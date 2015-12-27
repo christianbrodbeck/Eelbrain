@@ -120,6 +120,26 @@ def corr(y, x, out=None, perm=None):
     return out
 
 
+def lm_betas_se_1d(y, b, p):
+    """Regression T values
+
+    Parameters
+    ----------
+    y : array  [n_cases, n_tests]
+        Dependent measure.
+    b : array  [n_predictors, n_tests]
+        Regression coefficients.
+    p : Parametrization
+        Parametrized model.
+    """
+    v = np.einsum('i...,i...', y, y)
+    y_hat = b.T.dot(p.x.T).T
+    v -= np.einsum('i...,i...', y_hat, y)
+    v /= len(y) - p.x.shape[1]  # Var(e)
+    var_b = v * p.g.diagonal()[:, None]
+    return np.sqrt(var_b, var_b)
+
+
 def lm_t(y, x):
     """Calculate t-values for regression coefficients
 

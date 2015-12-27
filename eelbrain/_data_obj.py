@@ -6241,7 +6241,8 @@ class Parametrization(object):
 
         # projector
         x_t = x.T
-        self.projector = inv(x_t.dot(x)).dot(x_t)
+        self.g = inv(x_t.dot(x))
+        self.projector = self.g.dot(x_t)
 
     def reduced_model_index(self, term):
         "Boolean index into model columns for model comparison"

@@ -3,16 +3,30 @@
 from operator import mul
 
 import numpy as np
-from scipy.linalg import inv
 
 from .._data_obj import (Dataset, Factor, Var, NDVar, asmodel, asndvar,
                          DimensionMismatchError)
 from . import opt
+from .stats import lm_betas_se_1d
 from .testnd import ttest_1samp
 
 
 class LM(object):
-    """Fixed effects model for SPM"""
+    """Fixed effects model for SPM
+
+    Parameters
+    ----------
+    y : NDVar
+        Dependent variable.
+    model : Model
+        Model to fit.
+    ds : Dataset
+        Optional Dataset providing data for y/model.
+    coding : 'dummy' | 'effect'
+        Model parametrization (default is dummy coding).
+    subject : str
+        Optional information used by RandomLM.
+    """
     def __init__(self, y, model, ds=None, coding='dummy', subject=None):
         y = asndvar(y, ds=ds)
         n_cases = len(y)
@@ -29,6 +43,7 @@ class LM(object):
 
         self.model = model
         self._coeffs_flat = coeffs_flat
+        self._se_flat = lm_betas_se_1d(y_flat, coeffs_flat, p)
         self._p = p
         self._dims = y.dims
         self._shape = y.shape[1:]
@@ -37,15 +52,26 @@ class LM(object):
 
     def _coefficient(self, term):
         """Regression coefficient for a given term"""
+        index = self._index(term)
+        return self._coeffs_flat[index].reshape((1,) + self._shape)
+
+    def _index(self, term):
         if term in self._p.column_names:
-            index = self._p.column_names.index(term)
+            return self._p.column_names.index(term)
         elif term in self._p.terms:
             index = self._p.terms[term]
             if index.stop - index.start > 1:
                 raise NotImplementedError("Term has more than one column")
+            return index.start
         else:
             raise KeyError("Unknown term: %s" % repr(term))
-        return self._coeffs_flat[index].reshape((1,) + self._shape)
+
+    def t(self, term):
+        "NDVar with t-values for a given term"
+        index = self._index(term)
+        t = self._coeffs_flat[index] / self._se_flat[index]
+        return NDVar(t.reshape(self._shape), self._dims[1:],
+                     {'term': term, 'meas': 't'})
 
     def _n_columns(self):
         return {term: s.stop - s.start for term, s in self._p.terms.iteritems()}
