@@ -1580,6 +1580,11 @@ class Section(FMText):
         self._heading = asfmtext(heading)
         FMText.__init__(self, content)
 
+    def _repr_items(self):
+        out = [repr(self._heading)]
+        out += FMText._repr_items(self)
+        return out
+
     def add_figure(self, caption, content=None):
         """Add a figure frame to the section
 
@@ -1768,6 +1773,12 @@ class Report(Section):
         self._date = date
         self._site_title = site_title
         Section.__init__(self, title, content)
+
+    def _repr_items(self):
+        out = map(repr, (self._heading, self._author, self._date, self.content))
+        if self._site_title:
+            out.append(repr(self._site_title))
+        return out
 
     def get_html(self, env={}):
         # setup TOC in env
