@@ -5,6 +5,7 @@ from . import fmtxt
 from . import plot
 from . import test
 from ._data_obj import cellname, combine
+from ._stats.stats import ttest_t
 from .fmtxt import ms, Section
 
 
@@ -263,6 +264,25 @@ def source_bin_table(section, res, surfer_kwargs, pmin=None):
             caption_ = caption
         im = plot.brain.bin_table(ndvar, **surfer_kwargs)
         section.add_image_figure(im, caption_)
+
+
+def source_time_lm(lm, pmin):
+    if pmin == 0.1:
+        ps = (0.1, 0.01, 0.05)
+    elif pmin == 0.05:
+        ps = (0.05, 0.001, 0.01)
+    elif pmin == 0.01:
+        ps = (0.01, 0.0001, 0.001)
+    elif pmin == 0.001:
+        ps = (0.001, 0.00001, 0.0001)
+    else:
+        raise ValueError("pmin=%s" % pmin)
+    out = Section("SPMs")
+    ts = [ttest_t(p, lm.df) for p in ps]
+    for term in lm.column_names:
+        im = plot.brain.dspm_bin_table(lm.t(term), *ts, summary='extrema')
+        out.add_section(term, im)
+    return out
 
 
 def source_time_clusters(section, clusters, y, ds, model, include, title, colors, match):

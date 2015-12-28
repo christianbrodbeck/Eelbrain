@@ -47,8 +47,10 @@ class LM(object):
         self._p = p
         self._dims = y.dims
         self._shape = y.shape[1:]
+        self.column_names = p.column_names
         self.subject = subject
         self.n_cases = len(y)
+        self.df = self.n_cases - p.model.df
 
     def _coefficient(self, term):
         """Regression coefficient for a given term"""
@@ -94,7 +96,7 @@ class RandomLM(object):
             if lm._n_columns() != self._n_columns:
                 raise ValueError("Model for %s and %s don't match"
                                  % (lm0.subject, lm.subject))
-        self.column_names = lm0._p.column_names
+        self.column_names = lm0.column_names
 
         # unique subject labels
         name_i = 0

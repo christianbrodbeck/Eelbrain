@@ -252,7 +252,11 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {experiment}.log')
                                     '{epoch} {test} {test_options}.html'),
         'group-mov-file': os.path.join('{res-dir}', '{analysis} {group}',
                                        '{epoch} {test_options} {resname}.mov'),
-        'subject-mov-file': os.path.join('{res-dir}', '{analysis} subjects',
+        'subject-res-dir': os.path.join('{res-dir}', '{analysis} subjects'),
+        'subject-spm-report': os.path.join('{subject-res-dir}',
+                                           '{test} {epoch} {test_options}',
+                                           '{subject}.html'),
+        'subject-mov-file': os.path.join('{subject-res-dir}',
                                          '{epoch} {test_options} {resname}',
                                          '{subject}.mov'),
 
@@ -2880,6 +2884,17 @@ class MneExperiment(FileTree):
             self._add_vars(ds, vardef)
         return ds
 
+    def _load_spm(self, sns_baseline=True, src_baseline=False):
+        "Load LM"
+        subject = self.get('subject')
+        test = self.get('test')
+        p = self._tests[test]
+        if p['kind'] != 'two-stage':
+            raise NotImplementedError("Test kind %r" % p['kind'])
+        ds = self.load_epochs_stc(subject, sns_baseline, src_baseline, mask=True,
+                                  vardef=test)
+        return spm.LM('src', p['stage 1'], ds, subject=subject)
+
     def load_src(self, add_geom=False, **state):
         "Load the current source space"
         fpath = self.get('src-file', make=True, **state)
@@ -4097,8 +4112,7 @@ class MneExperiment(FileTree):
         self.set(**state)
         self._set_analysis_options('src', sns_baseline, src_baseline, pmin,
                                    tstart, tstop, parc, mask)
-        dst = self.get('report-file', mkdir=True, fmatch=False, folder=folder,
-                       test=test)
+        dst = self.get('report-file', mkdir=True, folder=folder, test=test)
         is_twostage = self._tests[test]['kind'] == 'two-stage'
         desc = self._get_rel('report-file', 'res-dir')
         if redo:
@@ -4476,6 +4490,33 @@ class MneExperiment(FileTree):
         section.add_image_figure(content, caption)
 
         legend.close()
+
+    def _make_report_lm(self, pmin=0.01, sns_baseline=True, src_baseline=False,
+                        mask='lobes'):
+        """Report for a first level (single subject) LM
+
+        Parameters
+        ----------
+        pmin : scalar
+            Threshold p-value for uncorrected SPMs.
+        """
+        if not self._tests[self.get('test')]['kind'] == 'two-stage':
+            raise NotImplementedError("Only two-stage tests")
+
+        with self._temporary_state:
+            self._set_analysis_options('src', sns_baseline, src_baseline, pmin,
+                                       None, None, None, mask)
+            dst = self.get('subject-spm-report', mkdir=True)
+            lm = self._load_spm(sns_baseline, src_baseline)
+
+            title = self.format('{experiment} {epoch} {test} {test_options}')
+
+        report = Report(title)
+        report.append(_report.source_time_lm(lm, pmin))
+
+        # report signature
+        report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
+        report.save_html(dst)
 
     def make_src(self, redo=False, **kwargs):
         """Make the source space
