@@ -3415,9 +3415,15 @@ class NDVar(object):
             Earliest time point (default is from the beginning).
         tstop : None | scalar
             End of the data to use (default is to the end).
-        func : callable
-            Function to summarize data, needs axis argument (default is the
-            mean)
+        func : callable | str
+            How to summarize data in each time bin. Can be the name of a numpy
+            function that takes an axis parameter (e.g., 'sum', 'mean', 'max') or
+            'extrema' which selects the value with the maximum absolute value.
+            The default depends on ``ndvar.info['meas']``:
+            'p': minimum;
+            'f': maximum;
+            't', 'r': extrema;
+            otherwise: mean.
 
         Returns
         -------
@@ -3439,6 +3445,13 @@ class NDVar(object):
                 func = extrema
             else:
                 func = np.mean
+        elif isinstance(func, str):
+            if func == 'extrema':
+                func = extrema
+            else:
+                func = getattr(scipy, func)
+        elif not callable(func):
+            raise TypeError("func=%s" % repr(func))
 
         # find time bin boundaries
         if tstart is None:

@@ -719,7 +719,7 @@ def _voxel_brain(data, lut, vmin, vmax):
 
 
 def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
-              views=('lat', 'med'), hemi=None, summary=np.sum, vmax=None,
+              views=('lat', 'med'), hemi=None, summary='sum', vmax=None,
               axw=300, axh=250, *args, **kwargs):
     """Create a table with images for time bins
 
@@ -743,10 +743,11 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
         'medial', 'dorsal'.
     hemi : 'lh' | 'rh' | 'both'
         Which hemispheres to plot (default based on data).
-    summary : callable
-        How to summarize data in each time bin. The value should be a function
-        that takes an axis parameter (e.g., numpy summary functions like
-        numpy.sum, numpy.mean, numpy.max, ..., default is numpy.sum).
+    summary : str
+        How to summarize data in each time bin. Can be the name of a numpy
+        function that takes an axis parameter (e.g., 'sum', 'mean', 'max') or
+        'extrema' which selects the value with the maximum absolute value.
+        Default is sum.
     vmax : scalar != 0
         Maximum value in the colormap. Default is the maximum value in the
         cluster.
