@@ -4094,6 +4094,32 @@ class NDVar(object):
         """
         return self._aggregate_over_dims(dims, regions, np.sum)
 
+    def threshold(self, v, tail=1):
+        """Set all values below a threshold to 0.
+
+        Parameters
+        ----------
+        v : scalar
+            Threshold value.
+        tail : -1 | 0 | 1
+            Tailedness.
+            1: set values below v to 0 (default);
+            0: set values between -v and v to 0;
+            -1: set values above v to 0.
+        """
+        if tail == 0:
+            v = abs(v)
+            idx = self.x >= v
+            np.logical_or(idx, self.x <= -v, idx)
+        elif tail == 1:
+            idx = self.x >= v
+        elif tail == -1:
+            idx = self.x <= v
+        else:
+            raise ValueError("Invalid value tail=%s; need -1, 0 or 1" % repr(tail))
+        info = self.info.copy()
+        return NDVar(np.where(idx, self.x, 0), self.dims, info)
+
 
 def extrema(x, axis=0):
     "Extract the extreme values in x"
