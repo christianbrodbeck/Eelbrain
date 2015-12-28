@@ -1628,17 +1628,24 @@ class MneExperiment(FileTree):
         ----------
         ds : Dataset
             Event dataset.
-        vardef : dict
+        vardef : dict | tuple
             Variable definition.
         """
-        new = {}
-        for name, definition in vardef.iteritems():
-            if isinstance(definition, str):
-                new[name] = ds.eval(definition)
-            else:
-                source, codes = definition
-                new[name] = asfactor(source, ds=ds).as_var(codes, 0, name)
-        ds.update(new, True)
+        if isinstance(vardef, tuple):
+            for item in vardef:
+                name, vdef = item.split('=')
+                ds[name.strip()] = ds.eval(vdef)
+        elif isinstance(vardef, dict):
+            new = {}
+            for name, definition in vardef.iteritems():
+                if isinstance(definition, str):
+                    new[name] = ds.eval(definition)
+                else:
+                    source, codes = definition
+                    new[name] = asfactor(source, ds=ds).as_var(codes, 0, name)
+            ds.update(new, True)
+        else:
+            raise TypeError("type(vardef)=%s; needs to be dict or tuple" % type(vardef))
 
     def _backup(self, dst_root):
         """Backup all essential files to ``dst_root``.
