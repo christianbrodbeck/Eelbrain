@@ -4176,6 +4176,9 @@ class Datalist(list):
         else:
             super(Datalist, self).__init__()
 
+    def __deepcopy__(self, memo):
+        return Datalist((deepcopy(item, memo) for item in self), self.name, self._fmt)
+
     def __repr__(self):
         args = super(Datalist, self).__repr__()
         if self.name is not None:

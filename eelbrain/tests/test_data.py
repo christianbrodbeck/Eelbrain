@@ -1,4 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from copy import deepcopy
 from itertools import izip, product
 from operator import (add, iadd, sub, isub, mul, imul, div, idiv, floordiv,
                       ifloordiv, mod, imod)
@@ -288,6 +289,13 @@ def test_datalist():
     b = Datalist([[], [], [2], [1]])
     assert_array_equal(a == b, [True, False, False, True])
     assert_array_equal(a != b, [False, True, True, False])
+
+    # deepcopy
+    ac = deepcopy(a)
+    ok_(ac is not a)
+    assert_array_equal(ac, a)
+    ac[0].append(1)
+    assert_array_equal(ac == a, [False, True, True, True])
 
     # update
     a._update_listlist(b)
