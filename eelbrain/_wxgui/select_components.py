@@ -564,24 +564,19 @@ class SourceFrame(FileFrameChild):
         FileFrame.__init__(self, parent, None, None, parent.model)
 
         # prepare canvas
-        self.sizer = wx.BoxSizer(wx.VERTICAL)
-        self.SetSizer(self.sizer)
         self.canvas = FigureCanvasPanel(self)
-        self.sizer.Add(self.canvas, 1, wx.EXPAND)
         self.figure = self.canvas.figure
         self.figure.subplots_adjust(0, 0, 1, 1, 0, 0)
         self.figure.set_facecolor('white')
-        self.sizer.Fit(self)
 
         # attributes
         self.parent = parent
         self.model = parent.model
         self.doc = parent.model.doc
-        self.size = 1
-        self.n_comp = 0  # updated by plot
+        self.n_comp = self.config.ReadInt('layout_n_comp', 10)
         self.n_comp_in_ica = len(self.doc.components)
         self.i_first = i_first
-        self.n_epochs = 20
+        self.n_epochs = self.config.ReadInt('layout_n_epochs', 20)
         self.i_first_epoch = 0
         self.n_epochs_in_data = len(self.doc.sources.epoch)
         self.y_scale = 5  # scale factor for y axis
@@ -638,9 +633,8 @@ class SourceFrame(FileFrameChild):
         # partition figure
         self.figure.clf()
         figheight = self.figure.get_figheight()
-        n_comp = int(self.figure.get_figheight() // self.size)
-        self.n_comp = n_comp
-        # make sure no empty lines
+        n_comp = self.n_comp
+        # make sure there are no empty lines
         if self.i_first and self.n_comp_in_ica - self.i_first < n_comp:
             self.i_first = max(0, self.n_comp_in_ica - n_comp)
         # further layout-relevant properties
@@ -649,8 +643,9 @@ class SourceFrame(FileFrameChild):
         elen = len(self.doc.sources.time)
 
         # topomaps
-        axheight = self.size / figheight
-        axwidth = self.size / self.figure.get_figwidth()
+        axheight = 1 / (self.n_comp + 0.5)  # 0.5 = bottom space for epoch labels
+        ax_size_in = axheight * figheight
+        axwidth = ax_size_in / self.figure.get_figwidth()
         left = axwidth / 2
         self.topo_plots = []
         self.topo_labels = []
@@ -680,7 +675,6 @@ class SourceFrame(FileFrameChild):
 
         # store canvas before plotting lines
         self.canvas.draw()
-        self.canvas.store_canvas()
 
         # plot epochs
         self.lines = ax.plot(y.T, color=LINE_COLOR[True], clip_on=False)
@@ -728,7 +722,7 @@ class SourceFrame(FileFrameChild):
         if index:
             for i_comp in index:
                 self.lines[i_comp - self.i_first].set_color(LINE_COLOR[self.doc.accept[i_comp]])
-            self.canvas.redraw(axes=(self.ax_tc,))
+            self.canvas.draw()
 
     def GoToComponentEpoch(self, component, epoch):
         self.SetFirstComponent(component // self.n_comp * self.n_comp)
@@ -783,6 +777,9 @@ class SourceFrame(FileFrameChild):
     def OnClose(self, event):
         if super(SourceFrame, self).OnClose(event):
             self.doc.unsubscribe_to_case_change(self.CaseChanged)
+            self.config.WriteInt('layout_n_comp', self.n_comp)
+            self.config.WriteInt('layout_n_epochs', self.n_epochs)
+            self.config.Flush()
 
     def OnDown(self, event):
         "turns the page backward"
@@ -791,6 +788,31 @@ class SourceFrame(FileFrameChild):
     def OnForward(self, event):
         "turns the page forward"
         self.SetFirstEpoch(self.i_first_epoch + self.n_epochs)
+
+    def OnSetLayout(self, event):
+        caption = "Set ICA Source Layout"
+        msg = "Number of components and epochs (e.g., '10 20')"
+        default = '%i %i' % (self.n_comp, self.n_epochs)
+        dlg = wx.TextEntryDialog(self, msg, caption, default)
+        while True:
+            if dlg.ShowModal() == wx.ID_OK:
+                value = dlg.GetValue()
+                try:
+                    n_comp, n_epochs = map(int, value.split())
+                except Exception:
+                    wx.MessageBox("Invalid entry: %r. Need two integers \n"
+                                  "(e.g., '10 20').", "Invalid Entry",
+                                  wx.OK | wx.ICON_ERROR)
+                else:
+                    dlg.Destroy()
+                    break
+            else:
+                dlg.Destroy()
+                return
+
+        self.n_comp = n_comp
+        self.n_epochs = n_epochs
+        self._plot()
 
     def OnUp(self, event):
         "turns the page backward"
@@ -804,6 +826,9 @@ class SourceFrame(FileFrameChild):
 
     def OnUpdateUIForward(self, event):
         event.Enable(self.CanForward())
+
+    def OnUpdateUISetLayout(self, event):
+        event.Enable(True)
 
     def OnUpdateUIUp(self, event):
         event.Enable(self.CanUp())

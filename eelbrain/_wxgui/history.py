@@ -186,20 +186,10 @@ class FileFrame(EelbrainFrame):
         if pos is None:
             pos = (config.ReadInt("pos_horizontal", -1),
                    config.ReadInt("pos_vertical", -1))
-        else:
-            pos_h, pos_v = pos
-            config.WriteInt("pos_horizontal", pos_h)
-            config.WriteInt("pos_vertical", pos_v)
-            config.Flush()
 
         if size is None:
             size = (config.ReadInt("size_width", 800),
                     config.ReadInt("size_height", 600))
-        else:
-            w, h = pos
-            config.WriteInt("size_width", w)
-            config.WriteInt("size_height", h)
-            config.Flush()
 
         super(FileFrame, self).__init__(parent, -1, self._title, pos, size)
         self.config = config
