@@ -718,6 +718,90 @@ def _voxel_brain(data, lut, vmin, vmax):
     return figure
 
 
+def dspm_bin_table(ndvar, fmin=2, fmax=8, fmid=None,
+                   tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
+                   views=('lat', 'med'), hemi=None, summary='extrema',
+                   axw=300, axh=250, *args, **kwargs):
+    """Create a table with images for time bins
+
+    Parameters
+    ----------
+    ndvar : NDVar (time x source)
+        Data to be plotted.
+    fmin, fmax : scalar >= 0
+        Start- and end-point for the color gradient for positive values. The
+        gradient for negative values goes from -fmin to -fmax. Values between
+        -fmin and fmin are transparent.
+    fmid : None | scalar
+        Midpoint for the color gradient. If fmid is None (default) it is set
+        half way between fmin and fmax.
+    tstart : None | scalar
+        Time point of the start of the first bin (inclusive; None to use the
+        first time point in ndvar).
+    tstop : None | scalar
+        End of the last bin (exclusive; None to end with the last time point
+        in ndvar).
+    tstep : scalar
+        Size of each bin (in seconds).
+    surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
+        Freesurfer surface to use as brain geometry.
+    views : list of str
+        Views to display (for each hemisphere, lh first). Options are:
+        'rostral', 'parietal', 'frontal', 'ventral', 'lateral', 'caudal',
+        'medial', 'dorsal'.
+    hemi : 'lh' | 'rh' | 'both'
+        Which hemispheres to plot (default based on data).
+    summary : str
+        How to summarize data in each time bin. Can be the name of a numpy
+        function that takes an axis parameter (e.g., 'sum', 'mean', 'max') or
+        'extrema' which selects the value with the maximum absolute value.
+        Default is extrema.
+    axw, axh : scalar
+        Subplot width/height (default axw=300, axh=250).
+    foreground : mayavi color
+        Figure foreground color (i.e., the text color).
+    background : mayavi color
+        Figure background color.
+    parallel : bool
+        Set views to parallel projection (default ``True``).
+    smoothing_steps : None | int
+        Number of smoothing steps if data is spatially undersampled (pysurfer
+        ``Brain.add_data()`` argument).
+    subjects_dir : None | str
+        Override the subjects_dir associated with the source space dimension.
+
+
+    Returns
+    -------
+    images : Image
+        FMTXT Image object that can be saved as SVG or integrated into an
+        FMTXT document.
+
+
+    Notes
+    -----
+    Plotting is based on :func:`plot.brain.dspm`.
+
+    The resulting image can be saved with either of the following (currently
+    the only supported formats)::
+
+    >>> image.save_html("name.html")
+    >>> image.save_image("name.svg")
+
+
+    See Also
+    --------
+    plot.brain.bin_table: plotting clusters as bin-table
+    """
+    data = ndvar.bin(tstep, tstart, tstop, summary)
+
+    def brain_(hemi_):
+        return dspm(data, fmin, fmax, fmid, surf, views[0], hemi_, False, None,
+                    axw, axh, None, None, *args, **kwargs)
+
+    return _bin_table(data, hemi, views, brain_)
+
+
 def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
               views=('lat', 'med'), hemi=None, summary='sum', vmax=None,
               axw=300, axh=250, *args, **kwargs):
@@ -775,32 +859,20 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
 
     Notes
     -----
-    Plotting is based on :func:`plot.brain.cluster`, so this function is
-    currently most appropriate for plotting SPMs over time (see Examples).
-
-
-    Examples
-    --------
-    The plotting requires a thresholded statistical map, for example from a
-    t-test::
-
-    >>> res = testnd.ttest_rel('y', 'x', match='subject', samples=0, pmin=0.05)
-    >>> spm = res.masked_parameter_map(None)
-
-    This map can be plotted into an image object. Since we're interested in the
-    largest statistic value of each time window, the appropriate summary
-    function is :func:`numpy.max`::
-
-    >>> image = plot.brain.bin_table(spm, 0.1, 0.4, tstep=0.05, summary=np.max)
+    Plotting is based on :func:`plot.brain.cluster`.
 
     The resulting image can be saved with either of the following (currently
     the only supported formats)::
 
     >>> image.save_html("name.html")
     >>> image.save_image("name.svg")
+
+
+    See Also
+    --------
+    plot.brain.dspm_bin_table: plotting SPMs as bin-table
     """
     data = ndvar.bin(tstep, tstart, tstop, summary)
-    ims = []
     if vmax is None:
         vmax = max(-data.min(), data.max())
         if vmax == 0:
@@ -810,6 +882,15 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
     elif vmax < 0:
         vmax = -vmax
 
+    def brain_(hemi_):
+        return cluster(data, vmax, surf, views[0], hemi_, False, None, axw, axh,
+                        None, None, *args, **kwargs)
+
+    return _bin_table(data, hemi, views, brain_)
+
+
+def _bin_table(data, hemi, views, brain_func):
+    ims = []
     if hemi is None:
         hemis = []
         if data.source.lh_n:
@@ -824,8 +905,7 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
         raise ValueError("hemi=%s" % repr(hemi))
 
     for hemi in hemis:
-        brain = cluster(data, vmax, surf, views[0], hemi, False, None, axw, axh,
-                        None, None, *args, **kwargs)
+        brain = brain_func(hemi)
 
         hemi_lines = [[] for _ in views]
         for i in xrange(len(data.time)):
