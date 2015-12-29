@@ -50,6 +50,26 @@ TOPO_PLOT = -2
 OUT_OF_RANGE = -3
 
 
+def _epoch_list_to_ranges(elist):
+    out = []
+    i = 0
+    i_last = len(elist) - 1
+    start = None
+    while i <= i_last:
+        cur = elist[i]
+        if i < i_last and elist[i + 1] - cur == 1:
+            if start is None:
+                start = cur
+        elif start is None:
+            out.append(fmtxt.Link(cur, 'epoch:%i' % cur))
+        else:
+            out.append(fmtxt.Link(start, 'epoch:%i' % start) + '-' +
+                       fmtxt.Link(cur, 'epoch:%i' % cur))
+            start = None
+        i += 1
+    return out
+
+
 def format_epoch_list(l, head="Epochs by channel:"):
     d = meeg.channel_listlist_to_dict(l)
     if not d:
@@ -57,8 +77,7 @@ def format_epoch_list(l, head="Epochs by channel:"):
     out = fmtxt.List(head)
     for ch in sorted(d, key=lambda x: -len(d[x])):
         item = fmtxt.FMText("%s (%i): " % (ch, len(d[ch])))
-        item += fmtxt.delim_list((fmtxt.Link(epoch, 'epoch:%i' % epoch) for
-                                  epoch in d[ch]))
+        item += fmtxt.delim_list(_epoch_list_to_ranges(d[ch]))
         out.add_item(item)
     return out
 
