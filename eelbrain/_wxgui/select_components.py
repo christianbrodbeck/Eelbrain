@@ -27,9 +27,9 @@ from .._data_obj import NDVar, Ordered, fft, isfactor
 from ..plot._topo import _ax_topomap
 from .._wxutils import Icon, ID, REValidator
 from .._utils.parse import POS_FLOAT_PATTERN
-from .mpl_canvas import FigureCanvasPanel, CanvasFrame
+from .mpl_canvas import FigureCanvasPanel
 from .text import TextFrame, HTMLFrame
-from .history import Action, FileDocument, FileModel, FileFrame
+from .history import Action, FileDocument, FileModel, FileFrame, FileFrameChild
 from .frame import EelbrainDialog
 
 
@@ -217,37 +217,18 @@ class Frame(FileFrame):
         self.canvas_sizer = sizer
 
         # Toolbar
-        tb = self.CreateToolBar(wx.TB_HORIZONTAL)
-        tb.SetToolBitmapSize(size=(32, 32))
-        tb.AddLabelTool(wx.ID_SAVE, "Save",
-                        Icon("tango/actions/document-save"), shortHelp="Save")
-        tb.AddLabelTool(wx.ID_SAVEAS, "Save As",
-                        Icon("tango/actions/document-save-as"),
-                        shortHelp="Save As")
-        # tb.AddLabelTool(wx.ID_OPEN, "Load",
-        #                 Icon("tango/actions/document-open"),
-        #                 shortHelp="Open Rejections")
-        tb.AddLabelTool(ID.UNDO, "Undo", Icon("tango/actions/edit-undo"),
-                        shortHelp="Undo")
-        tb.AddLabelTool(ID.REDO, "Redo", Icon("tango/actions/edit-redo"),
-                        shortHelp="Redo")
+        tb = self.InitToolbar(can_open=False)
         tb.AddSeparator()
-
-        # Buttons
+        # buttons
         button = wx.Button(tb, ID.SHOW_SOURCES, "Sources")
         button.Bind(wx.EVT_BUTTON, self.OnShowSources)
         tb.AddControl(button)
         button = wx.Button(tb, ID.FIND_RARE_EVENTS, "Rare Events")
         button.Bind(wx.EVT_BUTTON, self.OnFindRareEvents)
         tb.AddControl(button)
-
-        # right-most part
+        # tail
         tb.AddStretchableSpace()
-
-        # --> Help
-        tb.AddLabelTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
-        self.Bind(wx.EVT_TOOL, self.OnHelp, id=wx.ID_HELP)
-
+        self.InitToolbarTail(tb)
         tb.Realize()
 
         self.CreateStatusBar()
@@ -552,7 +533,7 @@ class Frame(FileFrame):
             self.source_frame = SourceFrame(self, i_first)
 
 
-class SourceFrame(CanvasFrame):
+class SourceFrame(FileFrameChild):
     """
     Component Source Time Course
     ============================
@@ -574,15 +555,25 @@ class SourceFrame(CanvasFrame):
     B           Butterfly plot of condition averages
     =========== ============================================================
     """
-    _make_axes = False
+    _doc_name = 'component selection'
+    _name = 'ICASources'
+    _title = 'ICA Source Time Course'
+    _wildcard = "ICA fiff file (*-ica.fif)|*.fif"
 
-    def __init__(self, parent, i_first, *args, **kwargs):
-        super(SourceFrame, self).__init__(parent, "ICA Source Time Course", None, *args, **kwargs)
+    def __init__(self, parent, i_first):
+        FileFrame.__init__(self, parent, None, None, parent.model)
+
+        # prepare canvas
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self.SetSizer(self.sizer)
+        self.canvas = FigureCanvasPanel(self)
+        self.sizer.Add(self.canvas, 1, wx.EXPAND)
+        self.figure = self.canvas.figure
         self.figure.subplots_adjust(0, 0, 1, 1, 0, 0)
         self.figure.set_facecolor('white')
+        self.sizer.Fit(self)
 
-        self.SetRect(wx.GetClientDisplayRect())
-
+        # attributes
         self.parent = parent
         self.model = parent.model
         self.doc = parent.model.doc
@@ -594,7 +585,21 @@ class SourceFrame(CanvasFrame):
         self.i_first_epoch = 0
         self.n_epochs_in_data = len(self.doc.sources.epoch)
         self.y_scale = 5  # scale factor for y axis
-        self._plot()
+
+        # Toolbar
+        tb = self.InitToolbar(can_open=False)
+        tb.AddSeparator()
+        self.up_button = tb.AddLabelTool(wx.ID_UP, "Up",
+                                         Icon("tango/actions/go-up"))
+        self.down_button = tb.AddLabelTool(wx.ID_DOWN, "Down",
+                                           Icon("tango/actions/go-down"))
+        self.back_button = tb.AddLabelTool(wx.ID_BACKWARD, "Back",
+                                           Icon("tango/actions/go-previous"))
+        self.next_button = tb.AddLabelTool(wx.ID_FORWARD, "Next",
+                                           Icon("tango/actions/go-next"))
+        tb.AddStretchableSpace()
+        self.InitToolbarTail(tb)
+        tb.Realize()
 
         # event bindings
         self.doc.subscribe_to_case_change(self.CaseChanged)
@@ -604,17 +609,10 @@ class SourceFrame(CanvasFrame):
         self.Bind(wx.EVT_TOOL, self.OnForward, id=wx.ID_FORWARD)
         self.canvas.mpl_connect('button_press_event', self.OnCanvasClick)
         self.canvas.mpl_connect('key_release_event', self.OnCanvasKey)
-        self.Show()
 
-    def _fill_toolbar(self, tb):
-        self.up_button = tb.AddLabelTool(wx.ID_UP, "Up",
-                                         Icon("tango/actions/go-up"))
-        self.down_button = tb.AddLabelTool(wx.ID_DOWN, "Down",
-                                           Icon("tango/actions/go-down"))
-        self.back_button = tb.AddLabelTool(wx.ID_BACKWARD, "Back",
-                                           Icon("tango/actions/go-previous"))
-        self.next_button = tb.AddLabelTool(wx.ID_FORWARD, "Next",
-                                           Icon("tango/actions/go-next"))
+        self._plot()
+        self.UpdateTitle()
+        self.Show()
 
     def _get_source_data(self):
         "component by time"
@@ -696,8 +694,6 @@ class SourceFrame(CanvasFrame):
         # epoch demarcation
         for x in xrange(elen, elen * self.n_epochs, elen):
             ax.axvline(x, ls='--', c='k')
-        # epoch labels
-
 
         self.ax_tc = ax
         self.canvas.draw()
@@ -785,8 +781,8 @@ class SourceFrame(CanvasFrame):
             self.parent.PlotEpochButterfly(-1)
 
     def OnClose(self, event):
-        self.doc.unsubscribe_to_case_change(self.CaseChanged)
-        super(SourceFrame, self).OnClose(event)
+        if super(SourceFrame, self).OnClose(event):
+            self.doc.unsubscribe_to_case_change(self.CaseChanged)
 
     def OnDown(self, event):
         "turns the page backward"

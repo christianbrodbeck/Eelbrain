@@ -662,20 +662,7 @@ class Frame(FileFrame):
                                     top=.95, hspace=.5)
 
         # Toolbar
-        tb = self.CreateToolBar(wx.TB_HORIZONTAL)
-        tb.SetToolBitmapSize(size=(32, 32))
-        tb.AddLabelTool(wx.ID_SAVE, "Save",
-                        Icon("tango/actions/document-save"), shortHelp="Save")
-        tb.AddLabelTool(wx.ID_SAVEAS, "Save As",
-                        Icon("tango/actions/document-save-as"),
-                        shortHelp="Save As")
-        tb.AddLabelTool(wx.ID_OPEN, "Load",
-                        Icon("tango/actions/document-open"),
-                        shortHelp="Open Rejections")
-        tb.AddLabelTool(ID.UNDO, "Undo", Icon("tango/actions/edit-undo"),
-                        shortHelp="Undo")
-        tb.AddLabelTool(ID.REDO, "Redo", Icon("tango/actions/edit-redo"),
-                        shortHelp="Redo")
+        tb = self.InitToolbar()
         tb.AddSeparator()
 
         # --> select page
@@ -688,8 +675,10 @@ class Frame(FileFrame):
         # --> forward / backward
         self.back_button = tb.AddLabelTool(wx.ID_BACKWARD, "Back",
                                            Icon("tango/actions/go-previous"))
+        self.Bind(wx.EVT_TOOL, self.OnBackward, id=wx.ID_BACKWARD)
         self.next_button = tb.AddLabelTool(wx.ID_FORWARD, "Next",
                                            Icon("tango/actions/go-next"))
+        self.Bind(wx.EVT_TOOL, self.OnForward, id=wx.ID_FORWARD)
         tb.AddSeparator()
 
         # --> Bad Channels
@@ -703,10 +692,7 @@ class Frame(FileFrame):
         tb.AddControl(button)
 
         # right-most part
-        if wx.__version__ >= '2.9':
-            tb.AddStretchableSpace()
-        else:
-            tb.AddSeparator()
+        tb.AddStretchableSpace()
 
         # Grand-average plot
         button = wx.Button(tb, ID.GRAND_AVERAGE, "GA")
@@ -719,9 +705,7 @@ class Frame(FileFrame):
         self.Bind(wx.EVT_TOOL, self.OnInfo, id=wx.ID_INFO)
 
         # --> Help
-        tb.AddLabelTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
-        self.Bind(wx.EVT_TOOL, self.OnHelp, id=wx.ID_HELP)
-
+        self.InitToolbarTail(tb)
         tb.Realize()
 
         self.CreateStatusBar()
@@ -739,9 +723,6 @@ class Frame(FileFrame):
         self._SetLayout(nplots, topo, mean)
 
         # Bind Events ---
-        self.Bind(wx.EVT_TOOL, self.OnBackward, id=wx.ID_BACKWARD)
-        self.Bind(wx.EVT_TOOL, self.OnForward, id=wx.ID_FORWARD)
-        self.Bind(wx.EVT_TOOL, self.OnSetLayout, id=ID.SET_LAYOUT)
         self.canvas.mpl_connect('axes_leave_event', self.OnPointerLeaveAxes)
         self.canvas.mpl_connect('button_press_event', self.OnCanvasClick)
         self.canvas.mpl_connect('key_release_event', self.OnCanvasKey)

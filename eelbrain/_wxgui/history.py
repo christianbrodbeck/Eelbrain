@@ -5,7 +5,7 @@ import os
 
 import wx
 
-from .._wxutils import ID
+from .._wxutils import Icon, ID
 from .help import show_help_txt
 from .frame import EelbrainFrame
 
@@ -163,6 +163,7 @@ class FileModel(object):
 
 
 class FileFrame(EelbrainFrame):
+    owns_file = True
     _doc_name = 'document'
     _name = 'Default'  # internal, for config
     _title = 'Title'  # external, for frame title
@@ -210,9 +211,30 @@ class FileFrame(EelbrainFrame):
         self.doc.subscribe_to_path_change(self.UpdateTitle)
         self.history.subscribe_to_saved_change(self.UpdateTitle)
         self.Bind(wx.EVT_CLOSE, self.OnClose)
-        self.Bind(wx.EVT_TOOL, self.OnOpen, id=ID.OPEN)
+
+    def InitToolbar(self, can_open=True):
+        tb = self.CreateToolBar(wx.TB_HORIZONTAL)
+        tb.SetToolBitmapSize(size=(32, 32))
+
+        tb.AddLabelTool(wx.ID_SAVE, "Save", Icon("tango/actions/document-save"),
+                        shortHelp="Save")
         self.Bind(wx.EVT_TOOL, self.OnSave, id=wx.ID_SAVE)
+        tb.AddLabelTool(wx.ID_SAVEAS, "Save As", Icon("tango/actions/document-save-as"),
+                        shortHelp="Save As")
         self.Bind(wx.EVT_TOOL, self.OnSaveAs, id=wx.ID_SAVEAS)
+        if can_open:
+            tb.AddLabelTool(wx.ID_OPEN, "Load", Icon("tango/actions/document-open"),
+                            shortHelp="Open Rejections")
+            self.Bind(wx.EVT_TOOL, self.OnOpen, id=wx.ID_OPEN)
+        tb.AddLabelTool(ID.UNDO, "Undo", Icon("tango/actions/edit-undo"),
+                        shortHelp="Undo")
+        tb.AddLabelTool(ID.REDO, "Redo", Icon("tango/actions/edit-redo"),
+                        shortHelp="Redo")
+        return tb
+
+    def InitToolbarTail(self, tb):
+        tb.AddLabelTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
+        self.Bind(wx.EVT_TOOL, self.OnHelp, id=wx.ID_HELP)
 
     def CanRedo(self):
         return self.history.can_redo()
@@ -227,8 +249,12 @@ class FileFrame(EelbrainFrame):
         self.model.clear()
 
     def OnClose(self, event):
-        "Ask to save unsaved changes"
-        if event.CanVeto() and not self.history.is_saved():
+        """Ask to save unsaved changes.
+
+        Returns True if confirmed so that child windows can unsubscribe from
+        document model changes.
+        """
+        if self.owns_file and event.CanVeto() and not self.history.is_saved():
             self.Raise()
             msg = ("The current document has unsaved changes. Would you like "
                    "to save them?")
@@ -258,6 +284,7 @@ class FileFrame(EelbrainFrame):
         self.config.Flush()
 
         event.Skip()
+        return True
 
     def OnHelp(self, event):
         show_help_txt(self.__doc__, self, self._title)
@@ -346,3 +373,7 @@ class FileFrame(EelbrainFrame):
         if is_modified:
             title = '* ' + title
         self.SetTitle(title)
+
+
+class FileFrameChild(FileFrame):
+    owns_file = False
