@@ -1120,12 +1120,7 @@ class Frame(FileFrame):
         dlg.Destroy()
 
     def OnThreshold(self, event):
-        method = self.config.Read("Threshold/method", "p2p")
-        mark_above = self.config.ReadBool("Threshold/mark_above", True)
-        mark_below = self.config.ReadBool("Threshold/mark_below", False)
-        threshold = self.config.ReadFloat("Threshold/threshold", 2e-12)
-
-        dlg = ThresholdDialog(self, method, mark_above, mark_below, threshold)
+        dlg = ThresholdDialog(self)
         if dlg.ShowModal() == wx.ID_OK:
             threshold = dlg.GetThreshold()
             method = dlg.GetMethod()
@@ -1142,12 +1137,7 @@ class Frame(FileFrame):
                 below = None
 
             self.model.auto_reject(threshold, method, above, below)
-
-            self.config.Write("Threshold/method", method)
-            self.config.WriteBool("Threshold/mark_above", mark_above)
-            self.config.WriteBool("Threshold/mark_below", mark_below)
-            self.config.WriteFloat("Threshold/threshold", threshold)
-            self.config.Flush()
+            dlg.StoreConfig()
 
         dlg.Destroy()
 
@@ -1633,9 +1623,15 @@ class ThresholdDialog(EelbrainDialog):
     _methods = (('absolute', 'abs'),
                 ('peak-to-peak', 'p2p'))
 
-    def __init__(self, parent, method, mark_above, mark_below, threshold):
+    def __init__(self, parent):
         title = "Threshold Criterion Rejection"
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title)
+
+        method = parent.config.Read("Threshold/method", "p2p")
+        mark_above = parent.config.ReadBool("Threshold/mark_above", True)
+        mark_below = parent.config.ReadBool("Threshold/mark_below", False)
+        threshold = parent.config.ReadFloat("Threshold/threshold", 2e-12)
+
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         txt = "Mark epochs based on a threshold criterion"
@@ -1702,6 +1698,14 @@ class ThresholdDialog(EelbrainDialog):
         text = self.threshold_ctrl.GetValue()
         value = float(text)
         return value
+
+    def StoreConfig(self):
+        config = self.Parent.config
+        config.Write("Threshold/method", self.GetMethod())
+        config.WriteBool("Threshold/mark_above", self.GetMarkAbove())
+        config.WriteBool("Threshold/mark_below", self.GetMarkBelow())
+        config.WriteFloat("Threshold/threshold", self.GetThreshold())
+        config.Flush()
 
 
 class InfoFrame(HTMLFrame):
