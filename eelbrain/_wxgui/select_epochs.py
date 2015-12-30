@@ -29,7 +29,7 @@ from .. import _meeg as meeg
 from .. import _report
 from .._names import INTERPOLATE_CHANNELS
 from .._info import BAD_CHANNELS
-from .._utils.parse import FLOAT_PATTERN, POS_FLOAT_PATTERN
+from .._utils.parse import FLOAT_PATTERN, POS_FLOAT_PATTERN, INT_PATTERN
 from ..plot._base import find_axis_params_data, find_axis_params_dim, \
     find_fig_vlims
 from ..plot._nuts import _plt_bin_nuts
@@ -502,6 +502,21 @@ class Model(FileModel):
                               new_interpolate=ch_names)
         self.history.do(action)
 
+    def set_range(self, start, stop, new_accept):
+        if start < 0:
+            start += len(self.doc.accept)
+
+        if stop <= 0:
+            stop += len(self.doc.accept)
+
+        if stop <= start:
+            return
+
+        old_accept = self.doc.accept[start: stop].copy()
+        action = ChangeAction("Set Range", slice(start, stop), old_accept,
+                              new_accept)
+        self.history.do(action)
+
     def threshold(self, threshold=2e-12, method='abs'):
         """Find epochs based on a threshold criterion
 
@@ -809,6 +824,9 @@ class Frame(FileFrame):
         item = menu.Append(wx.ID_ANY, "Set Bad Channels",
                            "Specify bad channels for the whole file")
         app.Bind(wx.EVT_MENU, self.OnSetBadChannels, item)
+        item = menu.Append(wx.ID_ANY, "Set Rejection for Range",
+                           "Set the rejection status for a range of epochs")
+        app.Bind(wx.EVT_MENU, self.OnRejectRange, item)
         item = menu.Append(wx.ID_ANY, "Find Epochs by Threshold",
                            "Find epochs based in a specific threshold")
         app.Bind(wx.EVT_MENU, self.OnThreshold, item)
@@ -1015,6 +1033,16 @@ class Frame(FileFrame):
             self._topo_plot.set_data([tseg])
             self.canvas.redraw(axes=[self._topo_ax])
             self._topo_plot_info_str = "Topomap: %s, t = %s ms" % (desc, x)
+
+    def OnRejectRange(self, event):
+        dlg = RejectRangeDialog(self)
+        if dlg.ShowModal() == wx.ID_OK:
+            start = int(dlg.first.GetValue())
+            stop = int(dlg.last.GetValue()) + 1
+            state = bool(dlg.action.GetSelection())
+            self.model.set_range(start, stop, state)
+            dlg.StoreConfig()
+        dlg.Destroy()
 
     def OnSetBadChannels(self, event):
         dlg = wx.TextEntryDialog(self, "Please enter bad channel names separated by "
@@ -1680,6 +1708,61 @@ class FindNoisyChannelsDialog(EelbrainDialog):
                          self.do_report.GetValue())
         config.WriteBool("FindNoisyChannels/do_apply",
                          self.do_apply.GetValue())
+        config.Flush()
+
+
+class RejectRangeDialog(EelbrainDialog):
+
+    def __init__(self, parent):
+        EelbrainDialog.__init__(self, parent, wx.ID_ANY, "Reject Epoch Range")
+
+        # load config
+        config = parent.config
+        first = config.ReadInt("RejectRange/first", 0)
+        last = config.ReadInt("RejectRange/last", 0)
+        action = config.ReadInt("Threshold/action", 0)
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+
+        # Range
+        hsizer = wx.BoxSizer(wx.HORIZONTAL)
+        hsizer.Add(wx.StaticText(self, wx.ID_ANY, "First:"))
+        validator = REValidator(INT_PATTERN, "Invalid entry for First: {value}. Need an integer.")
+        self.first = wx.TextCtrl(self, wx.ID_ANY, str(first), validator=validator)
+        hsizer.Add(self.first)
+        hsizer.Add(wx.StaticText(self, wx.ID_ANY, "Last:"))
+        validator = REValidator(INT_PATTERN, "Invalid entry for Last: {value}. Need an integer.")
+        self.last = wx.TextCtrl(self, wx.ID_ANY, str(last), validator=validator)
+        hsizer.Add(self.last)
+        sizer.Add(hsizer)
+
+        # Action
+        self.action = wx.RadioBox(self, wx.ID_ANY, "Action",
+                                  choices=('Reject', 'Accept'),
+                                  style=wx.RA_SPECIFY_ROWS)
+        self.action.SetSelection(action)
+        sizer.Add(self.action)
+
+        # buttons
+        button_sizer = wx.StdDialogButtonSizer()
+        # ok
+        btn = wx.Button(self, wx.ID_OK)
+        btn.SetDefault()
+        button_sizer.AddButton(btn)
+        # cancel
+        button_sizer.AddButton(wx.Button(self, wx.ID_CANCEL))
+        # finalize
+        button_sizer.Realize()
+        sizer.Add(button_sizer)
+
+        self.SetSizer(sizer)
+        sizer.Fit(self)
+
+    def StoreConfig(self):
+        config = self.Parent.config
+        config.WriteInt("RejectRange/first", int(self.first.GetValue()))
+        config.WriteInt("RejectRange/last", int(self.last.GetValue()))
+        config.WriteInt("RejectRange/action", self.action.GetSelection())
         config.Flush()
 
 
