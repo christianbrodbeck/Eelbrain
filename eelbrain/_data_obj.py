@@ -68,6 +68,7 @@ preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __
 
 
 UNNAMED = '<?>'
+LIST_INDEX_TYPES = (int, slice)
 SEQUENCE_TYPES = (tuple, list)
 _pickled_ds_wildcard = ("Pickled Dataset (*.pickled)", '*.pickled')
 _tex_wildcard = ("TeX (*.tex)", '*.tex')
@@ -4232,6 +4233,27 @@ class Datalist(list):
             err = ("Unsupported type of index for Datalist: %r" % index)
             raise TypeError(err)
 
+    def __setitem__(self, key, value):
+        if isinstance(key, LIST_INDEX_TYPES):
+            list.__setitem__(self, key, value)
+        elif isinstance(key, np.ndarray):
+            if key.dtype.kind == 'b':
+                key = np.flatnonzero(key)
+            elif key.dtype.kind != 'i':
+                raise TypeError("Array index needs to be int or bool type")
+
+            if np.iterable(value):
+                if len(key) != len(value):
+                    raise ValueError("Need one value per index when setting a "
+                                     "range of entries in a Datalist.")
+                for k, v in izip(key, value):
+                    list.__setitem__(self, k, v)
+            else:
+                for k in key:
+                    list.__setitem__(self, k, value)
+        else:
+            raise NotImplementedError("Datalist indexing with %s" % type(key))
+
     def __getslice__(self, i, j):
         return Datalist(list.__getslice__(self, i, j), fmt=self._fmt)
 
@@ -4292,10 +4314,9 @@ class Datalist(list):
         "update list elements from another list of lists"
         if len(self) != len(other):
             raise ValueError("Unequal length")
-        for e1, e2 in izip(self, other):
-            for item in e2:
-                if item not in e1:
-                    e1.append(item)
+        for i in xrange(len(self)):
+            if any(item not in self[i] for item in other[i]):
+                self[i] = sorted(set(self[i]).union(other[i]))
 
 
 legal_dataset_key_re = re.compile("[_A-Za-z][_a-zA-Z0-9]*$")

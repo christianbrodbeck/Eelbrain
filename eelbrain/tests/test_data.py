@@ -297,6 +297,13 @@ def test_datalist():
     ac[0].append(1)
     assert_array_equal(ac == a, [False, True, True, True])
 
+    # __setitem__
+    ac[:2] = (1, 2)
+    assert_array_equal(ac == [1, 2, [], [1]], True)
+    ac[np.arange(2, 4)] = [3, 4]
+    assert_array_equal(ac == range(1, 5), True)
+    assert_raises(ValueError, ac.__setitem__, np.arange(2), np.arange(3))
+
     # update
     a._update_listlist(b)
     assert_array_equal(a, [[], [1], [2], [1]])
