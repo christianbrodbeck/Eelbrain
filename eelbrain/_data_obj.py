@@ -38,7 +38,6 @@ from warnings import warn
 
 from matplotlib.ticker import FormatStrFormatter, FuncFormatter, IndexFormatter
 import mne
-from mne import Evoked as _mne_Evoked
 from nibabel.freesurfer import read_annot
 import numpy as np
 from numpy import dot
@@ -70,6 +69,9 @@ preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __
 UNNAMED = '<?>'
 LIST_INDEX_TYPES = (int, slice)
 SEQUENCE_TYPES = (tuple, list)
+MNE_EPOCHS_TYPES = (mne.Epochs, mne.EpochsArray)
+MNE_EVOKED_TYPES = mne.Evoked
+MNE_LABEL_TYPES = (mne.Label, mne.label.BiHemiLabel)
 _pickled_ds_wildcard = ("Pickled Dataset (*.pickled)", '*.pickled')
 _tex_wildcard = ("TeX (*.tex)", '*.tex')
 _tsv_wildcard = ("Plain Text Tab Separated Values (*.txt)", '*.txt')
@@ -426,7 +428,7 @@ def asepochs(x, sub=None, ds=None, n=None):
             raise TypeError(err)
         x = ds.eval(x)
 
-    if isinstance(x, mne.Epochs):
+    if isinstance(x, MNE_EPOCHS_TYPES):
         pass
     else:
         raise TypeError("Need mne Epochs object, got %s" % repr(x))
@@ -495,15 +497,15 @@ def asndvar(x, sub=None, ds=None, n=None):
         x = ds.eval(x)
 
     # convert MNE objects
-    if isinstance(x, (mne.Epochs, mne.EpochsArray)):
+    if isinstance(x, MNE_EPOCHS_TYPES):
         from .load.fiff import epochs_ndvar
         x = epochs_ndvar(x)
-    elif isinstance(x, _mne_Evoked):
+    elif isinstance(x, MNE_EVOKED_TYPES):
         from .load.fiff import evoked_ndvar
         x = evoked_ndvar(x)
     elif isinstance(x, list):
         item_0 = x[0]
-        if isinstance(item_0, _mne_Evoked):
+        if isinstance(item_0, MNE_EVOKED_TYPES):
             from .load.fiff import evoked_ndvar
             x = evoked_ndvar(x)
 
@@ -5061,7 +5063,7 @@ class Dataset(OrderedDict):
             try:
                 if hasattr(v, 'aggregate'):
                     ds[k] = v.aggregate(x)
-                elif isinstance(v, (mne.Epochs, mne.EpochsArray)):
+                elif isinstance(v, MNE_EPOCHS_TYPES):
                     evokeds = []
                     for cell in x.cells:
                         idx = (x == cell)
@@ -7787,7 +7789,7 @@ class SourceSpace(Dimension):
         return coords
 
     def dimindex(self, arg):
-        if isinstance(arg, (mne.Label, mne.label.BiHemiLabel)):
+        if isinstance(arg, MNE_LABEL_TYPES):
             return self._dimindex_label(arg)
         elif isinstance(arg, basestring):
             if arg == 'lh':
