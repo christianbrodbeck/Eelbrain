@@ -461,69 +461,6 @@ class Document(FileDocument):
 class Model(FileModel):
     """Manages a document as well as its history"""
 
-    def auto_reject(self, threshold=2e-12, method='abs', above=False,
-                    below=True):
-        """
-        Marks epochs based on a threshold criterion
-
-        Parameters
-        ----------
-        threshold : scalar
-            The threshold value. Examples: 1.25e-11 to detect saturated
-            channels; 2e-12: for conservative MEG rejection.
-        method : 'abs' | 'p2p'
-            How to apply the threshold. With "abs", the threshold is applied to
-            absolute values. With 'p2p' the threshold is applied to
-            peak-to-peak values.
-        above, below: True, False, None
-            How to mark segments that do (above) or do not (below) exceed the
-            threshold: True->good; False->bad; None->don't change
-        """
-        args = ', '.join(map(str, (threshold, method, above, below)))
-        logger = getLogger(__name__)
-        logger.info("Auto-reject trials: %s" % args)
-
-        x = self.doc.good_data()
-        if method == 'abs':
-            x_max = x.abs().max(('time', 'sensor'))
-            sub_threshold = x_max <= threshold
-        elif method == 'p2p':
-            p2p = x.max('time') - x.min('time')
-            max_p2p = p2p.max('sensor')
-            sub_threshold = max_p2p <= threshold
-        else:
-            raise ValueError("Invalid method: %r" % method)
-
-        accept = sub_threshold.copy()
-
-        if below is False:
-            accept[sub_threshold] = False
-        elif below is None:
-            accept[sub_threshold] = self.doc.accept.x[sub_threshold]
-        elif below is not True:
-            err = "below needs to be True, False or None, got %s" % repr(below)
-            raise TypeError(err)
-
-        if above is True:
-            accept[sub_threshold == False] = True
-        elif above is None:
-            accept = np.where(sub_threshold, accept, self.doc.accept.x)
-        elif above is not False:
-            err = "above needs to be True, False or None, got %s" % repr(above)
-            raise TypeError(err)
-
-        index = np.flatnonzero(self.doc.accept.x != accept)
-        old_accept = self.doc.accept[index]
-        new_accept = accept[index]
-        old_tag = self.doc.tag[index]
-        new_tag = "%s_%s" % (method, threshold)
-        desc = "Threshold-%s" % method
-        action = ChangeAction(desc, index, old_accept, new_accept, old_tag,
-                              new_tag)
-        logger.info("Auto-rejecting %i trials based on threshold %s" %
-                    (len(index), method))
-        self.history.do(action)
-
     def clear(self):
         desc = "Clear"
         index = np.logical_not(self.doc.accept.x)
@@ -565,6 +502,41 @@ class Model(FileModel):
                               new_interpolate=ch_names)
         self.history.do(action)
 
+    def threshold(self, threshold=2e-12, method='abs'):
+        """Find epochs based on a threshold criterion
+
+        Parameters
+        ----------
+        threshold : scalar
+            The threshold value. Examples: 1.25e-11 to detect saturated
+            channels; 2e-12: for conservative MEG rejection.
+        method : 'abs' | 'p2p'
+            How to apply the threshold. With "abs", the threshold is applied to
+            absolute values. With 'p2p' the threshold is applied to
+            peak-to-peak values.
+
+        Returns
+        -------
+        sub_threshold : array of bool
+            True for all epochs in which the criterion is not reached (i.e.,
+            epochs that should be accepted).
+        """
+        args = ', '.join(map(str, (threshold, method)))
+        logger = getLogger(__name__)
+        logger.info("Auto-reject trials: %s" % args)
+
+        x = self.doc.good_data()
+        if method == 'abs':
+            x_max = x.abs().max(('time', 'sensor'))
+            sub_threshold = x_max <= threshold
+        elif method == 'p2p':
+            p2p = x.max('time') - x.min('time')
+            max_p2p = p2p.max('sensor')
+            sub_threshold = max_p2p <= threshold
+        else:
+            raise ValueError("Invalid method: %r" % method)
+        return sub_threshold
+
     def toggle_interpolation(self, case, ch_name):
         old_interpolate = self.doc.interpolate[case]
         new_interpolate = old_interpolate[:]
@@ -578,7 +550,7 @@ class Model(FileModel):
                               new_interpolate=new_interpolate)
         self.history.do(action)
 
-    def update_rejection(self, bad_chs, interp, desc):
+    def update_bad_chs(self, bad_chs, interp, desc):
         if interp is None:
             index = old_interp = new_interp = None
         else:
@@ -600,6 +572,29 @@ class Model(FileModel):
 
         action = ChangeAction(desc, index, old_bad_chs=old_bad_chs, new_bad_chs=new_bad_chs,
                               old_interpolate=old_interp, new_interpolate=new_interp)
+        self.history.do(action)
+
+    def update_rejection(self, new_accept, mark_good, mark_bad, desc, new_tag):
+        # find changes
+        if not mark_good:
+            index = np.invert(new_accept)
+        elif not mark_bad:
+            index = new_accept
+        else:
+            index = None
+
+        if index is None:
+            index = new_accept != self.doc.accept.x
+        else:
+            np.logical_and(index, new_accept != self.doc.accept.x, index)
+        index = np.flatnonzero(index)
+
+        # construct action
+        old_accept = self.doc.accept[index]
+        new_accept = new_accept[index]
+        old_tag = self.doc.tag[index]
+        action = ChangeAction(desc, index, old_accept, new_accept, old_tag,
+                              new_tag)
         self.history.do(action)
 
 
@@ -801,8 +796,8 @@ class Frame(FileFrame):
         item = menu.Append(wx.ID_ANY, "Set Bad Channels",
                            "Specify bad channels for the whole file")
         app.Bind(wx.EVT_MENU, self.OnSetBadChannels, item)
-        item = menu.Append(wx.ID_ANY, "Auto-Reject by Threshold",
-                           "Reject epochs based in a specific threshold")
+        item = menu.Append(wx.ID_ANY, "Find Epochs by Threshold",
+                           "Find epochs based in a specific threshold")
         app.Bind(wx.EVT_MENU, self.OnThreshold, item)
         item = menu.Append(wx.ID_ANY, "Find Bad Channels",
                            "Find bad channels using different criteria")
@@ -908,7 +903,7 @@ class Frame(FileFrame):
                     interp = noisies
                 else:
                     interp = None
-                self.model.update_rejection(flats_av, interp, "Find noisy channels")
+                self.model.update_bad_chs(flats_av, interp, "Find noisy channels")
 
             # Show Report
             if dlg.do_report.GetValue():
@@ -1155,21 +1150,24 @@ class Frame(FileFrame):
         if dlg.ShowModal() == wx.ID_OK:
             threshold = dlg.GetThreshold()
             method = dlg.GetMethod()
-            mark_above = dlg.GetMarkAbove()
-            if mark_above:
-                above = False
-            else:
-                above = None
 
-            mark_below = dlg.GetMarkBelow()
-            if mark_below:
-                below = True
-            else:
-                below = None
+            sub_threshold = self.model.threshold(threshold, method)
+            if dlg.do_apply.GetValue():
+                self.model.update_rejection(sub_threshold, dlg.GetMarkBelow(),
+                                            dlg.GetMarkAbove(),
+                                            "Threshold-%s" % method,
+                                            "%s_%s" % (method, threshold))
+            if dlg.do_report.GetValue():
+                rejected = np.invert(sub_threshold)
 
-            self.model.auto_reject(threshold, method, above, below)
+                doc = fmtxt.Section("Threshold")
+                doc.append("%s at %s: %i epochs" % (method, threshold, rejected.sum()))
+                if np.any(rejected):
+                    para = fmtxt.delim_list((fmtxt.Link(epoch, "epoch:%i" % epoch) for
+                                             epoch in np.flatnonzero(rejected)))
+                    doc.add_paragraph(para)
+                InfoFrame(self, "Rejection Info", doc.get_html())
             dlg.StoreConfig()
-
         dlg.Destroy()
 
     def OnUpdateUIBackward(self, event):
@@ -1672,11 +1670,16 @@ class ThresholdDialog(EelbrainDialog):
         title = "Threshold Criterion Rejection"
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title)
 
-        method = parent.config.Read("Threshold/method", "p2p")
-        mark_above = parent.config.ReadBool("Threshold/mark_above", True)
-        mark_below = parent.config.ReadBool("Threshold/mark_below", False)
-        threshold = parent.config.ReadFloat("Threshold/threshold", 2e-12)
+        # load config
+        config = parent.config
+        method = config.Read("Threshold/method", "p2p")
+        mark_above = config.ReadBool("Threshold/mark_above", True)
+        mark_below = config.ReadBool("Threshold/mark_below", False)
+        threshold = config.ReadFloat("Threshold/threshold", 2e-12)
+        do_apply = config.ReadBool("Threshold/do_apply", True)
+        do_report = config.ReadBool("Threshold/do_report", True)
 
+        # construct layout
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         txt = "Mark epochs based on a threshold criterion"
@@ -1694,13 +1697,13 @@ class ThresholdDialog(EelbrainDialog):
                            "threshold")
         ctrl.SetValue(mark_above)
         sizer.Add(ctrl)
-        self.mark_above_ctrl = ctrl
+        self.mark_above = ctrl
 
         ctrl = wx.CheckBox(self, wx.ID_ANY, "Accept all epochs not exceeding "
                            "the threshold")
         ctrl.SetValue(mark_below)
         sizer.Add(ctrl)
-        self.mark_below_ctrl = ctrl
+        self.mark_below = ctrl
 
         msg = ("Invalid entry for threshold: {value}. Need a floating\n"
                "point number.")
@@ -1712,16 +1715,27 @@ class ThresholdDialog(EelbrainDialog):
         sizer.Add(ctrl)
         self.threshold_ctrl = ctrl
 
+        # output
+        sizer.AddSpacer(4)
+        sizer.Add(wx.StaticText(self, label="Output"))
+        self.do_report = wx.CheckBox(self, wx.ID_ANY, "Show Report")
+        self.do_report.SetValue(do_report)
+        sizer.Add(self.do_report)
+        self.do_apply = wx.CheckBox(self, wx.ID_ANY, "Apply")
+        self.do_apply.SetValue(do_apply)
+        sizer.Add(self.do_apply)
+
         # buttons
         button_sizer = wx.StdDialogButtonSizer()
-
+        # ok
         btn = wx.Button(self, wx.ID_OK)
         btn.SetDefault()
+        btn.Bind(wx.EVT_BUTTON, self.OnOK)
         button_sizer.AddButton(btn)
-
+        # cancel
         btn = wx.Button(self, wx.ID_CANCEL)
         button_sizer.AddButton(btn)
-
+        # finalize
         button_sizer.Realize()
         sizer.Add(button_sizer)
 
@@ -1729,10 +1743,10 @@ class ThresholdDialog(EelbrainDialog):
         sizer.Fit(self)
 
     def GetMarkAbove(self):
-        return self.mark_above_ctrl.IsChecked()
+        return self.mark_above.IsChecked()
 
     def GetMarkBelow(self):
-        return self.mark_below_ctrl.IsChecked()
+        return self.mark_below.IsChecked()
 
     def GetMethod(self):
         index = self.method_ctrl.GetSelection()
@@ -1744,12 +1758,24 @@ class ThresholdDialog(EelbrainDialog):
         value = float(text)
         return value
 
+    def OnOK(self, event):
+        if not (self.mark_above.GetValue() or self.mark_below.GetValue()):
+            wx.MessageBox("Specify at least one action (reject or accept epochs)",
+                          "No Command Selected", wx.ICON_EXCLAMATION)
+        if not (self.do_report.GetValue() or self.do_apply.GetValue()):
+            wx.MessageBox("Specify at least one action (report or apply)",
+                          "No Command Selected", wx.ICON_EXCLAMATION)
+        else:
+            event.Skip()
+
     def StoreConfig(self):
         config = self.Parent.config
         config.Write("Threshold/method", self.GetMethod())
         config.WriteBool("Threshold/mark_above", self.GetMarkAbove())
         config.WriteBool("Threshold/mark_below", self.GetMarkBelow())
         config.WriteFloat("Threshold/threshold", self.GetThreshold())
+        config.WriteBool("Threshold/do_report", self.do_report.GetValue())
+        config.WriteBool("Threshold/do_apply", self.do_apply.GetValue())
         config.Flush()
 
 
