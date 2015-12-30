@@ -90,7 +90,7 @@ class History():
         """
         current_index = len(self._history) + self._last_action_idx
         if current_index == -1 and self._saved_idx < 0:
-            return True  # no actions and never saved
+            return self.doc.saved  # no actions and never saved
         return self._saved_idx == current_index
 
     def redo(self):
@@ -129,7 +129,7 @@ class History():
 class FileDocument(object):
     """Represent a file"""
     def __init__(self, path):
-        self.saved = True  # managed by the history
+        self.saved = False  # managed by the history
         self.path = path
         self._path_change_subscriptions = []
 
@@ -230,7 +230,7 @@ class FileFrame(EelbrainFrame):
         return self.history.can_redo()
 
     def CanSave(self):
-        return bool(self.doc.path)
+        return bool(self.doc.path) and not self.doc.saved
 
     def CanUndo(self):
         return self.history.can_undo()

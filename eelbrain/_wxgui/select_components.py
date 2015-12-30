@@ -85,6 +85,7 @@ class Document(FileDocument):
     """
     def __init__(self, path, ds, sysname):
         FileDocument.__init__(self, path)
+        self.saved = True
 
         self.ica = ica = mne.preprocessing.read_ica(path)
         self.accept = np.ones(self.ica.n_components_, bool)

@@ -262,6 +262,7 @@ class Document(FileDocument):
             self.tag[:] = tag
             self.interpolate[:] = interpolate
             self.set_bad_channels_by_name(bad_chs)
+            self.saved = True
 
     @property
     def bad_channel_names(self):
