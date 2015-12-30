@@ -101,8 +101,8 @@ class _ax_map2d:
         ax.set_axis_off()
 
         self.sensors = _plt_map2d(ax, sensors, proj, extent, marker, size,
-                                  color, mark, None, None, True, head_radius,
-                                  head_pos, head_linewidth)
+                                  color, mark, None, None, None, True,
+                                  head_radius, head_pos, head_linewidth)
 
         locs = sensors.get_locs_2d(proj, extent, SENSORMAP_FRAME)
         self.connectivity = _plt_connectivity(ax, locs, None)
@@ -122,7 +122,7 @@ class _ax_map2d:
 class _plt_map2d:
 
     def __init__(self, ax, sensors, proj, extent, marker, size, color, mark,
-                 mcolor, labels, invisible, head_radius, head_pos,
+                 mcolor, mmarker, labels, invisible, head_radius, head_pos,
                  head_linewidth):
         """
         Parameters
@@ -165,9 +165,10 @@ class _plt_map2d:
 
         self._mark_handles = []
         if mark is not None:
-            self.mark_sensors(mark, c=mcolor)
+            self.mark_sensors(mark, 20, mcolor, mmarker)
 
-    def mark_sensors(self, sensors, s=20, c='yellow', *args, **kwargs):
+    def mark_sensors(self, sensors, s=20, c='yellow', marker='o',
+                     *args, **kwargs):
         """Mark specific sensors
 
         Parameters
@@ -185,10 +186,12 @@ class _plt_map2d:
 
         if c is None:
             c = 'yellow'
+        if marker is None:
+            marker = 'o'
 
         idx = self.sensors.dimindex(sensors)
-        h = self.ax.scatter(self.locs[idx, 0], self.locs[idx, 1], s, c, *args,
-                            **kwargs)
+        h = self.ax.scatter(self.locs[idx, 0], self.locs[idx, 1], s, c, marker,
+                            *args, **kwargs)
         self._mark_handles.append(h)
 
     def remove(self):

@@ -728,7 +728,7 @@ class Frame(FileFrame):
         self._bfly_kwargs = {'color': color, 'lw': lw, 'mlw': mlw,
                              'antialiased': antialiased, 'vlims': self._vlims,
                              'mcolor': mcolor}
-        self._topo_kwargs = {'vlims': self._vlims}
+        self._topo_kwargs = {'vlims': self._vlims, 'mcolor': 'red', 'mmarker': 'x'}
         self._SetLayout(nplots, topo, mean)
 
         # Bind Events ---
@@ -1006,8 +1006,12 @@ class Frame(FileFrame):
             if self._topo_plot:
                 self._topo_plot.set_data([tseg])
             else:
+                if self._mark:
+                    mark = [ch for ch in self._mark if ch not in self.doc.bad_channel_names]
+                else:
+                    mark = None
                 self._topo_plot = _ax_topomap(self._topo_ax, [tseg], False,
-                                              **self._topo_kwargs)
+                                              mark=mark, **self._topo_kwargs)
             self.canvas.redraw(axes=[self._topo_ax])
             self._topo_plot_info_str = "Topomap: %s, t = %s ms" % (desc, x)
 

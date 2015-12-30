@@ -119,7 +119,8 @@ class Topomap(SensorMapMixin, _EelFigure):
         self._plots = []
         sensor_plots = []
         for ax, layers, proj_ in izip(self._axes, epochs, proj):
-            h = _ax_topomap(ax, layers, axtitle, clip, clip_distance, sensorlabels, mark, None,
+            h = _ax_topomap(ax, layers, axtitle, clip, clip_distance,
+                            sensorlabels, mark, None, None,
                             proj_, res, interpolation, xlabel, vlims, cmaps,
                             contours, method, head_radius, head_pos)
             self._plots.append(h)
@@ -614,7 +615,8 @@ class _plt_topomap(_utsnd._plt_im):
 class _ax_topomap(_utsnd._ax_im_array):
 
     def __init__(self, ax, layers, title, clip=False, clip_distance=0.05,
-                 sensorlabels=None, mark=None, mcolor=None, proj='default',
+                 sensorlabels=None, mark=None, mcolor=None, mmarker=None,
+                 proj='default',
                  res=100, interpolation=None, xlabel=None, vlims={}, cmaps={},
                  contours={}, method='linear', head_radius=None, head_pos=0.,
                  head_linewidth=None):
@@ -654,8 +656,8 @@ class _ax_topomap(_utsnd._ax_im_array):
         # plot sensors
         sensor_dim = layers[0].sensor
         self.sensors = _plt_map2d(ax, sensor_dim, proj, 1, '.', 1, 'k', mark,
-                                  mcolor, sensorlabels, False, head_radius,
-                                  head_pos, head_linewidth)
+                                  mcolor, mmarker, sensorlabels, False,
+                                  head_radius, head_pos, head_linewidth)
 
         ax.set_aspect('equal')
         ax.set_xlim(0, 1)
