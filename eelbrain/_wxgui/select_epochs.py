@@ -12,7 +12,6 @@
 
 from __future__ import division
 
-from copy import deepcopy
 from logging import getLogger
 import math
 import os
@@ -21,6 +20,7 @@ import time
 
 import mne
 import numpy as np
+from scipy.spatial.distance import cdist
 import wx
 
 from .. import load, save, plot, fmtxt
@@ -611,6 +611,8 @@ class Frame(FileFrame):
     * Click the `Threshold` button to automatically reject epochs in which the
       signal exceeds a certain threshold.
     * Click on an epoch plot to toggle rejection of that epoch.
+    * Click on a channel in the topo-map to mark that channel in the epoch
+      plots.
     * Press ``i`` on the keyboard to toggle channel interpolation for the
       channel that is closest to the cursor along the y-axis.
     * Press ``shift-i`` on the keyboard to edit a list of interpolated channels
@@ -839,7 +841,14 @@ class Frame(FileFrame):
                 desc = "Epoch %i %s" % (idx, state)
                 self.model.set_case(idx, state, tag, desc)
             elif ax.ax_idx == TOPO_PLOT:
-                self.open_topomap()
+                ch_locs = self._topo_plot.sensors.locs
+                sensor_i = np.argmin(cdist(ch_locs, [[event.xdata, event.ydata]]))
+                sensor = self._topo_plot.sensors.sensors.names[sensor_i]
+                if sensor in self._mark:
+                    self._mark.remove(sensor)
+                else:
+                    self._mark.append(sensor)
+                self.SetPlotStyle(mark=self._mark)
         else:
             logger.debug("Canvas click outside axes")
 
@@ -1003,15 +1012,7 @@ class Frame(FileFrame):
         # update topomap
         if self._plot_topo:
             tseg = self._get_ax_data(ax.ax_idx, event.xdata)
-            if self._topo_plot:
-                self._topo_plot.set_data([tseg])
-            else:
-                if self._mark:
-                    mark = [ch for ch in self._mark if ch not in self.doc.bad_channel_names]
-                else:
-                    mark = None
-                self._topo_plot = _ax_topomap(self._topo_ax, [tseg], False,
-                                              mark=mark, **self._topo_kwargs)
+            self._topo_plot.set_data([tseg])
             self.canvas.redraw(axes=[self._topo_ax])
             self._topo_plot_info_str = "Topomap: %s, t = %s ms" % (desc, x)
 
@@ -1417,9 +1418,7 @@ class Frame(FileFrame):
         wx.BeginBusyCursor()
         logger = getLogger(__name__)
         t0 = time.time()
-        if page is None:
-            page = self._current_page_i
-        else:
+        if page is not None:
             self._page_change(page)
 
         self.figure.clf()
@@ -1484,7 +1483,13 @@ class Frame(FileFrame):
             self._topo_ax = self.figure.add_subplot(nrow, ncol, plot_i)
             self._topo_ax.ax_idx = TOPO_PLOT
             self._topo_ax.set_axis_off()
-            self._topo_plot = None
+            tseg = self._get_ax_data(0, True)
+            if self._mark:
+                mark = [ch for ch in self._mark if ch not in self.doc.bad_channel_names]
+            else:
+                mark = None
+            self._topo_plot = _ax_topomap(self._topo_ax, [tseg], False,
+                                          mark=mark, **self._topo_kwargs)
             self._topo_plot_info_str = ""
 
         self.canvas.draw()
@@ -1527,6 +1532,8 @@ class Frame(FileFrame):
             raise ValueError("Invalid ax_index: %s" % ax_index)
 
         if time is not None:
+            if time is True:
+                time = min(max(0.1, seg.time.tmin), seg.time.tmax)
             name = '%s, %i ms' % (epoch_name, 1e3 * time)
             return seg.sub(time=time, sensor=sensor_idx, name=name)
         elif sensor_idx is None:
