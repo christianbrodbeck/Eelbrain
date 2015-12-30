@@ -11,7 +11,7 @@
 
 from __future__ import division
 
-from itertools import izip
+from itertools import izip, repeat
 from math import ceil
 import re
 
@@ -23,7 +23,7 @@ import wx
 from wx.lib.scrolledpanel import ScrolledPanel
 
 from .. import load, plot, fmtxt
-from .._data_obj import NDVar, Ordered, fft, isfactor
+from .._data_obj import NDVar, asndvar, Ordered, fft, isfactor
 from ..plot._topo import _ax_topomap
 from .._wxutils import Icon, ID, REValidator
 from .._utils.parse import POS_FLOAT_PATTERN
@@ -118,7 +118,10 @@ class Document(FileDocument):
         self._case_change_subscriptions = []
 
     def apply(self, inst, copy=True):
-        return self.ica.apply(inst, copy=copy)
+        if isinstance(inst, list):
+            return [self.ica.apply(i, copy=copy) for i in inst]
+        else:
+            return self.ica.apply(inst, copy=copy)
 
     def set_case(self, index, state):
         self.accept[index] = state
@@ -247,6 +250,7 @@ class Frame(FileFrame):
         # attributes
         self.last_model = ""
         self.source_frame = None
+        self.butterfly_baseline = ID.BASELINE_CUSTOM
 
         # Finalize
         self.plot()
@@ -316,9 +320,24 @@ class Frame(FileFrame):
                            "number of epochs")
         app.Bind(wx.EVT_MENU, self.OnFindRareEvents, item)
         menu.AppendSeparator()
-        item = menu.Append(wx.ID_ANY, "Plot Grand Average",
+
+        # plotting
+        item = menu.Append(wx.ID_ANY, "Butterfly Plot Grand Average",
                            "Plot the grand average of all epochs")
         app.Bind(wx.EVT_MENU, self.OnPlotGrandAverage, item)
+        item = menu.Append(wx.ID_ANY, "Butterfly Plot by Category",
+                           "Separate butterfly plots for different model cells")
+        app.Bind(wx.EVT_MENU, self.OnPlotButterfly, item)
+        # Baseline submenu
+        blmenu = wx.Menu()
+        blmenu.AppendRadioItem(ID.BASELINE_CUSTOM, "Baseline Period")
+        blmenu.AppendRadioItem(ID.BASELINE_GLOABL_MEAN, "Global Mean")
+        blmenu.AppendRadioItem(ID.BASELINE_NONE, "No Baseline Correction")
+        blmenu.Check(self.butterfly_baseline, True)
+        blmenu.Bind(wx.EVT_MENU, self.OnSetButterflyBaseline, id=ID.BASELINE_CUSTOM)
+        blmenu.Bind(wx.EVT_MENU, self.OnSetButterflyBaseline, id=ID.BASELINE_GLOABL_MEAN)
+        blmenu.Bind(wx.EVT_MENU, self.OnSetButterflyBaseline, id=ID.BASELINE_NONE)
+        menu.AppendSubMenu(blmenu, "Baseline")
 
     def OnCanvasClick(self, event):
         "called by mouse clicks"
@@ -391,6 +410,9 @@ class Frame(FileFrame):
         if n_h >= 2 and n_h != self.n_h:
             self.plot()
 
+    def OnPlotButterfly(self, event):
+        self.PlotConditionAverages(self)
+
     def OnPlotCompSourceArray(self, event):
         self.PlotCompSourceArray(event.EventObject.i)
 
@@ -448,6 +470,9 @@ class Frame(FileFrame):
         self.PopupMenu(menu, pos)
         menu.Destroy()
 
+    def OnSetButterflyBaseline(self, event):
+        self.butterfly_baseline = event.GetId()
+
     def OnShowSources(self, event):
         self.ShowSources(0)
 
@@ -501,30 +526,39 @@ class Frame(FileFrame):
         self.last_model = value
 
         ds = self.doc.ds.aggregate(plot_model, drop_bad=True)
-        original = ds['epochs']
-        cleaned = load.fiff.evoked_ndvar(map(self.doc.apply, original))
-        vmax = 1.1 * max(abs(cleaned.min()), cleaned.max())
-        for i in xrange(len(original)):
-            name = ' '.join(ds[i, f] for f in use) + ' (n=%i)' % ds[i, 'n']
-            plot.TopoButterfly([original[i], cleaned[i]], vmax=vmax,
-                               title=name, axlabel=("Original", "Cleaned"))
+        titles = [' '.join(ds[i, f] for f in use) + ' (n=%i)' % ds[i, 'n'] for
+                  i in xrange(ds.n_cases)]
+        self._PlotButterfly(ds['epochs'], titles)
 
     def PlotEpochButterfly(self, i_epoch):
         if i_epoch == -1:
-            original_epoch = self.doc.epochs.average()
-            name = "Epochs Average"
-            vmax = None
-            ndvar = load.fiff.evoked_ndvar
+            self._PlotButterfly(self.doc.epochs.average(), "Epochs Average")
         else:
-            original_epoch = self.doc.epochs[i_epoch]
-            name = "Epoch %i" % self.doc.sources.epoch[i_epoch]
-            vmax = 2e-12
-            ndvar = load.fiff.epochs_ndvar
-        clean_epoch = self.doc.apply(original_epoch, copy=True)
-        original_ndvar = ndvar(original_epoch) - self.doc.global_mean
-        clean_ndvar = ndvar(clean_epoch) - self.doc.global_mean
-        plot.TopoButterfly([original_ndvar, clean_ndvar], vmax=vmax,
-                           title=name, axlabel=("Original", "Cleaned"))#, "Baselined Cleaned"))
+            self._PlotButterfly(self.doc.epochs[i_epoch],
+                                "Epoch %i" % self.doc.sources.epoch[i_epoch],
+                                vmax=2e-12)
+
+    def _PlotButterfly(self, epoch, title, vmax=None):
+        original = asndvar(epoch)
+        clean = asndvar(self.doc.apply(epoch, copy=True))
+        if self.butterfly_baseline == ID.BASELINE_CUSTOM:
+            original -= original.mean(time=(None, 0))
+            clean -= clean.mean(time=(None, 0))
+        elif self.butterfly_baseline == ID.BASELINE_GLOABL_MEAN:
+            original -= self.doc.global_mean
+            clean -= self.doc.global_mean
+
+        if original.has_case:
+            if isinstance(title, basestring):
+                title = repeat(title, len(original))
+            if vmax is None:
+                vmax = 1.1 * max(abs(original.min()), original.max())
+            for data, title_ in izip(izip(original, clean), title):
+                plot.TopoButterfly(data, vmax=vmax, title=title_,
+                                   axlabel=("Original", "Cleaned"))
+        else:
+            plot.TopoButterfly([original, clean], title=title,
+                               axlabel=("Original", "Cleaned"))
 
     def ShowSources(self, i_first):
         if self.source_frame:

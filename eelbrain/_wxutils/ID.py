@@ -9,6 +9,10 @@ import wx
 APYDOC_NEW = wx.NewId()
 ATTACH = wx.NewId()
 
+BASELINE_CUSTOM = wx.NewId()
+BASELINE_GLOABL_MEAN = wx.NewId()
+BASELINE_NONE = wx.NewId()
+
 CANVAS_PANEL_ZOOM = wx.NewId()
 CANVAS_PANEL_OVERVIEW = wx.NewId()
 CLEAR_CACHE = wx.NewId()
