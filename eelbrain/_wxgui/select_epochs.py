@@ -533,27 +533,6 @@ class Model(FileModel):
         logger.info("Clearing %i rejections" % index.sum())
         self.history.do(action)
 
-    def find_noisy_channels(self, flat, flat_average, mincorr):
-        bads, interp = meeg.find_bad_channels(self.doc.epochs, flat, flat_average, mincorr)
-        new_interp = deepcopy(self.doc.interpolate)
-        new_interp._update_listlist(interp)
-
-        # find changed bad channels
-        old_bad_chs = self.doc.bad_channel_names
-        if any(b not in old_bad_chs for b in bads):
-            new_bad_chs = sorted(set(old_bad_chs).union(bads))
-        else:
-            new_bad_chs = old_bad_chs = None
-
-        # find interpolation changes
-        index = np.flatnonzero(new_interp != self.doc.interpolate)
-        old = deepcopy(self.doc.interpolate[index])
-        new = new_interp[index]
-        action = ChangeAction("Auto-interpolate", index,
-                              old_bad_chs=old_bad_chs, new_bad_chs=new_bad_chs,
-                              old_interpolate=old, new_interpolate=new)
-        self.history.do(action)
-
     def load(self, path):
         new_accept, new_tag, new_interpolate, new_bad_chs = self.doc.read_rej_file(path)
 
@@ -597,6 +576,30 @@ class Model(FileModel):
             desc = "Interpolate %s for %i" % (ch_name, case)
         action = ChangeAction(desc, case, old_interpolate=old_interpolate,
                               new_interpolate=new_interpolate)
+        self.history.do(action)
+
+    def update_rejection(self, bad_chs, interp, desc):
+        if interp is None:
+            index = old_interp = new_interp = None
+        else:
+            new_interp = self.doc.interpolate[:]
+            new_interp._update_listlist(interp)
+            index = np.flatnonzero(new_interp != self.doc.interpolate)
+            if len(index):
+                old_interp = self.doc.interpolate[index]
+                new_interp = new_interp[index]
+            else:
+                index = old_interp = new_interp = None
+
+        # find changed bad channels
+        old_bad_chs = self.doc.bad_channel_names
+        if bad_chs and any(ch not in old_bad_chs for ch in bad_chs):
+            new_bad_chs = sorted(set(old_bad_chs).union(bad_chs))
+        else:
+            new_bad_chs = old_bad_chs = None
+
+        action = ChangeAction(desc, index, old_bad_chs=old_bad_chs, new_bad_chs=new_bad_chs,
+                              old_interpolate=old_interp, new_interpolate=new_interp)
         self.history.do(action)
 
 
@@ -875,28 +878,56 @@ class Frame(FileFrame):
     def OnFindNoisyChannels(self, event):
         dlg = FindNoisyChannelsDialog(self)
         if dlg.ShowModal() == wx.ID_OK:
+            # Find bad channels
             flat, flat_average, mincorr = dlg.GetValues()
+            if flat:
+                flats = meeg.find_flat_epochs(self.doc.epochs, flat)
+            else:
+                flats = None
+
+            if flat_average:
+                flats_av = meeg.find_flat_evoked(self.doc.epochs, flat_average)
+            else:
+                flats_av = None
+
+            if mincorr:
+                noisies = meeg.find_noisy_channels(self.doc.epochs, mincorr)
+            else:
+                noisies = None
+
+            # Apply
+            if dlg.do_apply.GetValue():
+                has_flats = flats and any(flats)
+                has_noisies = noisies and any(noisies)
+                if has_flats and has_noisies:
+                    interp = flats[:]
+                    interp._update_listlist(noisies)
+                elif has_flats:
+                    interp = flats
+                elif has_noisies:
+                    interp = noisies
+                else:
+                    interp = None
+                self.model.update_rejection(flats_av, interp, "Find noisy channels")
+
+            # Show Report
             if dlg.do_report.GetValue():
                 doc = fmtxt.Section("Noisy Channels")
                 doc.append("Total of %i epochs." % len(self.doc.epochs))
                 if flat_average:
                     sec = doc.add_section("Flat in the average (<%s)" % flat_average)
-                    bads = meeg.find_flat_evoked(self.doc.epochs, flat_average)
-                    if bads:
-                        sec.add_paragraph(', '.join(bads))
+                    if flats_av:
+                        sec.add_paragraph(', '.join(flats_av))
                     else:
                         sec.add_paragraph("None.")
                 if flat:
-                    bads = meeg.find_flat_epochs(self.doc.epochs, flat)
                     sec = doc.add_section("Flat Channels (<%s)" % flat)
-                    sec.add_paragraph(format_epoch_list(bads))
+                    sec.add_paragraph(format_epoch_list(flats))
                 if mincorr:
-                    bads = meeg.find_noisy_channels(self.doc.epochs, mincorr)
                     sec = doc.add_section("Neighbor correlation < %s" % mincorr)
-                    sec.add_paragraph(format_epoch_list(bads))
+                    sec.add_paragraph(format_epoch_list(noisies))
                 InfoFrame(self, "Noisy Channels", doc.get_html())
-            else:
-                self.model.find_noisy_channels(flat, flat_average, mincorr)
+
             dlg.StoreConfig()
         dlg.Destroy()
 
@@ -1525,7 +1556,8 @@ class FindNoisyChannelsDialog(EelbrainDialog):
         flat = config.ReadFloat("FindNoisyChannels/flat", 1e-13)
         flat_average = config.ReadFloat("FindNoisyChannels/flat_average", 1e-14)
         corr = config.ReadFloat("FindNoisyChannels/mincorr", 0.35)
-        do_report = config.ReadBool("FindNoisyChannels/do_report", False)
+        do_apply = config.ReadBool("FindNoisyChannels/do_apply", True)
+        do_report = config.ReadBool("FindNoisyChannels/do_report", True)
 
         # construct layout
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -1568,10 +1600,13 @@ class FindNoisyChannelsDialog(EelbrainDialog):
 
         # output
         sizer.AddSpacer(4)
-        sizer.Add(wx.StaticText(self, label="Create report (instead of marking channels)"))
-        self.do_report = wx.CheckBox(self, wx.ID_ANY, "Report")
+        sizer.Add(wx.StaticText(self, label="Output"))
+        self.do_report = wx.CheckBox(self, wx.ID_ANY, "Show Report")
         self.do_report.SetValue(do_report)
         sizer.Add(self.do_report)
+        self.do_apply = wx.CheckBox(self, wx.ID_ANY, "Apply")
+        self.do_apply.SetValue(do_apply)
+        sizer.Add(self.do_apply)
 
         # default button
         sizer.AddSpacer(4)
@@ -1584,6 +1619,7 @@ class FindNoisyChannelsDialog(EelbrainDialog):
         # ok
         btn = wx.Button(self, wx.ID_OK)
         btn.SetDefault()
+        btn.Bind(wx.EVT_BUTTON, self.OnOK)
         button_sizer.AddButton(btn)
         # cancel
         btn = wx.Button(self, wx.ID_CANCEL)
@@ -1600,6 +1636,13 @@ class FindNoisyChannelsDialog(EelbrainDialog):
                 float(self.flat_average_ctrl.GetValue()),
                 float(self.mincorr_ctrl.GetValue()))
 
+    def OnOK(self, event):
+        if self.do_report.GetValue() or self.do_apply.GetValue():
+            event.Skip()
+        else:
+            wx.MessageBox("Specify at least one action (report or apply)",
+                          "No Command Selected", wx.ICON_EXCLAMATION)
+
     def OnSetDefault(self, event):
         self.flat_ctrl.SetValue('1e-13')
         self.flat_average_ctrl.SetValue('1e-14')
@@ -1615,6 +1658,8 @@ class FindNoisyChannelsDialog(EelbrainDialog):
                           float(self.mincorr_ctrl.GetValue()))
         config.WriteBool("FindNoisyChannels/do_report",
                          self.do_report.GetValue())
+        config.WriteBool("FindNoisyChannels/do_apply",
+                         self.do_apply.GetValue())
         config.Flush()
 
 
