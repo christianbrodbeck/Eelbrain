@@ -712,15 +712,12 @@ class Frame(FileFrame):
         # check plot parameters
         warnings = []
         if mark:
-            ch_mark = set(mark)
-            ch_names = set(model.doc.epochs.sensor.names)
-            invalid = ch_mark - ch_names
+            mark, invalid = self.doc.epochs.sensor._normalize_sensor_names(mark, missing='return')
             if invalid:
                 msg = ("Some channels specified to mark do not exist in the "
                        "data and will be ignored: " + ', '.join(invalid))
                 wx.CallLater(1, wx.MessageBox, msg, "Invalid Channels in Mark",
                              wx.OK | wx.ICON_WARNING)
-                mark = sorted(ch_mark - invalid)
 
         # setup plot parameters
         self._vlims = find_fig_vlims([[self.doc.epochs]])

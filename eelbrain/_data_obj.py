@@ -7269,7 +7269,7 @@ class Sensor(Dimension):
 
         return index
 
-    def _normalize_sensor_names(self, names):
+    def _normalize_sensor_names(self, names, missing='raise'):
         "Process a user-input list of sensor names"
         valid_chs = set()
         missing_chs = set()
@@ -7289,12 +7289,16 @@ class Sensor(Dimension):
             else:
                 missing_chs.add(name)
 
-        if missing_chs:
-            msg = ("The following channels are not in the raw data: "
-                   "%s" % ', '.join(sorted(missing_chs)))
-            raise ValueError(msg)
-
-        return sorted(valid_chs)
+        if missing == 'raise':
+            if missing_chs:
+                msg = ("The following channels are not in the raw data: "
+                       "%s" % ', '.join(sorted(missing_chs)))
+                raise ValueError(msg)
+            return sorted(valid_chs)
+        elif missing == 'return':
+            return sorted(valid_chs), missing_chs
+        else:
+            raise ValueError("missing=%s" % repr(missing))
 
     def intersect(self, dim, check_dims=True):
         """Create a Sensor dimension that is the intersection with dim
