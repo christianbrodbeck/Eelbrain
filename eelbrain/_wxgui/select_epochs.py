@@ -656,8 +656,9 @@ class Frame(FileFrame):
         # setup figure canvas
         self.canvas = FigureCanvasPanel(self)
         self.figure = self.canvas.figure
-        self.figure.subplots_adjust(left=.01, right=.99, bottom=.05,
-                                    top=.95, hspace=.5)
+        self.figure.set_facecolor('white')
+        self.figure.subplots_adjust(left=.01, right=.99, bottom=.025,
+                                    top=.975, wspace=.1, hspace=.25)
 
         # Toolbar
         tb = self.InitToolbar()
