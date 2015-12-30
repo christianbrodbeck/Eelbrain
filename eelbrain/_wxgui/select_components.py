@@ -371,12 +371,11 @@ class Frame(FileFrame):
         dlg.StoreConfig()
 
         def outliers(source):
-            y = source - source.mean()
-            y /= y.std()
-            y **= 2
+            y = source ** 2
             ss = y.sum('time')
             idx = np.flatnonzero(ss.x > threshold * ss.std())
-            return source.epoch.values[idx]
+            rank = np.argsort(ss.x[idx])[::-1]
+            return source.epoch.values[idx[rank]]
 
         res = []
         for i in xrange(len(self.doc.sources)):
@@ -391,8 +390,8 @@ class Frame(FileFrame):
 
         doc = fmtxt.Section("Rare Events")
         doc.add_paragraph("Components that have strong relative loading (SS > "
-                          "%g STD) on %i or fewer epochs:"
-                          % (threshold, n_events))
+                          "%g STD) on %i or fewer epochs. Epochs are ranked by "
+                          "loading." % (threshold, n_events))
         doc.append(fmtxt.linebreak)
         hash_char = {True: fmtxt.FMTextElement('# ', 'font', {'color': 'green'}),
                      False: fmtxt.FMTextElement('# ', 'font', {'color': 'red'})}
