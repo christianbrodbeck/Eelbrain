@@ -1032,7 +1032,8 @@ class Frame(FileFrame):
             tseg = self._get_ax_data(ax.ax_idx, event.xdata)
             self._topo_plot.set_data([tseg])
             self.canvas.redraw(axes=[self._topo_ax])
-            self._topo_plot_info_str = "Topomap: %s, t = %s ms" % (desc, x)
+            self._topo_plot_info_str = ("Topomap: %s,  t = %s ms,  marked: %s" %
+                                        (desc, x, ', '.join(self._mark)))
 
     def OnRejectRange(self, event):
         dlg = RejectRangeDialog(self)
