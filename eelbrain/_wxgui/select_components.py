@@ -35,6 +35,7 @@ from .frame import EelbrainDialog
 
 COLOR = {True: (.5, 1, .5), False: (1, .3, .3)}
 LINE_COLOR = {True: 'k', False: (1, 0, 0)}
+LINK = 'component:%i epoch:%i'
 
 
 class ChangeAction(Action):
@@ -399,7 +400,7 @@ class Frame(FileFrame):
         for i, epochs in res:
             doc.append(hash_char[self.doc.accept[i]])
             doc.append("%i:  " % i)
-            doc.append(fmtxt.delim_list((fmtxt.Link(e, 'component:%i epoch:%i' % (i, e)) for e in epochs)))
+            doc.append(fmtxt.delim_list((fmtxt.Link(e, LINK % (i, e)) for e in epochs)))
             doc.append(fmtxt.linebreak)
 
         InfoFrame(self, "Rare Events", doc.get_html())
@@ -443,12 +444,15 @@ class Frame(FileFrame):
         ss = ss[sort]
         epoch_idx = source.epoch.values[sort]
 
-        # text
-        text = ["Component # %i, epochs SS in descending order:" % i_comp, ""]
-        for pair in izip(epoch_idx, ss):
-            text.append("% 4i: %.1f" % pair)
+        # doc
+        lst = fmtxt.List("Epochs SS loading in descending order for component "
+                         "%i:" % i_comp)
+        for i_epoch, ss_epoch in izip(epoch_idx, ss):
+            lst.add_item(fmtxt.Link("% 4i" % i_epoch, LINK % (i_comp, i_epoch)) +
+                         ': %.1f' % ss_epoch)
+        doc = fmtxt.Section("# %i Ranked Epochs" % i_comp, lst)
 
-        TextFrame(self, "Component %i Epoch SS" % i_comp, '\n'.join(text))
+        InfoFrame(self, "Component %i Epoch SS" % i_comp, doc.get_html())
 
     def OnRightDown(self, event):
         ax = self.canvas.MatplotlibEventAxes(event)
