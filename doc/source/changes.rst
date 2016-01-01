@@ -15,6 +15,10 @@ New in 0.22
   - Set marked channels by clicking on topo-map.
   - Faster page redraw.
 
+* :class:`MneExperiment`:
+
+  - New method: :meth:`MneExperiment.show_rej_info`.
+
 
 New in 0.21
 -----------

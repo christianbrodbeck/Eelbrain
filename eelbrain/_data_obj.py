@@ -2050,6 +2050,10 @@ class Var(object):
             idx = idx[::-1]
         return idx
 
+    def sum(self):
+        "Returns the sum over all values"
+        return self.x.sum()
+
     @property
     def values(self):
         return np.unique(self.x)

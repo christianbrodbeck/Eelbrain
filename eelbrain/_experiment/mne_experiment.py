@@ -5005,6 +5005,47 @@ class MneExperiment(FileTree):
         else:
             print(ds)
 
+    def show_rej_info(self, flagp=None, asds=False):
+        """Information about artifact rejection
+
+        Parameters
+        ----------
+        flagp : scalar
+            Flag entries whose percentage of good trials is lower than this
+            number.
+        asds : bool
+            Return a Dataset with the information (default is to print it).
+        """
+        epoch_name = self.get('epoch')
+        rej_name = self.get('rej')
+        rej = self._epoch_rejection[rej_name]
+
+        dss = [self.load_selected_events(reject='keep') for _ in self]
+
+        caption = ("Rejection info for epoch=%s, rej=%s. Percent is rounded to "
+                   "one decimal." % (epoch_name, rej_name))
+        if rej['interpolation']:
+            caption += (" ch_interp: average number of channels interpolated "
+                        "per epoch, rounded to one decimal.")
+        else:
+            caption += " Channel interpolation disabled."
+        out = Dataset(caption=caption)
+        out['subject'] = Factor([ds.info['subject'] for ds in dss])
+        out['n_events'] = Var([ds.n_cases for ds in dss])
+        out['n_good'] = Var([ds['accept'].sum() for ds in dss])
+        out['percent'] = Var(np.round(100 * out['n_good'] / out['n_events'], 1))
+        if flagp:
+            out['flag'] = Factor(out['percent'] < flagp, labels={False: '', True: '*'})
+        out['bad_channels'] = Var([len(ds.info[BAD_CHANNELS]) for ds in dss])
+        if rej['interpolation']:
+            av_n_ch = [np.mean([len(chi) for chi in ds[INTERPOLATE_CHANNELS]]) for ds in dss]
+            out['ch_interp'] = Var(np.round(av_n_ch, 1))
+
+        if asds:
+            return out
+        else:
+            print(out)
+
     def show_subjects(self, mri=True, mrisubject=False, caption=True,
                       asds=False):
         """Create a Dataset with subject information
