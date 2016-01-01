@@ -1400,6 +1400,9 @@ class Var(object):
             raise TypeError("Var can't be initialized with a string")
 
         x = np.asarray(x)
+        if x.dtype.kind == 'O':
+            raise TypeError("Var can not handle object-type arrays. Consider "
+                            "using a Datalist.")
         if x.ndim > 1:
             if np.count_nonzero(i > 1 for i in x.shape) <= 1:
                 x = np.ravel(x)
