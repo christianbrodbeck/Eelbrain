@@ -4639,8 +4639,8 @@ class MneExperiment(FileTree):
         fig.show()
         return fig
 
-    def plot_evoked(self, subject=None, separate=False, baseline=True, run=None,
-                    **kwargs):
+    def plot_evoked(self, subject=None, separate=False, baseline=True, ylim='same',
+                    run=None, **kwargs):
         """Plot evoked sensor data
 
         Parameters
@@ -4653,6 +4653,9 @@ class MneExperiment(FileTree):
         baseline : bool | tuple
             Apply baseline correction using this period. True to use the epoch's
             baseline specification (default).
+        ylim : 'same' | 'different'
+            Use the same or different y-axis limits for different subjects
+            (default 'same').
         run : bool
             Run the GUI after plotting (default in accordance with plotting
             default).
@@ -4672,11 +4675,13 @@ class MneExperiment(FileTree):
                 plots.append(p)
                 vlim.append(p.get_vlim())
 
-            # same vmax for all plots
-            vlim = np.array(vlim)
-            vmax = np.abs(vlim, out=vlim).max()
-            for p in plots:
-                p.set_vlim(vmax)
+            if ylim.startswith('s'):
+                vlim = np.array(vlim)
+                vmax = np.abs(vlim, out=vlim).max()
+                for p in plots:
+                    p.set_vlim(vmax)
+            elif not ylim.startswith('d'):
+                raise ValueError("ylim=%s" % repr(ylim))
 
             if run or plot._base.do_autorun():
                 gui.run()
