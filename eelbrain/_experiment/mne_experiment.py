@@ -4663,15 +4663,23 @@ class MneExperiment(FileTree):
         subject, group = self._process_subject_arg(subject, kwargs)
         y = self._ndvar_name_for_modality(self.get('modality'))
         model = self.get('model') or None
+        epoch = self.get('epoch')
+        if model:
+            model_name = " ~" + model
+        else:
+            model_name = None
+
         if subject:
             ds = self.load_evoked(baseline=baseline)
-            return plot.TopoButterfly(y, model, ds=ds, title=subject, run=run)
+            title = subject + " " + epoch + (model_name or " Average")
+            return plot.TopoButterfly(y, model, ds=ds, title=title, run=run)
         elif separate:
             plots = []
             vlim = []
             for subject in self.iter(group=group):
                 ds = self.load_evoked(baseline=baseline)
-                p = plot.TopoButterfly(y, model, ds=ds, title=subject, run=False)
+                title = subject + " " + epoch + (model_name or " Average")
+                p = plot.TopoButterfly(y, model, ds=ds, title=title, run=False)
                 plots.append(p)
                 vlim.append(p.get_vlim())
 
@@ -4687,7 +4695,8 @@ class MneExperiment(FileTree):
                 gui.run()
         else:
             ds = self.load_evoked(group, baseline=baseline)
-            return plot.TopoButterfly(y, model, ds=ds, title=subject, run=run)
+            title = group + " " + epoch + (model_name or " Grand Average")
+            return plot.TopoButterfly(y, model, ds=ds, title=title, run=run)
 
     def plot_label(self, label, surf='inflated', w=600, clear=False):
         """Plot a label"""
