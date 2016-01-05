@@ -257,9 +257,6 @@ def events(raw=None, merge=-1, proj=False, name=None, bads=None,
     else:
         evts = mne.read_events(events)
 
-    if len(evts) == 0:
-        raise ValueError("No events found!")
-
     i_start = Var(evts[:, 0], name='i_start')
     trigger = Var(evts[:, 2], name='trigger')
     info = {'raw': raw}
