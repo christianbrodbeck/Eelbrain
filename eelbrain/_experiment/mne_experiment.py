@@ -164,6 +164,7 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {experiment}.log')
 
         # raw input files
         'raw-file': os.path.join('{raw-dir}', '{subject}_{experiment}-raw.fif'),
+        'raw-file-bkp': os.path.join('{raw-dir}', '{subject}_{experiment}-raw*.fif'),
         'trans-file': os.path.join('{raw-dir}', '{mrisubject}-trans.fif'),
         # log-files (eye-tracker etc.)
         'log-dir': os.path.join('{meg-dir}', 'logs'),
@@ -451,9 +452,10 @@ class MneExperiment(FileTree):
     _backup_state = {'subject': '*', 'mrisubject': '*', 'experiment': '*',
                      'raw': 'clm', 'modality': '*'}
     # files to back up, together with state modifications on the basic state
-    _backup_files = (('raw-file', {}),
+    _backup_files = (('raw-file-bkp', {}),
                      ('bads-file', {}),
-                     ('rej-file', {'raw': '*', 'epoch': '*', 'rej': '*'}),
+                     ('rej-file', {'raw': '*', 'proj': '*', 'epoch': '*', 'rej': '*'}),
+                     ('ica-file', {'raw': '*', 'epoch': '*', 'rej': '*'}),
                      ('trans-file', {}),
                      ('mri-cfg-file', {}),
                      ('log-dir', {}),)
@@ -500,6 +502,8 @@ class MneExperiment(FileTree):
             self._templates['raw-dir'] = os.path.join('{meg-dir}', 'raw')
             self._templates['raw-file'] = os.path.join('{raw-dir}', '{subject}_'
                                               '{experiment}_{raw_kind}-raw.fif')
+            self._templates['raw-file-bkp'] = os.path.join('{raw-dir}', '{subject}_'
+                                              '{experiment}_{raw_kind}-raw*.fif')
         elif self.path_version != 1:
             raise ValueError("path_version needs to be 0 or 1")
         # update templates with _values
@@ -1656,13 +1660,16 @@ class MneExperiment(FileTree):
         else:
             raise TypeError("type(vardef)=%s; needs to be dict or tuple" % type(vardef))
 
-    def _backup(self, dst_root):
+    def _backup(self, dst_root, v=False):
         """Backup all essential files to ``dst_root``.
 
         Parameters
         ----------
         dst_root : str
             Directory to use as root for the backup.
+        v : bool
+            Verbose mode:  list all files that will be copied and ask for
+            confirmation.
 
         Notes
         -----
@@ -1733,8 +1740,24 @@ class MneExperiment(FileTree):
                 pairs.append((src, dst))
 
         if len(pairs) == 0:
-            self._log.info("All files backed up.")
+            if v:
+                print("All files backed up.")
+            else:
+                self._log.info("All files backed up.")
             return
+
+        # verbose file list
+        if v:
+            paths = [os.path.relpath(src, root) for src, _ in pairs]
+            print('\n'.join(paths))
+            cmd = 'x'
+            while cmd not in 'yn':
+                cmd = raw_input("Proceed ([y]/n)? ")
+            if cmd == 'n':
+                print("Abort.")
+                return
+            else:
+                print("Backing up %i files ..." % len(pairs))
 
         self._log.info("Backing up %i files ..." % len(pairs))
         # create directories
