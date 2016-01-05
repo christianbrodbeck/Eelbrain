@@ -10,7 +10,6 @@ import shutil
 import subprocess
 from time import localtime, strftime
 import traceback
-from warnings import warn
 
 import numpy as np
 
@@ -763,12 +762,16 @@ class TreeModel(object):
         return _TempStateController(self)
 
     def _update_compound(self, key):
-        items = []
+        compound = ''
         for item_key in self._compound_members[key]:
             value = self.get(item_key)
-            if value:
-                items.append(value)
-        self.set(**{key: ' '.join(items)})
+            if value == '*':
+                compound += '*'
+            elif value:
+                if compound and not compound.endswith('*'):
+                    compound += ' '
+                compound += value
+        self.set(**{key: compound})
 
     def _update_compounds(self, key, _):
         for compound in self._compounds[key]:
