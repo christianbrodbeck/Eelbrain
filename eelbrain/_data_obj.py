@@ -863,6 +863,7 @@ class Celltable(object):
                  cat=None, ds=None, coercion=asdataobject):
         self.sub = sub
         sub = assub(sub, ds)
+
         if X is None:
             Y = coercion(Y, sub, ds)
         else:

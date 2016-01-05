@@ -260,6 +260,11 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {experiment}.log')
                                          '{epoch} {test_options} {resname}',
                                          '{subject}.mov'),
 
+        # plots
+        # plot corresponding to a report (and using same folder structure)
+        'res-plot-dir': os.path.join('{root}', 'result plots', '{analysis} {group}',
+                                     '{folder}', '{epoch} {test} {test_options}'),
+
         # besa
         'besa-root': os.path.join('{root}', 'besa'),
         'besa-trig': os.path.join('{besa-root}', '{subject}', '{subject}_'
@@ -4094,25 +4099,10 @@ class MneExperiment(FileTree):
             raise ValueError("include needs to be 0 < include <= 1, got %s"
                              % repr(include))
 
-        # determine report file name
-        if parc is None:
-            if mask:
-                folder = "%s Masked" % mask.capitalize()
-            else:
-                folder = "Whole Brain"
-        elif mask:
-            raise ValueError("Can't specify mask together with parc")
-        elif pmin is None or pmin == 'tfce':
-            raise NotImplementedError("Threshold-free test (pmin=%r) is not "
-                                      "implemented for parcellation (parc "
-                                      "parameter). Use a mask instead, or do a "
-                                      "cluster-based test." % (pmin,))
-        else:
-            folder = "{parc}"
         self.set(**state)
         self._set_analysis_options('src', sns_baseline, src_baseline, pmin,
                                    tstart, tstop, parc, mask)
-        dst = self.get('report-file', mkdir=True, folder=folder, test=test)
+        dst = self.get('report-file', mkdir=True, test=test)
         is_twostage = self._tests[test]['kind'] == 'two-stage'
         desc = self._get_rel('report-file', 'res-dir')
         if redo:
@@ -4517,6 +4507,29 @@ class MneExperiment(FileTree):
         # report signature
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
         report.save_html(dst)
+
+    def load_result_plotter(self, test, tstart, tstop, pmin, parc=None, mask=None,
+                            samples=10000, data='src', sns_baseline=True,
+                            src_baseline=None,
+                            colors=None, labels=None,
+                            dst=None, vec_fmt='svg', pix_fmt='png', **kwargs):
+        if self._tests[test]['kind'] == '2-stage':
+            raise NotImplementedError("Result-plots for 2-stage tests")
+        elif data != 'src':
+            raise NotImplementedError("data=%s" % repr(data))
+        elif not isinstance(pmin, float):
+            raise NotImplementedError("Threshold-free tests")
+
+        from .._result_plots import ClusterPlotter
+
+        # calls _set_analysis_options():
+        ds, res = self.load_test(test, tstart, tstop, pmin, parc, mask, samples,
+                                 data, sns_baseline, src_baseline, True,
+                                 **kwargs)
+        if dst is None:
+            dst = self.get('res-plot-dir', mkdir=True)
+
+        return ClusterPlotter(ds, res, colors, dst, vec_fmt, pix_fmt, labels)
 
     def make_src(self, redo=False, **kwargs):
         """Make the source space
@@ -5073,6 +5086,22 @@ class MneExperiment(FileTree):
         else:
             raise ValueError("data=%r. Needs to be 'sns', 'src' or 'eeg'" % data)
 
+        # determine report folder
+        if parc is None:
+            if mask:
+                folder = "%s Masked" % mask.capitalize()
+            else:
+                folder = "Whole Brain"
+        elif mask:
+            raise ValueError("Can't specify mask together with parc")
+        elif pmin is None or pmin == 'tfce':
+            raise NotImplementedError("Threshold-free test (pmin=%r) is not "
+                                      "implemented for parcellation (parc "
+                                      "parameter). Use a mask instead, or do a "
+                                      "cluster-based test." % pmin)
+        else:
+            folder = "{parc}"
+
         # test properties
         items = []
 
@@ -5130,7 +5159,7 @@ class MneExperiment(FileTree):
             data_parc = 'unmasked'
 
         self.set(test_options=' '.join(items), analysis=analysis, parc=parc_,
-                 data_parc=data_parc)
+                 data_parc=data_parc, folder=folder)
 
     def show_file_status(self, temp, col=None, row='subject', *args, **kwargs):
         """Compile a table about the existence of files
