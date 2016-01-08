@@ -369,37 +369,42 @@ class Frame(FileFrame):
         dlg.Destroy()
         if rcode != wx.ID_OK:
             return
-        threshold, n_events = dlg.GetValues()
+        threshold = float(dlg.threshold.GetValue())
         dlg.StoreConfig()
 
-        def outliers(source):
-            y = source ** 2
-            ss = y.sum('time')
-            idx = np.flatnonzero(ss.x > threshold * ss.std())
-            rank = np.argsort(ss.x[idx])[::-1]
-            return source.epoch.values[idx[rank]]
+        # compute and rank SASICA FTc
+        y = self.doc.sources.max('time') - self.doc.sources.min('time')
+        z = (y - y.mean('epoch')) / y.std('epoch')
+        z_max = z.max('epoch')
+        c_rank = np.argsort(z_max.x)[::-1]
 
+        # collect output
         res = []
-        for i in xrange(len(self.doc.sources)):
-            outl = outliers(self.doc.sources[i])
-            if len(outl) <= n_events:
-                res.append((i, outl))
+        for i_c in c_rank:
+            z_epochs = z[i_c].x
+            if z_max[i_c] < threshold:
+                break
+            idx = np.flatnonzero(z_epochs >= threshold)
+            rank = np.argsort(z_epochs[idx])[::-1]
+            epochs = y.epoch.values[idx[rank]]
+            res.append((i_c, z_max[i_c], epochs))
 
         if len(res) == 0:
             wx.MessageBox("No rare events were found.", "No Rare Events Found",
                           style=wx.ICON_INFORMATION)
             return
 
+        # format output
         doc = fmtxt.Section("Rare Events")
-        doc.add_paragraph("Components that have strong relative loading (SS > "
-                          "%g STD) on %i or fewer epochs. Epochs are ranked by "
-                          "loading." % (threshold, n_events))
+        doc.add_paragraph("Components that disproportionally affect a small "
+                          "number of epochs (z-scored peak-to-peak > %g). "
+                          "Epochs are ranked by peak-to-peak." % threshold)
         doc.append(fmtxt.linebreak)
         hash_char = {True: fmtxt.FMTextElement('# ', 'font', {'color': 'green'}),
                      False: fmtxt.FMTextElement('# ', 'font', {'color': 'red'})}
-        for i, epochs in res:
+        for i, ft, epochs in res:
             doc.append(hash_char[self.doc.accept[i]])
-            doc.append("%i:  " % i)
+            doc.append("%i (%.1f):  " % (i, ft))
             doc.append(fmtxt.delim_list((fmtxt.Link(e, LINK % (i, e)) for e in epochs)))
             doc.append(fmtxt.linebreak)
 
@@ -931,30 +936,21 @@ class FindRareEventsDialog(EelbrainDialog):
                                                    "Find Rare Events", *args,
                                                    **kwargs)
         config = parent.config
-        n_events = config.ReadInt("FindRareEvents/n_events", 5)
         threshold = config.ReadFloat("FindRareEvents/threshold", 2.)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        # number of events
-        sizer.Add(wx.StaticText(self, label="Max number of events:"))
-        validator = REValidator("[1-9]\d*", "Invalid entry: {value}. Please "
-                                "specify a number > 0.", False)
-        ctrl = wx.TextCtrl(self, value=str(n_events), validator=validator)
-        ctrl.SetHelpText("Max number of events to qualify as rare (positive integer)")
-        ctrl.SelectAll()
-        sizer.Add(ctrl)
-        self.n_events_ctrl = ctrl
-
         # Threshold
-        sizer.Add(wx.StaticText(self, label="Threshold for rare epoch SS (in STD):"))
+        sizer.Add(wx.StaticText(self, label="Threshold for rare epochs\n"
+                                            "(z-scored peak-to-peak value):"))
         validator = REValidator(POS_FLOAT_PATTERN, "Invalid entry: {value}. Please "
                                 "specify a number > 0.", False)
         ctrl = wx.TextCtrl(self, value=str(threshold), validator=validator)
-        ctrl.SetHelpText("Epochs whose SS exceeds this value (in STD) are considered rare")
+        ctrl.SetHelpText("Epochs whose z-scored peak-to-peak value exceeds "
+                         "this value are considered rare")
         ctrl.SelectAll()
         sizer.Add(ctrl)
-        self.threshold_ctrl = ctrl
+        self.threshold = ctrl
 
         # default button
         btn = wx.Button(self, wx.ID_DEFAULT, "Default Settings")
@@ -977,20 +973,13 @@ class FindRareEventsDialog(EelbrainDialog):
         self.SetSizer(sizer)
         sizer.Fit(self)
 
-    def GetValues(self):
-        return (float(self.threshold_ctrl.GetValue()),
-                int(self.n_events_ctrl.GetValue()))
-
     def OnSetDefault(self, event):
-        self.threshold_ctrl.SetValue('2')
-        self.n_events_ctrl.SetValue('5')
+        self.threshold.SetValue('2')
 
     def StoreConfig(self):
         config = self.Parent.config
-        config.WriteInt("FindRareEvents/n_events",
-                        int(self.n_events_ctrl.GetValue()))
         config.WriteFloat("FindRareEvents/threshold",
-                          float(self.threshold_ctrl.GetValue()))
+                          float(self.threshold.GetValue()))
         config.Flush()
 
 
