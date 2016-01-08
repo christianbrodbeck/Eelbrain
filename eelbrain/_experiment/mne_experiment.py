@@ -3323,19 +3323,13 @@ class MneExperiment(FileTree):
             raise ValueError("Can only copy files, not directories.")
         shutil.copyfile(src_path, dst_path)
 
-    def make_cov(self, redo=False):
-        """Make a noise covariance (cov) file
-
-        Parameters
-        ----------
-        redo : bool
-            If the cov file already exists, overwrite it.
-        """
+    def make_cov(self):
+        "Make a noise covariance (cov) file"
         dest = self.get('cov-file', mkdir=True)
         params = self._covs[self.get('cov')]
         epoch = params['epoch']
         rej = self.get('cov-rej')
-        if (not redo) and os.path.exists(dest):
+        if os.path.exists(dest):
             cov_mtime = os.path.getmtime(dest)
             raw_mtime = os.path.getmtime(self._get_raw_path())
             bads_mtime = os.path.getmtime(self.get('bads-file'))
@@ -3441,7 +3435,7 @@ class MneExperiment(FileTree):
 
         return ds_agg
 
-    def make_fwd(self, redo=False):
+    def make_fwd(self):
         """Make the forward model"""
         dst = self.get('fwd-file')
         raw = self._get_raw_path(make=True)
@@ -3449,7 +3443,7 @@ class MneExperiment(FileTree):
         src = self.get('src-file', make=True)
         bem = self.get('bem-sol-file', make=True, fmatch=True)
 
-        if not redo and os.path.exists(dst):
+        if os.path.exists(dst):
             fwd_mtime = os.path.getmtime(dst)
             raw_mtime = os.path.getmtime(raw)
             trans_mtime = os.path.getmtime(trans)
@@ -3989,15 +3983,11 @@ class MneExperiment(FileTree):
             projs = [projs[i] for i in rm]
             mne.write_proj(proj_file, projs)
 
-    def make_raw(self, redo=False, n_jobs=1, **kwargs):
+    def make_raw(self, n_jobs=1, **kwargs):
         """Make a raw file
 
         Parameters
         ----------
-        raw : str
-            Name of the raw file to make.
-        redo : bool
-            If the file already exists, recreate it.
         n_jobs : int
             Number of processes for multiprocessing.
 
@@ -4012,7 +4002,7 @@ class MneExperiment(FileTree):
                                "file" % raw_dst)
         dst = self.get('cached-raw-file', mkdir=True)
         with self._temporary_state:
-            if not redo and os.path.exists(dst):
+            if os.path.exists(dst):
                 src = self.get('raw-file', raw='clm')
                 src_mtime = os.path.getmtime(src)
                 dst_mtime = os.path.getmtime(dst)
@@ -4554,15 +4544,8 @@ class MneExperiment(FileTree):
 
         return ClusterPlotter(ds, res, colors, dst, vec_fmt, pix_fmt, labels)
 
-    def make_src(self, redo=False, **kwargs):
-        """Make the source space
-
-        Parameters
-        ----------
-        redo : bool
-            Recreate the source space even if the corresponding file already
-            exists.
-        """
+    def make_src(self, **kwargs):
+        "Make the source space"
         dst = self.get('src-file', **kwargs)
         subject = self.get('mrisubject')
         common_brain = self.get('common_brain')
@@ -4575,14 +4558,14 @@ class MneExperiment(FileTree):
                 self.make_src(mrisubject=common_brain)
                 orig = self.get('src-file')
 
-            if not redo and os.path.exists(dst):
+            if os.path.exists(dst):
                 if os.path.getmtime(dst) >= os.path.getmtime(orig):
                     return
 
             src = self.get('src')
             subjects_dir = self.get('mri-sdir')
             mne.scale_source_space(subject, src, subjects_dir=subjects_dir)
-        elif not redo and os.path.exists(dst):
+        elif os.path.exists(dst):
             return
         else:
             src = self.get('src')
@@ -4596,9 +4579,8 @@ class MneExperiment(FileTree):
                                               subjects_dir=self.get('mri-sdir'))
             else:
                 spacing = kind + param
-                mne.setup_source_space(subject, dst, spacing, overwrite=redo,
-                                       subjects_dir=self.get('mri-sdir'),
-                                       add_dist=True)
+                mne.setup_source_space(subject, dst, spacing, add_dist=True,
+                                       subjects_dir=self.get('mri-sdir'))
 
     def _test_kwargs(self, samples, pmin, tstart, tstop, dims, parc_dim):
         "testnd keyword arguments"
