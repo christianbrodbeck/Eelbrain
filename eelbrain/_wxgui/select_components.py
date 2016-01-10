@@ -117,7 +117,7 @@ class Document(FileDocument):
         self.global_mean = NDVar(global_mean, (self.epochs_ndvar.sensor,))
 
         # publisher
-        self._case_change_subscriptions = []
+        self.callbacks.register_key('case_change')
 
     def apply(self, inst, copy=True):
         if isinstance(inst, list):
@@ -128,20 +128,10 @@ class Document(FileDocument):
     def set_case(self, index, state):
         self.accept[index] = state
         self.ica.exclude = list(np.flatnonzero(np.invert(self.accept)))
-        for func in self._case_change_subscriptions:
-            func(index)
+        self.callbacks.callback('case_change', index)
 
     def save(self):
         self.ica.save(self.path)
-
-    def subscribe_to_case_change(self, callback):
-        "callback(index)"
-        self._case_change_subscriptions.append(callback)
-
-    def unsubscribe_to_case_change(self, callback):
-        "callback(index)"
-        if callback in self._case_change_subscriptions:
-            self._case_change_subscriptions.remove(callback)
 
 
 class Model(FileModel):
@@ -239,7 +229,7 @@ class Frame(FileFrame):
         self.CreateStatusBar()
 
         # Bind Events ---
-        self.doc.subscribe_to_case_change(self.CaseChanged)
+        self.doc.callbacks.subscribe('case_change', self.CaseChanged)
         self.panel.Bind(wx.EVT_SIZE, self.OnPanelResize)
         self.canvas.mpl_connect('axes_enter_event', self.OnPointerEntersAxes)
         self.canvas.mpl_connect('axes_leave_event', self.OnPointerEntersAxes)
@@ -640,7 +630,7 @@ class SourceFrame(FileFrameChild):
         tb.Realize()
 
         # event bindings
-        self.doc.subscribe_to_case_change(self.CaseChanged)
+        self.doc.callbacks.subscribe('case_change', self.CaseChanged)
         self.Bind(wx.EVT_TOOL, self.OnUp, id=wx.ID_UP)
         self.Bind(wx.EVT_TOOL, self.OnDown, id=wx.ID_DOWN)
         self.Bind(wx.EVT_TOOL, self.OnBackward, id=wx.ID_BACKWARD)
@@ -819,7 +809,6 @@ class SourceFrame(FileFrameChild):
 
     def OnClose(self, event):
         if super(SourceFrame, self).OnClose(event):
-            self.doc.unsubscribe_to_case_change(self.CaseChanged)
             self.config.WriteInt('layout_n_comp', self.n_comp)
             self.config.WriteInt('layout_n_epochs', self.n_epochs)
             self.config.Flush()

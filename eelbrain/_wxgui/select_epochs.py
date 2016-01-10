@@ -163,6 +163,7 @@ class Document(FileDocument):
             Default location of the epoch selection file (used for save
             command). If the file exists, it is loaded as initial state.
         """
+        FileDocument.__init__(self, path)
         if isinstance(ds, mne.Epochs):
             epochs = ds
             if not epochs.preload:
@@ -248,13 +249,12 @@ class Document(FileDocument):
         self._good_sensor_indices = {}
 
         # publisher
-        self._bad_chs_change_subscriptions = []
-        self._case_change_subscriptions = []
+        self.callbacks.register_key('case_change')
+        self.callbacks.register_key('bad_chs_change')
 
         # finalize
         if bad_chs is not None:
             self.set_bad_channels_by_name(bad_chs)
-        FileDocument.__init__(self, path)
 
         if path and os.path.exists(path):
             accept, tag, interpolate, bad_chs = self.read_rej_file(path)
@@ -318,8 +318,7 @@ class Document(FileDocument):
         else:
             self.good_channels = None
         self._good_sensor_indices.clear()
-        for callback in self._bad_chs_change_subscriptions:
-            callback()
+        self.callbacks.callback('bad_chs_change')
 
     def set_bad_channels_by_name(self, names):
         self.set_bad_channels(self.epochs.sensor.dimindex(names))
@@ -332,8 +331,7 @@ class Document(FileDocument):
         if interpolate is not None:
             self.interpolate[index] = interpolate
 
-        for func in self._case_change_subscriptions:
-            func(index)
+        self.callbacks.callback('case_change', index)
 
     def set_path(self, path):
         """Set the path
@@ -449,14 +447,6 @@ class Document(FileDocument):
             ds.save_txt(self.path)
         else:
             raise ValueError("Unsupported extension: %r" % ext)
-
-    def subscribe_to_bad_channels_change(self, callback):
-        "callback()"
-        self._bad_chs_change_subscriptions.append(callback)
-
-    def subscribe_to_case_change(self, callback):
-        "callback(index)"
-        self._case_change_subscriptions.append(callback)
 
 
 class Model(FileModel):
@@ -668,8 +658,8 @@ class Frame(FileFrame):
         self.allow_interpolation = allow_interpolation
 
         # bind events
-        self.doc.subscribe_to_case_change(self.CaseChanged)
-        self.doc.subscribe_to_bad_channels_change(self.ShowPage)
+        self.doc.callbacks.subscribe('case_change', self.CaseChanged)
+        self.doc.callbacks.subscribe('bad_chs_change', self.ShowPage)
 
         # setup figure canvas
         self.canvas = FigureCanvasPanel(self)

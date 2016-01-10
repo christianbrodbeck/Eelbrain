@@ -10,6 +10,31 @@ from .help import show_help_txt
 from .frame import EelbrainFrame
 
 
+class CallBackManager(object):
+
+    def __init__(self, keys):
+        self._callbacks = {k: [] for k in keys}
+
+    def register_key(self, key):
+        if key in self._callbacks:
+            raise KeyError("Key already registered")
+        self._callbacks[key] = []
+
+    def callback(self, key, *args):
+        broken = []
+        for cb in self._callbacks[key]:
+            try:
+                cb(*args)
+            except wx.PyDeadObjectError:
+                broken.append(cb)
+
+        for cb in broken:
+            self._callbacks[key].remove(cb)
+
+    def subscribe(self, key, func):
+        self._callbacks[key].append(func)
+
+
 class Action(object):
 
     def do(self, doc):
@@ -40,7 +65,7 @@ class History():
     def __init__(self, doc):
         self.doc = doc
         self._history = []
-        self._saved_change_subscriptions = []
+        self.callbacks = CallBackManager(('saved_change',))
         # point to last executed action (always < 0)
         self._last_action_idx = -1
         # point to action after which we saved ( > 0 if ever saved)
@@ -77,8 +102,7 @@ class History():
         is_saved = self.is_saved()
         if is_saved != was_saved:
             self.doc.saved = is_saved
-            for func in self._saved_change_subscriptions:
-                func()
+            self.callbacks.callback('saved_change')
 
     def is_saved(self):
         """Determine whether the document is saved
@@ -110,10 +134,6 @@ class History():
         self._saved_idx = len(self._history) + self._last_action_idx
         self._process_saved_change(was_saved)
 
-    def subscribe_to_saved_change(self, callback):
-        "callback(saved)"
-        self._saved_change_subscriptions.append(callback)
-
     def undo(self):
         was_saved = self.is_saved()
         if -self._last_action_idx > len(self._history):
@@ -131,16 +151,11 @@ class FileDocument(object):
     def __init__(self, path):
         self.saved = False  # managed by the history
         self.path = path
-        self._path_change_subscriptions = []
+        self.callbacks = CallBackManager(('path_change',))
 
     def set_path(self, path):
         self.path = path
-        for func in self._path_change_subscriptions:
-            func()
-
-    def subscribe_to_path_change(self, callback):
-        "callback(path)"
-        self._path_change_subscriptions.append(callback)
+        self.callbacks.callback('path_change')
 
 
 class FileModel(object):
@@ -198,8 +213,8 @@ class FileFrame(EelbrainFrame):
         self.history = model.history
 
         # Bind Events ---
-        self.doc.subscribe_to_path_change(self.UpdateTitle)
-        self.history.subscribe_to_saved_change(self.UpdateTitle)
+        self.doc.callbacks.subscribe('path_change', self.UpdateTitle)
+        self.history.callbacks.subscribe('saved_change', self.UpdateTitle)
         self.Bind(wx.EVT_CLOSE, self.OnClose)
 
     def InitToolbar(self, can_open=True):
@@ -266,7 +281,6 @@ class FileFrame(EelbrainFrame):
                      self.__class__.__name__)
         pos_h, pos_v = self.GetPosition()
         w, h = self.GetSize()
-
         self.config.WriteInt("pos_horizontal", pos_h)
         self.config.WriteInt("pos_vertical", pos_v)
         self.config.WriteInt("size_width", w)
