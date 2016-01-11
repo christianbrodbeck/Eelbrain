@@ -14,6 +14,10 @@ from .._data_obj import cellname, isfactor, isinteraction
 from ._base import _EelFigure
 
 
+POINT_SIZE = 0.0138889  # 1 point in inches
+LEGEND_SIZE = 1.2  # times font.size
+
+
 def find_cell_colors(x, colors):
     """Process the colors arg from plotting functions
 
@@ -204,10 +208,8 @@ class ColorGrid(_EelFigure):
                 raise KeyError(msg)
 
         if size is None:
-            tight = True
-        else:
-            tight = False
-        _EelFigure.__init__(self, "ColorGrid", None, 3, 1, tight, *args, **kwargs)
+            size = mpl.rcParams['font.size'] * LEGEND_SIZE * POINT_SIZE
+        _EelFigure.__init__(self, "ColorGrid", None, 3, 1, False, *args, **kwargs)
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
         ax.set_axis_off()
         self._ax = ax
@@ -334,18 +336,18 @@ class ColorList(_EelFigure):
     """
     def __init__(self, colors, cells=None, labels=None, h='auto', *args,
                  **kwargs):
-        if h != 'auto':
-            kwargs['h'] = h
-
         if cells is None:
             cells = colors.keys()
+
+        if h == 'auto':
+            h = len(cells) * mpl.rcParams['font.size'] * POINT_SIZE * LEGEND_SIZE
 
         if labels is None:
             labels = {cell: cellname(cell) for cell in cells}
         elif not isinstance(labels, dict):
             raise TypeError("labels=%s" % repr(labels))
 
-        _EelFigure.__init__(self, "Colors", None, 2, 1.5, False, None, *args,
+        _EelFigure.__init__(self, "Colors", None, 2, 1.5, False, None, *args, h=h,
                             **kwargs)
 
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
@@ -363,15 +365,6 @@ class ColorList(_EelFigure):
 
         ax.set_ylim(0, n)
         ax.set_xlim(0, n * self._layout.w / self._layout.h)
-
-        # resize the figure to ft the content
-        if h == 'auto':
-            width, old_height = self._frame.GetSize()
-            self.draw()
-            text_height = max(h.get_window_extent().height for h in text_h) * 1.2
-            new_height = text_height * n
-            if new_height > old_height:
-                self._frame.SetSize((width, new_height))
 
         self._show()
 
