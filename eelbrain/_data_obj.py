@@ -76,6 +76,8 @@ _pickled_ds_wildcard = ("Pickled Dataset (*.pickled)", '*.pickled')
 _tex_wildcard = ("TeX (*.tex)", '*.tex')
 _tsv_wildcard = ("Plain Text Tab Separated Values (*.txt)", '*.txt')
 _txt_wildcard = ("Plain Text (*.txt)", '*.txt')
+EVAL_CONTEXT = vars(scipy)  # update at end of file
+
 
 
 class DimensionMismatchError(Exception):
@@ -4909,7 +4911,7 @@ class Dataset(OrderedDict):
         if not isinstance(expression, basestring):
             raise TypeError("Eval needs expression of type unicode or str. Got "
                             "%s" % repr(expression))
-        return eval(expression, vars(scipy), self)
+        return eval(expression, EVAL_CONTEXT, self)
 
     @classmethod
     def from_caselist(cls, names, cases):
@@ -8459,3 +8461,6 @@ def resample(data, sfreq, npad=100, window='boxcar'):
     time = UTS(data.time.tmin, tstep, x.shape[axis])
     dims = data.dims[:axis] + (time,) + data.dims[axis + 1:]
     return NDVar(x, dims=dims, info=data.info, name=data.name)
+
+
+EVAL_CONTEXT.update(Var=Var, Factor=Factor)
