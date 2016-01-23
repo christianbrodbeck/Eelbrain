@@ -968,12 +968,6 @@ class TopoArray(_EelFigure):
         for i, t in enumerate(t_list):
             self.set_topo_t(i, t)
 
-    def _window_update(self, mouseevent):
-        "update a window (used for mouse-over and for pick)"
-        t = mouseevent.xdata
-        self._selected_window.update(t=t)
-        self._frame.redraw(axes=[self._selected_window.ax])
-
     def _pick_handler(self, pickevent):
         mouseevent = pickevent.mouseevent
         ax = pickevent.artist
@@ -989,8 +983,6 @@ class TopoArray(_EelFigure):
                 pass
         elif (ax.type == 'main') and (self._selected_window != None):
             self._selected_window.clear()  # to side track pdf export transparency issue
-#            self._window_update(mouseevent, ax)
-
             # update corresponding topo_windows
             t = mouseevent.xdata
             Id = self._selected_window.ax.ID % self._ntopo
@@ -1001,6 +993,8 @@ class TopoArray(_EelFigure):
 
     def _motion_handler(self, mouseevent):
         ax = mouseevent.inaxes
-        if getattr(ax, 'type', None) == 'main':
-            if self._selected_window != None:
-                self._window_update(mouseevent)
+        if (self._selected_window is not None and
+                getattr(ax, 'type', None) == 'main' and
+                mouseevent.xdata in self._epochs[0][0].time):
+            self._selected_window.update(t=mouseevent.xdata)
+            self._frame.redraw(axes=[self._selected_window.ax])
