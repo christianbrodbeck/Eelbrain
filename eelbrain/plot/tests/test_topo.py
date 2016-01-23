@@ -3,7 +3,7 @@ Created on Jul 22, 2013
 
 @author: christian
 '''
-from eelbrain import datasets, plot
+from eelbrain import datasets, plot, testnd
 
 
 def test_plot_topomap():
@@ -51,4 +51,11 @@ def test_plot_array():
     p = plot.TopoArray('utsnd', ds=ds, vmax=0.2, w=2, show=False)
     p.close()
     p = plot.TopoArray('utsnd', 'A%B', ds=ds, axw=4, show=False)
+    p.close()
+
+    # results
+    res = testnd.ttest_ind('utsnd', 'A', ds=ds, pmin=0.05, tstart=0.1,
+                           tstop=0.3, samples=2)
+    p = plot.TopoArray(res, show=False)
+    p.set_topo_t(0, 0.)
     p.close()

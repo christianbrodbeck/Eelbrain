@@ -721,7 +721,7 @@ class _TopoWindow:
 #                                                'shrink':.05},
                                     zorder=99)
 
-            layers = [l.sub(time=t) for l in self.parent.data]
+            layers = [l.sub(time=t) for l in self.parent.data if t in l.time]
             if self.plot is None:
                 self.plot = _ax_topomap(self.ax, layers, False,
                                         **self.plot_args)
