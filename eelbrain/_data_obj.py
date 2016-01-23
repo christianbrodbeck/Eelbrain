@@ -8073,7 +8073,7 @@ class UTS(Dimension):
         return is_equal
 
     def __contains__(self, index):
-        return self.tmin - self.tstep < index < self.tstop
+        return self.tmin - self.tstep / 2 < index < self.tstop - self.tstep / 2
 
     def __getitem__(self, index):
         if isinstance(index, int):
