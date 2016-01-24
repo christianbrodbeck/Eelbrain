@@ -1833,7 +1833,7 @@ class TFCEProcessor(StatMapProcessor):
         self._int_buff = np.empty(shape, np.uint32)
         self._tfce_map = np.empty(shape)
 
-        if all_adjacent or len(shape) <= 2:
+        if all_adjacent or len(shape) == 2:
             self._int_buff_flat = self._int_buff
         else:
             self._int_buff_flat = self._int_buff.reshape((shape[0], -1))

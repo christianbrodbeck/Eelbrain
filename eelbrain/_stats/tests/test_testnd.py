@@ -112,6 +112,11 @@ def test_anova():
         assert_array_equal(dist.dist, vmax)
     eelbrain._stats.permutation._YIELD_ORIGINAL = 0
 
+    # 1d TFCE
+    testnd.configure(0)
+    res = testnd.anova('utsnd.rms(time=(0.1, 0.3))', 'A*B*rm', ds=ds, tfce=True, samples=samples)
+    testnd.configure(-1)
+
 
 def test_anova_incremental():
     "Test testnd.anova() with incremental f-tests"
