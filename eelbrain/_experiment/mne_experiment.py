@@ -2623,6 +2623,11 @@ class MneExperiment(FileTree):
 
         return ds
 
+    def load_fwd(self, surf_ori=True):
+        "Load the forward solution"
+        fwd_file = self.get('fwd-file', make=True)
+        return mne.read_forward_solution(fwd_file, surf_ori=surf_ori)
+
     def load_inv(self, fiff=None, **kwargs):
         """Load the inverse operator
 
@@ -2640,8 +2645,7 @@ class MneExperiment(FileTree):
         if fiff is None:
             fiff = self.load_raw()
 
-        fwd_file = self.get('fwd-file', make=True)
-        fwd = mne.read_forward_solution(fwd_file, surf_ori=True)
+        fwd = self.load_fwd()
         cov = self.load_cov()
         inv = make_inverse_operator(fiff.info, fwd, cov,
                                     **self._params['make_inv_kw'])
