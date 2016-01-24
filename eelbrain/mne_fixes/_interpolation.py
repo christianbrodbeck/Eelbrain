@@ -1,17 +1,27 @@
 # Authors: Denis Engemann <denis.engemann@gmail.com>
 #
 # License: BSD (3-clause)
-
+from distutils.version import LooseVersion
 import logging
 
 import numpy as np
 from numpy.polynomial.legendre import legval
 from scipy import linalg
 
+import mne
 from mne.bem import _fit_sphere
 from mne.forward import _map_meg_channels
 from mne.io.pick import pick_types, pick_channels
 from mne.surface import _normalize_vectors
+
+
+if LooseVersion(mne.__version__) >= LooseVersion('0.11.0'):
+    def map_meg_channels(inst, picks_good, picks_bad, mode):
+        info_from = mne.pick_info(inst.info, picks_good, copy=True)
+        info_to = mne.pick_info(inst.info, picks_bad, copy=True)
+        return _map_meg_channels(info_from, info_to, mode=mode)
+else:
+    map_meg_channels = _map_meg_channels
 
 
 # private in 0.9.0 (Epochs method)
@@ -267,5 +277,5 @@ def make_interpolators(interp_cache, keys, bads, epochs):
     for key in make:
         picks_good = pick_types(epochs.info, ref_meg=False, exclude=key)
         picks_bad = pick_channels(epochs.ch_names, key)
-        interpolation = _map_meg_channels(epochs, picks_good, picks_bad, 'accurate')
+        interpolation = map_meg_channels(epochs, picks_good, picks_bad, 'accurate')
         interp_cache[bads, key] = picks_good, picks_bad, interpolation
