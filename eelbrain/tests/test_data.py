@@ -1153,9 +1153,9 @@ def test_var():
     w = v.abs()
     eq_(w.info, {'a': 1, 'longname': 'abs(v)'})
     assert_array_equal(w, np.abs(v.x))
-    w = v.log()
-    eq_(w.info, {'a': 1, 'longname': 'log(v)'})
-    assert_array_equal(w, np.log(v.x))
+    x = w.log()
+    eq_(x.info, {'a': 1, 'longname': 'log(abs(v))'})
+    assert_array_equal(x, np.log(w.x))
 
     # assignment
     tgt1 = np.arange(10)
