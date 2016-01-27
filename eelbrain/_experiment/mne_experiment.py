@@ -61,6 +61,12 @@ SECONDARY_EPOCH_PARAMS = {'base', 'sel', 'tmin', 'tmax', 'decim', 'baseline',
                           'post_baseline_trigger_shift_min'}
 SUPER_EPOCH_PARAMS = {'sub_epochs'}
 SUPER_EPOCH_INHERITED_PARAMS = {'tmin', 'tmax', 'decim', 'baseline'}
+SUPER_EPOCH_NEW_PARAMS = {'vars', 'trigger_shift', 'post_baseline_trigger_shift',
+                          'post_baseline_trigger_shift_max',
+                          'post_baseline_trigger_shift_min'}
+SUPER_EPOCH_PARAMS.update(SUPER_EPOCH_INHERITED_PARAMS)
+SUPER_EPOCH_PARAMS.update(SUPER_EPOCH_NEW_PARAMS)
+
 
 FS_PARC = 'subject_parc'  # Parcellation that come with every MRI-subject
 FSA_PARC = 'fsaverage_parc'  # Parcellation that comes with fsaverage
@@ -597,8 +603,9 @@ class MneExperiment(FileTree):
             # filter out secondary epochs
             if 'sub_epochs' in parameters:
                 if set(parameters).difference(SUPER_EPOCH_PARAMS):
-                    msg = ("Super-epochs can only have one parameters called "
-                           "'sub_epochs'; got %r" % parameters)
+                    invalid = ', '.join(set(parameters).difference(SUPER_EPOCH_PARAMS))
+                    msg = ("Epoch definition %s contains invalid parameters: %s"
+                           % (name, invalid))
                     raise ValueError(msg)
                 super_epochs[name] = parameters.copy()
             elif 'base' in parameters:
@@ -637,13 +644,22 @@ class MneExperiment(FileTree):
         for name, parameters in super_epochs.iteritems():
             sub_epochs = parameters['sub_epochs']
 
-            # make sure definition is not recursive
-            if any('sub_epochs' in epochs[n] for n in sub_epochs):
-                msg = ("Super-epochs can't be defined recursively (%r)" % name)
-                raise ValueError(msg)
+            # check the sub_epochs
+            for epoch in (epochs[n] for n in sub_epochs):
+                if 'sub_epochs' in epoch:
+                    err = ("Epoch definition %s: Super-epochs can't be "
+                           "defined recursively" % name)
+                    raise ValueError(err)
+                elif 'post_baseline_trigger_shift' in epoch:
+                    err = ("Epoch definition %s: Super-epochs are merged on "
+                           "the level of events and can can not contain "
+                           "epochs with post_baseline_trigger_shift" % name)
+                    raise NotImplementedError(err)
 
-            # find params
+            # fill in missing params
             for param in SUPER_EPOCH_INHERITED_PARAMS:
+                if param in parameters:
+                    continue
                 values = {epochs[n][param] for n in sub_epochs}
                 if len(values) > 1:
                     param_repr = ', '.join(repr(v) for v in values)
