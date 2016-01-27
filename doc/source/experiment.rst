@@ -290,12 +290,13 @@ sel_epoch : str
 base : str
     Name of the epoch whose parameters provide defaults for all parameters.
 
-Superset epochs can be defined as a dictionary with only one entry:
+Superset epochs can be defined with:
 
 sub_epochs : tuple of str
     Tuple of epoch names. These epochs are combined to form the current epoch.
-    The current epoch can not have any additional specification, and parameters
-    from the sub_epochs must match.
+    Epochs are merged at the level of events, so the base epochs can not contain
+    post-baseline trigger shifts which are applied after loading data (however,
+    the super-epoch can have a post-baseline trigger shift).
 
 Examples::
 
