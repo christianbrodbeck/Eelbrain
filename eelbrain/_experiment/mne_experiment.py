@@ -352,6 +352,8 @@ class MneExperiment(FileTree):
     # Pattern for subject names. The first group is used to determine what
     # MEG-system the data was recorded from
     _subject_re = '(R|A|Y|AD|QP)(\d{3,})$'
+    # MEG-system. If None, the subject pattern is used to guess the system.
+    meg_system = None
     _meg_systems = {'R': 'KIT-NY',
                     'A': 'KIT-AD', 'Y': 'KIT-AD', 'AD': 'KIT-AD', 'QP': 'KIT-AD'}
 
@@ -1957,15 +1959,25 @@ class MneExperiment(FileTree):
         else:
             raise ValueError("modality=%r" % modality)
 
+    def _meg_system(self, subject):
+        if self.meg_system:
+            return self.meg_system
+        subject_prefix = self._subject_re.match(subject).group(1)
+        return self._meg_systems[subject_prefix]
+
     def _data_arg_for_modality(self, subject, modality, eog=False):
         "data argument for FIFF-to-NDVar conversion"
         if modality == 'meeg':
             raise NotImplementedError("NDVar for sensor space data combining "
                                       "EEG and MEG data")
         elif modality == '':
-            subject_prefix = self._subject_re.match(subject).group(1)
-            meg_system = self._meg_systems[subject_prefix]
-            sysname = 'KIT-157' if meg_system == 'KIT-NY' else 'KIT-208'
+            meg_system = self._meg_system(subject)
+            if meg_system == 'KIT-NY':
+                sysname = 'KIT-157'
+            elif meg_system == 'KIT-AD':
+                sysname = 'KIT-208'
+            else:
+                raise NotImplementedError("Unknown meg_system: %s" % meg_system)
             return 'mag', sysname
         elif modality == 'eeg':
             if eog:
@@ -3852,9 +3864,7 @@ class MneExperiment(FileTree):
             ds = self.load_epochs(reject=False, eog=True,
                                   decim=rej_args.get('decim', None),
                                   trigger_shift=False)
-            subject = self.get('subject')
-            subject_prefix = self._subject_re.match(subject).group(1)
-            meg_system = self._meg_systems[subject_prefix]
+            meg_system = self._meg_system(self.get('subject'))
             eog_sns = self._eog_sns[meg_system]
             data = 'meg'
             vlim = 2e-12
