@@ -763,6 +763,9 @@ class TopoArray(_EelFigure):
         is set to -vmax.
     xticklabels : bool
         Add tick-labels to the x-axis (default True).
+    axtitle : bool | sequence of str
+        Title for the individual axes. The default is to show the names of the
+        epochs, but only if multiple axes are plotted.
 
     Notes
     -----
@@ -774,7 +777,8 @@ class TopoArray(_EelFigure):
     _make_axes = False
 
     def __init__(self, epochs, Xax=None, title=None, ntopo=3, t=[], ds=None,
-                 vmax=None, vmin=None, xticklabels=True, *args, **kwargs):
+                 vmax=None, vmin=None, xticklabels=True, axtitle=True, *args,
+                 **kwargs):
         epochs, _ = _base.unpack_epochs_arg(epochs, ('time', 'sensor'), Xax, ds)
         n_epochs = len(epochs)
         n_topo_total = ntopo * n_epochs
@@ -802,6 +806,23 @@ class TopoArray(_EelFigure):
             fig.suptitle(title)
         self.title = title
 
+        if axtitle is True:
+            if len(epochs) == 1:
+                axtitle = [None]
+            else:
+                axtitle = []
+                for layers in epochs:
+                    for layer in layers:
+                        if layer.name:
+                            axtitle.append(layer.name)
+                            break
+                    else:
+                        axtitle.append(None)
+        elif axtitle:
+            if len(axtitle) != len(epochs):
+                raise ValueError("axtitle needs to have the same length as "
+                                 "epochs; got %s" % repr(axtitle))
+
         vlims = _base.find_fig_vlims(epochs, vmax, vmin)
         contours = _base.find_fig_contours(epochs, vlims, None)
 
@@ -826,7 +847,8 @@ class TopoArray(_EelFigure):
                               picker=True)
             ax.ID = i
             ax.type = 'main'
-            im_plot = _utsnd._ax_im_array(ax, layers, vlims=vlims, contours=contours)
+            im_plot = _utsnd._ax_im_array(ax, layers, 'time', axtitle[i],
+                                          vlims=vlims, contours=contours)
             self._axes.append(ax)
             self._array_axes.append(ax)
             self._array_plots.append(im_plot)
