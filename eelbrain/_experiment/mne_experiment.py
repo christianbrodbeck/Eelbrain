@@ -2823,15 +2823,14 @@ class MneExperiment(FileTree):
         epoch = self._epochs[self.get('epoch')]
         sel = epoch.get('sel', None)
         sel_epoch = epoch.get('sel_epoch', None)
-        sub_epochs = epoch.get('sub_epochs', None)
 
         # rejection comes from somewhere else
-        if sub_epochs is not None:
+        if 'sub_epochs' in epoch:
             with self._temporary_state:
                 dss = [self.load_selected_events(subject, reject, add_proj,
                                                  add_bads, index, data_raw,
                                                  epoch=sub_epoch)
-                       for sub_epoch in sub_epochs]
+                       for sub_epoch in epoch['sub_epochs']]
 
                 # combine bad channels
                 bad_channels = set()
