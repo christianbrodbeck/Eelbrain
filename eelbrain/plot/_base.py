@@ -704,7 +704,7 @@ def unpack_epochs_arg(Y, dims, Xax=None, ds=None):
         axes = []
         for cell in Xax.cells:
             v = Y[Xax == cell]
-            v.name = cell
+            v.name = cellname(cell)
             axes.append(v)
     elif isinstance(Y, (tuple, list)):
         axes = Y
@@ -729,6 +729,7 @@ def unpack_ax(ax, ndim, ds):
         return [_unpack_layer(layer, ndim, ds) for layer in ax]
     else:
         return [_unpack_layer(ax, ndim, ds)]
+
 
 def _unpack_layer(y, ndim, ds):
     # returns NDVar
