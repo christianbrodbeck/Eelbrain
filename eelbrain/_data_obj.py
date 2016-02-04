@@ -1215,8 +1215,9 @@ def combine(items, name=None, check_dims=True, incomplete='raise',
             keys = set(item0)
             if incomplete == 'raise':
                 if any(set(item) != keys for item in items[1:]):
-                    raise KeyError("Datasets have unequal keys. Combine with "
-                                   "fill_in_missing=True to combine anyways.")
+                    raise KeyError("Datasets have unequal keys. Use with "
+                                   "incomplete='drop' or incomplete='fill in' "
+                                   "to combine anyways.")
                 out_keys = item0
             else:
                 keys.intersection_update(*items[1:])
