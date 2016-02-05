@@ -19,6 +19,10 @@ New in 0.22
 
   - New method: :meth:`MneExperiment.show_rej_info`.
 
+* :class:`NDVar`:
+
+  - New method: :meth:`NDVar.label_clusters`.
+
 
 New in 0.21
 -----------

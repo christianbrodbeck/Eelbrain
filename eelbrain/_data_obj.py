@@ -3618,6 +3618,53 @@ class NDVar(object):
     def has_dim(self, name):
         return name in self._dim_2_ax
 
+    def label_clusters(self, threshold=0, tail=0):
+        """Find and label clusters of values exceeding a threshold
+
+        Parameters
+        ----------
+        threshold : scalar
+            Threshold value for clusters (default 0 to find clusters of
+            non-zero values).
+        tail : 0 | -1 | 1
+            Whether to label cluster smaller than threshold, larger than
+            threshold, or both (default).
+
+        Returns
+        -------
+        clusters : NDVar
+            NDVar of int, each cluster labeled with a unique integer value.
+        """
+        from ._stats.testnd import label_clusters
+
+        if self.has_case:
+            adjacent = [True] + [d.adjacent for d in self.dims[1:]]
+        else:
+            adjacent = [d.adjacent for d in self.dims]
+
+        if all(adjacent):
+            nad_ax = 0
+            connectivity = None
+        elif sum(adjacent) < len(adjacent) - 1:
+            raise NotImplementedError("More than one non-adjacent dimension")
+        else:
+            nad_ax = adjacent.index(False)
+            connectivity = self.dims[nad_ax].connectivity()
+
+        if nad_ax:
+            x = self.x.swapaxes(0, nad_ax)
+        else:
+            x = self.x
+
+        cmap, cids = label_clusters(x, threshold, tail, connectivity, None)
+
+        if nad_ax:
+            cmap = cmap.swapaxes(0, nad_ax)
+
+        info = self.info.copy()
+        info['cids'] = cids
+        return NDVar(cmap, self.dims, info)
+
     def max(self, dims=(), **regions):
         """Compute the maximum over given dimensions
 

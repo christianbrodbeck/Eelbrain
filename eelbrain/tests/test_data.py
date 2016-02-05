@@ -851,6 +851,14 @@ def test_ndvar_graph_dim():
     conn = argsort[sub_mono.sensor.connectivity().ravel()].reshape((-1, 2))
     assert_equal(sub_nonmono.sensor.connectivity(), conn)
 
+    # labeling
+    x1 = ds.eval("utsnd[logical_and(A=='a0', B=='b0')].mean('case')")
+    x2 = ds.eval("utsnd[A=='a1'].mean('case')")
+    x = x1 + x2
+    l = x.label_clusters(3)
+    eq_(len(l.info['cids']), 5)
+    eq_(len(np.unique(l.x)), 6)
+
 
 def test_ndvar_summary_methods():
     "Test NDVar methods for summarizing data over axes"
