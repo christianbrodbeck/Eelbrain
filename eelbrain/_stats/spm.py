@@ -4,6 +4,7 @@ from operator import mul
 
 import numpy as np
 
+from .._colorspaces import stat_info
 from .._data_obj import (Dataset, Factor, Var, NDVar, asmodel, asndvar,
                          DimensionMismatchError)
 from . import opt
@@ -72,8 +73,8 @@ class LM(object):
         "NDVar with t-values for a given term"
         index = self._index(term)
         t = self._coeffs_flat[index] / self._se_flat[index]
-        return NDVar(t.reshape(self._shape), self._dims[1:],
-                     {'term': term, 'meas': 't'})
+        info = stat_info('t', term=term)
+        return NDVar(t.reshape(self._shape), self._dims[1:], info)
 
     def _n_columns(self):
         return {term: s.stop - s.start for term, s in self._p.terms.iteritems()}
