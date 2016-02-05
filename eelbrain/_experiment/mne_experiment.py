@@ -344,13 +344,15 @@ class MneExperiment(FileTree):
                 'KIT-AD': ['MEG 087', 'MEG 130'],
                 'KIT-BRAINVISION': ['HEOGL', 'HEOGR', 'VEOGb']}
     #
-    # epoch_rejection dict:
+    # artifact_rejection dict:
     #
-    # kind : 'manual' | 'make' | None
+    # kind : 'manual' | 'make' | 'ica'
     #     How the rejection is derived:
     #     'manual': manually create a rejection file (use the selection GUI
     #     through .make_rej())
     #     'make' a rejection file is created by the user
+    # interpolation : bool
+    #     enable by-epoch channel interpolation
     # cov-rej : str
     #     rej setting to use for computing the covariance matrix. Default is
     #     same as rej.
@@ -359,10 +361,11 @@ class MneExperiment(FileTree):
     # ^^^^^^^^^^^^^^^^^^^^
     # decim : int
     #     Decim factor for the rejection GUI (default is to use epoch setting).
-    _epoch_rejection = {'': {'kind': None},
-                        'man': {'kind': 'manual',
-                                'interpolation': True,  # enable by-epoch channel interpolation
-                                }}
+    _artifact_rejection = {'': {'kind': None},
+                           'man': {'kind': 'manual',
+                                   'interpolation': True,
+                                   }}
+    artifact_rejection = {}
     epoch_rejection = {}
 
     exclude = {}  # field_values to exclude (e.g. subjects)
@@ -697,14 +700,19 @@ class MneExperiment(FileTree):
 
         ########################################################################
         # store epoch rejection settings
-        epoch_rejection = self._epoch_rejection.copy()
-        for name, params in self.epoch_rejection.iteritems():
+        artifact_rejection = self._artifact_rejection.copy()
+        if self.epoch_rejection:
+            warn("The MneExperiment.epoch_rejection attribute is deprecated "
+                 "and will be removed in Eelbrain 0.23. Please rename it to "
+                 ".artifact_rejection.", PendingDeprecationWarning)
+            artifact_rejection.update(self.epoch_rejection)
+        for name, params in self.artifact_rejection.iteritems():
             if params['kind'] not in ('manual', 'make', 'ica'):
                 raise ValueError("Invalid value in %r rejection setting: "
                                  "kind=%r" % (name, params['kind']))
-            epoch_rejection[name] = params.copy()
+            artifact_rejection[name] = params.copy()
 
-        self._epoch_rejection = epoch_rejection
+        self._artifact_rejection = artifact_rejection
 
         ########################################################################
         # parcellations
@@ -887,7 +895,7 @@ class MneExperiment(FileTree):
                              post_set_handler=self._post_set_group)
 
         self._register_field('raw', sorted(self._raw))
-        self._register_field('rej', self._epoch_rejection.keys(), 'man',
+        self._register_field('rej', self._artifact_rejection.keys(), 'man',
                              post_set_handler=self._post_set_rej)
         # epoch
         epoch_keys = sorted(self._epochs)
@@ -1362,7 +1370,7 @@ class MneExperiment(FileTree):
             paths = [self.get('rej-file', epoch=e) for e in epochs]
         if all(os.path.exists(path) for path in paths):
             mtime = max(os.path.getmtime(path) for path in paths)
-            rej = self._epoch_rejection[self.get('rej')]
+            rej = self._artifact_rejection[self.get('rej')]
             if pre_ica or rej['kind'] != 'ica':
                 return mtime
             # incorporate ICA-file
@@ -2178,7 +2186,7 @@ class MneExperiment(FileTree):
 
             # determine baseline
             apply_ica = (reject and apply_ica and
-                         self._epoch_rejection[self.get('rej')]['kind'] == 'ica')
+                         self._artifact_rejection[self.get('rej')]['kind'] == 'ica')
             if baseline is True:
                 baseline = epoch['baseline']
             if apply_ica:
@@ -2870,7 +2878,7 @@ class MneExperiment(FileTree):
 
             # rejection
             if reject:
-                rej_params = self._epoch_rejection[self.get('rej')]
+                rej_params = self._artifact_rejection[self.get('rej')]
                 path = self.get('rej-file')
                 if os.path.exists(path):
                     ds_sel = load.unpickle(path)
@@ -3517,7 +3525,7 @@ class MneExperiment(FileTree):
             ...     e.make_ica()
 
         """
-        params = self._epoch_rejection[self.get('rej')]
+        params = self._artifact_rejection[self.get('rej')]
         if params['kind'] != 'ica':
             raise RuntimeError("Current rej (%s) does not involve ICA" %
                                self.get('rej'))
@@ -4052,7 +4060,7 @@ class MneExperiment(FileTree):
         kwargs :
             Kwargs for SelectEpochs
         """
-        rej_args = self._epoch_rejection[self.get('rej')]
+        rej_args = self._artifact_rejection[self.get('rej')]
         if rej_args['kind'] not in ('manual', 'ica'):
             err = ("Epoch rejection kind for rej=%r is not manual."
                    % self.get('rej'))
@@ -5077,8 +5085,8 @@ class MneExperiment(FileTree):
     def _post_set_rej(self, _, rej):
         if rej == '*':
             self._fields['cov-rej'] = '*'
-        elif rej in self._epoch_rejection:
-            self._fields['cov-rej'] = self._epoch_rejection[rej].get('cov-rej', rej)
+        elif rej in self._artifact_rejection:
+            self._fields['cov-rej'] = self._artifact_rejection[rej].get('cov-rej', rej)
         else:
             self._fields['cov-rej'] = '<invalid rej>'
 
@@ -5267,7 +5275,7 @@ class MneExperiment(FileTree):
         """
         epoch_name = self.get('epoch')
         rej_name = self.get('rej')
-        rej = self._epoch_rejection[rej_name]
+        rej = self._artifact_rejection[rej_name]
         has_ica = rej['kind'] == 'ica'
 
         dss = []
