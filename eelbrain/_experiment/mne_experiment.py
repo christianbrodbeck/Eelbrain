@@ -138,6 +138,7 @@ class DictSet(object):
 class CacheDict(dict):
 
     def __init__(self, func, key_vars, *args):
+        super(CacheDict, self).__init__()
         self._func = func
         self._key_vars = key_vars
         self._args = args
