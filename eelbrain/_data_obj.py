@@ -1131,8 +1131,7 @@ class Celltable(object):
         return zip(self.cells, self.get_statistic(func=func, a=a, **kwargs))
 
 
-def combine(items, name=None, check_dims=True, incomplete='raise',
-            fill_in_missing=None):
+def combine(items, name=None, check_dims=True, incomplete='raise'):
     """Combine a list of items of the same type into one item.
 
     Parameters
@@ -1159,16 +1158,8 @@ def combine(items, name=None, check_dims=True, incomplete='raise',
     The info dict inherits only entries that are equal (``x is y or
     np.array_equal(x, y)``) for all items.
     """
-    if fill_in_missing is not None:
-        warn("The fill_in_missing argument to combine() is deprecated and will "
-             "be removed after version 0.20. Use the new incomplete argument "
-             "instead.", DeprecationWarning)
-        incomplete = 'fill in' if fill_in_missing else 'raise'
-    elif not isinstance(incomplete, basestring):
-        warn("The fill_in_missing argument to combine() has ben renamed to "
-             "`incomplete` and should be a string (got %s). After version 0.20 "
-             "this will raise an error" % repr(incomplete), DeprecationWarning)
-        incomplete = 'fill in' if incomplete else 'raise'
+    if not isinstance(incomplete, basestring):
+        raise TypeError("incomplete=%s, need str" % repr(incomplete))
     elif incomplete not in ('raise', 'drop', 'fill in'):
         raise ValueError("incomplete=%s" % repr(incomplete))
 
@@ -4555,14 +4546,7 @@ class Dataset(OrderedDict):
     def __init__(self, *args, **kwargs):
         # backwards compatibility
         if args:
-            fmt_1 = isdataobject(args[0])
-            fmt_2 = isinstance(args[0], tuple) and isinstance(args[0][0], str)
-            if fmt_1:
-                warn("Initializing Datasets with multiple data-objects is "
-                     "deprecated and will not be possible after version 0.20. "
-                     "Provide a list of data-objects instead.",
-                     DeprecationWarning)
-            if fmt_1 or fmt_2:
+            if isinstance(args[0], tuple) and isinstance(args[0][0], str):
                 items, name, caption, info, n_cases = self._args(args, **kwargs)
             else:
                 items, name, caption, info, n_cases = self._args(*args, **kwargs)
