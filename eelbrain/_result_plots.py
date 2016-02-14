@@ -6,6 +6,7 @@ import matplotlib as mpl
 import numpy as np
 
 from . import plot, testnd
+from .plot._base import POINT
 from ._data_obj import combine
 
 
@@ -31,7 +32,7 @@ def cname(cid):
 
 
 class ClusterPlotter(object):
-    """Make plots for spatio-temporal clusters
+    """Make plots for spatio-temporal clusters (returned by :meth:`MneExperiment.load_result_plotter`)
 
     Parameters
     ----------
@@ -96,7 +97,7 @@ class ClusterPlotter(object):
 
     def plot_color_list(self, name, cells, w=None):
         with mpl.rc_context(self.rc):
-            p = plot.ColorList(self.colors, cells, self.labels, w=w)
+            p = plot.ColorList(self.colors, cells, self.labels, w=w, show=False)
             p.save(self._dst_vec % "colorlist %s" % name, transparent=True)
             p.close()
 
@@ -106,7 +107,7 @@ class ClusterPlotter(object):
             p.save(self._dst_vec % "colorgrid %s" % name, transparent=True)
             p.close()
 
-    def plot_clusters_spatial(self, ids, views):
+    def plot_clusters_spatial(self, ids, views, w=600, h=480):
         """Plot spatial extent of the clusters
 
         Parameters
@@ -115,22 +116,23 @@ class ClusterPlotter(object):
             IDs of the clusters that should be plotted. For ANOVA results, this
             should be an ``{effect_name: id_list}`` dict. If a scalar, plot all
             clusters with p-values smaller than this.
-
-        models : str | list of str | dict
-            Can a str or list of str to use the same model for all clusters. A dict
-            can have as keys labels or cluster IDs. The relevant model for an effect
-            is alywas included.
         views : str | list of str | dict
             Can a str or list of str to use the same views for all clusters. A dict
             can have as keys labels or cluster IDs.
+        w, h : int
+            Size in pixels. The default (600 x 480) corresponds to 2 x 1.6 in
+            at 300 dpi.
 
         Notes
         -----
-        For ANOVA, clusters are identified by an ``(effect, id)`` tuple.
+        The horizontal colorbar is 1.5 in wide, the vertical colorbar is 0.8 in
+        wide.
         """
         ids = self._ids(ids)
         clusters = self._get_clusters(ids)
         clusters_spatial = [c.sum('time') for c in clusters]
+        if isinstance(views, basestring):
+            views = (views,)
 
         # vmax
         vmin = min(c.min() for c in clusters_spatial)
@@ -146,7 +148,7 @@ class ClusterPlotter(object):
                     continue
                 brain = plot.brain.cluster(cluster, abs_vmax, views='lat',
                                            background=(1, 1, 1), colorbar=False,
-                                           parallel=True, hemi=hemi)
+                                           parallel=True, hemi=hemi, w=w, h=h)
                 for view in views:
                     brain.show_view(view)
                     brain.screenshot('rgba', True)
@@ -158,8 +160,9 @@ class ClusterPlotter(object):
                         clipmin = 0 if vmin == 0 else None
                         clipmax = 0 if vmax == 0 else None
 
+                        h = 0.6 + POINT * mpl.rcParams['font.size']
                         p = brain.plot_colorbar(label, clipmin=clipmin, clipmax=clipmax,
-                                                h=0.65, w=1.5, show=False)
+                                                h=h, w=1.5, show=False)
                         p.save(self._dst_vec % 'cmap h', transparent=True)
                         p.close()
 
@@ -200,13 +203,16 @@ class ClusterPlotter(object):
         return ds, model, modelname
 
     def plot_values(self, ids, model, ymax, ymin=0, dpi=300, rc=None,
-                    sub=None, subagg=None):
+                    sub=None, subagg=None, cells=None):
         """Plot values in cluster
 
         Parameters
         ----------
         subagg : str
            Index in ds: within index, collapse across other predictors.
+        cells : sequence of cells in model
+            Modify visible cells and their order. Only applies to the barplot.
+            Does not affect filename.
         """
         ds, model, modelname = self._get_data(model, sub, subagg)
         ids = self._ids(ids)
@@ -221,7 +227,7 @@ class ClusterPlotter(object):
                 y_tc = src.mean(cluster.any('time'))
 
                 # barplot
-                p = plot.Barplot(y_mean, model, 'subject', ds=ds, trend=False, corr=None,
+                p = plot.Barplot(y_mean, model, 'subject', cells=cells, ds=ds, trend=False, corr=None,
                                  title=None, frame=False, yaxis=False, ylabel=False,
                                  colors=self.colors, bottom=ymin, top=ymax, w=self.h, h=self.h,
                                  xlabel=None, xticks=None,

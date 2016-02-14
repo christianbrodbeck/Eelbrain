@@ -2802,6 +2802,30 @@ class MneExperiment(FileTree):
 
         return raw
 
+    def _load_result_plotter(self, test, tstart, tstop, pmin, parc=None, mask=None,
+                            samples=10000, data='src', sns_baseline=True,
+                            src_baseline=None,
+                            colors=None, labels=None, h=1.1, rc=None,
+                            font_size=None,
+                            dst=None, vec_fmt='svg', pix_fmt='png', **kwargs):
+        if self._tests[test]['kind'] == '2-stage':
+            raise NotImplementedError("Result-plots for 2-stage tests")
+        elif data != 'src':
+            raise NotImplementedError("data=%s" % repr(data))
+        elif not isinstance(pmin, float):
+            raise NotImplementedError("Threshold-free tests")
+
+        from .._result_plots import ClusterPlotter
+
+        # calls _set_analysis_options():
+        ds, res = self.load_test(test, tstart, tstop, pmin, parc, mask, samples,
+                                 data, sns_baseline, src_baseline, True,
+                                 **kwargs)
+        if dst is None:
+            dst = self.get('res-plot-dir', mkdir=True)
+
+        return ClusterPlotter(ds, res, colors, dst, vec_fmt, pix_fmt, labels, h, rc, font_size)
+
     def load_selected_events(self, subject=None, reject=True, add_proj=True,
                              add_bads=True, index=True, data_raw=False,
                              vardef=None, cat=None, **kwargs):
@@ -4610,29 +4634,6 @@ class MneExperiment(FileTree):
         # report signature
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
         report.save_html(dst)
-
-    def load_result_plotter(self, test, tstart, tstop, pmin, parc=None, mask=None,
-                            samples=10000, data='src', sns_baseline=True,
-                            src_baseline=None,
-                            colors=None, labels=None,
-                            dst=None, vec_fmt='svg', pix_fmt='png', **kwargs):
-        if self._tests[test]['kind'] == '2-stage':
-            raise NotImplementedError("Result-plots for 2-stage tests")
-        elif data != 'src':
-            raise NotImplementedError("data=%s" % repr(data))
-        elif not isinstance(pmin, float):
-            raise NotImplementedError("Threshold-free tests")
-
-        from .._result_plots import ClusterPlotter
-
-        # calls _set_analysis_options():
-        ds, res = self.load_test(test, tstart, tstop, pmin, parc, mask, samples,
-                                 data, sns_baseline, src_baseline, True,
-                                 **kwargs)
-        if dst is None:
-            dst = self.get('res-plot-dir', mkdir=True)
-
-        return ClusterPlotter(ds, res, colors, dst, vec_fmt, pix_fmt, labels)
 
     def make_src(self, **kwargs):
         "Make the source space"

@@ -79,6 +79,9 @@ from .._data_obj import ascategorial, asndvar, isnumeric, cellname, \
     DimensionMismatchError
 
 
+# constants
+POINT = 0.013888888888898
+
 # defaults
 defaults = {'maxw': 16, 'maxh': 10}
 backend = {'eelbrain': True, 'autorun': None, 'show': True, 'format': 'svg'}
