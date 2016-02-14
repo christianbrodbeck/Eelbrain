@@ -1453,6 +1453,80 @@ class MneExperiment(FileTree):
         criteria = self._cluster_criteria[self.get('select_clusters')]
         return {'min' + dim: criteria[dim] for dim in dims if dim in criteria}
 
+    def _add_epochs(self, ds, epoch, baseline=True, ndvar=True, data_raw=False,
+                    pad=None, decim=None, reject=True, apply_ica=True,
+                    trigger_shift=True, eog=False):
+        modality = self.get('modality')
+        tmin = epoch['tmin']
+        tmax = epoch['tmax']
+        if baseline is True:
+            baseline = epoch['baseline']
+        if pad:
+            tmin -= pad
+            tmax += pad
+        if decim is None:
+            decim = epoch['decim']
+
+        # determine ICA
+        if apply_ica and self._artifact_rejection[self.get('rej')]['kind'] == 'ica':
+            path = self.get('ica-file')
+            if not os.path.exists(path):
+                raise RuntimeError("ICA file does not exist at %s. Run "
+                                   "e.make_ica_selection() to create it." %
+                                   os.path.relpath(path, self.get('root')))
+            ica = mne.preprocessing.read_ica(path)
+            baseline_ = None
+        else:
+            ica = None
+            baseline_ = baseline
+
+        ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline_, decim=decim)
+
+        # post baseline-correction trigger shift
+        if trigger_shift and 'post_baseline_trigger_shift' in epoch:
+            ds['epochs'] = shift_mne_epoch_trigger(ds['epochs'],
+                                                   ds[epoch['post_baseline_trigger_shift']],
+                                                   epoch['post_baseline_trigger_shift_min'],
+                                                   epoch['post_baseline_trigger_shift_max'])
+
+        # interpolate channels
+        if reject and ds.info[INTERPOLATE_CHANNELS]:
+            if modality == '':
+                interp_path = self.get('interp-file')
+                if os.path.exists(interp_path):
+                    interp_cache = load.unpickle(interp_path)
+                else:
+                    interp_cache = {}
+                n_in_cache = len(interp_cache)
+                _interpolate_bads_meg(ds['epochs'], ds[INTERPOLATE_CHANNELS],
+                                      interp_cache)
+                if len(interp_cache) > n_in_cache:
+                    save.pickle(interp_cache, interp_path)
+            else:
+                _interpolate_bads_eeg(ds['epochs'], ds[INTERPOLATE_CHANNELS])
+
+        # ICA
+        if ica is not None:
+            ica.apply(ds['epochs'])
+            if baseline:
+                ds['epochs'].apply_baseline(baseline)
+
+        if not data_raw:
+            del ds.info['raw']
+
+        if ndvar:
+            name = self._ndvar_name_for_modality(modality)
+            sysname = self._sysname(ds.info['subject'], modality)
+            ds[name] = load.fiff.epochs_ndvar(ds['epochs'],
+                                              data=self._data_arg(modality, eog),
+                                              sysname=sysname)
+            if ndvar != 'both':
+                del ds['epochs']
+            if modality == 'eeg':
+                self._fix_eeg_ndvar(ds[ndvar], True)
+
+        return ds
+
     def _add_epochs_stc(self, ds, ndvar, baseline, morph, mask):
         """
         Transform epochs contained in ds into source space (adds a list of mne
@@ -2155,7 +2229,6 @@ class MneExperiment(FileTree):
             If the current rej setting uses ICA, remove the excluded ICA
             components from the Epochs.
         """
-        modality = self.get('modality')
         if ndvar:
             if isinstance(ndvar, basestring):
                 if ndvar != 'both':
@@ -2171,7 +2244,7 @@ class MneExperiment(FileTree):
                 dss.append(ds)
 
             ds = combine(dss)
-        elif modality == 'meeg':  # single subject, combine MEG and EEG
+        elif self.get('modality') == 'meeg':  # single subject, combine MEG and EEG
             with self._temporary_state:
                 ds_meg = self.load_epochs(subject, baseline, ndvar, add_bads,
                                           reject, add_proj, cat, decim, pad,
@@ -2185,15 +2258,6 @@ class MneExperiment(FileTree):
         else:  # single subject, single modality
             epoch = self._epochs[self.get('epoch')]
 
-            # determine baseline
-            apply_ica = (reject and apply_ica and
-                         self._artifact_rejection[self.get('rej')]['kind'] == 'ica')
-            if baseline is True:
-                baseline = epoch['baseline']
-            if apply_ica:
-                post_ica_baseline = baseline
-                baseline = None
-
             ds = self.load_selected_events(add_bads=add_bads, reject=reject,
                                            add_proj=add_proj,
                                            data_raw=data_raw or True,
@@ -2206,62 +2270,8 @@ class MneExperiment(FileTree):
                 raise RuntimeError(err)
 
             # load sensor space data
-            tmin = epoch['tmin']
-            tmax = epoch['tmax']
-            if pad:
-                tmin -= pad
-                tmax += pad
-            if decim is None:
-                decim = epoch['decim']
-            ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim)
-
-            # post baseline-correction trigger shift
-            if trigger_shift and 'post_baseline_trigger_shift' in epoch:
-                ds['epochs'] = shift_mne_epoch_trigger(ds['epochs'],
-                                                       ds[epoch['post_baseline_trigger_shift']],
-                                                       epoch['post_baseline_trigger_shift_min'],
-                                                       epoch['post_baseline_trigger_shift_max'])
-
-            # interpolate channels
-            if reject and ds.info[INTERPOLATE_CHANNELS]:
-                if modality == '':
-                    interp_path = self.get('interp-file')
-                    if os.path.exists(interp_path):
-                        interp_cache = load.unpickle(interp_path)
-                    else:
-                        interp_cache = {}
-                    n_in_cache = len(interp_cache)
-                    _interpolate_bads_meg(ds['epochs'], ds[INTERPOLATE_CHANNELS],
-                                          interp_cache)
-                    if len(interp_cache) > n_in_cache:
-                        save.pickle(interp_cache, interp_path)
-                else:
-                    _interpolate_bads_eeg(ds['epochs'], ds[INTERPOLATE_CHANNELS])
-
-            # ICA
-            if apply_ica:
-                path = self.get('ica-file')
-                if not os.path.exists(path):
-                    raise RuntimeError("ICA file does not exist at %s. Run "
-                                       "e.make_ica_selection() to create it." %
-                                       os.path.relpath(path, self.get('root')))
-                ica = mne.preprocessing.read_ica(path)
-                ica.apply(ds['epochs'])
-                if post_ica_baseline:
-                    ds['epochs'].apply_baseline(post_ica_baseline)
-
-            if not data_raw:
-                del ds.info['raw']
-
-            if ndvar:
-                name = self._ndvar_name_for_modality(modality)
-                ds[name] = load.fiff.epochs_ndvar(ds['epochs'],
-                                                  data=self._data_arg(modality, eog),
-                                                  sysname=self._sysname(subject, modality))
-                if ndvar != 'both':
-                    del ds['epochs']
-                if modality == 'eeg':
-                    self._fix_eeg_ndvar(ds[ndvar], group)
+            ds = self._add_epochs(ds, epoch, baseline, ndvar, data_raw, pad,
+                                  decim, reject, apply_ica, trigger_shift, eog)
 
         return ds
 
@@ -4077,7 +4087,7 @@ class MneExperiment(FileTree):
         modality = self.get('modality')
 
         if modality == '':
-            ds = self.load_epochs(reject=False, eog=True,
+            ds = self.load_epochs(reject=False, apply_ica=False, eog=True,
                                   decim=rej_args.get('decim', None),
                                   trigger_shift=False)
             meg_system = self._meg_system(self.get('subject'))
