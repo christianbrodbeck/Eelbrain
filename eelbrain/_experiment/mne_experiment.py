@@ -2197,18 +2197,13 @@ class MneExperiment(FileTree):
             ds = self.load_selected_events(add_bads=add_bads, reject=reject,
                                            add_proj=add_proj,
                                            data_raw=data_raw or True,
-                                           vardef=vardef)
+                                           vardef=vardef, cat=cat)
             if ds.n_cases == 0:
-                raise RuntimeError("No events left for epoch=%s, subject=%s"
-                                   % (repr(self.get('epoch')), repr(subject)))
-
-            if cat:
-                model = ds.eval(self.get('model'))
-                idx = model.isin(cat)
-                ds = ds.sub(idx)
-                if ds.n_cases == 0:
-                    raise RuntimeError("Selection with cat=%s resulted in "
-                                       "empty Dataset" % repr(cat))
+                err = ("No events left for epoch=%r, subject=%r" %
+                       (epoch['name'], subject))
+                if cat:
+                    err += ", cat=%s" % repr(cat)
+                raise RuntimeError(err)
 
             # load sensor space data
             tmin = epoch['tmin']
@@ -2769,7 +2764,7 @@ class MneExperiment(FileTree):
 
     def load_selected_events(self, subject=None, reject=True, add_proj=True,
                              add_bads=True, index=True, data_raw=False,
-                             vardef=None, **kwargs):
+                             vardef=None, cat=None, **kwargs):
         """
         Load events and return a subset based on epoch and rejection
 
@@ -2798,6 +2793,8 @@ class MneExperiment(FileTree):
             analysis).
         vardef : str
             Name of a 2-stage test defining additional variables.
+        cat : sequence of cell-names
+            Only load data for these cells (cells of model).
         others :
             Update the experiment state.
 
@@ -2938,6 +2935,13 @@ class MneExperiment(FileTree):
             vardef = self._tests[vardef].get('vars', None)
         if vardef:
             self._add_vars(ds, vardef)
+
+        # apply cat subset
+        if cat:
+            model = ds.eval(self.get('model'))
+            idx = model.isin(cat)
+            ds = ds.sub(idx)
+
         return ds
 
     def _load_spm(self, sns_baseline=True, src_baseline=False):
