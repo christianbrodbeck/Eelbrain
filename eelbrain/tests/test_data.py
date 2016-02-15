@@ -149,7 +149,7 @@ def test_celltable():
     eq_(('False', 'True'), ct.cat)
     assert_array_equal(ct.data['True'], ds['Y', X])
 
-    ct = Celltable('Y', X, cat=(True, False), ds=ds)
+    ct = Celltable('Y', X, cat=('True', 'False'), ds=ds)
     eq_(('True', 'False'), ct.cat)
     assert_array_equal(ct.data['True'], ds['Y', X])
 

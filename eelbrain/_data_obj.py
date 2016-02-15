@@ -811,8 +811,6 @@ class Celltable(object):
         ponding to self.data
     sub : bool array
         Bool array of length N specifying which cases to include
-    match_func : callable
-        see match
     cat : None | sequence of cells of X
         Only retain data for these cells. Data will be sorted in the order
         of cells occuring in cat.
@@ -861,18 +859,20 @@ class Celltable(object):
         cell.
 
     """
-    def __init__(self, Y, X=None, match=None, sub=None, match_func=np.mean,
-                 cat=None, ds=None, coercion=asdataobject):
+    def __init__(self, Y, X=None, match=None, sub=None, cat=None, ds=None,
+                 coercion=asdataobject):
         self.sub = sub
         sub = assub(sub, ds)
 
         if X is None:
+            if cat is not None:
+                raise TypeError("cat is only a valid argument if X is provided")
             Y = coercion(Y, sub, ds)
         else:
             X = ascategorial(X, sub, ds)
             if cat is not None:
-                # determine cat
-                is_none = list(c is None for c in cat)
+                # reconstruct cat if some cells are provided as None
+                is_none = [c is None for c in cat]
                 if any(is_none):
                     if len(cat) == len(X.cells):
                         if all(is_none):
@@ -886,9 +886,6 @@ class Celltable(object):
                                "contains exactly as many cells as categories are "
                                "required (%i)." % len(cat))
                         raise ValueError(err)
-
-                if not isinteraction(X):
-                    cat = tuple(str(c) for c in cat)
 
                 # make sure all categories are in data
                 missing = [c for c in cat if c not in X.cells]
