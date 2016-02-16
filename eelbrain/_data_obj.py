@@ -893,7 +893,8 @@ class Celltable(object):
                 # make sure all categories are in data
                 missing = [c for c in cat if c not in X.cells]
                 if missing:
-                    raise ValueError("Categories not in data: %s" % ', '.join(missing))
+                    raise ValueError("Categories not in data: %s" %
+                                     ', '.join(map(str, missing)))
 
                 # apply cat
                 sort_idx = X.sort_idx(order=cat)
@@ -2202,6 +2203,8 @@ class _Effect(object):
                 sort_idx = sort_idx[:i_cut]
 
         if descending:
+            if not isinstance(descending, bool):
+                raise TypeError("descending=%s, need bool" % repr(descending))
             sort_idx = sort_idx[::-1]
 
         return sort_idx
