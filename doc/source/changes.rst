@@ -40,6 +40,7 @@ New in 0.21
 * New :class:`Factor` method:  :meth:`Factor.floodfill`.
 * :class:`Model` methods: :meth:`~Model.get_table` replaced with
   :meth:`~Model.as_table`, new :meth:`~Model.head` and :meth:`~Model.tail`.
+* API: ``.sort_idx`` methods renamed to ``.sort_index``.
 
 
 New in 0.20

@@ -34,7 +34,6 @@ import operator
 import os
 import re
 import string
-from warnings import warn
 
 from matplotlib.ticker import FormatStrFormatter, FuncFormatter, IndexFormatter
 import mne
@@ -49,7 +48,7 @@ from scipy.spatial.distance import cdist, pdist, squareform
 
 from . import fmtxt
 from . import _colorspaces as cs
-from ._utils import ui, LazyProperty, natsorted  #, logger
+from ._utils import deprecated, ui, LazyProperty, natsorted  #, logger
 from ._utils.numpy_utils import slice_to_arange, full_slice
 
 
@@ -894,7 +893,7 @@ class Celltable(object):
                                      ', '.join(map(str, missing)))
 
                 # apply cat
-                sort_idx = X.sort_idx(order=cat)
+                sort_idx = X.sort_index(order=cat)
                 X = X[sort_idx]
                 if sub is None:
                     sub = sort_idx
@@ -914,12 +913,12 @@ class Celltable(object):
                 if X is not None:
                     X = X.aggregate(cell_model)
                     if cat is not None:
-                        sort_idx = X.sort_idx(order=cat)
+                        sort_idx = X.sort_index(order=cat)
             else:
-                sort_idx = cell_model.sort_idx()
+                sort_idx = cell_model.sort_index()
                 if X is not None and cat is not None:
                     X_ = X[sort_idx]
-                    sort_X_idx = X_.sort_idx(order=cat)
+                    sort_X_idx = X_.sort_index(order=cat)
                     sort_idx = sort_idx[sort_X_idx]
 
             if (sort_idx is not None) and (not np.all(np.diff(sort_idx) == 1)):
@@ -2030,7 +2029,7 @@ class Var(object):
         "Returns the standard deviation"
         return self.x.std()
 
-    def sort_idx(self, descending=False):
+    def sort_index(self, descending=False):
         """Create an index that could be used to sort the Var.
 
         Parameters
@@ -2042,6 +2041,10 @@ class Var(object):
         if descending:
             idx = idx[::-1]
         return idx
+
+    @deprecated('0.23', sort_index)
+    def sort_idx(self):
+        pass
 
     def sum(self):
         "Returns the sum over all values"
@@ -2157,7 +2160,7 @@ class _Effect(object):
             index = slice(start, stop, step)
         return index
 
-    def sort_idx(self, descending=False, order=None):
+    def sort_index(self, descending=False, order=None):
         """Create an index that could be used to sort this data_object.
 
         Parameters
@@ -2196,6 +2199,10 @@ class _Effect(object):
             sort_idx = sort_idx[::-1]
 
         return sort_idx
+
+    @deprecated('0.23', sort_index)
+    def sort_idx(self):
+        pass
 
 
 class Factor(_Effect):
@@ -5266,14 +5273,14 @@ class Dataset(OrderedDict):
 
         See Also
         --------
-        .sort_idx : Create an index that could be used to sort the Dataset
+        .sort_index : Create an index that could be used to sort the Dataset
         .sorted : Create a sorted copy of the Dataset
         """
-        idx = self.sort_idx(order, descending)
+        idx = self.sort_index(order, descending)
         for k in self:
             self[k] = self[k][idx]
 
-    def sort_idx(self, order, descending=False):
+    def sort_index(self, order, descending=False):
         """Create an index that could be used to sort the Dataset.
 
         Parameters
@@ -5297,8 +5304,11 @@ class Dataset(OrderedDict):
                    "%i." % len(order))
             raise ValueError(err)
 
-        idx = order.sort_idx(descending=descending)
-        return idx
+        return order.sort_index(descending=descending)
+
+    @deprecated('0.23', sort_index)
+    def sort_idx(self):
+        pass
 
     def save(self):
         """Shortcut to save the Dataset, will display a system file dialog
@@ -5446,11 +5456,10 @@ class Dataset(OrderedDict):
         See Also
         --------
         .sort : sort the Dataset in place
-        .sort_idx : Create an index that could be used to sort the Dataset
+        .sort_index : Create an index that could be used to sort the Dataset
         """
-        idx = self.sort_idx(order, descending)
-        ds = self[idx]
-        return ds
+        idx = self.sort_index(order, descending)
+        return self[idx]
 
     def sub(self, index, name='{name}'):
         """

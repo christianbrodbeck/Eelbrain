@@ -3,16 +3,35 @@ A few basic operations needed throughout Eelbrain
 
 Created by Christian Brodbeck on 7/3/09.
 """
-
 from collections import defaultdict
+import functools
 import logging
 import os
 import cPickle as pickle
 import re
+from warnings import warn
 
 import numpy as np
 
 from . import ui
+
+
+def deprecated(version, replacement=None):
+    "Decorator to deprecate functions/,ethods"
+    def dec(func):
+        msg = ('%s is deprecated and will be removed in version %s' %
+               (func.__name__, version))
+        if replacement is not None:
+            msg += "; use %s instead" % replacement.__name__
+        func.__doc__ = msg
+
+        @functools.wraps(func)
+        def new(*args, **kwargs):
+            warn(msg, DeprecationWarning)
+            return replacement(*args, **kwargs)
+
+        return new
+    return dec
 
 
 def set_log_level(level, logger_name='eelbrain'):
