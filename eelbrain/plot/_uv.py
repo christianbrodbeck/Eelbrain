@@ -262,6 +262,9 @@ class Boxplot(_SimpleFigure):
         Match cases for a repeated measures design.
     sub : None | index-array
         Use a subset of the data.
+    cells : None | sequence of cells of X
+        Cells to plot (optional). All entries have to be cells of X). Can be
+        used to change the order of the bars or plot only certain cells.
     datalabels : scalar
         Threshold for labeling outliers (in standard-deviation).
     bottom : scalar
@@ -309,13 +312,13 @@ class Boxplot(_SimpleFigure):
     title : str
         Figure title.
     """
-    def __init__(self, Y, X=None, match=None, sub=None, datalabels=None,
+    def __init__(self, Y, X=None, match=None, sub=None, cells=None, datalabels=None,
                  bottom=None, top=None, ylabel=True, xlabel=True,
                  xtick_delim='\n', test=True, par=True, trend="'", test_markers=True,
                  corr='Hochberg', hatch=False, colors=False, ds=None, *args,
                  **kwargs):
         # get data
-        ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
+        ct = Celltable(Y, X, match, sub, cells, ds, asvar)
         if ct.X is None and test is True:
             test = 0.
 
@@ -434,6 +437,9 @@ class Barplot(_SimpleFigure):
         Match cases for a repeated measures design.
     sub : None | index-array
         Use a subset of the data.
+    cells : None | sequence of cells of X
+        Cells to plot (optional). All entries have to be cells of X). Can be
+        used to change the order of the bars or plot only certain cells.
     test : bool | scalar
         True (default): perform pairwise tests;  False: no tests;
         scalar: 1-sample tests against this value
@@ -497,12 +503,12 @@ class Barplot(_SimpleFigure):
     title : str
         Figure title.
     """
-    def __init__(self, Y, X=None, match=None, sub=None, test=True, par=True,
+    def __init__(self, Y, X=None, match=None, sub=None, cells=None, test=True, par=True,
                  corr='Hochberg', trend="'", test_markers=True, ylabel=True,
                  error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
                  xtick_delim='\n', hatch=False, colors=False, bottom=0, top=None,
                  origin=None, c='#0099FF', edgec=None, ds=None, *args, **kwargs):
-        ct = Celltable(Y, X, match, sub, ds=ds, coercion=asvar)
+        ct = Celltable(Y, X, match, sub, cells, ds, asvar)
 
         if pool_error is None:
             pool_error = ct.all_within
@@ -580,7 +586,7 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom, top=None,
         error_match = None
     else:
         error_match = ct.match
-    y_error = stats.variability(ct.Y.x, ct.X, error_match, error, pool_error)
+    y_error = stats.variability(ct.Y.x, ct.X, error_match, error, pool_error, ct.cells)
 
     # fig spacing
     plot_max = np.max(height + y_error)

@@ -20,6 +20,11 @@ def test_barplot():
                  show=False)
     plot.Barplot('fltvar', 'A%B', match='rm', test=0, ds=ds, show=False)
 
+    # cells
+    plot.Barplot('fltvar', 'A%B', cells=(('a2', 'b2'), ('a1', 'b1')), ds=ds, show=False)
+    plot.Barplot('fltvar', 'A%B', match='rm', cells=(('a2', 'b2'), ('a1', 'b1')),
+                 ds=ds, show=False)
+
     # Fixed top
     p = plot.Barplot('fltvar', 'A%B', ds=ds, top=2, test_markers=False,
                      show=False)
@@ -36,6 +41,11 @@ def test_boxplot():
     plot.Boxplot('fltvar', ds=ds, test=False, show=False)
     plot.Boxplot('fltvar', ds=ds, show=False)
     plot.Boxplot('fltvar', match='rm', ds=ds, show=False)
+
+    # cells
+    plot.Boxplot('fltvar', 'A%B', cells=(('a2', 'b2'), ('a1', 'b1')), ds=ds, show=False)
+    plot.Boxplot('fltvar', 'A%B', match='rm', cells=(('a2', 'b2'), ('a1', 'b1')),
+                 ds=ds, show=False)
 
     # many pairwise significances
     ds['fltvar'][ds.eval("A%B==('a1','b1')")] += 1

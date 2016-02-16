@@ -123,6 +123,9 @@ def test_sem_and_variability():
     stats.variability(y, x, None, '95%ci', True)
     stats.variability(y, x, match, '95%ci', True)
 
+    assert_equal(stats.variability(y, x, None, '95%ci', False)[::-1],
+                 stats.variability(y, x, None, '95%ci', False, x.cells[::-1]))
+
 
 def test_t_1samp():
     "Test 1-sample t-test"

@@ -15,6 +15,8 @@ New in 0.22
   - Set marked channels by clicking on topo-map.
   - Faster page redraw.
 
+* :class:`plot.Barplot` and :class:`plot.Boxplot`: new ``cells`` argument to
+  customize the order of bars/boxes.
 * :class:`MneExperiment`:
 
   - New method: :meth:`MneExperiment.show_rej_info`.

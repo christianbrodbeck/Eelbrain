@@ -391,7 +391,7 @@ def ttest_t(p, df, tail=0):
     return t
 
 
-def variability(y, x, match, spec, pool):
+def variability(y, x, match, spec, pool, cells=None):
     """Calculate data variability
 
     Parameters
@@ -432,23 +432,24 @@ def variability(y, x, match, spec, pool):
     except:
         raise ValueError("Invalid variability specification: %r" % spec)
 
-    if x is None and match is not None:
-        if match.df == len(match) - 1:
+    if x is None:
+        if match is not None and match.df == len(match) - 1:
             raise ValueError("Can't calculate within-subject error because the "
                              "match predictor explains all variability")
+    elif not pool and cells is None:
+        cells = x.cells
 
     if kind == 'ci':
         if pool or x is None:
             out = confidence_interval(y, x, match, scale)
         else:
-            cis = [confidence_interval(y[x == cell], confidence=scale) for cell
-                                       in x.cells]
+            cis = [confidence_interval(y[x == cell], confidence=scale) for cell in cells]
             out = np.array(cis)
     elif kind == 'sem':
         if pool or x is None:
             out = standard_error_of_the_mean(y, x, match)
         else:
-            sems = [standard_error_of_the_mean(y[x == cell]) for cell in x.cells]
+            sems = [standard_error_of_the_mean(y[x == cell]) for cell in cells]
             out = np.array(sems)
 
         if scale != 1:
