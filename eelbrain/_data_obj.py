@@ -942,11 +942,11 @@ class Celltable(object):
         if X is None:
             self.data[None] = Y
             self.data_indexes[None] = full_slice
-            self.cells = [None]
+            self.cells = (None,)
             self.n_cells = 1
             self.all_within = match is not None
             return
-        self.cells = X.cells
+        self.cells = cat if cat is not None else X.cells
         self.n_cells = len(self.cells)
         self.groups = {}
         for cell in X.cells:
