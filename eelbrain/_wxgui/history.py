@@ -68,8 +68,8 @@ class History():
         self.callbacks = CallBackManager(('saved_change',))
         # point to last executed action (always < 0)
         self._last_action_idx = -1
-        # point to action after which we saved ( > 0 if ever saved)
-        self._saved_idx = -1
+        # point to action after which we saved
+        self._saved_idx = -2 + doc.saved
 
     def can_redo(self):
         return self._last_action_idx < -1
@@ -87,7 +87,7 @@ class History():
             self._history = self._history[:self._last_action_idx + 1]
             self._last_action_idx = -1
             if self._saved_idx >= len(self._history):
-                self._saved_idx = -1
+                self._saved_idx = -2
         self._history.append(action)
         self._process_saved_change(was_saved)
 
@@ -113,8 +113,6 @@ class History():
             Whether the document is saved (i.e., contains no unsaved changes).
         """
         current_index = len(self._history) + self._last_action_idx
-        if current_index == -1 and self._saved_idx < 0:
-            return self.doc.saved  # no actions and never saved
         return self._saved_idx == current_index
 
     def redo(self):
