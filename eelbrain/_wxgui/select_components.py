@@ -771,6 +771,8 @@ class SourceFrame(FileFrameChild):
         if event.inaxes:
             if event.inaxes.i_comp is None:
                 i_comp = int(self.i_first + self.n_comp - ceil(event.ydata / self.y_scale + 0.5))
+                if i_comp >= self.n_comp_in_ica:
+                    return
             else:
                 i_comp = event.inaxes.i_comp
             self.model.toggle(i_comp)
