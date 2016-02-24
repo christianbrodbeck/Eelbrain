@@ -43,7 +43,7 @@ from .. import fmtxt
 from .. import _colorspaces as _cs
 from .._data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
                          NDVar, Var, Celltable, cellname, combine, Categorial,
-                         UTS, OldVersionError)
+                         UTS, OldVersionError, isinteraction)
 from .._report import enumeration, format_timewindow, ms
 from .._utils import LazyProperty
 from .._utils.numpy_utils import full_slice
@@ -474,7 +474,7 @@ class t_contrast_rel(_Result):
         # store attributes
         _Result.__init__(self, ct.Y, ct.match, sub, samples, tfce, pmin, cdist,
                          tstart, tstop)
-        self.X = ct.X.name
+        self.X = '%'.join(ct.X.base_names) if isinteraction(ct.X) else ct.X.name
         self.contrast = contrast
         self.tail = tail
         self.tmin = tmin
