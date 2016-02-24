@@ -392,6 +392,7 @@ Tools with a graphical user interface (GUI):
 .. autosummary::
    :toctree: generated
 
+    gui.select_components
     gui.select_epochs
 
 

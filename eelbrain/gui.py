@@ -8,6 +8,26 @@ def run():
 
 
 def select_components(path, ds, sysname=None):
+    """GUI for selecting ICA-components
+
+    Parameters
+    ----------
+    path : str
+        Path to the ICA file.
+    ds : Dataset
+        Dataset with epochs to use for source selection in ``ds['epochs']``
+        (as mne-python ``Epochs`` object). Optionally, ``ds['index']`` can be
+        the indexes to display for epochs (the default is ``range(n_epochs)``.
+        Further :class:`Factor` can be used to plot condition averages.
+    sysname : str
+        Optional, to define sensor connectivity.
+
+    Notes
+    -----
+    The ICA object does not need to be computed on the same data that is in
+    ``ds``. For example, the ICA can be computed on a raw file but component
+    selection done using the epochs that will be analyzed.
+    """
     from _wxgui import get_app
     from ._wxgui.select_components import Document, Model, Frame
 

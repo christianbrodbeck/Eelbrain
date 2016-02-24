@@ -581,6 +581,7 @@ class SourceFrame(FileFrameChild):
     =========== ============================================================
     Key         Effect
     =========== ============================================================
+    arrows      scroll through components/epochs
     t           topomap plot of the Component under the pointer
     a           array-plot of the source time course
     f           plot the frequency spectrum for the selected component
