@@ -5291,16 +5291,23 @@ class MneExperiment(FileTree):
         asds : bool
             Return a Dataset with the information (default is to print it).
         """
+        raw_name = self.get('raw')
         epoch_name = self.get('epoch')
         rej_name = self.get('rej')
         rej = self._artifact_rejection[rej_name]
         has_ica = rej['kind'] == 'ica'
 
         dss = []
+        bad_chs = []
         if has_ica:
             n_icas = []
+
         for _ in self:
-            dss.append(self.load_selected_events(reject='keep'))
+            ds = self.load_selected_events(reject='keep')
+            dss.append(ds)
+            bads_raw = self.load_bad_channels()
+            bads_rej = set(ds.info[BAD_CHANNELS]).difference(bads_raw)
+            bad_chs.append("%i + %i" % (len(bads_raw), len(bads_rej)))
             if has_ica:
                 ica_path = self.get('ica-file')
                 if os.path.exists(ica_path):
@@ -5309,8 +5316,10 @@ class MneExperiment(FileTree):
                 else:
                     n_icas.append(np.nan)
 
-        caption = ("Rejection info for epoch=%s, rej=%s. Percent is rounded to "
-                   "one decimal." % (epoch_name, rej_name))
+        caption = ("Rejection info for raw=%s, epoch=%s, rej=%s. "
+                   "Percent is rounded to one decimal. Bad channels: "
+                   "defined in bad_channels file and in rej-file." %
+                   (raw_name, epoch_name, rej_name))
         if rej['interpolation']:
             caption += (" ch_interp: average number of channels interpolated "
                         "per epoch, rounded to one decimal.")
@@ -5323,7 +5332,7 @@ class MneExperiment(FileTree):
         out['percent'] = Var(np.round(100 * out['n_good'] / out['n_events'], 1))
         if flagp:
             out['flag'] = Factor(out['percent'] < flagp, labels={False: '', True: '*'})
-        out['bad_channels'] = Var([len(ds.info[BAD_CHANNELS]) for ds in dss])
+        out['bad_channels'] = Factor(bad_chs)
         if rej['interpolation']:
             av_n_ch = [np.mean([len(chi) for chi in ds[INTERPOLATE_CHANNELS]]) for ds in dss]
             out['ch_interp'] = Var(np.round(av_n_ch, 1))
