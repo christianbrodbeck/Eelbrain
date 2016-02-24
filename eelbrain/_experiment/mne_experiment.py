@@ -25,7 +25,7 @@ from .. import plot
 from .. import save
 from .. import table
 from .. import testnd
-from .. import Dataset, Factor, Var, NDVar, combine
+from .._data_obj import Dataset, Factor, Var, NDVar, Datalist, combine
 from .._info import BAD_CHANNELS
 from .._names import INTERPOLATE_CHANNELS
 from .._mne import dissolve_label, \
@@ -2849,16 +2849,11 @@ class MneExperiment(FileTree):
                        for sub_epoch in epoch['sub_epochs']]
 
                 # combine bad channels
-                bad_channels = set()
-                for ds in dss:
-                    if BAD_CHANNELS in ds.info:
-                        bad_channels.update(ds.info[BAD_CHANNELS])
-
+                bad_channels = set.union(*(set(ds.info[BAD_CHANNELS]) for ds in dss))
                 ds = combine(dss)
                 if data_raw:
                     ds.info['raw'] = dss[0].info['raw']
-                if bad_channels:
-                    ds.info[BAD_CHANNELS] = sorted(bad_channels)
+                ds.info[BAD_CHANNELS] = sorted(bad_channels)
         elif sel_epoch is not None:
             with self._temporary_state:
                 ds = self.load_selected_events(None, 'keep', add_proj, add_bads,
@@ -2905,9 +2900,14 @@ class MneExperiment(FileTree):
                         raise RuntimeError("The epoch selection file contains different "
                                            "events than the data. Something went wrong...")
 
-                if rej_params['interpolation'] and INTERPOLATE_CHANNELS in ds_sel:
-                    ds[INTERPOLATE_CHANNELS] = ds_sel[INTERPOLATE_CHANNELS]
+                if rej_params['interpolation']:
                     ds.info[INTERPOLATE_CHANNELS] = True
+                    if INTERPOLATE_CHANNELS in ds_sel:
+                        ds[INTERPOLATE_CHANNELS] = ds_sel[INTERPOLATE_CHANNELS]
+                    else:
+                        ds[INTERPOLATE_CHANNELS] = Datalist([[]] * ds.n_cases,
+                                                            INTERPOLATE_CHANNELS,
+                                                            'strlist')
                 else:
                     ds.info[INTERPOLATE_CHANNELS] = False
 
@@ -2922,8 +2922,11 @@ class MneExperiment(FileTree):
                     raise ValueError(err)
 
                 # bad channels
-                if add_bads and BAD_CHANNELS in ds_sel.info:
-                    ds.info[BAD_CHANNELS] = ds_sel.info[BAD_CHANNELS]
+                if add_bads:
+                    if BAD_CHANNELS in ds_sel.info:
+                        ds.info[BAD_CHANNELS] = ds_sel.info[BAD_CHANNELS]
+                    else:
+                        ds.info[BAD_CHANNELS] = []
 
         # apply trigger-shift
         if 'trigger_shift' in epoch:
