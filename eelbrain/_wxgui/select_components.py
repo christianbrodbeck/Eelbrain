@@ -242,7 +242,7 @@ class Frame(FileFrame):
         # attributes
         self.last_model = ""
         self.source_frame = None
-        self.butterfly_baseline = ID.BASELINE_CUSTOM
+        self.butterfly_baseline = ID.BASELINE_NONE
 
         # Finalize
         self.plot()
