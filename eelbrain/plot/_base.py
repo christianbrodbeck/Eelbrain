@@ -82,6 +82,10 @@ from .._data_obj import ascategorial, asndvar, isnumeric, cellname, \
 # defaults
 defaults = {'maxw': 16, 'maxh': 10}
 backend = {'eelbrain': True, 'autorun': None, 'show': True, 'format': 'svg'}
+if 'ETS_TOOLKIT' in os.environ:
+    backend['ets_toolkit'] = None
+else:
+    backend['ets_toolkit'] = 'qt4'
 
 # store figures (they need to be preserved)
 figures = []
@@ -101,7 +105,8 @@ def do_autorun(run=None):
         return backend['autorun']
 
 
-def configure(frame=None, autorun=None, show=None, format=None):
+def configure(frame=None, autorun=None, show=None, format=None,
+              ets_toolkit=None):
     """Set basic configuration parameters for the current session
 
     Parameters
@@ -120,6 +125,10 @@ def configure(frame=None, autorun=None, show=None, format=None):
         plots and save them without showing them on the screen).
     format : str
         Default format for plots (for example "png", "svg", ...).
+    ets_toolkt : 'qt4' | 'wx'
+        Toolkit to use for :mod:`plot.brain` plots. QT4 is officially supported
+        but can lead to segmentation faults. WX is not officially supported but
+        seems to work.
     """
     if frame is not None:
         backend['eelbrain'] = bool(frame)
@@ -129,6 +138,13 @@ def configure(frame=None, autorun=None, show=None, format=None):
         backend['show'] = bool(show)
     if format is not None:
         backend['format'] = format.lower()
+    if ets_toolkit is not None:
+        if ets_toolkit in ('qt4', 'wx'):
+            backend['ets_toolkit'] = ets_toolkit
+        else:
+            raise ValueError("ets_toolkit=%r; needs to be 'qt4' or 'wx'" %
+                             ets_toolkit)
+
 
 
 meas_display_unit = {'time': u'ms',

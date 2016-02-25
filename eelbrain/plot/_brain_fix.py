@@ -4,9 +4,11 @@ from distutils.version import LooseVersion
 import os
 import sys
 
+from ._base import backend
+
 # pyface imports: set GUI backend (ETS don't support wxPython 3.0)
-if 'ETS_TOOLKIT' not in os.environ:
-    os.environ['ETS_TOOLKIT'] = "qt4"
+if backend['ets_toolkit']:
+    os.environ['ETS_TOOLKIT'] = backend['ets_toolkit']
 
 # surfer imports, revert to standard logging
 first_import = 'surfer' not in sys.modules
@@ -28,3 +30,11 @@ class Brain(BrainMixin, SurferBrain):
     def __init__(self, data, *args, **kwargs):
         BrainMixin.__init__(self, data)
         SurferBrain.__init__(self, *args, **kwargs)
+
+        from traits.trait_base import ETSConfig
+        self._prevent_close = ETSConfig.toolkit == 'wx'
+
+    def close(self):
+        "Prevent close() call that causes segmentation fault"
+        if not self._prevent_close:
+            SurferBrain.close(self)
