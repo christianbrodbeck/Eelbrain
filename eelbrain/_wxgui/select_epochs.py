@@ -1188,10 +1188,11 @@ class Frame(FileFrame):
             method = dlg.GetMethod()
 
             sub_threshold = self.model.threshold(threshold, method)
-            if dlg.do_apply.GetValue():
-                self.model.update_rejection(sub_threshold, dlg.GetMarkBelow(),
-                                            dlg.GetMarkAbove(),
-                                            "Threshold-%s" % method,
+            mark_below = dlg.GetMarkBelow()
+            mark_above = dlg.GetMarkAbove()
+            if mark_below or mark_above:
+                self.model.update_rejection(sub_threshold, mark_below,
+                                            mark_above, "Threshold-%s" % method,
                                             "%s_%s" % (method, threshold))
             if dlg.do_report.GetValue():
                 rejected = np.invert(sub_threshold)
@@ -1773,7 +1774,6 @@ class ThresholdDialog(EelbrainDialog):
         mark_above = config.ReadBool("Threshold/mark_above", True)
         mark_below = config.ReadBool("Threshold/mark_below", False)
         threshold = config.ReadFloat("Threshold/threshold", 2e-12)
-        do_apply = config.ReadBool("Threshold/do_apply", True)
         do_report = config.ReadBool("Threshold/do_report", True)
 
         # construct layout
@@ -1790,18 +1790,6 @@ class ThresholdDialog(EelbrainDialog):
         sizer.Add(ctrl)
         self.method_ctrl = ctrl
 
-        ctrl = wx.CheckBox(self, wx.ID_ANY, "Reject all epochs exceeding the "
-                           "threshold")
-        ctrl.SetValue(mark_above)
-        sizer.Add(ctrl)
-        self.mark_above = ctrl
-
-        ctrl = wx.CheckBox(self, wx.ID_ANY, "Accept all epochs not exceeding "
-                           "the threshold")
-        ctrl.SetValue(mark_below)
-        sizer.Add(ctrl)
-        self.mark_below = ctrl
-
         msg = ("Invalid entry for threshold: {value}. Need a floating\n"
                "point number.")
         validator = REValidator(FLOAT_PATTERN, msg, False)
@@ -1815,12 +1803,20 @@ class ThresholdDialog(EelbrainDialog):
         # output
         sizer.AddSpacer(4)
         sizer.Add(wx.StaticText(self, label="Output"))
+        # mark above
+        self.mark_above = wx.CheckBox(self, wx.ID_ANY,
+                                      "Reject epochs exceeding the threshold")
+        self.mark_above.SetValue(mark_above)
+        sizer.Add(self.mark_above)
+        # mark below
+        self.mark_below = wx.CheckBox(self, wx.ID_ANY,
+                                      "Accept epochs below the threshold")
+        self.mark_below.SetValue(mark_below)
+        sizer.Add(self.mark_below)
+        # report
         self.do_report = wx.CheckBox(self, wx.ID_ANY, "Show Report")
         self.do_report.SetValue(do_report)
         sizer.Add(self.do_report)
-        self.do_apply = wx.CheckBox(self, wx.ID_ANY, "Apply")
-        self.do_apply.SetValue(do_apply)
-        sizer.Add(self.do_apply)
 
         # buttons
         button_sizer = wx.StdDialogButtonSizer()
@@ -1856,12 +1852,11 @@ class ThresholdDialog(EelbrainDialog):
         return value
 
     def OnOK(self, event):
-        if not (self.mark_above.GetValue() or self.mark_below.GetValue()):
-            wx.MessageBox("Specify at least one action (reject or accept epochs)",
-                          "No Command Selected", wx.ICON_EXCLAMATION)
-        if not (self.do_report.GetValue() or self.do_apply.GetValue()):
-            wx.MessageBox("Specify at least one action (report or apply)",
-                          "No Command Selected", wx.ICON_EXCLAMATION)
+        if not (self.mark_above.GetValue() or self.mark_below.GetValue() or
+                self.do_report.GetValue()):
+            wx.MessageBox("Specify at least one action (create report or "
+                          "reject or accept epochs)", "No Command Selected",
+                          wx.ICON_EXCLAMATION)
         else:
             event.Skip()
 
@@ -1872,7 +1867,6 @@ class ThresholdDialog(EelbrainDialog):
         config.WriteBool("Threshold/mark_below", self.GetMarkBelow())
         config.WriteFloat("Threshold/threshold", self.GetThreshold())
         config.WriteBool("Threshold/do_report", self.do_report.GetValue())
-        config.WriteBool("Threshold/do_apply", self.do_apply.GetValue())
         config.Flush()
 
 
