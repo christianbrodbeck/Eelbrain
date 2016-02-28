@@ -5341,25 +5341,41 @@ class MneExperiment(FileTree):
         rej_name = self.get('rej')
         rej = self._artifact_rejection[rej_name]
         has_ica = rej['kind'] == 'ica'
+        has_interp = rej['interpolation']
 
-        dss = []
+        subjects = []
+        n_events = []
+        n_good = []
         bad_chs = []
+        if has_interp:
+            n_interp = []
         if has_ica:
-            n_icas = []
+            n_ics = []
 
-        for _ in self:
-            ds = self.load_selected_events(reject='keep')
-            dss.append(ds)
+        for subject in self:
+            subjects.append(subject)
             bads_raw = self.load_bad_channels()
-            bads_rej = set(ds.info[BAD_CHANNELS]).difference(bads_raw)
-            bad_chs.append("%i + %i" % (len(bads_raw), len(bads_rej)))
+            if os.path.exists(self.get('rej-file')):
+                ds = self.load_selected_events(reject='keep')
+                n_good.append(ds['accept'].sum())
+                bads_rej = set(ds.info[BAD_CHANNELS]).difference(bads_raw)
+                bad_chs.append("%i + %i" % (len(bads_raw), len(bads_rej)))
+                if has_interp:
+                    n_interp.append(np.mean([len(chi) for chi in ds[INTERPOLATE_CHANNELS]]))
+            else:
+                n_good.append(float('nan'))
+                ds = self.load_selected_events(reject=False)
+                bad_chs.append(str(len(bads_raw)))
+                if has_interp:
+                    n_interp.append(float('nan'))
+            n_events.append(ds.n_cases)
             if has_ica:
                 ica_path = self.get('ica-file')
                 if os.path.exists(ica_path):
                     ica = mne.preprocessing.read_ica(ica_path)
-                    n_icas.append(len(ica.exclude))
+                    n_ics.append(len(ica.exclude))
                 else:
-                    n_icas.append(np.nan)
+                    n_ics.append(np.nan)
 
         caption = ("Rejection info for raw=%s, epoch=%s, rej=%s. "
                    "Percent is rounded to one decimal. Bad channels: "
@@ -5371,18 +5387,17 @@ class MneExperiment(FileTree):
         else:
             caption += " Channel interpolation disabled."
         out = Dataset(caption=caption)
-        out['subject'] = Factor([ds.info['subject'] for ds in dss])
-        out['n_events'] = Var([ds.n_cases for ds in dss])
-        out['n_good'] = Var([ds['accept'].sum() for ds in dss])
+        out['subject'] = Factor(subjects)
+        out['n_events'] = Var(n_events)
+        out['n_good'] = Var(n_good)
         out['percent'] = Var(np.round(100 * out['n_good'] / out['n_events'], 1))
         if flagp:
             out['flag'] = Factor(out['percent'] < flagp, labels={False: '', True: '*'})
         out['bad_channels'] = Factor(bad_chs)
-        if rej['interpolation']:
-            av_n_ch = [np.mean([len(chi) for chi in ds[INTERPOLATE_CHANNELS]]) for ds in dss]
-            out['ch_interp'] = Var(np.round(av_n_ch, 1))
+        if has_interp:
+            out['ch_interp'] = Var(np.round(n_interp, 1))
         if has_ica:
-            out['ics_rejected'] = Var(n_icas)
+            out['ics_rejected'] = Var(n_ics)
 
         if asds:
             return out
