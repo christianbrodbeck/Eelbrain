@@ -26,9 +26,9 @@ at the
 at New York University. This work is currently funded by grant G1001 from the
 `NYU Abu Dhabi Institute
 <http://nyuad.nyu.edu/en/research/nyuad-institute.html>`_.
-If you use Eelbrain to a substantial degree in work that is published, please
-acknowledge it with a link to
-`pythonhosted.org/eelbrain <https://pythonhosted.org/eelbrain/>`_.
+If you use Eelbrain in work that is published, please acknowledge it with a
+link to `pythonhosted.org/eelbrain <https://pythonhosted.org/eelbrain/>`_ and
+indicate the version which you used.
 
 Manual:
 
