@@ -8010,16 +8010,19 @@ class SourceSpace(Dimension):
             parc_ = parc
         elif isinstance(parc, basestring):
             if self.kind == 'ico':
-                fname = os.path.join(self.subjects_dir, self.subject, 'label', '%%s.%s.annot' % parc)
-                vert_codes_lh, ctab_lh, names_lh = read_annot(fname % 'lh')
-                vert_codes_rh, ctab_rh, names_rh = read_annot(fname % 'rh')
-                x_lh = vert_codes_lh[self.lh_vertno]
-                x_rh = vert_codes_rh[self.rh_vertno]
-                x_rh += x_lh.max() + 1
-                names = chain(('%s-lh' % name for name in names_lh),
-                              ('%s-rh' % name for name in names_rh))
+                fname = os.path.join(self.subjects_dir, self.subject, 'label',
+                                     '%%s.%s.annot' % parc)
+                labels_lh, _, names_lh = read_annot(fname % 'lh')
+                labels_rh, _, names_rh = read_annot(fname % 'rh')
+                x_lh = labels_lh[self.lh_vertno]
+                x_lh[x_lh == -1] = -2
+                x_rh = labels_rh[self.rh_vertno]
+                x_rh[x_rh >= 0] += len(names_lh)
+                names = chain(('unknown-lh', 'unknown-rh'),
+                              (name + '-lh' for name in names_lh),
+                              (name + '-rh' for name in names_rh))
                 parc_ = Factor(np.hstack((x_lh, x_rh)), parc,
-                               labels={i: name for i, name in enumerate(names)})
+                               labels={i: name for i, name in enumerate(names, -2)})
             else:
                 raise NotImplementedError
         else:
