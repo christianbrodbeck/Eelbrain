@@ -7638,7 +7638,7 @@ class SourceSpace(Dimension):
         self.src = src
         self.kind = kind
         self.grade = grade
-        self.subjects_dir = subjects_dir
+        self._subjects_dir = subjects_dir
         self._connectivity = connectivity
         self._n_vert = sum(len(v) for v in vertno)
         if kind == 'ico':
@@ -7648,9 +7648,19 @@ class SourceSpace(Dimension):
             self.rh_n = len(self.rh_vertno)
             self.set_parc(parc)
 
+    @LazyProperty
+    def subjects_dir(self):
+        try:
+            return mne.utils.get_subjects_dir(self._subjects_dir, True)
+        except KeyError:
+            raise TypeError("subjects_dir was neither specified on SourceSpace "
+                            "dimension nor as environment variable")
+        else:
+            raise
+
     def __getstate__(self):
         state = {'vertno': self.vertno, 'subject': self.subject,
-                 'src': self.src, 'subjects_dir': self.subjects_dir,
+                 'src': self.src, 'subjects_dir': self._subjects_dir,
                  'parc': self.parc}
         return state
 
