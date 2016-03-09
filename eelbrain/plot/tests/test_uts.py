@@ -27,6 +27,12 @@ def test_uts_stat():
                      pool_error=False, show=False)
     p.close()
 
+    # error
+    p = plot.UTSStat('uts', 'A', match='rm', ds=ds, error=False, show=False)
+    p.close()
+    p = plot.UTSStat('uts', 'A', match='rm', ds=ds, error='all', show=False)
+    p.close()
+
     # clusters
     sds = ds.sub("B == 'b0'")
     res = testnd.ttest_rel('uts', 'A', 'a1', 'a0', match='rm', ds=sds,
