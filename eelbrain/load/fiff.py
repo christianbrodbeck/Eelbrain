@@ -577,7 +577,9 @@ def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
     if BAD_CHANNELS in ds.info:
         invalid = []
         for ch_name in ds.info[BAD_CHANNELS]:
-            if ch_name not in epochs.ch_names:
+            if ch_name in raw.info['bads']:
+                pass
+            elif ch_name not in epochs.ch_names:
                 invalid.append(ch_name)
             elif ch_name not in epochs.info['bads']:
                 epochs.info['bads'].append(ch_name)
