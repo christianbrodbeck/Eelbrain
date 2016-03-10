@@ -244,6 +244,11 @@ def _interpolate_bads_meg(epochs, bad_channels_by_epoch, interp_cache):
     logger.debug("starting interpolation")
     t0 = time.time()
 
+    # make sure bad_chs includes only existing channels
+    all_chs = set(epochs.ch_names)
+    bad_channels_by_epoch = [all_chs.intersection(chs) for chs in
+                             bad_channels_by_epoch]
+
     # find needed interpolators
     sorted_bad_chs_by_epoch = [tuple(sorted(bad_channels)) for bad_channels in
                                bad_channels_by_epoch]
