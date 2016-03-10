@@ -4148,10 +4148,13 @@ class MneExperiment(FileTree):
             Kwargs for SelectEpochs
         """
         rej_args = self._artifact_rejection[self.get('rej')]
-        if rej_args['kind'] not in ('manual', 'ica'):
-            err = ("Epoch rejection kind for rej=%r is not manual."
-                   % self.get('rej'))
-            raise RuntimeError(err)
+        if rej_args['kind'] == 'manual':
+            apply_ica = False
+        elif rej_args['kind'] == 'ica':
+            apply_ica = rej_args['source'] == 'raw'
+        else:
+            raise RuntimeError("Epoch rejection for rej=%r is not manual" %
+                               self.get('rej'))
 
         epoch = self._epochs[self.get('epoch')]
         assert_is_primary_epoch(epoch, 'make_rej')
@@ -4160,8 +4163,8 @@ class MneExperiment(FileTree):
 
         if modality == '':
             ds = self.load_epochs(reject=False, trigger_shift=False,
-                                  apply_ica=rej_args['source'] == 'raw',
-                                  eog=True, decim=rej_args.get('decim', None))
+                                  apply_ica=apply_ica, eog=True,
+                                  decim=rej_args.get('decim', None))
             meg_system = self._meg_system(self.get('subject'))
             eog_sns = self._eog_sns[meg_system]
             data = 'meg'
