@@ -385,6 +385,8 @@ class MneExperiment(FileTree):
             '0-40': ((None, 40), {'method': 'iir'}),
             '0.1-40': ((0.1, 40), {'l_trans_bandwidth': 0.08,
                                    'filter_length': '60s'}),
+            '0.2-40': ((0.2, 40), {'l_trans_bandwidth': 0.08,
+                                   'filter_length': '60s'}),
             '1-40': ((1, 40), {'method': 'iir'})}
 
     # projection definition:
