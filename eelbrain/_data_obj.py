@@ -3100,6 +3100,8 @@ class NDVar(object):
         Notes
         -----
         For unequal but overlapping dimensions, the intersection is used.
+        For example, ``c = a + b`` with ``a`` [-100 300] ms and ``b`` [0 400] ms
+        ``c`` will be [0 300] ms.
         """
         if isvar(other):
             return self.dims, self.x, self._ialign(other)
@@ -6034,12 +6036,12 @@ class Model(object):
             i = k
 
         # dfs
-        self.df_total = df_total = n_cases
-        self.df = df = sum(e.df for e in effects) + 1  # intercept
-        self.df_error = df_error = df_total - df
-
-        if df_error < 0:
-            raise ValueError("Model overspecified")
+        self.df = sum(e.df for e in effects) + 1  # intercept
+        if self.df > n_cases:
+            raise ValueError("Model overspecified (%i cases for %i model df)" %
+                             (n_cases, self.df))
+        self.df_total = n_cases
+        self.df_error = n_cases - self.df
 
         # names
         self.name = ' + '.join([str(e.name) for e in self.effects])
