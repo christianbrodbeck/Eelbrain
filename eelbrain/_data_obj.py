@@ -3156,6 +3156,32 @@ class NDVar(object):
         else:
             raise TypeError("Need Var or NDVar")
 
+    def _align_ndvar(self, other):
+        "Align NDVar other.x to self"
+        if not isinstance(other, NDVar):
+            raise TypeError("Expected NDVar")
+
+        if self.has_case:
+            dims = self.dims[1:]
+            if other.has_case:
+                axes = ['case']
+            else:
+                axes = [None]
+        else:
+            axes = []
+            dims = self.dims
+
+        for dim in dims:
+            if other.has_dim(dim.name):
+                if other.get_dim(dim.name) == dim:
+                    axes.append(dim.name)
+                else:
+                    raise NotImplementedError("Non-identical dimension: %s" %
+                                              dim.name)
+            else:
+                axes.append(None)
+        return other.get_data(axes)
+
     def _ialign(self, other):
         "align for self-modifying operations (+=, ...)"
         if np.isscalar(other):
@@ -3249,6 +3275,9 @@ class NDVar(object):
             return self.sub(*index)
         else:
             return self.sub(index)
+
+    def __setitem__(self, key, value):
+        self.x[self._align_ndvar(key)] = value
 
     def __len__(self):
         return self._len
