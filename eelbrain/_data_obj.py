@@ -3142,7 +3142,7 @@ class NDVar(object):
                         dim = self_dim.intersect(other_dim)
                         crop = True
                         cs = self_dim.dimindex(dim)
-                        os = other_dim.dimindex(dim)
+                        co = other_dim.dimindex(dim)
                 dims.append(dim)
                 crop_self.append(cs)
                 crop_other.append(co)
