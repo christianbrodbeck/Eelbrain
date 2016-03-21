@@ -1495,7 +1495,8 @@ class MneExperiment(FileTree):
             ica = None
             baseline_ = baseline
 
-        ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline_, decim=decim)
+        ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline_, decim=decim,
+                                      drop_bad_chs=False)
 
         # post baseline-correction trigger shift
         if trigger_shift and 'post_baseline_trigger_shift' in epoch:
