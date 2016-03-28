@@ -156,7 +156,11 @@ class _Result(object):
 
         args = self._repr_test_args()
         if self.sub:
-            args.append(', sub=%r' % self.sub)
+            if isinstance(self.sub, np.ndarray):
+                sub_repr = '<array>'
+            else:
+                sub_repr = repr(self.sub)
+            args.append(', sub=%s' % sub_repr)
         if self._cdist:
             args += self._cdist._repr_test_args(self.pmin)
             args += self._cdist._repr_clusters()
@@ -1449,6 +1453,7 @@ class anova(_MultiEffectResult):
     def __init__(self, Y, X, sub=None, ds=None, samples=None, pmin=None,
                  fmin=None, tfce=False, tstart=None, tstop=None, match=None,
                  parc=None, **criteria):
+        sub_arg = sub
         sub = assub(sub, ds)
         Y = asndvar(Y, sub, ds)
         x_ = asmodel(X, sub, ds)
@@ -1501,7 +1506,7 @@ class anova(_MultiEffectResult):
             f.append(f_)
 
         # store attributes
-        _MultiEffectResult.__init__(self, Y, match, sub, samples, tfce, pmin,
+        _MultiEffectResult.__init__(self, Y, match, sub_arg, samples, tfce, pmin,
                                     cdists, tstart, tstop)
         self.X = X if isinstance(X, basestring) else x_.name
         self._effects = effects
