@@ -71,13 +71,21 @@ class ClusterPlotter(object):
         elif isinstance(ids, dict):
             if not self._is_anova:
                 raise TypeError("ids can not be dict for results other than ANOVA")
-            return [(effect, cid) for effect, cids in ids.iteritems() for cid in cids]
+            out = []
+            for effect, cids in ids.iteritems():
+                if isinstance(cids, float):
+                    out.extend(self._ids_for_p(cids, effect))
+                else:
+                    out.extend((effect, cid) for cid in cids)
+            return out
         else:
             return ids
 
-    def _ids_for_p(self, p):
+    def _ids_for_p(self, p, effect=None):
         "Find cluster IDs for clusters with p-value <= p"
         idx = self.res.clusters['p'] <= p
+        if effect is not None:
+            idx = np.logical_and(idx, self.res.clusters[:, 'effect'] == effect)
         ids = self.res.clusters[idx, 'id']
         if self._is_anova:
             effect = self.res.clusters[idx, 'effect']
@@ -114,8 +122,9 @@ class ClusterPlotter(object):
         ----------
         ids : sequence | dict | scalar <= 1
             IDs of the clusters that should be plotted. For ANOVA results, this
-            should be an ``{effect_name: id_list}`` dict. If a scalar, plot all
-            clusters with p-values smaller than this.
+            should be an ``{effect_name: id_list}`` dict. Instead of a list of
+            IDs a scalar can be provided to plot all clusters with p-values
+            smaller than this.
         views : str | list of str | dict
             Can a str or list of str to use the same views for all clusters. A dict
             can have as keys labels or cluster IDs.
@@ -203,11 +212,16 @@ class ClusterPlotter(object):
         return ds, model, modelname
 
     def plot_values(self, ids, model, ymax, ymin=0, dpi=300, rc=None,
-                    sub=None, subagg=None, cells=None):
+                    sub=None, subagg=None, cells=None, pairwise=False):
         """Plot values in cluster
 
         Parameters
         ----------
+        ids : sequence | dict | scalar <= 1
+            IDs of the clusters that should be plotted. For ANOVA results, this
+            should be an ``{effect_name: id_list}`` dict. Instead of a list of
+            IDs a scalar can be provided to plot all clusters with p-values
+            smaller than this.
         subagg : str
            Index in ds: within index, collapse across other predictors.
         cells : sequence of cells in model
@@ -227,7 +241,8 @@ class ClusterPlotter(object):
                 y_tc = src.mean(cluster.any('time'))
 
                 # barplot
-                p = plot.Barplot(y_mean, model, 'subject', cells=cells, ds=ds, trend=False, corr=None,
+                p = plot.Barplot(y_mean, model, 'subject', None, cells, pairwise,
+                                 ds=ds, trend=False, corr=None,
                                  title=None, frame=False, yaxis=False, ylabel=False,
                                  colors=self.colors, bottom=ymin, top=ymax, w=self.h, h=self.h,
                                  xlabel=None, xticks=None,
