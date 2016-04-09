@@ -854,8 +854,9 @@ class ANOVA(object):
 #            SPSS
 
         # prepare kwargs
-        y = asvar(y, sub=sub, ds=ds)
-        x = asmodel(x, sub=sub, ds=ds)
+        sub = assub(sub, ds)
+        y = asvar(y, sub, ds)
+        x = asmodel(x, sub, ds)
 
         if len(y) != len(x):
             raise ValueError("y and x must describe same number of cases")
