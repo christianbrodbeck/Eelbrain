@@ -302,11 +302,14 @@ def stats(y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
     test        0.2253   0.2844
 
     """
-    y = asvar(y, ds=ds)
-    row = ascategorial(row, ds=ds)
+    sub = assub(sub, ds)
+    y = asvar(y, sub, ds)
+    row = ascategorial(row, sub, ds)
+    if match is not None:
+        match = ascategorial(match, sub, ds)
 
     if col is None:
-        ct = Celltable(y, row, sub=sub, match=match)
+        ct = Celltable(y, row, match=match)
 
         # table header
         n_disp = len(funcs)
@@ -323,8 +326,8 @@ def stats(y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
             for func in funcs:
                 table.cell(fmt % func(data.x))
     else:
-        col = ascategorial(col, ds=ds)
-        ct = Celltable(y, row % col, sub=sub, match=match)
+        col = ascategorial(col, sub, ds)
+        ct = Celltable(y, row % col, match=match)
 
         N = len(col.cells)
         table = fmtxt.Table('l' * (N + 1))
