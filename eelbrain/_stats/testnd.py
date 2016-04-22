@@ -434,7 +434,7 @@ class t_contrast_rel(_Result):
 
     To find a specific kind of interaction, where a is greater than b, and
     this difference is greater than the difference between c and d, one
-    could use ``"subtract(a > b, abs(c > d))"``.
+    could use ``"(a > b) - abs(c > d)"``.
     """
 
     _state_specific = ('X', 'contrast', 't', 'tail')

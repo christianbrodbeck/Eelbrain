@@ -5,6 +5,7 @@ import re
 import numpy as np
 
 from . import stats
+from .contrast import parse
 
 
 # array functions:  work on array, take axis argument
@@ -35,13 +36,13 @@ class TContrastRel(object):
         indexes : dict {cell: index}
             Indexes for the data of every cell.
         """
-        parse = _parse_t_contrast(contrast)
-        n_buffers, cells_in_contrast = _t_contrast_rel_properties(parse)
+        ast = parse(contrast)
+        n_buffers, cells_in_contrast = _t_contrast_rel_properties(ast)
         pcells, mcells = _t_contrast_rel_expand_cells(cells_in_contrast, cells)
 
         self.contrast = contrast
         self.indexes = indexes
-        self._parsed_contrast = parse
+        self._ast = ast
         self._pcells = pcells
         self._mcells = mcells
         self._n_buffers = n_buffers
@@ -55,7 +56,7 @@ class TContrastRel(object):
         "Apply contrast without retainig data buffers"
         buff = np.empty((self._n_buffers,) + y.shape[1:])
         data = _t_contrast_rel_data(y, self.indexes, self._pcells, self._mcells)
-        tmap = _t_contrast_rel(self._parsed_contrast, data, buff)
+        tmap = _t_contrast_rel(self._ast, data, buff)
         return tmap
 
     def __call__(self, y, out, perm):
@@ -67,104 +68,8 @@ class TContrastRel(object):
             self._buffer_shape = buffer_shape
         self._y_perm[perm] = y
         data = _t_contrast_rel_data(self._y_perm, self.indexes, self._pcells, self._mcells)
-        tmap = _t_contrast_rel(self._parsed_contrast, data, self._buffer, out)
+        tmap = _t_contrast_rel(self._ast, data, self._buffer, out)
         return tmap
-
-
-def _parse_cell(cell_name):
-    "Parse a cell name for t_contrast"
-    cell = tuple(s.strip() for s in cell_name.split('|'))
-    if len(cell) == 1:
-        return cell[0]
-    else:
-        return cell
-
-
-def _parse_t_contrast(contrast):
-    """Parse a string specifying a t-contrast into nested instruction tuples
-
-    Parameters
-    ----------
-    contrast : str
-        Contrast specification string.
-
-    Returns
-    -------
-    compiled_contrast : tuple
-        Nested tuple composed of:
-        Comparisons:  ``('comp', c1, c0)`` and
-        Unary functions:  ``('ufunc', func, arg)``
-        Binary functions:  ``('bfunc', func, [arg1, arg2])``
-        Array functions:  ``('afunc', func, [arg1, arg2, ...])``
-        where ``arg1`` etc. are in turn comparisons and functions.
-    """
-    depth = 0
-    start = 0
-    if not '(' in contrast:
-        m = re.match("\s*([\w\|*]+)\s*([<>])\s*([\w\|*]+)", contrast)
-        if m:
-            c1, direction, c0 = m.groups()
-            if direction == '<':
-                c1, c0 = c0, c1
-            c1 = _parse_cell(c1)
-            c0 = _parse_cell(c0)
-            return ('comp', c1, c0)
-
-    for i, c in enumerate(contrast):
-        if c == '(':
-            if depth == 0:
-                prefix = contrast[start:i]
-                i_open = i + 1
-                items = []
-            depth += 1
-        elif c == ',':
-            if depth == 0:
-                raise
-            elif depth == 1:
-                item = _parse_t_contrast(contrast[i_open:i])
-                items.append(item)
-                i_open = i + 1
-        elif c == ')':
-            depth -= 1
-            if depth == 0:
-                item = _parse_t_contrast(contrast[i_open:i])
-                items.append(item)
-
-                if contrast[i+1:].strip():
-                    raise ValueError("Expression continues after last "
-                                     "parentheses closed: %s" % contrast)
-                elif prefix == '':
-                    if len(items) == 1:
-                        return items[0]
-                    else:
-                        raise ValueError("Multiple comparisons without "
-                                         "combination expression: %s" % contrast)
-
-                m = re.match("\s*(\w+)\s*", prefix)
-                if m is None:
-                    raise ValueError("uninterpretable prefix: %r" % prefix)
-                func = m.group(1)
-                if func in np_ufuncs:
-                    if len(items) != 1:
-                        raise ValueError("Wrong number of input values for "
-                                         "unary function: %s" % contrast)
-                    return 'ufunc', np_ufuncs[func], items[0]
-                elif func in np_bfuncs:
-                    if len(items) != 2:
-                        raise ValueError("Wrong number of input values for "
-                                         "binary function: %s" % contrast)
-                    return 'bfunc', np_bfuncs[func], items
-                elif func in np_afuncs:
-                    if len(items) < 2:
-                        raise ValueError("Wrong number of input values for "
-                                         "array comparison function: %s"
-                                         % contrast)
-                    return 'afunc', np_afuncs[func], items
-                else:
-                    raise ValueError("Unknown function: %s" % contrast)
-            elif depth == -1:
-                err = "Invalid ')' at position %i of %r" % (i, contrast)
-                raise ValueError(err)
 
 
 def _t_contrast_rel_properties(item):
@@ -237,9 +142,9 @@ def _t_contrast_rel_expand_cells(cells, all_cells):
                 raise ValueError("%s not in all_cells" % repr(cell))
             mean_cells[cell] = all_cells
             primary_cells.update(all_cells)
-        elif not '*' in cell:
-            msg = "Contrast contains cell not in data: %s" % repr(cell)
-            raise ValueError(msg)
+        elif '*' not in cell:
+            raise ValueError("Contrast contains cell not in data: %s" %
+                             repr(cell))
         else:
             # find cells that should be averaged ("base")
             base = tuple(cell_ for cell_ in all_cells if
@@ -254,11 +159,7 @@ def _t_contrast_rel_expand_cells(cells, all_cells):
 
 def _t_contrast_rel_data(y, indexes, cells, mean_cells):
     "Create {cell: data} dictionary"
-    data = {}
-    for cell in cells:
-        index = indexes[cell]
-        data[cell] = y[index]
-
+    data = {cell: y[indexes[cell]] for cell in cells}
     for name, cells_ in mean_cells.iteritems():
         cell = cells_[0]
         x = data[cell].copy()
