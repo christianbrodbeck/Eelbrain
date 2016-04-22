@@ -418,7 +418,8 @@ class t_contrast_rel(_Result):
     - Comparisons using ">" or "<" and data cells,
       e.g. ``"cell1 > cell0"``. If the data is defined based on an
       interaction, cells are specified with "|",
-      e.g. ``"a1 | b0 > a0 | b0"``.
+      e.g. ``"a1 | b0 > a0 | b0"``. Cells can contain * to match multiple cells,
+      for which the average is used.
     - Unary numpy functions ``abs`` and ``negative``, e.g.
       ``"abs(cell1 > cell0)"``.
     - Binary numpy functions ``subtract`` and ``add``, e.g.
@@ -456,8 +457,8 @@ class t_contrast_rel(_Result):
         else:
             # threshold
             if sum((pmin is not None, tmin is not None, tfce)) > 1:
-                msg = "Only one of pmin, tmin and tfce can be specified"
-                raise ValueError(msg)
+                raise ValueError("Only one of pmin, tmin and tfce can be "
+                                 "specified")
             elif pmin is not None:
                 df = len(ct.match.cells) - 1
                 threshold = stats.ttest_t(pmin, df, tail)

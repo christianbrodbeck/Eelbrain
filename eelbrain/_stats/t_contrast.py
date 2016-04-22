@@ -1,9 +1,11 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+import fnmatch
 from itertools import izip
 import re
 
 import numpy as np
 
+from .._data_obj import cellname
 from . import stats
 from .contrast import parse
 
@@ -132,25 +134,20 @@ def _t_contrast_rel_expand_cells(cells, all_cells):
                str(tuple(cells) + tuple(all_cells)))
         raise ValueError(msg)
 
+    # convert cells to str for fnmatch
+    cell_iter = [(cell, cellname(cell, '|')) for cell in all_cells]
+
     primary_cells = set()
     mean_cells = {}
     for cell in cells:
         if cell in all_cells:
             primary_cells.add(cell)
-        elif isinstance(cell, str):
-            if cell != '*':
-                raise ValueError("%s not in all_cells" % repr(cell))
-            mean_cells[cell] = all_cells
-            primary_cells.update(all_cells)
-        elif '*' not in cell:
-            raise ValueError("Contrast contains cell not in data: %s" %
-                             repr(cell))
         else:
-            # find cells that should be averaged ("base")
-            base = tuple(cell_ for cell_ in all_cells if
-                         all(i in (i_, '*') for i, i_ in izip(cell, cell_)))
+            r = re.compile(fnmatch.translate(cellname(cell, '|')))
+            base = tuple(c for c, cn in cell_iter if r.match(cn))
             if len(base) == 0:
-                raise ValueError("No cells in data match %s" % repr(cell))
+                raise ValueError("No cells in data match %r" %
+                                 cellname(cell, '|'))
             mean_cells[cell] = base
             primary_cells.update(base)
 

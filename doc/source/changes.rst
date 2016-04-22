@@ -4,6 +4,13 @@ Changes
 .. currentmodule:: eelbrain
 
 
+New in 0.23
+-----------
+
+* :class:`testnd.t_contrast_rel` contrasts can contain ``*`` to include the
+  average of multiple cells.
+
+
 New in 0.22
 -----------
 

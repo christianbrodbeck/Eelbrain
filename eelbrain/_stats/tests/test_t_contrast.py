@@ -39,6 +39,15 @@ def test_t_contrast_parsing():
     assert_raises(ValueError, t_contrast._t_contrast_rel_expand_cells, cells,
                   ('a|c', 'b|c', 'c|c'))
 
+    # test finding cells
+    all_cells = (('fondue pot', 'brie'), ('fondue mix', 'brie'),
+                 ('fondue pot', 'edam'), ('raclette', 'edam'))
+    cells = (('* pot', '*'), ('fondue *', 'brie'))
+    pc, mc = t_contrast._t_contrast_rel_expand_cells(cells, all_cells)
+    eq_(pc, set(all_cells[:3]))
+    eq_(mc, {('* pot', '*'): (('fondue pot', 'brie'), ('fondue pot', 'edam')),
+             ('fondue *', 'brie'): (('fondue pot', 'brie'), ('fondue mix', 'brie'))})
+
 
 def test_t_contrasts():
     "Test computation of various t-contrasts"
