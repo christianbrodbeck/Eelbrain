@@ -12,6 +12,9 @@ experiment with MNE. Currently only gradiometer-only data is supported.
 .. seealso::
     :class:`MneExperiment` class reference for details on all available methods
 
+.. contents:: Contents
+   :local:
+
 
 Getting Started
 ===============
