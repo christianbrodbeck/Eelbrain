@@ -25,10 +25,10 @@ for key in mpl.rcParams:
 
 
 def cname(cid):
-    if isinstance(cid, int):
-        return str(cid)
+    if isinstance(cid, tuple):
+        return '-'.join(map(str, cid))
     else:
-        return '%s-%s' % cid
+        return str(cid)
 
 
 class ClusterPlotter(object):
