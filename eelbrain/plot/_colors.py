@@ -128,9 +128,8 @@ def colors_for_twoway(x1_cells, x2_cells, cmap=None):
 
     # find locations in the color-space to sample
     n_colors = n1 * n2
-    stop = (n_colors - 1) / n_colors
-    samples = np.linspace(0, stop, n_colors)
-
+    pad = 0.5 / n_colors
+    samples = np.linspace(pad, 1. - pad, n_colors)
     colors = dict(izip(product(x1_cells, x2_cells), map(tuple, cm(samples))))
     return colors
 
