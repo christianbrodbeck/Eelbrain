@@ -1,12 +1,12 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from eelbrain import datasets, Celltable
+from eelbrain import datasets, Celltable, testnd
 from eelbrain._stats import t_contrast
 from eelbrain._stats.stats import t_1samp
 from eelbrain._stats.t_contrast import TContrastRel
 
 from nose.tools import eq_, assert_raises
 import numpy as np
-from numpy.testing import assert_equal
+from numpy.testing import assert_equal, assert_array_equal
 
 
 def test_t_contrast_parsing():
@@ -102,3 +102,16 @@ def test_t_contrasts():
     assert_equal(c(y, out, perm), tgt)
     out.fill(0)
     assert_equal(c(y, out, perm), tgt)
+
+
+def test_t_contrast_testnd():
+    ds = datasets.get_uts()
+
+    # binary function
+    res = testnd.t_contrast_rel('uts', 'A', "a1>a0 - a0>a1", 'rm', ds=ds, tmin=4, samples=10)
+    assert_equal(res.find_clusters()['p'], np.array([1, 1, 0.9, 0, 0.2, 1, 1, 0]))
+    res_t = testnd.ttest_rel('uts', 'A', 'a1', 'a0', match='rm', ds=ds, tmin=2, samples=10)
+    assert_array_equal(res.t.x, res_t.t.x * 2)
+    assert_array_equal(res.clusters['tstart'], res_t.clusters['tstart'])
+    assert_array_equal(res.clusters['tstop'], res_t.clusters['tstop'])
+    assert_array_equal(res.clusters['v'], res_t.clusters['v'] * 2)

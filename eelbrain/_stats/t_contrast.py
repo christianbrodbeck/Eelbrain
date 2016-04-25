@@ -173,12 +173,12 @@ def _t_contrast_rel(item, data, buff, out=None):
     if item[0] == 'ufunc':
         _, func, item_ = item
         tmap = _t_contrast_rel(item_, data, buff[1:], buff[0])
-        tmap = func(tmap, tmap)
+        tmap = func(tmap, out)
     elif item[0] == 'bfunc':
         _, func, items = item
         tmap1 = _t_contrast_rel(items[0], data, buff[2:], buff[1])
         tmap2 = _t_contrast_rel(items[1], data, buff[2:], buff[0])
-        tmap = func(tmap1, tmap2, tmap2)
+        tmap = func(tmap1, tmap2, out)
     elif item[0] == 'afunc':
         _, func, items_ = item
         tmaps = buff[:len(items_)]
