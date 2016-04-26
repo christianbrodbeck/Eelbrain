@@ -103,9 +103,12 @@ class ClusterPlotter(object):
         else:
             return self.res.cluster(cid)
 
-    def plot_color_list(self, name, cells, w=None):
+    def plot_color_list(self, name, cells, w=None, colors=None):
+        if colors is None:
+            colors = self.colors
+
         with mpl.rc_context(self.rc):
-            p = plot.ColorList(self.colors, cells, self.labels, w=w, show=False)
+            p = plot.ColorList(colors, cells, self.labels, w=w, show=False)
             p.save(self._dst_vec % "colorlist %s" % name, transparent=True)
             p.close()
 
@@ -212,7 +215,7 @@ class ClusterPlotter(object):
         return ds, model, modelname
 
     def plot_values(self, ids, model, ymax, ymin=0, dpi=300, rc=None,
-                    sub=None, subagg=None, cells=None, pairwise=False):
+                    sub=None, subagg=None, cells=None, pairwise=False, colors=None):
         """Plot values in cluster
 
         Parameters
@@ -222,14 +225,22 @@ class ClusterPlotter(object):
             should be an ``{effect_name: id_list}`` dict. Instead of a list of
             IDs a scalar can be provided to plot all clusters with p-values
             smaller than this.
+
         subagg : str
            Index in ds: within index, collapse across other predictors.
         cells : sequence of cells in model
             Modify visible cells and their order. Only applies to the barplot.
             Does not affect filename.
+        pairwise : bool
+            Add pairwise tests to barplots.
+        colors : dict
+            Substitute colors (default are the colors provided at
+            initialization).
         """
         ds, model, modelname = self._get_data(model, sub, subagg)
         ids = self._ids(ids)
+        if colors is None:
+            colors = self.colors
 
         src = ds['srcm']
         legend_done = False
@@ -244,7 +255,7 @@ class ClusterPlotter(object):
                 p = plot.Barplot(y_mean, model, 'subject', None, cells, pairwise,
                                  ds=ds, trend=False, corr=None,
                                  title=None, frame=False, yaxis=False, ylabel=False,
-                                 colors=self.colors, bottom=ymin, top=ymax, w=self.h, h=self.h,
+                                 colors=colors, bottom=ymin, top=ymax, w=self.h, h=self.h,
                                  xlabel=None, xticks=None,
                                  tight=False, test_markers=False, show=False)
                 p.save(self._dst_vec % ' '.join((name, modelname, 'barplot')), dpi=dpi, transparent=True)
@@ -252,7 +263,7 @@ class ClusterPlotter(object):
 
                 # time-course
                 p = plot.UTSStat(y_tc, model, match='subject', ds=ds, error='sem',
-                                 colors=self.colors, title=None, axtitle=None, frame=False,
+                                 colors=colors, title=None, axtitle=None, frame=False,
                                  bottom=ymin, top=ymax,
                                  legend=None, ylabel=None, xlabel=None, w=self.h * 2, h=self.h,
                                  tight=False, show=False)
