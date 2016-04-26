@@ -7,6 +7,7 @@ Changes
 New in 0.23
 -----------
 
+* API :func:`plot.colors_for_twoway`:  new color model, different options.
 * :class:`testnd.t_contrast_rel` contrasts can contain ``*`` to include the
   average of multiple cells.
 

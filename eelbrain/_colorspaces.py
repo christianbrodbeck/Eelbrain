@@ -15,13 +15,35 @@ In addition to matplotlib colormaps, the following names can be used:
 """
 from __future__ import division
 
-from colorsys import hsv_to_rgb
+from itertools import izip
 
+from colormath.color_objects import LCHabColor, sRGBColor
+from colormath.color_conversions import convert_color
 import numpy as np
 import matplotlib as mpl
 
 
+def lch_to_rgb(lightness, chroma, hue):
+    "Convert Lightness/Chroma/Hue color representation to RGB"
+    psych = LCHabColor(lightness, chroma, hue * 360)
+    rgb = convert_color(psych, sRGBColor)
+    return rgb.clamped_rgb_r, rgb.clamped_rgb_g, rgb.clamped_rgb_b
+
+
 def make_seq_cmap(seq, val, name):
+    """Colormap from sequence of RGB values
+
+    Parameters
+    ----------
+    seq : iterator
+        Each entry is either an RGB tuple (if pre- and post color are
+        identical) or a tuple with two RGB tuples (separate pre- and post-
+        colors).
+    val : iterator
+        For each entry in ``seq``, the coordinate on the colormap.
+    name : str
+        Colormap name.
+    """
     red = []
     green = []
     blue = []
@@ -36,12 +58,11 @@ def make_seq_cmap(seq, val, name):
         red.append((v, r0, r1))
         green.append((v, g0, g1))
         blue.append((v, b0, b1))
-    cdict = {'red': red, 'green': green, 'blue':blue}
-    cm = mpl.colors.LinearSegmentedColormap(name, cdict)
-    return cm
+    cdict = {'red': red, 'green': green, 'blue': blue}
+    return mpl.colors.LinearSegmentedColormap(name, cdict)
 
 
-def twoway_cmap(n1, hue_start=0.1, internal_hue_shift=0.5, name=None, hue=None):
+def twoway_cmap(n1, hue_start=0.1, hue_shift=0.5, name=None, hues=None):
     """Create colormap for two-way interaction
 
     Parameters
@@ -50,28 +71,28 @@ def twoway_cmap(n1, hue_start=0.1, internal_hue_shift=0.5, name=None, hue=None):
         Number of levels on the first factor.
     hue_start : 0 <= scalar < 1
         First hue value.
-    internal_hue_shift : 0 <= scalar < 1
+    hue_shift : 0 <= scalar < 1
         Use that part of the hue continuum between categories to shift hue
         within categories.
     name : str
         Name of the colormap.
-    hue : list of scalar
+    hues : list of scalar
         List of hue values corresponding to the levels of the first factor
         (overrides regular hue distribution).
     """
     # within each hue, create values for [-1, -0.5, 0.5, 1]
     # return list of [i, (r, g, b), (r, g, b)]
-    if hue is None:
-        hue = np.linspace(hue_start, hue_start + 1, n1, False) % 1.
-    h_shift = internal_hue_shift * (1 / n1 / 2)
+    if hues is None:
+        hues = np.linspace(hue_start, hue_start + 1, n1, False) % 1.
+    hue_shift *= (0.5 / n1)
 
     seqs = []
-    for h in hue:
-        h_pre = (h - h_shift) % 1
-        h_post = (h + h_shift) % 1
-        seqs.append((hsv_to_rgb(h_pre, .9, .4),
-                     hsv_to_rgb(h, 1, 1.),
-                     hsv_to_rgb(h_post, .3, 1.)))
+    for h in hues:
+        h_pre = (h - hue_shift) % 1
+        h_post = (h + hue_shift) % 1
+        seqs.append((lch_to_rgb(0, 100, h_pre),
+                     lch_to_rgb(50, 100, h),
+                     lch_to_rgb(100, 100, h_post)))
 
     seq = []
     for i in xrange(n1):
@@ -85,8 +106,40 @@ def twoway_cmap(n1, hue_start=0.1, internal_hue_shift=0.5, name=None, hue=None):
     if name is None:
         name = "%i_by_n" % n1
 
-    cmap = make_seq_cmap(seq, loc, name)
-    return cmap
+    return make_seq_cmap(seq, loc, name)
+
+
+def twoway_colors(n1, n2, hue_start=0.2, hue_shift=0., hues=None):
+    """Create colors for two-way interaction
+
+    Parameters
+    ----------
+    n1, n2 : int
+        Number of levels on the first and second factors.
+    hue_start : 0 <= scalar < 1
+        First hue value.
+    hue_shift : 0 <= scalar < 1
+        Use that part of the hue continuum between categories to shift hue
+        within categories.
+    hues : list of scalar
+        List of hue values corresponding to the levels of the first factor
+        (overrides regular hue distribution).
+    """
+    if hues is None:
+        hues = np.linspace(hue_start, hue_start + 1, n1, False) % 1.
+    elif len(hues) < n1:
+        raise ValueError("Need at least as many hues as levels of the first "
+                         "factor (got %i, need %i)" % (len(hues), n1))
+    hue_shift *= (1. / 3. / n1)
+    lstart = 60. / n2
+    ls = np.linspace(lstart, 100 - lstart, n2)
+
+    colors = []
+    for hue in hues:
+        hs = np.linspace(hue - hue_shift, hue + hue_shift, n2) % 1
+        colors.extend(lch_to_rgb(l, 100, h) for l, h in izip(ls, hs))
+
+    return colors
 
 
 def make_cmaps():

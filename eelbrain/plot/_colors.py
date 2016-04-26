@@ -97,7 +97,8 @@ def colors_for_oneway(cells, cmap='jet'):
     return {cell: cm(i / n) for i, cell in enumerate(cells)}
 
 
-def colors_for_twoway(x1_cells, x2_cells, cmap=None):
+def colors_for_twoway(x1_cells, x2_cells, hue_start=0.2, hue_shift=0.,
+                      hues=None):
     """Define cell colors for a two-way design
 
     Parameters
@@ -106,9 +107,14 @@ def colors_for_twoway(x1_cells, x2_cells, cmap=None):
         Cells of the major factor.
     x2_cells : tuple of str
         Cells of the minor factor.
-    cmap : str
-        Name of a matplotlib colormap to use (Default picks depending on number
-        of cells in primary factor).
+    hue_start : 0 <= scalar < 1
+        First hue value.
+    hue_shift : 0 <= scalar < 1
+        Use that part of the hue continuum between categories to shift hue
+        within categories.
+    hues : list of scalar
+        List of hue values corresponding to the levels of the first factor
+        (overrides regular hue distribution).
 
     Returns
     -------
@@ -121,17 +127,8 @@ def colors_for_twoway(x1_cells, x2_cells, cmap=None):
     if n1 < 2 or n2 < 2:
         raise ValueError("Need at least 2 cells on each factor")
 
-    if cmap is None:
-        cm = cs.twoway_cmap(n1)
-    else:
-        cm = mpl.cm.get_cmap(cmap)
-
-    # find locations in the color-space to sample
-    n_colors = n1 * n2
-    pad = 0.5 / n_colors
-    samples = np.linspace(pad, 1. - pad, n_colors)
-    colors = dict(izip(product(x1_cells, x2_cells), map(tuple, cm(samples))))
-    return colors
+    clist = cs.twoway_colors(n1, n2, hue_start, hue_shift, hues)
+    return dict(izip(product(x1_cells, x2_cells), clist))
 
 
 def colors_for_nway(cell_lists, cmap=None):
