@@ -53,13 +53,18 @@ def find_cell_colors(x, colors):
         raise TypeError("Invalid type: colors=%s" % repr(colors))
 
 
-def colors_for_categorial(x, cmap=None):
+def colors_for_categorial(x, cmap=None, hue_start=0.2):
     """Automatically select colors for a categorial model
 
     Parameters
     ----------
     x : categorial
         Model defining the cells for which to define colors.
+    cmap : str
+        Name of a matplotlib colormap to use (only for one-way models;
+        default 'jet').
+    hue_start : 0 <= scalar < 1
+        First hue value (only for two-way or higher level models).
 
     Returns
     -------
@@ -69,7 +74,7 @@ def colors_for_categorial(x, cmap=None):
     if isfactor(x):
         return colors_for_oneway(x.cells, cmap)
     elif isinteraction(x):
-        return colors_for_nway([f.cells for f in x.base], cmap)
+        return colors_for_nway([f.cells for f in x.base], hue_start)
     else:
         msg = ("x needs to be Factor or Interaction, got %s" % repr(x))
         raise TypeError(msg)
@@ -131,7 +136,7 @@ def colors_for_twoway(x1_cells, x2_cells, hue_start=0.2, hue_shift=0.,
     return dict(izip(product(x1_cells, x2_cells), clist))
 
 
-def colors_for_nway(cell_lists, cmap=None):
+def colors_for_nway(cell_lists, hue_start=0.2):
     """Define cell colors for a two-way design
 
     Parameters
@@ -139,30 +144,40 @@ def colors_for_nway(cell_lists, cmap=None):
     cell_lists : sequence of of tuple of str
         List of the cells for each factor. E.g. for ``A % B``:
         ``[('a1', 'a2'), ('b1', 'b2', 'b3')]``.
-    cmap : str
-        Name of a matplotlib colormap to use (Default picks depending on number
-        of cells in primary factor).
+    hue_start : 0 <= scalar < 1
+        First hue value.
 
     Returns
     -------
     dict : {tuple: tuple}
         Mapping from cells to colors.
     """
-    ns = map(len, cell_lists)
+    if len(cell_lists) == 1:
+        return colors_for_oneway(cell_lists[0])
+    elif len(cell_lists) == 2:
+        return colors_for_twoway(cell_lists[0], cell_lists[1], hue_start)
+    elif len(cell_lists) > 2:
+        ns = map(len, cell_lists)
+        n_outer = reduce(operator.mul, ns[:-1])
+        n_inner = ns[-1]
 
-    if cmap is None:
-        cm = cs.twoway_cmap(ns[0])
+        # outer circle
+        hues = np.linspace(hue_start, 1 + hue_start, ns[0], False)
+        # subdivide for each  level
+        distance = 1. / ns[0]
+        for n_current in ns[1:-1]:
+            new = []
+            d = distance / 3
+            for hue in hues:
+                new.extend(np.linspace(hue - d, hue + d, n_current))
+            hues = new
+            distance = 2 * d / (n_current - 1)
+        hues = np.asarray(hues)
+        hues %= 1
+        colors = cs.twoway_colors(n_outer, n_inner, hues=hues)
+        return dict(izip(product(*cell_lists), colors))
     else:
-        cm = mpl.cm.get_cmap(cmap)
-
-    # find locations in the color-space to sample
-    n_colors = reduce(operator.mul, ns)
-    edge = 0.5 / n_colors
-    samples = np.linspace(edge, 1 - edge, n_colors)
-
-    colors = {cell: tuple(color) for cell, color in
-              izip(product(*cell_lists), cm(samples))}
-    return colors
+        return {}
 
 
 class ColorGrid(_EelFigure):

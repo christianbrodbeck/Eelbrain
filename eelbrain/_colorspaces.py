@@ -127,9 +127,13 @@ def twoway_colors(n1, n2, hue_start=0.2, hue_shift=0., hues=None):
     """
     if hues is None:
         hues = np.linspace(hue_start, hue_start + 1, n1, False) % 1.
-    elif len(hues) < n1:
-        raise ValueError("Need at least as many hues as levels of the first "
-                         "factor (got %i, need %i)" % (len(hues), n1))
+    else:
+        hues = np.asarray(hues)
+        if np.any(hues > 1) or np.any(hues < 0):
+            raise ValueError("hue values out of range; need to be in [0, 1]")
+        elif len(hues) < n1:
+            raise ValueError("Need at least as many hues as levels in the "
+                             "first factor (got %i, need %i)" % (len(hues), n1))
     hue_shift *= (1. / 3. / n1)
     lstart = 60. / n2
     ls = np.linspace(lstart, 100 - lstart, n2)
