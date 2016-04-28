@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from itertools import izip
+from math import floor, log10
 import os
 
 import matplotlib as mpl
@@ -118,7 +119,7 @@ class ClusterPlotter(object):
             p.save(self._dst_vec % "colorgrid %s" % name, transparent=True)
             p.close()
 
-    def plot_clusters_spatial(self, ids, views, w=600, h=480):
+    def plot_clusters_spatial(self, ids, views, w=600, h=480, prefix=''):
         """Plot spatial extent of the clusters
 
         Parameters
@@ -134,11 +135,14 @@ class ClusterPlotter(object):
         w, h : int
             Size in pixels. The default (600 x 480) corresponds to 2 x 1.6 in
             at 300 dpi.
+        prefix : str
+            Prefix to use for the image files (optional, can be used to
+            distinguish different groups of images sharing the same color-bars).
 
         Notes
         -----
-        The horizontal colorbar is 1.5 in wide, the vertical colorbar is 0.8 in
-        wide.
+        The horizontal colorbar is 1.5 in wide, the vertical colorbar is 1.6 in
+        high.
         """
         ids = self._ids(ids)
         clusters = self._get_clusters(ids)
@@ -155,6 +159,9 @@ class ClusterPlotter(object):
         brain_colorbar_done = False
         for cid, cluster in izip(ids, clusters_spatial):
             name = cname(cid)
+            if prefix:
+                name = prefix + ' ' + name
+
             for hemi in ('lh', 'rh'):
                 if not cluster.sub(source=hemi).any():
                     continue
@@ -171,17 +178,22 @@ class ClusterPlotter(object):
                         label = "Sum of %s-values" % cluster.info['meas']
                         clipmin = 0 if vmin == 0 else None
                         clipmax = 0 if vmax == 0 else None
+                        if prefix:
+                            cbar_name = '%s cbar %%s' % prefix
+                        else:
+                            cbar_name = 'cbar %s'
 
-                        h_cmap = 0.6 + POINT * mpl.rcParams['font.size']
+                        h_cmap = 0.7 + POINT * mpl.rcParams['font.size']
                         p = brain.plot_colorbar(label, clipmin=clipmin, clipmax=clipmax,
-                                                h=h_cmap, w=1.5, show=False)
-                        p.save(self._dst_vec % 'cmap h', transparent=True)
+                                                width=0.1, h=h_cmap, w=1.5, show=False)
+                        p.save(self._dst_vec % cbar_name % 'h', transparent=True)
                         p.close()
 
+                        w_cmap = 0.8 + 0.1 * abs(floor(log10(vmax)))
                         p = brain.plot_colorbar(label, clipmin=clipmin, clipmax=clipmax,
-                                                h=1.7, w=0.8, orientation='vertical',
-                                                show=False)
-                        p.save(self._dst_vec % 'cmap v', transparent=True)
+                                                width=0.1, h=1.6, w=w_cmap,
+                                                orientation='vertical', show=False)
+                        p.save(self._dst_vec % cbar_name % 'v', transparent=True)
                         p.close()
 
                         brain_colorbar_done = True

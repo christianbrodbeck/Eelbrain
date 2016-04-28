@@ -411,11 +411,13 @@ class ColorBar(_EelFigure):
         label 0.000001 as '1').
     contours : iterator of scalar (optional)
         Plot contour lines at these values.
+    width : scalar
+        Width of the color-bar in inches.
     """
     def __init__(self, cmap, vmin, vmax, label=True, label_position=None,
                  label_rotation=None,
                  clipmin=None, clipmax=None, orientation='horizontal',
-                 unit=None, contours=(), *args, **kwargs):
+                 unit=None, contours=(), width=None, *args, **kwargs):
         cm = mpl.cm.get_cmap(cmap)
         lut = cm(np.arange(cm.N))
         if orientation == 'horizontal':
@@ -477,4 +479,21 @@ class ColorBar(_EelFigure):
         else:
             raise ValueError("orientation=%s" % repr(orientation))
 
+        self._orientation = orientation
+        self._width = width
         self._show()
+
+    def _tight(self):
+        # Override to keep bar thickness
+        super(ColorBar, self)._tight()
+        if self._width:
+            ax = self._axes[0]
+            x = (self._width, self._width)
+            x = self.figure.dpi_scale_trans.transform(x)
+            x = self.figure.transFigure.inverted().transform(x)
+            pos = ax.get_position()
+            if self._orientation == 'vertical':
+                ax.set_position((pos.xmin, pos.ymin, x[0], pos.height))
+            else:
+                ax.set_position((pos.xmin, pos.ymin, pos.width, x[1]))
+            self.draw()
