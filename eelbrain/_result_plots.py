@@ -172,9 +172,9 @@ class ClusterPlotter(object):
                         clipmin = 0 if vmin == 0 else None
                         clipmax = 0 if vmax == 0 else None
 
-                        h = 0.6 + POINT * mpl.rcParams['font.size']
+                        h_cmap = 0.6 + POINT * mpl.rcParams['font.size']
                         p = brain.plot_colorbar(label, clipmin=clipmin, clipmax=clipmax,
-                                                h=h, w=1.5, show=False)
+                                                h=h_cmap, w=1.5, show=False)
                         p.save(self._dst_vec % 'cmap h', transparent=True)
                         p.close()
 
