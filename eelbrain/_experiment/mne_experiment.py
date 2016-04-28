@@ -272,7 +272,8 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {experiment}.log')
 
         # plots
         # plot corresponding to a report (and using same folder structure)
-        'res-plot-dir': os.path.join('{root}', 'result plots', '{analysis} {group}',
+        'res-plot-root': os.path.join('{root}', 'result plots'),
+        'res-plot-dir': os.path.join('{res-plot-root}', '{analysis} {group}',
                                      '{folder}', '{epoch} {test} {test_options}'),
 
         # besa
