@@ -467,7 +467,7 @@ class _NDANOVA(object):
 
 class _BalancedNDANOVA(_NDANOVA):
     "For balanced but not fully specified models"
-    def __init__(self, x,  effects, dfs_denom):
+    def __init__(self, x, effects, dfs_denom):
         _NDANOVA.__init__(self, x, effects, dfs_denom)
 
         self._effect_to_beta = x._effect_to_beta
