@@ -348,6 +348,13 @@ def source_time_cluster(section, cluster, y, model, ds, title, colors, match):
     section.add_figure(caption, (brain.image('cluster_spatial'), cbar))
     brain.close()
     cbar.close()
+    # add cluster time course
+    if 'effect' in cluster:
+        reduced_model = '%'.join(cluster['effect'].split(' x '))
+        if len(reduced_model) < len(model):
+            colors_ = plot.colors_for_categorial(ds.eval(reduced_model))
+            cluster_timecourse(section, cluster, y, 'source', reduced_model, ds,
+                               colors_, match)
     cluster_timecourse(section, cluster, y, 'source', model, ds, colors, match)
 
 
