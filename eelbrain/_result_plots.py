@@ -226,8 +226,8 @@ class ClusterPlotter(object):
 
         return ds, model, modelname
 
-    def plot_values(self, ids, model, ymax, ymin=0, dpi=300, rc=None,
-                    sub=None, subagg=None, cells=None, pairwise=False, colors=None):
+    def plot_values(self, ids, model, ymax, ymin=0, dpi=300, sub=None,
+                    subagg=None, cells=None, pairwise=False, colors=None):
         """Plot values in cluster
 
         Parameters
@@ -256,6 +256,8 @@ class ClusterPlotter(object):
 
         src = ds['srcm']
         legend_done = False
+        n_cells = len(ds.eval(model).cells)
+        w_bar = (n_cells * 2 + 4) * (self.h / 12)
         with mpl.rc_context(self.rc):
             for cid in ids:
                 name = cname(cid)
@@ -267,7 +269,7 @@ class ClusterPlotter(object):
                 p = plot.Barplot(y_mean, model, 'subject', None, cells, pairwise,
                                  ds=ds, trend=False, corr=None,
                                  title=None, frame=False, yaxis=False, ylabel=False,
-                                 colors=colors, bottom=ymin, top=ymax, w=self.h, h=self.h,
+                                 colors=colors, bottom=ymin, top=ymax, w=w_bar, h=self.h,
                                  xlabel=None, xticks=None,
                                  tight=False, test_markers=False, show=False)
                 p.save(self._dst_vec % ' '.join((name, modelname, 'barplot')), dpi=dpi, transparent=True)
