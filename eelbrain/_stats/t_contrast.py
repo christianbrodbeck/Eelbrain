@@ -135,7 +135,7 @@ def _t_contrast_rel_expand_cells(cells, all_cells):
         raise ValueError(msg)
 
     # convert cells to str for fnmatch
-    cell_iter = [(cell, cellname(cell, '|')) for cell in all_cells]
+    all_cellnames = tuple(cellname(cell, '|') for cell in all_cells)
 
     primary_cells = set()
     mean_cells = {}
@@ -144,10 +144,10 @@ def _t_contrast_rel_expand_cells(cells, all_cells):
             primary_cells.add(cell)
         else:
             r = re.compile(fnmatch.translate(cellname(cell, '|')))
-            base = tuple(c for c, cn in cell_iter if r.match(cn))
+            base = tuple(c for c, cn in izip(all_cells, all_cellnames) if r.match(cn))
             if len(base) == 0:
-                raise ValueError("No cells in data match %r" %
-                                 cellname(cell, '|'))
+                raise ValueError("%r does not match any cells in data %r" %
+                                 (cellname(cell, '|'), ', '.join(all_cellnames)))
             mean_cells[cell] = base
             primary_cells.update(base)
 
