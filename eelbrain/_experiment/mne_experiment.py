@@ -4353,6 +4353,10 @@ class MneExperiment(FileTree):
         redo : bool
             If the target file already exists, delete and recreate it.
         """
+        if self._tests[test]['kind'] == 'two-stage':
+            raise NotImplementedError("ROI analysis not implemented for two-"
+                                      "stage tests")
+
         parc = self.get('parc', parc=parc, **state)
         if not parc:
             raise ValueError("No parcellation specified")
