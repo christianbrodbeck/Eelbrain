@@ -52,11 +52,21 @@ def shift_mne_epoch_trigger(epochs, trigger_shift, min_shift=None, max_shift=Non
         min_shift = min(shifts)
     else:
         min_shift = int(floor(min_shift / tstep))
+        if any(shift < min_shift for shift in shifts):
+            invalid = (i for i, shift in enumerate(shifts) if shift < min_shift)
+            raise ValueError("The post_baseline_trigger_shift is smaller than "
+                             "min_shift at the following events %s" %
+                             ', '.join(map(str, invalid)))
 
     if max_shift is None:
         max_shift = max(shifts)
     else:
         max_shift = int(ceil(max_shift / tstep))
+        if any(shift > max_shift for shift in shifts):
+            invalid = (i for i, shift in enumerate(shifts) if shift > max_shift)
+            raise ValueError("The post_baseline_trigger_shift is greater than "
+                             "max_shift at the following events %s" %
+                             ', '.join(map(str, invalid)))
 
     x, y, z = data.shape
     start_offset = -min_shift
