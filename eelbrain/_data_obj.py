@@ -4749,13 +4749,20 @@ class Dataset(OrderedDict):
                 self[key][idx] = item
             elif isinstance(idx, slice):
                 if idx.start is None and idx.stop is None:
-                    if isinstance(item, basestring):
+                    if self.n_cases is None:
+                        raise TypeError("Can't assign slice of empty Dataset")
+                    elif isinstance(item, basestring):
                         self[key] = Factor([item], repeat=self.n_cases)
+                    elif np.isscalar(item):
+                        self[key] = Var([item], repeat=self.n_cases)
                     else:
-                        self[key] = Var([item] * self.n_cases)
+                        err = ("Value %s is not supported for slice-assignment "
+                               "of new variable. Use a str for a new Factor or "
+                               "a scalar for a new Var." % repr(item))
+                        raise TypeError(err)
                 else:
-                    err = ("Can only add Factor with general value for all "
-                           "cases (ds['name',:] = ...")
+                    err = ("If creating a new Factor or Var using a slice, all "
+                           "values need to be set (ds[:,'name'] = ...)")
                     raise NotImplementedError(err)
             else:
                 raise NotImplementedError("Advanced Dataset indexing")
