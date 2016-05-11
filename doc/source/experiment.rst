@@ -229,6 +229,10 @@ that have trigger 1 have the value "adjective", events with trigger 2 have
 the value "noun" and events with trigger 3 have the value "verb". The last
 entry shows how to map multiple trigger values to the same value, i.e. all
 events that have a trigger value of either 4, 5 or 6 are labelled as "other".
+Unmentioned trigger values are assigned the empty string (``''``).
+
+These variables are assigned to the events-Dataset in
+:meth:`MneExperiment.label_events`.
 
 
 Epochs
