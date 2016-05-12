@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Objects for the abstract representation of a document which can be into
 different formats. Currently (incomplete) support for str, RTF, TeX and HTML.
@@ -115,7 +116,7 @@ def _html_repl(m):
 
 
 def escape_html(text):
-    return _html_escape_pattern.sub(_html_repl, text)
+    return _html_escape_pattern.sub(_html_repl, text).encode('ascii', 'xmlcharrefreplace')
 
 
 _html_doc_template = u"""<!DOCTYPE html>
