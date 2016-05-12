@@ -43,6 +43,9 @@ report.add_figure("Two plots in one figure", [p, p_legend])
 p.close()
 p_legend.close()
 
+# add information on package versions used
+report.sign()
+
 # print string representation and save
 print report.get_str()
 report.save_html('test_report')

@@ -1913,7 +1913,7 @@ class Report(Section):
             text = "%s version %s" % (name, mod.__version__)
             info.append(text)
 
-        signature = ' &#8212 \n'.join(info)
+        signature = u' \u2014 \n'.join(info)
         self.add_paragraph(signature)
 
 
