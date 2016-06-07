@@ -40,6 +40,7 @@ import mne
 from nibabel.freesurfer import read_annot
 import numpy as np
 from numpy import dot
+import scipy.signal
 import scipy.stats
 from scipy.linalg import inv
 from scipy.optimize import leastsq
@@ -3561,6 +3562,29 @@ class NDVar(object):
             return info
         else:
             print info
+
+    def envelope(self, dim='time'):
+        """Compute the Hilbert envelope of a signal
+
+        Parameters
+        ----------
+        dim : str
+            Dimension over which to compute the envelope (default 'time').
+
+        Returns
+        -------
+        envelope : NDVar
+            NDVar with identical dimensions containing the envelope.
+
+        Notes
+        -----
+        The Hilbert envelope is computed with::
+
+        >>> numpy.abs(scipy.signal.hilbert(x))
+        """
+        x = np.abs(scipy.signal.hilbert(self.x, axis=self.get_axis(dim)))
+        info = self.info.copy()
+        return NDVar(x, self.dims, info)
 
     def get_axis(self, name):
         if self.has_dim(name):

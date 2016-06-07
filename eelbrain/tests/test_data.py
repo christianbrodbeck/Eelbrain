@@ -937,6 +937,20 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.rms(idx1d), rms(x.x[:, idx1d.x], 1))
 
 
+def test_ndvar_timeseries_methods():
+    "Test NDVar time-series methods"
+    ds = datasets.get_uts(True)
+    x = ds['utsnd']
+    xs = NDVar(x.x.swapaxes(1, 2), ('case', x.dims[2], x.dims[1]),
+               x.info.copy(), x.name)
+
+    # envelope
+    env = x.envelope()
+    assert_array_equal(env.x >= 0, True)
+    envs = xs.envelope()
+    assert_array_equal(env.x, envs.x.swapaxes(1,2))
+
+
 def test_ols():
     "Test NDVar.ols() method"
     from rpy2.robjects import r
