@@ -3724,7 +3724,7 @@ class NDVar(object):
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the minimum over all dimensions.
-            An boolean NDVar with the same dimensions as the data can be used
+            A boolean NDVar with the same dimensions as the data can be used
             to compute the minimum in specific elements (if the data has a case
             dimension, the minimum is computed for each case).
         *regions*
