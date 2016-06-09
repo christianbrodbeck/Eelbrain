@@ -3,6 +3,11 @@ Changes
 
 .. currentmodule:: eelbrain
 
+New in 0.24
+-----------
+
+* :meth:`MneExperiment.make_report_rois` includes corrected p-values in reports
+  for tests in more than one ROI    
 
 New in 0.23
 -----------

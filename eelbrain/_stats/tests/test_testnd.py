@@ -13,7 +13,7 @@ from scipy import ndimage
 import eelbrain
 from eelbrain import datasets, testnd, NDVar, set_log_level
 from eelbrain._data_obj import UTS, Ordered, Sensor, cwt_morlet
-from eelbrain._stats.testnd import _ClusterDist, label_clusters
+from eelbrain._stats.testnd import _ClusterDist, label_clusters, _MergedTemporalClusterDist
 from eelbrain._utils.testing import assert_dataobj_equal, assert_dataset_equal, \
     requires_mne_sample_data
 
@@ -524,3 +524,57 @@ def test_cwt():
     cluster = res.clusters.sub("p == 0")
     assert_array_equal(cluster['frequency_min'], 10)
     assert_array_equal(cluster['frequency_max'], 19)
+
+def test_merged_temporal_cluster_dist():
+    "Test use of _MergedTemporalClusterDist with testnd test results"
+    ds1 = datasets.get_uts()
+    ds2 = datasets.get_uts(seed=42)
+
+    anova_kw = dict(Y='uts', X='A*B*rm', pmin=0.05, samples=10)
+    ttest_kw = dict(Y='uts', X='A', c1='a1', c0='a0', pmin=0.05, samples=10)
+    contrast_kw = dict(Y='uts', X='A', contrast='a1>a0', pmin=0.05, samples=10)
+
+    def test_merged(res1, res2):
+        merged_dist = _MergedTemporalClusterDist([res1._cdist, res2._cdist])
+        if isinstance(res1, testnd.anova):
+            assert_equal(len(merged_dist.dist), len(res1.effects))
+            for effect, dist in merged_dist.dist.iteritems():
+                assert_in(effect, res1.effects)
+                assert_equal(len(dist), res1.samples)
+        else:
+            assert_equal(len(merged_dist.dist), res1.samples)
+        res1_clusters = merged_dist.correct_cluster_p(res1)
+        res2_clusters = merged_dist.correct_cluster_p(res2)
+        for clusters in [res1_clusters, res2_clusters]:
+            assert_in('p_parc', clusters)
+            for cl in clusters.itercases():
+                assert_greater_equal(cl['p_parc'], cl['p'])
+
+    # multi-effect
+    res1 = testnd.anova(ds=ds1, **anova_kw)
+    res2 = testnd.anova(ds=ds2, **anova_kw)
+    test_merged(res1, res2)
+
+    # ttest_rel
+    res1 = testnd.ttest_rel(ds=ds1, match='rm', **ttest_kw)
+    res2 = testnd.ttest_rel(ds=ds2, match='rm', **ttest_kw)
+    test_merged(res1, res2)
+
+    # ttest_ind
+    res1 = testnd.ttest_ind(ds=ds1, **ttest_kw)
+    res2 = testnd.ttest_ind(ds=ds2, **ttest_kw)
+    test_merged(res1, res2)
+
+    # ttest_1samp
+    res1 = testnd.ttest_1samp('uts', ds=ds1, pmin=0.05, samples=10)
+    res2 = testnd.ttest_1samp('uts', ds=ds2, pmin=0.05, samples=10)
+    test_merged(res1, res2)
+
+    # t_contrast_rel
+    res1 = testnd.t_contrast_rel(ds=ds1, match='rm', **contrast_kw)
+    res2 = testnd.t_contrast_rel(ds=ds2, match='rm', **contrast_kw)
+    test_merged(res1, res2)
+
+    # can't force 0 permutations
+    assert_raises(ValueError, testnd.anova, 'uts', X='A*B*rm', ds=ds1, samples=0,
+                  force_permutation=True)
