@@ -345,15 +345,33 @@ class UTS(_EelFigure):
                  top=None, *args, **kwargs):
         epochs, (xdim,) = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         _EelFigure.__init__(self, "UTS", len(epochs), 2, 1.5, *args, **kwargs)
-        e0 = epochs[0][0]
-        self._configure_yaxis(e0, ylabel)
-        self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
 
+        e0 = epochs[0][0]
+        self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
+        self._configure_yaxis(e0, ylabel)
+
+        self.plots = []
+        vlims = _base.find_fig_vlims(epochs, top, bottom)
         for ax, epoch in izip(self._axes, epochs):
-            _ax_uts(ax, epoch, xdim, axtitle, bottom, top)
+            h = _ax_uts(ax, epoch, xdim, axtitle, vlims)
+            self.plots.append(h)
 
         self.epochs = epochs
         self._show()
+
+    def set_vlim(self, vmax=None, vmin=None):
+        """Set the x-axis limits
+
+        Parameters
+        ----------
+        vmax : scalar
+            Upper limit.
+        vmin : scalar
+            Lower limit.
+        """
+        for p in self.plots:
+            p.set_vlim(vmax, vmin)
+        self.draw()
 
 
 class _ax_uts_stat(object):
@@ -505,42 +523,46 @@ class UTSClusters(_EelFigure):
         self.draw()
 
 
-def _ax_uts(ax, layers, xdim, title, bottom, top, invy=False, color=None):
-    l0 = layers[0]
-    xdim = l0.dimnames[0]
-    overlay = False
-    for l in layers:
-        args = _base.find_uts_args(l, overlay, color)
-        overlay = True
-        if args is None:
-            continue
+class _ax_uts(object):
 
-        _plt_uts(ax, l, xdim, **args)
-        contours = l.info.get('contours', None)
-        if contours:
-            for v, color in contours.iteritems():
-                if v in contours:
-                    continue
-                contours[v] = ax.axhline(v, color=color)
+    def __init__(self, ax, layers, xdim, title, vlims, color=None):
+        l0 = layers[0]
+        vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
 
-    x = l0.get_dim(xdim)
-    ax.set_xlim(x[0], x[-1])
+        overlay = False
+        for l in layers:
+            args = _base.find_uts_args(l, overlay, color)
+            overlay = True
+            if args is None:
+                continue
 
-    if title:
-        if '{name}' in title:
-            title = title.format(name=l0.name or '')
-    if title:
-        ax.set_title(title)
+            _plt_uts(ax, l, xdim, **args)
+            contours = l.info.get('contours', None)
+            if contours:
+                for v, color in contours.iteritems():
+                    if v in contours:
+                        continue
+                    contours[v] = ax.axhline(v, color=color)
 
-    if invy:
-        y0, y1 = ax.get_ylim()
-        if bottom is None:
-            bottom = y1
-        if top is None:
-            top = y0
+        x = l0.get_dim(xdim)
+        ax.set_xlim(x[0], x[-1])
 
-    if (bottom is not None) or (top is not None):
-        ax.set_ylim(bottom, top)
+        if title:
+            if '{name}' in title:
+                title = title.format(name=l0.name or '')
+        if title:
+            ax.set_title(title)
+
+        self.ax = ax
+        self.set_vlim(vmax, vmin)
+
+    def set_vlim(self, vmax=None, vmin=None):
+        if vmin is None and vmax is not None:
+            vmin = -vmax
+        self.ax.set_ylim(vmin, vmax)
+        vmin, vmax = self.ax.get_ylim()
+        self.vmin = vmin
+        self.vmax = vmax
 
 
 def _plt_uts(ax, ndvar, xdim, color=None, kwargs={}):

@@ -62,6 +62,8 @@ def test_uts():
     p = plot.UTS('uts', ds=ds, show=False)
     p.close()
     p = plot.UTS('uts', 'A%B', ds=ds, show=False)
+    p.set_vlim(1)
+    p.set_vlim(1, 0)
     p.close()
 
 

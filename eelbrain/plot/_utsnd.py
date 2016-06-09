@@ -8,10 +8,10 @@ from itertools import izip
 
 import numpy as np
 
-from .. import _data_obj as _dta
 from .._names import INTERPOLATE_CHANNELS
 from . import _base
 from ._base import _EelFigure
+from ._uts import UTS
 
 
 class _plt_im(object):
@@ -385,7 +385,7 @@ class _ax_butterfly(object):
         self.vmax = vmax
 
 
-class Butterfly(_EelFigure):
+class Butterfly(UTS):
     """Butterfly plot for NDVars
 
     Parameters
@@ -435,11 +435,6 @@ class Butterfly(_EelFigure):
             self.plots.append(h)
 
         self._show()
-
-    def set_vlim(self, vmax=None, vmin=None):
-        for p in self.plots:
-            p.set_vlim(vmax, vmin)
-        self.draw()
 
 
 class _ax_bfly_epoch:
