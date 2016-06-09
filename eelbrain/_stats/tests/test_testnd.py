@@ -13,7 +13,6 @@ from scipy import ndimage
 import eelbrain
 from eelbrain import datasets, testnd, NDVar, set_log_level
 from eelbrain._data_obj import UTS, Ordered, Sensor, cwt_morlet
-from eelbrain._stats import testnd as _testnd
 from eelbrain._stats.testnd import _ClusterDist, label_clusters
 from eelbrain._utils.testing import assert_dataobj_equal, assert_dataset_equal
 
