@@ -1078,61 +1078,9 @@ class Frame(FileFrame):
             self.model.set_interpolation(epoch, new)
 
     def OnSetLayout(self, event):
-        caption = "Set Plot Layout"
-        msg = ("Number of epoch plots for square layout (e.g., '10') or \n"
-               "exact n_rows and n_columns (e.g., '5 4'). Add 'nomean' to \n"
-               "turn off plotting the page mean at the bottom right (e.g., "
-               "'3 nomean').")
-        default = ""
-        dlg = wx.TextEntryDialog(self, msg, caption, default)
-        while True:
-            if dlg.ShowModal() == wx.ID_OK:
-                nplots = None
-                topo = True
-                mean = True
-                err = []
-
-                # separate options from layout
-                value = dlg.GetValue()
-                items = value.split(' ')
-                options = []
-                while not items[-1].isdigit():
-                    options.append(items.pop(-1))
-
-                # extract options
-                for option in options:
-                    if option == 'nomean':
-                        mean = False
-                    elif option == 'notopo':
-                        topo = False
-                    else:
-                        err.append('Unknown option: "%s"' % option)
-
-                # extract layout info
-                if len(items) == 1 and items[0].isdigit():
-                    nplots = int(items[0])
-                elif len(items) == 2 and all(item.isdigit() for item in items):
-                    nplots = tuple(int(item) for item in items)
-                else:
-                    value_ = ' '.join(items)
-                    err = 'Invalid layout specification: "%s"' % value_
-
-                # if all ok: break
-                if nplots and not err:
-                    break
-
-                # error
-                caption = 'Invalid Layout Entry: "%s"' % value
-                err.append('Please read the instructions and try again.')
-                msg = '\n'.join(err)
-                style = wx.OK | wx.ICON_ERROR
-                wx.MessageBox(msg, caption, style)
-            else:
-                dlg.Destroy()
-                return
-
-        dlg.Destroy()
-        self.SetLayout(nplots, topo, mean)
+        dlg = LayoutDialog(self, self._rows, self._columns, self._plot_topo, self._plot_mean)
+        if dlg.ShowModal() == wx.ID_OK:
+            self.SetLayout(dlg.layout, dlg.topo, dlg.mean)
 
     def OnSetMarkedChannels(self, event):
         "mark is represented in sensor names"
@@ -1306,7 +1254,8 @@ class Frame(FileFrame):
 
         # prepare segments
         n = self.doc.n_epochs
-        self._nplots = (nrow, ncol)
+        self._rows = nrow
+        self._columns = ncol
         self._n_per_page = n_per_page
         self._n_pages = n_pages = int(math.ceil(n / n_per_page))
 
@@ -1437,7 +1386,8 @@ class Frame(FileFrame):
             self._page_change(page)
 
         self.figure.clf()
-        nrow, ncol = self._nplots
+        nrow = self._rows
+        ncol = self._columns
 
         # formatters
         t_formatter, t_label = find_axis_params_dim(self.doc.epochs.time, True)
@@ -1696,6 +1646,76 @@ class FindNoisyChannelsDialog(EelbrainDialog):
         config.WriteBool("FindNoisyChannels/do_apply",
                          self.do_apply.GetValue())
         config.Flush()
+
+
+class LayoutDialog(EelbrainDialog):
+
+    def __init__(self, parent, rows, columns, topo, mean):
+        EelbrainDialog.__init__(self, parent, wx.ID_ANY, "Select-Epochs Layout")
+        # result attributes
+        self.topo = None
+        self.mean = None
+        self.layout = None
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+
+        sizer.Add(wx.StaticText(self, wx.ID_ANY, "Layout: number of rows and "
+                                "columns (e.g., '5 7')\n"
+                                "or number of epochs (e.g., '35'):"))
+        self.text = wx.TextCtrl(self, wx.ID_ANY, "%i %i" % (rows, columns))
+        self.text.SelectAll()
+        sizer.Add(self.text)
+
+        self.topo_ctrl = wx.CheckBox(self, wx.ID_ANY, "Topographic map")
+        self.topo_ctrl.SetValue(topo)
+        sizer.Add(self.topo_ctrl)
+
+        self.mean_ctrl = wx.CheckBox(self, wx.ID_ANY, "Page mean plot")
+        self.mean_ctrl.SetValue(mean)
+        sizer.Add(self.mean_ctrl)
+
+        # buttons
+        button_sizer = wx.StdDialogButtonSizer()
+        # ok
+        btn = wx.Button(self, wx.ID_OK)
+        btn.SetDefault()
+        button_sizer.AddButton(btn)
+        # cancel
+        button_sizer.AddButton(wx.Button(self, wx.ID_CANCEL))
+        # finalize
+        button_sizer.Realize()
+        sizer.Add(button_sizer)
+
+        self.Bind(wx.EVT_BUTTON, self.OnOk, id=wx.ID_OK)
+        self.SetSizer(sizer)
+        sizer.Fit(self)
+
+    def OnOk(self, event):
+        self.topo = self.topo_ctrl.GetValue()
+        self.mean = self.mean_ctrl.GetValue()
+        value = self.text.GetValue()
+        m = re.match("(\d+)\s*(\d*)", value)
+        if m:
+            rows_str, columns_str = m.groups()
+            rows = int(rows_str)
+            if columns_str:
+                columns = int(columns_str)
+                n_plots = rows * columns
+                self.layout = (rows, columns)
+            else:
+                self.layout = n_plots = rows
+
+            if n_plots >= self.topo + self.mean + 1:
+                event.Skip()
+                return
+            else:
+                wx.MessageBox("Layout does not have enough plots",
+                              "Invalid Layout", wx.OK | wx.ICON_ERROR, self)
+        else:
+            wx.MessageBox("Invalid layout string: %s" % value,
+                          "Invalid Layout", wx.OK | wx.ICON_ERROR, self)
+        self.text.SetFocus()
+        self.text.SelectAll()
 
 
 class RejectRangeDialog(EelbrainDialog):
