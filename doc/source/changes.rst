@@ -11,7 +11,7 @@ New in 0.23
   new color model, different options.
 * :class:`testnd.t_contrast_rel` contrasts can contain ``*`` to include the
   average of multiple cells.
-* New :class:`NDVar` method:  :meth:`NDVar.envelope`.
+* New :class:`NDVar` methods:  :meth:`NDVar.envelope`, :meth:`NDVar.fft`.
 
 
 New in 0.22

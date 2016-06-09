@@ -3586,6 +3586,23 @@ class NDVar(object):
         info = self.info.copy()
         return NDVar(x, self.dims, info)
 
+    def fft(self):
+        """Fast fourier transform
+
+        Returns
+        -------
+        fft : NDVar
+            NDVar containing the FFT, with the ``time`` dimension replaced by
+            ``frequency``.
+        """
+        axis = self.get_axis('time')
+        uts = self.get_dim('time')
+        x = np.abs(np.fft.rfft(self.x, axis=axis))
+        freq = Ordered('frequency', np.fft.rfftfreq(len(uts), uts.tstep), 'Hz')
+        dims = self.dims[:axis] + (freq,) + self.dims[axis + 1:]
+        info = cs.set_info_cs(self.info, cs.default_info('Amplitude'))
+        return NDVar(x, dims, info)
+
     def get_axis(self, name):
         if self.has_dim(name):
             i = self._dim_2_ax[name]
@@ -8451,16 +8468,6 @@ def corr(x, dim='sensor', obs='time', name=None):
 
     info = cs.set_info_cs(x.info, cs.stat_info('r'))
     return NDVar(y, (dim_obj,), info, name)
-
-
-def fft(ndvar, name=None):
-    axis = ndvar.get_axis('time')
-    uts = ndvar.get_dim('time')
-    x = np.abs(np.fft.rfft(ndvar.x, axis=axis))
-    freq = Ordered('frequency', np.fft.rfftfreq(len(uts), uts.tstep), 'Hz')
-    dims = ndvar.dims[:axis] + (freq,) + ndvar.dims[axis + 1:]
-    info = cs.set_info_cs(ndvar.info, cs.default_info('Amplitude'))
-    return NDVar(x, dims, info, name)
 
 
 def cwt_morlet(Y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,

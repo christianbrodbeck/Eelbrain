@@ -23,7 +23,7 @@ import wx
 from wx.lib.scrolledpanel import ScrolledPanel
 
 from .. import load, plot, fmtxt
-from .._data_obj import NDVar, asndvar, Ordered, fft, isfactor
+from .._data_obj import NDVar, asndvar, Ordered, isfactor
 from ..plot._topo import _ax_topomap
 from .._wxutils import Icon, ID, REValidator
 from .._utils.parse import POS_FLOAT_PATTERN
@@ -479,7 +479,7 @@ class Frame(FileFrame):
         event.Enable(False)
 
     def PlotCompFFT(self, i_comp):
-        plot.UTS(fft(self.doc.sources[i_comp]).mean('epoch'), w=8,
+        plot.UTS(self.doc.sources[i_comp].fft().mean('epoch'), w=8,
                  title="# %i Frequency Spectrum" % i_comp)
 
     def PlotCompSourceArray(self, i_comp):
