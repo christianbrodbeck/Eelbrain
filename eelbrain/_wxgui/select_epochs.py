@@ -718,7 +718,6 @@ class Frame(FileFrame):
         self.CreateStatusBar()
 
         # check plot parameters
-        warnings = []
         if mark:
             mark, invalid = self.doc.epochs.sensor._normalize_sensor_names(mark, missing='return')
             if invalid:
@@ -740,7 +739,6 @@ class Frame(FileFrame):
         self._SetLayout(nplots, topo, mean)
 
         # Bind Events ---
-        self.canvas.mpl_connect('axes_leave_event', self.OnPointerLeaveAxes)
         self.canvas.mpl_connect('button_press_event', self.OnCanvasClick)
         self.canvas.mpl_connect('key_release_event', self.OnCanvasKey)
         self.canvas.mpl_connect('motion_notify_event', self.OnPointerMotion)
@@ -992,10 +990,6 @@ class Frame(FileFrame):
 
     def OnPlotGrandAverage(self, event):
         self.PlotGrandAverage()
-
-    def OnPointerLeaveAxes(self, event):
-        sb = self.GetStatusBar()
-        sb.SetStatusText("", 0)
 
     def OnPointerMotion(self, event):
         "update view on mouse pointer movement"
