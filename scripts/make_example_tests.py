@@ -14,6 +14,7 @@ dst = os.path.join(test_dir, 'test_examples.py')
 example_dir = os.path.abspath(os.path.join('..', 'examples'))
 
 temp = """
+@requires_mayavi
 def test_{i}():
     "Test examples/{example_name}"
     exa_dir = os.path.join(examples_dir, {relpath!r})
@@ -52,6 +53,7 @@ import shutil
 from tempfile import mkdtemp
 
 from eelbrain import plot
+from eelbrain._utils.testing import requires_mayavi
 
 dir_ = os.path.dirname(__file__)
 examples_dir = os.path.join(dir_, '..', '..', 'examples')

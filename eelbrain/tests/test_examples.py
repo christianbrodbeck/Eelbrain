@@ -6,12 +6,14 @@ import shutil
 from tempfile import mkdtemp
 
 from eelbrain import plot
+from eelbrain._utils.testing import requires_mayavi
 
 dir_ = os.path.dirname(__file__)
 examples_dir = os.path.join(dir_, '..', '..', 'examples')
 examples_dir = os.path.abspath(examples_dir)
 
 
+@requires_mayavi
 def test_0():
     "Test examples/datasets/align.py"
     exa_dir = os.path.join(examples_dir, 'datasets')
@@ -41,6 +43,7 @@ def test_0():
     # delete temporary files
     shutil.rmtree(tempdir)
 
+@requires_mayavi
 def test_1():
     "Test examples/experiment/word_experiment.py"
     exa_dir = os.path.join(examples_dir, 'experiment')
@@ -70,6 +73,7 @@ def test_1():
     # delete temporary files
     shutil.rmtree(tempdir)
 
+@requires_mayavi
 def test_2():
     "Test examples/fmtxt/report.py"
     exa_dir = os.path.join(examples_dir, 'fmtxt')
@@ -99,6 +103,7 @@ def test_2():
     # delete temporary files
     shutil.rmtree(tempdir)
 
+@requires_mayavi
 def test_3():
     "Test examples/fmtxt/table.py"
     exa_dir = os.path.join(examples_dir, 'fmtxt')
@@ -128,6 +133,7 @@ def test_3():
     # delete temporary files
     shutil.rmtree(tempdir)
 
+@requires_mayavi
 def test_4():
     "Test examples/meg/mne_sample_loader.py"
     exa_dir = os.path.join(examples_dir, 'meg')
@@ -157,6 +163,7 @@ def test_4():
     # delete temporary files
     shutil.rmtree(tempdir)
 
+@requires_mayavi
 def test_5():
     "Test examples/meg/simple meg.py"
     exa_dir = os.path.join(examples_dir, 'meg')
@@ -186,6 +193,7 @@ def test_5():
     # delete temporary files
     shutil.rmtree(tempdir)
 
+@requires_mayavi
 def test_6():
     "Test examples/meg/source permutation cluster.py"
     exa_dir = os.path.join(examples_dir, 'meg')
@@ -215,6 +223,7 @@ def test_6():
     # delete temporary files
     shutil.rmtree(tempdir)
 
+@requires_mayavi
 def test_7():
     "Test examples/meg/source permutation.py"
     exa_dir = os.path.join(examples_dir, 'meg')
@@ -244,6 +253,7 @@ def test_7():
     # delete temporary files
     shutil.rmtree(tempdir)
 
+@requires_mayavi
 def test_8():
     "Test examples/meg/topographic plotting.py"
     exa_dir = os.path.join(examples_dir, 'meg')
@@ -273,6 +283,7 @@ def test_8():
     # delete temporary files
     shutil.rmtree(tempdir)
 
+@requires_mayavi
 def test_9():
     "Test examples/statistics/ANCOVA_Crawley.py"
     exa_dir = os.path.join(examples_dir, 'statistics')
@@ -302,6 +313,7 @@ def test_9():
     # delete temporary files
     shutil.rmtree(tempdir)
 
+@requires_mayavi
 def test_10():
     "Test examples/statistics/ANCOVA_rutherford.py"
     exa_dir = os.path.join(examples_dir, 'statistics')
@@ -331,6 +343,7 @@ def test_10():
     # delete temporary files
     shutil.rmtree(tempdir)
 
+@requires_mayavi
 def test_11():
     "Test examples/statistics/ANOVA.py"
     exa_dir = os.path.join(examples_dir, 'statistics')
@@ -360,6 +373,7 @@ def test_11():
     # delete temporary files
     shutil.rmtree(tempdir)
 
+@requires_mayavi
 def test_12():
     "Test examples/statistics/ANOVA_rutherford_1.py"
     exa_dir = os.path.join(examples_dir, 'statistics')
@@ -389,6 +403,7 @@ def test_12():
     # delete temporary files
     shutil.rmtree(tempdir)
 
+@requires_mayavi
 def test_13():
     "Test examples/statistics/ANOVA_rutherford_2.py"
     exa_dir = os.path.join(examples_dir, 'statistics')
@@ -418,6 +433,7 @@ def test_13():
     # delete temporary files
     shutil.rmtree(tempdir)
 
+@requires_mayavi
 def test_14():
     "Test examples/statistics/Fox_Prestige.py"
     exa_dir = os.path.join(examples_dir, 'statistics')
@@ -447,6 +463,7 @@ def test_14():
     # delete temporary files
     shutil.rmtree(tempdir)
 
+@requires_mayavi
 def test_15():
     "Test examples/statistics/pdf.py"
     exa_dir = os.path.join(examples_dir, 'statistics')
@@ -476,6 +493,7 @@ def test_15():
     # delete temporary files
     shutil.rmtree(tempdir)
 
+@requires_mayavi
 def test_16():
     "Test examples/statistics/simple.py"
     exa_dir = os.path.join(examples_dir, 'statistics')

@@ -1,0 +1,35 @@
+os: osx
+language: r
+sudo: false
+# https://github.com/travis-ci/travis-ci/issues/4729
+# https://github.com/travis-ci/travis-ci/issues/2312
+
+cache:  # https://docs.travis-ci.com/user/caching/
+  - packages
+  - pip
+
+#python:
+#  - 2.7
+
+# Setup anaconda
+# https://gist.github.com/dan-blanchard/7045057
+before_install:
+#  - pip install --upgrade pip
+#  # use anaconda
+#  - pip install conda
+#  - conda init
+  - wget -q http://repo.continuum.io/miniconda/Miniconda-latest-MacOSX-x86_64.sh -O miniconda.sh
+  - chmod +x miniconda.sh
+  - ./miniconda.sh -b -p $HOME/miniconda
+  - export PATH=$HOME/miniconda/bin:$PATH
+  - conda update --yes conda
+  - conda install --yes python=2.7 numpy scipy matplotlib wxpython nose #python.app
+  - pip install rpy2
+  - python --version
+
+install:
+  - python setup.py develop
+#  - pip install pysurfer
+
+script:
+  - make test

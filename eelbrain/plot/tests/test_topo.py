@@ -4,6 +4,7 @@ Created on Jul 22, 2013
 @author: christian
 '''
 from eelbrain import datasets, plot, testnd
+from eelbrain._utils.testing import requires_mne_sample_data
 
 
 def test_plot_topomap():
@@ -20,7 +21,10 @@ def test_plot_topomap():
     p = plot.Topomap(topo, ds=ds, sensorlabels=None, show=False)
     p.close()
 
-    # MNE data
+
+@requires_mne_sample_data
+def test_plot_topomap_mne():
+    "Test plot.Topomap with MNE data"
     ds = datasets.get_mne_sample(sub=[0, 1], sns=True)
     p = plot.Topomap(ds['meg'].summary(time=(.1, .12)), proj='left', show=False)
     p.close()

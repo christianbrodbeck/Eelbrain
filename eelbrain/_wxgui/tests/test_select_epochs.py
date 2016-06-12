@@ -5,10 +5,11 @@ from nose.tools import eq_
 from numpy.testing import assert_array_equal
 
 from eelbrain import datasets, load, set_log_level
-from eelbrain._utils.testing import TempDir
+from eelbrain._utils.testing import requires_mne_sample_data, TempDir
 from eelbrain._wxgui.select_epochs import Document, Model
 
 
+@requires_mne_sample_data
 def test_select_epochs():
     "Test Select-Epochs GUI Document"
     set_log_level('warning', 'mne')

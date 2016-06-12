@@ -14,7 +14,8 @@ import eelbrain
 from eelbrain import datasets, testnd, NDVar, set_log_level
 from eelbrain._data_obj import UTS, Ordered, Sensor, cwt_morlet
 from eelbrain._stats.testnd import _ClusterDist, label_clusters
-from eelbrain._utils.testing import assert_dataobj_equal, assert_dataset_equal
+from eelbrain._utils.testing import assert_dataobj_equal, assert_dataset_equal, \
+    requires_mne_sample_data
 
 
 def test_anova():
@@ -123,6 +124,7 @@ def test_anova_incremental():
     testnd.anova('uts', 'A*B', ds=ds[3:], pmin=0.05, samples=10)
 
 
+@requires_mne_sample_data
 def test_anova_parc():
     "Test ANOVA with parc argument and source space data"
     set_log_level('warning', 'mne')

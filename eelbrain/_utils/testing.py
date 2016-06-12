@@ -1,7 +1,9 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from functools import wraps
 import shutil
 import tempfile
 
+from nose.plugins.skip import SkipTest
 from nose.tools import assert_equal, assert_true, eq_
 import numpy as np
 from numpy.testing import assert_array_equal, assert_array_almost_equal
@@ -101,3 +103,31 @@ def assert_source_space_equal(src1, src2, msg="SourceSpace Dimension objects "
                  ")" % (msg, src1.src, src2.src))
     assert_equal(src1.subjects_dir, src2.subjects_dir, "%s unequal names (%r "
                  "vs %r)" % (msg, src1.subjects_dir, src2.subjects_dir))
+
+
+def requires_mayavi(function):
+    """Decorator to skip test if mayavi is not available"""
+    try:
+        import mayavi
+    except ImportError:
+        @wraps(function)
+        def decorator(*args, **kwargs):
+            raise SkipTest('Skipped %s, requires mayavi' % function.__name__)
+    else:
+        @wraps(function)
+        def decorator(*args, **kwargs):
+            return function(*args, **kwargs)
+    return decorator
+
+
+def requires_mne_sample_data(function):
+    import mne
+    if mne.datasets.sample.data_path(download=False):
+        @wraps(function)
+        def decorator(*args, **kwargs):
+            return function(*args, **kwargs)
+    else:
+        @wraps(function)
+        def decorator(*args, **kwargs):
+            raise SkipTest('Skipped %s, requires mne sample data' % function.__name__)
+    return decorator

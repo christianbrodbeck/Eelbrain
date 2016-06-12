@@ -12,6 +12,7 @@ from mne.io import Raw
 from eelbrain import datasets, plot, testnd
 from eelbrain.plot._base import Figure
 from eelbrain.plot._utsnd import _ax_bfly_epoch
+from eelbrain._utils.testing import requires_mne_sample_data
 
 
 def test_plot_butterfly():
@@ -44,6 +45,7 @@ def test_plot_array():
     p.close()
 
 
+@requires_mne_sample_data
 def test_plot_mne_evoked():
     "Test plotting evoked from the mne sample dataset"
     evoked = datasets.get_mne_evoked()
@@ -51,6 +53,7 @@ def test_plot_mne_evoked():
     p.close()
 
 
+@requires_mne_sample_data
 def test_plot_mne_epochs():
     "Test plotting epochs from the mne sample dataset"
     # find paths

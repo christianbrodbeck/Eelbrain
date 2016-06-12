@@ -22,7 +22,8 @@ from eelbrain._data_obj import (asvar, longname, Categorial, SourceSpace, UTS,
                                 DimensionMismatchError)
 from eelbrain._stats.stats import rms
 from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,
-                                     assert_source_space_equal)
+                                     assert_source_space_equal,
+                                     requires_mne_sample_data)
 
 
 OPERATORS = ((add, iadd, '+'),
@@ -1057,6 +1058,7 @@ def test_r():
     assert_dataset_equal(ds_copy, ds)
 
 
+@requires_mne_sample_data
 def test_source_space():
     "Test SourceSpace Dimension"
     subject = 'fsaverage'

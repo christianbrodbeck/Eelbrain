@@ -3,8 +3,10 @@ from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 from eelbrain import datasets
 from eelbrain.mne_fixes import _interpolate_bads_meg
+from eelbrain._utils.testing import requires_mne_sample_data
 
 
+@requires_mne_sample_data
 def test_interpolation():
     "Test MNE channel interpolation by epoch"
     ds = datasets.get_mne_sample(sub=[0, 1, 2, 3])

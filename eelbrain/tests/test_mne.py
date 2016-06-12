@@ -13,13 +13,14 @@ from nibabel.freesurfer import read_annot
 from eelbrain import datasets, load, testnd, morph_source_space, Factor
 from eelbrain._data_obj import Dataset, asndvar, SourceSpace, _matrix_graph
 from eelbrain._mne import shift_mne_epoch_trigger, combination_label
+from eelbrain._utils.testing import requires_mne_sample_data
 from eelbrain.tests.test_data import assert_dataobj_equal
 
-# mne paths
-data_dir = mne.datasets.sample.data_path()
+data_dir = mne.datasets.testing.data_path()
 subjects_dir = os.path.join(data_dir, 'subjects')
 
 
+@requires_mne_sample_data
 def test_source_estimate():
     "Test SourceSpace dimension"
     mne.set_log_level('warning')
@@ -86,6 +87,7 @@ def test_source_estimate():
     assert_dataobj_equal(s_sub, s_idx)
 
 
+@requires_mne_sample_data
 def test_dataobjects():
     "Test handing MNE-objects as data-objects"
     shift = np.array([0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
@@ -111,6 +113,7 @@ def test_dataobjects():
     eq_(c.max(), len(sensor) - 1)
 
 
+@requires_mne_sample_data
 def test_epoch_trigger_shift():
     "Test the shift_mne_epoch_trigger() function"
     epochs = datasets.get_mne_sample(sns=True, sub="[1,2,3]")['epochs']
@@ -172,13 +175,17 @@ def test_combination_label():
 
     # names with .
     labels = {l.name: l for l in
-              mne.read_labels_from_annot('fsaverage', 'PALS_B12_Brodmann', subjects_dir=subjects_dir)}
-    l = combination_label('Ba38-lh', "Brodmann.38", labels, subjects_dir)[0]
-    assert_array_equal(l.vertices, labels['Brodmann.38-lh'].vertices)
+              mne.read_labels_from_annot('fsaverage', 'PALS_B12_Lobes', subjects_dir=subjects_dir)}
+    l = combination_label('frontal-lh', "LOBE.FRONTAL", labels, subjects_dir)[0]
+    assert_array_equal(l.vertices, labels['LOBE.FRONTAL-lh'].vertices)
 
 
+@requires_mne_sample_data
 def test_morphing():
     mne.set_log_level('warning')
+    data_dir = mne.datasets.sample.data_path()
+    subjects_dir = os.path.join(data_dir, 'subjects')
+
     sss = datasets._mne_source_space('fsaverage', 'ico-4', subjects_dir)
     vertices_to = [sss[0]['vertno'], sss[1]['vertno']]
     ds = datasets.get_mne_sample(-0.1, 0.1, src='ico', sub='index==0', stc=True)
@@ -197,8 +204,11 @@ def test_morphing():
     assert_dataobj_equal(morphed_ndvar, morphed_stc_ndvar)
 
 
+@requires_mne_sample_data  # source space distance computation times out
 def test_source_space():
     "Test SourceSpace dimension"
+    data_dir = mne.datasets.sample.data_path()
+    subjects_dir = os.path.join(data_dir, 'subjects')
     annot_path = os.path.join(subjects_dir, '%s', 'label', '%s.%s.annot')
 
     for subject in ['fsaverage', 'sample']:

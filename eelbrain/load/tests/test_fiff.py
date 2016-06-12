@@ -11,16 +11,18 @@ from mne import pick_types
 from eelbrain import load
 
 from ...tests.test_data import assert_dataobj_equal
+from eelbrain._utils.testing import requires_mne_sample_data
 
 
-data_path = mne.datasets.sample.data_path()
-meg_path = os.path.join(data_path, 'MEG', 'sample')
-raw_path = os.path.join(meg_path, 'sample_audvis_filt-0-40_raw.fif')
-evt_path = os.path.join(meg_path, 'sample_audvis_filt-0-40_raw-eve.fif')
-
-
+@requires_mne_sample_data
 def test_load_fiff_from_raw():
     "Test loading data from a fiff raw file"
+    data_path = mne.datasets.sample.data_path()
+    meg_path = os.path.join(data_path, 'MEG', 'sample')
+    raw_path = os.path.join(meg_path, 'sample_audvis_filt-0-40_raw.fif')
+    evt_path = os.path.join(meg_path, 'sample_audvis_filt-0-40_raw-eve.fif')
+
+    # load events
     ds = load.fiff.events(raw_path)
     eq_(ds['i_start'].x.dtype.kind, 'i')
 
