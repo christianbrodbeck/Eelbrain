@@ -1,6 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 
 import os
+from warnings import catch_warnings, filterwarnings
 
 from nose.tools import eq_
 from numpy.testing import assert_array_equal, assert_array_almost_equal
@@ -13,6 +14,9 @@ from eelbrain import load
 from ...tests.test_data import assert_dataobj_equal
 from eelbrain._utils.testing import requires_mne_sample_data
 
+
+FILTER_WARNING = ('The measurement information indicates a low-pass frequency '
+                  'of 40 Hz.')
 
 @requires_mne_sample_data
 def test_load_fiff_from_raw():
@@ -33,15 +37,19 @@ def test_load_fiff_from_raw():
 
     # add epochs as ndvar
     ds = ds.sub('trigger == 32')
-    ds_ndvar = load.fiff.add_epochs(ds, -0.1, 0.3, decim=10, data='mag',
-                                    proj=False, reject=2e-12)
+    with catch_warnings():
+        filterwarnings('ignore', message=FILTER_WARNING)
+        ds_ndvar = load.fiff.add_epochs(ds, -0.1, 0.3, decim=10, data='mag',
+                                        proj=False, reject=2e-12)
     meg = ds_ndvar['meg']
     eq_(meg.ndim, 3)
     data = meg.get_data(('case', 'sensor', 'time'))
 
     # compare with mne epochs
-    ds_mne = load.fiff.add_mne_epochs(ds, -0.1, 0.3, decim=10, proj=False,
-                                      reject={'mag': 2e-12})
+    with catch_warnings():
+        filterwarnings('ignore', message=FILTER_WARNING)
+        ds_mne = load.fiff.add_mne_epochs(ds, -0.1, 0.3, decim=10, proj=False,
+                                          reject={'mag': 2e-12})
     epochs = ds_mne['epochs']
     picks = pick_types(epochs.info, meg='mag')
     mne_data = epochs.get_data()[:, picks]
@@ -50,10 +58,12 @@ def test_load_fiff_from_raw():
     assert_array_almost_equal(meg.time.x, epochs.times)
 
     # with proj
-    meg = load.fiff.epochs(ds, -0.1, 0.3, decim=10, data='mag', proj=True,
-                           reject=2e-12)
-    epochs = load.fiff.mne_epochs(ds, -0.1, 0.3, decim=10, proj=True,
-                                  reject={'mag': 2e-12})
+    with catch_warnings():
+        filterwarnings('ignore', message=FILTER_WARNING)
+        meg = load.fiff.epochs(ds, -0.1, 0.3, decim=10, data='mag', proj=True,
+                               reject=2e-12)
+        epochs = load.fiff.mne_epochs(ds, -0.1, 0.3, decim=10, proj=True,
+                                      reject={'mag': 2e-12})
     picks = pick_types(epochs.info, meg='mag')
     mne_data = epochs.get_data()[:, picks]
     assert_array_almost_equal(meg.x, mne_data, 10)
