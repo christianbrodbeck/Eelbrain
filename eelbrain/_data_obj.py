@@ -552,6 +552,9 @@ def assub(sub, ds=None):
                    "was specified")
             raise TypeError(err)
         sub = ds.eval(sub)
+        if not isinstance(sub, np.ndarray):
+            raise TypeError("sub parameters needs to evaluate to an array, got "
+                            "%s" % repr(sub))
     return sub
 
 

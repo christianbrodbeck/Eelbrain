@@ -18,8 +18,8 @@ from numpy.testing import (assert_equal, assert_array_equal,
 
 from eelbrain import (datasets, load, Var, Factor, NDVar, Datalist, Dataset,
                       Celltable, align, align1, choose, combine)
-from eelbrain._data_obj import (asvar, longname, Categorial, SourceSpace, UTS,
-                                DimensionMismatchError)
+from eelbrain._data_obj import (asvar, assub, longname, Categorial, SourceSpace,
+                                UTS, DimensionMismatchError)
 from eelbrain._stats.stats import rms
 from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,
                                      assert_source_space_equal,
@@ -188,6 +188,16 @@ def test_celltable():
     assert_array_equal(ct.match, Factor('abc', tile=2))
     assert_array_equal(ct.Y, np.tile(np.arange(3.), 2))
     assert_array_equal(ct.X, Factor('ab', repeat=3))
+
+
+def test_coercion():
+    "Test data class coercion"
+    ds = datasets.get_uts()
+    ds['avar'] = Var.from_dict(ds['A'], {'a0': 0, 'a1': 1})
+
+    assert_array_equal(assub("A == 'a0'", ds), ds['A'] == 'a0')
+    assert_array_equal(assub("avar == 0", ds), ds['avar'] == 0)
+    assert_raises(TypeError, assub, "avar == '0'", ds)
 
 
 def test_choose():
