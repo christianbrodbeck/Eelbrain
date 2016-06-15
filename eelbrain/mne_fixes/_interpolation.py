@@ -260,9 +260,9 @@ def _interpolate_bads_meg(epochs, bad_channels_by_epoch, interp_cache):
     bads = tuple(sorted(epochs.info['bads']))
 
     # make sure the cache is based on the correct channels
-    if 'all' not in interp_cache or interp_cache['all'] != epochs.ch_names:
+    if 'ch_names' not in interp_cache or interp_cache['ch_names'] != epochs.ch_names:
         interp_cache.clear()
-        interp_cache['all'] = epochs.ch_names
+        interp_cache['ch_names'] = epochs.ch_names
 
     # create interpolators
     make_interpolators(interp_cache, needed, bads, epochs)
