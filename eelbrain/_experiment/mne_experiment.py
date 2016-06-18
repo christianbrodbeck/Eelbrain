@@ -4912,7 +4912,7 @@ class MneExperiment(FileTree):
         self.set(**kwargs)
         raw = self.load_raw()
         return mne.viz.plot_trans(raw.info, self.get('trans-file'),
-                                  self.get('subject'), self.get('mri-sdir'),
+                                  self.get('mrisubject'), self.get('mri-sdir'),
                                   ch_type, 'head', dig=dig)
 
     def plot_whitened_gfp(self, s_start=None, s_stop=None, run=None):
