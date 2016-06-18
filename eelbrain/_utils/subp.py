@@ -1,4 +1,4 @@
-'''
+"""
 
 for permission errors: try ``os.chmod`` or ``os.chown``
 
@@ -15,7 +15,7 @@ http://codeghar.wordpress.com/2011/12/09/introduction-to-python-subprocess-modul
 Created on Mar 4, 2012
 
 @author: christian
-'''
+"""
 
 import fnmatch
 import logging
@@ -31,42 +31,47 @@ from mne.utils import get_subjects_dir, run_subprocess
 from . import ui
 
 
+# environment variables that can hold the path to this tool
 _env_vars = {'mne': 'MNE_ROOT',
              'freesurfer': 'FREESURFER_HOME',
              'edfapi': 'EYELINK_HOME'}
 
+# bin directory relative to tool location
 _bin_dirs = {'mne': 'bin',
              'freesurfer': 'bin',
-             'edfapi': None}
+             'edfapi': ''}
 
+# binaries to look for to test whether the tool directory is set correctly
 _test_bins = {'mne': ('mne_add_patch_info', 'mne_analyze'),
               'freesurfer': ('mri_annotation2label',),
               'edfapi': ('edf2asc',)}
 
 
-def get_bin(package, name):
-    "Get path for a binary"
+def get_root(package):
+    "Get the root path for a package"
     if package not in _env_vars:
         raise KeyError("Unknown binary package: %r" % package)
     root = mne.get_config(_env_vars[package])
-    if not root:
+    if root:
+        test_root(package, root)
+    else:
         root = _ask_user_for_bin_dir(package)
-    relpath = _bin_dirs[package]
-
-    while True:
-        if relpath:
-            bin_dir = os.path.join(root, relpath)
-        else:
-            bin_dir = root
-        bin_path = os.path.join(bin_dir, name)
-        if os.path.exists(bin_path):
-            return bin_path
-        else:
-            root = _ask_user_for_bin_dir(package)
+    return root
 
 
-def _test_bin_path(package, path):
-    return all(os.path.exists(os.path.join(path, f)) for f in _test_bins[package])
+def get_bin(package, name):
+    "Get path for a binary"
+    root = get_root(package)
+    bin_path = os.path.join(root, _bin_dirs[package], name)
+    if os.path.exists(bin_path):
+        return bin_path
+    else:
+        raise IOError("Binary does not exist: " + bin_path)
+
+
+def test_root(package, root):
+    bin_dir = os.path.join(root, _bin_dirs[package])
+    return all(os.path.exists(os.path.join(bin_dir, f)) for f in _test_bins[package])
 
 
 def _ask_user_for_bin_dir(package):
@@ -84,7 +89,7 @@ def _ask_user_for_bin_dir(package):
     while True:
         answer = ui.ask_dir(title, message, must_exist=True)
         if answer:
-            if _test_bin_path(package, answer):
+            if test_root(package, answer):
                 mne.set_config(_env_vars[package], answer)
                 return answer
             else:
@@ -155,7 +160,6 @@ class edf_file:
 
     def __repr__(self):
         return 'edf_file(%r)' % self.source_path
-
 
 
 def _format_path(path, fmt, is_new=False):
@@ -287,7 +291,6 @@ def process_raw(raw, save='{raw}_filt', args=['projoff'], rm_eve=True, **kwargs)
             print err
 
 
-
 def _run(cmd, v=None, cwd=None, block=True):
     """
     cmd: list of strings
@@ -321,7 +324,6 @@ def _run(cmd, v=None, cwd=None, block=True):
             print stderr
 
         return stdout, stderr
-
 
 
 def setup_mri(subject, subjects_dir=None, ico=4, block=False, redo=False):
@@ -425,10 +427,28 @@ def setup_mri(subject, subjects_dir=None, ico=4, block=False, redo=False):
         os.environ['SUBJECTS_DIR'] = _sub_dir
 
 
+def _run_mne_gui(name, cwd, modal, subject, subjects_dir):
+    root = get_root('mne')
+    env = os.environ.copy()
+    env['MNE_ROOT'] = root
+    if subjects_dir is not None:
+        env['SUBJECTS_DIR'] = subjects_dir
+    if subject:
+        env['SUBJECT'] = subject
+
+    setup_path = os.path.join(root, 'bin', 'mne_setup_sh').replace(' ', '\ ')
+    setup = '. %s' % setup_path
+
+    cmd = os.path.join(root, 'bin', name).replace(' ', '\ ')
+    p = subprocess.Popen(setup + ';' + cmd, shell=True, cwd=cwd, env=env)
+
+    if modal:
+        print("Waiting for %s to be closed..." % name)
+        p.wait()
+
 
 def run_mne_analyze(fif_dir, subject=None, subjects_dir=None, modal=False):
-    """
-    invokes mne_analyze (e.g., for manual coregistration)
+    """invokes mne_analyze (e.g., for manual coregistration)
 
     Parameters
     ----------
@@ -439,7 +459,7 @@ def run_mne_analyze(fif_dir, subject=None, subjects_dir=None, modal=False):
     subjects_dir : None | str
         Override the SUBJECTS_DIR environment variable.
     modal : bool
-        causes the shell to be unresponsive until mne_analyze is closed.
+        Causes the shell to block until mne_analyze is closed.
 
 
     Notes
@@ -465,31 +485,24 @@ def run_mne_analyze(fif_dir, subject=None, subjects_dir=None, modal=False):
     this creates a file next to the raw file with the '-trans.fif' extension.
 
     """
-    env = os.environ.copy()
-    if subjects_dir is not None:
-        env['SUBJECTS_DIR'] = subjects_dir
-
-    os.chdir(fif_dir)
-    setup_path = get_bin('mne', 'mne_setup_sh')
-    bin_path = get_bin('mne', 'mne_analyze')
-    cmd = ['. %s;' % setup_path, bin_path]
-    if subject:
-        cmd.extend(('--subject', subject))
-
-    p = subprocess.Popen(' '.join(cmd), shell=True, env=env)
-    if modal:
-        print "Waiting for mne_analyze to be closed..."
-        p.wait()  # causes the shell to be unresponsive until mne_analyze is closed
+    _run_mne_gui('mne_analyze', fif_dir, modal, subject, subjects_dir)
 
 
-def run_mne_browse_raw(fif_dir, modal=False):
-    os.chdir(fif_dir)
-    setup_path = get_bin('mne', 'mne_setup_sh')
-    p = subprocess.Popen('. %s; mne_browse_raw' % setup_path, shell=True)
-    if modal:
-        print "Waiting for mne_browse_raw to be closed..."
-        p.wait()  # causes the shell to be unresponsive until mne_analyze is closed
+def run_mne_browse_raw(fif_dir, subject=None, subjects_dir=None, modal=False):
+    """Invokes mne_browse_raw
 
+    Parameters
+    ----------
+    fif_dir : str
+        the directory containing the fiff files.
+    subject : None | str
+        The name of the MRI subject.
+    subjects_dir : None | str
+        Override the SUBJECTS_DIR environment variable.
+    modal : bool
+        Causes the shell to block until mne_browse_raw is closed.
+    """
+    _run_mne_gui('mne_browse_raw', fif_dir, modal, subject, subjects_dir)
 
 
 def do_forward_solution(paths=dict(rawfif=None,
@@ -587,7 +600,9 @@ def mne_make_morph_maps(s_to='fsaverage', s_from=None, redo=False, subjects_dir=
         os.environ['SUBJECTS_DIR'] = subjects_dir
     _run(cmd)
 
+
 # freesurfer---
+
 
 def _fs_hemis(arg):
     if arg == '*':
@@ -596,6 +611,7 @@ def _fs_hemis(arg):
         return [arg]
     else:
         raise ValueError("hemi has to be 'lh', 'rh', or '*' (no %r)" % arg)
+
 
 def _fs_subjects(arg, exclude=[], subjects_dir=None):
     if '*' in arg:

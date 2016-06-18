@@ -5021,16 +5021,37 @@ class MneExperiment(FileTree):
         brain.add_label(label, alpha=0.75)
         return brain
 
-    def run_mne_analyze(self, subject=None, modal=False):
-        subjects_dir = self.get('mri-sdir')
-        subject = subject or self.get('mrisubject')
-        fif_dir = self.get('raw-dir', subject=subject)
-        subp.run_mne_analyze(fif_dir, subject=subject,
-                             subjects_dir=subjects_dir, modal=modal)
+    def run_mne_analyze(self, modal=False):
+        """Run mne_analyze
 
-    def run_mne_browse_raw(self, subject=None, modal=False):
-        fif_dir = self.get('raw-dir', subject=subject)
-        subp.run_mne_browse_raw(fif_dir, modal)
+        Parameters
+        ----------
+        modal : bool
+            Causes the shell to block until mne_analyze is closed.
+
+        Notes
+        -----
+        Sets the current directory to raw-dir, and sets the SUBJECT and
+        SUBJECTS_DIR to current values
+        """
+        subp.run_mne_analyze(self.get('raw-dir'), self.get('mrisubject'),
+                             self.get('mri-sdir'), modal)
+
+    def run_mne_browse_raw(self, modal=False):
+        """Run mne_analyze
+
+        Parameters
+        ----------
+        modal : bool
+            Causes the shell to block until mne_browse_raw is closed.
+
+        Notes
+        -----
+        Sets the current directory to raw-dir, and sets the SUBJECT and
+        SUBJECTS_DIR to current values
+        """
+        subp.run_mne_browse_raw(self.get('raw-dir'), self.get('mrisubject'),
+                                self.get('mri-sdir'), modal)
 
     def set(self, subject=None, **state):
         """
