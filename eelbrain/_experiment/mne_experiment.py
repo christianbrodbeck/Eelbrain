@@ -2337,12 +2337,33 @@ class MneExperiment(FileTree):
             raise NotImplementedError("post_baseline_trigger_shift is not "
                                       "implemented for baseline correction in "
                                       "source space")
-        ds = self.load_epochs(subject, sns_baseline, False, cat=cat,
-                              data_raw=data_raw, **kwargs)
-        self._add_epochs_stc(ds, ndvar, src_baseline, morph, mask)
-        if not keep_epochs:
-            del ds['epochs']
-        return ds
+
+        subject, group = self._process_subject_arg(subject, kwargs)
+        if group is not None:
+            if data_raw:
+                raise ValueError("Can not keep data_raw when combining data "
+                                 "from multiple subjects. Set data_raw=False "
+                                 "(default).")
+            elif keep_epochs:
+                raise ValueError("Can not combine Epochs objects for different "
+                                 "subjects. Set keep_epochs=False (default).")
+            elif not morph:
+                raise ValueError("Source estimates can only be combined after "
+                                 "morphing data to common brain model. Set "
+                                 "morph=True.")
+            dss = []
+            for _ in self.iter(group=group):
+                ds = self.load_epochs_stc(None, sns_baseline, src_baseline,
+                                          ndvar, cat, keep_epochs, morph, mask)
+                dss.append(ds)
+            return combine(dss)
+        else:
+            ds = self.load_epochs(subject, sns_baseline, False, cat=cat,
+                                  data_raw=data_raw, **kwargs)
+            self._add_epochs_stc(ds, ndvar, src_baseline, morph, mask)
+            if not keep_epochs:
+                del ds['epochs']
+            return ds
 
     def load_events(self, subject=None, add_proj=True, add_bads=True,
                     data_raw=True, edf=True, **kwargs):
