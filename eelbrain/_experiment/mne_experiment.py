@@ -908,7 +908,6 @@ class MneExperiment(FileTree):
         # Experiment class setup
         ########################
         self._register_field('mri', sorted(self._mri_subjects))
-        self._register_field('mrisubject')
         self._register_field('subject', subjects or None)
         self._register_field('group', self._groups.keys(), 'all',
                              post_set_handler=self._post_set_group)
@@ -942,6 +941,10 @@ class MneExperiment(FileTree):
         self._register_field('freq', self._freqs.keys())
         self._register_field('src', ('ico-4', 'vol-10', 'vol-7', 'vol-5'))
         self._register_field('select_clusters', self._cluster_criteria.keys())
+
+        # slave fields
+        self._register_field('mrisubject', depends_on=('mri', 'subject'),
+                             slave_handler=self._update_mrisubject)
 
         # compounds
         self._register_compound('bads-compound', ('experiment', 'modality'))
@@ -5092,13 +5095,6 @@ class MneExperiment(FileTree):
         """
         if subject is not None:
             state['subject'] = subject
-            if 'mrisubject' not in state:
-                if 'mri' in state:
-                    mri = state['mri']
-                else:
-                    mri = self.get('mri')
-                state['mrisubject'] = self._mri_subjects[mri][subject]
-
         FileTree.set(self, **state)
 
     def _post_set_group(self, _, group):
@@ -5212,6 +5208,11 @@ class MneExperiment(FileTree):
         if unordered_factors:
             model.extend(unordered_factors)
         return '%'.join(model)
+
+    def _update_mrisubject(self, fields):
+        mri = fields['mri']
+        subject = fields['subject']
+        return self._mri_subjects[mri][subject]
 
     def _eval_parc(self, parc):
         if parc in self._parcs:
