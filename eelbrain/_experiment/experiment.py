@@ -147,6 +147,8 @@ class TreeModel(object):
         self._eval_handlers = defaultdict(list)
         self._post_set_handlers = defaultdict(list)
         self._set_handlers = {}
+        self._slave_fields = defaultdict(list)
+        self._slave_handlers = {}
 
         # construct initial state: make all defaults available, then set as
         # many values as we can
@@ -268,7 +270,8 @@ class TreeModel(object):
         self._fields[key] = value
 
     def _register_field(self, key, values=None, default=None, set_handler=None,
-                        eval_handler=None, post_set_handler=None):
+                        eval_handler=None, post_set_handler=None,
+                        depends_on=None, slave_handler=None):
         """Register an iterable field
 
         Parameters
@@ -289,10 +292,23 @@ class TreeModel(object):
         post_set_handler : None | callable
             Function to call after the value is changed. Needs to be able to
             handle non-existing values for ``e.set(..., vmatch=False)`` calls.
+        depends_on : str | sequence of str
+            Slave fields: Fields in depends_on trigger change in ``key``.
+        handler : func
+            Slave fields: Function that determines the new value of ``key``.
         """
         if key in self._fields:
             raise KeyError("Field already exists: %r" % key)
 
+        if depends_on is not None:
+            if (set_handler is not None or eval_handler is not None or
+                        post_set_handler is not None):
+                raise RuntimeError("Slave values can't have other handlers")
+            elif slave_handler is None:
+                raise RuntimeError("Slave value requires slave_handler")
+            self._register_slave_field(key, depends_on, slave_handler)
+            if default is None:
+                default = slave_handler(self._fields)
         if set_handler is not None:
             self._bind_set(key, set_handler)
         if eval_handler is not None:
@@ -321,6 +337,30 @@ class TreeModel(object):
         if default is not None:
             self.set(**{key: default})
 
+    def _register_slave_field(self, key, depends_on, handler):
+        """Register a field that strictly depends on one or more other fields
+
+        Parameters
+        ----------
+        key : str
+            Field name.
+        depends_on : str | sequence of str
+            Fields that trigger change.
+        handler : func
+            Function that determines the new value.
+
+        Notes
+        -----
+        Restrictions:
+
+        - Slave fields can not have any other handlers
+        - Slave fields can not depend on other slave fields
+        """
+        if isinstance(depends_on, basestring):
+            depends_on = (depends_on,)
+        for dep in depends_on:
+            self._slave_fields[dep].append(key)
+        self._slave_handlers[key] = handler
 
     def expand_template(self, temp, keep=()):
         """Expand all constant variables in a template
@@ -628,6 +668,14 @@ class TreeModel(object):
                 raise ValueError(err)
 
         self._fields.update(state)
+
+        # fields depending on changes in other fields
+        slave_state = {}
+        for state_key in set(state).union(handled_state).intersection(self._slave_fields):
+            for slave_key in self._slave_fields[state_key]:
+                if slave_key not in slave_state:
+                    slave_state[slave_key] = self._slave_handlers[slave_key](self._fields)
+        self._fields.update(slave_state)
 
         # call post_set handlers
         for k, v in chain(state.iteritems(), handled_state.iteritems()):
