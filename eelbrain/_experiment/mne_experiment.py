@@ -2337,12 +2337,33 @@ class MneExperiment(FileTree):
             raise NotImplementedError("post_baseline_trigger_shift is not "
                                       "implemented for baseline correction in "
                                       "source space")
-        ds = self.load_epochs(subject, sns_baseline, False, cat=cat,
-                              data_raw=data_raw, **kwargs)
-        self._add_epochs_stc(ds, ndvar, src_baseline, morph, mask)
-        if not keep_epochs:
-            del ds['epochs']
-        return ds
+
+        subject, group = self._process_subject_arg(subject, kwargs)
+        if group is not None:
+            if data_raw:
+                raise ValueError("Can not keep data_raw when combining data "
+                                 "from multiple subjects. Set data_raw=False "
+                                 "(default).")
+            elif keep_epochs:
+                raise ValueError("Can not combine Epochs objects for different "
+                                 "subjects. Set keep_epochs=False (default).")
+            elif not morph:
+                raise ValueError("Source estimates can only be combined after "
+                                 "morphing data to common brain model. Set "
+                                 "morph=True.")
+            dss = []
+            for _ in self.iter(group=group):
+                ds = self.load_epochs_stc(None, sns_baseline, src_baseline,
+                                          ndvar, cat, keep_epochs, morph, mask)
+                dss.append(ds)
+            return combine(dss)
+        else:
+            ds = self.load_epochs(subject, sns_baseline, False, cat=cat,
+                                  data_raw=data_raw, **kwargs)
+            self._add_epochs_stc(ds, ndvar, src_baseline, morph, mask)
+            if not keep_epochs:
+                del ds['epochs']
+            return ds
 
     def load_events(self, subject=None, add_proj=True, add_bads=True,
                     data_raw=True, edf=True, **kwargs):
@@ -4874,19 +4895,25 @@ class MneExperiment(FileTree):
         self.brain = brain
         return brain
 
-    def plot_coreg(self, ch_type=None, **kwargs):
+    def plot_coreg(self, ch_type=None, dig=True, **kwargs):
         """Plot the coregistration (Head shape and MEG helmet)
 
         Parameters
         ----------
         ch_type : 'meg' | 'eeg'
             Plot only MEG or only EEG sensors (default is both).
+        dig : bool
+            Plot the digitization points (default True).
+
+        Notes
+        -----
+        Uses :func:`mne.viz.plot_trans`
         """
         self.set(**kwargs)
         raw = self.load_raw()
         return mne.viz.plot_trans(raw.info, self.get('trans-file'),
-                                  self.get('subject'), self.get('mri-sdir'),
-                                  ch_type, 'head')
+                                  self.get('mrisubject'), self.get('mri-sdir'),
+                                  ch_type, 'head', dig=dig)
 
     def plot_whitened_gfp(self, s_start=None, s_stop=None, run=None):
         """Plot the GFP of the whitened evoked to evaluate the the covariance matrix
@@ -4994,16 +5021,37 @@ class MneExperiment(FileTree):
         brain.add_label(label, alpha=0.75)
         return brain
 
-    def run_mne_analyze(self, subject=None, modal=False):
-        subjects_dir = self.get('mri-sdir')
-        subject = subject or self.get('mrisubject')
-        fif_dir = self.get('raw-dir', subject=subject)
-        subp.run_mne_analyze(fif_dir, subject=subject,
-                             subjects_dir=subjects_dir, modal=modal)
+    def run_mne_analyze(self, modal=False):
+        """Run mne_analyze
 
-    def run_mne_browse_raw(self, subject=None, modal=False):
-        fif_dir = self.get('raw-dir', subject=subject)
-        subp.run_mne_browse_raw(fif_dir, modal)
+        Parameters
+        ----------
+        modal : bool
+            Causes the shell to block until mne_analyze is closed.
+
+        Notes
+        -----
+        Sets the current directory to raw-dir, and sets the SUBJECT and
+        SUBJECTS_DIR to current values
+        """
+        subp.run_mne_analyze(self.get('raw-dir'), self.get('mrisubject'),
+                             self.get('mri-sdir'), modal)
+
+    def run_mne_browse_raw(self, modal=False):
+        """Run mne_analyze
+
+        Parameters
+        ----------
+        modal : bool
+            Causes the shell to block until mne_browse_raw is closed.
+
+        Notes
+        -----
+        Sets the current directory to raw-dir, and sets the SUBJECT and
+        SUBJECTS_DIR to current values
+        """
+        subp.run_mne_browse_raw(self.get('raw-dir'), self.get('mrisubject'),
+                                self.get('mri-sdir'), modal)
 
     def set(self, subject=None, **state):
         """
