@@ -53,7 +53,7 @@ class Topomap(SensorMapMixin, _EelFigure):
         the top end of the plot).
     mark : Sensor index
         Sensors which to mark.
-    sensorlabels : None | 'index' | 'name' | 'fullname'
+    sensorlabels : 'none' | 'index' | 'name' | 'fullname'
         Show sensor labels. For 'name', any prefix common to all names
         is removed; with 'fullname', the full name is shown.
     ds : None | Dataset
@@ -126,7 +126,7 @@ class Topomap(SensorMapMixin, _EelFigure):
             self._plots.append(h)
             sensor_plots.append(h.sensors)
 
-        SensorMapMixin.__init__(self, sensor_plots, sensorlabels)
+        SensorMapMixin.__init__(self, sensor_plots)
         self._show()
 
     def add_contour(self, meas, level, color='k'):
