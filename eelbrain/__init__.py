@@ -44,4 +44,4 @@ from . import testnd
 from .fmtxt import Report
 
 
-__version__ = '0.23.1'
+__version__ = '0.23.2'
