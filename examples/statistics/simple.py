@@ -1,8 +1,6 @@
 from eelbrain import *
 import numpy as np
 
-np.random.seed(2)
-
 y = np.empty(21)
 y[:14] = np.random.normal(0, 1, 14)
 y[14:] = np.random.normal(1.5, 1, 7)

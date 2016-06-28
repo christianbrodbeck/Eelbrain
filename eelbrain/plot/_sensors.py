@@ -94,14 +94,15 @@ class _plt_connectivity:
 class _ax_map2d:
 
     def __init__(self, ax, sensors, proj, extent, size, color, marker,
-                 mark=None, head_radius=None, head_pos=0., head_linewidth=None):
+                 mark=None, head_radius=None, head_pos=0., head_linewidth=None,
+                 labels='none'):
         self.ax = ax
 
         # ax.set_frame_on(False)
         ax.set_axis_off()
 
         self.sensors = _plt_map2d(ax, sensors, proj, extent, marker, size,
-                                  color, mark, None, None, None, True,
+                                  color, mark, None, None, labels, True,
                                   head_radius, head_pos, head_linewidth)
 
         locs = sensors.get_locs_2d(proj, extent, SENSORMAP_FRAME)
@@ -131,10 +132,6 @@ class _plt_map2d:
             Axes.
         sensors : Sensor
             Sensor dimension.
-
-        labels : None | 'index' | 'name' | 'fullname'
-            Content of the labels. For 'name', any prefix common to all names
-            is removed; with 'fullname', the full name is shown.
         """
         self.ax = ax
         self.sensors = sensors
@@ -159,7 +156,8 @@ class _plt_map2d:
         self._sensor_h = ax.scatter(self.locs[index, 0], self.locs[index, 1],
                                     size, color, marker)
 
-        self._label_h = []
+        self._label_h = []  # handles for label text objects
+        self._label_text = 'none'  # currently shown label text
         if labels:
             self.show_labels(labels)
 
@@ -206,7 +204,7 @@ class _plt_map2d:
 
         Parameters
         ----------
-        text : None | 'index' | 'name' | 'fullname'
+        labels : 'none' | 'index' | 'name' | 'fullname'
             Content of the labels. For 'name', any prefix common to all names
             is removed; with 'fullname', the full name is shown.
         xpos, ypos : scalar
@@ -214,14 +212,24 @@ class _plt_map2d:
         text_kwargs : **
             Matplotlib text parameters.
         """
+        if not text:
+            text = 'none'
+        elif text not in ('none', 'index', 'name', 'fullname'):
+            raise ValueError("Invalid sensor label argument: %s. Need one of "
+                             "'none' | 'index' | 'name' | 'fullname'" %
+                             repr(text))
+
+        if text == self._label_text:
+            return
+        self._label_text = text
+
         # remove existing labels
         while self._label_h:
             self._label_h.pop().remove()
 
-        if not text or text == 'none':
+        if text == 'none':
             return
-
-        if text == 'index':
+        elif text == 'index':
             labels = map(str, xrange(len(self.sensors)))
         elif text == 'name':
             labels = self.sensors.names
@@ -231,8 +239,7 @@ class _plt_map2d:
         elif text == 'fullname':
             labels = self.sensors.names
         else:
-            err = "text has to be 'index' or 'name', can't be %r" % text
-            raise NotImplementedError(err)
+            raise RuntimeError("text=%s" % repr(text))
 
         locs = self.locs
         if self._index is not None:
@@ -299,22 +306,19 @@ class SensorMapMixin:
     __label_options = ['None', 'Index', 'Name', 'Full Name']
     __label_option_args = ['none', 'index', 'name', 'fullname']
 
-    def __init__(self, sensor_plots, label=None):
+    def __init__(self, sensor_plots):
         """Call after EelFigure init (toolbar fill)
 
         Parameters
         ----------
         sensor_plots : list of _plt_map2d
             Sensor-map objects.
-        label : None | str
-            Initial label argument (default None).
         """
-        if not label:
-            label = 'none'
         self.__label_color = 'k'
-        self.__check_label_arg(label)
         self.__sensor_plots = sensor_plots
-        self.__LabelChoice.SetSelection(self.__label_option_args.index(label))
+        # find current label text
+        sel = self.__label_option_args.index(sensor_plots[0]._label_text)
+        self.__LabelChoice.SetSelection(sel)
 
     def _fill_toolbar(self, tb):
         import wx
@@ -339,10 +343,6 @@ class SensorMapMixin:
         btn = wx.Button(tb, label="Mark")  # , style=wx.BU_EXACTFIT)
         btn.Bind(wx.EVT_BUTTON, self.__OnMarkSensor)
         tb.AddControl(btn)
-
-    def __check_label_arg(self, arg):
-        if arg not in self.__label_option_args:
-            raise ValueError("Invalid sensor label argument: %s" % repr(arg))
 
     def __OnMarkSensor(self, event):
         import wx
@@ -418,17 +418,15 @@ class SensorMapMixin:
 
         Parameters
         ----------
-        labels : None | 'name' | 'index'
+        labels : 'none' | 'index' | 'name' | 'fullname'
             Content of the labels. For 'name', any prefix common to all names
             is removed; with 'fullname', the full name is shown.
         """
-        self.__check_label_arg(text)
-        if hasattr(self, '_SensorLabelChoice'):
-            sel = self.__label_option_args.index(text)
-            self.__LabelChoice.SetSelection(sel)
-
+        # update plots
         for p in self.__sensor_plots:
             p.show_labels(text, color=self.__label_color)
+        # update GUI
+        self.__LabelChoice.SetSelection(self.__label_option_args.index(text))
         self.draw()
 
 
@@ -658,7 +656,7 @@ class SensorMap(SensorMapMixin, _EelFigure):
     ----------
     sensors : NDVar | Sensor
         sensor-net object or object containing sensor-net
-    labels : None | 'index' | 'name' | 'fullname'
+    labels : 'none' | 'index' | 'name' | 'fullname'
         Content of the labels. For 'name', any prefix common to all names
         is removed; with 'fullname', the full name is shown.
     proj:
@@ -711,11 +709,8 @@ class SensorMap(SensorMapMixin, _EelFigure):
         self._connectivity = None
 
         self._markers = _ax_map2d(ax, sensors, proj, 1, size, color, marker,
-                                  mark, head_radius, head_pos)
+                                  mark, head_radius, head_pos, labels=labels)
         SensorMapMixin.__init__(self, [self._markers.sensors])
-
-        if labels:
-            self.set_label_text(labels)
 
         if connectivity:
             self.show_connectivity()
