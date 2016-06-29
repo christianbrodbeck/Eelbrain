@@ -17,6 +17,11 @@ import sys
 from setuptools import setup, find_packages, Extension
 import numpy as np
 
+
+DESC = """
+GitHub: <https://github.com/christianbrodbeck/Eelbrain>
+"""
+
 # version must be in X.X.X format, e.g., "0.0.3dev"
 with open('eelbrain/__init__.py') as fid:
     text = fid.read()
@@ -43,7 +48,7 @@ kwargs = dict(name='eelbrain',
               author="Christian Brodbeck",
               author_email='christianbrodbeck@nyu.edu',
               license='GPL3',
-              long_description=open('README.txt').read(),
+              long_description=DESC,
               install_requires=['keyring >= 5',
                                 'tex >= 1.8',
                                 'mne >= 0.10',
