@@ -1,7 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import logging
 
-from nose.tools import eq_, ok_
+from nose.tools import eq_, ok_, assert_raises
 import numpy as np
 
 from eelbrain import Factor, Var
@@ -43,3 +43,5 @@ def test_permutation_sign_flip():
     ok_(np.all(res.min(1) < 0), "Not all permutations have a sign flip")
     for i, row in enumerate(res):
         eq_(np.any(np.all(row == res[:i], 1)), False)
+
+    assert_raises(NotImplementedError, permute_sign_flip(63).next)

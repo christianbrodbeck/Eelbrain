@@ -137,6 +137,9 @@ def permute_sign_flip(n, samples=10000, seed=0):
 
     # determine possible number of permutations
     n_perm = 2 ** n
+    if n > 62:
+        raise NotImplementedError("Too many cases for sign permutation "
+                                  "without repetition")
     if samples < 0:
         # do all permutations
         sample_sequences = xrange(1, n_perm)
