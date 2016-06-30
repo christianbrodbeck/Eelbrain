@@ -410,6 +410,8 @@ class t_contrast_rel(_Result):
         Minimum duration for clusters (in seconds).
     minsource : int
         Minimum number of sources per cluster.
+    force_permutation: bool
+        Conduct permutations regardless of whether there are any clusters.
 
     Notes
     -----
@@ -442,7 +444,7 @@ class t_contrast_rel(_Result):
 
     def __init__(self, Y, X, contrast, match=None, sub=None, ds=None, tail=0,
                  samples=None, pmin=None, tmin=None, tfce=False, tstart=None,
-                 tstop=None, parc=None, **criteria):
+                 tstop=None, parc=None, force_permutation=False, **criteria):
         ct = Celltable(Y, X, match, sub, ds=ds, coercion=asndvar)
 
         # setup contrast
@@ -470,7 +472,8 @@ class t_contrast_rel(_Result):
                 threshold = None
 
             cdist = _ClusterDist(ct.Y, samples, threshold, tail, 't',
-                                 "t-contrast", tstart, tstop, criteria, parc)
+                                 "t-contrast", tstart, tstop, criteria,
+                                 parc, force_permutation)
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 iterator = permute_order(len(ct.Y), samples, unit=ct.match)
@@ -710,6 +713,8 @@ class ttest_1samp(_Result):
         Minimum duration for clusters (in seconds).
     minsource : int
         Minimum number of sources per cluster.
+    force_permutation: bool
+        Conduct permutations regardless of whether there are any clusters.
 
     Attributes
     ----------
@@ -734,7 +739,7 @@ class ttest_1samp(_Result):
 
     def __init__(self, Y, popmean=0, match=None, sub=None, ds=None, tail=0,
                  samples=None, pmin=None, tmin=None, tfce=False, tstart=None,
-                 tstop=None, parc=None, **criteria):
+                 tstop=None, parc=None, force_permutation=False, **criteria):
         ct = Celltable(Y, match=match, sub=sub, ds=ds, coercion=asndvar)
 
         n = len(ct.Y)
@@ -772,7 +777,7 @@ class ttest_1samp(_Result):
             n_samples, samples = _resample_params(len(y_perm), samples)
             cdist = _ClusterDist(y_perm, n_samples, threshold, tail, 't',
                                  '1-Sample t-Test', tstart, tstop, criteria,
-                                 parc)
+                                 parc, force_permutation)
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 iterator = permute_sign_flip(n, samples)
@@ -871,6 +876,8 @@ class ttest_ind(_Result):
         Minimum duration for clusters (in seconds).
     minsource : int
         Minimum number of sources per cluster.
+    force_permutation: bool
+        Conduct permutations regardless of whether there are any clusters.
 
     Attributes
     ----------
@@ -898,7 +905,7 @@ class ttest_ind(_Result):
 
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=None, pmin=None, tmin=None, tfce=False,
-                 tstart=None, tstop=None, parc=None, **criteria):
+                 tstart=None, tstop=None, parc=None, force_permutation=False, **criteria):
         ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar)
         c1, c0 = ct.cat
 
@@ -926,7 +933,7 @@ class ttest_ind(_Result):
 
             cdist = _ClusterDist(ct.Y, samples, threshold, tail, 't',
                                  'Independent Samples t-Test', tstart, tstop,
-                                 criteria, parc)
+                                 criteria, parc, force_permutation)
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 def test_func(y, out, perm):
@@ -1069,6 +1076,8 @@ class ttest_rel(_Result):
         Minimum duration for clusters (in seconds).
     minsource : int
         Minimum number of sources per cluster.
+    force_permutation: bool
+        Conduct permutations regardless of whether there are any clusters.
 
     Attributes
     ----------
@@ -1101,7 +1110,7 @@ class ttest_rel(_Result):
 
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=None, pmin=None, tmin=None, tfce=False,
-                 tstart=None, tstop=None, parc=None, **criteria):
+                 tstart=None, tstop=None, parc=None, force_permutation=False, **criteria):
         if match is None:
             msg = ("The `match` argument needs to be specified for a related "
                    "samples t-test.")
@@ -1139,7 +1148,7 @@ class ttest_rel(_Result):
             n_samples, samples = _resample_params(len(diff), samples)
             cdist = _ClusterDist(diff, n_samples, threshold, tail, 't',
                                  'Related Samples t-Test', tstart, tstop,
-                                 criteria, parc)
+                                 criteria, parc, force_permutation)
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 iterator = permute_sign_flip(n, samples)
@@ -1431,6 +1440,8 @@ class anova(_MultiEffectResult):
         Minimum duration for clusters (in seconds).
     minsource : int
         Minimum number of sources per cluster.
+    force_permutation: bool
+        Conduct permutations regardless of whether there are any clusters.
 
     Attributes
     ----------
@@ -1453,7 +1464,7 @@ class anova(_MultiEffectResult):
 
     def __init__(self, Y, X, sub=None, ds=None, samples=None, pmin=None,
                  fmin=None, tfce=False, tstart=None, tstop=None, match=None,
-                 parc=None, **criteria):
+                 parc=None, force_permutation=False, **criteria):
         sub_arg = sub
         sub = assub(sub, ds)
         Y = asndvar(Y, sub, ds)
@@ -1484,7 +1495,7 @@ class anova(_MultiEffectResult):
                 thresholds = (None for _ in xrange(len(effects)))
 
             cdists = [_ClusterDist(Y, samples, thresh, 1, 'F', e.name, tstart,
-                                   tstop, criteria, parc)
+                                   tstop, criteria, parc, force_permutation)
                       for e, thresh in izip(effects, thresholds)]
 
             # Find clusters in the actual data
@@ -1940,7 +1951,7 @@ class _ClusterDist:
         ``cdist.add_perm(pmap)``.
     """
     def __init__(self, y, samples, threshold, tail=0, meas='?', name=None,
-                 tstart=None, tstop=None, criteria={}, parc=None):
+                 tstart=None, tstop=None, criteria={}, parc=None, force_permutation=False):
         """Accumulate information on a cluster statistic.
 
         Parameters
@@ -1971,6 +1982,8 @@ class _ClusterDist:
             Collect permutation extrema for all regions of the parcellation of
             this dimension. For threshold-based test, the regions are
             disconnected.
+        force_permutation : bool
+            Conduct permutations regardless of whether there are any clusters.
         """
         assert y.has_case
         assert parc is None or isinstance(parc, basestring)
@@ -2103,6 +2116,9 @@ class _ClusterDist:
             map_args = (kind, tail, max_axes, parc_indexes, shape,
                         all_adjacent, connectivity, threshold, criteria_)
 
+        if force_permutation and not samples:
+            raise ValueError("Cannot force permutations unless samples is non-zero.")
+
         self.kind = kind
         self.y_perm = y_perm
         self.dims = y_perm.dims
@@ -2131,6 +2147,7 @@ class _ClusterDist:
         self._finalized = False
         self._init_time = current_time()
         self._host = socket.gethostname()
+        self.force_permutation = force_permutation
 
         from .. import __version__
         self._version = __version__
@@ -2194,7 +2211,8 @@ class _ClusterDist:
         self.has_original = True
         self.dt_original = self._t0 - self._init_time
         self._original_param_map = stat_map
-        if self.samples and n_clusters:
+
+        if self.force_permutation or (self.samples and n_clusters):
             self._create_dist()
             self.do_permutation = True
         else:
@@ -2861,6 +2879,51 @@ class _ClusterDist:
         l.add_item("Original time:  %s" % timedelta(seconds=round(self.dt_original)))
         l.add_item("Permutation time:  %s" % timedelta(seconds=round(self.dt_perm)))
         return l
+
+
+class _MergedTemporalClusterDist:
+
+    def __init__(self, cdists):
+        if isinstance(cdists[0], list):
+            self.effects = [d.name for d in cdists[0]]
+            self.samples = cdists[0][0].samples
+            dist = {}
+            for i, effect in enumerate(self.effects):
+                if any(d[i].n_clusters for d in cdists):
+                    dist[effect] = np.column_stack([d[i].dist for d in cdists if d[i].dist is not None])
+            if len(dist):
+                dist = {c: d.max(1) for c, d in dist.iteritems()}
+        else:
+            self.samples = cdists[0].samples
+            if any(d.n_clusters for d in cdists):
+                dist = np.column_stack([d.dist for d in cdists if d.dist is not None])
+                dist = dist.max(1)
+            else:
+                dist = None
+
+        self.dist = dist
+
+    def correct_cluster_p(self, res):
+        clusters = res.find_clusters()
+        keys = clusters.keys()
+
+        if not clusters.n_cases:
+            return clusters
+        if isinstance(res, _MultiEffectResult):
+            keys.insert(-1, 'p_parc')
+            cluster_p_corr = []
+            for cl in clusters.itercases():
+                n_larger = np.sum(self.dist[cl['effect']] > np.abs(cl['v']))
+                cluster_p_corr.append(float(n_larger) / self.samples)
+        else:
+            keys.append('p_parc')
+            vs = np.array(clusters['v'])
+            n_larger = np.sum(self.dist > np.abs(vs[:, None]), 1)
+            cluster_p_corr = n_larger / self.samples
+        clusters['p_parc'] = Var(cluster_p_corr)
+        clusters = clusters[keys]
+
+        return clusters
 
 
 def distribution_worker(dist_array, dist_shape, in_queue):

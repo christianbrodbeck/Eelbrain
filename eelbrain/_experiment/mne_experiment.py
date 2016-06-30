@@ -41,6 +41,7 @@ from .._report import named_list, enumeration
 from .._resources import predefined_connectivity
 from .._stats import spm
 from .._stats.stats import ttest_t
+from .._stats.testnd import _MergedTemporalClusterDist
 from .._utils import subp, ui, keydefaultdict
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .experiment import FileTree
@@ -4388,6 +4389,9 @@ class MneExperiment(FileTree):
         if not redo and self._result_mtime(dst, 'src'):
             return
 
+        if samples < 1:
+            raise ValueError("Need samples > 0 to run permutation test.")
+
         # load data
         label_names = None
         dss = []
@@ -4444,11 +4448,24 @@ class MneExperiment(FileTree):
         model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
         test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, ('time',), None)
+        label_results = {}
+        force_permutation = (len(labels_lh) + len(labels_rh) > 1)
+        for label in labels_lh + labels_rh:
+            res = self._make_test(ds[label_keys[label]], ds, test, test_kwargs,
+                                  force_permutation)
+            label_results[label] = res
+        if force_permutation:
+            cdists = [r._cdist for r in label_results.values()]
+            merged_dist = _MergedTemporalClusterDist(cdists)
+        else:
+            merged_dist = None
+
         for hemi, label_names in (('Left', labels_lh), ('Right', labels_rh)):
             section = report.add_section("%s Hemisphere" % hemi)
             for label in label_names:
-                res = self._make_test(ds[label_keys[label]], ds, test, test_kwargs)
-                _report.roi_timecourse(section, ds, label, res, colors)
+                res = label_results[label]
+                _report.roi_timecourse(section, ds, label, res, colors,
+                                       merged_dist=merged_dist)
 
         # compose info
         self._report_test_info(info_section, ds, test, res, 'src')
@@ -4716,7 +4733,7 @@ class MneExperiment(FileTree):
             kwargs.update(self._cluster_criteria_kwargs(dims))
         return kwargs
 
-    def _make_test(self, y, ds, test, kwargs):
+    def _make_test(self, y, ds, test, kwargs, force_permutation=False):
         """Compute test results
 
         Parameters
@@ -4729,17 +4746,22 @@ class MneExperiment(FileTree):
             Name of the test to perform
         kwargs : dict
             Test parameters (from :meth:`._test_kwargs`).
+        force_permutation : bool
+            Conduct permutations regardless of whether there are any clusters.
         """
         p = self._tests[test]
         kind = p['kind']
         if kind == 'ttest_rel':
             res = testnd.ttest_rel(y, p['model'], p['c1'], p['c0'], 'subject',
-                                   ds=ds, tail=p.get('tail', 0), **kwargs)
+                                   ds=ds, tail=p.get('tail', 0),
+                                   force_permutation=force_permutation, **kwargs)
         elif kind == 't_contrast_rel':
             res = testnd.t_contrast_rel(y, p['model'], p['contrast'], 'subject',
-                                        ds=ds, tail=p.get('tail', 0), **kwargs)
+                                        ds=ds, tail=p.get('tail', 0),
+                                        force_permutation=force_permutation, **kwargs)
         elif kind == 'anova':
-            res = testnd.anova(y, p['x'], match='subject', ds=ds, **kwargs)
+            res = testnd.anova(y, p['x'], match='subject', ds=ds,
+                               force_permutation=force_permutation, **kwargs)
         else:
             raise RuntimeError("Test kind=%s" % repr(kind))
 
