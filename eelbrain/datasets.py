@@ -74,20 +74,28 @@ def get_mne_stc(ndvar=False):
 
 
 def _mne_source_space(subject, src_tag, subjects_dir):
-    """Load mne source space"""
+    """Load mne source space
+
+    Parameters
+    ----------
+    subject : str
+        Subejct
+    src_tag : str
+        Spacing (e.g., 'ico-4').
+    """
     src_file = os.path.join(subjects_dir, subject, 'bem',
                             '%s-%s-src.fif' % (subject, src_tag))
-    src = src_tag[:3]
+    src, spacing = src_tag.split('-')
     if os.path.exists(src_file):
         return mne.read_source_spaces(src_file, False)
     elif src == 'ico':
-        return mne.setup_source_space(subject, src_file, 'ico4',
+        return mne.setup_source_space(subject, src_file, src + spacing,
                                       subjects_dir=subjects_dir, add_dist=True)
     elif src == 'vol':
         mri_file = os.path.join(subjects_dir, subject, 'mri', 'orig.mgz')
         bem_file = os.path.join(subjects_dir, subject, 'bem',
                                 'sample-5120-5120-5120-bem-sol.fif')
-        return mne.setup_volume_source_space(subject, src_file, pos=10.,
+        return mne.setup_volume_source_space(subject, src_file, float(spacing),
                                              mri=mri_file, bem=bem_file,
                                              mindist=0., exclude=0.,
                                              subjects_dir=subjects_dir)

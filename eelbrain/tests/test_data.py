@@ -1089,7 +1089,6 @@ def test_source_space():
     data_path = mne.datasets.sample.data_path()
     mri_sdir = os.path.join(data_path, 'subjects')
     mri_dir = os.path.join(mri_sdir, subject)
-    src_path = os.path.join(mri_dir, 'bem', subject + '-ico-5-src.fif')
     label_dir = os.path.join(mri_dir, 'label')
     label_ba1 = mne.read_label(os.path.join(label_dir, 'lh.BA1.label'))
     label_v1 = mne.read_label(os.path.join(label_dir, 'lh.V1.label'))
@@ -1097,7 +1096,7 @@ def test_source_space():
     label_ba1_v1 = label_ba1 + label_v1
     label_v1_mt = label_v1 + label_mt
 
-    src = mne.read_source_spaces(src_path)
+    src = datasets._mne_source_space(subject, 'ico-5', mri_sdir)
     source = SourceSpace((src[0]['vertno'], src[1]['vertno']), subject,
                          'ico-5', mri_sdir)
     index = source.dimindex(label_v1)
