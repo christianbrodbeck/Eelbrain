@@ -166,10 +166,8 @@ class Document(FileDocument):
         FileDocument.__init__(self, path)
         if isinstance(ds, mne.Epochs):
             epochs = ds
-            if not epochs.preload:
-                err = ("Need Epochs with preloaded data (preload=True)")
-                raise ValueError(err)
             ds = Dataset()
+            epochs.load_data()
             ds[data] = epochs
             ds['trigger'] = Var(epochs.events[:, 2])
 
