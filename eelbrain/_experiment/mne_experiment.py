@@ -231,6 +231,7 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {experiment}.log')
         'bem-sol-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),  # removed, but here to delete old files
         'head-bem-file': os.path.join('{bem-dir}', '{mrisubject}-head.fif'),
         'src-file': os.path.join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
+        'fiducials-file': os.path.join('{bem-dir}', '{mrisubject}-fiducials.fif'),
         # Labels
         'hemi': ('lh', 'rh'),
         'label-dir': os.path.join('{mri-dir}', 'label'),
