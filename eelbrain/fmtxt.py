@@ -1611,23 +1611,19 @@ class Section(FMText):
         self.append(figure)
         return figure
 
-    def add_image_figure(self, image, caption, alt=None, from_file=None):
+    def add_image_figure(self, image, caption, alt=None):
         """Add an image in a figure frame to the section
 
         Parameters
         ----------
-        image : str | Image
-            Image or target filename for the image (should have the appropriate
-            extension; if a document has multiple images with the same name,
-            a unique integer is appended).
+        image : Image | array | str
+            Image, image array or target filename for the image. If a filename
+            it should have the appropriate extension.
         caption : FMText
             Figure caption.
         alt : None | str
             Alternate text, placeholder in case the image can not be found
             (HTML `alt` tag).
-        from_file : None | str
-            Path to an existing image file. Add an image that already exists
-            in a file.
 
         Returns
         -------
@@ -1647,22 +1643,14 @@ class Section(FMText):
 
         """
         if isinstance(image, str):
-            if from_file is None:
-                name, ext = os.path.splitext(image)
-                if ext:
-                    format = ext[1:]
-                else:
-                    format = 'png'
-                image = Image(name, format, alt)
+            name, ext = os.path.splitext(image)
+            if ext:
+                format = ext[1:]
             else:
-                _, ext_src = os.path.splitext(from_file)
-                name, ext_dst = os.path.splitext(image)
-                if ext_dst and ext_dst != ext_src:
-                    err = ("The extension of the image filename (%s) does not "
-                           "correspond to the input image file (%s)." %
-                           (ext_dst, ext_src))
-                    raise ValueError(err)
-                image = Image.from_file(from_file, name, ext_src[1:], alt)
+                format = 'png'
+            image = Image(name, format, alt)
+        elif isinstance(image, np.ndarray):
+            image = Image.from_array(image, alt=alt)
         else:
             image = asfmtext(image)
 
