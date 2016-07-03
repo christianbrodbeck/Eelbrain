@@ -1524,7 +1524,7 @@ class MneExperiment(FileTree):
             if baseline:
                 ds['epochs'].apply_baseline(baseline)
 
-        if not data_raw:
+        if data_raw is False:
             del ds.info['raw']
 
         if ndvar:
@@ -2334,7 +2334,7 @@ class MneExperiment(FileTree):
 
         subject, group = self._process_subject_arg(subject, kwargs)
         if group is not None:
-            if data_raw:
+            if data_raw is not False:
                 raise ValueError("Can not keep data_raw when combining data "
                                  "from multiple subjects. Set data_raw=False "
                                  "(default).")
@@ -2435,7 +2435,7 @@ class MneExperiment(FileTree):
 
         ds.info['subject'] = subject
         ds.info['experiment'] = self.get('experiment')
-        if data_raw:
+        if data_raw is not False:
             ds.info['raw'] = raw
 
         if self.trigger_shift:
@@ -2898,7 +2898,7 @@ class MneExperiment(FileTree):
         # case of loading events for a group
         subject, group = self._process_subject_arg(subject, kwargs)
         if group is not None:
-            if data_raw:
+            if data_raw is not False:
                 raise ValueError("data_var=%s: can't load data raw when "
                                  "combining different subjects" % repr(data_raw))
             dss = [self.load_selected_events(reject=reject, add_proj=add_proj,
@@ -2924,7 +2924,7 @@ class MneExperiment(FileTree):
                 # combine bad channels
                 bad_channels = set.union(*(set(ds.info[BAD_CHANNELS]) for ds in dss))
                 ds = combine(dss)
-                if data_raw:
+                if data_raw is not False:
                     ds.info['raw'] = dss[0].info['raw']
                 ds.info[BAD_CHANNELS] = sorted(bad_channels)
         elif sel_epoch is not None:
