@@ -228,7 +228,7 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {experiment}.log')
         'mri-cfg-file': os.path.join('{mri-dir}', 'MRI scaling parameters.cfg'),
         'mri-file': os.path.join('{mri-dir}', 'mri', 'orig.mgz'),
         'bem-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem.fif'),
-        'bem-sol-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),
+        'bem-sol-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),  # removed, but here to delete old files
         'head-bem-file': os.path.join('{bem-dir}', '{mrisubject}-head.fif'),
         'src-file': os.path.join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
         # Labels
@@ -956,7 +956,6 @@ class MneExperiment(FileTree):
         self._bind_cache('cov-file', self.make_cov)
         self._bind_cache('src-file', self.make_src)
         self._bind_cache('fwd-file', self.make_fwd)
-        self._bind_make('bem-sol-file', self.make_bem_sol)
 
         # Check that the template model is complete
         self._find_missing_fields()
@@ -3378,12 +3377,6 @@ class MneExperiment(FileTree):
         with open(dst, 'w') as fid:
             fid.write(text)
 
-    def make_bem_sol(self):
-        self._log.info(self.format("Creating bem-sol file for {mrisubject}"))
-        bin_path = subp.get_bin('mne', 'mne_prepare_bem_model')
-        bem_path = self.get('bem-file', fmatch=True)
-        mne.utils.run_subprocess([bin_path, '--bem', bem_path])
-
     def make_besa_evt(self, redo=False, **state):
         """Make the trigger and event files needed for besa
 
@@ -3566,7 +3559,7 @@ class MneExperiment(FileTree):
         raw = self._get_raw_path(make=True)
         trans = self.get('trans-file')
         src = self.get('src-file', make=True)
-        bem = self.get('bem-sol-file', make=True, fmatch=True)
+        bem = self.get('bem-file', fmatch=True)
 
         if os.path.exists(dst):
             fwd_mtime = os.path.getmtime(dst)
@@ -3580,7 +3573,10 @@ class MneExperiment(FileTree):
         if self.get('modality') != '':
             raise NotImplementedError("Source reconstruction with EEG")
         src = mne.read_source_spaces(src)
-        fwd = mne.make_forward_solution(raw, trans, src, bem, ignore_ref=True)
+        bem = mne.read_bem_surfaces(bem)
+        bemsol = mne.make_bem_solution(bem)
+        fwd = mne.make_forward_solution(raw, trans, src, bemsol,
+                                        ignore_ref=True)
         for s, s0 in izip(fwd['src'], src):
             if s['nuse'] != s0['nuse']:
                 msg = ("The forward solution contains fewer sources than the "

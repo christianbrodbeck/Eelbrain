@@ -10,6 +10,10 @@ New in 0.24
   for tests in more than one ROI    
 * :meth:`MneExperiment.make_rej` now has a ``decim`` parameter to improve
   display performance.
+* :class:`MneExperiment`: BEM-solution files are now created dynamically with
+  :module:`mne` and are not cached any more. This can lead to small changes
+  in results due to improved numerical precision. Delete old files to free up
+  space with ``mne_experiment.rm('bem-sol-file', subject='*')``.
 
 
 New in 0.23
