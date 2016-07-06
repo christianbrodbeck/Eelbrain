@@ -4094,7 +4094,7 @@ class MneExperiment(FileTree):
 
         # convert projs to NDVar
         picks = mne.epochs.pick_types(fiff_obj.info, exclude='bads')
-        sensor = load.fiff.sensor_dim(fiff_obj, picks=picks)
+        sensor = load.fiff.sensor_dim(fiff_obj, picks)
         projs_ndvars = []
         for p in projs:
             d = p['data']['data'][0]

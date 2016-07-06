@@ -599,9 +599,9 @@ def sensor_dim(fiff, picks=None, sysname=None):
     ----------
     fiff : mne-python object
         Object that has a .info attribute that contains measurement info.
-    picks : None | array of int
-        Channel picks (as used in mne-python). If None (default) all channels
-        are included.
+    picks : array of int
+        Channel picks (as used in mne-python). By default all MEG and EEG
+        channels are included.
     sysname : str
         Name of the sensor system (used to load sensor connectivity).
 
@@ -612,10 +612,11 @@ def sensor_dim(fiff, picks=None, sysname=None):
     """
     info = fiff.info
     if picks is None:
-        chs = info['chs']
+        picks = mne.pick_types(info, eeg=True, ref_meg=False, exclude=())
     else:
-        chs = [info['chs'][i] for i in picks]
+        picks = np.asarray(picks, int)
 
+    chs = [info['chs'][i] for i in picks]
     ch_locs = []
     ch_names = []
     for ch in chs:
