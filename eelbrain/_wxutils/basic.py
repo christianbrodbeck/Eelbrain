@@ -12,6 +12,7 @@ from . import icons
 _cache = {}
 _iconcache = {}
 
+
 def Icon(path, asicon=False):
     if asicon:
         if path not in _iconcache:

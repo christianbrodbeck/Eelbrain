@@ -13,7 +13,7 @@ folders = ["actions",
            "documents",
            ]
 
-# tango files
+# tango files (in `tango` subfolder)
 tango = {'actions': ['document-open',
                      'document-save',
                      'document-save-as',
@@ -59,8 +59,8 @@ kwargs = dict(compressed=True,
               functionCompatibile=-1)
 
 
-img2py('system-icons/eelbrain/eelbrain160.png', python_file, append=False,
-       imgName='eelbrain160', icon=False, **kwargs)
+img2py('system-icons/eelbrain/eelbrain256.png', python_file, append=False,
+       imgName='eelbrain256', icon=False, **kwargs)
 
 img2py('system-icons/eelbrain/eelbrain32.png', python_file, append=True,
        imgName='eelbrain', icon=True, **kwargs)

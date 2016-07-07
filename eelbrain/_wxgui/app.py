@@ -2,7 +2,7 @@ import webbrowser
 
 import wx
 
-from .._wxutils import ID
+from .._wxutils import ID, Icon
 from .about import AboutFrame
 
 
@@ -86,6 +86,9 @@ class App(wx.App):
         menu_bar.Append(help_menu, self.GetMacHelpMenuTitleName())
         wx.MenuBar.MacSetCommonMenuBar(menu_bar)
         self.menubar = menu_bar
+
+        # Dock icon
+        self.dock_icon = DockIcon(self)
 
         # Bind Menu Commands
         self.Bind(wx.EVT_MENU_OPEN, self.OnMenuOpened)
@@ -545,3 +548,18 @@ def run():
     if not app.IsMainLoopRunning():
         print "Starting GUI. Quit the Python application to return to the shell..."
         app.MainLoop()
+
+
+class DockIcon(wx.TaskBarIcon):
+    # http://stackoverflow.com/a/38249390/166700
+    def __init__(self, app):
+        wx.TaskBarIcon.__init__(self, iconType=wx.TBI_DOCK)
+        self.app = app
+
+        # Set the image
+        self.SetIcon(Icon('eelbrain256', True), "Eelbrain")
+        self.imgidx = 1
+
+    def CreatePopupMenu(self):
+        menu = wx.Menu()
+        return menu
