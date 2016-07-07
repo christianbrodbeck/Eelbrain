@@ -119,11 +119,11 @@ class Document(FileDocument):
         # publisher
         self.callbacks.register_key('case_change')
 
-    def apply(self, inst, copy=True):
+    def apply(self, inst):
         if isinstance(inst, list):
-            return [self.ica.apply(i, copy=copy) for i in inst]
+            return [self.ica.apply(i.copy()) for i in inst]
         else:
-            return self.ica.apply(inst, copy=copy)
+            return self.ica.apply(inst.copy())
 
     def set_case(self, index, state):
         self.accept[index] = state
@@ -539,7 +539,7 @@ class Frame(FileFrame):
 
     def _PlotButterfly(self, epoch, title, vmax=None):
         original = asndvar(epoch)
-        clean = asndvar(self.doc.apply(epoch, copy=True))
+        clean = asndvar(self.doc.apply(epoch))
         if self.butterfly_baseline == ID.BASELINE_CUSTOM:
             original -= original.mean(time=(None, 0))
             clean -= clean.mean(time=(None, 0))
