@@ -36,7 +36,7 @@ from ..mne_fixes import _interpolate_bads_eeg, _interpolate_bads_meg
 from .._data_obj import (isvar, asfactor, align, DimensionMismatchError,
                          as_legal_dataset_key, assert_is_legal_dataset_key,
                          cwt_morlet, OldVersionError)
-from ..fmtxt import List, Report
+from ..fmtxt import List, Report, Image
 from .._report import named_list, enumeration
 from .._resources import predefined_connectivity
 from .._stats import spm
@@ -4699,6 +4699,49 @@ class MneExperiment(FileTree):
         # report signature
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
         report.save_html(dst)
+
+    def make_report_coreg(self, file_name):
+        """Create HTML report with plots of the MEG/MRI coregistration
+
+        Parameters
+        ----------
+        file_name : str
+            Where to save the report.
+        """
+        from mayavi import mlab
+
+        mri = self.get('mri')
+        title = 'Coregistration'
+        if mri:
+            title += ' ' + mri
+        report = Report(title)
+
+        for subject in self:
+            fig = self.plot_coreg()
+            fig.scene.camera.parallel_projection = True
+            fig.scene.camera.parallel_scale = .175
+            mlab.draw(fig)
+
+            # front
+            mlab.view(90, 90, 1, figure=fig)
+            im_front = Image.from_array(mlab.screenshot(figure=fig), 'front')
+
+            # left
+            mlab.view(0, 270, 1, roll=90, figure=fig)
+            im_left = Image.from_array(mlab.screenshot(figure=fig), 'left')
+
+            mrisubject = self.get('mrisubject')
+            if subject == mrisubject:
+                title = subject
+                caption = "Coregistration for subject %s." % subject
+            else:
+                title = "%s (%s)" % (subject, mrisubject)
+                caption = ("Coregistration for subject %s (MRI-subject %s)." %
+                           (subject, mrisubject))
+            section = report.add_section(title)
+            section.add_figure(caption, (im_front, im_left))
+        report.sign()
+        report.save_html(file_name)
 
     def make_src(self, **kwargs):
         "Make the source space"
