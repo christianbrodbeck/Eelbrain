@@ -1,4 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from __future__ import print_function
 
 from itertools import izip, product
 import cPickle as pickle
@@ -194,9 +195,9 @@ def test_clusterdist():
     np.clip(pmap, -1, 1, pmap)
     pmap[bin_map] = 2
     cdist = _ClusterDist(y, 0, 1.5)
-    print repr(cdist)
+    print(repr(cdist))
     cdist.add_original(pmap)
-    print repr(cdist)
+    print(repr(cdist))
     assert_equal(cdist.n_clusters, 1)
     assert_array_equal(cdist._original_cluster_map == cdist._cids[0],
                        cdist._crop(bin_map).swapaxes(0, cdist._nad_ax))

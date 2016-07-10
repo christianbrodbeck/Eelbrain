@@ -1,4 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from __future__ import print_function
 from copy import deepcopy
 from itertools import izip, product
 from operator import (add, iadd, sub, isub, mul, imul, div, idiv, floordiv,
@@ -419,20 +420,20 @@ def test_dataset_repr():
     "Test Dataset string representation methods"
     ds = datasets.get_uts()
 
-    print ds
-    print repr(ds)
+    print(ds)
+    print(repr(ds))
 
     eq_(str(ds.head()), str(ds[:10]))
     eq_(str(ds.tail()), str(ds[-10:]))
 
-    print ds['A']
-    print repr(ds['A'])
+    print(ds['A'])
+    print(repr(ds['A']))
 
-    print ds['Y']
-    print repr(ds['Y'])
+    print(ds['Y'])
+    print(repr(ds['Y']))
 
-    print ds['uts']
-    print repr(ds['uts'])
+    print(ds['uts'])
+    print(repr(ds['uts']))
 
 
 def test_dataset_sorting():
@@ -464,7 +465,7 @@ def test_dim_categorial():
     dim = Categorial(name, values)
 
     # basic properties
-    print dim
+    print(dim)
     eq_(len(dim), len(values))
 
     # persistence

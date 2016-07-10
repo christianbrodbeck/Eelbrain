@@ -3,6 +3,7 @@ This terminal-based implementation of the Eelbrain ui functions depends only
 on the Python standard library os.
 
 """
+from __future__ import print_function
 import os
 
 
@@ -71,8 +72,8 @@ def ask(title="Overwrite File?",
      NO     -> False
      CANCEL -> None
     """
-    print title
-    print message
+    print(title)
+    print(message)
     c = ''
     while c not in ['y', 'n', 'c']:
         c = raw_input("([y]es / [n]o / [c]ancel)")
@@ -97,9 +98,9 @@ def message(title, message=None, icon='i'):
     """
     if icon:
         title = "%s: %s" % (icon, title)
-    print title
+    print(title)
     if message:
-        print message
+        print(message)
 
 
 class progress:
@@ -113,19 +114,19 @@ class progress:
         else:
             end_msg = ''
         txt = "%s (%s)%s" % (title, message, end_msg)
-        print txt,
+        print(txt, end=' ')
         self._i = 0
         self._i_max = i_max
 
     def advance(self, new_msg=None):
         self.i += 1
         if self._i_max:
-            print self._i_max - self._i,
+            print(self._i_max - self._i, end=' ')
         else:
-            print self._i
+            print(self._i)
 
     def terminate(self):
-        print ']'
+        print(']')
 
 
 def copy_file(path):

@@ -1,12 +1,11 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from __future__ import print_function
 from itertools import izip
-
-import numpy as np
-from numpy import newaxis
 
 from nose.tools import (eq_, assert_almost_equal, assert_is_instance,
     assert_raises, nottest)
-
+import numpy as np
+from numpy import newaxis
 from numpy.testing import assert_allclose
 
 from eelbrain import datasets, test, testnd, Dataset, NDVar
@@ -20,8 +19,8 @@ def r_require(package):
 
     success = r('require(%s)' % package)[0]
     if not success:
-        print r("install.packages('%s', repos='http://cran.us.r-project.org')"
-                % package)
+        print(r("install.packages('%s', repos='http://cran.us.r-project.org')"
+                % package))
         success = r('require(%s)' % package)[0]
         if not success:
             raise RuntimeError("Could not install R package %r" % package)
@@ -102,7 +101,7 @@ def test_anova():
 
     # fixed effects
     aov = test.ANOVA('fltvar', 'A*B', ds=ds)
-    print aov
+    print(aov)
     fs = run_on_lm_fitter('fltvar', 'A*B', ds)
     fnds = run_as_ndanova('fltvar', 'A*B', ds)
     r_res = r("Anova(lm(fltvar ~ A * B, ds, type=2))")
@@ -110,11 +109,11 @@ def test_anova():
 
     # random effects
     aov = test.ANOVA('fltvar', 'A*B*rm', ds=ds)
-    print aov
+    print(aov)
     fs = run_on_lm_fitter('fltvar', 'A*B*rm', ds)
     fnds = run_as_ndanova('fltvar', 'A*B*rm', ds)
     r('test.aov <- aov(fltvar ~ A * B + Error(rm / (A * B)), ds)')
-    print r('test.summary <- summary(test.aov)')
+    print(r('test.summary <- summary(test.aov)'))
     r_res = r['test.summary'][1:]
     assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'rmaov')
 
@@ -196,8 +195,8 @@ def test_anova_r_adler():
     aov = test.ANOVA('rating', 'instruction * expectation', ds=dsb)
     fs = run_on_lm_fitter('rating', 'instruction * expectation', dsb)
     fnds = run_as_ndanova('rating', 'instruction * expectation', dsb)
-    print r('a.aov <- aov(rating ~ instruction * expectation, AdlerB)')
-    print r('a.summary <- summary(a.aov)')
+    print(r('a.aov <- aov(rating ~ instruction * expectation, AdlerB)'))
+    print(r('a.summary <- summary(a.aov)'))
     r_res = r['a.summary'][0]
     assert_f_tests_equal(aov.f_tests, r_res, fs, fnds)
 
@@ -221,7 +220,7 @@ def test_anova_r_sleep():
     from rpy2.robjects import r
 
     # "sleep" dataset
-    print r('data(sleep)')
+    print(r('data(sleep)'))
     ds = Dataset.from_r('sleep')
     ds['ID'].random = True
 
@@ -229,8 +228,8 @@ def test_anova_r_sleep():
     aov = test.ANOVA('extra', 'group', ds=ds)
     fs = run_on_lm_fitter('extra', 'group', ds)
     fnds = run_as_ndanova('extra', 'group', ds)
-    print r('sleep.aov <- aov(extra ~ group, sleep)')
-    print r('sleep.summary <- summary(sleep.aov)')
+    print(r('sleep.aov <- aov(extra ~ group, sleep)'))
+    print(r('sleep.summary <- summary(sleep.aov)'))
     r_res = r['sleep.summary'][0]
     assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0], fnds[0])
 
@@ -238,19 +237,19 @@ def test_anova_r_sleep():
     aov = test.ANOVA('extra', 'group * ID', ds=ds)
     fs = run_on_lm_fitter('extra', 'group * ID', ds)
     fnds = run_as_ndanova('extra', 'group * ID', ds)
-    print r('sleep.aov <- aov(extra ~ group + Error(ID / group), sleep)')
-    print r('sleep.summary <- summary(sleep.aov)')
+    print(r('sleep.aov <- aov(extra ~ group + Error(ID / group), sleep)'))
+    print(r('sleep.summary <- summary(sleep.aov)'))
     r_res = r['sleep.summary'][1][0]
     assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0], fnds[0])
 
     # unbalanced (independent measures)
     ds2 = ds[1:]
-    print r('sleep2 <- subset(sleep, (group == 2) | (ID != 1))')
+    print(r('sleep2 <- subset(sleep, (group == 2) | (ID != 1))'))
     aov = test.ANOVA('extra', 'group', ds=ds2)
     fs = run_on_lm_fitter('extra', 'group', ds2)
     fnds = run_as_ndanova('extra', 'group', ds2)
-    print r('sleep2.aov <- aov(extra ~ group, sleep2)')
-    print r('sleep2.summary <- summary(sleep2.aov)')
+    print(r('sleep2.aov <- aov(extra ~ group, sleep2)'))
+    print(r('sleep2.summary <- summary(sleep2.aov)'))
     r_res = r['sleep2.summary'][0]
     assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0], fnds[0])
 

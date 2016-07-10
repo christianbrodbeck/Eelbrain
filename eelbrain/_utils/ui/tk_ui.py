@@ -7,6 +7,7 @@ http://tkinter.unpythonic.net/wiki/tkFileDialog
 
 @author: Christian M Brodbeck
 '''
+from __future__ import print_function
 import logging
 import tkFileDialog
 from tkFileDialog import Open, SaveAs
@@ -102,4 +103,4 @@ class progress_monitor:
 
 
 def show_help(obj):
-    print getattr(obj, '__doc__', 'no docstring')
+    print(getattr(obj, '__doc__', 'no docstring'))

@@ -1,4 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from __future__ import print_function
 
 from collections import defaultdict
 from glob import glob
@@ -664,7 +665,7 @@ class TreeModel(object):
         if str_out:
             return table
         else:
-            print table
+            print(table)
 
     def show_state(self, temp=None, empty=False, hide=()):
         """
@@ -743,8 +744,8 @@ class TreeModel(object):
         name_len = max(len(n) for n, _ in nodes)
         path_len = max(len(p) for _, p in nodes)
         pad = ' ' * (80 - name_len - path_len)
-        print os.linesep.join(n.ljust(name_len) + pad + p.ljust(path_len)
-                              for n, p in nodes)
+        print(os.linesep.join(n.ljust(name_len) + pad + p.ljust(path_len)
+                              for n, p in nodes))
 
     def store_state(self):
         """Store the current state
@@ -1155,7 +1156,7 @@ class FileTree(TreeModel):
                 files.append((old_name, new_name))
 
         if not files:
-            print "No files found for %r" % old
+            print("No files found for %r" % old)
             return
 
         old_pf = os.path.commonprefix([pair[0] for pair in files])
@@ -1170,7 +1171,7 @@ class FileTree(TreeModel):
         for old, new in files:
             table.cells(old[n_pf_old:], '->', new[n_pf_new:])
 
-        print table
+        print(table)
 
         msg = "Rename %s files (confirm with 'yes')? " % len(files)
         if raw_input(msg) == 'yes':
@@ -1226,7 +1227,7 @@ class FileTree(TreeModel):
         lines.append('')
         msg = 'Legend  m: source is missing;  o: will overwite a file'
         lines.append(msg)
-        print os.linesep.join(lines)
+        print(os.linesep.join(lines))
         rename = tuple(item for item in items if item[0] == ' ')
         if not rename:
             return
@@ -1237,7 +1238,7 @@ class FileTree(TreeModel):
 
         for _, src, dst in rename:
             os.rename(src, dst)
-        print "Done"
+        print("Done")
 
     def rm(self, temp, confirm=False, **constants):
         """
@@ -1260,23 +1261,23 @@ class FileTree(TreeModel):
         files = self.glob(temp, **constants)
         if files:
             root = self.get('root')
-            print "root: %s\n" % root
+            print("root: %s\n" % root)
             root_len = len(root)
             for name in files:
                 if name.startswith(root):
-                    print name[root_len:]
+                    print(name[root_len:])
                 else:
-                    print name
+                    print(name)
             msg = ("Delete %i files or directories (confirm with 'yes')? "
                    % len(files))
             if confirm or raw_input(msg) == 'yes':
-                print 'deleting...'
+                print('deleting...')
                 for path in files:
                     if os.path.isdir(path):
                         shutil.rmtree(path)
                     else:
                         os.remove(path)
             else:
-                print 'aborting...'
+                print('aborting...')
         else:
-            print "No files found for %r" % temp
+            print("No files found for %r" % temp)

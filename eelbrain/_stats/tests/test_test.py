@@ -1,4 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from __future__ import print_function
 from numpy.testing import assert_array_equal
 
 from eelbrain import datasets, test
@@ -15,9 +16,9 @@ def test_ttest():
     "Test test.ttest"
     ds = datasets.get_uv()
 
-    print test.ttest('fltvar', ds=ds)
-    print test.ttest('fltvar', 'A', ds=ds)
-    print test.ttest('fltvar', 'A%B', ds=ds)
-    print test.ttest('fltvar', 'A', match='rm', ds=ds)
-    print test.ttest('fltvar', 'A', 'a1', match='rm', ds=ds)
-    print test.ttest('fltvar', 'A%B', ('a1', 'b1'), match='rm', ds=ds)
+    print(test.ttest('fltvar', ds=ds))
+    print(test.ttest('fltvar', 'A', ds=ds))
+    print(test.ttest('fltvar', 'A%B', ds=ds))
+    print(test.ttest('fltvar', 'A', match='rm', ds=ds))
+    print(test.ttest('fltvar', 'A', 'a1', match='rm', ds=ds))
+    print(test.ttest('fltvar', 'A%B', ('a1', 'b1'), match='rm', ds=ds))

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import webbrowser
 
 import wx
@@ -166,7 +167,7 @@ class App(wx.App):
             if not self.GetTopWindow():
                 self.SetTopWindow(wx.Frame(None))
             wx.CallLater(10, func, True, *args)
-            print "Please switch to the Python Application to provide input."
+            print("Please switch to the Python Application to provide input.")
             self.MainLoop()
             return self._result
 
@@ -546,7 +547,7 @@ def get_app():
 def run():
     app = get_app()
     if not app.IsMainLoopRunning():
-        print "Starting GUI. Quit the Python application to return to the shell..."
+        print("Starting GUI. Quit the Python application to return to the shell...")
         app.MainLoop()
 
 

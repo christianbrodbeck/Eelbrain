@@ -1,3 +1,4 @@
+from __future__ import print_function
 from cPickle import Unpickler
 from importlib import import_module
 import os
@@ -49,7 +50,7 @@ def unpickle(file_path=None):
         if file_path is False:
             raise RuntimeError("User canceled")
         else:
-            print repr(file_path)
+            print(repr(file_path))
     else:
         file_path = os.path.expanduser(file_path)
         if not os.path.exists(file_path):

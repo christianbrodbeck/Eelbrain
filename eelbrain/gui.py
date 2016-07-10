@@ -28,7 +28,7 @@ def select_components(path, ds, sysname=None):
     ``ds``. For example, the ICA can be computed on a raw file but component
     selection done using the epochs that will be analyzed.
     """
-    from _wxgui import get_app
+    from ._wxgui import get_app
     from ._wxgui.select_components import Document, Model, Frame
 
     app = get_app()

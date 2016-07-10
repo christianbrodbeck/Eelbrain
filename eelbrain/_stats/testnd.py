@@ -53,6 +53,7 @@ from .opt import merge_labels
 from .permutation import _resample_params, permute_order, permute_sign_flip
 from .t_contrast import TContrastRel
 from .test import star_factor
+from functools import reduce
 
 
 __test__ = False

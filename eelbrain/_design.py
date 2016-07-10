@@ -40,6 +40,7 @@ Can be used in matlab as:
 
 '''
 from __future__ import division
+from __future__ import print_function
 
 from itertools import product
 from math import ceil
@@ -428,7 +429,7 @@ def export_mat(dataset, values=None, destination=None):
                                     "Where do you want to save the mat file?",
                                     ext=[("Matlab File", '*.mat')])
         if not destination:
-            print "aborted"
+            print("aborted")
             return
     else:
         print_path = False
@@ -442,7 +443,7 @@ def export_mat(dataset, values=None, destination=None):
                   "it be created?" % dirname):
             os.mkdir(dirname)
         else:
-            print "aborted"
+            print("aborted")
             return
 
     if not destination.endswith('mat'):
@@ -454,7 +455,7 @@ def export_mat(dataset, values=None, destination=None):
         mat.update(values)
 
     if print_path:
-        print 'Saving: %r' % destination
+        print('Saving: %r' % destination)
     scipy.io.savemat(destination, mat, do_compression=True, oned_as='row')
 
 
@@ -480,19 +481,19 @@ def save(dataset, destination=None, values=None, pickle_values=False):
         msg_temp = "Writing: %r"
 
         dest = os.path.extsep.join((destination, 'pickled'))
-        print msg_temp % dest
+        print(msg_temp % dest)
         save.pickle(dataset, dest)
 
         if pickle_values:
             dest = os.path.extsep.join((destination + '_values', 'pickled'))
-            print msg_temp % dest
+            print(msg_temp % dest)
             save.pickle(values, dest)
 
         dest = os.path.extsep.join((destination, 'mat'))
-        print msg_temp % dest
+        print(msg_temp % dest)
         export_mat(dataset, values, dest)
 
         dest = os.path.extsep.join((destination, 'tsv'))
-        print msg_temp % dest
+        print(msg_temp % dest)
         dataset.save_txt(dest)
 

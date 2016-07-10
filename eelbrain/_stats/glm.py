@@ -18,6 +18,7 @@ Created on Oct 17, 2010
 @author: christian
 '''
 from __future__ import division
+from __future__ import print_function
 
 from itertools import izip
 import logging, os
@@ -966,7 +967,7 @@ class ANOVA(object):
 
     def print_log(self):
         out = self._log[:]
-        print os.linesep.join(out)
+        print(os.linesep.join(out))
 
     def table(self):
         """Create an ANOVA table
@@ -1100,14 +1101,14 @@ def ancova(Y, factorial_model, covariate, interaction=None, sub=None, v=True,
     factorial_model = asmodel(factorial_model)
     a1 = LM(Y, factorial_model)
     if v:
-        print a1.table(title="MODEL 1", **anova_kwargs)
-        print '\n'
+        print(a1.table(title="MODEL 1", **anova_kwargs))
+        print('\n')
     a2 = LM(Y, factorial_model + covariate)
     if v:
-        print a2.table(title="MODEL 2: Main Effect Covariate", **anova_kwargs)
-        print '\n'
-    print 'Model with "%s" Covariate > without Covariate' % covariate.name
-    print comparelm(a1, a2)
+        print(a2.table(title="MODEL 2: Main Effect Covariate", **anova_kwargs))
+        print('\n')
+    print('Model with "%s" Covariate > without Covariate' % covariate.name)
+    print(comparelm(a1, a2))
 
     if interaction:
         logging.debug("%s / %s" % (covariate.name, interaction.name))
@@ -1116,10 +1117,10 @@ def ancova(Y, factorial_model, covariate, interaction=None, sub=None, v=True,
 #        i_effect = covariate / interaction
         a3 = LM(Y, factorial_model + i_effect)
         if v:
-            print '\n'
-            print a3.table(title="MODEL 3: Interaction")
+            print('\n')
+            print(a3.table(title="MODEL 3: Interaction"))
         # compare
-        print '\n"%s"x"%s" Interaction > No Covariate:' % (covariate.name, interaction.name)
-        print comparelm(a1, a3)
-        print '\n"%s"x"%s" Interaction > Main Effect:' % (covariate.name, interaction.name)
-        print comparelm(a2, a3)
+        print('\n"%s"x"%s" Interaction > No Covariate:' % (covariate.name, interaction.name))
+        print(comparelm(a1, a3))
+        print('\n"%s"x"%s" Interaction > Main Effect:' % (covariate.name, interaction.name))
+        print(comparelm(a2, a3))

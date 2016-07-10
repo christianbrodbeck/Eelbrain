@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import print_function
 from nose.tools import eq_
 import os
 import shutil
@@ -13,16 +14,16 @@ from eelbrain import datasets, plot
 def test_fmtext():
     "Tet FMText base class"
     t = fmtxt.FMText('test')
-    print t
+    print(t)
 
     tuc = fmtxt.FMText(u'FMText with unicode: \x80abc')
-    print str(tuc)
+    print(str(tuc))
 
     ts = fmtxt.FMText((t, tuc, u'unicode: \x80abc'))
 
-    print str(ts)
-    print html(ts)
-    print tex(ts)
+    print(str(ts))
+    print(html(ts))
+    print(tex(ts))
 
 
 def test_report():
@@ -39,7 +40,7 @@ def test_report():
     report.sign()
 
     # report output
-    print report
+    print(report)
     dst = os.path.join(tempdir, 'report.html')
     report.save_html(dst)
 

@@ -12,6 +12,7 @@ import matplotlib as mpl
 from .. import _colorspaces as cs
 from .._data_obj import cellname, isfactor, isinteraction
 from ._base import _EelFigure
+from functools import reduce
 
 
 POINT_SIZE = 0.0138889  # 1 point in inches

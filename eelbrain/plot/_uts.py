@@ -14,6 +14,7 @@ from .._stats import stats
 from . import _base
 from ._base import _EelFigure, LegendMixin
 from ._colors import colors_for_oneway, find_cell_colors
+from functools import reduce
 
 
 class UTSStat(_EelFigure, LegendMixin):

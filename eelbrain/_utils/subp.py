@@ -16,6 +16,7 @@ Created on Mar 4, 2012
 
 @author: christian
 """
+from __future__ import print_function
 
 import fnmatch
 import logging
@@ -197,7 +198,7 @@ def run_freesurfer_command(command, subjects_dir):
         problem = fs_home_problem(fs_home)
         if problem:
             save_fs_home = True
-            print problem
+            print(problem)
             if fs_home == os.environ.get('FREESURFER_HOME', 0):
                 print("WARNING: This directory is set as FREESURFER_HOME "
                       "environment variable. As long as you don't remove this "
@@ -205,7 +206,7 @@ def run_freesurfer_command(command, subjects_dir):
                       "FreeSurfer location every time a FreeSurfer command is "
                       "run.")
             message = "Please select the directory where FreeSurfer is installed"
-            print message
+            print(message)
             fs_home = ui.ask_dir("Select FreeSurfer Directory", message)
             if fs_home is False:
                 raise RuntimeError("Could not find FreeSurfer")
@@ -287,8 +288,8 @@ def process_raw(raw, save='{raw}_filt', args=['projoff'], rm_eve=True, **kwargs)
         try:
             os.remove(eve_file)
         except Exception as err:
-            print "Could not remove %r" % eve_file
-            print err
+            print("Could not remove %r" % eve_file)
+            print(err)
 
 
 def _run(cmd, v=None, cwd=None, block=True):
@@ -304,9 +305,9 @@ def _run(cmd, v=None, cwd=None, block=True):
         v = _verbose
 
     if v > 1:
-        print "> COMMAND:"
+        print("> COMMAND:")
         for line in cmd:
-            print repr(line)
+            print(repr(line))
 
     cmd = map(unicode, cmd)
     sp = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE,
@@ -316,12 +317,12 @@ def _run(cmd, v=None, cwd=None, block=True):
         stdout, stderr = sp.communicate()
 
         if v > 1:
-            print "\n> stdout:"
-            print stdout
+            print("\n> stdout:")
+            print(stdout)
 
         if v > 0 and stderr:
-            print '\n> stderr:'
-            print stderr
+            print('\n> stderr:')
+            print(stderr)
 
         return stdout, stderr
 

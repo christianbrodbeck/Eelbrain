@@ -6,13 +6,14 @@ Created on Feb 28, 2012
 
 @author: christian
 '''
+from __future__ import print_function
 import os
 import numpy as np
 
 
 def dicttree(dictionary):
     """readable repr for a hierarchical dictionary"""
-    print os.linesep.join(_dict_repr(dictionary))
+    print(os.linesep.join(_dict_repr(dictionary)))
 
 
 def _dict_repr(dictionary, indent=0):
@@ -38,7 +39,7 @@ def printdict(dictionary, w=100, fmt='%r', sort=True, max_v_lines=6):
         Sort keys
 
     """
-    print strdict(dictionary, w=w, fmt=fmt, sort=sort, max_v_lines=max_v_lines)
+    print(strdict(dictionary, w=w, fmt=fmt, sort=sort, max_v_lines=max_v_lines))
 
 
 def strdict(dictionary, w=100, fmt='%r', sort=True, max_v_lines=6):
@@ -79,7 +80,7 @@ def printlist(list_obj, fmt='%r'):
     print each element of a list on a new line
 
     """
-    print strlist(list_obj, fmt=fmt)
+    print(strlist(list_obj, fmt=fmt))
 
 
 def repr_1line(obj, w=70):

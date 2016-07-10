@@ -1,4 +1,5 @@
 '''Communication utilities'''
+from __future__ import print_function
 from email.mime.text import MIMEText
 import keyring
 import pdb
@@ -80,7 +81,7 @@ class Notifier(object):
             password = ui.ask_str("Please enter the Eelbrain notifier "
                                   "password.", "Notifier Password")
             # test it
-            print "Validating password..."
+            print("Validating password...")
             smtpserver = get_smtpserver(password, True)
             smtpserver.close()
 
@@ -121,7 +122,7 @@ class Notifier(object):
             # drop into pdb
             if self.debug:
                 traceback.print_exc()
-                print ''
+                print('')
                 pdb.post_mortem(traceback_)
         else:
             event = '{host} finished {task}'.format(host=host, task=self.name)

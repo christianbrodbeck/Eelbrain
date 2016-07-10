@@ -1,4 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from __future__ import print_function
 import os
 import cPickle
 
@@ -25,7 +26,7 @@ def pickle(obj, dest=None, protocol=cPickle.HIGHEST_PROTOCOL):
         if dest is False:
             raise RuntimeError("User canceled")
         else:
-            print 'dest=%r' % dest
+            print('dest=%r' % dest)
     else:
         dest = os.path.expanduser(dest)
         if not os.path.splitext(dest)[1]:

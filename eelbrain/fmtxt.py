@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Author:  Christian Brodbeck <christianbrodbeck@nyu.edu>
 """
 Objects for the abstract representation of a document which can be into
 different formats. Currently (incomplete) support for str, RTF, TeX and HTML.
@@ -45,7 +46,7 @@ The module also provides functions that work with fmtxt objects:
 - :func:`save_html` for saving an HTML file
 
 """
-# Author:  Christian Brodbeck <christianbrodbeck@nyu.edu>
+from __future__ import print_function
 
 
 import datetime
@@ -1295,8 +1296,8 @@ class Table(FMTextElement):
                 widths.append(row_strlen)
         try:
             widths = np.array(widths)
-        except Exception, exc:
-            print widths
+        except Exception as exc:
+            print(widths)
             raise Exception(exc)
         c_width = np.max(widths, axis=0)  # column widths!
 

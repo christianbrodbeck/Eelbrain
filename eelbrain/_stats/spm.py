@@ -10,6 +10,7 @@ from .._data_obj import (Dataset, Factor, Var, NDVar, asmodel, asndvar,
 from . import opt
 from .stats import lm_betas_se_1d
 from .testnd import ttest_1samp
+from functools import reduce
 
 
 class LM(object):

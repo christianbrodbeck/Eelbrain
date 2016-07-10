@@ -21,6 +21,7 @@ managed by
 """
 
 from __future__ import division
+from __future__ import print_function
 
 from collections import OrderedDict, defaultdict
 from copy import deepcopy
@@ -51,6 +52,7 @@ from . import fmtxt
 from . import _colorspaces as cs
 from ._utils import deprecated, ui, LazyProperty, natsorted  #, logger
 from ._utils.numpy_utils import slice_to_arange, full_slice
+from functools import reduce
 
 
 preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __repr__ methods
@@ -3569,7 +3571,7 @@ class NDVar(object):
         if str_out:
             return info
         else:
-            print info
+            print(info)
 
     def envelope(self, dim='time'):
         """Compute the Hilbert envelope of a signal
