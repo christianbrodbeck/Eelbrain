@@ -1779,10 +1779,14 @@ class ThresholdDialog(EelbrainDialog):
     def __init__(self, parent):
         title = "Threshold Criterion Rejection"
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title)
+        choices = tuple(m[0] for m in self._methods)
+        method_tags = tuple(m[1] for m in self._methods)
 
         # load config
         config = parent.config
         method = config.Read("Threshold/method", "p2p")
+        if method not in method_tags:
+            method = "p2p"
         mark_above = config.ReadBool("Threshold/mark_above", True)
         mark_below = config.ReadBool("Threshold/mark_below", False)
         threshold = config.ReadFloat("Threshold/threshold", 2e-12)
@@ -1795,10 +1799,8 @@ class ThresholdDialog(EelbrainDialog):
         ctrl = wx.StaticText(self, wx.ID_ANY, txt)
         sizer.Add(ctrl)
 
-        choices = tuple(m[0] for m in self._methods)
         ctrl = wx.RadioBox(self, wx.ID_ANY, "Method", choices=choices)
-        selection = [m[1] for m in self._methods].index(method)
-        ctrl.SetSelection(selection)
+        ctrl.SetSelection(method_tags.index(method))
         sizer.Add(ctrl)
         self.method_ctrl = ctrl
 
