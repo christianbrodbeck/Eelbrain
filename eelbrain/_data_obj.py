@@ -6061,7 +6061,8 @@ class Model(object):
                     e0 = effects[0]
                     err = ("All effects contained in a Model need to describe"
                            " the same number of cases. %r has %i cases, %r has"
-                           " %i cases." % (e0.name, len(e0), e.name, len(e)))
+                           " %i cases." %
+                           (dataobj_repr(e0), len(e0), dataobj_repr(e), len(e)))
                     raise ValueError(err)
 
                 # find effects
@@ -6086,7 +6087,7 @@ class Model(object):
                 raise ValueError("The Factor %s has only one level (%s). The "
                                  "intercept is implicit in each model and "
                                  "should not be specified explicitly."
-                                 % (e.name, e.cells[0]))
+                                 % (dataobj_repr(e), e.cells[0]))
             k = i + e.df
             beta_index[e] = slice(i, k)
             i = k
