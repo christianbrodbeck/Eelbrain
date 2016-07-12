@@ -119,6 +119,10 @@ def test_celltable():
     ct = Celltable('Y', 'A', ds=ds)
     eq_(ct.n_cases, 60)
     eq_(ct.n_cells, 2)
+    eq_(repr(ct), "Celltable(Y, A)")
+    eq_(repr(Celltable(ds['Y'].x, 'A', ds=ds)), "Celltable(<ndarray>, A)")
+    eq_(repr(Celltable(ds['Y'].x, ds['A'].x, ds=ds)),
+        "Celltable(<ndarray>, <Factor>)")
 
     ct = Celltable('Y', 'A', match='rm', ds=ds)
     eq_(ct.n_cases, 30)

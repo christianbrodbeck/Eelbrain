@@ -140,6 +140,16 @@ def longname(x):
     return '<unnamed>'
 
 
+def dataobj_repr(obj):
+    """Represent data-objects as parts of __repr__"""
+    if obj is None:
+        return 'None'
+    elif isdataobject(obj) and obj.name is not None:
+        return obj.name
+    else:
+        return '<%s>' % obj.__class__.__name__
+
+
 def rank(x, tol=1e-8):
     """
     Rank of a matrix, from
@@ -979,19 +989,14 @@ class Celltable(object):
             self.all_within = False
 
     def __repr__(self):
-        args = [self.Y.name, self.X.name]
-        rpr = "Celltable(%s)"
+        args = [dataobj_repr(self.Y), dataobj_repr(self.X)]
         if self.match is not None:
-            args.append("match=%s" % self.match.name)
+            args.append("match=%s" % dataobj_repr(self.match))
         if self.sub is not None:
-            if isvar(self.sub):
-                args.append('sub=%s' % self.sub.name)
-            else:
-                indexes = ' '.join(str(i) for i in self.sub[:4])
-                args.append("sub=[%s...]" % indexes)
+            args.append("sub=%s" % dataobj_repr(self.sub))
         if self.coercion != 'asdataobject':
             args.append("coercion=%s" % self.coercion)
-        return rpr % (', '.join(args))
+        return "Celltable(%s)" % (', '.join(args))
 
     def __len__(self):
         return self.n_cells
