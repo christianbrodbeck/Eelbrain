@@ -3623,8 +3623,7 @@ class MneExperiment(FileTree):
                 make = False
             else:
                 make = True
-                with self._temporary_state:
-                    inst = self.load_raw()
+                inst = self.load_raw()
         elif params['source'] == 'epochs':
             rej_mtime = self._rej_mtime(self._epochs[params['epoch']])
             if rej_mtime:
