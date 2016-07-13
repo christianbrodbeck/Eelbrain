@@ -8,6 +8,9 @@ New in 0.24
 
 * :meth:`MneExperiment.make_report_rois` includes corrected p-values in reports
   for tests in more than one ROI    
+* :meth:`MneExperiment.make_rej` now has a ``decim`` parameter to improve
+  display performance.
+
 
 New in 0.23
 -----------

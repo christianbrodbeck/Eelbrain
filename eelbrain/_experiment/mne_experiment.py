@@ -4160,7 +4160,7 @@ class MneExperiment(FileTree):
         raw.filter(*args, n_jobs=n_jobs, **kwargs)
         raw.save(dst, overwrite=True)
 
-    def make_rej(self, **kwargs):
+    def make_rej(self, decim=None, **kwargs):
         """Show the SelectEpochs GUI to do manual epoch selection for a given
         epoch
 
@@ -4170,6 +4170,12 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
+        decim : int
+            Decimate epochs for the purpose of faster display. Decimation is
+            applied relative to the raw data file (i.e., if the raw data is
+            sampled at a 1000 Hz, ``decim=10`` results in a sampling rate of
+            100 Hz for display purposes. The default is to use the decim
+            parameter specified in the epoch definition.
         kwargs :
             Kwargs for SelectEpochs
         """
@@ -4187,18 +4193,19 @@ class MneExperiment(FileTree):
         path = self.get('rej-file', mkdir=True)
         modality = self.get('modality')
 
+        if decim is None:
+            decim = rej_args.get('decim', None)
+
         if modality == '':
             ds = self.load_epochs(reject=False, trigger_shift=False,
-                                  apply_ica=apply_ica, eog=True,
-                                  decim=rej_args.get('decim', None))
+                                  apply_ica=apply_ica, eog=True, decim=decim)
             meg_system = self._meg_system(self.get('subject'))
             eog_sns = self._eog_sns[meg_system]
             data = 'meg'
             vlim = 2e-12
         elif modality == 'eeg':
             ds = self.load_epochs(reject=False, eog=True, baseline=True,
-                                  decim=rej_args.get('decim', None),
-                                  trigger_shift=False)
+                                  decim=decim, trigger_shift=False)
             eog_sns = self._eog_sns['KIT-BRAINVISION']
             data = 'eeg'
             vlim = 1.5e-4
