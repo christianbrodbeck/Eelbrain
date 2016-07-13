@@ -204,7 +204,7 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {experiment}.log')
         # sensor covariance
         'cov-dir': os.path.join('{cache-dir}', 'cov'),
         'cov-base': os.path.join('{cov-dir}', '{subject}', '{experiment} '
-                                 '{raw_kind} {cov}-{cov-rej}-{proj}'),
+                                 '{raw_kind} {cov}-{rej}-{proj}'),
         'cov-file': '{cov-base}-cov.fif',
         'cov-info-file': '{cov-base}-info.txt',
         # evoked
@@ -358,9 +358,6 @@ class MneExperiment(FileTree):
     #     'make' a rejection file is created by the user
     # interpolation : bool
     #     enable by-epoch channel interpolation
-    # cov-rej : str
-    #     rej setting to use for computing the covariance matrix. Default is
-    #     same as rej.
     #
     # For manual rejection
     # ^^^^^^^^^^^^^^^^^^^^
@@ -907,8 +904,7 @@ class MneExperiment(FileTree):
                              post_set_handler=self._post_set_group)
 
         self._register_field('raw', sorted(self._raw))
-        self._register_field('rej', self._artifact_rejection.keys(), 'man',
-                             post_set_handler=self._post_set_rej)
+        self._register_field('rej', self._artifact_rejection.keys(), 'man')
         # epoch
         epoch_keys = sorted(self._epochs)
         for default_epoch in epoch_keys:
@@ -3443,14 +3439,11 @@ class MneExperiment(FileTree):
         dest = self.get('cov-file', mkdir=True)
         params = self._covs[self.get('cov')]
         epoch = params['epoch']
-        rej = self.get('cov-rej')
         if os.path.exists(dest):
             cov_mtime = os.path.getmtime(dest)
             raw_mtime = os.path.getmtime(self._get_raw_path())
             bads_mtime = os.path.getmtime(self.get('bads-file'))
-            with self._temporary_state:
-                self.set(rej=rej)
-                rej_mtime = self._rej_mtime(self._epochs[epoch])
+            rej_mtime = self._rej_mtime(self._epochs[epoch])
             if cov_mtime > max(raw_mtime, bads_mtime, rej_mtime):
                 return
 
@@ -3459,7 +3452,7 @@ class MneExperiment(FileTree):
         reg = params.get('reg', None)
 
         with self._temporary_state:
-            ds = self.load_epochs(None, True, False, decim=1, epoch=epoch, rej=rej)
+            ds = self.load_epochs(None, True, False, decim=1, epoch=epoch)
         epochs = ds['epochs']
         cov = mne.compute_covariance(epochs, keep_sample_mean, method=method)
 
@@ -5224,14 +5217,6 @@ class MneExperiment(FileTree):
                 raise ValueError("No seeded parc with name %r" % name)
         else:
             raise ValueError("parc=%r" % parc)
-
-    def _post_set_rej(self, _, rej):
-        if rej == '*':
-            self._fields['cov-rej'] = '*'
-        elif rej in self._artifact_rejection:
-            self._fields['cov-rej'] = self._artifact_rejection[rej].get('cov-rej', rej)
-        else:
-            self._fields['cov-rej'] = '<invalid rej>'
 
     def _post_set_test(self, _, test):
         if test != '*' and test in self._tests and 'model' in self._tests[test]:
