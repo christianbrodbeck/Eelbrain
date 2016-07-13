@@ -371,7 +371,6 @@ class MneExperiment(FileTree):
                                    'interpolation': True,
                                    }}
     artifact_rejection = {}
-    epoch_rejection = {}
 
     exclude = {}  # field_values to exclude (e.g. subjects)
 
@@ -707,13 +706,8 @@ class MneExperiment(FileTree):
 
         ########################################################################
         # store epoch rejection settings
-        if self.epoch_rejection:
-            warn("The MneExperiment.epoch_rejection attribute is deprecated "
-                 "and will be removed in Eelbrain 0.23. Please rename it to "
-                 ".artifact_rejection.", DeprecationWarning)
         artifact_rejection = {}
         for name, params in chain(self._artifact_rejection.iteritems(),
-                                  self.epoch_rejection.iteritems(),
                                   self.artifact_rejection.iteritems()):
             if params['kind'] not in ('manual', 'make', 'ica', None):
                 raise ValueError("Invalid value in %r rejection setting: "
