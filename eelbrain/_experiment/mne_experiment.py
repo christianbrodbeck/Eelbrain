@@ -227,7 +227,8 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {experiment}.log')
         'bem-dir': os.path.join('{mri-dir}', 'bem'),
         'mri-cfg-file': os.path.join('{mri-dir}', 'MRI scaling parameters.cfg'),
         'mri-file': os.path.join('{mri-dir}', 'mri', 'orig.mgz'),
-        'bem-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem.fif'),
+        'bem-file': os.path.join('{bem-dir}', '{mrisubject}-inner_skull-bem.fif'),
+        'inner_skull-surf-file': os.path.join('{bem-dir}', 'inner_skull.surf'),
         'bem-sol-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),  # removed, but here to delete old files
         'head-bem-file': os.path.join('{bem-dir}', '{mrisubject}-head.fif'),
         'src-file': os.path.join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
@@ -2130,6 +2131,23 @@ class MneExperiment(FileTree):
             self.make_bad_channels(())
             return []
 
+    def _load_bem(self):
+        subject = self.get('mrisubject')
+        if subject == 'fsaverage' or is_fake_mri(self.get('mri-dir')):
+            return mne.read_bem_surfaces(self.get('bem-file'))
+        else:
+            if not os.path.exists(self.get('inner_skull-surf-file')):
+                is_link = os.path.islink(self.get('inner_skull-surf-file'))
+                log_msg = ('inner_skull.surf does not exist for {0}, running '
+                           'mne.make_watershed_bem()'.format(subject))
+                if is_link:
+                    log_msg += ', overwriting old sym-links'
+                self._log.debug(log_msg + '...')
+                mne.bem.make_watershed_bem(subject, self.get('mri-sdir'),
+                                           overwrite=is_link)
+            return mne.make_bem_model(subject, conductivity=(0.3,),
+                                      subjects_dir=self.get('mri-sdir'))
+
     def load_cov(self, **kwargs):
         """Load the covariance matrix
 
@@ -3552,21 +3570,20 @@ class MneExperiment(FileTree):
         raw = self._get_raw_path(make=True)
         trans = self.get('trans-file')
         src = self.get('src-file', make=True)
-        bem = self.get('bem-file', fmatch=True)
 
         if os.path.exists(dst):
             fwd_mtime = os.path.getmtime(dst)
             raw_mtime = os.path.getmtime(raw)
             trans_mtime = os.path.getmtime(trans)
             src_mtime = os.path.getmtime(src)
-            bem_mtime = os.path.getmtime(bem)
-            if fwd_mtime > max(raw_mtime, trans_mtime, src_mtime, bem_mtime):
+            if fwd_mtime > max(raw_mtime, trans_mtime, src_mtime):
                 return
 
         if self.get('modality') != '':
             raise NotImplementedError("Source reconstruction with EEG")
+
+        bem = self._load_bem()
         src = mne.read_source_spaces(src)
-        bem = mne.read_bem_surfaces(bem)
         bemsol = mne.make_bem_solution(bem)
         fwd = mne.make_forward_solution(raw, trans, src, bemsol,
                                         ignore_ref=True)
@@ -4708,7 +4725,7 @@ class MneExperiment(FileTree):
             kind, param = src.split('-')
             if kind == 'vol':
                 mri = self.get('mri-file')
-                bem = self.get('bem-file', fmatch=True)
+                bem = self._load_bem()
                 mne.setup_volume_source_space(subject, dst, pos=float(param),
                                               mri=mri, bem=bem, mindist=0.,
                                               exclude=0.,
