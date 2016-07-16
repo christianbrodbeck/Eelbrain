@@ -3572,9 +3572,10 @@ class MneExperiment(FileTree):
                                         ignore_ref=True)
         for s, s0 in izip(fwd['src'], src):
             if s['nuse'] != s0['nuse']:
-                msg = ("The forward solution contains fewer sources than the "
-                       "source space. This could be due to a corrupted bem "
-                       "file with source outside the inner skull surface.")
+                msg = ("The forward solution %s contains fewer sources than "
+                       "the source space. This could be due to a corrupted "
+                       "bem file with source outside the inner skull surface." %
+                       (os.path.split(dst)[1]))
                 raise RuntimeError(msg)
         mne.write_forward_solution(dst, fwd, True)
 
