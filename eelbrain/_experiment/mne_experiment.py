@@ -42,7 +42,7 @@ from .._resources import predefined_connectivity
 from .._stats import spm
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
-from .._utils import subp, ui, keydefaultdict
+from .._utils import subp, ui, keydefaultdict, log_level
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .experiment import FileTree
 from .definitions import find_dependent_epochs, find_epochs_vars, find_test_vars
@@ -320,6 +320,7 @@ class MneExperiment(FileTree):
         Guide on using :ref:`experiment-class-guide`.
     """
     path_version = None
+    screen_log_level = logging.WARNING
     auto_delete_cache = True
     # what to do when the experiment class definition changed:
     #   True: delete outdated files
@@ -961,42 +962,49 @@ class MneExperiment(FileTree):
         self.brain = None
 
         ########################################################################
+        # logger
+        ########
+        self._log = logging.Logger(self.__class__.__name__, logging.DEBUG)
+        # log-file
+        if root:
+            if os.path.exists(self.get('old-eelbrain-log-file')):
+                os.rename(self.get('old-eelbrain-log-file'),
+                          self.get('eelbrain-log-file'))
+            handler = logging.FileHandler(self.get('eelbrain-log-file'))
+            formatter = logging.Formatter("%(levelname)-8s %(asctime)s %(message)s",
+                                          "%m-%d %H:%M")  # %(name)-12s
+            handler.setFormatter(formatter)
+            handler.setLevel(logging.DEBUG)
+            self._log.addHandler(handler)
+        # Terminal log
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter("%(levelname)-8s %(name)s:  %(message)s")
+        handler.setFormatter(formatter)
+        handler.setLevel(log_level(self.screen_log_level))
+        self._log.addHandler(handler)
+
+        # log package versions
+        from .. import __version__
+        self._log.info("%s initialized with root %s", self.__class__.__name__,
+                       root)
+        msg = "Using eelbrain %s, mne %s." % (__version__, mne.__version__)
+        if any('dev' in v for v in (__version__, mne.__version__)):
+            self._log.warn(msg + " Development versions are more likely to "
+                           "contain errors.")
+        else:
+            self._log.info(msg)
+
+        if self.auto_delete_cache == 'disable':
+            self._log.warn("Cache-management disabled")
+            return
+
+        ########################################################################
         # Cache
         #######
         if self.exclude:
             raise ValueError("MneExperiment.exclude must be unspecified for "
                              "cache management to work")
         elif not root:
-            return
-
-        # logger
-        if os.path.exists(self.get('old-eelbrain-log-file')):
-            os.rename(self.get('old-eelbrain-log-file'),
-                      self.get('eelbrain-log-file'))
-        self._log = logging.Logger(self.__class__.__name__, logging.DEBUG)
-        handler = logging.FileHandler(self.get('eelbrain-log-file'))
-        formatter = logging.Formatter("%(levelname)-8s %(asctime)s %(message)s",
-                                      "%m-%d %H:%M")  # %(name)-12s
-        handler.setFormatter(formatter)
-        self._log.addHandler(handler)
-        handler.setLevel(logging.DEBUG)
-
-        # log package versions
-        from .. import __version__
-        msg = ("%s initialized with root=%r, eelbrain %s, mne %s"
-               % (self.__class__.__name__, root, __version__, mne.__version__))
-        if any('dev' in v for v in (__version__, mne.__version__)):
-            self._log.warn(msg)
-            for package, version in (('eelbrain', __version__),
-                                     ('mne', mne.__version__)):
-                if 'dev' in version:
-                    warn("Using %s %s: Using development versions can have "
-                         "unanticipated consequences" % (package, version))
-        else:
-            self._log.info(msg)
-
-        if self.auto_delete_cache == 'disable':
-            self._log.warn("Cache-management disabled")
             return
 
         # collect events for current setup
@@ -1268,7 +1276,7 @@ class MneExperiment(FileTree):
                     for path in files:
                         os.remove(path)
             else:
-                self._log.info("Cache up to date.")
+                self._log.debug("Cache up to date.")
         elif os.path.exists(cache_dir):
             if self.auto_delete_cache is True:
                 self._log.info("Deleting cache-dir without history")
@@ -2126,8 +2134,9 @@ class MneExperiment(FileTree):
                 names = [l for l in fid.read().splitlines() if l]
             return names
         else:
-            print("No bad channel definition for: %s/%s, creating empty file" %
-                  (self.get('subject'), self.get('experiment')))
+            self._log.info("No bad channel definition for: %s/%s, creating "
+                           "empty file" %
+                           (self.get('subject'), self.get('experiment')))
             self.make_bad_channels(())
             return []
 

@@ -16,6 +16,11 @@ import numpy as np
 from . import ui
 
 
+LOG_LEVELS = {'DEBUG': logging.DEBUG, 'INFO': logging.INFO,
+              'WARNING': logging.WARNING, 'ERROR': logging.ERROR,
+              'CRITICAL': logging.CRITICAL}
+
+
 def deprecated(version, replacement=None):
     "Decorator to deprecate functions/,ethods"
     def dec(func):
@@ -34,6 +39,20 @@ def deprecated(version, replacement=None):
     return dec
 
 
+def log_level(arg):
+    """Convert string to logging module constant"""
+    if isinstance(arg, int):
+        return arg
+    elif isinstance(arg, basestring):
+        try:
+            return LOG_LEVELS[arg.upper()]
+        except KeyError:
+            raise ValueError("Invalid log level: %s. mus be one of %s" %
+                             (arg, ', '.join(LOG_LEVELS)))
+    else:
+        raise TypeError("Invalid log level: %s. need int or str." % repr(arg))
+
+
 def set_log_level(level, logger_name='eelbrain'):
     """Set the minimum level of messages to be logged
 
@@ -46,16 +65,7 @@ def set_log_level(level, logger_name='eelbrain'):
         Name of the logger for which to set the logging level. The default is
         the Eelbrain logger.
     """
-    logger = logging.getLogger(logger_name)
-    if isinstance(level, basestring):
-        level = level.upper()
-        levels = {'DEBUG': logging.DEBUG, 'INFO': logging.INFO,
-                  'WARNING': logging.WARNING, 'ERROR': logging.ERROR,
-                  'CRITICAL': logging.CRITICAL}
-        if level not in levels:
-            raise ValueError('level must be one of %s' % str(levels.keys()))
-        level = levels[level]
-    logger.setLevel(level)
+    logging.getLogger(logger_name).setLevel(log_level(level))
 
 
 class intervals:
