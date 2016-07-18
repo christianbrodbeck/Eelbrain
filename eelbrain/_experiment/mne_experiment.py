@@ -2952,8 +2952,8 @@ class MneExperiment(FileTree):
                 raise RuntimeError(err)
 
             # rejection
-            if reject:
-                rej_params = self._artifact_rejection[self.get('rej')]
+            rej_params = self._artifact_rejection[self.get('rej')]
+            if reject and rej_params['kind'] is not None:
                 path = self.get('rej-file')
                 if os.path.exists(path):
                     ds_sel = load.unpickle(path)
@@ -2999,6 +2999,8 @@ class MneExperiment(FileTree):
                         ds.info[BAD_CHANNELS] = ds_sel.info[BAD_CHANNELS]
                     else:
                         ds.info[BAD_CHANNELS] = []
+            else:  # no artifact rejection
+                ds.info[INTERPOLATE_CHANNELS] = False
 
         # apply trigger-shift
         if 'trigger_shift' in epoch:
