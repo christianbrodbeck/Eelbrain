@@ -61,13 +61,9 @@ def is_fake_mri(mri_dir):
     -------
     True is `mri_dir` is a fake MRI directory.
 
+    Notes
+    -----
+    Based entirely on the presence of the `MRI scaling parameters.cfg` file.
     """
-    items = os.listdir(mri_dir)
-    # need to contain:
-    nc = [c for c in ['bem', 'surf'] if c not in items]
-    # does not contain:
-    c = [c for c in ['mri', 'src', 'stats'] if c in items]
-    if c or nc:
-        return False
-    else:
-        return True
+    fname = os.path.join(mri_dir, 'MRI scaling parameters.cfg')
+    return os.path.exists(fname)
