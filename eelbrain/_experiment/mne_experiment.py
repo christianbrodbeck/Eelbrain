@@ -1007,6 +1007,10 @@ class MneExperiment(FileTree):
         elif not root:
             return
 
+        # loading events will create cache-dir
+        cache_dir = self.get('cache-dir')
+        cache_dir_existed = os.path.exists(cache_dir)
+
         # collect events for current setup
         with self._temporary_state:
             self.set(raw='clm')
@@ -1014,7 +1018,6 @@ class MneExperiment(FileTree):
                       self.iter(group='all')}
 
         # check the cache, delete invalid files
-        cache_dir = self.get('cache-dir')
         cache_state_path = self.get('cache-state-file')
         if os.path.exists(cache_state_path):
             # check time stamp
@@ -1277,7 +1280,7 @@ class MneExperiment(FileTree):
                         os.remove(path)
             else:
                 self._log.debug("Cache up to date.")
-        elif os.path.exists(cache_dir):
+        elif cache_dir_existed:  # cache-dir but no history
             if self.auto_delete_cache is True:
                 self._log.info("Deleting cache-dir without history")
                 shutil.rmtree(cache_dir)
@@ -1299,7 +1302,7 @@ class MneExperiment(FileTree):
             else:
                 raise IOError("Cache directory without history, but "
                               "auto_delete_cache is not True")
-        else:
+        elif not os.path.exists(cache_dir):
             os.mkdir(cache_dir)
 
         new_state = {'version': 2,
