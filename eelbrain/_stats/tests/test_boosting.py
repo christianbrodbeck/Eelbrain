@@ -2,7 +2,6 @@
 import os
 
 from nose.tools import eq_, assert_almost_equal
-import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 import scipy.io
 
@@ -15,9 +14,8 @@ def test_boosting():
     path = os.path.join(os.path.dirname(__file__), 'test_boosting.mat')
     mat = scipy.io.loadmat(path)
 
-    h_init = np.zeros((1, 10))
     h, corr, rcorr, test_sse_history, train_corr = \
-        boosting(mat['stim'], mat['signal'][0], h_init, 0.005, 10000, 0)
+        boosting(mat['stim'], mat['signal'][0], 10, 0.005, 10000, 0)
 
     assert_array_equal(h, mat['h'])
     assert_almost_equal(corr, mat['crlt'][0, 0], 10)
@@ -30,9 +28,8 @@ def test_boosting():
     path = os.path.join(os.path.dirname(__file__), 'test_boosting_2d.mat')
     mat = scipy.io.loadmat(path)
 
-    h_init = np.zeros((3, 10))
     h, corr, rcorr, test_sse_history, train_corr = \
-        boosting(mat['stim'], mat['signal'][0], h_init, 0.005, 10000, 0)
+        boosting(mat['stim'], mat['signal'][0], 10, 0.005, 10000, 0)
 
     assert_array_equal(h, mat['h'])
     assert_almost_equal(corr, mat['crlt'][0, 0], 10)

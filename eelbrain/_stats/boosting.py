@@ -5,7 +5,7 @@ import numpy as np
 from scipy.stats import spearmanr
 
 
-def boosting(x, y, h, delta, maxiter, segno):
+def boosting(x, y, trf_length, delta, maxiter, segno, mindelta=0.001):
     """Basic port of svdboostV4pred
 
     Parameters
@@ -14,14 +14,18 @@ def boosting(x, y, h, delta, maxiter, segno):
         Stimulus.
     y : array (n_times,)
         Dependent signal, time series to predict.
-    h : array, (n_stims, n_rf_times)
-        Initial response function.
+    trf_length : int
+        Length of the TRF (in time samples).
     delta : scalar
         Step of the adjustment.
     maxiter : int
         Maximum number of iterations.
     segno : int [0, 39]
         which segment to use for testing
+    mindelta : scalar
+        Smallest delta to use. If no improvement can be found in an iteration,
+        the first step is to divide delta in half, but stop if delta becomes
+        smaller than ``mindelta``.
 
     Returns
     -------
@@ -36,6 +40,11 @@ def boosting(x, y, h, delta, maxiter, segno):
     train_corr : list of len n_iterations
         Correlation for training data at each iteration.
     """
+    n_stims, n_times = x.shape
+    assert y.shape == (n_times,)
+
+    h = np.zeros((n_stims, trf_length))
+
     # separate training and testing signal
     test_seg_len = int(floor(x.shape[1] / 40))
     testing_range = np.arange(test_seg_len, dtype=int) + test_seg_len * segno
@@ -88,6 +97,7 @@ def boosting(x, y, h, delta, maxiter, segno):
         #    the previous two iterations
         if (i_boost > 10 and test_sse_history[-1] > test_sse_history[-2] and
                 test_sse_history[-1] > test_sse_history[-3]):
+            print("SSE not improving in 2 steps")
             break
 
         # generate possible movements
@@ -112,11 +122,12 @@ def boosting(x, y, h, delta, maxiter, segno):
 
         # If no improvements can be found reduce delta
         if new_error.min() > np.sum((y - ypred_now) ** 2):
-            print("No BestPos")
-            if delta < 0.01:
+            if delta < mindelta:
+                print("No improvement, stopping...")
                 break
             else:
                 delta *= 0.5
+                print("No improvement, new delta=%s..." % delta)
                 continue
 
         # update h with best movement
