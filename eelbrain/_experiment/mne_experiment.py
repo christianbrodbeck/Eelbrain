@@ -3380,6 +3380,9 @@ class MneExperiment(FileTree):
         else:
             old_bads = None
 
+        if isinstance(bad_chs, basestring):
+            bad_chs = (bad_chs,)
+
         raw = self.load_raw(add_bads=False)
         sensor = load.fiff.sensor_dim(raw)
         chs = sensor._normalize_sensor_names(bad_chs)
