@@ -3599,6 +3599,8 @@ class MneExperiment(FileTree):
         raw = self._get_raw_path()
         bem = self._load_bem()
         src = mne.read_source_spaces(src)
+
+        self._log.debug("make_fwd %s...", os.path.split(dst)[1])
         bemsol = mne.make_bem_solution(bem)
         fwd = mne.make_forward_solution(raw, trans, src, bemsol,
                                         ignore_ref=True)
@@ -4174,6 +4176,7 @@ class MneExperiment(FileTree):
             raw = self.load_raw(raw='clm', add_proj=apply_proj, add_bads=False,
                                 preload=True)
 
+        self._log.debug("make_raw %s...", os.path.split(dst)[1])
         if apply_proj:
             raw.apply_projector()
 
