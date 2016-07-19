@@ -193,14 +193,14 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {experiment}.log')
         'cache-dir': os.path.join('{root}', 'eelbrain-cache'),
         'cache-state-file': os.path.join('{cache-dir}', 'cache-state.pickle'),
         # raw
-        'raw-cache-dir': os.path.join('{cache-dir}', 'raw'),
-        'raw-cache-base': os.path.join('{raw-cache-dir}', '{subject}', '{experiment} {raw_kind}'),
+        'raw-cache-dir': os.path.join('{cache-dir}', 'raw', '{subject}'),
+        'raw-cache-base': os.path.join('{raw-cache-dir}', '{experiment} {raw_kind}'),
         'cached-raw-file': '{raw-cache-base}-raw.fif',
         'event-file': '{raw-cache-base}-evts.pickled',
         'interp-file': '{raw-cache-base}-interp.pickled',
         # mne secondary/forward modeling
         'proj-file': '{raw-cache-base}_{proj}-proj.fif',
-        'fwd-file': '{raw-cache-base}_{mrisubject}-{src}-fwd.fif',
+        'fwd-file': os.path.join('{raw-cache-dir}', '{experiment}-{mrisubject}-{src}-fwd.fif'),
         # sensor covariance
         'cov-dir': os.path.join('{cache-dir}', 'cov'),
         'cov-base': os.path.join('{cov-dir}', '{subject}', '{experiment} '
@@ -3570,13 +3570,12 @@ class MneExperiment(FileTree):
     def make_fwd(self):
         """Make the forward model"""
         dst = self.get('fwd-file')
-        raw = self._get_raw_path(make=True)
         trans = self.get('trans-file')
         src = self.get('src-file', make=True)
 
         if os.path.exists(dst):
             fwd_mtime = os.path.getmtime(dst)
-            raw_mtime = os.path.getmtime(raw)
+            raw_mtime = self._raw_mtime()
             trans_mtime = os.path.getmtime(trans)
             src_mtime = os.path.getmtime(src)
             if fwd_mtime > max(raw_mtime, trans_mtime, src_mtime):
@@ -3585,6 +3584,7 @@ class MneExperiment(FileTree):
         if self.get('modality') != '':
             raise NotImplementedError("Source reconstruction with EEG")
 
+        raw = self._get_raw_path()
         bem = self._load_bem()
         src = mne.read_source_spaces(src)
         bemsol = mne.make_bem_solution(bem)
