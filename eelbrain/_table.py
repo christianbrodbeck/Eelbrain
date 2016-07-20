@@ -173,6 +173,28 @@ def melt(name, cells, cell_var_name, ds):
         Name of the variable to contain the cell identifier.
     ds : Dataset
         Input Dataset.
+
+    Examples
+    --------
+    >>> ds = Dataset()
+    >>> ds['y1'] = Var([1, 2, 3])
+    >>> ds['y2'] = Var([4, 5, 6])
+    >>> print ds
+    y1   y2
+    -------
+    1    4
+    2    5
+    3    6
+    >>> print table.melt('y', ['y1', 'y2'], 'id', ds)
+    y   id
+    ------
+    1   y1
+    2   y1
+    3   y1
+    4   y2
+    5   y2
+    6   y2
+
     """
     # find source cells
     if isinstance(cells, basestring):
