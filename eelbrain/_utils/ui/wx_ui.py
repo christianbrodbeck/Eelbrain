@@ -89,63 +89,6 @@ def message(title, message="", icon='i'):
     dlg.ShowModal()
 
 
-class progress_monitor:
-    """
-    catches calls meant to create a progress indicator, because the wx
-    ProgressDialog was way too slow.
-
-    To clean up after a crash, call
-
-        >>> ui.kill_progress_monitors()
-
-    """
-    def __init__(self, i_max=None,
-                 title="Task Progress",
-                 message="Wait and pray!",
-                 cancel=True):
-        style = wx.PD_AUTO_HIDE | wx.GA_SMOOTH  # |wx.PD_REMAINING_TIME
-        if cancel:
-            style = style | wx.PD_CAN_ABORT
-        if i_max is None:
-            self.indeterminate = True
-            i_max = 1
-        else:
-            self.indeterminate = False
-
-        self.dialog = wx.ProgressDialog(title, message, i_max, None, style)
-        self.i = 0
-        if self.indeterminate:
-            self.dialog.Pulse()
-
-    def __del__(self):
-        self.terminate()
-
-    def advance(self, new_msg=None):
-        if self.indeterminate:
-            cont, skip = self.dialog.Pulse(new_msg)
-        else:
-            self.i += 1
-            args = (self.i,)
-            if new_msg:
-                args += (new_msg,)
-            cont, skip = self.dialog.Update(*args)
-
-        if not cont:
-            self.terminate()
-            raise KeyboardInterrupt
-
-    def message(self, new_msg):
-        cont, skip = self.dialog.Update(self.i, new_msg)
-        if not cont:
-            self.terminate()
-            raise KeyboardInterrupt
-
-    def terminate(self):
-        if hasattr(self.dialog, 'Close'):
-            self.dialog.Close()
-            self.dialog.Destroy()
-
-
 def copy_file(path):
     "copies a file to the clipboard"
     if wx.TheClipboard.Open():

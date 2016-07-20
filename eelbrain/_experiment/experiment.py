@@ -507,6 +507,9 @@ class TreeModel(object):
         """
         if mail is True:
             mail = self.owner
+        if prog is not False:
+            raise RuntimeError("The prog argument has been removed from the "
+                               "iter() method.")
 
         # set constants
         self.set(**constants)
@@ -538,17 +541,8 @@ class TreeModel(object):
             v_lists.append(field_values[field])
 
         if len(v_lists):
-            if prog:
-                i_max = np.prod(map(len, v_lists))
-                if not isinstance(prog, str):
-                    prog = "MNE Experiment Iterator"
-                progm = ui.progress_monitor(i_max, prog, "")
-                prog = True
-
             with self._temporary_state:
                 for v_list in product(*v_lists):
-                    if prog:
-                        progm.message(' | '.join(map(str, v_list)))
                     self.restore_state(discard_tip=False)
                     values = dict(zip(fields, v_list))
                     self.set(**values)
@@ -557,9 +551,6 @@ class TreeModel(object):
                         yield v_list[0]
                     else:
                         yield v_list
-
-                    if prog:
-                        progm.advance()
         else:
             yield ()
 

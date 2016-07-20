@@ -71,36 +71,5 @@ def message(title, message="", icon='i'):
         raise ValueError("Invalid icon argument: %r" % icon)
 
 
-class progress_monitor:
-    def __init__(self, i_max=None,
-                 title="Task Progress",
-                 message="Wait and pray!",
-                 cancel=True):
-        self.i = -1
-        self.i_max = i_max
-        self.title = title
-        self._message = message
-        self.advance(message)
-
-    def _log(self):
-        msg = ("Progress %r: %s of %s; %r" % (self.title, self.i, self.i_max,
-                                              self._message))
-        logging.info(msg)
-
-    def advance(self, new_msg=None):
-        self.i += 1
-        if new_msg:
-            self._message = new_msg
-
-        self._log()
-
-    def message(self, new_msg):
-        self._message = new_msg
-        self._log()
-
-    def terminate(self):
-        pass
-
-
 def show_help(obj):
     print(getattr(obj, '__doc__', 'no docstring'))

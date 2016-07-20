@@ -103,32 +103,6 @@ def message(title, message=None, icon='i'):
         print(message)
 
 
-class progress:
-    def __init__(self,
-                 i_max=None,
-                 title="Progress",
-                 message="We're getting there...",
-                 cancel=True):
-        if i_max:
-            end_msg = " %i>" % i_max
-        else:
-            end_msg = ''
-        txt = "%s (%s)%s" % (title, message, end_msg)
-        print(txt, end=' ')
-        self._i = 0
-        self._i_max = i_max
-
-    def advance(self, new_msg=None):
-        self.i += 1
-        if self._i_max:
-            print(self._i_max - self._i, end=' ')
-        else:
-            print(self._i)
-
-    def terminate(self):
-        print(']')
-
-
 def copy_file(path):
     """
     copies a file to the clipboard
