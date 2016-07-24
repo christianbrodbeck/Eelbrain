@@ -7716,22 +7716,16 @@ class SourceSpace(Dimension):
         except KeyError:
             raise TypeError("subjects_dir was neither specified on SourceSpace "
                             "dimension nor as environment variable")
-        else:
-            raise
 
     def __getstate__(self):
-        state = {'vertno': self.vertno, 'subject': self.subject,
-                 'src': self.src, 'subjects_dir': self._subjects_dir,
-                 'parc': self.parc}
-        return state
+        return {'vertno': self.vertno, 'subject': self.subject, 'src': self.src,
+                'subjects_dir': self._subjects_dir, 'parc': self.parc,
+                'connectivity': self._connectivity}
 
     def __setstate__(self, state):
-        vertno = state['vertno']
-        subject = state['subject']
-        src = state.get('src', None)
-        parc = state.get('parc', None)
-        subjects_dir = state.get('subjects_dir', None)
-        self.__init__(vertno, subject, src, subjects_dir, parc)
+        self.__init__(state['vertno'], state['subject'], state.get('src', None),
+                      state.get('subjects_dir', None), state.get('parc', None),
+                      state.get('connectivity', None))
 
     def __repr__(self):
         ns = ', '.join(str(len(v)) for v in self.vertno)
@@ -7833,6 +7827,37 @@ class SourceSpace(Dimension):
     def _diminfo(self):
         ns = ', '.join(str(len(v)) for v in self.vertno)
         return "SourceSpace (MNE) [%s], %r, %r>" % (ns, self.subject, self.src)
+
+    def _link_midline(self, maxdist=0.015):
+        """Link sources in the left and right hemispheres
+
+        Link each source to the nearest source in the opposing hemisphere if
+        that source is closer than ``maxdist``.
+
+        Parameters
+        ----------
+        maxdist : scalar [m]
+            Add an interhemispheric connection between any two vertices whose
+            distance is less than this number (in meters; default 0.015).
+        """
+        if self.kind != 'ico':
+            raise ValueError("Can only link hemispheres in 'ico' source "
+                             "spaces, not in %s" % repr(self.kind))
+        old_con = self.connectivity()
+
+        # find vertices to connect
+        coords_lh = self.coordinates[:self.lh_n]
+        coords_rh = self.coordinates[self.lh_n:]
+        dists = cdist(coords_lh, coords_rh)
+        close_lh, close_rh = np.nonzero(dists < maxdist)
+        unique_close_lh = np.unique(close_lh)
+        unique_close_rh = np.unique(close_rh)
+        new_con = {(lh, np.argmin(dists[lh]) + self.lh_n) for lh in
+                   unique_close_lh}
+        new_con.update((np.argmin(dists[:, rh]), rh + self.lh_n) for rh in
+                       unique_close_rh)
+        new_con = np.array(sorted(new_con), np.uint32)
+        self._connectivity = np.vstack((old_con, new_con))
 
     def connectivity(self, disconnect_parc=False):
         """Create source space connectivity

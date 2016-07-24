@@ -802,7 +802,7 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
 
 
 def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
-              name=None, check=True, parc='aparc'):
+              name=None, check=True, parc='aparc', connectivity=None):
     """
     Convert one or more :class:`mne.SourceEstimate` objects to an :class:`NDVar`.
 
@@ -829,6 +829,9 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
         and vertices.
     parc : None | str
         Parcellation to add to the source space.
+    connectivity : 'link-midline'
+        Modify source space connectivity to link medial sources of the two
+        hemispheres across the midline.
     """
     subjects_dir = mne.utils.get_subjects_dir(subjects_dir)
 
@@ -858,7 +861,15 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
         ss = SourceSpace([stc.vertices], subject, src, subjects_dir, parc)
     else:
         ss = SourceSpace(stc.vertices, subject, src, subjects_dir, parc)
-
+    # Apply connectivity modification
+    if isinstance(connectivity, str):
+        if connectivity == 'link-midline':
+            ss._link_midline()
+        elif connectivity != '':
+            raise ValueError("connectivity=%s" % repr(connectivity))
+    elif connectivity is not None:
+        raise TypeError("connectivity=%s" % repr(connectivity))
+    # assemble dims
     if case:
         dims = ('case', ss, time)
     else:

@@ -933,6 +933,7 @@ class MneExperiment(FileTree):
         self._register_field('proj', [''] + self.projs.keys())
         self._register_field('freq', self._freqs.keys())
         self._register_field('src', ('ico-4', 'vol-10', 'vol-7', 'vol-5'))
+        self._register_field('connectivity', ('', 'link-midline'))
         self._register_field('select_clusters', self._cluster_criteria.keys())
 
         # slave fields
@@ -1598,7 +1599,8 @@ class MneExperiment(FileTree):
             src = load.fiff.stc_ndvar(stc, subject, src, mri_sdir,
                                       self._params['apply_inv_kw']['method'],
                                       self._params['make_inv_kw'].get('fixed', False),
-                                      parc=parc)
+                                      parc=parc,
+                                      connectivity=self.get('connectivity'))
             if baseline:
                 src -= src.summary(time=baseline)
 
@@ -1742,7 +1744,8 @@ class MneExperiment(FileTree):
             ds['src'] = load.fiff.stc_ndvar(stcs, subject, src, mri_sdir,
                                             self._params['apply_inv_kw']['method'],
                                             self._params['make_inv_kw'].get('fixed', False),
-                                            parc=parc)
+                                            parc=parc,
+                                            connectivity=self.get('connectivity'))
             if mask:
                 _mask_ndvar(ds, 'src')
         if morph_stc or morph_ndvar:
@@ -1752,7 +1755,8 @@ class MneExperiment(FileTree):
                 ds['srcm'] = load.fiff.stc_ndvar(mstcs, common_brain, src, mri_sdir,
                                                  self._params['apply_inv_kw']['method'],
                                                  self._params['make_inv_kw'].get('fixed', False),
-                                                 parc=parc)
+                                                 parc=parc,
+                                                 connectivity=self.get('connectivity'))
                 if mask:
                     _mask_ndvar(ds, 'srcm')
 
@@ -5367,6 +5371,14 @@ class MneExperiment(FileTree):
         # pmin
         if pmin is not None:
             items.append(str(pmin))
+            # source connectivity
+            connectivity = self.get('connectivity')
+            if connectivity and data != 'src':
+                raise NotImplementedError("connectivity=%r is not implemented "
+                                          "for data=%r" % (connectivity, data))
+            elif connectivity:
+                items.append(connectivity)
+
             # cluster criteria
             if pmin != 'tfce':
                 select_clusters = self.get('select_clusters')

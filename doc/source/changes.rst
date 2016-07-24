@@ -15,6 +15,8 @@ New in 0.24
   in results due to improved numerical precision. Delete old files to free up
   space with ``mne_experiment.rm('bem-sol-file', subject='*')``.
 * :meth:`MneExperiment.make_report_coreg` method.
+* :class:`MneExperiment`: New analysis parameter
+  :ref:`analysis-params-connectivity`
 
 
 New in 0.23
