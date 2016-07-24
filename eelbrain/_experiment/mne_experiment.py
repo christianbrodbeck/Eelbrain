@@ -1353,9 +1353,11 @@ class MneExperiment(FileTree):
     def _evoked_mtime(self):
         "Return mtime if the evoked file is up-to-date, None otherwise"
         path = self.get('evoked-file')
-        if os.path.exists(path):
+        fiff_path = self.get('evoked-fiff-file')
+        if os.path.exists(path) and os.path.exists(fiff_path):
             evoked_mtime = os.path.getmtime(path)
-            if evoked_mtime > self._epochs_mtime():
+            fiff_mtime = os.path.getmtime(fiff_path)
+            if min(evoked_mtime, fiff_mtime) > self._epochs_mtime():
                 return evoked_mtime
 
     def _evoked_stc_mtime(self):
@@ -3544,12 +3546,8 @@ class MneExperiment(FileTree):
                      (isinstance(data_raw, bool) or data_raw == self.get('raw')))
         if use_cache and self._evoked_mtime():
             ds = load.unpickle(dst)
-            if 'evoked' in ds:
-                if ds.info.get('mne_version', None) == mne.__version__:
-                    return ds
-            else:
-                ds['evoked'] = mne.read_evokeds(fiff_dst, proj=False)
-                return ds
+            ds['evoked'] = mne.read_evokeds(fiff_dst, proj=False)
+            return ds
 
         # load the epochs (post baseline-correction trigger shift requires
         # baseline corrected evoked
