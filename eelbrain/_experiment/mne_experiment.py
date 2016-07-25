@@ -2974,7 +2974,8 @@ class MneExperiment(FileTree):
                 ds.index(index)
 
             if reject is True:
-                ds = ds.sub('accept')
+                if self._artifact_rejection[self.get('rej')]['kind'] is not None:
+                    ds = ds.sub('accept')
         else:
             ds = self.load_events(add_proj=add_proj, add_bads=add_bads,
                                   data_raw=data_raw)
