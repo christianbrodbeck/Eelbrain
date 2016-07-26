@@ -305,24 +305,34 @@ def is_higher_order_effect(e1, e0):
     return all(f in f1s for f in find_factors(e0))
 
 
-def hasemptycells(x):
-    "True iff a categorial has one or more empty cells"
+def empty_cells(x):
+    return [cell for cell in x.cells if not np.any(x == cell)]
+
+
+def assert_has_no_empty_cells(x):
+    """Raise a ValueError iff a categorial has one or more empty cells"""
     if isfactor(x):
-        return False
+        return
     elif isinteraction(x):
-        if x.is_categorial:
-            for cell in x.cells:
-                if not np.any(x == cell):
-                    return True
-        return False
+        if not x.is_categorial:
+            return
+        empty = empty_cells(x)
+        if empty:
+            raise ValueError("%s contains empty cells: %s" %
+                             (dataobj_repr(x), ', '.join(empty)))
     elif ismodel(x):
+        empty = []
         for e in x.effects:
             if isinteraction(e) and e.is_categorial:
-                for cell in e.cells:
-                    if not np.any(e == cell):
-                        return True
-        return False
-    raise TypeError("Need categorial (got %s)" % type(x))
+                empty_ = empty_cells(e)
+                if empty_:
+                    empty.append((dataobj_repr(e), ', '.join(empty)))
+        if empty:
+            items = ['%s (%s)' % pair for pair in empty]
+            raise ValueError("%s contains empty cells in %s" %
+                             (dataobj_repr(x), ' and '.join(items)))
+    else:
+        raise TypeError("Need categorial (got %s)" % repr(x))
 
 
 def hasrandom(x):

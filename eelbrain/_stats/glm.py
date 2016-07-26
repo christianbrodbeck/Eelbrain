@@ -31,8 +31,8 @@ from .. import fmtxt
 from .._utils import LazyProperty
 from .._utils.print_funcs import strdict
 from .._data_obj import isvar, asvar, assub, isbalanced, iscategorial, \
-    hasemptycells, is_higher_order_effect, isnestedin, hasrandom, find_factors, \
-    Model, asmodel
+    assert_has_no_empty_cells, is_higher_order_effect, isnestedin, hasrandom, \
+    find_factors, Model, asmodel
 from .opt import anova_fmaps, anova_full_fmaps, lm_res_ss, ss
 from .stats import ftest_p
 from . import test
@@ -353,9 +353,8 @@ class LM(object):
 def _nd_anova(x):
     "Create an appropriate anova mapper"
     x = asmodel(x)
-    if hasemptycells(x):
-        raise NotImplementedError("Model has empty cells")
-    elif hasrandom(x):
+    assert_has_no_empty_cells(x)
+    if hasrandom(x):
         if not iscategorial(x):
             raise NotImplementedError("Random effects ANOVA with continuous "
                                       "predictors")
@@ -861,8 +860,7 @@ class ANOVA(object):
 
         if len(y) != len(x):
             raise ValueError("y and x must describe same number of cases")
-        elif hasemptycells(x):
-            raise NotImplementedError("Model has empty cells")
+        assert_has_no_empty_cells(x)
 
         # save args
         self.y = y
