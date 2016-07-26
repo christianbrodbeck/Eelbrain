@@ -5941,7 +5941,7 @@ def box_cox_transform(X, p, name=None):
     return Var(y, name)
 
 
-class NestedEffect(object):
+class NestedEffect(_Effect):
 
     _stype = "nested"
 
@@ -5974,6 +5974,9 @@ class NestedEffect(object):
 
     def __len__(self):
         return self._n_cases
+
+    def __eq__(self, other):
+        return self.effect == other
 
     @property
     def df(self):

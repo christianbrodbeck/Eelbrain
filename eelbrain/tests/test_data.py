@@ -20,7 +20,8 @@ from numpy.testing import (assert_equal, assert_array_equal,
 from eelbrain import (datasets, load, Var, Factor, NDVar, Datalist, Dataset,
                       Celltable, align, align1, choose, combine)
 from eelbrain._data_obj import (asvar, assub, longname, Categorial, SourceSpace,
-                                UTS, DimensionMismatchError)
+                                UTS, DimensionMismatchError,
+                                assert_has_no_empty_cells)
 from eelbrain._stats.stats import rms
 from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,
                                      assert_source_space_equal,
@@ -977,6 +978,12 @@ def test_nested_effects():
     i = ds.eval("A % nrm(B)")
     expected_cells = tuple((case['A'], case['nrm']) for case in ds.itercases())
     eq_(i.cells, expected_cells)
+
+    assert_has_no_empty_cells(ds.eval('A * B + nrm(B) + A % nrm(B)'))
+
+    i = ds.eval("nrm(B) % A")
+    expected_cells = sorted((case['nrm'], case['A']) for case in ds.itercases())
+    eq_(i.cells, tuple(expected_cells))
 
 
 def test_ols():
