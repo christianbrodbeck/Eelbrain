@@ -5707,7 +5707,7 @@ class Interaction(_Effect):
                 else:
                     self.base.extend(b.base)
                     self.is_categorial = (self.is_categorial and b.is_categorial)
-            elif b._stype == "nested":  # TODO: nested effects
+            elif isnested(b):  # TODO: nested effects
                 self.base.append(b)
                 if b.nestedin not in self.nestedin:
                     self.nestedin.append(b.nestedin)
@@ -5729,7 +5729,7 @@ class Interaction(_Effect):
         self.df = reduce(operator.mul, [f.df for f in self.base])
 
         # determine cells:
-        factors = EffectList(filter(isfactor, self.base))
+        factors = EffectList(e for e in self.base if isfactor(e) or isnested(e))
         self.cells = tuple(itertools.product(*(f.cells for f in factors)))
         self.cell_header = tuple(f.name for f in factors)
 

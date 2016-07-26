@@ -324,4 +324,6 @@ def get_uv(seed=0):
     ds['fltvar2'] = Var(np.random.normal(0, 1, 80))
     ds['fltvar2'][40:] += ds['fltvar'][40:].x
     ds['index'] = Var(np.repeat([True, False], 40))
+    # nested random effect
+    ds['nrm'] = Factor(['s%03i' % i for i in range(40)], tile=2, random=True)
     return ds

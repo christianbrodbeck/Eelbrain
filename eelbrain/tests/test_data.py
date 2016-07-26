@@ -966,6 +966,19 @@ def test_ndvar_timeseries_methods():
     assert_array_equal(env.x, envs.x.swapaxes(1,2))
 
 
+def test_nested_effects():
+    """Test nested effects"""
+    ds = datasets.get_uv()
+
+    nested = ds.eval("nrm(B)")
+    eq_(nested.cells, ds['nrm'].cells)
+
+    # interaction
+    i = ds.eval("A % nrm(B)")
+    expected_cells = tuple((case['A'], case['nrm']) for case in ds.itercases())
+    eq_(i.cells, expected_cells)
+
+
 def test_ols():
     "Test NDVar.ols() method"
     from rpy2.robjects import r
