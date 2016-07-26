@@ -274,11 +274,13 @@ Plot sensor layout maps:
 Xax parameter
 =============
 
-Many plots have an ``Xax`` parameter. This parameter takes a categorial data
-object. The data of the plotted variable will be split into the catories in
-``Xax``, and for every cell in ``Xax`` a separate subplot will be plotted.
+Many plots have an ``Xax`` parameter which is used to sort the data in ``Y``
+into different categories and plot them on separate axes. ``Xax`` can be
+specified through categorial data, or as a dimension in ``Y``.
 
-For example, while
+If a categorial data object is specified for ``Xax``, ``Y`` is split into the
+categories in ``Xax``, and for every cell in ``Xax`` a separate subplot is
+shown. For example, while
 
     >>> plot.Butterfly('meg', ds=ds)
 
@@ -288,6 +290,11 @@ will create a single Butterfly plot of the average response,
 
 where ``'subject'`` is the ``Xax`` parameter, will create a separate subplot
 for every subject with its average response.
+
+A dimension on ``Y`` can be specified through a string starting with ``.``.
+For example, to plot each case of ``meg`` separately, use::
+
+   >>> plot.Butterfly('meg', '.case', ds=ds)
 
 
 Layout
