@@ -54,6 +54,14 @@ def boosting(x, y, trf_length, delta, maxiter, segno, mindelta=0.001):
     x = x[:, training_range]
     y = y[training_range]
 
+    # buffers
+    ypred_now = np.empty(y.shape)
+    ypred_next_step = np.empty(y.shape)
+    ypred_test = np.empty(y_test.shape)
+    new_error = np.empty(h.shape)
+    new_sign = np.empty(h.shape, np.int8)
+    y_delta = np.empty(y.shape)
+
     # history lists
     history = []
     train_corr = []
@@ -65,10 +73,10 @@ def boosting(x, y, trf_length, delta, maxiter, segno, mindelta=0.001):
         history.append(h.copy())
 
         # evaluate current h
-        ypred_now = y * 0
+        ypred_now.fill(0)
         if np.any(h):
             # predict
-            ypred_test = y_test * 0
+            ypred_test.fill(0)
             for ind in xrange(len(h)):
                 ypred_now += np.convolve(h[ind], x[ind])[:len(ypred_now)]
                 ypred_test += np.convolve(h[ind], x_test[ind])[:len(ypred_test)]
@@ -101,18 +109,26 @@ def boosting(x, y, trf_length, delta, maxiter, segno, mindelta=0.001):
             break
 
         # generate possible movements
-        new_error = np.empty(h.shape)
-        new_sign = np.zeros(h.shape, int)
+        new_sign.fill(0)
         for ind1 in xrange(h.shape[0]):
             for ind2 in xrange(h.shape[1]):
-                x_delta = delta * np.hstack((np.zeros(ind2), x[ind1, :-ind2 or None]))
+                # y_delta = change in y from delta change in h
+                y_delta[:ind2] = 0.
+                y_delta[ind2:] = x[ind1, :-ind2 or None]
+                y_delta *= delta
 
-                ypred = ypred_now + x_delta
-                e1 = np.sum((y - ypred) ** 2)
-    
-                ypred = ypred_now - x_delta
-                e2 = np.sum((y - ypred) ** 2)
-    
+                # ypred = ypred_now + y_delta
+                # error = SS(y - ypred)
+                np.add(ypred_now, y_delta, ypred_next_step)
+                np.subtract(y, ypred_next_step, ypred_next_step)
+                e1 = np.dot(ypred_next_step, ypred_next_step[:, None])
+
+                # ypred = y_pred_now - y_delta
+                # error = SS(y - ypred)
+                np.subtract(ypred_now, y_delta, ypred_next_step)
+                np.subtract(y, ypred_next_step, ypred_next_step)
+                e2 = np.dot(ypred_next_step, ypred_next_step[:, None])
+
                 if e1 > e2:
                     new_error[ind1, ind2] = e2
                     new_sign[ind1, ind2] = -1
