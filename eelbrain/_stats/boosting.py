@@ -5,7 +5,22 @@ import numpy as np
 from scipy.stats import spearmanr
 
 
-def boosting(x, y, trf_length, delta, maxiter, segno, mindelta=0.001):
+def boosting(x, y, trf_length, delta, mindelta=None, maxiter=10000):
+    if mindelta is None:
+        mindelta = delta
+    hs = []
+    corrs = []
+    for i in xrange(40):
+        h, corr, test_sse_history = boost_1seg(x, y, trf_length, delta, maxiter, i, mindelta)
+        if not np.isnan(corr):
+            hs.append(h)
+            corrs.append(corr)
+    h = np.mean(hs, 0)
+    corr = np.mean(corrs)
+    return h, corr
+
+
+def boost_1seg(x, y, trf_length, delta, maxiter, segno, mindelta):
     """Basic port of svdboostV4pred
 
     Parameters

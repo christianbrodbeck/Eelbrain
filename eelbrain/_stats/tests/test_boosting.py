@@ -5,7 +5,7 @@ from nose.tools import eq_, assert_almost_equal
 from numpy.testing import assert_array_equal, assert_allclose
 import scipy.io
 
-from eelbrain._stats.boosting import boosting
+from eelbrain._stats.boosting import boost_1seg
 
 
 def test_boosting():
@@ -15,11 +15,11 @@ def test_boosting():
     mat = scipy.io.loadmat(path)
 
     h, corr, rcorr, test_sse_history, train_corr = \
-        boosting(mat['stim'], mat['signal'][0], 10, 0.005, 10000, 0)
+        boost_1seg(mat['stim'], mat['signal'][0], 10, 0.005, 10000, 0, 0.01)
 
     assert_array_equal(h, mat['h'])
     assert_almost_equal(corr, mat['crlt'][0, 0], 10)
-    eq_(rcorr, mat['crlt'][1, 0])
+    assert_almost_equal(rcorr, mat['crlt'][1, 0], 10)
     assert_allclose(test_sse_history, mat['Str_testE'][0])
     # NumPy 1.11 has equal_nan=True
     assert_allclose(train_corr[1:], mat['CR_train'][0, 1:])
@@ -29,7 +29,7 @@ def test_boosting():
     mat = scipy.io.loadmat(path)
 
     h, corr, rcorr, test_sse_history, train_corr = \
-        boosting(mat['stim'], mat['signal'][0], 10, 0.005, 10000, 0)
+        boost_1seg(mat['stim'], mat['signal'][0], 10, 0.005, 10000, 0, 0.01)
 
     assert_array_equal(h, mat['h'])
     assert_almost_equal(corr, mat['crlt'][0, 0], 10)
