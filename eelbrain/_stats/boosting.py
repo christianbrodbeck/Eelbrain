@@ -120,7 +120,7 @@ def boost_1seg(x, y, trf_length, delta, maxiter, segno, mindelta):
         #    the previous two iterations
         if (i_boost > 10 and test_sse_history[-1] > test_sse_history[-2] and
                 test_sse_history[-1] > test_sse_history[-3]):
-            print("SSE not improving in 2 steps")
+            reason = "SSE(test) not improving in 2 steps"
             break
 
         # generate possible movements
@@ -154,7 +154,8 @@ def boost_1seg(x, y, trf_length, delta, maxiter, segno, mindelta):
         # If no improvements can be found reduce delta
         if new_error.min() > np.sum((y - ypred_now) ** 2):
             if delta < mindelta:
-                print("No improvement, stopping...")
+                reason = ("No improvement possible for training data, "
+                          "stopping...")
                 break
             else:
                 delta *= 0.5
@@ -167,14 +168,16 @@ def boost_1seg(x, y, trf_length, delta, maxiter, segno, mindelta):
 
         # abort if we're moving in circles
         if len(history) >= 2 and np.array_equal(h, history[-2]):
-            print("Same as -2")
+            reason = "Same h after 2 iterations"
             break
         elif len(history) >= 3 and np.array_equal(h, history[-3]):
-            print("Same as -3")
+            reason = "Same h after 3 iterations"
             break
+    else:
+        reason = "maxiter exceeded"
 
     best_iter = np.argmin(test_sse_history)
-    print(len(test_sse_history), 'iterations')
+    print(reason + ' (%i iterations)' % len(test_sse_history))
 
     # Keep predictive power as the correlation for the best iteration
     return (history[best_iter], test_corr[best_iter], test_rcorr[best_iter],
