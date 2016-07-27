@@ -9,14 +9,12 @@ def boosting(x, y, trf_length, delta, mindelta=None, maxiter=10000):
     if mindelta is None:
         mindelta = delta
     hs = []
-    corrs = []
     for i in xrange(40):
-        h, corr, test_sse_history = boost_1seg(x, y, trf_length, delta, maxiter, i, mindelta)
-        if not np.isnan(corr):
+        h, test_sse_history = boost_1seg(x, y, trf_length, delta, maxiter, i, mindelta)
+        if not np.any(h):
             hs.append(h)
-            corrs.append(corr)
     h = np.mean(hs, 0)
-    corr = np.mean(corrs)
+    corr = corr_for_kernel(y, x, h, False)
     return h, corr
 
 
@@ -73,47 +71,30 @@ def boost_1seg(x, y, trf_length, delta, maxiter, segno, mindelta):
     ypred_now = np.empty(y.shape)
     ypred_next_step = np.empty(y.shape)
     ypred_test = np.empty(y_test.shape)
+    y_test_error = np.empty(y_test.shape)
     new_error = np.empty(h.shape)
     new_sign = np.empty(h.shape, np.int8)
     y_delta = np.empty(y.shape)
 
     # history lists
     history = []
-    train_corr = []
-    test_corr = []
-    test_rcorr = []
     test_sse_history = []
-    train_sse_history = []
     for i_boost in xrange(maxiter):
         history.append(h.copy())
 
         # evaluate current h
-        ypred_now.fill(0)
         if np.any(h):
             # predict
-            ypred_test.fill(0)
-            for ind in xrange(len(h)):
-                ypred_now += np.convolve(h[ind], x[ind])[:len(ypred_now)]
-                ypred_test += np.convolve(h[ind], x_test[ind])[:len(ypred_test)]
+            apply_kernel(x, h, ypred_now)
+            apply_kernel(x_test, h, ypred_test)
 
-            # Compute predictive power: Training
-            rg = slice(h.shape[1] - 1, None)
-            train_corr.append(np.corrcoef(y[rg], ypred_now[rg])[0, 1])
-
-            # Compute predictive power: Testing
-            rg = slice(h.shape[1] - 1, None)
-            test_corr.append(np.corrcoef(y_test[rg], ypred_test[rg])[0, 1])
-            test_rcorr.append(spearmanr(y_test[rg], ypred_test[rg])[0])
-
-            test_sse_history.append(np.sum((y_test - ypred_test) ** 2))
-            train_sse_history.append(np.sum((y - ypred_now) ** 2))
+            # Compute predictive power on testing data
+            np.subtract(y_test, ypred_test, y_test_error)
+            test_sse_history.append(np.dot(y_test_error, y_test_error[:, None])[0])
         else:
-            train_corr.append(np.NaN)
-            test_corr.append(np.NaN)
-            test_rcorr.append(np.NaN)
-            test_sse_history.append(np.sum(y_test ** 2))
-            train_sse_history.append(np.sum(y ** 2))
-    
+            ypred_now.fill(0)
+            test_sse_history.append(np.dot(y_test, y_test[:, None])[0])
+
         # stop the iteration if all the following requirements are met
         # 1. more than 10 iterations are done
         # 2. The testing error in the latest iteration is higher than that in
@@ -180,5 +161,35 @@ def boost_1seg(x, y, trf_length, delta, maxiter, segno, mindelta):
     print(reason + ' (%i iterations)' % len(test_sse_history))
 
     # Keep predictive power as the correlation for the best iteration
-    return (history[best_iter], test_corr[best_iter], test_rcorr[best_iter],
-            test_sse_history, train_corr)
+    return history[best_iter], test_sse_history
+
+
+def apply_kernel(x, h, out=None):
+    """Predict ``y`` by applying kernel ``h`` to ``x``"""
+    if out is None:
+        out = np.zeros(x.shape[1])
+    else:
+        out.fill(0)
+
+    for ind in xrange(len(h)):
+        out += np.convolve(h[ind], x[ind])[:len(out)]
+
+    return out
+
+
+def corr_for_kernel(y, x, h, skip_beginning=True, out=None):
+    """Correlation of ``y`` and the prediction with kernel ``h``"""
+    y_pred = apply_kernel(x, h)
+    if skip_beginning:
+        i0 = h.shape[1] - 1
+        y = y[i0:]
+        y_pred = y_pred[i0:]
+
+    if out is None:
+        return np.corrcoef(y, y_pred)[0, 1]
+    elif out == 'rank':
+        return spearmanr(y, y_pred)[0]
+    elif out == 'both':
+        return np.corrcoef(y, y_pred)[0, 1], spearmanr(y, y_pred)[0]
+    else:
+        raise ValueError("out=%s" % repr(out))
