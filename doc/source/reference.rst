@@ -385,6 +385,32 @@ following methods to better interact with Eelbrain:
     ~plot._brain_mixin.BrainMixin.save_image
 
 
+Surface options for plotting data on ``fsaverage``:
+
+.. |surf_inflated| image:: images/brain_inflated.png
+   :width: 200px
+.. |surf_inflated_avg| image:: images/brain_inflated_avg.png
+   :width: 200px
+.. |surf_inflated_pre| image:: images/brain_inflated_pre.png
+   :width: 200px
+.. |surf_white| image:: images/brain_white.png
+   :width: 200px
+.. |surf_smoothwm| image:: images/brain_smoothwm.png
+   :width: 200px
+.. |surf_sphere| image:: images/brain_sphere.png
+   :width: 200px
+
++---------------------+---------------------+---------------------+
+| white               | smoothwm            | inflated_pre        |
+|                     |                     |                     |
+| |surf_white|        | |surf_smoothwm|     | |surf_inflated_pre| |
++---------------------+---------------------+---------------------+
+| inflated            | inflated_avg        | sphere              |
+|                     |                     |                     |
+| |surf_inflated|     | |surf_inflated_avg| | |surf_sphere|       |
++---------------------+---------------------+---------------------+
+
+
 .. _ref-guis:
 
 ^^^^
