@@ -318,8 +318,8 @@ def assert_has_no_empty_cells(x):
             return
         empty = empty_cells(x)
         if empty:
-            raise ValueError("%s contains empty cells: %s" %
-                             (dataobj_repr(x), ', '.join(empty)))
+            raise NotImplementedError("%s contains empty cells: %s" %
+                                      (dataobj_repr(x), ', '.join(empty)))
     elif ismodel(x):
         empty = []
         for e in x.effects:
@@ -329,8 +329,8 @@ def assert_has_no_empty_cells(x):
                     empty.append((dataobj_repr(e), ', '.join(empty)))
         if empty:
             items = ['%s (%s)' % pair for pair in empty]
-            raise ValueError("%s contains empty cells in %s" %
-                             (dataobj_repr(x), ' and '.join(items)))
+            raise NotImplementedError("%s contains empty cells in %s" %
+                                      (dataobj_repr(x), ' and '.join(items)))
     else:
         raise TypeError("Need categorial (got %s)" % repr(x))
 

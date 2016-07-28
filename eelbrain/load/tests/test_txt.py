@@ -14,7 +14,7 @@ from ...tests.test_data import assert_dataobj_equal, assert_dataset_equal
 
 def test_tsv_io():
     """Test tsv I/O"""
-    names = ['A', 'B', 'rm', 'intvar', 'fltvar', 'fltvar2', 'index']
+    names = ['A', 'B', 'rm', 'intvar', 'fltvar', 'fltvar2', 'index', 'nrm']
 
     # get Dataset
     ds = datasets.get_uv()
