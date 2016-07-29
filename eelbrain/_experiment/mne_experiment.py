@@ -320,7 +320,7 @@ class MneExperiment(FileTree):
         Guide on using :ref:`experiment-class-guide`.
     """
     path_version = 1
-    screen_log_level = logging.WARNING
+    screen_log_level = logging.INFO
     auto_delete_cache = True
     # what to do when the experiment class definition changed:
     #   True: delete outdated files
@@ -2138,9 +2138,9 @@ class MneExperiment(FileTree):
             return names
         else:
             self._log.info("No bad channel definition for: %s/%s, creating "
-                           "empty file" %
+                           "empty bad_channels file" %
                            (self.get('subject'), self.get('experiment')))
-            self.make_bad_channels(())
+            self.make_bad_channels((), verbose=False)
             return []
 
     def _load_bem(self):
@@ -3367,7 +3367,7 @@ class MneExperiment(FileTree):
             raise NotImplementedError(msg)
         return labels
 
-    def make_bad_channels(self, bad_chs, redo=False, **kwargs):
+    def make_bad_channels(self, bad_chs, redo=False, verbose=True, **kwargs):
         """Write the bad channel definition file for a raw file
 
         Parameters
@@ -3399,10 +3399,11 @@ class MneExperiment(FileTree):
         raw = self.load_raw(add_bads=False)
         sensor = load.fiff.sensor_dim(raw)
         chs = sensor._normalize_sensor_names(bad_chs)
-        if old_bads is None:
-            print("-> %s" % chs)
-        else:
-            print("%s -> %s" % (old_bads, chs))
+        if verbose:
+            if old_bads is None:
+                print("-> %s" % chs)
+            else:
+                print("%s -> %s" % (old_bads, chs))
         text = os.linesep.join(chs)
         with open(dst, 'w') as fid:
             fid.write(text)

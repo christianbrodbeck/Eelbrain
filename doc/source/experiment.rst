@@ -16,8 +16,8 @@ experiment with MNE. Currently only gradiometer-only data is supported.
    :local:
 
 
-Getting Started
-===============
+Step by step
+============
 
 .. contents:: Contents
    :local:
@@ -99,8 +99,8 @@ Pre-processing
 --------------
 
 Once events are properly labeled, define :attr:`MneExperiment.epochs`. Then
-do epoch rejection (for the desired :ref:`MneExperiment-raw-parameter`
-setting) using :meth:`MneExperiment.make_rej`. A simple way to cycle through
+do artifact rejection using :meth:`MneExperiment.make_bad_channels` and
+:meth:`MneExperiment.make_rej`. A simple way to cycle through
 subjects for doing rejection is :meth:`MneExperiment.next`, like::
 
     >>> e.make_rej()
