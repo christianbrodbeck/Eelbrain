@@ -34,6 +34,7 @@ import re
 import socket
 from sys import stdout
 from time import time as current_time
+from warnings import warn
 
 import numpy as np
 import scipy.stats
@@ -210,9 +211,9 @@ class _Result(object):
 
         Parameters
         ----------
-        pmin : None | scalar
+        pmin : scalar
             Threshold p-value for masking (default 0.05). For threshold-based
-            cluster tests, pmin=None includes all clusters regardless of their
+            cluster tests, ``pmin=1`` includes all clusters regardless of their
             p-value.
 
         Returns
@@ -1331,9 +1332,9 @@ class _MultiEffectResult(_Result):
         ----------
         effect : int | str
             Index or name of the effect from which to use the parameter map.
-        pmin : None | scalar
+        pmin : scalar
             Threshold p-value for masking (default 0.05). For threshold-based
-            cluster tests, pmin=None includes all clusters regardless of their
+            cluster tests, ``pmin=1`` includes all clusters regardless of their
             p-value.
 
         Returns
@@ -2826,9 +2827,9 @@ class _ClusterDist:
 
         Parameters
         ----------
-        pmin : None | scalar
+        pmin : scalar
             Threshold p-value for masking (default 0.05). For threshold-based
-            cluster tests, pmin=None includes all clusters regardless of their
+            cluster tests, ``pmin=1`` includes all clusters regardless of their
             p-value.
 
         Returns
@@ -2837,15 +2838,21 @@ class _ClusterDist:
             NDVar with data from the original parameter map wherever p <= pmin
             and 0 everywhere else.
         """
+        if pmin is None:
+            pmin = 1
+            warn("Use of pmin=None for .masked_parameter_map() is deprecated "
+                 "and will stop working after Eelbrain 0.24. Use pmin=1 "
+                 "instead.", DeprecationWarning)
+
         if sub:
             param_map = self.parameter_map.sub(**sub)
         else:
             param_map = self.parameter_map.copy()
 
-        if pmin is None:
+        if pmin == 1:
             if self.kind != 'cluster':
-                msg = "pmin can only be None for thresholded cluster tests"
-                raise ValueError(msg)
+                raise ValueError("pmin can only be 1 for thresholded "
+                                 "cluster tests")
             c_mask = self.cluster_map.x != 0
         else:
             probability_map = self.compute_probability_map(**sub)

@@ -22,6 +22,8 @@ New in 0.24
 * :meth:`MneExperiment.make_report_coreg` method.
 * :class:`MneExperiment`: New analysis parameter
   :ref:`analysis-params-connectivity`
+* API of the :meth:`.masked_parameter_map` method of cluster-based test
+  results: use of ``pmin=None`` is deprecated, use ``pmin=1`` instead.
 
 
 New in 0.23

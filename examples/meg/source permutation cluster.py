@@ -50,7 +50,7 @@ res = e.testnd.ttest_ind('src', 'side', 'L', 'R', ds=ds,
 section = report.add_section("Result")
 
 # add an image with all clusters in time bins
-pmap = res.masked_parameter_map(None)
+pmap = res.masked_parameter_map(1)
 image = e.plot.brain.bin_table(pmap, tstep=0.05, surf='smoothwm', views=['lat', 'med'])
 section.add_figure("Significant clusters in time bins.", image)
 # add a table of all clusters

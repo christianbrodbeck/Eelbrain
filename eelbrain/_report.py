@@ -116,8 +116,8 @@ def sensor_time_results(res, ds, colors, include=1):
     return report
 
 
-def sensor_bin_table(section, res, pmin=None):
-    if pmin is None:
+def sensor_bin_table(section, res, pmin=1):
+    if pmin == 1:
         caption = "All clusters"
     else:
         caption = "p <= %.s" % pmin
@@ -243,7 +243,7 @@ def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={}, title="R
     return report
 
 
-def source_bin_table(section, res, surfer_kwargs, pmin=None):
+def source_bin_table(section, res, surfer_kwargs, pmin=1):
     caption = ("All clusters in time bins. Each plot shows all sources "
                "that are part of a cluster at any time during the "
                "relevant time bin. Only the general minimum duration and "
