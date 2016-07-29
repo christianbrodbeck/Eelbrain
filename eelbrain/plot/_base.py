@@ -868,17 +868,19 @@ class _EelFigure(object):
     _default_ylabel_ax = 0
     _make_axes = True
 
-    def __init__(self, frame_title, nax, axh_default, ax_aspect, tight=True,
-                 title=None, frame=True, yaxis=True, *args, **kwargs):
+    def __init__(self, frame_title, layout, axh_default, ax_aspect,
+                 tight=True, title=None, frame=True, yaxis=True, *args,
+                 **kwargs):
         """Parent class for Eelbrain figures.
 
         Parameters
         ----------
         frame_title : str
             Frame title.
-        nax : None | int
-            Number of axes to produce layout for. If None, no layout is
-            produced.
+        layout : None | int | Layout
+            Layout, or number of axes to produce layout for. If None, no layout
+            is produced. If a Layout is provided, some subsequent parameters
+            are ignored.
         axh_default : scalar
             Default height per axes.
         ax_aspect : scalar
@@ -888,11 +890,12 @@ class _EelFigure(object):
             (default True).
         title : str
             Figure title (default is no title).
-        frame : bool | 't'
+        frame : bool | 't' | 'none'
             How to frame the plots.
             ``True`` (default): normal matplotlib frame;
             ``False``: omit top and right lines;
             ``'t'``: draw spines at x=0 and y=0, common for ERPs.
+            ``'none'``: Draw no frame.
         yaxis : bool
             Draw the y-axis (default True).
         h : scalar
@@ -921,16 +924,19 @@ class _EelFigure(object):
             frame_title = '%s: %s' % (frame_title, title)
 
         # layout
-        layout = Layout(nax, ax_aspect, axh_default, tight, *args, **kwargs)
+        if not isinstance(layout, Layout):
+            layout = Layout(layout, ax_aspect, axh_default, tight, *args,
+                            **kwargs)
 
         # find the right frame
         if backend['eelbrain']:
             from .._wxgui import get_app
             from .._wxgui.mpl_canvas import CanvasFrame
             get_app()
-            frame_ = CanvasFrame(None, frame_title, eelfigure=self, **layout.fig_kwa)
+            frame_ = CanvasFrame(None, frame_title, eelfigure=self,
+                                 **layout.fig_kwa())
         else:
-            frame_ = mpl_figure(**layout.fig_kwa)
+            frame_ = mpl_figure(**layout.fig_kwa())
 
         figure = frame_.figure
         if title:
@@ -939,31 +945,10 @@ class _EelFigure(object):
             self._figtitle = None
 
         # make axes
-        axes = []
-        if self._make_axes and nax is not None:
-            for i in xrange(1, nax + 1):
-                ax = figure.add_subplot(layout.nrow, layout.ncol, i)
-                axes.append(ax)
-
-                # axes modifications
-                if frame == 't':
-                    ax.tick_params(direction='inout', bottom=False, top=True,
-                                   left=False, right=True, labelbottom=True,
-                                   labeltop=False, labelleft=True,
-                                   labelright=False)
-                    ax.spines['right'].set_position('zero')
-                    ax.spines['left'].set_visible(False)
-                    ax.spines['top'].set_position('zero')
-                    ax.spines['bottom'].set_visible(False)
-                elif not frame:
-                    ax.yaxis.set_ticks_position('left')
-                    ax.spines['right'].set_visible(False)
-                    ax.xaxis.set_ticks_position('bottom')
-                    ax.spines['top'].set_visible(False)
-
-                if not yaxis:
-                    ax.yaxis.set_ticks(())
-                    ax.spines['left'].set_visible(False)
+        if self._make_axes:
+            axes = layout.make_axes(figure, frame, yaxis)
+        else:
+            axes = []
 
         # store attributes
         self._frame = frame_
@@ -971,14 +956,13 @@ class _EelFigure(object):
         self._axes = axes
         self.canvas = frame_.canvas
         self._layout = layout
-        self._tight_arg = tight
 
         # add callbacks
         self.canvas.mpl_connect('motion_notify_event', self._on_motion)
         self.canvas.mpl_connect('axes_leave_event', self._on_leave_axes)
 
     def _show(self):
-        if self._tight_arg:
+        if self._layout.tight:
             self._tight()
 
         self.draw()
@@ -1156,7 +1140,7 @@ class _EelFigure(object):
         self._axes[ax].set_ylabel(label)
 
 
-class Layout():
+class Layout(object):
     """Create layouts for figures with several axes of the same size
     """
     def __init__(self, nax, ax_aspect, axh_default, tight, h=None, w=None,
@@ -1326,19 +1310,8 @@ class Layout():
             if h is None:
                 h = axh * nrow
 
-        fig_kwa = dict(figsize=(w, h), dpi=dpi)
-
-        # make subplot parameters absolute
-        if nax and not tight:
-            size = 2
-            bottom = mpl.rcParams['figure.subplot.bottom'] * size / h
-            left = mpl.rcParams['figure.subplot.left'] * size / w
-            right = 1 - (1 - mpl.rcParams['figure.subplot.right']) * size / w
-            top = 1 - (1 - mpl.rcParams['figure.subplot.top']) * size / h
-            hspace = mpl.rcParams['figure.subplot.hspace'] * size / h
-            wspace = mpl.rcParams['figure.subplot.wspace'] * size / w
-            fig_kwa['subplotpars'] = SubplotParams(left, bottom, right, top,
-                                                   wspace, hspace)
+        if dpi is None:
+            dpi = mpl.rcParams['figure.dpi']
 
         self.nax = nax
         self.h = h
@@ -1347,9 +1320,87 @@ class Layout():
         self.axw = axw
         self.nrow = nrow
         self.ncol = ncol
-        self.fig_kwa = fig_kwa
+        self.tight = tight
+        self.dpi = dpi
         self.show = show
         self.run = run
+
+    def fig_kwa(self):
+        out = {'figsize': (self.w, self.h), 'dpi': self.dpi}
+
+        # make subplot parameters absolute
+        if self.nax and not self.tight:
+            h = 2 / self.h
+            w = 2 / self.w
+            bottom = mpl.rcParams['figure.subplot.bottom'] * h
+            left = mpl.rcParams['figure.subplot.left'] * w
+            right = 1 - (1 - mpl.rcParams['figure.subplot.right']) * w
+            top = 1 - (1 - mpl.rcParams['figure.subplot.top']) * h
+            hspace = mpl.rcParams['figure.subplot.hspace'] * h
+            wspace = mpl.rcParams['figure.subplot.wspace'] * w
+            out['subplotpars'] = SubplotParams(left, bottom, right, top,
+                                               wspace, hspace)
+        return out
+
+    def make_axes(self, figure, frame, yaxis):
+        if not self.nax:
+            return []
+        axes = []
+        for i in xrange(1, self.nax + 1):
+            ax = figure.add_subplot(self.nrow, self.ncol, i)
+            axes.append(ax)
+
+            # axes modifications
+            if frame == 't':
+                ax.tick_params(direction='inout', bottom=False, top=True,
+                               left=False, right=True, labelbottom=True,
+                               labeltop=False, labelleft=True,
+                               labelright=False)
+                ax.spines['right'].set_position('zero')
+                ax.spines['left'].set_visible(False)
+                ax.spines['top'].set_position('zero')
+                ax.spines['bottom'].set_visible(False)
+            elif frame == 'none':
+                ax.axis('off')
+            elif not frame:
+                ax.yaxis.set_ticks_position('left')
+                ax.spines['right'].set_visible(False)
+                ax.xaxis.set_ticks_position('bottom')
+                ax.spines['top'].set_visible(False)
+
+            if not yaxis:
+                ax.yaxis.set_ticks(())
+                ax.spines['left'].set_visible(False)
+        return axes
+
+
+class ImLayout(Layout):
+    """Layout subclass for axes without space"""
+    def __init__(self, nrow, ncol, top_space, bottom_space, ax_aspect,
+                 axh_default, *args, **kwargs):
+        self.top_space = top_space
+        self.bottom_space = bottom_space
+        Layout.__init__(self, nrow * ncol, ax_aspect, axh_default, False,
+                        *args, nrow=nrow, ncol=ncol, **kwargs)
+
+        self.h += top_space + bottom_space
+
+    def fig_kwa(self):
+        bottom = self.bottom_space / self.h
+        top = 1 - (self.top_space / self.h)
+        return {'figsize': (self.w, self.h), 'dpi': self.dpi,
+                'subplotpars': SubplotParams(0, bottom, 1, top, 0, 0)}
+
+    def make_axes(self, figure, frame, yaxis):
+        i = 1
+        axes = []
+        for col in xrange(self.ncol):
+            for row in xrange(self.nrow):
+                ax = figure.add_subplot(self.nrow, self.ncol, i)
+                i += 1
+                ax.axis('off')
+                axes.append(ax)
+        return axes
 
 
 class LegendMixin(object):
