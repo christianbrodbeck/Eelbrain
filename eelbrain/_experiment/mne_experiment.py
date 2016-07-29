@@ -25,7 +25,8 @@ from .. import plot
 from .. import save
 from .. import table
 from .. import testnd
-from .._data_obj import Dataset, Factor, Var, NDVar, Datalist, combine
+from .._data_obj import Dataset, Factor, Var, NDVar, Datalist, combine, \
+    SEQUENCE_TYPES
 from .._info import BAD_CHANNELS
 from .._names import INTERPOLATE_CHANNELS
 from .._meeg import new_rejection_ds
@@ -303,11 +304,10 @@ class CacheDict(dict):
         return out
 
 
-temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {experiment}.log'),
+temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {class-name}.log'),
         'old-eelbrain-log-file': os.path.join('{root}', '.eelbrain.log'),
 
         # MEG
-        'experiment': None,
         'modality': ('', 'eeg', 'meeg'),
         'reference': ('', 'mastoids'),  # EEG reference
         'equalize_evoked_count': ('', 'eq'),
@@ -317,8 +317,8 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {experiment}.log')
         'raw-dir': '{meg-dir}',
 
         # raw input files
-        'raw-file': os.path.join('{raw-dir}', '{subject}_{experiment}-raw.fif'),
-        'raw-file-bkp': os.path.join('{raw-dir}', '{subject}_{experiment}-raw*.fif'),
+        'raw-file': os.path.join('{raw-dir}', '{subject}_{session}-raw.fif'),
+        'raw-file-bkp': os.path.join('{raw-dir}', '{subject}_{session}-raw*.fif'),
         'trans-file': os.path.join('{raw-dir}', '{mrisubject}-trans.fif'),
         # log-files (eye-tracker etc.)
         'log-dir': os.path.join('{meg-dir}', 'logs'),
@@ -330,30 +330,30 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {experiment}.log')
         # created input files
         'bads-file': os.path.join('{raw-dir}', '{subject}_{bads-compound}-bad_channels.txt'),
         'rej-dir': os.path.join('{meg-dir}', 'epoch selection'),
-        'rej-file': os.path.join('{rej-dir}', '{experiment}_{sns_kind}_{epoch}-{rej}.pickled'),
-        'ica-file': os.path.join('{rej-dir}', '{experiment} {sns_kind} {rej}-ica.fif'),
+        'rej-file': os.path.join('{rej-dir}', '{session}_{sns_kind}_{epoch}-{rej}.pickled'),
+        'ica-file': os.path.join('{rej-dir}', '{session} {sns_kind} {rej}-ica.fif'),
 
         # cache
         'cache-dir': os.path.join('{root}', 'eelbrain-cache'),
         'cache-state-file': os.path.join('{cache-dir}', 'cache-state.pickle'),
         # raw
         'raw-cache-dir': os.path.join('{cache-dir}', 'raw', '{subject}'),
-        'raw-cache-base': os.path.join('{raw-cache-dir}', '{experiment} {raw_kind}'),
+        'raw-cache-base': os.path.join('{raw-cache-dir}', '{session} {raw_kind}'),
         'cached-raw-file': '{raw-cache-base}-raw.fif',
         'event-file': '{raw-cache-base}-evts.pickled',
         'interp-file': '{raw-cache-base}-interp.pickled',
         # mne secondary/forward modeling
         'proj-file': '{raw-cache-base}_{proj}-proj.fif',
-        'fwd-file': os.path.join('{raw-cache-dir}', '{experiment}-{mrisubject}-{src}-fwd.fif'),
+        'fwd-file': os.path.join('{raw-cache-dir}', '{session}-{mrisubject}-{src}-fwd.fif'),
         # sensor covariance
         'cov-dir': os.path.join('{cache-dir}', 'cov'),
-        'cov-base': os.path.join('{cov-dir}', '{subject}', '{experiment} '
+        'cov-base': os.path.join('{cov-dir}', '{subject}',
                                  '{raw_kind} {cov}-{rej}-{proj}'),
         'cov-file': '{cov-base}-cov.fif',
         'cov-info-file': '{cov-base}-info.txt',
         # evoked
         'evoked-dir': os.path.join('{cache-dir}', 'evoked'),
-        'evoked-base': os.path.join('{evoked-dir}', '{subject}', '{experiment} '
+        'evoked-base': os.path.join('{evoked-dir}', '{subject}', '{session} '
                                     '{sns_kind} {epoch} {model} {evoked_kind}'),
         'evoked-file': os.path.join('{evoked-base}.pickled'),
         'evoked-fiff-file': os.path.join('{evoked-base}-ave.fif'),
@@ -425,9 +425,9 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {experiment}.log')
         # besa
         'besa-root': os.path.join('{root}', 'besa'),
         'besa-trig': os.path.join('{besa-root}', '{subject}', '{subject}_'
-                                  '{experiment}_{epoch}_triggers.txt'),
+                                  '{session}_{epoch}_triggers.txt'),
         'besa-evt': os.path.join('{besa-root}', '{subject}', '{subject}_'
-                                 '{experiment}_{epoch}[{rej}].evt'),
+                                 '{session}_{epoch}[{rej}].evt'),
 
         # MRAT
         'mrat_condition': '',
@@ -473,6 +473,8 @@ class MneExperiment(FileTree):
 
     # Experiment Constants
     # ====================
+    # tuple (if the experiment has multiple sessions)
+    sessions = None
 
     # add this value to all trigger times
     trigger_shift = 0
@@ -607,7 +609,7 @@ class MneExperiment(FileTree):
     # Backup
     # ------
     # basic state for a backup
-    _backup_state = {'subject': '*', 'mrisubject': '*', 'experiment': '*',
+    _backup_state = {'subject': '*', 'mrisubject': '*', 'session': '*',
                      'raw': 'clm', 'modality': '*'}
     # files to back up, together with state modifications on the basic state
     _backup_files = (('raw-file-bkp', {}),
@@ -649,6 +651,7 @@ class MneExperiment(FileTree):
         self.projs = self.projs.copy()
         self._mri_subjects = self._mri_subjects.copy()
         self._templates = self._templates.copy()
+        self._templates['class-name'] = self.__class__.__name__
         # templates version
         if self.path_version is None:
             raise ValueError("%s.path_version is not set. This parameter needs "
@@ -659,9 +662,9 @@ class MneExperiment(FileTree):
         elif self.path_version == 0:
             self._templates['raw-dir'] = os.path.join('{meg-dir}', 'raw')
             self._templates['raw-file'] = os.path.join('{raw-dir}', '{subject}_'
-                                              '{experiment}_{raw_kind}-raw.fif')
+                                              '{session}_{raw_kind}-raw.fif')
             self._templates['raw-file-bkp'] = os.path.join('{raw-dir}', '{subject}_'
-                                              '{experiment}_{raw_kind}-raw*.fif')
+                                              '{session}_{raw_kind}-raw*.fif')
         elif self.path_version != 1:
             raise ValueError("MneExperiment.path_version needs to be 0 or 1")
         # update templates with _values
@@ -670,6 +673,23 @@ class MneExperiment(FileTree):
                 self._templates.update(cls._values)
 
         FileTree.__init__(self)
+
+        ########################################################################
+        # sessions
+        if self.sessions is None:
+            raise TypeError("The MneExperiment.sessions parameter needs to be "
+                            "specified. The session name is contained in your "
+                            "raw data files. For example if your file is named "
+                            "`R0026_mysession-raw.fif` your session name is "
+                            "'mysession' and you should set "
+                            "MneExperiment.sessions='mysession'.")
+        elif isinstance(self.sessions, basestring):
+            self._sessions = (self.sessions,)
+        elif isinstance(self.sessions, SEQUENCE_TYPES):
+            self._sessions = tuple(self.sessions)
+        else:
+            raise TypeError("MneExperiment.sessions needs to be a string or a "
+                            "tuple, got %s" % repr(self.sessions))
 
         ########################################################################
         # subjects
@@ -996,7 +1016,9 @@ class MneExperiment(FileTree):
                              post_set_handler=self._post_set_group)
 
         self._register_field('raw', sorted(self._raw))
+        self._register_field('session', self._sessions)
         self._register_field('rej', self._artifact_rejection.keys(), 'man')
+
         # epoch
         epoch_keys = sorted(self._epochs)
         for default_epoch in epoch_keys:
@@ -1030,7 +1052,7 @@ class MneExperiment(FileTree):
                              slave_handler=self._update_mrisubject)
 
         # compounds
-        self._register_compound('bads-compound', ('experiment', 'modality'))
+        self._register_compound('bads-compound', ('session', 'modality'))
         self._register_compound('raw_kind', ('modality', 'raw'))
         self._register_compound('sns_kind', ('raw_kind', 'proj'))
         self._register_compound('src_kind', ('sns_kind', 'cov', 'mri', 'inv'))
@@ -2200,6 +2222,8 @@ class MneExperiment(FileTree):
         """
         ds['T'] = ds['i_start'] / ds.info['sfreq']
         ds['SOA'] = Var(np.ediff1d(ds['T'].x, 0))
+        if len(self._sessions) > 1:
+            ds[:, 'session'] = ds.info['session']
 
         for name, coding in self.variables.iteritems():
             ds[name] = ds['trigger'].as_factor(coding, name)
@@ -2250,7 +2274,7 @@ class MneExperiment(FileTree):
         else:
             self._log.info("No bad channel definition for: %s/%s, creating "
                            "empty bad_channels file" %
-                           (self.get('subject'), self.get('experiment')))
+                           (self.get('subject'), self.get('session')))
             self.make_bad_channels((), verbose=False)
             return []
 
@@ -2588,7 +2612,7 @@ class MneExperiment(FileTree):
                             % repr(data_raw))
 
         ds.info['subject'] = subject
-        ds.info['experiment'] = self.get('experiment')
+        ds.info['session'] = self.get('session')
         if data_raw is not False:
             ds.info['raw'] = raw
 
@@ -4272,7 +4296,7 @@ class MneExperiment(FileTree):
         p = plot.Topomap(projs_ndvars, title=proj_file, ncol=3, w=9)
         if save_plot:
             dest = self.get('plot-file', analysis='proj', ext='pdf',
-                            name='{subject}_{experiment}_{raw_kind}')
+                            name='{subject}_{session}_{raw_kind}')
             p.figure.savefig(dest)
         if save:
             rm = save
@@ -4481,7 +4505,7 @@ class MneExperiment(FileTree):
             self._log.debug("New report: %s", desc)
 
         # start report
-        title = self.format('{experiment} {epoch} {test} {test_options}')
+        title = self.format('{session} {epoch} {test} {test_options}')
         report = Report(title)
 
         if is_twostage:
@@ -4627,7 +4651,7 @@ class MneExperiment(FileTree):
         ds.info['label_keys'] = label_keys
 
         # start report
-        title = self.format('{experiment} {epoch} {test} {test_options}')
+        title = self.format('{session} {epoch} {test} {test_options}')
         report = Report(title)
 
         # method intro (compose it later when data is available)
@@ -4723,7 +4747,7 @@ class MneExperiment(FileTree):
                                  'sns', baseline, None, True, True)
 
         # start report
-        title = self.format('{experiment} {epoch} {test} {test_options}')
+        title = self.format('{session} {epoch} {test} {test_options}')
         report = Report(title)
 
         # info
@@ -4789,7 +4813,7 @@ class MneExperiment(FileTree):
             raise ValueError("The following sensors are not in the data: %s" % missing)
 
         # start report
-        title = self.format('{experiment} {epoch} {test} {test_options}')
+        title = self.format('{session} {epoch} {test} {test_options}')
         report = Report(title)
 
         # info
@@ -4880,7 +4904,7 @@ class MneExperiment(FileTree):
             dst = self.get('subject-spm-report', mkdir=True)
             lm = self._load_spm(sns_baseline, src_baseline)
 
-            title = self.format('{experiment} {epoch} {test} {test_options}')
+            title = self.format('{session} {epoch} {test} {test_options}')
 
         report = Report(title)
         report.append(_report.source_time_lm(lm, pmin))

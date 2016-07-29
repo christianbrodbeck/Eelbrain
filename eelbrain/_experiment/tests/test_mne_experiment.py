@@ -20,7 +20,7 @@ class BaseExperiment(MneExperiment):
 
     path_version = 1
 
-    defaults = {'experiment': 'file'}
+    sessions = 'file'
 
 
 class EventExperiment(MneExperiment):
@@ -28,6 +28,8 @@ class EventExperiment(MneExperiment):
     path_version = 1
 
     trigger_shift = 0.03
+
+    sessions = 'cheese'
 
     variables = {'kind': {(1, 2, 3, 4): 'cheese', (11, 12, 13, 14): 'pet'},
                  'name': {1: 'Leicester', 2: 'Tilsit', 3: 'Caerphilly',
@@ -43,8 +45,7 @@ class EventExperiment(MneExperiment):
               'cheese-tilsit': {'base': 'cheese',
                                 'sel': "name == 'Tilsit"}}
 
-    defaults = {'experiment': 'cheese',
-                'model': 'name'}
+    defaults = {'model': 'name'}
 
 
 class EventExperimentTriggerShiftDict(EventExperiment):
@@ -112,7 +113,7 @@ def test_test_experiment():
     e = EventExperiment()
 
     # test defaults
-    eq_(e.get('experiment'), 'cheese')
+    eq_(e.get('session'), 'cheese')
     eq_(e.get('model'), 'name')
 
     # test event labeling
@@ -154,12 +155,12 @@ class FileExperiment(MneExperiment):
               'gexc': {'exclude': SUBJECTS[0]},
               'gexc2': {'base': 'gexc', 'exclude': SUBJECTS[-1]}}
 
-    defaults = {'experiment': 'file'}
+    sessions = 'file'
 
 
 class FileExperimentDefaults(FileExperiment):
 
-    defaults = {'experiment': 'file',
+    defaults = {'session': 'file',
                 'group': 'gsub'}
 
 

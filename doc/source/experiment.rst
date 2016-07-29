@@ -35,9 +35,11 @@ of the experiment::
 
         path_version = 1
 
-        defaults = {'experiment': 'words'}
+        sessions = 'words'
 
 
+Where ``sessions`` is the name which you included in your raw data files after
+the subject identifier.
 Once this basic experiment class is defined, it can be initialized without root
 (i.e., without data files). This is useful to see the required file structure::
 
@@ -50,7 +52,7 @@ Once this basic experiment class is defined, it can be initialized without root
     meg-dir                                    /{subject}
     raw-dir
     trans-file                                       /{mrisubject}-trans.fif
-    raw-file                                         /{subject}_{experiment}-raw.fif
+    raw-file                                         /{subject}_{session}-raw.fif
 
 
 This output shows a template for the path structure according to which the input
@@ -59,8 +61,7 @@ called "R0001" this includes:
 
 - MRI-directory at ``/files/mri/R0001``
 - the raw data file at ``/files/meg/R0001/R0001_words-raw.fif`` (the
-  experiment is called "words" which is specified in
-  ``WordExperiment.defaults``)
+  session is called "words" which is specified in ``WordExperiment.sessions``)
 - the trans-file from the coregistration at ``/files/meg/R0001/R0001-trans.fif``
 
 Once the required files are placed in this structure, the experiment class can
@@ -206,16 +207,10 @@ Defaults
 
 .. py:attribute:: MneExperiment.defaults
 
-The defaults dictionary needs to contain the name of the experiment,
-so a minimal defaults is::
-
-    defaults = {'experiment': 'my_experiment'}
-
-In addition, the defaults dictionary can contain default settings for
+The defaults dictionary can contain default settings for
 experiment analysis parameters, e.g.::
 
-    defaults = {'experiment': 'my_experiment',
-                'epoch': 'my_epoch',
+    defaults = {'epoch': 'my_epoch',
                 'cov': 'noreg',
                 'raw': '1-40'}
 
