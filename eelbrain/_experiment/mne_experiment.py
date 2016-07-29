@@ -319,7 +319,7 @@ class MneExperiment(FileTree):
     .. seealso::
         Guide on using :ref:`experiment-class-guide`.
     """
-    path_version = None
+    path_version = 1
     screen_log_level = logging.WARNING
     auto_delete_cache = True
     # what to do when the experiment class definition changed:
@@ -507,20 +507,14 @@ class MneExperiment(FileTree):
         self._mri_subjects = self._mri_subjects.copy()
         self._templates = self._templates.copy()
         # templates version
-        if self.path_version is None:
-            warn("The default for MneExperiment.path_version will change to 1"
-                 "after version 0.20. To keep using the old scheme, please "
-                 "specify MneExperiment.path_version = 0 explicitly.",
-                 DeprecationWarning)
-
-        if self.path_version is None or self.path_version == 0:
+        if self.path_version == 0:
             self._templates['raw-dir'] = os.path.join('{meg-dir}', 'raw')
             self._templates['raw-file'] = os.path.join('{raw-dir}', '{subject}_'
                                               '{experiment}_{raw_kind}-raw.fif')
             self._templates['raw-file-bkp'] = os.path.join('{raw-dir}', '{subject}_'
                                               '{experiment}_{raw_kind}-raw*.fif')
         elif self.path_version != 1:
-            raise ValueError("path_version needs to be 0 or 1")
+            raise ValueError("MneExperiment.path_version needs to be 0 or 1")
         # update templates with _values
         for cls in reversed(inspect.getmro(self.__class__)):
             if hasattr(cls, '_values'):

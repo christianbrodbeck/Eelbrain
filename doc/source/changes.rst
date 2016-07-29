@@ -6,6 +6,10 @@ Changes
 New in 0.24
 -----------
 
+* API:
+
+  - The :attr:`MneExperiment.path_version` now defaults to ``1``.
+
 * :meth:`MneExperiment.make_report_rois` includes corrected p-values in reports
   for tests in more than one ROI    
 * :meth:`MneExperiment.make_rej` now has a ``decim`` parameter to improve

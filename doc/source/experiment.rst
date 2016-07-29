@@ -33,8 +33,6 @@ of the experiment::
 
     class WordExperiment(MneExperiment):
 
-        path_version = 1
-
         defaults = {'experiment': 'words'}
 
 
@@ -174,14 +172,6 @@ will send you an email as soon as the report is finished (or the program
 encountered an error)
 
 
-.. py:attribute:: MneExperiment.path_version
-
-Set :attr:`MneExperiment.path_version` to ``1`` to use the current file
-naming scheme (unless you defined your experiment class before Eelbrain
-version 0.13 in which case you don't need to define
-:attr:`MneExperiment.path_version` at all).
-
-
 .. py:attribute:: MneExperiment.trigger_shift
 
 Set this attribute to shift all trigger times by a constant (in seconds). For
@@ -190,6 +180,13 @@ example, with ``trigger_shift = 0.03`` a trigger that originally occurred
 differs between subjects, this attribute can also be a dictionary mapping
 subject names to shift values, e.g.
 ``trigger_shift = {'R0001': 0.02, 'R0002': 0.05, ...}``.
+
+
+.. py:attribute:: MneExperiment.path_version
+
+This attribute is only retained for backwards compatibility. Set
+:attr:`MneExperiment.path_version` to ``0`` if your paths correspond to an
+experiment defined before Eelbrain version 0.13.
 
 
 Defaults
