@@ -302,11 +302,11 @@ they fill in parameters that are not made explicit in the epoch's
 :attr:`MneExperiment.epoch_defaults`, with ``base`` other parameters default to
 the base epoch.
 
-sel_epoch (:class:`str`)
-    Name of the epoch providing primary events (e.g. whose trial rejection
-    file should be used).
 base (:class:`str`)
     Name of the epoch whose parameters provide defaults for all parameters.
+    Additional parameters override parameters of the ``base`` epoch, with the
+    exception of ``trigger_shift``, which is applied additively to the
+    ``trigger_shift`` of the ``base`` epoch.
 
 Superset epochs can be defined with:
 

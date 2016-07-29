@@ -37,7 +37,8 @@ class EventExperiment(MneExperiment):
 
     epochs = {'cheese': {'sel': "kind == 'cheese'",
                          'tmin': -0.2},
-              'cheese-leicester': {'sel_epoch': 'cheese',
+              'cheese-leicester': {'base': 'cheese',
+                                   'tmin': -0.1,
                                    'sel': "name == 'Leicester'"},
               'cheese-tilsit': {'base': 'cheese',
                                 'sel': "name == 'Tilsit"}}
@@ -138,9 +139,9 @@ def test_test_experiment():
     # assert_equal(ds['i_start'], I_START + round(0.04 * SAMPLINGRATE))
 
     # epochs
-    eq_(e._epochs['cheese']['tmin'], -0.2)
-    eq_(e._epochs['cheese-leicester']['tmin'], -0.1)
-    eq_(e._epochs['cheese-tilsit']['tmin'], -0.2)
+    eq_(e._epochs['cheese'].tmin, -0.2)
+    eq_(e._epochs['cheese-leicester'].tmin, -0.1)
+    eq_(e._epochs['cheese-tilsit'].tmin, -0.2)
 
 
 class FileExperiment(MneExperiment):

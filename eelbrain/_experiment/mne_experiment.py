@@ -52,25 +52,9 @@ from .definitions import find_dependent_epochs, find_epochs_vars, find_test_vars
 __all__ = ['MneExperiment']
 
 
-# Allowable epoch parameters
-EPOCH_PARAMS = {'sel_epoch', 'sel', 'tmin', 'tmax', 'decim', 'baseline', 'n_cases',
-                'vars', 'trigger_shift', 'post_baseline_trigger_shift',
-                'post_baseline_trigger_shift_max',
-                'post_baseline_trigger_shift_min'}
-SECONDARY_EPOCH_PARAMS = {'base', 'sel', 'tmin', 'tmax', 'decim', 'baseline',
-                          'vars', 'trigger_shift', 'post_baseline_trigger_shift',
-                          'post_baseline_trigger_shift_max',
-                          'post_baseline_trigger_shift_min'}
-SUPER_EPOCH_PARAMS = {'sub_epochs'}
-SUPER_EPOCH_INHERITED_PARAMS = {'tmin', 'tmax', 'decim', 'baseline'}
-SUPER_EPOCH_NEW_PARAMS = {'vars', 'trigger_shift', 'post_baseline_trigger_shift',
-                          'post_baseline_trigger_shift_max',
-                          'post_baseline_trigger_shift_min'}
-SUPER_EPOCH_PARAMS.update(SUPER_EPOCH_INHERITED_PARAMS)
-SUPER_EPOCH_PARAMS.update(SUPER_EPOCH_NEW_PARAMS)
+# Allowable parameters
 ICA_REJ_PARAMS = {'kind', 'source', 'epoch', 'interpolation', 'n_components',
                   'random_state', 'method'}
-
 
 FS_PARC = 'subject_parc'  # Parcellation that come with every MRI-subject
 FSA_PARC = 'fsaverage_parc'  # Parcellation that comes with fsaverage
@@ -84,6 +68,163 @@ inv_re = re.compile("(free|fixed|loose\.\d+)-"  # orientation constraint
                     "(?:-(pick_normal))?"
                     "$")  # pick normal
 
+
+def typed_arg(arg, type_):
+    return None if arg is None else type_(arg)
+
+
+################################################################################
+# Epochs
+class Epoch(object):
+    """Epoch definition
+
+    Parameters
+    ----------
+    ...
+    trigger_shift : float | str
+        Trigger shift applied after loading selected events. Trigger shift is
+        applied for all Epoch subtypes, i.e., it combines additively for
+        secondary epochs.
+    """
+    DICT_ATTRS = ('name', 'tmin', 'tmax', 'decim', 'baseline', 'vars',
+                  'trigger_shift', 'post_baseline_trigger_shift',
+                  'post_baseline_trigger_shift_min',
+                  'post_baseline_trigger_shift_max')
+
+    # to be set by subclass
+    rej_file_epochs = None
+
+    def __init__(self, name, tmin=-0.1, tmax=0.6, decim=5, baseline=(None, 0),
+                 vars=None, trigger_shift=0., post_baseline_trigger_shift=None,
+                 post_baseline_trigger_shift_min=None,
+                 post_baseline_trigger_shift_max=None):
+        if (post_baseline_trigger_shift is not None and
+                (post_baseline_trigger_shift_min is None or
+                 post_baseline_trigger_shift_max is None)):
+            raise ValueError("Epoch %s contains post_baseline_trigger_shift "
+                             "but is missing post_baseline_trigger_shift_min "
+                             "and/or post_baseline_trigger_shift_max" % name)
+
+        if baseline is None:
+            baseline = (None, 0)
+        elif len(baseline) != 2:
+            raise ValueError("Epoch baseline needs to be length 2 tuple, got "
+                             "%s" % repr(baseline))
+        else:
+            baseline = (typed_arg(baseline[0], float),
+                        typed_arg(baseline[1], float))
+
+        if not isinstance(trigger_shift, (float, basestring)):
+            raise TypeError("trigger_shift needs to be float or str, got %s" %
+                            repr(trigger_shift))
+
+        self.name = name
+        self.tmin = typed_arg(tmin, float)
+        self.tmax = typed_arg(tmax, float)
+        self.decim = typed_arg(decim, int)
+        self.baseline = baseline
+        self.vars = vars
+        self.trigger_shift = trigger_shift
+        self.post_baseline_trigger_shift = post_baseline_trigger_shift
+        self.post_baseline_trigger_shift_min = post_baseline_trigger_shift_min
+        self.post_baseline_trigger_shift_max = post_baseline_trigger_shift_max
+
+    def as_dict(self):
+        return {k: getattr(self, k) for k in self.DICT_ATTRS}
+
+    def as_dict_24(self):
+        "Dict to be compared with Eelbrain 0.24 cache"
+        out = {k: v for k, v in self.as_dict().items() if v is not None}
+        if isinstance(self, (SecondaryEpoch, SuperEpoch)):
+            out['_rej_file_epochs'] = self.rej_file_epochs
+        if out['trigger_shift'] == 0:
+            del out['trigger_shift']
+        return out
+
+    def __eq__(self, other):
+        return self.as_dict() == other
+
+
+class PrimaryEpoch(Epoch):
+    """Epoch based on selecting events from raw file
+    """
+    DICT_ATTRS = Epoch.DICT_ATTRS + ('sel',)
+
+    def __init__(self, name, sel=None, n_cases=None, **kwargs):
+        Epoch.__init__(self, name, **kwargs)
+        self.sel = typed_arg(sel, str)
+        self.n_cases = typed_arg(n_cases, int)
+        self.rej_file_epochs = (name,)
+
+
+class SecondaryEpoch(Epoch):
+    """Epoch inheriting event selection from another epoch
+
+    sel, vars and trigger shift will be applied from the sel_epoch
+
+    Attributes
+    ----------
+    sel_epoch : str
+        Name of the epoch form which selection is inherited
+    """
+    DICT_ATTRS = Epoch.DICT_ATTRS + ('sel_epoch', 'sel')
+    INHERITED_PARAMS = ('tmin', 'tmax', 'decim', 'baseline',
+                        'post_baseline_trigger_shift',
+                        'post_baseline_trigger_shift_min',
+                        'post_baseline_trigger_shift_max')
+
+    def __init__(self, name, base, sel=None, **kwargs):
+        for param in self.INHERITED_PARAMS:
+            if param not in kwargs:
+                kwargs[param] = getattr(base, param)
+
+        Epoch.__init__(self, name, **kwargs)
+        self.sel_epoch = base.name
+        self.sel = typed_arg(sel, str)
+        self.rej_file_epochs = base.rej_file_epochs
+
+
+class SuperEpoch(Epoch):
+    """Epoch combining several other epochs
+
+    Attributes
+    ----------
+    sub_epochs : tuple of str
+        Names of the epochs that are combined.
+    """
+    DICT_ATTRS = Epoch.DICT_ATTRS + ('sub_epochs',)
+    INHERITED_PARAMS = ('tmin', 'tmax', 'decim', 'baseline')
+
+    def __init__(self, name, sub_epochs, kwargs):
+        for e in sub_epochs:
+            if isinstance(e, SuperEpoch):
+                raise TypeError("SuperEpochs can not be defined recursively")
+            elif not isinstance(e, Epoch):
+                raise TypeError("sub_epochs must be Epochs, got %s" % repr(e))
+
+        if any(e.post_baseline_trigger_shift is not None for e in sub_epochs):
+            err = ("Epoch definition %s: Super-epochs are merged on the level "
+                   "of events and can can not contain epochs with "
+                   "post_baseline_trigger_shift" % name)
+            raise NotImplementedError(err)
+
+        for param in self.INHERITED_PARAMS:
+            if param in kwargs:
+                continue
+            values = {getattr(e, param) for e in sub_epochs}
+            if len(values) > 1:
+                param_repr = ', '.join(repr(v) for v in values)
+                raise ValueError("All sub_epochs of a super-epoch must have "
+                                 "the same setting for %r; super-epoch %r got "
+                                 "{%s}." % (param, name, param_repr))
+            kwargs[param] = values.pop()
+
+        Epoch.__init__(self, name, **kwargs)
+        self.sub_epochs = tuple(e.name for e in sub_epochs)
+        self.rej_file_epochs = sum((e.rej_file_epochs for e in sub_epochs), ())
+
+
+################################################################################
 
 def _mask_ndvar(ds, name):
     y = ds[name]
@@ -107,20 +248,22 @@ def _time_window_str(window, delim='-'):
 
 def assert_is_primary_epoch(epoch, caller):
     "epoch params/str"
-    if 'sel_epoch' in epoch:
+    if isinstance(epoch, SecondaryEpoch):
         msg = ("The current epoch {cur!r} inherits rejections from "
                "{sel!r}. To access a rejection file for this epoch, call "
                "`e.set(epoch={sel!r})` and then `e.{caller}()` "
-               "again.".format(cur=epoch['name'], sel=epoch['sel_epoch'],
+               "again.".format(cur=epoch.name, sel=epoch.sel_epoch,
                                caller=caller))
         raise ValueError(msg)
-    elif 'sub_epochs' in epoch:
+    elif isinstance(epoch, SuperEpoch):
         msg = ("The current epoch {cur!r} inherits rejections from these "
                "other epochs: {sel!r}. To access trial rejection for these "
                "epochs, call `e.set(epoch=epoch)` and then `e.{caller}()` "
-               "again.".format(cur=epoch['name'], sel=epoch['sub_epochs'],
+               "again.".format(cur=epoch.name, sel=epoch.sub_epochs,
                                caller=caller))
         raise ValueError(msg)
+    elif not isinstance(epoch, Epoch):
+        raise TypeError("Not an Epoch: %s" % repr(epoch))
 
 
 class DictSet(object):
@@ -338,12 +481,11 @@ class MneExperiment(FileTree):
     variables = {}
 
     # Default values for epoch definitions
-    _epoch_default = {'tmin':-0.1, 'tmax': 0.6, 'decim': 5, 'baseline': (None, 0)}
     epoch_default = {}
 
     # named epochs
     epochs = {'epoch': dict(sel="stim=='target'"),
-              'cov': dict(sel_epoch='epoch', tmin=-0.1, tmax=0)}
+              'cov': dict(base='epoch', tmin=-0.1, tmax=0)}
     # Rejection
     # =========
     # eog_sns: The sensors to plot separately in the rejection GUI. The default
@@ -607,103 +749,48 @@ class MneExperiment(FileTree):
 
         ########################################################################
         # epochs
+        epoch_default = {}
+        epoch_default.update(self.epoch_default)
         epochs = {}
         secondary_epochs = []
-        super_epochs = {}
+        super_epochs = []
         for name, parameters in self.epochs.iteritems():
             # filter out secondary epochs
             if 'sub_epochs' in parameters:
-                if set(parameters).difference(SUPER_EPOCH_PARAMS):
-                    invalid = ', '.join(set(parameters).difference(SUPER_EPOCH_PARAMS))
-                    msg = ("Epoch definition %s contains invalid parameters: %s"
-                           % (name, invalid))
-                    raise ValueError(msg)
-                super_epochs[name] = parameters.copy()
+                super_epochs.append((name, parameters.copy()))
             elif 'base' in parameters:
-                if set(parameters).difference(SECONDARY_EPOCH_PARAMS):
-                    raise ValueError("Invalid key in epoch definition for %s: %s"
-                                     % (name, parameters))
-                secondary_epochs.append((name, parameters))
-            elif set(parameters).difference(EPOCH_PARAMS):
-                raise ValueError("Invalid key in epoch definition for %s: %s"
-                                 % (name, parameters))
-            elif 'sel_epoch' in parameters and 'n_cases' in parameters:
-                raise ValueError("Epoch %s can not have both sel_epochs and "
-                                 "n_cases entries" % name)
+                secondary_epochs.append((name, parameters.copy()))
             else:
-                epochs[name] = epoch = self._epoch_default.copy()
-                epoch.update(self.epoch_default)
-                epoch.update(parameters)
-        # integrate epochs with base
+                kwargs = epoch_default.copy()
+                kwargs.update(parameters)
+                epochs[name] = PrimaryEpoch(name, **kwargs)
+
+        # integrate secondary epochs (epochs with base parameter)
         while secondary_epochs:
             n_secondary_epochs = len(secondary_epochs)
             for i in xrange(n_secondary_epochs - 1, -1, -1):
                 name, parameters = secondary_epochs[i]
                 if parameters['base'] in epochs:
-                    epoch = epochs[parameters['base']].copy()
-                    epoch['sel_epoch'] = parameters['base']
-                    for name_ in ('sel', 'vars', 'trigger_shift'):
-                        if name_ in epoch:
-                            del epoch[name_]
-                    epoch.update(parameters)
-                    epochs[name] = epoch
+                    parameters['base'] = epochs[parameters['base']]
+                    epochs[name] = SecondaryEpoch(name, **parameters)
                     del secondary_epochs[i]
             if len(secondary_epochs) == n_secondary_epochs:
-                txt = ' '.join('Epoch %s has non-existing base %r.' % p for p in secondary_epochs)
-                raise ValueError("Invalid epoch definition: %s" % txt)
-        # re-integrate super-epochs
-        for name, parameters in super_epochs.iteritems():
-            sub_epochs = parameters['sub_epochs']
+                raise ValueError("Invalid epoch definition: " +
+                                 '; '.join('Epoch %s has non-existing base '
+                                           '%r.' % p for p in secondary_epochs))
+        # integrate super-epochs
+        epochs_ = {}
+        for name, parameters in super_epochs:
+            try:
+                sub_epochs = [epochs[n] for n in parameters.pop('sub_epochs')]
+            except KeyError as err:
+                msg = 'no epoch named %r' % err.args
+                if err.args[0] in super_epochs:
+                    msg += '. SuperEpochs can not be defined recursively'
+                raise KeyError(msg)
+            epochs_[name] = SuperEpoch(name, sub_epochs, parameters)
+        epochs.update(epochs_)
 
-            # check the sub_epochs
-            for epoch in (epochs[n] for n in sub_epochs):
-                if 'sub_epochs' in epoch:
-                    err = ("Epoch definition %s: Super-epochs can't be "
-                           "defined recursively" % name)
-                    raise ValueError(err)
-                elif 'post_baseline_trigger_shift' in epoch:
-                    err = ("Epoch definition %s: Super-epochs are merged on "
-                           "the level of events and can can not contain "
-                           "epochs with post_baseline_trigger_shift" % name)
-                    raise NotImplementedError(err)
-
-            # fill in missing params
-            for param in SUPER_EPOCH_INHERITED_PARAMS:
-                if param in parameters:
-                    continue
-                values = {epochs[n][param] for n in sub_epochs}
-                if len(values) > 1:
-                    param_repr = ', '.join(repr(v) for v in values)
-                    msg = ("All sub_epochs of a super-epoch must have the "
-                           "same setting for %r; super-epoch %r got {%s}."
-                           % (param, name, param_repr))
-                    raise ValueError(msg)
-                parameters[param] = values.pop()
-        epochs.update(super_epochs)
-        # add name
-        for name, epoch in epochs.iteritems():
-            epoch['name'] = name
-        # find rej-files needed for each epoch (for cache checking)
-        def _rej_epochs(epoch):
-            "Find which rej-files an epoch depends on"
-            if 'sub_epochs' in epoch:
-                names = epoch['sub_epochs']
-                return sum((_rej_epochs(epochs[n]) for n in names), ())
-            elif 'sel_epoch' in epoch:
-                return _rej_epochs(epochs[epoch['sel_epoch']])
-            else:
-                return (epoch['name'],)
-        for name, epoch in epochs.iteritems():
-            if 'sub_epochs' in epoch or 'sel_epoch' in epoch:
-                epoch['_rej_file_epochs'] = _rej_epochs(epoch)
-        # check parameters
-        for name, epoch in epochs.iteritems():
-            if 'post_baseline_trigger_shift' in epoch:
-                if not ('post_baseline_trigger_shift_min' in epoch and
-                        'post_baseline_trigger_shift_max' in epoch):
-                    raise ValueError("Epoch %s contains post_baseline_trigger_shift "
-                                     "but is missing post_baseline_trigger_shift_min "
-                                     "and/or post_baseline_trigger_shift_max" % name)
         self._epochs = epochs
 
         ########################################################################
@@ -913,10 +1000,10 @@ class MneExperiment(FileTree):
         # epoch
         epoch_keys = sorted(self._epochs)
         for default_epoch in epoch_keys:
-            if 'sel_epoch' not in self._epochs[default_epoch]:
+            if isinstance(self._epochs[default_epoch], PrimaryEpoch):
                 break
         else:
-            default_epoch = None
+            raise RuntimeError("No primary epoch")
         self._register_field('epoch', epoch_keys, default_epoch)
         # cov
         if 'bestreg' in self._covs:
@@ -1023,6 +1110,7 @@ class MneExperiment(FileTree):
 
         # check the cache, delete invalid files
         cache_state_path = self.get('cache-state-file')
+        epoch_state = {k: v.as_dict() for k, v in self._epochs.iteritems()}
         if os.path.exists(cache_state_path):
             # check time stamp
             if os.path.getmtime(cache_state_path) > time.time():
@@ -1034,6 +1122,13 @@ class MneExperiment(FileTree):
                                    "the eelbrain-cache folder." % (tc, tsys))
             cache_state = load.unpickle(cache_state_path)
             cache_state_v = cache_state.get('version', 0)
+            # Epochs represented in Epoch class since Eelbrain 0.25
+            if cache_state_v >= 3:
+                epoch_state_v = epoch_state
+            else:
+                epoch_state_v = {k: v.as_dict_24() for k, v in self._epochs.iteritems()}
+                for e in cache_state['epochs'].values():
+                    e.pop('base', None)
 
             # Find modified definitions
             # =========================
@@ -1083,7 +1178,7 @@ class MneExperiment(FileTree):
 
             # epochs
             for epoch, params in cache_state['epochs'].iteritems():
-                if epoch not in self._epochs or params != self._epochs[epoch]:
+                if epoch not in epoch_state_v or params != epoch_state_v[epoch]:
                     invalid_cache['epochs'].add(epoch)
 
             # parcs
@@ -1318,9 +1413,9 @@ class MneExperiment(FileTree):
         elif not os.path.exists(cache_dir):
             os.mkdir(cache_dir)
 
-        new_state = {'version': 2,
+        new_state = {'version': 3,
                      'groups': self._groups,
-                     'epochs': self._epochs,
+                     'epochs': epoch_state,
                      'tests': self._tests,
                      'parcs': self._parcs,
                      'events': events}
@@ -1410,9 +1505,8 @@ class MneExperiment(FileTree):
         pre_ica : bool
             Only analyze mtime before ICA file estimation.
         """
-        epochs = epoch.get('_rej_file_epochs', None) or (epoch['name'],)
         with self._temporary_state:
-            paths = [self.get('rej-file', epoch=e) for e in epochs]
+            paths = [self.get('rej-file', epoch=e) for e in epoch.rej_file_epochs]
         if all(os.path.exists(path) for path in paths):
             mtime = max(os.path.getmtime(path) for path in paths)
             rej = self._artifact_rejection[self.get('rej')]
@@ -1501,15 +1595,15 @@ class MneExperiment(FileTree):
                     pad=None, decim=None, reject=True, apply_ica=True,
                     trigger_shift=True, eog=False):
         modality = self.get('modality')
-        tmin = epoch['tmin']
-        tmax = epoch['tmax']
+        tmin = epoch.tmin
+        tmax = epoch.tmax
         if baseline is True:
-            baseline = epoch['baseline']
+            baseline = epoch.baseline
         if pad:
             tmin -= pad
             tmax += pad
         if decim is None:
-            decim = epoch['decim']
+            decim = epoch.decim
 
         # determine ICA
         if apply_ica and self._artifact_rejection[self.get('rej')]['kind'] == 'ica':
@@ -1523,11 +1617,11 @@ class MneExperiment(FileTree):
                                       drop_bad_chs=False)
 
         # post baseline-correction trigger shift
-        if trigger_shift and 'post_baseline_trigger_shift' in epoch:
+        if trigger_shift and epoch.post_baseline_trigger_shift:
             ds['epochs'] = shift_mne_epoch_trigger(ds['epochs'],
-                                                   ds[epoch['post_baseline_trigger_shift']],
-                                                   epoch['post_baseline_trigger_shift_min'],
-                                                   epoch['post_baseline_trigger_shift_max'])
+                                                   ds[epoch.post_baseline_trigger_shift],
+                                                   epoch.post_baseline_trigger_shift_min,
+                                                   epoch.post_baseline_trigger_shift_max)
 
         # interpolate channels
         if reject and ds.info[INTERPOLATE_CHANNELS]:
@@ -1595,7 +1689,7 @@ class MneExperiment(FileTree):
         subject = subject.cells[0]
         self.set(subject=subject)
         if baseline is True:
-            baseline = self._epochs[self.get('epoch')]['baseline']
+            baseline = self._epochs[self.get('epoch')].baseline
 
         epochs = ds['epochs']
         inv = self.load_inv(epochs)
@@ -1678,7 +1772,7 @@ class MneExperiment(FileTree):
         if isinstance(baseline, str):
             raise NotImplementedError("Baseline form different epoch")
         elif baseline is True:
-            baseline = self._epochs[self.get('epoch')]['baseline']
+            baseline = self._epochs[self.get('epoch')].baseline
 
         # find from subjects
         common_brain = self.get('common_brain')
@@ -2337,7 +2431,7 @@ class MneExperiment(FileTree):
                                            vardef=vardef, cat=cat)
             if ds.n_cases == 0:
                 err = ("No events left for epoch=%r, subject=%r" %
-                       (epoch['name'], subject))
+                       (epoch.name, subject))
                 if cat:
                     err += ", cat=%s" % repr(cat)
                 raise RuntimeError(err)
@@ -2387,7 +2481,7 @@ class MneExperiment(FileTree):
             analysis).
         """
         if not sns_baseline and src_baseline and \
-                self._epochs[self.get('epoch')].get('post_baseline_trigger_shift', None):
+                self._epochs[self.get('epoch')].post_baseline_trigger_shift:
             raise NotImplementedError("post_baseline_trigger_shift is not "
                                       "implemented for baseline correction in "
                                       "source space")
@@ -2549,7 +2643,7 @@ class MneExperiment(FileTree):
         subject, group = self._process_subject_arg(subject, kwargs)
         modality = self.get('modality')
         if baseline is True:
-            baseline = self._epochs[self.get('epoch')]['baseline']
+            baseline = self._epochs[self.get('epoch')].baseline
 
         if group is not None:
             dss = [self.load_evoked(None, baseline, False, cat, decim, data_raw)
@@ -2587,8 +2681,7 @@ class MneExperiment(FileTree):
             # baseline correction
             if isinstance(baseline, str):
                 raise NotImplementedError
-            elif baseline and not self._epochs[self.get('epoch')]\
-                    .get('post_baseline_trigger_shift', None):
+            elif baseline and not self._epochs[self.get('epoch')].post_baseline_trigger_shift:
                 for e in ds['evoked']:
                     rescale(e.data, e.times, baseline, 'mean', copy=False)
 
@@ -2735,7 +2828,7 @@ class MneExperiment(FileTree):
                    "morph_stc, morph_ndvar) to True")
             raise ValueError(err)
         elif not sns_baseline and src_baseline and \
-                self._epochs[self.get('epoch')].get('post_baseline_trigger_shift', None):
+                self._epochs[self.get('epoch')].post_baseline_trigger_shift:
             raise NotImplementedError("post_baseline_trigger_shift is not "
                                       "implemented for baseline correction in "
                                       "source space")
@@ -2989,18 +3082,15 @@ class MneExperiment(FileTree):
             ds = combine(dss)
             return ds
 
-        # retrieve & check epoch parameters
         epoch = self._epochs[self.get('epoch')]
-        sel = epoch.get('sel', None)
-        sel_epoch = epoch.get('sel_epoch', None)
 
         # rejection comes from somewhere else
-        if 'sub_epochs' in epoch:
+        if isinstance(epoch, SuperEpoch):
             with self._temporary_state:
                 dss = [self.load_selected_events(subject, reject, add_proj,
                                                  add_bads, index, data_raw,
                                                  epoch=sub_epoch)
-                       for sub_epoch in epoch['sub_epochs']]
+                       for sub_epoch in epoch.sub_epochs]
 
                 # combine bad channels
                 bad_channels = set.union(*(set(ds.info[BAD_CHANNELS]) for ds in dss))
@@ -3008,14 +3098,14 @@ class MneExperiment(FileTree):
                 if data_raw is not False:
                     ds.info['raw'] = dss[0].info['raw']
                 ds.info[BAD_CHANNELS] = sorted(bad_channels)
-        elif sel_epoch is not None:
+        elif isinstance(epoch, SecondaryEpoch):
             with self._temporary_state:
                 ds = self.load_selected_events(None, 'keep' if reject else False,
                                                add_proj, add_bads, index,
-                                               data_raw, epoch=sel_epoch)
+                                               data_raw, epoch=epoch.sel_epoch)
 
-            if sel is not None:
-                ds = ds.sub(sel)
+            if epoch.sel:
+                ds = ds.sub(epoch.sel)
             if index:
                 ds.index(index)
 
@@ -3025,15 +3115,14 @@ class MneExperiment(FileTree):
         else:
             ds = self.load_events(add_proj=add_proj, add_bads=add_bads,
                                   data_raw=data_raw)
-            if sel is not None:
-                ds = ds.sub(sel)
+            if epoch.sel:
+                ds = ds.sub(epoch.sel)
             if index:
                 ds.index(index)
 
-            n_cases = epoch.get('n_cases', None)
-            if n_cases is not None and ds.n_cases != n_cases:
-                err = "Number of epochs %i, expected %i" % (ds.n_cases, n_cases)
-                raise RuntimeError(err)
+            if epoch.n_cases is not None and ds.n_cases != epoch.n_cases:
+                raise RuntimeError("Number of epochs %i, expected %i" %
+                                   (ds.n_cases, epoch.n_cases))
 
             # rejection
             rej_params = self._artifact_rejection[self.get('rej')]
@@ -3086,8 +3175,8 @@ class MneExperiment(FileTree):
                 ds.info[BAD_CHANNELS] = []
 
         # apply trigger-shift
-        if 'trigger_shift' in epoch:
-            shift = epoch['trigger_shift']
+        if epoch.trigger_shift:
+            shift = epoch.trigger_shift
             if isinstance(shift, basestring):
                 shift = ds.eval(shift)
             if isvar(shift):
@@ -3099,8 +3188,8 @@ class MneExperiment(FileTree):
                 ds['i_start'] += np.round(shift * ds.info['sfreq']).astype(int)
 
         # Additional variables
-        if 'vars' in epoch:
-            self._add_vars(ds, epoch['vars'])
+        if epoch.vars is not None:
+            self._add_vars(ds, epoch.vars)
         if isinstance(vardef, str):
             vardef = self._tests[vardef].get('vars', None)
         if vardef:
@@ -3496,7 +3585,7 @@ class MneExperiment(FileTree):
 
         # save evt
         epoch = self._epochs[self.get('epoch')]
-        save.besa_evt(ds, tstart=epoch['tmin'], tstop=epoch['tmax'], dest=evt_dest)
+        save.besa_evt(ds, tstart=epoch.tmin, tstop=epoch.tmax, dest=evt_dest)
 
     def make_copy(self, temp, field, src, dst, redo=False):
         """Make a copy of a file
@@ -3527,12 +3616,11 @@ class MneExperiment(FileTree):
         "Make a noise covariance (cov) file"
         dest = self.get('cov-file', mkdir=True)
         params = self._covs[self.get('cov')]
-        epoch = params['epoch']
         if os.path.exists(dest):
             cov_mtime = os.path.getmtime(dest)
             raw_mtime = os.path.getmtime(self._get_raw_path())
             bads_mtime = os.path.getmtime(self.get('bads-file'))
-            rej_mtime = self._rej_mtime(self._epochs[epoch])
+            rej_mtime = self._rej_mtime(self._epochs[params['epoch']])
             if cov_mtime > max(raw_mtime, bads_mtime, rej_mtime):
                 return
 
@@ -3541,7 +3629,8 @@ class MneExperiment(FileTree):
         reg = params.get('reg', None)
 
         with self._temporary_state:
-            ds = self.load_epochs(None, True, False, decim=1, epoch=epoch)
+            ds = self.load_epochs(None, True, False, decim=1,
+                                  epoch=params['epoch'])
         epochs = ds['epochs']
         cov = mne.compute_covariance(epochs, keep_sample_mean, method=method)
 
@@ -3593,7 +3682,7 @@ class MneExperiment(FileTree):
         dst = self.get('evoked-file', mkdir=True, **kwargs)
         fiff_dst = self.get('evoked-fiff-file')
         epoch = self._epochs[self.get('epoch')]
-        use_cache = ((not decim or decim == epoch['decim']) and
+        use_cache = ((not decim or decim == epoch.decim) and
                      (isinstance(data_raw, bool) or data_raw == self.get('raw')))
         if use_cache and self._evoked_mtime():
             ds = load.unpickle(dst)
@@ -3602,8 +3691,7 @@ class MneExperiment(FileTree):
 
         # load the epochs (post baseline-correction trigger shift requires
         # baseline corrected evoked
-        post_baseline_trigger_shift = epoch.get('post_baseline_trigger_shift', None)
-        if post_baseline_trigger_shift:
+        if epoch.post_baseline_trigger_shift:
             ds = self.load_epochs(ndvar=False, baseline=True, decim=decim,
                                   data_raw=data_raw)
         else:
@@ -4277,8 +4365,7 @@ class MneExperiment(FileTree):
             raise RuntimeError("Epoch rejection for rej=%r is not manual" %
                                self.get('rej'))
 
-        epoch = self._epochs[self.get('epoch')]
-        assert_is_primary_epoch(epoch, 'make_rej')
+        assert_is_primary_epoch(self._epochs[self.get('epoch')], 'make_rej')
         path = self.get('rej-file', mkdir=True)
         modality = self.get('modality')
 
@@ -5435,7 +5522,7 @@ class MneExperiment(FileTree):
         items = []
 
         # baseline (default is baseline correcting in sensor space)
-        epoch_baseline = self._epochs[self.get('epoch')]['baseline']
+        epoch_baseline = self._epochs[self.get('epoch')].baseline
         if src_baseline:
             if sns_baseline is True or sns_baseline == epoch_baseline:
                 items.append('snsbl')
