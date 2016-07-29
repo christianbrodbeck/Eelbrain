@@ -241,26 +241,28 @@ Epochs are specified as a {:class:`str`: :class:`dict`} dictionary. Keys are
 names for epochs, and values are corresponding definitions. Epoch definitions
 can use the following keys:
 
-sel : str
+sel (:class:`str`)
     Expression which evaluates in the events Dataset to the index of the
     events included in this Epoch specification.
-tmin : scalar
+tmin (:class:`float`)
     Start of the epoch (default -0.1).
-tmax : scalar
+tmax  (:class:`float`)
     End of the epoch (default 0.6).
-decim : int
+decim (:class:`int`)
     Decimate the data by this factor (i.e., only keep every ``decim``'th
     sample; default 5).
-baseline : tuple
+baseline (:class:`tuple`)
     The baseline of the epoch (default ``(None, 0)``).
-n_cases :
+n_cases (:class:`int`)
     Expected number of epochs. If n_cases is defined, a RuntimeError error
     will be raised whenever the actual number of matching events is different.
-trigger_shift : float | str
+trigger_shift (:class:`float` | :class:`str`)
     Shift event triggers before extracting the data [in seconds]. Can be a
     float to shift all triggers by the same value, or a str indicating an event
     variable that specifies the trigger shift for each trigger separately.
-post_baseline_trigger_shift : str
+    For secondary epochs the ``trigger_shift`` is applied additively with the
+    ``trigger_shift`` of their base epochs.
+post_baseline_trigger_shift (:class:`str`)
     Shift the trigger (i.e., where epoch time = 0) after baseline correction.
     The value of this entry has to be the name of an event variable providing
     for each epoch the actual amount of time shift (in seconds). If the
@@ -270,7 +272,7 @@ post_baseline_trigger_shift : str
     are used to crop the resulting epochs appropriately, to the region from
     ``new_tmin = epoch['tmin'] - post_baseline_trigger_shift_min`` to
     ``new_tmax = epoch['tmax'] - post_baseline_trigger_shift_max``.
-vars : dict
+vars (:class:`dict`)
     Add new variables only for this epoch.
     Each entry specifies a variable with the following schema:
     ``{name: definition}``. ``definition`` can be either a string that is
@@ -288,15 +290,15 @@ they fill in parameters that are not made explicit in the epoch's
 :attr:`MneExperiment.epoch_defaults`, with ``base`` other parameters default to
 the base epoch.
 
-sel_epoch : str
+sel_epoch (:class:`str`)
     Name of the epoch providing primary events (e.g. whose trial rejection
     file should be used).
-base : str
+base (:class:`str`)
     Name of the epoch whose parameters provide defaults for all parameters.
 
 Superset epochs can be defined with:
 
-sub_epochs : tuple of str
+sub_epochs (:class:`tuple` of :class:`str`)
     Tuple of epoch names. These epochs are combined to form the current epoch.
     Epochs are merged at the level of events, so the base epochs can not contain
     post-baseline trigger shifts which are applied after loading data (however,
