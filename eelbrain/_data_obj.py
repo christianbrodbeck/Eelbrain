@@ -78,8 +78,7 @@ _pickled_ds_wildcard = ("Pickled Dataset (*.pickled)", '*.pickled')
 _tex_wildcard = ("TeX (*.tex)", '*.tex')
 _tsv_wildcard = ("Plain Text Tab Separated Values (*.txt)", '*.txt')
 _txt_wildcard = ("Plain Text (*.txt)", '*.txt')
-EVAL_CONTEXT = vars(scipy)  # update at end of file
-
+EVAL_CONTEXT = vars(np)  # updated at end of file
 
 
 class DimensionMismatchError(Exception):
@@ -3481,10 +3480,9 @@ class NDVar(object):
             else:
                 func = np.mean
         elif isinstance(func, str):
-            if func == 'extrema':
-                func = extrema
-            else:
-                func = getattr(scipy, func)
+            if func not in EVAL_CONTEXT:
+                raise ValueError("Unknown summary function: func=%r" % func)
+            func = EVAL_CONTEXT[func]
         elif not callable(func):
             raise TypeError("func=%s" % repr(func))
 
@@ -5001,13 +4999,13 @@ class Dataset(OrderedDict):
         Parameters
         ----------
         expression : str
-            Python expression to evaluate, with scipy constituting the global
-            namespace and the current Dataset constituting the local namespace.
+            Python expression to evaluate.
 
         Notes
         -----
         ``ds.eval(expression)`` is equivalent to
-        ``eval(expression, scipy, ds)``.
+        ``eval(expression, globals, ds)`` with ``globals=numpy`` plus some
+        Eelbrain functions.
 
         Examples
         --------
@@ -8606,4 +8604,4 @@ def resample(data, sfreq, npad=100, window='boxcar'):
     return NDVar(x, dims=dims, info=data.info, name=data.name)
 
 
-EVAL_CONTEXT.update(Var=Var, Factor=Factor)
+EVAL_CONTEXT.update(Var=Var, Factor=Factor, extrema=extrema)
