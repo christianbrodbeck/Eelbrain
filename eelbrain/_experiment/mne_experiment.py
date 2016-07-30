@@ -4150,7 +4150,9 @@ class MneExperiment(FileTree):
         Parameters
         ----------
         n_jobs : int
-            Number of processes for multiprocessing.
+            Number of processes for multiprocessing. The default is ``1``
+            because in my testing total processing time was higher when
+            using multiple processes.
 
         Notes
         -----
@@ -4170,11 +4172,12 @@ class MneExperiment(FileTree):
                 if dst_mtime > src_mtime:
                     return
 
+            self._log.debug("make_raw %s/%s...", self.get('subject'),
+                            os.path.split(dst)[1])
             apply_proj = False
             raw = self.load_raw(raw='clm', add_proj=apply_proj, add_bads=False,
                                 preload=True)
 
-        self._log.debug("make_raw %s...", os.path.split(dst)[1])
         if apply_proj:
             raw.apply_projector()
 
