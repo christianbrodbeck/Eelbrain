@@ -969,7 +969,7 @@ def test_ndvar_timeseries_methods():
 
 def test_nested_effects():
     """Test nested effects"""
-    ds = datasets.get_uv()
+    ds = datasets.get_uv(nrm=True)
 
     nested = ds.eval("nrm(B)")
     eq_(nested.cells, ds['nrm'].cells)
