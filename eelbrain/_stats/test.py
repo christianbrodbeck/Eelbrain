@@ -12,8 +12,9 @@ import scipy.stats
 
 from .. import fmtxt
 from .._data_obj import (ascategorial, asfactor, assub, asvar, cellname,
-                         Celltable, Factor, isvar)
+                         Celltable, Factor, isvar, dataobj_repr)
 from .permutation import resample
+from . import stats
 
 
 __test__ = False
@@ -381,6 +382,82 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
             table.cell(fmtxt.p(p_adj))
     return table
 
+
+class TTestRel(object):
+    """Related-measures t-test
+
+    Parameters
+    ----------
+    y : Var
+        Dependent variable.
+    x : categorial
+        Model containing the cells which should be compared.
+    c1 : str | tuple | None
+        Test condition (cell of ``x``). Can be omitted (or ``None``) if ``x``
+        only contains two cells.
+    c0 : str | tuple | None
+        Control condition (cell of ``x``). Can be omitted (or ``None``) if
+        ``x`` only contains two cells.
+    match : categorial
+        Units within which measurements are related (e.g. 'subject' in a
+        within-subject comparison).
+    sub : None | index-array
+        Perform the test with a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables.
+    tail : 0 | 1 | -1
+        Which tail of the t-distribution to consider:
+        0: both (two-tailed, default);
+        1: upper tail (one-tailed);
+        -1: lower tail (one-tailed).
+
+    Attributes
+    ----------
+    t : float
+        T-value.
+    p : float
+        P-value.
+    tail : 0 | 1 | -1
+        Tailedness of the p value.
+    diff : Var
+        Difference values.
+    df : int
+        Degrees of freedom.
+    """
+    def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
+                 tail=0):
+        if match is None:
+            raise TypeError("The `match` argument needs to be specified for a "
+                            "related measures t-test.")
+        ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asvar)
+        c1, c0 = ct.cat
+        if not ct.all_within:
+            raise ValueError("conditions %r and %r do not have the same values "
+                             "on %s" % (c1, c0, dataobj_repr(ct.match)))
+
+        n = len(ct.Y) // 2
+        if n <= 2:
+            raise ValueError("Not enough observations for t-test (n=%i)" % n)
+
+        self._y = dataobj_repr(ct.Y)
+        self._x = dataobj_repr(ct.X)
+        self.diff = ct.Y[:n] - ct.Y[n:]
+        self.df = n - 1
+        self.t = stats.t_1samp(self.diff.x[:, None])[0]
+        self.p = stats.ttest_p(self.t, self.df, tail)
+        self.tail = tail
+        self._c1 = c1
+        self._c0 = c0
+
+    def __repr__(self):
+        return ("<TTestRel: %s ~ %s, %s%s%s; t(%i)=%.2f, p=%.3f>" %
+                (self._y, self._x, self._c1, '=><'[self.tail], self._c0,
+                 self.df, self.t, self.p))
+
+    def _asfmtext(self):
+        return fmtxt.FMText([fmtxt.eq('t', self.t, self.df), ', ',
+                             fmtxt.peq(self.p)])
 
 
 def pairwise(Y, X, match=None, sub=None, ds=None,  # data in

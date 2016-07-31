@@ -137,6 +137,7 @@ Univariate statistical tests:
 .. autosummary::
    :toctree: generated
    
+   test.TTestRel
    test.anova
    test.pairwise
    test.ttest
