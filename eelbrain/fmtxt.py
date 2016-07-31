@@ -62,6 +62,7 @@ import tempfile
 import time
 
 import numpy as np
+import matplotlib.figure
 from matplotlib.image import imsave
 from matplotlib.mathtext import math_to_image
 
@@ -412,6 +413,10 @@ def asfmtext(content, tag=None):
         return asfmtext(content._asfmtext(), tag)
     elif isinstance(content, (list, tuple)):
         return FMText(content, tag)
+    elif isinstance(content, matplotlib.figure.Figure):
+        image = Image()
+        content.savefig(image)
+        return image
     else:
         return Text(content, tag)
 
