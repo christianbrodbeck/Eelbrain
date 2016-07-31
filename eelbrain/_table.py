@@ -208,6 +208,10 @@ def melt(name, cells, cell_var_name, ds):
                 if m:
                     cells.append(key)
                     cell_values.append(int(m.group(1)))
+        else:
+            raise ValueError("If cells is a string, it needs to contain '%i' "
+                             "as a place-holder for an integer that "
+                             "identifies columns")
     else:
         cell_values = cells
 
