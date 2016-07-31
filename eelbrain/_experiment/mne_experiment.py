@@ -5369,7 +5369,6 @@ class MneExperiment(FileTree):
 
         # pmin
         if pmin is not None:
-            items.append(str(pmin))
             # source connectivity
             connectivity = self.get('connectivity')
             if connectivity and data != 'src':
@@ -5377,6 +5376,8 @@ class MneExperiment(FileTree):
                                           "for data=%r" % (connectivity, data))
             elif connectivity:
                 items.append(connectivity)
+
+            items.append(str(pmin))
 
             # cluster criteria
             if pmin != 'tfce':
