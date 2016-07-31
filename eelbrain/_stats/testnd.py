@@ -43,7 +43,7 @@ from .. import fmtxt
 from .. import _colorspaces as _cs
 from .._data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
                          NDVar, Var, Celltable, cellname, combine, Categorial,
-                         UTS, OldVersionError, isinteraction)
+                         UTS, OldVersionError, isinteraction, dataobj_repr)
 from .._report import enumeration, format_timewindow, ms
 from .._utils import LazyProperty
 from .._utils.numpy_utils import full_slice
@@ -1056,7 +1056,7 @@ class ttest_rel(_Result):
         names of Dataset variables.
     tail : 0 | 1 | -1
         Which tail of the t-distribution to consider:
-        0: both (two-tailed);
+        0: both (two-tailed, default);
         1: upper tail (one-tailed);
         -1: lower tail (one-tailed).
     samples : None | int
@@ -1113,15 +1113,13 @@ class ttest_rel(_Result):
                  tail=0, samples=None, pmin=None, tmin=None, tfce=False,
                  tstart=None, tstop=None, parc=None, force_permutation=False, **criteria):
         if match is None:
-            msg = ("The `match` argument needs to be specified for a related "
-                   "samples t-test.")
-            raise TypeError(msg)
+            raise TypeError("The `match` argument needs to be specified for a "
+                            "related measures t-test.")
         ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar)
         c1, c0 = ct.cat
         if not ct.all_within:
-            err = ("conditions %r and %r do not have the same values on "
-                   "%r" % (c1, c0, ct.match.name))
-            raise ValueError(err)
+            raise ValueError("conditions %r and %r do not have the same values "
+                             "on %s" % (c1, c0, dataobj_repr(ct.match)))
 
         n = len(ct.Y) // 2
         if n <= 2:
