@@ -393,10 +393,8 @@ class t_contrast_rel(_Result):
         0: both (two-tailed);
         1: upper tail (one-tailed);
         -1: lower tail (one-tailed).
-    samples : None | int
-        Number of samples for permutation cluster test. For None, no
-        clusters are formed. Use 0 to compute clusters without performing
-        any permutations.
+    samples : int
+        Number of samples for permutation test (default 0).
     pmin : None | scalar (0 < pmin < 1)
         Threshold for forming clusters:  use a t-value equivalent to an
         uncorrected p-value for a related samples t-test (with df =
@@ -445,7 +443,7 @@ class t_contrast_rel(_Result):
     _state_specific = ('X', 'contrast', 't', 'tail')
 
     def __init__(self, Y, X, contrast, match=None, sub=None, ds=None, tail=0,
-                 samples=None, pmin=None, tmin=None, tfce=False, tstart=None,
+                 samples=0, pmin=None, tmin=None, tfce=False, tstart=None,
                  tstop=None, parc=None, force_permutation=False, **criteria):
         ct = Celltable(Y, X, match, sub, ds=ds, coercion=asndvar)
 
@@ -456,14 +454,13 @@ class t_contrast_rel(_Result):
         tmap = t_contrast.map(ct.Y.x)
         t = NDVar(tmap, ct.Y.dims[1:], {}, 't')
 
-        if samples is None:
+        n_threshold_params = sum((pmin is not None, tmin is not None, tfce))
+        if n_threshold_params == 0 and not samples:
             cdist = None
+        elif n_threshold_params > 1:
+            raise ValueError("Only one of pmin, tmin and tfce can be specified")
         else:
-            # threshold
-            if sum((pmin is not None, tmin is not None, tfce)) > 1:
-                raise ValueError("Only one of pmin, tmin and tfce can be "
-                                 "specified")
-            elif pmin is not None:
+            if pmin is not None:
                 df = len(ct.match.cells) - 1
                 threshold = stats.ttest_t(pmin, df, tail)
             elif tmin is not None:
@@ -526,10 +523,8 @@ class corr(_Result):
     ds : None | Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
-    samples : None | int
-        Number of samples for permutation cluster test. For None, no
-        clusters are formed. Use 0 to compute clusters without performing
-        any permutations.
+    samples : int
+        Number of samples for permutation test (default 0).
     pmin : None | scalar (0 < pmin < 1)
         Threshold for forming clusters:  use an r-value equivalent to an
         uncorrected p-value.
@@ -565,7 +560,7 @@ class corr(_Result):
     """
     _state_specific = ('X', 'norm', 'n', 'df', 'r')
 
-    def __init__(self, Y, X, norm=None, sub=None, ds=None, samples=None,
+    def __init__(self, Y, X, norm=None, sub=None, ds=None, samples=0,
                  pmin=None, rmin=None, tfce=False, tstart=None, tstop=None,
                  match=None, parc=None, **criteria):
         sub = assub(sub, ds)
@@ -602,16 +597,15 @@ class corr(_Result):
 
         rmap = stats.corr(Y.x, x)
 
-        if samples is None:
+        n_threshold_params = sum((pmin is not None, rmin is not None, tfce))
+        if n_threshold_params == 0 and not samples:
             cdist = None
             r0, r1, r2 = stats.rtest_r((.05, .01, .001), df)
             info = _cs.stat_info('r', r0, r1, r2)
+        elif n_threshold_params > 1:
+            raise ValueError("Only one of pmin, rmin and tfce can be specified")
         else:
-            # threshold
-            if sum((pmin is not None, rmin is not None, tfce)) > 1:
-                msg = "Only one of pmin, rmin and tfce can be specified"
-                raise ValueError(msg)
-            elif pmin is not None:
+            if pmin is not None:
                 threshold = stats.rtest_r(pmin, df)
             elif rmin is not None:
                 threshold = abs(rmin)
@@ -697,10 +691,8 @@ class ttest_1samp(_Result):
         0: both (two-tailed);
         1: upper tail (one-tailed);
         -1: lower tail (one-tailed).
-    samples : None | int
-        Number of samples for permutation cluster test. For None, no
-        clusters are formed. Use 0 to compute clusters without performing
-        any permutations.
+    samples : int
+        Number of samples for permutation test (default 0).
     pmin : None | scalar (0 < pmin < 1)
         Threshold for forming clusters:  use a t-value equivalent to an
         uncorrected p-value.
@@ -740,7 +732,7 @@ class ttest_1samp(_Result):
     _state_specific = ('popmean', 'tail', 'n', 'df', 't', 'diff')
 
     def __init__(self, Y, popmean=0, match=None, sub=None, ds=None, tail=0,
-                 samples=None, pmin=None, tmin=None, tfce=False, tstart=None,
+                 samples=0, pmin=None, tmin=None, tfce=False, tstart=None,
                  tstop=None, parc=None, force_permutation=False, **criteria):
         ct = Celltable(Y, match=match, sub=sub, ds=ds, coercion=asndvar)
 
@@ -756,14 +748,13 @@ class ttest_1samp(_Result):
         else:
             diff = y
 
-        if samples is None:
+        n_threshold_params = sum((pmin is not None, tmin is not None, tfce))
+        if n_threshold_params == 0 and not samples:
             cdist = None
+        elif n_threshold_params > 1:
+            raise ValueError("Only one of pmin, tmin and tfce can be specified")
         else:
-            # threshold
-            if sum((pmin is not None, tmin is not None, tfce)) > 1:
-                msg = "Only one of pmin, tmin and tfce can be specified"
-                raise ValueError(msg)
-            elif pmin is not None:
+            if pmin is not None:
                 threshold = stats.ttest_t(pmin, df, tail)
             elif tmin is not None:
                 threshold = abs(tmin)
@@ -865,10 +856,8 @@ class ttest_ind(_Result):
         0: both (two-tailed);
         1: upper tail (one-tailed);
         -1: lower tail (one-tailed).
-    samples : None | int
-        Number of samples for permutation cluster test. For None, no
-        clusters are formed. Use 0 to compute clusters without performing
-        any permutations.
+    samples : int
+        Number of samples for permutation test (default 0).
     pmin : None | scalar (0 < pmin < 1)
         Threshold p value for forming clusters. None for threshold-free
         cluster enhancement.
@@ -906,7 +895,7 @@ class ttest_ind(_Result):
                        'c0_mean')
 
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
-                 tail=0, samples=None, pmin=None, tmin=None, tfce=False,
+                 tail=0, samples=0, pmin=None, tmin=None, tfce=False,
                  tstart=None, tstop=None, parc=None, force_permutation=False, **criteria):
         ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar)
         c1, c0 = ct.cat
@@ -917,14 +906,13 @@ class ttest_ind(_Result):
         df = n - 2
         tmap = stats.t_ind(ct.Y.x, n1, n0)
 
-        if samples is None:
+        n_threshold_params = sum((pmin is not None, tmin is not None, tfce))
+        if n_threshold_params == 0 and not samples:
             cdist = None
+        elif n_threshold_params > 1:
+            raise ValueError("Only one of pmin, tmin and tfce can be specified")
         else:
-            # threshold
-            if sum((pmin is not None, tmin is not None, tfce)) > 1:
-                msg = "Only one of pmin, tmin and tfce can be specified"
-                raise ValueError(msg)
-            elif pmin is not None:
+            if pmin is not None:
                 threshold = stats.ttest_t(pmin, df, tail)
             elif tmin is not None:
                 threshold = abs(tmin)
@@ -1060,10 +1048,8 @@ class ttest_rel(_Result):
         0: both (two-tailed, default);
         1: upper tail (one-tailed);
         -1: lower tail (one-tailed).
-    samples : None | int
-        Number of samples for permutation cluster test. For None, no
-        clusters are formed. Use 0 to compute clusters without performing
-        any permutations.
+    samples : int
+        Number of samples for permutation test (default 0).
     pmin : None | scalar (0 < pmin < 1)
         Threshold for forming clusters:  use a t-value equivalent to an
         uncorrected p-value.
@@ -1111,7 +1097,7 @@ class ttest_rel(_Result):
                        'c0_mean')
 
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
-                 tail=0, samples=None, pmin=None, tmin=None, tfce=False,
+                 tail=0, samples=0, pmin=None, tmin=None, tfce=False,
                  tstart=None, tstop=None, parc=None, force_permutation=False, **criteria):
         if match is None:
             raise TypeError("The `match` argument needs to be specified for a "
@@ -1129,14 +1115,13 @@ class ttest_rel(_Result):
         diff = ct.Y[:n] - ct.Y[n:]
         tmap = stats.t_1samp(diff.x)
 
-        if samples is None:
+        n_threshold_params = sum((pmin is not None, tmin is not None, tfce))
+        if n_threshold_params == 0 and not samples:
             cdist = None
+        elif n_threshold_params > 1:
+            raise ValueError("Only one of pmin, tmin and tfce can be specified")
         else:
-            # threshold
-            if sum((pmin is not None, tmin is not None, tfce)) > 1:
-                msg = "Only one of pmin, tmin and tfce can be specified"
-                raise ValueError(msg)
-            elif pmin is not None:
+            if pmin is not None:
                 threshold = stats.ttest_t(pmin, df, tail)
             elif tmin is not None:
                 threshold = abs(tmin)
@@ -1416,10 +1401,8 @@ class anova(_MultiEffectResult):
     ds : None | Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
-    samples : None | int
-        Number of samples for permutation cluster test. For None, no
-        clusters are formed. Use 0 to compute clusters without performing
-        any permutations.
+    samples : int
+        Number of samples for permutation test (default 0).
     pmin : None | scalar (0 < pmin < 1)
         Threshold for forming clusters:  use an f-value equivalent to an
         uncorrected p-value.
@@ -1462,7 +1445,7 @@ class anova(_MultiEffectResult):
     """
     _state_specific = ('X', 'pmin', '_effects', '_dfs_denom', 'f')
 
-    def __init__(self, Y, X, sub=None, ds=None, samples=None, pmin=None,
+    def __init__(self, Y, X, sub=None, ds=None, samples=0, pmin=None,
                  fmin=None, tfce=False, tstart=None, tstop=None, match=None,
                  parc=None, force_permutation=False, **criteria):
         sub_arg = sub
@@ -1477,14 +1460,13 @@ class anova(_MultiEffectResult):
         dfs_denom = lm.dfs_denom
         fmaps = lm.map(Y.x)
 
-        if samples is None:
+        n_threshold_params = sum((pmin is not None, fmin is not None, tfce))
+        if n_threshold_params == 0 and not samples:
             cdists = None
+        elif n_threshold_params > 1:
+            raise ValueError("Only one of pmin, fmin and tfce can be specified")
         else:
-            # threshold
-            if sum((pmin is not None, fmin is not None, tfce)) > 1:
-                msg = "Only one of pmin, fmin and tfce can be specified"
-                raise ValueError(msg)
-            elif pmin is not None:
+            if pmin is not None:
                 thresholds = (stats.ftest_f(pmin, e.df, df_den) for e, df_den in
                               izip(effects, dfs_denom))
             elif fmin is not None:
@@ -2115,9 +2097,6 @@ class _ClusterDist:
         else:
             map_args = (kind, tail, max_axes, parc_indexes, shape,
                         all_adjacent, connectivity, threshold, criteria_)
-
-        if force_permutation and not samples:
-            raise ValueError("Cannot force permutations unless samples is non-zero.")
 
         self.kind = kind
         self.y_perm = y_perm

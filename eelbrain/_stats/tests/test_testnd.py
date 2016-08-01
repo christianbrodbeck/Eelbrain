@@ -526,6 +526,7 @@ def test_cwt():
     assert_array_equal(cluster['frequency_min'], 10)
     assert_array_equal(cluster['frequency_max'], 19)
 
+
 def test_merged_temporal_cluster_dist():
     "Test use of _MergedTemporalClusterDist with testnd test results"
     ds1 = datasets.get_uts()
@@ -575,7 +576,3 @@ def test_merged_temporal_cluster_dist():
     res1 = testnd.t_contrast_rel(ds=ds1, match='rm', **contrast_kw)
     res2 = testnd.t_contrast_rel(ds=ds2, match='rm', **contrast_kw)
     test_merged(res1, res2)
-
-    # can't force 0 permutations
-    assert_raises(ValueError, testnd.anova, 'uts', X='A*B*rm', ds=ds1, samples=0,
-                  force_permutation=True)
