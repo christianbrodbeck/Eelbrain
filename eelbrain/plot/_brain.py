@@ -1,6 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import division
 from distutils.version import LooseVersion
+from functools import partial
 from itertools import izip
 import os
 from tempfile import mkdtemp
@@ -11,6 +12,7 @@ import mne
 
 from .._data_obj import asndvar, NDVar
 from ..fmtxt import Image, im_table, ms
+from ._base import _EelFigure, ImLayout
 from ._colors import ColorList
 
 
@@ -822,7 +824,98 @@ def dspm_bin_table(ndvar, fmin=2, fmax=8, fmid=None,
         return dspm(data, fmin, fmax, fmid, surf, views[0], hemi_, False, None,
                     axw, axh, None, None, *args, **kwargs)
 
-    return _bin_table(data, hemi, views, brain_)
+    ims, header = _bin_table_ims(data, hemi, views, brain_)
+    return im_table(ims, header)
+
+
+class _BinTable(_EelFigure):
+    def __init__(self, ndvar, tstart, tstop, tstep, im_func, surf, views, hemi,
+                 summary, title, *args, **kwargs):
+        if isinstance(views, str):
+            views = (views,)
+        data = ndvar.bin(tstep, tstart, tstop, summary)
+        n_columns = len(data.time)
+        n_hemis = (data.source.lh_n > 0) + (data.source.rh_n > 0)
+        n_rows = len(views) * n_hemis
+
+        # Make sure app is initialized. If not, mayavi takes over the menu bar
+        # and quits after closing the window
+        from .._wxgui import get_app
+        get_app()
+
+        layout = ImLayout(n_rows, n_columns, 0.5 * bool(title), 0.5, 4/3, 2,
+                          *args, **kwargs)
+        _EelFigure.__init__(self, "BinTable", layout, None, None, None,
+                            title=title)
+
+        res_w = int(layout.axw * layout.dpi)
+        res_h = int(layout.axh * layout.dpi)
+        ims, header = im_func(data, surf, views, hemi, axw=res_w, axh=res_h)
+        for row in xrange(n_rows):
+            for column in xrange(n_columns):
+                ax = self._axes[row * n_columns + column]
+                ax.imshow(ims[row][column])
+
+        # time labels
+        y = 0.25 / layout.h
+        for i, label in enumerate(header):
+            x = (0.5 + i) / layout.ncol
+            self.figure.text(x, y, label, va='center', ha='center')
+
+        self._show()
+
+
+class BinTable(_BinTable):
+    "DSPM plot bin-table"
+    def __init__(self, ndvar, tstart=None, tstop=None, tstep=0.1, fmin=13,
+                 fmax=22, fmid=None,
+                 surf='smoothwm', views=('lat', 'med'), hemi=None,
+                 summary='sum', title=None, *args, **kwargs):
+        im_func = partial(_dspm_bin_table_ims, fmin, fmax, fmid)
+        _BinTable.__init__(self, ndvar, tstart, tstop, tstep, im_func, surf,
+                           views, hemi, summary, title, *args, **kwargs)
+
+
+class ClusterBinTable(_BinTable):
+    """Data plotted on brain for different time bins and views
+
+    Parameters
+    ----------
+    ndvar : NDVar (time x source)
+        Data to be plotted.
+    tstart : None | scalar
+        Time point of the start of the first bin (inclusive; None to use the
+        first time point in ndvar).
+    tstop : None | scalar
+        End of the last bin (exclusive; None to end with the last time point
+        in ndvar).
+    tstep : scalar
+        Size of each bin (in seconds).
+    surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
+        Freesurfer surface to use as brain geometry.
+    views : list of str
+        Views to display (for each hemisphere, lh first). Options are:
+        'rostral', 'parietal', 'frontal', 'ventral', 'lateral', 'caudal',
+        'medial', 'dorsal'.
+    hemi : 'lh' | 'rh' | 'both'
+        Which hemispheres to plot (default based on data).
+    summary : str
+        How to summarize data in each time bin. Can be the name of a numpy
+        function that takes an axis parameter (e.g., 'sum', 'mean', 'max') or
+        'extrema' which selects the value with the maximum absolute value.
+        Default is sum.
+    vmax : scalar != 0
+        Maximum value in the colormap. Default is the maximum value in the
+        cluster.
+    title : str
+        Figure title.
+    """
+    def __init__(self, ndvar, tstart=None, tstop=None, tstep=0.1,
+                 surf='smoothwm', views=('lat', 'med'), hemi=None,
+                 summary='sum', vmax=None, title=None, *args, **kwargs):
+        im_func = partial(_cluster_bin_table_ims, vmax)
+        _BinTable.__init__(self, ndvar, tstart, tstop, tstep, im_func, surf,
+                           views, hemi, summary, title, *args, **kwargs)
 
 
 def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
@@ -858,6 +951,9 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
     vmax : scalar != 0
         Maximum value in the colormap. Default is the maximum value in the
         cluster.
+    out : 'image' | 'figure'
+        Format in which to return the plot. ``'image'`` (default) returns an
+        Image object that
     axw, axh : scalar
         Subplot width/height (default axw=300, axh=250).
     foreground : mayavi color
@@ -896,6 +992,25 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
     plot.brain.dspm_bin_table: plotting SPMs as bin-table
     """
     data = ndvar.bin(tstep, tstart, tstop, summary)
+    ims, header = _cluster_bin_table_ims(vmax, data, surf, views, hemi, axw,
+                                         axh, *args, **kwargs)
+    return im_table(ims, header)
+
+
+def _dspm_bin_table_ims(fmin, fmax, fmid, data, surf, views, hemi, axw, axh,
+                        *args, **kwargs):
+    if fmax is None:
+        fmax = max(data.max(), -data.min())
+
+    def brain_(hemi_):
+        return dspm(data, fmin, fmax, fmid, surf, views[0], hemi_, False, None,
+                    axw, axh, None, None, *args, **kwargs)
+
+    return _bin_table_ims(data, hemi, views, brain_)
+
+
+def _cluster_bin_table_ims(vmax, data, surf, views, hemi, axw, axh, *args,
+                           **kwargs):
     if vmax is None:
         vmax = max(-data.min(), data.max())
         if vmax == 0:
@@ -909,10 +1024,10 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
         return cluster(data, vmax, surf, views[0], hemi_, False, None, axw, axh,
                         None, None, *args, **kwargs)
 
-    return _bin_table(data, hemi, views, brain_)
+    return _bin_table_ims(data, hemi, views, brain_)
 
 
-def _bin_table(data, hemi, views, brain_func):
+def _bin_table_ims(data, hemi, views, brain_func):
     ims = []
     if hemi is None:
         hemis = []
@@ -941,7 +1056,7 @@ def _bin_table(data, hemi, views, brain_func):
         brain.close()  # causes segfault in wx
 
     header = ['%i - %i ms' % (ms(t0), ms(t1)) for t0, t1 in data.info['bins']]
-    return im_table(ims, header)
+    return ims, header
 
 
 def connectivity(source):
