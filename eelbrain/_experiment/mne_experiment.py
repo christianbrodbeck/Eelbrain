@@ -148,11 +148,17 @@ class Epoch(object):
 
 class PrimaryEpoch(Epoch):
     """Epoch based on selecting events from raw file
+
+    Attributes
+    ----------
+    session : str
+        Session of the raw file.
     """
     DICT_ATTRS = Epoch.DICT_ATTRS + ('sel',)
 
-    def __init__(self, name, sel=None, n_cases=None, **kwargs):
+    def __init__(self, name, session, sel=None, n_cases=None, **kwargs):
         Epoch.__init__(self, name, **kwargs)
+        self.session = session
         self.sel = typed_arg(sel, str)
         self.n_cases = typed_arg(n_cases, int)
         self.rej_file_epochs = (name,)
@@ -183,6 +189,7 @@ class SecondaryEpoch(Epoch):
         self.sel_epoch = base.name
         self.sel = typed_arg(sel, str)
         self.rej_file_epochs = base.rej_file_epochs
+        self.session = base.session
 
 
 class SuperEpoch(Epoch):
@@ -202,6 +209,10 @@ class SuperEpoch(Epoch):
                 raise TypeError("SuperEpochs can not be defined recursively")
             elif not isinstance(e, Epoch):
                 raise TypeError("sub_epochs must be Epochs, got %s" % repr(e))
+        sessions = {e.session for e in sub_epochs}
+        if len(sessions) > 1:
+            raise NotImplementedError("Combination of Epochs from different "
+                                      "sessions is not implemented.")
 
         if any(e.post_baseline_trigger_shift is not None for e in sub_epochs):
             err = ("Epoch definition %s: Super-epochs are merged on the level "
@@ -769,7 +780,7 @@ class MneExperiment(FileTree):
 
         ########################################################################
         # epochs
-        epoch_default = {}
+        epoch_default = {'session': self._sessions[0]}
         epoch_default.update(self.epoch_default)
         epochs = {}
         secondary_epochs = []
@@ -2434,7 +2445,7 @@ class MneExperiment(FileTree):
                                       vardef)
                 dss.append(ds)
 
-            ds = combine(dss)
+            return combine(dss)
         elif self.get('modality') == 'meeg':  # single subject, combine MEG and EEG
             with self._temporary_state:
                 ds_meg = self.load_epochs(subject, baseline, ndvar, add_bads,
@@ -2446,13 +2457,15 @@ class MneExperiment(FileTree):
             ds, eeg_epochs = align(ds_meg, ds_eeg['epochs'], 'index',
                                    ds_eeg['index'])
             ds['epochs'] = mne.epochs.add_channels_epochs((ds['epochs'], eeg_epochs))
-        else:  # single subject, single modality
-            epoch = self._epochs[self.get('epoch')]
-
+            return ds
+        # single subject, single modality
+        epoch = self._epochs[self.get('epoch')]
+        with self._temporary_state:
             ds = self.load_selected_events(add_bads=add_bads, reject=reject,
                                            add_proj=add_proj,
                                            data_raw=data_raw or True,
-                                           vardef=vardef, cat=cat)
+                                           vardef=vardef, cat=cat,
+                                           session=epoch.session)
             if ds.n_cases == 0:
                 err = ("No events left for epoch=%r, subject=%r" %
                        (epoch.name, subject))
@@ -3110,6 +3123,7 @@ class MneExperiment(FileTree):
 
         # rejection comes from somewhere else
         if isinstance(epoch, SuperEpoch):
+            # TODO:  events form different sessions
             with self._temporary_state:
                 dss = [self.load_selected_events(subject, reject, add_proj,
                                                  add_bads, index, data_raw,
