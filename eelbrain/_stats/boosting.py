@@ -1,24 +1,33 @@
-from __future__ import division, print_function
+from __future__ import division
+import logging
 from math import floor
 
 import numpy as np
 from scipy.stats import spearmanr
 
 
-def boosting(x, y, trf_length, delta, mindelta=None, maxiter=10000):
+def boosting(x, y, trf_length, delta, mindelta=None, maxiter=10000, nsegs=10):
+    logger = logging.getLogger('eelbrain.boosting')
     if mindelta is None:
         mindelta = delta
     hs = []
-    for i in xrange(40):
-        h, test_sse_history = boost_1seg(x, y, trf_length, delta, maxiter, i, mindelta)
-        if not np.any(h):
+    for i in xrange(nsegs):
+        h, test_sse_history, msg = boost_1seg(x, y, trf_length, delta, maxiter,
+                                              nsegs, i, mindelta)
+        logger.debug(msg)
+        if np.any(h):
             hs.append(h)
-    h = np.mean(hs, 0)
-    corr = corr_for_kernel(y, x, h, False)
+
+    if hs:
+        h = np.mean(hs, 0)
+        corr = corr_for_kernel(y, x, h, False)
+    else:
+        h = np.zeros((len(x), trf_length))
+        corr = 0
     return h, corr
 
 
-def boost_1seg(x, y, trf_length, delta, maxiter, segno, mindelta):
+def boost_1seg(x, y, trf_length, delta, maxiter, nsegs, segno, mindelta):
     """Basic port of svdboostV4pred
 
     Parameters
@@ -33,7 +42,9 @@ def boost_1seg(x, y, trf_length, delta, maxiter, segno, mindelta):
         Step of the adjustment.
     maxiter : int
         Maximum number of iterations.
-    segno : int [0, 39]
+    nsegs : int
+        Number of segments
+    segno : int [0, nsegs-1]
         which segment to use for testing
     mindelta : scalar
         Smallest delta to use. If no improvement can be found in an iteration,
@@ -59,7 +70,7 @@ def boost_1seg(x, y, trf_length, delta, maxiter, segno, mindelta):
     h = np.zeros((n_stims, trf_length))
 
     # separate training and testing signal
-    test_seg_len = int(floor(x.shape[1] / 40))
+    test_seg_len = int(floor(x.shape[1] / nsegs))
     testing_range = np.arange(test_seg_len, dtype=int) + test_seg_len * segno
     training_range = np.setdiff1d(np.arange(x.shape[1], dtype=int), testing_range)
     x_test = x[:, testing_range]
@@ -140,7 +151,7 @@ def boost_1seg(x, y, trf_length, delta, maxiter, segno, mindelta):
                 break
             else:
                 delta *= 0.5
-                print("No improvement, new delta=%s..." % delta)
+                # print("No improvement, new delta=%s..." % delta)
                 continue
 
         # update h with best movement
@@ -158,10 +169,10 @@ def boost_1seg(x, y, trf_length, delta, maxiter, segno, mindelta):
         reason = "maxiter exceeded"
 
     best_iter = np.argmin(test_sse_history)
-    print(reason + ' (%i iterations)' % len(test_sse_history))
 
     # Keep predictive power as the correlation for the best iteration
-    return history[best_iter], test_sse_history
+    return (history[best_iter], test_sse_history,
+            reason + ' (%i iterations)' % len(test_sse_history))
 
 
 def apply_kernel(x, h, out=None):
