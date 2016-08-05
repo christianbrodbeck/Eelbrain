@@ -172,6 +172,15 @@ will send you an email as soon as the report is finished (or the program
 encountered an error)
 
 
+.. py:attribute:: MneExperiment.meg_system
+
+Starting with :mod:`mne` 0.13, fiff files converted from KIT files store
+information about the system they were collected with. For files converted
+earlier, the :attr:`MneExperiment.meg_system` attribute needs to specify the
+system the data were collected with. For data from NYU New York, the
+correct value is ``meg_system="KIT-157"``.
+
+
 .. py:attribute:: MneExperiment.trigger_shift
 
 Set this attribute to shift all trigger times by a constant (in seconds). For

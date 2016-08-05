@@ -348,8 +348,9 @@ class MneExperiment(FileTree):
     # =========
     # eog_sns: The sensors to plot separately in the rejection GUI. The default
     # is the two MEG sensors closest to the eyes.
-    _eog_sns = {'KIT-NY': ['MEG 143', 'MEG 151'],
-                'KIT-AD': ['MEG 087', 'MEG 130'],
+    _eog_sns = {'KIT-157': ['MEG 143', 'MEG 151'],
+                'KIT-208': ['MEG 087', 'MEG 130'],
+                'KIT-UMD-3': ['MEG 042', 'MEG 025'],
                 'KIT-BRAINVISION': ['HEOGL', 'HEOGR', 'VEOGb']}
     #
     # artifact_rejection dict:
@@ -1533,19 +1534,18 @@ class MneExperiment(FileTree):
             if baseline:
                 ds['epochs'].apply_baseline(baseline)
 
-        if data_raw is False:
-            del ds.info['raw']
-
         if ndvar:
+            sysname = self._sysname(ds.info['raw'], ds.info['subject'], modality)
             name = self._ndvar_name_for_modality(modality)
-            sysname = self._sysname(ds.info['subject'], modality)
-            ds[name] = load.fiff.epochs_ndvar(ds['epochs'],
-                                              data=self._data_arg(modality, eog),
-                                              sysname=sysname)
+            ds[name] = load.fiff.epochs_ndvar(ds['epochs'], sysname=sysname,
+                                              data=self._data_arg(modality, eog))
             if ndvar != 'both':
                 del ds['epochs']
             if modality == 'eeg':
                 self._fix_eeg_ndvar(ds[ndvar], True)
+
+        if data_raw is False:
+            del ds.info['raw']
 
         return ds
 
@@ -2187,22 +2187,25 @@ class MneExperiment(FileTree):
         else:
             raise ValueError("modality=%r" % modality)
 
-    def _meg_system(self, subject):
-        if self.meg_system:
+    def _sysname(self, fiff, subject, modality):
+        if fiff.info.get('kit_system_id'):
+            return  # no need to guess
+        elif modality != '':
+            return  # handled in self._fix_eeg_ndvar()
+        if isinstance(self.meg_system, str):
             return self.meg_system
         subject_prefix = self._subject_re.match(subject).group(1)
-        return self._meg_systems[subject_prefix]
-
-    def _sysname(self, subject, modality):
-        if modality != '':
-            return None
-        meg_system = self._meg_system(subject)
-        if meg_system == 'KIT-NY':
-            return 'KIT-157'
-        elif meg_system == 'KIT-AD':
+        if isinstance(self.meg_system, dict):
+            return self.meg_system.get(subject_prefix)
+        elif self.meg_system is not None:
+            raise TypeError("MneExperiment.meg_system needs to be a str or a "
+                            "dict, not %s" % repr(self.meg_system))
+        # go by nothing but subject name
+        if subject_prefix.startswith('A'):
             return 'KIT-208'
         else:
-            raise NotImplementedError("Unknown meg_system: %s" % meg_system)
+            raise RuntimeError("Unknown MEG system encountered. Please set "
+                               "MneExperiment.meg_system.")
 
     @staticmethod
     def _data_arg(modality, eog=False):
@@ -2563,7 +2566,7 @@ class MneExperiment(FileTree):
                     rescale(e.data, e.times, baseline, 'mean', copy=False)
 
             # info
-            ds.info['sysname'] = self._sysname(subject, modality)
+            ds.info['sysname'] = self._sysname(ds[0, 'evoked'], subject, modality)
 
         # convert to NDVar
         if ndvar:
@@ -4224,8 +4227,7 @@ class MneExperiment(FileTree):
         if modality == '':
             ds = self.load_epochs(reject=False, trigger_shift=False,
                                   apply_ica=apply_ica, eog=True, decim=decim)
-            meg_system = self._meg_system(self.get('subject'))
-            eog_sns = self._eog_sns[meg_system]
+            eog_sns = self._eog_sns[ds['meg'].sensor.sysname]
             data = 'meg'
             vlim = 2e-12
         elif modality == 'eeg':

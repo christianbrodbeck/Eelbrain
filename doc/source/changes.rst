@@ -8,6 +8,10 @@ New in 0.24
 
 * API:
 
+  - :class:`MneExperiment`: For data from the NYU New York system converted
+    with :mod:`mne` < 0.13, the :attr:`MneExperiment.meg_system` attribute needs
+    to be set to ``"KIT-157"`` to distinguish it from data collected with the
+    KIT UMD system.
   - The :attr:`MneExperiment.path_version` now defaults to ``1``.
 
 * New test: :class:`test.TTestRel`.
