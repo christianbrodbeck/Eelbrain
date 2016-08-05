@@ -109,6 +109,10 @@ from mne.source_estimate import _BaseSourceEstimate
 from mne.io.constants import FIFF
 from mne.io import Raw as _mne_Raw
 from mne.io import read_raw_kit as _mne_read_raw_kit
+try:
+    from mne.io.kit.constants import KIT_LAYOUT
+except ImportError:  # mne < 0.13
+    KIT_LAYOUT = {}
 
 from .. import _colorspaces as _cs
 from .._info import BAD_CHANNELS
@@ -625,7 +629,10 @@ def sensor_dim(fiff, picks=None, sysname=None):
         ch_locs.append((x, y, z))
         ch_names.append(ch_name)
 
-    if sysname:
+    # use KIT system ID if available
+    sysname = KIT_LAYOUT.get(info.get('kit_system_id'), sysname)
+
+    if sysname is not None:
         c_matrix, names = mne.channels.read_ch_connectivity(sysname)
 
         # fix channel names
@@ -741,7 +748,7 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
     only the channels present in all objects are retained).
     """
     if isinstance(evoked, basestring):
-        evoked = mne.Evoked(evoked)
+        evoked = mne.read_evokeds(evoked)
 
     if data is None:
         if isinstance(evoked, (tuple, list)):
@@ -770,20 +777,29 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
         time = UTS.from_int(evoked.first, evoked.last, evoked.info['sfreq'])
         dims = (sensor, time)
     else:
-        e0 = evoked[0]
+        # KIT system ID
+        sysid_set = {e.info.get('kit_system_id') for e in evoked}
+        sysid_set.remove(None)
+        if len(sysid_set) == 1:
+            sysid = sysid_set.pop()
+        elif len(sysid_set) == 0:
+            sysid = None
+        elif len(sysid_set) > 1:
+            raise ValueError("Different evoked objects form different KIT "
+                             "systems")
 
-        # find common channels
-        all_chs = set(e0.info['ch_names'])
-        exclude = set(e0.info['bads'])
-        times = e0.times
-        for e in evoked[1:]:
-            chs = set(e.info['ch_names'])
-            all_chs.update(chs)
-            exclude.update(e.info['bads'])
-            missing = all_chs.difference(chs)
-            exclude.update(missing)
-            if not np.all(e.times == times):
-                raise ValueError("Not all evoked have the same time points.")
+        # timing
+        timing_set = {(e.first, e.last, e.info['sfreq']) for e in evoked}
+        if len(timing_set) == 1:
+            first, last, sfreq = timing_set.pop()
+        else:
+            raise ValueError("Evoked objects have different starting times")
+
+        ch_sets = [set(e.info['ch_names']) for e in evoked]
+        all_chs = set.union(*ch_sets)
+        common = set.intersection(*ch_sets)
+        exclude = set.union(*map(set, (e.info['bads'] for e in evoked)))
+        exclude.update(all_chs.difference(common))
 
         # get data
         x = []
@@ -795,7 +811,7 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
             if sensor is None:
                 sensor = sensor_dim(e, picks, sysname)
 
-        time = UTS.from_int(e0.first, e0.last, e0.info['sfreq'])
+        time = UTS.from_int(first, last, sfreq)
         dims = ('case', sensor, time)
 
     return NDVar(x, dims, info=info, name=name)
