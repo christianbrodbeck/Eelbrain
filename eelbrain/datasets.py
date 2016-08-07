@@ -70,7 +70,7 @@ def get_mne_stc(ndvar=False):
     if not ndvar:
         return mne.read_source_estimate(stc_path, 'sample')
     subjects_dir = os.path.join(data_path, 'subjects')
-    return load.fiff.stc_ndvar(stc_path, 'fsaverage', 'ico-4', subjects_dir)
+    return load.fiff.stc_ndvar(stc_path, 'fsaverage', 'ico-5', subjects_dir)
 
 
 def _mne_source_space(subject, src_tag, subjects_dir):
