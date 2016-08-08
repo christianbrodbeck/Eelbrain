@@ -841,6 +841,8 @@ def test_ndvar_binning():
     b = ndvar.bin(0.2)
     assert_array_equal(b.x, x_dst, "Binned data")
     assert_array_equal(b.time.x, time_dst, "Bin times")
+    b = ndvar.sub(time=(0, 0.8)).bin(0.4)
+    eq_(b.shape, (2,))
 
     # 2-d
     ndvar = NDVar(np.vstack((x, x, x)), ('case', time))

@@ -29,7 +29,7 @@ from fnmatch import fnmatchcase
 import itertools
 from itertools import chain, izip
 from keyword import iskeyword
-from math import ceil, log10
+from math import ceil, floor, log10
 import cPickle as pickle
 import operator
 import os
@@ -3448,7 +3448,8 @@ class NDVar(object):
         tstart : None | scalar
             Earliest time point (default is from the beginning).
         tstop : None | scalar
-            End of the data to use (default is to the end).
+            End of the data to use (the default is to use as many whole
+            ``tstep`` intervals as fit in the data).
         func : callable | str
             How to summarize data in each time bin. Can be the name of a numpy
             function that takes an axis parameter (e.g., 'sum', 'mean', 'max') or
@@ -3486,21 +3487,20 @@ class NDVar(object):
         elif not callable(func):
             raise TypeError("func=%s" % repr(func))
 
-        # find time bin boundaries
         if tstart is None:
             tstart = time.tmin
 
         if tstop is None:
-            tstop = time.tmax  # -> avoid adding 1 sample bins
+            dt = time.tstep * time.nsamples
+            n_bins = int(floor(round(dt / tstep, 1)))
+        else:
+            n_bins = int(ceil((tstop - tstart) / tstep))
 
-        times = [tstart]
-        t = tstart + tstep
-        while t < tstop:
-            times.append(t)
-            t += tstep
-        times.append(min(t, time.tstop))
+        # find time bin boundaries
+        times = [tstart + n * tstep for n in xrange(n_bins + 1)]
+        if times[-1] > time.tstop:
+            times[-1] = time.tstop
 
-        n_bins = len(times) - 1
         out_shape = list(self.shape)
         out_shape[time_axis] = n_bins
         x = np.empty(out_shape)
