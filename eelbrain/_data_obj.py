@@ -4621,30 +4621,24 @@ class Dataset(OrderedDict):
         else:
             items, name, caption, info, n_cases = self._args(**kwargs)
 
-        # collect initial items
+        # unpack data-objects
         args = []
         for item in items:
             if isdataobject(item):
-                if item.name:
-                    args.append((item.name, item))
-                else:
-                    err = ("items need to be named in a Dataset; use "
-                            "Dataset(('name', item), ...), or ds = Dataset(); "
-                            "ds['name'] = item")
-                    raise ValueError(err)
+                if not item.name:
+                    raise ValueError("items need to be named in a Dataset; use "
+                                     "Dataset(('name', item), ...), or ds = "
+                                     "Dataset(); ds['name'] = item")
+                args.append((item.name, item))
             else:
-                name, v = item
-                if not v.name:
-                    v.name = name
                 args.append(item)
 
+        # set state
         if n_cases is not None:
             assert isinstance(n_cases, int)
-
         self.n_cases = n_cases
+        # uses __setitem__() which checks items and length:
         super(Dataset, self).__init__(args)
-
-        # set state
         self.name = name
         self.info = info.copy()
         self._caption = caption
@@ -4769,27 +4763,21 @@ class Dataset(OrderedDict):
                 raise KeyError("Dataset already contains variable of name %r" % index)
             assert_is_legal_dataset_key(index)
 
-            # coerce item to data-object
+            # coerce to data-object
             if isdataobject(item) or isinstance(object, Datalist):
-                if not item.name:
+                if item.name is None:
                     item.name = index
             elif isinstance(item, (list, tuple)):
-                item = Datalist(item, name=index)
-            else:
-                pass
+                item = Datalist(item, index)
 
             # make sure the item has the right length
-            if isndvar(item) and not item.has_case:
-                N = 0
-            else:
-                N = len(item)
-
+            n = 0 if (isndvar(item) and not item.has_case) else len(item)
             if self.n_cases is None:
-                self.n_cases = N
-            elif self.n_cases != N:
+                self.n_cases = n
+            elif self.n_cases != n:
                 msg = ("Can not assign item to Dataset. The item`s length "
                        "(%i) is different from the number of cases in the "
-                       "Dataset (%i)." % (N, self.n_cases))
+                       "Dataset (%i)." % (n, self.n_cases))
                 raise ValueError(msg)
 
             super(Dataset, self).__setitem__(index, item)
