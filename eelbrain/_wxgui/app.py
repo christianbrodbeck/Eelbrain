@@ -1,10 +1,19 @@
 from __future__ import print_function
+
+from distutils.version import LooseVersion
+import select
+import sys
+from threading import Thread
 import webbrowser
 
 import wx
 
 from .._wxutils import ID, Icon
+from ..plot._base import backend
 from .about import AboutFrame
+
+
+APP = None  # hold the App instance
 
 
 def wildcard(filetypes):
@@ -135,7 +144,40 @@ class App(wx.App):
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIUndo, id=ID.UNDO)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIUp, id=wx.ID_UP)
 
+        # register in IPython
+        self.using_prompt_toolkit = False
+        if ('IPython' in sys.modules and
+                LooseVersion(sys.modules['IPython'].__version__) >=
+                LooseVersion('5') and backend['prompt_toolkit']):
+            import IPython
+
+            IPython.terminal.pt_inputhooks.register('eelbrain',
+                                                    self.pt_inputhook)
+            shell = IPython.get_ipython()
+            if shell is not None:
+                shell.enable_gui('eelbrain')
+                self.using_prompt_toolkit = True
+
+                # qt4 backend can cause conflicts in IPython
+                from .. import plot
+                plot.configure(ets_toolkit='wx')
+
         return True
+
+    def pt_inputhook(self, context):
+        """prompt_toolkit inputhook"""
+        # prompt_toolkit.eventloop.inputhook.InputHookContext
+        def thread():
+            poll = select.poll()
+            poll.register(context.fileno(), select.POLLIN)
+            poll.poll(-1)
+            wx.CallAfter(self.pt_yield)
+
+        Thread(target=thread).start()
+        self.MainLoop()
+
+    def pt_yield(self):
+        self.ExitMainLoop(True)
 
     def _get_active_frame(self):
         win = wx.Window.FindFocus()
@@ -286,6 +328,12 @@ class App(wx.App):
             self.ExitMainLoop()
         else:
             return result
+
+    def ExitMainLoop(self, event_with_pt=True):
+        if event_with_pt or not self.using_prompt_toolkit:
+            # with prompt-toolkit, this leads to hanging when terminating the
+            # interpreter
+            wx.App.ExitMainLoop(self)
 
     def OnAbout(self, event):
         if hasattr(self, '_about_frame') and hasattr(self._about_frame, 'Raise'):
@@ -539,15 +587,15 @@ class App(wx.App):
 
 
 def get_app():
-    app = wx.GetApp()
-    if app is None or not isinstance(app, App):
-        app = App()
-    return app
+    global APP
+    if APP is None:
+        APP = App()
+    return APP
 
 
 def run():
     app = get_app()
-    if not app.IsMainLoopRunning():
+    if not app.using_prompt_toolkit and not app.IsMainLoopRunning():
         print("Starting GUI. Quit the Python application to return to the shell...")
         app.MainLoop()
 

@@ -39,7 +39,7 @@ from ..plot._base import (find_axis_params_data, find_axis_params_dim,
 from ..plot._nuts import _plt_bin_nuts
 from ..plot._topo import _ax_topomap
 from ..plot._utsnd import _ax_bfly_epoch
-from .app import get_app
+from .app import get_app, run
 from .frame import EelbrainDialog
 from .mpl_canvas import FigureCanvasPanel
 from .history import Action, FileDocument, FileModel, FileFrame
@@ -1530,16 +1530,12 @@ class TerminalInterface(object):
                             bad_chs, allow_interpolation)
         self.model = Model(self.doc)
         self.history = self.model.history
-
-        app = get_app()
-
         self.frame = Frame(None, self.model, nplots, topo, mean, vlim, color,
                            lw, mark, mcolor, mlw, antialiased, pos, size,
                            allow_interpolation)
         self.frame.Show()
-        app.SetTopWindow(self.frame)
-        if not app.IsMainLoopRunning():
-            app.MainLoop()
+        self.frame.Raise()
+        run()
 
 
 class FindNoisyChannelsDialog(EelbrainDialog):

@@ -86,12 +86,15 @@ POINT = 0.013888888888898
 
 # defaults
 defaults = {'maxw': 16, 'maxh': 10}
-backend = {'eelbrain': True, 'autorun': None, 'show': True, 'format': 'svg',
-           'figure_background': 'white'}
-if 'ETS_TOOLKIT' in os.environ:
-    backend['ets_toolkit'] = None
-else:
-    backend['ets_toolkit'] = 'qt4'
+backend = {
+    'eelbrain': True,
+    'autorun': None,
+    'show': True,
+    'format': 'svg',
+    'ets_toolkit': None if 'ETS_TOOLKIT' in os.environ else 'qt4',
+    'figure_background': 'white',
+    'prompt_toolkit': True
+}
 
 # store figures (they need to be preserved)
 figures = []
@@ -108,7 +111,7 @@ def do_autorun(run=None):
 
 
 def configure(frame=None, autorun=None, show=None, format=None,
-              ets_toolkit=None, figure_background=None):
+              ets_toolkit=None, figure_background=None, prompt_toolkit=None):
     """Set basic configuration parameters for the current session
 
     Parameters
@@ -127,7 +130,7 @@ def configure(frame=None, autorun=None, show=None, format=None,
         plots and save them without showing them on the screen).
     format : str
         Default format for plots (for example "png", "svg", ...).
-    ets_toolkt : 'qt4' | 'wx'
+    ets_toolkit : 'qt4' | 'wx'
         Toolkit to use for :mod:`plot.brain` plots. QT4 is officially supported
         but can lead to segmentation faults. WX is not officially supported but
         seems to work.
@@ -137,6 +140,12 @@ def configure(frame=None, autorun=None, show=None, format=None,
         from :attr:`matplotlib.rcParams`, or set it to a valid matplotblib
         color value to use an arbitrary color. ``True`` to revert to the default
         white.
+    prompt_toolkit : bool
+        In IPython 5, prompt_toolkit allows running the GUI main loop in
+        parallel to the Terminal, meaning that the IPython terminal and GUI
+        windows can be used without explicitly switching between Terminal and
+        GUI. This feature is enabled by default, but can be disabled by setting
+        ``prompt_toolkit=False``.
     """
     # don't change values before raising an error
     new = {}
@@ -160,6 +169,8 @@ def configure(frame=None, autorun=None, show=None, format=None,
         elif figure_background is not False:
             mpl.colors.colorConverter.to_rgb(figure_background)
         new['figure_background'] = figure_background
+    if prompt_toolkit is not None:
+        new['prompt_toolkit'] = bool(prompt_toolkit)
 
     backend.update(new)
 

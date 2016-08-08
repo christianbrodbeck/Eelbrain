@@ -28,19 +28,16 @@ def select_components(path, ds, sysname=None):
     ``ds``. For example, the ICA can be computed on a raw file but component
     selection done using the epochs that will be analyzed.
     """
-    from ._wxgui import get_app
+    from ._wxgui import get_app, run
     from ._wxgui.select_components import Document, Model, Frame
 
-    app = get_app()
+    get_app()  # make sure app is created
     doc = Document(path, ds, sysname)
     model = Model(doc)
     frame = Frame(None, None, None, model)
-
-    app.SetTopWindow(frame)
     frame.Show()
-    if not app.IsMainLoopRunning():
-        app.MainLoop()
-
+    frame.Raise()
+    run()
     return frame
 
 
@@ -135,5 +132,8 @@ def select_epochs(*args, **kwargs):
     shift-i     open dialog to enter channels for interpolation
     =========== ============================================================
     """
-    from . import _wxgui
-    _wxgui.select_epochs.TerminalInterface(*args, **kwargs)
+    from ._wxgui import get_app
+    from ._wxgui.select_epochs import TerminalInterface
+
+    get_app()  # make sure app is created
+    return TerminalInterface(*args, **kwargs)
