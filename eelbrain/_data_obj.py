@@ -6756,30 +6756,51 @@ class Categorial(Dimension):
 
 
 class Scalar(Dimension):
-    "Simple scalar dimension"
-    def __init__(self, name, values, unit=None):
+    """Scalar dimension
+
+    Parameters
+    ----------
+    name : str
+        Name fo the dimension.
+    values : array
+        Scalar value for each entry.
+    unit : str (optional)
+        Unit of the values.
+    tick_format : str (optional)
+        Format string for formatting axis tick labels ('%'-format, e.g. '%.2f').
+    """
+    def __init__(self, name, values, unit=None, tick_format=None):
         self.x = self.values = values = np.asarray(values)
-        if len(np.unique(values)) < len(values):
+        if values.ndim != 1:
+            raise ValueError("values needs to be one-dimensional array, got "
+                             "array of shape %s" % repr(values.shape))
+        elif len(np.unique(values)) < len(values):
             raise ValueError("Dimension can not have duplicate values")
+        if tick_format and '%' not in tick_format:
+            raise ValueError("tick_format needs to include '%%'; got %s" %
+                             repr(tick_format))
         self.name = name
         self.unit = unit
+        self._axis_unit = unit
+        self.tick_format = tick_format
 
     def __getstate__(self):
         state = {'name': self.name,
                  'values': self.values,
-                 'unit': self.unit}
+                 'unit': self.unit,
+                 'tick_format': self.tick_format}
         return state
 
     def __setstate__(self, state):
-        name = state['name']
-        values = state['values']
-        unit = state.get('unit', None)
-        self.__init__(name, values, unit)
+        self.__init__(state['name'], state['values'], state.get('unit'),
+                      state.get('tick_format'))
 
     def __repr__(self):
         args = [repr(self.name), str(self.values)]
-        if self.unit is not None:
+        if self.unit is not None or self.tick_format is not None:
             args.append(repr(self.unit))
+        if self.tick_format is not None:
+            args.append(repr(self.tick_format))
         return "%s(%s)" % (self.__class__.__name__, ', '.join(args))
 
     def __len__(self):
@@ -6793,12 +6814,15 @@ class Scalar(Dimension):
     def __getitem__(self, index):
         if isinstance(index, int):
             return self.values[index]
-
-        values = self.values[index]
-        return Scalar(self.name, values, self.unit)
+        return self.__class__(self.name, self.values[index], self.unit,
+                              self.tick_format)
 
     def _axis_formatter(self):
-        return IndexFormatter(self.values)
+        if self.tick_format is None:
+            values = self.values
+        else:
+            values = [self.tick_format % v for v in self.values]
+        return IndexFormatter(values)
 
     def dimindex(self, arg):
         if isinstance(arg, self.__class__):
@@ -6839,17 +6863,27 @@ class Scalar(Dimension):
         elif np.all(dim.values == values):
             return dim
 
-        return self.__class__(self.name, values)
+        return self.__class__(self.name, values, self.unit, self.tick_format)
 
 
 class Ordered(Scalar):
-    """Scalar with guarantee that values are ordered"""
-    def __init__(self, name, values, unit=None):
-        values = np.sort(values)
-        Scalar.__init__(self, name, values, unit=unit)
+    """Scalar with guarantee that values are monotonically increasing
 
-    def _axis_formatter(self):
-        return IndexFormatter(self.values)
+    Parameters
+    ----------
+    name : str
+        Name fo the dimension.
+    values : array
+        Scalar value for each entry.
+    unit : str (optional)
+        Unit of the values.
+    tick_format : str (optional)
+        Format string for formatting axis tick labels ('%'-format, e.g. '%.2f').
+    """
+    def __init__(self, name, values, unit=None, tick_format=None):
+        Scalar.__init__(self, name, values, unit, tick_format)
+        if np.any(np.diff(self.values) <= 0):
+            raise ValueError("Values not monotonic")
 
     def dimindex(self, arg):
         if isinstance(arg, tuple):
