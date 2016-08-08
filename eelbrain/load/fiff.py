@@ -99,7 +99,7 @@ If events are stored separately form the raw files, they can be loaded in
 from __future__ import division
 
 import fnmatch
-from itertools import izip_longest
+from itertools import izip_longest, izip
 from logging import getLogger
 import os
 
@@ -109,6 +109,7 @@ import mne
 from mne.source_estimate import _BaseSourceEstimate
 from mne.io.constants import FIFF
 from mne.io.kit.constants import KIT
+from mne.minimum_norm import prepare_inverse_operator, apply_inverse_raw
 
 from .. import _colorspaces as _cs
 from .._info import BAD_CHANNELS
@@ -657,6 +658,99 @@ def sensor_dim(fiff, picks=None, sysname=None):
         conn = None
 
     return Sensor(ch_locs, ch_names, sysname=sysname, connectivity=conn)
+
+
+def _raw_ndvars(raw, i_start=None, i_stop=None, decim=1, inv=None, lambda2=1,
+                method='dSPM', pick_ori=None, src=None, subjects_dir=None,
+                parc='aparc', label=None):
+    """Raw dta as NDVar
+
+    Parameters
+    ----------
+    raw : Raw
+        Raw instance.
+    i_start : int | sequence of int
+        Start sample (see notes; default is the beginning of the ``raw``).
+    i_stop : int | sequence of int
+        Stop sample (see notes; default is end of the ``raw``).
+    decim : int
+        Downsample the data by this factor when importing. ``1`` (default)
+        means no downsampling. Note that this function does not low-pass filter
+        the data. The data is downsampled by picking out every n-th sample.
+    inv : InverseOperator
+        MNE inverse operator to transform data to source space (by default, data
+        are loaded in sensor space). If ``inv`` is specified, subsequent
+        parameters are required to construct the right soure space.
+    lambda2 : scalar
+        Inverse solution parameter: lambda squared parameter.
+    method : str
+        Inverse solution parameter: noise normalization method.
+    pick_ori : bool
+        Inverse solution parameter.
+    src : str
+        Source space descriptor (e.g. ``'ico-4'``).
+    subjects_dir : str
+        MRI subjects directory.
+    parc : str
+        Parcellation to load for the source space.
+    label : Label
+        Restrict source estimate to this label.
+
+    Returns
+    -------
+    data : NDVar | list of NDVar
+        Data (sensor or source space). If ``i_start`` and ``i_stopr`` are scalar
+        then a single NDVar is returned, if they are lists then a list of NDVars
+        is returned.
+
+    Notes
+    -----
+    ``i_start`` and ``i_stop`` are interpreted as event indexes (from
+    :func:`mne.find_events`), i.e. relative to ``raw.first_samp``.
+    """
+    start_scalar = i_start is None or isinstance(i_start, int)
+    stop_scalar = i_stop is None or isinstance(i_stop, int)
+    if start_scalar or stop_scalar:
+        if not start_scalar and stop_scalar:
+            raise TypeError(
+                "i_start and i_stop must either both be scalar or both "
+                "iterable, got i_start=%r, i_stop=%s" %  (i_start, i_stop))
+        i_start = (i_start,)
+        i_stop = (i_stop,)
+        scalar = True
+    else:
+        scalar = False
+
+    # event index to raw index
+    i_start = tuple(i if i is None else i - raw.first_samp for i in i_start)
+    i_stop = tuple(i if i is None else i - raw.first_samp for i in i_stop)
+
+    # target dimension
+    if inv is None:
+        picks = mne.pick_types(raw.info, ref_meg=False)
+        dim = sensor_dim(raw, picks)
+    else:
+        dim = SourceSpace.from_mne_source_spaces(inv['src'], src, subjects_dir,
+                                                 parc, label)
+        inv = prepare_inverse_operator(inv, 1, lambda2, method)
+
+    out = []
+    for start, stop in izip(i_start, i_stop):
+        if inv is None:
+            x = raw[picks, start:stop][0]
+        else:
+            x = apply_inverse_raw(raw, inv, lambda2, method, label, start,
+                                  stop, pick_ori=pick_ori, prepared=True).data
+
+        if decim != 1:
+            x = x[:, ::decim]
+        time = UTS(0, float(decim) / raw.info['sfreq'], x.shape[1])
+        out.append(NDVar(x, (dim, time), _cs.meg_info()))
+
+    if scalar:
+        return out[0]
+    else:
+        return out
 
 
 def epochs_ndvar(epochs, name=None, data=None, exclude='bads', mult=1,
