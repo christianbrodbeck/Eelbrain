@@ -324,9 +324,10 @@ class App(wx.App):
             # add new entries
             for window in wx.GetTopLevelWindows():
                 id_ = window.GetId()
-                if id_ == wx.ID_ANY:
+                label = window.GetTitle()
+                if not label:
                     continue
-                item = menu.Append(id_, window.GetTitle())
+                item = menu.Append(id_, label)
                 self.Bind(wx.EVT_MENU, self.OnWindowRaise, id=id_)
                 self.window_menu_window_items.append(item)
         elif menu.GetTitle() == 'Tools':
