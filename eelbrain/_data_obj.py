@@ -6893,10 +6893,12 @@ class Ordered(Scalar):
                                  "2 (got %s)" % (self.name, repr(arg)))
             start, stop = arg
             if start is not None:
-                start = super(Ordered, self).dimindex(start)
+                start = self.dimindex(start)
             if stop is not None:
-                stop = super(Ordered, self).dimindex(stop)
+                stop = self.dimindex(stop)
             return slice(start, stop)
+        elif np.isscalar(arg):
+            return int(np.digitize(arg, self.values, True))
         else:
             return super(Ordered, self).dimindex(arg)
 
