@@ -6602,7 +6602,10 @@ class Dimension(object):
             return arg
         elif isinstance(arg, (slice, int)):
             return arg
-        elif isinstance(arg, SEQUENCE_TYPES):
+        elif isinstance(arg, tuple):
+            raise TypeError("%s dimension does not support interval indexing "
+                            "with tuples." % self.name)
+        elif isinstance(arg, list):
             if len(arg) == 0:
                 return np.empty(0, np.int8)
             return np.array([self.dimindex(a) for a in arg])

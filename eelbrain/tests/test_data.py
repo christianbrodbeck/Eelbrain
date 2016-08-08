@@ -477,10 +477,10 @@ def test_dim_categorial():
     # indexing
     sub_values = values[:2]
     idx = dim.dimindex(sub_values)
-    assert_array_equal(dim.dimindex(tuple(sub_values)), idx)
     eq_(dim[idx], Categorial(name, sub_values))
     eq_(dim.dimindex('a'), values.index('a'))
     eq_(dim.dimindex('abc'), values.index('abc'))
+    assert_raises(TypeError, dim.dimindex, tuple(sub_values))
 
     # intersection
     dim2 = Categorial(name, ['c', 'b', 'e'])
