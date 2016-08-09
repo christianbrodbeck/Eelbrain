@@ -13,6 +13,7 @@ def test_plot_topomap():
     topo = ds.eval('utsnd.summary(time=(0.075, 0.125))')
 
     p = plot.Topomap(topo, ds=ds, show=False)
+    p.add_contour('V', 1, '#00FF00')
     p.close()
     p = plot.Topomap(topo, ds=ds, vmax=0.2, w=2, show=False)
     p.close()

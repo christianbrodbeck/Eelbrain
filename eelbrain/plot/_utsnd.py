@@ -24,12 +24,12 @@ class _plt_im(object):
         im_kwa = _base.find_im_args(ndvar, overlay, vlims, cmaps)
         self._meas = meas = ndvar.info.get('meas', _base.default_meas)
         self._contours = contours.get(meas, None)
-        self._data = data = self._data_from_ndvar(ndvar)
+        self._data = self._data_from_ndvar(ndvar)
         self._extent = extent
         self._mask = mask
 
         if im_kwa is not None:
-            self.im = ax.imshow(data, origin='lower', aspect=self._aspect,
+            self.im = ax.imshow(self._data, origin='lower', aspect=self._aspect,
                                 extent=extent, interpolation=interpolation,
                                 **im_kwa)
             self._cmap = im_kwa['cmap']
@@ -52,7 +52,7 @@ class _plt_im(object):
             self._contour_h = None
 
         if self._contours:
-            h = self.ax.contour(self._data, aspect=self._aspect, origin='lower',
+            h = self.ax.contour(self._data, origin='lower', aspect=self._aspect,
                                 extent=self._extent, **self._contours)
             if self._mask is not None:
                 for c in h.collections:
@@ -61,7 +61,9 @@ class _plt_im(object):
 
     def add_contour(self, meas, level, color):
         if self._meas == meas:
-            self._contours[level] = color
+            levels = tuple(self._contours['levels']) + (level,)
+            colors = tuple(self._contours['colors']) + (color,)
+            self._contours = {'levels': levels, 'colors': colors}
             self._draw_contours()
 
     def get_kwargs(self):
