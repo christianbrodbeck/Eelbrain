@@ -783,26 +783,17 @@ class TopoArray(_EelFigure):
         n_topo_total = ntopo * n_epochs
 
         # create figure
-        _EelFigure.__init__(self, 'TopoArray Plot', n_epochs, 6, 1.5, False, None,
-                            *args, **kwargs)
-        fig = self.figure
-        axw = self._layout.axw
+        _EelFigure.__init__(self, 'TopoArray Plot', n_epochs, 6, 1.5, False,
+                            title, *args, **kwargs)
 
         # fig coordinates
-        x_frame_l = .6 / axw / n_epochs
+        x_frame_l = .6 / self._layout.axw / n_epochs
         x_frame_r = .025 / n_epochs
         x_sep = .01 / n_epochs
-
         x_per_ax = (1 - x_frame_l - x_frame_r) / n_epochs
 
-
-        fig.subplots_adjust(left=x_frame_l,
-                            bottom=.05,
-                            right=1 - x_frame_r,
-                            top=.9,
-                            wspace=.1, hspace=.3)
-        if title:
-            fig.suptitle(title)
+        self.figure.subplots_adjust(left=x_frame_l, right=1 - x_frame_r,
+                                    bottom=.05, top=.9, wspace=.1, hspace=.3)
         self.title = title
 
         if axtitle is True:
@@ -842,8 +833,8 @@ class TopoArray(_EelFigure):
             ax_left = x_frame_l + i * (x_per_ax + x_sep)
             ax_right = 1 - x_frame_r - (n_epochs - i - 1) * (x_per_ax + x_sep)
             ax_width = ax_right - ax_left
-            ax = fig.add_axes((ax_left, ax_bottom, ax_width, ax_height),
-                              picker=True)
+            ax = self.figure.add_axes((ax_left, ax_bottom, ax_width, ax_height),
+                                      picker=True)
             ax.ID = i
             ax.type = 'main'
             im_plot = _utsnd._ax_im_array(ax, layers, 'time', axtitle[i],
@@ -857,8 +848,9 @@ class TopoArray(_EelFigure):
             # topo plots
             for j in range(ntopo):
                 ID = i * ntopo + j
-                ax = fig.add_subplot(3, n_topo_total, 2 * n_topo_total + 1 + ID,
-                                     picker=True, xticks=[], yticks=[])
+                ax = self.figure.add_subplot(3, n_topo_total,
+                                             2 * n_topo_total + 1 + ID,
+                                             picker=True, xticks=[], yticks=[])
                 ax.ID = ID
                 ax.type = 'window'
                 win = _TopoWindow(ax, im_plot, vlims=self._vlims,
