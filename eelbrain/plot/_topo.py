@@ -448,14 +448,13 @@ class TopoButterfly(_EelFigure):
             elif ax in self.topo_axes:
                 p = self.topo_plots[ax.id // 2]
                 Topomap(p.data)
-        elif key == 'right' and not self._realtime_topo:
-            i = np.where(self._xvalues > self._current_t)[0][0]
-            t = self._xvalues[i]
-            self.set_topo_t(t)
-        elif key == 'left' and not self._realtime_topo:
-            i = np.where(self._xvalues < self._current_t)[0][-1]
-            t = self._xvalues[i]
-            self.set_topo_t(t)
+        elif key == 'right' or key == 'left':
+            i = np.digitize(self._current_t, self._xvalues, key == 'left')
+            if key == 'left' and i > 0:
+                i -= 1
+            elif i == len(self._xvalues):
+                i -= 1
+            self.set_topo_t(self._xvalues[i])
 
     def _on_leave_axes(self, event):
         "update the status bar when the cursor leaves axes"
