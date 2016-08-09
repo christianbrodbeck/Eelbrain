@@ -1,12 +1,118 @@
 from __future__ import division
 import logging
 from math import floor
+import time
 
 import numpy as np
+from numpy import newaxis
 from scipy.stats import spearmanr
 
+from .._data_obj import NDVar, UTS
 
-def boosting(x, y, trf_length, delta, mindelta=None, maxiter=10000, nsegs=10):
+
+class BoostingResult(object):
+    """Result from boosting temporal response function"""
+    _attr = ('h', 'corr', 'isnan', 't_run')
+
+    def __init__(self, h, corr, isnan, t_run):
+        self.h = h
+        self.corr = corr
+        self.isnan = isnan
+        self.t_run = t_run
+
+    def __getstate__(self):
+        return {attr: getattr(self, attr) for attr in self._attr}
+
+    def __setstate__(self, state):
+        self.__init__(*(state[attr] for attr in self._attr))
+
+
+def boosting(y, x, tstart, tstop, delta=0.005):
+    """Estimate a temporal response function of ``x`` through boosting
+
+    Parameters
+    ----------
+    y : NDVar
+        Signal to predict.
+    x : NDVar
+        Signal to use to predict ``y``.
+    tstart : float
+        Start of the TRF in seconds.
+    tstop : float
+        Stop of the TRF in seconds.
+    """
+    if y.get_dim('time') != x.get_dim('time'):
+        raise ValueError("y and x don't have the same time dimension")
+
+    # x
+    if x.ndim == 1:
+        xdim = None
+        x_data = x.x[newaxis, :]
+    elif x.ndim == 2:
+        xdim = x.dims[not x.dimnames.index('time')]
+        x_data = x.get_data((xdim.name, 'time'))
+    else:
+        raise NotImplementedError("x with more than 2 dimensions")
+
+    # y
+    if y.ndim == 1:
+        ydim = None
+        y_data = y.x[None, :]
+    elif y.ndim == 2:
+        ydim = y.dims[not y.dimnames.index('time')]
+        y_data = y.get_data((ydim.name, 'time'))
+    else:
+        raise NotImplementedError("y with more than 2 dimensions")
+
+    # trf
+    i_start = int(round(tstart / y.time.tstep))
+    i_stop = int(round(tstop / y.time.tstep))
+    trf_length = i_stop - i_start
+    if i_start < 0:
+        x_data = x_data[:, -i_start:]
+        y_data = y_data[:, :i_start]
+    elif i_start > 0:
+        raise NotImplementedError("start > 0")
+
+    t0 = time.time()
+    hs = []
+    corrs = []
+    for y_ in y_data:
+        h, corr = boosting_continuous(x_data, y_, trf_length, delta)
+        hs.append(h)
+        corrs.append(corr)
+    dt = time.time() - t0
+
+    # correlation
+    if ydim is None:
+        corr = corrs[0]
+        isnan = np.isnan(corr)
+    else:
+        corrs = np.array(corrs)
+        isnan = np.isnan(corrs)
+        corrs[isnan] = 0
+        corr = NDVar(corrs, (ydim,))
+
+    # TRF
+    h_time = UTS(tstart, y.time.tstep, trf_length)
+    h_x = np.array(hs)
+    dims = (h_time,)
+    if xdim is None:
+        h_x = h_x[:, 0, :]
+    else:
+        dims = (xdim,) + dims
+    if ydim is None:
+        h_x = h_x[0]
+    else:
+        dims = (ydim,) + dims
+    h = NDVar(h_x, dims)
+
+    return BoostingResult(h, corr, isnan, dt)
+
+
+def boosting_continuous(x, y, trf_length, delta, mindelta=None, maxiter=10000, nsegs=10):
+    """Boosting for a continuous data segment, cycle through even splits for
+    test segment"""
     logger = logging.getLogger('eelbrain.boosting')
     if mindelta is None:
         mindelta = delta
