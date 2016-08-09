@@ -3670,6 +3670,33 @@ class NDVar(object):
         dim = self.dims[i]
         return dim
 
+    def get_dimnames(self, names):
+        """Fill in a partially specified tuple of Dimension names
+
+        Parameters
+        ----------
+        names : sequence of {str | None}
+            Dimension names. Names specified as ``None`` are inferred.
+
+        Returns
+        -------
+        inferred_names : tuple of str
+            Dimension names in the same order as in ``names``.
+        """
+        if not all(n is None or n in self.dimnames for n in names):
+            raise ValueError("%s contains dimension that is not in %r" %
+                             (names, self))
+        elif any(names.count(n) > 1 for n in names if n is not None):
+            raise ValueError("Dimension specified twice in " + repr(names))
+        elif None in names:
+            if len(names) != len(self.dims):
+                raise ValueError("Ambiguous dimension specification")
+            none_dims = [n for n in self.dimnames if n not in names]
+            return tuple(n if n is not None else none_dims.pop(0) for
+                         n in names)
+        else:
+            return tuple(names)
+
     def get_dims(self, names):
         """Returns a tuple with the requested Dimension objects
 
@@ -3685,10 +3712,7 @@ class NDVar(object):
             Dimension objects in the same order as in ``names``.
         """
         if None in names:
-            if len(names) != len(self.dims):
-                raise ValueError("Ambiguous dimension specification")
-            none_dims = [n for n in self.dimnames if n not in names]
-            names = [n if n is not None else none_dims.pop(0) for n in names]
+            names = self.get_dimnames(names)
         return tuple(self.get_dim(name) for name in names)
 
     def has_dim(self, name):
