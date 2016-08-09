@@ -112,21 +112,16 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
             if ax.in_axes(mpl_event):
                 return ax
 
-    def redraw(self, axes=[], artists=[]):
+    def redraw(self, axes=(), artists=()):
         self.restore_region(self._background)
         for ax in axes:
             ax.draw_artist(ax)
             extent = ax.get_window_extent()
             self.blit(extent)
         for artist in artists:
-            ax = artist.get_axes()
-            # FIXME:
-#            ax.draw_artist(artist)
-#            extent = artist.get_window_extent(self.get_renderer()) # or self?
-            # substitute redrawing whole ax
-            ax.draw_artist(ax)
-            extent = ax.get_window_extent()
-            # end substitute
+            # FIXME:  redraw artist instead of whole axes
+            artist.axes.draw_artist(artist.axes)
+            extent = artist.axes.get_window_extent()
             self.blit(extent)
 
     def store_canvas(self):

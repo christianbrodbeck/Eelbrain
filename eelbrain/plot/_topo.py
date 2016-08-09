@@ -694,7 +694,7 @@ class _TopoWindow:
 
             t_str = "%i ms" % round(t * 1e3)
             if self.pointer:
-                self.pointer.set_axes(self.parent.ax)
+                self.pointer.axes = self.parent.ax
                 self.pointer.xy = (t, 1)
                 self.pointer.set_text(t_str)
                 self.pointer.set_visible(True)

@@ -804,9 +804,8 @@ class mpl_figure:
             extent = ax.get_window_extent()
             self.canvas.blit(extent)
         for artist in artists:
-            ax = artist.get_axes()
-            ax.draw_artist(ax)
-            extent = ax.get_window_extent()
+            artist.axes.draw_artist(artist.axes)
+            extent = artist.axes.get_window_extent()
             self.canvas.blit(extent)
 
     def store_canvas(self):
