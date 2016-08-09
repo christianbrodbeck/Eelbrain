@@ -104,45 +104,33 @@ class _plt_im(object):
 
 class _plt_im_array(_plt_im):
 
-    def __init__(self, ax, ndvar, overlay, dims=('time', 'sensor'),
-                 extent=None, interpolation=None, vlims={}, cmaps={},
-                 contours={}):
-        self._dims = dims
+    def __init__(self, ax, ndvar, overlay, dimnames, interpolation, vlims,
+                 cmaps, contours):
+        self._dimnames = dimnames[::-1]
+        xdim, ydim = ndvar.get_dims(dimnames)
+        extent = xdim._axis_im_extent() + ydim._axis_im_extent()
         _plt_im.__init__(self, ax, ndvar, overlay, cmaps, vlims, contours,
                          extent, interpolation)
 
     def _data_from_ndvar(self, ndvar):
-        data = ndvar.get_data(self._dims)
-        if data.ndim > 2:
-            assert data.shape[0] == 1
-            data = data[0]
-        return data
+        return ndvar.get_data(self._dimnames)
 
 
 class _ax_im_array(object):
+
     def __init__(self, ax, layers, x='time', title=None, interpolation=None,
                  vlims={}, cmaps={}, contours={}):
-        """
-        plots segment data as im
-
-        define a colorspace by supplying one of those kwargs: ``colorspace`` OR
-        ``p`` OR ``vmax``
-
-        """
         self.ax = ax
         self.data = layers
         self.layers = []
         epoch = layers[0]
-
-        xdim, ydim = epoch.get_dims((x, None))
-        y = ydim.name
+        dimnames = epoch.get_dimnames((x, None))
 
         # plot
         overlay = False
-        extent = xdim._axis_im_extent() + ydim._axis_im_extent()
         for l in layers:
-            p = _plt_im_array(ax, l, overlay, (y, x), extent, interpolation,
-                              vlims, cmaps, contours)
+            p = _plt_im_array(ax, l, overlay, dimnames, interpolation, vlims,
+                              cmaps, contours)
             self.layers.append(p)
             overlay = True
 
