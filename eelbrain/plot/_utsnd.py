@@ -220,8 +220,10 @@ class Array(_EelFigure):
 
         self.plots = []
         vlims = _base.find_fig_vlims(epochs, vmax, vmin)
+        contours = _base.find_fig_contours(epochs, vlims, None)
         for i, ax, layers in zip(xrange(nax), self._axes, epochs):
-            p = _ax_im_array(ax, layers, x, axtitle, interpolation, vlims=vlims)
+            p = _ax_im_array(ax, layers, x, axtitle, interpolation, vlims,
+                             contours=contours)
             self.plots.append(p)
 
         e0 = epochs[0][0]
