@@ -3671,7 +3671,24 @@ class NDVar(object):
         return dim
 
     def get_dims(self, names):
-        "Returns a tuple with the requested Dimension objects"
+        """Returns a tuple with the requested Dimension objects
+
+        Parameters
+        ----------
+        names : sequence of {str | None}
+            Names of the dimension objects. If ``None`` is inserted in place of
+            names, these dimensions are inferred.
+
+        Returns
+        -------
+        dims : tuple of Dimension
+            Dimension objects in the same order as in ``names``.
+        """
+        if None in names:
+            if len(names) != len(self.dims):
+                raise ValueError("Ambiguous dimension specification")
+            none_dims = [n for n in self.dimnames if n not in names]
+            names = [n if n is not None else none_dims.pop(0) for n in names]
         return tuple(self.get_dim(name) for name in names)
 
     def has_dim(self, name):

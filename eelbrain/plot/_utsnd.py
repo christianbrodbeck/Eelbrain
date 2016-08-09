@@ -134,14 +134,8 @@ class _ax_im_array(object):
         self.layers = []
         epoch = layers[0]
 
-        xdim = epoch.get_dim(x)
-        if epoch.ndim == 2:
-            xdim_i = epoch.dimnames.index(x)
-            ydim_i = abs(xdim_i - 1)
-            y = epoch.dimnames[ydim_i]
-        else:
-            raise ValueError("Need 2 dimensions, got %i" % epoch.ndim)
-        ydim = epoch.get_dim(y)
+        xdim, ydim = epoch.get_dims((x, None))
+        y = ydim.name
 
         # plot
         overlay = False
