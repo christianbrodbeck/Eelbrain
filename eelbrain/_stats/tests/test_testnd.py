@@ -86,10 +86,10 @@ def test_anova():
     res0 = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=5)
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=5)
     assert_dataset_equal(res.clusters, res0.clusters)
-    eelbrain._stats.testnd.MULTIPROCESSING = 0
+    testnd.configure(0)
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=5)
     assert_dataset_equal(res.clusters, res0.clusters)
-    eelbrain._stats.testnd.MULTIPROCESSING = 1
+    testnd.configure(-1)
 
     # permutation
     eelbrain._stats.permutation._YIELD_ORIGINAL = 1
@@ -284,6 +284,17 @@ def test_clusterdist():
     logging.debug(' detected: \n%s' % (peaks.astype(int)))
     logging.debug(' target: \n%s' % (tgt.astype(int)))
     assert_array_equal(peaks, tgt)
+
+
+def test_configure():
+    """Test testnd.configure to change multiprocessing settings"""
+    testnd.configure(0)
+    eq_(eelbrain._stats.testnd.MULTIPROCESSING, 0)
+    testnd.configure(2)
+    eq_(eelbrain._stats.testnd.MULTIPROCESSING, 1)
+    eq_(eelbrain._stats.testnd.N_WORKERS, 2)
+    testnd.configure(-1)
+    eq_(eelbrain._stats.testnd.MULTIPROCESSING, 1)
 
 
 def test_corr():
@@ -488,36 +499,36 @@ def test_ttest_rel():
     res3 = testnd.ttest_rel('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm',
                             ds=ds, samples=100)
     assert_dataset_equal(res3.find_clusters(maps=True), res.clusters)
-    eelbrain._stats.testnd.MULTIPROCESSING = 0
+    testnd.configure(0)
     res4 = testnd.ttest_rel('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm',
                             ds=ds, samples=100)
     assert_dataset_equal(res4.find_clusters(maps=True), res.clusters)
-    eelbrain._stats.testnd.MULTIPROCESSING = 1
+    testnd.configure(-1)
     sds = ds.sub("B=='b0'")
     # thresholded, UTS
-    eelbrain._stats.testnd.MULTIPROCESSING = 0
+    testnd.configure(0)
     res0 = testnd.ttest_rel('uts', 'A', 'a1', 'a0', 'rm', ds=sds, pmin=0.1,
                             samples=100)
     tgt = res0.find_clusters()
-    eelbrain._stats.testnd.MULTIPROCESSING = 1
+    testnd.configure(-1)
     res1 = testnd.ttest_rel('uts', 'A', 'a1', 'a0', 'rm', ds=sds, pmin=0.1,
                             samples=100)
     assert_dataset_equal(res1.find_clusters(), tgt)
     # thresholded, UTSND
-    eelbrain._stats.testnd.MULTIPROCESSING = 0
+    testnd.configure(0)
     res0 = testnd.ttest_rel('utsnd', 'A', 'a1', 'a0', 'rm', ds=sds, pmin=0.1,
                             samples=100)
     tgt = res0.find_clusters()
-    eelbrain._stats.testnd.MULTIPROCESSING = 1
+    testnd.configure(-1)
     res1 = testnd.ttest_rel('utsnd', 'A', 'a1', 'a0', 'rm', ds=sds, pmin=0.1,
                             samples=100)
     assert_dataset_equal(res1.find_clusters(), tgt)
     # TFCE, UTS
-    eelbrain._stats.testnd.MULTIPROCESSING = 0
+    testnd.configure(0)
     res0 = testnd.ttest_rel('uts', 'A', 'a1', 'a0', 'rm', ds=sds, tfce=True,
                             samples=10)
     tgt = res0.compute_probability_map()
-    eelbrain._stats.testnd.MULTIPROCESSING = 1
+    testnd.configure(-1)
     res1 = testnd.ttest_rel('uts', 'A', 'a1', 'a0', 'rm', ds=sds, tfce=True,
                             samples=10)
     assert_dataobj_equal(res1.compute_probability_map(), tgt)
