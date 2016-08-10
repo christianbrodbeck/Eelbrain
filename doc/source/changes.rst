@@ -13,6 +13,8 @@ New in 0.24
     to be set to ``"KIT-157"`` to distinguish it from data collected with the
     KIT UMD system.
   - The :attr:`MneExperiment.path_version` now defaults to ``1``.
+  - :meth:`.masked_parameter_map` method of cluster-based test results: use
+    of ``pmin=None`` is deprecated, use ``pmin=1`` instead.
 
 * New test: :class:`test.TTestRel`.
 * :meth:`MneExperiment.make_report_rois` includes corrected p-values in reports
@@ -20,14 +22,12 @@ New in 0.24
 * :meth:`MneExperiment.make_rej` now has a ``decim`` parameter to improve
   display performance.
 * :class:`MneExperiment`: BEM-solution files are now created dynamically with
-  :module:`mne` and are not cached any more. This can lead to small changes
+  :mod:`mne` and are not cached any more. This can lead to small changes
   in results due to improved numerical precision. Delete old files to free up
   space with ``mne_experiment.rm('bem-sol-file', subject='*')``.
-* :meth:`MneExperiment.make_report_coreg` method.
-* :class:`MneExperiment`: New analysis parameter
+* New :meth:`MneExperiment.make_report_coreg` method.
+* New :class:`MneExperiment`: analysis parameter
   :ref:`analysis-params-connectivity`
-* API of the :meth:`.masked_parameter_map` method of cluster-based test
-  results: use of ``pmin=None`` is deprecated, use ``pmin=1`` instead.
 
 
 New in 0.23

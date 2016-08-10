@@ -5,7 +5,7 @@ class WordExperiment(MneExperiment):
 
     owner = "me@nyu.edu"
 
-    path_version = 1  # path scheme for starting a new experiment
+    meg_system = 'KIT-157'
 
     defaults = {'experiment': 'words'}
 
