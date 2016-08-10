@@ -5,8 +5,9 @@ from itertools import izip, product
 import cPickle as pickle
 import logging
 
-from nose.tools import (eq_, assert_equal, assert_greater_equal, assert_less,
-                        assert_in, assert_not_in, assert_raises)
+from nose.tools import (eq_, assert_equal, assert_not_equal,
+                        assert_greater_equal, assert_less, assert_in,
+                        assert_not_in, assert_raises)
 import numpy as np
 from numpy.testing import assert_array_equal
 from scipy import ndimage
@@ -377,6 +378,11 @@ def test_ttest_1samp():
     assert_in("'uts'", repr0)
     assert_not_in('clusters', repr0)
     assert_not_in('mintime', repr0)
+
+    # sub as array
+    res1 = testnd.ttest_1samp('uts', sub=ds.eval("A == 'a0'"), ds=ds)
+    repr1 = repr(res1)
+    assert_not_equal(repr1, repr0)
 
     # clusters without resampling
     res1 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds, samples=0,

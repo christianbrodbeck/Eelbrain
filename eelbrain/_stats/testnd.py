@@ -154,27 +154,28 @@ class _Result(object):
         self._expand_state()
 
     def __repr__(self):
-        temp = "<%s %%s>" % self.__class__.__name__
-
         args = self._repr_test_args()
-        if self.sub:
+        if self.sub is not None:
             if isinstance(self.sub, np.ndarray):
                 sub_repr = '<array>'
             else:
                 sub_repr = repr(self.sub)
             args.append(', sub=%s' % sub_repr)
         if self._cdist:
-            args += self._cdist._repr_test_args(self.pmin)
-            args += self._cdist._repr_clusters()
+            args += self._repr_cdist()
 
-        out = temp % ', '.join(args)
-        return out
+        return "<%s %s>" % (self.__class__.__name__, ', '.join(args))
 
     def _repr_test_args(self):
         """List of strings describing parameters unique to the test, to be
         joined by comma
         """
         raise NotImplementedError()
+
+    def _repr_cdist(self):
+        """List of results (override for MultiEffectResult)"""
+        return (self._cdist._repr_test_args(self.pmin) +
+                self._cdist._repr_clusters())
 
     def _expand_state(self):
         "override to create secondary results"
@@ -1223,21 +1224,15 @@ class ttest_rel(_Result):
 
 class _MultiEffectResult(_Result):
 
-    def __repr__(self):
-        temp = "<%s %%s>" % self.__class__.__name__
+    def _repr_test_args(self):
+        return [repr(self.Y), repr(self.X)]
 
-        args = [repr(self.Y), repr(self.X)]
-        if self.sub is not None:
-            args.append(', sub=%r' % self.sub)
-        if self._cdist:
-            cdist = self._cdist[0]
-            args += cdist._repr_test_args(self.pmin)
-            for cdist in self._cdist:
-                effect_args = cdist._repr_clusters()
-                args += ["%r: %s" % (cdist.name, ', '.join(effect_args))]
-
-        out = temp % ', '.join(args)
-        return out
+    def _repr_cdist(self):
+        args = self._cdist[0]._repr_test_args(self.pmin)
+        for cdist in self._cdist:
+            effect_args = cdist._repr_clusters()
+            args.append("%r: %s" % (cdist.name, ', '.join(effect_args)))
+        return args
 
     def _expand_state(self):
         self.effects = tuple(e.name for e in self._effects)
