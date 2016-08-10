@@ -2148,15 +2148,19 @@ class MneExperiment(FileTree):
         if subject == 'fsaverage' or is_fake_mri(self.get('mri-dir')):
             return mne.read_bem_surfaces(self.get('bem-file'))
         else:
-            if not os.path.exists(self.get('inner_skull-surf-file')):
-                is_link = os.path.islink(self.get('inner_skull-surf-file'))
-                log_msg = ('inner_skull.surf does not exist for {0}, running '
-                           'mne.make_watershed_bem()'.format(subject))
-                if is_link:
-                    log_msg += ', overwriting old sym-links'
-                self._log.debug(log_msg + '...')
+            surf_file = self.get('inner_skull-surf-file')
+            if not os.path.exists(surf_file) or os.path.islink(surf_file):
+                if os.path.islink(surf_file):
+                    log_msg = 'inner_skull.surf for {0} is sym-link'
+                else:
+                    log_msg = 'inner_skull.surf for {0} is missing'
+                log_msg += ', running mne.make_watershed_bem()'
+                if os.path.exists(os.path.join(self.get('bem-dir'), 'watershed')):
+                    log_msg += ', overwriting old watershed directory'
+                self._log.debug(log_msg.format(subject) + '...')
+
                 mne.bem.make_watershed_bem(subject, self.get('mri-sdir'),
-                                           overwrite=is_link)
+                                           overwrite=True)
             return mne.make_bem_model(subject, conductivity=(0.3,),
                                       subjects_dir=self.get('mri-sdir'))
 
