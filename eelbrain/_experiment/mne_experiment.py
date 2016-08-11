@@ -527,6 +527,7 @@ class MneExperiment(FileTree):
         if root is None:
             find_subjects = False
         else:
+            root = os.path.abspath(root)
             self.set(root=root)
 
         if find_subjects:
