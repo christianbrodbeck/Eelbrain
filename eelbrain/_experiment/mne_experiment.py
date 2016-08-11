@@ -37,7 +37,7 @@ from .._data_obj import (isvar, asfactor, align, DimensionMismatchError,
                          as_legal_dataset_key, assert_is_legal_dataset_key,
                          cwt_morlet, OldVersionError)
 from ..fmtxt import List, Report, Image
-from .._report import named_list, enumeration
+from .._report import named_list, enumeration, plural
 from .._resources import predefined_connectivity
 from .._stats import spm
 from .._stats.stats import ttest_t
@@ -228,7 +228,6 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {experiment}.log')
         'mri-cfg-file': os.path.join('{mri-dir}', 'MRI scaling parameters.cfg'),
         'mri-file': os.path.join('{mri-dir}', 'mri', 'orig.mgz'),
         'bem-file': os.path.join('{bem-dir}', '{mrisubject}-inner_skull-bem.fif'),
-        'inner_skull-surf-file': os.path.join('{bem-dir}', 'inner_skull.surf'),
         'bem-sol-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),  # removed, but here to delete old files
         'head-bem-file': os.path.join('{bem-dir}', '{mrisubject}-head.fif'),
         'src-file': os.path.join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
@@ -2148,19 +2147,25 @@ class MneExperiment(FileTree):
         if subject == 'fsaverage' or is_fake_mri(self.get('mri-dir')):
             return mne.read_bem_surfaces(self.get('bem-file'))
         else:
-            surf_file = self.get('inner_skull-surf-file')
-            if not os.path.exists(surf_file) or os.path.islink(surf_file):
-                if os.path.islink(surf_file):
-                    log_msg = 'inner_skull.surf for {0} is sym-link'
-                else:
-                    log_msg = 'inner_skull.surf for {0} is missing'
-                log_msg += ', running mne.make_watershed_bem()'
-                if os.path.exists(os.path.join(self.get('bem-dir'), 'watershed')):
-                    log_msg += ', overwriting old watershed directory'
-                self._log.debug(log_msg.format(subject) + '...')
-
+            bem_dir = self.get('bem-dir')
+            surfs = ('inner_skull', 'outer_skull', 'outer_skin')
+            paths = {s: os.path.join(bem_dir, s + '.surf') for s in surfs}
+            missing = [s for s in surfs if not os.path.exists(paths[s])]
+            if missing:
+                self._log.info("%s %s missing for %s",
+                               enumeration(missing).capitalize(),
+                               plural('surface', len(missing)), subject)
+                # remove broken symlinks
+                for surf in missing:
+                    path = paths[surf]
+                    if os.path.islink(path):
+                        self._log.info("Deleting broken symlink " + path)
+                        os.unlink(path)
+                # re-run watershed_bem
+                self._log.info('Running mne.make_watershed_bem()...')
                 mne.bem.make_watershed_bem(subject, self.get('mri-sdir'),
                                            overwrite=True)
+
             return mne.make_bem_model(subject, conductivity=(0.3,),
                                       subjects_dir=self.get('mri-sdir'))
 

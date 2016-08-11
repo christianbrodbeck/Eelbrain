@@ -12,14 +12,16 @@ from .fmtxt import ms, Section
 def n_of(n, of, plural_for_0=False):
     "n_of(3, 'epoch') -> '3 epochs'"
     if n == 0:
-        if plural_for_0:
-            return "no " + of + 's'
-        else:
-            return "no " + of
-    elif n == 1:
-        return "1 " + of
+        return "no " + plural(of, not plural_for_0)
+    return str(n) + ' ' + plural(of, n)
+
+
+def plural(noun, n):
+    "plural('house', 2) -> 'houses'"
+    if n == 1:
+        return noun
     else:
-        return str(n) + ' ' + of + 's'
+        return noun + 's'
 
 
 def enumeration(items, link='and'):
