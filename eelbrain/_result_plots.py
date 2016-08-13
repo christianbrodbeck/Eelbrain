@@ -41,10 +41,22 @@ class ClusterPlotter(object):
         Dataset with the data on which the test is based.
     res : Result
         Test result object with spatio-temporal cluster test result.
-
+    colors : dict
+        Colors for plotting data in a ``{cell: color}`` dictionary.
+    dst : str
+        Directory in which to place results.
+    vec_fmt : str
+        Format for vector graphics (default 'pdf').
+    pix_fmt : str
+        Format for pixel graphics (default 'png').
+    labels : dict
+        Labels for data in a ``{cell: label}`` dictionary (the default is to
+        use cell names).
+    h : scalar
+        Plot height in inches (default 1.1).
     rc : dict
         Matplotlib rc-parameters dictionary (the default is optimized for the
-        default plot size)
+        default plot size ``h=1.1``).
     font_size : int
         Font size for plots (default is 9).
     """
