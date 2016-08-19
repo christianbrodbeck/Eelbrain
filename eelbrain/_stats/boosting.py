@@ -1,4 +1,5 @@
 from __future__ import division
+from itertools import izip
 import logging
 from math import floor
 import time
@@ -34,25 +35,48 @@ def boosting(y, x, tstart, tstop, delta=0.005):
     ----------
     y : NDVar
         Signal to predict.
-    x : NDVar
-        Signal to use to predict ``y``.
+    x : NDVar | sequence of NDVar
+        Signal to use to predict ``y``. Can be sequence of NDVars to include
+        multiple predictors.
     tstart : float
         Start of the TRF in seconds.
     tstop : float
         Stop of the TRF in seconds.
     """
-    if y.get_dim('time') != x.get_dim('time'):
-        raise ValueError("y and x don't have the same time dimension")
-
-    # x
-    if x.ndim == 1:
-        xdim = None
-        x_data = x.x[newaxis, :]
-    elif x.ndim == 2:
-        xdim = x.dims[not x.dimnames.index('time')]
-        x_data = x.get_data((xdim.name, 'time'))
+    if isinstance(x, NDVar):
+        x = (x,)
+        multiple_x = False
     else:
-        raise NotImplementedError("x with more than 2 dimensions")
+        multiple_x = True
+    time_dim = y.get_dim('time')
+    if any(x_.get_dim('time') != time_dim for x_ in x):
+        raise ValueError("Not all NDVars have the same time dimension")
+
+    # x:  predictor x time
+    x_dims = []
+    x_data = []
+    x_slices = []
+    i = 0
+    for x_ in x:
+        if x_.ndim == 1:
+            xdim = None
+            data = x_.x[newaxis, :]
+            index = i
+        elif x_.ndim == 2:
+            xdim = x_.dims[not x_.dimnames.index('time')]
+            data = x_.get_data((xdim.name, 'time'))
+            index = slice(i, i + len(data))
+        else:
+            raise NotImplementedError("x with more than 2 dimensions")
+        x_dims.append(xdim)
+        x_data.append(data)
+        x_slices.append(index)
+        i += len(data)
+
+    if len(x_data) == 1:
+        x_data = x_data[0]
+    else:
+        x_data = np.vstack(x_data)
 
     # y
     if y.ndim == 1:
@@ -96,18 +120,23 @@ def boosting(y, x, tstart, tstop, delta=0.005):
     # TRF
     h_time = UTS(tstart, y.time.tstep, trf_length)
     h_x = np.array(hs)
-    dims = (h_time,)
-    if xdim is None:
-        h_x = h_x[:, 0, :]
-    else:
-        dims = (xdim,) + dims
-    if ydim is None:
-        h_x = h_x[0]
-    else:
-        dims = (ydim,) + dims
-    h = NDVar(h_x, dims)
+    hs = []
+    for dim, index in izip(x_dims, x_slices):
+        h_x_ = h_x[:, index, :]
+        if dim is None:
+            dims = (h_time,)
+        else:
+            dims = (dim, h_time)
+        if ydim is None:
+            h_x_ = h_x_[0]
+        else:
+            dims = (ydim,) + dims
+        hs.append(NDVar(h_x_, dims))
 
-    return BoostingResult(h, corr, isnan, dt)
+    if not multiple_x:
+        hs = hs[0]
+
+    return BoostingResult(hs, corr, isnan, dt)
 
 
 def boosting_continuous(x, y, trf_length, delta, mindelta=None, maxiter=10000, nsegs=10):
