@@ -6,11 +6,27 @@ from nose.tools import eq_, assert_almost_equal
 from numpy.testing import assert_array_equal, assert_allclose
 import scipy.io
 
-from eelbrain._stats.boosting import boost_1seg, corr_for_kernel
+from eelbrain import datasets
+from eelbrain._stats.boosting import boosting, boost_1seg, corr_for_kernel
 
 
 def test_boosting():
-    """Test boosting() against svdboostV4pred.m"""
+    "Test boosting NDVars"
+    ds = datasets._get_continuous()
+
+    # test values from running function, not verified independently
+    res = boosting(ds['y'], ds['x1'], 0, 1)
+    eq_(round(res.corr, 2), 0.83)
+
+    res = boosting(ds['y'], ds['x2'], 0, 1)
+    eq_(round(res.corr, 2), 0.56)
+
+    res = boosting(ds['y'], [ds['x1'], ds['x2']], 0, 1)
+    eq_(round(res.corr, 2), 0.96)
+
+
+def test_boosting_func():
+    "Test boosting() against svdboostV4pred.m"
     # 1d-TRF
     path = os.path.join(os.path.dirname(__file__), 'test_boosting.mat')
     mat = scipy.io.loadmat(path)
