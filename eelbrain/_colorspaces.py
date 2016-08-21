@@ -1,5 +1,5 @@
 """
-In addition to matplotlib colormaps, the following names can be used:
+In addition to matplotlib colormaps, the following colormaps are defined:
 
 "polar"
     white at 0, red for positive and blue for negative values.
@@ -12,6 +12,17 @@ In addition to matplotlib colormaps, the following names can be used:
     Significance map where nonsignificant values are white instead of black.
 "symsig"
     Symmetric bipolar significance map.
+
+Meas values
+-----------
+B
+    Magnetic field strength (MEG).
+V
+    Voltage (EEG).
+p
+    Probability (statistics).
+r, t, f
+    Statistic (correlation, t- and f- values).
 """
 from __future__ import division
 
@@ -21,6 +32,15 @@ from colormath.color_objects import LCHabColor, sRGBColor
 from colormath.color_conversions import convert_color
 import numpy as np
 import matplotlib as mpl
+
+
+# default color-maps {meas: cmap}
+DEFAULT_CMAPS = {'B': 'xpolar',
+                 'V': 'xpolar',
+                 'p': 'sig',
+                 'f': 'viridis',
+                 'r': 'xpolar',
+                 't': 'xpolar'}
 
 
 def lch_to_rgb(lightness, chroma, hue):

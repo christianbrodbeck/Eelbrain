@@ -22,7 +22,7 @@ class _plt_im(object):
                  interpolation, mask=None):
         self.ax = ax
         im_kwa = _base.find_im_args(ndvar, overlay, vlims, cmaps)
-        self._meas = meas = ndvar.info.get('meas', _base.default_meas)
+        self._meas = meas = ndvar.info.get('meas')
         self._contours = contours.get(meas, None)
         self._data = self._data_from_ndvar(ndvar)
         self._extent = extent

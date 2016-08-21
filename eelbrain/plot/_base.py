@@ -74,7 +74,7 @@ import PIL
 
 from .._utils.subp import command_exists
 from ..fmtxt import Image, texify
-from .._colorspaces import symmetric_cmaps, zerobased_cmaps
+from .._colorspaces import symmetric_cmaps, zerobased_cmaps, DEFAULT_CMAPS
 from .._data_obj import ascategorial, asndvar, isnumeric, cellname, \
     DimensionMismatchError
 
@@ -92,10 +92,6 @@ else:
 
 # store figures (they need to be preserved)
 figures = []
-
-# constants
-default_cmap = None
-default_meas = '?'
 
 
 def do_autorun(run=None):
@@ -279,17 +275,14 @@ def find_im_args(ndvar, overlay, vlims={}, cmaps={}):
         kind = ndvar.info.get('base', ('im',))
 
     if 'im' in kind:
-        if 'meas' in ndvar.info:
-            meas = ndvar.info['meas']
-        else:
-            meas = default_meas
+        meas = ndvar.info.get('meas')
 
         if meas in cmaps:
             cmap = cmaps[meas]
         elif 'cmap' in ndvar.info:
             cmap = ndvar.info['cmap']
         else:
-            cmap = default_cmap
+            cmap = DEFAULT_CMAPS.get(meas, 'xpolar')
 
         if meas in vlims:
             vmin, vmax = vlims[meas]
@@ -396,7 +389,7 @@ def find_uts_ax_vlim(layers, vlims={}):
         if 'trace' not in kind:
             continue
 
-        meas = ndvar.info.get('meas', default_meas)
+        meas = ndvar.info.get('meas')
         if meas in vlims:
             bottom_, top_ = vlims[meas]
             if bottom is None:
@@ -421,7 +414,7 @@ def find_fig_cmaps(epochs, cmap):
     """
     out = {}
     for ndvar in chain(*epochs):
-        meas = ndvar.info.get('meas', default_meas)
+        meas = ndvar.info.get('meas')
 
         if meas in out and out[meas]:
             pass
@@ -435,7 +428,7 @@ def find_fig_cmaps(epochs, cmap):
 
     for k in out.keys():
         if out[k] is None:
-            out[k] = default_cmap
+            out[k] = DEFAULT_CMAPS.get(meas, 'xpolar')
 
     return out
 
@@ -474,7 +467,7 @@ def find_fig_contours(epochs, vlims, contours_arg):
 
     for ndvars in epochs:
         for layer, ndvar in enumerate(ndvars):
-            meas = ndvar.info.get('meas', default_meas)
+            meas = ndvar.info.get('meas')
             if meas in out:
                 continue
 
@@ -549,7 +542,7 @@ def find_fig_vlims(plots, vmax=None, vmin=None, cmaps=None):
     out = {}  # {meas: (vmin, vmax), ...}
     first_meas = None  # what to use user-specified vmax for
     for ndvar in chain(*plots):
-        meas = ndvar.info.get('meas', default_meas)
+        meas = ndvar.info.get('meas')
         if user_vlim is not None and first_meas is None:
             first_meas = meas
             vmin, vmax = user_vlim
