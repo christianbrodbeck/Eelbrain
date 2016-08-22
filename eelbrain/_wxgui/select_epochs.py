@@ -31,7 +31,7 @@ from .._names import INTERPOLATE_CHANNELS
 from .._info import BAD_CHANNELS
 from .._utils.parse import FLOAT_PATTERN, POS_FLOAT_PATTERN, INT_PATTERN
 from ..plot._base import find_axis_params_data, find_axis_params_dim, \
-    find_fig_vlims
+    find_fig_vlims, find_fig_cmaps
 from ..plot._nuts import _plt_bin_nuts
 from ..plot._topo import _ax_topomap
 from ..plot._utsnd import _ax_bfly_epoch
@@ -41,7 +41,7 @@ from .app import get_app
 from .frame import EelbrainDialog
 from .mpl_canvas import FigureCanvasPanel
 from .history import Action, FileDocument, FileModel, FileFrame
-from .text import TextFrame, HTMLFrame
+from .text import HTMLFrame
 
 
 # IDs
@@ -725,10 +725,9 @@ class Frame(FileFrame):
                              wx.OK | wx.ICON_WARNING)
 
         # setup plot parameters
-        self._vlims = find_fig_vlims([[self.doc.epochs]])
-        if vlim is not None:
-            for k in self._vlims:
-                self._vlims[k] = (-vlim, vlim)
+        plot_list = ((self.doc.epochs,),)
+        cmaps = find_fig_cmaps(plot_list)
+        self._vlims = find_fig_vlims(plot_list, vlim, None, cmaps)
         self._mark = mark
         self._bfly_kwargs = {'color': color, 'lw': lw, 'mlw': mlw,
                              'antialiased': antialiased, 'vlims': self._vlims,

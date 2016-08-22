@@ -183,7 +183,8 @@ class TopomapBins(_EelFigure):
         _EelFigure.__init__(self, "TopomapBins Plot", n_bins * n_rows, 1.5, 1,
                             False, *args, nrow=n_rows, ncol=n_bins, **kwargs)
 
-        vlims = _base.find_fig_vlims(epochs, vmax, vmin)
+        cmaps = _base.find_fig_cmaps(epochs, None)
+        vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
 
         for row, layers in enumerate(epochs):
             for column, t in enumerate(time.x):
@@ -193,7 +194,7 @@ class TopomapBins(_EelFigure):
                     title = None
                 ax = self._axes[row * n_bins + column]
                 topo_layers = [l.sub(time=t) for l in layers]
-                _ax_topomap(ax, topo_layers, title, vlims=vlims)
+                _ax_topomap(ax, topo_layers, title, cmaps=cmaps, vlims=vlims)
 
         self._show()
 
@@ -289,7 +290,8 @@ class TopoButterfly(_EelFigure):
         y_sep = (1 - y_bottomframe) / n_plots
         height = y_sep - yframe
 
-        vlims = _base.find_fig_vlims(epochs, vmax, vmin)
+        cmaps = _base.find_fig_cmaps(epochs, None)
+        vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
         contours = _base.find_fig_contours(epochs, vlims, None)
 
         self._topo_kwargs = {'proj': proj,
@@ -306,6 +308,7 @@ class TopoButterfly(_EelFigure):
         self.topo_plots = []
         self._topoax_data = []
         self.t_markers = []
+        self._cmaps = cmaps
         self._vlims = vlims
         self._xvalues = []
 
@@ -382,8 +385,8 @@ class TopoButterfly(_EelFigure):
 
         if not self.topo_plots:
             for ax, layers in zip(self.topo_axes, epochs):
-                p = _ax_topomap(ax, layers, False, vlims=self._vlims,
-                                **self._topo_kwargs)
+                p = _ax_topomap(ax, layers, False, cmaps=self._cmaps,
+                                vlims=self._vlims, **self._topo_kwargs)
                 self.topo_plots.append(p)
 #             self._t_label = ax.text(.5, -0.1, t_str, ha='center', va='top')
         else:
@@ -813,14 +816,15 @@ class TopoArray(_EelFigure):
                 raise ValueError("axtitle needs to have the same length as "
                                  "epochs; got %s" % repr(axtitle))
 
-        vlims = _base.find_fig_vlims(epochs, vmax, vmin)
+        cmaps = _base.find_fig_cmaps(epochs, None)
+        vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
         contours = _base.find_fig_contours(epochs, vlims, None)
 
         # save important properties
         self._epochs = epochs
         self._ntopo = ntopo
+        self._cmaps = cmaps
         self._vlims = vlims  # keep track of these for replotting topomaps
-        self._cmaps = {}
         self._default_xlabel_ax = -1 - ntopo
 
         # im_array plots

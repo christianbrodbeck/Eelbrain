@@ -221,11 +221,12 @@ class Array(_EelFigure):
         _EelFigure.__init__(self, "Array Plot", nax, 4, 2, *args, **kwargs)
 
         self.plots = []
-        vlims = _base.find_fig_vlims(epochs, vmax, vmin)
+        cmaps = _base.find_fig_cmaps(epochs, None)
+        vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
         contours = _base.find_fig_contours(epochs, vlims, None)
         for i, ax, layers in zip(xrange(nax), self._axes, epochs):
             p = _ax_im_array(ax, layers, x, axtitle, interpolation, vlims,
-                             contours=contours)
+                             cmaps, contours)
             self.plots.append(p)
 
         e0 = epochs[0][0]

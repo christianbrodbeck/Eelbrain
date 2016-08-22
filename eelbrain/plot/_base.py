@@ -521,6 +521,8 @@ def find_fig_vlims(plots, vmax=None, vmin=None, cmaps=None):
     vmin : None | scalar
         User-specified vmin parameter. If vmax is user-specified but vmin is
         None, -vmax is used.
+    cmaps : dict
+        If provided, vlims will be fixed to match symmetric or 0-based cmaps.
 
     Returns
     -------
@@ -529,45 +531,40 @@ def find_fig_vlims(plots, vmax=None, vmin=None, cmaps=None):
     """
     if isinstance(vmax, dict):
         vlims = vmax
-        user_vlim = None
+        ndvars = [v for v in chain(*plots) if v.info.get('meas') not in vlims]
     else:
         vlims = {}
         if vmax is None:
             user_vlim = None
         elif vmin is None:
-            user_vlim = (vmax, 0)
+            user_vlim = (0, vmax)
         else:
-            user_vlim = (vmax, vmin)
+            user_vlim = (vmin, vmax)
+        ndvars = tuple(chain(*plots))
 
-    out = {}  # {meas: (vmin, vmax), ...}
-    first_meas = None  # what to use user-specified vmax for
-    for ndvar in chain(*plots):
+        # apply user specified vlim
+        if user_vlim is not None:
+            meas = ndvars[0].info.get('meas')
+            vlims[meas] = user_vlim
+            ndvars = [v for v in ndvars if v.info.get('meas') != meas]
+
+    # for other meas, fill in data limits
+    for ndvar in ndvars:
         meas = ndvar.info.get('meas')
-        if user_vlim is not None and first_meas is None:
-            first_meas = meas
-            vmin, vmax = user_vlim
-        else:
-            vmin, vmax = find_vlim_args(ndvar)
-
+        vmin, vmax = find_vlim_args(ndvar)
         if meas in vlims:
-            continue
-        elif user_vlim is not None and meas == first_meas:
-            vmax, vmin = user_vlim
-        elif meas in out:
-            vmin_, vmax_ = out[meas]
+            vmin_, vmax_ = vlims[meas]
             vmin = min(vmin, vmin_)
             vmax = max(vmax, vmax_)
+        vlims[meas] = (vmin, vmax)
 
-        if cmaps:
-            cmap = cmaps[meas]
-        else:
-            cmap = ndvar.info.get('cmap', None)
+    # fix vlims based on cmaps
+    if cmaps is not None:
+        for meas in vlims.keys():
+            vmin, vmax = vlims[meas]
+            vlims[meas] = fix_vlim_for_cmap(vmin, vmax, cmaps[meas])
 
-        vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cmap)
-        out[meas] = (vmin, vmax)
-
-    out.update(vlims)
-    return out
+    return vlims
 
 
 def find_vlim_args(ndvar, vmin=None, vmax=None):
