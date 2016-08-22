@@ -3224,8 +3224,8 @@ class MneExperiment(FileTree):
                     res = None
 
         if res is None and not make:
-            raise IOError("The requested test is not cached. Set make=True to "
-                          "perform the test.")
+            raise IOError("The requested test is not cached: %s. Set make=True "
+                          "to perform the test." % desc)
 
         # load data
         if load_data:
