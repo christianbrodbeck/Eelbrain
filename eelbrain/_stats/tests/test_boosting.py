@@ -19,10 +19,10 @@ def test_boosting():
     eq_(round(res.corr, 2), 0.83)
 
     res = boosting(ds['y'], ds['x2'], 0, 1)
-    eq_(round(res.corr, 2), 0.56)
+    eq_(round(res.corr, 2), 0.57)
 
     res = boosting(ds['y'], [ds['x1'], ds['x2']], 0, 1)
-    eq_(round(res.corr, 2), 0.96)
+    eq_(round(res.corr, 2), 0.97)
 
 
 def test_boosting_func():

@@ -1,5 +1,5 @@
 from __future__ import division
-from itertools import izip
+from itertools import chain, izip
 import logging
 from math import floor
 import time
@@ -12,7 +12,7 @@ from .. import _colorspaces as cs
 from .._data_obj import NDVar, UTS
 
 
-VERSION = 1
+VERSION = 2
 
 
 class BoostingResult(object):
@@ -96,7 +96,7 @@ def boosting(y, x, tstart, tstop, delta=0.005):
     else:
         raise NotImplementedError("y with more than 2 dimensions")
 
-    # trf
+    # prepare trf (apply tstart and tstop)
     i_start = int(round(tstart / y.time.tstep))
     i_stop = int(round(tstop / y.time.tstep))
     trf_length = i_stop - i_start
@@ -106,6 +106,7 @@ def boosting(y, x, tstart, tstop, delta=0.005):
     elif i_start > 0:
         raise NotImplementedError("start > 0")
 
+    # boosting
     t0 = time.time()
     hs = []
     corrs = []
@@ -209,87 +210,141 @@ def boost_1seg(x, y, trf_length, delta, maxiter, nsegs, segno, mindelta):
     train_corr : list of len n_iterations
         Correlation for training data at each iteration.
     """
-    n_stims, n_times = x.shape
-    assert y.shape == (n_times,)
-
-    h = np.zeros((n_stims, trf_length))
+    assert x.ndim == 2
+    assert y.shape == (x.shape[1],)
 
     # separate training and testing signal
     test_seg_len = int(floor(x.shape[1] / nsegs))
-    testing_range = np.arange(test_seg_len, dtype=int) + test_seg_len * segno
-    training_range = np.setdiff1d(np.arange(x.shape[1], dtype=int), testing_range)
-    x_test = x[:, testing_range]
-    y_test = y[testing_range]
-    x = x[:, training_range]
-    y = y[training_range]
+    test_index = slice(test_seg_len * segno, test_seg_len * (segno + 1))
+    if segno == 0:
+        train_index = (slice(test_seg_len, None),)
+    elif segno == nsegs-1:
+        train_index = (slice(None, -test_seg_len),)
+    elif segno < 0 or segno >= nsegs:
+        raise ValueError("segno=%r" % segno)
+    else:
+        train_index = (slice(None, test_seg_len * segno),
+                       slice(test_seg_len * (segno + 1), None))
+
+    y_train = [y[i] for i in train_index]
+    y_test = (y[test_index],)
+    x_train = [x[:, i] for i in train_index]
+    x_test = (x[:, test_index],)
+
+    return boost_segs(y_train, y_test, x_train, x_test, trf_length, delta,
+                      maxiter, mindelta)
+
+
+def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter, mindelta):
+    """Boosting supporting multiple array segments
+
+    Parameters
+    ----------
+    y_train, y_test : tuple of array (n_times,)
+        Dependent signal, time series to predict.
+    x_train, x_test : array (n_stims, n_times)
+        Stimulus.
+    trf_length : int
+        Length of the TRF (in time samples).
+    delta : scalar
+        Step of the adjustment.
+    maxiter : int
+        Maximum number of iterations.
+    mindelta : scalar
+        Smallest delta to use. If no improvement can be found in an iteration,
+        the first step is to divide delta in half, but stop if delta becomes
+        smaller than ``mindelta``.
+    """
+    n_stims = len(x_train[0])
+    if any(len(x) != n_stims for x in chain(x_train, x_test)):
+        raise ValueError("Not all x have same number of stimuli")
+    n_times = [len(y) for y in chain(y_train, y_test)]
+    if any(x.shape[1] != n for x, n in izip(chain(x_train, x_test), n_times)):
+        raise ValueError("y and x have inconsistent number of time points")
+
+    h = np.zeros((n_stims, trf_length))
 
     # buffers
-    ypred_now = np.empty(y.shape)
-    ypred_next_step = np.empty(y.shape)
-    ypred_test = np.empty(y_test.shape)
-    y_test_error = np.empty(y_test.shape)
+    y_train_pred = [np.empty(y.shape) for y in y_train]
+    y_train_pred_next = [np.empty(y.shape) for y in y_train]
+    y_delta = [np.empty(y.shape) for y in y_train]
+    y_test_pred = [np.empty(y.shape) for y in y_test]
+    # y_train_error = [np.empty(y.shape) for y in y_train]
+    y_test_error = [np.empty(y.shape) for y in y_test]
     new_error = np.empty(h.shape)
     new_sign = np.empty(h.shape, np.int8)
-    y_delta = np.empty(y.shape)
 
     # history lists
     history = []
-    test_sse_history = []
+    sse_test_history = []
     for i_boost in xrange(maxiter):
         history.append(h.copy())
 
         # evaluate current h
         if np.any(h):
             # predict
-            apply_kernel(x, h, ypred_now)
-            apply_kernel(x_test, h, ypred_test)
+            for x, y in izip(x_train, y_train_pred):
+                apply_kernel(x, h, y)
+            for x, y in izip(x_test, y_test_pred):
+                apply_kernel(x, h, y)
 
             # Compute predictive power on testing data
-            np.subtract(y_test, ypred_test, y_test_error)
-            test_sse_history.append(np.dot(y_test_error, y_test_error[:, None])[0])
+            sse_test = 0
+            for y, pred, err in izip(y_test, y_test_pred, y_test_error):
+                np.subtract(y, pred, err)
+                sse_test += np.dot(err, err[:, None])[0]
         else:
-            ypred_now.fill(0)
-            test_sse_history.append(np.dot(y_test, y_test[:, None])[0])
+            for pred in y_train_pred:
+                pred.fill(0)
+            sse_test = sum(np.dot(err, err[:, None])[0] for err in y_test)
+
+        sse_train = 0
+        for y, ynow in izip(y_train, y_train_pred):
+            sse_train += np.sum((y - ynow) ** 2)
+
+        sse_test_history.append(sse_test)
 
         # stop the iteration if all the following requirements are met
         # 1. more than 10 iterations are done
         # 2. The testing error in the latest iteration is higher than that in
         #    the previous two iterations
-        if (i_boost > 10 and test_sse_history[-1] > test_sse_history[-2] and
-                test_sse_history[-1] > test_sse_history[-3]):
+        if (i_boost > 10 and sse_test_history[-1] > sse_test_history[-2] and
+                sse_test_history[-1] > sse_test_history[-3]):
             reason = "SSE(test) not improving in 2 steps"
             break
 
-        # generate possible movements
+        # generate possible movements -> training error
         new_sign.fill(0)
         for ind1 in xrange(h.shape[0]):
             for ind2 in xrange(h.shape[1]):
                 # y_delta = change in y from delta change in h
-                y_delta[:ind2] = 0.
-                y_delta[ind2:] = x[ind1, :-ind2 or None]
-                y_delta *= delta
+                for y, x in izip(y_delta, x_train):
+                    y[:ind2] = 0.
+                    y[ind2:] = x[ind1, :-ind2 or None]
+                    y *= delta
 
-                # ypred = ypred_now + y_delta
-                # error = SS(y - ypred)
-                np.add(ypred_now, y_delta, ypred_next_step)
-                np.subtract(y, ypred_next_step, ypred_next_step)
-                e1 = np.dot(ypred_next_step, ypred_next_step[:, None])
+                # +/- delta
+                e_add = 0
+                e_sub = 0
+                for y, ynow, dy, ynext in izip(y_train, y_train_pred, y_delta, y_train_pred_next):
+                    # + delta
+                    np.add(ynow, dy, ynext)
+                    np.subtract(y, ynext, ynext)
+                    e_add += np.dot(ynext, ynext[:, None])[0]
+                    # - delta
+                    np.subtract(ynow, dy, ynext)
+                    np.subtract(y, ynext, ynext)
+                    e_sub += np.dot(ynext, ynext[:, None])[0]
 
-                # ypred = y_pred_now - y_delta
-                # error = SS(y - ypred)
-                np.subtract(ypred_now, y_delta, ypred_next_step)
-                np.subtract(y, ypred_next_step, ypred_next_step)
-                e2 = np.dot(ypred_next_step, ypred_next_step[:, None])
-
-                if e1 > e2:
-                    new_error[ind1, ind2] = e2
+                if e_add > e_sub:
+                    new_error[ind1, ind2] = e_sub
                     new_sign[ind1, ind2] = -1
                 else:
-                    new_error[ind1, ind2] = e1
+                    new_error[ind1, ind2] = e_add
                     new_sign[ind1, ind2] = 1
 
         # If no improvements can be found reduce delta
-        if new_error.min() > np.sum((y - ypred_now) ** 2):
+        if new_error.min() > sse_train:
             if delta < mindelta:
                 reason = ("No improvement possible for training data, "
                           "stopping...")
@@ -313,11 +368,11 @@ def boost_1seg(x, y, trf_length, delta, maxiter, nsegs, segno, mindelta):
     else:
         reason = "maxiter exceeded"
 
-    best_iter = np.argmin(test_sse_history)
+    best_iter = np.argmin(sse_test_history)
 
     # Keep predictive power as the correlation for the best iteration
-    return (history[best_iter], test_sse_history,
-            reason + ' (%i iterations)' % len(test_sse_history))
+    return (history[best_iter], sse_test_history,
+            reason + ' (%i iterations)' % len(sse_test_history))
 
 
 def apply_kernel(x, h, out=None):
