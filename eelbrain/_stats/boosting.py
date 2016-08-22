@@ -8,18 +8,23 @@ import numpy as np
 from numpy import newaxis
 from scipy.stats import spearmanr
 
+from .. import _colorspaces as cs
 from .._data_obj import NDVar, UTS
+
+
+VERSION = 1
 
 
 class BoostingResult(object):
     """Result from boosting temporal response function"""
-    _attr = ('h', 'corr', 'isnan', 't_run')
+    _attr = ('h', 'corr', 'isnan', 't_run', 'version')
 
-    def __init__(self, h, corr, isnan, t_run):
+    def __init__(self, h, corr, isnan, t_run, version):
         self.h = h
         self.corr = corr
         self.isnan = isnan
         self.t_run = t_run
+        self.version = version
 
     def __getstate__(self):
         return {attr: getattr(self, attr) for attr in self._attr}
@@ -42,6 +47,11 @@ def boosting(y, x, tstart, tstop, delta=0.005):
         Start of the TRF in seconds.
     tstop : float
         Stop of the TRF in seconds.
+
+    Returns
+    -------
+    result : BoostingResult
+        Object containig results from the boosting estimation.
     """
     if isinstance(x, NDVar):
         x = (x,)
@@ -53,9 +63,8 @@ def boosting(y, x, tstart, tstop, delta=0.005):
         raise ValueError("Not all NDVars have the same time dimension")
 
     # x:  predictor x time
-    x_dims = []
     x_data = []
-    x_slices = []
+    x_meta = []
     i = 0
     for x_ in x:
         if x_.ndim == 1:
@@ -68,9 +77,8 @@ def boosting(y, x, tstart, tstop, delta=0.005):
             index = slice(i, i + len(data))
         else:
             raise NotImplementedError("x with more than 2 dimensions")
-        x_dims.append(xdim)
         x_data.append(data)
-        x_slices.append(index)
+        x_meta.append((x_.name, xdim, index))
         i += len(data)
 
     if len(x_data) == 1:
@@ -115,13 +123,13 @@ def boosting(y, x, tstart, tstop, delta=0.005):
         corrs = np.array(corrs)
         isnan = np.isnan(corrs)
         corrs[isnan] = 0
-        corr = NDVar(corrs, (ydim,))
+        corr = NDVar(corrs, (ydim,), cs.stat_info('r'), 'Correlation')
 
     # TRF
     h_time = UTS(tstart, y.time.tstep, trf_length)
     h_x = np.array(hs)
     hs = []
-    for dim, index in izip(x_dims, x_slices):
+    for name, dim, index in x_meta:
         h_x_ = h_x[:, index, :]
         if dim is None:
             dims = (h_time,)
@@ -131,12 +139,14 @@ def boosting(y, x, tstart, tstop, delta=0.005):
             h_x_ = h_x_[0]
         else:
             dims = (ydim,) + dims
-        hs.append(NDVar(h_x_, dims))
+        hs.append(NDVar(h_x_, dims, y.info.copy(), name))
 
-    if not multiple_x:
+    if multiple_x:
+        hs = tuple(hs)
+    else:
         hs = hs[0]
 
-    return BoostingResult(hs, corr, isnan, dt)
+    return BoostingResult(hs, corr, isnan, dt, VERSION)
 
 
 def boosting_continuous(x, y, trf_length, delta, mindelta=None, maxiter=10000, nsegs=10):
