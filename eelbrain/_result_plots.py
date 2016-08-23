@@ -235,7 +235,8 @@ class ClusterPlotter(object):
         return ds, model, modelname
 
     def plot_values(self, ids, model, ymax, ymin=0, dpi=300, sub=None,
-                    subagg=None, cells=None, pairwise=False, colors=None):
+                    subagg=None, cells=None, pairwise=False, colors=None,
+                    prefix=None):
         """Plot values in cluster
 
         Parameters
@@ -258,6 +259,9 @@ class ClusterPlotter(object):
         colors : dict
             Substitute colors (default are the colors provided at
             initialization).
+        prefix : str
+            Prefix to use for the image files (optional, can be used to
+            distinguish different groups of images sharing the same color-bars).
         """
         ds, model, modelname = self._get_data(model, sub, subagg)
         ids = self._ids(ids)
@@ -271,6 +275,8 @@ class ClusterPlotter(object):
         with mpl.rc_context(self.rc):
             for cid in ids:
                 name = cname(cid)
+                if prefix:
+                    name = prefix + ' ' + name
                 cluster = self._get_cluster(cid)
                 y_mean = src.mean(cluster != 0)
                 y_tc = src.mean(cluster.any('time'))
