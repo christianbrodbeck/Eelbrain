@@ -57,21 +57,17 @@ class ClusterPlotter(object):
     rc : dict
         Matplotlib rc-parameters dictionary (the default is optimized for the
         default plot size ``h=1.1``).
-    font_size : int
-        Font size for plots (default is 9).
     """
     def __init__(self, ds, res, colors, dst, vec_fmt='pdf', pix_fmt='png',
-                 labels=None, h=1.1, rc=None, font_size=None):
-        if rc is None:
-            rc = RC.copy()
-        if font_size is not None:
-            rc['font.size'] = font_size
+                 labels=None, h=1.1, rc=None):
+        self.rc = RC.copy()
+        if rc is not None:
+            self.rc.update(rc)
         self.ds = ds
         self.res = res
         self.colors = colors
         self.labels = labels
         self.h = h
-        self.rc = rc
         self._dst_vec = os.path.join(dst, '%%s.%s' % vec_fmt)
         self._dst_pix = os.path.join(dst, '%%s.%s' % pix_fmt)
         self._is_anova = isinstance(self.res, testnd.anova)
@@ -249,6 +245,8 @@ class ClusterPlotter(object):
             should be an ``{effect_name: id_list}`` dict. Instead of a list of
             IDs a scalar can be provided to plot all clusters with p-values
             smaller than this.
+        model : str
+            Model defining cells which to plot separately.
 
         subagg : str
            Index in ds: within index, collapse across other predictors.

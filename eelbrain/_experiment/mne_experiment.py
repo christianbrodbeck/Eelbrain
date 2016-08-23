@@ -2868,8 +2868,33 @@ class MneExperiment(FileTree):
                             samples=10000, data='src', sns_baseline=True,
                             src_baseline=None,
                             colors=None, labels=None, h=1.1, rc=None,
-                            font_size=None,
                             dst=None, vec_fmt='svg', pix_fmt='png', **kwargs):
+        """Load cluster-based test result plotter
+
+        Parameters
+        ----------
+        test : str
+            Name of the test.
+        tstart, tstop, pmin, parc, mask, samples, data, sns_baseline, src_baseline
+            Test parameters.
+        colors : dict
+            Colors for data cells as ``{cell: matplotlib_color}`` dictionary.
+        labels : dict
+            Labels for data in a ``{cell: label}`` dictionary (the default is to
+            use cell names).
+        h : scalar
+            Plot height in inches (default 1.1).
+        rc : dict
+            Matplotlib rc-parameters dictionary (the default is optimized for
+            the default plot size ``h=1.1``).
+        dst : str
+            Directory in which to place results (default is the ``result plots``
+            directory).
+        vec_fmt : str
+            Format for vector graphics (default 'pdf').
+        pix_fmt : str
+            Format for pixel graphics (default 'png').
+        """
         if self._tests[test]['kind'] == '2-stage':
             raise NotImplementedError("Result-plots for 2-stage tests")
         elif data != 'src':
@@ -2886,7 +2911,8 @@ class MneExperiment(FileTree):
         if dst is None:
             dst = self.get('res-plot-dir', mkdir=True)
 
-        return ClusterPlotter(ds, res, colors, dst, vec_fmt, pix_fmt, labels, h, rc, font_size)
+        return ClusterPlotter(ds, res, colors, dst, vec_fmt, pix_fmt, labels, h,
+                              rc)
 
     def load_selected_events(self, subject=None, reject=True, add_proj=True,
                              add_bads=True, index=True, data_raw=False,
