@@ -2957,7 +2957,7 @@ class MneExperiment(FileTree):
         """
         # process arguments
         if reject not in (True, False, 'keep'):
-            raise ValueError("Invalid reject value: %r" % reject)
+            raise ValueError("reject=%s" % repr(reject))
 
         if index is True:
             index = 'index'
@@ -3060,9 +3060,7 @@ class MneExperiment(FileTree):
                 elif reject is True:
                     ds = ds.sub(ds_sel['accept'])
                 else:
-                    err = ("reject parameter must be bool or 'keep', not "
-                           "%r" % reject)
-                    raise ValueError(err)
+                    raise RuntimeError("reject=%s" % repr(reject))
 
                 # bad channels
                 if add_bads:
