@@ -7735,7 +7735,7 @@ class SourceSpace(Dimension):
 
     Parameters
     ----------
-    vertno : list of array
+    vertno : list of int array
         The vertex identities of the dipoles in the source space (left and
         right hemisphere separately).
     subject : str
