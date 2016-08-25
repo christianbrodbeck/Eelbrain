@@ -4544,8 +4544,7 @@ class MneExperiment(FileTree):
         report.save_html(dst)
 
     def _make_report_eeg(self, test, pmin=None, tstart=0.15, tstop=None,
-                         samples=10000, baseline=True, include=1,
-                         redo=False, redo_test=False, **state):
+                         samples=10000, baseline=True, include=1, **state):
         # outdated (cache, load_test())
         """Create an HTML report on EEG sensor space spatio-temporal clusters
 
@@ -4569,23 +4568,18 @@ class MneExperiment(FileTree):
         include : 0 < scalar <= 1
             Create plots for all clusters with p-values smaller or equal this
             value (the default is 1, i.e. to show all clusters).
-        redo : bool
-            If the target file already exists, delete and recreate it. This
-            only applies to the HTML result file, not to the test.
-        redo_test : bool
-            Redo the test even if a cached file exists.
         """
         self._set_analysis_options('eeg', baseline, None, pmin, tstart, tstop,
                                    None, None)
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
                        folder="EEG Spatio-Temporal", modality='eeg',
                        **state)
-        if not redo and not redo_test and os.path.exists(dst):
+        if os.path.exists(dst):
             return
 
         # load data
-        ds, res = self.load_test(None, tstart, tstop, pmin, None, None, samples,
-                                 'sns', baseline, None, True, True, redo_test)
+        ds, res = self.load_test(test, tstart, tstop, pmin, None, None, samples,
+                                 'sns', baseline, None, True, True)
 
         # start report
         title = self.format('{experiment} {epoch} {test} {test_options}')
