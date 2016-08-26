@@ -573,13 +573,15 @@ def find_vlim_args(ndvar, vmin=None, vmax=None):
         if vmin is None:
             vmin = ndvar.info.get('vmin', None)
 
-    if vmax is None:
+    if vmax is None or vmin is None:
         xmax = np.nanmax(ndvar.x)
         xmin = np.nanmin(ndvar.x)
         abs_max = max(abs(xmax), abs(xmin)) or 1e-14
         scale = math.floor(np.log10(abs_max))
-        vmax = math.ceil(xmax * 10 ** -scale) * 10 ** scale
-        vmin = math.floor(xmin * 10 ** -scale) * 10 ** scale
+        if vmax is None:
+            vmax = math.ceil(xmax * 10 ** -scale) * 10 ** scale
+        if vmin is None:
+            vmin = math.floor(xmin * 10 ** -scale) * 10 ** scale
 
     return vmin, vmax
 

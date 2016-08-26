@@ -1,3 +1,4 @@
+import numpy as np
 from nose.tools import assert_raises, eq_
 
 from eelbrain.plot import _base
@@ -8,6 +9,7 @@ class InfoObj:
     "Dummy object to stand in for objects with an info dictionary"
     def __init__(self, **info):
         self.info = info
+        self.x = np.array([0, 1])
 
 
 def assert_layout_ok(*args, **kwargs):
@@ -47,10 +49,18 @@ def test_vlims():
     v1 = InfoObj(meas=meas, cmap=sym_cmap, vmax=2)
 
     lims = _base.find_fig_vlims([[v1]])
-    eq_(lims[meas], (-2, 2))
+    eq_(lims[meas], (0, 2))
     lims = _base.find_fig_vlims([[v1]], 1)
-    eq_(lims[meas], (-1, 1))
+    eq_(lims[meas], (0, 1))
     lims = _base.find_fig_vlims([[v1]], 1, 0)
+    eq_(lims[meas], (0, 1))
+
+    cmaps = _base.find_fig_cmaps([[v1]], None)
+    lims = _base.find_fig_vlims([[v1]], cmaps=cmaps)
+    eq_(lims[meas], (-2, 2))
+    lims = _base.find_fig_vlims([[v1]], 1, cmaps=cmaps)
+    eq_(lims[meas], (-1, 1))
+    lims = _base.find_fig_vlims([[v1]], 1, 0, cmaps=cmaps)
     eq_(lims[meas], (-1, 1))
 
     # zero-based
@@ -62,4 +72,12 @@ def test_vlims():
     lims = _base.find_fig_vlims([[v2]], 1)
     eq_(lims[meas], (0, 1))
     lims = _base.find_fig_vlims([[v2]], 1, -1)
+    eq_(lims[meas], (-1, 1))
+
+    cmaps = _base.find_fig_cmaps([[v2]], None)
+    lims = _base.find_fig_vlims([[v2]], cmaps=cmaps)
+    eq_(lims[meas], (0, 2))
+    lims = _base.find_fig_vlims([[v2]], 1, cmaps=cmaps)
+    eq_(lims[meas], (0, 1))
+    lims = _base.find_fig_vlims([[v2]], 1, -1, cmaps=cmaps)
     eq_(lims[meas], (0, 1))
