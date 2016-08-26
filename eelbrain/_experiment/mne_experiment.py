@@ -3070,6 +3070,7 @@ class MneExperiment(FileTree):
                         ds.info[BAD_CHANNELS] = []
             else:  # no artifact rejection
                 ds.info[INTERPOLATE_CHANNELS] = False
+                ds.info[BAD_CHANNELS] = []
 
         # apply trigger-shift
         if 'trigger_shift' in epoch:
