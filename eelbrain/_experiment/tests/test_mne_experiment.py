@@ -1,7 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import os
 
-from nose.tools import eq_, assert_raises
+from nose.tools import eq_, ok_, assert_raises
 import numpy as np
 from numpy.testing import assert_array_equal
 
@@ -57,10 +57,11 @@ def gen_triggers():
 
 def test_mne_experiment_templates():
     "Test MneExperiment template formatting"
-    e = BaseExperiment('', False)
+    tempdir = TempDir()
+    e = BaseExperiment(tempdir, False)
 
     # Don't create dirs without root
-    assert_raises(IOError, e.get, 'raw-file', mkdir=True)
+    ok_(e.get('raw-file', mkdir=True).endswith('-raw.fif'))
 
     # model
     eq_(e.get('model', model='a % b'), 'a%b')
