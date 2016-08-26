@@ -1,5 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from distutils.version import LooseVersion
 from functools import wraps
+from importlib import import_module
 import shutil
 import tempfile
 
@@ -131,3 +133,21 @@ def requires_mne_sample_data(function):
         def decorator(*args, **kwargs):
             raise SkipTest('Skipped %s, requires mne sample data' % function.__name__)
     return decorator
+
+
+def requires_module(name, version):
+    mod = import_module(name)
+
+    def wrapper(function):
+        if LooseVersion(mod.__version__) >= LooseVersion(version):
+            @wraps(function)
+            def decorator(*args, **kwargs):
+                return function(*args, **kwargs)
+        else:
+            @wraps(function)
+            def decorator(*args, **kwargs):
+                raise SkipTest('Skipped %s, requires %s %s, found mne %s' %
+                               (function.__name__, name, version,
+                                mod.__version__))
+        return decorator
+    return wrapper
