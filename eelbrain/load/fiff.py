@@ -127,10 +127,10 @@ def mne_raw(path=None, proj=False, **kwargs):
 
     Parameters
     ----------
-    path : None | str(path)
-        path to the raw fiff file. If ``None``, a file can be chosen form a
-        file dialog.
-    proj : bool | str(path)
+    path : None | str
+        path to a raw fiff or sqd file. If no path is supplied, a file can be
+        chosen from a file dialog.
+    proj : bool | str
         Add projections from a separate file to the Raw object.
         **``False``**: No proj file will be added.
         **``True``**: ``'{raw}*proj.fif'`` will be used.
@@ -144,7 +144,7 @@ def mne_raw(path=None, proj=False, **kwargs):
 
     """
     if path is None:
-        path = ui.ask_file("Pick a Raw Fiff File", "Pick a Raw Fiff File",
+        path = ui.ask_file("Pick a raw data file", "Pick a raw data file",
                            [('Functional image file (*.fif)', '*.fif'),
                             ('KIT Raw File (*.sqd,*.con', '*.sqd;*.con')])
         if not path:

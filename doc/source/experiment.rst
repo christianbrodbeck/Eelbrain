@@ -716,8 +716,8 @@ clusters in cluster-based permutation tests. For source spaces, the default is
 to use FreeSurfer surfaces in which the two hemispheres are unconnected. By
 setting ``connectivity='link-midline'``, this default connectivity can be
 modified so that the midline gyri of the two hemispheres get linked at sources
-taht are  at most 15 mm apart. This parameter does not affect sensor space
-data.
+that are at most 15 mm apart. This parameter does not affect sensor space
+connectivity.
 
 .. _analysis-params-select_clusters:
 
