@@ -5234,13 +5234,16 @@ class Dataset(OrderedDict):
         return Dataset(self.items(), name, self._caption, self.info,
                        self.n_cases)
 
-    def equalize_counts(self, X):
+    def equalize_counts(self, X, n=None):
         """Create a copy of the Dataset with equal counts in each cell of X
 
         Parameters
         ----------
         X : categorial
             Model which defines the cells in which to equalize the counts.
+        n : int
+            Number of cases per cell (the default is the maximum possible).
+            Negative numbers to
 
         Returns
         -------
@@ -5257,9 +5260,20 @@ class Dataset(OrderedDict):
         self._check_n_cases(X, empty_ok=False)
         indexes = np.array([X == cell for cell in X.cells])
         n_by_cell = indexes.sum(1)
-        n = np.setdiff1d(n_by_cell, [0]).min()
+        n_max = np.setdiff1d(n_by_cell, [0]).min()
+        if n is None:
+            n_ = n_max
+        elif n < 0:
+            n_ = n_max + n
+        else:
+            n_ = n
+
+        if n_ < 0 or n_ > n_max:
+            raise ValueError("Invalid value n=%i; the maximum numer of cases "
+                             "per cell is %i" % (n, n_max))
+
         for index in indexes:
-            np.logical_and(index, index.cumsum() <= n, index)
+            np.logical_and(index, index.cumsum() <= n_, index)
         index = indexes.any(0)
         return self[index]
 
