@@ -2838,12 +2838,10 @@ class MneExperiment(FileTree):
         Parameters
         ----------
         add_proj : bool
-            Add the projections to the Raw object. This does *not* set the
-            proj variable.
-        add_bads : False | True | list
-            Add bad channel information to the Raw. If True, bad channel
-            information is retrieved from the 'bads-file'. Alternatively,
-            a list of bad channels can be sumbitted.
+            Add the projections to the Raw object.
+        add_bads : bool
+            Add bad channel information to the bad channels text file (default
+            True).
         preload : bool
             Mne Raw parameter.
         """
@@ -2861,12 +2859,9 @@ class MneExperiment(FileTree):
 
         raw = load.fiff.mne_raw(self._get_raw_path(True), proj, preload=preload)
         if add_bads:
-            if add_bads is True:
-                bad_chs = self.load_bad_channels()
-            else:
-                bad_chs = add_bads
-
-            raw.info['bads'] = bad_chs
+            if not isinstance(add_bads, int):
+                raise TypeError("add_bads must be boolean, got %s" % repr(add_bads))
+            raw.info['bads'] = self.load_bad_channels()
 
         return raw
 
