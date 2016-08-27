@@ -995,7 +995,7 @@ class Frame(FileFrame):
             return self.SetStatusText("")
         elif ax.ax_idx == TOPO_PLOT:
             return self.SetStatusText(self._topo_plot_info_str)
-        elif ax.epoch_idx == OUT_OF_RANGE:
+        elif ax.ax_idx != MEAN_PLOT and ax.epoch_idx == OUT_OF_RANGE:
             return self.SetStatusText("")
 
         # compose status text
@@ -1355,7 +1355,6 @@ class Frame(FileFrame):
                    if ch in case.sensor.channel_idx]
             h.set_marked(INTERPOLATE_CHANNELS, chs)
             h.set_visible()
-            ax.epoch_idx = epoch_idx
 
             # store objects
             ax.epoch_idx = epoch_idx
