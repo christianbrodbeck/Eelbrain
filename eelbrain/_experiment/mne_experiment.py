@@ -3656,7 +3656,10 @@ class MneExperiment(FileTree):
         self._g = gui.select_components(path, ds)
 
     def make_ica(self, return_data=False):
-        """Compute the ICA decomposition if it does not exist
+        """Compute the ICA decomposition
+
+        If a corresponding file exists, a basic check is done as to whether the
+        bad channels have changed, and if so the ICA is recomputed.
 
         Parameters
         ----------
@@ -3691,31 +3694,33 @@ class MneExperiment(FileTree):
                                self.get('rej'))
 
         path = self.get('ica-file', mkdir=True)
+        make = not os.path.exists(path)
         if params['source'] == 'raw':
-            load_data = return_data
-            if os.path.exists(path):
-                make = False
-            else:
-                make = True
-                inst = self.load_raw()
+            load_epochs = return_data
+            inst = self.load_raw()
         elif params['source'] == 'epochs':
-            rej_mtime = self._rej_mtime(self._epochs[params['epoch']])
-            if rej_mtime:
-                make = False
-                load_data = return_data
-            else:
-                make = load_data = True
+            load_epochs = True
+            if not make and not self._rej_mtime(self._epochs[params['epoch']]):
+                make = True
         else:
             raise ValueError("rej['source']=%r, needs to be 'raw' or 'epochs'" %
                              params['source'])
 
-        if load_data:
+        if load_epochs:
             with self._temporary_state:
                 ds = self.load_epochs(ndvar=False, apply_ica=False,
                                       reject=not params['source'] == 'raw',
                                       epoch=params['epoch'])
             if params['source'] == 'epochs':
                 inst = ds['epochs']
+
+        if not make:  # check bad channels
+            ica = self.load_ica()
+            picks = mne.pick_types(inst.info, ref_meg=False)
+            if ica.ch_names != [inst.ch_names[i] for i in picks]:
+                self._log.info("%s: ICA outdated due to change in bad "
+                               "channels", self.get('subject'))
+                make = True
 
         if make:
             ica = mne.preprocessing.ICA(params['n_components'],
