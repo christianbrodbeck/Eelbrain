@@ -51,7 +51,7 @@ from scipy.spatial.distance import cdist, pdist, squareform
 from . import fmtxt
 from . import _colorspaces as cs
 from ._utils import deprecated, ui, LazyProperty, natsorted  #, logger
-from ._utils.numpy_utils import slice_to_arange, full_slice
+from ._utils.numpy_utils import slice_to_arange, full_slice, digitize
 from functools import reduce
 
 
@@ -6927,7 +6927,7 @@ class Ordered(Scalar):
                 stop = self.dimindex(stop)
             return slice(start, stop)
         elif np.isscalar(arg):
-            return int(np.digitize(arg, self.values, True))
+            return int(digitize(arg, self.values, True))
         else:
             return super(Ordered, self).dimindex(arg)
 

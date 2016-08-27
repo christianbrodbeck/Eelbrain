@@ -13,6 +13,7 @@ from scipy import interpolate, linalg
 from scipy.spatial import ConvexHull
 
 from .._data_obj import SEQUENCE_TYPES
+from .._utils.numpy_utils import digitize
 from . import _base
 from ._base import _EelFigure
 from . import _utsnd
@@ -452,7 +453,7 @@ class TopoButterfly(_EelFigure):
                 p = self.topo_plots[ax.id // 2]
                 Topomap(p.data)
         elif key == 'right' or key == 'left':
-            i = np.digitize(self._current_t, self._xvalues, key == 'left')
+            i = digitize(self._current_t, self._xvalues, key == 'left')
             if key == 'left' and i > 0:
                 i -= 1
             elif i == len(self._xvalues):
