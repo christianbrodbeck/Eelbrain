@@ -2998,8 +2998,9 @@ class MneExperiment(FileTree):
                 ds.info[BAD_CHANNELS] = sorted(bad_channels)
         elif sel_epoch is not None:
             with self._temporary_state:
-                ds = self.load_selected_events(None, 'keep', add_proj, add_bads,
-                                               index, data_raw, epoch=sel_epoch)
+                ds = self.load_selected_events(None, 'keep' if reject else False,
+                                               add_proj, add_bads, index,
+                                               data_raw, epoch=sel_epoch)
 
             if sel is not None:
                 ds = ds.sub(sel)
