@@ -536,6 +536,9 @@ def test_factor():
     assert_array_equal(Factor('ab'), ['a', 'b'])
     assert_array_equal(Factor('ab', repeat=2), ['a', 'a', 'b', 'b'])
     assert_array_equal(Factor('ab', repeat=np.array([2, 1])), ['a', 'a', 'b'])
+    empty_factor = Factor([])
+    eq_(len(empty_factor), 0)
+    assert_dataobj_equal(Factor(np.empty(0)), empty_factor)
 
     # removing a cell
     f = Factor('aabbcc')
@@ -1243,10 +1246,10 @@ def test_var():
 
     # .as_factor()
     v = Var(np.arange(4))
-    assert_array_equal(v.as_factor(), Factor('0123'))
-    assert_array_equal(v.as_factor({0: 'a'}), Factor(['a', '', '', '']))
-    assert_array_equal(v.as_factor({(0, 1): 'a', (2, 3): 'b'}), Factor('aabb'))
-    assert_array_equal(v.as_factor({(0, 1): 'a', 2: 'b', 'default': 'c'}),
-                       Factor('aabc'))
-    assert_array_equal(v.as_factor({(0, 1): 'a', (2, 'default'): 'b'}),
-                       Factor('aabb'))
+    assert_dataobj_equal(v.as_factor(), Factor('0123'))
+    assert_dataobj_equal(v.as_factor({0: 'a'}), Factor(['a', '', '', '']))
+    assert_dataobj_equal(v.as_factor({(0, 1): 'a', (2, 3): 'b'}), Factor('aabb'))
+    assert_dataobj_equal(v.as_factor({(0, 1): 'a', 2: 'b', 'default': 'c'}),
+                         Factor('aabc'))
+    assert_dataobj_equal(v.as_factor({(0, 1): 'a', (2, 'default'): 'b'}),
+                         Factor('aabb'))

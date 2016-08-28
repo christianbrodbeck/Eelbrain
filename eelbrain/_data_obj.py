@@ -2284,55 +2284,66 @@ class Factor(_Effect):
     _stype = "factor"
 
     def __init__(self, x, name=None, random=False, repeat=1, tile=1, labels={}):
-        if not (np.any(repeat) or np.any(tile)):
-            self.__setstate__({'x': np.empty((0,), np.uint32), 'labels': {},
-                               'name': name, 'random': random})
-            return
-
         try:
             n_cases = len(x)
         except TypeError:  # for generators:
             x = tuple(x)
             n_cases = len(x)
 
+        if n_cases == 0 or not (np.any(repeat) or np.any(tile)):
+            self.__setstate__({'x': np.empty(0, np.uint32), 'labels': {},
+                               'name': name, 'random': random})
+            return
+
         # find mapping and ordered values
         if isinstance(labels, dict):
             labels_dict = labels
-            values = labels.values()
+            label_values = labels.values()
             if not isinstance(labels, OrderedDict):
-                values = natsorted(values)
+                label_values = natsorted(label_values)
         else:
             labels_dict = dict(labels)
-            values = [pair[1] for pair in labels]
+            label_values = [pair[1] for pair in labels]
 
-        # convert x to codes
-        highest_code = -1
-        codes = {}  # {label -> code}
-        x_ = np.empty(n_cases, dtype=np.uint32)
-        for i, value in enumerate(x):
-            if value in labels_dict:
-                label = labels_dict[value]
-            elif isinstance(value, unicode):
-                label = value
-            else:
-                label = str(value)
+        if isinstance(x, np.ndarray) and x.dtype.kind in 'ifb':
+            assert x.ndim == 1
+            unique = np.unique(x)
+            # find labels corresponding to unique values
+            u_labels = [labels_dict[v] if v in labels_dict else str(v) for
+                        v in unique]
+            # merge identical labels
+            u_label_index = np.array([u_labels.index(label) for label in
+                                      u_labels])
 
-            if label in codes:
-                x_[i] = codes[label]
-            else:  # new code
-                x_[i] = codes[label] = highest_code = highest_code + 1
+            x_ = u_label_index[np.digitize(x, unique, True)]
+            # {label: code}
+            codes = dict(izip(u_labels, u_label_index))
+        else:
+            # convert x to codes
+            highest_code = -1
+            codes = {}  # {label -> code}
+            x_ = np.empty(n_cases, dtype=np.uint32)
+            for i, value in enumerate(x):
+                if value in labels_dict:
+                    label = labels_dict[value]
+                elif isinstance(value, unicode):
+                    label = value
+                else:
+                    label = str(value)
 
-        if highest_code >= 2**32:
-            raise RuntimeError("Too many categories in this Factor")
+                if label in codes:
+                    x_[i] = codes[label]
+                else:  # new code
+                    x_[i] = codes[label] = highest_code = highest_code + 1
+
+            if highest_code >= 2**32:
+                raise RuntimeError("Too many categories in this Factor")
 
         # collect ordered_labels
-        ordered_labels = OrderedDict()
-        for label in values:
-            if label in codes:
-                ordered_labels[codes[label]] = label
-        for label in natsorted(codes):
-            if label not in values:
-                ordered_labels[codes[label]] = label
+        ordered_labels = OrderedDict(((codes[label], label) for label in
+                                      label_values if label in codes))
+        for label in natsorted(set(codes).difference(label_values)):
+            ordered_labels[codes[label]] = label
 
         if not (isinstance(repeat, int) and repeat == 1):
             x_ = x_.repeat(repeat)
