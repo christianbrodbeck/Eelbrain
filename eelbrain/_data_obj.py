@@ -2470,15 +2470,15 @@ class Factor(_Effect):
 
     def _encode(self, x):
         if isinstance(x, basestring):
-            return self._encode_1(x)
+            return self._codes.get(x, -1)
+        elif len(x) == 0:
+            return np.empty(0, dtype=int)
+        elif isinstance(x, Factor):
+            mapping = [self._codes.get(x._labels.get(xcode, -1), -1) for
+                       xcode in xrange(x.x.max() + 1)]
+            return np.array(mapping)[x.x]
         else:
-            return self._encode_seq(x)
-
-    def _encode_1(self, value):
-        return self._codes.get(value, -1)
-
-    def _encode_seq(self, values):
-        return np.array([self._codes.get(value, -1) for value in values])
+            return np.array([self._codes.get(label, -1) for label in x])
 
     def __call__(self, other):
         """
@@ -2793,7 +2793,7 @@ class Factor(_Effect):
         >>> f.isin(('b', 'c'))
         array([False, False,  True,  True,  True,  True], dtype=bool)
         """
-        return np.in1d(self.x, self._encode_seq(values))
+        return np.in1d(self.x, self._encode(values))
 
     def isnot(self, *values):
         """Find the index of entries not in ``values``
@@ -2813,7 +2813,7 @@ class Factor(_Effect):
         index : array of bool
             For each case False if the value is in values, else True.
         """
-        return np.in1d(self.x, self._encode_seq(values), invert=True)
+        return np.in1d(self.x, self._encode(values), invert=True)
 
     def label_length(self, name=None):
         """Create Var with the length of each label string
