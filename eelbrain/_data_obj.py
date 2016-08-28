@@ -2423,7 +2423,7 @@ class Factor(_Effect):
             index = index.x
 
         x = self.x[index]
-        if np.iterable(x):
+        if isinstance(x, np.ndarray):
             return Factor(x, self.name, self.random, labels=self._labels)
         else:
             return self._labels[x]
@@ -2431,21 +2431,13 @@ class Factor(_Effect):
     def __setitem__(self, index, x):
         # convert x to code
         if isinstance(x, basestring):
-            code = self._get_code(x)
-        elif np.iterable(x):
-            code = np.empty(len(x), dtype=np.uint16)
-            for i, v in enumerate(x):
-                code[i] = self._get_code(v)
-
-        # assign
-        self.x[index] = code
+            self.x[index] = self._get_code(x)
+        else:
+            self.x[index] = map(self._get_code, x)
 
         # obliterate redundant labels
-        codes_in_use = set(np.unique(self.x))
-        rm = set(self._labels) - codes_in_use
-        for code in rm:
-            label = self._labels.pop(code)
-            del self._codes[label]
+        for code in set(self._labels).difference(self.x):
+            del self._codes[self._labels.pop(code)]
 
     def _get_code(self, label):
         "add the label if it does not exists and return its code"
@@ -2467,11 +2459,7 @@ class Factor(_Effect):
         return (self._labels[i] for i in self.x)
 
     def __contains__(self, value):
-        try:
-            code = self._codes[value]
-        except KeyError:
-            return False
-        return code in self.x
+        return value in self._codes
 
     # numeric ---
     def __eq__(self, other):
@@ -2670,7 +2658,7 @@ class Factor(_Effect):
         "returns a deep copy of itself"
         if name is True:
             name = self.name
-        return Factor(self.x.copy(), name, self.random, repeat, tile, self._labels)
+        return Factor(self.x, name, self.random, repeat, tile, self._labels)
 
     @property
     def df(self):
