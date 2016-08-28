@@ -28,6 +28,8 @@ New in 0.24
 * New :meth:`MneExperiment.make_report_coreg` method.
 * New :class:`MneExperiment`: analysis parameter
   :ref:`analysis-params-connectivity`
+* :class:`plot.TopoButterfly`: press ``Shift-T`` for a large topo-map with
+  sensor names.
 
 
 New in 0.23
