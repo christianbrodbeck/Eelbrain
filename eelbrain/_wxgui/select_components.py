@@ -801,7 +801,7 @@ class SourceFrame(FileFrameChild):
                 if i_epoch < len(self.doc.epochs):
                     self.parent.PlotEpochButterfly(i_epoch)
             return
-        elif event.key == 't':
+        elif event.key in 'tT':
             self.parent.PlotCompTopomap(event.inaxes.i_comp)
         elif event.key == 'a':
             self.parent.PlotCompSourceArray(event.inaxes.i_comp)

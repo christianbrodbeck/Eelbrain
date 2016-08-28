@@ -251,7 +251,9 @@ class TopoButterfly(_EelFigure):
        the mouse pointer.
      - ``Right arrow``: Increment the current topomap time.
      - ``Left arrow``: Decrement the current topomap time.
-     - ``t``: open a TopoMap plot for the region under the mouse pointer.
+     - ``t``: open a ``Topomap`` plot for the region under the mouse pointer.
+     - ``T``: open a larger ``Topomap`` plot with visible sensor names for the
+       region under the mouse pointer.
     """
     _default_xlabel_ax = -2
     _make_axes = False
@@ -422,7 +424,7 @@ class TopoButterfly(_EelFigure):
 
         # add time label
         ax = self.topo_axes[-1]
-        self._t_label = ax.text(.5, -0.1, "t = %s ms" % round(t * 1e3),
+        self._t_label = ax.text(.5, -0.1, "t = %i ms" % round(t * 1e3),
                                 ha='center', va='top')
 
         self.canvas.draw()  # otherwise time label does not get redrawn
@@ -438,20 +440,26 @@ class TopoButterfly(_EelFigure):
                 self._rm_t_markers()
                 self._realtime_topo = True
                 self.canvas.draw()
-#                self._frame.redraw(axes=self.bfly_axes) # this leaves the time label
 
     def _on_key(self, event):
         ax = event.inaxes
         key = event.key
-        if key == 't':
+        if key in 'tT':
             if ax in self.bfly_axes:
                 p = self.bfly_plots[ax.id // 2]
                 t = event.xdata
                 seg = [l.sub(time=t) for l in p.data]
-                Topomap(seg)
+                title = "%i ms" % round(t * 1e3)
             elif ax in self.topo_axes:
-                p = self.topo_plots[ax.id // 2]
-                Topomap(p.data)
+                seg = self.topo_plots[ax.id // 2].data
+                title = self._t_label.get_text()[4:]
+            else:
+                return
+
+            if key == 't':
+                Topomap(seg, title=title)
+            else:
+                Topomap(seg, w=10, sensorlabels='name', title=title)
         elif key == 'right' or key == 'left':
             i = digitize(self._current_t, self._xvalues, key == 'left')
             if key == 'left' and i > 0:
