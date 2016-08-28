@@ -188,7 +188,7 @@ class Frame(FileFrame):
     _title = 'Select Components'
     _wildcard = "ICA fiff file (*-ica.fif)|*.fif"
 
-    def __init__(self, parent, pos, size, model, n_h=2):
+    def __init__(self, parent, pos, size, model):
         super(Frame, self).__init__(parent, pos, size, model)
 
         # setup layout
