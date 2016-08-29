@@ -14,7 +14,7 @@ class AboutFrame(EelbrainFrame):
         sizer = wx.BoxSizer(wx.VERTICAL)
         self.SetSizer(sizer)
 
-        img = Icon('eelbrain160')
+        img = Icon('eelbrain256')
         bmp = wx.StaticBitmap(self, -1, img)
         sizer.Add(bmp, 0, wx.LEFT | wx.TOP | wx.RIGHT | wx.ALIGN_CENTER_HORIZONTAL,
                   40)
