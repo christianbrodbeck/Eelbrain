@@ -78,6 +78,37 @@ def typed_arg(arg, type_):
 
 
 ################################################################################
+# Raw processing
+class RawProcessor(object):
+    affected_by_bad_channels = False
+
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+
+    def apply(self, raw):
+        raise NotImplementedError()
+
+
+class RawFilter(RawProcessor):
+
+    def apply(self, raw):
+        # Do not use multiprocessing because in my testing total processing
+        # time was higher when using multiple processes.
+        raw.filter(*self.args, **self.kwargs)
+
+
+class RawSNS(RawProcessor):
+    affected_by_bad_channels = True
+
+    def apply(self, raw):
+        from mne_sandbox.preprocessing import SensorNoiseSuppression
+        sns = SensorNoiseSuppression(*self.args, **self.kwargs)
+        sns.fit(raw)
+        sns.apply(raw)
+
+
+################################################################################
 # Epochs
 class Epoch(object):
     """Epoch definition
@@ -542,12 +573,12 @@ class MneExperiment(FileTree):
 
     # raw processing settings {name: (args, kwargs)}
     _raw = {'clm': None,
-            '0-40': ((None, 40), {'method': 'iir'}),
-            '0.1-40': ((0.1, 40), {'l_trans_bandwidth': 0.08,
-                                   'filter_length': '60s'}),
-            '0.2-40': ((0.2, 40), {'l_trans_bandwidth': 0.08,
-                                   'filter_length': '60s'}),
-            '1-40': ((1, 40), {'method': 'iir'})}
+            '0-40': (RawFilter(None, 40, method='iir'),),
+            '0.1-40': (RawFilter(0.1, 40, l_trans_bandwidth=0.08,
+                                 filter_length='60s'),),
+            '0.2-40': (RawFilter(0.2, 40, l_trans_bandwidth=0.08,
+                                 filter_length='60s'),),
+            '1-40': (RawFilter(1, 40, method='iir'),)}
 
     # projection definition:
     # "base": 'raw' for raw file, or epoch name
@@ -2987,6 +3018,11 @@ class MneExperiment(FileTree):
             True).
         preload : bool
             Mne Raw parameter.
+
+        Notes
+        -----
+        Bad channels defined in the raw file itself are ignored in favor of the
+        bad channels in the bad channels file.
         """
         if kwargs:
             self.set(**kwargs)
@@ -3005,6 +3041,8 @@ class MneExperiment(FileTree):
             if not isinstance(add_bads, int):
                 raise TypeError("add_bads must be boolean, got %s" % repr(add_bads))
             raw.info['bads'] = self.load_bad_channels()
+        else:
+            raw.info['bads'] = []
 
         return raw
 
@@ -4324,15 +4362,8 @@ class MneExperiment(FileTree):
             projs = [projs[i] for i in rm]
             mne.write_proj(proj_file, projs)
 
-    def make_raw(self, n_jobs=1, **kwargs):
+    def make_raw(self, **kwargs):
         """Make a raw file
-
-        Parameters
-        ----------
-        n_jobs : int
-            Number of processes for multiprocessing. The default is ``1``
-            because in my testing total processing time was higher when
-            using multiple processes.
 
         Notes
         -----
@@ -4340,7 +4371,8 @@ class MneExperiment(FileTree):
         0.16 Hz is not recorded even when recording at DC.
         """
         raw_dst = self.get('raw', **kwargs)
-        if self._raw[raw_dst] is None:
+        pipeline = self._raw[raw_dst]
+        if pipeline is None:
             raise RuntimeError("Can't make %r raw file because it is an input "
                                "file" % raw_dst)
         dst = self.get('cached-raw-file', mkdir=True)
@@ -4350,19 +4382,19 @@ class MneExperiment(FileTree):
                 src_mtime = os.path.getmtime(src)
                 dst_mtime = os.path.getmtime(dst)
                 if dst_mtime > src_mtime:
-                    return
+                    if any(p.affected_by_bad_channels for p in pipeline):
+                        bads_mtime = os.path.getmtime(self.get('bads-file'))
+                        if dst_mtime > bads_mtime:
+                            return
+                    else:
+                        return
 
             self._log.debug("make_raw %s/%s...", self.get('subject'),
                             os.path.split(dst)[1])
-            apply_proj = False
-            raw = self.load_raw(raw='clm', add_proj=apply_proj, add_bads=False,
-                                preload=True)
+            raw = self.load_raw(raw='clm', add_proj=False, preload=True)
 
-        if apply_proj:
-            raw.apply_projector()
-
-        args, kwargs = self._raw[raw_dst]
-        raw.filter(*args, n_jobs=n_jobs, **kwargs)
+        for proc in pipeline:
+            proc.apply(raw)
         raw.save(dst, overwrite=True)
 
     def make_rej(self, decim=None, auto=None, overwrite=False, **kwargs):
