@@ -21,4 +21,6 @@ from . import fiff
 from . import txt
 
 from .txt import tsv
+from ._misc import wav
 from ._pickle import unpickle
+from .._io.wav import load_wav as wav
