@@ -1,6 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import print_function
-from itertools import izip
+from itertools import izip, repeat
 
 from nose.tools import (eq_, assert_almost_equal, assert_is_instance,
     assert_raises, nottest)
@@ -29,43 +29,51 @@ def r_require(package):
 @nottest
 def assert_f_test_equal(f_test, r_res, r_row, f_lmf, f_nd, r_kind='aov'):
     if r_kind in ('aov', 'rmaov'):
-        r_df = 0
-        r_SS = 1
-        r_MS = 2
-        r_F = 3
-        r_p = 4
+        r_res = {'df': r_res[0][r_row], 'SS': r_res[1][r_row],
+                 'MS': r_res[2][r_row], 'F': r_res[3][r_row],
+                 'p': r_res[4][r_row]}
+    elif r_kind == 'ez':
+        pass
     elif r_kind == 'Anova':
-        r_df = 1
-        r_SS = 0
-        r_MS = None
-        r_F = 2
-        r_p = 3
+        r_res = {'df': r_res[1][r_row], 'SS': r_res[0][r_row],
+                 'F': r_res[2][r_row], 'p': r_res[3][r_row]}
     else:
         raise ValueError("invalid r_kind=%r" % r_kind)
 
-    eq_(f_test.df, r_res[r_df][r_row])
-    assert_almost_equal(f_test.SS, r_res[r_SS][r_row])
-    if r_MS is not None:
-        assert_almost_equal(f_test.MS, r_res[r_MS][r_row])
-    assert_almost_equal(f_test.F, r_res[r_F][r_row])
-    assert_almost_equal(f_test.p, r_res[r_p][r_row])
-    assert_almost_equal(f_lmf, r_res[r_F][r_row])  # lm-fitter comparison"
-    assert_almost_equal(f_nd, r_res[r_F][r_row])  # nd-anova comparison"
+    eq_(f_test.df, r_res['df'])
+    if 'SS' is r_res:
+        assert_almost_equal(f_test.SS, r_res['SS'])
+    if 'MS' in r_res:
+        assert_almost_equal(f_test.MS, r_res['MS'])
+    assert_almost_equal(f_test.F, r_res['F'])
+    assert_almost_equal(f_test.p, r_res['p'])
+    assert_almost_equal(f_lmf, r_res['F'])  # lm-fitter comparison"
+    assert_almost_equal(f_nd, r_res['F'])  # nd-anova comparison"
 
 
 @nottest
 def assert_f_tests_equal(f_tests, r_res, fs, fnds, r_kind='aov'):
-    if r_kind == 'rmaov':
-        r_row = 0
+    if r_kind == 'ez':
+        r_results = []
+        for f_test in f_tests:
+            f_test_name = set(f_test.name.split(' x '))
+            for i, r_name in enumerate(r_res[0][0]):
+                if set(r_name.split(':')) == f_test_name:
+                    r_results.append({'df': r_res[0][1][i], 'F': r_res[0][3][i],
+                                      'p': r_res[0][4][i]})
+                    break
+            else:
+                raise RuntimeError("Effect %s not in ezANOVA" % f_test_name)
+    elif r_kind == 'rmaov':
+        r_results = [r_res[i][0] for i in xrange(len(f_tests))]
     else:
-        r_res_ = r_res
+        r_results = repeat(r_res, len(f_tests))
 
-    for i in xrange(len(f_tests)):
-        if r_kind == 'rmaov':
-            r_res_ = r_res[i][0]
-        else:
+    r_row = 0
+    for i, r_res in enumerate(r_results):
+        if r_kind != 'rmaov':
             r_row = i
-        assert_f_test_equal(f_tests[i], r_res_, r_row, fs[i], fnds[i], r_kind)
+        assert_f_test_equal(f_tests[i], r_res, r_row, fs[i], fnds[i], r_kind)
 
 
 def run_on_lm_fitter(y, x, ds):
@@ -95,8 +103,9 @@ def test_anova():
     "Test ANOVA"
     from rpy2.robjects import r
     r_require('car')
+    r_require('ez')
 
-    ds = datasets.get_uv()
+    ds = datasets.get_uv(nrm=True)
     ds.to_r('ds')
 
     # fixed effects
@@ -107,7 +116,7 @@ def test_anova():
     r_res = r("Anova(lm(fltvar ~ A * B, ds, type=2))")
     assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'Anova')
 
-    # random effects
+    # random effect
     aov = test.ANOVA('fltvar', 'A*B*rm', ds=ds)
     print(aov)
     fs = run_on_lm_fitter('fltvar', 'A*B*rm', ds)
@@ -116,6 +125,14 @@ def test_anova():
     print(r('test.summary <- summary(test.aov)'))
     r_res = r['test.summary'][1:]
     assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'rmaov')
+
+    # nested random effect
+    aov = test.ANOVA('fltvar', 'B + A%B + A * nrm(B)', ds=ds)
+    print(aov)
+    fs = run_on_lm_fitter('fltvar', 'B + A%B + A * nrm(B)', ds)
+    fnds = run_as_ndanova('fltvar', 'B + A%B + A * nrm(B)', ds)
+    r_res = r('ezANOVA(ds, fltvar, nrm, A, between=B)')
+    assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'ez')
 
     # not fully specified model with random effects
     assert_raises(NotImplementedError, test.anova, 'fltvar', 'A*rm', ds=ds)
