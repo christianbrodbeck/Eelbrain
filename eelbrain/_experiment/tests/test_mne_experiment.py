@@ -18,10 +18,14 @@ I_START = np.arange(1001, 1441, 55)
 
 class BaseExperiment(MneExperiment):
 
+    path_version = 1
+
     defaults = {'experiment': 'file'}
 
 
 class EventExperiment(MneExperiment):
+
+    path_version = 1
 
     trigger_shift = 0.03
 

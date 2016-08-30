@@ -318,7 +318,7 @@ class MneExperiment(FileTree):
     .. seealso::
         Guide on using :ref:`experiment-class-guide`.
     """
-    path_version = 1
+    path_version = None
     screen_log_level = logging.INFO
     auto_delete_cache = True
     # what to do when the experiment class definition changed:
@@ -507,7 +507,13 @@ class MneExperiment(FileTree):
         self._mri_subjects = self._mri_subjects.copy()
         self._templates = self._templates.copy()
         # templates version
-        if self.path_version == 0:
+        if self.path_version is None:
+            raise ValueError("%s.path_version is not set. This parameter needs "
+                             "to be specified explicitlty. See <https://"
+                             "pythonhosted.org/eelbrain/experiment.html#"
+                             "eelbrain.MneExperiment.path_version>" %
+                             self.__class__.__name__)
+        elif self.path_version == 0:
             self._templates['raw-dir'] = os.path.join('{meg-dir}', 'raw')
             self._templates['raw-file'] = os.path.join('{raw-dir}', '{subject}_'
                                               '{experiment}_{raw_kind}-raw.fif')
