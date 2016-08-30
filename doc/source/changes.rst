@@ -12,7 +12,6 @@ New in 0.24
     with :mod:`mne` < 0.13, the :attr:`MneExperiment.meg_system` attribute needs
     to be set to ``"KIT-157"`` to distinguish it from data collected with the
     KIT UMD system.
-  - The :attr:`MneExperiment.path_version` now defaults to ``1``.
   - :meth:`.masked_parameter_map` method of cluster-based test results: use
     of ``pmin=None`` is deprecated, use ``pmin=1`` instead.
 

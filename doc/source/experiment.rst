@@ -33,6 +33,8 @@ of the experiment::
 
     class WordExperiment(MneExperiment):
 
+        path_version = 1
+
         defaults = {'experiment': 'words'}
 
 
@@ -181,6 +183,14 @@ system the data were collected with. For data from NYU New York, the
 correct value is ``meg_system="KIT-157"``.
 
 
+.. py:attribute:: MneExperiment.path_version
+
+:attr:`MneExperiment.path_version` determines the file naming scheme. If you
+are starting a new experiment, set it to ``1`` to use the most recent file
+naming scheme. If your experiment class was defined before Eelbrain version
+0.13, set it to ``0``.
+
+
 .. py:attribute:: MneExperiment.trigger_shift
 
 Set this attribute to shift all trigger times by a constant (in seconds). For
@@ -189,13 +199,6 @@ example, with ``trigger_shift = 0.03`` a trigger that originally occurred
 differs between subjects, this attribute can also be a dictionary mapping
 subject names to shift values, e.g.
 ``trigger_shift = {'R0001': 0.02, 'R0002': 0.05, ...}``.
-
-
-.. py:attribute:: MneExperiment.path_version
-
-This attribute is only retained for backwards compatibility. Set
-:attr:`MneExperiment.path_version` to ``0`` if your paths correspond to an
-experiment defined before Eelbrain version 0.13.
 
 
 Defaults
