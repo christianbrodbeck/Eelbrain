@@ -446,13 +446,13 @@ class TopoButterfly(_EelFigure):
                 p = self.bfly_plots[ax.id // 2]
                 t = event.xdata
                 seg = [l.sub(time=t) for l in p.data]
-                title = "%i ms" % round(t * 1e3)
             elif ax in self.topo_axes:
                 seg = self.topo_plots[ax.id // 2].data
-                title = self._t_label.get_text()[4:]
+                t = self._current_t
             else:
                 return
 
+            title = "%i ms" % round(t * 1e3)
             if key == 't':
                 Topomap(seg, title=title)
             else:
