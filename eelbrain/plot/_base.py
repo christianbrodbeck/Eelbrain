@@ -1421,14 +1421,23 @@ class LegendMixin(object):
          - 'upper center' : 9,
          - 'center'       : 10,
         """
-        out = self.__plot(loc, *args, **kwargs)
-        if loc:
-            if isinstance(loc, basestring):
-                if loc == 'fig':
-                    loc = 'separate window'
-                loc = self.__choices.index(loc)
-            self.__ctrl.SetSelection(loc)
-        return out
+        if loc in self.__choices:
+            choice = self.__choices.index(loc)
+            arg = self.__args[choice]
+        elif loc is None:
+            choice = 0
+            arg = False
+        elif loc not in self.__args:
+            raise ValueError("Invalid legend location: %r; use one of: %s" %
+                             (loc, ', '.join(map(repr, self.__choices))))
+        else:
+            choice = self.__args.index(loc)
+            arg = loc
+
+        self.__ctrl.SetSelection(choice)
+
+        if arg is not False:
+            return self.__plot(loc, *args, **kwargs)
 
     def save_legend(self, *args, **kwargs):
         """Save the legend as image file
