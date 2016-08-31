@@ -222,7 +222,7 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     return ds
 
 
-def get_uts(utsnd=False, seed=0):
+def get_uts(utsnd=False, seed=0, nrm=False):
     """Create a sample Dataset with 60 cases and random data.
 
     Parameters
@@ -298,6 +298,11 @@ def get_uts(utsnd=False, seed=0):
 
         dims = ('case', sensor, time)
         ds['utsnd'] = NDVar(y, dims, eeg_info())
+
+    # nested random effect
+    if nrm:
+        ds['nrm'] = Factor([a + '%02i' % i for a in 'AB' for _ in xrange(2) for
+                            i in xrange(15)], random=True)
 
     return ds
 

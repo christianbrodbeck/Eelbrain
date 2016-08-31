@@ -147,10 +147,15 @@ def test_anova():
 
 
 def test_ndanova():
-    ds = datasets.get_uts()
+    ds = datasets.get_uts(nrm=True)
     ds['An'] = ds['A'].as_var({'a0': 0, 'a1': 1})
 
     assert_raises(NotImplementedError, testnd.anova, 'uts', 'An*B*rm', ds=ds)
+
+    # nested random effect
+    res = testnd.anova('uts', 'A + A%B + B * nrm(A)', ds=ds, match='nrm',
+                       samples=100, pmin=0.05)
+    eq_(len(res.find_clusters(0.05)), 8)
 
 
 def test_anova_perm():
