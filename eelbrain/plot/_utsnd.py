@@ -10,7 +10,7 @@ import numpy as np
 
 from .._names import INTERPOLATE_CHANNELS
 from . import _base
-from ._base import _EelFigure
+from ._base import _EelFigure, LegendMixin
 from ._uts import UTS
 
 
@@ -301,6 +301,8 @@ class _plt_utsnd(object):
 
         self.epoch = epoch
         self._sensors = sensors
+        self.legend_handles = {name: line for name, line in
+                               izip(epoch.get_dim(linedim), self.lines)}
 
     def remove(self):
         while self.lines:
@@ -330,6 +332,7 @@ class _ax_butterfly(object):
         self.ax = ax
         self.data = layers
         self.layers = []
+        self.legend_handles = {}
         self._xvalues = []  # values on the x axis
         self._meas = None
 
@@ -350,6 +353,7 @@ class _ax_butterfly(object):
                 name = l.name
 
             self._xvalues = np.union1d(self._xvalues, l.time.x)
+            self.legend_handles.update(h.legend_handles)
 
         # axes decoration
         ax.set_xlim(min(l.epoch.time[0] for l in self.layers),
@@ -372,7 +376,7 @@ class _ax_butterfly(object):
         self.vmax = vmax
 
 
-class Butterfly(UTS):
+class Butterfly(UTS, LegendMixin):
     """Butterfly plot for NDVars
 
     Parameters
@@ -416,12 +420,19 @@ class Butterfly(UTS):
 
         self.plots = []
         vlims = _base.find_fig_vlims(epochs)
+        legend_handles = {}
         for ax, layers in zip(self._axes, epochs):
             h = _ax_butterfly(ax, layers, linedim, sensors, axtitle, color,
                               vlims)
             self.plots.append(h)
+            legend_handles.update(h.legend_handles)
 
+        LegendMixin.__init__(self, 'invisible', legend_handles)
         self._show()
+
+    def _fill_toolbar(self, tb):
+        UTS._fill_toolbar(self, tb)
+        LegendMixin._fill_toolbar(self, tb)
 
 
 class _ax_bfly_epoch:
