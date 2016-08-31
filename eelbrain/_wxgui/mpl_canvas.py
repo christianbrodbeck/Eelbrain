@@ -178,6 +178,7 @@ class CanvasFrame(EelbrainFrame):
             self._fill_toolbar(tb)
         else:
             eelfigure._fill_toolbar(tb)
+            self.__doc__ = eelfigure.__doc__
 
         # right-most part
         if self.__doc__:
