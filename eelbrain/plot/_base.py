@@ -606,49 +606,52 @@ def fix_vlim_for_cmap(vmin, vmax, cmap):
 
 
 def find_data_dims(ndvar, dims):
-    """Find dimensions in data
+    """Find dimensions in data.
+
+    Raise a ValueError if the dimensions don't match, except when the ``case``
+    dimension is omitted in ``dims``.
+
+    Parameters
+    ----------
+    ndvar : NDVar
+        NDVar instance to query.
+    dims : int | tuple of str
+        The requested dimensions. ``None`` for a free dimensions.
+
+    Returns
+    -------
+    agg : None | str
+        Dimension to aggregate over.
+    dims : list | tuple of str
+        Dimension names with all instances of ``None`` replaced by a string.
     """
     if isinstance(dims, int):
         if ndvar.ndim == dims:
-            return ndvar.dimnames
+            return None, ndvar.dimnames
         elif ndvar.ndim - 1 == dims:
-            return ndvar.dimnames[1:]
+            return ndvar.dimnames[0], ndvar.dimnames[1:]
         else:
             raise ValueError("NDVar does not have the right number of dimensions")
     else:
         if len(dims) == ndvar.ndim:
-            all_dims = list(ndvar.dimnames)
+            return None, ndvar.get_dimnames(dims)
         elif len(dims) == ndvar.ndim - 1 and ndvar.has_case:
-            all_dims = list(ndvar.dimnames[1:])
+            return 'case', ndvar.get_dimnames(('case',) + dims)[1:]
         else:
             raise ValueError("NDVar does not have the right number of dimensions")
 
-        out_dims = []
-        for dim in dims:
-            if dim is None:
-                for dim in all_dims:
-                    if dim not in dims:
-                        break
-                else:
-                    raise ValueError("NDVar does not have requested dimensions %s" % repr(dims))
-            elif dim not in all_dims:
-                raise ValueError("NDVar does not have requested dimension %s" % dim)
-            out_dims.append(dim)
-            all_dims.remove(dim)
-    return out_dims
 
-
-def unpack_epochs_arg(Y, dims, Xax=None, ds=None):
+def unpack_epochs_arg(y, dims, xax=None, ds=None):
     """Unpack the first argument to top-level NDVar plotting functions
 
     Parameters
     ----------
-    Y : NDVar | list
+    y : NDVar | list
         the first argument.
-    dims : int | tuple
-        The number of dimensions needed for the plotting function, or tuple
-        with dimension entries (str | None).
-    Xax : None | categorial
+    dims : tuple of str
+        The dimensions needed for the plotting function. ``None`` can be for
+        a free dimensions.
+    xax : None | categorial
         A model to divide Y into different axes. Xax is currently applied on
         the first level, i.e., it assumes that Y's first dimension is cases.
     ds : None | Dataset
@@ -667,95 +670,71 @@ def unpack_epochs_arg(Y, dims, Xax=None, ds=None):
     API:
 
      - simple NDVar: summary ``plot(meg)``
-     - list of ndvars: summary for each ``plot(meg.as_list())``
-     - NDVar and Xax argument: summary for each  ``plot(meg, Xax=subject)
+     - by dim: each case ``plot(meg, '.case')``
+     - NDVar and Xax argument: summary for each  ``plot(meg, subject)
      - nested list of layers (e.g., ttest results: [c1, c0, [c1-c0, p]])
     """
-    # get proper Y
-    if hasattr(Y, '_default_plot_obj'):
-        Y = Y._default_plot_obj
+    if hasattr(y, '_default_plot_obj'):
+        y = y._default_plot_obj
 
-    if isinstance(Y, (tuple, list)):
-        data_dims = None
-        if isinstance(dims, int):
-            ndims = dims
-        else:
-            ndims = len(dims)
-    else:
-        Y = asndvar(Y, ds=ds)
-        data_dims = find_data_dims(Y, dims)
-        ndims = len(data_dims)
-
-    if Xax is not None and isinstance(Y, (tuple, list)):
-        err = ("Xax can only be used to divide Y into different axes if Y is "
-               "a single NDVar (got a %s)." % Y.__class__.__name__)
-        raise TypeError(err)
-
-    # create list of plots
-    if isinstance(Xax, str) and Xax.startswith('.'):
-        dimname = Xax[1:]
-        if dimname == 'case':
-            if not Y.has_case:
-                err = ("Xax='.case' supplied, but Y does not have case "
-                       "dimension")
-                raise ValueError(err)
-            values = range(len(Y))
-            unit = ''
-        else:
-            dim = Y.get_dim(dimname)
-            values = dim.values
-            unit = getattr(dim, 'unit', '')
-
-        name = dimname.capitalize() + ' = %s'
-        if unit:
-            name += ' ' + unit
-        axes = [Y.sub(name=name % v, **{dimname: v}) for v in values]
-    elif Xax is not None:
-        Xax = ascategorial(Xax, ds=ds)
+    if isinstance(y, (tuple, list)):
+        if xax is not None:
+            raise TypeError("Xax can only be used to divide Y into different "
+                            "axes if Y is a single NDVar (got a %s)." %
+                            y.__class__.__name__)
         axes = []
-        for cell in Xax.cells:
-            v = Y[Xax == cell]
-            v.name = cellname(cell)
-            axes.append(v)
-    elif isinstance(Y, (tuple, list)):
-        axes = Y
+        for ax in y:
+            if isinstance(ax, (tuple, list)):
+                layers = []
+                for layer in ax:
+                    agg, dims = find_data_dims(layer, dims)
+                    layers.append(aggregate(layer, agg))
+                axes.append(layers)
+            else:
+                agg, dims = find_data_dims(ax, dims)
+                axes.append([aggregate(ax, agg)])
     else:
-        axes = [Y]
+        y = asndvar(y, ds=ds)
 
-    axes = [unpack_ax(ax, ndims, ds) for ax in axes]
-    if data_dims is None:
-        for layers in axes:
-            for l in layers:
-                if data_dims is None:
-                    data_dims = find_data_dims(l, dims)
-                else:
-                    find_data_dims(l, data_dims)
+        # create list of plots
+        if isinstance(xax, str) and xax.startswith('.'):
+            dimname = xax[1:]
+            if dimname == 'case':
+                if not y.has_case:
+                    raise ValueError("Xax='.case' supplied, but Y does not "
+                                     "have case dimension")
+                values = range(len(y))
+                unit = ''
+            else:
+                dim = y.get_dim(dimname)
+                values = dim.values
+                unit = getattr(dim, 'unit', '')
 
-    return axes, data_dims
+            agg, dims = find_data_dims(y, (dimname,) + dims)
+            dims = dims[1:]
+
+            name = dimname.capitalize() + ' = %s'
+            if unit:
+                name += ' ' + unit
+            axes = [[aggregate(y.sub(name=name % v, **{dimname: v}), agg)] for
+                    v in values]
+        else:
+            agg, dims = find_data_dims(y, dims)
+            if xax is None:
+                axes = [[aggregate(y, agg)]]
+            else:
+                xax = ascategorial(xax, ds=ds)
+                axes = []
+                for cell in xax.cells:
+                    v = y[xax == cell]
+                    v.name = cellname(cell)
+                    axes.append([aggregate(v, agg)])
+
+    return axes, dims
 
 
-def unpack_ax(ax, ndim, ds):
-    # returns list of NDVar
-    if isinstance(ax, (tuple, list)):
-        return [_unpack_layer(layer, ndim, ds) for layer in ax]
-    else:
-        return [_unpack_layer(ax, ndim, ds)]
-
-
-def _unpack_layer(y, ndim, ds):
-    # returns NDVar
-    ndvar = asndvar(y, ds=ds)
-
-    if ndvar.ndim == ndim + 1:
-        if ndvar.has_case:
-            ndvar = ndvar.mean('case')
-
-    if ndvar.ndim != ndim:
-        err = ("Plot requires ndim=%i, got %r with ndim=%i" %
-               (ndim, ndvar, ndvar.ndim))
-        raise DimensionMismatchError(err)
-
-    return ndvar
+def aggregate(y, agg):
+    return y if agg is None else y.mean(agg)
 
 
 def str2tex(txt):

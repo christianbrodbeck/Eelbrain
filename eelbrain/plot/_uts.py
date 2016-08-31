@@ -344,7 +344,7 @@ class UTS(_EelFigure):
     def __init__(self, epochs, Xax=None, axtitle='{name}', ds=None,
                  xlabel=True, ylabel=True, xticklabels=True, bottom=None,
                  top=None, *args, **kwargs):
-        epochs, (xdim,) = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
+        epochs, (xdim,) = _base.unpack_epochs_arg(epochs, (None,), Xax, ds)
         _EelFigure.__init__(self, "UTS", len(epochs), 2, 1.5, *args, **kwargs)
 
         e0 = epochs[0][0]
@@ -468,7 +468,7 @@ class UTSClusters(_EelFigure):
                  overlay=False, xticklabels=True, *args, **kwargs):
         clusters_ = res.clusters
 
-        epochs, (xdim,) = _base.unpack_epochs_arg(res, 1)
+        epochs, (xdim,) = _base.unpack_epochs_arg(res, (None,))
 
         # create figure
         n = len(epochs)
