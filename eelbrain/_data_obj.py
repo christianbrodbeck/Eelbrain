@@ -8308,28 +8308,19 @@ class UTS(Dimension):
             stop = index[-1] + step
             index = slice(start, stop, step)
 
-        if isinstance(index, slice):
-            if index.start is None:
-                start = 0
-            else:
-                start = index.start
+        start = 0 if index.start is None else index.start
+        stop = len(self) if index.stop is None else index.stop
 
-            if index.stop is None:
-                stop = len(self)
-            else:
-                stop = index.stop
+        tmin = self.times[start]
+        nsamples = stop - start
+        if nsamples < 0:
+            raise IndexError("Time index out of range: %s." % repr(index))
 
-            tmin = self.times[start]
-            nsamples = stop - start
-            if nsamples < 0:
-                raise IndexError("Time index out of range: %s." % repr(index))
-
-            if index.step is None:
-                tstep = self.tstep
-            else:
-                tstep = self.tstep * index.step
+        if index.step is None:
+            tstep = self.tstep
         else:
-            raise TypeError("Unsupported index: %r" % index)
+            tstep = self.tstep * index.step
+            nsamples = int(ceil(nsamples / index.step))
 
         return UTS(tmin, tstep, nsamples)
 
