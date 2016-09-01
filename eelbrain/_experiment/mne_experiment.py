@@ -3822,7 +3822,7 @@ class MneExperiment(FileTree):
         brain_kwargs = self._surfer_plot_kwargs(surf, views, foreground, background,
                                                 smoothing_steps, hemi)
         self._set_analysis_options('src', sns_baseline, src_baseline, None,
-                                   None, None, None, None)
+                                   None, None, None)
         self.set(equalize_evoked_count='',
                  resname="GA dSPM %s %s" % (brain_kwargs['surf'], fmin))
 
@@ -3949,7 +3949,7 @@ class MneExperiment(FileTree):
         with self._temporary_state:
             subject, group = self._process_subject_arg(subject, kwargs)
             self._set_analysis_options('src', sns_baseline, src_baseline, p,
-                                       None, None, None, None)
+                                       None, None, None)
 
             if dst is None:
                 if group is None:
@@ -4470,7 +4470,7 @@ class MneExperiment(FileTree):
         if not parc:
             raise ValueError("No parcellation specified")
         self._set_analysis_options('src', sns_baseline, src_baseline, pmin,
-                                   tstart, tstop, parc, None)
+                                   tstart, tstop, parc, dims=('time',))
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
                        folder="%s ROIs" % parc.capitalize())
         if not redo and self._result_mtime(dst, 'src'):
@@ -4535,13 +4535,15 @@ class MneExperiment(FileTree):
         model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
         test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, ('time',), None)
+        do_mcc = (len(labels_lh) + len(labels_rh) > 1 and
+                  pmin not in (None, 'tfce'))
         label_results = {}
-        force_permutation = (len(labels_lh) + len(labels_rh) > 1)
         for label in labels_lh + labels_rh:
             res = self._make_test(ds[label_keys[label]], ds, test, test_kwargs,
-                                  force_permutation)
+                                  do_mcc)
             label_results[label] = res
-        if force_permutation:
+            
+        if do_mcc:
             cdists = [r._cdist for r in label_results.values()]
             merged_dist = _MergedTemporalClusterDist(cdists)
         else:
@@ -4587,7 +4589,7 @@ class MneExperiment(FileTree):
             value (the default is 1, i.e. to show all clusters).
         """
         self._set_analysis_options('eeg', baseline, None, pmin, tstart, tstop,
-                                   None, None)
+                                   None, dims=('sensor', 'time'))
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
                        folder="EEG Spatio-Temporal", modality='eeg',
                        **state)
@@ -4649,7 +4651,7 @@ class MneExperiment(FileTree):
             only applies to the HTML result file, not to the test.
         """
         self._set_analysis_options('eeg', baseline, None, pmin, tstart, tstop,
-                                   None, None)
+                                   None, dims=('time',))
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
                        folder="EEG Sensors", modality='eeg', **state)
         if not redo and os.path.exists(dst):
@@ -5354,7 +5356,8 @@ class MneExperiment(FileTree):
             self.set(model=self._tests[test]['model'])
 
     def _set_analysis_options(self, data, sns_baseline, src_baseline, pmin,
-                              tstart, tstop, parc, mask):
+                              tstart, tstop, parc, mask=None,
+                              dims=('source', 'time')):
         """Set templates for test paths with test parameters
 
         Can be set before or after the test template.
@@ -5378,20 +5381,20 @@ class MneExperiment(FileTree):
             raise ValueError("data=%r. Needs to be 'sns', 'src' or 'eeg'" % data)
 
         # determine report folder
-        if parc is None:
-            if mask:
-                folder = "%s Masked" % mask.capitalize()
-            else:
-                folder = "Whole Brain"
-        elif mask:
-            raise ValueError("Can't specify mask together with parc")
-        elif pmin is None or pmin == 'tfce':
-            raise NotImplementedError("Threshold-free test (pmin=%r) is not "
-                                      "implemented for parcellation (parc "
-                                      "parameter). Use a mask instead, or do a "
-                                      "cluster-based test." % pmin)
-        else:
-            folder = "{parc}"
+        folder = "{parc}"
+        if 'source' in dims:
+            if parc is None:
+                if mask:
+                    folder = "%s Masked" % mask.capitalize()
+                else:
+                    folder = "Whole Brain"
+            elif mask:
+                raise ValueError("Can't specify mask together with parc")
+            elif pmin is None or pmin == 'tfce':
+                msg = ("Threshold-free test (pmin=%r) is not implemented for "
+                       "parcellation (parc parameter). Use a mask instead, or "
+                       "do a cluster-based test." % pmin)
+                raise NotImplementedError(msg)
 
         # test properties
         items = []
@@ -5440,9 +5443,7 @@ class MneExperiment(FileTree):
 
         # parc/mask
         if parc:
-            if pmin == 'tfce':
-                raise NotImplementedError("tfce analysis can't have parc")
-            elif data == 'sns':
+            if data == 'sns':
                 raise NotImplementedError("sns analysis can't have parc")
             parc_ = parc
             data_parc = parc
