@@ -157,8 +157,7 @@ unit_format = {u'ms': 1e3,
                u'fT': 1e15,
                u'dSPM': 1,
                int: int}
-scale_formatters = {1: ScalarFormatter(),
-                    1e3: FuncFormatter(lambda x, pos: '%g' % (1e3 * x)),
+scale_formatters = {1e3: FuncFormatter(lambda x, pos: '%g' % (1e3 * x)),
                     1e6: FuncFormatter(lambda x, pos: '%g' % (1e6 * x)),
                     1e9: FuncFormatter(lambda x, pos: '%g' % (1e9 * x)),
                     1e12: FuncFormatter(lambda x, pos: '%g' % (1e12 * x)),
@@ -214,7 +213,9 @@ def find_axis_params_data(v, label):
         else:
             label = getattr(v, 'name', None)
 
-    return scale_formatters[scale], label
+    # ScalarFormatter needs separate instance because it adapts to data
+    fmt = ScalarFormatter() if scale == 1 else scale_formatters[scale]
+    return fmt, label
 
 
 def find_axis_params_dim(dim, label):
