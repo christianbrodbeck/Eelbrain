@@ -1165,6 +1165,11 @@ def test_source_space():
     eq_(sub_source[sub_source.dimindex('cuneus-lh')], cuneus_source)
     eq_(len(sub_source), len(lingual_source) + len(cuneus_source))
 
+    # indexing
+    tgt = np.hstack(sub_source.vertno)
+    assert_array_equal([i for i in sub_source], tgt)
+    assert_array_equal([sub_source[i] for i in xrange(len(sub_source))], tgt)
+
 
 def test_var():
     "Test Var objects"

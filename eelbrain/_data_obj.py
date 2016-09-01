@@ -7823,6 +7823,9 @@ class SourceSpace(Dimension):
         ns = ', '.join(str(len(v)) for v in self.vertno)
         return "<SourceSpace [%s], %r, %r>" % (ns, self.subject, self.src)
 
+    def __iter__(self):
+        return chain(*self.vertno)
+
     def __len__(self):
         return self._n_vert
 
@@ -7835,6 +7838,13 @@ class SourceSpace(Dimension):
         return is_equal
 
     def __getitem__(self, index):
+        if isinstance(index, int):
+            for vertno in self.vertno:
+                if index < len(vertno):
+                    return vertno[index]
+                index -= len(vertno)
+            else:
+                raise ValueError("SourceSpace Index out of range: %i" % index)
         arange = np.arange(len(self))
         int_index = arange[index]
         bool_index = np.in1d(arange, int_index, True)
