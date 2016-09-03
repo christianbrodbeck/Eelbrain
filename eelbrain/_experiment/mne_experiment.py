@@ -983,7 +983,8 @@ class MneExperiment(FileTree):
         handler = logging.StreamHandler()
         formatter = logging.Formatter("%(levelname)-8s %(name)s:  %(message)s")
         handler.setFormatter(formatter)
-        handler.setLevel(log_level(self.screen_log_level))
+        self._screen_log_level = log_level(self.screen_log_level)
+        handler.setLevel(self._screen_log_level)
         self._log.addHandler(handler)
 
         # log package versions
@@ -1246,6 +1247,9 @@ class MneExperiment(FileTree):
                 else:
                     msg.append("No cache files affected.")
                 self._log.debug(os.linesep.join(msg))
+                # don't print same message to the screen twice
+                if self._screen_log_level <= logging.DEBUG:
+                    msg = []
 
                 # handle invalid files
                 if files:
