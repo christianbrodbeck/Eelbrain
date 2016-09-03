@@ -28,6 +28,7 @@ from .. import testnd
 from .._data_obj import Dataset, Factor, Var, NDVar, Datalist, combine
 from .._info import BAD_CHANNELS
 from .._names import INTERPOLATE_CHANNELS
+from .._meeg import new_rejection_ds
 from .._mne import dissolve_label, \
     labels_from_mni_coords, rename_label, combination_label, \
     morph_source_space, shift_mne_epoch_trigger
@@ -4236,7 +4237,7 @@ class MneExperiment(FileTree):
         raw.filter(*args, n_jobs=n_jobs, **kwargs)
         raw.save(dst, overwrite=True)
 
-    def make_rej(self, decim=None, **kwargs):
+    def make_rej(self, decim=None, auto=None, overwrite=False, **kwargs):
         """Show the SelectEpochs GUI to do manual epoch selection for a given
         epoch
 
@@ -4252,6 +4253,14 @@ class MneExperiment(FileTree):
             sampled at a 1000 Hz, ``decim=10`` results in a sampling rate of
             100 Hz for display purposes. The default is to use the decim
             parameter specified in the epoch definition.
+        auto : scalar (optional)
+            Perform automatic rejection instead of showing the GUI by supplying
+            a an absolute threshold (for example, ``1e-12`` to reject any epoch
+            in which the absolute of at least one channel exceeds 1 picotesla).
+            If a rejection file already exists also set ``overwrite=True``.
+        overwrite : bool
+            If ``auto`` is specified and a rejection file already exists,
+            overwrite has to be set to ``True`` to overwrite the old file.
         kwargs :
             Kwargs for SelectEpochs
         """
@@ -4268,6 +4277,12 @@ class MneExperiment(FileTree):
         assert_is_primary_epoch(epoch, 'make_rej')
         path = self.get('rej-file', mkdir=True)
         modality = self.get('modality')
+
+        if auto is not None and overwrite is not True and os.path.exists(path):
+            msg = ("A rejection file already exists for {subject}, epoch "
+                   "{epoch}, rej {rej}. Set overwrite=True if you are sure you "
+                   "want to replace that file.")
+            raise IOError(self.format(msg))
 
         if decim is None:
             decim = rej_args.get('decim', None)
@@ -4286,6 +4301,27 @@ class MneExperiment(FileTree):
             vlim = 1.5e-4
         else:
             raise ValueError("modality=%r" % modality)
+
+        if auto is not None:
+            # create rejection
+            rej_ds = new_rejection_ds(ds)
+            rej_ds[:, 'accept'] = ds[data].abs().max(('sensor', 'time')) <= auto
+            # create description for info
+            args = ["auto=%r" % auto]
+            if overwrite is True:
+                args.append("overwrite=True")
+            if decim is not None:
+                args.append("decim=%s" % repr(decim))
+            rej_ds.info['desc'] = ("Created with %s.make_rej(%s)" %
+                                   (self.__class__.__name__, ', '.join(args)))
+            # save
+            save.pickle(rej_ds, path)
+            # print info
+            n_rej = rej_ds.eval("sum(accept == False)")
+            msg = ("%i of %i epochs rejected with threshold %s for {subject}, "
+                   "epoch {epoch}" % (n_rej, rej_ds.n_cases, auto))
+            print(self.format(msg))
+            return
 
         # don't mark eog sns if it is bad
         bad_channels = self.load_bad_channels()

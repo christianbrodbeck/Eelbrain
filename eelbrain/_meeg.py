@@ -4,7 +4,7 @@ from itertools import izip
 
 import numpy as np
 
-from ._data_obj import Datalist, Var, corr
+from ._data_obj import Datalist, Dataset, Var, corr
 from ._info import BAD_CHANNELS
 from ._names import INTERPOLATE_CHANNELS
 
@@ -15,6 +15,15 @@ def _out(out, epochs):
     elif len(out) != len(epochs):
         raise ValueError("out needs same length as epochs, got %i/%i" %
                          (len(out), len(epochs)))
+    return out
+
+
+def new_rejection_ds(ds):
+    """Create a rejection Dataset from a Dataset with epochs"""
+    out = Dataset(info={BAD_CHANNELS: []})
+    out['trigger'] = ds['trigger']
+    out[:, 'accept'] = True
+    out[:, 'tag'] = ''
     return out
 
 
