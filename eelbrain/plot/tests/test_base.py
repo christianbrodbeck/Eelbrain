@@ -55,7 +55,7 @@ def test_vlims():
     lims = _base.find_fig_vlims([[v1]], 1, 0)
     eq_(lims[meas], (0, 1))
 
-    cmaps = _base.find_fig_cmaps([[v1]], None)
+    cmaps = _base.find_fig_cmaps([[v1]])
     lims = _base.find_fig_vlims([[v1]], cmaps=cmaps)
     eq_(lims[meas], (-2, 2))
     lims = _base.find_fig_vlims([[v1]], 1, cmaps=cmaps)
@@ -74,7 +74,7 @@ def test_vlims():
     lims = _base.find_fig_vlims([[v2]], 1, -1)
     eq_(lims[meas], (-1, 1))
 
-    cmaps = _base.find_fig_cmaps([[v2]], None)
+    cmaps = _base.find_fig_cmaps([[v2]])
     lims = _base.find_fig_vlims([[v2]], cmaps=cmaps)
     eq_(lims[meas], (0, 2))
     lims = _base.find_fig_vlims([[v2]], 1, cmaps=cmaps)

@@ -184,7 +184,7 @@ class TopomapBins(_EelFigure):
         _EelFigure.__init__(self, "TopomapBins Plot", n_bins * n_rows, 1.5, 1,
                             False, *args, nrow=n_rows, ncol=n_bins, **kwargs)
 
-        cmaps = _base.find_fig_cmaps(epochs, None)
+        cmaps = _base.find_fig_cmaps(epochs)
         vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
 
         for row, layers in enumerate(epochs):
@@ -293,7 +293,7 @@ class TopoButterfly(_EelFigure):
         y_sep = (1 - y_bottomframe) / n_plots
         height = y_sep - yframe
 
-        cmaps = _base.find_fig_cmaps(epochs, None)
+        cmaps = _base.find_fig_cmaps(epochs)
         vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
         contours = _base.find_fig_contours(epochs, vlims, None)
 
@@ -825,7 +825,7 @@ class TopoArray(_EelFigure):
                 raise ValueError("axtitle needs to have the same length as "
                                  "epochs; got %s" % repr(axtitle))
 
-        cmaps = _base.find_fig_cmaps(epochs, None)
+        cmaps = _base.find_fig_cmaps(epochs)
         vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
         contours = _base.find_fig_contours(epochs, vlims, None)
 

@@ -405,8 +405,16 @@ def find_uts_ax_vlim(layers, vlims={}):
     return bottom, top
 
 
-def find_fig_cmaps(epochs, cmap):
+def find_fig_cmaps(epochs, cmap=None):
     """Find cmap for every meas
+
+    Parameters
+    ----------
+    epochs : list of list of NDVar
+        All NDVars in the plot.
+    cmap : str
+        Use this instead of the default for the first ``meas`` (for user
+        argument).
 
     Returns
     -------

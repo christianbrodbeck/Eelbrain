@@ -221,7 +221,7 @@ class Array(_EelFigure):
         _EelFigure.__init__(self, "Array Plot", nax, 4, 2, *args, **kwargs)
 
         self.plots = []
-        cmaps = _base.find_fig_cmaps(epochs, None)
+        cmaps = _base.find_fig_cmaps(epochs)
         vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
         contours = _base.find_fig_contours(epochs, vlims, None)
         for i, ax, layers in zip(xrange(nax), self._axes, epochs):
