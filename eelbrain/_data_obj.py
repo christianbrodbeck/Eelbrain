@@ -8308,11 +8308,8 @@ class UTS(Dimension):
         return len(self.times)
 
     def __eq__(self, other):
-        is_equal = (Dimension.__eq__(self, other)
-                    and self.tmin == other.tmin
-                    and self.tstep == other.tstep
-                    and self.nsamples == other.nsamples)
-        return is_equal
+        return (Dimension.__eq__(self, other) and self.tmin == other.tmin and
+                self.tstep == other.tstep and self.nsamples == other.nsamples)
 
     def __contains__(self, index):
         return self.tmin - self.tstep / 2 < index < self.tstop - self.tstep / 2
@@ -8488,11 +8485,12 @@ class UTS(Dimension):
             The intersection with dim (returns itself if dim and self are
             equal)
         """
-        if self.tstep == dim.tstep:
-            tstep = self.tstep
-        else:
+        if self == dim:
+            return self
+        elif self.tstep != dim.tstep:
             raise NotImplementedError("Intersection of UTS with unequal tstep :(")
 
+        tstep = self.tstep
         tmin_diff = abs(self.tmin - dim.tmin) / tstep
         if abs(tmin_diff - round(tmin_diff)) > _uts_tol:
             raise DimensionMismatchError("UTS dimensions have different times")
