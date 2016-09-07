@@ -416,13 +416,18 @@ class t_contrast_rel(_Result):
 
     Notes
     -----
+    A contrast specifies the steps to calculate a map based on *t*-values.
     Contrast definitions can contain:
 
-    - Comparisons using ">" or "<" and data cells,
-      e.g. ``"cell1 > cell0"``. If the data is defined based on an
-      interaction, cells are specified with "|",
-      e.g. ``"a1 | b0 > a0 | b0"``. Cells can contain * to match multiple cells,
-      for which the average is used.
+    - Comparisons using ``>`` or ``<`` and data cells to compute *t*-maps.
+      For example, ``"cell1 > cell0"`` will compute a *t*-map of the comparison
+      if ``cell1`` and ``cell0``, being positive where ``cell1`` is greater than
+      ``cell0`` and negative where ``cell0`` is greater than ``cell1``.
+      If the data is defined based on an interaction, cells are specified with
+      ``|``, e.g. ``"a1 | b1 > a0 | b0"``. Cells can contain ``*`` to average
+      multiple cells. Thus, if the second factor in the model has cells ``b1``
+      and ``b0``, ``"a1 | * > a0 | *"`` would compare ``a1`` to ``a0``
+      while averaging ``b1`` and ``b0`` within ``a1`` and ``a0``.
     - Unary numpy functions ``abs`` and ``negative``, e.g.
       ``"abs(cell1 > cell0)"``.
     - Binary numpy functions ``subtract`` and ``add``, e.g.
