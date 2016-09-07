@@ -3,7 +3,7 @@ from __future__ import print_function
 from copy import deepcopy
 from itertools import izip, product
 from operator import (add, iadd, sub, isub, mul, imul, div, idiv, floordiv,
-                      ifloordiv, mod, imod)
+    ifloordiv, mod, imod)
 import os
 import cPickle as pickle
 import shutil
@@ -12,20 +12,18 @@ import tempfile
 
 import mne
 from nose.tools import (eq_, ok_, assert_almost_equal, assert_is_instance,
-                        assert_raises)
+    assert_raises, assert_not_equal)
 import numpy as np
 from numpy.testing import (assert_equal, assert_array_equal,
-                           assert_array_almost_equal)
+    assert_array_almost_equal)
 
 from eelbrain import (datasets, load, Var, Factor, NDVar, Datalist, Dataset,
-                      Celltable, align, align1, choose, combine)
-from eelbrain._data_obj import (asvar, assub, longname, Categorial, SourceSpace,
-                                UTS, DimensionMismatchError,
-                                assert_has_no_empty_cells)
+    Celltable, align, align1, choose, combine)
+from eelbrain._data_obj import (asvar, assub, longname, Categorial, Sensor,
+    SourceSpace, UTS, DimensionMismatchError, assert_has_no_empty_cells)
 from eelbrain._stats.stats import rms
 from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,
-                                     assert_source_space_equal,
-                                     requires_mne_sample_data)
+    assert_source_space_equal, requires_mne_sample_data)
 
 
 OPERATORS = ((add, iadd, '+'),
@@ -1110,6 +1108,22 @@ def test_r():
     ds.to_r('sleep_copy')
     ds_copy = Dataset.from_r('sleep_copy')
     assert_dataset_equal(ds_copy, ds)
+
+
+def test_sensor():
+    "Test Sensor dimension"
+    locs = np.array([[1., 0., 0.],
+                     [0., 1., 0.],
+                     [0., 0., 1.]])
+    names = ['1', '2', '3']
+    sensor = Sensor(locs, names, sysname='test')
+    s1 = sensor[[0, 1]]
+    s2 = sensor[[1, 2]]
+    eq_(tuple(s1.names), ('1', '2'))
+    eq_(tuple(s2.names), ('2', '3'))
+    eq_(s1, sensor[[0, 1]])
+    assert_not_equal(s1, s2)
+    eq_(s1.intersect(s2), sensor[[1]])
 
 
 @requires_mne_sample_data

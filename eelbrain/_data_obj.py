@@ -1264,13 +1264,20 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
 
         dims = reduce(lambda x, y: intersect_dims(x, y, check_dims), all_dims)
         idx = {d.name: d for d in dims}
-        items = [item.sub(**idx) for item in items]
+        # reduce data to common dimension range
+        sub_items = []
+        for item in items:
+            if item.dims[has_case:] == dims:
+                sub_items.append(item)
+            else:
+                sub_items.append(item.sub(**idx))
+        # combine data
         if has_case:
-            x = np.concatenate([v.x for v in items], axis=0)
+            x = np.concatenate([v.x for v in sub_items], axis=0)
         else:
-            x = np.array([v.x for v in items])
+            x = np.array([v.x for v in sub_items])
         dims = ('case',) + dims
-        return NDVar(x, dims, _merge_info(items), name)
+        return NDVar(x, dims, _merge_info(sub_items), name)
     elif stype == 'list':
         return Datalist(sum(items, []), name, items[0]._fmt)
     else:
