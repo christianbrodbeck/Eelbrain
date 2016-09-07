@@ -1,18 +1,46 @@
 from __future__ import print_function
-from cPickle import Unpickler
+
+from cPickle import dump, HIGHEST_PROTOCOL, Unpickler
 from importlib import import_module
 import os
 
-from .._utils import ui  # , logger
+from .._utils import ui
+
+
+def pickle(obj, dest=None, protocol=HIGHEST_PROTOCOL):
+    """Pickle a Python object.
+
+    Parameters
+    ----------
+    dest : None | str
+        Path to destination where to save the  file. If no destination is
+        provided, a file dialog is shown. If a destination without extension is
+        provided, '.pickled' is appended.
+    protocol : int
+        Pickle protocol (default is HIGHEST_PROTOCOL).
+    """
+    if dest is None:
+        filetypes = [("Pickled Python Objects (*.pickled)", '*.pickled')]
+        dest = ui.ask_saveas("Pickle Destination", "", filetypes)
+        if dest is False:
+            raise RuntimeError("User canceled")
+        else:
+            print('dest=%r' % dest)
+    else:
+        dest = os.path.expanduser(dest)
+        if not os.path.splitext(dest)[1]:
+            dest += '.pickled'
+
+    with open(dest, 'wb') as fid:
+        dump(obj, fid, protocol)
 
 
 def map_paths(module_name, class_name):
     "Subclass to handle changes in module paths"
     if module_name == 'eelbrain.vessels.data':
-#         logger.debug("Legacy pickle: %r / %r" % (module_name, class_name))
         module_name = 'eelbrain._data_obj'
-        class_names = {'var':'Var', 'factor':'Factor', 'ndvar':'NDVar',
-                       'datalist':'Datalist', 'dataset':'Dataset'}
+        class_names = {'var': 'Var', 'factor': 'Factor', 'ndvar': 'NDVar',
+                       'datalist': 'Datalist', 'dataset': 'Dataset'}
         class_name = class_names[class_name]
     elif module_name.startswith('eelbrain.data.'):
         if module_name.startswith('eelbrain.data.load'):
@@ -23,7 +51,6 @@ def map_paths(module_name, class_name):
             rev = module_name.replace('.data.data_obj', '._data_obj')
         else:
             raise NotImplementedError("%r / %r" % (module_name, class_name))
-#         logger.debug("Legacy pickle %r: %r -> %r" % (class_name, module_name, rev))
         module_name = rev
 
     module = import_module(module_name)
