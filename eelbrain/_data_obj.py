@@ -4018,6 +4018,20 @@ class NDVar(object):
         from ._stats.stats import rms
         return self._aggregate_over_dims(axis, regions, rms)
 
+    def sign(self, name=None):
+        """Element-wise indication of the sign
+
+        Returns
+        -------
+        sign : NDVar
+            NDVar of same shape, ``-1 if x < 0, 0 if x==0, 1 if x > 0``.
+
+        Notes
+        -----
+        Like :func:`numpy.sign`.
+        """
+        return NDVar(np.sign(self.x), self.dims, self.info.copy(), name)
+
     def std(self, dims=(), **regions):
         """Compute the standard deviation over given dimensions
 
