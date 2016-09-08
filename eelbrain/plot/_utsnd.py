@@ -273,7 +273,7 @@ class Array(_EelFigure):
 
 class _plt_utsnd(object):
 
-    def __init__(self, ax, epoch, linedim, sensors=None, *args, **kwargs):
+    def __init__(self, ax, epoch, xdim, linedim, sensors=None, *args, **kwargs):
         """
         uts plot for a single epoch
 
@@ -291,18 +291,19 @@ class _plt_utsnd(object):
         if sensors is not None and sensors is not True:
             epoch = epoch.sub(sensor=sensors)
 
-        self._dims = (linedim, 'time')
+        self._dims = (linedim, xdim)
         kwargs['label'] = epoch.name
-        self.lines = ax.plot(epoch.time.x, epoch.get_data(('time', linedim)),
-                             *args, **kwargs)
+        self.lines = ax.plot(epoch.get_dim(xdim),
+                             epoch.get_data((xdim, linedim)), *args, **kwargs)
 
         for y, kwa in _base.find_uts_hlines(epoch):
             ax.axhline(y, **kwa)
 
         self.epoch = epoch
         self._sensors = sensors
-        self.legend_handles = {name: line for name, line in
-                               izip(epoch.get_dim(linedim), self.lines)}
+        # FIXME:  implement actual Case dimension that supports iteration etc.
+        labels = range(len(epoch)) if linedim == 'case' else epoch.get_dim(linedim)
+        self.legend_handles = {name: line for name, line in izip(labels, self.lines)}
 
     def remove(self):
         while self.lines:
@@ -321,7 +322,7 @@ class _plt_utsnd(object):
 
 class _ax_butterfly(object):
 
-    def __init__(self, ax, layers, linedim, sensors=None, title='{name}',
+    def __init__(self, ax, layers, xdim, linedim, sensors=None, title='{name}',
                  color=None, vlims={}):
         """
         Parameters
@@ -347,17 +348,16 @@ class _ax_butterfly(object):
             overlay = True
 
             # plot
-            h = _plt_utsnd(ax, l, linedim, sensors, **uts_args)
+            h = _plt_utsnd(ax, l, xdim, linedim, sensors, **uts_args)
             self.layers.append(h)
             if not name and l.name:
                 name = l.name
 
-            self._xvalues = np.union1d(self._xvalues, l.time.x)
+            self._xvalues = np.union1d(self._xvalues, l.get_dim(xdim))
             self.legend_handles.update(h.legend_handles)
 
         # axes decoration
-        ax.set_xlim(min(l.epoch.time[0] for l in self.layers),
-                    max(l.epoch.time[-1] for l in self.layers))
+        ax.set_xlim(self._xvalues[0], self._xvalues[-1])
 
     #    ax.yaxis.set_offset_position('right')
         ax.yaxis.offsetText.set_va('top')
@@ -401,6 +401,8 @@ class Butterfly(UTS, LegendMixin):
     ds : None | Dataset
         If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
         as strings.
+    x : str
+        Dimension to plot on the x-axis (default 'time').
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
@@ -409,8 +411,8 @@ class Butterfly(UTS, LegendMixin):
     """
     def __init__(self, epochs, Xax=None, sensors=None, axtitle='{name}',
                  xlabel=True, ylabel=True, xticklabels=True, color=None,
-                 ds=None, *args, **kwargs):
-        epochs, (xdim, linedim) = _base.unpack_epochs_arg(epochs, ('time', None),
+                 ds=None, x='time', *args, **kwargs):
+        epochs, (xdim, linedim) = _base.unpack_epochs_arg(epochs, (x, None),
                                                           Xax, ds)
         _EelFigure.__init__(self, 'Butterfly Plot', len(epochs), 4, 2, *args,
                             **kwargs)
@@ -422,8 +424,8 @@ class Butterfly(UTS, LegendMixin):
         vlims = _base.find_fig_vlims(epochs)
         legend_handles = {}
         for ax, layers in zip(self._axes, epochs):
-            h = _ax_butterfly(ax, layers, linedim, sensors, axtitle, color,
-                              vlims)
+            h = _ax_butterfly(ax, layers, xdim, linedim, sensors, axtitle,
+                              color, vlims)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
@@ -455,7 +457,7 @@ class _ax_bfly_epoch:
         mlw : scalar
             Marked sensor plot line width (default 1).
         """
-        self.lines = _plt_utsnd(ax, epoch, 'sensor', color=color, lw=lw,
+        self.lines = _plt_utsnd(ax, epoch, 'time', 'sensor', color=color, lw=lw,
                                 antialiased=antialiased)
 
         self.ax = ax

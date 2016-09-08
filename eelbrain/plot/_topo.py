@@ -16,9 +16,9 @@ from .._data_obj import SEQUENCE_TYPES
 from .._utils.numpy_utils import digitize
 from . import _base
 from ._base import _EelFigure
-from . import _utsnd
-from ._sensors import SENSOR_AXES_FRAME, SENSORMAP_FRAME, SensorMapMixin, \
-    _plt_map2d
+from ._utsnd import _ax_butterfly, _ax_im_array, _plt_im
+from ._sensors import (SENSOR_AXES_FRAME, SENSORMAP_FRAME, SensorMapMixin,
+    _plt_map2d)
 
 
 class Topomap(SensorMapMixin, _EelFigure):
@@ -352,8 +352,8 @@ class TopoButterfly(_EelFigure):
             self._topoax_data.append((ax2, layers))
 
             # plot data
-            p = _utsnd._ax_butterfly(ax1, layers, 'sensor', mark, False, color,
-                                     vlims)
+            p = _ax_butterfly(ax1, layers, 'time', 'sensor', mark, False, color,
+                              vlims)
             self.bfly_plots.append(p)
 
             self._xvalues = np.union1d(self._xvalues, p._xvalues)
@@ -518,7 +518,7 @@ class TopoButterfly(_EelFigure):
         self.canvas.draw()
 
 
-class _plt_topomap(_utsnd._plt_im):
+class _plt_topomap(_plt_im):
 
     _aspect = 'equal'
 
@@ -566,8 +566,8 @@ class _plt_topomap(_utsnd._plt_im):
             default_head_radius = None
 
         self._default_head_radius = default_head_radius
-        _utsnd._plt_im.__init__(self, ax, ndvar, overlay, cmaps, vlims,
-                                contours, (0, 1, 0, 1), interpolation, mask)
+        _plt_im.__init__(self, ax, ndvar, overlay, cmaps, vlims, contours,
+                         (0, 1, 0, 1), interpolation, mask)
 
     def _data_from_ndvar(self, ndvar):
         v = ndvar.get_data(('sensor',))
@@ -623,7 +623,7 @@ class _plt_topomap(_utsnd._plt_im):
             return interpolate.griddata(locs, v, self._mgrid, self._method)
 
 
-class _ax_topomap(_utsnd._ax_im_array):
+class _ax_topomap(_ax_im_array):
 
     def __init__(self, ax, layers, title, clip=False, clip_distance=0.05,
                  sensorlabels=None, mark=None, mcolor=None, mmarker=None,
@@ -850,8 +850,8 @@ class TopoArray(_EelFigure):
                                       picker=True)
             ax.ID = i
             ax.type = 'main'
-            im_plot = _utsnd._ax_im_array(ax, layers, 'time', axtitle[i],
-                                          vlims=vlims, contours=contours)
+            im_plot = _ax_im_array(ax, layers, 'time', axtitle[i], vlims=vlims,
+                                   contours=contours)
             self._axes.append(ax)
             self._array_axes.append(ax)
             self._array_plots.append(im_plot)
