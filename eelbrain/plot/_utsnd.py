@@ -10,7 +10,7 @@ import numpy as np
 
 from .._names import INTERPOLATE_CHANNELS
 from . import _base
-from ._base import _EelFigure, LegendMixin
+from ._base import _EelFigure, ColorMapMixin, LegendMixin
 from ._uts import UTS
 
 
@@ -179,7 +179,7 @@ class _ax_im_array(object):
             l.set_vlim(vmax, meas, vmin)
 
 
-class Array(_EelFigure):
+class Array(_EelFigure, ColorMapMixin):
     """Plot UTS data to a rectangular grid.
 
     Parameters
@@ -216,17 +216,15 @@ class Array(_EelFigure):
                  xticklabels=True, ds=None, x='time', vmax=None, vmin=None,
                  axtitle=True, interpolation=None, *args, **kwargs):
         epochs, (xdim, ydim) = _base.unpack_epochs_arg(epochs, (x, None), Xax, ds)
+        ColorMapMixin.__init__(self, epochs, None, vmax, vmin)
 
         nax = len(epochs)
         _EelFigure.__init__(self, "Array Plot", nax, 4, 2, *args, **kwargs)
 
         self.plots = []
-        cmaps = _base.find_fig_cmaps(epochs)
-        vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
-        contours = _base.find_fig_contours(epochs, vlims, None)
         for i, ax, layers in zip(xrange(nax), self._axes, epochs):
-            p = _ax_im_array(ax, layers, x, axtitle, interpolation, vlims,
-                             cmaps, contours)
+            p = _ax_im_array(ax, layers, x, axtitle, interpolation, self._vlims,
+                             self._cmaps, self._contours)
             self.plots.append(p)
 
         e0 = epochs[0][0]
@@ -234,41 +232,8 @@ class Array(_EelFigure):
         self._configure_yaxis_dim(e0.get_dim(ydim), ylabel)
         self._show()
 
-    def add_contour(self, meas, level, color='k'):
-        """Add a contour line
-
-        Parameters
-        ----------
-        meas : str
-            The measurement for which to add a contour line.
-        level : scalar
-            The value at which to draw the contour.
-        color : matplotlib color
-            The color of the contour line.
-        """
-        for p in self.plots:
-            p.add_contour(meas, level, color)
-        self.draw()
-
-    def set_cmap(self, cmap, meas=None):
-        """Change the colormap in the array plots
-
-        Parameters
-        ----------
-        cmap : str | colormap
-            New colormap.
-        meas : None | str
-            Measurement to which to apply the colormap. With None, it is
-            applied to all.
-        """
-        for p in self.plots:
-            p.set_cmap(cmap, meas)
-        self.draw()
-
-    def set_vlim(self, vmax=None, meas=None, vmin=None):
-        for p in self.plots:
-            p.set_vlim(vmax, meas, vmin)
-        self.draw()
+    def _fill_toolbar(self, tb):
+        ColorMapMixin._fill_toolbar(self, tb)
 
 
 class _plt_utsnd(object):

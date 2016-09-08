@@ -1462,6 +1462,76 @@ class ColorBarMixin(object):
                         **kwargs)
 
 
+class ColorMapMixin(ColorBarMixin):
+    """takes care of color-map and includes color-bar"""
+    def __init__(self, epochs, cmap, vmax, vmin):
+        ColorBarMixin.__init__(self, self.__get_cmap_params, epochs[0][0])
+        self._cmaps = find_fig_cmaps(epochs, cmap)
+        self._vlims = find_fig_vlims(epochs, vmax, vmin, self._cmaps)
+        self._contours = find_fig_contours(epochs, self._vlims, None)
+        self._first_meas = epochs[0][0].info.get('meas')
+
+    def __get_cmap_params(self):
+        return (self._cmaps[self._first_meas],) + self._vlims[self._first_meas]
+
+    def add_contour(self, meas, level, color='k'):
+        """Add a contour line
+
+        Parameters
+        ----------
+        meas : str
+            The measurement for which to add a contour line.
+        level : scalar
+            The value at which to draw the contour.
+        color : matplotlib color
+            The color of the contour line.
+        """
+        for p in self.plots:
+            p.add_contour(meas, level, color)
+        self.draw()
+
+    def set_cmap(self, cmap, meas=None):
+        """Change the colormap in the array plots
+
+        Parameters
+        ----------
+        cmap : str | colormap
+            New colormap.
+        meas : None | str
+            Measurement to which to apply the colormap. With None, it is
+            applied to all.
+        """
+        if meas is None:
+            meas = self._first_meas
+
+        for p in self.plots:
+            p.set_cmap(cmap, meas)
+        self._cmaps[meas] = cmap
+        self.draw()
+
+    def set_vlim(self, vmax=None, meas=None, vmin=None):
+        """Change the colormap limits
+
+        Parameters
+        ----------
+        vmax : scalar
+            Highest value to represent.
+        meas : str (optional)
+            Measurement type to apply (default is the first one found).
+        vmin : scalar (optional)
+            Smallest value to plot. The default is to infer ``vmin`` from vmax
+            and the colormap.
+        """
+        if meas is None:
+            meas = self._first_meas
+        vmin, vmax = fix_vlim_for_cmap(vmin, vmax, self._cmaps[meas])
+
+        for p in self.plots:
+            p.set_vlim(vmax, meas, vmin)
+        self._vlims[meas] = vmin, vmax
+        self.draw()
+
+
 class LegendMixin(object):
     __choices = ('invisible', 'separate window', 'draggable', 'upper right',
                  'upper left', 'lower left', 'lower right', 'right',
