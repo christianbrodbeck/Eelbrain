@@ -75,8 +75,7 @@ import PIL
 from .._utils.subp import command_exists
 from ..fmtxt import Image, texify
 from .._colorspaces import symmetric_cmaps, zerobased_cmaps, DEFAULT_CMAPS
-from .._data_obj import ascategorial, asndvar, isnumeric, cellname, \
-    DimensionMismatchError
+from .._data_obj import ascategorial, asndvar, isnumeric, cellname
 
 
 # constants
@@ -150,7 +149,8 @@ meas_display_unit = {'time': u'ms',
                      'V': u'µV',
                      'B': u'fT',
                      'sensor': int}
-unit_format = {u'ms': 1e3,
+unit_format = {u'V': 1,
+               u'ms': 1e3,
                u'mV': 1e3,
                u'µV': 1e6,
                u'pT': 1e12,
@@ -166,7 +166,7 @@ scale_formatters = {1e3: FuncFormatter(lambda x, pos: '%g' % (1e3 * x)),
 
 
 def find_axis_params_data(v, label):
-    """
+    """Find matching number formatter and label for display unit != data unit
 
     Parameters
     ----------
@@ -190,8 +190,8 @@ def find_axis_params_data(v, label):
         scale = v
         unit = None
     elif isnumeric(v):
-        meas = v.info.get('meas', None)
-        data_unit = v.info.get('unit', None)
+        meas = v.info.get('meas')
+        data_unit = v.info.get('unit')
         if meas in meas_display_unit:
             unit = meas_display_unit[meas]
             scale = unit_format[unit]
