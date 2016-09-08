@@ -19,6 +19,17 @@ class BrainMixin(object):
         self.__data = data
         self.__annot = None
 
+    def _get_cmap_params(self, label=True):
+        """Return parameters required to plot a colorbar"""
+        if self._hemi in ('both', 'split', 'lh'):
+            data = self.data_dict['lh']
+        elif self._hemi == 'rh':
+            data = self.data_dict[self._hemi]
+        else:
+            raise RuntimeError("Brain._hemi=%s" % repr(self._hemi))
+        cmap = ListedColormap(data['orig_ctable'] / 255., label)
+        return cmap, data['fmin'], data['fmax']
+
     def image(self, name, format='png', alt=None):
         """Create an FMText Image from a screenshot
 
@@ -42,7 +53,7 @@ class BrainMixin(object):
 
         Parameters
         ----------
-        label : None | str
+        label : str | bool
             Label for the x-axis (default is based on the data).
         label_position : 'left' | 'right' | 'top' | 'bottom'
             Position of the axis label. Valid values depend on orientation.
@@ -62,18 +73,12 @@ class BrainMixin(object):
         colorbar : :class:`~eelbrain.plot.ColorBar`
             ColorBar plot object.
         """
-        if self._hemi in ('both', 'split', 'lh'):
-            data = self.data_dict['lh']
-        elif self._hemi == 'rh':
-            data = self.data_dict[self._hemi]
-        else:
-            raise RuntimeError("Brain._hemi=%s" % repr(self._hemi))
-        _, label = find_axis_params_data(self.__data, label)
         unit = self.__data.info.get('unit', None)
-        cmap = ListedColormap(data['orig_ctable'] / 255., label)
-        return ColorBar(cmap, data['fmin'], data['fmax'], label, label_position,
-                        label_rotation, clipmin, clipmax, orientation, unit,
-                        (), *args, **kwargs)
+        _, label = find_axis_params_data(self.__data, label)
+        cmap, vmin, vmax = self._get_cmap_params(label)
+        return ColorBar(cmap, vmin, vmax, label, label_position, label_rotation,
+                        clipmin, clipmax, orientation, unit, (), *args,
+                        **kwargs)
 
     def save_image(self, filename, transparent=True):
         """Save current image to disk

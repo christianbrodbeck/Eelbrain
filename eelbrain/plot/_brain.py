@@ -12,7 +12,7 @@ import mne
 
 from .._data_obj import asndvar, NDVar
 from ..fmtxt import Image, im_table, ms
-from ._base import _EelFigure, ImLayout
+from ._base import _EelFigure, ImLayout, ColorBarMixin
 from ._colors import ColorList
 
 
@@ -743,6 +743,109 @@ def _voxel_brain(data, lut, vmin, vmax):
     return figure
 
 
+################################################################################
+# Bin-Tables
+############
+# Top-level functions for fmtxt image tables and classes for Eelfigures.
+# - _x_bin_table_ims() wrap 'x' brain plot function
+# - _bin_table_ims() creates ims given a brain plot function
+
+class _BinTable(_EelFigure, ColorBarMixin):
+    """Super-class"""
+    def __init__(self, ndvar, tstart, tstop, tstep, im_func, surf, views, hemi,
+                 summary, title, *args, **kwargs):
+        if isinstance(views, str):
+            views = (views,)
+        data = ndvar.bin(tstep, tstart, tstop, summary)
+        n_columns = len(data.time)
+        n_hemis = (data.source.lh_n > 0) + (data.source.rh_n > 0)
+        n_rows = len(views) * n_hemis
+
+        # Make sure app is initialized. If not, mayavi takes over the menu bar
+        # and quits after closing the window
+        from .._wxgui import get_app
+        get_app()
+
+        layout = ImLayout(n_rows, n_columns, 0.5 * bool(title), 0.5, 4/3, 2,
+                          *args, **kwargs)
+        _EelFigure.__init__(self, "BinTable", layout, None, None, None,
+                            title=title)
+
+        res_w = int(layout.axw * layout.dpi)
+        res_h = int(layout.axh * layout.dpi)
+        ims, header, cmap_params = im_func(data, surf, views, hemi, axw=res_w,
+                                           axh=res_h)
+        for row in xrange(n_rows):
+            for column in xrange(n_columns):
+                ax = self._axes[row * n_columns + column]
+                ax.imshow(ims[row][column])
+
+        # time labels
+        y = 0.25 / layout.h
+        for i, label in enumerate(header):
+            x = (0.5 + i) / layout.ncol
+            self.figure.text(x, y, label, va='center', ha='center')
+
+        ColorBarMixin.__init__(self, lambda: cmap_params, data)
+        self._show()
+
+    def _fill_toolbar(self, tb):
+        ColorBarMixin._fill_toolbar(self, tb)
+
+
+class BinTable(_BinTable):
+    """DSPM plot bin-table"""
+    def __init__(self, ndvar, tstart=None, tstop=None, tstep=0.1,
+                 fmin=13, fmax=22, fmid=None,
+                 surf='smoothwm', views=('lat', 'med'), hemi=None,
+                 summary='sum', title=None, *args, **kwargs):
+        im_func = partial(_dspm_bin_table_ims, fmin, fmax, fmid)
+        _BinTable.__init__(self, ndvar, tstart, tstop, tstep, im_func, surf,
+                           views, hemi, summary, title, *args, **kwargs)
+
+
+class ClusterBinTable(_BinTable):
+    """Data plotted on brain for different time bins and views
+
+    Parameters
+    ----------
+    ndvar : NDVar (time x source)
+        Data to be plotted.
+    tstart : None | scalar
+        Time point of the start of the first bin (inclusive; None to use the
+        first time point in ndvar).
+    tstop : None | scalar
+        End of the last bin (exclusive; None to end with the last time point
+        in ndvar).
+    tstep : scalar
+        Size of each bin (in seconds).
+    surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
+        Freesurfer surface to use as brain geometry.
+    views : list of str
+        Views to display (for each hemisphere, lh first). Options are:
+        'rostral', 'parietal', 'frontal', 'ventral', 'lateral', 'caudal',
+        'medial', 'dorsal'.
+    hemi : 'lh' | 'rh' | 'both'
+        Which hemispheres to plot (default based on data).
+    summary : str
+        How to summarize data in each time bin. Can be the name of a numpy
+        function that takes an axis parameter (e.g., 'sum', 'mean', 'max') or
+        'extrema' which selects the value with the maximum absolute value.
+        Default is sum.
+    vmax : scalar != 0
+        Maximum value in the colormap. Default is the maximum value in the
+        cluster.
+    title : str
+        Figure title.
+    """
+    def __init__(self, ndvar, tstart=None, tstop=None, tstep=0.1,
+                 surf='smoothwm', views=('lat', 'med'), hemi=None,
+                 summary='sum', vmax=None, title=None, *args, **kwargs):
+        im_func = partial(_cluster_bin_table_ims, vmax)
+        _BinTable.__init__(self, ndvar, tstart, tstop, tstep, im_func, surf,
+                           views, hemi, summary, title, *args, **kwargs)
+
+
 def dspm_bin_table(ndvar, fmin=2, fmax=8, fmid=None,
                    tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
                    views=('lat', 'med'), hemi=None, summary='extrema',
@@ -819,103 +922,9 @@ def dspm_bin_table(ndvar, fmin=2, fmax=8, fmid=None,
     plot.brain.bin_table: plotting clusters as bin-table
     """
     data = ndvar.bin(tstep, tstart, tstop, summary)
-
-    def brain_(hemi_):
-        return dspm(data, fmin, fmax, fmid, surf, views[0], hemi_, False, None,
-                    axw, axh, None, None, *args, **kwargs)
-
-    ims, header = _bin_table_ims(data, hemi, views, brain_)
+    ims, header, _ = _dspm_bin_table_ims(fmin, fmax, fmid, data, surf, views,
+                                         hemi, axw, axh, *args, **kwargs)
     return im_table(ims, header)
-
-
-class _BinTable(_EelFigure):
-    def __init__(self, ndvar, tstart, tstop, tstep, im_func, surf, views, hemi,
-                 summary, title, *args, **kwargs):
-        if isinstance(views, str):
-            views = (views,)
-        data = ndvar.bin(tstep, tstart, tstop, summary)
-        n_columns = len(data.time)
-        n_hemis = (data.source.lh_n > 0) + (data.source.rh_n > 0)
-        n_rows = len(views) * n_hemis
-
-        # Make sure app is initialized. If not, mayavi takes over the menu bar
-        # and quits after closing the window
-        from .._wxgui import get_app
-        get_app()
-
-        layout = ImLayout(n_rows, n_columns, 0.5 * bool(title), 0.5, 4/3, 2,
-                          *args, **kwargs)
-        _EelFigure.__init__(self, "BinTable", layout, None, None, None,
-                            title=title)
-
-        res_w = int(layout.axw * layout.dpi)
-        res_h = int(layout.axh * layout.dpi)
-        ims, header = im_func(data, surf, views, hemi, axw=res_w, axh=res_h)
-        for row in xrange(n_rows):
-            for column in xrange(n_columns):
-                ax = self._axes[row * n_columns + column]
-                ax.imshow(ims[row][column])
-
-        # time labels
-        y = 0.25 / layout.h
-        for i, label in enumerate(header):
-            x = (0.5 + i) / layout.ncol
-            self.figure.text(x, y, label, va='center', ha='center')
-
-        self._show()
-
-
-class BinTable(_BinTable):
-    "DSPM plot bin-table"
-    def __init__(self, ndvar, tstart=None, tstop=None, tstep=0.1, fmin=13,
-                 fmax=22, fmid=None,
-                 surf='smoothwm', views=('lat', 'med'), hemi=None,
-                 summary='sum', title=None, *args, **kwargs):
-        im_func = partial(_dspm_bin_table_ims, fmin, fmax, fmid)
-        _BinTable.__init__(self, ndvar, tstart, tstop, tstep, im_func, surf,
-                           views, hemi, summary, title, *args, **kwargs)
-
-
-class ClusterBinTable(_BinTable):
-    """Data plotted on brain for different time bins and views
-
-    Parameters
-    ----------
-    ndvar : NDVar (time x source)
-        Data to be plotted.
-    tstart : None | scalar
-        Time point of the start of the first bin (inclusive; None to use the
-        first time point in ndvar).
-    tstop : None | scalar
-        End of the last bin (exclusive; None to end with the last time point
-        in ndvar).
-    tstep : scalar
-        Size of each bin (in seconds).
-    surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
-        Freesurfer surface to use as brain geometry.
-    views : list of str
-        Views to display (for each hemisphere, lh first). Options are:
-        'rostral', 'parietal', 'frontal', 'ventral', 'lateral', 'caudal',
-        'medial', 'dorsal'.
-    hemi : 'lh' | 'rh' | 'both'
-        Which hemispheres to plot (default based on data).
-    summary : str
-        How to summarize data in each time bin. Can be the name of a numpy
-        function that takes an axis parameter (e.g., 'sum', 'mean', 'max') or
-        'extrema' which selects the value with the maximum absolute value.
-        Default is sum.
-    vmax : scalar != 0
-        Maximum value in the colormap. Default is the maximum value in the
-        cluster.
-    title : str
-        Figure title.
-    """
-    def __init__(self, ndvar, tstart=None, tstop=None, tstep=0.1,
-                 surf='smoothwm', views=('lat', 'med'), hemi=None,
-                 summary='sum', vmax=None, title=None, *args, **kwargs):
-        im_func = partial(_cluster_bin_table_ims, vmax)
-        _BinTable.__init__(self, ndvar, tstart, tstop, tstep, im_func, surf,
-                           views, hemi, summary, title, *args, **kwargs)
 
 
 def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
@@ -992,8 +1001,8 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
     plot.brain.dspm_bin_table: plotting SPMs as bin-table
     """
     data = ndvar.bin(tstep, tstart, tstop, summary)
-    ims, header = _cluster_bin_table_ims(vmax, data, surf, views, hemi, axw,
-                                         axh, *args, **kwargs)
+    ims, header, _ = _cluster_bin_table_ims(vmax, data, surf, views, hemi, axw,
+                                            axh, *args, **kwargs)
     return im_table(ims, header)
 
 
@@ -1042,6 +1051,7 @@ def _bin_table_ims(data, hemi, views, brain_func):
     else:
         raise ValueError("hemi=%s" % repr(hemi))
 
+    cmap_params = None
     for hemi in hemis:
         brain = brain_func(hemi)
 
@@ -1053,10 +1063,12 @@ def _bin_table_ims(data, hemi, views, brain_func):
                 im = brain.screenshot_single('rgba', True)
                 line.append(im)
         ims += hemi_lines
-        brain.close()  # causes segfault in wx
+        if cmap_params is None:
+            cmap_params = brain._get_cmap_params()
+        brain.close()
 
     header = ['%i - %i ms' % (ms(t0), ms(t1)) for t0, t1 in data.info['bins']]
-    return ims, header
+    return ims, header, cmap_params
 
 
 def connectivity(source):

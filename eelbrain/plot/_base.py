@@ -1403,6 +1403,65 @@ class ImLayout(Layout):
         return axes
 
 
+class ColorBarMixin(object):
+    """Colorbar toolbar button mixin
+
+    Parameters
+    ----------
+    param_func : func
+        Function that returns color-bar parameters.
+    """
+    def __init__(self, param_func, data):
+        self.__get_params = param_func
+        self.__unit = data.info.get('unit', None)
+
+    def _fill_toolbar(self, tb):
+        import wx
+        from .._wxutils import ID
+
+        btn = wx.Button(tb, ID.PLOT_COLORBAR, 'CBar')
+        tb.AddControl(btn, "Color Bar")
+        btn.Bind(wx.EVT_BUTTON, self.__OnPlotColorBar)
+
+    def __OnPlotColorBar(self, event):
+        return self.plot_colorbar()
+
+    def plot_colorbar(self, label=True, label_position=None,
+                      label_rotation=None, clipmin=None, clipmax=None,
+                      orientation='horizontal', *args, **kwargs):
+        """Plot a colorbar corresponding to the displayed data
+
+        Parameters
+        ----------
+        label : str | bool
+            Label for the x-axis (default is based on the data).
+        label_position : 'left' | 'right' | 'top' | 'bottom'
+            Position of the axis label. Valid values depend on orientation.
+        label_rotation : scalar
+            Angle of the label in degrees (For horizontal colorbars, the default is
+            0; for vertical colorbars, the default is 0 for labels of 3 characters
+            and shorter, and 90 for longer labels).
+        clipmin : scalar
+            Clip the color-bar below this value.
+        clipmax : scalar
+            Clip the color-bar above this value.
+        orientation : 'horizontal' | 'vertical'
+            Orientation of the bar (default is horizontal).
+
+        Returns
+        -------
+        colorbar : plot.ColorBar
+            ColorBar plot object.
+        """
+        from . import ColorBar
+        if label is True:
+            label = self.__unit
+        cmap, vmin, vmax = self.__get_params()
+        return ColorBar(cmap, vmin, vmax, label, label_position, label_rotation,
+                        clipmin, clipmax, orientation, self.__unit, (), *args,
+                        **kwargs)
+
+
 class LegendMixin(object):
     __choices = ('invisible', 'separate window', 'draggable', 'upper right',
                  'upper left', 'lower left', 'lower right', 'right',
