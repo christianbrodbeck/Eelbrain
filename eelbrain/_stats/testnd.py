@@ -224,7 +224,8 @@ class _Result(object):
             and 0 everywhere else.
         """
         if self._cdist is None:
-            raise RuntimeError("Method only applies to results with samples >= 0")
+            raise RuntimeError("Method only applies to results of thresholded "
+                               "tests or results with samples >= 0")
         return self._cdist.masked_parameter_map(pmin, **sub)
 
     def cluster(self, cluster_id):
