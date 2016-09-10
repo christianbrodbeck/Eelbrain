@@ -1,12 +1,15 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 "Internet communication utilities"
 from __future__ import print_function
+from distutils.version import LooseVersion
 from email.mime.text import MIMEText
 import keyring
 import pdb
 import smtplib
 import socket
+import sys
 import traceback
+import xmlrpclib
 
 from .system import caffeine
 from . import ui
@@ -14,6 +17,23 @@ from . import ui
 
 NOOB_DOMAIN = "Eelbrain"
 NOOB_ADDRESS = 'n00b.eelbrain@gmail.com'
+
+
+def check_for_update():
+    """Check whether a new version of Eelbrain is available
+
+    Prints a message if an update is available on the Python package index, does
+    nothing otherwise.
+    """
+    current = sys.modules['eelbrain'].__version__
+    if current == 'dev':
+        return print("Using Eelbrain development version")
+    pypi = xmlrpclib.ServerProxy('https://pypi.python.org/pypi')
+    versions = pypi.package_releases('eelbrain')
+    newest = versions[-1]
+    if LooseVersion(newest) > LooseVersion(current):
+        print("New Eelbrain version available: %s (currently installed is %s)" %
+              (newest, current))
 
 
 def get_smtpserver(password, new_password=False):
