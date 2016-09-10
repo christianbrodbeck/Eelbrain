@@ -1,4 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+"Utilities for testing"
 from distutils.version import LooseVersion
 from functools import wraps
 from importlib import import_module

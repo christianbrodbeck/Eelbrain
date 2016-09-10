@@ -1,8 +1,4 @@
-'''
-Created on Feb 12, 2013
-
-@author: Christian M Brodbeck
-'''
+"Utilities for MNE data processing"
 from itertools import izip
 import os
 

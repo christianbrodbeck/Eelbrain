@@ -1,11 +1,5 @@
-'''
-Some functions which print data in a different way.
-
-
-Created on Feb 28, 2012
-
-@author: christian
-'''
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+"Some functions which print data in a different way"
 from __future__ import print_function
 import os
 import numpy as np
@@ -27,7 +21,6 @@ def _dict_repr(dictionary, indent=0):
             r = repr_1line(v, w=40)
             out.append(head + repr(k) + ': ' + r)
     return out
-
 
 
 def printdict(dictionary, w=100, fmt='%r', sort=True, max_v_lines=6):

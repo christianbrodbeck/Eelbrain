@@ -1,6 +1,7 @@
-"""
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+"""Wrapper for binaries
 
-for permission errors: try ``os.chmod`` or ``os.chown``
+For permission errors: try ``os.chmod`` or ``os.chown``
 
 
 subprocess documentation
@@ -10,11 +11,6 @@ http://docs.python.org/library/subprocess.html
 http://www.doughellmann.com/PyMOTW/subprocess/
 http://explanatorygap.net/2010/05/10/python-subprocess-over-shell/
 http://codeghar.wordpress.com/2011/12/09/introduction-to-python-subprocess-module/
-
-
-Created on Mar 4, 2012
-
-@author: christian
 """
 from __future__ import print_function
 

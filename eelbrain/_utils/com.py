@@ -1,4 +1,5 @@
-'''Communication utilities'''
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+"Internet communication utilities"
 from __future__ import print_function
 from email.mime.text import MIMEText
 import keyring
