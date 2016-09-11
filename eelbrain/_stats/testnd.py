@@ -452,6 +452,9 @@ class t_contrast_rel(_Result):
     def __init__(self, Y, X, contrast, match=None, sub=None, ds=None, tail=0,
                  samples=0, pmin=None, tmin=None, tfce=False, tstart=None,
                  tstop=None, parc=None, force_permutation=False, **criteria):
+        if match is None:
+            raise TypeError("The `match` parameter needs to be specified for "
+                            "repeated measures test t_contrast_rel")
         ct = Celltable(Y, X, match, sub, ds=ds, coercion=asndvar)
 
         # setup contrast
