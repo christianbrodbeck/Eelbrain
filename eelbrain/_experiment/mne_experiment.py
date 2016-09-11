@@ -1388,7 +1388,7 @@ class MneExperiment(FileTree):
                     elif self.auto_delete_cache == 'debug':
                         print(os.linesep.join(msg))
                         print("delete:  delete invalid cache files\n"
-                              "abort:  raise an error\n"
+                              "abort:  raise an error (debugger can be used)\n"
                               "ignore:  proceed without doing anything\n"
                               "revalidate:  don't delete any cache files but "
                               "write a new cache-state file")
