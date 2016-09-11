@@ -53,6 +53,9 @@ from .definitions import find_dependent_epochs, find_epochs_vars, find_test_vars
 __all__ = ['MneExperiment']
 
 
+# current cache state version
+CACHE_STATE_VERSION = 3
+
 # Allowable parameters
 ICA_REJ_PARAMS = {'kind', 'source', 'epoch', 'interpolation', 'n_components',
                   'random_state', 'method'}
@@ -1155,7 +1158,13 @@ class MneExperiment(FileTree):
                                    "the eelbrain-cache folder." % (tc, tsys))
             cache_state = load.unpickle(cache_state_path)
             cache_state_v = cache_state.get('version', 0)
-            # Epochs represented in Epoch class since Eelbrain 0.25
+            if cache_state_v > CACHE_STATE_VERSION:
+                raise RuntimeError("The %s cache is from a newer version of "
+                                   "Eelbrain than you are currently using. "
+                                   "Either upgrade Eelbrain or delete the cache "
+                                   "folder.")
+
+            # Epochs represented as dict up to Eelbrain 0.24
             if cache_state_v >= 3:
                 epoch_state_v = epoch_state
             else:
@@ -1446,7 +1455,7 @@ class MneExperiment(FileTree):
         elif not os.path.exists(cache_dir):
             os.mkdir(cache_dir)
 
-        new_state = {'version': 3,
+        new_state = {'version': CACHE_STATE_VERSION,
                      'groups': self._groups,
                      'epochs': epoch_state,
                      'tests': self._tests,
