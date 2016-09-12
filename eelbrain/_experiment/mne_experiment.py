@@ -369,8 +369,8 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {class-name}.log')
         'evoked-dir': os.path.join('{cache-dir}', 'evoked'),
         'evoked-base': os.path.join('{evoked-dir}', '{subject}', '{session} '
                                     '{sns_kind} {epoch} {model} {evoked_kind}'),
-        'evoked-file': os.path.join('{evoked-base}.pickled'),
-        'evoked-fiff-file': os.path.join('{evoked-base}-ave.fif'),
+        'evoked-file': os.path.join('{evoked-base}-ave.fif'),
+        'evoked-old-file': os.path.join('{evoked-base}.pickled'),  # removed for 0.25
         # test files
         'test-dir': os.path.join('{cache-dir}', 'test'),
         'data_parc': 'unmasked',
@@ -386,7 +386,7 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {class-name}.log')
         'mri-cfg-file': os.path.join('{mri-dir}', 'MRI scaling parameters.cfg'),
         'mri-file': os.path.join('{mri-dir}', 'mri', 'orig.mgz'),
         'bem-file': os.path.join('{bem-dir}', '{mrisubject}-inner_skull-bem.fif'),
-        'bem-sol-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),  # removed, but here to delete old files
+        'bem-sol-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),  # removed for 0.24
         'head-bem-file': os.path.join('{bem-dir}', '{mrisubject}-head.fif'),
         'src-file': os.path.join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
         'fiducials-file': os.path.join('{bem-dir}', '{mrisubject}-fiducials.fif'),
@@ -1364,11 +1364,6 @@ class MneExperiment(FileTree):
                     rm['test-file'].add({'test': test})
                     rm['report-file'].add({'test': test})
 
-                # update for "companion" files
-                if 'evoked-file' in rm:
-                    for arg_dict in rm['evoked-file']:
-                        rm['evoked-fiff-file'].add(arg_dict)
-
                 # find actual files to delete
                 files = set()
                 for temp, arg_dicts in rm.iteritems():
@@ -1503,11 +1498,9 @@ class MneExperiment(FileTree):
     def _evoked_mtime(self):
         "Return mtime if the evoked file is up-to-date, None otherwise"
         path = self.get('evoked-file')
-        fiff_path = self.get('evoked-fiff-file')
-        if os.path.exists(path) and os.path.exists(fiff_path):
+        if os.path.exists(path):
             evoked_mtime = os.path.getmtime(path)
-            fiff_mtime = os.path.getmtime(fiff_path)
-            if min(evoked_mtime, fiff_mtime) > self._epochs_mtime():
+            if evoked_mtime > self._epochs_mtime():
                 return evoked_mtime
 
     def _evoked_stc_mtime(self):
@@ -3727,13 +3720,16 @@ class MneExperiment(FileTree):
             Set to an int in order to override the epoch decim factor.
         """
         dst = self.get('evoked-file', mkdir=True, **kwargs)
-        fiff_dst = self.get('evoked-fiff-file')
         epoch = self._epochs[self.get('epoch')]
         use_cache = ((not decim or decim == epoch.decim) and
                      (isinstance(data_raw, bool) or data_raw == self.get('raw')))
+        model = self.get('model')
+        equal_count = self.get('equalize_evoked_count') == 'eq'
         if use_cache and self._evoked_mtime():
-            ds = load.unpickle(dst)
-            ds['evoked'] = mne.read_evokeds(fiff_dst, proj=False)
+            ds = self.load_selected_events(data_raw=data_raw)
+            ds = ds.aggregate(model, drop_bad=True, equal_count=equal_count,
+                              drop=('i_start', 't_edf', 'T', 'index'))
+            ds['evoked'] = mne.read_evokeds(dst, proj=False)
             return ds
 
         # load the epochs (post baseline-correction trigger shift requires
@@ -3745,21 +3741,14 @@ class MneExperiment(FileTree):
             ds = self.load_epochs(ndvar=False, decim=decim, data_raw=data_raw)
 
         # aggregate
-        equal_count = self.get('equalize_evoked_count') == 'eq'
-        ds_agg = ds.aggregate(self.get('model'), drop_bad=True,
+        ds_agg = ds.aggregate(model, drop_bad=True, equal_count=equal_count,
                               drop=('i_start', 't_edf', 'T', 'index'),
-                              equal_count=equal_count, never_drop=('epochs',))
+                              never_drop=('epochs',))
+        ds_agg.rename('epochs', 'evoked')
 
         # save
-        ds_agg.rename('epochs', 'evoked')
-        if 'raw' in ds_agg.info:
-            del ds_agg.info['raw']
-
         if use_cache:
-            evoked = ds_agg.pop('evoked')
-            save.pickle(ds_agg, dst)
-            mne.write_evokeds(fiff_dst, evoked)
-            ds_agg['evoked'] = evoked
+            mne.write_evokeds(dst, ds_agg['evoked'])
 
         return ds_agg
 
