@@ -10,6 +10,17 @@ from eelbrain.fmtxt import asfmtext
 from eelbrain._stats import test as _test
 
 
+def test_correlations():
+    "Test test.correlations()"
+    ds = datasets.get_uv()
+
+    print(test.correlations('fltvar', 'fltvar2', ds=ds))
+    print(test.correlations('fltvar', 'fltvar2', 'A', ds=ds))
+    table = test.correlations('fltvar', 'fltvar2', 'A%B', ds=ds)
+    print(table)
+    eq_(str(table[2][2]).strip(), '-0.276')
+
+
 def test_star():
     "Test the star function"
     assert_array_equal(_test.star([0.1, 0.04, 0.01], int), [0, 1, 2])
