@@ -207,6 +207,12 @@ class _Result(object):
                                "result with the current version.")
         return self.sub
 
+    def _assert_has_cdist(self):
+        if self._cdist is None:
+            raise RuntimeError("This method only applies to results of tests "
+                               "with threshold-based clustering and tests with "
+                               "a permutation distribution (samples > 0)")
+
     def masked_parameter_map(self, pmin=0.05, **sub):
         """Create a copy of the parameter map masked by significance
 
@@ -223,9 +229,7 @@ class _Result(object):
             NDVar with data from the original parameter map wherever p <= pmin
             and 0 everywhere else.
         """
-        if self._cdist is None:
-            raise RuntimeError("Method only applies to results of thresholded "
-                               "tests or results with samples >= 0")
+        self._assert_has_cdist()
         return self._cdist.masked_parameter_map(pmin, **sub)
 
     def cluster(self, cluster_id):
@@ -245,9 +249,7 @@ class _Result(object):
         -----
         Clusters only have stable ids for thresholded cluster distributions.
         """
-        if self._cdist is None:
-            err = "Method only applies to results with samples > 0"
-            raise RuntimeError(err)
+        self._assert_has_cdist()
         return self._cdist.cluster(cluster_id)
 
     @LazyProperty
@@ -275,10 +277,7 @@ class _Result(object):
         ds : Dataset
             Dataset with information about the clusters.
         """
-        if self._cdist is None:
-            err = ("Test results have no clustering (set samples to an int "
-                   " >= 0 to find clusters")
-            raise RuntimeError(err)
+        self._assert_has_cdist()
         return self._cdist.clusters(pmin, maps, **sub)
 
     def find_peaks(self):
@@ -289,9 +288,7 @@ class _Result(object):
         ds : Dataset
             Dataset with information about the peaks.
         """
-        if self._cdist is None:
-            err = "Method only applies to results with samples > 0"
-            raise RuntimeError(err)
+        self._assert_has_cdist()
         return self._cdist.find_peaks()
 
     def compute_probability_map(self, **sub):
@@ -302,9 +299,7 @@ class _Result(object):
         probability : NDVar
             Map of p-values.
         """
-        if self._cdist is None:
-            err = "Method only applies to results with samples > 0"
-            raise RuntimeError(err)
+        self._assert_has_cdist()
         return self._cdist.compute_probability_map(**sub)
 
     def info_list(self, computation=True):
@@ -1286,10 +1281,8 @@ class _MultiEffectResult(_Result):
         -----
         Clusters only have stable ids for thresholded cluster distributions.
         """
-        if self._cdist is None:
-            err = "Method only applies to results with samples > 0"
-            raise RuntimeError(err)
-        elif isinstance(effect, basestring):
+        self._assert_has_cdist()
+        if isinstance(effect, basestring):
             effect = self.effects.index(effect)
         return self._cdist[effect].cluster(cluster_id)
 
@@ -1307,10 +1300,8 @@ class _MultiEffectResult(_Result):
         probability : NDVar
             Map of p-values.
         """
-        if self._cdist is None:
-            err = "Method only applies to results with samples > 0"
-            raise RuntimeError(err)
-        elif isinstance(effect, basestring):
+        self._assert_has_cdist()
+        if isinstance(effect, basestring):
             effect = self.effects.index(effect)
         return self._cdist[effect].compute_probability_map(**sub)
 
@@ -1332,9 +1323,8 @@ class _MultiEffectResult(_Result):
             NDVar with data from the original parameter map wherever p <= pmin
             and 0 everywhere else.
         """
-        if self._cdist is None:
-            raise RuntimeError("Method only applies to results with samples >= 0")
-        elif isinstance(effect, basestring):
+        self._assert_has_cdist()
+        if isinstance(effect, basestring):
             effect = self.effects.index(effect)
         return self._cdist[effect].masked_parameter_map(pmin, **sub)
 
@@ -1356,10 +1346,7 @@ class _MultiEffectResult(_Result):
         ds : Dataset
             Dataset with information about the clusters.
         """
-        if self._cdist is None:
-            err = ("Test results have no clustering (set samples to an int "
-                   " >= 0 to find clusters")
-            raise RuntimeError(err)
+        self._assert_has_cdist()
         dss = []
         info = {}
         for cdist in self._cdist:
@@ -1380,9 +1367,7 @@ class _MultiEffectResult(_Result):
         ds : Dataset
             Dataset with information about the peaks.
         """
-        if self._cdist is None:
-            err = "Method only applies to results with samples > 0"
-            raise RuntimeError(err)
+        self._assert_has_cdist()
         dss = []
         for cdist in self._cdist:
             ds = cdist.find_peaks()
