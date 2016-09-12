@@ -476,9 +476,9 @@ def pairwise(Y, X, match=None, sub=None, ds=None,  # data in
         Repeated measures factor.
     sub : None | index-array
         Perform tests with a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is given, all data-objects can be specified as names of
-        Dataset variables
+        Dataset variables.
 
     Returns
     -------
@@ -634,32 +634,27 @@ def _pairwise(data, within=True, parametric=True, corr='Hochberg',
     return out
 
 
-
-def correlations(Y, Xs, cat=None, sub=None, ds=None, levels=[.05, .01, .001],
-                 diff=None, pmax=None, nan=True):  # , match=None):
+def correlations(y, x, cat=None, sub=None, ds=None, levels=(.05, .01, .001)):
     """Correlation with one or more predictors.
 
     Parameters
     ----------
-    Y : Var
+    y : Var
         First variable
-    X : Var | list of Var
+    x : Var | list of Var
         second variable (or list of variables).
     cat : categorial
         Show correlations separately for different groups in the
         data. Can be a ``Factor`` (the correlation for each level is shown
         separately) or an array of ``bool`` values (e.g. from a comparison like
         ``Stim==1``)
-    levels : list of float
-        Significance levels to mark.
-    diff :
-        (Factor, cat_1, cat_2)
-    sub :
+    sub : index
         Use only a subset of the data
-    pmax : float | None
-        Don't show correlations with p > pmax
-    nan : bool
-        Display correlation which yield NAN;
+    ds : Dataset
+        If a Dataset is given, all data-objects can be specified as names of
+        Dataset variables.
+    levels : sequence of float
+        Significance levels to mark.
 
     Returns
     -------
@@ -667,17 +662,14 @@ def correlations(Y, Xs, cat=None, sub=None, ds=None, levels=[.05, .01, .001],
         Table with correlations.
     """
     sub = assub(sub, ds)
-    Y = asvar(Y, sub, ds)
-    if isvar(Xs) or isinstance(Xs, basestring):  # FIXME: better way to specify Xs
-        Xs = (Xs,)
-    Xs = [asvar(X, sub, ds) for X in Xs]
+    y = asvar(y, sub, ds)
+    if isvar(x) or isinstance(x, basestring):
+        x = (x,)
+    x = [asvar(x_, sub, ds) for x_ in x]
     if cat is not None:
         cat = ascategorial(cat, sub, ds)
 
-    levels = np.array(levels)
-
-    if diff is not None:
-        raise NotImplementedError
+    levels = np.asarray(levels)
 
     if cat is None:
         table = fmtxt.Table('l' * 4)
@@ -687,79 +679,48 @@ def correlations(Y, Xs, cat=None, sub=None, ds=None, levels=[.05, .01, .001],
         table.cells('Variable', 'Category', 'r', 'p', 'n')
 
     table.midrule()
-    table.title("Correlations with %s" % (Y.name))
+    table.title("Correlations with %s" % dataobj_repr(y))
 
-    table._my_nan_count = 0
-
-    for X in Xs:
+    for x_ in x:
         if cat is None:
-            _corr_to_table(table, Y, X, cat, levels, pmax=pmax, nan=nan)
+            _corr_to_table(table, y, x_, None, levels)
         else:
-            printXname = True
+            print_xname = True
             for cell in cat.cells:
-                tlen = len(table)
                 sub = (cat == cell)
-                _corr_to_table(table, Y, X, sub, levels, pmax=pmax, nan=nan,
-                               printXname=printXname, label=cellname(cell))
+                _corr_to_table(table, y, x_, sub, levels, print_xname,
+                               cellname(cell))
+                print_xname = False
 
-                if len(table) > tlen:
-                    printXname = False
-
-    # last row
-    if pmax is None:
-        p_text = ''
-    else:
-        p_text = 'all other p>{p}'.format(p=pmax)
-    if nan is False and table._my_nan_count > 0:
-        nan_text = '%s NANs' % table._my_nan_count
-    else:
-        nan_text = ''
-    if p_text or nan_text:
-        if p_text and nan_text:
-            text = ', '.join([p_text, nan_text])
-        else:
-            text = ''.join([p_text, nan_text])
-        table.cell("(%s)" % text)
     return table
 
 
-
-def _corr(Y, X, sub=None):
-    """
-    index has to be bool array; returns r, p, n
-
-    """
+def _corr(y, x, sub):
+    """index has to be bool array; returns r, p, n"""
     if sub is not None:
-        Y = Y[sub]
-        X = X[sub]
-    n = len(Y)
-    assert n == len(X)
+        y = y[sub]
+        x = x[sub]
+    n = len(y)
+    assert n == len(x)
     df = n - 2
-    r = np.corrcoef(Y.x, X.x)[0, 1]
+    r = np.corrcoef(y.x, x.x)[0, 1]
     t = r / np.sqrt((1 - r ** 2) / df)
     p = scipy.stats.t.sf(np.abs(t), df) * 2
     return r, p, n
 
 
-
-def _corr_to_table(table, Y, X, categories, levels, printXname=True, label=False,
-                   pmax=None, nan=True):
-    r, p, n = _corr(X, Y, categories)
-    if (pmax is None) or (p <= pmax):
-        if nan or (not np.isnan(r)):
-            nstars = np.sum(p <= levels)
-            if printXname:
-                table.cell(X.name)
-            else:
-                table.cell()
-            if label:
-                table.cell(label)
-            table.cell(fmtxt.stat(r, '%.3f', nstars, len(levels), drop0=True))
-            table.cell(fmtxt.P(p))
-            table.cell(n)
-        else:
-            table._my_nan_count += 1
-
+def _corr_to_table(table, y, x, sub, levels, print_xname=True, label=False):
+    r, p, n = _corr(x, y, sub)
+    nstars = np.sum(p <= levels)
+    if print_xname:
+        table.cell(dataobj_repr(x))
+    else:
+        table.cell()
+    if label:
+        table.cell(label)
+    table.cell(fmtxt.stat(r, '%.3f', nstars, len(levels), drop0=True))
+    table.cell(fmtxt.P(p))
+    table.cell(n)
 
 
 class bootstrap_pairwise(object):
