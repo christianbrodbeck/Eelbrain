@@ -14,11 +14,19 @@ def test_correlations():
     "Test test.correlations()"
     ds = datasets.get_uv()
 
-    print(test.correlations('fltvar', 'fltvar2', ds=ds))
-    print(test.correlations('fltvar', 'fltvar2', 'A', ds=ds))
-    table = test.correlations('fltvar', 'fltvar2', 'A%B', ds=ds)
-    print(table)
-    eq_(str(table[2][2]).strip(), '-0.276')
+    res = test.correlations('fltvar', 'fltvar2', ds=ds)
+    print(res)
+    eq_(str(res[2][1]).strip(), '.398***')
+
+    res = test.correlations('fltvar', 'fltvar2', 'A', ds=ds)
+    print(res)
+    eq_(str(res[2][1]).strip(), 'a1')
+    eq_(str(res[2][2]).strip(), '-0.149')
+    eq_(str(res[3][2]).strip(), '.740***')
+
+    res = test.correlations('fltvar', 'fltvar2', 'A%B', ds=ds)
+    print(res)
+    eq_(str(res[2][2]).strip(), '-0.276')
 
 
 def test_star():
