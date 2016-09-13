@@ -11,8 +11,9 @@ import numpy as np
 import scipy.stats
 
 from .. import fmtxt
-from .._data_obj import (ascategorial, asfactor, assub, asvar, cellname,
-                         Celltable, Factor, isvar, dataobj_repr)
+from .._data_obj import (Dataset, ascategorial, asfactor, assub, asvar,
+     cellname, Celltable, Factor, Var, isfactor, isinteraction, isvar,
+     dataobj_repr)
 from .permutation import resample
 from . import stats
 
@@ -634,7 +635,7 @@ def _pairwise(data, within=True, parametric=True, corr='Hochberg',
     return out
 
 
-def correlations(y, x, cat=None, sub=None, ds=None, levels=(.05, .01, .001)):
+def correlations(y, x, cat=None, sub=None, ds=None, asds=False):
     """Correlation with one or more predictors.
 
     Parameters
@@ -644,83 +645,109 @@ def correlations(y, x, cat=None, sub=None, ds=None, levels=(.05, .01, .001)):
     x : Var | list of Var
         second variable (or list of variables).
     cat : categorial
-        Show correlations separately for different groups in the
-        data. Can be a ``Factor`` (the correlation for each level is shown
-        separately) or an array of ``bool`` values (e.g. from a comparison like
-        ``Stim==1``)
+        Show correlations separately for different groups in the data.
     sub : index
         Use only a subset of the data
     ds : Dataset
         If a Dataset is given, all data-objects can be specified as names of
         Dataset variables.
-    levels : sequence of float
-        Significance levels to mark.
+    asds : bool
+        Return correlations in Dataset instead of Table.
 
     Returns
     -------
-    table : FMText Table
-        Table with correlations.
+    correlations : Table | Dataset
+        Table or Dataset (if ``asds=True``) with correlations.
     """
     sub = assub(sub, ds)
     y = asvar(y, sub, ds)
     if isvar(x) or isinstance(x, basestring):
         x = (x,)
-    x = [asvar(x_, sub, ds) for x_ in x]
-    if cat is not None:
-        cat = ascategorial(cat, sub, ds)
-
-    levels = np.asarray(levels)
-
-    if cat is None:
-        table = fmtxt.Table('l' * 4)
-        table.cells('Variable', 'r', 'p', 'n')
+        print_x_name = False
     else:
-        table = fmtxt.Table('l' * 5)
-        table.cells('Variable', 'Category', 'r', 'p', 'n')
+        print_x_name = True
+    x = [asvar(x_, sub, ds) for x_ in x]
+    if cat is None:
+        cat_cells = [None]
+        n_cat = 1
+    else:
+        cat = ascategorial(cat, sub, ds)
+        cat_cells = cat.cells
+        n_cat = len(cat.cells)
 
-    table.midrule()
-    table.title("Correlations with %s" % dataobj_repr(y))
+    # correlation Dataset, nested:
+    # x -> cat
+    ds = Dataset()
+    if print_x_name:
+        ds['x'] = Factor([dataobj_repr(x_) for x_ in x], repeat=n_cat)
 
-    for x_ in x:
-        if cat is None:
-            _corr_to_table(table, y, x_, None, levels)
+    if n_cat > 1:
+        if isinteraction(cat):
+            cat_names = [dataobj_repr(c) for c in cat.base]
+            for i, name in enumerate(cat_names):
+                ds[name] = Factor([cell[i] for cell in cat.cells], tile=len(x))
+        elif isfactor(cat):
+            cat_names = (dataobj_repr(cat),)
+            ds[dataobj_repr(cat)] = Factor(cat.cells)
         else:
-            print_xname = True
-            for cell in cat.cells:
-                sub = (cat == cell)
-                _corr_to_table(table, y, x_, sub, levels, print_xname,
-                               cellname(cell))
-                print_xname = False
+            raise TypeError(repr(cat))
+    else:
+        cat_names = ()
 
+    rs = []
+    dfs = []
+    ps = []
+    for x_ in x:
+        for cell in cat_cells:
+            if cell is None:
+                r, p, df = _corr(y, x_)
+            else:
+                sub = cat == cell
+                r, p, df = _corr(y[sub], x_[sub])
+            rs.append(r)
+            dfs.append(df)
+            ps.append(p)
+    ds['r'] = Var(rs)
+    ds['df'] = Var(dfs)
+    p = Var(ps)
+    ds['sig'] = star_factor(p)
+    ds['p'] = p
+    if asds:
+        return ds
+
+    table = fmtxt.Table('l' * (4 + print_x_name + len(cat_names)),
+                        title="Correlations with %s" % dataobj_repr(y))
+    if print_x_name:
+        table.cell('x')
+    table.cells(*cat_names)
+    table.cells('r', 'df', '*' 'p')
+    table.midrule()
+    last_x = None
+    for case in ds.itercases():
+        if print_x_name:
+            if case['x'] == last_x:
+                table.cell('')
+            else:
+                table.cell(case['x'])
+                last_x = case['x']
+        for name in cat_names:
+            table.cell(case[name])
+        table.cell(fmtxt.stat(case['r'], '%.3f', drop0=True))
+        table.cell(case['df'])
+        table.cell(case['sig'])
+        table.cell(fmtxt.p(case['p']))
     return table
 
 
-def _corr(y, x, sub):
+def _corr(y, x):
     """index has to be bool array; returns r, p, n"""
-    if sub is not None:
-        y = y[sub]
-        x = x[sub]
     n = len(y)
-    assert n == len(x)
+    assert len(x) == n
     df = n - 2
     r = np.corrcoef(y.x, x.x)[0, 1]
     t = r / np.sqrt((1 - r ** 2) / df)
     p = scipy.stats.t.sf(np.abs(t), df) * 2
-    return r, p, n
-
-
-def _corr_to_table(table, y, x, sub, levels, print_xname=True, label=False):
-    r, p, n = _corr(x, y, sub)
-    nstars = np.sum(p <= levels)
-    if print_xname:
-        table.cell(dataobj_repr(x))
-    else:
-        table.cell()
-    if label:
-        table.cell(label)
-    table.cell(fmtxt.stat(r, '%.3f', nstars, len(levels), drop0=True))
-    table.cell(fmtxt.P(p))
-    table.cell(n)
+    return r, p, df
 
 
 class bootstrap_pairwise(object):
