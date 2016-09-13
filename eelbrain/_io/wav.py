@@ -73,6 +73,14 @@ def save_wav(ndvar, filename=None, toint=False):
 
     data = ndvar.get_data('time')
     if toint and data.dtype != np.int16:
+        above = data >= 2**15
+        below = data < -2**15
+        if np.any(above) or np.any(below):
+            n = np.sum(above) + np.sum(below)
+            print("WARNING: clipping %i samples" % n)
+            data[above] = 2**15 - 1
+            data[below] = -2**15
+
         data = data.astype(np.int16)
     elif data.dtype.kind != 'i' and (data.max() > 1. or data.min() < -1.):
         raise ValueError("Floating point data should be in range [-1, 1]. Set "
