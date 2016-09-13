@@ -384,6 +384,62 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
     return table
 
 
+class TTest1Sample(object):
+    """1-sample t-test
+
+    Parameters
+    ----------
+    y : Var
+        Dependent variable.
+    match : categorial
+        Units within which measurements are related (e.g. 'subject' in a
+        within-subject comparison).
+    sub : None | index-array
+        Perform the test with a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables.
+    tail : 0 | 1 | -1
+        Which tail of the t-distribution to consider:
+        0: both (two-tailed, default);
+        1: upper tail (one-tailed);
+        -1: lower tail (one-tailed).
+
+    Attributes
+    ----------
+    t : float
+        T-value.
+    p : float
+        P-value.
+    tail : 0 | 1 | -1
+        Tailedness of the p value.
+    df : int
+        Degrees of freedom.
+    """
+    def __init__(self, y, match=None, sub=None, ds=None, tail=0):
+        ct = Celltable(y, None, match, sub, ds=ds, coercion=asvar)
+        n = len(ct.Y)
+        if n <= 2:
+            raise ValueError("Not enough observations for t-test (n=%i)" % n)
+
+        self._y = dataobj_repr(ct.Y)
+        self.df = n - 1
+        self.t = stats.t_1samp(ct.Y.x[:, None])[0]
+        self.p = stats.ttest_p(self.t, self.df, tail)
+        self.tail = tail
+
+    def __repr__(self):
+        out = "<TTest1Samp: " + self._y
+        if self.tail:
+            out += 'tail=%i' % self.tail
+        out += "; t(%i)=%.2f, p=%.3f>" % (self.df, self.t, self.p)
+        return out
+
+    def _asfmtext(self):
+        return fmtxt.FMText([fmtxt.eq('t', self.t, self.df), ', ',
+                             fmtxt.peq(self.p)])
+
+
 class TTestRel(object):
     """Related-measures t-test
 
