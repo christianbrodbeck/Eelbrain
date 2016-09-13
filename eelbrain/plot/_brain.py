@@ -383,9 +383,9 @@ def _surfer_brain(data, subject='fsaverage', surf='smoothwm', hemi='split',
     if background is None:
         background = BACKGROUND
 
-    return Brain(data, subject, hemi, surf, True, title, 'classic',
-                 (width, height), background, foreground, None,
-                 subjects_dir, views)
+    return Brain(data, subject, hemi, surf, title=title, cortex='classic',
+                 size=(width, height), views=views, background=background,
+                 foreground=foreground, subjects_dir=subjects_dir)
 
 
 def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
