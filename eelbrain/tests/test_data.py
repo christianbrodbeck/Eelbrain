@@ -1183,6 +1183,11 @@ def test_source_space():
     tgt = np.hstack(sub_source.vertno)
     assert_array_equal([i for i in sub_source], tgt)
     assert_array_equal([sub_source[i] for i in xrange(len(sub_source))], tgt)
+    # hemisphere indexing
+    lh = source.dimindex('lh')
+    source_lh = source[lh]
+    eq_(source_lh.dimindex('rh'), slice(0, 0))
+    eq_(source_lh.dimindex('lh'), slice(0, len(source_lh)))
 
 
 def test_var():
