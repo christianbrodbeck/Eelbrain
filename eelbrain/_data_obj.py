@@ -8019,15 +8019,12 @@ class SourceSpace(Dimension):
             return self._dimindex_label(arg)
         elif isinstance(arg, basestring):
             if arg == 'lh':
-                if self.lh_n:
-                    return slice(None, self.lh_n)
-                else:
-                    raise IndexError("lh is empty")
+                return slice(0, self.lh_n)
             elif arg == 'rh':
                 if self.rh_n:
                     return slice(self.lh_n, None)
                 else:
-                    raise IndexError("rh is empty")
+                    return slice(0, 0)
             else:
                 return self._dimindex_label(arg)
         elif isinstance(arg, SourceSpace):

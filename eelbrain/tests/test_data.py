@@ -1162,6 +1162,12 @@ def test_source_space():
     eq_(sub_source[sub_source.dimindex('cuneus-lh')], cuneus_source)
     eq_(len(sub_source), len(lingual_source) + len(cuneus_source))
 
+    # hemisphere indexing
+    lh = source.dimindex('lh')
+    source_lh = source[lh]
+    eq_(source_lh.dimindex('rh'), slice(0, 0))
+    eq_(source_lh.dimindex('lh'), slice(0, len(source_lh)))
+
 
 def test_var():
     "Test Var objects"
