@@ -5,6 +5,7 @@ from __future__ import division
 
 from itertools import izip, product
 import operator
+from warnings import warn
 
 import numpy as np
 import matplotlib as mpl
@@ -48,24 +49,24 @@ def find_cell_colors(x, colors):
             if cell not in colors:
                 raise KeyError("%s not in colors" % repr(cell))
         return colors
-    elif colors is None or isinstance(colors, basestring):
-        return colors_for_categorial(x, colors)
+    elif colors is None:
+        return colors_for_categorial(x, cmap=colors)
     else:
         raise TypeError("Invalid type: colors=%s" % repr(colors))
 
 
-def colors_for_categorial(x, cmap=None, hue_start=0.2):
+def colors_for_categorial(x, hue_start=0.2, cmap=None):
     """Automatically select colors for a categorial model
 
     Parameters
     ----------
     x : categorial
         Model defining the cells for which to define colors.
-    cmap : str
-        Name of a matplotlib colormap to use (only for one-way models;
-        default 'jet').
     hue_start : 0 <= scalar < 1
         First hue value (only for two-way or higher level models).
+    cmap : str (optional)
+        Name of a matplotlib colormap to use instead of default hue-based
+        colors (only used for one-way models).
 
     Returns
     -------
@@ -73,7 +74,7 @@ def colors_for_categorial(x, cmap=None, hue_start=0.2):
         Dictionary providing colors for the cells in x.
     """
     if isfactor(x):
-        return colors_for_oneway(x.cells, cmap)
+        return colors_for_oneway(x.cells, hue_start, cmap=cmap)
     elif isinteraction(x):
         return colors_for_nway([f.cells for f in x.base], hue_start)
     else:
@@ -81,26 +82,42 @@ def colors_for_categorial(x, cmap=None, hue_start=0.2):
         raise TypeError(msg)
 
 
-def colors_for_oneway(cells, cmap='jet'):
+def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None):
     """Define colors for a single factor design
 
     Parameters
     ----------
     cells : sequence of str
         Cells for which to assign colors.
-    cmap : str
-        Name of a matplotlib colormap to use (default 'jet').
+    hue_start : 0 <= scalar < 1
+        First hue value (default 0.2).
+    light_range : scalar | tuple of 2 scalar
+        Scalar that specifies the amount of lightness variation (default 0.5).
+        If positive, the first color is lightest; if negative, the first color
+        is darkest. A tuple can be used to specify exact end-points (e.g.,
+        ``(1.0, 0.4)``). ``0.2`` is equivalent to ``(0.4, 0.6)``.
+    cmap : str (optional)
+        Use a matplotlib colormap instead of the default color generation
+        algorithm. Name of a matplotlib colormap to use (e.g., 'jet'). If
+        specified, ``hue_start`` and ``light_range`` are ignored.
 
     Returns
     -------
     dict : {str: tuple}
         Mapping from cells to colors.
     """
-    if cmap is None:
-        cmap = 'jet'
-    cm = mpl.cm.get_cmap(cmap)
+    if isinstance(hue_start, basestring):
+        warn("The function signature of colors_for_oneway has changed. "
+             "Specifying a colormap as second parameter will stop working after "
+             "Eelbrain 0.25. Use cmap=%r as keyword argument instead." %
+             hue_start, DeprecationWarning)
+        cmap = hue_start
     n = len(cells)
-    return {cell: cm(i / n) for i, cell in enumerate(cells)}
+    if cmap is None:
+        return dict(izip(cells, cs.oneway_colors(n, hue_start, light_range)))
+    else:
+        cm = mpl.cm.get_cmap(cmap)
+        return {cell: cm(i / n) for i, cell in enumerate(cells)}
 
 
 def colors_for_twoway(x1_cells, x2_cells, hue_start=0.2, hue_shift=0.,

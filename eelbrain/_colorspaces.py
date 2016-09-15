@@ -129,6 +129,30 @@ def twoway_cmap(n1, hue_start=0.1, hue_shift=0.5, name=None, hues=None):
     return make_seq_cmap(seq, loc, name)
 
 
+def oneway_colors(n, hue_start, light_range):
+    """Create colors for categories
+
+    Parameters
+    ----------
+    n : int
+        Number of levels.
+    hue_start : 0 <= scalar < 1
+        First hue value.
+    light_range : scalar | tuple
+        Amount of lightness variation. If a positive scalar, the first color is
+        lightest; if a negative scalar, the first color is darkest. Tuple with
+        two scalar to define a specific range.
+    """
+    hue = np.linspace(hue_start, hue_start + 1, n, False) % 1.
+    if isinstance(light_range, (list, tuple)):
+        start, stop = light_range
+        lightness = np.linspace(100 * start, 100 * stop, n)
+    else:
+        l_edge = 50 * light_range
+        lightness = np.linspace(50 + l_edge, 50 - l_edge, n)
+    return [lch_to_rgb(l, 100, h) for l, h in izip(lightness, hue)]
+
+
 def twoway_colors(n1, n2, hue_start=0.2, hue_shift=0., hues=None):
     """Create colors for two-way interaction
 

@@ -464,7 +464,7 @@ class UTSClusters(_EelFigure):
     title : str
         Figure title.
     """
-    def __init__(self, res, pmax=0.05, ptrend=0.1, axtitle='{name}', cm='jet',
+    def __init__(self, res, pmax=0.05, ptrend=0.1, axtitle='{name}', cm=None,
                  overlay=False, xticklabels=True, *args, **kwargs):
         clusters_ = res.clusters
 
@@ -475,7 +475,7 @@ class UTSClusters(_EelFigure):
         nax = 1 if overlay else n
         _EelFigure.__init__(self, "UTSClusters", nax, 4, 2, *args, **kwargs)
 
-        colors = colors_for_oneway(range(n), cm)
+        colors = colors_for_oneway(range(n), cmap=cm)
         self._caxes = []
         if overlay:
             ax = self._axes[0]

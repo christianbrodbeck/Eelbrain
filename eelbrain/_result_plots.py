@@ -33,7 +33,9 @@ def cname(cid):
 
 
 class ClusterPlotter(object):
-    """Make plots for spatio-temporal clusters (returned by :meth:`MneExperiment.load_result_plotter`)
+    """Make plots for spatio-temporal clusters
+
+    returned by :meth:`MneExperiment.load_result_plotter`
 
     Parameters
     ----------
@@ -57,6 +59,12 @@ class ClusterPlotter(object):
     rc : dict
         Matplotlib rc-parameters dictionary (the default is optimized for the
         default plot size ``h=1.1``).
+
+    Notes
+    -----
+    After loading a :class:`ClusterPlotter`, its ``rc``, ``colors``, ``labels``
+    and ``h`` attributes can be updated to create different plot layouts without
+    reloading the data.
     """
     def __init__(self, ds, res, colors, dst, vec_fmt='pdf', pix_fmt='png',
                  labels=None, h=1.1, rc=None):
