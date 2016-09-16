@@ -12,14 +12,15 @@ from .. import _colorspaces as cs
 from .._data_obj import NDVar, UTS
 
 
-VERSION = 2
+VERSION = 3
 
 
 class BoostingResult(object):
     """Result from boosting temporal response function"""
-    _attr = ('h', 'corr', 'isnan', 't_run', 'version')
+    _attr = ('h', 'corr', 'isnan', 't_run', 'version', 'error')
 
-    def __init__(self, h, corr, isnan, t_run, version):
+    def __init__(self, h, corr, isnan, t_run, version, error='SS'):
+        self.error = error
         self.h = h
         self.corr = corr
         self.isnan = isnan
@@ -30,10 +31,10 @@ class BoostingResult(object):
         return {attr: getattr(self, attr) for attr in self._attr}
 
     def __setstate__(self, state):
-        self.__init__(*(state[attr] for attr in self._attr))
+        self.__init__(**state)
 
 
-def boosting(y, x, tstart, tstop, delta=0.005):
+def boosting(y, x, tstart, tstop, delta=0.005, error='SS'):
     """Estimate a temporal response function through boosting
 
     Parameters
@@ -47,6 +48,8 @@ def boosting(y, x, tstart, tstop, delta=0.005):
         Start of the TRF in seconds.
     tstop : float
         Stop of the TRF in seconds.
+    error : 'SS' | 'Sabs'
+        Error function to use.
 
     Returns
     -------
@@ -109,7 +112,8 @@ def boosting(y, x, tstart, tstop, delta=0.005):
 
     # do boosting
     t0 = time.time()
-    res = [boosting_continuous(x_data, y_, trf_length, delta) for y_ in y_data]
+    res = [boosting_continuous(x_data, y_, trf_length, delta, error) for
+           y_ in y_data]
     hs, corrs = zip(*res)
     dt = time.time() - t0
 
@@ -144,19 +148,27 @@ def boosting(y, x, tstart, tstop, delta=0.005):
     else:
         hs = hs[0]
 
-    return BoostingResult(hs, corr, isnan, dt, VERSION)
+    return BoostingResult(hs, corr, isnan, dt, VERSION, error)
 
 
-def boosting_continuous(x, y, trf_length, delta, mindelta=None, maxiter=10000, nsegs=10):
+def boosting_continuous(x, y, trf_length, delta, error, mindelta=None,
+                        maxiter=10000, nsegs=10):
     """Boosting for a continuous data segment, cycle through even splits for
-    test segment"""
+    test segment
+
+    Parameters
+    ----------
+    ...
+    error : 'SS' | 'Sabs'
+        Error function to use.
+    """
     logger = logging.getLogger('eelbrain.boosting')
     if mindelta is None:
         mindelta = delta
     hs = []
     for i in xrange(nsegs):
         h, test_sse_history, msg = boost_1seg(x, y, trf_length, delta, maxiter,
-                                              nsegs, i, mindelta)
+                                              nsegs, i, mindelta, error)
         logger.debug(msg)
         if np.any(h):
             hs.append(h)
@@ -170,8 +182,10 @@ def boosting_continuous(x, y, trf_length, delta, mindelta=None, maxiter=10000, n
     return h, corr
 
 
-def boost_1seg(x, y, trf_length, delta, maxiter, nsegs, segno, mindelta):
-    """Basic port of svdboostV4pred
+def boost_1seg(x, y, trf_length, delta, maxiter, nsegs, segno, mindelta, error):
+    """boosting with one test segment determined by regular division
+
+    Based on port of svdboostV4pred
 
     Parameters
     ----------
@@ -193,6 +207,8 @@ def boost_1seg(x, y, trf_length, delta, maxiter, nsegs, segno, mindelta):
         Smallest delta to use. If no improvement can be found in an iteration,
         the first step is to divide delta in half, but stop if delta becomes
         smaller than ``mindelta``.
+    error : 'SS' | 'Sabs'
+        Error function to use.
 
     Returns
     -------
@@ -229,10 +245,11 @@ def boost_1seg(x, y, trf_length, delta, maxiter, nsegs, segno, mindelta):
     x_test = (x[:, test_index],)
 
     return boost_segs(y_train, y_test, x_train, x_test, trf_length, delta,
-                      maxiter, mindelta)
+                      maxiter, mindelta, error)
 
 
-def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter, mindelta):
+def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
+               mindelta, error):
     """Boosting supporting multiple array segments
 
     Parameters
@@ -251,6 +268,8 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter, min
         Smallest delta to use. If no improvement can be found in an iteration,
         the first step is to divide delta in half, but stop if delta becomes
         smaller than ``mindelta``.
+    error : 'SS' | 'Sabs'
+        Error function to use.
     """
     n_stims = len(x_train[0])
     if any(len(x) != n_stims for x in chain(x_train, x_test)):
@@ -258,6 +277,7 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter, min
     n_times = [len(y) for y in chain(y_train, y_test)]
     if any(x.shape[1] != n for x, n in izip(chain(x_train, x_test), n_times)):
         raise ValueError("y and x have inconsistent number of time points")
+    error = ERROR_FUNC[error]
 
     h = np.zeros((n_stims, trf_length))
 
@@ -273,7 +293,7 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter, min
 
     # history lists
     history = []
-    sse_test_history = []
+    test_error_history = []
     for i_boost in xrange(maxiter):
         history.append(h.copy())
 
@@ -286,28 +306,24 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter, min
                 apply_kernel(x, h, y)
 
             # Compute predictive power on testing data
-            sse_test = 0
-            for y, pred, err in izip(y_test, y_test_pred, y_test_error):
-                np.subtract(y, pred, err)
-                sse_test += np.dot(err, err[:, None])[0]
+            e_test = sum(error(np.subtract(y, pred, err), err) for y, pred, err in
+                         izip(y_test, y_test_pred, y_test_error))
         else:
-            for pred in y_train_pred:
-                pred.fill(0)
-            sse_test = sum(np.dot(err, err[:, None])[0] for err in y_test)
+            for y in y_train_pred:
+                y.fill(0)
+            e_test = sum(error(err) for err in y_test)
 
-        sse_train = 0
-        for y, ynow in izip(y_train, y_train_pred):
-            sse_train += np.sum((y - ynow) ** 2)
+        e_train = sum(error(y - ynow) for y, ynow in izip(y_train, y_train_pred))
 
-        sse_test_history.append(sse_test)
+        test_error_history.append(e_test)
 
         # stop the iteration if all the following requirements are met
         # 1. more than 10 iterations are done
         # 2. The testing error in the latest iteration is higher than that in
         #    the previous two iterations
-        if (i_boost > 10 and sse_test_history[-1] > sse_test_history[-2] and
-                sse_test_history[-1] > sse_test_history[-3]):
-            reason = "SSE(test) not improving in 2 steps"
+        if (i_boost > 10 and test_error_history[-1] > test_error_history[-2] and
+                test_error_history[-1] > test_error_history[-3]):
+            reason = "error(test) not improving in 2 steps"
             break
 
         # generate possible movements -> training error
@@ -327,11 +343,11 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter, min
                     # + delta
                     np.add(ynow, dy, ynext)
                     np.subtract(y, ynext, ynext)
-                    e_add += np.dot(ynext, ynext[:, None])[0]
+                    e_add += error(ynext, ynext)
                     # - delta
                     np.subtract(ynow, dy, ynext)
                     np.subtract(y, ynext, ynext)
-                    e_sub += np.dot(ynext, ynext[:, None])[0]
+                    e_sub += error(ynext, ynext)
 
                 if e_add > e_sub:
                     new_error[ind1, ind2] = e_sub
@@ -341,7 +357,7 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter, min
                     new_sign[ind1, ind2] = 1
 
         # If no improvements can be found reduce delta
-        if new_error.min() > sse_train:
+        if new_error.min() > e_train:
             if delta < mindelta:
                 reason = ("No improvement possible for training data, "
                           "stopping...")
@@ -365,11 +381,11 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter, min
     else:
         reason = "maxiter exceeded"
 
-    best_iter = np.argmin(sse_test_history)
+    best_iter = np.argmin(test_error_history)
 
     # Keep predictive power as the correlation for the best iteration
-    return (history[best_iter], sse_test_history,
-            reason + ' (%i iterations)' % len(sse_test_history))
+    return (history[best_iter], test_error_history,
+            reason + ' (%i iterations)' % len(test_error_history))
 
 
 def apply_kernel(x, h, out=None):
@@ -401,3 +417,17 @@ def corr_for_kernel(y, x, h, skip_beginning=True, out=None):
         return np.corrcoef(y, y_pred)[0, 1], spearmanr(y, y_pred)[0]
     else:
         raise ValueError("out=%s" % repr(out))
+
+
+# Error functions
+def ss(error, buf=None):
+    "Sum squared error"
+    return np.dot(error, error[:, None])[0]
+
+
+def sabs(error, buf=None):
+    "Sum of absolute values (warning: re-uses ``error``)"
+    return np.abs(error, buf).sum()
+
+
+ERROR_FUNC = {'SS': ss, 'SAbs': sabs}
