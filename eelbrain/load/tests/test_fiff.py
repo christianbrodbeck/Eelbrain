@@ -62,6 +62,10 @@ def test_load_fiff_from_raw():
         ds_mne = load.fiff.add_mne_epochs(ds, -0.1, 0.3, decim=10, proj=False,
                                           reject={'mag': 2e-12})
     epochs = ds_mne['epochs']
+    # events
+    assert_array_equal(epochs.events[:, 1], 0)
+    assert_array_equal(epochs.events[:, 2], 32)
+    # data
     picks = pick_types(epochs.info, meg='mag')
     mne_data = epochs.get_data()[:, picks]
     assert_array_equal(meg.sensor.names, [epochs.info['ch_names'][i] for i in picks])
