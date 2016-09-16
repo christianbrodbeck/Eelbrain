@@ -3628,12 +3628,12 @@ class NDVar(object):
         return NDVar(x, dims, info)
 
     def get_axis(self, name):
+        "Returns the data axis for a given dimension name"
         if self.has_dim(name):
-            i = self._dim_2_ax[name]
+            return self._dim_2_ax[name]
         else:
-            msg = "%r has no dimension named %r" % (self, name)
-            raise DimensionMismatchError(msg)
-        return i
+            raise DimensionMismatchError("%r has no dimension named %r" %
+                                         (self, name))
 
     def get_data(self, dims):
         """Retrieve the NDVar's data with a specific axes order.
