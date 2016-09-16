@@ -568,8 +568,6 @@ def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
         kwargs['picks'] = mne.pick_types(raw.info, eeg=True, eog=True, ref_meg=False)
 
     events = _mne_events(ds=ds, i_start=i_start)
-    # epochs with (event_id == None) does not use columns 1 and 2 of events
-    events[:, 1] = np.arange(len(events))
     epochs = mne.Epochs(raw, events, None, tmin, tmax, baseline, **kwargs)
     if kwargs.get('reject', None) is None and len(epochs) != len(events):
         logger = getLogger(__name__)
@@ -926,7 +924,6 @@ def _trim_ds(ds, epochs):
         Epochs loaded with mne_epochs()
     """
     if len(epochs) < ds.n_cases:
-        index = epochs.events[:, 1]
-        ds = ds.sub(index)
+        ds = ds.sub(epochs.selection)
 
     return ds
