@@ -34,7 +34,7 @@ class BoostingResult(object):
 
 
 def boosting(y, x, tstart, tstop, delta=0.005):
-    """Estimate a temporal response function of ``x`` through boosting
+    """Estimate a temporal response function through boosting
 
     Parameters
     ----------
@@ -42,7 +42,7 @@ def boosting(y, x, tstart, tstop, delta=0.005):
         Signal to predict.
     x : NDVar | sequence of NDVar
         Signal to use to predict ``y``. Can be sequence of NDVars to include
-        multiple predictors.
+        multiple predictors. Time dimension must correspond to ``y``.
     tstart : float
         Start of the TRF in seconds.
     tstop : float
@@ -53,6 +53,7 @@ def boosting(y, x, tstart, tstop, delta=0.005):
     result : BoostingResult
         Object containig results from the boosting estimation.
     """
+    # check y and x
     if isinstance(x, NDVar):
         x = (x,)
         multiple_x = False
@@ -62,7 +63,7 @@ def boosting(y, x, tstart, tstop, delta=0.005):
     if any(x_.get_dim('time') != time_dim for x_ in x):
         raise ValueError("Not all NDVars have the same time dimension")
 
-    # x:  predictor x time
+    # x_data:  predictor x time array
     x_data = []
     x_meta = []
     i = 0
@@ -72,7 +73,7 @@ def boosting(y, x, tstart, tstop, delta=0.005):
             data = x_.x[newaxis, :]
             index = i
         elif x_.ndim == 2:
-            xdim = x_.dims[not x_.dimnames.index('time')]
+            xdim = x_.dims[not x_.get_axis('time')]
             data = x_.get_data((xdim.name, 'time'))
             index = slice(i, i + len(data))
         else:
@@ -86,17 +87,17 @@ def boosting(y, x, tstart, tstop, delta=0.005):
     else:
         x_data = np.vstack(x_data)
 
-    # y
+    # y_data:  ydim x time array
     if y.ndim == 1:
         ydim = None
         y_data = y.x[None, :]
     elif y.ndim == 2:
-        ydim = y.dims[not y.dimnames.index('time')]
+        ydim = y.dims[not y.get_axis('time')]
         y_data = y.get_data((ydim.name, 'time'))
     else:
         raise NotImplementedError("y with more than 2 dimensions")
 
-    # prepare trf (apply tstart and tstop)
+    # prepare trf (by cropping data)
     i_start = int(round(tstart / y.time.tstep))
     i_stop = int(round(tstop / y.time.tstep))
     trf_length = i_stop - i_start
@@ -106,14 +107,10 @@ def boosting(y, x, tstart, tstop, delta=0.005):
     elif i_start > 0:
         raise NotImplementedError("start > 0")
 
-    # boosting
+    # do boosting
     t0 = time.time()
-    hs = []
-    corrs = []
-    for y_ in y_data:
-        h, corr = boosting_continuous(x_data, y_, trf_length, delta)
-        hs.append(h)
-        corrs.append(corr)
+    res = [boosting_continuous(x_data, y_, trf_length, delta) for y_ in y_data]
+    hs, corrs = zip(*res)
     dt = time.time() - t0
 
     # correlation
@@ -127,7 +124,7 @@ def boosting(y, x, tstart, tstop, delta=0.005):
         corr = NDVar(corrs, (ydim,), cs.stat_info('r'), 'Correlation')
 
     # TRF
-    h_time = UTS(tstart, y.time.tstep, trf_length)
+    h_time = UTS(tstart, time_dim.tstep, trf_length)
     h_x = np.array(hs)
     hs = []
     for name, dim, index in x_meta:
