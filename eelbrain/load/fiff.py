@@ -122,8 +122,7 @@ from .._data_obj import Var, NDVar, Dataset, Sensor, SourceSpace, UTS, \
 
 
 def mne_raw(path=None, proj=False, **kwargs):
-    """
-    Returns a mne Raw object with added projections if appropriate.
+    """Load a :class:`mne.io.Raw` object
 
     Parameters
     ----------
@@ -140,8 +139,8 @@ def mne_raw(path=None, proj=False, **kwargs):
         **``str``**: A custom path template can be provided, ``'{raw}'`` and
         ``'*'`` will be treated as with ``True``.
     kwargs
-        Additional keyword arguments are forwarded to mne Raw initialization.
-
+        Additional keyword arguments are forwarded to :class:`mne.io.Raw`
+        initialization.
     """
     if path is None:
         path = ui.ask_file("Pick a raw data file", "Pick a raw data file",
@@ -534,8 +533,7 @@ def _mne_events(ds=None, i_start='i_start', trigger='trigger'):
 
 def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
                raw=None, drop_bad_chs=True, **kwargs):
-    """
-    Load epochs as :class:`mne.Epochs`.
+    """Load epochs as :class:`mne.Epochs`.
 
     Parameters
     ----------
