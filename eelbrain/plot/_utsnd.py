@@ -429,6 +429,7 @@ class Butterfly(UTS, LegendMixin):
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
+        self._vspans = []
         LegendMixin.__init__(self, 'invisible', legend_handles)
         self._show()
 

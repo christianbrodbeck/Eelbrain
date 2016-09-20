@@ -357,8 +357,32 @@ class UTS(_EelFigure):
             h = _ax_uts(ax, epoch, xdim, axtitle, vlims)
             self.plots.append(h)
 
+        self._vspans = []
         self.epochs = epochs
         self._show()
+
+    def add_vspans(self, intervals, axes=None, *args, **kwargs):
+        """Draw vertical bars over axes
+
+        Parameters
+        ----------
+        intervals : sequence of (start, stop) tuples
+            Start and stop positions on the x-axis.
+        axes : int | list of int
+            Which axes to mark (default is all axes).
+        additonal arguments :
+            Additional arguments for :func:`matplotlib.axvspan`.
+        """
+        if axes is None:
+            axes = self._axes
+        elif isinstance(axes, int):
+            axes = (self._axes[axes],)
+        else:
+            axes = [self._axes[i] for i in axes]
+
+        for ax in axes:
+            for xmin, xmax in intervals:
+                self._vspans.append(ax.axvspan(xmin, xmax, *args, **kwargs))
 
     def set_vlim(self, vmax=None, vmin=None):
         """Set the x-axis limits
