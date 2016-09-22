@@ -12,6 +12,7 @@
 
 from __future__ import division
 
+from itertools import izip
 from logging import getLogger
 import math
 import os
@@ -266,12 +267,25 @@ class Document(FileDocument):
     def bad_channel_names(self):
         return [self.epochs.sensor.names[i] for i in self.bad_channels]
 
-    def good_data(self):
+    def iter_good_epochs(self):
         "All cases, only good channels"
         if self.bad_channels:
-            return self.epochs.sub(sensor=self.good_channels)
+            epochs = self.epochs.sub(sensor=self.good_channels)
         else:
-            return self.epochs
+            epochs = self.epochs
+
+        bad_set = set(self.bad_channel_names)
+        interpolate = [set(chs) - bad_set for chs in self.interpolate]
+
+        if any(interpolate):
+            for epoch, chs in izip(epochs, interpolate):
+                if chs:
+                    yield epoch.sub(sensor=epoch.sensor.index(exclude=chs))
+                else:
+                    yield epoch
+        else:
+            for epoch in epochs:
+                yield epoch
 
     def good_sensor_index(self, case):
         "Index of non-interpolated sensor relative to good sensors"
@@ -529,17 +543,15 @@ class Model(FileModel):
         logger = getLogger(__name__)
         logger.info("Auto-reject trials: %s" % args)
 
-        x = self.doc.good_data()
         if method == 'abs':
-            x_max = x.abs().max(('time', 'sensor'))
-            sub_threshold = x_max <= threshold
+            x = [x.abs().max(('time', 'sensor')) for x in
+                 self.doc.iter_good_epochs()]
         elif method == 'p2p':
-            p2p = x.max('time') - x.min('time')
-            max_p2p = p2p.max('sensor')
-            sub_threshold = max_p2p <= threshold
+            x = [(x.max('time') - x.min('time')).max('sensor') for x in
+                 self.doc.iter_good_epochs()]
         else:
             raise ValueError("Invalid method: %r" % method)
-        return sub_threshold
+        return np.array(x) < threshold
 
     def toggle_interpolation(self, case, ch_name):
         old_interpolate = self.doc.interpolate[case]
