@@ -1137,7 +1137,8 @@ class Frame(FileFrame):
                 rejected = np.invert(sub_threshold)
 
                 doc = fmtxt.Section("Threshold")
-                doc.append("%s at %s: %i epochs" % (method, threshold, rejected.sum()))
+                doc.append("%s at %s:  reject %i of %i epochs:" %
+                           (method, threshold, rejected.sum(), len(rejected)))
                 if np.any(rejected):
                     para = fmtxt.delim_list((fmtxt.Link(epoch, "epoch:%i" % epoch) for
                                              epoch in np.flatnonzero(rejected)))
