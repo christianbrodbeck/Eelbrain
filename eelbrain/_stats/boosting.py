@@ -12,11 +12,26 @@ from .. import _colorspaces as cs
 from .._data_obj import NDVar, UTS
 
 
-VERSION = 3
+VERSION = 4
 
 
 class BoostingResult(object):
-    """Result from boosting temporal response function"""
+    """Result from boosting a temporal response function
+
+    Attributes
+    ----------
+    h : NDVar | list of NDVar
+        The temporal response function. Whether ``h`` is an NDVar or a list of
+        NDVars depends on whether the ``x`` parameter to :func:`boosting` was
+        an NDVar or a list.
+    corr : float | NDVar
+        Correlation between the measured response and the response predicted
+        with ``h``. Type depends on the ``y`` parameter to :func:`boosting`.
+    t_run : float
+        Time it took to run the boosting algorithm (in seconds).
+    error : str
+        The error evaluation method used.
+    """
     _attr = ('h', 'corr', 'isnan', 't_run', 'version', 'error')
 
     def __init__(self, h, corr, isnan, t_run, version, error='SS'):
@@ -34,7 +49,7 @@ class BoostingResult(object):
         self.__init__(**state)
 
 
-def boosting(y, x, tstart, tstop, delta=0.005, error='SS'):
+def boosting(y, x, tstart, tstop, delta=0.005, error='SScentered'):
     """Estimate a temporal response function through boosting
 
     Parameters
@@ -48,13 +63,14 @@ def boosting(y, x, tstart, tstop, delta=0.005, error='SS'):
         Start of the TRF in seconds.
     tstop : float
         Stop of the TRF in seconds.
-    error : 'SS' | 'Sabs'
-        Error function to use.
+    error : 'SS' | 'SScentered' | 'sum(abs)' | 'sum(abs centered)'
+        Error function to use (default is ``SScentered``).
 
     Returns
     -------
     result : BoostingResult
-        Object containig results from the boosting estimation.
+        Object containig results from the boosting estimation (see
+        :class:`BoostingResult`).
     """
     # check y and x
     if isinstance(x, NDVar):
@@ -425,9 +441,23 @@ def ss(error, buf=None):
     return np.dot(error, error[:, None])[0]
 
 
-def sabs(error, buf=None):
-    "Sum of absolute values (warning: re-uses ``error``)"
+# Error functions
+def ss_centered(error, buf=None):
+    "Sum squared of the centered error"
+    error = np.subtract(error, error.mean(), buf)
+    return np.dot(error, error[:, None])[0]
+
+
+def sum_abs(error, buf=None):
+    "Sum of absolute error"
     return np.abs(error, buf).sum()
 
 
-ERROR_FUNC = {'SS': ss, 'SAbs': sabs}
+def sum_abs_centered(error, buf=None):
+    "Sum of absolute centered error"
+    error = np.subtract(error, error.mean(), buf)
+    return np.abs(error, buf).sum()
+
+
+ERROR_FUNC = {'SS': ss, 'SScentered': ss_centered,
+              'sum(abs)': sum_abs, 'sum(abs centered)': sum_abs}

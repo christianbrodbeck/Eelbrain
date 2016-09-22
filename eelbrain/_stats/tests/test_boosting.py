@@ -16,12 +16,12 @@ def test_boosting():
 
     # test values from running function, not verified independently
     res = boosting(ds['y'], ds['x1'], 0, 1)
-    eq_(round(res.corr, 2), 0.83)
+    eq_(round(res.corr, 2), 0.82)
 
     res = boosting(ds['y'], ds['x2'], 0, 1)
-    eq_(round(res.corr, 2), 0.57)
+    eq_(round(res.corr, 2), 0.58)
 
-    res = boosting(ds['y'], [ds['x1'], ds['x2']], 0, 1)
+    res = boosting(ds['y'], [ds['x1'], ds['x2']], 0, 1, error='SS')
     eq_(round(res.corr, 2), 0.97)
 
 
