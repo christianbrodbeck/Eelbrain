@@ -7473,28 +7473,30 @@ class Sensor(Dimension):
         ----------
         exclude : None | list of str, int
             Sensors to exclude (by name or index).
+        names : bool
+            Return channel names instead of index array (default False).
 
         Returns
         -------
-        index : numpy index
+        index : array of int  (if ``names==False``)
             Numpy index indexing good channels.
+        names : Datalist of str  (if ``names==True``)
+            List of channel names.
         """
         if exclude is None:
             return full_slice
 
         index = np.ones(len(self), dtype=bool)
-        for idx in exclude:
-            if isinstance(idx, str):
-                idx = self.channel_idx[idx]
-            else:
-                idx = int(idx)
-
-            index[idx] = False
+        for ch in exclude:
+            try:
+                index[self.channel_idx[ch]] = False
+            except KeyError:
+                raise ValueError("Invalid channel name: %s" % repr(ch))
 
         if names:
-            index = self.names[index]
-
-        return index
+            return self.names[index]
+        else:
+            return index
 
     def _normalize_sensor_names(self, names, missing='raise'):
         "Process a user-input list of sensor names"
