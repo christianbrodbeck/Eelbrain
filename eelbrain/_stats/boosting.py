@@ -117,8 +117,8 @@ def boosting(y, x, tstart, tstop, delta=0.005, error='SScentered'):
         raise NotImplementedError("y with more than 2 dimensions")
 
     # prepare trf (by cropping data)
-    i_start = int(round(tstart / y.time.tstep))
-    i_stop = int(round(tstop / y.time.tstep))
+    i_start = int(round(tstart / time_dim.tstep))
+    i_stop = int(round(tstop / time_dim.tstep))
     trf_length = i_stop - i_start
     if i_start < 0:
         x_data = x_data[:, -i_start:]
