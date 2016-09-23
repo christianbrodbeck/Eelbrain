@@ -124,7 +124,8 @@ def boosting(y, x, tstart, tstop, delta=0.005, error='SScentered'):
         x_data = x_data[:, -i_start:]
         y_data = y_data[:, :i_start]
     elif i_start > 0:
-        raise NotImplementedError("start > 0")
+        x_data = x_data[:, :-i_start]
+        y_data = y_data[:, i_start:]
 
     # do boosting
     t0 = time.time()
