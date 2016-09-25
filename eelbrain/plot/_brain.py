@@ -59,16 +59,22 @@ def annot(annot, subject='fsaverage', surf='smoothwm', borders=False, alpha=0.7,
         Figure background color.
     parallel : bool
         Set views to parallel projection (default ``True``).
-    smoothing_steps : None | int
-        Number of smoothing steps if data is spatially undersampled (pysurfer
-        ``Brain.add_data()`` argument).
     subjects_dir : None | str
-        Override the subjects_dir associated with the source space dimension.
+        Override the default subjects_dir.
 
     Returns
     -------
     brain : surfer.Brain
         PySurfer Brain instance.
+
+    Notes
+    -----
+    The ``Brain`` object that is returned has a
+    :meth:`~plot._brain_fixes.plot_legend` method to plot the color legend.
+
+    See Also
+    --------
+    eelbrain.plot.brain.annot_legend : plot a corresponding legend without the brain
     """
     if hemi is None:
         annot_lh = mne.read_labels_from_annot(subject, annot, 'lh',
@@ -88,7 +94,7 @@ def annot(annot, subject='fsaverage', surf='smoothwm', borders=False, alpha=0.7,
 
     brain = _surfer_brain(None, subject, surf, hemi, views, w, h, axw, axh,
                           foreground, background, subjects_dir)
-    brain.add_annotation(annot, borders, alpha)
+    brain._set_annot(annot, borders, alpha)
 
     if parallel:
         _set_parallel(brain, surf)
@@ -105,11 +111,28 @@ def annot_legend(lh, rh, *args, **kwargs):
         Path to the lh annot-file.
     rh : str
         Path to the rh annot-file.
+    labels : dict (optional)
+        Alternative (text) label for (brain) labels.
+    h : 'auto' | scalar
+        Height of the figure in inches. If 'auto' (default), the height is
+        automatically increased to fit all labels.
 
     Returns
     -------
-    legend : plot.ColorList
-        ColorList figure with legend for the parcellation.
+    legend : :class:`~eelbrain.plot.ColorList`
+        Figure with legend for the parcellation.
+
+    Notes
+    -----
+    Instead of :func:`~eelbrain.plot.brain.annot_legend` it is usually
+    easier to use::
+
+    >>> brain = plot.brain.annoot(annot, ...)
+    >>> legend = brain.plot_legend()
+
+    See Also
+    --------
+    eelbrain.plot.brain.annot : plot the parcellation on a brain model
     """
     _, lh_colors, lh_names = read_annot(lh)
     _, rh_colors, rh_names = read_annot(rh)

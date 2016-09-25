@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+import os
+
 from matplotlib.image import imsave
 from matplotlib.colors import ListedColormap
 
@@ -15,6 +17,7 @@ class BrainMixin(object):
     # importing Mayavi
     def __init__(self, data):
         self.__data = data
+        self.__annot = None
 
     def image(self, name, format='png', alt=None):
         """Create an FMText Image from a screenshot
@@ -56,7 +59,7 @@ class BrainMixin(object):
 
         Returns
         -------
-        colorbar : plot.ColorBar
+        colorbar : :class:`~eelbrain.plot.ColorBar`
             ColorBar plot object.
         """
         if self._hemi in ('both', 'split', 'lh'):
@@ -89,3 +92,39 @@ class BrainMixin(object):
         im = self.screenshot(mode)
         imsave(filename, im)
 
+    def _set_annot(self, annot, borders, alpha):
+        "Store annot name to enable plot_legend()"
+        self.add_annotation(annot, borders, alpha)
+        self.__annot = annot
+
+    def plot_legend(self, *args, **kwargs):
+        """Plot legend for parcellation
+
+        Parameters
+        ----------
+        labels : dict (optional)
+            Alternative (text) label for (brain) labels.
+        h : 'auto' | scalar
+            Height of the figure in inches. If 'auto' (default), the height is
+            automatically increased to fit all labels.
+
+        Returns
+        -------
+        legend : :class:`~eelbrain.plot.ColorList`
+            Figure with legend for the parcellation.
+
+        See Also
+        --------
+        plot.brain.annot_legend : plot a legend without plotting the brain
+        """
+        from ._brain import annot_legend
+        if self.__annot is None:
+            raise RuntimeError("Can only plot legend for brain displaying "
+                               "parcellation")
+
+        lh = os.path.join(self.subjects_dir, self.subject_id, 'label',
+                          'lh.%s.annot' % self.__annot)
+        rh = os.path.join(self.subjects_dir, self.subject_id, 'label',
+                          'rh.%s.annot' % self.__annot)
+
+        return annot_legend(lh, rh, *args, **kwargs)
