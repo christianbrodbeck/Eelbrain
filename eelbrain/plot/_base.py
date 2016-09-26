@@ -565,6 +565,10 @@ def find_fig_vlims(plots, vmax=None, vmin=None, cmaps=None):
             vmin_, vmax_ = vlims[meas]
             vmin = min(vmin, vmin_)
             vmax = max(vmax, vmax_)
+
+        if vmin == vmax:
+            vmin -= 1
+            vmax += 1
         vlims[meas] = (vmin, vmax)
 
     # fix vlims based on cmaps
