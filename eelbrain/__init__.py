@@ -27,6 +27,7 @@ from . import mne_fixes
 from ._data_obj import (Datalist, Dataset, Var, Factor, Interaction, Model,
                         NDVar, choose, combine, align, align1, cwt_morlet,
                         resample, cellname, Celltable)
+from ._ndvar import concatenate
 from ._mne import labels_from_clusters, morph_source_space
 
 from ._utils import set_log_level
