@@ -15,13 +15,13 @@ from scipy.spatial import ConvexHull
 from .._data_obj import SEQUENCE_TYPES
 from .._utils.numpy_utils import digitize
 from . import _base
-from ._base import _EelFigure
+from ._base import EelFigure, Layout
 from ._utsnd import _ax_butterfly, _ax_im_array, _plt_im
 from ._sensors import (SENSOR_AXES_FRAME, SENSORMAP_FRAME, SensorMapMixin,
     _plt_map2d)
 
 
-class Topomap(SensorMapMixin, _EelFigure):
+class Topomap(SensorMapMixin, EelFigure):
     """Plot individual topogeraphies
 
     Parameters
@@ -69,11 +69,11 @@ class Topomap(SensorMapMixin, _EelFigure):
         is True when more than one topography is plotted, False otherwise.
     xlabel : str
         Label below the topomaps (default is no label).
-    title : None | string
-        Figure title.
     method : 'nearest' | 'linear' | 'cubic' | 'spline'
         Alternative method for interpolating topo-map between sensors (default
         is based on mne-python).
+    title : None | string
+        Figure title.
     """
     _make_axes = False
 
@@ -81,7 +81,7 @@ class Topomap(SensorMapMixin, _EelFigure):
                  vmin=None, contours=7, clip='even', clip_distance=0.05,
                  head_radius=None, head_pos=0., mark=None, sensorlabels='none',
                  ds=None, res=64, interpolation=None, axtitle=None, xlabel=None,
-                 title=None, method=None, *args, **kwargs):
+                 method=None, *args, **kwargs):
         epochs, _ = self._epochs = _base.unpack_epochs_arg(epochs, ('sensor',), Xax, ds)
         if axtitle is None:
             axtitle = False if len(epochs) == 1 else True
@@ -99,8 +99,8 @@ class Topomap(SensorMapMixin, _EelFigure):
         if interpolation is None:
             interpolation = 'nearest' if method else 'bilinear'
 
-        _EelFigure.__init__(self, "Topomap", nax, 5, 1, False, title, False,
-                            False, *args, **kwargs)
+        layout = Layout(nax, 1, 5, False, *args, frame=False, yaxis=False, **kwargs)
+        EelFigure.__init__(self, "Topomap", layout)
 
         # make axes
         xframe = SENSOR_AXES_FRAME / self._layout.ncol
@@ -169,7 +169,7 @@ class Topomap(SensorMapMixin, _EelFigure):
         self.draw()
 
 
-class TopomapBins(_EelFigure):
+class TopomapBins(EelFigure):
 
     def __init__(self, epochs, Xax=None, bin_length=0.05, tstart=None,
                  tstop=None, ds=None, vmax=None, vmin=None, *args, **kwargs):
@@ -181,8 +181,9 @@ class TopomapBins(_EelFigure):
         time = epochs[0][0].get_dim('time')
         n_bins = len(time)
         n_rows = len(epochs)
-        _EelFigure.__init__(self, "TopomapBins Plot", n_bins * n_rows, 1.5, 1,
-                            False, *args, nrow=n_rows, ncol=n_bins, **kwargs)
+        layout = Layout(n_bins * n_rows, 1, 1.5, False, *args, nrow=n_rows,
+                        ncol=n_bins, **kwargs)
+        EelFigure.__init__(self, "TopomapBins Plot", layout)
 
         cmaps = _base.find_fig_cmaps(epochs)
         vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
@@ -200,7 +201,7 @@ class TopomapBins(_EelFigure):
         self._show()
 
 
-class TopoButterfly(_EelFigure):
+class TopoButterfly(EelFigure):
     """Butterfly plot with corresponding topomaps
 
     Parameters
@@ -270,8 +271,8 @@ class TopoButterfly(_EelFigure):
         # create figure
         nax = 3 * n_plots  # for layout pretend butterfly & topo are 3 axes
         kwargs['ncol'] = 3
-        _EelFigure.__init__(self, "TopoButterfly Plot", nax, 3, 1, False, *args,
-                            **kwargs)
+        layout = Layout(nax, 1, 3, False, *args, **kwargs)
+        EelFigure.__init__(self, "TopoButterfly Plot", layout)
 
         # axes sizes
         frame = .05  # in inches; .4
@@ -751,7 +752,7 @@ class _TopoWindow:
             self.pointer = None
 
 
-class TopoArray(_EelFigure):
+class TopoArray(EelFigure):
     """Channel by sample plots with topomaps for individual time points
 
     Parameters
@@ -795,8 +796,8 @@ class TopoArray(_EelFigure):
         n_topo_total = ntopo * n_epochs
 
         # create figure
-        _EelFigure.__init__(self, 'TopoArray Plot', n_epochs, 6, 1.5, False,
-                            title, *args, **kwargs)
+        layout = Layout(n_epochs, 1.5, 6, False, title, *args, **kwargs)
+        EelFigure.__init__(self, 'TopoArray Plot', layout)
 
         # fig coordinates
         x_frame_l = .6 / self._layout.axw / n_epochs

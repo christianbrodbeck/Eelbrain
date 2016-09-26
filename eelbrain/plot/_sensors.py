@@ -11,7 +11,7 @@ import matplotlib as mpl
 from matplotlib.lines import Line2D
 
 from .._data_obj import SEQUENCE_TYPES, Datalist, as_sensor
-from ._base import _EelFigure
+from ._base import EelFigure, Layout
 
 
 SENSOR_AXES_FRAME = 0.0
@@ -430,7 +430,7 @@ class SensorMapMixin:
         self.draw()
 
 
-class SensorMaps(_EelFigure):
+class SensorMaps(EelFigure):
     """Multiple views on a sensor layout.
 
     Allows selecting sensor groups and retrieving corresponding indices.
@@ -451,7 +451,7 @@ class SensorMaps(_EelFigure):
         Marker for the sensor positions.
     frame : scalar
         Size of the empty space around sensors in axes.
-    title : None | string
+    title : None | str
         Figure title.
 
     Notes
@@ -469,16 +469,14 @@ class SensorMaps(_EelFigure):
         sensors = as_sensor(sensors)
 
         # layout figure
-        ftitle = 'SensorMaps'
-        sens_name = getattr(sensors, 'sysname', None)
-        if sens_name:
-            ftitle = '%s: %s' % (ftitle, sens_name)
-
+        frame_title = 'SensorMaps'
+        if sensors.sysname:
+            frame_title += ': ' + sensors.sysname
         self._drag_ax = None
         self._drag_x = None
         self._drag_y = None
-        _EelFigure.__init__(self, ftitle, 4, 3, 1, False, ncol=2, nrow=2, *args,
-                            **kwargs)
+        layout = Layout(4, 1, 3, False, ncol=2, nrow=2, *args, **kwargs)
+        EelFigure.__init__(self, frame_title, layout)
         self.figure.subplots_adjust(left=0, bottom=0, right=1, top=1,
                                     wspace=.1, hspace=.1)
 
@@ -649,7 +647,7 @@ class SensorMaps(_EelFigure):
         self.canvas.draw()
 
 
-class SensorMap(SensorMapMixin, _EelFigure):
+class SensorMap(SensorMapMixin, EelFigure):
     """Plot sensor positions in 2 dimensions
 
     Parameters
@@ -691,11 +689,11 @@ class SensorMap(SensorMapMixin, _EelFigure):
                  head_pos=0., connectivity=False, *args, **kwargs):
         sensors = as_sensor(sensors)
 
+        frame_title = 'SensorMap'
         if sensors.sysname:
-            ftitle = 'SensorMap: %s' % sensors.sysname
-        else:
-            ftitle = 'SensorMap'
-        _EelFigure.__init__(self, ftitle, 1, 5, 1, False, *args, **kwargs)
+            frame_title += ': ' + sensors.sysname
+        layout = Layout(1, 1, 5, False, *args, **kwargs)
+        EelFigure.__init__(self, frame_title, layout)
 
         # axes with same scaling as plot.Topomap
         w = 1. - 2 * SENSOR_AXES_FRAME

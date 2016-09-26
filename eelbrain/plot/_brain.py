@@ -12,7 +12,7 @@ import mne
 
 from .._data_obj import asndvar, NDVar
 from ..fmtxt import Image, im_table, ms
-from ._base import _EelFigure, ImLayout, ColorBarMixin
+from ._base import EelFigure, ImLayout, ColorBarMixin
 from ._colors import ColorList
 
 
@@ -750,10 +750,10 @@ def _voxel_brain(data, lut, vmin, vmax):
 # - _x_bin_table_ims() wrap 'x' brain plot function
 # - _bin_table_ims() creates ims given a brain plot function
 
-class _BinTable(_EelFigure, ColorBarMixin):
+class _BinTable(EelFigure, ColorBarMixin):
     """Super-class"""
     def __init__(self, ndvar, tstart, tstop, tstep, im_func, surf, views, hemi,
-                 summary, title, *args, **kwargs):
+                 summary, *args, **kwargs):
         if isinstance(views, str):
             views = (views,)
         data = ndvar.bin(tstep, tstart, tstop, summary)
@@ -766,10 +766,8 @@ class _BinTable(_EelFigure, ColorBarMixin):
         from .._wxgui import get_app
         get_app()
 
-        layout = ImLayout(n_rows, n_columns, 0.5 * bool(title), 0.5, 4/3, 2,
-                          *args, **kwargs)
-        _EelFigure.__init__(self, "BinTable", layout, None, None, None,
-                            title=title)
+        layout = ImLayout(n_rows, n_columns, 0, 0.5, 4/3, 2, *args, **kwargs)
+        EelFigure.__init__(self, "BinTable", layout)
 
         res_w = int(layout.axw * layout.dpi)
         res_h = int(layout.axh * layout.dpi)

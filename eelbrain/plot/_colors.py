@@ -12,7 +12,7 @@ import matplotlib as mpl
 
 from .. import _colorspaces as cs
 from .._data_obj import cellname, isfactor, isinteraction
-from ._base import _EelFigure
+from ._base import EelFigure, Layout
 from functools import reduce
 
 
@@ -198,7 +198,7 @@ def colors_for_nway(cell_lists, hue_start=0.2):
         return {}
 
 
-class ColorGrid(_EelFigure):
+class ColorGrid(EelFigure):
     """Plot colors for a two-way design in a grid
 
     Parameters
@@ -238,7 +238,8 @@ class ColorGrid(_EelFigure):
 
         if size is None:
             size = mpl.rcParams['font.size'] * LEGEND_SIZE * POINT_SIZE
-        _EelFigure.__init__(self, "ColorGrid", None, 3, 1, False, *args, **kwargs)
+        layout = Layout(None, 1, 3, False, *args, **kwargs)
+        EelFigure.__init__(self, "ColorGrid", layout)
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
         ax.set_axis_off()
         self._ax = ax
@@ -346,7 +347,7 @@ class ColorGrid(_EelFigure):
         self._ax.set_ylim(0, ax_ymax / scale)
 
 
-class ColorList(_EelFigure):
+class ColorList(EelFigure):
     """Plot colors with labels
 
     Parameters
@@ -376,8 +377,8 @@ class ColorList(_EelFigure):
         elif not isinstance(labels, dict):
             raise TypeError("labels=%s" % repr(labels))
 
-        _EelFigure.__init__(self, "Colors", None, 2, 1.5, False, None, *args, h=h,
-                            **kwargs)
+        layout = Layout(None, 1.5, 2, False, False, h, *args, **kwargs)
+        EelFigure.__init__(self, "Colors", layout)
 
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
         ax.set_axis_off()
@@ -398,7 +399,7 @@ class ColorList(_EelFigure):
         self._show()
 
 
-class ColorBar(_EelFigure):
+class ColorBar(EelFigure):
     u"""A color-bar for a matplotlib color-map
 
     Parameters
@@ -455,8 +456,8 @@ class ColorBar(_EelFigure):
             else:
                 label = cm.name
 
-        title = "ColorBar: %s" % cm.name
-        _EelFigure.__init__(self, title, 1, h, ax_aspect, *args, **kwargs)
+        layout = Layout(1, ax_aspect, 2, True, False, h, *args, **kwargs)
+        EelFigure.__init__(self, "ColorBar: %s" % cm.name, layout)
         ax = self._axes[0]
 
         if orientation == 'horizontal':

@@ -10,7 +10,7 @@ import numpy as np
 
 from .._names import INTERPOLATE_CHANNELS
 from . import _base
-from ._base import _EelFigure, ColorMapMixin, LegendMixin
+from ._base import EelFigure, Layout, ColorMapMixin, LegendMixin
 from ._uts import UTS
 
 
@@ -179,7 +179,7 @@ class _ax_im_array(object):
             l.set_vlim(vmax, meas, vmin)
 
 
-class Array(_EelFigure, ColorMapMixin):
+class Array(EelFigure, ColorMapMixin):
     """Plot UTS data to a rectangular grid.
 
     Parameters
@@ -219,7 +219,8 @@ class Array(_EelFigure, ColorMapMixin):
         ColorMapMixin.__init__(self, epochs, None, vmax, vmin)
 
         nax = len(epochs)
-        _EelFigure.__init__(self, "Array Plot", nax, 4, 2, *args, **kwargs)
+        layout = Layout(nax, 2, 4, *args, **kwargs)
+        EelFigure.__init__(self, "Array Plot", layout)
 
         self.plots = []
         for i, ax, layers in zip(xrange(nax), self._axes, epochs):
@@ -379,8 +380,8 @@ class Butterfly(UTS, LegendMixin):
                  ds=None, x='time', *args, **kwargs):
         epochs, (xdim, linedim) = _base.unpack_epochs_arg(epochs, (x, None),
                                                           Xax, ds)
-        _EelFigure.__init__(self, 'Butterfly Plot', len(epochs), 4, 2, *args,
-                            **kwargs)
+        layout = Layout(len(epochs), 2, 4, *args, **kwargs)
+        EelFigure.__init__(self, 'Butterfly Plot', layout)
         e0 = epochs[0][0]
         self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
         self._configure_yaxis(e0, ylabel)

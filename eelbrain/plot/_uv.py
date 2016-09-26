@@ -12,7 +12,7 @@ import matplotlib as mpl
 
 from .._stats import test, stats
 from .._data_obj import asvar, ascategorial, assub, cellname, Celltable
-from ._base import _EelFigure, LegendMixin, str2tex, frame_title
+from ._base import EelFigure, Layout, LegendMixin, str2tex, frame_title
 from ._colors import find_cell_colors
 
 
@@ -168,7 +168,7 @@ def _mark_plot_1sample(ax, ct, par, y_min, y_unit, popmean=0, corr='Hochberg',
         return y_min
 
 
-class PairwiseLegend(_EelFigure):
+class PairwiseLegend(EelFigure):
     """Legend for colors used in pairwise comparisons
 
     Parameters
@@ -191,7 +191,8 @@ class PairwiseLegend(_EelFigure):
         ax_h = n_levels * size
         y_unit = size / 5
         ax_aspect = 4 / n_levels
-        _EelFigure.__init__(self, "ColorGrid", None, ax_h, ax_aspect, False, *args, **kwargs)
+        layout = Layout(None, ax_aspect, ax_h, False, *args, **kwargs)
+        EelFigure.__init__(self, "ColorGrid", layout)
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
         ax.set_axis_off()
 
@@ -211,9 +212,10 @@ class PairwiseLegend(_EelFigure):
         self._show()
 
 
-class _SimpleFigure(_EelFigure):
+class _SimpleFigure(EelFigure):
     def __init__(self, wintitle, *args, **kwargs):
-        _EelFigure.__init__(self, wintitle, 1, 5, 1, *args, **kwargs)
+        layout = Layout(1, 1, 5, *args, **kwargs)
+        EelFigure.__init__(self, wintitle, layout)
         self._ax = ax = self._axes[0]
 
         # remove x-axis ticks
@@ -246,7 +248,7 @@ class _SimpleFigure(_EelFigure):
                 w, h = self._frame.GetSize()
                 w += int(extend)
                 self._frame.SetSize((w, h))
-        _EelFigure._show(self)
+        EelFigure._show(self)
 
 
 class Boxplot(_SimpleFigure):
@@ -627,7 +629,7 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom, top=None,
     return lim
 
 
-class Timeplot(_EelFigure, LegendMixin):
+class Timeplot(EelFigure, LegendMixin):
     """Plot a variable over time
 
     Parameters
@@ -733,7 +735,8 @@ class Timeplot(_EelFigure, LegendMixin):
         color_list = [colors[i] for i in categories.cells]
 
         # get axes
-        _EelFigure.__init__(self, "Timeplot", 1, 5, 1, *args, **kwargs)
+        layout = Layout(1, 1, 5, *args, **kwargs)
+        EelFigure.__init__(self, "Timeplot", layout)
         self._configure_yaxis(Y, ylabel)
         self._configure_xaxis(time, xlabel)
         ax = self._axes[0]
@@ -868,7 +871,7 @@ def _reg_line(Y, reg):
     return regline_x, regline_y
 
 
-class Correlation(_EelFigure, LegendMixin):
+class Correlation(EelFigure, LegendMixin):
     """Plot the correlation between two variables
 
     Parameters
@@ -908,7 +911,8 @@ class Correlation(_EelFigure, LegendMixin):
 
         # figure
         frame_title_ = frame_title("Correlation", y, x, cat)
-        _EelFigure.__init__(self, frame_title_, 1, 5, 1, *args, **kwargs)
+        layout = Layout(1, 1, 5, *args, **kwargs)
+        EelFigure.__init__(self, frame_title_, layout)
         self._configure_yaxis(y, ylabel)
         self._configure_xaxis(x, xlabel)
 
@@ -939,7 +943,7 @@ class Correlation(_EelFigure, LegendMixin):
         LegendMixin._fill_toolbar(self, tb)
 
 
-class Regression(_EelFigure, LegendMixin):
+class Regression(EelFigure, LegendMixin):
     """Plot the regression of Y on X
 
     parameters
@@ -989,7 +993,8 @@ class Regression(_EelFigure, LegendMixin):
 
         # figure
         frame_title_ = frame_title("Regression", Y, X, cat)
-        _EelFigure.__init__(self, frame_title_, 1, 5, 1, *args, **kwargs)
+        layout = Layout(1, 1, 5, *args, **kwargs)
+        EelFigure.__init__(self, frame_title_, layout)
         self._configure_xaxis(X, xlabel)
         self._configure_yaxis(Y, ylabel)
 
@@ -1073,7 +1078,7 @@ def _normality_plot(ax, data, **kwargs):
     ax.set_yticklabels(ticks_int)
 
 
-class Histogram(_EelFigure):
+class Histogram(EelFigure):
     """Histogram plots with tests of normality
 
     Parameters
@@ -1120,8 +1125,8 @@ class Histogram(_EelFigure):
                 title = "Tests for Normality"
 
         frame_title_ = frame_title("Histogram", ct.Y, ct.X)
-        _EelFigure.__init__(self, frame_title_, nax, 3, 1, tight, title, *args,
-                            **kwargs)
+        layout = Layout(nax, 1, 3, tight, title, *args, **kwargs)
+        EelFigure.__init__(self, frame_title_, layout)
 
         if X is None:
             ax = self._axes[0]

@@ -4,7 +4,6 @@ from __future__ import division
 
 from itertools import izip
 import operator
-from warnings import warn
 
 import matplotlib as mpl
 import numpy as np
@@ -12,12 +11,12 @@ import numpy as np
 from .._data_obj import ascategorial, asndvar, assub, cellname, Celltable
 from .._stats import stats
 from . import _base
-from ._base import _EelFigure, LegendMixin
+from ._base import EelFigure, Layout, LegendMixin
 from ._colors import colors_for_oneway, find_cell_colors
 from functools import reduce
 
 
-class UTSStat(_EelFigure, LegendMixin):
+class UTSStat(EelFigure, LegendMixin):
     """
     Plot statistics for a one-dimensional NDVar
 
@@ -158,7 +157,8 @@ class UTSStat(_EelFigure, LegendMixin):
             colors = find_cell_colors(color_x, colors)
 
         frame_title = _base.frame_title("UTSStat", Y, X, Xax)
-        _EelFigure.__init__(self, frame_title, nax, 4, 2, *args, **kwargs)
+        layout = Layout(nax, 2, 4, *args, **kwargs)
+        EelFigure.__init__(self, frame_title, layout)
 
         # create plots
         self._plots = []
@@ -314,7 +314,7 @@ class UTSStat(_EelFigure, LegendMixin):
         self.draw()
 
 
-class UTS(_EelFigure):
+class UTS(EelFigure):
     """Value by time plot for UTS data
 
     Parameters
@@ -345,7 +345,8 @@ class UTS(_EelFigure):
                  xlabel=True, ylabel=True, xticklabels=True, bottom=None,
                  top=None, *args, **kwargs):
         epochs, (xdim,) = _base.unpack_epochs_arg(epochs, (None,), Xax, ds)
-        _EelFigure.__init__(self, "UTS", len(epochs), 2, 1.5, *args, **kwargs)
+        layout = Layout(len(epochs), 1.5, 2, *args, **kwargs)
+        EelFigure.__init__(self, "UTS", layout)
 
         e0 = epochs[0][0]
         self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
@@ -462,7 +463,7 @@ class _ax_uts_stat(object):
         self.title = title
 
 
-class UTSClusters(_EelFigure):
+class UTSClusters(EelFigure):
     """Plot permutation cluster test results
 
     Parameters
@@ -497,7 +498,8 @@ class UTSClusters(_EelFigure):
         # create figure
         n = len(epochs)
         nax = 1 if overlay else n
-        _EelFigure.__init__(self, "UTSClusters", nax, 4, 2, *args, **kwargs)
+        layout = Layout(nax, 2, 4, *args, **kwargs)
+        EelFigure.__init__(self, "UTSClusters", layout)
 
         colors = colors_for_oneway(range(n), cmap=cm)
         self._caxes = []

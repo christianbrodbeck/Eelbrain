@@ -853,7 +853,7 @@ def frame_title(plot, y, x=None, xax=None):
         return "%s: %s ~ %s | %s" % (plot, y.name, x.name, xax.name)
 
 
-class _EelFigure(object):
+class EelFigure(object):
     """Parent class for Eelbrain figures.
 
     In order to subclass:
@@ -868,26 +868,15 @@ class _EelFigure(object):
     _default_ylabel_ax = 0
     _make_axes = True
 
-    def __init__(self, frame_title, layout, axh_default, ax_aspect,
-                 tight=True, title=None, frame=True, yaxis=True, *args,
-                 **kwargs):
+    def __init__(self, frame_title, layout):
         """Parent class for Eelbrain figures.
 
         Parameters
         ----------
         frame_title : str
             Frame title.
-        layout : None | int | Layout
-            Layout, or number of axes to produce layout for. If None, no layout
-            is produced. If a Layout is provided, some subsequent parameters
-            are ignored.
-        axh_default : scalar
-            Default height per axes.
-        ax_aspect : scalar
-            Width to height ration (axw / axh).
-        tight : bool
-            Rescale axes so that the space in the figure is used optimally
-            (default True).
+        layout : Layout
+            Layout that determines figure dimensions.
         title : str
             Figure title (default is no title).
         frame : bool | 't' | 'none'
@@ -920,13 +909,8 @@ class _EelFigure(object):
             Run the Eelbrain GUI app (default is True for interactive plotting and
             False in scripts).
         """
-        if title:
-            frame_title = '%s: %s' % (frame_title, title)
-
-        # layout
-        if not isinstance(layout, Layout):
-            layout = Layout(layout, ax_aspect, axh_default, tight, *args,
-                            **kwargs)
+        if layout.title:
+            frame_title = '%s: %s' % (frame_title, layout.title)
 
         # find the right frame
         if backend['eelbrain']:
@@ -939,14 +923,14 @@ class _EelFigure(object):
             frame_ = mpl_figure(**layout.fig_kwa())
 
         figure = frame_.figure
-        if title:
-            self._figtitle = figure.suptitle(title)
+        if layout.title:
+            self._figtitle = figure.suptitle(layout.title)
         else:
             self._figtitle = None
 
         # make axes
         if self._make_axes:
-            axes = layout.make_axes(figure, frame, yaxis)
+            axes = layout.make_axes(figure)
         else:
             axes = []
 
@@ -1143,9 +1127,9 @@ class _EelFigure(object):
 class Layout(object):
     """Create layouts for figures with several axes of the same size
     """
-    def __init__(self, nax, ax_aspect, axh_default, tight, h=None, w=None,
-                 axh=None, axw=None, nrow=None, ncol=None, dpi=None, show=True,
-                 run=None):
+    def __init__(self, nax, ax_aspect, axh_default, tight=True, title=None,
+                 h=None, w=None, axh=None, axw=None, nrow=None, ncol=None,
+                 dpi=None, show=True, run=None, frame=True, yaxis=True):
         """Create a grid of axes based on variable parameters.
 
         Parameters
@@ -1160,6 +1144,8 @@ class Layout(object):
         tight : bool
             Rescale axes so that the space in the figure is used optimally
             (default True).
+        title : str
+            Figure title.
         h : scalar
             Height of the figure.
         w : scalar
@@ -1324,6 +1310,9 @@ class Layout(object):
         self.dpi = dpi
         self.show = show
         self.run = run
+        self.title = title
+        self.frame = frame
+        self.yaxis = yaxis
 
     def fig_kwa(self):
         out = {'figsize': (self.w, self.h), 'dpi': self.dpi}
@@ -1342,7 +1331,7 @@ class Layout(object):
                                                wspace, hspace)
         return out
 
-    def make_axes(self, figure, frame, yaxis):
+    def make_axes(self, figure):
         if not self.nax:
             return []
         axes = []
@@ -1351,7 +1340,7 @@ class Layout(object):
             axes.append(ax)
 
             # axes modifications
-            if frame == 't':
+            if self.frame == 't':
                 ax.tick_params(direction='inout', bottom=False, top=True,
                                left=False, right=True, labelbottom=True,
                                labeltop=False, labelleft=True,
@@ -1360,15 +1349,15 @@ class Layout(object):
                 ax.spines['left'].set_visible(False)
                 ax.spines['top'].set_position('zero')
                 ax.spines['bottom'].set_visible(False)
-            elif frame == 'none':
+            elif self.frame == 'none':
                 ax.axis('off')
-            elif not frame:
+            elif not self.frame:
                 ax.yaxis.set_ticks_position('left')
                 ax.spines['right'].set_visible(False)
                 ax.xaxis.set_ticks_position('bottom')
                 ax.spines['top'].set_visible(False)
 
-            if not yaxis:
+            if not self.yaxis:
                 ax.yaxis.set_ticks(())
                 ax.spines['left'].set_visible(False)
         return axes
@@ -1377,10 +1366,10 @@ class Layout(object):
 class ImLayout(Layout):
     """Layout subclass for axes without space"""
     def __init__(self, nrow, ncol, top_space, bottom_space, ax_aspect,
-                 axh_default, *args, **kwargs):
-        self.top_space = top_space
+                 axh_default, title=None, *args, **kwargs):
+        self.top_space = top_space + 0.5 * bool(title)
         self.bottom_space = bottom_space
-        Layout.__init__(self, nrow * ncol, ax_aspect, axh_default, False,
+        Layout.__init__(self, nrow * ncol, ax_aspect, axh_default, False, title,
                         *args, nrow=nrow, ncol=ncol, **kwargs)
 
         self.h += top_space + bottom_space
@@ -1391,7 +1380,7 @@ class ImLayout(Layout):
         return {'figsize': (self.w, self.h), 'dpi': self.dpi,
                 'subplotpars': SubplotParams(0, bottom, 1, top, 0, 0)}
 
-    def make_axes(self, figure, frame, yaxis):
+    def make_axes(self, figure):
         i = 1
         axes = []
         for col in xrange(self.ncol):
@@ -1666,9 +1655,10 @@ class LegendMixin(object):
             raise RuntimeError("No handles to produce legend.")
 
 
-class Legend(_EelFigure):
+class Legend(EelFigure):
     def __init__(self, handles, labels, *args, **kwargs):
-        _EelFigure.__init__(self, "Legend", None, 2, 1, False, *args, **kwargs)
+        layout = Layout(None, 1, 2, False, *args, **kwargs)
+        EelFigure.__init__(self, "Legend", layout)
 
         self.legend = self.figure.legend(handles, labels, loc=2)
 
@@ -1684,9 +1674,10 @@ class Legend(_EelFigure):
         self._show()
 
 
-class Figure(_EelFigure):
+class Figure(EelFigure):
     def __init__(self, nax=None, title='Figure', *args, **kwargs):
-        _EelFigure.__init__(self, title, nax, 2, 1, *args, **kwargs)
+        layout = Layout(nax, 1, 2, *args, **kwargs)
+        EelFigure.__init__(self, title, layout)
 
     def show(self):
         self._show()
