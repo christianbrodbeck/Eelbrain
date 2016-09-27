@@ -2,6 +2,7 @@
 from distutils.version import LooseVersion
 from functools import wraps
 from importlib import import_module
+import os
 import shutil
 import tempfile
 
@@ -151,3 +152,14 @@ def requires_module(name, version):
                                 mod.__version__))
         return decorator
     return wrapper
+
+
+def file_path(name):
+    "Path to test data file in the test_data directory"
+    path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', '..',
+                                         'test_data', name))
+    if os.path.exists(path):
+        return path
+    else:
+        raise IOError("Testing file does not exist. Test can only be executed "
+                      "from source repository.")

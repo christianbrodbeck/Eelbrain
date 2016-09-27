@@ -8,12 +8,12 @@ from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 import mne
 from mne import pick_types
-from mne.io.kit.tests import data_dir as kit_test_data_dir
 
 from eelbrain import load
 
 from ...tests.test_data import assert_dataobj_equal
-from eelbrain._utils.testing import requires_module, requires_mne_sample_data
+from eelbrain._utils.testing import (requires_module, requires_mne_sample_data,
+                                     file_path)
 
 
 FILTER_WARNING = ('The measurement information indicates a low-pass frequency '
@@ -22,7 +22,7 @@ FILTER_WARNING = ('The measurement information indicates a low-pass frequency '
 
 @requires_module('mne', '0.13')
 def test_load_fiff_sensor():
-    umd_sqd_path = os.path.join(kit_test_data_dir, 'test_umd-raw.sqd')
+    umd_sqd_path = file_path('test_umd-raw.sqd')
     raw = mne.io.read_raw_kit(umd_sqd_path)
 
     sensor = load.fiff.sensor_dim(raw)
