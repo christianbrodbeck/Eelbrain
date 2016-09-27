@@ -1587,7 +1587,7 @@ class MneExperiment(FileTree):
             if ica_mtime > mtime:
                 return ica_mtime
 
-    def _result_mtime(self, dst, data, cached_test=False, single_subject=False):
+    def _result_mtime(self, dst, data, single_subject=False):
         """For several results (reports and movies)
 
         Parameters
@@ -1605,30 +1605,27 @@ class MneExperiment(FileTree):
         """
         if os.path.exists(dst):
             dst_mtime = os.path.getmtime(dst)
-            if cached_test:
-                return self._result_mtime(self.get('test-file'), data)
-            else:
-                if data == 'src':
-                    if single_subject:
-                        mrisubject = 'mrisubject'
-                    else:
-                        mrisubject = 'common_brain'
-
-                    if self._annot_mtime(self.get(mrisubject)) > dst_mtime:
-                        return
-                    mtime_func = self._epochs_stc_mtime
-                else:
-                    mtime_func = self._epochs_mtime
-
+            if data == 'src':
                 if single_subject:
-                    mtime_iterator = (mtime_func(),)
+                    mrisubject = 'mrisubject'
                 else:
-                    mtime_iterator = (mtime_func() for _ in self)
+                    mrisubject = 'common_brain'
 
-                for mtime in mtime_iterator:
-                    if mtime is None or mtime > dst_mtime:
-                        return
-                return dst_mtime
+                if self._annot_mtime(self.get(mrisubject)) > dst_mtime:
+                    return
+                mtime_func = self._epochs_stc_mtime
+            else:
+                mtime_func = self._epochs_mtime
+
+            if single_subject:
+                mtime_iterator = (mtime_func(),)
+            else:
+                mtime_iterator = (mtime_func() for _ in self)
+
+            for mtime in mtime_iterator:
+                if mtime is None or mtime > dst_mtime:
+                    return
+            return dst_mtime
 
     def _process_subject_arg(self, subject, kwargs):
         """Process subject arg for methods that work on groups and subjects
@@ -4000,7 +3997,7 @@ class MneExperiment(FileTree):
         else:
             dst = os.path.expanduser(dst)
 
-        if not redo and self._result_mtime(dst, 'src', False, group is None):
+        if not redo and self._result_mtime(dst, 'src', group is None):
             return
 
         plot._brain.assert_can_save_movies()
@@ -4125,7 +4122,7 @@ class MneExperiment(FileTree):
             else:
                 dst = os.path.expanduser(dst)
 
-            if not redo and self._result_mtime(dst, 'src', False, group is None):
+            if not redo and self._result_mtime(dst, 'src', group is None):
                 return
 
             plot._brain.assert_can_save_movies()
@@ -4542,15 +4539,15 @@ class MneExperiment(FileTree):
         dst = self.get('report-file', mkdir=True, test=test)
         is_twostage = self._tests[test]['kind'] == 'two-stage'
         desc = self._get_rel('report-file', 'res-dir')
-        if redo:
+        if not os.path.exists(dst):
+            self._log.debug("New report: %s", desc)
+        elif redo:
             self._log.debug("Redoing report: %s", desc)
-        elif self._result_mtime(dst, 'src', not is_twostage):
-            self._log.debug("Report up to date: %s", desc)
-            return
-        elif os.path.exists(dst):
+        elif not self._result_mtime(dst, 'src'):
             self._log.debug("Report outdated: %s", desc)
         else:
-            self._log.debug("New report: %s", desc)
+            self._log.debug("Report up to date: %s", desc)
+            return
 
         # start report
         title = self.format('{session} {epoch} {test} {test_options}')
