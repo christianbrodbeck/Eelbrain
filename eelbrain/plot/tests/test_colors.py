@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from nose.tools import assert_equal, assert_in, assert_raises
+from nose.tools import eq_, assert_in, assert_raises, assert_greater
 
 from eelbrain import datasets, plot
 
@@ -11,13 +11,13 @@ def test_generate_colors():
     cells_2 = ('a', 'b', 'c')
 
     colors = plot.colors_for_oneway(cells_1)
-    assert_equal(len(colors), len(cells_1))
+    eq_(len(colors), len(cells_1))
 
     colors = plot.colors_for_twoway(cells_1, cells_2)
-    assert_equal(len(colors), len(cells_1) * len(cells_2))
+    eq_(len(colors), len(cells_1) * len(cells_2))
 
     colors = plot.colors_for_twoway(cells_2, cells_1)
-    assert_equal(len(colors), len(cells_1) * len(cells_2))
+    eq_(len(colors), len(cells_1) * len(cells_2))
 
     # colors_for_categorial()
     f = ds['A']
@@ -58,6 +58,13 @@ def test_plot_colors():
 
     colors = plot.colors_for_oneway(cells_1)
     p = plot.ColorList(colors, show=False)
+    w0, h0 = p.figure.get_size_inches()
+    p.close()
+
+    p = plot.ColorList(colors, labels={'A': 'A'*20, 'B': 'Bbb'}, show=False)
+    w, h = p.figure.get_size_inches()
+    eq_(h, h0)
+    assert_greater(w, w0)
     p.close()
 
     colors = plot.colors_for_twoway(cells_1, cells_2)

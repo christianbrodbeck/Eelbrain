@@ -384,18 +384,34 @@ class ColorList(EelFigure):
         ax.set_axis_off()
 
         n = len(cells)
-        text_h = []
+        self._labels = []
         for i, cell in enumerate(cells):
             bottom = n - i - 1
             y = bottom + 0.5
             patch = mpl.patches.Rectangle((0, bottom), 1, 1, fc=colors[cell],
                                           ec='none', zorder=1)
             ax.add_patch(patch)
-            text_h.append(ax.text(1.1, y, labels[cell], va='center', ha='left', zorder=2))
+            h = ax.text(1.1, y, labels[cell], va='center', ha='left', zorder=2)
+            self._labels.append(h)
 
         ax.set_ylim(0, n)
         ax.set_xlim(0, n * self._layout.w / self._layout.h)
 
+        # resize figure to match legend
+        if not self._layout.w_fixed:
+            self.draw()
+            # all calculation in pixels
+            fig_bb = self.figure.get_window_extent()
+            x_max = max(h.get_window_extent().x1 for h in self._labels)
+            w0, h0 = self._frame.GetSize()
+            new_w = w0 + (x_max - fig_bb.x1) + 5
+            self._frame.SetSize((new_w, h0))
+            # adjust x-limits
+            # self.draw()
+            ax_bb = ax.get_window_extent()
+            ax.set_xlim(0, n * ax_bb.width / ax_bb.height)
+
+        self._ax = ax
         self._show()
 
 
