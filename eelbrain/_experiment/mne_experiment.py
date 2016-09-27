@@ -172,6 +172,8 @@ class Epoch(object):
         out = {k: v for k, v in self.as_dict().items() if v is not None}
         if isinstance(self, (SecondaryEpoch, SuperEpoch)):
             out['_rej_file_epochs'] = self.rej_file_epochs
+        if isinstance(self, PrimaryEpoch) and self.n_cases:
+            out['n_cases'] = self.n_cases
         if out['trigger_shift'] == 0:
             del out['trigger_shift']
         return out
@@ -1202,6 +1204,8 @@ class MneExperiment(FileTree):
                 epoch_state_v = {k: v.as_dict_24() for k, v in self._epochs.iteritems()}
                 for e in cache_state['epochs'].values():
                     e.pop('base', None)
+                    if 'sel_epoch' in e:
+                        e.pop('n_cases', None)
 
             # Find modified definitions
             # =========================
