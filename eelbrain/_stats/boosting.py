@@ -7,6 +7,7 @@ import time
 import numpy as np
 from numpy import newaxis
 from scipy.stats import spearmanr
+from tqdm import tqdm
 
 from .. import _colorspaces as cs
 from .._data_obj import NDVar, UTS
@@ -128,11 +129,14 @@ def boosting(y, x, tstart, tstop, delta=0.005, error='SScentered'):
         y_data = y_data[:, i_start:]
 
     # do boosting
-    t0 = time.time()
-    res = [boosting_continuous(x_data, y_, trf_length, delta, error) for
-           y_ in y_data]
+    n_responses = len(y_data)
+    pbar = tqdm(desc="Boosting %i response" % n_responses + 's' * (n_responses > 1),
+                total=n_responses * 10)
+    res = [boosting_continuous(x_data, y_, trf_length, delta, error, pbar=pbar)
+           for y_ in y_data]
+    pbar.close()
     hs, corrs = zip(*res)
-    dt = time.time() - t0
+    dt = time.time() - pbar.start_t
 
     # correlation
     if ydim is None:
@@ -169,7 +173,7 @@ def boosting(y, x, tstart, tstop, delta=0.005, error='SScentered'):
 
 
 def boosting_continuous(x, y, trf_length, delta, error, mindelta=None,
-                        maxiter=10000, nsegs=10):
+                        maxiter=10000, nsegs=10, pbar=None):
     """Boosting for a continuous data segment, cycle through even splits for
     test segment
 
@@ -189,6 +193,8 @@ def boosting_continuous(x, y, trf_length, delta, error, mindelta=None,
         logger.debug(msg)
         if np.any(h):
             hs.append(h)
+        if pbar is not None:
+            pbar.update()
 
     if hs:
         h = np.mean(hs, 0)
