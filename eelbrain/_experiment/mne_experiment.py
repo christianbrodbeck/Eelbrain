@@ -1532,11 +1532,7 @@ class MneExperiment(FileTree):
 
     def _evoked_mtime(self):
         "Return mtime if the evoked file is up-to-date, None otherwise"
-        path = self.get('evoked-file')
-        if os.path.exists(path):
-            evoked_mtime = os.path.getmtime(path)
-            if evoked_mtime > self._epochs_mtime():
-                return evoked_mtime
+        return self._epochs_mtime()
 
     def _evoked_stc_mtime(self):
         "mtime if up-to-date, else None; does not check annot"
@@ -1558,12 +1554,11 @@ class MneExperiment(FileTree):
                     return ica_mtime
 
     def _inv_mtime(self):
-        return max(os.path.getmtime(self._get_raw_path(make=True)),
-                   os.path.getmtime(self.get('fwd-file', make=True)),
-                   os.path.getmtime(self.get('cov-file', make=True)))
+        return max(self._raw_mtime(),
+                   os.path.getmtime(self.get('fwd-file', make=True)))
 
     def _raw_mtime(self):
-        os.path.getmtime(self._get_raw_path(make=True))
+        return os.path.getmtime(self.get('raw-file'))
 
     def _rej_mtime(self, epoch, pre_ica=False):
         """rej-file mtime for secondary epoch definition
@@ -3764,7 +3759,7 @@ class MneExperiment(FileTree):
                      (isinstance(data_raw, bool) or data_raw == self.get('raw')))
         model = self.get('model')
         equal_count = self.get('equalize_evoked_count') == 'eq'
-        if use_cache and self._evoked_mtime():
+        if use_cache and os.path.exists(dst) and self._evoked_mtime():
             ds = self.load_selected_events(data_raw=data_raw)
             ds = ds.aggregate(model, drop_bad=True, equal_count=equal_count,
                               drop=('i_start', 't_edf', 'T', 'index'))
