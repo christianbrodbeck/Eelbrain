@@ -306,10 +306,10 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
 
     # buffers
     y_train_pred = [np.empty(y.shape) for y in y_train]
+    y_train_error = [np.empty(y.shape) for y in y_train]
     y_train_pred_next = [np.empty(y.shape) for y in y_train]
     y_delta = [np.empty(y.shape) for y in y_train]
     y_test_pred = [np.empty(y.shape) for y in y_test]
-    # y_train_error = [np.empty(y.shape) for y in y_train]
     y_test_error = [np.empty(y.shape) for y in y_test]
     new_error = np.empty(h.shape)
     new_sign = np.empty(h.shape, np.int8)
@@ -329,14 +329,17 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
                 apply_kernel(x, h, y)
 
             # Compute predictive power on testing data
-            e_test = sum(error(np.subtract(y, pred, err), err) for y, pred, err in
+            e_test = sum(error(np.subtract(y, pred, err), err)
+                         for y, pred, err in
                          izip(y_test, y_test_pred, y_test_error))
+            e_train = sum(error(np.subtract(y, pred, err), err)
+                          for y, pred, err in
+                          izip(y_train, y_train_pred, y_train_error))
         else:
             for y in y_train_pred:
                 y.fill(0)
-            e_test = sum(error(err) for err in y_test)
-
-        e_train = sum(error(y - ynow) for y, ynow in izip(y_train, y_train_pred))
+            e_test = sum(error(y.ravel()) for y in y_test)
+            e_train = sum(error(y.ravel()) for y in y_train)
 
         test_error_history.append(e_test)
 
