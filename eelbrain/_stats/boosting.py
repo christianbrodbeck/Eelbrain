@@ -1,5 +1,5 @@
 from __future__ import division
-from itertools import chain, izip
+from itertools import chain, izip, product
 import logging
 from math import floor
 import time
@@ -351,33 +351,32 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
 
         # generate possible movements -> training error
         new_sign.fill(0)
-        for ind1 in xrange(h.shape[0]):
-            for ind2 in xrange(h.shape[1]):
-                # y_delta = change in y from delta change in h
-                for y, x in izip(y_delta, x_train):
-                    y[:ind2] = 0.
-                    y[ind2:] = x[ind1, :-ind2 or None]
-                    y *= delta
+        for ind1, ind2 in product(xrange(h.shape[0]), xrange(h.shape[1])):
+            # y_delta = change in y from delta change in h
+            for y, x in izip(y_delta, x_train):
+                y[:ind2] = 0.
+                y[ind2:] = x[ind1, :-ind2 or None]
+                y *= delta
 
-                # +/- delta
-                e_add = 0
-                e_sub = 0
-                for y, ynow, dy, ynext in izip(y_train, y_train_pred, y_delta, y_train_pred_next):
-                    # + delta
-                    np.add(ynow, dy, ynext)
-                    np.subtract(y, ynext, ynext)
-                    e_add += error(ynext, ynext)
-                    # - delta
-                    np.subtract(ynow, dy, ynext)
-                    np.subtract(y, ynext, ynext)
-                    e_sub += error(ynext, ynext)
+            # +/- delta
+            e_add = 0
+            e_sub = 0
+            for y, ynow, dy, ynext in izip(y_train, y_train_pred, y_delta, y_train_pred_next):
+                # + delta
+                np.add(ynow, dy, ynext)
+                np.subtract(y, ynext, ynext)
+                e_add += error(ynext, ynext)
+                # - delta
+                np.subtract(ynow, dy, ynext)
+                np.subtract(y, ynext, ynext)
+                e_sub += error(ynext, ynext)
 
-                if e_add > e_sub:
-                    new_error[ind1, ind2] = e_sub
-                    new_sign[ind1, ind2] = -1
-                else:
-                    new_error[ind1, ind2] = e_add
-                    new_sign[ind1, ind2] = 1
+            if e_add > e_sub:
+                new_error[ind1, ind2] = e_sub
+                new_sign[ind1, ind2] = -1
+            else:
+                new_error[ind1, ind2] = e_add
+                new_sign[ind1, ind2] = 1
 
         # If no improvements can be found reduce delta
         if new_error.min() > e_train:
