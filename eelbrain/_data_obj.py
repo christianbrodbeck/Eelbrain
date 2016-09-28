@@ -23,7 +23,7 @@ managed by
 from __future__ import division
 from __future__ import print_function
 
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from copy import deepcopy
 from fnmatch import fnmatchcase
 import itertools
@@ -50,7 +50,7 @@ from scipy.spatial.distance import cdist, pdist, squareform
 
 from . import fmtxt
 from . import _colorspaces as cs
-from ._utils import deprecated, ui, LazyProperty, natsorted  #, logger
+from ._utils import deprecated, ui, LazyProperty, natsorted
 from ._utils.numpy_utils import slice_to_arange, full_slice, digitize
 from functools import reduce
 
@@ -8574,134 +8574,6 @@ def intersect_dims(dims1, dims2, check_dims=True):
         Intersection of dims1 and dims2.
     """
     return tuple(d1.intersect(d2, check_dims=check_dims) for d1, d2 in zip(dims1, dims2))
-
-
-# ---NDVar functions---
-
-def corr(x, dim='sensor', obs='time', name=None):
-    """Calculate Neighbor correlation
-
-    Parameters
-    ----------
-    x : NDVar
-        The data.
-    dim : str
-        Dimension over which to correlate neighbors (default 'sensor').
-    obs : str
-        Dimension which provides observations over which to compute the
-        correlation (default 'time').
-    name : str
-        Name for the new NDVar.
-
-    Returns
-    -------
-    correlation : NDVar
-        NDVar with correlation coefficients.
-    """
-    dim_obj = x.get_dim(dim)
-
-    # find neighbors
-    neighbors = defaultdict(list)
-    for a, b in dim_obj.connectivity():
-        neighbors[a].append(b)
-        neighbors[b].append(a)
-
-    # for each point, find the average correlation with its neighbors
-    data = x.get_data((dim, obs))
-    cc = np.corrcoef(data)
-    y = np.empty(len(dim_obj))
-    for i in xrange(len(dim_obj)):
-        y[i] = np.mean(cc[i, neighbors[i]])
-
-    info = cs.set_info_cs(x.info, cs.stat_info('r'))
-    return NDVar(y, (dim_obj,), info, name)
-
-
-def cwt_morlet(Y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
-               out='magnitude'):
-    """Time frequency decomposition with Morlet wavelets (mne-python)
-
-    Parameters
-    ----------
-    Y : NDVar with time dimension
-        Signal.
-    freqs : scalar | array
-        Frequency/ies of interest. For a scalar, the output will not contain a
-        frequency dimension.
-    use_fft : bool
-        Compute convolution with FFT or temporal convolution.
-    n_cycles: float | array of float
-        Number of cycles. Fixed number or one per frequency.
-    zero_mean : bool
-        Make sure the wavelets are zero mean.
-    out : 'complex' | 'magnitude' | 'phase'
-        Format of the data in the returned NDVar.
-
-    Returns
-    -------
-    tfr : NDVar
-        Time frequency decompositions.
-    """
-    from mne.time_frequency.tfr import cwt_morlet
-
-    if not Y.get_axis('time') == Y.ndim - 1:
-        raise NotImplementedError
-    x = Y.x
-    x = x.reshape((np.prod(x.shape[:-1]), x.shape[-1]))
-    Fs = 1. / Y.time.tstep
-    if np.isscalar(freqs):
-        freqs = [freqs]
-        fdim = None
-    else:
-        fdim = Ordered("frequency", freqs, 'Hz')
-        freqs = fdim.values
-    x = cwt_morlet(x, Fs, freqs, use_fft, n_cycles, zero_mean)
-    if out == 'magnitude':
-        x = np.abs(x)
-    elif out == 'complex':
-        pass
-    else:
-        raise ValueError("out = %r" % out)
-
-    new_shape = Y.x.shape[:-1]
-    dims = Y.dims[:-1]
-    if fdim is not None:
-        new_shape += (len(freqs),)
-        dims += (fdim,)
-    new_shape += Y.x.shape[-1:]
-    dims += Y.dims[-1:]
-
-    x = x.reshape(new_shape)
-    info = cs.set_info_cs(Y.info, cs.default_info('A'))
-    out = NDVar(x, dims, info, Y.name)
-    return out
-
-
-def resample(data, sfreq, npad=100, window='boxcar'):
-    """Resample an NDVar with 'time' dimension after properly filtering it
-
-    Parameters
-    ----------
-    data : NDVar
-        Ndvar which should be resampled.
-    sfreq : scalar
-        New sampling frequency.
-    npad : int
-        Number of samples to use at the beginning and end for padding.
-    window : string | tuple
-        See scipy.signal.resample for description.
-
-    Notes
-    -----
-    requires mne-python
-    """
-    axis = data.get_axis('time')
-    old_sfreq = 1.0 / data.time.tstep
-    x = mne.filter.resample(data.x, sfreq, old_sfreq, npad, axis, window)
-    tstep = 1. / sfreq
-    time = UTS(data.time.tmin, tstep, x.shape[axis])
-    dims = data.dims[:axis] + (time,) + data.dims[axis + 1:]
-    return NDVar(x, dims=dims, info=data.info, name=data.name)
 
 
 EVAL_CONTEXT.update(Var=Var, Factor=Factor, extrema=extrema)

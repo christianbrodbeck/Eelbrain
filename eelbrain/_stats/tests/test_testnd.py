@@ -13,8 +13,8 @@ from numpy.testing import assert_array_equal
 from scipy import ndimage
 
 import eelbrain
-from eelbrain import datasets, testnd, NDVar, set_log_level
-from eelbrain._data_obj import UTS, Ordered, Sensor, cwt_morlet
+from eelbrain import datasets, testnd, NDVar, set_log_level, cwt_morlet
+from eelbrain._data_obj import UTS, Ordered, Sensor
 from eelbrain._stats.testnd import _ClusterDist, label_clusters, _MergedTemporalClusterDist
 from eelbrain._utils.testing import assert_dataobj_equal, assert_dataset_equal, \
     requires_mne_sample_data

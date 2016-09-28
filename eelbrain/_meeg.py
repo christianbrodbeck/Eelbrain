@@ -4,7 +4,8 @@ from itertools import izip
 
 import numpy as np
 
-from ._data_obj import Datalist, Dataset, Var, corr
+from ._data_obj import Datalist, Dataset, Var
+from ._ndvar import neighbor_correlation
 from ._info import BAD_CHANNELS
 from ._names import INTERPOLATE_CHANNELS
 
@@ -46,7 +47,7 @@ def find_flat_evoked(epochs, flat=1e-14):
 
 def find_noisy_channels(epochs, mincorr=0.35):
     names = epochs.sensor.names
-    out_e = Datalist([list(names[corr(ep) < mincorr]) for ep in epochs])
+    out_e = Datalist([list(names[neighbor_correlation(ep) < mincorr]) for ep in epochs])
     return out_e
 
 

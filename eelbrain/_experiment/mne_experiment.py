@@ -37,7 +37,8 @@ from ..mne_fixes import write_labels_to_annot
 from ..mne_fixes import _interpolate_bads_eeg, _interpolate_bads_meg
 from .._data_obj import (isvar, asfactor, align, DimensionMismatchError,
                          as_legal_dataset_key, assert_is_legal_dataset_key,
-                         cwt_morlet, OldVersionError)
+                         OldVersionError)
+from .._ndvar import cwt_morlet
 from ..fmtxt import List, Report, Image
 from .._report import named_list, enumeration, plural
 from .._resources import predefined_connectivity

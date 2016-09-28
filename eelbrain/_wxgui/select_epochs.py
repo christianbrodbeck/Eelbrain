@@ -25,7 +25,8 @@ from scipy.spatial.distance import cdist
 import wx
 
 from .. import load, save, plot, fmtxt
-from .._data_obj import Dataset, Factor, Var, Datalist, corr, asndvar, combine
+from .._data_obj import Dataset, Factor, Var, Datalist, asndvar, combine
+from .._ndvar import neighbor_correlation
 from .. import _meeg as meeg
 from .. import _report
 from .._names import INTERPOLATE_CHANNELS
@@ -1182,7 +1183,7 @@ class Frame(FileFrame):
             epoch_idx = self._epoch_idxs[ax_index]
             seg = self._case_segs[ax_index]
             name = 'Epoch %i Neighbor Correlation' % epoch_idx
-        plot.Topomap(corr(seg, name=name), sensorlabels='name')
+        plot.Topomap(neighbor_correlation(seg, name=name), sensorlabels='name')
 
     def PlotButterfly(self, ax_index):
         epoch = self._get_ax_data(ax_index)
