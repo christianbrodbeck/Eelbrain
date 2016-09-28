@@ -307,7 +307,7 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
     # buffers
     y_train_pred = [np.empty(y.shape) for y in y_train]
     y_train_error = [np.empty(y.shape) for y in y_train]
-    y_train_pred_next = [np.empty(y.shape) for y in y_train]
+    y_train_buf = [np.empty(y.shape) for y in y_train]
     y_delta = [np.empty(y.shape) for y in y_train]
     y_test_pred = [np.empty(y.shape) for y in y_test]
     y_test_error = [np.empty(y.shape) for y in y_test]
@@ -329,15 +329,15 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
                 apply_kernel(x, h, y)
 
             # Compute predictive power on testing data
-            e_test = sum(error(np.subtract(y, pred, err), err)
-                         for y, pred, err in
-                         izip(y_test, y_test_pred, y_test_error))
-            e_train = sum(error(np.subtract(y, pred, err), err)
+            e_train = sum(error(np.subtract(y, pred, err), pred)
                           for y, pred, err in
                           izip(y_train, y_train_pred, y_train_error))
+            e_test = sum(error(np.subtract(y, pred, err), pred)
+                         for y, pred, err in
+                         izip(y_test, y_test_pred, y_test_error))
         else:
-            for y in y_train_pred:
-                y.fill(0)
+            for y_err, y in izip(y_train_error, y_train):
+                y_err[:] = y
             e_test = sum(error(y.ravel()) for y in y_test)
             e_train = sum(error(y.ravel()) for y in y_train)
 
@@ -364,15 +364,13 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
             # +/- delta
             e_add = 0
             e_sub = 0
-            for y, ynow, dy, ynext in izip(y_train, y_train_pred, y_delta, y_train_pred_next):
+            for y_err, dy, buf in izip(y_train_error, y_delta, y_train_buf):
                 # + delta
-                np.add(ynow, dy, ynext)
-                np.subtract(y, ynext, ynext)
-                e_add += error(ynext, ynext)
+                np.subtract(y_err, dy, buf)
+                e_add += error(buf, buf)
                 # - delta
-                np.subtract(ynow, dy, ynext)
-                np.subtract(y, ynext, ynext)
-                e_sub += error(ynext, ynext)
+                np.add(y_err, dy, buf)
+                e_sub += error(buf, buf)
 
             if e_add > e_sub:
                 new_error[ind1, ind2] = e_sub
