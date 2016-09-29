@@ -99,9 +99,12 @@ NDVar Transformations
 .. autosummary::
    :toctree: generated
 
+   concatenate
    cwt_morlet
    labels_from_clusters
    morph_source_space
+   neighbor_correlation
+   resample
 
 
 ^^^^^^

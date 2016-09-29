@@ -121,7 +121,8 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
     Returns
     -------
     correlation : NDVar
-        NDVar with correlation coefficients.
+        NDVar that contains for each element in ``dim`` the with average
+        correlation coefficient with its neighbors.
     """
     dim_obj = x.get_dim(dim)
 
@@ -143,7 +144,7 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
 
 
 def resample(data, sfreq, npad=100, window='boxcar'):
-    """Resample an NDVar with 'time' dimension after properly filtering it
+    """Resample an NDVar along the 'time' dimension with appropriate filter
 
     Parameters
     ----------
@@ -154,11 +155,11 @@ def resample(data, sfreq, npad=100, window='boxcar'):
     npad : int
         Number of samples to use at the beginning and end for padding.
     window : string | tuple
-        See scipy.signal.resample for description.
+        See :func:`scipy.signal.resample` for description.
 
     Notes
     -----
-    requires mne-python
+    Uses :func:`mne.filter.resample`.
     """
     axis = data.get_axis('time')
     old_sfreq = 1.0 / data.time.tstep
