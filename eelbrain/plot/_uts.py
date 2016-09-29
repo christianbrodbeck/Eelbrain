@@ -13,6 +13,7 @@ from .._stats import stats
 from . import _base
 from ._base import EelFigure, Layout, LegendMixin
 from ._colors import colors_for_oneway, find_cell_colors
+from .._colorspaces import oneway_colors
 from functools import reduce
 
 
@@ -321,7 +322,7 @@ class UTS(EelFigure):
     ----------
     epochs : epochs
         Uts data epochs to plot.
-    Xax : None | categorial
+    xax : None | categorial
         Make separate axes for each category in this categorial model.
     axtitle : None | str
         Axes title. '{name}' is formatted to the category name.
@@ -341,10 +342,10 @@ class UTS(EelFigure):
     title : None | str
         Figure title.
     """
-    def __init__(self, epochs, Xax=None, axtitle='{name}', ds=None,
+    def __init__(self, epochs, xax=None, axtitle='{name}', ds=None,
                  xlabel=True, ylabel=True, xticklabels=True, bottom=None,
                  top=None, *args, **kwargs):
-        epochs, (xdim,) = _base.unpack_epochs_arg(epochs, (None,), Xax, ds)
+        epochs, (xdim,) = _base.unpack_epochs_arg(epochs, (None,), xax, ds)
         layout = Layout(len(epochs), 1.5, 2, *args, **kwargs)
         EelFigure.__init__(self, "UTS", layout)
 
@@ -354,8 +355,9 @@ class UTS(EelFigure):
 
         self.plots = []
         vlims = _base.find_fig_vlims(epochs, top, bottom)
-        for ax, epoch in izip(self._axes, epochs):
-            h = _ax_uts(ax, epoch, xdim, axtitle, vlims)
+        colors = oneway_colors(max(map(len, epochs)))
+        for ax, layers in izip(self._axes, epochs):
+            h = _ax_uts(ax, layers, xdim, axtitle, vlims, colors)
             self.plots.append(h)
 
         self._vspans = []
@@ -552,18 +554,13 @@ class UTSClusters(EelFigure):
 
 class _ax_uts(object):
 
-    def __init__(self, ax, layers, xdim, title, vlims, color=None):
+    def __init__(self, ax, layers, xdim, title, vlims, colors):
         l0 = layers[0]
         vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
 
-        overlay = False
-        for l in layers:
-            args = _base.find_uts_args(l, overlay, color)
-            overlay = True
-            if args is None:
-                continue
-
-            _plt_uts(ax, l, xdim, **args)
+        for l, color in izip(layers, colors):
+            color = l.info.get('color', color)
+            _plt_uts(ax, l, xdim, color)
             contours = l.info.get('contours', None)
             if contours:
                 for v, color in contours.iteritems():

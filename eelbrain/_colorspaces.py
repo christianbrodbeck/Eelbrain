@@ -129,7 +129,7 @@ def twoway_cmap(n1, hue_start=0.1, hue_shift=0.5, name=None, hues=None):
     return make_seq_cmap(seq, loc, name)
 
 
-def oneway_colors(n, hue_start, light_range):
+def oneway_colors(n, hue_start=0.2, light_range=0.5):
     """Create colors for categories
 
     Parameters
