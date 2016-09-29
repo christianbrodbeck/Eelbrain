@@ -9,6 +9,7 @@ Tools for loading data from mne's fiff files.
    add_epochs
    add_mne_epochs
    epochs
+   forward_operator
    mne_epochs
 
 Converting mne objects to :class:`NDVar`:
@@ -610,7 +611,11 @@ def sensor_dim(fiff, picks=None, sysname=None):
     sensor_dim : Sensor
         Sensor dimension object.
     """
-    info = fiff.info
+    if isinstance(fiff, mne.Info):
+        info = fiff
+    else:
+        info = fiff.info
+
     if picks is None:
         picks = mne.pick_types(info, eeg=True, ref_meg=False, exclude=())
     else:
@@ -811,6 +816,43 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
         dims = ('case', sensor, time)
 
     return NDVar(x, dims, info=info, name=name)
+
+
+def forward_operator(fwd, src, subjects_dir=None, parc='aparc', name=None):
+    """Load forward operator as ``NDVar``
+
+    Parameters
+    ----------
+    fwd : str | mne Forward
+        MNE Forward solution, or path to forward solution.
+    src : str
+        Tag describing the source space (e.g., "ico-4").
+    subjects_dir : str
+        Location of the MRI subjects directory.
+    parc : str
+        Parcellation to load (corresponding to existing annot files; default
+        'aparc').
+    name : str
+        Name the NDVar (default is the filename if a path is provifded,
+        otherwise "fwd").
+
+    Returns
+    -------
+    fwd : NDVar  (sensor, source)
+        NDVar containing the gain matrix.
+    """
+    if isinstance(fwd, basestring):
+        if name is None:
+            name = os.path.basename(fwd)
+        fwd = mne.read_forward_solution(fwd, force_fixed=True)
+    elif name is None:
+        name = 'fwd'
+    sensor = sensor_dim(fwd['info'])
+    assert np.all(sensor.names == fwd['sol']['row_names'])
+    lh, rh = fwd['src']
+    source = SourceSpace([lh['vertno'], rh['vertno']], lh['subject_his_id'],
+                         src, subjects_dir, parc)
+    return NDVar(fwd['sol']['data'], (sensor, source), {}, name)
 
 
 def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,

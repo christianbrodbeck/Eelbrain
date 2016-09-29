@@ -20,6 +20,15 @@ FILTER_WARNING = ('The measurement information indicates a low-pass frequency '
                   'of 40 Hz.')
 
 
+def test_load_fiff_fwd():
+    data_path = mne.datasets.sample.data_path()
+    fwd_path = os.path.join(data_path, 'MEG', 'sample', 'sample-ico-4-fwd.fif')
+    mri_sdir = os.path.join(data_path, 'subjects')
+    fwd = load.fiff.forward_operator(fwd_path, 'ico-4', mri_sdir)
+    eq_(len(fwd.source), 5120)
+    eq_(len(fwd.sensor), 364)
+
+
 @requires_module('mne', '0.13')
 def test_load_fiff_sensor():
     umd_sqd_path = file_path('test_umd-raw.sqd')
