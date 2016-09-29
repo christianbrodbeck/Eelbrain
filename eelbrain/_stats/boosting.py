@@ -33,9 +33,11 @@ class BoostingResult(object):
     error : str
         The error evaluation method used.
     """
-    _attr = ('h', 'corr', 'isnan', 't_run', 'version', 'error')
+    _attr = ('h', 'corr', 'isnan', 't_run', 'version', 'error', 'forward')
 
-    def __init__(self, h, corr, isnan, t_run, version, error='SS'):
+    def __init__(self, h, corr, isnan, t_run, version, error='SS',
+                 forward=None):
+        self.forward = forward
         self.error = error
         self.h = h
         self.corr = corr
@@ -50,7 +52,7 @@ class BoostingResult(object):
         self.__init__(**state)
 
 
-def boosting(y, x, tstart, tstop, delta=0.005, error='SScentered'):
+def boosting(y, x, tstart, tstop, delta=0.005, forward=None, error='SScentered'):
     """Estimate a temporal response function through boosting
 
     Parameters
@@ -64,6 +66,8 @@ def boosting(y, x, tstart, tstop, delta=0.005, error='SScentered'):
         Start of the TRF in seconds.
     tstop : float
         Stop of the TRF in seconds.
+    forward : NDVar
+        Transform from h to y.
     error : 'SS' | 'SScentered' | 'sum(abs)' | 'sum(abs centered)'
         Error function to use (default is ``SScentered``).
 
@@ -117,6 +121,19 @@ def boosting(y, x, tstart, tstop, delta=0.005, error='SScentered'):
     else:
         raise NotImplementedError("y with more than 2 dimensions")
 
+    # determine forward model
+    if forward is None:
+        forward_m = None
+        trf_dim = ydim
+    else:
+        assert forward.ndim == 2
+        assert ydim is not None
+        trf_dim, fwd_ydim = forward.get_dims((None, ydim.name))
+        if fwd_ydim != ydim:
+            forward = forward[ydim]
+            trf_dim = forward.get_dim(trf_dim.name)
+        forward_m = forward.get_data((ydim.name, trf_dim.name))
+
     # prepare trf (by cropping data)
     i_start = int(round(tstart / time_dim.tstep))
     i_stop = int(round(tstop / time_dim.tstep))
@@ -129,13 +146,25 @@ def boosting(y, x, tstart, tstop, delta=0.005, error='SScentered'):
         y_data = y_data[:, i_start:]
 
     # do boosting
-    n_responses = len(y_data)
-    pbar = tqdm(desc="Boosting %i response" % n_responses + 's' * (n_responses > 1),
-                total=n_responses * 10)
-    res = [boosting_continuous(x_data, y_, trf_length, delta, error, pbar=pbar)
-           for y_ in y_data]
+    if forward is None:
+        n_responses = len(y_data)
+        desc = "Boosting %i response" % n_responses + 's' * (n_responses > 1)
+        total = n_responses * 10
+    else:
+        n_src = len(trf_dim)
+        desc = "Boosting %i sources" % n_src + 's' * (n_src > 1)
+        total = 10
+    pbar = tqdm(desc=desc, total=total)
+    if forward is None:
+        res = [boosting_continuous(x_data, y_, trf_length, delta, error,
+                                   pbar=pbar)
+               for y_ in y_data]
+        hs, corrs = zip(*res)
+        h_x = np.array(hs)
+    else:
+        h_x, corrs = boosting_continuous(x_data, y_data, trf_length, delta,
+                                         error, forward=forward_m, pbar=pbar)
     pbar.close()
-    hs, corrs = zip(*res)
     dt = time.time() - pbar.start_t
 
     # correlation
@@ -143,14 +172,13 @@ def boosting(y, x, tstart, tstop, delta=0.005, error='SScentered'):
         corr = corrs[0]
         isnan = np.isnan(corr)
     else:
-        corrs = np.array(corrs)
+        corrs = np.asarray(corrs)
         isnan = np.isnan(corrs)
         corrs[isnan] = 0
         corr = NDVar(corrs, (ydim,), cs.stat_info('r'), 'Correlation')
 
     # TRF
     h_time = UTS(tstart, time_dim.tstep, trf_length)
-    h_x = np.array(hs)
     hs = []
     for name, dim, index in x_meta:
         h_x_ = h_x[:, index, :]
@@ -158,10 +186,10 @@ def boosting(y, x, tstart, tstop, delta=0.005, error='SScentered'):
             dims = (h_time,)
         else:
             dims = (dim, h_time)
-        if ydim is None:
+        if trf_dim is None:
             h_x_ = h_x_[0]
         else:
-            dims = (ydim,) + dims
+            dims = (trf_dim,) + dims
         hs.append(NDVar(h_x_, dims, y.info.copy(), name))
 
     if multiple_x:
@@ -169,11 +197,11 @@ def boosting(y, x, tstart, tstop, delta=0.005, error='SScentered'):
     else:
         hs = hs[0]
 
-    return BoostingResult(hs, corr, isnan, dt, VERSION, error)
+    return BoostingResult(hs, corr, isnan, dt, VERSION, error, forward)
 
 
 def boosting_continuous(x, y, trf_length, delta, error, mindelta=None,
-                        maxiter=10000, nsegs=10, pbar=None):
+                        maxiter=10000, nsegs=10, forward=None, pbar=None):
     """Boosting for a continuous data segment, cycle through even splits for
     test segment
 
@@ -189,7 +217,8 @@ def boosting_continuous(x, y, trf_length, delta, error, mindelta=None,
     hs = []
     for i in xrange(nsegs):
         h, test_sse_history, msg = boost_1seg(x, y, trf_length, delta, maxiter,
-                                              nsegs, i, mindelta, error)
+                                              nsegs, i, mindelta, error,
+                                              forward)
         logger.debug(msg)
         if np.any(h):
             hs.append(h)
@@ -198,14 +227,18 @@ def boosting_continuous(x, y, trf_length, delta, error, mindelta=None,
 
     if hs:
         h = np.mean(hs, 0)
-        corr = corr_for_kernel(y, x, h, False)
+        corr = corr_for_kernel(y, x, h, False, forward=forward)
     else:
-        h = np.zeros((len(x), trf_length))
-        corr = 0
+        h = np.zeros(h.shape)
+        if forward is None:
+            corr = 0
+        else:
+            corr = np.zeros(len(forward))
     return h, corr
 
 
-def boost_1seg(x, y, trf_length, delta, maxiter, nsegs, segno, mindelta, error):
+def boost_1seg(x, y, trf_length, delta, maxiter, nsegs, segno, mindelta, error,
+               forward):
     """boosting with one test segment determined by regular division
 
     Based on port of svdboostV4pred
@@ -232,6 +265,8 @@ def boost_1seg(x, y, trf_length, delta, maxiter, nsegs, segno, mindelta, error):
         smaller than ``mindelta``.
     error : 'SS' | 'Sabs'
         Error function to use.
+    forward : array (optional)
+        Forward operator, transform h to y.
 
     Returns
     -------
@@ -247,7 +282,10 @@ def boost_1seg(x, y, trf_length, delta, maxiter, nsegs, segno, mindelta, error):
         Correlation for training data at each iteration.
     """
     assert x.ndim == 2
-    assert y.shape == (x.shape[1],)
+    if forward is None:
+        assert y.shape == (x.shape[1],)
+    else:
+        assert y.shape == (len(forward), x.shape[1])
 
     # separate training and testing signal
     test_seg_len = int(floor(x.shape[1] / nsegs))
@@ -262,13 +300,17 @@ def boost_1seg(x, y, trf_length, delta, maxiter, nsegs, segno, mindelta, error):
         train_index = (slice(None, test_seg_len * segno),
                        slice(test_seg_len * (segno + 1), None))
 
-    y_train = [y[i] for i in train_index]
-    y_test = (y[test_index],)
+    y_train = [y[..., i] for i in train_index]
+    y_test = (y[..., test_index],)
     x_train = [x[:, i] for i in train_index]
     x_test = (x[:, test_index],)
 
-    return boost_segs(y_train, y_test, x_train, x_test, trf_length, delta,
-                      maxiter, mindelta, error)
+    if forward is None:
+        return boost_segs(y_train, y_test, x_train, x_test, trf_length, delta,
+                          maxiter, mindelta, error)
+    else:
+        return boost_segs_fwd(y_train, y_test, x_train, x_test, trf_length,
+                              delta, maxiter, mindelta, error, forward)
 
 
 def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
@@ -411,8 +453,173 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
             reason + ' (%i iterations)' % len(test_error_history))
 
 
+def boost_segs_fwd(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
+                   mindelta, error, forward):
+    """Boosting supporting multiple array segments
+
+    Parameters
+    ----------
+    y_train, y_test : tuple of array (n_resp, n_times)
+        Dependent signal, time series to predict.
+    x_train, x_test : array (n_stims, n_times)
+        Stimulus.
+    trf_length : int
+        Length of the TRF (in time samples).
+    delta : scalar
+        Step of the adjustment.
+    maxiter : int
+        Maximum number of iterations.
+    mindelta : scalar
+        Smallest delta to use. If no improvement can be found in an iteration,
+        the first step is to divide delta in half, but stop if delta becomes
+        smaller than ``mindelta``.
+    error : 'SS' | 'Sabs'
+        Error function to use.
+    """
+    error = ERROR_FUNC[error]
+    n_stims = len(x_train[0])
+    if any(len(x) != n_stims for x in chain(x_train, x_test)):
+        raise ValueError("Not all x have same number of stimuli")
+    n_times = [y.shape[1] for y in chain(y_train, y_test)]
+    if any(x.shape[1] != n for x, n in izip(chain(x_train, x_test), n_times)):
+        raise ValueError("y and x have inconsistent number of time points")
+    n_responses, n_sources = forward.shape
+    h = np.zeros((n_sources, n_stims, trf_length))
+    # h_fwd = np.empty((n_responses, n_stims, trf_length))
+
+    # buffers
+    y_train_pred = [np.empty(y.shape) for y in y_train]
+    y_train_error = [np.empty(y.shape) for y in y_train]
+    y_train_error_flat = [y.ravel() for y in y_train_error]
+    y_train_buf = [np.empty(y.shape) for y in y_train]
+    y_train_buf_flat = [y.ravel() for y in y_train_buf]
+    y_train_buf2_flat = [np.empty(y.shape) for y in y_train_buf_flat]
+    y_delta = [np.empty(y.shape) for y in y_train]
+    y_test_pred = [np.empty(y.shape) for y in y_test]
+    y_test_error = [np.empty(y.shape) for y in y_test]
+    y_test_error_flat = [y.ravel() for y in y_test_error]
+    new_error = np.empty(h.shape)
+    new_sign = np.empty(h.shape, np.int8)
+
+    # history lists
+    history = []
+    test_error_history = []
+    for i_boost in xrange(maxiter):
+        history.append(h.copy())
+
+        # evaluate current h
+        if np.any(h):
+            h_fwd = np.tensordot(forward, h, 1)
+
+            e_train = 0
+            for x, y, pred, err, err_flat in izip(x_train, y_train,
+                                                  y_train_pred, y_train_error,
+                                                  y_train_error_flat):
+                apply_kernel_3d(x, h_fwd, pred)
+                np.subtract(y, pred, err)
+                e_train += error(err_flat)
+
+            e_test = 0
+            for x, y, pred, err, err_flat in izip(x_test, y_test,
+                                                  y_test_pred, y_test_error,
+                                                  y_test_error_flat):
+                apply_kernel_3d(x, h_fwd, pred)
+                np.subtract(y, pred, err)
+                e_test += error(err_flat)
+        else:
+            for y, err in izip(y_train, y_train_error):
+                err[:] = y
+            e_test = sum(error(y.ravel()) for y in y_test)
+            e_train = sum(error(y, buf) for y, buf in
+                          izip(y_train_error_flat, y_train_buf_flat))
+
+        test_error_history.append(e_test)
+
+        # stop the iteration if all the following requirements are met
+        # 1. more than 10 iterations are done
+        # 2. The testing error in the latest iteration is higher than that in
+        #    the previous two iterations
+        if (i_boost > 10 and test_error_history[-1] > test_error_history[-2] and
+                test_error_history[-1] > test_error_history[-3]):
+            reason = "error(test) not improving in 2 steps"
+            break
+
+        # generate possible movements -> training error
+        new_sign.fill(0)
+        for i_src in xrange(n_sources):
+            fwd = forward[:, i_src][:, None] * delta
+            for i_stim in xrange(h.shape[1]):
+                for dy, x in izip(y_delta, x_train):
+                    np.multiply(fwd, x[i_stim], dy)  # impulse response
+
+                # initialize the early part of the error buffer
+                for err, buf in izip(y_train_error, y_train_buf):
+                    buf[:, :trf_length] = err[:, :trf_length]
+
+                for i_t in xrange(trf_length - 1, -1, -1):
+                    # +/- delta
+                    e_add = 0
+                    e_sub = 0
+                    for err, dy, buf, buf_flat, buf2_flat in \
+                            izip(y_train_error, y_delta, y_train_buf,
+                                 y_train_buf_flat, y_train_buf2_flat):
+                        if i_t:
+                            err = err[:, i_t:]
+                            dy = dy[:, :-i_t]
+                            buf = buf[:, i_t:]
+
+                        # + delta
+                        np.subtract(err, dy, buf)
+                        e_add += error(buf_flat, buf2_flat)
+                        # - delta
+                        np.add(err, dy, buf)
+                        e_sub += error(buf_flat, buf2_flat)
+
+                    if e_add > e_sub:
+                        new_error[i_src, i_stim, i_t] = e_sub
+                        new_sign[i_src, i_stim, i_t] = -1
+                    else:
+                        new_error[i_src, i_stim, i_t] = e_add
+                        new_sign[i_src, i_stim, i_t] = 1
+
+        # If no improvements can be found reduce delta
+        if new_error.min() > e_train:
+            if delta < mindelta:
+                reason = ("No improvement possible for training data, "
+                          "stopping...")
+                break
+            else:
+                delta *= 0.5
+                # print("No improvement, new delta=%s..." % delta)
+                continue
+
+        # update h with best movement
+        bestfil = np.unravel_index(np.argmin(new_error), h.shape)
+        h[bestfil] += new_sign[bestfil] * delta
+
+        # abort if we're moving in circles
+        if len(history) >= 2 and np.array_equal(h, history[-2]):
+            reason = "Same h after 2 iterations"
+            break
+        elif len(history) >= 3 and np.array_equal(h, history[-3]):
+            reason = "Same h after 3 iterations"
+            break
+    else:
+        reason = "maxiter exceeded"
+
+    best_iter = np.argmin(test_error_history)
+
+    # Keep predictive power as the correlation for the best iteration
+    return (history[best_iter], test_error_history,
+            reason + ' (%i iterations)' % len(test_error_history))
+
+
 def apply_kernel(x, h, out=None):
-    """Predict ``y`` by applying kernel ``h`` to ``x``"""
+    """Predict ``y`` by applying kernel ``h`` to ``x``
+
+    x.shape is (n_stims, n_samples)
+    h.shape is (n_stims, n_trf_samples)
+    """
     if out is None:
         out = np.zeros(x.shape[1])
     else:
@@ -424,13 +631,43 @@ def apply_kernel(x, h, out=None):
     return out
 
 
-def corr_for_kernel(y, x, h, skip_beginning=True, out=None):
+def apply_kernel_3d(x, h, out=None):
+    """Predict ``y`` by applying kernel ``h`` to ``x``
+
+    x.shape is (n_stims, n_samples)
+    h.shape is (n_responses, n_stims, n_trf_samples)
+    y.shape is (n_responses, n_samples)
+    """
+    n_responses = len(h)
+    n_stims, n_samples = x.shape
+    if out is None:
+        out = np.zeros((n_responses, n_samples))
+    else:
+        out.fill(0)
+
+    for i_resp, i_stim in product(xrange(n_responses), xrange(n_stims)):
+        out[i_resp] += np.convolve(h[i_resp, i_stim], x[i_stim])[:n_samples]
+
+    return out
+
+
+def corr_for_kernel(y, x, h, skip_beginning=True, out=None, forward=None):
     """Correlation of ``y`` and the prediction with kernel ``h``"""
-    y_pred = apply_kernel(x, h)
+    if forward is not None:
+        assert h.ndim == 3
+        y_pred = apply_kernel_3d(x, np.tensordot(forward, h, 1))
+    else:
+        y_pred = apply_kernel(x, h)
+
     if skip_beginning:
-        i0 = h.shape[1] - 1
-        y = y[i0:]
-        y_pred = y_pred[i0:]
+        i0 = h.shape[-1] - 1
+        y = y[..., i0:]
+        y_pred = y_pred[..., i0:]
+
+    if forward is not None:
+        if out is not None:
+            raise NotImplementedError("out != None for forward")
+        return [np.corrcoef(y[i], y_pred[i])[0, 1] for i in xrange(len(y))]
 
     if out is None:
         return np.corrcoef(y, y_pred)[0, 1]
