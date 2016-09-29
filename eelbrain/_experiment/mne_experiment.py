@@ -3422,8 +3422,16 @@ class MneExperiment(FileTree):
                 if res.samples >= samples or res.samples == -1:
                     self._log.info("Load cached test: %s", desc)
                     load_data = return_data
+                elif not make:
+                    raise IOError("The requested test %s is cached with "
+                                  "samples=%i, but you request samples=%i; Set "
+                                  "make=True to perform the test." %
+                                  (desc, res.samples, samples))
                 else:
                     res = None
+        elif not make and os.path.exists(dst):
+            raise IOError("The requested test is outdated: %s. Set make=True "
+                          "to perform the test." % desc)
 
         if res is None and not make:
             raise IOError("The requested test is not cached: %s. Set make=True "
