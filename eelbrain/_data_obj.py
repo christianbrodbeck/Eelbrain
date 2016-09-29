@@ -3587,6 +3587,45 @@ class NDVar(object):
         else:
             print(info)
 
+    def dot(self, ndvar, dim=None, name=None):
+        """NDVar dot product
+
+        Parameters
+        ----------
+        v2 : NDVar, dims={[case, ?,] dim [, ?]}
+            Second NDVar, has to have at least the dimension ``dim``.
+        dim : str
+            Dimension which to multiple (default is the last dimension).
+
+        Examples
+        --------
+        >>> to_dss, from_dss = dss(x)
+        >>> x_dss_6 = to_dss[:6].dot(x, 'sensor')
+        """
+        if dim is None:
+            dim = self.dimnames[-1]
+        if self.get_dim(dim) != ndvar.get_dim(dim):
+            raise ValueError("self.{0} != ndvar.{0}".format(dim))
+
+        v1_dimnames = self.get_dimnames((None,) * (self.ndim - 1) + (dim,))
+        dims = tuple(self.get_dim(d) for d in v1_dimnames[:-1])
+
+        v2_dimnames = (dim,)
+        if ndvar.has_case:
+            v2_dimnames = ('case',) + v2_dimnames
+            dims = ('case',) + dims
+        v2_dimnames += (None,) * (ndvar.ndim - ndvar.has_case - 1)
+        v2_dimnames = ndvar.get_dimnames(v2_dimnames)
+        dims += tuple(ndvar.get_dim(d) for d in v2_dimnames[1 + ndvar.has_case:])
+
+        x1 = self.get_data(v1_dimnames)
+        x2 = ndvar.get_data(v2_dimnames)
+        if ndvar.has_case:
+            x = np.array([np.tensordot(x1, x2_, 1) for x2_ in x2])
+        else:
+            x = np.tensordot(x1, x2, 1)
+        return NDVar(x, dims, {}, name or ndvar.name)
+
     def envelope(self, dim='time'):
         """Compute the Hilbert envelope of a signal
 
