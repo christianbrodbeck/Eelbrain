@@ -969,6 +969,9 @@ def test_ndvar_timeseries_methods():
     envs = xs.envelope()
     assert_array_equal(env.x, envs.x.swapaxes(1,2))
 
+    # indexing
+    eq_(len(ds[0, 'uts'][-10:-1].time), 9)
+
 
 def test_nested_effects():
     """Test nested effects"""

@@ -8349,7 +8349,11 @@ class UTS(Dimension):
             index = slice(start, stop, step)
 
         start = 0 if index.start is None else index.start
+        if start < 0:
+            start += len(self.times)
         stop = len(self) if index.stop is None else index.stop
+        if stop < 0:
+            stop += len(self.times)
 
         tmin = self.times[start]
         nsamples = stop - start
