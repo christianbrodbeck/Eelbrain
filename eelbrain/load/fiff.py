@@ -150,9 +150,6 @@ def mne_raw(path=None, proj=False, **kwargs):
         if not path:
             return
 
-    if not os.path.isfile(path):
-        raise IOError("%r is not a file" % path)
-
     if isinstance(path, basestring):
         _, ext = os.path.splitext(path)
         if ext.startswith('.fif'):
@@ -162,6 +159,7 @@ def mne_raw(path=None, proj=False, **kwargs):
         else:
             raise ValueError("Unknown extension: %r" % ext)
     else:
+        # MNE Raw supports list of file-names
         raw = _mne_Raw(path, **kwargs)
 
     if proj:
