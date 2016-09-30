@@ -779,13 +779,15 @@ class SourceFrame(FileFrameChild):
             self.model.toggle(i_comp)
 
     def OnCanvasKey(self, event):
-        if event.key == 'down':
+        if event.key is None:
+            return
+        elif event.key == 'down':
             if self.CanDown():
                 self.OnDown(None)
-        if event.key == 'up':
+        elif event.key == 'up':
             if self.CanUp():
                 self.OnUp(None)
-        if event.key == 'right':
+        elif event.key == 'right':
             if self.CanForward():
                 self.OnForward(None)
         elif event.key == 'left':

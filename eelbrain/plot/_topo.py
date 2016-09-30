@@ -339,7 +339,7 @@ class TopoButterfly(EelFigure):
 
         # setup callback
         self.canvas.mpl_connect('button_press_event', self._on_click)
-        self.canvas.mpl_connect('key_press_event', self._on_key)
+        self.canvas.mpl_connect('key_release_event', self._on_key)
         self._realtime_topo = True
         self._t_label = None
         self._frame.store_canvas()
@@ -409,7 +409,9 @@ class TopoButterfly(EelFigure):
     def _on_key(self, event):
         ax = event.inaxes
         key = event.key
-        if key in 'tT':
+        if key is None:
+            return
+        elif key in 'tT':
             if ax in self.bfly_axes:
                 p = self.bfly_plots[ax.id // 2]
                 t = event.xdata
