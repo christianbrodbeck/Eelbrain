@@ -322,7 +322,6 @@ class SensorMapMixin:
 
     def _fill_toolbar(self, tb):
         import wx
-        tb.AddSeparator()
 
         # sensor labels
         lbl = wx.StaticText(tb, -1, "Labels:")

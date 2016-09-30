@@ -15,13 +15,13 @@ from scipy.spatial import ConvexHull
 from .._data_obj import SEQUENCE_TYPES
 from .._utils.numpy_utils import digitize
 from . import _base
-from ._base import EelFigure, Layout
+from ._base import EelFigure, Layout, ColorMapMixin
 from ._utsnd import _ax_butterfly, _ax_im_array, _plt_im
 from ._sensors import (SENSOR_AXES_FRAME, SENSORMAP_FRAME, SensorMapMixin,
     _plt_map2d)
 
 
-class Topomap(SensorMapMixin, EelFigure):
+class Topomap(SensorMapMixin, ColorMapMixin, EelFigure):
     """Plot individual topogeraphies
 
     Parameters
@@ -77,18 +77,17 @@ class Topomap(SensorMapMixin, EelFigure):
     """
     _make_axes = False
 
-    def __init__(self, epochs, Xax=None, proj='default', cmap=None, vmax=None,
+    def __init__(self, epochs, xax=None, proj='default', cmap=None, vmax=None,
                  vmin=None, contours=7, clip='even', clip_distance=0.05,
                  head_radius=None, head_pos=0., mark=None, sensorlabels='none',
                  ds=None, res=64, interpolation=None, axtitle=None, xlabel=None,
                  method=None, *args, **kwargs):
-        epochs, _ = self._epochs = _base.unpack_epochs_arg(epochs, ('sensor',), Xax, ds)
+        epochs, _ = self._epochs = _base.unpack_epochs_arg(epochs, ('sensor',),
+                                                           xax, ds)
+        ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin, contours)
         if axtitle is None:
             axtitle = False if len(epochs) == 1 else True
         nax = len(epochs)
-        cmaps = _base.find_fig_cmaps(epochs, cmap)
-        vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
-        contours = _base.find_fig_contours(epochs, vlims, contours)
         if isinstance(proj, basestring):
             proj = repeat(proj, nax)
         elif not isinstance(proj, SEQUENCE_TYPES):
@@ -117,56 +116,21 @@ class Topomap(SensorMapMixin, EelFigure):
                 self._axes.append(ax)
 
         # plots
-        self._plots = []
-        sensor_plots = []
+        self.plots = []
         for ax, layers, proj_ in izip(self._axes, epochs, proj):
             h = _ax_topomap(ax, layers, axtitle, clip, clip_distance,
                             sensorlabels, mark, None, None,
-                            proj_, res, interpolation, xlabel, vlims, cmaps,
-                            contours, method, head_radius, head_pos)
-            self._plots.append(h)
-            sensor_plots.append(h.sensors)
+                            proj_, res, interpolation, xlabel, self._vlims,
+                            self._cmaps, self._contours, method, head_radius,
+                            head_pos)
+            self.plots.append(h)
 
-        SensorMapMixin.__init__(self, sensor_plots)
+        SensorMapMixin.__init__(self, [h.sensors for h in self.plots])
         self._show()
 
-    def add_contour(self, meas, level, color='k'):
-        """Add a contour line
-
-        Parameters
-        ----------
-        meas : str
-            The measurement for which to add a contour line.
-        level : scalar
-            The value at which to draw the contour.
-        color : matplotlib color
-            The color of the contour line.
-        """
-        for p in self._plots:
-            p.add_contour(meas, level, color)
-        self.draw()
-
-    def set_cmap(self, cmap, base=True, overlays=False, **kwa):
-        """Change the colormap in the topomaps
-
-        Parameters
-        ----------
-        cmap : str | colormap
-            New colormap.
-        base : bool
-            Apply the new colormap in the lowest layer of each plot.
-        overlays : bool
-            Apply the new colormap to the layers above the first layer.
-        """
-        for p in self._plots:
-            p.set_cmap(cmap, base, overlays)
-        self.draw()
-
-    def set_vlim(self, vmax=None, meas=None, vmin=None):
-        "Change the range of the data shown in he colormap"
-        for p in self._plots:
-            p.set_vlim(vmax, meas, vmin)
-        self.draw()
+    def _fill_toolbar(self, tb):
+        ColorMapMixin._fill_toolbar(self, tb)
+        SensorMapMixin._fill_toolbar(self, tb)
 
 
 class TopomapBins(EelFigure):

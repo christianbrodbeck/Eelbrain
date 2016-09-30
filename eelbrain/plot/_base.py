@@ -1457,11 +1457,11 @@ class ColorBarMixin(object):
 
 class ColorMapMixin(ColorBarMixin):
     """takes care of color-map and includes color-bar"""
-    def __init__(self, epochs, cmap, vmax, vmin):
+    def __init__(self, epochs, cmap, vmax, vmin, contours=None):
         ColorBarMixin.__init__(self, self.__get_cmap_params, epochs[0][0])
         self._cmaps = find_fig_cmaps(epochs, cmap)
         self._vlims = find_fig_vlims(epochs, vmax, vmin, self._cmaps)
-        self._contours = find_fig_contours(epochs, self._vlims, None)
+        self._contours = find_fig_contours(epochs, self._vlims, contours)
         self._first_meas = epochs[0][0].info.get('meas')
 
     def __get_cmap_params(self):
