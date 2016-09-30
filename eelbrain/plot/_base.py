@@ -1467,18 +1467,22 @@ class ColorMapMixin(ColorBarMixin):
     def __get_cmap_params(self):
         return (self._cmaps[self._first_meas],) + self._vlims[self._first_meas]
 
-    def add_contour(self, meas, level, color='k'):
+    def add_contour(self, level, color='k', meas=None):
         """Add a contour line
 
         Parameters
         ----------
-        meas : str
-            The measurement for which to add a contour line.
         level : scalar
             The value at which to draw the contour.
         color : matplotlib color
             The color of the contour line.
+        meas : str
+            The measurement for which to add a contour line (default is the
+            measurement plotted first).
         """
+        if meas is None:
+            meas = self._first_meas
+
         for p in self.plots:
             p.add_contour(meas, level, color)
         self.draw()
