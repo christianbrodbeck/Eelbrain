@@ -20,6 +20,7 @@ FILTER_WARNING = ('The measurement information indicates a low-pass frequency '
                   'of 40 Hz.')
 
 
+@requires_mne_sample_data
 def test_load_fiff_fwd():
     data_path = mne.datasets.sample.data_path()
     fwd_path = os.path.join(data_path, 'MEG', 'sample', 'sample-ico-4-fwd.fif')
