@@ -1072,7 +1072,8 @@ class MneExperiment(FileTree):
         self._register_field('parc', parc_values, 'aparc',
                              eval_handler=self._eval_parc)
         self._register_field('freq', self._freqs.keys())
-        self._register_field('src', ('ico-4', 'vol-10', 'vol-7', 'vol-5'))
+        self._register_field('src', ('ico-2', 'ico-3', 'ico-4', 'ico-5',
+                                     'vol-10', 'vol-7', 'vol-5'), 'ico-4')
         self._register_field('connectivity', ('', 'link-midline'))
         self._register_field('select_clusters', self._cluster_criteria.keys())
 
