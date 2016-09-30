@@ -1064,7 +1064,6 @@ class MneExperiment(FileTree):
                              post_set_handler=self._post_set_group)
 
         self._register_field('raw', sorted(self._raw))
-        self._register_field('session', self._sessions)
         self._register_field('rej', self._artifact_rejection.keys(), 'man')
 
         # epoch
@@ -1075,6 +1074,8 @@ class MneExperiment(FileTree):
         else:
             raise RuntimeError("No primary epoch")
         self._register_field('epoch', epoch_keys, default_epoch)
+        self._register_field('session', self._sessions, depends_on=('epoch',),
+                             slave_handler=self._update_session)
         # cov
         if 'bestreg' in self._covs:
             default_cov = 'bestreg'
@@ -2494,8 +2495,7 @@ class MneExperiment(FileTree):
             ds = self.load_selected_events(add_bads=add_bads, reject=reject,
                                            add_proj=add_proj,
                                            data_raw=data_raw or True,
-                                           vardef=vardef, cat=cat,
-                                           session=epoch.session)
+                                           vardef=vardef, cat=cat)
             if ds.n_cases == 0:
                 err = ("No events left for epoch=%r, subject=%r" %
                        (epoch.name, subject))
@@ -5528,6 +5528,14 @@ class MneExperiment(FileTree):
         mri = fields['mri']
         subject = fields['subject']
         return self._mri_subjects[mri][subject]
+
+    def _update_session(self, fields):
+        epoch = fields['epoch']
+        if epoch == '*':
+            return '*'
+        epoch = self._epochs[epoch]
+        if isinstance(epoch, (PrimaryEpoch, SecondaryEpoch)):
+            return epoch.session
 
     def _eval_parc(self, parc):
         if parc in self._parcs:

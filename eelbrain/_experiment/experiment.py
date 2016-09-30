@@ -665,7 +665,9 @@ class TreeModel(object):
         for state_key in set(state).union(handled_state).intersection(self._slave_fields):
             for slave_key in self._slave_fields[state_key]:
                 if slave_key not in slave_state:
-                    slave_state[slave_key] = self._slave_handlers[slave_key](self._fields)
+                    v = self._slave_handlers[slave_key](self._fields)
+                    if v is not None:
+                        slave_state[slave_key] = v
         self._fields.update(slave_state)
 
         # call post_set handlers
