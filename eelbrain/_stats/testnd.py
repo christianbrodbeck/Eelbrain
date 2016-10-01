@@ -844,11 +844,11 @@ class ttest_ind(_Result):
     X : categorial
         Model containing the cells which should be compared.
     c1 : str | tuple | None
-        Test condition (cell of X). Can be None is X only contains two
-        cells.
+        Test condition (cell of ``X``). ``c1`` and ``c0`` can be omitted if
+        ``X`` only contains two cells, in which case cells will be used in
+        alphabetical order.
     c0 : str | tuple | None
-        Control condition (cell of X). Can be None if X only contains two
-        cells.
+        Control condition (cell of ``X``).
     match : None | categorial
         Combine cases with the same cell on X % match for testing.
     sub : None | index-array
@@ -1035,11 +1035,11 @@ class ttest_rel(_Result):
     X : categorial
         Model containing the cells which should be compared.
     c1 : str | tuple | None
-        Test condition (cell of X). Can be omitted (or ``None``) if X only
-        contains two cells.
+        Test condition (cell of ``X``). ``c1`` and ``c0`` can be omitted if
+        ``X`` only contains two cells, in which case cells will be used in
+        alphabetical order.
     c0 : str | tuple | None
-        Control condition (cell of X). Can be omitted (or ``None``) if X
-        only contains two cells.
+        Control condition (cell of ``X``).
     match : categorial
         Units within which measurements are related (e.g. 'subject' in a
         within-subject comparison).

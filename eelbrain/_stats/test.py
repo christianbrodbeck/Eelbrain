@@ -450,11 +450,11 @@ class TTestRel(object):
     x : categorial
         Model containing the cells which should be compared.
     c1 : str | tuple | None
-        Test condition (cell of ``x``). Can be omitted (or ``None``) if ``x``
-        only contains two cells.
+        Test condition (cell of ``x``). ``c1`` and ``c0`` can be omitted if
+        ``x`` only contains two cells, in which case cells will be used in
+        alphabetical order.
     c0 : str | tuple | None
-        Control condition (cell of ``x``). Can be omitted (or ``None``) if
-        ``x`` only contains two cells.
+        Control condition (cell of ``x``).
     match : categorial
         Units within which measurements are related (e.g. 'subject' in a
         within-subject comparison).
