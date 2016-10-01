@@ -856,7 +856,7 @@ class FileTree(TreeModel):
 
     @staticmethod
     def _eval_root(root):
-        root = os.path.expanduser(root)
+        root = os.path.abspath(os.path.expanduser(root))
         if root != '':
             root = os.path.normpath(root)
         return root

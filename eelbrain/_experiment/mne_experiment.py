@@ -744,8 +744,7 @@ class MneExperiment(FileTree):
         if root is None:
             find_subjects = False
         else:
-            root = os.path.abspath(root)
-            self.set(root=root)
+            root = self.get('root', root=root)
 
         if find_subjects:
             sub_dir = self.get(self._subject_loc)
