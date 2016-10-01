@@ -14,7 +14,7 @@ import mne
 from nose.tools import (eq_, ok_, assert_almost_equal, assert_is_instance,
     assert_raises, assert_not_equal)
 import numpy as np
-from numpy.testing import (assert_equal, assert_array_equal,
+from numpy.testing import (assert_equal, assert_array_equal, assert_allclose,
     assert_array_almost_equal)
 
 from eelbrain import (datasets, load, Var, Factor, NDVar, Datalist, Dataset,
@@ -792,6 +792,12 @@ def test_ndvar():
     assert_equal(x.sub(case=b_case, sensor=s_sensor, time=a_time), tgt)
     assert_equal(x.sub(case=s_case, sensor=a_sensor, time=b_time), tgt)
     assert_equal(x.sub(case=s_case, sensor=b_sensor, time=a_time), tgt)
+
+    # norm
+    y = x / x.norm('sensor')
+    assert_allclose(y.norm('sensor'), 1.)
+    y = ds['uts'].mean('case').norm('time')
+    assert_is_instance(y, float)
 
     # Var
     v_case = Var(b_case)

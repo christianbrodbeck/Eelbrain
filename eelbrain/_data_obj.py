@@ -43,7 +43,7 @@ import numpy as np
 from numpy import dot
 import scipy.signal
 import scipy.stats
-from scipy.linalg import inv
+from scipy.linalg import inv, norm
 from scipy.optimize import leastsq
 from scipy.spatial import ConvexHull
 from scipy.spatial.distance import cdist, pdist, squareform
@@ -3884,6 +3884,32 @@ class NDVar(object):
             all data.
         """
         return self._aggregate_over_dims(dims, regions, np.min)
+
+    def norm(self, dim):
+        """Norm over ``dim``
+
+        Parameters
+        ----------
+        dim : str
+            Dimension over which to operate.
+
+        Returns
+        -------
+        norm : NDVar
+            Norm over ``dim``.
+
+        Examples
+        --------
+        To normalize ``x`` along the sensor dimension:
+
+        >>> x /= x.norm('sensor')
+        """
+        axis = self.get_axis(dim)
+        x = norm(self.x, axis=axis)
+        if self.ndim == 1:
+            return x
+        dims = self.dims[:axis] + self.dims[axis + 1:]
+        return NDVar(x, dims, self.info.copy(), self.name)
 
     def ols(self, x, name=None):
         """Sample-wise ordinary least squares regressions
