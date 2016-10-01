@@ -32,9 +32,10 @@ def get_mne_epochs():
                             'sample_audvis_raw.fif')
     events_path = os.path.join(data_path, 'MEG', 'sample',
                                'sample_audvis_raw-eve.fif')
-    raw = mne.io.Raw(raw_path)
+    raw = mne.io.Raw(raw_path, add_eeg_ref=False)
     events = mne.read_events(events_path)
-    epochs = mne.Epochs(raw, events, 32, -0.1, 0.4, preload=True)
+    epochs = mne.Epochs(raw, events, 32, -0.1, 0.4, preload=True,
+                        add_eeg_ref=False)
     return epochs
 
 
