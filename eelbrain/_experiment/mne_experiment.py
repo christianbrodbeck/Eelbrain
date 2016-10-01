@@ -543,7 +543,8 @@ class MneExperiment(FileTree):
     _eog_sns = {'KIT-157': ['MEG 143', 'MEG 151'],
                 'KIT-208': ['MEG 087', 'MEG 130'],
                 'KIT-UMD-3': ['MEG 042', 'MEG 025'],
-                'KIT-BRAINVISION': ['HEOGL', 'HEOGR', 'VEOGb']}
+                'KIT-BRAINVISION': ['HEOGL', 'HEOGR', 'VEOGb'],
+                'neuromag306mag': ['MEG 0121', 'MEG 1411']}
     #
     # artifact_rejection dict:
     #
@@ -3211,10 +3212,13 @@ class MneExperiment(FileTree):
 
                 # check file
                 if not np.all(ds['trigger'] == ds_sel['trigger']):
+                    #  TODO:  this warning should be given in make_rej already
                     if np.all(ds[:-1, 'trigger'] == ds_sel['trigger']):
                         ds = ds[:-1]
-                        msg = self.format("Last epoch for {subject} is missing")
-                        self._log.warn(msg)
+                        self._log.warn(self.format("Last epoch for {subject} is missing"))
+                    elif np.all(ds[1:, 'trigger'] == ds_sel['trigger']):
+                        ds = ds[1:]
+                        self._log.warn(self.format("First epoch for {subject} is missing"))
                     else:
                         raise RuntimeError("The epoch selection file contains different "
                                            "events than the data. Something went wrong...")

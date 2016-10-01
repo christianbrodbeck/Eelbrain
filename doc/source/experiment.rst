@@ -138,12 +138,12 @@ Example
 
 The following is a complete example for an experiment class definition file
 (the source file can be found in the Eelbrain examples folder at
-``examples/meg/mne_experiment.py``):
+``examples/experiment/sample_experiment.py``):
 
-.. literalinclude:: ../../examples/experiment/word_experiment.py
+.. literalinclude:: ../../examples/experiment/sample_experiment.py
 
 
-Given the ``WordExperiment`` class definition above, the following is a
+Given the ``SampleExperiment`` class definition above, the following is a
 script that would compute/update analysis reports:
 
 .. literalinclude:: ../../examples/experiment/make_reports.py

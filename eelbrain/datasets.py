@@ -334,3 +334,52 @@ def get_uv(seed=0, nrm=False):
     if nrm:
         ds['nrm'] = Factor(['s%03i' % i for i in range(40)], tile=2, random=True)
     return ds
+
+
+def setup_samples_experiment(dst):
+    """Setup up file structure for the SampleExperiment class
+
+    Parameters
+    ----------
+    dst : str
+        Path. ``dst`` should exist, a new folder called ``SampleExperiment``
+        will be created within ``dst``.
+    """
+    data_path = mne.datasets.sample.data_path()
+    raw_path = os.path.join(data_path, 'MEG', 'sample', 'sample_audvis_raw.fif')
+    raw = mne.io.read_raw_fif(raw_path)
+    raw.info['bads'] = []
+    sfreq = raw.info['sfreq']
+
+    # find segmentation points
+    events = mne.find_events(raw)
+    events[:, 0] -= raw.first_samp
+    segs = []
+    n = 0
+    t_start = 0
+    for sample, _, trigger in events:
+        if trigger == 32:
+            n += 1
+        if n == 2:
+            t = sample / sfreq
+            segs.append((t_start, t))
+            if len(segs) == 3:
+                break
+            t_start = t
+            n = 0
+    dst = os.path.realpath(os.path.expanduser(dst))
+    root = os.path.join(dst, 'SampleExperiment')
+    meg_sdir = os.path.join(root, 'meg')
+    meg_dir = os.path.join(meg_sdir, '{subject}')
+    raw_file = os.path.join(meg_dir, '{subject}_{session}-raw.fif')
+
+    os.mkdir(root)
+    os.mkdir(meg_sdir)
+
+    for s_id, (start, stop) in enumerate(segs):
+        subject = 'R%04i' % s_id
+        os.mkdir(meg_dir.format(subject=subject))
+        raw_ = raw.copy().crop(start, stop)
+        raw_.load_data()
+        raw_.pick_types('mag', stim=True, exclude=[])
+        raw_.save(raw_file.format(subject=subject, session='sample'))
