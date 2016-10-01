@@ -3188,28 +3188,33 @@ class MneExperiment(FileTree):
                 if self._artifact_rejection[self.get('rej')]['kind'] is not None:
                     ds = ds.sub('accept')
         else:
-            ds = self.load_events(add_proj=add_proj, add_bads=add_bads,
-                                  data_raw=data_raw)
+            rej_params = self._artifact_rejection[self.get('rej')]
+            # load files
+            with self._temporary_state:
+                ds = self.load_events(add_proj=add_proj, add_bads=add_bads,
+                                      data_raw=data_raw, session=epoch.session)
+                if reject and rej_params['kind'] is not None:
+                    rej_file = self.get('rej-file')
+                    if os.path.exists(rej_file):
+                        ds_sel = load.unpickle(rej_file)
+                    else:
+                        raise RuntimeError("The rejection file at %s does not "
+                                           "exist. Run .make_rej() first." %
+                                           self._get_rel('rej-file', 'root'))
+                else:
+                    ds_sel = None
+
+            # primary event selection
             if epoch.sel:
                 ds = ds.sub(epoch.sel)
             if index:
                 ds.index(index)
-
             if epoch.n_cases is not None and ds.n_cases != epoch.n_cases:
                 raise RuntimeError("Number of epochs %i, expected %i" %
                                    (ds.n_cases, epoch.n_cases))
 
             # rejection
-            rej_params = self._artifact_rejection[self.get('rej')]
-            if reject and rej_params['kind'] is not None:
-                path = self.get('rej-file')
-                if os.path.exists(path):
-                    ds_sel = load.unpickle(path)
-                else:
-                    rpath = self._get_rel('rej-file', 'root')
-                    raise RuntimeError("The rejection file at %s does not "
-                                       "exist. Run .make_rej() first." % rpath)
-
+            if ds_sel is not None:
                 # check file
                 if not np.all(ds['trigger'] == ds_sel['trigger']):
                     #  TODO:  this warning should be given in make_rej already

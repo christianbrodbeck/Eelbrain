@@ -39,3 +39,26 @@ def test_sample():
 
     ds = e.load_evoked('all')
     assert_dataobj_equal(combine(sds), ds)
+
+
+@requires_mne_sample_data
+def test_samples_sesssions():
+    set_log_level('warning', 'mne')
+
+    e_path = realpath(join(__file__, '..', '..', '..', '..', 'examples',
+                           'experiment', 'sample_experiment_sessions.py'))
+    e_module = imp.load_source('sample_experiment_sessions', e_path)
+
+    tempdir = TempDir()
+    datasets.setup_samples_experiment(tempdir, 2, 1, 2)
+
+    root = join(tempdir, 'SampleExperiment')
+    e = e_module.SampleExperiment(root)
+    e.set(raw='clm')
+    for _ in e.iter(('subject', 'epoch')):
+        e.make_rej(auto=2e-12)
+
+    ds = e.load_evoked('R0000', epoch='target2')
+    e.set(session='sample1')
+    ds2 = e.load_evoked('R0000')
+    assert_dataobj_equal(ds2, ds)

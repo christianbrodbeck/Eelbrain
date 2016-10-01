@@ -336,7 +336,7 @@ def get_uv(seed=0, nrm=False):
     return ds
 
 
-def setup_samples_experiment(dst):
+def setup_samples_experiment(dst, n_subjects=3, n_segments=4, n_sessions=1):
     """Setup up file structure for the SampleExperiment class
 
     Parameters
@@ -344,6 +344,12 @@ def setup_samples_experiment(dst):
     dst : str
         Path. ``dst`` should exist, a new folder called ``SampleExperiment``
         will be created within ``dst``.
+    n_subjects : int
+        Number of subjects.
+    n_segments : int
+        Number of data segments to include in each file.
+    n_sessions : int
+        Number of sessions.
     """
     data_path = mne.datasets.sample.data_path()
     raw_path = os.path.join(data_path, 'MEG', 'sample', 'sample_audvis_raw.fif')
@@ -360,13 +366,15 @@ def setup_samples_experiment(dst):
     for sample, _, trigger in events:
         if trigger == 32:
             n += 1
-        if n == 2:
+        if n == n_segments:
             t = sample / sfreq
             segs.append((t_start, t))
-            if len(segs) == 3:
+            if len(segs) == n_subjects * n_sessions:
                 break
             t_start = t
             n = 0
+    else:
+        raise ValueError("Not enough data in sample raw. Try smaller ns.")
     dst = os.path.realpath(os.path.expanduser(dst))
     root = os.path.join(dst, 'SampleExperiment')
     meg_sdir = os.path.join(root, 'meg')
@@ -376,10 +384,17 @@ def setup_samples_experiment(dst):
     os.mkdir(root)
     os.mkdir(meg_sdir)
 
-    for s_id, (start, stop) in enumerate(segs):
+    if n_sessions == 1:
+        sessions = ['sample']
+    else:
+        sessions = ['sample%i' % (i + 1) for i in xrange(n_sessions)]
+
+    for s_id in xrange(n_subjects):
         subject = 'R%04i' % s_id
         os.mkdir(meg_dir.format(subject=subject))
-        raw_ = raw.copy().crop(start, stop)
-        raw_.load_data()
-        raw_.pick_types('mag', stim=True, exclude=[])
-        raw_.save(raw_file.format(subject=subject, session='sample'))
+        for session in sessions:
+            start, stop = segs.pop()
+            raw_ = raw.copy().crop(start, stop)
+            raw_.load_data()
+            raw_.pick_types('mag', stim=True, exclude=[])
+            raw_.save(raw_file.format(subject=subject, session=session))
