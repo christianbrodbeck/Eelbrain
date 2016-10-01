@@ -108,8 +108,6 @@ import numpy as np
 import mne
 from mne.source_estimate import _BaseSourceEstimate
 from mne.io.constants import FIFF
-from mne.io import Raw as _mne_Raw
-from mne.io import read_raw_kit as _mne_read_raw_kit
 try:
     from mne.io.kit.constants import KIT_LAYOUT
 except ImportError:  # mne < 0.13
@@ -153,14 +151,14 @@ def mne_raw(path=None, proj=False, **kwargs):
     if isinstance(path, basestring):
         _, ext = os.path.splitext(path)
         if ext.startswith('.fif'):
-            raw = _mne_Raw(path, **kwargs)
+            raw = mne.io.read_raw_fif(path, add_eeg_ref=False, **kwargs)
         elif ext in ('.sqd', '.con'):
-            raw = _mne_read_raw_kit(path, **kwargs)
+            raw = mne.io.read_raw_kit(path, **kwargs)
         else:
             raise ValueError("Unknown extension: %r" % ext)
     else:
         # MNE Raw supports list of file-names
-        raw = _mne_Raw(path, **kwargs)
+        raw = mne.io.read_raw_fif(path, add_eeg_ref=False, **kwargs)
 
     if proj:
         if proj is True:
@@ -565,7 +563,8 @@ def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
         kwargs['picks'] = mne.pick_types(raw.info, eeg=True, eog=True, ref_meg=False)
 
     events = _mne_events(ds=ds, i_start=i_start)
-    epochs = mne.Epochs(raw, events, None, tmin, tmax, baseline, **kwargs)
+    epochs = mne.Epochs(raw, events, None, tmin, tmax, baseline,
+                        add_eeg_ref=False, **kwargs)
     if kwargs.get('reject', None) is None and len(epochs) != len(events):
         logger = getLogger(__name__)
         logger.warn("%s: MNE generated only %i Epochs for %i events. The raw "

@@ -24,7 +24,6 @@ def test_sample():
 
     root = join(tempdir, 'SampleExperiment')
     e = e_module.SampleExperiment(root)
-    e.set(raw='clm')
 
     eq_(e.get('subject'), 'R0000')
     eq_(e.get('subject', subject='R0002'), 'R0002')
@@ -54,7 +53,6 @@ def test_samples_sesssions():
 
     root = join(tempdir, 'SampleExperiment')
     e = e_module.SampleExperiment(root)
-    e.set(raw='clm')
     for _ in e.iter(('subject', 'epoch')):
         e.make_rej(auto=2e-12)
 
