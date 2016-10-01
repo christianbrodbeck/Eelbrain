@@ -8143,10 +8143,10 @@ class SourceSpace(Dimension):
             ov = arg.vertno
             if all(np.array_equal(s, o) for s, o in izip(sv, ov)):
                 return full_slice
+            elif any(any(np.setdiff1d(o, s)) for o, s in izip(ov, sv)):
+                raise IndexError("Index contains unknown sources")
             else:
-                idxs = tuple(np.in1d(s, o, True) for s, o in izip(sv, ov))
-                index = np.hstack(idxs)
-                return index
+                return np.hstack([np.in1d(s, o, True) for s, o in izip(sv, ov)])
         elif isinstance(arg, SEQUENCE_TYPES):
             return self.parc.isin(arg)
         else:

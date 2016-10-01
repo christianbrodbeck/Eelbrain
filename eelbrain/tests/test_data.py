@@ -1152,14 +1152,10 @@ def test_source_space():
     src = datasets._mne_source_space(subject, 'ico-5', mri_sdir)
     source = SourceSpace((src[0]['vertno'], src[1]['vertno']), subject,
                          'ico-5', mri_sdir)
-    index = source.dimindex(label_v1)
-    source_v1 = source[index]
-    index = source.dimindex(label_ba1_v1)
-    source_ba1_v1 = source[index]
-    index = source.dimindex(label_v1_mt)
-    source_v1_mt = source[index]
-    index = source_ba1_v1.dimindex(source_v1_mt)
-    source_v1_intersection = source_ba1_v1[index]
+    source_v1 = source[source.dimindex(label_v1)]
+    source_ba1_v1 = source[source.dimindex(label_ba1_v1)]
+    source_v1_mt = source[source.dimindex(label_v1_mt)]
+    source_v1_intersection = source_ba1_v1.intersect(source_v1_mt)
     assert_source_space_equal(source_v1, source_v1_intersection)
 
     # index from label
@@ -1183,6 +1179,7 @@ def test_source_space():
                        np.logical_or(cuneus_index, lingual_index))
     lingual_source = source[lingual_index]
     cuneus_source = source[cuneus_index]
+    assert_raises(IndexError, lingual_source.dimindex, cuneus_source)
     sub_source = source[source.dimindex(('cuneus-lh', 'lingual-lh'))]
     eq_(sub_source[sub_source.dimindex('lingual-lh')], lingual_source)
     eq_(sub_source[sub_source.dimindex('cuneus-lh')], cuneus_source)
