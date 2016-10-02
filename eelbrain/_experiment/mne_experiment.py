@@ -390,8 +390,12 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {class-name}.log')
         'cached-raw-file': '{raw-cache-base}-raw.fif',
         'event-file': '{raw-cache-base}-evts.pickled',
         'interp-file': '{raw-cache-base}-interp.pickled',
-        # mne secondary/forward modeling
+        # mne secondary
         'proj-file': '{raw-cache-base}_{proj}-proj.fif',
+        # forward modeling:  Assuming same head shape geometry between sessions;
+        # Two raw files with the same head shape require only one trans, even if
+        # markers are different (different markers means different head-MEG
+        # trans). But different markers require separate forward solution.
         'fwd-file': os.path.join('{raw-cache-dir}', '{session}-{mrisubject}-{src}-fwd.fif'),
         # sensor covariance
         'cov-dir': os.path.join('{cache-dir}', 'cov'),
