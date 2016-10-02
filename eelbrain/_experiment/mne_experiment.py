@@ -2957,10 +2957,31 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_fwd(self, surf_ori=True):
-        "Load the forward solution"
+    def load_fwd(self, surf_ori=True, ndvar=False):
+        """Load the forward solution
+
+        Parameters
+        ----------
+        surf_ori : bool
+            Force surface orientation (default True; only applies if
+            ``ndvar=False``, :class:`NDVar` forward operators are alsways
+            surface based).
+        ndvar : bool
+            Return forward solution as :class:`NDVar` (default is
+            :class:`mne.forward.Forward`).
+
+        Returns
+        -------
+        forward_operator : mne.forward.Forward | NDVar
+            Forward operator.
+        """
         fwd_file = self.get('fwd-file', make=True)
-        return mne.read_forward_solution(fwd_file, surf_ori=surf_ori)
+        if ndvar:
+            return load.fiff.forward_operator(fwd_file, self.get('src'),
+                                              self.get('mri-sdir'),
+                                              self.get('parc'))
+        else:
+            return mne.read_forward_solution(fwd_file, surf_ori=surf_ori)
 
     def load_ica(self):
         """Load the ICA object for the current subject/rej setting
