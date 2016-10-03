@@ -8,11 +8,12 @@ from tempfile import mkdtemp
 
 from nibabel.freesurfer import read_annot
 import numpy as np
+import matplotlib as mpl
 import mne
 
 from .._data_obj import asndvar, NDVar
 from ..fmtxt import Image, im_table, ms
-from ._base import EelFigure, ImLayout, ColorBarMixin
+from ._base import EelFigure, ImLayout, ColorBarMixin, fix_vlim_for_cmap
 from ._colors import ColorList
 
 
@@ -482,6 +483,12 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
 
     if subjects_dir is None:
         subjects_dir = src.source.subjects_dir
+
+    # colormap
+    if isinstance(colormap, basestring):
+        vmin, vmax = fix_vlim_for_cmap(vmin, vmax, colormap)
+        cmap = mpl.cm.get_cmap(colormap)
+        colormap = np.round(cmap(np.arange(256)) * 255).astype(np.uint8)
 
     brain = _surfer_brain(src, src.source.subject, surf, hemi, views, w, h,
                           axw, axh, foreground, background, subjects_dir)
