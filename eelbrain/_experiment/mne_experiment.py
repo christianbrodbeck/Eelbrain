@@ -386,12 +386,10 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {class-name}.log')
         'cache-state-file': os.path.join('{cache-dir}', 'cache-state.pickle'),
         # raw
         'raw-cache-dir': os.path.join('{cache-dir}', 'raw', '{subject}'),
-        'raw-cache-base': os.path.join('{raw-cache-dir}', '{session} {raw_kind}'),
+        'raw-cache-base': os.path.join('{raw-cache-dir}', '{session} {sns_kind}'),
         'cached-raw-file': '{raw-cache-base}-raw.fif',
         'event-file': '{raw-cache-base}-evts.pickled',
         'interp-file': '{raw-cache-base}-interp.pickled',
-        # mne secondary
-        'proj-file': '{raw-cache-base}_{proj}-proj.fif',
         # forward modeling:  Assuming same head shape geometry between sessions;
         # Two raw files with the same head shape require only one trans, even if
         # markers are different (different markers means different head-MEG
@@ -400,7 +398,7 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {class-name}.log')
         # sensor covariance
         'cov-dir': os.path.join('{cache-dir}', 'cov'),
         'cov-base': os.path.join('{cov-dir}', '{subject}',
-                                 '{raw_kind} {cov}-{rej}-{proj}'),
+                                 '{sns_kind} {cov}-{rej}'),
         'cov-file': '{cov-base}-cov.fif',
         'cov-info-file': '{cov-base}-info.txt',
         # evoked
@@ -588,12 +586,6 @@ class MneExperiment(FileTree):
                                  filter_length='60s'),),
             '1-40': (RawFilter(1, 40, method='iir'),)}
 
-    # projection definition:
-    # "base": 'raw' for raw file, or epoch name
-    # "rej": rejection setting to use (only applies for epoch projs)
-    # r.g. {'ironcross': {'base': 'adj', 'rej': 'man'}}
-    projs = {}
-
     # Pattern for subject names. The first group is used to determine what
     # MEG-system the data was recorded from
     _subject_re = '(R|A|Y|AD|QP)(\d{3,})$'
@@ -667,7 +659,7 @@ class MneExperiment(FileTree):
     # files to back up, together with state modifications on the basic state
     _backup_files = (('raw-file-bkp', {}),
                      ('bads-file', {}),
-                     ('rej-file', {'raw': '*', 'proj': '*', 'epoch': '*', 'rej': '*'}),
+                     ('rej-file', {'raw': '*', 'epoch': '*', 'rej': '*'}),
                      ('ica-file', {'raw': '*', 'epoch': '*', 'rej': '*'}),
                      ('trans-file', {}),
                      ('mri-cfg-file', {}),
@@ -701,7 +693,6 @@ class MneExperiment(FileTree):
         # create attributes (overwrite class attributes)
         self._subject_re = re.compile(self._subject_re)
         self.groups = self.groups.copy()
-        self.projs = self.projs.copy()
         self._mri_subjects = self._mri_subjects.copy()
         self._templates = self._templates.copy()
         self._templates['class-name'] = self.__class__.__name__
@@ -715,9 +706,9 @@ class MneExperiment(FileTree):
         elif self.path_version == 0:
             self._templates['raw-dir'] = os.path.join('{meg-dir}', 'raw')
             self._templates['raw-file'] = os.path.join('{raw-dir}', '{subject}_'
-                                              '{session}_{raw_kind}-raw.fif')
+                                              '{session}_{sns_kind}-raw.fif')
             self._templates['raw-file-bkp'] = os.path.join('{raw-dir}', '{subject}_'
-                                              '{session}_{raw_kind}-raw*.fif')
+                                              '{session}_{sns_kind}-raw*.fif')
         elif self.path_version != 1:
             raise ValueError("MneExperiment.path_version needs to be 0 or 1")
         # update templates with _values
@@ -1094,7 +1085,6 @@ class MneExperiment(FileTree):
                              post_set_handler=self._post_set_test)
         self._register_field('parc', parc_values, 'aparc',
                              eval_handler=self._eval_parc)
-        self._register_field('proj', [''] + self.projs.keys())
         self._register_field('freq', self._freqs.keys())
         self._register_field('src', ('ico-4', 'vol-10', 'vol-7', 'vol-5'))
         self._register_field('connectivity', ('', 'link-midline'))
@@ -1106,8 +1096,7 @@ class MneExperiment(FileTree):
 
         # compounds
         self._register_compound('bads-compound', ('session', 'modality'))
-        self._register_compound('raw_kind', ('modality', 'raw'))
-        self._register_compound('sns_kind', ('raw_kind', 'proj'))
+        self._register_compound('sns_kind', ('modality', 'raw'))
         self._register_compound('src_kind', ('sns_kind', 'cov', 'mri', 'inv'))
         self._register_compound('evoked_kind', ('rej', 'equalize_evoked_count'))
         self._register_compound('eeg_kind', ('sns_kind', 'reference'))
@@ -2458,7 +2447,7 @@ class MneExperiment(FileTree):
             raise ValueError("modality=%r" % modality)
 
     def load_epochs(self, subject=None, baseline=False, ndvar=True,
-                    add_bads=True, reject=True, add_proj=True, cat=None,
+                    add_bads=True, reject=True, cat=None,
                     decim=None, pad=0, data_raw=False, vardef=None,
                     eog=False, trigger_shift=True, apply_ica=True, **kwargs):
         """
@@ -2484,8 +2473,6 @@ class MneExperiment(FileTree):
         reject : bool
             Whether to apply epoch rejection or not. The kind of rejection
             employed depends on the ``rej`` setting.
-        add_proj : bool
-            Add the projections to the Raw object.
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
         decim : None | int
@@ -2519,19 +2506,18 @@ class MneExperiment(FileTree):
             dss = []
             for _ in self.iter(group=group):
                 ds = self.load_epochs(None, baseline, ndvar, add_bads, reject,
-                                      add_proj, cat, decim, pad, data_raw,
-                                      vardef)
+                                      cat, decim, pad, data_raw, vardef)
                 dss.append(ds)
 
             return combine(dss)
         elif self.get('modality') == 'meeg':  # single subject, combine MEG and EEG
             with self._temporary_state:
                 ds_meg = self.load_epochs(subject, baseline, ndvar, add_bads,
-                                          reject, add_proj, cat, decim, pad,
-                                          data_raw, vardef, modality='')
+                                          reject, cat, decim, pad, data_raw,
+                                          vardef, modality='')
                 ds_eeg = self.load_epochs(subject, baseline, ndvar, add_bads,
-                                          reject, add_proj, cat, decim, pad,
-                                          data_raw, vardef, modality='eeg')
+                                          reject, cat, decim, pad, data_raw,
+                                          vardef, modality='eeg')
             ds, eeg_epochs = align(ds_meg, ds_eeg['epochs'], 'index',
                                    ds_eeg['index'])
             ds['epochs'] = mne.epochs.add_channels_epochs((ds['epochs'], eeg_epochs))
@@ -2540,7 +2526,6 @@ class MneExperiment(FileTree):
         epoch = self._epochs[self.get('epoch')]
         with self._temporary_state:
             ds = self.load_selected_events(add_bads=add_bads, reject=reject,
-                                           add_proj=add_proj,
                                            data_raw=data_raw or True,
                                            vardef=vardef, cat=cat)
             if ds.n_cases == 0:
@@ -2630,8 +2615,8 @@ class MneExperiment(FileTree):
                 del ds['epochs']
             return ds
 
-    def load_events(self, subject=None, add_proj=True, add_bads=True,
-                    data_raw=True, edf=True, **kwargs):
+    def load_events(self, subject=None, add_bads=True, data_raw=True, edf=True,
+                    **kwargs):
         """
         Load events from a raw file.
 
@@ -2642,8 +2627,6 @@ class MneExperiment(FileTree):
         ----------
         subject : str (state)
             Subject for which to load events.
-        add_proj : bool
-            Add the projections to the Raw object.
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from the 'bads-file'. Alternatively,
@@ -2680,7 +2663,7 @@ class MneExperiment(FileTree):
                 merge = -1
             else:
                 merge = 0
-            raw = self.load_raw(add_proj, add_bads, subject=subject)
+            raw = self.load_raw(add_bads, subject=subject)
             ds = load.fiff.events(raw, merge)
             del ds.info['raw']
             ds.info['sfreq'] = raw.info['sfreq']
@@ -2693,13 +2676,12 @@ class MneExperiment(FileTree):
             if edf or not self.has_edf[subject]:
                 save.pickle(ds, evt_file)
         elif data_raw is True:
-            raw = self.load_raw(add_proj, add_bads, subject=subject)
+            raw = self.load_raw(add_bads, subject=subject)
 
         # if data should come from different raw settings than events
         if isinstance(data_raw, str):
             with self._temporary_state:
-                raw = self.load_raw(add_proj, add_bads, subject=subject,
-                                    raw=data_raw)
+                raw = self.load_raw(add_bads, subject=subject, raw=data_raw)
         elif not isinstance(data_raw, bool):
             raise TypeError("data_raw=%s; needs to be str or bool"
                             % repr(data_raw))
@@ -3086,14 +3068,12 @@ class MneExperiment(FileTree):
                                       vertices_to, None, subjects_dir)
         return mm, vertices_to
 
-    def load_raw(self, add_proj=True, add_bads=True, preload=False, **kwargs):
+    def load_raw(self, add_bads=True, preload=False, **kwargs):
         """
         Load a raw file as mne Raw object.
 
         Parameters
         ----------
-        add_proj : bool
-            Add the projections to the Raw object.
         add_bads : bool
             Add bad channel information to the bad channels text file (default
             True).
@@ -3108,16 +3088,7 @@ class MneExperiment(FileTree):
         if kwargs:
             self.set(**kwargs)
 
-        if add_proj:
-            proj = self.get('proj')
-            if proj:
-                proj = self.get('proj-file')
-            else:
-                proj = None
-        else:
-            proj = None
-
-        raw = load.fiff.mne_raw(self._get_raw_path(True), proj, preload=preload)
+        raw = load.fiff.mne_raw(self._get_raw_path(True), preload=preload)
         if add_bads:
             if not isinstance(add_bads, int):
                 raise TypeError("add_bads must be boolean, got %s" % repr(add_bads))
@@ -3177,9 +3148,9 @@ class MneExperiment(FileTree):
         return ClusterPlotter(ds, res, colors, dst, vec_fmt, pix_fmt, labels, h,
                               rc)
 
-    def load_selected_events(self, subject=None, reject=True, add_proj=True,
-                             add_bads=True, index=True, data_raw=False,
-                             vardef=None, cat=None, **kwargs):
+    def load_selected_events(self, subject=None, reject=True, add_bads=True,
+                             index=True, data_raw=False, vardef=None, cat=None,
+                             **kwargs):
         """
         Load events and return a subset based on epoch and rejection
 
@@ -3193,8 +3164,6 @@ class MneExperiment(FileTree):
             Reject bad trials. For True, bad trials are removed from the
             Dataset. For 'keep', the 'accept' variable is added to the Dataset
             and bad trials are kept.
-        add_proj : bool
-            Add the projections to the Raw object.
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from the 'bads-file'. Alternatively,
@@ -3233,9 +3202,8 @@ class MneExperiment(FileTree):
             if data_raw is not False:
                 raise ValueError("data_var=%s: can't load data raw when "
                                  "combining different subjects" % repr(data_raw))
-            dss = [self.load_selected_events(reject=reject, add_proj=add_proj,
-                                             add_bads=add_bads, index=index,
-                                             vardef=vardef)
+            dss = [self.load_selected_events(reject=reject, add_bads=add_bads,
+                                             index=index, vardef=vardef)
                    for _ in self.iter(group=group)]
             ds = combine(dss)
             return ds
@@ -3246,8 +3214,8 @@ class MneExperiment(FileTree):
         if isinstance(epoch, SuperEpoch):
             # TODO:  events form different sessions
             with self._temporary_state:
-                dss = [self.load_selected_events(subject, reject, add_proj,
-                                                 add_bads, index, data_raw,
+                dss = [self.load_selected_events(subject, reject, add_bads,
+                                                 index, data_raw,
                                                  epoch=sub_epoch)
                        for sub_epoch in epoch.sub_epochs]
 
@@ -3260,8 +3228,8 @@ class MneExperiment(FileTree):
         elif isinstance(epoch, SecondaryEpoch):
             with self._temporary_state:
                 ds = self.load_selected_events(None, 'keep' if reject else False,
-                                               add_proj, add_bads, index,
-                                               data_raw, epoch=epoch.sel_epoch)
+                                               add_bads, index, data_raw,
+                                               epoch=epoch.sel_epoch)
 
             if epoch.sel:
                 ds = ds.sub(epoch.sel)
@@ -3275,8 +3243,8 @@ class MneExperiment(FileTree):
             rej_params = self._artifact_rejection[self.get('rej')]
             # load files
             with self._temporary_state:
-                ds = self.load_events(add_proj=add_proj, add_bads=add_bads,
-                                      data_raw=data_raw, session=epoch.session)
+                ds = self.load_events(add_bads=add_bads, data_raw=data_raw,
+                                      session=epoch.session)
                 if reject and rej_params['kind'] is not None:
                     rej_file = self.get('rej-file')
                     if os.path.exists(rej_file):
@@ -4379,86 +4347,6 @@ class MneExperiment(FileTree):
                         folder="{parc} {mrisubject} %s" % surf, resname=label,
                         ext='png')
 
-    def make_proj(self, save=True, save_plot=True):
-        """
-        computes the first ``n_mag`` PCA components, plots them, and asks for
-        user input (a tuple) on which ones to save.
-
-        Parameters
-        ----------
-        epochs : mne.Epochs
-            epochs which should be used for the PCA
-        dest : str(path)
-            path where to save the projections
-        n_mag : int
-            number of components to compute
-        save : False | True | tuple
-            False: don'r save proj fil; True: manuall pick componentws to
-            include in the proj file; tuple: automatically include these
-            components
-        save_plot : False | str(path)
-            target path to save the plot
-        """
-        proj = self.get('proj')
-        opt = self.projs[proj]
-        reject = {'mag': 1.5e-11}  # far lower than the data range
-        if opt['base'] == 'raw':
-            raw = self.load_raw(add_proj=False)
-
-            # select time range of events
-            events = load.fiff.events(raw)
-            time = events['i_start'] / events.info['samplingrate']
-            tstart = time.x.min() - 5
-            tstop = time.x.max() + 5
-
-            projs = mne.compute_proj_raw(raw, tstart, tstop, duration=5,
-                                         n_grad=0, n_mag=9, n_eeg=0,
-                                         reject=reject, n_jobs=1)
-            fiff_obj = raw
-        else:
-            epoch = opt['base']
-            rej = opt.get('rej', None)
-            rej_ = '' if rej is None else rej
-            self.set(epoch=epoch, rej=rej_)
-            ds = self.load_epochs(ndvar=False, add_proj=False)
-            epochs = ds['epochs']
-            if rej is None:
-                epochs.reject = reject.copy()
-                epochs._reject_setup()
-            projs = mne.compute_proj_epochs(epochs, n_grad=0, n_mag=9, n_eeg=0)
-            fiff_obj = epochs
-
-        # convert projs to NDVar
-        picks = mne.epochs.pick_types(fiff_obj.info, exclude='bads')
-        sensor = load.fiff.sensor_dim(fiff_obj, picks)
-        projs_ndvars = []
-        for p in projs:
-            d = p['data']['data'][0]
-            name = p['desc'][-5:]
-            v = NDVar(d, (sensor,), name=name)
-            projs_ndvars.append(v)
-
-        # plot PCA components
-        proj_file = self.get('proj-file')
-        p = plot.Topomap(projs_ndvars, title=proj_file, ncol=3, w=9)
-        if save_plot:
-            dest = self.get('plot-file', analysis='proj', ext='pdf',
-                            name='{subject}_{session}_{raw_kind}')
-            p.figure.savefig(dest)
-        if save:
-            rm = save
-            title = "Select Projections"
-            msg = ("which Projections do you want to select? (tuple / 'x' to "
-                   "abort)")
-            while not isinstance(rm, tuple):
-                answer = ui.ask_str(msg, title, default='(0,)')
-                rm = eval(answer)
-                if rm == 'x': raise
-
-            p.close()
-            projs = [projs[i] for i in rm]
-            mne.write_proj(proj_file, projs)
-
     def make_raw(self, **kwargs):
         """Make a raw file
 
@@ -4488,7 +4376,7 @@ class MneExperiment(FileTree):
 
             self._log.debug("make_raw %s/%s...", self.get('subject'),
                             os.path.split(dst)[1])
-            raw = self.load_raw(raw='clm', add_proj=False, preload=True)
+            raw = self.load_raw(raw='clm', preload=True)
 
         for proc in pipeline:
             proc.apply(raw)
