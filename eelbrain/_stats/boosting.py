@@ -300,9 +300,9 @@ def boost_1seg(x, y, trf_length, delta, maxiter, nsegs, segno, mindelta, error,
         train_index = (slice(None, test_seg_len * segno),
                        slice(test_seg_len * (segno + 1), None))
 
-    y_train = [y[..., i] for i in train_index]
+    y_train = tuple(y[..., i] for i in train_index)
     y_test = (y[..., test_index],)
-    x_train = [x[:, i] for i in train_index]
+    x_train = tuple(x[:, i] for i in train_index)
     x_test = (x[:, test_index],)
 
     if forward is None:
@@ -336,25 +336,28 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
     error : 'SS' | 'Sabs'
         Error function to use.
     """
+    error = ERROR_FUNC[error]
     n_stims = len(x_train[0])
     if any(len(x) != n_stims for x in chain(x_train, x_test)):
         raise ValueError("Not all x have same number of stimuli")
     n_times = [len(y) for y in chain(y_train, y_test)]
     if any(x.shape[1] != n for x, n in izip(chain(x_train, x_test), n_times)):
         raise ValueError("y and x have inconsistent number of time points")
-    error = ERROR_FUNC[error]
 
     h = np.zeros((n_stims, trf_length))
 
     # buffers
-    y_train_pred = [np.empty(y.shape) for y in y_train]
-    y_train_error = [np.empty(y.shape) for y in y_train]
-    y_train_buf = [np.empty(y.shape) for y in y_train]
-    y_delta = [np.empty(y.shape) for y in y_train]
-    y_test_pred = [np.empty(y.shape) for y in y_test]
-    y_test_error = [np.empty(y.shape) for y in y_test]
+    y_train_error = tuple(y.copy() for y in y_train)
+    y_train_buf = tuple(np.empty(y.shape) for y in y_train)
+    y_test_error = tuple(y.copy() for y in y_test)
+    y_test_buf = tuple(np.empty(y.shape) for y in y_test)
+
     new_error = np.empty(h.shape)
     new_sign = np.empty(h.shape, np.int8)
+
+    ys_error = y_train_error + y_test_error
+    ys_delta = tuple(np.empty(y.shape) for y in ys_error)
+    xs = x_train + x_test
 
     # history lists
     history = []
@@ -363,25 +366,8 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
         history.append(h.copy())
 
         # evaluate current h
-        if np.any(h):
-            # predict
-            for x, y in izip(x_train, y_train_pred):
-                apply_kernel(x, h, y)
-            for x, y in izip(x_test, y_test_pred):
-                apply_kernel(x, h, y)
-
-            # Compute predictive power on testing data
-            e_train = sum(error(np.subtract(y, pred, err), pred)
-                          for y, pred, err in
-                          izip(y_train, y_train_pred, y_train_error))
-            e_test = sum(error(np.subtract(y, pred, err), pred)
-                         for y, pred, err in
-                         izip(y_test, y_test_pred, y_test_error))
-        else:
-            for y_err, y in izip(y_train_error, y_train):
-                y_err[:] = y
-            e_test = sum(error(y.ravel()) for y in y_test)
-            e_train = sum(error(y.ravel()) for y in y_train)
+        e_test = sum(error(y, buf) for y, buf in izip(y_test_error, y_test_buf))
+        e_train = sum(error(y, buf) for y, buf in izip(y_train_error, y_train_buf))
 
         test_error_history.append(e_test)
 
@@ -395,18 +381,17 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
             break
 
         # generate possible movements -> training error
-        new_sign.fill(0)
-        for ind1, ind2 in product(xrange(h.shape[0]), xrange(h.shape[1])):
+        for i_stim, i_time in product(xrange(h.shape[0]), xrange(h.shape[1])):
             # y_delta = change in y from delta change in h
-            for y, x in izip(y_delta, x_train):
-                y[:ind2] = 0.
-                y[ind2:] = x[ind1, :-ind2 or None]
-                y *= delta
+            for yd, x in izip(ys_delta, x_train):
+                yd[:i_time] = 0.
+                yd[i_time:] = x[i_stim, :-i_time or None]
+                yd *= delta
 
             # +/- delta
             e_add = 0
             e_sub = 0
-            for y_err, dy, buf in izip(y_train_error, y_delta, y_train_buf):
+            for y_err, dy, buf in izip(y_train_error, ys_delta, y_train_buf):
                 # + delta
                 np.subtract(y_err, dy, buf)
                 e_add += error(buf, buf)
@@ -415,11 +400,11 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
                 e_sub += error(buf, buf)
 
             if e_add > e_sub:
-                new_error[ind1, ind2] = e_sub
-                new_sign[ind1, ind2] = -1
+                new_error[i_stim, i_time] = e_sub
+                new_sign[i_stim, i_time] = -1
             else:
-                new_error[ind1, ind2] = e_add
-                new_sign[ind1, ind2] = 1
+                new_error[i_stim, i_time] = e_add
+                new_sign[i_stim, i_time] = 1
 
         # If no improvements can be found reduce delta
         if new_error.min() > e_train:
@@ -433,8 +418,9 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
                 continue
 
         # update h with best movement
-        bestfil = np.unravel_index(np.argmin(new_error), h.shape)
-        h[bestfil] += new_sign[bestfil] * delta
+        i_stim, i_time = np.unravel_index(np.argmin(new_error), h.shape)
+        delta_signed = new_sign[i_stim, i_time] * delta
+        h[i_stim, i_time] += delta_signed
 
         # abort if we're moving in circles
         if len(history) >= 2 and np.array_equal(h, history[-2]):
@@ -443,6 +429,14 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
         elif len(history) >= 3 and np.array_equal(h, history[-3]):
             reason = "Same h after 3 iterations"
             break
+
+        # update error
+        for err, yd, x in izip(ys_error, ys_delta, xs):
+            yd[:i_time] = 0.
+            yd[i_time:] = x[i_stim, :-i_time or None]
+            yd *= delta_signed
+            err -= yd
+
     else:
         reason = "maxiter exceeded"
 
