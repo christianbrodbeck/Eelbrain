@@ -653,7 +653,7 @@ class TreeModel(object):
                 pass
             elif v not in self.get_field_values(k, False):
                 err = ("Variable {k!r} has no value {v!r}. In order to "
-                       "see valid values use e.list_values(); In order to "
+                       "see valid values use e.show_fields(); In order to "
                        "set a non-existent value, use e.set({k!s}={v!r}, "
                        "match=False).".format(k=k, v=v))
                 raise ValueError(err)
