@@ -2512,7 +2512,7 @@ class MneExperiment(FileTree):
     def load_epochs_stc(self, subject=None, sns_baseline=True,
                         src_baseline=False, ndvar=True, cat=None,
                         keep_epochs=False, morph=False, mask=False,
-                        data_raw=False, **kwargs):
+                        data_raw=False, vardef=None, **kwargs):
         """Load a Dataset with stcs for single epochs
 
         Parameters
@@ -2546,6 +2546,8 @@ class MneExperiment(FileTree):
             Can be specified as raw name (str) to include a different raw object
             than the one from which events are loaded (used for frequency
             analysis).
+        vardef : str
+            Name of a 2-stage test defining additional variables.
         """
         if not sns_baseline and src_baseline and \
                 self._epochs[self.get('epoch')].post_baseline_trigger_shift:
@@ -2569,12 +2571,13 @@ class MneExperiment(FileTree):
             dss = []
             for _ in self.iter(group=group):
                 ds = self.load_epochs_stc(None, sns_baseline, src_baseline,
-                                          ndvar, cat, keep_epochs, morph, mask)
+                                          ndvar, cat, keep_epochs, morph, mask,
+                                          vardef=vardef)
                 dss.append(ds)
             return combine(dss)
         else:
             ds = self.load_epochs(subject, sns_baseline, False, cat=cat,
-                                  data_raw=data_raw, **kwargs)
+                                  data_raw=data_raw, vardef=vardef)
             self._add_epochs_stc(ds, ndvar, src_baseline, morph, mask)
             if not keep_epochs:
                 del ds['epochs']
