@@ -13,7 +13,7 @@ from .. import _colorspaces as cs
 from .._data_obj import NDVar, UTS
 
 
-VERSION = 4
+VERSION = 5
 
 
 class BoostingResult(object):
@@ -33,15 +33,17 @@ class BoostingResult(object):
     error : str
         The error evaluation method used.
     """
-    _attr = ('h', 'corr', 'isnan', 't_run', 'version', 'error', 'forward')
+    _attr = ('h', 'corr', 'isnan', 'delta', 't_run', 'version', 'error',
+             'forward')
 
-    def __init__(self, h, corr, isnan, t_run, version, error='SS',
+    def __init__(self, h, corr, isnan, t_run, version, delta=None, error='SS',
                  forward=None):
         self.forward = forward
         self.error = error
         self.h = h
         self.corr = corr
         self.isnan = isnan
+        self.delta = delta
         self.t_run = t_run
         self.version = version
 
@@ -197,7 +199,7 @@ def boosting(y, x, tstart, tstop, delta=0.005, forward=None, error='SScentered')
     else:
         hs = hs[0]
 
-    return BoostingResult(hs, corr, isnan, dt, VERSION, error, forward)
+    return BoostingResult(hs, corr, isnan, dt, VERSION, delta, error, forward)
 
 
 def boosting_continuous(x, y, trf_length, delta, error, mindelta=None,
