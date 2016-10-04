@@ -352,12 +352,12 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
     y_test_error = tuple(y.copy() for y in y_test)
     y_test_buf = tuple(np.empty(y.shape) for y in y_test)
 
-    new_error = np.empty(h.shape)
-    new_sign = np.empty(h.shape, np.int8)
-
     ys_error = y_train_error + y_test_error
     ys_delta = tuple(np.empty(y.shape) for y in ys_error)
     xs = x_train + x_test
+
+    new_error = np.empty(h.shape)
+    new_sign = np.empty(h.shape, np.int8)
 
     # history lists
     history = []
@@ -478,20 +478,24 @@ def boost_segs_fwd(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
     if any(x.shape[1] != n for x, n in izip(chain(x_train, x_test), n_times)):
         raise ValueError("y and x have inconsistent number of time points")
     n_responses, n_sources = forward.shape
+
     h = np.zeros((n_sources, n_stims, trf_length))
-    # h_fwd = np.empty((n_responses, n_stims, trf_length))
+    fwd_buf = np.empty((n_responses, 1))
 
     # buffers
-    y_train_pred = [np.empty(y.shape) for y in y_train]
-    y_train_error = [np.empty(y.shape) for y in y_train]
-    y_train_error_flat = [y.ravel() for y in y_train_error]
-    y_train_buf = [np.empty(y.shape) for y in y_train]
-    y_train_buf_flat = [y.ravel() for y in y_train_buf]
-    y_train_buf2_flat = [np.empty(y.shape) for y in y_train_buf_flat]
-    y_delta = [np.empty(y.shape) for y in y_train]
-    y_test_pred = [np.empty(y.shape) for y in y_test]
-    y_test_error = [np.empty(y.shape) for y in y_test]
-    y_test_error_flat = [y.ravel() for y in y_test_error]
+    y_train_error = tuple(y.copy() for y in y_train)
+    y_train_error_flat = tuple(y.ravel() for y in y_train_error)
+    y_train_buf = tuple(np.empty(y.shape) for y in y_train)
+    y_train_buf_flat = tuple(y.ravel() for y in y_train_buf)
+    y_train_buf2_flat = tuple(np.empty(y.shape) for y in y_train_buf_flat)
+    y_test_error = tuple(y.copy() for y in y_test)
+    y_test_error_flat = tuple(y.ravel() for y in y_test_error)
+    y_test_buf_flat = tuple(np.empty(y.shape) for y in y_test_error_flat)
+
+    ys_error = y_train_error + y_test_error
+    ys_delta = tuple(np.empty(y.shape) for y in ys_error)
+    xs = x_train + x_test
+
     new_error = np.empty(h.shape)
     new_sign = np.empty(h.shape, np.int8)
 
@@ -502,30 +506,8 @@ def boost_segs_fwd(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
         history.append(h.copy())
 
         # evaluate current h
-        if np.any(h):
-            h_fwd = np.tensordot(forward, h, 1)
-
-            e_train = 0
-            for x, y, pred, err, err_flat in izip(x_train, y_train,
-                                                  y_train_pred, y_train_error,
-                                                  y_train_error_flat):
-                apply_kernel_3d(x, h_fwd, pred)
-                np.subtract(y, pred, err)
-                e_train += error(err_flat)
-
-            e_test = 0
-            for x, y, pred, err, err_flat in izip(x_test, y_test,
-                                                  y_test_pred, y_test_error,
-                                                  y_test_error_flat):
-                apply_kernel_3d(x, h_fwd, pred)
-                np.subtract(y, pred, err)
-                e_test += error(err_flat)
-        else:
-            for y, err in izip(y_train, y_train_error):
-                err[:] = y
-            e_test = sum(error(y.ravel()) for y in y_test)
-            e_train = sum(error(y, buf) for y, buf in
-                          izip(y_train_error_flat, y_train_buf_flat))
+        e_test = sum(error(y, buf) for y, buf in izip(y_test_error_flat, y_test_buf_flat))
+        e_train = sum(error(y, buf) for y, buf in izip(y_train_error_flat, y_train_buf_flat))
 
         test_error_history.append(e_test)
 
@@ -539,28 +521,28 @@ def boost_segs_fwd(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
             break
 
         # generate possible movements -> training error
-        new_sign.fill(0)
         for i_src in xrange(n_sources):
-            fwd = forward[:, i_src][:, None] * delta
-            for i_stim in xrange(h.shape[1]):
-                for dy, x in izip(y_delta, x_train):
-                    np.multiply(fwd, x[i_stim], dy)  # impulse response
+            fwd_buf[:, 0] = forward[:, i_src]
+            fwd_buf *= delta
+            for i_stim in xrange(n_stims):
+                for dy, x in izip(ys_delta, x_train):
+                    np.multiply(fwd_buf, x[i_stim], dy)  # impulse response
 
-                # initialize the early part of the error buffer
+                # y_buf will contain the new error; initialize the early part:
                 for err, buf in izip(y_train_error, y_train_buf):
                     buf[:, :trf_length] = err[:, :trf_length]
 
-                for i_t in xrange(trf_length - 1, -1, -1):
+                for i_time in xrange(trf_length - 1, -1, -1):
                     # +/- delta
                     e_add = 0
                     e_sub = 0
                     for err, dy, buf, buf_flat, buf2_flat in \
-                            izip(y_train_error, y_delta, y_train_buf,
+                            izip(y_train_error, ys_delta, y_train_buf,
                                  y_train_buf_flat, y_train_buf2_flat):
-                        if i_t:
-                            err = err[:, i_t:]
-                            dy = dy[:, :-i_t]
-                            buf = buf[:, i_t:]
+                        if i_time:
+                            err = err[:, i_time:]
+                            dy = dy[:, :-i_time]
+                            buf = buf[:, i_time:]
 
                         # + delta
                         np.subtract(err, dy, buf)
@@ -570,11 +552,11 @@ def boost_segs_fwd(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
                         e_sub += error(buf_flat, buf2_flat)
 
                     if e_add > e_sub:
-                        new_error[i_src, i_stim, i_t] = e_sub
-                        new_sign[i_src, i_stim, i_t] = -1
+                        new_error[i_src, i_stim, i_time] = e_sub
+                        new_sign[i_src, i_stim, i_time] = -1
                     else:
-                        new_error[i_src, i_stim, i_t] = e_add
-                        new_sign[i_src, i_stim, i_t] = 1
+                        new_error[i_src, i_stim, i_time] = e_add
+                        new_sign[i_src, i_stim, i_time] = 1
 
         # If no improvements can be found reduce delta
         if new_error.min() > e_train:
@@ -588,8 +570,10 @@ def boost_segs_fwd(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
                 continue
 
         # update h with best movement
-        bestfil = np.unravel_index(np.argmin(new_error), h.shape)
-        h[bestfil] += new_sign[bestfil] * delta
+
+        i_src, i_stim, i_time = np.unravel_index(np.argmin(new_error), h.shape)
+        delta_signed = new_sign[i_src, i_stim, i_time] * delta
+        h[i_src, i_stim, i_time] += delta_signed
 
         # abort if we're moving in circles
         if len(history) >= 2 and np.array_equal(h, history[-2]):
@@ -598,6 +582,15 @@ def boost_segs_fwd(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
         elif len(history) >= 3 and np.array_equal(h, history[-3]):
             reason = "Same h after 3 iterations"
             break
+
+        # update error
+        fwd_buf[:, 0] = forward[:, i_src]
+        fwd_buf *= delta_signed
+        for err, dy, x in izip(ys_error, ys_delta, xs):
+            dy = dy[:, i_time:]
+            np.multiply(fwd_buf, x[i_stim, :-i_time or None], dy)
+            err[:, i_time:] -= dy
+
     else:
         reason = "maxiter exceeded"
 
