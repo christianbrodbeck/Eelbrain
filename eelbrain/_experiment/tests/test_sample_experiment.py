@@ -28,9 +28,15 @@ def test_sample():
     eq_(e.get('subject'), 'R0000')
     eq_(e.get('subject', subject='R0002'), 'R0002')
 
-    e.set('R0001')
-    e.make_bad_channels(['MEG 0331'], redo=True)
+    # evoked cache invalidated by change in bads
+    e.set('R0001', rej='')
+    ds = e.load_evoked()
+    eq_(ds[0, 'evoked'].info['bads'], [])
+    e.make_bad_channels(['MEG 0331'])
+    ds = e.load_evoked()
+    eq_(ds[0, 'evoked'].info['bads'], ['MEG 0331'])
 
+    e.set(rej='man')
     sds = []
     for _ in e:
         e.make_rej(auto=2.5e-12)

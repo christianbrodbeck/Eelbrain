@@ -1504,12 +1504,23 @@ class MneExperiment(FileTree):
         for subject in self.iter():
             yield subject
 
-    def _annot_mtime(self, make_for=None):
-        "Return max mtime of annot files or None if they do not exist."
+    # mtime methods
+    # -------------
+    # _mtime() functions return the time at which any input files affecting the
+    # given file changed, and None if inputs are missing. They don't check
+    # whether the file actually exists (usually there is no need to recompute an
+    # intermediate file if it is not needed).
+    # _file_mtime() functions directly return the file's mtime, or None if it
+    # does not exists or is outdated
+    def _annot_file_mtime(self, make_for=None):
+        """Return max mtime of annot files or None if they do not exist.
+
+        Can be user input, so we need to check the actual file.
+        """
         if make_for:
             with self._temporary_state:
                 self.make_annot(mrisubject=make_for)
-                return self._annot_mtime()
+                return self._annot_file_mtime()
 
         mtime = 0
         for _ in self.iter('hemi'):
@@ -1531,22 +1542,35 @@ class MneExperiment(FileTree):
                 return max(raw_mtime, bads_mtime, rej_mtime)
 
     def _epochs_stc_mtime(self):
-        "mtime if up-to-date, else None; does not check annot"
-        mtime = self._epochs_mtime()
-        if mtime:
-            return max(mtime, self._inv_mtime())
+        "does not include check of annot"
+        epochs_mtime = self._epochs_mtime()
+        if epochs_mtime:
+            inv_mtime = self._inv_mtime()
+            if inv_mtime:
+                return max(epochs_mtime, inv_mtime)
 
     def _evoked_mtime(self):
-        "Return mtime if the evoked file is up-to-date, None otherwise"
         return self._epochs_mtime()
 
     def _evoked_stc_mtime(self):
         "mtime if up-to-date, else None; does not check annot"
-        mtime = self._evoked_mtime()
-        if mtime:
-            return max(mtime, self._inv_mtime())
+        evoked_mtime = self._evoked_mtime()
+        if evoked_mtime:
+            inv_mtime = self._inv_mtime()
+            if inv_mtime:
+                return max(evoked_mtime, inv_mtime)
 
-    def _ica_mtime(self, rej):
+    def _fwd_mtime(self):
+        "Return last time input files affecting fwd-file changed"
+        trans = self.get('trans-file')
+        if os.path.exists(trans):
+            src = self.get('src-file')
+            if os.path.exists(src):
+                trans_mtime = os.path.getmtime(trans)
+                src_mtime = os.path.getmtime(src)
+                return max(self._raw_mtime(), trans_mtime, src_mtime)
+
+    def _ica_file_mtime(self, rej):
         "mtime if the file exists, else None; does not check raw mtime"
         ica_path = self.get('ica-file')
         if os.path.exists(ica_path):
@@ -1560,8 +1584,14 @@ class MneExperiment(FileTree):
                     return ica_mtime
 
     def _inv_mtime(self):
-        return max(self._raw_mtime(),
-                   os.path.getmtime(self.get('fwd-file', make=True)))
+        fwd_mtime = self._fwd_mtime()
+        if fwd_mtime:
+            cov_epoch = self._covs[self.get('cov')]['epoch']
+            with self._temporary_state:
+                self.set(epoch=cov_epoch)
+                cov_mtime = self._epochs_mtime()
+            if cov_mtime:
+                return max(cov_mtime, fwd_mtime)
 
     def _raw_mtime(self):
         return os.path.getmtime(self.get('raw-file'))
@@ -1576,19 +1606,21 @@ class MneExperiment(FileTree):
         pre_ica : bool
             Only analyze mtime before ICA file estimation.
         """
+        rej = self._artifact_rejection[self.get('rej')]
+        if rej['kind'] is None:
+            return 1  # no rejection
         with self._temporary_state:
             paths = [self.get('rej-file', epoch=e) for e in epoch.rej_file_epochs]
         if all(os.path.exists(path) for path in paths):
             mtime = max(os.path.getmtime(path) for path in paths)
-            rej = self._artifact_rejection[self.get('rej')]
             if pre_ica or rej['kind'] != 'ica' or rej['source'] == 'raw':
                 return mtime
             # incorporate ICA-file
-            ica_mtime = self._ica_mtime(rej)
+            ica_mtime = self._ica_file_mtime(rej)
             if ica_mtime > mtime:
                 return ica_mtime
 
-    def _result_mtime(self, dst, data, single_subject=False):
+    def _result_file_mtime(self, dst, data, single_subject=False):
         """For several results (reports and movies)
 
         Parameters
@@ -1605,28 +1637,39 @@ class MneExperiment(FileTree):
             (as opposed to the current group).
         """
         if os.path.exists(dst):
-            dst_mtime = os.path.getmtime(dst)
-            if data == 'src':
-                if single_subject:
-                    mrisubject = 'mrisubject'
-                else:
-                    mrisubject = 'common_brain'
+            mtime = self._result_mtime(data, single_subject)
+            if mtime:
+                dst_mtime = os.path.getmtime(dst)
+                if dst_mtime > mtime:
+                    return dst_mtime
 
-                if self._annot_mtime(self.get(mrisubject)) > dst_mtime:
-                    return
-                mtime_func = self._epochs_stc_mtime
-            else:
-                mtime_func = self._epochs_mtime
-
+    def _result_mtime(self, data, single_subject=False):
+        "See ._result_file_mtime() above"
+        if data == 'src':
             if single_subject:
-                mtime_iterator = (mtime_func(),)
+                mrisubject = 'mrisubject'
             else:
-                mtime_iterator = (mtime_func() for _ in self)
+                mrisubject = 'common_brain'
 
-            for mtime in mtime_iterator:
-                if mtime is None or mtime > dst_mtime:
-                    return
-            return dst_mtime
+            out = self._annot_file_mtime(self.get(mrisubject))
+            if not out:
+                return
+
+            mtime_func = self._epochs_stc_mtime
+        else:
+            out = 1
+            mtime_func = self._epochs_mtime
+
+        if single_subject:
+            mtime_iterator = (mtime_func(),)
+        else:
+            mtime_iterator = (mtime_func() for _ in self)
+
+        for mtime in mtime_iterator:
+            if not mtime:
+                return
+            out = max(out, mtime)
+        return out
 
     def _process_subject_arg(self, subject, kwargs):
         """Process subject arg for methods that work on groups and subjects
@@ -3428,7 +3471,7 @@ class MneExperiment(FileTree):
         res = None
         load_data = True
         desc = self._get_rel('test-file', 'test-dir')
-        if self._result_mtime(dst, data):
+        if self._result_file_mtime(dst, data):
             try:
                 res = load.unpickle(dst)
             except OldVersionError:
@@ -3508,7 +3551,7 @@ class MneExperiment(FileTree):
 
         mrisubject = self.get('mrisubject')
         common_brain = self.get('common_brain')
-        mtime = self._annot_mtime()
+        mtime = self._annot_file_mtime()
         if mrisubject != common_brain:
             is_fake = is_fake_mri(self.get('mri-dir'))
             if p['morph_from_fsaverage'] or is_fake:
@@ -3771,7 +3814,7 @@ class MneExperiment(FileTree):
 
         cov.save(dest)
 
-    def _make_evoked(self, decim, data_raw, **kwargs):
+    def _make_evoked(self, decim, data_raw):
         """
         Creates datasets with evoked sensor data.
 
@@ -3780,18 +3823,20 @@ class MneExperiment(FileTree):
         decim : None | int
             Set to an int in order to override the epoch decim factor.
         """
-        dst = self.get('evoked-file', mkdir=True, **kwargs)
+        dst = self.get('evoked-file', mkdir=True)
         epoch = self._epochs[self.get('epoch')]
         use_cache = ((not decim or decim == epoch.decim) and
-                     (isinstance(data_raw, bool) or data_raw == self.get('raw')))
+                     (isinstance(data_raw, int) or data_raw == self.get('raw')))
         model = self.get('model')
         equal_count = self.get('equalize_evoked_count') == 'eq'
-        if use_cache and os.path.exists(dst) and self._evoked_mtime():
-            ds = self.load_selected_events(data_raw=data_raw)
-            ds = ds.aggregate(model, drop_bad=True, equal_count=equal_count,
-                              drop=('i_start', 't_edf', 'T', 'index'))
-            ds['evoked'] = mne.read_evokeds(dst, proj=False)
-            return ds
+        if use_cache and os.path.exists(dst):
+            mtime = self._evoked_mtime()
+            if mtime and os.path.getmtime(dst) > mtime:
+                ds = self.load_selected_events(data_raw=data_raw)
+                ds = ds.aggregate(model, drop_bad=True, equal_count=equal_count,
+                                  drop=('i_start', 't_edf', 'T', 'index'))
+                ds['evoked'] = mne.read_evokeds(dst, proj=False)
+                return ds
 
         # load the epochs (post baseline-correction trigger shift requires
         # baseline corrected evoked
@@ -3816,20 +3861,15 @@ class MneExperiment(FileTree):
     def make_fwd(self):
         """Make the forward model"""
         dst = self.get('fwd-file')
-        trans = self.get('trans-file')
-        src = self.get('src-file', make=True)
-
         if os.path.exists(dst):
             fwd_mtime = os.path.getmtime(dst)
-            raw_mtime = self._raw_mtime()
-            trans_mtime = os.path.getmtime(trans)
-            src_mtime = os.path.getmtime(src)
-            if fwd_mtime > max(raw_mtime, trans_mtime, src_mtime):
+            if fwd_mtime > self._fwd_mtime():
                 return
-
-        if self.get('modality') != '':
+        elif self.get('modality') != '':
             raise NotImplementedError("Source reconstruction with EEG")
 
+        trans = self.get('trans-file')
+        src = self.get('src-file', make=True)
         raw = self._get_raw_path()
         bem = self._load_bem()
         src = mne.read_source_spaces(src)
@@ -4019,7 +4059,7 @@ class MneExperiment(FileTree):
         else:
             dst = os.path.expanduser(dst)
 
-        if not redo and self._result_mtime(dst, 'src', group is None):
+        if not redo and self._result_file_mtime(dst, 'src', group is None):
             return
 
         plot._brain.assert_can_save_movies()
@@ -4144,7 +4184,7 @@ class MneExperiment(FileTree):
             else:
                 dst = os.path.expanduser(dst)
 
-            if not redo and self._result_mtime(dst, 'src', group is None):
+            if not redo and self._result_file_mtime(dst, 'src', group is None):
                 return
 
             plot._brain.assert_can_save_movies()
@@ -4565,7 +4605,7 @@ class MneExperiment(FileTree):
             self._log.debug("New report: %s", desc)
         elif redo:
             self._log.debug("Redoing report: %s", desc)
-        elif not self._result_mtime(dst, 'src'):
+        elif not self._result_file_mtime(dst, 'src'):
             self._log.debug("Report outdated: %s", desc)
         else:
             self._log.debug("Report up to date: %s", desc)
@@ -4686,7 +4726,7 @@ class MneExperiment(FileTree):
                                    tstart, tstop, parc, dims=('time',))
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
                        folder="%s ROIs" % parc.capitalize())
-        if not redo and self._result_mtime(dst, 'src'):
+        if not redo and self._result_file_mtime(dst, 'src'):
             return
 
         if samples < 1:
