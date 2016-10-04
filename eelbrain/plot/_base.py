@@ -155,6 +155,7 @@ unit_format = {u'V': 1,
                u'µV': 1e6,
                u'pT': 1e12,
                u'fT': 1e15,
+               u'T': 1,
                u'dSPM': 1,
                int: int}
 scale_formatters = {1e3: FuncFormatter(lambda x, pos: '%g' % (1e3 * x)),
