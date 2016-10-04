@@ -428,7 +428,7 @@ Example: The first example assumes 2 categorical variables present in events,
 recoded into 0/1 codes. The second test definition (``'a_x_time'`` uses the
 "index" variable which is always present and specifies the chronological index
 of the event within subject as an integer count and can be used to test for
-change over time. Thanks to the numberic nature of these variables interactions
+change over time. Due to the numeric nature of these variables interactions
 can be computed by multiplication::
 
     tests = {'word_basic': {'kind': 'two-stage',
