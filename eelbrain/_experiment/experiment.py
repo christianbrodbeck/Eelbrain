@@ -361,6 +361,7 @@ class TreeModel(object):
         for dep in depends_on:
             self._slave_fields[dep].append(key)
         self._slave_handlers[key] = handler
+        self._fields[key] = handler(self._fields)
 
     def expand_template(self, temp, keep=()):
         """Expand all constant variables in a template

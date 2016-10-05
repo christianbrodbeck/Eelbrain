@@ -6,24 +6,26 @@ from ..._utils.testing import TempDir
 from eelbrain._experiment import TreeModel, FileTree
 
 
+class Tree(TreeModel):
+    _templates = dict(apath="/{afield}/",
+                      afield=('a1', 'a2', 'a3'),
+                      field2=('', 'value'))
+
+    def __init__(self, **kwargs):
+        TreeModel.__init__(self, **kwargs)
+        self._register_compound('cmp', ('afield', 'field2'))
+
+
 def test_tree():
     "Test simple formatting in the tree"
-    class Tree(TreeModel):
-        _templates = dict(apath="/{afield}/",
-                          afield=('a1', 'a2', 'a3'),
-                          field2=('', 'value'))
-        def __init__(self, *a, **kw):
-            TreeModel.__init__(self, *a, **kw)
-            self._register_compound('cmp', ('afield', 'field2'))
-
     tree = Tree()
     eq_(tree.get('apath'), '/a1/')
     vs = []
     for v in tree.iter('afield'):
         vs.append(v)
-        eq_(tree.get('apath') , '/%s/' % v)
+        eq_(tree.get('apath'), '/%s/' % v)
         tree.set(afield='a3')
-        eq_(tree.get('afield') , 'a3')
+        eq_(tree.get('afield'), 'a3')
         eq_(tree.get('apath'), '/a3/')
 
     eq_(vs, ['a1', 'a2', 'a3'])
@@ -41,6 +43,26 @@ def test_tree():
         tree.set(afield='a2')
         eq_(tree.get('afield'), 'a2')
     eq_(tree.get('afield'), 'a1')
+
+
+class SlaveTree(TreeModel):
+    _templates = {'path': '{a}_{b}_{sb_comp}_{slave}'}
+
+    def __init__(self):
+        TreeModel.__init__(self)
+        self._register_field('a', ('x', 'y'))
+        self._register_field('b', ('u', 'v'))
+        self._register_compound('ab', ('a', 'b'))
+        self._register_slave_field('s', 'a', lambda f: f['a'].upper())
+        self._register_compound('sb', ('s', 'b'))
+        self._register_slave_field('comp_slave', 'sb', lambda f: f['sb'].upper())
+
+
+def test_slave_tree():
+    tree = SlaveTree()
+    eq_(tree.get('ab'), 'x u')
+    eq_(tree.get('sb'), 'X u')
+    eq_(tree.get('comp_slave'), 'X U')
 
 
 def test_file_tree():
