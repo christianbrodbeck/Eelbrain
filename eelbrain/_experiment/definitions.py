@@ -5,7 +5,7 @@ from .._utils.parse import find_variables
 def find_epoch_vars(params):
     "Find variables used in a primary epoch definition"
     out = ()
-    if 'sel' in params:
+    if params.get('sel'):
         out += find_variables(params['sel'])
     if 'trigger_shift' in params and isinstance(params['trigger_shift'], basestring):
         out += (params['trigger_shift'],)
