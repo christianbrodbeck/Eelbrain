@@ -672,7 +672,8 @@ class TreeModel(object):
         self._fields.update(slave_state)
 
         # call post_set handlers
-        for k, v in chain(state.iteritems(), handled_state.iteritems()):
+        for k, v in chain(state.iteritems(), handled_state.iteritems(),
+                          slave_state.iteritems()):
             for handler in self._post_set_handlers[k]:
                 handler(k, v)
 

@@ -63,6 +63,10 @@ def test_slave_tree():
     eq_(tree.get('ab'), 'x u')
     eq_(tree.get('sb'), 'X u')
     eq_(tree.get('comp_slave'), 'X U')
+    tree.set(a='y')
+    eq_(tree.get('ab'), 'y u')
+    eq_(tree.get('sb'), 'Y u')
+    eq_(tree.get('comp_slave'), 'Y U')
 
 
 def test_file_tree():
