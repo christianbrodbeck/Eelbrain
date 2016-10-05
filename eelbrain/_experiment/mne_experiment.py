@@ -2315,13 +2315,13 @@ class MneExperiment(FileTree):
         path = self.get('bads-file', **kwargs)
         if os.path.exists(path):
             with open(path) as fid:
-                names = [l for l in fid.read().splitlines() if l]
-            return names
+                return [l for l in fid.read().splitlines() if l]
         else:
+            # need to create one to know mtime after user deletes the file
             self._log.info("No bad channel definition for: %s/%s, creating "
                            "empty bad_channels file" %
                            (self.get('subject'), self.get('session')))
-            self.make_bad_channels((), verbose=False)
+            self.make_bad_channels(())
             return []
 
     def _load_bem(self):
@@ -3605,8 +3605,12 @@ class MneExperiment(FileTree):
             raise NotImplementedError(msg)
         return labels
 
-    def make_bad_channels(self, bad_chs, redo=False, verbose=True, **kwargs):
+    def make_bad_channels(self, bad_chs=None, redo=False, **kwargs):
         """Write the bad channel definition file for a raw file
+
+        If the file already exists, new bad channels are added to the old ones.
+        In order to replace the old file with only the new values, set
+        ``redo=True``.
 
         Parameters
         ----------
@@ -3615,7 +3619,7 @@ class MneExperiment(FileTree):
             interpreted as "MEG XXX". If bad_chs contains entries not present
             in the raw data, a ValueError is raised.
         redo : bool
-            If the file already exists, replace it.
+            If the file already exists, replace it (instead of adding).
 
         See Also
         --------
@@ -3624,25 +3628,24 @@ class MneExperiment(FileTree):
         dst = self.get('bads-file', **kwargs)
         if os.path.exists(dst):
             old_bads = self.load_bad_channels()
-            if not redo:
-                msg = ("Bads file already exists with %s. In order to replace "
-                       "it, use `redo=True`." % old_bads)
-                raise IOError(msg)
         else:
             old_bads = None
-
+        # find new bad channels
         if isinstance(bad_chs, basestring):
             bad_chs = (bad_chs,)
-
         raw = self.load_raw(add_bads=False)
         sensor = load.fiff.sensor_dim(raw)
-        chs = sensor._normalize_sensor_names(bad_chs)
-        if verbose:
-            if old_bads is None:
-                print("-> %s" % chs)
-            else:
-                print("%s -> %s" % (old_bads, chs))
-        text = os.linesep.join(chs)
+        new_bads = sensor._normalize_sensor_names(bad_chs)
+        # update with old bad channels
+        if old_bads is not None and not redo:
+            new_bads = sorted(set(old_bads).union(new_bads))
+        # print change
+        if old_bads is None:
+            print("-> %s" % new_bads)
+        else:
+            print("%s -> %s" % (old_bads, new_bads))
+        # write new bad channels
+        text = os.linesep.join(new_bads)
         with open(dst, 'w') as fid:
             fid.write(text)
 
