@@ -4,7 +4,7 @@ Plot multidimensional uniform time series.
 
 from __future__ import division
 
-from itertools import izip
+from itertools import chain, izip
 
 import numpy as np
 
@@ -349,7 +349,7 @@ class Butterfly(UTS, LegendMixin):
     ----------
     epochs : (list of) NDVar
         Data to plot.
-    Xax : None | categorial
+    xax : None | categorial
         Create a separate plot for each cell in this model.
     sensors: None or list of sensor IDs
         sensors to plot (``None`` = all)
@@ -369,17 +369,21 @@ class Butterfly(UTS, LegendMixin):
         as strings.
     x : str
         Dimension to plot on the x-axis (default 'time').
+    vmax : scalar
+        Top of the y axis (default depends on data).
+    vmax : scalar
+        Bottom of the y axis (default depends on data).
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
     title : None | string
         Figure title.
     """
-    def __init__(self, epochs, Xax=None, sensors=None, axtitle='{name}',
+    def __init__(self, epochs, xax=None, sensors=None, axtitle='{name}',
                  xlabel=True, ylabel=True, xticklabels=True, color=None,
-                 ds=None, x='time', *args, **kwargs):
+                 ds=None, x='time', vmax=None, vmin=None, *args, **kwargs):
         epochs, (xdim, linedim) = _base.unpack_epochs_arg(epochs, (x, None),
-                                                          Xax, ds)
+                                                          xax, ds)
         layout = Layout(len(epochs), 2, 4, *args, **kwargs)
         EelFigure.__init__(self, 'Butterfly Plot', layout)
         e0 = epochs[0][0]
@@ -387,7 +391,7 @@ class Butterfly(UTS, LegendMixin):
         self._configure_yaxis(e0, ylabel)
 
         self.plots = []
-        vlims = _base.find_fig_vlims(epochs)
+        vlims = _base.find_fig_vlims(epochs, vmax, vmin)
         legend_handles = {}
         for ax, layers in zip(self._axes, epochs):
             h = _ax_butterfly(ax, layers, xdim, linedim, sensors, axtitle,
