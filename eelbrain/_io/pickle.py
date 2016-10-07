@@ -85,7 +85,7 @@ def unpickle(file_path=None):
             if os.path.exists(new_path):
                 file_path = new_path
 
-    with open(file_path, 'r') as fid:
+    with open(file_path, 'rb') as fid:
         unpickler = Unpickler(fid)
         unpickler.find_global = map_paths
         obj = unpickler.load()
