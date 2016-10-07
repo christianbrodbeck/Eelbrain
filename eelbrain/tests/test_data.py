@@ -271,6 +271,12 @@ def test_datalist():
     "Test Datalist class"
     dl = Datalist(range(10))
 
+    # initialization
+    dl0 = Datalist()
+    eq_(len(dl0), 0)
+    dl_it = Datalist(xrange(10))
+    assert_array_equal(dl_it, dl)
+
     # indexing
     eq_(dl[3], 3)
     x = dl[:3]
@@ -281,11 +287,6 @@ def test_datalist():
     assert_is_instance(x, Datalist)
     assert_array_equal(x, range(3))
     assert_array_equal(dl[np.arange(3)], range(3))
-
-    # __add__
-    x = dl + range(10, 12)
-    assert_is_instance(x, Datalist)
-    assert_array_equal(x, range(12))
 
     # aggregate
     x = dl.aggregate(Factor('ab', repeat=5))
@@ -317,7 +318,7 @@ def test_datalist():
     assert_array_equal(ac == [1, 2, [], [1]], True)
     ac[np.arange(2, 4)] = [3, 4]
     assert_array_equal(ac == range(1, 5), True)
-    assert_raises(ValueError, ac.__setitem__, np.arange(2), np.arange(3))
+    assert_raises(ValueError, ac.__setitem__, slice(0, 2), np.arange(3))
 
     # update
     a._update_listlist(b)

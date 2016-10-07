@@ -4374,8 +4374,8 @@ def extrema(x, axis=0):
     return np.where(np.abs(max) > np.abs(min), max, min)
 
 
-class Datalist(list):
-    """:py:class:`list` subclass for including lists in in a Dataset.
+class Datalist(np.ndarray):
+    """``dtype=object`` array for storing arbitrary objects in in a Dataset
 
     Parameters
     ----------
@@ -4386,16 +4386,6 @@ class Datalist(list):
     fmt : 'repr' | 'str' | 'strlist'
         How to format items when converting Datasets to tables (default 'repr'
         uses the normal object representation).
-
-
-    Notes
-    -----
-    Modifications:
-
-     - adds certain methods that makes indexing behavior more similar to numpy
-       and other data objects
-     - blocks methods for in place modifications that would change the lists's
-       length
 
 
     Examples
@@ -4411,22 +4401,33 @@ class Datalist(list):
     _stype = 'list'
     _fmt = 'repr'  # for backwards compatibility with old pickles
 
-    def __init__(self, items=None, name=None, fmt='repr'):
+    def __new__(cls, items=None, name=None, fmt='repr'):
         if fmt not in ('repr', 'str', 'strlist'):
             raise ValueError("fmt=%s" % repr(fmt))
 
-        self.name = name
-        self._fmt = fmt
-        if items:
-            super(Datalist, self).__init__(items)
+        if items is None:
+            out = np.ndarray.__new__(cls, 0, object)
+        elif isinstance(items, np.ndarray):
+            out = items.view(cls)
         else:
-            super(Datalist, self).__init__()
+            out = np.array(items, dtype=object).view(cls)
 
-    def __deepcopy__(self, memo):
-        return Datalist((deepcopy(item, memo) for item in self), self.name, self._fmt)
+        out.name = name
+        out._fmt = fmt
+        return out
+
+    def __array_finalize__(self, parent):
+        if isinstance(parent, Datalist):
+            self.name = getattr(parent, 'name', None)
+            self._fmt = getattr(parent, '_fmt', None)
+
+    def __array_wrap__(self, out_arr, context=None):
+        if out_arr.ndim == 0:
+            return out_arr.item(0)
+        return out_arr
 
     def __repr__(self):
-        args = super(Datalist, self).__repr__()
+        args = '[%s]' % ', '.join(map(repr, self))
         if self.name is not None:
             args += ', %s' % repr(self.name)
         if self._fmt != 'repr':
@@ -4435,6 +4436,10 @@ class Datalist(list):
 
     def __str__(self):
         return "[%s]" % ', '.join(self._item_repr(i) for i in self)
+
+    def __nonzero__(self):
+        # For backwards compatibility with list subclass
+        return len(self) > 0
 
     def _item_repr(self, item):
         if self._fmt == 'str':
@@ -4450,110 +4455,84 @@ class Datalist(list):
         else:
             raise RuntimeError("Datalist._fmt=%s" % repr(self._fmt))
 
-    def __eq__(self, other):
-        if len(self) != len(other):
+    def _assert_same_length(self, other):
+        if isinstance(other, np.ndarray) and len(self) != len(other):
             raise ValueError("Unequal length")
-        return np.array([s == o for s, o in izip(self, other)])
+
+    def __eq__(self, other):
+        self._assert_same_length(other)
+        out = np.ndarray.__eq__(self, other)
+        if out is NotImplemented:
+            return np.array([s == o for s, o in izip(self, other)])
+        else:
+            return out.view(np.ndarray)
+
+    def __ge__(self, other):
+        self._assert_same_length(other)
+        out = np.ndarray.__ge__(self, other)
+        if out is NotImplemented:
+            return np.array([s >= o for s, o in izip(self, other)])
+        else:
+            return out.view(np.ndarray)
+
+    def __gt__(self, other):
+        self._assert_same_length(other)
+        out = np.ndarray.__gt__(self, other)
+        if out is NotImplemented:
+            return np.array([s > o for s, o in izip(self, other)])
+        else:
+            return out.view(np.ndarray)
+
+    def __le__(self, other):
+        self._assert_same_length(other)
+        out = np.ndarray.__le__(self, other)
+        if out is NotImplemented:
+            return np.array([s <= o for s, o in izip(self, other)])
+        else:
+            return out.view(np.ndarray)
+
+    def __lt__(self, other):
+        self._assert_same_length(other)
+        out = np.ndarray.__lt__(self, other)
+        if out is NotImplemented:
+            return np.array([s < o for s, o in izip(self, other)])
+        else:
+            return out.view(np.ndarray)
 
     def __ne__(self, other):
-        if len(self) != len(other):
-            raise ValueError("Unequal length")
-        return np.array([s != o for s, o in izip(self, other)])
-
-    def __getitem__(self, index):
-        if isinstance(index, int):
-            return list.__getitem__(self, index)
-        elif isinstance(index, slice):
-            return Datalist(list.__getitem__(self, index), fmt=self._fmt)
-
-        index = np.asarray(index)
-        if index.dtype.kind == 'b':
-            if len(index) != len(self):
-                raise ValueError("Boolean index needs to have same length as "
-                                 "Datalist")
-            return Datalist((self[i] for i in np.flatnonzero(index)), fmt=self._fmt)
-        elif index.dtype.kind == 'i':
-            return Datalist((self[i] for i in index), fmt=self._fmt)
+        self._assert_same_length(other)
+        out = np.ndarray.__ne__(self, other)
+        if out is NotImplemented:
+            return np.array([s != o for s, o in izip(self, other)])
         else:
-            err = ("Unsupported type of index for Datalist: %r" % index)
-            raise TypeError(err)
+            return out.view(np.ndarray)
 
-    def __setitem__(self, key, value):
-        if isinstance(key, LIST_INDEX_TYPES):
-            list.__setitem__(self, key, value)
-        elif isinstance(key, np.ndarray):
-            if key.dtype.kind == 'b':
-                key = np.flatnonzero(key)
-            elif key.dtype.kind != 'i':
-                raise TypeError("Array index needs to be int or bool type")
-
-            if np.iterable(value):
-                if len(key) != len(value):
-                    raise ValueError("Need one value per index when setting a "
-                                     "range of entries in a Datalist.")
-                for k, v in izip(key, value):
-                    list.__setitem__(self, k, v)
-            else:
-                for k in key:
-                    list.__setitem__(self, k, value)
-        else:
-            raise NotImplementedError("Datalist indexing with %s" % type(key))
-
-    def __getslice__(self, i, j):
-        return Datalist(list.__getslice__(self, i, j), fmt=self._fmt)
-
-    def __add__(self, other):
-        return Datalist(super(Datalist, self).__add__(other), fmt=self._fmt)
-
-    def aggregate(self, X, merge='mean'):
+    def aggregate(self, x, merge='mean'):
         """
         Summarize cases for each cell in X
 
         Parameters
         ----------
-        X : categorial
+        x : categorial
             Cells which to aggregate.
         merge : str
             How to merge entries.
             ``'mean'``: sum elements and dividie by cell length
         """
-        if len(X) != len(self):
-            err = "Length mismatch: %i (Var) != %i (X)" % (len(self), len(X))
-            raise ValueError(err)
+        if merge != 'mean':
+            raise ValueError("Invalid value for merge: %r" % merge)
+        self._assert_same_length(x)
 
-        x = []
-        for cell in X.cells:
-            x_cell = self[X == cell]
-            n = len(x_cell)
+        items = []
+        for cell in x.cells:
+            cell_data = self[x == cell]
+            n = len(cell_data)
             if n == 1:
-                x.append(x_cell)
+                items.append(cell_data[0])
             elif n > 1:
-                if merge == 'mean':
-                    xc = reduce(lambda x, y: x + y, x_cell)
-                    xc /= n
-                else:
-                    raise ValueError("Invalid value for merge: %r" % merge)
-                x.append(xc)
+                items.append(cell_data.mean())
 
-        return Datalist(x, fmt=self._fmt)
-
-    def __iadd__(self, other):
-        return self + other
-
-    def append(self, p_object):
-        raise TypeError("Datalist has fixed length to conform to Dataset")
-
-    def extend(self, iterable):
-        raise TypeError("Datalist has fixed length to conform to Dataset")
-
-    def insert(self, index, p_object):
-        raise TypeError("Datalist has fixed length to conform to Dataset")
-
-    def pop(self, index=None):
-        raise TypeError("Datalist has fixed length to conform to Dataset")
-
-    def remove(self, value):
-        raise TypeError("Datalist has fixed length to conform to Dataset")
+        return Datalist(items, self.name, self._fmt)
 
     def _update_listlist(self, other):
         "update list elements from another list of lists"
@@ -4562,6 +4541,12 @@ class Datalist(list):
         for i in xrange(len(self)):
             if any(item not in self[i] for item in other[i]):
                 self[i] = sorted(set(self[i]).union(other[i]))
+
+    def index(self, value):
+        try:
+            return np.flatnonzero(self == value)[0]
+        except IndexError:
+            raise ValueError("%s not in Datalist" % repr(value))
 
 
 legal_dataset_key_re = re.compile("[_A-Za-z][_a-zA-Z0-9]*$")
