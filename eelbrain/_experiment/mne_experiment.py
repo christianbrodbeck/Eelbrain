@@ -2957,7 +2957,7 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_fwd(self, surf_ori=True, ndvar=False):
+    def load_fwd(self, surf_ori=True, ndvar=False, mask=None):
         """Load the forward solution
 
         Parameters
@@ -2969,17 +2969,30 @@ class MneExperiment(FileTree):
         ndvar : bool
             Return forward solution as :class:`NDVar` (default is
             :class:`mne.forward.Forward`).
+        mask : str | bool
+            Remove source labelled "unknown". Can be parcellation name or True,
+            in which case the current parcellation is used.
 
         Returns
         -------
         forward_operator : mne.forward.Forward | NDVar
             Forward operator.
         """
+        if mask and not ndvar:
+            raise NotImplemented("mask is only implemented for ndvar=True")
+        elif isinstance(mask, basestring):
+            self.set(parc=mask)
+            mask = True
         fwd_file = self.get('fwd-file', make=True)
         if ndvar:
-            return load.fiff.forward_operator(fwd_file, self.get('src'),
-                                              self.get('mri-sdir'),
-                                              self.get('parc'))
+            self.make_annot()
+            fwd = load.fiff.forward_operator(fwd_file, self.get('src'),
+                                             self.get('mri-sdir'),
+                                             self.get('parc'))
+            if mask:
+                fwd = fwd.sub(source=np.invert(fwd.source.parc
+                                               .startswith('unknown')))
+            return fwd
         else:
             return mne.read_forward_solution(fwd_file, surf_ori=surf_ori)
 
