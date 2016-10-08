@@ -786,12 +786,15 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
             raise ValueError("Different evoked objects form different KIT "
                              "systems")
 
-        # timing
-        timing_set = {(e.first, e.last, e.info['sfreq']) for e in evoked}
+        # timing:  round sfreq because precision is lost by FIFF format
+        timing_set = {(e.first, e.last, round(e.info['sfreq'], 2)) for e in
+                      evoked}
         if len(timing_set) == 1:
             first, last, sfreq = timing_set.pop()
         else:
-            raise ValueError("Evoked objects have different starting times")
+            raise ValueError("Evoked objects have different timing "
+                             "information (first, last, sfreq): " +
+                             ', '.join(map(str, timing_set)))
 
         ch_sets = [set(e.info['ch_names']) for e in evoked]
         all_chs = set.union(*ch_sets)
