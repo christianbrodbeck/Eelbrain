@@ -32,13 +32,13 @@ import logging
 import operator
 import re
 import socket
-from sys import stdout
 from time import time as current_time
 from warnings import warn
 
 import numpy as np
 import scipy.stats
 from scipy import ndimage
+from tqdm import trange
 
 from .. import fmtxt
 from .. import _colorspaces as _cs
@@ -2906,35 +2906,8 @@ def distribution_worker(dist_array, dist_shape, in_queue):
     dist = np.frombuffer(dist_array, np.float64, n)
     dist.shape = dist_shape
     samples = dist_shape[0]
-    # logger
-    t0 = tn = current_time()
-    dt_update = 0.2
-    logger = logging.getLogger(__name__)
-    logger.info('starting permutation')
-    for i in xrange(samples):
+    for i in trange(samples, desc="Permutation test", unit=' permutations'):
         dist[i] = in_queue.get()
-        # logger
-        t = current_time()
-        dt = t - tn
-        if i and dt > dt_update:
-            time_elapsed = t - t0
-            time_left = (samples - i) * time_elapsed / i
-            td = timedelta(seconds=round(time_left))
-            n_progress = int(20. * i / samples)
-            print("\x1b[2K%i permutations [%-20s]  %s left"
-                  % (samples, '#' * n_progress, td), end='\r')
-            stdout.flush()
-            tn = t
-            if dt_update < 10 and n_progress:
-                dt_update = time_elapsed / n_progress
-                if dt_update < 0.2:
-                    dt_update = 0.2
-                elif dt_update > 10:
-                    dt_update = 10
-    time_taken = t - t0
-    td = timedelta(seconds=round(time_taken))
-    print("\x1b[2K%i permutations done in %s" % (samples, td))
-    logger.info("%i permutations done in %s", samples, td)
 
 
 def permutation_worker(in_queue, out_queue, y, shape, test_func, map_args):
@@ -3104,34 +3077,7 @@ def distribution_worker_me(dist_arrays, dist_shape, in_queue):
     dists = [d if d is None else np.frombuffer(d, np.float64, n).reshape(dist_shape)
              for d in dist_arrays]
     samples = dist_shape[0]
-    # logger
-    t0 = tn = current_time()
-    dt_update = 0.2
-    logger = logging.getLogger(__name__)
-    logger.info('starting permutation')
-    for i in xrange(samples):
+    for i in trange(samples, desc="Permutation test", unit=' permutations'):
         for dist, v in izip(dists, in_queue.get()):
             if dist is not None:
                 dist[i] = v
-        # logger
-        t = current_time()
-        dt = t - tn
-        if i and dt > dt_update:
-            time_elapsed = t - t0
-            time_left = (samples - i) * time_elapsed / i
-            td = timedelta(seconds=round(time_left))
-            n_progress = int(20. * i / samples)
-            print("\x1b[2K%i permutations [%-20s]  %s left"
-                  % (samples, '#' * n_progress, td), end='\r')
-            stdout.flush()
-            tn = t
-            if dt_update < 10 and n_progress:
-                dt_update = time_elapsed / n_progress
-                if dt_update < 0.2:
-                    dt_update = 0.2
-                elif dt_update > 10:
-                    dt_update = 10
-    time_taken = t - t0
-    td = timedelta(seconds=round(time_taken))
-    print("\x1b[2K%i permutations done in %s" % (samples, td))
-    logger.info("%i permutations done in %s", samples, td)
