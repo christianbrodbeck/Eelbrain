@@ -1,15 +1,9 @@
-import numpy as np
-from nose.tools import assert_raises, eq_
+from itertools import chain
+from nose.tools import assert_raises, eq_, assert_greater
 
+from eelbrain import datasets
 from eelbrain.plot import _base
 from eelbrain.plot._base import Layout
-
-
-class InfoObj:
-    "Dummy object to stand in for objects with an info dictionary"
-    def __init__(self, **info):
-        self.info = info
-        self.x = np.array([0, 1])
 
 
 def assert_layout_ok(*args, **kwargs):
@@ -42,42 +36,41 @@ def test_layout():
 
 def test_vlims():
     "Test vlim determination"
-    meas = 'm'
+    ds = datasets.get_uts()
+    epochs = [[ds[i: i+5, 'uts'].mean('case')] for i in xrange(0, 10, 5)]
+    meas = ds['uts'].info.get('meas')
+
+    lims = _base.find_fig_vlims(epochs)
+    assert_greater(lims[meas][1], lims[meas][0])
+    lims = _base.find_fig_vlims(epochs, 1)
+    eq_(lims[meas], (-1, 1))
+    lims = _base.find_fig_vlims(epochs, 1, -2)
+    eq_(lims[meas], (-2, 1))
+
+    # positive data
+    epochs = [[e * e.sign()] for e in chain(*epochs)]
+    lims = _base.find_fig_vlims(epochs)
+    eq_(lims[meas][0], 0)
+    lims = _base.find_fig_vlims(epochs, 1)
+    eq_(lims[meas], (0, 1))
+    lims = _base.find_fig_vlims(epochs, 1, -1)
+    eq_(lims[meas], (-1, 1))
 
     # symmetric
-    sym_cmap = 'polar'
-    v1 = InfoObj(meas=meas, cmap=sym_cmap, vmax=2)
-
-    lims = _base.find_fig_vlims([[v1]])
-    eq_(lims[meas], (0, 2))
-    lims = _base.find_fig_vlims([[v1]], 1)
-    eq_(lims[meas], (0, 1))
-    lims = _base.find_fig_vlims([[v1]], 1, 0)
-    eq_(lims[meas], (0, 1))
-
-    cmaps = _base.find_fig_cmaps([[v1]])
-    lims = _base.find_fig_vlims([[v1]], cmaps=cmaps)
-    eq_(lims[meas], (-2, 2))
-    lims = _base.find_fig_vlims([[v1]], 1, cmaps=cmaps)
+    cmaps = _base.find_fig_cmaps(epochs)
+    eq_(cmaps, {meas: 'xpolar'})
+    lims = _base.find_fig_vlims(epochs, cmaps=cmaps)
+    eq_(lims[meas][0], -lims[meas][1])
+    lims = _base.find_fig_vlims(epochs, 1, cmaps=cmaps)
     eq_(lims[meas], (-1, 1))
-    lims = _base.find_fig_vlims([[v1]], 1, 0, cmaps=cmaps)
+    lims = _base.find_fig_vlims(epochs, 1, 0, cmaps=cmaps)
     eq_(lims[meas], (-1, 1))
 
     # zero-based
-    zero_cmap = 'sig'
-    v2 = InfoObj(meas=meas, cmap=zero_cmap, vmax=2)
-
-    lims = _base.find_fig_vlims([[v2]])
-    eq_(lims[meas], (0, 2))
-    lims = _base.find_fig_vlims([[v2]], 1)
+    cmaps[meas] = 'sig'
+    lims = _base.find_fig_vlims(epochs, cmaps=cmaps)
+    eq_(lims[meas][0], 0)
+    lims = _base.find_fig_vlims(epochs, 1, cmaps=cmaps)
     eq_(lims[meas], (0, 1))
-    lims = _base.find_fig_vlims([[v2]], 1, -1)
-    eq_(lims[meas], (-1, 1))
-
-    cmaps = _base.find_fig_cmaps([[v2]])
-    lims = _base.find_fig_vlims([[v2]], cmaps=cmaps)
-    eq_(lims[meas], (0, 2))
-    lims = _base.find_fig_vlims([[v2]], 1, cmaps=cmaps)
-    eq_(lims[meas], (0, 1))
-    lims = _base.find_fig_vlims([[v2]], 1, -1, cmaps=cmaps)
+    lims = _base.find_fig_vlims(epochs, 1, -1, cmaps=cmaps)
     eq_(lims[meas], (0, 1))
