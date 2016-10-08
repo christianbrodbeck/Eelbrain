@@ -50,6 +50,7 @@ from __future__ import print_function
 
 
 import datetime
+from HTMLParser import HTMLParser
 from importlib import import_module
 from itertools import izip
 import os
@@ -124,7 +125,7 @@ def escape_html(text):
 _html_doc_template = u"""<!DOCTYPE html>
 <html>
 <head>
-    <title>{title}</title>
+    {meta}<title>{title}</title>
 </head>
 
 <body>
@@ -173,7 +174,7 @@ def rtf_document(fmtext):
     return "{\\rtf1\\ansi\\deff0\n\n%s\n}" % fmtext.get_rtf()
 
 
-def save_html(fmtxt, path=None, embed_images=True):
+def save_html(fmtxt, path=None, embed_images=True, meta=None):
     """Save an FMText object in HTML format
 
     Parameters
@@ -186,6 +187,8 @@ def save_html(fmtxt, path=None, embed_images=True):
     embed_images : bool
         Embed images in the HTML file (default True). If False, a separate
         folder containing image files is created.
+    meta : dict
+        Meta-information for document head.
     """
     if path is None:
         msg = "Save as HTML"
@@ -211,7 +214,7 @@ def save_html(fmtxt, path=None, embed_images=True):
         os.mkdir(resource_dir)
         resource_dir = os.path.relpath(resource_dir, root)
 
-    buf = make_html_doc(fmtxt, root, resource_dir)
+    buf = make_html_doc(fmtxt, root, resource_dir, meta=meta)
     buf_enc = buf.encode('utf-8')
     with open(file_path, 'wb') as fid:
         fid.write(buf_enc)
@@ -311,7 +314,7 @@ def html(text, env={}):
         return unicode(text)
 
 
-def make_html_doc(body, root, resource_dir=None, title=None):
+def make_html_doc(body, root, resource_dir=None, title=None, meta=None):
     """
     Parameters
     ----------
@@ -325,6 +328,8 @@ def make_html_doc(body, root, resource_dir=None, title=None):
     title : None | FMText
         Document title. The default is to try to infer the title from the body
         or use "Untitled".
+    meta : dict
+        Meta-information for document head.
 
     Returns
     -------
@@ -339,10 +344,14 @@ def make_html_doc(body, root, resource_dir=None, title=None):
         else:
             title = "Untitled"
 
+    if meta:
+        meta = '<meta %s>\n' % ' '.join('%s=%r' % x for x in meta.iteritems())
+    else:
+        meta = ''
+
     env = {'root': root, 'resource_dir': resource_dir}
     txt_body = html(body, env)
-    txt = _html_doc_template.format(title=title, body=txt_body)
-    return txt
+    return _html_doc_template.format(meta=meta, title=title, body=txt_body)
 
 
 def tex(text, env={}):
@@ -571,7 +580,7 @@ class FMTextElement(object):
     def _get_tex_core(self, env):
         return self._get_core(env)
 
-    def save_html(self, path=None, embed_images=True):
+    def save_html(self, path=None, embed_images=True, meta=None):
         """Save in HTML format
 
         Parameters
@@ -582,8 +591,10 @@ class FMTextElement(object):
         embed_images : bool
             Embed images in the HTML file (default True). If False, a separate
             folder containing image files is created.
+        meta : dict
+            Meta-information for document head.
         """
-        save_html(self, path, embed_images)
+        save_html(self, path, embed_images, meta)
 
     def save_pdf(self, path=None):
         """Save in PDF format
@@ -684,9 +695,16 @@ class FMText(FMTextElement):
 
 
 class Code(FMText):
+    """Code (block) element
+
+    Parameters
+    ----------
+    code : str
+        Multiline string to be displayed as code.
+    """
     def __init__(self, code):
         content = []
-        for line in code.split(os.linesep):
+        for line in code.splitlines():
             content.append(line)
             content.append(linebreak)
         FMText.__init__(self, content, 'code')
@@ -1860,7 +1878,7 @@ class Report(Section):
         with open(path, 'wb') as fid:
             pickle.dump(self, fid, pickle.HIGHEST_PROTOCOL)
 
-    def save_html(self, path, embed_images=True):
+    def save_html(self, path, embed_images=True, meta=None):
         """Save HTML file of the report
 
         Parameters
@@ -1869,13 +1887,16 @@ class Report(Section):
             Path at which to save the html. Does not need to contain the
             extension. A folder with the same name is created fo resource
             files.
-        pickle : bool
-            Also store a pickled version of the report in the resource folder.
+        embed_images : bool
+            Embed images in the HTML file (default True). If False, a separate
+            folder containing image files is created.
+        meta : dict
+            Meta-information for document head.
         """
         if path.endswith('.html'):
             path = path[:-5]
 
-        save_html(self, path, embed_images)
+        save_html(self, path, embed_images, meta)
 
     def sign(self, packages=('eelbrain',)):
         """Add a signature to the report
@@ -2091,3 +2112,26 @@ def _array_as_png(im):
     imsave(buf, np.asarray(im), format='png')
     data = buf.getvalue().encode('base64').replace('\n', '')
     return data
+
+
+class MetaParser(HTMLParser):
+    def __init__(self, file_name):
+        HTMLParser.__init__(self)
+        self.out = None
+        with open(file_name) as fid:
+            while self.out is None:
+                self.feed(fid.readline())
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'meta':
+            self.out = dict(attrs)
+
+    def handle_endtag(self, tag):
+        "No need to keep reading"
+        if tag == 'head':
+            self.out = {}
+
+
+def read_meta(file_path):
+    "Read meta information from a HTML head"
+    return MetaParser(file_path).out

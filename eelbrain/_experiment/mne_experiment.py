@@ -39,7 +39,7 @@ from .._data_obj import (isvar, asfactor, align, DimensionMismatchError,
                          as_legal_dataset_key, assert_is_legal_dataset_key,
                          OldVersionError)
 from .._ndvar import cwt_morlet
-from ..fmtxt import List, Report, Image
+from ..fmtxt import List, Report, Image, read_meta
 from .._report import named_list, enumeration, plural
 from .._resources import predefined_connectivity
 from .._stats import spm
@@ -4551,6 +4551,31 @@ class MneExperiment(FileTree):
 
         gui.select_epochs(ds, data, path=path, vlim=vlim, mark=eog_sns, **kwargs)
 
+    def _need_not_recompute_report(self, dst, samples, data, redo):
+        "Check (and log) whether the report needs to be redone"
+        desc = self._get_rel('report-file', 'res-dir')
+        if not os.path.exists(dst):
+            self._log.debug("New report: %s", desc)
+        elif redo:
+            self._log.debug("Redoing report: %s", desc)
+        elif not self._result_file_mtime(dst, data):
+            self._log.debug("Report outdated: %s", desc)
+        else:
+            meta = read_meta(dst)
+            if 'samples' in meta:
+                if int(meta['samples']) >= samples:
+                    self._log.debug("Report up to date: %s", desc)
+                    return True
+                else:
+                    self._log.debug("Report file used %s samples, recomputing "
+                                    "with %i: %s", meta['samples'], samples,
+                                    desc)
+            else:
+                self._log.debug("Report created prior to Eelbrain 0.25, can "
+                                "not check number of samples. Delete manually "
+                                "to recompute: %s", desc)
+                return True
+
     def make_report(self, test, parc=None, mask=None, pmin=None, tstart=0.15,
                     tstop=None, samples=10000, sns_baseline=True,
                     src_baseline=None, include=0.2, redo=False, **state):
@@ -4590,8 +4615,7 @@ class MneExperiment(FileTree):
         """
         if samples < 1:
             raise ValueError("samples needs to be > 0")
-
-        if include <= 0 or include > 1:
+        elif include <= 0 or include > 1:
             raise ValueError("include needs to be 0 < include <= 1, got %s"
                              % repr(include))
 
@@ -4599,17 +4623,10 @@ class MneExperiment(FileTree):
         self._set_analysis_options('src', sns_baseline, src_baseline, pmin,
                                    tstart, tstop, parc, mask)
         dst = self.get('report-file', mkdir=True, test=test)
-        is_twostage = self._tests[test]['kind'] == 'two-stage'
-        desc = self._get_rel('report-file', 'res-dir')
-        if not os.path.exists(dst):
-            self._log.debug("New report: %s", desc)
-        elif redo:
-            self._log.debug("Redoing report: %s", desc)
-        elif not self._result_file_mtime(dst, 'src'):
-            self._log.debug("Report outdated: %s", desc)
-        else:
-            self._log.debug("Report up to date: %s", desc)
+        if self._need_not_recompute_report(dst, samples, 'src', redo):
             return
+
+        is_twostage = self._tests[test]['kind'] == 'two-stage'
 
         # start report
         title = self.format('{session} {epoch} {test} {test_options}')
@@ -4625,7 +4642,7 @@ class MneExperiment(FileTree):
 
         # report signature
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
-        report.save_html(dst)
+        report.save_html(dst, meta={'samples': samples})
 
     def _evoked_report(self, report, test, sns_baseline, src_baseline, pmin,
                        samples, tstart, tstop, parc, mask, include):
@@ -4715,7 +4732,9 @@ class MneExperiment(FileTree):
         redo : bool
             If the target file already exists, delete and recreate it.
         """
-        if self._tests[test]['kind'] == 'two-stage':
+        if samples < 1:
+            raise ValueError("Need samples > 0 to run permutation test.")
+        elif self._tests[test]['kind'] == 'two-stage':
             raise NotImplementedError("ROI analysis not implemented for two-"
                                       "stage tests")
 
@@ -4726,11 +4745,8 @@ class MneExperiment(FileTree):
                                    tstart, tstop, parc, dims=('time',))
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
                        folder="%s ROIs" % parc.capitalize())
-        if not redo and self._result_file_mtime(dst, 'src'):
+        if self._need_not_recompute_report(dst, samples, 'src', redo):
             return
-
-        if samples < 1:
-            raise ValueError("Need samples > 0 to run permutation test.")
 
         # load data
         label_names = None
@@ -4813,7 +4829,7 @@ class MneExperiment(FileTree):
         self._report_test_info(info_section, ds, test, res, 'src')
 
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
-        report.save_html(dst)
+        report.save_html(dst, meta={'samples': samples})
 
     def _make_report_eeg(self, test, pmin=None, tstart=0.15, tstop=None,
                          samples=10000, baseline=True, include=1, **state):
@@ -4846,7 +4862,7 @@ class MneExperiment(FileTree):
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
                        folder="EEG Spatio-Temporal", modality='eeg',
                        **state)
-        if os.path.exists(dst):
+        if self._need_not_recompute_report(dst, samples, 'sns', False):
             return
 
         # load data
@@ -4907,7 +4923,7 @@ class MneExperiment(FileTree):
                                    None, dims=('time',))
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
                        folder="EEG Sensors", modality='eeg', **state)
-        if not redo and os.path.exists(dst):
+        if self._need_not_recompute_report(dst, samples, 'sns', redo):
             return
 
         # load data

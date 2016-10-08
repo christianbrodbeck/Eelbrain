@@ -3,15 +3,14 @@
 import wx
 from wx.html2 import WebView
 
-from ..fmtxt import _html_doc_template
+from ..fmtxt import make_html_doc, Section, Code
 from .frame import EelbrainFrame
 
 
 def show_help_txt(text, parent, title=""):
     "Show help frame with text in mono-spaced font"
-    lines = (line.replace(' ', '&nbsp;') for line in text.splitlines())
-    body = "<code>%s</code>" % '<br>'.join(lines)
-    html = _html_doc_template.format(title="Help: %s" % title, body=body)
+    s = Section(title, Code(text))
+    html = make_html_doc(s, None)
     frame = HelpFrame(parent)
     frame.SetPage(html, title)
     frame.Show()

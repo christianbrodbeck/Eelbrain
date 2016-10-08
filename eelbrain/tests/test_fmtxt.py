@@ -7,7 +7,7 @@ import tempfile
 
 from eelbrain import fmtxt
 from eelbrain._utils.testing import TempDir
-from eelbrain.fmtxt import html, tex
+from eelbrain.fmtxt import html, tex, read_meta
 from eelbrain import datasets, plot
 
 
@@ -43,6 +43,11 @@ def test_report():
     print(report)
     dst = os.path.join(tempdir, 'report.html')
     report.save_html(dst)
+
+    # test meta attribute reading
+    eq_(read_meta(dst), {})
+    report.save_html(dst, meta={'samples': 100, 'text': 'blah'})
+    eq_(read_meta(dst), {'samples': '100', 'text': 'blah'})
 
     # clean up
     shutil.rmtree(tempdir)
