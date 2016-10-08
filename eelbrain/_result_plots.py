@@ -256,7 +256,14 @@ class ClusterPlotter(object):
             smaller than this.
         model : str
             Model defining cells which to plot separately.
-
+        ymax : scalar
+            Top of the y-axis.
+        ymin : scalar
+            Bottom of the y axis (default 0).
+        dpi : int
+            Figure DPI.
+        sub : str
+            Only use a subset of the data.
         subagg : str
            Index in ds: within index, collapse across other predictors.
         cells : sequence of cells in model
