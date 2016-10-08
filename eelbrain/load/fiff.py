@@ -748,15 +748,30 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
     if isinstance(evoked, basestring):
         evoked = mne.read_evokeds(evoked)
 
+    if isinstance(evoked, mne.Evoked):
+        case_out = False
+        evoked = (evoked,)
+    if isinstance(evoked, (tuple, list)):
+        case_out = True
+    else:
+        raise TypeError("evoked=%s" % repr(evoked))
+
+    # data type to load
     if data is None:
-        if isinstance(evoked, (tuple, list)):
-            data_set = {_guess_ndvar_data_type(e.info) for e in evoked}
-            if len(data_set) > 1:
-                raise ValueError("Different Evoked objects contain different "
-                                 "data types: %s" % ', '.join(data_set))
-            data = data_set.pop()
-        else:
-            data = _guess_ndvar_data_type(evoked.info)
+        data_set = {_guess_ndvar_data_type(e.info) for e in evoked}
+        if len(data_set) > 1:
+            raise ValueError("Different Evoked objects contain different "
+                             "data types: %s" % ', '.join(data_set))
+        data = data_set.pop()
+
+    # MEG system
+    kit_sys_ids = {e.info.get('kit_system_id') for e in evoked}
+    kit_sys_ids -= {None}
+    if len(kit_sys_ids) > 1:
+        raise ValueError("Evoked objects from different KIT systems can not be "
+                         "combined because they have different sensor layouts")
+    elif kit_sys_ids:
+        sysname = KIT_LAYOUT.get(kit_sys_ids.pop(), sysname)
 
     if data == 'mag':
         info = _cs.meg_info(vmax)
@@ -767,25 +782,14 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
     else:
         raise ValueError("data=%s" % repr(data))
 
-    if isinstance(evoked, mne.Evoked):
-        picks = _picks(evoked.info, data, exclude)
-
-        x = evoked.data[picks]
-        sensor = sensor_dim(evoked, picks, sysname)
-        time = UTS.from_int(evoked.first, evoked.last, evoked.info['sfreq'])
-        dims = (sensor, time)
+    e0 = evoked[0]
+    if len(evoked) == 1:
+        picks = _picks(e0.info, data, exclude)
+        x = e0.data[picks]
+        if case_out:
+            x = x[None, :]
+        first, last, sfreq = e0.first, e0.last, round(e0.info['sfreq'], 2)
     else:
-        # KIT system ID
-        sysid_set = {e.info.get('kit_system_id') for e in evoked}
-        sysid_set.remove(None)
-        if len(sysid_set) == 1:
-            sysid = sysid_set.pop()
-        elif len(sysid_set) == 0:
-            sysid = None
-        elif len(sysid_set) > 1:
-            raise ValueError("Different evoked objects form different KIT "
-                             "systems")
-
         # timing:  round sfreq because precision is lost by FIFF format
         timing_set = {(e.first, e.last, round(e.info['sfreq'], 2)) for e in
                       evoked}
@@ -796,25 +800,26 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
                              "information (first, last, sfreq): " +
                              ', '.join(map(str, timing_set)))
 
+        # find excluded channels
         ch_sets = [set(e.info['ch_names']) for e in evoked]
         all_chs = set.union(*ch_sets)
         common = set.intersection(*ch_sets)
         exclude = set.union(*map(set, (e.info['bads'] for e in evoked)))
         exclude.update(all_chs.difference(common))
+        exclude = list(exclude)
 
         # get data
         x = []
-        sensor = None
-        exclude = list(exclude)
         for e in evoked:
             picks = _picks(e.info, data, exclude)
             x.append(e.data[picks])
-            if sensor is None:
-                sensor = sensor_dim(e, picks, sysname)
 
-        time = UTS.from_int(first, last, sfreq)
+    sensor = sensor_dim(e0, picks, sysname)
+    time = UTS.from_int(first, last, sfreq)
+    if case_out:
         dims = ('case', sensor, time)
-
+    else:
+        dims = (sensor, time)
     return NDVar(x, dims, info=info, name=name)
 
 
