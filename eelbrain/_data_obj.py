@@ -8535,12 +8535,11 @@ class UTS(Dimension):
 
             return slice(start, stop, step)
         elif isinstance(arg, tuple):
-            if len(arg) != 2:
+            if len(arg) > 3:
                 raise ValueError("Tuple indexes signify intervals for uniform "
                                  "time-series (UTS) dimension and need to be "
-                                 "exactly of length 2 (got %s)" % repr(arg))
-            tstart, tstop = arg
-            return self._slice(tstart, tstop)
+                                 "of length 1, 2 or 3 (got %s)" % repr(arg))
+            return self._slice(*arg)
         else:
             return super(UTS, self).dimindex(arg)
 
@@ -8600,7 +8599,7 @@ class UTS(Dimension):
 
         return UTS(tmin, tstep, nsamples)
 
-    def _slice(self, tstart, tstop):
+    def _slice(self, tstart, tstop=None, tstep=None):
         "Create a slice into the time axis"
         if (tstart is not None) and (tstop is not None) and (tstart >= tstop):
             raise ValueError("tstart must be smaller than tstop")
@@ -8625,8 +8624,17 @@ class UTS(Dimension):
             if stop_float - stop > 0.000001:
                 stop += 1
 
-        s = slice(start, stop)
-        return s
+        if tstep is None:
+            step = None
+        else:
+            step_ = tstep / self.tstep
+            step = int(round(step_))
+            if step != round(step_, 4):
+                raise ValueError("Index time step needs to be a multiple of "
+                                 "the data time step (%s), got %s" %
+                                 (self.tstep, tstep))
+
+        return slice(start, stop, step)
 
     @property
     def values(self):
