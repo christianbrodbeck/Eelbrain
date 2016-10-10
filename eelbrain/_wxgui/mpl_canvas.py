@@ -131,6 +131,8 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
 class CanvasFrame(EelbrainFrame):
     # after:
     # http://matplotlib.sourceforge.net/examples/user_interfaces/embedding_in_wx2.html
+    _plot_name = "CanvasFrame"
+
     def __init__(self, parent=None, title="Matplotlib Frame",
                  eelfigure=None,
                  statusbar=True, toolbar=True, mpl_toolbar=False,
@@ -178,6 +180,7 @@ class CanvasFrame(EelbrainFrame):
             self._fill_toolbar(tb)
         else:
             eelfigure._fill_toolbar(tb)
+            self._plot_name = eelfigure.__class__.__name__
             self.__doc__ = eelfigure.__doc__
 
         # right-most part
@@ -223,7 +226,7 @@ class CanvasFrame(EelbrainFrame):
         event.Skip()
 
     def OnHelp(self, event):
-        show_help_txt(self.__doc__, self, "Epoch-selection")
+        show_help_txt(self.__doc__, self, self._plot_name)
 
     def OnSave(self, event):
         self.OnSaveAs(event)
