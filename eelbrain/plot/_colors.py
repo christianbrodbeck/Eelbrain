@@ -452,15 +452,18 @@ class ColorBar(EelFigure):
     def __init__(self, cmap, vmin, vmax, label=True, label_position=None,
                  label_rotation=None,
                  clipmin=None, clipmax=None, orientation='horizontal',
-                 unit=None, contours=(), width=None, *args, **kwargs):
+                 unit=None, contours=(), width=None, h=None, w=None, *args,
+                 **kwargs):
         cm = mpl.cm.get_cmap(cmap)
         lut = cm(np.arange(cm.N))
         if orientation == 'horizontal':
-            h = 1
+            if h is None and w is None:
+                h = 1
             ax_aspect = 4
             im = lut.reshape((1, cm.N, 4))
         elif orientation == 'vertical':
-            h = 4
+            if h is None and w is None:
+                h = 4
             ax_aspect = 0.3
             im = lut.reshape((cm.N, 1, 4))
         else:
@@ -472,7 +475,7 @@ class ColorBar(EelFigure):
             else:
                 label = cm.name
 
-        layout = Layout(1, ax_aspect, 2, True, False, h, *args, **kwargs)
+        layout = Layout(1, ax_aspect, 2, True, False, h, w, *args, **kwargs)
         EelFigure.__init__(self, "ColorBar: %s" % cm.name, layout)
         ax = self._axes[0]
 
