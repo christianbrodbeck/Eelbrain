@@ -4543,9 +4543,6 @@ class Datalist(list):
     def append(self, p_object):
         raise TypeError("Datalist has fixed length to conform to Dataset")
 
-    def extend(self, iterable):
-        raise TypeError("Datalist has fixed length to conform to Dataset")
-
     def insert(self, index, p_object):
         raise TypeError("Datalist has fixed length to conform to Dataset")
 
