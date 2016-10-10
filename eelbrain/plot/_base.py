@@ -422,7 +422,12 @@ def find_fig_cmaps(epochs, cmap=None):
     cmaps : dict
         {meas: cmap} dict for all meas.
     """
-    out = {}
+    if isinstance(cmap, dict):
+        out = cmap.copy()
+        cmap = None
+    else:
+        out = {}
+
     for ndvar in chain(*epochs):
         meas = ndvar.info.get('meas')
 

@@ -75,6 +75,13 @@ class Topomap(SensorMapMixin, ColorMapMixin, EelFigure):
     title : None | string
         Figure title.
 
+    Notes
+    -----
+    Keys:
+     - ``t``: open a ``Topomap`` plot for the map under the mouse pointer.
+     - ``T``: open a large ``Topomap`` plot with visible sensor names for the
+       map under the mouse pointer.
+    """
     def __init__(self, epochs, xax=None, proj='default', cmap=None, vmax=None,
                  vmin=None, contours=7, clip='even', clip_distance=0.05,
                  head_radius=None, head_pos=0., mark=None, sensorlabels='none',
@@ -110,11 +117,26 @@ class Topomap(SensorMapMixin, ColorMapMixin, EelFigure):
             self.plots.append(h)
 
         SensorMapMixin.__init__(self, [h.sensors for h in self.plots])
+        self.canvas.mpl_connect('key_release_event', self._on_key)
         self._show()
 
     def _fill_toolbar(self, tb):
         ColorMapMixin._fill_toolbar(self, tb)
         SensorMapMixin._fill_toolbar(self, tb)
+
+    def _on_key(self, event):
+        if event.key is None:
+            return
+        elif event.key in 'tT' and event.inaxes:
+            ax_i = self._axes.index(event.inaxes)
+            p = self.plots[ax_i]
+            if event.key == 't':
+                Topomap(p.data, proj=p.proj, cmap=self._cmaps, vmax=self._vlims,
+                        contours=self._contours, title=p.title)
+            else:
+                Topomap(p.data, proj=p.proj, cmap=self._cmaps, vmax=self._vlims,
+                        contours=self._contours, title=p.title, w=10,
+                        sensorlabels='name')
 
 
 class TopomapBins(EelFigure):
@@ -594,6 +616,7 @@ class _ax_topomap(_ax_im_array):
         """
         self.ax = ax
         self.data = layers
+        self.proj = proj
         self.layers = []
 
         if title is True:
@@ -629,10 +652,9 @@ class _ax_topomap(_ax_im_array):
             x, y = ax.transData.inverted().transform(ax.transAxes.transform((0.5, 0)))
             ax.text(x, y, xlabel, ha='center', va='top')
 
+        self.title = title
         if isinstance(title, basestring):
-            self.title = ax.set_title(title)
-        else:
-            self.title = None
+            ax.set_title(title)
 
 
 class _TopoWindow:
