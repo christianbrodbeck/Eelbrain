@@ -1374,12 +1374,12 @@ class Layout(object):
 
 class ImLayout(Layout):
     """Layout subclass for axes without space"""
-    def __init__(self, nrow, ncol, top_space, bottom_space, ax_aspect,
+    def __init__(self, nax, top_space, bottom_space, ax_aspect,
                  axh_default, title=None, *args, **kwargs):
         self.top_space = top_space + 0.5 * bool(title)
         self.bottom_space = bottom_space
-        Layout.__init__(self, nrow * ncol, ax_aspect, axh_default, False, title,
-                        *args, nrow=nrow, ncol=ncol, **kwargs)
+        Layout.__init__(self, nax, ax_aspect, axh_default, False, title, *args,
+                        **kwargs)
 
         self.h += top_space + bottom_space
 

@@ -773,7 +773,8 @@ class _BinTable(EelFigure, ColorBarMixin):
         from .._wxgui import get_app
         get_app()
 
-        layout = ImLayout(n_rows, n_columns, 0, 0.5, 4/3, 2, *args, **kwargs)
+        layout = ImLayout(n_rows * n_columns, 0, 0.5, 4/3, 2, *args,
+                          nrow=n_rows, ncol=n_columns, **kwargs)
         EelFigure.__init__(self, "BinTable", layout)
 
         res_w = int(layout.axw * layout.dpi)

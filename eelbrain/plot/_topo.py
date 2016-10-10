@@ -15,7 +15,7 @@ from scipy.spatial import ConvexHull
 from .._data_obj import SEQUENCE_TYPES
 from .._utils.numpy_utils import digitize
 from . import _base
-from ._base import EelFigure, Layout, ColorMapMixin
+from ._base import EelFigure, Layout, ImLayout, ColorMapMixin
 from ._utsnd import _ax_butterfly, _ax_im_array, _plt_im
 from ._sensors import (SENSOR_AXES_FRAME, SENSORMAP_FRAME, SensorMapMixin,
     _plt_map2d)
@@ -74,8 +74,6 @@ class Topomap(SensorMapMixin, ColorMapMixin, EelFigure):
         is based on mne-python).
     title : None | string
         Figure title.
-    """
-    _make_axes = False
 
     def __init__(self, epochs, xax=None, proj='default', cmap=None, vmax=None,
                  vmin=None, contours=7, clip='even', clip_distance=0.05,
@@ -98,22 +96,8 @@ class Topomap(SensorMapMixin, ColorMapMixin, EelFigure):
         if interpolation is None:
             interpolation = 'nearest' if method else 'bilinear'
 
-        layout = Layout(nax, 1, 5, False, *args, frame=False, yaxis=False, **kwargs)
+        layout = ImLayout(nax, 0, 0, 1, 5, *args, **kwargs)
         EelFigure.__init__(self, "Topomap", layout)
-
-        # make axes
-        xframe = SENSOR_AXES_FRAME / self._layout.ncol
-        yframe = SENSOR_AXES_FRAME / self._layout.nrow
-        axw = (1. / self._layout.ncol)
-        axh = (1. / self._layout.nrow)
-        x_extent = axw * (1. - 2 * SENSOR_AXES_FRAME)
-        y_extent = axh * (1. - 2 * SENSOR_AXES_FRAME)
-        for row in xrange(self._layout.nrow - 1, -1, -1):
-            y_ = row * axh + yframe
-            for col in xrange(self._layout.ncol):
-                x = col * axw + xframe
-                ax = self.figure.add_axes((x, y_, x_extent, y_extent))
-                self._axes.append(ax)
 
         # plots
         self.plots = []
