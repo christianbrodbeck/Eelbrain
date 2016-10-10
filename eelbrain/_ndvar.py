@@ -28,7 +28,11 @@ def concatenate(ndvars, dim='time', name=None):
         NDVar with concatenated data. For ``dim='time'``, the output time axis
         starts at t=0.
     """
-    ndvar = ndvars[0]
+    try:
+        ndvar = ndvars[0]
+    except TypeError:
+        ndvars = tuple(ndvars)
+        ndvar = ndvars[0]
     axis = ndvar.get_axis(dim)
     dim_names = ndvar.get_dimnames((None,) * axis + (dim,) +
                                    (None,) * (ndvar.ndim - axis - 1))
