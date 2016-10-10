@@ -8308,8 +8308,6 @@ class SourceSpace(Dimension):
         raise NotImplementedError
 
 
-_uts_tol = 0.000001  # tolerance for deciding if time values are equal
-
 class UTS(Dimension):
     """Dimension object for representing uniform time series
 
@@ -8334,14 +8332,22 @@ class UTS(Dimension):
     name = 'time'
     unit = 's'
     _axis_unit = 'ms'
+    _tol = 0.000001  # tolerance for deciding if time values are equal
 
     def __init__(self, tmin, tstep, nsamples):
-        self.tmin = tmin
-        self.tstep = tstep
-        self.nsamples = nsamples = int(nsamples)
-        self.x = self.times = tmin + np.arange(nsamples) * tstep
-        self.tmax = self.times[-1]
-        self.tstop = self.tmin + tstep * nsamples
+        self.tmin = float(tmin)  # Python float has superior precision
+        self.tstep = float(tstep)
+        self.nsamples = int(nsamples)
+        self.tmax = self.tmin + self.tstep * (self.nsamples - 1)
+        self.tstop = self.tmin + self.tstep * self.nsamples
+
+    @LazyProperty
+    def x(self):
+        return self.times
+
+    @LazyProperty
+    def times(self):
+        return self.tmin + np.arange(self.nsamples) * self.tstep
 
     @classmethod
     def from_int(cls, first, last, sfreq):
@@ -8390,11 +8396,13 @@ class UTS(Dimension):
         return info
 
     def __len__(self):
-        return len(self.times)
+        return self.nsamples
 
     def __eq__(self, other):
-        return (Dimension.__eq__(self, other) and self.tmin == other.tmin and
-                self.tstep == other.tstep and self.nsamples == other.nsamples)
+        return (Dimension.__eq__(self, other) and
+                self.nsamples == other.nsamples and
+                abs(self.tmin - other.tmin) < self._tol and
+                abs(self.tstep - other.tstep) < self._tol)
 
     def __contains__(self, index):
         return self.tmin - self.tstep / 2 < index < self.tstop - self.tstep / 2
@@ -8502,7 +8510,7 @@ class UTS(Dimension):
             else:
                 start_float = (arg.tmin - self.tmin) / self.tstep
                 start = int(round(start_float))
-                if abs(start_float - start) > _uts_tol:
+                if abs(start_float - start) > self._tol:
                     err = ("The index time dimension contains values not "
                            "contained in the reference time dimension")
                     raise DimensionMismatchError(err)
@@ -8517,7 +8525,7 @@ class UTS(Dimension):
             else:
                 step_float = arg.tstep / self.tstep
                 step = int(round(step_float))
-                if abs(step_float - step) > _uts_tol:
+                if abs(step_float - step) > self._tol:
                     err = ("The index time dimension contains values not "
                            "contained in the reference time dimension")
                     raise DimensionMismatchError(err)
@@ -8581,7 +8589,7 @@ class UTS(Dimension):
 
         tstep = self.tstep
         tmin_diff = abs(self.tmin - dim.tmin) / tstep
-        if abs(tmin_diff - round(tmin_diff)) > _uts_tol:
+        if abs(tmin_diff - round(tmin_diff)) > self._tol:
             raise DimensionMismatchError("UTS dimensions have different times")
         tmin = max(self.tmin, dim.tmin)
 
