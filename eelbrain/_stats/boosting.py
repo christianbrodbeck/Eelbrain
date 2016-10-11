@@ -32,20 +32,23 @@ class BoostingResult(object):
         Time it took to run the boosting algorithm (in seconds).
     error : str
         The error evaluation method used.
+    train_method : str
+        The training method used.
     """
     _attr = ('h', 'corr', 'isnan', 'delta', 't_run', 'version', 'error',
-             'forward')
+             'train_method', 'forward')
 
     def __init__(self, h, corr, isnan, t_run, version, delta=None, error='SS',
-                 forward=None):
-        self.forward = forward
-        self.error = error
+                 train_method='best', forward=None):
         self.h = h
         self.corr = corr
         self.isnan = isnan
-        self.delta = delta
         self.t_run = t_run
         self.version = version
+        self.delta = delta
+        self.error = error
+        self.train_method = train_method
+        self.forward = forward
 
     def __getstate__(self):
         return {attr: getattr(self, attr) for attr in self._attr}
@@ -54,7 +57,8 @@ class BoostingResult(object):
         self.__init__(**state)
 
 
-def boosting(y, x, tstart, tstop, delta=0.005, forward=None, error='SScentered'):
+def boosting(y, x, tstart, tstop, delta=0.005, forward=None, error='SScentered',
+             train_method='best'):
     """Estimate a temporal response function through boosting
 
     Parameters
@@ -72,6 +76,10 @@ def boosting(y, x, tstart, tstop, delta=0.005, forward=None, error='SScentered')
         Transform from h to y.
     error : 'SS' | 'SScentered' | 'sum(abs)' | 'sum(abs centered)'
         Error function to use (default is ``SScentered``).
+    train_method : 'best' | 'stepdown'
+        Kernel training method. At each training step: pick the ``best`` kernel
+        modification for the training data, or ``stepdown`` until finding a
+        modification that also helps the test data.
 
     Returns
     -------
@@ -79,6 +87,8 @@ def boosting(y, x, tstart, tstop, delta=0.005, forward=None, error='SScentered')
         Object containig results from the boosting estimation (see
         :class:`BoostingResult`).
     """
+    if train_method not in ('best', 'stepdown'):
+        raise ValueError("train_method=%s" % repr(train_method))
     # check y and x
     if isinstance(x, NDVar):
         x = (x,)
@@ -159,13 +169,14 @@ def boosting(y, x, tstart, tstop, delta=0.005, forward=None, error='SScentered')
     pbar = tqdm(desc=desc, total=total)
     if forward is None:
         res = [boosting_continuous(x_data, y_, trf_length, delta, error,
-                                   pbar=pbar)
+                                   train_method=train_method, pbar=pbar)
                for y_ in y_data]
         hs, corrs = zip(*res)
         h_x = np.array(hs)
     else:
         h_x, corrs = boosting_continuous(x_data, y_data, trf_length, delta,
-                                         error, forward=forward_m, pbar=pbar)
+                                         error, train_method=train_method,
+                                         forward=forward_m, pbar=pbar)
     pbar.close()
     dt = time.time() - pbar.start_t
 
@@ -199,11 +210,13 @@ def boosting(y, x, tstart, tstop, delta=0.005, forward=None, error='SScentered')
     else:
         hs = hs[0]
 
-    return BoostingResult(hs, corr, isnan, dt, VERSION, delta, error, forward)
+    return BoostingResult(hs, corr, isnan, dt, VERSION, delta, error,
+                          train_method, forward)
 
 
 def boosting_continuous(x, y, trf_length, delta, error, mindelta=None,
-                        maxiter=10000, nsegs=10, forward=None, pbar=None):
+                        maxiter=10000, nsegs=10, train_method='best',
+                        forward=None, pbar=None):
     """Boosting for a continuous data segment, cycle through even splits for
     test segment
 
@@ -212,15 +225,17 @@ def boosting_continuous(x, y, trf_length, delta, error, mindelta=None,
     ...
     error : 'SS' | 'Sabs'
         Error function to use.
+    ...
     """
     logger = logging.getLogger('eelbrain.boosting')
     if mindelta is None:
         mindelta = delta
     hs = []
+
     for i in xrange(nsegs):
         h, test_sse_history, msg = boost_1seg(x, y, trf_length, delta, maxiter,
                                               nsegs, i, mindelta, error,
-                                              forward)
+                                              train_method, forward)
         logger.debug(msg)
         if np.any(h):
             hs.append(h)
@@ -240,7 +255,7 @@ def boosting_continuous(x, y, trf_length, delta, error, mindelta=None,
 
 
 def boost_1seg(x, y, trf_length, delta, maxiter, nsegs, segno, mindelta, error,
-               forward):
+               train_method, forward):
     """boosting with one test segment determined by regular division
 
     Based on port of svdboostV4pred
@@ -267,6 +282,8 @@ def boost_1seg(x, y, trf_length, delta, maxiter, nsegs, segno, mindelta, error,
         smaller than ``mindelta``.
     error : 'SS' | 'Sabs'
         Error function to use.
+    train_method : 'best' | 'stepdown'
+        Kernel training method.
     forward : array (optional)
         Forward operator, transform h to y.
 
@@ -309,14 +326,17 @@ def boost_1seg(x, y, trf_length, delta, maxiter, nsegs, segno, mindelta, error,
 
     if forward is None:
         return boost_segs(y_train, y_test, x_train, x_test, trf_length, delta,
-                          maxiter, mindelta, error)
+                          maxiter, mindelta, error, train_method)
     else:
+        if train_method != 'best':
+            raise NotImplementedError("train_method=%s for forward-boosting" %
+                                      train_method)
         return boost_segs_fwd(y_train, y_test, x_train, x_test, trf_length,
                               delta, maxiter, mindelta, error, forward)
 
 
 def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
-               mindelta, error):
+               mindelta, error, train_method):
     """Boosting supporting multiple array segments
 
     Parameters
@@ -356,6 +376,7 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
 
     ys_error = y_train_error + y_test_error
     ys_delta = tuple(np.empty(y.shape) for y in ys_error)
+    y_test_delta = ys_delta[len(y_train):]
     xs = x_train + x_test
 
     new_error = np.empty(h.shape)
@@ -408,8 +429,29 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
                 new_error[i_stim, i_time] = e_add
                 new_sign[i_stim, i_time] = 1
 
+        while True:
+            i_stim, i_time = np.unravel_index(np.argmin(new_error), h.shape)
+            new_train_error = new_error[i_stim, i_time]
+            delta_signed = new_sign[i_stim, i_time] * delta
+            if new_train_error > e_train or train_method == 'best':
+                break
+
+            # predict new test error
+            new_test_error = 0
+            for dy, yerr, x in izip(y_test_delta, y_test_error, x_test):
+                dy[:i_time] = 0.
+                dy[i_time:] = x[i_stim, :-i_time or None]
+                dy *= delta_signed
+                np.subtract(yerr, dy, dy)
+                new_test_error += error(dy, dy)
+
+            if new_test_error < e_test:
+                break
+
+            new_error[i_stim, i_time] = e_train + 1
+
         # If no improvements can be found reduce delta
-        if new_error.min() > e_train:
+        if new_train_error > e_train:
             if delta < mindelta:
                 reason = ("No improvement possible for training data, "
                           "stopping...")
@@ -420,17 +462,16 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, maxiter,
                 continue
 
         # update h with best movement
-        i_stim, i_time = np.unravel_index(np.argmin(new_error), h.shape)
-        delta_signed = new_sign[i_stim, i_time] * delta
         h[i_stim, i_time] += delta_signed
 
-        # abort if we're moving in circles
-        if len(history) >= 2 and np.array_equal(h, history[-2]):
-            reason = "Same h after 2 iterations"
-            break
-        elif len(history) >= 3 and np.array_equal(h, history[-3]):
-            reason = "Same h after 3 iterations"
-            break
+        if train_method == 'best':
+            # abort if we're moving in circles
+            if len(history) >= 2 and np.array_equal(h, history[-2]):
+                reason = "Same h after 2 iterations"
+                break
+            elif len(history) >= 3 and np.array_equal(h, history[-3]):
+                reason = "Same h after 3 iterations"
+                break
 
         # update error
         for err, yd, x in izip(ys_error, ys_delta, xs):
