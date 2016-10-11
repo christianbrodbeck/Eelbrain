@@ -1143,7 +1143,8 @@ class Layout(object):
     """
     def __init__(self, nax, ax_aspect, axh_default, tight=True, title=None,
                  h=None, w=None, axh=None, axw=None, nrow=None, ncol=None,
-                 dpi=None, show=True, run=None, frame=True, yaxis=True):
+                 dpi=None, show=True, run=None, frame=True, yaxis=True,
+                 share_axes=False):
         """Create a grid of axes based on variable parameters.
 
         Parameters
@@ -1327,6 +1328,7 @@ class Layout(object):
         self.title = title
         self.frame = frame
         self.yaxis = yaxis
+        self.share_axes = share_axes
 
     def fig_kwa(self):
         out = {'figsize': (self.w, self.h), 'dpi': self.dpi}
@@ -1349,9 +1351,12 @@ class Layout(object):
         if not self.nax:
             return []
         axes = []
+        kwargs = {}
         for i in xrange(1, self.nax + 1):
-            ax = figure.add_subplot(self.nrow, self.ncol, i)
+            ax = figure.add_subplot(self.nrow, self.ncol, i, **kwargs)
             axes.append(ax)
+            if self.share_axes:
+                kwargs.update(sharex=ax, sharey=ax)
 
             # axes modifications
             if self.frame == 't':

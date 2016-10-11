@@ -158,7 +158,7 @@ class UTSStat(EelFigure, LegendMixin):
             colors = find_cell_colors(color_x, colors)
 
         frame_title = _base.frame_title("UTSStat", Y, X, Xax)
-        layout = Layout(nax, 2, 4, *args, **kwargs)
+        layout = Layout(nax, 2, 4, *args, share_axes=True, **kwargs)
         EelFigure.__init__(self, frame_title, layout)
 
         # create plots
@@ -310,8 +310,7 @@ class UTSStat(EelFigure, LegendMixin):
 
     def set_ylim(self, bottom=None, top=None):
         "Adjust the y-axis limits on all axes"
-        for ax in self._axes:
-            ax.set_ylim(bottom, top)
+        self._axes[0].set_ylim(bottom, top)
         self.draw()
 
 
