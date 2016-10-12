@@ -1,11 +1,13 @@
 """NDVar operations"""
 from collections import defaultdict
+from math import floor
 
-import numpy as np
 import mne
+import numpy as np
+from scipy import signal
 
-from ._data_obj import NDVar, UTS, Ordered
 from . import _colorspaces as cs
+from ._data_obj import NDVar, UTS, Ordered
 
 
 def concatenate(ndvars, dim='time', name=None):
@@ -147,12 +149,12 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
     return NDVar(y, (dim_obj,), info, name)
 
 
-def resample(data, sfreq, npad=100, window='boxcar'):
+def resample(ndvar, sfreq, npad=100, window='none'):
     """Resample an NDVar along the 'time' dimension with appropriate filter
 
     Parameters
     ----------
-    data : NDVar
+    ndvar : NDVar
         Ndvar which should be resampled.
     sfreq : scalar
         New sampling frequency.
@@ -163,12 +165,31 @@ def resample(data, sfreq, npad=100, window='boxcar'):
 
     Notes
     -----
-    Uses :func:`mne.filter.resample`.
+    By default (``window='none'``) this function uses
+    :func:`scipy.signal.resample` directly. If ``window`` is set to a different
+    value, the more sophisticated but slower :func:`mne.filter.resample` is
+    used.
     """
-    axis = data.get_axis('time')
-    old_sfreq = 1.0 / data.time.tstep
-    x = mne.filter.resample(data.x, sfreq, old_sfreq, npad, axis, window)
-    tstep = 1. / sfreq
-    time = UTS(data.time.tmin, tstep, x.shape[axis])
-    dims = data.dims[:axis] + (time,) + data.dims[axis + 1:]
-    return NDVar(x, dims=dims, info=data.info, name=data.name)
+    axis = ndvar.get_axis('time')
+    if window == 'none':
+        new_tstep = 1. / sfreq
+        new_num = int(floor((ndvar.time.tstop - ndvar.time.tmin) / new_tstep))
+        # crop input data
+        new_duration = new_tstep * new_num
+        old_num = int(round(new_duration / ndvar.time.tstep))
+        if old_num == ndvar.time.nsamples:
+            x = ndvar.x
+        else:
+            idx = (slice(None),) * axis + (slice(None, old_num),)
+            x = ndvar.x[idx]
+        # resamples
+        x = signal.resample(x, new_num, axis=axis)
+        dims = (ndvar.dims[:axis] + (UTS(ndvar.time.tmin, new_tstep, new_num),)
+                + ndvar.dims[axis + 1:])
+        return NDVar(x, dims, ndvar.info.copy(), ndvar.name)
+    old_sfreq = 1.0 / ndvar.time.tstep
+    x = mne.filter.resample(ndvar.x, sfreq, old_sfreq, npad, axis, window)
+    new_tstep = 1.0 / sfreq
+    time = UTS(ndvar.time.tmin, new_tstep, x.shape[axis])
+    dims = ndvar.dims[:axis] + (time,) + ndvar.dims[axis + 1:]
+    return NDVar(x, dims, ndvar.info, ndvar.name)
