@@ -400,6 +400,12 @@ class UTS(EelFigure):
             p.set_vlim(vmax, vmin)
         self.draw()
 
+    def set_xlim(self, left=None, right=None):
+        """Set the x-axis limits for all axes"""
+        for ax in self._axes:
+            ax.set_xlim(left, right)
+        self.draw()
+
 
 class _ax_uts_stat(object):
 
