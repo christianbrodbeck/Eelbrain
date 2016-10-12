@@ -89,8 +89,8 @@ def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None):
     ----------
     cells : sequence of str
         Cells for which to assign colors.
-    hue_start : 0 <= scalar < 1
-        First hue value (default 0.2).
+    hue_start : 0 <= scalar < 1 | sequence of scalar
+        First hue value (default 0.2) or list of hue values.
     light_range : scalar | tuple of 2 scalar
         Scalar that specifies the amount of lightness variation (default 0.5).
         If positive, the first color is lightest; if negative, the first color

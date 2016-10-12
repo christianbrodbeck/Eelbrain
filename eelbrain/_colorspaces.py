@@ -136,14 +136,21 @@ def oneway_colors(n, hue_start=0.2, light_range=0.5):
     ----------
     n : int
         Number of levels.
-    hue_start : 0 <= scalar < 1
-        First hue value.
+    hue_start : 0 <= scalar < 1 | sequence of scalar
+        First hue value (default 0.2) or list of hue values.
     light_range : scalar | tuple
         Amount of lightness variation. If a positive scalar, the first color is
         lightest; if a negative scalar, the first color is darkest. Tuple with
         two scalar to define a specific range.
     """
-    hue = np.linspace(hue_start, hue_start + 1, n, False) % 1.
+    if isinstance(hue_start, float):
+        hue = np.linspace(hue_start, hue_start + 1, n, False) % 1.
+    elif len(hue_start) >= n:
+        hue = hue_start
+    else:
+        raise ValueError("If list of hues is provided it needs ot contain at "
+                         "least as many hues as there are cells")
+
     if isinstance(light_range, (list, tuple)):
         start, stop = light_range
         lightness = np.linspace(100 * start, 100 * stop, n)
