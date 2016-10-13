@@ -3931,9 +3931,14 @@ class MneExperiment(FileTree):
 
         if load_epochs:
             with self._temporary_state:
-                ds = self.load_epochs(ndvar=False, apply_ica=False,
-                                      reject=not params['source'] == 'raw',
-                                      epoch=params['epoch'])
+                if isinstance(params['epoch'], basestring):
+                    epoch = params['epoch']
+                elif isinstance(params['epoch'], dict):
+                    epoch = params['epoch'][self.get('session')]
+                else:
+                    raise TypeError("ICA param epoch=%s" % repr(params['epoch']))
+                ds = self.load_epochs(ndvar=False, apply_ica=False, epoch=epoch,
+                                      reject=not params['source'] == 'raw')
             if params['source'] == 'epochs':
                 inst = ds['epochs']
 
