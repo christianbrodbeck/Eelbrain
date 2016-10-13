@@ -8613,7 +8613,7 @@ class UTS(Dimension):
 
         if tstop is None:
             stop = None
-        elif tstop > self.tstop:
+        elif tstop - self.tstop > self._tol:
             raise ValueError("Value out of range: tstop=%s" % tstop)
         else:
             stop_float = (tstop - self.tmin) / self.tstep
