@@ -55,7 +55,7 @@ __all__ = ['MneExperiment']
 
 
 # current cache state version
-CACHE_STATE_VERSION = 3
+CACHE_STATE_VERSION = 4
 
 # Allowable parameters
 ICA_REJ_PARAMS = {'kind', 'source', 'epoch', 'interpolation', 'n_components',
@@ -1169,8 +1169,8 @@ class MneExperiment(FileTree):
         # collect events for current setup
         with self._temporary_state:
             self.set(raw='clm')
-            events = {s: self.load_events(data_raw=False) for s in
-                      self.iter(group='all')}
+            events = {k: self.load_events(data_raw=False) for k in
+                      self.iter(('subject', 'session'), group='all')}
 
         # check the cache, delete invalid files
         cache_state_path = self.get('cache-state-file')
@@ -1192,6 +1192,8 @@ class MneExperiment(FileTree):
                                    "Either upgrade Eelbrain or delete the cache "
                                    "folder.")
 
+            # Backwards compatibility
+            # =======================
             # Epochs represented as dict up to Eelbrain 0.24
             if cache_state_v >= 3:
                 epoch_state_v = epoch_state
@@ -1202,45 +1204,55 @@ class MneExperiment(FileTree):
                     if 'sel_epoch' in e:
                         e.pop('n_cases', None)
 
+            # events did not include session
+            if cache_state_v < 4:
+                session = self._sessions[0]
+                cache_events = {(subject, session): v for subject, v in
+                                cache_state['events'].iteritems()}
+            else:
+                cache_events = cache_state['events']
+
             # Find modified definitions
             # =========================
             invalid_cache = defaultdict(set)
-            # events (subject):  overall change in events
+            # events (subject, session):  overall change in events
             # variables:  event change restricted to certain variables
             # groups:  change in group members
             # epochs:  change in epoch parameters
             # parcs: parc def change
             # tests: test def change
 
-            # check events (includes trigger_shift)
-            cache_events = cache_state['events']
-            overlapping_subjects = [s for s in events if s in cache_events]
-            for subject in overlapping_subjects:
-                new_events = events[subject]
-                cached_events = cache_state['events'][subject]
-                if new_events.n_cases != cached_events.n_cases:
-                    invalid_cache['events'].add(subject)
-                    self._log.debug("  event length: %s %i->%i", subject,
-                                    cached_events.n_cases, new_events.n_cases)
-                elif not np.all(new_events['i_start'] == cached_events['i_start']):
-                    invalid_cache['events'].add(subject)
-                    self._log.debug("  trigger timing changed: %s", subject)
+            # check events
+            # 'events' -> number or timing og triggers (includes trigger_shift)
+            # 'variables' -> only variable change
+            for key, old_events in cache_events.iteritems():
+                new_events = events.get(key)
+                if new_events is None:
+                    invalid_cache['events'].add(key)
+                    self._log.debug("  raw file removed: %s", '/'.join(key))
+                elif new_events.n_cases != old_events.n_cases:
+                    invalid_cache['events'].add(key)
+                    self._log.debug("  event length: %s %i->%i", '/'.join(key),
+                                    old_events.n_cases, new_events.n_cases)
+                elif not np.all(new_events['i_start'] == old_events['i_start']):
+                    invalid_cache['events'].add(key)
+                    self._log.debug("  trigger timing changed: %s", '/'.join(key))
                 else:
-                    for var in cached_events:
+                    for var in old_events:
                         if var == 'i_start':
                             continue
                         elif var not in new_events:
                             invalid_cache['variables'].add(var)
-                            self._log.debug("  var removed: %s (%s)", var, subject)
-                        elif cached_events[var].name != new_events[var].name:
+                            self._log.debug("  var removed: %s (%s)", var, '/'.join(key))
+                        elif old_events[var].name != new_events[var].name:
                             invalid_cache['variables'].add(var)
                             self._log.debug("  var name changed: %s (%s) %s->%s",
-                                            var, subject,
-                                            cached_events[var].name,
+                                            var, '/'.join(key),
+                                            old_events[var].name,
                                             new_events[var].name)
-                        elif not np.all(cached_events[var] == new_events[var]):
+                        elif not np.all(old_events[var] == new_events[var]):
                             invalid_cache['variables'].add(var)
-                            self._log.debug("  var changed: %s (%s)", var, subject)
+                            self._log.debug("  var changed: %s (%s)", var, '/'.join(key))
 
             # groups
             for group, members in cache_state['groups'].iteritems():
@@ -1284,14 +1296,16 @@ class MneExperiment(FileTree):
             if invalid_cache:
                 msg.append("Experiment definition changed:")
                 for kind, values in invalid_cache.iteritems():
-                    msg.append("  %s: %s" % (kind, ', '.join(values)))
+                    msg.append("  %s: %s" % (kind, ', '.join(map(str, values))))
 
             # Secondary  invalidations
             # ========================
-            # dependent epochs
-            if 'epochs' in invalid_cache:
-                for e in tuple(invalid_cache['epochs']):
-                    invalid_cache['epochs'].update(find_dependent_epochs(e, cache_state['epochs']))
+            # changed events -> group result involving those subjects is also bad
+            if 'events' in invalid_cache:
+                subjects = {subject for subject, _ in invalid_cache['events']}
+                for group, members in cache_state['groups'].iteritems():
+                    if subjects.intersection(members):
+                        invalid_cache['groups'].add(group)
 
             # tests/epochs based on variables
             if 'variables' in invalid_cache:
@@ -1312,6 +1326,12 @@ class MneExperiment(FileTree):
                         invalid_cache['epochs'].add(epoch)
                         self._log.debug("  epoch %s depends on changed "
                                         "variables %s", epochs, bad)
+
+            # secondary epochs
+            if 'epochs' in invalid_cache:
+                for e in tuple(invalid_cache['epochs']):
+                    invalid_cache['epochs'].update(find_dependent_epochs(e, cache_state['epochs']))
+
 
             # Collect invalid files
             # =====================
@@ -1340,12 +1360,8 @@ class MneExperiment(FileTree):
                         rm['report-file'].add({'test': test, 'folder': parc})
 
                 # evoked files are based on old events
-                for subject in invalid_cache['events']:
-                    rm['evoked-file'].add({'subject': subject})
-                # any group involving those subjects is also bad
-                for group, members in cache_state['groups'].iteritems():
-                    if invalid_cache['events'].intersection(members):
-                        invalid_cache['groups'].add(group)
+                for subject, session in invalid_cache['events']:
+                    rm['evoked-file'].add({'subject': subject, 'session': session})
 
                 # variables
                 for var in invalid_cache['variables']:
