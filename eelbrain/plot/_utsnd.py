@@ -201,6 +201,8 @@ class Array(EelFigure, ColorMapMixin):
         Upper limits for the colormap.
     vmin : scalar
         Lower limit for the colormap.
+    cmap : str
+        Colormap (default depends on the data).
     axtitle : bool | str
         Axes title.
     interpolation : str
@@ -214,9 +216,9 @@ class Array(EelFigure, ColorMapMixin):
     """
     def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
                  xticklabels=True, ds=None, x='time', vmax=None, vmin=None,
-                 axtitle=True, interpolation=None, *args, **kwargs):
+                 cmap=None, axtitle=True, interpolation=None, *args, **kwargs):
         epochs, (xdim, ydim) = _base.unpack_epochs_arg(epochs, (x, None), Xax, ds)
-        ColorMapMixin.__init__(self, epochs, None, vmax, vmin)
+        ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin)
 
         nax = len(epochs)
         layout = Layout(nax, 2, 4, *args, **kwargs)
@@ -235,6 +237,12 @@ class Array(EelFigure, ColorMapMixin):
 
     def _fill_toolbar(self, tb):
         ColorMapMixin._fill_toolbar(self, tb)
+
+    def set_xlim(self, left=None, right=None):
+        """Set the x-axis limits for all axes"""
+        for ax in self._axes:
+            ax.set_xlim(left, right)
+        self.draw()
 
 
 class _plt_utsnd(object):
