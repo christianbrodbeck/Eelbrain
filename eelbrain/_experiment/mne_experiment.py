@@ -598,7 +598,8 @@ class MneExperiment(FileTree):
     _covs = {'auto': {'epoch': 'cov', 'method': 'auto'},
              'bestreg': {'epoch': 'cov', 'reg': 'best'},
              'reg': {'epoch': 'cov', 'reg': True},
-             'noreg': {'epoch': 'cov', 'reg': None}}
+             'noreg': {'epoch': 'cov', 'reg': None},
+             'emptyroom': {'session': 'emptyroom', 'reg': None}}
 
     # MRI subject names: {subject: mrisubject} mappings
     # selected with e.set(mri=dict_name)
@@ -1536,6 +1537,16 @@ class MneExperiment(FileTree):
                 return
         return mtime
 
+    def _cov_mtime(self):
+        params = self._covs[self.get('cov')]
+        with self._temporary_state:
+            if 'epoch' in params:
+                self.set(epoch=params['epoch'])
+                return self._epochs_mtime()
+            else:
+                self.set(session=params['session'])
+                return self._raw_mtime()
+
     def _epochs_mtime(self):
         bads_path = self.get('bads-file')
         if os.path.exists(bads_path):
@@ -1591,10 +1602,7 @@ class MneExperiment(FileTree):
     def _inv_mtime(self):
         fwd_mtime = self._fwd_mtime()
         if fwd_mtime:
-            cov_epoch = self._covs[self.get('cov')]['epoch']
-            with self._temporary_state:
-                self.set(epoch=cov_epoch)
-                cov_mtime = self._epochs_mtime()
+            cov_mtime = self._cov_mtime()
             if cov_mtime:
                 return max(cov_mtime, fwd_mtime)
 
@@ -3779,22 +3787,23 @@ class MneExperiment(FileTree):
         dest = self.get('cov-file', mkdir=True)
         params = self._covs[self.get('cov')]
         if os.path.exists(dest):
-            cov_mtime = os.path.getmtime(dest)
-            raw_mtime = os.path.getmtime(self._get_raw_path())
-            bads_mtime = os.path.getmtime(self.get('bads-file'))
-            rej_mtime = self._rej_mtime(self._epochs[params['epoch']])
-            if cov_mtime > max(raw_mtime, bads_mtime, rej_mtime):
+            mtime = self._cov_mtime()
+            if mtime and os.path.getmtime(dest) > mtime:
                 return
 
         method = params.get('method', 'empirical')
         keep_sample_mean = params.get('keep_sample_mean', True)
         reg = params.get('reg', None)
 
-        with self._temporary_state:
-            ds = self.load_epochs(None, True, False, decim=1,
-                                  epoch=params['epoch'])
-        epochs = ds['epochs']
-        cov = mne.compute_covariance(epochs, keep_sample_mean, method=method)
+        if 'epochs' in params:
+            with self._temporary_state:
+                epochs = self.load_epochs(None, True, False, decim=1,
+                                          epoch=params['epoch'])['epochs']
+            cov = mne.compute_covariance(epochs, keep_sample_mean, method=method)
+        else:
+            with self._temporary_state:
+                raw = self.load_raw(session=params['session'])
+            cov = mne.compute_raw_covariance(raw, method=method)
 
         if reg is True:
             cov = mne.cov.regularize(cov, epochs.info)
