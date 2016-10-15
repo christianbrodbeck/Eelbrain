@@ -38,6 +38,7 @@ import string
 
 from matplotlib.ticker import FormatStrFormatter, FuncFormatter, IndexFormatter
 import mne
+from mne.source_space import label_src_vertno_sel
 from nibabel.freesurfer import read_annot
 import numpy as np
 from numpy import dot
@@ -7885,6 +7886,17 @@ class SourceSpace(Dimension):
             self.lh_n = len(self.lh_vertno)
             self.rh_n = len(self.rh_vertno)
             self.set_parc(parc)
+
+    @classmethod
+    def from_mne_source_spaces(cls, source_spaces, src, subjects_dir,
+                               parc='aparc', label=None):
+        if label is None:
+            vertices = [ss['vertno'] for ss in source_spaces]
+        else:
+            vertices, _ = label_src_vertno_sel(label, source_spaces)
+
+        return cls(vertices, source_spaces[0]['subject_his_id'], src,
+                   subjects_dir, parc)
 
     @LazyProperty
     def subjects_dir(self):

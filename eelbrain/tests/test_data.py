@@ -1150,9 +1150,10 @@ def test_source_space():
     label_v1_mt = label_v1 + label_mt
 
     src = datasets._mne_source_space(subject, 'ico-5', mri_sdir)
-    source = SourceSpace((src[0]['vertno'], src[1]['vertno']), subject,
-                         'ico-5', mri_sdir)
+    source = SourceSpace.from_mne_source_spaces(src, 'ico-5', mri_sdir)
     source_v1 = source[source.dimindex(label_v1)]
+    eq_(source_v1, SourceSpace.from_mne_source_spaces(src, 'ico-5', mri_sdir,
+                                                      label=label_v1))
     source_ba1_v1 = source[source.dimindex(label_ba1_v1)]
     source_v1_mt = source[source.dimindex(label_v1_mt)]
     source_v1_intersection = source_ba1_v1.intersect(source_v1_mt)

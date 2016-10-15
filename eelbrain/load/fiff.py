@@ -854,9 +854,8 @@ def forward_operator(fwd, src, subjects_dir=None, parc='aparc', name=None):
         name = 'fwd'
     sensor = sensor_dim(fwd['info'])
     assert np.all(sensor.names == fwd['sol']['row_names'])
-    lh, rh = fwd['src']
-    source = SourceSpace([lh['vertno'], rh['vertno']], lh['subject_his_id'],
-                         src, subjects_dir, parc)
+    source = SourceSpace.from_mne_source_spaces(fwd['src'], src, subjects_dir,
+                                                parc)
     return NDVar(fwd['sol']['data'], (sensor, source), {}, name)
 
 
