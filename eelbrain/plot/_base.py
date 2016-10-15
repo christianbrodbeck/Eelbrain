@@ -958,6 +958,7 @@ class EelFigure(object):
         # add callbacks
         self.canvas.mpl_connect('motion_notify_event', self._on_motion)
         self.canvas.mpl_connect('axes_leave_event', self._on_leave_axes)
+        self.canvas.mpl_connect('resize_event', self._on_resize)
 
     def _show(self):
         if self._layout.tight:
@@ -991,6 +992,10 @@ class EelFigure(object):
             x = ax.xaxis.get_major_formatter().format_data(event.xdata)
             y = ax.yaxis.get_major_formatter().format_data(event.ydata)
             self._frame.SetStatusText('x = %s, y = %s' % (x, y))
+
+    def _on_resize(self, event):
+        if self._layout.tight:
+            self._tight()
 
     def _fill_toolbar(self, tb):
         """
