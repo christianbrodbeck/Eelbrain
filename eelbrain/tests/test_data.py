@@ -978,6 +978,15 @@ def test_ndvar_timeseries_methods():
     # indexing
     eq_(len(ds[0, 'uts'][-10:-1].time), 9)
 
+    # FFT
+    x = ds['uts'].mean('case')
+    np.sin(2 * np.pi * x.time.times, x.x)
+    f = x.fft()
+    assert_array_almost_equal(f.x, (f.frequency.x == 1) * (len(f) - 1))
+    np.sin(4 * np.pi * x.time.times, x.x)
+    f = x.fft()
+    assert_array_almost_equal(f.x, (f.frequency.x == 2) * (len(f) - 1))
+
 
 def test_nested_effects():
     """Test nested effects"""

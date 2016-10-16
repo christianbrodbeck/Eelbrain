@@ -3686,8 +3686,14 @@ class NDVar(object):
         info = self.info.copy()
         return NDVar(x, self.dims, info)
 
-    def fft(self):
+    def fft(self, dim=None):
         """Fast fourier transform
+
+        Parameters
+        ----------
+        dim : str
+            Dimension along which to operate (the default is the ``time``
+            dimension if present).
 
         Returns
         -------
@@ -3695,10 +3701,24 @@ class NDVar(object):
             NDVar containing the FFT, with the ``time`` dimension replaced by
             ``frequency``.
         """
-        axis = self.get_axis('time')
-        uts = self.get_dim('time')
+        if dim is None:
+            if self.ndim - self.has_case == 1:
+                dim = self.dimnames[-1]
+            elif self.has_dim('time'):
+                dim = 'time'
+            else:
+                raise ValueError("NDVar has more than one dimension, you need "
+                                 "to specify along which dimension to operate.")
+        axis = self.get_axis(dim)
         x = np.abs(np.fft.rfft(self.x, axis=axis))
-        freq = Ordered('frequency', np.fft.rfftfreq(len(uts), uts.tstep), 'Hz')
+        if dim == 'time':
+            uts = self.get_dim(dim)
+            freqs = np.fft.rfftfreq(len(uts), uts.tstep)
+            freq = Ordered('frequency', freqs, 'Hz')
+        else:
+            n = self.shape[axis]
+            freqs = np.fft.rfftfreq(n, 1. / n)
+            freq = Ordered('frequency', freqs)
         dims = self.dims[:axis] + (freq,) + self.dims[axis + 1:]
         info = cs.set_info_cs(self.info, cs.default_info('Amplitude'))
         return NDVar(x, dims, info)
