@@ -5,6 +5,7 @@ from functools import partial
 from itertools import izip
 import os
 from tempfile import mkdtemp
+from warnings import warn
 
 from nibabel.freesurfer import read_annot
 import numpy as np
@@ -414,11 +415,12 @@ def _surfer_brain(data, subject='fsaverage', surf='smoothwm', hemi='split',
                  foreground=foreground, subjects_dir=subjects_dir)
 
 
-def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
+def surfer_brain(src, cmap='hot', vmin=0, vmax=9, surf='smoothwm',
                  views=('lat', 'med'), hemi=None, colorbar=False,
                  time_label='ms', w=None, h=None, axw=None, axh=None,
                  foreground=None, background=None, parallel=True,
-                 smoothing_steps=None, mask=True, subjects_dir=None):
+                 smoothing_steps=None, mask=True, subjects_dir=None,
+                 colormap=None):
     """Create a PySurfer Brain object with a data layer
 
     Parameters
@@ -426,8 +428,8 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
     src : NDVar, dims = ([case,] source, [time])
         NDVar with SourceSpace dimension. If stc contains a case dimension,
         the average across cases is taken.
-    colormap :
-        Colormap for PySurfer.
+    cmap : str
+        Colormap (name of a matplotlib colormap).
     vmin, vmax : scalar
         Endpoints for the colormap.
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
@@ -465,6 +467,10 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
     brain : surfer.Brain
         PySurfer Brain instance containing the plot.
     """
+    if colormap is not None:
+        warn("The colormap parameter is deprecated, use cmap instead",
+             DeprecationWarning)
+        cmap = colormap
     src = asndvar(src)
     if src.has_case:
         src = src.summary()
@@ -485,10 +491,10 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
         subjects_dir = src.source.subjects_dir
 
     # colormap
-    if isinstance(colormap, basestring):
-        vmin, vmax = fix_vlim_for_cmap(vmin, vmax, colormap)
-        cmap = mpl.cm.get_cmap(colormap)
-        colormap = np.round(cmap(np.arange(256)) * 255).astype(np.uint8)
+    if isinstance(cmap, basestring):
+        vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cmap)
+        cmap = mpl.cm.get_cmap(cmap)
+        cmap = np.round(cmap(np.arange(256)) * 255).astype(np.uint8)
 
     brain = _surfer_brain(src, src.source.subject, surf, hemi, views, w, h,
                           axw, axh, foreground, background, subjects_dir)
@@ -528,14 +534,14 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
         src_hemi = src.sub(source='lh')
         data = src_hemi.get_data(data_dims)
         vertices = src.source.lh_vertno
-        brain.add_data(data, vmin, vmax, None, colormap, alpha, vertices,
+        brain.add_data(data, vmin, vmax, None, cmap, alpha, vertices,
                        smoothing_steps, times, time_label_, colorbar_, 'lh')
 
     if src.source.rh_n:
         src_hemi = src.sub(source='rh')
         data = src_hemi.get_data(data_dims)
         vertices = src.source.rh_vertno
-        brain.add_data(data, vmin, vmax, None, colormap, alpha, vertices,
+        brain.add_data(data, vmin, vmax, None, cmap, alpha, vertices,
                        smoothing_steps, times, time_label, colorbar, 'rh')
 
     # mask
