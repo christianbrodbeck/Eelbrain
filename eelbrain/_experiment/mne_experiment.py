@@ -47,8 +47,9 @@ from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
 from .._utils import subp, ui, keydefaultdict, log_level
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
-from .experiment import FileTree
 from .definitions import find_dependent_epochs, find_epochs_vars, find_test_vars
+from .experiment import FileTree
+from .preprocessing import RawSource, RawFilter
 
 
 __all__ = ['MneExperiment']
@@ -76,37 +77,6 @@ inv_re = re.compile("(free|fixed|loose\.\d+)-"  # orientation constraint
 
 def typed_arg(arg, type_):
     return None if arg is None else type_(arg)
-
-
-################################################################################
-# Raw processing
-class RawProcessor(object):
-    affected_by_bad_channels = False
-
-    def __init__(self, *args, **kwargs):
-        self.args = args
-        self.kwargs = kwargs
-
-    def apply(self, raw):
-        raise NotImplementedError()
-
-
-class RawFilter(RawProcessor):
-
-    def apply(self, raw):
-        # Do not use multiprocessing because in my testing total processing
-        # time was higher when using multiple processes.
-        raw.filter(*self.args, **self.kwargs)
-
-
-class RawSNS(RawProcessor):
-    affected_by_bad_channels = True
-
-    def apply(self, raw):
-        from mne_sandbox.preprocessing import SensorNoiseSuppression
-        sns = SensorNoiseSuppression(*self.args, **self.kwargs)
-        sns.fit(raw)
-        sns.apply(raw)
 
 
 ################################################################################
@@ -376,7 +346,7 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {class-name}.log')
         'edf-file': os.path.join('{log-dir}', '*.edf'),
 
         # created input files
-        'bads-file': os.path.join('{raw-dir}', '{subject}_{bads-compound}-bad_channels.txt'),
+        'bads-file': os.path.join('{raw-dir}', '{subject}_{session}-bad_channels.txt'),
         'rej-dir': os.path.join('{meg-dir}', 'epoch selection'),
         'rej-file': os.path.join('{rej-dir}', '{session}_{sns_kind}_{epoch}-{rej}.pickled'),
         'ica-file': os.path.join('{rej-dir}', '{session} {sns_kind} {rej}-ica.fif'),
@@ -386,7 +356,7 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {class-name}.log')
         'cache-state-file': os.path.join('{cache-dir}', 'cache-state.pickle'),
         # raw
         'raw-cache-dir': os.path.join('{cache-dir}', 'raw', '{subject}'),
-        'raw-cache-base': os.path.join('{raw-cache-dir}', '{session} {sns_kind}'),
+        'raw-cache-base': os.path.join('{raw-cache-dir}', '{session} {raw}'),
         'cached-raw-file': '{raw-cache-base}-raw.fif',
         'event-file': '{raw-cache-base}-evts.pickled',
         'interp-file': '{raw-cache-base}-interp.pickled',
@@ -521,10 +491,26 @@ class MneExperiment(FileTree):
     #   'disable': ignore it
     #   'debug': prompt for what to do in the terminal
 
-    # Experiment Constants
-    # ====================
     # tuple (if the experiment has multiple sessions)
     sessions = None
+
+    # Raw preprocessing pipeline
+    _raw_default = {
+        'raw': {},
+        '0-40': {
+            'source': 'raw', 'type': 'filter', 'args': (None, 40),
+            'kwargs': {'method': 'iir'}},
+        '0.1-40': {
+            'source': 'raw', 'type': 'filter', 'args': (0.1, 40),
+            'kwargs': {'l_trans_bandwidth': 0.08, 'filter_length': '60s'}},
+        '0.2-40': {
+            'source': 'raw', 'type': 'filter', 'args': (0.2, 40),
+            'kwargs': {'l_trans_bandwidth': 0.08, 'filter_length': '60s'}},
+        '1-40': {
+            'source': 'raw', 'type': 'filter', 'args': (1, 40),
+            'kwargs': {'method': 'iir'}},
+    }
+    _raw = {}
 
     # add this value to all trigger times
     trigger_shift = 0
@@ -538,6 +524,7 @@ class MneExperiment(FileTree):
     # named epochs
     epochs = {'epoch': dict(sel="stim=='target'"),
               'cov': dict(base='epoch', tmin=-0.1, tmax=0)}
+
     # Rejection
     # =========
     # eog_sns: The sensors to plot separately in the rejection GUI. The default
@@ -576,15 +563,6 @@ class MneExperiment(FileTree):
 
     # whether to look for and load eye tracker data when loading raw files
     has_edf = defaultdict(lambda: False)
-
-    # raw processing settings {name: (args, kwargs)}
-    _raw = {'clm': None,
-            '0-40': (RawFilter(None, 40, method='iir'),),
-            '0.1-40': (RawFilter(0.1, 40, l_trans_bandwidth=0.08,
-                                 filter_length='60s'),),
-            '0.2-40': (RawFilter(0.2, 40, l_trans_bandwidth=0.08,
-                                 filter_length='60s'),),
-            '1-40': (RawFilter(1, 40, method='iir'),)}
 
     # Pattern for subject names. The first group is used to determine what
     # MEG-system the data was recorded from
@@ -656,7 +634,7 @@ class MneExperiment(FileTree):
     # ------
     # basic state for a backup
     _backup_state = {'subject': '*', 'mrisubject': '*', 'session': '*',
-                     'raw': 'clm', 'modality': '*'}
+                     'raw': 'raw', 'modality': '*'}
     # files to back up, together with state modifications on the basic state
     _backup_files = (('raw-file-bkp', {}),
                      ('bads-file', {}),
@@ -707,7 +685,8 @@ class MneExperiment(FileTree):
         elif self.path_version == 0:
             self._templates['raw-dir'] = os.path.join('{meg-dir}', 'raw')
             self._templates['raw-file'] = os.path.join('{raw-dir}', '{subject}_'
-                                              '{session}_{sns_kind}-raw.fif')
+                                              '{session}_{raw}-raw.fif')
+
             self._templates['raw-file-bkp'] = os.path.join('{raw-dir}', '{subject}_'
                                               '{session}_{sns_kind}-raw*.fif')
         elif self.path_version != 1:
@@ -718,6 +697,7 @@ class MneExperiment(FileTree):
                 self._templates.update(cls._values)
 
         FileTree.__init__(self)
+        self._log = log = logging.Logger(self.__class__.__name__, logging.DEBUG)
 
         ########################################################################
         # sessions
@@ -788,6 +768,38 @@ class MneExperiment(FileTree):
             if len(group_definitions) == n_def:
                 raise ValueError("Groups contain unresolvable definition")
         self._groups = groups
+
+        ########################################################################
+        # Preprocessing
+        skip = {'subject', 'session'}
+        raw_path = self._partial('raw-file', skip)
+        bads_path = self._partial('bads-file', skip)
+        skip.add('raw')
+        cache_path = self._partial('cached-raw-file', skip)
+        unassigned = self._raw_default.copy()
+        unassigned.update(self._raw)
+        raw = {}
+        while unassigned:
+            n_unassigned = len(unassigned)
+            for name in tuple(unassigned):
+                params = unassigned[name]
+                source = params.get('source')
+                if source is None:
+                    raw[name] = RawSource(name, raw_path, bads_path, log)
+                    del unassigned[name]
+                elif source in raw:
+                    if params['type'] == 'filter':
+                        raw[name] = RawFilter(name, raw[source], cache_path,
+                                              log, params['args'],
+                                              params['kwargs'])
+                        del unassigned[name]
+                    else:
+                        raise ValueError("unknonw raw pipe type=%s" %
+                                         repr(params['type']))
+            if len(unassigned) == n_unassigned:
+                raise RuntimeError("unable to resolve preprocessing pipeline "
+                                   "definition: %s" % unassigned)
+        self._raw = raw
 
         ########################################################################
         # variables
@@ -1096,14 +1108,12 @@ class MneExperiment(FileTree):
                              slave_handler=self._update_mrisubject)
 
         # compounds
-        self._register_compound('bads-compound', ('session', 'modality'))
         self._register_compound('sns_kind', ('modality', 'raw'))
         self._register_compound('src_kind', ('sns_kind', 'cov', 'mri', 'inv'))
         self._register_compound('evoked_kind', ('rej', 'equalize_evoked_count'))
         self._register_compound('eeg_kind', ('sns_kind', 'reference'))
 
         # Define make handlers
-        self._bind_cache('cached-raw-file', self.make_raw)
         self._bind_cache('cov-file', self.make_cov)
         self._bind_cache('src-file', self.make_src)
         self._bind_cache('fwd-file', self.make_fwd)
@@ -1119,7 +1129,6 @@ class MneExperiment(FileTree):
         ########################################################################
         # logger
         ########
-        self._log = logging.Logger(self.__class__.__name__, logging.DEBUG)
         # log-file
         if root:
             if os.path.exists(self.get('old-eelbrain-log-file')):
@@ -1130,28 +1139,27 @@ class MneExperiment(FileTree):
                                           "%m-%d %H:%M")  # %(name)-12s
             handler.setFormatter(formatter)
             handler.setLevel(logging.DEBUG)
-            self._log.addHandler(handler)
+            log.addHandler(handler)
         # Terminal log
         handler = logging.StreamHandler()
         formatter = logging.Formatter("%(levelname)-8s %(name)s:  %(message)s")
         handler.setFormatter(formatter)
         self._screen_log_level = log_level(self.screen_log_level)
         handler.setLevel(self._screen_log_level)
-        self._log.addHandler(handler)
+        log.addHandler(handler)
 
         # log package versions
         from .. import __version__
-        self._log.info("%s initialized with root %s", self.__class__.__name__,
-                       root)
+        log.info("%s initialized with root %s", self.__class__.__name__, root)
         msg = "Using eelbrain %s, mne %s." % (__version__, mne.__version__)
         if any('dev' in v for v in (__version__, mne.__version__)):
-            self._log.warn(msg + " Development versions are more likely to "
-                           "contain errors.")
+            log.warn(msg + " Development versions are more likely to contain "
+                     "errors.")
         else:
-            self._log.info(msg)
+            log.info(msg)
 
         if self.auto_delete_cache == 'disable':
-            self._log.warn("Cache-management disabled")
+            log.warn("Cache-management disabled")
             return
 
         ########################################################################
@@ -1169,7 +1177,7 @@ class MneExperiment(FileTree):
 
         # collect events for current setup
         with self._temporary_state:
-            self.set(raw='clm')
+            self.set(raw='raw')
             events = {k: self.load_events(data_raw=False) for k in
                       self.iter(('subject', 'session'), group='all')}
 
@@ -1230,36 +1238,35 @@ class MneExperiment(FileTree):
                 new_events = events.get(key)
                 if new_events is None:
                     invalid_cache['events'].add(key)
-                    self._log.debug("  raw file removed: %s", '/'.join(key))
+                    log.debug("  raw file removed: %s", '/'.join(key))
                 elif new_events.n_cases != old_events.n_cases:
                     invalid_cache['events'].add(key)
-                    self._log.debug("  event length: %s %i->%i", '/'.join(key),
-                                    old_events.n_cases, new_events.n_cases)
+                    log.debug("  event length: %s %i->%i", '/'.join(key),
+                              old_events.n_cases, new_events.n_cases)
                 elif not np.all(new_events['i_start'] == old_events['i_start']):
                     invalid_cache['events'].add(key)
-                    self._log.debug("  trigger timing changed: %s", '/'.join(key))
+                    log.debug("  trigger timing changed: %s", '/'.join(key))
                 else:
                     for var in old_events:
                         if var == 'i_start':
                             continue
                         elif var not in new_events:
                             invalid_cache['variables'].add(var)
-                            self._log.debug("  var removed: %s (%s)", var, '/'.join(key))
+                            log.debug("  var removed: %s (%s)", var, '/'.join(key))
                         elif old_events[var].name != new_events[var].name:
                             invalid_cache['variables'].add(var)
-                            self._log.debug("  var name changed: %s (%s) %s->%s",
-                                            var, '/'.join(key),
-                                            old_events[var].name,
-                                            new_events[var].name)
+                            log.debug("  var name changed: %s (%s) %s->%s", var,
+                                      '/'.join(key), old_events[var].name,
+                                      new_events[var].name)
                         elif not np.all(old_events[var] == new_events[var]):
                             invalid_cache['variables'].add(var)
-                            self._log.debug("  var changed: %s (%s)", var, '/'.join(key))
+                            log.debug("  var changed: %s (%s)", var, '/'.join(key))
 
             # groups
             for group, members in cache_state['groups'].iteritems():
                 if group not in self._groups or members != self._groups[group]:
                     invalid_cache['groups'].add(group)
-                    self._log.debug("  group: %s" % group)
+                    log.debug("  group: %s" % group)
 
             # epochs
             for epoch, params in cache_state['epochs'].iteritems():
@@ -1284,10 +1291,10 @@ class MneExperiment(FileTree):
                 if test not in self._tests or params != self._tests[test]:
                     invalid_cache['tests'].add(test)
                     if test in self._tests:
-                        self._log.debug("  test %s: \n   %s\n ->%s", test,
-                                        params, self._tests[test])
+                        log.debug("  test %s: \n   %s\n ->%s", test, params,
+                                  self._tests[test])
                     else:
-                        self._log.debug("  test %s removed", test)
+                        log.debug("  test %s removed", test)
 
             # create message here, before secondary invalidations are added
             msg = []
@@ -1317,16 +1324,16 @@ class MneExperiment(FileTree):
                         bad = bad_vars.intersection(find_test_vars(params))
                         if bad:
                             invalid_cache['tests'].add(test)
-                            self._log.debug("  test %s depends on changed "
-                                            "variables %s", test, bad)
+                            log.debug("  test %s depends on changed variables "
+                                      "%s", test, bad)
                 # epochs using bad variable
                 epochs_vars = find_epochs_vars(cache_state['epochs'])
                 for epoch, evars in epochs_vars.iteritems():
                     bad = bad_vars.intersection(evars)
                     if bad:
                         invalid_cache['epochs'].add(epoch)
-                        self._log.debug("  epoch %s depends on changed "
-                                        "variables %s", epochs, bad)
+                        log.debug("  epoch %s depends on changed variables %s",
+                                  epochs, bad)
 
             # secondary epochs
             if 'epochs' in invalid_cache:
@@ -1354,8 +1361,8 @@ class MneExperiment(FileTree):
                         if params['kind'] == 'anova' and params['x'].count('*') > 1:
                             bad_tests.append(test)
                     if bad_tests and bad_parcs:
-                        self._log.warning("  Invalid ANOVA tests: %s for %s",
-                                          bad_tests, bad_parcs)
+                        log.warning("  Invalid ANOVA tests: %s for %s",
+                                    bad_tests, bad_parcs)
                     for test, parc in product(bad_tests, bad_parcs):
                         rm['test-file'].add({'test': test, 'data_parc': parc})
                         rm['report-file'].add({'test': test, 'folder': parc})
@@ -1425,7 +1432,7 @@ class MneExperiment(FileTree):
                     msg.extend(sorted('  ' + os.path.relpath(f, root) for f in files))
                 else:
                     msg.append("No cache files affected.")
-                self._log.debug(os.linesep.join(msg))
+                log.debug(os.linesep.join(msg))
                 # don't print same message to the screen twice
                 if self._screen_log_level <= logging.DEBUG:
                     msg = []
@@ -1455,10 +1462,10 @@ class MneExperiment(FileTree):
                         elif command == 'abort':
                             raise RuntimeError("User aborted invalid cache deletion")
                         elif command == 'ignore':
-                            self._log.warn("Ignoring invalid cache")
+                            log.warn("Ignoring invalid cache")
                             return
                         elif command == 'revalidate':
-                            self._log.warn("Revalidating invalid cache")
+                            log.warn("Revalidating invalid cache")
                             files.clear()
                         else:
                             raise RuntimeError("command=%s" % repr(command))
@@ -1467,18 +1474,18 @@ class MneExperiment(FileTree):
                                          % repr(self.auto_delete_cache))
 
                     # delete invalid files
-                    self._log.info("Deleting %i invalid cache files", len(files))
+                    log.info("Deleting %i invalid cache files", len(files))
                     for path in files:
                         os.remove(path)
             else:
-                self._log.debug("Cache up to date.")
+                log.debug("Cache up to date.")
         elif cache_dir_existed:  # cache-dir but no history
             if self.auto_delete_cache is True:
-                self._log.info("Deleting cache-dir without history")
+                log.info("Deleting cache-dir without history")
                 shutil.rmtree(cache_dir)
                 os.mkdir(cache_dir)
             elif self.auto_delete_cache == 'disable':
-                self._log.warn("Ignoring cache-dir without history")
+                log.warn("Ignoring cache-dir without history")
                 pass
             elif self.auto_delete_cache == 'debug':
                 print("Cache directory without history (validate|abort).")
@@ -1487,7 +1494,7 @@ class MneExperiment(FileTree):
                     if command == 'abort':
                         raise RuntimeError("User aborted")
                     elif command == 'validate':
-                        self._log.warn("Validating cache-dir without history")
+                        log.warn("Validating cache-dir without history")
                         break
                     else:
                         print("invalid entry")
@@ -1607,7 +1614,8 @@ class MneExperiment(FileTree):
                 return max(cov_mtime, fwd_mtime)
 
     def _raw_mtime(self):
-        return os.path.getmtime(self.get('raw-file'))
+        pipe = self._raw[self.get('raw')]
+        return pipe.mtime(self.get('subject'), self.get('session'))
 
     def _rej_mtime(self, epoch, pre_ica=False):
         """rej-file mtime for secondary epoch definition
@@ -2039,7 +2047,7 @@ class MneExperiment(FileTree):
 
         Currently, the following files are included in the backup::
 
-         * Calmed raw file (raw='clm')
+         * Input raw file (raw='raw')
          * Bad channels file
          * All rejection files
          * The trans-file
@@ -2232,19 +2240,6 @@ class MneExperiment(FileTree):
         else:
             return FileTree.get_field_values(self, field, exclude)
 
-    def _get_raw_path(self, make=False):
-        if self.get('modality') == 'meeg':
-            raise RuntimeError("No raw files for combined MEG & EEG")
-        elif self._raw[self.get('raw')] is None:
-            path = self.get('raw-file')
-            if os.path.isfile(path):
-                return path
-            else:
-                raise IOError("Raw file for %s is missing at %s"
-                              % (self.get('subject'), path))
-        else:
-            return self.get('cached-raw-file', make=make)
-
     def iter(self, fields='subject', exclude=True, values={}, group=None, *args,
              **kwargs):
         """
@@ -2368,17 +2363,8 @@ class MneExperiment(FileTree):
         bad_chs : list of str
             Bad chnnels.
         """
-        path = self.get('bads-file', **kwargs)
-        if os.path.exists(path):
-            with open(path) as fid:
-                return [l for l in fid.read().splitlines() if l]
-        else:
-            # need to create one to know mtime after user deletes the file
-            self._log.info("No bad channel definition for: %s/%s, creating "
-                           "empty bad_channels file" %
-                           (self.get('subject'), self.get('session')))
-            self.make_bad_channels(())
-            return []
+        pipe = self._raw[self.get('raw', **kwargs)]
+        return pipe.load_bad_channels(self.get('subject'), self.get('session'))
 
     def _load_bem(self):
         subject = self.get('mrisubject')
@@ -2535,6 +2521,7 @@ class MneExperiment(FileTree):
 
             return combine(dss)
         elif self.get('modality') == 'meeg':  # single subject, combine MEG and EEG
+            # FIXME: combine MEG/EEG based on different pipes
             with self._temporary_state:
                 ds_meg = self.load_epochs(subject, baseline, ndvar, add_bads,
                                           reject, cat, decim, pad, data_raw,
@@ -2665,16 +2652,12 @@ class MneExperiment(FileTree):
         others :
             Update state.
         """
-        evt_file = self.get('event-file', mkdir=True, subject=subject,
-                            **kwargs)
-        raw_file = self._get_raw_path(True)
+        evt_file = self.get('event-file', mkdir=True, subject=subject, **kwargs)
 
         # search for and check cached version
         ds = None
         if os.path.exists(evt_file):
-            event_mtime = os.path.getmtime(evt_file)
-            raw_mtime = os.path.getmtime(raw_file)
-            if event_mtime > raw_mtime:
+            if os.path.getmtime(evt_file) > self._raw_mtime():
                 ds = load.unpickle(evt_file)
                 #  <0.19 cache
                 if 'sfreq' not in ds.info:
@@ -2845,7 +2828,7 @@ class MneExperiment(FileTree):
             (default False).
         """
         ds = self.load_epochs_stc(subject, sns_baseline, ndvar=True,
-                                  morph=morph, mask=mask, data_raw='clm',
+                                  morph=morph, mask=mask, data_raw='raw',
                                   **kwargs)
         name = 'srcm' if morph else 'src'
 
@@ -2885,7 +2868,7 @@ class MneExperiment(FileTree):
         """
         ds = self.load_evoked_stc(subject, sns_baseline, morph_ndvar=morph,
                                   ind_ndvar=not morph, mask=mask,
-                                  data_raw='clm', **kwargs)
+                                  data_raw='raw', **kwargs)
         name = 'srcm' if morph else 'src'
 
         # apply morlet transformation
@@ -3109,18 +3092,11 @@ class MneExperiment(FileTree):
         Bad channels defined in the raw file itself are ignored in favor of the
         bad channels in the bad channels file.
         """
-        if kwargs:
-            self.set(**kwargs)
-
-        raw = load.fiff.mne_raw(self._get_raw_path(True), preload=preload)
-        if add_bads:
-            if not isinstance(add_bads, int):
-                raise TypeError("add_bads must be boolean, got %s" % repr(add_bads))
-            raw.info['bads'] = self.load_bad_channels()
-        else:
-            raw.info['bads'] = []
-
-        return raw
+        if not isinstance(add_bads, int):
+            raise TypeError("add_bads must be boolean, got %s" % repr(add_bads))
+        pipe = self._raw[self.get('raw', **kwargs)]
+        return pipe.load(self.get('subject'), self.get('session'), add_bads,
+                         preload)
 
     def _load_result_plotter(self, test, tstart, tstop, pmin, parc=None, mask=None,
                             samples=10000, data='src', sns_baseline=True,
@@ -3694,29 +3670,9 @@ class MneExperiment(FileTree):
         --------
         load_bad_channels : load the current bad_channels file
         """
-        dst = self.get('bads-file', **kwargs)
-        if os.path.exists(dst):
-            old_bads = self.load_bad_channels()
-        else:
-            old_bads = None
-        # find new bad channels
-        if isinstance(bad_chs, basestring):
-            bad_chs = (bad_chs,)
-        raw = self.load_raw(add_bads=False)
-        sensor = load.fiff.sensor_dim(raw)
-        new_bads = sensor._normalize_sensor_names(bad_chs)
-        # update with old bad channels
-        if old_bads is not None and not redo:
-            new_bads = sorted(set(old_bads).union(new_bads))
-        # print change
-        if old_bads is None:
-            print("-> %s" % new_bads)
-        else:
-            print("%s -> %s" % (old_bads, new_bads))
-        # write new bad channels
-        text = os.linesep.join(new_bads)
-        with open(dst, 'w') as fid:
-            fid.write(text)
+        pipe = self._raw[self.get('raw', **kwargs)]
+        pipe.make_bad_channels(self.get('subject'), self.get('session'),
+                               bad_chs, redo)
 
     def make_besa_evt(self, redo=False, **state):
         """Make the trigger and event files needed for besa
@@ -3785,12 +3741,12 @@ class MneExperiment(FileTree):
     def make_cov(self):
         "Make a noise covariance (cov) file"
         dest = self.get('cov-file', mkdir=True)
-        params = self._covs[self.get('cov')]
         if os.path.exists(dest):
             mtime = self._cov_mtime()
             if mtime and os.path.getmtime(dest) > mtime:
                 return
 
+        params = self._covs[self.get('cov')]
         method = params.get('method', 'empirical')
         keep_sample_mean = params.get('keep_sample_mean', True)
         reg = params.get('reg', None)
@@ -4380,32 +4336,10 @@ class MneExperiment(FileTree):
         Due to the electronics of the KIT system sensors, signal lower than
         0.16 Hz is not recorded even when recording at DC.
         """
-        raw_dst = self.get('raw', **kwargs)
-        pipeline = self._raw[raw_dst]
-        if pipeline is None:
-            raise RuntimeError("Can't make %r raw file because it is an input "
-                               "file" % raw_dst)
-        dst = self.get('cached-raw-file', mkdir=True)
-        with self._temporary_state:
-            if os.path.exists(dst):
-                src = self.get('raw-file', raw='clm')
-                src_mtime = os.path.getmtime(src)
-                dst_mtime = os.path.getmtime(dst)
-                if dst_mtime > src_mtime:
-                    if any(p.affected_by_bad_channels for p in pipeline):
-                        bads_mtime = os.path.getmtime(self.get('bads-file'))
-                        if dst_mtime > bads_mtime:
-                            return
-                    else:
-                        return
-
-            self._log.debug("make_raw %s/%s...", self.get('subject'),
-                            os.path.split(dst)[1])
-            raw = self.load_raw(raw='clm', preload=True)
-
-        for proc in pipeline:
-            proc.apply(raw)
-        raw.save(dst, overwrite=True)
+        if kwargs:
+            self.set(**kwargs)
+        pipe = self._raw[self.get('raw')]
+        pipe.cache(self.get('subject'), self.get('session'))
 
     def make_rej(self, decim=None, auto=None, overwrite=False, **kwargs):
         """Show the SelectEpochs GUI to do manual epoch selection for a given

@@ -582,6 +582,18 @@ class TreeModel(object):
             path = temp.format(**self._fields)
             yield path
 
+    def _partial(self, temp, skip=()):
+        "format a template while leaving some slots unfilled"
+        skip = set(skip)
+        fields = self._fields.copy()
+        fields.update({k: '{%s}' % k for k in skip})
+        string = '{%s}' % temp
+
+        while set(self._fmt_pattern.findall(string)).difference(skip):
+            string = string.format(**fields)
+
+        return string
+
     def restore_state(self, index=-1, discard_tip=True):
         """Restore a previously stored state
 
