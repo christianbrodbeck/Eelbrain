@@ -5,6 +5,8 @@ Pre-processing operations based on NDVars
 from os import mkdir
 from os.path import dirname, exists, getmtime
 
+import mne
+
 from .. import load
 
 
@@ -138,4 +140,69 @@ class RawFilter(CachedRawPipe):
     def _make(self, subject, session):
         raw = self.source.load(subject, session, preload=True)
         raw.filter(*self.args, **self.kwargs)
+        return raw
+
+
+class RawICA(CachedRawPipe):
+    """ICA raw pipe
+
+    Notes
+    -----
+    To avoid unwanted data loss, the ICA does not check raw source mtime.
+    However, if bad channels change the ICA is automatically recomputed.
+    """
+
+    def __init__(self, name, source, path, ica_path, log, session, kwargs):
+        CachedRawPipe.__init__(self, name, source, path, log)
+        if isinstance(session, basestring):
+            self.session = (session,)
+        else:
+            assert isinstance(session, tuple)
+        self.ica_path = ica_path
+        self.session = session
+        self.kwargs = kwargs
+
+    def load_bad_channels(self, subject, session=None):
+        bad_chs = set()
+        for session in self.session:
+            bad_chs.update(self.source.load_bad_channels(subject, session))
+        return sorted(bad_chs)
+
+    def load_ica(self, subject):
+        path = self.ica_path.format(subject=subject)
+        if not exists(path):
+            raise RuntimeError("ICA file does not exist for raw=%r, "
+                               "subject=%r. Run e.make_ica_selection() to "
+                               "create it." % (self.name, subject))
+        return mne.preprocessing.read_ica(path)
+
+    def make_ica(self, subject):
+        path = self.ica_path.format(subject=subject)
+        raw = self.source.load(subject, self.session[0], add_bads=False)
+        bad_channels = self.load_bad_channels(subject)
+        raw.info['bads'] = bad_channels
+        if exists(path):
+            ica = mne.preprocessing.read_ica(path)
+            picks = mne.pick_types(raw.info, ref_meg=False)
+            if ica.ch_names == [raw.ch_names[i] for i in picks]:
+                return path
+            self.log.info("%s/%s: ICA outdated due to change in bad channels",
+                          self.name, subject)
+        self.log.debug("%s/%s: computing ICA decomposition", self.name, subject)
+
+        for session in self.session[1:]:
+            raw_ = self.source.load(subject, session, False)
+            raw_.info['bads'] = bad_channels
+            raw.append(raw_)
+
+        ica = mne.preprocessing.ICA(max_iter=256, **self.kwargs)
+        # reject presets from meeg-preprocessing
+        ica.fit(raw, reject={'mag': 5e-12, 'grad': 5000e-13, 'eeg': 300e-6})
+        ica.save(path)
+        return path
+
+    def _make(self, subject, session):
+        raw = self.source.load(subject, session, preload=True)
+        ica = self.load_ica(subject)
+        ica.apply(raw)
         return raw

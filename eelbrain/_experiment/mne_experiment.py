@@ -49,7 +49,7 @@ from .._utils import subp, ui, keydefaultdict, log_level
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .definitions import find_dependent_epochs, find_epochs_vars, find_test_vars
 from .experiment import FileTree
-from .preprocessing import RawSource, RawFilter
+from .preprocessing import RawSource, RawFilter, RawICA
 
 
 __all__ = ['MneExperiment']
@@ -356,6 +356,7 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {class-name}.log')
 
         # created input files
         'bads-file': os.path.join('{raw-dir}', '{subject}_{session}-bad_channels.txt'),
+        'raw-ica-file': os.path.join('{raw-dir}', '{subject} {raw}-ica.fif'),
         'rej-dir': os.path.join('{meg-dir}', 'epoch selection'),
         'rej-file': os.path.join('{rej-dir}', '{session}_{sns_kind}_{epoch}-{rej}.pickled'),
         'ica-file': os.path.join('{rej-dir}', '{session} {sns_kind} {rej}-ica.fif'),
@@ -785,6 +786,7 @@ class MneExperiment(FileTree):
         bads_path = self._partial('bads-file', skip)
         skip.add('raw')
         cache_path = self._partial('cached-raw-file', skip)
+        ica_path = self._partial('raw-ica-file', skip)
         unassigned = self._raw_default.copy()
         unassigned.update(self._raw)
         raw = {}
@@ -801,10 +803,16 @@ class MneExperiment(FileTree):
                         raw[name] = RawFilter(name, raw[source], cache_path,
                                               log, params['args'],
                                               params['kwargs'])
-                        del unassigned[name]
+                    elif params['type'] == 'ica':
+                        raw[name] = RawICA(name, raw[source], cache_path,
+                                           ica_path.replace('{raw}', name),
+                                           log, params['session'],
+                                           params['kwargs'])
                     else:
                         raise ValueError("unknonw raw pipe type=%s" %
                                          repr(params['type']))
+                    del unassigned[name]
+
             if len(unassigned) == n_unassigned:
                 raise RuntimeError("unable to resolve preprocessing pipeline "
                                    "definition: %s" % unassigned)
@@ -2988,6 +2996,9 @@ class MneExperiment(FileTree):
         ica : mne.preprocessing.ICA
             ICA object for the current subject/rej setting.
         """
+        pipe = self._raw[self.get('raw')]
+        if isinstance(pipe, RawICA):
+            return pipe.load_ica(self.get('subject'))
         path = self.get('ica-file')
         if not os.path.exists(path):
             raise RuntimeError("ICA file does not exist at %s. Run "
@@ -3874,11 +3885,29 @@ class MneExperiment(FileTree):
                 raise RuntimeError(msg)
         mne.write_forward_solution(dst, fwd, True)
 
-    def make_ica_selection(self):
-        path, ds = self.make_ica(True)
+    def make_ica_selection(self, epoch=None, decim=None):
+        """Select ICA components to remove through a GUI.
+
+        Parameters
+        ----------
+        epoch : str
+            Epoch to use for visualization in the GUI (default is current
+            epoch; does not apply to ICA specified through artifact_rejection).
+
+        Notes
+        -----
+        Computing ICA decomposition can take a while. In order to precompute
+        the decomposition for all subjects before doing the selection use
+        :meth:`.make_ica()` in a loop as in::
+
+            >>> for _ in e:
+            ...     e.make_ica()
+            ...
+        """
+        path, ds = self.make_ica(epoch or True, decim)
         self._g = gui.select_components(path, ds)
 
-    def make_ica(self, return_data=False):
+    def make_ica(self, return_data=False, decim=None):
         """Compute the ICA decomposition
 
         If a corresponding file exists, a basic check is done as to whether the
@@ -3886,10 +3915,9 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        return_data : bool
-            Return the data the ICA was computed from. If False (default), the
-            data is only loaded if the ICA decomposition does not already exist,
-            leading to faster execution time.
+        return_data : bool | str
+            Return epoch data for ICA component selection. Can be a string to
+            load secific epoch.
 
 
         Returns
@@ -3911,6 +3939,18 @@ class MneExperiment(FileTree):
             ...     e.make_ica()
 
         """
+        pipe = self._raw[self.get('raw')]
+        if isinstance(pipe, RawICA):
+            path = pipe.make_ica(self.get('subject'))
+            if not return_data:
+                return path
+            epoch = self.get('epoch') if return_data is True else return_data
+            with self._temporary_state:
+                ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False,
+                                      raw=pipe.source.name, decim=decim)
+            return path, ds
+
+        # ICA as rej setting
         params = self._artifact_rejection[self.get('rej')]
         if params['kind'] != 'ica':
             raise RuntimeError("Current rej (%s) does not involve ICA" %
@@ -3922,6 +3962,9 @@ class MneExperiment(FileTree):
             load_epochs = return_data
             inst = self.load_raw()
         elif params['source'] == 'epochs':
+            if decim is not None:
+                raise TypeError("decim can not be specified for ICA based on "
+                                "epochs")
             load_epochs = True
             if not make and not self._rej_mtime(self._epochs[params['epoch']]):
                 make = True
@@ -3938,7 +3981,8 @@ class MneExperiment(FileTree):
                 else:
                     raise TypeError("ICA param epoch=%s" % repr(params['epoch']))
                 ds = self.load_epochs(ndvar=False, apply_ica=False, epoch=epoch,
-                                      reject=not params['source'] == 'raw')
+                                      reject=not params['source'] == 'raw',
+                                      decim=decim)
             if params['source'] == 'epochs':
                 inst = ds['epochs']
 
