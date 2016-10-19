@@ -10,7 +10,7 @@ import numpy as np
 
 from .._names import INTERPOLATE_CHANNELS
 from . import _base
-from ._base import EelFigure, Layout, ColorMapMixin, LegendMixin
+from ._base import EelFigure, Layout, ColorMapMixin, LegendMixin, XAxisMixin
 from ._uts import UTS
 
 
@@ -179,7 +179,7 @@ class _ax_im_array(object):
             l.set_vlim(vmax, meas, vmin)
 
 
-class Array(EelFigure, ColorMapMixin):
+class Array(ColorMapMixin, XAxisMixin, EelFigure):
     """Plot UTS data to a rectangular grid.
 
     Parameters
@@ -233,16 +233,11 @@ class Array(EelFigure, ColorMapMixin):
         e0 = epochs[0][0]
         self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
         self._configure_yaxis_dim(e0.get_dim(ydim), ylabel)
+        XAxisMixin.__init__(self, epochs, xdim)
         self._show()
 
     def _fill_toolbar(self, tb):
         ColorMapMixin._fill_toolbar(self, tb)
-
-    def set_xlim(self, left=None, right=None):
-        """Set the x-axis limits for all axes"""
-        for ax in self._axes:
-            ax.set_xlim(left, right)
-        self.draw()
 
 
 class _plt_utsnd(object):
@@ -350,7 +345,7 @@ class _ax_butterfly(object):
         self.vmax = vmax
 
 
-class Butterfly(UTS, LegendMixin):
+class Butterfly(UTS, LegendMixin, XAxisMixin):
     """Butterfly plot for NDVars
 
     Parameters
@@ -409,6 +404,7 @@ class Butterfly(UTS, LegendMixin):
 
         self._vspans = []
         LegendMixin.__init__(self, 'invisible', legend_handles)
+        XAxisMixin.__init__(self, epochs, xdim)
         self._show()
 
     def _fill_toolbar(self, tb):

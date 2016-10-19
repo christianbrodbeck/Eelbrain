@@ -1702,6 +1702,43 @@ class Legend(EelFigure):
         self._show()
 
 
+class XAxisMixin(object):
+
+    def __init__(self, epochs, xdim):
+        extent = tuple(e.get_dim(xdim)._axis_im_extent() for e in chain(*epochs))
+        self._xmin = min(e[0] for e in extent)
+        self._xmax = max(e[1] for e in extent)
+
+        self.canvas.mpl_connect('key_press_event', self._on_key)
+
+    def _get_xlim(self):
+        return self._axes[0].get_xlim()
+
+    def _on_key(self, event):
+        if event.key in ('left', 'right', '+', '-'):
+            left, right = self._get_xlim()
+            d = right - left
+            if event.key == 'left':
+                new_left = max(self._xmin, left - d)
+                new_right = new_left + d
+            elif event.key == 'right':
+                new_right = min(self._xmax, right + d)
+                new_left = new_right - d
+            elif event.key == '-':
+                new_left = max(self._xmin, left - (d / 2.))
+                new_right = min(self._xmax, new_left + 2 * d)
+            else:
+                new_left = left + d / 4.
+                new_right = right - d / 4.
+            self.set_xlim(new_left, new_right)
+
+    def set_xlim(self, left=None, right=None):
+        """Set the x-axis limits for all axes"""
+        for ax in self._axes:
+            ax.set_xlim(left, right)
+        self.draw()
+
+
 class Figure(EelFigure):
     def __init__(self, nax=None, title='Figure', *args, **kwargs):
         layout = Layout(nax, 1, 2, *args, **kwargs)

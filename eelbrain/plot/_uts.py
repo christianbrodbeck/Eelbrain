@@ -11,7 +11,7 @@ import numpy as np
 from .._data_obj import ascategorial, asndvar, assub, cellname, Celltable
 from .._stats import stats
 from . import _base
-from ._base import EelFigure, Layout, LegendMixin
+from ._base import EelFigure, Layout, LegendMixin, XAxisMixin
 from ._colors import colors_for_oneway, find_cell_colors
 from .._colorspaces import oneway_colors
 from functools import reduce
@@ -315,7 +315,7 @@ class UTSStat(EelFigure, LegendMixin):
         self.draw()
 
 
-class UTS(EelFigure):
+class UTS(EelFigure, XAxisMixin):
     """Value by time plot for UTS data
 
     Parameters
@@ -362,6 +362,7 @@ class UTS(EelFigure):
 
         self._vspans = []
         self.epochs = epochs
+        XAxisMixin.__init__(self, epochs, xdim)
         self._show()
 
     def add_vspans(self, intervals, axes=None, *args, **kwargs):
@@ -399,12 +400,6 @@ class UTS(EelFigure):
         """
         for p in self.plots:
             p.set_vlim(vmax, vmin)
-        self.draw()
-
-    def set_xlim(self, left=None, right=None):
-        """Set the x-axis limits for all axes"""
-        for ax in self._axes:
-            ax.set_xlim(left, right)
         self.draw()
 
 
