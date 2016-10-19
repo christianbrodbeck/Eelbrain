@@ -3554,6 +3554,42 @@ class NDVar(object):
             name = self.name
         return NDVar(x, self.dims, info, name)
 
+    def diff(self, dim=None, n=1, pad=True):
+        """Discrete difference
+
+        parameters
+        ----------
+        dim : str
+            Dimension along which to operate.
+        n : int
+            Number of times to difference (default 1).
+        pad : bool
+            Pad the ``dim`` dimension of the result to conserve NDVar shape
+            (default).
+
+        Returns
+        -------
+        diff : NDVar
+            NDVar with the ``n``th differences.
+        """
+        if dim is None:
+            if self.ndim - self.has_case == 1:
+                axis = -1
+            else:
+                raise TypeError("Need to specify dimension over which to "
+                                "differentiate")
+        else:
+            axis = self.get_axis(dim)
+
+        x = np.diff(self.x, n, axis)
+        if pad == 1:
+            idx = (slice(None),) * axis + (slice(0, n),)
+            x = np.concatenate((np.zeros_like(x[idx]), x), axis)
+        else:
+            raise NotImplementedError("pad != 1")
+
+        return NDVar(x, self.dims, self.info.copy(), self.name)
+
     def diminfo(self, str_out=False):
         """Information about the dimensions
 
