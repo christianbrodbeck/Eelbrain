@@ -8,6 +8,7 @@ from os.path import dirname, exists, getmtime
 import mne
 
 from .. import load
+from .._data_obj import NDVar
 
 
 class RawPipe(object):
@@ -136,6 +137,15 @@ class RawFilter(CachedRawPipe):
         CachedRawPipe.__init__(self, name, source, path, log)
         self.args = args
         self.kwargs = kwargs
+
+    def filter_ndvar(self, ndvar):
+        axis = ndvar.get_axis('time')
+        sfreq = 1. / ndvar.time.tstep
+        x = ndvar.x.swapaxes(axis, 0) if axis else ndvar.x
+        x = mne.filter.filter_data(x, sfreq, *self.args, **self.kwargs)
+        if axis:
+            x = x.swapaxes(axis, 0)
+        return NDVar(x, ndvar.dims, ndvar.info.copy(), ndvar.name)
 
     def _make(self, subject, session):
         raw = self.source.load(subject, session, preload=True)
