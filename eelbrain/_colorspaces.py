@@ -212,6 +212,7 @@ def make_cmaps():
     cm_polar.set_bad('w', alpha=0.)
     mpl.cm.register_cmap(cmap=cm_polar)
 
+    # extra-polar: fade ends into dark
     x = .3
     _cdict = {'red':  [(0, 0., 0.),
                        (0 + x, 0., 0.),
@@ -231,6 +232,31 @@ def make_cmaps():
     cm_xpolar = mpl.colors.LinearSegmentedColormap("xpolar", _cdict)
     cm_xpolar.set_bad('w', alpha=0.)
     mpl.cm.register_cmap(cmap=cm_xpolar)
+
+    # extra-polar alpha: middle is transparent instead of white
+    _cdict = {'red':   [(0,     0., 0.),
+                        (0 + x, 0., 0.),
+                        (0.5,   0., 1.),
+                        (1 - x, 1., 1.),
+                        (1,     0., 0.)],
+              'green': [(0,     0., 0.),
+                        # (0 + x, 0., 0.),
+                        # (0.5,   0., 0.),
+                        # (1 - x, 0., 0.),
+                        (1.,    0., 0.)],
+              'blue':  [(0,     0., 0.),
+                        (0 + x, 1., 1.),
+                        (0.5,   1., 0.),
+                        (1 - x, 0., 0.),
+                        (1,     0., 0.)],
+              'alpha': [(0,     1., 1.),
+                        (0 + x, 1., 1.),
+                        (0.5,   0., 0.),
+                        (1 - x, 1., 1.),
+                        (1,     1., 1.)]}
+    cm_xpolara = mpl.colors.LinearSegmentedColormap("xpolara", _cdict)
+    cm_xpolara.set_bad('w', alpha=0.)
+    mpl.cm.register_cmap(cmap=cm_xpolara)
 
     cdict = {'red':   [(0.0, 0., 0.),
                        (0.5, 1., 1.),
@@ -308,7 +334,7 @@ def make_cmaps():
 
 make_cmaps()
 
-symmetric_cmaps = ('polar', 'xpolar', 'symsig',
+symmetric_cmaps = ('polar', 'xpolar', 'xpolara', 'symsig',
                    'BrBG', 'BrBG_r', 'PRGn', 'PRGn_r', 'PuOr', 'PuOr_',
                    'RdBu', 'RdBu_r', 'RdGy', 'RdGy_r', 'seismic', 'seismic_r')
 zerobased_cmaps = ('sig',)
