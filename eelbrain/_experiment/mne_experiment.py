@@ -389,9 +389,8 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {class-name}.log')
         'evoked-old-file': os.path.join('{evoked-base}.pickled'),  # removed for 0.25
         # test files
         'test-dir': os.path.join('{cache-dir}', 'test'),
-        'data_parc': 'unmasked',
         'test-file': os.path.join('{test-dir}', '{analysis} {group}',
-                                  '{epoch} {test} {test_options} {data_parc}.pickled'),
+                                  '{epoch} {test} {test_options}.pickled'),
 
         # MRIs
         'common_brain': 'fsaverage',
@@ -1348,7 +1347,7 @@ class MneExperiment(FileTree):
                         log.warning("  Invalid ANOVA tests: %s for %s",
                                     bad_tests, bad_parcs)
                     for test, parc in product(bad_tests, bad_parcs):
-                        rm['test-file'].add({'test': test, 'data_parc': parc})
+                        rm['test-file'].add({'test': test, 'test_options': '* ' + parc})
                         rm['report-file'].add({'test': test, 'folder': parc})
 
                 # evoked files are based on old events
@@ -1392,7 +1391,7 @@ class MneExperiment(FileTree):
                         bad_parcs.append(parc)
                 for parc in bad_parcs:
                     rm['annot-file'].add({'parc': parc})
-                    rm['test-file'].add({'data_parc': parc})
+                    rm['test-file'].add({'test_options': '* ' + parc})
                     rm['report-file'].add({'folder': parc})
                     rm['res-file'].add({'analysis': 'Source Annot',
                                         'resname': parc + ' * *', 'ext': 'p*'})
@@ -5663,25 +5662,24 @@ class MneExperiment(FileTree):
             items.append(_time_window_str((tstart, tstop)))
 
         # parc/mask
-        if parc:
-            if data == 'sns':
-                raise NotImplementedError("sns analysis can't have parc")
-            parc_ = parc
-            data_parc = parc
-        elif mask:
-            if data == 'sns':
-                raise NotImplementedError("sns analysis can't have mask")
-            parc_ = mask
-            if pmin is None:  # can as well collect dist for parc
-                data_parc = mask
-            else:  # parc means disconnecting
-                data_parc = '%s-mask' % mask
-        else:
-            parc_ = 'aparc'
-            data_parc = 'unmasked'
+        kwargs = {}
+        if data == 'src':
+            if parc:
+                kwargs['parc'] = parc
+                data_parc = parc
+            elif mask:
+                kwargs['parc'] = mask
+                if pmin is None:  # can as well collect dist for parc
+                    data_parc = mask
+                else:  # parc means disconnecting
+                    data_parc = '%s-mask' % mask
+            else:
+                kwargs['parc'] = 'aparc'
+                data_parc = 'unmasked'
+            items.append(data_parc)
 
-        self.set(test_options=' '.join(items), analysis=analysis, parc=parc_,
-                 data_parc=data_parc, folder=folder)
+        self.set(test_options=' '.join(items), analysis=analysis, folder=folder,
+                 **kwargs)
 
     def show_file_status(self, temp, col=None, row='subject', *args, **kwargs):
         """Compile a table about the existence of files
