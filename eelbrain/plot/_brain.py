@@ -14,7 +14,8 @@ import mne
 
 from .._data_obj import asndvar, NDVar
 from ..fmtxt import Image, im_table, ms
-from ._base import EelFigure, ImLayout, ColorBarMixin, fix_vlim_for_cmap
+from ._base import EelFigure, ImLayout, ColorBarMixin, fix_vlim_for_cmap, \
+    find_fig_cmaps, find_fig_vlims
 from ._colors import ColorList
 
 
@@ -415,7 +416,7 @@ def _surfer_brain(data, subject='fsaverage', surf='smoothwm', hemi='split',
                  foreground=foreground, subjects_dir=subjects_dir)
 
 
-def surfer_brain(src, cmap='hot', vmin=0, vmax=9, surf='smoothwm',
+def surfer_brain(src, cmap=None, vmin=None, vmax=None, surf='smoothwm',
                  views=('lat', 'med'), hemi=None, colorbar=False,
                  time_label='ms', w=None, h=None, axw=None, axh=None,
                  foreground=None, background=None, parallel=True,
@@ -428,10 +429,11 @@ def surfer_brain(src, cmap='hot', vmin=0, vmax=9, surf='smoothwm',
     src : NDVar, dims = ([case,] source, [time])
         NDVar with SourceSpace dimension. If stc contains a case dimension,
         the average across cases is taken.
-    cmap : str
-        Colormap (name of a matplotlib colormap).
+    cmap : str | array
+        Colormap (name of a matplotlib colormap) or LUT array.
     vmin, vmax : scalar
-        Endpoints for the colormap.
+        Endpoints for the colormap. Need to be set explicitly if ``cmap`` is
+        a LUT array.
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
     views : str | iterator of str
@@ -491,8 +493,14 @@ def surfer_brain(src, cmap='hot', vmin=0, vmax=9, surf='smoothwm',
         subjects_dir = src.source.subjects_dir
 
     # colormap
-    if isinstance(cmap, basestring):
-        vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cmap)
+    if cmap is None or isinstance(cmap, basestring):
+        epochs = ((src,),)
+        cmaps = find_fig_cmaps(epochs, cmap, alpha=True)
+        vlims = find_fig_vlims(epochs, vmax, vmin, cmaps)
+        meas = src.info.get('meas')
+        cmap = cmaps[meas]
+        vmin, vmax = vlims[meas]
+        # convert to LUT
         cmap = mpl.cm.get_cmap(cmap)
         cmap = np.round(cmap(np.arange(256)) * 255).astype(np.uint8)
 
