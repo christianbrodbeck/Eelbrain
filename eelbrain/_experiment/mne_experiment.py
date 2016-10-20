@@ -801,7 +801,7 @@ class MneExperiment(FileTree):
                     if params['type'] == 'filter':
                         raw[name] = RawFilter(name, raw[source], cache_path,
                                               log, params['args'],
-                                              params['kwargs'])
+                                              params.get('kwargs', {}))
                     elif params['type'] == 'ica':
                         raw[name] = RawICA(name, raw[source], cache_path,
                                            ica_path.replace('{raw}', name),
