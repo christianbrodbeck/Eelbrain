@@ -74,7 +74,8 @@ import PIL
 
 from .._utils.subp import command_exists
 from ..fmtxt import Image, texify
-from .._colorspaces import symmetric_cmaps, zerobased_cmaps, DEFAULT_CMAPS
+from .._colorspaces import symmetric_cmaps, zerobased_cmaps, DEFAULT_CMAPS, \
+    ALPHA_CMAPS
 from .._data_obj import ascategorial, asndvar, isnumeric, cellname
 
 
@@ -409,7 +410,7 @@ def find_uts_ax_vlim(layers, vlims={}):
     return bottom, top
 
 
-def find_fig_cmaps(epochs, cmap=None):
+def find_fig_cmaps(epochs, cmap=None, alpha=False):
     """Find cmap for every meas
 
     Parameters
@@ -419,6 +420,8 @@ def find_fig_cmaps(epochs, cmap=None):
     cmap : str
         Use this instead of the default for the first ``meas`` (for user
         argument).
+    alpha : bool
+        If possible, use cmaps with alpha.
 
     Returns
     -------
@@ -447,6 +450,9 @@ def find_fig_cmaps(epochs, cmap=None):
     for k in out.keys():
         if out[k] is None:
             out[k] = DEFAULT_CMAPS.get(meas, 'xpolar')
+        # replace with cmap with alpha
+        if alpha and out[k] in ALPHA_CMAPS:
+            out[k] = ALPHA_CMAPS[out[k]]
 
     return out
 

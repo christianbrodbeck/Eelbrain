@@ -254,9 +254,9 @@ def make_cmaps():
                         (0.5,   0., 0.),
                         (1 - x, 1., 1.),
                         (1,     1., 1.)]}
-    cm_xpolara = mpl.colors.LinearSegmentedColormap("xpolara", _cdict)
-    cm_xpolara.set_bad('w', alpha=0.)
-    mpl.cm.register_cmap(cmap=cm_xpolara)
+    cm_xpolar_a = mpl.colors.LinearSegmentedColormap("xpolar-a", _cdict)
+    cm_xpolar_a.set_bad('w', alpha=0.)
+    mpl.cm.register_cmap(cmap=cm_xpolar_a)
 
     cdict = {'red':   [(0.0, 0., 0.),
                        (0.5, 1., 1.),
@@ -334,10 +334,13 @@ def make_cmaps():
 
 make_cmaps()
 
-symmetric_cmaps = ('polar', 'xpolar', 'xpolara', 'symsig',
+symmetric_cmaps = ('polar', 'xpolar', 'xpolar-a', 'symsig',
                    'BrBG', 'BrBG_r', 'PRGn', 'PRGn_r', 'PuOr', 'PuOr_',
                    'RdBu', 'RdBu_r', 'RdGy', 'RdGy_r', 'seismic', 'seismic_r')
 zerobased_cmaps = ('sig',)
+# corresponding cmaps with transparency (alpha channel)
+ALPHA_CMAPS = {'xpolar': 'xpolar-a',
+               'RdBu_r': 'xpolar-a'}
 
 
 def set_info_cs(info, cs={'cmap': 'jet'}, copy=True):
