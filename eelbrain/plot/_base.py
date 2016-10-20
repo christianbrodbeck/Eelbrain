@@ -1563,8 +1563,8 @@ class ColorMapMixin(ColorBarMixin):
         meas : str (optional)
             Measurement type to apply (default is the first one found).
         vmin : scalar (optional)
-            Smallest value to plot. The default is to infer ``vmin`` from vmax
-            and the colormap.
+            Smallest value to plot. The default is to infer ``vmin`` from
+            ``vmax`` and the colormap.
         """
         if meas is None:
             meas = self._first_meas

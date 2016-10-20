@@ -17,8 +17,7 @@ from .._utils.numpy_utils import digitize
 from . import _base
 from ._base import EelFigure, Layout, ImLayout, ColorMapMixin, TopoMapKey
 from ._utsnd import _ax_butterfly, _ax_im_array, _plt_im
-from ._sensors import (SENSOR_AXES_FRAME, SENSORMAP_FRAME, SensorMapMixin,
-    _plt_map2d)
+from ._sensors import SENSORMAP_FRAME, SensorMapMixin, _plt_map2d
 
 
 class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):

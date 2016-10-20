@@ -4,7 +4,7 @@ Plot multidimensional uniform time series.
 
 from __future__ import division
 
-from itertools import chain, izip
+from itertools import izip
 
 import numpy as np
 
