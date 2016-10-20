@@ -10,7 +10,8 @@ import numpy as np
 
 from .._names import INTERPOLATE_CHANNELS
 from . import _base
-from ._base import EelFigure, Layout, ColorMapMixin, LegendMixin, XAxisMixin
+from ._base import EelFigure, Layout, ColorMapMixin, LegendMixin, VLimMixin, \
+    XAxisMixin
 from ._uts import UTS
 
 
@@ -345,7 +346,7 @@ class _ax_butterfly(object):
         self.vmax = vmax
 
 
-class Butterfly(UTS, LegendMixin, XAxisMixin):
+class Butterfly(LegendMixin, VLimMixin, XAxisMixin, EelFigure):
     """Butterfly plot for NDVars
 
     Parameters
@@ -403,6 +404,7 @@ class Butterfly(UTS, LegendMixin, XAxisMixin):
             legend_handles.update(h.legend_handles)
 
         XAxisMixin.__init__(self, epochs, xdim)
+        VLimMixin.__init__(self)
         LegendMixin.__init__(self, 'invisible', legend_handles)
         self._show()
 

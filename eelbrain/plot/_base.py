@@ -1814,6 +1814,23 @@ class XAxisMixin(object):
         self.draw()
 
 
+class VLimMixin(object):
+
+    def set_vlim(self, vmax=None, vmin=None):
+        """Set the x-axis limits
+
+        Parameters
+        ----------
+        vmax : scalar
+            Upper limit.
+        vmin : scalar
+            Lower limit.
+        """
+        for p in self.plots:
+            p.set_vlim(vmax, vmin)
+        self.draw()
+
+
 class Figure(EelFigure):
     def __init__(self, nax=None, title='Figure', *args, **kwargs):
         layout = Layout(nax, 1, 2, *args, **kwargs)
