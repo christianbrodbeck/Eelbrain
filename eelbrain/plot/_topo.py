@@ -839,7 +839,7 @@ class TopoArray(EelFigure):
 
         e0 = epochs[0][0]
         self._configure_xaxis_dim(e0.time, True, xticklabels, self._array_axes)
-        self._configure_yaxis_dim(e0.sensor, True, self._array_axes)
+        self._configure_yaxis_dim(e0.sensor, True, self._array_axes, False)
 
         # setup callback
         self._selected_window = None

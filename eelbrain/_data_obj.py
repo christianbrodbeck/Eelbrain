@@ -6769,8 +6769,15 @@ class Dimension(object):
         "extent for im plots"
         return -0.5, len(self) - 0.5
 
-    def _axis_formatter(self):
-        "Return a matplotlib axis formatter"
+    def _axis_formatter(self, scalar):
+        """Return a matplotlib axis formatter
+
+        Parameters
+        ----------
+        scalar : bool
+            If True, the axis is scalar and labels should correspond to the axis
+            value. If False, the axis represents categorial bins (e.g., im-plots).
+        """
         raise NotImplementedError
 
     def dimindex(self, arg):
@@ -6896,7 +6903,7 @@ class Categorial(Dimension):
         values = self.values[index]
         return Categorial(self.name, values)
 
-    def _axis_formatter(self):
+    def _axis_formatter(self, scalar):
         return IndexFormatter(self.values)
 
     def dimindex(self, arg):
@@ -7003,12 +7010,16 @@ class Scalar(Dimension):
         return self.__class__(self.name, self.values[index], self.unit,
                               self.tick_format)
 
-    def _axis_formatter(self):
-        if self.tick_format is None:
-            values = self.values
+    def _axis_formatter(self, scalar):
+        if scalar:
+            if self.tick_format:
+                return FormatStrFormatter(self.tick_format)
+            else:
+                return None
+        elif self.tick_format:
+            return IndexFormatter([self.tick_format % v for v in self.values])
         else:
-            values = [self.tick_format % v for v in self.values]
-        return IndexFormatter(values)
+            return IndexFormatter(self.values)
 
     def dimindex(self, arg):
         if isinstance(arg, self.__class__):
@@ -7248,7 +7259,7 @@ class Sensor(Dimension):
             return Sensor(locs, names, None, self.sysname, self.default_proj2d,
                           _subgraph_edges(self._connectivity, int_index))
 
-    def _axis_formatter(self):
+    def _axis_formatter(self, scalar):
         return IndexFormatter(self.names)
 
     def _cluster_properties(self, x):
@@ -8021,7 +8032,7 @@ class SourceSpace(Dimension):
                           parc, _subgraph_edges(self._connectivity, int_index))
         return dim
 
-    def _axis_formatter(self):
+    def _axis_formatter(self, scalar):
         return FormatStrFormatter('%i')
 
     def _cluster_properties(self, x):
@@ -8454,8 +8465,12 @@ class UTS(Dimension):
     def _axis_im_extent(self):
         return self.tmin - 0.5 * self.tstep, self.tmax + 0.5 * self.tstep
 
-    def _axis_formatter(self):
-        return FuncFormatter(lambda x, pos: '%i' % round(1e3 * x))
+    def _axis_formatter(self, scalar):
+        if scalar:
+            return FuncFormatter(lambda x, pos: '%i' % round(1e3 * x))
+        else:
+            return FuncFormatter(lambda x, pos: '%i' %
+                                 round(1e3 * self.times[int(round(x))]))
 
     def _diminfo(self):
         name = self.name.capitalize()

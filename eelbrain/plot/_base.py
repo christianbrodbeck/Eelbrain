@@ -219,13 +219,16 @@ def find_axis_params_data(v, label):
     return fmt, label
 
 
-def find_axis_params_dim(dim, label):
+def find_axis_params_dim(dim, scalar, label):
     """Find an axis label
 
     Parameters
     ----------
     dim : Dimension
         The dimension.
+    scalar : bool
+        If True, the axis is scalar and labels should correspond to the axis
+        value. If False, the axis represents categorial bins (e.g., im-plots).
     label : None | True | str
         Label argument.
 
@@ -241,7 +244,7 @@ def find_axis_params_dim(dim, label):
         else:
             label = dim.name.capitalize()
 
-    return dim._axis_formatter(), label
+    return dim._axis_formatter(scalar), label
 
 
 def find_im_args(ndvar, overlay, vlims={}, cmaps={}):
@@ -1036,7 +1039,8 @@ class EelFigure(object):
         "Close the figure."
         self._frame.Close()
 
-    def _configure_xaxis_dim(self, dim, label, ticklabels, axes=None):
+    def _configure_xaxis_dim(self, dim, label, ticklabels, axes=None,
+                             scalar=True):
         """Configure the x-axis based on a dimension
 
         Parameters
@@ -1052,11 +1056,12 @@ class EelFigure(object):
         """
         if axes is None:
             axes = self._axes
-        formatter, label = find_axis_params_dim(dim, label)
+        formatter, label = find_axis_params_dim(dim, scalar, label)
 
         if ticklabels:
-            for ax in axes:
-                ax.xaxis.set_major_formatter(formatter)
+            if formatter:  # use formatter=None for default formatter
+                for ax in axes:
+                    ax.xaxis.set_major_formatter(formatter)
         else:
             for ax in axes:
                 ax.xaxis.set_ticklabels(())
@@ -1074,13 +1079,14 @@ class EelFigure(object):
         if label:
             self.set_xlabel(label)
 
-    def _configure_yaxis_dim(self, dim, label, axes=None):
+    def _configure_yaxis_dim(self, dim, label, axes=None, scalar=True):
         "Configure the y-axis based on a dimension"
         if axes is None:
             axes = self._axes
-        formatter, label = find_axis_params_dim(dim, label)
-        for ax in axes:
-            ax.yaxis.set_major_formatter(formatter)
+        formatter, label = find_axis_params_dim(dim, scalar, label)
+        if formatter:
+            for ax in axes:
+                ax.yaxis.set_major_formatter(formatter)
 
         if label:
             self.set_ylabel(label)
