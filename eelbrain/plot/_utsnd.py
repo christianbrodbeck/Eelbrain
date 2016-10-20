@@ -402,9 +402,8 @@ class Butterfly(UTS, LegendMixin, XAxisMixin):
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
-        self._vspans = []
-        LegendMixin.__init__(self, 'invisible', legend_handles)
         XAxisMixin.__init__(self, epochs, xdim)
+        LegendMixin.__init__(self, 'invisible', legend_handles)
         self._show()
 
     def _fill_toolbar(self, tb):

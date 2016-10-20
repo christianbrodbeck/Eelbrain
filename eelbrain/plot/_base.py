@@ -1735,14 +1735,26 @@ class XAxisMixin(object):
         extent = tuple(e.get_dim(xdim)._axis_im_extent() for e in chain(*epochs))
         self._xmin = min(e[0] for e in extent)
         self._xmax = max(e[1] for e in extent)
-
+        self.__vspans = []
         self._register_key('+', self._on_zoom_plus)
         self._register_key('-', self._on_zoom_minus)
         self._register_key('left', self._on_left)
         self._register_key('right', self._on_right)
+        self._register_key('home', self._on_beginning)
+        self._register_key('end', self._on_end)
 
     def _get_xlim(self):
         return self._axes[0].get_xlim()
+
+    def _on_beginning(self, event):
+        left, right = self._get_xlim()
+        d = right - left
+        self.set_xlim(self._xmin, min(self._xmax, self._xmin + d))
+
+    def _on_end(self, event):
+        left, right = self._get_xlim()
+        d = right - left
+        self.set_xlim(max(self._xmin, self._xmax - d), self._xmax)
 
     def _on_zoom_plus(self, event):
         left, right = self._get_xlim()
@@ -1772,6 +1784,28 @@ class XAxisMixin(object):
         new_left = new_right - d
         self.set_xlim(new_left, new_right)
 
+    def add_vspans(self, intervals, axes=None, *args, **kwargs):
+        """Draw vertical bars over axes
+
+        Parameters
+        ----------
+        intervals : sequence of (start, stop) tuples
+            Start and stop positions on the x-axis.
+        axes : int | list of int
+            Which axes to mark (default is all axes).
+        additonal arguments :
+            Additional arguments for :func:`matplotlib.axvspan`.
+        """
+        if axes is None:
+            axes = self._axes
+        elif isinstance(axes, int):
+            axes = (self._axes[axes],)
+        else:
+            axes = [self._axes[i] for i in axes]
+
+        for ax in axes:
+            for xmin, xmax in intervals:
+                self.__vspans.append(ax.axvspan(xmin, xmax, *args, **kwargs))
 
     def set_xlim(self, left=None, right=None):
         """Set the x-axis limits for all axes"""
