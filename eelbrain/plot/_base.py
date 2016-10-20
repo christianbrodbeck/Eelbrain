@@ -1729,6 +1729,30 @@ class Legend(EelFigure):
         self._show()
 
 
+class TopoMapKey(object):
+
+    def __init__(self, data_func):
+        self.__topo_data = data_func
+        self._register_key('t', self.__on_topo)
+        self._register_key('T', self.__on_topo)
+
+    def __on_topo(self, event):
+        topo_data = self.__topo_data(event)
+        if topo_data is None:
+            return
+
+        from ._topo import Topomap
+
+        data, title, proj = topo_data
+        if event.key == 't':
+            Topomap(data, proj=proj, cmap=self._cmaps, vmax=self._vlims,
+                    contours=self._contours, title=title)
+        else:
+            Topomap(data, proj=proj, cmap=self._cmaps, vmax=self._vlims,
+                    contours=self._contours, title=title, w=10,
+                    sensorlabels='name')
+
+
 class XAxisMixin(object):
 
     def __init__(self, epochs, xdim):

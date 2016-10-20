@@ -15,13 +15,13 @@ from scipy.spatial import ConvexHull
 from .._data_obj import SEQUENCE_TYPES
 from .._utils.numpy_utils import digitize
 from . import _base
-from ._base import EelFigure, Layout, ImLayout, ColorMapMixin
+from ._base import EelFigure, Layout, ImLayout, ColorMapMixin, TopoMapKey
 from ._utsnd import _ax_butterfly, _ax_im_array, _plt_im
 from ._sensors import (SENSOR_AXES_FRAME, SENSORMAP_FRAME, SensorMapMixin,
     _plt_map2d)
 
 
-class Topomap(SensorMapMixin, ColorMapMixin, EelFigure):
+class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
     """Plot individual topogeraphies
 
     Parameters
@@ -116,27 +116,19 @@ class Topomap(SensorMapMixin, ColorMapMixin, EelFigure):
                             head_pos)
             self.plots.append(h)
 
+        TopoMapKey.__init__(self, self._topo_data)
         SensorMapMixin.__init__(self, [h.sensors for h in self.plots])
-        self.canvas.mpl_connect('key_release_event', self._on_key)
         self._show()
 
     def _fill_toolbar(self, tb):
         ColorMapMixin._fill_toolbar(self, tb)
         SensorMapMixin._fill_toolbar(self, tb)
 
-    def _on_key(self, event):
-        if event.key is None:
-            return
-        elif event.key in 'tT' and event.inaxes:
+    def _topo_data(self, event):
+        if event.inaxes:
             ax_i = self._axes.index(event.inaxes)
             p = self.plots[ax_i]
-            if event.key == 't':
-                Topomap(p.data, proj=p.proj, cmap=self._cmaps, vmax=self._vlims,
-                        contours=self._contours, title=p.title)
-            else:
-                Topomap(p.data, proj=p.proj, cmap=self._cmaps, vmax=self._vlims,
-                        contours=self._contours, title=p.title, w=10,
-                        sensorlabels='name')
+            return p.data, p.title, p.proj
 
 
 class TopomapBins(EelFigure):
@@ -171,7 +163,7 @@ class TopomapBins(EelFigure):
         self._show()
 
 
-class TopoButterfly(EelFigure):
+class TopoButterfly(TopoMapKey, EelFigure):
     """Butterfly plot with corresponding topomaps
 
     Parameters
@@ -284,6 +276,7 @@ class TopoButterfly(EelFigure):
         self.t_markers = []
         self._cmaps = cmaps
         self._vlims = vlims
+        self._contours = contours
         self._xvalues = []
 
         # find ax-labels
@@ -345,7 +338,9 @@ class TopoButterfly(EelFigure):
 
         # setup callback
         self.canvas.mpl_connect('button_press_event', self._on_click)
-        self.canvas.mpl_connect('key_release_event', self._on_key)
+        self._register_key('left', self._on_arrow)
+        self._register_key('right', self._on_arrow)
+        TopoMapKey.__init__(self, self._topo_data)
         self._realtime_topo = True
         self._t_label = None
         self._frame.store_canvas()
@@ -412,34 +407,27 @@ class TopoButterfly(EelFigure):
                 self._realtime_topo = True
                 self.canvas.draw()
 
-    def _on_key(self, event):
+    def _topo_data(self, event):
         ax = event.inaxes
-        key = event.key
-        if key is None:
+        if ax in self.bfly_axes:
+            p = self.bfly_plots[ax.id // 2]
+            t = event.xdata
+            seg = [l.sub(time=t) for l in p.data]
+        elif ax in self.topo_axes:
+            seg = self.topo_plots[ax.id // 2].data
+            t = self._current_t
+        else:
             return
-        elif key in 'tT':
-            if ax in self.bfly_axes:
-                p = self.bfly_plots[ax.id // 2]
-                t = event.xdata
-                seg = [l.sub(time=t) for l in p.data]
-            elif ax in self.topo_axes:
-                seg = self.topo_plots[ax.id // 2].data
-                t = self._current_t
-            else:
-                return
 
-            title = "%i ms" % round(t * 1e3)
-            if key == 't':
-                Topomap(seg, title=title)
-            else:
-                Topomap(seg, w=10, sensorlabels='name', title=title)
-        elif key == 'right' or key == 'left':
-            i = digitize(self._current_t, self._xvalues, key == 'left')
-            if key == 'left' and i > 0:
-                i -= 1
-            elif i == len(self._xvalues):
-                i -= 1
-            self.set_topo_t(self._xvalues[i])
+        return seg, "%i ms" % round(t * 1e3), self._topo_kwargs['proj']
+
+    def _on_arrow(self, event):
+        i = digitize(self._current_t, self._xvalues, event.key == 'left')
+        if event.key == 'left' and i > 0:
+            i -= 1
+        elif i == len(self._xvalues):
+            i -= 1
+        self.set_topo_t(self._xvalues[i])
 
     def _on_leave_axes(self, event):
         "update the status bar when the cursor leaves axes"

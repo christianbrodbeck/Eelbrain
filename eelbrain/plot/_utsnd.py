@@ -11,8 +11,7 @@ import numpy as np
 from .._names import INTERPOLATE_CHANNELS
 from . import _base
 from ._base import EelFigure, Layout, ColorMapMixin, LegendMixin, VLimMixin, \
-    XAxisMixin
-from ._uts import UTS
+    XAxisMixin, TopoMapKey
 
 
 class _plt_im(object):
@@ -333,7 +332,9 @@ class _ax_butterfly(object):
         ax.yaxis.offsetText.set_va('top')
 
         if isinstance(title, basestring):
-            ax.set_title(title.format(name=name))
+            title = title.format(name=name)
+            ax.set_title(title)
+        self.title = title
 
         self.set_vlim(vmax, vmin)
 
@@ -346,7 +347,7 @@ class _ax_butterfly(object):
         self.vmax = vmax
 
 
-class Butterfly(LegendMixin, VLimMixin, XAxisMixin, EelFigure):
+class Butterfly(LegendMixin, TopoMapKey, VLimMixin, XAxisMixin, EelFigure):
     """Butterfly plot for NDVars
 
     Parameters
@@ -383,6 +384,9 @@ class Butterfly(LegendMixin, VLimMixin, XAxisMixin, EelFigure):
     title : None | string
         Figure title.
     """
+    _cmaps = None  # for TopoMapKey mixin
+    _contours = None
+
     def __init__(self, epochs, xax=None, sensors=None, axtitle='{name}',
                  xlabel=True, ylabel=True, xticklabels=True, color=None,
                  ds=None, x='time', vmax=None, vmin=None, *args, **kwargs):
@@ -395,22 +399,32 @@ class Butterfly(LegendMixin, VLimMixin, XAxisMixin, EelFigure):
         self._configure_yaxis(e0, ylabel)
 
         self.plots = []
-        vlims = _base.find_fig_vlims(epochs, vmax, vmin)
+        self._vlims = _base.find_fig_vlims(epochs, vmax, vmin)
         legend_handles = {}
         for ax, layers in zip(self._axes, epochs):
             h = _ax_butterfly(ax, layers, xdim, linedim, sensors, axtitle,
-                              color, vlims)
+                              color, self._vlims)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
         XAxisMixin.__init__(self, epochs, xdim)
         VLimMixin.__init__(self)
+        if linedim == 'sensor':
+            TopoMapKey.__init__(self, self._topo_data)
         LegendMixin.__init__(self, 'invisible', legend_handles)
         self._show()
 
     def _fill_toolbar(self, tb):
-        UTS._fill_toolbar(self, tb)
         LegendMixin._fill_toolbar(self, tb)
+
+    def _topo_data(self, event):
+        if not event.inaxes:
+            return
+        p = self.plots[self._axes.index(event.inaxes)]
+        t = event.xdata
+        data = [l.sub(time=t) for l in p.data]
+        return data, p.title + ' %i ms' % round(t), 'default'
+
 
 
 class _ax_bfly_epoch:
