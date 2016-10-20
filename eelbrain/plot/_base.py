@@ -954,11 +954,15 @@ class EelFigure(object):
         self._axes = axes
         self.canvas = frame_.canvas
         self._layout = layout
+        self.__callback_key_press = {}
+        self.__callback_key_release = {}
 
         # add callbacks
         self.canvas.mpl_connect('motion_notify_event', self._on_motion)
         self.canvas.mpl_connect('axes_leave_event', self._on_leave_axes)
         self.canvas.mpl_connect('resize_event', self._on_resize)
+        self.canvas.mpl_connect('key_press_event', self._on_key_press)
+        self.canvas.mpl_connect('key_release_event', self._on_key_release)
 
     def _show(self):
         if self._layout.tight:
@@ -981,6 +985,16 @@ class EelFigure(object):
             t_bottom = bbox[0, 1]
             self.figure.subplots_adjust(top=1 - 2 * (1 - t_bottom))
 
+    def _on_key_press(self, event):
+        if event.key in self.__callback_key_press:
+            self.__callback_key_press[event.key](event)
+            event.guiEvent.Skip(False)  # Matplotlib Skip()s all events
+
+    def _on_key_release(self, event):
+        if event.key in self.__callback_key_release:
+            self.__callback_key_release[event.key](event)
+            event.guiEvent.Skip(False)
+
     def _on_leave_axes(self, event):
         "update the status bar when the cursor leaves axes"
         self._frame.SetStatusText(':-)')
@@ -996,6 +1010,19 @@ class EelFigure(object):
     def _on_resize(self, event):
         if self._layout.tight:
             self._tight()
+
+    def _register_key(self, key, press=None, release=None):
+        if press:
+            if key in self.__callback_key_press:
+                raise RuntimeError("Attempting to assign key press %r twice" %
+                                   key)
+            self.__callback_key_press[key] = press
+        if release:
+            if key in self.__callback_key_release:
+                raise RuntimeError("Attempting to assign key release %r twice" %
+                                   key)
+            self.__callback_key_release[key] = release
+
 
     def _fill_toolbar(self, tb):
         """
@@ -1709,28 +1736,42 @@ class XAxisMixin(object):
         self._xmin = min(e[0] for e in extent)
         self._xmax = max(e[1] for e in extent)
 
-        self.canvas.mpl_connect('key_press_event', self._on_key)
+        self._register_key('+', self._on_zoom_plus)
+        self._register_key('-', self._on_zoom_minus)
+        self._register_key('left', self._on_left)
+        self._register_key('right', self._on_right)
 
     def _get_xlim(self):
         return self._axes[0].get_xlim()
 
-    def _on_key(self, event):
-        if event.key in ('left', 'right', '+', '-'):
-            left, right = self._get_xlim()
-            d = right - left
-            if event.key == 'left':
-                new_left = max(self._xmin, left - d)
-                new_right = new_left + d
-            elif event.key == 'right':
-                new_right = min(self._xmax, right + d)
-                new_left = new_right - d
-            elif event.key == '-':
-                new_left = max(self._xmin, left - (d / 2.))
-                new_right = min(self._xmax, new_left + 2 * d)
-            else:
-                new_left = left + d / 4.
-                new_right = right - d / 4.
-            self.set_xlim(new_left, new_right)
+    def _on_zoom_plus(self, event):
+        left, right = self._get_xlim()
+        d = right - left
+        new_left = left + d / 4.
+        new_right = right - d / 4.
+        self.set_xlim(new_left, new_right)
+
+    def _on_zoom_minus(self, event):
+        left, right = self._get_xlim()
+        d = right - left
+        new_left = max(self._xmin, left - (d / 2.))
+        new_right = min(self._xmax, new_left + 2 * d)
+        self.set_xlim(new_left, new_right)
+
+    def _on_left(self, event):
+        left, right = self._get_xlim()
+        d = right - left
+        new_left = max(self._xmin, left - d)
+        new_right = new_left + d
+        self.set_xlim(new_left, new_right)
+
+    def _on_right(self, event):
+        left, right = self._get_xlim()
+        d = right - left
+        new_right = min(self._xmax, right + d)
+        new_left = new_right - d
+        self.set_xlim(new_left, new_right)
+
 
     def set_xlim(self, left=None, right=None):
         """Set the x-axis limits for all axes"""
