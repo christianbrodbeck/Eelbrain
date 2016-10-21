@@ -28,7 +28,7 @@ from ._data_obj import (Datalist, Dataset, Var, Factor, Interaction, Model,
                         NDVar, choose, combine, align, align1, cellname,
                         Celltable)
 from ._ndvar import (Butterworth, concatenate, cwt_morlet, neighbor_correlation,
-                     resample)
+                     resample, segment)
 from ._mne import labels_from_clusters, morph_source_space
 
 from ._utils import set_log_level

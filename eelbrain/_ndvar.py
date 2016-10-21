@@ -7,7 +7,7 @@ import numpy as np
 from scipy import signal
 
 from . import _colorspaces as cs
-from ._data_obj import NDVar, UTS, Ordered
+from ._data_obj import NDVar, UTS, Ordered, combine
 
 
 def concatenate(ndvars, dim='time', name=None):
@@ -284,3 +284,36 @@ class Butterworth(Filter):
             return signal.butter(self.order, self.high / nyq, 'lowpass')
         else:
             raise ValueError("Neither low nor high set")
+
+
+def segment(continuous, times, tstart, tstop):
+    """Segment a continuous NDVar
+
+    Parameters
+    ----------
+    continuous : NDVar
+        NDVar with a continuous time axis.
+    times : sequence of scalar
+        Times for which to extract segments.
+    tstart : scalar
+        Start time for segments.
+    tstop : scalar
+        Stop time for segments.
+
+    Returns
+    -------
+    segmented_data : NDVar
+        NDVar with all data segments corresponding to ``times``, stacked along
+        the ``case`` axis.
+    """
+    if continuous.has_case:
+        raise ValueError("Continuous data can't have case dimension")
+    axis = continuous.get_axis('time')
+    segments = [continuous.sub(time=(t + tstart, t + tstop)) for t in times]
+    s0_time = segments[0].time
+    dims = (('case',) +
+            continuous.dims[:axis] +
+            (UTS(tstart, s0_time.tstep, s0_time.nsamples),) +
+            continuous.dims[axis + 1:])
+    return NDVar(np.array(tuple(s.x for s in segments)), dims,
+                 continuous.info.copy(), continuous.name)
