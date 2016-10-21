@@ -23,7 +23,7 @@ managed by
 from __future__ import division
 from __future__ import print_function
 
-from collections import OrderedDict
+from collections import Iterator, OrderedDict
 from copy import deepcopy
 from fnmatch import fnmatchcase
 import itertools
@@ -1184,6 +1184,8 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
         raise ValueError("incomplete=%s" % repr(incomplete))
 
     # check input
+    if isinstance(items, Iterator):
+        items = tuple(items)
     if len(items) == 0:
         raise ValueError("combine() called with empty sequence %s" % repr(items))
 
@@ -1419,6 +1421,8 @@ class Var(object):
         if isinstance(x, basestring):
             raise TypeError("Var can't be initialized with a string")
 
+        if isinstance(x, Iterator):
+            x = tuple(x)
         x = np.asarray(x)
         if x.dtype.kind == 'O':
             raise TypeError("Var can not handle object-type arrays. Consider "
