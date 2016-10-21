@@ -38,6 +38,10 @@ def load_wav(filename=None):
             return
     elif not isinstance(filename, basestring):
         raise TypeError("filename must be string, got %s" % repr(filename))
+    elif not os.path.exists(filename):
+        _, ext = os.path.splitext(filename)
+        if not ext:
+            filename += '.wav'
 
     srate, data = wavfile.read(filename)
     time = UTS(0, 1. / srate, data.shape[-1])
