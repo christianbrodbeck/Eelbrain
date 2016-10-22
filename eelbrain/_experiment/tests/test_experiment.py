@@ -68,6 +68,12 @@ def test_slave_tree():
     eq_(tree.get('sb'), 'Y u')
     eq_(tree.get('comp_slave'), 'Y U')
 
+    # .iter()
+    eq_(tuple(tree.iter(('a', 'b'))),
+        (('x', 'u'), ('x', 'v'), ('y', 'u'), ('y', 'v')))
+    eq_(tuple(tree.iter(('b', 'a'))),
+        (('u', 'x'), ('u', 'y'), ('v', 'x'), ('v', 'y')))
+
 
 def test_file_tree():
     "Test file management tree"

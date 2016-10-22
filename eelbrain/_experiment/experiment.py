@@ -495,36 +495,22 @@ class TreeModel(object):
             Fields with custom values to iterate over (instead of the
             corresponding field values) with {name: (sequence of values)}
             entries.
-        group : None | str
-            If iterating over subjects, use this group ('all' or a name defined
-            in experiment.groups).
-        prog : bool | str
-            Show a progress dialog; str for dialog title.
-        mail : bool | str
-            Send an email when iteration is finished. Can be True or an email
-            address. If True, the notification is sent to :attr:`.owner`.
-        others :
+        *others* :
             Fields with constant values throughout the iteration.
         """
-        if mail is True:
-            mail = self.owner
-        if prog is not False:
-            raise RuntimeError("The prog argument has been removed from the "
-                               "iter() method.")
-
         # set constants
         self.set(**constants)
 
         if isinstance(fields, basestring):
-            fields = [fields]
+            fields = (fields,)
             yield_str = True
         else:
             yield_str = False
-        fields = list(set(fields).difference(constants).union(values))
+        iter_fields = tuple(f for f in chain(fields, values) if f not in constants)
 
         # gather possible values to iterate over
         field_values = {}
-        for field in fields:
+        for field in iter_fields:
             if field in values:
                 field_values[field] = values[field]
             else:
@@ -538,29 +524,23 @@ class TreeModel(object):
 
         # pick out the fields to iterate, but drop excluded cases:
         v_lists = []
-        for field in fields:
+        for field in iter_fields:
             v_lists.append(field_values[field])
 
         if len(v_lists):
             with self._temporary_state:
                 for v_list in product(*v_lists):
                     self.restore_state(discard_tip=False)
-                    values = dict(zip(fields, v_list))
-                    self.set(**values)
+                    self.set(**dict(zip(iter_fields, v_list)))
 
                     if yield_str:
-                        yield v_list[0]
+                        yield self.get(fields[0])
                     else:
-                        yield v_list
+                        yield tuple(self.get(f) for f in fields)
         else:
             yield ()
 
-        if mail:
-            send_email(mail, "Eelbrain Task Done", "I did as you desired, "
-                       "my master.")
-
-    def iter_temp(self, temp, exclude=True, values={}, mail=False, prog=False,
-                  **constants):
+    def iter_temp(self, temp, exclude=True, values={}, **constants):
         """
         Iterate through all paths conforming to a template given in ``temp``.
 
@@ -577,8 +557,7 @@ class TreeModel(object):
         variables = set(self._fmt_pattern.findall(temp))
         variables.difference_update(constants)
 
-        for _ in self.iter(variables, exclude=exclude, values=values,
-                           mail=mail, prog=prog, **constants):
+        for _ in self.iter(variables, exclude, values, **constants):
             path = temp.format(**self._fields)
             yield path
 

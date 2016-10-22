@@ -2243,7 +2243,7 @@ class MneExperiment(FileTree):
         else:
             return FileTree.get_field_values(self, field, exclude)
 
-    def iter(self, fields='subject', exclude=True, values={}, group=None, *args,
+    def iter(self, fields='subject', exclude=True, values={}, group=None,
              **kwargs):
         """
         Cycle the experiment's state through all values on the given fields
@@ -2263,17 +2263,12 @@ class MneExperiment(FileTree):
             If iterating over subjects, use this group ('all' for all except
             excluded subjects, 'all!' for all including excluded subjects, or
             a name defined in experiment.groups).
-        mail : bool | str
-            Send an email when iteration is finished. Can be True or an email
-            address. If True, the notification is sent to :attr:`.owner`.
-        prog : bool | str
-            Show a progress dialog; str for dialog title.
         *others* :
             Fields with constant values throughout the iteration.
         """
         if group is not None:
             kwargs['group'] = group
-        return FileTree.iter(self, fields, exclude, values, *args, **kwargs)
+        return FileTree.iter(self, fields, exclude, values, **kwargs)
 
     def iter_range(self, start=None, stop=None, field='subject'):
         """Iterate through a range on a field with ordered values.
