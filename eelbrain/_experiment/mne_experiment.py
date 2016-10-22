@@ -1195,7 +1195,10 @@ class MneExperiment(FileTree):
                                    "the eelbrain-cache folder." % (tc, tsys))
             cache_state = load.unpickle(cache_state_path)
             cache_state_v = cache_state.get('version', 0)
-            if cache_state_v > CACHE_STATE_VERSION:
+            if cache_state_v < CACHE_STATE_VERSION:
+                log.debug("Updating cache-state %i -> %i", cache_state_v,
+                          CACHE_STATE_VERSION)
+            elif cache_state_v > CACHE_STATE_VERSION:
                 raise RuntimeError("The %s cache is from a newer version of "
                                    "Eelbrain than you are currently using. "
                                    "Either upgrade Eelbrain or delete the cache "
