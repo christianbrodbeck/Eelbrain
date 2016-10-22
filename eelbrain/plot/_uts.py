@@ -160,6 +160,7 @@ class UTSStat(EelFigure, LegendMixin):
         frame_title = _base.frame_title("UTSStat", Y, X, Xax)
         layout = Layout(nax, 2, 4, *args, share_axes=True, **kwargs)
         EelFigure.__init__(self, frame_title, layout)
+        clip = layout.frame
 
         # create plots
         self._plots = []
@@ -167,7 +168,7 @@ class UTSStat(EelFigure, LegendMixin):
         if Xax is None:
             p = _ax_uts_stat(self._axes[0], ct, colors, main, error, dev_data,
                              None, xdim, xlim, invy, bottom, top, hline,
-                             clusters, pmax, ptrend)
+                             clusters, pmax, ptrend, clip)
             self._plots.append(p)
             legend_handles.update(p.legend_handles)
             if len(ct) < 2:
@@ -184,7 +185,7 @@ class UTSStat(EelFigure, LegendMixin):
                 title_ = axtitle.format(name=cellname(cell))
                 p = _ax_uts_stat(ax, ct_, colors, main, error, dev_data, title_,
                                  xdim, xlim, invy, bottom, top, hline, clusters,
-                                 pmax, ptrend)
+                                 pmax, ptrend, clip)
                 self._plots.append(p)
                 legend_handles.update(p.legend_handles)
 
@@ -410,7 +411,7 @@ class UTS(EelFigure):
 class _ax_uts_stat(object):
 
     def __init__(self, ax, ct, colors, main, error, dev_data, title, xdim, xlim,
-                 invy, bottom, top, hline, clusters, pmax, ptrend):
+                 invy, bottom, top, hline, clusters, pmax, ptrend, clip):
         # stat plots
         self.stat_plots = []
         self.legend_handles = {}
@@ -420,7 +421,7 @@ class _ax_uts_stat(object):
             ndvar = ct.data[cell]
             y = ndvar.get_data(('case', xdim))
             plt = _plt_uts_stat(ax, x, y, main, error, dev_data, colors[cell],
-                                cellname(cell))
+                                cellname(cell), clip)
             self.stat_plots.append(plt)
             if plt.main is not None:
                 self.legend_handles[cell] = plt.main[0]
@@ -700,7 +701,7 @@ class _plt_uts_clusters:
 
 class _plt_uts_stat(object):
 
-    def __init__(self, ax, x, y, main, error, dev_data, color, label):
+    def __init__(self, ax, x, y, main, error, dev_data, color, label, clip):
         # plot main
         if hasattr(main, '__call__'):
             y_main = main(y, axis=0)
@@ -708,7 +709,7 @@ class _plt_uts_stat(object):
             if error == 'all':
                 lw *= 2
             self.main = ax.plot(x, y_main, color=color, label=label, lw=lw,
-                                zorder=5)
+                                zorder=5, clip_on=clip)
         elif error == 'all':
             self.main = None
         else:
@@ -716,7 +717,7 @@ class _plt_uts_stat(object):
 
         # plot error
         if error == 'all':
-            self.error = ax.plot(x, y.T, color=color, alpha=0.3)
+            self.error = ax.plot(x, y.T, color=color, alpha=0.3, clip_on=clip)
         elif error:
             if error == 'data':
                 pass
@@ -727,6 +728,6 @@ class _plt_uts_stat(object):
             lower = y_main - dev_data
             upper = y_main + dev_data
             self.error = ax.fill_between(x, lower, upper, color=color, alpha=0.3,
-                                         linewidth=0, zorder=0)
+                                         linewidth=0, zorder=0, clip_on=clip)
         else:
             self.error = None
