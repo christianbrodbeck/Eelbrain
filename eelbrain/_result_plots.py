@@ -244,7 +244,7 @@ class ClusterPlotter(object):
 
     def plot_values(self, ids, model, ymax, ymin=0, dpi=300, sub=None,
                     subagg=None, cells=None, pairwise=False, colors=None,
-                    prefix=None):
+                    prefix=None, w=None):
         """Plot values in cluster
 
         Parameters
@@ -277,7 +277,11 @@ class ClusterPlotter(object):
         prefix : str
             Prefix to use for the image files (optional, can be used to
             distinguish different groups of images sharing the same color-bars).
+        w : scalar
+            UTS-stat plot width (default is ``2 * h``).
         """
+        if w is None:
+            w = self.h * 2
         ds, model, modelname = self._get_data(model, sub, subagg)
         ids = self._ids(ids)
         if colors is None:
@@ -310,7 +314,7 @@ class ClusterPlotter(object):
                 p = plot.UTSStat(y_tc, model, match='subject', ds=ds, error='sem',
                                  colors=colors, title=None, axtitle=None, frame=False,
                                  bottom=ymin, top=ymax,
-                                 legend=None, ylabel=None, xlabel=None, w=self.h * 2, h=self.h,
+                                 legend=None, ylabel=None, xlabel=None, w=w, h=self.h,
                                  tight=False, show=False)
                 dt = y_tc.time.tstep / 2.
                 mark_start = cluster.info['tstart'] - dt
