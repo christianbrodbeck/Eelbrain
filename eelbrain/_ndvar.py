@@ -193,3 +193,94 @@ def resample(ndvar, sfreq, npad=100, window='none'):
     time = UTS(ndvar.time.tmin, new_tstep, x.shape[axis])
     dims = ndvar.dims[:axis] + (time,) + ndvar.dims[axis + 1:]
     return NDVar(x, dims, ndvar.info, ndvar.name)
+
+
+class Filter(object):
+    "Filter and downsample"
+    def __init__(self, sfreq=None):
+        self.sfreq = sfreq
+
+    def __repr__(self):
+        args = self._repr_args()
+        if self.sfreq:
+            args += ', sfreq=%i' % self.sfreq
+        return '%s(%s)' % (self.__class__.__name__, args)
+
+    def _repr_args(self):
+        raise NotImplementedError
+
+    def _get_b_a(self, tstep):
+        raise NotImplementedError
+
+    def __eq__(self, other):
+        return self.sfreq == other.sfreq
+
+    def filter(self, ndvar):
+        """Filter an NDVar"""
+        b, a = self._get_b_a(ndvar.time.tstep)
+        if not np.all(np.abs(np.roots(a)) < 1):
+            raise ValueError("Filter unstable")
+        x = signal.lfilter(b, a, ndvar.x, ndvar.get_axis('time'))
+        out = NDVar(x, ndvar.dims, ndvar.info.copy(), ndvar.name)
+        if self.sfreq:
+            return resample(out, self.sfreq)
+        else:
+            return out
+
+    def filtfilt(self, ndvar):
+        """Forward-backward filter an NDVar"""
+        b, a = self._get_b_a(ndvar.time.tstep)
+        if not np.all(np.abs(np.roots(a)) < 1):
+            raise ValueError("Filter unstable")
+        x = signal.filtfilt(b, a, ndvar.x, ndvar.get_axis('time'))
+        out = NDVar(x, ndvar.dims, ndvar.info.copy(), ndvar.name)
+        if self.sfreq:
+            return resample(out, self.sfreq)
+        else:
+            return out
+
+
+class Butterworth(Filter):
+    """Butterworth filter
+
+    Parameters
+    ----------
+    low : scalar
+        Low cutoff frequency.
+    high : scalar | None
+        High cutoff frequency.
+    order : int
+        Filter order.
+    sfreq : scalar
+        Downsample filtered signal to this sampling frequency.
+
+    Notes
+    -----
+    Uses :func:`scipy.signal.butter`.
+    """
+    def __init__(self, low, high, order, sfreq=None):
+        if not low and not high:
+            raise ValueError("Neither low nor high set")
+        self.low = low
+        self.high = high
+        self.order = int(order)
+        Filter.__init__(self, sfreq)
+
+    def _repr_args(self):
+        return '%s, %s, %i' % (self.low, self.high, self.order)
+
+    def __eq__(self, other):
+        return (Filter.__eq__(self, other) and self.low == other.low and
+                self.high == other.high and self.order == other.order)
+
+    def _get_b_a(self, tstep):
+        nyq = 1. / tstep / 2.
+        if self.low and self.high:
+            return signal.butter(self.order, (self.low / nyq, self.high / nyq),
+                                 'bandpass')
+        elif self.low:
+            return signal.butter(self.order, self.low / nyq, 'highpass')
+        elif self.high:
+            return signal.butter(self.order, self.high / nyq, 'lowpass')
+        else:
+            raise ValueError("Neither low nor high set")
