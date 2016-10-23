@@ -244,7 +244,7 @@ class ClusterPlotter(object):
 
     def plot_values(self, ids, model, ymax, ymin=0, dpi=300, sub=None,
                     subagg=None, cells=None, pairwise=False, colors=None,
-                    prefix=None, w=None):
+                    prefix=None, w=None, filter=None):
         """Plot values in cluster
 
         Parameters
@@ -279,6 +279,8 @@ class ClusterPlotter(object):
             distinguish different groups of images sharing the same color-bars).
         w : scalar
             UTS-stat plot width (default is ``2 * h``).
+        filter : Filter
+            Filter signal for display purposes (optional).
         """
         if w is None:
             w = self.h * 2
@@ -311,6 +313,8 @@ class ClusterPlotter(object):
                 p.close()
 
                 # time-course
+                if filter is not None:
+                    y_tc = filter.filtfilt(y_tc)
                 p = plot.UTSStat(y_tc, model, match='subject', ds=ds, error='sem',
                                  colors=colors, title=None, axtitle=None, frame=False,
                                  bottom=ymin, top=ymax,
