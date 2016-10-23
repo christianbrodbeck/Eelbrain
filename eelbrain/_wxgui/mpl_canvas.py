@@ -161,7 +161,7 @@ class CanvasFrame(EelbrainFrame):
         if mpl_toolbar:
             self.add_mpl_toolbar()
 
-        sizer.Fit(self)
+        self.Fit()
         self._eelfigure = eelfigure
         self.Bind(wx.EVT_CLOSE, self.OnClose)
 

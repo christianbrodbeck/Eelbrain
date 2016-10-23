@@ -1,7 +1,7 @@
 from itertools import chain
 from nose.tools import assert_raises, eq_, assert_greater
 
-from eelbrain import datasets
+from eelbrain import datasets, plot
 from eelbrain.plot import _base
 from eelbrain.plot._base import Layout
 
@@ -74,3 +74,10 @@ def test_vlims():
     eq_(lims[meas], (0, 1))
     lims = _base.find_fig_vlims(epochs, 1, -1, cmaps=cmaps)
     eq_(lims[meas], (0, 1))
+
+
+def test_eelfigure():
+    ds = datasets.get_uts()
+
+    p = plot.UTSStat('uts', 'A', ds=ds, h=2, w=50, show=False)
+    eq_(tuple(p.figure.get_size_inches()), (50, 2))
