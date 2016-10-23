@@ -1594,7 +1594,7 @@ class MneExperiment(FileTree):
             if os.path.exists(src):
                 trans_mtime = os.path.getmtime(trans)
                 src_mtime = os.path.getmtime(src)
-                return max(self._raw_mtime(), trans_mtime, src_mtime)
+                return max(self._raw_mtime('raw'), trans_mtime, src_mtime)
 
     def _ica_file_mtime(self, rej):
         "mtime if the file exists, else None; does not check raw mtime"
@@ -1616,9 +1616,14 @@ class MneExperiment(FileTree):
             if cov_mtime:
                 return max(cov_mtime, fwd_mtime)
 
-    def _raw_mtime(self):
-        pipe = self._raw[self.get('raw')]
-        return pipe.mtime(self.get('subject'), self.get('session'))
+    def _raw_mtime(self, raw=None):
+        if raw is None:
+            pipe = self._raw[self.get('raw')]
+            return pipe.mtime(self.get('subject'), self.get('session'))
+        elif raw == 'raw':
+            return os.path.getmtime(self.get('raw-file'))
+        else:
+            raise RuntimeError("raw-mtime with raw=%s" % repr(raw))
 
     def _rej_mtime(self, epoch, pre_ica=False):
         """rej-file mtime for secondary epoch definition
@@ -3851,7 +3856,7 @@ class MneExperiment(FileTree):
 
         trans = self.get('trans-file')
         src = self.get('src-file', make=True)
-        raw = self._get_raw_path()
+        raw = self.get('raw-file')
         bem = self._load_bem()
         src = mne.read_source_spaces(src)
 
