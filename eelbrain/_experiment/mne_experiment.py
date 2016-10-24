@@ -1817,7 +1817,7 @@ class MneExperiment(FileTree):
             correction (None).
         morph : bool
             Morph the source estimates to the common_brain (default False).
-        mask : bool
+        mask : bool | str
             Discard data that is labelled 'unknown' by the parcellation (only
             applies to NDVars, default False).
         """
@@ -1839,7 +1839,7 @@ class MneExperiment(FileTree):
             subject = self.get('mrisubject')
             src = self.get('src')
             mri_sdir = self.get('mri-sdir')
-            parc = self.get('parc') or None
+            parc = mask if isinstance(mask, basestring) else self.get('parc') or None
             src = load.fiff.stc_ndvar(stc, subject, src, mri_sdir,
                                       self._params['apply_inv_kw']['method'],
                                       self._params['make_inv_kw'].get('fixed', False),
@@ -1894,7 +1894,7 @@ class MneExperiment(FileTree):
         keep_evoked : bool
             Keep the sensor space data in the Dataset that is returned (default
             False).
-        mask : bool
+        mask : bool | str
             Discard data that is labelled 'unknown' by the parcellation (only
             applies to NDVars, default False).
 
@@ -1977,7 +1977,7 @@ class MneExperiment(FileTree):
 
         # add to Dataset
         src = self.get('src')
-        parc = self.get('parc') or None
+        parc = mask if isinstance(mask, basestring) else self.get('parc') or None
         mri_sdir = self.get('mri-sdir')
         # for name, key in izip(do, keys):
         if ind_stc:
@@ -2582,7 +2582,7 @@ class MneExperiment(FileTree):
             False).
         morph : bool
             Morph the source estimates to the common_brain (default False).
-        mask : bool
+        mask : bool | str
             Discard data that is labelled 'unknown' by the parcellation (only
             applies to NDVars, default False).
         data_raw : bool | str
@@ -2819,7 +2819,7 @@ class MneExperiment(FileTree):
         sns_baseline : None | True | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
-        mask : bool
+        mask : bool | str
             Discard data that is labelled 'unknown' by the parcellation (only
             applies to NDVars, default True).
         morph : bool
@@ -2858,7 +2858,7 @@ class MneExperiment(FileTree):
         sns_baseline : None | True | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
-        mask : bool
+        mask : bool | str
             Whether to just load the sources from the parcellation that are not
             defined as "unknown". Default is True.
         morph : bool
@@ -2919,7 +2919,7 @@ class MneExperiment(FileTree):
         keep_evoked : bool
             Keep the sensor space data in the Dataset that is returned (default
             False).
-        mask : bool
+        mask : bool | str
             Discard data that is labelled 'unknown' by the parcellation (only
             applies to NDVars, default False).
         data_raw : bool | str
