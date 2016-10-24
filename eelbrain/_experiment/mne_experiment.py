@@ -79,6 +79,15 @@ def typed_arg(arg, type_):
     return None if arg is None else type_(arg)
 
 
+def as_vardef_var(v):
+    "Coerce ds.eval() output for use as variable"
+    if isinstance(v, np.ndarray):
+        if v.dtype.kind == 'b':
+            return Var(v.astype(int))
+        return Var(v)
+    return v
+
+
 ################################################################################
 # Epochs
 class Epoch(object):
@@ -2029,12 +2038,12 @@ class MneExperiment(FileTree):
         if isinstance(vardef, tuple):
             for item in vardef:
                 name, vdef = item.split('=')
-                ds[name.strip()] = ds.eval(vdef)
+                ds[name.strip()] = as_vardef_var(ds.eval(vdef))
         elif isinstance(vardef, dict):
             new = {}
             for name, definition in vardef.iteritems():
                 if isinstance(definition, str):
-                    new[name] = ds.eval(definition)
+                    new[name] = as_vardef_var(ds.eval(definition))
                 else:
                     source, codes = definition
                     new[name] = asfactor(source, ds=ds).as_var(codes, 0, name)
