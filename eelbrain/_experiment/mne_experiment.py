@@ -2037,7 +2037,7 @@ class MneExperiment(FileTree):
 
         if isinstance(vardef, tuple):
             for item in vardef:
-                name, vdef = item.split('=')
+                name, vdef = item.split('=', 1)
                 ds[name.strip()] = as_vardef_var(ds.eval(vdef))
         elif isinstance(vardef, dict):
             new = {}
