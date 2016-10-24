@@ -1343,7 +1343,6 @@ class MneExperiment(FileTree):
                 for e in tuple(invalid_cache['epochs']):
                     invalid_cache['epochs'].update(find_dependent_epochs(e, cache_state['epochs']))
 
-
             # Collect invalid files
             # =====================
             if invalid_cache or cache_state_v < 2:
@@ -1905,9 +1904,8 @@ class MneExperiment(FileTree):
         operator.
         """
         if not any((ind_stc, ind_ndvar, morph_stc, morph_ndvar)):
-            err = ("Nothing to load, set at least one of (ind_stc, ind_ndvar, "
-                   "morph_stc, morph_ndvar) to True")
-            raise ValueError(err)
+            raise ValueError("Nothing to load, set at least one of (ind_stc, "
+                             "ind_ndvar, morph_stc, morph_ndvar) to True")
 
         if isinstance(baseline, str):
             raise NotImplementedError("Baseline form different epoch")
