@@ -2936,14 +2936,18 @@ class MneExperiment(FileTree):
             err = ("Nothing to load, set at least one of (ind_stc, ind_ndvar, "
                    "morph_stc, morph_ndvar) to True")
             raise ValueError(err)
-        elif not sns_baseline and src_baseline and \
+
+        if kwargs:
+            self.set(**kwargs)
+
+        if not sns_baseline and src_baseline and \
                 self._epochs[self.get('epoch')].post_baseline_trigger_shift:
             raise NotImplementedError("post_baseline_trigger_shift is not "
                                       "implemented for baseline correction in "
                                       "source space")
 
         ds = self.load_evoked(subject, sns_baseline, sns_ndvar, cat, None,
-                              data_raw, **kwargs)
+                              data_raw)
         self._add_evoked_stc(ds, ind_stc, ind_ndvar, morph_stc, morph_ndvar,
                              src_baseline, keep_evoked, mask)
 
