@@ -407,7 +407,7 @@ Example::
 two-stage
 ^^^^^^^^^
 
-Two-stage test. Stage 1: fit a model to the single trial data for each subject.
+Two-stage test. Stage 1: fit a regression model to the data for each subject.
 Stage 2: test coefficients from stage 1 against 0 across subjects.
 
 stage 1 : str
@@ -422,6 +422,10 @@ vars : dict (optional)
     ``(source_name, {value: code})``-tuple (see example below).
     ``source_name`` can also be an interaction, in which case cells are joined
     with spaces (``"f1_cell f2_cell"``).
+model : str (optional)
+    This parameter can be supplied to perform stage 1 tests on condition
+    averages. If ``model`` is not specified, the stage1 model is fit on single
+    trial data.
 
 Example: The first example assumes 2 categorical variables present in events,
 'a' with values 'a1' and 'a2', and 'b' with values 'b1' and 'b2'. These are

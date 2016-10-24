@@ -1048,7 +1048,8 @@ class MneExperiment(FileTree):
                 if missing:
                     raise KeyError("Test definition %s is missing %s"
                                    % (test, named_list(tuple(missing), 'entry')))
-                unknown = all_params.difference({'kind', 'stage 1', 'vars'})
+                unknown = all_params.difference({'kind', 'stage 1', 'vars',
+                                                 'model'})
                 if unknown:
                     raise KeyError("Test definition %s has unknown %s"
                                    % (test, named_list(tuple(unknown), 'entry')))
@@ -2006,8 +2007,7 @@ class MneExperiment(FileTree):
         if not keep_evoked:
             del ds['evoked']
 
-    @staticmethod
-    def _add_vars(ds, vardef):
+    def _add_vars(self, ds, vardef):
         """Add vars to the dataset
 
         Parameters
@@ -2017,6 +2017,15 @@ class MneExperiment(FileTree):
         vardef : dict | tuple
             Variable definition.
         """
+        if isinstance(vardef, str):
+            try:
+                vardef = self._tests[vardef].get('vars')
+            except KeyError:
+                raise ValueError("vardef must be a valid test definition, got "
+                                 "vardef=%r" % vardef)
+        if vardef is None:
+            return
+
         if isinstance(vardef, tuple):
             for item in vardef:
                 name, vdef = item.split('=')
@@ -2031,7 +2040,8 @@ class MneExperiment(FileTree):
                     new[name] = asfactor(source, ds=ds).as_var(codes, 0, name)
             ds.update(new, True)
         else:
-            raise TypeError("type(vardef)=%s; needs to be dict or tuple" % type(vardef))
+            raise TypeError("type(vardef)=%s; needs to be dict or tuple" %
+                            type(vardef))
 
     def _backup(self, dst_root, v=False):
         """Backup all essential files to ``dst_root``.
@@ -2716,7 +2726,7 @@ class MneExperiment(FileTree):
         return ds
 
     def load_evoked(self, subject=None, baseline=False, ndvar=True, cat=None,
-                    decim=None, data_raw=False, **kwargs):
+                    decim=None, data_raw=False, vardef=None, **kwargs):
         """
         Load a Dataset with the evoked responses for each subject.
 
@@ -2742,6 +2752,8 @@ class MneExperiment(FileTree):
             Can be specified as raw name (str) to include a different raw object
             than the one from which events are loaded (used for frequency
             analysis).
+        vardef : str
+            Name of a 2-stage test defining additional variables.
         model : str (state)
             Model according to which epochs are grouped into evoked responses.
         *others* : str
@@ -2753,7 +2765,8 @@ class MneExperiment(FileTree):
             baseline = self._epochs[self.get('epoch')].baseline
 
         if group is not None:
-            dss = [self.load_evoked(None, baseline, False, cat, decim, data_raw)
+            dss = [self.load_evoked(None, baseline, False, cat, decim, data_raw,
+                                    vardef)
                    for _ in self.iter(group=group)]
             if ndvar:
                 sysnames = set(ds.info['sysname'] for ds in dss)
@@ -2784,6 +2797,8 @@ class MneExperiment(FileTree):
                 if ds.n_cases == 0:
                     raise RuntimeError("Selection with cat=%s resulted in "
                                        "empty Dataset" % repr(cat))
+
+            self._add_vars(ds, vardef)
 
             # baseline correction
             if isinstance(baseline, str):
@@ -2888,7 +2903,7 @@ class MneExperiment(FileTree):
                         src_baseline=False, sns_ndvar=False, ind_stc=False,
                         ind_ndvar=False, morph_stc=False, morph_ndvar=False,
                         cat=None, keep_evoked=False, mask=False, data_raw=False,
-                        **kwargs):
+                        vardef=None, **kwargs):
         """Load evoked source estimates.
 
         Parameters
@@ -2927,6 +2942,8 @@ class MneExperiment(FileTree):
             Can be specified as raw name (str) to include a different raw object
             than the one from which events are loaded (used for frequency
             analysis).
+        vardef : str
+            Name of a 2-stage test defining additional variables.
         *others* : str
             State parameters.
         """
@@ -2945,7 +2962,7 @@ class MneExperiment(FileTree):
                                       "source space")
 
         ds = self.load_evoked(subject, sns_baseline, sns_ndvar, cat, None,
-                              data_raw)
+                              data_raw, vardef)
         self._add_evoked_stc(ds, ind_stc, ind_ndvar, morph_stc, morph_ndvar,
                              src_baseline, keep_evoked, mask)
 
@@ -3328,12 +3345,8 @@ class MneExperiment(FileTree):
                 ds['i_start'] += np.round(shift * ds.info['sfreq']).astype(int)
 
         # Additional variables
-        if epoch.vars is not None:
-            self._add_vars(ds, epoch.vars)
-        if isinstance(vardef, str):
-            vardef = self._tests[vardef].get('vars', None)
-        if vardef:
-            self._add_vars(ds, vardef)
+        self._add_vars(ds, epoch.vars)
+        self._add_vars(ds, vardef)
 
         # apply cat subset
         if cat:
@@ -3452,27 +3465,40 @@ class MneExperiment(FileTree):
 
         # two-stage tests (not cached)
         if test_params['kind'] == 'two-stage':
+            model = test_params.get('model')
             if data != 'src':
                 raise NotImplementedError("Two-stage test with data != 'src'")
-            elif return_data:
-                raise ValueError("return_data argument is invalid for two-"
-                                 "stage tests")
+            if model is not None:
+                self.set(model=model)
 
             # find params
-            model = test_params['stage 1']
-            vardef = test_params['vars'] if 'vars' in test_params else None
+            stage1 = test_params['stage 1']
+            vardef = test_params.get('vars')
 
             # stage 1
             n = len(self.get_field_values('subject'))
             prog_str = "\x1b[2KLoading 2-stage model [%%-%ss] %%s" % n
             lms = []
+            dss = []
             for i, subject in enumerate(self):
                 print(prog_str % ('#' * i, subject), end='\r')
-                ds = self.load_epochs_stc(subject, sns_baseline, src_baseline,
-                                          morph=True, mask=mask, vardef=vardef)
-                lms.append(spm.LM(y_name, model, ds, subject=subject))
+                if model is None:
+                    ds = self.load_epochs_stc(subject, sns_baseline,
+                                              src_baseline, morph=True,
+                                              mask=mask, vardef=vardef)
+                else:
+                    ds = self.load_evoked_stc(subject, sns_baseline,
+                                              src_baseline, morph_ndvar=True,
+                                              mask=mask, vardef=vardef)
+                lms.append(spm.LM(y_name, stage1, ds, subject=subject))
+                if return_data:
+                    dss.append(ds)
             print(prog_str % ('#' * n, 'done'))
-            return spm.RandomLM(lms)
+            rlm = spm.RandomLM(lms)
+            if return_data:
+                return combine(dss), rlm
+            else:
+                return rlm
 
         # try to load cached test
         res = None
@@ -4557,8 +4583,14 @@ class MneExperiment(FileTree):
 
     def _two_stage_report(self, report, test, sns_baseline, src_baseline, pmin,
                           samples, tstart, tstop, parc, mask, include):
+        model = self._tests[test].get('model')
         rlm = self._load_test(test, tstart, tstop, pmin, parc, mask, samples,
-                              'src', sns_baseline, src_baseline, False, True)
+                              'src', sns_baseline, src_baseline, bool(model),
+                              True)
+        if model:
+            group_ds, rlm = rlm
+        else:
+            group_ds = None
 
         # stage 2
         parc_dim = 'source' if parc else None
@@ -4585,7 +4617,7 @@ class MneExperiment(FileTree):
             report.append(_report.source_time_results(res, ds, None, include,
                                                       surfer_kwargs, term))
 
-        self._report_test_info(info_section, ds, test, res, 'src')
+        self._report_test_info(info_section, group_ds or ds, test, res, 'src')
 
     def make_report_rois(self, test, parc=None, pmin=None, tstart=0.15, tstop=None,
                          samples=10000, sns_baseline=True, src_baseline=False,
@@ -4881,7 +4913,7 @@ class MneExperiment(FileTree):
         info = res.info_list(data is not None)
         section.append(info)
 
-        section.append(self._report_subject_info(ds, test_params.get('model', None)))
+        section.append(self._report_subject_info(ds, test_params.get('model')))
         section.append(self.show_state(hide=('hemi', 'subject', 'mrisubject')))
 
     def _report_parc_image(self, section, caption):
