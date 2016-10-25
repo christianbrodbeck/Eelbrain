@@ -994,47 +994,10 @@ class MneExperiment(FileTree):
         # tests
         tests = {}
         for test, params in self.tests.iteritems():
-            # backwards compatibility for old test specification
-            if isinstance(params, (tuple, list)):
-                warn("MneExperiment.tests should be defined as dictionaries, "
-                     "test definitions with tuples/lists will not work after "
-                     "version 0.20. Please change your MneExperiment subclass "
-                     "definition.", DeprecationWarning)
-                kind, model, test_parameter = params
-                if kind == 'anova':
-                    params = {'kind': kind, 'model': model, 'x': test_parameter}
-                elif kind == 'ttest_rel':
-                    m = re.match(r"\s*([\w|]+)\s*([<=>])\s*([\w|]+)$", test_parameter)
-                    if m is None:
-                        raise ValueError("The contrast definition %s for test "
-                                         "%s could not be parsed." %
-                                         (repr(test_parameter), test))
-                    c1, tail, c0 = m.groups()
-                    if '|' in c1:
-                        c1 = tuple(c1.split('|'))
-                        c0 = tuple(c0.split('|'))
-
-                    if tail == '=':
-                        tail = 0
-                    elif tail == '>':
-                        tail = 1
-                    elif tail == '<':
-                        tail = -1
-                    else:
-                        raise ValueError("%r in t-test contrast=%r"
-                                         % (tail, test_parameter))
-                    params = {'kind': kind, 'model': model, 'c1': c1, 'c0': c0,
-                              'tail': tail}
-                elif kind == 't_contrast_rel':
-                    params = {'kind': kind, 'model': model,
-                              'contrast': test_parameter}
-                else:
-                    raise ValueError("Unknown test: %s" % repr(kind))
-            elif not isinstance(params, dict):
-                raise TypeError("Tests need to be specified as dictionary, "
-                                "got %s" % repr(params))
-            else:
-                params = params.copy()
+            if not isinstance(params, dict):
+                raise TypeError("Tests must be specified as dictionary, "
+                                "got %r: %s" % (test, repr(params)))
+            params = params.copy()
 
             # test descriptions
             kind = params['kind']
