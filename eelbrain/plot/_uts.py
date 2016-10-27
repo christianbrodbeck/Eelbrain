@@ -8,7 +8,8 @@ import operator
 import matplotlib as mpl
 import numpy as np
 
-from .._data_obj import ascategorial, asndvar, assub, cellname, Celltable
+from .._data_obj import (
+    ascategorial, asndvar, assub, cellname, Celltable, longname)
 from .._stats import stats
 from . import _base
 from ._base import EelFigure, Layout, LegendMixin, VLimMixin, XAxisMixin
@@ -315,7 +316,7 @@ class UTSStat(EelFigure, LegendMixin):
         self.draw()
 
 
-class UTS(VLimMixin, XAxisMixin, EelFigure):
+class UTS(LegendMixin, VLimMixin, XAxisMixin, EelFigure):
     """Value by time plot for UTS data
 
     Parameters
@@ -336,6 +337,9 @@ class UTS(VLimMixin, XAxisMixin, EelFigure):
         Add tick-labels to the x-axis (default True).
     bottom, top : scalar
         Y-axis limits.
+    legend : str | int | 'fig' | None
+        Matplotlib figure legend location argument or 'fig' to plot the
+        legend in a separate figure.
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
@@ -344,7 +348,7 @@ class UTS(VLimMixin, XAxisMixin, EelFigure):
     """
     def __init__(self, epochs, xax=None, axtitle='{name}', ds=None,
                  xlabel=True, ylabel=True, xticklabels=True, bottom=None,
-                 top=None, *args, **kwargs):
+                 top=None, legend='upper right', *args, **kwargs):
         epochs, (xdim,) = _base.unpack_epochs_arg(epochs, (None,), xax, ds)
         layout = Layout(len(epochs), 1.5, 2, *args, **kwargs)
         EelFigure.__init__(self, "UTS", layout)
@@ -354,16 +358,22 @@ class UTS(VLimMixin, XAxisMixin, EelFigure):
         self._configure_yaxis(e0, ylabel)
 
         self.plots = []
+        legend_handles = {}
         vlims = _base.find_fig_vlims(epochs, top, bottom)
         colors = oneway_colors(max(map(len, epochs)))
         for ax, layers in izip(self._axes, epochs):
             h = _ax_uts(ax, layers, xdim, axtitle, vlims, colors)
             self.plots.append(h)
+            legend_handles.update(h.legend_handles)
 
         self.epochs = epochs
         XAxisMixin.__init__(self, epochs, xdim)
         VLimMixin.__init__(self)
+        LegendMixin.__init__(self, legend, legend_handles)
         self._show()
+
+    def _fill_toolbar(self, tb):
+        LegendMixin._fill_toolbar(self, tb)
 
 
 class _ax_uts_stat(object):
@@ -522,9 +532,11 @@ class _ax_uts(object):
         l0 = layers[0]
         vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
 
+        self.legend_handles = {}
         for l, color in izip(layers, colors):
             color = l.info.get('color', color)
-            _plt_uts(ax, l, xdim, color)
+            p = _plt_uts(ax, l, xdim, color)
+            self.legend_handles[longname(l)] = p.plot_handle
             contours = l.info.get('contours', None)
             if contours:
                 for v, color in contours.iteritems():
@@ -553,17 +565,19 @@ class _ax_uts(object):
         self.vmax = vmax
 
 
-def _plt_uts(ax, ndvar, xdim, color=None, kwargs={}):
-    y = ndvar.get_data((xdim,))
-    x = ndvar.get_dim(xdim).x
-    if color is not None:
-        kwargs['color'] = color
-    ax.plot(x, y, **kwargs)
+class _plt_uts(object):
 
-    for y, kwa in _base.find_uts_hlines(ndvar):
+    def __init__(self, ax, ndvar, xdim, color=None, kwargs={}):
+        y = ndvar.get_data((xdim,))
+        x = ndvar.get_dim(xdim).x
         if color is not None:
-            kwa['color'] = color
-        ax.axhline(y, **kwa)
+            kwargs['color'] = color
+        self.plot_handle = ax.plot(x, y, label=longname(ndvar), **kwargs)[0]
+
+        for y, kwa in _base.find_uts_hlines(ndvar):
+            if color is not None:
+                kwa['color'] = color
+            ax.axhline(y, **kwa)
 
 
 class _ax_uts_clusters:
