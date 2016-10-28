@@ -63,9 +63,9 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         Resolution of the topomaps (width = height = ``res``).
     interpolation : str
         Matplotlib imshow() parameter for topomaps.
-    axtitle : str | bool
-        Axes title, True to use is each topography's name. The default (None)
-        is True when more than one topography is plotted, False otherwise.
+    axtitle : bool | sequence of str
+        Title for the individual axes. The default is to show the names of the
+        epochs, but only if multiple axes are plotted.
     xlabel : str
         Label below the topomaps (default is no label).
     method : 'nearest' | 'linear' | 'cubic' | 'spline'
@@ -84,13 +84,11 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
     def __init__(self, epochs, xax=None, proj='default', cmap=None, vmax=None,
                  vmin=None, contours=7, clip='even', clip_distance=0.05,
                  head_radius=None, head_pos=0., mark=None, sensorlabels='none',
-                 ds=None, res=64, interpolation=None, axtitle=None, xlabel=None,
+                 ds=None, res=64, interpolation=None, axtitle=True, xlabel=None,
                  method=None, *args, **kwargs):
         epochs, _ = self._epochs = _base.unpack_epochs_arg(epochs, ('sensor',),
                                                            xax, ds)
         ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin, contours)
-        if axtitle is None:
-            axtitle = False if len(epochs) == 1 else True
         nax = len(epochs)
         if isinstance(proj, basestring):
             proj = repeat(proj, nax)
@@ -104,15 +102,15 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
 
         layout = ImLayout(nax, 0, 0, 1, 5, *args, **kwargs)
         EelFigure.__init__(self, "Topomap", layout)
+        self._set_axtitle(axtitle, epochs)
 
         # plots
         self.plots = []
         for ax, layers, proj_ in izip(self._axes, epochs, proj):
-            h = _ax_topomap(ax, layers, axtitle, clip, clip_distance,
-                            sensorlabels, mark, None, None,
-                            proj_, res, interpolation, xlabel, self._vlims,
-                            self._cmaps, self._contours, method, head_radius,
-                            head_pos)
+            h = _ax_topomap(ax, layers, clip, clip_distance, sensorlabels, mark,
+                            None, None, proj_, res, interpolation, xlabel,
+                            self._vlims, self._cmaps, self._contours, method,
+                            head_radius, head_pos)
             self.plots.append(h)
 
         TopoMapKey.__init__(self, self._topo_data)
@@ -151,14 +149,11 @@ class TopomapBins(EelFigure):
 
         for row, layers in enumerate(epochs):
             for column, t in enumerate(time.x):
-                if row == 0:
-                    title = str(t)
-                else:
-                    title = None
                 ax = self._axes[row * n_bins + column]
                 topo_layers = [l.sub(time=t) for l in layers]
-                _ax_topomap(ax, topo_layers, title, cmaps=cmaps, vlims=vlims)
+                _ax_topomap(ax, topo_layers, cmaps=cmaps, vlims=vlims)
 
+        self._set_axtitle((str(t) for t in time.x), axes=self._axes[:len(time)])
         self._show()
 
 
@@ -201,8 +196,9 @@ class TopoButterfly(TopoMapKey, EelFigure):
     vmax, vmin : None | scalar
         Override the default plot limits. If only vmax is specified, vmin
         is set to -vmax.
-    axlabel : bool | str | list of str
-        Label for the axes.
+    axlabel : bool | sequence of str
+        Label for the individual axes. The default is to show the names of the
+        epochs, but only if multiple axes are plotted.
     title : None | string
         Figure title.
 
@@ -279,20 +275,7 @@ class TopoButterfly(TopoMapKey, EelFigure):
         self._xvalues = []
 
         # find ax-labels
-        if axlabel is True:
-            axlabel = []
-            for layers in epochs:
-                for l in layers:
-                    if l.name:
-                        axlabel.append(l.name)
-                        break
-                else:
-                    axlabel.append(None)
-        elif not axlabel or isinstance(axlabel, basestring):
-            axlabel = tuple(repeat(axlabel, n_plots))
-        elif len(axlabel) != n_plots:
-            raise ValueError("not the same number of axlabels as epochs "
-                             "(axlabel=%r, n_epochs=%s)" % (axlabel, n_plots))
+        axlabel = self._set_axtitle(axlabel, epochs, n_plots) or (None,) * n_plots
 
         # plot epochs (x/y are in figure coordinates)
         for i, layers in enumerate(epochs):
@@ -315,8 +298,7 @@ class TopoButterfly(TopoMapKey, EelFigure):
             self._topoax_data.append((ax2, layers))
 
             # plot data
-            p = _ax_butterfly(ax1, layers, 'time', 'sensor', mark, False, color,
-                              vlims)
+            p = _ax_butterfly(ax1, layers, 'time', 'sensor', mark, color, vlims)
             self.bfly_plots.append(p)
 
             self._xvalues = np.union1d(self._xvalues, p._xvalues)
@@ -585,7 +567,7 @@ class _plt_topomap(_plt_im):
 
 class _ax_topomap(_ax_im_array):
 
-    def __init__(self, ax, layers, title, clip=False, clip_distance=0.05,
+    def __init__(self, ax, layers, clip=False, clip_distance=0.05,
                  sensorlabels=None, mark=None, mcolor=None, mmarker=None,
                  proj='default',
                  res=100, interpolation=None, xlabel=None, vlims={}, cmaps={},
@@ -605,9 +587,6 @@ class _ax_topomap(_ax_im_array):
         self.data = layers
         self.proj = proj
         self.layers = []
-
-        if title is True:
-            title = layers[0].name
 
         if xlabel is True:
             xlabel = layers[0].name
@@ -638,10 +617,6 @@ class _ax_topomap(_ax_im_array):
         if isinstance(xlabel, basestring):
             x, y = ax.transData.inverted().transform(ax.transAxes.transform((0.5, 0)))
             ax.text(x, y, xlabel, ha='center', va='top')
-
-        self.title = title
-        if isinstance(title, basestring):
-            ax.set_title(title)
 
 
 class _TopoWindow:
@@ -768,22 +743,6 @@ class TopoArray(EelFigure):
                                     bottom=.05, top=.9, wspace=.1, hspace=.3)
         self.title = title
 
-        if axtitle is True:
-            if len(epochs) == 1:
-                axtitle = [None]
-            else:
-                axtitle = []
-                for layers in epochs:
-                    for layer in layers:
-                        if layer.name:
-                            axtitle.append(layer.name)
-                            break
-                    else:
-                        axtitle.append(None)
-        elif axtitle:
-            if len(axtitle) != len(epochs):
-                raise ValueError("axtitle needs to have the same length as "
-                                 "epochs; got %s" % repr(axtitle))
 
         cmaps = _base.find_fig_cmaps(epochs)
         vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
@@ -810,7 +769,7 @@ class TopoArray(EelFigure):
                                       picker=True)
             ax.ID = i
             ax.type = 'main'
-            im_plot = _ax_im_array(ax, layers, 'time', axtitle[i], vlims=vlims,
+            im_plot = _ax_im_array(ax, layers, 'time', vlims=vlims,
                                    contours=contours)
             self._axes.append(ax)
             self._array_axes.append(ax)
@@ -838,6 +797,7 @@ class TopoArray(EelFigure):
             self.set_topo_ts(*t)
 
         e0 = epochs[0][0]
+        self._set_axtitle(axtitle, epochs, self._array_axes)
         self._configure_xaxis_dim(e0.time, True, xticklabels, self._array_axes)
         self._configure_yaxis_dim(e0.sensor, True, self._array_axes, False)
 

@@ -53,9 +53,9 @@ class UTSStat(EelFigure, LegendMixin):
     legend : str | int | 'fig' | None
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
-    axtitle : str | None
-        Axes title, '{name}' is formatted to the category name. When plotting
-        only one axes, use the `title` argument.
+    axtitle : bool | sequence of str
+        Title for the individual axes. The default is to show the names of the
+        epochs, but only if multiple axes are plotted.
     xlabel : str | None
         X-axis labels. By default the label is inferred from the data.
     ylabel : str | None
@@ -106,7 +106,7 @@ class UTSStat(EelFigure, LegendMixin):
     """
     def __init__(self, Y='Y', X=None, Xax=None, match=None, sub=None, ds=None,
                  main=np.mean, error='sem', pool_error=None, legend='upper right',
-                 axtitle='{name}', xlabel=True, ylabel=True, xticklabels=True,
+                 axtitle=True, xlabel=True, ylabel=True, xticklabels=True,
                  invy=False, bottom=None, top=None, hline=None, xdim='time',
                  xlim=None, color='b', colors=None, clusters=None, pmax=0.05,
                  ptrend=0.1, *args, **kwargs):
@@ -168,8 +168,8 @@ class UTSStat(EelFigure, LegendMixin):
         legend_handles = {}
         if Xax is None:
             p = _ax_uts_stat(self._axes[0], ct, colors, main, error, dev_data,
-                             None, xdim, xlim, invy, bottom, top, hline,
-                             clusters, pmax, ptrend, clip)
+                             xdim, xlim, invy, bottom, top, hline, clusters,
+                             pmax, ptrend, clip)
             self._plots.append(p)
             legend_handles.update(p.legend_handles)
             if len(ct) < 2:
@@ -183,12 +183,12 @@ class UTSStat(EelFigure, LegendMixin):
                     match = matchct.data[cell]
 
                 ct_ = Celltable(ct.data[cell], X_, match=match, coercion=asndvar)
-                title_ = axtitle.format(name=cellname(cell))
-                p = _ax_uts_stat(ax, ct_, colors, main, error, dev_data, title_,
+                p = _ax_uts_stat(ax, ct_, colors, main, error, dev_data,
                                  xdim, xlim, invy, bottom, top, hline, clusters,
                                  pmax, ptrend, clip)
                 self._plots.append(p)
                 legend_handles.update(p.legend_handles)
+            self._set_axtitle(axtitle, names=map(cellname, ct.cells))
 
         self._configure_yaxis(ct.Y, ylabel)
         self._configure_xaxis_dim(ct.Y.get_dim(xdim), xlabel, xticklabels)
@@ -325,8 +325,9 @@ class UTS(LegendMixin, VLimMixin, XAxisMixin, EelFigure):
         Uts data epochs to plot.
     xax : None | categorial
         Make separate axes for each category in this categorial model.
-    axtitle : None | str
-        Axes title. '{name}' is formatted to the category name.
+    axtitle : bool | sequence of str
+        Title for the individual axes. The default is to show the names of the
+        epochs, but only if multiple axes are plotted.
     ds : None | Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
@@ -346,12 +347,13 @@ class UTS(LegendMixin, VLimMixin, XAxisMixin, EelFigure):
     title : None | str
         Figure title.
     """
-    def __init__(self, epochs, xax=None, axtitle='{name}', ds=None,
+    def __init__(self, epochs, xax=None, axtitle=True, ds=None,
                  xlabel=True, ylabel=True, xticklabels=True, bottom=None,
                  top=None, legend='upper right', *args, **kwargs):
         epochs, (xdim,) = _base.unpack_epochs_arg(epochs, (None,), xax, ds)
         layout = Layout(len(epochs), 1.5, 2, *args, **kwargs)
         EelFigure.__init__(self, "UTS", layout)
+        self._set_axtitle(axtitle, epochs)
 
         e0 = epochs[0][0]
         self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
@@ -362,7 +364,7 @@ class UTS(LegendMixin, VLimMixin, XAxisMixin, EelFigure):
         vlims = _base.find_fig_vlims(epochs, top, bottom)
         colors = oneway_colors(max(map(len, epochs)))
         for ax, layers in izip(self._axes, epochs):
-            h = _ax_uts(ax, layers, xdim, axtitle, vlims, colors)
+            h = _ax_uts(ax, layers, xdim, vlims, colors)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
@@ -378,7 +380,7 @@ class UTS(LegendMixin, VLimMixin, XAxisMixin, EelFigure):
 
 class _ax_uts_stat(object):
 
-    def __init__(self, ax, ct, colors, main, error, dev_data, title, xdim, xlim,
+    def __init__(self, ax, ct, colors, main, error, dev_data, xdim, xlim,
                  invy, bottom, top, hline, clusters, pmax, ptrend, clip):
         # stat plots
         self.stat_plots = []
@@ -410,12 +412,6 @@ class _ax_uts_stat(object):
         # cluster plot
         self.cluster_plt = _plt_uts_clusters(ax, clusters, pmax, ptrend)
 
-        # title
-        if title:
-            if title is True:
-                title = ct.Y.name
-            ax.set_title(title)
-
         # format x axis
         if xlim is None:
             ax.set_xlim(x[0], x[-1])
@@ -436,7 +432,10 @@ class _ax_uts_stat(object):
 
         # store attributes
         self.ax = ax
-        self.title = title
+
+    @property
+    def title(self):
+        return self.ax.get_title()
 
 
 class UTSClusters(EelFigure):
@@ -450,8 +449,9 @@ class UTSClusters(EelFigure):
         Maximum p-value of clusters to plot as solid.
     ptrend : scalar
         Maximum p-value of clusters to plot as trend.
-    axtitle : None | str
-        Axes title pattern. '{name}' is formatted to the effect name.
+    axtitle : bool | sequence of str
+        Title for the individual axes. The default is to show the names of the
+        epochs, but only if multiple axes are plotted.
     cm : str
         Colormap to use for coloring different effects.
     overlay : bool
@@ -465,7 +465,7 @@ class UTSClusters(EelFigure):
     title : str
         Figure title.
     """
-    def __init__(self, res, pmax=0.05, ptrend=0.1, axtitle='{name}', cm=None,
+    def __init__(self, res, pmax=0.05, ptrend=0.1, axtitle=True, cm=None,
                  overlay=False, xticklabels=True, *args, **kwargs):
         clusters_ = res.clusters
 
@@ -476,12 +476,12 @@ class UTSClusters(EelFigure):
         nax = 1 if overlay else n
         layout = Layout(nax, 2, 4, *args, **kwargs)
         EelFigure.__init__(self, "UTSClusters", layout)
+        self._set_axtitle(axtitle, epochs)
 
         colors = colors_for_oneway(range(n), cmap=cm)
         self._caxes = []
         if overlay:
             ax = self._axes[0]
-            axtitle = None
 
         for i, layers in enumerate(epochs):
             stat = layers[0]
@@ -497,8 +497,7 @@ class UTSClusters(EelFigure):
             else:
                 cs = None
 
-            cax = _ax_uts_clusters(ax, stat, cs, colors[i], pmax, ptrend, xdim,
-                                   axtitle)
+            cax = _ax_uts_clusters(ax, stat, cs, colors[i], pmax, ptrend, xdim)
             self._caxes.append(cax)
 
         e0 = epochs[0][0]
@@ -528,7 +527,7 @@ class UTSClusters(EelFigure):
 
 class _ax_uts(object):
 
-    def __init__(self, ax, layers, xdim, title, vlims, colors):
+    def __init__(self, ax, layers, xdim, vlims, colors):
         l0 = layers[0]
         vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
 
@@ -546,12 +545,6 @@ class _ax_uts(object):
 
         x = l0.get_dim(xdim)
         ax.set_xlim(x[0], x[-1])
-
-        if title:
-            if '{name}' in title:
-                title = title.format(name=l0.name or '')
-        if title:
-            ax.set_title(title)
 
         self.ax = ax
         self.set_vlim(vmax, vmin)
@@ -582,14 +575,9 @@ class _plt_uts(object):
 
 class _ax_uts_clusters:
     def __init__(self, ax, Y, clusters, color=None, pmax=0.05, ptrend=0.1,
-                 xdim='time', title=None):
+                 xdim='time'):
         uts_args = _base.find_uts_args(Y, False, color)
         self._bottom, self._top = _base.find_vlim_args(Y)
-
-        if title:
-            if '{name}' in title:
-                title = title.format(name=Y.name)
-            ax.set_title(title)
 
         _plt_uts(ax, Y, xdim=xdim, **uts_args)
 

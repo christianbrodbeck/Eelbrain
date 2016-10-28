@@ -120,13 +120,12 @@ class _plt_im_array(_plt_im):
 
 class _ax_im_array(object):
 
-    def __init__(self, ax, layers, x='time', title=None, interpolation=None,
-                 vlims={}, cmaps={}, contours={}):
+    def __init__(self, ax, layers, x='time', interpolation=None, vlims={},
+                 cmaps={}, contours={}):
         self.ax = ax
         self.data = layers
         self.layers = []
-        epoch = layers[0]
-        dimnames = epoch.get_dimnames((x, None))
+        dimnames = layers[0].get_dimnames((x, None))
 
         # plot
         overlay = False
@@ -136,11 +135,9 @@ class _ax_im_array(object):
             self.layers.append(p)
             overlay = True
 
-        # title
-        if title is True:
-            title = _base.str2tex(epoch.name)
-        if title:
-            ax.set_title(title)
+    @property
+    def title(self):
+        return self.ax.get_title()
 
     def add_contour(self, meas, level, color):
         for l in self.layers:
@@ -203,8 +200,9 @@ class Array(ColorMapMixin, XAxisMixin, EelFigure):
         Lower limit for the colormap.
     cmap : str
         Colormap (default depends on the data).
-    axtitle : bool | str
-        Axes title.
+    axtitle : bool | sequence of str
+        Title for the individual axes. The default is to show the names of the
+        epochs, but only if multiple axes are plotted.
     interpolation : str
         Array image interpolation (see Matplotlib's
         :meth:`~matplotlib.axes.Axes.imshow`).
@@ -223,10 +221,11 @@ class Array(ColorMapMixin, XAxisMixin, EelFigure):
         nax = len(epochs)
         layout = Layout(nax, 2, 4, *args, **kwargs)
         EelFigure.__init__(self, "Array Plot", layout)
+        self._set_axtitle(axtitle, epochs)
 
         self.plots = []
         for i, ax, layers in zip(xrange(nax), self._axes, epochs):
-            p = _ax_im_array(ax, layers, x, axtitle, interpolation, self._vlims,
+            p = _ax_im_array(ax, layers, x, interpolation, self._vlims,
                              self._cmaps, self._contours)
             self.plots.append(p)
 
@@ -291,8 +290,8 @@ class _plt_utsnd(object):
 
 class _ax_butterfly(object):
 
-    def __init__(self, ax, layers, xdim, linedim, sensors=None, title='{name}',
-                 color=None, vlims={}):
+    def __init__(self, ax, layers, xdim, linedim, sensors=None, color=None,
+                 vlims={}):
         """
         Parameters
         ----------
@@ -331,12 +330,11 @@ class _ax_butterfly(object):
     #    ax.yaxis.set_offset_position('right')
         ax.yaxis.offsetText.set_va('top')
 
-        if isinstance(title, basestring):
-            title = title.format(name=name)
-            ax.set_title(title)
-        self.title = title
-
         self.set_vlim(vmax, vmin)
+
+    @property
+    def title(self):
+        return self.ax.get_title()
 
     def set_vlim(self, vmax=None, vmin=None):
         if vmin is None and vmax is not None:
@@ -358,8 +356,9 @@ class Butterfly(LegendMixin, TopoMapKey, VLimMixin, XAxisMixin, EelFigure):
         Create a separate plot for each cell in this model.
     sensors: None or list of sensor IDs
         sensors to plot (``None`` = all)
-    axtitle : str | None
-        Title to plot for axes. Default is the NDVar names.
+    axtitle : bool | sequence of str
+        Title for the individual axes. The default is to show the names of the
+        epochs, but only if multiple axes are plotted.
     xlabel : str | None
         X-axis labels. By default the label is inferred from the data.
     ylabel : str | None
@@ -387,13 +386,14 @@ class Butterfly(LegendMixin, TopoMapKey, VLimMixin, XAxisMixin, EelFigure):
     _cmaps = None  # for TopoMapKey mixin
     _contours = None
 
-    def __init__(self, epochs, xax=None, sensors=None, axtitle='{name}',
+    def __init__(self, epochs, xax=None, sensors=None, axtitle=True,
                  xlabel=True, ylabel=True, xticklabels=True, color=None,
                  ds=None, x='time', vmax=None, vmin=None, *args, **kwargs):
         epochs, (xdim, linedim) = _base.unpack_epochs_arg(epochs, (x, None),
                                                           xax, ds)
         layout = Layout(len(epochs), 2, 4, *args, **kwargs)
         EelFigure.__init__(self, 'Butterfly Plot', layout)
+        self._set_axtitle(axtitle, epochs)
         e0 = epochs[0][0]
         self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
         self._configure_yaxis(e0, ylabel)
@@ -402,8 +402,8 @@ class Butterfly(LegendMixin, TopoMapKey, VLimMixin, XAxisMixin, EelFigure):
         self._vlims = _base.find_fig_vlims(epochs, vmax, vmin)
         legend_handles = {}
         for ax, layers in zip(self._axes, epochs):
-            h = _ax_butterfly(ax, layers, xdim, linedim, sensors, axtitle,
-                              color, self._vlims)
+            h = _ax_butterfly(ax, layers, xdim, linedim, sensors, color,
+                              self._vlims)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 

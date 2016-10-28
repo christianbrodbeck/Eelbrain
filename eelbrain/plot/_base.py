@@ -59,7 +59,8 @@ functions executed are:
 from __future__ import division
 import __main__
 
-from itertools import chain
+from collections import Iterable, Iterator
+from itertools import chain, izip
 import math
 import os
 import shutil
@@ -972,6 +973,62 @@ class EelFigure(object):
         self.canvas.mpl_connect('resize_event', self._on_resize)
         self.canvas.mpl_connect('key_press_event', self._on_key_press)
         self.canvas.mpl_connect('key_release_event', self._on_key_release)
+
+    def _set_axtitle(self, axtitle, epochs=None, axes=None, names=None):
+        """Set axes titles automatically
+
+        Parameters
+        ----------
+        axtitle : bool | str | sequence of str
+            Plot parameter.
+        epochs : nested list of NDVar
+            Plotted epochs (if available).
+        axes : list of axes | int
+            Axes for which to set title (default is self._axes). If an int,
+            (n axes) the method does not set axes title but returns ``None``
+            or a tuple of titles.
+        names : sequence of str
+            Instead of using ``epochs`` name attributes, use these names.
+        """
+        if not axtitle:
+            return
+
+        if axes is None:
+            axes = self._axes
+
+        naxes = axes if isinstance(axes, int) else len(axes)
+
+        if axtitle is True and naxes == 1:
+            return
+        elif axtitle is True or isinstance(axtitle, basestring):
+            if names is None:
+                names = []
+                for layers in epochs:
+                    for layer in layers:
+                        if layer.name:
+                            names.append(layer.name)
+                            break
+                    else:
+                        names.append(None)
+
+            if axtitle is True:
+                axtitle = names
+            else:
+                axtitle = (axtitle.format(name=n) if n else None for n in names)
+        elif isinstance(axtitle, Iterable):
+            if isinstance(axtitle, Iterator):
+                axtitle = tuple(axtitle)
+            if len(axtitle) != naxes:
+                raise ValueError("axtitle needs to have one entry per axes. "
+                                 "Got %r for %i axes" % (axtitle, naxes))
+        else:
+            raise TypeError("axtitle=%r" % (axtitle,))
+
+        if isinstance(axes, int):
+            return axtitle
+
+        for title, ax in izip(axtitle, axes):
+            ax.set_title(title)
 
     def _show(self):
         if self._layout.tight:
