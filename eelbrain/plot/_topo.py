@@ -4,6 +4,7 @@ Plot topographic maps of sensor space data.
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import division
 
+from collections import Sequence
 from itertools import izip, repeat
 from math import floor, sqrt
 
@@ -12,7 +13,6 @@ import numpy as np
 from scipy import interpolate, linalg
 from scipy.spatial import ConvexHull
 
-from .._data_obj import SEQUENCE_TYPES
 from .._utils.numpy_utils import digitize
 from . import _base
 from ._base import EelFigure, Layout, ImLayout, ColorMapMixin, TopoMapKey
@@ -92,7 +92,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         nax = len(epochs)
         if isinstance(proj, basestring):
             proj = repeat(proj, nax)
-        elif not isinstance(proj, SEQUENCE_TYPES):
+        elif not isinstance(proj, Sequence):
             raise TypeError("proj=%s" % repr(proj))
         elif len(proj) != nax:
             raise ValueError("need as many proj as axes (%s)" % nax)

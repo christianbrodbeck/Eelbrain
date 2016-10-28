@@ -2,6 +2,7 @@
 Plot sensor maps.
 '''
 # author: Christian Brodbeck
+from collections import Sequence
 from itertools import izip
 from math import sin, cos, asin
 import os
@@ -10,7 +11,7 @@ import numpy as np
 import matplotlib as mpl
 from matplotlib.lines import Line2D
 
-from .._data_obj import SEQUENCE_TYPES, Datalist, as_sensor
+from .._data_obj import Datalist, as_sensor
 from ._base import EelFigure, Layout
 
 
@@ -44,12 +45,12 @@ def _head_outlines(radius, center=0):
     ear_x_left = -ear_x_right
 
     # apply radius and center
-    if isinstance(radius, SEQUENCE_TYPES):
+    if isinstance(radius, Sequence):
         rx, ry = radius
     else:
         rx = ry = radius
 
-    if isinstance(center, SEQUENCE_TYPES):
+    if isinstance(center, Sequence):
         cx, cy = center
         cx += 0.5
         cy += 0.5

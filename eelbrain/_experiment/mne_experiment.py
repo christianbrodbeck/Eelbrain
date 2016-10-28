@@ -1,7 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import print_function
 
-from collections import defaultdict
+from collections import defaultdict, Sequence
 import inspect
 from itertools import chain, izip, product
 import logging
@@ -25,8 +25,7 @@ from .. import plot
 from .. import save
 from .. import table
 from .. import testnd
-from .._data_obj import Dataset, Factor, Var, NDVar, Datalist, combine, \
-    SEQUENCE_TYPES
+from .._data_obj import Dataset, Factor, Var, NDVar, Datalist, combine
 from .._info import BAD_CHANNELS
 from .._names import INTERPOLATE_CHANNELS
 from .._meeg import new_rejection_ds
@@ -719,7 +718,7 @@ class MneExperiment(FileTree):
                             "MneExperiment.sessions='mysession'.")
         elif isinstance(self.sessions, basestring):
             self._sessions = (self.sessions,)
-        elif isinstance(self.sessions, SEQUENCE_TYPES):
+        elif isinstance(self.sessions, Sequence):
             self._sessions = tuple(self.sessions)
         else:
             raise TypeError("MneExperiment.sessions needs to be a string or a "

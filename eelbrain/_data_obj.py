@@ -23,7 +23,7 @@ managed by
 from __future__ import division
 from __future__ import print_function
 
-from collections import Iterator, OrderedDict
+from collections import Iterator, OrderedDict, Sequence
 from copy import deepcopy
 from fnmatch import fnmatchcase
 import itertools
@@ -71,7 +71,6 @@ preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __
 
 UNNAMED = '<?>'
 LIST_INDEX_TYPES = (int, slice)
-SEQUENCE_TYPES = (tuple, list)
 MNE_EPOCHS_TYPES = (mne.Epochs, mne.EpochsArray)
 MNE_EVOKED_TYPES = mne.Evoked
 MNE_LABEL_TYPES = (mne.Label, mne.label.BiHemiLabel)
@@ -1306,7 +1305,7 @@ def _is_equal(a, b):
             return (a == b).all()
         else:
             return False
-    elif isinstance(a, SEQUENCE_TYPES):
+    elif isinstance(a, (tuple, list)):
         return all(_is_equal(a_, b_) for a_, b_ in izip(a, b))
     elif isinstance(a, dict):
         if a.viewkeys() == b.viewkeys():
@@ -1801,7 +1800,7 @@ class Var(object):
         if isinstance(labels, dict):
             # flatten
             for key, v in labels.iteritems():
-                if isinstance(key, SEQUENCE_TYPES):
+                if (isinstance(key, Sequence) and not isinstance(key, basestring)):
                     for k in key:
                         labels_[k] = v
                 else:
@@ -8231,7 +8230,7 @@ class SourceSpace(Dimension):
                 raise IndexError("Index contains unknown sources")
             else:
                 return np.hstack([np.in1d(s, o, True) for s, o in izip(sv, ov)])
-        elif isinstance(arg, SEQUENCE_TYPES):
+        elif isinstance(arg, Sequence):
             return self.parc.isin(arg)
         else:
             return super(SourceSpace, self).dimindex(arg)
