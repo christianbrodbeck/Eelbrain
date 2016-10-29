@@ -159,6 +159,12 @@ class RandomLM(object):
         minsource : int
             Minimum number of sources per cluster.
 
+        Returns
+        -------
+        result : ttest_1samp
+            T-test result.
+        data : Dataset (only with ``return_data=True``)
+            Dataset with subjects' coefficients.
 
         Notes
         -----
