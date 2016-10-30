@@ -4583,6 +4583,10 @@ class MneExperiment(FileTree):
             caption = "Mask: %s" % mask.capitalize()
             self._report_parc_image(section, caption)
 
+        # Design matrix
+        section = report.add_section("Design Matrix")
+        section.append(rlm.design())
+
         # add results to report
         for term in rlm.column_names:
             res, ds = results[term]

@@ -43,6 +43,7 @@ class LM(object):
             raise TypeError("subject needs to be None or string, got %s"
                             % repr(subject))
 
+        self.coding = coding
         self.model = model
         self._coeffs_flat = coeffs_flat
         self._se_flat = lm_betas_se_1d(y_flat, coeffs_flat, p)
@@ -87,17 +88,18 @@ class RandomLM(object):
         lm0 = lms[0]
         other_lms = lms[1:]
 
-        # dims
+        # check lms
         dims = lm0._dims
-        if any(lm._dims != dims for lm in other_lms):
-            raise DimensionMismatchError("Not all LM instances have same dimensions")
-
-        # terms
         self._n_columns = lm0._n_columns()
+        self.coding = lm0.coding
         for lm in other_lms:
-            if lm._n_columns() != self._n_columns:
+            if lm._dims != dims:
+                raise DimensionMismatchError("LMs have incompatible dimensions")
+            elif lm._n_columns() != self._n_columns:
                 raise ValueError("Model for %s and %s don't match"
                                  % (lm0.subject, lm.subject))
+            elif lm.coding != self.coding:
+                raise ValueError("Models have incompatible coding")
         self.column_names = lm0.column_names
 
         # unique subject labels
@@ -172,6 +174,21 @@ class RandomLM(object):
             return res, ds
         else:
             return res
+
+    def design(self, subject=None):
+        if subject is None:
+            lm = self._lms[0]
+            subject = lm.subject
+        else:
+            for lm in self._lms:
+                if lm.subject == subject:
+                    break
+            else:
+                raise ValueError("subject=%r" % (subject,))
+
+        table = lm.model.as_table(lm.coding)
+        table.caption("Design matrix for %s" % subject)
+        return table
 
     def _column_ttests(self, *args, **kwargs):
         "precompute all tests"
