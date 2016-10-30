@@ -6545,6 +6545,10 @@ class Parametrization(object):
                                           if e_ is not e
                                           and is_higher_order_effect(e_, e)]
 
+        # check model
+        if np.linalg.matrix_rank(x) < x.shape[1]:
+            raise ValueError("Model is rank deficient: %r" % model)
+
         # model basics
         self.model = model
         self.x = x
