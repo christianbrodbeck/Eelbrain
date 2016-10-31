@@ -1368,7 +1368,7 @@ class MneExperiment(FileTree):
                 for epoch in invalid_cache['epochs']:
                     rm['evoked-file'].add({'epoch': epoch})
                     for cov, cov_params in self._covs.iteritems():
-                        if cov_params['epoch'] != epoch:
+                        if cov_params.get('epoch') != epoch:
                             continue
                         analysis = '* %s *' % cov
                         rm['test-file'].add({'analysis': analysis})
