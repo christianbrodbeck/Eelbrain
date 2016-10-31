@@ -351,7 +351,7 @@ class UTS(LegendMixin, VLimMixin, XAxisMixin, EelFigure):
                  xlabel=True, ylabel=True, xticklabels=True, bottom=None,
                  top=None, legend='upper right', *args, **kwargs):
         epochs, (xdim,) = _base.unpack_epochs_arg(epochs, (None,), xax, ds)
-        layout = Layout(len(epochs), 1.5, 2, *args, **kwargs)
+        layout = Layout(len(epochs), 2, 4, *args, **kwargs)
         EelFigure.__init__(self, "UTS", layout)
         self._set_axtitle(axtitle, epochs)
 
