@@ -25,4 +25,15 @@ def test_find_epoch_vars():
 
 def test_find_test_vars():
     eq_(find_test_vars({'kind': 'anova', 'model': "a % b % c"}),
-        ('a', 'b', 'c'))
+        {'a', 'b', 'c'})
+    eq_(find_test_vars({'kind': 'two-stage', 'stage 1': "a + b + a*b"}),
+        {'a', 'b'})
+    eq_(find_test_vars({'kind': 'two-stage', 'stage 1': "a + b + a*b",
+                        'vars': ("a = c * d", "b = c * e")}),
+        {'c', 'd', 'e'})
+    eq_(find_test_vars({'kind': 'two-stage', 'stage 1': "a + b + a*b",
+                        'vars': {'a': 'c * d', 'b': 'c * e'}}),
+        {'c', 'd', 'e'})
+    eq_(find_test_vars({'kind': 'two-stage', 'stage 1': "a + b + a*b",
+                        'vars': {'a': ('c%d', {}), 'b': ('c%e', {})}}),
+        {'c', 'd', 'e'})

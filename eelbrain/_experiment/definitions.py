@@ -61,16 +61,28 @@ def find_dependent_epochs(epoch, epochs):
 
 def find_test_vars(params):
     "Find variables used in a test definition"
-    model = params.get('model')
-    vs = find_variables(model) if model else set()
+    if 'model' in params:
+        vs = set(find_variables(params['model']))
+    else:
+        vs = set()
+
     if params['kind'] == 'two-stage':
-        vs = set(find_variables(params['stage 1']))
-        if 'vars' in params:
-            for name, definition in params['vars'].iteritems():
-                vs.remove(name)
-                if isinstance(definition, tuple):
-                    definition = definition[0]
-                vs.update(find_variables(definition[1]))
+        vs.update(find_variables(params['stage 1']))
+
+    if 'vars' in params:
+        vardef = params['vars']
+        if isinstance(vardef, dict):
+            vardef = vardef.iteritems()
+        elif isinstance(vardef, tuple):
+            vardef = (map(str.strip, v.split('=', 1)) for v in vardef)
+        else:
+            raise TypeError("vardef=%r" % (vardef,))
+
+        for name, definition in vardef:
+            vs.remove(name)
+            if isinstance(definition, tuple):
+                definition = definition[0]
+            vs.update(find_variables(definition))
     return vs
 
 find_test_vars.__test__ = False
