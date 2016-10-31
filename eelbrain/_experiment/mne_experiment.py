@@ -5547,10 +5547,9 @@ class MneExperiment(FileTree):
         return self._mri_subjects[mri][subject]
 
     def _update_session(self, fields):
-        epoch = fields['epoch']
-        if epoch == '*':
+        epoch = self._epochs.get(fields['epoch'])
+        if epoch is None:
             return '*'
-        epoch = self._epochs[epoch]
         if isinstance(epoch, (PrimaryEpoch, SecondaryEpoch)):
             return epoch.session
 
