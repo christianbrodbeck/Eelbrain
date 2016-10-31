@@ -79,10 +79,11 @@ def find_test_vars(params):
             raise TypeError("vardef=%r" % (vardef,))
 
         for name, definition in vardef:
-            vs.remove(name)
-            if isinstance(definition, tuple):
-                definition = definition[0]
-            vs.update(find_variables(definition))
+            if name in vs:
+                vs.remove(name)
+                if isinstance(definition, tuple):
+                    definition = definition[0]
+                vs.update(find_variables(definition))
     return vs
 
 find_test_vars.__test__ = False

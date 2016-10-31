@@ -29,11 +29,15 @@ def test_find_test_vars():
     eq_(find_test_vars({'kind': 'two-stage', 'stage 1': "a + b + a*b"}),
         {'a', 'b'})
     eq_(find_test_vars({'kind': 'two-stage', 'stage 1': "a + b + a*b",
-                        'vars': ("a = c * d", "b = c * e")}),
+                        'vars': ("a = c * d",
+                                 "b = c * e")}),
         {'c', 'd', 'e'})
     eq_(find_test_vars({'kind': 'two-stage', 'stage 1': "a + b + a*b",
-                        'vars': {'a': 'c * d', 'b': 'c * e'}}),
+                        'vars': {'a': 'c * d',
+                                 'b': 'c * e',
+                                 'x': 'something * nonexistent'}}),
         {'c', 'd', 'e'})
     eq_(find_test_vars({'kind': 'two-stage', 'stage 1': "a + b + a*b",
-                        'vars': {'a': ('c%d', {}), 'b': ('c%e', {})}}),
+                        'vars': {'a': ('c%d', {}),
+                                 'b': ('c%e', {})}}),
         {'c', 'd', 'e'})
