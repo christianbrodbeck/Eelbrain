@@ -2725,8 +2725,11 @@ class Factor(_Effect):
 
         Parameters
         ----------
-        regions : array_like
-            Object with same length as factor that indicates regions to fill.
+        regions : array_like | str
+            How to define regions to fill. Can be an object with same length as
+            the factor that indicates regions to fill (see example). Can also
+            be ``"previous"``, in which case the last value before the empty
+            cell is used.
         empty : str
             Value that is to be treated as empty (default is '').
 
@@ -2740,30 +2743,43 @@ class Factor(_Effect):
         >>> f.floodfill([1, 1, 1, 1, 1, 1, 1, 1])
         Factor(['a', 'a', 'a', 'a', 'a', 'a', 'b', 'b'])
         """
-        assert(len(regions) == self._n_cases)
+        if isinstance(regions, str) and regions not in ('previous',):
+            raise ValueError("demarcation=%r" % (regions,))
+
         out = self.copy(None)
         if empty not in self._codes:
             return out
+        empty = out._codes[empty]
         x = out.x
 
-        empty = out._codes[empty]
-        i_region_start = 0
-        region_v = -1 if regions[0] is None else None
-        fill_with = empty
-        for i in xrange(self._n_cases):
-            if regions[i] == region_v:
-                if x[i] == empty:
-                    if fill_with != empty:
-                        x[i] = fill_with
-                else:
-                    if fill_with == empty:
-                        x[i_region_start:i] = x[i]
+        if isinstance(regions, str):
+            if regions == 'previous':
+                is_empty = np.flatnonzero(x == empty)
+                if is_empty[0] == 0:
+                    is_empty = is_empty[1:]
+                for i in is_empty:
+                    x[i] = x[i - 1]
+            else:
+                raise RuntimeError("demarcation=%r" % (regions,))
+        else:
+            assert(len(regions) == self._n_cases)
+            i_region_start = 0
+            region_v = -1 if regions[0] is None else None
+            fill_with = empty
+            for i in xrange(self._n_cases):
+                if regions[i] == region_v:
+                    if x[i] == empty:
+                        if fill_with != empty:
+                            x[i] = fill_with
+                    else:
+                        if fill_with == empty:
+                            x[i_region_start:i] = x[i]
+                        fill_with = x[i]
+                else:  # region change
+                    region_v = regions[i]
                     fill_with = x[i]
-            else:  # region change
-                region_v = regions[i]
-                fill_with = x[i]
-                if fill_with == empty:
-                    i_region_start = i
+                    if fill_with == empty:
+                        i_region_start = i
 
         # remove redundant label
         if empty not in x:

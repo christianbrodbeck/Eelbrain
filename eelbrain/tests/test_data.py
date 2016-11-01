@@ -586,9 +586,11 @@ def test_factor():
     regions2 = [ 1,   1,   1,   2,   2,   3,   3,   2,   2,   2,   2,   1,   1]
     regions3 = [ 1,   1,   1,   1,   1,   1,   1,   1,   2,   2,   2,   2,   2]
     target3 =  ['1', '1', '1', '2', '2', '2', '3', '3', '2', '2', '2', '2', '1']
+    target_p = [' ', ' ', '1', '2', '2', '2', '3', '3', '3', '2', '2', '2', '1']
     assert_array_equal(f.floodfill(regions, ' '), Var(regions).as_factor())
     assert_array_equal(f.floodfill(regions2, ' '), Var(regions2).as_factor())
     assert_array_equal(f.floodfill(regions3, ' '), target3)
+    assert_array_equal(f.floodfill('previous', ' '), target_p)
     f = Factor(['', '', 'a', '', 'e', 'r', ''])
     assert_array_equal(f.floodfill([1, 1, 1, 11, 11, 11, 11]), Factor('aaaeerr'))
 
