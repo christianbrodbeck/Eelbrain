@@ -7,6 +7,7 @@ from __future__ import division
 from collections import Sequence
 from itertools import izip, repeat
 from math import floor, sqrt
+from warnings import warn
 
 import matplotlib as mpl
 import numpy as np
@@ -197,8 +198,8 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
     vmax, vmin : None | scalar
         Override the default plot limits. If only vmax is specified, vmin
         is set to -vmax.
-    axlabel : bool | sequence of str
-        Label for the individual axes. The default is to show the names of the
+    axtitle : bool | sequence of str
+        Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.
     title : None | string
         Figure title.
@@ -221,7 +222,11 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
                  xticklabels=True,
                  proj='default', res=100, interpolation='nearest', color=None,
                  sensorlabels=None, mark=None, mcolor=None, ds=None, vmax=None,
-                 vmin=None, axlabel=True, *args, **kwargs):
+                 vmin=None, axlabel=None, axtitle=True, *args, **kwargs):
+        if axlabel is not None:
+            warn("The axlabel parameter for plot.TopoButterfly() is "
+                 "deprecated, please use axtitle instead", DeprecationWarning)
+            axtitle = axlabel
         epochs, (_, xdim) = _base.unpack_epochs_arg(epochs, ('sensor', None),
                                                     Xax, ds)
         n_plots = len(epochs)
@@ -277,7 +282,7 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
         self._xvalues = []
 
         # find ax-labels
-        axlabel = self._set_axtitle(axlabel, epochs, n_plots) or (None,) * n_plots
+        axtitle = self._set_axtitle(axtitle, epochs, n_plots) or (None,) * n_plots
 
         # plot epochs (x/y are in figure coordinates)
         for i, layers in enumerate(epochs):
@@ -306,10 +311,10 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
             self._xvalues = np.union1d(self._xvalues, p._xvalues)
 
             # find and print epoch title
-            if not axlabel[i]:
+            if not axtitle[i]:
                 continue
             y_text = bottom + y_sep / 2
-            ax1.text(x_text, y_text, axlabel[i],
+            ax1.text(x_text, y_text, axtitle[i],
                      transform=self.figure.transFigure,
                      ha='center', va='center', rotation='vertical')
 

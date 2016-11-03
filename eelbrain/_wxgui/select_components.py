@@ -554,10 +554,10 @@ class Frame(FileFrame):
                 vmax = 1.1 * max(abs(original.min()), original.max())
             for data, title_ in izip(izip(original, clean), title):
                 plot.TopoButterfly(data, vmax=vmax, title=title_,
-                                   axlabel=("Original", "Cleaned"))
+                                   axtitle=("Original", "Cleaned"))
         else:
             plot.TopoButterfly([original, clean], title=title,
-                               axlabel=("Original", "Cleaned"))
+                               axtitle=("Original", "Cleaned"))
 
     def ShowSources(self, i_first):
         if self.source_frame:
