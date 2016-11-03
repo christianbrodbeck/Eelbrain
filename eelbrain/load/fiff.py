@@ -109,16 +109,26 @@ from mne.source_estimate import _BaseSourceEstimate
 from mne.io.constants import FIFF
 from mne.io import Raw as _mne_Raw
 from mne.io import read_raw_kit as _mne_read_raw_kit
-try:
-    from mne.io.kit.constants import KIT_LAYOUT
-except ImportError:  # mne < 0.13
-    KIT_LAYOUT = {}
+from mne.io.kit.constants import KIT
 
 from .. import _colorspaces as _cs
 from .._info import BAD_CHANNELS
 from .._utils import ui
 from .._data_obj import Var, NDVar, Dataset, Sensor, SourceSpace, UTS, \
     _matrix_graph
+
+
+KIT_NEIGHBORS = {
+    KIT.SYSTEM_NYU_2008: 'KIT-157',
+    KIT.SYSTEM_NYU_2009: 'KIT-157',
+    KIT.SYSTEM_NYU_2010: 'KIT-157',
+    KIT.SYSTEM_NYUAD_2011: 'KIT-208',
+    KIT.SYSTEM_NYUAD_2012: 'KIT-208',
+    KIT.SYSTEM_NYUAD_2014: 'KIT-208',
+    KIT.SYSTEM_UMD_2004: 'KIT-UMD-1',
+    KIT.SYSTEM_UMD_2014_07: 'KIT-UMD-2',
+    KIT.SYSTEM_UMD_2014_12: 'KIT-UMD-3',
+}
 
 
 def mne_raw(path=None, proj=False, **kwargs):
@@ -628,7 +638,7 @@ def sensor_dim(fiff, picks=None, sysname=None):
         ch_names.append(ch_name)
 
     # use KIT system ID if available
-    sysname = KIT_LAYOUT.get(info.get('kit_system_id'), sysname)
+    sysname = KIT_NEIGHBORS.get(info.get('kit_system_id'), sysname)
 
     if sysname is not None:
         c_matrix, names = mne.channels.read_ch_connectivity(sysname)
@@ -771,7 +781,7 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
         raise ValueError("Evoked objects from different KIT systems can not be "
                          "combined because they have different sensor layouts")
     elif kit_sys_ids:
-        sysname = KIT_LAYOUT.get(kit_sys_ids.pop(), sysname)
+        sysname = KIT_NEIGHBORS.get(kit_sys_ids.pop(), sysname)
 
     if data == 'mag':
         info = _cs.meg_info(vmax)
