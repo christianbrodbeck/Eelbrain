@@ -712,18 +712,20 @@ def unpack_epochs_arg(y, dims, xax=None, ds=None):
 
     if isinstance(y, (tuple, list)):
         if xax is not None:
-            raise TypeError("Xax can only be used to divide Y into different "
-                            "axes if Y is a single NDVar (got a %s)." %
-                            y.__class__.__name__)
+            raise TypeError(
+                "xax can only be used to divide y into different axes if y is "
+                "a single NDVar (got y=%r)." % (y,))
         axes = []
         for ax in y:
             if isinstance(ax, (tuple, list)):
                 layers = []
                 for layer in ax:
+                    layer = asndvar(layer, ds=ds)
                     agg, dims = find_data_dims(layer, dims)
                     layers.append(aggregate(layer, agg))
                 axes.append(layers)
             else:
+                ax = asndvar(ax, ds=ds)
                 agg, dims = find_data_dims(ax, dims)
                 axes.append([aggregate(ax, agg)])
     else:
@@ -734,8 +736,9 @@ def unpack_epochs_arg(y, dims, xax=None, ds=None):
             dimname = xax[1:]
             if dimname == 'case':
                 if not y.has_case:
-                    raise ValueError("Xax='.case' supplied, but Y does not "
-                                     "have case dimension")
+                    raise ValueError(
+                        "Got xax='.case', but y does not have case dimension: "
+                        "y=%r" % (y,))
                 values = range(len(y))
                 unit = ''
             else:

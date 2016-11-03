@@ -526,6 +526,9 @@ def asndvar(x, sub=None, ds=None, n=None):
     elif isinstance(x, MNE_EVOKED_TYPES):
         from .load.fiff import evoked_ndvar
         x = evoked_ndvar(x)
+    elif isinstance(x, mne.io.Raw):
+        from .load.fiff import raw_ndvar
+        x = raw_ndvar(x)
     elif isinstance(x, list):
         item_0 = x[0]
         if isinstance(item_0, MNE_EVOKED_TYPES):
