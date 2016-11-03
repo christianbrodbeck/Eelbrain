@@ -3683,6 +3683,7 @@ class MneExperiment(FileTree):
         See Also
         --------
         load_bad_channels : load the current bad_channels file
+        merge_bad_channels : merge bad channel definitions for all sessions
         """
         pipe = self._raw[self.get('raw', **kwargs)]
         pipe.make_bad_channels(self.get('subject'), self.get('session'),
@@ -5104,6 +5105,25 @@ class MneExperiment(FileTree):
             raise RuntimeError("Test kind=%s" % repr(kind))
 
         return res
+
+    def merge_bad_channels(self):
+        """Merge bad channel definitions for different sessions
+
+        Load the bad channel definitions for all sessions of the current
+        subject and save the union for all sessions.
+
+        See Also
+        --------
+        make_bad_channels : set bad channels for a single session
+        """
+        bads = set()
+        n_chars = 0
+        for session in self.iter('session'):
+            bads.update(self.load_bad_channels())
+            n_chars = max(n_chars, len(session))
+        for session in self.iter('session'):
+            print(session.ljust(n_chars), end=': ')
+            self.make_bad_channels(bads)
 
     def next(self, field='subject', group=None):
         """Change field to the next value
