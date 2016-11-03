@@ -49,7 +49,7 @@ from .._utils import subp, ui, keydefaultdict, log_level
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .definitions import find_dependent_epochs, find_epochs_vars, find_test_vars
 from .experiment import FileTree
-from .preprocessing import RawSource, RawFilter, RawICA
+from .preprocessing import RawSource, RawFilter, RawICA, RawMaxwell
 
 
 __all__ = ['MneExperiment']
@@ -807,6 +807,9 @@ class MneExperiment(FileTree):
                                            ica_path.replace('{raw}', name),
                                            log, params['session'],
                                            params['kwargs'])
+                    elif params['type'] == 'maxwell_filter':
+                        raw[name] = RawMaxwell(name, raw[source], cache_path,
+                                               log, params['kwargs'])
                     else:
                         raise ValueError("unknonw raw pipe type=%s" %
                                          repr(params['type']))

@@ -217,3 +217,16 @@ class RawICA(CachedRawPipe):
         ica = self.load_ica(subject)
         ica.apply(raw)
         return raw
+
+
+class RawMaxwell(CachedRawPipe):
+
+    def __init__(self, name, source, path, log, kwargs):
+        CachedRawPipe.__init__(self, name, source, path, log)
+        self.kwargs = kwargs
+
+    def _make(self, subject, session):
+        raw = self.source.load(subject, session)
+        self.log.debug("Raw %s: computing Maxwell filter for %s/%s", self.name,
+                       subject, session)
+        return mne.preprocessing.maxwell_filter(raw, **self.kwargs)
