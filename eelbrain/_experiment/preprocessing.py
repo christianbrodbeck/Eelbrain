@@ -106,8 +106,6 @@ class CachedRawPipe(RawPipe):
         "Make sure the cache is up to date"
         path = self.path.format(subject=subject, session=session)
         if not exists(path) or getmtime(path) < self.mtime(subject, session, self._bad_chs_affect_cache):
-            self.log.debug("make raw %s for %s/%s...", self.name, subject, session)
-
             raw = self._make(subject, session)
             dir_path = dirname(path)
             if not exists(dir_path):
@@ -149,6 +147,8 @@ class RawFilter(CachedRawPipe):
 
     def _make(self, subject, session):
         raw = self.source.load(subject, session, preload=True)
+        self.log.debug("Raw %s: filtering for %s/%s...", self.name, subject,
+                       session)
         raw.filter(*self.args, **self.kwargs)
         return raw
 
@@ -196,15 +196,16 @@ class RawICA(CachedRawPipe):
             picks = mne.pick_types(raw.info, ref_meg=False)
             if ica.ch_names == [raw.ch_names[i] for i in picks]:
                 return path
-            self.log.info("%s/%s: ICA outdated due to change in bad channels",
-                          self.name, subject)
-        self.log.debug("%s/%s: computing ICA decomposition", self.name, subject)
+            self.log.info("Raw %s: ICA outdated due to change in bad channels "
+                          "for %s", self.name, subject)
 
         for session in self.session[1:]:
             raw_ = self.source.load(subject, session, False)
             raw_.info['bads'] = bad_channels
             raw.append(raw_)
 
+        self.log.debug("Raw %s: computing ICA decomposition for %s", self.name,
+                       subject)
         ica = mne.preprocessing.ICA(max_iter=256, **self.kwargs)
         # reject presets from meeg-preprocessing
         ica.fit(raw, reject={'mag': 5e-12, 'grad': 5000e-13, 'eeg': 300e-6})
