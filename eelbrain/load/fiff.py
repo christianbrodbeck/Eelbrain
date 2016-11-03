@@ -660,9 +660,9 @@ def sensor_dim(fiff, picks=None, sysname=None):
     return Sensor(ch_locs, ch_names, sysname=sysname, connectivity=conn)
 
 
-def _raw_ndvars(raw, i_start=None, i_stop=None, decim=1, inv=None, lambda2=1,
-                method='dSPM', pick_ori=None, src=None, subjects_dir=None,
-                parc='aparc', label=None):
+def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, inv=None, lambda2=1,
+              method='dSPM', pick_ori=None, src=None, subjects_dir=None,
+              parc='aparc', label=None):
     """Raw dta as NDVar
 
     Parameters
