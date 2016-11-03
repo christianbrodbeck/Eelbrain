@@ -1824,20 +1824,21 @@ class TopoMapKey(object):
 
 class XAxisMixin(object):
 
-    def __init__(self, epochs, xdim):
+    def __init__(self, epochs, xdim, axes=None, left='left', right='right'):
         extent = tuple(e.get_dim(xdim)._axis_im_extent() for e in chain(*epochs))
         self._xmin = min(e[0] for e in extent)
         self._xmax = max(e[1] for e in extent)
+        self.__axes = axes or self._axes
         self.__vspans = []
         self._register_key('+', self._on_zoom_plus)
         self._register_key('-', self._on_zoom_minus)
-        self._register_key('left', self._on_left)
-        self._register_key('right', self._on_right)
+        self._register_key(left, self._on_left)
+        self._register_key(right, self._on_right)
         self._register_key('home', self._on_beginning)
         self._register_key('end', self._on_end)
 
     def _get_xlim(self):
-        return self._axes[0].get_xlim()
+        return self.__axes[0].get_xlim()
 
     def _on_beginning(self, event):
         left, right = self._get_xlim()
@@ -1890,11 +1891,11 @@ class XAxisMixin(object):
             Additional arguments for :func:`matplotlib.axvspan`.
         """
         if axes is None:
-            axes = self._axes
+            axes = self.__axes
         elif isinstance(axes, int):
-            axes = (self._axes[axes],)
+            axes = (self.__axes[axes],)
         else:
-            axes = [self._axes[i] for i in axes]
+            axes = [self.__axes[i] for i in axes]
 
         for ax in axes:
             for xmin, xmax in intervals:
@@ -1902,7 +1903,7 @@ class XAxisMixin(object):
 
     def set_xlim(self, left=None, right=None):
         """Set the x-axis limits for all axes"""
-        for ax in self._axes:
+        for ax in self.__axes:
             ax.set_xlim(left, right)
         self.draw()
 

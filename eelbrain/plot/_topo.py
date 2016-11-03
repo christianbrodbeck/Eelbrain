@@ -15,7 +15,8 @@ from scipy.spatial import ConvexHull
 
 from .._utils.numpy_utils import digitize
 from . import _base
-from ._base import EelFigure, Layout, ImLayout, ColorMapMixin, TopoMapKey
+from ._base import (
+    EelFigure, Layout, ImLayout, ColorMapMixin, TopoMapKey, XAxisMixin)
 from ._utsnd import _ax_butterfly, _ax_im_array, _plt_im
 from ._sensors import SENSORMAP_FRAME, SensorMapMixin, _plt_map2d
 
@@ -157,7 +158,7 @@ class TopomapBins(EelFigure):
         self._show()
 
 
-class TopoButterfly(TopoMapKey, EelFigure):
+class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
     """Butterfly plot with corresponding topomaps
 
     Parameters
@@ -221,7 +222,8 @@ class TopoButterfly(TopoMapKey, EelFigure):
                  proj='default', res=100, interpolation='nearest', color=None,
                  sensorlabels=None, mark=None, mcolor=None, ds=None, vmax=None,
                  vmin=None, axlabel=True, *args, **kwargs):
-        epochs, _ = _base.unpack_epochs_arg(epochs, ('sensor', 'time'), Xax, ds)
+        epochs, (_, xdim) = _base.unpack_epochs_arg(epochs, ('sensor', None),
+                                                    Xax, ds)
         n_plots = len(epochs)
         self._epochs = epochs
 
@@ -318,6 +320,7 @@ class TopoButterfly(TopoMapKey, EelFigure):
             ax.xaxis.set_ticklabels(())
 
         # setup callback
+        XAxisMixin.__init__(self, epochs, xdim, self.bfly_axes, ',', '.')
         self.canvas.mpl_connect('button_press_event', self._on_click)
         self._register_key('left', self._on_arrow)
         self._register_key('right', self._on_arrow)
