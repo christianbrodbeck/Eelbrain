@@ -3667,7 +3667,9 @@ class MneExperiment(FileTree):
 
     def make_ica_selection(self):
         path, ds = self.make_ica(True)
-        self._g = gui.select_components(path, ds)
+        self._g = gui.select_components(
+            path, ds, self._sysname(
+                ds['epochs'], ds.info['subject'], self.get('modality')))
 
     def make_ica(self, return_data=False):
         """Compute the ICA decomposition
