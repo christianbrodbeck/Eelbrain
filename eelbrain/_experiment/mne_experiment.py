@@ -32,8 +32,9 @@ from .._meeg import new_rejection_ds
 from .._mne import dissolve_label, \
     labels_from_mni_coords, rename_label, combination_label, \
     morph_source_space, shift_mne_epoch_trigger
-from ..mne_fixes import write_labels_to_annot
-from ..mne_fixes import _interpolate_bads_eeg, _interpolate_bads_meg
+from ..mne_fixes import (
+    write_labels_to_annot, _interpolate_bads_eeg, _interpolate_bads_meg)
+from ..mne_fixes._trans import dig_equal
 from .._data_obj import (isvar, asfactor, align, DimensionMismatchError,
                          as_legal_dataset_key, assert_is_legal_dataset_key,
                          OldVersionError)
@@ -224,10 +225,6 @@ class SuperEpoch(Epoch):
                 raise TypeError("SuperEpochs can not be defined recursively")
             elif not isinstance(e, Epoch):
                 raise TypeError("sub_epochs must be Epochs, got %s" % repr(e))
-        sessions = {e.session for e in sub_epochs}
-        if len(sessions) > 1:
-            raise NotImplementedError("Combination of Epochs from different "
-                                      "sessions is not implemented.")
 
         if any(e.post_baseline_trigger_shift is not None for e in sub_epochs):
             err = ("Epoch definition %s: Super-epochs are merged on the level "
@@ -247,6 +244,7 @@ class SuperEpoch(Epoch):
             kwargs[param] = values.pop()
 
         Epoch.__init__(self, name, **kwargs)
+        self.sessions = {e.session for e in sub_epochs}
         self.sub_epochs = tuple(e.name for e in sub_epochs)
         self.rej_file_epochs = sum((e.rej_file_epochs for e in sub_epochs), ())
 
@@ -1158,11 +1156,40 @@ class MneExperiment(FileTree):
         cache_dir = self.get('cache-dir')
         cache_dir_existed = os.path.exists(cache_dir)
 
-        # collect events for current setup
+        # collect events and digitizer data for current setup
         with self._temporary_state:
             self.set(raw='raw')
-            events = {k: self.load_events(data_raw=False) for k in
-                      self.iter(('subject', 'session'), group='all')}
+            events = {}  # {(subject, session): enent_dataset}
+            digs = defaultdict(dict)  # {subject: {session: dig}}
+            for subject, session in self.iter(('subject', 'session'), group='all'):
+                ds = self.load_events()
+                raw = ds.info.pop('raw')
+                events[subject, session] = ds
+                digs[subject][session] = raw.info['dig']
+
+        # interlude: check whether raw files head-mri trans are compatible
+        self._dig_ids = {}  # {subject: {session: id}}
+        for subject in digs:
+            subject_dig_ids = {}  # {session: id}
+            subject_digs = {}  # {id: dig}
+            i = 0
+            for session, dig in digs[subject].iteritems():
+                for dig_id in subject_digs.keys():
+                    if dig_equal(dig, subject_digs[dig_id]):
+                        subject_dig_ids[session] = dig_id
+                        break
+                else:
+                    subject_dig_ids[session] = i
+                    subject_digs[i] = dig
+                    i += 1
+            self._dig_ids[subject] = subject_dig_ids
+        for name, epoch in self._epochs.iteritems():
+            if isinstance(epoch, SuperEpoch):
+                for subject, subject_dig_ids in self._dig_ids.iteritems():
+                    if len({subject_dig_ids[s] for s in epoch.sessions}) > 1:
+                        raise NotImplementedError(
+                            "SuperEpoch from sessions with different trans "
+                            "(%s)" % name)
 
         # check the cache, delete invalid files
         cache_state_path = self.get('cache-state-file')
@@ -3219,19 +3246,43 @@ class MneExperiment(FileTree):
 
         # rejection comes from somewhere else
         if isinstance(epoch, SuperEpoch):
-            # TODO:  events form different sessions
             with self._temporary_state:
-                dss = [self.load_selected_events(subject, reject, add_bads,
-                                                 index, data_raw,
-                                                 epoch=sub_epoch)
-                       for sub_epoch in epoch.sub_epochs]
+                dss = []
+                raw = None
+                # find bad channels
+                if add_bads:
+                    bad_channels = sorted(set.union(*(
+                        set(self.load_bad_channels(session=session)) for
+                        session in epoch.sessions)))
+                else:
+                    bad_channels = []
+                # load events
+                for session in epoch.sessions:
+                    self.set(session=session)
+                    # load events for this session
+                    ds = combine(
+                        self.load_selected_events(
+                            subject, reject, add_bads, index, data_raw or True,
+                            epoch=sub_epoch) for sub_epoch in
+                        epoch.sub_epochs if
+                        self._epochs[sub_epoch].session == session)
+                    # combine raw
+                    if raw is None:
+                        raw = ds.info['raw']
+                        raw.info['bads'] = bad_channels
+                    else:
+                        raw_ = ds.info['raw']
+                        raw_.info['bads'] = bad_channels
+                        ds['i_start'] += raw.last_samp + 1 - raw_.first_samp
+                        raw.append(raw_)
+                    del ds.info['raw']
+                    dss.append(ds)
 
-                # combine bad channels
-                bad_channels = set.union(*(set(ds.info[BAD_CHANNELS]) for ds in dss))
-                ds = combine(dss)
-                if data_raw is not False:
-                    ds.info['raw'] = dss[0].info['raw']
-                ds.info[BAD_CHANNELS] = sorted(bad_channels)
+            # combine bad channels
+            ds = combine(dss)
+            if data_raw is not False:
+                ds.info['raw'] = raw
+            ds.info[BAD_CHANNELS] = bad_channels
         elif isinstance(epoch, SecondaryEpoch):
             with self._temporary_state:
                 ds = self.load_selected_events(None, 'keep' if reject else False,

@@ -9,7 +9,7 @@ that the directory you specify exists)::
 
 Then you can use::
 
-    >>> from sample_experiment import SampleExperiment, ROOT
+    >>> from sample_experiment_sessions import SampleExperiment, ROOT
     >>> e = SampleExperiment(ROOT)
 
 """
@@ -38,4 +38,5 @@ class SampleExperiment(MneExperiment):
     epochs = {
         'target1': {'session': 'sample1', 'sel': "event == 'target'"},
         'target2': {'session': 'sample2', 'sel': "event == 'target'"},
+        'super': {'sub_epochs': ('target1', 'target2')},
     }

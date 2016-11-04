@@ -7,7 +7,8 @@ from nose.tools import eq_
 
 from eelbrain import *
 
-from ..._utils.testing import TempDir, assert_dataobj_equal, requires_mne_sample_data
+from ..._utils.testing import (
+    TempDir, assert_dataobj_equal, requires_mne_sample_data)
 
 
 @requires_mne_sample_data
@@ -59,10 +60,18 @@ def test_samples_sesssions():
 
     root = join(tempdir, 'SampleExperiment')
     e = e_module.SampleExperiment(root)
-    for _ in e.iter(('subject', 'epoch')):
-        e.make_rej(auto=2e-12)
+    for _ in e:
+        for epoch in ('target1', 'target2'):
+            e.set(epoch=epoch)
+            e.make_rej(auto=2e-12)
 
     ds = e.load_evoked('R0000', epoch='target2')
     e.set(session='sample1')
     ds2 = e.load_evoked('R0000')
     assert_dataobj_equal(ds2, ds)
+
+    # super-epoch
+    ds1 = e.load_epochs(epoch='target1')
+    ds2 = e.load_epochs(epoch='target2')
+    ds_super = e.load_epochs(epoch='super')
+    assert_dataobj_equal(ds_super['meg'], combine((ds1['meg'], ds2['meg'])))
