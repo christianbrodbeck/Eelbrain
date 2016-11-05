@@ -4008,8 +4008,8 @@ class MneExperiment(FileTree):
         # ICA as rej setting
         params = self._artifact_rejection[self.get('rej')]
         if params['kind'] != 'ica':
-            raise RuntimeError("Current rej (%s) does not involve ICA" %
-                               self.get('rej'))
+            raise RuntimeError("Current raw (%s) or rej (%s) do not involve "
+                               "ICA" % (self.get('raw'), self.get('rej')))
 
         path = self.get('ica-file', mkdir=True)
         make = not os.path.exists(path)
