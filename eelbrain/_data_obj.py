@@ -1893,31 +1893,50 @@ class Var(object):
     def beta_labels(self):
         return [self.name]
 
-    def diff(self, X, v1, v2, match):
-        """
-        Subtract X==v2 from X==v1; sorts values according to match (ascending)
+    def diff(self, to_end=None, to_begin=None):
+        """The differences between consecutive values
 
         Parameters
         ----------
-        X : categorial
-            Model to define cells.
-        v1, v2 : str | tuple
-            Cells on X for subtraction.
-        match : categorial
-            Model that defines how to mach cells in v1 to cells in v2.
+        to_end : scalar (optional)
+            Append ``to_end`` at the end.
+        to_begin : scalar (optional)
+            Add ``to_begin`` at the beginning.
+
+        Returns
+        -------
+        diff : Var
+            Difference.
         """
-        raise NotImplementedError
-        # FIXME: use celltable
-        assert isfactor(X)
-        I1 = (X == v1);         I2 = (X == v2)
-        Y1 = self[I1];          Y2 = self[I2]
-        m1 = match[I1];         m2 = match[I2]
-        s1 = np.argsort(m1);    s2 = np.argsort(m2)
-        y = Y1[s1] - Y2[s2]
-        name = "{n}({x1}-{x2})".format(n=self.name,
-                                       x1=X.cells[v1],
-                                       x2=X.cells[v2])
-        return Var(y, name, info=self.info.copy())
+        if len(self) == 0:
+            return Var(np.empty(0), info=self.info.copy())
+        return Var(np.ediff1d(self.x, to_end, to_begin), info=self.info.copy())
+
+    # def difference(self, X, v1, v2, match):
+    #     """
+    #     Subtract X==v2 from X==v1; sorts values according to match (ascending)
+    #
+    #     Parameters
+    #     ----------
+    #     X : categorial
+    #         Model to define cells.
+    #     v1, v2 : str | tuple
+    #         Cells on X for subtraction.
+    #     match : categorial
+    #         Model that defines how to mach cells in v1 to cells in v2.
+    #     """
+    #     raise NotImplementedError
+    #     # FIXME: use celltable
+    #     assert isfactor(X)
+    #     I1 = (X == v1);         I2 = (X == v2)
+    #     Y1 = self[I1];          Y2 = self[I2]
+    #     m1 = match[I1];         m2 = match[I2]
+    #     s1 = np.argsort(m1);    s2 = np.argsort(m2)
+    #     y = Y1[s1] - Y2[s2]
+    #     name = "{n}({x1}-{x2})".format(n=self.name,
+    #                                    x1=X.cells[v1],
+    #                                    x2=X.cells[v2])
+    #     return Var(y, name, info=self.info.copy())
 
     @classmethod
     def from_dict(cls, base, values, name=None, default=0, info=None):
