@@ -110,7 +110,7 @@ class CachedRawPipe(RawPipe):
             dir_path = dirname(path)
             if not exists(dir_path):
                 mkdir(dir_path)
-            raw.save(path)
+            raw.save(path, overwrite=True)
 
     def load(self, subject, session, add_bads=True, preload=False):
         self.cache(subject, session)
