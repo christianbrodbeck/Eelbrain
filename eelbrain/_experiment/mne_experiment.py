@@ -3499,43 +3499,6 @@ class MneExperiment(FileTree):
 
         dst = self.get('test-file', mkdir=True)
 
-        # two-stage tests (not cached)
-        if test_params['kind'] == 'two-stage':
-            model = test_params.get('model')
-            if data != 'src':
-                raise NotImplementedError("Two-stage test with data != 'src'")
-            if model is not None:
-                self.set(model=model)
-
-            # find params
-            stage1 = test_params['stage 1']
-            vardef = test_params.get('vars')
-
-            # stage 1
-            n = len(self.get_field_values('subject'))
-            prog_str = "\x1b[2KLoading 2-stage model [%%-%ss] %%s" % n
-            lms = []
-            dss = []
-            for i, subject in enumerate(self):
-                print(prog_str % ('#' * i, subject), end='\r')
-                if model is None:
-                    ds = self.load_epochs_stc(subject, sns_baseline,
-                                              src_baseline, morph=True,
-                                              mask=mask, vardef=vardef)
-                else:
-                    ds = self.load_evoked_stc(subject, sns_baseline,
-                                              src_baseline, morph_ndvar=True,
-                                              mask=mask, vardef=vardef)
-                lms.append(spm.LM(y_name, stage1, ds, subject=subject))
-                if return_data:
-                    dss.append(ds)
-            print(prog_str % ('#' * n, 'done'))
-            rlm = spm.RandomLM(lms)
-            if return_data:
-                return combine(dss), rlm
-            else:
-                return rlm
-
         # try to load cached test
         res = None
         load_data = True
@@ -3564,6 +3527,56 @@ class MneExperiment(FileTree):
             raise IOError("The requested test is not cached: %s. Set make=True "
                           "to perform the test." % desc)
 
+        if res is None:
+            test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, dims,
+                                            parc_dim)
+
+        # two-stage tests
+        if test_params['kind'] == 'two-stage':
+            if data != 'src':
+                raise NotImplementedError("Two-stage test with data != 'src'")
+
+            if load_data:
+                model = test_params.get('model')
+                if model is not None:
+                    self.set(model=model)
+                # find params
+                stage1 = test_params['stage 1']
+                vardef = test_params.get('vars')
+
+                # stage 1
+                n = len(self.get_field_values('subject'))
+                prog_str = "\x1b[2KLoading 2-stage model [%%-%ss] %%s" % n
+                lms = []
+                dss = []
+                for i, subject in enumerate(self):
+                    print(prog_str % ('#' * i, subject), end='\r')
+                    if model is None:
+                        ds = self.load_epochs_stc(subject, sns_baseline,
+                                                  src_baseline, morph=True,
+                                                  mask=mask, vardef=vardef)
+                    else:
+                        ds = self.load_evoked_stc(subject, sns_baseline,
+                                                  src_baseline, morph_ndvar=True,
+                                                  mask=mask, vardef=vardef)
+
+                    if res is None:
+                        lms.append(spm.LM(y_name, stage1, ds, subject=subject))
+                    if return_data:
+                        dss.append(ds)
+                print(prog_str % ('#' * n, 'done'))
+
+                if res is None:
+                    res = spm.RandomLM(lms)
+                    res._column_ttests(**test_kwargs)
+                    # cache
+                    save.pickle(res, dst)
+
+            if return_data:
+                return combine(dss), res
+            else:
+                return res
+
         # load data
         if load_data:
             # determine categories to load
@@ -3582,8 +3595,6 @@ class MneExperiment(FileTree):
         # perform the test if it was not cached
         if res is None:
             self._log.info("Make test: %s", desc)
-            test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, dims,
-                                            parc_dim)
             res = self._make_test(ds[y_name], ds, test, test_kwargs)
             # cache
             save.pickle(res, dst)
@@ -4669,12 +4680,6 @@ class MneExperiment(FileTree):
         else:
             group_ds = None
 
-        # stage 2
-        parc_dim = 'source' if parc else None
-        test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop,
-                                        ('time', 'source'), parc_dim)
-        results = rlm._column_ttests(True, **test_kwargs)
-
         # start report
         surfer_kwargs = self._surfer_plot_kwargs()
         info_section = report.add_section("Test Info")
@@ -4694,7 +4699,8 @@ class MneExperiment(FileTree):
 
         # add results to report
         for term in rlm.column_names:
-            res, ds = results[term]
+            res = rlm.tests[term]
+            ds = rlm._single_column_coefficient(term, asds=True)
             report.append(_report.source_time_results(res, ds, None, include,
                                                       surfer_kwargs, term))
 

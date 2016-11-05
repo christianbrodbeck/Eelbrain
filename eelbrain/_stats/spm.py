@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Statistical Parametric Mapping"""
+from itertools import izip
 from operator import mul
 
 import numpy as np
@@ -30,6 +31,10 @@ class LM(object):
         Optional information used by RandomLM.
     """
     def __init__(self, y, model, ds=None, coding='dummy', subject=None):
+        if subject is not None and not isinstance(subject, basestring):
+            raise TypeError("subject needs to be None or string, got %s"
+                            % repr(subject))
+
         y = asndvar(y, ds=ds)
         n_cases = len(y)
         model = asmodel(model, None, ds, n_cases)
@@ -38,22 +43,31 @@ class LM(object):
         coeffs_flat = np.empty((n_coeff, reduce(mul, y.shape[1:])))
         y_flat = y.x.reshape((n_cases, -1))
         opt.lm_betas(y_flat, p.x, p.projector, coeffs_flat)
+        se_flat = lm_betas_se_1d(y_flat, coeffs_flat, p)
+        self.__setstate__({
+            'coding': coding, 'coeffs': coeffs_flat, 'se': se_flat,
+            'model': model, 'p': p, 'dims': y.dims[1:], 'subject': subject})
 
-        if subject is not None and not isinstance(subject, basestring):
-            raise TypeError("subject needs to be None or string, got %s"
-                            % repr(subject))
+    def __setstate__(self, state):
+        self.coding = state['coding']
+        self._coeffs_flat = state['coeffs']
+        self._se_flat = state['se']
+        self.model = state['model']
+        self.dims = state['dims']
+        self.subject = state['subject']
+        if 'p' in state:
+            self._p = state['p']
+        else:
+            self._p = self.model._parametrize(self.coding)
+        # secondary attributes
+        self._shape = tuple(map(len, self.dims))
+        self.column_names = self._p.column_names
+        self.n_cases = self.model.df_total
 
-        self.coding = coding
-        self.model = model
-        self._coeffs_flat = coeffs_flat
-        self._se_flat = lm_betas_se_1d(y_flat, coeffs_flat, p)
-        self._p = p
-        self._dims = y.dims
-        self._shape = y.shape[1:]
-        self.column_names = p.column_names
-        self.subject = subject
-        self.n_cases = len(y)
-        self.df = self.n_cases - p.model.df
+    def __getstate__(self):
+        return {'coding': self.coding, 'coeffs': self._coeffs_flat,
+                'se': self._se_flat, 'model': self.model, 'dims': self.dims,
+                'subject': self.subject}
 
     def _coefficient(self, term):
         """Regression coefficient for a given term"""
@@ -61,8 +75,8 @@ class LM(object):
         return self._coeffs_flat[index].reshape((1,) + self._shape)
 
     def _index(self, term):
-        if term in self._p.column_names:
-            return self._p.column_names.index(term)
+        if term in self.column_names:
+            return self.column_names.index(term)
         elif term in self._p.terms:
             index = self._p.terms[term]
             if index.stop - index.start > 1:
@@ -76,7 +90,7 @@ class LM(object):
         index = self._index(term)
         t = self._coeffs_flat[index] / self._se_flat[index]
         info = stat_info('t', term=term)
-        return NDVar(t.reshape(self._shape), self._dims[1:], info)
+        return NDVar(t.reshape(self._shape), self.dims, info)
 
     def _n_columns(self):
         return {term: s.stop - s.start for term, s in self._p.terms.iteritems()}
@@ -85,24 +99,19 @@ class LM(object):
 class RandomLM(object):
     """Random effects model for SPM"""
     def __init__(self, lms):
-        lm0 = lms[0]
-        other_lms = lms[1:]
-
         # check lms
-        dims = lm0._dims
-        self._n_columns = lm0._n_columns()
-        self.coding = lm0.coding
-        for lm in other_lms:
-            if lm._dims != dims:
+        lm0 = lms[0]
+        n_columns_by_term = lm0._n_columns()
+        for lm in lms[1:]:
+            if lm.dims != lm0.dims:
                 raise DimensionMismatchError("LMs have incompatible dimensions")
-            elif lm._n_columns() != self._n_columns:
-                raise ValueError("Model for %s and %s don't match"
-                                 % (lm0.subject, lm.subject))
-            elif lm.coding != self.coding:
+            elif lm._n_columns() != n_columns_by_term:
+                raise ValueError("Model for %s and %s don't match" %
+                                 (lm0.subject, lm.subject))
+            elif lm.coding != lm0.coding:
                 raise ValueError("Models have incompatible coding")
-        self.column_names = lm0.column_names
 
-        # unique subject labels
+        # make sure to have a unique subject label for each lm
         name_i = 0
         subjects = [lm.subject for lm in lms]
         str_names = filter(None, subjects)
@@ -116,12 +125,33 @@ class RandomLM(object):
                     new_name = 'S%3i' % name_i
                 subjects[i] = new_name
 
-        self._lms = lms
-        self.dims = dims
+        self.__setstate__({'lms': lms, 'subjects': tuple(subjects)})
 
-    def _single_column_coefficient(self, term):
-        return NDVar(np.concatenate([lm._coefficient(term) for lm in self._lms]),
-                     self.dims)
+    def __setstate__(self, state):
+        self._lms = state['lms']
+        self._subjects = state['subjects']
+        self.tests = state.get('tests')
+        lm = self._lms[0]
+        self.dims = lm.dims
+        self.coding = lm.coding
+        self.column_names = lm.column_names
+
+        if self.tests is None:
+            self.samples = None
+        else:
+            self.samples = self.tests[self.column_names[0]].samples
+
+    def __getstate__(self):
+        return {'lms': self._lms, 'tests': self.tests,
+                'subjects': self._subjects}
+
+    def _single_column_coefficient(self, term, asds=False):
+        coeff = NDVar(np.concatenate([lm._coefficient(term) for lm in self._lms]),
+                      ('case',) + self.dims)
+        if asds:
+            return Dataset(('coeff', coeff))
+        else:
+            return coeff
 
     def column_ttest(self, term, return_data=False, popmean=0, *args, **kwargs):
         """Perform a one-sample t-test on a single model column
@@ -172,10 +202,10 @@ class RandomLM(object):
         to test the hypothesis that the coefficient is different from popmean
         in the population.
         """
-        ds = Dataset(('coeff', self._single_column_coefficient(term)))
+        ds = self._single_column_coefficient(term, asds=True)
         res = ttest_1samp('coeff', popmean, None, None, ds, *args, **kwargs)
         if return_data:
-            ds['subject'] = Factor([lm.subject for lm in self._lms])
+            ds['subject'] = Factor(self._subjects)
             ds['n'] = Var([lm.n_cases for lm in self._lms])
             return res, ds
         else:
@@ -184,10 +214,10 @@ class RandomLM(object):
     def design(self, subject=None):
         if subject is None:
             lm = self._lms[0]
-            subject = lm.subject
+            subject = self._subjects[0]
         else:
-            for lm in self._lms:
-                if lm.subject == subject:
+            for lm, lm_subject in izip(self._lms, self._subjects):
+                if lm_subject == subject:
                     break
             else:
                 raise ValueError("subject=%r" % (subject,))
@@ -198,7 +228,7 @@ class RandomLM(object):
 
     def _column_ttests(self, *args, **kwargs):
         "precompute all tests"
-        out = {}
+        self.tests = {}
         for term in self.column_names:
-            out[term] = self.column_ttest(term, *args, **kwargs)
-        return out
+            self.tests[term] = self.column_ttest(term, False, *args, **kwargs)
+        self.samples = self.tests[self.column_names[0]].samples

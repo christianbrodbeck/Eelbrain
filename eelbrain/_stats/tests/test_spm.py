@@ -1,4 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+import cPickle as pickle
 from nose.tools import eq_
 import numpy as np
 from numpy.testing import assert_array_equal
@@ -37,3 +38,7 @@ def test_random_lm():
     rlm = RandomLM(lms)
     res = rlm.column_ttest('A x B', samples=100, pmin=0.05, mintime=0.025)
     eq_(res.clusters.n_cases, 6)
+
+    # persistence
+    rlm_p = pickle.loads(pickle.dumps(rlm, pickle.HIGHEST_PROTOCOL))
+    eq_(rlm_p.dims, rlm.dims)
