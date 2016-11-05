@@ -2338,7 +2338,7 @@ class MneExperiment(FileTree):
         Subclass this method to specify events.
         """
         ds['T'] = ds['i_start'] / ds.info['sfreq']
-        ds['SOA'] = Var(np.ediff1d(ds['T'].x, 0))
+        ds['SOA'] = ds['T'].diff(0)
         if len(self._sessions) > 1:
             ds[:, 'session'] = ds.info['session']
 
