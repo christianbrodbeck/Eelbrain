@@ -5871,7 +5871,6 @@ class Dataset(OrderedDict):
             self.info.update(ds.info)
 
 
-
 class Interaction(_Effect):
     """Represents an Interaction effect.
 
@@ -5884,61 +5883,58 @@ class Interaction(_Effect):
 
     Attributes
     ----------
-    factors :
-        List of all factors (i.e. nonbasic effects are broken up into
-        factors).
-    base :
+    base : list
         All effects.
     """
     _stype = "interaction"
 
     def __init__(self, base):
-        # FIXME: Interaction does not update when component factors update
-        self.base = EffectList()
-        self.is_categorial = True
-        self.nestedin = EffectList()
+        base_ = EffectList()
+        n_vars = 0
 
         for b in base:
             if isuv(b):
-                self.base.append(b.copy()),
-                if isvar(b):
-                    if self.is_categorial:
-                        self.is_categorial = False
-                    else:
-                        raise TypeError("No Interaction between two Var objects")
+                base_.append(b.copy())
+                n_vars += isvar(b)
             elif isinteraction(b):
-                if (not b.is_categorial) and (not self.is_categorial):
-                    raise TypeError("No Interaction between two Var objects")
-                else:
-                    self.base.extend(b.base)
-                    self.is_categorial = (self.is_categorial and b.is_categorial)
-            elif isnested(b):  # TODO: nested effects
-                self.base.append(b)
-                if b.nestedin not in self.nestedin:
-                    self.nestedin.append(b.nestedin)
+                base_.extend(b.base)
+                n_vars += not b.is_categorial
+            elif isnested(b):
+                base_.append(b)
             else:
                 raise TypeError("Invalid type for Interaction: %r" % type(b))
 
-        if len(self.base) < 2:
+        if n_vars > 1:
+            raise TypeError("No Interaction between two Var objects")
+
+        if len(base_) < 2:
             raise ValueError("Interaction needs a base of at least two Factors "
                              "(got %s)" % repr(base))
-        self._n_cases = N = len(self.base[0])
-        if not all([len(f) == N for f in self.base[1:]]):
-            err = ("Interactions only between effects with the same number of "
-                   "cases")
-            raise ValueError(err)
+        N = len(base_[0])
+        if not all(len(f) == N for f in base_[1:]):
+            raise ValueError("Interactions only between effects with the same "
+                             "number of cases")
+        self.__setstate__({'base': base_, 'is_categorial': not bool(n_vars)})
 
+    def __setstate__(self, state):
+        self.base = state['base']
+        self.is_categorial = state['is_categorial']
+        # secondary attributes
+        self._n_cases = len(self.base[0])
+        self.nestedin = EffectList({e.nestedin for e in self.base if isnested(e)})
         self.base_names = [str(f.name) for f in self.base]
         self.name = ' x '.join(self.base_names)
         self.random = False
         self.df = reduce(operator.mul, [f.df for f in self.base])
-
-        # determine cells:
+        # cells
         factors = EffectList(e for e in self.base if isfactor(e) or isnested(e))
         self.cells = tuple(itertools.product(*(f.cells for f in factors)))
         self.cell_header = tuple(f.name for f in factors)
+        # TODO: beta-labels
+        self.beta_labels = ['?'] * self.df
 
-        self.beta_labels = ['?'] * self.df  # TODO:
+    def __getstate__(self):
+        return {'base': self.base, 'is_categorial': self.is_categorial}
 
     def __repr__(self):
         names = [UNNAMED if f.name is None else f.name for f in self.base]

@@ -628,6 +628,10 @@ def test_interaction():
     i = a % Factor(['c', '', 'c', ''])
     assert_dataobj_equal(i.as_factor(), Factor(['a c', 'a', 'b c', 'b']))
 
+    # pickling
+    ip = pickle.loads(pickle.dumps(i))
+    assert_dataobj_equal(ip, i)
+
 
 def test_isin():
     "Test .isin() methods"
