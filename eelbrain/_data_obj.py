@@ -6296,11 +6296,15 @@ class Model(object):
                            "(got %s)" % type(e))
                     raise TypeError(err)
 
-        self.effects = effects
-        self._n_cases = n_cases
+        # check dfs
+        df = sum(e.df for e in effects) + 1  # intercept
+        if df > n_cases:
+            raise ValueError(
+                "Model overspecified (%i cases for %i model df)" %
+                (n_cases, df))
 
         # beta indices
-        self.beta_index = beta_index = {}
+        beta_index = {}
         i = 1
         for e in effects:
             if isfactor(e) and len(e.cells) == 1:
@@ -6312,16 +6316,19 @@ class Model(object):
             beta_index[e] = slice(i, k)
             i = k
 
-        # dfs
-        self.df = sum(e.df for e in effects) + 1  # intercept
-        if self.df > n_cases:
-            raise ValueError("Model overspecified (%i cases for %i model df)" %
-                             (n_cases, self.df))
-        self.df_total = n_cases
-        self.df_error = n_cases - self.df
+        self.__setstate__({'effects': effects, 'beta_index': beta_index})
 
-        # names
+    def __setstate__(self, state):
+        self.effects = state['effects']
+        self.beta_index = state['beta_index']
+        # secondary attributes
+        self.df = sum(e.df for e in self.effects) + 1  # intercept
+        self.df_total = len(self.effects[0])
+        self.df_error = self.df_total - self.df
         self.name = ' + '.join([str(e.name) for e in self.effects])
+
+    def __getstate__(self):
+        return {'effects': self.effects, 'beta_index': self.beta_index}
 
     def __repr__(self):
         names = self.effects.names()
@@ -6336,7 +6343,7 @@ class Model(object):
 
     # container ---
     def __len__(self):
-        return self._n_cases
+        return self.df_total
 
     def __getitem__(self, sub):
         if isinstance(sub, str):
@@ -6440,7 +6447,7 @@ class Model(object):
         table : FMText Table
             The full model as a table.
         """
-        cases = cases_arg(cases, self._n_cases)
+        cases = cases_arg(cases, self.df_total)
         p = self._parametrize(method)
         table = fmtxt.Table('l' * len(p.column_names))
 
@@ -6483,7 +6490,7 @@ class Model(object):
     @LazyProperty
     def full(self):
         "returns the full model including an intercept"
-        out = np.empty((self._n_cases, self.df))
+        out = np.empty((self.df_total, self.df))
 
         # intercept
         out[:, 0] = 1
@@ -6595,7 +6602,7 @@ class Parametrization(object):
     """
     def __init__(self, model, method):
         model = asmodel(model)
-        x = np.empty((model._n_cases, model.df))
+        x = np.empty((model.df_total, model.df))
         x[:, 0] = 1
         column_names = ['intercept']
         effect_names = ['intercept']
@@ -6632,6 +6639,7 @@ class Parametrization(object):
 
         # model basics
         self.model = model
+        self.method = method
         self.x = x
         self.terms = terms
         self.column_names = column_names

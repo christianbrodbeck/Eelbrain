@@ -732,6 +732,10 @@ def test_model():
     assert_array_equal(p.x[:, p.terms['w']], w.x[:, None])
     assert_array_equal(p.x[:, p.terms['v * w']], (v * w).x[:, None])
 
+    # persistence
+    mp = pickle.loads(pickle.dumps(m, pickle.HIGHEST_PROTOCOL))
+    assert_array_equal(m.full, mp.full)
+
 
 def test_ndvar():
     "Test the NDVar class"
