@@ -96,6 +96,9 @@ def test_table():
                          'a1 & b1 \\\\\na2 & b2 \\\\\n'
                          '\\bottomrule\n\\end{tabular}\n\\end{center}')
 
+    # empty table
+    str(fmtxt.Table(''))
+
     # saving
     tempdir = TempDir()
     # HTML

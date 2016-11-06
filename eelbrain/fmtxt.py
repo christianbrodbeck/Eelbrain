@@ -1309,6 +1309,9 @@ class Table(FMTextElement):
         # append to recent tex out
         _add_to_recent(self)
 
+        if len(self._table) == 0:
+            return ''
+
         # determine column widths
         widths = []
         for row in self._table:
@@ -1317,11 +1320,7 @@ class Table(FMTextElement):
                 while len(row_strlen) < len(self.columns):
                     row_strlen.append(0)
                 widths.append(row_strlen)
-        try:
-            widths = np.array(widths)
-        except Exception as exc:
-            print(widths)
-            raise Exception(exc)
+        widths = np.array(widths)
         c_width = np.max(widths, axis=0)  # column widths!
 
         # FIXME: take into account tab length:

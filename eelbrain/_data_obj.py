@@ -4703,7 +4703,8 @@ def cases_arg(cases, n_cases):
                 raise ValueError("Can't get table for fewer than 0 cases")
         else:
             cases = min(cases, n_cases)
-        return xrange(cases)
+        if cases is not None:
+            return xrange(cases)
     else:
         return cases
 
@@ -5148,6 +5149,8 @@ class Dataset(OrderedDict):
             Include Datalists.
         """
         cases = cases_arg(cases, self.n_cases)
+        if cases is None:
+            return fmtxt.Table('')
         keys = [k for k, v in self.iteritems() if isuv(v) or (lfmt and isdatalist(v))]
         if sort:
             keys = sorted(keys)
