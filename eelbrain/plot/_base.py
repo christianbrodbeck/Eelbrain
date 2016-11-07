@@ -1504,14 +1504,11 @@ class ImLayout(Layout):
                 'subplotpars': SubplotParams(0, bottom, 1, top, 0, 0)}
 
     def make_axes(self, figure):
-        i = 1
         axes = []
-        for col in xrange(self.ncol):
-            for row in xrange(self.nrow):
-                ax = figure.add_subplot(self.nrow, self.ncol, i)
-                i += 1
-                ax.axis('off')
-                axes.append(ax)
+        for i in xrange(1, self.nax + 1):
+            ax = figure.add_subplot(self.nrow, self.ncol, i)
+            ax.axis('off')
+            axes.append(ax)
         return axes
 
 
