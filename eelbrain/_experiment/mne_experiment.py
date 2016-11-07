@@ -3260,12 +3260,16 @@ class MneExperiment(FileTree):
                 for session in epoch.sessions:
                     self.set(session=session)
                     # load events for this session
-                    ds = combine(
-                        self.load_selected_events(
+                    session_dss = []
+                    for sub_epoch in epoch.sub_epochs:
+                        if self._epochs[sub_epoch].session != session:
+                            continue
+                        ds = self.load_selected_events(
                             subject, reject, add_bads, index, data_raw or True,
-                            epoch=sub_epoch) for sub_epoch in
-                        epoch.sub_epochs if
-                        self._epochs[sub_epoch].session == session)
+                            epoch=sub_epoch)
+                        ds[:, 'epoch'] = sub_epoch
+                        session_dss.append(ds)
+                    ds = combine(session_dss)
                     # combine raw
                     if raw is None:
                         raw = ds.info['raw']

@@ -23,12 +23,12 @@ import wx
 from wx.lib.scrolledpanel import ScrolledPanel
 
 from .. import load, plot, fmtxt
-from .._data_obj import NDVar, asndvar, Ordered, isfactor
+from .._data_obj import NDVar, asndvar, Categorial, Ordered, isfactor
 from ..plot._topo import _ax_topomap
 from .._wxutils import Icon, ID, REValidator
 from .._utils.parse import POS_FLOAT_PATTERN
 from .mpl_canvas import FigureCanvasPanel
-from .text import TextFrame, HTMLFrame
+from .text import HTMLFrame
 from .history import Action, FileDocument, FileModel, FileFrame, FileFrameChild
 from .frame import EelbrainDialog
 
@@ -96,18 +96,23 @@ class Document(FileDocument):
         self.ds = ds
 
         data = np.dot(ica.mixing_matrix_.T, ica.pca_components_[:ica.n_components_])
-        self.components = NDVar(data, ('case', self.epochs_ndvar.sensor),
+        ic_dim = Ordered('component', np.arange(len(data)))
+        self.components = NDVar(data, (ic_dim, self.epochs_ndvar.sensor),
                                 info={'meas': 'component', 'cmap': 'xpolar'})
 
         # sources
-        data = ica.get_sources(epochs).get_data().swapaxes(0, 1)
-        if 'index' in ds:
-            epoch_index = ds['index']
-        else:
-            epoch_index = np.arange(len(epochs))
-        epoch_dim = Ordered('epoch', epoch_index)
-        self.sources = NDVar(data, ('case', epoch_dim, self.epochs_ndvar.time),
+        data = ica.get_sources(epochs).get_data()
+        self.sources = NDVar(data, ('case', ic_dim, self.epochs_ndvar.time),
                              info={'meas': 'component', 'cmap': 'xpolar'})
+
+        # find unique epoch labels
+        if 'index' in ds:
+            labels = map(str, ds['index'])
+            if 'epoch' in ds:
+                labels = map(' '.join, izip(ds['epoch'], labels))
+        else:
+            labels = map(str, xrange(len(epochs)))
+        self.epoch_labels = tuple(labels)
 
         # global mean (which is not modified by ICA)
         if ica.noise_cov is None:  # revert standardization
@@ -428,7 +433,7 @@ class Frame(FileFrame):
 
     def OnRankEpochs(self, event):
         i_comp = event.EventObject.i
-        source = self.doc.sources[i_comp]
+        source = self.doc.sources.sub(component=i_comp)
         y = source - source.mean()
         y /= y.std()
         y **= 2
@@ -437,14 +442,14 @@ class Frame(FileFrame):
         # sort
         sort = np.argsort(ss)[::-1]
         ss = ss[sort]
-        epoch_idx = source.epoch.values[sort]
 
         # doc
         lst = fmtxt.List("Epochs SS loading in descending order for component "
                          "%i:" % i_comp)
-        for i_epoch, ss_epoch in izip(epoch_idx, ss):
-            lst.add_item(fmtxt.Link("% 4i" % i_epoch, LINK % (i_comp, i_epoch)) +
-                         ': %.1f' % ss_epoch)
+        for i, ss_epoch in enumerate(ss):
+            lst.add_item(
+                fmtxt.Link(self.doc.epoch_labels[i], LINK % (i_comp, i)) +
+                ': %.1f' % ss_epoch)
         doc = fmtxt.Section("# %i Ranked Epochs" % i_comp, lst)
 
         InfoFrame(self, "Component %i Epoch SS" % i_comp, doc.get_html())
@@ -479,12 +484,15 @@ class Frame(FileFrame):
         event.Enable(False)
 
     def PlotCompFFT(self, i_comp):
-        plot.UTS(self.doc.sources[i_comp].fft().mean('epoch'), w=8,
-                 title="# %i Frequency Spectrum" % i_comp)
+        plot.UTS(self.doc.sources.sub(component=i_comp).fft().mean('epoch'),
+                 w=8, title="# %i Frequency Spectrum" % i_comp)
 
     def PlotCompSourceArray(self, i_comp):
-        plot.Array(self.doc.sources[i_comp], w=10, h=10, title='# %i' % i_comp,
-                   axtitle=False, interpolation='none')
+        x = self.doc.sources.sub(component=i_comp)
+        dim = Categorial('epoch', self.doc.epoch_labels)
+        x = NDVar(x.x, (dim,) + x.dims[1:], x.info, x.name)
+        plot.Array(x, w=10, h=10,
+                   title='# %i' % i_comp, axtitle=False, interpolation='none')
 
     def PlotCompTopomap(self, i_comp):
         plot.Topomap(self.doc.components[i_comp], w=10, sensorlabels='name',
@@ -534,7 +542,7 @@ class Frame(FileFrame):
             self._PlotButterfly(self.doc.epochs.average(), "Epochs Average")
         else:
             self._PlotButterfly(self.doc.epochs[i_epoch],
-                                "Epoch %i" % self.doc.sources.epoch[i_epoch],
+                                "Epoch " + self.doc.epoch_labels[i_epoch],
                                 vmax=2e-12)
 
     def _PlotButterfly(self, epoch, title, vmax=None):
@@ -612,7 +620,7 @@ class SourceFrame(FileFrameChild):
         self.i_first = i_first
         self.n_epochs = self.config.ReadInt('layout_n_epochs', 20)
         self.i_first_epoch = 0
-        self.n_epochs_in_data = len(self.doc.sources.epoch)
+        self.n_epochs_in_data = len(self.doc.sources)
         self.y_scale = 5  # scale factor for y axis
 
         # Toolbar
@@ -644,24 +652,19 @@ class SourceFrame(FileFrameChild):
         self.Show()
 
     def _get_source_data(self):
-        "component by time"
+        " -> (source_data, labels);  component by time"
         n_comp = self.n_comp
         n_comp_actual = self.n_comp_actual
-        e_start = self.doc.sources.epoch[self.i_first_epoch]
-        i_stop = self.i_first_epoch + self.n_epochs
-        if i_stop >= len(self.doc.sources.epoch):
-            e_stop = None
-        else:
-            e_stop = self.doc.sources.epoch[i_stop]
-        data = self.doc.sources.sub(case=slice(self.i_first, self.i_first + n_comp),
-                                    epoch=(e_start, e_stop))
-        y = data.get_data(('case', 'epoch', 'time')).reshape((n_comp_actual, -1))
+        epoch_index = slice(self.i_first_epoch, self.i_first_epoch + self.n_epochs)
+        data = self.doc.sources.sub(
+            case=epoch_index, component=slice(self.i_first, self.i_first + n_comp))
+        y = data.get_data(('component', 'case', 'time')).reshape((n_comp_actual, -1))
         if y.base is not None and data.x.base is not None:
             y = y.copy()
         start = n_comp - 1
         stop = -1 + (n_comp - n_comp_actual)
         y += np.arange(start * self.y_scale, stop * self.y_scale, -self.y_scale)[:, None]
-        return y, data.epoch.x
+        return y, self.doc.epoch_labels[epoch_index]
 
     def _plot(self):
         # partition figure
@@ -760,8 +763,7 @@ class SourceFrame(FileFrameChild):
 
     def GoToComponentEpoch(self, component, epoch):
         self.SetFirstComponent(component // self.n_comp * self.n_comp)
-        epoch_i = self.doc.sources.epoch.dimindex(epoch)
-        self.SetFirstEpoch(epoch_i // self.n_epochs * self.n_epochs)
+        self.SetFirstEpoch(epoch // self.n_epochs * self.n_epochs)
 
     def OnBackward(self, event):
         "turns the page backward"
@@ -799,7 +801,8 @@ class SourceFrame(FileFrameChild):
             return
         elif event.inaxes.i_comp is None:
             if event.key == 'b':
-                i_epoch = self.i_first_epoch + int(event.xdata // len(self.doc.sources.time))
+                i_epoch = (self.i_first_epoch +
+                           int(event.xdata // len(self.doc.sources.time)))
                 if i_epoch < len(self.doc.epochs):
                     self.parent.PlotEpochButterfly(i_epoch)
             return
