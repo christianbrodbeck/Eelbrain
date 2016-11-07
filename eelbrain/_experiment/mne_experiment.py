@@ -2737,6 +2737,8 @@ class MneExperiment(FileTree):
             raise NotImplementedError("post_baseline_trigger_shift is not "
                                       "implemented for baseline correction in "
                                       "source space")
+        if mask and not isinstance(mask, bool):
+            raise TypeError("mask must be boolean, got %s" % repr(mask))
 
         ds = self.load_evoked(subject, sns_baseline, sns_ndvar, cat, None,
                               data_raw, **kwargs)
@@ -4547,7 +4549,7 @@ class MneExperiment(FileTree):
             res = self._make_test(ds[label_keys[label]], ds, test, test_kwargs,
                                   do_mcc)
             label_results[label] = res
-            
+
         if do_mcc:
             cdists = [r._cdist for r in label_results.values()]
             merged_dist = _MergedTemporalClusterDist(cdists)
