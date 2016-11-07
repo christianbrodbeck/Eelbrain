@@ -2962,7 +2962,8 @@ class MneExperiment(FileTree):
             False).
         mask : bool | str
             Discard data that is labelled 'unknown' by the parcellation (only
-            applies to NDVars, default False).
+            applies to NDVars, default False). Can be set to a parcellation
+            name or ``True`` to use the current parcellation.
         data_raw : bool | str
             Keep the mne.io.Raw instance in ds.info['raw'] (default False).
             Can be specified as raw name (str) to include a different raw object
