@@ -1179,6 +1179,8 @@ class MneExperiment(FileTree):
             events = {}  # {(subject, session): enent_dataset}
             digs = defaultdict(dict)  # {subject: {session: dig}}
             for subject, session in self.iter(('subject', 'session'), group='all'):
+                if not os.path.exists(self.get('raw-file')):
+                    continue
                 ds = self.load_events()
                 raw = ds.info.pop('raw')
                 events[subject, session] = ds
@@ -1189,7 +1191,7 @@ class MneExperiment(FileTree):
         for subject in digs:
             subject_dig_ids = {}  # {session: id}
             subject_digs = {}  # {id: dig}
-            i = 0
+            i = 1
             for session, dig in digs[subject].iteritems():
                 for dig_id in subject_digs.keys():
                     if dig_equal(dig, subject_digs[dig_id]):
@@ -1203,7 +1205,8 @@ class MneExperiment(FileTree):
         for name, epoch in self._epochs.iteritems():
             if isinstance(epoch, SuperEpoch):
                 for subject, subject_dig_ids in self._dig_ids.iteritems():
-                    if len({subject_dig_ids[s] for s in epoch.sessions}) > 1:
+                    if len(set(filter(None, (subject_dig_ids.get(s) for s in
+                                             epoch.sessions)))) > 1:
                         raise NotImplementedError(
                             "SuperEpoch from sessions with different trans "
                             "(%s)" % name)
