@@ -3098,7 +3098,6 @@ class NDVar(object):
         # derived
         self.ndim = len(dims)
         self.shape = x.shape
-        self._len = len(x)
         self._dim_2_ax = dict(zip(self.dimnames, xrange(self.ndim)))
         # attr
         for dim in truedims:
@@ -3321,12 +3320,12 @@ class NDVar(object):
             return self.sub(index)
 
     def __len__(self):
-        return self._len
+        return len(self.x)
 
     def __repr__(self):
         rep = '<NDVar %(name)r: %(dims)s>'
         if self.has_case:
-            dims = [(self._len, 'case')]
+            dims = [(len(self.x), 'case')]
         else:
             dims = []
         dims.extend([(len(dim), dim.name) for dim in self._truedims])
