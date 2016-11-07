@@ -1358,7 +1358,7 @@ class MneExperiment(FileTree):
                         if bad:
                             invalid_cache['tests'].add(test)
                             log.debug("  test %s depends on changed variables "
-                                      "%s", test, bad)
+                                      "%s", test, ', '.join(bad))
                 # epochs using bad variable
                 epochs_vars = find_epochs_vars(cache_state['epochs'])
                 for epoch, evars in epochs_vars.iteritems():
@@ -1366,7 +1366,7 @@ class MneExperiment(FileTree):
                     if bad:
                         invalid_cache['epochs'].add(epoch)
                         log.debug("  epoch %s depends on changed variables %s",
-                                  epochs, bad)
+                                  epoch, ', '.join(bad))
 
             # secondary epochs
             if 'epochs' in invalid_cache:
