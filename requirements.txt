@@ -1,0 +1,7 @@
+colormath >= 2.1
+matplotlib >= 1.1
+numpy >= 1.8
+numpydoc >= 0.5
+scipy >= 0.11
+Sphinx > 1.1
+tex >= 1.8
