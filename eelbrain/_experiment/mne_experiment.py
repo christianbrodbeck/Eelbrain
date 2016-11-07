@@ -61,6 +61,8 @@ CACHE_STATE_VERSION = 4
 # Allowable parameters
 ICA_REJ_PARAMS = {'kind', 'source', 'epoch', 'interpolation', 'n_components',
                   'random_state', 'method'}
+COV_PARAMS = {'epoch', 'session', 'method', 'reg', 'keep_sample_mean',
+              'reg_eval_win_pad'}
 
 FS_PARC = 'subject_parc'  # Parcellation that come with every MRI-subject
 FSA_PARC = 'fsaverage_parc'  # Parcellation that comes with fsaverage
@@ -907,6 +909,21 @@ class MneExperiment(FileTree):
             artifact_rejection[name] = params
 
         self._artifact_rejection = artifact_rejection
+
+        ########################################################################
+        # Cov
+        #####
+        for k, params in self._covs.iteritems():
+            params = set(params)
+            n_datasource = ('epoch' in params) + ('session' in params)
+            if n_datasource != 1:
+                if n_datasource == 0:
+                    raise ValueError("Cov %s has neither epoch nor session "
+                                     "entry" % k)
+                raise ValueError("Cov %s has both epoch and session entry" % k)
+            if params.difference(COV_PARAMS):
+                raise ValueError("Cov %s has unused entries: %s" %
+                                 ', '.join(params.difference(COV_PARAMS)))
 
         ########################################################################
         # parcellations
@@ -3834,7 +3851,7 @@ class MneExperiment(FileTree):
         keep_sample_mean = params.get('keep_sample_mean', True)
         reg = params.get('reg', None)
 
-        if 'epochs' in params:
+        if 'epoch' in params:
             with self._temporary_state:
                 epochs = self.load_epochs(None, True, False, decim=1,
                                           epoch=params['epoch'])['epochs']
