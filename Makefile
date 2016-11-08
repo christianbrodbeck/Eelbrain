@@ -7,7 +7,7 @@ clean-py:
 	find . -type f -name *.pyo -delete
 
 doc:
-	rm -rf doc/build doc/source/generated
+	rm -rf doc/build doc/generated
 	python setup.py build_sphinx
 
 test:
