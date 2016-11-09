@@ -2,10 +2,27 @@
 Development
 ***********
 
-The latest development version can be found in the master branch in the
-`GitHub repository <https://github.com/christianbrodbeck/Eelbrain>`_.
+Eelbrain is developed by
+`Christian Brodbeck <http://loop.frontiersin.org/people/120185>`_
+at the `Computational sensorimotor systems lab
+<http://www.isr.umd.edu/Labs/CSSL/simonlab/Home.html>`_
+at University of Maryland, College Park.
+At my previous position as PhD student at the
+`Neuroscience of Language Lab <http://www.psych.nyu.edu/nellab/meglab.html>`_
+at New York University I was funded by grant G1001 from the
+`NYU Abu Dhabi Institute
+<http://nyuad.nyu.edu/en/research/nyuad-institute.html>`_.
 
-New contributions can be made as pull requests into that branch.
+Eelbrain is open-source and you are welcome to contribute.
+The latest development version can be found in the
+`GitHub repository <https://github.com/christianbrodbeck/Eelbrain>`_.
+New contributions can be made as pull requests into the master branch.
+
+Eelbrain development focuses on OS X, in particular the GUI components.
+However, the underlying libraries are all available on the major platforms and
+it should in principle be possible to make Eelbrain work on other platform with
+little effort.
+
 
 Style guides:
 
@@ -17,8 +34,10 @@ Style guides:
 
 Useful tools:
 
- - Graphical frontend for git: `GitX <http://rowanj.github.io/gitx/>`_
- - Python IDE: `PyCharm <https://www.jetbrains.com/pycharm/>`_
+ - Graphical frontends for git:
+   - `GitX <http://rowanj.github.io/gitx>`_
+   - `SourceTree <https://www.sourcetreeapp.com>`_
+ - Python IDE: `PyCharm <https://www.jetbrains.com/pycharm>`_
 
 
 Set up the Development Version

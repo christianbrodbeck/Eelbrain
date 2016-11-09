@@ -1,8 +1,3 @@
-.. Eelbrain documentation master file, created by
-   sphinx-quickstart on Tue Mar 29 23:16:11 2011.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-   
 .. Building: $ make html
    If you get ValueError: unknown locale: UTF-8, run 
    export LC_ALL=en_US.UTF-8 
@@ -11,26 +6,20 @@
 Eelbrain
 ========
 
-   "The human brain is like an enormous fish. It's flat and slimy, and has
-   gills through which it can see."
-
-   -- Doctor Quatt
-
-
 Eelbrain is an open-source `Python <https://www.python.org>`_ package for
-statistical analysis of electrical brain activity (MEG and EEG).
-Eelbrain is developed by
-`Christian Brodbeck <http://www.psych.nyu.edu/pylkkanen/lab/christianbrodbeck.html>`_
-at the
-`Neuroscience of Language Lab <http://www.psych.nyu.edu/nellab/meglab.html>`_
-at New York University. This work is currently funded by grant G1001 from the
-`NYU Abu Dhabi Institute
-<http://nyuad.nyu.edu/en/research/nyuad-institute.html>`_.
+statistical analysis of MEG and EEG data.
+It is developed by
+`Christian Brodbeck <http://loop.frontiersin.org/people/120185>`_
+at the `Computational sensorimotor systems lab
+<http://www.isr.umd.edu/Labs/CSSL/simonlab/Home.html>`_
+at University of Maryland, College Park.
+
 If you use Eelbrain in work that is published, please acknowledge it with a
 link to `pythonhosted.org/eelbrain <https://pythonhosted.org/eelbrain/>`_ and
 indicate the version which you used.
 
-Manual:
+Manual
+------
 
 .. toctree::
    :maxdepth: 1
@@ -54,7 +43,7 @@ Manual:
     <https://github.com/christianbrodbeck/Eelbrain/tree/master/examples>`_
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`
