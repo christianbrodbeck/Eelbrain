@@ -1,6 +1,6 @@
 from surfer import Brain
 
-DST = '../source/images/brain_%s.png'
+DST = '../images/brain_%s.png'
 subjects_dir = '/Volumes/Seagate/refpred/mri'
 surfaces = ('inflated',
             'inflated_avg',

@@ -140,13 +140,13 @@ The following is a complete example for an experiment class definition file
 (the source file can be found in the Eelbrain examples folder at
 ``examples/experiment/sample_experiment.py``):
 
-.. literalinclude:: ../../examples/experiment/sample_experiment.py
+.. literalinclude:: ../examples/experiment/sample_experiment.py
 
 
 Given the ``SampleExperiment`` class definition above, the following is a
 script that would compute/update analysis reports:
 
-.. literalinclude:: ../../examples/experiment/make_reports.py
+.. literalinclude:: ../examples/experiment/make_reports.py
 
 
 Experiment Definition
