@@ -105,25 +105,36 @@ modindex_common_prefix = ['eelbrain.']
 
 # -- Custom Options -----------------------------------------------------------
 
+# http://sphinx.pocoo.org/ext/intersphinx.html
 intersphinx_mapping = {'python': ('http://docs.python.org/2.7', None),
                        'mne': ('http://martinos.org/mne/stable', None),
                        'matplotlib': ('http://matplotlib.org', None),
                        'numpy': ('http://docs.scipy.org/doc/numpy/reference', None),
                        'scipy': ('http://docs.scipy.org/doc/scipy/reference', None)}
-# http://sphinx.pocoo.org/ext/intersphinx.html
 
 
 # -- Options for HTML output ---------------------------------------------------
 
+# import sphinx_bootstrap_theme
+# html_theme = 'bootstrap'
+# html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
+
+if os.environ.get('READTHEDOCS') != 'True':
+    import sphinx_rtd_theme
+    html_theme = "sphinx_rtd_theme"
+    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+    html_theme_options = {'display_version': True}
+
+
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 # new default: alabaster
-html_theme = 'classic'
+# html_theme = 'classic'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-html_theme_options = {'stickysidebar': True}
+# html_theme_options = {'stickysidebar': True}
 
 # Add any paths that contain custom themes here, relative to this directory.
 # html_theme_path = []
@@ -137,7 +148,7 @@ html_theme_options = {'stickysidebar': True}
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = 'images/eelbrain160.png'
+html_logo = 'images/Eelbrain RTD.png'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32

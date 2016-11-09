@@ -1,0 +1,10 @@
+python:
+  version: 2
+  pip_install: true
+  extra_requirements:
+    - doc
+
+requirements_file: requirements.txt
+
+formats:
+  - none
