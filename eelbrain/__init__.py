@@ -5,21 +5,6 @@
                                                - Dr. Quat
 
 
-Module Hierarchy
-================
-
-'a < b' means a imports from b, so b can not import from a:
-
-wxterm < wxgui < wxutils
-               < plot < analyze < vessels < fmtxt
-
-
-
-
-
-Created by Christian Brodbeck on 2/20/2012.
-Copyright (c) 2012. All rights reserved.
-
 """
 # import this first for a chance to reverse mne's non-standard logging practice
 from . import mne_fixes
