@@ -80,7 +80,7 @@ release = eelbrain.__version__  # '0.0.3'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['images', 'static']
+exclude_patterns = ['build', 'illustrations', 'images', 'static']
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 # default_role = None
