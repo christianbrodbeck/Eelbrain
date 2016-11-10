@@ -5549,12 +5549,13 @@ class MneExperiment(FileTree):
         asds : bool
             Return a Dataset with the information (default is to print it).
         """
+        # TODO: include ICA raw preprocessing pipes
         raw_name = self.get('raw')
         epoch_name = self.get('epoch')
         rej_name = self.get('rej')
         rej = self._artifact_rejection[rej_name]
         has_ica = rej['kind'] == 'ica'
-        has_interp = rej['interpolation']
+        has_interp = rej.get('interpolation')
 
         subjects = []
         n_events = []
@@ -5594,7 +5595,7 @@ class MneExperiment(FileTree):
                    "Percent is rounded to one decimal. Bad channels: "
                    "defined in bad_channels file and in rej-file." %
                    (raw_name, epoch_name, rej_name))
-        if rej['interpolation']:
+        if has_interp:
             caption += (" ch_interp: average number of channels interpolated "
                         "per epoch, rounded to one decimal.")
         else:
