@@ -5865,6 +5865,17 @@ class MneExperiment(FileTree):
          """
         return FileTree.show_file_status(self, temp, row, col, *args, **kwargs)
 
+    def show_raw_info(self):
+        "Display the selected pipeline for raw processing"
+        raw = self.get('raw')
+        pipe = self._raw[raw]
+        pipeline = [pipe]
+        while pipe.name != 'raw':
+            pipe = pipe.source
+            pipeline.insert(0, pipe)
+        print("Preprocessing pipeline: " +
+              ' --> '.join(pipe.name for pipe in pipeline))
+
     def show_reg_params(self, asds=False, **kwargs):
         """Show the covariance matrix regularization parameters
 
