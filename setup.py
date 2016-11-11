@@ -12,8 +12,6 @@ http://docs.python.org/distutils/index.html
 from ez_setup import use_setuptools
 use_setuptools('17')
 
-import re
-import sys
 from setuptools import setup, find_packages, Extension
 import numpy as np
 
@@ -23,19 +21,10 @@ GitHub: <https://github.com/christianbrodbeck/Eelbrain>
 """
 
 # version must be in X.X.X format, e.g., "0.0.3dev"
-with open('eelbrain/__init__.py') as fid:
-    text = fid.read()
-match = re.search("__version__ = '([.\w]+)'", text)
-if match is None:
-    raise ValueError("No valid version string found in:\n\n" + text)
-version = match.group(1)
-if version.count('.') != 2 and not version.endswith('dev'):
-    raise ValueError("Invalid version string extracted: %r" % version)
+v = {}
+execfile('read_version.py', v)
+version = v['version']
 
-if len(sys.argv) > 1:
-    arg = sys.argv[1]
-else:
-    arg = None
 
 # Cython extensions
 ext = [Extension("eelbrain._stats.opt", ["eelbrain/_stats/opt.c"])]
