@@ -19,6 +19,8 @@ import sys
 import eelbrain
 
 
+IN_RTD = os.environ.get('READTHEDOCS') == 'True'
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -34,10 +36,18 @@ autoclass_content = 'class'  # 'both'
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.autosummary',  # default
-              'sphinx.ext.todo', 'sphinx.ext.pngmath',  # default
+              'sphinx.ext.todo',  # default
               'sphinx.ext.intersphinx',  # http://sphinx.pocoo.org/ext/intersphinx.html
               'numpydoc',  # https://github.com/numpy/numpy/tree/master/doc/sphinxext
               ]
+if IN_RTD:
+    # RTD uses older sphinx
+    extensions.append('sphinx.ext.pngmath')
+else:
+    extensions.append('sphinx.ext.imgmath')
+
+
+
 # enable to  have all methods documented on the same page as a class:
 # autodoc_default_flags=['inherited-members']
 autosummary_generate = True
@@ -119,7 +129,7 @@ intersphinx_mapping = {'python': ('http://docs.python.org/2.7', None),
 # html_theme = 'bootstrap'
 # html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
 
-if os.environ.get('READTHEDOCS') != 'True':
+if not IN_RTD:
     import sphinx_rtd_theme
     html_theme = "sphinx_rtd_theme"
     html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
