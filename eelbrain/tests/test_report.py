@@ -1,9 +1,10 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import logging
+from nose.tools import eq_
 
 from eelbrain import datasets, testnd
 from eelbrain.fmtxt import html
-from eelbrain._report import result_report
+from eelbrain._report import result_report, enumeration
 
 
 def test_result_report():
@@ -43,3 +44,9 @@ def test_result_report():
         res = testnd.anova(y, 'A * rm', ds=sds, match='rm', **kwargs)
         rep = result_report(res, ds)
         html(rep)
+
+
+def test_text():
+    "Test _report text functions"
+    eq_(enumeration(['a', 'b', 'c']), 'a, b and c')
+    print(enumeration({'a', 'b', 'c'}))

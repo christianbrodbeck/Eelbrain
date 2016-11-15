@@ -26,6 +26,7 @@ def plural(noun, n):
 
 def enumeration(items, link='and'):
     "['a', 'b', 'c'] -> 'a, b and c'"
+    items = tuple(items)
     if len(items) >= 2:
         return (' %s ' % link).join((', '.join(items[:-1]), items[-1]))
     elif len(items) == 1:
