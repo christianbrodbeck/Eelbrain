@@ -4302,62 +4302,8 @@ class NDVar(object):
         """
         return self._aggregate_over_dims(dims, regions, np.std)
 
+    @deprecated("0.26", "use specific summary methods instead")
     def summary(self, *dims, **regions):
-        r"""
-        Returns a new NDVar with specified dimensions collapsed.
-
-        .. warning::
-            Data is collapsed over the different dimensions in turn using the
-            provided function with an axis argument. For certain functions
-            this is not equivalent to collapsing over several axes concurrently
-            (e.g., np.var).
-
-        dimension:
-            A whole dimension is specified as string argument. This
-            dimension is collapsed over the whole range.
-        range:
-            A range within a dimension is specified through a keyword-argument.
-            Only the data in the specified range is included. Use like the
-            :py:meth:`.sub` method.
-
-
-        **additional kwargs:**
-
-        func : callable
-            Function used to collapse the data. Needs to accept an "axis"
-            kwarg (default: np.mean)
-        name : str
-            Name for the new NDVar.
-
-
-        Examples
-        --------
-
-        Assuming ``data`` is a normal time series. Get the average in a time
-        window::
-
-            >>> Y = data.summary(time=(.1, .2))
-
-        Get the peak in a time window::
-
-            >>> Y = data.summary(time=(.1, .2), func=np.max)
-
-        Assuming ``meg`` is an NDVar with dimensions time and sensor. Get the
-        average across sensors 5, 6, and 8 in a time window::
-
-            >>> roi = [5, 6, 8]
-            >>> Y = meg.summary(sensor=roi, time=(.1, .2))
-
-        Get the peak in the same data:
-
-            >>> roi = [5, 6, 8]
-            >>> peak = meg.summary(sensor=roi, time=(.1, .2), func=np.max)
-
-        Get the RMS over all sensors
-
-            >>> meg_rms = meg.summary('sensor', func=rms)
-
-        """
         if 'func' in regions:
             func = regions.pop('func')
         elif 'summary_func' in self.info:

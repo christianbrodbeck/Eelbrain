@@ -9,7 +9,6 @@ import os
 import re
 import shutil
 import time
-from warnings import warn
 
 import numpy as np
 
