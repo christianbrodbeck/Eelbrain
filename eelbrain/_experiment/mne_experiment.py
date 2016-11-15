@@ -2211,7 +2211,11 @@ class MneExperiment(FileTree):
 
     def _sysname(self, fiff, subject, modality):
         if fiff.info.get('kit_system_id'):
-            return  # no need to guess
+            try:
+                return load.fiff.KIT_NEIGHBORS[fiff.info['kit_system_id']]
+            except KeyError:
+                raise NotImplementedError("Unknown KIT system-ID: %r" %
+                                          (fiff.info['kit_system_id'],))
         elif modality != '':
             return  # handled in self._fix_eeg_ndvar()
         if isinstance(self.meg_system, str):
