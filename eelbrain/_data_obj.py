@@ -3384,11 +3384,20 @@ class NDVar(object):
         return rep % args
 
     def abs(self, name=None):
-        """Compute the absolute values"""
-        x = np.abs(self.x)
-        dims = self.dims
-        info = self.info.copy()
-        return NDVar(x, dims, info, name)
+        """Compute the absolute values
+
+        Parameters
+        ----------
+        name : str
+            Name of the output NDVar (default is the current name).
+
+        Returns
+        -------
+        abs : NDVar
+            NDVar with same dimensions and absolute values.
+        """
+        return NDVar(np.abs(self.x), self.dims, self.info.copy(),
+                     name or self.name)
 
     def any(self, dims=(), **regions):
         """Compute presence of any value other than zero over given dimensions
@@ -3406,6 +3415,8 @@ class NDVar(object):
             Regions over which to aggregate. For example, to check for nonzero
             values between time=0.1 and time=0.2, use
             ``ndvar.any(time=(0.1, 0.2))``.
+        name : str
+            Name of the output NDVar (default is the current name).
 
         Returns
         -------
@@ -3421,7 +3432,7 @@ class NDVar(object):
             err = "Dimensions of %r do not match %r" % (self, dims)
             raise DimensionMismatchError(err)
 
-    def aggregate(self, X, func=np.mean, name=True):
+    def aggregate(self, X, func=np.mean, name=None):
         """
         Summarize data in each cell of ``X``.
 
@@ -3434,9 +3445,8 @@ class NDVar(object):
             into each cell of X. The function needs to accept the data as
             first argument and ``axis`` as keyword-argument. Default is
             ``numpy.mean``.
-        name : None | True | str
-            Name of the output NDVar, ``True`` to keep the current name
-            (default ``True``).
+        name : str
+            Name of the output NDVar (default is the current name).
 
         Returns
         -------
@@ -3455,20 +3465,17 @@ class NDVar(object):
             if np.sum(idx):
                 x_cell = self.x[idx]
                 x.append(func(x_cell, axis=0))
+        x = np.array(x)
 
         # update info for summary
         info = self.info.copy()
         if 'summary_info' in info:
             info.update(info.pop('summary_info'))
 
-        if name is True:
-            name = self.name
-
-        x = np.array(x)
-        out = NDVar(x, self.dims, info, name)
-        return out
+        return NDVar(x, self.dims, info, name or self.name)
 
     def _aggregate_over_dims(self, axis, regions, func):
+        name = regions.pop('name', self.name)
         if regions:
             data = self.sub(**regions)
             additional_axis = [dim for dim in regions if data.has_dim(dim)]
@@ -3482,7 +3489,7 @@ class NDVar(object):
                     axis = [axis] + additional_axis
                 else:
                     axis = list(axis) + additional_axis
-            return data._aggregate_over_dims(axis, None, func)
+            return data._aggregate_over_dims(axis, {'name': name}, func)
         elif not axis:
             return func(self.x)
         elif isndvar(axis):
@@ -3490,8 +3497,9 @@ class NDVar(object):
                 dim = axis.dims[0]
                 dim_axis = self.get_axis(dim.name)
                 if self.get_dim(dim.name) != dim:
-                    msg = "Index dimension does not match data dimension"
-                    raise DimensionMismatchError(msg)
+                    raise DimensionMismatchError("Index dimension %s does not "
+                                                 "match data dimension" %
+                                                 dim.name)
                 index = (full_slice,) * dim_axis + (axis.x,)
                 x = func(self.x[index], dim_axis)
                 dims = (dim_ for dim_ in self.dims if not dim_ == dim)
@@ -3499,9 +3507,10 @@ class NDVar(object):
                 # if the index does not contain all dimensions, numpy indexing
                 # is weird
                 if self.ndim - self.has_case != axis.ndim - axis.has_case:
-                    msg = ("If the index is not one dimensional, it needs to "
-                           "have the same dimensions as the data.")
-                    raise NotImplementedError(msg)
+                    raise NotImplementedError(
+                        "If the index is not one dimensional, it needs to have "
+                        "the same dimensions as the data."
+                    )
                 dims, self_x, index = self._align(axis)
                 if self.has_case:
                     if axis.has_case:
@@ -3509,11 +3518,10 @@ class NDVar(object):
                     else:
                         index = index[0]
                         x = np.array([func(x_[index]) for x_ in self_x])
-                    return Var(x, self.name, info=self.info.copy())
+                    return Var(x, name, info=self.info.copy())
                 elif axis.has_case:
-                    msg = ("Index with case dimension can not be applied to "
-                           "data without case dimension")
-                    raise IndexError(msg)
+                    raise IndexError("Index with case dimension can not be "
+                                     "applied to data without case dimension")
                 else:
                     return func(self_x[index])
         elif isinstance(axis, basestring):
@@ -3526,7 +3534,6 @@ class NDVar(object):
             dims = (self.dims[i] for i in xrange(self.ndim) if i not in axes)
 
         dims = tuple(dims)
-        name = self.name
         if len(dims) == 0:
             return x
         elif dims == ('case',):
@@ -3534,7 +3541,7 @@ class NDVar(object):
         else:
             return NDVar(x, dims, self.info.copy(), name)
 
-    def bin(self, tstep, tstart=None, tstop=None, func=None):
+    def bin(self, tstep, tstart=None, tstop=None, func=None, name=None):
         """Bin the data along the time axis
 
         Parameters
@@ -3555,6 +3562,8 @@ class NDVar(object):
             'f': maximum;
             't', 'r': extrema;
             otherwise: mean.
+        name : str
+            Name of the output NDVar (default is the current name).
 
         Returns
         -------
@@ -3617,16 +3626,15 @@ class NDVar(object):
         dims[time_axis] = out_time
         info = self.info.copy()
         info['bins'] = bins
-        return NDVar(x, dims, info)
+        return NDVar(x, dims, info, name or self.name)
 
-    def copy(self, name=True):
+    def copy(self, name=None):
         """returns an NDVar with a deep copy of its data
 
         Parameters
         ----------
-        name : None | True | str
-            Name of the output NDVar, ``True`` to keep the current name
-            (default ``True``).
+        name : str
+            Name of the output NDVar (default is the current name).
 
         Returns
         -------
@@ -3637,13 +3645,10 @@ class NDVar(object):
         -----
         The info dictionary is still a shallow copy.
         """
-        x = self.x.copy()
-        info = self.info.copy()
-        if name is True:
-            name = self.name
-        return NDVar(x, self.dims, info, name)
+        return NDVar(self.x.copy(), self.dims, self.info.copy(),
+                     name or self.name)
 
-    def diff(self, dim=None, n=1, pad=True):
+    def diff(self, dim=None, n=1, pad=True, name=None):
         """Discrete difference
 
         parameters
@@ -3655,6 +3660,8 @@ class NDVar(object):
         pad : bool
             Pad the ``dim`` dimension of the result to conserve NDVar shape
             (default).
+        name : str
+            Name of the output NDVar (default is the current name).
 
         Returns
         -------
@@ -3677,7 +3684,7 @@ class NDVar(object):
         else:
             raise NotImplementedError("pad != 1")
 
-        return NDVar(x, self.dims, self.info.copy(), self.name)
+        return NDVar(x, self.dims, self.info.copy(), name or self.name)
 
     def diminfo(self, str_out=False):
         """Information about the dimensions
@@ -3722,6 +3729,8 @@ class NDVar(object):
             Second NDVar, has to have at least the dimension ``dim``.
         dim : str
             Dimension which to multiple (default is the last dimension).
+        name : str
+            Name of the output NDVar (default is ``ndvar.name``).
 
         Examples
         --------
@@ -3752,13 +3761,15 @@ class NDVar(object):
             x = np.tensordot(x1, x2, 1)
         return NDVar(x, dims, {}, name or ndvar.name)
 
-    def envelope(self, dim='time'):
+    def envelope(self, dim='time', name=None):
         """Compute the Hilbert envelope of a signal
 
         Parameters
         ----------
         dim : str
             Dimension over which to compute the envelope (default 'time').
+        name : str
+            Name of the output NDVar (default is the current name).
 
         Returns
         -------
@@ -3776,9 +3787,9 @@ class NDVar(object):
         """
         x = np.abs(scipy.signal.hilbert(self.x, axis=self.get_axis(dim)))
         info = self.info.copy()
-        return NDVar(x, self.dims, info)
+        return NDVar(x, self.dims, info, name or self.name)
 
-    def fft(self, dim=None):
+    def fft(self, dim=None, name=None):
         """Fast fourier transform
 
         Parameters
@@ -3786,6 +3797,8 @@ class NDVar(object):
         dim : str
             Dimension along which to operate (the default is the ``time``
             dimension if present).
+        name : str
+            Name of the output NDVar (default is the current name).
 
         Returns
         -------
@@ -3813,7 +3826,7 @@ class NDVar(object):
             freq = Ordered('frequency', freqs)
         dims = self.dims[:axis] + (freq,) + self.dims[axis + 1:]
         info = cs.set_info_cs(self.info, cs.default_info('Amplitude'))
-        return NDVar(x, dims, info)
+        return NDVar(x, dims, info, name or self.name)
 
     def get_axis(self, name):
         "Returns the data axis for a given dimension name"
@@ -3912,7 +3925,7 @@ class NDVar(object):
     def has_dim(self, name):
         return name in self._dim_2_ax
 
-    def label_clusters(self, threshold=0, tail=0):
+    def label_clusters(self, threshold=0, tail=0, name=None):
         """Find and label clusters of values exceeding a threshold
 
         Parameters
@@ -3923,6 +3936,8 @@ class NDVar(object):
         tail : 0 | -1 | 1
             Whether to label cluster smaller than threshold, larger than
             threshold, or both (default).
+        name : str
+            Name of the output NDVar (default is the current name).
 
         Returns
         -------
@@ -3957,7 +3972,7 @@ class NDVar(object):
 
         info = self.info.copy()
         info['cids'] = cids
-        return NDVar(cmap, self.dims, info)
+        return NDVar(cmap, self.dims, info, name or self.name)
 
     def max(self, dims=(), **regions):
         """Compute the maximum over given dimensions
@@ -3974,6 +3989,8 @@ class NDVar(object):
         *regions*
             Regions over which to aggregate. For example, to get the maximum
             between time=0.1 and time=0.2, use ``ndvar.max(time=(0.1, 0.2))``.
+        name : str
+            Name of the output NDVar (default is the current name).
 
         Returns
         -------
@@ -3999,6 +4016,8 @@ class NDVar(object):
         *regions*
             Regions over which to aggregate. For example, to get the mean
             between time=0.1 and time=0.2, use ``ndvar.mean(time=(0.1, 0.2))``.
+        name : str
+            Name of the output NDVar (default is the current name).
 
         Returns
         -------
@@ -4024,6 +4043,8 @@ class NDVar(object):
         *regions*
             Regions over which to aggregate. For example, to get the minimum
             between time=0.1 and time=0.2, use ``ndvar.min(time=(0.1, 0.2))``.
+        name : str
+            Name of the output NDVar (default is the current name).
 
         Returns
         -------
@@ -4034,13 +4055,15 @@ class NDVar(object):
         """
         return self._aggregate_over_dims(dims, regions, np.min)
 
-    def norm(self, dim):
+    def norm(self, dim, name=None):
         """Norm over ``dim``
 
         Parameters
         ----------
         dim : str
             Dimension over which to operate.
+        name : str
+            Name of the output NDVar (default is the current name).
 
         Returns
         -------
@@ -4058,7 +4081,7 @@ class NDVar(object):
         if self.ndim == 1:
             return x
         dims = self.dims[:axis] + self.dims[axis + 1:]
-        return NDVar(x, dims, self.info.copy(), self.name)
+        return NDVar(x, dims, self.info.copy(), name or self.name)
 
     def ols(self, x, name=None):
         """Sample-wise ordinary least squares regressions
@@ -4069,7 +4092,7 @@ class NDVar(object):
             Predictor or predictors. Can also be supplied as argument that can
             be converted to a Model, for example ``Var`` or list of ``Var``.
         name : str
-            Name for the output NDVar.
+            Name of the output NDVar (default is the current name).
 
         Returns
         -------
@@ -4103,7 +4126,7 @@ class NDVar(object):
         info.update(meas='beta', unit=None)
         if 'summary_info' in info:
             del info['summary_info']
-        return NDVar(betas, self.dims, info, name)
+        return NDVar(betas, self.dims, info, name or self.name)
 
     def ols_t(self, x, name=None):
         """T-values for sample-wise ordinary least squares regressions
@@ -4114,7 +4137,7 @@ class NDVar(object):
             Predictor or predictors. Can also be supplied as argument that can
             be converted to a Model, for example ``Var`` or list of ``Var``.
         name : str
-            Name for the output NDVar.
+            Name of the output NDVar (default is the current name).
 
         Returns
         -------
@@ -4144,9 +4167,9 @@ class NDVar(object):
 
         t = stats.lm_t(self.x, x._parametrize())[1:]  # drop intercept
         info = self.info.copy()
-        return NDVar(t, self.dims, info, name)
+        return NDVar(t, self.dims, info, name or self.name)
 
-    def repeat(self, repeats, dim='case', name=True):
+    def repeat(self, repeats, dim='case', name=None):
         """
         Analogous to :py:func:`numpy.repeat`
 
@@ -4157,9 +4180,8 @@ class NDVar(object):
             broadcasted to fit the shape of the given dimension.
         dim : str
             The dimension along which to repeat values (default 'case').
-        name : None | True | str
-            Name of the output NDVar, ``True`` to keep the current name
-            (default ``True``).
+        name : str
+            Name of the output NDVar (default is the current name).
         """
         ax = self.get_axis(dim)
         x = self.x.repeat(repeats, axis=ax)
@@ -4170,9 +4192,7 @@ class NDVar(object):
 
         dims = self.dims[:ax] + (repdim,) + self.dims[ax + 1:]
         info = self.info.copy()
-        if name is True:
-            name = self.name
-        return NDVar(x, dims, info, name)
+        return NDVar(x, dims, info, name or self.name)
 
     def residuals(self, x, name=None):
         """
@@ -4184,7 +4204,7 @@ class NDVar(object):
             Predictor or predictors. Can also be supplied as argument that can
             be converted to a Model, for example ``Var`` or list of ``Var``.
         name : str
-            Name for the output NDVar.
+            Name of the output NDVar (default is the current name).
 
         Returns
         -------
@@ -4204,7 +4224,7 @@ class NDVar(object):
         from ._stats import stats
         res = stats.residuals(self.x, x)
         info = self.info.copy()
-        return NDVar(res, self.dims, info, name)
+        return NDVar(res, self.dims, info, name or self.name)
 
     def rms(self, axis=(), **regions):
         """Compute the root mean square over given dimensions
@@ -4221,6 +4241,8 @@ class NDVar(object):
         *regions*
             Regions over which to aggregate. For example, to get the RMS
             between time=0.1 and time=0.2, use ``ndvar.rms(time=(0.1, 0.2))``.
+        name : str
+            Name of the output NDVar (default is the current name).
 
         Returns
         -------
@@ -4235,6 +4257,11 @@ class NDVar(object):
     def sign(self, name=None):
         """Element-wise indication of the sign
 
+        Parameters
+        ----------
+        name : str
+            Name of the output NDVar (default is the current name).
+
         Returns
         -------
         sign : NDVar
@@ -4244,7 +4271,8 @@ class NDVar(object):
         -----
         Like :func:`numpy.sign`.
         """
-        return NDVar(np.sign(self.x), self.dims, self.info.copy(), name)
+        return NDVar(np.sign(self.x), self.dims, self.info.copy(),
+                     name or self.name)
 
     def std(self, dims=(), **regions):
         """Compute the standard deviation over given dimensions
@@ -4262,6 +4290,8 @@ class NDVar(object):
         *regions*
             Regions over which to aggregate. For example, to get the STD
             between time=0.1 and time=0.2, use ``ndvar.std(time=(0.1, 0.2))``.
+        name : str
+            Name of the output NDVar (default is the current name).
 
         Returns
         -------
@@ -4479,6 +4509,8 @@ class NDVar(object):
         *regions*
             Regions over which to aggregate. For example, to get the sum
             between time=0.1 and time=0.2, use ``ndvar.sum(time=(0.1, 0.2))``.
+        name : str
+            Name of the output NDVar (default is the current name).
 
         Returns
         -------
@@ -4489,7 +4521,7 @@ class NDVar(object):
         """
         return self._aggregate_over_dims(dims, regions, np.sum)
 
-    def threshold(self, v, tail=1):
+    def threshold(self, v, tail=1, name=None):
         """Set all values below a threshold to 0.
 
         Parameters
@@ -4501,6 +4533,8 @@ class NDVar(object):
             1: set values below v to 0 (default);
             0: set values between -v and v to 0;
             -1: set values above v to 0.
+        name : str
+            Name of the output NDVar (default is the current name).
         """
         if tail == 0:
             v = abs(v)
@@ -4511,9 +4545,10 @@ class NDVar(object):
         elif tail == -1:
             idx = self.x <= v
         else:
-            raise ValueError("Invalid value tail=%s; need -1, 0 or 1" % repr(tail))
+            raise ValueError("Invalid value tail=%r; need -1, 0 or 1" % (tail,))
         info = self.info.copy()
-        return NDVar(np.where(idx, self.x, 0), self.dims, info)
+        return NDVar(np.where(idx, self.x, 0), self.dims, info,
+                     name or self.name)
 
 
 def extrema(x, axis=0):

@@ -147,7 +147,7 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
         y[i] = np.mean(cc[i, neighbors[i]])
 
     info = cs.set_info_cs(x.info, cs.stat_info('r'))
-    return NDVar(y, (dim_obj,), info, name)
+    return NDVar(y, (dim_obj,), info, name or x.name)
 
 
 def resample(ndvar, sfreq, npad=100, window='none'):
