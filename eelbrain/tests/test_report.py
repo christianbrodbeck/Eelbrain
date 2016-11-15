@@ -50,3 +50,4 @@ def test_text():
     "Test _report text functions"
     eq_(enumeration(['a', 'b', 'c']), 'a, b and c')
     print(enumeration({'a', 'b', 'c'}))
+    eq_(enumeration(['a', 2]), 'a and 2')
