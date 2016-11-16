@@ -118,12 +118,18 @@ intersphinx_mapping = {'python': ('http://docs.python.org/2.7', None),
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 # new default: alabaster
-html_theme = 'classic'
+# html_theme = 'classic'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-html_theme_options = {'stickysidebar': True}
+html_theme_options = {
+    'logo': 'eelbrain160.png',
+    'logo_name': True,
+    'fixed_sidebar': True,
+    'github_user': 'christianbrodbeck',
+    'github_repo': 'Eelbrain',
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
 # html_theme_path = []
@@ -137,7 +143,7 @@ html_theme_options = {'stickysidebar': True}
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = 'images/eelbrain160.png'
+html_logo = 'static/eelbrain160.png'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
