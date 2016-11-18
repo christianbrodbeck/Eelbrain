@@ -1194,7 +1194,9 @@ class MneExperiment(FileTree):
             i = 1
             for session, dig in digs[subject].iteritems():
                 for dig_id in subject_digs.keys():
-                    if dig_equal(dig, subject_digs[dig_id]):
+                    if dig is None:
+                        pass  # assume that it is not used or the same
+                    elif dig_equal(dig, subject_digs[dig_id]):
                         subject_dig_ids[session] = dig_id
                         break
                 else:
