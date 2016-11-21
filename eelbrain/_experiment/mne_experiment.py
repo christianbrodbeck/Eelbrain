@@ -2604,7 +2604,7 @@ class MneExperiment(FileTree):
     def load_epochs_stc(self, subject=None, sns_baseline=True,
                         src_baseline=False, ndvar=True, cat=None,
                         keep_epochs=False, morph=False, mask=False,
-                        data_raw=False, vardef=None, **kwargs):
+                        data_raw=False, vardef=None, decim=None, **kwargs):
         """Load a Dataset with stcs for single epochs
 
         Parameters
@@ -2640,6 +2640,13 @@ class MneExperiment(FileTree):
             analysis).
         vardef : str
             Name of a 2-stage test defining additional variables.
+        decim : None | int
+            Set to an int in order to override the epoch decim factor.
+
+        Returns
+        -------
+        epochs_dataset : Dataset
+            Dataset containing single trial data (epochs).
         """
         if not sns_baseline and src_baseline and \
                 self._epochs[self.get('epoch')].post_baseline_trigger_shift:
@@ -2664,12 +2671,12 @@ class MneExperiment(FileTree):
             for _ in self.iter(group=group):
                 ds = self.load_epochs_stc(None, sns_baseline, src_baseline,
                                           ndvar, cat, keep_epochs, morph, mask,
-                                          vardef=vardef)
+                                          False, vardef, decim)
                 dss.append(ds)
             return combine(dss)
         else:
             ds = self.load_epochs(subject, sns_baseline, False, cat=cat,
-                                  data_raw=data_raw, vardef=vardef)
+                                  decim=decim, data_raw=data_raw, vardef=vardef)
             self._add_epochs_stc(ds, ndvar, src_baseline, morph, mask)
             if not keep_epochs:
                 del ds['epochs']
