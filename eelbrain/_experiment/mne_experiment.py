@@ -1867,11 +1867,14 @@ class MneExperiment(FileTree):
         stc = apply_inverse_epochs(epochs, inv, **self._params['apply_inv_kw'])
 
         if ndvar:
+            parc = self.get('parc') or None
+            if isinstance(mask, basestring) and parc != mask:
+                parc = mask
+                self.set(parc=mask)
             self.make_annot()
             subject = self.get('mrisubject')
             src = self.get('src')
             mri_sdir = self.get('mri-sdir')
-            parc = mask if isinstance(mask, basestring) else self.get('parc') or None
             src = load.fiff.stc_ndvar(stc, subject, src, mri_sdir,
                                       self._params['apply_inv_kw']['method'],
                                       self._params['make_inv_kw'].get('fixed', False),
