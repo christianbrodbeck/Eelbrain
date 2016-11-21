@@ -3256,6 +3256,9 @@ class NDVar(object):
         self.x += self._ialign(other)
         return self
 
+    def __radd__(self, other):
+        return NDVar(other + self.x, self.dims, self.info.copy(), self.name)
+
     def __div__(self, other):
         dims, x_self, x_other = self._align(other)
         x = x_self / x_other
@@ -3266,11 +3269,17 @@ class NDVar(object):
         self.x /= self._ialign(other)
         return self
 
+    def __rdiv__(self, other):
+        return NDVar(other / self.x, self.dims, self.info.copy(), self.name)
+
     def __truediv__(self, other):
         return self.__div__(other)
 
     def __itruediv__(self, other):
         return self.__idiv__(other)
+
+    def __rtruediv__(self, other):
+        return self.__rdiv__(other)
 
     def __mul__(self, other):
         dims, x_self, x_other = self._align(other)
@@ -3282,6 +3291,9 @@ class NDVar(object):
         self.x *= self._ialign(other)
         return self
 
+    def __rmul__(self, other):
+        return NDVar(other * self.x, self.dims, self.info.copy(), self.name)
+
     def __pow__(self, other):
         dims, x_self, x_other = self._align(other)
         x = np.power(x_self, x_other)
@@ -3291,6 +3303,9 @@ class NDVar(object):
     def __ipow__(self, other):
         self.x **= self._ialign(other)
         return self
+
+    def __rpow__(self, other):
+        return NDVar(other ** self.x, self.dims, self.info.copy(), self.name)
 
     def __sub__(self, other):
         dims, x_self, x_other = self._align(other)
@@ -3303,9 +3318,7 @@ class NDVar(object):
         return self
 
     def __rsub__(self, other):
-        x = other - self.x
-        info = self.info.copy()
-        return NDVar(x, self.dims, info, self.name)
+        return NDVar(other - self.x, self.dims, self.info.copy(), self.name)
 
     # container ---
     def __getitem__(self, index):
