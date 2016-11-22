@@ -10,7 +10,7 @@ from . import _colorspaces as cs
 from ._data_obj import NDVar, UTS, Ordered, combine
 
 
-def concatenate(ndvars, dim='time', name=None):
+def concatenate(ndvars, dim='time', name=None, tmin=0):
     """Concatenate multiple NDVars
 
     Parameters
@@ -23,12 +23,13 @@ def concatenate(ndvars, dim='time', name=None):
         implemented).
     name : str (optional)
         Name the NDVar holding the result.
+    tmin : scalar
+        Time axis start, only applies when ``dim == 'time'``; default is 0.
 
     Returns
     -------
     ndvar : NDVar
-        NDVar with concatenated data. For ``dim='time'``, the output time axis
-        starts at t=0.
+        NDVar with concatenated data.
     """
     try:
         ndvar = ndvars[0]
@@ -40,7 +41,7 @@ def concatenate(ndvars, dim='time', name=None):
                                    (None,) * (ndvar.ndim - axis - 1))
     x = np.concatenate([v.get_data(dim_names) for v in ndvars], axis)
     if dim == 'time':
-        out_dim = UTS(0, ndvar.time.tstep, x.shape[axis])
+        out_dim = UTS(tmin, ndvar.time.tstep, x.shape[axis])
     elif dim == 'case':
         out_dim = 'case'
     else:
