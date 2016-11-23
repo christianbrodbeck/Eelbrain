@@ -2338,6 +2338,14 @@ class Factor(_Effect):
             labels_dict = dict(labels)
             label_values = [pair[1] for pair in labels]
 
+        if isinstance(x, Factor):
+            labels_dict = {x._codes.get(s): d for s, d in
+                           labels_dict.iteritems()}
+            labels_dict.update({code: label for code, label in
+                                x._labels.iteritems() if
+                                code not in labels_dict})
+            x = x.x
+
         if isinstance(x, np.ndarray) and x.dtype.kind in 'ifb':
             assert x.ndim == 1
             unique = np.unique(x)

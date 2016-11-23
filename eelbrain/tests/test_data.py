@@ -537,6 +537,10 @@ def test_factor():
     empty_factor = Factor([])
     eq_(len(empty_factor), 0)
     assert_dataobj_equal(Factor(np.empty(0)), empty_factor)
+    # from Factor
+    f = Factor('aabbcc')
+    assert_array_equal(Factor(f), f)
+    assert_array_equal(Factor(f, labels={'a': 'b'}), Factor('bbbbcc'))
 
     # removing a cell
     f = Factor('aabbcc')
