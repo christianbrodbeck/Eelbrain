@@ -9,21 +9,24 @@ from .._utils import ui
 FILETYPES = [("WAV files", "*.wav")]
 
 
-def load_wav(filename=None):
-    """oad a wav file as NDVar
+def load_wav(filename=None, name=None):
+    """Load a wav file as NDVar
 
     Parameters
     ----------
     filename : str
         Filename of the wav file. If not filename is specified, a file dialog is
         shown to select one.
+    name : str
+        NDVar name (default is the file name).
 
     Returns
     -------
     wav : NDVar
         NDVar with the wav file's data. If the file contains a single channel,
         the NDVar dimensions are ``(time,)``; if it contains several channels,
-        they are ``(channel, time)``.
+        they are ``(channel, time)``. ``wav.info`` contains entries for
+        ``filename`` and ``samplingrate``.
 
     Notes
     -----
@@ -45,7 +48,8 @@ def load_wav(filename=None):
 
     srate, data = wavfile.read(filename)
     time = UTS(0, 1. / srate, data.shape[-1])
-    name = os.path.basename(filename)
+    if name is None:
+        name = os.path.basename(filename)
     info = {'filename': filename, 'samplingrate': srate}
     if data.ndim == 1:
         return NDVar(data, (time,), info, name)
