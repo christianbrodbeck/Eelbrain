@@ -17,8 +17,10 @@ import numpy as np
 from numpy.testing import (assert_equal, assert_array_equal, assert_allclose,
     assert_array_almost_equal)
 
-from eelbrain import (datasets, load, Var, Factor, NDVar, Datalist, Dataset,
-    Celltable, align, align1, choose, combine)
+from eelbrain import (
+    datasets, load, Var, Factor, NDVar, Datalist, Dataset, Celltable, align,
+    align1, choose, combine, shuffled_index,
+)
 from eelbrain._data_obj import (asvar, assub, longname, Categorial, Sensor,
     SourceSpace, UTS, DimensionMismatchError, assert_has_no_empty_cells)
 from eelbrain._stats.stats import rms
@@ -1162,6 +1164,13 @@ def test_sensor():
     assert_not_equal(s1, s2)
     eq_(s1.intersect(s2), sensor[[1]])
 
+
+def test_shuffle():
+    x = Factor('aabbaa')
+    for _ in xrange(3):
+        i = shuffled_index(6, x)
+        eq_(sorted(i[2:4]), [2, 3])
+        eq_(sorted(i), range(6))
 
 @requires_mne_sample_data
 def test_source_space():

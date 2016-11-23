@@ -97,10 +97,11 @@ Sorting and Reordering
 
    align
    align1
+   Celltable
    choose
    combine
-   Celltable
-   
+   shuffled_index
+
 
 ^^^^^^^^^^^^^^^^^^^^^
 NDVar Transformations

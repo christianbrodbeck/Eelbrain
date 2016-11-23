@@ -820,6 +820,36 @@ def choose(choice, sources, name=None):
         raise NotImplementedError
 
 
+def shuffled_index(n, cells=None):
+    """Return an index to shuffle a data-object
+
+    Parameters
+    ----------
+    n : int
+        Number of cases in the index.
+    cells : categorial
+        Only shuffle cases within cells.
+
+    Returns
+    -------
+    index : array of int
+        Array with in indexes for shuffling a data-object.
+
+    Notes
+    -----
+    If ``cells`` is not specified, this is equivalent to
+    ``numpy.random.permutation(n)``.
+    """
+    if cells is None:
+        return np.random.permutation(n)
+    cells = ascategorial(cells, n=n)
+    out = np.arange(n)
+    for cell in cells.cells:
+        index = cells == cell
+        out[index] = np.random.permutation(out[index])
+    return out
+
+
 class Celltable(object):
     """Divide Y into cells defined by X.
 
