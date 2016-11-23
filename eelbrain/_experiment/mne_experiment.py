@@ -5711,7 +5711,7 @@ class MneExperiment(FileTree):
 
     def _set_analysis_options(self, data, sns_baseline, src_baseline, pmin,
                               tstart, tstop, parc, mask=None,
-                              dims=('source', 'time')):
+                              dims=('source', 'time'), test_options=()):
         """Set templates for paths with test parameters
 
         analysis:  preprocessing up to source estimate epochs (not parcellation)
@@ -5727,7 +5727,12 @@ class MneExperiment(FileTree):
             Whether the analysis is in sensor or source space.
         ...
         src_baseline :
-            Should be None if data=='sensor'.
+            Should be False if data=='sensor'.
+        ...
+        dims : sequence of str
+            Dimensions included in the analysis.
+        test_options : sequence of str
+            Additional, test-specific tags.
         """
         # data kind (sensor or source space)
         if data == 'sensor':
@@ -5811,7 +5816,9 @@ class MneExperiment(FileTree):
                 kwargs['data_parc'] = parc
             elif mask:
                 kwargs['parc'] = mask
-                if pmin is None:  # can as well collect dist for parc
+                if pmin is None:
+                    # When not doing clustering, parc does not affect results,
+                    # so we don't need to distinguish parc and mask
                     kwargs['data_parc'] = mask
                 else:  # parc means disconnecting
                     kwargs['data_parc'] = '%s-mask' % mask
@@ -5821,6 +5828,8 @@ class MneExperiment(FileTree):
                 kwargs['data_parc'] = 'unmasked'
         elif parc:
             raise ValueError("Analysis with data=%r can't have parc" % (data,))
+
+        items.extend(test_options)
 
         self.set(test_options=' '.join(items), analysis=analysis, folder=folder,
                  **kwargs)
