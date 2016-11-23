@@ -3497,7 +3497,7 @@ class MneExperiment(FileTree):
         """
         self.set(test=test, **kwargs)
         self._set_analysis_options(data, sns_baseline, src_baseline, pmin,
-                                   tstart, tstop, parc, mask)
+                                   tstart, tstop, parc, mask, (data, 'time'))
         return self._load_test(test, tstart, tstop, pmin, parc, mask, samples,
                                data, sns_baseline, src_baseline, return_data,
                                make)
