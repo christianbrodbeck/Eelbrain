@@ -290,7 +290,7 @@ class Butterworth(Filter):
             raise ValueError("Neither low nor high set")
 
 
-def segment(continuous, times, tstart, tstop):
+def segment(continuous, times, tstart, tstop, decim=1):
     """Segment a continuous NDVar
 
     Parameters
@@ -303,6 +303,9 @@ def segment(continuous, times, tstart, tstop):
         Start time for segments.
     tstop : scalar
         Stop time for segments.
+    decim : int
+        Decimate data after segmenting by factor ``decim`` (the default is
+        ``1``, i.e. no decimation).
 
     Returns
     -------
@@ -313,7 +316,10 @@ def segment(continuous, times, tstart, tstop):
     if continuous.has_case:
         raise ValueError("Continuous data can't have case dimension")
     axis = continuous.get_axis('time')
-    segments = [continuous.sub(time=(t + tstart, t + tstop)) for t in times]
+    tstep = None if decim == 1 else continuous.time.tstep * decim
+    segments = [continuous.sub(time=(t + tstart, t + tstop, tstep)) for
+                t in times]
+
     s0_time = segments[0].time
     dims = (('case',) +
             continuous.dims[:axis] +
