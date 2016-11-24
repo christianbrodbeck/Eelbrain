@@ -5711,7 +5711,8 @@ class MneExperiment(FileTree):
 
     def _set_analysis_options(self, data, sns_baseline, src_baseline, pmin,
                               tstart, tstop, parc, mask=None,
-                              dims=('source', 'time'), test_options=()):
+                              dims=('source', 'time'), decim=None,
+                              test_options=()):
         """Set templates for paths with test parameters
 
         analysis:  preprocessing up to source estimate epochs (not parcellation)
@@ -5731,6 +5732,8 @@ class MneExperiment(FileTree):
         ...
         dims : sequence of str
             Dimensions included in the analysis.
+        decim : int
+            Decimation factor (default is None, i.e. based on epochs).
         test_options : sequence of str
             Additional, test-specific tags.
         """
@@ -5807,6 +5810,9 @@ class MneExperiment(FileTree):
         # time window
         if tstart is not None or tstop is not None:
             items.append(_time_window_str((tstart, tstop)))
+        if decim is not None:
+            assert isinstance(decim, int)
+            items.append(str(decim))
 
         # parc and data_parc args from parc/mask
         kwargs = {}
