@@ -40,14 +40,23 @@ Load
 .. py:module:: load
 .. py:currentmodule:: eelbrain
 
-Eelbrain has its own function for unpickling. In contrast to `normal unpickling
-<https://docs.python.org/2/library/pickle.html>`_, this function can also load 
-files pickled with earlier Eelbrain versions:
+For convenient storage, Eelbrain objects can be
+`pickled <https://docs.python.org/2/library/pickle.html>`_, although there is
+no guarantee that objects can be exchanged across versions. Eelbrain's own
+pickle I/O functions provide backwards compatibility:
 
 .. autosummary::
    :toctree: generated
 
    load.unpickle
+
+
+Functions for loading specific file formats as Eelbrain object:
+
+.. autosummary::
+   :toctree: generated
+
+   load.wav
 
 Modules:
 
@@ -76,6 +85,7 @@ Save
 
    save.pickle
    save.txt
+   save.wav
 
 
 ^^^^^^^^^^^^^^^^^^^^^^

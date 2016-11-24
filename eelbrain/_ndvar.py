@@ -170,6 +170,9 @@ def resample(ndvar, sfreq, npad=100, window='none'):
     :func:`scipy.signal.resample` directly. If ``window`` is set to a different
     value, the more sophisticated but slower :func:`mne.filter.resample` is
     used.
+
+    This function can be very slow when the number of time samples is uneven
+    (see :func:`scipy.signal.resample`).
     """
     axis = ndvar.get_axis('time')
     if window == 'none':

@@ -16,8 +16,8 @@ a one sample t-test across subjects to test the null hypothesis that between
 subjects, the regression coefficient does not differ significantly from 0.
 
 Assuming that ``ds_subject`` is a :class:`Dataset` containing single trial data
-for one subject, with ``data`` the dependent variable and ``pred`` the
-predictor::
+for one subject, with ``data`` the dependent variable and a predictor (called
+``predictor``)::
 
     >>> ds_subject
     <Dataset 'example' n_cases=145 {'predictor':V, 'data':Vnd}>

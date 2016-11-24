@@ -2537,8 +2537,9 @@ class MneExperiment(FileTree):
             employed depends on the ``rej`` setting.
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
-        decim : None | int
-            Set to an int in order to override the epoch decim factor.
+        decim : int
+            Data decimation factor (the default is the factor specified in the 
+            epoch definition).
         pad : scalar
             Pad the epochs with this much time (in seconds; e.g. for spectral
             analysis).
@@ -2793,8 +2794,9 @@ class MneExperiment(FileTree):
             Dataset is 'meg' or 'eeg').
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
-        decim : None | int
-            Set to an int in order to override the epoch decim factor.
+        decim : int
+            Data decimation factor (the default is the factor specified in the 
+            epoch definition).
         data_raw : bool | str
             Keep the mne.io.Raw instance in ds.info['raw'] (default False).
             Can be specified as raw name (str) to include a different raw object
@@ -3926,8 +3928,9 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        decim : None | int
-            Set to an int in order to override the epoch decim factor.
+        decim : int
+            Data decimation factor (the default is the factor specified in the 
+            epoch definition).
         """
         dst = self.get('evoked-file', mkdir=True)
         epoch = self._epochs[self.get('epoch')]

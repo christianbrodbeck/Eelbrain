@@ -3631,7 +3631,7 @@ class NDVar(object):
         Returns
         -------
         diff : NDVar
-            NDVar with the ``n``th differences.
+            NDVar with the ``n`` th differences.
         """
         if dim is None:
             if self.ndim - self.has_case == 1:
@@ -3739,9 +3739,12 @@ class NDVar(object):
 
         Notes
         -----
-        The Hilbert envelope is computed with::
+        The Hilbert envelope is computed with :func:`scipy.signal.hilbert`::
 
         >>> numpy.abs(scipy.signal.hilbert(x))
+
+        This function can be very slow when the number of time samples is
+        uneven.
         """
         x = np.abs(scipy.signal.hilbert(self.x, axis=self.get_axis(dim)))
         info = self.info.copy()
