@@ -45,18 +45,19 @@ from .._resources import predefined_connectivity
 from .._stats import spm
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
-from .._utils import subp, ui, keydefaultdict, log_level
+from .._utils import subp, keydefaultdict, log_level
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .definitions import find_dependent_epochs, find_epochs_vars, find_test_vars
 from .experiment import FileTree
-from .preprocessing import RawSource, RawFilter, RawICA, RawMaxwell
+from .preprocessing import (
+    assemble_pipeline, RawICA, pipeline_dict, compare_pipelines)
 
 
 __all__ = ['MneExperiment']
 
 
 # current cache state version
-CACHE_STATE_VERSION = 4
+CACHE_STATE_VERSION = 5
 
 # Allowable parameters
 ICA_REJ_PARAMS = {'kind', 'source', 'epoch', 'interpolation', 'n_components',
@@ -89,6 +90,23 @@ def as_vardef_var(v):
         return Var(v)
     return v
 
+
+# Eelbrain 0.24 raw/preprocessing pipeline
+LEGACY_RAW = {
+    'raw': {},
+    '0-40': {
+        'source': 'raw', 'type': 'filter', 'args': (None, 40),
+        'kwargs': {'method': 'iir'}},
+    '0.1-40': {
+        'source': 'raw', 'type': 'filter', 'args': (0.1, 40),
+        'kwargs': {'l_trans_bandwidth': 0.08, 'filter_length': '60s'}},
+    '0.2-40': {
+        'source': 'raw', 'type': 'filter', 'args': (0.2, 40),
+        'kwargs': {'l_trans_bandwidth': 0.08, 'filter_length': '60s'}},
+    '1-40': {
+        'source': 'raw', 'type': 'filter', 'args': (1, 40),
+        'kwargs': {'method': 'iir'}},
+}
 
 ################################################################################
 # Epochs
@@ -504,22 +522,8 @@ class MneExperiment(FileTree):
     sessions = None
 
     # Raw preprocessing pipeline
-    _raw_default = {
-        'raw': {},
-        '0-40': {
-            'source': 'raw', 'type': 'filter', 'args': (None, 40),
-            'kwargs': {'method': 'iir'}},
-        '0.1-40': {
-            'source': 'raw', 'type': 'filter', 'args': (0.1, 40),
-            'kwargs': {'l_trans_bandwidth': 0.08, 'filter_length': '60s'}},
-        '0.2-40': {
-            'source': 'raw', 'type': 'filter', 'args': (0.2, 40),
-            'kwargs': {'l_trans_bandwidth': 0.08, 'filter_length': '60s'}},
-        '1-40': {
-            'source': 'raw', 'type': 'filter', 'args': (1, 40),
-            'kwargs': {'method': 'iir'}},
-    }
-    _raw = {}
+    _raw = LEGACY_RAW
+    raw = {}
 
     # add this value to all trigger times
     trigger_shift = 0
@@ -789,39 +793,10 @@ class MneExperiment(FileTree):
         skip.add('raw')
         cache_path = self._partial('cached-raw-file', skip)
         ica_path = self._partial('raw-ica-file', skip)
-        unassigned = self._raw_default.copy()
-        unassigned.update(self._raw)
-        raw = {}
-        while unassigned:
-            n_unassigned = len(unassigned)
-            for name in tuple(unassigned):
-                params = unassigned[name]
-                source = params.get('source')
-                if source is None:
-                    raw[name] = RawSource(name, raw_path, bads_path, log)
-                    del unassigned[name]
-                elif source in raw:
-                    if params['type'] == 'filter':
-                        raw[name] = RawFilter(name, raw[source], cache_path,
-                                              log, params['args'],
-                                              params.get('kwargs', {}))
-                    elif params['type'] == 'ica':
-                        raw[name] = RawICA(name, raw[source], cache_path,
-                                           ica_path.replace('{raw}', name),
-                                           log, params['session'],
-                                           params['kwargs'])
-                    elif params['type'] == 'maxwell_filter':
-                        raw[name] = RawMaxwell(name, raw[source], cache_path,
-                                               log, params['kwargs'])
-                    else:
-                        raise ValueError("unknonw raw pipe type=%s" %
-                                         repr(params['type']))
-                    del unassigned[name]
-
-            if len(unassigned) == n_unassigned:
-                raise RuntimeError("unable to resolve preprocessing pipeline "
-                                   "definition: %s" % unassigned)
-        self._raw = raw
+        raw_dict = self._raw.copy()
+        raw_dict.update(self.raw)
+        self._raw = assemble_pipeline(raw_dict, raw_path, bads_path, cache_path,
+                                      ica_path, log)
 
         ########################################################################
         # variables
@@ -1219,6 +1194,7 @@ class MneExperiment(FileTree):
 
         # check the cache, delete invalid files
         cache_state_path = self.get('cache-state-file')
+        raw_state = pipeline_dict(self._raw)
         epoch_state = {k: v.as_dict() for k, v in self._epochs.iteritems()}
         if os.path.exists(cache_state_path):
             # check time stamp
@@ -1260,11 +1236,19 @@ class MneExperiment(FileTree):
             else:
                 cache_events = cache_state['events']
 
+            # raw pipeline
+            if cache_state_v < 5:
+                cache_raw = pipeline_dict(
+                    assemble_pipeline(LEGACY_RAW, '', '', '', '', log))
+            else:
+                cache_raw = cache_state['raw']
+
             # Find modified definitions
             # =========================
             invalid_cache = defaultdict(set)
             # events (subject, session):  overall change in events
             # variables:  event change restricted to certain variables
+            # raw: preprocessing definition changed
             # groups:  change in group members
             # epochs:  change in epoch parameters
             # parcs: parc def change
@@ -1306,6 +1290,11 @@ class MneExperiment(FileTree):
                 if group not in self._groups or members != self._groups[group]:
                     invalid_cache['groups'].add(group)
                     log.debug("  group: %s" % group)
+
+            # raw
+            changed = compare_pipelines(cache_raw, raw_state)
+            if changed:
+                invalid_cache['raw'] = changed
 
             # epochs
             for epoch, params in cache_state['epochs'].iteritems():
@@ -1418,6 +1407,16 @@ class MneExperiment(FileTree):
                     rm['test-file'].add({'group': group})
                     rm['group-mov-file'].add({'group': group})
                     rm['report-file'].add({'group': group})
+
+                # raw
+                for raw in invalid_cache['raw']:
+                    rm['cached-raw-file'].add({'raw': raw})
+                    rm['evoked-file'].add({'raw': raw})
+                    analysis = {'analysis': '* %s *' % raw}
+                    rm['test-file'].add(analysis)
+                    rm['report-file'].add(analysis)
+                    rm['group-mov-file'].add(analysis)
+                    rm['subject-mov-file'].add(analysis)
 
                 # epochs
                 for epoch in invalid_cache['epochs']:
@@ -1543,6 +1542,7 @@ class MneExperiment(FileTree):
             os.mkdir(cache_dir)
 
         new_state = {'version': CACHE_STATE_VERSION,
+                     'raw': raw_state,
                      'groups': self._groups,
                      'epochs': epoch_state,
                      'tests': self._tests,

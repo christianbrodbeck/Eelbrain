@@ -18,6 +18,9 @@ class RawPipe(object):
         self.path = path
         self.log = log
 
+    def as_dict(self):
+        return {'type': self.__class__.__name__, 'name': self.name}
+
     def load(self, subject, session, add_bads=True, preload=False):
         path = self.path.format(subject=subject, session=session)
         raw = load.fiff.mne_raw(path, preload=preload)
@@ -102,6 +105,11 @@ class CachedRawPipe(RawPipe):
         RawPipe.__init__(self, name, path, log)
         self.source = source
 
+    def as_dict(self):
+        out = RawPipe.as_dict(self)
+        out['source'] = self.source.name
+        return out
+
     def cache(self, subject, session):
         "Make sure the cache is up to date"
         path = self.path.format(subject=subject, session=session)
@@ -135,6 +143,12 @@ class RawFilter(CachedRawPipe):
         CachedRawPipe.__init__(self, name, source, path, log)
         self.args = args
         self.kwargs = kwargs
+
+    def as_dict(self):
+        out = CachedRawPipe.as_dict(self)
+        out['args'] = self.args
+        out['kwargs'] = self.kwargs
+        return out
 
     def filter_ndvar(self, ndvar):
         axis = ndvar.get_axis('time')
@@ -171,6 +185,12 @@ class RawICA(CachedRawPipe):
         self.ica_path = ica_path
         self.session = session
         self.kwargs = kwargs
+
+    def as_dict(self):
+        out = CachedRawPipe.as_dict(self)
+        out['session'] = self.session
+        out['kwargs'] = self.kwargs
+        return out
 
     def load_bad_channels(self, subject, session=None):
         bad_chs = set()
@@ -225,8 +245,99 @@ class RawMaxwell(CachedRawPipe):
         CachedRawPipe.__init__(self, name, source, path, log)
         self.kwargs = kwargs
 
+    def as_dict(self):
+        out = CachedRawPipe.as_dict(self)
+        out['kwargs'] = self.kwargs
+        return out
+
     def _make(self, subject, session):
         raw = self.source.load(subject, session)
         self.log.debug("Raw %s: computing Maxwell filter for %s/%s", self.name,
                        subject, session)
         return mne.preprocessing.maxwell_filter(raw, **self.kwargs)
+
+
+def assemble_pipeline(raw_dict, raw_path, bads_path, cache_path, ica_path, log):
+    "Assemble preprocessing pipeline form a definition in a dict"
+    raw = {}
+    unassigned = raw_dict.copy()
+    has_source = False
+    while unassigned:
+        n_unassigned = len(unassigned)
+        for name in tuple(unassigned):
+            params = unassigned[name]
+            source = params.get('source')
+            if source is None:
+                if has_source:
+                    raise NotImplementedError("Preprocessing pipeline with "
+                                              "more than one raw source")
+                raw[name] = RawSource(name, raw_path, bads_path, log)
+                has_source = True
+                del unassigned[name]
+            elif source in raw:
+                if params['type'] == 'filter':
+                    raw[name] = RawFilter(name, raw[source], cache_path, log,
+                                          params['args'],
+                                          params.get('kwargs', {}))
+                elif params['type'] == 'ica':
+                    raw[name] = RawICA(name, raw[source], cache_path,
+                                       ica_path.replace('{raw}', name), log,
+                                       params['session'], params['kwargs'])
+                elif params['type'] == 'maxwell_filter':
+                    raw[name] = RawMaxwell(name, raw[source], cache_path, log,
+                                           params['kwargs'])
+                else:
+                    raise ValueError("unknonw raw pipe type=%s" %
+                                     repr(params['type']))
+                del unassigned[name]
+
+        if len(unassigned) == n_unassigned:
+            raise RuntimeError("unable to resolve preprocessing pipeline "
+                               "definition: %s" % unassigned)
+
+    if not has_source:
+        raise ValueError("Preprocssing pipeline has not raw source")
+    return raw
+
+
+###############################################################################
+# Comparing pipelines
+######################
+
+
+def pipeline_dict(pipeline):
+    return {k: v.as_dict() for k, v in pipeline.iteritems()}
+
+
+def compare_pipelines(old, new):
+    """Return a tuple of raw keys for which definitions changed
+
+    Parameters
+    ----------
+    old : {str: dict}
+        A {name: params} dict for the previous preprocessing pipeline.
+    new : {str: dict}
+        Current pipeline.
+    """
+    good = {k: False for k in set(new) ^ set(old)}
+    good['raw'] = True
+    to_check = [k for k in old if k not in good]
+
+    # parameter changes
+    for key in to_check[:]:
+        if new[key] != old[key]:
+            good[key] = False
+            to_check.remove(key)
+
+    # secondary changes
+    while to_check:
+        n = len(to_check)
+        for key in to_check[:]:
+            parent = new[key]['source']
+            if parent in good:
+                good[key] = good[parent]
+                to_check.remove(key)
+        if len(to_check) == n:
+            raise RuntimeError("Que not decreasing")
+
+    return tuple(k for k, value in good.iteritems() if value is False)
