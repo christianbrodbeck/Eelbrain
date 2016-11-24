@@ -7,7 +7,7 @@ import numpy as np
 from scipy import signal
 
 from . import _colorspaces as cs
-from ._data_obj import NDVar, UTS, Ordered, combine
+from ._data_obj import NDVar, UTS, Ordered
 
 
 def concatenate(ndvars, dim='time', name=None, tmin=0):
