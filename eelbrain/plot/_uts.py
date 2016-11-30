@@ -18,7 +18,7 @@ from .._colorspaces import oneway_colors
 from functools import reduce
 
 
-class UTSStat(EelFigure, LegendMixin):
+class UTSStat(LegendMixin, YLimMixin, EelFigure):
     """
     Plot statistics for a one-dimensional NDVar
 
@@ -192,6 +192,7 @@ class UTSStat(EelFigure, LegendMixin):
 
         self._configure_yaxis(ct.Y, ylabel)
         self._configure_xaxis_dim(ct.Y.get_dim(xdim), xlabel, xticklabels)
+        YLimMixin.__init__(self, self._plots)
         LegendMixin.__init__(self, legend, legend_handles)
         self._update_ui_cluster_button()
         self._show()
@@ -383,6 +384,7 @@ class _ax_uts_stat(object):
     def __init__(self, ax, ct, colors, main, error, dev_data, xdim, xlim,
                  invy, bottom, top, hline, clusters, pmax, ptrend, clip):
         # stat plots
+        self.ax = ax
         self.stat_plots = []
         self.legend_handles = {}
 
@@ -419,6 +421,7 @@ class _ax_uts_stat(object):
             xmin, xmax = xlim
             ax.set_xlim(xmin, xmax)
 
+        # format y axis
         if invy:
             y0, y1 = ax.get_ylim()
             if bottom is None:
@@ -426,16 +429,15 @@ class _ax_uts_stat(object):
 
             if top is None:
                 top = y0
-
-        if (bottom is not None) or (top is not None):
-            ax.set_ylim(bottom, top)
-
-        # store attributes
-        self.ax = ax
+        self.set_ylim(bottom, top)
 
     @property
     def title(self):
         return self.ax.get_title()
+
+    def set_ylim(self, vmin, vmax):
+        self.ax.set_ylim(vmin, vmax)
+        self.vmin, self.vmax = self.ax.get_ylim()
 
 
 class UTSClusters(EelFigure):
