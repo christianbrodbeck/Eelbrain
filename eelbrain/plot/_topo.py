@@ -463,7 +463,7 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
         for topo, bfly in izip(self.topo_plots, self.bfly_plots):
             topo.set_vlim(vmax, vmin=vmin)
             kwa = topo.layers[0].get_kwargs()
-            bfly.set_vlim(kwa['vmax'], vmin=kwa['vmin'])
+            bfly.set_ylim(kwa['vmin'], kwa['vmax'])
 
         self.canvas.draw()
 

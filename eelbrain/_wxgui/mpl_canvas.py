@@ -242,11 +242,39 @@ class CanvasFrame(EelbrainFrame):
             self.figure.savefig(dlg.GetPath())
         dlg.Destroy()
 
+    def OnSetVLim(self, event):
+        bottom, top = self.get_ylim()
+        dlg = wx.TextEntryDialog(self, "New Y-axis limits:", "Set Y-Axis Limit",
+                                 "%s %s" % (bottom, top))
+
+        if dlg.ShowModal() == wx.ID_OK:
+            value = dlg.GetValue()
+            try:
+                values = value.replace(',', ' ').split()
+                if len(values) == 1:
+                    top = float(values[0])
+                    bottom = -top
+                elif len(values) == 2:
+                    bottom, top = map(float, values)
+                else:
+                    raise ValueError("Wrong number of values")
+            except Exception as exception:
+                msg = wx.MessageDialog(self, str(exception), "Invalid Entry",
+                                       wx.OK | wx.ICON_ERROR)
+                msg.ShowModal()
+                msg.Destroy()
+                raise
+            self._eelfigure.set_ylim(bottom, top)
+        dlg.Destroy()
+
     def OnUpdateUISave(self, event):
         event.Enable(True)
 
     def OnUpdateUISaveAs(self, event):
         event.Enable(True)
+
+    def OnUpdateUISetVLim(self, event):
+        event.Enable(hasattr(self._eelfigure, 'set_ylim'))
 
     def redraw(self, axes=[], artists=[]):
         self.canvas.redraw(axes=axes, artists=artists)

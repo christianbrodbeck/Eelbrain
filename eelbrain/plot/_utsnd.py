@@ -10,7 +10,7 @@ import numpy as np
 
 from .._names import INTERPOLATE_CHANNELS
 from . import _base
-from ._base import EelFigure, Layout, ColorMapMixin, LegendMixin, VLimMixin, \
+from ._base import EelFigure, Layout, ColorMapMixin, LegendMixin, YLimMixin, \
     XAxisMixin, TopoMapKey
 
 
@@ -330,22 +330,18 @@ class _ax_butterfly(object):
     #    ax.yaxis.set_offset_position('right')
         ax.yaxis.offsetText.set_va('top')
 
-        self.set_vlim(vmax, vmin)
+        self.set_ylim(vmin, vmax)
 
     @property
     def title(self):
         return self.ax.get_title()
 
-    def set_vlim(self, vmax=None, vmin=None):
-        if vmin is None and vmax is not None:
-            vmin = -vmax
+    def set_ylim(self, vmin, vmax):
         self.ax.set_ylim(vmin, vmax)
-        vmin, vmax = self.ax.get_ylim()
-        self.vmin = vmin
-        self.vmax = vmax
+        self.vmin, self.vmax = self.ax.get_ylim()
 
 
-class Butterfly(LegendMixin, TopoMapKey, VLimMixin, XAxisMixin, EelFigure):
+class Butterfly(LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
     """Butterfly plot for NDVars
 
     Parameters
@@ -408,7 +404,7 @@ class Butterfly(LegendMixin, TopoMapKey, VLimMixin, XAxisMixin, EelFigure):
             legend_handles.update(h.legend_handles)
 
         XAxisMixin.__init__(self, epochs, xdim)
-        VLimMixin.__init__(self)
+        YLimMixin.__init__(self, self.plots)
         if linedim == 'sensor':
             TopoMapKey.__init__(self, self._topo_data)
         LegendMixin.__init__(self, 'invisible', legend_handles)

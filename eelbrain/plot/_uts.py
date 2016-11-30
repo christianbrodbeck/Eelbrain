@@ -12,7 +12,7 @@ from .._data_obj import (
     ascategorial, asndvar, assub, cellname, Celltable, longname)
 from .._stats import stats
 from . import _base
-from ._base import EelFigure, Layout, LegendMixin, VLimMixin, XAxisMixin
+from ._base import EelFigure, Layout, LegendMixin, YLimMixin, XAxisMixin
 from ._colors import colors_for_oneway, find_cell_colors
 from .._colorspaces import oneway_colors
 from functools import reduce
@@ -316,7 +316,7 @@ class UTSStat(EelFigure, LegendMixin):
         self.draw()
 
 
-class UTS(LegendMixin, VLimMixin, XAxisMixin, EelFigure):
+class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     """Value by time plot for UTS data
 
     Parameters
@@ -370,7 +370,7 @@ class UTS(LegendMixin, VLimMixin, XAxisMixin, EelFigure):
 
         self.epochs = epochs
         XAxisMixin.__init__(self, epochs, xdim)
-        VLimMixin.__init__(self)
+        YLimMixin.__init__(self, self.plots)
         LegendMixin.__init__(self, legend, legend_handles)
         self._show()
 
@@ -547,15 +547,11 @@ class _ax_uts(object):
         ax.set_xlim(x[0], x[-1])
 
         self.ax = ax
-        self.set_vlim(vmax, vmin)
+        self.set_ylim(vmin, vmax)
 
-    def set_vlim(self, vmax=None, vmin=None):
-        if vmin is None and vmax is not None:
-            vmin = -vmax
+    def set_ylim(self, vmin, vmax):
         self.ax.set_ylim(vmin, vmax)
-        vmin, vmax = self.ax.get_ylim()
-        self.vmin = vmin
-        self.vmax = vmax
+        self.vmin, self.vmax = self.ax.get_ylim()
 
 
 class _plt_uts(object):

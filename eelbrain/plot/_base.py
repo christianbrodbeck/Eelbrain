@@ -73,6 +73,7 @@ from matplotlib.ticker import FormatStrFormatter, FuncFormatter, ScalarFormatter
 import numpy as np
 import PIL
 
+from .._utils import deprecated
 from .._utils.subp import command_exists
 from ..fmtxt import Image, texify
 from .._colorspaces import symmetric_cmaps, zerobased_cmaps, DEFAULT_CMAPS, \
@@ -391,7 +392,7 @@ def find_uts_ax_vlim(layers, vlims={}):
             kind = ndvar.info.get('overlay', ())
         else:
             kind = ndvar.info.get('base', ('trace',))
-        overlay = True
+            overlay = True
 
         if 'trace' not in kind:
             continue
@@ -402,11 +403,13 @@ def find_uts_ax_vlim(layers, vlims={}):
             if bottom is None:
                 bottom = bottom_
             elif bottom_ != bottom:
-                raise RuntimeError("Double vlim specification")
+                raise NotImplementedError("Data layers with incompatible "
+                                          "y-axis limits")
             if top is None:
                 top = top_
             elif top_ != top:
-                raise RuntimeError("Double vlim specification")
+                raise NotImplementedError("Data layers with incompatible "
+                                          "y-axis limits")
 
     return bottom, top
 
@@ -1908,21 +1911,47 @@ class XAxisMixin(object):
         self.draw()
 
 
-class VLimMixin(object):
+class YLimMixin(object):
+    # Keep Y-lim and V-lim separate. For EEG, one might want to invert the
+    # y-axis without inverting the colormap
 
-    def set_vlim(self, vmax=None, vmin=None):
+    # What should be the organizing principle for different vlims within
+    # one figure? Use cases:
+    # - 2 axes with different data
+    # - (not implemented) one axis with two y-axes
+
+    def __init__(self, plots):
+        self.__plots = plots
+
+    def get_ylim(self):
+        vmin = min(p.vmin for p in self.__plots)
+        vmax = max(p.vmax for p in self.__plots)
+        return vmin, vmax
+
+    def set_ylim(self, bottom=None, top=None):
         """Set the x-axis limits
 
         Parameters
         ----------
-        vmax : scalar
-            Upper limit.
-        vmin : scalar
-            Lower limit.
+        bottom : scalar
+            Lower y-axis limit.
+        top : scalar
+            Upper y-axis limit.
         """
-        for p in self.plots:
-            p.set_vlim(vmax, vmin)
+        if bottom is None and top is None:
+            return
+
+        for p in self.__plots:
+            p.set_ylim(bottom, top)
         self.draw()
+
+    @deprecated('0.26', "Use .set_ylim() (with different arguments)")
+    def set_vlim(self, vmax=None, vmin=None):
+        if vmax is None:
+            return
+        elif vmin is None:
+            vmin = -vmax
+        self.set_ylim(vmin, vmax)
 
 
 class Figure(EelFigure):

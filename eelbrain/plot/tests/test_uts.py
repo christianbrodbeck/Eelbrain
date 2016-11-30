@@ -3,6 +3,8 @@ Created on Dec 2, 2012
 
 @author: christian
 '''
+from nose.tools import eq_
+
 from eelbrain import Factor, datasets, plot, testnd
 
 
@@ -64,6 +66,10 @@ def test_uts():
     p = plot.UTS('uts', 'A%B', ds=ds, show=False)
     p.set_vlim(1)
     p.set_vlim(1, 0)
+    p.set_ylim(0, 1)
+    eq_(p.get_ylim(), (0, 1))
+    p.set_ylim(1, -1)
+    eq_(p.get_ylim(), (1, -1))
     p.close()
 
 
