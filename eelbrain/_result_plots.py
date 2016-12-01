@@ -187,7 +187,8 @@ class ClusterPlotter(object):
                 for view in views:
                     brain.show_view(view)
                     brain.screenshot('rgba', True)
-                    brain.save_image(self._dst_pix % ' '.join((name, hemi, view)))
+                    brain.save_image(self._dst_pix % ' '.join((name, hemi, view)),
+                                     'rgba', True)
 
                 if not brain_colorbar_done:
                     with mpl.rc_context(self.rc):

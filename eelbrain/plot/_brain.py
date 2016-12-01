@@ -1140,7 +1140,7 @@ def copy(brain):
 
     tempdir = mkdtemp()
     tempfile = os.path.join(tempdir, "brain.png")
-    brain.save_image(tempfile)
+    brain.save_image(tempfile, 'rgba', True)
 
     bitmap = wx.Bitmap(tempfile, wx.BITMAP_TYPE_PNG)
     bitmap_obj = wx.BitmapDataObject(bitmap)

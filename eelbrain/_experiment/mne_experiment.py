@@ -4448,7 +4448,7 @@ class MneExperiment(FileTree):
             return
 
         brain, legend = self.plot_annot(surf=surf, axw=600, show=False)
-        brain.save_image(dst)
+        brain.save_image(dst, 'rgba', True)
         legend.save(dst[:-3] + 'pdf', transparent=True)
         brain.close()
         legend.close()
@@ -4463,7 +4463,7 @@ class MneExperiment(FileTree):
             return
 
         brain = self.plot_label(label, surf=surf)
-        brain.save_image(dst)
+        brain.save_image(dst, 'rgba', True)
 
     def make_plots_labels(self, surf='inflated', redo=False, **state):
         self.set(**state)
@@ -4480,7 +4480,7 @@ class MneExperiment(FileTree):
         brain = self.plot_brain(surf, None, 'split', ['lat', 'med'], w=1200)
         for label, dst in zip(labels, dsts):
             brain.add_label(label)
-            brain.save_image(dst)
+            brain.save_image(dst, 'rgba', True)
             brain.remove_labels(hemi='lh')
 
     def _make_plot_label_dst(self, surf, label):

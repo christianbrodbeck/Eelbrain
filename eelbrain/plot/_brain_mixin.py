@@ -2,7 +2,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import os
 
-from matplotlib.image import imsave
 from matplotlib.colors import ListedColormap
 
 from ..fmtxt import Image
@@ -79,23 +78,6 @@ class BrainMixin(object):
         return ColorBar(cmap, vmin, vmax, label, label_position, label_rotation,
                         clipmin, clipmax, orientation, unit, (), *args,
                         **kwargs)
-
-    def save_image(self, filename, transparent=True):
-        """Save current image to disk
-
-        Parameters
-        ----------
-        filename: str
-            Destination for the image file (format is inferred from extension).
-        transparent : bool
-            Whether to make background transparent (default True).
-        """
-        if transparent:
-            mode = 'rgba'
-        else:
-            mode = 'rgb'
-        im = self.screenshot(mode)
-        imsave(filename, im)
 
     def _set_annot(self, annot, borders, alpha):
         "Store annot name to enable plot_legend()"

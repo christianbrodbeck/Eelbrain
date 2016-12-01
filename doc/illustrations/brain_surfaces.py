@@ -16,4 +16,4 @@ for surf in surfaces:
     brain = Brain('fsaverage', 'lh', surf, size=400, background='white',
                   subjects_dir=subjects_dir)
     brain.screenshot()
-    brain.save_image(DST % surf)
+    brain.save_image(DST % surf, 'rgba', True)

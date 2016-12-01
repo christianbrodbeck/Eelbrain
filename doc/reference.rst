@@ -387,7 +387,6 @@ following methods to better interact with Eelbrain:
 
     ~plot._brain_mixin.BrainMixin.image
     ~plot._brain_mixin.BrainMixin.plot_colorbar
-    ~plot._brain_mixin.BrainMixin.save_image
 
 
 Surface options for plotting data on ``fsaverage``:
