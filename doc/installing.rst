@@ -37,7 +37,7 @@ And, if you want to use pysurfer::
 
 Later, update Eelbrain with::
 
-    $ pip install -U eelbrain
+    $ pip install -U --upgrade-strategy only-if-needed eelbrain
 
 
 `WxPython <http://www.wxpython.org>`_ is not strictily necessary but enhances
@@ -51,11 +51,11 @@ Installing with Anaconda
 ------------------------
 
 For using Eelbrain with Continuum Analytics' `Anaconda
-<https://store.continuum.io/cshop/anaconda/>`_, first install the dependencies
-with ``conda``::
+<https://store.continuum.io/cshop/anaconda/>`_ first make sure you install an
+Anaconda environment with Python 2.7 (due to a dependency on Mayavi), then
+install the dependencies with ``conda``::
 
-    $ conda install wxpython
-    $ conda install mayavi
+    $ conda install wxpython numpy scipy matplotlib mayavi h5py pyqt=4.10 pygments=1 pip
 
 Then install Eelbrain (if you are not planning to plot MNE source estimates
 you can leave out the ``[plot.brain]``)::
@@ -64,12 +64,14 @@ you can leave out the ``[plot.brain]``)::
 
 Later, update Eelbrain with (again, ``[plot.brain]`` is optional)::
 
-    $ pip install -U eelbrain[plot.brain]
-
+    $ pip install -U --upgrade-strategy only-if-needed eelbrain[plot.brain]
 
 
 Installing with Canopy
 ----------------------
+
+.. note::
+   This option has not been tested in a while and might be outdated.
 
 Make sure that you are using the
 `Canopy <https://www.enthought.com/products/canopy>`_ Python distribution from
@@ -93,8 +95,7 @@ you can leave out the ``[plot.brain]``)::
 
 Later, update Eelbrain with::
 
-   $ pip uninstall eelbrain
-   $ easy_install eelbrain[plot.brain]
+    $ pip install -U --upgrade-strategy only-if-needed eelbrain
 
 
 Optional Dependencies
