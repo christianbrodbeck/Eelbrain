@@ -420,8 +420,8 @@ class ColorBar(EelFigure):
 
     Parameters
     ----------
-    cmap : str | Colormap
-        Name of the color-map, or a matplotlib Colormap.
+    cmap : str | Colormap | array
+        Name of the color-map, or a matplotlib Colormap, or LUT.
     vmin : scalar
         Lower end of the scale mapped onto cmap.
     vmax : scalar
@@ -454,8 +454,15 @@ class ColorBar(EelFigure):
                  clipmin=None, clipmax=None, orientation='horizontal',
                  unit=None, contours=(), width=None, h=None, w=None, *args,
                  **kwargs):
-        cm = mpl.cm.get_cmap(cmap)
-        lut = cm(np.arange(cm.N))
+        if isinstance(cmap, np.ndarray):
+            if cmap.max() > 1:
+                cmap = cmap / 255.
+            cm = mpl.colors.ListedColormap(cmap, 'LUT')
+            lut = cmap
+        else:
+            cm = mpl.cm.get_cmap(cmap)
+            lut = cm(np.arange(cm.N))
+
         if orientation == 'horizontal':
             if h is None and w is None:
                 h = 1
