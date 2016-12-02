@@ -537,11 +537,14 @@ class MneExperiment(FileTree):
     # =========
     # eog_sns: The sensors to plot separately in the rejection GUI. The default
     # is the two MEG sensors closest to the eyes.
-    _eog_sns = {'KIT-157': ['MEG 143', 'MEG 151'],
-                'KIT-208': ['MEG 087', 'MEG 130'],
-                'KIT-UMD-3': ['MEG 042', 'MEG 025'],
-                'KIT-BRAINVISION': ['HEOGL', 'HEOGR', 'VEOGb'],
-                'neuromag306mag': ['MEG 0121', 'MEG 1411']}
+    _eog_sns = {None: (),
+                'KIT-157': ('MEG 143', 'MEG 151'),
+                'KIT-208': ('MEG 087', 'MEG 130'),
+                'KIT-UMD-1': ('MEG 042', 'MEG 025'),
+                'KIT-UMD-2': ('MEG 042', 'MEG 025'),
+                'KIT-UMD-3': ('MEG 042', 'MEG 025'),
+                'KIT-BRAINVISION': ('HEOGL', 'HEOGR', 'VEOGb'),
+                'neuromag306mag': ('MEG 0121', 'MEG 1411')}
     #
     # artifact_rejection dict:
     #
@@ -4553,7 +4556,7 @@ class MneExperiment(FileTree):
         if modality == '':
             ds = self.load_epochs(reject=False, trigger_shift=False,
                                   apply_ica=apply_ica, eog=True, decim=decim)
-            eog_sns = self._eog_sns[ds['meg'].sensor.sysname]
+            eog_sns = self._eog_sns.get(ds['meg'].sensor.sysname)
             data = 'meg'
             vlim = 2e-12
         elif modality == 'eeg':
