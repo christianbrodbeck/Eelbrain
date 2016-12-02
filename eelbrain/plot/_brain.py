@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import division
+
 from distutils.version import LooseVersion
 from functools import partial
 from itertools import izip
@@ -14,8 +15,8 @@ import mne
 
 from .._data_obj import asndvar, NDVar
 from ..fmtxt import Image, im_table, ms
-from ._base import EelFigure, ImLayout, ColorBarMixin, fix_vlim_for_cmap, \
-    find_fig_cmaps, find_fig_vlims
+from ._base import (EelFigure, ImLayout, ColorBarMixin, find_fig_cmaps,
+                    find_fig_vlims)
 from ._colors import ColorList
 
 
@@ -582,25 +583,36 @@ def _set_parallel(brain, surf):
             fig.scene.camera.parallel_projection = True
 
 
-def _dspm_lut(fmin, fmid, fmax):
+def _dspm_lut(fmin, fmid, fmax, n=256):
     """Create a color look up table (lut) for a dSPM plot
 
     Parameters
     ----------
     fmin, fmid, fmax : scalar
         Start-, mid- and endpoint for the color gradient.
+    n : int
+        Number of distinct color values in the table.
+
+    Notes
+    -----
+    Transitions:
+
+    0-fmin
+        Transparent.
+    fmin-fmid
+        Transparent - opaque.
+    fmid-fmax
+        Hue shift.
     """
     if not (fmin < fmid < fmax):
         raise ValueError("Invalid colormap, we need fmin < fmid < fmax")
     elif fmin < 0:
-        msg = ("The dSPM color gradient is symmetric around 0, fmin needs to "
-               "be > 0.")
-        raise ValueError(msg)
+        raise ValueError("The dSPM color gradient is symmetric around 0, fmin "
+                         "needs to be > 0 (got %s)." % fmin)
 
-    n = 256
     lut = np.zeros((n, 4), dtype=np.uint8)
-    i0 = _idx(n / 2)
-    imin = _idx((fmin / fmax) * i0)
+    i0 = _idx(n / 2)  # v=0 (middle of the LUT)
+    imin = _idx((fmin / fmax) * i0)  # i0 is the range of one side of the LUT
     min_n = i0 - imin
     min_p = i0 + imin
     imid = _idx((fmid / fmax) * i0)
