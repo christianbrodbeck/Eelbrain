@@ -7,7 +7,7 @@ The :class:`MneExperiment` Class
 ********************************
 
 MneExperiment is a base class for managing data analysis for an MEG
-experiment with MNE. Currently only gradiometer-only data is supported.
+experiment with MNE.
 
 .. seealso::
     :class:`MneExperiment` class reference for details on all available methods
@@ -98,11 +98,22 @@ For more complex designs and variables, you can override
 and other functions to examine :class:`Dataset` s.
 
 
+Defining data epochs
+--------------------
+
+Once events are properly labeled, define :attr:`MneExperiment.epochs`. There is
+one special epoch to define, which is called ``'cov'``. This is the data epoch
+that will be used to estimate the sensor noise covariance matrix for source
+estimation.
+
+
 Pre-processing
 --------------
 
-Once events are properly labeled, define :attr:`MneExperiment.epochs`. Then
-do artifact rejection using :meth:`MneExperiment.make_bad_channels` and
+For each subject, define bad channels using
+:meth:`MneExperiment.make_bad_channels`.
+
+For each primary epoch that is defined, do artifact rejection using
 :meth:`MneExperiment.make_rej`. A simple way to cycle through
 subjects for doing rejection is :meth:`MneExperiment.next`, like::
 
@@ -156,7 +167,7 @@ Experiment Definition
    :local:
 
 
-Basic Setup
+Basic setup
 -----------
 
 .. py:attribute:: MneExperiment.owner
@@ -215,7 +226,7 @@ experiment analysis parameters, e.g.::
                 'raw': '1-40'}
 
 
-Event Variables
+Event variables
 ---------------
 
 .. py:attribute:: MneExperiment.variables
@@ -288,14 +299,11 @@ vars (:class:`dict`)
     ``source_name`` can also be an interaction, in which case cells are joined
     with spaces (``"f1_cell f2_cell"``).
 
-A secondary epoch can be defined using a ``sel_epoch`` or ``base`` entry.
-Secondary epochs inherit trial rejection from a primary epoch.
+A **secondary epoch** can be defined using a ``base`` entry.
+Secondary epochs inherit trial rejection and all parameters from a primary
+epoch (the ``base``).
 Additional parameters can be used to modify the definition, for example ``sel``
-can be used to select a subset of the primary epoch. The two differ in the way
-they fill in parameters that are not made explicit in the epoch's
-:class:`dict`: with ``sel_epoch`` other parameters default to
-:attr:`MneExperiment.epoch_defaults`, with ``base`` other parameters default to
-the base epoch.
+can be used to select a subset of the events in the primary epoch.
 
 base (:class:`str`)
     Name of the epoch whose parameters provide defaults for all parameters.
@@ -303,7 +311,8 @@ base (:class:`str`)
     exception of ``trigger_shift``, which is applied additively to the
     ``trigger_shift`` of the ``base`` epoch.
 
-Superset epochs can be defined with:
+A **superset epoch** is an epoch that combines multiple other epochs.
+A superset epoch can be defined with a single ``sub_epochs`` parameter:
 
 sub_epochs (:class:`tuple` of :class:`str`)
     Tuple of epoch names. These epochs are combined to form the current epoch.
@@ -313,10 +322,17 @@ sub_epochs (:class:`tuple` of :class:`str`)
 
 Examples::
 
-    epochs = {'noun': {'sel': "stimulus == 'noun'"},
-              'noun_inanimate': {'sel_epoch': 'noun',
-                                 'sel': "noun_type == 'animate'"}
-              'cov': {'sel_epoch': 'noun', 'tmax': 0}}
+    epochs = {
+        # some primary epochs:
+        'picture': {'sel': "stimulus == 'picture'"},
+        'word': {'sel': "stimulus == 'word'"},
+        # use the picture baseline for the sensor covariance estimate
+        'cov': {'base': 'picture', 'tmax': 0}
+        # another secondary epoch:
+        'animal_words': {'base': 'noun', 'sel': "word_type == 'animal'"},
+        # a superset-epoch:
+        'all_stimuli': {'sub_epochs': ('picture', 'word')},
+    }
 
 
 Tests
@@ -451,13 +467,15 @@ can be computed by multiplication::
             }
 
 
-Subject Groups
+Subject groups
 --------------
 
 .. py:attribute:: MneExperiment.groups
 
-Subject groups are defined in the :attr:`MneExperiment.groups` dictionary with
-``{name: group_definition}`` entries. The simplest group definition is a tuple
+A subject group called ``'all'`` containing all subjects is always implicitly
+defined. Additional subject groups can be defined in
+:attr:`MneExperiment.groups` in a dictionary with ``{name: group_definition}``
+entries. The simplest group definition is a tuple
 of subject names, e.g. ``("R0026", "R0042", "R0066")``. In addition, a
 group_definition can be a dictionary with the following entries:
 
@@ -465,6 +483,15 @@ base : str
     The name of the group to base the new group on.
 exclude : tuple of str
     A list of subjects to exclude (e.g., ``("R0026", "R0042", "R0066")``)
+
+Examples::
+
+    groups = {
+        'some': ("R0026", "R0042", "R0066"),
+        'others': {'base': 'all', 'exclude': ("R0666",)},
+        # some, buth without R0042:
+        'some_less': {'base': 'some', 'exclude': ("R0042",)}
+    }
 
 
 Parcellations (:attr:`parcs`)
@@ -550,7 +577,7 @@ Example::
                       'mask': 'lobes'}}
 
 
-Externally Created Parcellations
+Externally created parcellations
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 For parcellations that are user-created, the following two definitions can be
@@ -572,7 +599,7 @@ Examples (pre-defined parcellations)::
              'PALS_B12_Brodmann': 'fsaverage_parc'}
 
 
-Visualization Defaults
+Visualization defaults
 ----------------------
 
 .. py:attribute:: MneExperiment.brain_plot_defaults
@@ -593,7 +620,7 @@ smoothing_steps : None | int
     Number of smoothing steps to display data.
 
 
-Analysis Parameters
+Analysis parameters
 ===================
 
 These are parameters that can be set after an :class:`MneExperiment` has been
