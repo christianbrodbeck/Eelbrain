@@ -3217,6 +3217,7 @@ class MneExperiment(FileTree):
             raise ValueError("data=%s" % repr(data))
 
         #  parc/mask
+        mask = bool(mask)  # for .load_evoked_stc()
         if parc:
             mask = True
             parc_dim = 'source'
