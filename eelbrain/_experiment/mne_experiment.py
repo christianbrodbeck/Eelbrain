@@ -5029,15 +5029,17 @@ class MneExperiment(FileTree):
                                 "trials per condition")
         return s_table
 
-    def _report_test_info(self, section, ds, test, res, data, include=None):
-        test_params = self._tests[test]
-
-        # Analysis info
+    def _analysis_info(self, data):
         info = List("Analysis:")
         info.add_item(self.format('epoch = {epoch} {evoked_kind} ~ {model}'))
         if data == 'source':
             info.add_item(self.format("cov = {cov}"))
             info.add_item(self.format("inv = {inv}"))
+        return info
+
+    def _report_test_info(self, section, ds, test, res, data, include=None):
+        info = self._analysis_info(data)
+        test_params = self._tests[test]
         info.add_item("test = %s  (%s)" % (test_params['kind'], test_params['desc']))
         if include is not None:
             info.add_item("Separate plots of all clusters with a p-value < %s"
@@ -5712,7 +5714,7 @@ class MneExperiment(FileTree):
     def _set_analysis_options(self, data, sns_baseline, src_baseline, pmin,
                               tstart, tstop, parc, mask=None,
                               dims=('source', 'time'), decim=None,
-                              test_options=()):
+                              test_options=(), folder_options=()):
         """Set templates for paths with test parameters
 
         analysis:  preprocessing up to source estimate epochs (not parcellation)
@@ -5765,6 +5767,9 @@ class MneExperiment(FileTree):
                        "parcellation (parc parameter). Use a mask instead, or "
                        "do a cluster-based test." % pmin)
                 raise NotImplementedError(msg)
+
+        if folder_options:
+            folder += ' ' + ' '.join(folder_options)
 
         # test properties
         items = []
