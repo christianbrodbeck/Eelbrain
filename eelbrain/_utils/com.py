@@ -166,3 +166,13 @@ class Notifier(object):
             print ("Could not send email because an error occurred, skipping "
                    "notification. Check your internet connection.\n%s"
                    % str(error))
+
+
+class NotNotifier(object):
+    # Helper to raise proper error message when user has not set owner attribute
+    def __enter__(self):
+        raise AttributeError("The notifier is disabled because the .owner "
+                             "attribute was not set")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass

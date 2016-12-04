@@ -15,8 +15,8 @@ import traceback
 import numpy as np
 
 from .. import fmtxt
-from .._utils import LazyProperty, ui
-from .._utils.com import send_email, Notifier
+from .._utils import LazyProperty
+from .._utils.com import Notifier, NotNotifier
 
 
 def _etree_expand(node, state):
@@ -168,6 +168,8 @@ class TreeModel(object):
             task = self.__class__.__name__
             self.notification = Notifier(self.owner, task, self._crash_report,
                                          self._auto_debug)
+        else:
+            self.notification = NotNotifier()
 
     def __repr__(self):
         args = [repr(self._fields[arg]) for arg in self._repr_args]
