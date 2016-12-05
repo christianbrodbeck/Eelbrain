@@ -493,8 +493,6 @@ class FMTextElement(object):
         options : dict
             Options for HTML tags.
         """
-        if options and not tag:
-            raise ValueError("Can not specify options without tag")
         self.content = content
         self.tag = tag
         self.options = options
@@ -1571,29 +1569,32 @@ class Image(FMTextElement, StringIO):
 class Figure(FMText):
     "Represent a figure"
 
-    def __init__(self, content, caption=None):
+    def __init__(self, content, caption=None, options=None):
         """Represent a figure
 
         Parameters
         ----------
-        content : Text
+        content : FMText
+            Figure content.
+        caption : FMText
+            Figure caption.
+        options : dict
+            HTML options for ``<figure>`` tag.
         """
         self._caption = caption
-        FMText.__init__(self, content)
+        FMText.__init__(self, content, None, options)
 
     def get_html(self, env={}):
         body = FMText.get_html(self, env)
         if self._caption:
             caption = _html_element('figcaption', self._caption, env)
             body = '\n'.join((body, caption))
-        txt = _html_element('figure', body, env)
-        return txt
+        return _html_element('figure', body, env, self.options)
 
     def get_str(self, env={}):
         body = FMText.get_str(self, env)
         caption = str(self._caption)
-        txt = "\nFigure:\n%s\nCaption: %s" % (body, caption)
-        return txt
+        return "\nFigure:\n%s\nCaption: %s" % (body, caption)
 
 
 class Section(FMText):
@@ -1617,7 +1618,7 @@ class Section(FMText):
         out += FMText._repr_items(self)
         return out
 
-    def add_figure(self, caption, content=None):
+    def add_figure(self, caption, content=None, options=None):
         """Add a figure frame to the section
 
         Parameters
@@ -1638,7 +1639,7 @@ class Section(FMText):
         """
         if content is None:
             content = []
-        figure = Figure(content, caption)
+        figure = Figure(content, caption, options)
         self.append(figure)
         return figure
 
