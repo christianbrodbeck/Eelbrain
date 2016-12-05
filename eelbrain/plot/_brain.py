@@ -786,7 +786,9 @@ def _voxel_brain(data, lut, vmin, vmax):
 class _BinTable(EelFigure, ColorBarMixin):
     """Super-class"""
     def __init__(self, ndvar, tstart, tstop, tstep, im_func, surf, views, hemi,
-                 summary, *args, **kwargs):
+                 summary, title, foreground=None, background=None,
+                 parallel=True, smoothing_steps=None, mask=True,
+                 *args, **kwargs):
         if isinstance(views, str):
             views = (views,)
         data = ndvar.bin(tstep, tstart, tstop, summary)
@@ -799,14 +801,18 @@ class _BinTable(EelFigure, ColorBarMixin):
         from .._wxgui import get_app
         get_app()
 
-        layout = ImLayout(n_rows * n_columns, 0, 0.5, 4/3, 2, *args,
+        layout = ImLayout(n_rows * n_columns, 0, 0.5, 4/3, 2, title, *args,
                           nrow=n_rows, ncol=n_columns, **kwargs)
         EelFigure.__init__(self, "BinTable", layout)
 
         res_w = int(layout.axw * layout.dpi)
         res_h = int(layout.axh * layout.dpi)
         ims, header, cmap_params = im_func(data, surf, views, hemi, axw=res_w,
-                                           axh=res_h)
+                                           axh=res_h, foreground=foreground,
+                                           background=background,
+                                           parallel=parallel,
+                                           smoothing_steps=smoothing_steps,
+                                           mask=mask)
         for row in xrange(n_rows):
             for column in xrange(n_columns):
                 ax = self._axes[row * n_columns + column]
@@ -1045,7 +1051,7 @@ def _dspm_bin_table_ims(fmin, fmax, fmid, data, surf, views, hemi, axw, axh,
 
     def brain_(hemi_):
         return dspm(data, fmin, fmax, fmid, surf, views[0], hemi_, False, None,
-                    axw, axh, None, None, *args, **kwargs)
+                    axw, axh, *args, **kwargs)
 
     return _bin_table_ims(data, hemi, views, brain_)
 
