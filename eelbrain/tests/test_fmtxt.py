@@ -105,7 +105,9 @@ def test_table():
     path = os.path.join(tempdir, 'test.html')
     table.save_html(path)
     eq_(open(path).read(),  '<!DOCTYPE html>\n<html>\n<head>\n'
-                            '    <title>Untitled</title>\n</head>\n\n'
+                            '    <title>Untitled</title>\n'
+                            '<style>\n\n.float {\n    float:left\n}\n\n'
+                            '</style>\n</head>\n\n'
                             '<body>\n\n<figure>'
                             '<table rules="none" cellpadding="2" frame="hsides" '
                             'border="1"><tr>\n'

@@ -128,10 +128,16 @@ def escape_html(text):
     return _html_escape_pattern.sub(_html_repl, text).encode('ascii', 'xmlcharrefreplace')
 
 
+STYLE = u"""
+.float {
+    float:left
+}
+"""
+
 _html_doc_template = u"""<!DOCTYPE html>
 <html>
 <head>
-    {meta}<title>{title}</title>
+    {meta}<title>{title}</title>{style}
 </head>
 
 <body>
@@ -355,9 +361,12 @@ def make_html_doc(body, root, resource_dir=None, title=None, meta=None):
     else:
         meta = ''
 
+    style = os.linesep.join(('', '<style>', STYLE, '</style>'))
+
     env = {'root': root, 'resource_dir': resource_dir}
     txt_body = html(body, env)
-    return _html_doc_template.format(meta=meta, title=title, body=txt_body)
+    return _html_doc_template.format(meta=meta, title=title, style=style,
+                                     body=txt_body)
 
 
 def tex(text, env={}):
@@ -464,7 +473,7 @@ class FMTextConstant(object):
         return self.text
 
 
-linebreak = FMTextConstant('<br>\n', '\\line\n', '\\\\\n', '\n')
+linebreak = FMTextConstant('<br style="clear:left">\n', '\\line\n', '\\\\\n', '\n')
 
 
 class FMTextElement(object):
