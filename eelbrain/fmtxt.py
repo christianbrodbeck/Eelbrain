@@ -77,22 +77,30 @@ preferences = dict(
 
 # Tags
 # ----
+# Formatting instructions, actions depend on output format.
+# Two ways of dealing with them:
+#  - substitute tag with X_TAGS[tag]
+#  - format native format string with content (X_SUBS[tag] % content)
+#
 # str:
-#     ``sub % content`` if the tag is in _str_substitutes, otherwise it is
+#     ``sub % content`` if the tag is in _STR_SUBS, otherwise it is
 #     ignored
 # TeX:
-#     Ignor a tag if it is in _tex_ignore;
-#     ``sub % content`` if the tag is in _tex_substitutes,
+#     Ignor a tag if it is in _TEX_IGNORE;
+#     ``sub % content`` if the tag is in _TEX_SUBS,
 #     otherwise ``"%s{%s}" % (tag, content)``
 # HTML:
-#     Formatted HTML if the tag is in _html_tags, otherwise it is ignored
-#
+#     Formatted HTML if the tag is in _HTML_TAGS, otherwise it is ignored
+# RTF:
+#     Formatted RTF if the tag is in _RTF_SUBS, otherwise it is ignored
 
-_tex_ignore = ('font',)
-_tex_substitutes = {'paragraph': "\n\n%s\n\n",
-                    'math': "$%s$"}  # LaTeX math but normal HTML
+_STR_SUBS = {r'_': u'(%s)'}
 
-_html_tags = {r'_': 'sub',
+_TEX_IGNORE = ('font',)
+_TEX_SUBS = {'paragraph': "\n\n%s\n\n",
+             'math': "$%s$"}  # LaTeX math but normal HTML
+
+_HTML_TAGS = {r'_': 'sub',
               r'^': 'sup',
               r'\author': 'author',
               r'\emph': 'em',
@@ -102,9 +110,7 @@ _html_tags = {r'_': 'sub',
               'code': 'code',
               'font': 'font'}
 
-_RTF_TAGS = {r'\emph': "\i %s\i0"}
-
-_str_substitutes = {r'_': u'(%s)'}
+_RTF_SUBS = {r'\emph': "\i %s\i0"}
 
 _html_alignments = {'l': 'left',
                     'r': 'right',
@@ -389,7 +395,7 @@ def texify(txt):
 
 _html_temp = u'<{tag}>{body}</{tag}>'
 _html_temp_opt = u'<{tag} {options}>{body}</{tag}>'
-def _html_element(tag, body, env, html_options=None):
+def _html_element(tag, body, env, options=None):
     """Format an HTML element
 
     Parameters
@@ -400,11 +406,11 @@ def _html_element(tag, body, env, html_options=None):
         The main content between the tags.
     env : dict
         Environment for FMTXT compilation.
-    html_options : dict
+    options : dict
         HTML options to be inserted in the start tag.
     """
-    if html_options:
-        opt = ' '.join('%s="%s"' % item for item in html_options.iteritems())
+    if options:
+        opt = ' '.join('%s="%s"' % item for item in options.iteritems())
         txt = _html_temp_opt.format(tag=tag, options=opt, body=html(body, env))
     else:
         txt = _html_temp.format(tag=tag, body=html(body, env))
@@ -483,8 +489,7 @@ class FMTextElement(object):
         content : object
             Any item with a string representation (str, scalar, ...).
         tag : str
-            TeX property that is followed by ``{}`` (e.g.,
-            ``property=r'\textbf'`` for bold)
+            Formatting tag.
         options : dict
             Options for HTML tags.
         """
@@ -536,10 +541,9 @@ class FMTextElement(object):
         "return complete html representation"
         txt = self._get_html_core(env)
 
-        if self.tag:
-            if self.tag in _html_tags:
-                tag = _html_tags[self.tag]
-                return _html_element(tag, txt, env, self.options)
+        if self.tag and self.tag in _HTML_TAGS:
+            tag = _HTML_TAGS[self.tag]
+            return _html_element(tag, txt, env, self.options)
 
         return txt
 
@@ -548,8 +552,8 @@ class FMTextElement(object):
         return escape_html(self._get_core(env))
 
     def get_rtf(self, env={}):
-        if self.tag in _RTF_TAGS:
-            return _RTF_TAGS[self.tag] % self._get_rtf_core(env)
+        if self.tag in _RTF_SUBS:
+            return _RTF_SUBS[self.tag] % self._get_rtf_core(env)
         else:
             return self._get_rtf_core(env)
 
@@ -558,8 +562,8 @@ class FMTextElement(object):
 
     def get_str(self, env={}):
         "return unicode"
-        if self.tag in _str_substitutes:
-            return _str_substitutes[self.tag] % self._get_str_core(env)
+        if self.tag in _STR_SUBS:
+            return _STR_SUBS[self.tag] % self._get_str_core(env)
         else:
             return self._get_str_core(env)
 
@@ -569,9 +573,9 @@ class FMTextElement(object):
     def get_tex(self, env):
         txt = self._get_tex_core(env)
 
-        if self.tag and self.tag not in _tex_ignore:
-            if self.tag in _tex_substitutes:
-                txt = _tex_substitutes[self.tag] % txt
+        if self.tag and self.tag not in _TEX_IGNORE:
+            if self.tag in _TEX_SUBS:
+                txt = _TEX_SUBS[self.tag] % txt
             else:
                 txt = r"%s{%s}" % (self.tag, txt)
 
@@ -651,6 +655,10 @@ class FMText(FMTextElement):
         content : list of FMTextElement
             Any item with a string representation (str, FMText, scalar, ...)
             or an object that iterates over such items (e.g. a list of FMText).
+        tag : str
+            Formatting tag.
+        options : dict
+            Options for HTML tags.
 
         Notes
         -----
@@ -1174,7 +1182,7 @@ class Table(FMTextElement):
         content : FMText
             Cell content.
         tag : str
-            TeX tag.
+            Formatting tag.
         width : int
             Width in columns for multicolumn cells.
         just : None | 'l' | 'r' | 'c'
