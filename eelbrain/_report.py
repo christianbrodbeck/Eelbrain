@@ -6,7 +6,7 @@ from . import plot
 from . import test
 from ._data_obj import cellname, combine
 from ._stats.stats import ttest_t
-from .fmtxt import ms, Section
+from .fmtxt import ms, Section, linebreak
 
 
 def n_of(n, of, plural_for_0=False):
@@ -187,7 +187,52 @@ def sensor_time_cluster(section, cluster, y, model, ds, colors, match='subject')
     cluster_timecourse(section, cluster, y, 'sensor', model, ds, colors, match)
 
 
-def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={}, title="Results", parc=True):
+def source_results(res, surfer_kwargs={}, title="Results", diff_cmap=None):
+    sec = Section(title)
+
+    # raw difference
+    brain = plot.brain.surfer_brain(res.difference, diff_cmap, **surfer_kwargs)
+    cbar = brain.plot_colorbar(orientation='vertical', show=False)
+    sec.add_figure("Correlation increase.", (brain.image('correlation'), cbar))
+    brain.close()
+    cbar.close()
+
+    # test of difference
+    if res._kind == 'cluster':
+        clusters = res.find_clusters(0.2, True)
+        ctable = clusters.as_table(midrule=True, count=True,
+                                   caption="All clusters with p<0.2.")
+        sec.append(ctable)
+
+        for cluster in clusters.itercases():
+            # only plot relevant hemisphere
+            sec.add_figure("Cluster %i: p=%.3f" % (cluster['id'], cluster['p']),
+                           source_cluster_im(cluster['cluster'], surfer_kwargs),
+                           {'class': 'float'})
+        sec.append(linebreak)
+    return sec
+
+
+def source_cluster_im(ndvar, surfer_kwargs):
+    "Plot ('source',) NDVar, only plot relevant hemi"
+    kwargs = surfer_kwargs.copy()
+    if not ndvar.sub(source='lh').any():
+        kwargs['hemi'] = 'rh'
+    elif not ndvar.sub(source='rh').any():
+        kwargs['hemi'] = 'lh'
+    if ndvar.x.dtype.kind == 'b':
+        brain = plot.brain.dspm(ndvar, 0, 1.5, **kwargs)
+    elif ndvar.x.dtype.kind == 'i':  # map of cluster ids
+        brain = plot.brain.surfer_brain(ndvar, 'jet', **kwargs)
+    else:
+        brain = plot.brain.cluster(ndvar, **kwargs)
+    out = brain.image(ndvar.name)
+    brain.close()
+    return out
+
+
+def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={},
+                        title="Results", parc=True):
     report = Section(title)
     y = ds[res.Y]
     if parc is True:
