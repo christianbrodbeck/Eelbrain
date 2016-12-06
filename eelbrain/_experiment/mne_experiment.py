@@ -388,8 +388,9 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {class-name}.log')
         'evoked-old-file': os.path.join('{evoked-base}.pickled'),  # removed for 0.25
         # test files
         'test-dir': os.path.join('{cache-dir}', 'test'),
+        'data_parc': 'unmasked',  # for some tests, parc and mask parameter can be saved in same file
         'test-file': os.path.join('{test-dir}', '{analysis} {group}',
-                                  '{epoch} {test} {test_options}.pickled'),
+                                  '{epoch} {test} {test_options} {data_parc}.pickled'),
 
         # MRIs
         'common_brain': 'fsaverage',
@@ -1401,7 +1402,7 @@ class MneExperiment(FileTree):
                         log.warning("  Invalid ANOVA tests: %s for %s",
                                     bad_tests, bad_parcs)
                     for test, parc in product(bad_tests, bad_parcs):
-                        rm['test-file'].add({'test': test, 'test_options': '* ' + parc})
+                        rm['test-file'].add({'test': test, 'data_parc': parc})
                         rm['report-file'].add({'test': test, 'folder': parc})
 
                 # evoked files are based on old events
@@ -1445,7 +1446,7 @@ class MneExperiment(FileTree):
                         bad_parcs.append(parc)
                 for parc in bad_parcs:
                     rm['annot-file'].add({'parc': parc})
-                    rm['test-file'].add({'test_options': '* ' + parc})
+                    rm['test-file'].add({'data_parc': parc})
                     rm['report-file'].add({'folder': parc})
                     rm['res-file'].add({'analysis': 'Source Annot',
                                         'resname': parc + ' * *', 'ext': 'p*'})
@@ -5711,9 +5712,14 @@ class MneExperiment(FileTree):
     def _set_analysis_options(self, data, sns_baseline, src_baseline, pmin,
                               tstart, tstop, parc, mask=None,
                               dims=('source', 'time')):
-        """Set templates for test paths with test parameters
+        """Set templates for paths with test parameters
 
-        Can be set before or after the test template.
+        analysis:  preprocessing up to source estimate epochs (not parcellation)
+        folder: parcellation (human readable)
+        data_parc: parcellation (as used for spatio-temporal cluster test
+        test_options: baseline, permutation test method etc.
+
+        also sets `parc`
 
         Parameters
         ----------
@@ -5734,6 +5740,9 @@ class MneExperiment(FileTree):
             raise ValueError("data=%r. Needs to be 'sns', 'src' or 'eeg'" % data)
 
         # determine report folder
+        # TODO: for sensor space data; {parc} needed for ROI but not sensor
+        # tests with dims=('time'). Move into analysis-like compound?
+        # Add a global {pipeline} compound that can span multiple folders?
         folder = "{parc}"
         if 'source' in dims:
             if parc is None:
@@ -5794,22 +5803,24 @@ class MneExperiment(FileTree):
         if tstart is not None or tstop is not None:
             items.append(_time_window_str((tstart, tstop)))
 
-        # parc/mask
+        # parc and data_parc args from parc/mask
         kwargs = {}
         if data == 'src':
             if parc:
                 kwargs['parc'] = parc
-                data_parc = parc
+                kwargs['data_parc'] = parc
             elif mask:
                 kwargs['parc'] = mask
                 if pmin is None:  # can as well collect dist for parc
-                    data_parc = mask
+                    kwargs['data_parc'] = mask
                 else:  # parc means disconnecting
-                    data_parc = '%s-mask' % mask
+                    kwargs['data_parc'] = '%s-mask' % mask
             else:
+                # only compute unmasked test once (probably rare anyways)
                 kwargs['parc'] = 'aparc'
-                data_parc = 'unmasked'
-            items.append(data_parc)
+                kwargs['data_parc'] = 'unmasked'
+        elif parc:
+            raise ValueError("Analysis with data=%r can't have parc" % (data,))
 
         self.set(test_options=' '.join(items), analysis=analysis, folder=folder,
                  **kwargs)
