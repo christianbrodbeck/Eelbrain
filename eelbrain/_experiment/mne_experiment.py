@@ -701,7 +701,7 @@ class MneExperiment(FileTree):
         elif self.path_version == 0:
             self._templates['raw-dir'] = os.path.join('{meg-dir}', 'raw')
             self._templates['raw-file'] = os.path.join('{raw-dir}', '{subject}_'
-                                              '{session}_{raw}-raw.fif')
+                                                       '{session}_clm-raw.fif')
 
             self._templates['raw-file-bkp'] = os.path.join('{raw-dir}', '{subject}_'
                                               '{session}_{sns_kind}-raw*.fif')
