@@ -8491,14 +8491,25 @@ class UTS(Dimension):
         self.nsamples = int(nsamples)
         self.tmax = self.tmin + self.tstep * (self.nsamples - 1)
         self.tstop = self.tmin + self.tstep * self.nsamples
+        self._times = None
 
-    @LazyProperty
+    def set_tmin(self, tmin):
+        "Modify the value of tmin"
+        self.__init__(tmin, self.tstep, self.nsamples)
+
+    @property
+    def times(self):
+        if self._times is None:
+            self._times = self.tmin + np.arange(self.nsamples) * self.tstep
+        return self._times
+
+    @property
     def x(self):
         return self.times
 
-    @LazyProperty
-    def times(self):
-        return self.tmin + np.arange(self.nsamples) * self.tstep
+    @property
+    def values(self):
+        return self.times
 
     @classmethod
     def from_int(cls, first, last, sfreq):
@@ -8525,10 +8536,7 @@ class UTS(Dimension):
         return state
 
     def __setstate__(self, state):
-        tmin = state['tmin']
-        tstep = state['tstep']
-        nsamples = state['nsamples']
-        self.__init__(tmin, tstep, nsamples)
+        self.__init__(state['tmin'], state['tstep'], state['nsamples'])
 
     def __repr__(self):
         return "UTS(%s, %s, %s)" % (self.tmin, self.tstep, self.nsamples)
@@ -8790,10 +8798,6 @@ class UTS(Dimension):
                                  (self.tstep, tstep))
 
         return slice(start, stop, step)
-
-    @property
-    def values(self):
-        return self.times
 
 
 def intersect_dims(dims1, dims2, check_dims=True):

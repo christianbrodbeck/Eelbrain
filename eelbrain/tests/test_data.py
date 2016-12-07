@@ -1001,6 +1001,11 @@ def test_ndvar_timeseries_methods():
     f = x.fft()
     assert_array_almost_equal(f.x, (f.frequency.x == 2) * (len(f) - 1))
 
+    # update tmin
+    eq_(x.time.times[0], -0.2)
+    x.time.set_tmin(3.2)
+    eq_(x.time.times[0], 3.2)
+
 
 def test_nested_effects():
     """Test nested effects"""
