@@ -242,6 +242,36 @@ class UTSStat(LegendMixin, YLimMixin, EelFigure):
             enable = not all(p.cluster_plt.clusters is None for p in self._plots)
             self._cluster_btn.Enable(enable)
 
+    def _get_axes(self, axes):
+        "Iterate axes corresponding to ``axes`` parameter"
+        if axes is None:
+            return self._axes
+        elif isinstance(axes, int):
+            return self._axes[axes],
+        else:
+            return (self._axes[i] for i in axes)
+
+    def add_hline(self, y, axes=None, *args, **kwargs):
+        """Draw a vertical bar on all axes
+
+        Parameters
+        ----------
+        y : scalar
+            Level at which to plot the line.
+        axes : int | list of int
+            Which axes to mark (default is all axes).
+        ...
+            :meth:`matplotlib.axes.Axes.axhline` parameters.
+
+
+        Notes
+        -----
+        See Matplotlib's :meth:`matplotlib.axes.Axes.axhline` for more
+        arguments.
+        """
+        for ax in self._get_axes(axes):
+            ax.axhline(y, *args, **kwargs)
+
     def add_vspan(self, xmin, xmax, axes=None, *args, **kwargs):
         """Draw a vertical bar on all axes
 
@@ -254,6 +284,7 @@ class UTSStat(LegendMixin, YLimMixin, EelFigure):
         axes : int | list of int
             Which axes to mark (default is all axes).
         ...
+            :meth:`matplotlib.axes.Axes.axvspan` parameters.
 
 
         Notes
@@ -261,14 +292,7 @@ class UTSStat(LegendMixin, YLimMixin, EelFigure):
         See Matplotlib's :meth:`matplotlib.axes.Axes.axvspan` for more
         arguments.
         """
-        if axes is None:
-            axes = self._axes
-        elif isinstance(axes, int):
-            axes = (self._axes[axes],)
-        else:
-            axes = [self._axes[i] for i in axes]
-
-        for ax in axes:
+        for ax in self._get_axes(axes):
             ax.axvspan(xmin, xmax, *args, **kwargs)
 
     def set_clusters(self, clusters, pmax=0.05, ptrend=0.1, color='.7', ax=None):
