@@ -103,7 +103,7 @@ class Document(FileDocument):
         # sources
         data = ica.get_sources(epochs).get_data()
         self.sources = NDVar(data, ('case', ic_dim, self.epochs_ndvar.time),
-                             info={'meas': 'component', 'cmap': 'xpolar'})
+                             {'meas': 'component', 'cmap': 'xpolar'}, 'sources')
 
         # find unique epoch labels
         if 'index' in ds:
@@ -484,8 +484,8 @@ class Frame(FileFrame):
         event.Enable(False)
 
     def PlotCompFFT(self, i_comp):
-        plot.UTS(self.doc.sources.sub(component=i_comp).fft().mean('epoch'),
-                 w=8, title="# %i Frequency Spectrum" % i_comp)
+        plot.UTS(self.doc.sources.sub(component=i_comp).fft().mean('case'),
+                 w=8, title="# %i Frequency Spectrum" % i_comp, legend=False)
 
     def PlotCompSourceArray(self, i_comp):
         x = self.doc.sources.sub(component=i_comp)
