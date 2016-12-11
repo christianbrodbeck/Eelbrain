@@ -90,7 +90,7 @@ def frequencies(y, x=None, of=None, sub=None, ds=None):
         Factor with values whose frequencies are of interest.
     x : None | categorial
         Optional model defining cells for which frequencies are displayed
-        separately.
+        separately. Each row corresponds to one level of ``x``.
     of : None | categorial
         With ``x`` constant within ``of``, only count frequencies for each value
         in ``of`` once. (Compress y and x before calculating frequencies.)
@@ -104,6 +104,32 @@ def frequencies(y, x=None, of=None, sub=None, ds=None):
     -------
     freq : Dataset
         Dataset with frequencies.
+
+    Examples
+    --------
+    A simple sample dataset::
+
+    >>> ds = Dataset()
+    >>> ds['a'] = Factor('aabbcc')
+    >>> ds['x'] = Factor('xxxyyy')
+
+    Display frequency of a single factor's cells::
+
+    >>> print table.frequencies('a', ds=ds)
+    cell   n
+    --------
+    a      2
+    b      2
+    c      2
+
+    Display frequency of interaction cells::
+
+    >>> print table.frequencies('a', 'x', ds=ds)
+    x   a   b   c
+    -------------
+    x   2   1   0
+    y   0   1   2
+
     """
     sub = assub(sub, ds)
     y = ascategorial(y, sub, ds)
