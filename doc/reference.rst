@@ -449,7 +449,7 @@ Controlling the GUI Application
 ===============================
 
 Eelbrain uses a wxPython based application to create GUIs. This application can
-not take input form the user at the same time as the shell from which the GUI
+not take input from the user at the same time as the shell from which the GUI
 is invoked. By default, the GUI application is activated whenever a gui is
 created in interactive mode. While the application is processing user input,
 the shell can not be used. In order to return to the shell, simply quit the
