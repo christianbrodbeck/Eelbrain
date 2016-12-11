@@ -3,6 +3,7 @@ from __future__ import print_function
 from nose.tools import eq_, ok_, assert_raises
 from eelbrain._data_obj import isvar, isndvar
 from eelbrain._utils.testing import assert_dataobj_equal
+from numpy.testing import assert_array_equal
 
 from eelbrain import Factor, datasets, table, combine
 
@@ -28,12 +29,16 @@ def test_difference():
 def test_frequencies():
     "Test table.frequencies"
     ds = datasets.get_uts()
-    A = ds['A']
-    B = ds['B']
-    Cat = ds['YCat']
-    print(table.frequencies(Cat, A))
-    print(table.frequencies(Cat, A % B))
-    print(table.frequencies(Cat % A, B))
+    freq = table.frequencies('YCat', 'A', ds=ds)
+    assert_array_equal(freq['A'], ['a0', 'a1'])
+    ok_(all(c in freq for c in ds['YCat'].cells))
+    print(freq)
+    freq = table.frequencies('YCat', 'A % B', ds=ds)
+    assert_array_equal(freq['A'], ['a0', 'a0', 'a1', 'a1'])
+    assert_array_equal(freq['B'], ['b0', 'b1', 'b0', 'b1'])
+    print(freq)
+    freq = table.frequencies('YCat % A', 'B', ds=ds)
+    print(freq)
 
 
 def test_melt_ndvar():

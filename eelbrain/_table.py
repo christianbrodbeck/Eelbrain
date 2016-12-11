@@ -150,7 +150,12 @@ def frequencies(y, x=None, of=None, sub=None, ds=None):
     # special case
     if x is None:
         out = Dataset(name=name)
-        out['cell'] = Factor(y.cells, random=y.random)
+        if isinteraction(y):
+            for i, f in enumerate(y.base):
+                out[f.name] = Factor((c[i] for c in x.cells),
+                                     random=getattr(f, 'random', False))
+        else:
+            out[y.name] = Factor(y.cells, random=y.random)
         n = np.fromiter((np.sum(y == cell) for cell in y.cells), int,
                         len(y.cells))
         out['n'] = Var(n)
