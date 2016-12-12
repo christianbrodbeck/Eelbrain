@@ -3789,6 +3789,36 @@ class NDVar(object):
         info = self.info.copy()
         return NDVar(x, self.dims, info, name or self.name)
 
+    def extrema(self, dims=(), **regions):
+        """Extrema (value farthest away from 0) over given dimensions
+
+        For each data point,
+        ``extremum = max(x) if max(x) >= abs(min(x)) else min(x)``.
+
+        Parameters
+        ----------
+        dims : str | tuple of str | boolean NDVar
+            Dimensions over which to operate. A str is used to specify a single
+            dimension, a tuple of str to specify several dimensions, ``None`` to
+            compute the maximum over all dimensions.
+            An boolean NDVar with the same dimensions as the data can be used
+            to compute the extrema in specific elements (if the data has a case
+            dimension, the extrema are computed for each case).
+        *regions*
+            Regions over which to aggregate. For example, to get the maximum
+            between time=0.1 and time=0.2, use ``ndvar.max(time=(0.1, 0.2))``.
+        name : str
+            Name of the output NDVar (default is the current name).
+
+        Returns
+        -------
+        extrema : NDVar | Var | float
+            Extrema over specified dimensions. Returns a Var if only the
+            case dimension remains, and a float if the function collapses over
+            all data.
+        """
+        return self._aggregate_over_dims(dims, regions, extrema)
+
     def fft(self, dim=None, name=None):
         """Fast fourier transform
 
