@@ -4555,7 +4555,7 @@ def extrema(x, axis=0):
     "Extract the extreme values in x"
     max = np.max(x, axis)
     min = np.min(x, axis)
-    return np.where(np.abs(max) > np.abs(min), max, min)
+    return np.where(np.abs(max) >= np.abs(min), max, min)
 
 
 class Datalist(list):
