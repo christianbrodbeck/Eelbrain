@@ -17,7 +17,8 @@ from scipy.spatial import ConvexHull
 from .._utils.numpy_utils import digitize
 from . import _base
 from ._base import (
-    EelFigure, Layout, ImLayout, ColorMapMixin, TopoMapKey, XAxisMixin)
+    EelFigure, Layout, ImLayout, VariableAspectLayout, ColorMapMixin,
+    TopoMapKey, XAxisMixin)
 from ._utsnd import _ax_butterfly, _ax_im_array, _plt_im
 from ._sensors import SENSORMAP_FRAME, SensorMapMixin, _plt_map2d
 
@@ -216,7 +217,6 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
        region under the mouse pointer.
     """
     _default_xlabel_ax = -2
-    _make_axes = False
 
     def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
                  xticklabels=True,
@@ -229,34 +229,15 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
             axtitle = axlabel
         epochs, (_, xdim) = _base.unpack_epochs_arg(epochs, ('sensor', None),
                                                     Xax, ds)
-        n_plots = len(epochs)
+        n_rows = len(epochs)
         self._epochs = epochs
 
         # create figure
-        nax = 3 * n_plots  # for layout pretend butterfly & topo are 3 axes
-        kwargs['ncol'] = 3
-        layout = Layout(nax, 1, 3, False, *args, **kwargs)
+        layout = VariableAspectLayout(
+            n_rows, 3, 10, (None, 1), ({}, {'frameon': False}),
+            self._set_axtitle(axtitle, epochs, n_rows), *args, **kwargs
+        )
         EelFigure.__init__(self, "TopoButterfly Plot", layout)
-
-        # axes sizes
-        frame = .05  # in inches; .4
-        w = self._layout.w
-        h = self._layout.h
-        ax_aspect = 2
-
-        xframe = frame / w
-        x_left_ylabel = 0.5 / w if ylabel else 0
-        x_left_title = 0.5 / w
-        x_text = x_left_title / 3
-        ax1_left = xframe + x_left_title + x_left_ylabel
-        ax1_width = ax_aspect / (ax_aspect + 1) - ax1_left - xframe / 2
-        ax2_left = ax_aspect / (ax_aspect + 1) + xframe / 2
-        ax2_width = 1 / (ax_aspect + 1) - 1.5 * xframe
-
-        yframe = frame / h
-        y_bottomframe = 0.5 / h
-        y_sep = (1 - y_bottomframe) / n_plots
-        height = y_sep - yframe
 
         cmaps = _base.find_fig_cmaps(epochs)
         vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
@@ -270,54 +251,23 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
                              'mark': mark,
                              'mcolor': mcolor}
 
-        self.bfly_axes = []
-        self.topo_axes = []
+        self.bfly_axes = self._axes[0::2]
+        self.topo_axes = self._axes[1::2]
         self.bfly_plots = []
         self.topo_plots = []
-        self._topoax_data = []
-        self.t_markers = []
+        self.t_markers = []  # vertical lines on butterfly plots
         self._cmaps = cmaps
         self._vlims = vlims
         self._contours = contours
         self._xvalues = []
 
-        # find ax-labels
-        axtitle = self._set_axtitle(axtitle, epochs, n_plots) or (None,) * n_plots
-
         # plot epochs (x/y are in figure coordinates)
-        for i, layers in enumerate(epochs):
-            # position axes
-            bottom = 1 - y_sep * (1 + i)
-
-            ax1_rect = [ax1_left, bottom, ax1_width, height]
-            ax1 = self.figure.add_axes(ax1_rect)
-            ax1.id = i * 2
-            self._axes.append(ax1)
-
-            ax2_rect = [ax2_left, bottom, ax2_width, height]
-            ax2 = self.figure.add_axes(ax2_rect, frameon=False)
-            ax2.id = i * 2 + 1
-            ax2.set_axis_off()
-            self._axes.append(ax2)
-
-            self.bfly_axes.append(ax1)
-            self.topo_axes.append(ax2)
-            self._topoax_data.append((ax2, layers))
-
-            # plot data
-            p = _ax_butterfly(ax1, layers, 'time', 'sensor', mark, color, vlims)
+        for ax, layers in izip(self.bfly_axes, epochs):
+            p = _ax_butterfly(ax, layers, 'time', 'sensor', mark, color, vlims)
             self.bfly_plots.append(p)
-
             self._xvalues = np.union1d(self._xvalues, p._xvalues)
 
-            # find and print epoch title
-            if not axtitle[i]:
-                continue
-            y_text = bottom + y_sep / 2
-            ax1.text(x_text, y_text, axtitle[i],
-                     transform=self.figure.transFigure,
-                     ha='center', va='center', rotation='vertical')
-
+        # decorate axes
         e0 = epochs[0][0]
         self._configure_xaxis_dim(e0.time, xlabel, xticklabels, self.bfly_axes)
         self._configure_yaxis(e0, ylabel, self.bfly_axes)
@@ -331,9 +281,10 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
         self._register_key('right', self._on_arrow)
         TopoMapKey.__init__(self, self._topo_data)
         self._realtime_topo = True
-        self._t_label = None
+        self._t_label = None  # time label under lowest topo-map
         self._frame.store_canvas()
         self._draw_topo(e0.time[0], draw=False)
+
         self._show()
 
     def _draw_topo(self, t, draw=True):
@@ -346,14 +297,12 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
                 p = _ax_topomap(ax, layers, False, cmaps=self._cmaps,
                                 vlims=self._vlims, **self._topo_kwargs)
                 self.topo_plots.append(p)
-#             self._t_label = ax.text(.5, -0.1, t_str, ha='center', va='top')
         else:
             for layers, p in zip(epochs, self.topo_plots):
                 p.set_data(layers)
-#             self._t_label.set_text(t_str)
 
         if draw:
-            self._frame.redraw(axes=self.topo_axes)  # , artists=[self._t_label])  # , artists=self.t_markers)
+            self._frame.redraw(axes=self.topo_axes)
 
     def _rm_t_markers(self):
         "Remove markers of a specific time point (vlines and t-label)"
@@ -364,7 +313,7 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
         if self.t_markers:
             for m in self.t_markers:
                 m.remove()
-            self.t_markers = []
+            del self.t_markers[:]
 
     def set_topo_t(self, t):
         "set the time point of the topo-maps"

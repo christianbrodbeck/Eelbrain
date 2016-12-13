@@ -39,7 +39,7 @@ def test_plot_butterfly():
     p.close()
     p = plot.TopoButterfly('utsnd', ds=ds, vmax=0.2, w=2, show=False)
     p.close()
-    p = plot.TopoButterfly('utsnd', 'A%B', ds=ds, axw=2, show=False)
+    p = plot.TopoButterfly('utsnd', 'A%B', ds=ds, w=3, show=False)
     p.close()
     p = plot.TopoButterfly('utsnd', mark=[1, 2], ds=ds, show=False)
     p.close()

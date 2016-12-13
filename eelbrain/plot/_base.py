@@ -1515,6 +1515,102 @@ class ImLayout(Layout):
         return axes
 
 
+class VariableAspectLayout(Layout):
+    """Layout with one flexible and one square axes per row
+
+    Developed for TopoButterfly plot
+    """
+    def __init__(self, nrow, axh_default, w_default, aspect=(None, 1),
+                 ax_kwargs=None, row_titles=None,
+                 title=None, h=None, w=None, axh=None,
+                 dpi=None, show=True, run=None, frame=True, yaxis=True):
+        self.w_fixed = w
+
+        if axh and h:
+            raise ValueError("h and axh can not be specified both at the same "
+                             "time")
+        elif h:
+            axh = h / nrow
+        elif axh:
+            h = nrow * axh
+        else:
+            axh = axh_default
+            h = nrow * axh
+
+        if w is None:
+            w = w_default
+
+        if ax_kwargs is None:
+            ax_kwargs = [{}] * len(aspect)
+
+        self.nax = nrow * len(aspect)
+        self.h = h
+        self.w = w
+        self.axh = axh
+        self.nrow = nrow
+        self.ncol = len(aspect)
+        self.tight = False
+        self.dpi = dpi
+        self.show = show
+        self.run = run
+        self.title = title
+        self.frame = frame
+        self.yaxis = yaxis
+        self.share_axes = False
+        # special for subclass
+        self.row_titles = row_titles
+        self.aspect = aspect
+        self.n_flexible = self.aspect.count(None)
+        self.ax_kwargs = ax_kwargs
+
+    def ax_rects(self, h, w):
+        "Update "
+        text_buffer = 20 * POINT
+
+        # buffers for legends
+        left_buffer = text_buffer * (3 + (self.row_titles is not None))
+        bottom_buffer = text_buffer * 2
+        top_buffer = text_buffer * (1 + 2 * bool(self.title))
+
+        # rectangle base in inches
+        axh = (h - bottom_buffer - top_buffer) / self.nrow
+        axws = [None if a is None else a * axh for a in self.aspect]
+        fixed = sum(axw for axw in axws if axw is not None)
+        w_free = (w - fixed - left_buffer) / self.n_flexible
+        widths = [w_free if axw is None else axw for axw in axws]
+        lefts = (sum(widths[:i]) + left_buffer for i in xrange(len(widths)))
+        bottoms = (i * axh + bottom_buffer for i in xrange(self.nrow - 1, -1, -1))
+
+        # convert to figure coords
+        height = axh / h
+        lefts_ = tuple(l / w for l in lefts)
+        widths_ = tuple(w_ / w for w_ in widths)
+        bottoms_ = (b / h for b in bottoms)
+
+        # rectangles:  (left, bottom, width, height)
+        rects = (((l, bottom, w, height) for l, w in izip(lefts_, widths_)) for
+                 bottom in bottoms_)
+        return rects
+
+    def make_axes(self, figure):
+        axes = []
+        rects = self.ax_rects(self.h, self.w)
+        for row, row_rects in enumerate(rects):
+            for rect, kwa in izip(row_rects, self.ax_kwargs):
+                ax = figure.add_axes(rect, **kwa)
+                axes.append(ax)
+
+            if self.row_titles and self.row_titles[row]:
+                bottom, height = rect[1], rect[3]
+                figure.text(0, bottom + height / 2, self.row_titles[row],
+                            ha='left', va='center', rotation='vertical')
+
+        # id axes for callbacks
+        for i, ax in enumerate(axes):
+            ax.id = i
+        return axes
+
+
 class ColorBarMixin(object):
     """Colorbar toolbar button mixin
 
