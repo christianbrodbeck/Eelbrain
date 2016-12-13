@@ -86,7 +86,8 @@ POINT = 0.013888888888898
 
 # defaults
 defaults = {'maxw': 16, 'maxh': 10}
-backend = {'eelbrain': True, 'autorun': None, 'show': True, 'format': 'svg'}
+backend = {'eelbrain': True, 'autorun': None, 'show': True, 'format': 'svg',
+           'figure_background': 'white'}
 if 'ETS_TOOLKIT' in os.environ:
     backend['ets_toolkit'] = None
 else:
@@ -107,7 +108,7 @@ def do_autorun(run=None):
 
 
 def configure(frame=None, autorun=None, show=None, format=None,
-              ets_toolkit=None):
+              ets_toolkit=None, figure_background=None):
     """Set basic configuration parameters for the current session
 
     Parameters
@@ -130,21 +131,37 @@ def configure(frame=None, autorun=None, show=None, format=None,
         Toolkit to use for :mod:`plot.brain` plots. QT4 is officially supported
         but can lead to segmentation faults. WX is not officially supported but
         seems to work.
+    figure_background : bool | matplotlib color
+        While :mod:`matplotlib` uses a gray figure background by default,
+        Eelbrain uses white. Set this parameter to ``False`` to use the default
+        from :attr:`matplotlib.rcParams`, or set it to a valid matplotblib
+        color value to use an arbitrary color. ``True`` to revert to the default
+        white.
     """
+    # don't change values before raising an error
+    new = {}
     if frame is not None:
-        backend['eelbrain'] = bool(frame)
+        new['eelbrain'] = bool(frame)
     if autorun is not None:
-        backend['autorun'] = bool(autorun)
+        new['autorun'] = bool(autorun)
     if show is not None:
-        backend['show'] = bool(show)
+        new['show'] = bool(show)
     if format is not None:
-        backend['format'] = format.lower()
+        new['format'] = format.lower()
     if ets_toolkit is not None:
         if ets_toolkit in ('qt4', 'wx'):
-            backend['ets_toolkit'] = ets_toolkit
+            new['ets_toolkit'] = ets_toolkit
         else:
             raise ValueError("ets_toolkit=%r; needs to be 'qt4' or 'wx'" %
                              ets_toolkit)
+    if figure_background is not None:
+        if figure_background is True:
+            figure_background = 'white'
+        elif figure_background is not False:
+            mpl.colors.colorConverter.to_rgb(figure_background)
+        new['figure_background'] = figure_background
+
+    backend.update(new)
 
 
 
@@ -1245,7 +1262,49 @@ class EelFigure(object):
         self._axes[ax].set_ylabel(label)
 
 
-class Layout(object):
+class BaseLayout(object):
+    def __init__(self, h, w, dpi, tight, show, run):
+        self.h = h
+        self.w = w
+        self.dpi = dpi
+        self.tight = tight
+        self.show = show
+        self.run = run
+
+    def fig_kwa(self):
+        out = {'figsize': (self.w, self.h), 'dpi': self.dpi}
+        if backend['figure_background'] is not False:
+            out['facecolor'] = backend['figure_background']
+        return out
+
+    def make_axes(self, figure):
+        raise NotImplementedError
+
+    @staticmethod
+    def _format_axes(ax, frame, yaxis):
+        if frame == 't':
+            ax.tick_params(direction='inout', bottom=False, top=True,
+                           left=False, right=True, labelbottom=True,
+                           labeltop=False, labelleft=True,
+                           labelright=False)
+            ax.spines['right'].set_position('zero')
+            ax.spines['left'].set_visible(False)
+            ax.spines['top'].set_position('zero')
+            ax.spines['bottom'].set_visible(False)
+        elif frame == 'none':
+            ax.axis('off')
+        elif not frame:
+            ax.yaxis.set_ticks_position('left')
+            ax.spines['right'].set_visible(False)
+            ax.xaxis.set_ticks_position('bottom')
+            ax.spines['top'].set_visible(False)
+
+        if not yaxis:
+            ax.yaxis.set_ticks(())
+            ax.spines['left'].set_visible(False)
+
+
+class Layout(BaseLayout):
     """Create layouts for figures with several axes of the same size
     """
     def __init__(self, nax, ax_aspect, axh_default, tight=True, title=None,
@@ -1421,24 +1480,19 @@ class Layout(object):
         if dpi is None:
             dpi = mpl.rcParams['figure.dpi']
 
+        BaseLayout.__init__(self, h, w, dpi, tight, show, run)
         self.nax = nax
-        self.h = h
-        self.w = w
         self.axh = axh
         self.axw = axw
         self.nrow = nrow
         self.ncol = ncol
-        self.tight = tight
-        self.dpi = dpi
-        self.show = show
-        self.run = run
         self.title = title
         self.frame = frame
         self.yaxis = yaxis
         self.share_axes = share_axes
 
     def fig_kwa(self):
-        out = {'figsize': (self.w, self.h), 'dpi': self.dpi}
+        out = BaseLayout.fig_kwa(self)
 
         # make subplot parameters absolute
         if self.nax and not self.tight:
@@ -1467,29 +1521,6 @@ class Layout(object):
             self._format_axes(ax, self.frame, self.yaxis)
         return axes
 
-    @staticmethod
-    def _format_axes(ax, frame, yaxis):
-        if frame == 't':
-            ax.tick_params(direction='inout', bottom=False, top=True,
-                           left=False, right=True, labelbottom=True,
-                           labeltop=False, labelleft=True,
-                           labelright=False)
-            ax.spines['right'].set_position('zero')
-            ax.spines['left'].set_visible(False)
-            ax.spines['top'].set_position('zero')
-            ax.spines['bottom'].set_visible(False)
-        elif frame == 'none':
-            ax.axis('off')
-        elif not frame:
-            ax.yaxis.set_ticks_position('left')
-            ax.spines['right'].set_visible(False)
-            ax.xaxis.set_ticks_position('bottom')
-            ax.spines['top'].set_visible(False)
-
-        if not yaxis:
-            ax.yaxis.set_ticks(())
-            ax.spines['left'].set_visible(False)
-
 
 class ImLayout(Layout):
     """Layout subclass for axes without space"""
@@ -1503,10 +1534,11 @@ class ImLayout(Layout):
         self.h += top_space + bottom_space
 
     def fig_kwa(self):
+        out = BaseLayout.fig_kwa(self)
         bottom = self.bottom_space / self.h
         top = 1 - (self.top_space / self.h)
-        return {'figsize': (self.w, self.h), 'dpi': self.dpi,
-                'subplotpars': SubplotParams(0, bottom, 1, top, 0, 0)}
+        out['subplotpars'] = SubplotParams(0, bottom, 1, top, 0, 0)
+        return out
 
     def make_axes(self, figure):
         axes = []
@@ -1517,7 +1549,7 @@ class ImLayout(Layout):
         return axes
 
 
-class VariableAspectLayout(Layout):
+class VariableAspectLayout(BaseLayout):
     """Layout with one flexible and one square axes per row
 
     Developed for TopoButterfly plot
@@ -1547,21 +1579,15 @@ class VariableAspectLayout(Layout):
         if ax_frames is None:
             ax_frames = [True] * len(aspect)
 
+        BaseLayout.__init__(self, h, w, dpi, False, show, run)
         self.nax = nrow * len(aspect)
-        self.h = h
-        self.w = w
         self.axh = axh
         self.nrow = nrow
         self.ncol = len(aspect)
-        self.tight = False
-        self.dpi = dpi
-        self.show = show
-        self.run = run
         self.title = title
         self.frame = frame
         self.yaxis = yaxis
         self.share_axes = False
-        # special for subclass
         self.row_titles = row_titles
         self.aspect = aspect
         self.n_flexible = self.aspect.count(None)
