@@ -71,6 +71,7 @@ preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __
 
 UNNAMED = '<?>'
 LIST_INDEX_TYPES = (int, slice)
+MNE_RAW_TYPES = (mne.io.Raw, mne.io.RawArray, mne.io.kit.kit.RawKIT)
 MNE_EPOCHS_TYPES = (mne.Epochs, mne.EpochsArray)
 MNE_EVOKED_TYPES = mne.Evoked
 MNE_LABEL_TYPES = (mne.Label, mne.label.BiHemiLabel)
@@ -526,7 +527,7 @@ def asndvar(x, sub=None, ds=None, n=None):
     elif isinstance(x, MNE_EVOKED_TYPES):
         from .load.fiff import evoked_ndvar
         x = evoked_ndvar(x)
-    elif isinstance(x, mne.io.Raw):
+    elif isinstance(x, MNE_RAW_TYPES):
         from .load.fiff import raw_ndvar
         x = raw_ndvar(x)
     elif isinstance(x, list):
