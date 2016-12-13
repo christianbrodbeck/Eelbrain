@@ -1464,29 +1464,31 @@ class Layout(object):
             axes.append(ax)
             if self.share_axes:
                 kwargs.update(sharex=ax, sharey=ax)
-
-            # axes modifications
-            if self.frame == 't':
-                ax.tick_params(direction='inout', bottom=False, top=True,
-                               left=False, right=True, labelbottom=True,
-                               labeltop=False, labelleft=True,
-                               labelright=False)
-                ax.spines['right'].set_position('zero')
-                ax.spines['left'].set_visible(False)
-                ax.spines['top'].set_position('zero')
-                ax.spines['bottom'].set_visible(False)
-            elif self.frame == 'none':
-                ax.axis('off')
-            elif not self.frame:
-                ax.yaxis.set_ticks_position('left')
-                ax.spines['right'].set_visible(False)
-                ax.xaxis.set_ticks_position('bottom')
-                ax.spines['top'].set_visible(False)
-
-            if not self.yaxis:
-                ax.yaxis.set_ticks(())
-                ax.spines['left'].set_visible(False)
+            self._format_axes(ax, self.frame, self.yaxis)
         return axes
+
+    @staticmethod
+    def _format_axes(ax, frame, yaxis):
+        if frame == 't':
+            ax.tick_params(direction='inout', bottom=False, top=True,
+                           left=False, right=True, labelbottom=True,
+                           labeltop=False, labelleft=True,
+                           labelright=False)
+            ax.spines['right'].set_position('zero')
+            ax.spines['left'].set_visible(False)
+            ax.spines['top'].set_position('zero')
+            ax.spines['bottom'].set_visible(False)
+        elif frame == 'none':
+            ax.axis('off')
+        elif not frame:
+            ax.yaxis.set_ticks_position('left')
+            ax.spines['right'].set_visible(False)
+            ax.xaxis.set_ticks_position('bottom')
+            ax.spines['top'].set_visible(False)
+
+        if not yaxis:
+            ax.yaxis.set_ticks(())
+            ax.spines['left'].set_visible(False)
 
 
 class ImLayout(Layout):
@@ -1521,7 +1523,7 @@ class VariableAspectLayout(Layout):
     Developed for TopoButterfly plot
     """
     def __init__(self, nrow, axh_default, w_default, aspect=(None, 1),
-                 ax_kwargs=None, row_titles=None,
+                 ax_kwargs=None, ax_frames=None, row_titles=None,
                  title=None, h=None, w=None, axh=None,
                  dpi=None, show=True, run=None, frame=True, yaxis=True):
         self.w_fixed = w
@@ -1542,6 +1544,8 @@ class VariableAspectLayout(Layout):
 
         if ax_kwargs is None:
             ax_kwargs = [{}] * len(aspect)
+        if ax_frames is None:
+            ax_frames = [True] * len(aspect)
 
         self.nax = nrow * len(aspect)
         self.h = h
@@ -1562,6 +1566,7 @@ class VariableAspectLayout(Layout):
         self.aspect = aspect
         self.n_flexible = self.aspect.count(None)
         self.ax_kwargs = ax_kwargs
+        self.ax_frames = ax_frames
 
     def ax_rects(self, h, w):
         "Update "
@@ -1596,8 +1601,9 @@ class VariableAspectLayout(Layout):
         axes = []
         rects = self.ax_rects(self.h, self.w)
         for row, row_rects in enumerate(rects):
-            for rect, kwa in izip(row_rects, self.ax_kwargs):
+            for rect, kwa, frame in izip(row_rects, self.ax_kwargs, self.ax_frames):
                 ax = figure.add_axes(rect, **kwa)
+                self._format_axes(ax, frame, True)
                 axes.append(ax)
 
             if self.row_titles and self.row_titles[row]:

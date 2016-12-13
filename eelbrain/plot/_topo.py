@@ -202,6 +202,8 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
     axtitle : bool | sequence of str
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.
+    frame : 't'
+        Use T-frame for the Butterfly plots (default is rectangular frame).
     title : None | string
         Figure title.
 
@@ -222,7 +224,8 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
                  xticklabels=True,
                  proj='default', res=100, interpolation='nearest', color=None,
                  sensorlabels=None, mark=None, mcolor=None, ds=None, vmax=None,
-                 vmin=None, axlabel=None, axtitle=True, *args, **kwargs):
+                 vmin=None, axlabel=None, axtitle=True, frame=True, *args,
+                 **kwargs):
         if axlabel is not None:
             warn("The axlabel parameter for plot.TopoButterfly() is "
                  "deprecated, please use axtitle instead", DeprecationWarning)
@@ -234,7 +237,7 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
 
         # create figure
         layout = VariableAspectLayout(
-            n_rows, 3, 10, (None, 1), ({}, {'frameon': False}),
+            n_rows, 3, 10, (None, 1), ({}, {'frameon': False}), (frame, False),
             self._set_axtitle(axtitle, epochs, n_rows), *args, **kwargs
         )
         EelFigure.__init__(self, "TopoButterfly Plot", layout)
