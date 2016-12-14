@@ -5073,7 +5073,8 @@ class Dataset(OrderedDict):
 
             # coerce to data-object
             if isdataobject(item) or isinstance(object, Datalist):
-                if item.name is None:
+                if (item.name is None or (item.name != index and
+                                          item.name != as_legal_dataset_key(index))):
                     item.name = index
             elif isinstance(item, (list, tuple)):
                 item = Datalist(item, index)
