@@ -1954,8 +1954,25 @@ class TopoMapKey(object):
 
 
 class XAxisMixin(object):
+    """Manage x-axis
 
-    def __init__(self, epochs, xdim, axes=None, left='left', right='right'):
+    Parameters
+    ----------
+    epochs : list of list of NDVar
+        The data that is plotted (to determine axis range).
+    xdim : str
+        Dimension that is plotted on the x-axis.
+    axes : list of Axes
+        Axes that should be managed by the mixin.
+    left : str
+        Key to move left.
+    right : str
+        Key to move right.
+    xlim : tuple of 2 scalar
+        Initial x-axis display limits.
+    """
+    def __init__(self, epochs, xdim, axes=None, left='left', right='right',
+                 xlim=None):
         extent = tuple(e.get_dim(xdim)._axis_im_extent() for e in chain(*epochs))
         self._xmin = min(e[0] for e in extent)
         self._xmax = max(e[1] for e in extent)
@@ -1967,6 +1984,8 @@ class XAxisMixin(object):
         self._register_key(right, self._on_right)
         self._register_key('home', self._on_beginning)
         self._register_key('end', self._on_end)
+        if xlim is not None:
+            self._set_xlim(*xlim)
 
     def _get_xlim(self):
         return self.__axes[0].get_xlim()
@@ -2009,6 +2028,10 @@ class XAxisMixin(object):
         new_left = new_right - d
         self.set_xlim(new_left, new_right)
 
+    def _set_xlim(self, left, right):
+        for ax in self.__axes:
+            ax.set_xlim(left, right)
+
     def add_vspans(self, intervals, axes=None, *args, **kwargs):
         """Draw vertical bars over axes
 
@@ -2034,8 +2057,7 @@ class XAxisMixin(object):
 
     def set_xlim(self, left=None, right=None):
         """Set the x-axis limits for all axes"""
-        for ax in self.__axes:
-            ax.set_xlim(left, right)
+        self._set_xlim(left, right)
         self.draw()
 
 

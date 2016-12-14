@@ -206,6 +206,8 @@ class Array(ColorMapMixin, XAxisMixin, EelFigure):
     interpolation : str
         Array image interpolation (see Matplotlib's
         :meth:`~matplotlib.axes.Axes.imshow`).
+    xlim : (scalar, scalar)
+        Initial x-axis view limits (default is the full x-axis in the data).
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
@@ -214,7 +216,8 @@ class Array(ColorMapMixin, XAxisMixin, EelFigure):
     """
     def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
                  xticklabels=True, ds=None, x='time', vmax=None, vmin=None,
-                 cmap=None, axtitle=True, interpolation=None, *args, **kwargs):
+                 cmap=None, axtitle=True, interpolation=None, xlim=None, *args,
+                 **kwargs):
         epochs, (xdim, ydim) = _base.unpack_epochs_arg(epochs, (x, None), Xax, ds)
         ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin)
 
@@ -232,7 +235,7 @@ class Array(ColorMapMixin, XAxisMixin, EelFigure):
         e0 = epochs[0][0]
         self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
         self._configure_yaxis_dim(e0.get_dim(ydim), ylabel, scalar=False)
-        XAxisMixin.__init__(self, epochs, xdim)
+        XAxisMixin.__init__(self, epochs, xdim, xlim=xlim)
         self._show()
 
     def _fill_toolbar(self, tb):
@@ -371,8 +374,10 @@ class Butterfly(LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
         Dimension to plot on the x-axis (default 'time').
     vmax : scalar
         Top of the y axis (default depends on data).
-    vmax : scalar
+    vmin : scalar
         Bottom of the y axis (default depends on data).
+    xlim : (scalar, scalar)
+        Initial x-axis view limits (default is the full x-axis in the data).
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
@@ -384,7 +389,8 @@ class Butterfly(LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
 
     def __init__(self, epochs, xax=None, sensors=None, axtitle=True,
                  xlabel=True, ylabel=True, xticklabels=True, color=None,
-                 ds=None, x='time', vmax=None, vmin=None, *args, **kwargs):
+                 ds=None, x='time', vmax=None, vmin=None, xlim=None, *args,
+                 **kwargs):
         epochs, (xdim, linedim) = _base.unpack_epochs_arg(epochs, (x, None),
                                                           xax, ds)
         layout = Layout(len(epochs), 2, 4, *args, **kwargs)
@@ -403,7 +409,7 @@ class Butterfly(LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
-        XAxisMixin.__init__(self, epochs, xdim)
+        XAxisMixin.__init__(self, epochs, xdim, xlim=xlim)
         YLimMixin.__init__(self, self.plots)
         if linedim == 'sensor':
             TopoMapKey.__init__(self, self._topo_data)

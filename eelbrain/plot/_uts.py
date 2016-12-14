@@ -366,6 +366,8 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     legend : str | int | 'fig' | None
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
+    xlim : (scalar, scalar)
+        Initial x-axis view limits (default is the full x-axis in the data).
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
@@ -374,7 +376,7 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     """
     def __init__(self, epochs, xax=None, axtitle=True, ds=None,
                  xlabel=True, ylabel=True, xticklabels=True, bottom=None,
-                 top=None, legend='upper right', *args, **kwargs):
+                 top=None, legend='upper right', xlim=None, *args, **kwargs):
         epochs, (xdim,) = _base.unpack_epochs_arg(epochs, (None,), xax, ds)
         layout = Layout(len(epochs), 2, 4, *args, **kwargs)
         EelFigure.__init__(self, "UTS", layout)
@@ -394,7 +396,7 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
             legend_handles.update(h.legend_handles)
 
         self.epochs = epochs
-        XAxisMixin.__init__(self, epochs, xdim)
+        XAxisMixin.__init__(self, epochs, xdim, xlim=xlim)
         YLimMixin.__init__(self, self.plots)
         LegendMixin.__init__(self, legend, legend_handles)
         self._show()

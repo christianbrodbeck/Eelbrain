@@ -204,6 +204,8 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
         epochs, but only if multiple axes are plotted.
     frame : 't'
         Use T-frame for the Butterfly plots (default is rectangular frame).
+    xlim : (scalar, scalar)
+        Initial x-axis view limits (default is the full x-axis in the data).
     title : None | string
         Figure title.
 
@@ -224,8 +226,8 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
                  xticklabels=True,
                  proj='default', res=100, interpolation='nearest', color=None,
                  sensorlabels=None, mark=None, mcolor=None, ds=None, vmax=None,
-                 vmin=None, axlabel=None, axtitle=True, frame=True, *args,
-                 **kwargs):
+                 vmin=None, axlabel=None, axtitle=True, frame=True, xlim=None,
+                 *args, **kwargs):
         if axlabel is not None:
             warn("The axlabel parameter for plot.TopoButterfly() is "
                  "deprecated, please use axtitle instead", DeprecationWarning)
@@ -278,7 +280,7 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
             ax.xaxis.set_ticklabels(())
 
         # setup callback
-        XAxisMixin.__init__(self, epochs, xdim, self.bfly_axes, ',', '.')
+        XAxisMixin.__init__(self, epochs, xdim, self.bfly_axes, ',', '.', xlim)
         self.canvas.mpl_connect('button_press_event', self._on_click)
         self._register_key('left', self._on_arrow)
         self._register_key('right', self._on_arrow)
