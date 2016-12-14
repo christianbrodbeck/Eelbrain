@@ -1,19 +1,17 @@
-'''
-Created on Jun 17, 2012
-
+"""Basic GUI methods using Tkinter
 
 http://tkinter.unpythonic.net/wiki/tkFileDialog
-
-
-@author: Christian M Brodbeck
-'''
+"""
 from __future__ import print_function
-import logging
+from Tkinter import Tk
 import tkFileDialog
 from tkFileDialog import Open, SaveAs
 import tkMessageBox
-from Tkinter import Tk
+import tkSimpleDialog
 
+
+root = Tk()  # initialize application
+root.withdraw()  # hide root window
 
 
 def ask_saveas(title, message, filetypes, defaultDir=None, defaultFile=None):
@@ -22,8 +20,7 @@ def ask_saveas(title, message, filetypes, defaultDir=None, defaultFile=None):
     return filename
 
 
-def ask_dir(title="Select Folder",
-            message="Please Pick a Folder",
+def ask_dir(title="Select Folder", message="Please Pick a Folder",
             must_exist=True):
     return tkFileDialog.askdirectory(title=title, mustexist=must_exist)
 
@@ -37,14 +34,13 @@ def ask_file(title, message, filetypes, directory, mult):
 
 def ask(title="Overwrite File?",
         message="Duplicate filename. Do you want to overwrite?",
-        cancel=False,
-        default=True,  # True=YES, False=NO, None=Nothing
+        cancel=False, default=True,  # True=YES, False=NO, None=Nothing
         ):
     return tkMessageBox.askyesno(title, message)
 
 
 def ask_str(message, title, default=''):
-    return Tk.tkSimpleDialog.askstring(title, message, initialvalue=default)
+    return tkSimpleDialog.askstring(title, message, initialvalue=default)
 
 
 def copy_file(path):
@@ -53,11 +49,10 @@ def copy_file(path):
 
 def copy_text(text):
     # http://stackoverflow.com/a/4203897/166700
-    r = Tk()
-    r.withdraw()
-    r.clipboard_clear()
-    r.clipboard_append(text)
-    r.destroy()
+    root.withdraw()
+    root.clipboard_clear()
+    root.clipboard_append(text)
+    root.destroy()
 
 
 def message(title, message="", icon='i'):
