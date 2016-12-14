@@ -1073,11 +1073,6 @@ def _ax_histogram(ax, data, normed, **kwargs):
     n_test = test.lilliefors(data)
     ax.set_xlabel(r"$D=%.3f$, $p_{est}=%.2f$" % n_test)  # \chi ^{2}
     # make sure ticks display int values
-    # ax.yaxis.set_major_formatter(ticker.MaxNLocator(nbins=8, integer=True))
-    ticks = ax.get_yticks()
-    ticks_int = [int(l) for l in ticks]
-    ax.set_yticks(ticks_int)
-    ax.set_yticklabels(ticks_int)
 
 
 class Histogram(EelFigure):
@@ -1121,6 +1116,7 @@ class Histogram(EelFigure):
             kwargs['nrow'] = n_comp
             kwargs['ncol'] = n_comp
             self._make_axes = False
+            self._default_ylabel_ax = -1
             if title is True:
                 title = "Tests for Normality of the Differences"
         else:
@@ -1133,8 +1129,7 @@ class Histogram(EelFigure):
         EelFigure.__init__(self, frame_title_, layout)
 
         if X is None:
-            ax = self._axes[0]
-            _ax_histogram(ax, ct.Y.x, normed)
+            _ax_histogram(self._axes[0], ct.Y.x, normed)
         elif ct.all_within:  # distribution of differences
             data = ct.get_data()
             names = ct.cellnames()
@@ -1148,6 +1143,7 @@ class Histogram(EelFigure):
                     pooled_data.append(scipy.stats.zscore(difference))  # z transform?? (scipy.stats.zs())
                     ax_i = n_comp * i + (n_comp + 1 - j)
                     ax = self.figure.add_subplot(n_comp, n_comp, ax_i)
+                    self._axes.append(ax)
                     _ax_histogram(ax, difference, normed)
                     if i == 0:
                         ax.set_title(names[j], size=12)
@@ -1156,6 +1152,7 @@ class Histogram(EelFigure):
             # pooled diffs
             if pooled and len(names) > 2:
                 ax = self.figure.add_subplot(n_comp, n_comp, n_comp ** 2)
+                self._axes.append(ax)
                 _ax_histogram(ax, pooled_data, normed, facecolor='g')
                 ax.set_title("Pooled Differences (n=%s)" % len(pooled_data),
                              weight='bold')
@@ -1169,6 +1166,11 @@ class Histogram(EelFigure):
                 ax.set_title(cellname(cell))
                 _ax_histogram(ax, ct.data[cell], normed)
 
+        if normed:
+            self._configure_yaxis('p', 'probability density')
+        else:
+            self._configure_yaxis('n', 'count')
+        self._configure_xaxis(ct.Y, False)
         self._show()
 
 

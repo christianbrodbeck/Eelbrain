@@ -76,6 +76,7 @@ def test_histogram():
     ds = datasets.get_uts()
     plot.Histogram('Y', 'A%B', ds=ds, show=False)
     plot.Histogram('Y', 'A%B', match='rm', ds=ds, show=False)
+    plot.Histogram('Y', 'A%B', match='rm', ds=ds, normed=True, show=False)
 
 
 def test_regression():
