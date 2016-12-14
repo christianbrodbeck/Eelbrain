@@ -164,7 +164,6 @@ def configure(frame=None, autorun=None, show=None, format=None,
     backend.update(new)
 
 
-
 meas_display_unit = {'time': u'ms',
                      'V': u'µV',
                      'B': u'fT',
@@ -175,15 +174,18 @@ unit_format = {u'V': 1,
                u'µV': 1e6,
                u'pT': 1e12,
                u'fT': 1e15,
-               u'T': 1,
                u'dSPM': 1,
+               u'p': 1,
+               u'T': 1,
+               u'n': int,  # %i format
                int: int}
-scale_formatters = {1e3: FuncFormatter(lambda x, pos: '%g' % (1e3 * x)),
+scale_formatters = {1: FuncFormatter(lambda x, pos: '%g' % x),
+                    1e3: FuncFormatter(lambda x, pos: '%g' % (1e3 * x)),
                     1e6: FuncFormatter(lambda x, pos: '%g' % (1e6 * x)),
                     1e9: FuncFormatter(lambda x, pos: '%g' % (1e9 * x)),
                     1e12: FuncFormatter(lambda x, pos: '%g' % (1e12 * x)),
                     1e15: FuncFormatter(lambda x, pos: '%g' % (1e15 * x)),
-                    int: FormatStrFormatter('%i')}
+                    int: FuncFormatter(lambda x, pos: '%i' % round(x))}
 
 
 def find_axis_params_data(v, label):
@@ -192,7 +194,9 @@ def find_axis_params_data(v, label):
     Parameters
     ----------
     v : NDVar | Var | str | scalar
-        Unit or scale of the axis.
+        Unit or scale of the axis. See ``unit_format`` dict above for options.
+    label : bool | str
+        If ``label is True``, try to infer a label from ``v``.
 
     Returns
     -------
@@ -234,9 +238,10 @@ def find_axis_params_data(v, label):
         else:
             label = getattr(v, 'name', None)
 
-    # ScalarFormatter needs separate instance because it adapts to data
-    fmt = ScalarFormatter() if scale == 1 else scale_formatters[scale]
-    return fmt, label
+    # ScalarFormatter: disabled because it always used e notation in status bar
+    # (needs separate instance because it adapts to data)
+    # fmt = ScalarFormatter() if scale == 1 else scale_formatters[scale]
+    return scale_formatters[scale], label
 
 
 def find_axis_params_dim(dim, scalar, label):
