@@ -5129,14 +5129,14 @@ class Dataset(OrderedDict):
             super(Dataset, self).__setitem__(index, item)
         elif isinstance(index, tuple):
             if len(index) != 2:
-                err = ("Dataset indexes can have only two components; direct "
-                       "access to NDVars is not implemented")
-                raise NotImplementedError(err)
-            key, idx = index
+                raise NotImplementedError(
+                    "Dataset indexes can have at most two components; direct "
+                    "access to NDVars is not implemented")
+            idx, key = index
             if isinstance(idx, basestring):
                 key, idx = idx, key
             elif not isinstance(key, basestring):
-                TypeError("Dataset indexes need variable specified as string")
+                raise TypeError("Dataset key needs to be str; got %r" % (key,))
 
             if key in self:
                 self[key][idx] = item
@@ -5149,14 +5149,14 @@ class Dataset(OrderedDict):
                     elif np.isscalar(item):
                         self[key] = Var([item], repeat=self.n_cases)
                     else:
-                        err = ("Value %s is not supported for slice-assignment "
-                               "of new variable. Use a str for a new Factor or "
-                               "a scalar for a new Var." % repr(item))
-                        raise TypeError(err)
+                        raise TypeError(
+                            "Value %r is not supported for slice-assignment of "
+                            "new variable. Use a str for a new Factor or a "
+                            "scalar for a new Var." % (item,))
                 else:
-                    err = ("If creating a new Factor or Var using a slice, all "
-                           "values need to be set (ds[:,'name'] = ...)")
-                    raise NotImplementedError(err)
+                    raise NotImplementedError(
+                        "If creating a new Factor or Var using a slice, all "
+                        "values need to be set (ds[:,'name'] = ...)")
             else:
                 raise NotImplementedError("Advanced Dataset indexing")
         else:
