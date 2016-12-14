@@ -709,6 +709,7 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, inv=None, lambda2=1,
     ``i_start`` and ``i_stop`` are interpreted as event indexes (from
     :func:`mne.find_events`), i.e. relative to ``raw.first_samp``.
     """
+    name = os.path.basename(raw.info['filename'])
     start_scalar = i_start is None or isinstance(i_start, int)
     stop_scalar = i_stop is None or isinstance(i_stop, int)
     if start_scalar or stop_scalar:
@@ -746,7 +747,7 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, inv=None, lambda2=1,
         if decim != 1:
             x = x[:, ::decim]
         time = UTS(0, float(decim) / raw.info['sfreq'], x.shape[1])
-        out.append(NDVar(x, (dim, time), _cs.meg_info()))
+        out.append(NDVar(x, (dim, time), _cs.meg_info(), name))
 
     if scalar:
         return out[0]
