@@ -3152,7 +3152,7 @@ class MneExperiment(FileTree):
                                       vertices_to, None, subjects_dir)
         return mm, vertices_to
 
-    def load_raw(self, add_bads=True, preload=False, **kwargs):
+    def load_raw(self, add_bads=True, preload=False, ndvar=False, decim=1, **kwargs):
         """
         Load a raw file as mne Raw object.
 
@@ -3163,6 +3163,10 @@ class MneExperiment(FileTree):
             True).
         preload : bool
             Mne Raw parameter.
+        ndvar : bool
+            Load as NDVar instead of mne Raw object (defautl False).
+        decim : int
+            Decimate data (implies preload=True; default 1, i.e. no decimation)
 
         Notes
         -----
@@ -3172,8 +3176,17 @@ class MneExperiment(FileTree):
         if not isinstance(add_bads, int):
             raise TypeError("add_bads must be boolean, got %s" % repr(add_bads))
         pipe = self._raw[self.get('raw', **kwargs)]
-        return pipe.load(self.get('subject'), self.get('session'), add_bads,
-                         preload)
+        raw = pipe.load(self.get('subject'), self.get('session'), add_bads,
+                        preload)
+        if decim > 1:
+            sfreq = int(round(raw.info['sfreq'] / decim))
+            raw.load_data()
+            raw.resample(sfreq)
+
+        if ndvar:
+            raw = load.fiff.raw_ndvar(raw)
+
+        return raw
 
     def _load_result_plotter(self, test, tstart, tstop, pmin, parc=None, mask=None,
                             samples=10000, data='source', sns_baseline=True,
