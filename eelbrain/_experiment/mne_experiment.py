@@ -3775,7 +3775,7 @@ class MneExperiment(FileTree):
             raise NotImplementedError(msg)
         return labels
 
-    def make_bad_channels(self, bad_chs=None, redo=False, **kwargs):
+    def make_bad_channels(self, bad_chs=(), redo=False, **kwargs):
         """Write the bad channel definition file for a raw file
 
         If the file already exists, new bad channels are added to the old ones.
