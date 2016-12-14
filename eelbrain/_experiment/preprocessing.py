@@ -6,6 +6,7 @@ from os import mkdir
 from os.path import dirname, exists, getmtime
 
 import mne
+from mne.io import read_raw_fif
 
 from .. import load
 from .._data_obj import NDVar
@@ -23,7 +24,7 @@ class RawPipe(object):
 
     def load(self, subject, session, add_bads=True, preload=False):
         path = self.path.format(subject=subject, session=session)
-        raw = load.fiff.mne_raw(path, preload=preload)
+        raw = read_raw_fif(path, preload=preload)
         if add_bads:
             raw.info['bads'] = self.load_bad_channels(subject, session)
         else:
