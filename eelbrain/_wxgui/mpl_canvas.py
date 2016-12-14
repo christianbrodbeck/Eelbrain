@@ -15,6 +15,7 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 from matplotlib.backends import backend_wx
 from matplotlib.figure import Figure
 import wx
+from threading import Thread, Event
 
 from .._wxutils import ID, Icon
 from .frame import EelbrainFrame
@@ -66,12 +67,41 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
         self.figure = Figure(*args, **kwargs)
         FigureCanvasWxAgg.__init__(self, parent, wx.ID_ANY, self.figure)
         self.Bind(wx.EVT_ENTER_WINDOW, self.ChangeCursor)
+        self._needs_repaint = Event()
+        self._kill_painter = False
+        self._painter = Thread(target=self._paint_thread)
+        self._painter.start()
+
+    def _paint_thread(self):
+        while True:
+            self._needs_repaint.wait()
+            self._needs_repaint.clear()
+            if self._kill_painter:
+                return
+            self.draw()#drawDC=wx.PaintDC(self))
+
+    def _onPaint(self, evt):
+        """Called when wxPaintEvt is generated
+
+        Override from FigureCanvasWxAgg to redirect work to painter thread
+        """
+        if self._isDrawn:
+            self.gui_repaint(drawDC=wx.PaintDC(self))
+        else:
+            self._needs_repaint.set()
+        evt.Skip()
 
     def CanCopy(self):
         return True
 
     def bufferHasChanged(self):
         return True
+
+    def Destroy(self):
+        self._kill_painter = True
+        self._needs_repaint.set()
+        self._painter.join()
+        FigureCanvasWxAgg.Destroy(self)
 
     def ChangeCursor(self, event):
         "http://matplotlib.sourceforge.net/examples/user_interfaces/wxcursor_demo.html"
@@ -223,6 +253,7 @@ class CanvasFrame(EelbrainFrame):
         if getattr(self, '_eelfigure', None):
             del self._eelfigure._frame
             del self._eelfigure
+        self.canvas.Destroy()
         event.Skip()
 
     def OnHelp(self, event):
