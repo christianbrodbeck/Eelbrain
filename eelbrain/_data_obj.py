@@ -5106,18 +5106,25 @@ class Dataset(OrderedDict):
                 if (item.name is None or (item.name != index and
                                           item.name != as_legal_dataset_key(index))):
                     item.name = index
+                n = 0 if (isndvar(item) and not item.has_case) else len(item)
             elif isinstance(item, (list, tuple)):
                 item = Datalist(item, index)
+                n = len(item)
+            else:
+                try:
+                    n = len(item)
+                except TypeError:
+                    raise TypeError("Only items with length can be assigned to "
+                                    "a Dataset; got %r" % (item,))
 
             # make sure the item has the right length
-            n = 0 if (isndvar(item) and not item.has_case) else len(item)
             if self.n_cases is None:
                 self.n_cases = n
             elif self.n_cases != n:
-                msg = ("Can not assign item to Dataset. The item`s length "
-                       "(%i) is different from the number of cases in the "
-                       "Dataset (%i)." % (n, self.n_cases))
-                raise ValueError(msg)
+                raise ValueError(
+                    "Can not assign item to Dataset. The item`s length (%i) is "
+                    "different from the number of cases in the Dataset (%i)." %
+                    (n, self.n_cases))
 
             super(Dataset, self).__setitem__(index, item)
         elif isinstance(index, tuple):
