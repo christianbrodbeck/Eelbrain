@@ -172,8 +172,11 @@ class RawICA(CachedRawPipe):
 
     Notes
     -----
-    To avoid unwanted data loss, the ICA does not check raw source mtime.
-    However, if bad channels change the ICA is automatically recomputed.
+    This pipe merges bad channels from its source raw pipes.
+
+    When checking whether the ICA file is up to date, the ICA does not check
+    raw source mtime. However, if bad channels change the ICA is automatically
+    recomputed.
     """
 
     def __init__(self, name, source, path, ica_path, log, session, kwargs):
