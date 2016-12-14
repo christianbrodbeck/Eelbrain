@@ -1046,15 +1046,17 @@ def _difference(data, names):
     return data_differences, diffnames, diffnames_2lines
 
 
-def _normality_plot(ax, data, **kwargs):
+def _ax_histogram(ax, data, normed, **kwargs):
     """helper fubction for creating normality test figure"""
-    n, bins, patches = ax.hist(data, normed=True, **kwargs)
+    n, bins, patches = ax.hist(data, normed=normed, **kwargs)
     data = np.ravel(data)
 
     # normal line
     mu = np.mean(data)
     sigma = np.std(data)
     y = mpl.mlab.normpdf(bins, mu, sigma)
+    if not normed:
+        y *= len(data) * np.diff(bins)[0]
     ax.plot(bins, y, 'r--', linewidth=1)
 
     # TESTS
@@ -1096,6 +1098,8 @@ class Histogram(EelFigure):
         names of Dataset variables
     pooled : bool
         Add one plot with all values/differences pooled.
+    normed : bool
+        Norm counts to approximate a probability density (default False).
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
@@ -1103,7 +1107,7 @@ class Histogram(EelFigure):
         Figure title.
     """
     def __init__(self, Y, X=None, match=None, sub=None, ds=None, pooled=True,
-                 tight=True, title=True, *args, **kwargs):
+                 normed=False, tight=True, title=True, *args, **kwargs):
         ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
 
         # layout
@@ -1130,7 +1134,7 @@ class Histogram(EelFigure):
 
         if X is None:
             ax = self._axes[0]
-            _normality_plot(ax, ct.Y.x)
+            _ax_histogram(ax, ct.Y.x, normed)
         elif ct.all_within:  # distribution of differences
             data = ct.get_data()
             names = ct.cellnames()
@@ -1144,7 +1148,7 @@ class Histogram(EelFigure):
                     pooled_data.append(scipy.stats.zscore(difference))  # z transform?? (scipy.stats.zs())
                     ax_i = n_comp * i + (n_comp + 1 - j)
                     ax = self.figure.add_subplot(n_comp, n_comp, ax_i)
-                    _normality_plot(ax, difference)
+                    _ax_histogram(ax, difference, normed)
                     if i == 0:
                         ax.set_title(names[j], size=12)
                     if j == n_comp:
@@ -1152,7 +1156,7 @@ class Histogram(EelFigure):
             # pooled diffs
             if pooled and len(names) > 2:
                 ax = self.figure.add_subplot(n_comp, n_comp, n_comp ** 2)
-                _normality_plot(ax, pooled_data, facecolor='g')
+                _ax_histogram(ax, pooled_data, normed, facecolor='g')
                 ax.set_title("Pooled Differences (n=%s)" % len(pooled_data),
                              weight='bold')
                 self.figure.text(.99, .01, "$^{*}$ Anderson and Darling test "
@@ -1163,7 +1167,7 @@ class Histogram(EelFigure):
         else:  # independent measures
             for cell, ax in izip(ct.cells, self._axes):
                 ax.set_title(cellname(cell))
-                _normality_plot(ax, ct.data[cell])
+                _ax_histogram(ax, ct.data[cell], normed)
 
         self._show()
 
