@@ -12,19 +12,38 @@ LOG_LEVELS = {'DEBUG': logging.DEBUG, 'INFO': logging.INFO,
               'CRITICAL': logging.CRITICAL}
 
 
-def deprecated(version, replacement=None):
-    "Decorator to deprecate functions and methods"
+def deprecated(version, replacement):
+    """Decorator to deprecate functions and methods
+
+    Also handles docstring of the deprecated function.
+
+    Parameters
+    ----------
+    version : str
+        Version in which the feature will be removed.
+    replacement : callable | str
+        Either a verbal description, or a pointer to the direct replacement
+        function which takes the same arguments. In the latter case, the
+        replacement is automatically called and the deprecated function is not
+        used anymore.
+    """
     def dec(func):
         msg = ('%s is deprecated and will be removed in version %s' %
                (func.__name__, version))
-        if replacement is not None:
+        if isinstance(replacement, basestring):
+            msg += '; ' + replacement
+            call_func = func
+        elif replacement is not None:
             msg += "; use %s instead" % replacement.__name__
+            call_func = replacement
+        else:
+            raise TypeError("replacement=%r" % (replacement,))
         func.__doc__ = msg
 
         @functools.wraps(func)
         def new(*args, **kwargs):
             warn(msg, DeprecationWarning)
-            return replacement(*args, **kwargs)
+            return call_func(*args, **kwargs)
 
         return new
     return dec
