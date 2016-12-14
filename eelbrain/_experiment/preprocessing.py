@@ -240,6 +240,9 @@ class RawICA(CachedRawPipe):
 
 
 class RawMaxwell(CachedRawPipe):
+    "Maxwell filter raw pipe"
+
+    _bad_chs_affect_cache = True
 
     def __init__(self, name, source, path, log, kwargs):
         CachedRawPipe.__init__(self, name, source, path, log)
