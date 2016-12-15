@@ -5244,16 +5244,20 @@ class MneExperiment(FileTree):
         # collect bad channels
         bads = set()
         sessions = []
-        for session in self.iter('session'):
-            if os.path.exists(self.get('raw-file')):
-                bads.update(self.load_bad_channels())
-                sessions.append(session)
-            else:
-                print("%%-%is: skipping, raw file missing" % n_chars % session)
-        # update bad channel files
-        for session in sessions:
-            print(session.ljust(n_chars), end=': ')
-            self.make_bad_channels(bads, session=session)
+        with self._temporary_state:
+            # ICARaw merges bad channels dynamically, so explicit merge needs to
+            # be performed lower in the hierarchy
+            self.set(raw='raw')
+            for session in self.iter('session'):
+                if os.path.exists(self.get('raw-file')):
+                    bads.update(self.load_bad_channels())
+                    sessions.append(session)
+                else:
+                    print("%%-%is: skipping, raw file missing" % n_chars % session)
+            # update bad channel files
+            for session in sessions:
+                print(session.ljust(n_chars), end=': ')
+                self.make_bad_channels(bads, session=session)
 
     def next(self, field='subject', group=None):
         """Change field to the next value

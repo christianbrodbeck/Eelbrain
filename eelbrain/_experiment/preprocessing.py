@@ -279,7 +279,7 @@ def assemble_pipeline(raw_dict, raw_path, bads_path, cache_path, ica_path, log):
                     raise NotImplementedError("Preprocessing pipeline with "
                                               "more than one raw source")
                 raw[name] = RawSource(name, raw_path, bads_path, log)
-                has_source = True
+                has_source = name or True
                 del unassigned[name]
             elif source in raw:
                 if params['type'] == 'filter':
@@ -304,6 +304,8 @@ def assemble_pipeline(raw_dict, raw_path, bads_path, cache_path, ica_path, log):
 
     if not has_source:
         raise ValueError("Preprocssing pipeline has not raw source")
+    elif has_source != 'raw':
+        raise NotImplementedError("The raw source must be called 'raw'")
     return raw
 
 
