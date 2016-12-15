@@ -37,6 +37,9 @@ class RawPipe(object):
     def make_bad_channels(self, subject, session, bad_chs, redo):
         raise NotImplementedError
 
+    def make_bad_channels_auto(self, subject, session, flat):
+        raise NotImplementedError
+
     def mtime(self, subject, session, bad_chs=True):
         "modification time of anything influencing the output of load"
         raise NotImplementedError
@@ -51,14 +54,13 @@ class RawSource(RawPipe):
 
     def load_bad_channels(self, subject, session):
         path = self.bads_path.format(subject=subject, session=session)
-        if exists(path):
-            with open(path) as fid:
-                return [l for l in fid.read().splitlines() if l]
-        # need to create one to know mtime after user deletes the file
-        self.log.info("No bad channel definition for: %s/%s, creating empty "
-                      "bad_channels file", subject, session)
-        self.make_bad_channels(subject, session, (), False)
-        return []
+        if not exists(path):
+            # need to create one to know mtime after user deletes the file
+            self.log.info("Generating bad_channels file for %s %s",
+                          subject, session)
+            self.make_bad_channels_auto(subject, session)
+        with open(path) as fid:
+            return [l for l in fid.read().splitlines() if l]
 
     def make_bad_channels(self, subject, session, bad_chs, redo):
         path = self.bads_path.format(subject=subject, session=session)
@@ -84,6 +86,14 @@ class RawSource(RawPipe):
         text = '\n'.join(new_bads)
         with open(path, 'w') as fid:
             fid.write(text)
+
+    def make_bad_channels_auto(self, subject, session, flat=1e-14):
+        if not flat:
+            return
+        raw = self.load(subject, session, preload=True, add_bads=False)
+        raw = load.fiff.raw_ndvar(raw)
+        bad_chs = raw.sensor.names[raw.std('time') < flat]
+        self.make_bad_channels(subject, session, bad_chs, False)
 
     def mtime(self, subject, session, bad_chs=True):
         path = self.path.format(subject=subject, session=session)
@@ -133,6 +143,9 @@ class CachedRawPipe(RawPipe):
 
     def make_bad_channels(self, subject, session, bad_chs, redo):
         self.source.make_bad_channels(subject, session, bad_chs, redo)
+
+    def make_bad_channels_auto(self, *args, **kwargs):
+        self.source.make_bad_channels_auto(*args, **kwargs)
 
     def mtime(self, subject, session, bad_chs=True):
         return self.source.mtime(subject, session, bad_chs)

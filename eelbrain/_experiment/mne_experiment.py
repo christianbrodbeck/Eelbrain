@@ -3806,12 +3806,28 @@ class MneExperiment(FileTree):
 
         See Also
         --------
+        make_bad_channels_auto : find bad channels automatically
         load_bad_channels : load the current bad_channels file
         merge_bad_channels : merge bad channel definitions for all sessions
         """
         pipe = self._raw[self.get('raw', **kwargs)]
         pipe.make_bad_channels(self.get('subject'), self.get('session'),
                                bad_chs, redo)
+
+    def make_bad_channels_auto(self, flat=1e-14):
+        """Automatically detect bad channels
+
+        Works on ``raw='raw'``
+
+        Parameters
+        ----------
+        flat : scalar
+            Threshold for detecting flat channels: channels with ``std < flat``
+            are considered bad (default 1e-14).
+        """
+        pipe = self._raw['raw']
+        pipe.make_bad_channels_auto(self.get('subject'), self.get('session'),
+                                    flat)
 
     def make_besa_evt(self, redo=False, **state):
         """Make the trigger and event files needed for besa
