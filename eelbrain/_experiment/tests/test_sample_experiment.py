@@ -60,6 +60,16 @@ def test_samples_sesssions():
 
     root = join(tempdir, 'SampleExperiment')
     e = e_module.SampleExperiment(root)
+    # bad channels
+    e.make_bad_channels('0111')
+    eq_(e.load_bad_channels(), ['MEG 0111'])
+    eq_(e.load_bad_channels(session='sample2'), [])
+    e.show_bad_channels()
+    e.merge_bad_channels()
+    eq_(e.load_bad_channels(session='sample2'), ['MEG 0111'])
+    e.show_bad_channels()
+
+    # rejection
     for _ in e:
         for epoch in ('target1', 'target2'):
             e.set(epoch=epoch)

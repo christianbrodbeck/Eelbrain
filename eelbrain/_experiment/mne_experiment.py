@@ -5845,6 +5845,46 @@ class MneExperiment(FileTree):
         self.set(test_options=' '.join(items), analysis=analysis, folder=folder,
                  **kwargs)
 
+    def show_bad_channels(self):
+        """List bad channels for each subject/session combination
+
+        Notes
+        -----
+        ICA Raw pipes merge bad channels from different sessions (by combining
+        the bad channels from all sessions).
+        """
+        bad_channels = {k: self.load_bad_channels() for k in
+                        self.iter(('subject', 'session'))}
+
+        # whether they are equal between sessions
+        bad_by_s = {}
+        for (subject, session), bads in bad_channels.iteritems():
+            if subject in bad_by_s:
+                if bad_by_s[subject] != bads:
+                    sessions_congruent = False
+                    break
+            else:
+                bad_by_s[subject] = bads
+        else:
+            sessions_congruent = True
+
+        # display
+        if sessions_congruent:
+            print("All sessions equal:")
+            for subject in sorted(bad_by_s):
+                print("%s: %s" % (subject, bad_by_s[subject]))
+        else:
+            subject_len = 1
+            session_len = 1
+            for subject, session in bad_channels:
+                subject_len = max(subject_len, len(subject))
+                session_len = max(session_len, len(session))
+
+            template = '{:%i} {:%i}: {}' % (subject_len + 1, session_len + 1)
+            for subject, session in sorted(bad_channels):
+                print(template.format(subject, session,
+                                      bad_channels[subject, session]))
+
     def show_file_status(self, temp, col=None, row='subject', *args, **kwargs):
         """Compile a table about the existence of files
 
