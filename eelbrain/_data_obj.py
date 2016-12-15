@@ -6958,16 +6958,26 @@ class Dimension(object):
         "extent for im plots"
         return -0.5, len(self) - 0.5
 
-    def _axis_formatter(self, scalar):
-        """Return a matplotlib axis formatter
+    def _axis_format(self, scalar, label):
+        """Return a matplotlib axis formatter and label
 
         Parameters
         ----------
         scalar : bool
             If True, the axis is scalar and labels should correspond to the axis
-            value. If False, the axis represents categorial bins (e.g., im-plots).
+            value. If False, the axis represents categorial bins (e.g.,
+            im-plots).
+        label : bool | str
+            Label (if True, return an appropriate axis-specific label).
         """
         raise NotImplementedError
+
+    def _axis_label(self, label):
+        if label is True:
+            if self._axis_unit:
+                return "%s [%s]" % (self.name.capitalize(), self._axis_unit)
+            else:
+                return self.name.capitalize()
 
     def dimindex(self, arg):
         """Process index parameter
@@ -7092,8 +7102,8 @@ class Categorial(Dimension):
         values = self.values[index]
         return Categorial(self.name, values)
 
-    def _axis_formatter(self, scalar):
-        return IndexFormatter(self.values)
+    def _axis_format(self, scalar, label):
+        return IndexFormatter(self.values), self._axis_label(label)
 
     def dimindex(self, arg):
         if isinstance(arg, self.__class__):
@@ -7199,16 +7209,18 @@ class Scalar(Dimension):
         return self.__class__(self.name, self.values[index], self.unit,
                               self.tick_format)
 
-    def _axis_formatter(self, scalar):
+    def _axis_format(self, scalar, label):
+        label = self._axis_label(label)
         if scalar:
             if self.tick_format:
-                return FormatStrFormatter(self.tick_format)
+                fmt = FormatStrFormatter(self.tick_format)
             else:
-                return None
+                fmt = None
         elif self.tick_format:
-            return IndexFormatter([self.tick_format % v for v in self.values])
+            fmt = IndexFormatter([self.tick_format % v for v in self.values])
         else:
-            return IndexFormatter(self.values)
+            fmt = IndexFormatter(self.values)
+        return fmt, label
 
     def dimindex(self, arg):
         if isinstance(arg, self.__class__):
@@ -7448,8 +7460,8 @@ class Sensor(Dimension):
             return Sensor(locs, names, None, self.sysname, self.default_proj2d,
                           _subgraph_edges(self._connectivity, int_index))
 
-    def _axis_formatter(self, scalar):
-        return IndexFormatter(self.names)
+    def _axis_format(self, scalar, label):
+        return IndexFormatter(self.names), self._axis_label(label)
 
     def _cluster_properties(self, x):
         """Find cluster properties for this dimension
@@ -8221,8 +8233,8 @@ class SourceSpace(Dimension):
                           parc, _subgraph_edges(self._connectivity, int_index))
         return dim
 
-    def _axis_formatter(self, scalar):
-        return FormatStrFormatter('%i')
+    def _axis_format(self, scalar, label):
+        return FormatStrFormatter('%i'), self._axis_label(label)
 
     def _cluster_properties(self, x):
         """Find cluster properties for this dimension
@@ -8600,7 +8612,6 @@ class UTS(Dimension):
     """
     name = 'time'
     unit = 's'
-    _axis_unit = 'ms'
     _tol = 0.000001  # tolerance for deciding if time values are equal
 
     def __init__(self, tmin, tstep, nsamples):
@@ -8662,12 +8673,22 @@ class UTS(Dimension):
     def _axis_im_extent(self):
         return self.tmin - 0.5 * self.tstep, self.tmax + 0.5 * self.tstep
 
-    def _axis_formatter(self, scalar):
-        if scalar:
-            return FuncFormatter(lambda x, pos: '%i' % round(1e3 * x))
+    def _axis_format(self, scalar, label):
+        use_s = max(self.tmax, -self.tmin) >= 10.
+        if label is True:
+            label = "Time [%s]" % ('s' if use_s else 'ms')
+
+        if use_s:
+            if scalar:
+                fmt = FuncFormatter(lambda x, pos: '%.5g' % x)
+            else:
+                fmt = FuncFormatter(lambda x, pos: '%.5g' % self.times[x])
+        elif scalar:
+            fmt = FuncFormatter(lambda x, pos: '%i' % round(1e3 * x))
         else:
-            return FuncFormatter(lambda x, pos: '%i' %
-                                 round(1e3 * self.times[int(round(x))]))
+            fmt = FuncFormatter(lambda x, pos:
+                                '%i' % round(1e3 * self.times[int(round(x))]))
+        return fmt, label
 
     def _diminfo(self):
         name = self.name.capitalize()

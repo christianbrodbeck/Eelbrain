@@ -274,13 +274,7 @@ def find_axis_params_dim(dim, scalar, label):
         Returns the default axis label if label==True, otherwise the label
         argument.
     """
-    if label is True:
-        if dim._axis_unit:
-            label = "%s [%s]" % (dim.name.capitalize(), dim._axis_unit)
-        else:
-            label = dim.name.capitalize()
-
-    return dim._axis_formatter(scalar), label
+    return dim._axis_format(scalar, label)
 
 
 def find_im_args(ndvar, overlay, vlims={}, cmaps={}):
