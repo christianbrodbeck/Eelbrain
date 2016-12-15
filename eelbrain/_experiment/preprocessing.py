@@ -67,7 +67,7 @@ class RawSource(RawPipe):
         else:
             old_bads = None
         # find new bad channels
-        if isinstance(bad_chs, basestring):
+        if isinstance(bad_chs, (basestring, int)):
             bad_chs = (bad_chs,)
         raw = self.load(subject, session, add_bads=False)
         sensor = load.fiff.sensor_dim(raw)
