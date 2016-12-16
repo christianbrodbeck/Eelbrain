@@ -50,8 +50,9 @@ from scipy.spatial.distance import cdist, pdist, squareform
 
 from . import fmtxt
 from . import _colorspaces as cs
-from ._utils import deprecated, ui, LazyProperty, natsorted  #, logger
+from ._utils import deprecated, ui, LazyProperty, natsorted
 from ._utils.numpy_utils import slice_to_arange, full_slice, digitize
+from .mne_fixes import MNE_EPOCHS, MNE_EVOKED, MNE_LABEL
 from functools import reduce
 
 
@@ -71,9 +72,6 @@ preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __
 UNNAMED = '<?>'
 LIST_INDEX_TYPES = (int, slice)
 SEQUENCE_TYPES = (tuple, list)
-MNE_EPOCHS_TYPES = (mne.Epochs, mne.EpochsArray)
-MNE_EVOKED_TYPES = mne.Evoked
-MNE_LABEL_TYPES = (mne.Label, mne.label.BiHemiLabel)
 _pickled_ds_wildcard = ("Pickled Dataset (*.pickled)", '*.pickled')
 _tex_wildcard = ("TeX (*.tex)", '*.tex')
 _tsv_wildcard = ("Plain Text Tab Separated Values (*.txt)", '*.txt')
@@ -451,7 +449,7 @@ def asepochs(x, sub=None, ds=None, n=None):
             raise TypeError(err)
         x = ds.eval(x)
 
-    if isinstance(x, MNE_EPOCHS_TYPES):
+    if isinstance(x, MNE_EPOCHS):
         pass
     else:
         raise TypeError("Need mne Epochs object, got %s" % repr(x))
@@ -520,15 +518,15 @@ def asndvar(x, sub=None, ds=None, n=None):
         x = ds.eval(x)
 
     # convert MNE objects
-    if isinstance(x, MNE_EPOCHS_TYPES):
+    if isinstance(x, MNE_EPOCHS):
         from .load.fiff import epochs_ndvar
         x = epochs_ndvar(x)
-    elif isinstance(x, MNE_EVOKED_TYPES):
+    elif isinstance(x, MNE_EVOKED):
         from .load.fiff import evoked_ndvar
         x = evoked_ndvar(x)
     elif isinstance(x, list):
         item_0 = x[0]
-        if isinstance(item_0, MNE_EVOKED_TYPES):
+        if isinstance(item_0, MNE_EVOKED):
             from .load.fiff import evoked_ndvar
             x = evoked_ndvar(x)
 
@@ -5209,7 +5207,7 @@ class Dataset(OrderedDict):
             try:
                 if hasattr(v, 'aggregate'):
                     ds[k] = v.aggregate(x)
-                elif isinstance(v, MNE_EPOCHS_TYPES):
+                elif isinstance(v, MNE_EPOCHS):
                     evokeds = []
                     for cell in x.cells:
                         idx = (x == cell)
@@ -8015,7 +8013,7 @@ class SourceSpace(Dimension):
         return coords
 
     def dimindex(self, arg):
-        if isinstance(arg, MNE_LABEL_TYPES):
+        if isinstance(arg, MNE_LABEL):
             return self._dimindex_label(arg)
         elif isinstance(arg, basestring):
             if arg == 'lh':
