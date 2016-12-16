@@ -3157,9 +3157,7 @@ class NDVar(object):
 
     # numeric ---
     def __neg__(self):
-        x = -self.x
-        info = self.info.copy()
-        return NDVar(x, self.dims, info)
+        return NDVar(-self.x, self.dims, self.info.copy(), self.name)
 
     def __pos__(self):
         return self
@@ -3168,34 +3166,28 @@ class NDVar(object):
         return self.abs()
 
     def __lt__(self, other):
-        y = self._ialign(other)
-        x = self.x < y
-        return NDVar(x, self.dims, self.info.copy())
+        return NDVar(self.x < self._ialign(other),
+                     self.dims, self.info.copy(), self.name)
 
     def __le__(self, other):
-        y = self._ialign(other)
-        x = self.x <= y
-        return NDVar(x, self.dims, self.info.copy())
+        return NDVar(self.x <= self._ialign(other),
+                     self.dims, self.info.copy(), self.name)
 
     def __eq__(self, other):
-        y = self._ialign(other)
-        x = self.x == y
-        return NDVar(x, self.dims, self.info.copy())
+        return NDVar(self.x == self._ialign(other),
+                     self.dims, self.info.copy(), self.name)
 
     def __ne__(self, other):
-        y = self._ialign(other)
-        x = self.x != y
-        return NDVar(x, self.dims, self.info.copy())
+        return NDVar(self.x != self._ialign(other),
+                     self.dims, self.info.copy(), self.name)
 
     def __gt__(self, other):
-        y = self._ialign(other)
-        x = self.x > y
-        return NDVar(x, self.dims, self.info.copy())
+        return NDVar(self.x > self._ialign(other),
+                     self.dims, self.info.copy(), self.name)
 
     def __ge__(self, other):
-        y = self._ialign(other)
-        x = self.x >= y
-        return NDVar(x, self.dims, self.info.copy())
+        return NDVar(self.x >= self._ialign(other),
+                     self.dims, self.info.copy(), self.name)
 
     def _align(self, other):
         """Align data from 2 NDVars.
@@ -3284,9 +3276,7 @@ class NDVar(object):
 
     def __add__(self, other):
         dims, x_self, x_other = self._align(other)
-        x = x_self + x_other
-        info = self.info.copy()
-        return NDVar(x, dims, info)
+        return NDVar(x_self + x_other, dims, self.info.copy(), self.name)
 
     def __iadd__(self, other):
         self.x += self._ialign(other)
@@ -3297,9 +3287,7 @@ class NDVar(object):
 
     def __div__(self, other):
         dims, x_self, x_other = self._align(other)
-        x = x_self / x_other
-        info = self.info.copy()
-        return NDVar(x, dims, info)
+        return NDVar(x_self / x_other, dims, self.info.copy(), self.name)
 
     def __idiv__(self, other):
         self.x /= self._ialign(other)
@@ -3319,9 +3307,7 @@ class NDVar(object):
 
     def __mul__(self, other):
         dims, x_self, x_other = self._align(other)
-        x = x_self * x_other
-        info = self.info.copy()
-        return NDVar(x, dims, info)
+        return NDVar(x_self * x_other, dims, self.info.copy(), self.name)
 
     def __imul__(self, other):
         self.x *= self._ialign(other)
@@ -3332,9 +3318,8 @@ class NDVar(object):
 
     def __pow__(self, other):
         dims, x_self, x_other = self._align(other)
-        x = np.power(x_self, x_other)
-        info = self.info.copy()
-        return NDVar(x, dims, info)
+        return NDVar(np.power(x_self, x_other), dims, self.info.copy(),
+                     self.name)
 
     def __ipow__(self, other):
         self.x **= self._ialign(other)
@@ -3345,9 +3330,7 @@ class NDVar(object):
 
     def __sub__(self, other):
         dims, x_self, x_other = self._align(other)
-        x = x_self - x_other
-        info = self.info.copy()
-        return NDVar(x, dims, info)
+        return NDVar(x_self - x_other, dims, self.info.copy(), self.name)
 
     def __isub__(self, other):
         self.x -= self._ialign(other)
