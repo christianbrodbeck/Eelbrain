@@ -114,8 +114,9 @@ from mne.minimum_norm import prepare_inverse_operator, apply_inverse_raw
 from .. import _colorspaces as _cs
 from .._info import BAD_CHANNELS
 from .._utils import ui
-from .._data_obj import Var, NDVar, Dataset, Sensor, SourceSpace, UTS, \
-    _matrix_graph
+from .._data_obj import (Var, NDVar, Dataset, Sensor, SourceSpace, UTS,
+                         _matrix_graph)
+from ..mne_fixes import MNE_EVOKED
 
 
 KIT_NEIGHBORS = {
@@ -852,7 +853,7 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
     if isinstance(evoked, basestring):
         evoked = mne.read_evokeds(evoked)
 
-    if isinstance(evoked, mne.Evoked):
+    if isinstance(evoked, MNE_EVOKED):
         case_out = False
         evoked = (evoked,)
     if isinstance(evoked, (tuple, list)):

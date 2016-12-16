@@ -19,26 +19,26 @@ import os
 import re
 import time
 
-import mne
 import numpy as np
 from scipy.spatial.distance import cdist
 import wx
 
-from .. import load, save, plot, fmtxt
-from .._data_obj import Dataset, Factor, Var, Datalist, asndvar, combine
-from .._ndvar import neighbor_correlation
 from .. import _meeg as meeg
 from .. import _report
-from .._names import INTERPOLATE_CHANNELS
+from .. import load, save, plot, fmtxt
+from .._data_obj import Dataset, Factor, Var, Datalist, asndvar, combine
 from .._info import BAD_CHANNELS
+from .._names import INTERPOLATE_CHANNELS
+from .._ndvar import neighbor_correlation
 from .._utils.parse import FLOAT_PATTERN, POS_FLOAT_PATTERN, INT_PATTERN
-from ..plot._base import find_axis_params_data, find_axis_params_dim, \
-    find_fig_vlims, find_fig_cmaps
+from .._utils.numpy_utils import full_slice
+from .._wxutils import Icon, ID, REValidator
+from ..mne_fixes import MNE_EPOCHS
+from ..plot._base import (find_axis_params_data, find_axis_params_dim,
+                          find_fig_vlims, find_fig_cmaps)
 from ..plot._nuts import _plt_bin_nuts
 from ..plot._topo import _ax_topomap
 from ..plot._utsnd import _ax_bfly_epoch
-from .._utils.numpy_utils import full_slice
-from .._wxutils import Icon, ID, REValidator
 from .app import get_app
 from .frame import EelbrainDialog
 from .mpl_canvas import FigureCanvasPanel
@@ -166,7 +166,7 @@ class Document(FileDocument):
             command). If the file exists, it is loaded as initial state.
         """
         FileDocument.__init__(self, path)
-        if isinstance(ds, mne.Epochs):
+        if isinstance(ds, MNE_EPOCHS):
             epochs = ds
             ds = Dataset()
             epochs.load_data()
