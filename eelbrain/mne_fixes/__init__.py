@@ -29,7 +29,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-from ._logging import reset_logger
+from .import _logging
 from ._freesurfer import rename_mri
 from ._interpolation import _interpolate_bads_eeg, _interpolate_bads_meg
 from ._label import write_labels_to_annot
