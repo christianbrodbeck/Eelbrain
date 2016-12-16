@@ -377,9 +377,11 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     def __init__(self, epochs, xax=None, axtitle=True, ds=None,
                  xlabel=True, ylabel=True, xticklabels=True, bottom=None,
                  top=None, legend='upper right', xlim=None, *args, **kwargs):
-        epochs, (xdim,) = _base.unpack_epochs_arg(epochs, (None,), xax, ds)
+        epochs, (xdim,), frame_title = _base.unpack_epochs_arg(
+            epochs, (None,), xax, ds, "UTS"
+        )
         layout = Layout(len(epochs), 2, 4, *args, **kwargs)
-        EelFigure.__init__(self, "UTS", layout)
+        EelFigure.__init__(self, frame_title, layout)
         self._set_axtitle(axtitle, epochs)
 
         e0 = epochs[0][0]
@@ -497,13 +499,14 @@ class UTSClusters(EelFigure):
                  overlay=False, xticklabels=True, *args, **kwargs):
         clusters_ = res.clusters
 
-        epochs, (xdim,) = _base.unpack_epochs_arg(res, (None,))
-
+        epochs, (xdim,), frame_title = _base.unpack_epochs_arg(
+            res, (None,), plot_name="UTSClusters"
+        )
         # create figure
         n = len(epochs)
         nax = 1 if overlay else n
         layout = Layout(nax, 2, 4, *args, **kwargs)
-        EelFigure.__init__(self, "UTSClusters", layout)
+        EelFigure.__init__(self, frame_title, layout)
         self._set_axtitle(axtitle, epochs)
 
         colors = colors_for_oneway(range(n), cmap=cm)

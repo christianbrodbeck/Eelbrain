@@ -220,12 +220,14 @@ class Array(ColorMapMixin, XAxisMixin, EelFigure):
                  xticklabels=True, ds=None, x='time', vmax=None, vmin=None,
                  cmap=None, axtitle=True, interpolation=None, xlim=None, *args,
                  **kwargs):
-        epochs, (xdim, ydim) = _base.unpack_epochs_arg(epochs, (x, None), Xax, ds)
+        epochs, (xdim, ydim), frame_title = _base.unpack_epochs_arg(
+            epochs, (x, None), Xax, ds, "Array"
+        )
         ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin)
 
         nax = len(epochs)
         layout = Layout(nax, 2, 4, *args, **kwargs)
-        EelFigure.__init__(self, "Array Plot", layout)
+        EelFigure.__init__(self, frame_title, layout)
         self._set_axtitle(axtitle, epochs)
 
         self.plots = []
@@ -393,10 +395,11 @@ class Butterfly(LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
                  xlabel=True, ylabel=True, xticklabels=True, color=None,
                  ds=None, x='time', vmax=None, vmin=None, xlim=None, *args,
                  **kwargs):
-        epochs, (xdim, linedim) = _base.unpack_epochs_arg(epochs, (x, None),
-                                                          xax, ds)
+        epochs, (xdim, linedim), frame_title = _base.unpack_epochs_arg(
+            epochs, (x, None), xax, ds, "Butterfly"
+        )
         layout = Layout(len(epochs), 2, 4, *args, **kwargs)
-        EelFigure.__init__(self, 'Butterfly Plot', layout)
+        EelFigure.__init__(self, frame_title, layout)
         self._set_axtitle(axtitle, epochs)
         e0 = epochs[0][0]
         self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)

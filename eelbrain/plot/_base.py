@@ -78,7 +78,7 @@ from .._utils.subp import command_exists
 from ..fmtxt import Image, texify
 from .._colorspaces import symmetric_cmaps, zerobased_cmaps, DEFAULT_CMAPS, \
     ALPHA_CMAPS
-from .._data_obj import ascategorial, asndvar, isnumeric, cellname
+from .._data_obj import ascategorial, asndvar, isnumeric, isdataobject, cellname
 
 
 # constants
@@ -710,7 +710,7 @@ def find_data_dims(ndvar, dims):
             raise ValueError("NDVar does not have the right number of dimensions")
 
 
-def unpack_epochs_arg(y, dims, xax=None, ds=None):
+def unpack_epochs_arg(y, dims, xax=None, ds=None, plot_name=None):
     """Unpack the first argument to top-level NDVar plotting functions
 
     Parameters
@@ -725,6 +725,8 @@ def unpack_epochs_arg(y, dims, xax=None, ds=None):
         the first level, i.e., it assumes that Y's first dimension is cases.
     ds : None | Dataset
         Dataset containing data objects which are provided as str.
+    plot_name : str
+        Name of the plot (used only for ``frame_title``).
 
     Returns
     -------
@@ -732,6 +734,8 @@ def unpack_epochs_arg(y, dims, xax=None, ds=None):
         The processed data to plot.
     dims : tuple of str
         Names of the dimensions.
+    frame_title : str
+        Name for the plot frame.
 
     Notes
     -----
@@ -763,9 +767,25 @@ def unpack_epochs_arg(y, dims, xax=None, ds=None):
             else:
                 ax = asndvar(ax, ds=ds)
                 agg, dims = find_data_dims(ax, dims)
-                axes.append([aggregate(ax, agg)])
+                layer = aggregate(ax, agg)
+                axes.append([layer])
+
+        # determine names
+        x_name = None
+        y_names = []
+        for layers in axes:
+            for layer in layers:
+                if layer.name and layer.name not in y_names:
+                    y_names.append(layer.name)
+        if len(y_names) == 0:
+            y_name = None
+        elif len(y_names) == 1:
+            y_name = y_names[0]
+        else:
+            y_name = ' | '.join(y_names)
     else:
         y = asndvar(y, ds=ds)
+        y_name = y.name
 
         # create list of plots
         if isinstance(xax, str) and xax.startswith('.'):
@@ -790,10 +810,12 @@ def unpack_epochs_arg(y, dims, xax=None, ds=None):
                 name += ' ' + unit
             axes = [[aggregate(y.sub(name=name % v, **{dimname: v}), agg)] for
                     v in values]
+            x_name = xax
         else:
             agg, dims = find_data_dims(y, dims)
             if xax is None:
                 axes = [[aggregate(y, agg)]]
+                x_name = None
             else:
                 xax = ascategorial(xax, ds=ds)
                 axes = []
@@ -801,8 +823,9 @@ def unpack_epochs_arg(y, dims, xax=None, ds=None):
                     v = y[xax == cell]
                     v.name = cellname(cell)
                     axes.append([aggregate(v, agg)])
+                x_name = xax.name
 
-    return axes, dims
+    return axes, dims, frame_title(plot_name, y_name, x_name)
 
 
 def aggregate(y, agg):
@@ -898,22 +921,29 @@ def frame_title(plot, y, x=None, xax=None):
     ----------
     plot : str
         Name of the plot.
-    y : data-obj
+    y : data-obj | str
         Dependent variable.
-    x : data-obj
+    x : data-obj | str
         Predictor.
-    xax : data-obj
+    xax : data-obj | str
         Grouping variable for axes.
     """
+    if isdataobject(y):
+        y = y.name
+    if isdataobject(x):
+        x = x.name
+    if isdataobject(xax):
+        xax = xax.name
+
     if xax is None:
         if x is None:
-            return "%s: %s" % (plot, y.name)
+            return "%s: %s" % (plot, y)
         else:
-            return "%s: %s ~ %s" % (plot, y.name, x.name)
+            return "%s: %s ~ %s" % (plot, y, x)
     elif x is None:
-        return "%s: %s | %s" % (plot, y.name, xax.name)
+        return "%s: %s | %s" % (plot, y, xax)
     else:
-        return "%s: %s ~ %s | %s" % (plot, y.name, x.name, xax.name)
+        return "%s: %s ~ %s | %s" % (plot, y, x, xax)
 
 
 class EelFigure(object):

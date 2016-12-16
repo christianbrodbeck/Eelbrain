@@ -89,8 +89,9 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
                  head_radius=None, head_pos=0., mark=None, sensorlabels='none',
                  ds=None, res=64, interpolation=None, axtitle=True, xlabel=None,
                  method=None, *args, **kwargs):
-        epochs, _ = self._epochs = _base.unpack_epochs_arg(epochs, ('sensor',),
-                                                           xax, ds)
+        epochs, _, frame_title = _base.unpack_epochs_arg(
+            epochs, ('sensor',), xax, ds, "Topomap"
+        )
         ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin, contours)
         nax = len(epochs)
         if isinstance(proj, basestring):
@@ -104,7 +105,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
             interpolation = 'nearest' if method else 'bilinear'
 
         layout = ImLayout(nax, 0, 0, 1, 5, *args, **kwargs)
-        EelFigure.__init__(self, "Topomap", layout)
+        EelFigure.__init__(self, frame_title, layout)
         self._set_axtitle(axtitle, epochs)
 
         # plots
@@ -135,7 +136,9 @@ class TopomapBins(EelFigure):
 
     def __init__(self, epochs, Xax=None, bin_length=0.05, tstart=None,
                  tstop=None, ds=None, vmax=None, vmin=None, *args, **kwargs):
-        epochs, _ = _base.unpack_epochs_arg(epochs, ('sensor', 'time'), Xax, ds)
+        epochs, _, frame_title = _base.unpack_epochs_arg(
+            epochs, ('sensor', 'time'), Xax, ds, "TopomapBins"
+        )
         epochs = [[l.bin(bin_length, tstart, tstop) for l in layers]
                   for layers in epochs]
 
@@ -145,7 +148,7 @@ class TopomapBins(EelFigure):
         n_rows = len(epochs)
         layout = Layout(n_bins * n_rows, 1, 1.5, False, *args, nrow=n_rows,
                         ncol=n_bins, **kwargs)
-        EelFigure.__init__(self, "TopomapBins Plot", layout)
+        EelFigure.__init__(self, frame_title, layout)
 
         cmaps = _base.find_fig_cmaps(epochs)
         vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
@@ -232,8 +235,9 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
             warn("The axlabel parameter for plot.TopoButterfly() is "
                  "deprecated, please use axtitle instead", DeprecationWarning)
             axtitle = axlabel
-        epochs, (_, xdim) = _base.unpack_epochs_arg(epochs, ('sensor', None),
-                                                    Xax, ds)
+        epochs, (_, xdim), frame_title = _base.unpack_epochs_arg(
+            epochs, ('sensor', None), Xax, ds, "TopoButterfly"
+        )
         n_rows = len(epochs)
         self._epochs = epochs
 
@@ -242,7 +246,7 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
             n_rows, 3, 10, (None, 1), ({}, {'frameon': False}), (frame, False),
             self._set_axtitle(axtitle, epochs, n_rows), *args, **kwargs
         )
-        EelFigure.__init__(self, "TopoButterfly Plot", layout)
+        EelFigure.__init__(self, frame_title, layout)
 
         cmaps = _base.find_fig_cmaps(epochs)
         vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
@@ -687,13 +691,15 @@ class TopoArray(EelFigure):
     def __init__(self, epochs, Xax=None, title=None, ntopo=3, t=[], ds=None,
                  vmax=None, vmin=None, xticklabels=True, axtitle=True, *args,
                  **kwargs):
-        epochs, _ = _base.unpack_epochs_arg(epochs, ('time', 'sensor'), Xax, ds)
+        epochs, _, frame_title = _base.unpack_epochs_arg(
+            epochs, ('time', 'sensor'), Xax, ds, 'TopoArray'
+        )
         n_epochs = len(epochs)
         n_topo_total = ntopo * n_epochs
 
         # create figure
         layout = Layout(n_epochs, 1.5, 6, False, title, *args, **kwargs)
-        EelFigure.__init__(self, 'TopoArray Plot', layout)
+        EelFigure.__init__(self, frame_title, layout)
 
         # fig coordinates
         x_frame_l = .6 / self._layout.axw / n_epochs
