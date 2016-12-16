@@ -15,15 +15,19 @@ import mne
 from .._utils import log_level
 
 
-if first_mne_import:
+def reset_logger(logger):
     # lower mne's screen logging level, but defer to user-defined setting
     level = mne.get_config('MNE_LOGGING_LEVEL', WARNING)
     formatter = Formatter("%(levelname)-8s %(name)s:%(message)s")
-    for h in mne.utils.logger.handlers:
+    for h in logger.handlers:
         if isinstance(h, StreamHandler):
             h.setFormatter(formatter)
             if h.level < level:
                 h.setLevel(level)
+
+
+if first_mne_import:
+    reset_logger(mne.utils.logger)
 
 
 class CaptureLog(object):

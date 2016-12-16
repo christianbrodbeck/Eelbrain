@@ -10,7 +10,7 @@ from ._base import backend
 if backend['ets_toolkit']:
     os.environ['ETS_TOOLKIT'] = backend['ets_toolkit']
 
-# surfer imports, revert to standard logging
+# surfer imports, lower screen logging level
 first_import = 'surfer' not in sys.modules
 import surfer
 if first_import:
