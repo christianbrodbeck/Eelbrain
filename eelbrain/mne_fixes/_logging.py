@@ -26,3 +26,36 @@ if first_mne_import:
                 h.setLevel(level)
 
 
+class CaptureLog(object):
+    """Context to capture log from a specific logger and write it to a file
+
+    Parameters
+    ----------
+    filename : str
+        Where to write the log file.
+    mode : str
+        Mode for opening the log file (default 'w').
+    name : str
+        Name of the logger from which to capture (default 'mne').
+    """
+    def __init__(self, filename, mode='w', logger='mne', level='debug'):
+        self.logger = logger
+        self.level = log_level(level)
+        self.handler = FileHandler(filename, mode)
+        self.handler.setLevel(self.level)
+        self.handler.setFormatter(Formatter("%(levelname)-8s :%(message)s"))
+        self._old_level = None
+
+    def __enter__(self):
+        logger = getLogger(self.logger)
+        logger.addHandler(self.handler)
+        if logger.level == 0 or logger.level > self.level:
+            self._old_level = logger.level
+            logger.setLevel(self.level)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.handler.close()
+        logger = getLogger(self.logger)
+        logger.removeHandler(self.handler)
+        if self._old_level is not None:
+            logger.setLevel(self._old_level)

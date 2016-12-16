@@ -10,6 +10,7 @@ from mne.io import read_raw_fif
 
 from .. import load
 from .._data_obj import NDVar
+from ..mne_fixes import CaptureLog
 
 
 class RawPipe(object):
@@ -125,10 +126,11 @@ class CachedRawPipe(RawPipe):
         "Make sure the cache is up to date"
         path = self.path.format(subject=subject, session=session)
         if not exists(path) or getmtime(path) < self.mtime(subject, session, self._bad_chs_affect_cache):
-            raw = self._make(subject, session)
             dir_path = dirname(path)
             if not exists(dir_path):
                 mkdir(dir_path)
+            with CaptureLog(path[:-3] + 'log'):
+                raw = self._make(subject, session)
             raw.save(path, overwrite=True)
 
     def load(self, subject, session, add_bads=True, preload=False):
