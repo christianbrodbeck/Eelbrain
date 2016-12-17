@@ -3541,16 +3541,16 @@ class NDVar(object):
         else:
             return NDVar(x, dims, self.info.copy(), name)
 
-    def bin(self, tstep, tstart=None, tstop=None, func=None, name=None):
+    def bin(self, step, start=None, stop=None, func=None, dim=None, name=None):
         """Bin the data along the time axis
 
         Parameters
         ----------
-        tstep : scalar
+        step : scalar
             Time step between bins.
-        tstart : None | scalar
+        start : None | scalar
             Earliest time point (default is from the beginning).
-        tstop : None | scalar
+        stop : None | scalar
             End of the data to use (the default is to use as many whole
             ``tstep`` intervals as fit in the data).
         func : callable | str
@@ -3562,6 +3562,9 @@ class NDVar(object):
             'f': maximum;
             't', 'r': extrema;
             otherwise: mean.
+        dim : str
+            Dimension over which to bin. If the NDVar has more than one
+            dimension, the default is time.
         name : str
             Name of the output NDVar (default is the current name).
 
@@ -3571,8 +3574,16 @@ class NDVar(object):
             NDVar with data binned along the time axis (i.e., each time point
             reflects one time bin).
         """
-        time = self.get_dim('time')
-        time_axis = self.get_axis('time')
+        if dim is None:
+            if len(self.dims) == 1 + self.has_case:
+                dim = self.dims[-1].name
+            elif self.has_dim('time'):
+                dim = 'time'
+            else:
+                raise TypeError("NDVar has more then 1 dimensions, the dim "
+                                "argument needs to be specified")
+        elif dim == 'case':
+            raise NotImplementedError("dim='case'")
 
         # summary-func
         if func is None:
@@ -3592,40 +3603,60 @@ class NDVar(object):
         elif not callable(func):
             raise TypeError("func=%s" % repr(func))
 
-        if tstart is None:
-            tstart = time.tmin
+        axis = self.get_axis(dim)
+        dim = self.get_dim(dim)
 
-        if tstop is None:
-            dt = time.tstep * time.nsamples
-            n_bins = int(floor(round(dt / tstep, 1)))
+        if isinstance(dim, UTS):
+            if start is None:
+                start = dim.tmin
+
+            if stop is None:
+                stop = dim.tstop
+
+            n_bins = int(ceil((stop - start) / step))
+            out_dim = UTS(start + step / 2, step, n_bins)
+        elif isinstance(dim, Ordered):
+            if start is None:
+                start = dim[0]
+
+            if stop is None:
+                n_bins_fraction = (dim[-1] - start) / step
+                n_bins = int(ceil(n_bins_fraction))
+                # if the last value would fall into a new bin
+                if n_bins == n_bins_fraction:
+                    n_bins += 1
+            else:
+                n_bins = int(ceil((stop - start) / step))
+
+            # new dimensions
+            dim_start = start + step / 2
+            dim_stop = dim_start + n_bins * step
+            out_dim = Ordered(dim.name, np.arange(dim_start, dim_stop, step),
+                              dim.unit, dim.tick_format)
         else:
-            n_bins = int(ceil((tstop - tstart) / tstep))
+            raise NotImplementedError("NDVar.bin() is only implement for UTS "
+                                      "and Ordered dimensions, not %s" %
+                                      dim.__class__.__name__)
 
         # find time bin boundaries
-        times = [tstart + n * tstep for n in xrange(n_bins + 1)]
-        if times[-1] > time.tstop:
-            times[-1] = time.tstop
-
+        edges = [start + n * step for n in xrange(n_bins)] + [stop]
         out_shape = list(self.shape)
-        out_shape[time_axis] = n_bins
+        out_shape[axis] = n_bins
         x = np.empty(out_shape)
         bins = []
-        idx_prefix = (full_slice,) * time_axis
+        idx_prefix = (full_slice,) * axis
         for i in xrange(n_bins):
-            t0 = times[i]
-            t1 = times[i + 1]
-            src_idx = idx_prefix + (time.dimindex((t0, t1)),)
+            v0 = edges[i]
+            v1 = edges[i + 1]
+            src_idx = idx_prefix + (dim.dimindex((v0, v1)),)
             dst_idx = idx_prefix + (i,)
-            x[dst_idx] = func(self.x[src_idx], axis=time_axis)
-            if t1 is None:
-                t1 = time.tmax + time.tstep
-            bins.append((t0, t1))
+            x[dst_idx] = func(self.x[src_idx], axis=axis)
+            bins.append((v0, v1))
 
-        out_time = UTS(tstart + tstep / 2, tstep, n_bins)
         dims = list(self.dims)
-        dims[time_axis] = out_time
+        dims[axis] = out_dim
         info = self.info.copy()
-        info['bins'] = bins
+        info['bins'] = tuple(bins)
         return NDVar(x, dims, info, name or self.name)
 
     def copy(self, name=None):
