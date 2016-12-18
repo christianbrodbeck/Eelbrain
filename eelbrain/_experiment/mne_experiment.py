@@ -5961,13 +5961,32 @@ class MneExperiment(FileTree):
     def show_raw_info(self):
         "Display the selected pipeline for raw processing"
         raw = self.get('raw')
-        pipe = self._raw[raw]
+        pipe = source_pipe = self._raw[raw]
         pipeline = [pipe]
-        while pipe.name != 'raw':
-            pipe = pipe.source
-            pipeline.insert(0, pipe)
+        while source_pipe.name != 'raw':
+            source_pipe = source_pipe.source
+            pipeline.insert(0, source_pipe)
         print("Preprocessing pipeline: " +
-              ' --> '.join(pipe.name for pipe in pipeline))
+              ' --> '.join(p.name for p in pipeline))
+
+        # pipe-specific
+        if isinstance(pipe, RawICA):
+            subjects = []
+            statuses = []
+            for s in self:
+                subjects.append(s)
+                filename = self.get('raw-ica-file')
+                if os.path.exists(filename):
+                    ica = self.load_ica()
+                    status = "%i components rejected" % len(ica.exclude)
+                else:
+                    status = "No ICA-file"
+                statuses.append(status)
+            ds = Dataset()
+            ds['subject'] = Factor(subjects)
+            ds['status'] = Factor(statuses)
+            print()
+            print(ds)
 
     def show_reg_params(self, asds=False, **kwargs):
         """Show the covariance matrix regularization parameters
