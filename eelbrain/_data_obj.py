@@ -3954,6 +3954,9 @@ class NDVar(object):
         if not all(n is None or n in self.dimnames for n in names):
             raise ValueError("%s contains dimension that is not in %r" %
                              (names, self))
+        elif len(names) != len(self.dims):
+            raise ValueError("Wrong number of dimensions. NDVar has %i "
+                             "dimensions: %s" % (len(self.dims), self))
         elif any(names.count(n) > 1 for n in names if n is not None):
             raise ValueError("Dimension specified twice in " + repr(names))
         elif None in names:
