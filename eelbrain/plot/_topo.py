@@ -62,6 +62,8 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
     ds : None | Dataset
         If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
         as strings.
+    sub : str | array
+        Specify a subset of the data.
     res : int
         Resolution of the topomaps (width = height = ``res``).
     interpolation : str
@@ -87,10 +89,10 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
     def __init__(self, epochs, xax=None, proj='default', cmap=None, vmax=None,
                  vmin=None, contours=7, clip='even', clip_distance=0.05,
                  head_radius=None, head_pos=0., mark=None, sensorlabels='none',
-                 ds=None, res=64, interpolation=None, axtitle=True, xlabel=None,
-                 method=None, *args, **kwargs):
+                 ds=None, sub=None, res=64, interpolation=None, axtitle=True,
+                 xlabel=None, method=None, *args, **kwargs):
         epochs, _, frame_title = _base.unpack_epochs_arg(
-            epochs, ('sensor',), xax, ds, "Topomap"
+            epochs, ('sensor',), xax, ds, "Topomap", sub
         )
         ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin, contours)
         nax = len(epochs)
@@ -135,9 +137,10 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
 class TopomapBins(EelFigure):
 
     def __init__(self, epochs, Xax=None, bin_length=0.05, tstart=None,
-                 tstop=None, ds=None, vmax=None, vmin=None, *args, **kwargs):
+                 tstop=None, ds=None, sub=None, vmax=None, vmin=None, *args,
+                 **kwargs):
         epochs, _, frame_title = _base.unpack_epochs_arg(
-            epochs, ('sensor', 'time'), Xax, ds, "TopomapBins"
+            epochs, ('sensor', 'time'), Xax, ds, "TopomapBins", sub
         )
         epochs = [[l.bin(bin_length, tstart, tstop) for l in layers]
                   for layers in epochs]
@@ -193,6 +196,8 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
         Color for marked sensors.
     ds : None | Dataset
         If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
+    sub : str | array
+        Specify a subset of the data.
         as strings.
     axh : scalar
         Height of the butterfly axes as well as side length of the topomap
@@ -228,15 +233,15 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
     def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
                  xticklabels=True,
                  proj='default', res=100, interpolation='nearest', color=None,
-                 sensorlabels=None, mark=None, mcolor=None, ds=None, vmax=None,
-                 vmin=None, axlabel=None, axtitle=True, frame=True, xlim=None,
-                 *args, **kwargs):
+                 sensorlabels=None, mark=None, mcolor=None, ds=None, sub=None,
+                 vmax=None, vmin=None, axlabel=None, axtitle=True, frame=True,
+                 xlim=None, *args, **kwargs):
         if axlabel is not None:
             warn("The axlabel parameter for plot.TopoButterfly() is "
                  "deprecated, please use axtitle instead", DeprecationWarning)
             axtitle = axlabel
         epochs, (_, xdim), frame_title = _base.unpack_epochs_arg(
-            epochs, ('sensor', None), Xax, ds, "TopoButterfly"
+            epochs, ('sensor', None), Xax, ds, "TopoButterfly", sub
         )
         n_rows = len(epochs)
         self._epochs = epochs
@@ -670,6 +675,8 @@ class TopoArray(EelFigure):
     ds : None | Dataset
         If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
         as strings.
+    sub : str | array
+        Specify a subset of the data.
     vmax, vmin : None | scalar
         Override the default plot limits. If only vmax is specified, vmin
         is set to -vmax.
@@ -689,10 +696,10 @@ class TopoArray(EelFigure):
     _make_axes = False
 
     def __init__(self, epochs, Xax=None, title=None, ntopo=3, t=[], ds=None,
-                 vmax=None, vmin=None, xticklabels=True, axtitle=True, *args,
-                 **kwargs):
+                 sub=None, vmax=None, vmin=None, xticklabels=True, axtitle=True,
+                 *args, **kwargs):
         epochs, _, frame_title = _base.unpack_epochs_arg(
-            epochs, ('time', 'sensor'), Xax, ds, 'TopoArray'
+            epochs, ('time', 'sensor'), Xax, ds, 'TopoArray', sub
         )
         n_epochs = len(epochs)
         n_topo_total = ntopo * n_epochs

@@ -356,6 +356,8 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     ds : None | Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
+    sub : str | array
+        Specify a subset of the data.
     xlabel, ylabel : str | None
         X- and y axis labels. By default the labels will be inferred from
         the data.
@@ -374,11 +376,11 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     title : None | str
         Figure title.
     """
-    def __init__(self, epochs, xax=None, axtitle=True, ds=None,
+    def __init__(self, epochs, xax=None, axtitle=True, ds=None, sub=None,
                  xlabel=True, ylabel=True, xticklabels=True, bottom=None,
                  top=None, legend='upper right', xlim=None, *args, **kwargs):
         epochs, (xdim,), frame_title = _base.unpack_epochs_arg(
-            epochs, (None,), xax, ds, "UTS"
+            epochs, (None,), xax, ds, "UTS", sub
         )
         layout = Layout(len(epochs), 2, 4, *args, **kwargs)
         EelFigure.__init__(self, frame_title, layout)

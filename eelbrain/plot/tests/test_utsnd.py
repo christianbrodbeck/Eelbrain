@@ -8,6 +8,7 @@ import os
 import mne
 import numpy as np
 from mne.io import Raw
+from nose.tools import eq_
 
 from eelbrain import datasets, plot, testnd
 from eelbrain.plot._base import Figure
@@ -39,9 +40,13 @@ def test_plot_butterfly():
 def test_plot_array():
     "Test plot.Array"
     ds = datasets.get_uts(utsnd=True)
-    p = plot.Array('utsnd', 'A%B', ds=ds, show=False)
-    p.close()
     p = plot.Array('utsnd', ds=ds, show=False)
+    p.close()
+    p = plot.Array('utsnd', 'A%B', ds=ds, show=False)
+    eq_(p._layout.nax, 4)
+    p.close()
+    p = plot.Array('utsnd', 'A', sub='B=="b1"', ds=ds)
+    eq_(p._layout.nax, 2)
     p.close()
 
 

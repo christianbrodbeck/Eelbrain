@@ -192,6 +192,8 @@ class Array(ColorMapMixin, XAxisMixin, EelFigure):
     ds : None | Dataset
         If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
         as strings.
+    sub : str | array
+        Specify a subset of the data.
     x : str
         Dimension to plot on the x axis (default 'time').
     vmax : scalar
@@ -217,11 +219,11 @@ class Array(ColorMapMixin, XAxisMixin, EelFigure):
         Figure title.
     """
     def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
-                 xticklabels=True, ds=None, x='time', vmax=None, vmin=None,
-                 cmap=None, axtitle=True, interpolation=None, xlim=None, *args,
-                 **kwargs):
+                 xticklabels=True, ds=None, sub=None, x='time', vmax=None,
+                 vmin=None, cmap=None, axtitle=True, interpolation=None,
+                 xlim=None, *args, **kwargs):
         epochs, (xdim, ydim), frame_title = _base.unpack_epochs_arg(
-            epochs, (x, None), Xax, ds, "Array"
+            epochs, (x, None), Xax, ds, "Array", sub
         )
         ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin)
 
@@ -374,6 +376,8 @@ class Butterfly(LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
     ds : None | Dataset
         If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
         as strings.
+    sub : str | array
+        Specify a subset of the data.
     x : str
         Dimension to plot on the x-axis (default 'time').
     vmax : scalar
@@ -393,10 +397,10 @@ class Butterfly(LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
 
     def __init__(self, epochs, xax=None, sensors=None, axtitle=True,
                  xlabel=True, ylabel=True, xticklabels=True, color=None,
-                 ds=None, x='time', vmax=None, vmin=None, xlim=None, *args,
-                 **kwargs):
+                 ds=None, sub=None, x='time', vmax=None, vmin=None, xlim=None,
+                 *args, **kwargs):
         epochs, (xdim, linedim), frame_title = _base.unpack_epochs_arg(
-            epochs, (x, None), xax, ds, "Butterfly"
+            epochs, (x, None), xax, ds, "Butterfly", sub
         )
         layout = Layout(len(epochs), 2, 4, *args, **kwargs)
         EelFigure.__init__(self, frame_title, layout)

@@ -78,7 +78,8 @@ from .._utils.subp import command_exists
 from ..fmtxt import Image, texify
 from .._colorspaces import symmetric_cmaps, zerobased_cmaps, DEFAULT_CMAPS, \
     ALPHA_CMAPS
-from .._data_obj import ascategorial, asndvar, isnumeric, isdataobject, cellname
+from .._data_obj import (ascategorial, asndvar, assub, isnumeric, isdataobject,
+                         cellname)
 
 
 # constants
@@ -704,7 +705,7 @@ def find_data_dims(ndvar, dims):
             raise ValueError("NDVar does not have the right number of dimensions")
 
 
-def unpack_epochs_arg(y, dims, xax=None, ds=None, plot_name=None):
+def unpack_epochs_arg(y, dims, xax=None, ds=None, plot_name=None, sub=None):
     """Unpack the first argument to top-level NDVar plotting functions
 
     Parameters
@@ -721,6 +722,8 @@ def unpack_epochs_arg(y, dims, xax=None, ds=None, plot_name=None):
         Dataset containing data objects which are provided as str.
     plot_name : str
         Name of the plot (used only for ``frame_title``).
+    sub : None | str
+        Index selecting a subset of cases.
 
     Returns
     -------
@@ -744,6 +747,8 @@ def unpack_epochs_arg(y, dims, xax=None, ds=None, plot_name=None):
     if hasattr(y, '_default_plot_obj'):
         y = y._default_plot_obj
 
+    sub = assub(sub, ds)
+
     if isinstance(y, (tuple, list)):
         if xax is not None:
             raise TypeError(
@@ -754,12 +759,12 @@ def unpack_epochs_arg(y, dims, xax=None, ds=None, plot_name=None):
             if isinstance(ax, (tuple, list)):
                 layers = []
                 for layer in ax:
-                    layer = asndvar(layer, ds=ds)
+                    layer = asndvar(layer, sub, ds)
                     agg, dims = find_data_dims(layer, dims)
                     layers.append(aggregate(layer, agg))
                 axes.append(layers)
             else:
-                ax = asndvar(ax, ds=ds)
+                ax = asndvar(ax, sub, ds)
                 agg, dims = find_data_dims(ax, dims)
                 layer = aggregate(ax, agg)
                 axes.append([layer])
@@ -778,7 +783,7 @@ def unpack_epochs_arg(y, dims, xax=None, ds=None, plot_name=None):
         else:
             y_name = ' | '.join(y_names)
     else:
-        y = asndvar(y, ds=ds)
+        y = asndvar(y, sub, ds)
         y_name = y.name
 
         # create list of plots
@@ -811,7 +816,7 @@ def unpack_epochs_arg(y, dims, xax=None, ds=None, plot_name=None):
                 axes = [[aggregate(y, agg)]]
                 x_name = None
             else:
-                xax = ascategorial(xax, ds=ds)
+                xax = ascategorial(xax, sub, ds)
                 axes = []
                 for cell in xax.cells:
                     v = y[xax == cell]
