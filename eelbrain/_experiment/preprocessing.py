@@ -2,7 +2,7 @@
 """
 Pre-processing operations based on NDVars
 """
-from os import mkdir
+from os import mkdir, remove
 from os.path import dirname, exists, getmtime
 
 import mne
@@ -342,26 +342,71 @@ def compare_pipelines(old, new):
         A {name: params} dict for the previous preprocessing pipeline.
     new : {str: dict}
         Current pipeline.
+
+    Returns
+    -------
+    bad_raw : {str: str}
+        ``{pipe_name: status}`` dictionary. Status can be 'new', 'removed' or
+        'changed'.
+    bad_ica : {str: str}
+        Same as ``bad_raw`` but only for RawICA pipes (for which ICA files
+        might have to be removed).
     """
-    good = {k: False for k in set(new) ^ set(old)}
-    good['raw'] = True
-    to_check = [k for k in old if k not in good]
+    out = {k: 'new' for k in new if k not in old}
+    out.update({k: 'removed' for k in old if k not in new})
+    out['raw'] = 'good'
 
     # parameter changes
-    for key in to_check[:]:
+    to_check = set(new) - set(out)
+    for key in tuple(to_check):
         if new[key] != old[key]:
-            good[key] = False
+            out[key] = 'changed'
             to_check.remove(key)
 
     # secondary changes
     while to_check:
         n = len(to_check)
-        for key in to_check[:]:
+        for key in tuple(to_check):
             parent = new[key]['source']
-            if parent in good:
-                good[key] = good[parent]
+            if parent in out:
+                out[key] = out[parent]
                 to_check.remove(key)
         if len(to_check) == n:
-            raise RuntimeError("Que not decreasing")
+            raise RuntimeError("Queue not decreasing")
 
-    return tuple(k for k, value in good.iteritems() if value is False)
+    bad_raw = {k: v for k, v in out.iteritems() if v != 'good'}
+    bad_ica = {k: v for k, v in bad_raw.iteritems() if
+               new.get(k, old.get(k))['type'] == 'RawICA'}
+    return bad_raw, bad_ica
+
+
+def ask_to_delete_ica_files(raw, status, filenames):
+    "Ask whether outdated ICA files should be removed and act accordingly"
+    if status == 'new':
+        msg = ("The definition for raw=%r has been added, but ICA-files "
+               "already exist. These files might not correspond to the new "
+               "settings and should probably be deleted." % (raw,))
+    elif status == 'removed':
+        msg = ("The definition for raw=%r has been removed. The corresponsing "
+               "ICA files should probably be deleted:" % (raw,))
+    elif status == 'changed':
+        msg = ("The definition for raw=%r has changed. The corresponding ICA "
+               "files should probably be deleted." % (raw,))
+    else:
+        raise RuntimeError("status=%r" % (status,))
+    msg += (" Delete %i files? Abort to fix the raw definition and try again. "
+            "If you choose to ignore, you will not be warned again." %
+            len(filenames))
+    print(msg)
+
+    command = ''
+    while command not in ('abort', 'delete', 'ignore'):
+        command = raw_input("type delete/abort/ignore: ").lower()
+
+    if command == 'delete':
+        for filename in filenames:
+            remove(filename)
+    elif command == 'abort':
+        raise RuntimeError("User abort")
+    elif command != 'ignore':
+        raise RuntimeError("command=%r" % (command,))

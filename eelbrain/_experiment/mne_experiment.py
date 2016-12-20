@@ -50,7 +50,8 @@ from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .definitions import find_dependent_epochs, find_epochs_vars, find_test_vars
 from .experiment import FileTree
 from .preprocessing import (
-    assemble_pipeline, RawICA, pipeline_dict, compare_pipelines)
+    assemble_pipeline, RawICA, pipeline_dict, compare_pipelines,
+    ask_to_delete_ica_files)
 
 
 __all__ = ['MneExperiment']
@@ -1292,9 +1293,16 @@ class MneExperiment(FileTree):
                     log.debug("  group: %s" % group)
 
             # raw
-            changed = compare_pipelines(cache_raw, raw_state)
+            changed, changed_ica = compare_pipelines(cache_raw, raw_state)
             if changed:
-                invalid_cache['raw'] = changed
+                invalid_cache['raw'].update(changed)
+                log.debug("  raw: %s" % ', '.join(changed))
+            for raw, status in changed_ica.iteritems():
+                filenames = self.glob('raw-ica-file', raw=raw, subject='*')
+                if filenames:
+                    print("Outdated ICA files:\n" + '\n'.join(
+                          os.path.relpath(path, root) for path in filenames))
+                    ask_to_delete_ica_files(raw, status, filenames)
 
             # epochs
             for epoch, params in cache_state['epochs'].iteritems():
