@@ -14,6 +14,7 @@ from .about import AboutFrame
 
 
 APP = None  # hold the App instance
+IS_OSX = sys.platform == 'darwin'
 
 
 def wildcard(filetypes):
@@ -93,7 +94,7 @@ class App(wx.App):
         menu_bar.Append(view_menu, "View")
         menu_bar.Append(go_menu, "Go")
         menu_bar.Append(window_menu, "Window")
-        menu_bar.Append(help_menu, self.GetMacHelpMenuTitleName())
+        menu_bar.Append(help_menu, self.GetMacHelpMenuTitleName() if IS_OSX else 'Help')
         wx.MenuBar.MacSetCommonMenuBar(menu_bar)
         self.menubar = menu_bar
 
