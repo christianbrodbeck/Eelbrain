@@ -243,7 +243,7 @@ class CanvasFrame(EelbrainFrame):
         dlg.Destroy()
 
     def OnSetVLim(self, event):
-        bottom, top = self.get_ylim()
+        bottom, top = self._eelfigure.get_ylim()
         dlg = wx.TextEntryDialog(self, "New Y-axis limits:", "Set Y-Axis Limit",
                                  "%s %s" % (bottom, top))
 
