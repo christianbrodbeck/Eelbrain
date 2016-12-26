@@ -398,25 +398,38 @@ class TreeModel(object):
         return temp
 
     def find_keys(self, temp, root=True):
-        """
-        Find all terminal keys that are relevant for a template.
+        """Find all terminal field names that are relevant for a template.
+
+        Parameters
+        ----------
+        temp : str
+            Template (or field name) for which to find terminal field names.
+        root : bool
+            Include "root" if present (default True).
 
         Returns
         -------
         keys : set
-            All terminal keys that are relevant for foormatting temp.
-        root : bool
-            Include "root" if present (default True).
+            All terminal field names that are relevant for formatting ``temp``.
         """
         keys = set()
-        temp = self._fields.get(temp, temp)
 
-        for key in self._fmt_pattern.findall(temp):
-            if key == "root" and not root:
-                continue
-            value = self._fields[key]
-            if self._fmt_pattern.findall(value):
-                keys = keys.union(self.find_keys(value, root))
+        if temp in self._compound_members:
+            temporary_keys = list(self._compound_members[temp])
+        else:
+            temp = self._fields.get(temp, temp)
+            temporary_keys = self._fmt_pattern.findall(temp)
+
+        while temporary_keys:
+            key = temporary_keys.pop()
+
+            if key == 'root':
+                if root:
+                    keys.add('root')
+            # are there sub-fields?
+            elif (key in self._compound_members or
+                  self._fmt_pattern.findall(self._fields[key])):
+                keys.update(self.find_keys(key, root))
             else:
                 keys.add(key)
 

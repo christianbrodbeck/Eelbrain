@@ -84,6 +84,12 @@ def test_mne_experiment_templates():
     e.set(raw='1-40')
     eq_(e.get('src_kind'), '1-40 noreg fixed-3-dSPM')
 
+    # find terminal field names
+    eq_(e.find_keys('raw-file'), {'root', 'subject', 'session'})
+    eq_(e.find_keys('evoked-file', False),
+        {'subject', 'session', 'modality', 'raw', 'epoch', 'rej',
+         'equalize_evoked_count', 'model', })
+
     # inv
     SNR2 = 1. / 2**2
     SNR3 = 1. / 3**2
