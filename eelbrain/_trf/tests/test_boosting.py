@@ -27,10 +27,12 @@ def test_boosting():
 
     # test values from running function, not verified independently
     res = boosting(y, x1 * 2000, 0, 1, scale_data=False)
+    eq_(repr(res), '<boosting y ~ x1, 0 - 1, scale_data=False>')
     eq_(round(res.r, 2), 0.75)
     assert_is_none(res.y_mean)
 
     res = boosting(y, x1, 0, 1)
+    eq_(repr(res), '<boosting y ~ x1, 0 - 1>')
     eq_(round(res.r, 2), 0.83)
     eq_(res.y_mean, y_mean)
     eq_(res.y_scale, y.std())

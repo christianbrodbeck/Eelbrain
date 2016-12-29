@@ -70,7 +70,7 @@ class BoostingResult(object):
     """
     def __init__(self, h, r, isnan, t_run, version, delta, mindelta, error,
                  spearmanr, fit_error, scale_data, y_mean, y_scale, x_mean,
-                 x_scale):
+                 x_scale, y=None, x=None, tstart=None, tstop=None):
         self.h = h
         self.r = r
         self.isnan = isnan
@@ -86,6 +86,10 @@ class BoostingResult(object):
         self.y_scale = y_scale
         self.x_mean = x_mean
         self.x_scale = x_scale
+        self.y = y
+        self.x = x
+        self.tstart = tstart
+        self.tstop = tstop
 
     def __getstate__(self):
         return {attr: getattr(self, attr) for attr in
@@ -93,6 +97,21 @@ class BoostingResult(object):
 
     def __setstate__(self, state):
         self.__init__(**state)
+
+    def __repr__(self):
+        if self.x is None or isinstance(self.x, basestring):
+            x = self.x
+        else:
+            x = ' + '.join(map(str, self.x))
+        items = ['boosting %s ~ %s' % (self.y, x),
+                 '%g - %g' % (self.tstart, self.tstop)]
+        argspec = getargspec(boosting)
+        names = argspec.args[-len(argspec.defaults):]
+        for name, default in izip(names, argspec.defaults):
+            value = getattr(self, name)
+            if value != default:
+                items.append('%s=%r' % (name, value))
+        return '<%s>' % ', '.join(items)
 
 
 def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
@@ -132,12 +151,15 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     """
     # check y and x
     if isinstance(x, NDVar):
+        x_name = x.name
         x = (x,)
         multiple_x = False
     else:
         x = tuple(x)
         assert all(isinstance(x_, NDVar) for x_ in x)
+        x_name = tuple(x_.name for x_ in x)
         multiple_x = True
+    y_name = y.name
     time_dim = y.get_dim('time')
     if any(x_.get_dim('time') != time_dim for x_ in x):
         raise ValueError("Not all NDVars have the same time dimension")
@@ -270,7 +292,8 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
 
     return BoostingResult(hs, r, isnan, dt, VERSION, delta, mindelta, error, rr,
                           err, scale_data, data_mean[0], data_scale[0],
-                          data_mean[idx], data_scale[idx])
+                          data_mean[idx], data_scale[idx], y_name, x_name,
+                          tstart, tstop)
 
 
 def boosting_continuous(x, y, trf_length, delta, error, mindelta=None, nsegs=10,
