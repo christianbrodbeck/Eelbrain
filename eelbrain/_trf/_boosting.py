@@ -1,3 +1,17 @@
+"""
+Boosting as described by David et al. (2007).
+
+
+Profiling
+---------
+ds = datasets._get_continuous()
+y = ds['y']
+x1 = ds['x1']
+x2 = ds['x2']
+
+%prun -s cumulative res = boosting(y, x1, 0, 1)
+
+"""
 from __future__ import division
 from inspect import getargspec
 from itertools import chain, izip, product
@@ -413,8 +427,7 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
     # history lists
     history = []
     test_error_history = []
-    i_boost = 0
-    while True:
+    for i_boost in xrange(999999):
         history.append(h.copy())
 
         # evaluate current h
@@ -427,13 +440,11 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
         # 1. more than 10 iterations are done
         # 2. The testing error in the latest iteration is higher than that in
         #    the previous two iterations
-        if i_boost > 10:
-            if (test_error_history[-1] > test_error_history[-2] and
-                    test_error_history[-1] > test_error_history[-3]):
-                reason = "error(test) not improving in 2 steps"
-                break
-        else:
-            i_boost += 1
+        if (i_boost > 10 and
+                test_error_history[-1] > test_error_history[-2] and
+                test_error_history[-1] > test_error_history[-3]):
+            reason = "error(test) not improving in 2 steps"
+            break
 
         # generate possible movements -> training error
         for i_stim, i_time in product(xrange(h.shape[0]), xrange(h.shape[1])):
@@ -480,10 +491,10 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
         h[i_stim, i_time] += delta_signed
 
         # abort if we're moving in circles
-        if len(history) >= 2 and np.array_equal(h, history[-2]):
+        if i_boost >= 2 and h[i_stim, i_time] == history[-2][i_stim, i_time]:
             reason = "Same h after 2 iterations"
             break
-        elif len(history) >= 3 and np.array_equal(h, history[-3]):
+        elif i_boost >= 3 and h[i_stim, i_time] == history[-3][i_stim, i_time]:
             reason = "Same h after 3 iterations"
             break
 
@@ -501,7 +512,7 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
 
     # Keep predictive power as the correlation for the best iteration
     return (history[best_iter], test_error_history,
-            reason + ' (%i iterations)' % len(test_error_history))
+            reason + ' (%i iterations)' % (i_boost + 1))
 
 
 def apply_kernel(x, h, out=None):
