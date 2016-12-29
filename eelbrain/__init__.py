@@ -27,13 +27,13 @@ from . import mne_fixes
 from ._data_obj import (Datalist, Dataset, Var, Factor, Interaction, Model,
                         NDVar, choose, combine, align, align1, cellname,
                         Celltable, shuffled_index)
+from ._experiment import MneExperiment
+from ._mne import labels_from_clusters, morph_source_space
 from ._ndvar import (Butterworth, concatenate, cwt_morlet, neighbor_correlation,
                      resample, segment)
-from ._mne import labels_from_clusters, morph_source_space
-
+from ._trf import boosting
 from ._utils import set_log_level
 from ._utils.com import check_for_update
-from ._experiment import MneExperiment
 
 from . import datasets
 from . import gui
