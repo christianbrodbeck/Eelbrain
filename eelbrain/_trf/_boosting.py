@@ -463,9 +463,8 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
         # 1. more than 10 iterations are done
         # 2. The testing error in the latest iteration is higher than that in
         #    the previous two iterations
-        if (i_boost > 10 and
-                test_error_history[-1] > test_error_history[-2] and
-                test_error_history[-1] > test_error_history[-3]):
+        if (i_boost > 10 and e_test > test_error_history[-2] and
+                e_test > test_error_history[-3]):
             reason = "error(test) not improving in 2 steps"
             break
 
