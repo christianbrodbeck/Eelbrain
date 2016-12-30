@@ -450,12 +450,19 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
     # history lists
     history = []
     test_error_history = []
+    # pre-assign iterators
+    iter_test_error = zip(y_test_error, y_test_buf)
+    iter_train_error = zip(y_train_error, y_train_buf)
+    iter_h = tuple(product(xrange(h.shape[0]), xrange(h.shape[1])))
+    iter_x_train = zip(ys_delta, x_train)
+    iter_y_train = zip(y_train_error, ys_delta, y_train_buf)
+    iter_error = zip(ys_error, ys_delta, xs)
     for i_boost in xrange(999999):
         history.append(h.copy())
 
         # evaluate current h
-        e_test = sum(error(y, buf) for y, buf in izip(y_test_error, y_test_buf))
-        e_train = sum(error(y, buf) for y, buf in izip(y_train_error, y_train_buf))
+        e_test = sum(error(y, buf) for y, buf in iter_test_error)
+        e_train = sum(error(y, buf) for y, buf in iter_train_error)
 
         test_error_history.append(e_test)
 
@@ -469,9 +476,9 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
             break
 
         # generate possible movements -> training error
-        for i_stim, i_time in product(xrange(h.shape[0]), xrange(h.shape[1])):
+        for i_stim, i_time in iter_h:
             # y_delta = change in y from delta change in h
-            for yd, x in izip(ys_delta, x_train):
+            for yd, x in iter_x_train:
                 yd[:i_time] = 0.
                 yd[i_time:] = x[i_stim, :-i_time or None]
                 yd *= delta
@@ -479,7 +486,7 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
             # +/- delta
             e_add = 0
             e_sub = 0
-            for y_err, dy, buf in izip(y_train_error, ys_delta, y_train_buf):
+            for y_err, dy, buf in iter_y_train:
                 # + delta
                 np.subtract(y_err, dy, buf)
                 e_add += error(buf, buf)
@@ -521,7 +528,7 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
             break
 
         # update error
-        for err, yd, x in izip(ys_error, ys_delta, xs):
+        for err, yd, x in iter_error:
             yd[:i_time] = 0.
             yd[i_time:] = x[i_stim, :-i_time or None]
             yd *= delta_signed
