@@ -25,10 +25,13 @@ from tqdm import tqdm
 
 from .. import _colorspaces as cs
 from .._data_obj import NDVar, UTS
+from .._stats.error_functions import l1, l2
 
 
 # BoostingResult version
 VERSION = 6
+
+ERROR_FUNC = {'l2': l2, 'l1': l1}
 
 
 class BoostingResult(object):
@@ -139,7 +142,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     mindelta : scalar
         If set, ``delta`` is divided in half after each unsuccessful iteration
         until ``delta < mindelta``. The default is ``mindelta = delta``.
-    error : 'l2' | 'l1' | 'l2centered' | 'l1centered'
+    error : 'l2' | 'l1'
         Error function to use (default is ``l2``).
 
     Returns
@@ -412,7 +415,6 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
     y_train_error = tuple(y.copy() for y in y_train)
     y_train_buf = tuple(np.empty(y.shape) for y in y_train)
     y_test_error = tuple(y.copy() for y in y_test)
-    y_test_buf = tuple(np.empty(y.shape) for y in y_test)
 
     ys_error = y_train_error + y_test_error
     ys_delta = tuple(np.empty(y.shape) for y in ys_error)
@@ -425,8 +427,6 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
     history = []
     test_error_history = []
     # pre-assign iterators
-    iter_test_error = zip(y_test_error, y_test_buf)
-    iter_train_error = zip(y_train_error, y_train_buf)
     iter_h = tuple(product(xrange(h.shape[0]), xrange(h.shape[1])))
     iter_x_train = zip(ys_delta, x_train)
     iter_y_train = zip(y_train_error, ys_delta, y_train_buf)
@@ -435,8 +435,8 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
         history.append(h.copy())
 
         # evaluate current h
-        e_test = sum(error(y, buf) for y, buf in iter_test_error)
-        e_train = sum(error(y, buf) for y, buf in iter_train_error)
+        e_test = sum(error(y) for y in y_test_error)
+        e_train = sum(error(y) for y in y_train_error)
 
         test_error_history.append(e_test)
 
@@ -463,10 +463,10 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
             for y_err, dy, buf in iter_y_train:
                 # + delta
                 np.subtract(y_err, dy, buf)
-                e_add += error(buf, buf)
+                e_add += error(buf)
                 # - delta
                 np.add(y_err, dy, buf)
-                e_sub += error(buf, buf)
+                e_sub += error(buf)
 
             if e_add > e_sub:
                 new_error[i_stim, i_time] = e_sub
@@ -558,30 +558,3 @@ def evaluate_kernel(y, x, h, error):
     return (np.corrcoef(y, y_pred)[0, 1],
             spearmanr(y, y_pred)[0],
             error_func(y - y_pred))
-
-
-# Error functions
-def ss(error, buf=None):
-    "Sum squared error"
-    return np.dot(error, error[:, None])[0]
-
-
-def ss_centered(error, buf=None):
-    "Sum squared of the centered error"
-    error = np.subtract(error, error.mean(), buf)
-    return np.dot(error, error[:, None])[0]
-
-
-def sum_abs(error, buf=None):
-    "Sum of absolute error"
-    return np.abs(error, buf).sum()
-
-
-def sum_abs_centered(error, buf=None):
-    "Sum of absolute centered error"
-    error = np.subtract(error, error.mean(), buf)
-    return np.abs(error, buf).sum()
-
-
-ERROR_FUNC = {'l2': ss, 'l2centered': ss_centered,
-              'l1': sum_abs, 'l1centered': sum_abs_centered}
