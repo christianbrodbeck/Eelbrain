@@ -25,13 +25,15 @@ from tqdm import tqdm
 
 from .. import _colorspaces as cs
 from .._data_obj import NDVar, UTS
-from .._stats.error_functions import l1, l2
+from .._stats.error_functions import (l1, l2, l1_for_delta, l2_for_delta,
+                                      update_error)
 
 
 # BoostingResult version
 VERSION = 6
 
 ERROR_FUNC = {'l2': l2, 'l1': l1}
+DELTA_ERROR_FUNC = {'l2': l2_for_delta, 'l1': l1_for_delta}
 
 
 class BoostingResult(object):
@@ -401,6 +403,7 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
     error : str
         Error function to use.
     """
+    delta_error = DELTA_ERROR_FUNC[error]
     error = ERROR_FUNC[error]
     n_stims = len(x_train[0])
     if any(len(x) != n_stims for x in chain(x_train, x_test)):
@@ -413,11 +416,9 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
 
     # buffers
     y_train_error = tuple(y.copy() for y in y_train)
-    y_train_buf = tuple(np.empty(y.shape) for y in y_train)
     y_test_error = tuple(y.copy() for y in y_test)
 
     ys_error = y_train_error + y_test_error
-    ys_delta = tuple(np.empty(y.shape) for y in ys_error)
     xs = x_train + x_test
 
     new_error = np.empty(h.shape)
@@ -428,9 +429,8 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
     test_error_history = []
     # pre-assign iterators
     iter_h = tuple(product(xrange(h.shape[0]), xrange(h.shape[1])))
-    iter_x_train = zip(ys_delta, x_train)
-    iter_y_train = zip(y_train_error, ys_delta, y_train_buf)
-    iter_error = zip(ys_error, ys_delta, xs)
+    iter_train_error = zip(y_train_error, x_train)
+    iter_error = zip(ys_error, xs)
     for i_boost in xrange(999999):
         history.append(h.copy())
 
@@ -451,22 +451,12 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
 
         # generate possible movements -> training error
         for i_stim, i_time in iter_h:
-            # y_delta = change in y from delta change in h
-            for yd, x in iter_x_train:
-                yd[:i_time] = 0.
-                yd[i_time:] = x[i_stim, :-i_time or None]
-                yd *= delta
-
             # +/- delta
-            e_add = 0
-            e_sub = 0
-            for y_err, dy, buf in iter_y_train:
-                # + delta
-                np.subtract(y_err, dy, buf)
-                e_add += error(buf)
-                # - delta
-                np.add(y_err, dy, buf)
-                e_sub += error(buf)
+            e_add = e_sub = 0.
+            for y_err, x in iter_train_error:
+                e_add_, e_sub_ = delta_error(y_err, x[i_stim], delta, i_time)
+                e_add += e_add_
+                e_sub += e_sub_
 
             if e_add > e_sub:
                 new_error[i_stim, i_time] = e_sub
@@ -502,11 +492,8 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
             break
 
         # update error
-        for err, yd, x in iter_error:
-            yd[:i_time] = 0.
-            yd[i_time:] = x[i_stim, :-i_time or None]
-            yd *= delta_signed
-            err -= yd
+        for err, x in iter_error:
+            update_error(err, x[i_stim], delta_signed, i_time)
 
     else:
         reason = "maxiter exceeded"
