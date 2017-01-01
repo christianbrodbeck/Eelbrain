@@ -15,7 +15,6 @@ x2 = ds['x2']
 from __future__ import division
 from inspect import getargspec
 from itertools import chain, izip, product
-import logging
 from math import floor
 import time
 
@@ -149,6 +148,9 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         Object containing results from the boosting estimation (see
         :class:`BoostingResult`).
     """
+    # check arguments
+    mindelta_ = delta if mindelta is None else mindelta
+
     # check y and x
     if isinstance(x, NDVar):
         x_name = x.name
@@ -241,14 +243,29 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         x_data = x_data[:, :-i_start]
         y_data = y_data[:, i_start:]
 
-    # do boosting
+    # progress bar
     n_responses = len(y_data)
-    desc = "Boosting %i response" % n_responses + 's' * (n_responses > 1)
-    total = n_responses * 10
-    pbar = tqdm(desc=desc, total=total)
-    res = [boosting_continuous(x_data, y_, trf_length, delta, error, mindelta,
-                               pbar=pbar)
-           for y_ in y_data]
+    pbar = tqdm(desc="Boosting %i signals" % n_responses if n_responses > 1 else
+                "Boosting", total=n_responses * 10)
+    # boosting
+    res = []
+    for y_ in y_data:
+        hs = []
+        for i in xrange(10):
+            h, test_sse_history, msg = boost_1seg(x_data, y_, trf_length, delta,
+                                                  10, i, mindelta_, error)
+            if np.any(h):
+                hs.append(h)
+            if pbar is not None:
+                pbar.update()
+
+        if hs:
+            h = np.mean(hs, 0)
+            r, rr, err = evaluate_kernel(y_, x_data, h, error)
+        else:
+            h = np.zeros(h.shape)
+            r = rr = err = 0.
+        res.append((h, r, rr, err))
     hs, rs, rrs, errs = zip(*res)
     h_x = np.array(hs)
     pbar.close()
@@ -294,49 +311,6 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
                           err, scale_data, data_mean[0], data_scale[0],
                           data_mean[idx], data_scale[idx], y_name, x_name,
                           tstart, tstop)
-
-
-def boosting_continuous(x, y, trf_length, delta, error, mindelta=None, nsegs=10,
-                        pbar=None):
-    """Boosting for a continuous data segment, cycle through even splits for
-    test segment
-
-    Parameters
-    ----------
-    ...
-
-    Returns
-    -------
-    h : array
-        Average of the Estimated kernel (all zeros if all partitions failed).
-    r : scalar | array
-        Pearson correlation (array when ``forward`` is set).
-    rank_r : scalar | array
-        Rank correlation (array when ``forward`` is set).
-    error : scalar | array
-        Error of the final fit (array when ``forward`` is set).
-    """
-    logger = logging.getLogger('eelbrain.boosting')
-    if mindelta is None:
-        mindelta = delta
-    hs = []
-
-    for i in xrange(nsegs):
-        h, test_sse_history, msg = boost_1seg(x, y, trf_length, delta, nsegs, i,
-                                              mindelta, error)
-        logger.debug(msg)
-        if np.any(h):
-            hs.append(h)
-        if pbar is not None:
-            pbar.update()
-
-    if hs:
-        h = np.mean(hs, 0)
-        r, rr, err = evaluate_kernel(y, x, h, error)
-    else:
-        h = np.zeros(h.shape)
-        r = rr = err = 0.
-    return h, r, rr, err
 
 
 def boost_1seg(x, y, trf_length, delta, nsegs, segno, mindelta, error):
