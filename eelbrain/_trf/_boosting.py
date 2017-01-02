@@ -16,6 +16,9 @@ from __future__ import division
 from inspect import getargspec
 from itertools import chain, izip, product
 from math import floor
+from multiprocessing import Process, cpu_count
+from multiprocessing.queues import SimpleQueue
+from multiprocessing.sharedctypes import RawArray
 import time
 
 import numpy as np
@@ -32,6 +35,15 @@ from .._stats.error_functions import (l1, l2, l1_for_delta, l2_for_delta,
 # BoostingResult version
 VERSION = 6
 
+# cross-validation
+N_SEGS = 10
+
+# multiprocessing (0 = single process)
+N_WORKERS = cpu_count()
+JOB_BOOSTING = 1
+JOB_TERMINATE = 0
+
+# error functions
 ERROR_FUNC = {'l2': l2, 'l1': l1}
 DELTA_ERROR_FUNC = {'l2': l2_for_delta, 'l1': l1_for_delta}
 
@@ -249,46 +261,76 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         y_data = y_data[:, i_start:]
 
     # progress bar
-    n_responses = len(y_data)
-    pbar = tqdm(desc="Boosting %i signals" % n_responses if n_responses > 1 else
-                "Boosting", total=n_responses * 10)
+    n_y = len(y_data)
+    pbar = tqdm(desc="Boosting %i signals" % n_y if n_y > 1 else "Boosting",
+                total=n_y * 10)
+    # result containers
+    res = np.empty((3, n_y))  # r, rank-r, error
+    h_x = np.empty((n_y, len(x_data), trf_length))
+    res.fill(np.nan)
+    h_x.fill(np.nan)
     # boosting
-    res = []
-    for y_ in y_data:
-        hs = []
-        for i in xrange(10):
-            h, test_sse_history, msg = boost_1seg(x_data, y_, trf_length, delta,
-                                                  10, i, mindelta_, error)
-            if np.any(h):
-                hs.append(h)
-            if pbar is not None:
+    if N_WORKERS:
+        workers, job_queue, result_queue = setup_workers(
+            y_data, x_data, trf_length, delta, mindelta_, N_SEGS, error
+        )
+        for job in product(xrange(n_y), xrange(N_SEGS)):
+            job_queue.put((JOB_BOOSTING, job))
+        for _ in xrange(N_WORKERS):
+            job_queue.put((JOB_TERMINATE, None))
+
+        hs = [[] for _ in xrange(n_y)]
+        for _ in xrange(n_y * N_SEGS):
+            y_i, h = result_queue.get()
+            pbar.update()
+            hs_ = hs[y_i]
+            hs_.append(h)
+            if len(hs_) == N_SEGS:
+                hs_ = [h for h in hs_ if np.any(h)]
+
+                if hs_:
+                    h = np.mean(hs_, 0, out=h_x[y_i])
+                    res[:, y_i] = evaluate_kernel(y_data[y_i], x_data, h, error)
+                else:
+                    h_x[y_i].fill(0)
+                    res[:, y_i].fill(0.)
+                hs[y_i] = None
+
+        for w in workers:
+            w.join()
+    else:
+        for y_i, y_ in enumerate(y_data):
+            hs = []
+            for i in xrange(N_SEGS):
+                h, test_sse_history, msg = boost_1seg(x_data, y_, trf_length, delta,
+                                                      N_SEGS, i, mindelta_, error)
+                if np.any(h):
+                    hs.append(h)
                 pbar.update()
 
-        if hs:
-            h = np.mean(hs, 0)
-            r, rr, err = evaluate_kernel(y_, x_data, h, error)
-        else:
-            h = np.zeros(h.shape)
-            r = rr = err = 0.
-        res.append((h, r, rr, err))
-    hs, rs, rrs, errs = zip(*res)
-    h_x = np.array(hs)
+            if hs:
+                h = np.mean(hs, 0, out=h_x[y_i])
+                res[:, y_i] = evaluate_kernel(y_, x_data, h, error)
+            else:
+                h_x[y_i].fill(0)
+                res[:, y_i].fill(0.)
+
     pbar.close()
     dt = time.time() - pbar.start_t
 
     # correlation
+    rs, rrs, errs = res
     if ydim is None:
         r = rs[0]
         rr = rrs[0]
         err = errs[0]
         isnan = np.isnan(r)
     else:
-        rs = np.asarray(rs)
         isnan = np.isnan(rs)
         rs[isnan] = 0
         r = NDVar(rs, (ydim,), cs.stat_info('r'), 'correlation')
-        rr = NDVar(np.asarray(rrs), (ydim,), cs.stat_info('r'), 'rank correlation')
-        err = NDVar(np.asarray(errs), (ydim,), y.info.copy(), 'fit error')
+        rr = NDVar(rrs, (ydim,), cs.stat_info('r'), 'rank correlation')
+        err = NDVar(errs, (ydim,), y.info.copy(), 'fit error')
 
     # TRF
     h_time = UTS(tstart, time_dim.tstep, trf_length)
@@ -503,6 +545,46 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
     # Keep predictive power as the correlation for the best iteration
     return (history[best_iter], test_error_history,
             reason + ' (%i iterations)' % (i_boost + 1))
+
+
+def setup_workers(y, x, trf_length, delta, mindelta, nsegs, error):
+    n_y, n_times = y.shape
+    n_x, _ = x.shape
+
+    y_buffer = RawArray('d', n_y * n_times)
+    y_buffer[:] = y.ravel()
+    x_buffer = RawArray('d', n_x * n_times)
+    x_buffer[:] = x.ravel()
+
+    job_queue = SimpleQueue()
+    result_queue = SimpleQueue()
+
+    args = (y_buffer, x_buffer, n_y, n_times, n_x, trf_length, delta, mindelta,
+            nsegs, error, job_queue, result_queue)
+    workers = []
+    for _ in xrange(N_WORKERS):
+        w = Process(target=boosting_worker, args=args)
+        w.start()
+        workers.append(w)
+
+    return workers, job_queue, result_queue
+
+
+def boosting_worker(y_buffer, x_buffer, n_y, n_times, n_x, trf_length, delta,
+                    mindelta, nsegs, error, job_queue, result_queue):
+    y = np.frombuffer(y_buffer, np.float64, n_y * n_times).reshape((n_y, n_times))
+    x = np.frombuffer(x_buffer, np.float64, n_x * n_times).reshape((n_x, n_times))
+
+    while True:
+        command, data = job_queue.get()
+        if command == JOB_TERMINATE:
+            return
+        elif command != JOB_BOOSTING:
+            raise ValueError("command=%r" % (command,))
+        y_i, seg_i = data
+        h, test_sse_history, msg = boost_1seg(x, y[y_i], trf_length, delta,
+                                              nsegs, seg_i, mindelta, error)
+        result_queue.put((y_i, h))
 
 
 def apply_kernel(x, h, out=None):

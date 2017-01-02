@@ -7,6 +7,7 @@ from numpy.testing import assert_array_equal, assert_allclose
 import cPickle as pickle
 import scipy.io
 from eelbrain import boosting, datasets
+from eelbrain._trf import _boosting
 from eelbrain._trf._boosting import boost_1seg, evaluate_kernel
 
 
@@ -16,9 +17,12 @@ def assert_res_equal(res1, res):
     eq_(res1.spearmanr, res.spearmanr)
 
 
-def test_boosting():
-    "Test boosting NDVars"
-    ds = datasets._get_continuous()
+def run_boosting(ds, mp):
+    "Run boosting tests"
+    if not mp:
+        n_workers = _boosting.N_WORKERS
+        _boosting.N_WORKERS = 0
+
     y = ds['y']
     x1 = ds['x1']
     x2 = ds['x2']
@@ -57,6 +61,16 @@ def test_boosting():
 
     res = boosting(y, [x1, x2], 0, 1)
     eq_(round(res.r, 2), 0.98)
+
+    if not mp:
+        _boosting.N_WORKERS = n_workers
+
+
+def test_boosting():
+    "Test boosting NDVars"
+    ds = datasets._get_continuous()
+    run_boosting(ds, True)
+    run_boosting(ds, False)
 
 
 def test_boosting_func():
