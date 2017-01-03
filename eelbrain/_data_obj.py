@@ -6986,7 +6986,9 @@ class Dimension(object):
         -----
         Boolean and int arrays are always considered indexing self.values.
         """
-        if isndvar(arg):
+        if arg is None:
+            return None
+        elif isndvar(arg):
             return self._dimindex_for_ndvar(arg)
         elif isvar(arg):
             return arg.x
