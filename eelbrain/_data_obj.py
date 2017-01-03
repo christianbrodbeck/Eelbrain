@@ -3524,7 +3524,8 @@ class NDVar(object):
         else:
             return NDVar(x, dims, self.info.copy(), name)
 
-    def bin(self, step, start=None, stop=None, func=None, dim=None, name=None):
+    def bin(self, step=None, start=None, stop=None, func=None, dim=None,
+            name=None, nbins=None):
         """Bin the data along the time axis
 
         Parameters
@@ -3550,6 +3551,9 @@ class NDVar(object):
             dimension, the default is time.
         name : str
             Name of the output NDVar (default is the current name).
+        nbins : int
+            Instead of specifying ``step``, ``nbins`` can be specified to divide
+            ``dim`` into an even number of bins.
 
         Returns
         -------
@@ -3557,6 +3561,17 @@ class NDVar(object):
             NDVar with data binned along the time axis (i.e., each time point
             reflects one time bin).
         """
+        if nbins is not None:
+            if step is not None:
+                raise TypeError("can only specify one of step and nbins")
+            elif not isinstance(nbins, int):
+                raise TypeError("nbins needs to be int, got %r" % (nbins,))
+            elif nbins < 1:
+                raise ValueError("nbins needs to be >= 1, got %r" % (nbins,))
+            n_bins = nbins
+        elif step is None and nbins is None:
+            raise TypeError("need to specify one of step and nbins")
+
         if dim is None:
             if len(self.dims) == 1 + self.has_case:
                 dim = self.dims[-1].name
@@ -3590,6 +3605,9 @@ class NDVar(object):
         dim = self.get_dim(dim)
 
         if isinstance(dim, UTS):
+            if nbins is not None:
+                raise NotImplementedError("nbins for time dimension")
+
             if start is None:
                 start = dim.tmin
 
@@ -3602,27 +3620,45 @@ class NDVar(object):
             if start is None:
                 start = dim[0]
 
-            if stop is None:
-                n_bins_fraction = (dim[-1] - start) / step
-                n_bins = int(ceil(n_bins_fraction))
-                # if the last value would fall into a new bin
-                if n_bins == n_bins_fraction:
-                    n_bins += 1
+            if nbins is not None:
+                istop = len(dim) if stop is None else dim.dimindex(stop)
+                istart = 0 if start is None else dim.dimindex(start)
+                n_source_steps = istop - istart
+                if n_source_steps % nbins != 0:
+                    raise ValueError("length %i source dimension can not be "
+                                     "divided equally into %i bins" %
+                                     (n_source_steps, nbins))
+                istep = int(n_source_steps / nbins)
+                ilast = istep - 1
+                out_values = [(dim[i] + dim[i + ilast]) / 2 for i in
+                              xrange(istart, istop, istep)]
             else:
-                n_bins = int(ceil((stop - start) / step))
+                if stop is None:
+                    n_bins_fraction = (dim[-1] - start) / step
+                    n_bins = int(ceil(n_bins_fraction))
+                    # if the last value would fall into a new bin
+                    if n_bins == n_bins_fraction:
+                        n_bins += 1
+                else:
+                    n_bins = int(ceil((stop - start) / step))
 
-            # new dimensions
-            dim_start = start + step / 2
-            dim_stop = dim_start + n_bins * step
-            out_dim = Ordered(dim.name, np.arange(dim_start, dim_stop, step),
-                              dim.unit, dim.tick_format)
+                # new dimensions
+                dim_start = start + step / 2
+                dim_stop = dim_start + n_bins * step
+                out_values = np.arange(dim_start, dim_stop, step)
+            out_dim = Ordered(dim.name, out_values, dim.unit, dim.tick_format)
         else:
             raise NotImplementedError("NDVar.bin() is only implement for UTS "
                                       "and Ordered dimensions, not %s" %
                                       dim.__class__.__name__)
 
-        # find time bin boundaries
-        edges = [start + n * step for n in xrange(n_bins)] + [stop]
+        # find bin boundaries
+        if nbins is None:
+            edges = [start + n * step for n in xrange(n_bins)]
+        else:
+            edges = list(dim.x[istart:istop:istep])
+        edges.append(stop)
+
         out_shape = list(self.shape)
         out_shape[axis] = n_bins
         x = np.empty(out_shape)
