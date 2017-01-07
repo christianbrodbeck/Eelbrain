@@ -232,7 +232,7 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
     return _plot(src, lut, -fmax, fmax, *args, **kwargs)
 
 
-def p_map(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, *args,
+def p_map(p_map, param_map=None, p0=0.05, p1=0.01, p0alpha=0.5, *args,
           **kwargs):
     """Plot a map of p-values in source space.
 
@@ -241,13 +241,14 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, *args,
     p_map : NDVar
         Statistic to plot (normally a map of p values).
     param_map : NDVar
-        Statistical parameter covering the same data points as p_map. Used
-        only for incorporating the directionality of the effect into the plot.
+        Statistical parameter covering the same data points as p_map. Only the
+        sign is used, for incorporating the directionality of the effect into
+        the plot.
     p0, p1 : scalar
         Threshold p-values for the color map.
-    solid : bool
-        Use solid color patches between p0 and p1 (default: False - blend
-        transparency between p0 and p1).
+    p0alpha : 1 >= float >= 0
+        Alpha for greatest p-value that is still displayed (default: 0.5 -
+        clearly indicate border).
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
     views : str | iterator of str
@@ -281,7 +282,12 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, *args,
     brain : surfer.Brain
         PySurfer Brain instance containing the plot.
     """
-    pmap, lut, vmax = _p_lut(p_map, param_map, p0=p0, p1=p1, solid=solid)
+    if 'solid' in kwargs:
+        warn("The solid parameter for plot.brain.p_map() is deprecated and "
+             "will stop working after Eelbrain 0.25, use p0alpha instead.",
+             DeprecationWarning)
+        p0alpha = float(kwargs.pop('solid'))
+    pmap, lut, vmax = _p_lut(p_map, param_map, p0, p1, p0alpha)
     return _plot(pmap, lut, -vmax, vmax, *args, **kwargs)
 
 
@@ -638,7 +644,7 @@ def _dspm_lut(fmin, fmid, fmax, n=256):
     return lut
 
 
-def _p_lut(pmap, tmap, p0=0.05, p1=0.01, n=256, solid=False):
+def _p_lut(pmap, tmap, p0, p1, p0alpha, n=256):
     """Creat a color look up table (lut) for p-values
 
     Parameters
@@ -651,17 +657,17 @@ def _p_lut(pmap, tmap, p0=0.05, p1=0.01, n=256, solid=False):
         Highest p-vale that should be visible.
     p1 : scalar
         P-value where the colormap changes from ramping alpha to ramping color.
+    p0alpha : bool
+        Alpha at p0.
     n : int
         Number of color categories in the lut.
-    solid : bool
-        Instead of ramping alpha/color hue, create steps at p0 and p1.
     """
     if p1 >= p0:
         raise ValueError("p1 needs to be smaller than p0.")
 
-    pstep = 2 * p0 / _idx(n / 2 - 1)
+    pstep = 2 * p0 / (n - 3)  # there are n - 1 steps, 2 leave the visible range
 
-    # max p-value that needs to be represented
+    # max p-value that needs to be represented (1 step out of visible)
     vmax = p0 + pstep
 
     # bring interesting p-values to the range [pstep vmax]
@@ -678,8 +684,7 @@ def _p_lut(pmap, tmap, p0=0.05, p1=0.01, n=256, solid=False):
     lut = np.zeros((n, 4), dtype=np.uint8)
 
     middle = n / 2
-    p0n = _idx(p0 / pstep)
-    p0p = n - p0n
+    p0p = middle + 1
     p1n = _idx(p1 / pstep)
     p1p = n - p1n
 
@@ -692,13 +697,16 @@ def _p_lut(pmap, tmap, p0=0.05, p1=0.01, n=256, solid=False):
     lut[p1p:, 1] = np.linspace(0, 255, n - p1p)
 
     # alpha
-    if solid:
-        lut[:p0n, 3] = 255
+    if p0alpha == 1:
+        lut[:middle, 3] = 255
         lut[p0p:, 3] = 255
+    elif not 0 <= p0alpha <= 1:
+        raise ValueError("p0alpha=%r" % (p0alpha,))
     else:
+        p0_alpha = int(round(p0alpha * 255))
         lut[:p1n, 3] = 255
-        lut[p1n:p0n, 3] = np.linspace(255, 0, p0n - p1n)
-        lut[p0p:p1p, 3] = np.linspace(0, 255, p1p - p0p)
+        lut[p1n:middle, 3] = np.linspace(255, p0_alpha, middle - p1n)
+        lut[p0p:p1p, 3] = np.linspace(p0_alpha, 255, p1p - p0p)
         lut[p1p:, 3] = 255
 
     return pmap, lut, vmax
