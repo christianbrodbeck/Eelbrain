@@ -709,6 +709,14 @@ def _p_lut(pmap, tmap, p0, p1, p0alpha, n=256):
         lut[p0p:p1p, 3] = np.linspace(p0_alpha, 255, p1p - p0p)
         lut[p1p:, 3] = 255
 
+    pmap.info['cmap ticks'] = {
+        -vmax: '<' + str(p1 / 10)[1:],
+        -vmax + p1: str(p1)[1:],
+        0: str(p0)[1:],
+        vmax - p1: str(p1)[1:],
+        vmax: '<' + str(p1 / 10)[1:],
+    }
+
     return pmap, lut, vmax
 
 

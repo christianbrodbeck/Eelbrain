@@ -448,12 +448,15 @@ class ColorBar(EelFigure):
         Plot contour lines at these values.
     width : scalar
         Width of the color-bar in inches.
+    ticks : {float: str} dict | sequence of float
+        Customize tick-labels on the colormap; either a dictionary with
+        tick-locations and labels, or a sequence of tick locations.
     """
     def __init__(self, cmap, vmin, vmax, label=True, label_position=None,
                  label_rotation=None,
                  clipmin=None, clipmax=None, orientation='horizontal',
-                 unit=None, contours=(), width=None, h=None, w=None, *args,
-                 **kwargs):
+                 unit=None, contours=(), width=None, ticks=None, h=None, w=None,
+                 *args, **kwargs):
         if isinstance(cmap, np.ndarray):
             if cmap.max() > 1:
                 cmap = cmap / 255.
@@ -463,6 +466,7 @@ class ColorBar(EelFigure):
             cm = mpl.cm.get_cmap(cmap)
             lut = cm(np.arange(cm.N))
 
+        # prepare im and sizing
         if orientation == 'horizontal':
             if h is None and w is None:
                 h = 1
@@ -501,6 +505,8 @@ class ColorBar(EelFigure):
 
             if label_rotation is not None:
                 ax.xaxis.label.set_rotation(label_rotation)
+
+            axis = ax.xaxis
         elif orientation == 'vertical':
             ax.imshow(im, extent=(0, 1, vmin, vmax), aspect='auto', origin='lower')
             ax.set_ylim(clipmin, clipmax)
@@ -521,8 +527,18 @@ class ColorBar(EelFigure):
             elif label and len(label) <= 3:
                 ax.yaxis.label.set_rotation(0)
                 ax.yaxis.label.set_va('center')
+
+            axis = ax.yaxis
         else:
             raise ValueError("orientation=%s" % repr(orientation))
+
+        # value ticks
+        if isinstance(ticks, dict):
+            tick_locs = sorted(ticks)
+            axis.set_ticks(tick_locs)
+            axis.set_ticklabels([ticks[t] for t in tick_locs])
+        elif ticks is not None:
+            axis.set_ticks(ticks)
 
         self._orientation = orientation
         self._width = width

@@ -6,7 +6,7 @@ from . import plot
 from . import test
 from ._data_obj import cellname, combine
 from ._stats.stats import ttest_t
-from .fmtxt import ms, Section, linebreak
+from .fmtxt import ms, Section, Figure, linebreak
 
 
 def n_of(n, of, plural_for_0=False):
@@ -228,6 +228,17 @@ def source_cluster_im(ndvar, surfer_kwargs):
         brain = plot.brain.cluster(ndvar, **kwargs)
     out = brain.image(ndvar.name)
     brain.close()
+    return out
+
+
+def source_tfce_pmap(res, surfer_kwargs, caption='TFCE map'):
+    if not hasattr(res, 't'):
+        raise NotImplementedError
+    brain = plot.brain.p_map(res.p, res.t, **surfer_kwargs)
+    cbar = brain.plot_colorbar(orientation='vertical')
+    out = Figure((brain.image(), cbar), caption)
+    brain.close()
+    cbar.close()
     return out
 
 

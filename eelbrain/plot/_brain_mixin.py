@@ -47,7 +47,7 @@ class BrainMixin(object):
 
     def plot_colorbar(self, label=True, label_position=None, label_rotation=None,
                       clipmin=None, clipmax=None, orientation='horizontal',
-                      *args, **kwargs):
+                      width=None, ticks=None, *args, **kwargs):
         """Plot a colorbar corresponding to the displayed data
 
         Parameters
@@ -66,6 +66,11 @@ class BrainMixin(object):
             Clip the color-bar above this value.
         orientation : 'horizontal' | 'vertical'
             Orientation of the bar (default is horizontal).
+        width : scalar
+            Width of the color-bar in inches.
+        ticks : {float: str} dict | sequence of float
+            Customize tick-labels on the colormap; either a dictionary with
+            tick-locations and labels, or a sequence of tick locations.
 
         Returns
         -------
@@ -73,11 +78,13 @@ class BrainMixin(object):
             ColorBar plot object.
         """
         unit = self.__data.info.get('unit', None)
+        if ticks is None:
+            ticks = self.__data.info.get('cmap ticks')
         _, label = find_axis_params_data(self.__data, label)
         cmap, vmin, vmax = self._get_cmap_params(label)
         return ColorBar(cmap, vmin, vmax, label, label_position, label_rotation,
-                        clipmin, clipmax, orientation, unit, (), *args,
-                        **kwargs)
+                        clipmin, clipmax, orientation, unit, (), width, ticks,
+                        *args, **kwargs)
 
     def _set_annot(self, annot, borders, alpha):
         "Store annot name to enable plot_legend()"
