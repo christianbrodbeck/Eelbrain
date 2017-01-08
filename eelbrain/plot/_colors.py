@@ -545,10 +545,20 @@ class ColorBar(EelFigure):
         self._show()
 
     def _tight(self):
-        # Override to keep bar thickness
+        # make sure ticklabels have space
+        ax = self._axes[0]
+        if self._orientation == 'vertical' and not self._layout.w_fixed:
+            self.draw()
+            labels = ax.get_yticklabels()
+            # wmax = max(l.get_window_extent().width for l in labels)
+            x0 = min(l.get_window_extent().x0 for l in labels)
+            if x0 < 0:
+                w, h = self.figure.get_size_inches()
+                w -= (x0 / self._layout.dpi)
+                self.figure.set_size_inches(w, h, forward=True)
         super(ColorBar, self)._tight()
+        # Override to keep bar thickness
         if self._width:
-            ax = self._axes[0]
             x = (self._width, self._width)
             x = self.figure.dpi_scale_trans.transform(x)
             x = self.figure.transFigure.inverted().transform(x)
