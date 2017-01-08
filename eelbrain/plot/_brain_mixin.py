@@ -29,19 +29,22 @@ class BrainMixin(object):
         cmap = ListedColormap(data['orig_ctable'] / 255., label)
         return cmap, data['fmin'], data['fmax']
 
-    def image(self, name, format='png', alt=None):
+    def image(self, name=None, format='png', alt=None):
         """Create an FMText Image from a screenshot
 
         Parameters
         ----------
         name : str
-            Name for the file (without extension; default is 'image').
+            Name for the file (without extension; default is ``data.name`` or
+            'brain').
         format : str
             File format (default 'png').
         alt : None | str
             Alternate text, placeholder in case the image can not be found
             (HTML `alt` tag).
         """
+        if name is None:
+            name = self.__data.name or 'brain'
         im = self.screenshot('rgba', True)
         return Image.from_array(im, name, format, alt)
 
