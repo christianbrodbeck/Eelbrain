@@ -187,7 +187,9 @@ def sensor_time_cluster(section, cluster, y, model, ds, colors, match='subject')
     cluster_timecourse(section, cluster, y, 'sensor', model, ds, colors, match)
 
 
-def source_results(res, surfer_kwargs={}, title="Results", diff_cmap=None):
+def source_results(res, surfer_kwargs={}, title="Results", diff_cmap=None,
+                   table_pmax=0.2, plot_pmax=0.05):
+    "Only used for TRF-report"
     sec = Section(title)
 
     # raw difference
@@ -199,11 +201,13 @@ def source_results(res, surfer_kwargs={}, title="Results", diff_cmap=None):
 
     # test of difference
     if res._kind == 'cluster':
-        clusters = res.find_clusters(0.2, True)
-        ctable = clusters.as_table(midrule=True, count=True,
-                                   caption="All clusters with p<0.2.")
+        clusters = res.find_clusters(table_pmax)
+        pmax_repr = str(table_pmax)[1:]
+        ctable = clusters.as_table(midrule=True, count=True, caption="All "
+                                   "clusters with p<=%s." % pmax_repr)
         sec.append(ctable)
 
+        clusters = res.find_clusters(plot_pmax, True)
         for cluster in clusters.itercases():
             # only plot relevant hemisphere
             sec.add_figure("Cluster %i: p=%.3f" % (cluster['id'], cluster['p']),
@@ -235,7 +239,7 @@ def source_tfce_pmap(res, surfer_kwargs, caption='TFCE map'):
     if not hasattr(res, 't'):
         raise NotImplementedError
     brain = plot.brain.p_map(res.p, res.t, **surfer_kwargs)
-    cbar = brain.plot_colorbar(orientation='vertical')
+    cbar = brain.plot_colorbar(orientation='vertical', show=False)
     out = Figure((brain.image(), cbar), caption)
     brain.close()
     cbar.close()
