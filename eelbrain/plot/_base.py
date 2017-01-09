@@ -61,6 +61,7 @@ import __main__
 
 from collections import Iterable, Iterator
 from itertools import chain, izip
+from logging import getLogger
 import math
 import os
 import shutil
@@ -1111,7 +1112,11 @@ class EelFigure(object):
 
     def _tight(self):
         "Default implementation based on matplotlib"
-        self.figure.tight_layout()
+        try:
+            self.figure.tight_layout()
+        except ValueError as exception:
+            getLogger('eelbrain').debug('tight-layout: %s', exception)
+
         if self._figtitle:
             trans = self.figure.transFigure.inverted()
             extent = self._figtitle.get_window_extent(self.figure.canvas.renderer)
