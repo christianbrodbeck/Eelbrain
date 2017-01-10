@@ -16,10 +16,10 @@ from __future__ import division
 from inspect import getargspec
 from itertools import chain, izip, product
 from math import floor
-from multiprocessing import Process, cpu_count
-from multiprocessing.queues import SimpleQueue
+from multiprocessing import Process, Queue, cpu_count
 from multiprocessing.sharedctypes import RawArray
 import time
+from threading import Thread
 
 import numpy as np
 from numpy import newaxis
@@ -271,14 +271,11 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     h_x.fill(np.nan)
     # boosting
     if N_WORKERS:
-        workers, job_queue, result_queue = setup_workers(
-            y_data, x_data, trf_length, delta, mindelta_, N_SEGS, error
-        )
-        for job in product(xrange(n_y), xrange(N_SEGS)):
-            job_queue.put((JOB_BOOSTING, job))
-        for _ in xrange(N_WORKERS):
-            job_queue.put((JOB_TERMINATE, None))
+        job_queue, result_queue = setup_workers(y_data, x_data, trf_length,
+                                                delta, mindelta_, N_SEGS, error)
+        Thread(target=put_jobs, args=(job_queue, n_y, N_SEGS)).start()
 
+        # collect results
         hs = [[] for _ in xrange(n_y)]
         for _ in xrange(n_y * N_SEGS):
             y_i, h = result_queue.get()
@@ -295,9 +292,6 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
                     h_x[y_i].fill(0)
                     res[:, y_i].fill(0.)
                 hs[y_i] = None
-
-        for w in workers:
-            w.join()
     else:
         for y_i, y_ in enumerate(y_data):
             hs = []
@@ -556,18 +550,15 @@ def setup_workers(y, x, trf_length, delta, mindelta, nsegs, error):
     x_buffer = RawArray('d', n_x * n_times)
     x_buffer[:] = x.ravel()
 
-    job_queue = SimpleQueue()
-    result_queue = SimpleQueue()
+    job_queue = Queue(200)
+    result_queue = Queue(200)
 
     args = (y_buffer, x_buffer, n_y, n_times, n_x, trf_length, delta, mindelta,
             nsegs, error, job_queue, result_queue)
-    workers = []
     for _ in xrange(N_WORKERS):
-        w = Process(target=boosting_worker, args=args)
-        w.start()
-        workers.append(w)
+        Process(target=boosting_worker, args=args).start()
 
-    return workers, job_queue, result_queue
+    return job_queue, result_queue
 
 
 def boosting_worker(y_buffer, x_buffer, n_y, n_times, n_x, trf_length, delta,
@@ -585,6 +576,14 @@ def boosting_worker(y_buffer, x_buffer, n_y, n_times, n_x, trf_length, delta,
         h, test_sse_history, msg = boost_1seg(x, y[y_i], trf_length, delta,
                                               nsegs, seg_i, mindelta, error)
         result_queue.put((y_i, h))
+
+
+def put_jobs(queue, n_y, n_segs):
+    "Feed boosting jobs into a Queue"
+    for job in product(xrange(n_y), xrange(n_segs)):
+        queue.put((JOB_BOOSTING, job))
+    for _ in xrange(N_WORKERS):
+        queue.put((JOB_TERMINATE, None))
 
 
 def apply_kernel(x, h, out=None):
