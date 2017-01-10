@@ -4,8 +4,9 @@ from math import floor
 
 import mne
 import numpy as np
-from scipy import signal
+from scipy import linalg, signal
 
+from . import mne_fixes
 from . import _colorspaces as cs
 from ._data_obj import NDVar, UTS, Ordered
 
@@ -108,6 +109,37 @@ def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
     x = x.reshape(new_shape)
     info = cs.set_info_cs(y.info, cs.default_info('A'))
     return NDVar(x, dims, info, y.name)
+
+
+def dss(ndvar):
+    """DSS decomposition
+
+    Parameters
+    ----------
+    ndvar : NDVar (case, dim, time)
+        Data to decompose. DSS is performed over 'case' and 'time' dimensions.
+
+    Returns
+    -------
+    to_dss : NDVar (dss, dim)
+        Transform data to DSS.
+    from_dss : NDVar (dim, dss)
+        Reconstruct data form DSS.
+
+    Notes
+    -----
+    Uses DSS form mne-sandbox
+    """
+    dim_names = ndvar.get_dimnames(('case', None, 'time'))
+    x = ndvar.get_data(dim_names)
+    data_dim = ndvar.get_dim(dim_names[1])
+    dss_mat = mne_fixes.dss(x, return_data=False)
+
+    n_comp = len(dss_mat)
+    dss_dim = Ordered('dss', np.arange(n_comp))
+    to_dss = NDVar(dss_mat, (dss_dim, data_dim), {}, 'to dss')
+    from_dss = NDVar(linalg.inv(dss_mat), (data_dim, dss_dim), {}, 'from dss')
+    return to_dss, from_dss
 
 
 def neighbor_correlation(x, dim='sensor', obs='time', name=None):

@@ -1,6 +1,6 @@
-"""Some fixes relative to mne-python 0.8.6
+"""Fixes and modifications related to mne-python
 
-Contains code from MNE-Python governed by the following license:
+Contains code from MNE-Python governed by the following license (3-Clause BSD):
 
 
 Copyright (C) 2011-2014, authors of MNE-Python
@@ -29,7 +29,10 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
+# import this first for a chance to reverse mne's non-standard logging practice
 from ._logging import CaptureLog, reset_logger
+
+from ._dss import dss
 from ._freesurfer import rename_mri
 from ._interpolation import _interpolate_bads_eeg, _interpolate_bads_meg
 from ._label import write_labels_to_annot
