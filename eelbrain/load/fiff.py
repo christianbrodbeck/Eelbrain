@@ -474,7 +474,7 @@ def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
     reject = _ndvar_epochs_reject(data, reject)
 
     epochs_ = mne_epochs(ds, tmin, tmax, baseline, i_start, raw, decim=decim,
-                         picks=picks, reject=reject, proj=proj, preload=True)
+                         picks=picks, reject=reject, proj=proj)
     ds = _trim_ds(ds, epochs_)
     ds[name] = epochs_ndvar(epochs_, name, data, mult=mult, info=info,
                             sensors=sensors, sysname=sysname)
@@ -512,7 +512,6 @@ def add_mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, target='epochs',
         Any additional keyword arguments are forwarded to the mne Epochs
         object initialization.
     """
-    kwargs['preload'] = True
     epochs_ = mne_epochs(ds, tmin, tmax, baseline, **kwargs)
     ds = _trim_ds(ds, epochs_)
     ds[target] = epochs_
@@ -541,7 +540,8 @@ def _mne_events(ds=None, i_start='i_start', trigger='trigger'):
 
 
 def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
-               raw=None, drop_bad_chs=True, **kwargs):
+               raw=None, drop_bad_chs=True, picks=None, reject=None, name=None,
+               **kwargs):
     """Load epochs as :class:`mne.Epochs`.
 
     Parameters
@@ -571,17 +571,17 @@ def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
     if raw is None:
         raw = ds.info['raw']
 
-    if drop_bad_chs and ('picks' not in kwargs) and raw.info['bads']:
-        kwargs['picks'] = mne.pick_types(raw.info, eeg=True, eog=True, ref_meg=False)
+    if drop_bad_chs and picks is None and raw.info['bads']:
+        picks = mne.pick_types(raw.info, eeg=True, eog=True, ref_meg=False)
 
     events = _mne_events(ds=ds, i_start=i_start)
-    epochs = mne.Epochs(raw, events, None, tmin, tmax, baseline,
-                        add_eeg_ref=False, **kwargs)
-    if kwargs.get('reject', None) is None and len(epochs) != len(events):
-        logger = getLogger(__name__)
-        logger.warn("%s: MNE generated only %i Epochs for %i events. The raw "
-                    "file might end before the end of the last epoch."
-                    % (raw.info['filename'], len(epochs), len(events)))
+    epochs = mne.Epochs(raw, events, None, tmin, tmax, baseline, picks, name,
+                        True, reject, add_eeg_ref=False, **kwargs)
+    if reject is None and len(epochs) != len(events):
+        getLogger(__name__).warn(
+            "%s: MNE generated only %i Epochs for %i events. The raw file "
+            "might end before the end of the last epoch." %
+            (raw.info['filename'], len(epochs), len(events)))
 
     #  add bad channels from ds
     if BAD_CHANNELS in ds.info:
