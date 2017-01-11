@@ -10,6 +10,9 @@ doc:
 	rm -rf doc/build doc/generated
 	python setup.py build_sphinx
 
+flake:
+	flake8 --count eelbrain examples scripts
+
 test:
 	pythonw ${shell which nosetests} -v eelbrain eelbrain/_stats eelbrain/_trf eelbrain/_utils eelbrain/_wxgui eelbrain/_experiment eelbrain/load eelbrain/mne_fixes eelbrain/plot
 
