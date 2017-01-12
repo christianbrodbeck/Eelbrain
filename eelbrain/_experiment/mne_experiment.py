@@ -6,10 +6,10 @@ import inspect
 from itertools import chain, izip, product
 import logging
 import os
+from os.path import join
 import re
 import shutil
 import time
-from warnings import warn
 
 import numpy as np
 
@@ -349,147 +349,144 @@ class CacheDict(dict):
         return out
 
 
-temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {class-name}.log'),
-        'old-eelbrain-log-file': os.path.join('{root}', '.eelbrain.log'),
+temp = {
+    'eelbrain-log-file': join('{root}', 'eelbrain {class-name}.log'),
+    'old-eelbrain-log-file': join('{root}', '.eelbrain.log'),
 
-        # MEG
-        'modality': ('', 'eeg', 'meeg'),
-        'reference': ('', 'mastoids'),  # EEG reference
-        'equalize_evoked_count': ('', 'eq'),
-        # locations
-        'meg-sdir': os.path.join('{root}', 'meg'),
-        'meg-dir': os.path.join('{meg-sdir}', '{subject}'),
-        'raw-dir': '{meg-dir}',
+    # MEG
+    'modality': ('', 'eeg', 'meeg'),
+    'reference': ('', 'mastoids'),  # EEG reference
+    'equalize_evoked_count': ('', 'eq'),
+    # locations
+    'meg-sdir': join('{root}', 'meg'),
+    'meg-dir': join('{meg-sdir}', '{subject}'),
+    'raw-dir': '{meg-dir}',
 
-        # raw input files
-        'raw-file': os.path.join('{raw-dir}', '{subject}_{session}-raw.fif'),
-        'raw-file-bkp': os.path.join('{raw-dir}', '{subject}_{session}-raw*.fif'),
-        'trans-file': os.path.join('{raw-dir}', '{mrisubject}-trans.fif'),
-        # log-files (eye-tracker etc.)
-        'log-dir': os.path.join('{meg-dir}', 'logs'),
-        'log-rnd': '{log-dir}/rand_seq.mat',
-        'log-data-file': '{log-dir}/data.txt',
-        'log-file': '{log-dir}/log.txt',
-        'edf-file': os.path.join('{log-dir}', '*.edf'),
+    # raw input files
+    'raw-file': join('{raw-dir}', '{subject}_{session}-raw.fif'),
+    'raw-file-bkp': join('{raw-dir}', '{subject}_{session}-raw*.fif'),
+    'trans-file': join('{raw-dir}', '{mrisubject}-trans.fif'),
+    # log-files (eye-tracker etc.)
+    'log-dir': join('{meg-dir}', 'logs'),
+    'log-rnd': '{log-dir}/rand_seq.mat',
+    'log-data-file': '{log-dir}/data.txt',
+    'log-file': '{log-dir}/log.txt',
+    'edf-file': join('{log-dir}', '*.edf'),
 
-        # created input files
-        'bads-file': os.path.join('{raw-dir}', '{subject}_{session}-bad_channels.txt'),
-        'raw-ica-file': os.path.join('{raw-dir}', '{subject} {raw}-ica.fif'),
-        'rej-dir': os.path.join('{meg-dir}', 'epoch selection'),
-        'rej-file': os.path.join('{rej-dir}', '{session}_{sns_kind}_{epoch}-{rej}.pickled'),
-        'ica-file': os.path.join('{rej-dir}', '{session} {sns_kind} {rej}-ica.fif'),
+    # created input files
+    'bads-file': join('{raw-dir}', '{subject}_{session}-bad_channels.txt'),
+    'raw-ica-file': join('{raw-dir}', '{subject} {raw}-ica.fif'),
+    'rej-dir': join('{meg-dir}', 'epoch selection'),
+    'rej-file': join('{rej-dir}', '{session}_{sns_kind}_{epoch}-{rej}.pickled'),
+    'ica-file': join('{rej-dir}', '{session} {sns_kind} {rej}-ica.fif'),
 
-        # cache
-        'cache-dir': os.path.join('{root}', 'eelbrain-cache'),
-        'cache-state-file': os.path.join('{cache-dir}', 'cache-state.pickle'),
-        # raw
-        'raw-cache-dir': os.path.join('{cache-dir}', 'raw', '{subject}'),
-        'raw-cache-base': os.path.join('{raw-cache-dir}', '{session} {raw}'),
-        'cached-raw-file': '{raw-cache-base}-raw.fif',
-        'event-file': '{raw-cache-base}-evts.pickled',
-        'interp-file': '{raw-cache-base}-interp.pickled',
-        # forward modeling:  Assuming same head shape geometry between sessions;
-        # Two raw files with the same head shape require only one trans, even if
-        # markers are different (different markers means different head-MEG
-        # trans). But different markers require separate forward solution.
-        'fwd-file': os.path.join('{raw-cache-dir}', '{session}-{mrisubject}-{src}-fwd.fif'),
-        # sensor covariance
-        'cov-dir': os.path.join('{cache-dir}', 'cov'),
-        'cov-base': os.path.join('{cov-dir}', '{subject}',
-                                 '{sns_kind} {cov}-{rej}'),
-        'cov-file': '{cov-base}-cov.fif',
-        'cov-info-file': '{cov-base}-info.txt',
-        # evoked
-        'evoked-dir': os.path.join('{cache-dir}', 'evoked'),
-        'evoked-base': os.path.join('{evoked-dir}', '{subject}', '{session} '
-                                    '{sns_kind} {epoch} {model} {evoked_kind}'),
-        'evoked-file': os.path.join('{evoked-base}-ave.fif'),
-        'evoked-old-file': os.path.join('{evoked-base}.pickled'),  # removed for 0.25
-        # test files
-        'test-dir': os.path.join('{cache-dir}', 'test'),
-        'data_parc': 'unmasked',  # for some tests, parc and mask parameter can be saved in same file
-        'test-file': os.path.join('{test-dir}', '{analysis} {group}',
-                                  '{epoch} {test} {test_options} {data_parc}.pickled'),
+    # cache
+    'cache-dir': join('{root}', 'eelbrain-cache'),
+    'cache-state-file': join('{cache-dir}', 'cache-state.pickle'),
+    # raw
+    'raw-cache-dir': join('{cache-dir}', 'raw', '{subject}'),
+    'raw-cache-base': join('{raw-cache-dir}', '{session} {raw}'),
+    'cached-raw-file': '{raw-cache-base}-raw.fif',
+    'event-file': '{raw-cache-base}-evts.pickled',
+    'interp-file': '{raw-cache-base}-interp.pickled',
+    # forward modeling:  Assuming same head shape geometry between sessions;
+    # Two raw files with the same head shape require only one trans, even if
+    # markers are different (different markers means different head-MEG
+    # trans). But different markers require separate forward solution.
+    'fwd-file': join('{raw-cache-dir}', '{session}-{mrisubject}-{src}-fwd.fif'),
+    # sensor covariance
+    'cov-dir': join('{cache-dir}', 'cov'),
+    'cov-base': join('{cov-dir}', '{subject}', '{sns_kind} {cov}-{rej}'),
+    'cov-file': '{cov-base}-cov.fif',
+    'cov-info-file': '{cov-base}-info.txt',
+    # evoked
+    'evoked-dir': join('{cache-dir}', 'evoked'),
+    'evoked-base': join('{evoked-dir}', '{subject}',
+                        '{session} {sns_kind} {epoch} {model} {evoked_kind}'),
+    'evoked-file': join('{evoked-base}-ave.fif'),
+    'evoked-old-file': join('{evoked-base}.pickled'),  # removed for 0.25
+    # test files
+    'test-dir': join('{cache-dir}', 'test'),
+    'data_parc': 'unmasked',  # for some tests, parc and mask parameter can be saved in same file
+    'test-file': join('{test-dir}', '{analysis} {group}',
+                      '{epoch} {test} {test_options} {data_parc}.pickled'),
 
-        # MRIs
-        'common_brain': 'fsaverage',
-        # MRI base files
-        'mri-sdir': os.path.join('{root}', 'mri'),
-        'mri-dir': os.path.join('{mri-sdir}', '{mrisubject}'),
-        'bem-dir': os.path.join('{mri-dir}', 'bem'),
-        'mri-cfg-file': os.path.join('{mri-dir}', 'MRI scaling parameters.cfg'),
-        'mri-file': os.path.join('{mri-dir}', 'mri', 'orig.mgz'),
-        'bem-file': os.path.join('{bem-dir}', '{mrisubject}-inner_skull-bem.fif'),
-        'bem-sol-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),  # removed for 0.24
-        'head-bem-file': os.path.join('{bem-dir}', '{mrisubject}-head.fif'),
-        'src-file': os.path.join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
-        'fiducials-file': os.path.join('{bem-dir}', '{mrisubject}-fiducials.fif'),
-        # Labels
-        'hemi': ('lh', 'rh'),
-        'label-dir': os.path.join('{mri-dir}', 'label'),
-        'annot-file': os.path.join('{label-dir}', '{hemi}.{parc}.annot'),
+    # MRIs
+    'common_brain': 'fsaverage',
+    # MRI base files
+    'mri-sdir': join('{root}', 'mri'),
+    'mri-dir': join('{mri-sdir}', '{mrisubject}'),
+    'bem-dir': join('{mri-dir}', 'bem'),
+    'mri-cfg-file': join('{mri-dir}', 'MRI scaling parameters.cfg'),
+    'mri-file': join('{mri-dir}', 'mri', 'orig.mgz'),
+    'bem-file': join('{bem-dir}', '{mrisubject}-inner_skull-bem.fif'),
+    'bem-sol-file': join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),  # removed for 0.24
+    'head-bem-file': join('{bem-dir}', '{mrisubject}-head.fif'),
+    'src-file': join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
+    'fiducials-file': join('{bem-dir}', '{mrisubject}-fiducials.fif'),
+    # Labels
+    'hemi': ('lh', 'rh'),
+    'label-dir': join('{mri-dir}', 'label'),
+    'annot-file': join('{label-dir}', '{hemi}.{parc}.annot'),
 
-        # (method) plots
-        'plot-dir': os.path.join('{root}', 'plots'),
-        'plot-file': os.path.join('{plot-dir}', '{analysis}', '{name}.{ext}'),
+    # (method) plots
+    'plot-dir': join('{root}', 'plots'),
+    'plot-file': join('{plot-dir}', '{analysis}', '{name}.{ext}'),
 
-        # general analysis parameters
-        'analysis': '',  # analysis parameters (sns_kind, src_kind, ...)
-        'test_options': '',
-        'name': '',
+    # general analysis parameters
+    'analysis': '',  # analysis parameters (sns_kind, src_kind, ...)
+    'test_options': '',
+    'name': '',
 
-        # result output files
-        # data processing parameters
-        #    > group
-        #        > kind of test
-        #    > single-subject
-        #        > kind of test
-        #            > subject
-        'folder': '',  # intermediate folder for deep files
-        'resname': '',  # analysis name (GA-movie, max plot, ...)
-        'ext': 'pickled',  # file extension
-        'res-dir': os.path.join('{root}', 'results'),
-        'res-file': os.path.join('{res-dir}', '{analysis}', '{resname}.{ext}'),
-        'res-deep-file': os.path.join('{res-dir}', '{analysis}', '{folder}',
-                                      '{resname}.{ext}'),
-        'report-file': os.path.join('{res-dir}', '{analysis} {group}', '{folder}',
-                                    '{epoch} {test} {test_options}.html'),
-        'group-mov-file': os.path.join('{res-dir}', '{analysis} {group}',
-                                       '{epoch} {test_options} {resname}.mov'),
-        'subject-res-dir': os.path.join('{res-dir}', '{analysis} subjects'),
-        'subject-spm-report': os.path.join('{subject-res-dir}',
-                                           '{test} {epoch} {test_options}',
-                                           '{subject}.html'),
-        'subject-mov-file': os.path.join('{subject-res-dir}',
-                                         '{epoch} {test_options} {resname}',
-                                         '{subject}.mov'),
+    # result output files
+    # data processing parameters
+    #    > group
+    #        > kind of test
+    #    > single-subject
+    #        > kind of test
+    #            > subject
+    'folder': '',  # intermediate folder for deep files
+    'resname': '',  # analysis name (GA-movie, max plot, ...)
+    'ext': 'pickled',  # file extension
+    'res-dir': join('{root}', 'results'),
+    'res-file': join('{res-dir}', '{analysis}', '{resname}.{ext}'),
+    'res-deep-file': join('{res-dir}', '{analysis}', '{folder}', '{resname}.{ext}'),
+    'report-file': join('{res-dir}', '{analysis} {group}', '{folder}',
+                        '{epoch} {test} {test_options}.html'),
+    'group-mov-file': join('{res-dir}', '{analysis} {group}',
+                           '{epoch} {test_options} {resname}.mov'),
+    'subject-res-dir': join('{res-dir}', '{analysis} subjects'),
+    'subject-spm-report': join('{subject-res-dir}', '{test} {epoch} {test_options}',
+                               '{subject}.html'),
+    'subject-mov-file': join('{subject-res-dir}',
+                             '{epoch} {test_options} {resname}', '{subject}.mov'),
 
-        # plots
-        # plot corresponding to a report (and using same folder structure)
-        'res-plot-root': os.path.join('{root}', 'result plots'),
-        'res-plot-dir': os.path.join('{res-plot-root}', '{analysis} {group}',
-                                     '{folder}', '{epoch} {test} {test_options}'),
+    # plots
+    # plot corresponding to a report (and using same folder structure)
+    'res-plot-root': join('{root}', 'result plots'),
+    'res-plot-dir': join('{res-plot-root}', '{analysis} {group}', '{folder}',
+                         '{epoch} {test} {test_options}'),
 
-        # besa
-        'besa-root': os.path.join('{root}', 'besa'),
-        'besa-trig': os.path.join('{besa-root}', '{subject}', '{subject}_'
-                                  '{session}_{epoch}_triggers.txt'),
-        'besa-evt': os.path.join('{besa-root}', '{subject}', '{subject}_'
-                                 '{session}_{epoch}[{rej}].evt'),
+    # besa
+    'besa-root': join('{root}', 'besa'),
+    'besa-trig': join('{besa-root}', '{subject}',
+                      '{subject}_{session}_{epoch}_triggers.txt'),
+    'besa-evt': join('{besa-root}', '{subject}',
+                     '{subject}_{session}_{epoch}[{rej}].evt'),
 
-        # MRAT
-        'mrat_condition': '',
-        'mrat-root': os.path.join('{root}', 'mrat'),
-        'mrat-sns-root': os.path.join('{mrat-root}', '{sns_kind}',
-                                      '{epoch} {model} {evoked_kind}'),
-        'mrat-src-root': os.path.join('{mrat-root}', '{src_kind}',
-                                      '{epoch} {model} {evoked_kind}'),
-        'mrat-sns-file': os.path.join('{mrat-sns-root}', '{mrat_condition}',
-                                      '{mrat_condition}_{subject}-ave.fif'),
-        'mrat_info-file': os.path.join('{mrat-root}', '{subject} info.txt'),
-        'mrat-src-file': os.path.join('{mrat-src-root}', '{mrat_condition}',
-                                      '{mrat_condition}_{subject}'),
-         }
+    # MRAT
+    'mrat_condition': '',
+    'mrat-root': join('{root}', 'mrat'),
+    'mrat-sns-root': join('{mrat-root}', '{sns_kind}',
+                          '{epoch} {model} {evoked_kind}'),
+    'mrat-src-root': join('{mrat-root}', '{src_kind}',
+                          '{epoch} {model} {evoked_kind}'),
+    'mrat-sns-file': join('{mrat-sns-root}', '{mrat_condition}',
+                          '{mrat_condition}_{subject}-ave.fif'),
+    'mrat_info-file': join('{mrat-root}', '{subject} info.txt'),
+    'mrat-src-file': join('{mrat-src-root}', '{mrat_condition}',
+                          '{mrat_condition}_{subject}'),
+}
 
 
 class MneExperiment(FileTree):
@@ -700,12 +697,11 @@ class MneExperiment(FileTree):
                              "eelbrain.MneExperiment.path_version>" %
                              self.__class__.__name__)
         elif self.path_version == 0:
-            self._templates['raw-dir'] = os.path.join('{meg-dir}', 'raw')
-            self._templates['raw-file'] = os.path.join('{raw-dir}', '{subject}_'
-                                                       '{session}_clm-raw.fif')
-
-            self._templates['raw-file-bkp'] = os.path.join('{raw-dir}', '{subject}_'
-                                              '{session}_{sns_kind}-raw*.fif')
+            self._templates['raw-dir'] = join('{meg-dir}', 'raw')
+            self._templates['raw-file'] = join(
+                '{raw-dir}', '{subject}_{session}_clm-raw.fif')
+            self._templates['raw-file-bkp'] = join(
+                '{raw-dir}', '{subject}_{session}_{sns_kind}-raw*.fif')
         elif self.path_version != 1:
             raise ValueError("MneExperiment.path_version needs to be 0 or 1")
         # update templates with _values
@@ -747,7 +743,7 @@ class MneExperiment(FileTree):
                               "with root=None or find_subjects=False" % sub_dir)
             subjects = sorted(s for s in os.listdir(sub_dir) if
                               self._subject_re.match(s) and
-                              os.path.isdir(os.path.join(sub_dir, s)))
+                              os.path.isdir(join(sub_dir, s)))
 
             if len(subjects) == 0:
                 print("%s: No subjects found in %r"
@@ -2137,7 +2133,7 @@ class MneExperiment(FileTree):
                 paths = []
                 for dirpath in self.glob(temp, **state):
                     for root_, _, filenames in os.walk(dirpath):
-                        paths.extend(os.path.join(root_, fn) for fn in filenames)
+                        paths.extend(join(root_, fn) for fn in filenames)
             else:
                 paths = self.glob(temp, **state)
 
@@ -2146,7 +2142,7 @@ class MneExperiment(FileTree):
                 if not src.startswith(root):
                     raise ValueError("Can only backup files in root directory")
                 tail = src[root_len:]
-                dst = os.path.join(dst_root, tail)
+                dst = join(dst_root, tail)
                 if os.path.exists(dst):
                     src_m = os.path.getmtime(src)
                     dst_m = os.path.getmtime(dst)
@@ -2191,7 +2187,7 @@ class MneExperiment(FileTree):
         self._log.info("Backing up %i files ..." % len(pairs))
         # create directories
         for dirname in dirs:
-            dirpath = os.path.join(dst_root, dirname)
+            dirpath = join(dst_root, dirname)
             if not os.path.exists(dirpath):
                 os.mkdir(dirpath)
         # copy files
@@ -2430,7 +2426,7 @@ class MneExperiment(FileTree):
         else:
             bem_dir = self.get('bem-dir')
             surfs = ('inner_skull', 'outer_skull', 'outer_skin')
-            paths = {s: os.path.join(bem_dir, s + '.surf') for s in surfs}
+            paths = {s: join(bem_dir, s + '.surf') for s in surfs}
             missing = [s for s in surfs if not os.path.exists(paths[s])]
             if missing:
                 self._log.info("%s %s missing for %s",
