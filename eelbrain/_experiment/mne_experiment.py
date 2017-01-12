@@ -2305,7 +2305,7 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        fields : list | str
+        fields : sequence | str
             Field(s) over which should be iterated.
         exclude : dict  {str: str, str: iterator over str, ...}
             Values to exclude from the iteration with {name: value} and/or

@@ -498,7 +498,7 @@ class TreeModel(object):
 
         Parameters
         ----------
-        fields : list | str
+        fields : sequence | str
             Field(s) over which should be iterated.
         exclude : bool | dict  {str: bool, str: str, str: iterator over str}
             Exclude values from iteration. Boolean specifies whether to apply
