@@ -6,7 +6,7 @@ import inspect
 from itertools import chain, izip, product
 import logging
 import os
-from os.path import join
+from os.path import exists, getmtime, isdir, join, relpath
 import re
 import shutil
 import time
@@ -738,12 +738,12 @@ class MneExperiment(FileTree):
 
         if find_subjects:
             sub_dir = self.get(self._subject_loc)
-            if not os.path.exists(sub_dir):
+            if not exists(sub_dir):
                 raise IOError("Subjects directory not found: %s. Initialize "
                               "with root=None or find_subjects=False" % sub_dir)
             subjects = sorted(s for s in os.listdir(sub_dir) if
                               self._subject_re.match(s) and
-                              os.path.isdir(join(sub_dir, s)))
+                              isdir(join(sub_dir, s)))
 
             if len(subjects) == 0:
                 print("%s: No subjects found in %r"
@@ -1105,7 +1105,7 @@ class MneExperiment(FileTree):
         ########
         # log-file
         if root:
-            if os.path.exists(self.get('old-eelbrain-log-file')):
+            if exists(self.get('old-eelbrain-log-file')):
                 os.rename(self.get('old-eelbrain-log-file'),
                           self.get('eelbrain-log-file'))
             handler = logging.FileHandler(self.get('eelbrain-log-file'))
@@ -1147,7 +1147,7 @@ class MneExperiment(FileTree):
 
         # loading events will create cache-dir
         cache_dir = self.get('cache-dir')
-        cache_dir_existed = os.path.exists(cache_dir)
+        cache_dir_existed = exists(cache_dir)
 
         # collect events and digitizer data for current setup
         with self._temporary_state:
@@ -1155,7 +1155,7 @@ class MneExperiment(FileTree):
             events = {}  # {(subject, session): enent_dataset}
             digs = defaultdict(dict)  # {subject: {session: dig}}
             for subject, session in self.iter(('subject', 'session'), group='all'):
-                if not os.path.exists(self.get('raw-file')):
+                if not exists(self.get('raw-file')):
                     continue
                 ds = self.load_events()
                 raw = ds.info.pop('raw')
@@ -1193,10 +1193,10 @@ class MneExperiment(FileTree):
         cache_state_path = self.get('cache-state-file')
         raw_state = pipeline_dict(self._raw)
         epoch_state = {k: v.as_dict() for k, v in self._epochs.iteritems()}
-        if os.path.exists(cache_state_path):
+        if exists(cache_state_path):
             # check time stamp
-            if os.path.getmtime(cache_state_path) > time.time():
-                tc = time.ctime(os.path.getmtime(cache_state_path))
+            if getmtime(cache_state_path) > time.time():
+                tc = time.ctime(getmtime(cache_state_path))
                 tsys = time.asctime()
                 raise RuntimeError("The cache's time stamp is in the future "
                                    "(%s). If the system time (%s) is wrong, "
@@ -1297,7 +1297,7 @@ class MneExperiment(FileTree):
                 filenames = self.glob('raw-ica-file', raw=raw, subject='*')
                 if filenames:
                     print("Outdated ICA files:\n" + '\n'.join(
-                          os.path.relpath(path, root) for path in filenames))
+                          relpath(path, root) for path in filenames))
                     ask_to_delete_ica_files(raw, status, filenames)
 
             # epochs
@@ -1470,7 +1470,7 @@ class MneExperiment(FileTree):
                 # log
                 if files:
                     msg.append("Files to be deleted:")
-                    msg.extend(sorted('  ' + os.path.relpath(f, root) for f in files))
+                    msg.extend(sorted('  ' + relpath(f, root) for f in files))
                 else:
                     msg.append("No cache files affected.")
                 log.debug(os.linesep.join(msg))
@@ -1542,7 +1542,7 @@ class MneExperiment(FileTree):
             else:
                 raise IOError("Cache directory without history, but "
                               "auto_delete_cache is not True")
-        elif not os.path.exists(cache_dir):
+        elif not exists(cache_dir):
             os.mkdir(cache_dir)
 
         new_state = {'version': CACHE_STATE_VERSION,
@@ -1580,8 +1580,8 @@ class MneExperiment(FileTree):
         mtime = 0
         for _ in self.iter('hemi'):
             fpath = self.get('annot-file')
-            if os.path.exists(fpath):
-                mtime = max(mtime, os.path.getmtime(fpath))
+            if exists(fpath):
+                mtime = max(mtime, getmtime(fpath))
             else:
                 return
         return mtime
@@ -1598,9 +1598,9 @@ class MneExperiment(FileTree):
 
     def _epochs_mtime(self):
         bads_path = self.get('bads-file')
-        if os.path.exists(bads_path):
+        if exists(bads_path):
             raw_mtime = self._raw_mtime()
-            bads_mtime = os.path.getmtime(bads_path)
+            bads_mtime = getmtime(bads_path)
             epoch = self._epochs[self.get('epoch')]
             rej_mtime = self._rej_mtime(epoch)
             if rej_mtime:
@@ -1628,18 +1628,18 @@ class MneExperiment(FileTree):
     def _fwd_mtime(self):
         "Return last time input files affecting fwd-file changed"
         trans = self.get('trans-file')
-        if os.path.exists(trans):
+        if exists(trans):
             src = self.get('src-file')
-            if os.path.exists(src):
-                trans_mtime = os.path.getmtime(trans)
-                src_mtime = os.path.getmtime(src)
+            if exists(src):
+                trans_mtime = getmtime(trans)
+                src_mtime = getmtime(src)
                 return max(self._raw_mtime('raw'), trans_mtime, src_mtime)
 
     def _ica_file_mtime(self, rej):
         "mtime if the file exists, else None; does not check raw mtime"
         ica_path = self.get('ica-file')
-        if os.path.exists(ica_path):
-            ica_mtime = os.path.getmtime(ica_path)
+        if exists(ica_path):
+            ica_mtime = getmtime(ica_path)
             if rej['source'] == 'raw':
                 return ica_mtime
             else:
@@ -1660,7 +1660,7 @@ class MneExperiment(FileTree):
             pipe = self._raw[self.get('raw')]
             return pipe.mtime(self.get('subject'), self.get('session'))
         elif raw == 'raw':
-            return os.path.getmtime(self.get('raw-file'))
+            return getmtime(self.get('raw-file'))
         else:
             raise RuntimeError("raw-mtime with raw=%s" % repr(raw))
 
@@ -1679,8 +1679,8 @@ class MneExperiment(FileTree):
             return 1  # no rejection
         with self._temporary_state:
             paths = [self.get('rej-file', epoch=e) for e in epoch.rej_file_epochs]
-        if all(os.path.exists(path) for path in paths):
-            mtime = max(os.path.getmtime(path) for path in paths)
+        if all(exists(path) for path in paths):
+            mtime = max(getmtime(path) for path in paths)
             if pre_ica or rej['kind'] != 'ica' or rej['source'] == 'raw':
                 return mtime
             # incorporate ICA-file
@@ -1704,10 +1704,10 @@ class MneExperiment(FileTree):
             Whether the corresponding test is performed for a single subject
             (as opposed to the current group).
         """
-        if os.path.exists(dst):
+        if exists(dst):
             mtime = self._result_mtime(data, single_subject)
             if mtime:
-                dst_mtime = os.path.getmtime(dst)
+                dst_mtime = getmtime(dst)
                 if dst_mtime > mtime:
                     return dst_mtime
 
@@ -1806,7 +1806,7 @@ class MneExperiment(FileTree):
         if reject and ds.info[INTERPOLATE_CHANNELS]:
             if modality == '':
                 interp_path = self.get('interp-file')
-                if os.path.exists(interp_path):
+                if exists(interp_path):
                     interp_cache = load.unpickle(interp_path)
                 else:
                     interp_cache = {}
@@ -2143,9 +2143,9 @@ class MneExperiment(FileTree):
                     raise ValueError("Can only backup files in root directory")
                 tail = src[root_len:]
                 dst = join(dst_root, tail)
-                if os.path.exists(dst):
-                    src_m = os.path.getmtime(src)
-                    dst_m = os.path.getmtime(dst)
+                if exists(dst):
+                    src_m = getmtime(src)
+                    dst_m = getmtime(dst)
                     if dst_m == src_m:
                         continue
                     elif dst_m > src_m:
@@ -2173,7 +2173,7 @@ class MneExperiment(FileTree):
 
         # verbose file list
         if v:
-            paths = [os.path.relpath(src, root) for src, _ in pairs]
+            paths = [relpath(src, root) for src, _ in pairs]
             print('\n'.join(paths))
             cmd = 'x'
             while cmd not in 'yn':
@@ -2188,7 +2188,7 @@ class MneExperiment(FileTree):
         # create directories
         for dirname in dirs:
             dirpath = join(dst_root, dirname)
-            if not os.path.exists(dirpath):
+            if not exists(dirpath):
                 os.mkdir(dirpath)
         # copy files
         for src, dst in pairs:
@@ -2427,7 +2427,7 @@ class MneExperiment(FileTree):
             bem_dir = self.get('bem-dir')
             surfs = ('inner_skull', 'outer_skull', 'outer_skin')
             paths = {s: join(bem_dir, s + '.surf') for s in surfs}
-            missing = [s for s in surfs if not os.path.exists(paths[s])]
+            missing = [s for s in surfs if not exists(paths[s])]
             if missing:
                 self._log.info("%s %s missing for %s",
                                enumeration(missing).capitalize(),
@@ -2721,8 +2721,8 @@ class MneExperiment(FileTree):
 
         # search for and check cached version
         ds = None
-        if os.path.exists(evt_file):
-            if os.path.getmtime(evt_file) > self._raw_mtime():
+        if exists(evt_file):
+            if getmtime(evt_file) > self._raw_mtime():
                 ds = load.unpickle(evt_file)
                 #  <0.19 cache
                 if 'sfreq' not in ds.info:
@@ -3075,10 +3075,10 @@ class MneExperiment(FileTree):
         if isinstance(pipe, RawICA):
             return pipe.load_ica(self.get('subject'))
         path = self.get('ica-file')
-        if not os.path.exists(path):
+        if not exists(path):
             raise RuntimeError("ICA file does not exist at %s. Run "
                                "e.make_ica_selection() to create it." %
-                               os.path.relpath(path, self.get('root')))
+                               relpath(path, self.get('root')))
         return mne.preprocessing.read_ica(path)
 
     def load_inv(self, fiff=None, **kwargs):
@@ -3369,7 +3369,7 @@ class MneExperiment(FileTree):
                                       session=epoch.session)
                 if reject and rej_params['kind'] is not None:
                     rej_file = self.get('rej-file')
-                    if os.path.exists(rej_file):
+                    if exists(rej_file):
                         ds_sel = load.unpickle(rej_file)
                     else:
                         raise RuntimeError("The rejection file at %s does not "
@@ -3583,7 +3583,7 @@ class MneExperiment(FileTree):
                                   (desc, res.samples, samples))
                 else:
                     res = None
-        elif not make and os.path.exists(dst):
+        elif not make and exists(dst):
             raise IOError("The requested test is outdated: %s. Set make=True "
                           "to perform the test." % desc)
 
@@ -3851,16 +3851,16 @@ class MneExperiment(FileTree):
         rej = self.get('rej')
         trig_dest = self.get('besa-trig', rej='', mkdir=True)
         evt_dest = self.get('besa-evt', rej=rej, mkdir=True)
-        if not redo and os.path.exists(evt_dest) and os.path.exists(trig_dest):
+        if not redo and exists(evt_dest) and exists(trig_dest):
             return
 
         # load events
         ds = self.load_selected_events(reject='keep')
 
         # save triggers
-        if redo or not os.path.exists(trig_dest):
+        if redo or not exists(trig_dest):
             save.meg160_triggers(ds, trig_dest, pad=1)
-            if not redo and os.path.exists(evt_dest):
+            if not redo and exists(evt_dest):
                 return
         else:
             ds.index('besa_index', 1)
@@ -3889,20 +3889,20 @@ class MneExperiment(FileTree):
             If the target file already exists, overwrite it.
         """
         dst_path = self.get(temp, mkdir=True, **{field: dst})
-        if not redo and os.path.exists(dst_path):
+        if not redo and exists(dst_path):
             return
 
         src_path = self.get(temp, **{field: src})
-        if os.path.isdir(src_path):
+        if isdir(src_path):
             raise ValueError("Can only copy files, not directories.")
         shutil.copyfile(src_path, dst_path)
 
     def make_cov(self):
         "Make a noise covariance (cov) file"
         dest = self.get('cov-file', mkdir=True)
-        if os.path.exists(dest):
+        if exists(dest):
             mtime = self._cov_mtime()
-            if mtime and os.path.getmtime(dest) > mtime:
+            if mtime and getmtime(dest) > mtime:
                 return
 
         params = self._covs[self.get('cov')]
@@ -3972,9 +3972,9 @@ class MneExperiment(FileTree):
                      (isinstance(data_raw, int) or data_raw == self.get('raw')))
         model = self.get('model')
         equal_count = self.get('equalize_evoked_count') == 'eq'
-        if use_cache and os.path.exists(dst):
+        if use_cache and exists(dst):
             mtime = self._evoked_mtime()
-            if mtime and os.path.getmtime(dst) > mtime:
+            if mtime and getmtime(dst) > mtime:
                 ds = self.load_selected_events(data_raw=data_raw)
                 ds = ds.aggregate(model, drop_bad=True, equal_count=equal_count,
                                   drop=('i_start', 't_edf', 'T', 'index'))
@@ -4004,8 +4004,8 @@ class MneExperiment(FileTree):
     def make_fwd(self):
         """Make the forward model"""
         dst = self.get('fwd-file')
-        if os.path.exists(dst):
-            fwd_mtime = os.path.getmtime(dst)
+        if exists(dst):
+            fwd_mtime = getmtime(dst)
             if fwd_mtime > self._fwd_mtime():
                 return
         elif self.get('modality') != '':
@@ -4104,7 +4104,7 @@ class MneExperiment(FileTree):
                                "ICA" % (self.get('raw'), self.get('rej')))
 
         path = self.get('ica-file', mkdir=True)
-        make = not os.path.exists(path)
+        make = not exists(path)
         if params['source'] == 'raw':
             load_epochs = return_data
             inst = self.load_raw()
@@ -4172,7 +4172,7 @@ class MneExperiment(FileTree):
             If the target file already exists, overwrite it.
         """
         dst_path = self.get(temp, **{field: dst})
-        if not redo and os.path.exists(dst_path):
+        if not redo and exists(dst_path):
             return
 
         src_path = self.get(temp, **{field: src})
@@ -4484,7 +4484,7 @@ class MneExperiment(FileTree):
         dst = self.get('res-file', mkdir=True, ext='png',
                        analysis='Source Annot',
                        resname="{parc} {mrisubject} %s" % surf)
-        if not redo and os.path.exists(dst):
+        if not redo and exists(dst):
             return
 
         brain, legend = self.plot_annot(surf=surf, axw=600, show=False)
@@ -4499,7 +4499,7 @@ class MneExperiment(FileTree):
             self.set(mrisubject=mrisubject, match=False)
 
         dst = self._make_plot_label_dst(surf, label)
-        if not redo and os.path.exists(dst):
+        if not redo and exists(dst):
             return
 
         brain = self.plot_label(label, surf=surf)
@@ -4514,7 +4514,7 @@ class MneExperiment(FileTree):
             labels = self._load_labels().values()
             dsts = [self._make_plot_label_dst(surf, label.name)
                     for label in labels]
-        if not redo and all(os.path.exists(dst) for dst in dsts):
+        if not redo and all(exists(dst) for dst in dsts):
             return
 
         brain = self.plot_brain(surf, None, 'split', ['lat', 'med'], w=1200)
@@ -4581,7 +4581,7 @@ class MneExperiment(FileTree):
         path = self.get('rej-file', mkdir=True)
         modality = self.get('modality')
 
-        if auto is not None and overwrite is not True and os.path.exists(path):
+        if auto is not None and overwrite is not True and exists(path):
             msg = ("A rejection file already exists for {subject}, epoch "
                    "{epoch}, rej {rej}. Set overwrite=True if you are sure you "
                    "want to replace that file.")
@@ -4635,7 +4635,7 @@ class MneExperiment(FileTree):
     def _need_not_recompute_report(self, dst, samples, data, redo):
         "Check (and log) whether the report needs to be redone"
         desc = self._get_rel('report-file', 'res-dir')
-        if not os.path.exists(dst):
+        if not exists(dst):
             self._log.debug("New report: %s", desc)
         elif redo:
             self._log.debug("Redoing report: %s", desc)
@@ -5181,14 +5181,14 @@ class MneExperiment(FileTree):
                 self.make_src(mrisubject=common_brain)
                 orig = self.get('src-file')
 
-            if os.path.exists(dst):
-                if os.path.getmtime(dst) >= os.path.getmtime(orig):
+            if exists(dst):
+                if getmtime(dst) >= getmtime(orig):
                     return
 
             src = self.get('src')
             subjects_dir = self.get('mri-sdir')
             mne.scale_source_space(subject, src, subjects_dir=subjects_dir)
-        elif os.path.exists(dst):
+        elif exists(dst):
             return
         else:
             src = self.get('src')
@@ -5269,7 +5269,7 @@ class MneExperiment(FileTree):
             # be performed lower in the hierarchy
             self.set(raw='raw')
             for session in self.iter('session'):
-                if os.path.exists(self.get('raw-file')):
+                if exists(self.get('raw-file')):
                     bads.update(self.load_bad_channels())
                     sessions.append(session)
                 else:
@@ -5980,7 +5980,7 @@ class MneExperiment(FileTree):
             for s in self:
                 subjects.append(s)
                 filename = self.get('raw-ica-file')
-                if os.path.exists(filename):
+                if exists(filename):
                     ica = self.load_ica()
                     status = "%i components rejected" % len(ica.exclude)
                 else:
@@ -6006,7 +6006,7 @@ class MneExperiment(FileTree):
         reg = []
         for subject in self:
             path = self.get('cov-info-file')
-            if os.path.exists(path):
+            if exists(path):
                 with open(path, 'r') as fid:
                     text = fid.read()
                 reg.append(float(text.strip()))
@@ -6052,7 +6052,7 @@ class MneExperiment(FileTree):
         for subject in self:
             subjects.append(subject)
             bads_raw = self.load_bad_channels()
-            if os.path.exists(self.get('rej-file')):
+            if exists(self.get('rej-file')):
                 ds = self.load_selected_events(reject='keep')
                 n_good.append(ds['accept'].sum())
                 bads_rej = set(ds.info[BAD_CHANNELS]).difference(bads_raw)
@@ -6068,7 +6068,7 @@ class MneExperiment(FileTree):
             n_events.append(ds.n_cases)
             if has_ica:
                 ica_path = self.get('ica-file')
-                if os.path.exists(ica_path):
+                if exists(ica_path):
                     ica = mne.preprocessing.read_ica(ica_path)
                     n_ics.append(len(ica.exclude))
                 else:
@@ -6131,7 +6131,7 @@ class MneExperiment(FileTree):
             mrisubject_list.append(mrisubject_)
             if mri:
                 mri_dir = self.get('mri-dir')
-                if not os.path.exists(mri_dir):
+                if not exists(mri_dir):
                     mri_list.append('*missing')
                 elif is_fake_mri(mri_dir):
                     mri_sdir = self.get('mri-sdir')
