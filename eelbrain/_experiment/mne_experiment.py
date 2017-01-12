@@ -34,7 +34,7 @@ from .._mne import dissolve_label, \
     morph_source_space, shift_mne_epoch_trigger
 from ..mne_fixes import (
     write_labels_to_annot, _interpolate_bads_eeg, _interpolate_bads_meg)
-from ..mne_fixes._trans import dig_equal
+from ..mne_fixes._trans import hsp_equal, mrk_equal
 from .._data_obj import (isvar, asfactor, align, DimensionMismatchError,
                          as_legal_dataset_key, assert_is_legal_dataset_key,
                          OldVersionError)
@@ -382,6 +382,7 @@ temp = {
 
     # cache
     'cache-dir': join('{root}', 'eelbrain-cache'),
+    'input-state-file': join('{cache-dir}', 'input-state.pickle'),
     'cache-state-file': join('{cache-dir}', 'cache-state.pickle'),
     # raw
     'raw-cache-dir': join('{cache-dir}', 'raw', '{subject}'),
@@ -389,10 +390,15 @@ temp = {
     'cached-raw-file': '{raw-cache-base}-raw.fif',
     'event-file': '{raw-cache-base}-evts.pickled',
     'interp-file': '{raw-cache-base}-interp.pickled',
-    # forward modeling:  Assuming same head shape geometry between sessions;
-    # Two raw files with the same head shape require only one trans, even if
-    # markers are different (different markers means different head-MEG
-    # trans). But different markers require separate forward solution.
+
+    # forward modeling:
+    # Two raw files with
+    #  - different head shapes: raw files require different head-MRI trans-files
+    #    (not implemented).
+    #  - Same head shape, but different markers:  same trans-file, but different
+    #    forward solutions.
+    #  - Same head shape and markers:  raw files could potentially share forward
+    #    solution (not implemented)
     'fwd-file': join('{raw-cache-dir}', '{session}-{mrisubject}-{src}-fwd.fif'),
     # sensor covariance
     'cov-dir': join('{cache-dir}', 'cov'),
@@ -1149,47 +1155,100 @@ class MneExperiment(FileTree):
         cache_dir = self.get('cache-dir')
         cache_dir_existed = exists(cache_dir)
 
-        # collect events and digitizer data for current setup
+        # collect input file information
+        # ==============================
+        raw_missing = []  # [(subject, session), ...]
+        subjects_with_dig_changes = set()  # {subject, ...}
+        events = {}  # {(subject, session): event_dataset}
+
+        # saved mtimes
+        input_state_file = self.get('input-state-file')
+        if len(self._sessions) == 1:
+            input_state = None  # currently no check is necessary
+        elif exists(input_state_file):
+            input_state = load.unpickle(input_state_file)
+            if input_state['version'] > CACHE_STATE_VERSION:
+                raise RuntimeError(
+                    "You are trying to initialize an experiment with an older "
+                    "version of Eelbrain than that which wrote the cache. If "
+                    "you really need this, delete the eelbrain-cache folder "
+                    "before proceeding."
+                )
+        else:
+            input_state = {'version': CACHE_STATE_VERSION}
+
+        # collect current events and mtime
         with self._temporary_state:
-            self.set(raw='raw')
-            events = {}  # {(subject, session): enent_dataset}
-            digs = defaultdict(dict)  # {subject: {session: dig}}
-            for subject, session in self.iter(('subject', 'session'), group='all'):
-                if not exists(self.get('raw-file')):
+            for key in self.iter(('subject', 'session'), group='all', raw='raw'):
+                raw_file = self.get('raw-file')
+                if not exists(raw_file):
+                    raw_missing.append(key)
                     continue
-                ds = self.load_events()
-                raw = ds.info.pop('raw')
-                events[subject, session] = ds
-                digs[subject][session] = raw.info['dig']
+                # events
+                events[key] = self.load_events(add_bads=False, data_raw=False)
+                # mtime
+                if input_state is not None:
+                    mtime = getmtime(raw_file)
+                    if key not in input_state or mtime != input_state[key]['raw-mtime']:
+                        subjects_with_dig_changes.add(key[0])
+                        input_state[key] = {'raw-mtime': mtime}
+            # save input-state
+            if input_state is not None:
+                save.pickle(input_state, input_state_file)
 
-        # interlude: check whether raw files head-mri trans are compatible
-        self._dig_ids = {}  # {subject: {session: id}}
-        for subject in digs:
-            subject_dig_ids = {}  # {session: id}
-            subject_digs = {}  # {id: dig}
-            i = 1
-            for session, dig in digs[subject].iteritems():
-                for dig_id in subject_digs.keys():
+        # check for digitizer data differences
+        # ====================================
+        #  - raw files with different head shapes require different head-mri
+        #    trans files, which is not possible
+        #  - SuperEpochs currently need to have a single forward solution,
+        #    hence marker positions need to be the same between sub-epochs
+            if subjects_with_dig_changes:
+                log.info("Raw input files changed, checking digitizer data")
+                super_epochs = tuple(epoch for epoch in self._epochs.values() if
+                                     isinstance(epoch, SuperEpoch))
+            for subject in subjects_with_dig_changes:
+                self.set(subject)
+                digs = {}  # {session: dig}
+                dig_ids = {}  # {session: id}
+                for session in self.iter('session'):
+                    key = subject, session
+                    if key in raw_missing:
+                        continue
+                    raw = self.load_raw(False)
+                    dig = raw.info['dig']
                     if dig is None:
-                        pass  # assume that it is not used or the same
-                    elif dig_equal(dig, subject_digs[dig_id]):
-                        subject_dig_ids[session] = dig_id
-                        break
-                else:
-                    subject_dig_ids[session] = i
-                    subject_digs[i] = dig
-                    i += 1
-            self._dig_ids[subject] = subject_dig_ids
-        for name, epoch in self._epochs.iteritems():
-            if isinstance(epoch, SuperEpoch):
-                for subject, subject_dig_ids in self._dig_ids.iteritems():
-                    if len(set(filter(None, (subject_dig_ids.get(s) for s in
-                                             epoch.sessions)))) > 1:
-                        raise NotImplementedError(
-                            "SuperEpoch from sessions with different trans "
-                            "(%s)" % name)
+                        continue  # assume that it is not used or the same
 
-        # check the cache, delete invalid files
+                    for session_, dig_ in digs.iteritems():
+                        if not hsp_equal(dig, dig_):
+                            raise NotImplementedError(
+                                "Subject %s has different head shape data "
+                                "for sessions %s and %s. This would require "
+                                "different trans-files for the different "
+                                "sessions, which is currently not implemented "
+                                "in the MneExperiment class." %
+                                (subject, session, session_)
+                            )
+                        elif mrk_equal(dig, dig_):
+                            dig_ids[session] = dig_ids[session_]
+                            break
+                    else:
+                        dig_ids[session] = len(digs)
+                        digs[session] = dig
+
+                # check super-epochs
+                for epoch in super_epochs:
+                    if len(set(dig_ids[s] for s in epoch.sessions if s in
+                               dig_ids)) > 1:
+                        raise NotImplementedError(
+                            "SuperEpoch %s has sessions with incompatible "
+                            "marker positions: %s; SuperEpochs with different "
+                            "forward solutions are not implemented." %
+                            (epoch.name, dig_ids)
+                        )
+
+        # Check the cache, delete invalid files
+        # =====================================
         cache_state_path = self.get('cache-state-file')
         raw_state = pipeline_dict(self._raw)
         epoch_state = {k: v.as_dict() for k, v in self._epochs.iteritems()}
