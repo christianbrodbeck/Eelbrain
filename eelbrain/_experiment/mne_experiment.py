@@ -2691,8 +2691,7 @@ class MneExperiment(FileTree):
                 del ds['epochs']
             return ds
 
-    def load_events(self, subject=None, add_bads=True, data_raw=True, edf=True,
-                    **kwargs):
+    def load_events(self, subject=None, add_bads=True, data_raw=True, **kwargs):
         """
         Load events from a raw file.
 
@@ -2712,8 +2711,6 @@ class MneExperiment(FileTree):
             Can be specified as raw name (str) to include a different raw object
             than the one from which events are loaded (used for frequency
             analysis).
-        edf : bool
-            Load the EDF file (if available) and add it as ``ds.info['edf']``.
         others :
             Update state.
         """
@@ -2740,13 +2737,13 @@ class MneExperiment(FileTree):
             del ds.info['raw']
             ds.info['sfreq'] = raw.info['sfreq']
 
-            if edf and self.has_edf[subject]:  # add edf
+            # add edf
+            if self.has_edf[subject]:
                 edf = self.load_edf()
                 edf.add_t_to(ds)
                 ds.info['edf'] = edf
 
-            if edf or not self.has_edf[subject]:
-                save.pickle(ds, evt_file)
+            save.pickle(ds, evt_file)
         elif data_raw is True:
             raw = self.load_raw(add_bads, subject=subject)
 
