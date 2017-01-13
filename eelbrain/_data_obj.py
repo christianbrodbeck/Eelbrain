@@ -52,7 +52,9 @@ from scipy.spatial.distance import cdist, pdist, squareform
 from . import fmtxt
 from . import _colorspaces as cs
 from ._utils import deprecated, ui, LazyProperty, natsorted
-from ._utils.numpy_utils import slice_to_arange, full_slice, digitize
+from ._utils.numpy_utils import (
+    digitize_index, digitize_slice_endpoint, full_slice, index_to_int_array,
+    slice_to_arange)
 from .mne_fixes import MNE_EPOCHS, MNE_EVOKED, MNE_RAW, MNE_LABEL
 from functools import reduce
 
@@ -3038,7 +3040,6 @@ class Factor(_Effect):
         return Factor(self.x, name, self.random, repeats, labels=self._labels)
 
 
-
 class NDVar(object):
     """Container for n-dimensional data.
     
@@ -3059,20 +3060,31 @@ class NDVar(object):
 
     Notes
     -----
-    ``x`` and ``dims`` are stored without copying. A shallow
-    copy of ``info`` is stored. Make sure the relevant objects
-    are not modified externally later.
+    *Indexing*: For classical indexing, indexes need to be provided in the
+    correct sequence. For example, assuming ``ndvar``'s first axis is time,
+    ``ndvar[0.1]`` retrieves a slice at time = 0.1 s. If time is the second
+    axis, the same can be achieved with ``ndvar[:, 0.1]``.
+    In :meth:`NDVar.sub`, dimensions can be specified as keywords, for example,
+    ``ndvar.sub(time=0.1)``, regardless of which axis represents the time
+    dimension.
+
+    *Shallow copies*: ``x`` and ``dims`` are stored without copying. A shallow
+    copy of ``info`` is stored. Make sure the relevant objects are not modified
+    externally later.
 
 
     Examples
     --------
-    Importing 600 epochs of data for 80 time points:
+    Create an NDVar for 600 time series of 80 time points each:
 
     >>> data.shape
     (600, 80)
     >>> time = UTS(-.2, .01, 80)
-    >>> dims = ('case', time)
-    >>> Y = NDVar(data, dims=dims)
+    >>> ndvar = NDVar(data, dims=('case', time))
+
+    Baseline correction:
+
+    >>> ndvar -= ndvar.mean(time=(None, 0))
 
     """
     _stype = "ndvar"
@@ -4479,28 +4491,24 @@ class NDVar(object):
     def sub(self, *args, **kwargs):
         """Retrieve a slice through the NDVar.
 
-        Returns an NDVar object with a slice of the current NDVar's data.
-        The slice is specified using arguments and keyword arguments. Indexes
-        for dimensions can ether be specified in order, or with dimension names
-        as keywords, e.g.::
+        Returns a new NDVar with a slice of the current NDVar's data.
+        The slice is specified using arguments and keyword arguments.
 
-            >>> Y.sub(time = 1)
+        Indexes for dimensions can be either specified as arguments in the
+        order of the data axes, or with dimension names as keywords; for::
 
-        returns a slice for time point 1 (second). If time is the first
-        dimension, this is equivalent::
+        >>> x
+        >>> <NDVar 'uts': 60 (case) X 100 (time)>
 
-            >>> Y.sub(1)
+        ``x.sub(time=0.1)`` is equivalent to ``x.sub(slice(None), 0.1)`` and
+        ``x[:, 0.1]``.
 
-        For dimensions whose values change monotonically, a tuple can be used
-        to specify a window::
+        Tuples are reserved for slicing and are treated like ``slice`` objects.
+        Use lists for indexing arbitrary sequences of elements.
 
-            >>> Y.sub(time = (.2, .6))
-
-        returns a slice containing all values for times .2 seconds to .6
-        seconds.
-
-        The name of the new NDVar can be set with a ``name`` parameter. The
-        default is the name of the current NDVar.
+        The name of the new NDVar can be set with a ``name`` keyword
+        (``x.sub(time=0.1, name="new_name")``). The default is the name of the
+        current NDVar.
         """
         var_name = kwargs.pop('name', self.name)
         info = self.info.copy()
@@ -6979,7 +6987,8 @@ class Dimension(object):
         return not self == other
 
     def __getitem__(self, index):
-        """
+        """Array-like Indexing
+
          - int -> label or value for that location
          - [int] -> Dimension object with 1 location
          - [int, ...] -> Dimension object
@@ -7016,35 +7025,55 @@ class Dimension(object):
                 return self.name.capitalize()
 
     def dimindex(self, arg):
-        """Process index parameter
+        """Convert a dimension-semantic index to an array-like index
 
-        Notes
-        -----
-        Boolean and int arrays are always considered indexing self.values.
+        Subclasses need to handle dimension-specific cases
+
+        args that are handled by the Dimension baseclass:
+         - None
+         - boolean array
+         - boolean NDVars
+        args handled recursively:
+         - list
+         - tuple -> slice(*tuple)
+         - Var -> Var.x
         """
         if arg is None:
-            return None
+            return None  # pass through None, for example for slice
         elif isndvar(arg):
             return self._dimindex_for_ndvar(arg)
         elif isvar(arg):
-            return arg.x
-        elif isinstance(arg, np.ndarray) and arg.dtype.kind in 'bi':
-            return arg
-        elif isinstance(arg, (slice, int)):
+            return self.dimindex(arg.x)
+        elif isinstance(arg, np.ndarray):
+            if arg.dtype.kind != 'b':
+                raise TypeError("array of type %r not supported as index for "
+                                "%s" % (arg.dtype.kind, self._dimname()))
+            elif arg.ndim != 1:
+                raise IndexError("Boolean index for %s needs to be 1d, got "
+                                 "array of shape %s" %
+                                 (self._dimname(), arg.shape))
+            elif len(arg) != len(self):
+                raise IndexError(
+                    "Got boolean index of length %i for %s of length %i" %
+                    (len(arg), self._dimname(), len(self)))
             return arg
         elif isinstance(arg, tuple):
-            raise TypeError("%s dimension does not support interval indexing "
-                            "with tuples." % self.name)
+            if len(arg) > 3:
+                raise ValueError("Tuple indexes signify intervals and need to "
+                                 "be of length 1, 2 or 3 (got %r for %s)" %
+                                 (arg, self._dimname()))
+            return self._dimindex_for_slice(*arg)
         elif isinstance(arg, list):
             if len(arg) == 0:
                 return np.empty(0, np.int8)
             return np.array([self.dimindex(a) for a in arg])
+        elif isinstance(arg, slice):
+            return self._dimindex_for_slice(arg.start, arg.stop, arg.step)
         else:
-            raise TypeError("Unknown index type for %s dimension: %s" 
-                            % (self.name, repr(arg)))
+            raise TypeError("Unknown index type for %s: %r" %
+                            (self._dimname(), arg))
 
     def _dimindex_for_ndvar(self, arg):
-        "Dimindex for NDVar index"
         if arg.x.dtype.kind != 'b':
             raise IndexError("Only NDVars with boolean data can serve "
                              "as indexes. Got %s." % repr(arg))
@@ -7056,6 +7085,35 @@ class Dimension(object):
                              "dimension" % arg.dims[0].name)
         else:
             return arg.x
+
+    def _dimindex_for_slice(self, start, stop=None, step=None):
+        if step is not None and not isinstance(step, int):
+            raise TypeError("Slice index step for %s must be int, not %r" %
+                            (self._dimname(), step))
+
+        if start is None:
+            start_ = None
+        else:
+            start_ = self.dimindex(start)
+            if not isinstance(start_, int):
+                raise TypeError("%r is not an unambiguous slice start for %s" %
+                                (start, self._dimname()))
+
+        if stop is None:
+            stop_ = None
+        else:
+            stop_ = self.dimindex(stop)
+            if not isinstance(stop_, int):
+                raise TypeError("%r is not an unambiguous slice start for %s" %
+                                (stop, self._dimname()))
+
+        return slice(start_, stop_, step)
+
+    def _dimname(self):
+        if self.name.lower() == self.__class__.__name__.lower():
+            return self.__class__.__name__ + ' dimension'
+        else:
+            return '%s dimension (%r)' % (self.__class__.__name__, self.name)
 
     def intersect(self, dim, check_dims=True):
         """Create a Dimension that is the intersection with dim
@@ -7186,7 +7244,7 @@ class Categorial(Dimension):
 
 
 class Scalar(Dimension):
-    """Scalar dimension
+    """Scalar dimension (not currently used except as baseclass)
 
     Parameters
     ----------
@@ -7237,9 +7295,8 @@ class Scalar(Dimension):
         return len(self.values)
 
     def __eq__(self, other):
-        is_equal = (Dimension.__eq__(self, other)
-                    and np.array_equal(self.values, other.values))
-        return is_equal
+        return (Dimension.__eq__(self, other) and
+                np.array_equal(self.values, other.values))
 
     def __getitem__(self, index):
         if isinstance(index, int):
@@ -7265,7 +7322,7 @@ class Scalar(Dimension):
             s_idx, a_idx = np.nonzero(self.values[:, None] == arg.values)
             return s_idx[np.argsort(a_idx)]
         elif np.isscalar(arg):
-            return np.argmin(np.abs(self.values - arg))
+            return digitize_index(arg, self.values)
         else:
             return super(Scalar, self).dimindex(arg)
 
@@ -7322,21 +7379,21 @@ class Ordered(Scalar):
             raise ValueError("Values not monotonic")
 
     def dimindex(self, arg):
-        if isinstance(arg, tuple):
-            if len(arg) != 2:
-                raise ValueError("Tuple indexes for the %s dimension signify "
-                                 "intervals and need to be exactly of length "
-                                 "2 (got %s)" % (self.name, repr(arg)))
-            start, stop = arg
-            if start is not None:
-                start = self.dimindex(start)
-            if stop is not None:
-                stop = self.dimindex(stop)
-            return slice(start, stop)
-        elif np.isscalar(arg):
-            return int(digitize(arg, self.values, True))
+        if np.isscalar(arg):
+            try:
+                return digitize_index(arg, self.values, 0.3)
+            except IndexError as error:
+                raise IndexError("Ambiguous index for %s: %s" %
+                                 (self._dimname(), error.args[0]))
         else:
             return super(Ordered, self).dimindex(arg)
+
+    def _dimindex_for_slice(self, start, stop=None, step=None):
+        if start is not None:
+            start = digitize_slice_endpoint(start, self.values)
+        if stop is not None:
+            stop = digitize_slice_endpoint(stop, self.values)
+        return slice(start, stop, step)
 
     def _diminfo(self):
         name = self.name.capitalize(),
@@ -7485,18 +7542,14 @@ class Sensor(Dimension):
         return is_equal
 
     def __getitem__(self, index):
-        index = self.dimindex(index)
         if np.isscalar(index):
             return self.names[index]
         else:
-            int_index = np.arange(len(self))[index]
-            if len(int_index) == 0:
-                return None
-            locs = self.locs[index]
-            names = self.names[index]
             # TODO: groups
-            return Sensor(locs, names, None, self.sysname, self.default_proj2d,
-                          _subgraph_edges(self._connectivity, int_index))
+            return Sensor(self.locs[index], self.names[index], None,
+                          self.sysname, self.default_proj2d,
+                          _subgraph_edges(self._connectivity,
+                                          index_to_int_array(index, self.n)))
 
     def _axis_format(self, scalar, label):
         return IndexFormatter(self.names), self._axis_label(label)
@@ -7518,11 +7571,14 @@ class Sensor(Dimension):
         return Dataset(('n_sensors', Var(x.sum(1))))
 
     def dimindex(self, arg):
-        "Convert dimension indexes into numpy indexes"
+        "Convert a dimension-semantic index to an array-like index"
         if isinstance(arg, basestring):
             return self.channel_idx[arg]
         elif isinstance(arg, Sensor):
             return np.array([self.names.index(name) for name in arg.names])
+        elif isinstance(arg, int) or (isinstance(arg, np.ndarray) and
+                                      arg.dtype.kind == 'i'):
+            return arg
         else:
             return super(Sensor, self).dimindex(arg)
 
@@ -8252,9 +8308,8 @@ class SourceSpace(Dimension):
                 index -= len(vertno)
             else:
                 raise ValueError("SourceSpace Index out of range: %i" % index)
-        arange = np.arange(len(self))
-        int_index = arange[index]
-        bool_index = np.in1d(arange, int_index, True)
+        int_index = index_to_int_array(index, self._n_vert)
+        bool_index = np.bincount(int_index, minlength=self._n_vert).astype(bool)
 
         # vertno
         boundaries = np.cumsum(tuple(chain((0,), (len(v) for v in self.vertno))))
@@ -8449,7 +8504,7 @@ class SourceSpace(Dimension):
             return self._dimindex_label(arg)
         elif isinstance(arg, basestring):
             if arg == 'lh':
-                return slice(0, self.lh_n)
+                return slice(self.lh_n)
             elif arg == 'rh':
                 if self.rh_n:
                     return slice(self.lh_n, None)
@@ -8466,7 +8521,11 @@ class SourceSpace(Dimension):
                 raise IndexError("Index contains unknown sources")
             else:
                 return np.hstack([np.in1d(s, o, True) for s, o in izip(sv, ov)])
-        elif isinstance(arg, Sequence):
+        elif isinstance(arg, int) or (isinstance(arg, np.ndarray) and
+                                      arg.dtype.kind == 'i'):
+            return arg
+        elif isinstance(arg, Sequence) and all(isinstance(label, basestring) for
+                                               label in arg):
             return self.parc.isin(arg)
         else:
             return super(SourceSpace, self).dimindex(arg)
@@ -8752,28 +8811,28 @@ class UTS(Dimension):
             return self.times[index]
         elif not isinstance(index, slice):
             # convert index to slice
-            index = np.arange(len(self))[index]
-            start = index[0]
-            steps = np.unique(np.diff(index))
+            int_index = index_to_int_array(index, self.nsamples)
+            start = int_index[0]
+            steps = np.unique(np.diff(int_index))
             if len(steps) > 1:
                 raise NotImplementedError("non-uniform time series")
             step = steps[0]
-            stop = index[-1] + step
+            stop = int_index[-1] + step
             index = slice(start, stop, step)
 
         start = 0 if index.start is None else index.start
         if start < 0:
-            start += len(self.times)
-        stop = len(self) if index.stop is None else index.stop
+            start += self.nsamples
+        stop = self.nsamples if index.stop is None else index.stop
         if stop < 0:
-            stop += len(self.times)
+            stop += self.nsamples
 
         tmin = self.times[start]
         nsamples = stop - start
         if nsamples < 0:
             raise IndexError("Time index out of range: %s." % repr(index))
 
-        if index.step is None:
+        if index.step is None or index.step == 1:
             tstep = self.tstep
         else:
             tstep = self.tstep * index.step
@@ -8835,10 +8894,11 @@ class UTS(Dimension):
     def dimindex(self, arg):
         if np.isscalar(arg):
             i = int(round((arg - self.tmin) / self.tstep))
-            if i < 0 or i >= self.nsamples:
+            if 0 <= i < self.nsamples:
+                return i
+            else:
                 raise ValueError("Time index %s out of range (%s, %s)"
                                  % (arg, self.tmin, self.tmax))
-            return i
         elif isinstance(arg, UTS):
             if self.tmin == arg.tmin:
                 start = None
@@ -8874,14 +8934,47 @@ class UTS(Dimension):
                 stop = None
 
             return slice(start, stop, step)
-        elif isinstance(arg, tuple):
-            if len(arg) > 3:
-                raise ValueError("Tuple indexes signify intervals for uniform "
-                                 "time-series (UTS) dimension and need to be "
-                                 "of length 1, 2 or 3 (got %s)" % repr(arg))
-            return self._slice(*arg)
+        elif isinstance(arg, np.ndarray) and arg.dtype.kind in 'fi':
+            return np.array([self.dimindex(i) for i in arg])
         else:
             return super(UTS, self).dimindex(arg)
+
+    def _dimindex_for_slice(self, start, stop=None, step=None):
+        "Create a slice into the time axis"
+        if (start is not None) and (stop is not None) and (start >= stop):
+            raise ValueError("tstart must be smaller than tstop")
+
+        if start is None:
+            start_ = None
+        elif start <= self.tmin - self.tstep:
+            raise IndexError("Time index slice out of range: start=%s" % start)
+        else:
+            start_float = (start - self.tmin) / self.tstep
+            start_ = int(start_float)
+            if start_float - start_ > 0.000001:
+                start_ += 1
+
+        if stop is None:
+            stop_ = None
+        elif stop - self.tstop > self._tol:
+            raise ValueError("Time index slice out of range: stop=%s" % stop)
+        else:
+            stop_float = (stop - self.tmin) / self.tstep
+            stop_ = int(stop_float)
+            if stop_float - stop_ > 0.000001:
+                stop_ += 1
+
+        if step is None:
+            step_ = None
+        else:
+            step_float = step / self.tstep
+            step_ = int(round(step_float))
+            if step_ != round(step_float, 4):
+                raise ValueError("Time index slice step needs to be a multiple "
+                                 "of the data time step (%s), got %s" %
+                                 (self.tstep, step))
+
+        return slice(start_, stop_, step_)
 
     def index(self, time, rnd='closest'):
         """Find the index for a time point
@@ -8938,43 +9031,6 @@ class UTS(Dimension):
             raise DimensionMismatchError("UTS dimensions don't overlap")
 
         return UTS(tmin, tstep, nsamples)
-
-    def _slice(self, tstart, tstop=None, tstep=None):
-        "Create a slice into the time axis"
-        if (tstart is not None) and (tstop is not None) and (tstart >= tstop):
-            raise ValueError("tstart must be smaller than tstop")
-
-        if tstart is None:
-            start = None
-        elif tstart <= self.tmin - self.tstep:
-            raise ValueError("Value out of range: tstart=%s" % tstart)
-        else:
-            start_float = (tstart - self.tmin) / self.tstep
-            start = int(start_float)
-            if start_float - start > 0.000001:
-                start += 1
-
-        if tstop is None:
-            stop = None
-        elif tstop - self.tstop > self._tol:
-            raise ValueError("Value out of range: tstop=%s" % tstop)
-        else:
-            stop_float = (tstop - self.tmin) / self.tstep
-            stop = int(stop_float)
-            if stop_float - stop > 0.000001:
-                stop += 1
-
-        if tstep is None:
-            step = None
-        else:
-            step_ = tstep / self.tstep
-            step = int(round(step_))
-            if step != round(step_, 4):
-                raise ValueError("Index time step needs to be a multiple of "
-                                 "the data time step (%s), got %s" %
-                                 (self.tstep, tstep))
-
-        return slice(start, stop, step)
 
 
 def intersect_dims(dims1, dims2, check_dims=True):

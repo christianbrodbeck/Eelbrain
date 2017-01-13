@@ -12,20 +12,21 @@ import tempfile
 
 import mne
 from nose.tools import (eq_, ok_, assert_almost_equal, assert_is_instance,
-    assert_raises, assert_not_equal)
+    assert_raises, assert_not_equal, nottest)
 import numpy as np
 from numpy.testing import (assert_equal, assert_array_equal, assert_allclose,
     assert_array_almost_equal)
 
 from eelbrain import (
     datasets, load, Var, Factor, NDVar, Datalist, Dataset, Celltable, align,
-    align1, choose, combine, shuffled_index,
-)
-from eelbrain._data_obj import (asvar, assub, longname, Categorial, Sensor,
-    SourceSpace, UTS, DimensionMismatchError, assert_has_no_empty_cells)
+    align1, choose, combine, cwt_morlet, shuffled_index)
+from eelbrain._data_obj import (
+    asvar, assub, full_slice, longname, Categorial, Sensor, SourceSpace,
+    UTS, DimensionMismatchError, assert_has_no_empty_cells)
 from eelbrain._stats.stats import rms
-from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,
-    assert_source_space_equal, requires_mne_sample_data)
+from eelbrain._utils.testing import (
+    assert_dataobj_equal, assert_dataset_equal, assert_source_space_equal,
+    requires_mne_sample_data)
 
 
 OPERATORS = ((add, iadd, '+'),
@@ -480,7 +481,7 @@ def test_dim_categorial():
     eq_(dim[idx], Categorial(name, sub_values))
     eq_(dim.dimindex('a'), values.index('a'))
     eq_(dim.dimindex('abc'), values.index('abc'))
-    assert_raises(TypeError, dim.dimindex, tuple(sub_values))
+    assert_raises(TypeError, dim.dimindex, ('a', 'b', 'c'))
 
     # intersection
     dim2 = Categorial(name, ['c', 'b', 'e'])
@@ -763,18 +764,17 @@ def test_ndvar():
 
     # setup indices
     s_case = slice(10, 13)
-    s_sensor = slice(2, 4)
-    s_time = x.time._slice(0.1, 0.2)
-    b_case = np.zeros(ds.n_cases, dtype=bool)
-    b_case[s_case] = True
+    s_sensor = slice('2', '4')
+    s_time = slice(0.1, 0.2)
+    b_case = np.bincount([10, 11, 12], minlength=len(x)).astype(bool)
     b_sensor = np.array([False, False, True, True, False])
-    b_time = np.arange(s_time.start, s_time.stop)
+    b_time = np.bincount(xrange(30, 40), minlength=len(x.time)).astype(bool)
     a_case = np.arange(10, 13)
-    a_sensor = np.arange(2, 4)
-    a_time = np.arange(x.time.dimindex(0.1), x.time.dimindex(0.2))
+    a_sensor = ['2', '3']
+    a_time = np.arange(0.1, 0.2, 0.01)
 
     # slicing with different index kinds
-    tgt = x.x[s_case, s_sensor, s_time]
+    tgt = x.x[s_case, 2:4, 30:40]
     eq_(tgt.shape, (3, 2, 10))
     # single
     assert_equal(x.sub(case=s_case, sensor=s_sensor, time=s_time), tgt)
@@ -820,9 +820,9 @@ def test_ndvar():
     assert_equal(x.sub(case=v_case, sensor=b_sensor, time=a_time), tgt)
 
     # univariate result
-    assert_dataobj_equal(x.sub(sensor=2, time=0.1),
-                         Var(x.x[:, 2, a_time[0]], x.name))
-    eq_(x.sub(case=0, sensor=2, time=0.1), x.x[0, 2, a_time[0]])
+    assert_dataobj_equal(x.sub(sensor='2', time=0.1),
+                         Var(x.x[:, 2, 30], x.name))
+    eq_(x.sub(case=0, sensor='2', time=0.1), x.x[0, 2, 30])
 
     # baseline correction
     x_bl = x - x.summary(time=(None, 0))
@@ -843,7 +843,7 @@ def test_ndvar():
 
     # out of range index
     assert_raises(ValueError, x.sub, time=(0.1, 0.81))
-    assert_raises(ValueError, x.sub, time=(-0.25, 0.1))
+    assert_raises(IndexError, x.sub, time=(-0.25, 0.1))
 
     # iteration
     for i, xi in enumerate(x):
@@ -900,6 +900,88 @@ def test_ndvar_graph_dim():
     l = x.label_clusters(3)
     eq_(len(l.info['cids']), 5)
     eq_(len(np.unique(l.x)), 6)
+
+
+@nottest
+def test_ndvar_index(x, dimname, index, a_index):
+    "Helper function for test_ndvar_indexing"
+    ax = x.get_axis(dimname)
+    index_prefix = (full_slice,) * ax
+    if dimname != 'case':
+        dim = x.get_dim(dimname)
+        assert_equal(dim.dimindex(index), a_index)
+    x_array = x.x[index_prefix + (a_index,)]
+    x1 = x.sub(**{dimname: index})
+    x2 = x[index_prefix + (index,)]
+    assert_array_equal(x1.x, x_array)
+    assert_dataobj_equal(x2, x1)
+
+
+def test_ndvar_indexing():
+    ds = datasets.get_uts(utsnd=True)
+    x = ds['utsnd']
+
+    # case
+    test_ndvar_index(x, 'case', 1, 1)
+    test_ndvar_index(x, 'case', [0, 3], [0, 3])
+    test_ndvar_index(x, 'case', slice(0, 10, 2), slice(0, 10, 2))
+
+    # sensor
+    test_ndvar_index(x, 'sensor', '0', 0)
+    test_ndvar_index(x, 'sensor', ['0', '2'], [0, 2])
+    test_ndvar_index(x, 'sensor', slice('0', '2'), slice(0, 2))
+    test_ndvar_index(x, 'sensor', 0, 0)
+    test_ndvar_index(x, 'sensor', [0, 2], [0, 2])
+    test_ndvar_index(x, 'sensor', slice(0, 2), slice(0, 2))
+
+    # time
+    test_ndvar_index(x, 'time', 0, 20)
+    test_ndvar_index(x, 'time', 0.1, 30)
+    test_ndvar_index(x, 'time', 0.102, 30)
+    test_ndvar_index(x, 'time', [0, 0.1, 0.2], [20, 30, 40])
+    test_ndvar_index(x, 'time', slice(0.1, None), slice(30, None))
+    test_ndvar_index(x, 'time', slice(0.2), slice(40))
+    test_ndvar_index(x, 'time', slice(0.202), slice(41))
+    test_ndvar_index(x, 'time', slice(0.1, 0.2), slice(30, 40))
+    test_ndvar_index(x, 'time', slice(0.102, 0.2), slice(31, 40))
+    test_ndvar_index(x, 'time', slice(0.1, None, 0.1), slice(30, None, 10))
+    test_ndvar_index(x, 'time', slice(0.1, None, 1), slice(30, None, 100))
+
+    # Ordered
+    x = cwt_morlet(ds['uts'], [8, 10, 13, 17])
+    assert_raises(IndexError, x.__getitem__, (full_slice, 9))
+    assert_raises(IndexError, x.__getitem__, (full_slice, 6))
+    test_ndvar_index(x, 'frequency', 10, 1)
+    test_ndvar_index(x, 'frequency', 10.1, 1)
+    test_ndvar_index(x, 'frequency', 9.9, 1)
+    test_ndvar_index(x, 'frequency', [8.1, 10.1], [0, 1])
+    test_ndvar_index(x, 'frequency', slice(8, 13), slice(0, 2))
+    test_ndvar_index(x, 'frequency', slice(8, 13.1), slice(0, 3))
+    test_ndvar_index(x, 'frequency', slice(8, 13.1, 2), slice(0, 3, 2))
+
+    # Categorial
+    x = NDVar(x.x, ('case', Categorial('cat', ['8', '10', '13', '17']), x.time))
+    assert_raises(TypeError, x.__getitem__, (full_slice, 9))
+    assert_raises(IndexError, x.__getitem__, (full_slice, '9'))
+    test_ndvar_index(x, 'cat', '13', 2)
+    test_ndvar_index(x, 'cat', ['8', '13'], [0, 2])
+    test_ndvar_index(x, 'cat', slice('8', '13'), slice(0, 2))
+    test_ndvar_index(x, 'cat', slice('8', None, 2), slice(0, None, 2))
+
+    # SourceSpace
+    x = datasets.get_mne_stc(True)
+    assert_raises(TypeError, x.__getitem__, slice('insula-rh'))
+    assert_raises(TypeError, x.__getitem__, slice('insula-lh', 'insula-rh'))
+    assert_raises(TypeError, x.__getitem__, ('insula-lh', 'insula-rh'))
+    test_ndvar_index(x, 'source', 90, 90)
+    test_ndvar_index(x, 'source', [90, 95], [90, 95])
+    test_ndvar_index(x, 'source', slice(90, 95), slice(90, 95))
+    test_ndvar_index(x, 'source', 'insula-lh', x.source.parc == 'insula-lh')
+    test_ndvar_index(x, 'source', ('insula-lh', 'insula-rh'),
+                     x.source.parc.isin(('insula-lh', 'insula-rh')))
+    n_lh = x.source.parc.endswith('lh').sum()
+    test_ndvar_index(x, 'source', 'lh', slice(n_lh))
+    test_ndvar_index(x, 'source', 'rh', slice(n_lh, None))
 
 
 def test_ndvar_summary_methods():
@@ -992,7 +1074,7 @@ def test_ndvar_timeseries_methods():
     assert_array_equal(env.x, envs.x.swapaxes(1,2))
 
     # indexing
-    eq_(len(ds[0, 'uts'][-10:-1].time), 9)
+    eq_(len(ds[0, 'uts'][0.01:0.1].time), 9)
 
     # FFT
     x = ds['uts'].mean('case')
@@ -1231,7 +1313,7 @@ def test_source_space():
     lh = source.dimindex('lh')
     source_lh = source[lh]
     eq_(source_lh.dimindex('rh'), slice(0, 0))
-    eq_(source_lh.dimindex('lh'), slice(0, len(source_lh)))
+    eq_(source_lh.dimindex('lh'), slice(len(source_lh)))
 
 
 def test_var():
