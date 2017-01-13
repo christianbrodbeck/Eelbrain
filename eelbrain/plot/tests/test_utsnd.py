@@ -3,11 +3,7 @@ Created on Jul 11, 2013
 
 @author: christian
 '''
-import os
-
-import mne
 import numpy as np
-from mne.io import Raw
 from nose.tools import eq_
 
 from eelbrain import datasets, plot, testnd
@@ -26,7 +22,7 @@ def test_plot_butterfly():
 
     # other y-dim
     stc = datasets.get_mne_stc(True)
-    p = plot.Butterfly(stc)
+    p = plot.Butterfly(stc, show=False)
     p.close()
 
     # _ax_bfly_epoch
@@ -45,7 +41,7 @@ def test_plot_array():
     p = plot.Array('utsnd', 'A%B', ds=ds, show=False)
     eq_(p._layout.nax, 4)
     p.close()
-    p = plot.Array('utsnd', 'A', sub='B=="b1"', ds=ds)
+    p = plot.Array('utsnd', 'A', sub='B=="b1"', ds=ds, show=False)
     eq_(p._layout.nax, 2)
     p.close()
 
@@ -61,26 +57,14 @@ def test_plot_mne_evoked():
 @requires_mne_sample_data
 def test_plot_mne_epochs():
     "Test plotting epochs from the mne sample dataset"
-    # find paths
-    data_path = mne.datasets.sample.data_path()
-    raw_path = os.path.join(data_path, 'MEG', 'sample',
-                            'sample_audvis_filt-0-40_raw.fif')
-    events_path = os.path.join(data_path, 'MEG', 'sample',
-                               'sample_audvis_filt-0-40_raw-eve.fif')
-
-    # read epochs
-    raw = Raw(raw_path)
-    events = mne.read_events(events_path)
-    idx = np.logical_or(events[:, 2] == 5, events[:, 2] == 32)
-    events = events[idx]
-    epochs = mne.Epochs(raw, events, None, -0.1, 0.3)
+    epochs = datasets.get_mne_epochs()
 
     # grand average
     p = plot.Array(epochs, show=False)
     p.close()
 
     # with model
-    p = plot.Array(epochs, events[:, 2], show=False)
+    p = plot.Array(epochs, np.arange(2).repeat(8), show=False)
     p.close()
 
 
