@@ -242,7 +242,7 @@ class Document(FileDocument):
         self.interpolate = interpolate
         self.trigger = trigger
         self.blink = blink
-        self.bad_channels = []
+        self.bad_channels = []  # list of int
         self.good_channels = None
 
         # cache
@@ -261,7 +261,7 @@ class Document(FileDocument):
             self.accept[:] = accept
             self.tag[:] = tag
             self.interpolate[:] = interpolate
-            self.set_bad_channels_by_name(bad_chs)
+            self.set_bad_channels(bad_chs)
             self.saved = True
 
     @property
