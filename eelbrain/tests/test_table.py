@@ -1,11 +1,10 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import print_function
-from nose.tools import eq_, ok_, assert_raises
-from eelbrain._data_obj import isvar, isndvar
+from nose.tools import eq_, ok_, assert_is_instance, assert_raises
 from eelbrain._utils.testing import assert_dataobj_equal
 from numpy.testing import assert_array_equal
 
-from eelbrain import Factor, datasets, table, combine
+from eelbrain import Factor, NDVar, Var, datasets, table, combine
 
 
 def test_difference():
@@ -48,7 +47,7 @@ def test_melt_ndvar():
 
     lds = table.melt_ndvar('uts', ds=ds)
     ok_('time' in lds)
-    ok_(isvar(lds['time']))
+    assert_is_instance(lds['time'], Var)
     eq_(set(lds['time'].x), set(ds['uts'].time.x))
 
     # no ds
@@ -62,7 +61,7 @@ def test_melt_ndvar():
     # NDVar out
     lds = table.melt_ndvar("utsnd", 'sensor', ds=ds)
     ok_('utsnd' in lds)
-    ok_(isndvar(lds['utsnd']))
+    assert_is_instance(lds['utsnd'], NDVar)
     assert_dataobj_equal(lds[:ds.n_cases, 'utsnd'], ds.eval("utsnd.sub(sensor='0')"))
 
     # more than one dimensions

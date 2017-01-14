@@ -3,7 +3,7 @@ import random
 
 import numpy as np
 
-from .._data_obj import isvar, isndvar
+from .._data_obj import NDVar, Var
 
 
 _YIELD_ORIGINAL = 0
@@ -185,9 +185,9 @@ def resample(Y, samples=10000, replacement=False, unit=None, seed=0):
     Iterator over Y_resampled. One copy of ``Y`` is made, and this copy is
     yielded in each iteration with shuffled data.
     """
-    if isvar(Y):
+    if isinstance(Y, Var):
         pass
-    elif isndvar(Y):
+    elif isinstance(Y, NDVar):
         if not Y.has_case:
             raise ValueError("Need NDVar with cases")
     else:

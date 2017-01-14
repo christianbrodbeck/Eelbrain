@@ -23,7 +23,7 @@ import wx
 from wx.lib.scrolledpanel import ScrolledPanel
 
 from .. import load, plot, fmtxt
-from .._data_obj import NDVar, asndvar, Categorial, Ordered, isfactor
+from .._data_obj import Factor, NDVar, asndvar, Categorial, Ordered
 from ..plot._topo import _ax_topomap
 from .._wxutils import Icon, ID, REValidator
 from .._utils.parse import POS_FLOAT_PATTERN
@@ -500,7 +500,8 @@ class Frame(FileFrame):
 
     def PlotConditionAverages(self, parent):
         "Prompt for model and plot condition averages"
-        factors = [n for n, v in self.doc.ds.iteritems() if isfactor(v)]
+        factors = [n for n, v in self.doc.ds.iteritems() if
+                   isinstance(v, Factor)]
         if len(factors) == 0:
             wx.MessageBox("The dataset that describes the epochs does not "
                           "contain any Factors that could be used to plot the "

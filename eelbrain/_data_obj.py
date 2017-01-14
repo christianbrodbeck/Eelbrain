@@ -181,7 +181,7 @@ def isbalanced(x):
     x : categorial
         Categorial Model, Factor or Interaction.
     """
-    if ismodel(x):
+    if isinstance(x, Model):
         return all(isbalanced(e) for e in x.effects)
     else:
         return len({np.sum(x == c) for c in x.cells}) <= 1
@@ -189,27 +189,28 @@ def isbalanced(x):
 
 def iscategorial(x):
     "factors as well as interactions are categorial"
-    if isfactor(x) or isnested(x):
+    if isinstance(x, (Factor, NestedEffect)):
         return True
-    elif isinteraction(x):
+    elif isinstance(x, Interaction):
         return x.is_categorial
-    elif ismodel(x):
+    elif isinstance(x, Model):
         return all(iscategorial(e) for e in x.effects)
     else:
         return False
 
 
+# type checks
+#############
+# _Effect -> Factor, Interaction, NestedEffect
+def isdatacontainer(x):
+    "Includes Dataset"
+    return isinstance(x, (Datalist, Dataset, Model, NDVar, Var, _Effect,
+                          NonbasicEffect))
+
+
 def isdataobject(x):
-    return getattr(x, '_stype', None) in ("model", "var", "ndvar", "factor",
-                                          "interaction", "nonbasic", "nested", "list")
-
-
-def isdataset(x):
-    return getattr(x, '_stype', None) == 'dataset'
-
-
-def iseffect(x):
-    return getattr(x, '_stype', None) in ("factor", "var", "interaction", "nonbasic", "nested")
+    "Excludes Dataset"
+    return isinstance(x, (Datalist, Model, NDVar, Var, _Effect, NonbasicEffect))
 
 
 def isdatalist(x, contains=None, test_all=True):
@@ -234,21 +235,8 @@ def isdatalist(x, contains=None, test_all=True):
     return is_dl
 
 
-def isfactor(x):
-    return getattr(x, '_stype', None) == "factor"
-
-
-def isinteraction(x):
-    return getattr(x, '_stype', None) == "interaction"
-
-
-def ismodel(x):
-    return getattr(x, '_stype', None) == "model"
-
-
-def isnested(x):
-    "Determine whether x is nested"
-    return getattr(x, '_stype', None) == "nested"
+def iseffect(x):
+    return isinstance(x, (Var, _Effect, NonbasicEffect))
 
 
 def isnestedin(item, item2):
@@ -259,34 +247,24 @@ def isnestedin(item, item2):
         return False
 
 
-def isndvar(x):
-    "Determine whether x is an NDVar"
-    return getattr(x, '_stype', None) == "ndvar"
-
-
 def isnumeric(x):
     "Determine wether x is numeric (a Var or an NDVar)"
-    return getattr(x, '_stype', None) in ("ndvar", "var")
+    return isinstance(x, (NDVar, Var))
 
 
 def isuv(x):
     "Determine whether x is univariate (a Var or a Factor)"
-    return getattr(x, '_stype', None) in ("factor", "var")
-
-
-def isvar(x):
-    "Determine whether x is a Var"
-    return getattr(x, '_stype', None) == "var"
+    return isinstance(x, (Factor, Var))
 
 
 def isboolvar(x):
     "Determine whether x is a Var whose data type is boolean"
-    return isvar(x) and x.x.dtype.kind == 'b'
+    return isinstance(x, Var) and x.x.dtype.kind == 'b'
 
 
 def isintvar(x):
     "Determine whether x is a Var whose data type is integer"
-    return isvar(x) and x.x.dtype.kind in 'iu'
+    return isinstance(x, Var) and x.x.dtype.kind in 'iu'
 
 
 def is_higher_order_effect(e1, e0):
@@ -310,19 +288,19 @@ def empty_cells(x):
 
 def assert_has_no_empty_cells(x):
     """Raise a ValueError iff a categorial has one or more empty cells"""
-    if isfactor(x):
+    if isinstance(x, Factor):
         return
-    elif isinteraction(x):
+    elif isinstance(x, Interaction):
         if not x.is_categorial:
             return
         empty = empty_cells(x)
         if empty:
             raise NotImplementedError("%s contains empty cells: %s" %
                                       (dataobj_repr(x), ', '.join(empty)))
-    elif ismodel(x):
+    elif isinstance(x, Model):
         empty = []
         for e in x.effects:
-            if isinteraction(e) and e.is_categorial:
+            if isinstance(e, Interaction) and e.is_categorial:
                 empty_ = empty_cells(e)
                 if empty_:
                     empty.append((dataobj_repr(e), ', '.join(empty)))
@@ -336,13 +314,13 @@ def assert_has_no_empty_cells(x):
 
 def hasrandom(x):
     """True if x is or contains a random effect, False otherwise"""
-    if isfactor(x) or isnested(x):
+    if isinstance(x, (Factor, NestedEffect)):
         return x.random
-    elif isinteraction(x):
+    elif isinstance(x, Interaction):
         for e in x.base:
-            if isfactor(e) and e.random:
+            if isinstance(e, Factor) and e.random:
                 return True
-    elif ismodel(x):
+    elif isinstance(x, Model):
         return any(hasrandom(e) for e in x.effects)
     return False
 
@@ -359,11 +337,11 @@ def as_case_identifier(x, sub=None, ds=None):
     if sub is not None:
         x = x[sub]
 
-    if isvar(x):
+    if isinstance(x, Var):
         n = len(x.values)
-    elif isfactor(x):
+    elif isinstance(x, Factor):
         n = len(x.n_cells)
-    elif isinteraction(x):
+    elif isinstance(x, Interaction):
         n = set(map(tuple, x.as_effects))
     else:
         raise TypeError("Need a Var, Factor or Interaction to identify cases, "
@@ -378,7 +356,7 @@ def as_case_identifier(x, sub=None, ds=None):
 
 def asarray(x, kind=None):
     "Coerce input to array"
-    if isvar(x):
+    if isinstance(x, Var):
         x = x.x
     else:
         x = np.asarray(x)
@@ -403,8 +381,9 @@ def ascategorial(x, sub=None, ds=None, n=None):
 
     if iscategorial(x):
         pass
-    elif isinteraction(x):
-        x = Interaction([e if isfactor(e) else e.as_factor() for e in x.base])
+    elif isinstance(x, Interaction):
+        x = Interaction([e if isinstance(e, Factor) else e.as_factor() for
+                         e in x.base])
     else:
         x = asfactor(x)
 
@@ -473,7 +452,7 @@ def asfactor(x, sub=None, ds=None, n=None):
             raise TypeError(err)
         x = ds.eval(x)
 
-    if isfactor(x):
+    if isinstance(x, Factor):
         pass
     elif hasattr(x, 'as_factor'):
         x = x.as_factor(name=x.name)
@@ -497,7 +476,7 @@ def asmodel(x, sub=None, ds=None, n=None):
             raise TypeError(err)
         x = ds.eval(x)
 
-    if ismodel(x):
+    if isinstance(x, Model):
         pass
     else:
         x = Model(x)
@@ -535,7 +514,7 @@ def asndvar(x, sub=None, ds=None, n=None):
             from .load.fiff import evoked_ndvar
             x = evoked_ndvar(x)
 
-    if not isndvar(x):
+    if not isinstance(x, NDVar):
         raise TypeError("NDVar required, got %s" % repr(x))
 
     if sub is not None:
@@ -614,9 +593,7 @@ def asvar(x, sub=None, ds=None, n=None):
             raise TypeError(err)
         x = ds.eval(x)
 
-    if isvar(x):
-        pass
-    else:
+    if not isinstance(x, Var):
         x = Var(x)
 
     if sub is not None:
@@ -656,11 +633,11 @@ def _empty_like(obj, n=None, name=None):
     "Create an empty object of the same type as obj"
     n = n or len(obj)
     name = name or obj.name
-    if isfactor(obj):
+    if isinstance(obj, Factor):
         return Factor([''], repeat=n, name=name)
-    elif isvar(obj):
+    elif isinstance(obj, Var):
         return Var(np.empty(n) * np.NaN, name=name)
-    elif isndvar(obj):
+    elif isinstance(obj, NDVar):
         shape = (n,) + obj.shape[1:]
         return NDVar(np.empty(shape) * np.NaN, dims=obj.dims, name=name)
     elif isdatalist(obj):
@@ -706,11 +683,12 @@ def align(d1, d2, i1='index', i2=None, out='data'):
     i1 = as_case_identifier(i1, ds=d1)
     i2 = as_case_identifier(i2, ds=d2)
 
-    if not ((isvar(i1) and isvar(i2))
-            or (isfactor(i1) and isfactor(i2))
-            or (isinteraction(i1) and isinteraction(i2))):
+    if not isinstance(i1, (Var, Factor, Interaction)):
+        raise TypeError("i1 and i2 need to be data-objects, got: \n"
+                        "i1=%r\ni2=%r" % (i1, i2))
+    elif type(i1) is not type(i2):
         raise TypeError("i1 and i2 need to be of the same type, got: \n"
-                        "i1=%s\ni2=%s." % (repr(i1), repr(i2)))
+                        "i1=%r\ni2=%r" % (i1, i2))
 
     idx1 = []
     idx2 = []
@@ -749,7 +727,7 @@ def align1(d, idx, d_idx='index', out='data'):
     idx = asuv(idx)
     if not isinstance(d_idx, basestring):
         # check d_idx length
-        if isdataset(d):
+        if isinstance(d, Dataset):
             if len(d_idx) != d.n_cases:
                 msg = ("d_idx does not have the same number of cases as d "
                        "(d_idx: %i, d: %i)" % (len(d_idx), d.n_cases))
@@ -804,8 +782,8 @@ def choose(choice, sources, name=None):
 
     s0 = sources[0]
     s1 = sources[1:]
-    if isndvar(s0):
-        if not all(isndvar(s) for s in s1):
+    if isinstance(s0, NDVar):
+        if not all(isinstance(s, NDVar) for s in s1):
             raise TypeError("Sources have different types")
         elif any(s.dims != s0.dims for s in s1):
             raise DimensionMismatchError("Sources have different dimensions")
@@ -1222,14 +1200,13 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
         raise ValueError("combine() called with empty sequence %s" % repr(items))
 
     # find type
-    stypes = set(getattr(item, '_stype', None) for item in items)
-    if None in stypes:
-        raise TypeError("Can only combine data-objects, got at least one other "
-                        "item.")
-    elif len(stypes) > 1:
+    stype = type(items[0])
+    if not isdatacontainer(items[0]):
+        raise TypeError("Can only combine data-objects, got %r" % (items[0],))
+    elif any(type(item) is not stype for item in items[1:]):
         raise TypeError("All items to be combined need to have the same type, "
-                        "got %s." % ', '.join(tuple(stypes)))
-    stype = stypes.pop()
+                        "got %s." %
+                        ', '.join(str(i) for i in {type(i) for i in items}))
 
     # find name
     if name is None:
@@ -1237,7 +1214,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
         name = os.path.commonprefix(names) or None
 
     # combine objects
-    if stype == 'dataset':
+    if stype is Dataset:
         out = Dataset(name=name, info=_merge_info(items))
         item0 = items[0]
         if incomplete == 'fill in':
@@ -1269,10 +1246,10 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
             for key in out_keys:
                 out[key] = combine([ds[key] for ds in items])
         return out
-    elif stype == 'var':
+    elif stype is Var:
         x = np.hstack(i.x for i in items)
         return Var(x, name, info=_merge_info(items))
-    elif stype == 'factor':
+    elif stype is Factor:
         random = set(f.random for f in items)
         if len(random) > 1:
             raise ValueError("Factors have different values for random parameter")
@@ -1285,7 +1262,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
         else:
             x = sum((i.as_labels() for i in items), [])
             return Factor(x, name, random)
-    elif stype == 'ndvar':
+    elif stype is NDVar:
         v_have_case = [v.has_case for v in items]
         if all(v_have_case):
             has_case = True
@@ -1313,7 +1290,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
             x = np.array([v.x for v in sub_items])
         dims = ('case',) + dims
         return NDVar(x, dims, _merge_info(sub_items), name)
-    elif stype == 'list':
+    elif stype is Datalist:
         return Datalist(sum(items, []), name, items[0]._fmt)
     else:
         raise RuntimeError("combine with stype = %r" % stype)
@@ -1375,14 +1352,14 @@ def find_factors(obj):
         return EffectList(f)
     elif isuv(obj):
         return EffectList([obj])
-    elif ismodel(obj):
+    elif isinstance(obj, Model):
         f = set()
         for e in obj.effects:
             f.update(find_factors(e))
         return EffectList(f)
-    elif isnested(obj):
+    elif isinstance(obj, NestedEffect):
         return find_factors(obj.effect)
-    elif isinteraction(obj):
+    elif isinstance(obj, Interaction):
         return obj.base
     else:  # NonbasicEffect
         try:
@@ -1397,8 +1374,8 @@ class EffectList(list):
 
     def __contains__(self, item):
         for f in self:
-            if ((f.name == item.name) and (f._stype == item._stype)
-                and (len(f) == len(item)) and np.all(item == f)):
+            if ((f.name == item.name) and (type(f) is type(item)) and
+                    (len(f) == len(item)) and np.all(item == f)):
                 return True
         return False
 
@@ -1446,7 +1423,6 @@ class Var(object):
     :py:class:`numpy.array` which can be used for anything more complicated.
     :py:attr:`Var.x` can be read and modified, but should not be replaced.
     """
-    _stype = "var"
     ndim = 1
 
     def __init__(self, x, name=None, repeat=1, tile=1, info=None):
@@ -1536,13 +1512,13 @@ class Var(object):
 
     def __getitem__(self, index):
         "if Factor: return new variable with mean values per Factor category"
-        if isfactor(index):
+        if isinstance(index, Factor):
             f = index
             x = []
             for v in np.unique(f.x):
                 x.append(np.mean(self.x[f == v]))
             return Var(x, self.name, info=self.info.copy())
-        elif isvar(index):
+        elif isinstance(index, Var):
             index = index.x
 
         x = self.x[index]
@@ -1632,7 +1608,7 @@ class Var(object):
     def __mul__(self, other):
         if iscategorial(other):
             return Model((self, other, self % other))
-        elif isvar(other):
+        elif isinstance(other, Var):
             x = self.x * other.x
         else:
             x = self.x * other
@@ -1659,7 +1635,7 @@ class Var(object):
         return Var(x, info=info)
 
     def __floordiv__(self, other):
-        if isvar(other):
+        if isinstance(other, Var):
             x = self.x // other.x
         else:
             x = self.x // other
@@ -1673,9 +1649,9 @@ class Var(object):
         return self
 
     def __mod__(self, other):
-        if ismodel(other):
+        if isinstance(other, Model):
             return Model(self) % other
-        elif isvar(other):
+        elif isinstance(other, Var):
             x = self.x % other.x
         elif isdataobject(other):
             return Interaction((self, other))
@@ -1724,7 +1700,7 @@ class Var(object):
             ANCOVA
 
         """
-        if isvar(other):
+        if isinstance(other, Var):
             x = self.x / other.x
         elif iscategorial(other):
             dummy_factor = other.as_dummy_complete
@@ -1748,7 +1724,7 @@ class Var(object):
         return self
 
     def __pow__(self, other):
-        if isvar(other):
+        if isinstance(other, Var):
             x = self.x / other.x
         else:
             x = self.x / other
@@ -1957,7 +1933,7 @@ class Var(object):
     #     """
     #     raise NotImplementedError
     #     # FIXME: use celltable
-    #     assert isfactor(X)
+    #     assert isinstance(X, Factor)
     #     I1 = (X == v1);         I2 = (X == v2)
     #     Y1 = self[I1];          Y2 = self[I2]
     #     m1 = match[I1];         m2 = match[I2]
@@ -2007,7 +1983,7 @@ class Var(object):
             A function that when applied to each element in ``base`` returns
             the desired value for the resulting Var.
         """
-        if isvar(base) or isndvar(base):
+        if isinstance(base, (Var, NDVar)):
             base = base.x
 
         if isinstance(func, np.ufunc):
@@ -2344,8 +2320,6 @@ class Factor(_Effect):
         >>> Factor('iiiooo')
         Factor(['i', 'i', 'i', 'o', 'o', 'o'])
     """
-    _stype = "factor"
-
     def __init__(self, x, name=None, random=False, repeat=1, tile=1, labels={}):
         try:
             n_cases = len(x)
@@ -2490,7 +2464,7 @@ class Factor(_Effect):
         this method is valid for factors and nonbasic effects
 
         """
-        if isvar(index):
+        if isinstance(index, Var):
             index = index.x
 
         x = self.x[index]
@@ -3087,8 +3061,6 @@ class NDVar(object):
     >>> ndvar -= ndvar.mean(time=(None, 0))
 
     """
-    _stype = "ndvar"
-    
     def __init__(self, x, dims=('case',), info={}, name=None):
         # check data shape
         dims = tuple(dims)
@@ -3210,9 +3182,9 @@ class NDVar(object):
         For example, ``c = a + b`` with ``a`` [-100 300] ms and ``b`` [0 400] ms
         ``c`` will be [0 300] ms.
         """
-        if isvar(other):
+        if isinstance(other, Var):
             return self.dims, self.x, self._ialign(other)
-        elif isndvar(other):
+        elif isinstance(other, NDVar):
             dimnames = list(self.dimnames)
             i_add = 0
             for dimname in other.dimnames:
@@ -3269,12 +3241,12 @@ class NDVar(object):
         "align for self-modifying operations (+=, ...)"
         if np.isscalar(other):
             return other
-        elif isvar(other):
+        elif isinstance(other, Var):
             assert self.has_case
             n = len(other)
             shape = (n,) + (1,) * (self.x.ndim - 1)
             return other.x.reshape(shape)
-        elif isndvar(other):
+        elif isinstance(other, NDVar):
             assert all(dim in self.dimnames for dim in other.dimnames)
             i_other = []
             for dim in self.dimnames:
@@ -3475,7 +3447,7 @@ class NDVar(object):
             data = self.sub(**regions)
             additional_axis = [dim for dim in regions if data.has_dim(dim)]
             if additional_axis:
-                if isndvar(axis):
+                if isinstance(axis, NDVar):
                     data = data.sub(axis)
                     axis = additional_axis
                 elif not axis:
@@ -3487,7 +3459,7 @@ class NDVar(object):
             return data._aggregate_over_dims(axis, {'name': name}, func)
         elif not axis:
             return func(self.x)
-        elif isndvar(axis):
+        elif isinstance(axis, NDVar):
             if axis.ndim == 1:
                 dim = axis.dims[0]
                 dim_axis = self.get_axis(dim.name)
@@ -4519,7 +4491,7 @@ class NDVar(object):
 
         # sequence args
         for i, arg in enumerate(args):
-            if isndvar(arg):
+            if isinstance(arg, NDVar):
                 if arg.has_case:
                     raise ValueError("NDVar with case dimension can not serve"
                                      "as NDVar index")
@@ -4683,7 +4655,6 @@ class Datalist(list):
     >>> print Datalist(l, fmt='strlist')
     [[a, b], [], [a]]
     """
-    _stype = 'list'
     _fmt = 'repr'  # for backwards compatibility with old pickles
 
     def __init__(self, items=None, name=None, fmt='repr'):
@@ -5004,8 +4975,6 @@ class Dataset(OrderedDict):
         0      a
 
     """
-    _stype = "dataset"
-
     @staticmethod
     def _args(items=(), name=None, caption=None, info={}, n_cases=None):
         return items, name, caption, info, n_cases
@@ -5167,7 +5136,7 @@ class Dataset(OrderedDict):
                 if (item.name is None or (item.name != index and
                                           item.name != as_legal_dataset_key(index))):
                     item.name = index
-                n = 0 if (isndvar(item) and not item.has_case) else len(item)
+                n = 0 if (isinstance(item, NDVar) and not item.has_case) else len(item)
             elif isinstance(item, (list, tuple)):
                 item = Datalist(item, index)
                 n = len(item)
@@ -5347,7 +5316,7 @@ class Dataset(OrderedDict):
         values = [self[key] for key in keys]
         fmts = []
         for v in values:
-            if isfactor(v):
+            if isinstance(v, Factor):
                 fmts.append(sfmt)
             elif isintvar(v):
                 fmts.append(ifmt)
@@ -5967,7 +5936,7 @@ class Dataset(OrderedDict):
         elif isinstance(index, str):
             index = self.eval(index)
 
-        if isvar(index):
+        if isinstance(index, Var):
             index = index.x
 
         return Dataset(((k, v[index]) for k, v in self.iteritems()),
@@ -6018,14 +5987,14 @@ class Dataset(OrderedDict):
 
         items = OrderedDict()
         for k, v in self.iteritems():
-            if isvar(v):
+            if isinstance(v, Var):
                 if v.x.dtype.kind == 'b':
                     item = ro.BoolVector(v.x)
                 elif v.x.dtype.kind == 'i':
                     item = ro.IntVector(v.x)
                 else:
                     item = ro.FloatVector(v.x)
-            elif isfactor(v):
+            elif isinstance(v, Factor):
                 x = ro.IntVector(v.x)
                 codes = sorted(v._labels)
                 levels = ro.IntVector(codes)
@@ -6071,7 +6040,7 @@ class Dataset(OrderedDict):
 
         super(Dataset, self).update(ds)
 
-        if info and isdataset(ds):
+        if info and isinstance(ds, Dataset):
             self.info.update(ds.info)
 
 
@@ -6090,8 +6059,6 @@ class Interaction(_Effect):
     base : list
         All effects.
     """
-    _stype = "interaction"
-
     def __init__(self, base):
         base_ = EffectList()
         n_vars = 0
@@ -6099,11 +6066,11 @@ class Interaction(_Effect):
         for b in base:
             if isuv(b):
                 base_.append(b.copy())
-                n_vars += isvar(b)
-            elif isinteraction(b):
+                n_vars += isinstance(b, Var)
+            elif isinstance(b, Interaction):
                 base_.extend(b.base)
                 n_vars += not b.is_categorial
-            elif isnested(b):
+            elif isinstance(b, NestedEffect):
                 base_.append(b)
             else:
                 raise TypeError("Invalid type for Interaction: %r" % type(b))
@@ -6125,13 +6092,15 @@ class Interaction(_Effect):
         self.is_categorial = state['is_categorial']
         # secondary attributes
         self._n_cases = len(self.base[0])
-        self.nestedin = EffectList({e.nestedin for e in self.base if isnested(e)})
+        self.nestedin = EffectList({e.nestedin for e in self.base if
+                                    isinstance(e, NestedEffect)})
         self.base_names = [str(f.name) for f in self.base]
         self.name = ' x '.join(self.base_names)
         self.random = False
         self.df = reduce(operator.mul, [f.df for f in self.base])
         # cells
-        factors = EffectList(e for e in self.base if isfactor(e) or isnested(e))
+        factors = EffectList(e for e in self.base if
+                             isinstance(e, (Factor, NestedEffect)))
         self.cells = tuple(itertools.product(*(f.cells for f in factors)))
         self.cell_header = tuple(f.name for f in factors)
         # TODO: beta-labels
@@ -6152,7 +6121,7 @@ class Interaction(_Effect):
         return self._n_cases
 
     def __getitem__(self, index):
-        if isvar(index):
+        if isinstance(index, Var):
             index = index.x
 
         out = tuple(f[index] for f in self.base)
@@ -6173,7 +6142,7 @@ class Interaction(_Effect):
 
     # numeric ---
     def __eq__(self, other):
-        if isinteraction(other) and len(other.base) == len(self.base):
+        if isinstance(other, Interaction) and len(other.base) == len(self.base):
             x = np.vstack((b == bo for b, bo in izip(self.base, other.base)))
             return np.all(x, 0)
         elif isinstance(other, tuple) and len(other) == len(self.base):
@@ -6183,7 +6152,7 @@ class Interaction(_Effect):
             return np.zeros(len(self), bool)
 
     def __ne__(self, other):
-        if isinteraction(other) and len(other.base) == len(self.base):
+        if isinstance(other, Interaction) and len(other.base) == len(self.base):
             x = np.vstack((b != bo for b, bo in izip(self.base, other.base)))
             return np.any(x, 0)
         elif isinstance(other, tuple) and len(other) == len(self.base):
@@ -6335,7 +6304,7 @@ def box_cox_transform(X, p, name=None):
     :arg float p: Parameter for Box-Cox transform
 
     """
-    if isvar(X):
+    if isinstance(X, Var):
         X = X.x
 
     if p == 0:
@@ -6348,8 +6317,6 @@ def box_cox_transform(X, p, name=None):
 
 class NestedEffect(_Effect):
 
-    _stype = "nested"
-
     def __init__(self, effect, nestedin):
         if not iscategorial(nestedin):
             raise TypeError("Effects can only be nested in categorial base")
@@ -6360,7 +6327,7 @@ class NestedEffect(_Effect):
         self.cells = effect.cells
         self._n_cases = len(effect)
 
-        if isfactor(self.effect):
+        if isinstance(self.effect, Factor):
             e_name = self.effect.name
         else:
             e_name = '(%s)' % self.effect
@@ -6408,8 +6375,6 @@ class NestedEffect(_Effect):
 
 
 class NonbasicEffect(object):
-
-    _stype = "nonbasic"
 
     def __init__(self, effect_codes, factors, name, nestedin=[],
                  beta_labels=None):
@@ -6459,8 +6424,6 @@ class Model(object):
      - as list in Model.effects
      - with name as Model[name]
     """
-    _stype = "model"
-
     def __init__(self, x):
         effects = EffectList()
 
@@ -6468,7 +6431,7 @@ class Model(object):
         if iseffect(x):
             effects.append(x)
             n_cases = len(x)
-        elif ismodel(x):
+        elif isinstance(x, Model):
             effects += x.effects
             n_cases = len(x)
         else:
@@ -6488,7 +6451,7 @@ class Model(object):
                 # find effects
                 if iseffect(e):
                     effects.append(e)
-                elif ismodel(e):
+                elif isinstance(e, Model):
                     effects += e.effects
                 else:
                     err = ("Model needs to be initialized with effect (Var, "
@@ -6507,7 +6470,7 @@ class Model(object):
         beta_index = {}
         i = 1
         for e in effects:
-            if isfactor(e) and len(e.cells) == 1:
+            if isinstance(e, Factor) and len(e.cells) == 1:
                 raise ValueError("The Factor %s has only one level (%s). The "
                                  "intercept is implicit in each model and "
                                  "should not be specified explicitly."
@@ -6867,7 +6830,7 @@ DIMINDEX_RAW_TYPES = (int, slice, list)
 def dimindex_case(arg):
     if isinstance(arg, DIMINDEX_RAW_TYPES):
         return arg
-    elif isvar(arg):
+    elif isinstance(arg, Var):
         return arg.x
     elif isinstance(arg, np.ndarray) and arg.dtype.kind in 'bi':
         return arg
@@ -6984,9 +6947,9 @@ class Dimension(object):
         """
         if arg is None:
             return None  # pass through None, for example for slice
-        elif isndvar(arg):
+        elif isinstance(arg, NDVar):
             return self._dimindex_for_ndvar(arg)
-        elif isvar(arg):
+        elif isinstance(arg, Var):
             return self.dimindex(arg.x)
         elif isinstance(arg, np.ndarray):
             if arg.dtype.kind != 'b':
@@ -8599,7 +8562,7 @@ class SourceSpace(Dimension):
         """
         if parc is None:
             parc_ = None
-        elif isfactor(parc):
+        elif isinstance(parc, Factor):
             if len(parc) != len(self):
                 raise ValueError("Wrong length (%i)" % len(parc))
             parc_ = parc

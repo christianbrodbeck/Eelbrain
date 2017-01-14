@@ -12,7 +12,7 @@ from nose.tools import assert_equal, assert_true, eq_
 import numpy as np
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
-from .._data_obj import isdatalist, isndvar, isuv, isvar
+from .._data_obj import Dataset, NDVar, Var, isdatalist, isdatacontainer, isuv
 
 
 class TempDir(str):
@@ -58,25 +58,25 @@ def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None):
     decimal : None | int
         Desired precision (default is exact match).
     """
-    if not hasattr(d1, '_stype'):
+    if not isdatacontainer(d1):
         raise TypeError("d1 is not a data-object but %s" % repr(d1))
-    elif not hasattr(d2, '_stype'):
+    elif not isdatacontainer(d2):
         raise TypeError("d2 is not a data-object but %s" % repr(d2))
     else:
-        eq_(d1._stype, d2._stype)
-    msg = "%s:" % msg
+        eq_(type(d1), type(d2))
+    msg += ":"
     assert_equal(d1.name, d2.name, "%s unequal names (%r vs %r"
                  ")" % (msg, d1.name, d2.name))
     msg += 'Two objects named %r have' % d1.name
     len1 = len(d1)
     len2 = len(d2)
     assert_equal(len1, len2, "%s unequal length: %i/%i" % (msg, len1, len2))
-    if isvar(d1) and decimal:
+    if isinstance(d1, Var) and decimal:
         assert_array_almost_equal(d1.x, d2.x, decimal)
     elif isuv(d1):
         assert_true(np.all(d1 == d2), "%s unequal values: %r vs "
                     "%r" % (msg, d1, d2))
-    elif isndvar(d1):
+    elif isinstance(d1, NDVar):
         assert_true(np.all(d1.x == d2.x), "%s unequal values" % msg)
     elif isdatalist(d1):
         for i in xrange(len(d1)):

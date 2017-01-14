@@ -9,9 +9,9 @@ import re
 import numpy as np
 
 from . import fmtxt
-from ._data_obj import (ascategorial, asvar, asndvar, assub, isfactor, isuv,
-                        isinteraction, Dataset, Factor, Var, Celltable, combine,
-                        cellname, as_legal_dataset_key)
+from ._data_obj import (
+    Celltable, Dataset, Factor, Interaction, Var, ascategorial,
+    as_legal_dataset_key, asndvar, asvar, assub, cellname, combine, isuv)
 
 
 def difference(y, x, c1, c0, match, by=None, sub=None, ds=None):
@@ -70,7 +70,7 @@ def difference(y, x, c1, c0, match, by=None, sub=None, ds=None):
             cell_ds = Dataset()
             cell_ds.add(ct.groups[c1 + cell])
             cell_ds[yname] = ct.data[c1 + cell] - ct.data[c0 + cell]
-            if isfactor(by):
+            if isinstance(by, Factor):
                 cell_ds[by.name, :] = cell[0]
             else:
                 for b, c in zip(by.base, cell):
@@ -150,7 +150,7 @@ def frequencies(y, x=None, of=None, sub=None, ds=None):
     # special case
     if x is None:
         out = Dataset(name=name)
-        if isinteraction(y):
+        if isinstance(y, Interaction):
             for i, f in enumerate(y.base):
                 out[f.name] = Factor((c[i] for c in x.cells),
                                      random=getattr(f, 'random', False))
@@ -166,7 +166,7 @@ def frequencies(y, x=None, of=None, sub=None, ds=None):
         name += ' by %s' % x.name
     out = Dataset(name=name)
 
-    if isinteraction(x):
+    if isinstance(x, Interaction):
         for i, f in enumerate(x.base):
             random = getattr(f, 'random', False)
             out[f.name] = Factor((c[i] for c in x.cells), random=random)
@@ -466,7 +466,7 @@ def repmeas(y, x, match, sub=None, ds=None):
 
     out = Dataset()
     x_ = ct.groups.values()[0]
-    if isinteraction(x_):
+    if isinstance(x_, Interaction):
         for f in x_.base:
             out.add(f)
     else:

@@ -30,9 +30,9 @@ import scipy.stats
 from .. import fmtxt
 from .._utils import LazyProperty
 from .._utils.print_funcs import strdict
-from .._data_obj import isvar, asvar, assub, isbalanced, iscategorial, \
-    assert_has_no_empty_cells, is_higher_order_effect, isnestedin, hasrandom, \
-    find_factors, Model, asmodel
+from .._data_obj import (
+    Model, Var, asmodel, assub, asvar, assert_has_no_empty_cells, find_factors,
+    hasrandom, is_higher_order_effect, isbalanced, iscategorial, isnestedin)
 from .opt import anova_fmaps, anova_full_fmaps, lm_res_ss, ss
 from .stats import ftest_p
 from . import test
@@ -1087,7 +1087,7 @@ def ancova(Y, factorial_model, covariate, interaction=None, sub=None, v=True,
         <http://www.bio.ic.ac.uk/research/crawley/statistics/exercises/R6Ancova.pdf>`_
 
     """
-    assert isvar(covariate)
+    assert isinstance(covariate, Var)
     anova_kwargs = {'empty': empty, 'ems': ems}
     if sub != None:
         Y = Y[sub]

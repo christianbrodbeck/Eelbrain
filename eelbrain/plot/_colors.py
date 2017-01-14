@@ -11,9 +11,8 @@ import numpy as np
 import matplotlib as mpl
 
 from .. import _colorspaces as cs
-from .._data_obj import cellname, isfactor, isinteraction
+from .._data_obj import Factor, Interaction, cellname
 from ._base import EelFigure, Layout
-from functools import reduce
 
 
 POINT_SIZE = 0.0138889  # 1 point in inches
@@ -73,9 +72,9 @@ def colors_for_categorial(x, hue_start=0.2, cmap=None):
     colors : dict {cell -> color}
         Dictionary providing colors for the cells in x.
     """
-    if isfactor(x):
+    if isinstance(x, Factor):
         return colors_for_oneway(x.cells, hue_start, cmap=cmap)
-    elif isinteraction(x):
+    elif isinstance(x, Interaction):
         return colors_for_nway([f.cells for f in x.base], hue_start)
     else:
         msg = ("x needs to be Factor or Interaction, got %s" % repr(x))

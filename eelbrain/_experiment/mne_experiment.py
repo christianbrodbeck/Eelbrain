@@ -29,15 +29,15 @@ from .._data_obj import Dataset, Factor, Var, NDVar, Datalist, combine
 from .._info import BAD_CHANNELS
 from .._names import INTERPOLATE_CHANNELS
 from .._meeg import new_rejection_ds
-from .._mne import dissolve_label, \
-    labels_from_mni_coords, rename_label, combination_label, \
-    morph_source_space, shift_mne_epoch_trigger
+from .._mne import (
+    dissolve_label, labels_from_mni_coords, rename_label, combination_label,
+    morph_source_space, shift_mne_epoch_trigger)
 from ..mne_fixes import (
     write_labels_to_annot, _interpolate_bads_eeg, _interpolate_bads_meg)
 from ..mne_fixes._trans import hsp_equal, mrk_equal
-from .._data_obj import (isvar, asfactor, align, DimensionMismatchError,
-                         as_legal_dataset_key, assert_is_legal_dataset_key,
-                         OldVersionError)
+from .._data_obj import (
+    DimensionMismatchError, OldVersionError, Var, align, as_legal_dataset_key,
+    asfactor, assert_is_legal_dataset_key)
 from .._ndvar import cwt_morlet
 from ..fmtxt import List, Report, Image, read_meta
 from .._report import named_list, enumeration, plural
@@ -3492,7 +3492,7 @@ class MneExperiment(FileTree):
             shift = epoch.trigger_shift
             if isinstance(shift, basestring):
                 shift = ds.eval(shift)
-            if isvar(shift):
+            if isinstance(shift, Var):
                 shift = shift.x
 
             if np.isscalar(shift):

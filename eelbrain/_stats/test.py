@@ -11,9 +11,9 @@ import numpy as np
 import scipy.stats
 
 from .. import fmtxt
-from .._data_obj import (Dataset, ascategorial, asfactor, assub, asvar,
-     cellname, Celltable, Factor, Var, isfactor, isinteraction, isvar,
-     dataobj_repr)
+from .._data_obj import (
+    Celltable, Dataset, Factor, Interaction, Var, ascategorial, asfactor, assub,
+    asvar, cellname, dataobj_repr)
 from .permutation import resample
 from . import stats
 
@@ -717,7 +717,7 @@ def correlations(y, x, cat=None, sub=None, ds=None, asds=False):
     """
     sub = assub(sub, ds)
     y = asvar(y, sub, ds)
-    if isvar(x) or isinstance(x, basestring):
+    if isinstance(x, (Var, basestring)):
         x = (x,)
         print_x_name = False
     else:
@@ -738,11 +738,11 @@ def correlations(y, x, cat=None, sub=None, ds=None, asds=False):
         ds['x'] = Factor([dataobj_repr(x_) for x_ in x], repeat=n_cat)
 
     if n_cat > 1:
-        if isinteraction(cat):
+        if isinstance(cat, Interaction):
             cat_names = [dataobj_repr(c) for c in cat.base]
             for i, name in enumerate(cat_names):
                 ds[name] = Factor([cell[i] for cell in cat.cells], tile=len(x))
-        elif isfactor(cat):
+        elif isinstance(cat, Factor):
             cat_names = (dataobj_repr(cat),)
             ds[dataobj_repr(cat)] = Factor(cat.cells)
         else:
