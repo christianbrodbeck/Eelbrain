@@ -40,8 +40,7 @@ N_SEGS = 10
 
 # multiprocessing (0 = single process)
 N_WORKERS = cpu_count()
-JOB_BOOSTING = 1
-JOB_TERMINATE = 0
+JOB_TERMINATE = -1
 
 # error functions
 ERROR_FUNC = {'l2': l2, 'l1': l1}
@@ -215,21 +214,21 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     # x_data:  predictor x time array
     x_data = []
     x_meta = []
-    i = 0
+    n_x = 0
     for x_ in x:
         if x_.ndim == 1:
             xdim = None
             data = x_.x[newaxis, :]
-            index = i
+            index = n_x
         elif x_.ndim == 2:
             xdim = x_.dims[not x_.get_axis('time')]
             data = x_.get_data((xdim.name, 'time'))
-            index = slice(i, i + len(data))
+            index = slice(n_x, n_x + len(data))
         else:
             raise NotImplementedError("x with more than 2 dimensions")
         x_data.append(data)
         x_meta.append((x_.name, xdim, index))
-        i += len(data)
+        n_x += len(data)
 
     if len(x_data) == 1:
         x_data = x_data[0]
@@ -266,39 +265,42 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
                 total=n_y * 10)
     # result containers
     res = np.empty((3, n_y))  # r, rank-r, error
-    h_x = np.empty((n_y, len(x_data), trf_length))
-    res.fill(np.nan)
-    h_x.fill(np.nan)
+    h_x = np.empty((n_y, n_x, trf_length))
     # boosting
     if N_WORKERS:
-        job_queue, result_queue = setup_workers(y_data, x_data, trf_length,
-                                                delta, mindelta_, N_SEGS, error)
+        # Make sure cross-validations are added in the same order, otherwise
+        # slight numerical differences can occur
+        job_queue, result_queue = setup_workers(
+            y_data, x_data, trf_length, delta, mindelta_, N_SEGS, error)
         Thread(target=put_jobs, args=(job_queue, n_y, N_SEGS)).start()
 
         # collect results
-        hs = [[] for _ in xrange(n_y)]
+        h_segs = {}
         for _ in xrange(n_y * N_SEGS):
-            y_i, h = result_queue.get()
+            y_i, seg_i, h = result_queue.get()
             pbar.update()
-            hs_ = hs[y_i]
-            hs_.append(h)
-            if len(hs_) == N_SEGS:
-                hs_ = [h for h in hs_ if np.any(h)]
-
-                if hs_:
-                    h = np.mean(hs_, 0, out=h_x[y_i])
-                    res[:, y_i] = evaluate_kernel(y_data[y_i], x_data, h, error)
-                else:
-                    h_x[y_i].fill(0)
-                    res[:, y_i].fill(0.)
-                hs[y_i] = None
+            if y_i in h_segs:
+                h_seg = h_segs[y_i]
+                h_seg[seg_i] = h
+                if len(h_seg) == N_SEGS:
+                    del h_segs[y_i]
+                    hs = [h for h in (h_seg[i] for i in xrange(N_SEGS)) if
+                          h is not None]
+                    if hs:
+                        h = np.mean(hs, 0, out=h_x[y_i])
+                        res[:, y_i] = evaluate_kernel(y_data[y_i], x_data, h, error)
+                    else:
+                        h_x[y_i] = 0
+                        res[:, y_i] = 0.
+            else:
+                h_segs[y_i] = {seg_i: h}
     else:
         for y_i, y_ in enumerate(y_data):
             hs = []
             for i in xrange(N_SEGS):
                 h, test_sse_history, msg = boost_1seg(x_data, y_, trf_length, delta,
                                                       N_SEGS, i, mindelta_, error)
-                if np.any(h):
+                if h is not None:
                     hs.append(h)
                 pbar.update()
 
@@ -382,8 +384,8 @@ def boost_1seg(x, y, trf_length, delta, nsegs, segno, mindelta, error):
 
     Returns
     -------
-    history[best_iter] : array like h
-        Winning kernel.
+    history[best_iter] : None | array
+        Winning kernel, or None if 0 is the best kernel.
     test_corr[best_iter] : scalar
         Test data correlation for winning kernel.
     test_rcorr[best_iter] : scalar
@@ -537,8 +539,8 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
     best_iter = np.argmin(test_error_history)
 
     # Keep predictive power as the correlation for the best iteration
-    return (history[best_iter], test_error_history,
-            reason + ' (%i iterations)' % (i_boost + 1))
+    return (history[best_iter] if best_iter else None,
+            test_error_history, reason + ' (%i iterations)' % (i_boost + 1))
 
 
 def setup_workers(y, x, trf_length, delta, mindelta, nsegs, error):
@@ -553,35 +555,32 @@ def setup_workers(y, x, trf_length, delta, mindelta, nsegs, error):
     job_queue = Queue(200)
     result_queue = Queue(200)
 
-    args = (y_buffer, x_buffer, n_y, n_times, n_x, trf_length, delta, mindelta,
-            nsegs, error, job_queue, result_queue)
+    args = (y_buffer, x_buffer, n_y, n_times, n_x, trf_length, delta,
+            mindelta, nsegs, error, job_queue, result_queue)
     for _ in xrange(N_WORKERS):
         Process(target=boosting_worker, args=args).start()
 
     return job_queue, result_queue
 
 
-def boosting_worker(y_buffer, x_buffer, n_y, n_times, n_x, trf_length, delta,
-                    mindelta, nsegs, error, job_queue, result_queue):
+def boosting_worker(y_buffer, x_buffer, n_y, n_times, n_x, trf_length,
+                    delta, mindelta, nsegs, error, job_queue, result_queue):
     y = np.frombuffer(y_buffer, np.float64, n_y * n_times).reshape((n_y, n_times))
     x = np.frombuffer(x_buffer, np.float64, n_x * n_times).reshape((n_x, n_times))
 
     while True:
-        command, data = job_queue.get()
-        if command == JOB_TERMINATE:
+        y_i, seg_i = job_queue.get()
+        if y_i == JOB_TERMINATE:
             return
-        elif command != JOB_BOOSTING:
-            raise ValueError("command=%r" % (command,))
-        y_i, seg_i = data
         h, test_sse_history, msg = boost_1seg(x, y[y_i], trf_length, delta,
                                               nsegs, seg_i, mindelta, error)
-        result_queue.put((y_i, h))
+        result_queue.put((y_i, seg_i, h))
 
 
 def put_jobs(queue, n_y, n_segs):
     "Feed boosting jobs into a Queue"
     for job in product(xrange(n_y), xrange(n_segs)):
-        queue.put((JOB_BOOSTING, job))
+        queue.put(job)
     for _ in xrange(N_WORKERS):
         queue.put((JOB_TERMINATE, None))
 
