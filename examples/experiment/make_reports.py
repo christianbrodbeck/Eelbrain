@@ -1,9 +1,15 @@
+# skip test
+"""A script that creates test reports for an MneExperiment subclass
+
+"""
 from sample_experiment import SampleExperiment, ROOT
 
 
 # create the experiment class instance
 e = SampleExperiment(ROOT)
 
+# Use this to send an email to e.owner when the reports are finished or the
+# script raises an error
 with e.notification:
     # Whole-brain test with default settings
     e.make_report('a>v', mask='lobes', pmin=0.05, tstart=0.05, tstop=0.2)

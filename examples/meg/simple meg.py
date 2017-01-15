@@ -1,3 +1,4 @@
+# dataset: mne_sample
 """
 This example demonstrates how to load and plot MEG data
 

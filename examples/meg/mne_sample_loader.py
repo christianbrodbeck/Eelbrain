@@ -1,3 +1,4 @@
+# dataset: mne_sample
 """
 This example demonstrates how to define a function to load data form a specific
 experiment.

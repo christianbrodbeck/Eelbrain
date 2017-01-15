@@ -1,3 +1,5 @@
+"""Univariate 2-way ANOVA
+"""
 from eelbrain import *
 
 ds = datasets.get_uv()

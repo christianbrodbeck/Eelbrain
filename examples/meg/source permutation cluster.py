@@ -1,3 +1,5 @@
+# requires: mayavi
+# dataset: mne_sample
 '''
 Example performes a permutation cluster test on source space data and creates
 an HTML file describing he output.

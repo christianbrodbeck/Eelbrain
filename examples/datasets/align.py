@@ -1,3 +1,6 @@
+"""Demonstrates how to combine datasets with different ordering
+
+"""
 import random
 import string
 
@@ -5,7 +8,7 @@ from eelbrain import *
 
 
 ds = Dataset()
-# Add a Factor froma known sequence
+# Add a Factor from a known sequence
 ds['ascii'] = Factor(string.ascii_lowercase)
 # Add an index variable to the dataset to later identify the cases
 ds.index()

@@ -1,3 +1,6 @@
+# requires: mayavi
+# dataset: mne_sample
+"""Create a HTML report file for a permutation test of source space data"""
 import eelbrain as e
 
 
