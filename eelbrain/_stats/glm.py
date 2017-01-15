@@ -1008,9 +1008,9 @@ class ANOVA(object):
             table.empty_row()
             table.cell("Residuals")
             SS, df, MS = self.residuals
-            table.cell(SS)
+            table.cell(fmtxt.stat(SS))
             table.cell(df)
-            table.cell(MS)
+            table.cell(fmtxt.stat(MS))
             table.endline()
 
         # total
