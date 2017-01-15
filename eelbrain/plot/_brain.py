@@ -25,10 +25,6 @@ FOREGROUND = (0, 0, 0)
 BACKGROUND = (1, 1, 1)
 
 
-def _idx(i):
-    return int(round(i))
-
-
 def assert_can_save_movies():
     from ._brain_fix import assert_can_save_movies
     assert_can_save_movies()
@@ -617,11 +613,11 @@ def _dspm_lut(fmin, fmid, fmax, n=256):
                          "needs to be > 0 (got %s)." % fmin)
 
     lut = np.zeros((n, 4), dtype=np.uint8)
-    i0 = _idx(n / 2)  # v=0 (middle of the LUT)
-    imin = _idx((fmin / fmax) * i0)  # i0 is the range of one side of the LUT
+    i0 = int(round(n / 2))  # v=0 (middle of the LUT)
+    imin = int(round((fmin / fmax) * i0))  # i0 is the range of one side of the LUT
     min_n = i0 - imin
     min_p = i0 + imin
-    imid = _idx((fmid / fmax) * i0)
+    imid = int(round((fmid / fmax) * i0))
     mid_n = i0 - imid
     mid_p = i0 + imid
 
@@ -683,9 +679,9 @@ def _p_lut(pmap, tmap, p0, p1, p0alpha, n=256):
     # http://docs.enthought.com/mayavi/mayavi/auto/example_custom_colormap.html
     lut = np.zeros((n, 4), dtype=np.uint8)
 
-    middle = n / 2
+    middle = n // 2
     p0p = middle + 1
-    p1n = _idx(p1 / pstep)
+    p1n = int(round(p1 / pstep))
     p1p = n - p1n
 
     # negative colors
