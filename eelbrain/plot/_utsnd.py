@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Plot multidimensional uniform time series.
 """
@@ -177,7 +178,7 @@ class _ax_im_array(object):
 
 
 class Array(ColorMapMixin, XAxisMixin, EelFigure):
-    """Plot UTS data to a rectangular grid.
+    u"""Plot UTS data to a rectangular grid.
 
     Parameters
     ----------
@@ -217,6 +218,16 @@ class Array(ColorMapMixin, XAxisMixin, EelFigure):
         (default True)
     title : None | string
         Figure title.
+
+    Notes
+    -----
+    Navigation:
+     - ``←``: scroll left
+     - ``→``: scroll right
+     - ``home``: scroll to beginning
+     - ``end``: scroll to end
+     - ``+``: zoom in (reduce x axis range)
+     - ``-``: zoom out (increase x axis range)
     """
     def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
                  xticklabels=True, ds=None, sub=None, x='time', vmax=None,
@@ -241,7 +252,7 @@ class Array(ColorMapMixin, XAxisMixin, EelFigure):
         e0 = epochs[0][0]
         self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
         self._configure_yaxis_dim(e0.get_dim(ydim), ylabel, scalar=False)
-        XAxisMixin.__init__(self, epochs, xdim, xlim=xlim)
+        XAxisMixin.__init__(self, epochs, xdim, xlim)
         self._show()
 
     def _fill_toolbar(self, tb):
@@ -351,7 +362,7 @@ class _ax_butterfly(object):
 
 
 class Butterfly(LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
-    """Butterfly plot for NDVars
+    u"""Butterfly plot for NDVars
 
     Parameters
     ----------
@@ -391,6 +402,21 @@ class Butterfly(LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
         (default True)
     title : None | string
         Figure title.
+
+    Notes
+    -----
+    Navigation:
+     - ``←``: scroll left
+     - ``→``: scroll right
+     - ``home``: scroll to beginning
+     - ``end``: scroll to end
+     - ``+``: zoom in (reduce x axis range)
+     - ``-``: zoom out (increase x axis range)
+
+    Keys available for sensor data:
+     - ``t``: open a ``Topomap`` plot for the time point under the mouse pointer.
+     - ``T``: open a larger ``Topomap`` plot with visible sensor names for the
+       time point under the mouse pointer.
     """
     _cmaps = None  # for TopoMapKey mixin
     _contours = None
@@ -418,7 +444,7 @@ class Butterfly(LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
-        XAxisMixin.__init__(self, epochs, xdim, xlim=xlim)
+        XAxisMixin.__init__(self, epochs, xdim, xlim)
         YLimMixin.__init__(self, self.plots)
         if linedim == 'sensor':
             TopoMapKey.__init__(self, self._topo_data)

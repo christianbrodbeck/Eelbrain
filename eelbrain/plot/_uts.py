@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Plot uniform time-series of one variable."""
 # author: Christian Brodbeck
 from __future__ import division
@@ -342,7 +343,7 @@ class UTSStat(LegendMixin, YLimMixin, EelFigure):
 
 
 class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
-    """Value by time plot for UTS data
+    u"""Value by time plot for UTS data
 
     Parameters
     ----------
@@ -375,6 +376,16 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         (default True)
     title : None | str
         Figure title.
+
+    Notes
+    -----
+    Navigation:
+     - ``←``: scroll left
+     - ``→``: scroll right
+     - ``home``: scroll to beginning
+     - ``end``: scroll to end
+     - ``+``: zoom in (reduce x axis range)
+     - ``-``: zoom out (increase x axis range)
     """
     def __init__(self, epochs, xax=None, axtitle=True, ds=None, sub=None,
                  xlabel=True, ylabel=True, xticklabels=True, bottom=None,
@@ -400,7 +411,7 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
             legend_handles.update(h.legend_handles)
 
         self.epochs = epochs
-        XAxisMixin.__init__(self, epochs, xdim, xlim=xlim)
+        XAxisMixin.__init__(self, epochs, xdim, xlim)
         YLimMixin.__init__(self, self.plots)
         LegendMixin.__init__(self, legend, legend_handles)
         self._show()

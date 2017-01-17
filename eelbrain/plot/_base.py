@@ -2004,7 +2004,7 @@ class TopoMapKey(object):
 
 
 class XAxisMixin(object):
-    """Manage x-axis
+    u"""Manage x-axis
 
     Parameters
     ----------
@@ -2014,15 +2014,20 @@ class XAxisMixin(object):
         Dimension that is plotted on the x-axis.
     axes : list of Axes
         Axes that should be managed by the mixin.
-    left : str
-        Key to move left.
-    right : str
-        Key to move right.
     xlim : tuple of 2 scalar
         Initial x-axis display limits.
+
+    Notes
+    -----
+    Navigation:
+     - ``←``: scroll left
+     - ``→``: scroll right
+     - ``home``: scroll to beginning
+     - ``end``: scroll to end
+     - ``+``: zoom in (reduce x axis range)
+     - ``-``: zoom out (increase x axis range)
     """
-    def __init__(self, epochs, xdim, axes=None, left='left', right='right',
-                 xlim=None):
+    def __init__(self, epochs, xdim, xlim=None, axes=None):
         extent = tuple(e.get_dim(xdim)._axis_im_extent() for e in chain(*epochs))
         self._xmin = min(e[0] for e in extent)
         self._xmax = max(e[1] for e in extent)
@@ -2030,8 +2035,8 @@ class XAxisMixin(object):
         self.__vspans = []
         self._register_key('+', self._on_zoom_plus)
         self._register_key('-', self._on_zoom_minus)
-        self._register_key(left, self._on_left)
-        self._register_key(right, self._on_right)
+        self._register_key('left', self._on_left)
+        self._register_key('right', self._on_right)
         self._register_key('home', self._on_beginning)
         self._register_key('end', self._on_end)
         if xlim is not None:

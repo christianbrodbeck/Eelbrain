@@ -454,11 +454,15 @@ def asfmtext_or_none(content, tag=None):
 
 class FMTextConstant(object):
 
-    def __init__(self, html, rtf, tex, text):
+    def __init__(self, name, html, rtf, tex, text):
+        self.name = name
         self.html = html
         self.rtf = rtf
         self.tex = tex
         self.text = text
+
+    def __repr__(self):
+        return self.name
 
     def get_html(self, env):
         return self.html

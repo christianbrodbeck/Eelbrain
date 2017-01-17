@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Plot topographic maps of sensor space data.
 """
@@ -82,8 +83,8 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
     Notes
     -----
     Keys:
-     - ``t``: open a ``Topomap`` plot for the map under the mouse pointer.
-     - ``T``: open a large ``Topomap`` plot with visible sensor names for the
+     - ``t``: open a ``Topomap`` plot for the region under the mouse pointer.
+     - ``T``: open a larger ``Topomap`` plot with visible sensor names for the
        map under the mouse pointer.
     """
     def __init__(self, epochs, xax=None, proj='default', cmap=None, vmax=None,
@@ -167,7 +168,7 @@ class TopomapBins(EelFigure):
 
 
 class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
-    """Butterfly plot with corresponding topomaps
+    u"""Butterfly plot with corresponding topomaps
 
     Parameters
     ----------
@@ -219,14 +220,24 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
 
     Notes
     -----
-     - LMB click in butterfly plots fixates the topomap time.
-     - RMB click in butterfly plots removes the time point, the topomaps follow
-       the mouse pointer.
-     - ``Right arrow``: Increment the current topomap time.
-     - ``Left arrow``: Decrement the current topomap time.
-     - ``t``: open a ``Topomap`` plot for the region under the mouse pointer.
+    Topomap control:
+     - LMB click in a butterfly plot fixates the topomap time
+     - RMB click in a butterfly plot removes the time point, the topomaps
+       follow the mouse pointer
+     - ``,``: Decrement the current topomap time (go left)
+     - ``.``: Increment the current topomap time (got right)
+     - ``t``: open a ``Topomap`` plot for the time point under the mouse
+       pointer
      - ``T``: open a larger ``Topomap`` plot with visible sensor names for the
-       region under the mouse pointer.
+       time point under the mouse pointer
+
+    Navigation:
+     - ``←``: scroll left
+     - ``→``: scroll right
+     - ``home``: scroll to beginning
+     - ``end``: scroll to end
+     - ``+``: zoom in (reduce x axis range)
+     - ``-``: zoom out (increase x axis range)
     """
     _default_xlabel_ax = -2
 
@@ -289,10 +300,10 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
             ax.xaxis.set_ticklabels(())
 
         # setup callback
-        XAxisMixin.__init__(self, epochs, xdim, self.bfly_axes, ',', '.', xlim)
+        XAxisMixin.__init__(self, epochs, xdim, xlim, self.bfly_axes)
         self.canvas.mpl_connect('button_press_event', self._on_click)
-        self._register_key('left', self._on_arrow)
-        self._register_key('right', self._on_arrow)
+        self._register_key(',', self._on_arrow)
+        self._register_key('.', self._on_arrow)
         TopoMapKey.__init__(self, self._topo_data)
         self._realtime_topo = True
         self._t_label = None  # time label under lowest topo-map
