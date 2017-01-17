@@ -473,7 +473,13 @@ class FMTextConstant(object):
         return self.text
 
 
-linebreak = FMTextConstant('<br style="clear:left">\n', '\\line\n', '\\\\\n', '\n')
+linebreak = FMTextConstant(
+    name='linebreak',
+    html='<br style="clear:left">\n',
+    rtf='\\line\n',
+    tex='\\\\\n',
+    text='\n',
+)
 
 
 class FMTextElement(object):
@@ -659,7 +665,7 @@ class FMText(FMTextElement):
 
         Parameters
         ----------
-        content : list of FMTextElement
+        content : FMTextElement | list of FMTextElement
             Any item with a string representation (str, FMText, scalar, ...)
             or an object that iterates over such items (e.g. a list of FMText).
         tag : str
@@ -709,7 +715,7 @@ class FMText(FMTextElement):
         return ''.join(i.get_tex(env) for i in self.content)
 
 
-class Code(FMText):
+class Code(FMTextElement):
     """Code (block) element
 
     Parameters
@@ -717,19 +723,16 @@ class Code(FMText):
     code : str
         Multiline string to be displayed as code.
     """
-    def __init__(self, code):
-        content = []
-        for line in code.splitlines():
-            content.append(line)
-            content.append(linebreak)
-        FMText.__init__(self, content, 'code')
+    def __init__(self, content):
+        assert isinstance(content, basestring)
+        FMTextElement.__init__(self, content, 'code')
 
     def get_tex(self, env):
         raise NotImplementedError
 
     def _get_html_core(self, env):
-        return ''.join(i.get_html(env).replace(' ', '&nbsp;')
-                       for i in self.content)
+        return linebreak.html.join(line.rstrip().replace(' ', '&nbsp;') for
+                                   line in self.content.splitlines())
 
 
 class Text(FMTextElement):
