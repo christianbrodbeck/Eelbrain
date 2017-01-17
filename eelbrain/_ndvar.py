@@ -220,8 +220,9 @@ def resample(ndvar, sfreq, npad=100, window='none'):
             x = ndvar.x[idx]
         # resamples
         x = signal.resample(x, new_num, axis=axis)
-        dims = (ndvar.dims[:axis] + (UTS(ndvar.time.tmin, new_tstep, new_num),)
-                + ndvar.dims[axis + 1:])
+        dims = (ndvar.dims[:axis] +
+                (UTS(ndvar.time.tmin, new_tstep, new_num),) +
+                ndvar.dims[axis + 1:])
         return NDVar(x, dims, ndvar.info.copy(), ndvar.name)
     old_sfreq = 1.0 / ndvar.time.tstep
     x = mne.filter.resample(ndvar.x, sfreq, old_sfreq, npad, axis, window)

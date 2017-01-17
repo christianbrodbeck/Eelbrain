@@ -199,36 +199,36 @@ def twoway_colors(n1, n2, hue_start=0.2, hue_shift=0., hues=None):
 
 def make_cmaps():
     """Create some custom colormaps and register them with matplotlib"""
-    _cdict = {'red':  [(.0, .0, .0),
-                       (.5, 1., 1.),
-                       (1., 1., 1.)],
-              'green':[(.0, .0, .0),
-                       (.5, 1., 1.),
-                       (1., .0, .0)],
-              'blue': [(.0, 1., 1.),
-                       (.5, 1., 1.),
-                       (1., .0, .0)]}
+    _cdict = {'red':   [(.0, .0, .0),
+                        (.5, 1., 1.),
+                        (1., 1., 1.)],
+              'green': [(.0, .0, .0),
+                        (.5, 1., 1.),
+                        (1., .0, .0)],
+              'blue':  [(.0, 1., 1.),
+                        (.5, 1., 1.),
+                        (1., .0, .0)]}
     cm_polar = mpl.colors.LinearSegmentedColormap("polar", _cdict)
     cm_polar.set_bad('w', alpha=0.)
     mpl.cm.register_cmap(cmap=cm_polar)
 
     # extra-polar: fade ends into dark
     x = .3
-    _cdict = {'red':  [(0, 0., 0.),
-                       (0 + x, 0., 0.),
-                       (.5, 1., 1.),
-                       (1 - x, 1., 1.),
-                       (1, 0., 0.)],
-              'green':[(0, 0., 0.),
-                       (0 + x, 0., 0.),
-                       (.5, 1., 1.),
-                       (1 - x, 0., 0.),
-                       (1., 0., 0.)],
-              'blue': [(0, 0., 0.),
-                       (0 + x, 1., 1.),
-                       (.5, 1., 1.),
-                       (1 - x, 0., 0.),
-                       (1, .0, .0)]}
+    _cdict = {'red':   [(0, 0., 0.),
+                        (0 + x, 0., 0.),
+                        (.5, 1., 1.),
+                        (1 - x, 1., 1.),
+                        (1, 0., 0.)],
+              'green': [(0, 0., 0.),
+                        (0 + x, 0., 0.),
+                        (.5, 1., 1.),
+                        (1 - x, 0., 0.),
+                        (1., 0., 0.)],
+              'blue':  [(0, 0., 0.),
+                        (0 + x, 1., 1.),
+                        (.5, 1., 1.),
+                        (1 - x, 0., 0.),
+                        (1, .0, .0)]}
     cm_xpolar = mpl.colors.LinearSegmentedColormap("xpolar", _cdict)
     cm_xpolar.set_bad('w', alpha=0.)
     mpl.cm.register_cmap(cmap=cm_xpolar)
@@ -271,14 +271,14 @@ def make_cmaps():
     cm_phase.set_bad('w', alpha=0.)
     mpl.cm.register_cmap(cmap=cm_phase)
 
-    cdict = {'red':[(0.0, 1.0, 1.0),
-                    (1.0, 1.0, 0.0)],
-         'green':  [(0.0, 1.0, 1.0),
-                    (0.1, 1.0, 1.0),
-                    (1.0, 0.0, 0.0)],
-         'blue':   [(0.0, 1.0, 1.0),
-                    (0.1, 0.0, 0.0),
-                    (1.0, 0.0, 0.0)]}
+    cdict = {'red':   [(0.0, 1.0, 1.0),
+                       (1.0, 1.0, 0.0)],
+             'green': [(0.0, 1.0, 1.0),
+                       (0.1, 1.0, 1.0),
+                       (1.0, 0.0, 0.0)],
+             'blue':  [(0.0, 1.0, 1.0),
+                       (0.1, 0.0, 0.0),
+                       (1.0, 0.0, 0.0)]}
     cmap = mpl.colors.LinearSegmentedColormap("sig", cdict)
     cmap.set_over('k', alpha=0.)
     cmap.set_bad('b', alpha=0.)
@@ -312,24 +312,23 @@ def make_cmaps():
 
     # interaction cell coloring cmaps ---
     # yellow / blue
-    seq = [ (1, 1, .2),
+    seq = [(1, 1, .2),
            ((.3, .3, .6), (.2, .8, 1)),
-                          (.2, .2, 1),
-                          (.6, .6, .3)]
+           (.2, .2, 1),
+           (.6, .6, .3)]
     val = (0, .5, 1)
     cmap = make_seq_cmap(seq, val, "2group-yb")
     mpl.cm.register_cmap(cmap=cmap)
 
     # orange / blue
-    seq = [ (1, .9, .1),
-            (1, .5, .3),
-           ((.3, .6 , .6), (.2, .8, 1)),
-                           (.2, .2, 1),
-                           (.6, .6, .3)]
+    seq = [(1, .9, .1),
+           (1, .5, .3),
+           ((.3, .6, .6), (.2, .8, 1)),
+           (.2, .2, 1),
+           (.6, .6, .3)]
     val = (0, .25, .5, .75, 1)
     cmap = make_seq_cmap(seq, val, "2group-ob")
     mpl.cm.register_cmap(cmap=cmap)
-
 
 
 make_cmaps()
@@ -392,17 +391,17 @@ def stat_info(meas, c0=None, c1=None, c2=None, tail=0, **kwargs):
         contours = kwargs['contours'] = {}
         if c0 is not None:
             if tail >= 0:
-                contours[ c0] = (1.0, 0.5, 0.1)
+                contours[c0] = (1.0, 0.5, 0.1)
             if tail <= 0:
                 contours[-c0] = (0.5, 0.1, 1.0)
         if c1 is not None:
             if tail >= 0:
-                contours[ c1] = (1.0, 0.9, 0.2)
+                contours[c1] = (1.0, 0.9, 0.2)
             if tail <= 0:
                 contours[-c1] = (0.9, 0.2, 1.0)
         if c2 is not None:
             if tail >= 0:
-                contours[ c2] = (1.0, 1.0, 0.8)
+                contours[c2] = (1.0, 1.0, 0.8)
             if tail <= 0:
                 contours[-c2] = (1.0, 0.8, 1.0)
 
@@ -432,12 +431,14 @@ _unit_fmt = {1: "%s",
              1e-12: "p%s",
              1e-15: "f%s"}
 
+
 def eeg_info(vmax=None, mult=1, unit='V', meas="V"):
     unit = _unit_fmt[1 / mult] % unit
     out = dict(cmap='xpolar', meas=meas, unit=unit)
     if vmax is not None:
         out['vmax'] = vmax
     return out
+
 
 def meg_info(vmax=None, mult=1, unit='T', meas="B"):
     unit = _unit_fmt[1 / mult] % unit

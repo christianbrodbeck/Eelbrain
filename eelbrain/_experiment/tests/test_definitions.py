@@ -1,8 +1,8 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from nose.tools import eq_
 
-from eelbrain._experiment.definitions import (find_epoch_vars, find_epochs_vars,
-    find_dependent_epochs, find_test_vars)
+from eelbrain._experiment.definitions import (
+    find_dependent_epochs, find_epoch_vars, find_epochs_vars, find_test_vars)
 
 
 def test_find_epoch_vars():

@@ -1093,7 +1093,6 @@ class Celltable(object):
         self.data[cell] = out
         return out
 
-
     def get_data(self, out=list):
         if out is dict:
             return self.data
@@ -3016,7 +3015,7 @@ class Factor(_Effect):
 
 class NDVar(object):
     """Container for n-dimensional data.
-    
+
     Parameters
     ----------
     x : array_like
@@ -4808,6 +4807,8 @@ class Datalist(list):
 
 
 legal_dataset_key_re = re.compile("[_A-Za-z][_a-zA-Z0-9]*$")
+
+
 def assert_is_legal_dataset_key(key):
     if iskeyword(key):
         msg = ("%r is a reserved keyword and can not be used as variable name "
@@ -5212,18 +5213,11 @@ class Dataset(OrderedDict):
         Also raise an error if empty_ok is False and the Dataset is empty.
         """
         if self.n_cases is None:
-            if empty_ok == True:
-                return
-            else:
-                err = ("Dataset is empty.")
-                raise RuntimeError(err)
-
-        n = len(X)
-        if self.n_cases != n:
-            name = getattr(X, 'name', "the argument")
-            err = ("The Dataset has a different length (%i) than %s "
-                   "(%i)" % (self.n_cases, name, n))
-            raise ValueError(err)
+            if not empty_ok:
+                raise RuntimeError("Dataset is empty.")
+        elif self.n_cases != len(X):
+            raise ValueError("The Dataset has a different length (%i) than %s "
+                             "(%i)" % (self.n_cases, dataobj_repr(X), len(X)))
 
     def add(self, item, replace=False):
         """``ds.add(item)`` -> ``ds[item.name] = item``
@@ -5456,7 +5450,7 @@ class Dataset(OrderedDict):
         for item_name, item in df.items():
             if isinstance(item, ro.FactorVector):
                 x = np.array(item)
-                labels = {i:l for i, l in enumerate(item.levels, 1)}
+                labels = {i: l for i, l in enumerate(item.levels, 1)}
                 ds[item_name] = Factor(x, labels=labels)
             elif isinstance(item, (ro.FloatVector, ro.IntVector)):
                 x = np.array(item)
@@ -6792,9 +6786,10 @@ class Parametrization(object):
             i = j
 
             # find comparison models
-            higher_level_effects[name] = [e_ for e_ in model.effects
-                                          if e_ is not e
-                                          and is_higher_order_effect(e_, e)]
+            higher_level_effects[name] = [
+                e_ for e_ in model.effects if
+                e_ is not e and is_higher_order_effect(e_, e)
+            ]
 
         # check model
         if np.linalg.matrix_rank(x) < x.shape[1]:
@@ -6826,6 +6821,7 @@ class Parametrization(object):
 # ---NDVar dimensions---
 
 DIMINDEX_RAW_TYPES = (int, slice, list)
+
 
 def dimindex_case(arg):
     if isinstance(arg, DIMINDEX_RAW_TYPES):
@@ -7094,9 +7090,8 @@ class Categorial(Dimension):
         return len(self.values)
 
     def __eq__(self, other):
-        is_equal = (Dimension.__eq__(self, other)
-                    and np.all(self.values == other.values))
-        return is_equal
+        return (Dimension.__eq__(self, other) and
+                np.all(self.values == other.values))
 
     def __getitem__(self, index):
         if isinstance(index, int):
@@ -7273,7 +7268,7 @@ class Ordered(Scalar):
     ----------
     name : str
         Name fo the dimension.
-    values : array
+    values : array_like
         Scalar value for each entry.
     unit : str (optional)
         Unit of the values.
@@ -7443,10 +7438,8 @@ class Sensor(Dimension):
 
     def __eq__(self, other):
         "Based on having same sensor names"
-        is_equal = (Dimension.__eq__(self, other)
-                    and len(self) == len(other)
-                    and all(n == no for n, no in zip(self.names, other.names)))
-        return is_equal
+        return (Dimension.__eq__(self, other) and len(self) == len(other) and
+                all(n == no for n, no in zip(self.names, other.names)))
 
     def __getitem__(self, index):
         if np.isscalar(index):
@@ -7654,7 +7647,9 @@ class Sensor(Dimension):
                     locs2d[lower_half] *= (1 - locs3d[lower_half][:, [2]])
             elif proj == 'z root':
                 z = locs3d[:, 2]
-                z_dist = (z.max() + 0.01) - z  # distance form top, buffer so that top points don't stick together
+                z_dist = (z.max() + 0.01) - z  # distance form top (add a small
+                # buffer so that multiple points at z-max don't get stuck
+                # together)
                 r = np.sqrt(z_dist)  # desired 2d radius
                 r_xy = np.sqrt(np.sum(locs3d[:, :2] ** 2, 1))  # current radius in xy
                 idx = (r_xy != 0)  # avoid zero division
@@ -8200,12 +8195,10 @@ class SourceSpace(Dimension):
         return self._n_vert
 
     def __eq__(self, other):
-        is_equal = (Dimension.__eq__(self, other)
-                    and self.subject == other.subject
-                    and len(self) == len(other)
-                    and all(np.array_equal(s, o) for s, o in
-                            izip(self.vertno, other.vertno)))
-        return is_equal
+        return (Dimension.__eq__(self, other) and
+                self.subject == other.subject and len(self) == len(other) and
+                all(np.array_equal(s, o) for s, o in
+                    izip(self.vertno, other.vertno)))
 
     def __getitem__(self, index):
         if isinstance(index, int):

@@ -52,16 +52,15 @@ import scipy.io
 from ._data_obj import (Dataset, Factor, ascategorial, asfactor, assub,
                         check_length)
 from ._utils import ui
-from . import save
-
+from .save import pickle
 
 
 _max_iter = 1e3
 
+
 class RandomizationError(Exception):
     "custom error for failures in randomization"
     pass
-
 
 
 class Variable(object):
@@ -175,7 +174,6 @@ def permute_(variables, count='caseID', randomize=False):
     return ds
 
 
-
 def random_factor(values, n=None, name=None, rand=True, balance=None, urn=None,
                   require_exact_balance=True, sub=None, ds=None):
     """Create a Factor with random values
@@ -251,7 +249,7 @@ def random_factor(values, n=None, name=None, rand=True, balance=None, urn=None,
 
 def _try_make_random_factor(name, values, n, rand, balance, urn,
                             require_exact_balance):
-    N_values = len(values)
+    n_values = len(values)
     x = np.empty(n, dtype=np.uint8)
     cells = dict(enumerate(values))
 
@@ -269,20 +267,19 @@ def _try_make_random_factor(name, values, n, rand, balance, urn,
         region_len = n
 
     # generate random values with equal number of each value
-    exact_balance = (region_len % N_values == 0)
+    exact_balance = (region_len % n_values == 0)
     if exact_balance:
-        values = np.arange(region_len, dtype=np.uint8) % N_values
+        values = np.arange(region_len, dtype=np.uint8) % n_values
     elif require_exact_balance:
         raise ValueError("No exact balancing possible")
     else:
-        _len = int(ceil(region_len / N_values)) * N_values
-        values = np.arange(_len, dtype=np.uint8) % N_values
+        _len = int(ceil(region_len / n_values)) * n_values
+        values = np.arange(_len, dtype=np.uint8) % n_values
 
         # drop trailing values randomly
         if rand:  # and _randomize:
-            np.random.shuffle(values[-N_values:])
+            np.random.shuffle(values[-n_values:])
         values = values[:region_len]
-
 
     # cycle through values of the balance containers
     for region in regions.cells:
@@ -336,6 +333,8 @@ def complement(base, name=None, values=None, ds=None):
     ----------
     base : list of Factors
         Factors that together, on each case, contain all the values spare one.
+    name : str
+        Name for Factor.
     values : list of str | None
         values for the Factor. If None, the first Factor's values are used.
     ds : None | Dataset
@@ -393,7 +392,6 @@ def shuffle_cases(dataset, inplace=False, blocks=None):
             dataset[k] = dataset[k][index]
     else:
         return dataset.sub(index)
-
 
 
 def export_mat(dataset, values=None, destination=None):
@@ -482,12 +480,12 @@ def save(dataset, destination=None, values=None, pickle_values=False):
 
         dest = os.path.extsep.join((destination, 'pickled'))
         print(msg_temp % dest)
-        save.pickle(dataset, dest)
+        pickle(dataset, dest)
 
         if pickle_values:
             dest = os.path.extsep.join((destination + '_values', 'pickled'))
             print(msg_temp % dest)
-            save.pickle(values, dest)
+            pickle(values, dest)
 
         dest = os.path.extsep.join((destination, 'mat'))
         print(msg_temp % dest)
@@ -496,4 +494,3 @@ def save(dataset, destination=None, values=None, pickle_values=False):
         dest = os.path.extsep.join((destination, 'tsv'))
         print(msg_temp % dest)
         dataset.save_txt(dest)
-

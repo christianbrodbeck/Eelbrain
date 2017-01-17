@@ -1,7 +1,6 @@
 from itertools import izip
 from math import ceil, floor
 import os
-from operator import add, sub
 import re
 
 import numpy as np

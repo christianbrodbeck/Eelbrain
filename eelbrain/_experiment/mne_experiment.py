@@ -25,7 +25,9 @@ from .. import plot
 from .. import save
 from .. import table
 from .. import testnd
-from .._data_obj import Dataset, Factor, Var, NDVar, Datalist, combine
+from .._data_obj import (
+    Datalist, Dataset, DimensionMismatchError, Factor, OldVersionError, Var,
+    align, as_legal_dataset_key, asfactor, assert_is_legal_dataset_key, combine)
 from .._info import BAD_CHANNELS
 from .._names import INTERPOLATE_CHANNELS
 from .._meeg import new_rejection_ds
@@ -35,9 +37,6 @@ from .._mne import (
 from ..mne_fixes import (
     write_labels_to_annot, _interpolate_bads_eeg, _interpolate_bads_meg)
 from ..mne_fixes._trans import hsp_equal, mrk_equal
-from .._data_obj import (
-    DimensionMismatchError, OldVersionError, Var, align, as_legal_dataset_key,
-    asfactor, assert_is_legal_dataset_key)
 from .._ndvar import cwt_morlet
 from ..fmtxt import List, Report, Image, read_meta
 from .._report import named_list, enumeration, plural
@@ -108,6 +107,7 @@ LEGACY_RAW = {
         'source': 'raw', 'type': 'filter', 'args': (1, 40),
         'kwargs': {'method': 'iir'}},
 }
+
 
 ################################################################################
 # Epochs
@@ -631,8 +631,8 @@ class MneExperiment(FileTree):
                             'labels': {'occipitotemporal': "occipital + temporal"}}}
     parcs = {}
 
-    # Frequencies
-    _freqs = {'gamma': {'frequencies': np.arange(25, 50, 2), # lowbound, highbound, step
+    # Frequencies:  lowbound, highbound, step
+    _freqs = {'gamma': {'frequencies': np.arange(25, 50, 2),
                         'n_cycles': 5}}
     freqs = {}
 
@@ -2602,7 +2602,7 @@ class MneExperiment(FileTree):
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
         decim : int
-            Data decimation factor (the default is the factor specified in the 
+            Data decimation factor (the default is the factor specified in the
             epoch definition).
         pad : scalar
             Pad the epochs with this much time (in seconds; e.g. for spectral
@@ -2856,7 +2856,7 @@ class MneExperiment(FileTree):
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
         decim : int
-            Data decimation factor (the default is the factor specified in the 
+            Data decimation factor (the default is the factor specified in the
             epoch definition).
         data_raw : bool | str
             Keep the mne.io.Raw instance in ds.info['raw'] (default False).
@@ -3248,11 +3248,11 @@ class MneExperiment(FileTree):
 
         return raw
 
-    def _load_result_plotter(self, test, tstart, tstop, pmin, parc=None, mask=None,
-                            samples=10000, data='source', sns_baseline=True,
-                            src_baseline=None,
-                            colors=None, labels=None, h=1.1, rc=None,
-                            dst=None, vec_fmt='svg', pix_fmt='png', **kwargs):
+    def _load_result_plotter(self, test, tstart, tstop, pmin, parc=None,
+                             mask=None, samples=10000, data='source',
+                             sns_baseline=True, src_baseline=None,
+                             colors=None, labels=None, h=1.1, rc=None,
+                             dst=None, vec_fmt='svg', pix_fmt='png', **kwargs):
         """Load cluster-based test result plotter
 
         Parameters
@@ -4019,7 +4019,7 @@ class MneExperiment(FileTree):
         Parameters
         ----------
         decim : int
-            Data decimation factor (the default is the factor specified in the 
+            Data decimation factor (the default is the factor specified in the
             epoch definition).
         """
         dst = self.get('evoked-file', mkdir=True)
@@ -4431,7 +4431,8 @@ class MneExperiment(FileTree):
                 ds = self.load_epochs_stc(subject, sns_baseline, src_baseline, cat=cat)
                 y = 'src'
             else:
-                ds = self.load_evoked_stc(group, sns_baseline, src_baseline, morph_ndvar=True, cat=cat)
+                ds = self.load_evoked_stc(group, sns_baseline, src_baseline,
+                                          morph_ndvar=True, cat=cat)
                 y = 'srcm'
 
             # find/apply cluster criteria
@@ -4953,7 +4954,7 @@ class MneExperiment(FileTree):
             res = self._make_test(ds[label_keys[label]], ds, test, test_kwargs,
                                   do_mcc)
             label_results[label] = res
-            
+
         if do_mcc:
             cdists = [r._cdist for r in label_results.values()]
             merged_dist = _MergedTemporalClusterDist(cdists)
@@ -5032,9 +5033,9 @@ class MneExperiment(FileTree):
         report.save_html(dst)
 
     def _make_report_eeg_sensors(self, test, sensors=('FZ', 'CZ', 'PZ', 'O1', 'O2'),
-                                pmin=None, tstart=0.15, tstop=None,
-                                samples=10000, baseline=True, redo=False,
-                                **state):
+                                 pmin=None, tstart=0.15, tstop=None,
+                                 samples=10000, baseline=True, redo=False,
+                                 **state):
         # outdated (cache)
         """Create an HTML report on individual EEG sensors
 
@@ -5760,8 +5761,7 @@ class MneExperiment(FileTree):
         for factor in sorted(factors):
             assert_is_legal_dataset_key(factor)
             if factor in self._model_order:
-                v = self._model_order.index(factor)
-                ordered_factors[v] = factor
+                ordered_factors[self._model_order.index(factor)] = factor
             else:
                 unordered_factors.append(factor)
 
@@ -6221,9 +6221,11 @@ class MneExperiment(FileTree):
 
     def _surfer_plot_kwargs(self, surf=None, views=None, foreground=None,
                             background=None, smoothing_steps=None, hemi=None):
-        return {'surf': surf or self.brain_plot_defaults.get('surf', 'inflated'),
-                'views': views or self.brain_plot_defaults.get('views', ('lat', 'med')),
-                'hemi': hemi,
-                'foreground': foreground or self.brain_plot_defaults.get('foreground', None),
-                'background': background or self.brain_plot_defaults.get('background', None),
-                'smoothing_steps': smoothing_steps or self.brain_plot_defaults.get('smoothing_steps', None)}
+        defaults = self.brain_plot_defaults
+        return {
+            'surf': surf or defaults.get('surf', 'inflated'),
+            'views': views or defaults.get('views', ('lat', 'med')),
+            'hemi': hemi,
+            'foreground': foreground or defaults.get('foreground', None),
+            'background': background or defaults.get('background', None),
+            'smoothing_steps': smoothing_steps or defaults.get('smoothing_steps', None)}

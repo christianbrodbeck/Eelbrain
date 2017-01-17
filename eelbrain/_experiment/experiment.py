@@ -243,7 +243,7 @@ class TreeModel(object):
                     missing.add(field)
         if missing:
             raise KeyError("The following fields occur in templates but "
-                               "are undefined: %s" % ', '.join(sorted(missing)))
+                           "are undefined: %s" % ', '.join(sorted(missing)))
 
     def _register_compound(self, key, elements):
         """Register a field that is composed out of other fields
@@ -304,7 +304,7 @@ class TreeModel(object):
 
         if depends_on is not None:
             if (set_handler is not None or eval_handler is not None or
-                        post_set_handler is not None):
+                    post_set_handler is not None):
                 raise RuntimeError("Slave values can't have other handlers")
             elif slave_handler is None:
                 raise RuntimeError("Slave value requires slave_handler")

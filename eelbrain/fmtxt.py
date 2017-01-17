@@ -150,16 +150,14 @@ _html_doc_template = u"""<!DOCTYPE html>
 
 # to keep track of recent tex out and allow copying
 _recent_texout = []
+
+
 def _add_to_recent(tex_obj):
     keep_recent = preferences['keep_recent']
     if keep_recent:
         if len(_recent_texout) >= keep_recent - 1:
             _recent_texout.pop(0)
         _recent_texout.append(tex_obj)
-
-
-def isstr(obj):
-    return isinstance(obj, basestring)
 
 
 def get_pdf(tex_obj):
@@ -393,7 +391,7 @@ def texify(txt):
     """
     if hasattr(txt, 'get_tex'):
         return txt.get_tex()
-    elif not isstr(txt):
+    elif not isinstance(txt, basestring):
         txt = str(txt)
 
     out = txt.replace('_', r'\_') \
@@ -404,6 +402,8 @@ def texify(txt):
 
 _html_temp = u'<{tag}>{body}</{tag}>'
 _html_temp_opt = u'<{tag} {options}>{body}</{tag}>'
+
+
 def _html_element(tag, body, env, options=None):
     """Format an HTML element
 
@@ -875,7 +875,7 @@ class Stars(FMTextElement):
     so that alignment to the right can be used.
     """
     def __init__(self, n, of=3, tag="^"):
-        if isstr(n):
+        if isinstance(n, basestring):
             self.n = len(n.strip())
         else:
             self.n = n
@@ -1278,7 +1278,7 @@ class Table(FMTextElement):
         if caption and not preferences['html_tables_in_fig']:
             table.append(caption)
         for row in self._table:
-            if isstr(row):
+            if isinstance(row, basestring):
                 if row == "\\midrule":
                     pass
 #                     table.append('<tr style="border-bottom:1px solid black">')
@@ -1309,7 +1309,7 @@ class Table(FMTextElement):
         rows.append('\\row')
         # body
         for row in self._table:
-            if isstr(row):
+            if isinstance(row, basestring):
                 if row == "\\midrule":
                     pass
             else:
@@ -1337,7 +1337,7 @@ class Table(FMTextElement):
         # determine column widths
         widths = []
         for row in self._table:
-            if not isstr(row):  # some commands are str
+            if not isinstance(row, basestring):  # some commands are str
                 row_strlen = row._strlen(env)
                 while len(row_strlen) < len(self.columns):
                     row_strlen.append(0)
@@ -1352,7 +1352,7 @@ class Table(FMTextElement):
         # collect lines
         txtlines = []
         for row in self._table:
-            if isstr(row):  # commands
+            if isinstance(row, basestring):  # commands
                 if row == r'\midrule':
                     txtlines.append(midrule)  # "_"*l_len)
                 elif row == r'\bottomrule':
@@ -1377,10 +1377,10 @@ class Table(FMTextElement):
                 txtlines.append(row.get_str(c_width, self.columns, delim, env))
         out = txtlines
 
-        if self._title != None:
+        if self._title is not None:
             out = ['', self._title.get_str(env), ''] + out
 
-        if isstr(self._caption):
+        if isinstance(self._caption, basestring):
             out.append(self._caption)
         elif self._caption:
             out.append(str(self._caption))
@@ -1395,7 +1395,7 @@ class Table(FMTextElement):
         # Body
         tex_body = []
         for row in self._table:
-            if isstr(row):
+            if isinstance(row, basestring):
                 tex_body.append(row)
             else:
                 tex_body.append(row.get_tex(env))
@@ -1420,7 +1420,7 @@ class Table(FMTextElement):
         """
         table = []
         for row in self._table:
-            if isstr(row):
+            if isinstance(row, basestring):
                 pass
             else:
                 table.append(row.get_tsv(delimiter, fmt=fmt))

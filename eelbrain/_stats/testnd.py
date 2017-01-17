@@ -573,8 +573,7 @@ class corr(_Result):
         sub = assub(sub, ds)
         Y = asndvar(Y, sub=sub, ds=ds)
         if not Y.has_case:
-            msg = ("Dependent variable needs case dimension")
-            raise ValueError(msg)
+            raise ValueError("Dependent variable needs case dimension")
         X = asvar(X, sub=sub, ds=ds)
         if norm is not None:
             norm = ascategorial(norm, sub, ds)
@@ -588,7 +587,6 @@ class corr(_Result):
         # the variance associated with each subject for the z-scoring.
         Y = Y.copy()
         if norm is not None:
-#             Y.x = Y.x.reshape((n, -1))
             for cell in norm.cells:
                 idx = (norm == cell)
                 Y.x[idx] = scipy.stats.zscore(Y.x[idx], None)

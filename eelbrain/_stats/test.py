@@ -74,27 +74,28 @@ def lilliefors(data, formatted=False, **kwargs):
     if N > 100:
         D *= (N / 100) ** .49
         N = 100
-    p_estimate = np.exp(-7.01256 * D ** 2 * (N + 2.78019)             \
-                     + 2.99587 * D * (N + 2.78019) ** .5 - .122119    \
-                     + .974598 / (N ** .5) + 1.67997 / N)
+    p_estimate = np.exp(- 7.01256 * D ** 2 * (N + 2.78019)
+                        + 2.99587 * D * (N + 2.78019) ** .5
+                        - .122119
+                        + .974598 / (N ** .5)
+                        + 1.67997 / N)
     # approximate P (Molin & Abdi)
     L = D  # ???
     b2 = 0.08861783849346
     b1 = 1.30748185078790
     b0 = 0.37872256037043
     A = (-(b1 + N) + np.sqrt((b1 + N) ** 2 - 4 * b2 * (b0 - L ** -2))) / 2 * b2
-    Pr = -.37782822932809         \
-         + 1.67819837908004 * A     \
-         - 3.02959249450445 * A ** 2  \
-         + 2.80015798142101 * A ** 3  \
-         - 1.39874347510845 * A ** 4  \
-         + 0.40466213484419 * A ** 5  \
-         - 0.06353440854207 * A ** 6  \
-         + 0.00287462087623 * A ** 7  \
-         + 0.00069650013110 * A ** 8  \
-         - 0.00011872227037 * A ** 9  \
-         + 0.00000575586834 * A ** 10
-    #
+    Pr = (-.37782822932809
+          + 1.67819837908004 * A
+          - 3.02959249450445 * A ** 2
+          + 2.80015798142101 * A ** 3
+          - 1.39874347510845 * A ** 4
+          + 0.40466213484419 * A ** 5
+          - 0.06353440854207 * A ** 6
+          + 0.00287462087623 * A ** 7
+          + 0.00069650013110 * A ** 8
+          - 0.00011872227037 * A ** 9
+          + 0.00000575586834 * A ** 10)
     if formatted:
         txt = "D={0:.4f}, Dallal p={1:.4f}, Molin&Abdi p={2:.4f}"
         return txt.format(D, p_estimate, Pr)
@@ -102,12 +103,10 @@ def lilliefors(data, formatted=False, **kwargs):
         return D, p_estimate
 
 
-
 def _hochberg_threshold(N, alpha=.05):
     j = np.arange(N)
     threshold = alpha / (N - j)
     return threshold
-
 
 
 def mcp_adjust(ps, method='Hochberg'):
@@ -157,7 +156,6 @@ def mcp_adjust(ps, method='Hochberg'):
     return ps_adjusted
 
 
-
 def _get_correction_caption(corr, n):
     if corr == 'Hochberg':
         return "(* Corrected after Hochberg, 1988)"
@@ -170,28 +168,30 @@ def _get_correction_caption(corr, n):
 
 
 def star(p_list, out=str, levels=True, trend=False, eq_strlen=False):
-    """
+    """Determine number of stars for p-value
 
-    out=str: convert n stars into string containing '**'
-       =int: leave n stars as integer
-
-    levels: {p: string, ...} dictionary. Default (levels=True) creates the
-            levels {.05 : '*',    . trend=True adds {.1: "'"}.
-                    .01 : '**',
-                    .001: '***'}
-
-    eq_strlen: ("equalize string lengths") when strings are returned make sure
-               they all have the same length (False by default).
-
+    Parameters
+    ----------
+    p_list : sequence of scalar
+        P-values.
+    out : {str, int}
+        Return string with stars ('**') or an integer indicating the number of
+        stars.
+    levels : dict
+        ``{p: string, ...}`` dictionary. The default is ``{.05 : '*',
+        .01 : '**', .001: '***'}``; ``trend=True`` adds ``{.1: "'"}``.
+    trend : bool
+        Add trend to default ``levels`` (default ``False``).
+    eq_strlen : bool
+        Equalize string lengths; when strings are returned, make sure they all
+        have the same length (default ``False``).
     """
     # set default levels
     if levels is True:
-        levels = {.05 : '*',
-                  .01 : '**',
-                  .001: '***'}
+        levels = {.05: '*', .01: '**', .001: '***'}
         if trend is True:
-            levels[.1] = "`"  # "`"
-        elif fmtxt.isstr(trend):
+            levels[.1] = "`"
+        elif isinstance(trend, basestring):
             levels[.1] = trend
     elif trend:
         raise AssertionError("'trend' kwarg only meaningful when levels is True")
@@ -227,7 +227,7 @@ def star(p_list, out=str, levels=True, trend=False, eq_strlen=False):
         return out
 
 
-def star_factor(p, levels={.1: '`', .05 : '*', .01 : '**', .001: '***'}):
+def star_factor(p, levels={.1: '`', .05: '*', .01: '**', .001: '***'}):
     """Create a factor with stars for a sequence of p-values
 
     Parameters
@@ -246,12 +246,11 @@ def star_factor(p, levels={.1: '`', .05 : '*', .01 : '**', .001: '***'}):
     star_labels = {i: levels[v] for i, v in enumerate(sorted_levels, 1)}
     star_labels[0] = ''
     level_values = np.reshape(sorted_levels, (-1, 1))
-    stars = Factor(np.sum(p < level_values, 0), labels=star_labels)
-    return stars
+    return Factor(np.sum(p < level_values, 0), labels=star_labels)
 
 
 def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
-           title='{desc}', ds=None):
+          title='{desc}', ds=None):
     """T tests for one or more samples.
 
     parameters
@@ -555,7 +554,6 @@ def pairwise(Y, X, match=None, sub=None, ds=None,  # data in
     if corr:
         _Pc = mcp_adjust(_P, corr)
     _df = test['df']
-    _NStars = test['stars']
     symbols = test['symbols']
 
     # create TABLE
@@ -834,7 +832,8 @@ class bootstrap_pairwise(object):
             # T: indexes to transform Y.x to [X%match, value]-array
             match_cell_ids = match.cells
             group_size = len(match_cell_ids)
-            T = None; i = 0
+            T = None
+            i = 0
             for X_cell in cells:
                 for match_cell in match_cell_ids:
                     source_indexes = np.where((X == X_cell) * (match == match_cell))[0]
@@ -861,7 +860,8 @@ class bootstrap_pairwise(object):
                 group_1 = groups[g1]
                 group_2 = groups[g2]
                 diffs = ordered[:, group_1] - ordered[:, group_2]
-                t[:, i] = np.mean(diffs, axis=1) * np.sqrt(group_size) / np.std(diffs, axis=1, ddof=1)
+                t[:, i] = (np.mean(diffs, axis=1) * np.sqrt(group_size) /
+                           np.std(diffs, axis=1, ddof=1))
                 comp_names.append(' - '.join((cells[g1], cells[g2])))
 
             self.diffs = diffs

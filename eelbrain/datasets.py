@@ -148,8 +148,12 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
 
     Parameters
     ----------
-    tmin, tmax baseline :
-        Epoch parameters.
+    tmin : scalar
+        Relative time of the first sample of the epoch.
+    tmax : scalar
+        Relative time of the last sample of the epoch.
+    baseline : {None, tuple of 2 {scalar, None}}
+        Period for baseline correction.
     sns : bool
         Add sensor space data as NDVar as ``ds['meg']`` (default ``False``).
     src : False | 'ico' | 'vol'
@@ -196,12 +200,12 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     trigger = ds['trigger']
 
     # use trigger to add various labels to the dataset
-    ds['condition'] = Factor(trigger, labels={1:'LA', 2:'RA', 3:'LV', 4:'RV',
-                                              5:'smiley', 32:'button'})
-    ds['side'] = Factor(trigger, labels={1: 'L', 2:'R', 3:'L', 4:'R',
-                                         5:'None', 32:'None'})
-    ds['modality'] = Factor(trigger, labels={1: 'A', 2:'A', 3:'V', 4:'V',
-                                             5:'None', 32:'None'})
+    ds['condition'] = Factor(trigger, labels={
+        1: 'LA', 2: 'RA', 3: 'LV', 4: 'RV', 5: 'smiley', 32: 'button'})
+    ds['side'] = Factor(trigger, labels={
+        1: 'L', 2: 'R', 3: 'L', 4: 'R', 5: 'None', 32: 'None'})
+    ds['modality'] = Factor(trigger, labels={
+        1: 'A', 2: 'A', 3: 'V', 4: 'V', 5: 'None', 32: 'None'})
 
     if rm:
         ds = ds.sub('trigger < 5')
@@ -269,6 +273,8 @@ def get_uts(utsnd=False, seed=0, nrm=False):
         Add a sensor by time NDVar (called 'utsnd').
     seed : None | int
         If not None, call ``numpy.random.seed(seed)`` to ensure replicability.
+    nrm : bool
+        Create nested random effect Factor "nrm".
 
     Returns
     -------
@@ -292,9 +298,9 @@ def get_uts(utsnd=False, seed=0, nrm=False):
     y += rm_var
     ds['Y'] = Var(y)
     ybin = np.random.randint(0, 2, size=60)
-    ds['YBin'] = Factor(ybin, labels={0:'c1', 1:'c2'})
+    ds['YBin'] = Factor(ybin, labels={0: 'c1', 1: 'c2'})
     ycat = np.random.randint(0, 3, size=60)
-    ds['YCat'] = Factor(ycat, labels={0:'c1', 1:'c2', 2:'c3'})
+    ds['YCat'] = Factor(ycat, labels={0: 'c1', 1: 'c2', 2: 'c3'})
 
     # add a uts NDVar
     time = UTS(-.2, .01, 100)
@@ -306,11 +312,11 @@ def get_uts(utsnd=False, seed=0, nrm=False):
 
     # add sensor NDVar
     if utsnd:
-        locs = np.array([[-1.0, 0.0, 0.0],
-                         [ 0.0, 1.0, 0.0],
-                         [ 1.0, 0.0, 0.0],
+        locs = np.array([[-1.0,  0.0, 0.0],
+                         [ 0.0,  1.0, 0.0],
+                         [ 1.0,  0.0, 0.0],
                          [ 0.0, -1.0, 0.0],
-                         [ 0.0, 0.0, 1.0]])
+                         [ 0.0,  0.0, 1.0]])
         sensor = Sensor(locs, sysname='test_sens')
         sensor.set_connectivity(connect_dist=1.75)
 
@@ -330,9 +336,9 @@ def get_uts(utsnd=False, seed=0, nrm=False):
         x = np.sin(time.times * freq * 2 * np.pi)
         for i in xrange(30):
             shift = np.random.randint(0, 100 / freq)
-            y[i, 2, 25:75] += 1.1 * win * x[shift: 50+shift]
-            y[i, 3, 25:75] += 1.5 * win * x[shift: 50+shift]
-            y[i, 4, 25:75] += 0.5 * win * x[shift: 50+shift]
+            y[i, 2, 25:75] += 1.1 * win * x[shift: 50 + shift]
+            y[i, 3, 25:75] += 1.5 * win * x[shift: 50 + shift]
+            y[i, 4, 25:75] += 0.5 * win * x[shift: 50 + shift]
 
         dims = ('case', sensor, time)
         ds['utsnd'] = NDVar(y, dims, eeg_info())

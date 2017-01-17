@@ -128,7 +128,7 @@ def test_test_experiment():
     assert_dataobj_equal(ds['name'], name)
     tgt = ds['trigger'].as_factor(e.variables['backorder'], 'backorder')
     assert_dataobj_equal(ds['backorder'], tgt)
-    tgt = ds['trigger'].as_factor(e.variables['taste'],'taste')
+    tgt = ds['trigger'].as_factor(e.variables['taste'], 'taste')
     assert_dataobj_equal(ds['taste'], tgt)
     assert_array_equal(ds['i_start'], I_START)
     assert_array_equal(ds['subject'] == SUBJECT, True)

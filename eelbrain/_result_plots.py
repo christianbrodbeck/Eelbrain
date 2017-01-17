@@ -304,31 +304,34 @@ class ClusterPlotter(object):
                 y_tc = src.mean(cluster.any('time'))
 
                 # barplot
-                p = plot.Barplot(y_mean, model, 'subject', None, cells, pairwise,
-                                 ds=ds, trend=False, corr=None,
-                                 title=None, frame=False, yaxis=False, ylabel=False,
-                                 colors=colors, bottom=ymin, top=ymax, w=w_bar, h=self.h,
-                                 xlabel=None, xticks=None,
-                                 tight=False, test_markers=False, show=False)
-                p.save(self._dst_vec % ' '.join((name, modelname, 'barplot')), dpi=dpi, transparent=True)
+                p = plot.Barplot(
+                    y_mean, model, 'subject', None, cells, pairwise, ds=ds,
+                    trend=False, corr=None, title=None, frame=False,
+                    yaxis=False, ylabel=False, colors=colors, bottom=ymin,
+                    top=ymax, w=w_bar, h=self.h, xlabel=None, xticks=None,
+                    tight=False, test_markers=False, show=False)
+                p.save(self._dst_vec % ' '.join((name, modelname, 'barplot')),
+                       dpi=dpi, transparent=True)
                 p.close()
 
                 # time-course
                 if filter is not None:
                     y_tc = filter.filtfilt(y_tc)
-                p = plot.UTSStat(y_tc, model, match='subject', ds=ds, error='sem',
-                                 colors=colors, title=None, axtitle=None, frame=False,
-                                 bottom=ymin, top=ymax,
-                                 legend=None, ylabel=None, xlabel=None, w=w, h=self.h,
-                                 tight=False, show=False)
+                p = plot.UTSStat(
+                    y_tc, model, match='subject', ds=ds, error='sem',
+                    colors=colors, title=None, axtitle=None, frame=False,
+                    bottom=ymin, top=ymax, legend=None, ylabel=None,
+                    xlabel=None, w=w, h=self.h, tight=False, show=False)
                 dt = y_tc.time.tstep / 2.
                 mark_start = cluster.info['tstart'] - dt
                 mark_stop = cluster.info['tstop'] - dt
                 p.add_vspan(mark_start, mark_stop, color='k', alpha=0.1, zorder=-2)
-                p.save(self._dst_vec % ' '.join((name, modelname, 'timecourse')), dpi=dpi, transparent=True)
+                p.save(self._dst_vec % ' '.join((name, modelname, 'timecourse')),
+                       dpi=dpi, transparent=True)
                 p.close()
 
                 # legend
                 if not legend_done:
-                    p.save_legend(self._dst_vec % (modelname + ' legend'), transparent=True)
+                    p.save_legend(self._dst_vec % (modelname + ' legend'),
+                                  transparent=True)
                     legend_done = True

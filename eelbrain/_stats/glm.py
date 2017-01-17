@@ -21,7 +21,8 @@ from __future__ import division
 from __future__ import print_function
 
 from itertools import izip
-import logging, os
+import logging
+import os
 
 import numpy as np
 from scipy.linalg import lstsq
@@ -42,7 +43,6 @@ from . import test
 # (0) Use scipy.linalg.lstsq
 # (1) Use lstsq after Fox (2008) with caching of the model transformation
 _lm_lsq = 0  # for the LM class
-
 
 
 class hopkins_ems(dict):
@@ -189,7 +189,7 @@ class LM(object):
 
         # SS explained
         SS_model = self.SS = self.SS_model = SS_total - SS_res
-        df_model = self.df = self.df_model = X.df - 1 # don't count intercept
+        df_model = self.df = self.df_model = X.df - 1  # don't count intercept
         self.MS_model = self.MS = SS_model / df_model
 
         # store stuff
@@ -269,7 +269,7 @@ class LM(object):
                 e_ms_name = "Res"
 
             # F-test
-            if MS_d != False:
+            if MS_d:
                 F = MS / MS_d
                 p = 1 - scipy.stats.distributions.f.cdf(F, e.df, df_d)
                 F_tex = fmtxt.stat(F, stars=test.star(p))
@@ -287,8 +287,8 @@ class LM(object):
                 table.cell(F_tex)
                 table.cell(fmtxt.P(p))
             # store results
-            results[e.name] = {'SS': SS, 'df': e.df, 'MS': MS, 'E(MS)': e_ms_name,
-                             'F': F, 'p':p}
+            results[e.name] = {'SS': SS, 'df': e.df, 'MS': MS,
+                               'E(MS)': e_ms_name, 'F': F, 'p': p}
 
         # Residuals
         if self.df_res > 0:
@@ -840,19 +840,13 @@ class ANOVA(object):
     For other uses, properties of the fit can be accessed with methods and
     attributes.
     """
+    # Unbalanced models
+    # -----------------
+    #  - The SS of Effects which do not include the between-subject factor are
+    #    higher than in SPSS
+    #  - The SS of effects which include the between-subject factor agree with
+    #    SPSS
     def __init__(self, y, x, sub=None, title=None, ds=None):
-#  TODO:
-#         - sort model
-#         - provide threshold for including interaction effects when testing lower
-#           level effects
-#
-#        Problem with unbalanced models
-#        ------------------------------
-#          - The SS of Effects which do not include the between-subject factor are
-#            higher than in SPSS
-#          - The SS of effects which include the between-subject factor agree with
-#            SPSS
-
         # prepare kwargs
         sub = assub(sub, ds)
         y = asvar(y, sub, ds)
@@ -886,7 +880,6 @@ class ANOVA(object):
         # list of (name, SS, df, MS, F, p)
         self.f_tests = []
         self.names = []
-
 
         if len(x.effects) == 1:
             self._log.append("single factor model")
@@ -1089,11 +1082,11 @@ def ancova(Y, factorial_model, covariate, interaction=None, sub=None, v=True,
     """
     assert isinstance(covariate, Var)
     anova_kwargs = {'empty': empty, 'ems': ems}
-    if sub != None:
+    if sub is not None:
         Y = Y[sub]
         factorial_model = factorial_model[sub]
         covariate = covariate[sub]
-        if interaction != None:
+        if interaction is not None:
             interaction = interaction[sub]
     # if interaction: assert type(interaction) in [Factor]
     factorial_model = asmodel(factorial_model)

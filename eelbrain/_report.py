@@ -263,14 +263,16 @@ def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={},
 
             clusters = res.find_clusters(None, True, source=label)
             src_ = y.sub(source=label)
-            source_time_clusters(section, clusters, src_, ds, model, include, title, colors, res.match)
+            source_time_clusters(section, clusters, src_, ds, model, include,
+                                 title, colors, res.match)
     elif not parc and res._kind == 'cluster':
         source_bin_table(report, res, surfer_kwargs)
 
         clusters = res.find_clusters(None, True)
         clusters.sort('tstart')
         title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
-        source_time_clusters(report, clusters, y, ds, model, include, title, colors, res.match)
+        source_time_clusters(report, clusters, y, ds, model, include, title,
+                             colors, res.match)
     elif not parc and res._kind in ('raw', 'tfce'):
         section = report.add_section("P<=.05")
         source_bin_table(section, res, surfer_kwargs, 0.05)
@@ -278,7 +280,8 @@ def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={},
         clusters.sort('tstart')
         title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
         for cluster in clusters.itercases():
-            source_time_cluster(section, cluster, y, model, ds, title, colors, res.match)
+            source_time_cluster(section, cluster, y, model, ds, title, colors,
+                                res.match)
 
         # trend section
         section = report.add_section("Trend: p<=.1")
@@ -300,7 +303,8 @@ def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={},
             clusters = combine((clusters_sig, clusters_trend, clusters_all))
             clusters.sort('tstart')
             src_ = y.sub(source=label)
-            source_time_clusters(section, clusters, src_, ds, model, include, title, colors, res.match)
+            source_time_clusters(section, clusters, src_, ds, model, include,
+                                 title, colors, res.match)
     else:
         raise RuntimeError
     return report

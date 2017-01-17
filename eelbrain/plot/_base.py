@@ -1162,7 +1162,6 @@ class EelFigure(object):
                                    key)
             self.__callback_key_release[key] = release
 
-
     def _fill_toolbar(self, tb):
         """
         Subclasses should add their toolbar items in this function which

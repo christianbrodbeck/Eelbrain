@@ -41,7 +41,6 @@ def filename_repr(filenames):
         return ''
 
 
-
 class FilenameDropTarget(wx.FileDropTarget):
     """
     File drop target: http://wiki.wxpython.org/DragAndDrop
@@ -92,7 +91,7 @@ class StringDropTarget(wx.DropTarget):
         self.do.Add(self.textdo)
 #        self.do.Add(self.bmpdo)
         self.SetDataObject(self.do)
-        
+
     def OnData(self, x, y, d):#, data):
         if self.GetData():
             df = self.do.GetReceivedFormat().GetType()
@@ -108,11 +107,8 @@ class StringDropTarget(wx.DropTarget):
             logging.info(msg)
             self.target.ReplaceSelection(string)
         return d
-    
 
 
 def set_for_strings(window):
     drop_target = StringDropTarget(window)
     window.SetDropTarget(drop_target)
-    
-
