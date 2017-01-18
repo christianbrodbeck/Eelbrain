@@ -163,7 +163,12 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
         NDVar that contains for each element in ``dim`` the with average
         correlation coefficient with its neighbors.
     """
+    low_var = x.std(obs).x < 1e-25
     dim_obj = x.get_dim(dim)
+    if np.any(low_var):
+        raise ValueError("Low variance at %s = %s" %
+                         (dim, dim_obj._index_repr(low_var)))
+
 
     # find neighbors
     neighbors = defaultdict(list)

@@ -7018,6 +7018,10 @@ class Dimension(object):
         else:
             return '%s dimension (%r)' % (self.__class__.__name__, self.name)
 
+    def _index_repr(self, arg):
+        "Convert an array-like index to a dimension-semantic index"
+        return arg
+
     def intersect(self, dim, check_dims=True):
         """Create a Dimension that is the intersection with dim
 
@@ -7114,6 +7118,12 @@ class Categorial(Dimension):
 
     def _diminfo(self):
         return "%s" % self.name.capitalize()
+
+    def _index_repr(self, index):
+        if isinstance(index, int):
+            return self.values[index]
+        else:
+            return [self.values[i] for i in index_to_int_array(index, len(self))]
 
     def intersect(self, dim, check_dims=False):
         """Create a dimension object that is the intersection with dim
@@ -7230,6 +7240,12 @@ class Scalar(Dimension):
 
     def _diminfo(self):
         return "%s" % self.name.capitalize()
+
+    def _index_repr(self, index):
+        if isinstance(index, int):
+            return self.values[index]
+        else:
+            return [self.values[i] for i in index_to_int_array(index, len(self))]
 
     def intersect(self, dim, check_dims=False):
         """Create a dimension object that is the intersection with dim
@@ -7481,6 +7497,12 @@ class Sensor(Dimension):
             return arg
         else:
             return super(Sensor, self).dimindex(arg)
+
+    def _index_repr(self, index):
+        if isinstance(index, int):
+            return self.names[index]
+        else:
+            return [self.names[i] for i in index_to_int_array(index, self.n)]
 
     def connectivity(self):
         """Retrieve the sensor connectivity
