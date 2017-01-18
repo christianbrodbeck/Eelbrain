@@ -11,6 +11,13 @@ from eelbrain.fmtxt import html, tex, read_meta
 from eelbrain import datasets, plot
 
 
+def test_code():
+    "test fmtxt.Code"
+    eq_(html(fmtxt.Code("a = 5\nb = a + 2")),
+        "<code>a{s}={s}5{br}b{s}={s}a{s}+{s}2</code>".
+        format(s='&nbsp;', br='<br style="clear:left">\n'))
+
+
 def test_fmtext():
     "Tet FMText base class"
     t = fmtxt.FMText('test')
