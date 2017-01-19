@@ -142,6 +142,35 @@ def dss(ndvar):
     return to_dss, from_dss
 
 
+def filter_data(ndvar, l_freq, h_freq, filter_length='auto',
+                l_trans_bandwidth='auto', h_trans_bandwidth='auto',
+                method='fir', iir_params=None, phase='zero',
+                fir_window='hamming'):
+    """Apply :func:`mne.filter.filter_data` to an NDVar
+
+    Returns
+    -------
+    filtered_ndvar : NDVar
+        NDVar with same dimensions as ``ndvar`` and filtered data.
+    """
+    axis = ndvar.get_axis('time')
+    if axis == ndvar.ndim:
+        axis = None
+        data = ndvar.x
+    else:
+        data = ndvar.x.swapaxes(axis, -1)
+    sfreq = 1. / ndvar.time.tstep
+
+    x = mne.filter.filter_data(
+        data, sfreq, l_freq, h_freq, None, filter_length, l_trans_bandwidth,
+        h_trans_bandwidth, 1, method, iir_params, True, phase, fir_window
+    )
+
+    if axis is not None:
+        x = x.swapaxes(axis, -1)
+    return NDVar(x, ndvar.dims, ndvar.info.copy(), ndvar.name)
+
+
 def neighbor_correlation(x, dim='sensor', obs='time', name=None):
     """Calculate Neighbor correlation
 
