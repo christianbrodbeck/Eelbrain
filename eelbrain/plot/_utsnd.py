@@ -36,8 +36,10 @@ class _plt_im(object):
             self._cmap = im_kwa['cmap']
             if mask is not None:
                 self.im.set_clip_path(mask)
+            self.vmin, self.vmax = self.im.get_clim()
         else:
             self.im = None
+            self.vmin = self.vmax = None
 
         # draw flexible parts
         self._contour_h = None
@@ -103,6 +105,7 @@ class _plt_im(object):
 
         vmin, vmax = _base.fix_vlim_for_cmap(vmin, vmax, self._cmap)
         self.im.set_clim(vmin, vmax)
+        self.vmin, self.vmax = self.im.get_clim()
 
 
 class _plt_im_array(_plt_im):

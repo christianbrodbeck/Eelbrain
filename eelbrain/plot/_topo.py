@@ -15,11 +15,12 @@ import numpy as np
 from scipy import interpolate, linalg
 from scipy.spatial import ConvexHull
 
+from .._utils import deprecated
 from .._utils.numpy_utils import digitize
 from . import _base
 from ._base import (
     EelFigure, Layout, ImLayout, VariableAspectLayout, ColorMapMixin,
-    TopoMapKey, XAxisMixin)
+    TopoMapKey, XAxisMixin, YLimMixin)
 from ._utsnd import _ax_butterfly, _ax_im_array, _plt_im
 from ._sensors import SENSORMAP_FRAME, SensorMapMixin, _plt_map2d
 
@@ -167,7 +168,7 @@ class TopomapBins(EelFigure):
         self._show()
 
 
-class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
+class TopoButterfly(TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
     u"""Butterfly plot with corresponding topomaps
 
     Parameters
@@ -301,6 +302,7 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
 
         # setup callback
         XAxisMixin.__init__(self, epochs, xdim, xlim, self.bfly_axes)
+        YLimMixin.__init__(self, self.bfly_plots + self.topo_plots)
         self.canvas.mpl_connect('button_press_event', self._on_click)
         self._register_key(',', self._on_arrow)
         self._register_key('.', self._on_arrow)
@@ -420,8 +422,8 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
             p.add_contour(meas, level, color)
         self.draw()
 
+    @deprecated('0.26', "Use .get_ylim()")
     def get_vlim(self):
-        "Retrieve ``(vmax, vmin)`` tuple of the first plot"
         p = self.bfly_plots[0]
         return p.vmax, p.vmin
 
@@ -430,16 +432,6 @@ class TopoButterfly(TopoMapKey, XAxisMixin, EelFigure):
         for p in self.topo_plots:
             p.set_cmap(cmap)
         self.draw()
-
-    def set_vlim(self, vmax=None, vmin=None):
-        """Change the range of values displayed in butterfly-plots.
-        """
-        for topo, bfly in izip(self.topo_plots, self.bfly_plots):
-            topo.set_vlim(vmax, vmin=vmin)
-            kwa = topo.layers[0].get_kwargs()
-            bfly.set_ylim(kwa['vmin'], kwa['vmax'])
-
-        self.canvas.draw()
 
 
 class _plt_topomap(_plt_im):
@@ -599,6 +591,10 @@ class _ax_topomap(_ax_im_array):
         if isinstance(xlabel, basestring):
             x, y = ax.transData.inverted().transform(ax.transAxes.transform((0.5, 0)))
             ax.text(x, y, xlabel, ha='center', va='top')
+
+    def set_ylim(self, bottom, top):
+        "Alias for YLimMixin"
+        self.set_vlim(top, vmin=bottom)
 
 
 class _TopoWindow:

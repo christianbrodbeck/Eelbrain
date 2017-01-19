@@ -2133,7 +2133,7 @@ class YLimMixin(object):
         return vmin, vmax
 
     def set_ylim(self, bottom=None, top=None):
-        """Set the x-axis limits
+        """Set the y-axis limits
 
         Parameters
         ----------

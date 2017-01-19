@@ -1,8 +1,6 @@
-'''
-Created on Jul 22, 2013
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from nose.tools import eq_
 
-@author: christian
-'''
 from eelbrain import datasets, plot, testnd
 from eelbrain._utils.testing import requires_mne_sample_data
 
@@ -31,7 +29,7 @@ def test_plot_topomap_mne():
     p.close()
 
 
-def test_plot_butterfly():
+def test_plot_topo_butterfly():
     "Test plot.TopoButterfly"
     ds = datasets.get_uts(utsnd=True)
     p = plot.TopoButterfly('utsnd', ds=ds, show=False)
@@ -44,6 +42,8 @@ def test_plot_butterfly():
     p = plot.TopoButterfly('utsnd', mark=[1, 2], ds=ds, show=False)
     p.close()
     p = plot.TopoButterfly('utsnd', mark=['1', '2'], ds=ds, show=False)
+    p.set_vlim(-1, 1)
+    eq_(p.get_ylim(), (1.0, -1.0))
     p.close()
 
 

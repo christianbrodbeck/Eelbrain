@@ -4720,8 +4720,7 @@ class Datalist(list):
         elif index.dtype.kind == 'i':
             return Datalist((self[i] for i in index), fmt=self._fmt)
         else:
-            err = ("Unsupported type of index for Datalist: %r" % index)
-            raise TypeError(err)
+            raise TypeError("Unsupported type of index for Datalist: %r" % index)
 
     def __setitem__(self, key, value):
         if isinstance(key, LIST_INDEX_TYPES):
