@@ -132,6 +132,13 @@ KIT_NEIGHBORS = {
 }
 
 
+def _get_raw_filename(raw):
+    if 'filename' in raw.info:  # mne 0.13
+        return raw.info['filename']
+    else:  # mne 0.14
+        return raw.filenames[0]
+
+
 def mne_raw(path=None, proj=False, **kwargs):
     """Load a :class:`mne.io.Raw` object
 
@@ -177,7 +184,7 @@ def mne_raw(path=None, proj=False, **kwargs):
             proj = '{raw}*proj.fif'
 
         if '{raw}' in proj:
-            raw_file = raw.info['filename']
+            raw_file = _get_raw_filename(raw)
             raw_root, _ = os.path.splitext(raw_file)
             raw_root = raw_root.rstrip('raw')
             proj = proj.format(raw=raw_root)
@@ -257,7 +264,7 @@ def events(raw=None, merge=-1, proj=False, name=None, bads=None,
         raw.info['bads'].extend(bads)
 
     if name is None and raw is not None:
-        raw_path = raw.info['filename']
+        raw_path = _get_raw_filename(raw)
         if isinstance(raw_path, basestring):
             name = os.path.basename(raw_path)
         else:
@@ -401,7 +408,7 @@ def epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1, proj=False,
                          sensors=sensors)
 
     if len(epochs_) == 0:
-        raise RuntimeError("No events left in %r" % raw.info['filename'])
+        raise RuntimeError("No events left in %r" % _get_raw_filename(raw))
     return ndvar
 
 
@@ -581,7 +588,7 @@ def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
         getLogger(__name__).warn(
             "%s: MNE generated only %i Epochs for %i events. The raw file "
             "might end before the end of the last epoch." %
-            (raw.info['filename'], len(epochs), len(events)))
+            (_get_raw_filename(raw), len(epochs), len(events)))
 
     #  add bad channels from ds
     if BAD_CHANNELS in ds.info:
@@ -709,7 +716,7 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, inv=None, lambda2=1,
     ``i_start`` and ``i_stop`` are interpreted as event indexes (from
     :func:`mne.find_events`), i.e. relative to ``raw.first_samp``.
     """
-    name = os.path.basename(raw.info['filename'])
+    name = os.path.basename(_get_raw_filename(raw))
     start_scalar = i_start is None or isinstance(i_start, int)
     stop_scalar = i_stop is None or isinstance(i_stop, int)
     if start_scalar or stop_scalar:
