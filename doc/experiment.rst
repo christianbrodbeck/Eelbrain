@@ -23,8 +23,12 @@ Step by step
    :local:
 
 
+.. _MneExperiment-filestructure:
+
 Setting up the file structure
 -----------------------------
+
+.. py:attribute:: MneExperiment.sessions
 
 The first step is to define an :class:`MneExperiment` subclass with the name
 of the experiment::
@@ -226,6 +230,33 @@ experiment analysis parameters, e.g.::
                 'raw': '1-40'}
 
 
+Pre-processing (raw)
+--------------------
+
+.. py:attribute:: MneExperiment.raw
+
+Define a pre-processing pipeline as a series of processing steps.
+
+The default pre-processing pipeline is defined as follows::
+
+    defaut_raw = {
+        '0-40': {
+            'source': 'raw', 'type': 'filter', 'args': (None, 40),
+            'kwargs': {'method': 'iir'}},
+        '0.1-40': {
+            'source': 'raw', 'type': 'filter', 'args': (0.1, 40),
+            'kwargs': {'l_trans_bandwidth': 0.08, 'filter_length': '60s'}},
+        '0.2-40': {
+            'source': 'raw', 'type': 'filter', 'args': (0.2, 40),
+            'kwargs': {'l_trans_bandwidth': 0.08, 'filter_length': '60s'}},
+        '1-40': {
+            'source': 'raw', 'type': 'filter', 'args': (1, 40),
+            'kwargs': {'method': 'iir'}},
+    }
+
+Additional pipes can be added in a ``MneExperiment.raw`` attribute.
+
+
 Event variables
 ---------------
 
@@ -259,28 +290,28 @@ Epochs are specified as a {:class:`str`: :class:`dict`} dictionary. Keys are
 names for epochs, and values are corresponding definitions. Epoch definitions
 can use the following keys:
 
-sel (:class:`str`)
+sel : :class:`str`
     Expression which evaluates in the events Dataset to the index of the
     events included in this Epoch specification.
-tmin (:class:`float`)
+tmin : :class:`float`
     Start of the epoch (default -0.1).
-tmax  (:class:`float`)
+tmax : :class:`float`
     End of the epoch (default 0.6).
-decim (:class:`int`)
+decim : :class:`int`
     Decimate the data by this factor (i.e., only keep every ``decim``'th
     sample; default 5).
-baseline (:class:`tuple`)
+baseline : :class:`tuple`
     The baseline of the epoch (default ``(None, 0)``).
-n_cases (:class:`int`)
+n_cases : :class:`int`
     Expected number of epochs. If n_cases is defined, a RuntimeError error
     will be raised whenever the actual number of matching events is different.
-trigger_shift (:class:`float` | :class:`str`)
+trigger_shift : :class:`float` | :class:`str`
     Shift event triggers before extracting the data [in seconds]. Can be a
     float to shift all triggers by the same value, or a str indicating an event
     variable that specifies the trigger shift for each trigger separately.
     For secondary epochs the ``trigger_shift`` is applied additively with the
     ``trigger_shift`` of their base epochs.
-post_baseline_trigger_shift (:class:`str`)
+post_baseline_trigger_shift : :class:`str`
     Shift the trigger (i.e., where epoch time = 0) after baseline correction.
     The value of this entry has to be the name of an event variable providing
     for each epoch the actual amount of time shift (in seconds). If the
@@ -290,7 +321,7 @@ post_baseline_trigger_shift (:class:`str`)
     are used to crop the resulting epochs appropriately, to the region from
     ``new_tmin = epoch['tmin'] - post_baseline_trigger_shift_min`` to
     ``new_tmax = epoch['tmax'] - post_baseline_trigger_shift_max``.
-vars (:class:`dict`)
+vars : :class:`dict`
     Add new variables only for this epoch.
     Each entry specifies a variable with the following schema:
     ``{name: definition}``. ``definition`` can be either a string that is
@@ -305,7 +336,7 @@ epoch (the ``base``).
 Additional parameters can be used to modify the definition, for example ``sel``
 can be used to select a subset of the events in the primary epoch.
 
-base (:class:`str`)
+base : :class:`str`
     Name of the epoch whose parameters provide defaults for all parameters.
     Additional parameters override parameters of the ``base`` epoch, with the
     exception of ``trigger_shift``, which is applied additively to the
@@ -314,7 +345,7 @@ base (:class:`str`)
 A **superset epoch** is an epoch that combines multiple other epochs.
 A superset epoch can be defined with a single ``sub_epochs`` parameter:
 
-sub_epochs (:class:`tuple` of :class:`str`)
+sub_epochs : :class:`tuple` of :class:`str`
     Tuple of epoch names. These epochs are combined to form the current epoch.
     Epochs are merged at the level of events, so the base epochs can not contain
     post-baseline trigger shifts which are applied after loading data (however,
@@ -360,11 +391,11 @@ Example::
 anova
 ^^^^^
 
-model : str
+model : :class:`str`
     The model which defines the cells that are used in the test. It is
     specified in the ``"x % y"`` format (like interaction definitions) where
     ``x`` and ``y`` are variables in the experiment's events.
-x : str
+x : :class:`str`
     ANOVA model (e.g., ``"x * y * subject"``). The ANOVA model has to be fully
     specified and include ``subject``.
 
@@ -377,18 +408,18 @@ Example::
 ttest_rel
 ^^^^^^^^^
 
-model : str
+model : :class:`str`
     The model which defines the cells that are used in the test. It is
     specified in the ``"x % y"`` format (like interaction definitions) where
     ``x`` and ``y`` are variables in the experiment's events.
-c1 : str | tuple
+c1 : :class:`str` | :class:`tuple`
     The experimental condition. If the ``model`` is a single factor the
     condition is a :class:`str` specifying a value on that factor. If
     ``model`` is composed of several factors the cell is defined as a
     :class:`tuple` of :class:`str`, one value on each of the factors.
-c0 : str | tuple
+c0 : :class:`str` | :class:`tuple`
     The control condition, defined like ``c1``.
-tail : int (optional)
+tail : :class:`int` (optional)
     Tailedness of the test. ``0`` for two-tailed (default), ``1`` for upper tail
     and ``-1`` for lower tail.
 
@@ -403,14 +434,14 @@ t_contrast_rel
 
 Contrasts involving different T-maps (see :class:`testnd.t_contrast_rel`)
 
-model : str
+model : :class:`str`
     The model which defines the cells that are used in the test. It is
     specified in the ``"x % y"`` format (like interaction definitions) where
     ``x`` and ``y`` are variables in the experiment's events.
-contrast : str
+contrast : :class:`str`
     Contrast specification using cells form the specified model (see test
     documentation).
-tail : int (optional)
+tail : :class:`int` (optional)
     Tailedness of the test. ``0`` for two-tailed (default), ``1`` for upper tail
     and ``-1`` for lower tail.
 
@@ -426,10 +457,10 @@ two-stage
 Two-stage test. Stage 1: fit a regression model to the data for each subject.
 Stage 2: test coefficients from stage 1 against 0 across subjects.
 
-stage 1 : str
+stage 1 : :class:`str`
     Stage 1 model specification. Coding for categorial predictors uses 0/1 dummy
     coding.
-vars : dict (optional)
+vars : :class:`dict` (optional)
     Add new variables for the stage 1 model. This is useful for specifying
     coding schemes based on categorial variables.
     Each entry specifies a variable with the following schema:
@@ -438,7 +469,7 @@ vars : dict (optional)
     ``(source_name, {value: code})``-tuple (see example below).
     ``source_name`` can also be an interaction, in which case cells are joined
     with spaces (``"f1_cell f2_cell"``).
-model : str (optional)
+model : :class:`str` (optional)
     This parameter can be supplied to perform stage 1 tests on condition
     averages. If ``model`` is not specified, the stage1 model is fit on single
     trial data.
@@ -479,9 +510,9 @@ entries. The simplest group definition is a tuple
 of subject names, e.g. ``("R0026", "R0042", "R0066")``. In addition, a
 group_definition can be a dictionary with the following entries:
 
-base : str
+base : :class:`str`
     The name of the group to base the new group on.
-exclude : tuple of str
+exclude : :class:`tuple` of :class:`str`
     A list of subjects to exclude (e.g., ``("R0026", "R0042", "R0066")``)
 
 Examples::
@@ -513,11 +544,11 @@ Recombinations
 Recombinations of existing parcellations can be defined as dictionaries
 include the following entries:
 
-kind : 'combination'
+kind : ``'combination'``
     Has to be 'combination'.
-base : str
+base : :class:`str`
     The name of the parcellation that provides the input labels.
-labels : dict {str: str}
+labels : :class:`dict` {:class:`str`: :class:`str`}
     New labels to create in ``{name: expression}`` format. All label names
     should be composed of alphanumeric characters (plus underline) and should
     not contain the -hemi tags. In order to create a given label only on one
@@ -552,11 +583,11 @@ entries:
 
 kind : 'seeded'
     Has to be 'seeded'.
-seeds : dict
+seeds : :class:`dict`
     {name: seed(s)} dictionary, where names are strings, including -hemi tags
     (e.g., ``"mylabel-lh"``) and seed(s) are array-like, specifying one or more
     seed coordinate (shape ``(3,)`` or ``(n_seeds, 3)``).
-mask : str
+mask : :class:`str`
     Name of a parcellation to use as mask (i.e., anything that is "unknown" in
     that parcellation is excluded from the new parcellation. Use
     ``{'mask': 'lobes'}`` to exclude the subcortical areas around the
@@ -610,13 +641,13 @@ options are available:
 
 surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
     Freesurfer surface to use as brain geometry.
-views : str | iterator of str
+views : :class:`str` | iterator of :class:`str`
     View or views to show in the figure.
 foreground : mayavi color
     Figure foreground color (i.e., the text color).
 background : mayavi color
     Figure background color.
-smoothing_steps : None | int
+smoothing_steps : ``None`` | :class:`int`
     Number of smoothing steps to display data.
 
 
@@ -641,16 +672,16 @@ filter, and to use sensor covariance matrices without regularization.
 raw
 ---
 
-Which raw FIFF files to use.
+Which raw FIFF files to use. Can be customized (see :attr:`MneExperiment.raw`).
+The default values are:
 
-'clm'
-    The  unfiltered files (as they were added to the data, 'clm' stands for
-    CALMed).
-'0-40' (default)
+``'raw'``
+    The unfiltered files (as they were added to the data).
+``'0-40'`` (default)
     Low-pass filtered under 40 Hz.
-'0.1-40'
+``'0.1-40'``
     Band-pass filtered between 0.1 and 40 Hz.
-'1-40'
+``'1-40'``
     Band-pass filtered between 1 and 40 Hz.
 
 

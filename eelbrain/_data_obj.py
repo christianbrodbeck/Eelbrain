@@ -5593,8 +5593,9 @@ class Dataset(OrderedDict):
         X : categorial
             Model which defines the cells in which to equalize the counts.
         n : int
-            Number of cases per cell (the default is the maximum possible).
-            Negative numbers to
+            Number of cases per cell (the default is the maximum possible, i.e.
+            the number of cases in the cell with the least number of cases).
+            Negative numbers to subtract from maximum possible.
 
         Returns
         -------

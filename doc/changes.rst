@@ -3,6 +3,37 @@ Changes
 
 .. currentmodule:: eelbrain
 
+New in 0.25
+-----------
+
+* API:
+
+  - :class:`NDVar` objects now inherit names through operations.
+  - Assignment to a :class:`Dataset` overwrites variable ``.name`` attributes,
+    unless the :class:`Dataset` key is a pythonified version of ``.name``.
+
+* GUI/plotting:
+
+  - When using iPython 5 or later, GUI start and stop is now automatic. It is
+    possible to revert to the old behavior with :func:`plot.configure`.
+  - There are new hotkeys for most plots (see the individual plots' help for
+    details).
+  - Plots automatically rescale when the window is resized.
+
+* :class:`MneExperiment`:
+
+  - A new :attr:`MneExperiment.sessions` attribute replaces
+    ``defaults['experiment']``, with support for multiple sessions in one
+    experiment (see :ref:`MneExperiment-filestructure`).
+  - The :attr:`MneExperiment.epochs` parameter ``sel_epoch`` has been removed,
+    use ``base`` instead.
+  - The setting ``raw='clm'`` has been renamed to ``raw='raw'``.
+  - Custom preprocessing pipelines (see :attr:`MneExperiment.raw`).
+
+* Temporal response function estimation using :func:`boosting`.
+* Loading and saving ``*.wav`` files (:func:`load.wav` and :func:`save.wav`).
+
+
 New in 0.24
 -----------
 
@@ -12,8 +43,8 @@ New in 0.24
     with :mod:`mne` < 0.13, the :attr:`MneExperiment.meg_system` attribute needs
     to be set to ``"KIT-157"`` to distinguish it from data collected with the
     KIT UMD system.
-  - :meth:`.masked_parameter_map` method of cluster-based test results: use
-    of ``pmin=None`` is deprecated, use ``pmin=1`` instead.
+  - :meth:`~testnd.ttest_rel.masked_parameter_map` method of cluster-based test
+    results: use of ``pmin=None`` is deprecated, use ``pmin=1`` instead.
 
 * New test: :class:`test.TTestRel`.
 * :meth:`MneExperiment.make_report_rois` includes corrected p-values in reports

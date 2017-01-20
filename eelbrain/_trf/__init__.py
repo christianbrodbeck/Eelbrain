@@ -1,1 +1,1 @@
-from _boosting import boosting
+from _boosting import boosting, BoostingResult

@@ -4,8 +4,8 @@ Installing
 
 .. note::
     Eelbrain comes with a C extension. Precompiled binaries are currently
-    provided for OS X. On other platforms, installing Eelbrain requires
-    compilation.
+    provided for macOS and Windows. On other platforms, installing Eelbrain
+    requires compilation.
 
 
 .. contents:: Contents

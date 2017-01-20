@@ -110,12 +110,27 @@ NDVar Transformations
 .. autosummary::
    :toctree: generated
 
+   Butterworth
    concatenate
    cwt_morlet
+   dss
+   filter_data
    labels_from_clusters
    morph_source_space
    neighbor_correlation
    resample
+   segment
+
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Temporal Response Functions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autosummary::
+   :toctree: generated
+
+   boosting
+   BoostingResult
 
 
 ^^^^^^
