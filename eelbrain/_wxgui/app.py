@@ -4,6 +4,7 @@ from distutils.version import LooseVersion
 import select
 import sys
 from threading import Thread
+from time import sleep
 import webbrowser
 
 import wx
@@ -15,6 +16,7 @@ from .about import AboutFrame
 
 APP = None  # hold the App instance
 IS_OSX = sys.platform == 'darwin'
+IS_WINDOWS = sys.platform.startswith('win')
 
 
 def wildcard(filetypes):
@@ -26,7 +28,6 @@ def wildcard(filetypes):
 
 class App(wx.App):
     def OnInit(self):
-        self.SetExitOnFrameDelete(False)
         self.SetAppName("Eelbrain")
         self.SetAppDisplayName("Eelbrain")
 
@@ -162,17 +163,25 @@ class App(wx.App):
                 # qt4 backend can cause conflicts in IPython
                 from .. import plot
                 plot.configure(ets_toolkit='wx')
+        self.SetExitOnFrameDelete(not self.using_prompt_toolkit)
 
         return True
 
     def pt_inputhook(self, context):
         """prompt_toolkit inputhook"""
         # prompt_toolkit.eventloop.inputhook.InputHookContext
-        def thread():
-            poll = select.poll()
-            poll.register(context.fileno(), select.POLLIN)
-            poll.poll(-1)
-            wx.CallAfter(self.pt_yield)
+        if IS_WINDOWS:
+            # On Windows, select.poll() is not available
+            def thread():
+                while not context.input_is_ready():
+                    sleep(.02)
+                wx.CallAfter(self.pt_yield)
+        else:
+            def thread():
+                poll = select.poll()
+                poll.register(context.fileno(), select.POLLIN)
+                poll.poll(-1)
+                wx.CallAfter(self.pt_yield)
 
         Thread(target=thread).start()
         self.MainLoop()
@@ -612,5 +621,7 @@ class DockIcon(wx.TaskBarIcon):
         self.imgidx = 1
 
     def CreatePopupMenu(self):
-        menu = wx.Menu()
-        return menu
+        if not self.app.using_prompt_toolkit:
+            menu = wx.Menu()
+            menu.Append(ID.YIELD_TO_TERMINAL, '&Yield to Terminal')
+            return menu
