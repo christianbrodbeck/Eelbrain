@@ -217,8 +217,18 @@ def source_results(res, surfer_kwargs={}, title="Results", diff_cmap=None,
     return sec
 
 
-def source_cluster_im(ndvar, surfer_kwargs):
-    "Plot ('source',) NDVar, only plot relevant hemi"
+def source_cluster_im(ndvar, surfer_kwargs, mark_sources=None):
+    """Plot ('source',) NDVar, only plot relevant hemi
+
+    Parameters
+    ----------
+    ndvar : NDVar (source,)
+        Source space data.
+    surfer_kwargs : dict
+        Keyword arguments for PySurfer plot.
+    mark_sources : SourceSpace index
+        Sources to mark on the brain plot (as SourceSpace index).
+    """
     kwargs = surfer_kwargs.copy()
     if not ndvar.sub(source='lh').any():
         kwargs['hemi'] = 'rh'
@@ -230,6 +240,20 @@ def source_cluster_im(ndvar, surfer_kwargs):
         brain = plot.brain.surfer_brain(ndvar, 'jet', **kwargs)
     else:
         brain = plot.brain.cluster(ndvar, **kwargs)
+
+    # mark sources on the brain
+    if mark_sources is not None:
+        mark_sources = np.atleast_1d(ndvar.source.dimindex(mark_sources))
+        i_hemi_split = np.searchsorted(mark_sources, ndvar.source.lh_n)
+        lh_indexes = mark_sources[:i_hemi_split]
+        if lh_indexes:
+            lh_vertices = ndvar.source.lh_vertno[lh_indexes]
+            brain.add_foci(lh_vertices, True, hemi='lh', color="gold")
+        rh_indexes = mark_sources[i_hemi_split:]
+        if rh_indexes:
+            rh_vertices = ndvar.source.rh_vertno[rh_indexes - ndvar.source.lh_n]
+            brain.add_foci(rh_vertices, True, hemi='rh', color="gold")
+
     out = brain.image(ndvar.name)
     brain.close()
     return out
