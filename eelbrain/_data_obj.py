@@ -3393,6 +3393,26 @@ class NDVar(object):
         """
         return self._aggregate_over_dims(dims, regions, np.any)
 
+    def argmax(self):
+        """Find the index of the largest value.
+
+        ``ndvar[ndvar.argmax()]`` is equivalent to ``ndvar.max()``.
+
+        Returns
+        -------
+        argmax : index | tuple
+            Index appropriate for the NDVar's dimensions. If NDVar has more
+            than one dimensions, a tuple of indices.
+        """
+        argmax = np.argmax(self.x)
+        if self.ndim == 1:
+            return self.dims[0]._index_repr(argmax)
+        indices = np.unravel_index(argmax, self.x.shape)
+        if self.has_case:
+            return (indices[0],) + tuple(dim._index_repr(i) for dim, i in
+                                         izip(self.dims[1:], indices[1:]))
+        return tuple(dim._index_repr(i) for dim, i in izip(self.dims, indices))
+
     def assert_dims(self, dims):
         if self.dimnames != dims:
             err = "Dimensions of %r do not match %r" % (self, dims)

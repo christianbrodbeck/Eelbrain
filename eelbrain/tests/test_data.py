@@ -991,6 +991,13 @@ def test_ndvar_indexing():
     test_ndvar_index(x, 'source', 'lh', slice(n_lh), False)
     test_ndvar_index(x, 'source', 'rh', slice(n_lh, None), False)
 
+    # argmax
+    x.x[10, 10] = 20
+    eq_(x.argmax(), ('L10', 0.1))
+    eq_(x[('L10', 0.1)], 20)
+    eq_(x.sub(source='L10').argmax(), 0.1)
+    eq_(x.sub(time=0.1).argmax(), 'L10')
+
 
 def test_ndvar_summary_methods():
     "Test NDVar methods for summarizing data over axes"
