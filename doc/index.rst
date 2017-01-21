@@ -11,21 +11,14 @@
 Eelbrain
 ========
 
-   "The human brain is like an enormous fish. It's flat and slimy, and has
-   gills through which it can see."
-
-   -- Doctor Quatt
-
-
 Eelbrain is an open-source `Python <https://www.python.org>`_ package for
-statistical analysis of electrical brain activity (MEG and EEG).
-Eelbrain is developed by
-`Christian Brodbeck <http://www.psych.nyu.edu/pylkkanen/lab/christianbrodbeck.html>`_
-at the
-`Neuroscience of Language Lab <http://www.psych.nyu.edu/nellab/meglab.html>`_
-at New York University. This work is currently funded by grant G1001 from the
-`NYU Abu Dhabi Institute
-<http://nyuad.nyu.edu/en/research/nyuad-institute.html>`_.
+accessible statistical analysis of MEG and EEG data.
+It is maintained by
+`Christian Brodbeck <http://loop.frontiersin.org/people/120185>`_
+at the `Computational sensorimotor systems lab
+<http://www.isr.umd.edu/Labs/CSSL/simonlab/Home.html>`_
+at University of Maryland, College Park.
+
 If you use Eelbrain in work that is published, please acknowledge it with a
 link to `pythonhosted.org/eelbrain <https://pythonhosted.org/eelbrain/>`_ and
 indicate the version which you used.
@@ -60,6 +53,7 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
+
 Eelbrain relies on
 `NumPy <http://www.numpy.org>`_,
 `SciPy <http://scipy.org>`_,
@@ -68,3 +62,12 @@ Eelbrain relies on
 `PySurfer <http://pysurfer.github.io>`_,
 `WxPython <http://wxpython.org>`_ and
 `Cython <http://cython.org>`_.
+
+
+----
+
+Current funding: `National Institutes of Health (NIH) <https://www.nih.gov>`_
+grant R01-DC-014085 (since 2016).
+Past funding: `NYU Abu Dhabi Institute
+<http://nyuad.nyu.edu/en/research/nyuad-institute.html>`_ grant G1001
+(2011-2016).
