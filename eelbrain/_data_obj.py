@@ -8158,6 +8158,7 @@ class SourceSpace(Dimension):
     adjacent = False
     _src_pattern = os.path.join('{subjects_dir}', '{subject}', 'bem',
                                 '{subject}-{src}-src.fif')
+    _vertex_re = re.compile('([RL])(\d+)')
 
     def __init__(self, vertno, subject=None, src=None, subjects_dir=None,
                  parc='aparc', connectivity=None):
@@ -8439,7 +8440,22 @@ class SourceSpace(Dimension):
                 else:
                     return slice(0, 0)
             else:
-                return self._dimindex_label(arg)
+                m = self._vertex_re.match(arg)
+                if m is None:
+                    return self._dimindex_label(arg)
+                else:
+                    hemi, vertex = m.groups()
+                    vertex = int(vertex)
+                    vertno = self.vertno[hemi == 'R']
+                    i = np.searchsorted(vertno, vertex)
+                    if vertno[i] == vertex:
+                        if hemi == 'R':
+                            return i + self.lh_n
+                        else:
+                            return i
+                    else:
+                        raise IndexError("SourceSpace does not contain vertex "
+                                         "%r" % (arg,))
         elif isinstance(arg, SourceSpace):
             sv = self.vertno
             ov = arg.vertno
@@ -8454,7 +8470,10 @@ class SourceSpace(Dimension):
             return arg
         elif isinstance(arg, Sequence) and all(isinstance(label, basestring) for
                                                label in arg):
-            return self.parc.isin(arg)
+            if all(a in self.parc.cells for a in arg):
+                return self.parc.isin(arg)
+            else:
+                return [self.dimindex(a) for a in arg]
         else:
             return super(SourceSpace, self).dimindex(arg)
 
