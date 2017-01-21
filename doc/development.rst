@@ -2,18 +2,18 @@
 Development
 ***********
 
-Eelbrain is developed by
-`Christian Brodbeck <http://loop.frontiersin.org/people/120185>`_
+Eelbrain is actively developed and maintained by
+`Christian Brodbeck <http://loop.frontiersin.org/people/120185>`_,
+Post-doctoral
 at the `Computational sensorimotor systems lab
 <http://www.isr.umd.edu/Labs/CSSL/simonlab/Home.html>`_
 at University of Maryland, College Park.
-At my previous position as PhD student at the
-`Neuroscience of Language Lab <http://www.psych.nyu.edu/nellab/meglab.html>`_
-at New York University I was funded by grant G1001 from the
-`NYU Abu Dhabi Institute
-<http://nyuad.nyu.edu/en/research/nyuad-institute.html>`_ (2011-2016).
 
-Eelbrain is open-source and you are welcome to contribute.
+
+Contributing
+------------
+
+Eelbrain is fully open-source and you are welcome to contribute.
 The latest development version can be found in the
 `GitHub repository <https://github.com/christianbrodbeck/Eelbrain>`_.
 New contributions can be made as pull requests into the master branch.
@@ -40,8 +40,8 @@ Useful tools:
  - Python IDE: `PyCharm <https://www.jetbrains.com/pycharm>`_
 
 
-Set up the Development Version
-------------------------------
+Setting up the development version
+----------------------------------
 
 Set up your own fork of `Eelbrain
 <https://github.com/christianbrodbeck/Eelbrain>`_
