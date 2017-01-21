@@ -152,6 +152,15 @@ def natsorted(seq):
     return sorted(seq, key=_natural_keys)
 
 
+def n_decimals(number):
+    "returns at least 1"
+    s = str(number)
+    if '.' in s:
+        return s[::-1].index('.')
+    else:
+        return 1
+
+
 class keydefaultdict(defaultdict):
     "http://stackoverflow.com/a/2912455/166700"
     def __missing__(self, key):

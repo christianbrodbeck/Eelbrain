@@ -51,7 +51,7 @@ from scipy.spatial.distance import cdist, pdist, squareform
 
 from . import fmtxt
 from . import _colorspaces as cs
-from ._utils import deprecated, ui, LazyProperty, natsorted
+from ._utils import deprecated, ui, LazyProperty, n_decimals, natsorted
 from ._utils.numpy_utils import (
     digitize_index, digitize_slice_endpoint, full_slice, index_to_int_array,
     slice_to_arange)
@@ -7019,7 +7019,14 @@ class Dimension(object):
 
     def _index_repr(self, arg):
         "Convert an array-like index to a dimension-semantic index"
-        return arg
+        if isinstance(arg, slice):
+            return slice(None if arg.start is None else self._index_repr(arg.start),
+                         None if arg.stop is None else self._index_repr(arg.stop),
+                         arg.step)
+        elif np.isscalar(arg):
+            return arg
+        else:
+            return [self._index_repr(i) for i in index_to_int_array(arg, len(self))]
 
     def intersect(self, dim, check_dims=True):
         """Create a Dimension that is the intersection with dim
@@ -7122,7 +7129,7 @@ class Categorial(Dimension):
         if isinstance(index, int):
             return self.values[index]
         else:
-            return [self.values[i] for i in index_to_int_array(index, len(self))]
+            return Dimension._index_repr(self, index)
 
     def intersect(self, dim, check_dims=False):
         """Create a dimension object that is the intersection with dim
@@ -7241,10 +7248,10 @@ class Scalar(Dimension):
         return "%s" % self.name.capitalize()
 
     def _index_repr(self, index):
-        if isinstance(index, int):
+        if np.isscalar(index):
             return self.values[index]
         else:
-            return [self.values[i] for i in index_to_int_array(index, len(self))]
+            return Dimension._index_repr(self, index)
 
     def intersect(self, dim, check_dims=False):
         """Create a dimension object that is the intersection with dim
@@ -7498,10 +7505,10 @@ class Sensor(Dimension):
             return super(Sensor, self).dimindex(arg)
 
     def _index_repr(self, index):
-        if isinstance(index, int):
+        if np.isscalar(index):
             return self.names[index]
         else:
-            return [self.names[i] for i in index_to_int_array(index, self.n)]
+            return Dimension._index_repr(self, index)
 
     def connectivity(self):
         """Retrieve the sensor connectivity
@@ -8485,6 +8492,15 @@ class SourceSpace(Dimension):
         idx = np.in1d(stc_vertices, label.vertices, True)
         return idx
 
+    def _index_repr(self, index):
+        if np.isscalar(index):
+            if index >= self.lh_n:
+                return 'R%i' % (self.rh_vertno[index - self.lh_n])
+            else:
+                return 'L%i' % (self.lh_vertno[index])
+        else:
+            return Dimension._index_repr(self, index)
+
     def get_source_space(self):
         "Read the corresponding MNE source space"
         path = self._src_pattern.format(subjects_dir=self.subjects_dir,
@@ -8639,6 +8655,7 @@ class UTS(Dimension):
         self.tmax = self.tmin + self.tstep * (self.nsamples - 1)
         self.tstop = self.tmin + self.tstep * self.nsamples
         self._times = None
+        self._n_decimals = max(n_decimals(self.tmin), n_decimals(self.tstep))
 
     def set_tmin(self, tmin):
         "Modify the value of tmin"
@@ -8896,6 +8913,16 @@ class UTS(Dimension):
                                  (self.tstep, step))
 
         return slice(start_, stop_, step_)
+
+    def _index_repr(self, arg):
+        if isinstance(arg, slice):
+            return slice(None if arg.start is None else self._index_repr(arg.start),
+                         None if arg.stop is None else self._index_repr(arg.stop),
+                         None if arg.step is None else arg.step * self.tstep)
+        elif np.isscalar(arg):
+            return round(self.tmin + arg * self.tstep, self._n_decimals)
+        else:
+            return Dimension._index_repr(self, arg)
 
     def intersect(self, dim, check_dims=True):
         """Create a UTS dimension that is the intersection with dim

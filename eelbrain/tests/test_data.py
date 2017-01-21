@@ -903,13 +903,17 @@ def test_ndvar_graph_dim():
 
 
 @nottest
-def test_ndvar_index(x, dimname, index, a_index):
+def test_ndvar_index(x, dimname, index, a_index, index_repr=True):
     "Helper function for test_ndvar_indexing"
     ax = x.get_axis(dimname)
     index_prefix = (full_slice,) * ax
     if dimname != 'case':
         dim = x.get_dim(dimname)
         assert_equal(dim.dimindex(index), a_index)
+        if index_repr is not False:
+            if index_repr is True:
+                index_repr = index
+            eq_(dim._index_repr(a_index), index_repr)
     x_array = x.x[index_prefix + (a_index,)]
     x1 = x.sub(**{dimname: index})
     x2 = x[index_prefix + (index,)]
@@ -930,20 +934,20 @@ def test_ndvar_indexing():
     test_ndvar_index(x, 'sensor', '0', 0)
     test_ndvar_index(x, 'sensor', ['0', '2'], [0, 2])
     test_ndvar_index(x, 'sensor', slice('0', '2'), slice(0, 2))
-    test_ndvar_index(x, 'sensor', 0, 0)
-    test_ndvar_index(x, 'sensor', [0, 2], [0, 2])
-    test_ndvar_index(x, 'sensor', slice(0, 2), slice(0, 2))
+    test_ndvar_index(x, 'sensor', 0, 0, False)
+    test_ndvar_index(x, 'sensor', [0, 2], [0, 2], False)
+    test_ndvar_index(x, 'sensor', slice(0, 2), slice(0, 2), False)
 
     # time
     test_ndvar_index(x, 'time', 0, 20)
     test_ndvar_index(x, 'time', 0.1, 30)
-    test_ndvar_index(x, 'time', 0.102, 30)
+    test_ndvar_index(x, 'time', 0.102, 30, False)
     test_ndvar_index(x, 'time', [0, 0.1, 0.2], [20, 30, 40])
     test_ndvar_index(x, 'time', slice(0.1, None), slice(30, None))
     test_ndvar_index(x, 'time', slice(0.2), slice(40))
-    test_ndvar_index(x, 'time', slice(0.202), slice(41))
+    test_ndvar_index(x, 'time', slice(0.202), slice(41), False)
     test_ndvar_index(x, 'time', slice(0.1, 0.2), slice(30, 40))
-    test_ndvar_index(x, 'time', slice(0.102, 0.2), slice(31, 40))
+    test_ndvar_index(x, 'time', slice(0.102, 0.2), slice(31, 40), False)
     test_ndvar_index(x, 'time', slice(0.1, None, 0.1), slice(30, None, 10))
     test_ndvar_index(x, 'time', slice(0.1, None, 1), slice(30, None, 100))
 
@@ -952,12 +956,12 @@ def test_ndvar_indexing():
     assert_raises(IndexError, x.__getitem__, (full_slice, 9))
     assert_raises(IndexError, x.__getitem__, (full_slice, 6))
     test_ndvar_index(x, 'frequency', 10, 1)
-    test_ndvar_index(x, 'frequency', 10.1, 1)
-    test_ndvar_index(x, 'frequency', 9.9, 1)
-    test_ndvar_index(x, 'frequency', [8.1, 10.1], [0, 1])
+    test_ndvar_index(x, 'frequency', 10.1, 1, False)
+    test_ndvar_index(x, 'frequency', 9.9, 1, False)
+    test_ndvar_index(x, 'frequency', [8.1, 10.1], [0, 1], False)
     test_ndvar_index(x, 'frequency', slice(8, 13), slice(0, 2))
-    test_ndvar_index(x, 'frequency', slice(8, 13.1), slice(0, 3))
-    test_ndvar_index(x, 'frequency', slice(8, 13.1, 2), slice(0, 3, 2))
+    test_ndvar_index(x, 'frequency', slice(8, 13.1), slice(0, 3), False)
+    test_ndvar_index(x, 'frequency', slice(8, 13.1, 2), slice(0, 3, 2), False)
 
     # Categorial
     x = NDVar(x.x, ('case', Categorial('cat', ['8', '10', '13', '17']), x.time))
@@ -973,15 +977,15 @@ def test_ndvar_indexing():
     assert_raises(TypeError, x.__getitem__, slice('insula-rh'))
     assert_raises(TypeError, x.__getitem__, slice('insula-lh', 'insula-rh'))
     assert_raises(TypeError, x.__getitem__, ('insula-lh', 'insula-rh'))
-    test_ndvar_index(x, 'source', 90, 90)
-    test_ndvar_index(x, 'source', [90, 95], [90, 95])
-    test_ndvar_index(x, 'source', slice(90, 95), slice(90, 95))
-    test_ndvar_index(x, 'source', 'insula-lh', x.source.parc == 'insula-lh')
+    test_ndvar_index(x, 'source', 90, 90, False)
+    test_ndvar_index(x, 'source', [90, 95], [90, 95], False)
+    test_ndvar_index(x, 'source', slice(90, 95), slice(90, 95), False)
+    test_ndvar_index(x, 'source', 'insula-lh', x.source.parc == 'insula-lh', False)
     test_ndvar_index(x, 'source', ('insula-lh', 'insula-rh'),
-                     x.source.parc.isin(('insula-lh', 'insula-rh')))
+                     x.source.parc.isin(('insula-lh', 'insula-rh')), False)
     n_lh = x.source.parc.endswith('lh').sum()
-    test_ndvar_index(x, 'source', 'lh', slice(n_lh))
-    test_ndvar_index(x, 'source', 'rh', slice(n_lh, None))
+    test_ndvar_index(x, 'source', 'lh', slice(n_lh), False)
+    test_ndvar_index(x, 'source', 'rh', slice(n_lh, None), False)
 
 
 def test_ndvar_summary_methods():
