@@ -67,6 +67,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 
 import matplotlib as mpl
 from matplotlib.figure import SubplotParams
@@ -95,7 +96,8 @@ backend = {
     'format': 'svg',
     'ets_toolkit': None if 'ETS_TOOLKIT' in os.environ else 'qt4',
     'figure_background': 'white',
-    'prompt_toolkit': True
+    'prompt_toolkit': True,
+    'animate': True,
 }
 
 # store figures (they need to be preserved)
@@ -113,7 +115,8 @@ def do_autorun(run=None):
 
 
 def configure(frame=None, autorun=None, show=None, format=None,
-              ets_toolkit=None, figure_background=None, prompt_toolkit=None):
+              ets_toolkit=None, figure_background=None, prompt_toolkit=None,
+              animate=None):
     """Set basic configuration parameters for the current session
 
     Parameters
@@ -148,6 +151,8 @@ def configure(frame=None, autorun=None, show=None, format=None,
         windows can be used without explicitly switching between Terminal and
         GUI. This feature is enabled by default, but can be disabled by setting
         ``prompt_toolkit=False``.
+    animate : bool
+        Animate plot navigation (default True).
     """
     # don't change values before raising an error
     new = {}
@@ -173,6 +178,8 @@ def configure(frame=None, autorun=None, show=None, format=None,
         new['figure_background'] = figure_background
     if prompt_toolkit is not None:
         new['prompt_toolkit'] = bool(prompt_toolkit)
+    if animate is not None:
+        new['animate'] = bool(animate)
 
     backend.update(new)
 
@@ -1033,6 +1040,7 @@ class EelFigure(object):
         self._axes = axes
         self.canvas = frame_.canvas
         self._layout = layout
+        self._last_draw_time = 1.
         self.__callback_key_press = {}
         self.__callback_key_release = {}
 
@@ -1238,7 +1246,9 @@ class EelFigure(object):
 
     def draw(self):
         "(Re-)draw the figure (after making manual changes)."
+        t0 = time.time()
         self._frame.canvas.draw()
+        self._last_draw_time = time.time() - t0
 
     def _asfmtext(self):
         return self.image()
@@ -2044,6 +2054,15 @@ class XAxisMixin(object):
     def _get_xlim(self):
         return self.__axes[0].get_xlim()
 
+    def __animate(self, vmin, vmin_d, vmax, vmax_d):
+        n_steps = int(0.1 // self._last_draw_time)
+        if n_steps <= 1:
+            self.set_xlim(vmin + vmin_d, vmax + vmax_d)
+        else:
+            for i in xrange(1, n_steps + 1):
+                x = i / n_steps
+                self.set_xlim(vmin + x * vmin_d, vmax + x * vmax_d)
+
     def __on_beginning(self, event):
         left, right = self._get_xlim()
         d = right - left
@@ -2057,30 +2076,28 @@ class XAxisMixin(object):
     def __on_zoom_plus(self, event):
         left, right = self._get_xlim()
         d = right - left
-        new_left = left + d / 4.
-        new_right = right - d / 4.
-        self.set_xlim(new_left, new_right)
+        self.__animate(left, d / 4., right, -d / 4.)
 
     def __on_zoom_minus(self, event):
         left, right = self._get_xlim()
         d = right - left
         new_left = max(self.__xmin, left - (d / 2.))
         new_right = min(self.__xmax, new_left + 2 * d)
-        self.set_xlim(new_left, new_right)
+        self.__animate(left, new_left - left, right, new_right - right)
 
     def __on_left(self, event):
         left, right = self._get_xlim()
         d = right - left
         new_left = max(self.__xmin, left - d)
         new_right = new_left + d
-        self.set_xlim(new_left, new_right)
+        self.__animate(left, new_left - left, right, new_right - right)
 
     def __on_right(self, event):
         left, right = self._get_xlim()
         d = right - left
         new_right = min(self.__xmax, right + d)
         new_left = new_right - d
-        self.set_xlim(new_left, new_right)
+        self.__animate(left, new_left - left, right, new_right - right)
 
     def _set_xlim(self, left, right):
         for ax in self.__axes:
@@ -2168,25 +2185,34 @@ class YLimMixin(object):
             p.set_ylim(bottom, top)
         self.draw()
 
+    def __animate(self, vmin, vmin_d, vmax, vmax_d):
+        n_steps = int(0.1 // self._last_draw_time)
+        if n_steps <= 1:
+            self.set_ylim(vmin + vmin_d, vmax + vmax_d)
+        else:
+            for i in xrange(1, n_steps + 1):
+                x = i / n_steps
+                self.set_ylim(vmin + x * vmin_d, vmax + x * vmax_d)
+
     def __on_move_down(self, event):
         vmin, vmax = self.get_ylim()
         d = (vmax - vmin) * 0.1
-        self.set_ylim(vmin - d, vmax - d)
+        self.__animate(vmin, -d, vmax, -d)
 
     def __on_move_up(self, event):
         vmin, vmax = self.get_ylim()
         d = (vmax - vmin) * 0.1
-        self.set_ylim(vmin + d, vmax + d)
+        self.__animate(vmin, d, vmax, d)
 
     def __on_zoom_in(self, event):
         vmin, vmax = self.get_ylim()
         d = (vmax - vmin) * 0.05
-        self.set_ylim(vmin + d, vmax - d)
+        self.__animate(vmin, d, vmax, -d)
 
     def __on_zoom_out(self, event):
         vmin, vmax = self.get_ylim()
         d = (vmax - vmin) * (1 / 22)
-        self.set_ylim(vmin - d, vmax + d)
+        self.__animate(vmin, -d, vmax, d)
 
     @deprecated('0.26', "Use .set_ylim() (with different arguments)")
     def set_vlim(self, vmax=None, vmin=None):
