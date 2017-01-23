@@ -225,8 +225,8 @@ class TopoButterfly(TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
      - LMB click in a butterfly plot fixates the topomap time
      - RMB click in a butterfly plot removes the time point, the topomaps
        follow the mouse pointer
-     - ``,``: Decrement the current topomap time (go left)
      - ``.``: Increment the current topomap time (got right)
+     - ``,``: Decrement the current topomap time (go left)
      - ``t``: open a ``Topomap`` plot for the time point under the mouse
        pointer
      - ``T``: open a larger ``Topomap`` plot with visible sensor names for the
@@ -308,8 +308,8 @@ class TopoButterfly(TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
         XAxisMixin.__init__(self, epochs, xdim, xlim, self.bfly_axes)
         YLimMixin.__init__(self, self.bfly_plots + self.topo_plots)
         self.canvas.mpl_connect('button_press_event', self._on_click)
-        self._register_key(',', self._on_arrow)
-        self._register_key('.', self._on_arrow)
+        self._register_key('.', self._on_nudge_topo_t)
+        self._register_key(',', self._on_nudge_topo_t)
         TopoMapKey.__init__(self, self._topo_data)
         self._realtime_topo = True
         self._t_label = None  # time label under lowest topo-map
@@ -390,9 +390,9 @@ class TopoButterfly(TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
 
         return seg, "%i ms" % round(t * 1e3), self._topo_kwargs['proj']
 
-    def _on_arrow(self, event):
-        i = digitize(self._current_t, self._xvalues, event.key == 'left')
-        if event.key == 'left' and i > 0:
+    def _on_nudge_topo_t(self, event):
+        i = digitize(self._current_t, self._xvalues, event.key == ',')
+        if event.key == ',' and i > 0:
             i -= 1
         elif i == len(self._xvalues):
             i -= 1
