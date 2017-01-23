@@ -1,0 +1,63 @@
+package:
+  name: pysurfer
+  version: "0.7"
+
+source:
+  fn: pysurfer-0.7.tar.gz
+  url: https://pypi.python.org/packages/79/11/dd2f102c4f85a8e5823f6f78e5d0f6de27e2c0072d90bd19e86bb3edc12b/pysurfer-0.7.tar.gz
+  md5: 81dec0655507554ded2a0c734167b133
+#  patches:
+   # List any patch files here
+   # - fix.patch
+
+build:
+  number: 1
+
+requirements:
+  build:
+    - python
+    - setuptools
+    - matplotlib
+    - mayavi
+    - vtk ==6.3  # [win]
+    - nibabel
+    - imageio
+    - numpy
+    - scipy
+
+  run:
+    - python
+    - matplotlib
+    - mayavi
+    - vtk ==6.3  # [win]
+    - nibabel
+    - imageio
+    - numpy
+    - scipy
+
+test:
+  # Python imports
+  imports:
+    - surfer
+
+  # commands:
+    # You can put test commands to be run here.  Use this to test that the
+    # entry points work.
+
+
+  # You can also put a file called run_test.py in the recipe that will be run
+  # at test time.
+
+  # requires:
+    # Put any additional test requirements here.  For example
+    # - nose
+
+about:
+  home: http://pysurfer.github.com
+  license: BSD (3-clause)
+  summary: 'PySurfer: cortical surface visualization using Python.'
+  license_family: BSD
+
+# See
+# http://docs.continuum.io/conda/build.html for
+# more information about meta.yaml

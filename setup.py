@@ -12,6 +12,7 @@ http://docs.python.org/distutils/index.html
 from ez_setup import use_setuptools
 use_setuptools('17')
 
+from distutils.version import StrictVersion
 import re
 import sys
 from setuptools import setup, find_packages, Extension
@@ -29,8 +30,8 @@ match = re.search("__version__ = '([.\w]+)'", text)
 if match is None:
     raise ValueError("No valid version string found in:\n\n" + text)
 version = match.group(1)
-if version.count('.') != 2 and not version.endswith('dev'):
-    raise ValueError("Invalid version string extracted: %r" % version)
+if version != 'dev':
+    s = StrictVersion(version)  # check that it's a valid version
 
 if len(sys.argv) > 1:
     arg = sys.argv[1]

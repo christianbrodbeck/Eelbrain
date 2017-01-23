@@ -1,0 +1,62 @@
+package:
+  name: eelbrain
+  version: "VERSION"
+
+source:
+  path: ../../
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - python
+    - pywin32-ctypes  # [win]
+    - setuptools >=17
+    - colormath >=2.1
+    - keyring >=5
+    - matplotlib >=1.1
+    - mayavi
+    - mne >=0.13.1
+    - nibabel >=2.0
+    - numpy >=1.0
+    - pillow
+    - scipy >=0.16
+    - tex >=1.8
+    - tqdm >=4.8
+
+  run:
+    - python
+    - colormath >=2.1
+    - ipython ==5.0  # as of Jan 2017 iPython 5.1 was not a framework build
+    - keyring >=5
+    - matplotlib >=1.1
+    - mne >=0.13.1
+    - nibabel >=2.0
+    - numpy >=1.0
+    - pillow
+    - pysurfer >=0.7
+    - rpy2
+    - scipy >=0.16
+    - tex >=1.8
+    - tqdm >=4.8
+    - wxpython
+
+test:
+  # Python imports
+  imports:
+    - eelbrain
+    - eelbrain.load
+    - eelbrain.mne_fixes
+    - eelbrain.plot
+    - eelbrain.save
+
+about:
+  home: https://pythonhosted.org/eelbrain
+  license: GPL3
+  summary: 'MEG/EEG analysis tools'
+  license_family: GPL3
+
+# See
+# http://docs.continuum.io/conda/build.html for
+# more information about meta.yaml

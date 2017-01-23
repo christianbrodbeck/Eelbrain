@@ -12,6 +12,26 @@ Installing
    :local:
 
 
+Installing with Anaconda (recommended)
+--------------------------------------
+
+For using Eelbrain with Continuum Analytics' `Anaconda
+<https://store.continuum.io/cshop/anaconda/>`_, first make sure you install an
+Anaconda environment with Python 2.7 (due to a dependency on Mayavi), then
+add channels for Eelbrain and its dependencies to ``conda``::
+
+    $ conda config --append channels conda-forge
+    $ conda config --append channels christianbrodbeck
+
+Then install Eelbrain with its dependencies::
+
+    $ conda install eelbrain
+
+Later, update Eelbrain with::
+
+    $ conda update eelbrain
+
+
 Installing from PYPI
 --------------------
 
@@ -45,26 +65,6 @@ plots with several GUI elements (and enables the epoch rejection GUI).
 wxPython `can not be installed from the PYPI
 <http://stackoverflow.com/q/477573/166700>`_, but installers are provided
 `here <http://www.wxpython.org/download.php>`__.
-
-
-Installing with Anaconda
-------------------------
-
-For using Eelbrain with Continuum Analytics' `Anaconda
-<https://store.continuum.io/cshop/anaconda/>`_ first make sure you install an
-Anaconda environment with Python 2.7 (due to a dependency on Mayavi), then
-install the dependencies with ``conda``::
-
-    $ conda install wxpython numpy scipy matplotlib mayavi h5py pyqt=4.10 pygments=1 pip
-
-Then install Eelbrain (if you are not planning to plot MNE source estimates
-you can leave out the ``[plot.brain]``)::
-
-    $ pip install eelbrain[plot.brain]
-
-Later, update Eelbrain with (again, ``[plot.brain]`` is optional)::
-
-    $ pip install -U --upgrade-strategy only-if-needed eelbrain[plot.brain]
 
 
 Installing with Canopy
