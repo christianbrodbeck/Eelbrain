@@ -2023,62 +2023,62 @@ class XAxisMixin(object):
      - ``→``: scroll right
      - ``home``: scroll to beginning
      - ``end``: scroll to end
-     - ``f``: zoom in (reduce x axis range)
-     - ``d``: zoom out (increase x axis range)
+     - ``f``: x-axis zoom in (reduce x axis range)
+     - ``d``: x-axis zoom out (increase x axis range)
     """
     def __init__(self, epochs, xdim, xlim=None, axes=None):
         extent = tuple(e.get_dim(xdim)._axis_im_extent() for e in chain(*epochs))
-        self._xmin = min(e[0] for e in extent)
-        self._xmax = max(e[1] for e in extent)
+        self.__xmin = min(e[0] for e in extent)
+        self.__xmax = max(e[1] for e in extent)
         self.__axes = axes or self._axes
         self.__vspans = []
-        self._register_key('f', self._on_zoom_plus)
-        self._register_key('d', self._on_zoom_minus)
-        self._register_key('left', self._on_left)
-        self._register_key('right', self._on_right)
-        self._register_key('home', self._on_beginning)
-        self._register_key('end', self._on_end)
+        self._register_key('f', self.__on_zoom_plus)
+        self._register_key('d', self.__on_zoom_minus)
+        self._register_key('left', self.__on_left)
+        self._register_key('right', self.__on_right)
+        self._register_key('home', self.__on_beginning)
+        self._register_key('end', self.__on_end)
         if xlim is not None:
             self._set_xlim(*xlim)
 
     def _get_xlim(self):
         return self.__axes[0].get_xlim()
 
-    def _on_beginning(self, event):
+    def __on_beginning(self, event):
         left, right = self._get_xlim()
         d = right - left
-        self.set_xlim(self._xmin, min(self._xmax, self._xmin + d))
+        self.set_xlim(self.__xmin, min(self.__xmax, self.__xmin + d))
 
-    def _on_end(self, event):
+    def __on_end(self, event):
         left, right = self._get_xlim()
         d = right - left
-        self.set_xlim(max(self._xmin, self._xmax - d), self._xmax)
+        self.set_xlim(max(self.__xmin, self.__xmax - d), self.__xmax)
 
-    def _on_zoom_plus(self, event):
+    def __on_zoom_plus(self, event):
         left, right = self._get_xlim()
         d = right - left
         new_left = left + d / 4.
         new_right = right - d / 4.
         self.set_xlim(new_left, new_right)
 
-    def _on_zoom_minus(self, event):
+    def __on_zoom_minus(self, event):
         left, right = self._get_xlim()
         d = right - left
-        new_left = max(self._xmin, left - (d / 2.))
-        new_right = min(self._xmax, new_left + 2 * d)
+        new_left = max(self.__xmin, left - (d / 2.))
+        new_right = min(self.__xmax, new_left + 2 * d)
         self.set_xlim(new_left, new_right)
 
-    def _on_left(self, event):
+    def __on_left(self, event):
         left, right = self._get_xlim()
         d = right - left
-        new_left = max(self._xmin, left - d)
+        new_left = max(self.__xmin, left - d)
         new_right = new_left + d
         self.set_xlim(new_left, new_right)
 
-    def _on_right(self, event):
+    def __on_right(self, event):
         left, right = self._get_xlim()
         d = right - left
-        new_right = min(self._xmax, right + d)
+        new_right = min(self.__xmax, right + d)
         new_left = new_right - d
         self.set_xlim(new_left, new_right)
 
@@ -2116,6 +2116,21 @@ class XAxisMixin(object):
 
 
 class YLimMixin(object):
+    u"""Manage y-axis
+
+    Parameters
+    ----------
+    plots : list
+        Plots to manage.
+
+    Notes
+    -----
+    Navigation:
+     - ``↑``: scroll up
+     - ``↓``: scroll down
+     - ``r``: y-axis zoom in (reduce y-axis range)
+     - ``c``: y-axis zoom out (increase y-axis range)
+    """
     # Keep Y-lim and V-lim separate. For EEG, one might want to invert the
     # y-axis without inverting the colormap
 
@@ -2126,6 +2141,10 @@ class YLimMixin(object):
 
     def __init__(self, plots):
         self.__plots = plots
+        self._register_key('r', self.__on_zoom_in)
+        self._register_key('c', self.__on_zoom_out)
+        self._register_key('up', self.__on_move_up)
+        self._register_key('down', self.__on_move_down)
 
     def get_ylim(self):
         vmin = min(p.vmin for p in self.__plots)
@@ -2148,6 +2167,26 @@ class YLimMixin(object):
         for p in self.__plots:
             p.set_ylim(bottom, top)
         self.draw()
+
+    def __on_move_down(self, event):
+        vmin, vmax = self.get_ylim()
+        d = (vmax - vmin) * 0.1
+        self.set_ylim(vmin - d, vmax - d)
+
+    def __on_move_up(self, event):
+        vmin, vmax = self.get_ylim()
+        d = (vmax - vmin) * 0.1
+        self.set_ylim(vmin + d, vmax + d)
+
+    def __on_zoom_in(self, event):
+        vmin, vmax = self.get_ylim()
+        d = (vmax - vmin) * 0.05
+        self.set_ylim(vmin + d, vmax - d)
+
+    def __on_zoom_out(self, event):
+        vmin, vmax = self.get_ylim()
+        d = (vmax - vmin) * (1 / 22)
+        self.set_ylim(vmin - d, vmax + d)
 
     @deprecated('0.26', "Use .set_ylim() (with different arguments)")
     def set_vlim(self, vmax=None, vmin=None):

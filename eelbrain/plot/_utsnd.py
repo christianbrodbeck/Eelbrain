@@ -409,12 +409,16 @@ class Butterfly(LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
     Notes
     -----
     Navigation:
+     - ``↑``: scroll up
+     - ``↓``: scroll down
      - ``←``: scroll left
      - ``→``: scroll right
      - ``home``: scroll to beginning
      - ``end``: scroll to end
-     - ``f``: zoom in (reduce x axis range)
-     - ``d``: zoom out (increase x axis range)
+     - ``f``: x-axis zoom in (reduce x axis range)
+     - ``d``: x-axis zoom out (increase x axis range)
+     - ``r``: y-axis zoom in (reduce y-axis range)
+     - ``c``: y-axis zoom out (increase y-axis range)
 
     Keys available for sensor data:
      - ``t``: open a ``Topomap`` plot for the time point under the mouse pointer.

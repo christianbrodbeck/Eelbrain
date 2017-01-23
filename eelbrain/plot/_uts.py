@@ -20,7 +20,7 @@ from functools import reduce
 
 
 class UTSStat(LegendMixin, YLimMixin, EelFigure):
-    """
+    u"""
     Plot statistics for a one-dimensional NDVar
 
     Parameters
@@ -104,6 +104,14 @@ class UTSStat(LegendMixin, YLimMixin, EelFigure):
         ``True`` (default): normal matplotlib frame;
         ``False``: omit top and right lines;
         ``'t'``: draw spines at x=0 and y=0, common for ERPs.
+
+    Notes
+    -----
+    Navigation:
+     - ``↑``: scroll up
+     - ``↓``: scroll down
+     - ``r``: y-axis zoom in (reduce y-axis range)
+     - ``c``: y-axis zoom out (increase y-axis range)
     """
     def __init__(self, Y='Y', X=None, Xax=None, match=None, sub=None, ds=None,
                  main=np.mean, error='sem', pool_error=None, legend='upper right',
@@ -380,12 +388,16 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     Notes
     -----
     Navigation:
+     - ``↑``: scroll up
+     - ``↓``: scroll down
      - ``←``: scroll left
      - ``→``: scroll right
      - ``home``: scroll to beginning
      - ``end``: scroll to end
-     - ``f``: zoom in (reduce x axis range)
-     - ``d``: zoom out (increase x axis range)
+     - ``f``: x-axis zoom in (reduce x axis range)
+     - ``d``: x-axis zoom out (increase x axis range)
+     - ``r``: y-axis zoom in (reduce y-axis range)
+     - ``c``: y-axis zoom out (increase y-axis range)
     """
     def __init__(self, epochs, xax=None, axtitle=True, ds=None, sub=None,
                  xlabel=True, ylabel=True, xticklabels=True, bottom=None,
