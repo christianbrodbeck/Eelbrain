@@ -27,7 +27,7 @@ from scipy.stats import spearmanr
 from tqdm import tqdm
 
 from .. import _colorspaces as cs
-from .._data_obj import NDVar, UTS
+from .._data_obj import NDVar, UTS, dataobj_repr
 from .._stats.error_functions import (l1, l2, l1_for_delta, l2_for_delta,
                                       update_error)
 
@@ -183,8 +183,8 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         raise ValueError("Not all NDVars have the same time dimension")
 
     # scale y and x appropriately for error function
+    data = (y,) + x
     if scale_data:
-        data = (y,) + x
         data_mean = tuple(d.mean('time') for d in data)
         if isinstance(scale_data, int):
             data = tuple(d - d_mean for d, d_mean in izip(data, data_mean))
@@ -204,12 +204,27 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         else:
             raise ValueError("error=%r; needs to be 'l1' or 'l2' if "
                              "scale_data=True." % (error,))
+
+        # check for flat data (normalising would result in nan)
+        zero_var = tuple(np.any(v == 0) for v in data_scale)
+        if any(zero_var):
+            raise ValueError("Can not scale %s because it has 0 variance" %
+                             dataobj_repr(data[zero_var.index(True)]))
+
         for d, d_scale in izip(data, data_scale):
             d /= d_scale
         y = data[0]
         x = data[1:]
+
+        has_nan = tuple(np.isnan(v.sum()) for v in data_scale)
     else:
         data_mean = data_scale = (None,) * (len(x) + 1)
+        has_nan = tuple(np.isnan(v.sum()) for v in data)
+
+    # check for NaN (blocks boosting process)
+    if any(has_nan):
+        raise ValueError("Can not use %s for boosting because it contains NaN" %
+                         dataobj_repr(data[has_nan.index(True)]))
 
     # x_data:  predictor x time array
     x_data = []

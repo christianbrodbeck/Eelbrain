@@ -2,7 +2,8 @@
 from math import floor
 import os
 
-from nose.tools import eq_, assert_almost_equal, assert_is_none
+from nose.tools import eq_, assert_almost_equal, assert_is_none, assert_raises
+import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 import cPickle as pickle
 import scipy.io
@@ -69,8 +70,20 @@ def run_boosting(ds, mp):
 def test_boosting():
     "Test boosting NDVars"
     ds = datasets._get_continuous()
-    run_boosting(ds, True)
-    run_boosting(ds, False)
+
+    # test boosting results
+    yield run_boosting, ds, True
+    yield run_boosting, ds, False
+
+    # test NaN checks
+    ds['x2'].x[1, 50] = np.nan
+    assert_raises(ValueError, boosting, ds['y'], ds['x2'], 0, .5)
+    assert_raises(ValueError, boosting, ds['y'], ds['x2'], 0, .5, False)
+    ds['x2'].x[1, :] = 1
+    assert_raises(ValueError, boosting, ds['y'], ds['x2'], 0, .5)
+    ds['y'].x[50] = np.nan
+    assert_raises(ValueError, boosting, ds['y'], ds['x1'], 0, .5)
+    assert_raises(ValueError, boosting, ds['y'], ds['x1'], 0, .5, False)
 
 
 def test_boosting_func():
