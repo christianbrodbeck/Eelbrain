@@ -237,8 +237,8 @@ class TopoButterfly(TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
      - ``→``: scroll right
      - ``home``: scroll to beginning
      - ``end``: scroll to end
-     - ``+``: zoom in (reduce x axis range)
-     - ``-``: zoom out (increase x axis range)
+     - ``f``: zoom in (reduce x axis range)
+     - ``d``: zoom out (increase x axis range)
     """
     _default_xlabel_ax = -2
 

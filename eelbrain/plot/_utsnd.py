@@ -229,8 +229,8 @@ class Array(ColorMapMixin, XAxisMixin, EelFigure):
      - ``→``: scroll right
      - ``home``: scroll to beginning
      - ``end``: scroll to end
-     - ``+``: zoom in (reduce x axis range)
-     - ``-``: zoom out (increase x axis range)
+     - ``f``: zoom in (reduce x axis range)
+     - ``d``: zoom out (increase x axis range)
     """
     def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
                  xticklabels=True, ds=None, sub=None, x='time', vmax=None,
@@ -413,8 +413,8 @@ class Butterfly(LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
      - ``→``: scroll right
      - ``home``: scroll to beginning
      - ``end``: scroll to end
-     - ``+``: zoom in (reduce x axis range)
-     - ``-``: zoom out (increase x axis range)
+     - ``f``: zoom in (reduce x axis range)
+     - ``d``: zoom out (increase x axis range)
 
     Keys available for sensor data:
      - ``t``: open a ``Topomap`` plot for the time point under the mouse pointer.

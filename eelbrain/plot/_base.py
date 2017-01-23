@@ -2023,8 +2023,8 @@ class XAxisMixin(object):
      - ``→``: scroll right
      - ``home``: scroll to beginning
      - ``end``: scroll to end
-     - ``+``: zoom in (reduce x axis range)
-     - ``-``: zoom out (increase x axis range)
+     - ``f``: zoom in (reduce x axis range)
+     - ``d``: zoom out (increase x axis range)
     """
     def __init__(self, epochs, xdim, xlim=None, axes=None):
         extent = tuple(e.get_dim(xdim)._axis_im_extent() for e in chain(*epochs))
@@ -2032,8 +2032,8 @@ class XAxisMixin(object):
         self._xmax = max(e[1] for e in extent)
         self.__axes = axes or self._axes
         self.__vspans = []
-        self._register_key('+', self._on_zoom_plus)
-        self._register_key('-', self._on_zoom_minus)
+        self._register_key('f', self._on_zoom_plus)
+        self._register_key('d', self._on_zoom_minus)
         self._register_key('left', self._on_left)
         self._register_key('right', self._on_right)
         self._register_key('home', self._on_beginning)

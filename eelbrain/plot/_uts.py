@@ -384,8 +384,8 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
      - ``→``: scroll right
      - ``home``: scroll to beginning
      - ``end``: scroll to end
-     - ``+``: zoom in (reduce x axis range)
-     - ``-``: zoom out (increase x axis range)
+     - ``f``: zoom in (reduce x axis range)
+     - ``d``: zoom out (increase x axis range)
     """
     def __init__(self, epochs, xax=None, axtitle=True, ds=None, sub=None,
                  xlabel=True, ylabel=True, xticklabels=True, bottom=None,
