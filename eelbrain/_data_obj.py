@@ -3732,6 +3732,7 @@ class NDVar(object):
         -------
         clusters : NDVar
             NDVar of int, each cluster labeled with a unique integer value.
+            ``clusters.info['cids']`` contains an array of all cluster IDs.
         """
         from ._stats.testnd import label_clusters
 
