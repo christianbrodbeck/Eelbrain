@@ -19,7 +19,7 @@ import numpy as np
 
 
 DESC = """
-GitHub: <https://github.com/christianbrodbeck/Eelbrain>
+GitHub: https://github.com/christianbrodbeck/Eelbrain
 """
 
 # version must be in X.X.X format, e.g., "0.0.3dev"
@@ -44,7 +44,7 @@ ext = [Extension("eelbrain._stats.opt", ["eelbrain/_stats/opt.c"])]
 kwargs = dict(name='eelbrain',
               version=version,
               description="MEG/EEG analysis tools",
-              url="https://pythonhosted.org/eelbrain",
+              url="http://eelbrain.readthedocs.io",
               author="Christian Brodbeck",
               author_email='christianbrodbeck@nyu.edu',
               license='GPL3',

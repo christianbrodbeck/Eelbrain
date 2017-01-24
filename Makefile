@@ -17,8 +17,8 @@ test-coverage:
 	rm -rf coverage .coverage
 	pythonw ${shell which nosetests} --with-coverage --cover-package=eelbrain --cover-html --cover-html-dir=coverage
 
-pypi: doc
+pypi:
 	rm -rf build dist
-	python setup.py sdist bdist_wheel bdist_egg upload upload_docs
+	python setup.py sdist bdist_wheel bdist_egg upload
 
 .PHONY: clean clean-py doc test test-coverage pypi
