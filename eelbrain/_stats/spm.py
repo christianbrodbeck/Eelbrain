@@ -26,7 +26,8 @@ class LM(object):
     ds : Dataset
         Optional Dataset providing data for y/model.
     coding : 'dummy' | 'effect'
-        Model parametrization (default is dummy coding).
+        Model parametrization (default is dummy coding). Vars are centered for
+        effect coding (but not for dummy coding).
     subject : str
         Optional information used by RandomLM.
     """

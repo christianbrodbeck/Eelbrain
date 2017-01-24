@@ -212,8 +212,8 @@ class Array(ColorMapMixin, XAxisMixin, EelFigure):
     interpolation : str
         Array image interpolation (see Matplotlib's
         :meth:`~matplotlib.axes.Axes.imshow`). Matplotlib 1.5.3's SVG output
-         can't handle uneven aspect with ``interpolation='none'``, use
-         ``interpolation='nearest'`` intead.
+        can't handle uneven aspect with ``interpolation='none'``, use
+        ``interpolation='nearest'`` intead.
     xlim : (scalar, scalar)
         Initial x-axis view limits (default is the full x-axis in the data).
     tight : bool

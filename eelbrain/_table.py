@@ -109,26 +109,26 @@ def frequencies(y, x=None, of=None, sub=None, ds=None):
     --------
     A simple sample dataset::
 
-    >>> ds = Dataset()
-    >>> ds['a'] = Factor('aabbcc')
-    >>> ds['x'] = Factor('xxxyyy')
+        >>> ds = Dataset()
+        >>> ds['a'] = Factor('aabbcc')
+        >>> ds['x'] = Factor('xxxyyy')
 
     Display frequency of a single factor's cells::
 
-    >>> print table.frequencies('a', ds=ds)
-    cell   n
-    --------
-    a      2
-    b      2
-    c      2
+        >>> print table.frequencies('a', ds=ds)
+        cell   n
+        --------
+        a      2
+        b      2
+        c      2
 
     Display frequency of interaction cells::
 
-    >>> print table.frequencies('a', 'x', ds=ds)
-    x   a   b   c
-    -------------
-    x   2   1   0
-    y   0   1   2
+        >>> print table.frequencies('a', 'x', ds=ds)
+        x   a   b   c
+        -------------
+        x   2   1   0
+        y   0   1   2
 
     """
     sub = assub(sub, ds)
