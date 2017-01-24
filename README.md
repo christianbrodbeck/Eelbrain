@@ -3,4 +3,4 @@
 
 # Eelbrain
 
-The documentation is located at: https://pythonhosted.org/eelbrain/
+The documentation is located at: http://eelbrain.readthedocs.io
