@@ -103,11 +103,11 @@ modindex_common_prefix = ['eelbrain.']
 
 # -- Custom Options -----------------------------------------------------------
 
-intersphinx_mapping = {'python': ('http://docs.python.org/2.7', None),
+intersphinx_mapping = {'python': ('https://docs.python.org/2.7', None),
                        'mne': ('http://martinos.org/mne/stable', None),
                        'matplotlib': ('http://matplotlib.org', None),
-                       'numpy': ('http://docs.scipy.org/doc/numpy/', None),
-                       'scipy': ('http://docs.scipy.org/doc/scipy/reference', None)}
+                       'numpy': ('https://docs.scipy.org/doc/numpy', None),
+                       'scipy': ('https://docs.scipy.org/doc/scipy/reference', None)}
 # http://sphinx.pocoo.org/ext/intersphinx.html
 
 
