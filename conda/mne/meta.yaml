@@ -6,25 +6,9 @@ source:
   fn: mne-0.13.1.tar.gz
   url: https://pypi.python.org/packages/2f/1f/f7db5c21d8815da1448bf947849b8b501e26d1a03716b27e60073c5fc187/mne-0.13.1.tar.gz
   md5: 51cc1e955e96e7fa8c3f900895fc471a
-#  patches:
-   # List any patch files here
-   # - fix.patch
 
-# build:
-  # noarch_python: True
-  # preserve_egg_dir: True
-  # entry_points:
-    # Put any entry points (scripts to be generated automatically) here. The
-    # syntax is module:function.  For example
-    #
-    # - mne = mne:main
-    #
-    # Would create an entry point called mne that calls mne.main()
-
-
-  # If this is a new build for the same version, increment the build
-  # number. If you do not include this key, it defaults to 0.
-  # number: 1
+build:
+  number: 1
 
 requirements:
   build:
@@ -35,8 +19,8 @@ requirements:
   run:
     - python
     - matplotlib
-    - mayavi
-    - numpy
+    - pysurfer
+    - scikit-learn
     - scipy
 
 test:
@@ -114,24 +98,8 @@ test:
     - mne.viz
     - mne.viz.tests
 
-  # commands:
-    # You can put test commands to be run here.  Use this to test that the
-    # entry points work.
-
-
-  # You can also put a file called run_test.py in the recipe that will be run
-  # at test time.
-
-  # requires:
-    # Put any additional test requirements here.  For example
-    # - nose
-
 about:
   home: http://martinos.org/mne
   license: BSD (3-clause)
   summary: 'MNE python project for MEG and EEG data analysis.'
   license_family: BSD
-
-# See
-# http://docs.continuum.io/conda/build.html for
-# more information about meta.yaml
