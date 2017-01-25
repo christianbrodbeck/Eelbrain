@@ -1,7 +1,6 @@
 os: osx
 language: r
 sudo: false
-# https://github.com/travis-ci/travis-ci/issues/4729
 # https://github.com/travis-ci/travis-ci/issues/2312
 
 cache:  # https://docs.travis-ci.com/user/caching/
@@ -10,6 +9,10 @@ cache:  # https://docs.travis-ci.com/user/caching/
 
 #python:
 #  - 2.7
+
+r_packages:
+  - car
+  - ez
 
 # Setup anaconda
 # https://gist.github.com/dan-blanchard/7045057
@@ -22,8 +25,7 @@ before_install:
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p $HOME/miniconda
   - export PATH=$HOME/miniconda/bin:$PATH
-  - conda update --yes conda
-  - conda install --yes python=2.7 numpy scipy matplotlib wxpython nose #python.app
+  - conda install --yes python=2.7 numpy scipy matplotlib wxpython nose
   - pip install rpy2
   - python --version
 
