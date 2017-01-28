@@ -1044,6 +1044,9 @@ class EelFigure(object):
         self.__callback_key_press = {}
         self.__callback_key_release = {}
 
+        # containers for hooks
+        self._untight_draw_hooks = []
+
         # add callbacks
         self.canvas.mpl_connect('motion_notify_event', self._on_motion)
         self.canvas.mpl_connect('axes_leave_event', self._on_leave_axes)
@@ -1112,6 +1115,12 @@ class EelFigure(object):
             self._tight()
 
         self.draw()
+
+        # Allow hooks to modify figure after first draw
+        if not self._layout.tight:
+            if any(func() for func in self._untight_draw_hooks):
+                self.draw()
+
         if backend['show'] and self._layout.show:
             self._frame.Show()
             if backend['eelbrain'] and do_autorun(self._layout.run):
@@ -2162,6 +2171,14 @@ class YLimMixin(object):
         self._register_key('c', self.__on_zoom_out)
         self._register_key('up', self.__on_move_up)
         self._register_key('down', self.__on_move_down)
+        self._untight_draw_hooks.append(self.__untight_draw_hook)
+
+    def __untight_draw_hook(self):
+        for p in self.__plots:
+            # remove the top-most y tick-label if it is outside the figure
+            extent = p.ax.yaxis.get_ticklabels()[-1].get_window_extent()
+            if extent.height and extent.y1 > self.figure.get_window_extent().y1:
+                p.ax.set_yticks(p.ax.get_yticks()[:-1])
 
     def get_ylim(self):
         vmin = min(p.vmin for p in self.__plots)
