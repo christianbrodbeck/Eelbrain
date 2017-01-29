@@ -4,7 +4,6 @@ from __future__ import print_function
 from distutils.version import LooseVersion
 from email.mime.text import MIMEText
 import keyring
-import pdb
 import smtplib
 import socket
 import sys
@@ -144,6 +143,10 @@ class Notifier(object):
             if self.debug:
                 traceback.print_exc()
                 print('')
+                try:
+                    import ipdb as pdb
+                except ImportError:
+                    import pdb
                 pdb.post_mortem(traceback_)
         else:
             event = '{host} finished {task}'.format(host=host, task=self.name)
