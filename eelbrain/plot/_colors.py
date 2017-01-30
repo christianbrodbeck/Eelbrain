@@ -268,17 +268,18 @@ class ColorGrid(EelFigure):
             row_labels = row_cells
 
         # column labels
+        tilt_labels = any(len(label) > 1 for label in column_labels)
         self._labels = []
         if column_label_position == 'top':
             y = n_rows + 0.1
             va = 'bottom'
-            rotation = 40
+            rotation = 40 if tilt_labels else 0
             ymin = 0
             ymax = self._layout.h / size
         elif column_label_position == 'bottom':
             y = -0.1
             va = 'top'
-            rotation = -40
+            rotation = -40 if tilt_labels else 0
             ymax = n_rows
             ymin = n_rows - self._layout.h / size
         else:
@@ -286,7 +287,9 @@ class ColorGrid(EelFigure):
             raise ValueError(msg)
 
         for col, label in enumerate(column_labels):
-            h = ax.text(col + 0.5, y, label, va=va, ha='left', rotation=rotation)
+            h = ax.text(col + 0.5, y, label, va=va,
+                        ha='left' if tilt_labels else 'center',
+                        rotation=rotation)
             self._labels.append(h)
 
         # row labels
