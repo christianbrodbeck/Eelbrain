@@ -1,10 +1,16 @@
 '''Eelbrain GUIs'''
 
 
-def run():
-    "Hand over command to the GUI (quit the GUI to return to the terminal)"
+def run(block=False):
+    """Hand over command to the GUI (quit the GUI to return to the terminal)
+
+    Parameters
+    ----------
+    block : bool
+        Block the Terminal even if the gui is capable of being run in parallel.
+    """
     from . import _wxgui
-    _wxgui.run()
+    _wxgui.run(block)
 
 
 def select_components(path, ds, sysname=None):
