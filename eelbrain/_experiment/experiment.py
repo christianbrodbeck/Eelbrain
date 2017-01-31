@@ -646,9 +646,9 @@ class TreeModel(object):
                 for handler in eval_handlers:
                     try:
                         v = handler(v)
-                    except ValueError as exception:
+                    except ValueError:
                         if match:
-                            raise exception
+                            raise
 
                     if not isinstance(v, basestring):
                         err = "Invalid conversion: %s=%r" % (k, v)
