@@ -26,6 +26,7 @@ from __future__ import print_function
 from collections import Iterator, OrderedDict, Sequence
 from copy import deepcopy
 from fnmatch import fnmatchcase
+from functools import partial
 import itertools
 from itertools import chain, izip
 from keyword import iskeyword
@@ -4632,6 +4633,36 @@ class NDVar(object):
         info = self.info.copy()
         return NDVar(np.where(idx, self.x, 0), self.dims, info,
                      name or self.name)
+
+    def var(self, dims=(), ddof=0, **regions):
+        """Compute the variance over given dimensions
+
+        Parameters
+        ----------
+        dims : str | tuple of str | boolean NDVar
+            Dimensions over which to operate. A str is used to specify a single
+            dimension, a tuple of str to specify several dimensions, None to
+            compute the sum over all dimensions.
+            An boolean NDVar with the same dimensions as the data can be used
+            to compute the variance in specific elements (if the data has a case
+            dimension, the variance is computed for each case).
+        *regions*
+            Regions over which to aggregate. For example, to get the variance
+            between time=0.1 and time=0.2, use ``ndvar.var(time=(0.1, 0.2))``.
+        ddof : int
+            Degrees of freedom (default 0; see :func:`numpy.var`).
+        name : str
+            Name of the output NDVar (default is the current name).
+
+        Returns
+        -------
+        var : NDVar | Var | float
+            The variance over specified dimensions. Returns a Var if only the
+            case dimension remains, and a float if the function collapses over
+            all data.
+        """
+        return self._aggregate_over_dims(dims, regions,
+                                         partial(np.var, ddof=ddof))
 
 
 def extrema(x, axis=0):

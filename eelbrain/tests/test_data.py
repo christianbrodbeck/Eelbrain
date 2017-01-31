@@ -1055,6 +1055,16 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.min(idxsub), xsub.min(idxsub))
     assert_array_equal(x.min(idx1d), x.x[:, idx1d.x].min(1))
 
+    eq_(x.var(), x.x.var())
+    eq_(x.var(ddof=1), x.x.var(ddof=1))
+    assert_array_equal(x.var(dim), x.x.var(axis))
+    assert_array_equal(x.var(dims, ddof=1), x.x.var(axes, ddof=1))
+    assert_array_equal(x.var(idx0), [x_[idx0.x].var() for x_ in x.x])
+    assert_array_equal(x.var(idx), [x_[i].var() for x_, i in izip(x.x, idx.x)])
+    assert_array_equal(x0.var(idx0), x0.x[idx0.x].var())
+    assert_array_equal(x.var(idxsub), xsub.var(idxsub))
+    assert_array_equal(x.var(idx1d), x.x[:, idx1d.x].var(1))
+
     eq_(x.std(), x.x.std())
     assert_array_equal(x.std(dim), x.x.std(axis))
     assert_array_equal(x.std(dims), x.x.std(axes))
