@@ -32,21 +32,43 @@ def _apply_kernel(x, h, out=None):
 
 
 def _get_continuous(n_samples=100, seed=0):
-    "Continuous data for testing boosting"
+    """Continuous data for testing boosting
+
+    Parameters
+    ----------
+    n_samples : int
+        Number of samples to simulate.
+    seed : int
+        Seed for :func:`numpy.random.seed` (``None`` to skip seeding random
+        state; default us 0).
+
+    Returns
+    -------
+    data : dict
+        {:class:`str`: :class:`NDVar`}`` dictionary with simulated data:
+
+         - ``x1``: random time series
+         - ``x2``: two random time series
+         - ``h1`` and ``h2``: Kernels corresponding to ``x1`` and ``x2``
+         - ``y``: convolution of ``(x1 * h1) + (x2 * h2)``
+    """
     if seed is not None:
         np.random.seed(seed)
     time = UTS(0, 0.1, n_samples)
+    h_time = UTS(0, 0.1, 10)
+    xdim = Ordered('xdim', [0, 1])
 
     x1 = NDVar(np.random.normal(0, 1, (n_samples,)), (time,), name='x1')
-    h1 = np.array([0, 0, 1, 3, 0, 0, 0, 0, 2, 3])
+    h1 = NDVar(np.array([0, 0, 1, 3, 0, 0, 0, 0, 2, 3]), (h_time,), name='h1')
 
     x2 = NDVar(np.random.normal(0, 1, (2, n_samples,)),
-               (Ordered('xdim', [0, 1]), time), name='x2')
-    h2 = np.array([[0, 0, 0, 0, 0, 0, -1, -3, 0, 0],
-                   [0, 0, 2, 2, 0, 0, 0, 0, 0, 0]])
+               (xdim, time), name='x2')
+    h2 = NDVar(np.array([[0, 0, 0, 0, 0, 0, -1, -3, 0, 0],
+                         [0, 0, 2, 2, 0, 0, 0, 0, 0, 0]]),
+               (xdim, h_time), name='h2')
 
-    y = _apply_kernel(x1.x[np.newaxis], h1[np.newaxis])
-    y += _apply_kernel(x2.x, h2)
+    y = _apply_kernel(x1.x[np.newaxis], h1.x[np.newaxis])
+    y += _apply_kernel(x2.x, h2.x)
     y = NDVar(y, (time,), name='y')
     return {'y': y, 'x1': x1, 'h1': h1, 'x2': x2, 'h2': h2}
 

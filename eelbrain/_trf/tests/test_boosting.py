@@ -7,9 +7,10 @@ import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 import cPickle as pickle
 import scipy.io
-from eelbrain import boosting, datasets
+from eelbrain import boosting, convolve, datasets
 from eelbrain._trf import _boosting
 from eelbrain._trf._boosting import boost_1seg, evaluate_kernel
+from eelbrain._utils.testing import assert_dataobj_equal
 
 
 def assert_res_equal(res1, res):
@@ -75,7 +76,12 @@ def test_boosting():
     yield run_boosting, ds, True
     yield run_boosting, ds, False
 
-    # test NaN checks
+    # convolve function
+    y = convolve([ds['h1'], ds['h2']], [ds['x1'], ds['x2']])
+    y.name = 'y'
+    assert_dataobj_equal(y, ds['y'])
+
+    # test NaN checks  (modifies data)
     ds['x2'].x[1, 50] = np.nan
     assert_raises(ValueError, boosting, ds['y'], ds['x2'], 0, .5)
     assert_raises(ValueError, boosting, ds['y'], ds['x2'], 0, .5, False)

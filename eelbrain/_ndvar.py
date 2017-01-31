@@ -1,5 +1,6 @@
 """NDVar operations"""
 from collections import defaultdict
+from itertools import izip
 from math import floor
 
 import mne
@@ -50,6 +51,75 @@ def concatenate(ndvars, dim='time', name=None, tmin=0):
                                   "'case' are implemented" % repr(dim))
     dims = ndvar.dims[:axis] + (out_dim,) + ndvar.dims[axis + 1:]
     return NDVar(x, dims, {}, name or ndvar.name)
+
+
+def convolve(h, x):
+    """Convolve ``h`` and ``x`` along the time dimension
+
+    Parameters
+    ----------
+    h : NDVar | sequence of NDVar
+        Kernel.
+    x : NDVar | sequence of NDVar
+        Data to convolve, corresponding to ``h``.
+
+    Returns
+    -------
+    y : NDVar
+        Convolution, with same time dimension as ``x``.
+    """
+    if isinstance(h, NDVar):
+        if not isinstance(x, NDVar):
+            raise TypeError("If h is an NDVar, x also needs to be an NDVar "
+                            "(got x=%r)" % (x,))
+        elif h.ndim != x.ndim:
+            raise ValueError("x and h do not have same number of dimensions")
+
+        if h.ndim == 1:
+            ht = h.get_dim('time')
+            xt = x.get_dim('time')
+        elif h.ndim == 2:
+            hdim, ht = h.get_dims((None, 'time'))
+            xdim, xt = x.get_dims((None, 'time'))
+            if hdim != xdim:
+                raise ValueError("h %s dimension and x %s dimension do not "
+                                 "match" % (hdim.name, xdim.name))
+        else:
+            raise ValueError("h and x must be 1 or 2 dimensional, got "
+                             "ndim=%i" % h.ndim)
+
+        if ht.tstep != xt.tstep:
+            raise ValueError(
+                "h and x need to have same time-step (got h.time.tstep=%s, "
+                "x.time.tstep=%s)" % (ht.tstep, xt.tstep))
+
+        if h.ndim == 1:
+            data = np.convolve(h.x, x.x)
+        else:
+            data = None
+            for h_i, x_i in izip(h.get_data((hdim.name, 'time')),
+                                 x.get_data((xdim.name, 'time'))):
+                if data is None:
+                    data = np.convolve(h_i, x_i)
+                else:
+                    data += np.convolve(h_i, x_i)
+
+        i_start = -int(round(ht.tmin / ht.tstep))
+        i_stop = i_start + xt.nsamples
+        if i_start < 0:
+            data = np.concatenate((np.zeros(-i_start), data[:i_stop]))
+        else:
+            data = data[i_start: i_stop]
+
+        return NDVar(data, (xt,), x.info.copy(), x.name)
+    else:
+        out = None
+        for h_, x_ in izip(h, x):
+            if out is None:
+                out = convolve(h_, x_)
+            else:
+                out += convolve(h_, x_)
+        return out
 
 
 def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
