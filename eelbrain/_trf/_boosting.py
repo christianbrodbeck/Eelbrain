@@ -30,6 +30,7 @@ from .. import _colorspaces as cs
 from .._data_obj import NDVar, UTS, dataobj_repr
 from .._stats.error_functions import (l1, l2, l1_for_delta, l2_for_delta,
                                       update_error)
+from .._utils import LazyProperty
 
 
 # BoostingResult version
@@ -56,6 +57,10 @@ class BoostingResult(object):
         The temporal response function. Whether ``h`` is an NDVar or a tuple of
         NDVars depends on whether the ``x`` parameter to :func:`boosting` was
         an NDVar or a sequence of NDVars.
+    h_scaled : NDVar | tuple of NDVar
+        ``h`` scaled such that it applies to the original input ``y`` and ``x``.
+        If boosting was done with ``scale_data=False``, ``h_scaled`` is the same
+        as ``h``.
     r : float | NDVar
         Correlation between the measured response and the response predicted
         with ``h``. Type depends on the ``y`` parameter to :func:`boosting`.
@@ -127,6 +132,16 @@ class BoostingResult(object):
             if value != default:
                 items.append('%s=%r' % (name, value))
         return '<%s>' % ', '.join(items)
+
+    @LazyProperty
+    def h_scaled(self):
+        if self.y_scale is None:
+            return self.h
+        elif isinstance(self.h, NDVar):
+            return self.h * (self.y_scale / self.x_scale)
+        else:
+            return tuple(h * (self.y_scale / sx) for h, sx in
+                         izip(self.h, self.x_scale))
 
 
 def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,

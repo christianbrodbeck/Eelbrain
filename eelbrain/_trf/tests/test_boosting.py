@@ -81,6 +81,15 @@ def test_boosting():
     y.name = 'y'
     assert_dataobj_equal(y, ds['y'])
 
+    # test prediction with res.h and res.h_scaled
+    res = boosting(ds['y'], ds['x1'], 0, 1)
+    y1 = convolve(res.h_scaled, ds['x1'])
+    x_scaled = ds['x1'] / res.x_scale
+    y2 = convolve(res.h, x_scaled)
+    y2 *= res.y_scale
+    y2 += y1.mean() - y2.mean()  # mean can't be reconstructed
+    assert_dataobj_equal(y1, y2, decimal=12)
+
     # test NaN checks  (modifies data)
     ds['x2'].x[1, 50] = np.nan
     assert_raises(ValueError, boosting, ds['y'], ds['x2'], 0, .5)

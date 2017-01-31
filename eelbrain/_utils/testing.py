@@ -4,6 +4,7 @@ from distutils.version import LooseVersion
 from functools import wraps
 from importlib import import_module
 import os
+from operator import mul
 import shutil
 import tempfile
 
@@ -45,13 +46,11 @@ def assert_dataset_equal(ds1, ds2, msg="Datasets unequal", decimal=None):
 
 
 def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None):
-    """
-    Raise an assertion if two data-objects are not equal up to desired
-    precision.
+    """Assert that two data-objects are equal up to desired precision.
 
     Parameters
     ----------
-    ds1, ds2 : data-objects
+    d1, d2 : data-objects
         Data-objects to compare.
     msg : str
         Prefix of the error message to be printed in case of failure.
@@ -67,7 +66,7 @@ def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None):
     msg += ":"
     assert_equal(d1.name, d2.name, "%s unequal names (%r vs %r"
                  ")" % (msg, d1.name, d2.name))
-    msg += 'Two objects named %r have' % d1.name
+    msg += ' Two %ss named %r have' % (d1.__class__.__name__, d1.name)
     len1 = len(d1)
     len2 = len(d2)
     assert_equal(len1, len2, "%s unequal length: %i/%i" % (msg, len1, len2))
@@ -77,7 +76,18 @@ def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None):
         assert_true(np.all(d1 == d2), "%s unequal values: %r vs "
                     "%r" % (msg, d1, d2))
     elif isinstance(d1, NDVar):
-        assert_true(np.all(d1.x == d2.x), "%s unequal values" % msg)
+        if decimal:
+            is_different = np.max(np.abs(d1.x - d2.x)) >= 10**-decimal
+        else:
+            is_different = np.any(d1.x != d2.x)
+
+        if is_different:
+            n = reduce(mul, d1.x.shape)
+            n_different = (d1.x != d2.x).sum()
+            mean_diff = np.abs(d1.x - d2.x).sum() / n_different
+            raise AssertionError("%s unequal values. Difference in %i of %i "
+                                 "values, average difference=%s." %
+                                 (msg, n_different, n, mean_diff))
     elif isdatalist(d1):
         for i in xrange(len(d1)):
             assert_equal(d1[i], d2[i], "%s unequal values" % msg)
