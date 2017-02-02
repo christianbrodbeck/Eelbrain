@@ -6955,7 +6955,7 @@ class Dimension(object):
         return str(self.name)
 
     def _axis_im_extent(self):
-        "extent for im plots"
+        "extent for im plots; needs to extend beyond end point locations"
         return -0.5, len(self) - 0.5
 
     def _axis_format(self, scalar, label):

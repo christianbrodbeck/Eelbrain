@@ -2034,6 +2034,9 @@ class XAxisMixin(object):
         Axes that should be managed by the mixin.
     xlim : tuple of 2 scalar
         Initial x-axis display limits.
+    im : bool
+        Plot displays an im, i.e. the axes limits need to extend beyond the
+        dimension endpoints by half a step (default False).
 
     Notes
     -----
@@ -2045,10 +2048,15 @@ class XAxisMixin(object):
      - ``f``: x-axis zoom in (reduce x axis range)
      - ``d``: x-axis zoom out (increase x axis range)
     """
-    def __init__(self, epochs, xdim, xlim=None, axes=None):
-        extent = tuple(e.get_dim(xdim)._axis_im_extent() for e in chain(*epochs))
-        self.__xmin = min(e[0] for e in extent)
-        self.__xmax = max(e[1] for e in extent)
+    def __init__(self, epochs, xdim, xlim=None, axes=None, im=False):
+        dims = tuple(e.get_dim(xdim) for e in chain(*epochs))
+        if im:
+            dim_extent = tuple(dim._axis_im_extent() for dim in dims)
+            self.__xmin = min(e[0] for e in dim_extent)
+            self.__xmax = max(e[1] for e in dim_extent)
+        else:
+            self.__xmin = min(dim[0] for dim in dims)
+            self.__xmax = max(dim[-1] for dim in dims)
         self.__axes = axes or self._axes
         self.__vspans = []
         self._register_key('f', self.__on_zoom_plus)
@@ -2063,14 +2071,15 @@ class XAxisMixin(object):
     def _get_xlim(self):
         return self.__axes[0].get_xlim()
 
-    def __animate(self, vmin, vmin_d, vmax, vmax_d):
+    def __animate(self, vmin, vmin_dst, vmax, vmax_dst):
         n_steps = int(0.1 // self._last_draw_time)
-        if n_steps <= 1:
-            self.set_xlim(vmin + vmin_d, vmax + vmax_d)
-        else:
-            for i in xrange(1, n_steps + 1):
+        if n_steps > 1:
+            vmin_d = vmin_dst - vmin
+            vmax_d = vmax_dst - vmax
+            for i in xrange(1, n_steps):
                 x = i / n_steps
                 self.set_xlim(vmin + x * vmin_d, vmax + x * vmax_d)
+        self.set_xlim(vmin_dst, vmax_dst)
 
     def __on_beginning(self, event):
         left, right = self._get_xlim()
@@ -2084,29 +2093,27 @@ class XAxisMixin(object):
 
     def __on_zoom_plus(self, event):
         left, right = self._get_xlim()
-        d = right - left
-        self.__animate(left, d / 4., right, -d / 4.)
+        d = (right - left) / 4.
+        self.__animate(left, left + d, right, right - d)
 
     def __on_zoom_minus(self, event):
         left, right = self._get_xlim()
         d = right - left
         new_left = max(self.__xmin, left - (d / 2.))
         new_right = min(self.__xmax, new_left + 2 * d)
-        self.__animate(left, new_left - left, right, new_right - right)
+        self.__animate(left, new_left, right, new_right)
 
     def __on_left(self, event):
         left, right = self._get_xlim()
         d = right - left
         new_left = max(self.__xmin, left - d)
-        new_right = new_left + d
-        self.__animate(left, new_left - left, right, new_right - right)
+        self.__animate(left, new_left, right, new_left + d)
 
     def __on_right(self, event):
         left, right = self._get_xlim()
         d = right - left
         new_right = min(self.__xmax, right + d)
-        new_left = new_right - d
-        self.__animate(left, new_left - left, right, new_right - right)
+        self.__animate(left, new_right - d, right, new_right)
 
     def _set_xlim(self, left, right):
         for ax in self.__axes:

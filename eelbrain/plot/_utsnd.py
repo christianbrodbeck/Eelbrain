@@ -255,7 +255,7 @@ class Array(ColorMapMixin, XAxisMixin, EelFigure):
         e0 = epochs[0][0]
         self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
         self._configure_yaxis_dim(e0.get_dim(ydim), ylabel, scalar=False)
-        XAxisMixin.__init__(self, epochs, xdim, xlim)
+        XAxisMixin.__init__(self, epochs, xdim, xlim, im=True)
         self._show()
 
     def _fill_toolbar(self, tb):
