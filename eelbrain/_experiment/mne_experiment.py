@@ -1830,12 +1830,13 @@ class MneExperiment(FileTree):
         criteria = self._cluster_criteria[self.get('select_clusters')]
         return {'min' + dim: criteria[dim] for dim in dims if dim in criteria}
 
-    def _add_epochs(self, ds, epoch, baseline=True, ndvar=True, data_raw=False,
-                    pad=None, decim=None, reject=True, apply_ica=True,
-                    trigger_shift=True, eog=False):
+    def _add_epochs(self, ds, epoch, baseline, ndvar, data_raw, pad, decim,
+                    reject, apply_ica, trigger_shift, eog, tmin, tmax):
         modality = self.get('modality')
-        tmin = epoch.tmin
-        tmax = epoch.tmax
+        if tmin is None:
+            tmin = epoch.tmin
+        if tmax is None:
+            tmax = epoch.tmax
         if baseline is True:
             baseline = epoch.baseline
         if pad:
@@ -2576,7 +2577,8 @@ class MneExperiment(FileTree):
     def load_epochs(self, subject=None, baseline=False, ndvar=True,
                     add_bads=True, reject=True, cat=None,
                     decim=None, pad=0, data_raw=False, vardef=None,
-                    eog=False, trigger_shift=True, apply_ica=True, **kwargs):
+                    eog=False, trigger_shift=True, apply_ica=True, tmin=None,
+                    tmax=None, **kwargs):
         """
         Load a Dataset with epochs for a given epoch definition
 
@@ -2623,6 +2625,10 @@ class MneExperiment(FileTree):
         apply_ica : bool
             If the current rej setting uses ICA, remove the excluded ICA
             components from the Epochs.
+        tmin : scalar
+            Override the epoch's ``tmin`` parameter.
+        tmax : scalar
+            Override the epoch's ``tmax`` parameter.
         """
         if ndvar:
             if isinstance(ndvar, basestring):
@@ -2634,7 +2640,8 @@ class MneExperiment(FileTree):
             dss = []
             for _ in self.iter(group=group):
                 ds = self.load_epochs(None, baseline, ndvar, add_bads, reject,
-                                      cat, decim, pad, data_raw, vardef)
+                                      cat, decim, pad, data_raw, vardef,
+                                      tmin=tmin, tmax=tmax)
                 dss.append(ds)
 
             return combine(dss)
@@ -2643,10 +2650,12 @@ class MneExperiment(FileTree):
             with self._temporary_state:
                 ds_meg = self.load_epochs(subject, baseline, ndvar, add_bads,
                                           reject, cat, decim, pad, data_raw,
-                                          vardef, modality='')
+                                          vardef, tmin=tmin, tmax=tmax,
+                                          modality='')
                 ds_eeg = self.load_epochs(subject, baseline, ndvar, add_bads,
                                           reject, cat, decim, pad, data_raw,
-                                          vardef, modality='eeg')
+                                          vardef, tmin=tmin, tmax=tmax,
+                                          modality='eeg')
             ds, eeg_epochs = align(ds_meg, ds_eeg['epochs'], 'index',
                                    ds_eeg['index'])
             ds['epochs'] = mne.epochs.add_channels_epochs((ds['epochs'], eeg_epochs))
@@ -2666,7 +2675,8 @@ class MneExperiment(FileTree):
 
             # load sensor space data
             ds = self._add_epochs(ds, epoch, baseline, ndvar, data_raw, pad,
-                                  decim, reject, apply_ica, trigger_shift, eog)
+                                  decim, reject, apply_ica, trigger_shift, eog,
+                                  tmin, tmax)
 
         return ds
 
