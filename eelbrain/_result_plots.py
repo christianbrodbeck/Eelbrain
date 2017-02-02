@@ -17,7 +17,7 @@ RC = {'figure.dpi': 300,
       'font.family': 'sans-serif',
       'font.sans-serif': 'Helvetica',
       'font.size': 9,
-      'figure.subplot.top': 0.975,
+      'figure.subplot.top': 0.95,
       'legend.fontsize': 6,
       'legend.frameon': False}
 for key in mpl.rcParams:
@@ -55,10 +55,10 @@ class ClusterPlotter(object):
         Labels for data in a ``{cell: label}`` dictionary (the default is to
         use cell names).
     h : scalar
-        Plot height in inches (default 1.1).
+        Plot height in inches (default 1.2).
     rc : dict
         Matplotlib rc-parameters dictionary (the default is optimized for the
-        default plot size ``h=1.1``).
+        default plot size ``h=1.2``).
 
     Notes
     -----
@@ -67,7 +67,7 @@ class ClusterPlotter(object):
     reloading the data.
     """
     def __init__(self, ds, res, colors, dst, vec_fmt='pdf', pix_fmt='png',
-                 labels=None, h=1.1, rc=None):
+                 labels=None, h=1.2, rc=None):
         self.rc = RC.copy()
         if rc is not None:
             self.rc.update(rc)
@@ -243,7 +243,7 @@ class ClusterPlotter(object):
 
         return ds, model, modelname
 
-    def plot_values(self, ids, model, ymax, ymin=0, dpi=300, sub=None,
+    def plot_values(self, ids, model, ymax, ymin, dpi=300, sub=None,
                     subagg=None, cells=None, pairwise=False, colors=None,
                     prefix=None, w=None, filter=None):
         """Plot values in cluster
@@ -260,7 +260,7 @@ class ClusterPlotter(object):
         ymax : scalar
             Top of the y-axis.
         ymin : scalar
-            Bottom of the y axis (default 0).
+            Bottom of the y axis.
         dpi : int
             Figure DPI.
         sub : str

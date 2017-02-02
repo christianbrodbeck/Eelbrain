@@ -3262,7 +3262,7 @@ class MneExperiment(FileTree):
     def _load_result_plotter(self, test, tstart, tstop, pmin, parc=None,
                              mask=None, samples=10000, data='source',
                              sns_baseline=True, src_baseline=None,
-                             colors=None, labels=None, h=1.1, rc=None,
+                             colors=None, labels=None, h=1.2, rc=None,
                              dst=None, vec_fmt='svg', pix_fmt='png', **kwargs):
         """Load cluster-based test result plotter
 
