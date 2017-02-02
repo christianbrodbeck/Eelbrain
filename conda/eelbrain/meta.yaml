@@ -13,17 +13,15 @@ requirements:
     - python
     - pywin32-ctypes  # [win]
     - setuptools >=17
-    - colormath >=2.1
+    - numpy x.x
+    # the rest so that setuptools does not try to download them
+    - pillow
     - keyring >=5
-    - matplotlib >=1.1
-    - mayavi
+    - tex >=1.8
     - mne >=0.13.1
     - nibabel >=2.0
-    - numpy >=1.0
-    - pillow
-    - scipy >=0.16
-    - tex >=1.8
     - tqdm >=4.8
+    - colormath >=2.1
 
   run:
     - python
@@ -36,7 +34,6 @@ requirements:
     - numpy >=1.0
     - pillow
     - pysurfer >=0.7
-    - rpy2
     - scipy >=0.16
     - tex >=1.8
     - tqdm >=4.8

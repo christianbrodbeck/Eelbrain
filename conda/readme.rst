@@ -30,9 +30,11 @@ $ anaconda upload /anaconda/conda-bld/win-64/<package>.tar.bz2
 Eelbrain
 --------
 
-- Update version in ./eelbrain/meta.yaml
-- run $ conda build eelbrain
+- Update version in ``setup.py`` and ``meta.yaml``
+- run with appropriate numpy version:
 
-Upload as beta:
+ 	$ conda build eelbrain --numpy 1.11
 
-$ anaconda upload -l beta /anaconda/conda-bld/osx-64/<package>-py27_0.tar.bz2
+- Upload as beta:
+
+	$ anaconda upload -l beta /anaconda/conda-bld/<platform>/<package>.tar.bz2
