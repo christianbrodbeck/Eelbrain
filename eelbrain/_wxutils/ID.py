@@ -19,6 +19,7 @@ CLEAR_CACHE = wx.NewId()
 CLEAR_TERMINAL = wx.NewId()
 COLOUR_CHOOSER = wx.NewId()
 COMMENT = wx.NewId()
+COPY_AS_PNG = wx.NewId()
 
 DATASET_ATTACH = wx.NewId()
 DATASET_IMPORT = wx.NewId()

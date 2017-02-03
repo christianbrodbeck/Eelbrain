@@ -6,9 +6,9 @@ http://matplotlib.sourceforge.net/examples/user_interfaces/index.html
 
 
 '''
-
+from logging import getLogger
+import os
 import tempfile
-import logging
 
 import numpy as np
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
@@ -36,7 +36,6 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
     Subclass of mpl's Canvas to allow for more interaction with Eelbrain (such
     as copying the contents to the clipboard).
     """
-    _copy_as_pdf = True
     def __init__(self, parent, *args, **kwargs):
         """wx.Panel with a matplotlib figure
 
@@ -77,29 +76,23 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
         "http://matplotlib.sourceforge.net/examples/user_interfaces/wxcursor_demo.html"
         self.SetCursor(wx.StockCursor(wx.CURSOR_CROSS))
 
-#    def OnPaint(self, event):
-#        self.draw()
-
     def Copy(self):
-        if self._copy_as_pdf:
-            try:
-                if wx.TheClipboard.Open():
-                    # same code in mpl_tools
-                    path = tempfile.mktemp('.pdf')  # , text=True)
-                    logging.debug("Temporary file created at: %s" % path)
-                    self.figure.savefig(path)
-                    # copy path
-                    do = wx.FileDataObject()
-                    do.AddFile(path)
-                    wx.TheClipboard.SetData(do)
-                    wx.TheClipboard.Close()
-            except wx._core.PyAssertionError:
-                wx.TheClipboard.Close()
+        # By default, copy PDF
+        if not wx.TheClipboard.Open():
+            getLogger('eelbrain').debug("Failed to open clipboard")
+            return
+        try:
+            path = tempfile.mktemp('.pdf')
+            self.figure.savefig(path)
+            # copy path
+            do = wx.FileDataObject()
+            do.AddFile(path)
+            wx.TheClipboard.SetData(do)
+        finally:
+            wx.TheClipboard.Close()
 
-        else:
-            self.figure.set_facecolor((1, 1, 1))
-            self.draw()
-            self.Copy_to_Clipboard()
+    def CopyAsPNG(self):
+        self.Copy_to_Clipboard()
 
     def MatplotlibEvent(self, event):
         "Create dummy event to check in_axes"

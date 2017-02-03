@@ -46,6 +46,7 @@ class App(wx.App):
         m.AppendSeparator()
         m.Append(wx.ID_CUT, 'Cut \tCtrl+X')
         m.Append(wx.ID_COPY, 'Copy \tCtrl+C')
+        m.Append(ID.COPY_AS_PNG, 'Copy as PNG \tCtrl+Shift+C')
         m.Append(wx.ID_PASTE, 'Paste \tCtrl+V')
         m.AppendSeparator()
         m.Append(wx.ID_CLEAR, 'Cle&ar')
@@ -109,6 +110,7 @@ class App(wx.App):
         self.Bind(wx.EVT_MENU, self.OnClear, id=wx.ID_CLEAR)
         self.Bind(wx.EVT_MENU, self.OnCloseWindow, id=wx.ID_CLOSE)
         self.Bind(wx.EVT_MENU, self.OnCopy, id=wx.ID_COPY)
+        self.Bind(wx.EVT_MENU, self.OnCopyAsPNG, id=ID.COPY_AS_PNG)
         self.Bind(wx.EVT_MENU, self.OnCut, id=wx.ID_CUT)
         self.Bind(wx.EVT_MENU, self.OnOnlineHelp, id=ID.HELP_EELBRAIN)
         self.Bind(wx.EVT_MENU, self.OnOnlineHelp, id=ID.HELP_PYTHON)
@@ -131,6 +133,7 @@ class App(wx.App):
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIClear, id=wx.ID_CLEAR)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIClose, id=wx.ID_CLOSE)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUICopy, id=wx.ID_COPY)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUICopyAsPNG, id=ID.COPY_AS_PNG)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUICut, id=wx.ID_CUT)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIDown, id=wx.ID_DOWN)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIForward, id=wx.ID_FORWARD)
@@ -369,6 +372,9 @@ class App(wx.App):
     def OnCopy(self, event):
         win = wx.Window.FindFocus()
         win.Copy()
+
+    def OnCopyAsPNG(self, event):
+        wx.Window.FindFocus().CopyAsPNG()
 #
     def OnCut(self, event):
         win = wx.Window.FindFocus()
@@ -475,6 +481,9 @@ class App(wx.App):
     def OnUpdateUICopy(self, event):
         win = wx.Window.FindFocus()
         event.Enable(win and hasattr(win, 'CanCopy') and win.CanCopy())
+
+    def OnUpdateUICopyAsPNG(self, event):
+        event.Enable(hasattr(wx.Window.FindFocus(), 'CopyAsPNG'))
 
     def OnUpdateUICut(self, event):
         win = wx.Window.FindFocus()
