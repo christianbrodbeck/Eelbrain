@@ -285,18 +285,18 @@ def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={},
         for label in y.source.parc.cells:
             section = report.add_section(label.capitalize())
 
-            clusters = res.find_clusters(None, True, source=label)
+            clusters = res.find_clusters(source=label)
             src_ = y.sub(source=label)
             source_time_clusters(section, clusters, src_, ds, model, include,
-                                 title, colors, res.match)
+                                 title, colors, res)
     elif not parc and res._kind == 'cluster':
         source_bin_table(report, res, surfer_kwargs)
 
-        clusters = res.find_clusters(None, True)
+        clusters = res.find_clusters()
         clusters.sort('tstart')
         title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
         source_time_clusters(report, clusters, y, ds, model, include, title,
-                             colors, res.match)
+                             colors, res)
     elif not parc and res._kind in ('raw', 'tfce'):
         section = report.add_section("P<=.05")
         source_bin_table(section, res, surfer_kwargs, 0.05)
@@ -328,7 +328,7 @@ def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={},
             clusters.sort('tstart')
             src_ = y.sub(source=label)
             source_time_clusters(section, clusters, src_, ds, model, include,
-                                 title, colors, res.match)
+                                 title, colors, res)
     else:
         raise RuntimeError
     return report
@@ -376,7 +376,7 @@ def source_time_lm(lm, pmin):
     return out
 
 
-def source_time_clusters(section, clusters, y, ds, model, include, title, colors, match):
+def source_time_clusters(section, clusters, y, ds, model, include, title, colors, res):
     """
     Parameters
     ----------
@@ -393,25 +393,35 @@ def source_time_clusters(section, clusters, y, ds, model, include, title, colors
     if clusters.n_cases == 0:
         section.append("No clusters found.")
         return
-    table_ = clusters.as_table(midrule=True, count=True, caption="All clusters.")
-    section.append(table_)
+
+    section.append(
+        clusters.as_table(midrule=True, count=True, caption="All clusters."))
 
     # plot individual clusters
     clusters = clusters.sub("p < %s" % include)
+    # in non-threshold based tests, clusters don't have unique IDs
+    add_cluster_im = 'cluster' not in clusters
+    is_multi_effect_result = 'effect' in clusters
     for cluster in clusters.itercases():
-        source_time_cluster(section, cluster, y, model, ds, title, colors, match)
+        if add_cluster_im:
+            if is_multi_effect_result:
+                cluster['cluster'] = res.cluster(cluster['id'], cluster['effect'])
+            else:
+                cluster['cluster'] = res.cluster(cluster['id'])
+        source_time_cluster(section, cluster, y, model, ds, title, colors,
+                            res.match)
 
 
 def source_time_cluster(section, cluster, y, model, ds, title, colors, match):
     # cluster properties
     tstart_ms = ms(cluster['tstart'])
     tstop_ms = ms(cluster['tstop'])
+    effect = cluster.get('effect', '')
 
     # section/title
     if title is not None:
         title_ = title.format(tstart=tstart_ms, tstop=tstop_ms,
-                              p='%.3f' % cluster['p'],
-                              effect=cluster.get('effect', ''),
+                              p='%.3f' % cluster['p'], effect=effect,
                               location=cluster.get('location', ''),
                               mark=cluster['sig']).strip()
         while '  ' in title_:
@@ -428,20 +438,18 @@ def source_time_cluster(section, cluster, y, model, ds, title, colors, match):
     txt.append('.')
 
     # add cluster image to report
-    brain = plot.brain.cluster(cluster['cluster'].sum('time'),
-                               surf='inflated')
-    caption_ = ["Cluster"]
-    if 'effect' in cluster:
-        caption_.extend(('effect of', cluster['effect']))
-    caption_.append("%i - %i ms." % (tstart_ms, tstop_ms))
-    caption = ' '.join(caption_)
+    brain = plot.brain.cluster(cluster['cluster'].sum('time'), surf='inflated')
     cbar = brain.plot_colorbar(orientation='vertical', show=False)
+    caption = "Cluster"
+    if effect:
+        caption += 'effect of ' + effect
+    caption += "%i - %i ms." % (tstart_ms, tstop_ms)
     section.add_figure(caption, (brain.image('cluster_spatial'), cbar))
     brain.close()
     cbar.close()
     # add cluster time course
-    if 'effect' in cluster:
-        reduced_model = '%'.join(cluster['effect'].split(' x '))
+    if effect:
+        reduced_model = '%'.join(effect.split(' x '))
         if len(reduced_model) < len(model):
             colors_ = plot.colors_for_categorial(ds.eval(reduced_model))
             cluster_timecourse(section, cluster, y, 'source', reduced_model, ds,
