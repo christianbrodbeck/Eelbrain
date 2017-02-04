@@ -1,8 +1,13 @@
 colormath >= 2.1
+keyring >= 5
 matplotlib >= 1.1
+mne >= 0.13.1
+nibabel >= 2.0
 numpy >= 1.8
-numpydoc >= 0.5
-scipy >= 0.11
+pillow
+pysurfer >= 0.7
+scipy >= 0.16
 setuptools >= 17
-Sphinx > 1.1
 tex >= 1.8
+tqdm >= 4.8
+wxpython >= 3.0
