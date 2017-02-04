@@ -245,7 +245,7 @@ class ClusterPlotter(object):
 
     def plot_values(self, ids, model, ymax, ymin, dpi=300, sub=None,
                     subagg=None, cells=None, pairwise=False, colors=None,
-                    prefix=None, w=None, filter=None):
+                    prefix=None, w=None, filter=None, legend=False):
         """Plot values in cluster
 
         Parameters
@@ -282,6 +282,8 @@ class ClusterPlotter(object):
             UTS-stat plot width (default is ``2 * h``).
         filter : Filter
             Filter signal for display purposes (optional).
+        legend : bool
+            Plot a color legend.
         """
         if w is None:
             w = self.h * 2
@@ -291,7 +293,6 @@ class ClusterPlotter(object):
             colors = self.colors
 
         src = ds['srcm']
-        legend_done = False
         n_cells = len(ds.eval(model).cells)
         w_bar = (n_cells * 2 + 4) * (self.h / 12)
         with mpl.rc_context(self.rc):
@@ -330,8 +331,8 @@ class ClusterPlotter(object):
                        dpi=dpi, transparent=True)
                 p.close()
 
-                # legend
-                if not legend_done:
+                # legend (only once)
+                if legend:
                     p.save_legend(self._dst_vec % (modelname + ' legend'),
                                   transparent=True)
-                    legend_done = True
+                    legend = False
