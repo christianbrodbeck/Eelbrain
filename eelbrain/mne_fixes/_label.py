@@ -1,6 +1,5 @@
 # Fixes for defective mne functions
 from collections import defaultdict
-import os
 import os.path as op
 
 import numpy as np
@@ -127,8 +126,7 @@ def write_labels_to_annot(labels, subject=None, parc=None, overwrite=False,
 
         # find number of vertices in surface
         if subject is not None and subjects_dir is not None:
-            fpath = os.path.join(subjects_dir, subject, 'surf',
-                                 '%s.white' % hemi)
+            fpath = op.join(subjects_dir, subject, 'surf', '%s.white' % hemi)
             points, _ = read_surface(fpath)
             n_vertices = len(points)
         else:
@@ -204,18 +202,18 @@ def write_labels_to_annot(labels, subject=None, parc=None, overwrite=False,
         msg = ("Some labels have the same color values (all labels in one "
                "hemisphere must have a unique color):")
         duplicate_colors.insert(0, msg)
-        issues.append(os.linesep.join(duplicate_colors))
+        issues.append('\n'.join(duplicate_colors))
     if invalid_colors:
         msg = ("Some labels have invalid color values (all colors should be "
                "RGBA tuples with values between 0 and 1)")
         invalid_colors.insert(0, msg)
-        issues.append(os.linesep.join(invalid_colors))
+        issues.append('\n'.join(invalid_colors))
     if overlap:
         msg = ("Some labels occupy vertices that are also occupied by one or "
                "more other labels. Each vertex can only be occupied by a "
                "single label in *.annot files.")
         overlap.insert(0, msg)
-        issues.append(os.linesep.join(overlap))
+        issues.append('\n'.join(overlap))
 
     if issues:
         raise ValueError('\n\n'.join(issues))

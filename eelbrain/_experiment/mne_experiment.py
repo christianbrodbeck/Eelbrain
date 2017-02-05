@@ -1533,7 +1533,7 @@ class MneExperiment(FileTree):
                     msg.extend(sorted('  ' + relpath(f, root) for f in files))
                 else:
                     msg.append("No cache files affected.")
-                log.debug(os.linesep.join(msg))
+                log.debug('\n'.join(msg))
                 # don't print same message to the screen twice
                 if self._screen_log_level <= logging.DEBUG:
                     msg = []
@@ -1543,9 +1543,9 @@ class MneExperiment(FileTree):
                     if self.auto_delete_cache is False:
                         msg.append("Automatic cache management disabled. Either "
                                    "revert changes, or set e.auto_delete_cache=True")
-                        raise RuntimeError(os.linesep.join(msg))
+                        raise RuntimeError('\n'.join(msg))
                     elif self.auto_delete_cache == 'debug':
-                        print(os.linesep.join(msg))
+                        print('\n'.join(msg))
                         print("delete:  delete invalid cache files\n"
                               "abort:  raise an error (debugger can be used)\n"
                               "ignore:  proceed without doing anything\n"
@@ -2907,7 +2907,7 @@ class MneExperiment(FileTree):
                 alens = np.array(lens)
                 for l in ulens:
                     err.append('%i: %r' % (l, ds['subject', alens == l].cells))
-                raise DimensionMismatchError(os.linesep.join(err))
+                raise DimensionMismatchError('\n'.join(err))
 
         else:  # single subject
             ds = self._make_evoked(decim, data_raw)

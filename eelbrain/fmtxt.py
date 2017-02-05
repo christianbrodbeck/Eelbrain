@@ -359,7 +359,7 @@ def make_html_doc(body, root, resource_dir=None, title=None, meta=None):
     else:
         meta = ''
 
-    style = os.linesep.join(('', '<style>', STYLE, '</style>'))
+    style = '\n'.join(('', '<style>', STYLE, '</style>'))
 
     env = {'root': root, 'resource_dir': resource_dir}
     txt_body = html(body, env)
@@ -963,7 +963,7 @@ class List(FMTextElement):
             items.append(_html_element('li', item, env))
 
         items.append('</%s>' % tag)
-        return os.linesep.join(items)
+        return '\n'.join(items)
 
     def get_str(self, env={}):
         out = []
@@ -977,7 +977,7 @@ class List(FMTextElement):
                 out.extend('  %s' % line for line in lines[1:])
             else:
                 out.append('- %s' % str(item))
-        return os.linesep.join(out)
+        return '\n'.join(out)
 
 
 # Table ---
@@ -1316,7 +1316,7 @@ class Table(FMTextElement):
                 rows.append(row.get_rtf(env))
         return '\n'.join(rows)
 
-    def get_str(self, env={}, delim='   ', linesep=os.linesep):
+    def get_str(self, env={}, delim='   ', linesep='\n'):
         """Convert Table to str
 
         Parameters
@@ -1405,7 +1405,7 @@ class Table(FMTextElement):
         if self.rules:
             tex_post = [r"\bottomrule"] + tex_post
         # combine
-        tex_repr = os.linesep.join(tex_pre + tex_body + tex_post)
+        tex_repr = '\n'.join(tex_pre + tex_body + tex_post)
         return tex_repr
 
     def get_tsv(self, delimiter='\t', linesep='\r\n', fmt='%.9g'):
@@ -1445,7 +1445,7 @@ class Table(FMTextElement):
         """
         _save_txt(self.get_tsv(delimiter, linesep, fmt), path)
 
-    def save_txt(self, path=None, fmt='%.15g', delim='   ', linesep=os.linesep):
+    def save_txt(self, path=None, fmt='%.15g', delim='   ', linesep='\n'):
         """
         Save the table as text file.
 
@@ -1458,8 +1458,7 @@ class Table(FMTextElement):
         delim : str
             Cell delimiter.
         linesep : str
-            String that is placed in between lines (default is platform-specific
-            ``os.linesep``).
+            String that is placed in between lines (default is ``'\n'``).
         """
         _save_txt(self.get_str({'fmt': fmt}, delim, linesep), path)
 
@@ -2056,7 +2055,7 @@ def unindent(text, skip1=False):
             if skip1:
                 lines[0] = ' ' * rm + lines[0].lstrip()
 
-            text = os.linesep.join(line[rm:] for line in lines)
+            text = '\n'.join(line[rm:] for line in lines)
 
     return text
 

@@ -1,13 +1,12 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 "Some functions which print data in a different way"
 from __future__ import print_function
-import os
 import numpy as np
 
 
 def dicttree(dictionary):
     """readable repr for a hierarchical dictionary"""
-    print(os.linesep.join(_dict_repr(dictionary)))
+    print('\n'.join(_dict_repr(dictionary)))
 
 
 def _dict_repr(dictionary, indent=0):

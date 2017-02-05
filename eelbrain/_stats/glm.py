@@ -22,7 +22,6 @@ from __future__ import print_function
 
 from itertools import izip
 import logging
-import os
 
 import numpy as np
 from scipy.linalg import lstsq
@@ -958,7 +957,7 @@ class ANOVA(object):
 
     def print_log(self):
         out = self._log[:]
-        print(os.linesep.join(out))
+        print('\n'.join(out))
 
     def table(self):
         """Create an ANOVA table

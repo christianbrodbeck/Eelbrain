@@ -5252,11 +5252,13 @@ class Dataset(OrderedDict):
             return self.__repr__()
 
         maxn = preferences['dataset_str_n_cases']
-        txt = unicode(self.as_table(maxn, '%.5g', midrule=True, lfmt=True))
         if self.n_cases > maxn:
-            note = "... (use .as_table() method to see the whole Dataset)"
-            txt = os.linesep.join((txt, note))
-        return txt
+            caption = "... (use .as_table() method to see the whole Dataset)"
+        else:
+            caption = None
+        txt = self.as_table(maxn, '%.5g', midrule=True, caption=caption,
+                            lfmt=True)
+        return unicode(txt)
 
     def _check_n_cases(self, X, empty_ok=True):
         """Check that an input argument has the appropriate length.

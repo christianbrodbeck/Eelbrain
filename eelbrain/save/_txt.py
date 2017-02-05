@@ -1,12 +1,10 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-import os
-
 from .._utils import ui
 
 __all__ = ['txt']
 
 
-def txt(iterator, fmt='%s', delim=os.linesep, dest=None):
+def txt(iterator, fmt='%s', delim='\n', dest=None):
     """
     Writes any object that supports iteration to a text file.
 

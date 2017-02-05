@@ -710,7 +710,7 @@ class TreeModel(object):
                 if not values:
                     lines.append(line)
 
-        table = os.linesep.join(lines)
+        table = '\n'.join(lines)
         if str_out:
             return table
         else:
@@ -793,8 +793,8 @@ class TreeModel(object):
         name_len = max(len(n) for n, _ in nodes)
         path_len = max(len(p) for _, p in nodes)
         pad = ' ' * (80 - name_len - path_len)
-        print(os.linesep.join(n.ljust(name_len) + pad + p.ljust(path_len)
-                              for n, p in nodes))
+        print('\n'.join(n.ljust(name_len) + pad + p.ljust(path_len) for
+                        n, p in nodes))
 
     def store_state(self):
         """Store the current state
@@ -1276,7 +1276,7 @@ class FileTree(TreeModel):
         lines.append('')
         msg = 'Legend  m: source is missing;  o: will overwite a file'
         lines.append(msg)
-        print(os.linesep.join(lines))
+        print('\n'.join(lines))
         rename = tuple(item for item in items if item[0] == ' ')
         if not rename:
             return

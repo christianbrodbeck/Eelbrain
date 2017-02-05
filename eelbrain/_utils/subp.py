@@ -547,7 +547,7 @@ def do_forward_solution(paths=dict(rawfif=None,
         return fwd_file
     else:
         err = "fwd-file not created"
-        err = os.linesep.join([err, "command out:", out])
+        err = '\n'.join([err, "command out:", out])
         raise RuntimeError(err)
 
 
@@ -575,7 +575,7 @@ def do_inverse_operator(fwd_file, cov_file, inv_file='{cov}inv.fif',
 
     _, err = _run(cmd)
     if not os.path.exists(inv_file):
-        raise RuntimeError(os.linesep.join(["inv-file not created", err]))
+        raise RuntimeError('\n'.join(["inv-file not created", err]))
 
 
 def mne_make_morph_maps(s_to='fsaverage', s_from=None, redo=False, subjects_dir=None):
