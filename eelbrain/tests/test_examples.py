@@ -69,7 +69,10 @@ def run_example(example_path, name):
         exec(text, {})
     finally:
         # delete temporary files
-        shutil.rmtree(tempdir)
+        # FIXME:  on Windows (Appveyor) this raises a WindowsError indicating
+        # that the folder is being used by another process
+        if os.name != 'nt':
+            shutil.rmtree(tempdir)
 
 
 def test_examples():
