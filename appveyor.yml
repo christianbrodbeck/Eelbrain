@@ -10,7 +10,7 @@ install:
   - conda config --append channels conda-forge
   - conda config --append channels christianbrodbeck
   - conda install --yes --quiet --file requirements.txt
-  - conda install --yes --quiet nose
+  - conda install --yes --quiet nose rpy2
   - python setup.py develop
 
 build: false
