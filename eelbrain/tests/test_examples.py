@@ -56,18 +56,17 @@ def run_example(example_path, name):
     # copy all files to temporary dir
     tempdir = mkdtemp()
     try:
-        exec_path = os.path.join(tempdir, example_filename)
-        with open(exec_path, 'w') as fid:
-            fid.write(text)
+        logging.info("Tempdir for %s at %s" % (name, tempdir))
         for filename in required_files:
             src = os.path.join(dirname, filename)
+            logging.info(" Copying %s" % (filename,))
             shutil.copy(src, tempdir)
 
         # execute example
-        logging.info("executing %s from %s" % (name, tempdir))
-        plot.configure(show=False)
         os.chdir(tempdir)
-        execfile(example_filename, {})
+        logging.info(" Executing %s" % (name,))
+        plot.configure(show=False)
+        exec(text, {})
     finally:
         # delete temporary files
         shutil.rmtree(tempdir)
