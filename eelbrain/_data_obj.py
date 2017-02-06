@@ -8496,7 +8496,7 @@ class SourceSpace(Dimension):
                     hemi, vertex = m.groups()
                     vertex = int(vertex)
                     vertno = self.vertno[hemi == 'R']
-                    i = np.searchsorted(vertno, vertex)
+                    i = int(np.searchsorted(vertno, vertex))
                     if vertno[i] == vertex:
                         if hemi == 'R':
                             return i + self.lh_n
