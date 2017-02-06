@@ -7,10 +7,12 @@ source:
 
 build:
   number: 0
+  osx_is_app: True
 
 requirements:
   build:
     - python
+    - python.app  # [osx]
     - pywin32-ctypes  # [win]
     - setuptools >=17
     - numpy x.x
@@ -25,8 +27,9 @@ requirements:
 
   run:
     - python
+    - python.app  # [osx]
     - colormath >=2.1
-    - ipython ==5.0  # as of Jan 2017 iPython 5.1 was not a framework build
+    - ipython
     - keyring >=5
     - matplotlib >=1.1
     - mne >=0.13.1

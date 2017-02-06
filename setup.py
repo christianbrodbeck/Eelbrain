@@ -70,6 +70,7 @@ kwargs = dict(name='eelbrain',
               include_dirs=[np.get_include()],
               packages=find_packages(),
               ext_modules=ext,
+              scripts=['bin/eelbrain'],
               )
 
 # Either PIL or Pillow is fine...
