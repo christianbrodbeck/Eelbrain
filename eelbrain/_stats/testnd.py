@@ -30,6 +30,7 @@ from multiprocessing.queues import SimpleQueue
 from multiprocessing.sharedctypes import RawArray
 import logging
 import operator
+import os
 import re
 import socket
 from time import time as current_time
@@ -63,6 +64,7 @@ __test__ = False
 # toggle multiprocessing for _ClusterDist
 MULTIPROCESSING = 1
 N_WORKERS = cpu_count()
+MP_FOR_NON_TOP_LEVEL_FUNCTIONS = os.name != 'nt'  # FIXME
 
 
 def configure(ncpus=None):
@@ -482,7 +484,8 @@ class t_contrast_rel(_Result):
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 iterator = permute_order(len(ct.Y), samples, unit=ct.match)
-                run_permutation(t_contrast, cdist, iterator)
+                run_permutation(t_contrast, cdist, iterator,
+                                MP_FOR_NON_TOP_LEVEL_FUNCTIONS)
 
         # store attributes
         _Result.__init__(self, ct.Y, ct.match, sub, samples, tfce, pmin, cdist,
@@ -627,7 +630,8 @@ class corr(_Result):
                 def test_func(y, out, perm):
                     return stats.corr(y, x, out, perm)
                 iterator = permute_order(n, samples, unit=match)
-                run_permutation(test_func, cdist, iterator)
+                run_permutation(test_func, cdist, iterator,
+                                MP_FOR_NON_TOP_LEVEL_FUNCTIONS)
 
         # compile results
         dims = Y.dims[1:]
@@ -934,7 +938,8 @@ class ttest_ind(_Result):
                 def test_func(y, out, perm):
                     return stats.t_ind(y, n1, n0, True, out, perm)
                 iterator = permute_order(n, samples)
-                run_permutation(test_func, cdist, iterator)
+                run_permutation(test_func, cdist, iterator,
+                                MP_FOR_NON_TOP_LEVEL_FUNCTIONS)
 
         dims = ct.Y.dims[1:]
 
@@ -2926,8 +2931,8 @@ def permutation_worker(in_queue, out_queue, y, shape, test_func, map_args):
         out_queue.put(max_v)
 
 
-def run_permutation(test_func, dist, iterator):
-    if MULTIPROCESSING:
+def run_permutation(test_func, dist, iterator, use_mp=True):
+    if use_mp and MULTIPROCESSING:
         workers, out_queue = setup_workers(test_func, dist)
 
         for perm in iterator:
