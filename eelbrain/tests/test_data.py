@@ -2,8 +2,8 @@
 from __future__ import print_function
 from copy import deepcopy
 from itertools import izip, product
-from operator import (add, iadd, sub, isub, mul, imul, div, idiv, floordiv,
-    ifloordiv, mod, imod)
+from operator import (
+    add, iadd, sub, isub, mul, imul, div, idiv, floordiv, ifloordiv, mod, imod)
 import os
 import cPickle as pickle
 import shutil
@@ -11,10 +11,13 @@ from string import ascii_lowercase
 import tempfile
 
 import mne
-from nose.tools import (eq_, ok_, assert_almost_equal, assert_is_instance,
-    assert_raises, assert_not_equal, nottest)
+from nose import SkipTest
+from nose.tools import (
+    eq_, ok_, assert_almost_equal, assert_is_instance, assert_raises,
+    assert_not_equal, nottest)
 import numpy as np
-from numpy.testing import (assert_equal, assert_array_equal, assert_allclose,
+from numpy.testing import (
+    assert_equal, assert_array_equal, assert_allclose,
     assert_array_almost_equal)
 
 from eelbrain import (
@@ -1135,6 +1138,8 @@ def test_nested_effects():
 
 def test_ols():
     "Test NDVar.ols() method"
+    if os.name == 'nt':
+        raise SkipTest("Skipping test requiring R on Windows")
     from rpy2.robjects import r
 
     # simulate data
@@ -1236,7 +1241,9 @@ def test_io_txt():
 
 
 def test_r():
-    "Test interaction with R thorugh rpy2"
+    "Test interaction with R through rpy2"
+    if os.name == 'nt':
+        raise SkipTest("Skipping test requiring R on Windows")
     from rpy2.robjects import r
 
     r("data(sleep)")
