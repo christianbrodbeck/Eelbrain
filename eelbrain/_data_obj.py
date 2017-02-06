@@ -54,8 +54,8 @@ from . import fmtxt
 from . import _colorspaces as cs
 from ._utils import deprecated, ui, LazyProperty, n_decimals, natsorted
 from ._utils.numpy_utils import (
-    digitize_index, digitize_slice_endpoint, full_slice, index_to_int_array,
-    slice_to_arange)
+    apply_numpy_index, digitize_index, digitize_slice_endpoint, full_slice,
+    index_to_int_array, slice_to_arange)
 from .mne_fixes import MNE_EPOCHS, MNE_EVOKED, MNE_RAW, MNE_LABEL
 from functools import reduce
 
@@ -4762,17 +4762,8 @@ class Datalist(list):
             return list.__getitem__(self, index)
         elif isinstance(index, slice):
             return Datalist(list.__getitem__(self, index), fmt=self._fmt)
-
-        index = np.asarray(index)
-        if index.dtype.kind == 'b':
-            if len(index) != len(self):
-                raise ValueError("Boolean index needs to have same length as "
-                                 "Datalist")
-            return Datalist((self[i] for i in np.flatnonzero(index)), fmt=self._fmt)
-        elif index.dtype.kind == 'i':
-            return Datalist((self[i] for i in index), fmt=self._fmt)
         else:
-            raise TypeError("Unsupported type of index for Datalist: %r" % index)
+            return Datalist(apply_numpy_index(self, index), fmt=self._fmt)
 
     def __setitem__(self, key, value):
         if isinstance(key, LIST_INDEX_TYPES):

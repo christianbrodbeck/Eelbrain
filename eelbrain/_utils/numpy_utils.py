@@ -1,5 +1,8 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from collections import Sequence
 from distutils.version import LooseVersion
+from itertools import izip
+
 import numpy as np
 
 
@@ -66,6 +69,22 @@ def index_to_int_array(index, n):
         elif index.dtype.kind == 'b':
             return np.flatnonzero(index)
     return np.arange(n)[index]
+
+
+def apply_numpy_index(data, index):
+    "Apply numpy index to non-numpy sequence"
+    if isinstance(index, (int, slice)):
+        return data[index]
+    elif isinstance(index, list):
+        return (data[i] for i in index)
+    array = np.asarray(index)
+    assert array.ndim == 1, "Index must be 1 dimensional, got %r" % (index,)
+    if array.dtype.kind == 'i':
+        return (data[i] for i in array)
+    elif array.dtype.kind == 'b':
+        assert len(array) == len(data), "Index must have same length as data"
+        return (d for d, i in izip(data, array) if i)
+    raise TypeError("Invalid numpy-like index: %r" % (index,))
 
 
 def slice_to_arange(s, length):
