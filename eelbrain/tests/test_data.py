@@ -11,7 +11,6 @@ from string import ascii_lowercase
 import tempfile
 
 import mne
-from nose import SkipTest
 from nose.tools import (
     eq_, ok_, assert_almost_equal, assert_is_instance, assert_raises,
     assert_not_equal, nottest)
@@ -29,7 +28,7 @@ from eelbrain._data_obj import (
 from eelbrain._stats.stats import rms
 from eelbrain._utils.testing import (
     assert_dataobj_equal, assert_dataset_equal, assert_source_space_equal,
-    requires_mne_sample_data)
+    requires_mne_sample_data, skip_on_windows)
 
 
 OPERATORS = ((add, iadd, '+'),
@@ -1136,10 +1135,9 @@ def test_nested_effects():
     eq_(i.cells, tuple(expected_cells))
 
 
+@skip_on_windows  # uses R
 def test_ols():
     "Test NDVar.ols() method"
-    if os.name == 'nt':
-        raise SkipTest("Skipping test requiring R on Windows")
     from rpy2.robjects import r
 
     # simulate data
@@ -1240,10 +1238,9 @@ def test_io_txt():
     assert_dataset_equal(ds, ds2, decimal=6)
 
 
+@skip_on_windows  # uses R
 def test_r():
     "Test interaction with R through rpy2"
-    if os.name == 'nt':
-        raise SkipTest("Skipping test requiring R on Windows")
     from rpy2.robjects import r
 
     r("data(sleep)")

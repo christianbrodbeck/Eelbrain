@@ -4,6 +4,7 @@ from nose.tools import assert_raises, eq_, assert_greater
 from eelbrain import datasets, plot
 from eelbrain.plot import _base
 from eelbrain.plot._base import Layout
+from eelbrain._utils.testing import skip_on_windows
 
 
 def assert_layout_ok(*args, **kwargs):
@@ -76,6 +77,7 @@ def test_vlims():
     eq_(lims[meas], (0, 1))
 
 
+@skip_on_windows  # window resizes to screen size
 def test_eelfigure():
     ds = datasets.get_uts()
 

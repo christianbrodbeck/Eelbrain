@@ -165,6 +165,16 @@ def requires_module(name, version):
     return wrapper
 
 
+def skip_on_windows(function):
+    @wraps(function)
+    def decorator(*args, **kwargs):
+        if os.name == 'nt':
+            raise SkipTest('Skipped %s on Windows' % function.__name__)
+        else:
+            return function(*args, **kwargs)
+    return decorator
+
+
 def file_path(name):
     "Path to test data file in the test_data directory"
     path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', '..',
