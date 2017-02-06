@@ -124,5 +124,6 @@ def update_subjects_dir(obj, subjects_dir, depth=0):
             values = obj
         else:
             return
+
         for v in values:
             update_subjects_dir(v, subjects_dir, depth - 1)
