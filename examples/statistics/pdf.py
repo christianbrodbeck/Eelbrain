@@ -1,3 +1,4 @@
+# skip on windows
 # requires: tex
 """Performs ANOVA and creates a PDF of the ANOVA table.
 
