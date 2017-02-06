@@ -7120,23 +7120,22 @@ class Categorial(Dimension):
         Names of the entries.
     """
     def __init__(self, name, values):
-        if len(set(values)) < len(values):
+        self.values = tuple(values)
+        if len(set(self.values)) < len(self.values):
             raise ValueError("Dimension can not have duplicate values")
-        values = np.asarray(values)
-        if values.dtype.kind not in 'SU':
-            raise ValueError("All Categorial values must be strings")
+        if not all(isinstance(x, basestring) for x in self.values):
+            raise ValueError("All Categorial values must be strings; got %r." %
+                             (self.values,))
         self.name = name
-        self.values = values
 
     def __getstate__(self):
-        state = {'name': self.name,
-                 'values': self.values}
-        return state
+        return {'name': self.name, 'values': self.values}
 
     def __setstate__(self, state):
-        name = state['name']
         values = state['values']
-        self.__init__(name, values)
+        if isinstance(values, np.ndarray):  # backwards compatibility
+            values = (unicode(v) for v in values)
+        self.__init__(state['name'], values)
 
     def __repr__(self):
         args = (repr(self.name), str(self.values))
@@ -7146,25 +7145,26 @@ class Categorial(Dimension):
         return len(self.values)
 
     def __eq__(self, other):
-        return (Dimension.__eq__(self, other) and
-                np.all(self.values == other.values))
+        return Dimension.__eq__(self, other) and self.values == other.values
 
     def __getitem__(self, index):
         if isinstance(index, int):
             return self.values[index]
-
-        values = self.values[index]
-        return Categorial(self.name, values)
+        else:
+            return self.__class__(self.name,
+                                  apply_numpy_index(self.values, index))
 
     def _axis_format(self, scalar, label):
         return IndexFormatter(self.values), self._axis_label(label)
 
     def dimindex(self, arg):
-        if isinstance(arg, self.__class__):
-            s_idx, a_idx = np.nonzero(self.values[:, None] == arg.values)
-            return s_idx[np.argsort(a_idx)]
-        elif isinstance(arg, basestring):
-            return np.flatnonzero(self.values == arg)[0]
+        if isinstance(arg, basestring):
+            if arg in self.values:
+                return self.values.index(arg)
+            else:
+                raise IndexError(arg)
+        elif isinstance(arg, self.__class__):
+            return [self.dimindex(v) for v in arg.values]
         else:
             return super(Categorial, self).dimindex(arg)
 
@@ -7196,15 +7196,18 @@ class Categorial(Dimension):
         if self.name != dim.name:
             raise DimensionMismatchError("Dimensions don't match")
 
-        if np.array_equal(self.values, dim.values):
+        if self.values == dim.values:
             return self
-        values = np.intersect1d(self.values, dim.values)
-        if np.array_equal(self.values, values):
+        self_values = set(self.values)
+        dim_values = set(dim.values)
+        intersection = self_values.intersection(dim_values)
+        if len(intersection) == len(self_values):
             return self
-        elif np.array_equal(dim.values, values):
+        elif len(intersection) == len(dim_values):
             return dim
-
-        return self.__class__(self.name, values)
+        else:
+            return self.__class__(self.name, (v for v in self.values if
+                                              v in intersection))
 
 
 class Scalar(Dimension):

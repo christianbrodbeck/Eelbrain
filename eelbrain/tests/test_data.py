@@ -490,8 +490,6 @@ def test_dim_categorial():
 
     # unicode
     dimu = Categorial(name, [u'c', 'b', 'e'])
-    eq_(dimu.values.dtype.kind, 'U')
-    eq_(dim2.values.dtype.kind, 'S')
     eq_(dimu, dim2)
 
 
