@@ -12,6 +12,7 @@ install:
   - conda install --yes --quiet --file requirements.txt
   - conda install --yes --quiet nose
   - python setup.py develop
+  - python -c "import mne; mne.datasets.testing.data_path()"
 
 build: false
 

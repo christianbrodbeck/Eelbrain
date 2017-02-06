@@ -24,11 +24,11 @@ before_install:
   - conda install --yes --quiet --file requirements.txt
   - conda install --yes --quiet nose
   - pip install rpy2
+  - python -c "import mne; mne.datasets.testing.data_path()"
   - python --version
 
 install:
   - python setup.py develop
-#  - pip install pysurfer
 
 script:
   - make test
