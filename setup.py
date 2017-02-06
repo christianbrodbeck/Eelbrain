@@ -96,5 +96,9 @@ setup(
     include_dirs=[np.get_include()],
     packages=find_packages(),
     ext_modules=ext_modules,
-    scripts=['bin/eelbrain'],
+    entry_points={
+        'gui_scripts': [
+            'eelbrain = eelbrain._wxgui.run_ipython:main',
+        ],
+    },
 )
