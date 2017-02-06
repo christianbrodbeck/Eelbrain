@@ -17,15 +17,12 @@ r_packages:
 # Setup anaconda
 # https://gist.github.com/dan-blanchard/7045057
 before_install:
-#  - pip install --upgrade pip
-#  # use anaconda
-#  - pip install conda
-#  - conda init
   - wget -q http://repo.continuum.io/miniconda/Miniconda-latest-MacOSX-x86_64.sh -O miniconda.sh
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p $HOME/miniconda
   - export PATH=$HOME/miniconda/bin:$PATH
-  - conda install --yes python=2.7 numpy scipy matplotlib wxpython nose
+  - conda install --yes --quiet --file requirements.txt
+  - conda install --yes --quiet nose
   - pip install rpy2
   - python --version
 

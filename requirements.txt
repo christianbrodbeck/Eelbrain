@@ -6,7 +6,7 @@ nibabel >= 2.0
 numpy >= 1.8
 pillow
 pysurfer >= 0.7
-scipy >= 0.16
+scipy >= 0.17
 setuptools >= 17
 tex >= 1.8
 tqdm >= 4.8
