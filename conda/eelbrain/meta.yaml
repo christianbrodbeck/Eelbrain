@@ -13,7 +13,7 @@ requirements:
   build:
     - python
     - python.app  # [osx]
-    - pywin32-ctypes  # [win]
+    - toolchain
     - setuptools >=17
     - numpy x.x
     # the rest so that setuptools does not try to download them
