@@ -7,6 +7,11 @@ This is the setup.py script for Eelbrain.
 http://docs.python.org/distutils/index.html
 https://setuptools.readthedocs.io/en/latest/setuptools.html
 
+
+About MANIFEST.in:
+
+https://docs.python.org/2/distutils/sourcedist.html#manifest-template
+
 """
 # Setuptools bootstrap module
 # http://pythonhosted.org//setuptools/setuptools.html
@@ -46,10 +51,7 @@ setup(
     license='GPL3',
     long_description=DESC,
     python_requires='==2.7',
-    setup_requires=[
-        'cython >= 0.21',
-        'numpy >= 1.8',
-    ],
+    setup_requires=open('requirements_install.txt').read().splitlines(),
     tests_require=[
         'nose',
     ],
