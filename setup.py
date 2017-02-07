@@ -5,6 +5,7 @@ setup.py
 This is the setup.py script for Eelbrain.
 
 http://docs.python.org/distutils/index.html
+https://setuptools.readthedocs.io/en/latest/setuptools.html
 
 """
 # Setuptools bootstrap module
@@ -35,38 +36,42 @@ if version != 'dev':
     s = StrictVersion(version)  # check that it's a valid version
 
 # basic setup arguments
-kwargs = dict(name='eelbrain',
-              version=version,
-              description="MEG/EEG analysis tools",
-              url="http://eelbrain.readthedocs.io",
-              author="Christian Brodbeck",
-              author_email='christianbrodbeck@nyu.edu',
-              license='GPL3',
-              long_description=DESC,
-              install_requires=['keyring >= 5',
-                                'tex >= 1.8',
-                                'mne >= 0.13.1',
-                                'nibabel >= 2.0',
-                                'tqdm >= 4.8',
-                                'colormath >= 2.1',
-                                'cython >= 0.21'],
-              extras_require={'full': ['numpy >= 1.8',
-                                       'scipy >= 0.17',
-                                       'matplotlib >= 1.1'],
-                              'dev': ['sphinx >= 1.1',
-                                      'numpydoc >= 0.5'],
-                              'plot.brain': ['pysurfer[save_movie] >= 0.7']},
-              include_dirs=[np.get_include()],
-              packages=find_packages(),
-              ext_modules=cythonize('eelbrain/_stats/*.pyx'),
-              scripts=['bin/eelbrain'],
-              )
-
-# Either PIL or Pillow is fine...
-try:
-    import PIL
-except ImportError:
-    kwargs['install_requires'].append('pillow')
-
-setup(**kwargs)
-
+setup(
+    name='eelbrain',
+    version=version,
+    description="MEG/EEG analysis tools",
+    url="http://eelbrain.readthedocs.io",
+    author="Christian Brodbeck",
+    author_email='christianbrodbeck@nyu.edu',
+    license='GPL3',
+    long_description=DESC,
+    python_requires='==2.7',
+    setup_requires=[
+        'cython >= 0.21',
+        'numpy >= 1.8',
+    ],
+    tests_require=[
+        'nose',
+    ],
+    install_requires=[
+        'colormath >= 2.1',
+        'keyring >= 5',
+        'mne >= 0.13.1',
+        'nibabel >= 2.0',
+        'pillow',
+        'tex >= 1.8',
+        'tqdm >= 4.8',
+    ],
+    extras_require={
+        'full': ['numpy >= 1.8',
+                 'scipy >= 0.17',
+                 'matplotlib >= 1.1'],
+        'dev': ['sphinx >= 1.1',
+                'numpydoc >= 0.5'],
+        'plot.brain': ['pysurfer[save_movie] >= 0.7']
+    },
+    include_dirs=[np.get_include()],
+    packages=find_packages(),
+    ext_modules=cythonize('eelbrain/_stats/*.pyx'),
+    scripts=['bin/eelbrain'],
+)
