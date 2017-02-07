@@ -32,8 +32,18 @@ def pickle(obj, dest=None, protocol=HIGHEST_PROTOCOL):
         if not os.path.splitext(dest)[1]:
             dest += '.pickled'
 
-    with open(dest, 'wb') as fid:
-        dump(obj, fid, protocol)
+    try:
+        with open(dest, 'wb') as fid:
+            dump(obj, fid, protocol)
+    except SystemError as exception:
+        if exception.args[0] == 'error return without exception set':
+            if os.path.exists(dest):
+                os.remove(dest)
+            raise IOError("An error occurred while pickling. This could be "
+                          "due to an attempt to pickle an array (or NDVar) "
+                          "that is too big. Try saving several smaller arrays.")
+        else:
+            raise
 
 
 def map_paths(module_name, class_name):
