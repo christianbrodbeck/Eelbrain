@@ -21,6 +21,9 @@ before_install:
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p $HOME/miniconda
   - export PATH=$HOME/miniconda/bin:$PATH
+  - conda update --yes --quiet conda
+  - conda config --append channels conda-forge
+  - conda config --append channels christianbrodbeck
   - conda install --yes --quiet --file requirements.txt
   - conda install --yes --quiet nose
   - pip install rpy2
