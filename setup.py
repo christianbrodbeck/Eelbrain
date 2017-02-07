@@ -14,8 +14,9 @@ use_setuptools('17')
 
 from distutils.version import StrictVersion
 import re
-import sys
-from setuptools import setup, find_packages, Extension
+from setuptools import setup, find_packages
+
+from Cython.Build import cythonize
 import numpy as np
 
 
@@ -33,18 +34,6 @@ version = match.group(1)
 if version != 'dev':
     s = StrictVersion(version)  # check that it's a valid version
 
-if len(sys.argv) > 1:
-    arg = sys.argv[1]
-else:
-    arg = None
-
-# Cython extensions
-ext = [
-    Extension("eelbrain._stats.opt", ["eelbrain/_stats/opt.c"]),
-    Extension("eelbrain._stats.error_functions",
-              ["eelbrain/_stats/error_functions.c"])
-]
-
 # basic setup arguments
 kwargs = dict(name='eelbrain',
               version=version,
@@ -59,17 +48,17 @@ kwargs = dict(name='eelbrain',
                                 'mne >= 0.13.1',
                                 'nibabel >= 2.0',
                                 'tqdm >= 4.8',
-                                'colormath >= 2.1'],
+                                'colormath >= 2.1',
+                                'cython >= 0.21'],
               extras_require={'full': ['numpy >= 1.8',
                                        'scipy >= 0.17',
                                        'matplotlib >= 1.1'],
-                              'dev': ['cython >= 0.21',
-                                      'sphinx >= 1.1',
+                              'dev': ['sphinx >= 1.1',
                                       'numpydoc >= 0.5'],
                               'plot.brain': ['pysurfer[save_movie] >= 0.7']},
               include_dirs=[np.get_include()],
               packages=find_packages(),
-              ext_modules=ext,
+              ext_modules=cythonize('eelbrain/_stats/*.pyx'),
               scripts=['bin/eelbrain'],
               )
 
