@@ -37,7 +37,8 @@ import os
 import re
 import string
 
-from matplotlib.ticker import FormatStrFormatter, FuncFormatter, IndexFormatter
+from matplotlib.ticker import (
+    FixedLocator, FormatStrFormatter, FuncFormatter, IndexFormatter)
 import mne
 from mne.source_space import label_src_vertno_sel
 from nibabel.freesurfer import read_annot
@@ -6952,7 +6953,7 @@ class Dimension(object):
         return -0.5, len(self) - 0.5
 
     def _axis_format(self, scalar, label):
-        """Return a matplotlib axis formatter and label
+        """Find axis decoration parameters for this dimension
 
         Parameters
         ----------
@@ -6962,6 +6963,16 @@ class Dimension(object):
             im-plots).
         label : bool | str
             Label (if True, return an appropriate axis-specific label).
+
+        Returns
+        -------
+        formatter : matplotlib Formatter
+            Axis tick formatter.
+        locator : matplotlib Locator
+            Tick-locator.
+        label : str | None
+            Returns the default axis label if label==True, otherwise the label
+            argument.
         """
         raise NotImplementedError
 
@@ -7155,7 +7166,9 @@ class Categorial(Dimension):
                                   apply_numpy_index(self.values, index))
 
     def _axis_format(self, scalar, label):
-        return IndexFormatter(self.values), self._axis_label(label)
+        return (IndexFormatter(self.values),
+                FixedLocator(np.arange(len(self)), 10),
+                self._axis_label(label))
 
     def dimindex(self, arg):
         if isinstance(arg, basestring):
@@ -7272,7 +7285,6 @@ class Scalar(Dimension):
                               self.tick_format)
 
     def _axis_format(self, scalar, label):
-        label = self._axis_label(label)
         if scalar:
             if self.tick_format:
                 fmt = FormatStrFormatter(self.tick_format)
@@ -7282,7 +7294,9 @@ class Scalar(Dimension):
             fmt = IndexFormatter([self.tick_format % v for v in self.values])
         else:
             fmt = IndexFormatter(self.values)
-        return fmt, label
+        return (fmt,
+                None if scalar else FixedLocator(np.arange(len(self)), 10),
+                self._axis_label(label))
 
     def dimindex(self, arg):
         if isinstance(arg, self.__class__):
@@ -7523,7 +7537,9 @@ class Sensor(Dimension):
                                           index_to_int_array(index, self.n)))
 
     def _axis_format(self, scalar, label):
-        return IndexFormatter(self.names), self._axis_label(label)
+        return (IndexFormatter(self.names),
+                FixedLocator(np.arange(len(self)), 10),
+                self._axis_label(label))
 
     def _cluster_properties(self, x):
         """Find cluster properties for this dimension
@@ -8305,7 +8321,9 @@ class SourceSpace(Dimension):
         return dim
 
     def _axis_format(self, scalar, label):
-        return FormatStrFormatter('%i'), self._axis_label(label)
+        return (FormatStrFormatter('%i'),
+                FixedLocator(np.arange(len(self)), 10),
+                self._axis_label(label))
 
     def _cluster_properties(self, x):
         """Find cluster properties for this dimension
@@ -8791,7 +8809,7 @@ class UTS(Dimension):
         else:
             fmt = FuncFormatter(lambda x, pos:
                                 '%i' % round(1e3 * self.times[int(round(x))]))
-        return fmt, label
+        return fmt, None, label
 
     def _diminfo(self):
         name = self.name.capitalize()

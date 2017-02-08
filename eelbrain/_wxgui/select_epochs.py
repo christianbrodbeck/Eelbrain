@@ -34,8 +34,7 @@ from .._utils.parse import FLOAT_PATTERN, POS_FLOAT_PATTERN, INT_PATTERN
 from .._utils.numpy_utils import full_slice
 from .._wxutils import Icon, ID, REValidator
 from ..mne_fixes import MNE_EPOCHS
-from ..plot._base import (find_axis_params_data, find_axis_params_dim,
-                          find_fig_vlims, find_fig_cmaps)
+from ..plot._base import find_axis_params_data, find_fig_vlims, find_fig_cmaps
 from ..plot._nuts import _plt_bin_nuts
 from ..plot._topo import _ax_topomap
 from ..plot._utsnd import _ax_bfly_epoch
@@ -1400,8 +1399,8 @@ class Frame(FileFrame):
         ncol = self._columns
 
         # formatters
-        t_formatter, t_label = find_axis_params_dim(self.doc.epochs.time, True, True)
-        y_formatter, y_label = find_axis_params_data(self.doc.epochs, True)
+        t_formatter, t_locator, t_label = self.doc.epochs.time._axis_format(True, True)
+        y_formatter, y_locator, y_label = find_axis_params_data(self.doc.epochs, True)
 
         # segment plots
         self._case_plots = []
@@ -1428,7 +1427,11 @@ class Frame(FileFrame):
                 _plt_bin_nuts(ax, self.doc.blink[epoch_idx],
                               color=(0.99, 0.76, 0.21))
             # formatters
+            if t_locator is not None:
+                ax.xaxis.set_major_locator(t_locator)
             ax.xaxis.set_major_formatter(t_formatter)
+            if y_locator is not None:
+                ax.yaxis.set_major_locator(y_locator)
             ax.yaxis.set_major_formatter(y_formatter)
 
             # store objects

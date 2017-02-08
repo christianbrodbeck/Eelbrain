@@ -45,6 +45,11 @@ def test_plot_array():
     eq_(p._layout.nax, 2)
     p.close()
 
+    # Categorial dimension
+    ds = datasets._get_continuous()
+    p = plot.Array(ds['x2'], interpolation='none', show=False)
+    eq_(len(p.figure.axes[0].get_yticks()), 2)
+
 
 @requires_mne_sample_data
 def test_plot_mne_evoked():

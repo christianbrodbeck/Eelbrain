@@ -264,28 +264,6 @@ def find_axis_params_data(v, label):
     return scale_formatters[scale], label
 
 
-def find_axis_params_dim(dim, scalar, label):
-    """Find an axis label
-
-    Parameters
-    ----------
-    dim : Dimension
-        The dimension.
-    scalar : bool
-        If True, the axis is scalar and labels should correspond to the axis
-        value. If False, the axis represents categorial bins (e.g., im-plots).
-    label : None | True | str
-        Label argument.
-
-    Returns
-    -------
-    label : str | None
-        Returns the default axis label if label==True, otherwise the label
-        argument.
-    """
-    return dim._axis_format(scalar, label)
-
-
 def find_im_args(ndvar, overlay, vlims={}, cmaps={}):
     """Construct a dict with kwargs for an im plot
 
@@ -1208,14 +1186,16 @@ class EelFigure(object):
         """
         if axes is None:
             axes = self._axes
-        formatter, label = find_axis_params_dim(dim, scalar, label)
+        formatter, locator, label = dim._axis_format(scalar, label)
 
-        if ticklabels:
-            if formatter:  # use formatter=None for default formatter
-                for ax in axes:
+        for ax in axes:
+            if locator:
+                ax.xaxis.set_major_locator(locator)
+
+            if ticklabels:
+                if formatter:
                     ax.xaxis.set_major_formatter(formatter)
-        else:
-            for ax in axes:
+            else:
                 ax.xaxis.set_ticklabels(())
 
         if label:
@@ -1232,12 +1212,14 @@ class EelFigure(object):
             self.set_xlabel(label)
 
     def _configure_yaxis_dim(self, dim, label, axes=None, scalar=True):
-        "Configure the y-axis based on a dimension"
+        "Configure the y-axis based on a dimension (see ._configure_xaxis_dim)"
         if axes is None:
             axes = self._axes
-        formatter, label = find_axis_params_dim(dim, scalar, label)
-        if formatter:
-            for ax in axes:
+        formatter, locator, label = dim._axis_format(scalar, label)
+        for ax in axes:
+            if locator:
+                ax.yaxis.set_major_locator(locator)
+            if formatter:
                 ax.yaxis.set_major_formatter(formatter)
 
         if label:
