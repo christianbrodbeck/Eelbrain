@@ -1,13 +1,13 @@
-colormath >= 2.1
-keyring >= 5
-matplotlib >= 1.1
-mne >= 0.13.1
-nibabel >= 2.0
-numpy >= 1.8
-pillow
-pysurfer >= 0.7
-scipy >= 0.17
 setuptools >= 17
 tex >= 1.8
+colormath >= 2.1
 tqdm >= 4.8
+keyring >= 5
+pillow
 wxpython >= 3.0
+numpy >= 1.8
+scipy >= 0.17
+nibabel >= 2.0
+matplotlib >= 1.1
+pysurfer >= 0.7
+mne >= 0.13.1
