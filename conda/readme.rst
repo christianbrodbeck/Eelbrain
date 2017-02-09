@@ -33,8 +33,26 @@ Eelbrain
 - Update version in ``setup.py`` and ``meta.yaml``
 - run with appropriate numpy version:
 
- 	$ conda build eelbrain --numpy 1.11
+    $ conda build eelbrain --numpy 1.11
 
 - Upload as beta:
 
-	$ anaconda upload -l beta /anaconda/conda-bld/<platform>/<package>.tar.bz2
+    $ anaconda upload -l beta /anaconda/conda-bld/<platform>/<package>.tar.bz2
+
+
+Dependencies
+------------
+
+On all platforms:
+
+  - colormath
+  - tex
+  - mne
+
+Windows only:
+
+  - pywin32-ctypes
+
+Linux only:
+
+  - secretstorage
