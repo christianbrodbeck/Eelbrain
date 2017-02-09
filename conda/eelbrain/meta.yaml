@@ -14,13 +14,14 @@ requirements:
     - python
     - python.app  # [osx]
     - cython >=0.21
-    - olefile  # [win]
+    - olefile  # [win or linux]
     - pywin32-ctypes  # [win]
     - setuptools >=17
     - numpy x.x
     # the rest so that setuptools does not try to download them
     - pillow
     - keyring >=5
+    - secretstorage  # [linux]
     - tex >=1.8
     - mne >=0.13.1
     - nibabel >=2.0
@@ -36,6 +37,7 @@ requirements:
     - matplotlib >=1.1
     - mne >=0.13.1
     - nibabel >=2.0
+    - olefile  # [linux]
     - numpy >=1.0
     - pillow
     - pysurfer >=0.7

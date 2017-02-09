@@ -1,0 +1,64 @@
+package:
+  name: secretstorage
+  version: "2.3.1"
+
+source:
+  fn: SecretStorage-2.3.1.tar.gz
+  url: https://pypi.python.org/packages/a5/a5/0830cfe34a4cfd0d1c3c8b614ede1edb2aaf999091ac8548dd19cb352e79/SecretStorage-2.3.1.tar.gz
+  md5: 3b9465831b069e2622973afb7deb7bc2
+#  patches:
+   # List any patch files here
+   # - fix.patch
+
+# build:
+  # noarch_python: True
+  # preserve_egg_dir: True
+  # entry_points:
+    # Put any entry points (scripts to be generated automatically) here. The
+    # syntax is module:function.  For example
+    #
+    # - secretstorage = secretstorage:main
+    #
+    # Would create an entry point called secretstorage that calls secretstorage.main()
+
+
+  # If this is a new build for the same version, increment the build
+  # number. If you do not include this key, it defaults to 0.
+  # number: 1
+
+requirements:
+  build:
+    - python
+    - setuptools
+    - cryptography
+
+  run:
+    - python
+    - cryptography
+
+test:
+  # Python imports
+#  imports:
+#    - secretstorage
+
+  # commands:
+    # You can put test commands to be run here.  Use this to test that the
+    # entry points work.
+
+
+  # You can also put a file called run_test.py in the recipe that will be run
+  # at test time.
+
+  # requires:
+    # Put any additional test requirements here.  For example
+    # - nose
+
+about:
+  home: https://github.com/mitya57/secretstorage
+  license: BSD License
+  summary: 'Python bindings to FreeDesktop.org Secret Service API'
+  license_family: BSD
+
+# See
+# http://docs.continuum.io/conda/build.html for
+# more information about meta.yaml
