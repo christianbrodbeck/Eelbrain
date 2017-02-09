@@ -328,8 +328,8 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         for y_i, y_ in enumerate(y_data):
             hs = []
             for i in xrange(N_SEGS):
-                h, test_sse_history, msg = boost_1seg(x_data, y_, trf_length, delta,
-                                                      N_SEGS, i, mindelta_, error)
+                h = boost_1seg(x_data, y_, trf_length, delta, N_SEGS, i,
+                               mindelta_, error)
                 if h is not None:
                     hs.append(h)
                 pbar.update()
@@ -386,7 +386,8 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
                           tstart, tstop)
 
 
-def boost_1seg(x, y, trf_length, delta, nsegs, segno, mindelta, error):
+def boost_1seg(x, y, trf_length, delta, nsegs, segno, mindelta, error,
+               return_history=False):
     """boosting with one test segment determined by regular division
 
     Based on port of svdboostV4pred
@@ -411,19 +412,15 @@ def boost_1seg(x, y, trf_length, delta, nsegs, segno, mindelta, error):
         smaller than ``mindelta``.
     error : 'l2' | 'Sabs'
         Error function to use.
+    return_history : bool
+        Return error history as second return value.
 
     Returns
     -------
     history[best_iter] : None | array
         Winning kernel, or None if 0 is the best kernel.
-    test_corr[best_iter] : scalar
-        Test data correlation for winning kernel.
-    test_rcorr[best_iter] : scalar
-        Test data rank correlation for winning kernel.
-    test_sse_history : list of len n_iterations
-        SSE for test data at each iteration
-    train_corr : list of len n_iterations
-        Correlation for training data at each iteration.
+    test_sse_history : list (only if ``return_history==True``)
+        SSE for test data at each iteration.
     """
     assert x.ndim == 2
     assert y.shape == (x.shape[1],)
@@ -447,11 +444,11 @@ def boost_1seg(x, y, trf_length, delta, nsegs, segno, mindelta, error):
     x_test = (x[:, test_index],)
 
     return boost_segs(y_train, y_test, x_train, x_test, trf_length, delta,
-                      mindelta, error)
+                      mindelta, error, return_history)
 
 
 def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
-               error):
+               error, return_history):
     """Boosting supporting multiple array segments
 
     Parameters
@@ -470,6 +467,15 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
         smaller than ``mindelta``.
     error : str
         Error function to use.
+    return_history : bool
+        Return error history as second return value.
+
+    Returns
+    -------
+    history[best_iter] : None | array
+        Winning kernel, or None if 0 is the best kernel.
+    test_sse_history : list (only if ``return_history==True``)
+        SSE for test data at each iteration.
     """
     delta_error = DELTA_ERROR_FUNC[error]
     error = ERROR_FUNC[error]
@@ -514,7 +520,7 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
         #    the previous two iterations
         if (i_boost > 10 and e_test > test_error_history[-2] and
                 e_test > test_error_history[-3]):
-            reason = "error(test) not improving in 2 steps"
+            # print("error(test) not improving in 2 steps")
             break
 
         # generate possible movements -> training error
@@ -541,10 +547,10 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
         if new_train_error > e_train:
             delta *= 0.5
             if delta >= mindelta:
+                # print("new delta: %s" % delta)
                 continue
             else:
-                reason = ("No improvement possible for training data, "
-                          "stopping...")
+                # print("No improvement possible for training data")
                 break
 
         # update h with best movement
@@ -552,24 +558,25 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
 
         # abort if we're moving in circles
         if i_boost >= 2 and h[i_stim, i_time] == history[-2][i_stim, i_time]:
-            reason = "Same h after 2 iterations"
+            # print("Same h after 2 iterations")
             break
         elif i_boost >= 3 and h[i_stim, i_time] == history[-3][i_stim, i_time]:
-            reason = "Same h after 3 iterations"
+            # print("Same h after 3 iterations")
             break
 
         # update error
         for err, x in iter_error:
             update_error(err, x[i_stim], delta_signed, i_time)
-
-    else:
-        reason = "maxiter exceeded"
+    # else:
+    #     print("maxiter exceeded")
 
     best_iter = np.argmin(test_error_history)
+    # print('  (%i iterations)' % (i_boost + 1))
 
-    # Keep predictive power as the correlation for the best iteration
-    return (history[best_iter] if best_iter else None,
-            test_error_history, reason + ' (%i iterations)' % (i_boost + 1))
+    if return_history:
+        return history[best_iter] if best_iter else None, test_error_history
+    else:
+        return history[best_iter] if best_iter else None
 
 
 def setup_workers(y, x, trf_length, delta, mindelta, nsegs, error):
@@ -601,8 +608,8 @@ def boosting_worker(y_buffer, x_buffer, n_y, n_times, n_x, trf_length,
         y_i, seg_i = job_queue.get()
         if y_i == JOB_TERMINATE:
             return
-        h, test_sse_history, msg = boost_1seg(x, y[y_i], trf_length, delta,
-                                              nsegs, seg_i, mindelta, error)
+        h = boost_1seg(x, y[y_i], trf_length, delta, nsegs, seg_i, mindelta,
+                       error)
         result_queue.put((y_i, seg_i, h))
 
 

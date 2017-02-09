@@ -110,7 +110,7 @@ def test_boosting_func():
     x = mat['stim']
     y = mat['signal'][0]
 
-    h, test_sse_history, msg = boost_1seg(x, y, 10, 0.005, 40, 0, 0.01, 'l2')
+    h, test_sse_history = boost_1seg(x, y, 10, 0.005, 40, 0, 0.01, 'l2', True)
     test_seg_len = int(floor(x.shape[1] / 40))
     r, rr, _ = evaluate_kernel(y[:test_seg_len], x[:, :test_seg_len], h, 'l2')
 
@@ -125,7 +125,7 @@ def test_boosting_func():
     x = mat['stim']
     y = mat['signal'][0]
 
-    h, test_sse_history, msg = boost_1seg(x, y, 10, 0.005, 40, 0, 0.01, 'l2')
+    h, test_sse_history = boost_1seg(x, y, 10, 0.005, 40, 0, 0.01, 'l2', True)
     test_seg_len = int(floor(x.shape[1] / 40))
     r, rr, _ = evaluate_kernel(y[:test_seg_len], x[:, :test_seg_len], h, 'l2')
 
