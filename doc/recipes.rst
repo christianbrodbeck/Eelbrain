@@ -4,6 +4,44 @@
 Recipes
 *******
 
+.. contents:: Contents
+   :local:
+
+
+^^^^^^^^^^^^^^^^^^^^
+Group Level Analysis
+^^^^^^^^^^^^^^^^^^^^
+
+To do group level analysis one usually wants to construct a :class:`Dataset`
+that contains results for each participants along with condition and subhect
+labels. Assuming a function that computes the result for a single subject and
+condition as :class:`NDVar`, ``result_for(subject, condition)`` this is easy to
+achieve::
+
+	# create lists to collect data and labels
+	>>> ndvars = []
+	>>> subjects = []
+	>>> conditions = []
+	# collect data and labels
+	>>> for subject in ('s1', 's2', 's3', ...):
+	...		for condition in ('c1, 'c2', ...):
+	...			ndvar = result_for(subject, condition)
+	...			ndvars.append(ndvar)
+	...			subjects.append(subject)
+	...			conditions.append(condition)
+	...
+	# create a Dataset and convert the collected lists to appropriate format
+	>>> ds = Dataset()
+	>>> ds['subject'] = Factor(subjects, random=True)  # treat as random effect
+	>>> ds['condition'] = Factor(conditions)
+	>>> ds['y'] = combine(ndvars)
+
+
+Now this Dataset can be used for statistical analysis, for example, ANOVA:
+
+	>>> res = testnd.anova('y', 'condition * subject', ds=ds)
+
+
 .. _recipe-regression:
 
 ^^^^^^^^^^^^^^^^^
