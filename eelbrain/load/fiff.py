@@ -675,8 +675,8 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, inv=None, lambda2=1,
 
     Parameters
     ----------
-    raw : Raw
-        Raw instance.
+    raw : Raw | str
+        Raw instance, or path of a raw FIFF file..
     i_start : int | sequence of int
         Start sample (see notes; default is the beginning of the ``raw``).
     i_stop : int | sequence of int
@@ -716,6 +716,9 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, inv=None, lambda2=1,
     ``i_start`` and ``i_stop`` are interpreted as event indexes (from
     :func:`mne.find_events`), i.e. relative to ``raw.first_samp``.
     """
+    if isinstance(raw, basestring):
+        raw = mne.io.read_raw_fif(raw)
+
     name = os.path.basename(_get_raw_filename(raw))
     start_scalar = i_start is None or isinstance(i_start, int)
     stop_scalar = i_stop is None or isinstance(i_stop, int)
