@@ -3,9 +3,21 @@
 # when installed through setup.py, the first line is replaced with the normal,
 # non-framework build python. Replace it with::
 # #!/Users/christian/anaconda/envs/ENV/python.app/Contents/MacOS/python
+import os
+import sys
+from IPython import start_ipython
+from IPython.paths import get_ipython_dir
+
 
 if __name__ == '__main__':
-    import sys
-    import IPython
+    if not os.path.exists(os.path.join(get_ipython_dir(), 'profile_eelbrain')):
+        from IPython.core.profileapp import ProfileCreate
+        app = ProfileCreate()
+        app.parse_command_line(('eelbrain', '--quiet'))
+        app.init_config_files()
+        file_path = os.path.join(get_ipython_dir(), 'profile_eelbrain',
+                                 'startup', 'import_eelbrain.py')
+        with open(file_path, 'w') as fid:
+            fid.write("from eelbrain import *\n")
 
-    sys.exit(IPython.start_ipython())
+    sys.exit(start_ipython(profile='eelbrain'))

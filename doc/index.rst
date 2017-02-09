@@ -25,8 +25,9 @@ Manual
    :maxdepth: 1
 
    installing
-   changes
+   getting_started
    intro
+   changes
    development
 
 .. toctree::
