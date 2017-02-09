@@ -168,8 +168,9 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     delta : scalar
         Step for changes in the kernel.
     mindelta : scalar
-        If set, ``delta`` is divided in half after each unsuccessful iteration
-        until ``delta < mindelta``. The default is ``mindelta = delta``.
+        If the error for the training data can't be reduced, divide ``delta``
+        in half until ``delta < mindelta``. The default is ``mindelta = delta``,
+        i.e. ``delta`` is constant.
     error : 'l2' | 'l1'
         Error function to use (default is ``l2``).
 
