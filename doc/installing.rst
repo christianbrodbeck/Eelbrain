@@ -4,8 +4,8 @@ Installing
 
 .. note::
     Eelbrain comes with a C extension. Precompiled binaries are currently
-    provided for macOS and Windows. On other platforms, installing Eelbrain
-    requires compilation.
+    provided for macOS and Windows through ``conda``. On other platforms,
+    installing Eelbrain requires compilation.
 
 
 .. contents:: Contents
@@ -32,13 +32,21 @@ Later, update Eelbrain with::
     $ conda update eelbrain
 
 
+Optional extensions
+^^^^^^^^^^^^^^^^^^^
+
+Eelbrain provides functions to interface with R if `rpy2
+<http://rpy.sourceforge.net>`_ is installed:
+
+    $ conda install rpy2
+
+
 Installing from PYPI
 --------------------
 
 .. note::
-   If you are setting up a new Python environment, the easier options might be
-   `Anaconda <https://store.continuum.io/cshop/anaconda/>`_ or
-   `Canopy <https://www.enthought.com/products/canopy>`_.
+   If you are setting up a new Python environment, the easier option is
+   `Anaconda <https://store.continuum.io/cshop/anaconda/>`_.
 
 Eelbrain can be installed from the
 `Python Package Index (PYPI) <https://pypi.python.org/pypi/eelbrain>`_::
@@ -67,75 +75,14 @@ wxPython `can not be installed from the PYPI
 `here <http://www.wxpython.org/download.php>`__.
 
 
-Installing with Canopy
-----------------------
-
-.. note::
-   This option has not been tested in a while and might be outdated.
-
-Make sure that you are using the
-`Canopy <https://www.enthought.com/products/canopy>`_ Python distribution from
-the command line (see
-`here <https://support.enthought.com/entries/23646538-Make-Canopy-User-Python-be-your-default-Python-i-e-on-the-PATH->`__).
-
-Install dependencies that do not come with Canopy by default. The only
-additional package needed is Mayavi::
-
-   $ enpkg mayavi
-
-To make sure you are working with the latest versions of all dependencies,
-update the Canopy distribution before installing or updating Eelbrain::
-
-   $ enpkg --update-all
-
-Then install Eelbrain (if you are not planning to plot MNE source estimates
-you can leave out the ``[plot.brain]``)::
-
-    $ pip install eelbrain[plot.brain]
-
-Later, update Eelbrain with::
-
-    $ pip install -U --upgrade-strategy only-if-needed eelbrain
-
-
-Optional Dependencies
----------------------
+Optional extensions
+^^^^^^^^^^^^^^^^^^^
 
 The following items provide additional functionality if they are installed:
 
-* `rpy2 <http://rpy.sourceforge.net>`_ - in order to install it, first install
+* Eelbrain provides functions to interface with R if `rpy2
+  <http://rpy.sourceforge.net>`_ is installed: First install
   `R <http://www.r-project.org>`_, then use pip to install ``rpy2``:
   ``$ pip install rpy2``.
 * A working `LaTeX <http://www.latex-project.org/>`_ installation (enables
   exporting tables as pdf).
-
-
-.. _obtain-source:
-
-Installing the development version from GitHub
-----------------------------------------------
-
-The Eelbrain source code is hosted on
-`GitHub <https://github.com/christianbrodbeck/Eelbrain>`_. The source for the
-latest development version can be downloaded as a
-`zip archive <https://github.com/christianbrodbeck/Eelbrain/zipball/master>`_.
-However, since the code is evolving, the better option is to clone the project
-with git. A way to do this is::
-
-    $ cd /target/directory
-    $ git clone https://github.com/christianbrodbeck/Eelbrain.git
-
-This will create the folder ``/target/directory/Eelbrain`` containing all the
-source files.
-
-The source can then always be updated to the latest version from within the
-``Eelbrain`` directory::
-
-    $ cd /target/directory/Eelbrain
-    $ git pull
-
-If Eelbrain is installed in ``develop`` mode, changes in the source folder
-(e.g., after running ``$ git pull``) take effect without re-installing::
-
-	$ cd /target/directory/Eelbrain
-	$ python setup.py develop

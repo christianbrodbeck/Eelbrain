@@ -1,10 +1,10 @@
 ***************
-Getting started
+Getting Started
 ***************
 
 
-Special note for macOS
-----------------------
+Framework Build on macOS
+------------------------
 
 On macOS, the GUI tool Eelbrain uses requires a special build of Python called
 a "Framework build". You might see this error when trying to create a plot::
@@ -19,6 +19,6 @@ In order to avoid this, Eelbrain installs a shortcut to start `IPython
 	$ eelbrain
 
 This automatically launches IPython with the "eelbrain" profile. A default
-startup script that execute ``from eelbrain import *`` can be changed in the
-corresponding `IPython profile <http://ipython.readthedocs.io/en/stable/
-interactive/tutorial.html?highlight=startup#startup-files>`_.
+startup script that executes ``from eelbrain import *`` is created, and can be
+changed in the corresponding `IPython profile <http://ipython.readthedocs.io/
+en/stable/interactive/tutorial.html?highlight=startup#startup-files>`_.

@@ -10,18 +10,46 @@ at the `Computational sensorimotor systems lab
 at University of Maryland, College Park.
 
 
+.. _obtain-source:
+
+Installing the Development Version
+----------------------------------
+
+The Eelbrain source code is hosted on
+`GitHub <https://github.com/christianbrodbeck/Eelbrain>`_.
+
+Installation requires the presence of a compiler.
+On macOS, make sure Xcode is installed (open it once to accept the license
+agreement).
+Windows will indicate any needed files when the install command is run.
+
+After cloning the repository, the development version can be installed by
+running::
+
+	$ python setup.py develop
+
+
+For further information on working with GitHub see `GitHub's instructions
+<https://help.github.com/articles/fork-a-repo/>`_.
+
+In Python, you can make sure that you are working with the development version::
+
+    >>> import eelbrain
+    >>> eelbrain.__version__
+    'dev'
+
+To switch back to the release version use ``$ pip uninstall eelbrain``.
+
+
 Contributing
 ------------
 
 Eelbrain is fully open-source and you are welcome to contribute.
-The latest development version can be found in the
-`GitHub repository <https://github.com/christianbrodbeck/Eelbrain>`_.
-New contributions can be made as pull requests into the master branch.
+New contributions can be made as pull requests into the master branch on GitHub.
 
-Eelbrain development focuses on OS X, in particular the GUI components.
+I am focusing development on macOS, in particular for the GUI components.
 However, the underlying libraries are all available on the major platforms and
-it should in principle be possible to make Eelbrain work on other platform with
-little effort.
+it would be possible to make Eelbrain work on other platform with little effort.
 
 
 Style guides:
@@ -40,32 +68,6 @@ Useful tools:
  - Python IDE: `PyCharm <https://www.jetbrains.com/pycharm>`_
 
 
-Setting up the development version
-----------------------------------
-
-Set up your own fork of `Eelbrain
-<https://github.com/christianbrodbeck/Eelbrain>`_
-(see `GitHub's instructions for working with a fork
-<https://help.github.com/articles/fork-a-repo/>`_).
-
-Make sure Xcode is installed (open it once to accept the license agreement).
-Some command line tools provided by Xcode are needed to compile the Cython
-extension included in Eelbrain.
-
-In order to start working with the development version of Eelbrain, install it
-with the ``develop`` option (from within the project directory)::
-
-    $ python setup.py develop
-
-In Python, you can make sure that you are working with the development version::
-
-    >>> import eelbrain
-    >>> eelbrain.__version__
-    'dev'
-
-To switch back to the release version use ``$ pip uninstall eelbrain``.
-
-
 Testing
 -------
 
@@ -73,4 +75,3 @@ Eelbrain uses `nose <https://nose.readthedocs.org>`_ for testing. To run all
 tests, run ``$ make test`` from the Eelbrain project directory. Tests for
 individual modules are included in folders called "tests", usually on the same
 level as the module.
-Preferably, new features should be added with tests.

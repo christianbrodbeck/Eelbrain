@@ -123,9 +123,9 @@ NDVar Transformations
    segment
 
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Temporal Response Functions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^
+Reverse Correlation
+^^^^^^^^^^^^^^^^^^^
 
 .. autosummary::
    :toctree: generated

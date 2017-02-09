@@ -6,6 +6,8 @@ Changes
 New in 0.25
 -----------
 
+* Installation with ``conda`` (see :doc:`installing`) and ``$ eelbrain`` launch
+  script (see :doc:`getting_started`).
 * API:
 
   - :class:`NDVar` objects now inherit names through operations.
@@ -30,7 +32,7 @@ New in 0.25
   - The setting ``raw='clm'`` has been renamed to ``raw='raw'``.
   - Custom preprocessing pipelines (see :attr:`MneExperiment.raw`).
 
-* Temporal response function estimation using :func:`boosting`.
+* Reverse correlation using :func:`boosting`.
 * Loading and saving ``*.wav`` files (:func:`load.wav` and :func:`save.wav`).
 
 
