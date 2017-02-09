@@ -539,14 +539,13 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
 
         # If no improvements can be found reduce delta
         if new_train_error > e_train:
-            if delta < mindelta:
+            delta *= 0.5
+            if delta >= mindelta:
+                continue
+            else:
                 reason = ("No improvement possible for training data, "
                           "stopping...")
                 break
-            else:
-                delta *= 0.5
-                # print("No improvement, new delta=%s..." % delta)
-                continue
 
         # update h with best movement
         h[i_stim, i_time] += delta_signed

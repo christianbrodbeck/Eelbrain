@@ -32,8 +32,9 @@ def run_boosting(ds, mp):
     x2_mean = x2.mean()
 
     # test values from running function, not verified independently
-    res = boosting(y, x1 * 2000, 0, 1, scale_data=False)
-    eq_(repr(res), '<boosting y ~ x1, 0 - 1, scale_data=False>')
+    res = boosting(y, x1 * 2000, 0, 1, scale_data=False, mindelta=0.0025)
+    eq_(repr(res),
+        '<boosting y ~ x1, 0 - 1, scale_data=False, mindelta=0.0025>')
     eq_(round(res.r, 2), 0.75)
     assert_is_none(res.y_mean)
 
