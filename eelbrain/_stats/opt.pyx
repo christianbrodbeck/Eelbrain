@@ -473,6 +473,12 @@ def t_1samp(scalar[:,:] y, double[:] out):
             denom += (y[case, i] - mean) ** 2
         denom /= div
         denom **= 0.5
+        if denom == 0:
+            if mean == 0:
+                out[i] = 0
+            else:
+                out[i] = np.inf
+            continue
         out[i] = mean / denom
 
 
@@ -510,4 +516,10 @@ def t_1samp_perm(scalar[:,:] y, double[:] out, cnp.int8_t[:] sign):
             denom += (case_buffer[case] - mean) ** 2
         denom /= div
         denom **= 0.5
+        if denom == 0:
+            if mean == 0:
+                out[i] = 0
+            else:
+                out[i] = np.inf
+            continue
         out[i] = mean / denom
