@@ -1,38 +1,42 @@
-os: osx
-language: r
-sudo: false
-# https://github.com/travis-ci/travis-ci/issues/2312
-
-cache:  # https://docs.travis-ci.com/user/caching/
-  - packages
-  - pip
-
-#python:
-#  - 2.7
-
-r_packages:
-  - car
-  - ez
+matrix:
+  include:
+    - os: osx  # https://github.com/travis-ci/travis-ci/issues/2312
+      python: 2.7
+      sudo: false
+      env: CONDA_OS="MacOSX"
+    - os: linux
+      python: 2.7
+      sudo: false
+      env: CONDA_OS="Linux"
+           DISPLAY=:99.0
 
 # Setup anaconda
 # https://gist.github.com/dan-blanchard/7045057
 before_install:
-  - wget -q http://repo.continuum.io/miniconda/Miniconda-latest-MacOSX-x86_64.sh -O miniconda.sh
+  - wget -q http://repo.continuum.io/miniconda/Miniconda-latest-$CONDA_OS-x86_64.sh -O miniconda.sh
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p $HOME/miniconda
   - export PATH=$HOME/miniconda/bin:$PATH
   - conda update --yes --quiet conda
   - conda config --append channels conda-forge
   - conda config --append channels christianbrodbeck
+  - conda config --append channels ncil  # for r-ez
   - conda install --yes --quiet --file requirements_install.txt
   - conda install --yes --quiet --file requirements.txt
   - conda install --yes --quiet nose
-  - pip install rpy2
+  - conda install --yes rpy2 r-car r-ez
   - python -c "import mne; mne.datasets.testing.data_path()"
   - python --version
+  - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then
+      /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -screen 0 1400x900x24 -ac +extension GLX +render -noreset;
+    fi;
 
 install:
   - python setup.py develop
 
 script:
-  - make test
+  - if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
+      pythonw $(which nosetests) -v eelbrain  eelbrain/_*;
+    else
+      nosetests -v eelbrain  eelbrain/_*;
+    fi;

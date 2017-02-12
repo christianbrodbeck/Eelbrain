@@ -77,6 +77,11 @@ def test_boosting():
     yield run_boosting, ds, True
     yield run_boosting, ds, False
 
+
+def test_result():
+    "Test boosting results"
+    ds = datasets._get_continuous()
+
     # convolve function
     y = convolve([ds['h1'], ds['h2']], [ds['x1'], ds['x2']])
     y.name = 'y'

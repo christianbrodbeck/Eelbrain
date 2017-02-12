@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import shutil
+import sys
 from tempfile import mkdtemp
 
 import mne
@@ -30,9 +31,7 @@ def run_example(example_path, name):
         text = fid.read()
 
     # check for explicit skip
-    if os.name == 'nt' and re.findall("^# skip on windows", text, re.MULTILINE):
-        return
-    elif re.findall("^# skip test", text, re.MULTILINE):
+    if re.findall("^# skip test", text, re.MULTILINE):
         return
 
     # check for required modules
