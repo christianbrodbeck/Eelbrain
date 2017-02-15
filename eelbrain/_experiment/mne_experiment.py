@@ -12,7 +12,7 @@ import shutil
 import time
 
 import numpy as np
-
+from nibabel.freesurfer import read_annot
 import mne
 from mne.baseline import rescale
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
@@ -1931,15 +1931,38 @@ class MneExperiment(FileTree):
         if baseline is True:
             baseline = self._epochs[self.get('epoch')].baseline
 
+        parc = self.get('parc')
+        if mask is not None:
+            if mask is True:
+                mask = parc
+            elif not isinstance(mask, basestring):
+                raise TypeError("mask=%r" % (mask,))
+            elif mask != parc:
+                self.set(parc=mask)
+                parc = mask
+
+        # if data is going to be morphed then we need to load more
+        # need to detect case where "morphing" is just changing subject name!
+        if mask and not morph:
+            # load with nibabel
+            labels = []
+            for hemi in ('lh', 'rh'):
+                vertex_labels, _, names = read_annot(self.get('annot-file', hemi='lh'))
+                mask_id = names.index('unknown-' + hemi)
+                labels.append(mne.Label(
+                    np.flatnonzero(vertex_labels != mask_id), hemi=hemi,
+                    name='mask-' + hemi, subject=subject))
+            label = mne.BiHemiLabel(*labels)
+        else:
+            parc = self.get('parc')
+            label = None
+
         epochs = ds['epochs']
         inv = self.load_inv(epochs)
-        stc = apply_inverse_epochs(epochs, inv, **self._params['apply_inv_kw'])
+        stc = apply_inverse_epochs(epochs, inv, label=label,
+                                   **self._params['apply_inv_kw'])
 
         if ndvar:
-            parc = self.get('parc') or None
-            if isinstance(mask, basestring) and parc != mask:
-                parc = mask
-                self.set(parc=mask)
             self.make_annot()
             subject = self.get('mrisubject')
             src = self.get('src')
@@ -1961,8 +1984,6 @@ class MneExperiment(FileTree):
                     _mask_ndvar(ds, 'srcm')
             else:
                 ds['src'] = src
-                if mask:
-                    _mask_ndvar(ds, 'src')
         else:
             if baseline:
                 raise NotImplementedError("Baseline for SourceEstimate")
