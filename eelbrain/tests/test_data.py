@@ -1272,6 +1272,7 @@ def test_sensor():
     eq_(s1, sensor[[0, 1]])
     assert_not_equal(s1, s2)
     eq_(s1.intersect(s2), sensor[[1]])
+    eq_(sensor._index_repr(np.array([0, 1, 1], bool)), ['2', '3'])
 
 
 def test_shuffle():

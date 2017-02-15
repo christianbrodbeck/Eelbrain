@@ -31,6 +31,7 @@ import itertools
 from itertools import chain, izip
 from keyword import iskeyword
 from math import ceil, log10
+from numbers import Integral
 import cPickle as pickle
 import operator
 import os
@@ -621,12 +622,12 @@ def index_ndim(index):
         Number of index dimensions: 0 for an index to a single element, 1 for
         an index to a sequence.
     """
-    if np.iterable(index):
+    if isinstance(index, slice):
         return 1
-    elif isinstance(index, slice):
-        return 1
-    elif isinstance(index, int):
+    elif isinstance(index, Integral):
         return 0
+    elif np.iterable(index):
+        return 1
     else:
         raise TypeError("unknown index type: %s" % repr(index))
 
@@ -1444,7 +1445,7 @@ class Var(object):
                        "data with more than one dimension.")
                 raise ValueError(err)
 
-        if not (isinstance(repeat, int) and repeat == 1):
+        if not (isinstance(repeat, Integral) and repeat == 1):
             x = np.repeat(x, repeat)
 
         if tile > 1:
@@ -4759,7 +4760,7 @@ class Datalist(list):
         return np.array([s != o for s, o in izip(self, other)])
 
     def __getitem__(self, index):
-        if isinstance(index, int):
+        if isinstance(index, Integral):
             return list.__getitem__(self, index)
         elif isinstance(index, slice):
             return Datalist(list.__getitem__(self, index), fmt=self._fmt)
@@ -4889,7 +4890,7 @@ def as_legal_dataset_key(key):
 
 def cases_arg(cases, n_cases):
     "coerce cases argument to iterator"
-    if isinstance(cases, int):
+    if isinstance(cases, Integral):
         if cases < 1:
             cases = n_cases + cases
             if cases < 0:
@@ -5046,9 +5047,7 @@ class Dataset(OrderedDict):
                 args.append(item)
 
         # set state
-        if n_cases is not None:
-            assert isinstance(n_cases, int)
-        self.n_cases = n_cases
+        self.n_cases = None if n_cases is None else int(n_cases)
         # uses __setitem__() which checks items and length:
         super(Dataset, self).__init__(args)
         self.name = name
@@ -5086,21 +5085,17 @@ class Dataset(OrderedDict):
             >>> ds['MEG1', 'MEG2']  (list of strings) -> list of vars; can be nested!
 
         """
-        if isinstance(index, int):
-            return self.get_case(index)
-        elif isinstance(index, slice):
+        if isinstance(index, slice):
             return self.sub(index)
-
-        if isinstance(index, basestring):
+        elif isinstance(index, basestring):
             return super(Dataset, self).__getitem__(index)
-
-        if not np.iterable(index):
+        elif isinstance(index, Integral):
+            return self.get_case(index)
+        elif not np.iterable(index):
             raise KeyError("Invalid index for Dataset: %r" % index)
-
-        if all(isinstance(item, basestring) for item in index):
+        elif all(isinstance(item, basestring) for item in index):
             return Dataset(((item, self[item]) for item in index))
-
-        if isinstance(index, tuple):
+        elif isinstance(index, tuple):
             if len(index) != 2:
                 raise KeyError("Invalid index for Dataset: %s" % repr(index))
 
@@ -5118,11 +5113,9 @@ class Dataset(OrderedDict):
                 keys = Datalist(self.keys())[i1]
                 if isinstance(keys, basestring):
                     return self[i1][i0]
-
-            subds = Dataset(((k, self[k][i0]) for k in keys))
-            return subds
-
-        return self.sub(index)
+            return Dataset((k, self[k][i0]) for k in keys)
+        else:
+            return self.sub(index)
 
     def __repr__(self):
         class_name = self.__class__.__name__
@@ -5735,7 +5728,7 @@ class Dataset(OrderedDict):
         if self.n_cases is None:
             raise RuntimeError("Can't repeat Dataset with unspecified n_cases")
 
-        if isinstance(repeats, int):
+        if isinstance(repeats, Integral):
             n_cases = self.n_cases * repeats
         else:
             n_cases = sum(repeats)
@@ -5968,12 +5961,12 @@ class Dataset(OrderedDict):
         that advanced indexing always returns a copy of the data, whereas
         basic slicing (using slices) returns a view.
         """
-        if isinstance(index, int):
+        if isinstance(index, Integral):
             if index == -1:
                 index = slice(-1, None)
             else:
                 index = slice(index, index + 1)
-        elif isinstance(index, str):
+        elif isinstance(index, basestring):
             index = self.eval(index)
 
         if isinstance(index, Var):
@@ -7046,7 +7039,7 @@ class Dimension(object):
             return arg.x
 
     def _dimindex_for_slice(self, start, stop=None, step=None):
-        if step is not None and not isinstance(step, int):
+        if step is not None and not isinstance(step, Integral):
             raise TypeError("Slice index step for %s must be int, not %r" %
                             (self._dimname(), step))
 
@@ -7159,7 +7152,7 @@ class Categorial(Dimension):
         return Dimension.__eq__(self, other) and self.values == other.values
 
     def __getitem__(self, index):
-        if isinstance(index, int):
+        if isinstance(index, Integral):
             return self.values[index]
         else:
             return self.__class__(self.name,
@@ -7185,7 +7178,7 @@ class Categorial(Dimension):
         return "%s" % self.name.capitalize()
 
     def _index_repr(self, index):
-        if isinstance(index, int):
+        if isinstance(index, Integral):
             return self.values[index]
         else:
             return Dimension._index_repr(self, index)
@@ -7279,7 +7272,7 @@ class Scalar(Dimension):
                 np.array_equal(self.values, other.values))
 
     def __getitem__(self, index):
-        if isinstance(index, int):
+        if isinstance(index, Integral):
             return self.values[index]
         return self.__class__(self.name, self.values[index], self.unit,
                               self.tick_format)
@@ -7563,8 +7556,8 @@ class Sensor(Dimension):
             return self.channel_idx[arg]
         elif isinstance(arg, Sensor):
             return np.array([self.names.index(name) for name in arg.names])
-        elif isinstance(arg, int) or (isinstance(arg, np.ndarray) and
-                                      arg.dtype.kind == 'i'):
+        elif isinstance(arg, Integral) or (isinstance(arg, np.ndarray) and
+                                           arg.dtype.kind == 'i'):
             return arg
         else:
             return super(Sensor, self).dimindex(arg)
@@ -7927,7 +7920,7 @@ class Sensor(Dimension):
         valid_chs = set()
         missing_chs = set()
         for name in names:
-            if isinstance(name, int):
+            if isinstance(name, Integral):
                 name = '%03i' % name
 
             if name.isdigit():
@@ -8295,7 +8288,7 @@ class SourceSpace(Dimension):
                     izip(self.vertno, other.vertno)))
 
     def __getitem__(self, index):
-        if isinstance(index, int):
+        if isinstance(index, Integral):
             for vertno in self.vertno:
                 if index < len(vertno):
                     return vertno[index]
@@ -8532,8 +8525,8 @@ class SourceSpace(Dimension):
                 raise IndexError("Index contains unknown sources")
             else:
                 return np.hstack([np.in1d(s, o, True) for s, o in izip(sv, ov)])
-        elif isinstance(arg, int) or (isinstance(arg, np.ndarray) and
-                                      arg.dtype.kind == 'i'):
+        elif isinstance(arg, Integral) or (isinstance(arg, np.ndarray) and
+                                           arg.dtype.kind == 'i'):
             return arg
         elif isinstance(arg, Sequence) and all(isinstance(label, basestring) for
                                                label in arg):
@@ -8831,7 +8824,7 @@ class UTS(Dimension):
         return self.tmin - self.tstep / 2 < index < self.tstop - self.tstep / 2
 
     def __getitem__(self, index):
-        if isinstance(index, int):
+        if isinstance(index, Integral):
             return self.times[index]
         elif not isinstance(index, slice):
             # convert index to slice
