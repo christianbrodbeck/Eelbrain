@@ -13,33 +13,43 @@ Group Level Analysis
 ^^^^^^^^^^^^^^^^^^^^
 
 To do group level analysis one usually wants to construct a :class:`Dataset`
-that contains results for each participants along with condition and subhect
-labels. Assuming a function that computes the result for a single subject and
-condition as :class:`NDVar`, ``result_for(subject, condition)`` this is easy to
-achieve::
+that contains results for each participants along with condition and subject
+labels. The following illustration assumes functions that compute results
+for a single subject and condition:
 
-	# create lists to collect data and labels
-	>>> ndvars = []
-	>>> subjects = []
-	>>> conditions = []
-	# collect data and labels
-	>>> for subject in ('s1', 's2', 's3', ...):
-	...		for condition in ('c1, 'c2', ...):
-	...			ndvar = result_for(subject, condition)
-	...			ndvars.append(ndvar)
-	...			subjects.append(subject)
-	...			conditions.append(condition)
-	...
-	# create a Dataset and convert the collected lists to appropriate format
-	>>> ds = Dataset()
-	>>> ds['subject'] = Factor(subjects, random=True)  # treat as random effect
-	>>> ds['condition'] = Factor(conditions)
-	>>> ds['y'] = combine(ndvars)
+  - ``result_for(subject, condition)`` returns an :class:`NDVar`.
+  - ``scalar_result_for(subject, condition)`` returns a scalar
+    (:class:`float`).
+
+Given results by subject and condition, a Dataset can be constructed as
+follows::
+
+    >>> # create lists to collect data and labels
+    >>> ndvar_results = []
+    >>> scalar_results = []
+    >>> subjects = []
+    >>> conditions = []
+    >>> # collect data and labels
+    >>> for subject in ('s1', 's2', 's3', 's4'):
+    ...	    for condition in ('c1', 'c2'):
+    ...	        ndvar = result_for(subject, condition)
+    ...         s = scalar_result_for(subject, condition)
+    ...	        ndvar_results.append(ndvar)
+    ...         scalar_results.append(s)
+    ...	        subjects.append(subject)
+    ...	        conditions.append(condition)
+    ...
+    >>> # create a Dataset and convert the collected lists to appropriate format
+    >>> ds = Dataset()
+    >>> ds['subject'] = Factor(subjects, random=True)  # treat as random effect
+    >>> ds['condition'] = Factor(conditions)
+    >>> ds['y'] = combine(ndvar_results)
+    >>> ds['s'] = Var(scalar_results)
 
 
-Now this Dataset can be used for statistical analysis, for example, ANOVA:
+Now this Dataset can be used for statistical analysis, for example ANOVA::
 
-	>>> res = testnd.anova('y', 'condition * subject', ds=ds)
+    >>> res = testnd.anova('y', 'condition * subject', ds=ds)
 
 
 .. _recipe-regression:
