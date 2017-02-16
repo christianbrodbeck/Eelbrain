@@ -40,7 +40,7 @@ class SampleExperiment(MneExperiment):
 
     epochs = {
         # all target stimuli:
-        'target': {'sel': "event == 'target'"},
+        'target': {'sel': "event == 'target'", 'tmax': 0.3},
         # only auditory stimulation
         'auditory': {'base': 'target', 'sel': "modality == 'auditory"}
     }

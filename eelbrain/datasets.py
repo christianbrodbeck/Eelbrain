@@ -430,7 +430,7 @@ def setup_samples_experiment(dst, n_subjects=3, n_segments=4, n_sessions=1):
     n = 0
     t_start = 0
     for sample, _, trigger in events:
-        if trigger == 32:
+        if trigger == 5:  # smiley
             n += 1
         if n == n_segments:
             t = sample / sfreq
