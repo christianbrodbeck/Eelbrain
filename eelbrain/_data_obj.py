@@ -1775,7 +1775,7 @@ class Var(object):
     @property
     def as_effects(self):
         "for effect initialization"
-        return self.centered()[:, None]
+        return self.x[:, None] - self.x.mean()
 
     def as_factor(self, labels='%r', name=True, random=False):
         """Convert the Var into a Factor
@@ -1830,9 +1830,6 @@ class Var(object):
             name = self.name
 
         return Factor(self.x, name, random, labels=labels_)
-
-    def centered(self):
-        return self.x - self.x.mean()
 
     def copy(self, name=True):
         "returns a deep copy of itself"
