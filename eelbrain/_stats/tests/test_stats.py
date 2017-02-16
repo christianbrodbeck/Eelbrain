@@ -1,6 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from nose.tools import assert_almost_equal, eq_, assert_raises
+import warnings
 
+from nose.tools import assert_almost_equal, eq_, assert_raises
 import numpy as np
 from numpy.testing import assert_allclose, assert_equal
 import scipy.stats
@@ -53,8 +54,9 @@ def test_corr():
         assert_almost_equal(p[i], p_sp)
 
     # NaN
-    r = stats.corr(np.arange(10), np.zeros(10))
-    eq_(r, 0)
+    with warnings.catch_warnings():  # divide by 0
+        warnings.simplefilter("ignore")
+        eq_(stats.corr(np.arange(10), np.zeros(10)), 0)
 
     # perm
     y_perm = np.empty_like(y)

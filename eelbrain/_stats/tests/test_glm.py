@@ -1,6 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import print_function
 from itertools import izip, repeat
+import warnings
 
 from nose.tools import (eq_, assert_almost_equal, assert_is_instance,
     assert_raises, nottest)
@@ -15,9 +16,13 @@ from eelbrain._stats.permutation import permute_order
 
 
 def r_require(package):
+    from rpy2.rinterface import RRuntimeWarning
     from rpy2.robjects import r
 
-    success = r('require(%s)' % package)[0]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RRuntimeWarning)
+        success = r('require(%s)' % package)[0]
+    
     if not success:
         print(r("install.packages('%s', repos='http://cran.us.r-project.org')"
                 % package))

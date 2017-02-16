@@ -9,6 +9,7 @@ import cPickle as pickle
 import shutil
 from string import ascii_lowercase
 import tempfile
+import warnings
 
 import mne
 from nose.tools import (
@@ -206,7 +207,9 @@ def test_coercion():
 
     assert_array_equal(assub("A == 'a0'", ds), ds['A'] == 'a0')
     assert_array_equal(assub("avar == 0", ds), ds['avar'] == 0)
-    assert_raises(TypeError, assub, "avar == '0'", ds)
+    with warnings.catch_warnings():  # element-wise comparison
+        warnings.simplefilter("ignore")
+        assert_raises(TypeError, assub, "avar == '0'", ds)
 
 
 def test_choose():
