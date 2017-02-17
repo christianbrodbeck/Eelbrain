@@ -1010,6 +1010,9 @@ class MneExperiment(FileTree):
             kind = params['kind']
             if kind == 'anova':
                 desc = params['x']
+                if 'model' not in params:
+                    items = sorted(i.strip() for i in desc.split('*'))
+                    params['model'] = '%'.join(i for i in items if i != 'subject')
             elif kind == 'ttest_rel':
                 tail = params.get('tail', 0)
                 if tail == 0:

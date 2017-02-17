@@ -391,18 +391,22 @@ Example::
 anova
 ^^^^^
 
-model : :class:`str`
-    The model which defines the cells that are used in the test. It is
-    specified in the ``"x % y"`` format (like interaction definitions) where
-    ``x`` and ``y`` are variables in the experiment's events.
 x : :class:`str`
     ANOVA model (e.g., ``"x * y * subject"``). The ANOVA model has to be fully
     specified and include ``subject``.
+model : :class:`str`
+    The model which defines the cells into which the data is divided before
+    computing the ANOVA. This parameter can be left out if it includes the same
+    variables as ``x`` (excluding ``"subject"``). Otherwise, the ``model``
+    should be specified in the ``"x % y"`` format (like interaction definitions)
+    where ``x`` and ``y`` are variables in the experiment's events.
 
 Example::
 
-    tests = {'my_anova': {'kind': 'anova', 'model': 'noise % word_type',
-                          'x': 'noise * word_type * subject'}}
+    tests = {
+        'one_way': {'kind': 'anova', 'x': 'word_type * subject'},
+        'two_way': {'kind': 'anova', 'x': 'word_type * meaning * subject'},
+    }
 
 
 ttest_rel

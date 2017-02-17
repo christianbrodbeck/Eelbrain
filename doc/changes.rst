@@ -31,6 +31,8 @@ New in 0.25
     use ``base`` instead.
   - The setting ``raw='clm'`` has been renamed to ``raw='raw'``.
   - Custom preprocessing pipelines (see :attr:`MneExperiment.raw`).
+  - The ``model`` parameter for ANOVA tests is now optional (see
+    :attr:`MneExperiment.tests`).
 
 * Reverse correlation using :func:`boosting`.
 * Loading and saving ``*.wav`` files (:func:`load.wav` and :func:`save.wav`).
