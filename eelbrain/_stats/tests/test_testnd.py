@@ -32,9 +32,12 @@ def test_anova():
         testnd.anova('utsnd', 'A*B', ds=ds, samples=samples, tfce=True)
 
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=0, pmin=0.05)
-    repr(res)
-    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=2, pmin=0.05)
-    repr(res)
+    eq_(repr(res), "<anova 'utsnd', 'A*B*rm', samples=0, pmin=0.05, "
+                   "'A': 17 clusters, 'B': 20 clusters, 'A x B': 22 clusters>")
+    res = testnd.anova('utsnd', 'A*B*rm', match='rm', ds=ds, samples=2, pmin=0.05)
+    eq_(repr(res), "<anova 'utsnd', 'A*B*rm', match='rm', samples=2, pmin=0.05, "
+                   "'A': 17 clusters, p >= 0.000, 'B': 20 clusters, p >= 0.000, "
+                   "'A x B': 22 clusters, p >= 0.000>")
 
     # persistence
     string = pickle.dumps(res, protocol=pickle.HIGHEST_PROTOCOL)
@@ -453,12 +456,12 @@ def test_ttest_ind():
 
     # basic
     res = testnd.ttest_ind('uts', 'A', 'a1', 'a0', ds=ds)
-    repr(res)
+    eq_(repr(res), "<ttest_ind 'uts', 'A', 'a1' (n=30), 'a0' (n=30)>")
     assert_less(res.p_uncorrected.min(), 0.05)
     # persistence
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res_ = pickle.loads(string)
-    repr(res_)
+    eq_(repr(res_), "<ttest_ind 'uts', 'A', 'a1' (n=30), 'a0' (n=30)>")
     assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
 
     # cluster
@@ -481,7 +484,8 @@ def test_ttest_rel():
     # basic
     res = testnd.ttest_rel('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm',
                            ds=ds, samples=100)
-    repr(res)
+    eq_(repr(res), "<ttest_rel 'uts', 'A x B', ('a1', 'b1'), ('a0', 'b0'), "
+                   "'rm' (n=15), samples=100, p >= 0.000>")
 
     # persistence
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)

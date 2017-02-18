@@ -163,7 +163,7 @@ class _Result(object):
                 sub_repr = '<array>'
             else:
                 sub_repr = repr(self.sub)
-            args.append(', sub=%s' % sub_repr)
+            args.append('sub=%s' % sub_repr)
         if self._cdist:
             args += self._repr_cdist()
 
@@ -1234,7 +1234,10 @@ class ttest_rel(_Result):
 class _MultiEffectResult(_Result):
 
     def _repr_test_args(self):
-        return [repr(self.Y), repr(self.X)]
+        args = [repr(self.Y), repr(self.X)]
+        if self.match is not None:
+            args.append('match=%r' % self.match)
+        return args
 
     def _repr_cdist(self):
         args = self._cdist[0]._repr_test_args(self.pmin)
