@@ -7157,7 +7157,7 @@ class Categorial(Dimension):
 
     def _axis_format(self, scalar, label):
         return (IndexFormatter(self.values),
-                FixedLocator(np.arange(len(self)), 10),
+                FixedLocator(np.arange(len(self))),
                 self._axis_label(label))
 
     def dimindex(self, arg):
