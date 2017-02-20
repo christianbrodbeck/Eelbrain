@@ -100,15 +100,16 @@ class ClusterPlotter(object):
 
     def _ids_for_p(self, p, effect=None):
         "Find cluster IDs for clusters with p-value <= p"
-        idx = self.res.clusters['p'] <= p
-        if effect is not None:
-            idx = np.logical_and(idx, self.res.clusters[:, 'effect'] == effect)
-        ids = self.res.clusters[idx, 'id']
-        if self._is_anova:
-            effect = self.res.clusters[idx, 'effect']
-            return zip(effect, ids)
+        if effect is None:
+            clusters = self.res.find_clusters(p)
         else:
-            return ids
+            clusters = self.res.find_clusters(p, effect=effect)
+            clusters[:, 'effect'] = effect
+
+        if self._is_anova:
+            return zip(clusters['effect'], clusters['id'])
+        else:
+            return clusters['id']
 
     def _get_clusters(self, ids):
         return [self._get_cluster(cid) for cid in ids]

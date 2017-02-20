@@ -1336,7 +1336,7 @@ class _MultiEffectResult(_Result):
             effect = self.effects.index(effect)
         return self._cdist[effect].masked_parameter_map(pmin, **sub)
 
-    def find_clusters(self, pmin=None, maps=False, **sub):
+    def find_clusters(self, pmin=None, maps=False, effect=None, **sub):
         """Find significant regions in a TFCE distribution
 
         Parameters
@@ -1348,6 +1348,9 @@ class _MultiEffectResult(_Result):
             Include in the output a map of every cluster (can be memory
             intensive if there are large statistical maps and/or many
             clusters; default False).
+        effect : int | str
+            Index or name of the effect from which to find clusters (default is
+            all effects).
 
         Returns
         -------
@@ -1355,6 +1358,10 @@ class _MultiEffectResult(_Result):
             Dataset with information about the clusters.
         """
         self._assert_has_cdist()
+        if effect is not None:
+            if isinstance(effect, basestring):
+                effect = self.effects.index(effect)
+            return self._cdist[effect].clusters(pmin, maps, **sub)
         dss = []
         info = {}
         for cdist in self._cdist:
