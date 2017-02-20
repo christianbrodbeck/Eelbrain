@@ -3,8 +3,7 @@ Development
 ***********
 
 Eelbrain is actively developed and maintained by
-`Christian Brodbeck <http://loop.frontiersin.org/people/120185>`_,
-Post-doctoral
+`Christian Brodbeck <http://loop.frontiersin.org/people/120185>`_
 at the `Computational sensorimotor systems lab
 <http://www.isr.umd.edu/Labs/CSSL/simonlab/Home.html>`_
 at University of Maryland, College Park.
@@ -12,11 +11,18 @@ at University of Maryland, College Park.
 
 .. _obtain-source:
 
-Installing the Development Version
-----------------------------------
+The Development Version
+-----------------------
 
 The Eelbrain source code is hosted on
 `GitHub <https://github.com/christianbrodbeck/Eelbrain>`_.
+To clone the repository, use::
+
+    $ git clone https://github.com/christianbrodbeck/Eelbrain.git
+
+
+Installing as Development Version
+---------------------------------
 
 Installation requires the presence of a compiler.
 On macOS, make sure Xcode is installed (open it once to accept the license
@@ -24,9 +30,9 @@ agreement).
 Windows will indicate any needed files when the install command is run.
 
 After cloning the repository, the development version can be installed by
-running::
+running, from the ``Eelbrain`` root directory::
 
-	$ python setup.py develop
+    $ python setup.py develop
 
 
 For further information on working with GitHub see `GitHub's instructions
@@ -39,6 +45,22 @@ In Python, you can make sure that you are working with the development version::
     'dev'
 
 To switch back to the release version use ``$ pip uninstall eelbrain``.
+
+
+Building with Conda
+-------------------
+
+To Build Eelbrain with ``conda``, make sure that you are in your root
+environment and that ``conda-build`` is installed. Then, from
+``Eelbrain/conda`` run::
+
+    $ conda build eelbrain --numpy=1.11
+
+This builds against numpy 1.11, to build against another version replace
+``1.11``.
+After building successfully, the build can be installed with::
+
+    $ conda install --use-local eelbrain
 
 
 Contributing
