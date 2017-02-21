@@ -151,7 +151,6 @@ class App(wx.App):
 
         # register in IPython
         self.using_prompt_toolkit = False
-        self.block_terminal = False
         if ('IPython' in sys.modules and
                 LooseVersion(sys.modules['IPython'].__version__) >=
                 LooseVersion('5') and backend['prompt_toolkit']):
@@ -174,9 +173,6 @@ class App(wx.App):
     def pt_inputhook(self, context):
         """prompt_toolkit inputhook"""
         # prompt_toolkit.eventloop.inputhook.InputHookContext
-        if self.block_terminal:
-            return self.MainLoop()
-
         if IS_WINDOWS:
             # On Windows, select.poll() is not available
             def thread():
@@ -618,10 +614,14 @@ def get_app():
 
 def run(block=False):
     app = get_app()
-    app.block_terminal = block
-    if not app.using_prompt_toolkit and not app.IsMainLoopRunning():
-        print("Starting GUI. Quit the Python application to return to the shell...")
-        app.MainLoop()
+    if app.using_prompt_toolkit:
+        if block:
+            app.MainLoop()
+    else:
+        if not app.IsMainLoopRunning():
+            print("Starting GUI. Quit the Python application to return to the "
+                  "shell...")
+            app.MainLoop()
 
 
 class DockIcon(wx.TaskBarIcon):
