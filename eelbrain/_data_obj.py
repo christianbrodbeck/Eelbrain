@@ -3043,7 +3043,13 @@ class NDVar(object):
 
     *Shallow copies*: ``x`` and ``dims`` are stored without copying. A shallow
     copy of ``info`` is stored. Make sure the relevant objects are not modified
-    externally later.
+    externally later. When indexing an NDVar, the new NDVar will contain a view
+    on the data whenever possible based on the underlying array (See `NumPy
+    Indexing <https://docs.scipy.org/doc/numpy/reference/arrays.indexing
+    .html>`_). This only matters when explicitly modifying an NDVar in place
+    (e.g., ``ndvar += 1``) because NDVar methods that return NDVars never
+    implicitly modify the original NDVars in place (see `this note
+    <https://mail.python.org/pipermail/python-dev/2003-October/038855.html>`_.
 
 
     Examples
