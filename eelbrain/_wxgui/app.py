@@ -160,12 +160,20 @@ class App(wx.App):
                                                     self.pt_inputhook)
             shell = IPython.get_ipython()
             if shell is not None:
-                shell.enable_gui('eelbrain')
-                self.using_prompt_toolkit = True
+                try:
+                    shell.enable_gui('eelbrain')
+                except IPython.core.error.UsageError:
+                    print("Prompt-toolkit does not seem to be supported by "
+                          "the current IPython shell (%s); The Eelbrain GUI "
+                          "needs to block Terminal input to work. Use "
+                          "eelbrain.gui.run() to start GUI interaction." %
+                          shell.__class__.__name__)
+                else:
+                    self.using_prompt_toolkit = True
 
-                # qt4 backend can cause conflicts in IPython
-                from .. import plot
-                plot.configure(ets_toolkit='wx')
+                    # qt4 backend can cause conflicts in IPython
+                    from .. import plot
+                    plot.configure(ets_toolkit='wx')
         self.SetExitOnFrameDelete(not self.using_prompt_toolkit)
 
         return True
