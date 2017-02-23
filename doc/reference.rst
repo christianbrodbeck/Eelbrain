@@ -60,6 +60,7 @@ pickle I/O functions provide backwards compatibility:
    :toctree: generated
 
    load.unpickle
+   load.update_subjects_dir
 
 
 Functions for loading specific file formats as Eelbrain object:
