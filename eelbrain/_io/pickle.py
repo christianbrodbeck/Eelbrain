@@ -2,6 +2,7 @@ from __future__ import print_function
 
 from cPickle import dump, HIGHEST_PROTOCOL, Unpickler
 from importlib import import_module
+from itertools import chain
 import os
 
 from .._data_obj import NDVar
@@ -107,7 +108,7 @@ def unpickle(file_path=None):
 def update_subjects_dir(obj, subjects_dir, depth=0):
     """Update NDVar SourceSpace.subjects_dir attributes
 
-    Examine attributes of obj recursively and replace subjects_dir on all
+    Examine elements of ``obj`` recursively and replace ``subjects_dir`` on all
     NDVars with SourceSpace dimension that are found.
 
     Parameters
@@ -122,7 +123,11 @@ def update_subjects_dir(obj, subjects_dir, depth=0):
 
     Notes
     -----
-    Does not examine dict contents (including Datasets).
+    The following elements are searched:
+
+      - Attributes of objects that have a ``__dict__``.
+      - ``dict`` values.
+      - list/tuple items.
     """
     if isinstance(obj, NDVar):
         if hasattr(obj, 'source'):
@@ -130,10 +135,13 @@ def update_subjects_dir(obj, subjects_dir, depth=0):
     elif depth:
         if hasattr(obj, '__dict__'):
             values = obj.__dict__.itervalues()
-        elif isinstance(obj, (tuple, list)):
-            values = obj
         else:
-            return
+            values = ()
+
+        if isinstance(obj, dict):
+            values = chain(values, obj.itervalues())
+        elif isinstance(obj, (tuple, list)):
+            values = chain(values, obj)
 
         for v in values:
             update_subjects_dir(v, subjects_dir, depth - 1)
