@@ -885,28 +885,28 @@ class Celltable(object):
 
     Attributes
     ----------
-    .Y, .X,
+    Y, X,
         Y and X after sub was applied.
-    .sub, .match:
+    sub, match:
         Input arguments.
-    .cells : list of (str | tuple)
+    cells : list of (str | tuple)
         List of all cells in X.
-    .data : dict(cell -> data)
+    data : dict(cell -> data)
         Data (``Y[index]``) in each cell.
-    .data_indexes : dict(cell -> index-array)
+    data_indexes : dict(cell -> index-array)
         For each cell, a boolean-array specifying the index for that cell in
         ``X``.
 
     **If ``match`` is specified**:
 
-    .within : dict(cell1, cell2 -> bool)
+    within : dict(cell1, cell2 -> bool)
         Dictionary that specifies for each cell pair whether the corresponding
         comparison is a repeated-measures or an independent measures
         comparison (only available when the input argument ``match`` is
         specified.
-    .all_within : bool
+    all_within : bool
         Whether all comparison are repeated-measures comparisons or not.
-    .groups : dict(cell -> group)
+    groups : dict(cell -> group)
         A slice of the match argument describing the group members for each
         cell.
 
