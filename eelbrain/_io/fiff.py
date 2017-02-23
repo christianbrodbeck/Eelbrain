@@ -569,7 +569,7 @@ def sensor_dim(fiff, picks=None, sysname=None):
     else:
         conn = None
 
-    return Sensor(ch_locs, ch_names, sysname=sysname, connectivity=conn)
+    return Sensor(ch_locs, ch_names, sysname, connectivity=conn)
 
 
 def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, inv=None, lambda2=1,

@@ -1284,7 +1284,7 @@ def test_sensor():
                      [0., 1., 0.],
                      [0., 0., 1.]])
     names = ['1', '2', '3']
-    sensor = Sensor(locs, names, sysname='test')
+    sensor = Sensor(locs, names, 'test')
     s1 = sensor[[0, 1]]
     s2 = sensor[[1, 2]]
     eq_(tuple(s1.names), ('1', '2'))

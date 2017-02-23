@@ -7436,8 +7436,6 @@ class Sensor(Dimension):
         ``z``: top - bottom
     names : list of str | None
         sensor names, same order as locs (optional)
-    groups : None | dict
-        Named sensor groups.
     sysname : None | str
         Name of the sensor system (only used for information purposes).
     proj2d:
@@ -7481,8 +7479,8 @@ class Sensor(Dimension):
     _proj_aliases = {'left': 'x-', 'right': 'x+', 'back': 'y-', 'front': 'y+',
                      'top': 'z+', 'bottom': 'z-'}
 
-    def __init__(self, locs, names=None, groups=None, sysname=None,
-                 proj2d='z root', connectivity=None):
+    def __init__(self, locs, names=None, sysname=None, proj2d='z root',
+                 connectivity=None):
         self.sysname = sysname
         self.default_proj2d = self._interpret_proj(proj2d)
         self._connectivity = connectivity
@@ -7508,27 +7506,16 @@ class Sensor(Dimension):
         # cache for transformed locations
         self._transformed = {}
 
-        # groups
-        self.groups = groups
-
     def __getstate__(self):
-        state = {'proj2d': self.default_proj2d,
-                 'groups': self.groups,
-                 'locs': self.locs,
-                 'names': self.names,
-                 'sysname': self.sysname,
-                 'connectivity': self._connectivity}
-        return state
+        return {'proj2d': self.default_proj2d,
+                'locs': self.locs,
+                'names': self.names,
+                'sysname': self.sysname,
+                'connectivity': self._connectivity}
 
     def __setstate__(self, state):
-        locs = state['locs']
-        names = state['names']
-        groups = state['groups']
-        sysname = state['sysname']
-        proj2d = state['proj2d']
-        connectivity = state.get('connectivity', None)
-
-        self.__init__(locs, names, groups, sysname, proj2d, connectivity)
+        self.__init__(state['locs'], state['names'], state['sysname'],
+                      state['proj2d'], state.get('connectivity', None))
 
     def __repr__(self):
         return "<Sensor n=%i, name=%r>" % (self.n, self.sysname)
@@ -7545,9 +7532,8 @@ class Sensor(Dimension):
         if np.isscalar(index):
             return self.names[index]
         else:
-            # TODO: groups
-            return Sensor(self.locs[index], self.names[index], None,
-                          self.sysname, self.default_proj2d,
+            return Sensor(self.locs[index], self.names[index], self.sysname,
+                          self.default_proj2d,
                           _subgraph_edges(self._connectivity,
                                           index_to_int_array(index, self.n)))
 
@@ -8005,12 +7991,9 @@ class Sensor(Dimension):
         if check_dims:
             idxd = map(dim.names.index, names)
             if not np.all(locs == dim.locs[idxd]):
-                err = "Sensor locations don't match between dimension objects"
-                raise ValueError(err)
-
-        new = Sensor(locs, names, sysname=self.sysname,
-                     proj2d=self.default_proj2d)
-        return new
+                raise ValueError("Sensor locations don't match between "
+                                 "dimension objects")
+        return Sensor(locs, names, self.sysname, self.default_proj2d)
 
     def neighbors(self, connect_dist):
         """Find neighboring sensors.
@@ -8118,7 +8101,7 @@ def as_sensor(obj):
     elif isinstance(obj, NDVar) and obj.has_dim('sensor'):
         return obj.sensor
     elif hasattr(obj, 'pos') and hasattr(obj, 'ch_names') and hasattr(obj, 'kind'):
-        return Sensor(obj.pos, obj.ch_names, sysname=obj.kind)
+        return Sensor(obj.pos, obj.ch_names, obj.kind)
     else:
         raise TypeError("Can't get sensors from %r" % (obj,))
 
