@@ -36,7 +36,7 @@ Optional extensions
 ^^^^^^^^^^^^^^^^^^^
 
 Eelbrain provides functions to interface with R if `rpy2
-<http://rpy.sourceforge.net>`_ is installed:
+<http://rpy.sourceforge.net>`_ is installed::
 
     $ conda install rpy2
 
