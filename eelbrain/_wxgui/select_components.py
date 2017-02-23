@@ -35,7 +35,7 @@ from .frame import EelbrainDialog
 
 COLOR = {True: (.5, 1, .5), False: (1, .3, .3)}
 LINE_COLOR = {True: 'k', False: (1, 0, 0)}
-LINK = 'component:%i epoch:%i'
+LINK = 'component:%i epoch:%s'
 
 
 class ChangeAction(Action):
@@ -369,20 +369,19 @@ class Frame(FileFrame):
 
         # compute and rank SASICA FTc
         y = self.doc.sources.max('time') - self.doc.sources.min('time')
-        z = (y - y.mean('epoch')) / y.std('epoch')
-        z_max = z.max('epoch')
-        c_rank = np.argsort(z_max.x)[::-1]
+        z = (y - y.mean('case')) / y.std('case')
+        z_max = z.max('case').x
+        components_ranked = np.argsort(z_max)[::-1]
 
         # collect output
         res = []
-        for i_c in c_rank:
-            z_epochs = z[i_c].x
-            if z_max[i_c] < threshold:
+        for c in components_ranked:
+            if z_max[c] < threshold:
                 break
+            z_epochs = z.x[:, c]
             idx = np.flatnonzero(z_epochs >= threshold)
             rank = np.argsort(z_epochs[idx])[::-1]
-            epochs = y.epoch.values[idx[rank]]
-            res.append((i_c, z_max[i_c], epochs))
+            res.append((c, z_max[c], idx[rank]))
 
         if len(res) == 0:
             wx.MessageBox("No rare events were found.", "No Rare Events Found",
@@ -397,10 +396,11 @@ class Frame(FileFrame):
         doc.append(fmtxt.linebreak)
         hash_char = {True: fmtxt.FMTextElement('# ', 'font', {'color': 'green'}),
                      False: fmtxt.FMTextElement('# ', 'font', {'color': 'red'})}
-        for i, ft, epochs in res:
-            doc.append(hash_char[self.doc.accept[i]])
-            doc.append("%i (%.1f):  " % (i, ft))
-            doc.append(fmtxt.delim_list((fmtxt.Link(e, LINK % (i, e)) for e in epochs)))
+        for c, ft, epochs in res:
+            doc.append(hash_char[self.doc.accept[c]])
+            doc.append("%i (%.1f):  " % (c, ft))
+            doc.append(fmtxt.delim_list((fmtxt.Link(
+                self.doc.epoch_labels[e], LINK % (c, e)) for e in epochs)))
             doc.append(fmtxt.linebreak)
 
         InfoFrame(self, "Rare Events", doc.get_html())
