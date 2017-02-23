@@ -7362,7 +7362,7 @@ class Scalar(Dimension):
 
 
 class Ordered(Scalar):
-    """Scalar with guarantee that values are monotonically increasing
+    """Scalar dimension with values that are monotonically increasing
 
     Parameters
     ----------

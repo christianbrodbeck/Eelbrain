@@ -20,7 +20,7 @@ Primary data classes:
    Datalist
 
 
-Secondary classes (not usually initialized by themselves but through operations
+Model classes (not usually initialized by themselves but through operations
 on primary data-objects):
 
 .. autosummary::
@@ -28,6 +28,17 @@ on primary data-objects):
 
    Interaction
    Model
+
+
+NDVar dimensions (not usually initialized by themselves but through
+:mod:`load` functions):
+
+.. autosummary::
+   :toctree: generated
+
+   Categorial
+   Sensor
+   UTS
 
 
 ^^^^^^^^
