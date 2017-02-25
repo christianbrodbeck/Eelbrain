@@ -7429,17 +7429,17 @@ class Sensor(Dimension):
 
     Parameters
     ----------
-    locs : array-like
-        list of (x, y, z) coordinates;
-        ``x``: anterior - posterior,
-        ``y``: left - right,
-        ``z``: top - bottom
-    names : list of str | None
-        sensor names, same order as locs (optional)
-    sysname : None | str
-        Name of the sensor system (only used for information purposes).
+    locs : array-like  (n_sensor, 3)
+        list of sensor locations in ALS coordinates, i.e., for each sensor a
+        ``(anterior, left, superior)`` coordinate triplet.
+    names : list of str
+        Sensor names, same order as ``locs`` (default is ``['0', '1', '2',
+        ...]``).
+    sysname : str
+        Name of the sensor system.
     proj2d:
-        default 2d projection. For options, see the class documentation.
+        Default 2d projection (default is ``'z-root'``; for options see notes
+        below).
     connectivity : array (n_edges, 2)
         Sensor connectivity (optional).
 
@@ -7452,27 +7452,27 @@ class Sensor(Dimension):
     names : list of str
         Ordered list of sensor names.
     x, y, z : array, len = n_sensors
-        X, y and z positions of the sensors.
+        Sensor position x, y and z coordinates.
 
     Notes
     -----
     The following are possible 2d-projections:
 
-    ``None``:
-        Just use horizontal coordinates
     ``'z root'``:
         the radius of each sensor is set to equal the root of the vertical
         distance from the top of the net.
     ``'cone'``:
-        derive x/y coordinate from height based on a cone transformation
+        derive x/y coordinate from height based on a cone transformation.
     ``'lower cone'``:
-        only use cone for sensors with z < 0
+        only use cone for sensors with z < 0.
+    Axis and sign :
+        For example, ``x+`` for anterior, ``x-`` for posterior.
 
     Examples
     --------
-    >>> sensors = [(0,  0,   0),
-                   (0, -.25, -.45)]
-    >>> sensor_dim = Sensor(sensors, names=["Cz", "Pz"])
+    >>> locs = [(0,  0,   0),
+    ...         (0, -.25, -.45)]
+    >>> sensor_dim = Sensor(locs, names=["Cz", "Pz"])
     """
     name = 'sensor'
     adjacent = False
@@ -7487,6 +7487,9 @@ class Sensor(Dimension):
 
         # 'z root' transformation fails with 32-bit floats
         self.locs = locs = np.asarray(locs, dtype=np.float64)
+        if locs.ndim != 2 or locs.shape[1] != 3:
+            raise ValueError("locs needs to have shape (n_sensors, 3), got "
+                             "array of shape %s" % (locs.shape,))
         self.x = locs[:, 0]
         self.y = locs[:, 1]
         self.z = locs[:, 2]
@@ -7494,7 +7497,10 @@ class Sensor(Dimension):
         self.n = len(locs)
 
         if names is None:
-            self.names_dist = names = [str(i) for i in xrange(self.n)]
+            names = [str(i) for i in xrange(self.n)]
+        elif len(names) != self.n:
+            raise ValueError("Length mismatch: got %i locs but %i names" %
+                             (self.n, len(names)))
         self.names = Datalist(names)
         self.channel_idx = {name: i for i, name in enumerate(self.names)}
         pf = os.path.commonprefix(self.names)
@@ -7839,57 +7845,6 @@ class Sensor(Dimension):
             return out
         else:
             return None
-
-    def get_ROIs(self, base):
-        """
-        returns list if list of sensors, grouped according to closest
-        spatial proximity to elements of base (=list of sensor ids)"
-
-        """
-        locs3d = self.locs
-        # print loc3d
-        base_locs = locs3d[base]
-        ROI_dic = dict((i, [Id]) for i, Id in enumerate(base))
-        for i, loc in enumerate(locs3d):
-            if i not in base:
-                dist = np.sqrt(np.sum((base_locs - loc) ** 2, 1))
-                min_i = np.argmin(dist)
-                ROI_dic[min_i].append(i)
-        out = ROI_dic.values()
-        return out
-
-    def get_subnet_ROIs(self, ROIs, loc='first'):
-        """
-        returns new Sensor instance, combining groups of sensors in the old
-        instance into single sensors in the new instance. All sensors for
-        each element in ROIs are the basis for one new sensor.
-
-        ! Only implemented for numeric indexes, not for boolean indexes !
-
-        **parameters:**
-
-        ROIs : list of lists of sensor ids
-            each ROI defines one sensor in the new net
-        loc : str
-            'first': use the location of the first sensor of each ROI (default);
-            'mean': use the mean location
-
-        """
-        names = []
-        locs = np.empty((len(ROIs, 3)))
-        for i, ROI in enumerate(ROIs):
-            i = ROI[0]
-            names.append(self.names[i])
-
-            if loc == 'first':
-                ROI_loc = self.locs[i]
-            elif loc == 'mean':
-                ROI_loc = self.locs[ROI].mean(0)
-            else:
-                raise ValueError("invalid value for loc (%s)" % loc)
-            locs[i] = ROI_loc
-
-        return Sensor(locs, names, sysname=self.sysname)
 
     def index(self, exclude=None, names=False):
         """Construct an index for specified sensors
