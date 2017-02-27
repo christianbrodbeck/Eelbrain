@@ -18,6 +18,20 @@ managed by
 
     * Dataset
 
+
+Effect types
+------------
+
+These are elementary effects in a Model, and identified by :func:`is_effect`
+
+ - _Effect
+   - Factor
+   - Interaction
+   - NestedEffect
+ - Var
+ - NonBasicEffect
+
+
 """
 
 from __future__ import division
@@ -1608,7 +1622,9 @@ class Var(object):
         return Var(x, info=info)
 
     def __mul__(self, other):
-        if iscategorial(other):
+        if isinstance(other, Model):
+            return Model((self,)) * other
+        elif iscategorial(other):
             return Model((self, other, self % other))
         elif isinstance(other, Var):
             x = self.x * other.x
@@ -6087,7 +6103,7 @@ class Interaction(_Effect):
 
     Parameters
     ----------
-    base : list
+    base : sequence
         List of data-objects that form the basis of the interaction.
 
     Attributes
@@ -6581,7 +6597,10 @@ class Model(object):
         out = []
         for e_self in self.effects:
             for e_other in Model(other).effects:
-                out.append(e_self % e_other)
+                if isinstance(e_self, Var) and isinstance(e_other, Var):
+                    out.append(e_self * e_other)
+                else:
+                    out.append(e_self % e_other)
         return Model(out)
 
     def __eq__(self, other):

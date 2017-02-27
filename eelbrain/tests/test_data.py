@@ -706,6 +706,7 @@ def test_model():
     "Test Model class"
     a = Factor('ab', repeat=3, name='a')
     b = Factor('ab', tile=3, name='b')
+    u = Var([1, 1, 1, -1, -1, -1], 'u')
     v = Var([1., 2., 3., 4., 5., 6.], 'v')
     w = Var([1., 0., 0., 1., 1., 0.], 'w')
 
@@ -751,6 +752,22 @@ def test_model():
     # persistence
     mp = pickle.loads(pickle.dumps(m, pickle.HIGHEST_PROTOCOL))
     assert_array_equal(m.full, mp.full)
+
+    # nested Vars
+    m = (v + w) * u
+    assert_dataobj_equal(m.effects[2], u)
+    assert_dataobj_equal(m.effects[3], v * u)
+    assert_dataobj_equal(m.effects[4], w * u)
+    m = u * (v + w)
+    assert_dataobj_equal(m.effects[0], u)
+    assert_dataobj_equal(m.effects[3], u * v)
+    assert_dataobj_equal(m.effects[4], u * w)
+    m = (v + w) % u
+    assert_dataobj_equal(m.effects[0], v * u)
+    assert_dataobj_equal(m.effects[1], w * u)
+    m = u % (v + w)
+    assert_dataobj_equal(m.effects[0], u * v)
+    assert_dataobj_equal(m.effects[1], u * w)
 
 
 def test_ndvar():
