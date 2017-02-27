@@ -14,9 +14,12 @@ at the `Computational sensorimotor systems lab
 <http://www.isr.umd.edu/Labs/CSSL/simonlab/Home.html>`_
 at University of Maryland, College Park.
 
-If you use Eelbrain in work that is published, please acknowledge it with a
-link to `pythonhosted.org/eelbrain <https://pythonhosted.org/eelbrain/>`_ and
-indicate the version which you used.
+If you use Eelbrain in work that is published, please acknowledge it by citing
+it with the appropriate DOI for the version you used.
+
+.. image:: https://zenodo.org/badge/3651023.svg
+   :target: https://zenodo.org/badge/latestdoi/3651023
+
 
 Manual
 ------
