@@ -57,9 +57,10 @@ test:
 
 about:
   home: https://pythonhosted.org/eelbrain
-  license: GPL3
   summary: 'MEG/EEG analysis tools'
-  license_family: GPL3
+  license: BSD-3-Clause
+  license_family: BSD
+  license_file: LICENSE.txt
 
 # See
 # http://docs.continuum.io/conda/build.html for

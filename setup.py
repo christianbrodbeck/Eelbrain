@@ -48,7 +48,7 @@ setup(
     url="http://eelbrain.readthedocs.io",
     author="Christian Brodbeck",
     author_email='christianbrodbeck@nyu.edu',
-    license='GPL3',
+    license='BSD (3-clause)',
     long_description=DESC,
     python_requires='==2.7',
     setup_requires=open('requirements_install.txt').read().splitlines(),
