@@ -2591,43 +2591,6 @@ class Factor(_Effect):
         """
         return NestedEffect(self, other)
 
-    def _interpret_y(self, Y, create=False):
-        """
-        Parameters
-        ----------
-        Y : str | list of str
-            String(s) to be converted to code values.
-
-        Returns
-        -------
-        codes : int | list of int
-            List of values (codes) corresponding to the categories.
-
-        """
-        if isinstance(Y, basestring):
-            if Y in self._codes:
-                return self._codes[Y]
-            elif create:
-                code = 0
-                while code in self._labels:
-                    code += 1
-                if code >= 65535:
-                    raise ValueError("Too many categories in this Factor.")
-                self._labels[code] = Y
-                self._codes[Y] = code
-                return code
-            else:
-                return 65535  # code for values not present in the Factor
-        elif np.iterable(Y):
-            out = np.empty(len(Y), dtype=np.uint16)
-            for i, y in enumerate(Y):
-                out[i] = self._interpret_y(y, create=create)
-            return out
-        elif Y in self._labels:
-            return Y
-        else:
-            raise ValueError("unknown cell: %r" % Y)
-
     @property
     def as_dummy(self):  # x_dummy_coded
         shape = (self._n_cases, self.df)
@@ -5557,22 +5520,28 @@ class Dataset(OrderedDict):
         "returns the i'th case as a dictionary"
         return dict((k, v[i]) for k, v in self.iteritems())
 
-    def get_subsets_by(self, X, exclude=[], name='{name}[{cell}]'):
-        """
-        splits the Dataset by the cells of a Factor and
-        returns as dictionary of subsets.
+    def get_subsets_by(self, x, exclude=(), name='{name}[{cell}]'):
+        """Split the Dataset by the cells of ``x``
 
-        """
-        if isinstance(X, basestring):
-            X = self[X]
+        Parameters
+        ----------
+        x : categorial
+            Model defining cells into which to split the dataset.
+        exclude : sequence of str
+            Cells of ``x`` which should be ignored.
+        name : str
+            Name for the new datasets (formatted with ``self.name`` and
+            ``cell``).
 
-        out = {}
-        for cell in X.cells:
-            if cell not in exclude:
-                setname = name.format(name=self.name, cell=cell)
-                index = (X == cell)
-                out[cell] = self.sub(index, setname)
-        return out
+        Returns
+        -------
+        sub_datasets : dict
+            ``{cell: sub_dataset}`` dictionary.
+        """
+        if isinstance(x, basestring):
+            x = self.eval(x)
+        return {cell: self.sub(x == cell, name.format(name=self.name, cell=cell)) for
+                cell in x.cells if cell not in exclude}
 
     def aggregate(self, x=None, drop_empty=True, name='{name}', count='n',
                   drop_bad=False, drop=(), equal_count=False, never_drop=()):
@@ -6321,67 +6290,6 @@ class Interaction(_Effect):
     @LazyProperty
     def _value_set(self):
         return set(self)
-
-
-class diff(object):
-    """
-    helper to create difference values for correlation.
-
-    """
-    def __init__(self, X, c1, c2, match, sub=None):
-        """
-        X: Factor providing categories
-        c1: category 1
-        c2: category 2
-        match: Factor matching values between categories
-
-        """
-        raise NotImplementedError
-        # FIXME: use celltable
-        sub = X.isany(c1, c2)
-#        ct = celltable
-#        ...
-        i1 = X.code_for_label(c1)
-        i2 = X.code_for_label(c2)
-        self.I1 = X == i1
-        self.I2 = X == i2
-
-        if sub is not None:
-            self.I1 = self.I1 * sub
-            self.I2 = self.I2 * sub
-
-        m1 = match.x[self.I1]
-        m2 = match.x[self.I2]
-        self.s1 = np.argsort(m1)
-        self.s2 = np.argsort(m2)
-        assert np.all(np.unique(m1) == np.unique(m2))
-        self.name = "{n}({x1}-{x2})".format(n='{0}', x1=X.cells[i1], x2=X.cells[i2])
-
-    def subtract(self, Y):
-        ""
-        assert type(Y) is Var
-#        if self.sub is not None:
-#            Y = Y[self.sub]
-        Y1 = Y[self.I1]
-        Y2 = Y[self.I2]
-        y = Y1[self.s1] - Y2[self.s2]
-        name = self.name.format(Y.name)
-        # name = Y.name + '_DIFF'
-        return Var(y, name)
-
-    def extract(self, Y):
-        ""
-        y1 = Y[self.I1].x[self.s1]
-        y2 = Y[self.I2].x[self.s2]
-        assert np.all(y1 == y2), Y.name
-        if type(Y) is Factor:
-            return Factor(y1, Y.name, random=Y.random, labels=Y.cells)
-        else:
-            return Var(y1, Y.name)
-
-    @property
-    def N(self):
-        return np.sum(self.I1)
 
 
 def box_cox_transform(X, p, name=None):
