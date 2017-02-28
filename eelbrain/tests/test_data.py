@@ -13,8 +13,8 @@ import warnings
 
 import mne
 from nose.tools import (
-    eq_, ok_, assert_almost_equal, assert_is_instance, assert_raises,
-    assert_not_equal, nottest)
+    eq_, ok_, assert_almost_equal, assert_false, assert_is_instance,
+    assert_raises, assert_not_equal, nottest)
 import numpy as np
 from numpy.testing import (
     assert_equal, assert_array_equal, assert_allclose,
@@ -24,8 +24,8 @@ from eelbrain import (
     datasets, load, Var, Factor, NDVar, Datalist, Dataset, Celltable, align,
     align1, choose, combine, cwt_morlet, shuffled_index)
 from eelbrain._data_obj import (
-    asvar, assub, full_slice, longname, Categorial, Sensor, SourceSpace,
-    UTS, DimensionMismatchError, assert_has_no_empty_cells)
+    all_equal, asvar, assub, full_slice, longname, Categorial, Sensor,
+    SourceSpace, UTS, DimensionMismatchError, assert_has_no_empty_cells)
 from eelbrain._stats.stats import rms
 from eelbrain._utils.testing import (
     assert_dataobj_equal, assert_dataset_equal, assert_source_space_equal,
@@ -532,6 +532,17 @@ def test_effect():
     assert_array_equal(f1.enumerate_cells(), n1)
     assert_array_equal(f2.enumerate_cells(), np.arange(6).repeat(2))
     assert_array_equal(i.enumerate_cells(), np.arange(2).repeat(6))
+
+
+def test_equality():
+    u = Var(np.arange(5.))
+    v = Var(np.arange(5.))
+    ok_(all_equal(u, v))
+    u[-1] = np.nan
+    assert_false(all_equal(u, v))
+    v[-1] = np.nan
+    assert_false(all_equal(u, v))
+    ok_(all_equal(u, v, True))
 
 
 def test_factor():

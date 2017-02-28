@@ -664,6 +664,50 @@ def _empty_like(obj, n=None, name=None):
         raise TypeError(err)
 
 
+def all_equal(a, b, nan_equal=False):
+    """Test two data-objects for equality
+
+    Equivalent to ``numpy.all(a == b)`` but faster and capable of treating nans
+    as equal.
+
+    Paramaters
+    ----------
+    a : Var | Factor | NDVar
+        Variable to compare.
+    a : Var | Factor | NDVar
+        Variable to compare.
+    nan_equal : bool
+        Treat ``nan == nan`` as ``True``.
+
+    Returns
+    -------
+    all_equal : bool
+        True if all entries in
+    """
+    if a.__class__ is not b.__class__:
+        raise TypeError("Comparing %s with %s" % (a.__class__, b.__class__))
+    elif len(a) != len(b):
+        raise ValueError("a and b have different lengths (%i vs %i)" %
+                         (len(a), len(b)))
+    elif isinstance(a, Factor):
+        if a._codes == b._codes:
+            return np.array_equal(a.x, b.x)
+        else:
+            return np.all(a == b)
+    elif isinstance(a, (Var, NDVar)):
+        if not nan_equal or a.x.dtype.kind in 'ib':  # can't be nan
+            return np.array_equal(a.x, b.x)
+        else:
+            mask = np.isnan(a.x)
+            buf = np.isnan(b.x)
+            mask &= buf
+            np.equal(a.x, b.x, buf)
+            buf |= mask
+            return buf.all()
+    else:
+        raise TypeError("Comparison for %s is not implemented" % a.__class__)
+
+
 # --- sorting ---
 
 def align(d1, d2, i1='index', i2=None, out='data'):

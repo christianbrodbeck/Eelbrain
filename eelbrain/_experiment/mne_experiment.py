@@ -27,7 +27,8 @@ from .. import table
 from .. import testnd
 from .._data_obj import (
     Datalist, Dataset, DimensionMismatchError, Factor, OldVersionError, Var,
-    align, as_legal_dataset_key, asfactor, assert_is_legal_dataset_key, combine)
+    align, all_equal, as_legal_dataset_key, asfactor,
+    assert_is_legal_dataset_key, combine)
 from .._info import BAD_CHANNELS
 from .._io.pickle import update_subjects_dir
 from .._names import INTERPOLATE_CHANNELS
@@ -1336,14 +1337,20 @@ class MneExperiment(FileTree):
                         elif var not in new_events:
                             invalid_cache['variables'].add(var)
                             log.debug("  var removed: %s (%s)", var, '/'.join(key))
-                        elif old_events[var].name != new_events[var].name:
+                        old = old_events[var]
+                        new = new_events[var]
+                        if old.name != new.name:
                             invalid_cache['variables'].add(var)
                             log.debug("  var name changed: %s (%s) %s->%s", var,
-                                      '/'.join(key), old_events[var].name,
-                                      new_events[var].name)
-                        elif not np.all(old_events[var] == new_events[var]):
+                                      '/'.join(key), old.name, new.name)
+                        elif new.__class__ is not old.__class__:
                             invalid_cache['variables'].add(var)
-                            log.debug("  var changed: %s (%s)", var, '/'.join(key))
+                            log.debug("  var type changed: %s (%s) %s->%s", var,
+                                      '/'.join(key), old.__class__, new.__class)
+                        elif not all_equal(old, new, True):
+                            invalid_cache['variables'].add(var)
+                            log.debug("  var changed: %s (%s) %i values", var,
+                                      '/'.join(key), np.sum(new != old))
 
             # groups
             for group, members in cache_state['groups'].iteritems():
