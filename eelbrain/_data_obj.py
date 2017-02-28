@@ -1576,18 +1576,12 @@ class Var(object):
         return self._n_cases
 
     def __getitem__(self, index):
-        "if Factor: return new variable with mean values per Factor category"
         if isinstance(index, Factor):
-            f = index
-            x = []
-            for v in np.unique(f.x):
-                x.append(np.mean(self.x[f == v]))
-            return Var(x, self.name, info=self.info.copy())
+            raise TypeError("Factor can't be used as index")
         elif isinstance(index, Var):
             index = index.x
-
         x = self.x[index]
-        if np.iterable(x):
+        if isinstance(x, np.ndarray):
             return Var(x, self.name, info=self.info.copy())
         else:
             return x
