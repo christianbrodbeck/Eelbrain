@@ -1160,39 +1160,29 @@ class Celltable(object):
         elif out is list:
             return [self.data[cell] for cell in self.cells]
 
-    def get_statistic(self, func=np.mean, a=1, **kwargs):
-        """
-        Returns a list with a * func(data) for each data cell.
+    def get_statistic(self, func=np.mean, a=None, **kwargs):
+        """Return a list with ``a * func(data)`` for each data cell.
 
         Parameters
         ----------
-
         func : callable | str
             statistics function that is applied to the data. Can be string,
             such as '[X]sem', '[X]std', or '[X]ci', e.g. '2sem'.
         a : scalar
-            Multiplier (if not provided in ``function`` string).
-        kwargs :
+            Multiplier (ignored if a multiplier is specified in ``func``, as in
+            e.g. ``"2sem"``).
+        **kwargs :
             Are submitted to the statistic function.
-
-
-        Notes
-        ----
-
-        :py:meth:`get_statistic_dict`
-
 
         See also
         --------
-
-        Celltable.get_statistic_dict : return statistics in a dict
-
+        .get_statistic_dict : return statistics in a ``{cell: data}`` dict
         """
         if isinstance(func, basestring):
             if func.endswith('ci'):
                 if len(func) > 2:
                     a = float(func[:-2])
-                elif a == 1:
+                elif a is None:
                     a = .95
                 from ._stats.stats import confidence_interval
                 func = confidence_interval
@@ -1209,16 +1199,31 @@ class Celltable(object):
             else:
                 raise ValueError('unrecognized statistic: %r' % func)
 
-        Y = [a * func(self.data[cell].x, **kwargs) for cell in self.cells]
-        return Y
+        if a is None:
+            a = 1
 
-    def get_statistic_dict(self, func=np.mean, a=1, **kwargs):
-        """
-        Same as :py:meth:`~Celltable.get_statistic`, except that he result is returned in
-        a {cell: value} dictionary.
+        return [a * func(self.data[cell].x, **kwargs) for cell in self.cells]
 
+    def get_statistic_dict(self, func=np.mean, a=None, **kwargs):
+        """Return a ``{cell: a * func(data)}`` dictionary.
+
+        Parameters
+        ----------
+        func : callable | str
+            statistics function that is applied to the data. Can be string,
+            such as '[X]sem', '[X]std', or '[X]ci', e.g. '2sem'.
+        a : scalar
+            Multiplier (ignored if a multiplier is specified in ``func``, as in
+            e.g. ``"2sem"``).
+        **kwargs :
+            Are submitted to the statistic function.
+
+        See Also
+        --------
+        .get_statistic : statistic in a list
         """
-        return zip(self.cells, self.get_statistic(func=func, a=a, **kwargs))
+        return dict(zip(self.cells,
+                        self.get_statistic(func=func, a=a, **kwargs)))
 
 
 def combine(items, name=None, check_dims=True, incomplete='raise'):
