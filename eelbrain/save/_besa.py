@@ -1,20 +1,21 @@
-'''
-Export events for use in the Besa pipeline. Use :func:`meg160_triggers` to
-export a trigger list for MEG160, then reject unwanted events, and finally
-use :func:`besa_evt` to export a corresponding .evt file.
+"""
+Export events for use in the Besa pipeline.
 
-'''
+Use :func:`meg160_triggers` to export a trigger list for MEG160, then reject
+unwanted events, and finally use :func:`besa_evt` to export a corresponding
+``.evt`` file.
+
+"""
 import numpy as np
 
 from .._data_obj import Var, Dataset
 from .._utils import ui
 from . import _txt
 
-__all__ = ['meg160_triggers', 'besa_evt']
-
 
 def meg160_triggers(ds, dest=None, pad=1):
-    """Export a list of event times used for epoching in MEG-160
+    """
+    Export a list of event times used for epoching in MEG-160
 
     For use together with :func:`besa_evt`. ``save.meg160_triggers(ds)`` adds
     a variable called 'besa_index' which keeps track of the event sequence so
@@ -53,7 +54,8 @@ def meg160_triggers(ds, dest=None, pad=1):
 
 
 def besa_evt(ds, tstart=-0.1, tstop=0.6, pad=0.1, dest=None):
-    """Export an evt file for use with Besa
+    """
+    Export an evt file for use with Besa
 
     For use together with :func:`meg160_triggers`
 

@@ -22,9 +22,7 @@ before_install:
   - conda config --append channels christianbrodbeck
   - conda config --append channels ncil  # for r-ez
   - conda install --yes --quiet --file requirements_install.txt
-  - conda install --yes --quiet --file requirements.txt
-  - conda install --yes --quiet nose
-  - conda install --yes rpy2 r-car r-ez
+  - conda install --yes --quiet --file requirements_dev.txt
   - python -c "import mne; mne.datasets.testing.data_path()"
   - python --version
   - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then
@@ -39,4 +37,5 @@ script:
       pythonw $(which nosetests) -v eelbrain  eelbrain/_*;
     else
       nosetests -v eelbrain  eelbrain/_*;
+      make style-check;
     fi;

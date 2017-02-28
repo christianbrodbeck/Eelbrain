@@ -1,3 +1,5 @@
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+"""I/O for wave files"""
 import os
 
 import numpy as np

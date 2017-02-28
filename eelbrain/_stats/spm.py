@@ -87,7 +87,7 @@ class LM(object):
             raise KeyError("Unknown term: %s" % repr(term))
 
     def t(self, term):
-        "NDVar with t-values for a given term"
+        ":class:`NDVar` with t-values for a given term"
         index = self._index(term)
         t = self._coeffs_flat[index] / self._se_flat[index]
         info = stat_info('t', term=term)
@@ -228,7 +228,7 @@ class RandomLM(object):
         return table
 
     def _column_ttests(self, *args, **kwargs):
-        "precompute all tests"
+        "Precompute all tests"
         self.tests = {}
         for term in self.column_names:
             self.tests[term] = self.column_ttest(term, False, *args, **kwargs)

@@ -1,4 +1,4 @@
-# basic requirements for using Eelbrain
+# Requirements for developing
 setuptools >= 17
 tex >= 1.8
 colormath >= 2.1
@@ -12,3 +12,12 @@ nibabel >= 2.0
 matplotlib >= 1.1
 pysurfer >= 0.7
 mne >= 0.13.1
+# additional developer tools
+flake8
+nose
+numpydoc
+pydocstyle
+# for testing of R integration
+rpy2
+r-car
+r-ez

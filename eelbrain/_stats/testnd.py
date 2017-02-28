@@ -170,8 +170,9 @@ class _Result(object):
         return "<%s %s>" % (self.__class__.__name__, ', '.join(args))
 
     def _repr_test_args(self):
-        """List of strings describing parameters unique to the test, to be
-        joined by comma
+        """List of strings describing parameters unique to the test
+
+        Will be joined with ``", ".join(repr_args)``
         """
         raise NotImplementedError()
 
@@ -181,7 +182,7 @@ class _Result(object):
                 self._cdist._repr_clusters())
 
     def _expand_state(self):
-        "override to create secondary results"
+        "Override to create secondary results"
         cdist = self._cdist
         if cdist is None:
             self.tfce_map = None
@@ -2858,7 +2859,7 @@ class _ClusterDist:
             return [[self.parameter_map]]
 
     def info_list(self, title="Computation Info"):
-        "fmtxt List with information on computation"
+        "List with information on computation"
         l = fmtxt.List(title)
         l.add_item("Eelbrain version:  %s" % self._version)
         l.add_item("Host Computer:  %s" % self._host)

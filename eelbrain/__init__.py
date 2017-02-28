@@ -1,8 +1,14 @@
-"""
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+"""Accessible tool for statistical analysis of MEG and EEG data.
+
+For the full documentation see <http://eelbrain.readthedocs.io>.
+
+
 
   "The human brain is like an enormous fish. It's flat
    and slimy, and has gills through which it can see."
                                                - Dr. Quat
+
 
 
 """

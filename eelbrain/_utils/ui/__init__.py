@@ -1,7 +1,4 @@
-"""
-Module to deploy GUI elements depending on the current environment.
-
-"""
+"""Deploy UI elements depending on the current environment."""
 import os
 
 USE_WX = True
@@ -122,14 +119,23 @@ def copy_text(text):
 
 
 def test_targetpath(path, cancel=True):
-    """
-    Returns True if path is a valid path to write to, False otherwise. If the
-    directory does not exist, the user is asked whether it should be created.
+    """Test whether ``path`` is okay to write to
 
+    If the directory does not exist, the user is asked whether it should be
+    created.
+
+    Parameters
+    ----------
+    path : str
+        Path to test.
     cancel : bool
         Add a cancel button. If clicked, a KeyboardInterrupt Exception is
         raised.
 
+    Returns
+    -------
+    success : bool
+        True if path is a valid path to write to, False otherwise.
     """
     if not path:
         return False

@@ -10,7 +10,6 @@ from ._colors import ColorBar
 
 
 class BrainMixin(object):
-    "Additions to "
     # Mixin that adds Eelbrain functionality to the pysurfer Brain class,
     # defined in a separate module so that documentation can be built without
     # importing Mayavi

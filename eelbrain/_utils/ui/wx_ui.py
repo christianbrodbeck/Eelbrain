@@ -1,6 +1,4 @@
-import os
-import re
-
+"""WxPython-based implementation of the Eelbrain ui functions."""
 import wx
 from ..._wxgui import get_app
 
@@ -26,12 +24,6 @@ def ask(title="Overwrite File?",
         cancel=False,
         default=True,  # True=YES, False=NO, None=Nothing
         ):
-    """
-    returns:
-     YES    -> True
-     NO     -> False
-     CANCEL -> None
-    """
     style = wx.YES_NO | wx.ICON_QUESTION
     if cancel:
         style = style | wx.CANCEL
@@ -47,6 +39,7 @@ def ask(title="Overwrite File?",
         return True
     elif answer == wx.ID_CANCEL:
         return None
+
 
 def ask_color(default=(0, 0, 0)):
     dlg = wx.ColourDialog(None)
@@ -67,11 +60,6 @@ def ask_str(message, title, default=''):
 
 
 def message(title, message="", icon='i'):
-    """
-    icon : str
-        can be one of the following: '?', '!', 'i', 'error', None
-
-    """
     style = wx.OK
     if icon == 'i':
         style = style | wx.ICON_INFORMATION
@@ -90,7 +78,6 @@ def message(title, message="", icon='i'):
 
 
 def copy_file(path):
-    "copies a file to the clipboard"
     if wx.TheClipboard.Open():
         try:
             data_object = wx.FileDataObject()

@@ -1,5 +1,5 @@
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Plot univariate data (:class:`~eelbrain.Var` objects)."""
-# author: Christian Brodbeck
 
 from __future__ import division
 
@@ -12,7 +12,7 @@ import matplotlib as mpl
 
 from .._stats import test, stats
 from .._data_obj import asvar, ascategorial, assub, cellname, Celltable
-from ._base import EelFigure, Layout, LegendMixin, str2tex, frame_title
+from ._base import EelFigure, Layout, LegendMixin, frame_title
 from ._colors import find_cell_colors
 
 
@@ -135,7 +135,13 @@ def _mark_plot_pairwise(ax, ct, parametric, bottom, y_unit, corr, trend, markers
 
 def _mark_plot_1sample(ax, ct, par, y_min, y_unit, popmean=0, corr='Hochberg',
                        trend="'", levels=True, pwcolors=None, x0=0):
-    "returns y_max"
+    """Mark significance for one-sample test
+
+    Returns
+    -------
+    y_max : float
+        Top of space used on y axis.
+    """
     if levels is not True:  # to avoid test.star() conflict
         trend = False
     # tests
@@ -163,7 +169,7 @@ def _mark_plot_1sample(ax, ct, par, y_min, y_unit, popmean=0, corr='Hochberg',
                 c = pwcolors[n_stars - 1]
                 ax.text(x0 + i, y_stars, stars_str[i], color=c, size=font_size,
                         ha='center', va='center', clip_on=False)
-        return y_min + 4 * y_unit
+        return y_min + 4. * y_unit
     else:
         return y_min
 
@@ -427,7 +433,7 @@ class Boxplot(_SimpleFigure):
 
 
 class Barplot(_SimpleFigure):
-    """Barplot for a continuous variable
+    r"""Barplot for a continuous variable
 
     Parameters
     ----------
@@ -475,7 +481,7 @@ class Barplot(_SimpleFigure):
         X-axis tick labels describing the categories. None to plot no labels
         (Default uses cell names from ``X``).
     xtick_delim : str
-        Delimiter for x axis category descriptors (default is ``'\\n'``,
+        Delimiter for x axis category descriptors (default is ``'\n'``,
         i.e. the level on each Factor of ``X`` on a separate line).
     hatch : bool | str
         Matplotlib Hatch pattern to fill boxes (True to use the module
@@ -924,9 +930,9 @@ class Correlation(EelFigure, LegendMixin):
         else:
             for color, cell in zip(c, cat.cells):
                 idx = (cat == cell)
-                cell = str2tex(cellname(cell))
-                h = ax.scatter(x[idx].x, y[idx].x, c=color, label=cell, alpha=.5)
-                legend_handles[cell] = h
+                label = cellname(cell)
+                h = ax.scatter(x[idx].x, y[idx].x, c=color, label=label, alpha=.5)
+                legend_handles[label] = h
 
         # limits
         for func, data in ((ax.set_xlim, x), (ax.set_ylim, y)):
@@ -1036,7 +1042,7 @@ class Regression(EelFigure, LegendMixin):
 # MARK: Requirements for Statistical Tests
 
 def _difference(data, names):
-    "data condition x subject"
+    "Data condition x subject"
     data_differences = []; diffnames = []; diffnames_2lines = []
     for i, (name1, data1) in enumerate(zip(names, data)):
         for name2, data2 in zip(names[i + 1:], data[i + 1:]):
@@ -1047,7 +1053,7 @@ def _difference(data, names):
 
 
 def _ax_histogram(ax, data, normed, **kwargs):
-    """helper fubction for creating normality test figure"""
+    """Create normality test figure"""
     n, bins, patches = ax.hist(data, normed=normed, **kwargs)
     data = np.ravel(data)
 
@@ -1076,7 +1082,8 @@ def _ax_histogram(ax, data, normed, **kwargs):
 
 
 class Histogram(EelFigure):
-    """Histogram plots with tests of normality
+    """
+    Histogram plots with tests of normality
 
     Parameters
     ----------
@@ -1176,13 +1183,10 @@ class Histogram(EelFigure):
 
 def boxcox_explore(Y, params=[-1, -.5, 0, .5, 1], crange=False, ax=None, box=True):
     """
-    Plot the distribution resulting from a Box-Cox transformation with
-    different parameters.
-
+    Plot the distribution resulting from a Box-Cox transformation
 
     Parameters
     ----------
-
     Y : array-like
         array containing data whose distribution is to be examined
     crange :

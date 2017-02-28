@@ -375,7 +375,8 @@ def source_time_lm(lm, pmin):
 
 
 def source_time_clusters(section, clusters, y, ds, model, include, title, colors, res):
-    """
+    """Plot cluster with source and time dimensions
+
     Parameters
     ----------
     ...

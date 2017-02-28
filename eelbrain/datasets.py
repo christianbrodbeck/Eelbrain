@@ -1,12 +1,9 @@
-'''
-Defines some basic example datasets that are used in testing.
-'''
+"""Some basic example datasets for testing."""
 import os
-
-import numpy as np
 
 import mne
 from mne import minimum_norm as mn
+import numpy as np
 
 from . import load
 from ._colorspaces import eeg_info
@@ -32,7 +29,7 @@ def _apply_kernel(x, h, out=None):
 
 
 def _get_continuous(n_samples=100, seed=0):
-    """Continuous data for testing boosting
+    """Generate continuous data for reverse correlation
 
     Parameters
     ----------

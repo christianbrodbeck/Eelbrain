@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
-"""
-Plot topographic maps of sensor space data.
-"""
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+"""Plot topographic maps of sensor space data."""
 from __future__ import division
 
 from collections import Sequence
@@ -347,7 +345,7 @@ class TopoButterfly(TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
             del self.t_markers[:]
 
     def set_topo_t(self, t):
-        "set the time point of the topo-maps"
+        "Set the time point of the topo-maps"
         self._realtime_topo = False
         self._draw_topo(t, draw=False)
 
@@ -399,12 +397,12 @@ class TopoButterfly(TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
         self.set_topo_t(self._xvalues[i])
 
     def _on_leave_axes(self, event):
-        "update the status bar when the cursor leaves axes"
+        "Update the status bar when the cursor leaves axes"
         txt = "Topomap: t = %.3f" % self._current_t
         self._frame.SetStatusText(txt)
 
     def _on_motion(self, event):
-        "update the status bar for mouse movement"
+        "Update the status bar for mouse movement"
         super(self.__class__, self)._on_motion(event)
         ax = event.inaxes
         if ax in self.bfly_axes and self._realtime_topo:
@@ -439,21 +437,22 @@ class TopoButterfly(TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
 
 
 class _plt_topomap(_plt_im):
+    """Topomap plot
 
+    Parameters
+    ----------
+    ...
+    im_frame : scalar
+        Empty space beyond outmost sensors in the im plot.
+    vmax : scalar
+        Override the colorspace vmax.
+    method : 'nearest' | 'linear' | 'cubic' | 'spline'
+        Method for interpolating topo-map between sensors.
+    """
     _aspect = 'equal'
 
     def __init__(self, ax, ndvar, overlay, proj, res, interpolation, vlims,
                  cmaps, contours, method, clip, clip_distance):
-        """
-        Parameters
-        ----------
-        im_frame : scalar
-            Empty space beyond outmost sensors in the im plot.
-        vmax : scalar
-            Override the colorspace vmax.
-        method : 'nearest' | 'linear' | 'cubic' | 'spline'
-            Method for interpolating topo-map between sensors.
-        """
         # store attributes
         self._proj = proj
         self._visible_data = ndvar.sensor._visible_sensors(proj)
@@ -544,23 +543,22 @@ class _plt_topomap(_plt_im):
 
 
 class _ax_topomap(_ax_im_array):
+    """Axes with a topomap
 
+    Parameters
+    ----------
+    sensorlabels : None | 'index' | 'name' | 'fullname'
+        Show sensor labels. For 'name', any prefix common to all names
+        is removed; with 'fullname', the full name is shown.
+    mark : list of IDs
+        highlight a subset of the sensors
+    """
     def __init__(self, ax, layers, clip=False, clip_distance=0.05,
                  sensorlabels=None, mark=None, mcolor=None, mmarker=None,
                  proj='default',
                  res=100, interpolation=None, xlabel=None, vlims={}, cmaps={},
                  contours={}, method='linear', head_radius=None, head_pos=0.,
                  head_linewidth=None):
-        """
-        Parameters
-        ----------
-        sensorlabels : None | 'index' | 'name' | 'fullname'
-            Show sensor labels. For 'name', any prefix common to all names
-            is removed; with 'fullname', the full name is shown.
-        mark : list of IDs
-            highlight a subset of the sensors
-
-        """
         self.ax = ax
         self.data = layers
         self.proj = proj
@@ -596,8 +594,7 @@ class _ax_topomap(_ax_im_array):
             x, y = ax.transData.inverted().transform(ax.transAxes.transform((0.5, 0)))
             ax.text(x, y, xlabel, ha='center', va='top')
 
-    def set_ylim(self, bottom, top):
-        "Alias for YLimMixin"
+    def set_ylim(self, bottom, top):  # Alias for YLimMixin
         self.set_vlim(top, vmin=bottom)
 
 
@@ -874,7 +871,7 @@ class TopoArray(EelFigure):
 
     def set_topo_t(self, topo_id, t):
         """
-        Set the time point for a topo-map (same for all array plots).
+        Set the time point for a topo-map (same for all array plots)
 
         Parameters
         ----------
@@ -893,10 +890,7 @@ class TopoArray(EelFigure):
             self.set_topo_t_single(_topo, t, parent_im_id=i)
 
     def set_topo_ts(self, *t_list):
-        """
-        Set the time points for several topomaps (with ts identical for the
-        different array plots).
-        """
+        """Set the time points displayed in topo-maps across all array-plots"""
         for i, t in enumerate(t_list):
             self.set_topo_t(i, t)
 
@@ -913,7 +907,7 @@ class TopoArray(EelFigure):
                 self.set_topo_t(Id, None)
             else:
                 pass
-        elif (ax.type == 'main') and (self._selected_window != None):
+        elif (ax.type == 'main') and (self._selected_window is not None):
             self._selected_window.clear()  # to side track pdf export transparency issue
             # update corresponding topo_windows
             t = mouseevent.xdata

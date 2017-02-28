@@ -1,7 +1,5 @@
-"""
-statistical tests for data objects
-
-"""
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+"""Statistical tests for univariate variables"""
 from __future__ import division
 
 import itertools
@@ -22,7 +20,7 @@ __test__ = False
 
 
 def lilliefors(data, formatted=False, **kwargs):
-    """Lilliefors test for normal distribution.
+    """Lilliefors' test for normal distribution.
 
     The Lilliefors test is an adaptation of the Kolmogorov-Smirnov test. It
     is used to test the null hypothesis that data come from a normally
@@ -605,7 +603,8 @@ def pairwise(Y, X, match=None, sub=None, ds=None,  # data in
 
 def _pairwise(data, within=True, parametric=True, corr='Hochberg',
               levels=True, trend=True):
-    """
+    """Pairwise tests
+
     Parameters
     ----------
     data
@@ -794,7 +793,6 @@ def correlations(y, x, cat=None, sub=None, ds=None, asds=False):
 
 
 def _corr(y, x):
-    """index has to be bool array; returns r, p, n"""
     n = len(y)
     assert len(x) == n
     df = n - 2
@@ -922,10 +920,7 @@ class bootstrap_pairwise(object):
         return table
 
     def plot_t_dist(self):
-        """
-        After:
-        http://stackoverflow.com/questions/4150171/how-to-create-a-density-plot-in-matplotlib
-        """
+        # http://stackoverflow.com/questions/4150171/how-to-create-a-density-plot-in-matplotlib
         from matplotlib import pyplot
 
         t = self.t_resampled

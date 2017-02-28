@@ -52,7 +52,7 @@ def find_noisy_channels(epochs, mincorr=0.35):
 
 
 def find_bad_channels(epochs, flat, flat_average, mincorr):
-    "Combines flat and noisy channels"
+    "Find flat and noisy channels"
     interpolate = find_noisy_channels(epochs, mincorr)
     interpolate = find_flat_epochs(epochs, flat, interpolate)
     bad_channels = find_flat_evoked(epochs, flat_average)

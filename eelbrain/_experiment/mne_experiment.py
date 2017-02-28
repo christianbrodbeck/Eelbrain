@@ -55,9 +55,6 @@ from .preprocessing import (
     ask_to_delete_ica_files)
 
 
-__all__ = ['MneExperiment']
-
-
 # current cache state version
 CACHE_STATE_VERSION = 5
 
@@ -295,7 +292,7 @@ def _time_window_str(window, delim='-'):
 
 
 def assert_is_primary_epoch(epoch, caller):
-    "epoch params/str"
+    "Assert that ``epoch`` is a primary Epoch definition"
     if isinstance(epoch, SecondaryEpoch):
         msg = ("The current epoch {cur!r} inherits rejections from "
                "{sel!r}. To access a rejection file for this epoch, call "
@@ -1677,7 +1674,7 @@ class MneExperiment(FileTree):
                 return max(raw_mtime, bads_mtime, rej_mtime)
 
     def _epochs_stc_mtime(self):
-        "does not include check of annot"
+        "Mtime affecting source estimates; does not check annot"
         epochs_mtime = self._epochs_mtime()
         if epochs_mtime:
             inv_mtime = self._inv_mtime()
@@ -1688,7 +1685,7 @@ class MneExperiment(FileTree):
         return self._epochs_mtime()
 
     def _evoked_stc_mtime(self):
-        "mtime if up-to-date, else None; does not check annot"
+        "Mtime if up-to-date, else None; do not check annot"
         evoked_mtime = self._evoked_mtime()
         if evoked_mtime:
             inv_mtime = self._inv_mtime()
@@ -1696,7 +1693,7 @@ class MneExperiment(FileTree):
                 return max(evoked_mtime, inv_mtime)
 
     def _fwd_mtime(self):
-        "Return last time input files affecting fwd-file changed"
+        "The last time at which input files affecting fwd-file changed"
         trans = self.get('trans-file')
         if exists(trans):
             src = self.get('src-file')
@@ -1706,7 +1703,7 @@ class MneExperiment(FileTree):
                 return max(self._raw_mtime('raw'), trans_mtime, src_mtime)
 
     def _ica_file_mtime(self, rej):
-        "mtime if the file exists, else None; does not check raw mtime"
+        "Mtime if the file exists, else None; do not check raw mtime"
         ica_path = self.get('ica-file')
         if exists(ica_path):
             ica_mtime = getmtime(ica_path)
@@ -1912,8 +1909,9 @@ class MneExperiment(FileTree):
 
     def _add_epochs_stc(self, ds, ndvar, baseline, morph, mask):
         """
-        Transform epochs contained in ds into source space (adds a list of mne
-        SourceEstimates to ds)
+        Transform epochs contained in ds into source space
+
+        Data is added to ``ds`` as a list of :class:`mne.SourceEstimate`.
 
         Parameters
         ----------
@@ -2429,7 +2427,7 @@ class MneExperiment(FileTree):
 
     def label_events(self, ds):
         """
-        Adds T (time) and SOA (stimulus onset asynchrony) to the Dataset.
+        Add T (time) and SOA (stimulus onset asynchrony) to the Dataset.
 
         Parameters
         ----------
@@ -2570,7 +2568,7 @@ class MneExperiment(FileTree):
 
     @staticmethod
     def _data_arg(modality, eog=False):
-        "data argument for FIFF-to-NDVar conversion"
+        "Data argument for FIFF-to-NDVar conversion"
         if modality == 'meeg':
             raise NotImplementedError("NDVar for sensor space data combining "
                                       "EEG and MEG data")
@@ -3604,7 +3602,7 @@ class MneExperiment(FileTree):
 
     def _load_test(self, test, tstart, tstop, pmin, parc, mask, samples, data,
                    sns_baseline, src_baseline, return_data, make):
-        "Requires that _set_analysis_options() has been called"
+        "Load a cached test after _set_analysis_options() has been called"
         test_params = self._tests[test]
 
         if test_params['kind'] == 'custom':
@@ -3817,7 +3815,7 @@ class MneExperiment(FileTree):
                               self.get('mri-sdir'))
 
     def _make_annot(self, parc, p, subject):
-        """Returns labels
+        """Return labels
 
         Notes
         -----
@@ -4036,8 +4034,7 @@ class MneExperiment(FileTree):
         cov.save(dest)
 
     def _make_evoked(self, decim, data_raw):
-        """
-        Creates datasets with evoked sensor data.
+        """Make files with evoked sensor data.
 
         Parameters
         ----------
@@ -4234,8 +4231,10 @@ class MneExperiment(FileTree):
             return path
 
     def make_link(self, temp, field, src, dst, redo=False):
-        """Make a hard link at the file with the dst value on field, linking to
-        the file with the src value of field
+        """Make a hard link
+
+        Make a hard link at the file with the ``dst`` value on ``field``,
+        linking to the file with the ``src`` value of ``field``.
 
         Parameters
         ----------
@@ -4622,8 +4621,7 @@ class MneExperiment(FileTree):
         pipe.cache(self.get('subject'), self.get('session'))
 
     def make_rej(self, decim=None, auto=None, overwrite=False, **kwargs):
-        """Show the SelectEpochs GUI to do manual epoch selection for a given
-        epoch
+        """Open the SelectEpochs GUI for manual epoch selection
 
         The GUI is opened with the correct file name; if the corresponding
         file exists, it is loaded, and upon saving the correct path is
@@ -5286,7 +5284,7 @@ class MneExperiment(FileTree):
                                        subjects_dir=self.get('mri-sdir'))
 
     def _test_kwargs(self, samples, pmin, tstart, tstop, dims, parc_dim):
-        "testnd keyword arguments"
+        "Compile kwargs for testnd tests"
         kwargs = {'samples': samples, 'tstart': tstart, 'tstop': tstop,
                   'parc': parc_dim}
         if pmin == 'tfce':
@@ -6025,20 +6023,20 @@ class MneExperiment(FileTree):
         Examples
         --------
         >>> e.show_file_status('rej-file')
-             Subject   Rej-file
-        --------------------------------
-         0   A0005     07/22/15 13:03:08
-         1   A0008     07/22/15 13:07:57
-         2   A0028     07/22/15 13:22:04
-         3   A0048     07/22/15 13:25:29
+            Subject   Rej-file
+        -------------------------------
+        0   A0005     07/22/15 13:03:08
+        1   A0008     07/22/15 13:07:57
+        2   A0028     07/22/15 13:22:04
+        3   A0048     07/22/15 13:25:29
         >>> e.show_file_status('rej-file', 'raw')
-             Subject   0-40   0.1-40              1-40   Clm
-        ----------------------------------------------------
-         0   A0005     -      07/22/15 13:03:08   -      -
-         1   A0008     -      07/22/15 13:07:57   -      -
-         2   A0028     -      07/22/15 13:22:04   -      -
-         3   A0048     -      07/22/15 13:25:29   -      -
-         """
+            Subject   0-40   0.1-40              1-40   Clm
+        ---------------------------------------------------
+        0   A0005     -      07/22/15 13:03:08   -      -
+        1   A0008     -      07/22/15 13:07:57   -      -
+        2   A0028     -      07/22/15 13:22:04   -      -
+        3   A0048     -      07/22/15 13:25:29   -      -
+        """
         return FileTree.show_file_status(self, temp, row, col, *args, **kwargs)
 
     def show_raw_info(self):

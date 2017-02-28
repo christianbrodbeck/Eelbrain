@@ -75,9 +75,11 @@ class TextDropTarget(wx.TextDropTarget):
 
 class StringDropTarget(wx.DropTarget):
     """
-    DropTarget for multiple data types based on:
+    DropTarget for multiple data types
+
+    based on:
     http://www.wiki.wxpython.org/DragAndDrop#wxDataObjectComposite
-    
+
     """
     def __init__(self, target):
         wx.DropTarget.__init__(self)

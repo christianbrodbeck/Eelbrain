@@ -1,8 +1,6 @@
-'''
-Tools for loading data form eyelink edf files.
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+"""Tools for loading data form eyelink edf files."""
 
-
-'''
 from __future__ import print_function
 from glob import glob
 import os
@@ -10,7 +8,6 @@ import re
 import shutil
 import subprocess
 import tempfile
-from warnings import warn
 
 import numpy as np
 
@@ -18,12 +15,11 @@ from .._data_obj import Dataset, Datalist, Var
 from .._utils import ui
 from .._utils.subp import get_bin
 
-__all__ = ['Edf', 'read_edf', 'read_edf_events', 'read_edf_samples']
-
+__all__ = ('Edf', 'read_edf', 'read_edf_events', 'read_edf_samples')
 
 
 class Edf(object):
-    """Class for reading an eyelink .edf file.
+    """Eyelink .edf file reader.
 
     Reads an eyelink .edf file and extracts epoch acceptability
     based on contamination with ocular artifacts (saccades and blinks).
@@ -170,10 +166,10 @@ class Edf(object):
             raise ValueError(err)
 
     def add_t_to(self, ds, trigger='trigger', t_edf='t_edf'):
-        """
-        Add edf trigger times as a variable to Dataset ds.
-        These can then be used for Edf.add_by_T(ds) after ds hads been
-        decimated.
+        """Add EDF trigger times as a variable to Dataset ds.
+
+        These trigger times can then be used for Edf.add_by_T(ds) after ds hads
+        been decimated.
 
         Parameters
         ----------
@@ -197,7 +193,8 @@ class Edf(object):
 
     def filter(self, ds, tstart=-0.1, tstop=0.6, use=['ESACC', 'EBLINK'],
                T='t_edf'):
-        """
+        """Remove bad events from ``ds``
+
         Return a copy of the Dataset ``ds`` with all bad events removed. A
         Dataset containing all the bad events is stored in
         ``ds.info['rejected']``.
@@ -227,8 +224,9 @@ class Edf(object):
         return accepted
 
     def get_accept(self, T=None, tstart=-0.1, tstop=0.6, use=['ESACC', 'EBLINK']):
-        """
-        returns a boolean Var indicating for each epoch whether it should be
+        """Find good epochs
+
+        Return a boolean Var indicating for each epoch whether it should be
         accepted or not based on ocular artifacts in the edf file.
 
         Parameters
@@ -270,12 +268,12 @@ class Edf(object):
         return accept
 
     def get_t(self, name='t_edf'):
-        "returns all trigger times in the Dataset"
+        "Retrieve all trigger times in the Dataset"
         return Var(self.triggers['T'], name=name)
 
     def get_triggers(self, trigger='trigger', t_edf='t_edf'):
         """
-        Returns a Dataset with triggers and corresponding edf time values
+        Return a Dataset with triggers and corresponding edf time values
 
         Parameters
         ----------
@@ -296,9 +294,10 @@ class Edf(object):
 
     def mark(self, ds, tstart=-0.1, tstop=0.6, good=None, bad=False,
              use=['ESACC', 'EBLINK'], T='t_edf', target='accept'):
-        """
-        Mark events in ds as acceptable or not. ds needs to contain edf trigger
-        times in a variable whose name is specified by the ``T`` argument.
+        """Mark events in ``ds`` as acceptable or not.
+
+        ``ds`` needs to contain edf trigger times in a variable whose name is
+        specified by the ``T`` argument.
 
         Parameters
         ----------
@@ -343,7 +342,9 @@ class Edf(object):
                  use=['ESACC', 'EBLINK'],
                  trigger='trigger', target='accept'):
         """
-        Mark each epoch in the ds for acceptability based on overlap with
+        Mark epochs in ``ds`` based on blinks and saccades
+
+        Mark each epoch in ``ds`` for acceptability based on overlap with
         blinks and saccades. ds needs to contain the same number of triggers
         as the edf file. For adding acceptability to a decimated ds, use
         Edf.add_t_to(ds, ...) and then Edf.mark(ds, ...).
@@ -427,7 +428,7 @@ def events(path, samples=False, ds=None, trigger='trigger', t_edf='t_edf'):
 
 def artifact_epochs(ds, tmin=-0.2, tmax=0.6, crop=True, esacc='sacc',
                     eblink='blink', t_edf='t_edf'):
-    """find blink and saccade artifact information by event
+    """Find blink and saccade artifact information by event
 
     Parameters
     ----------
@@ -519,7 +520,7 @@ def add_artifact_epochs(ds, tmin=-0.2, tmax=0.6, crop=True, esacc='sacc',
     Returns
     -------
     ds : Dataset
-        Returns the input Dataset for consistency with similar functions; the
+        Return the input Dataset for consistency with similar functions; the
         Dataset is modified in place.
     """
     sacc, blink = artifact_epochs(ds, tmin, tmax, crop, esacc, eblink, t_edf)

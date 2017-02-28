@@ -99,12 +99,9 @@ _verbose = 1
 
 
 def command_exists(cmd):
-    """
-    Return True if the corresponding command exists (based on stackoverflow_
-    answer).
+    """Return True if the corresponding command exists
 
-    .. _stackoverflow: http://stackoverflow.com/a/11069822/166700
-
+    based http://stackoverflow.com/a/11069822/166700
     """
     return subprocess.call(["type", cmd], stdout=subprocess.PIPE,
                            stderr=subprocess.PIPE) == 0
@@ -176,9 +173,7 @@ def _format_path(path, fmt, is_new=False):
 
 
 def open_in_finder(path):
-    """
-    Open ``path`` in the finder.
-    """
+    """Open ``path`` in the finder"""
     os.system('open %s' % path)
 
 
@@ -289,7 +284,10 @@ def process_raw(raw, save='{raw}_filt', args=['projoff'], rm_eve=True, **kwargs)
 
 
 def _run(cmd, v=None, cwd=None, block=True):
-    """
+    """Run a command
+
+    Parameters
+    ----------
     cmd: list of strings
         command that is submitted to subprocess.Popen.
     v : 0 | 1 | 2 | None
@@ -324,14 +322,15 @@ def _run(cmd, v=None, cwd=None, block=True):
 
 
 def setup_mri(subject, subjects_dir=None, ico=4, block=False, redo=False):
-    """
-    Prepares an MRI for use in the mne-pipeline:
+    """Prepare an MRI for use in the mne-pipeline
 
-    - runs mne_setup_mri
-    - runs mne_setup_source_space
-    - runs mne_watershed_bem
-    - creates symlinks for watershed files in the bem directory
-    - runs mne_setup_forward_model (see MNE manual section 3.7, p. 25)
+    Performes the following steps:
+
+     - runs mne_setup_mri
+     - runs mne_setup_source_space
+     - runs mne_watershed_bem
+     - creates symlinks for watershed files in the bem directory
+     - runs mne_setup_forward_model (see MNE manual section 3.7, p. 25)
 
 
     Parameters
@@ -445,7 +444,7 @@ def _run_mne_gui(name, cwd, modal, subject, subjects_dir):
 
 
 def run_mne_analyze(fif_dir, subject=None, subjects_dir=None, modal=False):
-    """invokes mne_analyze (e.g., for manual coregistration)
+    """Invoke mne_analyze (e.g., for manual coregistration)
 
     Parameters
     ----------
@@ -486,7 +485,7 @@ def run_mne_analyze(fif_dir, subject=None, subjects_dir=None, modal=False):
 
 
 def run_mne_browse_raw(fif_dir, subject=None, subjects_dir=None, modal=False):
-    """Invokes mne_browse_raw
+    """Invoke mne_browse_raw
 
     Parameters
     ----------

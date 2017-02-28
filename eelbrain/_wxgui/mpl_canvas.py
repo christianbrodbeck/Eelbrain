@@ -159,7 +159,7 @@ class CanvasFrame(EelbrainFrame):
         self.Bind(wx.EVT_CLOSE, self.OnClose)
 
     def FillToolBar(self, tb, eelfigure):
-        "subclasses should call this after adding their own items"
+        "Subclass should call this after adding their own items"
         if hasattr(self.Parent, 'attach'):
             tb.AddLabelTool(ID.ATTACH, "Attach", Icon("actions/attach"))
             self.Bind(wx.EVT_TOOL, self.OnAttach, id=ID.ATTACH)

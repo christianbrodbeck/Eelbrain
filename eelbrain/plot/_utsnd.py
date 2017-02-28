@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-"""
-Plot multidimensional uniform time series.
-"""
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+"""Plot multidimensional uniform time series."""
 
 from __future__ import division
 
@@ -263,22 +262,21 @@ class Array(ColorMapMixin, XAxisMixin, EelFigure):
 
 
 class _plt_utsnd(object):
+    """
+    UTS-plot for a single epoch
 
+    Parameters
+    ----------
+    ax : matplotlib axes
+        Target axes.
+    epoch : NDVar (sensor by time)
+        Epoch to plot.
+    sensors : None | True | numpy index
+        The sensors to plot (None or True -> all sensors).
+    others :
+        Matplotlib plot() arguments.
+    """
     def __init__(self, ax, epoch, xdim, linedim, sensors=None, *args, **kwargs):
-        """
-        uts plot for a single epoch
-
-        Parameters
-        ----------
-        ax : matplotlib axes
-            Target axes.
-        epoch : NDVar (sensor by time)
-            Epoch to plot.
-        sensors : None | True | numpy index
-            The sensors to plot (None or True -> all sensors).
-        others :
-            Matplotlib plot() arguments.
-        """
         if sensors is not None and sensors is not True:
             epoch = epoch.sub(sensor=sensors)
 
@@ -312,15 +310,15 @@ class _plt_utsnd(object):
 
 
 class _ax_butterfly(object):
+    """Axis with butterfly plot
 
+    Parameters
+    ----------
+    vmin, vmax: None | scalar
+        Y axis limits.
+    """
     def __init__(self, ax, layers, xdim, linedim, sensors=None, color=None,
                  vlims={}):
-        """
-        Parameters
-        ----------
-        vmin, vmax: None | scalar
-            Y axis limits.
-        """
         self.ax = ax
         self.data = layers
         self.layers = []

@@ -153,7 +153,7 @@ def natsorted(seq):
 
 
 def n_decimals(number):
-    "returns at least 1"
+    "Number of meaningful decimals in ``number``, at least 1"
     s = str(number)
     if '.' in s:
         return s[::-1].index('.')

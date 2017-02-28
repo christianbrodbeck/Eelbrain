@@ -1,7 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-"""
-Pre-processing operations based on NDVars
-"""
+"""Pre-processing operations based on NDVars"""
 from os import mkdir, remove
 from os.path import dirname, exists, getmtime
 
@@ -42,13 +40,12 @@ class RawPipe(object):
         raise NotImplementedError
 
     def mtime(self, subject, session, bad_chs=True):
-        "modification time of anything influencing the output of load"
+        "Modification time of anything influencing the output of load"
         raise NotImplementedError
 
 
 class RawSource(RawPipe):
-    "raw data source"
-
+    "Raw data source"
     def __init__(self, name, path, bads_path, log):
         RawPipe.__init__(self, name, path, log)
         self.bads_path = bads_path

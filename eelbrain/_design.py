@@ -64,22 +64,23 @@ class RandomizationError(Exception):
 
 
 class Variable(object):
-    def __init__(self, name, values, rand=True, urn=[]):
-        """
-        Parameters
-        ----------
-        name : str
-            name for the Variable
-        values : iterable of str
-            list of values that the Variable can assume (iterable, i.e. can be
-            dict with keys)
-        rand : bool
-            randomize the sequence of values
-        urn : list of Variables
-            Variables which are drawn from the same urn BEFORE the
-            current Variable (i.e. the current Variable can only assume values
-            not taken by any PI in urn.
-        """
+    """Variable for a design
+
+    Parameters
+    ----------
+    name : str
+        name for the Variable
+    values : iterable of str
+        list of values that the Variable can assume (iterable, i.e. can be
+        dict with keys)
+    rand : bool
+        randomize the sequence of values
+    urn : list of Variables
+        Variables which are drawn from the same urn BEFORE the
+        current Variable (i.e. the current Variable can only assume values
+        not taken by any PI in urn.
+    """
+    def __init__(self, name, values, rand=True, urn=()):
         self.is_rand = rand
         self.name = name
 
@@ -325,7 +326,8 @@ def _try_make_random_factor(name, values, n, rand, balance, urn,
 
 
 def complement(base, name=None, values=None, ds=None):
-    """
+    """Factor with values that complement the Factors in ``base``
+
     Create a Factor that contains for each index the value that is not on any
     other Factor at this index.
 
@@ -366,16 +368,18 @@ def complement(base, name=None, values=None, ds=None):
 
 
 def shuffle_cases(dataset, inplace=False, blocks=None):
-    """
-    Shuffles the cases in a Dataset.
+    """Shuffle the cases in a Dataset.
 
-    blocks : categorial
-        defines blocks between which cases are not exchanged.
+    Parametters
+    -----------
+    dataset : Dataset
+        Dataset to shuffle.
     inplace : bool
         If True, the input Dataset itself is modified, and the function does
         not return anything; if False, a new Dataset containing the shuffled
         variables is returned and the original Dataset is left unmodified.
-
+    blocks : categorial
+        defines blocks between which cases are not exchanged.
     """
     index = np.arange(dataset.n_cases)
     if blocks is None:
@@ -458,12 +462,13 @@ def export_mat(dataset, values=None, destination=None):
 
 
 def save(dataset, destination=None, values=None, pickle_values=False):
-    """
-    Saves the Dataset with the same name simultaneously in 3 different formats:
+    """Save the Dataset
 
-     - mat: matlab file
-     - pickled Dataset
-     - TSV: tab-separated values
+    Save the dataset with the same name in 3 different formats:
+
+      - mat: matlab file
+      - pickled Dataset
+      - TSV: tab-separated values
 
     """
     if destination is None:

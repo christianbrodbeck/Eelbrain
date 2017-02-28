@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Plot uniform time-series of one variable."""
-# author: Christian Brodbeck
 from __future__ import division
 
 from itertools import izip
@@ -575,7 +575,7 @@ class UTSClusters(EelFigure):
         show_text_dialog(self._frame, info, "Clusters")
 
     def set_pmax(self, pmax=0.05, ptrend=0.1):
-        "set the threshold p-value for clusters to be displayed"
+        "Set the threshold p-value for clusters to be displayed"
         for cax in self._caxes:
             cax.set_pmax(pmax, ptrend)
         self.draw()
@@ -655,11 +655,16 @@ class _ax_uts_clusters:
 
 
 class _plt_uts_clusters:
+    """UTS cluster plot
+
+    Parameters
+    ----------
+    ax : Axes
+        Axes.
+    clusters : Dataset
+        Dataset with entries for 'tstart', 'tstop' and 'p'.
+    """
     def __init__(self, ax, clusters, pmax, ptrend, color=None, hatch='/'):
-        """
-        clusters : Dataset
-            Dataset with entries for 'tstart', 'tstop' and 'p'.
-        """
         self.pmax = pmax
         self.ptrend = ptrend
         self.h = []

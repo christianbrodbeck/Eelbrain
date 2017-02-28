@@ -263,7 +263,7 @@ class App(wx.App):
 
     def _ask_for_file(self, exit_main_loop, title, message, filetypes,
                       directory, mult):
-        """Returns path(s) or False.
+        """Return path(s) or False.
 
         Parameters
         ----------
@@ -385,7 +385,7 @@ class App(wx.App):
         win.Cut()
 
     def OnMenuOpened(self, event):
-        "Updates window names in the window menu"
+        "Update window names in the window menu"
         menu = event.GetMenu()
         if menu.GetTitle() == 'Window':
             # clear old entries

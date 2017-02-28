@@ -1,3 +1,4 @@
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import print_function
 
 from cPickle import dump, HIGHEST_PROTOCOL, Unpickler
