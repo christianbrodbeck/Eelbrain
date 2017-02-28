@@ -58,7 +58,7 @@ import mne
 from mne.source_space import label_src_vertno_sel
 from nibabel.freesurfer import read_annot
 import numpy as np
-from numpy import dot
+from numpy import dot, newaxis
 import scipy.signal
 import scipy.stats
 from scipy.linalg import inv, norm
@@ -4002,7 +4002,7 @@ class NDVar(object):
         if isinstance(dims, str):
             dims = (dims,)
 
-        dims_ = tuple(d for d in dims if d is not np.newaxis)
+        dims_ = tuple(d for d in dims if d is not newaxis)
         if set(dims_) != set(self.dimnames) or len(dims_) != len(self.dimnames):
             err = "Requested dimensions %r from %r" % (dims, self)
             raise DimensionMismatchError(err)
@@ -4014,7 +4014,7 @@ class NDVar(object):
         # insert axes
         if len(dims) > len(dims_):
             for ax, dim in enumerate(dims):
-                if dim is np.newaxis:
+                if dim is newaxis:
                     x = np.expand_dims(x, ax)
 
         return x
@@ -4321,30 +4321,24 @@ class NDVar(object):
         info = self.info.copy()
         return NDVar(t, self.dims, info, name or self.name)
 
-    def repeat(self, repeats, dim='case', name=None):
-        """
-        Analogous to :py:func:`numpy.repeat`
+    def repeat(self, repeats, name=None):
+        """Repeat slices of the NDVar along the case dimension
 
         Parameters
         ----------
         repeats : int | array of ints
             The number of repetitions for each element. `repeats` is
             broadcasted to fit the shape of the given dimension.
-        dim : str
-            The dimension along which to repeat values (default 'case').
         name : str
             Name of the output NDVar (default is the current name).
         """
-        ax = self.get_axis(dim)
-        x = self.x.repeat(repeats, axis=ax)
-
-        repdim = self.dims[ax]
-        if not isinstance(repdim, str):
-            repdim = repdim.repeat(repeats)
-
-        dims = self.dims[:ax] + (repdim,) + self.dims[ax + 1:]
-        info = self.info.copy()
-        return NDVar(x, dims, info, name or self.name)
+        if self.has_case:
+            x = self.x.repeat(repeats, axis=0)
+            dims = self.dims
+        else:
+            x = self.x[newaxis].repeat(repeats, axis=0)
+            dims = ('case',) + self.dims
+        return NDVar(x, dims, self.info.copy(), name or self.name)
 
     def residuals(self, x, name=None):
         """
