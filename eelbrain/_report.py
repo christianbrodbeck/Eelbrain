@@ -286,8 +286,7 @@ def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={},
             section = report.add_section(label.capitalize())
 
             clusters = res.find_clusters(source=label)
-            src_ = y.sub(source=label)
-            source_time_clusters(section, clusters, src_, ds, model, include,
+            source_time_clusters(section, clusters, y, ds, model, include,
                                  title, colors, res)
     elif not parc and res._kind == 'cluster':
         source_bin_table(report, res, surfer_kwargs)
@@ -326,8 +325,7 @@ def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={},
             clusters_all = clusters_all.sub("p>0.1")
             clusters = combine((clusters_sig, clusters_trend, clusters_all))
             clusters.sort('tstart')
-            src_ = y.sub(source=label)
-            source_time_clusters(section, clusters, src_, ds, model, include,
+            source_time_clusters(section, clusters, y, ds, model, include,
                                  title, colors, res)
     else:
         raise RuntimeError

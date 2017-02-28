@@ -3109,7 +3109,7 @@ class NDVar(object):
     .html>`_). This only matters when explicitly modifying an NDVar in place
     (e.g., ``ndvar += 1``) because NDVar methods that return NDVars never
     implicitly modify the original NDVars in place (see `this note
-    <https://mail.python.org/pipermail/python-dev/2003-October/038855.html>`_.
+    <https://mail.python.org/pipermail/python-dev/2003-October/038855.html>`_).
 
 
     Examples
