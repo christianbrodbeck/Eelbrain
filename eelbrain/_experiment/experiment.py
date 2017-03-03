@@ -66,12 +66,12 @@ class LayeredDict(dict):
         """
         return self._states[level].get(key, default)
 
-    def restore_state(self, index=-1, discard_tip=True):
+    def restore_state(self, state=-1, discard_tip=True):
         """Restore a previously stored state
 
         Parameters
         ----------
-        index : int
+        state : int | dict
             Index of the state which to restore (specified as index into a
             list of stored states, i.e., negative values access recently
             stored states).
@@ -83,11 +83,16 @@ class LayeredDict(dict):
         --------
         .get_stored(): Retrieve a stored value without losing stored states
         """
-        state = self._states[index]
-        if discard_tip:
-            del self._states[index:]
-        elif index != -1:
-            del self._states[index + 1:]
+        if isinstance(state, int):
+            index = state
+            state = self._states[index]
+            if discard_tip:
+                del self._states[index:]
+            elif index != -1:
+                del self._states[index + 1:]
+        elif not isinstance(state, dict):
+            raise TypeError("state needs to be either int or dict, got %r" %
+                            (state,))
 
         self.clear()
         self.update(state)
@@ -587,12 +592,16 @@ class TreeModel(object):
 
         return string
 
-    def restore_state(self, index=-1, discard_tip=True):
+    def _copy_state(self):
+        """Copy of the state that can be used with ``.restore_state()``"""
+        return self._fields.copy(), self._field_values.copy(), self._params.copy()
+
+    def restore_state(self, state=-1, discard_tip=True):
         """Restore a previously stored state
 
         Parameters
         ----------
-        index : int
+        state : int
             Index of the state which to restore (specified as index into a
             list of stored states, i.e., negative values access recently
             stored states).
@@ -600,9 +609,13 @@ class TreeModel(object):
             Discard the relevant state after restoring it. All states stored
             later are discarded either way.
         """
-        self._fields.restore_state(index, discard_tip)
-        self._field_values.restore_state(index, discard_tip)
-        self._params.restore_state(index, discard_tip)
+        if isinstance(state, int):
+            s1 = s2 = s3 = state
+        else:
+            s1, s2, s3 = state
+        self._fields.restore_state(s1, discard_tip)
+        self._field_values.restore_state(s2, discard_tip)
+        self._params.restore_state(s3, discard_tip)
 
     def set(self, match=True, allow_asterisk=False, **state):
         """Set the value of one or more fields.
