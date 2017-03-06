@@ -1,5 +1,22 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from inspect import getargspec
+
 from .._utils.parse import find_variables
+
+
+class DefinitionError(Exception):
+    "MneExperiment definition error"
+
+
+def assert_dict_has_args(d, cls, kind, name, n_internal=0):
+    "Make sure the dictionary ``d`` has all keys required by ``cls``"
+    argspec = getargspec(cls.__init__)
+    required = argspec.args[1 + n_internal: -len(argspec.defaults)]
+    missing = set(required).difference(d)
+    if missing:
+        raise DefinitionError(
+            "%s definition %s is missing the following parameters: %s" %
+            (kind, name, ', '.join(missing)))
 
 
 def find_epoch_vars(params):
