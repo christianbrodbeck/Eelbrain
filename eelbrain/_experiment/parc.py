@@ -12,8 +12,9 @@ class Parcellation(object):
     make = False
     morph_from_fsaverage = False
 
-    def __init__(self, name):
+    def __init__(self, name, views=None):
         self.name = name
+        self.views = views
 
     def as_dict(self):
         return NotImplemented
@@ -23,8 +24,8 @@ class CombinationParcellation(Parcellation):
     "Recombine labels from an existingparcellation"
     make = True
 
-    def __init__(self, name, base, labels):
-        Parcellation.__init__(self, name)
+    def __init__(self, name, base, labels, views=None):
+        Parcellation.__init__(self, name, views)
         self.base = base
         self.labels = labels
 
@@ -37,8 +38,8 @@ class EelbrainParcellation(Parcellation):
     "Parcellation that has special make rule"
     make = True
 
-    def __init__(self, name, morph_from_fsaverage):
-        Parcellation.__init__(self, name)
+    def __init__(self, name, morph_from_fsaverage, views=None):
+        Parcellation.__init__(self, name, views)
         self.morph_from_fsaverage = morph_from_fsaverage
 
     def as_dict(self):
@@ -64,8 +65,8 @@ class SeededParcellation(Parcellation):
     "Parcellation that is grown from seed vertices"
     make = True
 
-    def __init__(self, name, seeds, mask=None, surface='white'):
-        Parcellation.__init__(self, name)
+    def __init__(self, name, seeds, mask=None, surface='white', views=None):
+        Parcellation.__init__(self, name, views)
         self.seeds = seeds
         self.mask = mask
         self.surface = surface

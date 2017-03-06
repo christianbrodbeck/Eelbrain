@@ -678,6 +678,7 @@ class MneExperiment(FileTree):
 
     # plotting
     # --------
+    _brain_plot_defaults = {'surf': 'inflated'}
     brain_plot_defaults = {}
 
     def __init__(self, root=None, find_subjects=True, **state):
@@ -3746,13 +3747,9 @@ class MneExperiment(FileTree):
         self.set(**state)
 
         # variables
-        parc = self.get('parc')
-        if parc == '':
+        parc, p = self._get_parc()
+        if p is None:
             return
-        elif parc in self._parcs:
-            p = self._parcs[parc]
-        else:
-            p = self._parcs[SEEDED_PARC_RE.match(parc).group(1)]
 
         mrisubject = self.get('mrisubject')
         common_brain = self.get('common_brain')
@@ -5804,6 +5801,15 @@ class MneExperiment(FileTree):
         else:
             raise ValueError("parc=%r" % parc)
 
+    def _get_parc(self):
+        parc = self.get('parc')
+        if parc == '':
+            return '', None
+        elif parc in self._parcs:
+            return parc, self._parcs[parc]
+        else:
+            return parc, self._parcs[SEEDED_PARC_RE.match(parc).group(1)]
+
     def _post_set_test(self, _, test):
         if test != '*' and test in self._tests and 'model' in self._tests[test]:
             self.set(model=self._tests[test]['model'])
@@ -6225,11 +6231,23 @@ class MneExperiment(FileTree):
 
     def _surfer_plot_kwargs(self, surf=None, views=None, foreground=None,
                             background=None, smoothing_steps=None, hemi=None):
-        defaults = self.brain_plot_defaults
-        return {
-            'surf': surf or defaults.get('surf', 'inflated'),
-            'views': views or defaults.get('views', ('lat', 'med')),
-            'hemi': hemi,
-            'foreground': foreground or defaults.get('foreground', None),
-            'background': background or defaults.get('background', None),
-            'smoothing_steps': smoothing_steps or defaults.get('smoothing_steps', None)}
+        out = self._brain_plot_defaults.copy()
+        out.update(self.brain_plot_defaults)
+        if views:
+            out['views'] = views
+        else:
+            parc, p = self._get_parc()
+            if p is not None and p.views:
+                out['views'] = p.views
+
+        if surf:
+            out['surf'] = surf
+        if foreground:
+            out['foreground'] = foreground
+        if background:
+            out['background'] = background
+        if smoothing_steps:
+            out['smoothing_steps'] = smoothing_steps
+        if hemi:
+            out['hemi'] = hemi
+        return out
