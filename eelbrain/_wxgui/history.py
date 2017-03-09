@@ -254,7 +254,7 @@ class FileFrame(EelbrainFrame):
     def OnClose(self, event):
         """Ask to save unsaved changes.
 
-        Returns True if confirmed so that child windows can unsubscribe from
+        Return True if confirmed so that child windows can unsubscribe from
         document model changes.
         """
         if self.owns_file and event.CanVeto() and not self.history.is_saved():

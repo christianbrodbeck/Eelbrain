@@ -44,8 +44,7 @@ def _etree_node_repr(node, name, indent=0):
 
 
 class LayeredDict(dict):
-    """Dictionary which can store and restore states
-    """
+    """Dictionary which can store and restore states"""
     def __init__(self):
         self._states = []
         dict.__init__(self)
@@ -577,7 +576,7 @@ class TreeModel(object):
             yield path
 
     def _partial(self, temp, skip=()):
-        "format a template while leaving some slots unfilled"
+        "Format a template while leaving some slots unfilled"
         skip = set(skip)
         fields = self._fields.copy()
         fields.update({k: '{%s}' % k for k in skip})
@@ -717,9 +716,9 @@ class TreeModel(object):
             print(table)
 
     def show_state(self, temp=None, empty=False, hide=()):
-        """
-        List all top-level fields and their values (i.e., fields whose values
-        do not contain templates).
+        """List all top-level fields and their values
+
+        (Top-level fields are fields whose values do not contain templates)
 
         Parameters
         ----------
@@ -829,9 +828,7 @@ class TreeModel(object):
 
 
 class FileTree(TreeModel):
-    """
-    :class:`TreeModel` subclass for representing a file system hierarchy
-    """
+    """:class:`TreeModel` subclass for a file system hierarchy"""
     _repr_args = ('root',)
 
     def __init__(self, **state):
@@ -841,7 +838,8 @@ class FileTree(TreeModel):
         self._register_field('root', eval_handler=self._eval_root)
 
     def _bind_cache(self, key, handler):
-        """
+        """Bind a cache function to a ``*-file`` key
+
         The cache function is called every time the file name is retrieved and
         should recreate the file if it is outdated.
         """
@@ -852,7 +850,8 @@ class FileTree(TreeModel):
         self._cache_handlers[key] = handler
 
     def _bind_make(self, key, handler):
-        """
+        """Bind a make function to a ``*-file`` key
+
         The make function is called only when the file name is retrieved and
         the file does not exist.
         """
@@ -1094,7 +1093,7 @@ class FileTree(TreeModel):
         return table
 
     def show_in_finder(self, temp, **kwargs):
-        "Reveals the file corresponding to the ``temp`` template in the Finder."
+        "Reveal the file corresponding to the ``temp`` template in the Finder."
         fname = self.get(temp, **kwargs)
         subprocess.call(["open", "-R", fname])
 

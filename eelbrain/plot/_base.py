@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""
+"""Framework for figures embedded in a GUI
+
 Implementation
 ==============
 
@@ -77,7 +78,7 @@ import PIL
 
 from .._utils import deprecated
 from .._utils.subp import command_exists
-from ..fmtxt import Image, texify
+from ..fmtxt import Image
 from .._colorspaces import symmetric_cmaps, zerobased_cmaps, DEFAULT_CMAPS, \
     ALPHA_CMAPS
 from .._data_obj import (ascategorial, asndvar, assub, isnumeric, isdataobject,
@@ -817,20 +818,10 @@ def aggregate(y, agg):
     return y if agg is None else y.mean(agg)
 
 
-def str2tex(txt):
-    """If matplotlib usetex is enabled, replace tex sensitive characters in the
-    string.
-    """
-    if txt and mpl.rcParams['text.usetex']:
-        return texify(txt)
-    else:
-        return txt
-
-
 class mpl_figure:
-    "cf. _wxgui.mpl_canvas"
+    "Cf. _wxgui.mpl_canvas"
     def __init__(self, **fig_kwargs):
-        "creates self.figure and self.canvas attributes and returns the figure"
+        "Create self.figure and self.canvas attributes and return the figure"
         from matplotlib import pyplot
 
         self._plt = pyplot
@@ -866,10 +857,7 @@ class mpl_figure:
 # MARK: figure composition
 
 def _loc(name, size=(0, 0), title_space=0, frame=.01):
-    """
-    takes a loc argument and returns x,y of bottom left edge
-
-    """
+    """Convert loc argument to ``(x, y)`` of bottom left edge"""
     if isinstance(name, basestring):
         y, x = name.split()
     # interpret x
@@ -1130,11 +1118,11 @@ class EelFigure(object):
             event.guiEvent.Skip(False)
 
     def _on_leave_axes(self, event):
-        "update the status bar when the cursor leaves axes"
+        "Update the status bar when the cursor leaves axes"
         self._frame.SetStatusText(':-)')
 
     def _on_motion(self, event):
-        "update the status bar for mouse movement"
+        "Update the status bar for mouse movement"
         ax = event.inaxes
         if ax:
             x = ax.xaxis.get_major_formatter().format_data(event.xdata)
@@ -1159,9 +1147,10 @@ class EelFigure(object):
 
     def _fill_toolbar(self, tb):
         """
-        Subclasses should add their toolbar items in this function which
-        is called by CanvasFrame.FillToolBar()
+        Add toolbar tools
 
+        Subclasses should add their toolbar items in this function which
+        is called by ``CanvasFrame.FillToolBar()``.
         """
         pass
 
@@ -1355,8 +1344,7 @@ class BaseLayout(object):
 
 
 class Layout(BaseLayout):
-    """Create layouts for figures with several axes of the same size
-    """
+    """Layout for figures with several axes of the same size"""
     def __init__(self, nax, ax_aspect, axh_default, tight=True, title=None,
                  h=None, w=None, axh=None, axw=None, nrow=None, ncol=None,
                  dpi=None, show=True, run=None, frame=True, yaxis=True,
@@ -1645,7 +1633,7 @@ class VariableAspectLayout(BaseLayout):
         self.ax_frames = ax_frames
 
     def ax_rects(self, h, w):
-        "Update "
+        "Compute axes outlines for given height and width"
         text_buffer = 20 * POINT
 
         # buffers for legends
@@ -1861,7 +1849,7 @@ class LegendMixin(object):
         self.__plot(self.__args[event.GetSelection()])
 
     def plot_legend(self, loc='fig', *args, **kwargs):
-        """Plots (or removes) the legend from the figure.
+        """Plot the legend (or remove it from the figure).
 
         Parameters
         ----------

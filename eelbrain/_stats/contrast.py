@@ -1,7 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Parse contrast expressions
 
-
 AST
 ===
 

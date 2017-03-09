@@ -84,19 +84,18 @@ def format_epoch_list(l, head="Epochs by channel:"):
 
 
 class ChangeAction(Action):
-    """Action objects are kept in the history and can do and undo themselves"""
+    """Action objects are kept in the history and can do and undo themselves
 
+    Parameters
+    ----------
+    desc : str
+        Description of the action
+        list of (i, name, old, new) tuples
+    """
     def __init__(self, desc, index=None, old_accept=None, new_accept=None,
                  old_tag=None, new_tag=None, old_path=None, new_path=None,
                  old_bad_chs=None, new_bad_chs=None, old_interpolate=None,
                  new_interpolate=None):
-        """
-        Parameters
-        ----------
-        desc : str
-            Description of the action
-            list of (i, name, old, new) tuples
-        """
         self.desc = desc
         self.index = index
         self.old_path = old_path
@@ -130,10 +129,16 @@ class ChangeAction(Action):
 
 
 class Document(FileDocument):
-    """Represents data for the current state of the Document
+    """Represent the current state of the Document
 
     Data can be accesses through attributes, but should only be changed through
     the set_...() methods.
+
+    Parameters
+    ----------
+    path : None | str
+        Default location of the epoch selection file (used for save
+        command). If the file exists, it is loaded as initial state.
 
     Attributes
     ----------
@@ -154,16 +159,6 @@ class Document(FileDocument):
     def __init__(self, ds, data='meg', accept='accept', blink='blink',
                  tag='rej_tag', trigger='trigger', path=None, bad_chs=None,
                  allow_interpolation=True):
-        """
-        Parameters
-        ----------
-        ds : Dataset
-            Dataset containing
-            ...
-        path : None | str
-            Default location of the epoch selection file (used for save
-            command). If the file exists, it is loaded as initial state.
-        """
         FileDocument.__init__(self, path)
         if isinstance(ds, MNE_EPOCHS):
             epochs = ds
@@ -615,9 +610,7 @@ class Model(FileModel):
 
 
 class Frame(FileFrame):
-    """
-    Epoch Rejection
-    ===============
+    """Epoch rejection GUI
 
     Exclude bad epochs and interpolate or remove bad channels.
 
@@ -775,7 +768,7 @@ class Frame(FileFrame):
         return self._current_page_i < self._n_pages - 1
 
     def CaseChanged(self, index):
-        "updates the states of the segments on the current page"
+        "Update the states of the segments on the current page"
         if isinstance(index, int):
             index = [index]
         elif isinstance(index, slice):
@@ -841,11 +834,11 @@ class Frame(FileFrame):
         app.Bind(wx.EVT_MENU, self.OnInfo, item)
 
     def OnBackward(self, event):
-        "turns the page backward"
+        "Turn the page backward"
         self.SetPage(self._current_page_i - 1)
 
     def OnCanvasClick(self, event):
-        "called by mouse clicks"
+        "Called by mouse clicks"
         ax = event.inaxes
         logger = getLogger(__name__)
         if ax:
@@ -963,7 +956,7 @@ class Frame(FileFrame):
         dlg.Destroy()
 
     def OnForward(self, event):
-        "turns the page forward"
+        "Turn the page forward"
         self.SetPage(self._current_page_i + 1)
 
     def OnInfo(self, event):
@@ -993,7 +986,7 @@ class Frame(FileFrame):
         InfoFrame(self, "Rejection Info", doc.get_html())
 
     def OnPageChoice(self, event):
-        "called by the page Choice control"
+        "Called by the page Choice control"
         page = event.GetSelection()
         self.SetPage(page)
 
@@ -1001,7 +994,7 @@ class Frame(FileFrame):
         self.PlotGrandAverage()
 
     def OnPointerMotion(self, event):
-        "update view on mouse pointer movement"
+        "Update view on mouse pointer movement"
         ax = event.inaxes
         if not ax:
             return self.SetStatusText("")
@@ -1092,7 +1085,7 @@ class Frame(FileFrame):
             self.SetLayout(dlg.layout, dlg.topo, dlg.mean)
 
     def OnSetMarkedChannels(self, event):
-        "mark is represented in sensor names"
+        "Mark is represented in sensor names"
         dlg = wx.TextEntryDialog(self, "Please enter channel names separated by "
                                  "comma (e.g., \"MEG 003, MEG 010\"):", "Set Marked"
                                  "Channels", ', '.join(self._mark))
@@ -1345,7 +1338,7 @@ class Frame(FileFrame):
         self.canvas.draw()
 
     def _page_change(self, page):
-        "Operations common to page change"
+        "Perform operations common to page change events"
         self._current_page_i = page
         self.page_choice.Select(page)
         self._epoch_idxs = self._segs_by_page[page]

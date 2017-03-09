@@ -1,7 +1,6 @@
-'''
-Plot sensor maps.
-'''
-# author: Christian Brodbeck
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+"""Plot sensor maps."""
+
 from collections import Sequence
 from itertools import izip
 from math import sin, cos, asin
@@ -117,23 +116,23 @@ class _ax_map2d:
         self.sensors.mark_sensors(*args, **kwargs)
 
     def remove(self):
-        "remove from axes"
+        "Remove from axes"
         self.sensors.remove()
 
 
 class _plt_map2d:
+    """Sensor-map plot
 
+    Parameters
+    ----------
+    ax : matplotlib Axes
+        Axes.
+    sensors : Sensor
+        Sensor dimension.
+    """
     def __init__(self, ax, sensors, proj, extent, marker, size, color, mark,
                  mcolor, mmarker, labels, invisible, head_radius, head_pos,
                  head_linewidth):
-        """
-        Parameters
-        ----------
-        ax : matplotlib Axes
-            Axes.
-        sensors : Sensor
-            Sensor dimension.
-        """
         self.ax = ax
         self.sensors = sensors
         self.locs = sensors.get_locs_2d(proj, extent, SENSORMAP_FRAME)
@@ -194,7 +193,7 @@ class _plt_map2d:
         self._mark_handles.append(h)
 
     def remove(self):
-        "remove from axes"
+        "Remove from axes"
         self._sensor_h.remove()
         while self._mark_handles:
             self._mark_handles.pop().remove()
@@ -552,11 +551,12 @@ class SensorMaps(EelFigure):
         self._update_mark_plot()
 
     def get_selection(self):
-        """
+        """Retrieve the current selection
+
         Returns
         -------
         selection : list
-            Returns the current selection as a list of indices.
+            The current selection as a list of indices.
         """
         if self._selection is None:
             return []

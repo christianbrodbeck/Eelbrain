@@ -5,7 +5,7 @@ import numpy as np
 
 
 def dicttree(dictionary):
-    """readable repr for a hierarchical dictionary"""
+    """Print a hierarchical dictionary"""
     print('\n'.join(_dict_repr(dictionary)))
 
 
@@ -23,14 +23,7 @@ def _dict_repr(dictionary, indent=0):
 
 
 def printdict(dictionary, w=100, fmt='%r', sort=True, max_v_lines=6):
-    """
-    Prints only one key-value pair per line, hopefully a more readable
-    representation for complex dictionaries.
-
-    sort : bool
-        Sort keys
-
-    """
+    """Print only one key-value pair per line"""
     print(strdict(dictionary, w=w, fmt=fmt, sort=sort, max_v_lines=max_v_lines))
 
 
@@ -68,10 +61,7 @@ def strdict(dictionary, w=100, fmt='%r', sort=True, max_v_lines=6):
 
 
 def printlist(list_obj, fmt='%r'):
-    """
-    print each element of a list on a new line
-
-    """
+    """Print each element of a list on a new line"""
     print(strlist(list_obj, fmt=fmt))
 
 

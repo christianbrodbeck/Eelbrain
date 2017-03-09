@@ -1,18 +1,9 @@
-"""
-This terminal-based implementation of the Eelbrain ui functions depends only
-on the Python standard library os.
-
-"""
+"""Terminal-based implementation of the Eelbrain ui functions."""
 from __future__ import print_function
 import os
 
 
 def ask_saveas(title, messagefiletypes, defaultDir, defaultFile):
-    """
-    ext: list of (extension, description) tuples
-         or None
-
-    """
     msg = "%s (%s): " % (title, message)
     path = raw_input(msg)
     path = os.path.expanduser(path)
@@ -35,8 +26,7 @@ def ask_saveas(title, messagefiletypes, defaultDir, defaultFile):
             return False
 
 
-def ask_dir(title="Select Folder",
-            message="Please Pick a Folder",
+def ask_dir(title="Select Folder", message="Please Pick a Folder",
             must_exist=True):
     msg = "%s (%s): " % (title, message)
     path = raw_input(msg)
@@ -48,10 +38,6 @@ def ask_dir(title="Select Folder",
 
 
 def ask_file(title, message, filetypes, directory, mult):
-    """
-    returns a path (str) or False
-
-    """
     msg = "%s (%s): " % (title, message)
     path = raw_input(msg)
     path = os.path.expanduser(path)
@@ -63,15 +49,7 @@ def ask_file(title, message, filetypes, directory, mult):
 
 def ask(title="Overwrite File?",
         message="Duplicate filename. Do you want to overwrite?",
-        cancel=False,
-        default=True,
-        ):
-    """
-    returns:
-     YES    -> True
-     NO     -> False
-     CANCEL -> None
-    """
+        cancel=False, default=True):
     print(title)
     print(message)
     c = ''
@@ -91,11 +69,6 @@ def ask_color(parent=None, default=None):
 
 
 def message(title, message=None, icon='i'):
-    """
-    icon : str
-        can be one of the following: '?', '!', 'i', 'error', None
-
-    """
     if icon:
         title = "%s: %s" % (icon, title)
     print(title)
@@ -104,16 +77,8 @@ def message(title, message=None, icon='i'):
 
 
 def copy_file(path):
-    """
-    copies a file to the clipboard
-
-    """
     raise NotImplementedError
 
 
 def copy_text(text):
-    """
-    copies a file to the clipboard
-
-    """
     raise NotImplementedError

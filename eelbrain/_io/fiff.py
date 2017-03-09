@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """I/O for MNE"""
 from __future__ import division
 
@@ -430,9 +431,7 @@ def add_mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, target='epochs',
 
 
 def _mne_events(ds=None, i_start='i_start', trigger='trigger'):
-    """
-    Convert events from a Dataset into mne events.
-    """
+    """Convert events from a Dataset into mne events"""
     if isinstance(i_start, basestring):
         i_start = ds[i_start]
 
@@ -976,9 +975,9 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
 
 
 def _trim_ds(ds, epochs):
-    """
-    Trim a Dataset to account for rejected epochs. If no epochs were rejected,
-    the original ds is rturned.
+    """Trim a Dataset to account for rejected epochs.
+
+    If no epochs were rejected, the original ds is rturned.
 
     Parameters
     ----------

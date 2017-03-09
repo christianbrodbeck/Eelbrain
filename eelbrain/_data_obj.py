@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-"""
+"""Data containers and basic operations
+
 Data Representation
 ===================
 
@@ -58,7 +59,7 @@ import mne
 from mne.source_space import label_src_vertno_sel
 from nibabel.freesurfer import read_annot
 import numpy as np
-from numpy import dot
+from numpy import dot, newaxis
 import scipy.signal
 import scipy.stats
 from scipy.linalg import inv, norm
@@ -131,8 +132,7 @@ def _effect_interaction(a, b):
 
 
 def cellname(cell, delim=' '):
-    """
-    Returns a consistent ``str`` representation for cells.
+    """Consistent ``str`` representation for cells.
 
     * for Factor cells: the cell (str)
     * for Interaction cell: delim.join(cell).
@@ -159,7 +159,7 @@ def longname(x):
 
 
 def dataobj_repr(obj):
-    """Represent data-objects as parts of __repr__"""
+    """Describe data-objects as parts of __repr__"""
     if obj is None:
         return 'None'
     elif isdataobject(obj) and obj.name is not None:
@@ -169,8 +169,8 @@ def dataobj_repr(obj):
 
 
 def rank(x, tol=1e-8):
-    """
-    Rank of a matrix, from
+    """Rank of a matrix
+
     http://mail.scipy.org/pipermail/numpy-discussion/2008-February/031218.html
 
     """
@@ -205,7 +205,7 @@ def isbalanced(x):
 
 
 def iscategorial(x):
-    "factors as well as interactions are categorial"
+    "Determine wether x is categorial"
     if isinstance(x, (Factor, NestedEffect)):
         return True
     elif isinstance(x, Interaction):
@@ -220,13 +220,13 @@ def iscategorial(x):
 #############
 # _Effect -> Factor, Interaction, NestedEffect
 def isdatacontainer(x):
-    "Includes Dataset"
+    "Determine whether x is a data-object, including Datasets"
     return isinstance(x, (Datalist, Dataset, Model, NDVar, Var, _Effect,
                           NonbasicEffect))
 
 
 def isdataobject(x):
-    "Excludes Dataset"
+    "Determine whether x is a data-object, excluding Datasets"
     return isinstance(x, (Datalist, Model, NDVar, Var, _Effect, NonbasicEffect))
 
 
@@ -257,7 +257,7 @@ def iseffect(x):
 
 
 def isnestedin(item, item2):
-    "Returns True if item is nested in item2, False otherwise"
+    "Determine whether ``item`` is nested in ``item2``"
     if hasattr(item, 'nestedin'):
         return item.nestedin and (item2 in find_factors(item.nestedin))
     else:
@@ -287,7 +287,7 @@ def isintvar(x):
 def is_higher_order_effect(e1, e0):
     """Determine whether e1 is a higher order term of e0
 
-    Returns True if e1 is a higher order term of e0 (i.e., if all factors in
+    Return True if e1 is a higher order term of e0 (i.e., if all factors in
     e0 are contained in e1).
 
     Parameters
@@ -579,7 +579,7 @@ def assub(sub, ds=None):
 
 
 def asuv(x, sub=None, ds=None, n=None):
-    "As Var or Factor"
+    "Coerce to Var or Factor"
     if isinstance(x, basestring):
         if ds is None:
             err = ("Parameter was specified as string, but no Dataset was "
@@ -604,6 +604,7 @@ def asuv(x, sub=None, ds=None, n=None):
 
 
 def asvar(x, sub=None, ds=None, n=None):
+    "Coerce to Var"
     if isinstance(x, basestring):
         if ds is None:
             err = "Var was specified as string, but no Dataset was specified"
@@ -712,13 +713,13 @@ def all_equal(a, b, nan_equal=False):
 
 def align(d1, d2, i1='index', i2=None, out='data'):
     """
-    Aligns two data-objects d1 and d2 based on two index variables, i1 and i2.
+    Align two data-objects based on index variables.
 
-    Before aligning, d1 and d2 describe the same cases, but their order does
-    not correspond. Align uses the indexes (i1 and i2) to match each case in
-    d2 to a case in d1 (i.e., d1 is used as the basis for the case order).
-    Cases that are not present in both d1 and d2 are dropped.
-
+    Before aligning, two data-objects ``d1`` and ``d2`` describe the same cases,
+    but their order does not correspond. :func:`align` uses the indexes ``i1``
+    and ``i2`` to match each case in ``d2`` to a case in ``d1`` (i.e., ``d1``
+    is used as the basis for the case order in the output). Cases that are
+    present in only one of ``d1`` and ``d2`` are dropped.
 
     Parameters
     ----------
@@ -726,13 +727,12 @@ def align(d1, d2, i1='index', i2=None, out='data'):
         Two data objects which are to be aligned
     i1, i2 : str | Var | Factor | Interaction
         Indexes for cases in d1 and d2. If d1 and d2 are Datasets, i1 and i2
-        can be keys for variables in d1 and d2 (if i2 is identical to i1 it can
-        be omitted). Indexes have to supply a unique value for each case.
+        can be keys for variables in d1 and d2.  If i2 is identical to i1 it can
+        be omitted. Indexes have to supply a unique value for each case.
     out : 'data' | 'index'
-        **'data'**: returns the two aligned data objects. **'index'**: returns two
-        indices index1 and index2 which can be used to align the datasets with
-        ``d1[index1]; d2[index2]``.
-
+        **'data'**: returns the two aligned data objects. **'index'**: returns
+        two indices index1 and index2 which can be used to align the datasets
+        with ``d1[index1]; d2[index2]``.
 
     Examples
     --------
@@ -1098,7 +1098,7 @@ class Celltable(object):
         return cellname(cell, delim=delim)
 
     def cellnames(self, delim=' '):
-        """Returns a list of all cell names as strings.
+        """Return a list of all cell names as strings.
 
         See Also
         --------
@@ -1160,39 +1160,29 @@ class Celltable(object):
         elif out is list:
             return [self.data[cell] for cell in self.cells]
 
-    def get_statistic(self, func=np.mean, a=1, **kwargs):
-        """
-        Returns a list with a * func(data) for each data cell.
+    def get_statistic(self, func=np.mean, a=None, **kwargs):
+        """Return a list with ``a * func(data)`` for each data cell.
 
         Parameters
         ----------
-
         func : callable | str
             statistics function that is applied to the data. Can be string,
             such as '[X]sem', '[X]std', or '[X]ci', e.g. '2sem'.
         a : scalar
-            Multiplier (if not provided in ``function`` string).
-        kwargs :
+            Multiplier (ignored if a multiplier is specified in ``func``, as in
+            e.g. ``"2sem"``).
+        **kwargs :
             Are submitted to the statistic function.
-
-
-        Notes
-        ----
-
-        :py:meth:`get_statistic_dict`
-
 
         See also
         --------
-
-        Celltable.get_statistic_dict : return statistics in a dict
-
+        .get_statistic_dict : return statistics in a ``{cell: data}`` dict
         """
         if isinstance(func, basestring):
             if func.endswith('ci'):
                 if len(func) > 2:
                     a = float(func[:-2])
-                elif a == 1:
+                elif a is None:
                     a = .95
                 from ._stats.stats import confidence_interval
                 func = confidence_interval
@@ -1209,16 +1199,31 @@ class Celltable(object):
             else:
                 raise ValueError('unrecognized statistic: %r' % func)
 
-        Y = [a * func(self.data[cell].x, **kwargs) for cell in self.cells]
-        return Y
+        if a is None:
+            a = 1
 
-    def get_statistic_dict(self, func=np.mean, a=1, **kwargs):
-        """
-        Same as :py:meth:`~Celltable.get_statistic`, except that he result is returned in
-        a {cell: value} dictionary.
+        return [a * func(self.data[cell].x, **kwargs) for cell in self.cells]
 
+    def get_statistic_dict(self, func=np.mean, a=None, **kwargs):
+        """Return a ``{cell: a * func(data)}`` dictionary.
+
+        Parameters
+        ----------
+        func : callable | str
+            statistics function that is applied to the data. Can be string,
+            such as '[X]sem', '[X]std', or '[X]ci', e.g. '2sem'.
+        a : scalar
+            Multiplier (ignored if a multiplier is specified in ``func``, as in
+            e.g. ``"2sem"``).
+        **kwargs :
+            Are submitted to the statistic function.
+
+        See Also
+        --------
+        .get_statistic : statistic in a list
         """
-        return zip(self.cells, self.get_statistic(func=func, a=a, **kwargs))
+        return dict(zip(self.cells,
+                        self.get_statistic(func=func, a=a, **kwargs)))
 
 
 def combine(items, name=None, check_dims=True, incomplete='raise'):
@@ -1404,7 +1409,7 @@ def _merge_info(items):
 
 
 def find_factors(obj):
-    "returns a list of all factors contained in obj"
+    "Return the list of all factors contained in obj"
     if isinstance(obj, EffectList):
         f = set()
         for e in obj:
@@ -1571,18 +1576,12 @@ class Var(object):
         return self._n_cases
 
     def __getitem__(self, index):
-        "if Factor: return new variable with mean values per Factor category"
         if isinstance(index, Factor):
-            f = index
-            x = []
-            for v in np.unique(f.x):
-                x.append(np.mean(self.x[f == v]))
-            return Var(x, self.name, info=self.info.copy())
+            raise TypeError("Factor can't be used as index")
         elif isinstance(index, Var):
             index = index.x
-
         x = self.x[index]
-        if np.iterable(x):
+        if isinstance(x, np.ndarray):
             return Var(x, self.name, info=self.info.copy())
         else:
             return x
@@ -1753,18 +1752,9 @@ class Var(object):
         return self.__idiv__(other)
 
     def __div__(self, other):
-        """
-        type of other:
-        scalar:
-            returns var divided by other
-        Factor:
-            returns a separate slope for each level of the Factor; needed for
-            ANCOVA
-
-        """
         if isinstance(other, Var):
             x = self.x / other.x
-        elif iscategorial(other):
+        elif iscategorial(other):  # separate slope for each level (for ANCOVA)
             dummy_factor = other.as_dummy_complete
             codes = dummy_factor * self.as_effects
             # center
@@ -1829,12 +1819,12 @@ class Var(object):
 
     @property
     def as_dummy(self):
-        "for effect initialization"
+        "For dummy coding"
         return self.x[:, None]
 
     @property
     def as_effects(self):
-        "for effect initialization"
+        "For effect coding"
         return self.x[:, None] - self.x.mean()
 
     def as_factor(self, labels='%r', name=True, random=False):
@@ -1892,7 +1882,7 @@ class Var(object):
         return Factor(self.x, name, random, labels=labels_)
 
     def copy(self, name=True):
-        "returns a deep copy of itself"
+        "Return a deep copy"
         x = self.x.copy()
         if name is True:
             name = self.name
@@ -2081,15 +2071,15 @@ class Var(object):
         return Var(np.log(self.x), name, info=info)
 
     def max(self):
-        "Returns the highest value"
+        "The highest value"
         return self.x.max()
 
     def mean(self):
-        "Returns the mean"
+        "The mean"
         return self.x.mean()
 
     def min(self):
-        "Returns the smallest value"
+        "The smallest value"
         return self.x.min()
 
     def repeat(self, repeats, name=True):
@@ -2144,7 +2134,7 @@ class Var(object):
         return Factor(x, name)
 
     def std(self):
-        "Returns the standard deviation"
+        "The standard deviation"
         return self.x.std()
 
     def sort_index(self, descending=False):
@@ -2165,7 +2155,7 @@ class Var(object):
         pass
 
     def sum(self):
-        "Returns the sum over all values"
+        "The sum over all values"
         return self.x.sum()
 
     @property
@@ -2241,7 +2231,7 @@ class _Effect(object):
         return Var(enum, name)
 
     def index(self, cell):
-        """``e.index(cell)`` returns an array of indices where e equals cell
+        """Array with ``int`` indices equal to ``cell``
 
         Examples
         --------
@@ -2518,11 +2508,6 @@ class Factor(_Effect):
         return self._n_cases
 
     def __getitem__(self, index):
-        """
-        sub needs to be int or an array of bools of shape(self.x)
-        this method is valid for factors and nonbasic effects
-
-        """
         if isinstance(index, Var):
             index = index.x
 
@@ -2544,7 +2529,7 @@ class Factor(_Effect):
             del self._codes[self._labels.pop(code)]
 
     def _get_code(self, label):
-        "add the label if it does not exists and return its code"
+        "Add the label if it does not exists and return its code"
         try:
             return self._codes[label]
         except KeyError:
@@ -2585,49 +2570,13 @@ class Factor(_Effect):
             return np.array([self._codes.get(label, -1) for label in x])
 
     def __call__(self, other):
-        """
-        Create a nested effect. A factor A is nested in another factor B if
+        """Create a nested effect.
+
+        A factor A is nested in another factor B if
         each level of A only occurs together with one level of B.
 
         """
         return NestedEffect(self, other)
-
-    def _interpret_y(self, Y, create=False):
-        """
-        Parameters
-        ----------
-        Y : str | list of str
-            String(s) to be converted to code values.
-
-        Returns
-        -------
-        codes : int | list of int
-            List of values (codes) corresponding to the categories.
-
-        """
-        if isinstance(Y, basestring):
-            if Y in self._codes:
-                return self._codes[Y]
-            elif create:
-                code = 0
-                while code in self._labels:
-                    code += 1
-                if code >= 65535:
-                    raise ValueError("Too many categories in this Factor.")
-                self._labels[code] = Y
-                self._codes[Y] = code
-                return code
-            else:
-                return 65535  # code for values not present in the Factor
-        elif np.iterable(Y):
-            out = np.empty(len(Y), dtype=np.uint16)
-            for i, y in enumerate(Y):
-                out[i] = self._interpret_y(y, create=create)
-            return out
-        elif Y in self._labels:
-            return Y
-        else:
-            raise ValueError("unknown cell: %r" % Y)
 
     @property
     def as_dummy(self):  # x_dummy_coded
@@ -2759,7 +2708,7 @@ class Factor(_Effect):
         return out
 
     def copy(self, name=True, repeat=1, tile=1):
-        "returns a deep copy of itself"
+        "A deep copy"
         if name is True:
             name = self.name
         return Factor(self.x, name, self.random, repeat, tile, self._labels)
@@ -2769,8 +2718,7 @@ class Factor(_Effect):
         return max(0, len(self._labels) - 1)
 
     def endswith(self, substr):
-        """Create an index that is true for all cases whose name ends with
-        ``substr``
+        """An index that is true for all cases whose name ends with ``substr``
 
         Parameters
         ----------
@@ -2859,17 +2807,18 @@ class Factor(_Effect):
         return out
 
     def get_index_to_match(self, other):
-        """
-        Assuming that ``other`` is a shuffled version of self, this method
-        returns ``index`` to transform from the order of self to the order of
-        ``other``. To guarantee exact matching, each value can only occur once
-        in self.
+        """Generate index to conform to another Factor's order
 
-        Example::
+        Assuming that ``other`` is a reordered version of self,
+        ``get_index_to_match()`` generates an index to transform from the order
+        of ``self`` to the order of ``other``.
+        To guarantee exact matching, each value can only occur once in ``self``.
 
-            >>> index = factor1.get_index_to_match(factor2)
-            >>> all(factor1[index] == factor2)
-            True
+        Examples
+        --------
+        >>> index = factor1.get_index_to_match(factor2)
+        >>> all(factor1[index] == factor2)
+        True
 
         """
         assert self._labels == other._labels
@@ -3020,8 +2969,7 @@ class Factor(_Effect):
         self._codes = {l: c for c, l in new_labels.iteritems()}
 
     def startswith(self, substr):
-        """Create an index that is true for all cases whose name starts with
-        ``substr``
+        """An index that is true for all cases whose name starts with ``substr``
 
         Parameters
         ----------
@@ -3043,7 +2991,7 @@ class Factor(_Effect):
         return self.isin(values)
 
     def table_categories(self):
-        "returns a table containing information about categories"
+        "A table containing information about categories"
         table = fmtxt.Table('rll')
         table.title(self.name)
         for title in ['i', 'Label', 'n']:
@@ -3303,7 +3251,7 @@ class NDVar(object):
             raise TypeError("Need Var or NDVar")
 
     def _ialign(self, other):
-        "align for self-modifying operations (+=, ...)"
+        "Align for self-modifying operations (+=, ...)"
         if np.isscalar(other):
             return other
         elif isinstance(other, Var):
@@ -3390,11 +3338,6 @@ class NDVar(object):
 
     # container ---
     def __getitem__(self, index):
-        '''Options for NDVar indexing:
-
-         - First element only: numpy-like case index (int, array).
-         - All elements: 1d boolean NDVar.
-        '''
         if isinstance(index, tuple):
             return self.sub(*index)
         else:
@@ -3454,7 +3397,7 @@ class NDVar(object):
         -------
         any : NDVar | Var | float
             Boolean data indicating presence of nonzero value over specified
-            dimensions. Returns a Var if only the case dimension remains, and a
+            dimensions. Return a Var if only the case dimension remains, and a
             float if the function collapses over all data.
         """
         return self._aggregate_over_dims(dims, regions, np.any)
@@ -3503,7 +3446,7 @@ class NDVar(object):
         Returns
         -------
         aggregated_ndvar : NDVar
-            Returns an
+            NDVar with data aggregated over cells of ``X``.
         """
         if not self.has_case:
             raise DimensionMismatchError("%r has no case dimension" % self)
@@ -3748,7 +3691,7 @@ class NDVar(object):
         return NDVar(x, dims, info, name or self.name)
 
     def copy(self, name=None):
-        """returns an NDVar with a deep copy of its data
+        """A deep copy of the NDVar's data
 
         Parameters
         ----------
@@ -3840,7 +3783,7 @@ class NDVar(object):
             print(info)
 
     def dot(self, ndvar, dim=None, name=None):
-        """NDVar dot product
+        """Dot product
 
         Parameters
         ----------
@@ -3932,7 +3875,7 @@ class NDVar(object):
         Returns
         -------
         extrema : NDVar | Var | float
-            Extrema over specified dimensions. Returns a Var if only the
+            Extrema over specified dimensions. Return a Var if only the
             case dimension remains, and a float if the function collapses over
             all data.
         """
@@ -3978,7 +3921,7 @@ class NDVar(object):
         return NDVar(x, dims, info, name or self.name)
 
     def get_axis(self, name):
-        "Returns the data axis for a given dimension name"
+        "Return the data axis for a given dimension name"
         if self.has_dim(name):
             return self._dim_2_ax[name]
         else:
@@ -4003,7 +3946,7 @@ class NDVar(object):
         if isinstance(dims, str):
             dims = (dims,)
 
-        dims_ = tuple(d for d in dims if d is not np.newaxis)
+        dims_ = tuple(d for d in dims if d is not newaxis)
         if set(dims_) != set(self.dimnames) or len(dims_) != len(self.dimnames):
             err = "Requested dimensions %r from %r" % (dims, self)
             raise DimensionMismatchError(err)
@@ -4015,13 +3958,13 @@ class NDVar(object):
         # insert axes
         if len(dims) > len(dims_):
             for ax, dim in enumerate(dims):
-                if dim is np.newaxis:
+                if dim is newaxis:
                     x = np.expand_dims(x, ax)
 
         return x
 
     def get_dim(self, name):
-        "Returns the Dimension object named ``name``"
+        "Return the Dimension object named ``name``"
         i = self.get_axis(name)
         dim = self.dims[i]
         return dim
@@ -4057,7 +4000,7 @@ class NDVar(object):
             return tuple(names)
 
     def get_dims(self, names):
-        """Returns a tuple with the requested Dimension objects
+        """Return a tuple with the requested Dimension objects
 
         Parameters
         ----------
@@ -4148,7 +4091,7 @@ class NDVar(object):
         Returns
         -------
         max : NDVar | Var | float
-            The maximum over specified dimensions. Returns a Var if only the
+            The maximum over specified dimensions. Return a Var if only the
             case dimension remains, and a float if the function collapses over
             all data.
         """
@@ -4175,7 +4118,7 @@ class NDVar(object):
         Returns
         -------
         mean : NDVar | Var | float
-            The mean over specified dimensions. Returns a Var if only the case
+            The mean over specified dimensions. Return a Var if only the case
             dimension remains, and a float if the function collapses over all
             data.
         """
@@ -4202,7 +4145,7 @@ class NDVar(object):
         Returns
         -------
         min : NDVar | Var | float
-            The minimum over specified dimensions. Returns a Var if only the
+            The minimum over specified dimensions. Return a Var if only the
             case dimension remains, and a float if the function collapses over
             all data.
         """
@@ -4282,7 +4225,8 @@ class NDVar(object):
         return NDVar(betas, self.dims, info, name or self.name)
 
     def ols_t(self, x, name=None):
-        """T-values for sample-wise ordinary least squares regressions
+        """
+        Compute T-values for sample-wise ordinary least squares regressions
 
         Parameters
         ----------
@@ -4322,34 +4266,28 @@ class NDVar(object):
         info = self.info.copy()
         return NDVar(t, self.dims, info, name or self.name)
 
-    def repeat(self, repeats, dim='case', name=None):
-        """
-        Analogous to :py:func:`numpy.repeat`
+    def repeat(self, repeats, name=None):
+        """Repeat slices of the NDVar along the case dimension
 
         Parameters
         ----------
         repeats : int | array of ints
             The number of repetitions for each element. `repeats` is
             broadcasted to fit the shape of the given dimension.
-        dim : str
-            The dimension along which to repeat values (default 'case').
         name : str
             Name of the output NDVar (default is the current name).
         """
-        ax = self.get_axis(dim)
-        x = self.x.repeat(repeats, axis=ax)
-
-        repdim = self.dims[ax]
-        if not isinstance(repdim, str):
-            repdim = repdim.repeat(repeats)
-
-        dims = self.dims[:ax] + (repdim,) + self.dims[ax + 1:]
-        info = self.info.copy()
-        return NDVar(x, dims, info, name or self.name)
+        if self.has_case:
+            x = self.x.repeat(repeats, axis=0)
+            dims = self.dims
+        else:
+            x = self.x[newaxis].repeat(repeats, axis=0)
+            dims = ('case',) + self.dims
+        return NDVar(x, dims, self.info.copy(), name or self.name)
 
     def residuals(self, x, name=None):
         """
-        Residuals of sample-wise ordinary least squares regressions
+        The residuals of sample-wise ordinary least squares regressions
 
         Parameters
         ----------
@@ -4400,7 +4338,7 @@ class NDVar(object):
         Returns
         -------
         rms : NDVar | Var | float
-            The root mean square over specified dimensions. Returns a Var if
+            The root mean square over specified dimensions. Return a Var if
             only the case dimension remains, and a float if the function
             collapses over all data.
         """
@@ -4449,7 +4387,7 @@ class NDVar(object):
         Returns
         -------
         std : NDVar | Var | float
-            The standard deviation over specified dimensions. Returns a Var if
+            The standard deviation over specified dimensions. Return a Var if
             only the case dimension remains, and a float if the function
             collapses over all data.
         """
@@ -4457,7 +4395,7 @@ class NDVar(object):
 
     def summary(self, *dims, **regions):
         r"""
-        Returns a new NDVar with specified dimensions collapsed.
+        Return a new NDVar with specified dimensions collapsed.
 
         .. warning::
             Data is collapsed over the different dimensions in turn using the
@@ -4549,7 +4487,7 @@ class NDVar(object):
     def sub(self, *args, **kwargs):
         """Retrieve a slice through the NDVar.
 
-        Returns a new NDVar with a slice of the current NDVar's data.
+        Return a new NDVar with a slice of the current NDVar's data.
         The slice is specified using arguments and keyword arguments.
 
         Indexes for dimensions can be either specified as arguments in the
@@ -4664,7 +4602,7 @@ class NDVar(object):
         Returns
         -------
         sum : NDVar | Var | float
-            The sum over specified dimensions. Returns a Var if only the
+            The sum over specified dimensions. Return a Var if only the
             case dimension remains, and a float if the function collapses over
             all data.
         """
@@ -4722,7 +4660,7 @@ class NDVar(object):
         Returns
         -------
         var : NDVar | Var | float
-            The variance over specified dimensions. Returns a Var if only the
+            The variance over specified dimensions. Return a Var if only the
             case dimension remains, and a float if the function collapses over
             all data.
         """
@@ -4905,7 +4843,7 @@ class Datalist(list):
         raise TypeError("Datalist has fixed length to conform to Dataset")
 
     def _update_listlist(self, other):
-        "update list elements from another list of lists"
+        "Update list elements from another list of lists"
         if len(self) != len(other):
             raise ValueError("Unequal length")
         for i in xrange(len(self)):
@@ -4952,7 +4890,7 @@ def as_legal_dataset_key(key):
 
 
 def cases_arg(cases, n_cases):
-    "coerce cases argument to iterator"
+    "Coerce cases argument to iterator"
     if isinstance(cases, Integral):
         if cases < 1:
             cases = n_cases + cases
@@ -5368,6 +5306,7 @@ class Dataset(OrderedDict):
                  ifmt='%s', bfmt='%s', lfmt=False):
         r"""
         Create an fmtxt.Table containing all Vars and Factors in the Dataset.
+
         Can be used for exporting in different formats such as csv.
 
         Parameters
@@ -5561,25 +5500,31 @@ class Dataset(OrderedDict):
         return ds
 
     def get_case(self, i):
-        "returns the i'th case as a dictionary"
+        "The i'th case as a dictionary"
         return dict((k, v[i]) for k, v in self.iteritems())
 
-    def get_subsets_by(self, X, exclude=[], name='{name}[{cell}]'):
-        """
-        splits the Dataset by the cells of a Factor and
-        returns as dictionary of subsets.
+    def get_subsets_by(self, x, exclude=(), name='{name}[{cell}]'):
+        """Split the Dataset by the cells of ``x``
 
-        """
-        if isinstance(X, basestring):
-            X = self[X]
+        Parameters
+        ----------
+        x : categorial
+            Model defining cells into which to split the dataset.
+        exclude : sequence of str
+            Cells of ``x`` which should be ignored.
+        name : str
+            Name for the new datasets (formatted with ``self.name`` and
+            ``cell``).
 
-        out = {}
-        for cell in X.cells:
-            if cell not in exclude:
-                setname = name.format(name=self.name, cell=cell)
-                index = (X == cell)
-                out[cell] = self.sub(index, setname)
-        return out
+        Returns
+        -------
+        sub_datasets : dict
+            ``{cell: sub_dataset}`` dictionary.
+        """
+        if isinstance(x, basestring):
+            x = self.eval(x)
+        return {cell: self.sub(x == cell, name.format(name=self.name, cell=cell)) for
+                cell in x.cells if cell not in exclude}
 
     def aggregate(self, x=None, drop_empty=True, name='{name}', count='n',
                   drop_bad=False, drop=(), equal_count=False, never_drop=()):
@@ -5715,9 +5660,7 @@ class Dataset(OrderedDict):
         return self.as_table(n, '%.5g', midrule=True, lfmt=True)
 
     def index(self, name='index', start=0):
-        """
-        Add an index to the Dataset (i.e., `range(n_cases)`), e.g. for later
-        alignment.
+        """Add an index to the Dataset (i.e., ``range(n_cases)``)
 
         Parameters
         ----------
@@ -5729,7 +5672,7 @@ class Dataset(OrderedDict):
         self[name] = Var(np.arange(start, self.n_cases + start))
 
     def itercases(self, start=None, stop=None):
-        "iterate through cases (each case represented as a dict)"
+        "Iterate through cases (each case represented as a dict)"
         if start is None:
             start = 0
 
@@ -5778,7 +5721,7 @@ class Dataset(OrderedDict):
 
     def repeat(self, repeats, name='{name}'):
         """
-        Returns a new Dataset with each row repeated ``n`` times.
+        Return a new Dataset with each row repeated ``n`` times.
 
         Parameters
         ----------
@@ -6007,7 +5950,7 @@ class Dataset(OrderedDict):
 
     def sub(self, index, name='{name}'):
         """
-        Returns a Dataset containing only the cases selected by `index`.
+        Return a Dataset containing only the cases selected by `index`.
 
         Parameters
         ----------
@@ -6290,8 +6233,7 @@ class Interaction(_Effect):
         return reduce(_effect_interaction, codelist)
 
     @LazyProperty
-    def as_effects(self):
-        "effect coding"
+    def as_effects(self):  # Effect coding
         codelist = [f.as_effects for f in self.base]
         return reduce(_effect_interaction, codelist)
 
@@ -6330,75 +6272,19 @@ class Interaction(_Effect):
         return set(self)
 
 
-class diff(object):
-    """
-    helper to create difference values for correlation.
-
-    """
-    def __init__(self, X, c1, c2, match, sub=None):
-        """
-        X: Factor providing categories
-        c1: category 1
-        c2: category 2
-        match: Factor matching values between categories
-
-        """
-        raise NotImplementedError
-        # FIXME: use celltable
-        sub = X.isany(c1, c2)
-#        ct = celltable
-#        ...
-        i1 = X.code_for_label(c1)
-        i2 = X.code_for_label(c2)
-        self.I1 = X == i1
-        self.I2 = X == i2
-
-        if sub is not None:
-            self.I1 = self.I1 * sub
-            self.I2 = self.I2 * sub
-
-        m1 = match.x[self.I1]
-        m2 = match.x[self.I2]
-        self.s1 = np.argsort(m1)
-        self.s2 = np.argsort(m2)
-        assert np.all(np.unique(m1) == np.unique(m2))
-        self.name = "{n}({x1}-{x2})".format(n='{0}', x1=X.cells[i1], x2=X.cells[i2])
-
-    def subtract(self, Y):
-        ""
-        assert type(Y) is Var
-#        if self.sub is not None:
-#            Y = Y[self.sub]
-        Y1 = Y[self.I1]
-        Y2 = Y[self.I2]
-        y = Y1[self.s1] - Y2[self.s2]
-        name = self.name.format(Y.name)
-        # name = Y.name + '_DIFF'
-        return Var(y, name)
-
-    def extract(self, Y):
-        ""
-        y1 = Y[self.I1].x[self.s1]
-        y2 = Y[self.I2].x[self.s2]
-        assert np.all(y1 == y2), Y.name
-        if type(Y) is Factor:
-            return Factor(y1, Y.name, random=Y.random, labels=Y.cells)
-        else:
-            return Var(y1, Y.name)
-
-    @property
-    def N(self):
-        return np.sum(self.I1)
-
-
 def box_cox_transform(X, p, name=None):
-    """
-    :returns: a variable with the Box-Cox transform applied to X. With p==0,
-        this is the log of X; otherwise (X**p - 1) / p
+    """The Box-Cox transform of X as :class:`Var`
 
-    :arg Var X: Source variable
-    :arg float p: Parameter for Box-Cox transform
+    With ``p=0``, this is the log of X; otherwise ``(X**p - 1) / p``
 
+    Parameters
+    ----------
+    X : Var
+        Source data.
+    p : scalar
+        Parameter for Box-Cox transform.
+    name : str
+        Name for the output Var.
     """
     if isinstance(X, Var):
         X = X.x
@@ -6452,7 +6338,7 @@ class NestedEffect(_Effect):
 
     @property
     def as_effects(self):
-        "create effect codes"
+        "Effect codes"
         codes = np.zeros((self._n_cases, self.df))
         ix = 0
         for outer_cell in self.nestedin.cells:
@@ -6617,10 +6503,7 @@ class Model(object):
         return id(effect) in map(id, self.effects)
 
     def sorted(self):
-        """
-        returns sorted Model, interactions last
-
-        """
+        """Sorted copy of the Model, interactions last"""
         out = []
         i = 1
         while len(out) < len(self.effects):
@@ -6751,7 +6634,7 @@ class Model(object):
 
     @LazyProperty
     def full(self):
-        "returns the full model including an intercept"
+        # the full model including an intercept"
         out = np.empty((self.df_total, self.df))
 
         # intercept
@@ -6773,11 +6656,11 @@ class Model(object):
 
     # checking model properties
     def check(self, v=True):
-        "shortcut to check linear independence and orthogonality"
+        "Shortcut to check linear independence and orthogonality"
         return self.lin_indep(v) + self.orthogonal(v)
 
     def lin_indep(self, v=True):
-        "Checks the Model for linear independence of its factors"
+        "Check the Model for linear independence of its factors"
         msg = []
         ne = len(self.effects)
         codes = [e.as_effects for e in self.effects]
@@ -6793,7 +6676,7 @@ class Model(object):
         return msg
 
     def orthogonal(self, v=True):
-        "Checks the Model for orthogonality of its factors"
+        "Check the Model for orthogonality of its factors"
         msg = []
         ne = len(self.effects)
         codes = [e.as_effects for e in self.effects]
@@ -6821,7 +6704,7 @@ class Model(object):
         return Parametrization(self, method)
 
     def repeat(self, n):
-        "Analogous to numpy repeat method"
+        "Repeat each row of the Model ``n`` times"
         effects = [e.repeat(n) for e in self.effects]
         return Model(effects)
 
@@ -6997,9 +6880,11 @@ class Dimension(object):
     def __getitem__(self, index):
         """Array-like Indexing
 
-         - int -> label or value for that location
-         - [int] -> Dimension object with 1 location
-         - [int, ...] -> Dimension object
+        Possible indexes:
+
+          - int -> label or value for that location
+          - [int] -> Dimension object with 1 location
+          - [int, ...] -> Dimension object
         """
         raise NotImplementedError
 
@@ -7008,7 +6893,7 @@ class Dimension(object):
         return str(self.name)
 
     def _axis_im_extent(self):
-        "extent for im plots; needs to extend beyond end point locations"
+        "Extent for im plots; needs to extend beyond end point locations"
         return -0.5, len(self) - 0.5
 
     def _axis_format(self, scalar, label):
@@ -7030,7 +6915,7 @@ class Dimension(object):
         locator : matplotlib Locator
             Tick-locator.
         label : str | None
-            Returns the default axis label if label==True, otherwise the label
+            Return the default axis label if label==True, otherwise the label
             argument.
         """
         raise NotImplementedError
@@ -7647,8 +7532,7 @@ class Sensor(Dimension):
 
     @classmethod
     def from_xyz(cls, path=None, **kwargs):
-        """Create a Sensor instance from a text file with xyz coordinates
-        """
+        """Create a Sensor instance from a text file with xyz coordinates"""
         locs = []
         names = []
         with open(path) as f:
@@ -7668,8 +7552,7 @@ class Sensor(Dimension):
 
     @classmethod
     def from_sfp(cls, path=None, **kwargs):
-        """Create a Sensor instance from an sfp file
-        """
+        """Create a Sensor instance from an sfp file"""
         locs = []
         names = []
         for line in open(path):
@@ -7685,8 +7568,7 @@ class Sensor(Dimension):
 
     @classmethod
     def from_lout(cls, path=None, transform_2d=None, **kwargs):
-        """Create a Sensor instance from a *.lout file
-        """
+        """Create a Sensor instance from a *.lout file"""
         kwargs['transform_2d'] = transform_2d
         locs = []
         names = []
@@ -7711,9 +7593,7 @@ class Sensor(Dimension):
             return proj
 
     def get_locs_2d(self, proj='default', extent=1, frame=0, invisible=True):
-        """
-        returns a sensor X location array, the first column reflecting the x,
-        and the second column containing the y coordinate of each sensor.
+        """Compute a 2 dimensional projection of the sensor locations
 
         Parameters
         ----------
@@ -7728,6 +7608,11 @@ class Sensor(Dimension):
         invisible : bool
             Return invisible sensors (sensors that would be hidden behind the
             head; default True).
+
+        Returns
+        -------
+        locs_2d : array (n_sensor, 2)
+            Sensor position 2d projection in x, y coordinates.
         """
         proj = self._interpret_proj(proj)
 
@@ -7830,7 +7715,7 @@ class Sensor(Dimension):
         return locs2d
 
     def _topomap_outlines(self, proj):
-        "outline argument for mne-python topomaps"
+        "Outline argument for mne-python topomaps"
         proj = self._interpret_proj(proj)
         if proj in ('cone', 'lower cone', 'z root', 'z+'):
             return 'top'
@@ -8464,7 +8349,7 @@ class SourceSpace(Dimension):
         return connectivity
 
     def circular_index(self, seeds, extent=0.05, name="globe"):
-        """Returns an index into all vertices within extent of seed
+        """Return an index into all vertices within extent of seed
 
         Parameters
         ----------
@@ -8592,7 +8477,7 @@ class SourceSpace(Dimension):
         return src
 
     def index_for_label(self, label):
-        """Returns the index for a label
+        """Return the index for a label
 
         Parameters
         ----------

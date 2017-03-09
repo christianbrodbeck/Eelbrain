@@ -1,22 +1,14 @@
-'''
-
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+"""General linear model
 
 References
 ----------
-
 Fox, J. (2008). Applied regression analysis and generalized linear models.
     2nd ed. Sage, Los Angeles.
-
 Hopkins, K. D. (1976). A Simplified Method for Determining Expected Mean
     Squares and Error Terms in the Analysis of Variance. Journal of
     Experimental Education, 45(2), 13--18.
-
-
-
-Created on Oct 17, 2010
-
-@author: christian
-'''
+"""
 from __future__ import division
 from __future__ import print_function
 
@@ -45,7 +37,8 @@ _lm_lsq = 0  # for the LM class
 
 
 class hopkins_ems(dict):
-    """
+    """Find components of the F-test denominator according to Hopkins (1976)
+
     A dictionary supplying for each of a model's effects the components of
     the F-test denominator (error term).
 
@@ -56,31 +49,27 @@ class hopkins_ems(dict):
     plus any random effect that either crosses or is nested within each
     ingredient and the specified effect." (Hopkins, 1976: 18)
 
+    Parameters
+    ----------
+    x : Model
+        ANOVA model. Needs to balanced and completely specified.
     """
-    def __init__(self, X):
-        """
-        Components of the F-test denominator according to Hopkins (1976)
-
-        Parameters
-        ----------
-        X : Model
-            ANOVA model. Needs to balanced and completely specified.
-        """
+    def __init__(self, x):
         super(hopkins_ems, self).__init__()
 
-        if X.df_error > 0:
+        if x.df_error > 0:
             err = "Hopkins E(MS) estimate requires a fully specified model"
             raise ValueError(err)
-        elif not any(f.random for f in find_factors(X)):
+        elif not any(f.random for f in find_factors(x)):
             err = ("Need at least one random effect in fully specified model "
-                   "(got %s)" % X.name)
+                   "(got %s)" % x.name)
             raise ValueError(err)
-        elif not isbalanced(X):
+        elif not isbalanced(x):
             logging.warn('X is not balanced')
 
-        self.x = X
-        for e in X.effects:
-            self[e] = _find_hopkins_ems(e, X)
+        self.x = x
+        for e in x.effects:
+            self[e] = _find_hopkins_ems(e, x)
 
     def __repr__(self):
         items = {}
@@ -92,8 +81,7 @@ class hopkins_ems(dict):
 
 
 def _hopkins_ems_array(x):
-    """Construct E(MS) array
-    """
+    """Construct E(MS) array"""
     n = len(x.effects)
     out = np.zeros((n, n), dtype=np.int8)
     for row, erow in enumerate(x.effects):
@@ -103,14 +91,14 @@ def _hopkins_ems_array(x):
 
 
 def _hopkins_test(e, e2):
-    """
-    Tests whether e2 is in the E(MS) of e.
+    """Test whether e2 is in the E(MS) of e.
 
+    Parameters
+    ----------
     e : effect
         effect whose E(MS) is being constructed
     e2 : effect
         Model effect which is tested for inclusion in E(MS) of e
-
     """
     if e is e2:
         return False
@@ -125,7 +113,7 @@ def _hopkins_test(e, e2):
 
 
 def _find_hopkins_ems(e, x):
-    "tuple with all effects included in the Hopkins E(MS)"
+    "Tuple with all effects included in the Hopkins E(MS)"
     return tuple(e2 for e2 in x.effects if _hopkins_test(e, e2))
 
 
@@ -212,10 +200,7 @@ class LM(object):
         return "LM({Y}, {X}{kw})".format(**fmt)
 
     def anova(self, title='ANOVA', empty=True, ems=False):
-        """
-        returns an ANOVA table for the linear model
-
-        """
+        """ANOVA table for the linear model"""
         X = self.X
         values = self.beta * self.X.full
 
@@ -368,9 +353,7 @@ def _nd_anova(x):
 
 
 class _NDANOVA(object):
-    """
-    Object for efficiently fitting a model to multiple dependent variables.
-    """
+    """Efficiently fit a model to multiple dependent variables."""
     def __init__(self, x, effects, dfs_denom):
         self.x = x
         self._n_obs = len(x)
@@ -384,9 +367,7 @@ class _NDANOVA(object):
         return '%s(%s)' % (self.__class__.__name__, self.x.name)
 
     def map(self, y, perm=None):
-        """
-        Fits the model to multiple dependent variables and returns arrays of
-        F-values and optionally p-values.
+        """Fit the model to multiple dependent variables
 
         Parameters
         ----------
@@ -509,21 +490,20 @@ class _BalancedFixedNDANOVA(_BalancedNDANOVA):
 
 
 class _FullNDANOVA(_BalancedNDANOVA):
-    """for balanced models.
-    E(MS) for F statistic after Hopkins (1976)
+    """For balanced, fully specified models.
+
+    Object for efficiently fitting a model to multiple dependent variables.
+
+    Parameters
+    ----------
+    x : Model
+        Model which will be fitted to the data.
+
+    Notes
+    -----
+    E(MS) for F statistic is determined after Hopkins (1976)
     """
     def __init__(self, x):
-        """
-        Object for efficiently fitting a model to multiple dependent variables.
-
-        Parameters
-        ----------
-        x : Model
-            Model which will be fitted to the data.
-        y_shape : None | tuple
-            Data shape (if known) will allow preallocation of containers for
-            intermediate results.
-        """
         e_ms = hopkins_ems(x)
         df_den = {e: sum(e_.df for e_ in e_ms[e]) for e in x.effects}
         effects = tuple(e for e in x.effects if df_den[e])
@@ -623,7 +603,8 @@ class _IncrementalNDANOVA(_NDANOVA):
 
 
 def _incremental_comparisons(x):
-    """
+    """Determine models for incremental comparisons
+
     Parameters
     ----------
     x : Model
@@ -704,8 +685,22 @@ def _incremental_comparisons(x):
     return comparisons, models, skipped
 
 
-class incremental_F_test:
+class incremental_f_test:
     """Incremental F-Test between two linear models
+
+    Test the null hypothesis that the model of lm1 does not explain more
+    variance than that of lm0 (with model_1 == model_0 + q factors,  q > 0).
+    If lm1 is None it is assumed that lm1 is the full model with 0 residuals
+    (Fox 2008, p. 109 f.).
+
+    Parameters
+    ----------
+    lm1, lm0 : Model
+        The two models to compare.
+    MS_e, df_e : scalar | None
+        Parameters for random effects models: the Expected value of MS;
+        if None, the error MS of lm1 is used (valid for fixed effects
+        models).
 
     Attributes
     ----------
@@ -723,22 +718,6 @@ class incremental_F_test:
         F and p valuer of the comparison.
     """
     def __init__(self, lm1, lm0, MS_e=None, df_e=None, name=None):
-        """
-        tests the null hypothesis that the model of lm1 does not explain more
-        variance than that of lm0 (with model_1 == model_0 + q factors,  q > 0).
-        If lm1 is None it is assumed that lm1 is the full model with 0 residuals.
-
-        lm1, lm0 : Model
-            The two models to compare.
-        MS_e, df_e : scalar | None
-            Parameters for random effects models: the Expected value of MS;
-            if None, the error MS of lm1 is used (valid for fixed effects
-            models).
-
-
-        (Fox 2008, p. 109 f.)
-
-        """
         if lm1 is None:
             lm1_SS_res = 0
             lm1_MS_res = 0
@@ -779,29 +758,7 @@ class incremental_F_test:
 
     def __repr__(self):
         name = ' %r' % self.name if self.name else ''
-        return "<incremental_F_test%s: F=%.2f, p=%.3f>" % (name, self.F, self.p)
-
-
-def comparelm(lm1, lm2):
-    """
-    Fox (p. 109)
-
-    """
-    if lm2.df_res > lm1.df_res:
-        mtemp = lm1
-        lm1 = lm2
-        lm2 = mtemp
-    else:
-        assert lm1.df_res != lm2.df_res
-    SS_diff = lm1.SS_res - lm2.SS_res
-    df_diff = lm1.df_res - lm2.df_res
-    MS_diff = SS_diff / df_diff
-    F = MS_diff / lm2.MS_res
-    p = ftest_p(F, df_diff, lm2.df_res)
-    stars = test.star(p).replace(' ', '')
-    difftxt = "Residual SS reduction: {SS}, df difference: {df}, " + \
-              "F = {F:.3f}{s}, p = {p:.4f}"
-    return difftxt.format(SS=SS_diff, df=df_diff, F=F, s=stars, p=p)
+        return "<incremental_f_test%s: F=%.2f, p=%.3f>" % (name, self.F, self.p)
 
 
 class ANOVA(object):
@@ -941,7 +898,7 @@ class ANOVA(object):
                 if skip:
                     self._log.append("SKIPPING: %s (%s)" % (e_test.name, skip))
                 else:
-                    res = incremental_F_test(lm1, lm0, MS_e=MS_e, df_e=df_e, name=name)
+                    res = incremental_f_test(lm1, lm0, MS_e=MS_e, df_e=df_e, name=name)
                     self.f_tests.append(res)
                     self.names.append(name)
             if not is_mixed:
@@ -1050,67 +1007,3 @@ def anova(y, x, sub=None, title=None, ds=None):
     """
     anova_ = ANOVA(y, x, sub, title, ds)
     return anova_.table()
-
-
-def ancova(Y, factorial_model, covariate, interaction=None, sub=None, v=True,
-           empty=True, ems=None):
-    """
-    OBSOLETE
-
-    args
-    ----
-
-    Y: dependent variable
-    factorial model:
-    covariate:
-
-
-    kwargs
-    ------
-
-    interaction: term from the factorial model to check for interaction with
-                 the covariate
-    v=True: display more information
-    **anova_kwargs: ems, empty
-
-
-    Based on:
-        `Exercise to STATISTICS: AN INTRODUCTION USING R
-        <http://www.bio.ic.ac.uk/research/crawley/statistics/exercises/R6Ancova.pdf>`_
-
-    """
-    assert isinstance(covariate, Var)
-    anova_kwargs = {'empty': empty, 'ems': ems}
-    if sub is not None:
-        Y = Y[sub]
-        factorial_model = factorial_model[sub]
-        covariate = covariate[sub]
-        if interaction is not None:
-            interaction = interaction[sub]
-    # if interaction: assert type(interaction) in [Factor]
-    factorial_model = asmodel(factorial_model)
-    a1 = LM(Y, factorial_model)
-    if v:
-        print(a1.table(title="MODEL 1", **anova_kwargs))
-        print('\n')
-    a2 = LM(Y, factorial_model + covariate)
-    if v:
-        print(a2.table(title="MODEL 2: Main Effect Covariate", **anova_kwargs))
-        print('\n')
-    print('Model with "%s" Covariate > without Covariate' % covariate.name)
-    print(comparelm(a1, a2))
-
-    if interaction:
-        logging.debug("%s / %s" % (covariate.name, interaction.name))
-        logging.debug("%s" % (covariate.__div__))
-        i_effect = covariate.__div__(interaction)
-#        i_effect = covariate / interaction
-        a3 = LM(Y, factorial_model + i_effect)
-        if v:
-            print('\n')
-            print(a3.table(title="MODEL 3: Interaction"))
-        # compare
-        print('\n"%s"x"%s" Interaction > No Covariate:' % (covariate.name, interaction.name))
-        print(comparelm(a1, a3))
-        print('\n"%s"x"%s" Interaction > Main Effect:' % (covariate.name, interaction.name))
-        print(comparelm(a2, a3))

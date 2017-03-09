@@ -716,10 +716,8 @@ def _p_lut(pmap, tmap, p0, p1, p0alpha, n=256):
     return pmap, lut, vmax
 
 
-
 def _activation_lut(threshold=3, vmax=8):
-    """
-    Creates a lookup table containing a color map for plotting stc activation.
+    """Color map for plotting stc activation.
 
     Parameters
     ----------
@@ -738,7 +736,6 @@ def _activation_lut(threshold=3, vmax=8):
     - positive is red.
     - super positive is yellow.
     """
-
     values = np.linspace(-vmax, vmax, 256)
     trans_uidx = np.argmin(np.abs(values - threshold))
     trans_lidx = np.argmin(np.abs(values + threshold))

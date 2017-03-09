@@ -1,7 +1,6 @@
 """
 Boosting as described by David et al. (2007).
 
-
 Profiling
 ---------
 ds = datasets._get_continuous()
@@ -389,7 +388,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
 
 def boost_1seg(x, y, trf_length, delta, nsegs, segno, mindelta, error,
                return_history=False):
-    """boosting with one test segment determined by regular division
+    """Boosting with one test segment determined by regular division
 
     Based on port of svdboostV4pred
 

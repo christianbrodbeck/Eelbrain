@@ -10,6 +10,9 @@ doc:
 	rm -rf doc/build doc/generated
 	python setup.py build_sphinx
 
+style-check:
+	pydocstyle eelbrain
+
 flake:
 	flake8 --count eelbrain examples scripts
 

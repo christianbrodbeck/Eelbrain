@@ -95,9 +95,7 @@ def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None):
 
 def assert_source_space_equal(src1, src2, msg="SourceSpace Dimension objects "
                               "unequal"):
-    """
-    Raise an assertion if two SourceSpace objects are not equal up to desired
-    precision.
+    """Assert that two SourceSpace objects are identical
 
     Parameters
     ----------

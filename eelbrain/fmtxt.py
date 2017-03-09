@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Author:  Christian Brodbeck <christianbrodbeck@nyu.edu>
-"""
+"""Document model for formatted text documents
+
 Objects for the abstract representation of a document which can be into
 different formats. Currently (incomplete) support for str, RTF, TeX and HTML.
 
@@ -161,7 +162,7 @@ def _add_to_recent(tex_obj):
 
 
 def get_pdf(tex_obj):
-    "creates a pdf from an fmtxt object (using tex)"
+    "Generate PDF from an FMText object (using :mod:`tex`)"
     try:
         import tex as _tex
     except ImportError:
@@ -261,7 +262,7 @@ def save_rtf(fmtext, path=None):
 
 
 def save_tex(tex_obj, path=None):
-    "saves an fmtxt object as a pdf"
+    "Save an FMText object as a PDF"
     txt = tex(tex_obj)
     if path is None:
         path = ui.ask_saveas("Save tex", filetypes=[('tex', 'tex source code')])
@@ -282,11 +283,13 @@ def _save_txt(text, path=None):
 
 
 def copy_pdf(tex_obj=-1):
-    """
-    copies an fmtxt object to the clipboard as pdf. `tex_obj` can be an object
-    with a `.get_tex` method or an int, in which case the item is retrieved from
-    a list of recently displayed fmtxt objects.
+    """Copt an fmtxt object to the clipboard as PDF.
 
+    Parameters
+    ----------
+    tex_obj : FMText | int
+        Either an FMText object that can be rendered, or an ``int`` to retrieve
+        an FMText item from a list of recently displayed FMText objects.
     """
     if isinstance(tex_obj, int):
         tex_obj = _recent_texout[tex_obj]
@@ -302,13 +305,13 @@ def copy_pdf(tex_obj=-1):
 
 
 def copy_tex(tex_obj):
-    "copies an fmtxt object to the clipboard as tex code"
+    "Copy an fmtxt object to the clipboard as tex code"
     txt = tex(tex_obj)
     ui.copy_text(txt)
 
 
 def html(text, env={}):
-    """Create html code for any object with a string representation
+    """Generate HTML for any object with a string representation
 
     Parameters
     ----------
@@ -325,7 +328,8 @@ def html(text, env={}):
 
 
 def make_html_doc(body, root, resource_dir=None, title=None, meta=None):
-    """
+    """Generate HTML document
+
     Parameters
     ----------
     body : fmtxt-object
@@ -382,22 +386,6 @@ def tex(text, env={}):
         return text.get_tex(env)
     else:
         return str(text)
-
-
-def texify(txt):
-    """
-    prepares non-latex txt for input to tex (e.g. for Matplotlib)
-
-    """
-    if hasattr(txt, 'get_tex'):
-        return txt.get_tex()
-    elif not isinstance(txt, basestring):
-        txt = str(txt)
-
-    out = txt.replace('_', r'\_') \
-             .replace('{', r'\{') \
-             .replace('}', r'\}')
-    return out
 
 
 _html_temp = u'<{tag}>{body}</{tag}>'
@@ -543,19 +531,19 @@ class FMTextElement(object):
         return FMText([self, other])
 
     def copy_pdf(self):
-        "copy PDF to clipboard"
+        "Copy PDF to clipboard"
         copy_pdf(self)
 
     def copy_tex(self):
-        "copy TeX t clipboard"
+        "Copy TeX to clipboard"
         copy_tex(self)
 
     def _get_core(self, env):
-        "return unicode core"
+        "Unicode core"
         return unicode(self.content)
 
     def get_html(self, env):
-        "return complete html representation"
+        "Complete HTML representation"
         txt = self._get_html_core(env)
 
         if self.tag and self.tag in _HTML_TAGS:
@@ -565,7 +553,7 @@ class FMTextElement(object):
         return txt
 
     def _get_html_core(self, env):
-        "return html representation of everything inside the tag"
+        "HTML representation of everything inside the tag"
         return escape_html(self._get_core(env))
 
     def get_rtf(self, env={}):
@@ -578,7 +566,7 @@ class FMTextElement(object):
         return self._get_core(env)
 
     def get_str(self, env={}):
-        "return unicode"
+        "Unicode representation"
         if self.tag in _STR_SUBS:
             return _STR_SUBS[self.tag] % self._get_str_core(env)
         else:
@@ -663,32 +651,31 @@ class FMTextElement(object):
 
 
 class FMText(FMTextElement):
-    "List of FMTextElements"
+    r"""List of :class:`FMTextElement` items
+
+    Parameters
+    ----------
+    content : FMTextElement | list of FMTextElement
+        Any item with a string representation (str, FMText, scalar, ...)
+        or an object that iterates over such items (e.g. a list of FMText).
+    tag : str
+        Formatting tag.
+    options : dict
+        Options for HTML tags.
+
+    Notes
+    -----
+    The ``property`` argument is primarily used for TeX commands; for
+    example, ``txt = FMText('Brie', r'\textbf')`` will result in the
+    following TeX representation: r"\textbf{Brie}". Some properties are
+    automatically translated into HTML; thus, the HTML representation of
+    ``txt`` would be "<b>Brie</b>". The following are additional proprties
+    that don't exist in TeX:
+
+    'paragraph'
+        A <p> tag in HTML, and simple line breaks in TeX.
+    """
     def __init__(self, content, tag=None, options=None):
-        """Represent a value along with formatting properties.
-
-        Parameters
-        ----------
-        content : FMTextElement | list of FMTextElement
-            Any item with a string representation (str, FMText, scalar, ...)
-            or an object that iterates over such items (e.g. a list of FMText).
-        tag : str
-            Formatting tag.
-        options : dict
-            Options for HTML tags.
-
-        Notes
-        -----
-        The ``property`` argument is primarily used for TeX commands; for
-        example, ``txt = FMText('Brie', r'\textbf')`` will result in the
-        following TeX representation: r"\textbf{Brie}". Some properties are
-        automatically translated into HTML; thus, the HTML representation of
-        ``txt`` would be "<b>Brie</b>". The following are additional proprties
-        that don't exist in TeX:
-
-        'paragraph'
-            A <p> tag in HTML, and simple line breaks in TeX.
-        """
         if isinstance(content, (list, tuple)):
             content = [asfmtext(item) for item in content]
         else:
@@ -804,19 +791,17 @@ class P(Number):
 
 
 class Math(FMTextElement):
-    """FMTextElement for math expressions"""
-    def __init__(self, content, equation=False):
-        """
+    r""":class:`FMTextElement` for math expressions
 
-        Parameters
-        ----------
-        content : str
-            LaTeX math expression (excluding '$'). E.g. r'\\sqrt{a}' (note that
-            '\\' must be escaped)
-        equation : bool
-            Whether to display the expression as a separate equation (as
-            oppposed to inline).
-        """
+    Parameters
+    ----------
+    content : str
+        LaTeX math expression (excluding '$'). E.g. ``r'\sqrt{a}'``.
+    equation : bool
+        Whether to display the expression as a separate equation (as
+        oppposed to inline).
+    """
+    def __init__(self, content, equation=False):
         FMTextElement.__init__(content)
         self._equation = equation
 
@@ -842,15 +827,14 @@ class Math(FMTextElement):
 
 
 class EquationArray(FMTextElement):
-    "FMTextElement for equation arrays"
-    def __init__(self, eqnarray):
-        """FMTextElement for equation arrays
+    """:class:`FMTextElement` for equation arrays
 
-        Parameters
-        ----------
-        eqnarray : tuple of str
-            Tuple of lines for the equation array.
-        """
+    Parameters
+    ----------
+    eqnarray : tuple of str
+        Tuple of lines for the equation array.
+    """
+    def __init__(self, eqnarray):
         FMTextElement.__init__(self, eqnarray)
 
     def __repr__(self):
@@ -869,7 +853,7 @@ class EquationArray(FMTextElement):
 
 
 class Stars(FMTextElement):
-    """FMTextElement object for decoration of p-calues
+    """:class:`FMTextElement` for decoration of p-values
 
     Shortcut for adding stars to a table and spaces in place of absent stars,
     so that alignment to the right can be used.
@@ -1057,7 +1041,7 @@ class Row(list):
         return ' '.join([str(cell) for cell in self])
 
     def _strlen(self, env):
-        "returns list of cell-str-lengths; multicolumns handled poorly"
+        "List of cell-str-lengths; multicolumns are handled poorly"
         lens = []
         for cell in self:
             cell_len = len(cell.get_str(env))
@@ -1074,7 +1058,7 @@ class Row(list):
         return '\n'.join([cell.get_rtf(env) for cell in self] + ['\\row'])
 
     def get_str(self, c_width, c_just, delimiter='   ', env={}):
-        "returns the row using col spacing provided in c_width"
+        "String of the row using column spacing ``c_width``"
         col = 0
         out = []
         for cell in self:
@@ -1112,59 +1096,55 @@ class Row(list):
 
 
 class Table(FMTextElement):
-    """
-    A table that can be output in text with equal width font
-    as well as tex.
+    r"""A table :class:`FMText` element
 
-    Example::
+    Parameters
+    ----------
+    columns : str
+        alignment for each column, e.g. ``'lrr'``
+    rules : bool
+        Add toprule and bottomrule
+    title : None | text
+        Title for the table.
+    caption : None | text
+        Caption for the table.
+    rows : list of Row
+        Table body.
 
-        >>> from eelbrain import fmtxt
-        >>> table = fmtxt.Table('lll')
-        >>> table.cell()
-        >>> table.cell("example 1")
-        >>> table.cell("example 2")
-        >>> table.midrule()
-        >>> table.cell("string")
-        >>> table.cell('???')
-        >>> table.cell('another string')
-        >>> table.cell("Number")
-        >>> table.cell(4.5)
-        >>> table.cell(2./3, fmt='%.4g')
-        >>> print table
-                 example 1   example 2
-        -----------------------------------
-        string   ???         another string
-        Number   4.5         0.6667
-        >>> print table.get_tex()
-        \begin{center}
-        \begin{tabular}{lll}
-        \toprule
-         & example 1 & example 2 \\
-        \midrule
-        string & ??? & another string \\
-        Number & 4.5 & 0.6667 \\
-        \bottomrule
-        \end{tabular}
-        \end{center}
-        >>> table.save_tex()
-
+    Examples
+    --------
+    >>> from eelbrain import fmtxt
+    >>> table = fmtxt.Table('lll')
+    >>> table.cell()
+    >>> table.cell("example 1")
+    >>> table.cell("example 2")
+    >>> table.midrule()
+    >>> table.cell("string")
+    >>> table.cell('???')
+    >>> table.cell('another string')
+    >>> table.cell("Number")
+    >>> table.cell(4.5)
+    >>> table.cell(2./3, fmt='%.4g')
+    >>> print table
+             example 1   example 2
+    -----------------------------------
+    string   ???         another string
+    Number   4.5         0.6667
+    >>> print table.get_tex()
+    \begin{center}
+    \begin{tabular}{lll}
+    \toprule
+     & example 1 & example 2 \\
+    \midrule
+    string & ??? & another string \\
+    Number & 4.5 & 0.6667 \\
+    \bottomrule
+    \end{tabular}
+    \end{center}
+    >>> table.save_tex()
 
     """
     def __init__(self, columns, rules=True, title=None, caption=None, rows=[]):
-        """
-        Parameters
-        ----------
-        columns : str
-            alignment for each column, e.g. ``'lrr'``
-        rules : bool
-            Add toprule and bottomrule
-        title : None | text
-            Title for the table.
-        caption : None | text
-            Caption for the table.
-        rows : list of Row
-            Table body.
-        """
         self.columns = columns
         self._table = rows[:]
         self.rules = rules
@@ -1218,33 +1198,40 @@ class Table(FMTextElement):
         self._table.append(Row())
 
     def endline(self):
-        "finishes the active row"
+        "Finish the active row"
         if self._active_row is not None:
             for _ in xrange(len(self.columns) - len(self._active_row)):
                 self._active_row.append(Cell())
         self._active_row = None
 
     def cells(self, *cells):
-        "add several simple cells with one command"
+        "Add several simple cells with one command"
         for cell in cells:
             self.cell(cell)
 
     def midrule(self, span=None):
-        """
-        adds midrule; span ('2-4' or (2, 4)) specifies the extent
+        """Add a midrule
 
         note that a toprule and a bottomrule are inserted automatically
         in every table.
+
+        Parameters
+        ----------
+        span : str | sequence of int
+            Add a midrule that spans less than the whole width of the table
+            (e.g., ``'2-4'`` or ``(2, 4)``).
         """
         self.endline()
         if span is None:
             self._table.append("\\midrule")
         else:
-            if type(span) in [list, tuple]:
-                # TODO: assert end is not too big
-                span = '-'.join([str(int(i)) for i in span])
-            assert '-' in span
-            assert all([i.isdigit() for i in span.split('-')])
+            if isinstance(span, (list, tuple)):
+                span = '%i-%i' % span
+            elif isinstance(span, basestring):
+                if not re.match('\d+-\d+', span):
+                    raise ValueError("span=%r" % span)
+            else:
+                raise TypeError("span=%r" % (span,))
             self._table.append(r"\cmidrule{%s}" % span)
 
     def title(self, content):
@@ -1256,11 +1243,8 @@ class Table(FMTextElement):
         self._caption = asfmtext_or_none(content)
 
     def __repr__(self):
-        """
-        return self.__str__ so that when a function returns a Table, the
-        result can be inspected without assigning the Table to a variable.
-
-        """
+        # return self.__str__ so that when a function returns a Table, the
+        # result can be inspected without assigning the Table to a variable.
         return self.__str__()
 
     def get_html(self, env={}):
@@ -1409,14 +1393,17 @@ class Table(FMTextElement):
         return tex_repr
 
     def get_tsv(self, delimiter='\t', linesep='\r\n', fmt='%.9g'):
-        """
-        Returns the table as tsv string.
+        r"""
+        Return the table as tab-separated values (TSV) string.
 
-        kwargs
-        ------
-        delimiter: delimiter between columns (by default tab)
-        linesep:   delimiter string between lines
-        fmt:       format for numerical entries
+        Parameters
+        ----------
+        delimiter : str
+            Delimiter between columns (default ``'\t'``).
+        linesep : str
+            Delimiter string between lines (default ``'\r\n'``).
+        fmt : str
+            Format string for numerical entries (default ``'%.9g'``).
         """
         table = []
         for row in self._table:
@@ -1427,7 +1414,7 @@ class Table(FMTextElement):
         return linesep.join(table)
 
     def save_tsv(self, path=None, delimiter='\t', linesep='\r\n', fmt='%.15g'):
-        """
+        r"""
         Save the table as tab-separated values file.
 
         Parameters
@@ -1435,9 +1422,9 @@ class Table(FMTextElement):
         path : str | None
             Destination file name.
         delimiter : str
-            String that is placed between cells (default: tab).
+            String that is placed between cells (default: ``'\t'``).
         linesep : str
-            String that is placed in between lines.
+            Delimiter string between lines (default ``'\r\n'``).
         fmt : str
             Format string for representing numerical cells.
             (see 'Python String Formatting Documentation
@@ -1446,7 +1433,7 @@ class Table(FMTextElement):
         _save_txt(self.get_tsv(delimiter, linesep, fmt), path)
 
     def save_txt(self, path=None, fmt='%.15g', delim='   ', linesep='\n'):
-        """
+        r"""
         Save the table as text file.
 
         Parameters
@@ -1683,7 +1670,7 @@ class Section(FMText):
 
         Notes
         -----
-        Returns the Image object which can be used to write the image data. If
+        Return the Image object which can be used to write the image data. If
         a function supports writing to a file-like object, it can be written
         with ``save_image(image)``. A function that writes a file to disk can
         be used as ``save_image(image.``.
@@ -1963,7 +1950,7 @@ def symbol(symbol, subscript, tag='math'):
 
 
 def p(p, stars=None, of=3, tag='math'):
-    """Create an FMText representation of a p-value
+    """:class:`FMText` representation of a p-value
 
     Parameters
     ----------
@@ -1989,7 +1976,7 @@ def p(p, stars=None, of=3, tag='math'):
 
 
 def stat(x, fmt="%.2f", stars=None, of=3, tag='math', drop0=False):
-    "FMText with properties set for a statistic (e.g. a t-value)"
+    ":class:`FMText` with properties for a statistic (e.g. a t-value)"
     if stars is None:
         return Number(x, tag, fmt, drop0)
     else:
@@ -2031,7 +2018,7 @@ def ms(t_s):
 
 
 def unindent(text, skip1=False):
-    """Removes leading spaces that are present in all lines of ``text``.
+    """Remove leading spaces that are present in all lines of ``text``.
 
     Parameters
     ----------

@@ -71,6 +71,18 @@ class Notifier(object):
     """
     A notification email sender supporting ``with`` statements
 
+    Parameters
+    ----------
+    to : str
+        Email address of the recipient.
+    name : str
+        Name of the job (will be included in subject line).
+    crash_info_func : None | callable
+        Will be called upon crash to produce a string that will be included
+        in the crash report.
+    debug : bool
+        If the task crashes, start pdb instead of exiting.
+
     Examples
     --------
     To receive a message after a task has been executed:
@@ -82,19 +94,6 @@ class Notifier(object):
 
     """
     def __init__(self, to, name='job', crash_info_func=None, debug=True):
-        """
-        Parameters
-        ----------
-        to : str
-            Email address of the recipient.
-        name : str
-            Name of the job (will be included in subject line).
-        crash_info_func : None | callable
-            Will be called upon crash to produce a string that will be included
-            in the crash report.
-        debug : bool
-            If the task crashes, start pdb instead of exiting.
-        """
         # get the password
         password = keyring.get_password(NOOB_DOMAIN, NOOB_ADDRESS)
         if password is None:

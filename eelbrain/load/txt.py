@@ -16,14 +16,14 @@ from .._utils import ui
 from .._utils.parse import FLOAT_NAN_PATTERN
 from .. import _data_obj as _data
 
-__all__ = ['tsv', 'var']
+__all__ = ('tsv', 'var')
 
 
 # could use csv module (http://docs.python.org/2/library/csv.html) but it
 # currently does not support unicode
 def tsv(path=None, names=True, types='auto', delimiter='\t', skiprows=0,
         start_tag=None, ignore_missing=False, empty=None):
-    """
+    r"""
     Load a :class:`Dataset` from a tab-separated values file.
 
     Parameters
@@ -39,7 +39,7 @@ def tsv(path=None, names=True, types='auto', delimiter='\t', skiprows=0,
           otherwise as Factor
         * list of 0=auto, 1=Factor, 2=Var. e.g. ``[0,1,1,0]``
     delimiter : None | str
-        Value delimiting cells in the input file (default: ``'\\t'`` (tab);
+        Value delimiting cells in the input file (default: ``'\t'`` (tab);
         None = any whitespace).
     skiprows : int
         Skip so many rows at the beginning of the file (for tsv files with

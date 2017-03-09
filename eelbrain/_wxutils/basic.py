@@ -78,7 +78,3 @@ class REValidator(wx.PyValidator):
 
     def TransferFromWindow(self):
         return True
-
-
-
-

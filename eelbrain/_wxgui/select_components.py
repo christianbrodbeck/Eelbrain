@@ -39,17 +39,16 @@ LINK = 'component:%i epoch:%s'
 
 
 class ChangeAction(Action):
-    """Action objects are kept in the history and can do and undo themselves"""
+    """Action objects are kept in the history and can do and undo themselves
 
+    Parameters
+    ----------
+    desc : str
+        Description of the action
+        list of (i, name, old, new) tuples
+    """
     def __init__(self, desc, index=None, old_accept=None, new_accept=None,
                  old_path=None, new_path=None):
-        """
-        Parameters
-        ----------
-        desc : str
-            Description of the action
-            list of (i, name, old, new) tuples
-        """
         self.desc = desc
         self.index = index
         self.old_path = old_path
@@ -165,15 +164,13 @@ class ContextMenu(wx.Menu):
 
 
 class Frame(FileFrame):
-    """
+    """GIU for selecting ICA sensor-space components
+
     Component Selection
     ===================
 
-    Select components from ICA.
-
     * Click on components topographies to select/deselect them.
     * Use the context-menu (right click) for additional commands.
-
 
     *Keyboard shortcuts* in addition to the ones in the menu:
 
@@ -283,7 +280,7 @@ class Frame(FileFrame):
         self.Layout()
 
     def CaseChanged(self, index):
-        "updates the states of the segments on the current page"
+        "Update the state of the segments on the current page"
         if isinstance(index, int):
             index = [index]
         elif isinstance(index, slice):
@@ -337,7 +334,7 @@ class Frame(FileFrame):
         menu.AppendSubMenu(blmenu, "Baseline")
 
     def OnCanvasClick(self, event):
-        "called by mouse clicks"
+        "Called by mouse clicks"
         if event.button == 1:
             if event.inaxes:
                 self.model.toggle(event.inaxes.i)
@@ -576,14 +573,9 @@ class Frame(FileFrame):
 
 
 class SourceFrame(FileFrameChild):
-    """
-    Component Source Time Course
-    ============================
-
-    Select components from ICA.
+    """Component source time course display for selecting ICA components.
 
     * Click on components topographies to select/deselect them.
-
 
     *Keyboard shortcuts* in addition to the ones in the menu:
 
@@ -653,7 +645,7 @@ class SourceFrame(FileFrameChild):
         self.Show()
 
     def _get_source_data(self):
-        " -> (source_data, labels);  component by time"
+        "Return ``(source_data, epoch-labels)`` tuple for current page"
         n_comp = self.n_comp
         n_comp_actual = self.n_comp_actual
         epoch_index = slice(self.i_first_epoch, self.i_first_epoch + self.n_epochs)
@@ -743,7 +735,7 @@ class SourceFrame(FileFrameChild):
         return self.i_first > 0
 
     def CaseChanged(self, index):
-        "updates the states of the segments on the current page"
+        "Update the states of the segments on the current page"
         if isinstance(index, int):
             index = [index]
         elif isinstance(index, slice):
@@ -767,11 +759,11 @@ class SourceFrame(FileFrameChild):
         self.SetFirstEpoch(epoch // self.n_epochs * self.n_epochs)
 
     def OnBackward(self, event):
-        "turns the page backward"
+        "Turn the page backward"
         self.SetFirstEpoch(self.i_first_epoch - self.n_epochs)
 
     def OnCanvasClick(self, event):
-        "called by mouse clicks"
+        "Called by mouse clicks"
         if event.inaxes:
             if event.inaxes.i_comp is None:
                 i_comp = int(self.i_first + self.n_comp - ceil(event.ydata / self.y_scale + 0.5))
@@ -823,11 +815,11 @@ class SourceFrame(FileFrameChild):
             self.config.Flush()
 
     def OnDown(self, event):
-        "turns the page backward"
+        "Turn the page backward"
         self.SetFirstComponent(self.i_first + self.n_comp)
 
     def OnForward(self, event):
-        "turns the page forward"
+        "Turn the page forward"
         self.SetFirstEpoch(self.i_first_epoch + self.n_epochs)
 
     def OnSetLayout(self, event):
@@ -856,7 +848,7 @@ class SourceFrame(FileFrameChild):
         self._plot()
 
     def OnUp(self, event):
-        "turns the page backward"
+        "Turn the page backward"
         self.SetFirstComponent(self.i_first - self.n_comp)
 
     def OnUpdateUIBackward(self, event):
