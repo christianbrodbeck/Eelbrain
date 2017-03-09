@@ -83,6 +83,10 @@ def test_mne_experiment_templates():
     eq_(e.get('src_kind'), '0-40 noreg fixed-3-dSPM')
     e.set(raw='1-40')
     eq_(e.get('src_kind'), '1-40 noreg fixed-3-dSPM')
+    e.set(src='ico-5')
+    eq_(e.get('src_kind'), '1-40 noreg ico-5 fixed-3-dSPM')
+    e.set(src='ico-4')
+    eq_(e.get('src_kind'), '1-40 noreg fixed-3-dSPM')
 
     # find terminal field names
     eq_(e.find_keys('raw-file'), {'root', 'subject', 'session'})
