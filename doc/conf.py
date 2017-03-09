@@ -32,7 +32,7 @@ autoclass_content = 'class'  # 'both'
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.autosummary',  # default
-              'sphinx.ext.todo', 'sphinx.ext.pngmath',  # default
+              'sphinx.ext.todo', 'sphinx.ext.imgmath',  # default
               'sphinx.ext.intersphinx',  # http://sphinx.pocoo.org/ext/intersphinx.html
               'numpydoc',  # https://github.com/numpy/numpy/tree/master/doc/sphinxext
               ]
@@ -99,6 +99,9 @@ pygments_style = 'sphinx'
 
 # A list of ignored prefixes for module index sorting.
 modindex_common_prefix = ['eelbrain.']
+
+# Supress warnings for badges
+suppress_warnings = ['image.nonlocal_uri']
 
 
 # -- Custom Options -----------------------------------------------------------
