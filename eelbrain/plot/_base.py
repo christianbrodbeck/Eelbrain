@@ -89,6 +89,9 @@ from .._data_obj import (UTS, ascategorial, asndvar, assub, isnumeric,
 # constants
 POINT = 0.013888888888898
 
+IS_WINDOWS = os.name == 'nt'
+
+
 # defaults
 defaults = {'maxw': 16, 'maxh': 10}
 
@@ -2160,8 +2163,8 @@ class XAxisMixin(object):
         self.__vspans = []
         self._register_key('f', self.__on_zoom_plus)
         self._register_key('d', self.__on_zoom_minus)
-        self._register_key('left', self.__on_left)
-        self._register_key('right', self.__on_right)
+        self._register_key('j' if IS_WINDOWS else 'left', self.__on_left)
+        self._register_key('l' if IS_WINDOWS else 'right', self.__on_right)
         self._register_key('home', self.__on_beginning)
         self._register_key('end', self.__on_end)
         if xlim is None:
@@ -2277,8 +2280,8 @@ class YLimMixin(object):
         self.__plots = plots
         self._register_key('r', self.__on_zoom_in)
         self._register_key('c', self.__on_zoom_out)
-        self._register_key('up', self.__on_move_up)
-        self._register_key('down', self.__on_move_down)
+        self._register_key('i' if IS_WINDOWS else 'up', self.__on_move_up)
+        self._register_key('k' if IS_WINDOWS else 'down', self.__on_move_down)
         self._draw_hooks.append(self.__draw_hook)
         self._untight_draw_hooks.append(self.__untight_draw_hook)
 
