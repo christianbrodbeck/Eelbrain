@@ -7358,7 +7358,7 @@ class Sensor(Dimension):
 
     Parameters
     ----------
-    locs : array-like  (n_sensor, 3)
+    locs : array_like  (n_sensor, 3)
         list of sensor locations in ALS coordinates, i.e., for each sensor a
         ``(anterior, left, superior)`` coordinate triplet.
     names : list of str
@@ -7366,21 +7366,21 @@ class Sensor(Dimension):
         ...]``).
     sysname : str
         Name of the sensor system.
-    proj2d:
+    proj2d : str
         Default 2d projection (default is ``'z-root'``; for options see notes
         below).
-    connectivity : array (n_edges, 2)
+    connectivity : array_like  (n_edges, 2)
         Sensor connectivity (optional).
 
     Attributes
     ----------
     channel_idx : dict
         Dictionary mapping channel names to indexes.
-    locs : array, shape = (n_sensors, 3)
+    locs : array  (n_sensors, 3)
         Spatial position of all sensors.
     names : list of str
         Ordered list of sensor names.
-    x, y, z : array, len = n_sensors
+    x, y, z : array  (n_sensors,)
         Sensor position x, y and z coordinates.
 
     Notes
@@ -7412,6 +7412,12 @@ class Sensor(Dimension):
                  connectivity=None):
         self.sysname = sysname
         self.default_proj2d = self._interpret_proj(proj2d)
+        if connectivity is not None:
+            connectivity = np.asarray(connectivity)
+            if connectivity.shape != (len(connectivity), 2):
+                raise ValueError("connectivity requires shape (n_edges, 2), "
+                                 "got array with shape %s" %
+                                 (connectivity.shape,))
         self._connectivity = connectivity
 
         # 'z root' transformation fails with 32-bit floats
@@ -7458,8 +7464,7 @@ class Sensor(Dimension):
     def __len__(self):
         return self.n
 
-    def __eq__(self, other):
-        "Based on having same sensor names"
+    def __eq__(self, other):  # Based on equality of sensor names
         return (Dimension.__eq__(self, other) and len(self) == len(other) and
                 all(n == no for n, no in zip(self.names, other.names)))
 
@@ -7482,7 +7487,7 @@ class Sensor(Dimension):
 
         Parameters
         ----------
-        x : array of bool, (n_clusters, len(self))
+        x : array of bool  (n_clusters, n_sensors)
             The cluster extents, with different clusters stacked along the
             first axis.
 
@@ -7568,7 +7573,7 @@ class Sensor(Dimension):
 
     @classmethod
     def from_lout(cls, path=None, transform_2d=None, **kwargs):
-        """Create a Sensor instance from a *.lout file"""
+        """Create a Sensor instance from a ``*.lout`` file"""
         kwargs['transform_2d'] = transform_2d
         locs = []
         names = []
