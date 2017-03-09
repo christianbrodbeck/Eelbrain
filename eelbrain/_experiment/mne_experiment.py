@@ -1088,10 +1088,13 @@ class MneExperiment(FileTree):
         # slave fields
         self._register_field('mrisubject', depends_on=('mri', 'subject'),
                              slave_handler=self._update_mrisubject)
+        self._register_field('src-name', depends_on=('src',),
+                             slave_handler=self._update_src_name)
 
         # compounds
         self._register_compound('sns_kind', ('modality', 'raw'))
-        self._register_compound('src_kind', ('sns_kind', 'cov', 'mri', 'inv'))
+        self._register_compound('src_kind', ('sns_kind', 'cov', 'mri',
+                                             'src-name', 'inv'))
         self._register_compound('evoked_kind', ('rej', 'equalize_evoked_count'))
         self._register_compound('eeg_kind', ('sns_kind', 'reference'))
 
@@ -5803,6 +5806,10 @@ class MneExperiment(FileTree):
             return '*'
         if isinstance(epoch, (PrimaryEpoch, SecondaryEpoch)):
             return epoch.session
+
+    def _update_src_name(self, fields):
+        "Becuase 'ico-4' is treated in filenames  as ''"
+        return '' if fields['src'] == 'ico-4' else fields['src']
 
     def _eval_parc(self, parc):
         if parc in self._parcs:
