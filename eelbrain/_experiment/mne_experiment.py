@@ -1232,6 +1232,7 @@ class MneExperiment(FileTree):
         cache_state_path = self.get('cache-state-file')
         raw_state = pipeline_dict(self._raw)
         epoch_state = {k: v.as_dict() for k, v in self._epochs.iteritems()}
+        parcs_state = {k: v.as_dict() for k, v in self._parcs.iteritems()}
         if exists(cache_state_path):
             # check time stamp
             if getmtime(cache_state_path) > time.time():
@@ -1359,7 +1360,6 @@ class MneExperiment(FileTree):
                     invalid_cache['epochs'].add(epoch)
 
             # parcs
-            parcs_state = {k: v.as_dict() for k, v in self._parcs.iteritems()}
             for parc, params in cache_parcs.iteritems():
                 if parc not in parcs_state:
                     invalid_cache['parcs'].add(parc)
