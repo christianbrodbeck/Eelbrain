@@ -30,7 +30,10 @@ class SampleExperiment(MneExperiment):
 
     sessions = 'sample'
 
-    defaults = {'epoch': 'target'}
+    defaults = {
+        'epoch': 'target',
+        'select_clusters': 'all',
+    }
 
     variables = {
         'event': {(1, 2, 3, 4): 'target', 5: 'smiley', 32: 'button'},
