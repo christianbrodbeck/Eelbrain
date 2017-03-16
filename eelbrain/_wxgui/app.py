@@ -616,7 +616,17 @@ class App(wx.App):
 def get_app():
     global APP
     if APP is None:
-        APP = App()
+        try:
+            APP = App()
+        except SystemExit as exc:
+            if exc.code.startswith("This program needs access to the screen"):
+                raise SystemExit(
+                    exc.code +
+                    "\n\nTo make sure you are running a framework build, "
+                    "launch IPython with:\n\n    $ eelbrain")
+            else:
+                raise
+
     return APP
 
 
