@@ -117,21 +117,6 @@ def assert_source_space_equal(src1, src2, msg="SourceSpace Dimension objects "
                  "vs %r)" % (msg, src1.subjects_dir, src2.subjects_dir))
 
 
-def requires_mayavi(function):
-    """Decorator to skip test if mayavi is not available"""
-    try:
-        import mayavi
-    except ImportError:
-        @wraps(function)
-        def decorator(*args, **kwargs):
-            raise SkipTest('Skipped %s, requires mayavi' % function.__name__)
-    else:
-        @wraps(function)
-        def decorator(*args, **kwargs):
-            return function(*args, **kwargs)
-    return decorator
-
-
 def requires_mne_sample_data(function):
     import mne
     if mne.datasets.sample.data_path(download=False):
