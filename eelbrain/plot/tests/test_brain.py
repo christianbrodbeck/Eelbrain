@@ -1,10 +1,9 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import print_function
 from eelbrain import datasets, plot
-from eelbrain._utils.testing import requires_mayavi, requires_mne_sample_data
+from eelbrain._utils.testing import requires_mne_sample_data
 
 
-@requires_mayavi
 @requires_mne_sample_data
 def test_plot_brain():
     """Test plot.brain plots"""
