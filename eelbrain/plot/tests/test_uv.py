@@ -77,6 +77,9 @@ def test_histogram():
     plot.Histogram('Y', 'A%B', ds=ds, show=False)
     plot.Histogram('Y', 'A%B', match='rm', ds=ds, show=False)
     plot.Histogram('Y', 'A%B', match='rm', ds=ds, normed=True, show=False)
+    plot.Histogram('Y', 'A%B', ds=ds, show=False, test=True)
+    plot.Histogram('Y', 'A%B', match='rm', ds=ds, show=False, test=True)
+    plot.Histogram('Y', 'A%B', match='rm', ds=ds, normed=True, show=False, test=True)
 
 
 def test_regression():
