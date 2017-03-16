@@ -11,7 +11,8 @@ import scipy.stats  # without this sp.stats is not available
 import matplotlib as mpl
 
 from .._stats import test, stats
-from .._data_obj import asvar, ascategorial, assub, cellname, Celltable
+from .._data_obj import (
+    Celltable, asvar, ascategorial, assub, cellname, longname)
 from ._base import EelFigure, Layout, LegendMixin, frame_title
 from ._colors import find_cell_colors
 
@@ -1052,33 +1053,36 @@ def _difference(data, names):
     return data_differences, diffnames, diffnames_2lines
 
 
-def _ax_histogram(ax, data, normed, **kwargs):
+def _ax_histogram(ax, data, normed, test, **kwargs):
     """Create normality test figure"""
     n, bins, patches = ax.hist(data, normed=normed, **kwargs)
-    data = np.ravel(data)
 
-    # normal line
-    mu = np.mean(data)
-    sigma = np.std(data)
-    y = mpl.mlab.normpdf(bins, mu, sigma)
-    if not normed:
-        y *= len(data) * np.diff(bins)[0]
-    ax.plot(bins, y, 'r--', linewidth=1)
+    if test:
+        data = np.ravel(data)
+        # normal line
+        mu = np.mean(data)
+        sigma = np.std(data)
+        y = mpl.mlab.normpdf(bins, mu, sigma)
+        if not normed:
+            y *= len(data) * np.diff(bins)[0]
+        ax.plot(bins, y, 'r--', linewidth=1)
 
-    # TESTS
-    # test Anderson
-    A2, thresh, sig = scipy.stats.morestats.anderson(data)
-    index = sum(A2 >= thresh)
-    if index > 0:
-        ax.text(.95, .95, '$^{*}%s$' % str(sig[index - 1] / 100), color='r', size=11,
-                horizontalalignment='right',
-                verticalalignment='top',
-                transform=ax.transAxes,)
-    logging.debug(" Anderson: %s, %s, %s" % (A2, thresh, sig))
-    # test Lilliefors
-    n_test = test.lilliefors(data)
-    ax.set_xlabel(r"$D=%.3f$, $p_{est}=%.2f$" % n_test)  # \chi ^{2}
-    # make sure ticks display int values
+        # TESTS
+        # test Anderson
+        a2, thresh, sig = scipy.stats.morestats.anderson(data)
+        index = sum(a2 >= thresh)
+        if index > 0:
+            ax.text(.95, .95, '$^{*}%s$' % str(sig[index - 1] / 100), color='r', size=11,
+                    horizontalalignment='right',
+                    verticalalignment='top',
+                    transform=ax.transAxes,)
+        logging.debug(" Anderson: %s, %s, %s" % (a2, thresh, sig))
+        # test Lilliefors
+        n_test = test.lilliefors(data)
+        ax.set_xlabel(r"$D=%.3f$, $p_{est}=%.2f$" % n_test)  # \chi ^{2}
+
+    # finalize axes
+    ax.autoscale()
 
 
 class Histogram(EelFigure):
@@ -1102,6 +1106,8 @@ class Histogram(EelFigure):
         Add one plot with all values/differences pooled.
     normed : bool
         Norm counts to approximate a probability density (default False).
+    test : bool
+        Test for normality.
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
@@ -1109,14 +1115,15 @@ class Histogram(EelFigure):
         Figure title.
     """
     def __init__(self, Y, X=None, match=None, sub=None, ds=None, pooled=True,
-                 normed=False, tight=True, title=True, *args, **kwargs):
+                 normed=False, test=False, tight=True, title=None, xlabel=True,
+                 *args, **kwargs):
         ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
 
         # layout
         if X is None:
             nax = 1
             if title is True:
-                title = "Test for Normality"
+                title = "Test for Normality" if test else "Histogram"
         elif ct.all_within:
             n_comp = len(ct.cells) - 1
             nax = n_comp ** 2
@@ -1125,18 +1132,19 @@ class Histogram(EelFigure):
             self._make_axes = False
             self._default_ylabel_ax = -1
             if title is True:
-                title = "Tests for Normality of the Differences"
+                title = ("Tests for Normality of the Differences" if test else
+                         "Histogram of Pairwise Difference")
         else:
             nax = len(ct.cells)
             if title is True:
-                title = "Tests for Normality"
+                title = "Tests for Normality" if test else "Histogram"
 
         frame_title_ = frame_title("Histogram", ct.Y, ct.X)
         layout = Layout(nax, 1, 3, tight, title, *args, **kwargs)
         EelFigure.__init__(self, frame_title_, layout)
 
         if X is None:
-            _ax_histogram(self._axes[0], ct.Y.x, normed)
+            _ax_histogram(self._axes[0], ct.Y.x, normed, test)
         elif ct.all_within:  # distribution of differences
             data = ct.get_data()
             names = ct.cellnames()
@@ -1147,11 +1155,11 @@ class Histogram(EelFigure):
             for i in xrange(n_comp + 1):
                 for j in range(i + 1, n_comp + 1):
                     difference = data[i] - data[j]
-                    pooled_data.append(scipy.stats.zscore(difference))  # z transform?? (scipy.stats.zs())
+                    pooled_data.append(scipy.stats.zscore(difference))
                     ax_i = n_comp * i + (n_comp + 1 - j)
                     ax = self.figure.add_subplot(n_comp, n_comp, ax_i)
                     self._axes.append(ax)
-                    _ax_histogram(ax, difference, normed)
+                    _ax_histogram(ax, difference, normed, test)
                     if i == 0:
                         ax.set_title(names[j], size=12)
                     if j == n_comp:
@@ -1160,7 +1168,7 @@ class Histogram(EelFigure):
             if pooled and len(names) > 2:
                 ax = self.figure.add_subplot(n_comp, n_comp, n_comp ** 2)
                 self._axes.append(ax)
-                _ax_histogram(ax, pooled_data, normed, facecolor='g')
+                _ax_histogram(ax, pooled_data, normed, test, facecolor='g')
                 ax.set_title("Pooled Differences (n=%s)" % len(pooled_data),
                              weight='bold')
                 self.figure.text(.99, .01, "$^{*}$ Anderson and Darling test "
@@ -1171,13 +1179,13 @@ class Histogram(EelFigure):
         else:  # independent measures
             for cell, ax in izip(ct.cells, self._axes):
                 ax.set_title(cellname(cell))
-                _ax_histogram(ax, ct.data[cell], normed)
+                _ax_histogram(ax, ct.data[cell], normed, test)
 
         if normed:
             self._configure_yaxis('p', 'probability density')
         else:
             self._configure_yaxis('n', 'count')
-        self._configure_xaxis(ct.Y, False)
+        self._configure_xaxis(ct.Y, xlabel)
         self._show()
 
 
