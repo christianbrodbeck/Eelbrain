@@ -30,6 +30,7 @@ from .._data_obj import (
     align, all_equal, as_legal_dataset_key, asfactor,
     assert_is_legal_dataset_key, combine)
 from .._info import BAD_CHANNELS
+from .._io.fiff import KIT_NEIGHBORS
 from .._io.pickle import update_subjects_dir
 from .._names import INTERPOLATE_CHANNELS
 from .._meeg import new_rejection_ds
@@ -2533,7 +2534,7 @@ class MneExperiment(FileTree):
     def _sysname(self, fiff, subject, modality):
         if fiff.info.get('kit_system_id'):
             try:
-                return load.fiff.KIT_NEIGHBORS[fiff.info['kit_system_id']]
+                return KIT_NEIGHBORS[fiff.info['kit_system_id']]
             except KeyError:
                 raise NotImplementedError("Unknown KIT system-ID: %r" %
                                           (fiff.info['kit_system_id'],))
