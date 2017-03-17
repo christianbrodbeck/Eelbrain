@@ -15,6 +15,7 @@ mne >= 0.13.1
 # additional developer tools
 flake8
 nose
+coverage
 numpydoc
 pydocstyle
 # for testing of R integration
