@@ -1,10 +1,11 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import os
 
-from nose.tools import eq_
+from nose.tools import eq_, ok_, assert_false
 from numpy.testing import assert_array_equal
 
-from eelbrain import datasets, load, set_log_level
+import eelbrain
+from eelbrain import datasets, gui, load, set_log_level
 from eelbrain._utils.testing import requires_mne_sample_data, TempDir
 from eelbrain._wxgui.select_epochs import Document, Model
 
@@ -12,11 +13,16 @@ from eelbrain._wxgui.select_epochs import Document, Model
 @requires_mne_sample_data
 def test_select_epochs():
     "Test Select-Epochs GUI Document"
+    eelbrain._wxgui.select_epochs.TEST_MODE = True
+    eelbrain._wxgui.history.TEST_MODE = True
+
     set_log_level('warning', 'mne')
     ds = datasets.get_mne_sample(sns=True)
     tempdir = TempDir()
     path = os.path.join(tempdir, 'rej.pickled')
 
+    # Test Document
+    # =============
     # create a file
     doc = Document(ds, 'meg')
     doc.set_path(path)
@@ -48,7 +54,7 @@ def test_select_epochs():
     eq_(doc.bad_channels, [1])
     assert_array_equal(doc.accept[2:], True)
 
-    # Test model
+    # Test Model
     # ==========
     ds = datasets.get_mne_sample(sns=True)
     doc = Document(ds, 'meg')
@@ -97,3 +103,10 @@ def test_select_epochs():
     eq_(doc.interpolate[2], ['2'])
     eq_(doc.bad_channels, [1])
     assert_array_equal(doc.accept[2:], True)
+
+    # Test GUI
+    # ========
+    g = gui.select_epochs(ds)
+    assert_false(g.frame.CanBackward())
+    ok_(g.frame.CanForward())
+    g.frame.OnForward(None)

@@ -10,6 +10,9 @@ from .help import show_help_txt
 from .frame import EelbrainFrame
 
 
+TEST_MODE = False
+
+
 class CallBackManager(object):
 
     def __init__(self, keys):
@@ -44,7 +47,7 @@ class Action(object):
         raise NotImplementedError
 
 
-class History():
+class History(object):
     """The history as a list of action objects
 
     Public interface
@@ -193,7 +196,7 @@ class FileFrame(EelbrainFrame):
         others :
             See TerminalInterface constructor.
         """
-        config = wx.Config("Eelbrain")
+        config = wx.Config("Eelbrain Testing" if TEST_MODE else "Eelbrain")
         config.SetPath(self._name)
 
         if pos is None:
