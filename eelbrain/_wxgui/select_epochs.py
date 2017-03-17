@@ -50,6 +50,9 @@ MEAN_PLOT = -1
 TOPO_PLOT = -2
 OUT_OF_RANGE = -3
 
+# For unit-tests
+TEST_MODE = False
+
 
 def _epoch_list_to_ranges(elist):
     out = []
@@ -1393,7 +1396,7 @@ class Frame(FileFrame):
 
         # formatters
         t_formatter, t_locator, t_label = self.doc.epochs.time._axis_format(True, True)
-        y_formatter, y_locator, y_label = find_axis_params_data(self.doc.epochs, True)
+        y_formatter, y_label = find_axis_params_data(self.doc.epochs, True)
 
         # segment plots
         self._case_plots = []
@@ -1423,8 +1426,6 @@ class Frame(FileFrame):
             if t_locator is not None:
                 ax.xaxis.set_major_locator(t_locator)
             ax.xaxis.set_major_formatter(t_formatter)
-            if y_locator is not None:
-                ax.yaxis.set_major_locator(y_locator)
             ax.yaxis.set_major_formatter(y_formatter)
 
             # store objects
@@ -1531,7 +1532,8 @@ class TerminalInterface(object):
                            allow_interpolation)
         self.frame.Show()
         self.frame.Raise()
-        run()
+        if not TEST_MODE:
+            run()
 
 
 class FindNoisyChannelsDialog(EelbrainDialog):
