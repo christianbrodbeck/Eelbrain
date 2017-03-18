@@ -12,12 +12,16 @@ from mayavi.core.ui.api import SceneEditor, MlabSceneModel
 from traits.api import HasTraits, Instance
 from traitsui.api import View, Item, HGroup, VGroup
 from tvtk.api import tvtk
+from tvtk.pyface.toolkit import toolkit_object
 import wx
 
 from .._wxgui.frame import EelbrainFrame
 
 
 SCENE_NAME = 'scene_%i'
+
+# undecorated scene
+Scene = toolkit_object('scene:Scene')
 
 
 class MayaviView(HasTraits):
@@ -36,7 +40,8 @@ class MayaviView(HasTraits):
             self.add_trait(SCENE_NAME % i, scene)
 
         if n_rows == n_columns == 1:
-            self.view = View(Item(SCENE_NAME % 0, editor=SceneEditor(),
+            self.view = View(Item(SCENE_NAME % 0,
+                                  editor=SceneEditor(scene_class=Scene),
                                   resizable=True, show_label=False),
                              width=width, height=height, resizable=True)
         else:
@@ -45,7 +50,8 @@ class MayaviView(HasTraits):
                 columns = []
                 for column in xrange(n_columns):
                     i = row * n_columns + column
-                    item = Item(SCENE_NAME % i, editor=SceneEditor(),
+                    item = Item(SCENE_NAME % i,
+                                editor=SceneEditor(scene_class=Scene),
                                 resizable=True, show_label=False)
                     columns.append(item)
                 rows.append(HGroup(*columns))
@@ -67,10 +73,9 @@ class BrainFrame(EelbrainFrame):
         self.panel = self.ui.control
         # Hide the toolbar (the edit_traits command assigns scene_editor)
         for scene in self.mayavi_view.scenes:
-            scene.scene_editor._tool_bar.Show(False)
             scene.interactor.interactor_style = tvtk.InteractorStyleTerrain()
 
-        self.panel.SetSize((width, height))
+        self.panel.SetSize((width + 2, height + 2))
         self.Fit()
 
         self.figure = self.mayavi_view.figures
