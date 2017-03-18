@@ -187,7 +187,6 @@ class ClusterPlotter(object):
                                            parallel=True, hemi=hemi, w=w, h=h)
                 for view in views:
                     brain.show_view(view)
-                    brain.screenshot('rgba', True)
                     brain.save_image(self._dst_pix % ' '.join((name, hemi, view)),
                                      'rgba', True)
 

@@ -452,6 +452,3 @@ class Brain(surfer.Brain):
                     fig.scene.camera.parallel_scale = scale
                 fig.scene.camera.parallel_projection = True
                 fig.render()
-
-        # without this sometimes the brain position is off
-        self.screenshot()
