@@ -25,7 +25,7 @@ from eelbrain import (
     datasets, load, Var, Factor, NDVar, Datalist, Dataset, Celltable, align,
     align1, choose, combine, cwt_morlet, shuffled_index)
 from eelbrain._data_obj import (
-    all_equal, asvar, assub, full_slice, longname, Categorial, Sensor,
+    all_equal, asvar, assub, full_slice, longname, Categorial, Ordered, Sensor,
     SourceSpace, UTS, DimensionMismatchError, assert_has_no_empty_cells)
 from eelbrain._stats.stats import rms
 from eelbrain._utils.testing import (
@@ -913,7 +913,7 @@ def test_ndvar_binning():
     eq_(binned_ndvar.shape, (5, 7))
 
 
-def test_ndvar_graph_dim():
+def test_ndvar_connectivity():
     "Test NDVar dimensions with conectvity graph"
     ds = datasets.get_uts(utsnd=True)
     x = ds['utsnd']
@@ -925,13 +925,35 @@ def test_ndvar_graph_dim():
     conn = argsort[sub_mono.sensor.connectivity().ravel()].reshape((-1, 2))
     assert_equal(sub_nonmono.sensor.connectivity(), conn)
 
-    # labeling
+    # date for labeling
     x1 = ds.eval("utsnd[logical_and(A=='a0', B=='b0')].mean('case')")
     x2 = ds.eval("utsnd[A=='a1'].mean('case')")
     x = x1 + x2
+    # insert point that is connected by sensors but not by grid
+    x.x[0, 50:55] = 4
+
+    # custom connectivity on first axis
     l = x.label_clusters(3)
     eq_(len(l.info['cids']), 5)
-    eq_(len(np.unique(l.x)), 6)
+    assert_array_equal(np.unique(l.x), np.append([0], l.info['cids']))
+
+    # custom connectivity second
+    sensor, time = x.dims
+    x = NDVar(x.x.T, (time, sensor))
+    l = x.label_clusters(3)
+    eq_(len(l.info['cids']), 5)
+
+    # disconnected
+    cat = Categorial('categorial', ('a', 'b', 'c', 'd', 'e'))
+    x = NDVar(x.x, (time, cat))
+    l = x.label_clusters(3)
+    eq_(len(l.info['cids']), 13)
+
+    # ordered
+    ordered = Ordered('ordered', range(5))
+    x = NDVar(x.x, (time, ordered))
+    l = x.label_clusters(3)
+    eq_(len(l.info['cids']), 6)
 
 
 @nottest

@@ -1,7 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import print_function
 
-from itertools import izip, product
+from itertools import izip
 import cPickle as pickle
 import logging
 
@@ -10,14 +10,14 @@ from nose.tools import (eq_, assert_equal, assert_not_equal,
                         assert_not_in, assert_raises)
 import numpy as np
 from numpy.testing import assert_array_equal
-from scipy import ndimage
 
 import eelbrain
 from eelbrain import datasets, testnd, NDVar, set_log_level, cwt_morlet
-from eelbrain._data_obj import UTS, Ordered, Sensor
-from eelbrain._stats.testnd import _ClusterDist, label_clusters, _MergedTemporalClusterDist
-from eelbrain._utils.testing import assert_dataobj_equal, assert_dataset_equal, \
-    requires_mne_sample_data
+from eelbrain._data_obj import Graph, UTS, Ordered, Sensor
+from eelbrain._stats.testnd import (Connectivity, _ClusterDist, label_clusters,
+                                    _MergedTemporalClusterDist)
+from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,
+                                     requires_mne_sample_data)
 
 
 def test_anova():
@@ -357,9 +357,9 @@ def test_labeling():
     "Test cluster labeling"
     shape = flat_shape = (4, 20)
     pmap = np.empty(shape, np.float_)
-    struct = ndimage.generate_binary_structure(2, 1)
-    struct[::2] = False
-    conn = np.array([(0, 1), (0, 3), (1, 2), (2, 3)], np.uint32)
+    conn = Connectivity((
+        Graph(4, np.array([(0, 1), (0, 3), (1, 2), (2, 3)], np.uint32)),
+        UTS(0, 0.01, 20)))
     criteria = None
 
     # some clusters

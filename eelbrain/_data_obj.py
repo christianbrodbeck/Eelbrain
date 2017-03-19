@@ -4049,26 +4049,28 @@ class NDVar(object):
             NDVar of int, each cluster labeled with a unique integer value.
             ``clusters.info['cids']`` contains an array of all cluster IDs.
         """
-        from ._stats.testnd import label_clusters
+        from ._stats.testnd import Connectivity, label_clusters
 
         if self.has_case:
-            adjacent = [True] + [d.adjacent for d in self.dims[1:]]
+            custom = [False] + [dim._connectivity_type == 'custom' for dim in
+                                self.dims[1:]]
         else:
-            adjacent = [d.adjacent for d in self.dims]
+            custom = [dim._connectivity_type == 'custom' for dim in self.dims]
 
-        if all(adjacent):
-            nad_ax = 0
-            connectivity = None
-        elif sum(adjacent) < len(adjacent) - 1:
-            raise NotImplementedError("More than one non-adjacent dimension")
+        if any(custom):
+            if sum(custom) > 1:
+                raise NotImplementedError("More than one non-adjacent dimension")
+            nad_ax = custom.index(True)
         else:
-            nad_ax = adjacent.index(False)
-            connectivity = self.dims[nad_ax].connectivity()
+            nad_ax = 0
 
         if nad_ax:
             x = self.x.swapaxes(0, nad_ax)
+            connectivity = Connectivity(
+                (self.dims[nad_ax],) + self.dims[:nad_ax] + self.dims[nad_ax + 1:])
         else:
             x = self.x
+            connectivity = Connectivity(self.dims)
 
         cmap, cids = label_clusters(x, threshold, tail, connectivity, None)
 
@@ -6899,7 +6901,8 @@ class Dimension(object):
         Meaningful point descriptions (e.g. time points, sensor names, ...).
     """
     name = 'Dimension'
-    adjacent = True
+    # grid | none | custom
+    _connectivity_type = 'grid'
     _axis_unit = None
 
     def __getstate__(self):
@@ -7113,9 +7116,11 @@ class Categorial(Dimension):
     ----------
     name : str
         Dimension name.
-    values : list of str
+    values : sequence of str
         Names of the entries.
     """
+    _connectivity_type = 'none'
+
     def __init__(self, name, values):
         self.values = tuple(values)
         if len(set(self.values)) < len(self.values):
@@ -7395,7 +7400,59 @@ class Ordered(Scalar):
         return ds
 
 
-class Sensor(Dimension):
+class Graph(Dimension):
+    """baseclass with graph connectivity
+
+    Parameters
+    ----------
+    n_nodes : int
+        Number of nodes in the graph.
+    connectivity : array of int, (n_pairs, 2)
+        array of sorted [src, dst] pairs, with all src < dts.
+    """
+    _connectivity_type = 'custom'
+
+    def __init__(self, n_nodes, connectivity):
+        Dimension.__init__(self)
+        if connectivity is not None:
+            connectivity = np.asarray(connectivity)
+            if connectivity.shape != (len(connectivity), 2):
+                raise ValueError("connectivity requires shape (n_edges, 2), "
+                                 "got array with shape %s" %
+                                 (connectivity.shape,))
+
+        self._n_nodes = n_nodes
+        self._connectivity = connectivity
+
+    def __len__(self):
+        return self._n_nodes
+
+    def _subgraph(self, index):
+        return _subgraph_edges(self._connectivity,
+                               index_to_int_array(index, self._n_nodes))
+
+    def connectivity(self):
+        """Retrieve the graph connectivity
+
+        Returns
+        -------
+        connectivity : array of int, (n_pairs, 2)
+            array of sorted [src, dst] pairs, with all src < dts.
+
+        See Also
+        --------
+        .set_connectivity() : define the connectivity
+        .neighbors() : Neighboring sensors for each sensor in a dictionary.
+        """
+        if self._connectivity is None:
+            self._connectivity = self._generate_connectivity()
+        return self._connectivity
+
+    def _generate_connectivity(self):
+        raise NotImplementedError("Connectivity for %s dimension." % self.name)
+
+
+class Sensor(Graph):
     """Dimension class for representing sensor information
 
     Parameters
@@ -7446,38 +7503,31 @@ class Sensor(Dimension):
     >>> sensor_dim = Sensor(locs, names=["Cz", "Pz"])
     """
     name = 'sensor'
-    adjacent = False
+    _connectivity_type = 'custom'
     _proj_aliases = {'left': 'x-', 'right': 'x+', 'back': 'y-', 'front': 'y+',
                      'top': 'z+', 'bottom': 'z-'}
 
     def __init__(self, locs, names=None, sysname=None, proj2d='z root',
                  connectivity=None):
-        self.sysname = sysname
-        self.default_proj2d = self._interpret_proj(proj2d)
-        if connectivity is not None:
-            connectivity = np.asarray(connectivity)
-            if connectivity.shape != (len(connectivity), 2):
-                raise ValueError("connectivity requires shape (n_edges, 2), "
-                                 "got array with shape %s" %
-                                 (connectivity.shape,))
-        self._connectivity = connectivity
-
         # 'z root' transformation fails with 32-bit floats
         self.locs = locs = np.asarray(locs, dtype=np.float64)
-        if locs.ndim != 2 or locs.shape[1] != 3:
+        n = len(locs)
+        if locs.shape != (n, 3):
             raise ValueError("locs needs to have shape (n_sensors, 3), got "
                              "array of shape %s" % (locs.shape,))
         self.x = locs[:, 0]
         self.y = locs[:, 1]
         self.z = locs[:, 2]
 
-        self.n = len(locs)
+        Graph.__init__(self, n, connectivity)
+        self.sysname = sysname
+        self.default_proj2d = self._interpret_proj(proj2d)
 
         if names is None:
-            names = [str(i) for i in xrange(self.n)]
-        elif len(names) != self.n:
+            names = [str(i) for i in xrange(n)]
+        elif len(names) != n:
             raise ValueError("Length mismatch: got %i locs but %i names" %
-                             (self.n, len(names)))
+                             (n, len(names)))
         self.names = Datalist(names)
         self.channel_idx = {name: i for i, name in enumerate(self.names)}
         pf = os.path.commonprefix(self.names)
@@ -7501,10 +7551,7 @@ class Sensor(Dimension):
                       state['proj2d'], state.get('connectivity', None))
 
     def __repr__(self):
-        return "<Sensor n=%i, name=%r>" % (self.n, self.sysname)
-
-    def __len__(self):
-        return self.n
+        return "<Sensor n=%i, name=%r>" % (self._n_nodes, self.sysname)
 
     def __eq__(self, other):  # Based on equality of sensor names
         return (Dimension.__eq__(self, other) and len(self) == len(other) and
@@ -7515,9 +7562,7 @@ class Sensor(Dimension):
             return self.names[index]
         else:
             return Sensor(self.locs[index], self.names[index], self.sysname,
-                          self.default_proj2d,
-                          _subgraph_edges(self._connectivity,
-                                          index_to_int_array(index, self.n)))
+                          self.default_proj2d, self._subgraph(index))
 
     def _axis_format(self, scalar, label):
         return (IndexFormatter(self.names),
@@ -7558,24 +7603,9 @@ class Sensor(Dimension):
         else:
             return Dimension._index_repr(self, index)
 
-    def connectivity(self):
-        """Retrieve the sensor connectivity
-
-        Returns
-        -------
-        connetivity : array of int, (n_pairs, 2)
-            array of sorted [src, dst] pairs, with all src < dts.
-
-        See Also
-        --------
-        .set_connectivity() : define the connectivity
-        .neighbors() : Neighboring sensors for each sensor in a dictionary.
-        """
-        if self._connectivity is None:
-            raise RuntimeError("Sensor connectivity is not defined. Use "
-                               "Sensor.set_connectivity().")
-        else:
-            return self._connectivity
+    def _generate_connectivity(self):
+        raise RuntimeError("Sensor connectivity is not defined. Use "
+                           "Sensor.set_connectivity().")
 
     @classmethod
     def from_xyz(cls, path=None, **kwargs):
@@ -8149,7 +8179,7 @@ class SourceSpace(Dimension):
 
     """
     name = 'source'
-    adjacent = False
+    _connectivity_type = 'custom'
     _src_pattern = os.path.join('{subjects_dir}', '{subject}', 'bem',
                                 '{subject}-{src}-src.fif')
     _vertex_re = re.compile('([RL])(\d+)')
