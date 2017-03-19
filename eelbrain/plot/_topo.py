@@ -94,7 +94,9 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         epochs, _, frame_title = _base.unpack_epochs_arg(
             epochs, ('sensor',), xax, ds, "Topomap", sub
         )
-        ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin, contours)
+        self.plots = []
+        ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin, contours,
+                               self.plots)
         nax = len(epochs)
         if isinstance(proj, basestring):
             proj = repeat(proj, nax)
@@ -111,7 +113,6 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         self._set_axtitle(axtitle, epochs)
 
         # plots
-        self.plots = []
         for ax, layers, proj_ in izip(self._axes, epochs, proj):
             h = _ax_topomap(ax, layers, clip, clip_distance, sensorlabels, mark,
                             None, None, proj_, res, interpolation, xlabel,
@@ -166,7 +167,7 @@ class TopomapBins(EelFigure):
         self._show()
 
 
-class TopoButterfly(TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
+class TopoButterfly(ColorMapMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
     u"""Butterfly plot with corresponding topomaps
 
     Parameters
@@ -184,7 +185,10 @@ class TopoButterfly(TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
     res : int
         Resolution of the topomaps (width = height = ``res``).
     interpolation : str
-        Matplotlib imshow() parameter for topomaps.
+        Array image interpolation (see Matplotlib's
+        :meth:`~matplotlib.axes.Axes.imshow`). Matplotlib 1.5.3's SVG output
+        can't handle uneven aspect with ``interpolation='none'``, use
+        ``interpolation='nearest'`` instead.
     color : matplotlib color
         Color of the butterfly plots.
     sensorlabels : None | 'index' | 'name' | 'fullname'
@@ -204,9 +208,12 @@ class TopoButterfly(TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
         axes (in inches).
     ax_aspect : scalar
         multiplier for the width of butterfly plots based on their height
-    vmax, vmin : None | scalar
-        Override the default plot limits. If only vmax is specified, vmin
-        is set to -vmax.
+    vmax : scalar
+        Upper limits for the colormap.
+    vmin : scalar
+        Lower limit for the colormap.
+    cmap : str
+        Colormap (default depends on the data).
     axtitle : bool | sequence of str
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.
@@ -248,8 +255,8 @@ class TopoButterfly(TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
                  xticklabels=True,
                  proj='default', res=100, interpolation='nearest', color=None,
                  sensorlabels=None, mark=None, mcolor=None, ds=None, sub=None,
-                 vmax=None, vmin=None, axlabel=None, axtitle=True, frame=True,
-                 xlim=None, *args, **kwargs):
+                 vmax=None, vmin=None, cmap=None, axlabel=None, axtitle=True,
+                 frame=True, xlim=None, *args, **kwargs):
         if axlabel is not None:
             warn("The axlabel parameter for plot.TopoButterfly() is "
                  "deprecated, please use axtitle instead", DeprecationWarning)
@@ -267,31 +274,28 @@ class TopoButterfly(TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
         )
         EelFigure.__init__(self, frame_title, layout)
 
-        cmaps = _base.find_fig_cmaps(epochs)
-        vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
-        contours = _base.find_fig_contours(epochs, vlims, None)
+        self.bfly_axes = self._axes[0::2]
+        self.topo_axes = self._axes[1::2]
+        self.bfly_plots = []
+        self.topo_plots = []
+        self.t_markers = []  # vertical lines on butterfly plots
+        self._xvalues = []
+
+        ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin, None,
+                               self.topo_plots)
 
         self._topo_kwargs = {'proj': proj,
-                             'contours': contours,
+                             'contours': self._contours,
                              'res': res,
                              'interpolation': interpolation,
                              'sensorlabels': sensorlabels,
                              'mark': mark,
                              'mcolor': mcolor}
 
-        self.bfly_axes = self._axes[0::2]
-        self.topo_axes = self._axes[1::2]
-        self.bfly_plots = []
-        self.topo_plots = []
-        self.t_markers = []  # vertical lines on butterfly plots
-        self._cmaps = cmaps
-        self._vlims = vlims
-        self._contours = contours
-        self._xvalues = []
-
         # plot epochs (x/y are in figure coordinates)
         for ax, layers in izip(self.bfly_axes, epochs):
-            p = _ax_butterfly(ax, layers, 'time', 'sensor', mark, color, vlims)
+            p = _ax_butterfly(ax, layers, 'time', 'sensor', mark, color,
+                              self._vlims)
             self.bfly_plots.append(p)
             self._xvalues = np.union1d(self._xvalues, p._xvalues)
 
@@ -315,6 +319,9 @@ class TopoButterfly(TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
         self._draw_topo(e0.time[0], draw=False)
 
         self._show()
+
+    def _fill_toolbar(self, tb):
+        ColorMapMixin._fill_toolbar(self, tb)
 
     def _draw_topo(self, t, draw=True):
         self._current_t = t
@@ -407,33 +414,6 @@ class TopoButterfly(TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
         ax = event.inaxes
         if ax in self.bfly_axes and self._realtime_topo:
             self._draw_topo(event.xdata)
-
-    def add_contour(self, meas, level, color='k'):
-        """Add a contour line
-
-        Parameters
-        ----------
-        meas : str
-            The measurement for which to add a contour line.
-        level : scalar
-            The value at which to draw the contour.
-        color : matplotlib color
-            The color of the contour line.
-        """
-        for p in self.topo_plots:
-            p.add_contour(meas, level, color)
-        self.draw()
-
-    @deprecated('0.26', "Use .get_ylim()")
-    def get_vlim(self):
-        p = self.bfly_plots[0]
-        return p.vmax, p.vmin
-
-    def set_cmap(self, cmap):
-        "Change the colormap"
-        for p in self.topo_plots:
-            p.set_cmap(cmap)
-        self.draw()
 
 
 class _plt_topomap(_plt_im):
@@ -595,7 +575,7 @@ class _ax_topomap(_ax_im_array):
             ax.text(x, y, xlabel, ha='center', va='top')
 
     def set_ylim(self, bottom, top):  # Alias for YLimMixin
-        self.set_vlim(top, vmin=bottom)
+        self.set_vlim(bottom, top)
 
 
 class _TopoWindow:
@@ -631,20 +611,18 @@ class _TopoWindow:
                 # into 'figure fraction' coordinates
                 inv = self.ax.figure.transFigure.inverted()
                 xytext = inv.transform(xytext)
-                self.pointer = self.parent.ax.annotate(t_str, (t, 0),
-                                    xycoords='data',
-                                    xytext=xytext,
-                                    textcoords='figure fraction',
-                                    horizontalalignment='center',
-                                    verticalalignment='center',
-                                    arrowprops={'arrowstyle': '-',
-                                                'shrinkB': 0,
-                                                'connectionstyle': "angle3,angleA=90,angleB=0",
-                                                'color': 'r'},
-#                                    arrowprops={'width':1, 'frac':0,
-#                                                'headwidth':0, 'color':'r',
-#                                                'shrink':.05},
-                                    zorder=99)
+                self.pointer = self.parent.ax.annotate(
+                    t_str, (t, 0),
+                    xycoords='data',
+                    xytext=xytext,
+                    textcoords='figure fraction',
+                    horizontalalignment='center',
+                    verticalalignment='center',
+                    arrowprops={'arrowstyle': '-',
+                                'shrinkB': 0,
+                                'connectionstyle': "angle3,angleA=90,angleB=0",
+                                'color': 'r'},
+                    zorder=99)
 
             layers = [l.sub(time=t) for l in self.parent.data if t in l.time]
             if self.plot is None:
@@ -664,8 +642,20 @@ class _TopoWindow:
             self.pointer.remove()
             self.pointer = None
 
+    def add_contour(self, meas, level, color):
+        if self.plot:
+            self.plot.add_contour(meas, level, color)
 
-class TopoArray(EelFigure):
+    def set_cmap(self, cmap, meas):
+        if self.plot:
+            self.plot.set_cmap(cmap, meas)
+
+    def set_vlim(self, vmin, vmax, meas):
+        if self.plot:
+            self.plot.set_vlim(vmin, vmax, meas)
+
+
+class TopoArray(ColorMapMixin, EelFigure):
     """Channel by sample plots with topomaps for individual time points
 
     Parameters
@@ -685,9 +675,17 @@ class TopoArray(EelFigure):
         as strings.
     sub : str | array
         Specify a subset of the data.
-    vmax, vmin : None | scalar
-        Override the default plot limits. If only vmax is specified, vmin
-        is set to -vmax.
+    vmax : scalar
+        Upper limits for the colormap.
+    vmin : scalar
+        Lower limit for the colormap.
+    cmap : str
+        Colormap (default depends on the data).
+    interpolation : str
+        Array image interpolation (see Matplotlib's
+        :meth:`~matplotlib.axes.Axes.imshow`). Matplotlib 1.5.3's SVG output
+        can't handle uneven aspect with ``interpolation='none'``, use
+        ``interpolation='nearest'`` instead.
     xticklabels : bool
         Add tick-labels to the x-axis (default True).
     axtitle : bool | sequence of str
@@ -704,8 +702,8 @@ class TopoArray(EelFigure):
     _make_axes = False
 
     def __init__(self, epochs, Xax=None, title=None, ntopo=3, t=[], ds=None,
-                 sub=None, vmax=None, vmin=None, xticklabels=True, axtitle=True,
-                 *args, **kwargs):
+                 sub=None, vmax=None, vmin=None, cmap=None, interpolation=None,
+                 xticklabels=True, axtitle=True, *args, **kwargs):
         epochs, _, frame_title = _base.unpack_epochs_arg(
             epochs, ('time', 'sensor'), Xax, ds, 'TopoArray', sub
         )
@@ -715,6 +713,8 @@ class TopoArray(EelFigure):
         # create figure
         layout = Layout(n_epochs, 1.5, 6, False, title, *args, **kwargs)
         EelFigure.__init__(self, frame_title, layout)
+        all_plots = []
+        ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin, None, all_plots)
 
         # fig coordinates
         x_frame_l = .6 / self._layout.axw / n_epochs
@@ -726,16 +726,9 @@ class TopoArray(EelFigure):
                                     bottom=.05, top=.9, wspace=.1, hspace=.3)
         self.title = title
 
-
-        cmaps = _base.find_fig_cmaps(epochs)
-        vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
-        contours = _base.find_fig_contours(epochs, vlims, None)
-
         # save important properties
         self._epochs = epochs
         self._ntopo = ntopo
-        self._cmaps = cmaps
-        self._vlims = vlims  # keep track of these for replotting topomaps
         self._default_xlabel_ax = -1 - ntopo
 
         # im_array plots
@@ -752,8 +745,8 @@ class TopoArray(EelFigure):
                                       picker=True)
             ax.ID = i
             ax.type = 'main'
-            im_plot = _ax_im_array(ax, layers, 'time', vlims=vlims,
-                                   contours=contours)
+            im_plot = _ax_im_array(ax, layers, 'time', interpolation,
+                                   self._vlims, self._cmaps, self._contours)
             self._axes.append(ax)
             self._array_axes.append(ax)
             self._array_plots.append(im_plot)
@@ -769,9 +762,11 @@ class TopoArray(EelFigure):
                 ax.ID = ID
                 ax.type = 'window'
                 win = _TopoWindow(ax, im_plot, vlims=self._vlims,
-                                  cmaps=self._cmaps, contours=contours)
+                                  cmaps=self._cmaps, contours=self._contours)
                 self._axes.append(ax)
                 self._topo_windows.append(win)
+        all_plots.extend(self._array_plots)
+        all_plots.extend(self._topo_windows)
 
         # if t argument is provided, set topo-map time points
         if t:
@@ -790,6 +785,9 @@ class TopoArray(EelFigure):
         self.canvas.mpl_connect('motion_notify_event', self._motion_handler)
         self._frame.store_canvas()
         self._show()
+
+    def _fill_toolbar(self, tb):
+        ColorMapMixin._fill_toolbar(self, tb)
 
     def __repr__(self):
         e_repr = []
