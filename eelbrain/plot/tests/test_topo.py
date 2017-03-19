@@ -42,8 +42,10 @@ def test_plot_topo_butterfly():
     p = plot.TopoButterfly('utsnd', mark=[1, 2], ds=ds, show=False)
     p.close()
     p = plot.TopoButterfly('utsnd', mark=['1', '2'], ds=ds, show=False)
-    p.set_vlim(-1, 1)
-    eq_(p.get_ylim(), (1.0, -1.0))
+    p.set_vlim(2)
+    eq_(p.get_vlim(), (-2.0, 2.0))
+    p.set_ylim(-1, 1)
+    eq_(p.get_ylim(), (-1.0, 1.0))
     p.close()
 
 

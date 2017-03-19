@@ -1756,8 +1756,9 @@ class ColorBarMixin(object):
 
 class ColorMapMixin(ColorBarMixin):
     """takes care of color-map and includes color-bar"""
-    def __init__(self, epochs, cmap, vmax, vmin, contours=None):
+    def __init__(self, epochs, cmap, vmax, vmin, contours, plots):
         ColorBarMixin.__init__(self, self.__get_cmap_params, epochs[0][0])
+        self.__plots = plots  # can be empty list at __init__
         self._cmaps = find_fig_cmaps(epochs, cmap)
         self._vlims = find_fig_vlims(epochs, vmax, vmin, self._cmaps)
         self._contours = find_fig_contours(epochs, self._vlims, contours)
@@ -1782,7 +1783,7 @@ class ColorMapMixin(ColorBarMixin):
         if meas is None:
             meas = self._first_meas
 
-        for p in self.plots:
+        for p in self.__plots:
             p.add_contour(meas, level, color)
         self.draw()
 
@@ -1800,32 +1801,49 @@ class ColorMapMixin(ColorBarMixin):
         if meas is None:
             meas = self._first_meas
 
-        for p in self.plots:
+        for p in self.__plots:
             p.set_cmap(cmap, meas)
         self._cmaps[meas] = cmap
         self.draw()
 
-    def set_vlim(self, vmax=None, meas=None, vmin=None):
+    def set_vlim(self, v=None, vmax=None, meas=None):
         """Change the colormap limits
+
+        If the limit is symmetric, use ``set_vlim(vlim)``; if it is not, use
+        ``set_vlim(vmin, vmax)``.
 
         Parameters
         ----------
-        vmax : scalar
-            Highest value to represent.
+        v : scalar
+            If this is the only value specified it is interpreted as the upper
+            end of the scale, and the lower end is determined based on
+            the colormap to be ``-v`` or ``0``. If ``vmax`` is also specified,
+            ``v`` specifies the lower end of the scale.
+        vmax : scalar (optional)
+            Upper end of the color scale.
         meas : str (optional)
             Measurement type to apply (default is the first one found).
-        vmin : scalar (optional)
-            Smallest value to plot. The default is to infer ``vmin`` from
-            ``vmax`` and the colormap.
         """
         if meas is None:
             meas = self._first_meas
-        vmin, vmax = fix_vlim_for_cmap(vmin, vmax, self._cmaps[meas])
+        elif meas not in self._cmaps:
+            raise ValueError("meas=%r" % (meas,))
 
-        for p in self.plots:
-            p.set_vlim(vmax, meas, vmin)
+        if vmax is None:
+            vmin, vmax = fix_vlim_for_cmap(None, abs(v), self._cmaps[meas])
+        else:
+            vmin = v
+
+        for p in self.__plots:
+            p.set_vlim(vmin, vmax, meas)
         self._vlims[meas] = vmin, vmax
         self.draw()
+
+    def get_vlim(self, meas=None):
+        "Retrieve colormap value limits as ``(vmin, vmax)`` tuple"
+        if meas is None:
+            meas = self._first_meas
+        return self._vlims[meas]
 
 
 class LegendMixin(object):

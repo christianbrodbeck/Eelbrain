@@ -88,12 +88,12 @@ class _plt_im(object):
             self.im.set_data(data)
             if vlim:
                 vmin, vmax = _base.find_vlim_args(ndvar)
-                self.set_vlim(vmax, None, vmin)
+                self.set_vlim(vmin, vmax, None)
 
         self._data = data
         self._draw_contours()
 
-    def set_vlim(self, vmax, meas, vmin):
+    def set_vlim(self, vmin, vmax=None, meas=None):
         if self.im is None:
             return
         elif (meas is not None) and (self._meas != meas):
@@ -174,9 +174,9 @@ class _ax_im_array(object):
         for l, p in zip(layers, self.layers):
             p.set_data(l, vlim)
 
-    def set_vlim(self, vmax=None, meas=None, vmin=None):
+    def set_vlim(self, vmin, vmax, meas):
         for l in self.layers:
-            l.set_vlim(vmax, meas, vmin)
+            l.set_vlim(vmin, vmax, meas)
 
 
 class Array(ColorMapMixin, XAxisMixin, EelFigure):
@@ -212,7 +212,7 @@ class Array(ColorMapMixin, XAxisMixin, EelFigure):
         Array image interpolation (see Matplotlib's
         :meth:`~matplotlib.axes.Axes.imshow`). Matplotlib 1.5.3's SVG output
         can't handle uneven aspect with ``interpolation='none'``, use
-        ``interpolation='nearest'`` intead.
+        ``interpolation='nearest'`` instead.
     xlim : (scalar, scalar)
         Initial x-axis view limits (default is the full x-axis in the data).
     tight : bool
@@ -238,14 +238,14 @@ class Array(ColorMapMixin, XAxisMixin, EelFigure):
         epochs, (xdim, ydim), frame_title = _base.unpack_epochs_arg(
             epochs, (x, None), Xax, ds, "Array", sub
         )
-        ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin)
+        self.plots = []
+        ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin, None, self.plots)
 
         nax = len(epochs)
         layout = Layout(nax, 2, 4, *args, **kwargs)
         EelFigure.__init__(self, frame_title, layout)
         self._set_axtitle(axtitle, epochs)
 
-        self.plots = []
         for i, ax, layers in zip(xrange(nax), self._axes, epochs):
             p = _ax_im_array(ax, layers, x, interpolation, self._vlims,
                              self._cmaps, self._contours)
