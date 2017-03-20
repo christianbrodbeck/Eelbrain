@@ -2,6 +2,10 @@
 from .._utils.parse import find_variables
 
 
+class DefinitionError(Exception):
+    "MneExperiment definition error"
+
+
 def find_epoch_vars(params):
     "Find variables used in a primary epoch definition"
     out = ()

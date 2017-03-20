@@ -49,7 +49,8 @@ from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
 from .._utils import subp, keydefaultdict, log_level
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
-from .definitions import find_dependent_epochs, find_epochs_vars, find_test_vars
+from .definitions import (
+    DefinitionError, find_dependent_epochs, find_epochs_vars, find_test_vars)
 from .experiment import FileTree
 from .preprocessing import (
     assemble_pipeline, RawICA, pipeline_dict, compare_pipelines,
@@ -133,7 +134,11 @@ class Epoch(object):
     def __init__(self, name, tmin=-0.1, tmax=0.6, decim=5, baseline=(None, 0),
                  vars=None, trigger_shift=0., post_baseline_trigger_shift=None,
                  post_baseline_trigger_shift_min=None,
-                 post_baseline_trigger_shift_max=None):
+                 post_baseline_trigger_shift_max=None, sel_epoch=None):
+        if sel_epoch is not None:
+            raise DefinitionError("The `sel_epoch` epoch parameter has been "
+                                  "removed. Use `base` instead.")
+
         if (post_baseline_trigger_shift is not None and
                 (post_baseline_trigger_shift_min is None or
                  post_baseline_trigger_shift_max is None)):
