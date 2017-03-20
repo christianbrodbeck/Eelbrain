@@ -1213,19 +1213,28 @@ class EelFigure(object):
         if label:
             self.set_xlabel(label)
 
-    def _configure_yaxis_dim(self, dim, label, axes=None, scalar=True):
+    def _configure_yaxis_dim(self, epochs, dim, label, axes=None, scalar=True):
         "Configure the y-axis based on a dimension (see ._configure_xaxis_dim)"
         if axes is None:
             axes = self._axes
-        formatter, locator, label = dim._axis_format(scalar, label)
-        for ax in axes:
+
+        labels = []
+        for ax, layers in izip(axes, epochs):
+            formatter, locator, label_ = layers[0].get_dim(
+                dim)._axis_format(scalar, label)
             if locator:
                 ax.yaxis.set_major_locator(locator)
             if formatter:
                 ax.yaxis.set_major_formatter(formatter)
+            labels.append(label_)
 
-        if label:
-            self.set_ylabel(label)
+        if any(labels):
+            if len(set(labels)) == 1:
+                self.set_ylabel(labels[0])
+            else:
+                for ax, label in izip(axes, labels):
+                    if label:
+                        self.set_ylabel(label, ax)
 
     def _configure_yaxis(self, v, label, axes=None):
         if axes is None:
@@ -1310,8 +1319,10 @@ class EelFigure(object):
             Axis on which to set the label (default is usually the first axis).
         """
         if ax is None:
-            ax = self._default_ylabel_ax
-        self._axes[ax].set_ylabel(label)
+            ax = self._axes[self._default_ylabel_ax]
+        elif isinstance(ax, int):
+            ax = self._axes[ax]
+        ax.set_ylabel(label)
 
 
 class BaseLayout(object):

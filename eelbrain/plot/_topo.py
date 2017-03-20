@@ -773,10 +773,9 @@ class TopoArray(ColorMapMixin, EelFigure):
                 t = [t]
             self.set_topo_ts(*t)
 
-        e0 = epochs[0][0]
         self._set_axtitle(axtitle, epochs, self._array_axes)
-        self._configure_xaxis_dim(e0.time, True, xticklabels, self._array_axes)
-        self._configure_yaxis_dim(e0.sensor, True, self._array_axes, False)
+        self._configure_xaxis_dim(epochs[0][0].time, True, xticklabels, self._array_axes)
+        self._configure_yaxis_dim(epochs, 'sensor', True, self._array_axes, False)
 
         # setup callback
         self._selected_window = None
