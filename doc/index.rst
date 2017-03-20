@@ -60,8 +60,9 @@ Eelbrain relies on
 `Matplotlib <http://matplotlib.org>`_,
 `MNE-Python <http://martinos.org/mne/stable/index.html>`_,
 `PySurfer <http://pysurfer.github.io>`_,
-`WxPython <http://wxpython.org>`_ and
-`Cython <http://cython.org>`_.
+`WxPython <http://wxpython.org>`_,
+`Cython <http://cython.org>`_ and incorporates icons from the
+`Tango Desktop Project <http://tango.freedesktop.org>`_.
 
 
 ----
