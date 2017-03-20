@@ -1777,9 +1777,9 @@ class Var(object):
 
     def __pow__(self, other):
         if isinstance(other, Var):
-            x = self.x / other.x
+            x = self.x ** other.x
         else:
-            x = self.x / other
+            x = self.x ** other
         info = self.info.copy()
         info['longname'] = longname(self) + ' ** ' + longname(other)
         return Var(x, info=info)
