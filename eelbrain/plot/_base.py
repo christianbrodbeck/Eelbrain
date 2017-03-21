@@ -76,6 +76,7 @@ from matplotlib.ticker import FuncFormatter
 import numpy as np
 import PIL
 
+from .._config import CONFIG
 from .._utils import deprecated
 from .._utils.subp import command_exists
 from ..fmtxt import Image
@@ -89,16 +90,6 @@ POINT = 0.013888888888898
 
 # defaults
 defaults = {'maxw': 16, 'maxh': 10}
-backend = {
-    'eelbrain': True,
-    'autorun': None,
-    'show': True,
-    'format': 'svg',
-    'ets_toolkit': None if 'ETS_TOOLKIT' in os.environ else 'qt4',
-    'figure_background': 'white',
-    'prompt_toolkit': True,
-    'animate': True,
-}
 
 # store figures (they need to be preserved)
 figures = []
@@ -108,80 +99,12 @@ def do_autorun(run=None):
     # http://stackoverflow.com/a/2356420/166700
     if run is not None:
         return run
-    elif backend['autorun'] is None:
+    elif CONFIG['autorun'] is None:
         return not hasattr(__main__, '__file__')
     else:
-        return backend['autorun']
+        return CONFIG['autorun']
 
 
-def configure(frame=None, autorun=None, show=None, format=None,
-              ets_toolkit=None, figure_background=None, prompt_toolkit=None,
-              animate=None):
-    """Set basic configuration parameters for the current session
-
-    Parameters
-    ----------
-    frame : bool
-        Open figures in the Eelbrain application. This provides additional
-        functionality such as copying a figure to the clipboard. If False, open
-        figures as normal matplotlib figures.
-    autorun : bool
-        When a figure is created, automatically enter the GUI mainloop. By
-        default, this is True when the figure is created in interactive mode
-        but False when the figure is created in a script (in order to run the
-        GUI at a specific point in a script, call :func:`eelbrain.gui.run`).
-    show : bool
-        Show plots on the screen when they're created (disable this to create
-        plots and save them without showing them on the screen).
-    format : str
-        Default format for plots (for example "png", "svg", ...).
-    ets_toolkit : 'qt4' | 'wx'
-        Toolkit to use for :mod:`plot.brain` plots. QT4 is officially supported
-        but can lead to segmentation faults. WX is not officially supported but
-        seems to work.
-    figure_background : bool | matplotlib color
-        While :mod:`matplotlib` uses a gray figure background by default,
-        Eelbrain uses white. Set this parameter to ``False`` to use the default
-        from :attr:`matplotlib.rcParams`, or set it to a valid matplotblib
-        color value to use an arbitrary color. ``True`` to revert to the default
-        white.
-    prompt_toolkit : bool
-        In IPython 5, prompt_toolkit allows running the GUI main loop in
-        parallel to the Terminal, meaning that the IPython terminal and GUI
-        windows can be used without explicitly switching between Terminal and
-        GUI. This feature is enabled by default, but can be disabled by setting
-        ``prompt_toolkit=False``.
-    animate : bool
-        Animate plot navigation (default True).
-    """
-    # don't change values before raising an error
-    new = {}
-    if frame is not None:
-        new['eelbrain'] = bool(frame)
-    if autorun is not None:
-        new['autorun'] = bool(autorun)
-    if show is not None:
-        new['show'] = bool(show)
-    if format is not None:
-        new['format'] = format.lower()
-    if ets_toolkit is not None:
-        if ets_toolkit in ('qt4', 'wx'):
-            new['ets_toolkit'] = ets_toolkit
-        else:
-            raise ValueError("ets_toolkit=%r; needs to be 'qt4' or 'wx'" %
-                             ets_toolkit)
-    if figure_background is not None:
-        if figure_background is True:
-            figure_background = 'white'
-        elif figure_background is not False:
-            mpl.colors.colorConverter.to_rgb(figure_background)
-        new['figure_background'] = figure_background
-    if prompt_toolkit is not None:
-        new['prompt_toolkit'] = bool(prompt_toolkit)
-    if animate is not None:
-        new['animate'] = bool(animate)
-
-    backend.update(new)
 
 
 MEAS_DISPLAY_UNIT = {
@@ -992,7 +915,7 @@ class EelFigure(object):
             frame_title = '%s: %s' % (frame_title, layout.title)
 
         # find the right frame
-        if backend['eelbrain']:
+        if CONFIG['eelbrain']:
             from .._wxgui import get_app
             from .._wxgui.mpl_canvas import CanvasFrame
             get_app()
@@ -1100,9 +1023,9 @@ class EelFigure(object):
             if any(func() for func in self._untight_draw_hooks):
                 self.draw()
 
-        if backend['show'] and self._layout.show:
+        if CONFIG['show'] and self._layout.show:
             self._frame.Show()
-            if backend['eelbrain'] and do_autorun(self._layout.run):
+            if CONFIG['eelbrain'] and do_autorun(self._layout.run):
                 from .._wxgui import run
                 run()
 
@@ -1271,7 +1194,7 @@ class EelFigure(object):
             Image FMTXT object.
         """
         if format is None:
-            format = backend['format']
+            format = CONFIG['format']
 
         image = Image(name, format)
         self.figure.savefig(image, format=format)
@@ -1336,8 +1259,8 @@ class BaseLayout(object):
 
     def fig_kwa(self):
         out = {'figsize': (self.w, self.h), 'dpi': self.dpi}
-        if backend['figure_background'] is not False:
-            out['facecolor'] = backend['figure_background']
+        if CONFIG['figure_background'] is not False:
+            out['facecolor'] = CONFIG['figure_background']
         return out
 
     def make_axes(self, figure):

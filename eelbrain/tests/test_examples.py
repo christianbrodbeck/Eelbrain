@@ -9,7 +9,7 @@ from tempfile import mkdtemp
 import mne
 from nose import SkipTest
 
-from eelbrain import plot
+from eelbrain import configure
 
 # exclude files with those names:
 EXCLUDE = ('make_reports.py',)
@@ -66,7 +66,7 @@ def run_example(example_path, name):
         # execute example
         os.chdir(tempdir)
         logging.info(" Executing %s" % (name,))
-        plot.configure(show=False)
+        configure(show=False)
         exec(text, {})
     finally:
         # delete temporary files

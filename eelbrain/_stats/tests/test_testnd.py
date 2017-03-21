@@ -12,7 +12,8 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 import eelbrain
-from eelbrain import datasets, testnd, NDVar, set_log_level, cwt_morlet
+from eelbrain import (configure, datasets, testnd, NDVar, set_log_level,
+                      cwt_morlet)
 from eelbrain._data_obj import Graph, UTS, Ordered, Sensor
 from eelbrain._stats.testnd import (Connectivity, _ClusterDist, label_clusters,
                                     _MergedTemporalClusterDist)
@@ -89,10 +90,10 @@ def test_anova():
     res0 = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=5)
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=5)
     assert_dataset_equal(res.clusters, res0.clusters)
-    testnd.configure(0)
+    configure(n_workers=0)
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=5)
     assert_dataset_equal(res.clusters, res0.clusters)
-    testnd.configure(-1)
+    configure(n_workers=True)
 
     # permutation
     eelbrain._stats.permutation._YIELD_ORIGINAL = 1
@@ -118,9 +119,9 @@ def test_anova():
     eelbrain._stats.permutation._YIELD_ORIGINAL = 0
 
     # 1d TFCE
-    testnd.configure(0)
+    configure(n_workers=0)
     res = testnd.anova('utsnd.rms(time=(0.1, 0.3))', 'A*B*rm', ds=ds, tfce=True, samples=samples)
-    testnd.configure(-1)
+    configure(n_workers=True)
 
 
 def test_anova_incremental():
@@ -156,7 +157,7 @@ def test_anova_parc():
                                  0.12, 0.88, 0.25, 0.97, 0.34, 0.96])
 
     # without multiprocessing
-    testnd.configure(0)
+    configure(n_workers=0)
     ress = testnd.anova(y, "side*modality", pmin=0.05, parc='source', **kwa)
     c1s = ress.find_clusters(source='lateraloccipital-lh')
     c2s = ress.find_clusters(source='cuneus-lh')
@@ -164,7 +165,7 @@ def test_anova_parc():
     del c2s['p_parc', 'id']
     assert_dataset_equal(c1s, c1)
     assert_dataset_equal(c2s, c2)
-    testnd.configure(-1)
+    configure(n_workers=True)
 
     # parc but single label
     resp2 = testnd.anova(y2, "side*modality", pmin=0.05, parc='source', **kwa)
@@ -287,17 +288,6 @@ def test_clusterdist():
     logging.debug(' detected: \n%s' % (peaks.astype(int)))
     logging.debug(' target: \n%s' % (tgt.astype(int)))
     assert_array_equal(peaks, tgt)
-
-
-def test_configure():
-    """Test testnd.configure to change multiprocessing settings"""
-    testnd.configure(0)
-    eq_(eelbrain._stats.testnd.MULTIPROCESSING, 0)
-    testnd.configure(2)
-    eq_(eelbrain._stats.testnd.MULTIPROCESSING, 1)
-    eq_(eelbrain._stats.testnd.N_WORKERS, 2)
-    testnd.configure(-1)
-    eq_(eelbrain._stats.testnd.MULTIPROCESSING, 1)
 
 
 def test_corr():
@@ -503,36 +493,36 @@ def test_ttest_rel():
     res3 = testnd.ttest_rel('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm',
                             ds=ds, samples=100)
     assert_dataset_equal(res3.find_clusters(maps=True), res.clusters)
-    testnd.configure(0)
+    configure(n_workers=0)
     res4 = testnd.ttest_rel('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm',
                             ds=ds, samples=100)
     assert_dataset_equal(res4.find_clusters(maps=True), res.clusters)
-    testnd.configure(-1)
+    configure(n_workers=True)
     sds = ds.sub("B=='b0'")
     # thresholded, UTS
-    testnd.configure(0)
+    configure(n_workers=0)
     res0 = testnd.ttest_rel('uts', 'A', 'a1', 'a0', 'rm', ds=sds, pmin=0.1,
                             samples=100)
     tgt = res0.find_clusters()
-    testnd.configure(-1)
+    configure(n_workers=True)
     res1 = testnd.ttest_rel('uts', 'A', 'a1', 'a0', 'rm', ds=sds, pmin=0.1,
                             samples=100)
     assert_dataset_equal(res1.find_clusters(), tgt)
     # thresholded, UTSND
-    testnd.configure(0)
+    configure(n_workers=0)
     res0 = testnd.ttest_rel('utsnd', 'A', 'a1', 'a0', 'rm', ds=sds, pmin=0.1,
                             samples=100)
     tgt = res0.find_clusters()
-    testnd.configure(-1)
+    configure(n_workers=True)
     res1 = testnd.ttest_rel('utsnd', 'A', 'a1', 'a0', 'rm', ds=sds, pmin=0.1,
                             samples=100)
     assert_dataset_equal(res1.find_clusters(), tgt)
     # TFCE, UTS
-    testnd.configure(0)
+    configure(n_workers=0)
     res0 = testnd.ttest_rel('uts', 'A', 'a1', 'a0', 'rm', ds=sds, tfce=True,
                             samples=10)
     tgt = res0.compute_probability_map()
-    testnd.configure(-1)
+    configure(n_workers=True)
     res1 = testnd.ttest_rel('uts', 'A', 'a1', 'a0', 'rm', ds=sds, tfce=True,
                             samples=10)
     assert_dataobj_equal(res1.compute_probability_map(), tgt)

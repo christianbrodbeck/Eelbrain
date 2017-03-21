@@ -43,6 +43,7 @@ from tqdm import trange
 
 from .. import fmtxt
 from .. import _colorspaces as _cs
+from .._config import CONFIG
 from .._data_obj import (
     Categorial, Celltable, Dataset, Interaction, NDVar, OldVersionError, UTS,
     Var, ascategorial, asmodel, asndvar, asvar, assub, cellname, combine,
@@ -62,38 +63,8 @@ from functools import reduce
 
 __test__ = False
 
-# toggle multiprocessing for _ClusterDist
-MULTIPROCESSING = 1
-N_WORKERS = cpu_count()
+# toggle multiprocessing for problematic functions on Windows
 MP_FOR_NON_TOP_LEVEL_FUNCTIONS = os.name != 'nt'  # FIXME
-
-
-def configure(ncpus=None):
-    """Configure the number of CPUs used in permutation tests
-
-    Parameters
-    ----------
-    ncpus : int
-        Maximum number of CPUs to use. 0 to turn off multiprocessing. -1 to use
-        all available CPUs.
-
-    Notes
-    -----
-    For tests on large NDVars on systems with many CPUs it can be beneficial
-    to limit the number of CPUs to conserve RAM.
-    """
-    if ncpus is not None:
-        global MULTIPROCESSING, N_WORKERS
-        if not isinstance(ncpus, int):
-            raise TypeError("ncpus=%s, int required" % repr(ncpus))
-        elif ncpus == 0:
-            MULTIPROCESSING = 0
-        elif ncpus < 0:
-            MULTIPROCESSING = 1
-            N_WORKERS = cpu_count()
-        else:
-            MULTIPROCESSING = 1
-            N_WORKERS = min(ncpus, cpu_count())
 
 
 class _Result(object):
@@ -2168,7 +2139,7 @@ class _ClusterDist:
 
     def _create_dist(self):
         "Create the distribution container"
-        if MULTIPROCESSING:
+        if CONFIG['n_workers']:
             n = reduce(operator.mul, self.dist_shape)
             dist_array = RawArray('d', n)
             dist = np.frombuffer(dist_array, np.float64, n)
@@ -2913,7 +2884,7 @@ def permutation_worker(in_queue, out_queue, y, shape, test_func, map_args):
 
 
 def run_permutation(test_func, dist, iterator, use_mp=True):
-    if use_mp and MULTIPROCESSING:
+    if use_mp and CONFIG['n_workers']:
         workers, out_queue = setup_workers(test_func, dist)
 
         for perm in iterator:
@@ -2940,7 +2911,7 @@ def run_permutation(test_func, dist, iterator, use_mp=True):
 def setup_workers(test_func, dist):
     "Initialize workers for permutation tests"
     logger = logging.getLogger(__name__)
-    logger.debug("Setting up %i worker processes..." % N_WORKERS)
+    logger.debug("Setting up %i worker processes..." % CONFIG['n_workers'])
     permutation_queue = SimpleQueue()
     dist_queue = SimpleQueue()
 
@@ -2948,7 +2919,7 @@ def setup_workers(test_func, dist):
     y, shape = dist.data_for_permutation()
     args = (permutation_queue, dist_queue, y, shape, test_func, dist.map_args)
     workers = []
-    for _ in xrange(N_WORKERS):
+    for _ in xrange(CONFIG['n_workers']):
         w = Process(target=permutation_worker, args=args)
         w.start()
         workers.append(w)
@@ -2969,7 +2940,7 @@ def run_permutation_me(test, dists, iterator):
     else:
         thresholds = None
 
-    if MULTIPROCESSING:
+    if CONFIG['n_workers']:
         workers, out_queue = setup_workers_me(test, dists, thresholds)
 
         for perm in iterator:
@@ -3012,7 +2983,7 @@ def run_permutation_me(test, dists, iterator):
 def setup_workers_me(test_func, dists, thresholds):
     "Initialize workers for permutation tests"
     logger = logging.getLogger(__name__)
-    logger.debug("Setting up %i worker processes..." % N_WORKERS)
+    logger.debug("Setting up %i worker processes..." % CONFIG['n_workers'])
     permutation_queue = SimpleQueue()
     dist_queue = SimpleQueue()
 
@@ -3022,7 +2993,7 @@ def setup_workers_me(test_func, dists, thresholds):
     args = (permutation_queue, dist_queue, y, shape, test_func, dist.map_args,
             thresholds)
     workers = []
-    for _ in xrange(N_WORKERS):
+    for _ in xrange(CONFIG['n_workers']):
         w = Process(target=permutation_worker_me, args=args)
         w.start()
         workers.append(w)

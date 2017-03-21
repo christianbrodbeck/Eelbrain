@@ -15,7 +15,7 @@ from __future__ import division
 from inspect import getargspec
 from itertools import chain, izip, product
 from math import floor
-from multiprocessing import Process, Queue, cpu_count
+from multiprocessing import Process, Queue
 from multiprocessing.sharedctypes import RawArray
 import time
 from threading import Thread
@@ -26,6 +26,7 @@ from scipy.stats import spearmanr
 from tqdm import tqdm
 
 from .. import _colorspaces as cs
+from .._config import CONFIG
 from .._data_obj import NDVar, UTS, dataobj_repr
 from .._stats.error_functions import (l1, l2, l1_for_delta, l2_for_delta,
                                       update_error)
@@ -38,8 +39,7 @@ VERSION = 6
 # cross-validation
 N_SEGS = 10
 
-# multiprocessing (0 = single process)
-N_WORKERS = cpu_count()
+# process messages
 JOB_TERMINATE = -1
 
 # error functions
@@ -297,7 +297,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     res = np.empty((3, n_y))  # r, rank-r, error
     h_x = np.empty((n_y, n_x, trf_length))
     # boosting
-    if N_WORKERS:
+    if CONFIG['n_workers']:
         # Make sure cross-validations are added in the same order, otherwise
         # slight numerical differences can occur
         job_queue, result_queue = setup_workers(
@@ -593,7 +593,7 @@ def setup_workers(y, x, trf_length, delta, mindelta, nsegs, error):
 
     args = (y_buffer, x_buffer, n_y, n_times, n_x, trf_length, delta,
             mindelta, nsegs, error, job_queue, result_queue)
-    for _ in xrange(N_WORKERS):
+    for _ in xrange(CONFIG['n_workers']):
         Process(target=boosting_worker, args=args).start()
 
     return job_queue, result_queue
@@ -617,7 +617,7 @@ def put_jobs(queue, n_y, n_segs):
     "Feed boosting jobs into a Queue"
     for job in product(xrange(n_y), xrange(n_segs)):
         queue.put(job)
-    for _ in xrange(N_WORKERS):
+    for _ in xrange(CONFIG['n_workers']):
         queue.put((JOB_TERMINATE, None))
 
 

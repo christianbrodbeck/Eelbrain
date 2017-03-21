@@ -17,7 +17,7 @@ from .._data_obj import NDVar, SourceSpace
 from .._wxgui import run as run_gui
 from ..fmtxt import Image
 from ..mne_fixes import reset_logger
-from ._base import (backend, do_autorun, find_axis_params_data, find_fig_cmaps,
+from ._base import (CONFIG, do_autorun, find_axis_params_data, find_fig_cmaps,
                     find_fig_vlims)
 from ._colors import ColorBar
 from ._wx_brain import BrainFrame
@@ -56,9 +56,9 @@ class Brain(surfer.Brain):
         surfer.Brain.__init__(self, subject, hemi, surf, views=views,
                               figure=self._frame.figure, **kwargs)
 
-        if backend['show'] and show:
+        if CONFIG['show'] and show:
             self._frame.Show()
-            if backend['eelbrain'] and do_autorun(run):
+            if CONFIG['eelbrain'] and do_autorun(run):
                 run_gui()
 
     def add_mask(self, source, color=(1, 1, 1), smoothing_steps=None,
