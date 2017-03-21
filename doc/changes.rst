@@ -3,6 +3,13 @@ Changes
 
 .. currentmodule:: eelbrain
 
+New in 0.26
+-----------
+
+* API: new global :func:`configure` function replaces module-level configuration
+  functions.
+
+
 New in 0.25
 -----------
 

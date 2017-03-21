@@ -10,7 +10,7 @@ import webbrowser
 import wx
 
 from .._wxutils import ID, Icon
-from ..plot._base import backend
+from ..plot._base import CONFIG
 from .about import AboutFrame
 
 
@@ -153,7 +153,7 @@ class App(wx.App):
         self.using_prompt_toolkit = False
         if ('IPython' in sys.modules and
                 LooseVersion(sys.modules['IPython'].__version__) >=
-                LooseVersion('5') and backend['prompt_toolkit']):
+                LooseVersion('5') and CONFIG['prompt_toolkit']):
             import IPython
 
             IPython.terminal.pt_inputhooks.register('eelbrain',
@@ -171,9 +171,6 @@ class App(wx.App):
                 else:
                     self.using_prompt_toolkit = True
 
-                    # qt4 backend can cause conflicts in IPython
-                    from .. import plot
-                    plot.configure(ets_toolkit='wx')
         self.SetExitOnFrameDelete(not self.using_prompt_toolkit)
 
         return True

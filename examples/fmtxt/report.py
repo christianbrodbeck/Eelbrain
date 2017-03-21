@@ -1,7 +1,7 @@
 from eelbrain import *
 
 # uncomment the following line to embed plots as PNG instead of the default SVG
-# plot.configure(format='png')
+# configure(format='png')
 
 
 # create the initial report

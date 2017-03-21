@@ -198,7 +198,6 @@ Mass-Univariate Statistics
 .. autosummary::
    :toctree: generated
 
-   testnd.configure
    testnd.ttest_1samp
    testnd.ttest_rel
    testnd.ttest_ind
@@ -376,9 +375,7 @@ run : bool
     Run the Eelbrain GUI app (default is True for interactive plotting and
     False in scripts).
 
-The behavior can also be changed globally using :func:`plot.configure`:
-
-.. autofunction:: eelbrain.plot.configure
+The behavior can also be changed globally using :func:`configure`:
 
 
 ^^^^^^^^^^^^^^^
@@ -519,3 +516,10 @@ Datasets for experimenting and testing:
     datasets.get_mne_sample
     datasets.get_uts
     datasets.get_uv
+
+
+^^^^^^^^^^^^^
+Configuration
+^^^^^^^^^^^^^
+
+.. autofunction:: configure

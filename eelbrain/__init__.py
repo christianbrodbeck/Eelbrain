@@ -15,6 +15,7 @@ For the full documentation see <http://eelbrain.readthedocs.io>.
 # import this first for a chance to reverse mne's non-standard logging practice
 from . import mne_fixes
 
+from ._config import configure
 from ._data_obj import (Datalist, Dataset, Var, Factor, Interaction, Model,
                         NDVar, Categorial, Sensor, UTS,
                         Celltable, choose, combine, align, align1, cellname,
