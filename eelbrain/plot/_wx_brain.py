@@ -8,7 +8,10 @@ brain = plot.brain.brain(src.source, mask=False,hemi='lh',views='lat')
 from traits.trait_base import ETSConfig
 ETSConfig.toolkit = 'wx'
 
+from logging import getLogger
+
 from mayavi.core.ui.api import SceneEditor, MlabSceneModel
+import numpy as np
 from traits.api import HasTraits, Instance
 from traitsui.api import View, Item, HGroup, VGroup
 from tvtk.api import tvtk
@@ -16,6 +19,7 @@ from tvtk.pyface.toolkit import toolkit_object
 import wx
 
 from .._wxgui.frame import EelbrainFrame
+from .._wxutils import Icon
 
 
 SCENE_NAME = 'scene_%i'
@@ -62,8 +66,17 @@ class MayaviView(HasTraits):
 
 class BrainFrame(EelbrainFrame):
 
-    def __init__(self, parent, title, width, height, n_rows, n_columns):
+    def __init__(self, parent, brain, title, width, height, n_rows, n_columns):
         EelbrainFrame.__init__(self, parent, wx.ID_ANY, title)
+
+        # toolbar
+        tb = self.CreateToolBar(wx.TB_HORIZONTAL)
+        tb.SetToolBitmapSize(size=(32, 32))
+        tb.AddLabelTool(wx.ID_SAVE, "Save", Icon("tango/actions/document-save"))
+        self.Bind(wx.EVT_TOOL, self.OnSaveAs, id=wx.ID_SAVE)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISave, id=wx.ID_SAVE)
+        tb.Realize()
+
         self.mayavi_view = MayaviView(width, height, n_rows, n_columns)
         # Use traits to create a panel, and use it as the content of this
         # wx frame.
@@ -79,3 +92,50 @@ class BrainFrame(EelbrainFrame):
         self.Fit()
 
         self.figure = self.mayavi_view.figures
+
+        self._brain = brain
+        self.Bind(wx.EVT_CLOSE, self.OnClose)  # remove circular reference
+
+    def CanCopy(self):
+        return True
+
+    def Copy(self):
+        ss = self._brain.screenshot('rgba', True)
+        ss = np.round(ss * 255).astype(np.uint8)
+        h, w, _ = ss.shape
+        image = wx.ImageFromDataWithAlpha(
+            w, h, ss[:,:,:3].tostring(), ss[:,:,3].tostring())
+        bitmap = image.ConvertToBitmap()
+        data = wx.BitmapDataObject(bitmap)
+        if not wx.TheClipboard.Open():
+            getLogger('eelbrain').debug("Failed to open clipboard")
+            return
+        try:
+            wx.TheClipboard.SetData(data)
+        finally:
+            wx.TheClipboard.Close()
+            wx.TheClipboard.Flush()
+
+    def OnClose(self, event):
+        self._brain = None
+        event.Skip()
+
+    def OnSave(self, event):
+        self.OnSaveAs(event)
+
+    def OnSaveAs(self, event):
+        default_file = '%s.png' % self.GetTitle().replace(': ', ' - ')
+        dlg = wx.FileDialog(self, "If no file type is selected below, it is "
+                                  "inferred from the extension.",
+                            defaultFile=default_file,
+                            wildcard="Any (*.*)|*.*|PNG (*.png)|*.png",
+                            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+        if dlg.ShowModal() == wx.ID_OK:
+            self._brain.save_image(dlg.GetPath(), 'rgba', True)
+        dlg.Destroy()
+
+    def OnUpdateUISave(self, event):
+        event.Enable(True)
+
+    def OnUpdateUISaveAs(self, event):
+        event.Enable(True)
