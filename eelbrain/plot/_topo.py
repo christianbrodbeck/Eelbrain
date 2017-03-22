@@ -269,7 +269,7 @@ class TopoButterfly(ColorMapMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure)
 
         # create figure
         layout = VariableAspectLayout(
-            n_rows, 3, 10, (None, 1), ({}, {'frameon': False}), (frame, False),
+            n_rows, 3, 10, (None, 1), None, (frame, False),
             self._set_axtitle(axtitle, epochs, n_rows), *args, **kwargs
         )
         EelFigure.__init__(self, frame_title, layout)

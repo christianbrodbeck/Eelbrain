@@ -113,9 +113,12 @@ class _plt_im_array(_plt_im):
                  cmaps, contours):
         self._dimnames = dimnames[::-1]
         xdim, ydim = ndvar.get_dims(dimnames)
-        extent = xdim._axis_im_extent() + ydim._axis_im_extent()
+        xlim = xdim._axis_im_extent()
+        ylim = ydim._axis_im_extent()
         _plt_im.__init__(self, ax, ndvar, overlay, cmaps, vlims, contours,
-                         extent, interpolation)
+                         xlim + ylim, interpolation)
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
 
     def _data_from_ndvar(self, ndvar):
         return ndvar.get_data(self._dimnames)

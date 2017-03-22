@@ -1552,7 +1552,8 @@ class Layout(BaseLayout):
         axes = []
         kwargs = {}
         for i in xrange(1, self.nax + 1):
-            ax = figure.add_subplot(self.nrow, self.ncol, i, **kwargs)
+            ax = figure.add_subplot(self.nrow, self.ncol, i, autoscale_on=False,
+                                    **kwargs)
             axes.append(ax)
             if self.share_axes:
                 kwargs.update(sharex=ax, sharey=ax)
@@ -1581,7 +1582,7 @@ class ImLayout(Layout):
     def make_axes(self, figure):
         axes = []
         for i in xrange(1, self.nax + 1):
-            ax = figure.add_subplot(self.nrow, self.ncol, i)
+            ax = figure.add_subplot(self.nrow, self.ncol, i, autoscale_on=False)
             ax.axis('off')
             axes.append(ax)
         return axes
@@ -1666,7 +1667,7 @@ class VariableAspectLayout(BaseLayout):
         rects = self.ax_rects(self.h, self.w)
         for row, row_rects in enumerate(rects):
             for rect, kwa, frame in izip(row_rects, self.ax_kwargs, self.ax_frames):
-                ax = figure.add_axes(rect, **kwa)
+                ax = figure.add_axes(rect, autoscale_on=False, **kwa)
                 self._format_axes(ax, frame, True)
                 axes.append(ax)
 
