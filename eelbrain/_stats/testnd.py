@@ -2747,7 +2747,7 @@ class _ClusterDist:
         info = _cs.cluster_pmap_info()
         return NDVar(cpmap, dims, info, self.name)
 
-    def masked_parameter_map(self, pmin=0.05, **sub):
+    def masked_parameter_map(self, pmin=0.05, name=None, **sub):
         """Create a copy of the parameter map masked by significance
 
         Parameters
@@ -2769,10 +2769,13 @@ class _ClusterDist:
                  "and will stop working after Eelbrain 0.24. Use pmin=1 "
                  "instead.", DeprecationWarning)
 
+        if name is None:
+            name = self.parameter_map.name
+
         if sub:
-            param_map = self.parameter_map.sub(**sub)
+            param_map = self.parameter_map.sub(name=name, **sub)
         else:
-            param_map = self.parameter_map.copy()
+            param_map = self.parameter_map.copy(name)
 
         if pmin == 1:
             if self.kind != 'cluster':
