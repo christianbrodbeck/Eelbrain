@@ -506,6 +506,11 @@ class ColorBar(EelFigure):
         EelFigure.__init__(self, "ColorBar: %s" % cm.name, layout)
         ax = self._axes[0]
 
+        if clipmin is None:
+            clipmin = vmin
+        if clipmax is None:
+            clipmax = vmax
+
         if orientation == 'horizontal':
             ax.imshow(im, extent=(vmin, vmax, 0, 1), aspect='auto')
             ax.set_xlim(clipmin, clipmax)
