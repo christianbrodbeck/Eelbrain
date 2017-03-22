@@ -314,15 +314,15 @@ class TopoButterfly(ColorMapMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure)
         TopoMapKey.__init__(self, self._topo_data)
         self._realtime_topo = True
         self._t_label = None  # time label under lowest topo-map
-        self._frame.store_canvas()
-        self._draw_topo(e0.time[0], draw=False)
+        self.canvas.store_canvas()
+        self._update_topo(e0.time[0])
 
-        self._show()
+        self._show(crosshair_axes=self.bfly_axes)
 
     def _fill_toolbar(self, tb):
         ColorMapMixin._fill_toolbar(self, tb)
 
-    def _draw_topo(self, t, draw=True):
+    def _update_topo(self, t):
         self._current_t = t
         epochs = [[l.sub(time=t) for l in layers if t in l.time]
                   for layers in self._epochs]
@@ -335,9 +335,6 @@ class TopoButterfly(ColorMapMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure)
         else:
             for layers, p in zip(epochs, self.topo_plots):
                 p.set_data(layers)
-
-        if draw:
-            self._frame.redraw(axes=self.topo_axes)
 
     def _rm_t_markers(self):
         "Remove markers of a specific time point (vlines and t-label)"
@@ -353,7 +350,7 @@ class TopoButterfly(ColorMapMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure)
     def set_topo_t(self, t):
         "Set the time point of the topo-maps"
         self._realtime_topo = False
-        self._draw_topo(t, draw=False)
+        self._update_topo(t)
 
         # update t-markers
         self._rm_t_markers()
@@ -402,17 +399,15 @@ class TopoButterfly(ColorMapMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure)
             i -= 1
         self.set_topo_t(self._xvalues[i])
 
-    def _on_leave_axes(self, event):
-        "Update the status bar when the cursor leaves axes"
-        txt = "Topomap: t = %.3f" % self._current_t
-        self._frame.SetStatusText(txt)
+    def _on_leave_axes_status_text(self, event):
+        return "Topomap: t = %.3f" % self._current_t
 
-    def _on_motion(self, event):
+    def _on_motion_sub(self, event):
         "Update the status bar for mouse movement"
-        super(self.__class__, self)._on_motion(event)
-        ax = event.inaxes
-        if ax in self.bfly_axes and self._realtime_topo:
-            self._draw_topo(event.xdata)
+        if event.inaxes in self.bfly_axes and self._realtime_topo:
+            self._update_topo(event.xdata)
+            return set(self.topo_axes)
+        return set()
 
 
 class _plt_topomap(_plt_im):
@@ -591,7 +586,7 @@ class _TopoWindow:
         self.pointer = None
         self.plot = None
 
-    def update(self, t=None):
+    def update(self, t):
         if t is not None:
             if self.t_line:
                 self.t_line.remove()
@@ -780,9 +775,8 @@ class TopoArray(ColorMapMixin, EelFigure):
         # setup callback
         self._selected_window = None
         self.canvas.mpl_connect('pick_event', self._pick_handler)
-        self.canvas.mpl_connect('motion_notify_event', self._motion_handler)
-        self._frame.store_canvas()
-        self._show()
+        self.canvas.store_canvas()
+        self._show(crosshair_axes=self._array_axes)
 
     def _fill_toolbar(self, tb):
         ColorMapMixin._fill_toolbar(self, tb)
@@ -861,7 +855,7 @@ class TopoArray(ColorMapMixin, EelFigure):
         w.clear()
 
         if t is not None:
-            w.update(t=t)
+            w.update(t)
 
         self.canvas.draw()
 
@@ -913,10 +907,10 @@ class TopoArray(ColorMapMixin, EelFigure):
             self._selected_window = None
             self.canvas.draw()
 
-    def _motion_handler(self, mouseevent):
-        ax = mouseevent.inaxes
-        if (self._selected_window is not None and
-                getattr(ax, 'type', None) == 'main' and
-                mouseevent.xdata in self._epochs[0][0].time):
-            self._selected_window.update(t=mouseevent.xdata)
-            self._frame.redraw(axes=[self._selected_window.ax])
+    def _on_motion_sub(self, event):
+        if (self._selected_window is not None and event.inaxes and
+                event.inaxes.type == 'main' and
+                event.xdata in self._epochs[0][0].time):
+            self._selected_window.update(event.xdata)
+            return {self._selected_window.ax}
+        return set()

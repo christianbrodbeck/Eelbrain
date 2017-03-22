@@ -949,6 +949,11 @@ class EelFigure(object):
         # containers for hooks
         self._untight_draw_hooks = []
 
+        # options
+        self._draw_crosshairs = False
+        self._crosshair_lines = None
+        self._crosshair_axes = None
+
         # add callbacks
         self.canvas.mpl_connect('motion_notify_event', self._on_motion)
         self.canvas.mpl_connect('axes_leave_event', self._on_leave_axes)
@@ -1012,9 +1017,14 @@ class EelFigure(object):
         for title, ax in izip(axtitle, axes):
             ax.set_title(title)
 
-    def _show(self):
+    def _show(self, crosshair_axes=None):
         if self._layout.tight:
             self._tight()
+
+        if crosshair_axes is None:
+            self._crosshair_axes = self._axes
+        else:
+            self._crosshair_axes = crosshair_axes
 
         self.draw()
 
@@ -1028,6 +1038,9 @@ class EelFigure(object):
             if CONFIG['eelbrain'] and do_autorun(self._layout.run):
                 from .._wxgui import run
                 run()
+
+        if not self.canvas._background:
+            self.canvas.store_canvas()
 
     def _tight(self):
         "Default implementation based on matplotlib"
@@ -1055,15 +1068,41 @@ class EelFigure(object):
 
     def _on_leave_axes(self, event):
         "Update the status bar when the cursor leaves axes"
-        self._frame.SetStatusText(':-)')
+        self._frame.SetStatusText(
+            self._on_leave_axes_status_text(event))
+        if self._draw_crosshairs:
+            self._remove_crosshairs(True)
+
+    def _on_leave_axes_status_text(self, event):
+        return u'☺︎'
 
     def _on_motion(self, event):
         "Update the status bar for mouse movement"
+        redraw_axes = self._on_motion_sub(event)
         ax = event.inaxes
+        # draw crosshairs
+        if self._draw_crosshairs and ax in self._crosshair_axes:
+            if self._crosshair_lines is None:
+                self._crosshair_lines = tuple(
+                    (ax.axhline(event.ydata, color='k'),
+                     ax.axvline(event.xdata, color='k'))
+                    for ax in self._crosshair_axes)
+            else:
+                for hline, vline in self._crosshair_lines:
+                    hline.set_ydata([event.ydata, event.ydata])
+                    vline.set_xdata([event.xdata, event.xdata])
+            redraw_axes.update(self._crosshair_axes)
+        # update status bar
         if ax:
             x = ax.xaxis.get_major_formatter().format_data(event.xdata)
             y = ax.yaxis.get_major_formatter().format_data(event.ydata)
             self._frame.SetStatusText('x = %s, y = %s' % (x, y))
+        # redraw
+        self.canvas.redraw(redraw_axes)
+
+    def _on_motion_sub(self, event):
+        "Subclass action on mouse motion, return set of axes to redraw"
+        return set()
 
     def _on_resize(self, event):
         if self._layout.tight:
@@ -1080,6 +1119,15 @@ class EelFigure(object):
                 raise RuntimeError("Attempting to assign key release %r twice" %
                                    key)
             self.__callback_key_release[key] = release
+
+    def _remove_crosshairs(self, draw=False):
+        if self._crosshair_lines is not None:
+            for hline, vline in self._crosshair_lines:
+                hline.remove()
+                vline.remove()
+            self._crosshair_lines = None
+            if draw:
+                self.canvas.redraw(self._crosshair_axes)
 
     def _fill_toolbar(self, tb):
         """
@@ -1174,6 +1222,11 @@ class EelFigure(object):
         t0 = time.time()
         self._frame.canvas.draw()
         self._last_draw_time = time.time() - t0
+
+    def draw_crosshairs(self, enable=True):
+        self._draw_crosshairs = enable
+        if not enable:
+            self._remove_crosshairs(True)
 
     def _asfmtext(self):
         return self.image()

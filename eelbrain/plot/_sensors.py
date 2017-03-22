@@ -609,8 +609,7 @@ class SensorMaps(EelFigure):
 
         self._update_mark_plot()
 
-    def _on_motion(self, event):
-        super(self.__class__, self)._on_motion(event)
+    def _on_motion_sub(self, event):
         ax = event.inaxes
         if ax and ax is self._drag_ax:
             x0 = self._drag_x
@@ -620,7 +619,8 @@ class SensorMaps(EelFigure):
             x = [x0, x1, x1, x0, x0]
             y = [y0, y0, y1, y1, y0]
             self._drag_rect.set_data(x, y)
-            self.canvas.redraw(artists=[self._drag_rect])
+            return {ax}
+        return set()
 
     def _OnClear(self, event):
         self.clear()
