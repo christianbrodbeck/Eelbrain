@@ -65,6 +65,7 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
         self.figure = Figure(*args, **kwargs)
         FigureCanvasWxAgg.__init__(self, parent, wx.ID_ANY, self.figure)
         self.Bind(wx.EVT_ENTER_WINDOW, self.ChangeCursor)
+        self._background = None
 
     def CanCopy(self):
         return True
@@ -105,17 +106,22 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
             if ax.in_axes(mpl_event):
                 return ax
 
-    def redraw(self, axes=(), artists=()):
+    def redraw(self, axes=set(), artists=()):
+        # FIXME:  redraw artist instead of whole axes
+        if artists:
+            axes.update(artist.axes for artist in artists)
+        elif not axes:
+            return
+        elif self._background is None:
+            raise RuntimeError("Background not captured")
+
         self.restore_region(self._background)
         for ax in axes:
             ax.draw_artist(ax)
-            extent = ax.get_window_extent()
-            self.blit(extent)
-        for artist in artists:
-            # FIXME:  redraw artist instead of whole axes
-            artist.axes.draw_artist(artist.axes)
-            extent = artist.axes.get_window_extent()
-            self.blit(extent)
+            self.blit(ax.get_window_extent())
+        # for artist in artists:
+        #     artist.axes.draw_artist(artist.axes)
+        #     self.blit(artist.axes.get_window_extent())
 
     def store_canvas(self):
         self._background = self.copy_from_bbox(self.figure.bbox)
@@ -268,12 +274,6 @@ class CanvasFrame(EelbrainFrame):
 
     def OnUpdateUISetVLim(self, event):
         event.Enable(hasattr(self._eelfigure, 'set_ylim'))
-
-    def redraw(self, axes=[], artists=[]):
-        self.canvas.redraw(axes=axes, artists=artists)
-
-    def store_canvas(self):
-        self.canvas.store_canvas()
 
 
 class TestCanvas(CanvasFrame):
