@@ -51,7 +51,8 @@ class Brain(surfer.Brain):
         assert isinstance(views, list)
         n_rows = len(views)
         n_columns = 2 if hemi == 'split' else 1
-        self._frame = BrainFrame(None, title, width, height, n_rows, n_columns)
+        self._frame = BrainFrame(None, self, title, width, height, n_rows,
+                                 n_columns)
 
         surfer.Brain.__init__(self, subject, hemi, surf, views=views,
                               figure=self._frame.figure, **kwargs)
