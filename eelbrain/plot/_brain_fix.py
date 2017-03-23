@@ -42,6 +42,9 @@ class Brain(surfer.Brain):
                  show, run, **kwargs):
         self.__data = []
         self.__annot = None
+        self._time_dim = None
+        self.__time_index = 0
+        self._frame_is_alive = True
 
         if title is None:
             title = "Brain: %s" % subject
@@ -180,6 +183,13 @@ class Brain(surfer.Brain):
             smoothing_steps = ndvar.source.grade + 1
 
         if ndvar.has_dim('time'):
+            if self._time_dim is None:
+                self._time_dim = ndvar.time
+            elif self._time_dim != ndvar.time:
+                raise ValueError(
+                    "The brain already displays an NDVar with incompatible "
+                    "time dimension (current: %s;  new: %s)" %
+                    (self._time_dim, ndvar.time))
             times = ndvar.time.times
             data_dims = ('source', 'time')
             if time_label == 'ms':
@@ -454,3 +464,10 @@ class Brain(surfer.Brain):
                     fig.scene.camera.parallel_scale = scale
                 fig.scene.camera.parallel_projection = True
                 fig.render()
+
+    def _update_time(self, t):
+        index = self._time_dim.dimindex(t)
+        if index == self.__time_index:
+            return
+        self.set_data_time_index(index)
+        self.__time_index = index

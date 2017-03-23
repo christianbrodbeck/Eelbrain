@@ -116,6 +116,7 @@ class BrainFrame(EelbrainFrame):
             wx.TheClipboard.Flush()
 
     def OnClose(self, event):
+        self._brain._frame_is_alive = False
         self._brain = None
         event.Skip()
 
