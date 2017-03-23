@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 from distutils.version import LooseVersion
+from logging import getLogger
 import select
 import sys
 from threading import Thread
@@ -372,7 +373,14 @@ class App(wx.App):
 
     def OnCopy(self, event):
         win = wx.Window.FindFocus()
-        win.Copy()
+        if hasattr(win, 'CanCopy'):
+            return win.Copy()
+        win = self._get_active_frame()
+        if hasattr(win, 'CanCopy'):
+            return win.Copy()
+        getLogger('Eelbrain').debug(
+            "App.OnCopy() call but neither focus nor frame have CanCopy()")
+        event.Skip()
 
     def OnCopyAsPNG(self, event):
         wx.Window.FindFocus().CopyAsPNG()
@@ -481,7 +489,11 @@ class App(wx.App):
 
     def OnUpdateUICopy(self, event):
         win = wx.Window.FindFocus()
-        event.Enable(win and hasattr(win, 'CanCopy') and win.CanCopy())
+        if hasattr(win, 'CanCopy'):
+            return event.Enable(win.CanCopy())
+        win = self._get_active_frame()
+        if hasattr(win, 'CanCopy'):
+            return event.Enable(win.CanCopy())
 
     def OnUpdateUICopyAsPNG(self, event):
         event.Enable(hasattr(wx.Window.FindFocus(), 'CopyAsPNG'))
