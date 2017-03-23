@@ -15,7 +15,7 @@ import wx
 
 from .._data_obj import NDVar, SourceSpace
 from .._wxgui import run as run_gui
-from ..fmtxt import Image
+from ..fmtxt import Image, ms
 from ..mne_fixes import reset_logger
 from ._base import (CONFIG, do_autorun, find_axis_params_data, find_fig_cmaps,
                     find_fig_vlims)
@@ -61,6 +61,14 @@ class Brain(surfer.Brain):
             self._frame.Show()
             if CONFIG['eelbrain'] and do_autorun(run):
                 run_gui()
+
+    def __repr__(self):
+        args = [self.subject_id]
+        if self.n_times:
+            args.append("%i time points %i-%i ms" %
+                        (self.n_times, ms(self._time_dim.tmin),
+                         ms(self._time_dim.tstop)))
+        return "<plot.brain.Brain: %s>" % ', '.join(args)
 
     def add_mask(self, source, color=(1, 1, 1), smoothing_steps=None,
                  alpha=None, subjects_dir=None):
