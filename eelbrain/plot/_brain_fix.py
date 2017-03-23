@@ -140,10 +140,10 @@ class Brain(surfer.Brain):
         colorbar : bool
             Add a colorbar to the figure (use ``.plot_colorbar()`` to plot a
             colorbar separately).
-        time_label : str
+        time_label : str | callable
             Label to show time point. Use ``'ms'`` or ``'s'`` to display time in
-            milliseconds or in seconds, or supply a custom format string to format
-            time values (in seconds; default is ``'ms'``).
+            milliseconds or in seconds, or supply a custom formatter for time
+            values in seconds (default is ``'ms'``).
         lighting : bool
             The data overlay is affected by light sources (set to False to make
             the data overlay luminescent).
@@ -185,12 +185,7 @@ class Brain(surfer.Brain):
             times = ndvar.time.times
             data_dims = ('source', 'time')
             if time_label == 'ms':
-                import surfer
-                if LooseVersion(surfer.__version__) > LooseVersion('0.5'):
-                    time_label = lambda x: '%s ms' % int(round(x * 1000))
-                else:
-                    times = times * 1000
-                    time_label = '%i ms'
+                time_label = lambda x: '%s ms' % int(round(x * 1000))
             elif time_label == 's':
                 time_label = '%.3f s'
         else:
