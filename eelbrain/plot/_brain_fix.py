@@ -62,6 +62,12 @@ class Brain(surfer.Brain):
             if CONFIG['eelbrain'] and do_autorun(run):
                 run_gui()
 
+    def __repr__(self):
+        args = [self.subject_id]
+        if self.n_times:
+            args.append("%i time points, %s...%s")
+        return "<plot.brain.Brain: %s>" % ', '.join(args)
+
     def add_mask(self, source, color=(1, 1, 1), smoothing_steps=None,
                  alpha=None, subjects_dir=None):
         """Add a mask shading areas that are not included in an NDVar
