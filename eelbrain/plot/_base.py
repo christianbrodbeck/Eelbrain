@@ -1987,6 +1987,56 @@ class Legend(EelFigure):
         self._show()
 
 
+class TimeSlicer(object):
+    # update data in a child plot of time-slices
+    def __init__(self, x_dimname, axes=None):
+        self.__x_dimname = x_dimname
+        self.__slice_plots = []
+        self.__dead_plots = []
+        self.__time_fixed = None
+        self.__time_lines = []
+        self.__axes = self._axes if axes is None else axes
+        self.canvas.mpl_connect('button_press_event', self._on_click)
+
+    def _link_slice_plot(self, other):
+        if self.__x_dimname != 'time':
+            raise NotImplementedError("Slice plot for dimension other than time")
+        self.__slice_plots.append(other)
+
+    def _on_click(self, event):
+        if event.inaxes:
+            while self.__time_lines:
+                self.__time_lines.pop().remove()
+
+            if event.button == 1:  # LMB
+                for p in self.__slice_plots:
+                    if p._frame_is_alive:
+                        p._update_time(event.xdata)
+                self.__time_fixed = True
+                # add time point lines
+                for ax in self.__axes:
+                    self.__time_lines.append(ax.axvline(event.xdata, color='k'))
+            elif self.__time_fixed:
+                self.__time_fixed = False
+            else:
+                return
+            self.canvas.redraw(self.__axes)
+
+    def _on_motion_sub(self, event):
+        if self.__time_fixed:
+            return set()
+        if event.inaxes:
+            for p in self.__slice_plots:
+                if p._frame_is_alive:
+                    p._update_time(event.xdata)
+                else:
+                    self.__dead_plots.append(p)
+        # remove dead plots
+        while self.__dead_plots:
+            self.__slice_plots.remove(self.__dead_plots.pop())
+        return set()
+
+
 class TopoMapKey(object):
 
     def __init__(self, data_func):
