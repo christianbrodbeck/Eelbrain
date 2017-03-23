@@ -531,7 +531,11 @@ def brain(src, cmap=None, vmin=None, vmax=None, surface='smoothwm',
         ndvar = asndvar(src)
         if ndvar.has_case:
             ndvar = ndvar.summary()
-        source = ndvar.source
+        source = ndvar.get_dim('source')
+        # check that ndvar has the right dimensions
+        if ndvar.ndim == 2 and not ndvar.has_dim('time') or ndvar.ndim > 2:
+            raise ValueError("NDVar should have dimesions source and "
+                             "optionally time, got %r" % (ndvar,))
 
     if hemi is None:
         if source.lh_n and source.rh_n:
