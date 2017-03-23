@@ -253,8 +253,8 @@ class Brain(surfer.Brain):
 
     def close(self):
         "Close the figure window"
-        self._frame.Close()
         surfer.Brain.close(self)
+        self._frame.Close()
 
     def copy_screenshot(self):
         "Copy the currently shown image to the clipboard"
