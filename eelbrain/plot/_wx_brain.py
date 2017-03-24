@@ -106,11 +106,12 @@ class BrainFrame(EelbrainFrame):
         image = wx.ImageFromDataWithAlpha(
             w, h, ss[:,:,:3].tostring(), ss[:,:,3].tostring())
         bitmap = image.ConvertToBitmap()
+        data = wx.BitmapDataObject(bitmap)
         if not wx.TheClipboard.Open():
             getLogger('eelbrain').debug("Failed to open clipboard")
             return
         try:
-            wx.TheClipboard.SetData(bitmap)
+            wx.TheClipboard.SetData(data)
         finally:
             wx.TheClipboard.Close()
             wx.TheClipboard.Flush()
