@@ -13,7 +13,6 @@ import numpy as np
 from scipy import interpolate, linalg
 from scipy.spatial import ConvexHull
 
-from .._utils import deprecated
 from .._utils.numpy_utils import digitize
 from . import _base
 from ._base import (
