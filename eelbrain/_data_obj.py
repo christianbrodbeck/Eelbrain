@@ -7088,7 +7088,23 @@ class Dimension(object):
         -------
         intersection : Dimension
             The intersection with dim (returns itself if dim and self are
-            equal)
+            equal).
+        """
+        raise NotImplementedError
+
+    def _union(self, other):
+        """Create a Dimension that is the union with dim
+
+        Parameters
+        ----------
+        other : Dimension
+            Dimension to form union with.
+
+        Returns
+        -------
+        union : Dimension
+            The union with dim (returns itself if dim and self are
+            equal).
         """
         raise NotImplementedError
 
@@ -9014,6 +9030,15 @@ class UTS(Dimension):
             raise DimensionMismatchError("UTS dimensions don't overlap")
 
         return UTS(tmin, tstep, nsamples)
+
+    def _union(self, other):
+        # sloppy implementation
+        if self == other:
+            return self
+        tstep = min(self.tstep, other.tstep)
+        tmin = min(self.tmin, other.tmin)
+        n_samples = int(round((max(self.tstop, other.tstop) - tmin) / tstep))
+        return UTS(tmin, tstep, n_samples)
 
 
 def intersect_dims(dims1, dims2, check_dims=True):

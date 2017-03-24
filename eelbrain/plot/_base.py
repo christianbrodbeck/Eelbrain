@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Framework for figures embedded in a GUI
 
 Implementation
@@ -81,8 +82,8 @@ from .._utils import deprecated
 from .._utils.subp import command_exists
 from ..fmtxt import Image
 from .._colorspaces import symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
-from .._data_obj import (ascategorial, asndvar, assub, isnumeric, isdataobject,
-                         cellname)
+from .._data_obj import (UTS, ascategorial, asndvar, assub, isnumeric,
+                         isdataobject, cellname)
 
 
 # constants
@@ -1989,7 +1990,14 @@ class Legend(EelFigure):
 
 class TimeSlicer(object):
     # update data in a child plot of time-slices
-    def __init__(self, x_dimname, axes=None):
+    def __init__(self, x_dimname, epochs, axes=None):
+        if x_dimname == 'time':
+            self.__xdim = reduce(
+                UTS._union,
+                (e.get_dim(x_dimname) for layers in epochs for e in layers))
+            self.__current_time = self.__xdim.tmin
+        else:
+            self.__xdim = self.__current_time = None
         self.__x_dimname = x_dimname
         self.__slice_plots = []
         self.__dead_plots = []
@@ -1997,6 +2005,8 @@ class TimeSlicer(object):
         self.__time_lines = []
         self.__axes = self._axes if axes is None else axes
         self.canvas.mpl_connect('button_press_event', self._on_click)
+        self._register_key('.', self.__on_nudge_time)
+        self._register_key(',', self.__on_nudge_time)
 
     def _link_slice_plot(self, other):
         if self.__x_dimname != 'time':
@@ -2005,36 +2015,52 @@ class TimeSlicer(object):
 
     def _on_click(self, event):
         if event.inaxes:
-            while self.__time_lines:
-                self.__time_lines.pop().remove()
-
             if event.button == 1:  # LMB
-                for p in self.__slice_plots:
-                    if p._frame_is_alive:
-                        p._update_time(event.xdata)
-                self.__time_fixed = True
-                # add time point lines
-                for ax in self.__axes:
-                    self.__time_lines.append(ax.axvline(event.xdata, color='k'))
+                self.__set_time(event.xdata, fixate=True)
             elif self.__time_fixed:
+                while self.__time_lines:
+                    self.__time_lines.pop().remove()
                 self.__time_fixed = False
             else:
                 return
             self.canvas.redraw(self.__axes)
 
     def _on_motion_sub(self, event):
-        if self.__time_fixed:
-            return set()
-        if event.inaxes:
-            for p in self.__slice_plots:
-                if p._frame_is_alive:
-                    p._update_time(event.xdata)
-                else:
-                    self.__dead_plots.append(p)
+        if event.inaxes and not self.__time_fixed:
+            self.__set_time(event.xdata)
+        return set()
+
+    def __on_nudge_time(self, event):
+        if self.__xdim is None:
+            return
+        current_i = self.__xdim.dimindex(self.__current_time)
+        if event.key == ',':  # left
+            new_i = max(0, current_i - 1)
+        else:
+            new_i = min(self.__xdim.nsamples - 1, current_i + 1)
+        self.__set_time(self.__xdim.times[new_i])
+        self.canvas.redraw(self.__axes)
+
+    def __set_time(self, t, fixate=False):
+        for p in self.__slice_plots:
+            if p._frame_is_alive:
+                p._update_time(t)
+            else:
+                self.__dead_plots.append(p)
+        self.__current_time = t
+        if fixate:
+            self.__time_fixed = True
+            # add time point lines
+            if self.__time_lines:
+                xdata = (t, t)
+                for line in self.__time_lines:
+                    line.set_xdata(xdata)
+            else:
+                for ax in self.__axes:
+                    self.__time_lines.append(ax.axvline(t, color='k'))
         # remove dead plots
         while self.__dead_plots:
             self.__slice_plots.remove(self.__dead_plots.pop())
-        return set()
 
 
 class TopoMapKey(object):
