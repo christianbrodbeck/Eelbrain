@@ -1,7 +1,6 @@
 # Authors: Denis Engemann <denis.engemann@gmail.com>
 #
 # License: BSD (3-clause)
-from distutils.version import LooseVersion
 import logging
 
 import numpy as np
@@ -15,13 +14,11 @@ from mne.io.pick import pick_types, pick_channels
 from mne.surface import _normalize_vectors
 
 
-if LooseVersion(mne.__version__) >= LooseVersion('0.11.0'):
-    def map_meg_channels(inst, picks_good, picks_bad, mode):
-        info_from = mne.pick_info(inst.info, picks_good, copy=True)
-        info_to = mne.pick_info(inst.info, picks_bad, copy=True)
-        return _map_meg_channels(info_from, info_to, mode=mode)
-else:
-    map_meg_channels = _map_meg_channels
+# mne 0.10 function
+def map_meg_channels(inst, picks_good, picks_bad, mode):
+    info_from = mne.pick_info(inst.info, picks_good, copy=True)
+    info_to = mne.pick_info(inst.info, picks_bad, copy=True)
+    return _map_meg_channels(info_from, info_to, mode=mode)
 
 
 # private in 0.9.0 (Epochs method)
