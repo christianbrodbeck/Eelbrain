@@ -139,7 +139,7 @@ def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
         Number of cycles. Fixed number or one per frequency.
     zero_mean : bool
         Make sure the wavelets are zero mean.
-    out : 'complex' | 'magnitude' | 'phase'
+    out : 'complex' | 'magnitude'
         Format of the data in the returned NDVar.
 
     Returns
@@ -147,20 +147,18 @@ def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
     tfr : NDVar
         Time frequency decompositions.
     """
-    from mne.time_frequency.tfr import cwt_morlet
-
     if not y.get_axis('time') == y.ndim - 1:
         raise NotImplementedError
     x = y.x
     x = x.reshape((np.prod(x.shape[:-1]), x.shape[-1]))
-    Fs = 1. / y.time.tstep
+    sfreq = 1. / y.time.tstep
     if np.isscalar(freqs):
         freqs = [freqs]
         fdim = None
     else:
         fdim = Ordered("frequency", freqs, 'Hz')
         freqs = fdim.values
-    x = cwt_morlet(x, Fs, freqs, use_fft, n_cycles, zero_mean)
+    x = mne_fixes.cwt_morlet(x, sfreq, freqs, n_cycles, zero_mean, use_fft)
     if out == 'magnitude':
         x = np.abs(x)
     elif out == 'complex':

@@ -1,9 +1,10 @@
-from distutils.version import LooseVersion
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import mne
 
+from ._version import MNE_14_OR_GREATER
 
-MNE_VERSION = LooseVersion(mne.__version__)
-if MNE_VERSION >= LooseVersion('0.14'):
+
+if MNE_14_OR_GREATER:
     MNE_EPOCHS = mne.BaseEpochs
     MNE_RAW = mne.io.BaseRaw
 else:
