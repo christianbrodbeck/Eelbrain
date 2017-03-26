@@ -38,7 +38,7 @@ requirements:
     - mne >=0.13.1
     - nibabel >=2.0
     - olefile  # [linux]
-    - numpy >=1.8
+    - numpy x.x
     - pillow
     - pysurfer >=0.7
     - scipy >=0.17
