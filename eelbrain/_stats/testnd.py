@@ -32,6 +32,7 @@ import logging
 import operator
 import os
 import re
+import signal
 import socket
 from time import time as current_time
 from warnings import warn
@@ -2862,6 +2863,7 @@ class _MergedTemporalClusterDist:
 
 def distribution_worker(dist_array, dist_shape, in_queue):
     "Worker that accumulates values and places them into the distribution"
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
     n = reduce(operator.mul, dist_shape)
     dist = np.frombuffer(dist_array, np.float64, n)
     dist.shape = dist_shape
@@ -2872,6 +2874,7 @@ def distribution_worker(dist_array, dist_shape, in_queue):
 
 def permutation_worker(in_queue, out_queue, y, shape, test_func, map_args):
     "Worker for 1 sample t-test"
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
     n = reduce(operator.mul, shape)
     y = np.frombuffer(y, np.float64, n).reshape((shape[0], -1))
     stat_map = np.empty(shape[1:])
@@ -2924,12 +2927,14 @@ def setup_workers(test_func, dist):
     workers = []
     for _ in xrange(CONFIG['n_workers']):
         w = Process(target=permutation_worker, args=args)
+        w.daemon = True
         w.start()
         workers.append(w)
 
     # distribution worker
     args = (dist.dist_array, dist.dist_shape, dist_queue)
     w = Process(target=distribution_worker, args=args)
+    w.daemon = True
     w.start()
     workers.append(w)
 
@@ -2998,12 +3003,14 @@ def setup_workers_me(test_func, dists, thresholds):
     workers = []
     for _ in xrange(CONFIG['n_workers']):
         w = Process(target=permutation_worker_me, args=args)
+        w.daemon = True
         w.start()
         workers.append(w)
 
     # distribution worker
     args = ([d.dist_array for d in dists], dist.dist_shape, dist_queue)
     w = Process(target=distribution_worker_me, args=args)
+    w.daemon = True
     w.start()
     workers.append(w)
 
@@ -3012,6 +3019,7 @@ def setup_workers_me(test_func, dists, thresholds):
 
 def permutation_worker_me(in_queue, out_queue, y, shape, test, map_args,
                           thresholds):
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
     n = reduce(operator.mul, shape)
     y = np.frombuffer(y, np.float64, n).reshape((shape[0], -1))
     iterator = list(test.preallocate(shape))
@@ -3033,6 +3041,7 @@ def permutation_worker_me(in_queue, out_queue, y, shape, test, map_args,
 
 def distribution_worker_me(dist_arrays, dist_shape, in_queue):
     "Worker that accumulates values and places them into the distribution"
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
     n = reduce(operator.mul, dist_shape)
     dists = [d if d is None else np.frombuffer(d, np.float64, n).reshape(dist_shape)
              for d in dist_arrays]

@@ -17,6 +17,7 @@ from itertools import chain, izip, product
 from math import floor
 from multiprocessing import Process, Queue
 from multiprocessing.sharedctypes import RawArray
+import signal
 import time
 from threading import Thread
 
@@ -302,7 +303,9 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         # slight numerical differences can occur
         job_queue, result_queue = setup_workers(
             y_data, x_data, trf_length, delta, mindelta_, N_SEGS, error)
-        Thread(target=put_jobs, args=(job_queue, n_y, N_SEGS)).start()
+        thread = Thread(target=put_jobs, args=(job_queue, n_y, N_SEGS))
+        thread.daemon = True
+        thread.start()
 
         # collect results
         h_segs = {}
@@ -594,13 +597,17 @@ def setup_workers(y, x, trf_length, delta, mindelta, nsegs, error):
     args = (y_buffer, x_buffer, n_y, n_times, n_x, trf_length, delta,
             mindelta, nsegs, error, job_queue, result_queue)
     for _ in xrange(CONFIG['n_workers']):
-        Process(target=boosting_worker, args=args).start()
+        process = Process(target=boosting_worker, args=args)
+        process.daemon = True
+        process.start()
 
     return job_queue, result_queue
 
 
 def boosting_worker(y_buffer, x_buffer, n_y, n_times, n_x, trf_length,
                     delta, mindelta, nsegs, error, job_queue, result_queue):
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
     y = np.frombuffer(y_buffer, np.float64, n_y * n_times).reshape((n_y, n_times))
     x = np.frombuffer(x_buffer, np.float64, n_x * n_times).reshape((n_x, n_times))
 
