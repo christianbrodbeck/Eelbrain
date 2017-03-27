@@ -13,7 +13,8 @@ from .._data_obj import (
     ascategorial, asndvar, assub, cellname, Celltable, longname)
 from .._stats import stats
 from . import _base
-from ._base import EelFigure, Layout, LegendMixin, YLimMixin, XAxisMixin
+from ._base import (
+    EelFigure, Layout, LegendMixin, YLimMixin, XAxisMixin, frame_title)
 from ._colors import colors_for_oneway, find_cell_colors
 from .._colorspaces import oneway_colors
 from functools import reduce
@@ -113,6 +114,8 @@ class UTSStat(LegendMixin, YLimMixin, EelFigure):
      - ``r``: y-axis zoom in (reduce y-axis range)
      - ``c``: y-axis zoom out (increase y-axis range)
     """
+    _name = "UTSStat"
+
     def __init__(self, Y='Y', X=None, Xax=None, match=None, sub=None, ds=None,
                  main=np.mean, error='sem', pool_error=None, legend='upper right',
                  axtitle=True, xlabel=True, ylabel=True, xticklabels=True,
@@ -167,9 +170,8 @@ class UTSStat(LegendMixin, YLimMixin, EelFigure):
         else:
             colors = find_cell_colors(color_x, colors)
 
-        frame_title = _base.frame_title("UTSStat", Y, X, Xax)
         layout = Layout(nax, 2, 4, *args, share_axes=True, **kwargs)
-        EelFigure.__init__(self, frame_title, layout)
+        EelFigure.__init__(self, frame_title(Y, X, Xax), layout)
         clip = layout.frame
 
         # create plots
@@ -399,14 +401,16 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
      - ``r``: y-axis zoom in (reduce y-axis range)
      - ``c``: y-axis zoom out (increase y-axis range)
     """
+    _name = "UTS"
+
     def __init__(self, epochs, xax=None, axtitle=True, ds=None, sub=None,
                  xlabel=True, ylabel=True, xticklabels=True, bottom=None,
                  top=None, legend='upper right', xlim=None, *args, **kwargs):
-        epochs, (xdim,), frame_title = _base.unpack_epochs_arg(
-            epochs, (None,), xax, ds, "UTS", sub
+        epochs, (xdim,), data_desc = _base.unpack_epochs_arg(
+            epochs, (None,), xax, ds, sub
         )
         layout = Layout(len(epochs), 2, 4, *args, **kwargs)
-        EelFigure.__init__(self, frame_title, layout)
+        EelFigure.__init__(self, data_desc, layout)
         self._set_axtitle(axtitle, epochs)
 
         e0 = epochs[0][0]
@@ -520,18 +524,18 @@ class UTSClusters(EelFigure):
     title : str
         Figure title.
     """
+    _name = "UTSClusters"
+
     def __init__(self, res, pmax=0.05, ptrend=0.1, axtitle=True, cm=None,
                  overlay=False, xticklabels=True, *args, **kwargs):
         clusters_ = res.clusters
 
-        epochs, (xdim,), frame_title = _base.unpack_epochs_arg(
-            res, (None,), plot_name="UTSClusters"
-        )
+        epochs, (xdim,), data_desc = _base.unpack_epochs_arg(res, (None,))
         # create figure
         n = len(epochs)
         nax = 1 if overlay else n
         layout = Layout(nax, 2, 4, *args, **kwargs)
-        EelFigure.__init__(self, frame_title, layout)
+        EelFigure.__init__(self, data_desc, layout)
         self._set_axtitle(axtitle, epochs)
 
         colors = colors_for_oneway(range(n), cmap=cm)

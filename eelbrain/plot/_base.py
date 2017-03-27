@@ -629,7 +629,7 @@ def find_data_dims(ndvar, dims):
             raise ValueError("NDVar does not have the right number of dimensions")
 
 
-def unpack_epochs_arg(y, dims, xax=None, ds=None, plot_name=None, sub=None):
+def unpack_epochs_arg(y, dims, xax=None, ds=None, sub=None):
     """Unpack the first argument to top-level NDVar plotting functions
 
     Parameters
@@ -644,8 +644,6 @@ def unpack_epochs_arg(y, dims, xax=None, ds=None, plot_name=None, sub=None):
         the first level, i.e., it assumes that Y's first dimension is cases.
     ds : None | Dataset
         Dataset containing data objects which are provided as str.
-    plot_name : str
-        Name of the plot (used only for ``frame_title``).
     sub : None | str
         Index selecting a subset of cases.
 
@@ -655,8 +653,8 @@ def unpack_epochs_arg(y, dims, xax=None, ds=None, plot_name=None, sub=None):
         The processed data to plot.
     dims : tuple of str
         Names of the dimensions.
-    frame_title : str
-        Name for the plot frame.
+    data_desc : str
+        Data description for the plot frame.
 
     Notes
     -----
@@ -748,7 +746,7 @@ def unpack_epochs_arg(y, dims, xax=None, ds=None, plot_name=None, sub=None):
                     axes.append([aggregate(v, agg)])
                 x_name = xax.name
 
-    return axes, dims, frame_title(plot_name, y_name, x_name)
+    return axes, dims, frame_title(y_name, x_name)
 
 
 def aggregate(y, agg):
@@ -824,13 +822,11 @@ def _loc(name, size=(0, 0), title_space=0, frame=.01):
     return x, y
 
 
-def frame_title(plot, y, x=None, xax=None):
+def frame_title(y, x=None, xax=None):
     """Generate frame title from common data structure
 
     Parameters
     ----------
-    plot : str
-        Name of the plot.
     y : data-obj | str
         Dependent variable.
     x : data-obj | str
@@ -847,13 +843,13 @@ def frame_title(plot, y, x=None, xax=None):
 
     if xax is None:
         if x is None:
-            return "%s: %s" % (plot, y)
+            return "%s" % (y,)
         else:
-            return "%s: %s ~ %s" % (plot, y, x)
+            return "%s ~ %s" % (y, x)
     elif x is None:
-        return "%s: %s | %s" % (plot, y, xax)
+        return "%s | %s" % (y, xax)
     else:
-        return "%s: %s ~ %s | %s" % (plot, y, x, xax)
+        return "%s ~ %s | %s" % (y, x, xax)
 
 
 class EelFigure(object):
@@ -867,17 +863,18 @@ class EelFigure(object):
      - end the initialization by calling `_EelFigure._show()`
      - add the :py:meth:`_fill_toolbar` method
     """
+    _name = 'Figure'
     _default_xlabel_ax = -1
     _default_ylabel_ax = 0
     _make_axes = True
 
-    def __init__(self, frame_title, layout):
+    def __init__(self, data_desc, layout):
         """Parent class for Eelbrain figures.
 
         Parameters
         ----------
-        frame_title : str
-            Frame title.
+        data_desc : str
+            Data description for frame title.
         layout : Layout
             Layout that determines figure dimensions.
         title : str
@@ -912,8 +909,7 @@ class EelFigure(object):
             Run the Eelbrain GUI app (default is True for interactive plotting and
             False in scripts).
         """
-        if layout.title:
-            frame_title = '%s: %s' % (frame_title, layout.title)
+        frame_title = '%s: %s' % (self._name, layout.title or data_desc)
 
         # find the right frame
         if CONFIG['eelbrain']:

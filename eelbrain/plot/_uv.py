@@ -320,6 +320,8 @@ class Boxplot(_SimpleFigure):
     title : str
         Figure title.
     """
+    _name = "Boxplot"
+
     def __init__(self, Y, X=None, match=None, sub=None, cells=None, datalabels=None,
                  bottom=None, top=None, ylabel=True, xlabel=True,
                  xtick_delim='\n', test=True, par=True, trend="'", test_markers=True,
@@ -353,8 +355,7 @@ class Boxplot(_SimpleFigure):
             raise ValueError(msg)
 
         # get axes
-        frame_title_ = frame_title("Boxplot", ct.Y, ct.X)
-        _SimpleFigure.__init__(self, frame_title_, *args, **kwargs)
+        _SimpleFigure.__init__(self, frame_title(ct.Y, ct.X), *args, **kwargs)
         self._set_xlabel_categorial(xlabel, ct.X)
         self._configure_yaxis(ct.Y, ylabel)
         ax = self._axes[0]
@@ -511,6 +512,8 @@ class Barplot(_SimpleFigure):
     title : str
         Figure title.
     """
+    _name = "Barplot"
+
     def __init__(self, Y, X=None, match=None, sub=None, cells=None, test=True, par=True,
                  corr='Hochberg', trend="'", test_markers=True, ylabel=True,
                  error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
@@ -521,8 +524,7 @@ class Barplot(_SimpleFigure):
         if pool_error is None:
             pool_error = ct.all_within
 
-        frame_title_ = frame_title("Barplot", ct.Y, ct.X)
-        _SimpleFigure.__init__(self, frame_title_, *args, **kwargs)
+        _SimpleFigure.__init__(self, frame_title(ct.Y, ct.X), *args, **kwargs)
         self._set_xlabel_categorial(xlabel, ct.X)
         self._configure_yaxis(ct.Y, ylabel)
 
@@ -906,6 +908,8 @@ class Correlation(EelFigure, LegendMixin):
     title : str
         Figure title.
     """
+    _name = "Correlation"
+
     def __init__(self, y, x, cat=None, sub=None, ds=None,
                  c=['b', 'r', 'k', 'c', 'm', 'y', 'g'], legend='upper right',
                  xlabel=True, ylabel=True, *args, **kwargs):
@@ -916,9 +920,8 @@ class Correlation(EelFigure, LegendMixin):
             cat = ascategorial(cat, sub, ds)
 
         # figure
-        frame_title_ = frame_title("Correlation", y, x, cat)
         layout = Layout(1, 1, 5, *args, **kwargs)
-        EelFigure.__init__(self, frame_title_, layout)
+        EelFigure.__init__(self, frame_title(y, x, cat), layout)
         self._configure_yaxis(y, ylabel)
         self._configure_xaxis(x, xlabel)
 
@@ -982,6 +985,8 @@ class Regression(EelFigure, LegendMixin):
     title : str
         Figure title.
     """
+    _name = "Regression"
+
     def __init__(self, Y, X, cat=None, match=None, sub=None, ds=None,
                  xlabel=True, ylabel=True, alpha=.2, legend='upper right',
                  c=['#009CFF', '#FF7D26', '#54AF3A', '#FE58C6', '#20F2C3'],
@@ -998,9 +1003,8 @@ class Regression(EelFigure, LegendMixin):
             ylabel = Y.name
 
         # figure
-        frame_title_ = frame_title("Regression", Y, X, cat)
         layout = Layout(1, 1, 5, *args, **kwargs)
-        EelFigure.__init__(self, frame_title_, layout)
+        EelFigure.__init__(self, frame_title(Y, X, cat), layout)
         self._configure_xaxis(X, xlabel)
         self._configure_yaxis(Y, ylabel)
 
@@ -1108,6 +1112,8 @@ class Histogram(EelFigure):
     title : None | str
         Figure title.
     """
+    _name = "Histogram"
+
     def __init__(self, Y, X=None, match=None, sub=None, ds=None, pooled=True,
                  normed=False, tight=True, title=True, *args, **kwargs):
         ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
@@ -1131,9 +1137,8 @@ class Histogram(EelFigure):
             if title is True:
                 title = "Tests for Normality"
 
-        frame_title_ = frame_title("Histogram", ct.Y, ct.X)
         layout = Layout(nax, 1, 3, tight, title, *args, **kwargs)
-        EelFigure.__init__(self, frame_title_, layout)
+        EelFigure.__init__(self, frame_title(ct.Y, ct.X), layout)
 
         if X is None:
             _ax_histogram(self._axes[0], ct.Y.x, normed)

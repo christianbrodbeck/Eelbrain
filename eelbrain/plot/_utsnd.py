@@ -235,19 +235,21 @@ class Array(TimeSlicer, ColorMapMixin, XAxisMixin, EelFigure):
      - ``f``: zoom in (reduce x axis range)
      - ``d``: zoom out (increase x axis range)
     """
+    _name = "Array"
+
     def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
                  xticklabels=True, ds=None, sub=None, x='time', vmax=None,
                  vmin=None, cmap=None, axtitle=True, interpolation=None,
                  xlim=None, *args, **kwargs):
-        epochs, (xdim, ydim), frame_title = _base.unpack_epochs_arg(
-            epochs, (x, None), Xax, ds, "Array", sub
+        epochs, (xdim, ydim), data_desc = _base.unpack_epochs_arg(
+            epochs, (x, None), Xax, ds, sub
         )
         self.plots = []
         ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin, None, self.plots)
 
         nax = len(epochs)
         layout = Layout(nax, 2, 4, *args, **kwargs)
-        EelFigure.__init__(self, frame_title, layout)
+        EelFigure.__init__(self, data_desc, layout)
         self._set_axtitle(axtitle, epochs)
 
         for i, ax, layers in zip(xrange(nax), self._axes, epochs):
@@ -430,16 +432,17 @@ class Butterfly(TimeSlicer, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
     """
     _cmaps = None  # for TopoMapKey mixin
     _contours = None
+    _name = "Butterfly"
 
     def __init__(self, epochs, xax=None, sensors=None, axtitle=True,
                  xlabel=True, ylabel=True, xticklabels=True, color=None,
                  ds=None, sub=None, x='time', vmax=None, vmin=None, xlim=None,
                  *args, **kwargs):
-        epochs, (xdim, linedim), frame_title = _base.unpack_epochs_arg(
-            epochs, (x, None), xax, ds, "Butterfly", sub
+        epochs, (xdim, linedim), data_desc = _base.unpack_epochs_arg(
+            epochs, (x, None), xax, ds, sub
         )
         layout = Layout(len(epochs), 2, 4, *args, **kwargs)
-        EelFigure.__init__(self, frame_title, layout)
+        EelFigure.__init__(self, data_desc, layout)
         self._set_axtitle(axtitle, epochs)
         e0 = epochs[0][0]
         self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
