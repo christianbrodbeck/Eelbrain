@@ -10,9 +10,10 @@ from scipy import linalg, signal
 from . import mne_fixes
 from . import _colorspaces as cs
 from ._data_obj import NDVar, Dimension, UTS, Ordered, DimensionMismatchError
+from ._info import merge_info
 
 
-def concatenate(ndvars, dim='time', name=None, tmin=0, info=None):
+def concatenate(ndvars, dim='time', name=None, tmin=0):
     """Concatenate multiple NDVars
 
     Parameters
@@ -28,8 +29,6 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None):
         Name the NDVar holding the result.
     tmin : scalar
         Time axis start, only applies when ``dim == 'time'``; default is 0.
-    info : dict
-        Info for the new NDVar (default is an empty dict).
 
     Returns
     -------
@@ -41,6 +40,11 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None):
     except TypeError:
         ndvars = tuple(ndvars)
         ndvar = ndvars[0]
+
+    if isinstance(ndvars, NDVar):
+        info = ndvars.info
+    else:
+        info = merge_info(ndvars)
 
     if isinstance(dim, Dimension):
         dim_names = (ndvar.dimnames[:ndvar.has_case] + (np.newaxis,) +
@@ -61,7 +65,7 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None):
             raise NotImplementedError("dim=%s is not implemented; only 'time' and "
                                       "'case' are implemented" % repr(dim))
         dims = ndvar.dims[:axis] + (out_dim,) + ndvar.dims[axis + 1:]
-    return NDVar(x, dims, {} if info is None else info, name or ndvar.name)
+    return NDVar(x, dims, info, name or ndvar.name)
 
 
 def convolve(h, x):

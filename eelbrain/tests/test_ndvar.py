@@ -14,6 +14,7 @@ def test_concatenate():
     vc = concatenate((v1, v0))
     assert_array_equal(vc.sub(time=(0, 1)).x, v1.x)
     assert_array_equal(vc.sub(time=(1, 2)).x, v0.x)
+    assert_array_equal(vc.info, ds['utsnd'].info)
 
 
 def test_find_intervals():
