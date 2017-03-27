@@ -963,9 +963,9 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
     elif fixed is True:
         info['meas'] = 'Current Estimate'
         if method == 'MNE':
-            info['unit'] = 'Am'
+            info['unit'] = 'A'
         elif method == 'dSPM' or method == 'sLORETA':
-            info['unit'] = '%s(Am)' % method
+            info['unit'] = '%s(A)' % method
         elif method is not None:
             raise ValueError("method=%s" % repr(method))
     elif fixed is not None:

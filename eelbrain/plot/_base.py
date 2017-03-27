@@ -115,6 +115,8 @@ MEAS_DISPLAY_UNIT = {
     'sensor': int,
 }
 UNIT_FORMAT = {
+    u'A': 1,
+    u'Am': 1,
     u'V': 1,
     u'ms': 1e3,
     u'mV': 1e3,
