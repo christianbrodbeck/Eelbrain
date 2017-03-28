@@ -99,6 +99,9 @@ TOOLS = wx.NewId()
 
 UNDO = wx.NewId()
 
+VIEW_LATERAL = wx.NewId()
+VIEW_MEDIAL = wx.NewId()
+
 WINDOW_MINIMIZE = wx.NewId()
 WINDOW_TILE = wx.NewId()
 WINDOW_ZOOM = wx.NewId()

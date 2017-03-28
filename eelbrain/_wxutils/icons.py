@@ -542,6 +542,48 @@ index.append('documents/pickled')
 catalog['documents/pickled'] = documents_pickled
 
 #----------------------------------------------------------------------
+brain_medial = PyEmbeddedImage(
+    "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"
+    "4FyNAAAAAElFTkSuQmCC")
+index.append('brain/medial')
+catalog['brain/medial'] = brain_medial
+
+#----------------------------------------------------------------------
 actions_terminal_on = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAAAAlw"
     "SFlzAAAJOgAACToB8GSSSgAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoA"
@@ -1076,6 +1118,47 @@ actions_info = PyEmbeddedImage(
     "YDIQHg9m7swk8E2+bAVg49eOdLOCpvETzAuE0iCXvP4NuZdsOlw+WZ8AAAAASUVORK5CYII=")
 index.append('actions/info')
 catalog['actions/info'] = actions_info
+
+#----------------------------------------------------------------------
+brain_lateral = PyEmbeddedImage(
+    "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")
+index.append('brain/lateral')
+catalog['brain/lateral'] = brain_lateral
 
 #----------------------------------------------------------------------
 documents_unknown = PyEmbeddedImage(

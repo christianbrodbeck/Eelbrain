@@ -76,6 +76,11 @@ class BrainFrame(EelbrainFrame):
         tb.AddLabelTool(wx.ID_SAVE, "Save", Icon("tango/actions/document-save"))
         self.Bind(wx.EVT_TOOL, self.OnSaveAs, id=wx.ID_SAVE)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISave, id=wx.ID_SAVE)
+        # view
+        tb.AddLabelTool(ID.VIEW_LATERAL, "Lateral View", Icon('brain/lateral'))
+        self.Bind(wx.EVT_TOOL, self.OnSetView, id=ID.VIEW_LATERAL)
+        tb.AddLabelTool(ID.VIEW_MEDIAL, "Medial View", Icon('brain/medial'))
+        self.Bind(wx.EVT_TOOL, self.OnSetView, id=ID.VIEW_MEDIAL)
         # attach
         tb.AddStretchableSpace()
         tb.AddLabelTool(ID.ATTACH, "Attach", Icon("actions/attach"))
@@ -143,6 +148,14 @@ class BrainFrame(EelbrainFrame):
             # no antialiasing (leads to loss of alpha channel)
             self._brain.save_image(dlg.GetPath(), 'rgba')
         dlg.Destroy()
+
+    def OnSetView(self, event):
+        if event.Id == ID.VIEW_LATERAL:
+            for b in self._brain.brains:
+                b.show_view('lateral')
+        elif event.Id == ID.VIEW_MEDIAL:
+            for b in self._brain.brains:
+                b.show_view('medial')
 
     def OnUpdateUISave(self, event):
         event.Enable(True)

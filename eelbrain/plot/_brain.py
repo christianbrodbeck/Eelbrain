@@ -454,7 +454,7 @@ def _surfer_brain(subject='fsaverage', surface='smoothwm', hemi='split',
 
 
 def brain(src, cmap=None, vmin=None, vmax=None, surface='smoothwm',
-          views=('lat', 'med'), hemi=None, colorbar=False, time_label='ms',
+          views='lateral', hemi=None, colorbar=False, time_label='ms',
           w=None, h=None, axw=None, axh=None, foreground=None, background=None,
           parallel=True, cortex='classic', title=None, smoothing_steps=None,
           mask=True, subjects_dir=None, colormap=None, surf=None):

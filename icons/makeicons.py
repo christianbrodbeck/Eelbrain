@@ -1,4 +1,4 @@
-
+"Combine icons into a Python file"
 import os
 from wx.tools.img2py import img2py
 
@@ -8,35 +8,41 @@ python_file = "../eelbrain/_wxutils/icons.py"
 files = {}  # name: file
 
 # folders that are included entirely
-folders = ["actions",
-           "copy",
-           "documents",
-           ]
+folders = [
+    "actions",
+    "brain",
+    "copy",
+    "documents",
+]
 
 # tango files (in `tango` subfolder)
-tango = {'actions': ['document-open',
-                     'document-save',
-                     'document-save-as',
-                     'edit-clear',
-                     'edit-redo',
-                     'edit-undo',
-                     'go-down',
-                     'go-first',
-                     'go-last',
-                     'go-next',
-                     'go-previous',
-                     'go-up',
-                     'media-seek-forward',
-                     'media-seek-backward',
-                     'system-log-out',
-                     'view-refresh',
-                     ],
-         'apps': ['help-browser',
-                  'utilities-terminal'],
-         'mimetypes': ['x-office-presentation'],
-         'places': ['start-here'],
-         'status': ['image-missing'],
-         }
+tango = {
+    'actions': [
+        'document-open',
+        'document-save',
+        'document-save-as',
+        'edit-clear',
+        'edit-redo',
+        'edit-undo',
+        'go-down',
+        'go-first',
+        'go-last',
+        'go-next',
+        'go-previous',
+        'go-up',
+        'media-seek-forward',
+        'media-seek-backward',
+        'system-log-out',
+        'view-refresh',
+    ],
+    'apps': [
+        'help-browser',
+        'utilities-terminal'
+    ],
+    'mimetypes': ['x-office-presentation'],
+    'places': ['start-here'],
+    'status': ['image-missing'],
+}
 
 
 for folder in folders:
