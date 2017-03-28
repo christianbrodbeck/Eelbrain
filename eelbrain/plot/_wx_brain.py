@@ -67,7 +67,7 @@ class MayaviView(HasTraits):
 class BrainFrame(EelbrainFrame):
 
     def __init__(self, parent, brain, title, width, height, n_rows, n_columns):
-        EelbrainFrame.__init__(self, parent, wx.ID_ANY, title)
+        EelbrainFrame.__init__(self, parent, wx.ID_ANY, "Brain: %s" % title)
 
         # toolbar
         tb = self.CreateToolBar(wx.TB_HORIZONTAL)
