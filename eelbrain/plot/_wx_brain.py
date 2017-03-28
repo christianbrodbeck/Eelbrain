@@ -132,7 +132,8 @@ class BrainFrame(EelbrainFrame):
                             wildcard="Any (*.*)|*.*|PNG (*.png)|*.png",
                             style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
         if dlg.ShowModal() == wx.ID_OK:
-            self._brain.save_image(dlg.GetPath(), 'rgba', True)
+            # no antialiasing (leads to loss of alpha channel)
+            self._brain.save_image(dlg.GetPath(), 'rgba')
         dlg.Destroy()
 
     def OnUpdateUISave(self, event):
