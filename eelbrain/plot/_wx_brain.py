@@ -18,8 +18,9 @@ from tvtk.api import tvtk
 from tvtk.pyface.toolkit import toolkit_object
 import wx
 
+from .._wxgui.app import get_app
 from .._wxgui.frame import EelbrainFrame
-from .._wxutils import Icon
+from .._wxutils import ID, Icon
 
 
 SCENE_NAME = 'scene_%i'
@@ -75,6 +76,10 @@ class BrainFrame(EelbrainFrame):
         tb.AddLabelTool(wx.ID_SAVE, "Save", Icon("tango/actions/document-save"))
         self.Bind(wx.EVT_TOOL, self.OnSaveAs, id=wx.ID_SAVE)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISave, id=wx.ID_SAVE)
+        # attach
+        tb.AddStretchableSpace()
+        tb.AddLabelTool(ID.ATTACH, "Attach", Icon("actions/attach"))
+        self.Bind(wx.EVT_TOOL, self.OnAttach, id=ID.ATTACH)
         tb.Realize()
 
         self.mayavi_view = MayaviView(width, height, n_rows, n_columns)
@@ -115,6 +120,9 @@ class BrainFrame(EelbrainFrame):
         finally:
             wx.TheClipboard.Close()
             wx.TheClipboard.Flush()
+
+    def OnAttach(self, event):
+        get_app().Attach(self._brain, "Brain plot", 'brain', self)
 
     def OnClose(self, event):
         self._brain._frame_is_alive = False

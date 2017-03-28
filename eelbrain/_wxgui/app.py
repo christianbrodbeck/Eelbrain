@@ -152,6 +152,7 @@ class App(wx.App):
 
         # register in IPython
         self.using_prompt_toolkit = False
+        self._ipython = None
         if ('IPython' in sys.modules and
                 LooseVersion(sys.modules['IPython'].__version__) >=
                 LooseVersion('5') and CONFIG['prompt_toolkit']):
@@ -171,6 +172,7 @@ class App(wx.App):
                           shell.__class__.__name__)
                 else:
                     self.using_prompt_toolkit = True
+                    self._ipython = shell
 
         self.SetExitOnFrameDelete(not self.using_prompt_toolkit)
 
@@ -294,11 +296,12 @@ class App(wx.App):
         else:
             return result
 
-    def ask_for_string(self, title, message, default=''):
-        return self._bash_ui(self._ask_for_string, title, message, default)
+    def ask_for_string(self, title, message, default='', parent=None):
+        return self._bash_ui(self._ask_for_string, title, message, default,
+                             parent)
 
-    def _ask_for_string(self, exit_main_loop, title, message, default):
-        dlg = wx.TextEntryDialog(None, message, title, default)
+    def _ask_for_string(self, exit_main_loop, title, message, default, parent):
+        dlg = wx.TextEntryDialog(parent, message, title, default)
         if dlg.ShowModal() == wx.ID_OK:
             result = dlg.GetValue()
         else:
@@ -336,12 +339,11 @@ class App(wx.App):
         else:
             return result
 
-    def message_box(self, message, caption, style):
-        return self._bash_ui(self._message_box, message, caption, style)
+    def message_box(self, message, caption, style, parent=None):
+        return self._bash_ui(self._message_box, message, caption, style, parent)
 
-    def _message_box(self, exit_main_loop, message, caption, style):
-        result = wx.MessageBox(message, caption, style)
-
+    def _message_box(self, exit_main_loop, message, caption, style, parent):
+        result = wx.MessageBox(message, caption, style, parent)
         if exit_main_loop:
             self._result = result
             self.ExitMainLoop()
@@ -353,6 +355,19 @@ class App(wx.App):
             # with prompt-toolkit, this leads to hanging when terminating the
             # interpreter
             wx.App.ExitMainLoop(self)
+
+    def Attach(self, obj, desc, default_name, parent):
+        if self._ipython is None:
+            self.message_box(
+                "Attach Unavailable",
+                "The attach command requires running from within IPython 5 or "
+                "later", wx.ICON_ERROR|wx.OK, parent)
+            return
+        name = self.ask_for_string(
+            "Attach", "Variable name for %s in terminal:" % desc, default_name,
+            parent)
+        if name:
+            self._ipython.user_global_ns[name] = obj
 
     def OnAbout(self, event):
         if hasattr(self, '_about_frame') and hasattr(self._about_frame, 'Raise'):

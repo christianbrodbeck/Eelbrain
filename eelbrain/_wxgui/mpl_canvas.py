@@ -7,7 +7,6 @@ http://matplotlib.sourceforge.net/examples/user_interfaces/index.html
 
 '''
 from logging import getLogger
-import os
 import tempfile
 
 import numpy as np
@@ -17,6 +16,7 @@ from matplotlib.figure import Figure
 import wx
 
 from .._wxutils import ID, Icon
+from .app import get_app
 from .frame import EelbrainFrame
 from .help import show_help_txt
 
@@ -184,8 +184,10 @@ class CanvasFrame(EelbrainFrame):
             self.__doc__ = eelfigure.__doc__
 
         # right-most part
+        tb.AddStretchableSpace()
+        tb.AddLabelTool(ID.ATTACH, "Attach", Icon("actions/attach"))
+        self.Bind(wx.EVT_TOOL, self.OnAttach, id=ID.ATTACH)
         if self.__doc__:
-            tb.AddStretchableSpace()
             tb.AddLabelTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
             self.Bind(wx.EVT_TOOL, self.OnHelp, id=wx.ID_HELP)
 
@@ -214,9 +216,7 @@ class CanvasFrame(EelbrainFrame):
         self.toolbar.update()
 
     def OnAttach(self, event):
-        items = {'p': self._eelfigure}
-        self.Parent.attach(items, detach=False, _internal_call=True)
-        self.Parent.Raise()
+        get_app().Attach(self._eelfigure, "%s plot" % self._plot_name, 'p', self)
 
     def OnClose(self, event):
         # remove circular reference
