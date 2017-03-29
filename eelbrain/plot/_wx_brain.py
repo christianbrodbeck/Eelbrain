@@ -102,9 +102,15 @@ class BrainFrame(EelbrainFrame):
         self.Fit()
 
         self.figure = self.mayavi_view.figures
-
         self._brain = brain
         self.Bind(wx.EVT_CLOSE, self.OnClose)  # remove circular reference
+
+        # replace key bindings
+        self.panel.Unbind(wx.EVT_KEY_DOWN)
+        for child in self.panel.Children[0].Children:
+            panel = child.Children[0]
+            panel.Unbind(wx.EVT_CHAR)
+            panel.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
 
     def CanCopy(self):
         return True
@@ -133,6 +139,17 @@ class BrainFrame(EelbrainFrame):
         self._brain._frame_is_alive = False
         self._brain = None
         event.Skip()
+
+    def OnKeyDown(self, event):
+        if self._brain is None:
+            return  # plot is closed
+        key = unichr(event.GetUnicodeKey())
+        if key == '.':
+            self._brain._nudge_time(1)
+        elif key == ',':
+            self._brain._nudge_time(-1)
+        else:
+            event.Skip()
 
     def OnSave(self, event):
         self.OnSaveAs(event)

@@ -316,6 +316,10 @@ class Brain(surfer.Brain):
         im = self.screenshot('rgba', True)
         return Image.from_array(im, name, format, alt)
 
+    def _nudge_time(self, offset):
+        new_index = max(0, min(self.n_times, self.data_time_index + offset))
+        self.set_data_time_index(new_index)
+
     def plot_colorbar(self, label=True, label_position=None, label_rotation=None,
                       clipmin=None, clipmax=None, orientation='horizontal',
                       width=None, ticks=None, layer=None, *args, **kwargs):
