@@ -2111,6 +2111,7 @@ class XAxisMixin(object):
         for ax in axes:
             for xmin, xmax in intervals:
                 self.__vspans.append(ax.axvspan(xmin, xmax, *args, **kwargs))
+        self.draw()
 
     def set_xlim(self, left=None, right=None):
         """Set the x-axis limits for all axes"""
