@@ -9,7 +9,7 @@ from scipy import linalg, signal
 
 from . import mne_fixes
 from . import _colorspaces as cs
-from ._data_obj import NDVar, UTS, Ordered
+from ._data_obj import NDVar, UTS, Ordered, DimensionMismatchError
 
 
 def concatenate(ndvars, dim='time', name=None, tmin=0):
@@ -237,6 +237,41 @@ def filter_data(ndvar, l_freq, h_freq, filter_length='auto',
     if axis is not None:
         x = x.swapaxes(axis, -1)
     return NDVar(x, ndvar.dims, ndvar.info.copy(), ndvar.name)
+
+
+def find_intervals(ndvar):
+    """Find intervals from a boolean NDVar
+
+    Parameters
+    ----------
+    ndvar : boolean NDVar (time,)
+        Data which to convert to intervals.
+
+    Returns
+    -------
+    intervals : iterator over tuples
+        Intervals represented as ``(start, stop)`` tuples
+    """
+    if ndvar.dimnames != ('time',):
+        raise DimensionMismatchError("Requires NDVar with time dimension only,"
+                                     "got %r" % (ndvar,))
+    # make sure we have a boolean NDVar
+    if ndvar.x.dtype.kind != 'b':
+        ndvar = ndvar != 0
+    ndvar = ndvar.astype(int)
+
+    diff = np.diff(ndvar.x)
+    if ndvar.x[0]:
+        diff = np.append(1, diff)
+    else:
+        diff = np.append(0, diff)
+
+    onsets = ndvar.time.times[diff == 1]
+    offsets = ndvar.time.times[diff == -1]
+    if ndvar.x[-1]:
+        offsets = np.append(offsets, ndvar.time.tstop)
+
+    return tuple(izip(onsets, offsets))
 
 
 def neighbor_correlation(x, dim='sensor', obs='time', name=None):
