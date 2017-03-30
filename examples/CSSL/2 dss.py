@@ -20,6 +20,26 @@ plot.Topomap(fromdss[:, :6], '.dss', h=2, ncol=6)
 save.pickle((todss, fromdss), 'DATA/R2290_HAYO_P3H_DSS.pickle')
 
 
+# Exclude artifacts
+# -----------------
+# High amplitude artifacts can exert a bias on DSS components. A simple way to
+# exclude the largest artifacts is using a simple threshold. First, confirm the
+# presence of an artifact in the first trial:
+p = plot.TopoButterfly('meg', '.case', ds=ds, xlim=(0, 10))
+p.set_topo_t(11.62)
+# find all time points where data does not exced 1000 fT
+good_times = ds['meg'].abs().max(('case', 'sensor')) < 1e-12
+# find time intervals with good data
+intervals = find_intervals(good_times)
+# add the intervals to the plot to confirm that we found the right intervals
+p.add_vspans(intervals, color='green', alpha=0.2)
+# concatenate all the good segments
+meg_good = concatenate([ds['meg'].sub(time=interval) for interval in intervals])
+# conmpute DSS on good data
+todss, fromdss = dss(meg_good)
+plot.Topomap(fromdss[:, :6], '.dss', h=2, ncol=6, title='Clean data only')
+
+
 # DSS for multiple conditions
 # ---------------------------
 # To compute the DSS for multiple conditions, concatenate the data for
