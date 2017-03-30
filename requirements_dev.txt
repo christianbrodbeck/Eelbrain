@@ -11,7 +11,7 @@ scipy >= 0.17
 nibabel >= 2.0
 matplotlib >= 1.1
 pysurfer >= 0.7
-mne >= 0.13.1
+mne >= 0.14
 # additional developer tools
 flake8
 nose

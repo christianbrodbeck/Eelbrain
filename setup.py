@@ -58,7 +58,7 @@ setup(
     install_requires=[
         'colormath >= 2.1',
         'keyring >= 5',
-        'mne >= 0.13.1',
+        'mne >= 0.14',
         'nibabel >= 2.0',
         'pillow',
         'tex >= 1.8',

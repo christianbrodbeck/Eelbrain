@@ -23,7 +23,7 @@ requirements:
     - keyring >=5
     - secretstorage  # [linux]
     - tex >=1.8
-    - mne >=0.13.1
+    - mne >=0.14
     - nibabel >=2.0
     - tqdm >=4.8
     - colormath >=2.1
@@ -35,7 +35,7 @@ requirements:
     - ipython
     - keyring >=5
     - matplotlib >=1.1
-    - mne >=0.13.1
+    - mne >=0.14
     - nibabel >=2.0
     - olefile  # [linux]
     - numpy x.x

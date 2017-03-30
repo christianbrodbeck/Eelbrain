@@ -75,14 +75,14 @@ def mne_raw(path=None, proj=False, **kwargs):
     if isinstance(path, basestring):
         _, ext = os.path.splitext(path)
         if ext.startswith('.fif'):
-            raw = mne.io.read_raw_fif(path, add_eeg_ref=False, **kwargs)
+            raw = mne.io.read_raw_fif(path, **kwargs)
         elif ext in ('.sqd', '.con'):
             raw = mne.io.read_raw_kit(path, **kwargs)
         else:
             raise ValueError("Unknown extension: %r" % ext)
     else:
         # MNE Raw supports list of file-names
-        raw = mne.io.read_raw_fif(path, add_eeg_ref=False, **kwargs)
+        raw = mne.io.read_raw_fif(path, **kwargs)
 
     if proj:
         if proj is True:
@@ -475,6 +475,8 @@ def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
     kwargs
         :class:`mne.Epochs` parameters.
     """
+    if name is not None:
+        raise RuntimeError("MNE Epochs no longer have a `name` parameter")
     if baseline is False:
         baseline = None
 
@@ -485,8 +487,8 @@ def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
         picks = mne.pick_types(raw.info, eeg=True, eog=True, ref_meg=False)
 
     events = _mne_events(ds=ds, i_start=i_start)
-    epochs = mne.Epochs(raw, events, None, tmin, tmax, baseline, picks, name,
-                        True, reject, add_eeg_ref=False, **kwargs)
+    epochs = mne.Epochs(raw, events, None, tmin, tmax, baseline, picks,
+                        preload=True, reject=reject, **kwargs)
     if reject is None and len(epochs) != len(events):
         getLogger(__name__).warn(
             "%s: MNE generated only %i Epochs for %i events. The raw file "
