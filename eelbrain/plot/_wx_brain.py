@@ -24,6 +24,7 @@ from .._wxutils import ID, Icon
 
 
 SCENE_NAME = 'scene_%i'
+SURFACES = ('inflated', 'pial', 'smoothwm')
 
 # undecorated scene
 Scene = toolkit_object('scene:Scene')
@@ -67,7 +68,8 @@ class MayaviView(HasTraits):
 
 class BrainFrame(EelbrainFrame):
 
-    def __init__(self, parent, brain, title, width, height, n_rows, n_columns):
+    def __init__(self, parent, brain, title, width, height, n_rows, n_columns,
+                 surface):
         EelbrainFrame.__init__(self, parent, wx.ID_ANY, "Brain: %s" % title)
 
         # toolbar
@@ -76,6 +78,15 @@ class BrainFrame(EelbrainFrame):
         tb.AddLabelTool(wx.ID_SAVE, "Save", Icon("tango/actions/document-save"))
         self.Bind(wx.EVT_TOOL, self.OnSaveAs, id=wx.ID_SAVE)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISave, id=wx.ID_SAVE)
+        # surface
+        self._surface_selector = wx.Choice(
+            tb, choices=[name.capitalize() for name in SURFACES],
+            name='Surface')
+        if surface in SURFACES:
+            self._surface_selector.SetSelection(SURFACES.index(surface))
+        tb.AddControl(self._surface_selector, "Surface")
+        self._surface_selector.Bind(
+            wx.EVT_CHOICE, self.OnChoiceSurface, source=self._surface_selector)
         # view
         tb.AddLabelTool(ID.VIEW_LATERAL, "Lateral View", Icon('brain/lateral'))
         self.Bind(wx.EVT_TOOL, self.OnSetView, id=ID.VIEW_LATERAL)
@@ -134,6 +145,9 @@ class BrainFrame(EelbrainFrame):
 
     def OnAttach(self, event):
         get_app().Attach(self._brain, "Brain plot", 'brain', self)
+
+    def OnChoiceSurface(self, event):
+        self._brain._set_surface(SURFACES[event.GetSelection()])
 
     def OnClose(self, event):
         self._brain._frame_is_alive = False

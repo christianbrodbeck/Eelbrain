@@ -20,7 +20,7 @@ from ..mne_fixes import reset_logger
 from ._base import (CONFIG, do_autorun, find_axis_params_data, find_fig_cmaps,
                     find_fig_vlims)
 from ._colors import ColorBar
-from ._wx_brain import BrainFrame
+from ._wx_brain import BrainFrame, SURFACES
 
 # Traits-GUI related imports after BrainFrame
 from mayavi import mlab
@@ -38,7 +38,7 @@ def assert_can_save_movies():
 
 class Brain(surfer.Brain):
     # Subclass that adds Eelbrain functionality to surfer.Brain
-    def __init__(self, subject, hemi, views, surf, title, width, height,
+    def __init__(self, subject, hemi, views, surface, title, width, height,
                  show, run, **kwargs):
         self.__data = []
         self.__annot = None
@@ -55,9 +55,9 @@ class Brain(surfer.Brain):
         n_rows = len(views)
         n_columns = 2 if hemi == 'split' else 1
         self._frame = BrainFrame(None, self, title, width, height, n_rows,
-                                 n_columns)
+                                 n_columns, surface)
 
-        surfer.Brain.__init__(self, subject, hemi, surf, views=views,
+        surfer.Brain.__init__(self, subject, hemi, surface, views=views,
                               figure=self._frame.figure, **kwargs)
 
         if CONFIG['show'] and show:
@@ -470,6 +470,15 @@ class Brain(surfer.Brain):
                     fig.scene.camera.parallel_scale = scale
                 fig.scene.camera.parallel_projection = True
                 fig.render()
+
+    def set_surface(self, surface):
+        self._set_surface(surface)
+        if surface in SURFACES:
+            self._frame._surface_selector.SetSelection(SURFACES.index(surface))
+
+    def _set_surface(self, surface):
+        surfer.Brain.set_surface(self, surface)
+        self.set_parallel_view(scale=True)
 
     def _update_time(self, t):
         index = self._time_dim.dimindex(t)
