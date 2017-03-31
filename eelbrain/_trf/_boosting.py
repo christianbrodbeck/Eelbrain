@@ -276,9 +276,6 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     else:
         raise NotImplementedError("y with more than 2 dimensions")
 
-    # TRF extra dimension
-    trf_dim = ydim
-
     # prepare trf (by cropping data)
     i_start = int(round(tstart / time_dim.tstep))
     i_stop = int(round(tstop / time_dim.tstep))
@@ -370,10 +367,10 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
             dims = (h_time,)
         else:
             dims = (dim, h_time)
-        if trf_dim is None:
+        if ydim is None:
             h_x_ = h_x_[0]
         else:
-            dims = (trf_dim,) + dims
+            dims = (ydim,) + dims
         hs.append(NDVar(h_x_, dims, y.info.copy(), name))
 
     if multiple_x:
