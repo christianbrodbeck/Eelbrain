@@ -22,16 +22,15 @@ import time
 from threading import Thread
 
 import numpy as np
-from numpy import newaxis
 from scipy.stats import spearmanr
 from tqdm import tqdm
 
-from .. import _colorspaces as cs
 from .._config import CONFIG
 from .._data_obj import NDVar, UTS, dataobj_repr
 from .._stats.error_functions import (l1, l2, l1_for_delta, l2_for_delta,
                                       update_error)
 from .._utils import LazyProperty
+from .shared import RevCorrData
 
 
 # BoostingResult version
@@ -183,102 +182,16 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     # check arguments
     mindelta_ = delta if mindelta is None else mindelta
 
-    # check y and x
-    if isinstance(x, NDVar):
-        x_name = x.name
-        x = (x,)
-        multiple_x = False
-    else:
-        x = tuple(x)
-        assert all(isinstance(x_, NDVar) for x_ in x)
-        x_name = tuple(x_.name for x_ in x)
-        multiple_x = True
-    y_name = y.name
-    time_dim = y.get_dim('time')
-    if any(x_.get_dim('time') != time_dim for x_ in x):
-        raise ValueError("Not all NDVars have the same time dimension")
-
-    # scale y and x appropriately for error function
-    data = (y,) + x
-    if scale_data:
-        data_mean = tuple(d.mean('time') for d in data)
-        if isinstance(scale_data, int):
-            data = tuple(d - d_mean for d, d_mean in izip(data, data_mean))
-        elif isinstance(scale_data, str):
-            if scale_data == 'inplace':
-                for d, d_mean in izip(data, data_mean):
-                    d -= d_mean
-            else:
-                raise ValueError("scale_data=%r" % scale_data)
-        else:
-            raise TypeError("scale_data=%r" % (scale_data,))
-
-        if error == 'l1':
-            data_scale = tuple(d.abs().mean('time') for d in data)
-        elif error == 'l2':
-            data_scale = tuple(d.std('time') for d in data)
-        else:
-            raise ValueError("error=%r; needs to be 'l1' or 'l2' if "
-                             "scale_data=True." % (error,))
-
-        # check for flat data (normalising would result in nan)
-        zero_var = tuple(np.any(v == 0) for v in data_scale)
-        if any(zero_var):
-            raise ValueError("Can not scale %s because it has 0 variance" %
-                             dataobj_repr(data[zero_var.index(True)]))
-
-        for d, d_scale in izip(data, data_scale):
-            d /= d_scale
-        y = data[0]
-        x = data[1:]
-
-        has_nan = tuple(np.isnan(v.sum()) for v in data_scale)
-    else:
-        data_mean = data_scale = (None,) * (len(x) + 1)
-        has_nan = tuple(np.isnan(v.sum()) for v in data)
-
-    # check for NaN (blocks boosting process)
-    if any(has_nan):
-        raise ValueError("Can not use %s for boosting because it contains NaN" %
-                         dataobj_repr(data[has_nan.index(True)]))
-
-    # x_data:  predictor x time array
-    x_data = []
-    x_meta = []
-    n_x = 0
-    for x_ in x:
-        if x_.ndim == 1:
-            xdim = None
-            data = x_.x[newaxis, :]
-            index = n_x
-        elif x_.ndim == 2:
-            xdim = x_.dims[not x_.get_axis('time')]
-            data = x_.get_data((xdim.name, 'time'))
-            index = slice(n_x, n_x + len(data))
-        else:
-            raise NotImplementedError("x with more than 2 dimensions")
-        x_data.append(data)
-        x_meta.append((x_.name, xdim, index))
-        n_x += len(data)
-
-    if len(x_data) == 1:
-        x_data = x_data[0]
-    else:
-        x_data = np.vstack(x_data)
-
-    # y_data:  ydim x time array
-    if y.ndim == 1:
-        ydim = None
-        y_data = y.x[None, :]
-    elif y.ndim == 2:
-        ydim = y.dims[not y.get_axis('time')]
-        y_data = y.get_data((ydim.name, 'time'))
-    else:
-        raise NotImplementedError("y with more than 2 dimensions")
+    data = RevCorrData(y, x, error, scale_data)
+    y_data = data.y
+    x_data = data.x
+    n_y = len(y_data)
+    n_x = len(x_data)
 
     # prepare trf (by cropping data)
-    i_start = int(round(tstart / time_dim.tstep))
-    i_stop = int(round(tstop / time_dim.tstep))
+    tstep = data.time.tstep
+    i_start = int(round(tstart / tstep))
+    i_stop = int(round(tstop / tstep))
     trf_length = i_stop - i_start
     if i_start < 0:
         x_data = x_data[:, -i_start:]
@@ -288,7 +201,6 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         y_data = y_data[:, i_start:]
 
     # progress bar
-    n_y = len(y_data)
     pbar = tqdm(desc="Boosting %i signals" % n_y if n_y > 1 else "Boosting",
                 total=n_y * 10)
     # result containers
@@ -344,46 +256,20 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     pbar.close()
     dt = time.time() - pbar.start_t
 
-    # correlation
+    # fit-evaluation statistics
     rs, rrs, errs = res
-    if ydim is None:
-        r = rs[0]
-        rr = rrs[0]
-        err = errs[0]
-        isnan = np.isnan(r)
-    else:
-        isnan = np.isnan(rs)
-        rs[isnan] = 0
-        r = NDVar(rs, (ydim,), cs.stat_info('r'), 'correlation')
-        rr = NDVar(rrs, (ydim,), cs.stat_info('r'), 'rank correlation')
-        err = NDVar(errs, (ydim,), y.info.copy(), 'fit error')
+    isnan = np.isnan(rs)
+    rs[isnan] = 0
+    r = data.package_statistic(rs, 'r', 'correlation')
+    rr = data.package_statistic(rrs, 'r', 'rank correlation')
+    err = data.package_value(errs, 'fit error')
 
-    # TRF
-    h_time = UTS(tstart, time_dim.tstep, trf_length)
-    hs = []
-    for name, dim, index in x_meta:
-        h_x_ = h_x[:, index, :]
-        if dim is None:
-            dims = (h_time,)
-        else:
-            dims = (dim, h_time)
-        if ydim is None:
-            h_x_ = h_x_[0]
-        else:
-            dims = (ydim,) + dims
-        hs.append(NDVar(h_x_, dims, y.info.copy(), name))
+    y_mean, y_scale, x_mean, x_scale = data.data_scale_ndvars()
 
-    if multiple_x:
-        hs = tuple(hs)
-        idx = slice(1, None)
-    else:
-        hs = hs[0]
-        idx = 1
-
-    return BoostingResult(hs, r, isnan, dt, VERSION, delta, mindelta, error, rr,
-                          err, scale_data, data_mean[0], data_scale[0],
-                          data_mean[idx], data_scale[idx], y_name, x_name,
-                          tstart, tstop)
+    return BoostingResult(data.package_kernel(h_x, tstart), r, isnan, dt, VERSION,
+                          delta, mindelta, error, rr, err,
+                          scale_data, y_mean, y_scale, x_mean, x_scale,
+                          data.y_name, data.x_name, tstart, tstop)
 
 
 def boost_1seg(x, y, trf_length, delta, nsegs, segno, mindelta, error,
