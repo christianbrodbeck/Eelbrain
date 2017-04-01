@@ -40,6 +40,9 @@ class Split(PickleableDataClass, EQMixIn):
     validate: np.ndarray = None
     test: np.ndarray = None
     i_test: int = 0  # Index (to group splits with the same test segmet)
+    train_set: np.ndarray = None  # Boolean index into segments (original cases)
+    validate_set: np.ndarray = None
+    test_set: np.ndarray = None
 
     @cached_property
     def train_and_validate(self):
@@ -176,7 +179,7 @@ def split_data(
             train_set = np.ones(n_segments, bool)
             # test set
             if i_test is None:
-                test_segments = None
+                test_segments = test_set = None
             else:
                 test_set = np.zeros(n_segments, bool)
                 for cell_index in categories:
@@ -188,7 +191,7 @@ def split_data(
                 test_segments = merge_segments(split_segments[test_set], soft_splits)
             # validation set
             if i_validate is None:
-                validate_segments = None
+                validate_segments = validate_set = None
             else:
                 validate_set = np.zeros(n_segments, bool)
                 for cell_index in categories:
@@ -200,7 +203,7 @@ def split_data(
                 validate_segments = merge_segments(split_segments[validate_set], soft_splits)
             # create split
             train_segments = merge_segments(split_segments[train_set], soft_splits)
-            splits.append(Split(train_segments, validate_segments, test_segments, i_test))
+            splits.append(Split(train_segments, validate_segments, test_segments, i_test, train_set, validate_set, test_set))
     return Splits(splits, partitions_arg, partitions, validate, test, model, segments, split_segments)
 
 
@@ -373,6 +376,8 @@ class DeconvolutionData:
         else:
             vector_shape = None
 
+        self.has_case = x_data.has_case
+        self.n_cases = x_data.n_cases
         self.time = x_data.time_dim
         self.segments = x_data.segments
         self.shortest_segment_n_times = x_data.n_times
