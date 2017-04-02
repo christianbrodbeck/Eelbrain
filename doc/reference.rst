@@ -37,6 +37,7 @@ NDVar dimensions (not usually initialized by themselves but through
    :toctree: generated
 
    Categorial
+   Scalar
    Sensor
    UTS
 

@@ -12,9 +12,9 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 import eelbrain
-from eelbrain import (configure, datasets, testnd, NDVar, set_log_level,
-                      cwt_morlet)
-from eelbrain._data_obj import Categorial, Graph, UTS, Scalar, Sensor
+from eelbrain import (NDVar, Categorial, Scalar, UTS, Sensor, configure,
+                      datasets, testnd, set_log_level, cwt_morlet)
+from eelbrain._data_obj import Graph
 from eelbrain._stats.testnd import (Connectivity, _ClusterDist, label_clusters,
                                     _MergedTemporalClusterDist)
 from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,

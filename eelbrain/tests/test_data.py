@@ -22,11 +22,12 @@ from numpy.testing import (
 from scipy import signal
 
 from eelbrain import (
-    datasets, load, Var, Factor, NDVar, Datalist, Dataset, Celltable, align,
-    align1, choose, combine, cwt_morlet, shuffled_index)
+    datasets, load, Var, Factor, NDVar, Datalist, Dataset, Celltable,
+    Categorial, Scalar, Sensor, UTS, align, align1, choose, combine, cwt_morlet,
+    shuffled_index)
 from eelbrain._data_obj import (
-    all_equal, asvar, assub, full_slice, longname, Categorial, Scalar, Sensor,
-    SourceSpace, UTS, DimensionMismatchError, assert_has_no_empty_cells)
+    all_equal, asvar, assub, full_slice, longname, SourceSpace,
+    DimensionMismatchError, assert_has_no_empty_cells)
 from eelbrain._stats.stats import rms
 from eelbrain._utils.testing import (
     assert_dataobj_equal, assert_dataset_equal, assert_source_space_equal,
