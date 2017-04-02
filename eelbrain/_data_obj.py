@@ -3593,7 +3593,7 @@ class NDVar(object):
 
             n_bins = int(ceil((stop - start) / step))
             out_dim = UTS(start + step / 2, step, n_bins)
-        elif isinstance(dim, Ordered):
+        elif isinstance(dim, Scalar):
             if start is None:
                 start = dim[0]
 
@@ -3623,10 +3623,10 @@ class NDVar(object):
                 dim_start = start + step / 2
                 dim_stop = dim_start + n_bins * step
                 out_values = np.arange(dim_start, dim_stop, step)
-            out_dim = Ordered(dim.name, out_values, dim.unit, dim.tick_format)
+            out_dim = Scalar(dim.name, out_values, dim.unit, dim.tick_format)
         else:
             raise NotImplementedError("NDVar.bin() is only implement for UTS "
-                                      "and Ordered dimensions, not %s" %
+                                      "and Scalar dimensions, not %s" %
                                       dim.__class__.__name__)
 
         # find bin boundaries
@@ -3876,11 +3876,11 @@ class NDVar(object):
         if dim == 'time':
             uts = self.get_dim(dim)
             freqs = np.fft.rfftfreq(len(uts), uts.tstep)
-            freq = Ordered('frequency', freqs, 'Hz')
+            freq = Scalar('frequency', freqs, 'Hz')
         else:
             n = self.shape[axis]
             freqs = np.fft.rfftfreq(n, 1. / n)
-            freq = Ordered('frequency', freqs)
+            freq = Scalar('frequency', freqs)
         dims = self.dims[:axis] + (freq,) + self.dims[axis + 1:]
         info = cs.set_info_cs(self.info, cs.default_info('Amplitude'))
         return NDVar(x, dims, info, name or self.name)
@@ -7185,40 +7185,40 @@ class Categorial(Dimension):
 
 
 class Scalar(Dimension):
-    """Scalar dimension (not currently used except as baseclass)
+    """Scalar dimension
 
     Parameters
     ----------
     name : str
         Name fo the dimension.
-    values : array
-        Scalar value for each entry.
+    values : array_like
+        Scalar value for each sample of the dimension.
     unit : str (optional)
         Unit of the values.
     tick_format : str (optional)
         Format string for formatting axis tick labels ('%'-format, e.g. '%.2f').
     """
     def __init__(self, name, values, unit=None, tick_format=None):
-        self.x = self.values = values = np.asarray(values)
+        values = np.asarray(values)
         if values.ndim != 1:
             raise ValueError("values needs to be one-dimensional array, got "
                              "array of shape %s" % repr(values.shape))
-        elif len(np.unique(values)) < len(values):
-            raise ValueError("Dimension can not have duplicate values")
-        if tick_format and '%' not in tick_format:
-            raise ValueError("tick_format needs to include '%%'; got %s" %
-                             repr(tick_format))
+        elif np.any(np.diff(values) <= 0):
+            raise ValueError("Values for Scalar must increase monotonically")
+        elif tick_format and '%' not in tick_format:
+            raise ValueError("tick_format needs to include '%%'; got %r" %
+                             (tick_format,))
         self.name = name
+        self.values = values
         self.unit = unit
         self._axis_unit = unit
         self.tick_format = tick_format
 
     def __getstate__(self):
-        state = {'name': self.name,
-                 'values': self.values,
-                 'unit': self.unit,
-                 'tick_format': self.tick_format}
-        return state
+        return {'name': self.name,
+                'values': self.values,
+                'unit': self.unit,
+                'tick_format': self.tick_format}
 
     def __setstate__(self, state):
         self.__init__(state['name'], state['values'], state.get('unit'),
@@ -7259,17 +7259,49 @@ class Scalar(Dimension):
                 None if scalar else FixedLocator(np.arange(len(self)), 10),
                 self._axis_label(label))
 
+    def _cluster_properties(self, x):
+        """Find cluster properties for this dimension
+
+        Parameters
+        ----------
+        x : array of bool, (n_clusters, len(self))
+            The cluster extents, with different clusters stacked along the
+            first axis.
+
+        Returns
+        -------
+        cluster_properties : None | Dataset
+            A dataset with variables describing cluster properties.
+        """
+        ds = Dataset()
+        where = [np.flatnonzero(cluster) for cluster in x]
+        ds['%s_min' % self.name] = Var([self.values[w[0]] for w in where])
+        ds['%s_max' % self.name] = Var([self.values[w[-1]] for w in where])
+        return ds
+
     def dimindex(self, arg):
         if isinstance(arg, self.__class__):
             s_idx, a_idx = np.nonzero(self.values[:, None] == arg.values)
             return s_idx[np.argsort(a_idx)]
         elif np.isscalar(arg):
-            return digitize_index(arg, self.values)
+            try:
+                return digitize_index(arg, self.values, 0.3)
+            except IndexError as error:
+                raise IndexError("Ambiguous index for %s: %s" %
+                                 (self._dimname(), error.args[0]))
         else:
-            return super(Scalar, self).dimindex(arg)
+            return Dimension.dimindex(self, arg)
+
+    def _dimindex_for_slice(self, start, stop=None, step=None):
+        if start is not None:
+            start = digitize_slice_endpoint(start, self.values)
+        if stop is not None:
+            stop = digitize_slice_endpoint(stop, self.values)
+        return slice(start, stop, step)
 
     def _diminfo(self):
-        return "%s" % self.name.capitalize()
+        return "%s [%s, %s]" % (self.name.capitalize(),
+                                self.values.min(), self.values.max())
 
     def _index_repr(self, index):
         if np.isscalar(index):
@@ -7307,67 +7339,8 @@ class Scalar(Dimension):
         return self.__class__(self.name, values, self.unit, self.tick_format)
 
 
-class Ordered(Scalar):
-    """Scalar dimension with values that are monotonically increasing
-
-    Parameters
-    ----------
-    name : str
-        Name fo the dimension.
-    values : array_like
-        Scalar value for each entry.
-    unit : str (optional)
-        Unit of the values.
-    tick_format : str (optional)
-        Format string for formatting axis tick labels ('%'-format, e.g. '%.2f').
-    """
-    def __init__(self, name, values, unit=None, tick_format=None):
-        Scalar.__init__(self, name, values, unit, tick_format)
-        if np.any(np.diff(self.values) <= 0):
-            raise ValueError("Values not monotonic")
-
-    def dimindex(self, arg):
-        if np.isscalar(arg):
-            try:
-                return digitize_index(arg, self.values, 0.3)
-            except IndexError as error:
-                raise IndexError("Ambiguous index for %s: %s" %
-                                 (self._dimname(), error.args[0]))
-        else:
-            return super(Ordered, self).dimindex(arg)
-
-    def _dimindex_for_slice(self, start, stop=None, step=None):
-        if start is not None:
-            start = digitize_slice_endpoint(start, self.values)
-        if stop is not None:
-            stop = digitize_slice_endpoint(stop, self.values)
-        return slice(start, stop, step)
-
-    def _diminfo(self):
-        name = self.name.capitalize(),
-        vmin = self.x.min()
-        vmax = self.x.max()
-        return "%s [%s, %s]" % (name, vmin, vmax)
-
-    def _cluster_properties(self, x):
-        """Find cluster properties for this dimension
-
-        Parameters
-        ----------
-        x : array of bool, (n_clusters, len(self))
-            The cluster extents, with different clusters stacked along the
-            first axis.
-
-        Returns
-        -------
-        cluster_properties : None | Dataset
-            A dataset with variables describing cluster properties.
-        """
-        ds = Dataset()
-        where = [np.flatnonzero(cluster) for cluster in x]
-        ds['%s_min' % self.name] = Var([self.values[w[0]] for w in where])
-        ds['%s_max' % self.name] = Var([self.values[w[-1]] for w in where])
-        return ds
+# for unpickling backwards compatibility
+Ordered = Scalar
 
 
 class Graph(Dimension):

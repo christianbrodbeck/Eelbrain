@@ -23,7 +23,7 @@ import wx
 from wx.lib.scrolledpanel import ScrolledPanel
 
 from .. import load, plot, fmtxt
-from .._data_obj import Factor, NDVar, asndvar, Categorial, Ordered
+from .._data_obj import Factor, NDVar, asndvar, Categorial, Scalar
 from ..plot._topo import _ax_topomap
 from .._wxutils import Icon, ID, REValidator
 from .._utils.parse import POS_FLOAT_PATTERN
@@ -95,7 +95,7 @@ class Document(FileDocument):
         self.ds = ds
 
         data = np.dot(ica.mixing_matrix_.T, ica.pca_components_[:ica.n_components_])
-        ic_dim = Ordered('component', np.arange(len(data)))
+        ic_dim = Scalar('component', np.arange(len(data)))
         self.components = NDVar(data, (ic_dim, self.epochs_ndvar.sensor),
                                 info={'meas': 'component', 'cmap': 'xpolar'})
 

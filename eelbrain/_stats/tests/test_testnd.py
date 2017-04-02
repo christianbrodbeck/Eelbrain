@@ -14,7 +14,7 @@ from numpy.testing import assert_array_equal
 import eelbrain
 from eelbrain import (configure, datasets, testnd, NDVar, set_log_level,
                       cwt_morlet)
-from eelbrain._data_obj import Categorial, Graph, UTS, Ordered, Sensor
+from eelbrain._data_obj import Categorial, Graph, UTS, Scalar, Sensor
 from eelbrain._stats.testnd import (Connectivity, _ClusterDist, label_clusters,
                                     _MergedTemporalClusterDist)
 from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,
@@ -188,7 +188,7 @@ def test_clusterdist():
     x = np.random.normal(0, 1, shape)
     sensor = Sensor(locs, ['0', '1', '2', '3'])
     sensor.set_connectivity(connect_dist=1.1)
-    dims = ('case', UTS(-0.1, 0.1, 6), Ordered('dim2', range(6), 'unit'),
+    dims = ('case', UTS(-0.1, 0.1, 6), Scalar('dim2', range(6), 'unit'),
             sensor)
     y = NDVar(x, dims)
 
@@ -253,8 +253,8 @@ def test_clusterdist():
     sensor = Sensor(locs, ['0', '1', '2', '3'])
     sensor.set_connectivity(connect_dist=1.1)
     time = UTS(-0.1, 0.1, 4)
-    ordered = Ordered('ordered', range(10), 'unit')
-    dims = ('case', time, sensor, ordered)
+    scalar = Scalar('scalar', range(10), 'unit')
+    dims = ('case', time, sensor, scalar)
     y = NDVar(np.random.normal(0, 1, (10, 4, 4, 10)), dims)
     cdist = _ClusterDist(y, 3, None)
     cdist.add_original(y.x[0])

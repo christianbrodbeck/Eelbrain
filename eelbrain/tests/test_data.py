@@ -25,7 +25,7 @@ from eelbrain import (
     datasets, load, Var, Factor, NDVar, Datalist, Dataset, Celltable, align,
     align1, choose, combine, cwt_morlet, shuffled_index)
 from eelbrain._data_obj import (
-    all_equal, asvar, assub, full_slice, longname, Categorial, Ordered, Sensor,
+    all_equal, asvar, assub, full_slice, longname, Categorial, Scalar, Sensor,
     SourceSpace, UTS, DimensionMismatchError, assert_has_no_empty_cells)
 from eelbrain._stats.stats import rms
 from eelbrain._utils.testing import (
@@ -950,8 +950,8 @@ def test_ndvar_connectivity():
     eq_(len(l.info['cids']), 13)
 
     # ordered
-    ordered = Ordered('ordered', range(5))
-    x = NDVar(x.x, (time, ordered))
+    scalar = Scalar('ordered', range(5))
+    x = NDVar(x.x, (time, scalar))
     l = x.label_clusters(3)
     eq_(len(l.info['cids']), 6)
 
@@ -984,7 +984,7 @@ def test_ndvar_indexing():
     test_ndvar_index(x, 'case', [0, 3], [0, 3])
     test_ndvar_index(x, 'case', slice(0, 10, 2), slice(0, 10, 2))
 
-    # sensor
+    # Sensor
     test_ndvar_index(x, 'sensor', '0', 0)
     test_ndvar_index(x, 'sensor', ['0', '2'], [0, 2])
     test_ndvar_index(x, 'sensor', slice('0', '2'), slice(0, 2))
@@ -992,7 +992,7 @@ def test_ndvar_indexing():
     test_ndvar_index(x, 'sensor', [0, 2], [0, 2], False)
     test_ndvar_index(x, 'sensor', slice(0, 2), slice(0, 2), False)
 
-    # time
+    # UTS
     test_ndvar_index(x, 'time', 0, 20)
     test_ndvar_index(x, 'time', 0.1, 30)
     test_ndvar_index(x, 'time', 0.102, 30, False)
@@ -1005,7 +1005,7 @@ def test_ndvar_indexing():
     test_ndvar_index(x, 'time', slice(0.1, None, 0.1), slice(30, None, 10))
     test_ndvar_index(x, 'time', slice(0.1, None, 1), slice(30, None, 100))
 
-    # Ordered
+    # Scalar
     x = cwt_morlet(ds['uts'], [8, 10, 13, 17])
     assert_raises(IndexError, x.__getitem__, (full_slice, 9))
     assert_raises(IndexError, x.__getitem__, (full_slice, 6))
@@ -1171,10 +1171,10 @@ def test_ndvar_timeseries_methods():
     x = ds['uts'].mean('case')
     np.sin(2 * np.pi * x.time.times, x.x)
     f = x.fft()
-    assert_array_almost_equal(f.x, (f.frequency.x == 1) * (len(f) - 1))
+    assert_array_almost_equal(f.x, (f.frequency.values == 1) * (len(f) - 1))
     np.sin(4 * np.pi * x.time.times, x.x)
     f = x.fft()
-    assert_array_almost_equal(f.x, (f.frequency.x == 2) * (len(f) - 1))
+    assert_array_almost_equal(f.x, (f.frequency.values == 2) * (len(f) - 1))
 
     # update tmin
     eq_(x.time.times[0], -0.2)

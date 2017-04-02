@@ -9,7 +9,7 @@ from scipy import linalg, signal
 
 from . import mne_fixes
 from . import _colorspaces as cs
-from ._data_obj import NDVar, Dimension, UTS, Ordered, DimensionMismatchError
+from ._data_obj import NDVar, Dimension, Scalar, UTS, DimensionMismatchError
 from ._info import merge_info
 
 
@@ -171,7 +171,7 @@ def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
         freqs = [freqs]
         fdim = None
     else:
-        fdim = Ordered("frequency", freqs, 'Hz')
+        fdim = Scalar("frequency", freqs, 'Hz')
         freqs = fdim.values
     x = mne_fixes.cwt_morlet(x, sfreq, freqs, n_cycles, zero_mean, use_fft)
     if out == 'magnitude':
@@ -219,7 +219,7 @@ def dss(ndvar):
     dss_mat = mne_fixes.dss(x, return_data=False)
 
     n_comp = len(dss_mat)
-    dss_dim = Ordered('dss', np.arange(n_comp))
+    dss_dim = Scalar('dss', np.arange(n_comp))
     to_dss = NDVar(dss_mat, (dss_dim, data_dim), {}, 'to dss')
     from_dss = NDVar(linalg.inv(dss_mat), (data_dim, dss_dim), {}, 'from dss')
     return to_dss, from_dss

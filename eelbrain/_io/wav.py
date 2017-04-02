@@ -4,7 +4,7 @@ import os
 
 import numpy as np
 
-from .._data_obj import NDVar, UTS, Ordered
+from .._data_obj import NDVar, Scalar, UTS
 from .._utils import ui
 
 
@@ -56,7 +56,7 @@ def load_wav(filename=None, name=None):
     if data.ndim == 1:
         return NDVar(data, (time,), info, name)
     elif data.ndim == 2:
-        chan = Ordered('channel', np.arange(len(data)))
+        chan = Scalar('channel', np.arange(len(data)))
         return NDVar(data, (chan, time), info, name)
     else:
         raise NotImplementedError("Data with %i dimensions" % data.ndim)

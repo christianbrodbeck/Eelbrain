@@ -7,7 +7,7 @@ import numpy as np
 
 from . import load
 from ._colorspaces import eeg_info
-from ._data_obj import Dataset, Factor, Var, NDVar, Sensor, UTS, Ordered
+from ._data_obj import Dataset, Factor, Var, NDVar, Scalar, Sensor, UTS
 from ._design import permute
 
 
@@ -53,7 +53,7 @@ def _get_continuous(n_samples=100, seed=0):
         np.random.seed(seed)
     time = UTS(0, 0.1, n_samples)
     h_time = UTS(0, 0.1, 10)
-    xdim = Ordered('xdim', [0, 1])
+    xdim = Scalar('xdim', [0, 1])
 
     x1 = NDVar(np.random.normal(0, 1, (n_samples,)), (time,), name='x1')
     h1 = NDVar(np.array([0, 0, 1, 3, 0, 0, 0, 0, 2, 3]), (h_time,), name='h1')

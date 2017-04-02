@@ -17,7 +17,7 @@ import re
 import numpy as np
 from scipy.io import loadmat
 
-from .._data_obj import Dataset, Factor, NDVar, UTS, Ordered, combine
+from .._data_obj import Dataset, Factor, NDVar, UTS, Scalar, combine
 from .._utils import ui
 
 
@@ -67,7 +67,7 @@ def dat_file(path):
         data = data.reshape((n_locs, n_times + 3))
         locs = data[:, :3]
         data = data[:, 3:]
-        source = Ordered("source", np.arange(n_locs))
+        source = Scalar("source", np.arange(n_locs))
         src = NDVar(data, (source, time), info, 'src')
 
     return src
