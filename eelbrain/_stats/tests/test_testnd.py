@@ -14,7 +14,7 @@ from numpy.testing import assert_array_equal
 import eelbrain
 from eelbrain import (configure, datasets, testnd, NDVar, set_log_level,
                       cwt_morlet)
-from eelbrain._data_obj import Graph, UTS, Ordered, Sensor
+from eelbrain._data_obj import Categorial, Graph, UTS, Ordered, Sensor
 from eelbrain._stats.testnd import (Connectivity, _ClusterDist, label_clusters,
                                     _MergedTemporalClusterDist)
 from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,
@@ -288,6 +288,26 @@ def test_clusterdist():
     logging.debug(' detected: \n%s' % (peaks.astype(int)))
     logging.debug(' target: \n%s' % (tgt.astype(int)))
     assert_array_equal(peaks, tgt)
+
+    configure(False)
+    x = np.random.normal(0, 1, (10, 5, 2, 4))
+    time = UTS(-0.1, 0.1, 5)
+    categorial = Categorial('categorial', ('a', 'b'))
+    y = NDVar(x, ('case', time, categorial, sensor))
+    y0 = NDVar(x[:, :, 0], ('case', time, sensor))
+    y1 = NDVar(x[:, :, 1], ('case', time, sensor))
+    res = testnd.ttest_1samp(y, tfce=True, samples=3)
+    res0 = testnd.ttest_1samp(y0, tfce=True, samples=3)
+    res1 = testnd.ttest_1samp(y1, tfce=True, samples=3)
+    # cdist
+    eq_(res._cdist.shape, (4, 2, 5))
+    # T-maps don't depend on connectivity
+    assert_array_equal(res.t.x[:, 0], res0.t.x)
+    assert_array_equal(res.t.x[:, 1], res1.t.x)
+    # TFCE-maps should always be the same because they're unconnected
+    assert_array_equal(res.tfce_map.x[:, 0], res0.tfce_map.x)
+    assert_array_equal(res.tfce_map.x[:, 1], res1.tfce_map.x)
+    configure(True)
 
 
 def test_corr():

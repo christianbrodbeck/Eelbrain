@@ -1970,8 +1970,11 @@ class _ClusterDist:
             nad_ax = custom.index(True)
             nad_dim = dims[nad_ax]
             if nad_ax:
-                shape = (shape[nad_ax],) + shape[:nad_ax] + shape[nad_ax + 1:]
-                swapped_dims = ((dims[nad_ax],) + dims[:nad_ax] + dims[nad_ax + 1:])
+                swap_index = range(len(shape))
+                swap_index[nad_ax] = 0
+                swap_index[0] = nad_ax
+                shape = tuple(shape[i] for i in swap_index)
+                swapped_dims = tuple(dims[i] for i in swap_index)
         connectivity = Connectivity(swapped_dims, parc)
 
         # prepare cluster minimum size criteria
