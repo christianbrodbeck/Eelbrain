@@ -23,9 +23,9 @@ n_samples : None | int
 from __future__ import division, print_function
 
 from datetime import datetime, timedelta
-from itertools import izip
+from itertools import chain, izip
 from math import ceil
-from multiprocessing import Process, cpu_count
+from multiprocessing import Process
 from multiprocessing.queues import SimpleQueue
 from multiprocessing.sharedctypes import RawArray
 import logging
@@ -1776,10 +1776,10 @@ class StatMapProcessor(object):
         else:
             v = -stat_map.min(self.max_axes)
 
-        if self.parc is not None:
-            v = [v[idx].max() for idx in self.parc]
-
-        return v
+        if self.parc is None:
+            return v
+        else:
+            return [v[idx].max() for idx in self.parc]
 
 
 class TFCEProcessor(StatMapProcessor):
@@ -1800,10 +1800,14 @@ class TFCEProcessor(StatMapProcessor):
             self._int_buff_flat = self._int_buff.reshape((shape[0], -1))
 
     def max_stat(self, stat_map):
-        return _tfce(
+        v = _tfce(
             stat_map, self.tail, self.connectivity, self._tfce_map,
             self._bin_buff, self._int_buff, self._int_buff_flat
         ).max(self.max_axes)
+        if self.parc is None:
+            return v
+        else:
+            return [v[idx].max() for idx in self.parc]
 
 
 class ClusterProcessor(StatMapProcessor):
@@ -1846,15 +1850,14 @@ class ClusterProcessor(StatMapProcessor):
                     v.append(clusters_v.max())
                 else:
                     v.append(0)
+            return v
         elif len(cids):
             clusters_v = ndimage.sum(stat_map, cmap, cids)
             if self.tail <= 0:
                 np.abs(clusters_v, clusters_v)
-            v = clusters_v.max()
+            return clusters_v.max()
         else:
-            v = 0
-
-        return v
+            return 0
 
 
 def get_map_processor(kind, *args):
@@ -2011,22 +2014,29 @@ class _ClusterDist:
         # prepare distribution
         samples = int(samples)
         if parc:
-            if kind == 'tfce':
-                raise NotImplementedError("parc for TFCE")
-            elif nad_dim is None or parc != nad_dim.name:
-                raise NotImplementedError("parc=%s is not non-adjacent axis"
-                                          % repr(parc))
-            elif not hasattr(nad_dim, 'parc'):
-                raise NotImplementedError("parc dimension %r has no parcellation"
-                                          % nad_dim.name)
+            for parc_ax, parc_dim in enumerate(swapped_dims):
+                if parc_dim.name == parc:
+                    break
+            else:
+                raise ValueError("parc=%r (no dimension named %r)" % (parc, parc))
 
-            # find parameters for aggregating dist
-            parc_ = nad_dim.parc
-            parc_dim = Categorial(nad_dim.name, parc_.cells)
+            if parc_dim._connectivity_type == 'none':
+                parc_indexes = np.arange(len(parc_dim))
+            elif kind == 'tfce':
+                raise NotImplementedError("TFCE for parc=%r (%s dimension)" %
+                                          (parc, parc_dim.__class__.__name__))
+            elif parc_dim._connectivity_type == 'custom':
+                if not hasattr(parc_dim, 'parc'):
+                    raise NotImplementedError("parc=%r: dimension has no "
+                                              "parcellation" % nad_dim.name)
+                parc_indexes = tuple(np.flatnonzero(parc_dim.parc == cell) for
+                                     cell in parc_dim.parc.cells)
+                parc_dim = Categorial(nad_dim.name, parc_dim.parc.cells)
+            else:
+                raise NotImplementedError("parc=%r" % (parc,))
             dist_shape = (samples, len(parc_dim))
             dist_dims = ('case', parc_dim)
-            parc_indexes = tuple(np.flatnonzero(parc_ == cell) for cell in parc_.cells)
-            max_axes = tuple(xrange(1, ndim))
+            max_axes = tuple(chain(xrange(parc_ax), xrange(parc_ax + 1, ndim)))
         else:
             dist_shape = (samples,)
             dist_dims = None

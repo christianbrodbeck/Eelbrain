@@ -5,7 +5,7 @@ from itertools import izip
 import cPickle as pickle
 import logging
 
-from nose.tools import (eq_, assert_equal, assert_not_equal,
+from nose.tools import (eq_, ok_, assert_equal, assert_not_equal,
                         assert_greater_equal, assert_less, assert_in,
                         assert_not_in, assert_raises)
 import numpy as np
@@ -252,8 +252,9 @@ def test_clusterdist():
     logging.info("TEST:  TFCE")
     sensor = Sensor(locs, ['0', '1', '2', '3'])
     sensor.set_connectivity(connect_dist=1.1)
-    dims = ('case', UTS(-0.1, 0.1, 4), sensor,
-            Ordered('dim2', range(10), 'unit'))
+    time = UTS(-0.1, 0.1, 4)
+    ordered = Ordered('ordered', range(10), 'unit')
+    dims = ('case', time, sensor, ordered)
     y = NDVar(np.random.normal(0, 1, (10, 4, 4, 10)), dims)
     cdist = _ClusterDist(y, 3, None)
     cdist.add_original(y.x[0])
@@ -289,6 +290,7 @@ def test_clusterdist():
     logging.debug(' target: \n%s' % (tgt.astype(int)))
     assert_array_equal(peaks, tgt)
 
+    # parc with TFCE on unconnected dimension
     configure(False)
     x = np.random.normal(0, 1, (10, 5, 2, 4))
     time = UTS(-0.1, 0.1, 5)
@@ -297,6 +299,7 @@ def test_clusterdist():
     y0 = NDVar(x[:, :, 0], ('case', time, sensor))
     y1 = NDVar(x[:, :, 1], ('case', time, sensor))
     res = testnd.ttest_1samp(y, tfce=True, samples=3)
+    res_parc = testnd.ttest_1samp(y, tfce=True, samples=3, parc='categorial')
     res0 = testnd.ttest_1samp(y0, tfce=True, samples=3)
     res1 = testnd.ttest_1samp(y1, tfce=True, samples=3)
     # cdist
@@ -304,9 +307,22 @@ def test_clusterdist():
     # T-maps don't depend on connectivity
     assert_array_equal(res.t.x[:, 0], res0.t.x)
     assert_array_equal(res.t.x[:, 1], res1.t.x)
+    assert_array_equal(res_parc.t.x[:, 0], res0.t.x)
+    assert_array_equal(res_parc.t.x[:, 1], res1.t.x)
     # TFCE-maps should always be the same because they're unconnected
     assert_array_equal(res.tfce_map.x[:, 0], res0.tfce_map.x)
     assert_array_equal(res.tfce_map.x[:, 1], res1.tfce_map.x)
+    assert_array_equal(res_parc.tfce_map.x[:, 0], res0.tfce_map.x)
+    assert_array_equal(res_parc.tfce_map.x[:, 1], res1.tfce_map.x)
+    # Probability-maps should depend on what is taken into account
+    p_a = res0.compute_probability_map().x
+    p_b = res1.compute_probability_map().x
+    assert_array_equal(res_parc.compute_probability_map(categorial='a').x, p_a)
+    assert_array_equal(res_parc.compute_probability_map(categorial='b').x, p_b)
+    p_parc = res_parc.compute_probability_map()
+    assert_array_equal(p_parc.x, res.compute_probability_map().x)
+    ok_(np.all(p_parc.sub(categorial='a').x >= p_a))
+    ok_(np.all(p_parc.sub(categorial='b').x >= p_b))
     configure(True)
 
 
