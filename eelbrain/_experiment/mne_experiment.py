@@ -628,11 +628,14 @@ class MneExperiment(FileTree):
         'PALS_B12_Lobes': FSA_PARC,
         'PALS_B12_OrbitoFrontal': FSA_PARC,
         'PALS_B12_Visuotopic': FSA_PARC,
-        'lobes': EelbrainParcellation('lobes', morph_from_fsaverage=True),
+        'lobes': EelbrainParcellation('lobes', morph_from_fsaverage=True,
+                                      views=('lateral', 'medial')),
         'lobes-op': CombinationParcellation(
-            'lobes-op', 'lobes', {'occipitoparietal': "occipital + parietal"}),
+            'lobes-op', 'lobes', {'occipitoparietal': "occipital + parietal"},
+            views=('lateral', 'medial')),
         'lobes-ot': CombinationParcellation(
-            'lobes-ot', 'lobes', {'occipitotemporal': "occipital + temporal"}),
+            'lobes-ot', 'lobes', {'occipitotemporal': "occipital + temporal"},
+            views=('lateral', 'medial')),
     }
     parcs = {}
 
@@ -936,9 +939,9 @@ class MneExperiment(FileTree):
         parcs = {}
         for name, p in chain(self.__parcs.iteritems(), user_parcs.iteritems()):
             if p == FS_PARC:
-                parcs[name] = FreeSurferParcellation(name)
+                parcs[name] = FreeSurferParcellation(name, ('lateral', 'medial'))
             elif p == FSA_PARC:
-                parcs[name] = FSAverageParcellation(name)
+                parcs[name] = FSAverageParcellation(name, ('lateral', 'medial'))
             elif isinstance(p, Parcellation):
                 parcs[name] = p
             elif isinstance(p, dict):
