@@ -1,9 +1,12 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from itertools import izip
+from math import ceil
 import random
 
 import numpy as np
 
 from .._data_obj import NDVar, Var
+from .._utils import intervals
 
 
 _YIELD_ORIGINAL = 0
@@ -106,7 +109,7 @@ def permute_order(n, samples=10000, replacement=False, unit=None, seed=0):
                 yield idx_perm
 
 
-def permute_sign_flip(n, samples=10000, seed=0):
+def permute_sign_flip(n, samples=10000, seed=0, out=None):
     """Iterate over indices for ``samples`` permutations of the data
 
     Parameters
@@ -117,44 +120,51 @@ def permute_sign_flip(n, samples=10000, seed=0):
         Number of samples to yield. If < 0, all possible permutations are
         performed.
     seed : None | int
-        Seed the random state of the randomization module (:mod:`random`) to
-        make replication possible. None to skip seeding (default 0).
+        Seed the random state of the :mod:`random` module to make replication 
+        possible. None to skip seeding (default 0).
+    out : array of int8  (n,)
+        Buffer for the ``sign`` variable that is yielded in each iteration.
 
-    Returns
-    -------
-    iterator over sign : array
-        Iterate over sign flip permutations (``sign`` is the same object but
-        its content modified in every iteration).
-
-    Notes
-    -----
-    Sign flip of each element is encoded in successive bits. These bits are
-    recoded as integer.
+    Yields
+    ------
+    sign : array of int8  (n,)
+        Sign for each case (``1`` or ``-1``; ``sign`` is the same array object 
+        but its content modified in every iteration).
     """
     n = int(n)
     if seed is not None:
         random.seed(seed)
 
+    if out is None:
+        out = np.empty(n, np.int8)
+    else:
+        assert out.shape == (n,)
+
+    if n > 62:  # Python 2 limit for xrange
+        if samples < 0:
+            raise NotImplementedError("All possibilities for more than 62 cases")
+        n_groups = ceil(n / 62.)
+        group_size = int(ceil(n / n_groups))
+        for _ in izip(*(permute_sign_flip(stop - start, samples, None,
+                                          out[start: stop]) for
+                        start, stop in intervals(range(0, n, group_size) + [n]))):
+            yield out
+        return
+
     # determine possible number of permutations
-    n_perm = 2 ** n
-    if n > 62:
-        raise NotImplementedError("Too many cases for sign permutation "
-                                  "without repetition")
+    n_perm_possible = 2 ** n
     if samples < 0:
         # do all permutations
-        sample_sequences = xrange(1, n_perm)
+        sample_sequences = xrange(1, n_perm_possible)
     else:
         # random resampling
-        sample_sequences = random.sample(xrange(1, n_perm), samples)
+        sample_sequences = random.sample(xrange(1, n_perm_possible), samples)
 
-    sign = np.empty(n, np.int8)
-    mult = 2 ** np.arange(n, dtype=np.int64)
-    buffer_ = np.empty(n, dtype=np.int64)
-    choice = np.array([1, -1], np.int8)
-    for i in sample_sequences:
-        np.floor_divide(i, mult, buffer_, dtype=np.int64)
-        buffer_ %= 2
-        yield np.choose(buffer_, choice, sign)
+    for seq in sample_sequences:
+        out.fill(1)
+        for i in (i for i, s in enumerate(bin(seq)[-1:1:-1]) if s == '1'):
+            out[i] = -1
+        yield out
 
 
 def resample(Y, samples=10000, replacement=False, unit=None, seed=0):
