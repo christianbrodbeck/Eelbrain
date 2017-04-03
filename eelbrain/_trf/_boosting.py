@@ -142,6 +142,31 @@ class BoostingResult(object):
             return tuple(h * (self.y_scale / sx) for h, sx in
                          izip(self.h, self.x_scale))
 
+    def _set_parc(self, parc):
+        """Change the parcellation of source-space result
+         
+        Notes
+        -----
+        No warning for missing sources!
+        """
+        if not self.r.has_dim('source'):
+            raise RuntimeError('BoostingResult does not have source-space data')
+
+        source = self.r.source
+        source.set_parc(parc)
+        index = np.invert(source.parc.startswith('unknown-'))
+
+        def sub(x):
+            if isinstance(x, tuple):
+                return tuple(sub(x_) for x_ in x)
+            assert x.source is source
+            return x.sub(source=index)
+
+        for attr in ('h', 'r', 'spearmanr', 'fit_error', 'y_mean', 'y_scale'):
+            x = getattr(self, attr)
+            if x is not None:
+                setattr(self, attr, sub(x))
+
 
 def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
              error='l2'):
