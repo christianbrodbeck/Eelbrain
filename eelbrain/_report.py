@@ -259,17 +259,6 @@ def source_cluster_im(ndvar, surfer_kwargs, mark_sources=None):
     return out
 
 
-def source_tfce_pmap(res, surfer_kwargs, caption='TFCE map'):
-    if not hasattr(res, 't'):
-        raise NotImplementedError
-    brain = plot.brain.p_map(res.p, res.t, **surfer_kwargs)
-    cbar = brain.plot_colorbar(orientation='vertical', show=False)
-    out = Figure((brain.image(), cbar), caption)
-    brain.close()
-    cbar.close()
-    return out
-
-
 def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={},
                         title="Results", parc=True):
     report = Section(title)

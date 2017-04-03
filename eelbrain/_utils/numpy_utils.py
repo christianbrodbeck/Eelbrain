@@ -1,5 +1,4 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from collections import Sequence
 from distutils.version import LooseVersion
 from itertools import izip
 
