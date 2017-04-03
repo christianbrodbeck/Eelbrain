@@ -54,6 +54,7 @@ from .._utils import LazyProperty
 from .._utils.numpy_utils import full_slice
 from . import opt, stats
 from .connectivity import Connectivity
+from .connectivity_opt import tfce_increment
 from .glm import _nd_anova
 from .opt import merge_labels
 from .permutation import _resample_params, permute_order, permute_sign_flip
@@ -1547,27 +1548,36 @@ class anova(_MultiEffectResult):
         return super(anova, self)._plot_sub()
 
 
-def flatten(spm, connectivity):
+def flatten(array, connectivity):
     """Reshape SPM buffer array to 2-dimensional map for connectivity processing
 
     Parameters
     ----------
-    spm : array
+    array : ndarray
         N-dimensional array (with non-adjacent dimension at first position).
     connectivity : Connectivity
         N-dimensional connectivity.
 
     Returns
     -------
-    flat_spm : array
-        The input spm reshaped if necessary, making sure that input and output
+    flat_array : ndarray
+        The input array reshaped if necessary, making sure that input and output
         arrays share the same underlying data buffer.
     """
-    if spm.ndim == 2 or not connectivity.custom:
-        return spm
+    if array.ndim == 2 or not connectivity.custom:
+        return array
     else:
-        out = spm.reshape((spm.shape[0], -1))
-        assert out.base is spm
+        out = array.reshape((array.shape[0], -1))
+        assert out.base is array
+        return out
+
+
+def flatten_1d(array):
+    if array.ndim == 1:
+        return array
+    else:
+        out = array.ravel()
+        assert out.base is array
         return out
 
 
@@ -1718,23 +1728,25 @@ def _label_clusters_binary(bin_map, cmap, cmap_flat, connectivity, criteria):
 
 
 def tfce(stat_map, tail, connectivity):
-    tfce_map = np.empty(stat_map.shape)
+    tfce_im = np.empty(stat_map.shape, np.float64)
+    tfce_im_1d = flatten_1d(tfce_im)
     bin_buff = np.empty(stat_map.shape, np.bool8)
     int_buff = np.empty(stat_map.shape, np.uint32)
     int_buff_flat = flatten(int_buff, connectivity)
-    return _tfce(stat_map, tail, connectivity, tfce_map, bin_buff, int_buff,
-                 int_buff_flat)
+    int_buff_1d = flatten_1d(int_buff)
+    return _tfce(stat_map, tail, connectivity, tfce_im, tfce_im_1d, bin_buff, int_buff,
+                 int_buff_flat, int_buff_1d)
 
 
-def _tfce(stat_map, tail, conn, out, bin_buff, int_buff, int_buff_flat, dh=0.1,
-          e=0.5, h=2.0):
+def _tfce(stat_map, tail, conn, out, out_1d, bin_buff, int_buff,
+          int_buff_flat, int_buff_1d, dh=0.1, e=0.5, h=2.0):
     "Threshold-free cluster enhancement"
     out.fill(0)
 
     # determine slices
     if tail == 0:
-        hs = np.hstack((np.arange(-dh, stat_map.min(), -dh),
-                        np.arange(dh, stat_map.max(), dh)))
+        hs = chain(np.arange(-dh, stat_map.min(), -dh),
+                   np.arange(dh, stat_map.max(), dh))
     elif tail < 0:
         hs = np.arange(-dh, stat_map.min(), -dh)
     else:
@@ -1752,10 +1764,7 @@ def _tfce(stat_map, tail, conn, out, bin_buff, int_buff, int_buff_flat, dh=0.1,
             h_factor = (-h_) ** h
 
         c_ids = _label_clusters_binary(bin_buff, int_buff, int_buff_flat, conn, None)
-        for id_ in c_ids:
-            np.equal(int_buff, id_, bin_buff)
-            v = np.count_nonzero(bin_buff) ** e * h_factor
-            out[bin_buff] += v
+        tfce_increment(c_ids, int_buff_1d, out_1d, e, h_factor)
 
     return out
 
@@ -1792,17 +1801,16 @@ class TFCEProcessor(StatMapProcessor):
         # Pre-allocate memory buffers used for cluster processing
         self._bin_buff = np.empty(shape, np.bool8)
         self._int_buff = np.empty(shape, np.uint32)
-        self._tfce_map = np.empty(shape)
-
-        if not connectivity.custom or len(shape) == 2:
-            self._int_buff_flat = self._int_buff
-        else:
-            self._int_buff_flat = self._int_buff.reshape((shape[0], -1))
+        self._tfce_im = np.empty(shape, np.float64)
+        self._tfce_im_1d = flatten_1d(self._tfce_im)
+        self._int_buff_flat = flatten(self._int_buff, connectivity)
+        self._int_buff_1d = flatten_1d(self._int_buff)
 
     def max_stat(self, stat_map):
         v = _tfce(
-            stat_map, self.tail, self.connectivity, self._tfce_map,
-            self._bin_buff, self._int_buff, self._int_buff_flat
+            stat_map, self.tail, self.connectivity, self._tfce_im,
+            self._tfce_im_1d,
+            self._bin_buff, self._int_buff, self._int_buff_flat, self._int_buff_1d,
         ).max(self.max_axes)
         if self.parc is None:
             return v
