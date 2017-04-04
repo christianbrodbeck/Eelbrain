@@ -5453,10 +5453,9 @@ class MneExperiment(FileTree):
 
         kwa = self._surfer_plot_kwargs(surf, views, foreground, background,
                                        None, hemi)
-        brain = plot.brain.annot(parc, subject, kwa['surf'], borders, alpha,
-                                 kwa['hemi'], kwa['views'], w, h, axw, axh,
-                                 kwa['foreground'], kwa['background'],
-                                 subjects_dir=mri_sdir)
+        brain = plot.brain.annot(parc, subject, borders=borders, alpha=alpha,
+                                 w=w, h=h, axw=axw, axh=axh,
+                                 subjects_dir=mri_sdir, **kwa)
 
         legend = plot.brain.annot_legend(self.get('annot-file', hemi='lh'),
                                          self.get('annot-file', hemi='rh'),
