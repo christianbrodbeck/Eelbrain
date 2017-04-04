@@ -292,6 +292,12 @@ class Brain(surfer.Brain):
         colormap = ListedColormap(data_dict['orig_ctable'] / 255., label)
         return colormap, data_dict['fmin'], data_dict['fmax']
 
+    def _has_annot(self):
+        return bool(self.__annot)
+
+    def _has_data(self):
+        return bool(self.__data)
+
     def image(self, name=None, format='png', alt=None):
         """Create an FMText Image from a screenshot
 

@@ -78,6 +78,10 @@ class BrainFrame(EelbrainFrame):
         tb.AddLabelTool(wx.ID_SAVE, "Save", Icon("tango/actions/document-save"))
         self.Bind(wx.EVT_TOOL, self.OnSaveAs, id=wx.ID_SAVE)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISave, id=wx.ID_SAVE)
+        # color-bar
+        btn = wx.Button(tb, ID.PLOT_COLORBAR, 'CBar')
+        tb.AddControl(btn, "Color Bar")
+        btn.Bind(wx.EVT_BUTTON, self.OnPlotColorBar)
         # surface
         self._surface_selector = wx.Choice(
             tb, choices=[name.capitalize() for name in SURFACES],
@@ -164,6 +168,12 @@ class BrainFrame(EelbrainFrame):
             self._brain._nudge_time(-1)
         else:
             event.Skip()
+
+    def OnPlotColorBar(self, event):
+        if self._brain._has_data():
+            self._brain.plot_colorbar()
+        elif self._brain._has_annot():
+            self._brain.plot_legend()
 
     def OnSave(self, event):
         self.OnSaveAs(event)
