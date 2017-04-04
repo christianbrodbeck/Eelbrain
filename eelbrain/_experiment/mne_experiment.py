@@ -4558,8 +4558,9 @@ class MneExperiment(FileTree):
         if not redo and exists(dst):
             return
 
-        brain, legend = self.plot_annot(surf=surf, axw=600, show=False)
+        brain = self.plot_annot(surf=surf, axw=600)
         brain.save_image(dst, 'rgba', True)
+        legend = brain.plot_legend(show=False)
         legend.save(dst[:-3] + 'pdf', transparent=True)
         brain.close()
         legend.close()
@@ -5160,7 +5161,8 @@ class MneExperiment(FileTree):
         "Add picture of the current parcellation"
         with self._temporary_state:
             self.set(mrisubject=self.get('common_brain'))
-            brain, legend = self.plot_annot(axw=500, show=False)
+            brain = self.plot_annot(axw=500)
+            legend = brain.plot_legend(show=False)
 
         content = [brain.image('parc'), legend.image('parc-legend')]
         section.add_image_figure(content, caption)
@@ -5403,7 +5405,7 @@ class MneExperiment(FileTree):
 
     def plot_annot(self, parc=None, surf=None, views=None, hemi=None,
                    borders=False, alpha=0.7, w=None, h=None, axw=None, axh=None,
-                   foreground=None, background=None, show=True):
+                   foreground=None, background=None):
         """Plot the annot file on which the current parcellation is based
 
         Parameters
@@ -5428,9 +5430,6 @@ class MneExperiment(FileTree):
             Figure foreground color (i.e., the text color).
         background : mayavi color
             Figure background color.
-        show : bool
-            Show the plot (set to False to save the plot without displaying it;
-            only works for the legend).
 
         Returns
         -------
@@ -5453,15 +5452,9 @@ class MneExperiment(FileTree):
 
         kwa = self._surfer_plot_kwargs(surf, views, foreground, background,
                                        None, hemi)
-        brain = plot.brain.annot(parc, subject, borders=borders, alpha=alpha,
-                                 w=w, h=h, axw=axw, axh=axh,
-                                 subjects_dir=mri_sdir, **kwa)
-
-        legend = plot.brain.annot_legend(self.get('annot-file', hemi='lh'),
-                                         self.get('annot-file', hemi='rh'),
-                                         show=show)
-
-        return brain, legend
+        return plot.brain.annot(parc, subject, borders=borders, alpha=alpha,
+                                w=w, h=h, axw=axw, axh=axh,
+                                subjects_dir=mri_sdir, **kwa)
 
     def plot_brain(self, surf='inflated', title=None, hemi='lh', views=['lat'],
                    w=500, clear=True, common_brain=True):
