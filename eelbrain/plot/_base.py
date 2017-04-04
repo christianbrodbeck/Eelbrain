@@ -1696,11 +1696,10 @@ class ColorBarMixin(object):
 
     def _fill_toolbar(self, tb):
         import wx
-        from .._wxutils import ID
+        from .._wxutils import ID, Icon
 
-        btn = wx.Button(tb, ID.PLOT_COLORBAR, 'CBar')
-        tb.AddControl(btn, "Color Bar")
-        btn.Bind(wx.EVT_BUTTON, self.__OnPlotColorBar)
+        tb.AddLabelTool(ID.PLOT_COLORBAR, "Plot Colorbar", Icon("plot/colorbar"))
+        tb.Bind(wx.EVT_TOOL, self.__OnPlotColorBar, id=ID.PLOT_COLORBAR)
 
     def __OnPlotColorBar(self, event):
         return self.plot_colorbar()

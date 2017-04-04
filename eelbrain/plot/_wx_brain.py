@@ -79,9 +79,8 @@ class BrainFrame(EelbrainFrame):
         self.Bind(wx.EVT_TOOL, self.OnSaveAs, id=wx.ID_SAVE)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISave, id=wx.ID_SAVE)
         # color-bar
-        btn = wx.Button(tb, ID.PLOT_COLORBAR, 'CBar')
-        tb.AddControl(btn, "Color Bar")
-        btn.Bind(wx.EVT_BUTTON, self.OnPlotColorBar)
+        tb.AddLabelTool(ID.PLOT_COLORBAR, "Plot Colorbar", Icon("plot/colorbar"))
+        tb.Bind(wx.EVT_TOOL, self.OnPlotColorBar, id=ID.PLOT_COLORBAR)
         # surface
         self._surface_selector = wx.Choice(
             tb, choices=[name.capitalize() for name in SURFACES],

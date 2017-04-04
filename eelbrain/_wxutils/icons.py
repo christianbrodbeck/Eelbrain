@@ -1433,6 +1433,40 @@ index.append('tango/actions/go-up')
 catalog['tango/actions/go-up'] = tango_actions_go_up
 
 #----------------------------------------------------------------------
+plot_colorbar = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABG2lUWHRYTUw6Y29tLmFkb2Jl"
+    "LnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRj"
+    "emtjOWQiPz4KPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0i"
+    "WE1QIENvcmUgNS41LjAiPgogPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9y"
+    "Zy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KICA8cmRmOkRlc2NyaXB0aW9uIHJkZjph"
+    "Ym91dD0iIi8+CiA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgo8P3hwYWNrZXQgZW5kPSJyIj8+"
+    "Gkqr6gAAAYJpQ0NQc1JHQiBJRUM2MTk2Ni0yLjEAACiRdZHLS0JBFIc/H1H0wOgBLVpIWCsL"
+    "M4jaBClhgYSYQa+N3nwEapd7lZC2QVuhIGrTa1F/QW2D1kFQFEEE7VoXtam4nZuCEjnDzPnm"
+    "N+cczpwBayStZHS7BzLZnBYO+Jxz8wvO+mfsMtsYpDOq6Op4KBSk5vi4w2Lam34zV22/f0fT"
+    "clxXwNIgPKaoWk54Uji4llNN3hbuUFLRZeFTYbcmBQrfmnqsxC8mJ0v8ZbIWCfvB2irsTFZx"
+    "rIqVlJYRlpfjyqTzSrke8yXN8ezsjNgeWd3ohAngw8kUE/gZlq6Myj5MP14G5ESNeM9v/DSr"
+    "EqvIrlJAY4UkKXK4Rc1L9rjYhOhxmWkKZv//9lVPDHlL2Zt9UPdkGG+9UL8F30XD+Dw0jO8j"
+    "sD3CRbYSv3oAI++iFyuaax8cG3B2WdFiO3C+CV0PalSL/ko2WdZEAl5PoGUe2q+hcbHUs/I9"
+    "x/cQWZevuoLdPegTf8fSDz/BZ9S0WaV5AAAACXBIWXMAAAsTAAALEwEAmpwYAAAC70lEQVRY"
+    "heWWzYodRRTHf6eq7kdXd9/cmYArZTDMQtCN7+Gu8CUC4iMYty4U3ImgSJRgtHTnE/gIBmIY"
+    "YqJoJs4YdObOzZ17u+u46DYZF+k7TnNF8EB3wSno/6/PR52C/7tJ12YI4Tlg5xnbU+B34I8Y"
+    "452LAriuzVMdvXuk26/VatNZv4jKZdk/dFJ/CPwMbAZAjLWPR1cuVTJ+6kNQEtuLR9/FLz99"
+    "56LC5wIwRshzT23GjbSAKoAiS9NXu9HoBjDkuacsC4rSU5Q5RekpyxybTndDCG/3BVgbAZ9n"
+    "yDBvPdouSj3we/HGx29tFkAMReGRkW9yr9qkISnHprOBzm1rU+DzjLINfVHm5EVOOcnRarET"
+    "QnijL8CaLqgZ+hkuE5rwS/uuMYPhg7o6vbFRAEyNHR9g/QmIgkqzJjAuLW/GeNgXoDMFIhU2"
+    "O8Tl+7jsV5x/+GRN9aoIIbzUF6A7AlJj/QHWu+bvAZFEUoFUlcCrwO2NAYipceNDXNYGqk2D"
+    "QbGZPrj5Wdx0DVRYf4DLz4wCFVRBzKiv9noAkZrB+DcGWQVAAgxCSsrq+IXdEMIXwK0Y47WN"
+    "AFiEiVhG0sxtQUgoCIwnae/6B1+/flHhcwEY4JI4vPzV/42prGmff2Cd37EIUyxb4tgWx7YM"
+    "mIrjsgxYzsxOCOHNvgBrZgFMxDGRhJy5PCVRMq+/LBdc3yiARZiKYyrNFBRoa0AYWFnFGB/1"
+    "BegeRm0RboljSxzTNg1b4qiWFCGEl/sCdLdhUtws4UxT+WIETUpKUK1cAbwC3NoYQFol5j/O"
+    "GRWpvQs8BcjccP+TGD/vI34OAGV2f44drc44Qa2QVtO+2sCaGkjLxOz+Ccd3m+fozozjuzOO"
+    "vp9xtDC7IYRrfQHWpmB27wRh+Te/Ini73Pvoq2/+BYCf5lAtnhyDmgAR9EXtq70eoKpl8W1+"
+    "5aGr67pRb84ABTkxw+dDCO8DP8QY39sIwDzzV+eZf1a1DYAV8Pii4v8J+xOtQhC9e9i3dQAA"
+    "AABJRU5ErkJggg==")
+index.append('plot/colorbar')
+catalog['plot/colorbar'] = plot_colorbar
+
+#----------------------------------------------------------------------
 documents_pydoc_open = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAAAAlw"
     "SFlzAAAJOgAACToB8GSSSgAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoA"

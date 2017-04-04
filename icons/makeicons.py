@@ -13,6 +13,7 @@ folders = [
     "brain",
     "copy",
     "documents",
+    "plot",
 ]
 
 # tango files (in `tango` subfolder)
