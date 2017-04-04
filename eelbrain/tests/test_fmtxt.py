@@ -33,6 +33,19 @@ def test_fmtext():
     print(tex(ts))
 
 
+def test_list():
+    list_ = fmtxt.List("Head")
+    eq_(html(list_), u'Head\n<ul>\n</ul>')
+    list_.add_item("child")
+    eq_(html(list_), u'Head\n<ul>\n<li>child</li>\n</ul>')
+    sublist = list_.add_sublist(u"unicode:")
+    eq_(html(list_), u'Head\n<ul>\n<li>child</li>\n<li>unicode:\n<ul>\n'
+                     u'</ul></li>\n</ul>')
+    sublist.add_item(u'delta: ∂')
+    eq_(html(list_), u'Head\n<ul>\n<li>child</li>\n<li>unicode:\n<ul>\n'
+                     u'<li>delta: &#8706;</li>\n</ul></li>\n</ul>')
+
+
 def test_report():
     "Test fmtxt.Report class"
     tempdir = tempfile.mkdtemp()

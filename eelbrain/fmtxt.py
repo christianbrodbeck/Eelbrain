@@ -892,10 +892,8 @@ class List(FMTextElement):
             Whether to use the "ol" HTML tag (instead of "ul").
         """
         self.ordered = ordered
-        self.head = head
-        if items is None:
-            items = []
-        self.items = items
+        self.head = asfmtext_or_none(head)
+        self.items = [] if items is None else map(asfmtext(items))
 
     def _repr_items(self):
         if self.ordered:
@@ -909,7 +907,7 @@ class List(FMTextElement):
 
     def add_item(self, item):
         "Add an item to the list"
-        self.items.append(item)
+        self.items.append(asfmtext(item))
 
     def add_sublist(self, head, items=None, ordered=None):
         """Add an item with a subordinate list
@@ -938,7 +936,7 @@ class List(FMTextElement):
     def get_html(self, env={}):
         items = []
         if self.head is not None:
-            items.append(self.head)
+            items.append(self.head.get_html(env))
         tag = 'ol' if self.ordered else 'ul'
         items.append('<%s>' % tag)
 
