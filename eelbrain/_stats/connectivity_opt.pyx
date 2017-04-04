@@ -85,12 +85,11 @@ def merge_labels(np.ndarray[UINT32, ndim=2] cmap,
                     cmap[i, slice_i] = relabel_dst
 
     # find all label ids in cmap
-    out = np.empty(n_labels_out, dtype=np.uint32)
-    cdef unsigned int [:] label_ids = out
+    cdef np.ndarray[UINT32, ndim=1] out = np.empty(n_labels_out, dtype=np.uint32)
     dst_i = 0
     for i in range(1, n_labels_in):
         if i == relabel[i]:
-            label_ids[dst_i] = i
+            out[dst_i] = i
             dst_i += 1
 
     free(relabel)
