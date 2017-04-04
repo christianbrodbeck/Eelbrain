@@ -2,11 +2,99 @@
 #cython: boundscheck=False, wraparound=False
 
 from libc.stdlib cimport malloc, free
+import numpy as np
 cimport numpy as np
 
 
 ctypedef np.uint32_t UINT32
 ctypedef np.float64_t FLOAT64
+
+def merge_labels(np.ndarray[UINT32, ndim=2] cmap,
+                 int n_labels_in,
+                 np.ndarray[UINT32, ndim=2] edges):
+    """Merge adjacent labels with non-standard connectivity
+
+    Parameters
+    ----------
+    cmap : array of int, ndim=2
+        Array with labels, labels are merged along the second axis; cmap is
+        modified in-place.
+    n_labels_in : int
+        Number of labels in cmap.
+    edges : array of int (n_edges, 2)
+        Edges of the connectivity graph.
+    """
+    n_labels_in += 1
+
+    cdef unsigned int slice_i, i, dst_i
+    cdef unsigned int n_vert = cmap.shape[0]
+    cdef unsigned int n_slices = cmap.shape[1]
+    cdef unsigned int n_edges = edges.shape[0]
+    cdef unsigned int label, connected_label, src, dst
+    cdef unsigned int relabel_src, relabel_dst
+
+    cdef unsigned int* relabel = <unsigned int*> malloc(sizeof(unsigned int) * n_labels_in)
+    for i in range(n_labels_in):
+        relabel[i] = i
+
+    # find targets for relabeling
+    for slice_i in range(n_slices):
+        for i in range(n_edges):
+            src = edges[i, 0]
+            label = cmap[src, slice_i]
+            if label == 0:
+                continue
+            dst = edges[i, 1]
+            connected_label = cmap[dst, slice_i]
+            if connected_label == 0:
+                continue
+
+            while relabel[label] < label:
+                label = relabel[label]
+
+            while relabel[connected_label] < connected_label:
+                connected_label = relabel[connected_label]
+
+            if label > connected_label:
+                relabel_src = label
+                relabel_dst = connected_label
+            else:
+                relabel_src = connected_label
+                relabel_dst = label
+
+            relabel[relabel_src] = relabel_dst
+
+    # find lowest labels
+    cdef int n_labels_out = -1
+    for i in range(n_labels_in):
+        relabel_dst = relabel[i]
+        if relabel_dst == i:
+            n_labels_out += 1
+        else:
+            while relabel[relabel_dst] < relabel_dst:
+                relabel_dst = relabel[relabel_dst]
+            relabel[i] = relabel_dst
+
+    # relabel cmap
+    for i in range(n_vert):
+        for slice_i in range(n_slices):
+            label = cmap[i, slice_i]
+            if label != 0:
+                relabel_dst = relabel[label]
+                if relabel_dst != label:
+                    cmap[i, slice_i] = relabel_dst
+
+    # find all label ids in cmap
+    out = np.empty(n_labels_out, dtype=np.uint32)
+    cdef unsigned int [:] label_ids = out
+    dst_i = 0
+    for i in range(1, n_labels_in):
+        if i == relabel[i]:
+            label_ids[dst_i] = i
+            dst_i += 1
+
+    free(relabel)
+    return out
 
 
 def tfce_increment(np.ndarray[UINT32, ndim=1] labels,

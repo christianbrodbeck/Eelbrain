@@ -54,9 +54,8 @@ from .._utils import LazyProperty
 from .._utils.numpy_utils import full_slice
 from . import opt, stats
 from .connectivity import Connectivity
-from .connectivity_opt import tfce_increment
+from .connectivity_opt import merge_labels, tfce_increment
 from .glm import _nd_anova
-from .opt import merge_labels
 from .permutation import _resample_params, permute_order, permute_sign_flip
 from .t_contrast import TContrastRel
 from .test import star_factor
