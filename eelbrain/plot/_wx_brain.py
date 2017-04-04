@@ -8,6 +8,7 @@ brain = plot.brain.brain(src.source, mask=False,hemi='lh',views='lat')
 from traits.trait_base import ETSConfig
 ETSConfig.toolkit = 'wx'
 
+from itertools import izip
 from logging import getLogger
 
 from mayavi.core.ui.api import SceneEditor, MlabSceneModel
@@ -191,11 +192,15 @@ class BrainFrame(EelbrainFrame):
 
     def OnSetView(self, event):
         if event.Id == ID.VIEW_LATERAL:
-            for b in self._brain.brains:
-                b.show_view('lateral')
+            views = ('lateral', 'medial')
         elif event.Id == ID.VIEW_MEDIAL:
-            for b in self._brain.brains:
-                b.show_view('medial')
+            views = ('medial', 'lateral')
+        else:
+            return
+
+        for row, view in izip(self._brain.brain_matrix, views):
+            for b in row:
+                b.show_view(view)
 
     def OnUpdateUISave(self, event):
         event.Enable(True)
