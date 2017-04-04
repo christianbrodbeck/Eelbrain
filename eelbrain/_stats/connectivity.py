@@ -1,4 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+import numpy as np
 from scipy.ndimage import generate_binary_structure, label
 
 
@@ -28,9 +29,15 @@ class Connectivity(object):
                     "Custom connectivity on axis other than first")
             custom_dim = dims[axis]
             if custom_dim.name == parc:
-                self.custom[axis] = custom_dim.connectivity(disconnect_parc=True)
+                edges = custom_dim.connectivity(disconnect_parc=True)
             else:
-                self.custom[axis] = custom_dim.connectivity()
+                edges = custom_dim.connectivity()
+            dim_length = len(custom_dim)
+            src = edges[:, 0]
+            n_edges = np.bincount(src, minlength=dim_length)
+            edge_stop = np.cumsum(n_edges)
+            edge_start = edge_stop - n_edges
+            self.custom[axis] = (edges, edge_start, edge_stop)
 
         # prepare struct for grid connectivity
         self.struct = generate_binary_structure(len(dims), 1)

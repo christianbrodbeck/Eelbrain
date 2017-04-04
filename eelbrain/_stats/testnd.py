@@ -1710,7 +1710,7 @@ def _label_clusters_binary(bin_map, cmap, cmap_flat, connectivity, criteria):
         else:
             cids = np.array((1,), np.uint32)
     elif connectivity.custom:
-        cids = merge_labels(cmap_flat, n, connectivity.custom[0])
+        cids = merge_labels(cmap_flat, n, *connectivity.custom[0])
     else:
         cids = np.arange(1, n + 1, 1, np.uint32)
 
@@ -2370,7 +2370,7 @@ class _ClusterDist:
                 outsa = out.reshape(shape)
                 axlen = xsa.shape[1]
 
-                conn_src, conn_dst = self._connectivity.custom[ax].T
+                conn_src, conn_dst = self._connectivity.custom[ax][0].T
                 for i in xrange(axlen):
                     data = xsa[:, i]
                     outslice = outsa[:, i]
