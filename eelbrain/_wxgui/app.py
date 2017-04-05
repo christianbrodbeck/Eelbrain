@@ -344,12 +344,14 @@ class App(wx.App):
         return self._bash_ui(self._message_box, message, caption, style, parent)
 
     def _message_box(self, exit_main_loop, message, caption, style, parent):
-        result = wx.MessageBox(message, caption, style, parent)
+        dlg = wx.MessageDialog(parent, message, caption, style)
+        answer = dlg.ShowModal()
+        dlg.Destroy()
         if exit_main_loop:
-            self._result = result
+            self._result = answer
             self.ExitMainLoop()
         else:
-            return result
+            return answer
 
     def ExitMainLoop(self, event_with_pt=True):
         if event_with_pt or not self.using_prompt_toolkit:
