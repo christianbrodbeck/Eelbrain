@@ -306,6 +306,7 @@ class App(wx.App):
             result = dlg.GetValue()
         else:
             result = False
+        dlg.Destroy()
 
         if exit_main_loop:
             self._result = result
