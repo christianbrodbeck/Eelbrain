@@ -2,7 +2,8 @@
 from nose.tools import eq_
 from numpy.testing import assert_array_equal
 
-from eelbrain import NDVar, UTS, datasets, concatenate, find_intervals
+from eelbrain import (
+    NDVar, UTS, datasets, concatenate, cross_correlation, find_intervals)
 
 
 def test_concatenate():
@@ -15,6 +16,18 @@ def test_concatenate():
     assert_array_equal(vc.sub(time=(0, 1)).x, v1.x)
     assert_array_equal(vc.sub(time=(1, 2)).x, v0.x)
     assert_array_equal(vc.info, ds['utsnd'].info)
+
+
+def test_cross_correlation():
+    ds = datasets._get_continuous()
+    x = ds['x1']
+
+    eq_(cross_correlation(x, x).argmax(), 0)
+    eq_(cross_correlation(x[2:], x).argmax(), 0)
+    eq_(cross_correlation(x[:9], x).argmax(), 0)
+    eq_(cross_correlation(x, x[1:]).argmax(), 0)
+    eq_(cross_correlation(x, x[:8]).argmax(), 0)
+    eq_(cross_correlation(x[2:], x[:8]).argmax(), 0)
 
 
 def test_find_intervals():

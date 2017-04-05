@@ -137,6 +137,44 @@ def convolve(h, x):
         return out
 
 
+def cross_correlation(in1, in2, name="{in1} * {in2}"):
+    """Cross-correlation between two NDVars along the time axis
+    
+    Parameters
+    ----------
+    in1 : NDVar  (time,)
+        First NDVar.
+    in2 : NDVar  (time,)
+        Second NDVar.
+    name : str  
+        Name for the new NDVar.
+        
+    Returns
+    -------
+    cross_correlation : NDVar  (time,)
+        Cross-correlation between ``in1`` and ``in2``, with a time axis 
+        reflecting time shift.
+    """
+    x1 = in1.get_data(('time',))
+    x2 = in2.get_data(('time',))
+    in1_time = in1.get_dim('time')
+    in2_time = in2.get_dim('time')
+    tstep = in1_time.tstep
+    if in2_time.tstep != tstep:
+        raise ValueError("in1 and in2 need to have the same tstep, got %s and "
+                         "%s" % (tstep, in2_time.tstep))
+    nsamples = in1_time.nsamples + in2_time.nsamples - 1
+    in1_i0 = -(in1_time.tmin / tstep)
+    in2_i0 = -(in2_time.tmin / tstep)
+    in2_rel_i0 = in2_i0 - in2_time.nsamples
+    out_i0 = in1_i0 - in2_rel_i0 - 1
+    tmin = -out_i0 * tstep
+    time = UTS(tmin, tstep, nsamples)
+    x_corr = signal.correlate(x1, x2)
+    return NDVar(x_corr, (time,), merge_info((in1, in2)),
+                 name.format(in1=in1.name, in2=in2.name))
+
+
 def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
                out='magnitude'):
     """Time frequency decomposition with Morlet wavelets (mne-python)

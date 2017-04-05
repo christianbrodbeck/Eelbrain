@@ -126,6 +126,7 @@ NDVar Transformations
    Butterworth
    concatenate
    convolve
+   cross_correlation
    cwt_morlet
    dss
    filter_data
