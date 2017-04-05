@@ -7,7 +7,10 @@ def run(block=False):
     Parameters
     ----------
     block : bool
-        Block the Terminal even if the gui is capable of being run in parallel.
+        Block the Terminal even if the GUI is capable of being run in parallel.
+        Control returns to the Terminal when the user quits the GUI application.
+        This is also useful to prevent plots form closing at the end of a 
+        script.
     """
     from . import _wxgui
     _wxgui.run(block)

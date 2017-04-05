@@ -467,11 +467,24 @@ Tools with a graphical user interface (GUI):
 Controlling the GUI Application
 ===============================
 
-Eelbrain uses a wxPython based application to create GUIs. This application can
-not take input from the user at the same time as the shell from which the GUI
-is invoked. By default, the GUI application is activated whenever a gui is
-created in interactive mode. While the application is processing user input,
-the shell can not be used. In order to return to the shell, simply quit the
+Eelbrain uses a wxPython based application to create GUIs. This GUI appears as a
+separate application with its own Dock icon. The way that control
+of this GUI is managed depends on the environment form which it is invoked.
+
+When Eelbrain plots are created from within iPython, the GUI is managed in the
+background and control returns immediately to the terminal. There might be cases
+in which this is not desired, for example when running scripts. After execution
+of a script finishes, the interpreter is terminated and all associated plots are
+closed. To avoid this, the command  ``gui.run(block=True)`` can be inserted at
+the end of the script, which will keep all gui elements open until the user
+quits the GUI application (see :func:`gui.run` below).
+
+In interpreters other than iPython, input can not be processed from the GUI
+and the interpreter shell at the same time. In that case, the GUI application
+is activated by default whenever a GUI is created in interactive mode
+(this can be avoided by passing ``run=False`` to any plotting function).
+While the application is processing user input,
+the shell can not be used. In order to return to the shell, quit the
 application (the *python/Quit Eelbrain* menu command or Command-Q). In order to
 return to the terminal without closing all windows, use the alternative
 *Go/Yield to Terminal* command (Command-Alt-Q). To return to the application
