@@ -22,3 +22,13 @@ This automatically launches IPython with the "eelbrain" profile. A default
 startup script that executes ``from eelbrain import *`` is created, and can be
 changed in the corresponding `IPython profile <http://ipython.readthedocs.io/
 en/stable/interactive/tutorial.html?highlight=startup#startup-files>`_.
+
+
+Quitting iPython
+----------------
+
+Sometimes iPython seems to get stuck after this line::
+
+	Do you really want to exit ([y]/n)? y
+
+In those instances, pressing ctrl-c usually terminates iPython immediately.
