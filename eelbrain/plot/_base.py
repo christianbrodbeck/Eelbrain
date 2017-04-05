@@ -1141,6 +1141,15 @@ class EelFigure(object):
         "Close the figure."
         self._frame.Close()
 
+    def _get_axes(self, axes):
+        "Iterate over axes corresponding to ``axes`` parameter"
+        if axes is None:
+            return self._axes
+        elif isinstance(axes, int):
+            return self._axes[axes],
+        else:
+            return (self._axes[i] for i in axes)
+
     def _configure_xaxis_dim(self, dim, label, ticklabels, axes=None,
                              scalar=True):
         """Configure the x-axis based on a dimension
@@ -1255,6 +1264,98 @@ class EelFigure(object):
     def save(self, *args, **kwargs):
         "Short-cut for Matplotlib's :meth:`~matplotlib.figure.Figure.savefig()`"
         self.figure.savefig(*args, **kwargs)
+
+    def add_hline(self, y, axes=None, *args, **kwargs):
+        """Draw a horizontal line on one or more axes
+
+        Parameters
+        ----------
+        y : scalar
+            Level at which to draw the line.
+        axes : int | list of int
+            Which axes to mark (default is all axes).
+        ...
+            :meth:`matplotlib.axes.Axes.axhline` parameters.
+
+
+        Notes
+        -----
+        See Matplotlib's :meth:`matplotlib.axes.Axes.axhline` for more
+        arguments.
+        """
+        for ax in self._get_axes(axes):
+            ax.axhline(y, *args, **kwargs)
+        self.draw()
+
+    def add_hspan(self, bottom, top, axes=None, *args, **kwargs):
+        """Draw a horizontal bar on one or more axes
+
+        Parameters
+        ----------
+        bottom : scalar
+            Bottom end of the horizontal bar.
+        top : scalar
+            Top end of the horizontal bar.
+        axes : int | list of int
+            Which axes to mark (default is all axes).
+        ...
+            :meth:`matplotlib.axes.Axes.axvspan` parameters.
+
+
+        Notes
+        -----
+        See Matplotlib's :meth:`matplotlib.axes.Axes.axhspan` for more
+        arguments.
+        """
+        for ax in self._get_axes(axes):
+            ax.axhspan(bottom, top, *args, **kwargs)
+        self.draw()
+
+    def add_vline(self, x, axes=None, *args, **kwargs):
+        """Draw a vertical line on one or more axes
+
+        Parameters
+        ----------
+        x : scalar
+            Value at which to place the vertical line.
+        axes : int | list of int
+            Which axes to mark (default is all axes).
+        ...
+            :meth:`matplotlib.axes.Axes.axvspan` parameters.
+
+
+        Notes
+        -----
+        See Matplotlib's :meth:`matplotlib.axes.Axes.axvline` for more
+        arguments.
+        """
+        for ax in self._get_axes(axes):
+            ax.axvline(x, *args, **kwargs)
+        self.draw()
+
+    def add_vspan(self, xmin, xmax, axes=None, *args, **kwargs):
+        """Draw a vertical bar on one or more axes
+
+        Parameters
+        ----------
+        xmin : scalar
+            Start value on the x-axis.
+        xmax : scalar
+            Last value on the x-axis.
+        axes : int | list of int
+            Which axes to mark (default is all axes).
+        ...
+            :meth:`matplotlib.axes.Axes.axvspan` parameters.
+
+
+        Notes
+        -----
+        See Matplotlib's :meth:`matplotlib.axes.Axes.axvspan` for more
+        arguments.
+        """
+        for ax in self._get_axes(axes):
+            ax.axvspan(xmin, xmax, *args, **kwargs)
+        self.draw()
 
     def set_xtick_rotation(self, rotation):
         """Rotate every x-axis tick-label by an angle (counterclockwise, in degrees)
