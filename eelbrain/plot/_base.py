@@ -78,7 +78,7 @@ import numpy as np
 import PIL
 
 from .._config import CONFIG
-from .._utils import deprecated
+from .._utils import deprecated, intervals
 from .._utils.subp import command_exists
 from ..fmtxt import Image
 from .._colorspaces import symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
@@ -946,6 +946,7 @@ class EelFigure(object):
         self.__callback_key_release = {}
 
         # containers for hooks
+        self._draw_hooks = []
         self._untight_draw_hooks = []
 
         # options
@@ -1028,9 +1029,11 @@ class EelFigure(object):
         self.draw()
 
         # Allow hooks to modify figure after first draw
+        need_redraw = any(func() for func in self._draw_hooks)
         if not self._layout.tight:
-            if any(func() for func in self._untight_draw_hooks):
-                self.draw()
+            need_redraw = any(func() for func in self._untight_draw_hooks) or need_redraw
+        if need_redraw:
+            self.draw()
 
         if CONFIG['show'] and self._layout.show:
             self._frame.Show()
@@ -2348,7 +2351,26 @@ class YLimMixin(object):
         self._register_key('c', self.__on_zoom_out)
         self._register_key('up', self.__on_move_up)
         self._register_key('down', self.__on_move_down)
+        self._draw_hooks.append(self.__draw_hook)
         self._untight_draw_hooks.append(self.__untight_draw_hook)
+
+    def __draw_hook(self):
+        need_draw = False
+        for p in self.__plots:
+            # decimate overlapping ticklabels
+            locs = p.ax.yaxis.get_ticklocs()
+            we = tuple(l.get_window_extent() for l in p.ax.yaxis.get_ticklabels())
+            start = 0
+            step = 1
+            locs_list = list(locs) if 0 in locs else None
+            while any(e1.ymin < e0.ymax for e0, e1 in intervals(we[start::step])):
+                step += 1
+                if locs_list:
+                    start = locs_list.index(0) % step
+            if step > 1:
+                p.ax.yaxis.set_ticks(locs[start::step])
+                need_draw = True
+        return need_draw
 
     def __untight_draw_hook(self):
         for p in self.__plots:
