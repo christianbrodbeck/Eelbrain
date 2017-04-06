@@ -198,6 +198,8 @@ class Brain(surfer.Brain):
                 time_label = lambda x: '%s ms' % int(round(x * 1000))
             elif time_label == 's':
                 time_label = '%.3f s'
+            elif time_label is False:
+                time_label = None
         else:
             times = None
             data_dims = ('source',)
