@@ -9,7 +9,7 @@ from nose.tools import (eq_, ok_, assert_equal, assert_not_equal,
                         assert_greater_equal, assert_less, assert_in,
                         assert_not_in, assert_raises)
 import numpy as np
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_equal, assert_allclose
 
 import eelbrain
 from eelbrain import (NDVar, Categorial, Scalar, UTS, Sensor, configure,
@@ -255,6 +255,7 @@ def test_clusterdist():
     time = UTS(-0.1, 0.1, 4)
     scalar = Scalar('scalar', range(10), 'unit')
     dims = ('case', time, sensor, scalar)
+    np.random.seed(0)
     y = NDVar(np.random.normal(0, 1, (10, 4, 4, 10)), dims)
     cdist = _ClusterDist(y, 3, None)
     cdist.add_original(y.x[0])
@@ -289,6 +290,10 @@ def test_clusterdist():
     logging.debug(' detected: \n%s' % (peaks.astype(int)))
     logging.debug(' target: \n%s' % (tgt.astype(int)))
     assert_array_equal(peaks, tgt)
+    # testnd permutation result
+    res = testnd.ttest_1samp(y, tfce=True, samples=3)
+    assert_allclose(np.sort(res._cdist.dist),
+                    [77.5852307, 119.1976153, 217.6270428])
 
     # parc with TFCE on unconnected dimension
     configure(False)
