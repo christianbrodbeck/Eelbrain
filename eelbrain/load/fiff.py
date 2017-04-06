@@ -13,6 +13,7 @@
    evoked_ndvar
    stc_ndvar
    forward_operator
+   inverse_operator
 
 
 .. currentmodule:: eelbrain
@@ -89,5 +90,6 @@ If events are stored separately form the raw files, they can be loaded in
 """
 from .._io.fiff import (
     add_epochs, add_mne_epochs, epochs, epochs_ndvar, events, evoked_ndvar,
-    forward_operator, mne_epochs, mne_raw, raw_ndvar, sensor_dim, stc_ndvar
+    forward_operator, inverse_operator, mne_epochs, mne_raw, raw_ndvar,
+    sensor_dim, stc_ndvar
 )

@@ -228,12 +228,14 @@ def _picks(info, data, exclude):
         meg = data
         eeg = False
         eog = False
+    elif data is True:
+        meg = True
+        eeg = True
+        eog = False
     else:
-        err = "data=%r (needs to be 'eeg', 'grad' or 'mag')" % data
-        raise ValueError(err)
-    picks = mne.pick_types(info, meg, eeg, False, eog, ref_meg=False,
-                           exclude=exclude)
-    return picks
+        raise ValueError("data=%r (needs to be 'eeg', 'grad' or 'mag')" % data)
+    return mne.pick_types(info, meg, eeg, False, eog, ref_meg=False,
+                          exclude=exclude)
 
 
 def _ndvar_epochs_reject(data, reject):
@@ -889,7 +891,7 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
 
 
 def forward_operator(fwd, src, subjects_dir=None, parc='aparc', name=None):
-    """Load forward operator as ``NDVar``
+    """Load forward operator as :class:`NDVar`
 
     Parameters
     ----------
@@ -903,7 +905,7 @@ def forward_operator(fwd, src, subjects_dir=None, parc='aparc', name=None):
         Parcellation to load (corresponding to existing annot files; default
         'aparc').
     name : str
-        Name the NDVar (default is the filename if a path is provifded,
+        Name the NDVar (default is the filename if a path is provided,
         otherwise "fwd").
 
     Returns
@@ -922,6 +924,44 @@ def forward_operator(fwd, src, subjects_dir=None, parc='aparc', name=None):
     source = SourceSpace.from_mne_source_spaces(fwd['src'], src, subjects_dir,
                                                 parc)
     return NDVar(fwd['sol']['data'], (sensor, source), {}, name)
+
+
+def inverse_operator(inv, src, subjects_dir=None, parc='aparc', name=None):
+    """Load inverse operator as :class:`NDVar`
+    
+    Parameters
+    ----------
+    inv : str | mne.minimum_norm.InverseOperator
+        MNE inverse operator, or path to inverse operator.
+    src : str
+        Tag describing the source space (e.g., "ico-4").
+    subjects_dir : str
+        Location of the MRI subjects directory.
+    parc : str
+        Parcellation to load (corresponding to existing annot files; default
+        'aparc').
+    name : str
+        Name the NDVar (default is the filename if a path is provided,
+        otherwise "inv").
+
+    Returns
+    -------
+    inv : NDVar  (source, sensor)
+        NDVar containing the inverse operator.
+    """
+    if isinstance(inv, basestring):
+        if name is None:
+            name = os.path.basename(inv)
+        inv = mne.minimum_norm.read_inverse_operator(inv)
+    elif name is None:
+        name = 'inv'
+    sensor = sensor_dim(inv['info'], _picks(inv['info'], True, 'bads'))
+    assert np.all(sensor.names == inv['eigen_fields']['col_names'])
+    source = SourceSpace.from_mne_source_spaces(inv['src'], src, subjects_dir,
+                                                parc)
+    inv = mne.minimum_norm.prepare_inverse_operator(inv, 1, 1., 'MNE')
+    k = mne.minimum_norm.inverse._assemble_kernel(inv, None, 'MNE', False)[0]
+    return NDVar(k, (source, sensor), {}, name)
 
 
 def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,

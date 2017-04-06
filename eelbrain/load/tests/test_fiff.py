@@ -21,13 +21,40 @@ FILTER_WARNING = ('The measurement information indicates a low-pass frequency '
 
 
 @requires_mne_sample_data
-def test_load_fiff_fwd():
+def test_load_fiff_mne():
     data_path = mne.datasets.sample.data_path()
     fwd_path = os.path.join(data_path, 'MEG', 'sample', 'sample-ico-4-fwd.fif')
+    evoked_path = os.path.join(data_path, 'MEG', 'sample',
+                               'sample_audvis-no-filter-ave.fif')
+    cov_path = os.path.join(data_path, 'MEG', 'sample', 'sample_audvis-cov.fif')
     mri_sdir = os.path.join(data_path, 'subjects')
-    fwd = load.fiff.forward_operator(fwd_path, 'ico-4', mri_sdir)
-    eq_(len(fwd.source), 5120)
-    eq_(len(fwd.sensor), 364)
+
+    mne_evoked = mne.read_evokeds(evoked_path, 'Left Auditory')
+    mne_fwd = mne.read_forward_solution(fwd_path, force_fixed=True)
+    cov = mne.read_cov(cov_path)
+
+    picks = mne.pick_types(mne_evoked.info, 'mag')
+    channels = [mne_evoked.ch_names[i] for i in picks]
+
+    mne_evoked = mne_evoked.pick_channels(channels)
+    mne_fwd = mne.pick_channels_forward(mne_fwd, channels)
+    cov = mne.pick_channels_cov(cov, channels)
+
+    mne_inv = mne.minimum_norm.make_inverse_operator(mne_evoked.info, mne_fwd,
+                                                     cov, None, None, True)
+
+    mne_stc = mne.minimum_norm.apply_inverse(mne_evoked, mne_inv, 1., 'MNE')
+
+    meg = load.fiff.evoked_ndvar(mne_evoked)
+    inv = load.fiff.inverse_operator(mne_inv, 'ico-4', mri_sdir)
+    stc = inv.dot(meg)
+    assert_array_almost_equal(stc.get_data(('source', 'time')), mne_stc.data)
+
+    fwd = load.fiff.forward_operator(mne_fwd, 'ico-4', mri_sdir)
+    reconstruct = fwd.dot(stc)
+    mne_reconstruct = mne.apply_forward(mne_fwd, mne_stc, mne_evoked.info)
+    assert_array_almost_equal(reconstruct.get_data(('sensor', 'time')),
+                              mne_reconstruct.data)
 
 
 @requires_module('mne', '0.13')

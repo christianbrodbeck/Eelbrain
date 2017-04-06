@@ -3132,12 +3132,11 @@ class MneExperiment(FileTree):
         fwd_file = self.get('fwd-file', make=True)
         if ndvar:
             self.make_annot()
-            fwd = load.fiff.forward_operator(fwd_file, self.get('src'),
-                                             self.get('mri-sdir'),
-                                             self.get('parc'))
+            fwd = load.fiff.forward_operator(
+                fwd_file, self.get('src'), self.get('mri-sdir'), self.get('parc'))
             if mask:
-                fwd = fwd.sub(source=np.invert(fwd.source.parc
-                                               .startswith('unknown')))
+                fwd = fwd.sub(source=np.invert(
+                    fwd.source.parc.startswith('unknown')))
             return fwd
         else:
             return mne.read_forward_solution(fwd_file, surf_ori=surf_ori)
@@ -3160,7 +3159,7 @@ class MneExperiment(FileTree):
                                relpath(path, self.get('root')))
         return mne.preprocessing.read_ica(path)
 
-    def load_inv(self, fiff=None, **kwargs):
+    def load_inv(self, fiff=None, ndvar=False, mask=None, **kwargs):
         """Load the inverse operator
 
         Parameters
@@ -3168,19 +3167,39 @@ class MneExperiment(FileTree):
         fiff : Raw | Epochs | Evoked | ...
             Object which provides the mne info dictionary (default: load the
             raw file).
+        ndvar : bool
+            Return the inverse operator as NDVar (default is 
+            :class:`mne.minimum_norm.InverseOperator`). The NDVar representation 
+            does not take into account any direction selectivity (loose/free 
+            orientation) or noise normalization properties.
+        mask : str | bool
+            Remove source labelled "unknown". Can be parcellation name or True,
+            in which case the current parcellation is used.
         ...
             State parameters.
         """
         if self.get('modality', **kwargs) != '':
             raise NotImplementedError("Source reconstruction for EEG data")
+        elif mask and not ndvar:
+            raise NotImplemented("mask is only implemented for ndvar=True")
+        elif isinstance(mask, basestring):
+            self.set(parc=mask)
+            mask = True
 
         if fiff is None:
             fiff = self.load_raw()
 
         fwd = self.load_fwd()
         cov = self.load_cov()
-        inv = make_inverse_operator(fiff.info, fwd, cov,
-                                    **self._params['make_inv_kw'])
+        kwargs = self._params['make_inv_kw']
+        inv = make_inverse_operator(fiff.info, fwd, cov, **kwargs)
+
+        if ndvar:
+            inv = load.fiff.inverse_operator(
+                inv, self.get('src'), self.get('mri-sdir'), self.get('parc'))
+            if mask:
+                inv = inv.sub(source=np.invert(
+                    inv.source.parc.startswith('unknown')))
         return inv
 
     def load_label(self, label, **kwargs):
