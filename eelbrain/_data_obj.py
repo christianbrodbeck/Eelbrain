@@ -3044,29 +3044,33 @@ class NDVar(object):
             if d0 == 'case':
                 has_case = True
             else:
-                err = ("The only dimension that can be specified as a string"
-                       "is 'case' (got %r)" % d0)
-                raise ValueError(err)
+                raise ValueError(
+                    "The only dimension that can be specified as a string is "
+                    "'case' (got %r)" % d0)
         else:
             has_case = False
 
         for dim, n in zip(dims, x.shape)[has_case:]:
             if isinstance(dim, basestring):
-                err = ("Invalid dimension: %r in %r. First dimension can be "
-                       "'case', other dimensions need to be Dimension "
-                       "subclasses." % (dim, dims))
-                raise TypeError(err)
+                raise TypeError(
+                    "Invalid dimension: %r in %r. First dimension can be "
+                    "'case', other dimensions need to be Dimension "
+                    "subclasses." % (dim, dims))
             n_dim = len(dim)
             if n_dim != n:
-                err = ("Dimension %r length mismatch: %i in data, "
-                       "%i in dimension %r" % (dim.name, n, n_dim, dim.name))
-                raise DimensionMismatchError(err)
+                raise DimensionMismatchError(
+                    "Dimension %r length mismatch: %i in data, %i in dimension "
+                    "%r" % (dim.name, n, n_dim, dim.name))
 
-        state = {'x': x, 'dims': dims, 'info': dict(info),
-                 'name': name}
-        self.__setstate__(state)
+        self.__setstate__({'x': x, 'dims': dims, 'info': dict(info),
+                           'name': name})
 
     def __setstate__(self, state):
+        # backwards compatibility
+        if 'properties' in state:
+            state['info'] = state.pop('properties')
+
+        # initialize attributes
         self.dims = dims = state['dims']
         self.has_case = (dims[0] == 'case')
         self._truedims = truedims = dims[self.has_case:]
@@ -3078,10 +3082,7 @@ class NDVar(object):
 
         self.x = x = state['x']
         self.name = state['name']
-        if 'info' in state:
-            self.info = state['info']
-        else:
-            self.info = state['properties']
+        self.info = state['info']
         # derived
         self.ndim = len(dims)
         self.shape = x.shape
@@ -3096,11 +3097,10 @@ class NDVar(object):
                 setattr(self, dim.name, dim)
 
     def __getstate__(self):
-        state = {'dims': self.dims,
-                 'x': self.x,
-                 'name': self.name,
-                 'info': self.info}
-        return state
+        return {'dims': self.dims,
+                'x': self.x,
+                'name': self.name,
+                'info': self.info}
 
     @property
     def __array_interface__(self):
@@ -3913,8 +3913,8 @@ class NDVar(object):
 
         dims_ = tuple(d for d in dims if d is not newaxis)
         if set(dims_) != set(self.dimnames) or len(dims_) != len(self.dimnames):
-            err = "Requested dimensions %r from %r" % (dims, self)
-            raise DimensionMismatchError(err)
+            raise DimensionMismatchError("Requested dimensions %r from %r" %
+                                         (dims, self))
 
         # transpose
         axes = tuple(self.dimnames.index(d) for d in dims_)
