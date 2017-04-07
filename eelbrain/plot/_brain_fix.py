@@ -444,9 +444,9 @@ class Brain(surfer.Brain):
 
         return annot_legend(lh, rh, *args, **kwargs)
 
-    def remove_data(self):
+    def remove_data(self, hemi=None):
         """Remove data shown with ``Brain.add_ndvar``"""
-        surfer.Brain.remove_data(self)
+        surfer.Brain.remove_data(self, None)
         del self.__data[:]
 
     def set_parallel_view(self, forward=None, up=None, scale=None):
