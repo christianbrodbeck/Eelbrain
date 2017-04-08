@@ -488,6 +488,9 @@ class Brain(surfer.Brain):
         surfer.Brain.set_surface(self, surface)
         self.set_parallel_view(scale=True)
 
+    def set_title(self, title):
+        self._frame.SetTitle(unicode(title))
+
     def _update_time(self, t):
         index = self._time_dim.dimindex(t)
         if index == self.__time_index:
