@@ -125,7 +125,7 @@ class Brain(surfer.Brain):
 
     def add_ndvar(self, ndvar, cmap=None, vmin=None, vmax=None,
                   smoothing_steps=None, colorbar=False, time_label='ms',
-                  lighting=True, contours=None, remove_existing=False):
+                  lighting=False, contours=None, remove_existing=False):
         """Add data layer form an NDVar
 
         Parameters
@@ -148,8 +148,8 @@ class Brain(surfer.Brain):
             milliseconds or in seconds, or supply a custom formatter for time
             values in seconds (default is ``'ms'``).
         lighting : bool
-            The data overlay is affected by light sources (set to False to make
-            the data overlay luminescent).
+            The data overlay is affected by light sources (default ``False``, 
+            i.e. data overlays appear luminescent).
         contours : bool | sequence of scalar
             Draw contour lines instead of a solid overlay. Set to a list of
             contour levels or ``True`` for automatic contours.
