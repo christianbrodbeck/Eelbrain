@@ -513,6 +513,8 @@ class MneExperiment(FileTree):
         Automatically look for subjects in the MEG-directory (default
         True). Set ``find_subjects=False`` to initialize the experiment
         without any files.
+    ...
+        Initial state parameters.
 
     Notes
     -----
@@ -2384,7 +2386,7 @@ class MneExperiment(FileTree):
             If iterating over subjects, use this group ('all' for all except
             excluded subjects, 'all!' for all including excluded subjects, or
             a name defined in experiment.groups).
-        *others* :
+        ...
             Fields with constant values throughout the iteration.
         """
         if group is not None:
@@ -2468,6 +2470,8 @@ class MneExperiment(FileTree):
         labels : list of Label
             Labels in the parcellation (output of
             :func:`mne.read_labels_from_annot`).
+        ...
+            State parameters.
         """
         self.make_annot(**state)
         return mne.read_labels_from_annot(self.get('mrisubject'),
@@ -2476,6 +2480,11 @@ class MneExperiment(FileTree):
 
     def load_bad_channels(self, **kwargs):
         """Load bad channels
+        
+        Parameters
+        ----------
+        ...
+            State parameters.
 
         Returns
         -------
@@ -2517,13 +2526,19 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        others :
+        ...
             State parameters.
         """
         return mne.read_cov(self.get('cov-file', make=True, **kwargs))
 
     def load_edf(self, **kwargs):
-        """Load the edf file ("edf-file" template)"""
+        """Load the edf file ("edf-file" template)
+        
+        Parameters
+        ----------
+        ...
+            State parameters.
+        """
         path = self.get('edf-file', fmatch=False, **kwargs)
         return load.eyelink.Edf(path)
 
@@ -2634,6 +2649,8 @@ class MneExperiment(FileTree):
             Override the epoch's ``tmin`` parameter.
         tmax : scalar
             Override the epoch's ``tmax`` parameter.
+        ...
+            State parameters.
         """
         if ndvar:
             if isinstance(ndvar, basestring):
@@ -2726,6 +2743,8 @@ class MneExperiment(FileTree):
             Name of a 2-stage test defining additional variables.
         decim : None | int
             Set to an int in order to override the epoch decim factor.
+        ...
+            State parameters.
 
         Returns
         -------
@@ -2786,8 +2805,8 @@ class MneExperiment(FileTree):
             Can be specified as raw name (str) to include a different raw object
             than the one from which events are loaded (used for frequency
             analysis).
-        others :
-            Update state.
+        ...
+            State parameters.
         """
         evt_file = self.get('event-file', mkdir=True, subject=subject, **kwargs)
 
@@ -2883,7 +2902,7 @@ class MneExperiment(FileTree):
             Name of a 2-stage test defining additional variables.
         model : str (state)
             Model according to which epochs are grouped into evoked responses.
-        *others* : str
+        ...
             State parameters.
         """
         subject, group = self._process_subject_arg(subject, kwargs)
@@ -2969,6 +2988,8 @@ class MneExperiment(FileTree):
         keep_stc : bool
             Keep the source timecourse data in the Dataset that is returned
             (default False).
+        ...
+            State parameters.
         """
         ds = self.load_epochs_stc(subject, sns_baseline, ndvar=True,
                                   morph=morph, mask=mask, data_raw='raw',
@@ -3008,6 +3029,8 @@ class MneExperiment(FileTree):
         keep_stc : bool
             Keep the source timecourse data in the Dataset that is returned
             (default False).
+        ...
+            State parameters.
         """
         ds = self.load_evoked_stc(subject, sns_baseline, morph_ndvar=morph,
                                   ind_ndvar=not morph, mask=mask,
@@ -3072,7 +3095,7 @@ class MneExperiment(FileTree):
             analysis).
         vardef : str
             Name of a 2-stage test defining additional variables.
-        *others* : str
+        ...
             State parameters.
         """
         if not any((ind_stc, ind_ndvar, morph_stc, morph_ndvar)):
@@ -3161,7 +3184,7 @@ class MneExperiment(FileTree):
         fiff : Raw | Epochs | Evoked | ...
             Object which provides the mne info dictionary (default: load the
             raw file).
-        others :
+        ...
             State parameters.
         """
         if self.get('modality', **kwargs) != '':
@@ -3185,6 +3208,8 @@ class MneExperiment(FileTree):
             Name of the label. If the label name does not end in '-bh' or '-rh'
             the combination of the labels ``label + '-lh'`` and
             ``label + '-rh'`` is returned.
+        ...
+            State parameters.
         """
         labels = self._load_labels(label, **kwargs)
         if label in labels:
@@ -3206,6 +3231,11 @@ class MneExperiment(FileTree):
 
     def load_morph_matrix(self, **state):
         """Load the morph matrix from mrisubject to common_brain
+
+        Parameter
+        ---------
+        ...
+            State parameters.
 
         Returns
         -------
@@ -3243,6 +3273,8 @@ class MneExperiment(FileTree):
             Load as NDVar instead of mne Raw object (defautl False).
         decim : int
             Decimate data (implies preload=True; default 1, i.e. no decimation)
+        ...
+            State parameters.
 
         Notes
         -----
@@ -3294,6 +3326,8 @@ class MneExperiment(FileTree):
             Format for vector graphics (default 'pdf').
         pix_fmt : str
             Format for pixel graphics (default 'png').
+        ...
+            State parameters.
         """
         if self._tests[test]['kind'] == '2-stage':
             raise NotImplementedError("Result-plots for 2-stage tests")
@@ -3345,8 +3379,8 @@ class MneExperiment(FileTree):
             Name of a 2-stage test defining additional variables.
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
-        others :
-            Update the experiment state.
+        ...
+            State parameters.
 
         Notes
         -----
@@ -3540,10 +3574,17 @@ class MneExperiment(FileTree):
         return spm.LM('src', p['stage 1'], ds, subject=subject)
 
     def load_src(self, add_geom=False, **state):
-        "Load the current source space"
+        """Load the current source space
+        
+        Parameters
+        ----------
+        add_geom : bool
+            Parameter for :func:`mne.read_source_spaces`.
+        ...
+            State parameters.
+        """
         fpath = self.get('src-file', make=True, **state)
-        src = mne.read_source_spaces(fpath, add_geom)
-        return src
+        return mne.read_source_spaces(fpath, add_geom)
 
     def load_test(self, test, tstart, tstop, pmin, parc=None, mask=None,
                   samples=10000, data='source', sns_baseline=True,
@@ -3580,8 +3621,9 @@ class MneExperiment(FileTree):
         make : bool
             If the target file does not exist, create it (could take a long
             time depending on the test; if False, raise an IOError).
-        group : str
-            Group for which to perform the test.
+        ...
+            State parameters (Use the ``group`` state parameter to select the 
+            subject group for which to perform the test).
 
         Returns
         -------
@@ -3749,6 +3791,8 @@ class MneExperiment(FileTree):
         ----------
         redo : bool
             Even if the file exists, recreate it (default False).
+        ...
+            State parameters.
 
         Returns
         -------
@@ -3876,6 +3920,8 @@ class MneExperiment(FileTree):
             in the raw data, a ValueError is raised.
         redo : bool
             If the file already exists, replace it (instead of adding).
+        ...
+            State parameters.
 
         See Also
         --------
@@ -3909,6 +3955,8 @@ class MneExperiment(FileTree):
         ----------
         redo : bool
             If besa files already exist, overwrite them.
+        ...
+            State parameters.
 
         Notes
         -----
@@ -4106,6 +4154,8 @@ class MneExperiment(FileTree):
         epoch : str
             Epoch to use for visualization in the GUI (default is current
             epoch; does not apply to ICA specified through artifact_rejection).
+        decim : int (optional)
+            Downsample epochs (for visualization only).
 
         Notes
         -----
@@ -4133,7 +4183,8 @@ class MneExperiment(FileTree):
         return_data : bool | str
             Return epoch data for ICA component selection. Can be a string to
             load secific epoch.
-
+        decim : int (optional)
+            Downsample epochs (for visualization only).
 
         Returns
         -------
@@ -4142,7 +4193,6 @@ class MneExperiment(FileTree):
         [ds : Dataset]
             Dataset with the epoch data the ICA is based on (only if
             ``return_data`` is ``True``)
-
 
         Notes
         -----
@@ -4292,8 +4342,8 @@ class MneExperiment(FileTree):
             folder.
         redo : bool
             Make the movie even if the target file exists already.
-        *others* :
-            Experiment state parameters.
+        ...
+            State parameters.
         """
         kwargs['model'] = ''
         subject, group = self._process_subject_arg(subject, kwargs)
@@ -4384,8 +4434,8 @@ class MneExperiment(FileTree):
             folder.
         redo : bool
             Make the movie even if the target file exists already.
-        *others* :
-            Experiment state parameters.
+        ...
+            State parameters.
         """
         if p == 0.1:
             pmid = 0.05
@@ -4480,8 +4530,8 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        kwargs :
-            State arguments
+        ...
+            State parameters.
 
         Examples
         --------
@@ -4509,8 +4559,8 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        kwargs :
-            State arguments
+        ...
+            State parameters.
 
         Examples
         --------
@@ -4547,6 +4597,8 @@ class MneExperiment(FileTree):
             FreeSurfer surface on which to plot the annotation.
         redo : bool
             If the target file already exists, overwrite it.
+        ...
+            State parameters.
         """
         if is_fake_mri(self.get('mri-dir', **state)):
             mrisubject = self.get('common_brain')
@@ -4602,6 +4654,11 @@ class MneExperiment(FileTree):
 
     def make_raw(self, **kwargs):
         """Make a raw file
+        
+        Parameters
+        ----------
+        ...
+            State parameters.
 
         Notes
         -----
@@ -4636,7 +4693,7 @@ class MneExperiment(FileTree):
         overwrite : bool
             If ``auto`` is specified and a rejection file already exists,
             overwrite has to be set to ``True`` to overwrite the old file.
-        kwargs :
+        ... :
             Kwargs for SelectEpochs
         """
         rej_args = self._artifact_rejection[self.get('rej')]
@@ -4764,6 +4821,8 @@ class MneExperiment(FileTree):
         redo : bool
             If the target file already exists, delete and recreate it. This
             only applies to the HTML result file, not to the test.
+        ...
+            State parameters.
         """
         if samples < 1:
             raise ValueError("samples needs to be > 0")
@@ -4888,6 +4947,8 @@ class MneExperiment(FileTree):
             not apply baseline correction.
         redo : bool
             If the target file already exists, delete and recreate it.
+        ...
+            State parameters.
         """
         if samples < 1:
             raise ValueError("Need samples > 0 to run permutation test.")
@@ -5013,6 +5074,8 @@ class MneExperiment(FileTree):
         include : 0 < scalar <= 1
             Create plots for all clusters with p-values smaller or equal this
             value (the default is 1, i.e. to show all clusters).
+        ...
+            State parameters.
         """
         self._set_analysis_options('eeg', baseline, None, pmin, tstart, tstop,
                                    None, dims=('sensor', 'time'))
@@ -5075,6 +5138,8 @@ class MneExperiment(FileTree):
         redo : bool
             If the target file already exists, delete and recreate it. This
             only applies to the HTML result file, not to the test.
+        ...
+            State parameters.
         """
         self._set_analysis_options('eeg', baseline, None, pmin, tstart, tstop,
                                    None, dims=('time',))
@@ -5256,7 +5321,13 @@ class MneExperiment(FileTree):
         report.save_html(file_name)
 
     def make_src(self, **kwargs):
-        "Make the source space"
+        """Make the source space
+        
+        Parameters
+        ----------
+        ...
+            State parameters.
+        """
         dst = self.get('src-file', **kwargs)
         subject = self.get('mrisubject')
         common_brain = self.get('common_brain')
@@ -5458,7 +5529,7 @@ class MneExperiment(FileTree):
 
     def plot_brain(self, surf='inflated', title=None, hemi='lh', views=['lat'],
                    w=500, clear=True, common_brain=True):
-        """Create a PuSyrfer Brain instance
+        """Create a PySurfer Brain instance
 
         Parameters
         ----------
@@ -5516,6 +5587,8 @@ class MneExperiment(FileTree):
             Plot only MEG or only EEG sensors (default is both).
         dig : bool
             Plot the digitization points (default True).
+        ...
+            State parameters.
 
         Notes
         -----
@@ -5584,6 +5657,8 @@ class MneExperiment(FileTree):
         run : bool
             Run the GUI after plotting (default in accordance with plotting
             default).
+        ...
+            State parameters.
         """
         subject, group = self._process_subject_arg(subject, kwargs)
         y = self._ndvar_name_for_modality(self.get('modality'))
@@ -5674,8 +5749,8 @@ class MneExperiment(FileTree):
         subject : str
             Set the `subject` value. The corresponding `mrisubject` is
             automatically set to the corresponding mri subject.
-        *other* : str
-            All other keywords can be used to set templates.
+        ...
+            State parameters.
         """
         if subject is not None:
             state['subject'] = subject
@@ -6030,8 +6105,8 @@ class MneExperiment(FileTree):
             modification date and time (default); 'date' for date only.
         absent : str
             String to display when a given file is absent (default '-').
-        others :
-            ``self.iter()`` kwargs.
+        ... :
+            :meth:`MneExperiment.iter` parameters.
 
         Examples
         --------
@@ -6089,6 +6164,8 @@ class MneExperiment(FileTree):
         ----------
         asds : bool
             Return a dataset with the parameters (default False).
+        ...
+            State parameters.
         """
         if kwargs:
             self.set(**kwargs)
