@@ -125,7 +125,7 @@ class Brain(surfer.Brain):
 
     def add_ndvar(self, ndvar, cmap=None, vmin=None, vmax=None,
                   smoothing_steps=None, colorbar=False, time_label='ms',
-                  lighting=True, contours=None):
+                  lighting=True, contours=None, remove_existing=False):
         """Add data layer form an NDVar
 
         Parameters
@@ -153,6 +153,8 @@ class Brain(surfer.Brain):
         contours : bool | sequence of scalar
             Draw contour lines instead of a solid overlay. Set to a list of
             contour levels or ``True`` for automatic contours.
+        remove_existing : bool
+            Remove data layers that have been added previously (default False).
         """
         # find standard args
         meas = ndvar.info.get('meas')
@@ -233,7 +235,8 @@ class Brain(surfer.Brain):
             data = src_hemi.get_data(data_dims)
             vertices = ndvar.source.lh_vertno
             self.add_data(data, vmin, vmax, None, cmap, alpha, vertices,
-                          smoothing_steps, times, time_label_, colorbar_, 'lh')
+                          smoothing_steps, times, time_label_, colorbar_, 'lh',
+                          remove_existing)
             new_surfaces.extend(self.data_dict['lh']['surfaces'])
 
         if data_hemi != 'lh':
@@ -241,7 +244,8 @@ class Brain(surfer.Brain):
             data = src_hemi.get_data(data_dims)
             vertices = ndvar.source.rh_vertno
             self.add_data(data, vmin, vmax, None, cmap, alpha, vertices,
-                          smoothing_steps, times, time_label, colorbar, 'rh')
+                          smoothing_steps, times, time_label, colorbar, 'rh',
+                          remove_existing)
             new_surfaces.extend(self.data_dict['rh']['surfaces'])
 
         # update surfaces
