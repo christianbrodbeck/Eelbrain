@@ -172,7 +172,7 @@ class BrainFrame(EelbrainFrame):
     def OnPlotColorBar(self, event):
         if self._brain._has_data():
             self._brain.plot_colorbar()
-        elif self._brain._has_annot():
+        elif self._brain._has_annot() or self._brain._has_labels():
             self._brain.plot_legend()
 
     def OnSave(self, event):

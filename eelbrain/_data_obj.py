@@ -8553,19 +8553,38 @@ class SourceSpace(Dimension):
                           in izip(self.vertno, other.vertno))
         return self[index]
 
+    def _label(self, vertices, name, color, subjects_dir=None, sss=None):
+        lh_vertices, rh_vertices = vertices
+        if sss is None:
+            sss = self.get_source_space(subjects_dir)
+
+        if len(lh_vertices):
+            lh = mne.Label(lh_vertices, hemi='lh', color=color).fill(sss, name + '-lh')
+        else:
+            lh = None
+
+        if len(rh_vertices):
+            rh = mne.Label(rh_vertices, hemi='rh', color=color).fill(sss, name + '-rh')
+        else:
+            rh = None
+
+        return lh, rh
+
     def _mask_label(self, subjects_dir=None):
         "Create a Label that masks the areas not covered in this SourceSpace"
-        lh = rh = None
         sss = self.get_source_space(subjects_dir)
         if self.lh_n:
             lh_verts = np.setdiff1d(sss[0]['vertno'], self.lh_vertno)
-            if len(lh_verts):
-                lh = mne.Label(lh_verts, hemi='lh', color=(0, 0, 0)).fill(sss, 'mask-lh')
+        else:
+            lh_verts = ()
+
         if self.rh_n:
             rh_verts = np.setdiff1d(sss[1]['vertno'], self.rh_vertno)
-            if len(rh_verts):
-                rh = mne.Label(rh_verts, hemi='rh', color=(0, 0, 0)).fill(sss, 'mask-rh')
-        return lh, rh
+        else:
+            rh_verts = ()
+
+        return self._label((lh_verts, rh_verts), 'mask', (0, 0, 0),
+                           subjects_dir, sss)
 
     def _mask_ndvar(self, subjects_dir=None):
         if subjects_dir is None:

@@ -19,7 +19,7 @@ from ..fmtxt import Image, ms
 from ..mne_fixes import reset_logger
 from ._base import (CONFIG, do_autorun, find_axis_params_data, find_fig_cmaps,
                     find_fig_vlims)
-from ._colors import ColorBar
+from ._colors import ColorBar, ColorList
 from ._wx_brain import BrainFrame, SURFACES
 
 # Traits-GUI related imports after BrainFrame
@@ -42,6 +42,7 @@ class Brain(surfer.Brain):
                  show, run, **kwargs):
         self.__data = []
         self.__annot = None
+        self.__labels = []  # [(name, color), ...]
         self._time_dim = None
         self.__time_index = 0
         self._frame_is_alive = True
@@ -270,6 +271,54 @@ class Brain(surfer.Brain):
             'dict_index': data_index,
         })
 
+    def add_ndvar_label(self, ndvar, color=(1, 0, 0), borders=False, name=None,
+                        alpha=None, lighting=False):
+        """Draw a boolean NDVar as label.
+
+        Parameters
+        ----------
+        ndvar : NDVar
+            Boolean NDVar.
+        color : matplotlib-style color | None
+            anything matplotlib accepts: string, RGB, hex, etc. (default
+            "crimson")
+        borders : bool | int
+            Show only label borders. If int, specify the number of steps
+            (away from the true border) along the cortical mesh to include
+            as part of the border definition.
+        name : str
+            Name for the label (for display in legend).
+        alpha : float in [0, 1]
+            alpha level to control opacity
+        lighting : bool
+            Whether label should be affected by lighting (default False).
+
+        Notes
+        -----
+        To remove previously added labels, run Brain.remove_labels().
+        """
+        x = ndvar.get_data('source')
+        if x.dtype.kind != 'b':
+            raise ValueError("Require NDVar of type bool, got %r" % (x.dtype,))
+        if name is None:
+            name = str(ndvar.name)
+        source = ndvar.get_dim('source')
+        color = colorConverter.to_rgba(color, alpha)
+        lh_vertices = source.lh_vertno[x[:source.lh_n]]
+        rh_vertices = source.rh_vertno[x[source.lh_n:]]
+        lh, rh = source._label((lh_vertices, rh_vertices), name, color[:3])
+        if lh and self._hemi != 'rh':
+            while lh.name in self.labels_dict:
+                lh.name += '_'
+            self.add_label(lh, color[:3], color[3], borders=borders)
+            self.labels_dict[lh.name][0].actor.property.lighting = lighting
+        if rh and self._hemi != 'lh':
+            while rh.name in self.labels_dict:
+                rh.name += '_'
+            self.add_label(rh, color[:3], color[3], borders=borders)
+            self.labels_dict[rh.name][0].actor.property.lighting = lighting
+        self.__labels.append((name, color))
+
     def close(self):
         "Close the figure window"
         surfer.Brain.close(self)
@@ -303,6 +352,9 @@ class Brain(surfer.Brain):
 
     def _has_data(self):
         return bool(self.__data)
+
+    def _has_labels(self):
+        return bool(self.__labels)
 
     def image(self, name=None, format='png', alt=None):
         """Create an FMText Image from a screenshot
@@ -437,7 +489,11 @@ class Brain(surfer.Brain):
         plot.brain.annot_legend : plot a legend without plotting the brain
         """
         from ._brain import annot_legend
-        if self.__annot is None:
+        if self.__labels:
+            return ColorList(dict(self.__labels),
+                             tuple(name for name, color in self.__labels),
+                             *args, **kwargs)
+        elif self.__annot is None:
             raise RuntimeError("Can only plot legend for brain displaying "
                                "parcellation")
 
@@ -452,6 +508,11 @@ class Brain(surfer.Brain):
         """Remove data shown with ``Brain.add_ndvar``"""
         surfer.Brain.remove_data(self, None)
         del self.__data[:]
+
+    def remove_labels(self):
+        """Remove labels shown with ``Brain.add_ndvar_label``"""
+        surfer.Brain.remove_labels()
+        del self.__labels[:]
 
     def set_parallel_view(self, forward=None, up=None, scale=None):
         """Set view to parallel projection
