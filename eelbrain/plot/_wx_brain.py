@@ -154,9 +154,10 @@ class BrainFrame(EelbrainFrame):
         self._brain._set_surface(SURFACES[event.GetSelection()])
 
     def OnClose(self, event):
-        self._brain._frame_is_alive = False
-        self._brain = None
         event.Skip()
+        if self._brain is not None:
+            self._brain._frame_is_alive = False
+            self._brain = None  # remove circular reference
 
     def OnKeyDown(self, event):
         if self._brain is None:
