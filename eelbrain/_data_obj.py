@@ -3291,6 +3291,16 @@ class NDVar(object):
         return NDVar(other - self.x, self.dims, self.info.copy(), self.name)
 
     # container ---
+    def _pack_index(self, index):
+        "Convert array-index to semantic index"
+        if self.ndim == 1:
+            return self.dims[0]._index_repr(index)
+        indices = np.unravel_index(index, self.x.shape)
+        if self.has_case:
+            return (indices[0],) + tuple(dim._index_repr(i) for dim, i in
+                                         izip(self.dims[1:], indices[1:]))
+        return tuple(dim._index_repr(i) for dim, i in izip(self.dims, indices))
+
     def __getitem__(self, index):
         if isinstance(index, tuple):
             return self.sub(*index)
@@ -3367,14 +3377,20 @@ class NDVar(object):
             Index appropriate for the NDVar's dimensions. If NDVar has more
             than one dimensions, a tuple of indices.
         """
-        argmax = np.argmax(self.x)
-        if self.ndim == 1:
-            return self.dims[0]._index_repr(argmax)
-        indices = np.unravel_index(argmax, self.x.shape)
-        if self.has_case:
-            return (indices[0],) + tuple(dim._index_repr(i) for dim, i in
-                                         izip(self.dims[1:], indices[1:]))
-        return tuple(dim._index_repr(i) for dim, i in izip(self.dims, indices))
+        return self._pack_index(np.argmax(self.x))
+
+    def argmin(self):
+        """Find the index of the smallest value.
+
+        ``ndvar[ndvar.argmin()]`` is equivalent to ``ndvar.min()``.
+
+        Returns
+        -------
+        argmin : index | tuple
+            Index appropriate for the NDVar's dimensions. If NDVar has more
+            than one dimensions, a tuple of indices.
+        """
+        return self._pack_index(np.argmin(self.x))
 
     def assert_dims(self, dims):
         if self.dimnames != dims:
