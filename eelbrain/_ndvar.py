@@ -327,7 +327,7 @@ def find_intervals(ndvar):
     return tuple(izip(onsets, offsets))
 
 
-def label_operator(labels, operation='mean', exclude=None):
+def label_operator(labels, operation='mean', exclude=None, weights=None):
     """Convert labeled NDVar into a matrix operation to extract label values
     
     Parameters
@@ -339,6 +339,9 @@ def label_operator(labels, operation='mean', exclude=None):
     exclude : array_like
         Values to exclude (i.e., use ``exclude=0`` to ignore the area where 
         ``labels==0``.
+    weights : NDVar
+        NDVar with same dimension as ``labels`` to assign weights to label 
+        elements.
     
     Returns
     -------
@@ -349,6 +352,11 @@ def label_operator(labels, operation='mean', exclude=None):
         raise ValueError("operation=%r" % (operation,))
     dimname = labels.get_dimnames((None,))[0]
     dim = labels.get_dim(dimname)
+    if weights is not None:
+        if weights.get_dim(dimname) != dim:
+            raise DimensionMismatchError("weights.{0} does not correspond to "
+                                         "labels.{0}".format(dimname))
+        weights = weights.get_data((dimname,))
     label_data = labels.get_data((dimname,))
     label_values = np.unique(label_data)
     if exclude is not None:
@@ -356,6 +364,8 @@ def label_operator(labels, operation='mean', exclude=None):
     x = np.empty((len(label_values), len(dim)))
     for v, xs in izip(label_values, x):
         np.equal(label_data, v, xs)
+        if weights is not None:
+            xs *= weights
         if operation == 'mean':
             xs /= xs.sum()
     label_dim = Scalar('label', label_values)
