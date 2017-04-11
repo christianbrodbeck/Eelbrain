@@ -2,6 +2,7 @@
 from collections import defaultdict
 from itertools import izip
 from math import floor
+from numbers import Real
 
 import mne
 import numpy as np
@@ -9,7 +10,8 @@ from scipy import linalg, signal
 
 from . import mne_fixes
 from . import _colorspaces as cs
-from ._data_obj import NDVar, Dimension, Scalar, UTS, DimensionMismatchError
+from ._data_obj import (
+    NDVar, Categorial, Dimension, Scalar, UTS, DimensionMismatchError)
 from ._info import merge_info
 
 
@@ -327,7 +329,8 @@ def find_intervals(ndvar):
     return tuple(izip(onsets, offsets))
 
 
-def label_operator(labels, operation='mean', exclude=None, weights=None):
+def label_operator(labels, operation='mean', exclude=None, weights=None,
+                   dim_name='label', dim_values=None):
     """Convert labeled NDVar into a matrix operation to extract label values
     
     Parameters
@@ -342,6 +345,13 @@ def label_operator(labels, operation='mean', exclude=None, weights=None):
     weights : NDVar
         NDVar with same dimension as ``labels`` to assign weights to label 
         elements.
+    dim_name : str
+        Name for the dimension characterized by labels (default ``"label"``).
+    dim_values : dict
+        Dictionary mapping label ids (i.e., values in ``labels``) to values on 
+        the dimension characterized by labels. If values are strings the new 
+        dimension will be categorical, if values are scalar it will be Scalar.
+        The default values are the integers in ``labels``.
     
     Returns
     -------
@@ -361,6 +371,20 @@ def label_operator(labels, operation='mean', exclude=None, weights=None):
     label_values = np.unique(label_data)
     if exclude is not None:
         label_values = np.setdiff1d(label_values, exclude)
+    # out-dim
+    if dim_values is None:
+        label_dim = Scalar(dim_name, label_values)
+    else:
+        values = tuple(dim_values[i] for i in label_values)
+        if all(isinstance(v, basestring) for v in values):
+            label_dim = Categorial(dim_name, values)
+        elif all(isinstance(v, Real) for v in values):
+            label_dim = Scalar(dim_name, values)
+        else:
+            raise TypeError("If dim_values is specified, values mus be either "
+                            "all strings or all real numbers; got %r" %
+                            (dim_values,))
+    # construct operator
     x = np.empty((len(label_values), len(dim)))
     for v, xs in izip(label_values, x):
         np.equal(label_data, v, xs)
@@ -368,7 +392,6 @@ def label_operator(labels, operation='mean', exclude=None, weights=None):
             xs *= weights
         if operation == 'mean':
             xs /= xs.sum()
-    label_dim = Scalar('label', label_values)
     return NDVar(x, (label_dim, dim), {}, labels.name)
 
 
