@@ -286,8 +286,15 @@ class _plt_utsnd(object):
 
         self._dims = (linedim, xdim)
         x = epoch.get_dim(xdim).x
-        self.lines = ax.plot(x, epoch.get_data((xdim, linedim)),
-                             color=color, label=epoch.name, **kwargs)
+        if isinstance(color, dict):
+            data = epoch.get_data((linedim, xdim))
+            line_dim = epoch.get_dim(linedim)
+            self.lines = [ax.plot(x, y, color=color[level], label=str(level),
+                                  **kwargs)[0] for
+                          y, level in izip(data, line_dim)]
+        else:
+            self.lines = ax.plot(x, epoch.get_data((xdim, linedim)),
+                                 color=color, label=epoch.name, **kwargs)
 
         for y, kwa in _base.find_uts_hlines(epoch):
             ax.axhline(y, **kwa)
@@ -321,8 +328,7 @@ class _ax_butterfly(object):
     vmin, vmax: None | scalar
         Y axis limits.
     """
-    def __init__(self, ax, layers, xdim, linedim, sensors=None, color=None,
-                 vlims={}):
+    def __init__(self, ax, layers, xdim, linedim, sensors, color, vlims):
         self.ax = ax
         self.data = layers
         self.layers = []
@@ -381,9 +387,11 @@ class Butterfly(TimeSlicer, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
         Y-axis labels. By default the label is inferred from the data.
     xticklabels : bool
         Add tick-labels to the x-axis (default True).
-    color : matplotlib color
-        default (``None``): use segment color if available, otherwise
-        black; ``True``: alternate colors (mpl default)
+    color : matplotlib color | dict
+        Either a color for all lines, or a dictionary mapping levels of the 
+        line dimension to colors. The default is to use ``NDVar.info['color']``
+        if available, otherwise the matplotlib default color alternation. Use 
+        ``color=True`` to use the matplotlib default.
     ds : None | Dataset
         If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
         as strings.
