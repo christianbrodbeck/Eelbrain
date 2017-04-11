@@ -224,21 +224,28 @@ class App(wx.App):
 
     def _bash_ui(self, func, *args):
         "Launch a modal dialog based on terminal input"
-        if self.IsMainLoopRunning():
-            return func(False, *args)
+        if self.using_prompt_toolkit or self.IsMainLoopRunning():
+            return func(*args)
         else:
             if not self.GetTopWindow():
                 self.SetTopWindow(wx.Frame(None))
-            wx.CallLater(10, func, True, *args)
+            wx.CallLater(10, func, *args)
             print("Please switch to the Python Application to provide input.")
             self.MainLoop()
             return self._result
+
+    def _bash_ui_finalize(self, result):
+        if self.using_prompt_toolkit or self.IsMainLoopRunning():
+            return result
+        else:
+            self._result = result
+            self.ExitMainLoop()
 
     def ask_for_dir(self, title="Select Folder", message="Please Pick a Folder",
                     must_exist=True):
         return self._bash_ui(self._ask_for_dir, title, message, must_exist)
 
-    def _ask_for_dir(self, exit_main_loop, title, message, must_exist):
+    def _ask_for_dir(self, title, message, must_exist):
         style = wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT
         if must_exist:
             style = style | wx.DD_DIR_MUST_EXIST
@@ -250,19 +257,14 @@ class App(wx.App):
             result = dialog.GetPath()
         else:
             result = False
-
-        if exit_main_loop:
-            self._result = result
-            self.ExitMainLoop()
-        else:
-            return result
+        dialog.Destroy()
+        return self._bash_ui_finalize(result)
 
     def ask_for_file(self, title, message, filetypes, directory, mult):
         return self._bash_ui(self._ask_for_file, title, message, filetypes,
                              directory, mult)
 
-    def _ask_for_file(self, exit_main_loop, title, message, filetypes,
-                      directory, mult):
+    def _ask_for_file(self, title, message, filetypes, directory, mult):
         """Return path(s) or False.
 
         Parameters
@@ -289,37 +291,27 @@ class App(wx.App):
                 result = dialog.GetPath()
         else:
             result = False
-
-        if exit_main_loop:
-            self._result = result
-            self.ExitMainLoop()
-        else:
-            return result
+        dialog.Destroy()
+        return self._bash_ui_finalize(result)
 
     def ask_for_string(self, title, message, default='', parent=None):
         return self._bash_ui(self._ask_for_string, title, message, default,
                              parent)
 
-    def _ask_for_string(self, exit_main_loop, title, message, default, parent):
-        dlg = wx.TextEntryDialog(parent, message, title, default)
-        if dlg.ShowModal() == wx.ID_OK:
-            result = dlg.GetValue()
+    def _ask_for_string(self, title, message, default, parent):
+        dialog = wx.TextEntryDialog(parent, message, title, default)
+        if dialog.ShowModal() == wx.ID_OK:
+            result = dialog.GetValue()
         else:
             result = False
-        dlg.Destroy()
-
-        if exit_main_loop:
-            self._result = result
-            self.ExitMainLoop()
-        else:
-            return result
+        dialog.Destroy()
+        return self._bash_ui_finalize(result)
 
     def ask_saveas(self, title, message, filetypes, defaultDir, defaultFile):
         return self._bash_ui(self._ask_saveas, title, message, filetypes,
                              defaultDir, defaultFile)
 
-    def _ask_saveas(self, exit_main_loop, title, message, filetypes, defaultDir,
-                    defaultFile):
+    def _ask_saveas(self, title, message, filetypes, defaultDir, defaultFile):
         # setup file-dialog
         dialog = wx.FileDialog(None, message, wildcard=wildcard(filetypes),
                                style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
@@ -333,25 +325,17 @@ class App(wx.App):
             result = dialog.GetPath()
         else:
             result = False
-
-        if exit_main_loop:
-            self._result = result
-            self.ExitMainLoop()
-        else:
-            return result
+        dialog.Destroy()
+        return self._bash_ui_finalize(result)
 
     def message_box(self, message, caption, style, parent=None):
         return self._bash_ui(self._message_box, message, caption, style, parent)
 
-    def _message_box(self, exit_main_loop, message, caption, style, parent):
-        dlg = wx.MessageDialog(parent, message, caption, style)
-        answer = dlg.ShowModal()
-        dlg.Destroy()
-        if exit_main_loop:
-            self._result = answer
-            self.ExitMainLoop()
-        else:
-            return answer
+    def _message_box(self, message, caption, style, parent):
+        dialog = wx.MessageDialog(parent, message, caption, style)
+        result = dialog.ShowModal()
+        dialog.Destroy()
+        self._bash_ui_finalize(result)
 
     def ExitMainLoop(self, event_with_pt=True):
         if event_with_pt or not self.using_prompt_toolkit:
