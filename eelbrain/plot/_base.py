@@ -258,46 +258,6 @@ def find_im_args(ndvar, overlay, vlims={}, cmaps={}):
     return im_args
 
 
-def find_uts_args(ndvar, overlay, color=None):
-    """Construct a dict with kwargs for a uts plot
-
-    Parameters
-    ----------
-    ndvar : NDVar
-        Data to be plotted.
-    overlay : bool
-        Whether the NDVar is plotted as a first layer or as an overlay.
-    vlims : dict
-        Vmax and vmin values by (meas, cmap).
-
-    Returns
-    -------
-    uts_args : dict
-        Arguments for a uts plot (color).
-
-    Notes
-    -----
-    The NDVar's info dict contains default arguments that determine how the
-    NDVar is plotted as base and as overlay. In case of insufficient
-    information, defaults apply. On the other hand, defaults can be overridden
-    by providing specific arguments to plotting functions.
-    """
-    if overlay:
-        kind = ndvar.info.get('overlay', ())
-    else:
-        kind = ndvar.info.get('base', ('trace',))
-
-    if 'trace' in kind:
-        args = {}
-        color = color or ndvar.info.get('color', None)
-        if color is not None:
-            args['color'] = color
-    else:
-        args = None
-
-    return args
-
-
 def find_uts_hlines(ndvar):
     """Find horizontal lines for uts plots (based on contours)
 
@@ -340,17 +300,7 @@ def find_uts_ax_vlim(layers, vlims={}):
     """
     bottom = None
     top = None
-    overlay = False
     for ndvar in layers:
-        if overlay:
-            kind = ndvar.info.get('overlay', ())
-        else:
-            kind = ndvar.info.get('base', ('trace',))
-            overlay = True
-
-        if 'trace' not in kind:
-            continue
-
         meas = ndvar.info.get('meas')
         if meas in vlims:
             bottom_, top_ = vlims[meas]

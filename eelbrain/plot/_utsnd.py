@@ -279,17 +279,15 @@ class _plt_utsnd(object):
         Epoch to plot.
     sensors : None | True | numpy index
         The sensors to plot (None or True -> all sensors).
-    others :
-        Matplotlib plot() arguments.
     """
-    def __init__(self, ax, epoch, xdim, linedim, sensors=None, *args, **kwargs):
+    def __init__(self, ax, epoch, xdim, linedim, color, sensors=None, **kwargs):
         if sensors is not None and sensors is not True:
             epoch = epoch.sub(sensor=sensors)
 
         self._dims = (linedim, xdim)
-        kwargs['label'] = epoch.name
-        self.lines = ax.plot(epoch.get_dim(xdim),
-                             epoch.get_data((xdim, linedim)), *args, **kwargs)
+        x = epoch.get_dim(xdim).x
+        self.lines = ax.plot(x, epoch.get_data((xdim, linedim)),
+                             color=color, label=epoch.name, **kwargs)
 
         for y, kwa in _base.find_uts_hlines(epoch):
             ax.axhline(y, **kwa)
@@ -335,15 +333,9 @@ class _ax_butterfly(object):
         vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
 
         name = ''
-        overlay = False
         for l in layers:
-            uts_args = _base.find_uts_args(l, overlay, color)
-            if uts_args is None:
-                continue
-            overlay = True
-
-            # plot
-            h = _plt_utsnd(ax, l, xdim, linedim, sensors, **uts_args)
+            h = _plt_utsnd(ax, l, xdim, linedim, color or l.info.get('color'),
+                           sensors)
             self.layers.append(h)
             if not name and l.name:
                 name = l.name

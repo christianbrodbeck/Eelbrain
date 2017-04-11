@@ -563,12 +563,10 @@ class _ax_uts(object):
 
 class _plt_uts(object):
 
-    def __init__(self, ax, ndvar, xdim, color=None, kwargs={}):
+    def __init__(self, ax, ndvar, xdim, color):
         y = ndvar.get_data((xdim,))
         x = ndvar.get_dim(xdim).x
-        if color is not None:
-            kwargs['color'] = color
-        self.plot_handle = ax.plot(x, y, label=longname(ndvar), **kwargs)[0]
+        self.plot_handle = ax.plot(x, y, color=color, label=longname(ndvar))[0]
 
         for y, kwa in _base.find_uts_hlines(ndvar):
             if color is not None:
@@ -579,10 +577,11 @@ class _plt_uts(object):
 class _ax_uts_clusters:
     def __init__(self, ax, Y, clusters, color=None, pmax=0.05, ptrend=0.1,
                  xdim='time'):
-        uts_args = _base.find_uts_args(Y, False, color)
         self._bottom, self._top = _base.find_vlim_args(Y)
+        if color is None:
+            color = Y.info.get('color')
 
-        _plt_uts(ax, Y, xdim=xdim, **uts_args)
+        _plt_uts(ax, Y, xdim, color)
 
         if np.any(Y.x < 0) and np.any(Y.x > 0):
             ax.axhline(0, color='k')
