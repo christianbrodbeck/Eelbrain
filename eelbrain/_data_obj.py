@@ -4647,13 +4647,13 @@ class NDVar(object):
             An boolean NDVar with the same dimensions as the data can be used
             to compute the variance in specific elements (if the data has a case
             dimension, the variance is computed for each case).
-        *regions*
-            Regions over which to aggregate. For example, to get the variance
-            between time=0.1 and time=0.2, use ``ndvar.var(time=(0.1, 0.2))``.
         ddof : int
             Degrees of freedom (default 0; see :func:`numpy.var`).
         name : str
             Name of the output NDVar (default is the current name).
+        **regions
+            Regions over which to aggregate. For example, to get the variance
+            between time=0.1 and time=0.2, use ``ndvar.var(time=(0.1, 0.2))``.
 
         Returns
         -------
