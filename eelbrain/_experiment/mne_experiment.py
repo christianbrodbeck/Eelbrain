@@ -5829,22 +5829,19 @@ class MneExperiment(FileTree):
         m = inv_re.match(inv)
         ori, snr, method, depth, pick_normal = m.groups()
 
-        make_kw = {}
-        apply_kw = {}
-
         if ori == 'fixed':
-            make_kw['fixed'] = True
-            make_kw['loose'] = None
+            make_kw = {'fixed': True, 'loose': None}
         elif ori == 'free':
-            make_kw['loose'] = 1
+            make_kw = {'loose': 1}
         elif ori.startswith('loose'):
-            make_kw['loose'] = float(ori[5:])
+            make_kw = {'loose': float(ori[5:])}
+        else:
+            raise RuntimeError("ori=%r (in inv=%r)" % (ori, inv))
 
         if depth is not None:
             make_kw['depth'] = float(depth)
 
-        apply_kw['method'] = method
-        apply_kw['lambda2'] = 1. / float(snr) ** 2
+        apply_kw = {'method': method, 'lambda2': 1. / float(snr) ** 2}
         if pick_normal:
             apply_kw['pick_normal'] = True
 
