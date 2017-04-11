@@ -112,7 +112,15 @@ LEGACY_RAW = {
 
 
 ################################################################################
+# Exceptions
+
+class FileMissing(Exception):
+    "An input file is missing"
+
+
+################################################################################
 # Epochs
+
 class Epoch(object):
     """Epoch definition
 
@@ -3478,9 +3486,9 @@ class MneExperiment(FileTree):
                     if exists(rej_file):
                         ds_sel = load.unpickle(rej_file)
                     else:
-                        raise RuntimeError("The rejection file at %s does not "
-                                           "exist. Run .make_rej() first." %
-                                           self._get_rel('rej-file', 'root'))
+                        raise FileMissing("The rejection file at %s does not "
+                                          "exist. Run .make_rej() first." %
+                                          self._get_rel('rej-file', 'root'))
                 else:
                     ds_sel = None
 
@@ -6219,19 +6227,20 @@ class MneExperiment(FileTree):
         for subject in self:
             subjects.append(subject)
             bads_raw = self.load_bad_channels()
-            if exists(self.get('rej-file')):
+            try:
                 ds = self.load_selected_events(reject='keep')
+            except FileMissing:
+                ds = self.load_selected_events(reject=False)
+                n_good.append(float('nan'))
+                bad_chs.append(str(len(bads_raw)))
+                if has_interp:
+                    n_interp.append(float('nan'))
+            else:
                 n_good.append(ds['accept'].sum())
                 bads_rej = set(ds.info[BAD_CHANNELS]).difference(bads_raw)
                 bad_chs.append("%i + %i" % (len(bads_raw), len(bads_rej)))
                 if has_interp:
                     n_interp.append(np.mean([len(chi) for chi in ds[INTERPOLATE_CHANNELS]]))
-            else:
-                n_good.append(float('nan'))
-                ds = self.load_selected_events(reject=False)
-                bad_chs.append(str(len(bads_raw)))
-                if has_interp:
-                    n_interp.append(float('nan'))
             n_events.append(ds.n_cases)
             if has_ica:
                 ica_path = self.get('ica-file')
