@@ -70,6 +70,7 @@ from scipy.spatial.distance import cdist, pdist, squareform
 from . import fmtxt
 from . import _colorspaces as cs
 from ._exceptions import DimensionMismatchError
+from ._data_opt import gaussian_smoother
 from ._info import merge_info
 from ._utils import deprecated, intervals, ui, LazyProperty, n_decimals, natsorted
 from ._utils.numpy_utils import (
@@ -4402,7 +4403,7 @@ class NDVar(object):
         return NDVar(np.sign(self.x), self.dims, self.info.copy(),
                      name or self.name)
 
-    def smooth(self, dim, window_length, window='hamming', mode='center',
+    def smooth(self, dim, window_size, window='hamming', mode='center',
                name=None):
         """Smooth data by convolving it with a window
 
@@ -4410,12 +4411,15 @@ class NDVar(object):
         ----------
         dim : str
             Dimension along which to smooth.
-        window_length : scalar
-            Length of the window (in dimension units, i.e., for time in
-            seconds).
+        window_size : scalar
+            Size of the window (in dimension units, i.e., for time in
+            seconds). For finite windows this is the full size of the window, 
+            for a gaussian window it is the standard deviation.
         window : str | tuple
             Window type, input to :func:`scipy.signal.get_window`. For example
-            'boxcar', 'triang', 'hamming' (default).
+            'boxcar', 'triang', 'hamming' (default). For dimensions with
+            irregular spacing, such as :class:`SourceSpace`, only ``gaussian``
+            is implemented.
         mode : 'left' | 'center' | 'right'
             Alignment of the output to the input relative to the window:
 
@@ -4435,24 +4439,40 @@ class NDVar(object):
         """
         axis = self.get_axis(dim)
         dim_object = self.get_dim(dim)
-        if dim == 'time':
-            n = int(round(window_length / dim_object.tstep))
-        else:
-            raise NotImplementedError("dim=%r" % (dim,))
-        window = scipy.signal.get_window(window, n)
-        window /= window.sum()
-        window.shape = (1,) * axis + (n,) + (1,) * (self.ndim - axis - 1)
-        if mode == 'center':
-            x = scipy.signal.convolve(self.x, window, 'same')
-        else:
-            x = scipy.signal.convolve(self.x, window, 'full')
-            index = FULL_AXIS_SLICE * axis
-            if mode == 'left':
-                x = x[index + (slice(self.shape[axis]),)]
-            elif mode == 'right':
-                x = x[index + (slice(-self.shape[axis], None),)]
+        if window == 'gaussian':
+            if mode != 'center':
+                raise ValueError("For gaussian smoothing, mode must be "
+                                 "'center'; got mode=%r" % (mode,))
+            elif dim_object._connectivity_type == 'custom':
+                m = gaussian_smoother(dim_object._distances(), window_size)
             else:
-                raise ValueError("mode=%r" % (mode,))
+                raise NotImplementedError("Gaussian smoothing for %s "
+                                          "dimension" % (dim_object.name,))
+            x = np.tensordot(m, self.x, (1, axis))
+            if axis:
+                x = x.swapaxes(0, axis)
+        elif dim_object._connectivity_type == 'custom':
+            raise ValueError("For non-regular dimensions window must be "
+                             "'gaussian', got %r" % (window,))
+        else:
+            if dim == 'time':
+                n = int(round(window_size / dim_object.tstep))
+            else:
+                raise NotImplementedError("dim=%r" % (dim,))
+            window = scipy.signal.get_window(window, n)
+            window /= window.sum()
+            window.shape = (1,) * axis + (n,) + (1,) * (self.ndim - axis - 1)
+            if mode == 'center':
+                x = scipy.signal.convolve(self.x, window, 'same')
+            else:
+                x = scipy.signal.convolve(self.x, window, 'full')
+                index = FULL_AXIS_SLICE * axis
+                if mode == 'left':
+                    x = x[index + (slice(self.shape[axis]),)]
+                elif mode == 'right':
+                    x = x[index + (slice(-self.shape[axis], None),)]
+                else:
+                    raise ValueError("mode=%r" % (mode,))
         return NDVar(x, self.dims, self.info.copy(), name or self.name)
 
     def std(self, dims=(), **regions):
@@ -7125,6 +7145,10 @@ class Dimension(object):
         else:
             return [self._dim_index(i) for i in index_to_int_array(arg, len(self))]
 
+    def _distances(self):
+        "Distance matrix for dimension elements"
+        raise NotImplementedError("Distances for %s" % self.__class__.__name__)
+
     def intersect(self, dim, check_dims=True):
         """Create a Dimension that is the intersection with dim
 
@@ -8579,6 +8603,19 @@ class SourceSpace(Dimension):
     def _diminfo(self):
         ns = ', '.join(str(len(v)) for v in self.vertno)
         return "SourceSpace (MNE) [%s], %r, %r>" % (ns, self.subject, self.src)
+
+    def _distances(self):
+        "Surface distances between source space vertices"
+        dist = -np.ones((self._n_vert, self._n_vert))
+        sss = self.get_source_space()
+        i0 = 0
+        for vertices, ss in izip(self.vertno, sss):
+            if ss['dist'] is None:
+                raise RuntimeError("Source-space does not contain distances")
+            i = i0 + len(vertices)
+            dist[i0:i, i0:i] = ss['dist'][vertices, vertices[:, None]].toarray()
+            i0 = i
+        return dist
 
     def _link_midline(self, maxdist=0.015):
         """Link sources in the left and right hemispheres

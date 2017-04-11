@@ -78,6 +78,6 @@ setup(
     },
     include_dirs=[np.get_include()],
     packages=find_packages(),
-    ext_modules=cythonize('eelbrain/_stats/*.pyx'),
+    ext_modules=cythonize(('eelbrain/*.pyx', 'eelbrain/_stats/*.pyx')),
     scripts=['bin/eelbrain'],
 )
