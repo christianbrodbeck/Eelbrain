@@ -116,9 +116,12 @@ Sorting and Reordering
    shuffled_index
 
 
-^^^^^^^^^^^^^^^^^^^^^
-NDVar Transformations
-^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^
+NDVar Operations
+^^^^^^^^^^^^^^^^
+
+For the most common operations see :class:`NDVar` methods. Here are less common
+and more specific operations:
 
 .. autosummary::
    :toctree: generated
@@ -130,6 +133,7 @@ NDVar Transformations
    cwt_morlet
    dss
    filter_data
+   label_operator
    labels_from_clusters
    morph_source_space
    neighbor_correlation

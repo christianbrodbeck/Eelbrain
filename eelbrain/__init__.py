@@ -24,7 +24,7 @@ from ._experiment import MneExperiment
 from ._mne import labels_from_clusters, morph_source_space
 from ._ndvar import (Butterworth, concatenate, convolve, cross_correlation,
                      cwt_morlet, dss, filter_data, find_intervals,
-                     neighbor_correlation, resample, segment)
+                     label_operator, neighbor_correlation, resample, segment)
 from ._trf import boosting, BoostingResult
 from ._utils import set_log_level
 from ._utils.com import check_for_update

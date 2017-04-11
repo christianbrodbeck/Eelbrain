@@ -327,6 +327,41 @@ def find_intervals(ndvar):
     return tuple(izip(onsets, offsets))
 
 
+def label_operator(labels, operation='mean', exclude=None):
+    """Convert labeled NDVar into a matrix operation to extract label values
+    
+    Parameters
+    ----------
+    labels : NDVar of int
+        NDVar in which each label corresponds to a unique integer.
+    operation : 'mean' | 'sum'
+        Whether to extract the label mean or sum.
+    exclude : array_like
+        Values to exclude (i.e., use ``exclude=0`` to ignore the area where 
+        ``labels==0``.
+    
+    Returns
+    -------
+    m : NDVar
+        Label operator, ``m.dot(data)`` extracts label mean/sum.
+    """
+    if operation not in ('mean', 'sum'):
+        raise ValueError("operation=%r" % (operation,))
+    dimname = labels.get_dimnames((None,))[0]
+    dim = labels.get_dim(dimname)
+    label_data = labels.get_data((dimname,))
+    label_values = np.unique(label_data)
+    if exclude is not None:
+        label_values = np.setdiff1d(label_values, exclude)
+    x = np.empty((len(label_values), len(dim)))
+    for v, xs in izip(label_values, x):
+        np.equal(label_data, v, xs)
+        if operation == 'mean':
+            xs /= xs.sum()
+    label_dim = Scalar('label', label_values)
+    return NDVar(x, (label_dim, dim), {}, labels.name)
+
+
 def neighbor_correlation(x, dim='sensor', obs='time', name=None):
     """Calculate Neighbor correlation
 
