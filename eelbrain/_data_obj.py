@@ -159,6 +159,16 @@ def longname(x):
     return '<unnamed>'
 
 
+def array_repr(a):
+    "Concise array repr where class does not matter"
+    if a.ndim == 0:
+        return str(a)
+    elif a.ndim == 1:
+        return '[%s]' % ', '.join(map(str, a))
+    else:
+        raise RuntimeError("Array with ndim > 1")
+
+
 def dataobj_repr(obj):
     """Describe data-objects as parts of __repr__"""
     if obj is None:
@@ -7245,7 +7255,7 @@ class Scalar(Dimension):
                       state.get('tick_format'))
 
     def __repr__(self):
-        args = [repr(self.name), str(self.values)]
+        args = [repr(self.name), array_repr(self.values)]
         if self.unit is not None or self.tick_format is not None:
             args.append(repr(self.unit))
         if self.tick_format is not None:
