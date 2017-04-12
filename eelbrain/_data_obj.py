@@ -7309,6 +7309,11 @@ class Scalar(Dimension):
             except IndexError as error:
                 raise IndexError("Ambiguous index for %s: %s" %
                                  (self._dimname(), error.args[0]))
+        elif isinstance(arg, np.ndarray) and arg.dtype.kind == self.values.dtype.kind:
+            if np.setdiff1d(arg, self.values):
+                raise IndexError("Index %r includes values not in dimension: %s" %
+                                 (arg, np.setdiff1d(arg, self.values)))
+            return np.digitize(arg, self.values, True)
         else:
             return Dimension.dimindex(self, arg)
 
