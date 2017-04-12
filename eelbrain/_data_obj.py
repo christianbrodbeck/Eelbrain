@@ -1521,6 +1521,8 @@ class Var(object):
     def __str__(self):
         return self.__repr__(True)
 
+    __array_priority__ = 15
+
     @property
     def __array_interface__(self):
         return self.x.__array_interface__
@@ -3101,6 +3103,8 @@ class NDVar(object):
                 'x': self.x,
                 'name': self.name,
                 'info': self.info}
+
+    __array_priority__ = 15
 
     @property
     def __array_interface__(self):
