@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import numpy as np
+from numpy import newaxis
 from scipy.ndimage import generate_binary_structure, label
 
 
@@ -59,12 +60,16 @@ def find_peaks(x, connectivity, out=None):
     Returns
     -------
     out : array (x.shape, bool)
-        Boolean array which is True only on local maxima. The borders are
-        treated as lower than the rest of x (i.e., local maxima can touch
-        the border).
+        Boolean array which is True only on local maxima.
     """
     if out is None:
         out = np.empty(x.shape, np.bool8)
+    elif out.dtype.kind != 'b':
+        raise TypeError("out needs to be array of boolean type, got type %s" %
+                        out.dtype)
+    elif out.shape != x.shape:
+        raise ValueError("out needs to have same shape as x, got x.shape = %s"
+                         "but out.shape = %s" % (x.shape, out.shape))
     out.fill(True)
 
     # move through each axis in both directions and discard descending
@@ -114,8 +119,8 @@ def find_peaks(x, connectivity, out=None):
                     outslice.fill(False)
         else:
             if x.ndim == 1:
-                xsa = x[:, None]
-                outsa = out[:, None]
+                xsa = x[:, newaxis]
+                outsa = out[:, newaxis]
             else:
                 xsa = x.swapaxes(0, ax)
                 outsa = out.swapaxes(0, ax)
@@ -128,19 +133,17 @@ def find_peaks(x, connectivity, out=None):
             # forward
             kernel.fill(True)
             for i in xrange(axlen - 1):
+                kernel &= outsa[i]
                 kernel[diff[i] > 0] = True
                 kernel[diff[i] < 0] = False
-                nodiff = diff[i] == 0
-                kernel[nodiff] *= outsa[i + 1][nodiff]
                 outsa[i + 1] *= kernel
 
             # backward
             kernel.fill(True)
             for i in xrange(axlen - 2, -1, -1):
+                kernel &= outsa[i + 1]
                 kernel[diff[i] < 0] = True
                 kernel[diff[i] > 0] = False
-                nodiff = diff[i] == 0
-                kernel[nodiff] *= outsa[i][nodiff]
                 outsa[i] *= kernel
 
     return out

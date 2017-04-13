@@ -1,9 +1,11 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from nose.tools import eq_
+import numpy as np
 from numpy.testing import assert_array_equal
 
 from eelbrain import (
-    NDVar, UTS, datasets, concatenate, cross_correlation, find_intervals)
+    NDVar, Scalar, UTS, datasets, concatenate, cross_correlation,
+    find_intervals, find_peaks)
 
 
 def test_concatenate():
@@ -38,3 +40,18 @@ def test_find_intervals():
     eq_(find_intervals(x), ((-4, -3), (-2, 0), (1, 5)))
     x = NDVar([1, 1, 0, 1, 1, 0, 1, 1, 1, 1], (time,))
     eq_(find_intervals(x), ((-5, -3), (-2, 0), (1, 5)))
+
+
+def test_find_peaks():
+    scalar = Scalar('scalar', range(9))
+    time = UTS(0, .1, 12)
+    v = NDVar(np.zeros((9, 12)), (scalar, time))
+    wsize = [0, 0, 1, 2, 3, 2, 1, 0, 0]
+    for i, s in enumerate(wsize):
+        if s:
+            v.x[i, 5 - s: 5 + s] += np.hamming(2 * s)
+
+    peaks = find_peaks(v)
+    x, y = np.where(peaks.x)
+    assert_array_equal(x, [4])
+    assert_array_equal(y, [5])
