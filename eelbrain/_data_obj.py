@@ -3042,39 +3042,30 @@ class NDVar(object):
     """
     def __init__(self, x, dims=('case',), info={}, name=None):
         # check data shape
-        dims = tuple(dims)
-        ndim = len(dims)
+        if isinstance(dims, Dimension) or isinstance(dims, basestring):
+            dims_ = (dims,)
+        else:
+            dims_ = tuple(dims)
+            if not all(isinstance(dim, Dimension) or dim == 'case' for dim in dims_):
+                raise TypeError(
+                    "Invalid dimension in dims=%r. All dimensions need to be "
+                    "Dimension subclass objects, with the exception of the "
+                    "first dimension which can also be 'class'" % (dims,))
         x = np.asarray(x)
-        if ndim != x.ndim:
+        if len(dims_) != x.ndim:
             err = ("Unequal number of dimensions (data: %i, dims: %i)" %
-                   (x.ndim, ndim))
+                   (x.ndim, len(dims_)))
             raise DimensionMismatchError(err)
 
         # check dimensions
-        d0 = dims[0]
-        if isinstance(d0, basestring):
-            if d0 == 'case':
-                has_case = True
-            else:
-                raise ValueError(
-                    "The only dimension that can be specified as a string is "
-                    "'case' (got %r)" % d0)
-        else:
-            has_case = False
-
-        for dim, n in zip(dims, x.shape)[has_case:]:
-            if isinstance(dim, basestring):
-                raise TypeError(
-                    "Invalid dimension: %r in %r. First dimension can be "
-                    "'case', other dimensions need to be Dimension "
-                    "subclasses." % (dim, dims))
-            n_dim = len(dim)
-            if n_dim != n:
+        has_case = isinstance(dims_[0], basestring)
+        for dim, n in zip(dims_, x.shape)[has_case:]:
+            if len(dim) != n:
                 raise DimensionMismatchError(
                     "Dimension %r length mismatch: %i in data, %i in dimension "
-                    "%r" % (dim.name, n, n_dim, dim.name))
+                    "%r" % (dim.name, n, len(dim), dim.name))
 
-        self.__setstate__({'x': x, 'dims': dims, 'info': dict(info),
+        self.__setstate__({'x': x, 'dims': dims_, 'info': dict(info),
                            'name': name})
 
     def __setstate__(self, state):
