@@ -133,7 +133,7 @@ class RandomLM(object):
             if not subjects[i]:
                 while new_name in subjects:
                     name_i += 1
-                    new_name = 'S%3i' % name_i
+                    new_name = 'S%03i' % name_i
                 subjects[i] = new_name
 
         self.__setstate__({'lms': lms, 'subjects': tuple(subjects)})
