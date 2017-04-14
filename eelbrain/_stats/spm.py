@@ -7,7 +7,7 @@ import numpy as np
 
 from .._colorspaces import stat_info
 from .._data_obj import (Dataset, Factor, Var, NDVar, asmodel, asndvar,
-                         combine, DimensionMismatchError)
+                         combine, dataobj_repr, DimensionMismatchError)
 from . import opt
 from .stats import lm_betas_se_1d
 from .testnd import ttest_1samp
@@ -47,7 +47,9 @@ class LM(object):
         se_flat = lm_betas_se_1d(y_flat, coeffs_flat, p)
         self.__setstate__({
             'coding': coding, 'coeffs': coeffs_flat, 'se': se_flat,
-            'model': model, 'p': p, 'dims': y.dims[1:], 'subject': subject})
+            'model': model, 'p': p, 'dims': y.dims[1:], 'subject': subject,
+            'y': dataobj_repr(y),
+        })
 
     def __setstate__(self, state):
         self.coding = state['coding']
@@ -64,11 +66,15 @@ class LM(object):
         self._shape = tuple(map(len, self.dims))
         self.column_names = self._p.column_names
         self.n_cases = self.model.df_total
+        self._y = state.get('y')
 
     def __getstate__(self):
         return {'coding': self.coding, 'coeffs': self._coeffs_flat,
                 'se': self._se_flat, 'model': self.model, 'dims': self.dims,
-                'subject': self.subject}
+                'subject': self.subject, 'y': self._y}
+
+    def __repr__(self):
+        return "<LM: %s ~ %s>" % (self._y or '<?>', self.model.name)
 
     def _coefficient(self, term):
         """Regression coefficient for a given term"""
@@ -149,6 +155,11 @@ class RandomLM(object):
     def __getstate__(self):
         return {'lms': self._lms, 'tests': self.tests,
                 'subjects': self._subjects}
+
+    def __repr__(self):
+        lm = self._lms[0]
+        return "<RandomLM: %s ~ %s, n=%i>" % (lm._y or '<?>', lm.model.name,
+                                              len(self._lms))
 
     def coefficients(self, term):
         "Coefficients for one term as :class:`NDVar`"

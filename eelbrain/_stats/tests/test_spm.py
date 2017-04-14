@@ -14,6 +14,7 @@ def test_lm():
     coeffs = ds['uts'].ols(model)
 
     lm = LM('uts', 'A*B*Y', ds, 'effect')
+    eq_(repr(lm), "<LM: uts ~ A + B + A x B + Y + A x Y + B x Y + A x B x Y>")
     for i, effect in enumerate(model.effects):
         assert_array_equal(lm.coefficient(effect.name).x, coeffs.x[i])
 
@@ -26,6 +27,7 @@ def test_random_lm():
         ds['uts'].x += np.random.normal(0, 2, ds['uts'].shape)
         lms.append(LM('uts', 'A*B*Y', ds))
     rlm = RandomLM(lms)
+    eq_(repr(rlm), '<RandomLM: uts ~ A + B + A x B + Y + A x Y + B x Y + A x B x Y, n=5>')
 
     # coefficients
     ds = rlm.coefficients_dataset(('A', 'A x B'))
