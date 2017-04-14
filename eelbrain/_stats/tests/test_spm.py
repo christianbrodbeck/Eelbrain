@@ -15,7 +15,7 @@ def test_lm():
 
     lm = LM('uts', 'A*B*Y', ds, 'effect')
     for i, effect in enumerate(model.effects):
-        assert_array_equal(lm._coefficient(effect.name), coeffs.x[i: i+1])
+        assert_array_equal(lm.coefficient(effect.name).x, coeffs.x[i])
 
 
 def test_random_lm():
@@ -26,6 +26,12 @@ def test_random_lm():
         ds['uts'].x += np.random.normal(0, 2, ds['uts'].shape)
         lms.append(LM('uts', 'A*B*Y', ds))
     rlm = RandomLM(lms)
+
+    # coefficients
+    ds = rlm.coefficients_dataset(('A', 'A x B'))
+    eq_(ds['term'].cells, ('A', 'A x B'))
+
+    # tests
     res = rlm.column_ttest('A x B', samples=100, pmin=0.05, mintime=0.025)
     eq_(res.clusters.n_cases, 1)
 

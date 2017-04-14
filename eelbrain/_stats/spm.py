@@ -7,7 +7,7 @@ import numpy as np
 
 from .._colorspaces import stat_info
 from .._data_obj import (Dataset, Factor, Var, NDVar, asmodel, asndvar,
-                         DimensionMismatchError)
+                         combine, DimensionMismatchError)
 from . import opt
 from .stats import lm_betas_se_1d
 from .testnd import ttest_1samp
@@ -86,6 +86,10 @@ class LM(object):
         else:
             raise KeyError("Unknown term: %s" % repr(term))
 
+    def coefficient(self, term):
+        ":class:`NDVar` with regression coefficient for a given term"
+        return NDVar(self._coefficient(term)[0], self.dims)
+
     def t(self, term):
         ":class:`NDVar` with t-values for a given term"
         index = self._index(term)
@@ -146,13 +150,23 @@ class RandomLM(object):
         return {'lms': self._lms, 'tests': self.tests,
                 'subjects': self._subjects}
 
-    def _single_column_coefficient(self, term, asds=False):
-        coeff = NDVar(np.concatenate([lm._coefficient(term) for lm in self._lms]),
-                      ('case',) + self.dims)
-        if asds:
-            return Dataset(('coeff', coeff))
-        else:
-            return coeff
+    def coefficients(self, term):
+        "Coefficients for one term as :class:`NDVar`"
+        return NDVar(np.concatenate([lm._coefficient(term) for lm in self._lms]),
+                     ('case',) + self.dims)
+
+    def coefficients_dataset(self, terms):
+        "Coefficients for multiple terms in a :class:`Dataset`"
+        if isinstance(terms, basestring):
+            terms = (terms,)
+        coeffs = []
+        for term in terms:
+            coeffs.append(self.coefficients(term))
+        ds = Dataset()
+        ds['coeff'] = combine(coeffs)
+        ds['subject'] = Factor(self._subjects, tile=len(terms))
+        ds['term'] = Factor(terms, repeat=len(self._lms))
+        return ds
 
     def column_ttest(self, term, return_data=False, popmean=0, *args, **kwargs):
         """Perform a one-sample t-test on a single model column
@@ -203,12 +217,12 @@ class RandomLM(object):
         to test the hypothesis that the coefficient is different from popmean
         in the population.
         """
-        ds = self._single_column_coefficient(term, asds=True)
-        res = ttest_1samp('coeff', popmean, None, None, ds, *args, **kwargs)
+        coeff = self.coefficients(term)
+        res = ttest_1samp(coeff, popmean, None, None, None, *args, **kwargs)
         if return_data:
-            ds['subject'] = Factor(self._subjects)
-            ds['n'] = Var([lm.n_cases for lm in self._lms])
-            return res, ds
+            return res, Dataset((('coeff', coeff),
+                                 ('subject', Factor(self._subjects)),
+                                 ('n', Var([lm.n_cases for lm in self._lms]))))
         else:
             return res
 
