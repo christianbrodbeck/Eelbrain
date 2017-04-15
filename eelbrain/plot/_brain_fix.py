@@ -48,7 +48,7 @@ class Brain(surfer.Brain):
         self._frame_is_alive = True
 
         if title is None:
-            title = "Brain: %s" % subject
+            title = subject
         elif not isinstance(title, basestring):
             raise TypeError("title needs to be a string, got %r" % (title,))
 
