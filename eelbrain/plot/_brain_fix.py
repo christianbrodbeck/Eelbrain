@@ -3,6 +3,7 @@
 from __future__ import division
 
 from distutils.version import LooseVersion
+from itertools import izip
 import os
 import sys
 from tempfile import mkdtemp
@@ -10,6 +11,8 @@ from time import time, sleep
 
 from matplotlib.cm import get_cmap
 from matplotlib.colors import Colormap, ListedColormap, colorConverter
+from mne.io.constants import FIFF
+from numbers import Integral
 import numpy as np
 import wx
 
@@ -19,7 +22,7 @@ from ..fmtxt import Image, ms
 from ..mne_fixes import reset_logger
 from ._base import (CONFIG, do_autorun, find_axis_params_data, find_fig_cmaps,
                     find_fig_vlims)
-from ._colors import ColorBar, ColorList
+from ._colors import ColorBar, ColorList, colors_for_oneway
 from ._wx_brain import BrainFrame, SURFACES
 
 # Traits-GUI related imports after BrainFrame
@@ -271,6 +274,73 @@ class Brain(surfer.Brain):
             'dict_index': data_index,
         })
 
+    def add_ndvar_annotation(self, ndvar, colors=None, borders=True, alpha=1,
+                             lighting=True):
+        """Add annotation from labels in an NDVar
+        
+        Parameters
+        ----------
+        ndvar : NDVar of int
+            NDVar in which each unique integer indicates a label. ``0`` is 
+            interpreted as unlabeled.
+        colors : dict
+            Dictionary mapping label ids to colors.
+        borders : bool | int
+            Show label borders (instead of solid labels). If int, specify the 
+            border width.
+        alpha : scalar [0, 1]
+            Opacity of the labels (default 1).
+        lighting : bool
+            Labels are affected by lights (default True).
+        """
+        x = ndvar.get_data('source')
+        source = ndvar.get_dim('source')
+        if x.dtype.kind != 'i':
+            raise TypeError("Need NDVar of integer type, not %r" % (x.dtype,))
+        # determine colors
+        label_values = np.unique(x)
+        colored_values = np.setdiff1d(label_values, (0,))
+        if colors is None:
+            colors = colors_for_oneway(colored_values)
+        else:
+            if any(k not in colors for k in colored_values):
+                raise ValueError(
+                    "The following values of ndvar are missing from colors: %s" %
+                    ', '.join(set(label_values).difference(colors)))
+            colors = {k: colors[k] for k in colored_values}
+        # generate color table
+        ctab = np.zeros((len(label_values), 5), int)
+        ctab[:, 4] = label_values
+        for i, v in enumerate(label_values, 0 in label_values):
+            try:
+                ctab[i, :4] = [int(round(c * 255.)) for c in
+                               colorConverter.to_rgba(colors[v])]
+            except ValueError:
+                pass
+        # generate annotation
+        sss = ndvar.source.get_source_space()
+        indexes = (slice(None, source.lh_n), slice(source.lh_n, None))
+        annot = []
+        for ss, vertno, index in izip(sss, source.vertno, indexes):
+            if ((self._hemi == 'rh' and ss['id'] == FIFF.FIFFV_MNE_SURF_LEFT_HEMI) or
+                    (self._hemi == 'lh' and ss['id'] == FIFF.FIFFV_MNE_SURF_RIGHT_HEMI)):
+                continue
+            # expand to full source space
+            ss_map = np.zeros(ss['nuse'], int)
+            ss_map[np.in1d(ss['vertno'], vertno)] = x[index]
+            # expand to full brain
+            full_map = ss_map[ss['nearest']]
+            annot.append((full_map, ctab))
+
+        if len(annot) == 1:
+            annot = annot[0]
+
+        self.add_annotation(annot, borders, alpha)
+        self.__annot = colors
+        if not lighting:
+            for annot in self.annot_list:
+                annot['surface'].actor.property.lighting = False
+
     def add_ndvar_label(self, ndvar, color=(1, 0, 0), borders=False, name=None,
                         alpha=None, lighting=False):
         """Draw a boolean NDVar as label.
@@ -496,13 +566,14 @@ class Brain(surfer.Brain):
         elif self.__annot is None:
             raise RuntimeError("Can only plot legend for brain displaying "
                                "parcellation")
-
-        lh = os.path.join(self.subjects_dir, self.subject_id, 'label',
-                          'lh.%s.annot' % self.__annot)
-        rh = os.path.join(self.subjects_dir, self.subject_id, 'label',
-                          'rh.%s.annot' % self.__annot)
-
-        return annot_legend(lh, rh, *args, **kwargs)
+        elif isinstance(self.__annot, basestring):
+            lh = os.path.join(self.subjects_dir, self.subject_id, 'label',
+                              'lh.%s.annot' % self.__annot)
+            rh = os.path.join(self.subjects_dir, self.subject_id, 'label',
+                              'rh.%s.annot' % self.__annot)
+            return annot_legend(lh, rh, *args, **kwargs)
+        else:
+            return ColorList(self.__annot, sorted(self.__annot), *args, **kwargs)
 
     def remove_data(self, hemi=None):
         """Remove data shown with ``Brain.add_ndvar``"""
