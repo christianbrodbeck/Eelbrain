@@ -3084,6 +3084,8 @@ class MneExperiment(FileTree):
             raise NotImplementedError("post_baseline_trigger_shift is not "
                                       "implemented for baseline correction in "
                                       "source space")
+        if mask and not isinstance(mask, bool):
+            raise TypeError("mask must be boolean, got %s" % repr(mask))
 
         ds = self.load_evoked(subject, sns_baseline, sns_ndvar, cat, None,
                               data_raw, vardef)
