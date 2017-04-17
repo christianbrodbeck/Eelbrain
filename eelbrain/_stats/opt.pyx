@@ -7,18 +7,16 @@ from libc.stdlib cimport malloc, free
 import numpy as np
 cimport numpy as cnp
 
-ctypedef cnp.uint32_t NP_UINT32
-ctypedef fused scalar:
-    cython.int
-    cython.long
-    cython.longlong
-    cython.float
-    cython.double
+ctypedef cnp.int8_t INT8
+ctypedef cnp.float64_t FLOAT64
 
 
-def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
-                     double[:, :] f_map, cnp.int16_t[:, :] effects,
-                     cnp.int8_t[:, :] e_ms):
+def anova_full_fmaps(cnp.ndarray[FLOAT64, ndim=2] y,
+                     cnp.ndarray[FLOAT64, ndim=2] x,
+                     cnp.ndarray[FLOAT64, ndim=2] xsinv,
+                     cnp.ndarray[FLOAT64, ndim=2] f_map,
+                     cnp.ndarray[long, ndim=2] effects,
+                     cnp.ndarray[INT8, ndim=2] e_ms):
     """Compute f-maps for a balanced, fully specified ANOVA model
     
     Parameters
@@ -79,8 +77,12 @@ def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
     free(mss)
 
 
-def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
-                double[:, :] f_map, cnp.int16_t[:, :] effects, int df_res):
+def anova_fmaps(cnp.ndarray[FLOAT64, ndim=2] y,
+                cnp.ndarray[FLOAT64, ndim=2] x,
+                cnp.ndarray[FLOAT64, ndim=2] xsinv,
+                cnp.ndarray[FLOAT64, ndim=2] f_map,
+                cnp.ndarray[long, ndim=2] effects,
+                int df_res):
     """Compute f-maps for a balanced ANOVA model with residuals
 
     Parameters
@@ -143,7 +145,8 @@ def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
     free(betas)
 
 
-def sum_square(scalar[:,:] y, double[:] out):
+def sum_square(cnp.ndarray[FLOAT64, ndim=2] y,
+               cnp.ndarray[FLOAT64, ndim=1] out):
     """Compute the Sum Square of the data
 
     Parameters
@@ -168,7 +171,8 @@ def sum_square(scalar[:,:] y, double[:] out):
         out[i] = ss
 
 
-def ss(scalar[:,:] y, double[:] out):
+def ss(cnp.ndarray[FLOAT64, ndim=2] y,
+       cnp.ndarray[FLOAT64, ndim=1] out):
     """Compute sum squares in the data (after subtracting the intercept)
 
     Parameters
@@ -200,8 +204,10 @@ def ss(scalar[:,:] y, double[:] out):
         out[i] = ss_
 
 
-cdef void _lm_betas(scalar[:,:] y, unsigned long i, double[:,:] xsinv,
-                    double *betas) nogil:
+cdef void _lm_betas(cnp.ndarray[FLOAT64, ndim=2] y,
+                    unsigned long i,
+                    cnp.ndarray[FLOAT64, ndim=2] xsinv,
+                    double *betas):
     """Fit a linear model
 
     Parameters
@@ -233,8 +239,11 @@ cdef void _lm_betas(scalar[:,:] y, unsigned long i, double[:,:] xsinv,
         betas[i_beta] = beta
 
 
-cdef double _lm_res_ss(scalar[:,:] y, int i, double[:,:] x, int df_x,
-                       double *betas) nogil:
+cdef double _lm_res_ss(cnp.ndarray[FLOAT64, ndim=2] y,
+                       int i,
+                       cnp.ndarray[FLOAT64, ndim=2] x,
+                       int df_x,
+                       double *betas):
     """Residual sum squares
 
     Parameters
@@ -263,7 +272,10 @@ cdef double _lm_res_ss(scalar[:,:] y, int i, double[:,:] x, int df_x,
     return ss
 
 
-def lm_betas(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:,:] out):
+def lm_betas(cnp.ndarray[FLOAT64, ndim=2] y,
+             cnp.ndarray[FLOAT64, ndim=2] x,
+             cnp.ndarray[FLOAT64, ndim=2] xsinv,
+             cnp.ndarray[FLOAT64, ndim=2] out):
     """Fit a linear model
 
     Parameters
@@ -292,7 +304,10 @@ def lm_betas(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:,:] out):
     free(betas)
 
 
-def lm_res(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:,:] res):
+def lm_res(cnp.ndarray[FLOAT64, ndim=2] y,
+           cnp.ndarray[FLOAT64, ndim=2] x,
+           cnp.ndarray[FLOAT64, ndim=2] xsinv,
+           cnp.ndarray[FLOAT64, ndim=2] res):
     """Fit a linear model and compute the residuals
 
     Parameters
@@ -328,7 +343,10 @@ def lm_res(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:,:] res):
     free(betas)
 
 
-def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:] ss):
+def lm_res_ss(cnp.ndarray[FLOAT64, ndim=2] y,
+              cnp.ndarray[FLOAT64, ndim=2] x,
+              cnp.ndarray[FLOAT64, ndim=2] xsinv,
+              cnp.ndarray[FLOAT64, ndim=1] ss):
     """Fit a linear model and compute the residual sum squares
 
     Parameters
@@ -356,7 +374,8 @@ def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:] ss):
     free(betas)
 
 
-def t_1samp(scalar[:,:] y, double[:] out):
+def t_1samp(cnp.ndarray[FLOAT64, ndim=2] y,
+            cnp.ndarray[FLOAT64, ndim=1] out):
     """T-values for 1-sample t-test
 
     Parameters
@@ -370,7 +389,7 @@ def t_1samp(scalar[:,:] y, double[:] out):
     cdef double mean, denom
 
     cdef unsigned long n_tests = y.shape[1]
-    cdef unsigned int n_cases = y.shape[0]
+    cdef unsigned long n_cases = y.shape[0]
     cdef double div = (n_cases - 1) * n_cases
 
     for i in range(n_tests):
@@ -395,7 +414,9 @@ def t_1samp(scalar[:,:] y, double[:] out):
         out[i] = mean / denom
 
 
-def t_1samp_perm(scalar[:,:] y, double[:] out, cnp.int8_t[:] sign):
+def t_1samp_perm(cnp.ndarray[FLOAT64, ndim=2] y,
+                 cnp.ndarray[FLOAT64, ndim=1] out, 
+                 cnp.ndarray[INT8, ndim=1] sign):
     """T-values for 1-sample t-test
 
     Parameters

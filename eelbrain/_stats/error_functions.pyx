@@ -2,13 +2,13 @@
 #cython: boundscheck=False, wraparound=False
 
 cimport cython
-from cython.view cimport array as cvarray
-from libc.stdlib cimport malloc, free
 import numpy as np
-cimport numpy as np
+cimport numpy as cnp
+
+ctypedef cnp.float64_t FLOAT64
 
 
-def l1(double [::1] x):
+def l1(cnp.ndarray[FLOAT64, ndim=1] x):
     cdef:
         double out = 0.
         size_t i
@@ -19,7 +19,7 @@ def l1(double [::1] x):
     return out
 
 
-def l2(double [::1] x):
+def l2(cnp.ndarray[FLOAT64, ndim=1] x):
     cdef:
         double out = 0.
         size_t i
@@ -30,7 +30,9 @@ def l2(double [::1] x):
     return out
 
 
-def l1_for_delta(double [:] y, double [:] x, double delta, long shift):
+def l1_for_delta(cnp.ndarray[FLOAT64, ndim=1] y,
+                 cnp.ndarray[FLOAT64, ndim=1] x,
+                 double delta, long shift):
     cdef:
         double out_pos = 0.
         double out_neg
@@ -49,7 +51,9 @@ def l1_for_delta(double [:] y, double [:] x, double delta, long shift):
     return out_pos, out_neg
 
 
-def l2_for_delta(double [:] y, double [:] x, double delta, long shift):
+def l2_for_delta(cnp.ndarray[FLOAT64, ndim=1] y,
+                 cnp.ndarray[FLOAT64, ndim=1] x,
+                 double delta, long shift):
     cdef:
         double out_pos = 0.
         double out_neg
@@ -68,7 +72,9 @@ def l2_for_delta(double [:] y, double [:] x, double delta, long shift):
     return out_pos, out_neg
 
 
-def update_error(double [::1] error, double [:] x, double delta, long shift):
+def update_error(cnp.ndarray[FLOAT64, ndim=1] error,
+                 cnp.ndarray[FLOAT64, ndim=1] x,
+                 double delta, long shift):
     cdef:
         size_t i
 

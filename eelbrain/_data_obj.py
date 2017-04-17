@@ -518,7 +518,7 @@ def asmodel(x, sub=None, ds=None, n=None):
     return x
 
 
-def asndvar(x, sub=None, ds=None, n=None):
+def asndvar(x, sub=None, ds=None, n=None, dtype=None):
     if isinstance(x, basestring):
         if ds is None:
             err = ("Ndvar was specified as string, but no Dataset was "
@@ -550,6 +550,9 @@ def asndvar(x, sub=None, ds=None, n=None):
 
     if n is not None and len(x) != n:
         raise ValueError("Arguments have different length")
+
+    if dtype is not None and x.x.dtype != dtype:
+        x = x.astype(dtype)
 
     return x
 
@@ -967,7 +970,7 @@ class Celltable(object):
 
     """
     def __init__(self, Y, X=None, match=None, sub=None, cat=None, ds=None,
-                 coercion=asdataobject):
+                 coercion=asdataobject, dtype=None):
         self.sub = sub
         sub = assub(sub, ds)
 
@@ -1034,6 +1037,9 @@ class Celltable(object):
                 match = match[sort_idx]
                 if X is not None:
                     X = X[sort_idx]
+
+        if dtype is not None and Y.x.dtype != dtype:
+            Y = Y.astype(dtype)
 
         # save args
         self.Y = Y
@@ -1782,6 +1788,16 @@ class Var(object):
             In other words, ``a[index_array]`` yields a sorted `a`.
         """
         return np.argsort(self.x, kind=kind)
+
+    def astype(self, dtype):
+        """Copy of the Var with data cast to the specified type
+
+        Parameters
+        ----------
+        dtype : numpy dtype
+            Numpy data-type specification (see :meth:`numpy.ndarray.astype`).
+        """
+        return Var(self.x.astype(dtype), self.name, info=self.info.copy())
 
     @property
     def as_dummy(self):

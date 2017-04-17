@@ -427,7 +427,8 @@ class t_contrast_rel(_Result):
         if match is None:
             raise TypeError("The `match` parameter needs to be specified for "
                             "repeated measures test t_contrast_rel")
-        ct = Celltable(Y, X, match, sub, ds=ds, coercion=asndvar)
+        ct = Celltable(Y, X, match, sub, ds=ds, coercion=asndvar,
+                       dtype=np.float64)
 
         # setup contrast
         t_contrast = TContrastRel(contrast, ct.cells, ct.data_indexes)
@@ -548,7 +549,7 @@ class corr(_Result):
                  pmin=None, rmin=None, tfce=False, tstart=None, tstop=None,
                  match=None, parc=None, **criteria):
         sub = assub(sub, ds)
-        Y = asndvar(Y, sub=sub, ds=ds)
+        Y = asndvar(Y, sub=sub, ds=ds, dtype=np.float64)
         if not Y.has_case:
             raise ValueError("Dependent variable needs case dimension")
         X = asvar(X, sub=sub, ds=ds)
@@ -717,7 +718,8 @@ class ttest_1samp(_Result):
     def __init__(self, Y, popmean=0, match=None, sub=None, ds=None, tail=0,
                  samples=0, pmin=None, tmin=None, tfce=False, tstart=None,
                  tstop=None, parc=None, force_permutation=False, **criteria):
-        ct = Celltable(Y, match=match, sub=sub, ds=ds, coercion=asndvar)
+        ct = Celltable(Y, match=match, sub=sub, ds=ds, coercion=asndvar,
+                       dtype=np.float64)
 
         n = len(ct.Y)
         df = n - 1
@@ -880,7 +882,8 @@ class ttest_ind(_Result):
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=0, pmin=None, tmin=None, tfce=False,
                  tstart=None, tstop=None, parc=None, force_permutation=False, **criteria):
-        ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar)
+        ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar,
+                       dtype=np.float64)
         c1, c0 = ct.cat
 
         n1 = len(ct.data[c1])
@@ -1086,7 +1089,8 @@ class ttest_rel(_Result):
         if match is None:
             raise TypeError("The `match` argument needs to be specified for a "
                             "related measures t-test.")
-        ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar)
+        ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar,
+                       dtype=np.float64)
         c1, c0 = ct.cat
         if not ct.all_within:
             raise ValueError("conditions %r and %r do not have the same values "
@@ -1428,7 +1432,7 @@ class anova(_MultiEffectResult):
                  parc=None, force_permutation=False, **criteria):
         sub_arg = sub
         sub = assub(sub, ds)
-        Y = asndvar(Y, sub, ds)
+        Y = asndvar(Y, sub, ds, dtype=np.float64)
         x_ = asmodel(X, sub, ds)
         if match is not None:
             match = ascategorial(match, sub, ds)

@@ -16,7 +16,7 @@ def test_confidence_interval():
     from rpy2.robjects import r
 
     ds = datasets.get_loftus_masson_1994()
-    y = ds['n_recalled'].x[:, None]
+    y = ds['n_recalled'].x[:, None].astype(np.float64)
     x = ds['exposure'].as_factor()
     subject = ds['subject']
     ds.to_r('ds')
@@ -92,7 +92,7 @@ def test_lm():
 def test_sem_and_variability():
     "Test variability() and standard_error_of_the_mean() functions"
     ds = datasets.get_loftus_masson_1994()
-    y = ds['n_recalled'].x
+    y = ds['n_recalled'].x.astype(np.float64)
     x = ds['exposure'].as_factor()
     match = ds['subject']
 

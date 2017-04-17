@@ -215,6 +215,7 @@ def test_anova_r_adler():
     # "Adler" dataset
     r_require('car')
     ds = Dataset.from_r('Adler')
+    ds['rating'] = ds['rating'].astype(np.float64)
 
     # with balanced data
     dsb = ds.equalize_counts('expectation % instruction')
