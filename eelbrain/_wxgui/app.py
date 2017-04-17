@@ -70,8 +70,6 @@ class App(wx.App):
         m = go_menu = wx.Menu()
         m.Append(wx.ID_FORWARD, '&Forward \tCtrl+]', 'Go One Page Forward')
         m.Append(wx.ID_BACKWARD, '&Back \tCtrl+[', 'Go One Page Back')
-        m.AppendSeparator()
-        m.Append(ID.YIELD_TO_TERMINAL, '&Yield to Terminal \tAlt+Ctrl+Q')
 
         # Window Menu
         m = window_menu = wx.Menu()
@@ -175,6 +173,10 @@ class App(wx.App):
                     self._ipython = shell
 
         self.SetExitOnFrameDelete(not self.using_prompt_toolkit)
+        if not self.using_prompt_toolkit:
+            go_menu.AppendSeparator()
+            go_menu.Append(ID.YIELD_TO_TERMINAL, '&Yield to Terminal \tAlt+Ctrl+Q')
+
 
         return True
 
@@ -438,7 +440,8 @@ class App(wx.App):
         for win in wx.GetTopLevelWindows():
             if not win.Close():
                 return
-        self.ExitMainLoop()
+        if not self.using_prompt_toolkit:
+            self.ExitMainLoop()
 
     def OnRedo(self, event):
         frame = self._get_active_frame()
