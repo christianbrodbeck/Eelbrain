@@ -18,15 +18,6 @@ requirements:
     - pywin32-ctypes  # [win]
     - setuptools >=17
     - numpy x.x
-    # the rest so that setuptools does not try to download them
-    - pillow
-    - keyring >=5
-    - secretstorage  # [linux]
-    - tex >=1.8
-    - mne >=0.14
-    - nibabel >=2.0
-    - tqdm >=4.8
-    - colormath >=2.1
 
   run:
     - python
