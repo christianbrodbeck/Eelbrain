@@ -137,7 +137,7 @@ def permute_(variables, count='caseID', randomize=False):
     perm_n = [v.Ndraw for v in variables]
     n_trials = np.prod(perm_n)
     n_properties = len(variables)
-    out = np.empty((n_trials, n_properties), dtype=np.uint8)
+    out = np.empty((n_trials, n_properties), dtype=int)
 
     # permutatet variables
     for i, v in enumerate(variables):
@@ -251,7 +251,7 @@ def random_factor(values, n=None, name=None, rand=True, balance=None, urn=None,
 def _try_make_random_factor(name, values, n, rand, balance, urn,
                             require_exact_balance):
     n_values = len(values)
-    x = np.empty(n, dtype=np.uint8)
+    x = np.empty(n, dtype=int)
     cells = dict(enumerate(values))
 
     if balance is not None:
@@ -270,12 +270,12 @@ def _try_make_random_factor(name, values, n, rand, balance, urn,
     # generate random values with equal number of each value
     exact_balance = (region_len % n_values == 0)
     if exact_balance:
-        values = np.arange(region_len, dtype=np.uint8) % n_values
+        values = np.arange(region_len, dtype=int) % n_values
     elif require_exact_balance:
         raise ValueError("No exact balancing possible")
     else:
         _len = int(ceil(region_len / n_values)) * n_values
-        values = np.arange(_len, dtype=np.uint8) % n_values
+        values = np.arange(_len, dtype=int) % n_values
 
         # drop trailing values randomly
         if rand:  # and _randomize:

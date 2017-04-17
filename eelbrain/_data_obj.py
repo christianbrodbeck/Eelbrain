@@ -120,9 +120,9 @@ def _effect_eye(n):
            [ 0,  0,  1],
            [-1, -1, -1]])
     """
-    x = np.empty((n, n - 1), dtype=np.int8)
-    x[:n - 1] = np.eye(n - 1, dtype=np.int8)
-    x[n - 1] = -1
+    x = np.zeros((n, n - 1))
+    np.fill_diagonal(x, 1.)
+    x[-1] = -1.
     return x
 
 
@@ -2267,21 +2267,21 @@ class _Effect(object):
         sort_index : array of int
             Array which can be used to sort a data_object in the desired order.
         """
-        idx = np.empty(len(self), dtype=np.uint32)
+        idx = np.empty(len(self), dtype=np.intp)
         if order is None:
             cells = self.cells
         else:
             cells = order
-            idx[:] = -1
+            idx.fill(-1)
 
         for i, cell in enumerate(cells):
             idx[self == cell] = i
 
         sort_idx = np.argsort(idx, kind='mergesort')
         if order is not None:
-            i_cut = -np.count_nonzero(idx == np.uint32(-1))
-            if i_cut:
-                sort_idx = sort_idx[:i_cut]
+            excluded = np.count_nonzero(idx == -1)
+            if excluded:
+                sort_idx = sort_idx[excluded:]
 
         if descending:
             if not isinstance(descending, bool):
@@ -2562,24 +2562,24 @@ class Factor(_Effect):
 
     @property
     def as_dummy(self):  # x_dummy_coded
-        shape = (self._n_cases, self.df)
-        codes = np.empty(shape, dtype=np.int8)
+        codes = np.empty((self._n_cases, self.df))
         for i, cell in enumerate(self.cells[:-1]):
             codes[:, i] = (self == cell)
-
         return codes
 
     @property
     def as_dummy_complete(self):
-        x = self.x[:, None]
+        x = self.x
         categories = np.unique(x)
-        codes = np.hstack([x == cat for cat in categories])
-        return codes.astype(np.int8)
+        out = np.empty((len(self), len(categories)))
+        for i, cat in enumerate(categories):
+            np.equal(x, cat, out[:, i])
+        return out
 
     @property
     def as_effects(self):  # x_deviation_coded
         shape = (self._n_cases, self.df)
-        codes = np.empty(shape, dtype=np.int8)
+        codes = np.empty(shape)
         for i, cell in enumerate(self.cells[:-1]):
             codes[:, i] = (self == cell)
 
@@ -6596,7 +6596,7 @@ class Model(object):
         effects_to_beta : np.ndarray (n_effects, 2)
             For each effect, indicating the first index in betas and df
         """
-        out = np.empty((len(self.effects), 2), np.int16)
+        out = np.empty((len(self.effects), 2), np.intp)
         beta_start = 1
         for i, e in enumerate(self.effects):
             out[i, 0] = beta_start
@@ -7004,7 +7004,7 @@ class Dimension(object):
             return self._dimindex_for_slice(*arg)
         elif isinstance(arg, list):
             if len(arg) == 0:
-                return np.empty(0, np.int8)
+                return np.empty(0, np.intp)
             return np.array([self.dimindex(a) for a in arg])
         elif isinstance(arg, slice):
             return self._dimindex_for_slice(arg.start, arg.stop, arg.step)

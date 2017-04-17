@@ -141,7 +141,7 @@ def write_labels_to_annot(labels, subject=None, parc=None, overwrite=False,
             logger.warning(msg)
 
         # Create annot and color table array to write
-        annot = np.empty(n_vertices, dtype=np.int)
+        annot = np.empty(n_vertices, dtype=np.intp)
         annot[:] = -1
         # create the annotation ids from the colors
         annot_id_coding = np.array((1, 2 ** 8, 2 ** 16))
