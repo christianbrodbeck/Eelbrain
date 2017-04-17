@@ -13,7 +13,9 @@ r, t, f
 """
 from __future__ import division
 
-from itertools import izip
+from itertools import cycle, izip
+from math import ceil
+from numbers import Real
 
 from colormath.color_objects import LCHabColor, sRGBColor
 from colormath.color_conversions import convert_color
@@ -108,7 +110,7 @@ def twoway_cmap(n1, hue_start=0.1, hue_shift=0.5, name=None, hues=None):
     return make_seq_cmap(seq, loc, name)
 
 
-def oneway_colors(n, hue_start=0.2, light_range=0.5):
+def oneway_colors(n, hue_start=0.2, light_range=0.5, light_cycle=None):
     """Create colors for categories
 
     Parameters
@@ -121,10 +123,18 @@ def oneway_colors(n, hue_start=0.2, light_range=0.5):
         Amount of lightness variation. If a positive scalar, the first color is
         lightest; if a negative scalar, the first color is darkest. Tuple with
         two scalar to define a specific range.
+    light_cycle : int
+        Cycle from light to dark in ``light_cycle`` cells to make nearby colors 
+        more distinct (default cycles once).
     """
-    if isinstance(hue_start, float):
-        hue = np.linspace(hue_start, hue_start + 1, n, False) % 1.
-    elif len(hue_start) >= n:
+    if light_cycle is None:
+        n_hues = n
+    else:
+        n_hues = int(ceil(n / light_cycle))
+
+    if isinstance(hue_start, Real):
+        hue = np.linspace(hue_start, hue_start + 1, n_hues, False) % 1.
+    elif len(hue_start) >= n_hues:
         hue = hue_start
     else:
         raise ValueError("If list of hues is provided it needs ot contain at "
@@ -132,10 +142,19 @@ def oneway_colors(n, hue_start=0.2, light_range=0.5):
 
     if isinstance(light_range, (list, tuple)):
         start, stop = light_range
+    else:
+        start = 0.5 + 0.5 * light_range
+        stop = 0.5 - 0.5 * light_range
+
+    if light_cycle is None:
         lightness = np.linspace(100 * start, 100 * stop, n)
     else:
-        l_edge = 50 * light_range
-        lightness = np.linspace(50 + l_edge, 50 - l_edge, n)
+        tile = np.linspace(100 * start, 100 * stop, light_cycle)
+        lightness = cycle(tile)
+        hue = np.repeat(hue, light_cycle)
+        if n % light_cycle:
+            hue = hue[:n]
+
     return [lch_to_rgb(l, 100, h) for l, h in izip(lightness, hue)]
 
 

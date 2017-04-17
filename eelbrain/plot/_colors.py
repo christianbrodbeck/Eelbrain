@@ -81,7 +81,8 @@ def colors_for_categorial(x, hue_start=0.2, cmap=None):
         raise TypeError(msg)
 
 
-def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None):
+def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None,
+                      light_cycle=None):
     """Define colors for a single factor design
 
     Parameters
@@ -93,27 +94,27 @@ def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None):
     light_range : scalar | tuple of 2 scalar
         Scalar that specifies the amount of lightness variation (default 0.5).
         If positive, the first color is lightest; if negative, the first color
-        is darkest. A tuple can be used to specify exact end-points (e.g.,
+        is darkest. A tuple can be used to specify exact end-points (e.g., 
         ``(1.0, 0.4)``). ``0.2`` is equivalent to ``(0.4, 0.6)``.
+        The ``light_cycle`` parameter can be used to cycle between light and 
+        dark more than once. 
     cmap : str (optional)
         Use a matplotlib colormap instead of the default color generation
         algorithm. Name of a matplotlib colormap to use (e.g., 'jet'). If
         specified, ``hue_start`` and ``light_range`` are ignored.
+    light_cycle : int
+        Cycle from light to dark in ``light_cycle`` cells to make nearby colors 
+        more distinct (default cycles once).
 
     Returns
     -------
     dict : {str: tuple}
         Mapping from cells to colors.
     """
-    if isinstance(hue_start, basestring):
-        warn("The function signature of colors_for_oneway has changed. "
-             "Specifying a colormap as second parameter will stop working after "
-             "Eelbrain 0.25. Use cmap=%r as keyword argument instead." %
-             hue_start, DeprecationWarning)
-        cmap = hue_start
     n = len(cells)
     if cmap is None:
-        return dict(izip(cells, cs.oneway_colors(n, hue_start, light_range)))
+        return dict(izip(cells, cs.oneway_colors(n, hue_start, light_range,
+                                                 light_cycle)))
     else:
         cm = mpl.cm.get_cmap(cmap)
         return {cell: cm(i / n) for i, cell in enumerate(cells)}
