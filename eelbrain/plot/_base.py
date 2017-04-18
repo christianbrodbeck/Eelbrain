@@ -1046,9 +1046,9 @@ class EelFigure(object):
             redraw_axes.update(self._crosshair_axes)
         # update status bar
         if ax:
-            x = ax.xaxis.get_major_formatter().format_data(event.xdata)
-            y = ax.yaxis.get_major_formatter().format_data(event.ydata)
-            self._frame.SetStatusText('x = %s, y = %s' % (x, y))
+            self._frame.SetStatusText('x = %s, y = %s' % (
+                ax.xaxis.get_major_formatter().format_data_short(event.xdata),
+                ax.yaxis.get_major_formatter().format_data_short(event.ydata)))
         # redraw
         self.canvas.redraw(redraw_axes)
 
