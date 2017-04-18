@@ -1355,13 +1355,14 @@ class EelFigure(object):
 
 
 class BaseLayout(object):
-    def __init__(self, h, w, dpi, tight, show, run):
+    def __init__(self, h, w, dpi, tight, show, run, autoscale):
         self.h = h
         self.w = w
         self.dpi = dpi
         self.tight = tight
         self.show = show
         self.run = run
+        self.autoscale = autoscale
 
     def fig_kwa(self):
         out = {'figsize': (self.w, self.h), 'dpi': self.dpi}
@@ -1401,7 +1402,7 @@ class Layout(BaseLayout):
     def __init__(self, nax, ax_aspect, axh_default, tight=True, title=None,
                  h=None, w=None, axh=None, axw=None, nrow=None, ncol=None,
                  dpi=None, show=True, run=None, frame=True, yaxis=True,
-                 share_axes=False):
+                 share_axes=False, autoscale=False):
         """Create a grid of axes based on variable parameters.
 
         Parameters
@@ -1571,7 +1572,7 @@ class Layout(BaseLayout):
         if dpi is None:
             dpi = mpl.rcParams['figure.dpi']
 
-        BaseLayout.__init__(self, h, w, dpi, tight, show, run)
+        BaseLayout.__init__(self, h, w, dpi, tight, show, run, autoscale)
         self.nax = nax
         self.axh = axh
         self.axw = axw
@@ -1605,8 +1606,8 @@ class Layout(BaseLayout):
         axes = []
         kwargs = {}
         for i in xrange(1, self.nax + 1):
-            ax = figure.add_subplot(self.nrow, self.ncol, i, autoscale_on=False,
-                                    **kwargs)
+            ax = figure.add_subplot(self.nrow, self.ncol, i,
+                                    autoscale_on=self.autoscale, **kwargs)
             axes.append(ax)
             if self.share_axes:
                 kwargs.update(sharex=ax, sharey=ax)
@@ -1635,7 +1636,8 @@ class ImLayout(Layout):
     def make_axes(self, figure):
         axes = []
         for i in xrange(1, self.nax + 1):
-            ax = figure.add_subplot(self.nrow, self.ncol, i, autoscale_on=False)
+            ax = figure.add_subplot(self.nrow, self.ncol, i,
+                                    autoscale_on=self.autoscale)
             ax.axis('off')
             axes.append(ax)
         return axes
@@ -1649,7 +1651,8 @@ class VariableAspectLayout(BaseLayout):
     def __init__(self, nrow, axh_default, w_default, aspect=(None, 1),
                  ax_kwargs=None, ax_frames=None, row_titles=None,
                  title=None, h=None, w=None, axh=None,
-                 dpi=None, show=True, run=None, frame=True, yaxis=True):
+                 dpi=None, show=True, run=None, frame=True, yaxis=True,
+                 autoscale=False):
         self.w_fixed = w
 
         if axh and h:
@@ -1671,7 +1674,7 @@ class VariableAspectLayout(BaseLayout):
         if ax_frames is None:
             ax_frames = [True] * len(aspect)
 
-        BaseLayout.__init__(self, h, w, dpi, False, show, run)
+        BaseLayout.__init__(self, h, w, dpi, False, show, run, autoscale)
         self.nax = nrow * len(aspect)
         self.axh = axh
         self.nrow = nrow
@@ -1720,7 +1723,7 @@ class VariableAspectLayout(BaseLayout):
         rects = self.ax_rects(self.h, self.w)
         for row, row_rects in enumerate(rects):
             for rect, kwa, frame in izip(row_rects, self.ax_kwargs, self.ax_frames):
-                ax = figure.add_axes(rect, autoscale_on=False, **kwa)
+                ax = figure.add_axes(rect, autoscale_on=self.autoscale, **kwa)
                 self._format_axes(ax, frame, True)
                 axes.append(ax)
 
@@ -2390,6 +2393,16 @@ class YLimMixin(object):
 
 
 class Figure(EelFigure):
+    """Empty figure
+    
+    Parameters
+    ----------
+    nax : int (optional)
+        Create this many axes (default is to not create any axes).
+    ...
+    autoscale : bool
+        Autoscale data axes (default False).
+    """
     def __init__(self, nax=None, title='Figure', *args, **kwargs):
         layout = Layout(nax, 1, 2, *args, **kwargs)
         EelFigure.__init__(self, title, layout)
