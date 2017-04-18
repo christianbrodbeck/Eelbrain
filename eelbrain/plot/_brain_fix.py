@@ -12,7 +12,6 @@ from time import time, sleep
 from matplotlib.cm import get_cmap
 from matplotlib.colors import Colormap, ListedColormap, colorConverter
 from mne.io.constants import FIFF
-from numbers import Integral
 import numpy as np
 import wx
 
@@ -281,8 +280,9 @@ class Brain(surfer.Brain):
         Parameters
         ----------
         ndvar : NDVar of int
-            NDVar in which each unique integer indicates a label. ``0`` is 
-            interpreted as unlabeled.
+            NDVar in which each unique integer indicates a label. By default, 
+            ``0`` is interpreted as unlabeled, but this can be overridden by 
+            providing a ``colors`` dictionary that contains an entry for ``0``.
         colors : dict
             Dictionary mapping label ids to colors.
         borders : bool | int
@@ -299,22 +299,32 @@ class Brain(surfer.Brain):
             raise TypeError("Need NDVar of integer type, not %r" % (x.dtype,))
         # determine colors
         label_values = np.unique(x)
-        colored_values = np.setdiff1d(label_values, (0,))
         if colors is None:
-            colors = colors_for_oneway(colored_values)
-        else:
-            if any(k not in colors for k in colored_values):
+            colors = plot_colors = colors_for_oneway([v for v in label_values if v])
+        elif 0 in colors and 0 in label_values:
+            x = x + 1
+            label_values += 1
+            try:
+                plot_colors = {k: colors[k - 1] for k in label_values}
+            except KeyError:
                 raise ValueError(
                     "The following values of ndvar are missing from colors: %s" %
-                    ', '.join(set(label_values).difference(colors)))
-            colors = {k: colors[k] for k in colored_values}
+                    ', '.join(set(label_values - 1).difference(colors)))
+            colors = {k - 1: v for k, v in plot_colors.iteritems()}
+        else:
+            try:
+                colors = plot_colors = {k: colors[k] for k in label_values if k}
+            except KeyError:
+                raise ValueError(
+                    "The following values of ndvar are missing from colors: %s" %
+                    ', '.join(set(label_values).difference(colors).difference((0,))))
         # generate color table
         ctab = np.zeros((len(label_values), 5), int)
         ctab[:, 4] = label_values
         for i, v in enumerate(label_values, 0 in label_values):
             try:
                 ctab[i, :4] = [int(round(c * 255.)) for c in
-                               colorConverter.to_rgba(colors[v])]
+                               colorConverter.to_rgba(plot_colors[v])]
             except ValueError:
                 pass
         # generate annotation
