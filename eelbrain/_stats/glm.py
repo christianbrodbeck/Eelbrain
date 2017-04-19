@@ -477,6 +477,10 @@ class _BalancedNDANOVA(_NDANOVA):
 class _BalancedFixedNDANOVA(_BalancedNDANOVA):
     "For balanced but not fully specified models"
     def __init__(self, x):
+        if x.df_error <= 0:
+            raise ValueError("Model %s is overspecified with df_error=%s. "
+                             "Alle effects are fixed, should one be random?" %
+                             (x.name, x.df_error))
         effects = x.effects
         dfs_denom = (x.df_error,) * len(effects)
         _BalancedNDANOVA.__init__(self, x, effects, dfs_denom)
