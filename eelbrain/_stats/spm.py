@@ -175,7 +175,7 @@ class RandomLM(object):
             coeffs.append(self.coefficients(term))
         ds = Dataset()
         ds['coeff'] = combine(coeffs)
-        ds['subject'] = Factor(self._subjects, tile=len(terms))
+        ds['subject'] = Factor(self._subjects, tile=len(terms), random=True)
         ds['term'] = Factor(terms, repeat=len(self._lms))
         return ds
 
@@ -232,7 +232,7 @@ class RandomLM(object):
         res = ttest_1samp(coeff, popmean, None, None, None, *args, **kwargs)
         if return_data:
             return res, Dataset((('coeff', coeff),
-                                 ('subject', Factor(self._subjects)),
+                                 ('subject', Factor(self._subjects, random=True)),
                                  ('n', Var([lm.n_cases for lm in self._lms]))))
         else:
             return res
