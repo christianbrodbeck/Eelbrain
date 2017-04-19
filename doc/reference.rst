@@ -211,7 +211,6 @@ Mass-Univariate Statistics
    testnd.anova
    testnd.corr
 
-
 By default the tests in this module produce maps of statistical parameters
 along with maps of p-values uncorrected for multiple comparison. Using different
 parameters, different methods for multiple comparison correction can be applied
@@ -235,6 +234,25 @@ parameters, different methods for multiple comparison correction can be applied
     cluster-enhancement algorithm (see [2]_). This is the most computationally
     intensive option.
 
+
+Two-stage tests
+===============
+
+Two-stage tests proceed by estimating parameters for a fixed effects model for
+each subject, and then testing hypotheses on these parameter estimates on the
+group level. Two-stage tests are implemented by fitting an :class:`~testnd.LM`
+for each subject, and then combining them in a :class:`~testnd.LMGroup` to
+retrieve coefficients for group level statistics.
+
+.. autosummary::
+   :toctree: generated
+
+   testnd.LM
+   testnd.LMGroup
+
+
+References
+==========
 
 .. [1] Maris, E., & Oostenveld, R. (2007). Nonparametric
     statistical testing of EEG- and MEG-data. Journal of Neuroscience Methods,

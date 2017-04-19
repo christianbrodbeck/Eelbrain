@@ -44,7 +44,6 @@ from .._ndvar import cwt_morlet
 from ..fmtxt import List, Report, Image, read_meta
 from .._report import named_list, enumeration, plural
 from .._resources import predefined_connectivity
-from .._stats import spm
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
 from .._utils import WrappedFormater, subp, keydefaultdict, log_level
@@ -3579,7 +3578,7 @@ class MneExperiment(FileTree):
             raise NotImplementedError("Test kind %r" % p['kind'])
         ds = self.load_epochs_stc(subject, sns_baseline, src_baseline, mask=True,
                                   vardef=test)
-        return spm.LM('src', p['stage 1'], ds, subject=subject)
+        return testnd.LM('src', p['stage 1'], ds, subject=subject)
 
     def load_src(self, add_geom=False, **state):
         """Load the current source space
@@ -3749,13 +3748,13 @@ class MneExperiment(FileTree):
                                                   mask=mask, vardef=vardef)
 
                     if res is None:
-                        lms.append(spm.LM(y_name, stage1, ds, subject=subject))
+                        lms.append(testnd.LM(y_name, stage1, ds, subject=subject))
                     if return_data:
                         dss.append(ds)
                 print(prog_str % ('#' * n, 'done'))
 
                 if res is None:
-                    res = spm.RandomLM(lms)
+                    res = testnd.LMGroup(lms)
                     res._column_ttests(**test_kwargs)
                     # cache
                     save.pickle(res, dst)

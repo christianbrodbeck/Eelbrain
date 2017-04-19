@@ -15,7 +15,7 @@ from functools import reduce
 
 
 class LM(object):
-    """Fixed effects model for SPM
+    """Fixed effects linear model
 
     Parameters
     ----------
@@ -107,8 +107,14 @@ class LM(object):
         return {term: s.stop - s.start for term, s in self._p.terms.iteritems()}
 
 
-class RandomLM(object):
-    """Random effects model for SPM"""
+class LMGroup(object):
+    """Group level analysis for linear model :class:`LM` objects
+    
+    Parameters
+    ----------
+    lms : sequence of LM
+        A separate :class:`LM` object for each subject.
+    """
     def __init__(self, lms):
         # check lms
         lm0 = lms[0]
@@ -180,7 +186,7 @@ class RandomLM(object):
         return ds
 
     def column_ttest(self, term, return_data=False, popmean=0, *args, **kwargs):
-        """Perform a one-sample t-test on a single model column
+        """One-sample t-test on a single model column
 
         Parameters
         ----------
@@ -238,6 +244,7 @@ class RandomLM(object):
             return res
 
     def design(self, subject=None):
+        "Table with the design matrix"
         if subject is None:
             lm = self._lms[0]
             subject = self._subjects[0]
@@ -258,3 +265,7 @@ class RandomLM(object):
         for term in self.column_names:
             self.tests[term] = self.column_ttest(term, False, *args, **kwargs)
         self.samples = self.tests[self.column_names[0]].samples
+
+
+# for backwards compatibility
+RandomLM = LMGroup
