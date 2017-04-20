@@ -33,6 +33,11 @@ if first_import:
     reset_logger(surfer.utils.logger)
 
 
+HEMI_ID_TO_STR = {FIFF.FIFFV_MNE_SURF_LEFT_HEMI: 'lh',
+                  FIFF.FIFFV_MNE_SURF_RIGHT_HEMI: 'rh'}
+OTHER_HEMI = {'lh': 'rh', 'rh': 'lh'}
+
+
 def assert_can_save_movies():
     if LooseVersion(surfer.__version__) < LooseVersion('0.6'):
         raise ImportError("Saving movies requires PySurfer 0.6")
@@ -284,7 +289,7 @@ class Brain(surfer.Brain):
             ``0`` is interpreted as unlabeled, but this can be overridden by 
             providing a ``colors`` dictionary that contains an entry for ``0``.
         colors : dict
-            Dictionary mapping label ids to colors.
+            Dictionary mapping label IDs to colors.
         borders : bool | int
             Show label borders (instead of solid labels). If int, specify the 
             border width.
@@ -295,7 +300,7 @@ class Brain(surfer.Brain):
         """
         x = ndvar.get_data('source')
         source = ndvar.get_dim('source')
-        if x.dtype.kind != 'i':
+        if x.dtype.kind not in 'iu':
             raise TypeError("Need NDVar of integer type, not %r" % (x.dtype,))
         # determine colors
         label_values = np.unique(x)
@@ -321,7 +326,9 @@ class Brain(surfer.Brain):
         # generate color table
         ctab = np.zeros((len(label_values), 5), int)
         ctab[:, 4] = label_values
-        for i, v in enumerate(label_values, 0 in label_values):
+        for i, v in enumerate(label_values):
+            if v == 0:
+                continue
             try:
                 ctab[i, :4] = [int(round(c * 255.)) for c in
                                colorConverter.to_rgba(plot_colors[v])]
@@ -331,21 +338,33 @@ class Brain(surfer.Brain):
         sss = ndvar.source.get_source_space()
         indexes = (slice(None, source.lh_n), slice(source.lh_n, None))
         annot = []
+        has_annot = []
         for ss, vertno, index in izip(sss, source.vertno, indexes):
-            if ((self._hemi == 'rh' and ss['id'] == FIFF.FIFFV_MNE_SURF_LEFT_HEMI) or
-                    (self._hemi == 'lh' and ss['id'] == FIFF.FIFFV_MNE_SURF_RIGHT_HEMI)):
+            hemi = HEMI_ID_TO_STR[ss['id']]
+            if self._hemi == OTHER_HEMI[hemi]:
                 continue
             # expand to full source space
             ss_map = np.zeros(ss['nuse'], int)
             ss_map[np.in1d(ss['vertno'], vertno)] = x[index]
+            # select only the used colors; Mayavi resets the range of the data-
+            # to-LUT mapping to the extrema of the data at various points, so it
+            # is safer to restrict the LUT to used colors
+            ctab_index = np.in1d(ctab[:, 4], ss_map)
             # expand to full brain
             full_map = ss_map[ss['nearest']]
-            annot.append((full_map, ctab))
+            if ctab_index.sum() > 1:
+                annot.append((full_map, ctab[ctab_index]))
+                has_annot.append(hemi)
 
-        if len(annot) == 1:
+        if len(annot) == 0:
+            return
+        elif len(annot) == 1:
             annot = annot[0]
+            hemi = has_annot[0]
+        else:
+            hemi = None
 
-        self.add_annotation(annot, borders, alpha)
+        self.add_annotation(annot, borders, alpha, hemi)
         self.__annot = colors
         if not lighting:
             for annot in self.annot_list:
