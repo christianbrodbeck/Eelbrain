@@ -1422,7 +1422,7 @@ class Layout(BaseLayout):
 
         self.w_fixed = w or axw
 
-        if nax is None:
+        if not nax:
             if w is None:
                 if h is None:
                     h = axh_default
@@ -1533,7 +1533,7 @@ class Layout(BaseLayout):
             elif axw and not axh:
                 axh = axw / ax_aspect
 
-        if nax is not None:
+        if nax:
             nrow = int(nrow)
             ncol = int(ncol)
             if w is None:
@@ -1999,7 +1999,7 @@ class Legend(EelFigure):
     _name = "Legend"
 
     def __init__(self, handles, labels, *args, **kwargs):
-        layout = Layout(None, 1, 2, False, *args, **kwargs)
+        layout = Layout(0, 1, 2, False, *args, **kwargs)
         EelFigure.__init__(self, None, layout)
 
         self.legend = self.figure.legend(handles, labels, loc=2)

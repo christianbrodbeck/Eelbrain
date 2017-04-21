@@ -240,7 +240,7 @@ class ColorGrid(EelFigure):
 
         if size is None:
             size = mpl.rcParams['font.size'] * LEGEND_SIZE * POINT_SIZE
-        layout = Layout(None, 1, 3, False, *args, **kwargs)
+        layout = Layout(0, 1, 3, False, *args, **kwargs)
         EelFigure.__init__(self, None, layout)
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
         ax.set_axis_off()
@@ -384,7 +384,7 @@ class ColorList(EelFigure):
         elif not isinstance(labels, dict):
             raise TypeError("labels=%s" % repr(labels))
 
-        layout = Layout(None, 1.5, 2, False, False, h, *args, **kwargs)
+        layout = Layout(0, 1.5, 2, False, False, h, *args, **kwargs)
         EelFigure.__init__(self, None, layout)
 
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)

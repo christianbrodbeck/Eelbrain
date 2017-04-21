@@ -199,7 +199,7 @@ class PairwiseLegend(EelFigure):
         ax_h = n_levels * size
         y_unit = size / 5
         ax_aspect = 4 / n_levels
-        layout = Layout(None, ax_aspect, ax_h, False, *args, **kwargs)
+        layout = Layout(0, ax_aspect, ax_h, False, *args, **kwargs)
         EelFigure.__init__(self, None, layout)
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
         ax.set_axis_off()
