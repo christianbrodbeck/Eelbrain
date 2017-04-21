@@ -16,6 +16,7 @@ from ._info import merge_info
 from ._stats.connectivity import Connectivity
 from ._stats.connectivity import find_peaks as _find_peaks
 from ._stats.testnd import label_clusters_binary
+from ._stats.error_functions import l1
 
 
 def concatenate(ndvars, dim='time', name=None, tmin=0):
@@ -428,7 +429,7 @@ def label_operator(labels, operation='mean', exclude=None, weights=None,
         if weights is not None:
             xs *= weights
         if operation == 'mean':
-            xs /= xs.sum()
+            xs /= l1(xs)
     return NDVar(x, (label_dim, dim), {}, labels.name)
 
 
