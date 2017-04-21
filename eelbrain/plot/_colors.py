@@ -221,6 +221,8 @@ class ColorGrid(EelFigure):
         Condition labels that are used instead of the keys in ``row_cells`` and
         ``column_cells``.
     """
+    _name = "ColorGrid"
+
     def __init__(self, row_cells, column_cells, colors, size=None,
                  column_label_position='top', row_first=None, labels=None,
                  *args, **kwargs):
@@ -239,7 +241,7 @@ class ColorGrid(EelFigure):
         if size is None:
             size = mpl.rcParams['font.size'] * LEGEND_SIZE * POINT_SIZE
         layout = Layout(None, 1, 3, False, *args, **kwargs)
-        EelFigure.__init__(self, "ColorGrid", layout)
+        EelFigure.__init__(self, None, layout)
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
         ax.set_axis_off()
         self._ax = ax
@@ -367,6 +369,8 @@ class ColorList(EelFigure):
         Height of the figure in inches. If 'auto' (default), the height is
         automatically increased to fit all labels.
     """
+    _name = "Colors"
+
     def __init__(self, colors, cells=None, labels=None, h='auto', *args,
                  **kwargs):
         if cells is None:
@@ -381,7 +385,7 @@ class ColorList(EelFigure):
             raise TypeError("labels=%s" % repr(labels))
 
         layout = Layout(None, 1.5, 2, False, False, h, *args, **kwargs)
-        EelFigure.__init__(self, "Colors", layout)
+        EelFigure.__init__(self, None, layout)
 
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
         ax.set_axis_off()
@@ -458,6 +462,8 @@ class ColorBar(EelFigure):
         Set the alpha of values below ``threshold`` to 0 (as well as for
         negative values above ``abs(threshold)``).
     """
+    _name = "ColorBar"
+
     def __init__(self, cmap, vmin, vmax, label=True, label_position=None,
                  label_rotation=None,
                  clipmin=None, clipmax=None, orientation='horizontal',
@@ -504,7 +510,7 @@ class ColorBar(EelFigure):
                 label = cm.name
 
         layout = Layout(1, ax_aspect, 2, True, False, h, w, *args, **kwargs)
-        EelFigure.__init__(self, "ColorBar: %s" % cm.name, layout)
+        EelFigure.__init__(self, cm.name, layout)
         ax = self._axes[0]
 
         if clipmin is None:

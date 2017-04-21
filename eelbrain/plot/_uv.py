@@ -184,6 +184,8 @@ class PairwiseLegend(EelFigure):
     trend : bool
         Also include a bar for trends (p<0.1). Default is True.
     """
+    _name = "ColorGrid"
+
     def __init__(self, size=.3, trend=True, *args, **kwargs):
         if trend:
             levels = [.1, .05, .01, .001]
@@ -198,7 +200,7 @@ class PairwiseLegend(EelFigure):
         y_unit = size / 5
         ax_aspect = 4 / n_levels
         layout = Layout(None, ax_aspect, ax_h, False, *args, **kwargs)
-        EelFigure.__init__(self, "ColorGrid", layout)
+        EelFigure.__init__(self, None, layout)
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
         ax.set_axis_off()
 
@@ -219,9 +221,9 @@ class PairwiseLegend(EelFigure):
 
 
 class _SimpleFigure(EelFigure):
-    def __init__(self, wintitle, *args, **kwargs):
+    def __init__(self, data_desc, *args, **kwargs):
         layout = Layout(1, 1, 5, *args, **kwargs)
-        EelFigure.__init__(self, wintitle, layout)
+        EelFigure.__init__(self, data_desc, layout)
         self._ax = ax = self._axes[0]
 
         # remove x-axis ticks
@@ -744,7 +746,7 @@ class Timeplot(EelFigure, LegendMixin):
 
         # get axes
         layout = Layout(1, 1, 5, *args, **kwargs)
-        EelFigure.__init__(self, "Timeplot", layout)
+        EelFigure.__init__(self, frame_title(Y, categories), layout)
         self._configure_yaxis(Y, ylabel)
         self._configure_xaxis(time, xlabel)
         ax = self._axes[0]

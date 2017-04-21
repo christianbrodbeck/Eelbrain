@@ -29,7 +29,7 @@ def assert_can_save_movies():
 def annot(annot, subject='fsaverage', surface='smoothwm', borders=False, alpha=0.7,
           hemi=None, views=('lat', 'med'), w=None, h=None, axw=None, axh=None,
           foreground=None, background=None, parallel=True, cortex='classic',
-          title=None, subjects_dir=None, surf=None):
+          title=None, subjects_dir=None, surf=None, name=None):
     """Plot the parcellation in an annotation file
 
     Parameters
@@ -70,6 +70,8 @@ def annot(annot, subject='fsaverage', surface='smoothwm', borders=False, alpha=0
         Override the default subjects_dir.
     surf : str
         Same as ``surface``, for compatibility with PySurfer argument naming.
+    name : str
+        Equivalent to ``title``, for consistency with other plotting functions. 
 
     Returns
     -------
@@ -105,7 +107,8 @@ def annot(annot, subject='fsaverage', surface='smoothwm', borders=False, alpha=0
         title = annot
 
     brain = _surfer_brain(subject, surf or surface, hemi, views, w, h, axw, axh,
-                          foreground, background, cortex, title, subjects_dir)
+                          foreground, background, cortex, title, subjects_dir,
+                          name)
     brain._set_annot(annot, borders, alpha)
     if parallel:
         brain.set_parallel_view(scale=True)
@@ -237,6 +240,8 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
         Override the subjects_dir associated with the source space dimension.
     surf : str
         Same as ``surface``, for compatibility with PySurfer argument naming.
+    name : str
+        Equivalent to ``title``, for consistency with other plotting functions. 
 
     Returns
     -------
@@ -306,6 +311,8 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, p0alpha=0.5, *args,
         Override the subjects_dir associated with the source space dimension.
     surf : str
         Same as ``surface``, for compatibility with PySurfer argument naming.
+    name : str
+        Equivalent to ``title``, for consistency with other plotting functions. 
 
     Returns
     -------
@@ -374,6 +381,8 @@ def cluster(cluster, vmax=None, *args, **kwargs):
         Override the subjects_dir associated with the source space dimension.
     surf : str
         Same as ``surface``, for compatibility with PySurfer argument naming.
+    name : str
+        Equivalent to ``title``, for consistency with other plotting functions. 
 
     Returns
     -------
@@ -396,7 +405,8 @@ def cluster(cluster, vmax=None, *args, **kwargs):
 def _surfer_brain(subject='fsaverage', surface='smoothwm', hemi='split',
                   views=('lat', 'med'), w=None, h=None, axw=None, axh=None,
                   foreground=None, background=None, cortex='classic',
-                  title=None, subjects_dir=None, show=True, run=None):
+                  title=None, subjects_dir=None, name=None, show=True,
+                  run=None):
     """Create surfer.Brain instance
 
     Parameters
@@ -424,6 +434,8 @@ def _surfer_brain(subject='fsaverage', surface='smoothwm', hemi='split',
         title for the window (default is the subject name).
     subjects_dir : None | str
         Override the subjects_dir associated with the source space dimension.
+    name : str
+        Equivalent to ``title``, for consistency with other plotting functions. 
 
     Returns
     -------
@@ -464,8 +476,8 @@ def _surfer_brain(subject='fsaverage', surface='smoothwm', hemi='split',
     if background is None:
         background = BACKGROUND
 
-    return Brain(subject, hemi, views, surface, title, width, height, show, run,
-                 cortex=cortex, alpha=1., background=background,
+    return Brain(subject, hemi, views, surface, title or name, width, height,
+                 show, run, cortex=cortex, alpha=1., background=background,
                  foreground=foreground, subjects_dir=subjects_dir)
 
 
@@ -473,7 +485,7 @@ def brain(src, cmap=None, vmin=None, vmax=None, surface='inflated',
           views='lateral', hemi=None, colorbar=False, time_label='ms',
           w=None, h=None, axw=None, axh=None, foreground=None, background=None,
           parallel=True, cortex='classic', title=None, smoothing_steps=None,
-          mask=True, subjects_dir=None, colormap=None, surf=None):
+          mask=True, subjects_dir=None, colormap=None, surf=None, name=None):
     """Create a PySurfer Brain object with a data layer
 
     Parameters
@@ -528,6 +540,8 @@ def brain(src, cmap=None, vmin=None, vmax=None, surface='inflated',
         Override the subjects_dir associated with the source space dimension.
     surf : str
         Same as ``surface``, for compatibility with PySurfer argument naming.
+    name : str
+        Equivalent to ``title``, for consistency with other plotting functions. 
 
     Returns
     -------
@@ -577,7 +591,7 @@ def brain(src, cmap=None, vmin=None, vmax=None, surface='inflated',
 
     brain = _surfer_brain(source.subject, surf or surface, hemi, views, w, h,
                           axw, axh, foreground, background, cortex, title,
-                          subjects_dir)
+                          subjects_dir, name)
 
     if ndvar is not None:
         brain.add_ndvar(ndvar, cmap, vmin, vmax, smoothing_steps, colorbar,
@@ -810,6 +824,7 @@ def _voxel_brain(data, lut, vmin, vmax):
 # - _bin_table_ims() creates ims given a brain plot function
 
 class ImageTable(EelFigure, ColorBarMixin):
+    _name = "ImageTable"
     # Initialize in two steps
     #
     #  1) Initialize class to generate layout
@@ -820,7 +835,7 @@ class ImageTable(EelFigure, ColorBarMixin):
     def __init__(self, n_rows, n_columns, title=None, *args, **kwargs):
         layout = ImLayout(n_rows * n_columns, 0, 0.5, 4/3, 2, title, *args,
                           nrow=n_rows, ncol=n_columns, **kwargs)
-        EelFigure.__init__(self, "ImageTable", layout)
+        EelFigure.__init__(self, None, layout)
 
         self._n_rows = n_rows
         self._n_columns = n_columns
@@ -847,6 +862,8 @@ class ImageTable(EelFigure, ColorBarMixin):
 
 class _BinTable(EelFigure, ColorBarMixin):
     """Super-class"""
+    _name = "BinTable"
+
     def __init__(self, ndvar, tstart, tstop, tstep, im_func, surf, views, hemi,
                  summary, title, foreground=None, background=None,
                  parallel=True, smoothing_steps=None, mask=True,
@@ -860,7 +877,7 @@ class _BinTable(EelFigure, ColorBarMixin):
 
         layout = ImLayout(n_rows * n_columns, 0, 0.5, 4/3, 2, title, *args,
                           nrow=n_rows, ncol=n_columns, **kwargs)
-        EelFigure.__init__(self, "BinTable", layout)
+        EelFigure.__init__(self, None, layout)
 
         res_w = int(layout.axw * layout.dpi)
         res_h = int(layout.axh * layout.dpi)
@@ -1003,6 +1020,8 @@ def dspm_bin_table(ndvar, fmin=2, fmax=8, fmid=None,
         Override the subjects_dir associated with the source space dimension.
     surf : str
         Same as ``surface``, for compatibility with PySurfer argument naming.
+    name : str
+        Equivalent to ``title``, for consistency with other plotting functions. 
 
 
     Returns
@@ -1093,6 +1112,8 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surface='smoothwm',
         Override the subjects_dir associated with the source space dimension.
     surf : str
         Same as ``surface``, for compatibility with PySurfer argument naming.
+    name : str
+        Equivalent to ``title``, for consistency with other plotting functions. 
 
 
     Returns

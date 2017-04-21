@@ -17,7 +17,6 @@ from ._base import (
     EelFigure, Layout, LegendMixin, YLimMixin, XAxisMixin, frame_title)
 from ._colors import colors_for_oneway, find_cell_colors
 from .._colorspaces import oneway_colors
-from functools import reduce
 
 
 class UTSStat(LegendMixin, YLimMixin, EelFigure):
@@ -58,10 +57,10 @@ class UTSStat(LegendMixin, YLimMixin, EelFigure):
     axtitle : bool | sequence of str
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.
-    xlabel : str | None
-        X-axis labels. By default the label is inferred from the data.
-    ylabel : str | None
-        Y-axis labels. By default the label is inferred from the data.
+    xlabel : bool | str
+        X-axis label. By default the label is inferred from the data.
+    ylabel : bool | str
+        Y-axis label. By default the label is inferred from the data.
     xticklabels : bool
         Add tick-labels to the x-axis (default True).
     invy : bool

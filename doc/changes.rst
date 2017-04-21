@@ -6,6 +6,8 @@ Changes
 New in 0.26
 -----------
 
+* API plotting: the new ``name`` argument allows setting the window title
+  (without adding a title to the figure).
 * API: new global :func:`configure` function replaces module-level configuration
   functions.
 

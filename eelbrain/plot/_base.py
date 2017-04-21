@@ -825,43 +825,13 @@ class EelFigure(object):
 
         Parameters
         ----------
-        data_desc : str
+        data_desc : None | str
             Data description for frame title.
         layout : Layout
             Layout that determines figure dimensions.
-        title : str
-            Figure title (default is no title).
-        frame : bool | 't' | 'none'
-            How to frame the plots.
-            ``True`` (default): normal matplotlib frame;
-            ``False``: omit top and right lines;
-            ``'t'``: draw spines at x=0 and y=0, common for ERPs.
-            ``'none'``: Draw no frame.
-        yaxis : bool
-            Draw the y-axis (default True).
-        h : scalar
-            Height of the figure.
-        w : scalar
-            Width of the figure.
-        axh : scalar
-            Height of the axes.
-        axw : scalar
-            Width of the axes.
-        nrow : int
-            Set a limit to the number of rows (default is no limit).
-        ncol : int
-            Set a limit to the number of columns (defaut is no limit). If
-            neither nrow or ncol is specified, a square layout is preferred.
-        dpi : int
-            DPI for the figure (default is to use matplotlib rc parameters).
-        show : bool
-            Show the figure in the GUI (default True). Use False for creating
-            figures and saving them without displaying them on the screen.
-        run : bool
-            Run the Eelbrain GUI app (default is True for interactive plotting and
-            False in scripts).
         """
-        frame_title = '%s: %s' % (self._name, layout.title or data_desc)
+        desc = layout.name or data_desc
+        frame_title = '%s: %s' % (self._name, desc) if desc else self._name
 
         # find the right frame
         if CONFIG['eelbrain']:
@@ -1355,7 +1325,7 @@ class EelFigure(object):
 
 
 class BaseLayout(object):
-    def __init__(self, h, w, dpi, tight, show, run, autoscale):
+    def __init__(self, h, w, dpi, tight, show, run, autoscale, title, name):
         self.h = h
         self.w = w
         self.dpi = dpi
@@ -1363,6 +1333,8 @@ class BaseLayout(object):
         self.show = show
         self.run = run
         self.autoscale = autoscale
+        self.title = title
+        self.name = name or title
 
     def fig_kwa(self):
         out = {'figsize': (self.w, self.h), 'dpi': self.dpi}
@@ -1402,7 +1374,7 @@ class Layout(BaseLayout):
     def __init__(self, nax, ax_aspect, axh_default, tight=True, title=None,
                  h=None, w=None, axh=None, axw=None, nrow=None, ncol=None,
                  dpi=None, show=True, run=None, frame=True, yaxis=True,
-                 share_axes=False, autoscale=False):
+                 share_axes=False, autoscale=False, name=None):
         """Create a grid of axes based on variable parameters.
 
         Parameters
@@ -1572,13 +1544,13 @@ class Layout(BaseLayout):
         if dpi is None:
             dpi = mpl.rcParams['figure.dpi']
 
-        BaseLayout.__init__(self, h, w, dpi, tight, show, run, autoscale)
+        BaseLayout.__init__(self, h, w, dpi, tight, show, run, autoscale,
+                            title, name)
         self.nax = nax
         self.axh = axh
         self.axw = axw
         self.nrow = nrow
         self.ncol = ncol
-        self.title = title
         self.frame = frame
         self.yaxis = yaxis
         self.share_axes = share_axes
@@ -1652,7 +1624,7 @@ class VariableAspectLayout(BaseLayout):
                  ax_kwargs=None, ax_frames=None, row_titles=None,
                  title=None, h=None, w=None, axh=None,
                  dpi=None, show=True, run=None, frame=True, yaxis=True,
-                 autoscale=False):
+                 autoscale=False, name=None):
         self.w_fixed = w
 
         if axh and h:
@@ -1674,12 +1646,12 @@ class VariableAspectLayout(BaseLayout):
         if ax_frames is None:
             ax_frames = [True] * len(aspect)
 
-        BaseLayout.__init__(self, h, w, dpi, False, show, run, autoscale)
+        BaseLayout.__init__(self, h, w, dpi, False, show, run, autoscale,
+                            title, name)
         self.nax = nrow * len(aspect)
         self.axh = axh
         self.nrow = nrow
         self.ncol = len(aspect)
-        self.title = title
         self.frame = frame
         self.yaxis = yaxis
         self.share_axes = False
@@ -2024,9 +1996,11 @@ class LegendMixin(object):
 
 
 class Legend(EelFigure):
+    _name = "Legend"
+
     def __init__(self, handles, labels, *args, **kwargs):
         layout = Layout(None, 1, 2, False, *args, **kwargs)
-        EelFigure.__init__(self, "Legend", layout)
+        EelFigure.__init__(self, None, layout)
 
         self.legend = self.figure.legend(handles, labels, loc=2)
 
@@ -2403,9 +2377,11 @@ class Figure(EelFigure):
     autoscale : bool
         Autoscale data axes (default False).
     """
-    def __init__(self, nax=None, title='Figure', *args, **kwargs):
+    _name = "Figure"
+
+    def __init__(self, nax=0, *args, **kwargs):
         layout = Layout(nax, 1, 2, *args, **kwargs)
-        EelFigure.__init__(self, title, layout)
+        EelFigure.__init__(self, None, layout)
 
     def show(self):
         self._show()

@@ -463,19 +463,18 @@ class SensorMaps(EelFigure):
      - The 'Clear' button (or :meth:`clear`) clears the selection.
 
     """
+    _name = 'SensorMaps'
+
     def __init__(self, sensors, select=[], proj='default', size=1,
                  color='k', marker='.', frame=0.05, *args, **kwargs):
         sensors = as_sensor(sensors)
 
         # layout figure
-        frame_title = 'SensorMaps'
-        if sensors.sysname:
-            frame_title += ': ' + sensors.sysname
         self._drag_ax = None
         self._drag_x = None
         self._drag_y = None
         layout = Layout(4, 1, 3, False, ncol=2, nrow=2, *args, **kwargs)
-        EelFigure.__init__(self, frame_title, layout)
+        EelFigure.__init__(self, sensors.sysname, layout)
         self.figure.subplots_adjust(left=0, bottom=0, right=1, top=1,
                                     wspace=.1, hspace=.1)
 
@@ -683,17 +682,14 @@ class SensorMap(SensorMapMixin, EelFigure):
         Figure title.
     """
     _make_axes = False
+    _name = 'SensorMap'
 
     def __init__(self, sensors, labels='name', proj='default', size=1,
                  color='k', marker='.', mark=None, head_radius=None,
                  head_pos=0., connectivity=False, *args, **kwargs):
         sensors = as_sensor(sensors)
-
-        frame_title = 'SensorMap'
-        if sensors.sysname:
-            frame_title += ': ' + sensors.sysname
         layout = Layout(1, 1, 5, False, *args, **kwargs)
-        EelFigure.__init__(self, frame_title, layout)
+        EelFigure.__init__(self, sensors.sysname, layout)
 
         # axes with same scaling as plot.Topomap
         w = 1. - 2 * SENSOR_AXES_FRAME
