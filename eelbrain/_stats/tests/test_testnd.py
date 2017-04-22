@@ -14,7 +14,6 @@ from numpy.testing import assert_array_equal, assert_allclose
 import eelbrain
 from eelbrain import (NDVar, Categorial, Scalar, UTS, Sensor, configure,
                       datasets, testnd, set_log_level, cwt_morlet)
-from eelbrain._data_obj import Graph
 from eelbrain._stats.testnd import (Connectivity, _ClusterDist, label_clusters,
                                     _MergedTemporalClusterDist, find_peaks)
 from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,
@@ -388,25 +387,26 @@ def test_labeling():
     "Test cluster labeling"
     shape = flat_shape = (4, 20)
     pmap = np.empty(shape, np.float_)
+    edges = np.array([(0, 1), (0, 3), (1, 2), (2, 3)], np.uint32)
     conn = Connectivity((
-        Graph(4, np.array([(0, 1), (0, 3), (1, 2), (2, 3)], np.uint32)),
+        Scalar('graph', range(4), connectivity=edges),
         UTS(0, 0.01, 20)))
     criteria = None
 
     # some clusters
-    pmap[:] = [[ 3, 3, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0],
-               [ 0, 1, 0, 0, 0, 0, 8, 0, 0, 4, 4, 4, 0, 0, 0, 0, 0, 0, 4, 0],
-               [ 0, 3, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 4, 4],
-               [ 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 4, 4, 4, 0, 0, 0, 0, 0]]
+    pmap[:] = [[3, 3, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0],
+               [0, 1, 0, 0, 0, 0, 8, 0, 0, 4, 4, 4, 0, 0, 0, 0, 0, 0, 4, 0],
+               [0, 3, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 4, 4],
+               [0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 4, 4, 4, 0, 0, 0, 0, 0]]
     cmap, cids = label_clusters(pmap, 2, 0, conn, criteria)
     assert_equal(len(cids), 6)
     assert_array_equal(cmap > 0, np.abs(pmap) > 2)
 
     # some other clusters
-    pmap[:] = [[ 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0],
-               [ 0, 4, 0, 0, 0, 0, 0, 4, 0, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0],
-               [ 0, 0, 4, 4, 0, 4, 4, 0, 4, 0, 0, 0, 4, 4, 1, 0, 4, 4, 0, 0],
-               [ 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0]]
+    pmap[:] = [[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0],
+               [0, 4, 0, 0, 0, 0, 0, 4, 0, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 4, 4, 0, 4, 4, 0, 4, 0, 0, 0, 4, 4, 1, 0, 4, 4, 0, 0],
+               [0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0]]
     cmap, cids = label_clusters(pmap, 2, 0, conn, criteria)
     assert_equal(len(cids), 6)
     assert_array_equal(cmap > 0, np.abs(pmap) > 2)

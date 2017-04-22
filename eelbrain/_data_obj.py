@@ -6860,9 +6860,6 @@ def dimindex_case(arg):
 
 def _subgraph_edges(connectivity, int_index):
     "Extract connectivity for a subset of a graph"
-    if connectivity is None:
-        return None
-
     idx = np.logical_and(np.in1d(connectivity[:, 0], int_index),
                          np.in1d(connectivity[:, 1], int_index))
     if np.any(idx):
@@ -6883,6 +6880,19 @@ def _subgraph_edges(connectivity, int_index):
 
 class Dimension(object):
     """Base class for dimensions.
+    
+    Parameters
+    ----------
+    name : str
+        Dimension name.
+    connectivity : 'grid' | 'none' | array of int, (n_edges, 2)
+        Connectivity between elements. Set to ``"none"`` for no connections or 
+        ``"grid"`` to use adjacency in the sequence of elements as connection. 
+        Set to :class:`numpy.ndarray` to specify custom connectivity. The array
+        should be of shape (n_edges, 2), and each row should specify one 
+        connection [i, j] with i < j, with rows sorted in ascending order. If
+        the array's dtype is uint32, property checks are disabled to improve 
+        efficiency.
 
     Attributes
     ----------
@@ -6891,16 +6901,53 @@ class Dimension(object):
     values : sequence
         Meaningful point descriptions (e.g. time points, sensor names, ...).
     """
-    name = 'Dimension'
-    # grid | none | custom
-    _connectivity_type = 'grid'
+    _CONNECTIVITY_TYPES = ('grid', 'none', 'custom')
     _axis_unit = None
 
+    def __init__(self, name, connectivity):
+        # requires __len__ to work
+        self.name = name
+        if isinstance(connectivity, basestring):
+            self._connectivity = None
+        else:
+            if not (isinstance(connectivity, np.ndarray) and connectivity.dtype == np.uint32):
+                connectivity = np.asarray(connectivity)
+                if connectivity.dtype.kind != 'i':
+                    raise TypeError("connectivity needs to be integer type, got"
+                                    "dtype=%r" % (connectivity.dtype,))
+                elif connectivity.shape != (len(connectivity), 2):
+                    raise ValueError("connectivity requires shape (n_edges, 2), "
+                                     "got array with shape %s" %
+                                     (connectivity.shape,))
+                elif connectivity.min() < 0:
+                    raise ValueError("connectivity can not have negative values")
+                elif connectivity.max() >= len(self):
+                    raise ValueError("connectivity can not have negative values")
+                elif np.any(connectivity[:, 0] >= connectivity[:, 1]):
+                    raise ValueError("All edges [i, j] must have i < j")
+                elif np.any(np.diff(connectivity, axis=0) > 0):
+                    edges = map(tuple, connectivity)
+                    edges.sort()
+                    connectivity = np.array(edges, np.uint32)
+                else:
+                    connectivity = connectivity.astype(np.uint32)
+            self._connectivity = connectivity
+            connectivity = 'custom'
+
+        if not isinstance(connectivity, basestring):
+            raise TypeError("connectivity=%r" % (connectivity,))
+        elif connectivity not in self._CONNECTIVITY_TYPES:
+            raise ValueError("connectivity=%r" % (connectivity,))
+        self._connectivity_type = connectivity
+
     def __getstate__(self):
-        raise NotImplementedError
+        return {'name': self.name, 'connectivity': self._connectivity,
+                'connectivity_type': self._connectivity_type}
 
     def __setstate__(self, state):
-        raise NotImplementedError
+        self.name = state['name']
+        self._connectivity = state['connectivity']
+        self._connectivity_type = state['connectivity_type']
 
     def __len__(self):
         raise NotImplementedError
@@ -7115,6 +7162,34 @@ class Dimension(object):
         """
         return None
 
+    def connectivity(self):
+        """Retrieve the dimension's connectivity graph
+
+        Returns
+        -------
+        connectivity : array of int, (n_pairs, 2)
+            array of sorted ``[src, dst]`` pairs, with all ``src < dst``.
+
+        See Also
+        --------
+        .set_connectivity() : define the connectivity
+        .neighbors() : Neighboring sensors for each sensor in a dictionary.
+        """
+        if self._connectivity is None:
+            self._connectivity = self._generate_connectivity()
+        return self._connectivity
+
+    def _generate_connectivity(self):
+        raise NotImplementedError("Connectivity for %s dimension." % self.name)
+
+    def _subgraph(self, index):
+        if self._connectivity_type == 'custom':
+            if self._connectivity is None:
+                return 'custom'
+            return _subgraph_edges(self._connectivity,
+                                   index_to_int_array(index, len(self)))
+        return self._connectivity_type
+
 
 class Categorial(Dimension):
     """Simple categorial dimension
@@ -7125,26 +7200,39 @@ class Categorial(Dimension):
         Dimension name.
     values : sequence of str
         Names of the entries.
+    connectivity : 'grid' | 'none' | array of int, (n_edges, 2)
+        Connectivity between elements. Set to ``"none"`` for no connections or 
+        ``"grid"`` to use adjacency in the sequence of elements as connection. 
+        Set to :class:`numpy.ndarray` to specify custom connectivity. The array
+        should be of shape (n_edges, 2), and each row should specify one 
+        connection [i, j] with i < j, with rows sorted in ascending order. If
+        the array's dtype is uint32, property checks are disabled to improve 
+        efficiency.
     """
-    _connectivity_type = 'none'
-
-    def __init__(self, name, values):
+    def __init__(self, name, values, connectivity='none'):
         self.values = tuple(values)
         if len(set(self.values)) < len(self.values):
             raise ValueError("Dimension can not have duplicate values")
         if not all(isinstance(x, basestring) for x in self.values):
             raise ValueError("All Categorial values must be strings; got %r." %
                              (self.values,))
-        self.name = name
+        Dimension.__init__(self, name, connectivity)
 
     def __getstate__(self):
-        return {'name': self.name, 'values': self.values}
+        out = Dimension.__getstate__(self)
+        out['values'] = self.values
+        return out
 
     def __setstate__(self, state):
-        values = state['values']
-        if isinstance(values, np.ndarray):  # backwards compatibility
-            values = (unicode(v) for v in values)
-        self.__init__(state['name'], values)
+        # backwards compatibility
+        if 'connectivity' not in state:
+            state['connectivity'] = None
+            state['connectivity_type'] = 'none'
+        self.values = state['values']
+        if isinstance(self.values, np.ndarray):
+            self.values = tuple(unicode(v) for v in self.values)
+        # /backwards compatibility
+        Dimension.__setstate__(self, state)
 
     def __repr__(self):
         args = (repr(self.name), str(self.values))
@@ -7161,7 +7249,8 @@ class Categorial(Dimension):
             return self.values[index]
         else:
             return self.__class__(self.name,
-                                  apply_numpy_index(self.values, index))
+                                  apply_numpy_index(self.values, index),
+                                  self._subgraph(index))
 
     def _axis_format(self, scalar, label):
         return (IndexFormatter(self.values),
@@ -7209,16 +7298,13 @@ class Categorial(Dimension):
 
         if self.values == dim.values:
             return self
-        self_values = set(self.values)
-        dim_values = set(dim.values)
-        intersection = self_values.intersection(dim_values)
-        if len(intersection) == len(self_values):
+        index = np.array([v in dim.values for v in self.values])
+        if np.all(index):
             return self
-        elif len(intersection) == len(dim_values):
+        elif index.sum() == len(dim):
             return dim
         else:
-            return self.__class__(self.name, (v for v in self.values if
-                                              v in intersection))
+            return self[index]
 
 
 class Scalar(Dimension):
@@ -7234,8 +7320,17 @@ class Scalar(Dimension):
         Unit of the values.
     tick_format : str (optional)
         Format string for formatting axis tick labels ('%'-format, e.g. '%.2f').
+    connectivity : 'grid' | 'none' | array of int, (n_edges, 2)
+        Connectivity between elements. Set to ``"none"`` for no connections or 
+        ``"grid"`` to use adjacency in the sequence of elements as connection. 
+        Set to :class:`numpy.ndarray` to specify custom connectivity. The array
+        should be of shape (n_edges, 2), and each row should specify one 
+        connection [i, j] with i < j, with rows sorted in ascending order. If
+        the array's dtype is uint32, property checks are disabled to improve 
+        efficiency.
     """
-    def __init__(self, name, values, unit=None, tick_format=None):
+    def __init__(self, name, values, unit=None, tick_format=None,
+                 connectivity='grid'):
         values = np.asarray(values)
         if values.ndim != 1:
             raise ValueError("values needs to be one-dimensional array, got "
@@ -7245,21 +7340,27 @@ class Scalar(Dimension):
         elif tick_format and '%' not in tick_format:
             raise ValueError("tick_format needs to include '%%'; got %r" %
                              (tick_format,))
-        self.name = name
         self.values = values
         self.unit = unit
         self._axis_unit = unit
         self.tick_format = tick_format
+        Dimension.__init__(self, name, connectivity)
 
     def __getstate__(self):
-        return {'name': self.name,
-                'values': self.values,
-                'unit': self.unit,
-                'tick_format': self.tick_format}
+        out = Dimension.__getstate__(self)
+        out.update(values=self.values, unit=self.unit,
+                   tick_format=self.tick_format)
+        return out
 
     def __setstate__(self, state):
-        self.__init__(state['name'], state['values'], state.get('unit'),
-                      state.get('tick_format'))
+        # backwards compatibility
+        if 'connectivity' not in state:
+            state['connectivity'] = None
+            state['connectivity_type'] = 'grid'
+        Dimension.__setstate__(self, state)
+        self.values = state['values']
+        self.unit = self._axis_unit = state.get('unit')
+        self.tick_format = state.get('tick_format')
 
     def __repr__(self):
         args = [repr(self.name), array_repr(self.values)]
@@ -7280,7 +7381,7 @@ class Scalar(Dimension):
         if isinstance(index, Integral):
             return self.values[index]
         return self.__class__(self.name, self.values[index], self.unit,
-                              self.tick_format)
+                              self.tick_format, self._subgraph(index))
 
     def _axis_format(self, scalar, label):
         if scalar:
@@ -7372,72 +7473,19 @@ class Scalar(Dimension):
 
         if np.all(self.values == dim.values):
             return self
-        values = np.intersect1d(self.values, dim.values)
-        if np.all(self.values == values):
+        index = np.in1d(self.values, dim.values)
+        if np.all(index):
             return self
-        elif np.all(dim.values == values):
+        elif index.sum() == len(dim):
             return dim
-
-        return self.__class__(self.name, values, self.unit, self.tick_format)
+        return self[index]
 
 
 # for unpickling backwards compatibility
 Ordered = Scalar
 
 
-class Graph(Dimension):
-    """baseclass with graph connectivity
-
-    Parameters
-    ----------
-    n_nodes : int
-        Number of nodes in the graph.
-    connectivity : array of int, (n_pairs, 2)
-        array of sorted [src, dst] pairs, with all src < dts.
-    """
-    _connectivity_type = 'custom'
-
-    def __init__(self, n_nodes, connectivity):
-        Dimension.__init__(self)
-        if connectivity is not None:
-            connectivity = np.asarray(connectivity)
-            if connectivity.shape != (len(connectivity), 2):
-                raise ValueError("connectivity requires shape (n_edges, 2), "
-                                 "got array with shape %s" %
-                                 (connectivity.shape,))
-
-        self._n_nodes = n_nodes
-        self._connectivity = connectivity
-
-    def __len__(self):
-        return self._n_nodes
-
-    def _subgraph(self, index):
-        return _subgraph_edges(self._connectivity,
-                               index_to_int_array(index, self._n_nodes))
-
-    def connectivity(self):
-        """Retrieve the graph connectivity
-
-        Returns
-        -------
-        connectivity : array of int, (n_pairs, 2)
-            array of sorted [src, dst] pairs, with all src < dts.
-
-        See Also
-        --------
-        .set_connectivity() : define the connectivity
-        .neighbors() : Neighboring sensors for each sensor in a dictionary.
-        """
-        if self._connectivity is None:
-            self._connectivity = self._generate_connectivity()
-        return self._connectivity
-
-    def _generate_connectivity(self):
-        raise NotImplementedError("Connectivity for %s dimension." % self.name)
-
-
-class Sensor(Graph):
+class Sensor(Dimension):
     """Dimension class for representing sensor information
 
     Parameters
@@ -7453,8 +7501,14 @@ class Sensor(Graph):
     proj2d : str
         Default 2d projection (default is ``'z-root'``; for options see notes
         below).
-    connectivity : array_like  (n_edges, 2)
-        Sensor connectivity (optional).
+    connectivity : 'grid' | 'none' | array of int, (n_edges, 2)
+        Connectivity between elements. Set to ``"none"`` for no connections or 
+        ``"grid"`` to use adjacency in the sequence of elements as connection. 
+        Set to :class:`numpy.ndarray` to specify custom connectivity. The array
+        should be of shape (n_edges, 2), and each row should specify one 
+        connection [i, j] with i < j, with rows sorted in ascending order. If
+        the array's dtype is uint32, property checks are disabled to improve 
+        efficiency.
 
     Attributes
     ----------
@@ -7487,24 +7541,17 @@ class Sensor(Graph):
     ...         (0, -.25, -.45)]
     >>> sensor_dim = Sensor(locs, names=["Cz", "Pz"])
     """
-    name = 'sensor'
-    _connectivity_type = 'custom'
     _proj_aliases = {'left': 'x-', 'right': 'x+', 'back': 'y-', 'front': 'y+',
                      'top': 'z+', 'bottom': 'z-'}
 
     def __init__(self, locs, names=None, sysname=None, proj2d='z root',
-                 connectivity=None):
+                 connectivity='custom'):
         # 'z root' transformation fails with 32-bit floats
         self.locs = locs = np.asarray(locs, dtype=np.float64)
         n = len(locs)
         if locs.shape != (n, 3):
             raise ValueError("locs needs to have shape (n_sensors, 3), got "
                              "array of shape %s" % (locs.shape,))
-        self.x = locs[:, 0]
-        self.y = locs[:, 1]
-        self.z = locs[:, 2]
-
-        Graph.__init__(self, n, connectivity)
         self.sysname = sysname
         self.default_proj2d = self._interpret_proj(proj2d)
 
@@ -7514,29 +7561,47 @@ class Sensor(Graph):
             raise ValueError("Length mismatch: got %i locs but %i names" %
                              (n, len(names)))
         self.names = Datalist(names)
+        Dimension.__init__(self, 'sensor', connectivity)
+        self._init_secondary()
+
+    def _init_secondary(self):
+        self.x = self.locs[:, 0]
+        self.y = self.locs[:, 1]
+        self.z = self.locs[:, 2]
+
         self.channel_idx = {name: i for i, name in enumerate(self.names)}
-        pf = os.path.commonprefix(self.names)
-        if pf:
-            n_pf = len(pf)
-            short_names = {name[n_pf:]: i for i, name in enumerate(self.names)}
-            self.channel_idx.update(short_names)
+        # short names
+        prefix = os.path.commonprefix(self.names)
+        if prefix:
+            n_pf = len(prefix)
+            self.channel_idx.update({name[n_pf:]: i for i, name in
+                                     enumerate(self.names)})
 
         # cache for transformed locations
         self._transformed = {}
 
     def __getstate__(self):
-        return {'proj2d': self.default_proj2d,
-                'locs': self.locs,
-                'names': self.names,
-                'sysname': self.sysname,
-                'connectivity': self._connectivity}
+        out = Dimension.__getstate__(self)
+        out.update(proj2d=self.default_proj2d, locs=self.locs, names=self.names,
+                   sysname=self.sysname)
+        return out
 
     def __setstate__(self, state):
-        self.__init__(state['locs'], state['names'], state['sysname'],
-                      state['proj2d'], state.get('connectivity', None))
+        if 'name' not in state:
+            state['name'] = 'sensor'
+            state['connectivity_type'] = 'custom'
+        Dimension.__setstate__(self, state)
+        self.locs = state['locs']
+        self.names = state['names']
+        self.sysname = state['sysname']
+        self.default_proj2d = state['proj2d']
+        self._init_secondary()
 
     def __repr__(self):
         return "<Sensor n=%i, name=%r>" % (self._n_nodes, self.sysname)
+
+    def __len__(self):
+        return len(self.locs)
 
     def __eq__(self, other):  # Based on equality of sensor names
         return (Dimension.__eq__(self, other) and len(self) == len(other) and
@@ -7931,15 +7996,13 @@ class Sensor(Graph):
         elif n_intersection == len(dim.names):
             return dim
 
-        names = sorted(names)
-        idx = map(self.names.index, names)
-        locs = self.locs[idx]
+        index = np.array([name in names for name in self.names])
         if check_dims:
-            idxd = map(dim.names.index, names)
-            if not np.all(locs == dim.locs[idxd]):
+            other_index = np.array([name in names for name in dim.names])
+            if not np.all(self.locs[index] == dim.locs[other_index]):
                 raise ValueError("Sensor locations don't match between "
                                  "dimension objects")
-        return Sensor(locs, names, self.sysname, self.default_proj2d)
+        return self[index]
 
     def neighbors(self, connect_dist):
         """Find neighboring sensors.
@@ -8001,6 +8064,7 @@ class Sensor(Graph):
                         pairs.add((v, k))
 
         self._connectivity = np.array(sorted(pairs), np.uint32)
+        self._connectivity_type = 'custom'
 
     def set_sensor_positions(self, pos, names=None):
         """Set the sensor positions
@@ -8152,8 +8216,14 @@ class SourceSpace(Dimension):
     parc : None | str
         Add a parcellation to the source space to identify vertex location.
         Only applies to ico source spaces, default is 'aparc'.
-    connectivity : None | sparse matrix
-        Cached source space connectivity.
+    connectivity : 'grid' | 'none' | array of int, (n_edges, 2)
+        Connectivity between elements. Set to ``"none"`` for no connections or 
+        ``"grid"`` to use adjacency in the sequence of elements as connection. 
+        Set to :class:`numpy.ndarray` to specify custom connectivity. The array
+        should be of shape (n_edges, 2), and each row should specify one 
+        connection [i, j] with i < j, with rows sorted in ascending order. If
+        the array's dtype is uint32, property checks are disabled to improve 
+        efficiency.
 
     Notes
     -----
@@ -8163,35 +8233,34 @@ class SourceSpace(Dimension):
      - 'lh' or 'rh' to select an entire hemisphere
 
     """
-    name = 'source'
-    _connectivity_type = 'custom'
     _src_pattern = os.path.join('{subjects_dir}', '{subject}', 'bem',
                                 '{subject}-{src}-src.fif')
     _vertex_re = re.compile('([RL])(\d+)')
 
     def __init__(self, vertno, subject=None, src=None, subjects_dir=None,
-                 parc='aparc', connectivity=None):
-        match = re.match("(ico|vol)-(\d)", src)
-        if match:
-            kind, grade = match.groups()
-            grade = int(grade)
-        else:
-            raise ValueError("Unrecognized src value %r" % src)
-
+                 parc='aparc', connectivity='custom'):
         self.vertno = vertno
         self.subject = subject
         self.src = src
-        self.kind = kind
-        self.grade = grade
         self._subjects_dir = subjects_dir
-        self._connectivity = connectivity
-        self._n_vert = sum(len(v) for v in vertno)
+        self._init_secondary()
+        Dimension.__init__(self, 'source', connectivity)
+        if self.kind == 'ico':
+            self.set_parc(parc)
+
+    def _init_secondary(self):
+        self._n_vert = sum(len(v) for v in self.vertno)
+        match = re.match("(ico|vol)-(\d)", self.src)
+        if match is None:
+            raise ValueError("Unrecognized src value %r" % self.src)
+        kind, grade = match.groups()
+        self.kind = kind
+        self.grade = int(grade)
         if kind == 'ico':
-            self.lh_vertno = vertno[0]
-            self.rh_vertno = vertno[1]
+            self.lh_vertno = self.vertno[0]
+            self.rh_vertno = self.vertno[1]
             self.lh_n = len(self.lh_vertno)
             self.rh_n = len(self.rh_vertno)
-            self.set_parc(parc)
 
     @classmethod
     def from_mne_source_spaces(cls, source_spaces, src, subjects_dir,
@@ -8213,14 +8282,22 @@ class SourceSpace(Dimension):
                             "dimension nor as environment variable")
 
     def __getstate__(self):
-        return {'vertno': self.vertno, 'subject': self.subject, 'src': self.src,
-                'subjects_dir': self._subjects_dir, 'parc': self.parc,
-                'connectivity': self._connectivity}
+        state = Dimension.__getstate__(self)
+        state.update(vertno=self.vertno, subject=self.subject, src=self.src,
+                     subjects_dir=self._subjects_dir, parc=self.parc)
+        return state
 
     def __setstate__(self, state):
-        self.__init__(state['vertno'], state['subject'], state.get('src', None),
-                      state.get('subjects_dir', None), state.get('parc', None),
-                      state.get('connectivity', None))
+        if 'name' not in state:
+            state['name'] = 'source'
+            state['connectivity_type'] = 'custom'
+        Dimension.__setstate__(self, state)
+        self.vertno = state['vertno']
+        self.subject = state['subject']
+        self.src = state['src']
+        self._subjects_dir = state['subjects_dir']
+        self.parc = state['parc']
+        self._init_secondary()
 
     def __repr__(self):
         ns = ', '.join(str(len(v)) for v in self.vertno)
@@ -8261,7 +8338,7 @@ class SourceSpace(Dimension):
             parc = self.parc[index]
 
         dim = SourceSpace(vertno, self.subject, self.src, self.subjects_dir,
-                          parc, _subgraph_edges(self._connectivity, int_index))
+                          parc, self._subgraph(int_index))
         return dim
 
     def _axis_format(self, scalar, label):
@@ -8705,14 +8782,17 @@ class UTS(Dimension):
         None).
 
     """
-    name = 'time'
     unit = 's'
     _tol = 0.000001  # tolerance for deciding if time values are equal
 
     def __init__(self, tmin, tstep, nsamples):
+        Dimension.__init__(self, 'time', 'grid')
         self.tmin = float(tmin)  # Python float has superior precision
         self.tstep = float(tstep)
         self.nsamples = int(nsamples)
+        self._init_secondary()
+
+    def _init_secondary(self):
         self.tmax = self.tmin + self.tstep * (self.nsamples - 1)
         self.tstop = self.tmin + self.tstep * self.nsamples
         self._times = None
@@ -8722,7 +8802,7 @@ class UTS(Dimension):
         "Modify the value of tmin"
         self.__init__(tmin, self.tstep, self.nsamples)
 
-    @property
+    @property  # not a LazyProperty because ithas to change after .set_time()
     def times(self):
         if self._times is None:
             self._times = self.tmin + np.arange(self.nsamples) * self.tstep
@@ -8755,13 +8835,20 @@ class UTS(Dimension):
         return cls(tmin, tstep, nsamples)
 
     def __getstate__(self):
-        state = {'tmin': self.tmin,
-                 'tstep': self.tstep,
-                 'nsamples': self.nsamples}
-        return state
+        out = Dimension.__getstate__(self)
+        out.update(tmin=self.tmin, tstep=self.tstep, nsamples=self.nsamples)
+        return out
 
     def __setstate__(self, state):
-        self.__init__(state['tmin'], state['tstep'], state['nsamples'])
+        if 'name' not in state:
+            state['name'] = 'time'
+            state['connectivity'] = None
+            state['connectivity_type'] = 'grid'
+        Dimension.__setstate__(self, state)
+        self.tmin = state['tmin']
+        self.tstep = state['tstep']
+        self.nsamples = state['nsamples']
+        self._init_secondary()
 
     def __repr__(self):
         return "UTS(%s, %s, %s)" % (self.tmin, self.tstep, self.nsamples)

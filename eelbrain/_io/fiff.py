@@ -568,7 +568,7 @@ def sensor_dim(fiff, picks=None, sysname=None):
 
         conn = _matrix_graph(c_matrix)
     else:
-        conn = None
+        conn = 'custom'
 
     return Sensor(ch_locs, ch_names, sysname, connectivity=conn)
 
