@@ -285,7 +285,7 @@ class _plt_utsnd(object):
             epoch = epoch.sub(sensor=sensors)
 
         self._dims = (linedim, xdim)
-        x = epoch.get_dim(xdim).x
+        x = epoch.get_dim(xdim)._axis_data()
         if isinstance(color, dict):
             data = epoch.get_data((linedim, xdim))
             line_dim = epoch.get_dim(linedim)

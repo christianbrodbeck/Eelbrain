@@ -160,12 +160,12 @@ class TopomapBins(EelFigure):
         vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
 
         for row, layers in enumerate(epochs):
-            for column, t in enumerate(time.x):
+            for column, t in enumerate(time):
                 ax = self._axes[row * n_bins + column]
                 topo_layers = [l.sub(time=t) for l in layers]
                 _ax_topomap(ax, topo_layers, cmaps=cmaps, vlims=vlims)
 
-        self._set_axtitle((str(t) for t in time.x), axes=self._axes[:len(time)])
+        self._set_axtitle((str(t) for t in time), axes=self._axes[:len(time)])
         self._show()
 
 

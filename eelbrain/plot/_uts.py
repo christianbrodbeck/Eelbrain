@@ -564,7 +564,7 @@ class _plt_uts(object):
 
     def __init__(self, ax, ndvar, xdim, color):
         y = ndvar.get_data((xdim,))
-        x = ndvar.get_dim(xdim).x
+        x = ndvar.get_dim(xdim)._axis_data()
         self.plot_handle = ax.plot(x, y, color=color, label=longname(ndvar))[0]
 
         for y, kwa in _base.find_uts_hlines(ndvar):
@@ -590,7 +590,7 @@ class _ax_uts_clusters:
 
         # save ax attr
         self.ax = ax
-        x = Y.get_dim(xdim).x
+        x = Y.get_dim(xdim)._axis_data()
         self.xlim = (x[0], x[-1])
 
         ax.set_xlim(*self.xlim)

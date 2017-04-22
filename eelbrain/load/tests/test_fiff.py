@@ -80,7 +80,7 @@ def test_load_fiff_from_raw():
     mne_data = epochs.get_data()[:, picks]
     assert_array_equal(meg.sensor.names, [epochs.info['ch_names'][i] for i in picks])
     assert_array_equal(data, mne_data)
-    assert_array_almost_equal(meg.time.x, epochs.times)
+    assert_array_almost_equal(meg.time, epochs.times)
 
     # with proj
     with catch_warnings():

@@ -1,9 +1,10 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import print_function
 from nose.tools import eq_, ok_, assert_is_instance, assert_raises
-from eelbrain._utils.testing import assert_dataobj_equal
+import numpy as np
 from numpy.testing import assert_array_equal
 
+from eelbrain._utils.testing import assert_dataobj_equal
 from eelbrain import Factor, NDVar, Var, datasets, table, combine
 
 
@@ -48,7 +49,7 @@ def test_melt_ndvar():
     lds = table.melt_ndvar('uts', ds=ds)
     ok_('time' in lds)
     assert_is_instance(lds['time'], Var)
-    eq_(set(lds['time'].x), set(ds['uts'].time.x))
+    assert_array_equal(np.unique(lds['time'].x), ds['uts'].time)
 
     # no ds
     lds2 = table.melt_ndvar(ds['uts'])

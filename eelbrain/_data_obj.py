@@ -6975,6 +6975,13 @@ class Dimension(object):
         "Return a str describing the dimension in on line (79 chars)"
         return str(self.name)
 
+    def _as_uv(self):
+        return Var(self._axis_data(), name=self.name)
+
+    def _axis_data(self):
+        "x for plot command"
+        return np.arange(len(self))
+
     def _axis_im_extent(self):
         "Extent for im plots; needs to extend beyond end point locations"
         return -0.5, len(self) - 0.5
@@ -7252,6 +7259,9 @@ class Categorial(Dimension):
                                   apply_numpy_index(self.values, index),
                                   self._subgraph(index))
 
+    def _as_uv(self):
+        return Factor(self.values, name=self.name)
+
     def _axis_format(self, scalar, label):
         return (IndexFormatter(self.values),
                 FixedLocator(np.arange(len(self))),
@@ -7382,6 +7392,9 @@ class Scalar(Dimension):
             return self.values[index]
         return self.__class__(self.name, self.values[index], self.unit,
                               self.tick_format, self._subgraph(index))
+
+    def _axis_data(self):
+        return self.values
 
     def _axis_format(self, scalar, label):
         if scalar:
@@ -7613,6 +7626,9 @@ class Sensor(Dimension):
         else:
             return Sensor(self.locs[index], self.names[index], self.sysname,
                           self.default_proj2d, self._subgraph(index))
+
+    def _as_uv(self):
+        return Factor(self.names, name=self.name)
 
     def _axis_format(self, scalar, label):
         return (IndexFormatter(self.names),
@@ -8341,6 +8357,13 @@ class SourceSpace(Dimension):
                           parc, self._subgraph(int_index))
         return dim
 
+    def _as_uv(self):
+        if self.kind == 'vol':
+            return Dimension._as_uv(self)
+        return Factor(('%s%i' % (hemi, i) for hemi, vertices in
+                       izip(('L', 'R'), self.vertno) for i in vertices),
+                      name=self.name)
+
     def _axis_format(self, scalar, label):
         return (FormatStrFormatter('%i'),
                 FixedLocator(np.arange(len(self)), 10),
@@ -8808,14 +8831,6 @@ class UTS(Dimension):
             self._times = self.tmin + np.arange(self.nsamples) * self.tstep
         return self._times
 
-    @property
-    def x(self):
-        return self.times
-
-    @property
-    def values(self):
-        return self.times
-
     @classmethod
     def from_int(cls, first, last, sfreq):
         """Create a UTS dimension from sample index and sampling frequency
@@ -8852,6 +8867,9 @@ class UTS(Dimension):
 
     def __repr__(self):
         return "UTS(%s, %s, %s)" % (self.tmin, self.tstep, self.nsamples)
+
+    def _axis_data(self):
+        return self.times
 
     def _axis_im_extent(self):
         return self.tmin - 0.5 * self.tstep, self.tmax + 0.5 * self.tstep

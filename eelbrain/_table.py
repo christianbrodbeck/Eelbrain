@@ -299,7 +299,7 @@ def melt_ndvar(ndvar, dim=None, cells=None, ds=None, varname=None):
         dim = ndvar.get_dim(dimname)
 
     if cells is None:
-        cells = dim.values
+        cells = dim._as_uv()
 
     if varname is None:
         if ndvar.name is None:
