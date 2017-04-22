@@ -5207,7 +5207,11 @@ class MneExperiment(FileTree):
 
     def _analysis_info(self, data):
         info = List("Analysis:")
-        info.add_item(self.format('epoch = {epoch} {evoked_kind} ~ {model}'))
+        epoch = self.format('epoch = {epoch} {evoked_kind}').strip()
+        model = self.format('{model}').strip()
+        if model:
+            epoch += ' ~ ' + model
+        info.add_item(epoch)
         if data == 'source':
             info.add_item(self.format("cov = {cov}"))
             info.add_item(self.format("inv = {inv}"))
