@@ -1373,6 +1373,10 @@ def test_source_space():
     source_v1_intersection = source_ba1_v1.intersect(source_v1_mt)
     assert_source_space_equal(source_v1, source_v1_intersection)
 
+    # persistence
+    eq_(pickle.loads(pickle.dumps(source, pickle.HIGHEST_PROTOCOL)), source)
+    eq_(pickle.loads(pickle.dumps(source_v1, pickle.HIGHEST_PROTOCOL)), source_v1)
+
     # index from label
     index = source.index_for_label(label_v1)
     assert_array_equal(index.source[index.x].vertno[0],
