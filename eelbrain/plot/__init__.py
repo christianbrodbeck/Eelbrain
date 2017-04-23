@@ -3,6 +3,7 @@
 
 from ._colors import (colors_for_categorial, colors_for_oneway,
                       colors_for_twoway, ColorBar, ColorGrid, ColorList)
+from ._line import LineStack
 from ._sensors import SensorMaps, SensorMap
 from ._topo import TopoArray, TopoButterfly, Topomap, TopomapBins
 from ._uts import UTSStat, UTS, UTSClusters
