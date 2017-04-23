@@ -333,7 +333,6 @@ class _ax_butterfly(object):
         self.data = layers
         self.layers = []
         self.legend_handles = {}
-        self._xvalues = []  # values on the x axis
         self._meas = None
 
         vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
@@ -346,13 +345,8 @@ class _ax_butterfly(object):
             if not name and l.name:
                 name = l.name
 
-            self._xvalues = np.union1d(self._xvalues, l.get_dim(xdim))
             self.legend_handles.update(h.legend_handles)
 
-        # axes decoration
-        ax.set_xlim(self._xvalues[0], self._xvalues[-1])
-
-    #    ax.yaxis.set_offset_position('right')
         ax.yaxis.offsetText.set_va('top')
 
         self.set_ylim(vmin, vmax)
@@ -504,8 +498,7 @@ class _ax_bfly_epoch:
         self.epoch = epoch
         self._state_h = []
         self._visible = True
-        self._ylim = _base.find_uts_ax_vlim([epoch], vlims)
-        self._update_ax_lim()
+        self.set_ylim(_base.find_uts_ax_vlim([epoch], vlims))
         self._styles = {None: {'color': color, 'lw': lw, 'ls': '-',
                                'zorder': 2},
                         'mark': {'color': mcolor, 'lw': mlw, 'ls': '-',
@@ -528,16 +521,6 @@ class _ax_bfly_epoch:
         self.lines.set_ydata(epoch)
         if label is not None:
             self._label.set_text(label)
-
-    def _update_ax_lim(self):
-        self.ax.set_xlim(self.epoch.time[0], self.epoch.time[-1])
-        ylim = self._ylim
-        if ylim:
-            if np.isscalar(ylim):
-                self.ax.set_ylim(-ylim, ylim)
-            else:
-                y_min, y_max = ylim
-                self.ax.set_ylim(y_min, y_max)
 
     def set_marked(self, kind, sensors):
         """Set the channels which should be marked for a specific style
@@ -595,5 +578,8 @@ class _ax_bfly_epoch:
             self._visible = visible
 
     def set_ylim(self, ylim):
-        self._ylim = ylim
-        self._update_ax_lim()
+        if ylim:
+            if np.isscalar(ylim):
+                self.ax.set_ylim(-ylim, ylim)
+            else:
+                self.ax.set_ylim(ylim)

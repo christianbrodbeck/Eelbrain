@@ -282,7 +282,6 @@ class TopoButterfly(ColorMapMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure)
         self.bfly_plots = []
         self.topo_plots = []
         self.t_markers = []  # vertical lines on butterfly plots
-        self._xvalues = []
 
         ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin, None,
                                self.topo_plots)
@@ -300,7 +299,11 @@ class TopoButterfly(ColorMapMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure)
             p = _ax_butterfly(ax, layers, 'time', 'sensor', mark, color,
                               self._vlims)
             self.bfly_plots.append(p)
-            self._xvalues = np.union1d(self._xvalues, p._xvalues)
+
+        # find possible discrete values for time point
+        xdims = (v.get_dim(xdim) for ax_vs in epochs for v in ax_vs)
+        xdim_axdata = (dim._axis_data() for dim in xdims)
+        self._xvalues = reduce(np.union1d, xdim_axdata)
 
         # decorate axes
         e0 = epochs[0][0]

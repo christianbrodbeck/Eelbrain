@@ -19,7 +19,7 @@ from ._colors import colors_for_oneway, find_cell_colors
 from .._colorspaces import oneway_colors
 
 
-class UTSStat(LegendMixin, YLimMixin, EelFigure):
+class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
     u"""
     Plot statistics for a one-dimensional NDVar
 
@@ -178,7 +178,7 @@ class UTSStat(LegendMixin, YLimMixin, EelFigure):
         legend_handles = {}
         if Xax is None:
             p = _ax_uts_stat(self._axes[0], ct, colors, main, error, dev_data,
-                             xdim, xlim, invy, bottom, top, hline, clusters,
+                             xdim, invy, bottom, top, hline, clusters,
                              pmax, ptrend, clip)
             self._plots.append(p)
             legend_handles.update(p.legend_handles)
@@ -194,7 +194,7 @@ class UTSStat(LegendMixin, YLimMixin, EelFigure):
 
                 ct_ = Celltable(ct.data[cell], X_, match=match, coercion=asndvar)
                 p = _ax_uts_stat(ax, ct_, colors, main, error, dev_data,
-                                 xdim, xlim, invy, bottom, top, hline, clusters,
+                                 xdim, invy, bottom, top, hline, clusters,
                                  pmax, ptrend, clip)
                 self._plots.append(p)
                 legend_handles.update(p.legend_handles)
@@ -202,6 +202,7 @@ class UTSStat(LegendMixin, YLimMixin, EelFigure):
 
         self._configure_yaxis(ct.Y, ylabel)
         self._configure_xaxis_dim(ct.Y.get_dim(xdim), xlabel, xticklabels)
+        XAxisMixin.__init__(self, ((Y,),), xdim, xlim)
         YLimMixin.__init__(self, self._plots)
         LegendMixin.__init__(self, legend, legend_handles)
         self._update_ui_cluster_button()
@@ -384,7 +385,7 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
 
 class _ax_uts_stat(object):
 
-    def __init__(self, ax, ct, colors, main, error, dev_data, xdim, xlim,
+    def __init__(self, ax, ct, colors, main, error, dev_data, xdim,
                  invy, bottom, top, hline, clusters, pmax, ptrend, clip):
         # stat plots
         self.ax = ax
@@ -416,13 +417,6 @@ class _ax_uts_stat(object):
 
         # cluster plot
         self.cluster_plt = _plt_uts_clusters(ax, clusters, pmax, ptrend)
-
-        # format x axis
-        if xlim is None:
-            ax.set_xlim(x[0], x[-1])
-        else:
-            xmin, xmax = xlim
-            ax.set_xlim(xmin, xmax)
 
         # format y axis
         if invy:
@@ -548,9 +542,6 @@ class _ax_uts(object):
                     if v in contours:
                         continue
                     contours[v] = ax.axhline(v, color=color)
-
-        x = l0.get_dim(xdim)
-        ax.set_xlim(x[0], x[-1])
 
         self.ax = ax
         self.set_ylim(vmin, vmax)

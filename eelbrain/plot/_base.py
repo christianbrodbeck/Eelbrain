@@ -2164,8 +2164,9 @@ class XAxisMixin(object):
         self._register_key('right', self.__on_right)
         self._register_key('home', self.__on_beginning)
         self._register_key('end', self.__on_end)
-        if xlim is not None:
-            self._set_xlim(*xlim)
+        if xlim is None:
+            xlim = (self.__xmin, self.__xmax)
+        self._set_xlim(*xlim)
 
     def _get_xlim(self):
         return self.__axes[0].get_xlim()
