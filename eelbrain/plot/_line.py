@@ -33,6 +33,8 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
         ``'0.66 * max(y)'`` will offset each line by 0.66 times the maximum 
         value in ``y`` (after aggregating if ``x`` is specified). The default is
         ``'2/3 * max(y.max(), -y.min())'``.
+    xlim : tuple of 2 scalar
+        Initial x-axis display limits.
     xlabel : bool | str
         X-axis label. By default the label is inferred from the data.
     ylabel : bool | str
@@ -57,46 +59,81 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
     """
     _name = "LineStack"
 
-    def __init__(self, y, x=None, sub=None, ds=None,
-                 offset='max(y.max(), -y.min())', xlabel=True, ylabel=True,
+    def __init__(self, y, x=None, sub=None, ds=None, offset='y.max() - y.min()',
+                 xlim=None, xlabel=True, ylabel=True, order=None,
                  colors=None, ylabels=True, xdim=None, legend=None,
                  *args, **kwargs):
         sub = assub(sub, ds)
-        y = asndvar(y, sub, ds)
-        if x is not None:
-            x = ascategorial(x, sub, ds)
-            y = y.aggregate(x)
+        if isinstance(y, (tuple, list)):
+            if x is not None:
+                raise TypeError(
+                    "x can only be used to divide y into different lines if y "
+                    "is a single NDVar (got y=%r)." % (y,))
+            elif order is not None:
+                raise TypeError("The order parameter only applies if y is a "
+                                "single NDVar")
+            ys = tuple(asndvar(y_, sub, ds) for y_ in y)
+            xdims = set(y_.get_dimnames((None,))[0] for y_ in ys)
+            if len(xdims) > 1:
+                raise ValueError("NDVars must have same dimension, got %s" %
+                                 (tuple(xdims),))
+            xdim = xdims.pop()
+            ydata = tuple(y_.get_data(xdim) for y_ in ys)
+            ny = len(ydata)
+            xdim_objs = tuple(y_.get_dim(xdim) for y_ in ys)
+            xdata = tuple(d._axis_data() for d in xdim_objs)
+            xdim_obj = reduce(lambda d1, d2: d1._union(d2), xdim_objs)
 
-        # find plotting dims
-        if xdim is None and y.has_dim('time'):
-            ydim, xdim = y.get_dimnames((None, 'time'))
+            if isinstance(offset, basestring):
+                offset = max(eval(offset, {'y': y_}) for y_ in ydata)
+
+            cells = cell_labels = tuple(y_.name for y_ in ys)
+
+            if ylabel is True:
+                _, ylabel = find_axis_params_data(ys[0], ylabel)
+            epochs = (ys,)
         else:
-            ydim, xdim = y.get_dimnames((None, xdim))
-        xdim_obj = y.get_dim(xdim)
-
-        # get data with offset
-        ydata = y.get_data((ydim, xdim)).copy()
-        ny = len(ydata)
-        if isinstance(offset, basestring):
-            offset = eval(offset, {'y': y})
-        offset_a = np.arange(ny) * offset
-        ydata += offset_a[:, np.newaxis]
-
-        # find cells
-        if x is None:
-            if ydim == 'case':
-                cells = range(ny)
+            y = asndvar(y, sub, ds)
+            if x is not None:
+                x = ascategorial(x, sub, ds)
+                y = y.aggregate(x)
+            # find plotting dims
+            if xdim is None and y.has_dim('time'):
+                ydim, xdim = y.get_dimnames((None, 'time'))
             else:
-                cells = y.get_dim(ydim)._as_uv()
-            cell_labels = map(str, cells)
-        else:
-            cells = cell_labels = x.cells
+                ydim, xdim = y.get_dimnames((None, xdim))
+            xdim_obj = y.get_dim(xdim)
+
+            # get data
+            ydata = y.get_data((ydim, xdim))
+
+            if isinstance(offset, basestring):
+                offset = eval(offset, {'y': y})
+
+            # find cells
+            if x is None:
+                cells = y.get_dim(ydim)
+                cell_labels = map(str, cells)
+            else:
+                cells = cell_labels = x.cells
+
+            if order is not None:
+                sort_index = [cells._array_index(i) for i in reversed(order)]
+                ydata = ydata[sort_index]
+                cells = tuple(cells[i] for i in sort_index)
+                cell_labels = tuple(cell_labels[i] for i in sort_index)
+
+            if ylabel is True:
+                _, ylabel = find_axis_params_data(y, ylabel)
+            epochs = ((y,),)
+
+            ny = len(ydata)
+            xdata = repeat(xdim_obj._axis_data(), ny)
+
+        offsets = np.arange(ny) * offset
 
         if ylabels is True:
             ylabels = cell_labels
-
-        if ylabel is True:
-            _, ylabel = find_axis_params_data(y, ylabel)
 
         # colors
         if colors is None:
@@ -112,20 +149,20 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
         EelFigure.__init__(self, frame_title(y, x), layout)
         ax = self._axes[0]
 
-        xdata = xdim_obj._axis_data()
-        handles = [ax.plot(xdata, y_, color=color)[0] for y_, color in
-                   izip(ydata, color_iter)]
+        handles = [ax.plot(x_, y_ + offset_, color=color)[0] for
+                   x_, y_, offset_, color in
+                   izip(xdata, ydata, offsets, color_iter)]
 
         ax.grid(True)
         ax.set_frame_on(False)
         ax.xaxis.set_ticks_position('none')
         ax.yaxis.set_ticks_position('none')
-        ax.set_yticks(offset_a)
+        ax.set_yticks(offsets)
         ax.set_yticklabels(ylabels or ())
-        ax.set_ylim(y[0].min(), offset * ny)
+        ax.set_ylim(ydata[0].min(), offset * ny)
         self._configure_xaxis_dim(xdim_obj, xlabel, True)
         if ylabel:
             ax.set_ylabel(ylabel)
-        XAxisMixin.__init__(self, ((y,),), xdim)
+        XAxisMixin.__init__(self, epochs, xdim, xlim)
         LegendMixin.__init__(self, legend, dict(izip(cell_labels, handles)))
         self._show()
