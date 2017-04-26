@@ -156,8 +156,11 @@ class BrainFrame(EelbrainFrame):
     def OnClose(self, event):
         event.Skip()
         if self._brain is not None:
+            self._brain._surfer_close()
             self._brain._frame_is_alive = False
-            self._brain = None  # remove circular reference
+            # remove circular references
+            self._brain._frame = None
+            self._brain = None
 
     def OnKeyDown(self, event):
         if self._brain is None:

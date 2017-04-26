@@ -26,11 +26,12 @@ from ._wx_brain import BrainFrame, SURFACES
 
 # Traits-GUI related imports after BrainFrame
 from mayavi import mlab
-# surfer imports, lower screen logging level
+# if this is the first surfer import, lower screen logging level
 first_import = 'surfer' not in sys.modules
 import surfer
 if first_import:
     reset_logger(surfer.utils.logger)
+del first_import
 
 
 HEMI_ID_TO_STR = {FIFF.FIFFV_MNE_SURF_LEFT_HEMI: 'lh',
@@ -420,8 +421,10 @@ class Brain(surfer.Brain):
 
     def close(self):
         "Close the figure window"
-        surfer.Brain.close(self)
         self._frame.Close()
+
+    def _surfer_close(self):
+        surfer.Brain.close(self)
 
     def copy_screenshot(self):
         "Copy the currently shown image to the clipboard"
