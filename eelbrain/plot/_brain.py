@@ -494,9 +494,12 @@ def brain(src, cmap=None, vmin=None, vmax=None, surface='inflated',
         NDVar with SourceSpace dimension. If stc contains a case dimension,
         the average across cases is taken. If a SourceSpace, the Brain is
         returned without adding any data and corresponding arguments are
-        ignored.
+        ignored. If ndvar contains integer data, it is plotted as annotation,
+        otherwise as data layer.
     cmap : str | array
-        Colormap (name of a matplotlib colormap) or LUT array.
+        Colormap (name of a matplotlib colormap) or LUT array. If ``src`` is an
+        integer NDVar, ``cmap`` can be a color dictionary mapping label IDs to
+        colors.
     vmin, vmax : scalar
         Endpoints for the colormap. Need to be set explicitly if ``cmap`` is
         a LUT array.
@@ -594,8 +597,11 @@ def brain(src, cmap=None, vmin=None, vmax=None, surface='inflated',
                           subjects_dir, name)
 
     if ndvar is not None:
-        brain.add_ndvar(ndvar, cmap, vmin, vmax, smoothing_steps, colorbar,
-                        time_label)
+        if ndvar.x.dtype.kind in 'ui':
+            brain.add_ndvar_annotation(ndvar, cmap, False)
+        else:
+            brain.add_ndvar(ndvar, cmap, vmin, vmax, smoothing_steps, colorbar,
+                            time_label)
 
     if mask is not False:
         if mask is True:
