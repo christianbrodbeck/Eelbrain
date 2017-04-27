@@ -15,7 +15,6 @@ from ._data_obj import (
 from ._info import merge_info
 from ._stats.connectivity import Connectivity
 from ._stats.connectivity import find_peaks as _find_peaks
-from ._stats.testnd import label_clusters_binary
 from ._stats.error_functions import l1
 
 
