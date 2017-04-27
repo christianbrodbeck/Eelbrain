@@ -46,9 +46,9 @@ from .. import fmtxt
 from .. import _colorspaces as _cs
 from .._config import CONFIG
 from .._data_obj import (
-    Categorial, Celltable, Dataset, Interaction, NDVar, OldVersionError, UTS,
-    Var, ascategorial, asmodel, asndvar, asvar, assub, cellname, combine,
-    dataobj_repr)
+    Categorial, Celltable, Dataset, Interaction, NDVar, UTS, Var, ascategorial,
+    asmodel, asndvar, asvar, assub, cellname, combine, dataobj_repr)
+from .._exceptions import OldVersionError
 from .._report import enumeration, format_timewindow, ms
 from .._utils import LazyProperty
 from .._utils.numpy_utils import full_slice

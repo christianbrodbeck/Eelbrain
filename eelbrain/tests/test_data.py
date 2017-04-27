@@ -27,7 +27,8 @@ from eelbrain import (
     shuffled_index)
 from eelbrain._data_obj import (
     all_equal, asvar, assub, full_slice, longname, SourceSpace,
-    DimensionMismatchError, assert_has_no_empty_cells)
+    assert_has_no_empty_cells)
+from eelbrain._exceptions import DimensionMismatchError
 from eelbrain._stats.stats import rms
 from eelbrain._utils.testing import (
     assert_dataobj_equal, assert_dataset_equal, assert_source_space_equal,

@@ -26,9 +26,9 @@ from .. import save
 from .. import table
 from .. import testnd
 from .._data_obj import (
-    Datalist, Dataset, DimensionMismatchError, Factor, OldVersionError, Var,
-    align, all_equal, as_legal_dataset_key, asfactor,
-    assert_is_legal_dataset_key, combine)
+    Datalist, Dataset, Factor, Var, align, all_equal, as_legal_dataset_key,
+    asfactor, assert_is_legal_dataset_key, combine)
+from .._exceptions import DimensionMismatchError, OldVersionError
 from .._info import BAD_CHANNELS
 from .._io.fiff import KIT_NEIGHBORS
 from .._io.pickle import update_subjects_dir

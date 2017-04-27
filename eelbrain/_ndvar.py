@@ -11,7 +11,8 @@ from scipy import linalg, signal
 from . import mne_fixes
 from . import _colorspaces as cs
 from ._data_obj import (
-    NDVar, Categorial, Dimension, Scalar, UTS, DimensionMismatchError)
+    NDVar, Categorial, Dimension, Scalar, UTS)
+from ._exceptions import DimensionMismatchError
 from ._info import merge_info
 from ._stats.connectivity import Connectivity
 from ._stats.connectivity import find_peaks as _find_peaks

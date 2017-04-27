@@ -69,6 +69,7 @@ from scipy.spatial.distance import cdist, pdist, squareform
 
 from . import fmtxt
 from . import _colorspaces as cs
+from ._exceptions import DimensionMismatchError
 from ._info import merge_info
 from ._utils import deprecated, ui, LazyProperty, n_decimals, natsorted
 from ._utils.numpy_utils import (
@@ -98,15 +99,6 @@ _tex_wildcard = ("TeX (*.tex)", '*.tex')
 _tsv_wildcard = ("Plain Text Tab Separated Values (*.txt)", '*.txt')
 _txt_wildcard = ("Plain Text (*.txt)", '*.txt')
 EVAL_CONTEXT = vars(np)  # updated at end of file
-
-
-class DimensionMismatchError(Exception):
-    pass
-
-
-class OldVersionError(Exception):
-    "Trying to load a file from a version that is no longer supported"
-    pass
 
 
 def _effect_eye(n):

@@ -7,7 +7,8 @@ import numpy as np
 
 from .._colorspaces import stat_info
 from .._data_obj import (Dataset, Factor, Var, NDVar, asmodel, asndvar,
-                         combine, dataobj_repr, DimensionMismatchError)
+                         combine, dataobj_repr)
+from .._exceptions import DimensionMismatchError
 from . import opt
 from .stats import lm_betas_se_1d
 from .testnd import ttest_1samp
