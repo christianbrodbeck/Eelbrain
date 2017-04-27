@@ -2036,6 +2036,8 @@ class Var(object):
 
     def isin(self, values):
         "Boolean index, True where the Var value is in values"
+        if isinstance(values, dict):
+            values = values.keys()
         return np.in1d(self.x, values)
 
     def isnot(self, *values):
