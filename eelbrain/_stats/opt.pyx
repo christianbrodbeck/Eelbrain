@@ -457,3 +457,18 @@ def t_1samp_perm(cnp.ndarray[FLOAT64, ndim=2] y,
                 out[i] = np.inf
             continue
         out[i] = mean / denom
+
+
+def has_zero_variance(cnp.ndarray[FLOAT64, ndim=2] y):
+    "True if any data-columns have zero variance"
+    cdef double value
+    cdef unsigned long case, i
+
+    for i in range(y.shape[1]):
+        value = y[0, i]
+        for case in range(1, y.shape[0]):
+            if y[case, i] != value:
+                break
+        else:
+            return True
+    return False

@@ -6,14 +6,15 @@ import cPickle as pickle
 import logging
 
 from nose.tools import (eq_, ok_, assert_equal, assert_not_equal,
-                        assert_greater_equal, assert_less, assert_in,
-                        assert_not_in, assert_raises)
+                        assert_greater, assert_greater_equal, assert_less,
+                        assert_in, assert_not_in, assert_raises)
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 
 import eelbrain
 from eelbrain import (NDVar, Categorial, Scalar, UTS, Sensor, configure,
                       datasets, testnd, set_log_level, cwt_morlet)
+from eelbrain._exceptions import ZeroVariance
 from eelbrain._stats.testnd import (Connectivity, _ClusterDist, label_clusters,
                                     _MergedTemporalClusterDist, find_peaks)
 from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,
@@ -121,6 +122,11 @@ def test_anova():
     configure(n_workers=0)
     res = testnd.anova('utsnd.rms(time=(0.1, 0.3))', 'A*B*rm', ds=ds, tfce=True, samples=samples)
     configure(n_workers=True)
+
+    # zero variance
+    ds['utsnd'].x[:, 1, 10] = 0.
+    assert_raises(ZeroVariance, testnd.anova, 'utsnd', 'A', ds=ds)
+    assert_raises(ZeroVariance, testnd.anova, 'utsnd', 'A*B*rm', ds=ds)
 
 
 def test_anova_incremental():
@@ -382,6 +388,11 @@ def test_t_contrast():
     res = testnd.t_contrast_rel('uts', 'A%B', 'min(a1|b0>a0|b0, a1|b1>a0|b1)',
                                 'rm', ds=ds, tail=1)
 
+    # zero variance
+    ds['uts'].x[:, 10] = 0.
+    assert_raises(ZeroVariance, testnd.t_contrast_rel, 'uts', 'A%B',
+                  'min(a1|b0>a0|b0, a1|b1>a0|b1)', 'rm', tail=1, ds=ds)
+
 
 def test_labeling():
     "Test cluster labeling"
@@ -480,6 +491,13 @@ def test_ttest_1samp():
     masked = res.masked_parameter_map(pmin=0.05)
     assert_array_equal(masked.abs().x <= res.t.abs().x, True)
 
+    # zero variance
+    ds['utsnd'].x[:, 1, 10] = 0.
+    ds['utsnd'].x[:, 2, 10] = 0.1
+    res = testnd.ttest_1samp('utsnd', ds=ds)
+    eq_(res.t.x[1, 10], 0.)
+    assert_greater(res.t.x[2, 10], 1e10)
+
 
 def test_ttest_ind():
     "Test testnd.ttest_ind()"
@@ -506,6 +524,10 @@ def test_ttest_ind():
     # nd
     res = testnd.ttest_ind('utsnd', 'A', 'a1', 'a0', ds=ds, pmin=0.05, samples=2)
     eq_(res._cdist.n_clusters, 10)
+
+    # zero variance
+    ds['utsnd'].x[:, 1, 10] = 0.
+    assert_raises(ZeroVariance, testnd.ttest_ind, 'utsnd', 'A', ds=ds)
 
 
 def test_ttest_rel():
@@ -567,6 +589,10 @@ def test_ttest_rel():
     res1 = testnd.ttest_rel('uts', 'A', 'a1', 'a0', 'rm', ds=sds, tfce=True,
                             samples=10)
     assert_dataobj_equal(res1.compute_probability_map(), tgt)
+
+    # zero variance
+    ds['utsnd'].x[:, 1, 10] = 0.
+    assert_raises(ZeroVariance, testnd.ttest_rel, 'utsnd', 'A', match='rm', ds=ds)
 
 
 def test_cwt():

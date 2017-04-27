@@ -48,7 +48,7 @@ from .._config import CONFIG
 from .._data_obj import (
     Categorial, Celltable, Dataset, Interaction, NDVar, UTS, Var, ascategorial,
     asmodel, asndvar, asvar, assub, cellname, combine, dataobj_repr)
-from .._exceptions import OldVersionError
+from .._exceptions import OldVersionError, ZeroVariance
 from .._report import enumeration, format_timewindow, ms
 from .._utils import LazyProperty
 from .._utils.numpy_utils import full_slice
@@ -66,6 +66,13 @@ __test__ = False
 
 # toggle multiprocessing for problematic functions on Windows
 MP_FOR_NON_TOP_LEVEL_FUNCTIONS = os.name != 'nt'  # FIXME
+
+
+def check_variance(x):
+    if x.ndim != 2:
+        x = x.reshape((len(x), -1))
+    if opt.has_zero_variance(x):
+        raise ZeroVariance("y contains data column with zero variance")
 
 
 class _Result(object):
@@ -429,6 +436,7 @@ class t_contrast_rel(_Result):
                             "repeated measures test t_contrast_rel")
         ct = Celltable(Y, X, match, sub, ds=ds, coercion=asndvar,
                        dtype=np.float64)
+        check_variance(ct.Y.x)
 
         # setup contrast
         t_contrast = TContrastRel(contrast, ct.cells, ct.data_indexes)
@@ -884,6 +892,7 @@ class ttest_ind(_Result):
                  tstart=None, tstop=None, parc=None, force_permutation=False, **criteria):
         ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar,
                        dtype=np.float64)
+        check_variance(ct.Y.x)
         c1, c0 = ct.cat
 
         n1 = len(ct.data[c1])
@@ -1091,6 +1100,7 @@ class ttest_rel(_Result):
                             "related measures t-test.")
         ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar,
                        dtype=np.float64)
+        check_variance(ct.Y.x)
         c1, c0 = ct.cat
         if not ct.all_within:
             raise ValueError("conditions %r and %r do not have the same values "
@@ -1437,6 +1447,7 @@ class anova(_MultiEffectResult):
         if match is not None:
             match = ascategorial(match, sub, ds)
 
+        check_variance(Y.x)
         lm = _nd_anova(x_)
         effects = lm.effects
         dfs_denom = lm.dfs_denom
