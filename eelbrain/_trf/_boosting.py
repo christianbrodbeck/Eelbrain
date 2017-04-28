@@ -48,8 +48,6 @@ JOB_TERMINATE = -1
 ERROR_FUNC = {'l2': l2, 'l1': l1}
 DELTA_ERROR_FUNC = {'l2': 2, 'l1': 1}
 
-DELTA_REDUCTION_STEP = (None, None, None)
-
 
 class BoostingResult(object):
     """Result from boosting a temporal response function
@@ -106,6 +104,8 @@ class BoostingResult(object):
             # result parameters
             h, r, isnan, spearmanr, residual, t_run,
             y_mean, y_scale, x_mean, x_scale, y_info={}, r_l1=None,
+            # new parameters
+            selective_stopping=False,
             **debug_attrs,
     ):
         # input parameters
@@ -122,6 +122,7 @@ class BoostingResult(object):
         self.model = model
         self.basis = basis
         self.basis_window = basis_window
+        self.selective_stopping = selective_stopping
         # results
         self._h = h
         self._y_info = y_info
@@ -148,6 +149,7 @@ class BoostingResult(object):
             'partitions_arg': self._partitions_arg, 'partitions': self.partitions,
             'model': self.model, 'basis': self.basis,
             'basis_window': self.basis_window,
+            'selective_stopping': self.selective_stopping,
             # results
             'h': self._h, 'r': self.r, 'r_l1': self.r_l1, 'isnan': self._isnan,
             'spearmanr': self.spearmanr, 'residual': self.residual,
@@ -257,7 +259,8 @@ class BoostingResult(object):
 @user_activity
 def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
              error='l2', basis=0, basis_window='hamming',
-             partitions=None, model=None, ds=None, debug=False):
+             partitions=None, model=None, ds=None, selective_stopping=False,
+             debug=False):
     """Estimate a filter with boosting
 
     Parameters
@@ -306,6 +309,11 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     ds : Dataset
         If provided, other parameters can be specified as string for items in
         ``ds``.
+    selective_stopping : bool
+        By default, boosting stops when the testing error stops decreasing. With
+        ``selective_stopping=True``, boosting continues but excludes the
+        predictor (one time-series in ``x``) that caused the increase in
+        testing error, until all predictors are stopped.
     debug : bool
         Store additional properties in the result object (increases memory
         consumption).
@@ -337,6 +345,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     """
     # check arguments
     mindelta_ = delta if mindelta is None else mindelta
+    selective_stopping = bool(selective_stopping)
 
     data = RevCorrData(y, x, error, scale_data, ds)
     data.initialize_cross_validation(partitions, model, ds)
@@ -374,7 +383,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     if CONFIG['n_workers']:
         # Make sure cross-validations are added in the same order, otherwise
         # slight numerical differences can occur
-        job_queue, result_queue = setup_workers(data, i_start, trf_length, delta, mindelta_, error)
+        job_queue, result_queue = setup_workers(data, i_start, trf_length, delta, mindelta_, error, selective_stopping)
         stop_jobs = Event()
         thread = Thread(target=put_jobs, args=(job_queue, n_y, n_cv, stop_jobs))
         thread.start()
@@ -412,7 +421,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         for y_i, y_ in enumerate(data.y):
             hs = []
             for segments, train, test in data.cv_segments:
-                h = boost(y_, data.x, data.x_pads, segments, train, test, i_start, trf_length, delta, mindelta_, error)
+                h = boost(y_, data.x, data.x_pads, segments, train, test, i_start, trf_length, delta, mindelta_, error, selective_stopping)
                 if h is not None:
                     hs.append(h)
                 pbar.update()
@@ -479,12 +488,23 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         h, r, isnan, spearmanr, residual, t_run,
         y_mean, y_scale, x_mean, x_scale, data.y_info,
         # vector results
-        r_l1,
+        r_l1, selective_stopping,
         **debug_attrs)
 
 
+class BoostingStep(object):
+    __slots__ = ('i_stim', 'i_time', 'delta', 'e_train', 'e_test')
+
+    def __init__(self, i_stim, i_time, delta_signed, e_test, e_train):
+        self.i_stim = i_stim
+        self.i_time = i_time
+        self.delta = delta_signed
+        self.e_train = e_train
+        self.e_test = e_test
+
+
 def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
-          delta, mindelta, error, return_history=False):
+          delta, mindelta, error, selective_stopping=False, return_history=False):
     """Estimate one filter with boosting
 
     Parameters
@@ -530,34 +550,50 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
     y_error = y.copy()
     new_error = np.empty(h.shape)
     new_sign = np.empty(h.shape, np.int8)
+    x_active = np.ones(n_stims, dtype=np.int8)
 
     # history
     best_test_error = np.inf
     history = []
-    test_error_history = []
+    i_stim = i_time = delta_signed = None
+    best_iteration = 0
     # pre-assign iterators
     for i_boost in range(999999):
         # evaluate current h
         e_test = error(y_error, test_index)
         e_train = error(y_error, train_index)
+        step = BoostingStep(i_stim, i_time, delta_signed, e_test, e_train)
+        history.append(step)
 
+        # evaluate stopping conditions
         if e_test < best_test_error:
             best_test_error = e_test
             best_iteration = i_boost
-
-        test_error_history.append(e_test)
-
-        # stop the iteration if all the following requirements are met
-        # 1. more than 10 iterations are done
-        # 2. The testing error in the latest iteration is higher than that in
-        #    the previous two iterations
-        if (i_boost > 10 and e_test > test_error_history[-2] and
-                e_test > test_error_history[-3]):
-            # print("error(test) not improving in 2 steps")
-            break
+        elif i_boost >= 2 and e_test > history[-2].e_test:
+            if selective_stopping:
+                # revert last change
+                del history[-1]
+                h[i_stim, i_time] -= step.delta
+                update_error(y_error, x[step.i_stim], x_pads[step.i_stim], all_index, -step.delta, step.i_time + i_start)
+                step = history[-1]
+                e_train = step.e_train
+                # disable predictor
+                x_active[i_stim] = False
+                if not np.any(x_active):
+                    break
+                new_error[i_stim, :] = np.inf
+            # Basic
+            # -----
+            # stop the iteration if all the following requirements are met
+            # 1. more than 10 iterations are done
+            # 2. The testing error in the latest iteration is higher than that in
+            #    the previous two iterations
+            elif i_boost > 10 and e_test > history[-3].e_test:
+                # print("error(test) not improving in 2 steps")
+                break
 
         # generate possible movements -> training error
-        generate_options(y_error, x, x_pads, train_index, i_start, delta_error_func, delta, new_error, new_sign)
+        generate_options(y_error, x, x_pads, x_active, train_index, i_start, delta_error_func, delta, new_error, new_sign)
 
         i_stim, i_time = np.unravel_index(np.argmin(new_error), h.shape)
         new_train_error = new_error[i_stim, i_time]
@@ -567,25 +603,19 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
         if new_train_error > e_train:
             delta *= 0.5
             if delta >= mindelta:
+                i_stim = i_time = delta_signed = None
                 # print("new delta: %s" % delta)
-                history.append(DELTA_REDUCTION_STEP)
                 continue
             else:
                 # print("No improvement possible for training data")
                 break
 
         # abort if we're moving in circles
-        if i_boost >= 2 and history[-1] == (i_stim, i_time, -delta_signed):
-            break
-        elif (i_boost >= 4 and
-              history[-2] is DELTA_REDUCTION_STEP and
-              history[-3] == (i_stim, i_time, -2 * delta_signed) and
-              history[-1] == (i_stim, i_time, delta_signed)):
+        if step.delta and i_stim == step.i_stim and i_time == step.i_time and delta_signed == -step.delta:
             break
 
         # update h with best movement
         h[i_stim, i_time] += delta_signed
-        history.append((i_stim, i_time, delta_signed))
         update_error(y_error, x[i_stim], x_pads[i_stim], all_index, delta_signed, i_time + i_start)
     else:
         raise RuntimeError("Maximum number of iterations exceeded")
@@ -593,19 +623,19 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
 
     # reverse changes after best iteration
     if best_iteration:
-        for i_stim, i_time, delta_signed in history[-1: best_iteration - 1: -1]:
-            if delta_signed is not None:
-                h[i_stim, i_time] -= delta_signed
+        for step in history[-1: best_iteration: -1]:
+            if step.delta:
+                h[step.i_stim, step.i_time] -= step.delta
     else:
         h = None
 
     if return_history:
-        return h, test_error_history
+        return h, [step.e_test for step in history]
     else:
         return h
 
 
-def setup_workers(data, i_start, trf_length, delta, mindelta, error):
+def setup_workers(data, i_start, trf_length, delta, mindelta, error, selective_stopping):
     n_y, n_times = data.y.shape
     n_x, _ = data.x.shape
 
@@ -619,9 +649,7 @@ def setup_workers(data, i_start, trf_length, delta, mindelta, error):
     job_queue = Queue(200)
     result_queue = Queue(200)
 
-    args = (y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, data.cv_segments,
-            i_start, trf_length, delta, mindelta, error,
-            job_queue, result_queue)
+    args = (y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, data.cv_segments, i_start, trf_length, delta, mindelta, error, selective_stopping, job_queue, result_queue)
     for _ in range(CONFIG['n_workers']):
         process = Process(target=boosting_worker, args=args)
         process.start()
@@ -629,9 +657,7 @@ def setup_workers(data, i_start, trf_length, delta, mindelta, error):
     return job_queue, result_queue
 
 
-def boosting_worker(y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, cv_segments,
-                    i_start, trf_length, delta, mindelta, error,
-                    job_queue, result_queue):
+def boosting_worker(y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, cv_segments, i_start, trf_length, delta, mindelta, error, selective_stopping, job_queue, result_queue):
     if CONFIG['nice']:
         os.nice(CONFIG['nice'])
 
@@ -644,8 +670,7 @@ def boosting_worker(y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, cv_seg
         if y_i == JOB_TERMINATE:
             return
         all_index, train_index, test_index = cv_segments[seg_i]
-        h = boost(y[y_i], x, x_pads, all_index, train_index, test_index,
-                  i_start, trf_length, delta, mindelta, error)
+        h = boost(y[y_i], x, x_pads, all_index, train_index, test_index, i_start, trf_length, delta, mindelta, error, selective_stopping)
         result_queue.put((y_i, seg_i, h))
 
 

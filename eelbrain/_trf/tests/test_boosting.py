@@ -161,7 +161,7 @@ def test_boosting_func():
     train_segments = all_segments[1:]
     test_segments = all_segments[:1]
     h, test_sse_history = boost(y, x, x_pads, all_segments, train_segments, test_segments,
-                                0, 10, 0.005, 0.005, 'l2', True)
+                                0, 10, 0.005, 0.005, 'l2', return_history=True)
     test_seg_len = int(floor(x.shape[1] / 40))
     y_pred = boosting_convolve(h, x[:, :test_seg_len], x_pads, 0)
     r, rr, _ = evaluate_kernel(y[:test_seg_len], y_pred, 'l2', h.shape[1] - 1)
@@ -179,7 +179,7 @@ def test_boosting_func():
     x_pads = np.zeros(len(x))
 
     h, test_sse_history = boost(y, x, x_pads, all_segments, train_segments, test_segments,
-                                0, 10, 0.005, 0.005, 'l2', True)
+                                0, 10, 0.005, 0.005, 'l2', return_history=True)
     test_seg_len = int(floor(x.shape[1] / 40))
     y_pred = boosting_convolve(h, x[:, :test_seg_len], x_pads, 0)
     r, rr, _ = evaluate_kernel(y[:test_seg_len], y_pred, 'l2', h.shape[1] - 1)
