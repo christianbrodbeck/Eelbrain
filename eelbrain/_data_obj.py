@@ -71,7 +71,7 @@ from . import fmtxt
 from . import _colorspaces as cs
 from ._exceptions import DimensionMismatchError
 from ._info import merge_info
-from ._utils import deprecated, ui, LazyProperty, n_decimals, natsorted
+from ._utils import deprecated, intervals, ui, LazyProperty, n_decimals, natsorted
 from ._utils.numpy_utils import (
     apply_numpy_index, digitize_index, digitize_slice_endpoint, full_slice,
     index_to_int_array, slice_to_arange)
@@ -3611,68 +3611,14 @@ class NDVar(object):
 
         axis = self.get_axis(dim)
         dim = self.get_dim(dim)
-
-        if isinstance(dim, UTS):
-            if nbins is not None:
-                raise NotImplementedError("nbins for time dimension")
-
-            if start is None:
-                start = dim.tmin
-
-            if stop is None:
-                stop = dim.tstop
-
-            n_bins = int(ceil((stop - start) / step))
-            out_dim = UTS(start + step / 2, step, n_bins)
-        elif isinstance(dim, Scalar):
-            if start is None:
-                start = dim[0]
-
-            if nbins is not None:
-                istop = len(dim) if stop is None else dim.dimindex(stop)
-                istart = 0 if start is None else dim.dimindex(start)
-                n_source_steps = istop - istart
-                if n_source_steps % nbins != 0:
-                    raise ValueError("length %i source dimension can not be "
-                                     "divided equally into %i bins" %
-                                     (n_source_steps, nbins))
-                istep = int(n_source_steps / nbins)
-                ilast = istep - 1
-                out_values = [(dim[i] + dim[i + ilast]) / 2 for i in
-                              xrange(istart, istop, istep)]
-            else:
-                if stop is None:
-                    n_bins_fraction = (dim[-1] - start) / step
-                    n_bins = int(ceil(n_bins_fraction))
-                    # if the last value would fall into a new bin
-                    if n_bins == n_bins_fraction:
-                        n_bins += 1
-                else:
-                    n_bins = int(ceil((stop - start) / step))
-
-                # new dimensions
-                dim_start = start + step / 2
-                dim_stop = dim_start + n_bins * step
-                out_values = np.arange(dim_start, dim_stop, step)
-            out_dim = Scalar(dim.name, out_values, dim.unit, dim.tick_format)
-        else:
-            raise NotImplementedError("NDVar.bin() is only implement for UTS "
-                                      "and Scalar dimensions, not %s" %
-                                      dim.__class__.__name__)
-
-        # find bin boundaries
-        if nbins is None:
-            edges = [start + n * step for n in xrange(n_bins)]
-        else:
-            edges = list(dim.x[istart:istop:istep])
-        edges.append(stop)
+        edges, out_dim = dim._bin(start, stop, step, nbins)
 
         out_shape = list(self.shape)
-        out_shape[axis] = n_bins
+        out_shape[axis] = len(edges) - 1
         x = np.empty(out_shape)
         bins = []
         idx_prefix = (full_slice,) * axis
-        for i in xrange(n_bins):
+        for i, (v0, v1) in enumerate(intervals(edges)):
             v0 = edges[i]
             v1 = edges[i + 1]
             src_idx = idx_prefix + (dim.dimindex((v0, v1)),)
@@ -6965,6 +6911,11 @@ class Dimension(object):
         """
         raise NotImplementedError
 
+    def _bin(self, start, stop, step, nbins):
+        "Divide Dimension into bins"
+        raise NotImplementedError(
+            "Binning for %s dimension" % self.__class__.__name__)
+
     def _diminfo(self):
         "Return a str describing the dimension in on line (79 chars)"
         return str(self.name)
@@ -7403,6 +7354,42 @@ class Scalar(Dimension):
         return (fmt,
                 None if scalar else FixedLocator(np.arange(len(self)), 10),
                 self._axis_label(label))
+
+    def _bin(self, start, stop, step, nbins):
+        if start is None:
+            start = self.values[0]
+
+        if nbins is not None:
+            istop = len(self) if stop is None else self.dimindex(stop)
+            istart = 0 if start is None else self.dimindex(start)
+            n_source_steps = istop - istart
+            if n_source_steps % nbins != 0:
+                raise ValueError("length %i source dimension can not be "
+                                 "divided equally into %i bins" %
+                                 (n_source_steps, nbins))
+            istep = int(n_source_steps / nbins)
+            ilast = istep - 1
+            out_values = [(self[i] + self[i + ilast]) / 2. for i in
+                          xrange(istart, istop, istep)]
+            edges = list(self.values[istart:istop:istep])
+        else:
+            if stop is None:
+                n_bins_fraction = (self[-1] - start) / step
+                n_bins = int(ceil(n_bins_fraction))
+                # if the last value would fall into a new bin
+                if n_bins == n_bins_fraction:
+                    n_bins += 1
+            else:
+                n_bins = int(ceil((stop - start) / step))
+
+            # new dimensions
+            dim_start = start + step / 2
+            dim_stop = dim_start + n_bins * step
+            out_values = np.arange(dim_start, dim_stop, step)
+            edges = [start + n * step for n in xrange(n_bins)]
+        edges.append(stop)
+        out_dim = Scalar(self.name, out_values, self.unit, self.tick_format)
+        return edges, out_dim
 
     def _cluster_properties(self, x):
         """Find cluster properties for this dimension
@@ -8884,6 +8871,22 @@ class UTS(Dimension):
             fmt = FuncFormatter(lambda x, pos:
                                 '%i' % round(1e3 * self.times[int(round(x))]))
         return fmt, None, label
+
+    def _bin(self, start, stop, step, nbins):
+        if nbins is not None:
+            raise NotImplementedError("nbins for UTS dimension")
+
+        if start is None:
+            start = self.tmin
+
+        if stop is None:
+            stop = self.tstop
+
+        n_bins = int(ceil((stop - start) / step))
+        edges = [start + n * step for n in xrange(n_bins)]
+        edges.append(stop)
+        out_dim = UTS(start + step / 2, step, n_bins)
+        return edges, out_dim
 
     def _diminfo(self):
         name = self.name.capitalize()
