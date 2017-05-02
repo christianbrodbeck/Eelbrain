@@ -6372,14 +6372,11 @@ class Model(object):
         ...). Can also contain models, in which case all the model's
         effects will be added.
 
-    Notes
-    -----
-    a Model's data is exhausted by its :attr:`.effects` list; all the rest are
-    @properties.
-
-    Accessing effects:
-     - as list in Model.effects
-     - with name as Model[name]
+    Attributes
+    ----------
+    effects : list
+        Effects included in the model (:class:`Var`, :class:`Factor`, etc. 
+        objects)
     """
     def __init__(self, x):
         effects = EffectList()
@@ -6399,11 +6396,11 @@ class Model(object):
                     n_cases = len(e)
                 elif len(e) != n_cases:
                     e0 = effects[0]
-                    err = ("All effects contained in a Model need to describe"
-                           " the same number of cases. %r has %i cases, %r has"
-                           " %i cases." %
-                           (dataobj_repr(e0), len(e0), dataobj_repr(e), len(e)))
-                    raise ValueError(err)
+                    raise ValueError(
+                        "All effects contained in a Model need to describe the "
+                        "same number of cases. %s has %i cases, %s has %i "
+                        "cases." %
+                        (dataobj_repr(e0), len(e0), dataobj_repr(e), len(e)))
 
                 # find effects
                 if iseffect(e):
@@ -6411,10 +6408,10 @@ class Model(object):
                 elif isinstance(e, Model):
                     effects += e.effects
                 else:
-                    err = ("Model needs to be initialized with effect (Var, "
-                           "Factor, Interaction, ...) and/or Model objects "
-                           "(got %s)" % type(e))
-                    raise TypeError(err)
+                    raise TypeError(
+                        "Model needs to be initialized with effect (Var, "
+                        "Factor, Interaction, ...) and/or Model objects (got "
+                        "%s)" % type(e))
 
         # check dfs
         df = sum(e.df for e in effects) + 1  # intercept
@@ -6436,16 +6433,21 @@ class Model(object):
             beta_index[e] = slice(i, k)
             i = k
 
-        self.__setstate__({'effects': effects, 'beta_index': beta_index})
+        self.effects = effects
+        self.beta_index = beta_index
+        self.df = df
+        self._init_secondary()
+
+    def _init_secondary(self):
+        self.df_total = len(self.effects[0])
+        self.df_error = self.df_total - self.df
+        self.name = ' + '.join([str(e.name) for e in self.effects])
 
     def __setstate__(self, state):
         self.effects = state['effects']
         self.beta_index = state['beta_index']
-        # secondary attributes
         self.df = sum(e.df for e in self.effects) + 1  # intercept
-        self.df_total = len(self.effects[0])
-        self.df_error = self.df_total - self.df
-        self.name = ' + '.join([str(e.name) for e in self.effects])
+        self._init_secondary()
 
     def __getstate__(self):
         return {'effects': self.effects, 'beta_index': self.beta_index}
@@ -6470,7 +6472,7 @@ class Model(object):
             for e in self.effects:
                 if e.name == sub:
                     return e
-            raise ValueError("No effect named %r" % sub)
+            raise KeyError(sub)
         else:
             return Model((x[sub] for x in self.effects))
 
@@ -6544,10 +6546,6 @@ class Model(object):
             beta_start += e.df
         return out
 
-    @LazyProperty
-    def as_effects(self):
-        return np.hstack((e.as_effects for e in self.effects))
-
     def as_table(self, method='dummy', cases=0, group_terms=True):
         """Return a table with the model codes
 
@@ -6588,42 +6586,6 @@ class Model(object):
                 table.cell('%g' % i)
 
         return table
-
-    def fit(self, Y):
-        """
-        Find the beta weights by fitting the model to data
-
-        Parameters
-        ----------
-        Y : Var | array, shape = (n_cases,)
-            Data to fit the model to.
-
-        Returns
-        -------
-        beta : array, shape = (n_regressors, )
-            The beta weights.
-        """
-        Y = asvar(Y)
-        beta = dot(self.xsinv, Y.x)
-        return beta
-
-    @LazyProperty
-    def full(self):
-        # the full model including an intercept"
-        out = np.empty((self.df_total, self.df))
-
-        # intercept
-        out[:, 0] = 1
-        self.full_index = {'I': slice(0, 1)}
-
-        # effects
-        i = 1
-        for e in self.effects:
-            j = i + e.df
-            out[:, i:j] = e.as_effects
-            self.full_index[e] = slice(i, j)
-            i = j
-        return out
 
     def head(self, n=10):
         "Table with the first n cases in the Model"
@@ -6680,18 +6642,11 @@ class Model(object):
 
     def repeat(self, n):
         "Repeat each row of the Model ``n`` times"
-        effects = [e.repeat(n) for e in self.effects]
-        return Model(effects)
+        return Model(e.repeat(n) for e in self.effects)
 
     def tail(self, n=10):
         "Table with the last n cases in the Model"
         return self.as_table(cases=xrange(-n, 0))
-
-    @LazyProperty
-    def xsinv(self):
-        x = self.full
-        x_t = x.T
-        return dot(inv(dot(x_t, x)), x_t)
 
 
 class Parametrization(object):

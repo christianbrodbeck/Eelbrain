@@ -765,7 +765,8 @@ def test_model():
 
     # persistence
     mp = pickle.loads(pickle.dumps(m, pickle.HIGHEST_PROTOCOL))
-    assert_array_equal(m.full, mp.full)
+    mpp = mp._parametrize('dummy')
+    assert_array_equal(mpp.x, p.x)
 
     # nested Vars
     m = (v + w) * u

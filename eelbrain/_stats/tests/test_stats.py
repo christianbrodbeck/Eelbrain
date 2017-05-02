@@ -74,17 +74,18 @@ def test_lm():
     uts = ds['uts']
     utsnd = ds['utsnd']
     x = ds.eval("A*B")
+    p = x._parametrize()
     n = ds.n_cases
 
     # 1d betas
     betas = stats.betas(uts.x, x)
-    sp_betas = scipy.linalg.lstsq(x.full, uts.x.reshape((n, -1)))[0]
+    sp_betas = scipy.linalg.lstsq(p.x, uts.x.reshape((n, -1)))[0]
     # sp_betas = sp_betas.reshape((x.df,) + uts.shape[1:])
     assert_allclose(betas, sp_betas)
 
     # 2d betas
     betas = stats.betas(utsnd.x, x)
-    sp_betas = scipy.linalg.lstsq(x.full, utsnd.x.reshape((n, -1)))[0]
+    sp_betas = scipy.linalg.lstsq(p.x, utsnd.x.reshape((n, -1)))[0]
     sp_betas = sp_betas.reshape((x.df,) + utsnd.shape[1:])
     assert_allclose(betas, sp_betas)
 

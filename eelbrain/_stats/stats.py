@@ -28,11 +28,12 @@ def betas(y, x):
     """
     n = len(y)
     x = asmodel(x)
+    p = x._parametrize()
     shape = (x.df,) + y.shape[1:]
     y_ = y.reshape((n, -1))
     out = np.empty(shape)
     out_ = out.reshape((x.df, -1))
-    opt.lm_betas(y_, x.full, x.xsinv, out_)
+    opt.lm_betas(y_, p.x, p.projector, out_)
     return out
 
 
@@ -198,10 +199,11 @@ def residuals(y, x):
     """
     n = len(y)
     x = asmodel(x)
+    p = x._parametrize()
     res = np.empty(y.shape)
     y_ = y.reshape((n, -1))
     res_ = res.reshape((n, -1))
-    opt.lm_res(y_, x.full, x.xsinv, res_)
+    opt.lm_res(y_, p.x, p.projector, res_)
     return res
 
 

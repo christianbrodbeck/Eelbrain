@@ -147,20 +147,16 @@ class LM(object):
         assert X.df_error > 0
 
         # fit
+        p = X._parametrize()
         if _lm_lsq == 0:  # use scipy (faster)
-            beta, SS_res, _, _ = lstsq(X.full, Y.x)
+            beta, SS_res, _, _ = lstsq(p.x, Y.x)
         elif _lm_lsq == 1:  # Fox
             # estimate least squares approximation
-            beta = X.fit(Y)
+            beta = np.dot(p.projector, Y.x)
             # estimate
-            values = beta * X.full
-            Y_est = values.sum(1)
-            self._residuals = residuals = Y.x - Y_est
+            y_est = np.dot(p.x, beta)
+            self._residuals = residuals = Y.x - y_est
             SS_res = np.sum(residuals ** 2)
-            if not Y.mean() == Y_est.mean():
-                msg = ("Y.mean() != Y_est.mean() (%s vs "
-                       "%s)" % (Y.mean(), Y_est.mean()))
-                logging.warning(msg)
         else:
             raise ValueError
 
@@ -182,6 +178,7 @@ class LM(object):
         # store stuff
         self.Y = Y
         self.X = X
+        self._p = p
         self.sub = sub
         self.beta = beta
 
@@ -202,14 +199,13 @@ class LM(object):
     def anova(self, title='ANOVA', empty=True, ems=False):
         """ANOVA table for the linear model"""
         X = self.X
-        values = self.beta * self.X.full
+        values = np.dot(self._p.x, self.beta)
 
         if X.df_error == 0:
             e_ms = hopkins_ems(X)
         elif hasrandom(X):
-            err = ("Models containing random effects need to be fully "
-                   "specified.")
-            raise NotImplementedError(err)
+            raise NotImplementedError("Models containing random effects need "
+                                      "to be fully specified.")
         else:
             e_ms = False
 
@@ -299,7 +295,7 @@ class LM(object):
         A table containing slope coefficients for all effects.
 
         """
-        # prepare table
+        # header
         table = fmtxt.Table('l' * 4)
         df = self.X.df_error
         table.cell()
@@ -307,8 +303,8 @@ class LM(object):
         table.cell('T_{%i}' % df, mat=True)
         table.cell('p', mat=True)
         table.midrule()
-        #
-        q = 1  # track start location of effect in Model.full
+        # body
+        q = 1
         ne = len(self.X.effects)
         for ie, e in enumerate(self.X.effects):
             table.cell(e.name + ':')
@@ -329,9 +325,7 @@ class LM(object):
 
     @LazyProperty
     def residuals(self):
-        values = self.beta * self.X.full
-        Y_est = values.sum(1)
-        return self.Y.x - Y_est
+        return self.Y.x - np.dot(self._p.x, self.beta)
 
 
 def _nd_anova(x):
@@ -356,6 +350,7 @@ class _NDANOVA(object):
     """Efficiently fit a model to multiple dependent variables."""
     def __init__(self, x, effects, dfs_denom):
         self.x = x
+        self.p = x._parametrize()
         self._n_obs = len(x)
         self.effects = effects
         self.n_effects = len(effects)
@@ -451,24 +446,20 @@ class _BalancedNDANOVA(_NDANOVA):
 
         self._effect_to_beta = x._effect_to_beta
         self._x_full_perm = None
-        self._xsinv_perm = None
+        self._x_proj_perm = None
 
     def _map(self, y, flat_f_map, perm):
-        x = self.x
         if perm is None:
-            x_full = x.full
-            xsinv = x.xsinv
+            x_full = self.p.x
+            x_proj = self.p.projector
         else:
             if self._x_full_perm is None:
-                self._x_full_perm = x_full = np.empty_like(x.full)
-                self._xsinv_perm = xsinv = np.empty_like(x.xsinv)
-            else:
-                x_full = self._x_full_perm
-                xsinv = self._xsinv_perm
-            x.full.take(perm, 0, x_full)
-            x.xsinv.take(perm, 1, xsinv)
+                self._x_full_perm = np.empty_like(self.p.x)
+                self._x_proj_perm = np.empty_like(self.p.projector)
+            x_full = self.p.x.take(perm, 0, self._x_full_perm)
+            x_proj = self.p.projector.take(perm, 1, self._x_proj_perm)
 
-        self._map_balanced(y, flat_f_map, x_full, xsinv)
+        self._map_balanced(y, flat_f_map, x_full, x_proj)
 
     def _map_balanced(self, y, flat_f_map, x_full, xsinv):
         raise NotImplementedError
@@ -542,7 +533,8 @@ class _IncrementalNDANOVA(_NDANOVA):
             if x is None:
                 x_orig[i] = None
             else:
-                x_orig[i] = (x.full, x.xsinv)
+                p = x._parametrize()
+                x_orig[i] = (p.x, p.projector)
         self._x_perm = None
 
     def preallocate(self, y_shape):
@@ -576,11 +568,11 @@ class _IncrementalNDANOVA(_NDANOVA):
             x_dict = self._x_perm
             if x_dict is None:
                 self._x_perm = x_dict = {}
-                for i, x in self._models.iteritems():
+                for i, x in x_orig.iteritems():
                     if x is None:
                         x_dict[i] = None
                     else:
-                        x_dict[i] = (np.empty_like(x.full), np.empty_like(x.xsinv))
+                        x_dict[i] = (np.empty_like(x[0]), np.empty_like(x[1]))
 
             for i in x_dict:
                 if x_dict[i]:
