@@ -10,6 +10,8 @@ New in 0.26
   (without adding a title to the figure).
 * API: new global :func:`configure` function replaces module-level configuration
   functions.
+* :mod:`load.fiff`: when generating epochs from raw data, a new ``tstop``
+  argument allows specifying the time interval exclusive of the last sample.
 
 
 New in 0.25

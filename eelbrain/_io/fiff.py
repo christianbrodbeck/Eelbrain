@@ -248,9 +248,9 @@ def _ndvar_epochs_reject(data, reject):
     return reject
 
 
-def epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1, proj=False,
+def epochs(ds, tmin=-0.1, tmax=None, baseline=None, decim=1, mult=1, proj=False,
            data='mag', reject=None, exclude='bads', info=None, name=None,
-           raw=None, sensors=None, i_start='i_start'):
+           raw=None, sensors=None, i_start='i_start', tstop=None):
     """
     Load epochs as :class:`NDVar`.
 
@@ -258,8 +258,11 @@ def epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1, proj=False,
     ----------
     ds : Dataset
         Dataset containing a variable which defines epoch cues (i_start).
-    tmin, tmax : scalar
-        First and last sample to include in the epochs in seconds.
+    tmin : scalar
+        First sample to include in the epochs in seconds (Default is -0.1).
+    tmax : scalar
+        Last sample to include in the epochs in seconds (Default 0.6; use
+        ``tstop`` instead to specify index exclusive of last sample).
     baseline : tuple(tmin, tmax) | ``None``
         Time interval for baseline correction. Tmin/tmax in seconds, or None to
         use all the data (e.g., ``(None, 0)`` uses all the data from the
@@ -295,6 +298,13 @@ def epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1, proj=False,
         Sensor instance can be supplied through this kwarg.
     i_start : str
         name of the variable containing the index of the events.
+    tstop : scalar
+        Alternative to ``tmax``: While ``tmax`` specifies the last samples to 
+        include, ``tstop`` can be used to specify the epoch time excluding the 
+        last time point (i.e., standard Python/Eelbrain indexing convention).
+        For example, at 100 Hz the epoch with ``tmin=-0.1, tmax=0.4`` will have 
+        51 samples, while the epoch specified with ``tmin=-0.1, tstop=0.4`` will
+        have 50 samples.
 
     Returns
     -------
@@ -308,7 +318,7 @@ def epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1, proj=False,
     reject = _ndvar_epochs_reject(data, reject)
 
     epochs_ = mne_epochs(ds, tmin, tmax, baseline, i_start, raw, decim=decim,
-                         picks=picks, reject=reject, proj=proj)
+                         picks=picks, reject=reject, proj=proj, tstop=tstop)
     ndvar = epochs_ndvar(epochs_, name, data, mult=mult, info=info,
                          sensors=sensors)
 
@@ -320,7 +330,7 @@ def epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1, proj=False,
 def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
                proj=False, data='mag', reject=None, exclude='bads', info=None,
                name="meg", raw=None, sensors=None, i_start='i_start',
-               sysname=None):
+               sysname=None, tstop=None):
     """
     Load epochs and add them to a dataset as :class:`NDVar`.
 
@@ -333,8 +343,11 @@ def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
     ds : Dataset
         Dataset containing a variable which defines epoch cues (i_start) and to
         which the epochs are added.
-    tmin, tmax : scalar
-        First and last sample to include in the epochs in seconds.
+    tmin : scalar
+        First sample to include in the epochs in seconds (Default is -0.1).
+    tmax : scalar
+        Last sample to include in the epochs in seconds (Default 0.6; use
+        ``tstop`` instead to specify index exclusive of last sample).
     baseline : tuple(tmin, tmax) | ``None``
         Time interval for baseline correction. Tmin/tmax in seconds, or None to
         use all the data (e.g., ``(None, 0)`` uses all the data from the
@@ -372,6 +385,13 @@ def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
         name of the variable containing the index of the events.
     sysname : str
         Name of the sensor system (used to load sensor connectivity).
+    tstop : scalar
+        Alternative to ``tmax``: While ``tmax`` specifies the last samples to 
+        include, ``tstop`` can be used to specify the epoch time excluding the 
+        last time point (i.e., standard Python/Eelbrain indexing convention).
+        For example, at 100 Hz the epoch with ``tmin=-0.1, tmax=0.4`` will have 
+        51 samples, while the epoch specified with ``tmin=-0.1, tstop=0.4`` will
+        have 50 samples.
 
     Returns
     -------
@@ -386,14 +406,14 @@ def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
     reject = _ndvar_epochs_reject(data, reject)
 
     epochs_ = mne_epochs(ds, tmin, tmax, baseline, i_start, raw, decim=decim,
-                         picks=picks, reject=reject, proj=proj)
+                         picks=picks, reject=reject, proj=proj, tstop=tstop)
     ds = _trim_ds(ds, epochs_)
     ds[name] = epochs_ndvar(epochs_, name, data, mult=mult, info=info,
                             sensors=sensors, sysname=sysname)
     return ds
 
 
-def add_mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, target='epochs',
+def add_mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, target='epochs',
                    **kwargs):
     """
     Load epochs and add them to a dataset as :class:`mne.Epochs`.
@@ -411,8 +431,11 @@ def add_mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, target='epochs',
     ds : Dataset
         Dataset with events from a raw fiff file (i.e., created by
         load.fiff.events).
-    tmin, tmax : scalar
-        First and last sample to include in the epochs in seconds.
+    tmin : scalar
+        First sample to include in the epochs in seconds (Default is -0.1).
+    tmax : scalar
+        Last sample to include in the epochs in seconds (Default 0.6; use
+        ``tstop`` instead to specify index exclusive of last sample).
     baseline : tuple(tmin, tmax) | ``None``
         Time interval for baseline correction. Tmin/tmax in seconds, or None to
         use all the data (e.g., ``(None, 0)`` uses all the data from the
@@ -420,9 +443,8 @@ def add_mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, target='epochs',
         correction (default).
     target : str
         Name for the Epochs object in the Dataset.
-    *others* :
-        Any additional keyword arguments are forwarded to the mne Epochs
-        object initialization.
+    ...
+        See :func:`~eelbrain.load.fiff.mne_epochs`.
     """
     epochs_ = mne_epochs(ds, tmin, tmax, baseline, **kwargs)
     ds = _trim_ds(ds, epochs_)
@@ -449,17 +471,20 @@ def _mne_events(ds=None, i_start='i_start', trigger='trigger'):
     return events
 
 
-def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
-               raw=None, drop_bad_chs=True, picks=None, reject=None, name=None,
-               **kwargs):
+def mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, i_start='i_start',
+               raw=None, drop_bad_chs=True, picks=None, reject=None, tstop=None,
+               name=None, decim=1, **kwargs):
     """Load epochs as :class:`mne.Epochs`.
 
     Parameters
     ----------
     ds : Dataset
         Dataset containing a variable which defines epoch cues (i_start).
-    tmin, tmax : scalar
-        First and last sample to include in the epochs in seconds.
+    tmin : scalar
+        First sample to include in the epochs in seconds (Default is -0.1).
+    tmax : scalar
+        Last sample to include in the epochs in seconds (Default 0.6; use
+        ``tstop`` instead to specify index exclusive of last sample).
     baseline : tuple(tmin, tmax) | ``None``
         Time interval for baseline correction. Tmin/tmax in seconds, or None to
         use all the data (e.g., ``(None, 0)`` uses all the data from the
@@ -472,23 +497,42 @@ def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
     drop_bad_chs : bool
         Drop all channels in raw.info['bads'] form the Epochs. This argument is
         ignored if the picks argument is specified.
-    kwargs
+    picks, reject
+        :class:`mne.Epochs` parameters.
+    tstop : scalar
+        Alternative to ``tmax``: While ``tmax`` specifies the last samples to 
+        include, ``tstop`` can be used to specify the epoch time excluding the 
+        last time point (i.e., standard Python/Eelbrain indexing convention).
+        For example, at 100 Hz the epoch with ``tmin=-0.1, tmax=0.4`` will have 
+        51 samples, while the epoch specified with ``tmin=-0.1, tstop=0.4`` will
+        have 50 samples.
+    ...
         :class:`mne.Epochs` parameters.
     """
     if name is not None:
         raise RuntimeError("MNE Epochs no longer have a `name` parameter")
     if baseline is False:
         baseline = None
-
     if raw is None:
         raw = ds.info['raw']
+    if tmax is None:
+        if tstop is None:
+            tmax = 0.6
+        else:
+            sfreq = raw.info['sfreq'] / decim
+            start_index = int(round(tmin * sfreq))
+            stop_index = int(round(tstop * sfreq))
+            tmax = tmin + (stop_index - start_index - 1) / sfreq
+    elif tstop is not None:
+        raise TypeError("tmax and tstop can not both be specified at the same "
+                        "time, got tmax=%s, tstop=%s" % (tmax, tstop))
 
     if drop_bad_chs and picks is None and raw.info['bads']:
         picks = mne.pick_types(raw.info, eeg=True, eog=True, ref_meg=False)
 
     events = _mne_events(ds=ds, i_start=i_start)
     epochs = mne.Epochs(raw, events, None, tmin, tmax, baseline, picks,
-                        preload=True, reject=reject, **kwargs)
+                        preload=True, reject=reject, decim=decim, **kwargs)
     if reject is None and len(epochs) != len(events):
         getLogger(__name__).warn(
             "%s: MNE generated only %i Epochs for %i events. The raw file "
