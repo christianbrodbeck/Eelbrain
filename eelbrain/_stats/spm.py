@@ -100,7 +100,16 @@ class LM(object):
     def t(self, term):
         ":class:`NDVar` with t-values for a given term"
         index = self._index(term)
-        t = self._coeffs_flat[index] / self._se_flat[index]
+        se = self._se_flat[index]
+        flat_index = se == 0.
+        any_flat = np.any(flat_index)
+        if any_flat:
+            se = se.copy()
+            se[flat_index] = 1.
+        t = self._coeffs_flat[index] / se
+        if any_flat:
+            t[np.logical_and(flat_index, t == 0)] = 0.
+            t[np.logical_and(flat_index, t != 0)] *= np.inf
         info = stat_info('t', term=term)
         return NDVar(t.reshape(self._shape), self.dims, info)
 
