@@ -334,9 +334,7 @@ Below is a simple example using data objects (for more, see the
 Exporting Data
 ==============
 
-:class:`Dataset` objects have an :meth:`Dataset.export` method for
-saving in various formats. In addition, the Dataset's :meth:`Dataset.as_table` 
-method can create tables with more flexibility.
-
+:class:`Dataset` objects have different :meth:`Dataset.save` methods for
+saving in various formats.
 Iterators (such as :class:`Var` and :class:`Factor`) can be exported using the
 :func:`save.txt` function.
