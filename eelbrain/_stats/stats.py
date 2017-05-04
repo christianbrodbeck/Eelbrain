@@ -122,7 +122,7 @@ def corr(y, x, out=None, perm=None):
 
 
 def lm_betas_se_1d(y, b, p):
-    """Regression T values
+    """Regression coefficient standard errors
 
     Parameters
     ----------
