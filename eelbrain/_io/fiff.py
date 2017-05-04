@@ -534,7 +534,7 @@ def mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, i_start='i_start',
     epochs = mne.Epochs(raw, events, None, tmin, tmax, baseline, picks,
                         preload=True, reject=reject, decim=decim, **kwargs)
     if reject is None and len(epochs) != len(events):
-        getLogger(__name__).warn(
+        getLogger('eelbrain').warn(
             "%s: MNE generated only %i Epochs for %i events. The raw file "
             "might end before the end of the last epoch." %
             (_get_raw_filename(raw), len(epochs), len(events)))
