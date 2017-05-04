@@ -95,7 +95,7 @@ class LM(object):
 
     def coefficient(self, term):
         ":class:`NDVar` with regression coefficient for a given term"
-        return NDVar(self._coefficient(term)[0], self.dims)
+        return NDVar(self._coefficient(term)[0], self.dims, name=term)
 
     def t(self, term):
         ":class:`NDVar` with t-values for a given term"
@@ -111,7 +111,7 @@ class LM(object):
             t[np.logical_and(flat_index, t == 0)] = 0.
             t[np.logical_and(flat_index, t != 0)] *= np.inf
         info = stat_info('t', term=term)
-        return NDVar(t.reshape(self._shape), self.dims, info)
+        return NDVar(t.reshape(self._shape), self.dims, info, term)
 
     def _n_columns(self):
         return {term: s.stop - s.start for term, s in self._p.terms.iteritems()}
@@ -180,7 +180,7 @@ class LMGroup(object):
     def coefficients(self, term):
         "Coefficients for one term as :class:`NDVar`"
         return NDVar(np.concatenate([lm._coefficient(term) for lm in self._lms]),
-                     ('case',) + self.dims)
+                     ('case',) + self.dims, name=term)
 
     def coefficients_dataset(self, terms):
         "Coefficients for multiple terms in a :class:`Dataset`"
