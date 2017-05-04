@@ -3,11 +3,14 @@
 from os import mkdir, remove
 from os.path import dirname, exists, getmtime
 
+import numpy as np
 import mne
 from mne.io import read_raw_fif
+from scipy import signal
 
 from .. import load
 from .._data_obj import NDVar
+from .._ndvar import filter_data
 from ..mne_fixes import CaptureLog
 
 
@@ -165,19 +168,54 @@ class RawFilter(CachedRawPipe):
         return out
 
     def filter_ndvar(self, ndvar):
-        axis = ndvar.get_axis('time')
-        sfreq = 1. / ndvar.time.tstep
-        x = ndvar.x.swapaxes(axis, 0) if axis else ndvar.x
-        x = mne.filter.filter_data(x, sfreq, *self.args, **self.kwargs)
-        if axis:
-            x = x.swapaxes(axis, 0)
-        return NDVar(x, ndvar.dims, ndvar.info.copy(), ndvar.name)
+        return filter_data(ndvar, *self.args, **self.kwargs)
 
     def _make(self, subject, session):
         raw = self.source.load(subject, session, preload=True)
         self.log.debug("Raw %s: filtering for %s/%s...", self.name, subject,
                        session)
         raw.filter(*self.args, **self.kwargs)
+        return raw
+
+
+class RawFilterElliptic(CachedRawPipe):
+
+    def __init__(self, name, source, path, log, low_stop, low_pass, high_pass,
+                 high_stop, gpass, gstop):
+        CachedRawPipe.__init__(self, name, source, path, log)
+        self.args = (low_stop, low_pass, high_pass, high_stop, gpass, gstop)
+
+    def as_dict(self):
+        out = CachedRawPipe.as_dict(self)
+        out['args'] = self.args
+        return out
+
+    def _sos(self, sfreq):
+        nyq = sfreq / 2.
+        low_stop, low_pass, high_pass, high_stop, gpass, gstop = self.args
+        order, wn = signal.ellipord((low_pass / nyq, high_pass / nyq),
+                                    (low_stop / nyq, high_stop / nyq),
+                                    gpass, gstop)
+        return signal.ellip(order, gpass, gstop, wn, 'bandpass', output='sos')
+
+    def filter_ndvar(self, ndvar):
+        axis = ndvar.get_axis('time')
+        sos = self._sos(1. / ndvar.time.tstep)
+        x = signal.sosfilt(sos, ndvar.x, axis)
+        return NDVar(x, ndvar.dims, ndvar.info.copy(), ndvar.name)
+
+    def _make(self, subject, session):
+        raw = self.source.load(subject, session, preload=True)
+        self.log.debug("Raw %s: filtering for %s/%s...", self.name, subject,
+                       session)
+        picks = mne.pick_types(raw.info, eeg=True, ref_meg=True)
+        sos = self._sos(raw.info['sfreq'])
+        for i in picks:
+            raw._data[i] = signal.sosfilt(sos, raw._data[i])
+        if raw.info['lowpass'] and raw.info['lowpass'] > self.args[2]:
+            raw.info['lowpass'] = float(self.args[2])
+        if raw.info['highpass'] < self.args[1]:
+            raw.info['highpass'] = float(self.args[2])
         return raw
 
 
@@ -295,20 +333,23 @@ def assemble_pipeline(raw_dict, raw_path, bads_path, cache_path, ica_path, log):
                 has_source = name or True
                 del unassigned[name]
             elif source in raw:
-                if params['type'] == 'filter':
+                pipe_type = params['type']
+                if pipe_type == 'filter':
                     raw[name] = RawFilter(name, raw[source], cache_path, log,
                                           params['args'],
                                           params.get('kwargs', {}))
-                elif params['type'] == 'ica':
+                elif pipe_type == 'ica':
                     raw[name] = RawICA(name, raw[source], cache_path,
                                        ica_path.replace('{raw}', name), log,
                                        params['session'], params['kwargs'])
-                elif params['type'] == 'maxwell_filter':
+                elif pipe_type == 'maxwell_filter':
                     raw[name] = RawMaxwell(name, raw[source], cache_path, log,
                                            params['kwargs'])
+                elif pipe_type == 'elliptical filter':
+                    raw[name] = RawFilterElliptic(name, raw[source], cache_path,
+                                                  log, *params['args'])
                 else:
-                    raise ValueError("unknonw raw pipe type=%s" %
-                                     repr(params['type']))
+                    raise ValueError("unknonw raw pipe type=%r" % (pipe_type,))
                 del unassigned[name]
 
         if len(unassigned) == n_unassigned:
