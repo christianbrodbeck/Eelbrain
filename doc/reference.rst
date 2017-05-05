@@ -372,14 +372,16 @@ those parameters are determined automatically, but individual values can be
 specified manually by supplying them as keyword arguments.
 
 h, w : scalar
-    Height and width of the figure.
+   Height and width of the figure.
 axh, axw : scalar
-    Height and width of the axes.
+   Height and width of the axes.
 nrow, ncol : None | int
-    Limit number of rows/columns. If neither is specified, a square layout
-    is produced
+   Limit number of rows/columns. If neither is specified, a square layout
+   is produced
 ax_aspect : scalar
-    Width / height aspect of the axes.
+   Width / height aspect of the axes.
+name : str
+   Window title (i.e. not displayed on the figure itself).
 
 Plots that do take those parameters can be identified by the ``**layout`` in
 their function signature.
