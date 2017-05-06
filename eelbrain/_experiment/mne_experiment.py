@@ -1094,6 +1094,9 @@ class MneExperiment(FileTree):
         self._bind_cache('src-file', self.make_src)
         self._bind_cache('fwd-file', self.make_fwd)
 
+        # register experimental features
+        self._subclass_init()
+
         # Check that the template model is complete
         self._find_missing_fields()
 
@@ -1626,6 +1629,9 @@ class MneExperiment(FileTree):
                      'parcs': parcs_state,
                      'events': events}
         save.pickle(new_state, cache_state_path)
+
+    def _subclass_init(self):
+        "Allow subclass to register experimental features"
 
     def __iter__(self):
         "Iterate state through subjects and yield each subject name."
