@@ -19,7 +19,7 @@ from multiprocessing import Process, Queue
 from multiprocessing.sharedctypes import RawArray
 import signal
 import time
-from threading import Thread
+from threading import Event, Thread
 
 import numpy as np
 from scipy.stats import spearmanr
@@ -237,30 +237,35 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         # slight numerical differences can occur
         job_queue, result_queue = setup_workers(
             y_data, x_data, trf_length, delta, mindelta_, N_SEGS, error)
-        thread = Thread(target=put_jobs, args=(job_queue, n_y, N_SEGS))
+        stop_jobs = Event()
+        thread = Thread(target=put_jobs, args=(job_queue, n_y, N_SEGS, stop_jobs))
         thread.daemon = True
         thread.start()
 
         # collect results
-        h_segs = {}
-        for _ in xrange(n_y * N_SEGS):
-            y_i, seg_i, h = result_queue.get()
-            pbar.update()
-            if y_i in h_segs:
-                h_seg = h_segs[y_i]
-                h_seg[seg_i] = h
-                if len(h_seg) == N_SEGS:
-                    del h_segs[y_i]
-                    hs = [h for h in (h_seg[i] for i in xrange(N_SEGS)) if
-                          h is not None]
-                    if hs:
-                        h = np.mean(hs, 0, out=h_x[y_i])
-                        res[:, y_i] = evaluate_kernel(y_data[y_i], x_data, h, error)
-                    else:
-                        h_x[y_i] = 0
-                        res[:, y_i] = 0.
-            else:
-                h_segs[y_i] = {seg_i: h}
+        try:
+            h_segs = {}
+            for _ in xrange(n_y * N_SEGS):
+                y_i, seg_i, h = result_queue.get()
+                pbar.update()
+                if y_i in h_segs:
+                    h_seg = h_segs[y_i]
+                    h_seg[seg_i] = h
+                    if len(h_seg) == N_SEGS:
+                        del h_segs[y_i]
+                        hs = [h for h in (h_seg[i] for i in xrange(N_SEGS)) if
+                              h is not None]
+                        if hs:
+                            h = np.mean(hs, 0, out=h_x[y_i])
+                            res[:, y_i] = evaluate_kernel(y_data[y_i], x_data, h, error)
+                        else:
+                            h_x[y_i] = 0
+                            res[:, y_i] = 0.
+                else:
+                    h_segs[y_i] = {seg_i: h}
+        except KeyboardInterrupt:
+            stop_jobs.set()
+            raise
     else:
         for y_i, y_ in enumerate(y_data):
             hs = []
@@ -528,10 +533,14 @@ def boosting_worker(y_buffer, x_buffer, n_y, n_times, n_x, trf_length,
         result_queue.put((y_i, seg_i, h))
 
 
-def put_jobs(queue, n_y, n_segs):
+def put_jobs(queue, n_y, n_segs, stop):
     "Feed boosting jobs into a Queue"
     for job in product(xrange(n_y), xrange(n_segs)):
         queue.put(job)
+        if stop.isSet():
+            while not queue.empty():
+                queue.get()
+            break
     for _ in xrange(CONFIG['n_workers']):
         queue.put((JOB_TERMINATE, None))
 
