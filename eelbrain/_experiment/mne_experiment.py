@@ -17,6 +17,7 @@ import mne
 from mne.baseline import rescale
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               apply_inverse_epochs)
+from tqdm import tqdm
 
 from .. import _report
 from .. import gui
@@ -59,10 +60,11 @@ from .parc import (
 from .preprocessing import (
     assemble_pipeline, RawICA, pipeline_dict, compare_pipelines,
     ask_to_delete_ica_files)
+from .test_def import EvokedTest, TwoStageTest, assemble_tests
 
 
 # current cache state version
-CACHE_STATE_VERSION = 6
+CACHE_STATE_VERSION = 7
 
 # Allowable parameters
 ICA_REJ_PARAMS = {'kind', 'source', 'epoch', 'interpolation', 'n_components',
@@ -988,52 +990,7 @@ class MneExperiment(FileTree):
 
         ########################################################################
         # tests
-        tests = {}
-        for test, params in self.tests.iteritems():
-            if not isinstance(params, dict):
-                raise TypeError("Tests must be specified as dictionary, "
-                                "got %r: %s" % (test, repr(params)))
-            params = params.copy()
-
-            # test descriptions
-            kind = params['kind']
-            if kind == 'anova':
-                desc = params['x']
-                if 'model' not in params:
-                    items = sorted(i.strip() for i in desc.split('*'))
-                    params['model'] = '%'.join(i for i in items if i != 'subject')
-            elif kind == 'ttest_rel':
-                tail = params.get('tail', 0)
-                if tail == 0:
-                    link = ' = '
-                elif tail > 0:
-                    link = ' > '
-                else:
-                    link = ' < '
-                desc = link.join((params['c1'], params['c0']))
-            elif kind == 't_contrast_rel':
-                desc = params['contrast']
-            elif kind == 'two-stage':
-                all_params = set(params)
-                missing = {'kind', 'stage 1'}.difference(all_params)
-                if missing:
-                    raise KeyError("Test definition %s is missing %s"
-                                   % (test, named_list(tuple(missing), 'entry')))
-                unknown = all_params.difference({'kind', 'stage 1', 'vars',
-                                                 'model'})
-                if unknown:
-                    raise KeyError("Test definition %s has unknown %s"
-                                   % (test, named_list(tuple(unknown), 'entry')))
-
-                desc = params['stage 1']
-            elif kind == 'custom':
-                desc = 'Custom test'
-            else:
-                raise NotImplementedError("Invalid test kind: %r" % kind)
-            params['desc'] = desc
-
-            tests[test] = params
-        self._tests = tests
+        self._tests = assemble_tests(self.tests)
 
         ########################################################################
         # Experiment class setup
@@ -1254,6 +1211,7 @@ class MneExperiment(FileTree):
         raw_state = pipeline_dict(self._raw)
         epoch_state = {k: v.as_dict() for k, v in self._epochs.iteritems()}
         parcs_state = {k: v.as_dict() for k, v in self._parcs.iteritems()}
+        tests_state = {k: v.as_dict() for k, v in self._tests.iteritems()}
         if exists(cache_state_path):
             # check time stamp
             if getmtime(cache_state_path) > time.time():
@@ -1308,6 +1266,12 @@ class MneExperiment(FileTree):
                     for key in ('morph_from_fsaverage', 'make'):
                         if key in params:
                             del params[key]
+
+            # tests represented as dicts
+            cache_tests = cache_state['tests']
+            if cache_state_v < 7:
+                cache_tests = {k: v.as_dict() for k, v in
+                               assemble_tests(cache_tests).iteritems()}
 
             # Find modified definitions
             # =========================
@@ -1395,12 +1359,12 @@ class MneExperiment(FileTree):
                         invalid_cache['parcs'].add(parc)
 
             # tests
-            for test, params in cache_state['tests'].iteritems():
-                if test not in self._tests or params != self._tests[test]:
+            for test, params in cache_tests.iteritems():
+                if test not in tests_state or params != tests_state[test]:
                     invalid_cache['tests'].add(test)
-                    if test in self._tests:
+                    if test in tests_state:
                         log.debug("  test %s: \n   %s\n ->%s", test, params,
-                                  self._tests[test])
+                                  tests_state[test])
                     else:
                         log.debug("  test %s removed", test)
 
@@ -1427,7 +1391,7 @@ class MneExperiment(FileTree):
             if 'variables' in invalid_cache:
                 bad_vars = invalid_cache['variables']
                 # tests using bad variable
-                for test, params in cache_state['tests'].iteritems():
+                for test, params in cache_tests.iteritems():
                     if test not in invalid_cache['tests']:
                         bad = bad_vars.intersection(find_test_vars(params))
                         if bad:
@@ -1464,7 +1428,7 @@ class MneExperiment(FileTree):
                         else:
                             bad_parcs.append(parc)
                     bad_tests = []
-                    for test, params in self._tests.iteritems():
+                    for test, params in tests_state.iteritems():
                         if params['kind'] == 'anova' and params['x'].count('*') > 1:
                             bad_tests.append(test)
                     if bad_tests and bad_parcs:
@@ -1625,7 +1589,7 @@ class MneExperiment(FileTree):
                      'raw': raw_state,
                      'groups': self._groups,
                      'epochs': epoch_state,
-                     'tests': self._tests,
+                     'tests': tests_state,
                      'parcs': parcs_state,
                      'events': events}
         save.pickle(new_state, cache_state_path)
@@ -2142,7 +2106,7 @@ class MneExperiment(FileTree):
         """
         if isinstance(vardef, str):
             try:
-                vardef = self._tests[vardef].get('vars')
+                vardef = self._tests[vardef].vars
             except KeyError:
                 raise ValueError("vardef must be a valid test definition, got "
                                  "vardef=%r" % vardef)
@@ -3344,8 +3308,9 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        if self._tests[test]['kind'] == '2-stage':
-            raise NotImplementedError("Result-plots for 2-stage tests")
+        if not isinstance(self._tests[test], EvokedTest):
+            raise NotImplementedError("Result-plots for %s" %
+                                      self._tests[test].__class__.__name__)
         elif data != 'source':
             raise NotImplementedError("data=%s" % repr(data))
         elif not isinstance(pmin, float):
@@ -3581,12 +3546,12 @@ class MneExperiment(FileTree):
         "Load LM"
         subject = self.get('subject')
         test = self.get('test')
-        p = self._tests[test]
-        if p['kind'] != 'two-stage':
-            raise NotImplementedError("Test kind %r" % p['kind'])
+        test_obj = self._tests[test]
+        if not isinstance(test_obj, TwoStageTest):
+            raise NotImplementedError("Test kind %r" % test_obj.__class__.__name__)
         ds = self.load_epochs_stc(subject, sns_baseline, src_baseline, mask=True,
-                                  vardef=test)
-        return testnd.LM('src', p['stage 1'], ds, subject=subject)
+                                  vardef=test_obj.vars)
+        return testnd.LM('src', test_obj.stage_1, ds, subject=subject)
 
     def load_src(self, add_geom=False, **state):
         """Load the current source space
@@ -3657,10 +3622,7 @@ class MneExperiment(FileTree):
     def _load_test(self, test, tstart, tstop, pmin, parc, mask, samples, data,
                    sns_baseline, src_baseline, return_data, make):
         "Load a cached test after _set_analysis_options() has been called"
-        test_params = self._tests[test]
-
-        if test_params['kind'] == 'custom':
-            raise RuntimeError("Don't know how to perform 'custom' test")
+        test_obj = self._tests[test]
 
         # find data to use
         modality = self.get('modality')
@@ -3727,39 +3689,33 @@ class MneExperiment(FileTree):
                                             parc_dim)
 
         # two-stage tests
-        if test_params['kind'] == 'two-stage':
+        if isinstance(test_obj, TwoStageTest):
             if data != 'source':
                 raise NotImplementedError("Two-stage test with data != 'source'")
 
             if load_data:
-                model = test_params.get('model')
-                if model is not None:
-                    self.set(model=model)
-                # find params
-                stage1 = test_params['stage 1']
-                vardef = test_params.get('vars')
+                if test_obj.model is not None:
+                    self.set(model=test_obj.model)
 
                 # stage 1
-                n = len(self.get_field_values('subject'))
-                prog_str = "\x1b[2KLoading 2-stage model [%%-%ss] %%s" % n
                 lms = []
                 dss = []
-                for i, subject in enumerate(self):
-                    print(prog_str % ('#' * i, subject), end='\r')
-                    if model is None:
+                for subject in tqdm(self, "Loading stage 1 models",
+                                    len(self.get_field_values('subject'))):
+                    if test_obj.model is None:
                         ds = self.load_epochs_stc(subject, sns_baseline,
                                                   src_baseline, morph=True,
-                                                  mask=mask, vardef=vardef)
+                                                  mask=mask, vardef=test_obj.vars)
                     else:
                         ds = self.load_evoked_stc(subject, sns_baseline,
                                                   src_baseline, morph_ndvar=True,
-                                                  mask=mask, vardef=vardef)
+                                                  mask=mask, vardef=test_obj.vars)
 
                     if res is None:
-                        lms.append(testnd.LM(y_name, stage1, ds, subject=subject))
+                        lms.append(testnd.LM(y_name, test_obj.stage_1, ds,
+                                             subject=subject))
                     if return_data:
                         dss.append(ds)
-                print(prog_str % ('#' * n, 'done'))
 
                 if res is None:
                     res = testnd.LMGroup(lms)
@@ -3774,18 +3730,12 @@ class MneExperiment(FileTree):
 
         # load data
         if load_data:
-            # determine categories to load
-            if test_params['kind'] == 'ttest_rel':
-                cat = (test_params['c1'], test_params['c0'])
-            else:
-                cat = None
-
-            # load data
             if data == 'sensor':
-                ds = self.load_evoked(True, sns_baseline, True, cat)
+                ds = self.load_evoked(True, sns_baseline, True, test_obj.cat)
             elif data == 'source':
                 ds = self.load_evoked_stc(True, sns_baseline, src_baseline,
-                                          morph_ndvar=True, cat=cat, mask=mask)
+                                          morph_ndvar=True, cat=test_obj.cat,
+                                          mask=mask)
 
         # perform the test if it was not cached
         if res is None:
@@ -4852,13 +4802,11 @@ class MneExperiment(FileTree):
         if self._need_not_recompute_report(dst, samples, 'source', redo):
             return
 
-        is_twostage = self._tests[test]['kind'] == 'two-stage'
-
         # start report
         title = self.format('{session} {epoch} {test} {test_options}')
         report = Report(title)
 
-        if is_twostage:
+        if isinstance(self._tests[test], TwoStageTest):
             self._two_stage_report(report, test, sns_baseline, src_baseline,
                                    pmin, samples, tstart, tstop, parc, mask,
                                    include)
@@ -4890,14 +4838,13 @@ class MneExperiment(FileTree):
             caption = "Mask: %s" % mask.capitalize()
             self._report_parc_image(section, caption)
 
-        model = self._tests[test]['model']
-        colors = plot.colors_for_categorial(ds.eval(model))
+        colors = plot.colors_for_categorial(ds.eval(self._tests[test].model))
         report.append(_report.source_time_results(res, ds, colors, include,
                                                   surfer_kwargs, parc=parc))
 
     def _two_stage_report(self, report, test, sns_baseline, src_baseline, pmin,
                           samples, tstart, tstop, parc, mask, include):
-        model = self._tests[test].get('model')
+        model = self._tests[test].model
         rlm = self._load_test(test, tstart, tstop, pmin, parc, mask, samples,
                               'source', sns_baseline, src_baseline, bool(model),
                               True)
@@ -4965,9 +4912,10 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
+        test_obj = self._tests[test]
         if samples < 1:
             raise ValueError("Need samples > 0 to run permutation test.")
-        elif self._tests[test]['kind'] == 'two-stage':
+        elif isinstance(test_obj, TwoStageTest):
             raise NotImplementedError("ROI analysis not implemented for two-"
                                       "stage tests")
 
@@ -5034,8 +4982,7 @@ class MneExperiment(FileTree):
         labels_rh.sort()
 
         # add content body
-        model = self._tests[test]['model']
-        colors = plot.colors_for_categorial(ds.eval(model))
+        colors = plot.colors_for_categorial(ds.eval(test_obj.model))
         test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, ('time',), None)
         do_mcc = (len(labels_lh) + len(labels_rh) > 1 and
                   pmin not in (None, 'tfce'))
@@ -5118,8 +5065,7 @@ class MneExperiment(FileTree):
         info_section.add_figure("Sensor map with connectivity", image_conn)
         p.close()
 
-        model = self._tests[test]['model']
-        colors = plot.colors_for_categorial(ds.eval(model))
+        colors = plot.colors_for_categorial(ds.eval(self._tests[test].model))
         report.append(_report.sensor_time_results(res, ds, colors, include))
         report.sign(('eelbrain', 'mne', 'scipy', 'numpy'))
         report.save_html(dst)
@@ -5186,9 +5132,8 @@ class MneExperiment(FileTree):
         p.close()
 
         # main body
-        model = self._tests[test]['model']
         caption = "Signal at %s."
-        colors = plot.colors_for_categorial(ds.eval(model))
+        colors = plot.colors_for_categorial(ds.eval(self._tests[test].model))
         test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, ('time', 'sensor'), None)
         for sensor in sensors:
             y = eeg.sub(sensor=sensor)
@@ -5227,8 +5172,8 @@ class MneExperiment(FileTree):
 
     def _report_test_info(self, section, ds, test, res, data, include=None):
         info = self._analysis_info(data)
-        test_params = self._tests[test]
-        info.add_item("test = %s  (%s)" % (test_params['kind'], test_params['desc']))
+        test_obj = self._tests[test]
+        info.add_item("test = %s  (%s)" % (test_obj.test_kind, test_obj.desc))
         if include is not None:
             info.add_item("Separate plots of all clusters with a p-value < %s"
                           % include)
@@ -5238,7 +5183,7 @@ class MneExperiment(FileTree):
         info = res.info_list(data is not None)
         section.append(info)
 
-        section.append(self._report_subject_info(ds, test_params.get('model')))
+        section.append(self._report_subject_info(ds, test_obj.model))
         section.append(self.show_state(hide=('hemi', 'subject', 'mrisubject')))
 
     def _report_parc_image(self, section, caption):
@@ -5262,7 +5207,7 @@ class MneExperiment(FileTree):
         pmin : scalar
             Threshold p-value for uncorrected SPMs.
         """
-        if not self._tests[self.get('test')]['kind'] == 'two-stage':
+        if not isinstance(self._tests[self.get('test')], TwoStageTest):
             raise NotImplementedError("Only two-stage tests")
 
         with self._temporary_state:
@@ -5410,23 +5355,10 @@ class MneExperiment(FileTree):
         force_permutation : bool
             Conduct permutations regardless of whether there are any clusters.
         """
-        p = self._tests[test]
-        kind = p['kind']
-        if kind == 'ttest_rel':
-            res = testnd.ttest_rel(y, p['model'], p['c1'], p['c0'], 'subject',
-                                   ds=ds, tail=p.get('tail', 0),
-                                   force_permutation=force_permutation, **kwargs)
-        elif kind == 't_contrast_rel':
-            res = testnd.t_contrast_rel(y, p['model'], p['contrast'], 'subject',
-                                        ds=ds, tail=p.get('tail', 0),
-                                        force_permutation=force_permutation, **kwargs)
-        elif kind == 'anova':
-            res = testnd.anova(y, p['x'], match='subject', ds=ds,
-                               force_permutation=force_permutation, **kwargs)
-        else:
-            raise RuntimeError("Test kind=%s" % repr(kind))
-
-        return res
+        test_obj = self._tests[test]
+        if not isinstance(test_obj, EvokedTest):
+            raise RuntimeError("Test kind=%s" % test_obj.test_kind)
+        return test_obj.make(y, ds, force_permutation, kwargs)
 
     def merge_bad_channels(self):
         """Merge bad channel definitions for different sessions
@@ -5926,8 +5858,10 @@ class MneExperiment(FileTree):
             return parc, self._parcs[SEEDED_PARC_RE.match(parc).group(1)]
 
     def _post_set_test(self, _, test):
-        if test != '*' and test in self._tests and 'model' in self._tests[test]:
-            self.set(model=self._tests[test]['model'])
+        if test != '*':
+            test_obj = self._tests[test]
+            if test_obj.model is not None:
+                self.set(model=test_obj.model)
 
     def _set_analysis_options(self, data, sns_baseline, src_baseline, pmin,
                               tstart, tstop, parc, mask=None,
