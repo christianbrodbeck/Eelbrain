@@ -1018,12 +1018,18 @@ class EelFigure(object):
                     vline.set_xdata([event.xdata, event.xdata])
             redraw_axes.update(self._crosshair_axes)
         # update status bar
-        if ax:
-            self._frame.SetStatusText('x = %s, y = %s' % (
-                ax.xaxis.get_major_formatter().format_data_short(event.xdata),
-                ax.yaxis.get_major_formatter().format_data_short(event.ydata)))
+        self._frame.SetStatusText(self._on_motion_status_text(event))
         # redraw
         self.canvas.redraw(redraw_axes)
+
+    @staticmethod
+    def _on_motion_status_text(event):
+        ax = event.inaxes
+        if ax:
+            return ('x = %s, y = %s' % (
+                ax.xaxis.get_major_formatter().format_data_short(event.xdata),
+                ax.yaxis.get_major_formatter().format_data_short(event.ydata)))
+        return ''
 
     def _on_motion_sub(self, event):
         "Subclass action on mouse motion, return set of axes to redraw"
@@ -1415,6 +1421,12 @@ class Layout(BaseLayout):
         run : bool
             Run the Eelbrain GUI app (default is True for interactive plotting and
             False in scripts).
+        frame : bool | 't' | 'none'
+            Draw frame around axes: 
+            - True: all four spines
+            - False: only spines with ticks
+            - 't': spines at x=0 and y=0
+            - 'none': no spines at all
         """
         if h and axh:
             if h < axh:

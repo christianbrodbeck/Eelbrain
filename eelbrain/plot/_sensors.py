@@ -11,7 +11,7 @@ import matplotlib as mpl
 from matplotlib.lines import Line2D
 
 from .._data_obj import Datalist, as_sensor
-from ._base import EelFigure, Layout
+from ._base import EelFigure, ImLayout, Layout
 
 
 SENSOR_AXES_FRAME = 0.0
@@ -98,9 +98,6 @@ class _ax_map2d:
                  labels='none'):
         self.ax = ax
 
-        # ax.set_frame_on(False)
-        ax.set_axis_off()
-
         self.sensors = _plt_map2d(ax, sensors, proj, extent, marker, size,
                                   color, mark, None, None, labels, True,
                                   head_radius, head_pos, head_linewidth)
@@ -108,9 +105,10 @@ class _ax_map2d:
         locs = sensors.get_locs_2d(proj, extent, SENSORMAP_FRAME)
         self.connectivity = _plt_connectivity(ax, locs, None)
 
-        ax.set_aspect('equal')
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
+        ax.set_aspect('equal', 'datalim', 'C')
+        if extent:
+            ax.set_xlim(0, extent)
+            ax.set_ylim(0, extent)
 
     def mark_sensors(self, *args, **kwargs):
         self.sensors.mark_sensors(*args, **kwargs)
@@ -473,7 +471,8 @@ class SensorMaps(EelFigure):
         self._drag_ax = None
         self._drag_x = None
         self._drag_y = None
-        layout = Layout(4, 1, 3, False, ncol=2, nrow=2, *args, **kwargs)
+        layout = ImLayout(4, 0, 0, 1, 3, frame='none', ncol=2, nrow=2, *args,
+                          **kwargs)
         EelFigure.__init__(self, sensors.sysname, layout)
         self.figure.subplots_adjust(left=0, bottom=0, right=1, top=1,
                                     wspace=.1, hspace=.1)
@@ -481,37 +480,36 @@ class SensorMaps(EelFigure):
         # store args
         self._sensors = sensors
 
-        ext = np.vstack((sensors.locs.min(0), sensors.locs.max(0)))
-        aframe = np.array([-frame, frame])
-        xlim = ext[:, 0] + aframe
-        ylim = ext[:, 1] + aframe
-        zlim = ext[:, 2] + aframe
+        min_coords = sensors.locs.min(0) - frame
+        max_coords = sensors.locs.max(0) + frame
+        xlim, ylim, zlim = zip(min_coords, max_coords)
 
         # back
-        ax = self.ax0 = self.figure.add_subplot(2, 2, 1)
-        ax.proj = 'y-'
+        ax = self.ax0 = self._axes[0]
+        ax.proj = 'back'  # y-
         ax.extent = False
+        ax.set_xlim(xlim)
+        ax.set_ylim(zlim)
         self._h0 = _ax_map2d(ax, sensors, ax.proj, ax.extent, size, color, marker)
 
         # left
-        ax = self.ax1 = self.figure.add_subplot(2, 2, 2, sharey=self.ax0)
-        ax.proj = 'x-'
+        ax = self.ax1 = self._axes[1]
+        ax.proj = 'left'  # x-
         ax.extent = False
+        ax.set_xlim(ylim)
+        ax.set_ylim(zlim)
         self._h1 = _ax_map2d(ax, sensors, ax.proj, ax.extent, size, color, marker)
 
         # top
-        ax = self.ax2 = self.figure.add_subplot(2, 2, 3, sharex=self.ax0)
-        ax.proj = 'z+'
+        ax = self.ax2 = self._axes[2]
+        ax.proj = 'top'  # z+
         ax.extent = False
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
         self._h2 = _ax_map2d(ax, sensors, ax.proj, ax.extent, size, color, marker)
 
-        self.ax0.set_xlim(*xlim)
-        self.ax0.set_ylim(*zlim)
-        self.ax1.set_xlim(*zlim)
-        self.ax2.set_ylim(*ylim)
-
         # proj
-        ax = self.ax3 = self.figure.add_subplot(2, 2, 4)
+        ax = self.ax3 = self._axes[3]
         ax.proj = proj
         ax.extent = 1
         self._h3 = _ax_map2d(ax, sensors, ax.proj, ax.extent, size, color, marker)
@@ -607,6 +605,17 @@ class SensorMaps(EelFigure):
         self._drag_y = None
 
         self._update_mark_plot()
+
+    @staticmethod
+    def _on_motion_status_text(event):
+        ax = event.inaxes
+        if ax:
+            out = "Projection: " + ax.proj
+            if not ax.extent:
+                out += ';  x = %i, y = %i' % (round(event.xdata * 1e3),
+                                              round(event.ydata * 1e3))
+            return out
+        return ''
 
     def _on_motion_sub(self, event):
         ax = event.inaxes
