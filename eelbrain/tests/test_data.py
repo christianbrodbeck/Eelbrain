@@ -238,6 +238,10 @@ def test_combine():
     ds = combine((ds1, ds2))
     assert_array_equal(ds2['Y'].x, ds['Y'].x[n:])
 
+    # list of numbers
+    assert_dataobj_equal(combine((1., 2., 1.)), Var((1., 2., 1.)))
+    assert_dataobj_equal(combine(('a', 'b', 'a')), Factor('aba'))
+
     # combine Datasets with unequal keys
     del ds1['Y']
     # raise

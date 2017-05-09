@@ -46,7 +46,7 @@ import itertools
 from itertools import chain, izip
 from keyword import iskeyword
 from math import ceil, log10
-from numbers import Integral
+from numbers import Integral, Number
 import cPickle as pickle
 import operator
 import os
@@ -1240,9 +1240,10 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
 
     Parameters
     ----------
-    items : collection
-        Collection (:py:class:`list`, :py:class:`tuple`, ...) of data objects
-        of a single type (Dataset, Var, Factor, NDVar or Datalist).
+    items : sequence
+        Sequence of data objects to combine (Dataset, Var, Factor, 
+        NDVar or Datalist). A sequence of numbers is converted to :class:`Var`, 
+        a sequence of strings is converted to :class:`Factor`.
     name : None | str
         Name for the resulting data-object. If None, the name of the combined
         item is the common prefix of all items.
@@ -1274,9 +1275,14 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
         raise ValueError("combine() called with empty sequence %s" % repr(items))
 
     # find type
-    stype = type(items[0])
-    if not isdatacontainer(items[0]):
-        raise TypeError("Can only combine data-objects, got %r" % (items[0],))
+    first_item = items[0]
+    if isinstance(first_item, Number):
+        return Var(items, name=name)
+    elif isinstance(first_item, basestring):
+        return Factor(items)
+    stype = type(first_item)
+    if not isdatacontainer(first_item):
+        raise TypeError("Can only combine data-objects, got %r" % (first_item,))
     elif any(type(item) is not stype for item in items[1:]):
         raise TypeError("All items to be combined need to have the same type, "
                         "got %s." %
@@ -1290,11 +1296,10 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
     # combine objects
     if stype is Dataset:
         out = Dataset(name=name, info=merge_info(items))
-        item0 = items[0]
         if incomplete == 'fill in':
             # find all keys and data types
-            keys = item0.keys()
-            sample = dict(item0)
+            keys = first_item.keys()
+            sample = dict(first_item)
             for item in items:
                 for key in item.keys():
                     if key not in keys:
@@ -1306,16 +1311,16 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
                           _empty_like(sample[key], ds.n_cases) for ds in items]
                 out[key] = combine(pieces, check_dims=check_dims)
         else:
-            keys = set(item0)
+            keys = set(first_item)
             if incomplete == 'raise':
                 if any(set(item) != keys for item in items[1:]):
                     raise KeyError("Datasets have unequal keys. Use with "
                                    "incomplete='drop' or incomplete='fill in' "
                                    "to combine anyways.")
-                out_keys = item0
+                out_keys = first_item
             else:
                 keys.intersection_update(*items[1:])
-                out_keys = (k for k in item0 if k in keys)
+                out_keys = (k for k in first_item if k in keys)
 
             for key in out_keys:
                 out[key] = combine([ds[key] for ds in items])
@@ -1328,8 +1333,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
         if len(random) > 1:
             raise ValueError("Factors have different values for random parameter")
         random = random.pop()
-        item0 = items[0]
-        labels = item0._labels
+        labels = first_item._labels
         if all(f._labels == labels for f in items[1:]):
             x = np.hstack(f.x for f in items)
             return Factor(x, name, random, labels=labels)
