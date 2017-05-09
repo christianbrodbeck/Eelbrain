@@ -528,7 +528,6 @@ class UTSClusters(EelFigure):
 class _ax_uts(object):
 
     def __init__(self, ax, layers, xdim, vlims, colors):
-        l0 = layers[0]
         vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
 
         self.legend_handles = {}

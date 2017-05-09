@@ -2269,8 +2269,8 @@ class YLimMixin(object):
 
     Parameters
     ----------
-    plots : list
-        Plots to manage.
+    plots : Sequence
+        Plots to manage. Plots must have ``.ax`` attribute.
 
     Notes
     -----

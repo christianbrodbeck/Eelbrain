@@ -9,11 +9,11 @@ import logging
 import numpy as np
 import scipy.stats  # without this sp.stats is not available
 import matplotlib as mpl
+from matplotlib.artist import setp
 
 from .._stats import test, stats
-from .._data_obj import (
-    Celltable, asvar, ascategorial, assub, cellname, longname)
-from ._base import EelFigure, Layout, LegendMixin, frame_title
+from .._data_obj import Celltable, asvar, ascategorial, assub, cellname
+from ._base import EelFigure, Layout, LegendMixin, YLimMixin, frame_title
 from ._colors import find_cell_colors
 
 
@@ -640,12 +640,12 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom, top=None,
     return lim
 
 
-class Timeplot(EelFigure, LegendMixin):
+class Timeplot(LegendMixin, YLimMixin, EelFigure):
     """Plot a variable over time
 
     Parameters
     ----------
-    Y : Var
+    y : Var
         Dependent variable.
     categories : categorial
         Model (Factor or Interaction)
@@ -701,7 +701,7 @@ class Timeplot(EelFigure, LegendMixin):
     title : str
         Figure title.
     """
-    def __init__(self, Y, categories, time, match=None, sub=None, ds=None,
+    def __init__(self, y, categories, time, match=None, sub=None, ds=None,
                  # data plotting
                  main=np.mean, spread='sem', x_jitter=False,
                  bottom=None, top=None,
@@ -709,7 +709,7 @@ class Timeplot(EelFigure, LegendMixin):
                  ylabel=True, xlabel=True, timelabels=None, legend='upper right',
                  colors=None, hatch=False, markers=True, *args, **kwargs):
         sub = assub(sub, ds)
-        Y = asvar(Y, sub, ds)
+        y = asvar(y, sub, ds)
         categories = ascategorial(categories, sub, ds)
         time = asvar(time, sub, ds)
         if match is not None:
@@ -730,7 +730,9 @@ class Timeplot(EelFigure, LegendMixin):
                 spread = None
             else:
                 local_plot = None
-        del main
+
+        if not line_plot:
+            legend = False
 
         # hatch/marker
         if hatch is True:
@@ -743,21 +745,47 @@ class Timeplot(EelFigure, LegendMixin):
 
         # colors: {category index -> color, ...}
         colors = find_cell_colors(categories, colors)
-        color_list = [colors[i] for i in categories.cells]
 
         # get axes
         layout = Layout(1, 1, 5, *args, **kwargs)
-        EelFigure.__init__(self, frame_title(Y, categories), layout)
-        self._configure_yaxis(Y, ylabel)
+        EelFigure.__init__(self, frame_title(y, categories), layout)
+        self._configure_yaxis(y, ylabel)
         self._configure_xaxis(time, xlabel)
-        ax = self._axes[0]
 
+        plot = _ax_timeplot(self._axes[0], y, categories, time, match, colors,
+                            hatch, markers, line_plot, spread, local_plot,
+                            timelabels, x_jitter, bottom, top)
+
+        YLimMixin.__init__(self, (plot,))
+        LegendMixin.__init__(self, legend, plot.legend_handles)
+        self._show()
+
+    def _fill_toolbar(self, tb):
+        LegendMixin._fill_toolbar(self, tb)
+
+
+class _ax_timeplot(object):
+
+    def __init__(self, ax, y, categories, time, match, colors, hatch, markers,
+                 line_plot, spread, local_plot, timelabels, x_jitter, bottom,
+                 top):
+        color_list = [colors[i] for i in categories.cells]
         # categories
         n_cat = len(categories.cells)
-
         # find time points
         time_points = np.unique(time.x)
-        n_time_points = len(time_points)
+        # n_time_points = len(time_points)
+        # determine whether spread can be plotted
+        celltables = [Celltable(y, categories, match=match, sub=(time == t)) for
+                      t in time_points]
+        line_values = np.array([ct.get_statistic(line_plot) for ct in celltables]).T
+        # all_within = all(ct.all_within for ct in celltables)
+        plot_spread = spread and all(ct.n_cases > ct.n_cells for ct in celltables)
+        if plot_spread:
+            spread_values = np.array([ct.get_statistic(spread) for ct in celltables]).T
+        else:
+            spread = spread_values = False
+
         time_step = min(np.diff(time_points))
         if local_plot in ['box', 'bar']:
             within_spacing = time_step / (2 * n_cat)
@@ -772,49 +800,29 @@ class Timeplot(EelFigure, LegendMixin):
         t_min = min(time_points) - padding
         t_max = max(time_points) + padding
 
-        # prepare container for time series
-        if line_plot:
-            line_values = np.empty((n_cat, n_time_points))
-        if spread and local_plot != 'bar':
-            yerr = np.empty((n_cat, n_time_points))
-
-        # loop through time points
-        for i_t, t in enumerate(time_points):
-            ct = Celltable(Y, categories, match=match, sub=(time == t))
-            if line_plot:
-                line_values[:, i_t] = ct.get_statistic(line_plot)
-
+        # local plots
+        for t, ct in izip(time_points, celltables):
             pos = rel_pos + t
             if local_plot == 'box':
                 # boxplot
                 bp = ax.boxplot(ct.get_data(out=list), positions=pos, widths=within_spacing)
-
+                # make outlines black
+                for lines in bp.values():
+                    setp(lines, color='black')
                 # Now fill the boxes with desired colors
-#               if hatch or colors:
-#                   numBoxes = len(bp['boxes'])
                 for i, cell in enumerate(ct.cells):
                     box = bp['boxes'][i]
-                    boxX = box.get_xdata()[:5]
-                    boxY = box.get_ydata()[:5]
-                    boxCoords = zip(boxX, boxY)
-
-                    c = colors[cell]
-                    try:
-                        h = hatch[i]
-                    except:
-                        h = ''
-                    patch = mpl.patches.Polygon(boxCoords, facecolor=c, hatch=h,
-                                                zorder=-999)
+                    box_x = box.get_xdata()[:5]
+                    box_y = box.get_ydata()[:5]
+                    patch = mpl.patches.Polygon(
+                        zip(box_x, box_y),
+                        facecolor=colors[cell],
+                        hatch=hatch[i] if hatch else '',
+                        zorder=-999)
                     ax.add_patch(patch)
-
-                if True:  # defaults['mono']:
-                    for itemname in bp:
-                        plt.setp(bp[itemname], color='black')
             elif local_plot == 'bar':
                 _plt_barplot(ax, ct, spread, False, hatch, color_list, 0, left=pos,
                              width=within_spacing, test=False)
-            elif spread:
-                yerr[:, i_t] = ct.get_statistic(spread)
 
         legend_handles = {}
         if line_plot:
@@ -851,15 +859,10 @@ class Timeplot(EelFigure, LegendMixin):
                         x_errbars = x + rel_pos[i]
                     else:
                         x_errbars = x
-                    ax.errorbar(x_errbars, y, yerr=yerr[i], fmt=None, zorder=5,
+                    ax.errorbar(x_errbars, y, yerr=spread_values[i], fmt=None, zorder=5,
                                 ecolor=color, linestyle=ls, label=name)
-        else:
-            legend = False
 
-        # finalize
-        ax.set_xlim(t_min, t_max)
-        ax.set_xticks(time_points)
-        ax.set_ylim(bottom, top)
+        # x-ticks
         if timelabels is not None:
             if isinstance(timelabels, dict):
                 xticklabels = [timelabels[t] for t in time_points]
@@ -867,11 +870,29 @@ class Timeplot(EelFigure, LegendMixin):
                 xticklabels = [unicode(l) for l in timelabels]
             ax.set_xticklabels(xticklabels)
 
-        LegendMixin.__init__(self, legend, legend_handles)
-        self._show()
+        # data-limits
+        data_max = line_values.max()
+        data_min = line_values.min()
+        if spread:
+            max_spread = max(spread_values.max(), -spread_values.min())
+            data_max += max_spread
+            data_min -= max_spread
+        pad = (data_max - data_min) / 20.
+        if bottom is None:
+            bottom = data_min - pad
+        if top is None:
+            top = data_max + pad
 
-    def _fill_toolbar(self, tb):
-        LegendMixin._fill_toolbar(self, tb)
+        # finalize
+        ax.set_xlim(t_min, t_max)
+        ax.set_xticks(time_points)
+        self.ax = ax
+        self.legend_handles = legend_handles
+        self.set_ylim(bottom, top)
+
+    def set_ylim(self, vmin, vmax):
+        self.ax.set_ylim(vmin, vmax)
+        self.vmin, self.vmax = self.ax.get_ylim()
 
 
 def _reg_line(Y, reg):

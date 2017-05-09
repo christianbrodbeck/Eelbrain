@@ -93,6 +93,10 @@ def test_regression():
 
 def test_timeplot():
     "Test plot.Timeplot"
-    ds = datasets.get_uts()
-    ds['seq'] = Var(np.arange(2).repeat(30))
-    plot.Timeplot('Y', 'B', 'seq', match='rm', ds=ds, show=False)
+    ds = datasets.get_loftus_masson_1994()
+    ds['cat'] = Factor([int(s) > 5 for s in ds['subject']],
+                       labels={True: 'a', False: 'b'})
+
+    plot.Timeplot('n_recalled', 'subject', 'exposure', ds=ds, show=False)
+    plot.Timeplot('n_recalled', 'cat', 'exposure', ds=ds)
+    plot.Timeplot('n_recalled', 'cat', 'exposure', 'subject', ds=ds, x_jitter=True)
