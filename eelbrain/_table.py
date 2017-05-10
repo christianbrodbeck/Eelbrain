@@ -10,8 +10,9 @@ import numpy as np
 
 from . import fmtxt
 from ._data_obj import (
-    Celltable, Dataset, Factor, Interaction, Var, ascategorial,
-    as_legal_dataset_key, asndvar, asvar, assub, cellname, combine, isuv)
+    Categorial, Celltable, Dataset, Factor, Interaction, NDVar, Scalar, UTS,
+    Var, ascategorial, as_legal_dataset_key, asndvar, asvar, assub, asuv,
+    cellname, combine, isuv)
 
 
 def difference(y, x, c1, c0, match, by=None, sub=None, ds=None):
@@ -319,6 +320,88 @@ def melt_ndvar(ndvar, dim=None, cells=None, ds=None, varname=None):
         ds_[dimname, :] = cell
         dss.append(ds_)
     return combine(dss)
+
+
+def cast_to_ndvar(data, dim_values, match, sub=None, ds=None, dim=None,
+                  name=None):
+    """Create an NDVar by converting a data column to a dimension
+    
+    Parameters
+    ----------
+    data : Var
+        Data to be cast.
+    dim_values : Var | Factor
+        Location on the new dimension.
+    match : Factor | Interaction
+        Indicating rows which belong the the same case in the NDvar.
+    sub : index
+        Use a subset of the data.
+    ds : Dataset
+        Dataset with data for operation.
+    dim : str   
+        Name for the new dimension. Use ``dim='uts'`` to create :class:`UTS` 
+        time dimension from scalar ``dim_values``.
+    name : str
+        Name for the new :class:`NDVar` (the default is the name of 
+        ``dim_values``).
+        
+    Returns
+    -------
+    short_ds : Dataset
+        Copy of ``ds``, aggregated over ``dim_values``, and with an 
+        :class:`NDVar` containing the values form ``data`` and a new dimension
+        reflecting ``dim_values``. If ``dim_values`` is a Factor, the new 
+        dimension is :class:`Categorial`; if ``dim_values`` is a :class:`Var`, 
+        it is :class:`Scalar`. The new dimension's name is ``dim``. The only
+        exception to this is that when ``dim='uts'``, the new dimension is 
+        :class:`UTS` named ``'time'``.
+    """
+    sub = assub(sub, ds)
+    data = asvar(data, sub, ds)
+    dim_values = asuv(dim_values, sub, ds)
+    match = ascategorial(match, sub, ds)
+
+    # determine NDVar dimension
+    if isinstance(dim_values, Factor):
+        unique_dim_vales = dim_values.cells
+        dim = Categorial(dim or dim_values.name, unique_dim_vales)
+    else:
+        unique_dim_vales = np.unique(dim_values.x)
+        if dim == 'uts':
+            diff = np.diff(unique_dim_vales)
+            unique_diff = np.unique(diff)
+            if len(unique_diff) > 1:
+                if np.diff(unique_diff).max() > 1e-15:
+                    raise NotImplementedError(
+                        "Can't create UTS dimension from data with irregular "
+                        "sampling (detected time-steps of %s" %
+                        ', '.join(map(str, unique_diff)))
+                tstep = round(unique_diff.mean(), 17)
+            else:
+                tstep = unique_diff[0]
+            dim = UTS(unique_dim_vales[0], tstep, len(unique_dim_vales))
+        else:
+            dim = Scalar(dim or dim_values.name, unique_dim_vales)
+
+    # find NDVar data
+    n_samples = len(dim)
+    n_cases = len(match.cells)
+    case_indexes = [match == case for case in match.cells]
+    samples_indexes = [dim_values == v for v in unique_dim_vales]
+    x = np.empty((n_cases, n_samples))
+    index = None
+    for i, case_index in enumerate(case_indexes):
+        for j, sample_index in enumerate(samples_indexes):
+            x[i, j] = data.x[np.logical_and(case_index, sample_index, index)]
+
+    # package output dataset
+    if ds is None:
+        out = Dataset()
+    else:
+        out = ds if sub is None else ds.sub(sub)
+        out = out.aggregate(match, drop_bad=True, count=False)
+    out[name or data.name] = NDVar(x, ('case', dim))
+    return out
 
 
 def stats(y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],

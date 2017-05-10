@@ -17,6 +17,9 @@ New in 0.26
   (without adding a title to the figure).
 * :mod:`load.fiff`: when generating epochs from raw data, a new ``tstop``
   argument allows specifying the time interval exclusive of the last sample.
+* New functions:
+
+  - :func:`table.cast_to_ndvar`
 
 
 New in 0.25

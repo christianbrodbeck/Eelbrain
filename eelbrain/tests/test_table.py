@@ -5,7 +5,39 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from eelbrain._utils.testing import assert_dataobj_equal
-from eelbrain import Factor, NDVar, Var, datasets, table, combine
+from eelbrain import (
+    Categorial, Factor, NDVar, Scalar, UTS, Var, datasets, table, combine)
+
+
+def test_cast_to_ndvar():
+    "Test table.cast_to_ndvar()"
+    long_ds = datasets.get_uv()
+    long_ds['scalar'] = long_ds['A'] == 'a2'
+    long_ds['time'] = long_ds.eval('A%B').as_var({
+        ('a1', 'b1'): 0.,
+        ('a1', 'b2'): 0.1,
+        ('a2', 'b1'): 0.2,
+        ('a2', 'b2'): 0.3,
+    })
+
+    # categorial
+    ds = table.cast_to_ndvar('fltvar', 'A', 'B%rm', ds=long_ds, name='new')
+    eq_(ds.n_cases, long_ds.n_cases / 2)
+    eq_(ds['new'].A, Categorial('A', ('a1', 'a2')))
+
+    # scalar
+    ds2 = table.cast_to_ndvar('fltvar', 'scalar', 'B%rm', ds=long_ds,
+                              dim='newdim', name='new')
+    eq_(ds2.n_cases, long_ds.n_cases / 2)
+    eq_(ds2['new'].newdim, Scalar('newdim', [False, True]))
+
+    assert_array_equal(ds['new'].x, ds2['new'].x)
+
+    # time
+    ds = table.cast_to_ndvar('fltvar', 'time', 'rm', ds=long_ds, dim='uts',
+                             name='y')
+    eq_(ds.n_cases, long_ds.n_cases / 4)
+    eq_(ds['y'].time, UTS(0, 0.1, 4))
 
 
 def test_difference():
