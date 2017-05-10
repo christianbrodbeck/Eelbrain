@@ -2158,6 +2158,26 @@ class _Effect(object):
             return Model((self % e for e in other.effects))
         return Interaction((self, other))
 
+    def as_var(self, labels, default=None, name=None):
+        """Convert into a Var
+
+        Parameters
+        ----------
+        labels : dict
+            A ``{old_value: new_value}`` mapping.
+        default : None | scalar
+            Default value for old values not mentioned in ``labels``. If not
+            specified, old values missing from ``labels`` will raise a
+            ``KeyError``.
+        name : str
+            Name of the output Var (default is the old object's name).
+        """
+        if default is None:
+            x = [labels[v] for v in self]
+        else:
+            x = [labels.get(v, default) for v in self]
+        return Var(x, name or self.name)
+
     def count(self, value, start=-1):
         """Cumulative count of the occurrences of ``value``
 
@@ -2595,31 +2615,6 @@ class Factor(_Effect):
     def as_labels(self):
         "Convert the Factor to a list of str"
         return [self._labels[v] for v in self.x]
-
-    def as_var(self, labels, default=None, name=None):
-        """Convert the Factor into a Var
-
-        Parameters
-        ----------
-        labels : dict
-            A ``{factor_value: var_value}`` mapping.
-        default : None | scalar
-            Default value for factor values not mentioned in ``labels``. If not
-            specified, factor values missing from ``labels`` will raise a
-            ``KeyError``.
-        name : None | True | str
-            Name of the output Var, ``True`` to keep the current name (default
-            ``None``).
-        """
-        if default is None:
-            x = [labels[v] for v in self]
-        else:
-            x = [labels.get(v, default) for v in self]
-
-        if name is True:
-            name = self.name
-
-        return Var(x, name)
 
     @property
     def beta_labels(self):
