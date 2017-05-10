@@ -5157,6 +5157,10 @@ class Dataset(OrderedDict):
             elif isinstance(item, (list, tuple)):
                 item = Datalist(item, index)
                 n = len(item)
+            elif isinstance(item, np.ndarray):
+                n = len(item)
+                if item.ndim == 1:
+                    item = Var(item, index)
             else:
                 try:
                     n = len(item)
