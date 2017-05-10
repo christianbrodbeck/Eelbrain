@@ -31,7 +31,7 @@ from .._info import BAD_CHANNELS
 from .._names import INTERPOLATE_CHANNELS
 from .._ndvar import neighbor_correlation
 from .._utils.parse import FLOAT_PATTERN, POS_FLOAT_PATTERN, INT_PATTERN
-from .._utils.numpy_utils import full_slice
+from .._utils.numpy_utils import FULL_SLICE
 from .._wxutils import Icon, ID, REValidator
 from ..mne_fixes import MNE_EPOCHS
 from ..plot._base import find_axis_params_data, find_fig_vlims, find_fig_cmaps
@@ -475,7 +475,7 @@ class Model(FileModel):
         new_accept, new_tag, new_interpolate, new_bad_chs = self.doc.read_rej_file(path)
 
         # create load action
-        action = ChangeAction("Load File", full_slice, self.doc.accept, new_accept,
+        action = ChangeAction("Load File", FULL_SLICE, self.doc.accept, new_accept,
                               self.doc.tag, new_tag, self.doc.path, path,
                               self.doc.bad_channels, new_bad_chs,
                               self.doc.interpolate, new_interpolate)

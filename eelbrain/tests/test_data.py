@@ -26,7 +26,7 @@ from eelbrain import (
     Categorial, Scalar, Sensor, UTS, align, align1, choose, combine, cwt_morlet,
     shuffled_index)
 from eelbrain._data_obj import (
-    all_equal, asvar, assub, full_slice, longname, SourceSpace,
+    all_equal, asvar, assub, FULL_AXIS_SLICE, FULL_SLICE, longname, SourceSpace,
     assert_has_no_empty_cells)
 from eelbrain._exceptions import DimensionMismatchError
 from eelbrain._stats.stats import rms
@@ -967,7 +967,7 @@ def test_ndvar_connectivity():
 def test_ndvar_index(x, dimname, index, a_index, index_repr=True):
     "Helper function for test_ndvar_indexing"
     ax = x.get_axis(dimname)
-    index_prefix = (full_slice,) * ax
+    index_prefix = FULL_AXIS_SLICE * ax
     if dimname != 'case':
         dim = x.get_dim(dimname)
         assert_equal(dim.dimindex(index), a_index)
@@ -1014,8 +1014,8 @@ def test_ndvar_indexing():
 
     # Scalar
     x = cwt_morlet(ds['uts'], [8, 10, 13, 17])
-    assert_raises(IndexError, x.__getitem__, (full_slice, 9))
-    assert_raises(IndexError, x.__getitem__, (full_slice, 6))
+    assert_raises(IndexError, x.__getitem__, (FULL_SLICE, 9))
+    assert_raises(IndexError, x.__getitem__, (FULL_SLICE, 6))
     test_ndvar_index(x, 'frequency', 10, 1)
     test_ndvar_index(x, 'frequency', 10.1, 1, False)
     test_ndvar_index(x, 'frequency', 9.9, 1, False)
@@ -1026,8 +1026,8 @@ def test_ndvar_indexing():
 
     # Categorial
     x = NDVar(x.x, ('case', Categorial('cat', ['8', '10', '13', '17']), x.time))
-    assert_raises(TypeError, x.__getitem__, (full_slice, 9))
-    assert_raises(IndexError, x.__getitem__, (full_slice, '9'))
+    assert_raises(TypeError, x.__getitem__, (FULL_SLICE, 9))
+    assert_raises(IndexError, x.__getitem__, (FULL_SLICE, '9'))
     test_ndvar_index(x, 'cat', '13', 2)
     test_ndvar_index(x, 'cat', ['8', '13'], [0, 2])
     test_ndvar_index(x, 'cat', slice('8', '13'), slice(0, 2))

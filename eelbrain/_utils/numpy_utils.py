@@ -5,7 +5,8 @@ from itertools import izip
 import numpy as np
 
 
-full_slice = slice(None)
+FULL_SLICE = slice(None)
+FULL_AXIS_SLICE = (FULL_SLICE,)
 
 
 def digitize_index(index, values, tol=None):

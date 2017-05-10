@@ -73,8 +73,8 @@ from ._exceptions import DimensionMismatchError
 from ._info import merge_info
 from ._utils import deprecated, intervals, ui, LazyProperty, n_decimals, natsorted
 from ._utils.numpy_utils import (
-    apply_numpy_index, digitize_index, digitize_slice_endpoint, full_slice,
-    index_to_int_array, slice_to_arange)
+    apply_numpy_index, digitize_index, digitize_slice_endpoint, FULL_AXIS_SLICE,
+    FULL_SLICE, index_to_int_array, slice_to_arange)
 from .mne_fixes import MNE_EPOCHS, MNE_EVOKED, MNE_RAW, MNE_LABEL
 from functools import reduce
 
@@ -1046,7 +1046,7 @@ class Celltable(object):
         self.data_indexes = {}
         if X is None:
             self.data[None] = Y
-            self.data_indexes[None] = full_slice
+            self.data_indexes[None] = FULL_SLICE
             self.cells = (None,)
             self.n_cells = 1
             self.all_within = match is not None
@@ -3188,16 +3188,16 @@ class NDVar(object):
             for name, other_name in izip(self_axes, other_axes):
                 if name is None:
                     dim = other.get_dim(other_name)
-                    cs = co = full_slice
+                    cs = co = FULL_SLICE
                 elif other_name is None:
                     dim = self.get_dim(name)
-                    cs = co = full_slice
+                    cs = co = FULL_SLICE
                 else:
                     self_dim = self.get_dim(name)
                     other_dim = other.get_dim(other_name)
                     if self_dim == other_dim:
                         dim = self_dim
-                        cs = co = full_slice
+                        cs = co = FULL_SLICE
                     else:
                         dim = self_dim.intersect(other_dim)
                         crop = True
@@ -3479,7 +3479,7 @@ class NDVar(object):
                     raise DimensionMismatchError("Index dimension %s does not "
                                                  "match data dimension" %
                                                  dim.name)
-                index = (full_slice,) * dim_axis + (axis.x,)
+                index = FULL_AXIS_SLICE * dim_axis + (axis.x,)
                 x = func(self.x[index], dim_axis)
                 dims = (dim_ for dim_ in self.dims if not dim_ == dim)
             else:
@@ -3616,7 +3616,7 @@ class NDVar(object):
         out_shape[axis] = len(edges) - 1
         x = np.empty(out_shape)
         bins = []
-        idx_prefix = (full_slice,) * axis
+        idx_prefix = FULL_AXIS_SLICE * axis
         for i, (v0, v1) in enumerate(intervals(edges)):
             v0 = edges[i]
             v1 = edges[i + 1]
@@ -3682,7 +3682,7 @@ class NDVar(object):
 
         x = np.diff(self.x, n, axis)
         if pad == 1:
-            idx = (slice(None),) * axis + (slice(0, n),)
+            idx = FULL_AXIS_SLICE * axis + (slice(0, n),)
             x = np.concatenate((np.zeros_like(x[idx]), x), axis)
         else:
             raise NotImplementedError("pad != 1")
@@ -4484,7 +4484,7 @@ class NDVar(object):
         info = self.info.copy()
         dims = list(self.dims)
         n_axes = len(dims)
-        index = [full_slice] * n_axes
+        index = [FULL_SLICE] * n_axes
         index_args = [None] * n_axes
 
         # sequence args
@@ -4541,7 +4541,7 @@ class NDVar(object):
                         idx = slice_to_arange(idx, len(dims[i]))
                     elif idx.dtype.kind == 'b':
                         idx = np.flatnonzero(idx)
-                    index[i] = idx[(full_slice,) + (None,) * ndim_increment]
+                    index[i] = idx[FULL_AXIS_SLICE + (None,) * ndim_increment]
 
                 if isinstance(idx, np.ndarray):
                     ndim_increment += 1
@@ -7875,7 +7875,7 @@ class Sensor(Dimension):
             List of channel names.
         """
         if exclude is None:
-            return full_slice
+            return FULL_SLICE
 
         index = np.ones(len(self), dtype=bool)
         for ch in exclude:
@@ -8510,7 +8510,7 @@ class SourceSpace(Dimension):
             sv = self.vertno
             ov = arg.vertno
             if all(np.array_equal(s, o) for s, o in izip(sv, ov)):
-                return full_slice
+                return FULL_SLICE
             elif any(any(np.setdiff1d(o, s)) for o, s in izip(ov, sv)):
                 raise IndexError("Index contains unknown sources")
             else:

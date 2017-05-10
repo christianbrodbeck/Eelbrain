@@ -51,7 +51,7 @@ from .._data_obj import (
 from .._exceptions import OldVersionError, ZeroVariance
 from .._report import enumeration, format_timewindow, ms
 from .._utils import LazyProperty
-from .._utils.numpy_utils import full_slice
+from .._utils.numpy_utils import FULL_AXIS_SLICE
 from . import opt, stats
 from .connectivity import Connectivity, find_peaks
 from .connectivity_opt import merge_labels, tfce_increment
@@ -1974,7 +1974,7 @@ class _ClusterDist:
             self._crop_for_permutation = True
             y_perm = y.sub(time=(tstart, tstop))
             t_slice = y.time.dimindex(slice(tstart, tstop))
-            self._crop_idx = (full_slice,) * t_ax + (t_slice,)
+            self._crop_idx = FULL_AXIS_SLICE * t_ax + (t_slice,)
             self._uncropped_shape = y.shape[1:]
 
         # cluster map properties
