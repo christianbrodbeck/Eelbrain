@@ -3,6 +3,7 @@
 
 from __future__ import division
 
+from collections import Sequence
 from itertools import izip
 import logging
 
@@ -678,9 +679,11 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
         Y axis label (default is inferred from the data).
     xlabel : str | None
         X axis label (default is inferred from the data).
-    timelabels : sequence | dict
-        Labels for the x (time) axis. Can be provided in the form of a list
-        of labels from left to right, or a {time_value: label} dictionary.
+    timelabels : sequence | dict | 'all'
+        Labels for the x (time) axis. Exact labels can be specified in the form 
+        of a list of labels corresponsing to all unique values of ``time``, or a 
+        ``{time_value: label}`` dictionary. For 'all', all values of ``time`` 
+        are marked. The default is normal matplotlib ticks.
     legend : str | int | 'fig' | None
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
@@ -865,10 +868,26 @@ class _ax_timeplot(object):
         # x-ticks
         if timelabels is not None:
             if isinstance(timelabels, dict):
-                xticklabels = [timelabels[t] for t in time_points]
+                locations = [t for t in time_points if t in timelabels]
+                labels = [timelabels[t] for t in locations]
+            elif isinstance(timelabels, basestring):
+                if timelabels == 'all':
+                    locations = time_points
+                    labels = None
+                else:
+                    raise ValueError("timelabels=%r" % (timelabels,))
+            elif (not isinstance(timelabels, Sequence) or
+                  not len(timelabels) == len(time_points)):
+                raise TypeError(
+                    "timelabels needs to be a sequence whose length equals the "
+                    "number of time points (%i); got %r" %
+                    (len(time_points), timelabels))
             else:
-                xticklabels = [unicode(l) for l in timelabels]
-            ax.set_xticklabels(xticklabels)
+                locations = time_points
+                labels = [unicode(l) for l in timelabels]
+            ax.set_xticks(locations)
+            if labels is not None:
+                ax.set_xticklabels(labels)
 
         # data-limits
         data_max = line_values.max()
@@ -885,7 +904,6 @@ class _ax_timeplot(object):
 
         # finalize
         ax.set_xlim(t_min, t_max)
-        ax.set_xticks(time_points)
         self.ax = ax
         self.legend_handles = legend_handles
         self.set_ylim(bottom, top)
