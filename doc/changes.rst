@@ -21,6 +21,8 @@ New in 0.26
 
   - :func:`table.cast_to_ndvar`
 
+* New methods: :meth:`NDVar.smooth`.
+
 
 New in 0.25
 -----------

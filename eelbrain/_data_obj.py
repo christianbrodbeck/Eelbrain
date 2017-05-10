@@ -4306,7 +4306,8 @@ class NDVar(object):
         return NDVar(np.sign(self.x), self.dims, self.info.copy(),
                      name or self.name)
 
-    def smooth(self, dim, window_length, window='blackman', name=None):
+    def smooth(self, dim, window_length, window='blackman', name=None,
+               mode='center'):
         """Smooth data by convolving it with a window
 
         Parameters
@@ -4321,6 +4322,15 @@ class NDVar(object):
             'boxcar', 'triang', 'blackman' (default).
         name : str
             Name for the smoothed NDVar.
+        mode : 'left' | 'center' | 'right'
+            Alignment of the output to the input relative to the window:
+            
+            - ``left``: sample in the output corresponds to the left edge of 
+              the window.
+            - ``center``: sample in the output corresponds to the center of 
+              the window.
+            - ``right``: sample in the output corresponds to the right edge of 
+              the window.
 
         Returns
         -------
@@ -4336,7 +4346,17 @@ class NDVar(object):
         window = scipy.signal.get_window(window, n)
         window /= window.sum()
         window.shape = (1,) * axis + (n,) + (1,) * (self.ndim - axis - 1)
-        x = scipy.signal.convolve(self.x, window, 'same')
+        if mode == 'center':
+            x = scipy.signal.convolve(self.x, window, 'same')
+        else:
+            x = scipy.signal.convolve(self.x, window, 'full')
+            index = FULL_AXIS_SLICE * axis
+            if mode == 'left':
+                x = x[index + (slice(self.shape[axis]),)]
+            elif mode == 'right':
+                x = x[index + (slice(-self.shape[axis], None),)]
+            else:
+                raise ValueError("mode=%r" % (mode,))
         return NDVar(x, self.dims, self.info.copy(), name or self.name)
 
     def std(self, dims=(), **regions):

@@ -1172,7 +1172,13 @@ def test_ndvar_timeseries_methods():
     window = signal.get_window('blackman', 20)
     window /= window.sum()
     window.shape = (1, 1, 20)
-    assert_equal(ma.x, signal.convolve(x.x, window, 'same'))
+    assert_array_equal(ma.x, signal.convolve(x.x, window, 'same'))
+    # mode parameter
+    full = signal.convolve(x.x, window, 'full')
+    ma = x.smooth('time', 0.2, mode='left')
+    assert_array_equal(ma.x, full[:, :, :ma.shape[2]])
+    ma = x.smooth('time', 0.2, mode='right')
+    assert_array_equal(ma.x, full[:, :, -ma.shape[2]:])
 
     # FFT
     x = ds['uts'].mean('case')
