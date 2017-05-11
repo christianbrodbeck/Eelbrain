@@ -11,7 +11,7 @@ from scipy import linalg, signal
 from . import mne_fixes
 from . import _colorspaces as cs
 from ._data_obj import (
-    NDVar, Categorial, Dimension, Scalar, UTS)
+    NDVar, Categorial, Dimension, Scalar, UTS, asndvar)
 from ._exceptions import DimensionMismatchError
 from ._info import merge_info
 from ._stats.connectivity import Connectivity
@@ -454,6 +454,7 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
         NDVar that contains for each element in ``dim`` the with average
         correlation coefficient with its neighbors.
     """
+    x = asndvar(x)
     low_var = x.std(obs).x < 1e-25
     dim_obj = x.get_dim(dim)
     if np.any(low_var):
