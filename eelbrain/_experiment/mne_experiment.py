@@ -799,7 +799,12 @@ class MneExperiment(FileTree):
                                         "%s" % repr(exclude))
                     group_members = (s for s in groups[base] if s not in exclude)
                 elif isinstance(group_def, (list, tuple)):
-                    group_members = (s for s in subjects if s in group_def)
+                    missing = tuple(s for s in group_def if s not in subjects)
+                    if missing:
+                        raise DefinitionError(
+                            "Group %s contains non-existing subjects: %s" %
+                            (name, ', '.join(missing)))
+                    group_members = tuple(group_def)
                 else:
                     raise TypeError("group %s=%r" % (name, group_def))
                 groups[name] = tuple(group_members)
