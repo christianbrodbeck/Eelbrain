@@ -70,6 +70,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+import weakref
 
 import matplotlib as mpl
 from matplotlib.figure import SubplotParams
@@ -2031,72 +2032,136 @@ class Legend(EelFigure):
         self._show()
 
 
-class TimeSlicer(object):
-    # update data in a child plot of time-slices
-    def __init__(self, x_dimname, epochs, axes=None):
-        if x_dimname == 'time':
-            self.__xdim = reduce(
-                UTS._union,
-                (e.get_dim(x_dimname) for layers in epochs for e in layers))
-            self.__current_time = self.__xdim.tmin
-        else:
-            self.__xdim = self.__current_time = None
-        self.__x_dimname = x_dimname
-        self.__slave_plots = []
-        self.__dead_plots = []
-        self.__time_fixed = None
-        self.__time_lines = []
-        self.__axes = self._axes if axes is None else axes
-        self.canvas.mpl_connect('button_press_event', self._on_click)
-        self._register_key('.', self.__on_nudge_time)
-        self._register_key(',', self.__on_nudge_time)
+class TimeController(object):
+    # Link plots that have the TimeSlicer mixin
+    def __init__(self, t=0, fixate=False):
+        self.plots = []
+        self.current_time = t
+        self.fixate = fixate
 
-    def _link_slice_plot(self, other):
-        if self.__x_dimname != 'time':
+    def add_plot(self, plot):
+        if plot._time_controller:
+            self.merge(plot._time_controller)
+        else:
+            plot._set_time(self.current_time, self.fixate)
+            self.plots.append(weakref.ref(plot))
+            plot._time_controller = self
+
+    def iter_plots(self):
+        self.plots = [p for p in self.plots if p() is not None]
+        return self.plots
+
+    def merge(self, time_controller):
+        "Merge another TimeController into self"
+        time_controller.set_time(self.current_time, self.fixate)
+        for plot in time_controller.iter_plots():
+            plot()._time_controller = self
+            self.plots.append(plot)
+
+    def set_time(self, t, fixate):
+        if t == self.current_time and fixate == self.fixate:
+            return
+        for p in self.iter_plots():
+            p()._update_time_wrapper(t, fixate)
+        self.current_time = t
+        self.fixate = fixate
+
+
+class TimeSlicer(object):
+    # Interface to link time axes of multiple plots.
+    # update data in a child plot of time-slices
+    _time_dim = None
+    _current_time = None
+
+    def __init__(self, ndvars=None):
+        if ndvars is not None:
+            self._set_time_dim(ndvars)
+            self._current_time = self._time_dim.tmin
+        self._time_controller = None
+        self._time_fixed = False
+
+    def _set_time_dim(self, ndvars):
+        ndvars = tuple(v for v in ndvars if v.has_dim('time'))
+        if ndvars:
+            self._time_dim = reduce(UTS._union, (e.get_dim('time') for e in ndvars))
+
+    def link_time_axis(self, other):
+        """Link the time axis of this figure with another figure"""
+        if self._time_dim is None:
             raise NotImplementedError("Slice plot for dimension other than time")
-        self.__slave_plots.append(other)
+        elif not isinstance(other, TimeSlicer):
+            raise TypeError("%s plot does not support linked time axes" %
+                            other.__class__.__name__)
+        elif other._time_dim is None:
+            raise NotImplementedError("Slice plot for dimension other than time")
+        elif self._time_controller:
+            self._time_controller.add_plot(other)
+        elif other._time_controller:
+            other._time_controller.add_plot(self)
+        else:
+            tc = TimeController(self._current_time, self._time_fixed)
+            tc.add_plot(self)
+            tc.add_plot(other)
+
+    def _nudge_time(self, offset):
+        if self._time_dim is None:
+            return
+        current_i = self._time_dim.dimindex(self._current_time)
+        if offset > 0:
+            new_i = min(self._time_dim.nsamples - 1, current_i + offset)
+        else:
+            new_i = max(0, current_i + offset)
+        self._set_time(self._time_dim.times[new_i], True)
+
+    def _set_time(self, t, fixate=False):
+        "Called by the plot"
+        if self._time_controller is None:
+            self._update_time(t, fixate)
+        else:
+            self._time_controller.set_time(t, fixate)
+
+    def _update_time_wrapper(self, t, fixate):
+        "Called by the TimeController"
+        if t == self._current_time and fixate == self._time_fixed:
+            return
+        self._current_time = t
+        self._time_fixed = fixate
+        self._update_time(t, fixate)
+
+    def _update_time(self, t, fixate):
+        raise NotImplementedError
+
+
+class TimeSlicerEF(TimeSlicer):
+    # TimeSlicer for Eelfigure
+    def __init__(self, x_dimname, epochs, axes=None, redraw=True):
+        if x_dimname != 'time':
+            self._time_fixed = True
+            return
+        ndvars = tuple(e for layer in epochs for e in layer)
+        TimeSlicer.__init__(self, ndvars)
+        self.__axes = self._axes if axes is None else axes
+        self.__time_lines = []
+        self.__redraw = redraw
+        self.canvas.mpl_connect('button_press_event', self._on_click)
+        self._register_key('.', self._on_nudge_time)
+        self._register_key(',', self._on_nudge_time)
 
     def _on_click(self, event):
-        if event.inaxes and self.__slave_plots:
-            if event.button == 1:  # LMB
-                self.__set_time(event.xdata, fixate=True)
-            elif self.__time_fixed:
-                self.__remove_time_lines()
-            else:
-                return
-            self.canvas.redraw(self.__axes)
+        if self._time_controller and event.inaxes in self.__axes:
+            self._set_time(event.xdata, fixate=event.button == 1)
 
     def _on_motion_sub(self, event):
-        if event.inaxes and not self.__time_fixed:
-            self.__set_time(event.xdata)
+        if not self._time_fixed and event.inaxes in self.__axes:
+            self._set_time(event.xdata)
         return set()
 
-    def __on_nudge_time(self, event):
-        if self.__xdim is None:
-            return
-        current_i = self.__xdim.dimindex(self.__current_time)
-        if event.key == ',':  # left
-            new_i = max(0, current_i - 1)
-        else:
-            new_i = min(self.__xdim.nsamples - 1, current_i + 1)
-        self.__set_time(self.__xdim.times[new_i], True)
-        self.canvas.redraw(self.__axes)
+    def _on_nudge_time(self, event):
+        self._nudge_time(1 if event.key == '.' else -1)
 
-    def __remove_time_lines(self):
-        while self.__time_lines:
-            self.__time_lines.pop().remove()
-        self.__time_fixed = False
-
-    def __set_time(self, t, fixate=False):
-        for p in self.__slave_plots:
-            if p._frame_is_alive:
-                p._update_time(t)
-            else:
-                self.__dead_plots.append(p)
-        self.__current_time = t
+    def _update_time(self, t, fixate):
         if fixate:
-            self.__time_fixed = True
-            # add time point lines
+            redraw = True
             if self.__time_lines:
                 xdata = (t, t)
                 for line in self.__time_lines:
@@ -2104,11 +2169,13 @@ class TimeSlicer(object):
             else:
                 for ax in self.__axes:
                     self.__time_lines.append(ax.axvline(t, color='k'))
-        # remove dead plots
-        while self.__dead_plots:
-            self.__slave_plots.remove(self.__dead_plots.pop())
-            if not self.__slave_plots:
-                self.__remove_time_lines()
+        else:
+            redraw = bool(self.__time_lines)
+            while self.__time_lines:
+                self.__time_lines.pop().remove()
+
+        if self.__redraw and redraw:
+            self.canvas.redraw(self.__axes)
 
 
 class TopoMapKey(object):

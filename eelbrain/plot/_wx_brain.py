@@ -157,7 +157,6 @@ class BrainFrame(EelbrainFrame):
         event.Skip()
         if self._brain is not None:
             self._brain._surfer_close()
-            self._brain._frame_is_alive = False
             # remove circular references
             self._brain._frame = None
             self._brain = None

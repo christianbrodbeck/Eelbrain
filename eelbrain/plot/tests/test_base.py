@@ -35,6 +35,22 @@ def test_layout():
     assert_raises(ValueError, Layout, 2, 1.5, 2, True, w=5, axw=6)
 
 
+def test_time_slicer():
+    "Test linked time axes"
+    ds = datasets.get_uts(True)
+
+    p1 = plot.Butterfly(ds['utsnd'], show=False)
+    p2 = plot.Array('utsnd', 'A', ds=ds, show=False)
+    p1.link_time_axis(p2)
+
+    p1._set_time(.1, True)
+    eq_(p2._current_time, .1)
+    eq_(p2._time_fixed, True)
+    p2._set_time(.2)
+    eq_(p1._current_time, .2)
+    eq_(p1._time_fixed, False)
+
+
 def test_vlims():
     "Test vlim determination"
     ds = datasets.get_uts()

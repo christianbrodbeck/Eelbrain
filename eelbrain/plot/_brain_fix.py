@@ -19,8 +19,8 @@ from .._data_obj import NDVar, SourceSpace
 from .._wxgui import run as run_gui
 from ..fmtxt import Image, ms
 from ..mne_fixes import reset_logger
-from ._base import (CONFIG, do_autorun, find_axis_params_data, find_fig_cmaps,
-                    find_fig_vlims)
+from ._base import (CONFIG, TimeSlicer, do_autorun, find_axis_params_data,
+                    find_fig_cmaps, find_fig_vlims)
 from ._colors import ColorBar, ColorList, colors_for_oneway
 from ._wx_brain import BrainFrame, SURFACES
 
@@ -44,16 +44,14 @@ def assert_can_save_movies():
         raise ImportError("Saving movies requires PySurfer 0.6")
 
 
-class Brain(surfer.Brain):
+class Brain(TimeSlicer, surfer.Brain):
     # Subclass that adds Eelbrain functionality to surfer.Brain
     def __init__(self, subject, hemi, views, surface, title, width, height,
                  show, run, **kwargs):
         self.__data = []
         self.__annot = None
         self.__labels = []  # [(name, color), ...]
-        self._time_dim = None
         self.__time_index = 0
-        self._frame_is_alive = True
 
         if title is None:
             title = subject
@@ -68,6 +66,7 @@ class Brain(surfer.Brain):
 
         surfer.Brain.__init__(self, subject, hemi, surface, views=views,
                               figure=self._frame.figure, **kwargs)
+        TimeSlicer.__init__(self)
 
         if CONFIG['show'] and show:
             self._frame.Show()
@@ -482,10 +481,6 @@ class Brain(surfer.Brain):
         im = self.screenshot('rgba', True)
         return Image.from_array(im, name, format, alt)
 
-    def _nudge_time(self, offset):
-        new_index = max(0, min(self.n_times, self.data_time_index + offset))
-        self.set_data_time_index(new_index)
-
     def plot_colorbar(self, label=True, label_position=None, label_rotation=None,
                       clipmin=None, clipmax=None, orientation='horizontal',
                       width=None, ticks=None, layer=None, *args, **kwargs):
@@ -611,6 +606,7 @@ class Brain(surfer.Brain):
         """Remove data shown with ``Brain.add_ndvar``"""
         surfer.Brain.remove_data(self, None)
         del self.__data[:]
+        self._time_dim = None
 
     def remove_labels(self):
         """Remove labels shown with ``Brain.add_ndvar_label``"""
@@ -656,10 +652,20 @@ class Brain(surfer.Brain):
         surfer.Brain.set_surface(self, surface)
         self.set_parallel_view(scale=True)
 
+    def set_time(self, time):
+        """Set the time point if data with a time dimension is displayed
+
+        Parameters
+        ----------
+        time : scalar
+            Time.
+        """
+        self._set_time(time, True)
+
     def set_title(self, title):
         self._frame.SetTitle(unicode(title))
 
-    def _update_time(self, t):
+    def _update_time(self, t, fixate):
         index = self._time_dim.dimindex(t)
         if index == self.__time_index:
             return

@@ -11,7 +11,7 @@ import numpy as np
 from .._names import INTERPOLATE_CHANNELS
 from . import _base
 from ._base import (
-    EelFigure, Layout, ColorMapMixin, LegendMixin, TimeSlicer, TopoMapKey,
+    EelFigure, Layout, ColorMapMixin, LegendMixin, TimeSlicerEF, TopoMapKey,
     YLimMixin, XAxisMixin)
 
 
@@ -183,7 +183,7 @@ class _ax_im_array(object):
             l.set_vlim(vmin, vmax, meas)
 
 
-class Array(TimeSlicer, ColorMapMixin, XAxisMixin, EelFigure):
+class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
     u"""Plot UTS data to a rectangular grid.
 
     Parameters
@@ -260,7 +260,7 @@ class Array(TimeSlicer, ColorMapMixin, XAxisMixin, EelFigure):
         self._configure_xaxis_dim(epochs[0][0].get_dim(xdim), xlabel, xticklabels)
         self._configure_yaxis_dim(epochs, ydim, ylabel, scalar=False)
         XAxisMixin.__init__(self, epochs, xdim, xlim, im=True)
-        TimeSlicer.__init__(self, x, epochs)
+        TimeSlicerEF.__init__(self, xdim, epochs)
         self._show()
 
     def _fill_toolbar(self, tb):
@@ -360,7 +360,7 @@ class _ax_butterfly(object):
         self.vmin, self.vmax = self.ax.get_ylim()
 
 
-class Butterfly(TimeSlicer, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
+class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
                 EelFigure):
     u"""Butterfly plot for NDVars
 
@@ -456,7 +456,7 @@ class Butterfly(TimeSlicer, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
         if linedim == 'sensor':
             TopoMapKey.__init__(self, self._topo_data)
         LegendMixin.__init__(self, 'invisible', legend_handles)
-        TimeSlicer.__init__(self, x, epochs)
+        TimeSlicerEF.__init__(self, xdim, epochs)
         self._show()
 
     def _fill_toolbar(self, tb):
