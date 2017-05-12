@@ -4661,6 +4661,14 @@ class NDVar(object):
         return self._aggregate_over_dims(dims, regions,
                                          partial(np.var, ddof=ddof))
 
+    def nonzero(self):
+        """Return indices where the NDVar is non-zero 
+        
+        Like :func:`numpy.nonzero`.
+        """
+        return tuple(index if dim == 'case' else dim._index_repr(index) for
+                     dim, index in izip(self.dims, self.x.nonzero()))
+
 
 def extrema(x, axis=0):
     "Extract the extreme values in x"
