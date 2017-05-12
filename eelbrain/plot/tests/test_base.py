@@ -50,6 +50,17 @@ def test_time_slicer():
     eq_(p1._current_time, .2)
     eq_(p1._time_fixed, False)
 
+    p1 = plot.TopoButterfly(ds['utsnd'], show=False)
+    p2 = plot.Array('utsnd', 'A', ds=ds, show=False)
+    p2.link_time_axis(p1)
+
+    p1._set_time(.1, True)
+    eq_(p2._current_time, .1)
+    eq_(p2._time_fixed, True)
+    p2._set_time(.2)
+    eq_(p1._current_time, .2)
+    eq_(p1._time_fixed, False)
+
 
 def test_vlims():
     "Test vlim determination"

@@ -2040,12 +2040,12 @@ class TimeController(object):
         self.fixate = fixate
 
     def add_plot(self, plot):
-        if plot._time_controller:
-            self.merge(plot._time_controller)
-        else:
+        if plot._time_controller is None:
             plot._set_time(self.current_time, self.fixate)
             self.plots.append(weakref.ref(plot))
             plot._time_controller = self
+        else:
+            self.merge(plot._time_controller)
 
     def iter_plots(self):
         self.plots = [p for p in self.plots if p() is not None]
@@ -2080,6 +2080,10 @@ class TimeSlicer(object):
         self._time_controller = None
         self._time_fixed = False
 
+    def _init_controller(self):
+        tc = TimeController(self._current_time, self._time_fixed)
+        tc.add_plot(self)
+
     def _set_time_dim(self, ndvars):
         ndvars = tuple(v for v in ndvars if v.has_dim('time'))
         if ndvars:
@@ -2094,14 +2098,12 @@ class TimeSlicer(object):
                             other.__class__.__name__)
         elif other._time_dim is None:
             raise NotImplementedError("Slice plot for dimension other than time")
-        elif self._time_controller:
-            self._time_controller.add_plot(other)
         elif other._time_controller:
             other._time_controller.add_plot(self)
         else:
-            tc = TimeController(self._current_time, self._time_fixed)
-            tc.add_plot(self)
-            tc.add_plot(other)
+            if not self._time_controller:
+                self._init_controller()
+            self._time_controller.add_plot(other)
 
     def _nudge_time(self, offset):
         if self._time_dim is None:
@@ -2124,9 +2126,9 @@ class TimeSlicer(object):
         "Called by the TimeController"
         if t == self._current_time and fixate == self._time_fixed:
             return
+        self._update_time(t, fixate)
         self._current_time = t
         self._time_fixed = fixate
-        self._update_time(t, fixate)
 
     def _update_time(self, t, fixate):
         raise NotImplementedError

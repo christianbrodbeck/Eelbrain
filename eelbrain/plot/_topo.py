@@ -17,7 +17,7 @@ from .._utils.numpy_utils import digitize
 from . import _base
 from ._base import (
     EelFigure, Layout, ImLayout, VariableAspectLayout, ColorMapMixin,
-    TopoMapKey, XAxisMixin, YLimMixin)
+    TimeSlicerEF, TopoMapKey, XAxisMixin, YLimMixin)
 from ._utsnd import _ax_butterfly, _ax_im_array, _plt_im
 from ._sensors import SENSORMAP_FRAME, SensorMapMixin, _plt_map2d
 
@@ -169,7 +169,8 @@ class TopomapBins(EelFigure):
         self._show()
 
 
-class TopoButterfly(ColorMapMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
+class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
+                    XAxisMixin, EelFigure):
     u"""Butterfly plot with corresponding topomaps
 
     Parameters
@@ -300,11 +301,6 @@ class TopoButterfly(ColorMapMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure)
                               self._vlims)
             self.bfly_plots.append(p)
 
-        # find possible discrete values for time point
-        xdims = (v.get_dim(xdim) for ax_vs in epochs for v in ax_vs)
-        xdim_axdata = (dim._axis_data() for dim in xdims)
-        self._xvalues = reduce(np.union1d, xdim_axdata)
-
         # decorate axes
         e0 = epochs[0][0]
         self._configure_xaxis_dim(e0.time, xlabel, xticklabels, self.bfly_axes)
@@ -315,9 +311,7 @@ class TopoButterfly(ColorMapMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure)
         # setup callback
         XAxisMixin.__init__(self, epochs, xdim, xlim, self.bfly_axes)
         YLimMixin.__init__(self, self.bfly_plots + self.topo_plots)
-        self.canvas.mpl_connect('button_press_event', self._on_click)
-        self._register_key('.', self._on_nudge_topo_t)
-        self._register_key(',', self._on_nudge_topo_t)
+        TimeSlicerEF.__init__(self, xdim, epochs, self.bfly_axes, False)
         TopoMapKey.__init__(self, self._topo_data)
         self._realtime_topo = True
         self._t_label = None  # time label under lowest topo-map
@@ -325,12 +319,12 @@ class TopoButterfly(ColorMapMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure)
         self._update_topo(e0.time[0])
 
         self._show(crosshair_axes=self.bfly_axes)
+        self._init_controller()
 
     def _fill_toolbar(self, tb):
         ColorMapMixin._fill_toolbar(self, tb)
 
     def _update_topo(self, t):
-        self._current_t = t
         epochs = [[l.sub(time=t) for l in layers if t in l.time]
                   for layers in self._epochs]
 
@@ -343,46 +337,9 @@ class TopoButterfly(ColorMapMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure)
             for layers, p in zip(epochs, self.topo_plots):
                 p.set_data(layers)
 
-    def _rm_t_markers(self):
-        "Remove markers of a specific time point (vlines and t-label)"
-        if self._t_label:
-            self._t_label.remove()
-            self._t_label = None
-
-        if self.t_markers:
-            for m in self.t_markers:
-                m.remove()
-            del self.t_markers[:]
-
     def set_topo_t(self, t):
         "Set the time point of the topo-maps"
-        self._realtime_topo = False
-        self._update_topo(t)
-
-        # update t-markers
-        self._rm_t_markers()
-        for ax in self.bfly_axes:
-            t_marker = ax.axvline(t, color='k')
-            self.t_markers.append(t_marker)
-
-        # add time label
-        ax = self.topo_axes[-1]
-        self._t_label = ax.text(.5, -0.1, "t = %i ms" % round(t * 1e3),
-                                ha='center', va='top')
-
-        self.canvas.draw()  # otherwise time label does not get redrawn
-
-    def _on_click(self, event):
-        ax = event.inaxes
-        if ax in self.bfly_axes:
-            button = {1:'l', 2:'r', 3:'r'}[event.button]
-            if button == 'l':
-                t = event.xdata
-                self.set_topo_t(t)
-            elif (button == 'r') and (self._realtime_topo == False):
-                self._rm_t_markers()
-                self._realtime_topo = True
-                self.canvas.draw()
+        self._set_time(t, True)
 
     def _topo_data(self, event):
         ax = event.inaxes
@@ -392,29 +349,33 @@ class TopoButterfly(ColorMapMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure)
             seg = [l.sub(time=t) for l in p.data]
         elif ax in self.topo_axes:
             seg = self.topo_plots[ax.id // 2].data
-            t = self._current_t
+            t = self._current_time
         else:
             return
 
         return seg, "%i ms" % round(t * 1e3), self._topo_kwargs['proj']
 
-    def _on_nudge_topo_t(self, event):
-        i = digitize(self._current_t, self._xvalues, event.key == ',')
-        if event.key == ',' and i > 0:
-            i -= 1
-        elif i == len(self._xvalues):
-            i -= 1
-        self.set_topo_t(self._xvalues[i])
-
     def _on_leave_axes_status_text(self, event):
-        return "Topomap: t = %.3f" % self._current_t
+        return "Topomap: t = %.3f" % self._current_time
 
-    def _on_motion_sub(self, event):
-        "Update the status bar for mouse movement"
-        if event.inaxes in self.bfly_axes and self._realtime_topo:
-            self._update_topo(event.xdata)
-            return set(self.topo_axes)
-        return set()
+    def _update_time(self, t, fixate):
+        TimeSlicerEF._update_time(self, t, fixate)
+        self._update_topo(t)
+        if fixate:
+            # add time label
+            text = "t = %i ms" % round(t * 1e3)
+            if self._t_label:
+                self._t_label.set_text(text)
+            else:
+                ax = self.topo_axes[-1]
+                self._t_label = ax.text(.5, -0.1, text, ha='center', va='top')
+            self.canvas.draw()  # otherwise time label does not get redrawn
+        elif self._time_fixed:
+            self._t_label.remove()
+            self._t_label = None
+            self.canvas.draw()  # otherwise time label does not get redrawn
+        else:
+            self.canvas.redraw(self.topo_axes)
 
 
 class _plt_topomap(_plt_im):
