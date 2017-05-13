@@ -584,7 +584,7 @@ def brain(src, cmap=None, vmin=None, vmax=None, surface='inflated',
             hemi = 'rh'
     elif (hemi == 'lh' and source.rh_n) or (hemi == 'rh' and source.lh_n):
         if ndvar is None:
-            source = source[source.dimindex(hemi)]
+            source = source[source._array_index(hemi)]
         else:
             ndvar = ndvar.sub(source=hemi)
             source = ndvar.source

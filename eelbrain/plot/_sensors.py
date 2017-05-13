@@ -185,7 +185,7 @@ class _plt_map2d:
         if marker is None:
             marker = 'o'
 
-        idx = self.sensors.dimindex(sensors)
+        idx = self.sensors._array_index(sensors)
         h = self.ax.scatter(self.locs[idx, 0], self.locs[idx, 1], s, c, marker,
                             *args, **kwargs)
         self._mark_handles.append(h)
@@ -643,7 +643,7 @@ class SensorMaps(EelFigure):
             Index for sensor dimension, for example array_like of int, or list
             of sensor names.
         """
-        idx = self._sensors.dimindex(select)
+        idx = self._sensors._array_index(select)
         self._selection = np.zeros(len(self._sensors), dtype=bool)
         self._selection[idx] = True
         self._update_mark_plot()

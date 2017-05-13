@@ -2108,7 +2108,7 @@ class TimeSlicer(object):
     def _nudge_time(self, offset):
         if self._time_dim is None:
             return
-        current_i = self._time_dim.dimindex(self._current_time)
+        current_i = self._time_dim._array_index(self._current_time)
         if offset > 0:
             new_i = min(self._time_dim.nsamples - 1, current_i + offset)
         else:

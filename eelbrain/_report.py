@@ -243,7 +243,7 @@ def source_cluster_im(ndvar, surfer_kwargs, mark_sources=None):
 
     # mark sources on the brain
     if mark_sources is not None:
-        mark_sources = np.atleast_1d(ndvar.source.dimindex(mark_sources))
+        mark_sources = np.atleast_1d(ndvar.source._array_index(mark_sources))
         i_hemi_split = np.searchsorted(mark_sources, ndvar.source.lh_n)
         lh_indexes = mark_sources[:i_hemi_split]
         if lh_indexes:

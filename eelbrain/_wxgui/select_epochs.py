@@ -293,7 +293,7 @@ class Document(FileDocument):
                 return self._good_sensor_indices[key]
             else:
                 out = np.ones(len(self.epochs.sensor), bool)
-                out[self.epochs.sensor.dimindex(self.interpolate[case])] = False
+                out[self.epochs.sensor._array_index(self.interpolate[case])] = False
                 if self.good_channels is not None:
                     out = out[self.good_channels]
                 self._good_sensor_indices[key] = out
@@ -331,7 +331,7 @@ class Document(FileDocument):
         self.callbacks.callback('bad_chs_change')
 
     def set_bad_channels_by_name(self, names):
-        self.set_bad_channels(self.epochs.sensor.dimindex(names))
+        self.set_bad_channels(self.epochs.sensor._array_index(names))
 
     def set_case(self, index, state, tag, interpolate):
         if state is not None:
@@ -436,7 +436,7 @@ class Document(FileDocument):
                                    'strlist')
 
         if BAD_CHANNELS in ds.info:
-            bad_channels = self.epochs.sensor.dimindex(ds.info[BAD_CHANNELS])
+            bad_channels = self.epochs.sensor._array_index(ds.info[BAD_CHANNELS])
         else:
             bad_channels = []
 
@@ -1055,7 +1055,7 @@ class Frame(FileFrame):
                 dlg.Destroy()
                 return
         dlg.Destroy()
-        bad_channels = self.doc.epochs.sensor.dimindex(names)
+        bad_channels = self.doc.epochs.sensor._array_index(names)
         self.model.set_bad_channels(bad_channels)
 
     def OnSetInterpolation(self, epoch):

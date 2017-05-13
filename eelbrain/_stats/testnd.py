@@ -1973,7 +1973,7 @@ class _ClusterDist:
             t_ax = y.get_axis('time') - 1
             self._crop_for_permutation = True
             y_perm = y.sub(time=(tstart, tstop))
-            t_slice = y.time.dimindex(slice(tstart, tstop))
+            t_slice = y.time._array_index(slice(tstart, tstop))
             self._crop_idx = FULL_AXIS_SLICE * t_ax + (t_slice,)
             self._uncropped_shape = y.shape[1:]
 

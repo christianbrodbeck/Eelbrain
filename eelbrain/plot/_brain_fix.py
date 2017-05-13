@@ -666,7 +666,7 @@ class Brain(TimeSlicer, surfer.Brain):
         self._frame.SetTitle(unicode(title))
 
     def _update_time(self, t, fixate):
-        index = self._time_dim.dimindex(t)
+        index = self._time_dim._array_index(t)
         if index == self.__time_index:
             return
         self.set_data_time_index(index)

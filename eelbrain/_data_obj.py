@@ -3210,8 +3210,8 @@ class NDVar(object):
                     else:
                         dim = self_dim.intersect(other_dim)
                         crop = True
-                        cs = self_dim.dimindex(dim)
-                        co = other_dim.dimindex(dim)
+                        cs = self_dim._array_index(dim)
+                        co = other_dim._array_index(dim)
                 dims.append(dim)
                 crop_self.append(cs)
                 crop_other.append(co)
@@ -3314,15 +3314,17 @@ class NDVar(object):
         return NDVar(other - self.x, self.dims, self.info.copy(), self.name)
 
     # container ---
-    def _pack_index(self, index):
-        "Convert array-index to semantic index"
+    def _dim_index_unravel(self, index):
+        "Convert ravelled array index to dimension index"
         if self.ndim == 1:
-            return self.dims[0]._index_repr(index)
-        indices = np.unravel_index(index, self.x.shape)
-        if self.has_case:
-            return (indices[0],) + tuple(dim._index_repr(i) for dim, i in
-                                         izip(self.dims[1:], indices[1:]))
-        return tuple(dim._index_repr(i) for dim, i in izip(self.dims, indices))
+            return self.dims[0]._dim_index(index)
+        return self._dim_index(np.unravel_index(index, self.x.shape))
+
+    def _dim_index(self, index):
+        "Convert array index to dimension index"
+        if isinstance(index, tuple):
+            return tuple(dim._dim_index(i) for dim, i in izip(self.dims, index))
+        return self.dims[0]._dim_index(index)
 
     def __getitem__(self, index):
         if isinstance(index, tuple):
@@ -3394,7 +3396,7 @@ class NDVar(object):
             Index appropriate for the NDVar's dimensions. If NDVar has more
             than one dimensions, a tuple of indices.
         """
-        return self._pack_index(np.argmax(self.x))
+        return self._dim_index_unravel(self.x.argmax())
 
     def argmin(self):
         """Find the index of the smallest value.
@@ -3407,7 +3409,7 @@ class NDVar(object):
             Index appropriate for the NDVar's dimensions. If NDVar has more
             than one dimensions, a tuple of indices.
         """
-        return self._pack_index(np.argmin(self.x))
+        return self._dim_index_unravel(self.x.argmin())
 
     def assert_dims(self, dims):
         if self.dimnames != dims:
@@ -3614,7 +3616,7 @@ class NDVar(object):
         for i, (v0, v1) in enumerate(intervals(edges)):
             v0 = edges[i]
             v1 = edges[i + 1]
-            src_idx = idx_prefix + (dim.dimindex((v0, v1)),)
+            src_idx = idx_prefix + (dim._array_index((v0, v1)),)
             dst_idx = idx_prefix + (i,)
             x[dst_idx] = func(self.x[src_idx], axis=axis)
             bins.append((v0, v1))
@@ -4536,7 +4538,7 @@ class NDVar(object):
             dim = self.dims[dimax]
 
             # find index
-            idx = dim.dimindex(idx)
+            idx = dim._array_index(idx)
             index[dimax] = idx
 
             # find corresponding dim
@@ -4658,7 +4660,7 @@ class NDVar(object):
         
         Like :func:`numpy.nonzero`.
         """
-        return tuple(dim._index_repr(index) for dim, index in
+        return tuple(dim._dim_index(index) for dim, index in
                      izip(self.dims, self.x.nonzero()))
 
 
@@ -6926,6 +6928,11 @@ class Dimension(object):
                 return self.name.capitalize()
 
     def dimindex(self, arg):
+        "Convert a dimension index to an array index"
+        # backwards compatibility
+        return self._array_index(arg)
+
+    def _array_index(self, arg):
         """Convert a dimension-semantic index to an array-like index
 
         Subclasses need to handle dimension-specific cases
@@ -6942,9 +6949,9 @@ class Dimension(object):
         if arg is None:
             return None  # pass through None, for example for slice
         elif isinstance(arg, NDVar):
-            return self._dimindex_for_ndvar(arg)
+            return self._array_index_for_ndvar(arg)
         elif isinstance(arg, Var):
-            return self.dimindex(arg.x)
+            return self._array_index(arg.x)
         elif isinstance(arg, np.ndarray):
             if arg.dtype.kind != 'b':
                 raise TypeError("array of type %r not supported as index for "
@@ -6963,18 +6970,18 @@ class Dimension(object):
                 raise ValueError("Tuple indexes signify intervals and need to "
                                  "be of length 1, 2 or 3 (got %r for %s)" %
                                  (arg, self._dimname()))
-            return self._dimindex_for_slice(*arg)
+            return self._array_index_for_slice(*arg)
         elif isinstance(arg, list):
             if len(arg) == 0:
                 return np.empty(0, np.intp)
-            return np.array([self.dimindex(a) for a in arg])
+            return np.array([self._array_index(a) for a in arg])
         elif isinstance(arg, slice):
-            return self._dimindex_for_slice(arg.start, arg.stop, arg.step)
+            return self._array_index_for_slice(arg.start, arg.stop, arg.step)
         else:
             raise TypeError("Unknown index type for %s: %r" %
                             (self._dimname(), arg))
 
-    def _dimindex_for_ndvar(self, arg):
+    def _array_index_for_ndvar(self, arg):
         if arg.x.dtype.kind != 'b':
             raise IndexError("Only NDVars with boolean data can serve "
                              "as indexes. Got %s." % repr(arg))
@@ -6987,7 +6994,7 @@ class Dimension(object):
         else:
             return arg.x
 
-    def _dimindex_for_slice(self, start, stop=None, step=None):
+    def _array_index_for_slice(self, start, stop=None, step=None):
         if step is not None and not isinstance(step, Integral):
             raise TypeError("Slice index step for %s must be int, not %r" %
                             (self._dimname(), step))
@@ -6995,7 +7002,7 @@ class Dimension(object):
         if start is None:
             start_ = None
         else:
-            start_ = self.dimindex(start)
+            start_ = self._array_index(start)
             if not isinstance(start_, int):
                 raise TypeError("%r is not an unambiguous slice start for %s" %
                                 (start, self._dimname()))
@@ -7003,7 +7010,7 @@ class Dimension(object):
         if stop is None:
             stop_ = None
         else:
-            stop_ = self.dimindex(stop)
+            stop_ = self._array_index(stop)
             if not isinstance(stop_, int):
                 raise TypeError("%r is not an unambiguous slice start for %s" %
                                 (stop, self._dimname()))
@@ -7016,16 +7023,16 @@ class Dimension(object):
         else:
             return '%s dimension (%r)' % (self.__class__.__name__, self.name)
 
-    def _index_repr(self, arg):
-        "Convert an array-like index to a dimension-semantic index"
+    def _dim_index(self, arg):
+        "Convert an array index to a dimension index"
         if isinstance(arg, slice):
-            return slice(None if arg.start is None else self._index_repr(arg.start),
-                         None if arg.stop is None else self._index_repr(arg.stop),
+            return slice(None if arg.start is None else self._dim_index(arg.start),
+                         None if arg.stop is None else self._dim_index(arg.stop),
                          arg.step)
         elif np.isscalar(arg):
             return arg
         else:
-            return [self._index_repr(i) for i in index_to_int_array(arg, len(self))]
+            return [self._dim_index(i) for i in index_to_int_array(arg, len(self))]
 
     def intersect(self, dim, check_dims=True):
         """Create a Dimension that is the intersection with dim
@@ -7152,8 +7159,8 @@ class Case(Dimension):
                 None if scalar else FixedLocator(np.arange(len(self)), 10),
                 self._axis_label(label))
 
-    def dimindex(self, arg):
-        if isinstance(arg, self.DIMINDEX_RAW_TYPES):
+    def _array_index(self, arg):
+        if isinstance(arg, self._DIMINDEX_RAW_TYPES):
             return arg
         elif isinstance(arg, Var) and arg.x.dtype.kind in 'bi':
             return arg.x
@@ -7163,7 +7170,7 @@ class Case(Dimension):
             raise TypeError("Unknown index type for case dimension: %r" %
                             (arg,))
 
-    def _index_repr(self, arg):
+    def _dim_index(self, arg):
         return arg
 
 
@@ -7236,25 +7243,25 @@ class Categorial(Dimension):
                 FixedLocator(np.arange(len(self))),
                 self._axis_label(label))
 
-    def dimindex(self, arg):
+    def _array_index(self, arg):
         if isinstance(arg, basestring):
             if arg in self.values:
                 return self.values.index(arg)
             else:
                 raise IndexError(arg)
         elif isinstance(arg, self.__class__):
-            return [self.dimindex(v) for v in arg.values]
+            return [self._array_index(v) for v in arg.values]
         else:
-            return super(Categorial, self).dimindex(arg)
+            return super(Categorial, self)._array_index(arg)
 
     def _diminfo(self):
         return "%s" % self.name.capitalize()
 
-    def _index_repr(self, index):
+    def _dim_index(self, index):
         if isinstance(index, Integral):
             return self.values[index]
         else:
-            return Dimension._index_repr(self, index)
+            return Dimension._dim_index(self, index)
 
     def intersect(self, dim, check_dims=False):
         """Create a dimension object that is the intersection with dim
@@ -7384,8 +7391,8 @@ class Scalar(Dimension):
             start = self.values[0]
 
         if nbins is not None:
-            istop = len(self) if stop is None else self.dimindex(stop)
-            istart = 0 if start is None else self.dimindex(start)
+            istop = len(self) if stop is None else self._array_index(stop)
+            istart = 0 if start is None else self._array_index(start)
             n_source_steps = istop - istart
             if n_source_steps % nbins != 0:
                 raise ValueError("length %i source dimension can not be "
@@ -7435,7 +7442,7 @@ class Scalar(Dimension):
         ds['%s_max' % self.name] = Var([self.values[w[-1]] for w in where])
         return ds
 
-    def dimindex(self, arg):
+    def _array_index(self, arg):
         if isinstance(arg, self.__class__):
             s_idx, a_idx = np.nonzero(self.values[:, None] == arg.values)
             return s_idx[np.argsort(a_idx)]
@@ -7451,9 +7458,9 @@ class Scalar(Dimension):
                                  (arg, np.setdiff1d(arg, self.values)))
             return np.digitize(arg, self.values, True)
         else:
-            return Dimension.dimindex(self, arg)
+            return Dimension._array_index(self, arg)
 
-    def _dimindex_for_slice(self, start, stop=None, step=None):
+    def _array_index_for_slice(self, start, stop=None, step=None):
         if start is not None:
             start = digitize_slice_endpoint(start, self.values)
         if stop is not None:
@@ -7464,11 +7471,11 @@ class Scalar(Dimension):
         return "%s [%s, %s]" % (self.name.capitalize(),
                                 self.values.min(), self.values.max())
 
-    def _index_repr(self, index):
+    def _dim_index(self, index):
         if np.isscalar(index):
             return self.values[index]
         else:
-            return Dimension._index_repr(self, index)
+            return Dimension._dim_index(self, index)
 
     def intersect(self, dim, check_dims=False):
         """Create a dimension object that is the intersection with dim
@@ -7656,7 +7663,7 @@ class Sensor(Dimension):
         """
         return Dataset(('n_sensors', Var(x.sum(1))))
 
-    def dimindex(self, arg):
+    def _array_index(self, arg):
         "Convert a dimension-semantic index to an array-like index"
         if isinstance(arg, basestring):
             return self.channel_idx[arg]
@@ -7666,13 +7673,13 @@ class Sensor(Dimension):
                                            arg.dtype.kind == 'i'):
             return arg
         else:
-            return super(Sensor, self).dimindex(arg)
+            return super(Sensor, self)._array_index(arg)
 
-    def _index_repr(self, index):
+    def _dim_index(self, index):
         if np.isscalar(index):
             return self.names[index]
         else:
-            return Dimension._index_repr(self, index)
+            return Dimension._dim_index(self, index)
 
     def _generate_connectivity(self):
         raise RuntimeError("Sensor connectivity is not defined. Use "
@@ -8544,9 +8551,9 @@ class SourceSpace(Dimension):
         coords = np.vstack(coords)
         return coords
 
-    def dimindex(self, arg):
+    def _array_index(self, arg):
         if isinstance(arg, MNE_LABEL):
-            return self._dimindex_label(arg)
+            return self._array_index_label(arg)
         elif isinstance(arg, basestring):
             if arg == 'lh':
                 return slice(self.lh_n)
@@ -8558,7 +8565,7 @@ class SourceSpace(Dimension):
             else:
                 m = self._vertex_re.match(arg)
                 if m is None:
-                    return self._dimindex_label(arg)
+                    return self._array_index_label(arg)
                 else:
                     hemi, vertex = m.groups()
                     vertex = int(vertex)
@@ -8589,11 +8596,11 @@ class SourceSpace(Dimension):
             if all(a in self.parc.cells for a in arg):
                 return self.parc.isin(arg)
             else:
-                return [self.dimindex(a) for a in arg]
+                return [self._array_index(a) for a in arg]
         else:
-            return super(SourceSpace, self).dimindex(arg)
+            return super(SourceSpace, self)._array_index(arg)
 
-    def _dimindex_label(self, label):
+    def _array_index_label(self, label):
         if isinstance(label, basestring):
             if self.parc is None:
                 raise RuntimeError("SourceSpace has no parcellation")
@@ -8603,12 +8610,12 @@ class SourceSpace(Dimension):
                 raise KeyError(err)
             idx = self.parc == label
         elif label.hemi == 'both':
-            lh_idx = self._dimindex_hemilabel(label.lh)
-            rh_idx = self._dimindex_hemilabel(label.rh)
+            lh_idx = self._array_index_hemilabel(label.lh)
+            rh_idx = self._array_index_hemilabel(label.rh)
             idx = np.hstack((lh_idx, rh_idx))
         else:
             idx = np.zeros(len(self), dtype=np.bool8)
-            idx_part = self._dimindex_hemilabel(label)
+            idx_part = self._array_index_hemilabel(label)
             if label.hemi == 'lh':
                 idx[:self.lh_n] = idx_part
             elif label.hemi == 'rh':
@@ -8619,7 +8626,7 @@ class SourceSpace(Dimension):
 
         return idx
 
-    def _dimindex_hemilabel(self, label):
+    def _array_index_hemilabel(self, label):
         if label.hemi == 'lh':
             stc_vertices = self.vertno[0]
         else:
@@ -8627,14 +8634,14 @@ class SourceSpace(Dimension):
         idx = np.in1d(stc_vertices, label.vertices, True)
         return idx
 
-    def _index_repr(self, index):
+    def _dim_index(self, index):
         if np.isscalar(index):
             if index >= self.lh_n:
                 return 'R%i' % (self.rh_vertno[index - self.lh_n])
             else:
                 return 'L%i' % (self.lh_vertno[index])
         else:
-            return Dimension._index_repr(self, index)
+            return Dimension._dim_index(self, index)
 
     def get_source_space(self, subjects_dir=None):
         "Read the corresponding MNE source space"
@@ -8659,7 +8666,7 @@ class SourceSpace(Dimension):
         index : NDVar of bool
             Index into the source space dim that corresponds to the label.
         """
-        idx = self._dimindex_label(label)
+        idx = self._array_index_label(label)
         if isinstance(label, basestring):
             name = label
         else:
@@ -9016,7 +9023,7 @@ class UTS(Dimension):
         ds['duration'] = ds.eval("tstop - tstart")
         return ds
 
-    def dimindex(self, arg):
+    def _array_index(self, arg):
         if np.isscalar(arg):
             i = int(round((arg - self.tmin) / self.tstep))
             if 0 <= i < self.nsamples:
@@ -9060,11 +9067,11 @@ class UTS(Dimension):
 
             return slice(start, stop, step)
         elif isinstance(arg, np.ndarray) and arg.dtype.kind in 'fi':
-            return np.array([self.dimindex(i) for i in arg])
+            return np.array([self._array_index(i) for i in arg])
         else:
-            return super(UTS, self).dimindex(arg)
+            return super(UTS, self)._array_index(arg)
 
-    def _dimindex_for_slice(self, start, stop=None, step=None):
+    def _array_index_for_slice(self, start, stop=None, step=None):
         "Create a slice into the time axis"
         if (start is not None) and (stop is not None) and (start >= stop):
             raise ValueError("tstart must be smaller than tstop")
@@ -9101,15 +9108,15 @@ class UTS(Dimension):
 
         return slice(start_, stop_, step_)
 
-    def _index_repr(self, arg):
+    def _dim_index(self, arg):
         if isinstance(arg, slice):
-            return slice(None if arg.start is None else self._index_repr(arg.start),
-                         None if arg.stop is None else self._index_repr(arg.stop),
+            return slice(None if arg.start is None else self._dim_index(arg.start),
+                         None if arg.stop is None else self._dim_index(arg.stop),
                          None if arg.step is None else arg.step * self.tstep)
         elif np.isscalar(arg):
             return round(self.tmin + arg * self.tstep, self._n_decimals)
         else:
-            return Dimension._index_repr(self, arg)
+            return Dimension._dim_index(self, arg)
 
     def intersect(self, dim, check_dims=True):
         """Create a UTS dimension that is the intersection with dim

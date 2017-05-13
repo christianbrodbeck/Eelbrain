@@ -490,11 +490,11 @@ def test_dim_categorial():
 
     # indexing
     sub_values = values[:2]
-    idx = dim.dimindex(sub_values)
+    idx = dim._array_index(sub_values)
     eq_(dim[idx], Categorial(name, sub_values))
-    eq_(dim.dimindex('a'), values.index('a'))
-    eq_(dim.dimindex('abc'), values.index('abc'))
-    assert_raises(TypeError, dim.dimindex, ('a', 'b', 'c'))
+    eq_(dim._array_index('a'), values.index('a'))
+    eq_(dim._array_index('abc'), values.index('abc'))
+    assert_raises(TypeError, dim._array_index, ('a', 'b', 'c'))
 
     # intersection
     dim2 = Categorial(name, ['c', 'b', 'e'])
@@ -511,12 +511,12 @@ def test_dim_uts():
     uts = UTS(-0.1, 0.005, 301)
 
     # basic indexing
-    assert_raises(ValueError, uts.dimindex, 1.5)
-    assert_raises(ValueError, uts.dimindex, -.15)
+    assert_raises(ValueError, uts._array_index, 1.5)
+    assert_raises(ValueError, uts._array_index, -.15)
 
     # make sure indexing rounds correctly for floats
     for i, s in enumerate(np.arange(0, 1.4, 0.05)):
-        idx = uts.dimindex((-0.1 + s, s))
+        idx = uts._array_index((-0.1 + s, s))
         eq_(idx.start, 10 * i)
         eq_(idx.stop, 20 + 10 * i)
 
@@ -525,7 +525,7 @@ def test_dim_uts():
     uts2 = UTS(0, 0.01, 20)
     intersection = uts1.intersect(uts2)
     eq_(intersection, uts2)
-    idx = uts1.dimindex((0, 0.2))
+    idx = uts1._array_index((0, 0.2))
     eq_(uts1[idx], uts2)
 
 
@@ -971,11 +971,11 @@ def test_ndvar_index(x, dimname, index, a_index, index_repr=True):
     index_prefix = FULL_AXIS_SLICE * ax
     if dimname != 'case':
         dim = x.get_dim(dimname)
-        assert_equal(dim.dimindex(index), a_index)
+        assert_equal(dim._array_index(index), a_index)
         if index_repr is not False:
             if index_repr is True:
                 index_repr = index
-            eq_(dim._index_repr(a_index), index_repr)
+            eq_(dim._dim_index(a_index), index_repr)
     x_array = x.x[index_prefix + (a_index,)]
     x1 = x.sub(**{dimname: index})
     x2 = x[index_prefix + (index,)]
@@ -1352,7 +1352,7 @@ def test_sensor():
     eq_(s1, sensor[[0, 1]])
     assert_not_equal(s1, s2)
     eq_(s1.intersect(s2), sensor[[1]])
-    eq_(sensor._index_repr(np.array([0, 1, 1], bool)), ['2', '3'])
+    eq_(sensor._dim_index(np.array([0, 1, 1], bool)), ['2', '3'])
 
 
 def test_shuffle():
@@ -1378,11 +1378,11 @@ def test_source_space():
 
     src = datasets._mne_source_space(subject, 'ico-5', mri_sdir)
     source = SourceSpace.from_mne_source_spaces(src, 'ico-5', mri_sdir)
-    source_v1 = source[source.dimindex(label_v1)]
+    source_v1 = source[source._array_index(label_v1)]
     eq_(source_v1, SourceSpace.from_mne_source_spaces(src, 'ico-5', mri_sdir,
                                                       label=label_v1))
-    source_ba1_v1 = source[source.dimindex(label_ba1_v1)]
-    source_v1_mt = source[source.dimindex(label_v1_mt)]
+    source_ba1_v1 = source[source._array_index(label_ba1_v1)]
+    source_v1_mt = source[source._array_index(label_v1_mt)]
     source_v1_intersection = source_ba1_v1.intersect(source_v1_mt)
     assert_source_space_equal(source_v1, source_v1_intersection)
 
@@ -1405,16 +1405,16 @@ def test_source_space():
         eq_(ds[i, 'location'], parc[i].name)
 
     # multiple labels
-    lingual_index = source.dimindex('lingual-lh')
-    cuneus_index = source.dimindex('cuneus-lh')
-    assert_array_equal(source.dimindex(('cuneus-lh', 'lingual-lh')),
+    lingual_index = source._array_index('lingual-lh')
+    cuneus_index = source._array_index('cuneus-lh')
+    assert_array_equal(source._array_index(('cuneus-lh', 'lingual-lh')),
                        np.logical_or(cuneus_index, lingual_index))
     lingual_source = source[lingual_index]
     cuneus_source = source[cuneus_index]
-    assert_raises(IndexError, lingual_source.dimindex, cuneus_source)
-    sub_source = source[source.dimindex(('cuneus-lh', 'lingual-lh'))]
-    eq_(sub_source[sub_source.dimindex('lingual-lh')], lingual_source)
-    eq_(sub_source[sub_source.dimindex('cuneus-lh')], cuneus_source)
+    assert_raises(IndexError, lingual_source._array_index, cuneus_source)
+    sub_source = source[source._array_index(('cuneus-lh', 'lingual-lh'))]
+    eq_(sub_source[sub_source._array_index('lingual-lh')], lingual_source)
+    eq_(sub_source[sub_source._array_index('cuneus-lh')], cuneus_source)
     eq_(len(sub_source), len(lingual_source) + len(cuneus_source))
 
     # indexing
@@ -1422,10 +1422,10 @@ def test_source_space():
     assert_array_equal([i for i in sub_source], tgt)
     assert_array_equal([sub_source[i] for i in xrange(len(sub_source))], tgt)
     # hemisphere indexing
-    lh = source.dimindex('lh')
+    lh = source._array_index('lh')
     source_lh = source[lh]
-    eq_(source_lh.dimindex('rh'), slice(0, 0))
-    eq_(source_lh.dimindex('lh'), slice(len(source_lh)))
+    eq_(source_lh._array_index('rh'), slice(0, 0))
+    eq_(source_lh._array_index('lh'), slice(len(source_lh)))
 
 
 def test_var():

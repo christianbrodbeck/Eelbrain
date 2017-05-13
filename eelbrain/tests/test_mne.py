@@ -234,7 +234,7 @@ def test_source_space():
         assert_array_equal(conn, _matrix_graph(mne_conn))
 
         # sub-space connectivity
-        sssub = ss[ss.dimindex('superiortemporal-rh')]
+        sssub = ss[ss._array_index('superiortemporal-rh')]
         ss2 = SourceSpace(vertno, subject, 'ico-4', subjects_dir, 'aparc')
-        ss2sub = ss2[ss2.dimindex('superiortemporal-rh')]
+        ss2sub = ss2[ss2._array_index('superiortemporal-rh')]
         assert_array_equal(sssub.connectivity(), ss2sub.connectivity())

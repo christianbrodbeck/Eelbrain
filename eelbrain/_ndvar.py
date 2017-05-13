@@ -459,7 +459,7 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
     dim_obj = x.get_dim(dim)
     if np.any(low_var):
         raise ValueError("Low variance at %s = %s" %
-                         (dim, dim_obj._index_repr(low_var)))
+                         (dim, dim_obj._dim_index(low_var)))
 
 
     # find neighbors

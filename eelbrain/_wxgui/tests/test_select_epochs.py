@@ -41,7 +41,7 @@ def test_select_epochs():
 
     # check the file
     ds_ = load.unpickle(path)
-    eq_(doc.epochs.sensor.dimindex(ds_.info['bad_channels']), [1])
+    eq_(doc.epochs.sensor._array_index(ds_.info['bad_channels']), [1])
 
     # load the file
     ds = datasets.get_mne_sample(sns=True)
