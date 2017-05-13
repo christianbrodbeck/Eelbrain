@@ -169,7 +169,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         else:
             colors = find_cell_colors(color_x, colors)
 
-        layout = Layout(nax, 2, 4, *args, share_axes=True, **kwargs)
+        layout = Layout(nax, 2, 4, *args, autoscale='y', **kwargs)
         EelFigure.__init__(self, frame_title(Y, X, Xax), layout)
         clip = layout.frame
 
@@ -286,17 +286,6 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         self.draw()
 
         self._update_ui_cluster_button()
-
-    def set_xlim(self, xmin, xmax):
-        "Adjust the x-axis limits on all axes"
-        for ax in self._axes:
-            ax.set_xlim(xmin, xmax)
-        self.draw()
-
-    def set_ylim(self, bottom=None, top=None):
-        "Adjust the y-axis limits on all axes"
-        self._axes[0].set_ylim(bottom, top)
-        self.draw()
 
 
 class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
