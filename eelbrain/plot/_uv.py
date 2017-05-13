@@ -704,6 +704,8 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
     title : str
         Figure title.
     """
+    _name = "Timeplot"
+
     def __init__(self, y, categories, time, match=None, sub=None, ds=None,
                  # data plotting
                  main=np.mean, spread='sem', x_jitter=False,
