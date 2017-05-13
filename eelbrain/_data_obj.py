@@ -3049,64 +3049,73 @@ class NDVar(object):
     >>> ndvar -= ndvar.mean(time=(None, 0))
 
     """
-    def __init__(self, x, dims=('case',), info={}, name=None):
+    def __init__(self, x, dims, info={}, name=None):
         # check data shape
         if isinstance(dims, Dimension) or isinstance(dims, basestring):
-            dims_ = (dims,)
+            dims_ = [dims]
         else:
-            dims_ = tuple(dims)
-            if not all(isinstance(dim, Dimension) or dim == 'case' for dim in dims_):
-                raise TypeError(
-                    "Invalid dimension in dims=%r. All dimensions need to be "
-                    "Dimension subclass objects, with the exception of the "
-                    "first dimension which can also be 'class'" % (dims,))
+            dims_ = list(dims)
+
         x = np.asarray(x)
         if len(dims_) != x.ndim:
-            err = ("Unequal number of dimensions (data: %i, dims: %i)" %
-                   (x.ndim, len(dims_)))
-            raise DimensionMismatchError(err)
+            raise DimensionMismatchError(
+                "Unequal number of dimensions (data: %i, dims: %i)" %
+                (x.ndim, len(dims_)))
+
+        first_dim = dims_[0]
+        if isinstance(first_dim, basestring) and first_dim == 'case':
+            dims_[0] = Case(len(x))
+
+        if not all(isinstance(dim, Dimension) for dim in dims_):
+            raise TypeError(
+                "Invalid dimension in dims=%r. All dimensions need to be "
+                "Dimension subclass objects, with the exception of the "
+                "first dimension which can also be 'case'" % (dims,))
+        elif any(isinstance(dim, Case) for dim in dims_[1:]):
+            raise TypeError(
+                "Invalid dimension in dims=%r. Only the first dimension can be "
+                "Case." % (dims,))
 
         # check dimensions
-        has_case = isinstance(dims_[0], basestring)
-        for dim, n in zip(dims_, x.shape)[has_case:]:
+        for dim, n in zip(dims_, x.shape):
             if len(dim) != n:
                 raise DimensionMismatchError(
                     "Dimension %r length mismatch: %i in data, %i in dimension "
                     "%r" % (dim.name, n, len(dim), dim.name))
 
-        self.__setstate__({'x': x, 'dims': dims_, 'info': dict(info),
-                           'name': name})
+        self.x = x
+        self.dims = tuple(dims_)
+        self.info = dict(info)
+        self.name = name
+        self._init_secondary()
+
+    def _init_secondary(self):
+        self.has_case = isinstance(self.dims[0], Case)
+        self._truedims = self.dims[self.has_case:]
+        self.dimnames = tuple(dim.name for dim in self.dims)
+        self.ndim = len(self.dims)
+        self.shape = self.x.shape
+        self._dim_2_ax = dict(izip(self.dimnames, xrange(self.ndim)))
+        # Dimension attributes
+        for dim in self._truedims:
+            if hasattr(self, dim.name):
+                raise ValueError("Invalid dimension name: %r (name is reserved "
+                                 "for an NDVar attribute)" % dim.name)
+            else:
+                setattr(self, dim.name, dim)
 
     def __setstate__(self, state):
         # backwards compatibility
         if 'properties' in state:
             state['info'] = state.pop('properties')
+        if isinstance(state['dims'][0], basestring):
+            state['dims'] = (Case(len(state['x'])),) + state['dims'][1:]
 
-        # initialize attributes
-        self.dims = dims = state['dims']
-        self.has_case = (dims[0] == 'case')
-        self._truedims = truedims = dims[self.has_case:]
-
-        # dimnames
-        self.dimnames = tuple(dim.name for dim in truedims)
-        if self.has_case:
-            self.dimnames = ('case',) + self.dimnames
-
-        self.x = x = state['x']
+        self.x = state['x']
+        self.dims = state['dims']
         self.name = state['name']
         self.info = state['info']
-        # derived
-        self.ndim = len(dims)
-        self.shape = x.shape
-        self._dim_2_ax = dict(zip(self.dimnames, xrange(self.ndim)))
-        # attr
-        for dim in truedims:
-            if hasattr(self, dim.name):
-                err = ("invalid dimension name: %r (already present as NDVar"
-                       " attr)" % dim.name)
-                raise ValueError(err)
-            else:
-                setattr(self, dim.name, dim)
+        self._init_secondary()
 
     def __getstate__(self):
         return {'dims': self.dims,
@@ -3325,16 +3334,10 @@ class NDVar(object):
         return len(self.x)
 
     def __repr__(self):
-        rep = '<NDVar %(name)r: %(dims)s>'
-        if self.has_case:
-            dims = [(len(self.x), 'case')]
-        else:
-            dims = []
-        dims.extend([(len(dim), dim.name) for dim in self._truedims])
-
-        dims = ' X '.join('%i (%s)' % fmt for fmt in dims)
-        args = dict(dims=dims, name=self.name or '')
-        return rep % args
+        return '<NDVar %(name)r: %(dims)s>' % {
+            'name': self.name or '',
+            'dims': ', '.join('%i %s' % (len(dim), dim.name) for dim in
+                              self.dims)}
 
     def abs(self, name=None):
         """Compute the absolute values
@@ -3451,7 +3454,7 @@ class NDVar(object):
         if 'summary_info' in info:
             info.update(info.pop('summary_info'))
 
-        return NDVar(x, self.dims, info, name or self.name)
+        return NDVar(x, (Case(len(x)),) + self.dims[1:], info, name or self.name)
 
     def _aggregate_over_dims(self, axis, regions, func):
         name = regions.pop('name', self.name)
@@ -3474,22 +3477,21 @@ class NDVar(object):
         elif isinstance(axis, NDVar):
             if axis.ndim == 1:
                 dim = axis.dims[0]
-                dim_axis = self.get_axis(dim.name)
                 if self.get_dim(dim.name) != dim:
                     raise DimensionMismatchError("Index dimension %s does not "
                                                  "match data dimension" %
                                                  dim.name)
+                dim_axis = self.get_axis(dim.name)
                 index = FULL_AXIS_SLICE * dim_axis + (axis.x,)
                 x = func(self.x[index], dim_axis)
-                dims = (dim_ for dim_ in self.dims if not dim_ == dim)
+                dims = tuple(self.dims[i] for i in xrange(self.ndim) if i != dim_axis)
             else:
                 # if the index does not contain all dimensions, numpy indexing
                 # is weird
                 if self.ndim - self.has_case != axis.ndim - axis.has_case:
                     raise NotImplementedError(
                         "If the index is not one dimensional, it needs to have "
-                        "the same dimensions as the data."
-                    )
+                        "the same dimensions as the data.")
                 dims, self_x, index = self._align(axis)
                 if self.has_case:
                     if axis.has_case:
@@ -3506,19 +3508,13 @@ class NDVar(object):
         elif isinstance(axis, basestring):
             axis = self._dim_2_ax[axis]
             x = func(self.x, axis=axis)
-            dims = (self.dims[i] for i in xrange(self.ndim) if i != axis)
+            dims = tuple(self.dims[i] for i in xrange(self.ndim) if i != axis)
         else:
             axes = tuple(self._dim_2_ax[dim_name] for dim_name in axis)
             x = func(self.x, axes)
-            dims = (self.dims[i] for i in xrange(self.ndim) if i not in axes)
+            dims = tuple(self.dims[i] for i in xrange(self.ndim) if i not in axes)
 
-        dims = tuple(dims)
-        if len(dims) == 0:
-            return x
-        elif dims == ('case',):
-            return Var(x, name, info=self.info.copy())
-        else:
-            return NDVar(x, dims, self.info.copy(), name)
+        return self._package_aggregated_output(x, dims, self.info.copy(), name)
 
     def astype(self, dtype):
         """Copy of the NDVar with data cast to the specified type
@@ -3587,8 +3583,6 @@ class NDVar(object):
             else:
                 raise TypeError("NDVar has more then 1 dimensions, the dim "
                                 "argument needs to be specified")
-        elif dim == 'case':
-            raise NotImplementedError("dim='case'")
 
         # summary-func
         if func is None:
@@ -4149,21 +4143,22 @@ class NDVar(object):
         from ._stats import stats
 
         if not self.has_case:
-            msg = ("Can only apply regression to NDVar with case dimension")
-            raise DimensionMismatchError(msg)
+            raise DimensionMismatchError(
+                "Can only apply regression to NDVar with case dimension")
 
         x = asmodel(x)
         if len(x) != len(self):
-            msg = ("Predictors do not have same number of cases (%i) as the "
-                   "dependent variable (%i)" % (len(x), len(self)))
-            raise DimensionMismatchError(msg)
+            raise DimensionMismatchError(
+                "Predictors do not have same number of cases (%i) as the "
+                "dependent variable (%i)" % (len(x), len(self)))
 
         betas = stats.betas(self.x, x)[1:]  # drop intercept
         info = self.info.copy()
         info.update(meas='beta', unit=None)
         if 'summary_info' in info:
             del info['summary_info']
-        return NDVar(betas, self.dims, info, name or self.name)
+        return NDVar(betas, ('case',) + self.dims[1:], info,
+                     name or self.name)
 
     def ols_t(self, x, name=None):
         """
@@ -4194,18 +4189,28 @@ class NDVar(object):
         from ._stats import stats
 
         if not self.has_case:
-            msg = "Can only apply regression to NDVar with case dimension"
-            raise DimensionMismatchError(msg)
+            raise DimensionMismatchError(
+                "Can only apply regression to NDVar with case dimension")
 
         x = asmodel(x)
         if len(x) != len(self):
-            msg = ("Predictors do not have same number of cases (%i) as the "
-                   "dependent variable (%i)" % (len(x), len(self)))
-            raise DimensionMismatchError(msg)
+            raise DimensionMismatchError(
+                "Predictors do not have same number of cases (%i) as the "
+                "dependent variable (%i)" % (len(x), len(self)))
 
         t = stats.lm_t(self.x, x._parametrize())[1:]  # drop intercept
-        info = self.info.copy()
-        return NDVar(t, self.dims, info, name or self.name)
+        return NDVar(t, ('case',) + self.dims[1:], self.info.copy(),
+                     name or self.name)
+
+    @staticmethod
+    def _package_aggregated_output(x, dims, info, name):
+        ndims = len(dims)
+        if ndims == 0:
+            return x
+        elif ndims == 1 and isinstance(dims[0], Case):
+            return Var(x, name, info=info)
+        else:
+            return NDVar(x, dims, info, name)
 
     def repeat(self, repeats, name=None):
         """Repeat slices of the NDVar along the case dimension
@@ -4223,7 +4228,7 @@ class NDVar(object):
             dims = self.dims
         else:
             x = self.x[newaxis].repeat(repeats, axis=0)
-            dims = ('case',) + self.dims
+            dims = (Case(repeats),) + self.dims
         return NDVar(x, dims, self.info.copy(), name or self.name)
 
     def residuals(self, x, name=None):
@@ -4470,13 +4475,7 @@ class NDVar(object):
             info = self.info.copy()
             if 'summary_info' in info:
                 info.update(info.pop('summary_info'))
-
-            if len(dims) == 0:
-                return x
-            elif dims == ['case']:
-                return Var(x, name, info=info)
-            else:
-                return NDVar(x, dims, info, name)
+            return self._package_aggregated_output(x, dims, info, name)
 
     def sub(self, *args, **kwargs):
         """Retrieve a slice through the NDVar.
@@ -4537,10 +4536,7 @@ class NDVar(object):
             dim = self.dims[dimax]
 
             # find index
-            if dimax >= self.has_case:
-                idx = dim.dimindex(idx)
-            else:
-                idx = dimindex_case(idx)
+            idx = dim.dimindex(idx)
             index[dimax] = idx
 
             # find corresponding dim
@@ -4549,7 +4545,7 @@ class NDVar(object):
             elif dimax >= self.has_case:
                 dims[dimax] = dim[idx]
             else:
-                dims[dimax] = dim
+                dims[dimax] = 'case'
 
         # adjust index dimension
         if sum(isinstance(idx, np.ndarray) for idx in index) > 1:
@@ -4567,13 +4563,9 @@ class NDVar(object):
                     ndim_increment += 1
 
         # create NDVar
-        dims = tuple(dim for dim in dims if dim is not None)
-        if dims == ('case',):
-            return Var(self.x[tuple(index)], var_name, info=info)
-        elif dims:
-            return NDVar(self.x[tuple(index)], dims, info, var_name)
-        else:
-            return self.x[tuple(index)]
+        return self._package_aggregated_output(
+            self.x[tuple(index)], tuple(dim for dim in dims if dim is not None),
+            info, var_name)
 
     def sum(self, dims=(), **regions):
         """Compute the sum over given dimensions
@@ -4666,8 +4658,8 @@ class NDVar(object):
         
         Like :func:`numpy.nonzero`.
         """
-        return tuple(index if dim == 'case' else dim._index_repr(index) for
-                     dim, index in izip(self.dims, self.x.nonzero()))
+        return tuple(dim._index_repr(index) for dim, index in
+                     izip(self.dims, self.x.nonzero()))
 
 
 def extrema(x, axis=0):
@@ -6769,21 +6761,6 @@ class Parametrization(object):
 
 # ---NDVar dimensions---
 
-DIMINDEX_RAW_TYPES = (int, slice, list)
-
-
-def dimindex_case(arg):
-    if isinstance(arg, DIMINDEX_RAW_TYPES):
-        return arg
-    elif isinstance(arg, Var):
-        return arg.x
-    elif isinstance(arg, np.ndarray) and arg.dtype.kind in 'bi':
-        return arg
-    else:
-        raise TypeError("Unknown index type for case dimension: %s"
-                        % repr(arg))
-
-
 def _subgraph_edges(connectivity, int_index):
     "Extract connectivity for a subset of a graph"
     idx = np.logical_and(np.in1d(connectivity[:, 0], int_index),
@@ -7127,6 +7104,67 @@ class Dimension(object):
             return _subgraph_edges(self._connectivity,
                                    index_to_int_array(index, len(self)))
         return self._connectivity_type
+
+
+class Case(Dimension):
+    """Case dimension
+    
+    Parameters
+    ----------
+    n : int
+        Number of cases.
+    connectivity : 'grid' | 'none' | array of int, (n_edges, 2)
+        Connectivity between elements. Set to ``"none"`` for no connections or 
+        ``"grid"`` to use adjacency in the sequence of elements as connection. 
+        Set to :class:`numpy.ndarray` to specify custom connectivity. The array
+        should be of shape (n_edges, 2), and each row should specify one 
+        connection [i, j] with i < j, with rows sorted in ascending order. If
+        the array's dtype is uint32, property checks are disabled to improve 
+        efficiency.
+    """
+    _DIMINDEX_RAW_TYPES = (int, slice, list)
+
+    def __init__(self, n, connectivity='none'):
+        Dimension.__init__(self, 'case', connectivity)
+        self.n = n
+
+    def __getstate__(self):
+        out = Dimension.__getstate__(self)
+        out['n'] = self.n
+        return out
+
+    def __setstate__(self, state):
+        Dimension.__setstate__(self, state)
+        self.n = state['n']
+
+    def __len__(self):
+        return self.n
+
+    def __eq__(self, other):
+        return isinstance(other, Case) and other.n == self.n
+
+    def _axis_format(self, scalar, label):
+        if scalar:
+            fmt = FormatStrFormatter('%i')
+        else:
+            fmt = IndexFormatter(np.arange(self.n))
+        return (fmt,
+                None if scalar else FixedLocator(np.arange(len(self)), 10),
+                self._axis_label(label))
+
+    def dimindex(self, arg):
+        if isinstance(arg, self.DIMINDEX_RAW_TYPES):
+            return arg
+        elif isinstance(arg, Var) and arg.x.dtype.kind in 'bi':
+            return arg.x
+        elif isinstance(arg, np.ndarray) and arg.dtype.kind in 'bi':
+            return arg
+        else:
+            raise TypeError("Unknown index type for case dimension: %r" %
+                            (arg,))
+
+    def _index_repr(self, arg):
+        return arg
 
 
 class Categorial(Dimension):

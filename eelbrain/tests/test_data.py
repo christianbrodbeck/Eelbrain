@@ -46,31 +46,32 @@ OPERATORS = ((add, iadd, '+'),
 def test_aggregate():
     "Test aggregation methods"
     ds = datasets.get_uts()
+    drop = ('rm', 'ind', 'YBin', 'YCat')
 
     # don't handle inconsistencies silently
     assert_raises(ValueError, ds.aggregate, 'A%B')
 
-    dsa = ds.aggregate('A%B', drop_bad=True)
+    dsa = ds.aggregate('A%B', drop=drop)
     assert_array_equal(dsa['n'], [15, 15, 15, 15])
     idx1 = ds.eval("logical_and(A=='a0', B=='b0')")
     eq_(dsa['Y', 0], ds['Y', idx1].mean())
 
     # unequal cell counts
     ds = ds[:-3]
-    dsa = ds.aggregate('A%B', drop_bad=True)
+    dsa = ds.aggregate('A%B', drop=drop)
     assert_array_equal(dsa['n'], [15, 15, 15, 12])
     idx1 = ds.eval("logical_and(A=='a0', B=='b0')")
     eq_(dsa['Y', 0], ds['Y', idx1].mean())
 
     # equalize count
-    dsa = ds.aggregate('A%B', drop_bad=True, equal_count=True)
+    dsa = ds.aggregate('A%B', drop=drop, equal_count=True)
     assert_array_equal(dsa['n'], [12, 12, 12, 12])
     idx1_12 = np.logical_and(idx1, idx1.cumsum() <= 12)
     eq_(dsa['Y', 0], ds['Y', idx1_12].mean())
 
     # equalize count with empty cell
     sds = ds.sub("logical_or(A == 'a1', B == 'b1')")
-    dsa = sds.aggregate('A%B', drop_bad=True, equal_count=True)
+    dsa = sds.aggregate('A%B', drop=drop, equal_count=True)
     assert_array_equal(dsa['n'], [12, 12, 12])
 
 

@@ -280,20 +280,20 @@ class _plt_utsnd(object):
     sensors : None | True | numpy index
         The sensors to plot (None or True -> all sensors).
     """
-    def __init__(self, ax, epoch, xdim, linedim, color, sensors=None, **kwargs):
+    def __init__(self, ax, epoch, xdim, line_dim, color, sensors=None, **kwargs):
         if sensors is not None and sensors is not True:
             epoch = epoch.sub(sensor=sensors)
 
-        self._dims = (linedim, xdim)
+        self._dims = (line_dim, xdim)
         x = epoch.get_dim(xdim)._axis_data()
+        line_dim_obj = epoch.get_dim(line_dim)
         if isinstance(color, dict):
-            data = epoch.get_data((linedim, xdim))
-            line_dim = epoch.get_dim(linedim)
+            data = epoch.get_data((line_dim, xdim))
             self.lines = [ax.plot(x, y, color=color[level], label=str(level),
                                   **kwargs)[0] for
-                          y, level in izip(data, line_dim)]
+                          y, level in izip(data, line_dim_obj)]
         else:
-            self.lines = ax.plot(x, epoch.get_data((xdim, linedim)),
+            self.lines = ax.plot(x, epoch.get_data((xdim, line_dim)),
                                  color=color, label=epoch.name, **kwargs)
 
         for y, kwa in _base.find_uts_hlines(epoch):
@@ -301,9 +301,8 @@ class _plt_utsnd(object):
 
         self.epoch = epoch
         self._sensors = sensors
-        # FIXME:  implement actual Case dimension that supports iteration etc.
-        labels = range(len(epoch)) if linedim == 'case' else epoch.get_dim(linedim)
-        self.legend_handles = {name: line for name, line in izip(labels, self.lines)}
+        self.legend_handles = {name: line for name, line in
+                               izip(line_dim_obj, self.lines)}
 
     def remove(self):
         while self.lines:
