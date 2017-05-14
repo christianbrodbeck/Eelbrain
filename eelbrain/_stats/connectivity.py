@@ -12,7 +12,7 @@ class Connectivity(object):
     __slots__ = ('struct', 'custom')
 
     def __init__(self, dims, parc=None):
-        types = tuple(getattr(dim, '_connectivity_type', 'grid') for dim in dims)
+        types = tuple(dim._connectivity_type for dim in dims)
         invalid = set(types).difference(VALID_TYPES)
         if invalid:
             raise RuntimeError("Invalid connectivity type: %s" %

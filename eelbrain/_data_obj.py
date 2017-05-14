@@ -3593,7 +3593,6 @@ class NDVar(object):
                 raise TypeError("nbins needs to be int, got %r" % (nbins,))
             elif nbins < 1:
                 raise ValueError("nbins needs to be >= 1, got %r" % (nbins,))
-            n_bins = nbins
         elif step is None and nbins is None:
             raise TypeError("need to specify one of step and nbins")
 
@@ -3721,11 +3720,7 @@ class NDVar(object):
         """
         ns = []
         dim_info = ["<NDVar %r" % self.name]
-        if self.has_case:
-            ns.append(len(self))
-            dim_info.append("cases")
-
-        for dim in self._truedims:
+        for dim in self.dims:
             ns.append(len(dim))
             dim_info.append(dim._diminfo())
         dim_info[-1] += '>'
@@ -3997,12 +3992,7 @@ class NDVar(object):
         """
         from ._stats.testnd import Connectivity, label_clusters
 
-        if self.has_case:
-            custom = [False] + [dim._connectivity_type == 'custom' for dim in
-                                self.dims[1:]]
-        else:
-            custom = [dim._connectivity_type == 'custom' for dim in self.dims]
-
+        custom = [dim._connectivity_type == 'custom' for dim in self.dims]
         if any(custom):
             if sum(custom) > 1:
                 raise NotImplementedError("More than one non-adjacent dimension")
@@ -4271,14 +4261,14 @@ class NDVar(object):
             Residual for each case and sample (same dimensions as data).
         """
         if not self.has_case:
-            msg = ("Can only apply regression to NDVar with case dimension")
-            raise DimensionMismatchError(msg)
+            raise DimensionMismatchError(
+                "Can only apply regression to NDVar with case dimension")
 
         x = asmodel(x)
         if len(x) != len(self):
-            msg = ("Predictors do not have same number of cases (%i) as the "
-                   "dependent variable (%i)" % (len(x), len(self)))
-            raise DimensionMismatchError(msg)
+            raise DimensionMismatchError(
+                "Predictors do not have same number of cases (%i) as the "
+                "dependent variable (%i)" % (len(x), len(self)))
 
         from ._stats import stats
         res = stats.residuals(self.x, x)
@@ -7193,6 +7183,9 @@ class Case(Dimension):
     def _dim_index(self, arg):
         return arg
 
+    def _diminfo(self):
+        return "cases"
+
 
 class Categorial(Dimension):
     """Simple categorial dimension
@@ -7275,7 +7268,7 @@ class Categorial(Dimension):
             return super(Categorial, self)._array_index(arg)
 
     def _diminfo(self):
-        return "%s" % self.name.capitalize()
+        return self.name.capitalize()
 
     def _dim_index(self, index):
         if isinstance(index, Integral):
