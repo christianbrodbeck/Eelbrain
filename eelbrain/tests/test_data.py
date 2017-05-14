@@ -1060,6 +1060,12 @@ def test_ndvar_indexing():
     eq_(x.sub(source='L10').argmax(), 0.1)
     eq_(x.sub(time=0.1).argmax(), 'L10')
 
+    # set
+    x = ds['uts'].copy()
+    x[:3, :.0] = 0
+    assert_array_equal(x.x[:3, :20], 0.)
+    assert_array_equal(x.x[3:, 20:], ds['uts'].x[3:, 20:])
+
 
 def test_ndvar_summary_methods():
     "Test NDVar methods for summarizing data over axes"

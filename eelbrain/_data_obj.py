@@ -3332,6 +3332,11 @@ class NDVar(object):
         else:
             return self.sub(index)
 
+    def __setitem__(self, key, value):
+        if isinstance(value, NDVar):
+            raise NotImplementedError("Setting NDVar to NDVar")
+        self.x[self._array_index(key)] = value
+
     def __len__(self):
         return len(self.x)
 
@@ -3410,6 +3415,21 @@ class NDVar(object):
             than one dimensions, a tuple of indices.
         """
         return self._dim_index_unravel(self.x.argmin())
+
+    def _array_index(self, args):
+        "convert dimension index to array index"
+        if isinstance(args, NDVar):
+            if args.x.dtype.kind != 'b':
+                raise IndexError("Only boolean NDVar can be used as index")
+            elif args.dims == self.dims:
+                return args.x
+            raise NotImplementedError
+        elif isinstance(args, tuple):
+            return tuple(dim._array_index(i) for dim, i in izip(self.dims, args))
+        elif isinstance(args, np.ndarray) and args.ndim > 1:
+            raise NotImplementedError
+        else:
+            return self.dims[0]._array_index(args)
 
     def assert_dims(self, dims):
         if self.dimnames != dims:
