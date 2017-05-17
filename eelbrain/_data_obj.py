@@ -7636,7 +7636,7 @@ class Sensor(Dimension):
         self._init_secondary()
 
     def __repr__(self):
-        return "<Sensor n=%i, name=%r>" % (self._n_nodes, self.sysname)
+        return "<Sensor n=%i, name=%r>" % (len(self), self.sysname)
 
     def __len__(self):
         return len(self.locs)
