@@ -264,7 +264,8 @@ def dss(ndvar):
     ----------
     .. [1] de Cheveigné, A., & Simon, J. Z. (2008). Denoising based on spatial 
         filtering. Journal of Neuroscience Methods, 171(2), 331–339. 
-        doi:10.1016/j.jneumeth.2008.03.015
+        `10.1016/j.jneumeth.2008.03.015 
+        <https://doi.org/10.1016/j.jneumeth.2008.03.015>`_
 
     """
     dim_names = ndvar.get_dimnames(('case', None, 'time'))

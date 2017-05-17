@@ -256,11 +256,13 @@ References
 
 .. [1] Maris, E., & Oostenveld, R. (2007). Nonparametric
     statistical testing of EEG- and MEG-data. Journal of Neuroscience Methods,
-    164(1), 177-190. doi:10.1016/j.jneumeth.2007.03.024
+    164(1), 177-190. `10.1016/j.jneumeth.2007.03.024
+    <https://doi.org/10.1016/j.jneumeth.2007.03.024>`_
 .. [2] Smith, S. M., and Nichols, T. E. (2009). Threshold-Free Cluster
     Enhancement: Addressing Problems of Smoothing, Threshold Dependence and
     Localisation in Cluster Inference. NeuroImage, 44(1), 83-98.
-    doi:10.1016/j.neuroimage.2008.03.061
+    `10.1016/j.neuroimage.2008.03.061
+    <https://doi.org/10.1016/j.neuroimage.2008.03.061>`_
 
 
 .. _ref-plotting:
