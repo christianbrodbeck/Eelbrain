@@ -614,7 +614,7 @@ class Brain(surfer.Brain):
 
     def remove_labels(self):
         """Remove labels shown with ``Brain.add_ndvar_label``"""
-        surfer.Brain.remove_labels()
+        surfer.Brain.remove_labels(self)
         del self.__labels[:]
 
     def set_parallel_view(self, forward=None, up=None, scale=None):
