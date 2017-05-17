@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """NDVar operations"""
 from collections import defaultdict
 from itertools import izip
@@ -239,12 +241,12 @@ def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
 
 
 def dss(ndvar):
-    """DSS decomposition
+    u"""Denoising source separation (DSS) [1]_
 
     Parameters
     ----------
     ndvar : NDVar (case, dim, time)
-        Data to decompose. DSS is performed over 'case' and 'time' dimensions.
+        Data to decompose. DSS is performed over the case and time dimensions.
 
     Returns
     -------
@@ -255,7 +257,15 @@ def dss(ndvar):
 
     Notes
     -----
-    Uses DSS form mne-sandbox
+    Uses the DSS implementation from the `mne-sandbox 
+    <https://github.com/mne-tools/mne-sandbox>`_.
+    
+    References
+    ----------
+    .. [1] de Cheveigné, A., & Simon, J. Z. (2008). Denoising based on spatial 
+        filtering. Journal of Neuroscience Methods, 171(2), 331–339. 
+        doi:10.1016/j.jneumeth.2008.03.015
+
     """
     dim_names = ndvar.get_dimnames(('case', None, 'time'))
     x = ndvar.get_data(dim_names)
