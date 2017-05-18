@@ -110,8 +110,6 @@ def do_autorun(run=None):
         return CONFIG['autorun']
 
 
-
-
 MEAS_DISPLAY_UNIT = {
     'time': u'ms',
     'V': u'µV',
@@ -170,11 +168,8 @@ def find_axis_params_data(v, label):
         Axis label.
     """
     if isinstance(v, basestring):
-        if v in UNIT_FORMAT:
-            scale = UNIT_FORMAT[v]
-            unit = v
-        else:
-            raise ValueError("Unknown unit: %s" % repr(v))
+        unit = v
+        scale = UNIT_FORMAT.get(v, 1)
     elif isinstance(v, float):
         scale = v
         unit = None
