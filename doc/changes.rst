@@ -21,7 +21,9 @@ New in 0.26
 
   - :func:`table.cast_to_ndvar`
 
-* New methods: :meth:`NDVar.smooth`.
+* New methods: :meth:`NDVar.smooth`,
+  :meth:`MneExperiment.reset` (replacing :meth:`MneExperiment.store_state` and
+  :meth:`MneExperiment.restore_state`),
 
 
 New in 0.25

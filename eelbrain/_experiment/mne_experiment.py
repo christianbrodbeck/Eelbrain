@@ -1064,7 +1064,7 @@ class MneExperiment(FileTree):
 
         # set initial values
         self.set(**state)
-        self.store_state()
+        self._store_state()
         self.brain = None
 
         ########################################################################
@@ -2402,7 +2402,7 @@ class MneExperiment(FileTree):
 
         with self._temporary_state:
             for value in values:
-                self.restore_state(discard_tip=False)
+                self._restore_state(discard_tip=False)
                 self.set(**{field: value})
                 yield value
 
@@ -5663,6 +5663,15 @@ class MneExperiment(FileTree):
         brain = self.plot_brain(surf, title, 'split', ['lat', 'med'], w, clear)
         brain.add_label(label, alpha=0.75)
         return brain
+
+    def reset(self):
+        """Reset all field values to the state at initialization
+        
+        This function can be used in cases where the same MneExperiment instance 
+        is used to perform multiple independent operations, where parameters set 
+        during one operation should not affect the next operation.
+        """
+        self._restore_state(0, False)
 
     def run_mne_analyze(self, modal=False):
         """Run mne_analyze

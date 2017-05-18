@@ -50,9 +50,8 @@ class LayeredDict(dict):
         dict.__init__(self)
 
     def __repr__(self):
-        rep = ("<LayeredDict with %i stored states:\n"
-               "%r>" % (len(self._states), dict.__repr__(self)))
-        return rep
+        return ("<LayeredDict with %i stored states:\n"
+                "%r>" % (len(self._states), dict.__repr__(self)))
 
     def get_stored(self, key, level, default=None):
         """Retrieve a field value from any level
@@ -107,10 +106,10 @@ class _TempStateController(object):
         self.experiment = experiment
 
     def __enter__(self):
-        self.experiment.store_state()
+        self.experiment._store_state()
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.experiment.restore_state()
+        self.experiment._restore_state()
 
 
 class TreeModel(object):
@@ -119,7 +118,7 @@ class TreeModel(object):
 
     Notes
     -----
-    Any subclass should make sure to call the ``.store_state()`` method at the
+    Any subclass should make sure to call the ``._store_state()`` method at the
     end of initialization.
     """
     owner = None  # email address as string (for notification)
@@ -549,7 +548,7 @@ class TreeModel(object):
         if len(v_lists):
             with self._temporary_state:
                 for v_list in product(*v_lists):
-                    self.restore_state(discard_tip=False)
+                    self._restore_state(discard_tip=False)
                     self.set(**dict(zip(iter_fields, v_list)))
 
                     if yield_str:
@@ -593,10 +592,10 @@ class TreeModel(object):
         return string
 
     def _copy_state(self):
-        """Copy of the state that can be used with ``.restore_state()``"""
+        """Copy of the state that can be used with ``._restore_state()``"""
         return self._fields.copy(), self._field_values.copy(), self._params.copy()
 
-    def restore_state(self, state=-1, discard_tip=True):
+    def _restore_state(self, state=-1, discard_tip=True):
         """Restore a previously stored state
 
         Parameters
@@ -808,12 +807,12 @@ class TreeModel(object):
         print('\n'.join(n.ljust(name_len) + pad + p.ljust(path_len) for
                         n, p in nodes))
 
-    def store_state(self):
+    def _store_state(self):
         """Store the current state
 
         See also
         --------
-        .restore_state() : restore a previously stored state
+        ._restore_state() : restore a previously stored state
         """
         self._fields.store_state()
         self._field_values.store_state()
