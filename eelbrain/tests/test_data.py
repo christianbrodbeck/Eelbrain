@@ -1022,6 +1022,11 @@ def test_ndvar_indexing():
     test_ndvar_index(x, 'source', 'lh', slice(n_lh), False)
     test_ndvar_index(x, 'source', 'rh', slice(n_lh, None), False)
 
+    # multiple arguments
+    y = ds['utsnd'].sub(sensor=[1, 2], time=[0, 0.1])
+    eq_(y.shape, (60, 2, 2))
+    assert_array_equal(y.x, ds['utsnd'].x[:, 1:3, [20, 30]])
+
     # argmax
     x.x[10, 10] = 20
     eq_(x.argmax(), ('L10', 0.1))
