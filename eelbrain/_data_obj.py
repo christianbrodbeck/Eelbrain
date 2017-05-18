@@ -4566,7 +4566,7 @@ class NDVar(object):
                 idx = index[i]
                 if ndim_increment and isinstance(idx, (slice, np.ndarray)):
                     if isinstance(idx, slice):
-                        idx = slice_to_arange(idx, len(dims[i]))
+                        idx = slice_to_arange(idx, self.x.shape[i])
                     elif idx.dtype.kind == 'b':
                         idx = np.flatnonzero(idx)
                     index[i] = idx[FULL_AXIS_SLICE + (None,) * ndim_increment]
