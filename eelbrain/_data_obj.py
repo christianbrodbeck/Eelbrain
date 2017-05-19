@@ -3362,6 +3362,57 @@ class NDVar(object):
         return NDVar(np.abs(self.x), self.dims, self.info.copy(),
                      name or self.name)
 
+    def all(self, dims=(), **regions):
+        """Whether all values are nonzero over given dimensions
+
+        Parameters
+        ----------
+        dims : str | tuple of str | boolean NDVar
+            Dimensions over which to operate. A str is used to specify a single
+            dimension, a tuple of str to specify several dimensions, None to
+            compute whether there are any nonzero values at all.
+            An boolean NDVar with the same dimensions as the data can be used
+            to find nonzero values in specific elements (if the NDVar has cases
+            on a per case basis).
+        *regions*
+            Regions over which to aggregate as keywords. 
+            For example, to check whether all values between time=0.1 and 
+            time=0.2 are non-zero, use ``ndvar.all(time=(0.1, 0.2))``.
+        name : str
+            Name of the output NDVar (default is the current name).
+
+        Returns
+        -------
+        any : NDVar | Var | float
+            Boolean data indicating presence of nonzero value over specified
+            dimensions. Return a Var if only the case dimension remains, and a
+            float if the function collapses over all data.
+            
+        Examples
+        --------
+        Examples for
+        
+        >>> ndvar
+        <NDVar 'utsnd': 60 case, 5 sensor, 100 time>
+
+        Check whether all values are nonzero:
+        
+        >>> ndvar.all()
+        True
+        
+        Check whether each time point contains at least one non-zero value
+        
+        >>> ndvar.all(('case', 'sensor'))
+        <NDVar 'utsnd': 100 time>
+        
+        Check for nonzero values between time=0.1 and time=0.2
+        
+        >>> ndvar.all(time=(0.1, 0.2))
+        <NDVar 'utsnd': 60 case, 5 sensor>
+        
+        """
+        return self._aggregate_over_dims(dims, regions, np.all)
+
     def any(self, dims=(), **regions):
         """Compute presence of any value other than zero over given dimensions
 
