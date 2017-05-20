@@ -4149,13 +4149,16 @@ class NDVar(object):
         """
         return self._aggregate_over_dims(dims, regions, np.min)
 
-    def norm(self, dim, name=None):
+    def norm(self, dim, ord=2, name=None):
         """Norm over ``dim``
 
         Parameters
         ----------
         dim : str
             Dimension over which to operate.
+        ord : scalar
+            See description of vector norm for :func:`scipy.linalg.norm` 
+            (default 2).
         name : str
             Name of the output NDVar (default is the current name).
 
@@ -4171,7 +4174,7 @@ class NDVar(object):
         >>> x /= x.norm('sensor')
         """
         axis = self.get_axis(dim)
-        x = norm(self.x, axis=axis)
+        x = norm(self.x, ord, axis)
         if self.ndim == 1:
             return x
         dims = self.dims[:axis] + self.dims[axis + 1:]
