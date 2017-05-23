@@ -14,6 +14,7 @@ from ._data_obj import combine
 # usage:  with mpl.rc_context(RC):
 RC = {'figure.dpi': 300,
       'savefig.dpi': 300,
+      'savefig.transparent': True,
       'font.family': 'sans-serif',
       'font.sans-serif': 'Helvetica',
       'font.size': 9,
