@@ -1378,8 +1378,9 @@ class Layout(BaseLayout):
     """Layout for figures with several axes of the same size"""
     def __init__(self, nax, ax_aspect, axh_default, tight=True, title=None,
                  h=None, w=None, axh=None, axw=None, nrow=None, ncol=None,
-                 dpi=None, show=True, run=None, frame=True, yaxis=True,
-                 share_axes=False, autoscale=False, name=None):
+                 dpi=None, margins=None, show=True, run=None,
+                 frame=True, yaxis=True, share_axes=False, autoscale=False,
+                 name=None):
         """Create a grid of axes based on variable parameters.
 
         Parameters
@@ -1411,6 +1412,8 @@ class Layout(BaseLayout):
             neither nrow or ncol is specified, a square layout is preferred.
         dpi : int
             DPI for the figure (default is to use matplotlib rc parameters).
+        margins : dict
+            Absolute subplot parameters (in inches). Implies ``tight=False``.
         show : bool
             Show the figure in the GUI (default True). Use False for creating
             figures and saving them without displaying them on the screen.
@@ -1555,6 +1558,9 @@ class Layout(BaseLayout):
         if dpi is None:
             dpi = mpl.rcParams['figure.dpi']
 
+        if margins:
+            tight = False
+
         BaseLayout.__init__(self, h, w, dpi, tight, show, run, autoscale,
                             title, name)
         self.nax = nax
@@ -1565,22 +1571,20 @@ class Layout(BaseLayout):
         self.frame = frame
         self.yaxis = yaxis
         self.share_axes = share_axes
+        self.margins = margins
 
     def fig_kwa(self):
         out = BaseLayout.fig_kwa(self)
 
-        # make subplot parameters absolute
-        if self.nax and not self.tight:
-            h = 2 / self.h
-            w = 2 / self.w
-            bottom = mpl.rcParams['figure.subplot.bottom'] * h
-            left = mpl.rcParams['figure.subplot.left'] * w
-            right = 1 - (1 - mpl.rcParams['figure.subplot.right']) * w
-            top = 1 - (1 - mpl.rcParams['figure.subplot.top']) * h
-            hspace = mpl.rcParams['figure.subplot.hspace'] * h
-            wspace = mpl.rcParams['figure.subplot.wspace'] * w
-            out['subplotpars'] = SubplotParams(left, bottom, right, top,
-                                               wspace, hspace)
+        if self.margins:  # absolute subplot parameters
+            out['subplotpars'] = SubplotParams(
+                self.margins.get('left', 0.4) / self.w,
+                self.margins.get('bottom', 0.5) / self.h,
+                1 - self.margins.get('right', 0.05) / self.w,
+                1 - self.margins.get('top', 0.05) / self.h,
+                self.margins.get('wspace', 0.1) / self.w,
+                self.margins.get('hspace', 0.1) / self.h)
+
         return out
 
     def make_axes(self, figure):
