@@ -327,7 +327,8 @@ class _ax_butterfly(object):
     vmin, vmax: None | scalar
         Y axis limits.
     """
-    def __init__(self, ax, layers, xdim, linedim, sensors, color, vlims):
+    def __init__(self, ax, layers, xdim, linedim, sensors, color, vlims,
+                 clip=True):
         self.ax = ax
         self.data = layers
         self.layers = []
@@ -339,7 +340,7 @@ class _ax_butterfly(object):
         name = ''
         for l in layers:
             h = _plt_utsnd(ax, l, xdim, linedim, color or l.info.get('color'),
-                           sensors)
+                           sensors, clip_on=clip)
             self.layers.append(h)
             if not name and l.name:
                 name = l.name
@@ -398,6 +399,8 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
         Bottom of the y axis (default depends on data).
     xlim : (scalar, scalar)
         Initial x-axis view limits (default is the full x-axis in the data).
+    clip : bool
+        Clip lines outside of axes (default ``True``).
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
@@ -430,7 +433,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
     def __init__(self, epochs, xax=None, sensors=None, axtitle=True,
                  xlabel=True, ylabel=True, xticklabels=True, color=None,
                  ds=None, sub=None, x='time', vmax=None, vmin=None, xlim=None,
-                 *args, **kwargs):
+                 clip=True, *args, **kwargs):
         epochs, (xdim, linedim), data_desc = _base.unpack_epochs_arg(
             epochs, (x, None), xax, ds, sub
         )
@@ -446,7 +449,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
         legend_handles = {}
         for ax, layers in zip(self._axes, epochs):
             h = _ax_butterfly(ax, layers, xdim, linedim, sensors, color,
-                              self._vlims)
+                              self._vlims, clip)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
