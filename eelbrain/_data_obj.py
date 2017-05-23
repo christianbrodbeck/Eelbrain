@@ -3340,6 +3340,12 @@ class NDVar(object):
     def __len__(self):
         return len(self.x)
 
+    def __iter__(self):
+        dim = self.dims[0]
+        name = self.dimnames[0]
+        for value in dim:
+            yield self.sub(**{name: value})
+
     def __repr__(self):
         return '<NDVar %(name)r: %(dims)s>' % {
             'name': self.name or '',
