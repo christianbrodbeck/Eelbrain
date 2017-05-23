@@ -46,6 +46,8 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
     legend : str | int | 'fig' | None
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
+    clip : bool
+        Clip lines outside of axes (default ``True``).
         
     Notes
     -----
@@ -61,7 +63,7 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
 
     def __init__(self, y, x=None, sub=None, ds=None, offset='y.max() - y.min()',
                  xlim=None, xlabel=True, ylabel=True, order=None,
-                 colors=None, ylabels=True, xdim=None, legend=None,
+                 colors=None, ylabels=True, xdim=None, legend=None, clip=True,
                  *args, **kwargs):
         sub = assub(sub, ds)
         if isinstance(y, (tuple, list)):
@@ -149,7 +151,7 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
         EelFigure.__init__(self, frame_title(y, x), layout)
         ax = self._axes[0]
 
-        handles = [ax.plot(x_, y_ + offset_, color=color)[0] for
+        handles = [ax.plot(x_, y_ + offset_, color=color, clip_on=clip)[0] for
                    x_, y_, offset_, color in
                    izip(xdata, ydata, offsets, color_iter)]
 
