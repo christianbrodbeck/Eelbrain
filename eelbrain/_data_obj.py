@@ -3349,8 +3349,8 @@ class NDVar(object):
             yield self.sub(**{name: value})
 
     def __repr__(self):
-        return '<NDVar %(name)r: %(dims)s>' % {
-            'name': self.name or '',
+        return '<NDVar%(name)s: %(dims)s>' % {
+            'name': '' if self.name is None else ' %r' % self.name,
             'dims': ', '.join('%i %s' % (len(dim), dim.name) for dim in
                               self.dims)}
 
