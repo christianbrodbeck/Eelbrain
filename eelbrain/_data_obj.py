@@ -74,7 +74,7 @@ from ._info import merge_info
 from ._utils import deprecated, intervals, ui, LazyProperty, n_decimals, natsorted
 from ._utils.numpy_utils import (
     apply_numpy_index, digitize_index, digitize_slice_endpoint, FULL_AXIS_SLICE,
-    FULL_SLICE, index_to_int_array, slice_to_arange)
+    FULL_SLICE, index_length, index_to_int_array, slice_to_arange)
 from .mne_fixes import MNE_EPOCHS, MNE_EVOKED, MNE_RAW, MNE_LABEL
 from functools import reduce
 
@@ -7203,7 +7203,7 @@ class Case(Dimension):
 
     def __init__(self, n, connectivity='none'):
         Dimension.__init__(self, 'case', connectivity)
-        self.n = n
+        self.n = int(n)
 
     def __getstate__(self):
         out = Dimension.__getstate__(self)
@@ -7214,11 +7214,34 @@ class Case(Dimension):
         Dimension.__setstate__(self, state)
         self.n = state['n']
 
+    def __repr__(self):
+        if self._connectivity_type == 'none':
+            return "Case(%i)" % self.n
+        elif self._connectivity_type == 'grid':
+            return "Case(%i, 'grid')" % self.n
+        else:
+            return "Case(%i, <custom connectivity>)" % self.n
+
     def __len__(self):
         return self.n
 
     def __eq__(self, other):
         return isinstance(other, Case) and other.n == self.n
+
+    def __getitem__(self, item):
+        if isinstance(item, Integral):
+            if item < 0:
+                if item < -self.n:
+                    raise IndexError(item)
+                item += self.n
+            elif item > self.n:
+                raise IndexError(item)
+            return item
+        else:
+            return Case(index_length(item, self.n), self._subgraph(item))
+
+    def __iter__(self):
+        return iter(xrange(self.n))
 
     def _axis_format(self, scalar, label):
         if scalar:

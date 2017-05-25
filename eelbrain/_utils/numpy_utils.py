@@ -1,6 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from distutils.version import LooseVersion
 from itertools import izip
+from math import floor
 
 import numpy as np
 
@@ -69,6 +70,30 @@ def index_to_int_array(index, n):
         elif index.dtype.kind == 'b':
             return np.flatnonzero(index)
     return np.arange(n)[index]
+
+
+def index_length(index, n):
+    "Length of an array index (number of selected elements)"
+    if isinstance(index, slice):
+        start = index.start or 0
+        if start < 0:
+            start = n - start
+        stop = n if index.stop is None else index.stop
+        if stop < 0:
+            stop = n - stop
+        step = index.step or 1
+        return floor((stop - start) / step)
+
+    if not isinstance(index, np.ndarray):
+        index = np.asarray(index)
+    if index.dtype.kind == 'b':
+        if len(index) > n:
+            index = index[:n]
+        return index.sum()
+    elif index.dtype.kind in 'iu':
+        return len(index)
+    else:
+        raise TypeError("index %r" % (index,))
 
 
 def apply_numpy_index(data, index):
