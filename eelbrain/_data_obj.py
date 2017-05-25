@@ -8395,6 +8395,8 @@ class SourceSpace(Dimension):
             self.rh_vertno = self.vertno[1]
             self.lh_n = len(self.lh_vertno)
             self.rh_n = len(self.rh_vertno)
+        else:
+            assert len(self.vertno) == 1
 
     @classmethod
     def from_mne_source_spaces(cls, source_spaces, src, subjects_dir,
@@ -8438,7 +8440,11 @@ class SourceSpace(Dimension):
         return "<SourceSpace [%s], %r, %r>" % (ns, self.subject, self.src)
 
     def __iter__(self):
-        return chain(*self.vertno)
+        if self.kind == 'ico':
+            return (temp % v for temp, vertices in
+                    izip(('L%i', 'R%i'), self.vertno) for v in vertices)
+        else:
+            return iter(self.vertno[0])
 
     def __len__(self):
         return self._n_vert
@@ -8451,10 +8457,12 @@ class SourceSpace(Dimension):
 
     def __getitem__(self, index):
         if isinstance(index, Integral):
-            for vertno in self.vertno:
-                if index < len(vertno):
-                    return vertno[index]
-                index -= len(vertno)
+            if self.kind == 'vol':
+                return self.vertno[0][index]
+            elif index < self.lh_n:
+                return 'L%i' % self.lh_vertno[index]
+            elif index < self._n_vert:
+                return 'R%i' % self.rh_vertno[index - self.lh_n]
             else:
                 raise ValueError("SourceSpace Index out of range: %i" % index)
         int_index = index_to_int_array(index, self._n_vert)

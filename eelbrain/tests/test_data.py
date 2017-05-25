@@ -1,7 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import print_function
 from copy import deepcopy
-from itertools import izip, product
+from itertools import chain, izip, product
 from operator import (
     add, iadd, sub, isub, mul, imul, div, idiv, floordiv, ifloordiv, mod, imod)
 import os
@@ -1429,7 +1429,7 @@ def test_source_space():
     eq_(len(sub_source), len(lingual_source) + len(cuneus_source))
 
     # indexing
-    tgt = np.hstack(sub_source.vertno)
+    tgt = ['L%i' % i for i in chain(*sub_source.vertno)]
     assert_array_equal([i for i in sub_source], tgt)
     assert_array_equal([sub_source[i] for i in xrange(len(sub_source))], tgt)
     # hemisphere indexing
