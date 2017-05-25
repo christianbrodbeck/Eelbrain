@@ -3042,7 +3042,7 @@ class NDVar(object):
     >>> data.shape
     (600, 80)
     >>> time = UTS(-.2, .01, 80)
-    >>> ndvar = NDVar(data, dims=('case', time))
+    >>> ndvar = NDVar(data, dims=(Case, time))
 
     Baseline correction:
 
@@ -3051,7 +3051,8 @@ class NDVar(object):
     """
     def __init__(self, x, dims, info={}, name=None):
         # check data shape
-        if isinstance(dims, Dimension) or isinstance(dims, basestring):
+        if (isinstance(dims, Dimension) or dims is Case or
+                isinstance(dims, basestring)):
             dims_ = [dims]
         else:
             dims_ = list(dims)
@@ -3063,7 +3064,8 @@ class NDVar(object):
                 (x.ndim, len(dims_)))
 
         first_dim = dims_[0]
-        if isinstance(first_dim, basestring) and first_dim == 'case':
+        if first_dim is Case or (isinstance(first_dim, basestring) and
+                                 first_dim == 'case'):
             dims_[0] = Case(len(x))
 
         if not all(isinstance(dim, Dimension) for dim in dims_):
@@ -7198,6 +7200,14 @@ class Case(Dimension):
         connection [i, j] with i < j, with rows sorted in ascending order. If
         the array's dtype is uint32, property checks are disabled to improve 
         efficiency.
+        
+    Examples
+    --------
+    When initializing an :class:`NDVar`, the case dimension can be speciied
+    with the bare class and the number of cases will be inferred from the data:
+    
+    >>> NDVar([[1, 2], [3, 4]], (Case, Categorial('column', ['1', '2'])))
+    <NDVar: 2 case, 2 column>
     """
     _DIMINDEX_RAW_TYPES = (int, slice, list)
 

@@ -17,7 +17,7 @@ from . import mne_fixes
 
 from ._config import configure
 from ._data_obj import (Datalist, Dataset, Var, Factor, Interaction, Model,
-                        NDVar, Categorial, Scalar, Sensor, UTS,
+                        NDVar, Case, Categorial, Scalar, Sensor, UTS,
                         Celltable, choose, combine, align, align1, cellname,
                         shuffled_index)
 from ._experiment import MneExperiment

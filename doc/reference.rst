@@ -36,6 +36,7 @@ NDVar dimensions (not usually initialized by themselves but through
 .. autosummary::
    :toctree: generated
 
+   Case
    Categorial
    Scalar
    Sensor
