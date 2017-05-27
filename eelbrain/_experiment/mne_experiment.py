@@ -6234,7 +6234,7 @@ class MneExperiment(FileTree):
             print(out)
 
     def show_subjects(self, mri=True, mrisubject=False, caption=True,
-                      asds=False):
+                      asds=False, **state):
         """Create a Dataset with subject information
 
         Parameters
@@ -6249,7 +6249,12 @@ class MneExperiment(FileTree):
             {group}".
         asds : bool
             Return the table as Dataset instead of an FMTxt Table.
+        ...
+            State parameters.
         """
+        if state:
+            self.set(**state)
+
         # caption
         if caption is True:
             caption = self.format("Subjects in group {group}")
