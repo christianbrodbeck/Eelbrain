@@ -350,10 +350,11 @@ class Brain(TimeSlicer, surfer.Brain):
             # to-LUT mapping to the extrema of the data at various points, so it
             # is safer to restrict the LUT to used colors
             ctab_index = np.in1d(ctab[:, 4], ss_map)
-            # expand to full brain
-            full_map = ss_map[ss['nearest']]
-            if ctab_index.sum() > 1:
-                annot.append((full_map, ctab[ctab_index]))
+            hemi_ctab = ctab[ctab_index]
+            if np.any(hemi_ctab):
+                # expand to full brain
+                full_map = ss_map[ss['nearest']]
+                annot.append((full_map, hemi_ctab))
                 has_annot.append(hemi)
 
         if len(annot) == 0:
