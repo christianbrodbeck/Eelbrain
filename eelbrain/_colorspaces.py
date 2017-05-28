@@ -268,9 +268,9 @@ def make_cmaps():
 
 make_cmaps()
 
-symmetric_cmaps = ('polar', 'polar-a', 'xpolar', 'xpolar-a',
+symmetric_cmaps = ['polar', 'polar-a', 'xpolar', 'xpolar-a',
                    'BrBG', 'BrBG_r', 'PRGn', 'PRGn_r', 'PuOr', 'PuOr_',
-                   'RdBu', 'RdBu_r', 'RdGy', 'RdGy_r', 'seismic', 'seismic_r')
+                   'RdBu', 'RdBu_r', 'RdGy', 'RdGy_r', 'seismic', 'seismic_r']
 zerobased_cmaps = ('sig',)
 # corresponding cmaps with transparency (alpha channel)
 ALPHA_CMAPS = {'xpolar': 'xpolar-a',
