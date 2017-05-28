@@ -62,7 +62,7 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
     _name = "LineStack"
 
     def __init__(self, y, x=None, sub=None, ds=None, offset='y.max() - y.min()',
-                 xlim=None, xlabel=True, ylabel=True, order=None,
+                 ylim=None, xlim=None, xlabel=True, ylabel=True, order=None,
                  colors=None, ylabels=True, xdim=None, legend=None, clip=True,
                  *args, **kwargs):
         sub = assub(sub, ds)
@@ -155,13 +155,19 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
                    x_, y_, offset_, color in
                    izip(xdata, ydata, offsets, color_iter)]
 
+        if ylim is None:
+            ylim = (ydata[0].min(), offset * ny)
+        else:
+            ymin, ymax = ylim
+            ylim = (ymin, offset * (ny - 1) + ymax)
+
         ax.grid(True)
         ax.set_frame_on(False)
         ax.xaxis.set_ticks_position('none')
         ax.yaxis.set_ticks_position('none')
         ax.set_yticks(offsets)
         ax.set_yticklabels(ylabels or ())
-        ax.set_ylim(ydata[0].min(), offset * ny)
+        ax.set_ylim(ylim)
         self._configure_xaxis_dim(xdim_obj, xlabel, True)
         if ylabel:
             ax.set_ylabel(ylabel)
