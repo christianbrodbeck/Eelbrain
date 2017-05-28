@@ -1413,7 +1413,10 @@ class Layout(BaseLayout):
         dpi : int
             DPI for the figure (default is to use matplotlib rc parameters).
         margins : dict
-            Absolute subplot parameters (in inches). Implies ``tight=False``.
+            Absolute subplot parameters (in inches). Implies ``tight=False``. 
+            If ``margins`` is specified, ``axw`` and ``axh`` are interpreted 
+            exclusive of the margins, i.e., ``axh=2, margins={'top': .5}`` for
+            a plot with one axes will result in a total height of 2.5.
         show : bool
             Show the figure in the GUI (default True). Use False for creating
             figures and saving them without displaying them on the screen.
@@ -1435,6 +1438,21 @@ class Layout(BaseLayout):
                 raise ValueError("w < axw")
 
         self.w_fixed = w or axw
+
+        if margins:
+            tight = False
+            margins_in = dict(margins)
+            margins = {'left': margins_in.pop('left', 0.4),
+                       'bottom': margins_in.pop('bottom', 0.5),
+                       'right': margins_in.pop('right', 0.05),
+                       'top': margins_in.pop('top', 0.05),
+                       'wspace': margins_in.pop('wspace', 0.1),
+                       'hspace': margins_in.pop('hspace', 0.1)}
+            if margins_in:
+                raise ValueError("Invalid entries in margins (unknown keys): "
+                                 "%r" % (margins_in,))
+        h_is_implicit = h is None
+        w_is_implicit = w is None
 
         if not nax:
             if w is None:
@@ -1555,11 +1573,14 @@ class Layout(BaseLayout):
             if h is None:
                 h = axh * nrow
 
+        if margins:
+            if h_is_implicit:
+                h += margins['bottom'] + margins['hspace'] * (nrow - 1) + margins['top']
+            if w_is_implicit:
+                w += margins['left'] + margins['wspace'] * (ncol - 1) + margins['right']
+
         if dpi is None:
             dpi = mpl.rcParams['figure.dpi']
-
-        if margins:
-            tight = False
 
         BaseLayout.__init__(self, h, w, dpi, tight, show, run, autoscale,
                             title, name)
@@ -1578,12 +1599,12 @@ class Layout(BaseLayout):
 
         if self.margins:  # absolute subplot parameters
             out['subplotpars'] = SubplotParams(
-                self.margins.get('left', 0.4) / self.w,
-                self.margins.get('bottom', 0.5) / self.h,
-                1 - self.margins.get('right', 0.05) / self.w,
-                1 - self.margins.get('top', 0.05) / self.h,
-                self.margins.get('wspace', 0.1) / self.w,
-                self.margins.get('hspace', 0.1) / self.h)
+                self.margins['left'] / self.w,
+                self.margins['bottom'] / self.h,
+                1 - self.margins['right'] / self.w,
+                1 - self.margins['top'] / self.h,
+                self.margins['wspace'] / self.w,
+                self.margins['hspace'] / self.h)
 
         return out
 
