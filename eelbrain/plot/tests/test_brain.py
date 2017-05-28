@@ -1,5 +1,8 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import print_function
+
+from nose.tools import eq_
+
 from eelbrain import datasets, plot
 from eelbrain._utils.testing import requires_mne_sample_data
 
@@ -9,11 +12,24 @@ def test_plot_brain():
     """Test plot.brain plots"""
     src = datasets.get_mne_sample(src='ico', sub=[0])['src']
 
+    # size
+    b = plot.brain.brain(src.source, hemi='rh', w=400, h=300, mask=False)
+    eq_(b.screenshot().shape, (300, 400, 3))
+    b.set_size(200, 150)
+    eq_(b.screenshot().shape, (150, 200, 3))
+    b.close()
+    # both hemispheres
+    b = plot.brain.brain(src.source, w=600, h=300, mask=False)
+    eq_(b.screenshot().shape, (300, 600, 3))
+    b.set_size(400, 150)
+    eq_(b.screenshot().shape, (150, 400, 3))
+    b.close()
+
+    # plot shortcuts
     p = plot.brain.dspm(src)
     cb = p.plot_colorbar(show=False)
     cb.close()
     p.close()
-    # not closing figures leads to weird interactions with the QT backend
 
     p = plot.brain.dspm(src, hemi='lh')
     cb = p.plot_colorbar(show=False)

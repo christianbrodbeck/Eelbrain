@@ -644,6 +644,10 @@ class Brain(TimeSlicer, surfer.Brain):
                 fig.scene.camera.parallel_projection = True
                 fig.render()
 
+    def set_size(self, width, height):
+        """Set image size in pixels"""
+        self._frame.SetImageSize(width, height)
+
     def set_surface(self, surface):
         self._set_surface(surface)
         if surface in SURFACES:

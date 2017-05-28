@@ -103,6 +103,8 @@ class BrainFrame(EelbrainFrame):
         tb.Realize()
 
         self.mayavi_view = MayaviView(width, height, n_rows, n_columns)
+        self._n_rows = n_rows
+        self._n_columns = n_columns
         # Use traits to create a panel, and use it as the content of this
         # wx frame.
         self.ui = self.mayavi_view.edit_traits(parent=self,
@@ -113,8 +115,7 @@ class BrainFrame(EelbrainFrame):
         for scene in self.mayavi_view.scenes:
             scene.interactor.interactor_style = tvtk.InteractorStyleTerrain()
 
-        self.panel.SetSize((width + 2, height + 2))
-        self.Fit()
+        self.SetImageSize(width, height)
 
         self.figure = self.mayavi_view.figures
         self._brain = brain
@@ -210,3 +211,12 @@ class BrainFrame(EelbrainFrame):
 
     def OnUpdateUISaveAs(self, event):
         event.Enable(True)
+
+    def SetImageSize(self, width, height):
+        if self._n_columns == 1 and self._n_rows == 1:
+            width += 2
+            height += 2
+        else:
+            width += self._n_columns * 2 + 4
+            height += self._n_rows * 2 + 4
+        self.SetClientSize((width, height))
