@@ -120,7 +120,7 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
                 cells = cell_labels = x.cells
 
             if order is not None:
-                sort_index = [cells._array_index(i) for i in reversed(order)]
+                sort_index = [cells._array_index(i) for i in order]
                 ydata = ydata[sort_index]
                 cells = tuple(cells[i] for i in sort_index)
                 cell_labels = tuple(cell_labels[i] for i in sort_index)
@@ -132,7 +132,7 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
             ny = len(ydata)
             xdata = repeat(xdim_obj._axis_data(), ny)
 
-        offsets = np.arange(ny) * offset
+        offsets = np.arange(ny - 1, -1, -1) * offset
 
         if ylabels is True:
             ylabels = cell_labels
