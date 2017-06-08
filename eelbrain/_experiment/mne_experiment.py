@@ -1275,6 +1275,9 @@ class MneExperiment(FileTree):
             # tests represented as dicts
             cache_tests = cache_state['tests']
             if cache_state_v < 7:
+                for params in cache_tests.values():
+                    if 'desc' in params:
+                        del params['desc']
                 cache_tests = {k: v.as_dict() for k, v in
                                assemble_tests(cache_tests).iteritems()}
 
