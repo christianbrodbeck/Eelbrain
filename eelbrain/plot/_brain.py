@@ -840,7 +840,7 @@ class ImageTable(EelFigure, ColorBarMixin):
 
     def __init__(self, n_rows, n_columns, title=None, *args, **kwargs):
         layout = ImLayout(n_rows * n_columns, 0, 0.5, 4/3, 2, title, *args,
-                          nrow=n_rows, ncol=n_columns, **kwargs)
+                          nrow=n_rows, ncol=n_columns, autoscale=True, **kwargs)
         EelFigure.__init__(self, None, layout)
 
         self._n_rows = n_rows
