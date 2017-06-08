@@ -818,7 +818,7 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
     if isinstance(evoked, MNE_EVOKED):
         case_out = False
         evoked = (evoked,)
-    if isinstance(evoked, (tuple, list)):
+    elif isinstance(evoked, (tuple, list)):
         case_out = True
     else:
         raise TypeError("evoked=%s" % repr(evoked))
