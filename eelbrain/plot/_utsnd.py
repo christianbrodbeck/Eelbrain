@@ -287,22 +287,40 @@ class _plt_utsnd(object):
         self._dims = (line_dim, xdim)
         x = epoch.get_dim(xdim)._axis_data()
         line_dim_obj = epoch.get_dim(line_dim)
+        self.legend_handles = {}
         if isinstance(color, dict):
-            data = epoch.get_data((line_dim, xdim))
-            self.lines = [ax.plot(x, y, color=color[level], label=str(level),
-                                  **kwargs)[0] for
-                          y, level in izip(data, line_dim_obj)]
+            line_color = color.get('default', 'k')
         else:
-            self.lines = ax.plot(x, epoch.get_data((xdim, line_dim)),
-                                 color=color, label=epoch.name, **kwargs)
+            line_color = color
+        self.lines = ax.plot(x, epoch.get_data((xdim, line_dim)),
+                             color=line_color, label=epoch.name, **kwargs)
+
+        if isinstance(color, dict):
+            self.legend_handles = {}
+            for key, c in color.iteritems():
+                line_index = line_dim_obj._array_index(key)
+                if isinstance(line_index, slice):
+                    lines = self.lines[line_index]
+                elif isinstance(line_index, int):
+                    lines = (self.lines[line_index],)
+                else:
+                    lines = tuple(self.lines[line_index] for i in line_index)
+
+                if not lines:
+                    continue
+
+                for line in lines:
+                    line.set_color(c)
+                    line.set_label(key)
+                self.legend_handles[key] = line
+        else:
+            self.legend_handles = {epoch.name: self.lines[0]}
 
         for y, kwa in _base.find_uts_hlines(epoch):
             ax.axhline(y, **kwa)
 
         self.epoch = epoch
         self._sensors = sensors
-        self.legend_handles = {name: line for name, line in
-                               izip(line_dim_obj, self.lines)}
 
     def remove(self):
         while self.lines:
