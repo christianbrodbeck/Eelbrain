@@ -227,6 +227,9 @@ class Brain(TimeSlicer, surfer.Brain):
         dict_hemi = 'rh' if data_hemi == 'rh' else 'lh'
         data_index = len(self._data_dicts[dict_hemi])
 
+        if remove_existing:
+            self.remove_data()
+
         # add data
         new_surfaces = []
         if data_hemi != 'rh':
@@ -243,8 +246,7 @@ class Brain(TimeSlicer, surfer.Brain):
             data = src_hemi.get_data(data_dims)
             vertices = ndvar.source.lh_vertno
             self.add_data(data, vmin, vmax, None, cmap, alpha, vertices,
-                          smoothing_steps, times, time_label_, colorbar_, 'lh',
-                          remove_existing)
+                          smoothing_steps, times, time_label_, colorbar_, 'lh')
             new_surfaces.extend(self.data_dict['lh']['surfaces'])
 
         if data_hemi != 'lh':
@@ -252,8 +254,7 @@ class Brain(TimeSlicer, surfer.Brain):
             data = src_hemi.get_data(data_dims)
             vertices = ndvar.source.rh_vertno
             self.add_data(data, vmin, vmax, None, cmap, alpha, vertices,
-                          smoothing_steps, times, time_label, colorbar, 'rh',
-                          remove_existing)
+                          smoothing_steps, times, time_label, colorbar, 'rh')
             new_surfaces.extend(self.data_dict['rh']['surfaces'])
 
         # update surfaces
