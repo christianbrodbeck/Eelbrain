@@ -1314,6 +1314,7 @@ class MneExperiment(FileTree):
                         elif var not in new_events:
                             invalid_cache['variables'].add(var)
                             log.debug("  var removed: %s (%s)", var, '/'.join(key))
+                            continue
                         old = old_events[var]
                         new = new_events[var]
                         if old.name != new.name:
