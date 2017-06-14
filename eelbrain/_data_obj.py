@@ -3626,7 +3626,7 @@ class NDVar(object):
             if stop is None:
                 stop = dim.tstop
 
-            n_bins = int(ceil((stop - start) / step))
+            n_bins = int(ceil(round(((stop - start) / step), 2)))
             out_dim = UTS(start + step / 2, step, n_bins)
         elif isinstance(dim, Ordered):
             if start is None:
