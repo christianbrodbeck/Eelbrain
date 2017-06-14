@@ -3691,13 +3691,11 @@ class NDVar(object):
         x = np.empty(out_shape)
         bins = []
         idx_prefix = FULL_AXIS_SLICE * axis
-        for i, (v0, v1) in enumerate(intervals(edges)):
-            v0 = edges[i]
-            v1 = edges[i + 1]
-            src_idx = idx_prefix + (dim._array_index((v0, v1)),)
+        for i, bin_ in enumerate(intervals(edges)):
+            src_idx = idx_prefix + (dim._array_index(bin_),)
             dst_idx = idx_prefix + (i,)
             x[dst_idx] = func(self.x[src_idx], axis=axis)
-            bins.append((v0, v1))
+            bins.append(bin_)
 
         dims = list(self.dims)
         dims[axis] = out_dim
