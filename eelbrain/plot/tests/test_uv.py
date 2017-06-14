@@ -98,5 +98,6 @@ def test_timeplot():
                        labels={True: 'a', False: 'b'})
 
     plot.Timeplot('n_recalled', 'subject', 'exposure', ds=ds, show=False)
-    plot.Timeplot('n_recalled', 'cat', 'exposure', ds=ds)
-    plot.Timeplot('n_recalled', 'cat', 'exposure', 'subject', ds=ds, x_jitter=True)
+    plot.Timeplot('n_recalled', 'cat', 'exposure', ds=ds, show=False)
+    plot.Timeplot('n_recalled', 'cat', 'exposure', 'subject', ds=ds,
+                  x_jitter=True, show=False)
