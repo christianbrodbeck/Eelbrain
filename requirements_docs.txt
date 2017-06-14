@@ -5,6 +5,7 @@ colormath >= 2.1
 tqdm >= 4.8
 keyring >= 5
 pillow
+mne >= 0.14
 numpy >= 1.8
 numpydoc
 scipy >= 0.17
