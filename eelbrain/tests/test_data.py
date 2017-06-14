@@ -911,6 +911,11 @@ def test_ndvar_binning():
     assert_array_equal(binned_ndvar.x, 1.)
     eq_(binned_ndvar.shape, (5, 7))
 
+    # n_bins
+    x = np.ones((5, 601))
+    ndvar = NDVar(x, ('case', UTS(-0.1, 0.001, 601)))
+    binned_ndvar = ndvar.bin(0.1, 0.1, 0.4)
+    eq_(binned_ndvar.shape, (5, 3))
 
 def test_ndvar_graph_dim():
     "Test NDVar dimensions with conectvity graph"
