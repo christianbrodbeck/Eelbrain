@@ -4394,8 +4394,7 @@ class NDVar(object):
         return self._aggregate_over_dims(dims, regions, np.std)
 
     def summary(self, *dims, **regions):
-        r"""
-        Return a new NDVar with specified dimensions collapsed.
+        r"""Aggregate specified dimensions.
 
         .. warning::
             Data is collapsed over the different dimensions in turn using the
@@ -4420,10 +4419,13 @@ class NDVar(object):
         name : str
             Name for the new NDVar.
 
+        Returns
+        -------
+        summary : float | Var | NDVar
+            Result of applying the summary function over specified dimensions.
 
         Examples
         --------
-
         Assuming ``data`` is a normal time series. Get the average in a time
         window::
 
