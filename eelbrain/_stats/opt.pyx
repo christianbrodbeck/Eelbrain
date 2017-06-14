@@ -8,6 +8,7 @@ import numpy as np
 cimport numpy as cnp
 
 ctypedef cnp.int8_t INT8
+ctypedef cnp.int64_t INT64
 ctypedef cnp.float64_t FLOAT64
 
 
@@ -15,7 +16,7 @@ def anova_full_fmaps(cnp.ndarray[FLOAT64, ndim=2] y,
                      cnp.ndarray[FLOAT64, ndim=2] x,
                      cnp.ndarray[FLOAT64, ndim=2] xsinv,
                      cnp.ndarray[FLOAT64, ndim=2] f_map,
-                     cnp.ndarray[long, ndim=2] effects,
+                     cnp.ndarray[INT64, ndim=2] effects,
                      cnp.ndarray[INT8, ndim=2] e_ms):
     """Compute f-maps for a balanced, fully specified ANOVA model
     
@@ -81,7 +82,7 @@ def anova_fmaps(cnp.ndarray[FLOAT64, ndim=2] y,
                 cnp.ndarray[FLOAT64, ndim=2] x,
                 cnp.ndarray[FLOAT64, ndim=2] xsinv,
                 cnp.ndarray[FLOAT64, ndim=2] f_map,
-                cnp.ndarray[long, ndim=2] effects,
+                cnp.ndarray[INT64, ndim=2] effects,
                 int df_res):
     """Compute f-maps for a balanced ANOVA model with residuals
 
