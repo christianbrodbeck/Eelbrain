@@ -216,7 +216,6 @@ def setup_mri(subject, subjects_dir=None, ico=4, block=False, redo=False):
 
     Parameters
     ----------
-
     subject : str
         Subject whose MRI should be processed.
     subjects_dir : None | str(path)

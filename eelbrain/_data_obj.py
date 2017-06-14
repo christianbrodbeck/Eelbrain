@@ -3476,7 +3476,7 @@ class NDVar(object):
         return self._dim_index_unravel(self.x.argmin())
 
     def _array_index(self, args):
-        "convert dimension index to array index"
+        "Convert dimension index to array index"
         if isinstance(args, NDVar):
             if args.x.dtype.kind != 'b':
                 raise IndexError("Only boolean NDVar can be used as index")
@@ -4467,8 +4467,7 @@ class NDVar(object):
         return self._aggregate_over_dims(dims, regions, np.std)
 
     def summary(self, *dims, **regions):
-        r"""
-        Return a new NDVar with specified dimensions collapsed.
+        r"""Aggregate specified dimensions.
 
         .. warning::
             Data is collapsed over the different dimensions in turn using the
@@ -4493,10 +4492,13 @@ class NDVar(object):
         name : str
             Name for the new NDVar.
 
+        Returns
+        -------
+        summary : float | Var | NDVar
+            Result of applying the summary function over specified dimensions.
 
         Examples
         --------
-
         Assuming ``data`` is a normal time series. Get the average in a time
         window::
 
@@ -6961,7 +6963,7 @@ class Dimension(object):
         return Var(self._axis_data(), name=self.name)
 
     def _axis_data(self):
-        "x for plot command"
+        "X for plot command"
         return np.arange(len(self))
 
     def _axis_im_extent(self):
