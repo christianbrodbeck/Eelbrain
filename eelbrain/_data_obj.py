@@ -9029,7 +9029,7 @@ class UTS(Dimension):
         if stop is None:
             stop = self.tstop
 
-        n_bins = int(ceil((stop - start) / step))
+        n_bins = int(ceil(round((stop - start) / step, 2)))
         edges = [start + n * step for n in xrange(n_bins)]
         edges.append(stop)
         out_dim = UTS(start + step / 2, step, n_bins)
