@@ -380,19 +380,22 @@ class t_contrast_rel(_Result):
         Threshold for forming clusters:  use a t-value equivalent to an
         uncorrected p-value for a related samples t-test (with df =
         len(match.cells) - 1).
-    tmin : None | scalar
-        Threshold for forming clusters.
+    tmin : scalar
+        Threshold for forming clusters as t-value.
     tfce : bool
-        Use threshold-free cluster enhancement (Smith & Nichols, 2009).
-        Default is False.
+        Use threshold-free cluster enhancement (default False).
     tstart, tstop : None | scalar
         Restrict time window for permutation cluster test.
+    parc : str
+        Collect permutation extrema for all regions of the parcellation of
+        this dimension. For threshold-based test, the regions are
+        disconnected.
+    force_permutation: bool
+        Conduct permutations regardless of whether there are any clusters.
     mintime : scalar
         Minimum duration for clusters (in seconds).
     minsource : int
         Minimum number of sources per cluster.
-    force_permutation: bool
-        Conduct permutations regardless of whether there are any clusters.
 
     Notes
     -----
@@ -524,13 +527,16 @@ class corr(_Result):
     rmin : None | scalar
         Threshold for forming clusters.
     tfce : bool
-        Use threshold-free cluster enhancement (Smith & Nichols, 2009).
-        Default is False.
+        Use threshold-free cluster enhancement (default False).
     tstart, tstop : None | scalar
         Restrict time window for permutation cluster test.
     match : None | categorial
         When permuting data, only shuffle the cases within the categories
         of match.
+    parc : str
+        Collect permutation extrema for all regions of the parcellation of
+        this dimension. For threshold-based test, the regions are
+        disconnected.
     mintime : scalar
         Minimum duration for clusters (in seconds).
     minsource : int
@@ -688,19 +694,22 @@ class ttest_1samp(_Result):
     pmin : None | scalar (0 < pmin < 1)
         Threshold for forming clusters:  use a t-value equivalent to an
         uncorrected p-value.
-    tmin : None | scalar
-        Threshold for forming clusters.
+    tmin : scalar
+        Threshold for forming clusters as t-value.
     tfce : bool
-        Use threshold-free cluster enhancement (Smith & Nichols, 2009).
-        Default is False.
+        Use threshold-free cluster enhancement (default False).
     tstart, tstop : None | scalar
         Restrict time window for permutation cluster test.
+    parc : str
+        Collect permutation extrema for all regions of the parcellation of
+        this dimension. For threshold-based test, the regions are
+        disconnected.
+    force_permutation: bool
+        Conduct permutations regardless of whether there are any clusters.
     mintime : scalar
         Minimum duration for clusters (in seconds).
     minsource : int
         Minimum number of sources per cluster.
-    force_permutation: bool
-        Conduct permutations regardless of whether there are any clusters.
 
     Attributes
     ----------
@@ -854,14 +863,22 @@ class ttest_ind(_Result):
     pmin : None | scalar (0 < pmin < 1)
         Threshold p value for forming clusters. None for threshold-free
         cluster enhancement.
+    tmin : scalar
+        Threshold for forming clusters as t-value.
+    tfce : bool
+        Use threshold-free cluster enhancement (default False).
     tstart, tstop : None | scalar
         Restrict time window for permutation cluster test.
+    parc : str
+        Collect permutation extrema for all regions of the parcellation of
+        this dimension. For threshold-based test, the regions are
+        disconnected.
+    force_permutation: bool
+        Conduct permutations regardless of whether there are any clusters.
     mintime : scalar
         Minimum duration for clusters (in seconds).
     minsource : int
         Minimum number of sources per cluster.
-    force_permutation: bool
-        Conduct permutations regardless of whether there are any clusters.
 
     Attributes
     ----------
@@ -1049,19 +1066,22 @@ class ttest_rel(_Result):
     pmin : None | scalar (0 < pmin < 1)
         Threshold for forming clusters:  use a t-value equivalent to an
         uncorrected p-value.
-    tmin : None | scalar
-        Threshold for forming clusters.
+    tmin : scalar
+        Threshold for forming clusters as t-value.
     tfce : bool
-        Use threshold-free cluster enhancement (Smith & Nichols, 2009).
-        Default is False.
+        Use threshold-free cluster enhancement (default False).
     tstart, tstop : None | scalar
         Restrict time window for permutation cluster test.
+    parc : str
+        Collect permutation extrema for all regions of the parcellation of
+        this dimension. For threshold-based test, the regions are
+        disconnected.
+    force_permutation: bool
+        Conduct permutations regardless of whether there are any clusters.
     mintime : scalar
         Minimum duration for clusters (in seconds).
     minsource : int
         Minimum number of sources per cluster.
-    force_permutation: bool
-        Conduct permutations regardless of whether there are any clusters.
 
     Attributes
     ----------
@@ -1398,11 +1418,10 @@ class anova(_MultiEffectResult):
     pmin : None | scalar (0 < pmin < 1)
         Threshold for forming clusters:  use an f-value equivalent to an
         uncorrected p-value.
-    fmin : None | scalar
-        Threshold for forming clusters.
+    fmin : scalar
+        Threshold for forming clusters as f-value.
     tfce : bool
-        Use threshold-free cluster enhancement (Smith & Nichols, 2009).
-        Default is False.
+        Use threshold-free cluster enhancement (default False).
     replacement : bool
         whether random samples should be drawn with replacement or
         without
@@ -1411,12 +1430,16 @@ class anova(_MultiEffectResult):
     match : None | categorial
         When permuting data, only shuffle the cases within the categories
         of match.
+    parc : str
+        Collect permutation extrema for all regions of the parcellation of
+        this dimension. For threshold-based test, the regions are
+        disconnected.
+    force_permutation: bool
+        Conduct permutations regardless of whether there are any clusters.
     mintime : scalar
         Minimum duration for clusters (in seconds).
     minsource : int
         Minimum number of sources per cluster.
-    force_permutation: bool
-        Conduct permutations regardless of whether there are any clusters.
 
     Attributes
     ----------
