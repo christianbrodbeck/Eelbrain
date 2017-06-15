@@ -203,6 +203,17 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     result : BoostingResult
         Object containing results from the boosting estimation (see
         :class:`BoostingResult`).
+
+    Notes
+    -----
+    The boosting algorithm is described in [1]_.
+
+    References
+    ----------
+    .. [1] David, S. V., Mesgarani, N., & Shamma, S. A. (2007). Estimating
+        sparse spectro-temporal receptive fields with natural stimuli. Network:
+        Computation in Neural Systems, 18(3), 191-212.
+        `10.1080/09548980701609235 <https://doi.org/10.1080/09548980701609235>`_.
     """
     # check arguments
     mindelta_ = delta if mindelta is None else mindelta

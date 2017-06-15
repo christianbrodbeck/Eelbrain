@@ -241,7 +241,7 @@ def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
 
 
 def dss(ndvar):
-    u"""Denoising source separation (DSS) [1]_
+    u"""Denoising source separation (DSS)
 
     Parameters
     ----------
@@ -257,8 +257,8 @@ def dss(ndvar):
 
     Notes
     -----
-    Uses the DSS implementation from the `mne-sandbox 
-    <https://github.com/mne-tools/mne-sandbox>`_.
+    the method is described in  [1]_. This function uses the implementation from
+    the `mne-sandbox <https://github.com/mne-tools/mne-sandbox>`_.
     
     References
     ----------
