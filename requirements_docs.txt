@@ -5,10 +5,11 @@ colormath >= 2.1
 tqdm >= 4.8
 keyring >= 5
 pillow
-mne >= 0.14
 numpy >= 1.8
 numpydoc
 scipy >= 0.17
 nibabel >= 2.0
 matplotlib >= 1.1
+pysurfer >= 0.7
+mne >= 0.14
 # exclude mne because it requires numpy to be installed already

@@ -16,11 +16,6 @@ from ._base import EelFigure, ImLayout, ColorBarMixin
 from ._colors import ColorList
 
 
-# defaults
-FOREGROUND = (0, 0, 0)
-BACKGROUND = (1, 1, 1)
-
-
 def assert_can_save_movies():
     from ._brain_fix import assert_can_save_movies
     assert_can_save_movies()
@@ -106,9 +101,12 @@ def annot(annot, subject='fsaverage', surface='smoothwm', borders=False, alpha=0
     if title is None:
         title = annot
 
-    brain = _surfer_brain(subject, surf or surface, hemi, views, w, h, axw, axh,
-                          foreground, background, cortex, title, subjects_dir,
-                          name)
+    from ._brain_fix import Brain
+    brain = Brain(subject, hemi, surf or surface, title, cortex,
+                  views=views, w=w, h=h, axw=axw, axh=axh,
+                  foreground=foreground, background=background,
+                  subjects_dir=subjects_dir, name=name)
+
     brain._set_annot(annot, borders, alpha)
     if parallel:
         brain.set_parallel_view(scale=True)
@@ -402,85 +400,6 @@ def cluster(cluster, vmax=None, *args, **kwargs):
     return _plot(cluster, lut, -vmax, vmax, *args, **kwargs)
 
 
-def _surfer_brain(subject='fsaverage', surface='smoothwm', hemi='split',
-                  views=('lat', 'med'), w=None, h=None, axw=None, axh=None,
-                  foreground=None, background=None, cortex='classic',
-                  title=None, subjects_dir=None, name=None, show=True,
-                  run=None):
-    """Create surfer.Brain instance
-
-    Parameters
-    ----------
-    subject : str
-        Name of the subject (default 'fsaverage').
-    surface : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
-        Freesurfer surface to use as brain geometry.
-    hemi : 'lh' | 'rh' | 'both' | 'split'
-        Which hemispheres to plot.
-    views : str | iterator of str
-        View or views to show in the figure.
-    colorbar : bool
-        Whether to add a colorbar to the figure.
-    w, h, axw, axh : scalar
-        Layout parameters (figure width/height, subplot width/height).
-    foreground : mayavi color
-        Figure foreground color (i.e., the text color).
-    background : mayavi color
-        Figure background color.
-    cortex : str, tuple, dict, or None
-        Specifies how the cortical surface is rendered (see
-        :class:`surfer.Brain`).
-    title : str
-        title for the window (default is the subject name).
-    subjects_dir : None | str
-        Override the subjects_dir associated with the source space dimension.
-    name : str
-        Equivalent to ``title``, for consistency with other plotting functions. 
-
-    Returns
-    -------
-    brain : surfer.Brain
-        PySurfer Brain instance.
-    """
-    from ._brain_fix import Brain
-
-    if isinstance(views, basestring):
-        views = [views]
-    elif not isinstance(views, list):
-        views = list(views)
-
-    if hemi == 'split':
-        n_views_x = 2
-    elif hemi in ('lh', 'rh', 'both'):
-        n_views_x = 1
-    else:
-        raise ValueError("Unknown value for hemi parameter: %s" % repr(hemi))
-
-    if w is not None:
-        width = w
-    elif axw is not None:
-        width = axw * n_views_x
-    else:
-        width = 500 * n_views_x
-
-    if h is not None:
-        height = h
-    elif axh is not None:
-        height = axh * len(views)
-    else:
-        height = 400 * len(views)
-
-    if foreground is None:
-        foreground = FOREGROUND
-
-    if background is None:
-        background = BACKGROUND
-
-    return Brain(subject, hemi, views, surface, title or name, width, height,
-                 show, run, cortex=cortex, alpha=1., background=background,
-                 foreground=foreground, subjects_dir=subjects_dir)
-
-
 def brain(src, cmap=None, vmin=None, vmax=None, surface='inflated',
           views='lateral', hemi=None, colorbar=False, time_label='ms',
           w=None, h=None, axw=None, axh=None, foreground=None, background=None,
@@ -592,9 +511,11 @@ def brain(src, cmap=None, vmin=None, vmax=None, surface='inflated',
     if subjects_dir is None:
         subjects_dir = source.subjects_dir
 
-    brain = _surfer_brain(source.subject, surf or surface, hemi, views, w, h,
-                          axw, axh, foreground, background, cortex, title,
-                          subjects_dir, name)
+    from ._brain_fix import Brain
+    brain = Brain(source.subject, hemi, surf or surface, title, cortex,
+                  views=views, w=w, h=h, axw=axw, axh=axh,
+                  foreground=foreground, background=background,
+                  subjects_dir=subjects_dir, name=name)
 
     if ndvar is not None:
         if ndvar.x.dtype.kind in 'ui':

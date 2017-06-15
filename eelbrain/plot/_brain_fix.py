@@ -45,27 +45,139 @@ def assert_can_save_movies():
 
 
 class Brain(TimeSlicer, surfer.Brain):
-    # Subclass that adds Eelbrain functionality to surfer.Brain
-    def __init__(self, subject, hemi, views, surface, title, width, height,
-                 show, run, **kwargs):
+    """PySurfer :class:`surfer.Brain` subclass adding Eelbrain integration
+
+    Parameters
+    ----------
+    subject : str
+        Subject name.
+    hemi : 'lh' | 'rh' | 'both' | 'split'
+        'both': both hemispheres are shown in the same window;
+        'split': hemispheres are displayed side-by-side in different viewing
+        panes.
+    surface : str
+        Freesurfer surface mesh name (ie 'white', 'inflated', etc.).
+    title : str
+        Title for the window.
+    cortex : str, tuple, dict, or None
+        Specifies how the cortical surface is rendered. Options:
+
+            1. The name of one of the preset cortex styles:
+               ``'classic'`` (default), ``'high_contrast'``,
+               ``'low_contrast'``, or ``'bone'``.
+            2. A color-like argument to render the cortex as a single
+               color, e.g. ``'red'`` or ``(0.1, 0.4, 1.)``. Setting
+               this to ``None`` is equivalent to ``(0.5, 0.5, 0.5)``.
+            3. The name of a colormap used to render binarized
+               curvature values, e.g., ``Grays``.
+            4. A list of colors used to render binarized curvature
+               values. Only the first and last colors are used. E.g.,
+               ['red', 'blue'] or [(1, 0, 0), (0, 0, 1)].
+            5. A container with four entries for colormap (string
+               specifiying the name of a colormap), vmin (float
+               specifying the minimum value for the colormap), vmax
+               (float specifying the maximum value for the colormap),
+               and reverse (bool specifying whether the colormap
+               should be reversed. E.g., ``('Greys', -1, 2, False)``.
+            6. A dict of keyword arguments that is passed on to the
+               call to surface.
+    alpha : float in [0, 1]
+        Alpha level to control opacity of the cortical surface.
+    background, foreground : matplotlib colors
+        color of the background and foreground of the display window
+    subjects_dir : str | None
+        If not None, this directory will be used as the subjects directory
+        instead of the value set using the SUBJECTS_DIR environment
+        variable.
+    views : list | str
+        views to use
+    offset : bool
+        If True, aligs origin with medial wall. Useful for viewing inflated
+        surface where hemispheres typically overlap (Default: True)
+    show_toolbar : bool
+        If True, toolbars will be shown for each view.
+    offscreen : bool
+        If True, rendering will be done offscreen (not shown). Useful
+        mostly for generating images or screenshots, but can be buggy.
+        Use at your own risk.
+    interaction : str
+        Can be "trackball" (default) or "terrain", i.e. a turntable-style
+        camera.
+    w, h : int
+        Figure width and height.
+    axw, axh : int
+        Width and height of the individual viewing panes.
+    name : str
+        Window title (alternative to ``title`` for consistency with other
+        Eelbrian figures).
+    show : bool
+        Currently meaningless due to limitation in VTK that does not allow
+        hidden plots.
+    run : bool
+        Run the Eelbrain GUI app (default is True for interactive plotting and
+        False in scripts).
+    """
+    def __init__(self, subject, hemi, surface='inflated', title=None,
+                 cortex="classic", alpha=1.0, background="white",
+                 foreground="black", subjects_dir=None, views='lat',
+                 offset=True, show_toolbar=False, offscreen=False,
+                 interaction='trackball', w=None, h=None, axw=None, axh=None,
+                 name=None, show=True, run=None):
         self.__data = []
         self.__annot = None
         self.__labels = []  # [(name, color), ...]
         self.__time_index = 0
 
-        if title is None:
-            title = subject
-        elif not isinstance(title, basestring):
-            raise TypeError("title needs to be a string, got %r" % (title,))
+        if isinstance(views, basestring):
+            views = [views]
+        elif not isinstance(views, list):
+            views = list(views)
 
-        assert isinstance(views, list)
+        if hemi == 'split':
+            n_views_x = 2
+        elif hemi in ('lh', 'rh', 'both'):
+            n_views_x = 1
+        else:
+            raise ValueError("hemi=%r" % (hemi,))
+
+        if w is not None:
+            width = w
+        elif axw is not None:
+            width = axw * n_views_x
+        else:
+            width = 500 * n_views_x
+
+        if h is not None:
+            height = h
+        elif axh is not None:
+            height = axh * len(views)
+        else:
+            height = 400 * len(views)
+
+        if title is None:
+            if name is None:
+                title = subject
+            elif isinstance(name, basestring):
+                title = name
+            else:
+                raise TypeError("name=%r (str required)" % (name,))
+        elif not isinstance(title, basestring):
+            raise TypeError("title=%r (str required)" % (title,))
+
         n_rows = len(views)
         n_columns = 2 if hemi == 'split' else 1
         self._frame = BrainFrame(None, self, title, width, height, n_rows,
                                  n_columns, surface)
 
-        surfer.Brain.__init__(self, subject, hemi, surface, views=views,
-                              figure=self._frame.figure, **kwargs)
+        if foreground is None:
+            foreground = 'black'
+        if background is None:
+            background = 'white'
+
+        surfer.Brain.__init__(self, subject, hemi, surface, '', cortex, alpha,
+                              800, background, foreground, self._frame.figure,
+                              subjects_dir, views, offset, show_toolbar,
+                              offscreen, interaction)
         TimeSlicer.__init__(self)
 
         if CONFIG['show'] and show:

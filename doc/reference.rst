@@ -414,10 +414,11 @@ Plotting Brains
 .. py:module:: plot.brain
 .. py:currentmodule:: eelbrain
 
-:mod:`plot.brain` contains specialized functions to plot :class:`NDVar` objects
-containing source space data with mayavi/pysurfer. Unlike Eelbrain's other
-plotting functions, brain plots return a `PySurfer
-<https://pysurfer.github.io/#>`_ :class:`surfer.Brain` instance.
+The :mod:`plot.brain` module contains specialized functions to plot
+:class:`NDVar` objects containing source space data.
+For this it uses a subclass of `PySurfer's
+<https://pysurfer.github.io/#>`_ :class:`surfer.Brain` class.
+The functions below allow quick plotting:
 
 .. autosummary::
    :toctree: generated
@@ -426,24 +427,30 @@ plotting functions, brain plots return a `PySurfer
     plot.brain.cluster
     plot.brain.dspm
     plot.brain.p_map
-
-Eelbrain uses a subclass of PySurfer's :class:`surfer.Brain` class. In addition
-to the PySurfer functionality, this subclass provides the following
-Eelbrain-specific methods:
-
-.. autosummary::
-   :toctree: generated
-
-    ~plot._brain_fix.Brain.image
-    ~plot._brain_fix.Brain.plot_colorbar
-
-Shortcut to plotting annotations with the same interface:
-
-.. autosummary::
-   :toctree: generated
-
     plot.brain.annot
     plot.brain.annot_legend
+
+
+More specific control over the plots can be achieved through the
+:class:`~plot._brain_fix.Brain` object that is returned.
+The following table lists the methods that Eelbrain adds to PySurfer's
+:class:`~plot._brain_fix.Brain` class. For a complete list of methods see the
+:class:`~plot._brain_fix.Brain` class documentation.
+
+.. autosummary::
+   :toctree: generated
+
+    ~plot._brain_fix.Brain
+    ~plot._brain_fix.Brain.add_mask
+    ~plot._brain_fix.Brain.add_ndvar
+    ~plot._brain_fix.Brain.add_ndvar_annotation
+    ~plot._brain_fix.Brain.add_ndvar_label
+    ~plot._brain_fix.Brain.copy_screenshot
+    ~plot._brain_fix.Brain.image
+    ~plot._brain_fix.Brain.plot_colorbar
+    ~plot._brain_fix.Brain.plot_legend
+    ~plot._brain_fix.Brain.set_parallel_view
+
 
 Surface options for plotting data on ``fsaverage``:
 

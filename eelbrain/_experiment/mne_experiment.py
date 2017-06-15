@@ -3239,8 +3239,8 @@ class MneExperiment(FileTree):
     def load_morph_matrix(self, **state):
         """Load the morph matrix from mrisubject to common_brain
 
-        Parameter
-        ---------
+        Parameters
+        ----------
         ...
             State parameters.
 
