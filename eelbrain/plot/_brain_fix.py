@@ -22,15 +22,22 @@ from ..mne_fixes import reset_logger
 from ._base import (CONFIG, TimeSlicer, do_autorun, find_axis_params_data,
                     find_fig_cmaps, find_fig_vlims)
 from ._colors import ColorBar, ColorList, colors_for_oneway
-from ._wx_brain import BrainFrame, SURFACES
 
-# Traits-GUI related imports after BrainFrame
-from mayavi import mlab
-# if this is the first surfer import, lower screen logging level
+# Traits-GUI related imports
+# --------------------------
+# - Set ETS toolkit before importing traits-GUI
+# - Readthedocs does not support mayavi import, so we can't use surfer
+# - if this is the first surfer import, lower screen logging level
 first_import = 'surfer' not in sys.modules
-import surfer
-if first_import:
-    reset_logger(surfer.utils.logger)
+try:
+    from traits.trait_base import ETSConfig
+    ETSConfig.toolkit = 'wx'
+    import surfer
+except ImportError:
+    from . import _mock_surfer as surfer
+else:
+    if first_import:
+        reset_logger(surfer.utils.logger)
 del first_import
 
 
@@ -123,6 +130,8 @@ class Brain(TimeSlicer, surfer.Brain):
                  offset=True, show_toolbar=False, offscreen=False,
                  interaction='trackball', w=None, h=None, axw=None, axh=None,
                  name=None, show=True, run=None):
+        from ._wx_brain import BrainFrame
+
         self.__data = []
         self.__annot = None
         self.__labels = []  # [(name, color), ...]
@@ -747,6 +756,8 @@ class Brain(TimeSlicer, surfer.Brain):
             else:
                 scale = 75  # was 65 for WX backend
 
+        from mayavi import mlab
+
         for figs in self._figures:
             for fig in figs:
                 if forward is not None or up is not None:
@@ -762,6 +773,8 @@ class Brain(TimeSlicer, surfer.Brain):
         self._frame.SetImageSize(width, height)
 
     def set_surface(self, surface):
+        from ._wx_brain import SURFACES
+
         self._set_surface(surface)
         if surface in SURFACES:
             self._frame._surface_selector.SetSelection(SURFACES.index(surface))

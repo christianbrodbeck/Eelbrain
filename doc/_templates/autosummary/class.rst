@@ -6,12 +6,12 @@
 .. autoclass:: {{ objname }}
    
 
+{% block methods %}
+{% if methods %}
+
 Methods
 -------
 
-{% block methods %}
-{% if methods %}
-   
    .. autosummary::
       :toctree:
 

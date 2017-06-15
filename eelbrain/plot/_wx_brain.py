@@ -5,9 +5,6 @@ for testing:
 src = datasets.get_mne_sample(src='ico', sub=[0])['src']
 brain = plot.brain.brain(src.source, mask=False,hemi='lh',views='lat')
 """
-from traits.trait_base import ETSConfig
-ETSConfig.toolkit = 'wx'
-
 from itertools import izip
 from logging import getLogger
 
