@@ -45,7 +45,6 @@ Dependencies
 
 On all platforms:
 
-  - colormath
   - tex
   - mne
 
