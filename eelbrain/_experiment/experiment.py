@@ -3,7 +3,6 @@ from __future__ import print_function
 
 from collections import defaultdict
 from glob import glob
-import inspect
 from itertools import chain, product
 import os
 import re
@@ -209,26 +208,30 @@ class TreeModel(object):
         self._set_handlers[key] = handler
 
     def _crash_report(self):
-        try:
-            source = inspect.getsource(self.__class__)
-        except Exception as e:
-            source = "Failed to retrieve source:\n" + traceback.format_exc(e)
+        out = []
+
+        # try:
+        #     source = inspect.getsource(self.__class__)
+        # except Exception as e:
+        #     source = "Failed to retrieve source:\n" + traceback.format_exc(e)
+        # out.append(source)
 
         try:
             tree = unicode(self.show_state())
         except Exception as e:
             tree = "Failed to retrieve state:\n" + traceback.format_exc(e)
+        out.append(tree)
 
         # package versions
         from .. import __version__
         import mne
         import scipy
-        versions = '\n'.join(("Eelbrain %s" % __version__,
+        out.append('\n'.join(("Eelbrain %s" % __version__,
                               "mne-python %s" % mne.__version__,
                               "SciPy %s" % scipy.__version__,
-                              "NumPy %s" % np.__version__))
+                              "NumPy %s" % np.__version__)))
 
-        return source, tree, versions
+        return out
 
     def _find_missing_fields(self):
         """Check that all field names occurring in templates are valid entries
