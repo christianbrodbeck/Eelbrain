@@ -273,6 +273,12 @@ def dss(ndvar):
     data_dim = ndvar.get_dim(dim_names[1])
     dss_mat = mne_fixes.dss(x, return_data=False)
 
+    # if data is rank-deficient, dss_mat is not square
+    a, b = dss_mat.shape
+    if a != b:
+        raise ValueError("Data for DSS is rank-deficient. Did you exclude all "
+                         "bad channels?")
+
     n_comp = len(dss_mat)
     dss_dim = Scalar('dss', np.arange(n_comp))
     to_dss = NDVar(dss_mat, (dss_dim, data_dim), {}, 'to dss')
