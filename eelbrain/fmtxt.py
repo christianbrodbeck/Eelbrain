@@ -1593,8 +1593,11 @@ class Figure(FMText):
 
     def get_str(self, env={}):
         body = FMText.get_str(self, env)
-        caption = str(self._caption)
-        return "\nFigure:\n%s\nCaption: %s" % (body, caption)
+        if self._caption:
+            caption = str(self._caption)
+            return "%s\n\n%s\n" % (body, caption)
+        else:
+            return body + '\n'
 
 
 class Section(FMText):
@@ -1612,11 +1615,6 @@ class Section(FMText):
         """
         self._heading = asfmtext(heading)
         FMText.__init__(self, content)
-
-    def _repr_items(self):
-        out = [repr(self._heading)]
-        out += FMText._repr_items(self)
-        return out
 
     def add_figure(self, caption, content=None, options=None):
         """Add a figure frame to the section
@@ -1786,7 +1784,7 @@ class Report(Section):
         """
         if author is not None:
             author = asfmtext(author, r'\author')
-        if date is not None:
+        if date:
             if date is True:
                 date = str(datetime.date.today())
             date = asfmtext(date, r'\date')
@@ -1831,7 +1829,7 @@ class Report(Section):
         if self._author is not None:
             author = html(self._author, env)
             content.append(author)
-        if self._date is not None:
+        if self._date:
             date = html(self._date, env)
             content.append(date)
         content.append(toc)
@@ -1847,12 +1845,9 @@ class Report(Section):
         if self._author is not None:
             author = self._author.get_str(env)
             content += [author, '']
-        if self._date is not None:
+        if self._date:
             date = self._date.get_str(env)
             content += [date, '']
-
-        if content:
-            content += ['', '']
 
         level = [1]
         env = env.copy()
