@@ -45,7 +45,7 @@ from functools import partial
 import itertools
 from itertools import chain, izip
 from keyword import iskeyword
-from math import ceil, log10
+from math import ceil, log10, log
 from numbers import Integral, Number
 import cPickle as pickle
 import operator
@@ -4073,6 +4073,25 @@ class NDVar(object):
         info = self.info.copy()
         info['cids'] = cids
         return NDVar(cmap, self.dims, info, name or self.name)
+
+    def log(self, base=None):
+        """Element-wise log
+
+        Parameters
+        ----------
+        base : scalar
+            Base of the log (default is the natural log).
+        """
+        if base is None:
+            x = np.log(self.x)
+        elif base == 2:
+            x = np.log2(self.x)
+        elif base == 10:
+            x = np.log10(self.x)
+        else:
+            x = np.log(self.x)
+            x /= log(base)
+        return NDVar(x, self.dims, self.info.copy(), self.name)
 
     def max(self, dims=(), **regions):
         """Compute the maximum over given dimensions
