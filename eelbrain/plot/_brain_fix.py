@@ -324,6 +324,11 @@ class Brain(TimeSlicer, surfer.Brain):
         if smoothing_steps is None and ndvar.source.kind == 'ico':
             smoothing_steps = ndvar.source.grade + 1
 
+        # remove existing data before modifying attributes
+        if remove_existing:
+            self.remove_data()
+
+        # make sure time axis is compatible with existing data
         if ndvar.has_dim('time'):
             if self._time_dim is None:
                 self._time_dim = ndvar.time
@@ -356,9 +361,6 @@ class Brain(TimeSlicer, surfer.Brain):
         # remember where to find data_dict
         dict_hemi = 'rh' if data_hemi == 'rh' else 'lh'
         data_index = len(self._data_dicts[dict_hemi])
-
-        if remove_existing:
-            self.remove_data()
 
         # add data
         new_surfaces = []
