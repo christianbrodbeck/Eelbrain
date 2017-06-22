@@ -4383,8 +4383,8 @@ class NDVar(object):
         return NDVar(np.sign(self.x), self.dims, self.info.copy(),
                      name or self.name)
 
-    def smooth(self, dim, window_length, window='blackman', name=None,
-               mode='center'):
+    def smooth(self, dim, window_length, window='hamming', mode='center',
+               name=None):
         """Smooth data by convolving it with a window
 
         Parameters
@@ -4396,18 +4396,18 @@ class NDVar(object):
             seconds).
         window : str | tuple
             Window type, input to :func:`scipy.signal.get_window`. For example
-            'boxcar', 'triang', 'blackman' (default).
-        name : str
-            Name for the smoothed NDVar.
+            'boxcar', 'triang', 'hamming' (default).
         mode : 'left' | 'center' | 'right'
             Alignment of the output to the input relative to the window:
-            
-            - ``left``: sample in the output corresponds to the left edge of 
+
+            - ``left``: sample in the output corresponds to the left edge of
               the window.
-            - ``center``: sample in the output corresponds to the center of 
+            - ``center``: sample in the output corresponds to the center of
               the window.
-            - ``right``: sample in the output corresponds to the right edge of 
+            - ``right``: sample in the output corresponds to the right edge of
               the window.
+        name : str
+            Name for the smoothed NDVar.
 
         Returns
         -------
