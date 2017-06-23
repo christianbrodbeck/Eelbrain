@@ -2095,8 +2095,7 @@ class TimeSlicer(object):
 
     def __init__(self, ndvars=None):
         if ndvars is not None:
-            self._set_time_dim(ndvars)
-            self._current_time = self._time_dim.tmin
+            self._set_time_dim_from_ndvars(ndvars)
         self._time_controller = None
         self._time_fixed = False
 
@@ -2104,10 +2103,17 @@ class TimeSlicer(object):
         tc = TimeController(self._current_time, self._time_fixed)
         tc.add_plot(self)
 
-    def _set_time_dim(self, ndvars):
-        ndvars = tuple(v for v in ndvars if v.has_dim('time'))
-        if ndvars:
-            self._time_dim = reduce(UTS._union, (e.get_dim('time') for e in ndvars))
+    def _set_time_dim(self, time_dim):
+        if self._time_dim is not None:
+            raise NotImplementedError("Time dim already set")
+        self._time_dim = time_dim
+        self._current_time = time_dim.tmin
+
+    def _set_time_dim_from_ndvars(self, ndvars):
+        time_ndvars = tuple(v for v in ndvars if v.has_dim('time'))
+        if time_ndvars:
+            time_dim = reduce(UTS._union, (v.time for v in time_ndvars))
+            self._set_time_dim(time_dim)
 
     def link_time_axis(self, other):
         """Link the time axis of this figure with another figure"""
