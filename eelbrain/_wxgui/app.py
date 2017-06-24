@@ -61,7 +61,10 @@ class App(wx.App):
         m.Append(ID.SET_VLIM, "Set Y-Axis Limit... \tCtrl+l", "Change the Y-"
                  "axis limit in epoch plots")
         m.Append(ID.SET_MARKED_CHANNELS, "Mark Channels...", "Mark specific "
-                 "channels in plots.")
+                 "channels in plots")
+        self._draw_crosshairs_menu_item = m.Append(
+            ID.DRAW_CROSSHAIRS, "Draw &Crosshairs", "Draw crosshairs under the "
+            "cursor", kind=wx.ITEM_CHECK)
         m.AppendSeparator()
         m.Append(ID.SET_LAYOUT, "&Set Layout... \tCtrl+Shift+l", "Change the "
                  "page layout")
@@ -111,6 +114,7 @@ class App(wx.App):
         self.Bind(wx.EVT_MENU, self.OnCopy, id=wx.ID_COPY)
         self.Bind(wx.EVT_MENU, self.OnCopyAsPNG, id=ID.COPY_AS_PNG)
         self.Bind(wx.EVT_MENU, self.OnCut, id=wx.ID_CUT)
+        self.Bind(wx.EVT_MENU, self.OnDrawCrosshairs, id=ID.DRAW_CROSSHAIRS)
         self.Bind(wx.EVT_MENU, self.OnOnlineHelp, id=ID.HELP_EELBRAIN)
         self.Bind(wx.EVT_MENU, self.OnOnlineHelp, id=ID.HELP_PYTHON)
         self.Bind(wx.EVT_MENU, self.OnPaste, id=wx.ID_PASTE)
@@ -135,6 +139,7 @@ class App(wx.App):
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUICopyAsPNG, id=ID.COPY_AS_PNG)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUICut, id=wx.ID_CUT)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIDown, id=wx.ID_DOWN)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIDrawCrosshairs, id=ID.DRAW_CROSSHAIRS)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIForward, id=wx.ID_FORWARD)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIOpen, id=wx.ID_OPEN)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIPaste, id=wx.ID_PASTE)
@@ -393,6 +398,11 @@ class App(wx.App):
         win = wx.Window.FindFocus()
         win.Cut()
 
+    def OnDrawCrosshairs(self, event):
+        frame = self._get_active_frame()
+        if hasattr(frame, 'SetDrawCrosshairs'):
+            frame.SetDrawCrosshairs(self._draw_crosshairs_menu_item.IsChecked())
+
     def OnMenuOpened(self, event):
         "Update window names in the window menu"
         menu = event.GetMenu()
@@ -513,6 +523,12 @@ class App(wx.App):
             frame.OnUpdateUIDown(event)
         else:
             event.Enable(False)
+
+    def OnUpdateUIDrawCrosshairs(self, event):
+        frame = self._get_active_frame()
+        valid_frame = hasattr(frame, 'SetDrawCrosshairs')
+        event.Enable(valid_frame)
+        event.Check(frame.GetDrawCrosshairs() if valid_frame else False)
 
     def OnUpdateUIForward(self, event):
         frame = self._get_active_frame()

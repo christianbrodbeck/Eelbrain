@@ -1160,6 +1160,13 @@ class EelFigure(object):
         self._last_draw_time = time.time() - t0
 
     def draw_crosshairs(self, enable=True):
+        """Draw crosshairs under the cursor
+
+        Parameters
+        ----------
+        enable : bool
+            Enable drawing crosshairs (default True, set to False to disable).
+        """
         self._draw_crosshairs = enable
         if not enable:
             self._remove_crosshairs(True)

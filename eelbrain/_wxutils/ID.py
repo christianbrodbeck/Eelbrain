@@ -23,6 +23,7 @@ COPY_AS_PNG = wx.NewId()
 
 DATASET_ATTACH = wx.NewId()
 DATASET_IMPORT = wx.NewId()
+DRAW_CROSSHAIRS = wx.NewId()
 DUPLICATE = wx.NewId()
 DUPLICATE_WITH_OUTPUT = wx.NewId()
 
