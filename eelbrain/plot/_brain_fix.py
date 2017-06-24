@@ -52,7 +52,10 @@ def assert_can_save_movies():
 
 
 class Brain(TimeSlicer, surfer.Brain):
-    """PySurfer :class:`surfer.Brain` subclass adding Eelbrain integration
+    """PySurfer :class:`Brain` subclass returned by :mod:`plot.brain` functions
+
+    PySurfer :class:`surfer.Brain` subclass adding Eelbrain GUI integration and
+    methods to visualize data in :class:`NDVar` format.
 
     Parameters
     ----------
@@ -123,6 +126,12 @@ class Brain(TimeSlicer, surfer.Brain):
     run : bool
         Run the Eelbrain GUI app (default is True for interactive plotting and
         False in scripts).
+
+    Notes
+    -----
+    The documentation lists only the methods that Eelbrain adds to or overrides
+    from the PySurfer :class:`~surfer.Brain` super-class. For complete PySurfer
+    functionality see te PySurfer documentation.
     """
     def __init__(self, subject, hemi, surface='inflated', title=None,
                  cortex="classic", alpha=1.0, background="white",
@@ -794,6 +803,7 @@ class Brain(TimeSlicer, surfer.Brain):
         self._set_time(time, True)
 
     def set_title(self, title):
+        "Set the window title"
         self._frame.SetTitle(unicode(title))
 
     def _update_time(self, t, fixate):

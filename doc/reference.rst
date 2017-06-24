@@ -418,7 +418,9 @@ The :mod:`plot.brain` module contains specialized functions to plot
 :class:`NDVar` objects containing source space data.
 For this it uses a subclass of `PySurfer's
 <https://pysurfer.github.io/#>`_ :class:`surfer.Brain` class.
-The functions below allow quick plotting:
+The functions below allow quick plotting.
+More specific control over the plots can be achieved through the
+:class:`~plot._brain_fix.Brain` object that is returned.
 
 .. autosummary::
    :toctree: generated
@@ -429,28 +431,11 @@ The functions below allow quick plotting:
     plot.brain.p_map
     plot.brain.annot
     plot.brain.annot_legend
-
-
-More specific control over the plots can be achieved through the
-:class:`~plot._brain_fix.Brain` object that is returned.
-The following table lists the methods that Eelbrain adds to PySurfer's
-:class:`~plot._brain_fix.Brain` class. For a complete list of methods see the
-:class:`~plot._brain_fix.Brain` class documentation.
-
-.. autosummary::
-   :toctree: generated
-
     ~plot._brain_fix.Brain
-    ~plot._brain_fix.Brain.add_mask
-    ~plot._brain_fix.Brain.add_ndvar
-    ~plot._brain_fix.Brain.add_ndvar_annotation
-    ~plot._brain_fix.Brain.add_ndvar_label
-    ~plot._brain_fix.Brain.copy_screenshot
-    ~plot._brain_fix.Brain.image
-    ~plot._brain_fix.Brain.plot_colorbar
-    ~plot._brain_fix.Brain.plot_legend
-    ~plot._brain_fix.Brain.set_parallel_view
 
+In order to make custom plots, a :class:`~plot._brain_fix.Brain` figure
+without any data added can be created with
+``plot.brain.brain(ndvar.source, mask=False)``.
 
 Surface options for plotting data on ``fsaverage``:
 
