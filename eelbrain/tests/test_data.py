@@ -23,8 +23,8 @@ from scipy import signal
 
 from eelbrain import (
     datasets, load, Var, Factor, NDVar, Datalist, Dataset, Celltable,
-    Categorial, Scalar, Sensor, UTS, align, align1, choose, combine, cwt_morlet,
-    shuffled_index)
+    Case, Categorial, Scalar, Sensor, UTS, align, align1, choose, combine,
+    cwt_morlet, shuffled_index)
 from eelbrain._data_obj import (
     all_equal, asvar, assub, FULL_AXIS_SLICE, FULL_SLICE, longname, SourceSpace,
     assert_has_no_empty_cells)
@@ -1236,6 +1236,9 @@ def test_nested_effects():
 def test_ols():
     "Test NDVar.ols() method"
     from rpy2.robjects import r
+
+    # data-type
+    assert_array_equal(NDVar([1, 2, 3], Case).ols(Var([1, 2, 3])).x, [1.])
 
     # simulate data
     ds = datasets.get_uts(True)

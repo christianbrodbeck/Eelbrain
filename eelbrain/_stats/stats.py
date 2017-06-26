@@ -10,6 +10,16 @@ from .._data_obj import asfactor, asmodel, Model
 from . import opt
 
 
+FLOAT64 = np.dtype('float64')
+
+
+def _as_float64(x):
+    if x.dtype is FLOAT64:
+        return x
+    else:
+        return x.astype(FLOAT64)
+
+
 def betas(y, x):
     """Regression coefficients
 
@@ -30,7 +40,7 @@ def betas(y, x):
     x = asmodel(x)
     p = x._parametrize()
     shape = (x.df,) + y.shape[1:]
-    y_ = y.reshape((n, -1))
+    y_ = _as_float64(y).reshape((n, -1))
     out = np.empty(shape)
     out_ = out.reshape((x.df, -1))
     opt.lm_betas(y_, p.x, p.projector, out_)
