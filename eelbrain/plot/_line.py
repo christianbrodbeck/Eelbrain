@@ -156,6 +156,7 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
                    izip(xdata, ydata, offsets, color_iter)]
 
         if ylim is None:
+            ymin = ydata.min()
             ylim = (ydata[0].min(), offset * ny)
         else:
             ymin, ymax = ylim
@@ -166,7 +167,7 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
         ax.xaxis.set_ticks_position('none')
         ax.yaxis.set_ticks_position('none')
         ax.set_yticks(offsets)
-        ax.set_yticklabels(ylabels or ())
+        ax.set_yticklabels(ylabels or (), va='center' if ymin < 0 else 'baseline')
         ax.set_ylim(ylim)
         self._configure_xaxis_dim(xdim_obj, xlabel, True)
         if ylabel:
