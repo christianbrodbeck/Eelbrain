@@ -37,12 +37,14 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
         Initial x-axis display limits.
     xlabel : bool | str
         X-axis label. By default the label is inferred from the data.
+    xticklabels : bool
+        Print x-axis tick-labels (set to False to suppress them).
     ylabel : bool | str
         Y-axis label. By default the label is inferred from the data.
     colors : dict | sequence of colors
         Colors for the lines (default is all lines in black).
     ylabels : bool | dict | sequence of str
-        Labels for the different lines.
+        Labels for the different lines, placed along the y-axis.
     legend : str | int | 'fig' | None
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
@@ -62,9 +64,9 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
     _name = "LineStack"
 
     def __init__(self, y, x=None, sub=None, ds=None, offset='y.max() - y.min()',
-                 ylim=None, xlim=None, xlabel=True, ylabel=True, order=None,
-                 colors=None, ylabels=True, xdim=None, legend=None, clip=True,
-                 *args, **kwargs):
+                 ylim=None, xlim=None, xlabel=True, xticklabels=True,
+                 ylabel=True, order=None, colors=None, ylabels=True, xdim=None,
+                 legend=None, clip=True, *args, **kwargs):
         sub = assub(sub, ds)
         if isinstance(y, (tuple, list)):
             if x is not None:
@@ -169,7 +171,7 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
         ax.set_yticks(offsets)
         ax.set_yticklabels(ylabels or (), va='center' if ymin < 0 else 'baseline')
         ax.set_ylim(ylim)
-        self._configure_xaxis_dim(xdim_obj, xlabel, True)
+        self._configure_xaxis_dim(xdim_obj, xlabel, xticklabels)
         if ylabel:
             ax.set_ylabel(ylabel)
         XAxisMixin.__init__(self, epochs, xdim, xlim)
