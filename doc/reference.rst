@@ -420,7 +420,7 @@ For this it uses a subclass of `PySurfer's
 <https://pysurfer.github.io/#>`_ :class:`surfer.Brain` class.
 The functions below allow quick plotting.
 More specific control over the plots can be achieved through the
-:class:`~plot._brain_fix.Brain` object that is returned.
+:class:`~plot._brain_object.Brain` object that is returned.
 
 .. autosummary::
    :toctree: generated
@@ -431,9 +431,9 @@ More specific control over the plots can be achieved through the
     plot.brain.p_map
     plot.brain.annot
     plot.brain.annot_legend
-    ~plot._brain_fix.Brain
+    ~plot._brain_object.Brain
 
-In order to make custom plots, a :class:`~plot._brain_fix.Brain` figure
+In order to make custom plots, a :class:`~plot._brain_object.Brain` figure
 without any data added can be created with
 ``plot.brain.brain(ndvar.source, mask=False)``.
 

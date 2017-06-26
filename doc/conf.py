@@ -14,7 +14,6 @@
 
 from datetime import datetime
 import eelbrain
-# import eelbrain.plot._brain_fix  # lazy import
 
 
 # If extensions (or modules to document with autodoc) are in another directory,

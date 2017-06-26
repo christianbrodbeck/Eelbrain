@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-"""Fix up surfer.Brain"""
+"""PySurfer Brain subclass to embed in Eelbrain"""
 from __future__ import division
 
 from distutils.version import LooseVersion

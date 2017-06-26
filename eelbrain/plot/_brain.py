@@ -17,7 +17,7 @@ from ._colors import ColorList
 
 
 def assert_can_save_movies():
-    from ._brain_fix import assert_can_save_movies
+    from ._brain_object import assert_can_save_movies
     assert_can_save_movies()
 
 
@@ -101,7 +101,7 @@ def annot(annot, subject='fsaverage', surface='smoothwm', borders=False, alpha=0
     if title is None:
         title = annot
 
-    from ._brain_fix import Brain
+    from ._brain_object import Brain
     brain = Brain(subject, hemi, surf or surface, title, cortex,
                   views=views, w=w, h=h, axw=axw, axh=axh,
                   foreground=foreground, background=background,
@@ -511,7 +511,7 @@ def brain(src, cmap=None, vmin=None, vmax=None, surface='inflated',
     if subjects_dir is None:
         subjects_dir = source.subjects_dir
 
-    from ._brain_fix import Brain
+    from ._brain_object import Brain
     brain = Brain(source.subject, hemi, surf or surface, title, cortex,
                   views=views, w=w, h=h, axw=axw, axh=axh,
                   foreground=foreground, background=background,
