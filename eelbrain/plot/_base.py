@@ -1340,7 +1340,7 @@ class BaseLayout(object):
     def __init__(self, h, w, dpi, tight, show, run, autoscale, title, name):
         self.h = h
         self.w = w
-        self.dpi = dpi
+        self.dpi = dpi or mpl.rcParams['figure.dpi']
         self.tight = tight
         self.show = show
         self.run = run
@@ -1586,9 +1586,6 @@ class Layout(BaseLayout):
             if w_is_implicit:
                 w += margins['left'] + margins['wspace'] * (ncol - 1) + margins['right']
 
-        if dpi is None:
-            dpi = mpl.rcParams['figure.dpi']
-
         BaseLayout.__init__(self, h, w, dpi, tight, show, run, autoscale,
                             title, name)
         self.nax = nax
@@ -1632,10 +1629,12 @@ class Layout(BaseLayout):
 
 class ImLayout(Layout):
     """Layout subclass for axes without space"""
-    def __init__(self, nax, top_space, bottom_space, ax_aspect,
-                 axh_default, title=None, *args, **kwargs):
+    def __init__(self, nax, top_space, bottom_space, left_space, right_space,
+                 ax_aspect, axh_default, title=None, *args, **kwargs):
         self.top_space = top_space + 0.5 * bool(title)
         self.bottom_space = bottom_space
+        self.left_space = left_space
+        self.right_space = right_space
         Layout.__init__(self, nax, ax_aspect, axh_default, False, title, *args,
                         **kwargs)
 
@@ -1645,7 +1644,9 @@ class ImLayout(Layout):
         out = BaseLayout.fig_kwa(self)
         bottom = self.bottom_space / self.h
         top = 1 - (self.top_space / self.h)
-        out['subplotpars'] = SubplotParams(0, bottom, 1, top, 0, 0)
+        left = self.left_space / self.w
+        right = 1 - (self.right_space / self.w)
+        out['subplotpars'] = SubplotParams(left, bottom, right, top, 0, 0)
         return out
 
     def make_axes(self, figure):
@@ -1659,9 +1660,29 @@ class ImLayout(Layout):
 
 
 class VariableAspectLayout(BaseLayout):
-    """Layout with one flexible and one square axes per row
+    """Layout with a fixed number of columns that differ in spacing
 
-    Developed for TopoButterfly plot
+    Axes are originally created to fill the whole rectangle allotted to them.
+    Developed for TopoButterfly plot: one variable aspect butterfly plot, and
+    one square topomap plot.
+
+    Parameters
+    ----------
+    nrow : int
+        Number of rows.
+    axh_default : scalar
+        Default row height.
+    w_default : scalar
+        Default figure width.
+    aspect : tuple of {scalar | None}
+        Axes aspect ratio (w/h) for each column; None for axes with flexible
+        width.
+    ax_kwargs : tuple of dict
+        Parameters for :meth:`figure.add_axes` for each column.
+    ax_frames : tuple of str
+        ``frame`` parameter for :meth:`._format_axes` for each column.
+    row_titles : sequence of {str | None}
+        One title per row.
     """
     def __init__(self, nrow, axh_default, w_default, aspect=(None, 1),
                  ax_kwargs=None, ax_frames=None, row_titles=None,
@@ -1704,8 +1725,9 @@ class VariableAspectLayout(BaseLayout):
         self.ax_kwargs = ax_kwargs
         self.ax_frames = ax_frames
 
-    def ax_rects(self, h, w):
-        "Compute axes outlines for given height and width"
+        # Compute axes outlines for given height and width
+        h = self.h
+        w = self.w
         text_buffer = 20 * POINT
 
         # buffers for legends
@@ -1731,12 +1753,11 @@ class VariableAspectLayout(BaseLayout):
         # rectangles:  (left, bottom, width, height)
         rects = (((l, bottom, w, height) for l, w in izip(lefts_, widths_)) for
                  bottom in bottoms_)
-        return rects
+        self._ax_rects = rects
 
     def make_axes(self, figure):
         axes = []
-        rects = self.ax_rects(self.h, self.w)
-        for row, row_rects in enumerate(rects):
+        for row, row_rects in enumerate(self._ax_rects):
             for rect, kwa, frame in izip(row_rects, self.ax_kwargs, self.ax_frames):
                 ax = figure.add_axes(rect, autoscale_on=self.autoscale, **kwa)
                 self._format_axes(ax, frame, True)

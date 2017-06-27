@@ -760,7 +760,7 @@ class ImageTable(EelFigure, ColorBarMixin):
     #
 
     def __init__(self, n_rows, n_columns, title=None, *args, **kwargs):
-        layout = ImLayout(n_rows * n_columns, 0, 0.5, 4/3, 2, title, *args,
+        layout = ImLayout(n_rows * n_columns, 0, 0.5, 0, 0, 4/3, 2, title, *args,
                           nrow=n_rows, ncol=n_columns, autoscale=True, **kwargs)
         EelFigure.__init__(self, None, layout)
 
@@ -802,7 +802,7 @@ class _BinTable(EelFigure, ColorBarMixin):
         n_hemis = (data.source.lh_n > 0) + (data.source.rh_n > 0)
         n_rows = len(views) * n_hemis
 
-        layout = ImLayout(n_rows * n_columns, 0, 0.5, 4/3, 2, title, *args,
+        layout = ImLayout(n_rows * n_columns, 0, 0.5, 0, 0, 4/3, 2, title, *args,
                           nrow=n_rows, ncol=n_columns, **kwargs)
         EelFigure.__init__(self, None, layout)
 
