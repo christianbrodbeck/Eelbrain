@@ -19,7 +19,7 @@ print(ds)
 ds = ds.sub("trigger == 167")
 
 # Add MEG data for trials
-ds['meg'] = load.fiff.epochs(ds, 0, 60)
+ds['meg'] = load.fiff.epochs(ds, 0, tstop=60)
 # concatenate MEG data into one long "trial"
 meg = concatenate(ds['meg'])
 # plot average correlation with neighbors
@@ -30,7 +30,7 @@ raw.info['bads'] = ['MEG 056']
 
 # check the result of removing the channel (need to add the data with the
 # new bad channel setting)
-ds['meg'] = load.fiff.epochs(ds, 0, 60)
+ds['meg'] = load.fiff.epochs(ds, 0, tstop=60)
 plot.Topomap(neighbor_correlation(concatenate(ds['meg'])))
 
 # remove the mean from the data

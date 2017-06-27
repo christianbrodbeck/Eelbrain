@@ -6,7 +6,7 @@ from eelbrain import *
 # load the data
 ds = load.fiff.events('Data/R2290_HAYO_P3H_1-8-raw.fif')
 ds = ds.sub("trigger == 167")
-ds['meg'] = load.fiff.epochs(ds, 0, 60)
+ds['meg'] = load.fiff.epochs(ds, 0, tstop=60)
 
 # load the saved DSS
 todss, fromdss = load.unpickle('Data/R2290_HAYO_P3H_DSS.pickle')
@@ -15,8 +15,6 @@ todss, fromdss = load.unpickle('Data/R2290_HAYO_P3H_DSS.pickle')
 meg_dss1 = todss[0].dot(ds['meg'])
 # average trials (trial number is represented by the 'case' dimension)
 y = meg_dss1.mean('case')
-# MNE-Python includes last sample; discard it for consistency with wav
-y = y[:60]
 # resample at 100 Hz
 y = resample(y, 100)
 

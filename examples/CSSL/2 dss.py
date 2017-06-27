@@ -9,7 +9,7 @@ ds = load.fiff.events('DATA/R2290_HAYO_P3H_1-8-raw.fif')
 # select the desired events
 ds = ds.sub("trigger == 167")
 # add MEG trial data to the dataset
-ds['meg'] = load.fiff.epochs(ds, 0, 60)
+ds['meg'] = load.fiff.epochs(ds, 0, tstop=60)
 
 # DSS from
 todss, fromdss = dss(ds['meg'])
@@ -46,7 +46,7 @@ plot.Topomap(fromdss[:, :6], '.dss', h=2, ncol=6, title='Clean data only')
 # different conditions:
 ds = load.fiff.events('DATA/R2290_HAYO_P3H_1-8-raw.fif')
 # load data for all 6 trials (each trial 10 s long)
-ds['meg'] = load.fiff.epochs(ds, 0, 10)
+ds['meg'] = load.fiff.epochs(ds, 0, tstop=10)
 # extract NDVar for each condition; each condition has 3 trials:
 c167 = ds[ds.eval("trigger == 167"), 'meg']
 c163 = ds[ds.eval("trigger == 163"), 'meg']
