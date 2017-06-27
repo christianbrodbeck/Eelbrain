@@ -1450,8 +1450,10 @@ class Layout(BaseLayout):
         self.w_fixed = w or axw
 
         if margins is True:
+            use_margins = True
             margins = self._default_margins.copy()
         elif margins is not None:
+            use_margins = True
             tight = False
             margins_in = dict(margins)
             margins = {key: margins_in.pop(key, default) for key, default in
@@ -1459,6 +1461,10 @@ class Layout(BaseLayout):
             if margins_in:
                 raise ValueError("Invalid entries in margins (unknown keys): "
                                  "%r" % (margins_in,))
+        else:
+            margins = {k: 0 for k in self._default_margins}
+            use_margins = False
+
         h_is_implicit = h is None
         w_is_implicit = w is None
 
@@ -1560,10 +1566,12 @@ class Layout(BaseLayout):
                 nrow = min(nax, nrow)
                 ncol = int(math.ceil(nax / nrow))
 
-            if h:
-                axh = axh or h / nrow
-            if w:
-                axw = axw or w / ncol
+            if h and not axh:
+                h_empty = margins['bottom'] + margins['hspace'] * (nrow - 1) + margins['top']
+                axh = (h - h_empty) / nrow
+            if w and not axw:
+                w_empty = margins['left'] + margins['wspace'] * (ncol - 1) + margins['right']
+                axw = (w - w_empty) / ncol
 
             if not axw and not axh:
                 axh = axh_default
@@ -1581,11 +1589,10 @@ class Layout(BaseLayout):
             if h is None:
                 h = axh * nrow
 
-        if margins:
-            if h_is_implicit:
-                h += margins['bottom'] + margins['hspace'] * (nrow - 1) + margins['top']
-            if w_is_implicit:
-                w += margins['left'] + margins['wspace'] * (ncol - 1) + margins['right']
+        if h_is_implicit:
+            h += margins['bottom'] + margins['hspace'] * (nrow - 1) + margins['top']
+        if w_is_implicit:
+            w += margins['left'] + margins['wspace'] * (ncol - 1) + margins['right']
 
         BaseLayout.__init__(self, h, w, dpi, tight, show, run, autoscale,
                             title, name)
@@ -1597,7 +1604,7 @@ class Layout(BaseLayout):
         self.frame = frame
         self.yaxis = yaxis
         self.share_axes = share_axes
-        self.margins = margins
+        self.margins = margins if use_margins else None
 
     def fig_kwa(self):
         out = BaseLayout.fig_kwa(self)

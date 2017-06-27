@@ -457,7 +457,8 @@ class ColorBar(EelFigure):
         Width of the color-bar in inches.
     ticks : {float: str} dict | sequence of float
         Customize tick-labels on the colormap; either a dictionary with
-        tick-locations and labels, or a sequence of tick locations.
+        tick-locations and labels, or a sequence of tick locations. To draw no
+        ticks, set to ``()``.
     threshold : scalar
         Set the alpha of values below ``threshold`` to 0 (as well as for
         negative values above ``abs(threshold)``).
@@ -561,7 +562,9 @@ class ColorBar(EelFigure):
             raise ValueError("orientation=%s" % repr(orientation))
 
         # value ticks
-        if isinstance(ticks, dict):
+        if ticks is False:
+            axis.set_ticks(())
+        elif isinstance(ticks, dict):
             tick_locs = sorted(ticks)
             axis.set_ticks(tick_locs)
             axis.set_ticklabels([ticks[t] for t in tick_locs])
