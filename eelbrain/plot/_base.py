@@ -1383,6 +1383,9 @@ class BaseLayout(object):
 
 class Layout(BaseLayout):
     """Layout for figures with several axes of the same size"""
+    _default_margins = {'left': 0.4, 'bottom': 0.5, 'right': 0.05, 'top': 0.05,
+                        'wspace': 0.1, 'hspace': 0.1}
+
     def __init__(self, nax, ax_aspect, axh_default, tight=True, title=None,
                  h=None, w=None, axh=None, axw=None, nrow=None, ncol=None,
                  dpi=None, margins=None, show=True, run=None,
@@ -1446,15 +1449,13 @@ class Layout(BaseLayout):
 
         self.w_fixed = w or axw
 
-        if margins:
+        if margins is True:
+            margins = self._default_margins.copy()
+        elif margins is not None:
             tight = False
             margins_in = dict(margins)
-            margins = {'left': margins_in.pop('left', 0.4),
-                       'bottom': margins_in.pop('bottom', 0.5),
-                       'right': margins_in.pop('right', 0.05),
-                       'top': margins_in.pop('top', 0.05),
-                       'wspace': margins_in.pop('wspace', 0.1),
-                       'hspace': margins_in.pop('hspace', 0.1)}
+            margins = {key: margins_in.pop(key, default) for key, default in
+                       self._default_margins.iteritems()}
             if margins_in:
                 raise ValueError("Invalid entries in margins (unknown keys): "
                                  "%r" % (margins_in,))
@@ -1628,26 +1629,25 @@ class Layout(BaseLayout):
 
 
 class ImLayout(Layout):
-    """Layout subclass for axes without space"""
-    def __init__(self, nax, top_space, bottom_space, left_space, right_space,
-                 ax_aspect, axh_default, title=None, *args, **kwargs):
-        self.top_space = top_space + 0.5 * bool(title)
-        self.bottom_space = bottom_space
-        self.left_space = left_space
-        self.right_space = right_space
+    """Layout subclass for axes without space
+
+    Make sure to specify the ``margins`` parameter for absolute spacing
+    """
+    _default_margins = {'left': 0, 'bottom': 0, 'right': 0, 'top': 0,
+                        'wspace': 0, 'hspace': 0}
+
+    def __init__(self, nax, ax_aspect, axh_default, margins, default_margins,
+                 title=None, *args, **kwargs):
+        if margins is None:
+            margins = default_margins
+        elif isinstance(margins, dict):
+            for k in default_margins:
+                if k not in margins:
+                    margins[k] = default_margins[k]
+        else:
+            raise TypeError("margins=%r; needs to be a dict" % (margins,))
         Layout.__init__(self, nax, ax_aspect, axh_default, False, title, *args,
-                        **kwargs)
-
-        self.h += top_space + bottom_space
-
-    def fig_kwa(self):
-        out = BaseLayout.fig_kwa(self)
-        bottom = self.bottom_space / self.h
-        top = 1 - (self.top_space / self.h)
-        left = self.left_space / self.w
-        right = 1 - (self.right_space / self.w)
-        out['subplotpars'] = SubplotParams(left, bottom, right, top, 0, 0)
-        return out
+                        margins=margins, **kwargs)
 
     def make_axes(self, figure):
         axes = []

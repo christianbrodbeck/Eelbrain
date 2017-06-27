@@ -109,7 +109,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         if interpolation is None:
             interpolation = 'nearest' if method else 'bilinear'
 
-        layout = ImLayout(nax, 0, 0, 0, 0, 1, 5, *args, **kwargs)
+        layout = ImLayout(nax, 1, 5, None, {}, *args, **kwargs)
         EelFigure.__init__(self, data_desc, layout)
         self._set_axtitle(axtitle, epochs)
 
