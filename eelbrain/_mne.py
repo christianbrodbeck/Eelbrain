@@ -220,7 +220,7 @@ def labels_from_mni_coords(seeds, extent=30., subject='fsaverage',
 
 
 def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
-                       copy=False):
+                       copy=False, parc=True):
     """Morph source estimate to a different MRI subject
 
     Parameters
@@ -240,6 +240,11 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     copy : bool
         Make sure that the data of ``morphed_ndvar`` is separate from
         ``ndvar`` (default False).
+    parc : bool | str
+        Parcellation for target source space. The default is to keep the
+        parcellation from ``ndvar``. Set to ``False`` to load no parcellation.
+        If the annotation files are missing for the target subject an IOError
+        is raised.
 
     Returns
     -------
@@ -260,19 +265,39 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     subject_from = ndvar.source.subject
     src = ndvar.source.src
     if vertices_to is None:
-        path = SourceSpace._src_pattern.format(subjects_dir=subjects_dir,
-                                               subject=subject_to, src=src)
+        path = SourceSpace._SRC_PATH.format(
+            subjects_dir=subjects_dir, subject=subject_to, src=src)
         src_to = mne.read_source_spaces(path)
         vertices_to = [src_to[0]['vertno'], src_to[1]['vertno']]
     elif not isinstance(vertices_to, list) or not len(vertices_to) == 2:
         raise ValueError('vertices_to must be a list of length 2')
 
+    # parc for new source space
+    if parc is True:
+        parc_to = ndvar.source.parc.name if ndvar.source.parc else None
+    else:
+        parc_to = parc
+    # check that annot files are available
+    if parc:
+        fname = SourceSpace._ANNOT_PATH.format(
+            subjects_dir=subjects_dir, subject=subject_to, hemi='%s',
+            parc=parc_to)
+        fnames = tuple(fname % hemi for hemi in ('lh', 'rh'))
+        missing = tuple(fname for fname in fnames if not os.path.exists(fname))
+        if missing:
+            raise IOError(
+                "Annotation files are missing for parc=%r for target subject "
+                "%s. Use the parc parameter to change the parcellation. The "
+                "following files are missing:\n%s" %
+                (parc_to, subject_to, '\n'.join(missing)))
+
     if subject_from == subject_to and _vertices_equal(ndvar.source.vertno,
                                                       vertices_to):
         if copy:
-            return ndvar.copy()
-        else:
-            return ndvar
+            ndvar = ndvar.copy()
+        if parc is not True:
+            ndvar.source.set_parc(parc)
+        return ndvar
 
     axis = ndvar.get_axis('source')
     x = ndvar.x
@@ -327,11 +352,7 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
             x_ = x_.swapaxes(axis, 0)
 
     # package output NDVar
-    if ndvar.source.parc is None:
-        parc = None
-    else:
-        parc = ndvar.source.parc.name
-    source = SourceSpace(vertices_to, subject_to, src, subjects_dir, parc)
+    source = SourceSpace(vertices_to, subject_to, src, subjects_dir, parc_to)
     dims = ndvar.dims[:axis] + (source,) + ndvar.dims[axis + 1:]
     info = ndvar.info.copy()
     out = NDVar(x_, dims, info, ndvar.name)

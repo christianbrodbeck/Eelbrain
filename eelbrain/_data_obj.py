@@ -59,7 +59,7 @@ import mne
 from mne.source_space import label_src_vertno_sel
 from nibabel.freesurfer import read_annot
 import numpy as np
-from numpy import dot, newaxis
+from numpy import newaxis
 import scipy.signal
 import scipy.stats
 from scipy.linalg import inv, norm
@@ -8386,8 +8386,11 @@ class SourceSpace(Dimension):
      - 'lh' or 'rh' to select an entire hemisphere
 
     """
-    _src_pattern = os.path.join('{subjects_dir}', '{subject}', 'bem',
-                                '{subject}-{src}-src.fif')
+    _SRC_PATH = os.path.join(
+        '{subjects_dir}', '{subject}', 'bem', '{subject}-{src}-src.fif')
+    _ANNOT_PATH = os.path.join(
+        '{subjects_dir}', '{subject}', 'label', '{hemi}.{parc}.annot')
+
     _vertex_re = re.compile('([RL])(\d+)')
 
     def __init__(self, vertno, subject=None, src=None, subjects_dir=None,
@@ -8778,7 +8781,7 @@ class SourceSpace(Dimension):
 
     def get_source_space(self, subjects_dir=None):
         "Read the corresponding MNE source space"
-        path = self._src_pattern.format(
+        path = self._SRC_PATH.format(
             subjects_dir=subjects_dir or self.subjects_dir,
             subject=self.subject, src=self.src)
         src = mne.read_source_spaces(path)
@@ -8896,7 +8899,7 @@ class SourceSpace(Dimension):
             files with the MRI). Only applies to ico source spaces, default is
             'aparc'.
         """
-        if parc is None:
+        if parc is None or parc is False:
             parc_ = None
         elif isinstance(parc, Factor):
             if len(parc) != len(self):
@@ -8904,8 +8907,9 @@ class SourceSpace(Dimension):
             parc_ = parc
         elif isinstance(parc, basestring):
             if self.kind == 'ico':
-                fname = os.path.join(self.subjects_dir, self.subject, 'label',
-                                     '%%s.%s.annot' % parc)
+                fname = self._ANNOT_PATH.format(
+                    subjects_dir=self.subjects_dir, subject=self.subject,
+                    hemi='%s', parc=parc)
                 labels_lh, _, names_lh = read_annot(fname % 'lh')
                 labels_rh, _, names_rh = read_annot(fname % 'rh')
                 x_lh = labels_lh[self.lh_vertno]
@@ -8920,7 +8924,7 @@ class SourceSpace(Dimension):
             else:
                 raise NotImplementedError
         else:
-            raise ValueError("Parc needs to be string, got %s" % repr(parc))
+            raise TypeError("Parc needs to be string, got %s" % repr(parc))
 
         self.parc = parc_
 
