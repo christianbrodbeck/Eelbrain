@@ -1617,8 +1617,9 @@ class Layout(BaseLayout):
                 self.margins['bottom'] / self.h,
                 1 - self.margins['right'] / self.w,
                 1 - self.margins['top'] / self.h,
-                self.margins['wspace'] / self.w,
-                self.margins['hspace'] / self.h)
+                # space expressed as a fraction of the average axis height/width
+                self.margins['wspace'] / self.axw,
+                self.margins['hspace'] / self.axh)
 
         return out
 
