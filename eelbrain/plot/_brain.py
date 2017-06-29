@@ -316,6 +316,22 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, p0alpha=0.5, *args,
     -------
     brain : surfer.Brain
         PySurfer Brain instance containing the plot.
+
+    Notes
+    -----
+    In order to make economical use of the color lookup table, p-values are
+    remapped for display. P-values larger than ``p0`` are mapped to 0, p-values
+    for positive effects to ``[step, p0 + step]`` and p-values
+    for negative effects to ``[-step, -(p0 + step)]``.
+
+    Due to this, in order to plot a colorbar only including positive
+    differences yse::
+
+    >>> brain.plot_colorbar(clipmin=0)
+
+    and to include only negative effects::
+
+    >>> brain.plot_colorbar(clipmax=0)
     """
     if 'solid' in kwargs:
         warn("The solid parameter for plot.brain.p_map() is deprecated and "

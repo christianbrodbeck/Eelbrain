@@ -521,7 +521,6 @@ class ColorBar(EelFigure):
 
         if orientation == 'horizontal':
             ax.imshow(im, extent=(vmin, vmax, 0, 1), aspect='auto')
-            ax.set_xlim(clipmin, clipmax)
             ax.yaxis.set_ticks(())
             self._contours = [ax.axvline(c, c='k') for c in contours]
             if unit:
@@ -538,7 +537,6 @@ class ColorBar(EelFigure):
             axis = ax.xaxis
         elif orientation == 'vertical':
             ax.imshow(im, extent=(0, 1, vmin, vmax), aspect='auto', origin='lower')
-            ax.set_ylim(clipmin, clipmax)
             ax.xaxis.set_ticks(())
             self._contours = [ax.axhline(c, c='k') for c in contours]
             if unit:
@@ -570,6 +568,13 @@ class ColorBar(EelFigure):
             axis.set_ticklabels([ticks[t] for t in tick_locs])
         elif ticks is not None:
             axis.set_ticks(ticks)
+
+        # set axes limits after ticks (ticks reset limits even with
+        # autoscale=False)
+        if orientation == 'horizontal':
+            ax.set_xlim(clipmin, clipmax)
+        else:
+            ax.set_ylim(clipmin, clipmax)
 
         self._orientation = orientation
         self._width = width
