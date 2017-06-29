@@ -268,7 +268,8 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
         path = SourceSpace._SRC_PATH.format(
             subjects_dir=subjects_dir, subject=subject_to, src=src)
         src_to = mne.read_source_spaces(path)
-        vertices_to = [src_to[0]['vertno'], src_to[1]['vertno']]
+        vertices_to = [src_to[0]['vertno'] if ndvar.source.lh_n else np.empty(0, int),
+                       src_to[1]['vertno'] if ndvar.source.rh_n else np.empty(0, int)]
     elif not isinstance(vertices_to, list) or not len(vertices_to) == 2:
         raise ValueError('vertices_to must be a list of length 2')
 
