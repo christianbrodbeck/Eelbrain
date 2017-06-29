@@ -2179,7 +2179,7 @@ class TimeSlicer(object):
     def _set_time(self, t, fixate=False):
         "Called by the plot"
         if self._time_controller is None:
-            self._update_time(t, fixate)
+            self._update_time_wrapper(t, fixate)
         else:
             self._time_controller.set_time(t, fixate)
 
