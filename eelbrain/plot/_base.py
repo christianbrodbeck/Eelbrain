@@ -1590,9 +1590,11 @@ class Layout(BaseLayout):
                 h = axh * nrow
 
         if h_is_implicit:
-            h += margins['bottom'] + margins['hspace'] * (nrow - 1) + margins['top']
+            hspace = 0 if nrow is None else margins['hspace'] * (nrow - 1)
+            h += margins['bottom'] + hspace + margins['top']
         if w_is_implicit:
-            w += margins['left'] + margins['wspace'] * (ncol - 1) + margins['right']
+            wspace = 0 if ncol is None else margins['wspace'] * (ncol - 1)
+            w += margins['left'] + wspace + margins['right']
 
         BaseLayout.__init__(self, h, w, dpi, tight, show, run, autoscale,
                             title, name)
