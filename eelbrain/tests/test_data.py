@@ -1181,10 +1181,10 @@ def test_ndvar_timeseries_methods():
     eq_(len(ds[0, 'uts'][0.01:0.1].time), 9)
 
     # smoothing
-    ma = x.smooth('time', 0.2)
-    mas = xs.smooth('time', 0.2)
+    ma = x.smooth('time', 0.2, 'blackman')
+    mas = xs.smooth('time', 0.2, 'blackman')
     assert_allclose(ma.x, mas.x.swapaxes(1, 2), 1e-10)
-    ma_mean = x.mean('case').smooth('time', 0.2)
+    ma_mean = x.mean('case').smooth('time', 0.2, 'blackman')
     assert_allclose(ma.mean('case').x, ma_mean.x)
     # against raw scipy.signal
     window = signal.get_window('blackman', 20)
@@ -1193,9 +1193,9 @@ def test_ndvar_timeseries_methods():
     assert_array_equal(ma.x, signal.convolve(x.x, window, 'same'))
     # mode parameter
     full = signal.convolve(x.x, window, 'full')
-    ma = x.smooth('time', 0.2, mode='left')
+    ma = x.smooth('time', 0.2, 'blackman', mode='left')
     assert_array_equal(ma.x, full[:, :, :ma.shape[2]])
-    ma = x.smooth('time', 0.2, mode='right')
+    ma = x.smooth('time', 0.2, 'blackman', mode='right')
     assert_array_equal(ma.x, full[:, :, -ma.shape[2]:])
 
     # FFT
