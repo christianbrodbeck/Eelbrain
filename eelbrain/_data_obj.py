@@ -3316,6 +3316,39 @@ class NDVar(object):
     def __rsub__(self, other):
         return NDVar(other - self.x, self.dims, self.info.copy(), self.name)
 
+    def __and__(self, other):
+        dims, x_self, x_other = self._align(other)
+        return NDVar(x_self & x_other, dims, self.info.copy(), self.name)
+
+    def __iand__(self, other):
+        self.x &= self._ialign(other)
+        return self
+
+    def __rand__(self, other):
+        return NDVar(other & self.x, self.dims, self.info.copy(), self.name)
+
+    def __xor__(self, other):
+        dims, x_self, x_other = self._align(other)
+        return NDVar(x_self ^ x_other, dims, self.info.copy(), self.name)
+
+    def __ixor__(self, other):
+        self.x ^= self._ialign(other)
+        return self
+
+    def __rxor__(self, other):
+        return NDVar(other ^ self.x, self.dims, self.info.copy(), self.name)
+
+    def __or__(self, other):
+        dims, x_self, x_other = self._align(other)
+        return NDVar(x_self | x_other, dims, self.info.copy(), self.name)
+
+    def __ior__(self, other):
+        self.x |= self._ialign(other)
+        return self
+
+    def __ror__(self, other):
+        return NDVar(other | self.x, self.dims, self.info.copy(), self.name)
+
     # container ---
     def _dim_index_unravel(self, index):
         "Convert ravelled array index to dimension index"
