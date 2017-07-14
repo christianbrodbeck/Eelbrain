@@ -12,6 +12,8 @@ New in 0.26
       functions.
     - :class:`Dataset`: when a one-dimensional array is assigned to an unused
       key, the array is now automatically converted to a :class:`Var` object.
+    - :attr:`SourceSpace.vertno` has been renamed to
+      :attr:`SourceSpace.vertices`.
 
 * Plotting: the new ``name`` argument allows setting the window title
   (without adding a title to the figure).

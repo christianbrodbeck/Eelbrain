@@ -1412,8 +1412,8 @@ def test_source_space():
 
     # index from label
     index = source.index_for_label(label_v1)
-    assert_array_equal(index.source[index.x].vertno[0],
-                       np.intersect1d(source.lh_vertno, label_v1.vertices, 1))
+    assert_array_equal(index.source[index.x].vertices[0],
+                       np.intersect1d(source.lh_vertices, label_v1.vertices, 1))
 
     # parcellation and cluster localization
     parc = mne.read_labels_from_annot(subject, parc='aparc', subjects_dir=mri_sdir)
@@ -1438,7 +1438,7 @@ def test_source_space():
     eq_(len(sub_source), len(lingual_source) + len(cuneus_source))
 
     # indexing
-    tgt = ['L%i' % i for i in chain(*sub_source.vertno)]
+    tgt = ['L%i' % i for i in chain(*sub_source.vertices)]
     assert_array_equal([i for i in sub_source], tgt)
     assert_array_equal([sub_source[i] for i in xrange(len(sub_source))], tgt)
     # hemisphere indexing

@@ -120,8 +120,8 @@ def labels_from_clusters(clusters, names=None):
     colors = _n_colors(n_clusters)
     labels = []
     for cluster, color, name in izip(clusters_index, colors, names):
-        lh_vertices = source.lh_vertno[cluster.x[:source.lh_n]]
-        rh_vertices = source.rh_vertno[cluster.x[source.lh_n:]]
+        lh_vertices = source.lh_vertices[cluster.x[:source.lh_n]]
+        rh_vertices = source.rh_vertices[cluster.x[source.lh_n:]]
         if len(lh_vertices) and len(rh_vertices):
             lh = Label(lh_vertices, hemi='lh', name=name + '-lh',
                        subject=subject, color=color).fill(source_space)
@@ -292,7 +292,7 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
                 "following files are missing:\n%s" %
                 (parc_to, subject_to, '\n'.join(missing)))
 
-    if subject_from == subject_to and _vertices_equal(ndvar.source.vertno,
+    if subject_from == subject_to and _vertices_equal(ndvar.source.vertices,
                                                       vertices_to):
         if copy:
             ndvar = ndvar.copy()
@@ -310,17 +310,17 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     if os.path.exists(cfg_path):
         cfg = mne.coreg.read_mri_cfg(subject_from, subjects_dir)
         subject_from = cfg['subject_from']
-        if subject_to == subject_from and _vertices_equal(ndvar.source.vertno,
+        if subject_to == subject_from and _vertices_equal(ndvar.source.vertices,
                                                           vertices_to):
             if copy:
                 x_ = x.copy()
             else:
                 x_ = x
-            vertices_to = ndvar.source.vertno
+            vertices_to = ndvar.source.vertices
             do_morph = False
 
     if do_morph:
-        vertices_from = ndvar.source.vertno
+        vertices_from = ndvar.source.vertices
         if morph_mat is None:
             morph_mat = mne.compute_morph_matrix(subject_from, subject_to,
                                                  vertices_from, vertices_to,

@@ -66,6 +66,29 @@ def deprecated(version, replacement):
     return dec
 
 
+def deprecated_attribute(version, class_name, replacement):
+    if not isinstance(replacement, basestring):
+        raise TypeError("replacement=%r" % (replacement,))
+
+    class Dec(object):
+
+        def __init__(self, meth):
+            self._meth = meth
+            self.__name__ = meth.__name__
+            self._msg = (
+                'The %s.%s attribute is deprecated and will be removed in '
+                'version %s, use %s.%s instead.' %
+                (class_name, meth.__name__, version, class_name, replacement))
+
+        def __get__(self, obj, klass=None):
+            if obj is None:
+                return None
+            warn(self._msg, DeprecationWarning)
+            return getattr(obj, replacement)
+
+    return Dec
+
+
 def log_level(arg):
     """Convert string to logging module constant"""
     if isinstance(arg, int):
@@ -131,7 +154,8 @@ class LazyProperty(object):
         self.__doc__ = func.__doc__
 
     def __get__(self, obj, klass=None):
-        if obj is None: return None
+        if obj is None:
+            return None
         result = obj.__dict__[self.__name__] = self._func(obj)
         return result
 

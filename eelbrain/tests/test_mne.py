@@ -213,13 +213,13 @@ def test_source_space():
 
     for subject in ['fsaverage', 'sample']:
         mne_src = datasets._mne_source_space(subject, 'ico-4', subjects_dir)
-        vertno = [mne_src[0]['vertno'], mne_src[1]['vertno']]
-        ss = SourceSpace(vertno, subject, 'ico-4', subjects_dir)
+        vertices = [mne_src[0]['vertno'], mne_src[1]['vertno']]
+        ss = SourceSpace(vertices, subject, 'ico-4', subjects_dir)
 
         # labels
-        for hemi_vertices, hemi in izip(ss.vertno, ('lh', 'rh')):
+        for hemi_vertices, hemi in izip(ss.vertices, ('lh', 'rh')):
             labels, _, names = read_annot(annot_path % (subject, hemi, 'aparc'))
-            start = 0 if hemi == 'lh' else len(ss.lh_vertno)
+            start = 0 if hemi == 'lh' else len(ss.lh_vertices)
             hemi_tag = '-' + hemi
             for i, v in enumerate(hemi_vertices, start):
                 label = labels[v]
@@ -235,6 +235,6 @@ def test_source_space():
 
         # sub-space connectivity
         sssub = ss[ss._array_index('superiortemporal-rh')]
-        ss2 = SourceSpace(vertno, subject, 'ico-4', subjects_dir, 'aparc')
+        ss2 = SourceSpace(vertices, subject, 'ico-4', subjects_dir, 'aparc')
         ss2sub = ss2[ss2._array_index('superiortemporal-rh')]
         assert_array_equal(sssub.connectivity(), ss2sub.connectivity())

@@ -72,7 +72,9 @@ from . import _colorspaces as cs
 from ._exceptions import DimensionMismatchError
 from ._data_opt import gaussian_smoother
 from ._info import merge_info
-from ._utils import deprecated, intervals, ui, LazyProperty, n_decimals, natsorted
+from ._utils import (
+    deprecated, deprecated_attribute, intervals, ui, LazyProperty, n_decimals,
+    natsorted)
 from ._utils.numpy_utils import (
     apply_numpy_index, digitize_index, digitize_slice_endpoint, FULL_AXIS_SLICE,
     FULL_SLICE, index_length, index_to_int_array, slice_to_arange)
@@ -8413,7 +8415,7 @@ class SourceSpace(Dimension):
 
     Parameters
     ----------
-    vertno : list of int array
+    vertices : list of int array
         The vertex identities of the dipoles in the source space (left and
         right hemisphere separately).
     subject : str
@@ -8450,9 +8452,9 @@ class SourceSpace(Dimension):
 
     _vertex_re = re.compile('([RL])(\d+)')
 
-    def __init__(self, vertno, subject=None, src=None, subjects_dir=None,
+    def __init__(self, vertices, subject=None, src=None, subjects_dir=None,
                  parc='aparc', connectivity='custom'):
-        self.vertno = vertno
+        self.vertices = vertices
         self.subject = subject
         self.src = src
         self._subjects_dir = subjects_dir
@@ -8462,7 +8464,7 @@ class SourceSpace(Dimension):
             self.set_parc(parc)
 
     def _init_secondary(self):
-        self._n_vert = sum(len(v) for v in self.vertno)
+        self._n_vert = sum(len(v) for v in self.vertices)
         match = re.match("(ico|vol)-(\d)", self.src)
         if match is None:
             raise ValueError("Unrecognized src value %r" % self.src)
@@ -8470,12 +8472,24 @@ class SourceSpace(Dimension):
         self.kind = kind
         self.grade = int(grade)
         if kind == 'ico':
-            self.lh_vertno = self.vertno[0]
-            self.rh_vertno = self.vertno[1]
-            self.lh_n = len(self.lh_vertno)
-            self.rh_n = len(self.rh_vertno)
+            self.lh_vertices = self.vertices[0]
+            self.rh_vertices = self.vertices[1]
+            self.lh_n = len(self.lh_vertices)
+            self.rh_n = len(self.rh_vertices)
         else:
-            assert len(self.vertno) == 1
+            assert len(self.vertices) == 1
+
+    @deprecated_attribute('0.27', 'SourceSpace', 'vertices')
+    def vertno(self):
+        pass
+
+    @deprecated_attribute('0.27', 'SourceSpace', 'lh_vertices')
+    def lh_vertno(self):
+        pass
+
+    @deprecated_attribute('0.27', 'SourceSpace', 'rh_vertices')
+    def rh_vertno(self):
+        pass
 
     @classmethod
     def from_mne_source_spaces(cls, source_spaces, src, subjects_dir,
@@ -8498,7 +8512,7 @@ class SourceSpace(Dimension):
 
     def __getstate__(self):
         state = Dimension.__getstate__(self)
-        state.update(vertno=self.vertno, subject=self.subject, src=self.src,
+        state.update(vertno=self.vertices, subject=self.subject, src=self.src,
                      subjects_dir=self._subjects_dir, parc=self.parc)
         return state
 
@@ -8507,7 +8521,7 @@ class SourceSpace(Dimension):
             state['name'] = 'source'
             state['connectivity_type'] = 'custom'
         Dimension.__setstate__(self, state)
-        self.vertno = state['vertno']
+        self.vertices = state['vertno']
         self.subject = state['subject']
         self.src = state['src']
         self._subjects_dir = state['subjects_dir']
@@ -8515,15 +8529,15 @@ class SourceSpace(Dimension):
         self._init_secondary()
 
     def __repr__(self):
-        ns = ', '.join(str(len(v)) for v in self.vertno)
+        ns = ', '.join(str(len(v)) for v in self.vertices)
         return "<SourceSpace [%s], %r, %r>" % (ns, self.subject, self.src)
 
     def __iter__(self):
         if self.kind == 'ico':
             return (temp % v for temp, vertices in
-                    izip(('L%i', 'R%i'), self.vertno) for v in vertices)
+                    izip(('L%i', 'R%i'), self.vertices) for v in vertices)
         else:
-            return iter(self.vertno[0])
+            return iter(self.vertices[0])
 
     def __len__(self):
         return self._n_vert
@@ -8532,25 +8546,25 @@ class SourceSpace(Dimension):
         return (Dimension.__eq__(self, other) and
                 self.subject == other.subject and len(self) == len(other) and
                 all(np.array_equal(s, o) for s, o in
-                    izip(self.vertno, other.vertno)))
+                    izip(self.vertices, other.vertices)))
 
     def __getitem__(self, index):
         if isinstance(index, Integral):
             if self.kind == 'vol':
-                return self.vertno[0][index]
+                return self.vertices[0][index]
             elif index < self.lh_n:
-                return 'L%i' % self.lh_vertno[index]
+                return 'L%i' % self.lh_vertices[index]
             elif index < self._n_vert:
-                return 'R%i' % self.rh_vertno[index - self.lh_n]
+                return 'R%i' % self.rh_vertices[index - self.lh_n]
             else:
                 raise ValueError("SourceSpace Index out of range: %i" % index)
         int_index = index_to_int_array(index, self._n_vert)
         bool_index = np.bincount(int_index, minlength=self._n_vert).astype(bool)
 
-        # vertno
-        boundaries = np.cumsum(tuple(chain((0,), (len(v) for v in self.vertno))))
-        vertno = [v[bool_index[boundaries[i]:boundaries[i + 1]]]
-                  for i, v in enumerate(self.vertno)]
+        # vertices
+        boundaries = np.cumsum(tuple(chain((0,), (len(v) for v in self.vertices))))
+        vertices = [v[bool_index[boundaries[i]:boundaries[i + 1]]]
+                  for i, v in enumerate(self.vertices)]
 
         # parc
         if self.parc is None:
@@ -8558,7 +8572,7 @@ class SourceSpace(Dimension):
         else:
             parc = self.parc[index]
 
-        dim = SourceSpace(vertno, self.subject, self.src, self.subjects_dir,
+        dim = SourceSpace(vertices, self.subject, self.src, self.subjects_dir,
                           parc, self._subgraph(int_index))
         return dim
 
@@ -8566,7 +8580,7 @@ class SourceSpace(Dimension):
         if self.kind == 'vol':
             return Dimension._as_uv(self)
         return Factor(('%s%i' % (hemi, i) for hemi, vertices in
-                       izip(('L', 'R'), self.vertno) for i in vertices),
+                       izip(('L', 'R'), self.vertices) for i in vertices),
                       name=self.name)
 
     def _axis_format(self, scalar, label):
@@ -8634,7 +8648,7 @@ class SourceSpace(Dimension):
         return ds
 
     def _diminfo(self):
-        ns = ', '.join(str(len(v)) for v in self.vertno)
+        ns = ', '.join(str(len(v)) for v in self.vertices)
         return "SourceSpace (MNE) [%s], %r, %r>" % (ns, self.subject, self.src)
 
     def _distances(self):
@@ -8642,7 +8656,7 @@ class SourceSpace(Dimension):
         dist = -np.ones((self._n_vert, self._n_vert))
         sss = self.get_source_space()
         i0 = 0
-        for vertices, ss in izip(self.vertno, sss):
+        for vertices, ss in izip(self.vertices, sss):
             if ss['dist'] is None:
                 raise RuntimeError("Source-space does not contain distances")
             i = i0 + len(vertices)
@@ -8703,11 +8717,11 @@ class SourceSpace(Dimension):
 
             src = self.get_source_space()
             if self.kind == 'vol':
-                coords = src[0]['rr'][self.vertno[0]]
+                coords = src[0]['rr'][self.vertices[0]]
                 dist_threshold = self.grade * 0.0011
                 connectivity = _point_graph(coords, dist_threshold)
             elif self.kind == 'ico':
-                connectivity = _mne_tri_soure_space_graph(src, self.vertno)
+                connectivity = _mne_tri_soure_space_graph(src, self.vertices)
             else:
                 msg = "Connectivity for %r source space" % self.kind
                 raise NotImplementedError(msg)
@@ -8753,7 +8767,7 @@ class SourceSpace(Dimension):
     @LazyProperty
     def coordinates(self):
         sss = self.get_source_space()
-        coords = (ss['rr'][v] for ss, v in izip(sss, self.vertno))
+        coords = (ss['rr'][v] for ss, v in izip(sss, self.vertices))
         coords = np.vstack(coords)
         return coords
 
@@ -8775,9 +8789,9 @@ class SourceSpace(Dimension):
                 else:
                     hemi, vertex = m.groups()
                     vertex = int(vertex)
-                    vertno = self.vertno[hemi == 'R']
-                    i = int(np.searchsorted(vertno, vertex))
-                    if vertno[i] == vertex:
+                    vertices = self.vertices[hemi == 'R']
+                    i = int(np.searchsorted(vertices, vertex))
+                    if vertices[i] == vertex:
                         if hemi == 'R':
                             return i + self.lh_n
                         else:
@@ -8786,8 +8800,8 @@ class SourceSpace(Dimension):
                         raise IndexError("SourceSpace does not contain vertex "
                                          "%r" % (arg,))
         elif isinstance(arg, SourceSpace):
-            sv = self.vertno
-            ov = arg.vertno
+            sv = self.vertices
+            ov = arg.vertices
             if all(np.array_equal(s, o) for s, o in izip(sv, ov)):
                 return FULL_SLICE
             elif any(any(np.setdiff1d(o, s)) for o, s in izip(ov, sv)):
@@ -8834,18 +8848,18 @@ class SourceSpace(Dimension):
 
     def _array_index_hemilabel(self, label):
         if label.hemi == 'lh':
-            stc_vertices = self.vertno[0]
+            stc_vertices = self.vertices[0]
         else:
-            stc_vertices = self.vertno[1]
+            stc_vertices = self.vertices[1]
         idx = np.in1d(stc_vertices, label.vertices, True)
         return idx
 
     def _dim_index(self, index):
         if np.isscalar(index):
             if index >= self.lh_n:
-                return 'R%i' % (self.rh_vertno[index - self.lh_n])
+                return 'R%i' % (self.rh_vertices[index - self.lh_n])
             else:
-                return 'L%i' % (self.lh_vertno[index])
+                return 'L%i' % (self.lh_vertices[index])
         else:
             return Dimension._dim_index(self, index)
 
@@ -8910,7 +8924,7 @@ class SourceSpace(Dimension):
                              % (self.subjects_dir, other.subjects_dir))
 
         index = np.hstack(np.in1d(s, o) for s, o
-                          in izip(self.vertno, other.vertno))
+                          in izip(self.vertices, other.vertices))
         return self[index]
 
     def _label(self, vertices, name, color, subjects_dir=None, sss=None):
@@ -8934,12 +8948,12 @@ class SourceSpace(Dimension):
         "Create a Label that masks the areas not covered in this SourceSpace"
         sss = self.get_source_space(subjects_dir)
         if self.lh_n:
-            lh_verts = np.setdiff1d(sss[0]['vertno'], self.lh_vertno)
+            lh_verts = np.setdiff1d(sss[0]['vertno'], self.lh_vertices)
         else:
             lh_verts = ()
 
         if self.rh_n:
-            rh_verts = np.setdiff1d(sss[1]['vertno'], self.rh_vertno)
+            rh_verts = np.setdiff1d(sss[1]['vertno'], self.rh_vertices)
         else:
             rh_verts = ()
 
@@ -8952,7 +8966,7 @@ class SourceSpace(Dimension):
         sss = self.get_source_space(subjects_dir)
         vertices = [sss[0]['vertno'], sss[1]['vertno']]
         data = [np.in1d(vert, self_vert) for vert, self_vert in
-                izip(vertices, self.vertno)]
+                izip(vertices, self.vertices)]
         source = SourceSpace(vertices, self.subject, self.src, subjects_dir,
                              self.parc.name)
         return NDVar(np.concatenate(data), (source,))
@@ -8982,9 +8996,9 @@ class SourceSpace(Dimension):
                     hemi='%s', parc=parc)
                 labels_lh, _, names_lh = read_annot(fname % 'lh')
                 labels_rh, _, names_rh = read_annot(fname % 'rh')
-                x_lh = labels_lh[self.lh_vertno]
+                x_lh = labels_lh[self.lh_vertices]
                 x_lh[x_lh == -1] = -2
-                x_rh = labels_rh[self.rh_vertno]
+                x_rh = labels_rh[self.rh_vertices]
                 x_rh[x_rh >= 0] += len(names_lh)
                 names = chain(('unknown-lh', 'unknown-rh'),
                               (name + '-lh' for name in names_lh),

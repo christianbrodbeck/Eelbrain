@@ -247,11 +247,11 @@ def source_cluster_im(ndvar, surfer_kwargs, mark_sources=None):
         i_hemi_split = np.searchsorted(mark_sources, ndvar.source.lh_n)
         lh_indexes = mark_sources[:i_hemi_split]
         if lh_indexes:
-            lh_vertices = ndvar.source.lh_vertno[lh_indexes]
+            lh_vertices = ndvar.source.lh_vertices[lh_indexes]
             brain.add_foci(lh_vertices, True, hemi='lh', color="gold")
         rh_indexes = mark_sources[i_hemi_split:]
         if rh_indexes:
-            rh_vertices = ndvar.source.rh_vertno[rh_indexes - ndvar.source.lh_n]
+            rh_vertices = ndvar.source.rh_vertices[rh_indexes - ndvar.source.lh_n]
             brain.add_foci(rh_vertices, True, hemi='rh', color="gold")
 
     out = brain.image(ndvar.name)

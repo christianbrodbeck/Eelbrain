@@ -105,10 +105,10 @@ def assert_source_space_equal(src1, src2, msg="SourceSpace Dimension objects "
         Prefix of the error message to be printed in case of failure.
     """
     msg = "%s:" % msg
-    assert_array_equal(src1.vertno[0], src2.vertno[0], "%s unequal lh vertno "
-                       "(%r vs %r)" % (msg, src1.vertno[0], src2.vertno[0]))
-    assert_array_equal(src1.vertno[1], src2.vertno[1], "%s unequal rh vertno "
-                       "(%r vs %r)" % (msg, src1.vertno[1], src2.vertno[1]))
+    assert_array_equal(src1.vertices[0], src2.vertices[0], "%s unequal lh vertices "
+                       "(%r vs %r)" % (msg, src1.vertices[0], src2.vertices[0]))
+    assert_array_equal(src1.vertices[1], src2.vertices[1], "%s unequal rh vertices "
+                       "(%r vs %r)" % (msg, src1.vertices[1], src2.vertices[1]))
     assert_equal(src1.subject, src2.subject, "%s unequal subject (%r vs %r"
                  ")" % (msg, src1.subject, src2.subject))
     assert_equal(src1.src, src2.src, "%s unequal names (%r vs %r"

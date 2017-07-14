@@ -376,7 +376,7 @@ class Brain(TimeSlicer, surfer.Brain):
 
             src_hemi = ndvar.sub(source='lh')
             data = src_hemi.get_data(data_dims)
-            vertices = ndvar.source.lh_vertno
+            vertices = ndvar.source.lh_vertices
             self.add_data(data, vmin, vmax, None, cmap, alpha, vertices,
                           smoothing_steps, times, time_label_, colorbar_, 'lh')
             new_surfaces.extend(self.data_dict['lh']['surfaces'])
@@ -384,7 +384,7 @@ class Brain(TimeSlicer, surfer.Brain):
         if data_hemi != 'lh':
             src_hemi = ndvar.sub(source='rh')
             data = src_hemi.get_data(data_dims)
-            vertices = ndvar.source.rh_vertno
+            vertices = ndvar.source.rh_vertices
             self.add_data(data, vmin, vmax, None, cmap, alpha, vertices,
                           smoothing_steps, times, time_label, colorbar, 'rh')
             new_surfaces.extend(self.data_dict['rh']['surfaces'])
@@ -472,13 +472,13 @@ class Brain(TimeSlicer, surfer.Brain):
         indexes = (slice(None, source.lh_n), slice(source.lh_n, None))
         annot = []
         has_annot = []
-        for ss, vertno, index in izip(sss, source.vertno, indexes):
+        for ss, vertices, index in izip(sss, source.vertices, indexes):
             hemi = HEMI_ID_TO_STR[ss['id']]
             if self._hemi == OTHER_HEMI[hemi]:
                 continue
             # expand to full source space
             ss_map = np.zeros(ss['nuse'], int)
-            ss_map[np.in1d(ss['vertno'], vertno)] = x[index]
+            ss_map[np.in1d(ss['vertno'], vertices)] = x[index]
             # select only the used colors; Mayavi resets the range of the data-
             # to-LUT mapping to the extrema of the data at various points, so it
             # is safer to restrict the LUT to used colors
@@ -537,8 +537,8 @@ class Brain(TimeSlicer, surfer.Brain):
             name = str(ndvar.name)
         source = ndvar.get_dim('source')
         color = colorConverter.to_rgba(color, alpha)
-        lh_vertices = source.lh_vertno[x[:source.lh_n]]
-        rh_vertices = source.rh_vertno[x[source.lh_n:]]
+        lh_vertices = source.lh_vertices[x[:source.lh_n]]
+        rh_vertices = source.rh_vertices[x[source.lh_n:]]
         lh, rh = source._label((lh_vertices, rh_vertices), name, color[:3])
         if lh and self._hemi != 'rh':
             while lh.name in self.labels_dict:
