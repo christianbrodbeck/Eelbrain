@@ -21,10 +21,10 @@ def assert_can_save_movies():
     assert_can_save_movies()
 
 
-def annot(annot, subject='fsaverage', surface='smoothwm', borders=False, alpha=0.7,
+def annot(annot, subject='fsaverage', surf='smoothwm', borders=False, alpha=0.7,
           hemi=None, views=('lat', 'med'), w=None, h=None, axw=None, axh=None,
           foreground=None, background=None, parallel=True, cortex='classic',
-          title=None, subjects_dir=None, surf=None, name=None):
+          title=None, subjects_dir=None, name=None):
     """Plot the parcellation in an annotation file
 
     Parameters
@@ -33,7 +33,7 @@ def annot(annot, subject='fsaverage', surface='smoothwm', borders=False, alpha=0
         Name of the annotation (e.g., "PALS_B12_LOBES").
     subject : str
         Name of the subject (default 'fsaverage').
-    surface : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
+    surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
     borders : bool | int
         Show only label borders (PySurfer Brain.add_annotation() argument).
@@ -63,8 +63,6 @@ def annot(annot, subject='fsaverage', surface='smoothwm', borders=False, alpha=0
         title for the window (default is the parcellation name).
     subjects_dir : None | str
         Override the default subjects_dir.
-    surf : str
-        Same as ``surface``, for compatibility with PySurfer argument naming.
     name : str
         Equivalent to ``title``, for consistency with other plotting functions. 
 
@@ -102,7 +100,7 @@ def annot(annot, subject='fsaverage', surface='smoothwm', borders=False, alpha=0
         title = annot
 
     from ._brain_object import Brain
-    brain = Brain(subject, hemi, surf or surface, title, cortex,
+    brain = Brain(subject, hemi, surf, title, cortex,
                   views=views, w=w, h=h, axw=axw, axh=axh,
                   foreground=foreground, background=background,
                   subjects_dir=subjects_dir, name=name)
@@ -198,7 +196,7 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
     fmid : None | scalar
         Midpoint for the color gradient. If fmid is None (default) it is set
         half way between fmin and fmax.
-    surface : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
+    surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
     views : str | iterator of str
         View or views to show in the figure. Options are: 'rostral', 'parietal',
@@ -236,8 +234,6 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
         alpha (e.g., ``(1, 1, 1, 0.5)`` for semi-transparent white).
     subjects_dir : None | str
         Override the subjects_dir associated with the source space dimension.
-    surf : str
-        Same as ``surface``, for compatibility with PySurfer argument naming.
     name : str
         Equivalent to ``title``, for consistency with other plotting functions. 
 
@@ -269,7 +265,7 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, p0alpha=0.5, *args,
     p0alpha : 1 >= float >= 0
         Alpha for greatest p-value that is still displayed (default: 0.5 -
         clearly indicate border).
-    surface : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
+    surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
     views : str | iterator of str
         View or views to show in the figure. Options are: 'rostral', 'parietal',
@@ -307,8 +303,6 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, p0alpha=0.5, *args,
         including alpha (e.g., ``(1, 1, 1, 0.5)`` for semi-transparent white).
     subjects_dir : None | str
         Override the subjects_dir associated with the source space dimension.
-    surf : str
-        Same as ``surface``, for compatibility with PySurfer argument naming.
     name : str
         Equivalent to ``title``, for consistency with other plotting functions. 
 
@@ -355,7 +349,7 @@ def cluster(cluster, vmax=None, *args, **kwargs):
     vmax : scalar != 0
         Maximum value in the colormap. Default is the maximum value in the
         cluster.
-    surface : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
+    surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
     views : str | iterator of str
         View or views to show in the figure. Options are: 'rostral', 'parietal',
@@ -393,8 +387,6 @@ def cluster(cluster, vmax=None, *args, **kwargs):
         including alpha (e.g., ``(1, 1, 1, 0.5)`` for semi-transparent white).
     subjects_dir : None | str
         Override the subjects_dir associated with the source space dimension.
-    surf : str
-        Same as ``surface``, for compatibility with PySurfer argument naming.
     name : str
         Equivalent to ``title``, for consistency with other plotting functions. 
 
@@ -416,11 +408,11 @@ def cluster(cluster, vmax=None, *args, **kwargs):
     return _plot(cluster, lut, -vmax, vmax, *args, **kwargs)
 
 
-def brain(src, cmap=None, vmin=None, vmax=None, surface='inflated',
+def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
           views='lateral', hemi=None, colorbar=False, time_label='ms',
           w=None, h=None, axw=None, axh=None, foreground=None, background=None,
           parallel=True, cortex='classic', title=None, smoothing_steps=None,
-          mask=True, subjects_dir=None, colormap=None, surf=None, name=None):
+          mask=True, subjects_dir=None, colormap=None, name=None):
     """Create a PySurfer Brain object with a data layer
 
     Parameters
@@ -438,7 +430,7 @@ def brain(src, cmap=None, vmin=None, vmax=None, surface='inflated',
     vmin, vmax : scalar
         Endpoints for the colormap. Need to be set explicitly if ``cmap`` is
         a LUT array.
-    surface : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
+    surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
     views : str | iterator of str
         View or views to show in the figure. Options are: 'rostral', 'parietal',
@@ -476,8 +468,6 @@ def brain(src, cmap=None, vmin=None, vmax=None, surface='inflated',
         alpha (e.g., ``(1, 1, 1, 0.5)`` for semi-transparent white).
     subjects_dir : None | str
         Override the subjects_dir associated with the source space dimension.
-    surf : str
-        Same as ``surface``, for compatibility with PySurfer argument naming.
     name : str
         Equivalent to ``title``, for consistency with other plotting functions. 
 
@@ -528,7 +518,7 @@ def brain(src, cmap=None, vmin=None, vmax=None, surface='inflated',
         subjects_dir = source.subjects_dir
 
     from ._brain_object import Brain
-    brain = Brain(source.subject, hemi, surf or surface, title, cortex,
+    brain = Brain(source.subject, hemi, surf, title, cortex,
                   views=views, w=w, h=h, axw=axw, axh=axh,
                   foreground=foreground, background=background,
                   subjects_dir=subjects_dir, name=name)
@@ -903,7 +893,7 @@ class ClusterBinTable(_BinTable):
 
 
 def dspm_bin_table(ndvar, fmin=2, fmax=8, fmid=None,
-                   tstart=None, tstop=None, tstep=0.1, surface='smoothwm',
+                   tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
                    views=('lat', 'med'), hemi=None, summary='extrema',
                    axw=300, axh=250, *args, **kwargs):
     """Create a table with images for time bins
@@ -962,8 +952,6 @@ def dspm_bin_table(ndvar, fmin=2, fmax=8, fmid=None,
         including alpha (e.g., ``(1, 1, 1, 0.5)`` for semi-transparent white).
     subjects_dir : None | str
         Override the subjects_dir associated with the source space dimension.
-    surf : str
-        Same as ``surface``, for compatibility with PySurfer argument naming.
     name : str
         Equivalent to ``title``, for consistency with other plotting functions. 
 
@@ -991,12 +979,12 @@ def dspm_bin_table(ndvar, fmin=2, fmax=8, fmid=None,
     plot.brain.bin_table: plotting clusters as bin-table
     """
     data = ndvar.bin(tstep, tstart, tstop, summary)
-    ims, header, _ = _dspm_bin_table_ims(fmin, fmax, fmid, data, surface, views,
+    ims, header, _ = _dspm_bin_table_ims(fmin, fmax, fmid, data, surf, views,
                                          hemi, axw, axh, *args, **kwargs)
     return im_table(ims, header)
 
 
-def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surface='smoothwm',
+def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
               views=('lat', 'med'), hemi=None, summary='sum', vmax=None,
               axw=300, axh=250, *args, **kwargs):
     """Create a table with images for time bins
@@ -1013,7 +1001,7 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surface='smoothwm',
         in ndvar).
     tstep : scalar
         Size of each bin (in seconds).
-    surface : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
+    surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
     views : list of str
         Views to display (for each hemisphere, lh first). Options are:
@@ -1054,8 +1042,6 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surface='smoothwm',
         including alpha (e.g., ``(1, 1, 1, 0.5)`` for semi-transparent white).
     subjects_dir : None | str
         Override the subjects_dir associated with the source space dimension.
-    surf : str
-        Same as ``surface``, for compatibility with PySurfer argument naming.
     name : str
         Equivalent to ``title``, for consistency with other plotting functions. 
 
@@ -1083,7 +1069,7 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surface='smoothwm',
     plot.brain.dspm_bin_table: plotting SPMs as bin-table
     """
     data = ndvar.bin(tstep, tstart, tstop, summary)
-    ims, header, _ = _cluster_bin_table_ims(vmax, data, surface, views, hemi,
+    ims, header, _ = _cluster_bin_table_ims(vmax, data, surf, views, hemi,
                                             axw, axh, *args, **kwargs)
     return im_table(ims, header)
 
@@ -1100,7 +1086,7 @@ def _dspm_bin_table_ims(fmin, fmax, fmid, data, surf, views, hemi, axw, axh,
     return _bin_table_ims(data, hemi, views, brain_)
 
 
-def _cluster_bin_table_ims(vmax, data, surface, views, hemi, axw, axh, *args,
+def _cluster_bin_table_ims(vmax, data, surf, views, hemi, axw, axh, *args,
                            **kwargs):
     if vmax is None:
         vmax = max(-data.min(), data.max())
@@ -1112,7 +1098,7 @@ def _cluster_bin_table_ims(vmax, data, surface, views, hemi, axw, axh, *args,
         vmax = -vmax
 
     def brain_(hemi_):
-        return cluster(data, vmax, surface, views[0], hemi_, False, None, axw,
+        return cluster(data, vmax, surf, views[0], hemi_, False, None, axw,
                        axh, None, None, *args, **kwargs)
 
     return _bin_table_ims(data, hemi, views, brain_)
@@ -1191,10 +1177,10 @@ class SequencePlotter(object):
         self._bins = None
         self._brain_args = {}
 
-    def set_brain_args(self, surface='smoothwm', foreground=None, background=None,
+    def set_brain_args(self, surf='smoothwm', foreground=None, background=None,
                        parallel=True, cortex='classic', mask=True):
         self._brain_args = {
-            'surface': surface, 'foreground': foreground, 'background': background,
+            'surf': surf, 'foreground': foreground, 'background': background,
             'parallel': parallel, 'cortex': cortex, 'mask': mask}
 
     def add_ndvar(self, ndvar, *args, **kwargs):

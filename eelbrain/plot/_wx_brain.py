@@ -67,7 +67,7 @@ class MayaviView(HasTraits):
 class BrainFrame(EelbrainFrame):
 
     def __init__(self, parent, brain, title, width, height, n_rows, n_columns,
-                 surface):
+                 surf):
         EelbrainFrame.__init__(self, parent, wx.ID_ANY, "Brain: %s" % title)
 
         # toolbar
@@ -80,14 +80,14 @@ class BrainFrame(EelbrainFrame):
         tb.AddLabelTool(ID.PLOT_COLORBAR, "Plot Colorbar", Icon("plot/colorbar"))
         tb.Bind(wx.EVT_TOOL, self.OnPlotColorBar, id=ID.PLOT_COLORBAR)
         # surface
-        self._surface_selector = wx.Choice(
+        self._surf_selector = wx.Choice(
             tb, choices=[name.capitalize() for name in SURFACES],
             name='Surface')
-        if surface in SURFACES:
-            self._surface_selector.SetSelection(SURFACES.index(surface))
-        tb.AddControl(self._surface_selector, "Surface")
-        self._surface_selector.Bind(
-            wx.EVT_CHOICE, self.OnChoiceSurface, source=self._surface_selector)
+        if surf in SURFACES:
+            self._surf_selector.SetSelection(SURFACES.index(surf))
+        tb.AddControl(self._surf_selector, "Surface")
+        self._surf_selector.Bind(
+            wx.EVT_CHOICE, self.OnChoiceSurface, source=self._surf_selector)
         # view
         tb.AddLabelTool(ID.VIEW_LATERAL, "Lateral View", Icon('brain/lateral'))
         self.Bind(wx.EVT_TOOL, self.OnSetView, id=ID.VIEW_LATERAL)
@@ -149,7 +149,7 @@ class BrainFrame(EelbrainFrame):
         get_app().Attach(self._brain, "Brain plot", 'brain', self)
 
     def OnChoiceSurface(self, event):
-        self._brain._set_surface(SURFACES[event.GetSelection()])
+        self._brain._set_surf(SURFACES[event.GetSelection()])
 
     def OnClose(self, event):
         event.Skip()

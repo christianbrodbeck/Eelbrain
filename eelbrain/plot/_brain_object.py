@@ -65,7 +65,7 @@ class Brain(TimeSlicer, surfer.Brain):
         'both': both hemispheres are shown in the same window;
         'split': hemispheres are displayed side-by-side in different viewing
         panes.
-    surface : str
+    surf : str
         Freesurfer surface mesh name (ie 'white', 'inflated', etc.).
     title : str
         Title for the window.
@@ -133,7 +133,7 @@ class Brain(TimeSlicer, surfer.Brain):
     from the PySurfer :class:`~surfer.Brain` super-class. For complete PySurfer
     functionality see te PySurfer documentation.
     """
-    def __init__(self, subject, hemi, surface='inflated', title=None,
+    def __init__(self, subject, hemi, surf='inflated', title=None,
                  cortex="classic", alpha=1.0, background="white",
                  foreground="black", subjects_dir=None, views='lat',
                  offset=True, show_toolbar=False, offscreen=False,
@@ -185,14 +185,14 @@ class Brain(TimeSlicer, surfer.Brain):
         n_rows = len(views)
         n_columns = 2 if hemi == 'split' else 1
         self._frame = BrainFrame(None, self, title, width, height, n_rows,
-                                 n_columns, surface)
+                                 n_columns, surf)
 
         if foreground is None:
             foreground = 'black'
         if background is None:
             background = 'white'
 
-        surfer.Brain.__init__(self, subject, hemi, surface, '', cortex, alpha,
+        surfer.Brain.__init__(self, subject, hemi, surf, '', cortex, alpha,
                               800, background, foreground, self._frame.figure,
                               subjects_dir, views, offset, show_toolbar,
                               offscreen, interaction)
@@ -783,15 +783,15 @@ class Brain(TimeSlicer, surfer.Brain):
         """Set image size in pixels"""
         self._frame.SetImageSize(width, height)
 
-    def set_surface(self, surface):
+    def set_surf(self, surf):
         from ._wx_brain import SURFACES
 
-        self._set_surface(surface)
-        if surface in SURFACES:
-            self._frame._surface_selector.SetSelection(SURFACES.index(surface))
+        self._set_surf(surf)
+        if surf in SURFACES:
+            self._frame._surf_selector.SetSelection(SURFACES.index(surf))
 
-    def _set_surface(self, surface):
-        surfer.Brain.set_surface(self, surface)
+    def _set_surf(self, surf):
+        surfer.Brain.set_surf(self, surf)
         self.set_parallel_view(scale=True)
 
     def set_time(self, time):
