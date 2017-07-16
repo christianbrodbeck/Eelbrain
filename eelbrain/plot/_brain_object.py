@@ -44,6 +44,9 @@ del first_import
 HEMI_ID_TO_STR = {FIFF.FIFFV_MNE_SURF_LEFT_HEMI: 'lh',
                   FIFF.FIFFV_MNE_SURF_RIGHT_HEMI: 'rh'}
 OTHER_HEMI = {'lh': 'rh', 'rh': 'lh'}
+# default size
+BRAIN_H = 250
+BRAIN_W = 300
 
 
 def assert_can_save_movies():
@@ -150,27 +153,34 @@ class Brain(TimeSlicer, surfer.Brain):
             views = [views]
         elif not isinstance(views, list):
             views = list(views)
+        n_rows = len(views)
 
         if hemi == 'split':
-            n_views_x = 2
+            n_columns = 2
         elif hemi in ('lh', 'rh', 'both'):
-            n_views_x = 1
+            n_columns = 1
         else:
             raise ValueError("hemi=%r" % (hemi,))
 
-        if w is not None:
-            width = w
-        elif axw is not None:
-            width = axw * n_views_x
-        else:
-            width = 500 * n_views_x
+        # layout
+        if w is None and axw is None:
+            if h is None and axh is None:
+                axw = BRAIN_W
+                axh = BRAIN_H
+            else:
+                if axh is None:
+                    axh = int(round(h / n_rows))
+                axw = int(round(axh * (BRAIN_W / BRAIN_H)))
+        elif h is None and axh is None:
+            if axw is None:
+                axw = int(round(w / n_columns))
+            axh = int(round(axw * (BRAIN_H / BRAIN_W)))
 
-        if h is not None:
-            height = h
-        elif axh is not None:
-            height = axh * len(views)
-        else:
-            height = 400 * len(views)
+        if w is None:
+            w = axw * n_columns
+
+        if h is None:
+            h = axh * n_rows
 
         if title is None:
             if name is None:
@@ -182,10 +192,8 @@ class Brain(TimeSlicer, surfer.Brain):
         elif not isinstance(title, basestring):
             raise TypeError("title=%r (str required)" % (title,))
 
-        n_rows = len(views)
-        n_columns = 2 if hemi == 'split' else 1
-        self._frame = BrainFrame(None, self, title, width, height, n_rows,
-                                 n_columns, surf)
+        self._frame = BrainFrame(None, self, title, w, h, n_rows, n_columns,
+                                 surf)
 
         if foreground is None:
             foreground = 'black'
