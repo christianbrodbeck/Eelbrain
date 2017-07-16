@@ -279,7 +279,7 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     else:
         parc_to = parc
     # check that annot files are available
-    if parc:
+    if parc_to:
         fname = SourceSpace._ANNOT_PATH.format(
             subjects_dir=subjects_dir, subject=subject_to, hemi='%s',
             parc=parc_to)
