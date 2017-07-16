@@ -219,6 +219,13 @@ class Brain(TimeSlicer, surfer.Brain):
                          ms(self._time_dim.tstop)))
         return "<plot.brain.Brain: %s>" % ', '.join(args)
 
+    def _check_source_space(self, source):
+        "Make sure SourceSpace is compatible"
+        if source.subject != self.subject_id:
+            raise ValueError(
+                "Trying to plot NDVar from subject %s on Brain from subject "
+                "%s" % (source.subject, self.subject_id))
+
     def add_mask(self, source, color=(1, 1, 1), smoothing_steps=None,
                  alpha=None, subjects_dir=None):
         """Add a mask shading areas that are not included in an NDVar
@@ -242,6 +249,7 @@ class Brain(TimeSlicer, surfer.Brain):
         if not isinstance(source, SourceSpace):
             raise TypeError("source needs to be a SourceSpace or NDVar, got "
                             "%s" % (source,))
+        self._check_source_space(source)
 
         color = colorConverter.to_rgba(color, alpha)
         if smoothing_steps is not None:
@@ -302,6 +310,7 @@ class Brain(TimeSlicer, surfer.Brain):
         remove_existing : bool
             Remove data layers that have been added previously (default False).
         """
+        self._check_source_space(ndvar.source)
         # find standard args
         meas = ndvar.info.get('meas')
         if cmap is None or isinstance(cmap, basestring):
@@ -441,6 +450,7 @@ class Brain(TimeSlicer, surfer.Brain):
         """
         x = ndvar.get_data('source')
         source = ndvar.get_dim('source')
+        self._check_source_space(source)
         if x.dtype.kind not in 'iu':
             raise TypeError("Need NDVar of integer type, not %r" % (x.dtype,))
         # determine colors
@@ -544,6 +554,7 @@ class Brain(TimeSlicer, surfer.Brain):
         if name is None:
             name = str(ndvar.name)
         source = ndvar.get_dim('source')
+        self._check_source_space(source)
         color = colorConverter.to_rgba(color, alpha)
         lh_vertices = source.lh_vertices[x[:source.lh_n]]
         rh_vertices = source.rh_vertices[x[source.lh_n:]]
