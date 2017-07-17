@@ -9,7 +9,10 @@ from eelbrain import (
 
 
 def test_concatenate():
-    "Test concatenate()"
+    """Test concatenate()
+
+    Concatenation of SourceSpace is tested in .test_mne.test_source_estimate
+    """
     ds = datasets.get_uts(True)
 
     v0 = ds[0, 'utsnd']

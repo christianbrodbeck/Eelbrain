@@ -10,8 +10,11 @@ import mne
 from mne.tests.test_label import assert_labels_equal
 from nibabel.freesurfer import read_annot
 
-from eelbrain import datasets, load, testnd, morph_source_space, Factor
-from eelbrain._data_obj import Dataset, asndvar, SourceSpace, _matrix_graph
+from eelbrain import (
+    datasets, load, testnd,
+    Dataset, Factor,
+    concatenate, morph_source_space)
+from eelbrain._data_obj import SourceSpace, asndvar, _matrix_graph
 from eelbrain._mne import shift_mne_epoch_trigger, combination_label
 from eelbrain._utils.testing import requires_mne_sample_data
 from eelbrain.tests.test_data import assert_dataobj_equal
@@ -85,6 +88,10 @@ def test_source_estimate():
     idx = source.index_for_label('fusiform-lh')
     s_idx = src[idx]
     assert_dataobj_equal(s_sub, s_idx)
+
+    # concatenate
+    src_reconc = concatenate((src.sub(source='lh'), src.sub(source='rh')), 'source')
+    assert_dataobj_equal(src_reconc, src)
 
 
 @requires_mne_sample_data

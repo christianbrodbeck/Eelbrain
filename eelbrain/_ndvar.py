@@ -13,7 +13,8 @@ from scipy import linalg, signal
 from . import mne_fixes
 from . import _colorspaces as cs
 from ._data_obj import (
-    NDVar, Categorial, Dimension, Scalar, UTS, asndvar)
+    NDVar, Case, Categorial, Dimension, Scalar, SourceSpace, UTS,
+    asndvar, combine)
 from ._exceptions import DimensionMismatchError
 from ._info import merge_info
 from ._stats.connectivity import Connectivity
@@ -68,7 +69,34 @@ def concatenate(ndvars, dim='time', name=None, tmin=0):
         if dim == 'time':
             out_dim = UTS(tmin, ndvar.time.tstep, x.shape[axis])
         elif dim == 'case':
-            out_dim = 'case'
+            out_dim = Case
+        elif dim == 'source':
+            if (len(ndvars) != 2 or
+                        ndvars[0].source.rh_n != 0 or
+                        ndvars[1].source.lh_n != 0):
+                raise NotImplementedError(
+                    "Can only concatenate NDVars along source space with "
+                    "exactly two NDVars, one for lh and one for rh (in this "
+                    "order)")
+            lh = ndvars[0].source
+            rh = ndvars[1].source
+            if lh.subject != rh.subject:
+                raise ValueError("NDVars not from the same subject (%s/%s)" %
+                                 (lh.subject, rh.subject))
+            elif lh.src != rh.src:
+                raise ValueError("NDVars have different source-spaces (%s/%s)" %
+                                 (lh.src, rh.src))
+            elif lh.subjects_dir != rh.subjects_dir:
+                raise ValueError("NDVars have different subjects_dirs (%s/%s)" %
+                                 (lh.subjects_dir, rh.subjects_dir))
+            # parc
+            if lh.parc is None or rh.parc is None:
+                parc = None
+            else:
+                parc = combine((lh.parc, rh.parc))
+
+            out_dim = SourceSpace([lh.lh_vertices, rh.rh_vertices], lh.subject,
+                                  lh.src, lh.subjects_dir, parc)
         else:
             raise NotImplementedError("dim=%s is not implemented; only 'time' and "
                                       "'case' are implemented" % repr(dim))
