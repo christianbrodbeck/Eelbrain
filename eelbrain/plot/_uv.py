@@ -964,7 +964,7 @@ class Correlation(EelFigure, LegendMixin):
             cat = ascategorial(cat, sub, ds)
 
         # figure
-        layout = Layout(1, 1, 5, *args, **kwargs)
+        layout = Layout(1, 1, 5, *args, autoscale=True, **kwargs)
         EelFigure.__init__(self, frame_title(y, x, cat), layout)
         self._configure_yaxis(y, ylabel)
         self._configure_xaxis(x, xlabel)
@@ -980,14 +980,6 @@ class Correlation(EelFigure, LegendMixin):
                 label = cellname(cell)
                 h = ax.scatter(x[idx].x, y[idx].x, c=color, label=label, alpha=.5)
                 legend_handles[label] = h
-
-        # limits
-        for func, data in ((ax.set_xlim, x), (ax.set_ylim, y)):
-            min_ = data.min()
-            max_ = data.max()
-            range_ = max_ - min_
-            delta = range_ / 20.
-            func(min_ - delta, max_ + delta)
 
         LegendMixin.__init__(self, legend, legend_handles)
         self._show()
@@ -1047,7 +1039,7 @@ class Regression(EelFigure, LegendMixin):
             ylabel = Y.name
 
         # figure
-        layout = Layout(1, 1, 5, *args, **kwargs)
+        layout = Layout(1, 1, 5, *args, autoscale=True, **kwargs)
         EelFigure.__init__(self, frame_title(Y, X, cat), layout)
         self._configure_xaxis(X, xlabel)
         self._configure_yaxis(Y, ylabel)

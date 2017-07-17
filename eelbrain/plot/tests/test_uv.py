@@ -1,8 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from nose.tools import eq_, ok_
-import numpy as np
 
-from eelbrain import Factor, Var, datasets, plot
+from eelbrain import Factor, datasets, plot
 
 
 def test_barplot():
