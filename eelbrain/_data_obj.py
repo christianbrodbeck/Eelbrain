@@ -8460,8 +8460,7 @@ class SourceSpace(Dimension):
         self._subjects_dir = subjects_dir
         self._init_secondary()
         Dimension.__init__(self, 'source', connectivity)
-        if self.kind == 'ico':
-            self.set_parc(parc)
+        self.set_parc(parc)
 
     def _init_secondary(self):
         self._n_vert = sum(len(v) for v in self.vertices)
@@ -9006,7 +9005,7 @@ class SourceSpace(Dimension):
                 parc_ = Factor(np.hstack((x_lh, x_rh)), parc,
                                labels={i: name for i, name in enumerate(names, -2)})
             else:
-                raise NotImplementedError
+                raise NotImplementedError("Parcellation for volume source space")
         else:
             raise TypeError("Parc needs to be string, got %s" % repr(parc))
 
