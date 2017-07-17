@@ -219,7 +219,7 @@ def labels_from_mni_coords(seeds, extent=30., subject='fsaverage',
 
 
 def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
-                       copy=False, parc=True):
+                       copy=False, parc=True, xhemi=False):
     """Morph source estimate to a different MRI subject
 
     Parameters
@@ -228,10 +228,11 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
         NDVar with SourceSpace dimension.
     subject_to : string
         Name of the subject on which to morph.
-    vertices_to : None | list of array of int
+    vertices_to : None | list of array of int | 'lh' | 'rh'
         The vertices on the destination subject's brain. If ndvar contains a
         whole source space, vertices_to can be automatically loaded, although
         providing them as argument can speed up processing by a second or two.
+        Use 'lh' or 'rh' to target vertices from only one hemisphere.
     morph_mat : None | sparse matrix
         The morphing matrix. If ndvar contains a whole source space, the morph
         matrix can be automatically loaded, although providing a cached matrix
@@ -244,6 +245,9 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
         parcellation from ``ndvar``. Set to ``False`` to load no parcellation.
         If the annotation files are missing for the target subject an IOError
         is raised.
+    xhemi : bool
+        Mirror hemispheres (i.e., project data from the left hemisphere to the
+        right hemisphere and vice versa).
 
     Returns
     -------
@@ -260,21 +264,47 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     altering ``ndvar``. To make sure the date of the output is independent from
     the data of the input, set the argument ``copy=True``.
     """
-    subjects_dir = ndvar.source.subjects_dir
-    subject_from = ndvar.source.subject
-    src = ndvar.source.src
-    if vertices_to is None:
+    source = ndvar.get_dim('source')
+    subjects_dir = source.subjects_dir
+    subject_from = source.subject
+    src = source.src
+    has_lh_out = bool(source.rh_n if xhemi else source.lh_n)
+    has_rh_out = bool(source.lh_n if xhemi else source.rh_n)
+    if vertices_to in (None, 'lh', 'rh'):
         path = SourceSpace._SRC_PATH.format(
             subjects_dir=subjects_dir, subject=subject_to, src=src)
         src_to = mne.read_source_spaces(path)
-        vertices_to = [src_to[0]['vertno'] if ndvar.source.lh_n else np.empty(0, int),
-                       src_to[1]['vertno'] if ndvar.source.rh_n else np.empty(0, int)]
+
+        if vertices_to == 'lh' or (vertices_to is None and has_lh_out):
+            vertices_lh = src_to[0]['vertno']
+        else:
+            vertices_lh = np.empty(0, int)
+
+        if vertices_to == 'rh' or (vertices_to is None and has_rh_out):
+            vertices_rh = src_to[1]['vertno']
+        else:
+            vertices_rh = np.empty(0, int)
+
+        vertices_to = [vertices_lh, vertices_rh]
     elif not isinstance(vertices_to, list) or not len(vertices_to) == 2:
-        raise ValueError('vertices_to must be a list of length 2')
+        raise ValueError('vertices_to must be a list of length 2, got %r' %
+                         (vertices_to,))
+
+    # check that requested data is available
+    n_to_lh = len(vertices_to[0])
+    n_to_rh = len(vertices_to[1])
+    if n_to_lh and not has_lh_out:
+        raise ValueError("Data on the left hemisphere was requested in "
+                         "vertices_to but is not available in ndvar")
+    elif n_to_rh and not has_rh_out:
+        raise ValueError("Data on the right hemisphere was requested in "
+                         "vertices_to but is not available in ndvar")
+    elif n_to_lh == 0 and n_to_rh == 0:
+        raise ValueError("No target vertices")
 
     # parc for new source space
     if parc is True:
-        parc_to = ndvar.source.parc.name if ndvar.source.parc else None
+        parc_to = source.parc.name if source.parc else None
     else:
         parc_to = parc
     # check that annot files are available
@@ -291,7 +321,7 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
                 "following files are missing:\n%s" %
                 (parc_to, subject_to, '\n'.join(missing)))
 
-    if subject_from == subject_to and _vertices_equal(ndvar.source.vertices,
+    if subject_from == subject_to and _vertices_equal(source.vertices,
                                                       vertices_to):
         if copy:
             ndvar = ndvar.copy()
@@ -304,26 +334,28 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
 
     # check whether it is a scaled brain
     do_morph = True
-    cfg_path = os.path.join(subjects_dir, subject_from,
-                            'MRI scaling parameters.cfg')
-    if os.path.exists(cfg_path):
-        cfg = mne.coreg.read_mri_cfg(subject_from, subjects_dir)
-        subject_from = cfg['subject_from']
-        if subject_to == subject_from and _vertices_equal(ndvar.source.vertices,
-                                                          vertices_to):
-            if copy:
-                x_ = x.copy()
-            else:
-                x_ = x
-            vertices_to = ndvar.source.vertices
-            do_morph = False
+    if not xhemi:
+        cfg_path = os.path.join(subjects_dir, subject_from,
+                                'MRI scaling parameters.cfg')
+        if os.path.exists(cfg_path):
+            cfg = mne.coreg.read_mri_cfg(subject_from, subjects_dir)
+            subject_from = cfg['subject_from']
+            if (subject_to == subject_from and
+                    _vertices_equal(source.vertices, vertices_to)):
+                if copy:
+                    x_ = x.copy()
+                else:
+                    x_ = x
+                vertices_to = source.vertices
+                do_morph = False
 
     if do_morph:
-        vertices_from = ndvar.source.vertices
+        vertices_from = source.vertices
         if morph_mat is None:
             morph_mat = mne.compute_morph_matrix(subject_from, subject_to,
                                                  vertices_from, vertices_to,
-                                                 None, subjects_dir)
+                                                 None, subjects_dir,
+                                                 xhemi=xhemi)
         elif not sp.sparse.issparse(morph_mat):
             raise ValueError('morph_mat must be a sparse matrix')
         elif not sum(len(v) for v in vertices_to) == morph_mat.shape[0]:
@@ -355,8 +387,7 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     source = SourceSpace(vertices_to, subject_to, src, subjects_dir, parc_to)
     dims = ndvar.dims[:axis] + (source,) + ndvar.dims[axis + 1:]
     info = ndvar.info.copy()
-    out = NDVar(x_, dims, info, ndvar.name)
-    return out
+    return NDVar(x_, dims, info, ndvar.name)
 
 
 # label operations ---
