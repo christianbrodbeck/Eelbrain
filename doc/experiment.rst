@@ -798,6 +798,7 @@ parameter with the following options:
 name             min time min sources min sensors
 ================ ======== =========== ===========
 ``"all"``
+``"10ms"``       10 ms    10          4
 ``""`` (default) 25 ms    10          4
 ``"large"``      25 ms    20          8
 ================ ======== =========== ===========

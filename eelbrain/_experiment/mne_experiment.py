@@ -691,9 +691,12 @@ class MneExperiment(FileTree):
     # Make sure dictionary keys (test names) are appropriate for filenames.
     # tests imply a model which is set automatically
     tests = {}
-    _cluster_criteria = {'': {'time': 0.025, 'sensor': 4, 'source': 10},
-                         'all': {},
-                         'large': {'time': 0.025, 'sensor': 8, 'source': 20}}
+    _cluster_criteria = {
+        '': {'time': 0.025, 'sensor': 4, 'source': 10},
+        'all': {},
+        '10ms': {'time': 0.01, 'sensor': 4, 'source': 10},
+        'large': {'time': 0.025, 'sensor': 8, 'source': 20},
+    }
 
     # plotting
     # --------
