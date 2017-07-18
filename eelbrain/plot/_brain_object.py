@@ -286,8 +286,10 @@ class Brain(TimeSlicer, surfer.Brain):
         ----------
         ndvar : NDVar  (source[, time])
             NDVar with SourceSpace dimension and optional time dimension.
-        cmap : str | array
-            Colormap (name of a matplotlib colormap) or LUT array.
+        cmap : str | list of matplotlib colors | array
+            Colormap. Can be the name of a matplotlib colormap, a list of
+            colors, or a custom lookup table (an n x 4 array with RBGA values
+            between 0 and 255).
         vmin, vmax : scalar
             Endpoints for the colormap. Need to be set explicitly if ``cmap`` is
             a LUT array.
@@ -329,12 +331,6 @@ class Brain(TimeSlicer, surfer.Brain):
                 cmap = (contour_color, contour_color)
         elif cmap is None or isinstance(cmap, basestring):
             cmap = cmaps[meas]
-
-        # convert ColorMap to LUT (PySurfer can't handle ColorMap instances)
-        if isinstance(cmap, basestring):
-            cmap = get_cmap(cmap)
-        if isinstance(cmap, Colormap):
-            cmap = np.round(cmap(np.arange(cmap.N)) * 255).astype(np.uint8)
 
         # general PySurfer data args
         alpha = 1
