@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import division
 
@@ -5,9 +6,9 @@ from functools import partial
 from itertools import izip, product
 from warnings import warn
 
+import mne
 from nibabel.freesurfer import read_annot
 import numpy as np
-import mne
 
 from .._data_obj import asndvar, NDVar, SourceSpace
 from .._utils import deprecated
@@ -1294,3 +1295,59 @@ def connectivity(source):
 def copy(brain):
     "Copy the figure to the clip board"
     return brain.copy_screenshot()
+
+
+def butterfly(y, cmap=None, vmin=None, vmax=None, name=None, h=2.5, w=5):
+    u"""Shortcut for a Butterfly-plot with a time-linked brain plot
+
+    Parameters
+    ----------
+    y : NDVar  ([case,] time, source)
+        Data to plot; if ``y`` has a case dimension, the mean is plotted.
+        ``y`` can also be a :mod:`~eelbrain.testnd` t-test result, in which
+        case a masked parameter map is plotted (p ≤ 0.05).
+    name : str
+        The window title (default is y.name).
+    h : scalar
+        Plot height (inches).
+    w : scalar
+        Butterfly plot width (inches).
+
+    Returns
+    -------
+    butterfly_plot : plot.Butterfly
+        Butterfly plot.
+    brain : Brain
+        Brain plot.
+    """
+    from .._stats import testnd
+    from ._utsnd import Butterfly
+
+    if isinstance(y, (testnd.ttest_1samp, testnd.ttest_rel, testnd.ttest_ind)):
+        y = y.masked_parameter_map(0.05, name=y.Y)
+
+    if name is None:
+        name = y.name
+
+    if y.has_case:
+        y = y.mean('case')
+
+    # find hemispheres with data
+    hemis = []
+    if y.source.lh_n:
+        hemis.append('lh')
+    if y.source.rh_n:
+        hemis.append('rh')
+
+    # butterfly-plot
+    plot_data = [y.sub(source=hemi, name=hemi.capitalize()) for hemi in hemis]
+    p = Butterfly(plot_data, vmin=vmin, vmax=vmax,
+                  h=h, w=w, ncol=1, name=name, color='black', ylabel=False)
+
+    brain_h = h * p._layout.dpi
+
+    # Brain plot
+    p_brain = brain(y, cmap, vmin, vmax, name=name, axh=brain_h, mask=False)
+    p.link_time_axis(p_brain)
+
+    return p, p_brain
