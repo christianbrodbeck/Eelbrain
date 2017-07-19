@@ -149,18 +149,19 @@ def test_t_ind():
     y = ds.eval("utsnd.x")
     n_cases = len(y)
     n = n_cases / 2
+    groups = (np.arange(n_cases) < n).astype(np.int8)
 
-    t = stats.t_ind(y, n, n)
+    t = stats.t_ind(y, groups)
     p = stats.ttest_p(t, n_cases - 2)
     t_sp, p_sp = scipy.stats.ttest_ind(y[:n], y[n:])
-    assert_equal(t, t_sp)
-    assert_equal(p, p_sp)
+    assert_allclose(t, t_sp)
+    assert_allclose(p, p_sp)
     assert_allclose(stats.ttest_t(p, n_cases - 2), np.abs(t))
 
     # permutation
     y_perm = np.empty_like(y)
     for perm in permute_order(n_cases, 2):
-        stats.t_ind(y, n, n, out=t, perm=perm)
+        stats.t_ind(y, groups, out=t, perm=perm)
         y_perm[perm] = y
         t_sp, _ = scipy.stats.ttest_ind(y_perm[:n], y_perm[n:])
         assert_allclose(t, t_sp)

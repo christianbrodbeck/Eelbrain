@@ -456,6 +456,55 @@ def t_1samp_perm(cnp.ndarray[FLOAT64, ndim=2] y,
             out[i] = 0
 
 
+def t_ind(cnp.ndarray[FLOAT64, ndim=2] y,
+          cnp.ndarray[FLOAT64, ndim=1] out,
+          cnp.ndarray[INT8, ndim=1] group):
+    "Indpendent-samples t-test, assuming equal variance"
+    cdef unsigned long i, case
+    cdef double mean0, mean1, var
+
+    cdef unsigned long n_tests = y.shape[1]
+    cdef unsigned long n_cases = y.shape[0]
+    cdef unsigned long df = n_cases - 2
+    cdef unsigned long n0 = 0
+    cdef unsigned long n1 = 0
+
+    if group.shape[0] != n_cases:
+        raise ValueError("length of group does not match n_cases in y")
+
+    for case in range(n_cases):
+        if group[case] == 1:
+            n1 += 1
+    n0 = n_cases - n1
+
+    cdef double var_mult = (1. / n0 + 1. / n1) / df
+
+    for i in range(n_tests):
+        mean0 = 0.
+        mean1 = 0.
+        var = 0.
+
+        # means
+        for case in range(n_cases):
+            if group[case] == 0:
+                mean0 += y[case, i]
+            else:
+                mean1 += y[case, i]
+        mean0 /= n0
+        mean1 /= n1
+
+        # variance
+        for case in range(n_cases):
+            if group[case] == 0:
+                var += (y[case, i] - mean0) ** 2
+            else:
+                var += (y[case, i] - mean1) ** 2
+        if var == 0:
+            out[i] = 0
+            continue
+        out[i] = (mean1 - mean0) / (var * var_mult) ** 0.5
+
+
 def has_zero_variance(cnp.ndarray[FLOAT64, ndim=2] y):
     "True if any data-columns have zero variance"
     cdef double value

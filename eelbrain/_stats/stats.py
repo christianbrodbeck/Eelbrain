@@ -285,43 +285,34 @@ def t_1samp(y, out=None):
         out = np.empty(y.shape[1:])
 
     if out.ndim == 1:
-        out_ = out
+        y_flat = y
+        out_flat = out
     else:
-        out_ = out.ravel()
+        y_flat = y.reshape((n_cases, -1))
+        out_flat = out.ravel()
 
-    opt.t_1samp(y.reshape(n_cases, -1), out_)
+    opt.t_1samp(y_flat, out_flat)
     return out
 
 
-def t_ind(x, n1, n2, equal_var=True, out=None, perm=None):
-    "Based on scipy.stats.ttest_ind"
+def t_ind(y, group, out=None, perm=None):
+    "T-value for independent samples t-test, assuming equal variance"
+    n_cases = len(y)
     if out is None:
-        out = np.empty(x.shape[1:])
+        out = np.empty(y.shape[1:])
 
-    if perm is None:
-        a = x[:n1]
-        b = x[n1:]
+    if perm is not None:
+        group = group[perm]
+
+    if out.ndim == 1:
+        y_flat = y
+        out_flat = out
     else:
-        cat = np.zeros(n1 + n2)
-        cat[n1:] = 1
-        cat_perm = cat[perm]
-        a = x[cat_perm == 0]
-        b = x[cat_perm == 1]
-    v1 = np.var(a, 0, ddof=1)
-    v2 = np.var(b, 0, ddof=1)
+        y_flat = y.reshape((n_cases, -1))
+        out_flat = out.ravel()
 
-    if equal_var:
-        df = n1 + n2 - 2
-        svar = ((n1 - 1) * v1 + (n2 - 1) * v2) / float(df)
-        denom = np.sqrt(svar * (1.0 / n1 + 1.0 / n2))
-    else:
-        vn1 = v1 / n1
-        vn2 = v2 / n2
-        denom = np.sqrt(vn1 + vn2)
-
-    d = np.mean(a, 0) - np.mean(b, 0)
-    t = np.divide(d, denom, out)
-    return t
+    opt.t_ind(y_flat, out_flat, group)
+    return out
 
 
 def ftest_f(p, df_num, df_den):

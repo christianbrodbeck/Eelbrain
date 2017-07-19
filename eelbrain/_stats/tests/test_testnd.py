@@ -527,7 +527,9 @@ def test_ttest_ind():
 
     # zero variance
     ds['utsnd'].x[:, 1, 10] = 0.
-    assert_raises(ZeroVariance, testnd.ttest_ind, 'utsnd', 'A', ds=ds)
+    res_zv = testnd.ttest_ind('utsnd', 'A', 'a1', 'a0', ds=ds)
+    assert_array_equal(res_zv.t.x[0], res.t.x[0])
+    eq_(res_zv.t.x[1, 10], 0.)
 
 
 def test_ttest_rel():

@@ -906,6 +906,10 @@ class ttest_ind(_Result):
     tfce_map : NDVar | None
         Map of the test statistic processed with the threshold-free cluster
         enhancement algorithm (or None if no TFCE was performed).
+
+    Notes
+    -----
+    Cases with zero variance are set to t=0.
     """
     _state_specific = ('X', 'c1', 'c0', 'tail', 't', 'n1', 'n0', 'df', 'c1_mean',
                        'c0_mean')
@@ -915,14 +919,14 @@ class ttest_ind(_Result):
                  tstart=None, tstop=None, parc=None, force_permutation=False, **criteria):
         ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar,
                        dtype=np.float64)
-        check_variance(ct.Y.x)
         c1, c0 = ct.cat
 
         n1 = len(ct.data[c1])
         n = len(ct.Y)
         n0 = n - n1
         df = n - 2
-        tmap = stats.t_ind(ct.Y.x, n1, n0)
+        groups = (np.arange(n) < n1).astype(np.int8)
+        tmap = stats.t_ind(ct.Y.x, groups)
 
         n_threshold_params = sum((pmin is not None, tmin is not None, tfce))
         if n_threshold_params == 0 and not samples:
@@ -945,7 +949,7 @@ class ttest_ind(_Result):
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 def test_func(y, out, perm):
-                    return stats.t_ind(y, n1, n0, True, out, perm)
+                    return stats.t_ind(y, groups, out, perm)
                 iterator = permute_order(n, samples)
                 run_permutation(test_func, cdist, iterator,
                                 MP_FOR_NON_TOP_LEVEL_FUNCTIONS)
