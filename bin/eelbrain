@@ -5,11 +5,17 @@
 # #!/Users/christian/anaconda/envs/ENV/python.app/Contents/MacOS/python
 import os
 import sys
+
+from traits.trait_base import ETSConfig
 from IPython import start_ipython
 from IPython.paths import get_ipython_dir
 
 
 if __name__ == '__main__':
+
+    # set ETS toolkit before it is launched
+    ETSConfig.toolkit = 'wx'
+
     if not os.path.exists(os.path.join(get_ipython_dir(), 'profile_eelbrain')):
         from IPython.core.profileapp import ProfileCreate
         app = ProfileCreate()
