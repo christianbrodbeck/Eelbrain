@@ -404,15 +404,13 @@ def t_1samp(cnp.ndarray[FLOAT64, ndim=2] y,
         denom = 0
         for case in range(n_cases):
             denom += (y[case, i] - mean) ** 2
+
         denom /= div
         denom **= 0.5
-        if denom == 0:
-            if mean == 0:
-                out[i] = 0
-            else:
-                out[i] = np.inf
-            continue
-        out[i] = mean / denom
+        if denom > 0:
+            out[i] = mean / denom
+        else:
+            out[i] = 0
 
 
 def t_1samp_perm(cnp.ndarray[FLOAT64, ndim=2] y,
@@ -449,15 +447,13 @@ def t_1samp_perm(cnp.ndarray[FLOAT64, ndim=2] y,
         denom = 0
         for case in range(n_cases):
             denom += (case_buffer[case] - mean) ** 2
+
         denom /= div
         denom **= 0.5
-        if denom == 0:
-            if mean == 0:
-                out[i] = 0
-            else:
-                out[i] = np.inf
-            continue
-        out[i] = mean / denom
+        if denom > 0:
+            out[i] = mean / denom
+        else:
+            out[i] = 0
 
 
 def has_zero_variance(cnp.ndarray[FLOAT64, ndim=2] y):

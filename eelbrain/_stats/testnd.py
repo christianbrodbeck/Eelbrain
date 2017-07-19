@@ -414,9 +414,11 @@ class t_contrast_rel(_Result):
     - Unary numpy functions ``abs`` and ``negative``, e.g.
       ``"abs(cell1 > cell0)"``.
     - Binary numpy functions ``subtract`` and ``add``, e.g.
-      ``"add(a>b, a>c)"``
+      ``"add(a>b, a>c)"``.
     - Numpy functions for multiple arrays ``min``, ``max`` and ``sum``,
       e.g. ``min(a>d, b>d, c>d)``.
+
+    Cases with zero variance are set to t=0.
 
     Examples
     --------
@@ -729,6 +731,10 @@ class ttest_1samp(_Result):
     tfce_map : NDVar | None
         Map of the test statistic processed with the threshold-free cluster
         enhancement algorithm (or None if no TFCE was performed).
+
+    Notes
+    -----
+    Cases with zero variance are set to t=0.
     """
     _state_specific = ('popmean', 'tail', 'n', 'df', 't', 'diff')
 
@@ -1108,6 +1114,7 @@ class ttest_rel(_Result):
     -----
     In the permutation cluster test, permutations are done within the
     categories of ``match``.
+    Cases with zero variance are set to t=0.
     """
     _state_specific = ('X', 'c1', 'c0', 'tail', 't', 'n', 'df', 'c1_mean',
                        'c0_mean')
