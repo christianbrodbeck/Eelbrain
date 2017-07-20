@@ -1,4 +1,4 @@
-{{ fullname }}
+{{ fullname | escape }}
 {{ underline }}
 
 .. automodule:: {{ fullname }}

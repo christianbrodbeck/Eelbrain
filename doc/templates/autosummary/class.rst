@@ -1,5 +1,5 @@
-{{ fullname }}
--------------------------------------------------------------------------------
+{{ fullname | escape }}
+{{ underline }}
 
 .. currentmodule:: {{ module }}
 
@@ -10,12 +10,12 @@
 {% if methods %}
 
 Methods
--------
+{{ underline }}
 
 .. autosummary::
    :toctree:
 
-{% for item in all_methods %}
+{% for item in methods %}
    {%- if not item.startswith('_') or item in ['__call__'] %}
    ~{{ name }}.{{ item }}
    {%- endif -%}

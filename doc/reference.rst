@@ -166,6 +166,7 @@ frequencies:
 .. autosummary::
    :toctree: generated
 
+    table.cast_to_ndvar
     table.difference
     table.frequencies
     table.melt

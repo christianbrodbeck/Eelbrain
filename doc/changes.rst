@@ -8,24 +8,32 @@ New in 0.26
 
 * API changes:
 
-    - A new global :func:`configure` function replaces module-level configuration
-      functions.
-    - :class:`Dataset`: when a one-dimensional array is assigned to an unused
-      key, the array is now automatically converted to a :class:`Var` object.
-    - :attr:`SourceSpace.vertno` has been renamed to
-      :attr:`SourceSpace.vertices`.
+  - A new global :func:`configure` function replaces module-level configuration
+    functions.
+  - :class:`Dataset`: when a one-dimensional array is assigned to an unused
+    key, the array is now automatically converted to a :class:`Var` object.
+  - :attr:`SourceSpace.vertno` has been renamed to
+    :attr:`SourceSpace.vertices`.
 
-* Plotting: the new ``name`` argument allows setting the window title
-  (without adding a title to the figure).
+* Plotting:
+
+  - The new ``name`` argument allows setting the window title without adding a
+    title to the figure.
+  - Plots that reresent time have a new method to synchronize the time axis on
+    multiple plots: :meth:`~plot.Butterfly.link_time_axis`.
+
 * :mod:`load.fiff`: when generating epochs from raw data, a new ``tstop``
   argument allows specifying the time interval exclusive of the last sample.
 * New functions:
 
   - :func:`table.cast_to_ndvar`
 
-* New methods: :meth:`NDVar.log`, :meth:`NDVar.smooth`,
-  :meth:`MneExperiment.reset` (replacing :meth:`MneExperiment.store_state` and
-  :meth:`MneExperiment.restore_state`),
+* New methods:
+
+  - :meth:`NDVar.log`
+  - :meth:`NDVar.smooth`
+  - :meth:`MneExperiment.reset` (replacing :meth:`MneExperiment.store_state`
+    and :meth:`MneExperiment.restore_state`)
 
 
 New in 0.25
