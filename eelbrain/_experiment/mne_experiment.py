@@ -1068,7 +1068,6 @@ class MneExperiment(FileTree):
         # set initial values
         self.set(**state)
         self._store_state()
-        self.brain = None
 
         ########################################################################
         # logger
@@ -5509,56 +5508,31 @@ class MneExperiment(FileTree):
                                 w=w, h=h, axw=axw, axh=axh,
                                 subjects_dir=mri_sdir, **kwa)
 
-    def plot_brain(self, surf='inflated', title=None, hemi='lh', views=['lat'],
-                   w=500, clear=True, common_brain=True):
-        """Create a PySurfer Brain instance
+    def plot_brain(self, common_brain=True, **brain_kwargs):
+        """Plot the brain model
 
         Parameters
         ----------
-        w : int
-            Total window width.
-        clear : bool
-            If self.brain exists, replace it with a new plot (if False,
-            the existsing self.brain is returned).
         common_brain : bool
             If the current mrisubject is a scaled MRI, use the common_brain
             instead.
+        ... :
+            :class:`~plot._brain_object.Brain` options as keyword arguments.
         """
-        import surfer
-        if clear:
-            self.brain = None
-        else:
-            if self.brain is None:
-                pass
-            elif self.brain._figures == [[None, None], [None, None]]:
-                self.brain = None
-            else:
-                return self.brain
+        from ..plot._brain_object import Brain
+
+        brain_args = self._surfer_plot_kwargs()
+        brain_args.update(brain_kwargs)
+        brain_args['subjects_dir'] = self.get('mri-sdir')
 
         # find subject
-        mri_sdir = self.get('mri-sdir')
         if common_brain and is_fake_mri(self.get('mri-dir')):
             mrisubject = self.get('common_brain')
             self.set(mrisubject=mrisubject, match=False)
         else:
             mrisubject = self.get('mrisubject')
 
-        if title is not None:
-            title = title.format(mrisubject=mrisubject)
-
-        if hemi in ('lh', 'rh'):
-            self.set(hemi=hemi)
-            height = len(views) * w * 3 / 4.
-        else:
-            height = len(views) * w * 3 / 8.
-
-        config_opts = dict(background=(1, 1, 1), foreground=(0, 0, 0),
-                           width=w, height=height)
-        brain = surfer.Brain(mrisubject, hemi, surf, True, title, config_opts,
-                             None, mri_sdir, views)
-
-        self.brain = brain
-        return brain
+        return Brain(mrisubject, **brain_args)
 
     def plot_coreg(self, ch_type=None, dig=True, **kwargs):
         """Plot the coregistration (Head shape and MEG helmet)
