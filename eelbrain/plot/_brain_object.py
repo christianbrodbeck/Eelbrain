@@ -123,6 +123,8 @@ class Brain(TimeSlicer, surfer.Brain):
     name : str
         Window title (alternative to ``title`` for consistency with other
         Eelbrian figures).
+    pos : tuple of int
+        Position of the new window on the screen.
     show : bool
         Currently meaningless due to limitation in VTK that does not allow
         hidden plots.
@@ -141,7 +143,7 @@ class Brain(TimeSlicer, surfer.Brain):
                  foreground="black", subjects_dir=None, views='lat',
                  offset=True, show_toolbar=False, offscreen=False,
                  interaction='trackball', w=None, h=None, axw=None, axh=None,
-                 name=None, show=True, run=None):
+                 name=None, pos=wx.DefaultPosition, show=True, run=None):
         from ._wx_brain import BrainFrame
 
         self.__data = []
@@ -193,7 +195,7 @@ class Brain(TimeSlicer, surfer.Brain):
             raise TypeError("title=%r (str required)" % (title,))
 
         self._frame = BrainFrame(None, self, title, w, h, n_rows, n_columns,
-                                 surf)
+                                 surf, pos)
 
         if foreground is None:
             foreground = 'black'
@@ -225,6 +227,10 @@ class Brain(TimeSlicer, surfer.Brain):
             raise ValueError(
                 "Trying to plot NDVar from subject %s on Brain from subject "
                 "%s" % (source.subject, self.subject_id))
+        elif self._hemi == 'lh' and source.lh_n == 0:
+            raise ValueError("Trying to add NDVar without lh data to plot of lh")
+        elif self._hemi == 'rh' and source.rh_n == 0:
+            raise ValueError("Trying to add NDVar without rh data to plot of rh")
 
     def add_mask(self, source, color=(1, 1, 1), smoothing_steps=None,
                  alpha=None, subjects_dir=None):

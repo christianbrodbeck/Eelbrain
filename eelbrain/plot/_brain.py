@@ -413,7 +413,7 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
           views='lateral', hemi=None, colorbar=False, time_label='ms',
           w=None, h=None, axw=None, axh=None, foreground=None, background=None,
           parallel=True, cortex='classic', title=None, smoothing_steps=None,
-          mask=True, subjects_dir=None, colormap=None, name=None):
+          mask=True, subjects_dir=None, colormap=None, name=None, pos=None):
     """Create a PySurfer Brain object with a data layer
 
     Parameters
@@ -471,6 +471,8 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
         Override the subjects_dir associated with the source space dimension.
     name : str
         Equivalent to ``title``, for consistency with other plotting functions. 
+    pos : tuple of int
+        Position of the new window on the screen.
 
     Returns
     -------
@@ -522,7 +524,7 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
     brain = Brain(source.subject, hemi, surf, title, cortex,
                   views=views, w=w, h=h, axw=axw, axh=axh,
                   foreground=foreground, background=background,
-                  subjects_dir=subjects_dir, name=name)
+                  subjects_dir=subjects_dir, name=name, pos=pos)
 
     if ndvar is not None:
         if ndvar.x.dtype.kind in 'ui':
@@ -1297,7 +1299,8 @@ def copy(brain):
     return brain.copy_screenshot()
 
 
-def butterfly(y, cmap=None, vmin=None, vmax=None, name=None, h=2.5, w=5):
+def butterfly(y, cmap=None, vmin=None, vmax=None, hemi=None, name=None, h=2.5,
+              w=5):
     u"""Shortcut for a Butterfly-plot with a time-linked brain plot
 
     Parameters
@@ -1306,6 +1309,13 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, name=None, h=2.5, w=5):
         Data to plot; if ``y`` has a case dimension, the mean is plotted.
         ``y`` can also be a :mod:`~eelbrain.testnd` t-test result, in which
         case a masked parameter map is plotted (p ≤ 0.05).
+    vmin : scalar
+        Plot data range minimum.
+    vmax : scalar
+        Plot data range maximum.
+    hemi : 'lh' | 'rh'
+        Plot only this hemisphere (the default is to plot all hemispheres with
+        data in ``y``).
     name : str
         The window title (default is y.name).
     h : scalar
@@ -1320,7 +1330,10 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, name=None, h=2.5, w=5):
     brain : Brain
         Brain plot.
     """
+    import wx
     from .._stats import testnd
+    from .._wxgui.mpl_canvas import CanvasFrame
+    from ._brain_object import BRAIN_H, BRAIN_W
     from ._utsnd import Butterfly
 
     if isinstance(y, (testnd.ttest_1samp, testnd.ttest_rel, testnd.ttest_ind)):
@@ -1332,22 +1345,38 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, name=None, h=2.5, w=5):
     if y.has_case:
         y = y.mean('case')
 
-    # find hemispheres with data
-    hemis = []
-    if y.source.lh_n:
-        hemis.append('lh')
-    if y.source.rh_n:
-        hemis.append('rh')
+    # find hemispheres to include
+    if hemi is None:
+        hemis = []
+        if y.source.lh_n:
+            hemis.append('lh')
+        if y.source.rh_n:
+            hemis.append('rh')
+    elif hemi in ('lh', 'rh'):
+        hemis = (hemi,)
+    else:
+        raise ValueError("hemi=%r" % (hemi,))
 
     # butterfly-plot
-    plot_data = [y.sub(source=hemi, name=hemi.capitalize()) for hemi in hemis]
+    plot_data = [y.sub(source=hemi_, name=hemi_.capitalize()) for hemi_ in hemis]
     p = Butterfly(plot_data, vmin=vmin, vmax=vmax,
                   h=h, w=w, ncol=1, name=name, color='black', ylabel=False)
 
+    # position the brain window next to the butterfly-plot
     brain_h = h * p._layout.dpi
+    if isinstance(p._frame, CanvasFrame):
+        px, py = p._frame.GetPosition()
+        pw, _ = p._frame.GetSize()
+        display_w, _ = wx.DisplaySize()
+        brain_w = int(brain_h * len(hemis) * BRAIN_W / BRAIN_H)
+        brain_x = min(px + pw, display_w - brain_w)
+        pos = (brain_x, py)
+    else:
+        pos = wx.DefaultPosition
 
     # Brain plot
-    p_brain = brain(y, cmap, vmin, vmax, name=name, axh=brain_h, mask=False)
+    p_brain = brain(y, cmap, vmin, vmax, hemi=hemi, name=name, axh=brain_h,
+                    mask=False, pos=pos)
     p.link_time_axis(p_brain)
 
     return p, p_brain
