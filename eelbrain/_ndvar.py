@@ -2,7 +2,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """NDVar operations"""
 from collections import defaultdict
-from itertools import izip
+from itertools import izip, repeat
 from math import floor
 from numbers import Real
 
@@ -123,21 +123,25 @@ def convolve(h, x):
         if not isinstance(x, NDVar):
             raise TypeError("If h is an NDVar, x also needs to be an NDVar "
                             "(got x=%r)" % (x,))
-        elif h.ndim != x.ndim:
-            raise ValueError("x and h do not have same number of dimensions")
 
         if h.ndim == 1:
             ht = h.get_dim('time')
-            xt = x.get_dim('time')
+            hdim = None
         elif h.ndim == 2:
             hdim, ht = h.get_dims((None, 'time'))
+        else:
+            raise NotImplementedError("h must be 1 or 2 dimensional, got h=%r" % h)
+
+        if x.ndim == 1:
+            xt = x.get_dim('time')
+            xdim = None
+        elif x.ndim == 2:
             xdim, xt = x.get_dims((None, 'time'))
-            if hdim != xdim:
+            if xdim != hdim:
                 raise ValueError("h %s dimension and x %s dimension do not "
                                  "match" % (hdim.name, xdim.name))
         else:
-            raise ValueError("h and x must be 1 or 2 dimensional, got "
-                             "ndim=%i" % h.ndim)
+            raise NotImplementedError("x must be 1 or 2 dimensional, got x=%r" % h)
 
         if ht.tstep != xt.tstep:
             raise ValueError(
@@ -146,6 +150,12 @@ def convolve(h, x):
 
         if h.ndim == 1:
             data = np.convolve(h.x, x.x)
+            dims = (xt,)
+        elif x.ndim == 1:
+            xdata = x.get_data('time')
+            data = np.array(tuple(np.convolve(h_i, xdata) for h_i in
+                                  h.get_data((hdim.name, 'time'))))
+            dims = (hdim, xt)
         else:
             data = None
             for h_i, x_i in izip(h.get_data((hdim.name, 'time')),
@@ -154,15 +164,18 @@ def convolve(h, x):
                     data = np.convolve(h_i, x_i)
                 else:
                     data += np.convolve(h_i, x_i)
+            dims = (xt,)
 
         i_start = -int(round(ht.tmin / ht.tstep))
         i_stop = i_start + xt.nsamples
         if i_start < 0:
-            data = np.concatenate((np.zeros(-i_start), data[:i_stop]))
+            data = np.concatenate((
+                np.zeros((len(hdim), -i_start) if data.ndim == 2 else -i_start),
+                data[..., :i_stop]), -1)
         else:
-            data = data[i_start: i_stop]
+            data = data[..., i_start: i_stop]
 
-        return NDVar(data, (xt,), x.info.copy(), x.name)
+        return NDVar(data, dims, x.info.copy(), x.name)
     else:
         out = None
         for h_, x_ in izip(h, x):

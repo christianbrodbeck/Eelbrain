@@ -4,7 +4,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from eelbrain import (
-    NDVar, Scalar, UTS, datasets, concatenate, cross_correlation,
+    NDVar, Scalar, UTS, datasets, concatenate, convolve, cross_correlation,
     find_intervals, find_peaks)
 
 
@@ -21,6 +21,24 @@ def test_concatenate():
     assert_array_equal(vc.sub(time=(0, 1)).x, v1.x)
     assert_array_equal(vc.sub(time=(1, 2)).x, v0.x)
     assert_array_equal(vc.info, ds['utsnd'].info)
+
+
+def test_convolve():
+    ds = datasets._get_continuous()
+
+    h1 = ds['h1']
+    h2 = ds['h2']
+    x1 = ds['x1']
+
+    xc = convolve(h1, x1)
+    xc_np = np.convolve(h1.x, x1.x)
+    assert_array_equal(xc.x, xc_np[:100])
+
+    # add dimension through kernel
+    xc = convolve(h2, x1)
+    xc_np = np.vstack((np.convolve(h2.x[0], x1.x)[:100],
+                       np.convolve(h2.x[1], x1.x)[:100]))
+    assert_array_equal(xc.x, xc_np)
 
 
 def test_cross_correlation():
