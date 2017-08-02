@@ -90,7 +90,9 @@ def _hopkins_test(e, e2):
         e2_factors = find_factors(e2)
 
         a = all((f in e_factors or f.random) for f in e2_factors)
-        b = all((f in e2_factors or isnestedin(e2, f)) for f in e_factors)
+        b = all((f in e2_factors or isnestedin(e2, f) or
+                 any(isnestedin(f2, f) for f2 in e2_factors)) for
+                 f in e_factors)
 
         return a and b
 
