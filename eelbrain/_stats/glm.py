@@ -13,7 +13,6 @@ from __future__ import division
 from __future__ import print_function
 
 from itertools import izip
-import logging
 
 import numpy as np
 from scipy.linalg import lstsq
@@ -21,7 +20,6 @@ import scipy.stats
 
 from .. import fmtxt
 from .._utils import LazyProperty
-from .._utils.print_funcs import strdict
 from .._data_obj import (
     Model, Var, asmodel, assub, asvar, assert_has_no_empty_cells, find_factors,
     hasrandom, is_higher_order_effect, isbalanced, iscategorial, isnestedin)
@@ -36,11 +34,11 @@ from . import test
 _lm_lsq = 0  # for the LM class
 
 
-class hopkins_ems(dict):
+def hopkins_ems(x):
     """Find components of the F-test denominator according to Hopkins (1976)
 
-    A dictionary supplying for each of a model's effects the components of
-    the F-test denominator (error term).
+    Return a dictionary supplying for each of a model's effects the components
+    of the F-test denominator (error term).
 
     "The E(MS) for any source of variation for any ANOVA model, in addition
     to the specified effect (main effect or interaction), includes the
@@ -54,30 +52,15 @@ class hopkins_ems(dict):
     x : Model
         ANOVA model. Needs to balanced and completely specified.
     """
-    def __init__(self, x):
-        super(hopkins_ems, self).__init__()
+    if x.df_error > 0:
+        raise ValueError(
+            "Hopkins E(MS) estimate requires a fully specified model")
+    elif not any(f.random for f in find_factors(x)):
+        raise ValueError(
+            "Need at least one random effect in fully specified model "
+            "(got %s)" % x.name)
 
-        if x.df_error > 0:
-            err = "Hopkins E(MS) estimate requires a fully specified model"
-            raise ValueError(err)
-        elif not any(f.random for f in find_factors(x)):
-            err = ("Need at least one random effect in fully specified model "
-                   "(got %s)" % x.name)
-            raise ValueError(err)
-        elif not isbalanced(x):
-            logging.warn('X is not balanced')
-
-        self.x = x
-        for e in x.effects:
-            self[e] = _find_hopkins_ems(e, x)
-
-    def __repr__(self):
-        items = {}
-        for k, v in self.iteritems():
-            kstr = ' %s' % k.name
-            vstr = '(%s)' % ''.join(e.name + ', ' for e in v)
-            items[kstr] = vstr
-        return strdict(items, fmt='%s')
+    return {e: _find_hopkins_ems(e, x) for e in x.effects}
 
 
 def _hopkins_ems_array(x):
