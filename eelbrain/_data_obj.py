@@ -264,8 +264,27 @@ def iseffect(x):
 
 def isnestedin(item, item2):
     "Determine whether ``item`` is nested in ``item2``"
-    if hasattr(item, 'nestedin'):
-        return item.nestedin and (item2 in find_factors(item.nestedin))
+    if isinstance(item, NestedEffect):
+        return item2 in find_factors(item.nestedin)
+    else:
+        return False
+
+
+def partially_nested(item1, item2):
+    """Determine whether there is a complete or partial nesting relationship
+
+    Used to determine whether a model should include an interaction effect
+    between item1 and item2.
+    """
+    if isinstance(item2, NestedEffect):
+        if isinstance(item1, NestedEffect):
+            raise NotImplementedError(
+                "Interaction between two nested effects is not implemented. "
+                "Please specify model explicitly")
+        return partially_nested(item2, item1)
+    elif isinstance(item1, NestedEffect):
+        nestedin = find_factors(item1.nestedin)
+        return any(e in nestedin for e in find_factors(item2))
     else:
         return False
 
@@ -2152,8 +2171,8 @@ class _Effect(object):
         return Model(self) + other
 
     def __mul__(self, other):
-        if isinstance(other, Model):
-            return Model((self, other, self % other))
+        if partially_nested(other, self):
+            return Model((self, other))
         return Model((self, other, self % other))
 
     def __mod__(self, other):
@@ -6681,7 +6700,7 @@ class Model(object):
             for e_other in Model(other).effects:
                 if isinstance(e_self, Var) and isinstance(e_other, Var):
                     out.append(e_self * e_other)
-                else:
+                elif not partially_nested(e_self, e_other):
                     out.append(e_self % e_other)
         return Model(out)
 

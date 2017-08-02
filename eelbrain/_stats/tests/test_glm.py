@@ -132,10 +132,12 @@ def test_anova():
     assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'rmaov')
 
     # nested random effect
-    aov = test.ANOVA('fltvar', 'B + A%B + A * nrm(B)', ds=ds)
+    aov_explicit = test.ANOVA('fltvar', 'A + B + A%B + nrm(B) + A%nrm(B)', ds=ds)
+    aov = test.ANOVA('fltvar', 'A * B * nrm(B)', ds=ds)
+    eq_(str(aov_explicit), str(aov))
     print(aov)
-    fs = run_on_lm_fitter('fltvar', 'B + A%B + A * nrm(B)', ds)
-    fnds = run_as_ndanova('fltvar', 'B + A%B + A * nrm(B)', ds)
+    fs = run_on_lm_fitter('fltvar', 'A * B * nrm(B)', ds)
+    fnds = run_as_ndanova('fltvar', 'A * B * nrm(B)', ds)
     r_res = r('ezANOVA(ds, fltvar, nrm, A, between=B)')
     assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'ez')
 
