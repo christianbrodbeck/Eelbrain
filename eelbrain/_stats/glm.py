@@ -611,28 +611,18 @@ def _incremental_comparisons(x):
     # Find comparisons for each effect
     skipped = []
     for e_test in x.effects:
-        # find effects in model 0
-        effects = []
-        for e in x.effects:
-            # determine whether e_test
-            if e is e_test:
-                pass
-            elif is_higher_order_effect(e, e_test):
-                pass
-            else:
-                effects.append(e)
+        model0_effects = tuple(e for e in x.effects if e is not e_test and
+                               not is_higher_order_effect(e, e_test))
 
         # get model 0
-        e_tuple = tuple(effects)
-        if e_tuple in model_idxs:
-            idx0 = model_idxs[e_tuple]
+        if model0_effects in model_idxs:
+            idx0 = model_idxs[model0_effects]
             model0 = models[idx0]
         else:
-            idx0 = next_idx
+            idx0 = model_idxs[model0_effects] = next_idx
             next_idx += 1
-            model_idxs[e_tuple] = idx0
-            if len(effects):
-                model0 = Model(effects)
+            if len(model0_effects):
+                model0 = Model(model0_effects)
             else:
                 model0 = None
 
@@ -649,15 +639,13 @@ def _incremental_comparisons(x):
             models[idx0] = model0
 
         # get model 1
-        effects.append(e_test)
-        e_tuple = tuple(effects)
-        if e_tuple in model_idxs:
-            idx1 = model_idxs[e_tuple]
+        model1_effects = model0_effects + (e_test,)
+        if model1_effects in model_idxs:
+            idx1 = model_idxs[model1_effects]
         else:
-            idx1 = next_idx
+            idx1 = model_idxs[model1_effects] = next_idx
             next_idx += 1
-            model_idxs[e_tuple] = idx1
-            models[idx1] = Model(effects)
+            models[idx1] = Model(model1_effects)
 
         # store comparison
         comparisons.append((e_test, idx1, idx0))
@@ -824,14 +812,6 @@ class ANOVA(object):
             self.names.append(x.name)
             self.residuals = lm1.SS_res, lm1.df_res, lm1.MS_res
         else:
-            if is_mixed:
-                pass  # <- Hopkins
-            else:
-                full_lm = LM(y, x)
-                SS_e = full_lm.SS_res
-                MS_e = full_lm.MS_res
-                df_e = full_lm.df_res
-
             comparisons, models, skipped = _incremental_comparisons(x)
 
             # store info on skipped effects
@@ -839,50 +819,37 @@ class ANOVA(object):
                 self._log.append("SKIPPING: %s (%s)" % (e_test.name, reason))
 
             # fit the models
-            lms = {}
-            for idx, model in models.iteritems():
-                if model.df_error > 0:
-                    lm = LM(y, model)
-                else:
-                    lm = None
-                lms[idx] = lm
+            lms = {idx: LM(y, model) if model.df_error > 0 else None for
+                   idx, model in models.iteritems()}
 
             # incremental F-tests
             for e_test, i1, i0 in comparisons:
-                name = e_test.name
-                skip = None
-
-                # find model 0
                 lm0 = lms[i0]
                 lm1 = lms[i1]
 
                 if is_mixed:
-                    # find E(MS)
-                    EMS_effects = _find_hopkins_ems(e_test, x)
-
-                    if len(EMS_effects) > 0:
-                        lm_EMS = LM(y, Model(EMS_effects))
-                        MS_e = lm_EMS.MS_model
-                        df_e = lm_EMS.df_model
-                    else:
-                        if lm1 is None:
-                            SS = lm0.SS_res
-                            df = lm0.df_res
-                        else:
-                            SS = lm0.SS_res - lm1.SS_res
-                            df = lm0.df_res - lm1.df_res
-                        MS = SS / df
-                        skip = ("no Hopkins E(MS); SS=%.2f, df=%i, "
-                                "MS=%.2f" % (SS, df, MS))
-
-                if skip:
-                    self._log.append("SKIPPING: %s (%s)" % (e_test.name, skip))
+                    ems_effects = _find_hopkins_ems(e_test, x)
+                    if len(ems_effects) == 0:
+                        self._log.append(
+                            "SKIPPING: %s (no Hopkins E(MS))" % (e_test.name,))
+                        continue
+                    lm_ems = LM(y, Model(ems_effects))
+                    ms_e = lm_ems.MS_model
+                    df_e = lm_ems.df_model
                 else:
-                    res = incremental_f_test(lm1, lm0, MS_e=MS_e, df_e=df_e, name=name)
-                    self.f_tests.append(res)
-                    self.names.append(name)
-            if not is_mixed:
-                self.residuals = SS_e, df_e, MS_e
+                    full_lm = lms[0]
+                    ms_e = full_lm.MS_res
+                    df_e = full_lm.df_res
+
+                res = incremental_f_test(lm1, lm0, ms_e, df_e, e_test.name)
+                self.f_tests.append(res)
+                self.names.append(e_test.name)
+
+            if is_mixed:
+                self.residuals = None
+            else:
+                full_lm = lms[0]
+                self.residuals = full_lm.SS_res, full_lm.df_res, full_lm.MS_res
 
         self._is_mixed = is_mixed
 
