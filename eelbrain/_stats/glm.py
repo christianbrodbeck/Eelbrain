@@ -324,11 +324,11 @@ def _nd_anova(x):
         elif x.df_error != 0:
             raise NotImplementedError("Random effects ANOVA need to be fully "
                                       "specified")
-        return _FullNDANOVA(x)
+        if isbalanced(x):
+            return _BalancedMixedNDANOVA(x)
     elif isbalanced(x):
         return _BalancedFixedNDANOVA(x)
-    else:
-        return _IncrementalNDANOVA(x)
+    return _IncrementalNDANOVA(x)
 
 
 class _NDANOVA(object):
@@ -468,7 +468,7 @@ class _BalancedFixedNDANOVA(_BalancedNDANOVA):
                     self.df_error)
 
 
-class _FullNDANOVA(_BalancedNDANOVA):
+class _BalancedMixedNDANOVA(_BalancedNDANOVA):
     """For balanced, fully specified models.
 
     Object for efficiently fitting a model to multiple dependent variables.
@@ -499,25 +499,32 @@ class _FullNDANOVA(_BalancedNDANOVA):
 
 class _IncrementalNDANOVA(_NDANOVA):
     def __init__(self, x):
-        if hasrandom(x):
-            raise NotImplementedError("Models containing random effects")
         comparisons = IncrementalComparisons(x)
-        effects = tuple(item[0] for item in comparisons.comparisons)
-        dfs_denom = (x.df_error,) * len(effects)
-        _NDANOVA.__init__(self, x, effects, dfs_denom)
+        if comparisons.mixed:
+            dfs_denom = tuple(comparisons.models[i].df - 1 for i in
+                              (comparisons.ems_idx[e_test] for e_test in
+                               comparisons.effects))
+        else:
+            dfs_denom = (x.df_error,) * len(comparisons.effects)
+        _NDANOVA.__init__(self, x, comparisons.effects, dfs_denom)
 
         self._comparisons = comparisons
         self._SS_diff = None
         self._MS_e = None
         self._SS_res = None
 
-        self._x_orig = x_orig = {}
-        for i, x in comparisons.models.iteritems():
-            if x is None:
-                x_orig[i] = None
+        self._x_orig = {}
+        self._full_ss_i = -1
+        for m, i in comparisons.relevant_models:
+            if m is None:  # intercept only
+                self._x_orig[i] = None
+                self._full_ss_i = i
             else:
-                p = x._parametrize()
-                x_orig[i] = (p.x, p.projector)
+                p = m._parametrize()
+                self._x_orig[i] = (p.x, p.projector)
+        if comparisons.mixed and self._full_ss_i == -1:
+            # need full SS
+            self._x_orig[-1] = None
         self._x_perm = None
 
     def preallocate(self, y_shape):
@@ -526,9 +533,7 @@ class _IncrementalNDANOVA(_NDANOVA):
         shape = self._flat_f_map.shape[1]
         self._SS_diff = np.empty(shape)
         self._MS_e = np.empty(shape)
-        self._SS_res = {}
-        for i in self._comparisons.models:
-            self._SS_res[i] = np.empty(shape)
+        self._SS_res = {i: np.empty(shape) for i in self._x_orig.keys()}
         return f_map
 
     def _map(self, y, flat_f_map, perm):
@@ -536,9 +541,7 @@ class _IncrementalNDANOVA(_NDANOVA):
             shape = y.shape[1]
             SS_diff = MS_diff = np.empty(shape)
             MS_e = np.empty(shape)
-            SS_res = {}
-            for i in self._comparisons.models:
-                SS_res[i] = np.empty(shape)
+            SS_res = {i: np.empty(shape) for i in self._x_orig.keys()}
         else:
             SS_diff = MS_diff = self._SS_diff
             MS_e = self._MS_e
@@ -562,21 +565,24 @@ class _IncrementalNDANOVA(_NDANOVA):
                     x_orig[i][0].take(perm, 0, x_dict[i][0])
                     x_orig[i][1].take(perm, 1, x_dict[i][1])
 
-        # calculate SS_res and MS_res for all models
+        # calculate SS_res for all models
         for i, x in x_dict.iteritems():
-            ss_ = SS_res[i]
-            if x is None:
-                ss(y, ss_)
+            if x is None:  # TODO:  use the same across permutations?
+                ss(y, SS_res[i])
             else:
                 x_full, xsinv = x
-                lm_res_ss(y, x_full, xsinv, ss_)
+                lm_res_ss(y, x_full, xsinv, SS_res[i])
 
         # incremental comparisons
-        np.divide(SS_res[0], self.x.df_error, MS_e)
-        for i in xrange(self.n_effects):
-            e, i1, i0 = self._comparisons.comparisons[i]
+        if not self._comparisons.mixed:
+            np.divide(SS_res[0], self.x.df_error, MS_e)
+        for i, (e_test, i1, i0) in enumerate(self._comparisons.comparisons):
+            if self._comparisons.mixed:
+                i_ems = self._comparisons.ems_idx[e_test]
+                np.subtract(SS_res[self._full_ss_i], SS_res[i_ems], MS_e)
+                np.divide(MS_e, self.dfs_denom[i], MS_e)
             np.subtract(SS_res[i0], SS_res[i1], SS_diff)
-            np.divide(SS_diff, e.df, MS_diff)
+            np.divide(SS_diff, e_test.df, MS_diff)
             np.divide(MS_diff, MS_e, flat_f_map[i])
 
 
@@ -675,10 +681,27 @@ class IncrementalComparisons(object):
             # store comparison
             self.comparisons.append((e_test, idx1, idx0))
             relevant_models.add(idx1)
-            if model0 is not None:
-                relevant_models.add(idx0)
+            relevant_models.add(idx0)
+
+        # for i_ss, model in self.models.iteritems()
 
         self.relevant_models = tuple((self.models[idx], idx) for idx in relevant_models)
+        self.effects = tuple(item[0] for item in self.comparisons)
+
+    def __repr__(self):
+        return "IncrementalComparisons(%s)" % self.x.name
+
+    def __str__(self):
+        out = ["Incremental comparisons:"]
+        for e_test, i1, i0 in self.comparisons:
+            out.append("  %s > %s" % (e_test.name, self.models[i0].name))
+        if self.ems_idx:
+            out.append("E(MS):")
+            for e_test, i1, i0 in self.comparisons:
+                if e_test in self.ems_idx:
+                    ems = self.ems_idx[e_test]
+                    out.append("  %s: %s" % (e_test.name, "N/A" if ems is None else self.models[ems].name))
+        return '\n'.join(out)
 
 
 class incremental_f_test:
@@ -760,8 +783,7 @@ class incremental_f_test:
 class ANOVA(object):
     """Univariate ANOVA.
 
-    Mixed effects models require balanced models and full model specification
-    so that E(MS) can be estimated according to Hopkins (1976).
+    Mixed effects models require full model specification.
 
     Parameters
     ----------
@@ -779,7 +801,7 @@ class ANOVA(object):
     Examples
     --------
     The objects' string representation is the
-    anova table, so the model can be created and examined inone command::
+    anova table, so the model can be created and examined in one command::
 
     >>> ds = datasets.get_loftus_masson_1994()
     >>> print test.ANOVA('n_recalled', 'exposure.as_factor()*subject', ds=ds)
@@ -792,12 +814,6 @@ class ANOVA(object):
     For other uses, properties of the fit can be accessed with methods and
     attributes.
     """
-    # Unbalanced models
-    # -----------------
-    #  - The SS of Effects which do not include the between-subject factor are
-    #    higher than in SPSS
-    #  - The SS of effects which include the between-subject factor agree with
-    #    SPSS
     def __init__(self, y, x, sub=None, title=None, ds=None):
         # prepare kwargs
         sub = assub(sub, ds)
@@ -854,12 +870,7 @@ class ANOVA(object):
                 lm1 = lms[i1]
 
                 if is_mixed:
-                    ems_idx = comparisons.ems_idx[e_test]
-                    if ems_idx is None:
-                        self._log.append(
-                            "SKIPPING: %s (no Hopkins E(MS))" % (e_test.name,))
-                        continue
-                    lm_ems = lms[ems_idx]
+                    lm_ems = lms[comparisons.ems_idx[e_test]]
                     ms_e = lm_ems.MS_model
                     df_e = lm_ems.df_model
                 else:

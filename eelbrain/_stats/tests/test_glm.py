@@ -106,6 +106,7 @@ def run_as_ndanova(y, x, ds):
 
 def test_anova():
     "Test ANOVA"
+    from rpy2.rinterface import RRuntimeWarning
     from rpy2.robjects import r
     r_require('car')
     r_require('ez')
@@ -143,6 +144,30 @@ def test_anova():
 
     # not fully specified model with random effects
     assert_raises(NotImplementedError, test.anova, 'fltvar', 'A*rm', ds=ds)
+
+    # unequal group size, 1-way
+    sds = ds.sub("A == 'a1'").sub("nrm.isnotin(('s037', 's038', 's039'))")
+    sds.to_r('sds')
+    aov = test.ANOVA('fltvar', 'B * nrm(B)', ds=sds)
+    print(aov)
+    fs = run_on_lm_fitter('fltvar', 'B * nrm(B)', sds)
+    fnds = run_as_ndanova('fltvar', 'B * nrm(B)', sds)
+    with warnings.catch_warnings():  # type argument to ezANOVA
+        warnings.filterwarnings('ignore', category=RRuntimeWarning)
+        r_res = r('ezANOVA(sds, fltvar, nrm, between=B)')
+    assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'ez')
+
+    # unequal group size, 2-way
+    sds = ds.sub("nrm.isnotin(('s037', 's038', 's039'))")
+    sds.to_r('sds')
+    aov = test.ANOVA('fltvar', 'A * B * nrm(B)', ds=sds)
+    print(aov)
+    fs = run_on_lm_fitter('fltvar', 'A * B * nrm(B)', sds)
+    fnds = run_as_ndanova('fltvar', 'A * B * nrm(B)', sds)
+    with warnings.catch_warnings():  # type argument to ezANOVA
+        warnings.filterwarnings('ignore', category=RRuntimeWarning)
+        r_res = r('ezANOVA(sds, fltvar, nrm, A, between=B)')
+    assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'ez')
 
     # empty cells
     dss = ds.sub("A%B != ('a2', 'b2')")
@@ -183,7 +208,7 @@ def test_anova_perm():
         assert_allclose(r2, r1, 1e-6, 1e-6)
 
     # full repeated measures anova
-    aov = glm._FullNDANOVA(ds.eval('A*B*rm'))
+    aov = glm._BalancedMixedNDANOVA(ds.eval('A*B*rm'))
     r1 = aov.preallocate(y.shape)
     for perm in permute_order(n_cases, 2):
         aov.map(y, perm)
@@ -298,7 +323,7 @@ def test_lmfitter():
 
     x_full = ds.eval("A * B + ind(A%B)")
     lm_full = glm._nd_anova(x_full)
-    assert_is_instance(lm_full, glm._FullNDANOVA)
+    assert_is_instance(lm_full, glm._BalancedMixedNDANOVA)
     f_maps_full = lm_full.map(y)
     p_maps_full = lm_full.p_maps(f_maps)
 
