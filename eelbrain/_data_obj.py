@@ -8733,12 +8733,14 @@ class SourceSpace(Dimension):
         connetivity : array of int, (n_pairs, 2)
             array of sorted [src, dst] pairs, with all src < dts.
         """
-        if self._connectivity is None:
+        if self._n_vert == 0:
+            return np.empty((0, 2), np.uint32)
+        elif self._connectivity is None:
             if self.src is None or self.subject is None or self.subjects_dir is None:
-                err = ("In order for a SourceSpace dimension to provide "
-                       "connectivity information it needs to be initialized with "
-                       "src, subject and subjects_dir parameters")
-                raise ValueError(err)
+                raise ValueError(
+                    "In order for a SourceSpace dimension to provide "
+                    "connectivity information it needs to be initialized with "
+                    "src, subject and subjects_dir parameters")
 
             src = self.get_source_space()
             if self.kind == 'vol':
