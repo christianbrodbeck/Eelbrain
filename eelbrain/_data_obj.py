@@ -1585,7 +1585,7 @@ class Var(object):
         return Var(x, info=info)
 
     def __iadd__(self, other):
-        self.x += other
+        self.x += other.x if isinstance(other, Var) else other
         return self
 
     def __radd__(self, other):
@@ -1617,7 +1617,7 @@ class Var(object):
         return Var(x, info=info)
 
     def __isub__(self, other):
-        self.x -= other
+        self.x -= other.x if isinstance(other, Var) else other
         return self
 
     def __rsub__(self, other):
@@ -1648,7 +1648,7 @@ class Var(object):
         return Var(x, info=info)
 
     def __imul__(self, other):
-        self.x *= other
+        self.x *= other.x if isinstance(other, Var) else other
         return self
 
     def __rmul__(self, other):
@@ -1675,7 +1675,7 @@ class Var(object):
         return Var(x, info=info)
 
     def __ifloordiv__(self, other):
-        self.x //= other
+        self.x //= other.x if isinstance(other, Var) else other
         return self
 
     def __mod__(self, other):
@@ -1693,7 +1693,7 @@ class Var(object):
         return Var(x, info=info)
 
     def __imod__(self, other):
-        self.x %= other
+        self.x %= other.x if isinstance(other, Var) else other
         return self
 
     def __lt__(self, y):
@@ -1741,7 +1741,7 @@ class Var(object):
         return Var(x, info=info)
 
     def __idiv__(self, other):
-        self.x /= other
+        self.x /= other.x if isinstance(other, Var) else other
         return self
 
     def __pow__(self, other):
