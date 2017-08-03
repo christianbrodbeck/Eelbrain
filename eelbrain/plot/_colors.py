@@ -5,7 +5,6 @@ from __future__ import division
 
 from itertools import izip, product
 import operator
-from warnings import warn
 
 import numpy as np
 import matplotlib as mpl
