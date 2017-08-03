@@ -501,20 +501,18 @@ class _IncrementalNDANOVA(_NDANOVA):
     def __init__(self, x):
         if hasrandom(x):
             raise NotImplementedError("Models containing random effects")
-        comparisons, models, skipped = _incremental_comparisons(x)
-        effects = tuple(item[0] for item in comparisons)
+        comparisons = IncrementalComparisons(x)
+        effects = tuple(item[0] for item in comparisons.comparisons)
         dfs_denom = (x.df_error,) * len(effects)
         _NDANOVA.__init__(self, x, effects, dfs_denom)
 
         self._comparisons = comparisons
-        self._models = models
-        self._skipped = skipped
         self._SS_diff = None
         self._MS_e = None
         self._SS_res = None
 
         self._x_orig = x_orig = {}
-        for i, x in models.iteritems():
+        for i, x in comparisons.models.iteritems():
             if x is None:
                 x_orig[i] = None
             else:
@@ -529,7 +527,7 @@ class _IncrementalNDANOVA(_NDANOVA):
         self._SS_diff = np.empty(shape)
         self._MS_e = np.empty(shape)
         self._SS_res = {}
-        for i in self._models:
+        for i in self._comparisons.models:
             self._SS_res[i] = np.empty(shape)
         return f_map
 
@@ -539,7 +537,7 @@ class _IncrementalNDANOVA(_NDANOVA):
             SS_diff = MS_diff = np.empty(shape)
             MS_e = np.empty(shape)
             SS_res = {}
-            for i in self._models:
+            for i in self._comparisons.models:
                 SS_res[i] = np.empty(shape)
         else:
             SS_diff = MS_diff = self._SS_diff
@@ -576,13 +574,13 @@ class _IncrementalNDANOVA(_NDANOVA):
         # incremental comparisons
         np.divide(SS_res[0], self.x.df_error, MS_e)
         for i in xrange(self.n_effects):
-            e, i1, i0 = self._comparisons[i]
+            e, i1, i0 = self._comparisons.comparisons[i]
             np.subtract(SS_res[i0], SS_res[i1], SS_diff)
             np.divide(SS_diff, e.df, MS_diff)
             np.divide(MS_diff, MS_e, flat_f_map[i])
 
 
-def _incremental_comparisons(x):
+class IncrementalComparisons(object):
     """Determine models for incremental comparisons
 
     Parameters
@@ -599,58 +597,88 @@ def _incremental_comparisons(x):
     skipped : list of (effect, reason) tuples
         Effects that can't be tested.
     """
-    comparisons = []  # (Effect, int m1, int m0)
-    model_idxs = {}  # effect tuple -> ind
-    models = {}  # int -> Model
-    next_idx = 1
-
-    # add full model
-    model_idxs[tuple(x.effects)] = 0
-    models[0] = x
-
-    # Find comparisons for each effect
-    skipped = []
-    for e_test in x.effects:
-        model0_effects = tuple(e for e in x.effects if e is not e_test and
-                               not is_higher_order_effect(e, e_test))
-
-        # get model 0
-        if model0_effects in model_idxs:
-            idx0 = model_idxs[model0_effects]
-            model0 = models[idx0]
+    def __init__(self, x):
+        if x.df_error == 0:
+            self.mixed = is_mixed = True
+        elif x.df_error > 0:
+            if hasrandom(x):
+                raise NotImplementedError("Models containing random effects "
+                                          "need to be fully specified.")
+            self.mixed = is_mixed = False
         else:
-            idx0 = model_idxs[model0_effects] = next_idx
-            next_idx += 1
-            if len(model0_effects):
-                model0 = Model(model0_effects)
+            raise ValueError("Model Overdetermined")
+
+        self.comparisons = []  # (Effect, int m1, int m0)
+        self.models = {0: x}  # int -> Model
+        relevant_models = set()
+        self.skipped = []
+        model_idxs = {tuple(x.effects): 0}  # effect tuple -> ind
+        next_idx = 1
+        self.ems_idx = {}
+
+        if is_mixed:
+            ems = hopkins_ems(x)
+            # find relevant models for E(MS) computation
+            for e_test, e_ms_effects in ems.iteritems():
+                if not e_ms_effects:
+                    idx = None
+                elif e_ms_effects in model_idxs:
+                    idx = model_idxs[e_ms_effects]
+                else:
+                    idx = model_idxs[e_ms_effects] = next_idx
+                    next_idx += 1
+                    self.models[idx] = Model(e_ms_effects)
+                    relevant_models.add(idx)
+                self.ems_idx[e_test] = idx
+
+        # Find comparisons for each effect
+        for e_test in x.effects:
+            model0_effects = tuple(e for e in x.effects if e is not e_test and
+                                   not is_higher_order_effect(e, e_test))
+
+            # get model 0
+            if model0_effects in model_idxs:
+                idx0 = model_idxs[model0_effects]
+                model0 = self.models[idx0]
             else:
-                model0 = None
+                idx0 = model_idxs[model0_effects] = next_idx
+                next_idx += 1
+                if len(model0_effects):
+                    model0 = Model(model0_effects)
+                else:
+                    model0 = None
 
-        # test whether comparison is feasible
-        if model0 is None:
-            df_res_0 = x.df_total
-        else:
-            df_res_0 = model0.df_error
+            # test whether comparison is feasible
+            if model0 is None:
+                df_res_0 = x.df_total
+            else:
+                df_res_0 = model0.df_error
 
-        if e_test.df > df_res_0:
-            skipped.append((e_test, "overspecified"))
-            continue
-        elif idx0 not in models:
-            models[idx0] = model0
+            if e_test.df > df_res_0:
+                self.skipped.append((e_test, "overspecified"))
+                continue
+            elif is_mixed and self.ems_idx[e_test] is None:
+                self.skipped.append((e_test, "no E(MS)"))
+                continue
+            elif idx0 not in self.models:
+                self.models[idx0] = model0
 
-        # get model 1
-        model1_effects = model0_effects + (e_test,)
-        if model1_effects in model_idxs:
-            idx1 = model_idxs[model1_effects]
-        else:
-            idx1 = model_idxs[model1_effects] = next_idx
-            next_idx += 1
-            models[idx1] = Model(model1_effects)
+            # get model 1
+            model1_effects = model0_effects + (e_test,)
+            if model1_effects in model_idxs:
+                idx1 = model_idxs[model1_effects]
+            else:
+                idx1 = model_idxs[model1_effects] = next_idx
+                next_idx += 1
+                self.models[idx1] = Model(model1_effects)
 
-        # store comparison
-        comparisons.append((e_test, idx1, idx0))
+            # store comparison
+            self.comparisons.append((e_test, idx1, idx0))
+            relevant_models.add(idx1)
+            if model0 is not None:
+                relevant_models.add(idx0)
 
-    return comparisons, models, skipped
+        self.relevant_models = tuple((self.models[idx], idx) for idx in relevant_models)
 
 
 class incremental_f_test:
@@ -787,19 +815,13 @@ class ANOVA(object):
         self._log = []
 
         # decide which E(MS) model to use
-        if x.df_error == 0:
-            is_mixed = True
-            fx_desc = 'Mixed'
-        elif x.df_error > 0:
+        if x.df_error > 0:
             if hasrandom(x):
                 err = ("Models containing random effects need to be fully "
                        "specified.")
                 raise NotImplementedError(err)
-            is_mixed = False
-            fx_desc = 'Fixed'
-        else:
+        elif x.df_error < 0:
             raise ValueError("Model Overdetermined")
-        self._log.append("Using %s effects model" % fx_desc)
 
         # list of (name, SS, df, MS, F, p)
         self.f_tests = []
@@ -811,29 +833,33 @@ class ANOVA(object):
             self.f_tests.append(lm1)
             self.names.append(x.name)
             self.residuals = lm1.SS_res, lm1.df_res, lm1.MS_res
+            self._is_mixed = False
         else:
-            comparisons, models, skipped = _incremental_comparisons(x)
+            comparisons = IncrementalComparisons(x)
+            self._log.append("%s effects model" %
+                             ('Mixed' if comparisons.mixed else 'Fixed'))
+            is_mixed = self._is_mixed = comparisons.mixed
 
             # store info on skipped effects
-            for e_test, reason in skipped:
+            for e_test, reason in comparisons.skipped:
                 self._log.append("SKIPPING: %s (%s)" % (e_test.name, reason))
 
             # fit the models
             lms = {idx: LM(y, model) if model.df_error > 0 else None for
-                   idx, model in models.iteritems()}
+                   model, idx in comparisons.relevant_models}
 
             # incremental F-tests
-            for e_test, i1, i0 in comparisons:
+            for e_test, i1, i0 in comparisons.comparisons:
                 lm0 = lms[i0]
                 lm1 = lms[i1]
 
                 if is_mixed:
-                    ems_effects = _find_hopkins_ems(e_test, x)
-                    if len(ems_effects) == 0:
+                    ems_idx = comparisons.ems_idx[e_test]
+                    if ems_idx is None:
                         self._log.append(
                             "SKIPPING: %s (no Hopkins E(MS))" % (e_test.name,))
                         continue
-                    lm_ems = LM(y, Model(ems_effects))
+                    lm_ems = lms[ems_idx]
                     ms_e = lm_ems.MS_model
                     df_e = lm_ems.df_model
                 else:
@@ -850,8 +876,6 @@ class ANOVA(object):
             else:
                 full_lm = lms[0]
                 self.residuals = full_lm.SS_res, full_lm.df_res, full_lm.MS_res
-
-        self._is_mixed = is_mixed
 
     def __repr__(self):
         return "anova(%s, %s)" % (self.y.name, self.x.name)
