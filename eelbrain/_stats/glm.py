@@ -783,8 +783,6 @@ class incremental_f_test:
 class ANOVA(object):
     """Univariate ANOVA.
 
-    Mixed effects models require full model specification.
-
     Parameters
     ----------
     y : Var
@@ -798,21 +796,24 @@ class ANOVA(object):
     ds : Dataset
         Dataset to use data from.
 
+    Attributes
+    ----------
+    effects : tuple of str
+        Names of the tested effects, in the same order as in other attributes.
+    f_tests : tuple
+        F-tests for all effects.
+    residuals : None | tuple
+        For fixed effects models, a ``(ss, df, ms)`` tuple; for mixed effects
+        models ``None``.
+
+    See Also
+    --------
+    anova : Function for generating ANOVA table directly.
+
     Examples
     --------
-    The objects' string representation is the
-    anova table, so the model can be created and examined in one command::
-
-    >>> ds = datasets.get_loftus_masson_1994()
-    >>> print test.ANOVA('n_recalled', 'exposure.as_factor()*subject', ds=ds)
-                SS       df   MS         F         p
-    ---------------------------------------------------
-    exposure     52.27    2   26.13   42.51***   < .001
-    ---------------------------------------------------
-    Total      1005.87   29
-
-    For other uses, properties of the fit can be accessed with methods and
-    attributes.
+    For information about model specification, see the :func:`anova`
+    documentation.
     """
     def __init__(self, y, x, sub=None, title=None, ds=None):
         # prepare kwargs
@@ -840,14 +841,13 @@ class ANOVA(object):
             raise ValueError("Model Overdetermined")
 
         # list of (name, SS, df, MS, F, p)
-        self.f_tests = []
-        self.names = []
-
+        names = []
+        f_tests = []
         if len(x.effects) == 1:
             self._log.append("single factor model")
             lm1 = LM(y, x)
-            self.f_tests.append(lm1)
-            self.names.append(x.name)
+            f_tests.append(lm1)
+            names.append(x.name)
             self.residuals = lm1.SS_res, lm1.df_res, lm1.MS_res
             self._is_mixed = False
         else:
@@ -879,8 +879,8 @@ class ANOVA(object):
                     df_e = full_lm.df_res
 
                 res = incremental_f_test(lm1, lm0, ms_e, df_e, e_test.name)
-                self.f_tests.append(res)
-                self.names.append(e_test.name)
+                f_tests.append(res)
+                names.append(e_test.name)
 
             if is_mixed:
                 self.residuals = None
@@ -888,8 +888,11 @@ class ANOVA(object):
                 full_lm = lms[0]
                 self.residuals = full_lm.SS_res, full_lm.df_res, full_lm.MS_res
 
+        self.effects = tuple(names)
+        self.f_tests = tuple(f_tests)
+
     def __repr__(self):
-        return "anova(%s, %s)" % (self.y.name, self.x.name)
+        return "ANOVA(%s, %s)" % (self.y.name, self.x.name)
 
     def __str__(self):
         return str(self.table())
@@ -918,7 +921,7 @@ class ANOVA(object):
         table.midrule()
 
         # table body
-        for name, f_test in izip(self.names, self.f_tests):
+        for name, f_test in izip(self.effects, self.f_tests):
             table.cell(name)
             table.cell(fmtxt.stat(f_test.SS))
             table.cell(f_test.df)
@@ -979,13 +982,63 @@ def anova(y, x, sub=None, title=None, ds=None):
 
     Examples
     --------
-    >>> ds = datasets.get_loftus_masson_1994()
-    >>> test.ANOVA('n_recalled', 'exposure.as_factor()*subject', ds=ds)
-                SS       df   MS         F         p
-    ---------------------------------------------------
-    exposure     52.27    2   26.13   42.51***   < .001
-    ---------------------------------------------------
-    Total      1005.87   29
+    Simple n-way between subjects ANOVA::
+
+        >>> ds = datasets.get_uv(nrm=True)
+        >>> print test.anova('fltvar', 'A*B', ds=ds)
+                        SS   df      MS          F        p
+        ---------------------------------------------------
+        A            28.69    1   28.69   25.69***   < .001
+        B             0.04    1    0.04    0.03        .855
+        A x B         1.16    1    1.16    1.04        .310
+        Residuals    84.85   76    1.12
+        ---------------------------------------------------
+        Total       114.74   79
+
+    For repeated measures designs, whether a factors is fixed or random is
+    determined based on the :attr:`Factor.random` attribute, which is usually
+    specified at creation::
+
+        >>> ds['rm'].random
+        True
+
+    Thus, with ``rm`` providing the measurement unit (subject for a
+    within-subject design), the ``A*B`` model can be fitted as repeated measures
+    design::
+
+        >>> print test.anova('fltvar', 'A*B*rm', ds=ds)
+                    SS   df      MS   MS(denom)   df(denom)          F        p
+        -----------------------------------------------------------------------
+        A        28.69    1   28.69        1.21          19   23.67***   < .001
+        B         0.04    1    0.04        1.15          19    0.03        .859
+        A x B     1.16    1    1.16        1.01          19    1.15        .297
+        -----------------------------------------------------------------------
+        Total   114.74   79
+
+    Nested effects are specified with parentheses. For example, if each
+    condition of ``B`` was run with separate subjects (in other words, ``B`` is
+    a between-subjects factor), ``subject`` is nested in ``B``, which is specified
+    as ``subject(B)``::
+
+        >>> print test.anova('fltvar', 'A * B * nrm(B)', ds=ds)
+                    SS   df      MS   MS(denom)   df(denom)          F        p
+        -----------------------------------------------------------------------
+        A        28.69    1   28.69        1.11          38   25.80***   < .001
+        B         0.04    1    0.04        1.12          38    0.03        .856
+        A x B     1.16    1    1.16        1.11          38    1.05        .313
+        -----------------------------------------------------------------------
+        Total   114.74   79
+
+    Numerical variables can be coerced to categorial factors in the model::
+
+        >>> ds = datasets.get_loftus_masson_1994()
+        >>> print test.anova('n_recalled', 'exposure.as_factor()*subject', ds=ds)
+                    SS       df   MS         F         p
+        ---------------------------------------------------
+        exposure     52.27    2   26.13   42.51***   < .001
+        ---------------------------------------------------
+        Total      1005.87   29
+
     """
     anova_ = ANOVA(y, x, sub, title, ds)
     return anova_.table()

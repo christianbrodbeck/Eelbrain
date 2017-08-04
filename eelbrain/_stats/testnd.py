@@ -352,7 +352,7 @@ class _Result(object):
 
 
 class t_contrast_rel(_Result):
-    """Contrast with t-values from multiple comparisons
+    """Mass-univariate contrast based on t-values
 
     Parameters
     ----------
@@ -506,7 +506,7 @@ class t_contrast_rel(_Result):
 
 
 class corr(_Result):
-    """Correlation
+    """Mass-univariate correlation
 
     Parameters
     ----------
@@ -671,7 +671,7 @@ class corr(_Result):
 
 
 class ttest_1samp(_Result):
-    """Element-wise one sample t-test
+    """Mass-univariate one sample t-test
 
     Parameters
     ----------
@@ -838,7 +838,7 @@ class ttest_1samp(_Result):
 
 
 class ttest_ind(_Result):
-    """Element-wise independent samples t-test
+    """Mass-univariate independent samples t-test
 
     Parameters
     ----------
@@ -1044,7 +1044,7 @@ class ttest_ind(_Result):
 
 
 class ttest_rel(_Result):
-    """Element-wise related samples t-test
+    """Mass-univariate related samples t-test
 
     Parameters
     ----------
@@ -1411,7 +1411,7 @@ class _MultiEffectResult(_Result):
 
 
 class anova(_MultiEffectResult):
-    """Element-wise ANOVA
+    """Mass-univariate ANOVA
 
     Parameters
     ----------
@@ -1455,7 +1455,7 @@ class anova(_MultiEffectResult):
     Attributes
     ----------
     effects : tuple of str
-        Names of all the effects as they occur in the ``.clusters`` Dataset.
+        Names of the tested effects, in the same order as in other attributes.
     clusters : None | Dataset
         When performing a cluster permutation test, a Dataset of all clusters.
     f : list of NDVar
@@ -1468,6 +1468,11 @@ class anova(_MultiEffectResult):
     tfce_maps : list of NDVar | None
         Maps of the test statistic processed with the threshold-free cluster
         enhancement algorithm (or None if no TFCE was performed).
+
+    Examples
+    --------
+    For information on model specification see the univariate
+    :func:`~eelbrain.test.anova` examples.
     """
     _state_specific = ('X', 'pmin', '_effects', '_dfs_denom', 'f')
 
