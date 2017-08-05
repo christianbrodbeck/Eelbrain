@@ -45,8 +45,11 @@ def test_anova():
     res_ = pickle.loads(string)
     assert_equal(repr(res_), repr(res))
 
+    # missing match parameter
+    assert_raises(TypeError, testnd.anova, 'utsnd', 'A*B*rm', ds=ds, samples=10)
+
     # threshold-free
-    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=10)
+    res = testnd.anova('utsnd', 'A*B*rm', match='rm', ds=ds, samples=10)
     repr(res)
     assert_in('A clusters', res.clusters.info)
     assert_in('B clusters', res.clusters.info)
@@ -60,12 +63,12 @@ def test_anova():
     assert_in('p', res.clusters)
 
     # all effects with clusters
-    res = testnd.anova('uts', 'A*B*rm', ds=ds, samples=5, pmin=0.05,
+    res = testnd.anova('uts', 'A*B*rm', match=False, ds=ds, samples=5, pmin=0.05,
                        tstart=0.1, mintime=0.02)
     assert_equal(set(res.clusters['effect'].cells), set(res.effects))
 
     # some effects with clusters, some without
-    res = testnd.anova('uts', 'A*B*rm', ds=ds, samples=5, pmin=0.05,
+    res = testnd.anova('uts', 'A*B*rm', match='rm', ds=ds, samples=5, pmin=0.05,
                        tstart=0.37, mintime=0.02)
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res_ = pickle.loads(string)
@@ -73,7 +76,7 @@ def test_anova():
 
     # test multi-effect results (with persistence)
     # UTS
-    res = testnd.anova('uts', 'A*B*rm', ds=ds, samples=5)
+    res = testnd.anova('uts', 'A*B*rm', match='rm', ds=ds, samples=5)
     repr(res)
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     resr = pickle.loads(string)
@@ -87,11 +90,11 @@ def test_anova():
     assert_array_equal(masked.x <= unmasked.x, True)
 
     # reproducibility
-    res0 = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=5)
-    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=5)
+    res0 = testnd.anova('utsnd', 'A*B*rm', match='rm', ds=ds, pmin=0.05, samples=5)
+    res = testnd.anova('utsnd', 'A*B*rm', match='rm', ds=ds, pmin=0.05, samples=5)
     assert_dataset_equal(res.clusters, res0.clusters)
     configure(n_workers=0)
-    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=5)
+    res = testnd.anova('utsnd', 'A*B*rm', match='rm', ds=ds, pmin=0.05, samples=5)
     assert_dataset_equal(res.clusters, res0.clusters)
     configure(n_workers=True)
 
@@ -99,17 +102,17 @@ def test_anova():
     eelbrain._stats.permutation._YIELD_ORIGINAL = 1
     samples = 4
     # raw
-    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=samples)
+    res = testnd.anova('utsnd', 'A*B*rm', match='rm', ds=ds, samples=samples)
     for dist in res._cdist:
         eq_(len(dist.dist), samples)
         assert_array_equal(dist.dist, dist.parameter_map.abs().max())
     # TFCE
-    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, tfce=True, samples=samples)
+    res = testnd.anova('utsnd', 'A*B*rm', match='rm', ds=ds, tfce=True, samples=samples)
     for dist in res._cdist:
         eq_(len(dist.dist), samples)
         assert_array_equal(dist.dist, dist.tfce_map.abs().max())
     # thresholded
-    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=samples)
+    res = testnd.anova('utsnd', 'A*B*rm', match='rm', ds=ds, pmin=0.05, samples=samples)
     clusters = res.find_clusters()
     for dist, effect in izip(res._cdist, res.effects):
         effect_idx = clusters.eval("effect == %r" % effect)
@@ -120,13 +123,13 @@ def test_anova():
 
     # 1d TFCE
     configure(n_workers=0)
-    res = testnd.anova('utsnd.rms(time=(0.1, 0.3))', 'A*B*rm', ds=ds, tfce=True, samples=samples)
+    res = testnd.anova('utsnd.rms(time=(0.1, 0.3))', 'A*B*rm', match='rm', ds=ds, tfce=True, samples=samples)
     configure(n_workers=True)
 
     # zero variance
     ds['utsnd'].x[:, 1, 10] = 0.
-    assert_raises(ZeroVariance, testnd.anova, 'utsnd', 'A', ds=ds)
-    assert_raises(ZeroVariance, testnd.anova, 'utsnd', 'A*B*rm', ds=ds)
+    assert_raises(ZeroVariance, testnd.anova, 'utsnd', 'A', match='rm', ds=ds)
+    assert_raises(ZeroVariance, testnd.anova, 'utsnd', 'A*B*rm', match='rm', ds=ds)
 
 
 def test_anova_incremental():
@@ -612,7 +615,7 @@ def test_merged_temporal_cluster_dist():
     ds1 = datasets.get_uts()
     ds2 = datasets.get_uts(seed=42)
 
-    anova_kw = dict(Y='uts', X='A*B*rm', pmin=0.05, samples=10)
+    anova_kw = dict(Y='uts', X='A*B*rm', match='rm', pmin=0.05, samples=10)
     ttest_kw = dict(Y='uts', X='A', c1='a1', c0='a0', pmin=0.05, samples=10)
     contrast_kw = dict(Y='uts', X='A', contrast='a1>a0', pmin=0.05, samples=10)
 

@@ -88,7 +88,7 @@ def test_clusters():
 
     # random effects model:
     subject = Factor(range(15), tile=4, random=True, name='subject')
-    res = testnd.anova(Y, A * B * subject, samples=2)
+    res = testnd.anova(Y, A * B * subject, match=subject, samples=2)
     p = plot.UTSClusters(res, title="Random Effects Model", show=False)
     p.close()
 

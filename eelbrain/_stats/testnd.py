@@ -46,8 +46,9 @@ from .. import fmtxt
 from .. import _colorspaces as _cs
 from .._config import CONFIG
 from .._data_obj import (
-    Categorial, Celltable, Dataset, Interaction, NDVar, UTS, Var, ascategorial,
-    asmodel, asndvar, asvar, assub, cellname, combine, dataobj_repr)
+    Categorial, Celltable, Dataset, Interaction, NDVar, UTS, Var,
+    ascategorial, asmodel, asndvar, asvar, assub,
+    hasrandom, cellname, combine, dataobj_repr)
 from .._exceptions import OldVersionError, ZeroVariance
 from .._report import enumeration, format_timewindow, ms
 from .._utils import LazyProperty
@@ -1438,9 +1439,11 @@ class anova(_MultiEffectResult):
         without
     tstart, tstop : None | scalar
         Restrict time window for permutation cluster test.
-    match : None | categorial
+    match : categorial | False
         When permuting data, only shuffle the cases within the categories
-        of match.
+        of match. If running permutations for a model with random effects
+        without specifying ``match``, a TypeError is raised; set
+        ``match=False`` to confirm that permutations shoud not be restricted.
     parc : str
         Collect permutation extrema for all regions of the parcellation of
         this dimension. For threshold-based test, the regions are
@@ -1483,7 +1486,16 @@ class anova(_MultiEffectResult):
         sub = assub(sub, ds)
         Y = asndvar(Y, sub, ds, dtype=np.float64)
         x_ = asmodel(X, sub, ds)
-        if match is not None:
+        if match is None:
+            if samples and hasrandom(x_):
+                raise TypeError(
+                    "Model %s has random effects, but the match parameter is "
+                    "not specified. Are you sure you don't want to restrict "
+                    "permutation to within random effects? To confirm, set "
+                    "match=False." % (x_.name,))
+        elif match is False:
+            match = None
+        else:
             match = ascategorial(match, sub, ds)
 
         check_variance(Y.x)
