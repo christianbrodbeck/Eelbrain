@@ -1,4 +1,6 @@
-# Requirements for developing
+# usage: $ conda install --file=requirements_dev.txt
+
+# Standard requirements:
 setuptools >= 17
 tex >= 1.8
 colormath >= 2.1
@@ -12,13 +14,20 @@ nibabel >= 2.0
 matplotlib >= 1.1
 pysurfer >= 0.7
 mne >= 0.14
-# additional developer tools
+
+# building
+cython
+
+# docs
+numpydoc
+pydocstyle
+
+# testing
 flake8
 nose
 coverage
-numpydoc
-pydocstyle
-# for testing of R integration
+
+# testing of R integration
 rpy2
 r-car
-r-ez
+r-ez  # might require additional channel, e.g. ``mittner``
