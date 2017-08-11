@@ -3,7 +3,7 @@ from __future__ import print_function
 
 from collections import defaultdict
 from glob import glob
-from itertools import chain, product
+from itertools import chain, izip, product
 import os
 import re
 import shutil
@@ -965,23 +965,97 @@ class FileTree(TreeModel):
 
         return path
 
-    def glob(self, temp, **state):
+    def glob(self, temp, inclusive=False, **state):
         """Find all files matching a certain pattern
 
         Parameters
         ----------
         temp : str
             Name of the path template for which to find files.
+        inclusive : bool
+            Treat all unspecified fields as ``*`` (default False).
 
         Notes
         -----
         State parameters can include an asterisk ('*') to match multiple files.
         Uses :func:`glob.glob`.
         """
+        if inclusive:
+            for key in self._user_fields:
+                if key not in state and key != 'root':
+                    state[key] = '*'
         with self._temporary_state:
             pattern = self.get(temp, allow_asterisk=True, **state)
-        file_paths = glob(pattern)
-        return file_paths
+        print(pattern)
+        return glob(pattern)
+
+    def move(self, temp, dst_root=None, inclusive=False, confirm=False,
+             overwrite=False, **state):
+        """Move files to a different root folder
+
+        Parameters
+        ----------
+        temp : str
+            Name of the path template for which to find files.
+        dst_root : str
+            Path to the root to which the files should be moved. If the target
+            is the experiment's root directory, specify ``root`` as the source
+            root and leave ``dst_root`` unspecified.
+        inclusive : bool
+            Treat all unspecified fields as ``*`` (default False).
+        confirm : bool
+            Confirm moving of the selected files. If ``False`` (default) the
+            user is prompted for confirmation with a list of files; if ``True``,
+            the files are moved immediately.
+        overwrite : bool
+            Overwrite target files if they already exist.
+
+        See Also
+        --------
+        glob : find all files matching a template.
+
+        Notes
+        -----
+        State parameters can include an asterisk ('*') to match multiple files.
+        """
+        if dst_root is None:
+            if 'root' not in state:
+                raise TypeError("Need to specify at least one of root and "
+                                "dst_root")
+            dst_root = self.get('root')
+        root = state['root'] if 'root' in state else self.get('root')
+        src_filenames = self.glob(temp, inclusive, **state)
+        errors = [filename for filename in src_filenames if not
+                  filename.startswith(root)]
+        if errors:
+            raise ValueError("%i files are not located in the root directory "
+                             "(%s, ...)" % (len(errors), errors[0],))
+        rel_filenames = [os.path.relpath(filename, root) for filename in
+                         src_filenames]
+        dst_filenames = [os.path.join(dst_root, filename) for filename in
+                         rel_filenames]
+        if not overwrite:
+            exist = filter(os.path.exists, dst_filenames)
+            if exist:
+                raise ValueError("%i of %i files already exist (%s, ...)" %
+                                 (len(exist), len(src_filenames),
+                                  dst_filenames[0]))
+        n = len(src_filenames)
+        if not n:
+            print("No files matching pattern.")
+            return
+        if not confirm:
+            print("moving %s -> %s:" % (root, dst_root))
+            for filename in rel_filenames:
+                print("  " + filename)
+            if raw_input("Move %i files? (confirm with 'yes'): " % n) != 'yes':
+                return
+        print("Moving %i files..." % n)
+        for src, dst in izip(src_filenames, dst_filenames):
+            dirname = os.path.dirname(dst)
+            if not os.path.exists(dirname):
+                os.makedirs(dirname)
+            os.rename(src, dst)
 
     def show_file_status(self, temp, row, col=None, count=True, present='time',
                          absent='-', **kwargs):
@@ -1124,7 +1198,7 @@ class FileTree(TreeModel):
         names : str | sequence of str
             Name(s) of the template(s) of the files that should be copied.
         overwrite : bool
-            What to do if the target file already exists.
+            Overwrite target files if they already exist.
         others :
             Update experiment state.
 
@@ -1165,8 +1239,7 @@ class FileTree(TreeModel):
             print(' '.join((flag, src[-78:])))
         print("Flags: o=overwrite, e=skip, it exists, m=skip, source is "
               "missing")
-        msg = "Proceed? (confirm with 'yes'): "
-        if raw_input(msg) != 'yes':
+        if raw_input("Proceed? (confirm with 'yes'): ") != 'yes':
             return
 
         # copy the files
@@ -1304,8 +1377,7 @@ class FileTree(TreeModel):
         print("Done")
 
     def rm(self, temp, confirm=False, **constants):
-        """
-        Remove all files corresponding to a template
+        """Remove all files corresponding to a template
 
         Asks for confirmation before deleting anything. Uses glob, so
         individual templates can be set to '*'.
