@@ -8554,8 +8554,11 @@ class SourceSpace(Dimension):
         self._init_secondary()
 
     def __repr__(self):
-        ns = ', '.join(str(len(v)) for v in self.vertices)
-        return "<SourceSpace [%s], %r, %r>" % (ns, self.subject, self.src)
+        out = "<SourceSpace [%s], %r, %r" % (
+            ', '.join(str(len(v)) for v in self.vertices), self.subject, self.src)
+        if self.parc is not None:
+            out += ', parc=%s' % self.parc.name
+        return out + '>'
 
     def __iter__(self):
         if self.kind == 'ico':
