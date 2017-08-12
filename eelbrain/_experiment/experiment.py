@@ -141,7 +141,8 @@ class TreeModel(object):
         self._fields = LayeredDict()
         self._field_values = LayeredDict()
         self._params = LayeredDict()
-        self._user_fields = []
+        self._terminal_fields = []
+        self._user_fields = []  # field that are relevant when showing state
 
         # scaffold for hooks
         self._compound_members = {}
@@ -279,7 +280,7 @@ class TreeModel(object):
 
     def _register_field(self, key, values=None, default=None, set_handler=None,
                         eval_handler=None, post_set_handler=None,
-                        depends_on=None, slave_handler=None):
+                        depends_on=None, slave_handler=None, internal=False):
         """Register an iterable field
 
         Parameters
@@ -302,8 +303,11 @@ class TreeModel(object):
             handle non-existing values for ``e.set(..., vmatch=False)`` calls.
         depends_on : str | sequence of str
             Slave fields: Fields in depends_on trigger change in ``key``.
-        handler : func
+        slave_handler : func
             Slave fields: Function that determines the new value of ``key``.
+        internal : bool
+            The field is set by methods as needed but should not be exposed to
+            the user.
         """
         if key in self._fields:
             raise KeyError("Field already exists: %r" % key)
@@ -340,7 +344,9 @@ class TreeModel(object):
 
             self._field_values[key] = tuple(values)
 
-        self._user_fields.append(key)
+        self._terminal_fields.append(key)
+        if depends_on is None and not internal:
+            self._user_fields.append(key)
         self._fields[key] = ''
         if default is not None:
             self.set(**{key: default})
@@ -981,7 +987,7 @@ class FileTree(TreeModel):
         Uses :func:`glob.glob`.
         """
         if inclusive:
-            for key in self._user_fields:
+            for key in self._terminal_fields:
                 if key not in state and key != 'root':
                     state[key] = '*'
         with self._temporary_state:

@@ -454,11 +454,6 @@ temp = {
     'plot-dir': join('{root}', 'plots'),
     'plot-file': join('{plot-dir}', '{analysis}', '{name}.{ext}'),
 
-    # general analysis parameters
-    'analysis': '',  # analysis parameters (sns_kind, src_kind, ...)
-    'test_options': '',
-    'name': '',
-
     # result output files
     # data processing parameters
     #    > group
@@ -466,9 +461,6 @@ temp = {
     #    > single-subject
     #        > kind of test
     #            > subject
-    'folder': '',  # intermediate folder for deep files
-    'resname': '',  # analysis name (GA-movie, max plot, ...)
-    'ext': 'pickled',  # file extension
     'res-dir': join('{root}', 'results'),
     'res-file': join('{res-dir}', '{analysis}', '{resname}.{ext}'),
     'res-deep-file': join('{res-dir}', '{analysis}', '{folder}', '{resname}.{ext}'),
@@ -1046,6 +1038,14 @@ class MneExperiment(FileTree):
                              slave_handler=self._update_mrisubject)
         self._register_field('src-name', depends_on=('src',),
                              slave_handler=self._update_src_name)
+
+        # fields used internally
+        self._register_field('analysis', internal=True)
+        self._register_field('test_options', internal=True)
+        self._register_field('name', internal=True)
+        self._register_field('folder', internal=True)
+        self._register_field('resname', internal=True)
+        self._register_field('ext', internal=True)
 
         # compounds
         self._register_compound('sns_kind', ('modality', 'raw'))
@@ -5829,8 +5829,10 @@ class MneExperiment(FileTree):
         return '%'.join(model)
 
     def _update_mrisubject(self, fields):
-        mri = fields['mri']
         subject = fields['subject']
+        if subject == '*':
+            return '*'
+        mri = fields['mri']
         return self._mri_subjects[mri][subject]
 
     def _update_session(self, fields):
