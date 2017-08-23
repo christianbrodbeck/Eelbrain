@@ -134,6 +134,10 @@ class LMGroup(object):
     ----------
     column_names : [str]
         Names of the linear model columns.
+    tests : None | {str: ttest_rel}
+        Tests computed with :meth:`compute_column_ttests`.
+    samples : None | int
+        Number of samples used to compute tests in :attr:`tests`.
     """
     def __init__(self, lms):
         # check lms
@@ -288,8 +292,11 @@ class LMGroup(object):
         table.caption("Design matrix for %s" % subject)
         return table
 
-    def _column_ttests(self, *args, **kwargs):
-        "Precompute all tests"
+    def compute_column_ttests(self, *args, **kwargs):
+        """Compute all tests and store them in :attr:`self.tests`
+
+        Parameters like :meth:`.column_ttest`, starting with ``popmean``.
+        """
         self.tests = {}
         for term in self.column_names:
             self.tests[term] = self.column_ttest(term, False, *args, **kwargs)

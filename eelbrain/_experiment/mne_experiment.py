@@ -3749,7 +3749,7 @@ class MneExperiment(FileTree):
 
                 if res is None:
                     res = testnd.LMGroup(lms)
-                    res._column_ttests(**test_kwargs)
+                    res.compute_column_ttests(**test_kwargs)
                     # cache
                     save.pickle(res, dst)
 
