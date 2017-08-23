@@ -609,7 +609,7 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom, top=None,
     y_bottom = min(bottom, plot_min - plot_span * .05)
 
     # main BARPLOT
-    bars = ax.bar(left, height - origin, width, bottom=origin,
+    bars = ax.bar(left, height - origin, width, bottom=origin, align='edge',
                   color=c, edgecolor=edgec, ecolor=ec, yerr=y_error)
 
     # hatch
