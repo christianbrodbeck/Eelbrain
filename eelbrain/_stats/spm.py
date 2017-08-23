@@ -6,8 +6,10 @@ from operator import mul
 import numpy as np
 
 from .._colorspaces import stat_info
-from .._data_obj import (Dataset, Factor, Var, NDVar, asmodel, asndvar,
-                         combine, dataobj_repr)
+from .._data_obj import (
+    Dataset, Factor, Var, NDVar,
+    asmodel, asndvar, assub,
+    combine, dataobj_repr)
 from .._exceptions import DimensionMismatchError
 from . import opt
 from .stats import lm_betas_se_1d
@@ -31,15 +33,18 @@ class LM(object):
         effect coding (but not for dummy coding).
     subject : str
         Optional information used by RandomLM.
+    sub : index
+        Only use part of the data.
     """
-    def __init__(self, y, model, ds=None, coding='dummy', subject=None):
+    def __init__(self, y, model, ds=None, coding='dummy', subject=None,
+                 sub=None):
         if subject is not None and not isinstance(subject, basestring):
             raise TypeError("subject needs to be None or string, got %s"
                             % repr(subject))
-
-        y = asndvar(y, ds=ds)
+        sub = assub(sub, ds)
+        y = asndvar(y, sub, ds)
         n_cases = len(y)
-        model = asmodel(model, None, ds, n_cases)
+        model = asmodel(model, sub, ds, n_cases)
         p = model._parametrize(coding)
         n_coeff = p.x.shape[1]
         coeffs_flat = np.empty((n_coeff, reduce(mul, y.shape[1:])))
