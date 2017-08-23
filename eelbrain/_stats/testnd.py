@@ -2347,6 +2347,8 @@ class _ClusterDist:
         args = ['samples=%r' % self.samples]
         if pmin:
             args.append("pmin=%r" % pmin)
+        elif self.kind == 'tfce':
+            args.append("tfce=True")
         if self.tstart:
             args.append("tstart=%r" % self.tstart)
         if self.tstop:

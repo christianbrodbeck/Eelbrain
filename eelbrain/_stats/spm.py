@@ -129,6 +129,11 @@ class LMGroup(object):
     ----------
     lms : sequence of LM
         A separate :class:`LM` object for each subject.
+
+    Attributes
+    ----------
+    column_names : [str]
+        Names of the linear model columns.
     """
     def __init__(self, lms):
         # check lms
@@ -179,8 +184,8 @@ class LMGroup(object):
 
     def __repr__(self):
         lm = self._lms[0]
-        return "<RandomLM: %s ~ %s, n=%i>" % (lm._y or '<?>', lm.model.name,
-                                              len(self._lms))
+        return "<LMGroup: %s ~ %s, n=%i>" % (
+            lm._y or '<?>', lm.model.name, len(self._lms))
 
     def coefficients(self, term):
         "Coefficients for one term as :class:`NDVar`"
@@ -188,7 +193,16 @@ class LMGroup(object):
                      ('case',) + self.dims, name=term)
 
     def coefficients_dataset(self, terms):
-        "Coefficients for multiple terms in a :class:`Dataset`"
+        """Coefficients in a :class:`Dataset`
+
+        Returns
+        -------
+        ds : Dataset
+            The Dataset has entries ``coeff``, ``subject`` and ``term``. If more
+            than one terms are specified, the coefficients for the different
+            terms are stacked vertically and the ``term`` :class:`Factor`
+            specifies which term the coefficients correspond to.
+        """
         if isinstance(terms, basestring):
             terms = (terms,)
         coeffs = []
@@ -229,7 +243,7 @@ class LMGroup(object):
         tfce : bool
             Use threshold-free cluster enhancement (Smith & Nichols, 2009).
             Default is False.
-        tstart, tstop : None | scalar
+        tstart, tstop : scalar
             Restrict time window for permutation cluster test.
         mintime : scalar
             Minimum duration for clusters (in seconds).
