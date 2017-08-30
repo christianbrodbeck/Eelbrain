@@ -3,6 +3,7 @@
 """I/O for MNE"""
 from __future__ import division
 
+from collections import Iterable
 import fnmatch
 from itertools import izip_longest, izip
 from logging import getLogger
@@ -21,7 +22,7 @@ from .._info import BAD_CHANNELS
 from .._utils import ui
 from .._data_obj import (Var, NDVar, Dataset, Sensor, SourceSpace, UTS,
                          _matrix_graph)
-from ..mne_fixes import MNE_EVOKED
+from ..mne_fixes import MNE_EVOKED, MNE_RAW
 
 
 KIT_NEIGHBORS = {
@@ -74,15 +75,18 @@ def mne_raw(path=None, proj=False, **kwargs):
 
     if isinstance(path, basestring):
         _, ext = os.path.splitext(path)
+        ext = ext.lower()
         if ext.startswith('.fif'):
             raw = mne.io.read_raw_fif(path, **kwargs)
         elif ext in ('.sqd', '.con'):
             raw = mne.io.read_raw_kit(path, **kwargs)
         else:
             raise ValueError("Unknown extension: %r" % ext)
-    else:
+    elif isinstance(path, Iterable):
         # MNE Raw supports list of file-names
         raw = mne.io.read_raw_fif(path, **kwargs)
+    else:
+        raise TypeError("path=%r" % (path,))
 
     if proj:
         if proj is True:
@@ -667,9 +671,8 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, inv=None, lambda2=1,
     ``i_start`` and ``i_stop`` are interpreted as event indexes (from
     :func:`mne.find_events`), i.e. relative to ``raw.first_samp``.
     """
-    if isinstance(raw, basestring):
-        raw = mne.io.read_raw_fif(raw)
-
+    if not isinstance(raw, MNE_RAW):
+        raw = mne_raw(raw)
     name = os.path.basename(_get_raw_filename(raw))
     start_scalar = i_start is None or isinstance(i_start, int)
     stop_scalar = i_stop is None or isinstance(i_stop, int)
