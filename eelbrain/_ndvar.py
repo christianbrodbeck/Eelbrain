@@ -356,13 +356,18 @@ def filter_data(ndvar, l_freq, h_freq, filter_length='auto',
     return NDVar(x, ndvar.dims, ndvar.info.copy(), ndvar.name)
 
 
-def find_intervals(ndvar):
+def find_intervals(ndvar, interpolate=False):
     """Find intervals from a boolean NDVar
 
     Parameters
     ----------
     ndvar : boolean NDVar (time,)
         Data which to convert to intervals.
+    interpolate : bool
+        By default, ``start`` values reflect the first sample that is ``True``
+        and ``stop`` values reflect the first sample that is ``False``. With
+        ``interpolate=True``, time points are shifted half a sample to the
+        left. This is desirable for example when marking regions in a plot.
 
     Returns
     -------
@@ -387,6 +392,11 @@ def find_intervals(ndvar):
     offsets = ndvar.time.times[diff == -1]
     if ndvar.x[-1]:
         offsets = np.append(offsets, ndvar.time.tstop)
+
+    if interpolate:
+        shift = -ndvar.time.tstep / 2.
+        onsets += shift
+        offsets += shift
 
     return tuple(izip(onsets, offsets))
 
