@@ -541,7 +541,9 @@ def asndvar(x, sub=None, ds=None, n=None, dtype=None):
         x = ds.eval(x)
 
     # convert MNE objects
-    if isinstance(x, MNE_EPOCHS):
+    if isinstance(x, NDVar):
+        pass
+    elif isinstance(x, MNE_EPOCHS):
         from .load.fiff import epochs_ndvar
         x = epochs_ndvar(x)
     elif isinstance(x, MNE_EVOKED):
@@ -551,12 +553,12 @@ def asndvar(x, sub=None, ds=None, n=None, dtype=None):
         from .load.fiff import raw_ndvar
         x = raw_ndvar(x)
     elif isinstance(x, list):
-        item_0 = x[0]
-        if isinstance(item_0, MNE_EVOKED):
+        if isinstance(x[0], MNE_EVOKED):
             from .load.fiff import evoked_ndvar
             x = evoked_ndvar(x)
-
-    if not isinstance(x, NDVar):
+        else:
+            x = combine(map(asndvar, x))
+    else:
         raise TypeError("NDVar required, got %s" % repr(x))
 
     if sub is not None:
