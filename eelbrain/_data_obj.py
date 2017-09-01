@@ -3816,36 +3816,6 @@ class NDVar(object):
 
         return NDVar(x, self.dims, self.info.copy(), name or self.name)
 
-    def diminfo(self, str_out=False):
-        """Information about the dimensions
-
-        Parameters
-        ----------
-        str_out : bool
-            Return a string with the information (as opposed to the default
-            which is to print the information).
-
-        Returns
-        -------
-        info : None | str
-            If str_out is True, the dimension description as str.
-        """
-        ns = []
-        dim_info = ["<NDVar %r" % self.name]
-        for dim in self.dims:
-            ns.append(len(dim))
-            dim_info.append(dim._diminfo())
-        dim_info[-1] += '>'
-
-        n_digits = int(max(ceil(log10(n)) for n in ns))
-
-        info = '\n '.join('{:{}d} {:s}'.format(n, n_digits, desc) for n, desc
-                          in izip(ns, dim_info))
-        if str_out:
-            return info
-        else:
-            print(info)
-
     def dot(self, ndvar, dim=None, name=None):
         """Dot product
 
@@ -7053,10 +7023,6 @@ class Dimension(object):
         raise NotImplementedError(
             "Binning for %s dimension" % self.__class__.__name__)
 
-    def _diminfo(self):
-        "Return a str describing the dimension in on line (79 chars)"
-        return str(self.name)
-
     def _as_uv(self):
         return Var(self._axis_data(), name=self.name)
 
@@ -7380,9 +7346,6 @@ class Case(Dimension):
     def _dim_index(self, arg):
         return arg
 
-    def _diminfo(self):
-        return "cases"
-
 
 class Categorial(Dimension):
     """Simple categorial dimension
@@ -7463,9 +7426,6 @@ class Categorial(Dimension):
             return [self._array_index(v) for v in arg.values]
         else:
             return super(Categorial, self)._array_index(arg)
-
-    def _diminfo(self):
-        return self.name.capitalize()
 
     def _dim_index(self, index):
         if isinstance(index, Integral):
@@ -7676,10 +7636,6 @@ class Scalar(Dimension):
         if stop is not None:
             stop = digitize_slice_endpoint(stop, self.values)
         return slice(start, stop, step)
-
-    def _diminfo(self):
-        return "%s [%s, %s]" % (self.name.capitalize(),
-                                self.values.min(), self.values.max())
 
     def _dim_index(self, index):
         if np.isscalar(index):
@@ -8675,10 +8631,6 @@ class SourceSpace(Dimension):
 
         return ds
 
-    def _diminfo(self):
-        ns = ', '.join(str(len(v)) for v in self.vertices)
-        return "SourceSpace (MNE) [%s], %r, %r>" % (ns, self.subject, self.src)
-
     def _distances(self):
         "Surface distances between source space vertices"
         dist = -np.ones((self._n_vert, self._n_vert))
@@ -9169,13 +9121,6 @@ class UTS(Dimension):
         edges.append(stop)
         out_dim = UTS(start + step / 2, step, n_bins)
         return edges, out_dim
-
-    def _diminfo(self):
-        name = self.name.capitalize()
-        tmax = self.times[-1] + self.tstep
-        sfreq = 1. / self.tstep
-        info = '%s %.3f - %.3f s, %s Hz' % (name, self.tmin, tmax, sfreq)
-        return info
 
     def __len__(self):
         return self.nsamples
