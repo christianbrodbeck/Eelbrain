@@ -8367,9 +8367,13 @@ def _mne_tri_soure_space_graph(source_space, vertices_list):
         if len(verts) == 0:
             continue
 
+        tris = ss['use_tris']
+        if tris is None:
+            raise ValueError("Connectivity unavailable. The source space does "
+                             "not seem to be an ico source space.")
+
         # graph for the whole source space
         src_vertices = ss['vertno']
-        tris = ss['use_tris']
         graph = _tri_graph(tris)
 
         # select relevant edges
@@ -8449,18 +8453,22 @@ class SourceSpace(Dimension):
     def _init_secondary(self):
         self._n_vert = sum(len(v) for v in self.vertices)
         match = re.match("(ico|vol)-(\d)", self.src)
+        # The source-space type is needed to determine connectivity
         if match is None:
-            raise ValueError("Unrecognized src value %r" % self.src)
+            raise ValueError("src=%r; needs to be 'ico-i' or 'vol-i'" % self.src)
         kind, grade = match.groups()
         self.kind = kind
         self.grade = int(grade)
         if kind == 'ico':
+            assert len(self.vertices) == 2, "ico-based SourceSpaces need " \
+                                            "exactly two vertices arrays"
             self.lh_vertices = self.vertices[0]
             self.rh_vertices = self.vertices[1]
             self.lh_n = len(self.lh_vertices)
             self.rh_n = len(self.rh_vertices)
-        else:
-            assert len(self.vertices) == 1
+        elif kind == 'vol':
+            assert len(self.vertices) == 1, "volume-based SourceSpaces need " \
+                                            "exactly one vertices array"
 
     @deprecated_attribute('0.27', 'SourceSpace', 'vertices')
     def vertno(self):
@@ -8512,8 +8520,10 @@ class SourceSpace(Dimension):
         self._init_secondary()
 
     def __repr__(self):
-        out = "<SourceSpace [%s], %r, %r" % (
-            ', '.join(str(len(v)) for v in self.vertices), self.subject, self.src)
+        vert_repr = ', '.join(str(len(v)) for v in self.vertices)
+        out = "<SourceSpace [%s], %r" % (vert_repr, self.subject)
+        if self.src is not None:
+            out += ', %r' % self.src
         if self.parc is not None:
             out += ', parc=%s' % self.parc.name
         return out + '>'
@@ -8849,6 +8859,9 @@ class SourceSpace(Dimension):
 
     def get_source_space(self, subjects_dir=None):
         "Read the corresponding MNE source space"
+        if self.src is None:
+            raise TypeError("Unknown source-space. Specify the src parameter "
+                            "when initializing SourceSpace.")
         path = self._SRC_PATH.format(
             subjects_dir=subjects_dir or self.subjects_dir,
             subject=self.subject, src=self.src)
