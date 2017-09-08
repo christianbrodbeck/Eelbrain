@@ -3,14 +3,14 @@
 
 import numpy as np
 cimport numpy as np
-from libc.math cimport exp, log, sqrt
+from libc.math cimport exp, sqrt
 
 
 ctypedef np.int64_t INT64
 ctypedef np.float64_t FLOAT64
 
 
-def gaussian_smoother(np.ndarray[FLOAT64, ndim=2] dist, double fwhm):
+def gaussian_smoother(np.ndarray[FLOAT64, ndim=2] dist, double std):
     """Create a gaussian smoothing matrix
 
     Parameters
@@ -18,8 +18,8 @@ def gaussian_smoother(np.ndarray[FLOAT64, ndim=2] dist, double fwhm):
     dist : array (float64)
         Distances; dist[i, j] should provide the distance for any vertex pair i,
          j. Distances < 0 indicate absence of a connection.
-    fwhm : float
-        The full width at half maximum of the kernel.
+    std : float
+        The standard deviation of the kernel.
 
     Returns
     -------
@@ -28,7 +28,6 @@ def gaussian_smoother(np.ndarray[FLOAT64, ndim=2] dist, double fwhm):
     """
     cdef INT64 source, target
     cdef long n_vertices = len(dist)
-    cdef double std = fwhm / (2 * (sqrt(2 * log(2))))
     cdef double a = 1. / (std * sqrt(2 * np.pi))
     cdef double weight
     cdef double target_sum

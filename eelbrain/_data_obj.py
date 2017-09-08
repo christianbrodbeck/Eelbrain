@@ -4471,6 +4471,13 @@ class NDVar(object):
         -------
         smoothed_ndvar : NDVar
             NDVar with idential dimensions containing the smoothed data.
+
+        Notes
+        -----
+        To perform Gaussian smoothing with a given full width at half maximum,
+        the standard deviation can be calculated with the following conversion::
+
+        >>> std = fwhm / (2 * (sqrt(2 * log(2))))
         """
         axis = self.get_axis(dim)
         dim_object = self.get_dim(dim)
