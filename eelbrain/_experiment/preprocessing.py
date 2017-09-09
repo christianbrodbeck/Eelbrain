@@ -3,7 +3,6 @@
 from os import mkdir, remove
 from os.path import dirname, exists, getmtime
 
-import numpy as np
 import mne
 from mne.io import read_raw_fif
 from scipy import signal
@@ -11,6 +10,7 @@ from scipy import signal
 from .. import load
 from .._data_obj import NDVar
 from .._ndvar import filter_data
+from .._utils import ask
 from ..mne_fixes import CaptureLog
 
 
@@ -433,14 +433,11 @@ def ask_to_delete_ica_files(raw, status, filenames):
                "files should probably be deleted." % (raw,))
     else:
         raise RuntimeError("status=%r" % (status,))
-    msg += (" Delete %i files? Abort to fix the raw definition and try again. "
-            "If you choose to ignore, you will not be warned again." %
-            len(filenames))
-    print(msg)
-
-    command = ''
-    while command not in ('abort', 'delete', 'ignore'):
-        command = raw_input("type delete/abort/ignore: ").lower()
+    command = ask(
+        "%s Delete %i files?" % (msg, len(filenames)),
+        (('abort', 'abort to fix the raw definition and try again'),
+         ('delete', 'delete the invalid fils'),
+         ('ignore', 'pretend that the files are valid; you will not be warned again')))
 
     if command == 'delete':
         for filename in filenames:

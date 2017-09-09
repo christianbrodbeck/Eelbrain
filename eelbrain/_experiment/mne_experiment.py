@@ -47,7 +47,7 @@ from .._report import named_list, enumeration, plural
 from .._resources import predefined_connectivity
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
-from .._utils import WrappedFormater, subp, keydefaultdict, log_level
+from .._utils import WrappedFormater, ask, subp, keydefaultdict, log_level
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .definitions import (
     DefinitionError, assert_dict_has_args, find_dependent_epochs,
@@ -529,7 +529,8 @@ class MneExperiment(FileTree):
     #   True: delete outdated files
     #   False: raise an error
     #   'disable': ignore it
-    #   'debug': prompt for what to do in the terminal
+    #   'ask': prompt for what to do in the terminal
+    #   'debug': prompt with debug options
 
     # tuple (if the experiment has multiple sessions)
     sessions = None
@@ -1535,20 +1536,20 @@ class MneExperiment(FileTree):
                         msg.append("Automatic cache management disabled. Either "
                                    "revert changes, or set e.auto_delete_cache=True")
                         raise RuntimeError('\n'.join(msg))
-                    elif self.auto_delete_cache == 'debug':
-                        print('\n'.join(msg))
-                        print("delete:  delete invalid cache files\n"
-                              "abort:  raise an error (debugger can be used)\n"
-                              "ignore:  proceed without doing anything\n"
-                              "revalidate:  don't delete any cache files but "
-                              "write a new cache-state file")
-                        while True:
-                            command = raw_input(" > ")
-                            if command in ('delete', 'abort', 'ignore', 'revalidate'):
-                                break
-                            else:
-                                print("invalid entry")
-
+                    elif isinstance(self.auto_delete_cache, basestring):
+                        options = [
+                            ('delete', 'delete invalid cache files'),
+                            ('abort', 'raise an error'),
+                        ]
+                        if self.auto_delete_cache == 'debug':
+                            options += [
+                                ('ignore', 'proceed without doing anything'),
+                                ('revalidate', "don't delete any cache files but write a new cache-state file"),
+                            ]
+                        elif self.auto_delete_cache != 'ask':
+                            raise ValueError("MneExperiment.auto_delete_cache=%r" %
+                                             (self.auto_delete_cache,))
+                        command = ask('\n'.join(msg), options)
                         if command == 'delete':
                             pass
                         elif command == 'abort':
@@ -1562,8 +1563,8 @@ class MneExperiment(FileTree):
                         else:
                             raise RuntimeError("command=%s" % repr(command))
                     elif self.auto_delete_cache is not True:
-                        raise ValueError("MneExperiment.auto_delete_cache=%s"
-                                         % repr(self.auto_delete_cache))
+                        raise TypeError("MneExperiment.auto_delete_cache=%s" %
+                                        repr(self.auto_delete_cache))
 
                     # delete invalid files
                     log.info("Deleting %i invalid cache files", len(files))
@@ -1580,16 +1581,15 @@ class MneExperiment(FileTree):
                 log.warn("Ignoring cache-dir without history")
                 pass
             elif self.auto_delete_cache == 'debug':
-                print("Cache directory without history (validate|abort).")
-                while True:
-                    command = raw_input(" > ")
-                    if command == 'abort':
-                        raise RuntimeError("User aborted")
-                    elif command == 'validate':
-                        log.warn("Validating cache-dir without history")
-                        break
-                    else:
-                        print("invalid entry")
+                command = ask("Cache directory without history",
+                              (('validate', 'write a history file treating cache as valid'),
+                               ('abort', 'raise an error')))
+                if command == 'abort':
+                    raise RuntimeError("User aborted")
+                elif command == 'validate':
+                    log.warn("Validating cache-dir without history")
+                else:
+                    raise RuntimeError("command=%r" % (command,))
             else:
                 raise IOError("Cache directory without history, but "
                               "auto_delete_cache is not True")
@@ -3515,8 +3515,12 @@ class MneExperiment(FileTree):
                         ds = ds[1:]
                         self._log.warn(self.format("First epoch for {subject} is missing"))
                     else:
-                        raise RuntimeError("The epoch selection file contains different "
-                                           "events than the data. Something went wrong...")
+                        raise RuntimeError(
+                            "The epoch selection file contains different events (trigger IDs) "
+                            "from the epoch data loaded from the raw file. If the "
+                            "events included in the epoch were changed intentionally, "
+                            "delete the corresponding trial rejection file and create a new "
+                            "one:\n %s" % (rej_file,))
 
                 if rej_params['interpolation']:
                     ds.info[INTERPOLATE_CHANNELS] = True
