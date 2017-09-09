@@ -60,7 +60,7 @@ from .connectivity_opt import merge_labels, tfce_increment
 from .glm import _nd_anova
 from .permutation import _resample_params, permute_order, permute_sign_flip
 from .t_contrast import TContrastRel
-from .test import star_factor
+from .test import star, star_factor
 from functools import reduce
 
 
@@ -1610,6 +1610,22 @@ class anova(_MultiEffectResult):
 
     def _plot_sub(self):
         return super(anova, self)._plot_sub()
+
+    def table(self):
+        """Table with effects and smallest p-value"""
+        table = fmtxt.Table('rl' + ('' if self.p is None else 'rl'))
+        table.cells('#', 'Effect')
+        if self.p is not None:
+            table.cells('p', 'sig')
+        table.midrule()
+        for i in xrange(len(self.effects)):
+            table.cell(i)
+            table.cell(self.effects[i])
+            if self.p is not None:
+                pmin = self.p[i].min()
+                table.cell(fmtxt.p(pmin))
+                table.cell(star(pmin))
+        return table
 
 
 def flatten(array, connectivity):
