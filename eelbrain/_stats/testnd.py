@@ -44,8 +44,10 @@ from tqdm import trange
 from .. import fmtxt
 from .. import _colorspaces as _cs
 from .._data_obj import (
-    Categorial, Celltable, Dataset, Interaction, NDVar, OldVersionError, UTS,
-    Var, ascategorial, asmodel, asndvar, asvar, assub, cellname, combine,
+    OldVersionError,
+    Dataset, NDVar, Categorial, UTS, Var, Factor, Interaction, NestedEffect,
+    Celltable,
+    ascategorial, asmodel, asndvar, asvar, assub, cellname, combine,
     dataobj_repr)
 from .._report import enumeration, format_timewindow, ms
 from .._utils import LazyProperty
@@ -1565,10 +1567,8 @@ class anova(_MultiEffectResult):
             return "ANOVA:  %s" % self.X
 
     def _plot_model(self):
-        factors = [f.strip() for f in self.X.split('*')]
-        if self.match in factors:
-            factors.remove(self.match)
-        return '%'.join(factors)
+        return '%'.join(e.name for e in self._effects if isinstance(e, Factor) or
+                        (isinstance(e, NestedEffect) and isinstance(e.effect, Factor)))
 
     def _plot_sub(self):
         return super(anova, self)._plot_sub()

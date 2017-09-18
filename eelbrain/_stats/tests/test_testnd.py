@@ -29,20 +29,24 @@ def test_anova():
         logging.info("TEST:  samples=%r" % samples)
         testnd.anova('utsnd', 'A*B', ds=ds, samples=samples)
         testnd.anova('utsnd', 'A*B', ds=ds, samples=samples, pmin=0.05)
-        testnd.anova('utsnd', 'A*B', ds=ds, samples=samples, tfce=True)
+        res = testnd.anova('utsnd', 'A*B', ds=ds, samples=samples, tfce=True)
+        eq_(res._plot_model(), 'A%B')
 
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=0, pmin=0.05)
     eq_(repr(res), "<anova 'utsnd', 'A*B*rm', samples=0, pmin=0.05, "
                    "'A': 17 clusters, 'B': 20 clusters, 'A x B': 22 clusters>")
+    eq_(res._plot_model(), 'A%B')
     res = testnd.anova('utsnd', 'A*B*rm', match='rm', ds=ds, samples=2, pmin=0.05)
     eq_(repr(res), "<anova 'utsnd', 'A*B*rm', match='rm', samples=2, pmin=0.05, "
                    "'A': 17 clusters, p >= 0.000, 'B': 20 clusters, p >= 0.000, "
                    "'A x B': 22 clusters, p >= 0.000>")
+    eq_(res._plot_model(), 'A%B')
 
     # persistence
     string = pickle.dumps(res, protocol=pickle.HIGHEST_PROTOCOL)
     res_ = pickle.loads(string)
     assert_equal(repr(res_), repr(res))
+    eq_(res_._plot_model(), 'A%B')
 
     # threshold-free
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=10)
@@ -57,6 +61,7 @@ def test_anova():
     repr(res)
     assert_in('v', res.clusters)
     assert_in('p', res.clusters)
+    eq_(res._plot_model(), 'B')
 
     # all effects with clusters
     res = testnd.anova('uts', 'A*B*rm', ds=ds, samples=5, pmin=0.05,
