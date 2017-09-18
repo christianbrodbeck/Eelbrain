@@ -4835,8 +4835,7 @@ class MneExperiment(FileTree):
             caption = "Mask: %s" % mask.capitalize()
             self._report_parc_image(section, caption)
 
-        model = self._tests[test]['model']
-        colors = plot.colors_for_categorial(ds.eval(model))
+        colors = plot.colors_for_categorial(ds.eval(res._plot_model()))
         report.append(_report.source_time_results(res, ds, colors, include,
                                                   surfer_kwargs, parc=parc))
 
@@ -4977,8 +4976,6 @@ class MneExperiment(FileTree):
         labels_rh.sort()
 
         # add content body
-        model = self._tests[test]['model']
-        colors = plot.colors_for_categorial(ds.eval(model))
         test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, ('time',), None)
         do_mcc = (len(labels_lh) + len(labels_rh) > 1 and
                   pmin not in (None, 'tfce'))
@@ -4994,6 +4991,7 @@ class MneExperiment(FileTree):
         else:
             merged_dist = None
 
+        colors = plot.colors_for_categorial(ds.eval(res._plot_model()))
         for hemi, label_names in (('Left', labels_lh), ('Right', labels_rh)):
             section = report.add_section("%s Hemisphere" % hemi)
             for label in label_names:
@@ -5059,8 +5057,7 @@ class MneExperiment(FileTree):
         info_section.add_figure("Sensor map with connectivity", image_conn)
         p.close()
 
-        model = self._tests[test]['model']
-        colors = plot.colors_for_categorial(ds.eval(model))
+        colors = plot.colors_for_categorial(ds.eval(res._plot_model()))
         report.append(_report.sensor_time_results(res, ds, colors, include))
         report.sign(('eelbrain', 'mne', 'scipy', 'numpy'))
         report.save_html(dst)
@@ -5125,15 +5122,13 @@ class MneExperiment(FileTree):
         p.close()
 
         # main body
-        model = self._tests[test]['model']
         caption = "Signal at %s."
-        colors = plot.colors_for_categorial(ds.eval(model))
         test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, ('time', 'sensor'), None)
-        for sensor in sensors:
-            y = eeg.sub(sensor=sensor)
-            res = self._make_test(y, ds, test, test_kwargs)
-            report.append(_report.time_results(res, ds, colors, sensor,
-                                               caption % sensor))
+        ress = [self._make_test(eeg.sub(sensor=sensor), ds, test, test_kwargs) for
+                sensor in sensors]
+        colors = plot.colors_for_categorial(ds.eval(ress[0]._plot_model()))
+        for sensor, res in izip(sensors, ress):
+            report.append(_report.time_results(res, ds, colors, sensor, caption % sensor))
 
         self._report_test_info(info_section, ds, test, res, 'sensor')
         report.sign(('eelbrain', 'mne', 'scipy', 'numpy'))
