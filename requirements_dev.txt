@@ -2,6 +2,7 @@
 
 # Standard requirements:
 setuptools >= 17
+ipython
 tex >= 1.8
 colormath >= 2.1
 tqdm >= 4.8
