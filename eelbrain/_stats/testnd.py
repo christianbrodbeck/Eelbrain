@@ -46,7 +46,8 @@ from .. import fmtxt
 from .. import _colorspaces as _cs
 from .._config import CONFIG
 from .._data_obj import (
-    Categorial, Celltable, Dataset, Interaction, NDVar, UTS, Var,
+    Celltable, Dataset, Var, Factor, Interaction, NestedEffect,
+    NDVar, Categorial, UTS,
     ascategorial, asmodel, asndvar, asvar, assub,
     hasrandom, cellname, combine, dataobj_repr)
 from .._exceptions import OldVersionError, ZeroVariance
@@ -1604,10 +1605,8 @@ class anova(_MultiEffectResult):
             return "ANOVA:  %s" % self.X
 
     def _plot_model(self):
-        factors = [f.strip() for f in self.X.split('*')]
-        if self.match in factors:
-            factors.remove(self.match)
-        return '%'.join(factors)
+        return '%'.join(e.name for e in self._effects if isinstance(e, Factor) or
+                        (isinstance(e, NestedEffect) and isinstance(e.effect, Factor)))
 
     def _plot_sub(self):
         return super(anova, self)._plot_sub()
