@@ -16,11 +16,15 @@ from eelbrain._stats.permutation import permute_order
 
 
 def r_require(package):
-    from rpy2.rinterface import RRuntimeWarning
+    try:
+        from rpy2.rinterface import RRuntimeWarning
+        warning_class = RRuntimeWarning
+    except ImportError:  # rpy2 >=2.7
+        warning_class = UserWarning
     from rpy2.robjects import r
 
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RRuntimeWarning)
+        warnings.simplefilter("ignore", warning_class)
         success = r('require(%s)' % package)[0]
     
     if not success:
