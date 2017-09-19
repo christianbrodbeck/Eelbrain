@@ -70,7 +70,9 @@ from .experiment import FileTree
 from .parc import (
     FS_PARC, FSA_PARC, PARC_CLASSES, SEEDED_PARC_RE,
     Parcellation, CombinationParcellation, EelbrainParcellation,
-    FreeSurferParcellation, FSAverageParcellation, SeededParcellation)
+    FreeSurferParcellation, FSAverageParcellation, SeededParcellation,
+    IndividualSeededParcellation,
+)
 from .preprocessing import (
     assemble_pipeline, RawICA, pipeline_dict, compare_pipelines,
     ask_to_delete_ica_files)
@@ -1343,7 +1345,7 @@ class MneExperiment(FileTree):
                 # parcs
                 bad_parcs = []
                 for parc in invalid_cache['parcs']:
-                    if cache_state['parcs'][parc]['kind'] == 'seeded':
+                    if cache_state['parcs'][parc]['kind'].endswith('seeded'):
                         bad_parcs.append(parc + '-?')
                         bad_parcs.append(parc + '-??')
                         bad_parcs.append(parc + '-???')
@@ -1618,8 +1620,8 @@ class MneExperiment(FileTree):
             if ica_mtime > mtime:
                 return ica_mtime
 
-    def _result_file_mtime(self, dst, data, single_subject=False):
-        """For several results (reports and movies)
+    def _result_file_mtime(self, dst, data, single_subject=False, parc=None):
+        """MTime if up-to-date, else None (for reports and movies)
 
         Parameters
         ----------
@@ -1633,26 +1635,40 @@ class MneExperiment(FileTree):
         single_subject : bool
             Whether the corresponding test is performed for a single subject
             (as opposed to the current group).
+        parc : 'common' | 'individual'
+            For group results only: whether parc is used, from common or
+            individual brain.
         """
         if exists(dst):
-            mtime = self._result_mtime(data, single_subject)
+            mtime = self._result_mtime(data, single_subject, parc)
             if mtime:
                 dst_mtime = getmtime(dst)
                 if dst_mtime > mtime:
                     return dst_mtime
 
-    def _result_mtime(self, data, single_subject=False):
+    def _result_mtime(self, data, single_subject, parc):
         "See ._result_file_mtime() above"
         if data == 'source':
-            if single_subject:
-                mrisubject = 'mrisubject'
+            if parc:
+                if single_subject:
+                    out = self._annot_file_mtime(self.get('mrisubject'))
+                elif parc == 'common':
+                    out = self._annot_file_mtime(self.get('common_brain'))
+                elif parc == 'individual':
+                    out = 0
+                    for subject in self:
+                        mtime = self._annot_file_mtime()
+                        if mtime is None:
+                            return
+                        else:
+                            out = max(out, mtime)
+                else:
+                    raise RuntimeError("parc=%r" % (parc,))
             else:
-                mrisubject = 'common_brain'
+                out = 1
 
-            out = self._annot_file_mtime(self.get(mrisubject))
             if not out:
                 return
-
             mtime_func = self._epochs_stc_mtime
         else:
             out = 1
@@ -3596,7 +3612,7 @@ class MneExperiment(FileTree):
         res = None
         load_data = True
         desc = self._get_rel('test-file', 'test-dir')
-        if self._result_file_mtime(dst, data):
+        if self._result_file_mtime(dst, data, parc='common'):
             try:
                 res = load.unpickle(dst)
                 if data == 'source':
@@ -3773,9 +3789,9 @@ class MneExperiment(FileTree):
                 with self._temporary_state:
                     self.make_annot(parc=p.mask)
             name, extent = SEEDED_PARC_RE.match(parc).groups()
-            labels = labels_from_mni_coords(p.seeds, float(extent), subject,
-                                            p.surface, p.mask, subjects_dir,
-                                            parc)
+            labels = labels_from_mni_coords(
+                p.seeds_for_subject(subject), float(extent), subject, p.surface,
+                p.mask, subjects_dir, parc)
         elif isinstance(p, EelbrainParcellation) and p.name == 'lobes':
             if subject != 'fsaverage':
                 raise RuntimeError("lobes parcellation can only be created for "
@@ -4716,14 +4732,14 @@ class MneExperiment(FileTree):
 
         gui.select_epochs(ds, data, path=path, vlim=vlim, mark=eog_sns, **kwargs)
 
-    def _need_not_recompute_report(self, dst, samples, data, redo):
+    def _need_not_recompute_report(self, dst, samples, data, redo, parc=None):
         "Check (and log) whether the report needs to be redone"
         desc = self._get_rel('report-file', 'res-dir')
         if not exists(dst):
             self._log.debug("New report: %s", desc)
         elif redo:
             self._log.debug("Redoing report: %s", desc)
-        elif not self._result_file_mtime(dst, data):
+        elif not self._result_file_mtime(dst, data, parc=parc):
             self._log.debug("Report outdated: %s", desc)
         else:
             meta = read_meta(dst)
@@ -4790,7 +4806,7 @@ class MneExperiment(FileTree):
         self._set_analysis_options('source', sns_baseline, src_baseline, pmin,
                                    tstart, tstop, parc, mask)
         dst = self.get('report-file', mkdir=True, test=test)
-        if self._need_not_recompute_report(dst, samples, 'source', redo):
+        if self._need_not_recompute_report(dst, samples, 'source', redo, 'common'):
             return
 
         # start report
@@ -4920,13 +4936,14 @@ class MneExperiment(FileTree):
                                    tstart, tstop, parc, dims=('time',))
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
                        folder="%s ROIs" % parc)
-        if self._need_not_recompute_report(dst, samples, 'source', redo):
+        if self._need_not_recompute_report(dst, samples, 'source', redo, 'individual'):
             return
 
         # load data
         dss = defaultdict(list)
         n_trials_dss = []
-        n_subjects = len(self.get_field_values('subject'))
+        subjects = self.get_field_values('subject')
+        n_subjects = len(subjects)
         for _ in tqdm(self, "Loading data", n_subjects, unit='subject'):
             ds = self.load_evoked_stc(None, sns_baseline, src_baseline, ind_ndvar=True)
             src = ds.pop('src')
@@ -4967,10 +4984,10 @@ class MneExperiment(FileTree):
         for label in labels_lh + labels_rh:
             ds = combine(dss[label], incomplete='drop')
             res = self._make_test(ds['label_tc'], ds, test, test_kwargs, do_mcc)
-            label_results[label] = res
+            label_results[label] = ds, res
 
         if do_mcc:
-            cdists = [r._cdist for r in label_results.values()]
+            cdists = [res._cdist for _, res in label_results.values()]
             merged_dist = _MergedTemporalClusterDist(cdists)
         else:
             merged_dist = None
@@ -4986,14 +5003,14 @@ class MneExperiment(FileTree):
         # add parc image
         section = report.add_section(parc)
         caption = "ROIs in the %s parcellation." % parc
-        self._report_parc_image(section, caption)
+        self._report_parc_image(section, caption, subjects)
 
         # add content body
         colors = plot.colors_for_categorial(ds.eval(res._plot_model()))
         for hemi, label_names in (('Left', labels_lh), ('Right', labels_rh)):
             section = report.add_section("%s Hemisphere" % hemi)
             for label in label_names:
-                res = label_results[label]
+                ds, res = label_results[label]
                 title = label[:-3].capitalize()
                 caption = "Mean in label %s." % label
                 n = n_per_label[label]
@@ -5181,16 +5198,37 @@ class MneExperiment(FileTree):
         section.append(self._report_subject_info(ds, test_obj.model))
         section.append(self.show_state(hide=('hemi', 'subject', 'mrisubject')))
 
-    def _report_parc_image(self, section, caption):
+    def _report_parc_image(self, section, caption, subjects=None):
         "Add picture of the current parcellation"
+        parc_name, parc = self._get_parc()
         with self._temporary_state:
+            if isinstance(parc, IndividualSeededParcellation):
+                if subjects is None:
+                    raise RuntimeError("subjects needs to be specified for "
+                                       "plotting individual parcellations")
+                legend = None
+                for subject in self:
+                    # make sure there is at least one label
+                    if not any(not l.name.startswith('unknown-') for l in
+                               self.load_annot()):
+                        section.add_image_figure("No labels", subject)
+                        continue
+                    brain = self.plot_annot()
+                    if legend is None:
+                        p = brain.plot_legend(show=False)
+                        legend = p.image('parc-legend')
+                        p.close()
+                    section.add_image_figure(brain.image('parc'), subject)
+                    brain.close()
+                return
+
+            # one parc for all subjects
             self.set(mrisubject=self.get('common_brain'))
             brain = self.plot_annot(axw=500)
-            legend = brain.plot_legend(show=False)
-
+        legend = brain.plot_legend(show=False)
         content = [brain.image('parc'), legend.image('parc-legend')]
         section.add_image_figure(content, caption)
-
+        brain.close()
         legend.close()
 
     def _make_report_lm(self, pmin=0.01, sns_baseline=True, src_baseline=False,
@@ -5424,7 +5462,7 @@ class MneExperiment(FileTree):
 
     def plot_annot(self, parc=None, surf=None, views=None, hemi=None,
                    borders=False, alpha=0.7, w=None, h=None, axw=None, axh=None,
-                   foreground=None, background=None):
+                   foreground=None, background=None, **state):
         """Plot the annot file on which the current parcellation is based
 
         Parameters
@@ -5449,6 +5487,8 @@ class MneExperiment(FileTree):
             Figure foreground color (i.e., the text color).
         background : mayavi color
             Figure background color.
+        ...
+            State parameters.
 
         Returns
         -------
@@ -5457,10 +5497,9 @@ class MneExperiment(FileTree):
         legend : ColorList
             ColorList figure with the legend.
         """
-        if parc is None:
-            parc = self.get('parc')
-        else:
-            parc = self.get('parc', parc=parc)
+        if parc is not None:
+            state['parc'] = parc
+        parc = self.get('parc', **state)
 
         self.make_annot()
         mri_sdir = self.get('mri-sdir')

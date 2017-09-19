@@ -99,7 +99,7 @@ def annot(annot, subject='fsaverage', surf='smoothwm', borders=False, alpha=0.7,
             raise ValueError("Neither hemisphere contains more than one label")
 
     if title is None:
-        title = annot
+        title = '%s - %s' % (subject, annot)
 
     from ._brain_object import Brain
     brain = Brain(subject, hemi, surf, title, cortex,

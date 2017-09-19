@@ -638,6 +638,8 @@ An example using a split label::
     }
 
 
+.. _MneExperiment.parc-seeded:
+
 MNI coordinates
 ^^^^^^^^^^^^^^^
 
@@ -665,10 +667,37 @@ parameter as in ``e.set(parc="myparc-25")``, which specifies a radius of 25 mm.
 Example::
 
      parcs = {'stg': {'kind': 'seeded',
+                      'mask': 'lobes',
                       'seeds': {'anteriorstg-lh': ((-54, 10, -8), (-47, 14, -28)),
                                 'middlestg-lh': (-66, -24, 8),
-                                'posteriorstg-lh': (-54, -57, 16)},
-                      'mask': 'lobes'}}
+                                'posteriorstg-lh': (-54, -57, 16)}}}
+
+
+Individual coordinates
+^^^^^^^^^^^^^^^^^^^^^^
+
+Labels can also be constructured from subjects-specific seeds. They work
+like :ref:`MneExperiment.parc-seeded` parcellations, except that seeds are
+provided for each subject.
+
+Example::
+
+     parcs = {
+         'stg': {
+             'kind': 'individual seeded',
+             'mask': 'lobes',
+             'seeds': {
+                 'anteriorstg-lh': {
+                     'R0001': (-54, 10, -8),
+                     'R0002': (-47, 14, -28),
+                 },
+                 'middlestg-lh': {
+                     'R0001': (-66, -24, 8),
+                     'R0002': (-60, -26, 9),
+                 }
+             }
+         }
+     }
 
 
 Externally created parcellations
