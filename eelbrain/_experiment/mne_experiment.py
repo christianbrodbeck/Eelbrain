@@ -4919,7 +4919,9 @@ class MneExperiment(FileTree):
             raise NotImplementedError("ROI analysis not implemented for two-"
                                       "stage tests")
 
-        parc = self.get('parc', parc=parc, **state)
+        if parc is not None:
+            state['parc'] = parc
+        parc = self.get('parc', **state)
         if not parc:
             raise ValueError("No parcellation specified")
         self._set_analysis_options('source', sns_baseline, src_baseline, pmin,
