@@ -2827,6 +2827,7 @@ class _ClusterDist:
 
 
 class _MergedTemporalClusterDist:
+    """Merge permutation distributions from multiple tests"""
 
     def __init__(self, cdists):
         if isinstance(cdists[0], list):

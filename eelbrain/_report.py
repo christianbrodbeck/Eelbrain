@@ -497,15 +497,6 @@ def cluster_timecourse(section, cluster, y, dim, model, ds, colors, match):
                            "cluster.", [image_tc, image_bar, image_box])
 
 
-def roi_timecourse(doc, ds, label, res, colors, merged_dist=None):
-    "Plot ROI time course with cluster permutation test"
-    label_name = label[:-3].capitalize()
-    hemi = label[-2].capitalize()
-    title = ' '.join((label_name, hemi))
-    caption = "Source estimates in %s (%s)." % (label_name, hemi)
-    doc.append(time_results(res, ds, colors, title, caption, merged_dist=merged_dist))
-
-
 def time_results(res, ds, colors, title='Results', caption="Timecourse",
                  pairwise_pmax=0.1, merged_dist=None):
     """Add time course with clusters

@@ -4910,49 +4910,30 @@ class MneExperiment(FileTree):
             return
 
         # load data
-        label_names = None
-        dss = []
-        for _ in self:
+        dss = defaultdict(list)
+        n_trials_dss = []
+        n_subjects = len(self.get_field_values('subject'))
+        for _ in tqdm(self, "Loading data", n_subjects, unit='subject'):
             ds = self.load_evoked_stc(None, sns_baseline, src_baseline, ind_ndvar=True)
             src = ds.pop('src')
-            if label_names is None:
-                label_keys = {k: as_legal_dataset_key(k) for k in src.source.parc.cells}
-                label_names = {v: k for k, v in label_keys.iteritems()}
-                if len(label_names) != len(label_keys):
-                    raise RuntimeError("Label key conflict")
-            elif set(label_keys) != set(src.source.parc.cells):
-                raise RuntimeError("Not all subjects have the same labels")
-
-            for name, key in label_keys.iteritems():
-                ds[key] = src.summary(source=name)
+            n_trials_dss.append(ds.copy())
+            for label in src.source.parc.cells:
+                if label.startswith('unknown-'):
+                    continue
+                label_ds = ds.copy()
+                label_ds['label_tc'] = src.mean(source=label)
+                dss[label].append(label_ds)
             del src
-            dss.append(ds)
-        ds = combine(dss, incomplete='drop')
-        # prune label_keys
-        for name, key in label_keys.iteritems():
-            if key not in ds:
-                del label_keys[name]
-        ds.info['label_keys'] = label_keys
+        n_trials_ds = combine(n_trials_dss, incomplete='drop')
 
-        # start report
-        title = self.format('{session} {epoch} {test} {test_options}')
-        report = Report(title)
+        # n subjects per label
+        n_per_label = {label: len(dss[label]) for label in dss}
 
-        # method intro (compose it later when data is available)
-        info_section = report.add_section("Test Info")
-
-        # add parc image
-        section = report.add_section(parc)
-        caption = "ROIs in the %s parcellation." % parc
-        self._report_parc_image(section, caption)
-
-        # sort labels
+        # sorted labels
         labels_lh = []
         labels_rh = []
-        for label in label_keys:
-            if label.startswith('unknown'):
-                continue
-            elif label.endswith('-lh'):
+        for label in dss.keys():
+            if label.endswith('-lh'):
                 labels_lh.append(label)
             elif label.endswith('-rh'):
                 labels_rh.append(label)
@@ -4961,14 +4942,17 @@ class MneExperiment(FileTree):
         labels_lh.sort()
         labels_rh.sort()
 
-        # add content body
+        # compute results
         test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, ('time',), None)
-        do_mcc = (len(labels_lh) + len(labels_rh) > 1 and
-                  pmin not in (None, 'tfce'))
+        do_mcc = (
+            len(labels_lh) + len(labels_rh) > 1 and  # more than one test
+            pmin not in (None, 'tfce') and  # not implemented
+            len(set(n_per_label.values())) == 1  # equal n permutations
+        )
         label_results = {}
         for label in labels_lh + labels_rh:
-            res = self._make_test(ds[label_keys[label]], ds, test, test_kwargs,
-                                  do_mcc)
+            ds = combine(dss[label], incomplete='drop')
+            res = self._make_test(ds['label_tc'], ds, test, test_kwargs, do_mcc)
             label_results[label] = res
 
         if do_mcc:
@@ -4977,16 +4961,33 @@ class MneExperiment(FileTree):
         else:
             merged_dist = None
 
+        # start report
+        title = self.format('{session} {epoch} {test} {test_options}')
+        report = Report(title)
+
+        # method intro (compose it later when data is available)
+        info_section = report.add_section("Test Info")
+        self._report_test_info(info_section, n_trials_ds, test, res, 'source')
+
+        # add parc image
+        section = report.add_section(parc)
+        caption = "ROIs in the %s parcellation." % parc
+        self._report_parc_image(section, caption)
+
+        # add content body
         colors = plot.colors_for_categorial(ds.eval(res._plot_model()))
         for hemi, label_names in (('Left', labels_lh), ('Right', labels_rh)):
             section = report.add_section("%s Hemisphere" % hemi)
             for label in label_names:
                 res = label_results[label]
-                _report.roi_timecourse(section, ds, label, res, colors,
-                                       merged_dist=merged_dist)
-
-        # compose info
-        self._report_test_info(info_section, ds, test, res, 'source')
+                title = label[:-3].capitalize()
+                caption = "Mean in label %s." % label
+                n = n_per_label[label]
+                if n < n_subjects:
+                    title += ' (n=%i)' % n
+                    caption += " Data from %i of %i subjects." % (n, n_subjects)
+                section.append(_report.time_results(
+                    res, ds, colors, title, caption, merged_dist=merged_dist))
 
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
         report.save_html(dst, meta={'samples': samples})
