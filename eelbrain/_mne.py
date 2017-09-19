@@ -165,11 +165,14 @@ def labels_from_mni_coords(seeds, extent=30., subject='fsaverage',
         Name of the parcellation under construction (only used for error
         messages).
     """
-    name_re = re.compile("\w+-(lh|rh)$")
-    if not all(name.endswith(('lh', 'rh')) for name in seeds):
-        err = ("Names need to end in 'lh' or 'rh' so that the proper "
-               "hemisphere can be selected")
-        raise ValueError(err)
+    name_re = re.compile("^\w+-(lh|rh)$")
+    matches = {name: name_re.match(name) for name in seeds}
+    invalid = sorted(name for name, m in matches.iteritems() if m is None)
+    if invalid:
+        raise ValueError(
+            "Invalid seed names in parc %r: %s; seed names need to conform to "
+            "the 'xxx-lh' or 'xxx-rh' scheme so that the proper hemisphere can "
+            "be selected" % (parc, ', '.join(map(repr, sorted(invalid)))))
 
     # load surfaces
     subjects_dir = get_subjects_dir(subjects_dir)
@@ -181,18 +184,13 @@ def labels_from_mni_coords(seeds, extent=30., subject='fsaverage',
     names = []
     hemis = []
     for name, coords_ in seeds.iteritems():
-        m = name_re.match(name)
-        if not m:
-            raise ValueError("Invalid seed name in %r parc: %r. Names must "
-                             "conform to the 'xxx-lh' or 'xxx-rh' scheme."
-                             % (parc, name))
         coords = np.atleast_2d(coords_)
         if coords.ndim != 2 or coords.shape[1] != 3:
             raise ValueError("Invalid coordinate specification for seed %r in "
                              "parc %r: %r. Seeds need to be specified as "
                              "arrays with shape (3,) or (n_seeds, 3)."
                              % (name, parc, coords_))
-        hemi = m.group(1)
+        hemi = matches[name].group(1)
         seed_verts = []
         for coord in coords:
             dist = np.sqrt(np.sum((surfs[hemi][0] - coord) ** 2, axis=1))
