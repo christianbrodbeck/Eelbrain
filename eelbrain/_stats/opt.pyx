@@ -473,7 +473,7 @@ def t_ind(cnp.ndarray[FLOAT64, ndim=2] y,
         raise ValueError("length of group does not match n_cases in y")
 
     for case in range(n_cases):
-        if group[case] == 1:
+        if group[case]:
             n1 += 1
     n0 = n_cases - n1
 
@@ -486,19 +486,19 @@ def t_ind(cnp.ndarray[FLOAT64, ndim=2] y,
 
         # means
         for case in range(n_cases):
-            if group[case] == 0:
-                mean0 += y[case, i]
-            else:
+            if group[case]:
                 mean1 += y[case, i]
+            else:
+                mean0 += y[case, i]
         mean0 /= n0
         mean1 /= n1
 
         # variance
         for case in range(n_cases):
-            if group[case] == 0:
-                var += (y[case, i] - mean0) ** 2
-            else:
+            if group[case]:
                 var += (y[case, i] - mean1) ** 2
+            else:
+                var += (y[case, i] - mean0) ** 2
         if var == 0:
             out[i] = 0
             continue

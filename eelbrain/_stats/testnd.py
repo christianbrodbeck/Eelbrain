@@ -927,7 +927,8 @@ class ttest_ind(_Result):
         n = len(ct.Y)
         n0 = n - n1
         df = n - 2
-        groups = (np.arange(n) < n1).astype(np.int8)
+        groups = np.arange(n) < n1
+        groups.dtype = np.int8
         tmap = stats.t_ind(ct.Y.x, groups)
 
         n_threshold_params = sum((pmin is not None, tmin is not None, tfce))
