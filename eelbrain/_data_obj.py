@@ -5287,10 +5287,10 @@ class Dataset(OrderedDict):
             else:
                 lbl = type(v).__name__
 
-            if getattr(v, 'name', key) == key:
-                item = '%r:%s' % (key, lbl)
+            if isdataobject(v) and v.name != key:
+                item = '%r:%s<%r>' % (key, lbl, v.name)
             else:
-                item = '%r:<%s %r>' % (key, lbl, v.name)
+                item = '%r:%s' % (key, lbl)
 
             items.append(item)
 
