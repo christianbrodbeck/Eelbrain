@@ -3,6 +3,7 @@ from __future__ import print_function
 
 from nose.tools import eq_, assert_almost_equal
 from numpy.testing import assert_array_equal
+import numpy as np
 import scipy.stats
 
 from eelbrain import datasets, test
@@ -52,7 +53,7 @@ def test_star():
 
 
 def test_ttest():
-    """Test test.ttest()"""
+    """Test univariate t-test functions"""
     ds = datasets.get_uv()
 
     print(test.ttest('fltvar', ds=ds))
@@ -62,16 +63,32 @@ def test_ttest():
     print(test.ttest('fltvar', 'A', 'a1', match='rm', ds=ds))
     print(test.ttest('fltvar', 'A%B', ('a1', 'b1'), match='rm', ds=ds))
 
+    # Prepare data for scipy
+    a1_index = ds.eval("A == 'a1'")
+    a2_index = ds.eval("A == 'a2'")
+    b1_index = ds.eval("B == 'b1'")
+    a1_in_b1_index = np.logical_and(a1_index, b1_index)
+    a2_in_b1_index = np.logical_and(a2_index, b1_index)
 
-def test_ttest_rel():
-    """Test test.TTestRel()"""
-    ds = datasets.get_uv()
+    # TTest1Samp
+    res = test.TTest1Sample('fltvar', ds=ds)
+    t, p = scipy.stats.ttest_1samp(ds['fltvar'], 0)
+    assert_almost_equal(res.t, t, 10)
+    assert_almost_equal(res.p, p, 10)
+    res = test.TTest1Sample('fltvar', ds=ds, tail=1)
+    assert_almost_equal(res.t, t, 10)
+    assert_almost_equal(res.p, p / 2., 10)
 
+    # TTestInd
+    res = test.TTestInd('fltvar', 'A', 'a1', 'a2', ds=ds)
+    t, p = scipy.stats.ttest_ind(ds[a1_index, 'fltvar'], ds[a2_index, 'fltvar'])
+    assert_almost_equal(res.t, t, 10)
+    assert_almost_equal(res.p, p, 10)
+
+    # TTestRel
     res = test.TTestRel('fltvar', 'A', 'a1', 'a2', 'rm', "B=='b1'", ds)
-    i1 = ds.eval("logical_and(A=='a1', B=='b1')")
-    i2 = ds.eval("logical_and(A=='a2', B=='b1')")
-    a1 = ds[i1, 'fltvar'].x
-    a2 = ds[i2, 'fltvar'].x
+    a1 = ds[a1_in_b1_index, 'fltvar'].x
+    a2 = ds[a2_in_b1_index, 'fltvar'].x
     diff = a1 - a2
     t, p = scipy.stats.ttest_rel(a1, a2)
     assert_array_equal(res.diff.x, diff)

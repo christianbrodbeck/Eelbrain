@@ -27,6 +27,7 @@ New in 0.26
 * New functions:
 
   - :func:`table.cast_to_ndvar`
+  - :func:`test.TTestInd`
 
 * New methods:
 

@@ -188,6 +188,7 @@ Univariate statistical tests:
    :toctree: generated
    
    test.TTest1Sample
+   test.TTestInd
    test.TTestRel
    test.anova
    test.pairwise

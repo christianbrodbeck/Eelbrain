@@ -437,6 +437,76 @@ class TTest1Sample(object):
                              fmtxt.peq(self.p)])
 
 
+class TTestInd(object):
+    """Related-measures t-test
+
+    Parameters
+    ----------
+    y : Var
+        Dependent variable.
+    x : categorial
+        Model containing the cells which should be compared.
+    c1 : str | tuple | None
+        Test condition (cell of ``x``). ``c1`` and ``c0`` can be omitted if
+        ``x`` only contains two cells, in which case cells will be used in
+        alphabetical order.
+    c0 : str | tuple | None
+        Control condition (cell of ``x``).
+    match : categorial
+        Units within which measurements are related and should be averaged over
+        (e.g. 'subject' in a between-group comparison).
+    sub : None | index-array
+        Perform the test with a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables.
+    tail : 0 | 1 | -1
+        Which tail of the t-distribution to consider:
+        0: both (two-tailed, default);
+        1: upper tail (one-tailed);
+        -1: lower tail (one-tailed).
+
+    Attributes
+    ----------
+    t : float
+        T-value.
+    p : float
+        P-value.
+    tail : 0 | 1 | -1
+        Tailedness of the p value.
+    df : int
+        Degrees of freedom.
+    """
+    def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
+                 tail=0):
+        ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asvar)
+        c1, c0 = ct.cat
+
+        n = len(ct.Y)
+        if n <= 2:
+            raise ValueError("Not enough observations for t-test (n=%i)" % n)
+
+        self._y = dataobj_repr(ct.Y)
+        self._x = dataobj_repr(ct.X)
+        self.df = n - 2
+        groups = ct.X == c1
+        groups.dtype = np.int8
+        self.t = stats.t_ind(ct.Y.x[:, None], groups)[0]
+        self.p = stats.ttest_p(self.t, self.df, tail)
+        self.tail = tail
+        self._c1 = c1
+        self._c0 = c0
+
+    def __repr__(self):
+        return ("<TTestInd: %s ~ %s, %s%s%s; t(%i)=%.2f, p=%.3f>" %
+                (self._y, self._x, self._c1, '=><'[self.tail], self._c0,
+                 self.df, self.t, self.p))
+
+    def _asfmtext(self):
+        return fmtxt.FMText([fmtxt.eq('t', self.t, self.df), ', ',
+                             fmtxt.peq(self.p)])
+
+
 class TTestRel(object):
     """Related-measures t-test
 

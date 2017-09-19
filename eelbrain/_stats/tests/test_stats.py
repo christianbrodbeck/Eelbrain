@@ -150,7 +150,7 @@ def test_t_ind():
     n_cases = len(y)
     n = n_cases / 2
     groups = (np.arange(n_cases) < n)
-    groups.dtype = np.uint8
+    groups.dtype = np.int8
 
     t = stats.t_ind(y, groups)
     p = stats.ttest_p(t, n_cases - 2)
