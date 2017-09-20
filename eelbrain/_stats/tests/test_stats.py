@@ -11,33 +11,6 @@ from eelbrain._stats import stats
 from eelbrain._stats.permutation import permute_order
 
 
-def test_confidence_interval():
-    "Test confidence_interval()"
-    from rpy2.robjects import r
-
-    ds = datasets.get_loftus_masson_1994()
-    y = ds['n_recalled'].x[:, None].astype(np.float64)
-    x = ds['exposure'].as_factor()
-    subject = ds['subject']
-    ds.to_r('ds')
-
-    # simple confidence interval of the mean
-    ci = stats.confidence_interval(y)[0]
-    r("s <- sd(ds$n_recalled)")
-    r("n <- length(ds$n_recalled)")
-    ci_r = r("qt(0.975, df=n-1) * s / sqrt(n)")[0]
-    eq_(ci, ci_r)
-
-    # pooled variance
-    ci = stats.confidence_interval(y, x)[0]
-    assert_almost_equal(ci, 3.85, delta=0.01)
-    assert_raises(NotImplementedError, stats.confidence_interval, y[1:], x[1:])
-
-    # within subject confidence interval
-    ci = stats.confidence_interval(y, x, subject)[0]
-    assert_almost_equal(ci, 0.52, 2)
-
-
 def test_corr():
     "Test stats.corr"
     ds = datasets.get_uts()
@@ -90,23 +63,23 @@ def test_lm():
     assert_allclose(betas, sp_betas)
 
 
-def test_sem_and_variability():
-    "Test variability() and standard_error_of_the_mean() functions"
+def test_variability():
+    "Test variability functions"
     ds = datasets.get_loftus_masson_1994()
     y = ds['n_recalled'].x.astype(np.float64)
     x = ds['exposure'].as_factor()
     match = ds['subject']
+
+    sem = scipy.stats.sem(y, 0, 1)
+    ci = sem * scipy.stats.t.isf(0.05 / 2., len(y) - 1)
 
     # invalid spec
     assert_raises(ValueError, stats.variability, y, 0, 0, '1mile', 0)
     assert_raises(ValueError, stats.variability, y, 0, 0, 'ci7ci', 0)
 
     # standard error
-    target = scipy.stats.sem(y, 0, 1)
-    e = stats.variability(y, None, None, 'sem', False)
-    assert_almost_equal(e, target)
-    e = stats.variability(y, None, None, '2sem', False)
-    assert_almost_equal(e, 2 * target)
+    assert_almost_equal(stats.variability(y, None, None, 'sem', False), sem)
+    assert_almost_equal(stats.variability(y, None, None, '2sem', False), 2 * sem)
     # within subject standard-error
     target = scipy.stats.sem(stats.residuals(y[:, None], match), 0, len(match.cells))
     assert_almost_equal(stats.variability(y, None, match, 'sem', True), target)
@@ -122,9 +95,9 @@ def test_sem_and_variability():
     stats.variability(y, x, None, 'sem', True)
 
     # confidence intervals
-    stats.variability(y, None, None, '95%ci', False)
-    stats.variability(y, x, None, '95%ci', True)
-    stats.variability(y, x, match, '95%ci', True)
+    assert_almost_equal(stats.variability(y, None, None, '95%ci', False), ci)
+    assert_almost_equal(stats.variability(y, x, None, '95%ci', True), 3.86, 2)  # L&M: 3.85
+    assert_almost_equal(stats.variability(y, x, match, '95%ci', True), 0.52, 2)
 
     assert_equal(stats.variability(y, x, None, '95%ci', False)[::-1],
                  stats.variability(y, x, None, '95%ci', False, x.cells[::-1]))

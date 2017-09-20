@@ -1233,70 +1233,42 @@ class Celltable(object):
         elif out is list:
             return [self.data[cell] for cell in self.cells]
 
-    def get_statistic(self, func=np.mean, a=None, **kwargs):
+    def get_statistic(self, func=np.mean):
         """Return a list with ``a * func(data)`` for each data cell.
 
         Parameters
         ----------
         func : callable | str
             statistics function that is applied to the data. Can be string,
-            such as '[X]sem', '[X]std', or '[X]ci', e.g. '2sem'.
-        a : scalar
-            Multiplier (ignored if a multiplier is specified in ``func``, as in
-            e.g. ``"2sem"``).
-        **kwargs :
-            Are submitted to the statistic function.
+            such as '[X]sem' or '[X]ci', e.g. '2sem'.
 
         See also
         --------
         .get_statistic_dict : return statistics in a ``{cell: data}`` dict
         """
         if isinstance(func, basestring):
-            if func.endswith('ci'):
-                if len(func) > 2:
-                    a = float(func[:-2])
-                elif a is None:
-                    a = .95
-                from ._stats.stats import confidence_interval
-                func = confidence_interval
-            elif func.endswith('sem'):
-                if len(func) > 3:
-                    a = float(func[:-3])
-                func = scipy.stats.sem
-            elif func.endswith('std'):
-                if len(func) > 3:
-                    a = float(func[:-3])
-                func = np.std
-                if 'ddof' not in kwargs:
-                    kwargs['ddof'] = 1
-            else:
-                raise ValueError('unrecognized statistic: %r' % func)
+            from ._stats.stats import variability
+            var_spec = func
 
-        if a is None:
-            a = 1
+            def func(y):
+                return variability(y, None, None, var_spec, False)
 
-        return [a * func(self.data[cell].x, **kwargs) for cell in self.cells]
+        return [func(self.data[cell].x) for cell in self.cells]
 
-    def get_statistic_dict(self, func=np.mean, a=None, **kwargs):
-        """Return a ``{cell: a * func(data)}`` dictionary.
+    def get_statistic_dict(self, func=np.mean):
+        """Return a ``{cell: func(data)}`` dictionary.
 
         Parameters
         ----------
         func : callable | str
             statistics function that is applied to the data. Can be string,
             such as '[X]sem', '[X]std', or '[X]ci', e.g. '2sem'.
-        a : scalar
-            Multiplier (ignored if a multiplier is specified in ``func``, as in
-            e.g. ``"2sem"``).
-        **kwargs :
-            Are submitted to the statistic function.
 
         See Also
         --------
         .get_statistic : statistic in a list
         """
-        return dict(zip(self.cells,
-                        self.get_statistic(func=func, a=a, **kwargs)))
+        return dict(izip(self.cells, self.get_statistic(func)))
 
 
 def combine(items, name=None, check_dims=True, incomplete='raise'):
@@ -2691,15 +2663,15 @@ class Factor(_Effect):
         return tuple(self._labels.values())
 
     def _cellsize(self):
-        "-1 if cell size is not equal"
-        codes = self._labels.keys()
-        buf = self.x == codes[0]
-        n = buf.sum()
-        for code in codes[1:]:
-            n_ = np.equal(self.x, code, buf).sum()
-            if n_ != n:
-                return -1
-        return n
+        "int if all cell sizes are equal, otherwise a {cell: size} dict"
+        buf = np.empty(self.x.shape, bool)
+        ns = {self._labels[code]: np.equal(self.x, code, buf).sum() for
+              code in self._labels.keys()}
+        n_set = set(ns.values())
+        if len(n_set) == 1:
+            return n_set.pop()
+        else:
+            return ns
 
     def aggregate(self, X, name=True):
         """

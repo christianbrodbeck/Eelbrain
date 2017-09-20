@@ -47,52 +47,6 @@ def betas(y, x):
     return out
 
 
-def confidence_interval(y, x=None, match=None, confidence=.95):
-    """Confidence interval based on the inverse t-test
-
-    Parameters
-    ----------
-    y : array [n, ...]
-        Data, first dimension reflecting cases.
-    x : Categorial
-        Categorial predictor for using pooled variance.
-    match : Factor
-        Specifies which cases are related.
-    confidence : scalar
-        Confidence in the interval (i.e., .95 for 95% CI).
-
-    Returns
-    -------
-    ci : array [...]
-        Confidence interval (i.e., the mean of y lies within m +- ci with the
-        specified confidence).
-
-    Notes
-    -----
-    See
-    `<http://en.wikipedia.org/wiki/Confidence_interval#Statistical_hypothesis_testing>`_
-    """
-    if x is None:
-        n = len(y)
-        df = n - 1
-    else:
-        x = asfactor(x)
-        n = x._cellsize()
-        if n < 0:
-            raise NotImplementedError()
-
-        if match is None:
-            x = Model(x)
-        else:
-            x = x + match
-        df = x.df_error
-    out = residual_mean_square(y, x)
-    np.sqrt(out, out)
-    t = scipy.stats.t.isf((1 - confidence) / 2, df)
-    out *= t / np.sqrt(n)
-    return out
-
-
 def corr(y, x, out=None, perm=None):
     """Correlation parameter map
 
@@ -255,39 +209,65 @@ def rmssd(y):
     return np.sqrt(X)
 
 
-def standard_error_of_the_mean(y, x=None, match=None):
-    """Standard error of the mean (SEM)
+class SEM(object):
 
-    Parameters
-    ----------
-    y : array (n, ...)
-        Data, first dimension reflecting cases.
-    x : Categorial
-        Categorial predictor for using pooled variance.
-    match : Categorial
-        Within-subject SEM.
+    def __init__(self, y, x=None, match=None):
+        """Standard error of the mean (SEM)
 
-    Returns
-    -------
-    sem : array (...)
-        Standard error of the mean.
-    """
-    if x is None:
-        n = len(y)
-        if match is not None:
-            x = match
-    else:
-        x = asfactor(x)
-        n = x._cellsize()
-        if n < 0:
-            raise NotImplementedError()
+        Parameters
+        ----------
+        y : array (n, ...)
+            Data, first dimension reflecting cases.
+        x : Categorial
+            Categorial predictor for using pooled variance.
+        match : Categorial
+            Within-subject SEM.
 
-        if match is not None:
-            x = x + match
-    out = residual_mean_square(y, x)
-    out /= n
-    np.sqrt(out, out)
-    return out
+        Notes
+        -----
+        See Loftus and Masson (1994).
+        """
+        if x is None:
+            n = len(y)
+            model = match
+        else:
+            x = asfactor(x)
+            n = x._cellsize()
+            if isinstance(n, dict):
+                raise NotImplementedError("SEM for unequal cell sizes")
+            model = x if match is None else x + match
+        sem = residual_mean_square(y, model)
+        sem /= n
+        np.sqrt(sem, sem)
+        self.n = n
+        self.model = model
+        self.sem = sem
+
+    def ci(self, confidence):
+        """Confidence interval based on the inverse t-test
+
+        Parameters
+        ----------
+        confidence : scalar
+            Confidence in the interval (i.e., .95 for 95% CI).
+
+        Returns
+        -------
+        ci : array [...]
+            Confidence interval (i.e., the mean of y lies within m +- ci with the
+            specified confidence).
+
+        Notes
+        -----
+        See `<http://en.wikipedia.org/wiki/Confidence_interval#Statistical_hypothesis_testing>`_
+        """
+        if self.model is None:
+            df = self.n - 1
+        elif isinstance(self.model, Model):
+            df = self.model.df_error
+        else:
+            df = Model(self.model).df_error
+        return self.sem * scipy.stats.t.isf((1 - confidence) / 2, df)
 
 
 def t_1samp(y, out=None):
@@ -453,23 +433,22 @@ def variability(y, x, match, spec, pool, cells=None):
     elif not pool and cells is None:
         cells = x.cells
 
+    y = np.asarray(y, np.float64)
     if kind == 'ci':
         if pool or x is None:
-            out = confidence_interval(y, x, match, scale)
+            out = SEM(y, x, match).ci(scale)
         else:
-            cis = [confidence_interval(y[x == cell], confidence=scale) for cell in cells]
-            out = np.array(cis)
+            out = np.array([SEM(y[x == cell]).ci(scale) for cell in cells])
     elif kind == 'sem':
         if pool or x is None:
-            out = standard_error_of_the_mean(y, x, match)
+            out = SEM(y, x, match).sem
         else:
-            sems = [standard_error_of_the_mean(y[x == cell]) for cell in cells]
-            out = np.array(sems)
+            out = np.array([SEM(y[x == cell]).sem for cell in cells])
 
         if scale != 1:
             out *= scale
     else:
-        raise RuntimeError
+        raise RuntimeError("kind=%r" % (kind,))
 
     # return scalars for 1d-arrays
     if out.ndim == 0:
