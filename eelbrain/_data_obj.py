@@ -596,15 +596,17 @@ def asnumeric(x, sub=None, ds=None, n=None):
 
 def assub(sub, ds=None):
     "Interpret the sub argument."
-    if isinstance(sub, basestring):
+    if sub is None:
+        return None
+    elif isinstance(sub, basestring):
         if ds is None:
             err = ("the sub parameter was specified as string, but no Dataset "
                    "was specified")
             raise TypeError(err)
         sub = ds.eval(sub)
-        if not isinstance(sub, np.ndarray):
-            raise TypeError("sub parameters needs to evaluate to an array, got "
-                            "%s" % repr(sub))
+
+    if not isinstance(sub, (Var, np.ndarray)):
+        raise TypeError("sub parameters needs to be Var or array, got %r" % (sub,))
     return sub
 
 
