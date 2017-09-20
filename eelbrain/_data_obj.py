@@ -6478,6 +6478,11 @@ class NestedEffect(_Effect):
     def __eq__(self, other):
         return self.effect == other
 
+    def __getitem__(self, index):
+        if isinstance(index, Integral):
+            return self.effect[index]
+        return NestedEffect(self.effect[index], self.nestedin[index])
+
     @property
     def df(self):
         return len(self.effect.cells) - len(self.nestedin.cells)
