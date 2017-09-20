@@ -202,10 +202,15 @@ def residuals(y, x):
 
     Parameters
     ----------
-    y : array
-        Data
+    y : array (n, ...)
+        Data.
     x : Model
-        Predictors
+        Predictors.
+
+    Returns
+    -------
+    residuals : array (...)
+        Residuals.
     """
     n = len(y)
     x = asmodel(x)
@@ -251,14 +256,21 @@ def rmssd(y):
 
 
 def standard_error_of_the_mean(y, x=None, match=None):
-    """Standard error of the mean
+    """Standard error of the mean (SEM)
 
     Parameters
     ----------
-    y : array [n, ...]
+    y : array (n, ...)
         Data, first dimension reflecting cases.
     x : Categorial
         Categorial predictor for using pooled variance.
+    match : Categorial
+        Within-subject SEM.
+
+    Returns
+    -------
+    sem : array (...)
+        Standard error of the mean.
     """
     if x is None:
         n = len(y)
@@ -421,19 +433,18 @@ def variability(y, x, match, spec, pool, cells=None):
         Variability estimate. A single estimate if errors are pooled, otherwise
         an estimate for every cell in x.
     """
-    try:
-        m = re.match("^([.\d]*)(\%?)(ci|sem)$", spec.lower())
-        scale, perc, kind = m.groups()
-        if scale:
-            scale = float(scale)
-            if perc:
-                scale /= 100
-        elif kind == 'ci':
-            scale = .95
-        else:
-            scale = 1
-    except:
-        raise ValueError("Invalid variability specification: %r" % spec)
+    m = re.match("^([.\d]*)(\%?)(ci|sem)$", spec.lower())
+    if m is None:
+        raise ValueError("error=%r" % (spec,))
+    scale, perc, kind = m.groups()
+    if scale:
+        scale = float(scale)
+        if perc:
+            scale /= 100
+    elif kind == 'ci':
+        scale = .95
+    else:
+        scale = 1
 
     if x is None:
         if match is not None and match.df == len(match) - 1:
