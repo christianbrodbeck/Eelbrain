@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-"""NDVar operations"""
+"""NDVar operations
+
+NDVar methods should work on all NDVars; This module defines operations that
+depend on the presence of specific dimensions as functions, as well as
+operations that operate on more than one NDVar.
+"""
 from collections import defaultdict
 from itertools import izip, repeat
 from math import floor
@@ -532,7 +537,6 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
         raise ValueError("Low variance at %s = %s" %
                          (dim, dim_obj._dim_index(low_var)))
 
-
     # find neighbors
     neighbors = defaultdict(list)
     for a, b in dim_obj.connectivity():
@@ -548,6 +552,49 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
 
     info = cs.set_info_cs(x.info, cs.stat_info('r'))
     return NDVar(y, (dim_obj,), info, name or x.name)
+
+
+def psd_welch(ndvar, fmin=0, fmax=np.inf, n_fft=256, n_overlap=0, n_per_seg=None):
+    """Power spectral density with Welch's method
+
+    Parameters
+    ----------
+    ndvar : NDVar  (..., time, ...)
+        Data with time dimension.
+    fmin : scalar
+        Lower bound of the frequencies of interest.
+    fmax : scalar
+        Upper bound of the frequencies of interest.
+    n_fft : int
+        Length of the FFT in samples (default 256).
+    n_overlap : int
+        Overlap between segments in samples (default 0).
+    n_per_seg : int | None
+        Length of each Welch segment in samples. Smaller ``n_per_seg`` result
+        in smoother PSD estimates (default ``n_fft``).
+
+    Returns
+    -------
+    psd : NDVar  (..., frequency)
+        Power spectral density.
+
+    Notes
+    -----
+    Uses :func:`mne.time_frequency.psd_array_welch` implementation.
+    """
+    time_ax = ndvar.get_axis('time')
+    dims = list(ndvar.dims)
+    del dims[time_ax]
+    last_ax = ndvar.ndim - 1
+    data = ndvar.x
+    if time_ax != last_ax:
+        data = data.rollaxis(time_ax, last_ax + 1)
+    sfreq = 1. / ndvar.time.tstep
+    psds, freqs = mne.time_frequency.psd_array_welch(
+        data, sfreq, fmin, fmax, n_fft=n_fft, n_overlap=n_overlap,
+        n_per_seg=n_per_seg)
+    dims.append(Scalar("frequency", freqs, 'Hz'))
+    return NDVar(psds, dims, ndvar.info.copy(), ndvar.name)
 
 
 def resample(ndvar, sfreq, npad=100, window='none'):

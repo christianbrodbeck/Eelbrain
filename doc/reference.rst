@@ -138,6 +138,7 @@ and more specific operations:
    labels_from_clusters
    morph_source_space
    neighbor_correlation
+   psd_welch
    resample
    segment
 

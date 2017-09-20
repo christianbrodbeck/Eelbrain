@@ -8,6 +8,10 @@ New in 0.27
 
 * :func:`concatenate`: concatenate multiple :class:`NDVar` objects to form a
   new dimension.
+* New functions:
+
+  - :func:`psd_welch`
+
 * New methods:
 
   - :meth:`Dataset.zip`
