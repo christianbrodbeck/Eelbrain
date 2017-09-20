@@ -21,6 +21,7 @@ New in 0.26
     title to the figure.
   - Plots that reresent time have a new method to synchronize the time axis on
     multiple plots: :meth:`~plot.Butterfly.link_time_axis`.
+  - Plot source space time series: :func:`plot.brain.butterfly`
 
 * :mod:`load.fiff`: when generating epochs from raw data, a new ``tstop``
   argument allows specifying the time interval exclusive of the last sample.
@@ -33,13 +34,15 @@ New in 0.26
 
   - :meth:`NDVar.log`
   - :meth:`NDVar.smooth`
-  - :meth:`MneExperiment.reset` (replacing :meth:`MneExperiment.store_state`
-    and :meth:`MneExperiment.restore_state`)
 
 * :class:`MneExperiment`:
 
+  - :meth:`MneExperiment.reset` (replacing :meth:`MneExperiment.store_state`
+    and :meth:`MneExperiment.restore_state`)
   - New :attr:`MneExperiment.auto_delete_results` attribute to control whether
     invalidated results are automatically deleted.
+  - :attr:`MneExperiment.screen_log_level`
+
 
 
 New in 0.25

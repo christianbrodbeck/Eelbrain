@@ -197,6 +197,11 @@ previously computed results. By default, the user is prompted to confirm
 the deletion of invalidated results. Set ``.auto_delete_results=True`` to
 delete them automatically without interrupting initialization.
 
+.. py:attribute:: MneExperiment.screen_log_level
+
+Determines the amount of information displayed on the screen while using
+an :class:`MneExperiment` (see :mod:`logging`).
+
 .. py:attribute:: MneExperiment.meg_system
 
 Starting with :mod:`mne` 0.13, fiff files converted from KIT files store
@@ -546,7 +551,10 @@ A number of standard parcellations are automatically defined (see
 :ref:`analysis-params-parc` below). Additional parcellations can be defined in
 the :attr:`MneExperiment.parcs` dictionary with ``{name: parc_definition}``
 entries. There are a couple of different ways in which parcellations can be
-defined:
+defined, described below.
+
+Each ``parc_definition`` can have a ``"views"`` entry to set the views shown in
+anatomical plots, e.g. ``{"views": ("medial", "lateral")}``.
 
 
 Recombinations
@@ -578,12 +586,19 @@ Examples (these are pre-defined parcellations)::
 
 An example using a split label::
 
-    parcs = {'medial': {'kind': 'combination', 'base': 'aparc',
-                        'labels': {'medialparietal': 'precuneus +'
-                                                     'posteriorcingulate',
-                                   'medialfrontal': 'medialorbitofrontal +'
-                                                    'rostralanteriorcingulate +'
-                                                    'split(superiorfrontal, 3)[2]'}}}
+    parcs = {
+        'medial': {
+            'kind': 'combination',
+            'base': 'aparc',
+            'labels': {
+                'medialparietal': 'precuneus + posteriorcingulate',
+                'medialfrontal': 'medialorbitofrontal + '
+                                 'rostralanteriorcingulate + '
+                                 'split(superiorfrontal, 3)[2]',
+            },
+            'views': 'medial',
+        },
+    }
 
 
 MNI coordinates
@@ -653,7 +668,8 @@ options are available:
 surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
     Freesurfer surface to use as brain geometry.
 views : :class:`str` | iterator of :class:`str`
-    View or views to show in the figure.
+    View or views to show in the figure. Can also be set for each parcellation,
+    see :attr:`MneExperiment.parc`.
 foreground : mayavi color
     Figure foreground color (i.e., the text color).
 background : mayavi color

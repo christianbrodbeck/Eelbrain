@@ -428,6 +428,7 @@ More specific control over the plots can be achieved through the
    :toctree: generated
 
     plot.brain.brain
+    plot.brain.butterfly
     plot.brain.cluster
     plot.brain.dspm
     plot.brain.p_map

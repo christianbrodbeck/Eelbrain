@@ -3029,10 +3029,9 @@ class NDVar(object):
     ----------
     x : array_like
         The data.
-    dims : tuple
-        The dimensions characterizing the axes of the data. If present,
-        ``'case'`` should be provided as a :py:class:`str`, and should
-        always occupy the first position.
+    dims : Sequence of Dimension
+        The dimensions characterizing the axes of the data. If present, ``Case``
+        should always occupy the first position.
     info : dict
         A dictionary with data properties (can contain arbitrary
         information that will be accessible in the info attribute).

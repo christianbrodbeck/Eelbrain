@@ -154,7 +154,8 @@ def events(raw=None, merge=-1, proj=False, name=None, bads=None,
         path to the events file can be supplied here. The events in the Dataset
         will reflect the event sin the events file rather than the raw file.
     others :
-        Keyword arguments for loading the raw file.
+        Keyword arguments for loading the raw file (see
+        :func:`mne.io.read_raw_kit` or :func:`mne.io.read_raw_kit`).
 
     Returns
     -------
