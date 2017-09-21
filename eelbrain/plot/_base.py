@@ -2277,17 +2277,14 @@ class XAxisMixin(object):
 
     Parameters
     ----------
-    epochs : list of list of NDVar
-        The data that is plotted (to determine axis range).
-    xdim : str
-        Dimension that is plotted on the x-axis.
+    xmin : scalar
+        Lower bound of the x axis.
+    xmin : scalar
+        Upper bound of the x axis.
     axes : list of Axes
         Axes that should be managed by the mixin.
     xlim : tuple of 2 scalar
         Initial x-axis display limits.
-    im : bool
-        Plot displays an im, i.e. the axes limits need to extend beyond the
-        dimension endpoints by half a step (default False).
 
     Notes
     -----
@@ -2299,15 +2296,9 @@ class XAxisMixin(object):
      - ``f``: x-axis zoom in (reduce x axis range)
      - ``d``: x-axis zoom out (increase x axis range)
     """
-    def __init__(self, epochs, xdim, xlim=None, axes=None, im=False):
-        dims = tuple(e.get_dim(xdim) for e in chain(*epochs))
-        if im:
-            dim_extent = tuple(dim._axis_im_extent() for dim in dims)
-            self.__xmin = min(e[0] for e in dim_extent)
-            self.__xmax = max(e[1] for e in dim_extent)
-        else:
-            self.__xmin = min(dim[0] for dim in dims)
-            self.__xmax = max(dim[-1] for dim in dims)
+    def __init__(self, xmin, xmax, xlim=None, axes=None):
+        self.__xmin = xmin
+        self.__xmax = xmax
         self.__axes = axes or self._axes
         self.__vspans = []
         self._register_key('f', self.__on_zoom_plus)
@@ -2319,6 +2310,33 @@ class XAxisMixin(object):
         if xlim is None:
             xlim = (self.__xmin, self.__xmax)
         self._set_xlim(*xlim)
+
+    def _init_with_data(self, epochs, xdim, xlim=None, axes=None, im=False):
+        """Compute axis bounds from data
+
+        Parameters
+        ----------
+        epochs : list of list of NDVar
+            The data that is plotted (to determine axis range).
+        xdim : str
+            Dimension that is plotted on the x-axis.
+        axes : list of Axes
+            Axes that should be managed by the mixin.
+        xlim : tuple of 2 scalar
+            Initial x-axis display limits.
+        im : bool
+            Plot displays an im, i.e. the axes limits need to extend beyond the
+            dimension endpoints by half a step (default False).
+        """
+        dims = tuple(e.get_dim(xdim) for e in chain(*epochs))
+        if im:
+            dim_extent = tuple(dim._axis_im_extent() for dim in dims)
+            xmin = min(e[0] for e in dim_extent)
+            xmax = max(e[1] for e in dim_extent)
+        else:
+            xmin = min(dim[0] for dim in dims)
+            xmax = max(dim[-1] for dim in dims)
+        XAxisMixin.__init__(self, xmin, xmax, xlim, axes)
 
     def _get_xlim(self):
         return self.__axes[0].get_xlim()
@@ -2517,27 +2535,6 @@ class YLimMixin(object):
         elif vmin is None:
             vmin = -vmax
         self.set_ylim(vmin, vmax)
-
-
-class Figure(EelFigure):
-    """Empty figure
-    
-    Parameters
-    ----------
-    nax : int (optional)
-        Create this many axes (default is to not create any axes).
-    ...
-    autoscale : bool
-        Autoscale data axes (default False).
-    """
-    _name = "Figure"
-
-    def __init__(self, nax=0, *args, **kwargs):
-        layout = Layout(nax, 1, 2, *args, **kwargs)
-        EelFigure.__init__(self, None, layout)
-
-    def show(self):
-        self._show()
 
 
 class ImageTiler(object):

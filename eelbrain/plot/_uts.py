@@ -202,7 +202,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
 
         self._configure_yaxis(ct.Y, ylabel)
         self._configure_xaxis_dim(ct.Y.get_dim(xdim), xlabel, xticklabels)
-        XAxisMixin.__init__(self, ((Y,),), xdim, xlim)
+        XAxisMixin._init_with_data(self, ((Y,),), xdim, xlim)
         YLimMixin.__init__(self, self._plots)
         LegendMixin.__init__(self, legend, legend_handles)
         self._update_ui_cluster_button()
@@ -363,7 +363,7 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
             legend_handles.update(h.legend_handles)
 
         self.epochs = epochs
-        XAxisMixin.__init__(self, epochs, xdim, xlim)
+        XAxisMixin._init_with_data(self, epochs, xdim, xlim)
         YLimMixin.__init__(self, self.plots)
         LegendMixin.__init__(self, legend, legend_handles)
         self._show()

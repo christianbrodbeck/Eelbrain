@@ -7,7 +7,7 @@ import numpy as np
 from nose.tools import eq_
 
 from eelbrain import datasets, plot, testnd
-from eelbrain.plot._base import Figure
+from eelbrain.plot._figure import Figure
 from eelbrain.plot._utsnd import _ax_bfly_epoch
 from eelbrain._utils.testing import requires_mne_sample_data
 
@@ -25,7 +25,7 @@ def test_plot_butterfly():
     p = plot.Butterfly(stc, show=False)
     p.close()
 
-    # _ax_bfly_epoch
+    # _ax_bfly_epoch (used in GUI, not part of a figure)
     fig = Figure(1, show=False)
     ax = _ax_bfly_epoch(fig._axes[0], ds[0, 'utsnd'])
     fig.show()

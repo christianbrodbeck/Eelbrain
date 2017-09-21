@@ -259,7 +259,7 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
 
         self._configure_xaxis_dim(epochs[0][0].get_dim(xdim), xlabel, xticklabels)
         self._configure_yaxis_dim(epochs, ydim, ylabel, scalar=False)
-        XAxisMixin.__init__(self, epochs, xdim, xlim, im=True)
+        XAxisMixin._init_with_data(self, epochs, xdim, xlim, im=True)
         TimeSlicerEF.__init__(self, xdim, epochs)
         self._show()
 
@@ -471,7 +471,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
-        XAxisMixin.__init__(self, epochs, xdim, xlim)
+        XAxisMixin._init_with_data(self, epochs, xdim, xlim)
         YLimMixin.__init__(self, self.plots)
         if linedim == 'sensor':
             TopoMapKey.__init__(self, self._topo_data)

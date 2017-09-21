@@ -174,6 +174,6 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
         self._configure_xaxis_dim(xdim_obj, xlabel, xticklabels)
         if ylabel:
             ax.set_ylabel(ylabel)
-        XAxisMixin.__init__(self, epochs, xdim, xlim)
+        XAxisMixin._init_with_data(self, epochs, xdim, xlim)
         LegendMixin.__init__(self, legend, dict(izip(cell_labels, handles)))
         self._show()

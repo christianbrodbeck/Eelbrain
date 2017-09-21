@@ -308,7 +308,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
             ax.xaxis.set_ticklabels(())
 
         # setup callback
-        XAxisMixin.__init__(self, epochs, xdim, xlim, self.bfly_axes)
+        XAxisMixin._init_with_data(self, epochs, xdim, xlim, self.bfly_axes)
         YLimMixin.__init__(self, self.bfly_plots + self.topo_plots)
         TimeSlicerEF.__init__(self, xdim, epochs, self.bfly_axes, False)
         TopoMapKey.__init__(self, self._topo_data)
