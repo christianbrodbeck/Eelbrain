@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 from collections import defaultdict, Sequence
+from datetime import datetime
 import inspect
 from itertools import chain, izip, product
 import logging
@@ -1144,7 +1145,8 @@ class MneExperiment(FileTree):
 
         # log package versions
         from .. import __version__
-        log.info("%s initialized with root %s", self.__class__.__name__, root)
+        log.info("*** %s initialized with root %s on %s ***", self.__class__.__name__, 
+                 root, datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         msg = "Using eelbrain %s, mne %s." % (__version__, mne.__version__)
         if any('dev' in v for v in (__version__, mne.__version__)):
             log.warn(msg + " Development versions are more likely to contain "
@@ -1213,7 +1215,7 @@ class MneExperiment(FileTree):
         # check for digitizer data differences
         # ====================================
         #  - raw files with different head shapes require different head-mri
-        #    trans files, which is not possible
+        #    trans files, which is currently not implemented
         #  - SuperEpochs currently need to have a single forward solution,
         #    hence marker positions need to be the same between sub-epochs
             if subjects_with_dig_changes:
@@ -1325,13 +1327,13 @@ class MneExperiment(FileTree):
             # tests: test def change
 
             # check events
-            # 'events' -> number or timing og triggers (includes trigger_shift)
+            # 'events' -> number or timing of triggers (includes trigger_shift)
             # 'variables' -> only variable change
             for key, old_events in cache_events.iteritems():
                 new_events = events.get(key)
                 if new_events is None:
                     invalid_cache['events'].add(key)
-                    log.debug("  raw file removed: %s", '/'.join(key))
+                    log.debug("  raw file removed, unable to verify events: %s", '/'.join(key))
                 elif new_events.n_cases != old_events.n_cases:
                     invalid_cache['events'].add(key)
                     log.debug("  event length: %s %i->%i", '/'.join(key),
