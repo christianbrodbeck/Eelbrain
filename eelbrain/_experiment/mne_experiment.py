@@ -1256,6 +1256,10 @@ class MneExperiment(FileTree):
 
             # events did not include session
             if cache_state_v < 4:
+                if not events:
+                    raise DefinitionError(
+                        "No raw files ot events found. Did you set the MneExperiment.session "
+                        "parameter correctly?")
                 session = self._sessions[0]
                 cache_events = {(subject, session): v for subject, v in
                                 cache_state['events'].iteritems()}
