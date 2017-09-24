@@ -5462,7 +5462,7 @@ class MneExperiment(FileTree):
 
     def plot_annot(self, parc=None, surf=None, views=None, hemi=None,
                    borders=False, alpha=0.7, w=None, h=None, axw=None, axh=None,
-                   foreground=None, background=None, **state):
+                   foreground=None, background=None, seeds=False, **state):
         """Plot the annot file on which the current parcellation is based
 
         Parameters
@@ -5475,8 +5475,8 @@ class MneExperiment(FileTree):
         views : str | iterator of str
             View or views to show in the figure.
         hemi : 'lh' | 'rh' | 'both' | 'split'
-            Which hemispheres to plot (default includes hemisphere with more than one
-            label in the annot file).
+            Which hemispheres to plot (default includes hemisphere with more
+            than one label in the annot file).
         borders : bool | int
             Show only label borders (PySurfer Brain.add_annotation() argument).
         alpha : scalar
@@ -5487,6 +5487,8 @@ class MneExperiment(FileTree):
             Figure foreground color (i.e., the text color).
         background : mayavi color
             Figure background color.
+        seeds : bool
+            Plot seeds as points (only applies to seeded parcellations).
         ...
             State parameters.
 
@@ -5499,20 +5501,51 @@ class MneExperiment(FileTree):
         """
         if parc is not None:
             state['parc'] = parc
-        parc = self.get('parc', **state)
+        self.set(**state)
 
         self.make_annot()
+
+        parc_name, parc = self._get_parc()
+        if seeds:
+            if not isinstance(parc, SeededParcellation):
+                raise ValueError(
+                    "seeds=True is only valid for seeded parcellation, "
+                    "not for parc=%r" % (parc_name,))
+            # if seeds are defined on a scaled common-brain, we need to plot the
+            # scaled brain:
+            plot_on_scaled_common_brain = isinstance(parc, IndividualSeededParcellation)
+        else:
+            plot_on_scaled_common_brain = False
+
         mri_sdir = self.get('mri-sdir')
-        if is_fake_mri(self.get('mri-dir')):
+        if (not plot_on_scaled_common_brain) and is_fake_mri(self.get('mri-dir')):
             subject = self.get('common_brain')
         else:
             subject = self.get('mrisubject')
 
         kwa = self._surfer_plot_kwargs(surf, views, foreground, background,
                                        None, hemi)
-        return plot.brain.annot(parc, subject, borders=borders, alpha=alpha,
-                                w=w, h=h, axw=axw, axh=axh,
-                                subjects_dir=mri_sdir, **kwa)
+        brain = plot.brain.annot(parc_name, subject, borders=borders, alpha=alpha,
+                                 w=w, h=h, axw=axw, axh=axh,
+                                 subjects_dir=mri_sdir, **kwa)
+        if seeds:
+            from mayavi import mlab
+
+            seeds = parc.seeds_for_subject(subject)
+            seed_points = {hemi: [np.atleast_2d(coords) for name, coords in
+                                  seeds.iteritems() if name.endswith(hemi)]
+                           for hemi in ('lh', 'rh')}
+            plot_points = {hemi: np.vstack(points).T if len(points) else None
+                           for hemi, points in seed_points.iteritems()}
+            for hemisphere in brain.brains:
+                if plot_points[hemisphere.hemi] is None:
+                    continue
+                x, y, z = plot_points[hemisphere.hemi]
+                mlab.points3d(x, y, z, figure=hemisphere._f, color=(1, 0, 0),
+                              scale_factor=10)
+            brain.set_parallel_view(scale=True)
+
+        return brain
 
     def plot_brain(self, common_brain=True, **brain_kwargs):
         """Plot the brain model
