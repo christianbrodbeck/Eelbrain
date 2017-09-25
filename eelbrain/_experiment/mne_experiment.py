@@ -2427,18 +2427,21 @@ class MneExperiment(FileTree):
                 yield value
 
     def label_events(self, ds):
-        """
-        Add T (time) and SOA (stimulus onset asynchrony) to the Dataset.
+        """Add event labels to events loaded from raw files
 
         Parameters
         ----------
         ds : Dataset
-            A Dataset containing events (as returned by
+            A Dataset containing events (with variables as returned by
             :func:`load.fiff.events`).
 
         Notes
         -----
-        Subclass this method to specify events.
+        Override this method in MneExperiment subclasses to add event labels.
+        The session the events are from can be determined with
+        ``ds.info['session']``.
+        Call the original (super-class) method to add T (time) and SOA (stimulus
+        onset asynchrony) to the Dataset.
         """
         ds['T'] = ds['i_start'] / ds.info['sfreq']
         ds['SOA'] = ds['T'].diff(0)
@@ -3293,7 +3296,7 @@ class MneExperiment(FileTree):
         preload : bool
             Mne Raw parameter.
         ndvar : bool
-            Load as NDVar instead of mne Raw object (defautl False).
+            Load as NDVar instead of mne Raw object (default False).
         decim : int
             Decimate data (implies preload=True; default 1, i.e. no decimation)
         ...
