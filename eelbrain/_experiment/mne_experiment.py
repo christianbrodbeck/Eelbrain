@@ -3,6 +3,7 @@ from __future__ import print_function
 
 from collections import defaultdict, Sequence
 from datetime import datetime
+from glob import glob
 import inspect
 from itertools import chain, izip, product
 import logging
@@ -1518,26 +1519,31 @@ class MneExperiment(FileTree):
                     rm['report-file'].add({'test': test})
 
                 # find actual files to delete
+                log.debug("Outdated cache files:")
                 files = set()
+                msg = []
                 for temp, arg_dicts in rm.iteritems():
                     keys = self.find_keys(temp, False)
                     for args in arg_dicts:
                         kwargs = {k: args.get(k, '*') for k in keys}
-                        files.update(self.glob(temp, vmatch=False, **kwargs))
-
-                # log
-                if files:
-                    msg.append("Files to be deleted:")
-                    msg.extend(sorted('  ' + relpath(f, root) for f in files))
-                else:
-                    msg.append("No cache files affected.")
-                log.debug('\n'.join(msg))
-                # don't print same message to the screen twice
-                if self._screen_log_level <= logging.DEBUG:
-                    msg = []
+                        pattern = self._glob_pattern(temp, vmatch=False, **kwargs)
+                        filenames = glob(pattern)
+                        files.update(filenames)
+                        # log
+                        rel_pattern = ' >' + relpath(pattern, root)
+                        rel_filenames = sorted('  ' + relpath(f, root) for f in filenames)
+                        log.debug(rel_pattern)
+                        map(log.debug, rel_filenames)
+                        # message to the screen unless log is already displayed
+                        if self._screen_log_level > logging.DEBUG:
+                            msg.append(rel_pattern)
+                            msg.extend(rel_filenames)
 
                 # handle invalid files
                 if files:
+                    if msg:
+                        msg.insert(0, "Outdated cache files to be deleted:")
+
                     if self.auto_delete_cache is False:
                         msg.append("Automatic cache management disabled. Either "
                                    "revert changes, or set e.auto_delete_cache=True")
@@ -1576,6 +1582,8 @@ class MneExperiment(FileTree):
                     log.info("Deleting %i invalid cache files", len(files))
                     for path in files:
                         os.remove(path)
+                else:
+                    log.debug("No existing cache files affected.")
             else:
                 log.debug("Cache up to date.")
         elif cache_dir_existed:  # cache-dir but no history

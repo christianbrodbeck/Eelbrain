@@ -142,7 +142,7 @@ class TreeModel(object):
         self._field_values = LayeredDict()
         self._params = LayeredDict()
         self._terminal_fields = []
-        self._user_fields = []  # field that are relevant when showing state
+        self._user_fields = []  # terminal fields that are relevant for user
 
         # scaffold for hooks
         self._compound_members = {}
@@ -986,14 +986,17 @@ class FileTree(TreeModel):
         State parameters can include an asterisk ('*') to match multiple files.
         Uses :func:`glob.glob`.
         """
+        pattern = self._glob_pattern(temp, inclusive, **state)
+        return glob(pattern)
+
+    def _glob_pattern(self, temp, inclusive=False, **state):
         if inclusive:
             for key in self._terminal_fields:
                 if key not in state and key != 'root':
                     state[key] = '*'
         with self._temporary_state:
             pattern = self.get(temp, allow_asterisk=True, **state)
-        print(pattern)
-        return glob(pattern)
+        return pattern
 
     def move(self, temp, dst_root=None, inclusive=False, confirm=False,
              overwrite=False, **state):
