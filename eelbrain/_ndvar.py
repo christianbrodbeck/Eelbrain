@@ -32,8 +32,7 @@ def concatenate(ndvars, dim='time', name=None, tmin=0):
         dimension to concatenate the different cases.
     dim : str | Dimension
         Either a string specifying an existsing dimension along which to
-        concatenate (only 'time' and 'case' are implemented), or a Dimension
-        object to create a new dimension.
+        concatenate, or a Dimension object to create a new dimension.
     name : str (optional)
         Name the NDVar holding the result.
     tmin : scalar
@@ -66,11 +65,12 @@ def concatenate(ndvars, dim='time', name=None, tmin=0):
         dim_names = ndvar.get_dimnames((None,) * axis + (dim,) +
                                        (None,) * (ndvar.ndim - axis - 1))
         x = np.concatenate([v.get_data(dim_names) for v in ndvars], axis)
-        if dim == 'time':
+        dim_obj = ndvar.dims[axis]
+        if isinstance(dim_obj, UTS):
             out_dim = UTS(tmin, ndvar.time.tstep, x.shape[axis])
-        elif dim == 'case':
+        elif isinstance(dim_obj, Case):
             out_dim = Case
-        elif dim == 'source':
+        elif isinstance(dim_obj, SourceSpace):
             if (len(ndvars) != 2 or
                         ndvars[0].source.rh_n != 0 or
                         ndvars[1].source.lh_n != 0):
@@ -97,9 +97,12 @@ def concatenate(ndvars, dim='time', name=None, tmin=0):
 
             out_dim = SourceSpace([lh.lh_vertices, rh.rh_vertices], lh.subject,
                                   lh.src, lh.subjects_dir, parc)
+        elif isinstance(dim_obj, Scalar):
+            out_dim = Scalar._concatenate(v.get_dim(dim) for v in ndvars)
         else:
-            raise NotImplementedError("dim=%s is not implemented; only 'time' and "
-                                      "'case' are implemented" % repr(dim))
+            raise NotImplementedError(
+                "concatenate() is not implemented for concatenating along %s "
+                "dimensions" % (dim_obj.__class__.__name__,))
         dims = ndvar.dims[:axis] + (out_dim,) + ndvar.dims[axis + 1:]
     return NDVar(x, dims, info, name or ndvar.name)
 

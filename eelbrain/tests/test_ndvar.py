@@ -4,8 +4,10 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from eelbrain import (
-    NDVar, Scalar, UTS, datasets, concatenate, convolve, cross_correlation,
-    find_intervals, find_peaks)
+    NDVar, Scalar, UTS, datasets,
+    concatenate, convolve, cross_correlation, find_intervals, find_peaks,
+    psd_welch,
+)
 
 
 def test_concatenate():
@@ -21,6 +23,16 @@ def test_concatenate():
     assert_array_equal(vc.sub(time=(0, 1)).x, v1.x)
     assert_array_equal(vc.sub(time=(1, 2)).x, v0.x)
     assert_array_equal(vc.info, ds['utsnd'].info)
+
+    # scalar
+    psd = psd_welch(ds['utsnd'], n_fft=100)
+    v0 = psd.sub(frequency=(None, 5))
+    v1 = psd.sub(frequency=(45, None))
+    conc = concatenate((v0, v1), 'frequency')
+    assert_array_equal(conc.frequency.values[:5], psd.frequency.values[:5])
+    assert_array_equal(conc.frequency.values[5:], psd.frequency.values[45:])
+    conc_data = conc.get_data(v1.dimnames)
+    assert_array_equal(conc_data[:, :, 5:], v1.x)
 
 
 def test_convolve():

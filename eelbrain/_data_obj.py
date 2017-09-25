@@ -7620,6 +7620,21 @@ class Scalar(Dimension):
         ds['%s_max' % self.name] = Var([self.values[w[-1]] for w in where])
         return ds
 
+    @classmethod
+    def _concatenate(cls, scalars):
+        "Concatenate multiple Scalar instances"
+        scalars = tuple(scalars)
+        attrs = {}
+        for attr in ('name', 'unit', 'tick_format'):
+            values = {getattr(s, attr) for s in scalars}
+            if len(values) > 1:
+                raise DimensionMismatchError(
+                    "Trying to concatenate %s dimensions with different %ss: "
+                    "%s" % (cls.__name__, attr, values))
+            attrs[attr] = values.pop()
+        values = np.concatenate(tuple(s.values for s in scalars))
+        return cls(attrs['name'], values, attrs['unit'], attrs['tick_format'])
+
     def _array_index(self, arg):
         if isinstance(arg, self.__class__):
             s_idx, a_idx = np.nonzero(self.values[:, None] == arg.values)

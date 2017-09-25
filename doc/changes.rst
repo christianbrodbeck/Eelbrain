@@ -3,6 +3,13 @@ Changes
 
 .. currentmodule:: eelbrain
 
+New in 0.27
+-----------
+
+* :func:`concatenate`: concatenate multiple :class:`NDVar` objects to form a
+  new dimension.
+
+
 New in 0.26
 -----------
 
