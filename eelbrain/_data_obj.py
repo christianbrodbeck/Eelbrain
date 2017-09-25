@@ -4292,9 +4292,11 @@ class NDVar(object):
 
         Parameters
         ----------
-        x : Model
-            Predictor or predictors. Can also be supplied as argument that can
-            be converted to a Model, for example ``Var`` or list of ``Var``.
+        x : Model | str
+            Predictor or predictors. A Model to regress over cases, or a
+            dimension name to regress against values of one of the
+            ``NDVar``'s dimensions. A Model with multiple ``Var``s can be
+            supplied as argument list of ``Var``.
         name : str
             Name of the output NDVar (default is the current name).
 
@@ -4307,7 +4309,8 @@ class NDVar(object):
         Notes
         -----
         The intercept is generated internally, and betas for the intercept are
-        not returned.
+        not returned. If you need access to more details of the results,
+        consider using :class:`testnd.LM`.
 
         See Also
         --------
@@ -4315,23 +4318,33 @@ class NDVar(object):
         """
         from ._stats import stats
 
-        if not self.has_case:
-            raise DimensionMismatchError(
-                "Can only apply regression to NDVar with case dimension")
-
-        x = asmodel(x)
-        if len(x) != len(self):
-            raise DimensionMismatchError(
-                "Predictors do not have same number of cases (%i) as the "
-                "dependent variable (%i)" % (len(x), len(self)))
-
-        betas = stats.betas(self.x, x)[1:]  # drop intercept
         info = self.info.copy()
         info.update(meas='beta', unit=None)
         if 'summary_info' in info:
             del info['summary_info']
-        return NDVar(betas, ('case',) + self.dims[1:], info,
-                     name or self.name)
+
+        if isinstance(x, basestring):
+            if x.startswith('.'):
+                x = x[:]
+            dimnames = self.get_dimnames((x,) + (None,) * (self.ndim - 1))
+            dim = self.get_dim(x)
+            values = dim._as_scalar_array()
+            y = self.get_data(dimnames)
+            betas = stats.betas(y, Var(values, x))[1]
+            out_dims = self.get_dims(dimnames[1:])
+        elif not self.has_case:
+            raise DimensionMismatchError(
+                "Can only apply regression to NDVar with case dimension")
+        else:
+            x = asmodel(x)
+            if len(x) != len(self):
+                raise DimensionMismatchError(
+                    "Predictors do not have same number of cases (%i) as the "
+                    "dependent variable (%i)" % (len(x), len(self)))
+
+            betas = stats.betas(self.x, x)[1:]  # drop intercept
+            out_dims = (Case,) + self.dims[1:]
+        return self._package_aggregated_output(betas, out_dims, info, name or self.name)
 
     def ols_t(self, x, name=None):
         """
@@ -7122,6 +7135,10 @@ class Dimension(object):
         raise NotImplementedError(
             "Binning for %s dimension" % self.__class__.__name__)
 
+    def _as_scalar_array(self):
+        raise TypeError("%s dimension %r has no scalar representation" %
+                        (self.__class__.__name__, self.name))
+
     def _as_uv(self):
         return Var(self._axis_data(), name=self.name)
 
@@ -7422,6 +7439,9 @@ class Case(Dimension):
     def __iter__(self):
         return iter(xrange(self.n))
 
+    def _as_scalar_array(self):
+        return np.arange(self.n)
+
     def _axis_format(self, scalar, label):
         if scalar:
             fmt = FormatStrFormatter('%i')
@@ -7637,6 +7657,9 @@ class Scalar(Dimension):
             return self.values[index]
         return self.__class__(self.name, self.values[index], self.unit,
                               self.tick_format, self._subgraph(index))
+
+    def _as_scalar_array(self):
+        return self.values
 
     def _axis_data(self):
         return self.values
@@ -9209,6 +9232,9 @@ class UTS(Dimension):
 
     def __repr__(self):
         return "UTS(%s, %s, %s)" % (self.tmin, self.tstep, self.nsamples)
+
+    def _as_scalar_array(self):
+        return self.times
 
     def _axis_data(self):
         return self.times
