@@ -29,7 +29,7 @@ from .. import save
 from .. import table
 from .. import testnd
 from .._data_obj import (
-    Datalist, Dataset, Factor, Var, align, all_equal, as_legal_dataset_key,
+    Datalist, Dataset, Factor, Var, align, all_equal,
     asfactor, assert_is_legal_dataset_key, combine)
 from .._exceptions import DimensionMismatchError, OldVersionError
 from .._info import BAD_CHANNELS
@@ -2921,8 +2921,9 @@ class MneExperiment(FileTree):
         """
         subject, group = self._process_subject_arg(subject, kwargs)
         modality = self.get('modality')
+        epoch = self._epochs[self.get('epoch')]
         if baseline is True:
-            baseline = self._epochs[self.get('epoch')].baseline
+            baseline = epoch.baseline
 
         if group is not None:
             dss = [self.load_evoked(None, baseline, False, cat, decim, data_raw,
@@ -2946,7 +2947,6 @@ class MneExperiment(FileTree):
                 for l in ulens:
                     err.append('%i: %r' % (l, ds['subject', alens == l].cells))
                 raise DimensionMismatchError('\n'.join(err))
-
         else:  # single subject
             ds = self._make_evoked(decim, data_raw)
 
@@ -2963,7 +2963,7 @@ class MneExperiment(FileTree):
             # baseline correction
             if isinstance(baseline, str):
                 raise NotImplementedError
-            elif baseline and not self._epochs[self.get('epoch')].post_baseline_trigger_shift:
+            elif baseline and not epoch.post_baseline_trigger_shift:
                 for e in ds['evoked']:
                     rescale(e.data, e.times, baseline, 'mean', copy=False)
 
