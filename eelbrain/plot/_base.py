@@ -1292,6 +1292,10 @@ class EelFigure(object):
             ax.axvspan(xmin, xmax, *args, **kwargs)
         self.draw()
 
+    def set_name(self, name):
+        """Set the figure window title"""
+        self._frame.SetTitle('%s: %s' % (self._name, name) if name else self._name)
+
     def set_xtick_rotation(self, rotation):
         """Rotate every x-axis tick-label by an angle (counterclockwise, in degrees)
 
