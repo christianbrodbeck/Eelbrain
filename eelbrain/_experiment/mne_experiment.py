@@ -1359,14 +1359,20 @@ class MneExperiment(FileTree):
                     ask_to_delete_ica_files(raw, status, filenames)
 
             # epochs
-            for epoch, params in cache_state['epochs'].iteritems():
-                if epoch not in epoch_state_v or params != epoch_state_v[epoch]:
+            for epoch, old_params in cache_state['epochs'].iteritems():
+                new_params = epoch_state_v.get(epoch, None)
+                if old_params != new_params:
                     invalid_cache['epochs'].add(epoch)
+                    if new_params is None:
+                        log.debug("  Epoch removed: %s", epoch)
+                    else:
+                        log.debug("  Epoch changed: %s %r -> %r", epoch, old_params, new_params)
 
             # parcs
             for parc, params in cache_parcs.iteritems():
                 if parc not in parcs_state:
                     invalid_cache['parcs'].add(parc)
+                    log.debug("  Parc removed: %s", parc)
                 elif params != parcs_state[parc]:
                     # FS_PARC:  Parcellations that are provided by the user
                     # should not be automatically removed.
@@ -1376,6 +1382,7 @@ class MneExperiment(FileTree):
                     if not isinstance(self._parcs[parc],
                                       (FreeSurferParcellation, FSAverageParcellation)):
                         invalid_cache['parcs'].add(parc)
+                        log.debug("  Parc changed: %s", parc)
 
             # tests
             for test, params in cache_tests.iteritems():
