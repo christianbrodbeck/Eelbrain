@@ -103,4 +103,9 @@ def find_test_vars(params):
                 vs.update(find_variables(definition))
     return vs
 
+
+def typed_arg(arg, type_):
+    return None if arg is None else type_(arg)
+
+
 find_test_vars.__test__ = False
