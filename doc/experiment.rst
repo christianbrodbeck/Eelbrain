@@ -189,6 +189,13 @@ has finished executing or run into an error, for example::
 will send you an email as soon as the report is finished (or the program
 encountered an error)
 
+.. py:attribute:: MneExperiment.auto_delete_results
+
+Whenever a :class:`MneExperiment` instance is initialized with a valid
+``root`` path, it checks whether changes in the class definition invalidate
+previously computed results. By default, the user is prompted to confirm
+the deletion of invalidated results. Set ``.auto_delete_results=True`` to
+delete them automatically without interrupting initialization.
 
 .. py:attribute:: MneExperiment.meg_system
 

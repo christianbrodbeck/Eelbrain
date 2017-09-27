@@ -526,12 +526,12 @@ class MneExperiment(FileTree):
     """
     path_version = None
     screen_log_level = logging.INFO
+    auto_delete_results = False
     auto_delete_cache = True
     # what to do when the experiment class definition changed:
     #   True: delete outdated files
     #   False: raise an error
     #   'disable': ignore it
-    #   'ask': prompt for what to do in the terminal
     #   'debug': prompt with debug options
 
     # tuple (if the experiment has multiple sessions)
@@ -1528,7 +1528,7 @@ class MneExperiment(FileTree):
                 # find actual files to delete
                 log.debug("Outdated cache files:")
                 files = set()
-                msg = []
+                result_files = []
                 for temp, arg_dicts in rm.iteritems():
                     keys = self.find_keys(temp, False)
                     for args in arg_dicts:
@@ -1537,37 +1537,49 @@ class MneExperiment(FileTree):
                         filenames = glob(pattern)
                         files.update(filenames)
                         # log
-                        rel_pattern = ' >' + relpath(pattern, root)
+                        rel_pattern = relpath(pattern, root)
                         rel_filenames = sorted('  ' + relpath(f, root) for f in filenames)
-                        log.debug(rel_pattern)
+                        log.debug(' >%s', rel_pattern)
                         map(log.debug, rel_filenames)
                         # message to the screen unless log is already displayed
-                        if self._screen_log_level > logging.DEBUG:
-                            msg.append(rel_pattern)
-                            msg.extend(rel_filenames)
+                        if rel_pattern.startswith('results'):
+                            result_files.extend(rel_filenames)
 
                 # handle invalid files
-                if files:
-                    if msg:
-                        msg.insert(0, "Outdated cache files to be deleted:")
+                n_result_files = len(result_files)
+                if n_result_files and self.auto_delete_cache is True and not self.auto_delete_results:
+                    if self._screen_log_level > logging.DEBUG:
+                        msg = result_files[:]
+                        msg.insert(0, "Outdated result files detected:")
+                    else:
+                        msg = []
+                    msg.append("Delete %i outdated results?" % (n_result_files,))
+                    options = [
+                        ('delete', 'delete invalid result files'),
+                        ('abort', 'raise an error'),
+                    ]
+                    command = ask('\n'.join(msg), options)
+                    if command == 'abort':
+                        raise RuntimeError("User aborted invalid result deletion")
+                    elif command != 'delete':
+                        raise RuntimeError("command=%r" % (command,))
 
+                if files:
+                    msg = []
                     if self.auto_delete_cache is False:
                         msg.append("Automatic cache management disabled. Either "
                                    "revert changes, or set e.auto_delete_cache=True")
                         raise RuntimeError('\n'.join(msg))
                     elif isinstance(self.auto_delete_cache, basestring):
-                        options = [
-                            ('delete', 'delete invalid cache files'),
-                            ('abort', 'raise an error'),
-                        ]
-                        if self.auto_delete_cache == 'debug':
-                            options += [
-                                ('ignore', 'proceed without doing anything'),
-                                ('revalidate', "don't delete any cache files but write a new cache-state file"),
-                            ]
-                        elif self.auto_delete_cache != 'ask':
+                        if self.auto_delete_cache != 'debug':
                             raise ValueError("MneExperiment.auto_delete_cache=%r" %
                                              (self.auto_delete_cache,))
+                        options = [
+                            ('delete', 'delete invalid files'),
+                            ('abort', 'raise an error'),
+                            ('ignore', 'proceed without doing anything'),
+                            ('revalidate', "don't delete any cache files but write a new cache-state file"),
+                        ]
                         command = ask('\n'.join(msg), options)
                         if command == 'delete':
                             pass
@@ -1586,7 +1598,13 @@ class MneExperiment(FileTree):
                                         repr(self.auto_delete_cache))
 
                     # delete invalid files
-                    log.info("Deleting %i invalid cache files", len(files))
+                    n_cache_files = len(files) - n_result_files
+                    descs = []
+                    if n_result_files:
+                        descs.append("%i invalid result files" % n_result_files)
+                    if n_cache_files:
+                        descs.append("%i invalid cache files" % n_cache_files)
+                    log.info("Deleting " + (' and '.join(descs)) + '...')
                     for path in files:
                         os.remove(path)
                 else:

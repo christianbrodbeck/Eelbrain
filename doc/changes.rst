@@ -36,6 +36,11 @@ New in 0.26
   - :meth:`MneExperiment.reset` (replacing :meth:`MneExperiment.store_state`
     and :meth:`MneExperiment.restore_state`)
 
+* :class:`MneExperiment`:
+
+  - New :attr:`MneExperiment.auto_delete_results` attribute to control whether
+    invalidated results are automatically deleted.
+
 
 New in 0.25
 -----------
