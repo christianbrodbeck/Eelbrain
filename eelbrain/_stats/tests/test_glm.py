@@ -13,22 +13,7 @@ from eelbrain import datasets, test, testnd, Dataset, NDVar
 from eelbrain._data_obj import UTS
 from eelbrain._stats import glm
 from eelbrain._stats.permutation import permute_order
-
-
-def r_require(package):
-    from rpy2.rinterface import RRuntimeWarning
-    from rpy2.robjects import r
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RRuntimeWarning)
-        success = r('require(%s)' % package)[0]
-    
-    if not success:
-        print(r("install.packages('%s', repos='http://cran.us.r-project.org')"
-                % package))
-        success = r('require(%s)' % package)[0]
-        if not success:
-            raise RuntimeError("Could not install R package %r" % package)
+from eelbrain._utils.r_bridge import r, r_require, r_warning_filter
 
 
 @nottest
@@ -106,8 +91,6 @@ def run_as_ndanova(y, x, ds):
 
 def test_anova():
     "Test ANOVA"
-    from rpy2.rinterface import RRuntimeWarning
-    from rpy2.robjects import r
     r_require('car')
     r_require('ez')
 
@@ -152,8 +135,7 @@ def test_anova():
     print(aov)
     fs = run_on_lm_fitter('fltvar', 'B * nrm(B)', sds)
     fnds = run_as_ndanova('fltvar', 'B * nrm(B)', sds)
-    with warnings.catch_warnings():  # type argument to ezANOVA
-        warnings.filterwarnings('ignore', category=RRuntimeWarning)
+    with r_warning_filter:  # type argument to ezANOVA
         r_res = r('ezANOVA(sds, fltvar, nrm, between=B)')
     assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'ez')
 
@@ -164,8 +146,7 @@ def test_anova():
     print(aov)
     fs = run_on_lm_fitter('fltvar', 'A * B * nrm(B)', sds)
     fnds = run_as_ndanova('fltvar', 'A * B * nrm(B)', sds)
-    with warnings.catch_warnings():  # type argument to ezANOVA
-        warnings.filterwarnings('ignore', category=RRuntimeWarning)
+    with r_warning_filter:  # type argument to ezANOVA
         r_res = r('ezANOVA(sds, fltvar, nrm, A, between=B)')
     assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'ez')
 
