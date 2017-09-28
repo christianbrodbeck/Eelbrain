@@ -31,7 +31,7 @@ requirements:
     - olefile  # [linux]
     - numpy x.x
     - pillow
-    - pysurfer >=0.7
+    - pysurfer >=0.8
     - scipy >=0.17
     - tex >=1.8
     - tqdm >=4.8

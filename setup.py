@@ -73,7 +73,7 @@ setup(
             'sphinx >= 1.1',
         ],
         'plot.brain': [
-            'pysurfer[save_movie] >= 0.7',
+            'pysurfer[save_movie] >= 0.8',
         ],
     },
     include_dirs=[np.get_include()],
