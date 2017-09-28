@@ -40,8 +40,9 @@ def concatenate(ndvars, dim='time', name=None, tmin=0):
         concatenate, or a Dimension object to create a new dimension.
     name : str (optional)
         Name the NDVar holding the result.
-    tmin : scalar
+    tmin : scalar | 'first'
         Time axis start, only applies when ``dim == 'time'``; default is 0.
+        Set ``tmin='first'`` to use ``tmin`` of ``ndvars[0]``.
 
     Returns
     -------
@@ -72,6 +73,11 @@ def concatenate(ndvars, dim='time', name=None, tmin=0):
         x = np.concatenate([v.get_data(dim_names) for v in ndvars], axis)
         dim_obj = ndvar.dims[axis]
         if isinstance(dim_obj, UTS):
+            if isinstance(tmin, basestring):
+                if tmin == 'first':
+                    tmin = ndvar.time.tmin
+                else:
+                    raise ValueError("tmin=%r" % (tmin,))
             out_dim = UTS(tmin, ndvar.time.tstep, x.shape[axis])
         elif isinstance(dim_obj, Case):
             out_dim = Case
