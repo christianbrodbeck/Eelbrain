@@ -1517,6 +1517,8 @@ class MneExperiment(FileTree):
                     rm['annot-file'].add({'parc': parc})
                     rm['test-file'].add({'data_parc': parc})
                     rm['report-file'].add({'folder': parc})
+                    rm['report-file'].add({'folder': '%s *' % parc})
+                    rm['report-file'].add({'folder': '%s *' % parc.capitalize()})  # pre 0.26
                     rm['res-file'].add({'analysis': 'Source Annot',
                                         'resname': parc + ' * *', 'ext': 'p*'})
 
@@ -5003,7 +5005,7 @@ class MneExperiment(FileTree):
         self._set_analysis_options('source', sns_baseline, src_baseline, pmin,
                                    tstart, tstop, parc, dims=('time',))
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
-                       folder="%s ROIs" % parc.capitalize())
+                       folder="%s ROIs" % parc)
         if self._need_not_recompute_report(dst, samples, 'source', redo):
             return
 
@@ -5972,7 +5974,7 @@ class MneExperiment(FileTree):
         if 'source' in dims:
             if parc is None:
                 if mask:
-                    folder = "%s Masked" % mask.capitalize()
+                    folder = "%s masked" % mask
                 else:
                     folder = "Whole Brain"
             elif mask:
