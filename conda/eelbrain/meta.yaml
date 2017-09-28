@@ -1,6 +1,6 @@
 package:
   name: eelbrain
-  version: "VERSION"
+  version: "0.26.0"
 
 source:
   path: ../../
