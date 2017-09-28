@@ -1,3 +1,4 @@
+UNAME := $(shell uname -m)
 
 clean:
 	rm -rf coverage .coverage build dist
@@ -17,7 +18,11 @@ flake:
 	flake8 --count eelbrain examples scripts
 
 test:
-	nosetests -v eelbrain eelbrain/_stats eelbrain/_trf eelbrain/_utils eelbrain/_wxgui eelbrain/_experiment eelbrain/load eelbrain/mne_fixes eelbrain/plot
+	nosetests -v eelbrain eelbrain/_experiment eelbrain/_stats eelbrain/_trf eelbrain/_utils eelbrain/_wxgui eelbrain/load eelbrain/mne_fixes eelbrain/plot
+
+test_travis_osx:
+	pythonw $(shell which nosetests) -v eelbrain eelbrain/_experiment eelbrain/_stats eelbrain/_trf eelbrain/_utils eelbrain/_wxgui eelbrain/load eelbrain/mne_fixes eelbrain/plot
+
 
 # Running through makefile causes OSError: [Errno 2] No such file or directory:
 # 'coverage'; running in bash directly works
@@ -28,4 +33,4 @@ pypi:
 	rm -rf build dist
 	python setup.py sdist bdist_wheel bdist_egg upload
 
-.PHONY: clean clean-py doc test coverage pypi
+.PHONY: clean clean-py doc test_travis_osx travis coverage pypi
