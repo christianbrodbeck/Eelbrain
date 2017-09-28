@@ -145,8 +145,10 @@ def _mne_source_space(subject, src_tag, subjects_dir):
     if os.path.exists(src_file):
         return mne.read_source_spaces(src_file, False)
     elif src == 'ico':
-        return mne.setup_source_space(subject, src_file, src + spacing,
-                                      subjects_dir=subjects_dir, add_dist=True)
+        ss = mne.setup_source_space(subject, fname=None, spacing=src + spacing,
+                                    subjects_dir=subjects_dir, add_dist=True)
+        mne.write_source_spaces(src_file, ss)
+        return ss
     elif src == 'vol':
         mri_file = os.path.join(subjects_dir, subject, 'mri', 'orig.mgz')
         bem_file = os.path.join(subjects_dir, subject, 'bem',
