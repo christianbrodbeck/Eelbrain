@@ -251,7 +251,7 @@ Define a pre-processing pipeline as a series of processing steps.
 
 The default pre-processing pipeline is defined as follows::
 
-    defaut_raw = {
+    default_raw = {
         '0-40': {
             'source': 'raw', 'type': 'filter', 'args': (None, 40),
             'kwargs': {'method': 'iir'}},
@@ -266,7 +266,44 @@ The default pre-processing pipeline is defined as follows::
             'kwargs': {'method': 'iir'}},
     }
 
-Additional pipes can be added in a ``MneExperiment.raw`` attribute.
+Additional pipes can be added in a ``MneExperiment.raw`` attribute. For
+example, to use TSSS, ICA and finally band-pass filter::
+
+    raw = {
+        'tsss':
+    }
+
+
+Each ``raw`` dictionary entry constitutes one pipe, with in input (``source``)
+from another pipe, or raw data (``'raw'``) and a ``'type'``, and the following
+type-specific parameters:
+
+
+``filter``
+^^^^^^^^^^
+
+``args`` (:class:`tuple`) and ``kwargs`` (:class:`dict`) for
+:func:`mne.io.Raw.filter`.
+
+
+``ica``
+^^^^^^^
+
+session : str | tuple of str
+    One or several sessions from which the raw data is used for estimating ICA
+    components.
+kwargs : dict
+    :class:`mne.preprocessing.ICA` parameters.
+
+Use :meth:`MneExperiment.make_ica_selection` to select ICA components to reject
+for each subject.
+
+
+``tsss``
+^^^^^^^^
+
+Temporal signal space separation; ``kwargs`` (:class:`dict`) with
+:func:`mne.preprocessing.maxwell_filter` parameters.
 
 
 Event variables
