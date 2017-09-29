@@ -23,6 +23,8 @@ New in 0.26
     multiple plots: :meth:`~plot.Butterfly.link_time_axis`.
   - Plot source space time series: :func:`plot.brain.butterfly`
 
+* ANOVAs now support mixed models with between- and within-subjects factors
+  (see examples at :func:`test.anova`).
 * :mod:`load.fiff`: when generating epochs from raw data, a new ``tstop``
   argument allows specifying the time interval exclusive of the last sample.
 * New functions:
