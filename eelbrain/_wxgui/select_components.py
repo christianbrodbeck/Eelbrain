@@ -177,12 +177,13 @@ class Frame(FileFrame):
     =========== ============================================================
     Key         Effect
     =========== ============================================================
-    t           topomap plot of the Component under the pointer
-    a           array-plot of the source time course
+    t           topomap plot of the component under the pointer
+    a           array-plot of the source time course of the component
     s           plot sources, starting with the component under the cursor
-    f           plot the frequency spectrum for the selected component
-    b           Butterfly plot of grand average (original and cleaned)
-    B           Butterfly plot of condition averages
+    f           plot the frequency spectrum for the component under the
+                pointer
+    b           butterfly plot of grand average (original and cleaned)
+    B           butterfly plot of condition averages
     =========== ============================================================
     """
     _doc_name = 'component selection'
@@ -583,10 +584,14 @@ class SourceFrame(FileFrameChild):
     Key         Effect
     =========== ============================================================
     arrows      scroll through components/epochs
-    t           topomap plot of the Component under the pointer
-    a           array-plot of the source time course
-    f           plot the frequency spectrum for the selected component
-    b           butterfly plot of the epoch (original and cleaned)
+    t           topomap plot of the component under the pointer
+    a           array-plot of the source time course of the component under
+                the pointer
+    f           plot the frequency spectrum for the component under the
+                pointer
+    b           butterfly plot of the original and cleaned data (of the
+                epoch under the pointer, or of the grand average if the
+                pointer is over other elements)
     B           Butterfly plot of condition averages
     =========== ============================================================
     """
@@ -790,14 +795,18 @@ class SourceFrame(FileFrameChild):
                 self.OnBackward(None)
         elif event.key == 'B':
             self.parent.PlotConditionAverages(self)
-        elif not event.inaxes:
-            return
-        elif event.inaxes.i_comp is None:
-            if event.key == 'b':
+        elif event.key == 'b':
+            if event.inaxes is None:
+                i_epoch = -1
+            elif event.inaxes.i_comp is None:
                 i_epoch = (self.i_first_epoch +
                            int(event.xdata // len(self.doc.sources.time)))
-                if i_epoch < len(self.doc.epochs):
-                    self.parent.PlotEpochButterfly(i_epoch)
+                if i_epoch >= len(self.doc.epochs):
+                    i_epoch = -1
+            else:
+                i_epoch = -1
+            self.parent.PlotEpochButterfly(i_epoch)
+        elif not event.inaxes:
             return
         elif event.key in 'tT':
             self.parent.PlotCompTopomap(event.inaxes.i_comp)
@@ -805,8 +814,6 @@ class SourceFrame(FileFrameChild):
             self.parent.PlotCompSourceArray(event.inaxes.i_comp)
         elif event.key == 'f':
             self.parent.PlotCompFFT(event.inaxes.i_comp)
-        elif event.key == 'b':
-            self.parent.PlotEpochButterfly(-1)
 
     def OnClose(self, event):
         if super(SourceFrame, self).OnClose(event):
