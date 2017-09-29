@@ -93,6 +93,10 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
             wx.TheClipboard.Close()
             wx.TheClipboard.Flush()
 
+    @staticmethod
+    def CanCopyPNG():
+        return True
+
     def CopyAsPNG(self):
         self.Copy_to_Clipboard()
 

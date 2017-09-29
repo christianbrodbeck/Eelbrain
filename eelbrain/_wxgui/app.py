@@ -18,7 +18,12 @@ from .about import AboutFrame
 APP = None  # hold the App instance
 IS_OSX = sys.platform == 'darwin'
 IS_WINDOWS = sys.platform.startswith('win')
-
+FOCUS_UI_UPDATE_FUNC_NAMES = {
+    wx.ID_COPY: 'CanCopy',
+    ID.COPY_AS_PNG: 'CanCopyPNG',
+    wx.ID_CUT: 'CanCut',
+    wx.ID_PASTE: 'CanPaste',
+}
 
 def wildcard(filetypes):
     if filetypes:
@@ -131,18 +136,14 @@ class App(wx.App):
         self.Bind(wx.EVT_MENU, self.OnQuit, id=wx.ID_EXIT)
         self.Bind(wx.EVT_MENU, self.OnYieldToTerminal, id=ID.YIELD_TO_TERMINAL)
 
-        # bind update UI
+        # UI-update concerning frames
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIBackward, id=wx.ID_BACKWARD)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIClear, id=wx.ID_CLEAR)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIClose, id=wx.ID_CLOSE)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUICopy, id=wx.ID_COPY)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUICopyAsPNG, id=ID.COPY_AS_PNG)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUICut, id=wx.ID_CUT)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIDown, id=wx.ID_DOWN)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIDrawCrosshairs, id=ID.DRAW_CROSSHAIRS)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIForward, id=wx.ID_FORWARD)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIOpen, id=wx.ID_OPEN)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIPaste, id=wx.ID_PASTE)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIRedo, id=ID.REDO)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISave, id=wx.ID_SAVE)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISaveAs, id=wx.ID_SAVEAS)
@@ -152,6 +153,12 @@ class App(wx.App):
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUITools, id=ID.TOOLS)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIUndo, id=ID.UNDO)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIUp, id=wx.ID_UP)
+
+        # UI-update concerning focus
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIFocus, id=wx.ID_COPY)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIFocus, id=ID.COPY_AS_PNG)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIFocus, id=wx.ID_CUT)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIFocus, id=wx.ID_PASTE)
 
         # register in IPython
         self.using_prompt_toolkit = False
@@ -502,21 +509,6 @@ class App(wx.App):
         else:
             event.Enable(False)
 
-    def OnUpdateUICopy(self, event):
-        win = wx.Window.FindFocus()
-        if hasattr(win, 'CanCopy'):
-            return event.Enable(win.CanCopy())
-        win = self._get_active_frame()
-        if hasattr(win, 'CanCopy'):
-            return event.Enable(win.CanCopy())
-
-    def OnUpdateUICopyAsPNG(self, event):
-        event.Enable(hasattr(wx.Window.FindFocus(), 'CopyAsPNG'))
-
-    def OnUpdateUICut(self, event):
-        win = wx.Window.FindFocus()
-        event.Enable(win and hasattr(win, 'CanCut') and win.CanCut())
-
     def OnUpdateUIDown(self, event):
         frame = self._get_active_frame()
         if frame and hasattr(frame, 'OnUpdateUIDown'):
@@ -537,16 +529,24 @@ class App(wx.App):
         else:
             event.Enable(False)
 
+    def OnUpdateUIFocus(self, event):
+        func_name = FOCUS_UI_UPDATE_FUNC_NAMES[event.GetId()]
+        win = wx.Window.FindFocus()
+        func = getattr(win, func_name, None)
+        if func is None:
+            win = self._get_active_frame()
+            func = getattr(win, func_name, None)
+            if func is None:
+                event.Enable(False)
+                return
+        event.Enable(func())
+
     def OnUpdateUIOpen(self, event):
         frame = self._get_active_frame()
         if frame and hasattr(frame, 'OnUpdateUIOpen'):
             frame.OnUpdateUIOpen(event)
         else:
             event.Enable(False)
-
-    def OnUpdateUIPaste(self, event):
-        win = wx.Window.FindFocus()
-        event.Enable(win and hasattr(win, 'CanPaste') and win.CanPaste())
 
     def OnUpdateUIRedo(self, event):
         frame = self._get_active_frame()
