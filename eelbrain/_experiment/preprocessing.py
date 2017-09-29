@@ -234,7 +234,7 @@ class RawICA(CachedRawPipe):
     def __init__(self, name, source, path, ica_path, log, session, kwargs):
         CachedRawPipe.__init__(self, name, source, path, log)
         if isinstance(session, basestring):
-            self.session = (session,)
+            session = (session,)
         else:
             assert isinstance(session, tuple)
         self.ica_path = ica_path
