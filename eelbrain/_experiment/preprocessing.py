@@ -372,7 +372,7 @@ def pipeline_dict(pipeline):
     return {k: v.as_dict() for k, v in pipeline.iteritems()}
 
 
-def compare_pipelines(old, new):
+def compare_pipelines(old, new, log):
     """Return a tuple of raw keys for which definitions changed
 
     Parameters
@@ -381,6 +381,8 @@ def compare_pipelines(old, new):
         A {name: params} dict for the previous preprocessing pipeline.
     new : {str: dict}
         Current pipeline.
+    log : logger
+        Logger for logging changes.
 
     Returns
     -------
@@ -399,6 +401,7 @@ def compare_pipelines(old, new):
     to_check = set(new) - set(out)
     for key in tuple(to_check):
         if new[key] != old[key]:
+            log.debug("  raw changed: %s %s -> %s", key, old[key], new[key])
             out[key] = 'changed'
             to_check.remove(key)
 

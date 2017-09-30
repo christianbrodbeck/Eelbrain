@@ -1120,7 +1120,7 @@ class MneExperiment(FileTree):
                 new_events = events.get(key)
                 if new_events is None:
                     invalid_cache['events'].add(key)
-                    log.debug("  raw file removed, unable to verify events: %s", '/'.join(key))
+                    log.debug("  raw file removed: %s", '/'.join(key))
                 elif new_events.n_cases != old_events.n_cases:
                     invalid_cache['events'].add(key)
                     log.debug("  event length: %s %i->%i", '/'.join(key),
@@ -1158,10 +1158,9 @@ class MneExperiment(FileTree):
                     log.debug("  group: %s" % group)
 
             # raw
-            changed, changed_ica = compare_pipelines(cache_raw, raw_state)
+            changed, changed_ica = compare_pipelines(cache_raw, raw_state, log)
             if changed:
                 invalid_cache['raw'].update(changed)
-                log.debug("  raw: %s" % ', '.join(changed))
             for raw, status in changed_ica.iteritems():
                 filenames = self.glob('raw-ica-file', raw=raw, subject='*')
                 if filenames:
