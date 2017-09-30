@@ -619,7 +619,7 @@ class SourceFrame(FileFrameChild):
         self.n_epochs = self.config.ReadInt('layout_n_epochs', 20)
         self.i_first_epoch = 0
         self.n_epochs_in_data = len(self.doc.sources)
-        self.y_scale = 5  # scale factor for y axis
+        self.y_scale = self.config.ReadFloat('y_scale', 10)  # scale factor for y axis
 
         # Toolbar
         tb = self.InitToolbar(can_open=False)
@@ -713,7 +713,7 @@ class SourceFrame(FileFrameChild):
 
         # plot epochs
         self.lines = ax.plot(y.T, color=LINE_COLOR[True], clip_on=False)
-        ax.set_ylim((-0.5 * self.y_scale, (n_comp - 0.5) * self.y_scale))
+        ax.set_ylim((-0.5 * self.y_scale, (self.n_comp - 0.5) * self.y_scale))
         ax.set_xlim((0, y.shape[1]))
         # line color
         reject_color = LINE_COLOR[False]
@@ -819,6 +819,7 @@ class SourceFrame(FileFrameChild):
         if super(SourceFrame, self).OnClose(event):
             self.config.WriteInt('layout_n_comp', self.n_comp)
             self.config.WriteInt('layout_n_epochs', self.n_epochs)
+            self.config.WriteFloat('y_scale', self.y_scale)
             self.config.Flush()
 
     def OnDown(self, event):
@@ -854,6 +855,29 @@ class SourceFrame(FileFrameChild):
         self.n_epochs = n_epochs
         self._plot()
 
+    def OnSetVLim(self, event):
+        dlg = wx.TextEntryDialog(self, "Y-axis scale:", "Y-Axis Scale",
+                                 "%g" % (10. / self.y_scale,))
+        value = None
+        while True:
+            if dlg.ShowModal() != wx.ID_OK:
+                break
+            try:
+                value = float(dlg.GetValue())
+            except Exception as exception:
+                msg = wx.MessageDialog(
+                    self, str(exception), "Invalid Entry",
+                    wx.OK | wx.ICON_ERROR)
+                msg.ShowModal()
+                msg.Destroy()
+            else:
+                break
+        dlg.Destroy()
+        if value is not None:
+            self.y_scale = 10. / value
+            # redraw
+            self.SetFirstEpoch(self.i_first_epoch)
+
     def OnUp(self, event):
         "Turn the page backward"
         self.SetFirstComponent(self.i_first - self.n_comp)
@@ -868,6 +892,9 @@ class SourceFrame(FileFrameChild):
         event.Enable(self.CanForward())
 
     def OnUpdateUISetLayout(self, event):
+        event.Enable(True)
+
+    def OnUpdateUISetVLim(self, event):
         event.Enable(True)
 
     def OnUpdateUIUp(self, event):
@@ -898,7 +925,6 @@ class SourceFrame(FileFrameChild):
                 self.topo_labels[i].set_text("")
                 self.lines[i].set_color('white')
 
-
         self.i_first = i_first
         self.n_comp_actual = n_comp_actual
         self.SetFirstEpoch(self.i_first_epoch)
@@ -924,6 +950,7 @@ class SourceFrame(FileFrameChild):
         for line, data in izip(self.lines, y):
             line.set_ydata(data)
         self.ax_tc.set_xticklabels(tick_labels)
+        self.ax_tc.set_ylim((-0.5 * self.y_scale, (self.n_comp - 0.5) * self.y_scale))
         self.canvas.draw()
 
 
