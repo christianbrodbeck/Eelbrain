@@ -288,6 +288,8 @@ class RawICA(CachedRawPipe):
         return path
 
     def _make(self, subject, session):
+        self.log.debug("Raw %s: applying ICA for %s/%s...", self.name, subject,
+                       session)
         raw = self.source.load(subject, session, preload=True)
         ica = self.load_ica(subject)
         ica.apply(raw)
