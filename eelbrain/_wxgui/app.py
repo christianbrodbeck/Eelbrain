@@ -71,7 +71,9 @@ class App(wx.App):
 
         return True
 
-    def CreateMenu(self, target):
+    def CreateMenu(self, t):
+        menu_bar = wx.MenuBar()
+
         # File Menu
         m = file_menu = wx.Menu()
         m.Append(wx.ID_OPEN, '&Open... \tCtrl+O')
@@ -79,6 +81,7 @@ class App(wx.App):
         m.Append(wx.ID_CLOSE, '&Close Window \tCtrl+W')
         m.Append(wx.ID_SAVE, "Save \tCtrl+S")
         m.Append(wx.ID_SAVEAS, "Save As... \tCtrl+Shift+S")
+        menu_bar.Append(file_menu, "File")
 
         # Edit Menu
         m = edit_menu = wx.Menu()
@@ -91,10 +94,15 @@ class App(wx.App):
         m.Append(wx.ID_PASTE, 'Paste \tCtrl+V')
         m.AppendSeparator()
         m.Append(wx.ID_CLEAR, 'Cle&ar')
+        menu_bar.Append(edit_menu, "Edit")
 
         # Tools Menu
         # updated by the active GUI
-        tools_menu = wx.Menu()
+        if IS_OSX or hasattr(t, 'MakeToolsMenu'):
+            tools_menu = wx.Menu()
+            if not IS_OSX:
+                t.MakeToolsMenu(tools_menu)
+            menu_bar.Append(tools_menu, "Tools")
 
         # View Menu
         m = view_menu = wx.Menu()
@@ -107,6 +115,7 @@ class App(wx.App):
         m.AppendSeparator()
         m.Append(ID.SET_LAYOUT, "&Set Layout... \tCtrl+Shift+l", "Change the "
                  "page layout")
+        menu_bar.Append(view_menu, "View")
 
         # Go Menu
         m = go_menu = wx.Menu()
@@ -115,6 +124,7 @@ class App(wx.App):
         if not self.using_prompt_toolkit:
             m.AppendSeparator()
             m.Append(ID.YIELD_TO_TERMINAL, '&Yield to Terminal \tAlt+Ctrl+Q')
+        menu_bar.Append(go_menu, "Go")
 
         # Window Menu
         m = window_menu = wx.Menu()
@@ -123,6 +133,7 @@ class App(wx.App):
         m.AppendSeparator()
         m.Append(ID.WINDOW_TILE, '&Tile')
         m.AppendSeparator()
+        menu_bar.Append(window_menu, "Window")
 
         # Help Menu
         m = help_menu = wx.Menu()
@@ -130,66 +141,59 @@ class App(wx.App):
         m.Append(ID.HELP_PYTHON, "Python Help")
         m.AppendSeparator()
         m.Append(wx.ID_ABOUT, '&About Eelbrain')
+        menu_bar.Append(help_menu, self.GetMacHelpMenuTitleName() if IS_OSX else 'Help')
 
         # Menu Bar
-        menu_bar = wx.MenuBar()
-        menu_bar.Append(file_menu, "File")
-        menu_bar.Append(edit_menu, "Edit")
-        menu_bar.Append(tools_menu, "Tools")
-        menu_bar.Append(view_menu, "View")
-        menu_bar.Append(go_menu, "Go")
-        menu_bar.Append(window_menu, "Window")
-        menu_bar.Append(help_menu, self.GetMacHelpMenuTitleName() if IS_OSX else 'Help')
         wx.MenuBar.MacSetCommonMenuBar(menu_bar)
 
         # Bind Menu Commands
-        self.Bind(wx.EVT_MENU, self.OnAbout, id=wx.ID_ABOUT)
-        self.Bind(wx.EVT_MENU, self.OnOpen, id=wx.ID_OPEN)
-        self.Bind(wx.EVT_MENU, self.OnClear, id=wx.ID_CLEAR)
-        self.Bind(wx.EVT_MENU, self.OnCloseWindow, id=wx.ID_CLOSE)
-        self.Bind(wx.EVT_MENU, self.OnCopy, id=wx.ID_COPY)
-        self.Bind(wx.EVT_MENU, self.OnCopyAsPNG, id=ID.COPY_AS_PNG)
-        self.Bind(wx.EVT_MENU, self.OnCut, id=wx.ID_CUT)
-        self.Bind(wx.EVT_MENU, self.OnDrawCrosshairs, id=ID.DRAW_CROSSHAIRS)
-        self.Bind(wx.EVT_MENU, self.OnOnlineHelp, id=ID.HELP_EELBRAIN)
-        self.Bind(wx.EVT_MENU, self.OnOnlineHelp, id=ID.HELP_PYTHON)
-        self.Bind(wx.EVT_MENU, self.OnPaste, id=wx.ID_PASTE)
-        self.Bind(wx.EVT_MENU, self.OnRedo, id=ID.REDO)
-        self.Bind(wx.EVT_MENU, self.OnSave, id=wx.ID_SAVE)
-        self.Bind(wx.EVT_MENU, self.OnSaveAs, id=wx.ID_SAVEAS)
-        self.Bind(wx.EVT_MENU, self.OnSetLayout, id=ID.SET_LAYOUT)
-        self.Bind(wx.EVT_MENU, self.OnSetMarkedChannels, id=ID.SET_MARKED_CHANNELS)
-        self.Bind(wx.EVT_MENU, self.OnSetVLim, id=ID.SET_VLIM)
-        self.Bind(wx.EVT_MENU, self.OnUndo, id=ID.UNDO)
-        self.Bind(wx.EVT_MENU, self.OnWindowMinimize, id=ID.WINDOW_MINIMIZE)
-        self.Bind(wx.EVT_MENU, self.OnWindowTile, id=ID.WINDOW_TILE)
-        self.Bind(wx.EVT_MENU, self.OnWindowZoom, id=ID.WINDOW_ZOOM)
-        self.Bind(wx.EVT_MENU, self.OnQuit, id=wx.ID_EXIT)
-        self.Bind(wx.EVT_MENU, self.OnYieldToTerminal, id=ID.YIELD_TO_TERMINAL)
+        t.Bind(wx.EVT_MENU, self.OnAbout, id=wx.ID_ABOUT)
+        t.Bind(wx.EVT_MENU, t.OnOpen, id=wx.ID_OPEN)
+        t.Bind(wx.EVT_MENU, t.OnClear, id=wx.ID_CLEAR)
+        t.Bind(wx.EVT_MENU, t.OnWindowClose, id=wx.ID_CLOSE)
+        t.Bind(wx.EVT_MENU, t.OnCopy, id=wx.ID_COPY)
+        t.Bind(wx.EVT_MENU, t.OnCopyAsPNG, id=ID.COPY_AS_PNG)
+        t.Bind(wx.EVT_MENU, t.OnCut, id=wx.ID_CUT)
+        t.Bind(wx.EVT_MENU, t.OnDrawCrosshairs, id=ID.DRAW_CROSSHAIRS)
+        t.Bind(wx.EVT_MENU, self.OnOnlineHelp, id=ID.HELP_EELBRAIN)
+        t.Bind(wx.EVT_MENU, self.OnOnlineHelp, id=ID.HELP_PYTHON)
+        t.Bind(wx.EVT_MENU, t.OnPaste, id=wx.ID_PASTE)
+        t.Bind(wx.EVT_MENU, t.OnRedo, id=ID.REDO)
+        t.Bind(wx.EVT_MENU, t.OnSave, id=wx.ID_SAVE)
+        t.Bind(wx.EVT_MENU, t.OnSaveAs, id=wx.ID_SAVEAS)
+        t.Bind(wx.EVT_MENU, t.OnSetLayout, id=ID.SET_LAYOUT)
+        t.Bind(wx.EVT_MENU, t.OnSetMarkedChannels, id=ID.SET_MARKED_CHANNELS)
+        t.Bind(wx.EVT_MENU, t.OnSetVLim, id=ID.SET_VLIM)
+        t.Bind(wx.EVT_MENU, t.OnUndo, id=ID.UNDO)
+        t.Bind(wx.EVT_MENU, t.OnWindowIconize, id=ID.WINDOW_MINIMIZE)
+        t.Bind(wx.EVT_MENU, self.OnWindowTile, id=ID.WINDOW_TILE)
+        t.Bind(wx.EVT_MENU, t.OnWindowZoom, id=ID.WINDOW_ZOOM)
+        t.Bind(wx.EVT_MENU, self.OnQuit, id=wx.ID_EXIT)
+        t.Bind(wx.EVT_MENU, self.OnYieldToTerminal, id=ID.YIELD_TO_TERMINAL)
 
         # UI-update concerning frames
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIBackward, id=wx.ID_BACKWARD)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIClear, id=wx.ID_CLEAR)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIClose, id=wx.ID_CLOSE)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIDown, id=wx.ID_DOWN)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIDrawCrosshairs, id=ID.DRAW_CROSSHAIRS)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIForward, id=wx.ID_FORWARD)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIOpen, id=wx.ID_OPEN)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIRedo, id=ID.REDO)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISave, id=wx.ID_SAVE)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISaveAs, id=wx.ID_SAVEAS)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISetLayout, id=ID.SET_LAYOUT)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISetMarkedChannels, id=ID.SET_MARKED_CHANNELS)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISetVLim, id=ID.SET_VLIM)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUITools, id=ID.TOOLS)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIUndo, id=ID.UNDO)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIUp, id=wx.ID_UP)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUIBackward, id=wx.ID_BACKWARD)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUIClear, id=wx.ID_CLEAR)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUIClose, id=wx.ID_CLOSE)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUIDown, id=wx.ID_DOWN)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUIDrawCrosshairs, id=ID.DRAW_CROSSHAIRS)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUIForward, id=wx.ID_FORWARD)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUIOpen, id=wx.ID_OPEN)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUIRedo, id=ID.REDO)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUISave, id=wx.ID_SAVE)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUISaveAs, id=wx.ID_SAVEAS)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUISetLayout, id=ID.SET_LAYOUT)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUISetMarkedChannels, id=ID.SET_MARKED_CHANNELS)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUISetVLim, id=ID.SET_VLIM)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUITools, id=ID.TOOLS)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUIUndo, id=ID.UNDO)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUIUp, id=wx.ID_UP)
 
         # UI-update concerning focus
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIFocus, id=wx.ID_COPY)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIFocus, id=ID.COPY_AS_PNG)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIFocus, id=wx.ID_CUT)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIFocus, id=wx.ID_PASTE)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUIFocus, id=wx.ID_COPY)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUIFocus, id=ID.COPY_AS_PNG)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUIFocus, id=wx.ID_CUT)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUIFocus, id=wx.ID_PASTE)
 
         return menu_bar
 
@@ -382,11 +386,6 @@ class App(wx.App):
     def OnClear(self, event):
         frame = self._get_active_frame()
         frame.OnClear(event)
-
-    def OnCloseWindow(self, event):
-        frame = self._get_active_frame()
-        if frame is not None:
-            frame.Close()
 
     def OnCopy(self, event):
         win = wx.Window.FindFocus()
@@ -609,7 +608,12 @@ class App(wx.App):
         else:
             event.Enable(False)
 
-    def OnWindowMinimize(self, event):
+    def OnWindowClose(self, event):
+        frame = self._get_active_frame()
+        if frame:
+            frame.Close()
+
+    def OnWindowIconize(self, event):
         frame = self._get_active_frame()
         if frame:
             frame.Iconize()

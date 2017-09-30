@@ -18,6 +18,12 @@ FOCUS_UI_UPDATE_FUNC_NAMES = {
 class EelbrainWindow(object):
     # Frame subclass to support UI Update
 
+    def OnWindowIconize(self, event):
+        self.Iconize()
+
+    def OnWindowZoom(self, event):
+        self.Maximize()
+
     def OnUpdateUIBackward(self, event):
         event.Enable(False)
 
@@ -70,6 +76,12 @@ class EelbrainWindow(object):
 
 
 class EelbrainFrame(wx.Frame, EelbrainWindow):
+
+    def __init__(self, *args, **kwargs):
+        wx.Frame.__init__(self, *args, **kwargs)
+        if not IS_OSX:
+            from .app import APP
+            self.SetMenuBar(APP.CreateMenu(self))
 
     def OnDrawCrosshairs(self, event):
         raise RuntimeError("%s can't draw crosshairs" % (self,))
