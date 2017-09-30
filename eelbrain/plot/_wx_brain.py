@@ -94,6 +94,8 @@ class BrainFrame(EelbrainFrame):
         self.Bind(wx.EVT_TOOL, self.OnSetView, id=ID.VIEW_LATERAL)
         tb.AddLabelTool(ID.VIEW_MEDIAL, "Medial View", Icon('brain/medial'))
         self.Bind(wx.EVT_TOOL, self.OnSetView, id=ID.VIEW_MEDIAL)
+        tb.AddLabelTool(ID.SMOOTHING, "Smoothing Steps", Icon('brain/smoothing'))
+        self.Bind(wx.EVT_TOOL, self.OnSetSmoothing, id=ID.SMOOTHING)
         # attach
         tb.AddStretchableSpace()
         tb.AddLabelTool(ID.ATTACH, "Attach", Icon("actions/attach"))
@@ -191,6 +193,28 @@ class BrainFrame(EelbrainFrame):
             # no antialiasing (leads to loss of alpha channel)
             self._brain.save_image(dlg.GetPath(), 'rgba')
         dlg.Destroy()
+
+    def OnSetSmoothing(self, event):
+        props = self._brain.get_data_properties()
+        old_value = props['smoothing_steps']
+        dlg = wx.TextEntryDialog(self, "Data overlay smoothing steps:",
+                                 "Smoothing Steps", str(old_value))
+        value = None
+        while True:
+            if dlg.ShowModal() != wx.ID_OK:
+                break
+            try:
+                value = int(dlg.GetValue())
+            except Exception as exception:
+                msg = wx.MessageDialog(self, str(exception), "Invalid Entry",
+                                       wx.OK | wx.ICON_ERROR)
+                msg.ShowModal()
+                msg.Destroy()
+            else:
+                break
+        dlg.Destroy()
+        if value is not None and value != old_value:
+            self._brain.set_data_smoothing_steps(value)
 
     def OnSetView(self, event):
         if event.Id == ID.VIEW_LATERAL:

@@ -88,6 +88,7 @@ SHOW_SOURCES = wx.NewId()
 SIZE_MAX = wx.NewId()
 SIZE_MAX_NOTITLE = wx.NewId()
 SIZE_MIN = wx.NewId()
+SMOOTHING = wx.NewId()
 SPLITTER = wx.NewId()
 SPLITTER2 = wx.NewId()
 
