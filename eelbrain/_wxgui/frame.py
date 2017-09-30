@@ -1,4 +1,18 @@
+import sys
+
 import wx
+
+from .._wxutils import ID
+
+
+IS_OSX = sys.platform == 'darwin'
+IS_WINDOWS = sys.platform.startswith('win')
+FOCUS_UI_UPDATE_FUNC_NAMES = {
+    wx.ID_COPY: 'CanCopy',
+    ID.COPY_AS_PNG: 'CanCopyPNG',
+    wx.ID_CUT: 'CanCut',
+    wx.ID_PASTE: 'CanPaste',
+}
 
 
 class EelbrainWindow(object):
@@ -18,6 +32,17 @@ class EelbrainWindow(object):
 
     def OnUpdateUIForward(self, event):
         event.Enable(False)
+
+    def OnUpdateUIFocus(self, event):
+        func_name = FOCUS_UI_UPDATE_FUNC_NAMES[event.GetId()]
+        win = self.FindFocus()
+        func = getattr(win, func_name, None)
+        if func is None:
+            func = getattr(self, func_name, None)
+            if func is None:
+                event.Enable(False)
+                return
+        event.Enable(func())
 
     def OnUpdateUIOpen(self, event):
         event.Enable(False)
@@ -46,7 +71,12 @@ class EelbrainWindow(object):
 
 class EelbrainFrame(wx.Frame, EelbrainWindow):
 
-    pass
+    def OnDrawCrosshairs(self, event):
+        raise RuntimeError("%s can't draw crosshairs" % (self,))
+
+    def OnUpdateUIDrawCrosshairs(self, event):
+        event.Enable(False)
+        event.Check(False)
 
 
 class EelbrainDialog(wx.Dialog, EelbrainWindow):

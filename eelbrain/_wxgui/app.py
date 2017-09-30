@@ -13,17 +13,12 @@ import wx
 from .._wxutils import ID, Icon
 from ..plot._base import CONFIG
 from .about import AboutFrame
+from .frame import (
+    IS_OSX, IS_WINDOWS, FOCUS_UI_UPDATE_FUNC_NAMES, EelbrainFrame,
+)
 
 
 APP = None  # hold the App instance
-IS_OSX = sys.platform == 'darwin'
-IS_WINDOWS = sys.platform.startswith('win')
-FOCUS_UI_UPDATE_FUNC_NAMES = {
-    wx.ID_COPY: 'CanCopy',
-    ID.COPY_AS_PNG: 'CanCopyPNG',
-    wx.ID_CUT: 'CanCut',
-    wx.ID_PASTE: 'CanPaste',
-}
 
 def wildcard(filetypes):
     if filetypes:
@@ -37,6 +32,46 @@ class App(wx.App):
         self.SetAppName("Eelbrain")
         self.SetAppDisplayName("Eelbrain")
 
+        # register in IPython
+        self.using_prompt_toolkit = False
+        self._ipython = None
+        if ('IPython' in sys.modules and
+                LooseVersion(sys.modules['IPython'].__version__) >=
+                LooseVersion('5') and CONFIG['prompt_toolkit']):
+            import IPython
+
+            IPython.terminal.pt_inputhooks.register('eelbrain',
+                                                    self.pt_inputhook)
+            shell = IPython.get_ipython()
+            if shell is not None:
+                try:
+                    shell.enable_gui('eelbrain')
+                except IPython.core.error.UsageError:
+                    print("Prompt-toolkit does not seem to be supported by "
+                          "the current IPython shell (%s); The Eelbrain GUI "
+                          "needs to block Terminal input to work. Use "
+                          "eelbrain.gui.run() to start GUI interaction." %
+                          shell.__class__.__name__)
+                else:
+                    self.using_prompt_toolkit = True
+                    self._ipython = shell
+
+        self.SetExitOnFrameDelete(not self.using_prompt_toolkit)
+
+        if IS_OSX:
+            self.dock_icon = DockIcon(self)
+            self.menubar = self.CreateMenu(self)
+            # list windows in Window menu
+            self.window_menu_window_items = []
+            self.Bind(wx.EVT_MENU_OPEN, self.OnMenuOpened)
+        else:
+            self.dock_icon = None
+            self.menu_bar = None
+            self.window_menu_window_items = None
+
+        return True
+
+    def CreateMenu(self, target):
         # File Menu
         m = file_menu = wx.Menu()
         m.Append(wx.ID_OPEN, '&Open... \tCtrl+O')
@@ -67,9 +102,8 @@ class App(wx.App):
                  "axis limit in epoch plots")
         m.Append(ID.SET_MARKED_CHANNELS, "Mark Channels...", "Mark specific "
                  "channels in plots")
-        self._draw_crosshairs_menu_item = m.Append(
-            ID.DRAW_CROSSHAIRS, "Draw &Crosshairs", "Draw crosshairs under the "
-            "cursor", kind=wx.ITEM_CHECK)
+        m.Append(ID.DRAW_CROSSHAIRS, "Draw &Crosshairs",
+                 "Draw crosshairs under the cursor", kind=wx.ITEM_CHECK)
         m.AppendSeparator()
         m.Append(ID.SET_LAYOUT, "&Set Layout... \tCtrl+Shift+l", "Change the "
                  "page layout")
@@ -78,6 +112,9 @@ class App(wx.App):
         m = go_menu = wx.Menu()
         m.Append(wx.ID_FORWARD, '&Forward \tCtrl+]', 'Go One Page Forward')
         m.Append(wx.ID_BACKWARD, '&Back \tCtrl+[', 'Go One Page Back')
+        if not self.using_prompt_toolkit:
+            m.AppendSeparator()
+            m.Append(ID.YIELD_TO_TERMINAL, '&Yield to Terminal \tAlt+Ctrl+Q')
 
         # Window Menu
         m = window_menu = wx.Menu()
@@ -86,7 +123,6 @@ class App(wx.App):
         m.AppendSeparator()
         m.Append(ID.WINDOW_TILE, '&Tile')
         m.AppendSeparator()
-        self.window_menu_window_items = []
 
         # Help Menu
         m = help_menu = wx.Menu()
@@ -105,13 +141,8 @@ class App(wx.App):
         menu_bar.Append(window_menu, "Window")
         menu_bar.Append(help_menu, self.GetMacHelpMenuTitleName() if IS_OSX else 'Help')
         wx.MenuBar.MacSetCommonMenuBar(menu_bar)
-        self.menubar = menu_bar
-
-        # Dock icon
-        self.dock_icon = DockIcon(self)
 
         # Bind Menu Commands
-        self.Bind(wx.EVT_MENU_OPEN, self.OnMenuOpened)
         self.Bind(wx.EVT_MENU, self.OnAbout, id=wx.ID_ABOUT)
         self.Bind(wx.EVT_MENU, self.OnOpen, id=wx.ID_OPEN)
         self.Bind(wx.EVT_MENU, self.OnClear, id=wx.ID_CLEAR)
@@ -160,37 +191,7 @@ class App(wx.App):
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIFocus, id=wx.ID_CUT)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIFocus, id=wx.ID_PASTE)
 
-        # register in IPython
-        self.using_prompt_toolkit = False
-        self._ipython = None
-        if ('IPython' in sys.modules and
-                LooseVersion(sys.modules['IPython'].__version__) >=
-                LooseVersion('5') and CONFIG['prompt_toolkit']):
-            import IPython
-
-            IPython.terminal.pt_inputhooks.register('eelbrain',
-                                                    self.pt_inputhook)
-            shell = IPython.get_ipython()
-            if shell is not None:
-                try:
-                    shell.enable_gui('eelbrain')
-                except IPython.core.error.UsageError:
-                    print("Prompt-toolkit does not seem to be supported by "
-                          "the current IPython shell (%s); The Eelbrain GUI "
-                          "needs to block Terminal input to work. Use "
-                          "eelbrain.gui.run() to start GUI interaction." %
-                          shell.__class__.__name__)
-                else:
-                    self.using_prompt_toolkit = True
-                    self._ipython = shell
-
-        self.SetExitOnFrameDelete(not self.using_prompt_toolkit)
-        if not self.using_prompt_toolkit:
-            go_menu.AppendSeparator()
-            go_menu.Append(ID.YIELD_TO_TERMINAL, '&Yield to Terminal \tAlt+Ctrl+Q')
-
-
-        return True
+        return menu_bar
 
     def pt_inputhook(self, context):
         """prompt_toolkit inputhook"""
@@ -400,15 +401,14 @@ class App(wx.App):
 
     def OnCopyAsPNG(self, event):
         wx.Window.FindFocus().CopyAsPNG()
-#
+
     def OnCut(self, event):
         win = wx.Window.FindFocus()
         win.Cut()
 
     def OnDrawCrosshairs(self, event):
         frame = self._get_active_frame()
-        if hasattr(frame, 'SetDrawCrosshairs'):
-            frame.SetDrawCrosshairs(self._draw_crosshairs_menu_item.IsChecked())
+        frame.OnDrawCrosshairs(event)
 
     def OnMenuOpened(self, event):
         "Update window names in the window menu"
@@ -518,9 +518,11 @@ class App(wx.App):
 
     def OnUpdateUIDrawCrosshairs(self, event):
         frame = self._get_active_frame()
-        valid_frame = hasattr(frame, 'SetDrawCrosshairs')
-        event.Enable(valid_frame)
-        event.Check(frame.GetDrawCrosshairs() if valid_frame else False)
+        if isinstance(frame, EelbrainFrame):
+            frame.OnUpdateUIDrawCrosshairs(event)
+        else:
+            event.Enable(False)
+            event.Check(False)
 
     def OnUpdateUIForward(self, event):
         frame = self._get_active_frame()

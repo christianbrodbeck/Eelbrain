@@ -219,9 +219,6 @@ class CanvasFrame(EelbrainFrame):
         # update the axes menu on the toolbar
         self.toolbar.update()
 
-    def GetDrawCrosshairs(self):
-        return self._eelfigure._draw_crosshairs
-
     def OnAttach(self, event):
         get_app().Attach(self._eelfigure, "%s plot" % self._plot_name, 'p', self)
 
@@ -231,6 +228,9 @@ class CanvasFrame(EelbrainFrame):
             del self._eelfigure._frame
             del self._eelfigure
         event.Skip()
+
+    def OnDrawCrosshairs(self, event):
+        self._eelfigure.draw_crosshairs(event.IsChecked())
 
     def OnHelp(self, event):
         show_help_txt(self.__doc__, self, self._plot_name)
@@ -274,6 +274,10 @@ class CanvasFrame(EelbrainFrame):
             self._eelfigure.set_ylim(bottom, top)
         dlg.Destroy()
 
+    def OnUpdateUIDrawCrosshairs(self, event):
+        event.Enable(True)
+        event.Check(self._eelfigure._draw_crosshairs)
+
     def OnUpdateUISave(self, event):
         event.Enable(True)
 
@@ -282,9 +286,6 @@ class CanvasFrame(EelbrainFrame):
 
     def OnUpdateUISetVLim(self, event):
         event.Enable(hasattr(self._eelfigure, 'set_ylim'))
-
-    def SetDrawCrosshairs(self, enable):
-        self._eelfigure.draw_crosshairs(enable)
 
 
 class TestCanvas(CanvasFrame):
