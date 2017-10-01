@@ -53,7 +53,7 @@ from .._utils import WrappedFormater, ask, subp, keydefaultdict, log_level
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .definitions import (
     DefinitionError, assert_dict_has_args, find_dependent_epochs,
-    find_epochs_vars, find_test_vars)
+    find_epochs_vars, find_test_vars, log_dict_change, log_list_change)
 from .epochs import PrimaryEpoch, SecondaryEpoch, SuperEpoch
 from .experiment import FileTree
 from .parc import (
@@ -899,8 +899,9 @@ class MneExperiment(FileTree):
             log.addHandler(handler)
         # Terminal log
         handler = logging.StreamHandler()
-        formatter = WrappedFormater("%(levelname)-8s %(name)s:  %(message)s",
-                                    width=100, indent=9)
+        # formatter = WrappedFormater("%(levelname)-8s %(name)s:  %(message)s",
+        #                             width=100, indent=9)
+        formatter = logging.Formatter("%(levelname)-8s:  %(message)s")
         handler.setFormatter(formatter)
         self._screen_log_level = log_level(self.screen_log_level)
         handler.setLevel(self._screen_log_level)
@@ -1120,14 +1121,14 @@ class MneExperiment(FileTree):
                 new_events = events.get(key)
                 if new_events is None:
                     invalid_cache['events'].add(key)
-                    log.debug("  raw file removed: %s", '/'.join(key))
+                    log.warn("  raw file removed: %s", '/'.join(key))
                 elif new_events.n_cases != old_events.n_cases:
                     invalid_cache['events'].add(key)
-                    log.debug("  event length: %s %i->%i", '/'.join(key),
-                              old_events.n_cases, new_events.n_cases)
+                    log.warn("  event length: %s %i->%i", '/'.join(key),
+                             old_events.n_cases, new_events.n_cases)
                 elif not np.all(new_events['i_start'] == old_events['i_start']):
                     invalid_cache['events'].add(key)
-                    log.debug("  trigger timing changed: %s", '/'.join(key))
+                    log.warn("  trigger timing changed: %s", '/'.join(key))
                 else:
                     for var in old_events:
                         if var == 'i_start':
@@ -1140,22 +1141,25 @@ class MneExperiment(FileTree):
                         new = new_events[var]
                         if old.name != new.name:
                             invalid_cache['variables'].add(var)
-                            log.debug("  var name changed: %s (%s) %s->%s", var,
-                                      '/'.join(key), old.name, new.name)
+                            log.warn("  var name changed: %s (%s) %s->%s", var,
+                                     '/'.join(key), old.name, new.name)
                         elif new.__class__ is not old.__class__:
                             invalid_cache['variables'].add(var)
-                            log.debug("  var type changed: %s (%s) %s->%s", var,
-                                      '/'.join(key), old.__class__, new.__class)
+                            log.warn("  var type changed: %s (%s) %s->%s", var,
+                                     '/'.join(key), old.__class__, new.__class)
                         elif not all_equal(old, new, True):
                             invalid_cache['variables'].add(var)
-                            log.debug("  var changed: %s (%s) %i values", var,
-                                      '/'.join(key), np.sum(new != old))
+                            log.warn("  var changed: %s (%s) %i values", var,
+                                     '/'.join(key), np.sum(new != old))
 
             # groups
             for group, members in cache_state['groups'].iteritems():
-                if group not in self._groups or members != self._groups[group]:
+                if group not in self._groups:
                     invalid_cache['groups'].add(group)
-                    log.debug("  group: %s" % group)
+                    log.warn("  Group removed: %s", group)
+                elif members != self._groups[group]:
+                    invalid_cache['groups'].add(group)
+                    log_list_change(log, "Group", group, members, self._groups[group])
 
             # raw
             changed, changed_ica = compare_pipelines(cache_raw, raw_state, log)
@@ -1174,15 +1178,15 @@ class MneExperiment(FileTree):
                 if old_params != new_params:
                     invalid_cache['epochs'].add(epoch)
                     if new_params is None:
-                        log.debug("  Epoch removed: %s", epoch)
+                        log.warn("  Epoch removed: %s", epoch)
                     else:
-                        log.debug("  Epoch changed: %s %r -> %r", epoch, old_params, new_params)
+                        log_dict_change(log, 'Epoch', epoch, old_params, new_params)
 
             # parcs
             for parc, params in cache_parcs.iteritems():
                 if parc not in parcs_state:
                     invalid_cache['parcs'].add(parc)
-                    log.debug("  Parc removed: %s", parc)
+                    log.warn("  Parc %s removed", parc)
                 elif params != parcs_state[parc]:
                     # FS_PARC:  Parcellations that are provided by the user
                     # should not be automatically removed.
@@ -1192,17 +1196,16 @@ class MneExperiment(FileTree):
                     if not isinstance(self._parcs[parc],
                                       (FreeSurferParcellation, FSAverageParcellation)):
                         invalid_cache['parcs'].add(parc)
-                        log.debug("  Parc changed: %s", parc)
+                        log_dict_change(log, "Parc", parc, params, parcs_state[parc])
 
             # tests
             for test, params in cache_tests.iteritems():
                 if test not in tests_state or params != tests_state[test]:
                     invalid_cache['tests'].add(test)
                     if test in tests_state:
-                        log.debug("  test %s: \n   %s\n ->%s", test, params,
-                                  tests_state[test])
+                        log_dict_change(log, "Test", test, params, tests_state[test])
                     else:
-                        log.debug("  test %s removed", test)
+                        log.warn("  Test %s removed", test)
 
             # create message here, before secondary invalidations are added
             msg = []
@@ -1232,15 +1235,15 @@ class MneExperiment(FileTree):
                         bad = bad_vars.intersection(find_test_vars(params))
                         if bad:
                             invalid_cache['tests'].add(test)
-                            log.debug("  test %s depends on changed variables "
-                                      "%s", test, ', '.join(bad))
+                            log.debug("  Test %s depends on changed variables %s",
+                                      test, ', '.join(bad))
                 # epochs using bad variable
                 epochs_vars = find_epochs_vars(cache_state['epochs'])
                 for epoch, evars in epochs_vars.iteritems():
                     bad = bad_vars.intersection(evars)
                     if bad:
                         invalid_cache['epochs'].add(epoch)
-                        log.debug("  epoch %s depends on changed variables %s",
+                        log.debug("  Epoch %s depends on changed variables %s",
                                   epoch, ', '.join(bad))
 
             # secondary epochs
