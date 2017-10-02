@@ -239,7 +239,7 @@ def cross_correlation(in1, in2, name="{in1} * {in2}"):
 
 
 def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
-               out='magnitude'):
+               out='magnitude', decim=1):
     """Time frequency decomposition with Morlet wavelets (mne-python)
 
     Parameters
@@ -263,36 +263,43 @@ def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
     tfr : NDVar
         Time frequency decompositions.
     """
-    if not y.get_axis('time') == y.ndim - 1:
-        raise NotImplementedError
-    x = y.x
-    x = x.reshape((np.prod(x.shape[:-1]), x.shape[-1]))
-    sfreq = 1. / y.time.tstep
+    if out == 'magnitude':
+        magnitude_out = True
+        out = 'power'
+    elif out not in ('complex', 'phase', 'power'):
+        raise ValueError("out=%r" % (out,))
+    else:
+        magnitude_out = False
+    dimnames = y.get_dimnames((None,) * (y.ndim - 1) + ('time',))
+    data = y.get_data(dimnames)
+    dims = y.get_dims(dimnames)
+    data_flat = data.reshape((1, np.prod(data.shape[:-1]), data.shape[-1]))
+    time_dim = dims[-1]
+    sfreq = 1. / time_dim.tstep
     if np.isscalar(freqs):
         freqs = [freqs]
         fdim = None
     else:
         fdim = Scalar("frequency", freqs, 'Hz')
         freqs = fdim.values
-    x = mne_fixes.cwt_morlet(x, sfreq, freqs, n_cycles, zero_mean, use_fft)
-    if out == 'magnitude':
-        x = np.abs(x)
-    elif out == 'complex':
-        pass
-    else:
-        raise ValueError("out = %r" % out)
 
-    new_shape = y.x.shape[:-1]
-    dims = y.dims[:-1]
+    x_flat = mne.time_frequency.tfr_array_morlet(
+        data_flat, sfreq, freqs, n_cycles, zero_mean, use_fft, decim, out)
+
+    out_shape = list(data.shape)
+    out_dims = list(dims)
     if fdim is not None:
-        new_shape += (len(freqs),)
-        dims += (fdim,)
-    new_shape += y.x.shape[-1:]
-    dims += y.dims[-1:]
-
-    x = x.reshape(new_shape)
+        out_shape.insert(-1, len(fdim))
+        out_dims.insert(-1, fdim)
+    if decim != 1:
+        n_times = x_flat.shape[-1]
+        out_shape[-1] = n_times
+        out_dims[-1] = UTS(time_dim.tmin, time_dim.tstep * decim, n_times)
+    x = x_flat.reshape(out_shape)
+    if magnitude_out:
+        x **= 0.5
     info = cs.set_info_cs(y.info, cs.default_info('A'))
-    return NDVar(x, dims, info, y.name)
+    return NDVar(x, out_dims, info, y.name)
 
 
 def dss(ndvar):
