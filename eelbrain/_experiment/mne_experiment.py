@@ -5608,7 +5608,8 @@ class MneExperiment(FileTree):
             return
         group_members = self._groups[group]
         self._field_values['subject'] = group_members
-        if self.get('subject') not in group_members and group_members:
+        subject = self.get('subject')
+        if subject != '*' and subject not in group_members and group_members:
             self.set(group_members[0])
 
     def set_inv(self, ori='free', snr=3, method='dSPM', depth=None,
