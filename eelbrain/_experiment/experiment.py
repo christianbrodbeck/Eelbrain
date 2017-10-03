@@ -981,6 +981,11 @@ class FileTree(TreeModel):
         inclusive : bool
             Treat all unspecified fields as ``*`` (default False).
 
+        See Also
+        --------
+        move : Move files to a different root folder.
+        rm : Delete files.
+
         Notes
         -----
         State parameters can include an asterisk ('*') to match multiple files.
@@ -1021,7 +1026,8 @@ class FileTree(TreeModel):
 
         See Also
         --------
-        glob : find all files matching a template.
+        glob : Find all files matching a template.
+        rm : Delete files.
 
         Notes
         -----
@@ -1385,7 +1391,7 @@ class FileTree(TreeModel):
             os.rename(src, dst)
         print("Done")
 
-    def rm(self, temp, confirm=False, **constants):
+    def rm(self, temp, inclusive=False, confirm=False, **constants):
         """Remove all files corresponding to a template
 
         Asks for confirmation before deleting anything. Uses glob, so
@@ -1395,14 +1401,21 @@ class FileTree(TreeModel):
         ----------
         temp : str
             Name of the path template for which to find and delete files.
+        inclusive : bool
+            Treat all unspecified fields as ``*`` (default False).
         confirm : bool
             Confirm removal of the selected files. If False (default) the user
             is prompted for confirmation with a list of files; if True, the
             files are removed immediately.
         **others** :
             Set field values (values can be '*' to match all).
+
+        See Also
+        --------
+        glob : Find all files matching a template.
+        move : Move files to a different root folder.
         """
-        files = self.glob(temp, **constants)
+        files = self.glob(temp, inclusive, **constants)
         if files:
             root = self.get('root')
             print("root: %s\n" % root)
