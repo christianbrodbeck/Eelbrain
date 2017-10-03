@@ -44,10 +44,10 @@ def log_list_change(log, kind, name, old, new):
     log.warn("  %s %s changed:", kind, name)
     removed = tuple(v for v in old if v not in new)
     if removed:
-        log.warn("    Members removed: ", ', '.join(map(str, removed)))
+        log.warn("    Members removed: %s", ', '.join(map(str, removed)))
     added = tuple(v for v in new if v not in old)
     if added:
-        log.warn("    Members added: ", ', '.join(map(str, added)))
+        log.warn("    Members added: %s", ', '.join(map(str, added)))
 
 
 def find_epoch_vars(params):
