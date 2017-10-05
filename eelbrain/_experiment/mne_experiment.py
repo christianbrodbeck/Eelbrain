@@ -72,8 +72,8 @@ CACHE_STATE_VERSION = 7
 # Allowable parameters
 ICA_REJ_PARAMS = {'kind', 'source', 'epoch', 'interpolation', 'n_components',
                   'random_state', 'method'}
-COV_PARAMS = {'epoch', 'session', 'method', 'reg', 'keep_sample_mean',
-              'reg_eval_win_pad'}
+COV_PARAMS = {'epoch', 'session', 'unique_session', 'method', 'reg',
+              'keep_sample_mean', 'reg_eval_win_pad'}
 
 
 inv_re = re.compile("(free|fixed|loose\.\d+)-"  # orientation constraint
@@ -731,12 +731,14 @@ class MneExperiment(FileTree):
         #####
         for k, params in self._covs.iteritems():
             params = set(params)
-            n_datasource = ('epoch' in params) + ('session' in params)
-            if n_datasource != 1:
-                if n_datasource == 0:
+            datasource = {'epoch', 'session', 'unique_session'}.intersection(params)
+            if len(datasource) != 1:
+                if datasource:
+                    raise ValueError("Cov %s has more than one data-source: " %
+                                     (k, ' and '.join(datasource)))
+                else:
                     raise ValueError("Cov %s has neither epoch nor session "
                                      "entry" % k)
-                raise ValueError("Cov %s has both epoch and session entry" % k)
             if params.difference(COV_PARAMS):
                 raise ValueError("Cov %s has unused entries: %s" %
                                  ', '.join(params.difference(COV_PARAMS)))
@@ -1500,9 +1502,15 @@ class MneExperiment(FileTree):
             if 'epoch' in params:
                 self.set(epoch=params['epoch'])
                 return self._epochs_mtime()
-            else:
+            elif 'session' in params:
                 self.set(session=params['session'])
                 return self._raw_mtime()
+            elif 'unique_session' in params:
+                session = params['unique_session']
+                self.set(subject=session, session=session, match=False)
+                return self._raw_mtime()
+            else:
+                raise RuntimeError("cov=%r: %r" % (self.get('cov'), params))
 
     def _epochs_mtime(self):
         bads_path = self.get('bads-file')
@@ -2374,7 +2382,15 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        return mne.read_cov(self.get('cov-file', make=True, **kwargs))
+        params = self._covs[self.get('cov')]
+        if 'unique_session' in params:
+            self.set(**kwargs)
+            with self._temporary_state:
+                filename = self.get('cov-file', make=True,
+                                    subject=params['unique_session'], match=False)
+        else:
+            filename = self.get('cov-file', make=True, **kwargs)
+        return mne.read_cov(filename)
 
     def load_edf(self, **kwargs):
         """Load the edf file ("edf-file" template)
@@ -3872,39 +3888,49 @@ class MneExperiment(FileTree):
 
     def make_cov(self):
         "Make a noise covariance (cov) file"
-        dest = self.get('cov-file', mkdir=True)
-        if exists(dest):
-            mtime = self._cov_mtime()
-            if mtime and getmtime(dest) > mtime:
-                return
-
         params = self._covs[self.get('cov')]
+        with self._temporary_state:
+            unique_session = params.get('unique_session', None)
+            session = params.get('session', None)
+            if unique_session:
+                self.set(subject=unique_session, session=unique_session, match=False)
+            dest = self.get('cov-file', mkdir=True)
+            if exists(dest):
+                mtime = self._cov_mtime()
+                if mtime and getmtime(dest) > mtime:
+                    return
+
+            if session:
+                data = self.load_raw(session=session)
+            elif unique_session:
+                data = self.load_raw()
+            else:
+                data = self.load_epochs(None, True, False, decim=1,
+                                        epoch=params['epoch'])['epochs']
+
         method = params.get('method', 'empirical')
         keep_sample_mean = params.get('keep_sample_mean', True)
         reg = params.get('reg', None)
 
-        if 'epoch' in params:
-            with self._temporary_state:
-                epochs = self.load_epochs(None, True, False, decim=1,
-                                          epoch=params['epoch'])['epochs']
-            cov = mne.compute_covariance(epochs, keep_sample_mean, method=method)
+        if session or unique_session:
+            cov = mne.compute_raw_covariance(data, method=method)
         else:
-            with self._temporary_state:
-                raw = self.load_raw(session=params['session'])
-            cov = mne.compute_raw_covariance(raw, method=method)
+            cov = mne.compute_covariance(data, keep_sample_mean, method=method)
 
         if reg is True:
-            cov = mne.cov.regularize(cov, epochs.info)
+            cov = mne.cov.regularize(cov, data.info)
         elif isinstance(reg, dict):
-            cov = mne.cov.regularize(cov, epochs.info, **reg)
+            cov = mne.cov.regularize(cov, data.info, **reg)
         elif reg == 'best':
-            if mne.pick_types(epochs.info, meg='grad', eeg=True, ref_meg=False):
+            if mne.pick_types(data.info, meg='grad', eeg=True, ref_meg=False):
                 raise NotImplementedError("EEG or gradiometer sensors")
+            elif session or unique_session:
+                raise NotImplementedError("reg='best' with raw cov")
             reg_vs = np.arange(0, 0.21, 0.01)
-            covs = [mne.cov.regularize(cov, epochs.info, mag=v) for v in reg_vs]
+            covs = [mne.cov.regularize(cov, data.info, mag=v) for v in reg_vs]
 
             # compute whitened global field power
-            evoked = epochs.average()
+            evoked = data.average()
             picks = mne.pick_types(evoked.info, meg='mag', ref_meg=False)
             gfps = [mne.whiten_evoked(evoked, cov, picks).data.std(0)
                     for cov in covs]
@@ -3912,7 +3938,7 @@ class MneExperiment(FileTree):
             # apply padding
             t_pad = params.get('reg_eval_win_pad', 0)
             if t_pad:
-                n_pad = int(t_pad * epochs.info['sfreq'])
+                n_pad = int(t_pad * data.info['sfreq'])
                 if len(gfps[0]) <= 2 * n_pad:
                     msg = "Covariance padding (%s) is bigger than epoch" % t_pad
                     raise ValueError(msg)
