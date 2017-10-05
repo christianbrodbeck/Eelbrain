@@ -8,6 +8,9 @@ New in 0.27
 
 * :func:`concatenate`: concatenate multiple :class:`NDVar` objects to form a
   new dimension.
+* New methods:
+
+  - :meth:`Dataset.zip`
 
 
 New in 0.26

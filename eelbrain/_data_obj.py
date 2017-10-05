@@ -6227,6 +6227,13 @@ class Dataset(OrderedDict):
         if info and isinstance(ds, Dataset):
             self.info.update(ds.info)
 
+    def zip(self, *variables):
+        """Iterate through the values of multiple variables
+
+        ``ds.zip('a', 'b')`` is equivalent to ``izip(ds['a'], ds['b'])``.
+        """
+        return izip(*map(self.eval, variables))
+
 
 class Interaction(_Effect):
     """Represents an Interaction effect.
