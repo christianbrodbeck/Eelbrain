@@ -2,7 +2,7 @@ import numpy as np
 from numpy import newaxis
 
 from .. import _colorspaces as cs
-from .._data_obj import NDVar, UTS, dataobj_repr
+from .._data_obj import Case, NDVar, UTS, dataobj_repr
 
 
 class RevCorrData(object):
@@ -181,15 +181,17 @@ class RevCorrData(object):
         h_time = UTS(tstart, self.time.tstep, h.shape[-1])
         hs = []
         for name, dim, index in self._x_meta:
-            x = h[:, index, :]
+            x = h[..., index, :]
             if dim is None:
-                dims = (h_time,)
+                dims = [h_time]
             else:
-                dims = (dim, h_time)
+                dims = [dim, h_time]
             if self.ydim is None:
                 x = x[0]
             else:
-                dims = (self.ydim,) + dims
+                dims.insert(0, self.ydim)
+            if h.ndim == 4:
+                dims.insert(0, Case)
             hs.append(NDVar(x, dims, self._y_info.copy(), name))
 
         if self._multiple_x:

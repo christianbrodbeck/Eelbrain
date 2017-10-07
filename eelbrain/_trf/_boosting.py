@@ -89,7 +89,7 @@ class BoostingResult(object):
     """
     def __init__(self, h, r, isnan, t_run, version, delta, mindelta, error,
                  spearmanr, fit_error, scale_data, y_mean, y_scale, x_mean,
-                 x_scale, y=None, x=None, tstart=None, tstop=None):
+                 x_scale, y=None, x=None, tstart=None, tstop=None, h_segs=None):
         self.h = h
         self.r = r
         self.isnan = isnan
@@ -109,6 +109,7 @@ class BoostingResult(object):
         self.x = x
         self.tstart = tstart
         self.tstop = tstop
+        self.h_segs = h_segs
 
     def __getstate__(self):
         return {attr: getattr(self, attr) for attr in
@@ -241,6 +242,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
                 total=n_y * 10)
     # result containers
     res = np.empty((3, n_y))  # r, rank-r, error
+    h_x_allsegs = np.empty((N_SEGS, n_y, n_x, trf_length))
     h_x = np.empty((n_y, n_x, trf_length))
     # boosting
     if CONFIG['n_workers']:
@@ -259,6 +261,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
             for _ in xrange(n_y * N_SEGS):
                 y_i, seg_i, h = result_queue.get()
                 pbar.update()
+                h_x_allsegs[seg_i, y_i] = 0 if h is None else h
                 if y_i in h_segs:
                     h_seg = h_segs[y_i]
                     h_seg[seg_i] = h
@@ -280,9 +283,10 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     else:
         for y_i, y_ in enumerate(y_data):
             hs = []
-            for i in xrange(N_SEGS):
-                h = boost_1seg(x_data, y_, trf_length, delta, N_SEGS, i,
+            for seg_i in xrange(N_SEGS):
+                h = boost_1seg(x_data, y_, trf_length, delta, N_SEGS, seg_i,
                                mindelta_, error)
+                h_x_allsegs[seg_i, y_i] = 0 if h is None else h
                 if h is not None:
                     hs.append(h)
                 pbar.update()
@@ -310,7 +314,8 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     return BoostingResult(data.package_kernel(h_x, tstart), r, isnan, dt, VERSION,
                           delta, mindelta, error, rr, err,
                           scale_data, y_mean, y_scale, x_mean, x_scale,
-                          data.y_name, data.x_name, tstart, tstop)
+                          data.y_name, data.x_name, tstart, tstop,
+                          data.package_kernel(h_x_allsegs, tstart))
 
 
 def boost_1seg(x, y, trf_length, delta, nsegs, segno, mindelta, error,
