@@ -4048,6 +4048,7 @@ class NDVar(object):
         dims : tuple of Dimension
             Dimension objects in the same order as in ``names``.
         """
+        names = tuple(names)
         if None in names:
             names = self.get_dimnames(names)
         return tuple(self.get_dim(name) for name in names)

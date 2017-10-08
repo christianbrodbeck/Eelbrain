@@ -186,6 +186,56 @@ def convolve(h, x):
         return out
 
 
+def correlation(v1, v2, dim=None, name=None):
+    """Correlation coefficient
+
+    Parameters
+    ----------
+    v1 : NDVar
+        First NDVar.
+    v2 : NDVar
+        Second NDVar. Needs to have same dimensions as ``v1``.
+    dim : str
+        Dimension along which to compute correlation coefficient (by default,
+        look for a dimension that is shared between ``v1`` and ``v2``; if more
+        than one dimension are shared and ``dim`` is unspecified, raise a
+        ``TypeError``).
+    name : str
+        Name for the new NDVar.
+
+    Returns
+    -------
+    correlation : NDVar
+        Correlation between data in ``v1`` and ``v2`` along ``dim``.
+    """
+    v1 = asndvar(v1)
+    v2 = asndvar(v2)
+    if v1.dims != v2.dims:
+        raise NotImplementedError("NDVars with unequal dimensions")
+    if dim is None:
+        shared_dims = set(v1.dimnames).intersection(v2.dimnames)
+        if len(shared_dims) == 1:
+            dim = shared_dims.pop()
+        elif shared_dims:
+            raise TypeError(
+                "NDVars share more than one dimension (%s); dim parameter "
+                "needs to be explicitly specified." % (', '.join(shared_dims)))
+        else:
+            raise ValueError("NDVars do not share any dimensions")
+
+    axis1 = v1.get_axis(dim)
+    x1 = np.rollaxis(v1.x, axis1, v1.ndim).reshape((-1, v1.shape[axis1]))
+    axis2 = v2.get_axis(dim)
+    x2 = np.rollaxis(v2.x, axis2, v2.ndim).reshape((-1, v2.shape[axis2]))
+    x = np.array([np.corrcoef(x1[i], x2[i])[0, 1] for i in xrange(len(x1))])
+    x[np.isnan(x)] = 0.
+    dims = v1.get_dims(name for name in v1.dimnames if name != dim)
+    x = x.reshape(map(len, dims))
+    info = merge_info((v1, v2))
+    info = cs.set_info_cs(info, cs.stat_info('r'))
+    return NDVar(x, dims, info, name)
+
+
 def cross_correlation(in1, in2, name="{in1} * {in2}"):
     """Cross-correlation between two NDVars along the time axis
     
@@ -502,7 +552,7 @@ def label_operator(labels, operation='mean', exclude=None, weights=None,
 
 
 def neighbor_correlation(x, dim='sensor', obs='time', name=None):
-    """Calculate Neighbor correlation
+    """Correlation between neighboring elements
 
     Parameters
     ----------
@@ -519,8 +569,8 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
     Returns
     -------
     correlation : NDVar
-        NDVar that contains for each element in ``dim`` the with average
-        correlation coefficient with its neighbors.
+        NDVar that contains for each element in ``dim`` the average correlation
+        coefficient with its neighbors.
     """
     x = asndvar(x)
     low_var = x.std(obs).x < 1e-25
@@ -528,7 +578,6 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
     if np.any(low_var):
         raise ValueError("Low variance at %s = %s" %
                          (dim, dim_obj._dim_index(low_var)))
-
 
     # find neighbors
     neighbors = defaultdict(list)
