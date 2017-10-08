@@ -4771,6 +4771,41 @@ class NDVar(object):
         return NDVar(np.where(idx, self.x, 0), self.dims, info,
                      name or self.name)
 
+    def trim_mean(self, proportioncut, dims=(), **regions):
+        """Compute the trimmed mean over given dimensions
+
+        Parameters
+        ----------
+        proportioncut : scalar
+            Fraction to cut off the tails of the distribution (see
+            :func:`scipy.stats.trim_mean`).
+        dims : str | tuple of str | boolean NDVar
+            Dimensions over which to operate. A str is used to specify a single
+            dimension, a tuple of str to specify several dimensions, None to
+            compute the mean over all dimensions.
+            A boolean NDVar with the same dimensions as the data can be used
+            to compute the mean in specific elements (if the data has a case
+            dimension, the mean is computed for each case).
+        *regions*
+            Regions over which to aggregate. For example, to get the mean
+            between time=0.1 and time=0.2, use ``ndvar.mean(time=(0.1, 0.2))``.
+        name : str
+            Name of the output NDVar (default is the current name).
+
+        Returns
+        -------
+        mean : NDVar | Var | float
+            The mean over specified dimensions. Return a Var if only the case
+            dimension remains, and a float if the function collapses over all
+            data.
+        """
+        return self._aggregate_over_dims(
+            dims, regions, partial(self._trim_mean, proportioncut))
+
+    @staticmethod
+    def _trim_mean(proportioncut, array, axis):
+        return scipy.stats.trim_mean(array, proportioncut, axis)
+
     def var(self, dims=(), ddof=0, **regions):
         """Compute the variance over given dimensions
 
