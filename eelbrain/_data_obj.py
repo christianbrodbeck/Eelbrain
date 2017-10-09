@@ -8768,8 +8768,13 @@ class SourceSpace(Dimension):
     def coordinates(self):
         sss = self.get_source_space()
         coords = (ss['rr'][v] for ss, v in izip(sss, self.vertices))
-        coords = np.vstack(coords)
-        return coords
+        return np.vstack(coords)
+
+    @LazyProperty
+    def normals(self):
+        sss = self.get_source_space()
+        normals = (ss['nn'][v] for ss, v in izip(sss, self.vertices))
+        return np.vstack(normals)
 
     def _array_index(self, arg):
         if isinstance(arg, MNE_LABEL):
