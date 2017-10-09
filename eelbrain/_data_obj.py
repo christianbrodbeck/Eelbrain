@@ -8543,7 +8543,38 @@ class SourceSpace(Dimension):
         self._subjects_dir = subjects_dir
         self._init_secondary()
         Dimension.__init__(self, 'source', connectivity)
-        self.set_parc(parc)
+
+        # parc
+        if parc is None or parc is False:
+            self.parc = None
+        elif isinstance(parc, Factor):
+            if len(parc) != len(self):
+                raise ValueError("parc has wrong length (%i) for SourceSpace "
+                                 "with %i vertices" % (len(parc), self._n_vert))
+            self.parc = parc
+        elif isinstance(parc, basestring):
+            if self.kind == 'ico':
+                fname = self._ANNOT_PATH.format(
+                    subjects_dir=self.subjects_dir, subject=self.subject,
+                    hemi='%s', parc=parc)
+                labels_lh, _, names_lh = read_annot(fname % 'lh')
+                labels_rh, _, names_rh = read_annot(fname % 'rh')
+                x_lh = labels_lh[self.lh_vertices]
+                x_lh[x_lh == -1] = -2
+                x_rh = labels_rh[self.rh_vertices]
+                x_rh[x_rh >= 0] += len(names_lh)
+                names = chain(('unknown-lh', 'unknown-rh'),
+                              (name + '-lh' for name in names_lh),
+                              (name + '-rh' for name in names_rh))
+                self.parc = Factor(np.hstack((x_lh, x_rh)), parc,
+                                   labels={i: name for i, name in
+                                           enumerate(names, -2)})
+            else:
+                raise NotImplementedError(
+                    "Can't set parcellation from annotation files for volume "
+                    "source space. Consider using a Factor instead.")
+        else:
+            raise TypeError("Parc needs to be Factor or string, got %s" % repr(parc))
 
     def _init_secondary(self):
         self._n_vert = sum(len(v) for v in self.vertices)
@@ -9069,45 +9100,9 @@ class SourceSpace(Dimension):
         return NDVar(np.concatenate(data), (source,))
 
     def set_parc(self, parc):
-        """Set the source space parcellation
-
-        Parameters
-        ----------
-        parc : None | str | Factor
-            Add a parcellation to the source space to identify vertex location.
-            Can be specified as Factor assigning a label to each source, or a
-            string specifying a freesurfer parcellation (stored as *.annot
-            files with the MRI). Only applies to ico source spaces, default is
-            'aparc'.
-        """
-        if parc is None or parc is False:
-            parc_ = None
-        elif isinstance(parc, Factor):
-            if len(parc) != len(self):
-                raise ValueError("Wrong length (%i)" % len(parc))
-            parc_ = parc
-        elif isinstance(parc, basestring):
-            if self.kind == 'ico':
-                fname = self._ANNOT_PATH.format(
-                    subjects_dir=self.subjects_dir, subject=self.subject,
-                    hemi='%s', parc=parc)
-                labels_lh, _, names_lh = read_annot(fname % 'lh')
-                labels_rh, _, names_rh = read_annot(fname % 'rh')
-                x_lh = labels_lh[self.lh_vertices]
-                x_lh[x_lh == -1] = -2
-                x_rh = labels_rh[self.rh_vertices]
-                x_rh[x_rh >= 0] += len(names_lh)
-                names = chain(('unknown-lh', 'unknown-rh'),
-                              (name + '-lh' for name in names_lh),
-                              (name + '-rh' for name in names_rh))
-                parc_ = Factor(np.hstack((x_lh, x_rh)), parc,
-                               labels={i: name for i, name in enumerate(names, -2)})
-            else:
-                raise NotImplementedError("Parcellation for volume source space")
-        else:
-            raise TypeError("Parc needs to be string, got %s" % repr(parc))
-
-        self.parc = parc_
+        """Superseded. Use :func:`eelbrain.set_parc`."""
+        raise RuntimeError("The SourceSpace.set_parc() method has been "
+                           "removed. Use eelbrain.set_parc() instead")
 
     @property
     def values(self):

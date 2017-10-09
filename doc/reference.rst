@@ -141,6 +141,7 @@ and more specific operations:
    psd_welch
    resample
    segment
+   set_parc
 
 
 ^^^^^^^^^^^^^^^^^^^

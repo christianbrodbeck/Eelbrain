@@ -12,6 +12,7 @@ from mne.label import Label, BiHemiLabel
 from mne.utils import get_subjects_dir
 
 from ._data_obj import NDVar, SourceSpace
+from ._ndvar import set_parc
 
 
 def _vertices_equal(v1, v0):
@@ -295,7 +296,7 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
         if copy:
             ndvar = ndvar.copy()
         if parc is not True:
-            ndvar.source.set_parc(parc)
+            set_parc(ndvar, parc)
         return ndvar
 
     axis = ndvar.get_axis('source')

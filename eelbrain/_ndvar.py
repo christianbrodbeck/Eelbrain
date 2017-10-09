@@ -788,3 +788,31 @@ def segment(continuous, times, tstart, tstop, decim=1):
             continuous.dims[axis + 1:])
     return NDVar(np.array(tuple(s.x for s in segments)), dims,
                  continuous.info.copy(), continuous.name)
+
+
+def set_parc(ndvar, parc):
+    """Change the parcellation of an :class:`NDVar` with SourceSpace dimension
+
+    Parameters
+    ----------
+    ndvar : NDVar
+        NDVar with SourceSpace dimension.
+    parc : None | str | Factor
+        Parcellation to identify source space vertex locations.
+        Can be specified as Factor assigning a label to each source, or a
+        string specifying a FreeSurfer parcellation (stored as ``*.annot``
+        files with the MRI).
+
+    Returns
+    -------
+    out_ndvar : NDVar
+        Shallow copy of ``ndvar`` with the source space parcellation set to
+        ``parc``.
+    """
+    axis = ndvar.get_axis('source')
+    old = ndvar.dims[axis]
+    new = SourceSpace(old.vertices, old.subject, old.src, old.subjects_dir,
+                      parc, old.connectivity)
+    dims = list(ndvar.dims)
+    dims[axis] = new
+    return NDVar(ndvar.x, dims, ndvar.info.copy(), ndvar.name)

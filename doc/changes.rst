@@ -6,6 +6,14 @@ Changes
 New in 0.27
 -----------
 
+* API changes:
+
+  - To change the parcellation of an :class:`NDVar` with source-space data,
+    use the new function :func:`set_parc`. The :meth:`SourceSpace.set_parc`
+    method has been removed because dimension objects should be treated
+    as immutable, as they can be shared between different :class:`NDVar`
+    instances.
+
 * :func:`concatenate`: concatenate multiple :class:`NDVar` objects to form a
   new dimension.
 * New functions:

@@ -148,23 +148,22 @@ class BoostingResult(object):
         -----
         No warning for missing sources!
         """
+        from .._ndvar import set_parc
+
         if not self.r.has_dim('source'):
             raise RuntimeError('BoostingResult does not have source-space data')
 
-        source = self.r.source
-        source.set_parc(parc)
-        index = np.invert(source.parc.startswith('unknown-'))
-
-        def sub(x):
-            if isinstance(x, tuple):
-                return tuple(sub(x_) for x_ in x)
-            assert x.source is source
-            return x.sub(source=index)
+        def sub_func(obj):
+            if obj is None:
+                return None
+            elif isinstance(obj, tuple):
+                return tuple(sub_func(obj_) for obj_ in obj)
+            obj_new = set_parc(obj, parc)
+            index = np.invert(obj_new.source.parc.startswith('unknown-'))
+            return obj_new.sub(source=index)
 
         for attr in ('h', 'r', 'spearmanr', 'fit_error', 'y_mean', 'y_scale'):
-            x = getattr(self, attr)
-            if x is not None:
-                setattr(self, attr, sub(x))
+            setattr(self, attr, sub_func(getattr(self, attr)))
 
 
 def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
