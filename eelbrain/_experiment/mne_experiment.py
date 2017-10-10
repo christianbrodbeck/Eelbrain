@@ -2669,6 +2669,8 @@ class MneExperiment(FileTree):
         # refresh cache
         subject = self.get('subject')
         if ds is None:
+            self._log.debug("Extracting events for %s %s", subject,
+                            self.get('session'))
             if self.get('modality') == '':
                 merge = -1
             else:
