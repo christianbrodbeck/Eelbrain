@@ -3929,6 +3929,39 @@ class MneExperiment(FileTree):
 
         cov.save(dest)
 
+    def make_empty_room_raw(self, source_file, redo=False):
+        """Generate am empty room raw file with the subject's digitizer info
+
+        Parameters
+        ----------
+        source_file : str
+            Path to the empty room raw file.
+        redo : bool
+            If the file already exists, recreate and overwrite it (default
+            False).
+        """
+        # figure out sessions
+        if 'emptyroom' not in self._sessions:
+            raise ValueError("The expleriment does not have a session called "
+                             "'emptyroom'")
+        for session in self._sessions:
+            if session != 'emptyroom':
+                break
+        else:
+            raise ValueError("The experiment does not have a session other than "
+                             "'emptyroom'")
+        # find destination path
+        with self._temporary_state:
+            dst = self.get('raw-file', raw='raw', session='emptyroom')
+            if not redo and os.path.exists(dst):
+                return
+            dig_raw = self.load_raw(add_bads=False, raw='raw', session=session)
+        # generate file
+        raw = mne.io.read_raw_fif(source_file)
+        for key in ('dev_head_t', 'dig'):
+            raw.info[key] = dig_raw.info[key]
+        raw.save(dst, overwrite=redo)
+
     def _make_evoked(self, decim, data_raw):
         """Make files with evoked sensor data.
 
