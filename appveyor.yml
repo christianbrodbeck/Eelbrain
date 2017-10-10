@@ -19,8 +19,3 @@ build: false
 
 test_script:
   - nosetests -v
-  - python setup.py build_sphinx
-
-artifacts:
-  - path: doc\build\html
-    name: html_docs

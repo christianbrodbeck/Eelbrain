@@ -20,8 +20,7 @@ before_install:
   - conda update --yes --quiet conda
   - conda config --append channels conda-forge
   - conda config --append channels christianbrodbeck
-  - conda config --append channels ncil  # for r-ez
-  - conda install --yes --quiet --file requirements_install.txt
+  - conda config --append channels mittner  # for r-ez
   - conda install --yes --quiet --file requirements_dev.txt
   - python -c "import mne; mne.datasets.testing.data_path()"
   - python --version
@@ -34,8 +33,10 @@ install:
 
 script:
   - if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
-      pythonw $(which nosetests) -v eelbrain  eelbrain/_*;
+      make test_travis_osx;
     else
-      nosetests -v eelbrain  eelbrain/_*;
+      make test;
+    fi;
+  - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then
       make style-check;
     fi;

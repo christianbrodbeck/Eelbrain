@@ -19,6 +19,37 @@ def assert_dict_has_args(d, cls, kind, name, n_internal=0):
             (kind, name, ', '.join(missing)))
 
 
+def dict_change(old, new):
+    "Readable representation of dict change"
+    lines = []
+    keys = set(new)
+    keys.update(old)
+    for key in sorted(keys):
+        if key not in new:
+            lines.append("%r: %r -> key removed" % (key, old[key]))
+        elif key not in old:
+            lines.append("%r: new key -> %r" % (key, new[key]))
+        elif new[key] != old[key]:
+            lines.append("%r: %r -> %r" % (key, old[key], new[key]))
+    return lines
+
+
+def log_dict_change(log, kind, name, old, new):
+    log.warn("  %s %s changed:", kind, name)
+    for line in dict_change(old, new):
+        log.warn("    %s", line)
+
+
+def log_list_change(log, kind, name, old, new):
+    log.warn("  %s %s changed:", kind, name)
+    removed = tuple(v for v in old if v not in new)
+    if removed:
+        log.warn("    Members removed: %s", ', '.join(map(str, removed)))
+    added = tuple(v for v in new if v not in old)
+    if added:
+        log.warn("    Members added: %s", ', '.join(map(str, added)))
+
+
 def find_epoch_vars(params):
     "Find variables used in a primary epoch definition"
     out = ()
@@ -102,5 +133,10 @@ def find_test_vars(params):
                     definition = definition[0]
                 vs.update(find_variables(definition))
     return vs
+
+
+def typed_arg(arg, type_):
+    return None if arg is None else type_(arg)
+
 
 find_test_vars.__test__ = False

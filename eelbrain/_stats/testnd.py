@@ -25,7 +25,7 @@ from __future__ import division, print_function
 from datetime import datetime, timedelta
 from itertools import chain, izip
 from math import ceil
-from multiprocessing import Process
+from multiprocessing import Process, Event
 from multiprocessing.queues import SimpleQueue
 from multiprocessing.sharedctypes import RawArray
 import logging
@@ -2871,7 +2871,7 @@ class _MergedTemporalClusterDist:
         return clusters
 
 
-def distribution_worker(dist_array, dist_shape, in_queue):
+def distribution_worker(dist_array, dist_shape, in_queue, kill_beacon):
     "Worker that accumulates values and places them into the distribution"
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     n = reduce(operator.mul, dist_shape)
@@ -2880,9 +2880,12 @@ def distribution_worker(dist_array, dist_shape, in_queue):
     samples = dist_shape[0]
     for i in trange(samples, desc="Permutation test", unit=' permutations'):
         dist[i] = in_queue.get()
+        if kill_beacon.is_set():
+            return
 
 
-def permutation_worker(in_queue, out_queue, y, shape, test_func, map_args):
+def permutation_worker(in_queue, out_queue, y, shape, test_func, map_args,
+                       kill_beacon):
     "Worker for 1 sample t-test"
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     n = reduce(operator.mul, shape)
@@ -2890,7 +2893,7 @@ def permutation_worker(in_queue, out_queue, y, shape, test_func, map_args):
     stat_map = np.empty(shape[1:])
     stat_map_flat = stat_map.ravel()
     map_processor = get_map_processor(*map_args)
-    while True:
+    while not kill_beacon.is_set():
         perm = in_queue.get()
         if perm is None:
             break
@@ -2901,18 +2904,22 @@ def permutation_worker(in_queue, out_queue, y, shape, test_func, map_args):
 
 def run_permutation(test_func, dist, iterator, use_mp=True):
     if use_mp and CONFIG['n_workers']:
-        workers, out_queue = setup_workers(test_func, dist)
+        workers, out_queue, kill_beacon = setup_workers(test_func, dist)
 
-        for perm in iterator:
-            out_queue.put(perm)
+        try:
+            for perm in iterator:
+                out_queue.put(perm)
 
-        for _ in xrange(len(workers) - 1):
-            out_queue.put(None)
+            for _ in xrange(len(workers) - 1):
+                out_queue.put(None)
 
-        logger = logging.getLogger(__name__)
-        for w in workers:
-            w.join()
-            logger.debug("worker joined")
+            logger = logging.getLogger(__name__)
+            for w in workers:
+                w.join()
+                logger.debug("worker joined")
+        except KeyboardInterrupt:
+            kill_beacon.set()
+            raise
     else:
         y = dist.data_for_permutation(False)
         map_processor = get_map_processor(*dist.map_args)
@@ -2930,25 +2937,25 @@ def setup_workers(test_func, dist):
     logger.debug("Setting up %i worker processes..." % CONFIG['n_workers'])
     permutation_queue = SimpleQueue()
     dist_queue = SimpleQueue()
+    kill_beacon = Event()
 
     # permutation workers
     y, shape = dist.data_for_permutation()
-    args = (permutation_queue, dist_queue, y, shape, test_func, dist.map_args)
+    args = (permutation_queue, dist_queue, y, shape, test_func, dist.map_args,
+            kill_beacon)
     workers = []
     for _ in xrange(CONFIG['n_workers']):
         w = Process(target=permutation_worker, args=args)
-        w.daemon = True
         w.start()
         workers.append(w)
 
     # distribution worker
-    args = (dist.dist_array, dist.dist_shape, dist_queue)
+    args = (dist.dist_array, dist.dist_shape, dist_queue, kill_beacon)
     w = Process(target=distribution_worker, args=args)
-    w.daemon = True
     w.start()
     workers.append(w)
 
-    return workers, permutation_queue
+    return workers, permutation_queue, kill_beacon
 
 
 def run_permutation_me(test, dists, iterator):
@@ -2959,18 +2966,22 @@ def run_permutation_me(test, dists, iterator):
         thresholds = None
 
     if CONFIG['n_workers']:
-        workers, out_queue = setup_workers_me(test, dists, thresholds)
+        workers, out_queue, kill_beacon = setup_workers_me(test, dists, thresholds)
 
-        for perm in iterator:
-            out_queue.put(perm)
+        try:
+            for perm in iterator:
+                out_queue.put(perm)
 
-        for _ in xrange(len(workers) - 1):
-            out_queue.put(None)
+            for _ in xrange(len(workers) - 1):
+                out_queue.put(None)
 
-        logger = logging.getLogger(__name__)
-        for w in workers:
-            w.join()
-            logger.debug("worker joined")
+            logger = logging.getLogger(__name__)
+            for w in workers:
+                w.join()
+                logger.debug("worker joined")
+        except KeyboardInterrupt:
+            kill_beacon.set()
+            raise
     else:
         y = dist.data_for_permutation(False)
         map_processor = get_map_processor(*dist.map_args)
@@ -3004,31 +3015,30 @@ def setup_workers_me(test_func, dists, thresholds):
     logger.debug("Setting up %i worker processes..." % CONFIG['n_workers'])
     permutation_queue = SimpleQueue()
     dist_queue = SimpleQueue()
+    kill_beacon = Event()
 
     # permutation workers
     dist = dists[0]
     y, shape = dist.data_for_permutation()
     args = (permutation_queue, dist_queue, y, shape, test_func, dist.map_args,
-            thresholds)
+            thresholds, kill_beacon)
     workers = []
     for _ in xrange(CONFIG['n_workers']):
         w = Process(target=permutation_worker_me, args=args)
-        w.daemon = True
         w.start()
         workers.append(w)
 
     # distribution worker
-    args = ([d.dist_array for d in dists], dist.dist_shape, dist_queue)
+    args = ([d.dist_array for d in dists], dist.dist_shape, dist_queue, kill_beacon)
     w = Process(target=distribution_worker_me, args=args)
-    w.daemon = True
     w.start()
     workers.append(w)
 
-    return workers, permutation_queue
+    return workers, permutation_queue, kill_beacon
 
 
 def permutation_worker_me(in_queue, out_queue, y, shape, test, map_args,
-                          thresholds):
+                          thresholds, kill_beacon):
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     n = reduce(operator.mul, shape)
     y = np.frombuffer(y, np.float64, n).reshape((shape[0], -1))
@@ -3036,7 +3046,7 @@ def permutation_worker_me(in_queue, out_queue, y, shape, test, map_args,
     if thresholds:
         iterator = zip(iterator, thresholds)
     map_processor = get_map_processor(*map_args)
-    while True:
+    while not kill_beacon.is_set():
         perm = in_queue.get()
         if perm is None:
             break
@@ -3049,7 +3059,7 @@ def permutation_worker_me(in_queue, out_queue, y, shape, test, map_args,
         out_queue.put(max_v)
 
 
-def distribution_worker_me(dist_arrays, dist_shape, in_queue):
+def distribution_worker_me(dist_arrays, dist_shape, in_queue, kill_beacon):
     "Worker that accumulates values and places them into the distribution"
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     n = reduce(operator.mul, dist_shape)
@@ -3060,3 +3070,5 @@ def distribution_worker_me(dist_arrays, dist_shape, in_queue):
         for dist, v in izip(dists, in_queue.get()):
             if dist is not None:
                 dist[i] = v
+        if kill_beacon.is_set():
+            return

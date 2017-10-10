@@ -564,14 +564,14 @@ def mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, i_start='i_start',
     return epochs
 
 
-def sensor_dim(fiff, picks=None, sysname=None):
-    """
-    Create a Sensor dimension object based on the info in a fiff object.
+def sensor_dim(info, picks=None, sysname=None):
+    """Create a :class:`Sensor` dimension from an :class:`mne.Info` object.
 
     Parameters
     ----------
-    fiff : mne-python object
-        Object that has a .info attribute that contains measurement info.
+    info : mne.Info
+        Measurement info dictionary (or mne-python object that has a ``.info``
+        attribute that contains measurement info).
     picks : array of int
         Channel picks (as used in mne-python). By default all MEG and EEG
         channels are included.
@@ -583,10 +583,11 @@ def sensor_dim(fiff, picks=None, sysname=None):
     sensor_dim : Sensor
         Sensor dimension object.
     """
-    if isinstance(fiff, mne.Info):
-        info = fiff
-    else:
-        info = fiff.info
+    if not isinstance(info, mne.Info):
+        info_ = getattr(info, 'info', info)
+        if not isinstance(info_, mne.Info):
+            raise TypeError("No mne.Info object: %r" % (info,))
+        info = info_
 
     if picks is None:
         picks = mne.pick_types(info, eeg=True, ref_meg=False, exclude=())
