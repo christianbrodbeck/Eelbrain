@@ -5237,8 +5237,10 @@ class MneExperiment(FileTree):
                                               subjects_dir=self.get('mri-sdir'))
             else:
                 spacing = kind + param
-                mne.setup_source_space(subject, dst, spacing, add_dist=True,
-                                       subjects_dir=self.get('mri-sdir'))
+                sss = mne.setup_source_space(subject, fname=None,
+                                             spacing=spacing, add_dist=True,
+                                             subjects_dir=self.get('mri-sdir'))
+                mne.write_source_spaces(dst, sss)
 
     def _test_kwargs(self, samples, pmin, tstart, tstop, dims, parc_dim):
         "Compile kwargs for testnd tests"
