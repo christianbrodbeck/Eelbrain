@@ -109,12 +109,7 @@ def open_in_finder(path):
     os.system('open %s' % path)
 
 
-def run_freesurfer_command(command, subjects_dir):
-    "Run a FreeSurfer command"
-    env = os.environ.copy()
-    env['SUBJECTS_DIR'] = subjects_dir
-
-    # find FREESURFER_HOME
+def get_fs_home():
     fs_home = mne.get_config('FREESURFER_HOME')
     save_fs_home = False
     while True:
@@ -137,9 +132,14 @@ def run_freesurfer_command(command, subjects_dir):
             break
     if save_fs_home:
         mne.set_config('FREESURFER_HOME', fs_home)
+    return fs_home
 
-    # adjust environment
-    env['FREESURFER_HOME'] = fs_home
+
+def run_freesurfer_command(command, subjects_dir):
+    "Run a FreeSurfer command"
+    env = os.environ.copy()
+    env['SUBJECTS_DIR'] = subjects_dir
+    env['FREESURFER_HOME'] = fs_home = get_fs_home()
     bin_path = os.path.join(fs_home, 'bin')
     if bin_path not in env['PATH']:
         env['PATH'] = ':'.join((bin_path, env['PATH']))

@@ -2360,6 +2360,8 @@ class MneExperiment(FileTree):
                         os.unlink(path)
                 # re-run watershed_bem
                 self._log.info('Running mne.make_watershed_bem()...')
+                # mne-python expects the environment variable
+                os.environ['FREESURFER_HOME'] = subp.get_fs_home()
                 mne.bem.make_watershed_bem(subject, self.get('mri-sdir'),
                                            overwrite=True)
 
