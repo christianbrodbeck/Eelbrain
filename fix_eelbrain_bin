@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+from distutils.spawn import find_executable
+
+
+OLD = '/bin/python'
+NEW = '/python.app/Contents/MacOS/python'
+
+
+if __name__ == '__main__':
+    path = find_executable('eelbrain')
+
+    with open(path) as fid:
+        text = fid.read()
+
+    if OLD not in text:
+        raise RuntimeError("%r not in file:\n%s" % (OLD, text))
+
+    text = text.replace(OLD, NEW)
+
+    with open(path, 'w') as fid:
+        fid.write(text)
