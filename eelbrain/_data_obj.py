@@ -5619,12 +5619,13 @@ class Dataset(OrderedDict):
         ----------
         names : sequence of str
             Names for the variables.
-        cases : sequence
+        cases : sequence of sequence of { str | scalar }
             A sequence of cases, whereby each case is itself represented as a
             sequence of values (str or scalar). Variable type (Factor or Var)
             is inferred from whether values are str or not.
         """
         ds = cls()
+        cases = tuple(cases)
         for i, name in enumerate(names):
             values = [case[i] for case in cases]
             if any(isinstance(v, basestring) for v in values):
