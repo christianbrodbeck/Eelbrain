@@ -43,7 +43,7 @@ if version != 'dev':
     s = StrictVersion(version)  # check that it's a valid version
 
 # Use cython only if *.pyx files are present (i.e., not in sdist)
-ext_paths = ('eelbrain/*%s', 'eelbrain/_stats/*%s')
+ext_paths = ('eelbrain/*%s', 'eelbrain/_trf/*%s', 'eelbrain/_stats/*%s')
 if glob(ext_paths[0] % '.pyx'):
     from Cython.Build import cythonize
 

@@ -24,7 +24,7 @@ from ._exceptions import DimensionMismatchError
 from ._info import merge_info
 from ._stats.connectivity import Connectivity
 from ._stats.connectivity import find_peaks as _find_peaks
-from ._stats.error_functions import l1
+from ._trf._boosting_opt import l1
 
 
 def concatenate(ndvars, dim='time', name=None, tmin=0):
@@ -511,7 +511,7 @@ def label_operator(labels, operation='mean', exclude=None, weights=None,
         if weights is not None:
             xs *= weights
         if operation == 'mean':
-            xs /= l1(xs)
+            xs /= l1(xs, np.array(((0, len(xs)),), np.int64))
     return NDVar(x, (label_dim, dim), {}, labels.name)
 
 

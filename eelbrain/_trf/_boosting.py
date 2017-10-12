@@ -13,7 +13,7 @@ x2 = ds['x2']
 """
 from __future__ import division
 from inspect import getargspec
-from itertools import chain, izip, product
+from itertools import izip, product
 from math import floor
 from multiprocessing import Process, Queue
 from multiprocessing.sharedctypes import RawArray
@@ -26,10 +26,9 @@ from scipy.stats import spearmanr
 from tqdm import tqdm
 
 from .._config import CONFIG
-from .._data_obj import NDVar, UTS, dataobj_repr
-from .._stats.error_functions import (l1, l2, l1_for_delta, l2_for_delta,
-                                      update_error)
+from .._data_obj import NDVar
 from .._utils import LazyProperty
+from ._boosting_opt import l1, l2, generate_options, update_error
 from .shared import RevCorrData
 
 
@@ -44,7 +43,7 @@ JOB_TERMINATE = -1
 
 # error functions
 ERROR_FUNC = {'l2': l2, 'l1': l1}
-DELTA_ERROR_FUNC = {'l2': l2_for_delta, 'l1': l1_for_delta}
+DELTA_ERROR_FUNC = {'l2': 2, 'l1': 1}
 
 
 class BoostingResult(object):
@@ -353,37 +352,38 @@ def boost_1seg(x, y, trf_length, delta, nsegs, segno, mindelta, error,
     assert y.shape == (x.shape[1],)
 
     # separate training and testing signal
+    n_times = x.shape[1]
     test_seg_len = int(floor(x.shape[1] / nsegs))
-    test_index = slice(test_seg_len * segno, test_seg_len * (segno + 1))
+    test_index = ((test_seg_len * segno, test_seg_len * (segno + 1)),)
     if segno == 0:
-        train_index = (slice(test_seg_len, None),)
+        train_index = ((test_seg_len, n_times),)
     elif segno == nsegs-1:
-        train_index = (slice(0, -test_seg_len),)
+        train_index = ((0, n_times - test_seg_len),)
     elif segno < 0 or segno >= nsegs:
         raise ValueError("segno=%r" % segno)
     else:
-        train_index = (slice(0, test_seg_len * segno),
-                       slice(test_seg_len * (segno + 1), None))
+        train_index = ((0, test_seg_len * segno),
+                       (test_seg_len * (segno + 1), n_times))
 
-    y_train = tuple(y[..., i] for i in train_index)
-    y_test = (y[..., test_index],)
-    x_train = tuple(x[:, i] for i in train_index)
-    x_test = (x[:, test_index],)
-
-    return boost_segs(y_train, y_test, x_train, x_test, trf_length, delta,
+    return boost_segs(y, x, np.array(train_index, np.int64),
+                      np.array(test_index, np.int64), trf_length, delta,
                       mindelta, error, return_history)
 
 
-def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
+def boost_segs(y, x, train_index, test_index, trf_length, delta, mindelta,
                error, return_history):
     """Boosting supporting multiple array segments
 
     Parameters
     ----------
-    y_train, y_test : tuple of array (n_times,)
+    y : array (n_times,)
         Dependent signal, time series to predict.
-    x_train, x_test : array (n_stims, n_times)
+    x : array (n_stims, n_times)
         Stimulus.
+    train_index : array of (start, stop)
+        Time sample index of training segments.
+    test_index : array of (start, stop)
+        Time sample index of test segments.
     trf_length : int
         Length of the TRF (in time samples).
     delta : scalar
@@ -406,22 +406,16 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
     """
     delta_error = DELTA_ERROR_FUNC[error]
     error = ERROR_FUNC[error]
-    n_stims = len(x_train[0])
-    if any(len(x) != n_stims for x in chain(x_train, x_test)):
-        raise ValueError("Not all x have same number of stimuli")
-    n_times = [len(y) for y in chain(y_train, y_test)]
-    if any(x.shape[1] != n for x, n in izip(chain(x_train, x_test), n_times)):
-        raise ValueError("y and x have inconsistent number of time points")
+    n_stims, n_times = x.shape
+    assert y.shape == (n_times,)
 
     h = np.zeros((n_stims, trf_length))
 
+    # index for computing all segments
+    all_index = np.vstack((train_index, test_index))
+
     # buffers
-    y_train_error = tuple(y.copy() for y in y_train)
-    y_test_error = tuple(y.copy() for y in y_test)
-
-    ys_error = y_train_error + y_test_error
-    xs = x_train + x_test
-
+    y_error = y.copy()
     new_error = np.empty(h.shape)
     new_sign = np.empty(h.shape, np.int8)
 
@@ -429,15 +423,12 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
     history = []
     test_error_history = []
     # pre-assign iterators
-    iter_h = tuple(product(xrange(h.shape[0]), xrange(h.shape[1])))
-    iter_train_error = zip(y_train_error, x_train)
-    iter_error = zip(ys_error, xs)
     for i_boost in xrange(999999):
         history.append(h.copy())
 
         # evaluate current h
-        e_test = sum(error(y) for y in y_test_error)
-        e_train = sum(error(y) for y in y_train_error)
+        e_test = error(y_error, test_index)
+        e_train = error(y_error, train_index)
 
         test_error_history.append(e_test)
 
@@ -451,20 +442,7 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
             break
 
         # generate possible movements -> training error
-        for i_stim, i_time in iter_h:
-            # +/- delta
-            e_add = e_sub = 0.
-            for y_err, x in iter_train_error:
-                e_add_, e_sub_ = delta_error(y_err, x[i_stim], delta, i_time)
-                e_add += e_add_
-                e_sub += e_sub_
-
-            if e_add > e_sub:
-                new_error[i_stim, i_time] = e_sub
-                new_sign[i_stim, i_time] = -1
-            else:
-                new_error[i_stim, i_time] = e_add
-                new_sign[i_stim, i_time] = 1
+        generate_options(y_error, x, train_index, delta_error, delta, new_error, new_sign)
 
         i_stim, i_time = np.unravel_index(np.argmin(new_error), h.shape)
         new_train_error = new_error[i_stim, i_time]
@@ -492,8 +470,7 @@ def boost_segs(y_train, y_test, x_train, x_test, trf_length, delta, mindelta,
             break
 
         # update error
-        for err, x in iter_error:
-            update_error(err, x[i_stim], delta_signed, i_time)
+        update_error(y_error, x[i_stim], all_index, delta_signed, i_time)
     # else:
     #     print("maxiter exceeded")
 
@@ -589,10 +566,11 @@ def evaluate_kernel(y, x, h, error):
 
     # discard onset (length of kernel)
     i0 = h.shape[-1] - 1
-    y = y[..., i0:]
-    y_pred = y_pred[..., i0:]
+    y = y[i0:]
+    y_pred = y_pred[i0:]
 
     error_func = ERROR_FUNC[error]
+    index = np.array(((0, len(y)),), np.int64)
     return (np.corrcoef(y, y_pred)[0, 1],
             spearmanr(y, y_pred)[0],
-            error_func(y - y_pred))
+            error_func(y - y_pred, index))
