@@ -1,4 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+import re
+
 from .. import testnd
 from .._exceptions import DefinitionError
 
@@ -148,3 +150,42 @@ TEST_CLASSES = {
     't_contrast_rel': TContrastRel,
     'two-stage': TwoStageTest,
 }
+
+
+class TestDims(object):
+    time = True
+    source = None
+    sensor = None
+
+    def __init__(self, string):
+        substrings = string.split()
+        for substring in substrings:
+            m = re.match("(source|sensor)(?:\.(mean))?$", substring)
+            if m is None:
+                raise ValueError("Invalid test dimension description: %r" %
+                                 (string,))
+            dim, aggregate = m.groups()
+            setattr(self, dim, aggregate or True)
+        if sum(map(bool, (self.source, self.sensor, self.eeg))) != 1:
+            raise ValueError("Invalid test dimension description: %r. Need "
+                             "exactly one of 'sensor' or 'source'" % (string,))
+        self.string = ' '.join(substrings)
+
+        dims = []
+        if self.source is True:
+            dims.append('source')
+        elif self.sensor is True:
+            dims.append('sensor')
+        if self.time is True:
+            dims.append('time')
+        self.dims = tuple(dims)
+
+    @classmethod
+    def coerce(cls, obj):
+        if isinstance(obj, cls):
+            return obj
+        else:
+            return cls(obj)
+
+    def __repr__(self):
+        return "TestDims(%r)" % (self.string,)

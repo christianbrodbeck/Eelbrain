@@ -76,7 +76,7 @@ from .parc import (
 from .preprocessing import (
     assemble_pipeline, RawICA, pipeline_dict, compare_pipelines,
     ask_to_delete_ica_files)
-from .test_def import EvokedTest, TwoStageTest, assemble_tests
+from .test_def import EvokedTest, TwoStageTest, TestDims, assemble_tests
 
 
 # current cache state version
@@ -1627,7 +1627,7 @@ class MneExperiment(FileTree):
         ----------
         dst : str
             Filename.
-        data : 'source' | 'sensor'
+        data : TestDims
             Data type.
         cached_test : bool
             Whether a corresponding test is being cached and needs to be
@@ -1648,7 +1648,7 @@ class MneExperiment(FileTree):
 
     def _result_mtime(self, data, single_subject, parc):
         "See ._result_file_mtime() above"
-        if data == 'source':
+        if data.source:
             if parc:
                 if single_subject:
                     out = self._annot_file_mtime(self.get('mrisubject'))
@@ -1712,9 +1712,9 @@ class MneExperiment(FileTree):
 
         return subject_, group
 
-    def _cluster_criteria_kwargs(self, dims):
+    def _cluster_criteria_kwargs(self, data):
         criteria = self._cluster_criteria[self.get('select_clusters')]
-        return {'min' + dim: criteria[dim] for dim in dims if dim in criteria}
+        return {'min' + dim: criteria[dim] for dim in data.dims if dim in criteria}
 
     def _add_epochs(self, ds, epoch, baseline, ndvar, data_raw, pad, decim,
                     reject, apply_ica, trigger_shift, eog, tmin, tmax, tstop):
@@ -3578,8 +3578,9 @@ class MneExperiment(FileTree):
             Test result for the specified test.
         """
         self.set(test=test, **kwargs)
+        data = TestDims.coerce(data)
         self._set_analysis_options(data, sns_baseline, src_baseline, pmin,
-                                   tstart, tstop, parc, mask, (data, 'time'))
+                                   tstart, tstop, parc, mask, data)
         return self._load_test(test, tstart, tstop, pmin, parc, mask, samples,
                                data, sns_baseline, src_baseline, return_data,
                                make)
@@ -3588,22 +3589,21 @@ class MneExperiment(FileTree):
                    sns_baseline, src_baseline, return_data, make):
         "Load a cached test after _set_analysis_options() has been called"
         test_obj = self._tests[test]
+        data = TestDims.coerce(data)
 
         # find data to use
         modality = self.get('modality')
-        if data == 'sensor':
-            dims = ('time', 'sensor')
+        if data.sensor:
             if modality == '':
                 y_name = 'meg'
             elif modality == 'eeg':
                 y_name = 'eeg'
             else:
-                raise ValueError("data=%r, modality=%r" % (data, modality))
-        elif data == 'source':
-            dims = ('time', 'source')
+                raise ValueError("data=%r, modality=%r" % (data.string, modality))
+        elif data.source:
             y_name = 'srcm'
         else:
-            raise ValueError("data=%s" % repr(data))
+            raise RuntimeError("data=%r" % (data,))
 
         #  parc/mask
         if parc:
@@ -3626,7 +3626,7 @@ class MneExperiment(FileTree):
         if self._result_file_mtime(dst, data, parc='common'):
             try:
                 res = load.unpickle(dst)
-                if data == 'source':
+                if data.source:
                     update_subjects_dir(res, self.get('mri-sdir'), 2)
             except OldVersionError:
                 res = None
@@ -3650,7 +3650,7 @@ class MneExperiment(FileTree):
                           "to perform the test." % desc)
 
         if res is None:
-            test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, dims,
+            test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, data,
                                             parc_dim)
 
         # two-stage tests
@@ -4313,7 +4313,7 @@ class MneExperiment(FileTree):
         brain_kwargs = self._surfer_plot_kwargs(surf, views, foreground, background,
                                                 smoothing_steps, hemi)
         self._set_analysis_options('source', sns_baseline, src_baseline, None,
-                                   None, None, None)
+                                   None, None)
         self.set(equalize_evoked_count='',
                  resname="GA dSPM %s %s" % (brain_kwargs['surf'], fmin))
 
@@ -4415,6 +4415,7 @@ class MneExperiment(FileTree):
         else:
             raise ValueError("p=%s" % p)
 
+        data = TestDims("source")
         brain_kwargs = self._surfer_plot_kwargs(surf, views, foreground, background,
                                                 smoothing_steps, hemi)
         surf = brain_kwargs['surf']
@@ -4439,8 +4440,8 @@ class MneExperiment(FileTree):
         kwargs.update(resname=resname, model=model)
         with self._temporary_state:
             subject, group = self._process_subject_arg(subject, kwargs)
-            self._set_analysis_options('source', sns_baseline, src_baseline, p,
-                                       None, None, None)
+            self._set_analysis_options(data, sns_baseline, src_baseline, p,
+                                       None, None)
 
             if dst is None:
                 if group is None:
@@ -4450,7 +4451,7 @@ class MneExperiment(FileTree):
             else:
                 dst = os.path.expanduser(dst)
 
-            if not redo and self._result_file_mtime(dst, 'source', group is None):
+            if not redo and self._result_file_mtime(dst, data, group is None):
                 return
 
             plot._brain.assert_can_save_movies()
@@ -4463,7 +4464,7 @@ class MneExperiment(FileTree):
                 y = 'srcm'
 
             # find/apply cluster criteria
-            kwargs = self._cluster_criteria_kwargs(('source', 'time'))
+            kwargs = self._cluster_criteria_kwargs(data)
             if kwargs:
                 kwargs.update(samples=0, pmin=p)
 
@@ -4932,6 +4933,7 @@ class MneExperiment(FileTree):
             State parameters.
         """
         test_obj = self._tests[test]
+        data = TestDims('source.mean')
         if samples < 1:
             raise ValueError("Need samples > 0 to run permutation test.")
         elif isinstance(test_obj, TwoStageTest):
@@ -4943,11 +4945,10 @@ class MneExperiment(FileTree):
         parc = self.get('parc', **state)
         if not parc:
             raise ValueError("No parcellation specified")
-        self._set_analysis_options('source', sns_baseline, src_baseline, pmin,
-                                   tstart, tstop, parc, dims=('time',))
-        dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
-                       folder="%s ROIs" % parc)
-        if self._need_not_recompute_report(dst, samples, 'source', redo, 'individual'):
+        self._set_analysis_options(data, sns_baseline, src_baseline, pmin,
+                                   tstart, tstop, parc)
+        dst = self.get('report-file', mkdir=True, test=test)
+        if self._need_not_recompute_report(dst, samples, data, redo, 'individual'):
             return
 
         # load data
@@ -4985,7 +4986,7 @@ class MneExperiment(FileTree):
         labels_rh.sort()
 
         # compute results
-        test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, ('time',), None)
+        test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, data, None)
         do_mcc = (
             len(labels_lh) + len(labels_rh) > 1 and  # more than one test
             pmin not in (None, 'tfce') and  # not implemented
@@ -5062,8 +5063,7 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        self._set_analysis_options('eeg', baseline, None, pmin, tstart, tstop,
-                                   None, dims=('sensor', 'time'))
+        self._set_analysis_options('eeg', baseline, None, pmin, tstart, tstop)
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
                        folder="EEG Spatio-Temporal", modality='eeg',
                        **state)
@@ -5125,8 +5125,7 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        self._set_analysis_options('eeg', baseline, None, pmin, tstart, tstop,
-                                   None, dims=('time',))
+        self._set_analysis_options('sensor.sub', baseline, None, pmin, tstart, tstop)
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
                        folder="EEG Sensors", modality='eeg', **state)
         if self._need_not_recompute_report(dst, samples, 'sensor', redo):
@@ -5256,7 +5255,7 @@ class MneExperiment(FileTree):
 
         with self._temporary_state:
             self._set_analysis_options('source', sns_baseline, src_baseline, pmin,
-                                       None, None, None, mask)
+                                       None, None, mask=mask)
             dst = self.get('subject-spm-report', mkdir=True)
             lm = self._load_spm(sns_baseline, src_baseline)
 
@@ -5375,7 +5374,7 @@ class MneExperiment(FileTree):
                                              subjects_dir=self.get('mri-sdir'))
                 mne.write_source_spaces(dst, sss)
 
-    def _test_kwargs(self, samples, pmin, tstart, tstop, dims, parc_dim):
+    def _test_kwargs(self, samples, pmin, tstart, tstop, data, parc_dim):
         "Compile kwargs for testnd tests"
         kwargs = {'samples': samples, 'tstart': tstart, 'tstop': tstop,
                   'parc': parc_dim}
@@ -5383,7 +5382,7 @@ class MneExperiment(FileTree):
             kwargs['tfce'] = True
         elif pmin is not None:
             kwargs['pmin'] = pmin
-            kwargs.update(self._cluster_criteria_kwargs(dims))
+            kwargs.update(self._cluster_criteria_kwargs(data))
         return kwargs
 
     def _make_test(self, y, ds, test, kwargs, force_permutation=False):
@@ -5976,8 +5975,7 @@ class MneExperiment(FileTree):
                 self.set(model=test_obj.model)
 
     def _set_analysis_options(self, data, sns_baseline, src_baseline, pmin,
-                              tstart, tstop, parc, mask=None,
-                              dims=('source', 'time'), decim=None,
+                              tstart, tstop, parc=None, mask=None, decim=None,
                               test_options=(), folder_options=()):
         """Set templates for paths with test parameters
 
@@ -5996,29 +5994,29 @@ class MneExperiment(FileTree):
         src_baseline :
             Should be False if data=='sensor'.
         ...
-        dims : sequence of str
-            Dimensions included in the analysis.
         decim : int
             Decimation factor (default is None, i.e. based on epochs).
         test_options : sequence of str
             Additional, test-specific tags.
         """
+        data = TestDims.coerce(data)
         # data kind (sensor or source space)
-        if data == 'sensor':
-            analysis = '{sns_kind} {evoked_kind}'
-        elif data == 'source':
+        if data.sensor:
+            if self.get('modality') == 'eeg':
+                analysis = '{eeg_kind} {evoked_kind}'
+            else:
+                analysis = '{sns_kind} {evoked_kind}'
+        elif data.source:
             analysis = '{src_kind} {evoked_kind}'
-        elif data == 'eeg':
-            analysis = '{eeg_kind} {evoked_kind}'
         else:
-            raise ValueError("data=%r. Needs to be 'sensor', 'source' or 'eeg'" % data)
+            raise RuntimeError("data=%r" % (data.string,))
 
         # determine report folder
         # TODO: for sensor space data; {parc} needed for ROI but not sensor
         # tests with dims=('time'). Move into analysis-like compound?
         # Add a global {pipeline} compound that can span multiple folders?
         folder = "{parc}"
-        if 'source' in dims:
+        if data.source is True:
             if parc is None:
                 if mask:
                     folder = "%s masked" % mask
@@ -6031,6 +6029,8 @@ class MneExperiment(FileTree):
                        "parcellation (parc parameter). Use a mask instead, or "
                        "do a cluster-based test." % pmin)
                 raise NotImplementedError(msg)
+        elif data.source == 'mean':
+            folder = '%s ROIs' % parc
 
         if folder_options:
             folder += ' ' + ' '.join(folder_options)
@@ -6062,7 +6062,7 @@ class MneExperiment(FileTree):
         if pmin is not None:
             # source connectivity
             connectivity = self.get('connectivity')
-            if connectivity and data != 'source':
+            if connectivity and not data.source:
                 raise NotImplementedError("connectivity=%r is not implemented "
                                           "for data=%r" % (connectivity, data))
             elif connectivity:
@@ -6085,7 +6085,7 @@ class MneExperiment(FileTree):
 
         # parc and data_parc args from parc/mask
         kwargs = {}
-        if data == 'source':
+        if data.source:
             if parc:
                 kwargs['parc'] = parc
                 kwargs['data_parc'] = parc
@@ -6102,7 +6102,7 @@ class MneExperiment(FileTree):
                 kwargs['parc'] = 'aparc'
                 kwargs['data_parc'] = 'unmasked'
         elif parc:
-            raise ValueError("Analysis with data=%r can't have parc" % (data,))
+            raise ValueError("Analysis with data=%r can't have parc" % (data.string,))
 
         items.extend(test_options)
 
