@@ -586,6 +586,10 @@ def test_factor():
     eq_(f[:2].cells, ('c', 'b'))
     f[f == 'b'] = 'c'
     eq_(f.cells, ('c', 'a'))
+    # sort
+    f = Factor(a, labels=((0, 'c'), (1, 'b'), (2, 'a')))
+    f.sort_cells(('a', 'c', 'b'))
+    eq_(f.cells, ('a', 'c', 'b'))
 
     # label length
     lens = [2, 5, 32, 2, 32, 524]

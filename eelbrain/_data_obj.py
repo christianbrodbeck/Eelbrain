@@ -2969,6 +2969,31 @@ class Factor(_Effect):
         self._labels = new_labels
         self._codes = {l: c for c, l in new_labels.iteritems()}
 
+    def sort_cells(self, order):
+        """Reorder the cells of the Factor
+
+        Function using Factors, such as tables and plotting, often display data
+        in an order determined by Factor; the Factor cell order can be used to
+        control the order in which cells are displayed.
+
+        Parameters
+        ----------
+        order : sequence of str
+            New cell order. Needs to contain each cell exactly once.
+        """
+        new_order = tuple(order)
+        new = set(new_order)
+        old = set(self.cells)
+        if new != old:
+            invalid = new.difference(old)
+            if invalid:
+                raise ValueError("Factor does not have cells: %s" % ', '.join(invalid))
+            missing = old.difference(new)
+            if missing:
+                raise ValueError("Factor has cennls not in order: %s" % ', '.join(missing))
+            raise RuntimeError("Factor.sort_cells comparing %s and %s" % (old, new))
+        self._labels = OrderedDict((self._codes[cell], cell) for cell in new_order)
+
     def startswith(self, substr):
         """An index that is true for all cases whose name starts with ``substr``
 

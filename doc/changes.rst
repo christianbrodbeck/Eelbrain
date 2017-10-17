@@ -15,6 +15,7 @@ New in 0.27
 * New methods:
 
   - :meth:`Dataset.zip`
+  - :meth:`Factor.sort_cells`
 
 
 New in 0.26
