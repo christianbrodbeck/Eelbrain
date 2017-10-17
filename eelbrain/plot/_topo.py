@@ -180,8 +180,9 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         Create a separate plot for each cell in this model.
     xlabel, ylabel : bool | string
         Labels for x and y axes. If True, labels are automatically chosen.
-    xticklabels : bool
-        Add tick-labels to the x-axis (default True).
+    xticklabels : bool | int
+        Add tick-labels to the x-axis. ``int`` to add tick-labels to a single
+        axis (default ``-1``).
     proj : str
         The sensor projection to use for topomaps.
     res : int
@@ -255,7 +256,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
     _name = "TopoButterfly"
 
     def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
-                 xticklabels=True,
+                 xticklabels=-1,
                  proj='default', res=100, interpolation='nearest', color=None,
                  sensorlabels=None, mark=None, mcolor=None, ds=None, sub=None,
                  vmax=None, vmin=None, cmap=None, axlabel=None, axtitle=True,
@@ -304,8 +305,6 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         e0 = epochs[0][0]
         self._configure_xaxis_dim(e0.time, xlabel, xticklabels, self.bfly_axes)
         self._configure_yaxis(e0, ylabel, self.bfly_axes)
-        for ax in self.bfly_axes[:-1]:
-            ax.xaxis.set_ticklabels(())
 
         # setup callback
         XAxisMixin._init_with_data(self, epochs, xdim, xlim, self.bfly_axes)
@@ -647,8 +646,9 @@ class TopoArray(ColorMapMixin, EelFigure):
         :meth:`~matplotlib.axes.Axes.imshow`). Matplotlib 1.5.3's SVG output
         can't handle uneven aspect with ``interpolation='none'``, use
         ``interpolation='nearest'`` instead.
-    xticklabels : bool
-        Add tick-labels to the x-axis (default True).
+    xticklabels : bool | int
+        Add tick-labels to the x-axis. ``int`` to add tick-labels to a single
+        axis (default ``-1``).
     axtitle : bool | sequence of str
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.
@@ -665,7 +665,7 @@ class TopoArray(ColorMapMixin, EelFigure):
 
     def __init__(self, epochs, Xax=None, title=None, ntopo=3, t=[], ds=None,
                  sub=None, vmax=None, vmin=None, cmap=None, interpolation=None,
-                 xticklabels=True, axtitle=True, *args, **kwargs):
+                 xticklabels=-1, axtitle=True, *args, **kwargs):
         epochs, _, data_desc = _base.unpack_epochs_arg(
             epochs, ('time', 'sensor'), Xax, ds, sub
         )

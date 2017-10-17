@@ -1088,8 +1088,9 @@ class EelFigure(object):
             The dimension assigned to the axis.
         label : None | str
             Axis label.
-        ticklabels : bool
-            Whether to print tick-labels.
+        xticklabels : bool | int
+            Add tick-labels to the x-axis. ``int`` to add tick-labels to a
+            single axis (default ``-1``).
         axes : list of Axes
             Axes which to format (default is EelFigure._axes)
         """
@@ -1097,11 +1098,17 @@ class EelFigure(object):
             axes = self._axes
         formatter, locator, label = dim._axis_format(scalar, label)
 
-        for ax in axes:
+        if isinstance(ticklabels, int):
+            add_tick_labels = [False] * len(axes)
+            add_tick_labels[ticklabels] = True
+        else:
+            add_tick_labels = [ticklabels] * len(axes)
+
+        for ax, add_tick_labels_ in izip(axes, add_tick_labels):
             if locator:
                 ax.xaxis.set_major_locator(locator)
 
-            if ticklabels:
+            if add_tick_labels_:
                 if formatter:
                     ax.xaxis.set_major_formatter(formatter)
             else:

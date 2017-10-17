@@ -194,8 +194,9 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
         Create a separate plot for each cell in this model.
     xlabel, ylabel : bool | str
         Labels for x- and y-axis; the default is determined from the data.
-    xticklabels : bool
-        Add tick-labels to the x-axis (default True).
+    xticklabels : bool | int
+        Add tick-labels to the x-axis. ``int`` to add tick-labels to a single
+        axis (default ``-1``).
     ds : None | Dataset
         If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
         as strings.
@@ -238,7 +239,7 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
     _name = "Array"
 
     def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
-                 xticklabels=True, ds=None, sub=None, x='time', vmax=None,
+                 xticklabels=-1, ds=None, sub=None, x='time', vmax=None,
                  vmin=None, cmap=None, axtitle=True, interpolation=None,
                  xlim=None, *args, **kwargs):
         epochs, (xdim, ydim), data_desc = _base.unpack_epochs_arg(
@@ -397,8 +398,9 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
         X-axis labels. By default the label is inferred from the data.
     ylabel : str | None
         Y-axis labels. By default the label is inferred from the data.
-    xticklabels : bool
-        Add tick-labels to the x-axis (default True).
+    xticklabels : bool | int
+        Add tick-labels to the x-axis. ``int`` to add tick-labels to a single
+        axis (default ``-1``).
     color : matplotlib color | dict
         Either a color for all lines, or a dictionary mapping levels of the 
         line dimension to colors. The default is to use ``NDVar.info['color']``
@@ -449,7 +451,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
     _name = "Butterfly"
 
     def __init__(self, epochs, xax=None, sensors=None, axtitle=True,
-                 xlabel=True, ylabel=True, xticklabels=True, color=None,
+                 xlabel=True, ylabel=True, xticklabels=-1, color=None,
                  ds=None, sub=None, x='time', vmax=None, vmin=None, xlim=None,
                  clip=True, *args, **kwargs):
         epochs, (xdim, linedim), data_desc = _base.unpack_epochs_arg(

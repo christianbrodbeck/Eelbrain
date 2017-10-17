@@ -61,8 +61,9 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         X-axis label. By default the label is inferred from the data.
     ylabel : bool | str
         Y-axis label. By default the label is inferred from the data.
-    xticklabels : bool
-        Add tick-labels to the x-axis (default True).
+    xticklabels : bool | int
+        Add tick-labels to the x-axis. ``int`` to add tick-labels to a single
+        axis (default ``-1``).
     invy : bool
         Invert the y axis (if ``bottom`` and/or ``top`` are specified explicitly
         they take precedence; an inverted y-axis can also be produced by
@@ -117,7 +118,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
 
     def __init__(self, Y='Y', X=None, Xax=None, match=None, sub=None, ds=None,
                  main=np.mean, error='sem', pool_error=None, legend='upper right',
-                 axtitle=True, xlabel=True, ylabel=True, xticklabels=True,
+                 axtitle=True, xlabel=True, ylabel=True, xticklabels=-1,
                  invy=False, bottom=None, top=None, hline=None, xdim='time',
                  xlim=None, color='b', colors=None, clusters=None, pmax=0.05,
                  ptrend=0.1, *args, **kwargs):
@@ -201,7 +202,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             self._set_axtitle(axtitle, names=map(cellname, ct.cells))
 
         self._configure_yaxis(ct.Y, ylabel)
-        self._configure_xaxis_dim(ct.Y.get_dim(xdim), xlabel, xticklabels)
+        self._configure_xaxis_dim(ct.Y.get_dim(xdim), xlabel, xticklabels)#
         XAxisMixin._init_with_data(self, ((Y,),), xdim, xlim)
         YLimMixin.__init__(self, self._plots)
         LegendMixin.__init__(self, legend, legend_handles)
@@ -308,8 +309,9 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     xlabel, ylabel : str | None
         X- and y axis labels. By default the labels will be inferred from
         the data.
-    xticklabels : bool
-        Add tick-labels to the x-axis (default True).
+    xticklabels : bool | int
+        Add tick-labels to the x-axis. ``int`` to add tick-labels to a single
+        axis (default ``-1``).
     bottom, top : scalar
         Y-axis limits.
     legend : str | int | 'fig' | None
@@ -340,7 +342,7 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     _name = "UTS"
 
     def __init__(self, epochs, xax=None, axtitle=True, ds=None, sub=None,
-                 xlabel=True, ylabel=True, xticklabels=True, bottom=None,
+                 xlabel=True, ylabel=True, xticklabels=-1, bottom=None,
                  top=None, legend='upper right', xlim=None, *args, **kwargs):
         epochs, (xdim,), data_desc = _base.unpack_epochs_arg(
             epochs, (None,), xax, ds, sub
@@ -445,8 +447,9 @@ class UTSClusters(EelFigure):
     overlay : bool
         Plot epochs (time course for different effects) on top of each
         other (as opposed to on separate axes).
-    xticklabels : bool
-        Add tick-labels to the x-axis (default True).
+    xticklabels : bool | int
+        Add tick-labels to the x-axis. ``int`` to add tick-labels to a single
+        axis (default ``-1``).
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
@@ -456,7 +459,7 @@ class UTSClusters(EelFigure):
     _name = "UTSClusters"
 
     def __init__(self, res, pmax=0.05, ptrend=0.1, axtitle=True, cm=None,
-                 overlay=False, xticklabels=True, *args, **kwargs):
+                 overlay=False, xticklabels=-1, *args, **kwargs):
         clusters_ = res.clusters
 
         epochs, (xdim,), data_desc = _base.unpack_epochs_arg(res, (None,))
