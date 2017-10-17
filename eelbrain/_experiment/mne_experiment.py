@@ -76,7 +76,9 @@ from .parc import (
 from .preprocessing import (
     assemble_pipeline, RawICA, pipeline_dict, compare_pipelines,
     ask_to_delete_ica_files)
-from .test_def import EvokedTest, TwoStageTest, TestDims, assemble_tests
+from .test_def import (
+    EvokedTest, ROITestResult, TestDims, TwoStageTest, assemble_tests,
+)
 
 
 # current cache state version
@@ -254,9 +256,9 @@ temp = {
     'evoked-old-file': join('{evoked-base}.pickled'),  # removed for 0.25
     # test files
     'test-dir': join('{cache-dir}', 'test'),
-    'data_parc': 'unmasked',  # for some tests, parc and mask parameter can be saved in same file
+    'test_dims': 'unmasked',  # for some tests, parc and mask parameter can be saved in same file
     'test-file': join('{test-dir}', '{analysis} {group}',
-                      '{epoch} {test} {test_options} {data_parc}.pickled'),
+                      '{epoch} {test} {test_options} {test_dims}.pickled'),
 
     # MRIs
     'common_brain': 'fsaverage',
@@ -1296,7 +1298,7 @@ class MneExperiment(FileTree):
                         log.warning("  Invalid ANOVA tests: %s for %s",
                                     bad_tests, bad_parcs)
                     for test, parc in product(bad_tests, bad_parcs):
-                        rm['test-file'].add({'test': test, 'data_parc': parc})
+                        rm['test-file'].add({'test': test, 'test_dims': parc})
                         rm['report-file'].add({'test': test, 'folder': parc})
 
                 # evoked files are based on old events
@@ -1353,7 +1355,7 @@ class MneExperiment(FileTree):
                         bad_parcs.append(parc)
                 for parc in bad_parcs:
                     rm['annot-file'].add({'parc': parc})
-                    rm['test-file'].add({'data_parc': parc})
+                    rm['test-file'].add({'test_dims': parc})
                     rm['report-file'].add({'folder': parc})
                     rm['report-file'].add({'folder': '%s *' % parc})
                     rm['report-file'].add({'folder': '%s *' % parc.capitalize()})  # pre 0.26
@@ -1620,7 +1622,7 @@ class MneExperiment(FileTree):
             if ica_mtime > mtime:
                 return ica_mtime
 
-    def _result_file_mtime(self, dst, data, single_subject=False, parc=None):
+    def _result_file_mtime(self, dst, data, single_subject=False):
         """MTime if up-to-date, else None (for reports and movies)
 
         Parameters
@@ -1635,26 +1637,23 @@ class MneExperiment(FileTree):
         single_subject : bool
             Whether the corresponding test is performed for a single subject
             (as opposed to the current group).
-        parc : 'common' | 'individual'
-            For group results only: whether parc is used, from common or
-            individual brain.
         """
         if exists(dst):
-            mtime = self._result_mtime(data, single_subject, parc)
+            mtime = self._result_mtime(data, single_subject)
             if mtime:
                 dst_mtime = getmtime(dst)
                 if dst_mtime > mtime:
                     return dst_mtime
 
-    def _result_mtime(self, data, single_subject, parc):
+    def _result_mtime(self, data, single_subject):
         "See ._result_file_mtime() above"
         if data.source:
-            if parc:
+            if data.parc_level:
                 if single_subject:
                     out = self._annot_file_mtime(self.get('mrisubject'))
-                elif parc == 'common':
+                elif data.parc_level == 'common':
                     out = self._annot_file_mtime(self.get('common_brain'))
-                elif parc == 'individual':
+                elif data.parc_level == 'individual':
                     out = 0
                     for subject in self:
                         mtime = self._annot_file_mtime()
@@ -1663,7 +1662,8 @@ class MneExperiment(FileTree):
                         else:
                             out = max(out, mtime)
                 else:
-                    raise RuntimeError("parc=%r" % (parc,))
+                    raise RuntimeError("data=%r, parc_level=%r" %
+                                       (data, data.parc_level,))
             else:
                 out = 1
 
@@ -3580,7 +3580,7 @@ class MneExperiment(FileTree):
         self.set(test=test, **kwargs)
         data = TestDims.coerce(data)
         self._set_analysis_options(data, sns_baseline, src_baseline, pmin,
-                                   tstart, tstop, parc, mask, data)
+                                   tstart, tstop, parc, mask)
         return self._load_test(test, tstart, tstop, pmin, parc, mask, samples,
                                data, sns_baseline, src_baseline, return_data,
                                make)
@@ -3589,11 +3589,10 @@ class MneExperiment(FileTree):
                    sns_baseline, src_baseline, return_data, make):
         "Load a cached test after _set_analysis_options() has been called"
         test_obj = self._tests[test]
-        data = TestDims.coerce(data)
 
         # find data to use
-        modality = self.get('modality')
         if data.sensor:
+            modality = self.get('modality')
             if modality == '':
                 y_name = 'meg'
             elif modality == 'eeg':
@@ -3603,37 +3602,25 @@ class MneExperiment(FileTree):
         elif data.source:
             y_name = 'srcm'
         else:
-            raise RuntimeError("data=%r" % (data,))
-
-        #  parc/mask
-        if parc:
-            mask = True
-            parc_dim = 'source'
-        elif mask:
-            if pmin is None:  # can as well collect dist for parc
-                parc_dim = 'source'
-            else:  # parc means disconnecting
-                parc_dim = None
-        else:
-            parc_dim = None
+            raise RuntimeError("data=%r" % (data.string,))
 
         dst = self.get('test-file', mkdir=True)
 
         # try to load cached test
         res = None
-        load_data = True
         desc = self._get_rel('test-file', 'test-dir')
-        if self._result_file_mtime(dst, data, parc='common'):
+        if self._result_file_mtime(dst, data):
             try:
                 res = load.unpickle(dst)
-                if data.source:
+                if data.source is True:
                     update_subjects_dir(res, self.get('mri-sdir'), 2)
             except OldVersionError:
                 res = None
             else:
                 if res.samples >= samples or res.samples == -1:
                     self._log.info("Load cached test: %s", desc)
-                    load_data = return_data
+                    if not return_data:
+                        return res
                 elif not make:
                     raise IOError("The requested test %s is cached with "
                                   "samples=%i, but you request samples=%i; Set "
@@ -3649,70 +3636,131 @@ class MneExperiment(FileTree):
             raise IOError("The requested test is not cached: %s. Set make=True "
                           "to perform the test." % desc)
 
-        if res is None:
-            test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, data,
-                                            parc_dim)
+        #  parc/mask
+        parc_dim = None
+        if data.source is True:
+            if parc:
+                mask = True
+                parc_dim = 'source'
+            elif mask:
+                if pmin is None:  # can as well collect dist for parc
+                    parc_dim = 'source'
 
-        # two-stage tests
+        do_test = res is None
+        if do_test:
+            test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, data, parc_dim)
+        else:
+            test_kwargs = None
+
         if isinstance(test_obj, TwoStageTest):
-            if data != 'source':
-                raise NotImplementedError("Two-stage test with data != 'source'")
+            if data.source is not True:
+                raise NotImplementedError("Two-stage test with data=%r" % (data.string,))
 
-            if load_data:
-                if test_obj.model is not None:
-                    self.set(model=test_obj.model)
+            if test_obj.model is not None:
+                self.set(model=test_obj.model)
 
-                # stage 1
-                lms = []
-                dss = []
-                for subject in tqdm(self, "Loading stage 1 models",
-                                    len(self.get_field_values('subject'))):
-                    if test_obj.model is None:
-                        ds = self.load_epochs_stc(subject, sns_baseline,
-                                                  src_baseline, morph=True,
-                                                  mask=mask, vardef=test_obj.vars)
-                    else:
-                        ds = self.load_evoked_stc(subject, sns_baseline,
-                                                  src_baseline, morph_ndvar=True,
-                                                  mask=mask, vardef=test_obj.vars)
+            # stage 1
+            lms = []
+            dss = []
+            for subject in tqdm(self, "Loading stage 1 models",
+                                len(self.get_field_values('subject'))):
+                if test_obj.model is None:
+                    ds = self.load_epochs_stc(subject, sns_baseline,
+                                              src_baseline, morph=True,
+                                              mask=mask, vardef=test_obj.vars)
+                else:
+                    ds = self.load_evoked_stc(subject, sns_baseline,
+                                              src_baseline, morph_ndvar=True,
+                                              mask=mask, vardef=test_obj.vars)
 
-                    if res is None:
-                        lms.append(testnd.LM(y_name, test_obj.stage_1, ds,
-                                             subject=subject))
-                    if return_data:
-                        dss.append(ds)
+                if do_test:
+                    lms.append(testnd.LM(y_name, test_obj.stage_1, ds,
+                                         subject=subject))
+                if return_data:
+                    dss.append(ds)
 
-                if res is None:
-                    res = testnd.LMGroup(lms)
-                    res.compute_column_ttests(**test_kwargs)
-                    # cache
-                    save.pickle(res, dst)
+            if do_test:
+                res = testnd.LMGroup(lms)
+                res.compute_column_ttests(**test_kwargs)
 
-            if return_data:
-                return combine(dss), res
+            res_data = combine(dss) if return_data else None
+        elif isinstance(data.source, basestring):
+            res_data, res = self._make_test_rois(
+                sns_baseline, src_baseline, test, samples, pmin,
+                test_kwargs, res, data)
+        else:
+            if data.sensor:
+                res_data = self.load_evoked(True, sns_baseline, True, test_obj.cat)
+                if isinstance(data.sensor, basestring):
+                    res_data[y_name] = getattr(res_data[y_name], data.sensor)('sensor')
+            elif data.source:
+                res_data = self.load_evoked_stc(True, sns_baseline, src_baseline,
+                                                morph_ndvar=True, cat=test_obj.cat,
+                                                mask=mask)
             else:
-                return res
+                raise RuntimeError("data=%r" % (data.string,))
 
-        # load data
-        if load_data:
-            if data == 'sensor':
-                ds = self.load_evoked(True, sns_baseline, True, test_obj.cat)
-            elif data == 'source':
-                ds = self.load_evoked_stc(True, sns_baseline, src_baseline,
-                                          morph_ndvar=True, cat=test_obj.cat,
-                                          mask=mask)
+            if do_test:
+                self._log.info("Make test: %s", desc)
+                res = self._make_test(y_name, res_data, test, test_kwargs)
 
-        # perform the test if it was not cached
-        if res is None:
-            self._log.info("Make test: %s", desc)
-            res = self._make_test(ds[y_name], ds, test, test_kwargs)
-            # cache
+        if do_test:
             save.pickle(res, dst)
 
         if return_data:
-            return ds, res
+            return res_data, res
         else:
             return res
+
+    def _make_test_rois(self, sns_baseline, src_baseline, test, samples, pmin,
+                        test_kwargs, res):
+        # load data
+        dss = defaultdict(list)
+        n_trials_dss = []
+        subjects = self.get_field_values('subject')
+        n_subjects = len(subjects)
+        for _ in tqdm(self, "Loading data", n_subjects, unit='subject'):
+            ds = self.load_evoked_stc(None, sns_baseline, src_baseline, ind_ndvar=True)
+            src = ds.pop('src')
+            n_trials_dss.append(ds.copy())
+            for label in src.source.parc.cells:
+                if label.startswith('unknown-'):
+                    continue
+                label_ds = ds.copy()
+                label_ds['label_tc'] = src.mean(source=label)
+                dss[label].append(label_ds)
+            del src
+
+        label_data = {label: combine(data, incomplete='drop') for
+                      label, data in dss.iteritems()}
+        if res is not None:
+            return label_data, res
+
+        n_trials_ds = combine(n_trials_dss, incomplete='drop')
+
+        # n subjects per label
+        n_per_label = {label: len(dss[label]) for label in dss}
+
+        # compute results
+        do_mcc = (
+            len(dss) > 1 and  # more than one ROI
+            pmin not in (None, 'tfce') and  # not implemented
+            len(set(n_per_label.values())) == 1  # equal n permutations
+        )
+        label_results = {
+            label: self._make_test('label_tc', ds, test, test_kwargs, do_mcc) for
+            label, ds in label_data.iteritems()
+        }
+
+        if do_mcc:
+            cdists = [res._cdist for res in label_results.values()]
+            merged_dist = _MergedTemporalClusterDist(cdists)
+        else:
+            merged_dist = None
+
+        res = ROITestResult(subjects, samples, n_trials_ds, merged_dist,
+                            label_results)
+        return label_data, res
 
     def make_annot(self, redo=False, **state):
         """Make sure the annot files for both hemispheres exist
@@ -4308,12 +4356,12 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
+        data = TestDims("source")
         kwargs['model'] = ''
         subject, group = self._process_subject_arg(subject, kwargs)
         brain_kwargs = self._surfer_plot_kwargs(surf, views, foreground, background,
                                                 smoothing_steps, hemi)
-        self._set_analysis_options('source', sns_baseline, src_baseline, None,
-                                   None, None)
+        self._set_analysis_options(data, sns_baseline, src_baseline, None, None, None)
         self.set(equalize_evoked_count='',
                  resname="GA dSPM %s %s" % (brain_kwargs['surf'], fmin))
 
@@ -4325,7 +4373,7 @@ class MneExperiment(FileTree):
         else:
             dst = os.path.expanduser(dst)
 
-        if not redo and self._result_file_mtime(dst, 'source', group is None):
+        if not redo and self._result_file_mtime(dst, data, group is None):
             return
 
         plot._brain.assert_can_save_movies()
@@ -4744,14 +4792,14 @@ class MneExperiment(FileTree):
 
         gui.select_epochs(ds, data, path=path, vlim=vlim, mark=eog_sns, **kwargs)
 
-    def _need_not_recompute_report(self, dst, samples, data, redo, parc=None):
+    def _need_not_recompute_report(self, dst, samples, data, redo):
         "Check (and log) whether the report needs to be redone"
         desc = self._get_rel('report-file', 'res-dir')
         if not exists(dst):
             self._log.debug("New report: %s", desc)
         elif redo:
             self._log.debug("Redoing report: %s", desc)
-        elif not self._result_file_mtime(dst, data, parc=parc):
+        elif not self._result_file_mtime(dst, data):
             self._log.debug("Report outdated: %s", desc)
         else:
             meta = read_meta(dst)
@@ -4815,10 +4863,11 @@ class MneExperiment(FileTree):
                              % repr(include))
 
         self.set(**state)
-        self._set_analysis_options('source', sns_baseline, src_baseline, pmin,
+        data = TestDims('source')
+        self._set_analysis_options(data, sns_baseline, src_baseline, pmin,
                                    tstart, tstop, parc, mask)
         dst = self.get('report-file', mkdir=True, test=test)
-        if self._need_not_recompute_report(dst, samples, 'source', redo, 'common'):
+        if self._need_not_recompute_report(dst, samples, data, redo):
             return
 
         # start report
@@ -4948,34 +4997,32 @@ class MneExperiment(FileTree):
         self._set_analysis_options(data, sns_baseline, src_baseline, pmin,
                                    tstart, tstop, parc)
         dst = self.get('report-file', mkdir=True, test=test)
-        if self._need_not_recompute_report(dst, samples, data, redo, 'individual'):
+        if self._need_not_recompute_report(dst, samples, data, redo):
             return
 
-        # load data
-        dss = defaultdict(list)
-        n_trials_dss = []
-        subjects = self.get_field_values('subject')
-        n_subjects = len(subjects)
-        for _ in tqdm(self, "Loading data", n_subjects, unit='subject'):
-            ds = self.load_evoked_stc(None, sns_baseline, src_baseline, ind_ndvar=True)
-            src = ds.pop('src')
-            n_trials_dss.append(ds.copy())
-            for label in src.source.parc.cells:
-                if label.startswith('unknown-'):
-                    continue
-                label_ds = ds.copy()
-                label_ds['label_tc'] = src.mean(source=label)
-                dss[label].append(label_ds)
-            del src
-        n_trials_ds = combine(n_trials_dss, incomplete='drop')
+        data, res = self._load_test(test, tstart, tstop, pmin, parc, None,
+                                    samples, data, sns_baseline, src_baseline,
+                                    True, True)
+        ds0 = data.values()[0]
+        res0 = res.res.values()[0]
 
-        # n subjects per label
-        n_per_label = {label: len(dss[label]) for label in dss}
+        # start report
+        title = self.format('{session} {epoch} {test} {test_options}')
+        report = Report(title)
+
+        # method intro (compose it later when data is available)
+        info_section = report.add_section("Test Info")
+        self._report_test_info(info_section, res.n_trials_ds, test, res0, 'source')
+
+        # add parc image
+        section = report.add_section(parc)
+        caption = "ROIs in the %s parcellation." % parc
+        self._report_parc_image(section, caption, res.subjects)
 
         # sorted labels
         labels_lh = []
         labels_rh = []
-        for label in dss.keys():
+        for label in res.res.keys():
             if label.endswith('-lh'):
                 labels_lh.append(label)
             elif label.endswith('-rh'):
@@ -4985,52 +5032,20 @@ class MneExperiment(FileTree):
         labels_lh.sort()
         labels_rh.sort()
 
-        # compute results
-        test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, data, None)
-        do_mcc = (
-            len(labels_lh) + len(labels_rh) > 1 and  # more than one test
-            pmin not in (None, 'tfce') and  # not implemented
-            len(set(n_per_label.values())) == 1  # equal n permutations
-        )
-        label_results = {}
-        for label in labels_lh + labels_rh:
-            ds = combine(dss[label], incomplete='drop')
-            res = self._make_test(ds['label_tc'], ds, test, test_kwargs, do_mcc)
-            label_results[label] = ds, res
-
-        if do_mcc:
-            cdists = [res._cdist for _, res in label_results.values()]
-            merged_dist = _MergedTemporalClusterDist(cdists)
-        else:
-            merged_dist = None
-
-        # start report
-        title = self.format('{session} {epoch} {test} {test_options}')
-        report = Report(title)
-
-        # method intro (compose it later when data is available)
-        info_section = report.add_section("Test Info")
-        self._report_test_info(info_section, n_trials_ds, test, res, 'source')
-
-        # add parc image
-        section = report.add_section(parc)
-        caption = "ROIs in the %s parcellation." % parc
-        self._report_parc_image(section, caption, subjects)
-
         # add content body
-        colors = plot.colors_for_categorial(ds.eval(res._plot_model()))
-        for hemi, label_names in (('Left', labels_lh), ('Right', labels_rh)):
-            section = report.add_section("%s Hemisphere" % hemi)
-            for label in label_names:
-                ds, res = label_results[label]
-                title = label[:-3].capitalize()
-                caption = "Mean in label %s." % label
-                n = n_per_label[label]
-                if n < n_subjects:
-                    title += ' (n=%i)' % n
-                    caption += " Data from %i of %i subjects." % (n, n_subjects)
-                section.append(_report.time_results(
-                    res, ds, colors, title, caption, merged_dist=merged_dist))
+        n_subjects = len(res.subjects)
+        colors = plot.colors_for_categorial(ds0.eval(res0._plot_model()))
+        for label in chain(labels_lh, labels_rh):
+            res_i = res.res[label]
+            ds = data[label]
+            title = label[:-3].capitalize()
+            caption = "Mean in label %s." % label
+            n = len(ds['subject'].cells)
+            if n < n_subjects:
+                title += ' (n=%i)' % n
+                caption += " Data from %i of %i subjects." % (n, n_subjects)
+            section.append(_report.time_results(
+                res_i, ds, colors, title, caption, merged_dist=res.merged_dist))
 
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
         report.save_html(dst, meta={'samples': samples})
@@ -5063,11 +5078,12 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        self._set_analysis_options('eeg', baseline, None, pmin, tstart, tstop)
+        data = TestDims("sensor")
+        self._set_analysis_options(data, baseline, None, pmin, tstart, tstop)
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
                        folder="EEG Spatio-Temporal", modality='eeg',
                        **state)
-        if self._need_not_recompute_report(dst, samples, 'sensor', False):
+        if self._need_not_recompute_report(dst, samples, data, False):
             return
 
         # load data
@@ -5125,10 +5141,11 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        self._set_analysis_options('sensor.sub', baseline, None, pmin, tstart, tstop)
+        data = TestDims('sensor.sub')
+        self._set_analysis_options(data, baseline, None, pmin, tstart, tstop)
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
                        folder="EEG Sensors", modality='eeg', **state)
-        if self._need_not_recompute_report(dst, samples, 'sensor', redo):
+        if self._need_not_recompute_report(dst, samples, data, redo):
             return
 
         # load data
@@ -5981,7 +5998,7 @@ class MneExperiment(FileTree):
 
         analysis:  preprocessing up to source estimate epochs (not parcellation)
         folder: parcellation (human readable)
-        data_parc: parcellation (as used for spatio-temporal cluster test
+        test_dims: parcellation (as used for spatio-temporal cluster test
         test_options: baseline, permutation test method etc.
 
         also sets `parc`
@@ -6011,26 +6028,49 @@ class MneExperiment(FileTree):
         else:
             raise RuntimeError("data=%r" % (data.string,))
 
-        # determine report folder
-        # TODO: for sensor space data; {parc} needed for ROI but not sensor
-        # tests with dims=('time'). Move into analysis-like compound?
-        # Add a global {pipeline} compound that can span multiple folders?
-        folder = "{parc}"
+        # determine report folder (reports) and test_dims (test-files)
+        kwargs = {}
         if data.source is True:
             if parc is None:
                 if mask:
                     folder = "%s masked" % mask
+                    kwargs['parc'] = mask
+                    if pmin is None:
+                        # When not doing clustering, parc does not affect
+                        # results, so we don't need to distinguish parc and mask
+                        kwargs['test_dims'] = mask
+                    else:  # parc means disconnecting
+                        kwargs['test_dims'] = '%s-mask' % mask
                 else:
                     folder = "Whole Brain"
+                    # only compute unmasked test once (probably rare anyways)
+                    kwargs['parc'] = 'aparc'
+                    kwargs['test_dims'] = 'unmasked'
             elif mask:
                 raise ValueError("Can't specify mask together with parc")
             elif pmin is None or pmin == 'tfce':
-                msg = ("Threshold-free test (pmin=%r) is not implemented for "
-                       "parcellation (parc parameter). Use a mask instead, or "
-                       "do a cluster-based test." % pmin)
-                raise NotImplementedError(msg)
-        elif data.source == 'mean':
-            folder = '%s ROIs' % parc
+                raise NotImplementedError(
+                    "Threshold-free test (pmin=%r) is not implemented for "
+                    "parcellation (parc parameter). Use a mask instead, or do "
+                    "a cluster-based test." % pmin)
+            else:
+                folder = parc
+                kwargs['parc'] = parc
+                kwargs['test_dims'] = parc
+        elif data.source:  # source-space ROIs
+            if not parc:
+                raise ValueError("Need parc for ROI definition")
+            kwargs['parc'] = parc
+            kwargs['test_dims'] = '%s.%s' % (parc, data.source)
+            if data.source == 'mean':
+                folder = '%s ROIs' % parc
+            else:
+                raise ValueError("data=%r" % (data.string,))
+        elif parc:
+            raise ValueError("Sensor analysis (data=%r) can't have parc" %
+                             (data.string,))
+        else:
+            folder = 'Sensor'
 
         if folder_options:
             folder += ' ' + ' '.join(folder_options)
@@ -6041,6 +6081,7 @@ class MneExperiment(FileTree):
         # baseline (default is baseline correcting in sensor space)
         epoch_baseline = self._epochs[self.get('epoch')].baseline
         if src_baseline:
+            assert data.source
             if sns_baseline is True or sns_baseline == epoch_baseline:
                 items.append('snsbl')
             elif sns_baseline:
@@ -6082,27 +6123,6 @@ class MneExperiment(FileTree):
         if decim is not None:
             assert isinstance(decim, int)
             items.append(str(decim))
-
-        # parc and data_parc args from parc/mask
-        kwargs = {}
-        if data.source:
-            if parc:
-                kwargs['parc'] = parc
-                kwargs['data_parc'] = parc
-            elif mask:
-                kwargs['parc'] = mask
-                if pmin is None:
-                    # When not doing clustering, parc does not affect results,
-                    # so we don't need to distinguish parc and mask
-                    kwargs['data_parc'] = mask
-                else:  # parc means disconnecting
-                    kwargs['data_parc'] = '%s-mask' % mask
-            else:
-                # only compute unmasked test once (probably rare anyways)
-                kwargs['parc'] = 'aparc'
-                kwargs['data_parc'] = 'unmasked'
-        elif parc:
-            raise ValueError("Analysis with data=%r can't have parc" % (data.string,))
 
         items.extend(test_options)
 

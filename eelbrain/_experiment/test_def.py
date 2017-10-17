@@ -1,4 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from inspect import getargspec
 import re
 
 from .. import testnd
@@ -166,7 +167,7 @@ class TestDims(object):
                                  (string,))
             dim, aggregate = m.groups()
             setattr(self, dim, aggregate or True)
-        if sum(map(bool, (self.source, self.sensor, self.eeg))) != 1:
+        if sum(map(bool, (self.source, self.sensor))) != 1:
             raise ValueError("Invalid test dimension description: %r. Need "
                              "exactly one of 'sensor' or 'source'" % (string,))
         self.string = ' '.join(substrings)
@@ -180,6 +181,14 @@ class TestDims(object):
             dims.append('time')
         self.dims = tuple(dims)
 
+        # whether parc is used from subjects or from common-brain
+        if self.source is True:
+            self.parc_level = 'common'
+        elif self.source:
+            self.parc_level = 'individual'
+        else:
+            self.parc_level = None
+
     @classmethod
     def coerce(cls, obj):
         if isinstance(obj, cls):
@@ -189,3 +198,21 @@ class TestDims(object):
 
     def __repr__(self):
         return "TestDims(%r)" % (self.string,)
+
+
+class ROITestResult(object):
+    """Store samples as attribute"""
+
+    def __init__(self, subjects, samples, n_trials_ds, merged_dist, res):
+        self.subjects = subjects
+        self.samples = samples
+        self.n_trials_ds = n_trials_ds
+        self.merged_dist = merged_dist
+        self.res = res
+
+    def __getstate__(self):
+        return {attr: getattr(self, attr) for attr in
+                getargspec(self.__init__).args[1:]}
+
+    def __setstate__(self, state):
+        self.__init__(**state)
