@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ "$(uname)" == "Darwin" ]
+then
+    export LDFLAGS="${LDFLAGS} -headerpad_max_install_names"
+fi
+
 $PYTHON setup.py install 
 
 # Add more build steps here, if they are necessary.
