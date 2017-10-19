@@ -4594,7 +4594,7 @@ class MneExperiment(FileTree):
         pipe.cache(self.get('subject'), self.get('session'))
 
     def make_rej(self, decim=None, auto=None, overwrite=False, **kwargs):
-        """Open the SelectEpochs GUI for manual epoch selection
+        """Open :func:`gui.select_epochs` for manual epoch selection
 
         The GUI is opened with the correct file name; if the corresponding
         file exists, it is loaded, and upon saving the correct path is
@@ -4617,7 +4617,7 @@ class MneExperiment(FileTree):
             If ``auto`` is specified and a rejection file already exists,
             overwrite has to be set to ``True`` to overwrite the old file.
         ... :
-            Kwargs for SelectEpochs
+            Keyword arguments for :func:`gui.select_epochs`.
         """
         rej_args = self._artifact_rejection[self.get('rej')]
         if rej_args['kind'] == 'manual':
