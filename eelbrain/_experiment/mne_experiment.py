@@ -39,7 +39,7 @@ from .. import save
 from .. import table
 from .. import testnd
 from .._data_obj import (
-    Datalist, Dataset, Factor, Var, align, all_equal,
+    Datalist, Dataset, Factor, Var, align, all_equal, as_legal_dataset_key,
     asfactor, assert_is_legal_dataset_key, combine)
 from .._exceptions import DimensionMismatchError, OldVersionError
 from .._info import BAD_CHANNELS
