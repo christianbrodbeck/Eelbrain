@@ -1,4 +1,14 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+"""MneExperiment class to manage data from a experiment
+
+For testing purposed, set up an experiment class without checking for data:
+
+MneExperiment.path_version = 1
+MneExperiment.auto_delete_cache = 'disable'
+MneExperiment.sessions = ('session',)
+e = MneExperiment('.', find_subjects=False)
+
+"""
 from __future__ import print_function
 
 from collections import defaultdict, Sequence
@@ -2349,21 +2359,35 @@ class MneExperiment(FileTree):
             paths = {s: join(bem_dir, s + '.surf') for s in surfs}
             missing = [s for s in surfs if not exists(paths[s])]
             if missing:
-                self._log.info("%s %s missing for %s",
-                               enumeration(missing).capitalize(),
-                               plural('surface', len(missing)), subject)
-                # remove broken symlinks
-                for surf in missing:
+                bem_dir = self.get('bem-dir')
+                temp = join(".*", "bem", "(.*)")
+                for surf in missing[:]:
                     path = paths[surf]
                     if os.path.islink(path):
-                        self._log.info("Deleting broken symlink " + path)
-                        os.unlink(path)
-                # re-run watershed_bem
-                self._log.info('Running mne.make_watershed_bem()...')
-                # mne-python expects the environment variable
-                os.environ['FREESURFER_HOME'] = subp.get_fs_home()
-                mne.bem.make_watershed_bem(subject, self.get('mri-sdir'),
-                                           overwrite=True)
+                        # try to fix broken symlinks
+                        old_target = os.readlink(path)
+                        m = re.match(temp, old_target)
+                        if m:
+                            new_target = m.group(1)
+                            if exists(join(bem_dir, new_target)):
+                                self._log.info("Fixing broken symlink for %s "
+                                               "%s surface file", subject, surf)
+                                os.unlink(path)
+                                os.symlink(new_target, path)
+                                missing.remove(surf)
+                        #         continue
+                        # self._log.info("Deleting broken symlink " + path)
+                        # os.unlink(path)
+                if missing:
+                    self._log.info("%s %s missing for %s. Running "
+                                   "mne.make_watershed_bem()...",
+                                   enumeration(missing).capitalize(),
+                                   plural('surface', len(missing)), subject)
+                    # re-run watershed_bem
+                    # mne-python expects the environment variable
+                    os.environ['FREESURFER_HOME'] = subp.get_fs_home()
+                    mne.bem.make_watershed_bem(subject, self.get('mri-sdir'),
+                                               overwrite=True)
 
             return mne.make_bem_model(subject, conductivity=(0.3,),
                                       subjects_dir=self.get('mri-sdir'))
