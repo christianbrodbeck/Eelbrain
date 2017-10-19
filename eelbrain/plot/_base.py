@@ -1098,11 +1098,17 @@ class EelFigure(object):
             axes = self._axes
         formatter, locator, label = dim._axis_format(scalar, label)
 
-        if isinstance(ticklabels, int):
-            add_tick_labels = [False] * len(axes)
+        n_axes = len(axes)
+        if isinstance(ticklabels, bool):
+            add_tick_labels = [ticklabels] * n_axes
+        elif isinstance(ticklabels, int):
+            if ticklabels >= n_axes or ticklabels < -n_axes:
+                raise ValueError("ticklabels=%r for a plot with %i axes" %
+                                 (ticklabels, n_axes))
+            add_tick_labels = [False] * n_axes
             add_tick_labels[ticklabels] = True
         else:
-            add_tick_labels = [ticklabels] * len(axes)
+            raise TypeError("ticklabels=%r" % (ticklabels,))
 
         for ax, add_tick_labels_ in izip(axes, add_tick_labels):
             if locator:
