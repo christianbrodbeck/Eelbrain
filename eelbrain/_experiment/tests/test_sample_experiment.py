@@ -46,6 +46,13 @@ def test_sample():
     ds = e.load_evoked('all')
     assert_dataobj_equal(combine(sds), ds)
 
+    # e._report_subject_info() broke with non-alphabetic subject order
+    subjects = e.get_field_values('subject')
+    ds = Dataset()
+    ds['subject'] = Factor(reversed(subjects))
+    ds['n'] = Var(range(3))
+    s_table = e._report_subject_info(ds, '')
+
 
 @requires_mne_sample_data
 def test_samples_sesssions():
