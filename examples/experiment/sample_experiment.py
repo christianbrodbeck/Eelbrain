@@ -10,14 +10,11 @@ that the directory you specify exists)::
 
 Then you can use::
 
-    >>> from sample_experiment import SampleExperiment, ROOT
-    >>> e = SampleExperiment(ROOT)
+    >>> from sample_experiment import SampleExperiment
+    >>> e = SampleExperiment("~/Data/SampleExperiment")
 
 """
 from eelbrain import MneExperiment
-
-
-ROOT = "~/Data/SampleExperiment"
 
 
 class SampleExperiment(MneExperiment):

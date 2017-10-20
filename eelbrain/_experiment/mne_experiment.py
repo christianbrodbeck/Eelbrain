@@ -39,7 +39,8 @@ from .. import save
 from .. import table
 from .. import testnd
 from .._data_obj import (
-    Datalist, Dataset, Factor, Var, align, all_equal, as_legal_dataset_key,
+    Datalist, Dataset, Factor, Var,
+    align, align1, all_equal, as_legal_dataset_key,
     asfactor, assert_is_legal_dataset_key, combine)
 from .._exceptions import DimensionMismatchError, OldVersionError
 from .._info import BAD_CHANNELS
@@ -5125,7 +5126,8 @@ class MneExperiment(FileTree):
         else:
             s_ds = ds
         s_ds2 = self.show_subjects(asds=True)
-        s_ds.update(s_ds2[('subject', 'mri')])
+        s_ds2_aligned = align1(s_ds2[('subject', 'mri')], s_ds['subject'], 'subject')
+        s_ds.update(s_ds2_aligned)
         s_table = s_ds.as_table(midrule=True, count=True, caption="All "
                                 "subjects included in the analysis with "
                                 "trials per condition")
