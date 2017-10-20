@@ -744,14 +744,14 @@ def all_equal(a, b, nan_equal=False):
 # --- sorting ---
 
 def align(d1, d2, i1='index', i2=None, out='data'):
-    """
-    Align two data-objects based on index variables.
+    """Align two data-objects based on index variables
 
     Before aligning, two data-objects ``d1`` and ``d2`` describe the same cases,
-    but their order does not correspond. :func:`align` uses the indexes ``i1``
-    and ``i2`` to match each case in ``d2`` to a case in ``d1`` (i.e., ``d1``
-    is used as the basis for the case order in the output). Cases that are
-    present in only one of ``d1`` and ``d2`` are dropped.
+    but their order does not correspond. :func:`align` uses the index variables
+    ``i1`` and ``i2`` to match each case in ``d2`` to a case in ``d1`` (i.e.,
+    ``d1`` is used as the basis for the case order in the output), and returns
+    reordered versions of of ``d1`` and ``d2`` with matching cases. Cases that
+    are present in only one of ``d1`` and ``d2`` are dropped.
 
     Parameters
     ----------
@@ -765,6 +765,17 @@ def align(d1, d2, i1='index', i2=None, out='data'):
         **'data'**: returns the two aligned data objects. **'index'**: returns
         two indices index1 and index2 which can be used to align the datasets
         with ``d1[index1]; d2[index2]``.
+
+    Returns
+    -------
+    d1_aligned : data-object | array
+        Aligned copy of ``d1`` (or index to align ``d1`` if ``out='index'``).
+    d2_aligned : data-object | array
+        Aligned copy of ``d2`` (or index to align ``d2`` if ``out='index'``).
+
+    See Also
+    --------
+    align1 : Align one data-object to an index variable
 
     Examples
     --------
@@ -802,20 +813,30 @@ def align(d1, d2, i1='index', i2=None, out='data'):
 
 
 def align1(d, idx, d_idx='index', out='data'):
-    """
-    Align a data object to an index
+    """Align a data object to an index variable
 
     Parameters
     ----------
-    d : data object, n_cases = n1
-        Data object with cases that should be aligned to idx.
+    d : data-object, n_cases = n1
+        Data object with cases that should be aligned to ``idx``.
     idx : Var | array_like, len = n2
-        Index array to which d should be aligned.
+        Index array to which ``d`` should be aligned.
     d_idx : str | index array, len = n1
-        Indices of cases in d. If d is a Dataset, d_idx can be a name in d.
+        Variable labeling cases in ``d`` for aligning them to ``idx``. If ``d``
+        is a Dataset, ``d_idx`` can be the name of a variable in ``d``.
     out : 'data' | 'index'
-        Return a restructured copy of d or an array of numerical indices into
-        d.
+        Return a restructured copy of ``d`` (default) or an index array into
+        ``d``.
+
+    Returns
+    -------
+    d_aligned : data-object | array
+        Aligned copy of ``d`` (or index to align ``d`` to ``idx`` if
+        ``out='index'``).
+
+    See Also
+    --------
+    align : Align two data-objects
     """
     idx = asuv(idx)
     if not isinstance(d_idx, basestring):
