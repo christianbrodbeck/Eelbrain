@@ -6242,9 +6242,9 @@ class Dataset(OrderedDict):
 
         Parameters
         ----------
-        ds : dict-like
-            A dictionary like object whose keys are strings and whose values
-            are data-objects.
+        ds : Dataset | dict
+            A Dataset or other dictionary-like object whose keys are strings
+            and whose values are data-objects.
         replace : bool
             If a variable in ds is already present, replace it. If False,
             duplicates raise a ValueError (unless they are equivalent).
@@ -6258,15 +6258,24 @@ class Dataset(OrderedDict):
         values are equal, the variable in ds is copied into the Dataset that is
         being updated (the expected behavior of .update()).
         """
+        if isinstance(ds, Dataset):
+            if ds.n_cases != self.n_cases:
+                raise ValueError("Trying to update dataset with %i cases from "
+                                 "dataset with %i cases" % (self.n_cases, ds.n_cases))
+
         if not replace:
-            unequal = []
+            unequal = {}
             for key in set(self).intersection(ds):
-                if not np.all(self[key] == ds[key]):
-                    unequal.append(key)
+                own = self[key]
+                other = ds[key]
+                if len(own) != len(other):
+                    unequal[key] = 'unequal length'
+                elif not np.all(own == other):
+                    unequal[key] = "unequal values"
             if unequal:
-                err = ("The following variables are present twice but are not "
-                       "equal: %s" % unequal)
-                raise ValueError(err)
+                raise ValueError(
+                    "The following variables are present twice but are not "
+                    "equal: %s" % ', '.join('%r (%s)' % item for item in unequal.iteritems()))
 
         super(Dataset, self).update(ds)
 
