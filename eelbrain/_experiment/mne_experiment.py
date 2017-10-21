@@ -531,7 +531,6 @@ class MneExperiment(FileTree):
 
         # create attributes (overwrite class attributes)
         self._subject_re = re.compile(self._subject_re)
-        self.groups = self.groups.copy()
         self._mri_subjects = self._mri_subjects.copy()
         self._templates = self._templates.copy()
         self._templates['class-name'] = self.__class__.__name__
@@ -2315,7 +2314,7 @@ class MneExperiment(FileTree):
             A Dataset with 'subject' entry.
         """
         subject = ds['subject']
-        for name, subjects in self.groups.iteritems():
+        for name, subjects in self._groups.iteritems():
             ds[name] = Var(subject.isin(subjects))
 
     def load_annot(self, **state):
