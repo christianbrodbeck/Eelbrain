@@ -747,6 +747,7 @@ def test_model():
     eq_(str(m), '\n'.join(lines))
     eq_(str(m.head(2)), '\n'.join(lines[:4]))
     eq_(str(m.tail(2)), '\n'.join(lines[:2] + lines[-2:]))
+    str(m.info())
 
     # model without explicit names
     x1 = Factor('ab', repeat=2)

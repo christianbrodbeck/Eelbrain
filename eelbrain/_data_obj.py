@@ -6700,6 +6700,18 @@ class Model(object):
     def __str__(self):
         return str(self.as_table())
 
+    def info(self):
+        """A :class:`fmtxt.Table` with information about the model"""
+        table = fmtxt.Table('rl')
+        table.cells('Df', 'Term')
+        table.midrule()
+        for e in self.effects:
+            table.cells(e.df, e.name, )
+        if self.df_error:
+            table.midrule()
+            table.cells(self.df_error, 'Residuals')
+        return table
+
     # container ---
     def __len__(self):
         return self.df_total
