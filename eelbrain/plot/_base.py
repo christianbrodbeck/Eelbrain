@@ -1114,11 +1114,11 @@ class EelFigure(object):
             if locator:
                 ax.xaxis.set_major_locator(locator)
 
-            if add_tick_labels_:
-                if formatter:
-                    ax.xaxis.set_major_formatter(formatter)
-            else:
-                ax.xaxis.set_ticklabels(())
+            if formatter:
+                ax.xaxis.set_major_formatter(formatter)
+
+            if not add_tick_labels_:
+                ax.tick_params(labelbottom='off')
 
         if label:
             self.set_xlabel(label)
