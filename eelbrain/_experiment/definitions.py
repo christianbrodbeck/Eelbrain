@@ -1,11 +1,8 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from inspect import getargspec
 
+from .._exceptions import DefinitionError
 from .._utils.parse import find_variables
-
-
-class DefinitionError(Exception):
-    "MneExperiment definition error"
 
 
 def assert_dict_has_args(d, cls, kind, name, n_internal=0):

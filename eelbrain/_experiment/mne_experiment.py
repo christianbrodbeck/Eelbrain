@@ -11,7 +11,7 @@ e = MneExperiment('.', find_subjects=False)
 """
 from __future__ import print_function
 
-from collections import defaultdict, Sequence
+from collections import Counter, defaultdict, Sequence
 from datetime import datetime
 from glob import glob
 import inspect
@@ -42,7 +42,7 @@ from .._data_obj import (
     Datalist, Dataset, Factor, Var,
     align, align1, all_equal, as_legal_dataset_key,
     asfactor, assert_is_legal_dataset_key, combine)
-from .._exceptions import DimensionMismatchError, OldVersionError
+from .._exceptions import DefinitionError, DimensionMismatchError, OldVersionError
 from .._info import BAD_CHANNELS
 from .._io.fiff import KIT_NEIGHBORS
 from .._io.pickle import update_subjects_dir
@@ -63,7 +63,7 @@ from .._stats.testnd import _MergedTemporalClusterDist
 from .._utils import WrappedFormater, ask, subp, keydefaultdict, log_level
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .definitions import (
-    DefinitionError, assert_dict_has_args, find_dependent_epochs,
+    assert_dict_has_args, find_dependent_epochs,
     find_epochs_vars, find_test_vars, log_dict_change, log_list_change)
 from .epochs import PrimaryEpoch, SecondaryEpoch, SuperEpoch
 from .experiment import FileTree
@@ -624,6 +624,12 @@ class MneExperiment(FileTree):
                             "Group %s contains non-existing subjects: %s" %
                             (name, ', '.join(missing)))
                     group_members = tuple(group_def)
+                    if len(set(group_members)) < len(group_members):
+                        count = Counter(group_members)
+                        duplicates = (s for s, n in count.iteritems() if n > 1)
+                        raise DefinitionError(
+                            "Group %r: the following subjects appear more than "
+                            "once: %s" % (name, ', '.join(duplicates)))
                 else:
                     raise TypeError("group %s=%r" % (name, group_def))
                 groups[name] = tuple(group_members)
