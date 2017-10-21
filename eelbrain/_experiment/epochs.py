@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from .definitions import DefinitionError, typed_arg
+from .._exceptions import DefinitionError
+from .definitions import typed_arg
 
 
 class Epoch(object):

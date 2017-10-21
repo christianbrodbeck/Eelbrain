@@ -1,6 +1,10 @@
 """Exceptions used throughout Eelbrain"""
 
 
+class DefinitionError(Exception):
+    "MneExperiment definition error"
+
+
 class DimensionMismatchError(Exception):
     "Trying to align NDVars with mismatching dimensions"
 

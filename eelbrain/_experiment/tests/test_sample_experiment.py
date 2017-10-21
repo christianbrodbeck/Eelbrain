@@ -3,9 +3,10 @@
 import imp
 from os.path import join, realpath
 
-from nose.tools import eq_
+from nose.tools import eq_, assert_raises
 
 from eelbrain import *
+from eelbrain._exceptions import DefinitionError
 
 from ..._utils.testing import (
     TempDir, assert_dataobj_equal, requires_mne_sample_data)
@@ -52,6 +53,11 @@ def test_sample():
     ds['subject'] = Factor(reversed(subjects))
     ds['n'] = Var(range(3))
     s_table = e._report_subject_info(ds, '')
+
+    # test bad definitions
+    class BadExperiment(e_module.SampleExperiment):
+        groups = {'group': ('R0001', 'R0002', 'R0002')}
+    assert_raises(DefinitionError, BadExperiment, root)
 
 
 @requires_mne_sample_data

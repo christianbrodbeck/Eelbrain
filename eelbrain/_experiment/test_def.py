@@ -1,6 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from .. import testnd
-from .definitions import DefinitionError
+from .._exceptions import DefinitionError
 
 
 __test__ = False
