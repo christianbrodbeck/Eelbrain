@@ -870,6 +870,11 @@ class Stars(FMTextElement):
             text = n.ljust(of)
         FMTextElement.__init__(self, text, tag)
 
+    @classmethod
+    def from_p(cls, p):
+        n = sum((p <= 0.01, p <= 0.01, p <= 0.05))
+        return cls(n)
+
     def _get_tex_core(self, env):
         txt = self._get_core(env)
         spaces = r'\ ' * (self.of - self.n)
@@ -1949,8 +1954,6 @@ def p(p, stars=None, of=3, tag='math'):
     ----------
     p : scalar
         P-value.
-    digits : int
-        Significant digits.
     stars : None | str
         Stars decorating the p-value (e.g., "**")
     of : int
