@@ -992,6 +992,12 @@ class Cell(FMText):
         else:
             self.just = just
 
+    @classmethod
+    def coerce(cls, content):
+        if isinstance(content, cls):
+            return content
+        return cls(content)
+
     def _repr_items(self):
         items = FMText._repr_items(self)
         if self.width != 1:
@@ -1031,8 +1037,50 @@ class Cell(FMText):
 
 
 class Row(list):
+    """Row for a Table"""
+    def __init__(self, n_columns, items=()):
+        self.n_columns = n_columns
+        list.__init__(self, (Cell.coerce(item) for item in items))
+
+    @classmethod
+    def coerce(cls, obj, n_columns):
+        if isinstance(obj, cls):
+            if obj.n_columns != n_columns:
+                raise ValueError("Required Row with %i columns, got %i" %
+                                 (n_columns, obj.n_columns))
+            return obj
+        return cls(n_columns, obj)
+
     def __len__(self):
         return sum([len(cell) for cell in self])
+
+    def __setitem__(self, key, value):
+        if isinstance(key, slice):
+            start, stop, stride = key.indices(self.n_columns)
+            for i, v in izip(xrange(start, stop, stride), value):
+                self[i] = v
+            return
+        elif not isinstance(key, int):
+            raise TypeError("Row index %r" % (key,))
+
+        column = key if key >= 0 else key + self.n_columns
+        if not 0 <= column < self.n_columns:
+            raise IndexError("%i for row with %i columns" % (key, self.n_columns))
+
+        cell = Cell.coerce(value)
+        if len(self) <= column:
+            while len(self) < column:
+                self.append(Cell(''))
+            self.append(cell)
+            return
+
+        column_i = 0
+        for i, cell_i in enumerate(self):
+            if column_i == column:
+                list.__setitem__(self, i, cell)
+                return
+            column_i += len(cell_i)
+        raise IndexError("Column %i is part of a multi-column cell" % (column,))
 
     def __repr__(self):
         return "Row(%s)" % list.__repr__(self)
@@ -1149,6 +1197,7 @@ class Table(FMTextElement):
     """
     def __init__(self, columns, rules=True, title=None, caption=None, rows=[]):
         self.columns = columns
+        self.n_columns = len(columns)
         self._table = rows[:]
         self.rules = rules
         self.title(title)
@@ -1165,10 +1214,29 @@ class Table(FMTextElement):
     def __getitem__(self, item):
         if isinstance(item, int):
             return self._table[item]
-        else:
+        elif isinstance(item, slice):
             rows = self._table[item]
             return Table(self.columns, rules=self.rules, title=self._title,
                          caption=self._caption, rows=rows)
+        elif isinstance(item, tuple):
+            raise NotImplementedError
+
+    def __setitem__(self, key, value):
+        if isinstance(key, int):
+            self._table[key] = Row.coerce(value, self.n_columns)
+        elif isinstance(key, tuple) and len(key) == 2:
+            row, column = key
+            if isinstance(row, slice):
+                value = tuple(value)
+                start, stop, stride = row.indices(len(self._table))
+                for i, v in izip(xrange(start, stop, stride), value):
+                    self[i, column] = v
+            elif not isinstance(row, int):
+                raise TypeError("Table index %r" % (key,))
+            else:
+                self._table[row][column] = value
+        else:
+            raise IndexError("Table index %r" % (key,))
 
     # adding texstrs ---
     def cell(self, content='', tag=None, width=1, just=None):
@@ -1188,7 +1256,7 @@ class Table(FMTextElement):
         cell = Cell(content, tag, width, just)
 
         if self._active_row is None or len(self._active_row) == len(self.columns):
-            new_row = Row()
+            new_row = Row(self.n_columns)
             self._table.append(new_row)
             self._active_row = new_row
 
@@ -1198,7 +1266,7 @@ class Table(FMTextElement):
 
     def empty_row(self):
         self.endline()
-        self._table.append(Row())
+        self._table.append(Row(self.n_columns))
 
     def endline(self):
         "Finish the active row"

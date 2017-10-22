@@ -155,6 +155,16 @@ def test_table():
     table.save_txt(path)
     eq_(open(path).read(), 'A    B \n-------\na1   b1\na2   b2')
 
+    # editing
+    table[0, 0] = 'X'
+    eq_(str(table), 'X    B \n-------\na1   b1\na2   b2')
+    table[0] = ['C', 'D']
+    eq_(str(table), 'C    D \n-------\na1   b1\na2   b2')
+    table[2, 0] = 'cd'
+    eq_(str(table), 'C    D \n-------\ncd   b1\na2   b2')
+    table[2:4, 1] = ['x', 'y']
+    eq_(str(table), 'C    D\n------\ncd   x\na2   y')
+
 
 def test_symbol():
     "Test fmtxt.symbol()"
