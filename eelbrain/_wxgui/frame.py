@@ -36,6 +36,10 @@ class EelbrainWindow(object):
     def OnUpdateUIDown(self, event):
         event.Enable(True)
 
+    def OnUpdateUIDrawCrosshairs(self, event):
+        event.Enable(False)
+        event.Check(False)
+
     def OnUpdateUIForward(self, event):
         event.Enable(False)
 
@@ -65,8 +69,14 @@ class EelbrainWindow(object):
     def OnUpdateUISetLayout(self, event):
         event.Enable(False)
 
+    def OnUpdateUISetMarkedChannels(self, event):
+        event.Enable(False)
+
     def OnUpdateUISetVLim(self, event):
         event.Enable(False)
+
+    def OnUpdateUITools(self, event):
+        event.Enable(hasattr(self, 'MakeToolsMenu'))
 
     def OnUpdateUIUndo(self, event):
         event.Enable(False)
@@ -83,12 +93,47 @@ class EelbrainFrame(wx.Frame, EelbrainWindow):
             from .app import APP
             self.SetMenuBar(APP.CreateMenu(self))
 
-    def OnDrawCrosshairs(self, event):
-        raise RuntimeError("%s can't draw crosshairs" % (self,))
+    def OnClear(self, event):
+        raise RuntimeError(str(self))
 
-    def OnUpdateUIDrawCrosshairs(self, event):
-        event.Enable(False)
-        event.Check(False)
+    def OnCopy(self, event):
+        win = wx.Window.FindFocus()
+        if hasattr(win, 'CanCopy'):
+            return win.Copy()
+        elif hasattr(self, 'CanCopy'):
+            return self.Copy()
+        else:
+            event.Skip()
+
+    def OnDrawCrosshairs(self, event):
+        raise RuntimeError(str(self))
+
+    def OnOpen(self, event):
+        raise RuntimeError(str(self))
+
+    def OnRedo(self, event):
+        raise RuntimeError(str(self))
+
+    def OnSave(self, event):
+        raise RuntimeError(str(self))
+
+    def OnSaveAs(self, event):
+        raise RuntimeError(str(self))
+
+    def OnSetVLim(self, event):
+        raise RuntimeError(str(self))
+
+    def OnSetLayout(self, event):
+        raise RuntimeError(str(self))
+
+    def OnSetMarkedChannels(self, event):
+        raise RuntimeError(str(self))
+
+    def OnUndo(self, event):
+        raise RuntimeError(str(self))
+
+    def OnWindowClose(self, event):
+        self.Close()
 
 
 class EelbrainDialog(wx.Dialog, EelbrainWindow):
