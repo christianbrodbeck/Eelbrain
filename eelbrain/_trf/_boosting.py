@@ -45,6 +45,8 @@ JOB_TERMINATE = -1
 ERROR_FUNC = {'l2': l2, 'l1': l1}
 DELTA_ERROR_FUNC = {'l2': 2, 'l1': 1}
 
+DELTA_REDUCTION_STEP = (None, None, None)
+
 
 class BoostingResult(object):
     """Result from boosting a temporal response function
@@ -418,16 +420,19 @@ def boost_segs(y, x, train_index, test_index, trf_length, delta, mindelta,
     new_error = np.empty(h.shape)
     new_sign = np.empty(h.shape, np.int8)
 
-    # history lists
+    # history
+    best_test_error = np.inf
     history = []
     test_error_history = []
     # pre-assign iterators
     for i_boost in xrange(999999):
-        history.append(h.copy())
-
         # evaluate current h
         e_test = error(y_error, test_index)
         e_train = error(y_error, train_index)
+
+        if e_test < best_test_error:
+            best_test_error = e_test
+            best_iteration = i_boost
 
         test_error_history.append(e_test)
 
@@ -452,34 +457,42 @@ def boost_segs(y, x, train_index, test_index, trf_length, delta, mindelta,
             delta *= 0.5
             if delta >= mindelta:
                 # print("new delta: %s" % delta)
+                history.append(DELTA_REDUCTION_STEP)
                 continue
             else:
                 # print("No improvement possible for training data")
                 break
 
-        # update h with best movement
-        h[i_stim, i_time] += delta_signed
-
         # abort if we're moving in circles
-        if i_boost >= 2 and h[i_stim, i_time] == history[-2][i_stim, i_time]:
+        if i_boost >= 2 and (i_stim, i_time, -delta_signed) == history[-1]:
             # print("Same h after 2 iterations")
             break
-        elif i_boost >= 3 and h[i_stim, i_time] == history[-3][i_stim, i_time]:
-            # print("Same h after 3 iterations")
-            break
+        elif i_boost >= 4 and history[-3] is DELTA_REDUCTION_STEP:
+            step = (i_stim, i_time, -delta_signed / 2.)
+            if history[-1] == step and history[-2] == step:
+                # print("Same h after 3 iterations")
+                break
 
-        # update error
+        # update h with best movement
+        h[i_stim, i_time] += delta_signed
+        history.append((i_stim, i_time, delta_signed))
         update_error(y_error, x[i_stim], all_index, delta_signed, i_time)
-    # else:
-    #     print("maxiter exceeded")
-
-    best_iter = np.argmin(test_error_history)
+    else:
+        raise RuntimeError("Maximum number of iterations exceeded")
     # print('  (%i iterations)' % (i_boost + 1))
 
-    if return_history:
-        return history[best_iter] if best_iter else None, test_error_history
+    # reverse changes after best iteration
+    if best_iteration:
+        for i_stim, i_time, delta_signed in history[-1: best_iteration - 1: -1]:
+            if delta_signed is not None:
+                h[i_stim, i_time] -= delta_signed
     else:
-        return history[best_iter] if best_iter else None
+        h = None
+
+    if return_history:
+        return h, test_error_history
+    else:
+        return h
 
 
 def setup_workers(y, x, trf_length, delta, mindelta, nsegs, error):
