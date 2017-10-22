@@ -523,3 +523,57 @@ def combination_label(name, exp, labels, subjects_dir):
         out.append(label)
 
     return out
+
+
+def xhemi(ndvar, mask=True, hemi='lh'):
+    """Project data from both hemispheres to ``hemi``.
+
+    Return data from left and right hemisphere, both projected onto ``hemi``
+    of fsaverage_sym for interhemisphere comparisons.
+
+    Parameters
+    ----------
+    ndvar : NDVar
+        NDVar with SourceSpace dimension.
+    mask : bool
+        Restrict the output to cortical data-points (vertices contained in the
+        "cortex" label of ``fsaverage_sym``.
+    hemi : 'lh' | 'rh'
+        Hemisphere onto which to morph the data.
+
+    Returns
+    -------
+    lh : NDVAr
+        Data from the left hemisphere on ``hemi`` of ``fsaverage_sym``.
+    rh : NDVar
+        Data from the right hemisphere on ``hemi`` of ``fsaverage_sym``.
+    """
+    other_hemi = 'rh' if hemi == 'lh' else 'lh'
+    if ndvar.source.subject == 'fsaverage_sym':
+        ndvar_sym = ndvar
+    else:
+        ndvar_sym = morph_source_space(ndvar, 'fsaverage_sym', parc=False)
+
+    vert_lh, vert_rh = ndvar_sym.source.vertices
+    vert_from = [[], vert_rh] if hemi == 'lh' else [vert_lh, []]
+    vert_to = [vert_lh, []] if hemi == 'lh' else [[], vert_rh]
+    morph_mat = mne.compute_morph_matrix(
+        'fsaverage_sym', 'fsaverage_sym', vert_from, vert_to,
+        subjects_dir=ndvar.source.subjects_dir, xhemi=True)
+
+    out_same = ndvar_sym.sub(source=hemi)
+    out_other = morph_source_space(
+        ndvar_sym.sub(source=other_hemi), 'fsaverage_sym',
+        out_same.source.vertices, morph_mat, parc=False, xhemi=True)
+
+    if mask:
+        path = os.path.join(ndvar.source.subjects_dir, 'fsaverage_sym', 'label',
+                            hemi + '.cortex.label')
+        label = mne.read_label(path)
+        out_same = out_same.sub(source=label)
+        out_other = out_other.sub(source=label)
+
+    if hemi == 'lh':
+        return out_same, out_other
+    else:
+        return out_other, out_same

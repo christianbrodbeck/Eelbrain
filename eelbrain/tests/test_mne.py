@@ -2,7 +2,10 @@
 from itertools import izip
 import os
 
-from nose.tools import eq_, ok_, assert_less_equal, assert_not_equal, assert_in
+from nose.tools import (
+    eq_, ok_, assert_almost_equal, assert_less_equal, assert_not_equal,
+    assert_in,
+)
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 
@@ -13,7 +16,7 @@ from nibabel.freesurfer import read_annot
 from eelbrain import (
     datasets, load, testnd,
     Dataset, Factor,
-    concatenate, morph_source_space)
+    concatenate, morph_source_space, xhemi)
 from eelbrain._data_obj import SourceSpace, asndvar, _matrix_graph
 from eelbrain._mne import shift_mne_epoch_trigger, combination_label
 from eelbrain._utils.testing import requires_mne_sample_data
@@ -192,10 +195,10 @@ def test_morphing():
     mne.set_log_level('warning')
     data_dir = mne.datasets.sample.data_path()
     subjects_dir = os.path.join(data_dir, 'subjects')
-
     sss = datasets._mne_source_space('fsaverage', 'ico-4', subjects_dir)
     vertices_to = [sss[0]['vertno'], sss[1]['vertno']]
     ds = datasets.get_mne_sample(-0.1, 0.1, src='ico', sub='index==0', stc=True)
+
     stc = ds['stc', 0]
     morph_mat = mne.compute_morph_matrix('sample', 'fsaverage', stc.vertices,
                                          vertices_to, None, subjects_dir)
@@ -209,6 +212,13 @@ def test_morphing():
                                             subjects_dir, 'dSPM', False, 'src',
                                             parc=None)
     assert_dataobj_equal(morphed_ndvar, morphed_stc_ndvar)
+
+    # xhemi
+    lh, rh = xhemi(ndvar, mask=False)
+    eq_(lh.source.rh_n, 0)
+    eq_(rh.source.rh_n, 0)
+    assert_almost_equal(lh.max(), 19.63, 2)
+    assert_almost_equal(rh.max(), 22.79, 2)
 
 
 @requires_mne_sample_data  # source space distance computation times out
