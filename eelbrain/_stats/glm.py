@@ -53,8 +53,7 @@ def hopkins_ems(x):
         ANOVA model. Needs to balanced and completely specified.
     """
     if x.df_error > 0:
-        raise ValueError(
-            "Hopkins E(MS) estimate requires a fully specified model")
+        raise x._incomplete_error("Hopkins E(MS) estimate")
     elif not any(f.random for f in find_factors(x)):
         raise ValueError(
             "Need at least one random effect in fully specified model "
@@ -189,8 +188,7 @@ class LM(object):
         if X.df_error == 0:
             e_ms = hopkins_ems(X)
         elif hasrandom(X):
-            raise NotImplementedError("Models containing random effects need "
-                                      "to be fully specified.")
+            raise X._incomplete_error("Mixed effects ANOVA")
         else:
             e_ms = False
 
@@ -322,8 +320,7 @@ def _nd_anova(x):
             raise NotImplementedError("Random effects ANOVA with continuous "
                                       "predictors")
         elif x.df_error != 0:
-            raise NotImplementedError("Random effects ANOVA need to be fully "
-                                      "specified")
+            raise x._incomplete_error("Mixed effects ANOVA")
         if isbalanced(x):
             return _BalancedMixedNDANOVA(x)
     elif isbalanced(x):
@@ -608,8 +605,7 @@ class IncrementalComparisons(object):
             self.mixed = is_mixed = True
         elif x.df_error > 0:
             if hasrandom(x):
-                raise NotImplementedError("Models containing random effects "
-                                          "need to be fully specified.")
+                raise x._incomplete_error("Mixed effects ANOVA")
             self.mixed = is_mixed = False
         else:
             raise ValueError("Model Overdetermined")
@@ -834,9 +830,7 @@ class ANOVA(object):
         # decide which E(MS) model to use
         if x.df_error > 0:
             if hasrandom(x):
-                err = ("Models containing random effects need to be fully "
-                       "specified.")
-                raise NotImplementedError(err)
+                raise x._incomplete_error("Mixed effects ANOVA")
         elif x.df_error < 0:
             raise ValueError("Model Overdetermined")
 

@@ -45,7 +45,7 @@ from functools import partial
 import itertools
 from itertools import chain, izip
 from keyword import iskeyword
-from math import ceil, log10, log
+from math import ceil, log
 from numbers import Integral, Number
 import cPickle as pickle
 import operator
@@ -69,7 +69,7 @@ from scipy.spatial.distance import cdist, pdist, squareform
 
 from . import fmtxt
 from . import _colorspaces as cs
-from ._exceptions import DimensionMismatchError
+from ._exceptions import DimensionMismatchError, IncompleteModel
 from ._data_opt import gaussian_smoother
 from ._info import merge_info
 from ._utils import (
@@ -6889,6 +6889,14 @@ class Model(object):
     def _parametrize(self, method='effect'):
         "Create a design matrix"
         return Parametrization(self, method)
+
+    def _incomplete_error(self, caller):
+        df_table = self.info()
+        df_table[-1, 1] = 'Unexplained'
+        return IncompleteModel(
+            "%s requires a fully specified model, but the model has only "
+            "%i explained degrees of freedom for %i cases:\n%s" %
+            (caller, self.df, self.df_total, df_table))
 
     def repeat(self, n):
         "Repeat each row of the Model ``n`` times"

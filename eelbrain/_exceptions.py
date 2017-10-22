@@ -5,6 +5,10 @@ class DimensionMismatchError(Exception):
     "Trying to align NDVars with mismatching dimensions"
 
 
+class IncompleteModel(Exception):
+    "Function requires a fully specified model"
+
+
 class OldVersionError(Exception):
     "Trying to load a file from a version that is no longer supported"
 

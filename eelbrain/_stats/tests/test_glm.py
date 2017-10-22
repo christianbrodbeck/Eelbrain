@@ -1,7 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import print_function
 from itertools import izip, repeat
-import warnings
 
 from nose.tools import (eq_, assert_almost_equal, assert_is_instance,
     assert_raises, nottest)
@@ -11,6 +10,7 @@ from numpy.testing import assert_allclose
 
 from eelbrain import datasets, test, testnd, Dataset, NDVar
 from eelbrain._data_obj import UTS
+from eelbrain._exceptions import IncompleteModel
 from eelbrain._stats import glm
 from eelbrain._stats.permutation import permute_order
 from eelbrain._utils.r_bridge import r, r_require, r_warning_filter
@@ -126,7 +126,7 @@ def test_anova():
     assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'ez')
 
     # not fully specified model with random effects
-    assert_raises(NotImplementedError, test.anova, 'fltvar', 'A*rm', ds=ds)
+    assert_raises(IncompleteModel, test.anova, 'fltvar', 'A*rm', ds=ds)
 
     # unequal group size, 1-way
     sds = ds.sub("A == 'a1'").sub("nrm.isnotin(('s037', 's038', 's039'))")
