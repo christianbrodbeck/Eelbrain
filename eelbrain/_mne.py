@@ -15,6 +15,26 @@ from ._data_obj import NDVar, SourceSpace
 from ._ndvar import set_parc
 
 
+ICO_N_VERTICES = (12, 42, 162, 642, 2562, 10242, 40962)
+ICO_SLICE_SUBJECTS = ('fsaverage', 'fsaverage_sym')
+
+
+def source_space_vertices(kind, grade, subject, subjects_dir):
+    """Vertices in ico-``grade`` source space"""
+    if kind == 'ico' and subject in ICO_SLICE_SUBJECTS:
+        n = ICO_N_VERTICES[grade]
+        return np.arange(n), np.arange(n)
+    path = SourceSpace._SRC_PATH.format(subjects_dir=subjects_dir,
+                                        subject=subject, src='ico-%i' % grade)
+    if os.path.exists(path):
+        src_to = mne.read_source_spaces(path)
+        return src_to[0]['vertno'], src_to[1]['vertno']
+    elif kind != 'ico':
+        raise NotImplementedError("Can't infer vertices for non-ico source space")
+    else:
+        return mne.grade_to_vertices(subject, grade, subjects_dir)
+
+
 def _vertices_equal(v1, v0):
     "Test whether v1 and v0 are equal"
     return np.array_equal(v1[0], v0[0]) and np.array_equal(v1[1], v0[1])
@@ -271,21 +291,11 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     has_lh_out = bool(source.rh_n if xhemi else source.lh_n)
     has_rh_out = bool(source.lh_n if xhemi else source.rh_n)
     if vertices_to in (None, 'lh', 'rh'):
-        path = SourceSpace._SRC_PATH.format(
-            subjects_dir=subjects_dir, subject=subject_to, src=src)
-        src_to = mne.read_source_spaces(path)
-
-        if vertices_to == 'lh' or (vertices_to is None and has_lh_out):
-            vertices_lh = src_to[0]['vertno']
-        else:
-            vertices_lh = np.empty(0, int)
-
-        if vertices_to == 'rh' or (vertices_to is None and has_rh_out):
-            vertices_rh = src_to[1]['vertno']
-        else:
-            vertices_rh = np.empty(0, int)
-
-        vertices_to = [vertices_lh, vertices_rh]
+        default_vertices = source_space_vertices(source.kind, source.grade, subject_to, subjects_dir)
+        lh_out = vertices_to == 'lh' or (vertices_to is None and has_lh_out)
+        rh_out = vertices_to == 'rh' or (vertices_to is None and has_rh_out)
+        vertices_to = [default_vertices[0] if lh_out else np.empty(0, int),
+                       default_vertices[1] if rh_out else np.empty(0, int)]
     elif not isinstance(vertices_to, list) or not len(vertices_to) == 2:
         raise ValueError('vertices_to must be a list of length 2, got %r' %
                          (vertices_to,))
