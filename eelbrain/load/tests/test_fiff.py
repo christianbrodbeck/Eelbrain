@@ -30,7 +30,8 @@ def test_load_fiff_mne():
     mri_sdir = os.path.join(data_path, 'subjects')
 
     mne_evoked = mne.read_evokeds(evoked_path, 'Left Auditory')
-    mne_fwd = mne.read_forward_solution(fwd_path, force_fixed=True)
+    mne_fwd = mne.read_forward_solution(fwd_path)
+    mne_fwd = mne.convert_forward_solution(mne_fwd, force_fixed=True, use_cps=True)
     cov = mne.read_cov(cov_path)
 
     picks = mne.pick_types(mne_evoked.info, 'mag')
@@ -41,7 +42,7 @@ def test_load_fiff_mne():
     cov = mne.pick_channels_cov(cov, channels)
 
     mne_inv = mne.minimum_norm.make_inverse_operator(mne_evoked.info, mne_fwd,
-                                                     cov, None, None, True)
+                                                     cov, 0, None, True)
 
     mne_stc = mne.minimum_norm.apply_inverse(mne_evoked, mne_inv, 1., 'MNE')
 

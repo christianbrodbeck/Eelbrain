@@ -270,8 +270,9 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
 
         cov_file = os.path.join(meg_dir, 'sample_audvis-cov.fif')
         cov = mne.read_cov(cov_file)
-        inv = mn.make_inverse_operator(epochs.info, fwd, cov, None, None,
-                                       fixed)
+        inv = mn.make_inverse_operator(epochs.info, fwd, cov,
+                                       loose=0 if fixed else 1, depth=None,
+                                       fixed=fixed)
         mne.minimum_norm.write_inverse_operator(inv_file, inv)
     ds.info['inv'] = inv
 

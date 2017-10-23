@@ -3089,10 +3089,8 @@ class MneExperiment(FileTree):
         if fiff is None:
             fiff = self.load_raw()
 
-        fwd = self.load_fwd()
-        cov = self.load_cov()
-        kwargs = self._params['make_inv_kw']
-        inv = make_inverse_operator(fiff.info, fwd, cov, **kwargs)
+        inv = make_inverse_operator(fiff.info, self.load_fwd(), self.load_cov(),
+                                    **self._params['make_inv_kw'])
 
         if ndvar:
             inv = load.fiff.inverse_operator(
@@ -5784,7 +5782,7 @@ class MneExperiment(FileTree):
         ori, snr, method, depth, pick_normal = self._inv_params(inv)
 
         if ori == 'fixed':
-            make_kw = {'fixed': True, 'loose': None}
+            make_kw = {'fixed': True}
         elif ori == 'free':
             make_kw = {'loose': 1}
         elif isinstance(ori, float):
