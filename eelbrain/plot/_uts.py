@@ -88,6 +88,8 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         **dict**: A dictionary mapping each cell in X to a color.
         Colors are specified as `matplotlib compatible color arguments
         <http://matplotlib.org/api/colors_api.html>`_.
+    error_alpha : float
+        Alpha of the error plot (default 0.3).
     clusters : None | Dataset
         Clusters to add to the plots. The clusters should be provided as
         Dataset, as stored in test results' :py:attr:`.clusters`.
@@ -120,8 +122,8 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
                  main=np.mean, error='sem', pool_error=None, legend='upper right',
                  axtitle=True, xlabel=True, ylabel=True, xticklabels=-1,
                  invy=False, bottom=None, top=None, hline=None, xdim='time',
-                 xlim=None, color='b', colors=None, clusters=None, pmax=0.05,
-                 ptrend=0.1, *args, **kwargs):
+                 xlim=None, color='b', colors=None, error_alpha=0.3,
+                 clusters=None, pmax=0.05, ptrend=0.1, *args, **kwargs):
         # coerce input variables
         sub = assub(sub, ds)
         Y = asndvar(Y, sub, ds)
@@ -180,7 +182,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         if Xax is None:
             p = _ax_uts_stat(self._axes[0], ct, colors, main, error, dev_data,
                              xdim, invy, bottom, top, hline, clusters,
-                             pmax, ptrend, clip)
+                             pmax, ptrend, clip, error_alpha)
             self._plots.append(p)
             legend_handles.update(p.legend_handles)
             if len(ct) < 2:
@@ -196,7 +198,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
                 ct_ = Celltable(ct.data[cell], X_, match=match, coercion=asndvar)
                 p = _ax_uts_stat(ax, ct_, colors, main, error, dev_data,
                                  xdim, invy, bottom, top, hline, clusters,
-                                 pmax, ptrend, clip)
+                                 pmax, ptrend, clip, error_alpha)
                 self._plots.append(p)
                 legend_handles.update(p.legend_handles)
             self._set_axtitle(axtitle, names=map(cellname, ct.cells))
@@ -377,7 +379,8 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
 class _ax_uts_stat(object):
 
     def __init__(self, ax, ct, colors, main, error, dev_data, xdim,
-                 invy, bottom, top, hline, clusters, pmax, ptrend, clip):
+                 invy, bottom, top, hline, clusters, pmax, ptrend, clip,
+                 error_alpha):
         # stat plots
         self.ax = ax
         self.stat_plots = []
@@ -388,7 +391,7 @@ class _ax_uts_stat(object):
             ndvar = ct.data[cell]
             y = ndvar.get_data(('case', xdim))
             plt = _plt_uts_stat(ax, x, y, main, error, dev_data, colors[cell],
-                                cellname(cell), clip)
+                                cellname(cell), clip, error_alpha)
             self.stat_plots.append(plt)
             if plt.main is not None:
                 self.legend_handles[cell] = plt.main[0]
@@ -649,7 +652,8 @@ class _plt_uts_clusters:
 
 class _plt_uts_stat(object):
 
-    def __init__(self, ax, x, y, main, error, dev_data, color, label, clip):
+    def __init__(self, ax, x, y, main, error, dev_data, color, label, clip,
+                 error_alpha):
         # plot main
         if hasattr(main, '__call__'):
             y_main = main(y, axis=0)
@@ -665,7 +669,8 @@ class _plt_uts_stat(object):
 
         # plot error
         if error == 'all':
-            self.error = ax.plot(x, y.T, color=color, alpha=0.3, clip_on=clip)
+            self.error = ax.plot(x, y.T, color=color, alpha=error_alpha,
+                                 clip_on=clip)
         elif error:
             if error == 'data':
                 pass
@@ -675,7 +680,8 @@ class _plt_uts_stat(object):
                 dev_data = stats.variability(y, None, None, error, False)
             lower = y_main - dev_data
             upper = y_main + dev_data
-            self.error = ax.fill_between(x, lower, upper, color=color, alpha=0.3,
+            self.error = ax.fill_between(x, lower, upper, color=color,
+                                         alpha=error_alpha,
                                          linewidth=0, zorder=0, clip_on=clip)
         else:
             self.error = None
