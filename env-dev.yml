@@ -1,0 +1,38 @@
+# usage: $ conda install --file=env_dev.yml
+name: eelbrain-dev
+channels:
+- defaults
+- conda-forge
+- christianbrodbeck
+- ncil  # for r-ez
+dependencies:
+# Standard requirements:
+- setuptools >= 17
+- ipdb
+- ipython
+- tex >= 1.8
+- colormath >= 2.1
+- tqdm >= 4.19
+- keyring >= 5
+- pillow
+- wxpython == 3
+- numpy >= 1.13
+- scipy >= 0.17
+- nibabel >= 2.0
+- matplotlib >= 2.0
+- pysurfer >= 0.7
+- mne >= 0.15
+# building
+- cython
+# docs
+- numpydoc
+- pydocstyle
+# testing
+- flake8
+- nose
+- pytest
+- coverage
+# testing of R integration
+- rpy2
+- r-car
+- r-ez
