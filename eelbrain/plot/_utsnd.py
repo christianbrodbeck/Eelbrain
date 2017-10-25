@@ -492,6 +492,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
 
 
 class _ax_bfly_epoch:
+
     def __init__(self, ax, epoch, mark=None, state=True, label=None, color='k',
                  lw=0.2, mcolor='r', mlw=0.8, antialiased=True, vlims={}):
         """Specific plot for showing a single sensor by time epoch
@@ -513,6 +514,7 @@ class _ax_bfly_epoch:
         """
         self.lines = _plt_utsnd(ax, epoch, 'time', 'sensor', color=color, lw=lw,
                                 antialiased=antialiased)
+        ax.set_xlim(epoch.time[0], epoch.time[-1])
 
         self.ax = ax
         self.epoch = epoch
