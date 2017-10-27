@@ -14,6 +14,7 @@ from .._data_obj import asndvar, NDVar, SourceSpace
 from .._utils import deprecated
 from ..fmtxt import Image, im_table, ms
 from ._base import EelFigure, ImLayout, ColorBarMixin
+from ._color_luts import p_lut, dspm_lut
 from ._colors import ColorList
 
 
@@ -245,7 +246,7 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
     """
     if fmid is None:
         fmid = (fmax + fmin) / 2
-    lut = _dspm_lut(fmin, fmid, fmax)
+    lut = dspm_lut(fmin, fmid, fmax)
     return _plot(src, lut, -fmax, fmax, *args, **kwargs)
 
 
@@ -261,11 +262,13 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, p0alpha=0.5, *args,
         Statistical parameter covering the same data points as p_map. Only the
         sign is used, for incorporating the directionality of the effect into
         the plot.
-    p0, p1 : scalar
-        Threshold p-values for the color map.
+    p0 : scalar
+        Highest p-value that is visible.
+    p1 : scalar
+        P-value where the colormap changes from ramping alpha to ramping color.
     p0alpha : 1 >= float >= 0
-        Alpha for greatest p-value that is still displayed (default: 0.5 -
-        clearly indicate border).
+        Alpha at ``p0``. Set to 0 for a smooth transition, or a larger value to
+        clearly delineate significant regions (default 0.5).
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
     views : str | iterator of str
@@ -328,13 +331,8 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, p0alpha=0.5, *args,
 
     >>> brain.plot_colorbar(clipmax=0)
     """
-    if 'solid' in kwargs:
-        warn("The solid parameter for plot.brain.p_map() is deprecated and "
-             "will stop working after Eelbrain 0.25, use p0alpha instead.",
-             DeprecationWarning)
-        p0alpha = float(kwargs.pop('solid'))
-    pmap, lut, vmax = _p_lut(p_map, param_map, p0, p1, p0alpha)
-    return _plot(pmap, lut, -vmax, vmax, *args, **kwargs)
+    p_map, lut, vmax = p_lut(p_map, param_map, p0, p1, p0alpha)
+    return _plot(p_map, lut, -vmax, vmax, *args, **kwargs)
 
 
 def cluster(cluster, vmax=None, *args, **kwargs):
@@ -405,7 +403,7 @@ def cluster(cluster, vmax=None, *args, **kwargs):
     elif vmax < 0:
         vmax = -vmax
 
-    lut = _dspm_lut(0, vmax / 10, vmax)
+    lut = dspm_lut(0, vmax / 10, vmax)
     return _plot(cluster, lut, -vmax, vmax, *args, **kwargs)
 
 
@@ -550,180 +548,6 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
 @deprecated("0.25", brain)
 def surfer_brain(*args, **kwargs):
     pass
-
-
-def _dspm_lut(fmin, fmid, fmax, n=256):
-    """Create a color look up table (lut) for a dSPM plot
-
-    Parameters
-    ----------
-    fmin, fmid, fmax : scalar
-        Start-, mid- and endpoint for the color gradient.
-    n : int
-        Number of distinct color values in the table.
-
-    Notes
-    -----
-    Transitions:
-
-    0-fmin
-        Transparent.
-    fmin-fmid
-        Transparent - opaque.
-    fmid-fmax
-        Hue shift.
-    """
-    if not (fmin < fmid < fmax):
-        raise ValueError("Invalid colormap, we need fmin < fmid < fmax")
-    elif fmin < 0:
-        raise ValueError("The dSPM color gradient is symmetric around 0, fmin "
-                         "needs to be > 0 (got %s)." % fmin)
-
-    lut = np.zeros((n, 4), dtype=np.uint8)
-    i0 = int(round(n / 2))  # v=0 (middle of the LUT)
-    imin = int(round((fmin / fmax) * i0))  # i0 is the range of one side of the LUT
-    min_n = i0 - imin
-    min_p = i0 + imin
-    imid = int(round((fmid / fmax) * i0))
-    mid_n = i0 - imid
-    mid_p = i0 + imid
-
-    # red end
-    lut[i0:, 0] = 255
-    lut[mid_p:, 1] = np.linspace(0, 255, n - mid_p)
-
-    # blue end
-    lut[:i0, 2] = 255
-    lut[:mid_n, 0] = np.linspace(127, 0, mid_n)
-    lut[:mid_n, 1] = np.linspace(127, 0, mid_n)
-
-    # alpha
-    lut[:mid_n, 3] = 255
-    lut[mid_n:min_n, 3] = np.linspace(255, 0, min_n - mid_n)
-    lut[min_n:min_p, 3] = 0
-    lut[min_p:mid_p, 3] = np.linspace(0, 255, mid_p - min_p)
-    lut[mid_p:, 3] = 255
-
-    return lut
-
-
-def _p_lut(pmap, tmap, p0, p1, p0alpha, n=256):
-    """Creat a color look up table (lut) for p-values
-
-    Parameters
-    ----------
-    pmap : NDVar
-        Map of p-values.
-    tmap : NDVar
-        Map of signed statistic (only used to code the sign of each p-value).
-    p0 : scalar
-        Highest p-vale that should be visible.
-    p1 : scalar
-        P-value where the colormap changes from ramping alpha to ramping color.
-    p0alpha : bool
-        Alpha at p0.
-    n : int
-        Number of color categories in the lut.
-    """
-    if p1 >= p0:
-        raise ValueError("p1 needs to be smaller than p0.")
-
-    pstep = 2 * p0 / (n - 3)  # there are n - 1 steps, 2 leave the visible range
-
-    # max p-value that needs to be represented (1 step out of visible)
-    vmax = p0 + pstep
-
-    # bring interesting p-values to the range [pstep vmax]
-    pmap = vmax - pmap
-
-    # set uninteresting values to zero
-    pmap.x.clip(0, vmax, pmap.x)
-
-    # add sign to p-values
-    if tmap is not None:
-        pmap.x *= np.sign(tmap.x)
-
-    # http://docs.enthought.com/mayavi/mayavi/auto/example_custom_colormap.html
-    lut = np.zeros((n, 4), dtype=np.uint8)
-
-    middle = n // 2
-    p0p = middle + 1
-    p1n = int(round(p1 / pstep))
-    p1p = n - p1n
-
-    # negative colors
-    lut[:middle, 2] = 255
-    lut[:p1n, 0] = np.linspace(255, 0, p1n)
-
-    # positive colors
-    lut[middle:, 0] = 255
-    lut[p1p:, 1] = np.linspace(0, 255, n - p1p)
-
-    # alpha
-    if p0alpha == 1:
-        lut[:middle, 3] = 255
-        lut[p0p:, 3] = 255
-    elif not 0 <= p0alpha <= 1:
-        raise ValueError("p0alpha=%r" % (p0alpha,))
-    else:
-        p0_alpha = int(round(p0alpha * 255))
-        lut[:p1n, 3] = 255
-        lut[p1n:middle, 3] = np.linspace(255, p0_alpha, middle - p1n)
-        lut[p0p:p1p, 3] = np.linspace(p0_alpha, 255, p1p - p0p)
-        lut[p1p:, 3] = 255
-
-    pmap.info['cmap ticks'] = {
-        -vmax: '<' + str(p1 / 10)[1:],
-        -vmax + p1: str(p1)[1:],
-        0: str(p0)[1:],
-        vmax - p1: str(p1)[1:],
-        vmax: '<' + str(p1 / 10)[1:],
-    }
-
-    return pmap, lut, vmax
-
-
-def _activation_lut(threshold=3, vmax=8):
-    """Color map for plotting stc activation.
-
-    Parameters
-    ----------
-    threshold : scalar
-        threshold is point at which values gain 50% visibility.
-        from threshold and beyond, alpha = 100% visibility.
-    vmax : scalar
-        the upper range of activation values. values are clipped above this range. When None,
-        vmax = two standard deviations above and below the mean.
-
-    Notes
-    -----
-    Colors:
-    - negative is blue.
-    - super negative is purple.
-    - positive is red.
-    - super positive is yellow.
-    """
-    values = np.linspace(-vmax, vmax, 256)
-    trans_uidx = np.argmin(np.abs(values - threshold))
-    trans_lidx = np.argmin(np.abs(values + threshold))
-
-    # Transparent ramping
-    lut = np.zeros((256, 4), dtype=np.uint8)
-    lut[127:trans_uidx, 3] = np.linspace(0, 128, trans_uidx - 127)
-    lut[trans_lidx:127, 3] = np.linspace(128, 0, 127 - trans_lidx)
-    lut[trans_uidx:, 3] = 255
-    lut[:trans_lidx, 3] = 255
-
-    # negative -> Blue
-    lut[:127, 2] = 255
-    # super negative -> Purple
-    lut[:trans_lidx, 0] = np.linspace(0, 255, trans_lidx)
-    # positive -> Red
-    lut[127:, 0] = 255
-    # super positive -> Yellow
-    lut[trans_uidx:, 1] = np.linspace(0, 255, 256 - trans_uidx)
-
-    return lut
 
 
 def _voxel_brain(data, lut, vmin, vmax):

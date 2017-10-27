@@ -9,8 +9,7 @@ import sys
 from tempfile import mkdtemp
 from time import time, sleep
 
-from matplotlib.cm import get_cmap
-from matplotlib.colors import Colormap, ListedColormap, colorConverter
+from matplotlib.colors import ListedColormap, colorConverter
 from mne.io.constants import FIFF
 import numpy as np
 import wx
@@ -21,6 +20,7 @@ from ..fmtxt import Image, ms
 from ..mne_fixes import reset_logger
 from ._base import (CONFIG, TimeSlicer, do_autorun, find_axis_params_data,
                     find_fig_cmaps, find_fig_vlims)
+from ._color_luts import p_lut
 from ._colors import ColorBar, ColorList, colors_for_oneway
 
 # Traits-GUI related imports
@@ -572,6 +572,31 @@ class Brain(TimeSlicer, surfer.Brain):
             self.add_label(rh, color[:3], color[3], borders=borders)
             self.labels_dict[rh.name][0].actor.property.lighting = lighting
         self.__labels.append((name, color))
+
+    def add_ndvar_p_map(self, p_map, param_map=None, p0=0.05, p1=0.01,
+                        p0alpha=0.5, *args, **kwargs):
+        """Add a map of p-values as data-layer
+
+        Parameters
+        ----------
+        p_map : NDVar
+            Statistic to plot (normally a map of p values).
+        param_map : NDVar
+            Statistical parameter covering the same data points as p_map. Only the
+            sign is used, for incorporating the directionality of the effect into
+            the plot.
+        p0 : scalar
+            Highest p-value that is visible.
+        p1 : scalar
+            P-value where the colormap changes from ramping alpha to ramping color.
+        p0alpha : 1 >= float >= 0
+            Alpha at ``p0``. Set to 0 for a smooth transition, or a larger value to
+            clearly delineate significant regions (default 0.5).
+        ...
+            Other parameters for :meth:`.add_ndvar`.
+        """
+        p_map, lut, vmax = p_lut(p_map, param_map, p0, p1, p0alpha)
+        self.add_ndvar(p_map, lut, -vmax, vmax, *args, **kwargs)
 
     def close(self):
         "Close the figure window"
