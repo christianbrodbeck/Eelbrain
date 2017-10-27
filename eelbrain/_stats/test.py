@@ -17,6 +17,8 @@ from . import stats
 
 
 __test__ = False
+DEFAULT_LEVELS = {.05: '*', .01: '**', .001: '***'}
+DEFAULT_LEVELS_TREND = {.05: '*', .01: '**', .001: '***', .1: '`'}
 
 
 def lilliefors(data, formatted=False, **kwargs):
@@ -165,6 +167,10 @@ def _get_correction_caption(corr, n):
         return "(* Uncorrected)"
 
 
+def _n_stars(p, levels):
+    return sum(p <= l for l in levels)
+
+
 def star(p_list, out=str, levels=True, trend=False, eq_strlen=False):
     """Determine number of stars for p-value
 
@@ -186,43 +192,43 @@ def star(p_list, out=str, levels=True, trend=False, eq_strlen=False):
     """
     # set default levels
     if levels is True:
-        levels = {.05: '*', .01: '**', .001: '***'}
         if trend is True:
-            levels[.1] = "`"
-        elif isinstance(trend, basestring):
+            levels = DEFAULT_LEVELS_TREND
+        elif trend:
+            levels = DEFAULT_LEVELS.copy()
             levels[.1] = trend
+        else:
+            levels = DEFAULT_LEVELS
     elif trend:
-        raise AssertionError("'trend' kwarg only meaningful when levels is True")
+        raise TypeError("trend=%r only valid when levels=True" % (trend,))
 
-    a_levels = sorted(levels.keys(), reverse=True)
-    symbols = [''] + [levels[p] for p in a_levels]
+    levels_descending = sorted(levels.keys(), reverse=True)
+    symbols_descending = [''] + [levels[l] for l in levels_descending]
 
-    # allow input (p_list) to contain single p-value
-    if np.iterable(p_list):
+    if out is int:
+        int_out = True
+    elif out is str:
         int_out = False
     else:
-        int_out = True
-        p_list = [p_list]
+        raise TypeError("out=%r" % (out,))
 
-    nstars = np.zeros(len(p_list), dtype=int)
-    p_list = np.asarray(p_list)
-    for a in a_levels:
-        nstars += (p_list <= a)
-
-    # out
-    if out == str:
-        if eq_strlen:
-            maxlen = max([len(s) for s in symbols])
-            out = [(symbols[n]).ljust(maxlen) for n in nstars]
+    # allow input (p_list) to contain single p-value
+    if not np.iterable(p_list):
+        n = _n_stars(p_list, levels)
+        if int_out:
+            return out
         else:
-            out = [symbols[n] for n in nstars]
-    else:
-        out = nstars
-    # out format to in format
+            return symbols_descending[n]
+
+    ns = [_n_stars(p, levels) for p in p_list]
     if int_out:
-        return out[0]
+        return ns
+    symbols = [symbols_descending[n] for n in ns]
+    if eq_strlen:
+        maxlen = max(map(len, symbols))
+        return [s.ljust(maxlen) for s in symbols]
     else:
-        return out
+        return symbols
 
 
 def star_factor(p, levels={.1: '`', .05: '*', .01: '**', .001: '***'}):
