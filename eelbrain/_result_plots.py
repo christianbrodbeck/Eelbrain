@@ -1,7 +1,8 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from itertools import izip
 from math import floor, log10
-import os
+from os import mkdir
+from os.path import exists, expanduser, isdir, join
 
 import matplotlib as mpl
 import numpy as np
@@ -24,6 +25,45 @@ RC = {'figure.dpi': 300,
 for key in mpl.rcParams:
     if 'width' in key:
         RC[key] = mpl.rcParams[key] * 0.5
+
+
+class PlotDestDir(object):
+    """Generate paths for saving plots in figure-specific subdirectories"""
+    def __init__(self, root, pix_fmt='png', vec_fmt='pdf'):
+        root = expanduser(root)
+        if not exists(root):
+            mkdir(root)
+        else:
+            assert isdir(root)
+        assert pix_fmt.isalnum()
+        assert vec_fmt.isalnum()
+        self.root = root
+        self._pix_fmt = pix_fmt
+        self._vec_fmt = vec_fmt
+        self.pix = join(root, '%s.' + pix_fmt)
+        self.vec = join(root, '%s.' + vec_fmt)
+        self.txt = join(root, '%s.txt')
+        self._info = []
+
+    def with_ext(self, ext):
+        """Generate path template with extension ``ext``"""
+        assert ext.isalnum()
+        return join(self.root, '%s.' + ext)
+
+    def subdir(self, dirname):
+        """PlotDestDir object for a sub-directory"""
+        return PlotDestDir(join(self.root, dirname), self._pix_fmt, self._vec_fmt)
+
+    def info(self, info_string):
+        """Add ``info_string`` to the info list"""
+        print(info_string)
+        self._info.append(info_string)
+
+    def save_info(self):
+        """Save info to ``info.txt``"""
+        with open(self.txt % 'info', 'w') as fid:
+            fid.write('\n'.join(self._info))
+        del self._info[:]
 
 
 def cname(cid):
@@ -77,11 +117,8 @@ class ClusterPlotter(object):
         self.colors = colors
         self.labels = labels
         self.h = h
-        self._dst_vec = os.path.join(dst, '%%s.%s' % vec_fmt)
-        self._dst_pix = os.path.join(dst, '%%s.%s' % pix_fmt)
+        self._dst = PlotDestDir(dst, pix_fmt, vec_fmt)
         self._is_anova = isinstance(self.res, testnd.anova)
-        if not os.path.exists(dst):
-            os.mkdir(dst)
 
     def _ids(self, ids):
         if isinstance(ids, (float, int)):
@@ -128,13 +165,13 @@ class ClusterPlotter(object):
 
         with mpl.rc_context(self.rc):
             p = plot.ColorList(colors, cells, self.labels, w=w, show=False)
-            p.save(self._dst_vec % "colorlist %s" % name, transparent=True)
+            p.save(self._dst.vec % "colorlist %s" % name, transparent=True)
             p.close()
 
     def plot_color_grid(self, name, row_cells, column_cells):
         with mpl.rc_context(self.rc):
             p = plot.ColorGrid(row_cells, column_cells, self.colors, labels=self.labels)
-            p.save(self._dst_vec % "colorgrid %s" % name, transparent=True)
+            p.save(self._dst.vec % "colorgrid %s" % name, transparent=True)
             p.close()
 
     def plot_clusters_spatial(self, ids, views, w=600, h=480, prefix=''):
@@ -204,14 +241,14 @@ class ClusterPlotter(object):
                         h_cmap = 0.7 + POINT * mpl.rcParams['font.size']
                         p = brain.plot_colorbar(label, clipmin=clipmin, clipmax=clipmax,
                                                 width=0.1, h=h_cmap, w=1.5, show=False)
-                        p.save(self._dst_vec % cbar_name % 'h', transparent=True)
+                        p.save(self._dst.vec % cbar_name % 'h', transparent=True)
                         p.close()
 
                         w_cmap = 0.8 + 0.1 * abs(floor(log10(vmax)))
                         p = brain.plot_colorbar(label, clipmin=clipmin, clipmax=clipmax,
                                                 width=0.1, h=1.6, w=w_cmap,
                                                 orientation='vertical', show=False)
-                        p.save(self._dst_vec % cbar_name % 'v', transparent=True)
+                        p.save(self._dst.vec % cbar_name % 'v', transparent=True)
                         p.close()
 
                         brain_colorbar_done = True
@@ -312,7 +349,7 @@ class ClusterPlotter(object):
                     yaxis=False, ylabel=False, colors=colors, bottom=ymin,
                     top=ymax, w=w_bar, h=self.h, xlabel=None, xticks=None,
                     tight=False, test_markers=False, show=False)
-                p.save(self._dst_vec % ' '.join((name, modelname, 'barplot')),
+                p.save(self._dst.vec % ' '.join((name, modelname, 'barplot')),
                        dpi=dpi, transparent=True)
                 p.close()
 
@@ -328,12 +365,12 @@ class ClusterPlotter(object):
                 mark_start = cluster.info['tstart'] - dt
                 mark_stop = cluster.info['tstop'] - dt
                 p.add_vspan(mark_start, mark_stop, color='k', alpha=0.1, zorder=-2)
-                p.save(self._dst_vec % ' '.join((name, modelname, 'timecourse')),
+                p.save(self._dst.vec % ' '.join((name, modelname, 'timecourse')),
                        dpi=dpi, transparent=True)
                 p.close()
 
                 # legend (only once)
                 if legend:
-                    p.save_legend(self._dst_vec % (modelname + ' legend'),
+                    p.save_legend(self._dst.vec % (modelname + ' legend'),
                                   transparent=True)
                     legend = False
