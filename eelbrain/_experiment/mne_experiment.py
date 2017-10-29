@@ -1295,7 +1295,10 @@ class MneExperiment(FileTree):
 
                 # evoked files are based on old events
                 for subject, session in invalid_cache['events']:
-                    rm['evoked-file'].add({'subject': subject, 'session': session})
+                    for epoch, params in self._epochs.iteritems():
+                        if session not in params.sessions:
+                            continue
+                        rm['evoked-file'].add({'subject': subject, 'epoch': epoch})
 
                 # variables
                 for var in invalid_cache['variables']:

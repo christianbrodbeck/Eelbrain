@@ -4,7 +4,7 @@ from .definitions import typed_arg
 
 
 class Epoch(object):
-    """Epoch definition
+    """Epoch definition base (non-functional baseclass)
 
     Parameters
     ----------
@@ -21,6 +21,7 @@ class Epoch(object):
 
     # to be set by subclass
     rej_file_epochs = None
+    sessions = None
 
     def __init__(self, name, tmin=-0.1, tmax=0.6, decim=5, baseline=(None, 0),
                  vars=None, trigger_shift=0., post_baseline_trigger_shift=None,
@@ -95,6 +96,7 @@ class PrimaryEpoch(Epoch):
         self.sel = typed_arg(sel, str)
         self.n_cases = typed_arg(n_cases, int)
         self.rej_file_epochs = (name,)
+        self.sessions = (session,)
 
 
 class SecondaryEpoch(Epoch):
@@ -123,6 +125,7 @@ class SecondaryEpoch(Epoch):
         self.sel = typed_arg(sel, str)
         self.rej_file_epochs = base.rej_file_epochs
         self.session = base.session
+        self.sessions = base.sessions
 
 
 class SuperEpoch(Epoch):
