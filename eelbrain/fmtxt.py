@@ -872,7 +872,7 @@ class Stars(FMTextElement):
 
     @classmethod
     def from_p(cls, p):
-        n = sum((p <= 0.01, p <= 0.01, p <= 0.05))
+        n = sum((p <= 0.001, p <= 0.01, p <= 0.05))
         return cls(n)
 
     def _get_tex_core(self, env):
