@@ -1986,13 +1986,17 @@ class LegendMixin(object):
     def __OnChoice(self, event):
         self.__plot(self.__args[event.GetSelection()])
 
-    def plot_legend(self, loc='fig', *args, **kwargs):
+    def plot_legend(self, loc='fig', labels=None, *args, **kwargs):
         """Plot the legend (or remove it from the figure).
 
         Parameters
         ----------
         loc : False | 'fig' | 'draggable' | str | int
             Where to plot the legend (see Notes; default 'fig').
+        labels : dict
+            Dictionary with alternate labels for all cells.
+        ... :
+            Parameters for :class:`eelbrain.plot.Legend`.
 
         Returns
         -------
@@ -2046,21 +2050,29 @@ class LegendMixin(object):
         self.__ctrl.SetSelection(choice)
 
         if arg is not False:
-            return self.__plot(loc, *args, **kwargs)
+            return self.__plot(loc, labels, *args, **kwargs)
 
     def save_legend(self, *args, **kwargs):
         """Save the legend as image file
 
-        Parameters for Matplotlib's figure.savefig()
+        Parameters
+        ----------
+        ... :
+            Parameters for Matplotlib's figure.savefig()
         """
         p = self.plot_legend(show=False)
         p.save(*args, **kwargs)
         p.close()
 
-    def __plot(self, loc, *args, **kwargs):
+    def __plot(self, loc, labels=None, *args, **kwargs):
         if loc and self.__handles:
             cells = sorted(self.__handles)
-            labels = [cellname(cell) for cell in cells]
+            if labels is None:
+                labels = [cellname(cell) for cell in cells]
+            elif isinstance(labels, dict):
+                labels = [labels[cell] for cell in cells]
+            else:
+                raise TypeError("labels=%r; needs to be dict" % (labels,))
             handles = [self.__handles[cell] for cell in cells]
             if loc == 'fig':
                 return Legend(handles, labels, *args, **kwargs)
