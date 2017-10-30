@@ -602,6 +602,10 @@ class Brain(TimeSlicer, surfer.Brain):
         "Close the figure window"
         self._frame.Close()
 
+    @property
+    def closed(self):
+        return self._figures[0][0] is None
+
     def _surfer_close(self):
         surfer.Brain.close(self)
 
