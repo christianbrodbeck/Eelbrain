@@ -1087,7 +1087,7 @@ class MneExperiment(FileTree):
             if cache_state_v < 4:
                 if not events:
                     raise DefinitionError(
-                        "No raw files ot events found. Did you set the MneExperiment.session "
+                        "No raw files or events found. Did you set the MneExperiment.session "
                         "parameter correctly?")
                 session = self._sessions[0]
                 cache_events = {(subject, session): v for subject, v in
@@ -1560,7 +1560,7 @@ class MneExperiment(FileTree):
             if exists(src):
                 trans_mtime = getmtime(trans)
                 src_mtime = getmtime(src)
-                return max(self._raw_mtime('raw'), trans_mtime, src_mtime)
+                return max(self._raw_mtime('raw', bad_chs=False), trans_mtime, src_mtime)
 
     def _ica_file_mtime(self, rej):
         "Mtime if the file exists, else None; do not check raw mtime"
@@ -1582,14 +1582,13 @@ class MneExperiment(FileTree):
             if cov_mtime:
                 return max(cov_mtime, fwd_mtime)
 
-    def _raw_mtime(self, raw=None):
+    def _raw_mtime(self, raw=None, bad_chs=True):
         if raw is None:
-            pipe = self._raw[self.get('raw')]
-            return pipe.mtime(self.get('subject'), self.get('session'))
-        elif raw == 'raw':
-            return getmtime(self.get('raw-file'))
-        else:
+            raw = self.get('raw')
+        elif raw not in self._raw:
             raise RuntimeError("raw-mtime with raw=%s" % repr(raw))
+        pipe = self._raw[raw]
+        return pipe.mtime(self.get('subject'), self.get('session'), bad_chs)
 
     def _rej_mtime(self, epoch, pre_ica=False):
         """rej-file mtime for secondary epoch definition
@@ -2691,29 +2690,34 @@ class MneExperiment(FileTree):
             State parameters.
         """
         evt_file = self.get('event-file', mkdir=True, subject=subject, **kwargs)
+        subject = self.get('subject')
 
         # search for and check cached version
-        ds = None
+        raw_mtime = self._raw_mtime(bad_chs=False)
         if exists(evt_file):
-            if getmtime(evt_file) > self._raw_mtime():
-                ds = load.unpickle(evt_file)
-                #  <0.19 cache
-                if 'sfreq' not in ds.info:
-                    ds = None
+            ds = load.unpickle(evt_file)
+            if 'sfreq' not in ds.info:  # Eelbrain < 0.19
+                ds = None
+            elif 'raw-mtime' not in ds.info:  # Eelbrain < 0.27
+                ds = None
+            elif ds.info['raw-mtime'] != raw_mtime:
+                ds = None
+        else:
+            ds = None
 
         # refresh cache
-        subject = self.get('subject')
         if ds is None:
-            self._log.debug("Extracting events for %s %s", subject,
-                            self.get('session'))
+            self._log.debug("Extracting events for %s %s %s", self.get('raw'),
+                            subject, self.get('session'))
             if self.get('modality') == '':
                 merge = -1
             else:
                 merge = 0
-            raw = self.load_raw(add_bads, subject=subject)
+            raw = self.load_raw(add_bads)
             ds = load.fiff.events(raw, merge)
             del ds.info['raw']
             ds.info['sfreq'] = raw.info['sfreq']
+            ds.info['raw-mtime'] = raw_mtime
 
             # add edf
             if self.has_edf[subject]:
@@ -2723,12 +2727,12 @@ class MneExperiment(FileTree):
 
             save.pickle(ds, evt_file)
         elif data_raw is True:
-            raw = self.load_raw(add_bads, subject=subject)
+            raw = self.load_raw(add_bads)
 
         # if data should come from different raw settings than events
         if isinstance(data_raw, str):
             with self._temporary_state:
-                raw = self.load_raw(add_bads, subject=subject, raw=data_raw)
+                raw = self.load_raw(add_bads, raw=data_raw)
         elif not isinstance(data_raw, bool):
             raise TypeError("data_raw=%s; needs to be str or bool"
                             % repr(data_raw))
