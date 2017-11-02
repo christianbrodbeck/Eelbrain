@@ -14,6 +14,7 @@ CONFIG = {
     'figure_background': 'white',
     'prompt_toolkit': True,
     'animate': True,
+    'nice': 0,
 }
 
 
@@ -26,6 +27,7 @@ def configure(
         figure_background=None,
         prompt_toolkit=None,
         animate=None,
+        nice=None,
 ):
     """Set basic configuration parameters for the current session
 
@@ -64,6 +66,9 @@ def configure(
         ``prompt_toolkit=False``.
     animate : bool
         Animate plot navigation (default True).
+    nice : int [0, 19]
+        Scheduling priority for muliprocessing (larger number yields more to
+        other processes).
     """
     # don't change values before raising an error
     new = {}
@@ -100,5 +105,10 @@ def configure(
         new['prompt_toolkit'] = bool(prompt_toolkit)
     if animate is not None:
         new['animate'] = bool(animate)
+    if nice is not None:
+        nice = int(nice)
+        if not 0 <= nice < 20:
+            raise ValueError("nice=%i; needs to be in range [0, 19]" % (nice,))
+        new['nice'] = nice
 
     CONFIG.update(new)

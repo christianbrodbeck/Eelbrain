@@ -17,6 +17,7 @@ from itertools import izip, product
 from math import floor
 from multiprocessing import Process, Queue
 from multiprocessing.sharedctypes import RawArray
+import os
 import signal
 import time
 from threading import Event, Thread
@@ -519,6 +520,8 @@ def setup_workers(y, x, trf_length, delta, mindelta, nsegs, error):
 
 def boosting_worker(y_buffer, x_buffer, n_y, n_times, n_x, trf_length,
                     delta, mindelta, nsegs, error, job_queue, result_queue):
+    if CONFIG['nice']:
+        os.nice(CONFIG['nice'])
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     y = np.frombuffer(y_buffer, np.float64, n_y * n_times).reshape((n_y, n_times))

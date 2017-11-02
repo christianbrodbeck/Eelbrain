@@ -2889,6 +2889,9 @@ def permutation_worker(in_queue, out_queue, y, shape, test_func, map_args,
                        kill_beacon):
     "Worker for 1 sample t-test"
     signal.signal(signal.SIGINT, signal.SIG_IGN)
+    if CONFIG['nice']:
+        os.nice(CONFIG['nice'])
+
     n = reduce(operator.mul, shape)
     y = np.frombuffer(y, np.float64, n).reshape((shape[0], -1))
     stat_map = np.empty(shape[1:])
@@ -3041,6 +3044,9 @@ def setup_workers_me(test_func, dists, thresholds):
 def permutation_worker_me(in_queue, out_queue, y, shape, test, map_args,
                           thresholds, kill_beacon):
     signal.signal(signal.SIGINT, signal.SIG_IGN)
+    if CONFIG['nice']:
+        os.nice(CONFIG['nice'])
+
     n = reduce(operator.mul, shape)
     y = np.frombuffer(y, np.float64, n).reshape((shape[0], -1))
     iterator = list(test.preallocate(shape))
