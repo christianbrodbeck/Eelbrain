@@ -2,6 +2,7 @@
 """PySurfer Brain subclass to embed in Eelbrain"""
 from collections import OrderedDict
 from distutils.version import LooseVersion
+from functools import partial
 import os
 import sys
 from tempfile import mkdtemp
@@ -16,6 +17,7 @@ import numpy as np
 from .._colorspaces import to_rgb, to_rgba
 from .._data_obj import NDVar, SourceSpace, asndvar
 from .._text import ms
+from .._utils import LazyProperty
 from ..fmtxt import Image
 from ..mne_fixes import reset_logger
 from ._base import (CONFIG, TimeSlicer, do_autorun, find_axis_params_data,
@@ -158,13 +160,14 @@ class Brain(TimeSlicer, surfer.Brain):
                  foreground="black", subjects_dir=None, views='lat',
                  offset=True, show_toolbar=False, offscreen=False,
                  interaction='trackball', w=None, h=None, axw=None, axh=None,
-                 name=None, pos=None, show=True, run=None):
+                 name=None, pos=None, source_space=None, show=True, run=None):
         from ._wx_brain import BrainFrame
 
         self.__data = []
         self.__annot = None
         self.__labels = OrderedDict()  # {name: color}
         self.__time_index = 0
+        self.__source_space = source_space
 
         if isinstance(views, str):
             views = [views]
@@ -688,6 +691,66 @@ class Brain(TimeSlicer, surfer.Brain):
 
     def _has_labels(self):
         return bool(self.__labels)
+
+    def _enable_selecting_vertex(self, color='red'):
+        """Find source space vertex numbers by clicking on the brain
+
+        After enabling this functionality, each right-click on the brain will
+        cause the vertex number of the closest source space vertex to be printed
+        in the terminal.
+
+        Parameters
+        ----------
+        color : mayavi color
+            Color for the vertex marker.
+
+        Example
+        -------
+        Load a source space and plot it to be able to select vertices::
+
+            ss = SourceSpace.from_file('directory/mri_subjects', 'fsaverage', 'ico-4')
+            brain = plot.brain.brain(ss)
+            brain._enable_selecting_vertex()
+
+        """
+        if self.__source_space is None:
+            raise RuntimeError("Can't enable vertex selection for brian without source space")
+        for brain in self.brains:
+            func = partial(self._select_nearest_source, hemi=brain.hemi, color=color)
+            brain._f.on_mouse_pick(func, button="Right")
+            
+    @LazyProperty
+    def _tris_lh(self):
+        return self.__source_space._read_surf('lh')[1]
+
+    @LazyProperty
+    def _tris_rh(self):
+        return self.__source_space._read_surf('rh')[1]
+
+    def _select_nearest_source(self, vertex, hemi, color='red'):
+        if not isinstance(vertex, int):
+            vertex = vertex.point_id
+
+        ss_vertices = self.__source_space.vertices[hemi == 'rh']
+        if vertex not in ss_vertices:
+            tris = self._tris_lh if hemi == 'lh' else self._tris_rh
+            selected = np.any(tris == vertex, 1)
+            for i in range(7):
+                selected_v = np.unique(tris[selected])
+                index = np.in1d(ss_vertices, selected_v)
+                if index.any():
+                    vertex = ss_vertices[index][0]
+                    break
+                for v in selected_v:
+                    selected |= np.any(tris == v, 1)
+            else:
+                print("No vertex found in 7 iterations")
+
+        if 'selection' in self.foci_dict:
+            self.foci_dict.pop('selection')[0].remove()
+        self.add_foci([vertex], True, hemi=hemi, scale_factor=0.5, name='selection', color=color)
+        tag = 'L' if hemi == 'lh' else 'R'
+        print(f'{tag}{vertex}')
 
     def image(self, name=None, format='png', alt=None):
         """Create an FMText Image from a screenshot

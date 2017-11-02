@@ -548,7 +548,8 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
     brain = Brain(subject, hemi, surf, title, cortex,
                   views=views, w=w, h=h, axw=axw, axh=axh,
                   foreground=foreground, background=background,
-                  subjects_dir=subjects_dir, name=name, pos=pos)
+                  subjects_dir=subjects_dir, name=name, pos=pos,
+                  source_space=source)
 
     if ndvar is not None:
         if ndvar.x.dtype.kind in 'ui':

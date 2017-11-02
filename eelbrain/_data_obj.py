@@ -53,7 +53,7 @@ from matplotlib.ticker import (
     FixedLocator, FormatStrFormatter, FuncFormatter, IndexFormatter)
 import mne
 from mne.source_space import label_src_vertno_sel
-from nibabel.freesurfer import read_annot
+from nibabel.freesurfer import read_annot, read_geometry
 import numpy as np
 import scipy.signal
 import scipy.stats
@@ -9348,6 +9348,10 @@ class SourceSpace(SourceSpaceBase):
                              self.parc.name, name=self.name)
         return NDVar(np.concatenate(data), (source,))
 
+    def _read_surf(self, hemi, surf='orig'):
+        path = Path(f'{self.subjects_dir}/{self.subject}/surf/{hemi}.{surf}')
+        return read_geometry(path)
+
     def surface_coordinates(self, surf='white'):
         """Load surface coordinates for any FreeSurfer surface
 
@@ -9365,8 +9369,7 @@ class SourceSpace(SourceSpaceBase):
         for hemi, vertices in zip(('lh', 'rh'), self.vertices):
             if len(vertices) == 0:
                 continue
-            path = Path(f'{self.subjects_dir}/{self.subject}/surf/{hemi}.{surf}')
-            coords, tris = mne.read_surface(str(path))
+            coords, _ = self._read_surf(hemi, surf)
             out.append(coords[vertices])
 
         if len(out) == 1:
