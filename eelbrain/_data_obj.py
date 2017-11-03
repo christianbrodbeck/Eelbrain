@@ -513,9 +513,17 @@ def asfactor(x, sub=None, ds=None, n=None):
 def asmodel(x, sub=None, ds=None, n=None):
     if isinstance(x, basestring):
         if ds is None:
-            err = ("Model was specified as string, but no Dataset was "
-                   "specified")
-            raise TypeError(err)
+            raise TypeError("Model was specified as string, but no Dataset was "
+                            "specified")
+        elif sub is not None:
+            # need to sub dataset before building model to get right number of
+            # df
+            names = set(re.findall('\w+', x))
+            if isinstance(sub, basestring):
+                names.update(re.findall('\w+', sub))
+            names.intersection_update(ds)
+            ds = ds[names].sub(sub)
+            sub = None
         x = ds.eval(x)
 
     if isinstance(x, Model):

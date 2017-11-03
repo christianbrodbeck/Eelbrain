@@ -125,6 +125,11 @@ def test_anova():
     r_res = r('ezANOVA(ds, fltvar, nrm, A, between=B)')
     assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'ez')
 
+    # sub parameter
+    r1 = test.ANOVA('fltvar', 'B * rm', ds=ds.sub('A == "a1"'))
+    r2 = test.ANOVA('fltvar', 'B * rm', sub='A == "a1"', ds=ds)
+    eq_(str(r2), str(r1))
+
     # not fully specified model with random effects
     assert_raises(IncompleteModel, test.anova, 'fltvar', 'A*rm', ds=ds)
 
