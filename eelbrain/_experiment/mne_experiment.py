@@ -3043,7 +3043,10 @@ class MneExperiment(FileTree):
                     fwd.source.parc.startswith('unknown')))
             return fwd
         else:
-            return mne.read_forward_solution(fwd_file, surf_ori=surf_ori)
+            fwd = mne.read_forward_solution(fwd_file)
+            if surf_ori:
+                mne.convert_forward_solution(fwd, surf_ori, copy=False)
+            return fwd
 
     def load_ica(self):
         """Load the ICA object for the current subject/rej setting

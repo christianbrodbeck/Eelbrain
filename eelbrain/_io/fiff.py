@@ -921,8 +921,9 @@ def forward_operator(fwd, src, subjects_dir=None, parc='aparc', name=None):
     if isinstance(fwd, basestring):
         if name is None:
             name = os.path.basename(fwd)
-        fwd = mne.convert_forward_solution(mne.read_forward_solution(fwd),
-                                           force_fixed=True, use_cps=True)
+        fwd = mne.read_forward_solution(fwd)
+        mne.convert_forward_solution(fwd, force_fixed=True, use_cps=True,
+                                     copy=False)
     elif name is None:
         name = 'fwd'
     sensor = sensor_dim(fwd['info'])
