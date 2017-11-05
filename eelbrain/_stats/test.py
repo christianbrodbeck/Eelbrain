@@ -10,8 +10,10 @@ import scipy.stats
 
 from .. import fmtxt
 from .._data_obj import (
-    Celltable, Dataset, Factor, Interaction, Var, ascategorial, asfactor, assub,
-    asvar, cellname, dataobj_repr)
+    Celltable, Dataset, Factor, Interaction, Var, NDVar,
+    ascategorial, asfactor, asnumeric, assub, asvar,
+    cellname, dataobj_repr,
+)
 from .permutation import resample
 from . import stats
 
@@ -19,6 +21,57 @@ from . import stats
 __test__ = False
 DEFAULT_LEVELS = {.05: '*', .01: '**', .001: '***'}
 DEFAULT_LEVELS_TREND = {.05: '*', .01: '**', .001: '***', .1: '`'}
+
+
+class Correlation(object):
+    """Pearson product moment correlation between y and x
+
+    Parameters
+    ----------
+    y : Var | NDVar
+        First variable.
+    x : Var | NDVar
+        Second variable. Needs to have same type/shape as ``y``.
+    sub : index
+        Use only a subset of the data
+    ds : Dataset
+        If a Dataset is given, all data-objects can be specified as names of
+        Dataset variables.
+
+    Attributes
+    ----------
+    r : float
+        Pearson correlation coefficient.
+    p : float
+        Two-tailed p-value.
+    df : int
+        Degrees of freedom.
+    """
+    def __init__(self, y, x, sub=None, ds=None):
+        sub = assub(sub, ds)
+        y = asnumeric(y, sub, ds)
+        x = asnumeric(x, sub, ds)
+        if type(y) is not type(x):
+            raise TypeError("y and x must be same type; got type(y)=%r, "
+                            "type(x)=%r" % (type(y), type(x)))
+        elif isinstance(y, Var):
+            x_y = y.x
+            x_x = x.x
+        elif isinstance(y, NDVar):
+            if y.dims != x.dims:
+                raise ValueError("y and x have different dimensions; "
+                                 "y.dims=%r, x.dims=%r" % (y.dims, x.dims))
+            x_y = y.x.ravel()
+            x_x = x.x.ravel()
+        else:
+            raise RuntimeError("y=%r" % (y,))
+        self.r, self.p, self.df = _corr(x_y, x_x)
+        self._y = dataobj_repr(y)
+        self._x = dataobj_repr(x)
+
+    def __repr__(self):
+        return ("<Correlation %s, %s: r(%i)=%.2f, p=%.3f>" %
+                (self._y, self._x, self.df, self.r, self.p))
 
 
 def lilliefors(data, formatted=False, **kwargs):
@@ -829,10 +882,10 @@ def correlations(y, x, cat=None, sub=None, ds=None, asds=False):
     for x_ in x:
         for cell in cat_cells:
             if cell is None:
-                r, p, df = _corr(y, x_)
+                r, p, df = _corr(y.x, x_.x)
             else:
                 sub = cat == cell
-                r, p, df = _corr(y[sub], x_[sub])
+                r, p, df = _corr(y[sub].x, x_[sub].x)
             rs.append(r)
             dfs.append(df)
             ps.append(p)
@@ -872,7 +925,7 @@ def _corr(y, x):
     n = len(y)
     assert len(x) == n
     df = n - 2
-    r = np.corrcoef(y.x, x.x)[0, 1]
+    r = np.corrcoef(y, x)[0, 1]
     t = r / np.sqrt((1 - r ** 2) / df)
     p = scipy.stats.t.sf(np.abs(t), df) * 2
     return r, p, df

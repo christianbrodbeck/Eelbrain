@@ -20,6 +20,8 @@ def test_correlations():
     eq_(str(res[2][0]).strip(), '.398')
     res = test.correlations('fltvar', 'fltvar2', ds=ds, asds=True)
     assert_almost_equal(res[0, 'r'], .398, 3)
+    res = test.Correlation('fltvar', 'fltvar2', ds=ds)
+    assert_almost_equal(res.r, .398, 3)
 
     res = test.correlations('fltvar', 'fltvar2', 'A', ds=ds)
     print(res)
@@ -30,6 +32,8 @@ def test_correlations():
     eq_(res[0, 'A'], 'a1')
     assert_almost_equal(res[0, 'r'], -0.149, 3)
     assert_almost_equal(res[1, 'r'], .740, 3)
+    res = test.Correlation('fltvar', 'fltvar2', "A == 'a1'", ds)
+    assert_almost_equal(res.r, -0.149, 3)
 
     res = test.correlations('fltvar', 'fltvar2', 'A%B', ds=ds)
     print(res)
@@ -44,6 +48,8 @@ def test_correlations():
     eq_(str(res[2][3]).strip(), '-0.276')
     res = test.correlations('fltvar', ('fltvar2', 'intvar'), 'A%B', ds=ds, asds=True)
     assert_almost_equal(res[0, 'r'], -0.276, 3)
+    res = test.Correlation('fltvar', 'intvar', "(A=='a1')&(B=='b1')", ds)
+    assert_almost_equal(res.r, 0.315, 3)
 
 
 def test_star():

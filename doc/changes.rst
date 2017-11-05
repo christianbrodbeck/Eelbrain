@@ -17,9 +17,10 @@ New in 0.27
 * :func:`concatenate`: concatenate multiple :class:`NDVar` objects to form a
   new dimension.
 * :meth:`NDVar.ols`: regress on a dimension.
-* New functions:
+* New functions and objects:
 
   - :func:`psd_welch`
+  - :class:`test.Correlation`
 
 * New methods:
 
