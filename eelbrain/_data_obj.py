@@ -7362,10 +7362,19 @@ class Dimension(object):
     def _generate_connectivity(self):
         raise NotImplementedError("Connectivity for %s dimension." % self.name)
 
-    def _subgraph(self, index):
+    def _subgraph(self, index=None):
+        """Connectivity parameter for new Dimension instance
+
+        Parameters
+        ----------
+        index : array_like
+            Index if the new dimension is a subset of the current dimension.
+        """
         if self._connectivity_type == 'custom':
             if self._connectivity is None:
                 return 'custom'
+            elif index is None:
+                return self._connectivity
             return _subgraph_edges(self._connectivity,
                                    index_to_int_array(index, len(self)))
         return self._connectivity_type

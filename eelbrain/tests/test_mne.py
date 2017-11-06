@@ -4,7 +4,7 @@ import os
 
 from nose.tools import (
     eq_, ok_, assert_almost_equal, assert_less_equal, assert_not_equal,
-    assert_in,
+    assert_in, assert_is, assert_less
 )
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
@@ -16,7 +16,7 @@ from nibabel.freesurfer import read_annot
 from eelbrain import (
     datasets, load, testnd,
     Dataset, Factor,
-    concatenate, morph_source_space, xhemi)
+    concatenate, morph_source_space, set_parc, xhemi)
 from eelbrain._data_obj import SourceSpace, asndvar, _matrix_graph
 from eelbrain._mne import shift_mne_epoch_trigger, combination_label
 from eelbrain._utils.testing import requires_mne_sample_data
@@ -255,3 +255,20 @@ def test_source_space():
         ss2 = SourceSpace(vertices, subject, 'ico-4', subjects_dir, 'aparc')
         ss2sub = ss2[ss2._array_index('superiortemporal-rh')]
         assert_array_equal(sssub.connectivity(), ss2sub.connectivity())
+
+
+@requires_mne_sample_data
+def test_source_ndvar():
+    "Test NDVar with source dimension"
+    ds = datasets.get_mne_sample(-0.1, 0.1, src='ico', sub='index==0')
+    v = ds['src', 0]
+    eq_(v.source.parc.name, 'aparc')
+    v_2009 = set_parc(v, 'aparc.a2009s')
+    eq_(v_2009.source.parc.name, 'aparc.a2009s')
+    conn = v_2009.source.connectivity()
+    assert_less(np.sum(v.source.parc == v_2009.source.parc), len(v.source))
+    v_back = set_parc(v_2009, 'aparc')
+    eq_(v_back.source.parc.name, 'aparc')
+    assert_array_equal(v.source.parc, v_back.source.parc)
+    assert_is(v.x, v_back.x)
+    assert_array_equal(v_back.source.connectivity(), conn)

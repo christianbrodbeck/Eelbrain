@@ -812,7 +812,7 @@ def set_parc(ndvar, parc):
     axis = ndvar.get_axis('source')
     old = ndvar.dims[axis]
     new = SourceSpace(old.vertices, old.subject, old.src, old.subjects_dir,
-                      parc, old.connectivity)
+                      parc, old._subgraph())
     dims = list(ndvar.dims)
     dims[axis] = new
     return NDVar(ndvar.x, dims, ndvar.info.copy(), ndvar.name)
