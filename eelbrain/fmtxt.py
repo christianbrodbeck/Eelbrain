@@ -169,14 +169,20 @@ def get_pdf(tex_obj):
         raise ImportError("Module tex not found, LaTeX to PDF conversion not "
                           "available")
 
-    txt = tex(tex_obj)
+    if isinstance(tex_obj, (Report, Section)):
+        doc_class = '{article}'
+        standalone = False
+    else:
+        doc_class = '[border=2pt]{standalone}'
+        standalone = True
+    txt = tex(tex_obj, {'standalone': standalone})
     document = u"""
-\\documentclass{article}
+\\documentclass%s
 \\usepackage{booktabs}
 \\begin{document}
 %s
 \\end{document}
-""" % txt
+""" % (doc_class, txt)
     pdf = _tex.latex2pdf(document)
     return pdf
 
@@ -1376,8 +1382,8 @@ class Table(FMTextElement):
 
         Parameters
         ----------
-        fmt : None  | str
-            Format for numbers.
+        env : dict
+            Processing environment.
         delim : str
             Delimiter between columns.
         linesep : str
@@ -1443,25 +1449,27 @@ class Table(FMTextElement):
         return linesep.join(out)
 
     def get_tex(self, env={}):
-        tex_pre = [r"\begin{center}",
-                   r"\begin{tabular}{%s}" % self.columns]
+        standalone = env.get('standalone')  # https://stackoverflow.com/a/17235546
+        # init
+        items = []
+        if not standalone:
+            items.append(r"\begin{center}")
+        items.append(r"\begin{tabular}{%s}" % self.columns)
         if self.rules:
-            tex_pre.append(r"\toprule")
+            items.append(r"\toprule")
         # Body
-        tex_body = []
         for row in self._table:
             if isinstance(row, basestring):
-                tex_body.append(row)
+                items.append(row)
             else:
-                tex_body.append(row.get_tex(env))
+                items.append(row.get_tex(env))
         # post
-        tex_post = [r"\end{tabular}",
-                    r"\end{center}"]
         if self.rules:
-            tex_post = [r"\bottomrule"] + tex_post
-        # combine
-        tex_repr = '\n'.join(tex_pre + tex_body + tex_post)
-        return tex_repr
+            items.append(r"\bottomrule")
+        items.append(r"\end{tabular}")
+        if not standalone:
+            items.append(r"\end{center}")
+        return '\n'.join(items)
 
     def get_tsv(self, delimiter='\t', linesep='\r\n', fmt='%.9g'):
         r"""
