@@ -3097,7 +3097,7 @@ class MneExperiment(FileTree):
             fiff = self.load_raw()
 
         inv = make_inverse_operator(fiff.info, self.load_fwd(), self.load_cov(),
-                                    **self._params['make_inv_kw'])
+                                    use_cps=True, **self._params['make_inv_kw'])
 
         if ndvar:
             inv = load.fiff.inverse_operator(
