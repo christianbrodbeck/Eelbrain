@@ -802,7 +802,7 @@ class Math(FMTextElement):
         oppposed to inline).
     """
     def __init__(self, content, equation=False):
-        FMTextElement.__init__(content)
+        FMTextElement.__init__(self, content)
         self._equation = equation
 
     def __repr__(self):
