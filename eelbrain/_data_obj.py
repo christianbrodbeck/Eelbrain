@@ -154,6 +154,15 @@ def longname(x):
     return '<unnamed>'
 
 
+def nice_label(x, labels={}):
+    if x.name in labels:
+        return labels[x.name]
+    elif 'label' in x.info:
+        return x.info['label']
+    else:
+        return longname(x)
+
+
 def array_repr(a):
     "Concise array repr where class does not matter"
     if a.ndim == 0:

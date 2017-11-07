@@ -6,4 +6,5 @@ from ._stats.test import (
     Correlation,
     TTest1Sample, TTestInd, TTestRel, pairwise, ttest, correlations,
     bootstrap_pairwise, lilliefors,
+    pairwise_correlations,
 )

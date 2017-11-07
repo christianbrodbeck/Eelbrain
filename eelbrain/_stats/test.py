@@ -12,7 +12,7 @@ from .. import fmtxt
 from .._data_obj import (
     Celltable, Dataset, Factor, Interaction, Var, NDVar,
     ascategorial, asfactor, asnumeric, assub, asvar,
-    cellname, dataobj_repr,
+    cellname, dataobj_repr, nice_label,
 )
 from .permutation import resample
 from . import stats
@@ -815,6 +815,50 @@ def _pairwise(data, within=True, parametric=True, corr='Hochberg',
            'symbols': _str_Stars,
            'pw_indexes': indexes}
     return out
+
+
+def pairwise_correlations(xs, sub=None, ds=None, labels={}):
+    """Pairwise correlation table
+
+    Parameters
+    ----------
+    xs : sequence of Var | NDVar
+        Variables to correlate.
+    sub : index
+        Use only a subset of the data
+    ds : Dataset
+        If a Dataset is given, all data-objects can be specified as names of
+        Dataset variables.
+    labels : {str: str} dict
+        Labels for ``xs`` in the table (mapping ``x.name`` to string labels).
+
+    Returns
+    -------
+    pairwise_table : fmtxt.Table
+        Table with pairwise correlations.
+    """
+    sub = assub(sub, ds)
+    x_rows = [asnumeric(x, sub, ds) for x in xs]
+    n_vars = len(x_rows)
+
+    table = fmtxt.Table('l' + 'c' * n_vars)
+    # header
+    table.cell()
+    for i in xrange(1, n_vars + 1):
+        table.cell(i)
+    table.midrule()
+    # body
+    for i_row, x_row in enumerate(x_rows):
+        label = nice_label(x_row, labels)
+        table.cell("%i  %s" % (i_row + 1, label))
+        for x_col in x_rows:
+            if x_col is x_row:
+                table.cell()
+            else:
+                corr = Correlation(x_row, x_col)
+                table.cell(fmtxt.stat(corr.r, drop0=True))
+        table.endline()
+    return table
 
 
 def correlations(y, x, cat=None, sub=None, ds=None, asds=False):
