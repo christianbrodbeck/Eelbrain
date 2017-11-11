@@ -151,6 +151,8 @@ TEST_CLASSES = {
     't_contrast_rel': TContrastRel,
     'two-stage': TwoStageTest,
 }
+AGGREGATE_FUNCTIONS = ('mean', 'rms')
+DATA_RE = re.compile("(source|sensor)(?:\.(%s))?$" % '|'.join(AGGREGATE_FUNCTIONS))
 
 
 class TestDims(object):
@@ -161,7 +163,7 @@ class TestDims(object):
     def __init__(self, string):
         substrings = string.split()
         for substring in substrings:
-            m = re.match("(source|sensor)(?:\.(mean))?$", substring)
+            m = DATA_RE.match(substring)
             if m is None:
                 raise ValueError("Invalid test dimension description: %r" %
                                  (string,))

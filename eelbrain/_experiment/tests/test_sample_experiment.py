@@ -7,8 +7,7 @@ from nose.tools import eq_, assert_raises
 
 from eelbrain import *
 from eelbrain._exceptions import DefinitionError
-
-from ..._utils.testing import (
+from eelbrain._utils.testing import (
     TempDir, assert_dataobj_equal, requires_mne_sample_data)
 
 
@@ -38,7 +37,7 @@ def test_sample():
     ds = e.load_evoked()
     eq_(ds[0, 'evoked'].info['bads'], ['MEG 0331'])
 
-    e.set(rej='man')
+    e.set(rej='man', model='modality')
     sds = []
     for _ in e:
         e.make_rej(auto=2.5e-12)
@@ -46,6 +45,17 @@ def test_sample():
 
     ds = e.load_evoked('all')
     assert_dataobj_equal(combine(sds), ds)
+
+    # test with data parameter
+    megs = [e.load_evoked(cat='auditory')['meg'] for _ in e]
+    res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=100, data='sensor.rms',
+                      sns_baseline=False, make=True)
+    meg_rms = combine(meg.rms('sensor') for meg in megs).mean('case', name='auditory')
+    assert_dataobj_equal(res.c1_mean, meg_rms, decimal=22)
+    res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=100, data='sensor.mean',
+                      sns_baseline=False, make=True)
+    meg_mean = combine(meg.mean('sensor') for meg in megs).mean('case', name='auditory')
+    assert_dataobj_equal(res.c1_mean, meg_mean)
 
     # e._report_subject_info() broke with non-alphabetic subject order
     subjects = e.get_field_values('subject')

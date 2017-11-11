@@ -1356,6 +1356,7 @@ class MneExperiment(FileTree):
                 for parc in bad_parcs:
                     rm['annot-file'].add({'parc': parc})
                     rm['test-file'].add({'test_dims': parc})
+                    rm['test-file'].add({'test_dims': parc + '.*'})
                     rm['report-file'].add({'folder': parc})
                     rm['report-file'].add({'folder': '%s *' % parc})
                     rm['report-file'].add({'folder': '%s *' % parc.capitalize()})  # pre 0.26
@@ -2791,7 +2792,8 @@ class MneExperiment(FileTree):
         return ds
 
     def load_evoked(self, subject=None, baseline=False, ndvar=True, cat=None,
-                    decim=None, data_raw=False, vardef=None, **kwargs):
+                    decim=None, data_raw=False, vardef=None, data='sensor',
+                    **kwargs):
         """
         Load a Dataset with the evoked responses for each subject.
 
@@ -2820,6 +2822,10 @@ class MneExperiment(FileTree):
             analysis).
         vardef : str
             Name of a 2-stage test defining additional variables.
+        data : str
+            Data to load; 'sensor' to load all sensor data (default);
+            'sensor.rms' to return RMS over sensors. Only applies to NDVar
+            output.
         model : str (state)
             Model according to which epochs are grouped into evoked responses.
         ...
@@ -2828,20 +2834,31 @@ class MneExperiment(FileTree):
         subject, group = self._process_subject_arg(subject, kwargs)
         modality = self.get('modality')
         epoch = self._epochs[self.get('epoch')]
+        data = TestDims.coerce(data)
+        if not data.sensor:
+            raise ValueError("data=%r; load_evoked is for loading sensor data" %
+                             (data.string,))
+        elif data.sensor is not True and not ndvar:
+            raise ValueError("data=%r with ndvar=False" % (data.string,))
         if baseline is True:
             baseline = epoch.baseline
 
         if group is not None:
-            dss = [self.load_evoked(None, baseline, False, cat, decim, data_raw,
-                                    vardef)
+            # when aggregating across sensors, do it before combining subjects
+            # to avoid losing sensors that are not shared
+            individual_ndvar = isinstance(data.sensor, basestring)
+            dss = [self.load_evoked(None, baseline, individual_ndvar, cat,
+                                    decim, data_raw, vardef, data)
                    for _ in self.iter(group=group)]
-            if ndvar:
+            if individual_ndvar:
+                ndvar = False
+            elif ndvar and data.sensor is True:
                 sysnames = set(ds.info['sysname'] for ds in dss)
                 if len(sysnames) != 1:
-                    err = ("Can not combine different MEG systems in a single "
-                           "NDVar (trying to load data with systems %s)" %
-                           enumeration(sysnames))
-                    raise NotImplementedError(err)
+                    raise NotImplementedError(
+                        "Can not combine different MEG systems in a single "
+                        "NDVar (trying to load data with systems %s)" %
+                        (enumeration(sysnames),))
             ds = combine(dss, incomplete='drop')
 
             # check consistency in MNE objects' number of time points
@@ -2884,6 +2901,9 @@ class MneExperiment(FileTree):
                                               sysname=ds.info['sysname'])
             if modality == 'eeg':
                 self._fix_eeg_ndvar(ds[name], group)
+
+            if isinstance(data.sensor, basestring):
+                ds[name] = getattr(ds[name], data.sensor)('sensor')
 
         return ds
 
@@ -3552,8 +3572,10 @@ class MneExperiment(FileTree):
         samples : int
             Number of random permutations of the data used to determine cluster
             p values (default 10'000).
-        data : 'sensor' | 'source'
-            Whether the analysis is in sensor or source space.
+        data : str
+            Dta for test. Whether the analysis is in sensor or source space.
+            ``source.mean`` to load tests for ROI mean time course.
+            ``sensor.rms`` for RMS across sensors.
         sns_baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
@@ -3645,6 +3667,15 @@ class MneExperiment(FileTree):
             elif mask:
                 if pmin is None:  # can as well collect dist for parc
                     parc_dim = 'source'
+        elif isinstance(data.source, basestring):
+            if not isinstance(parc, basestring):
+                raise TypeError("parc needs to be set for ROI test (data=%r)" % (data.string,))
+            elif mask is not None:
+                raise TypeError("Mask=%r invalid with data=%r" % (mask, data.string))
+        elif parc is not None:
+            raise TypeError("parc=%r invalid for sensor space test (data=%r)" % (parc, data.string))
+        elif mask is not None:
+            raise TypeError("mask=%r invalid for sensor space test (data=%r)" % (mask, data.string))
 
         do_test = res is None
         if do_test:
@@ -3690,9 +3721,8 @@ class MneExperiment(FileTree):
                 test_kwargs, res, data)
         else:
             if data.sensor:
-                res_data = self.load_evoked(True, sns_baseline, True, test_obj.cat)
-                if isinstance(data.sensor, basestring):
-                    res_data[y_name] = getattr(res_data[y_name], data.sensor)('sensor')
+                res_data = self.load_evoked(True, sns_baseline, True,
+                                            test_obj.cat, data=data)
             elif data.source:
                 res_data = self.load_evoked_stc(True, sns_baseline, src_baseline,
                                                 morph_ndvar=True, cat=test_obj.cat,
@@ -3713,7 +3743,7 @@ class MneExperiment(FileTree):
             return res
 
     def _make_test_rois(self, sns_baseline, src_baseline, test, samples, pmin,
-                        test_kwargs, res):
+                        test_kwargs, res, data):
         # load data
         dss = defaultdict(list)
         n_trials_dss = []
@@ -3727,7 +3757,7 @@ class MneExperiment(FileTree):
                 if label.startswith('unknown-'):
                     continue
                 label_ds = ds.copy()
-                label_ds['label_tc'] = src.mean(source=label)
+                label_ds['label_tc'] = getattr(src, data.source)(source=label)
                 dss[label].append(label_ds)
             del src
 
@@ -4982,7 +5012,6 @@ class MneExperiment(FileTree):
             State parameters.
         """
         test_obj = self._tests[test]
-        data = TestDims('source.mean')
         if samples < 1:
             raise ValueError("Need samples > 0 to run permutation test.")
         elif isinstance(test_obj, TwoStageTest):
@@ -4994,16 +5023,17 @@ class MneExperiment(FileTree):
         parc = self.get('parc', **state)
         if not parc:
             raise ValueError("No parcellation specified")
+        data = TestDims('source.mean')
         self._set_analysis_options(data, sns_baseline, src_baseline, pmin,
                                    tstart, tstop, parc)
         dst = self.get('report-file', mkdir=True, test=test)
         if self._need_not_recompute_report(dst, samples, data, redo):
             return
 
-        data, res = self._load_test(test, tstart, tstop, pmin, parc, None,
+        res_data, res = self._load_test(test, tstart, tstop, pmin, parc, None,
                                     samples, data, sns_baseline, src_baseline,
                                     True, True)
-        ds0 = data.values()[0]
+        ds0 = res_data.values()[0]
         res0 = res.res.values()[0]
 
         # start report
@@ -5037,7 +5067,7 @@ class MneExperiment(FileTree):
         colors = plot.colors_for_categorial(ds0.eval(res0._plot_model()))
         for label in chain(labels_lh, labels_rh):
             res_i = res.res[label]
-            ds = data[label]
+            ds = res_data[label]
             title = label[:-3].capitalize()
             caption = "Mean in label %s." % label
             n = len(ds['subject'].cells)
@@ -6005,7 +6035,7 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        data : 'sensor' | 'source'
+        data : TestDims
             Whether the analysis is in sensor or source space.
         ...
         src_baseline :
@@ -6029,7 +6059,7 @@ class MneExperiment(FileTree):
             raise RuntimeError("data=%r" % (data.string,))
 
         # determine report folder (reports) and test_dims (test-files)
-        kwargs = {}
+        kwargs = {'test_dims': data.string}
         if data.source is True:
             if parc is None:
                 if mask:
@@ -6065,12 +6095,16 @@ class MneExperiment(FileTree):
             if data.source == 'mean':
                 folder = '%s ROIs' % parc
             else:
-                raise ValueError("data=%r" % (data.string,))
+                folder = '%s %s' % (parc, data.source)
         elif parc:
             raise ValueError("Sensor analysis (data=%r) can't have parc" %
                              (data.string,))
-        else:
+        elif data.sensor is True:
             folder = 'Sensor'
+        elif data.sensor:
+            folder = 'Sensor %s' % (data.sensor,)
+        else:
+            raise RuntimeError('data=%r' % (data.string,))
 
         if folder_options:
             folder += ' ' + ' '.join(folder_options)

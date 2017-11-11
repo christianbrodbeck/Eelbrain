@@ -11,7 +11,7 @@ import tempfile
 from nose.plugins.skip import SkipTest
 from nose.tools import assert_equal, assert_true, eq_
 import numpy as np
-from numpy.testing import assert_array_equal, assert_array_almost_equal
+from numpy.testing import assert_array_equal, assert_allclose
 
 from .._data_obj import Dataset, NDVar, Var, isdatalist, isdatacontainer, isuv
 
@@ -71,7 +71,7 @@ def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None):
     len2 = len(d2)
     assert_equal(len1, len2, "%s unequal length: %i/%i" % (msg, len1, len2))
     if isinstance(d1, Var) and decimal:
-        assert_array_almost_equal(d1.x, d2.x, decimal)
+        assert_allclose(d1.x, d2.x, 0, 10**-decimal)
     elif isuv(d1):
         assert_true(np.all(d1 == d2), "%s unequal values: %r vs "
                     "%r" % (msg, d1, d2))
