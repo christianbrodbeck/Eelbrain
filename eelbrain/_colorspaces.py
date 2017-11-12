@@ -26,7 +26,7 @@ if logger.level == 0:  # otherwise it was probably set by user (DEBUG=10)
 from colormath.color_objects import LCHabColor, sRGBColor
 from colormath.color_conversions import convert_color
 from matplotlib.cm import register_cmap
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.colors import LinearSegmentedColormap, Normalize
 import numpy as np
 
 
@@ -380,3 +380,82 @@ def meg_info(vmax=None, mult=1, unit='T', meas="B"):
     if vmax is not None:
         out['vmax'] = vmax
     return out
+
+
+class SymmetricNormalize(Normalize):
+    """Matplotlib Normalize subclass to add threshold"""
+
+    def __init__(self, threshold, vmax, clip=False):
+        assert threshold >= 0
+        if vmax is None:
+            vmin = None
+        else:
+            assert vmax > threshold
+            vmin = -vmax
+        self.threshold = threshold
+        Normalize.__init__(self, vmin, vmax, clip)
+
+    def __repr__(self):
+        args = map(repr, (self.threshold, self.vmax))
+        if self.clip:
+            args.append("clip=%r" % (self.clip,))
+        return "SymmetricNormalize(%s)" % ', '.join(args)
+
+    def __call__(self, value, clip=None):
+        # cf. Normalize.__call__
+        if clip is None:
+            clip = self.clip
+
+        result, is_scalar = self.process_value(value)
+        vmax = self.vmax
+        vmin = self.vmin
+
+        self.autoscale_None(result)
+        # Convert at least to float, without losing precision.
+        if clip:
+            mask = np.ma.getmask(result)
+            result = np.ma.array(np.clip(result.filled(vmax), vmin, vmax),
+                                 mask=mask)
+        # ma division is very slow; we can take a shortcut
+        resdat = result.data
+
+        # subclass #
+        ############
+        # threshold
+        if self.threshold:
+            mask_lower = resdat <= -self.threshold
+            mask_upper = resdat >= self.threshold
+            mask_visible = mask_upper | mask_lower
+            mask_invisible = np.invert(mask_visible)
+            resdat[mask_lower] -= vmin
+            resdat[mask_upper] -= vmin + 2 * self.threshold
+            resdat[mask_visible] /= vmax - vmin - 2 * self.threshold
+            resdat[mask_invisible] = 0.5
+        else:
+            resdat -= vmin
+            resdat /= (vmax - vmin)
+        #############
+
+        result = np.ma.array(resdat, mask=result.mask, copy=False)
+        # Agg cannot handle float128.  We actually only need 32-bit of
+        # precision, but on Windows, `np.dtype(np.longdouble) == np.float64`,
+        # so casting to float32 would lose precision on float64s as well.
+        if result.dtype == np.longdouble:
+            result = result.astype(np.float64)
+        if is_scalar:
+            result = result[0]
+        return result
+
+    def inverse(self, value):
+        raise NotImplementedError
+
+    def autoscale(self, A):
+        a = np.asanyarray(A)
+        self.vmax = max(a.max(), -a.min())
+        self.vmin = -self.vmax
+
+    def autoscale_None(self, A):
+        pass
+
+    def scaled(self):
+        return self.vmax is not None
