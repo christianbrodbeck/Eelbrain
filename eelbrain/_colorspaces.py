@@ -446,9 +446,6 @@ class SymmetricNormalize(Normalize):
             result = result[0]
         return result
 
-    def inverse(self, value):
-        raise NotImplementedError
-
     def autoscale(self, A):
         a = np.asanyarray(A)
         self.vmax = max(a.max(), -a.min())

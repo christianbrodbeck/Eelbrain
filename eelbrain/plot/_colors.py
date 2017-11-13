@@ -8,10 +8,12 @@ import operator
 
 import numpy as np
 import matplotlib as mpl
+from matplotlib.colors import Normalize
+from matplotlib.colorbar import ColorbarBase
 
 from .. import _colorspaces as cs
 from .._data_obj import Factor, Interaction, cellname
-from ._base import EelFigure, Layout
+from ._base import EelFigure, Layout, find_axis_params_data
 
 
 POINT_SIZE = 0.0138889  # 1 point in inches
@@ -432,7 +434,7 @@ class ColorBar(EelFigure):
         Lower end of the scale mapped onto cmap.
     vmax : scalar
         Upper end of the scale mapped onto cmap.
-    label : None | str
+    label : bool | str
         Label for the x-axis (default is the unit, or if no unit is provided
         the name of the colormap).
     label_position : 'left' | 'right' | 'top' | 'bottom'
@@ -461,120 +463,131 @@ class ColorBar(EelFigure):
     threshold : scalar
         Set the alpha of values below ``threshold`` to 0 (as well as for
         negative values above ``abs(threshold)``).
+    ticklocation : 'auto', 'top', 'bottom', 'left', 'right'
+        Where to place ticks and label  on the axis.
     """
     _name = "ColorBar"
 
-    def __init__(self, cmap, vmin, vmax, label=True, label_position=None,
+    def __init__(self, cmap, vmin, vmax=None, label=True, label_position=None,
                  label_rotation=None,
                  clipmin=None, clipmax=None, orientation='horizontal',
                  unit=None, contours=(), width=None, ticks=None, threshold=None,
+                 ticklocation='auto',
                  h=None, w=None, *args, **kwargs):
+        # get Colormap
         if isinstance(cmap, np.ndarray):
             if threshold is not None:
                 raise NotImplementedError("threshold parameter with cmap=array")
             if cmap.max() > 1:
                 cmap = cmap / 255.
             cm = mpl.colors.ListedColormap(cmap, 'LUT')
-            lut = cmap
         else:
             cm = mpl.cm.get_cmap(cmap)
-            lut = cm(np.arange(cm.N))
-            if threshold:
-                assert threshold > 0
-                vrange = vmax - vmin
-                upper_threshold = int(round((threshold - vmin) / vrange * cm.N))
-                if -threshold > vmin:
-                    lower_threshold = int(round((-threshold - vmin) / vrange * cm.N))
-                else:
-                    lower_threshold = 0
-                lut[lower_threshold:upper_threshold, 3] = 0
 
-        # prepare im and sizing
+        # prepare layout
         if orientation == 'horizontal':
             if h is None and w is None:
                 h = 1
             ax_aspect = 4
-            im = lut.reshape((1, cm.N, 4))
         elif orientation == 'vertical':
             if h is None and w is None:
                 h = 4
             ax_aspect = 0.3
-            im = lut.reshape((cm.N, 1, 4))
         else:
             raise ValueError("orientation=%s" % repr(orientation))
+
+        layout = Layout(1, ax_aspect, 2, True, False, h, w, *args, **kwargs)
+        EelFigure.__init__(self, cm.name, layout)
+        ax = self._axes[0]
+
+        # translate between axes and data coordinates
+        if isinstance(vmin, Normalize):
+            norm = vmin
+        else:
+            norm = Normalize(vmin, vmax)
+
+        # value ticks
+        if ticks is False:
+            ticks = ()
+            tick_labels = None
+        elif isinstance(ticks, dict):
+            tick_dict = ticks
+            ticks = sorted(tick_dict)
+            tick_labels = [tick_dict[t] for t in ticks]
+        else:
+            tick_labels = None
+
+        if orientation == 'horizontal':
+            axis = ax.xaxis
+            contour_func = ax.axhline
+        else:
+            axis = ax.yaxis
+            contour_func = ax.axvline
 
         if label is True:
             if unit:
                 label = unit
             else:
                 label = cm.name
+        elif not label:
+            label = ''
 
-        layout = Layout(1, ax_aspect, 2, True, False, h, w, *args, **kwargs)
-        EelFigure.__init__(self, cm.name, layout)
-        ax = self._axes[0]
+        # show only part of the colorbar
+        if clipmin is not None or clipmax is not None:
+            if isinstance(norm, cs.SymmetricNormalize):
+                raise NotImplementedError(
+                    "clipmin or clipmax with SymmetricNormalize")
+            boundaries = norm.inverse(np.linspace(0, 1, cm.N + 1))
+            if clipmin is None:
+                start = None
+            else:
+                start = np.digitize(clipmin, boundaries, True)
+            if clipmax is None:
+                stop = None
+            else:
+                stop = np.digitize(clipmax, boundaries, True)
+            boundaries = boundaries[start:stop]
+        else:
+            boundaries = None
 
-        if clipmin is None:
-            clipmin = vmin
-        if clipmax is None:
-            clipmax = vmax
+        # FIXME:  cmaps with alpha https://stackoverflow.com/q/15003353/166700
+        # remove alpha channel from cmap before plotting?
+        colorbar = ColorbarBase(ax, cm, norm, boundaries=boundaries,
+                                orientation=orientation,
+                                ticklocation=ticklocation, ticks=ticks,
+                                label=label)
 
-        if orientation == 'horizontal':
-            ax.imshow(im, extent=(vmin, vmax, 0, 1), aspect='auto')
-            ax.yaxis.set_ticks(())
-            self._contours = [ax.axvline(c, c='k') for c in contours]
-            if unit:
-                self._configure_xaxis(unit, label)
-            elif label:
-                ax.set_xlabel(label)
+        # fix tick location
+        if isinstance(norm, cs.SymmetricNormalize) and ticks is not None:
+            tick_norm = Normalize(norm.vmin, norm.vmax, norm.clip)
+            axis.set_ticks(tick_norm(ticks))
 
-            if label_position is not None:
-                ax.xaxis.set_label_position(label_position)
+        # unit-based tick-labels
+        if unit:
+            formatter, label = find_axis_params_data(unit, label)
+            # axis extent is 0-1
+            if tick_labels is None:
+                tick_locs = norm.inverse(axis.get_ticklocs())
+                tick_labels = map(formatter, tick_locs)
 
-            if label_rotation is not None:
-                ax.xaxis.label.set_rotation(label_rotation)
+        if tick_labels is not None:
+            axis.set_ticklabels(tick_labels)
 
-            axis = ax.xaxis
-        elif orientation == 'vertical':
-            ax.imshow(im, extent=(0, 1, vmin, vmax), aspect='auto', origin='lower')
-            ax.xaxis.set_ticks(())
-            self._contours = [ax.axhline(c, c='k') for c in contours]
-            if unit:
-                self._configure_yaxis(unit, label)
-            elif label:
-                ax.set_ylabel(label)
-
-            if label_position is not None:
-                ax.yaxis.set_label_position(label_position)
-
-            if label_rotation is not None:
-                ax.yaxis.label.set_rotation(label_rotation)
+        # label position/rotation
+        if label_position is not None:
+            axis.set_label_position(label_position)
+        if label_rotation is not None:
+            axis.label.set_rotation(label_rotation)
+            if orientation == 'vertical':
                 if (label_rotation + 10) % 360 < 20:
-                    ax.yaxis.label.set_va('center')
-            elif label and len(label) <= 3:
-                ax.yaxis.label.set_rotation(0)
-                ax.yaxis.label.set_va('center')
+                    axis.label.set_va('center')
+        elif orientation == 'vertical' and len(label) <= 3:
+            axis.label.set_rotation(0)
+            axis.label.set_va('center')
 
-            axis = ax.yaxis
-        else:
-            raise ValueError("orientation=%s" % repr(orientation))
+        self._contours = [contour_func(c, c='k') for c in contours]
 
-        # value ticks
-        if ticks is False:
-            axis.set_ticks(())
-        elif isinstance(ticks, dict):
-            tick_locs = sorted(ticks)
-            axis.set_ticks(tick_locs)
-            axis.set_ticklabels([ticks[t] for t in tick_locs])
-        elif ticks is not None:
-            axis.set_ticks(ticks)
-
-        # set axes limits after ticks (ticks reset limits even with
-        # autoscale=False)
-        if orientation == 'horizontal':
-            ax.set_xlim(clipmin, clipmax)
-        else:
-            ax.set_ylim(clipmin, clipmax)
-
+        self._colorbar = colorbar
         self._orientation = orientation
         self._width = width
         self._show()

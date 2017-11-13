@@ -1,7 +1,9 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from numpy.testing import assert_array_equal
 from nose.tools import eq_, assert_in, assert_raises, assert_greater
 
 from eelbrain import datasets, plot
+from eelbrain._colorspaces import SymmetricNormalize
 
 
 def test_generate_colors():
@@ -48,6 +50,11 @@ def test_plot_colorbar():
     p.close()
     p = plot.ColorBar('jet', -1, 1, orientation='vertical',
                       label_position='right', show=False)
+    p.close()
+
+    norm = SymmetricNormalize(0.5, 1)
+    p = plot.ColorBar('xpolar', norm, unit='ms', ticks=(-1, 0, 1))
+    assert_array_equal(p._axes[0].get_xticks(), [0, 0.5, 1])
     p.close()
 
 
