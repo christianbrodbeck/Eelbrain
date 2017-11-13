@@ -11,7 +11,7 @@ source:
   md5: {{ md5 }}
 
 build:
-  number: 0
+  number: 1
   osx_is_app: True
 
 requirements:
@@ -31,13 +31,13 @@ requirements:
     - ipython
     - keyring >=5
     - matplotlib >=1.1
-    - mne >=0.14
+    - mne >=0.14,<0.15
     - nibabel >=2.0
     - olefile  # [linux]
     - numpy
     - pillow
     - pysurfer >=0.8
-    - scipy >=0.17
+    - scipy >=0.17,<1.0
     - tex >=1.8
     - tqdm >=4.8
     - wxpython
