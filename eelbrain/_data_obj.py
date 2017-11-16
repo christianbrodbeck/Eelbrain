@@ -4015,7 +4015,7 @@ class NDVar(object):
         else:
             n = self.shape[axis]
             freqs = np.fft.rfftfreq(n, 1. / n)
-            freq = Scalar('frequency', freqs)
+            freq = Scalar('frequency', freqs, 'Hz')
         dims = self.dims[:axis] + (freq,) + self.dims[axis + 1:]
         info = cs.set_info_cs(self.info, cs.default_info('Amplitude'))
         return NDVar(x, dims, info, name or self.name)
