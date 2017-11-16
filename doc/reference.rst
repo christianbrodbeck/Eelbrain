@@ -134,6 +134,7 @@ and more specific operations:
    cwt_morlet
    dss
    filter_data
+   frequency_response
    label_operator
    labels_from_clusters
    morph_source_space

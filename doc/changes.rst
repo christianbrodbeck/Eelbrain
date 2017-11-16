@@ -20,6 +20,7 @@ New in 0.27
 * New functions and objects:
 
   - :func:`psd_welch`
+  - :func:`frequency_response`
   - :class:`test.Correlation`, :func:`test.pairwise_correlations`
 
 * New methods:

@@ -460,6 +460,46 @@ def find_peaks(ndvar):
     return NDVar(peak_map, ndvar.dims, {}, ndvar.name)
 
 
+def frequency_response(b, frequencies=None):
+    """Frequency response for a FIR filter
+
+    Parameters
+    ----------
+    b : NDVar  (..., time, ...)
+        FIR Filter.
+    frequencies : int | array_like
+        Number of frequencies at which to compute the response, or array with
+        exact frequencies in Hz.
+
+    Returns
+    -------
+    frequency_response : NDVar  (..., frequency)
+        Frequency response for each filter in ``b``.
+    """
+    time = b.get_dim('time')
+    dimnames = b.get_dimnames(last='time')
+    data = b.get_data(dimnames)
+    if frequencies is None or isinstance(frequencies, int):
+        wor_n = None
+    else:
+        if isinstance(frequencies, Scalar):
+            freqs = frequencies.values
+        else:
+            freqs = np.asarray(frequencies)
+        wor_n = freqs * (2 * np.pi * time.tstep)
+    orig_shape = data.shape[:-1]
+    data_flat = data.reshape((-1, len(time)))
+    fresps = []
+    for h in data_flat:
+        freqs, fresp = signal.freqz(h, worN=wor_n)
+        fresps.append(fresp)
+    freqs_hz = freqs / (2 * np.pi * time.tstep)
+    frequency = Scalar('frequency', freqs_hz, 'Hz')
+    fresps = np.array(fresps).reshape(orig_shape + (-1,))
+    dims = b.get_dims(dimnames[:-1]) + (frequency,)
+    return NDVar(fresps, dims, b.info.copy(), b.name)
+
+
 def label_operator(labels, operation='mean', exclude=None, weights=None,
                    dim_name='label', dim_values=None):
     """Convert labeled NDVar into a matrix operation to extract label values

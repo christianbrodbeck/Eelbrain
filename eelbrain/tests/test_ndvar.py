@@ -2,11 +2,12 @@
 from nose.tools import eq_
 import numpy as np
 from numpy.testing import assert_array_equal
+from scipy import signal
 
 from eelbrain import (
-    NDVar, Scalar, UTS, datasets,
+    NDVar, Case, Scalar, UTS, datasets,
     concatenate, convolve, cross_correlation, find_intervals, find_peaks,
-    psd_welch,
+    frequency_response, psd_welch,
 )
 
 
@@ -88,3 +89,20 @@ def test_find_peaks():
     x, y = np.where(peaks.x)
     assert_array_equal(x, [4])
     assert_array_equal(y, [5])
+
+
+def test_frequency_response():
+    b_array = signal.firwin(80, 0.5, window=('kaiser', 8))
+    freqs_array, fresp_array = signal.freqz(b_array)
+    hz_to_rad = 2 * np.pi * 0.01
+
+    b = NDVar(b_array, (UTS(0, 0.01, 80),))
+    fresp = frequency_response(b)
+    assert_array_equal(fresp.x, fresp_array)
+    assert_array_equal(fresp.frequency.values * hz_to_rad, freqs_array)
+
+    b2d = concatenate((b, b), Case)
+    fresp = frequency_response(b2d)
+    assert_array_equal(fresp.x[0], fresp_array)
+    assert_array_equal(fresp.x[1], fresp_array)
+    assert_array_equal(fresp.frequency.values * hz_to_rad, freqs_array)
