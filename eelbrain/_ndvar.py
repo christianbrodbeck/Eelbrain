@@ -60,6 +60,10 @@ def concatenate(ndvars, dim='time', name=None, tmin=0):
     else:
         info = merge_info(ndvars)
 
+    if dim is Case or (isinstance(dim, basestring) and dim == 'case'):
+        n = sum(1 if not v.has_case else len(v) for v in ndvars)
+        dim = Case(n)
+
     if isinstance(dim, Dimension):
         dim_names = (ndvar.dimnames[:ndvar.has_case] + (np.newaxis,) +
                      ndvar.dimnames[ndvar.has_case:])
