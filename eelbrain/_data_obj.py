@@ -4067,19 +4067,32 @@ class NDVar(object):
         "Return the Dimension object named ``name``"
         return self.dims[self.get_axis(name)]
 
-    def get_dimnames(self, names):
+    def get_dimnames(self, names=None, last=None):
         """Fill in a partially specified tuple of Dimension names
 
         Parameters
         ----------
         names : sequence of {str | None}
             Dimension names. Names specified as ``None`` are inferred.
+        last : str
+            Instead of ptoviding ``names``, specify a constraint on the last
+            dimension only.
 
         Returns
         -------
         inferred_names : tuple of str
             Dimension names in the same order as in ``names``.
         """
+        if last is not None:
+            if names is not None:
+                raise TypeError("Can only specify names or last, not both")
+            elif last not in self.dimnames:
+                raise ValueError("NDVar has no %r dimension" % (last,))
+            dims = list(self.dimnames)
+            dims.remove(last)
+            dims.append(last)
+            return tuple(dims)
+
         if not all(n is None or n in self.dimnames for n in names):
             raise ValueError("%s contains dimension that is not in %r" %
                              (names, self))
