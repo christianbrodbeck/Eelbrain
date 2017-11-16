@@ -607,9 +607,13 @@ def psd_welch(ndvar, fmin=0, fmax=np.inf, n_fft=256, n_overlap=0, n_per_seg=None
     if time_ax != last_ax:
         data = data.rollaxis(time_ax, last_ax + 1)
     sfreq = 1. / ndvar.time.tstep
+    if data.ndim == 1:  # mne bug for 1d arrays
+        data = data.reshape((1, -1))
     psds, freqs = mne.time_frequency.psd_array_welch(
         data, sfreq, fmin, fmax, n_fft=n_fft, n_overlap=n_overlap,
         n_per_seg=n_per_seg)
+    if len(dims) == 0:
+        psds = psds[0]
     dims.append(Scalar("frequency", freqs, 'Hz'))
     return NDVar(psds, dims, ndvar.info.copy(), ndvar.name)
 
