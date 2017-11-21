@@ -8,7 +8,7 @@ import operator
 
 import numpy as np
 import matplotlib as mpl
-from matplotlib.colors import Normalize
+from matplotlib.colors import LinearSegmentedColormap, Normalize, to_rgb
 from matplotlib.colorbar import ColorbarBase
 
 from .. import _colorspaces as cs
@@ -197,6 +197,26 @@ def colors_for_nway(cell_lists, hue_start=0.2):
         return dict(izip(product(*cell_lists), colors))
     else:
         return {}
+
+
+def single_hue_colormap(hue):
+    """Colormap based on single hue
+
+    Parameters
+    ----------
+    hue : matplotlib color
+        Base RGB color.
+
+    Returns
+    -------
+    colormap : matplotlib Colormap
+        Colormap from transparent to ``hue``.
+    """
+    name = str(hue)
+    color = tuple(to_rgb(hue))
+    start = color + (0.,)
+    stop = color + (1.,)
+    return LinearSegmentedColormap.from_list(name, (start, stop))
 
 
 class ColorGrid(EelFigure):

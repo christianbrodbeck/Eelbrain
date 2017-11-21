@@ -1,8 +1,11 @@
 """Plotting for data-objects"""
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 
-from ._colors import (colors_for_categorial, colors_for_oneway,
-                      colors_for_twoway, ColorBar, ColorGrid, ColorList)
+from ._colors import (
+    ColorBar, ColorGrid, ColorList,
+    colors_for_categorial, colors_for_oneway, colors_for_twoway,
+    single_hue_colormap,
+)
 from ._line import LineStack
 from ._sensors import SensorMaps, SensorMap
 from ._topo import TopoArray, TopoButterfly, Topomap, TopomapBins
