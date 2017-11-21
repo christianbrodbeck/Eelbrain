@@ -83,7 +83,7 @@ def colors_for_categorial(x, hue_start=0.2, cmap=None):
 
 
 def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None,
-                      light_cycle=None):
+                      light_cycle=None, always_cycle_hue=False):
     """Define colors for a single factor design
 
     Parameters
@@ -106,6 +106,9 @@ def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None,
     light_cycle : int
         Cycle from light to dark in ``light_cycle`` cells to make nearby colors 
         more distinct (default cycles once).
+    always_cycle_hue : bool
+        Cycle hue even when cycling lightness. With ``False`` (default), hue
+        is constant within a lightness cycle.
 
     Returns
     -------
@@ -114,8 +117,9 @@ def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None,
     """
     n = len(cells)
     if cmap is None:
-        return dict(izip(cells, cs.oneway_colors(n, hue_start, light_range,
-                                                 light_cycle)))
+        colors = cs.oneway_colors(n, hue_start, light_range, light_cycle,
+                                  always_cycle_hue)
+        return dict(izip(cells, colors))
     else:
         cm = mpl.cm.get_cmap(cmap)
         return {cell: cm(i / n) for i, cell in enumerate(cells)}

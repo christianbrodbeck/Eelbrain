@@ -116,7 +116,8 @@ def twoway_cmap(n1, hue_start=0.1, hue_shift=0.5, name=None, hues=None):
     return make_seq_cmap(seq, loc, name)
 
 
-def oneway_colors(n, hue_start=0.2, light_range=0.5, light_cycle=None):
+def oneway_colors(n, hue_start=0.2, light_range=0.5, light_cycle=None,
+                  always_cycle_hue=False):
     """Create colors for categories
 
     Parameters
@@ -132,14 +133,19 @@ def oneway_colors(n, hue_start=0.2, light_range=0.5, light_cycle=None):
     light_cycle : int
         Cycle from light to dark in ``light_cycle`` cells to make nearby colors 
         more distinct (default cycles once).
+    always_cycle_hue : bool
+        Cycle hue even when cycling lightness. With ``False`` (default), hue
+        is constant within a lightness cycle.
     """
-    if light_cycle is None:
+    if light_cycle is None or always_cycle_hue:
         n_hues = n
     else:
         n_hues = int(ceil(n / light_cycle))
 
     if isinstance(hue_start, Real):
         hue = np.linspace(hue_start, hue_start + 1, n_hues, False) % 1.
+        if light_cycle and not always_cycle_hue:
+            hue = np.repeat(hue, light_cycle)
     elif len(hue_start) >= n_hues:
         hue = hue_start
     else:
@@ -157,7 +163,6 @@ def oneway_colors(n, hue_start=0.2, light_range=0.5, light_cycle=None):
     else:
         tile = np.linspace(100 * start, 100 * stop, light_cycle)
         lightness = cycle(tile)
-        hue = np.repeat(hue, light_cycle)
         if n % light_cycle:
             hue = hue[:n]
 
