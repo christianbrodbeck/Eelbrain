@@ -14,8 +14,3 @@ from ._utsnd import Array, Butterfly
 from ._uv import (Barplot, Boxplot, Correlation, Histogram, PairwiseLegend,
                   Regression, Timeplot)
 from . import brain
-
-
-def configure(*args, **kwargs):
-    raise RuntimeError("This function has been removed. Please use "
-                       "eelbrain.configure() instead")
