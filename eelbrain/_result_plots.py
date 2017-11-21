@@ -13,15 +13,25 @@ from ._data_obj import combine
 
 
 # usage:  with mpl.rc_context(RC):
-RC = {'figure.dpi': 300,
-      'savefig.dpi': 300,
-      'savefig.transparent': True,
-      'font.family': 'sans-serif',
-      'font.sans-serif': 'Helvetica',
-      'font.size': 9,
-      'figure.subplot.top': 0.95,
-      'legend.fontsize': 6,
-      'legend.frameon': False}
+FONT = 'Helvetica'
+RC = {
+    'figure.dpi': 300,
+    'savefig.dpi': 300,
+    'savefig.transparent': True,
+    # Font
+    'font.family': 'sans-serif',
+    'font.sans-serif': FONT,
+    'font.size': 9,
+    # make sure equations use same font
+    'mathtext.fontset': 'custom',
+    'font.cursive': FONT,
+    'font.serif': FONT,
+    # subplot
+    'figure.subplot.top': 0.95,
+    # legend
+    'legend.fontsize': 6,
+    'legend.frameon': False,
+}
 for key in mpl.rcParams:
     if 'width' in key:
         RC[key] = mpl.rcParams[key] * 0.5
