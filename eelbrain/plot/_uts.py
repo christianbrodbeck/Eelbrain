@@ -345,7 +345,8 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
 
     def __init__(self, epochs, xax=None, axtitle=True, ds=None, sub=None,
                  xlabel=True, ylabel=True, xticklabels=-1, bottom=None,
-                 top=None, legend='upper right', xlim=None, *args, **kwargs):
+                 top=None, legend='upper right', xlim=None, color=None, *args,
+                 **kwargs):
         epochs, (xdim,), data_desc = _base.unpack_epochs_arg(
             epochs, (None,), xax, ds, sub
         )
@@ -360,7 +361,13 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         self.plots = []
         legend_handles = {}
         vlims = _base.find_fig_vlims(epochs, top, bottom)
-        colors = oneway_colors(max(map(len, epochs)))
+
+        n_colors = max(map(len, epochs))
+        if color is None:
+            colors = oneway_colors(n_colors)
+        else:
+            colors = (color,) * n_colors
+
         for ax, layers in izip(self._axes, epochs):
             h = _ax_uts(ax, layers, xdim, vlims, colors)
             self.plots.append(h)
