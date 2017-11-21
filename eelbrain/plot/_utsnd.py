@@ -346,8 +346,8 @@ class _ax_butterfly(object):
     vmin, vmax: None | scalar
         Y axis limits.
     """
-    def __init__(self, ax, layers, xdim, linedim, sensors, color, vlims,
-                 clip=True):
+    def __init__(self, ax, layers, xdim, linedim, sensors, color, linewidth,
+                 vlims, clip=True):
         self.ax = ax
         self.data = layers
         self.layers = []
@@ -359,7 +359,7 @@ class _ax_butterfly(object):
         name = ''
         for l in layers:
             h = _plt_utsnd(ax, l, xdim, linedim, color or l.info.get('color'),
-                           sensors, clip_on=clip)
+                           sensors, clip_on=clip, linewidth=linewidth)
             self.layers.append(h)
             if not name and l.name:
                 name = l.name
@@ -406,6 +406,8 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
         line dimension to colors. The default is to use ``NDVar.info['color']``
         if available, otherwise the matplotlib default color alternation. Use 
         ``color=True`` to use the matplotlib default.
+    linewidth : scalar
+        Linewidth for plots (defult is to use ``matplotlib.rcParams``).
     ds : None | Dataset
         If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
         as strings.
@@ -452,6 +454,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
 
     def __init__(self, epochs, xax=None, sensors=None, axtitle=True,
                  xlabel=True, ylabel=True, xticklabels=-1, color=None,
+                 linewidth=None,
                  ds=None, sub=None, x='time', vmax=None, vmin=None, xlim=None,
                  clip=True, *args, **kwargs):
         epochs, (xdim, linedim), data_desc = _base.unpack_epochs_arg(
@@ -469,7 +472,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
         legend_handles = {}
         for ax, layers in zip(self._axes, epochs):
             h = _ax_butterfly(ax, layers, xdim, linedim, sensors, color,
-                              self._vlims, clip)
+                              linewidth, self._vlims, clip)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
@@ -514,7 +517,7 @@ class _ax_bfly_epoch:
         mlw : scalar
             Marked sensor plot line width (default 1).
         """
-        self.lines = _plt_utsnd(ax, epoch, 'time', 'sensor', color=color, lw=lw,
+        self.lines = _plt_utsnd(ax, epoch, 'time', 'sensor', color, lw=lw,
                                 antialiased=antialiased)
         ax.set_xlim(epoch.time[0], epoch.time[-1])
 

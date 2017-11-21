@@ -194,6 +194,8 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         ``interpolation='nearest'`` instead.
     color : matplotlib color
         Color of the butterfly plots.
+    linewidth : scalar
+        Linewidth for plots (defult is to use ``matplotlib.rcParams``).
     sensorlabels : None | 'index' | 'name' | 'fullname'
         Show sensor labels. For 'name', any prefix common to all names
         is removed; with 'fullname', the full name is shown.
@@ -257,7 +259,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
 
     def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
                  xticklabels=-1,
-                 proj='default', res=100, interpolation='nearest', color=None,
+                 proj='default', res=100, interpolation='nearest', color=None, linewidth=None,
                  sensorlabels=None, mark=None, mcolor=None, ds=None, sub=None,
                  vmax=None, vmin=None, cmap=None, axlabel=None, axtitle=True,
                  frame=True, xlim=None, *args, **kwargs):
@@ -298,7 +300,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         # plot epochs (x/y are in figure coordinates)
         for ax, layers in izip(self.bfly_axes, epochs):
             p = _ax_butterfly(ax, layers, 'time', 'sensor', mark, color,
-                              self._vlims)
+                              linewidth, self._vlims)
             self.bfly_plots.append(p)
 
         # decorate axes
