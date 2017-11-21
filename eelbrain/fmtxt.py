@@ -778,10 +778,12 @@ class Number(FMTextElement):
         else:
             fmt = env.get('fmt', self.fmt)
             txt = fmt % self.content
-            if self.drop0 and txt.startswith('0.'):
-                return txt[1:]
-            else:
-                return txt
+            if self.drop0:
+                if txt.startswith('0.'):
+                    return txt[1:]
+                elif txt.startswith('-0.'):
+                    return '-' + txt[2:]
+            return txt
 
 
 class P(Number):
