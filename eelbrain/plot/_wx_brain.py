@@ -205,6 +205,10 @@ class BrainFrame(EelbrainFrame):
                 break
             try:
                 value = int(dlg.GetValue())
+                if value < 1:
+                    raise ValueError("Needs to be at least 1")
+                elif value > 100:
+                    raise ValueError("Values > 100 take too long")
             except Exception as exception:
                 msg = wx.MessageDialog(self, str(exception), "Invalid Entry",
                                        wx.OK | wx.ICON_ERROR)
