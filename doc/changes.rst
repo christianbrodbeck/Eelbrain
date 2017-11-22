@@ -19,6 +19,7 @@ New in 0.27
 * :meth:`NDVar.ols`: regress on a dimension.
 * New functions and objects:
 
+  - :func:`complete_source_space`
   - :func:`psd_welch`
   - :func:`frequency_response`
   - :class:`test.Correlation`, :func:`test.pairwise_correlations`

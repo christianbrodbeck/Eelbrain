@@ -19,6 +19,41 @@ ICO_N_VERTICES = (12, 42, 162, 642, 2562, 10242, 40962)
 ICO_SLICE_SUBJECTS = ('fsaverage', 'fsaverage_sym')
 
 
+def complete_source_space(ndvar, fill=0.):
+    """Fill in missing vertices on an NDVar with a partial source space
+
+    Parmeters
+    ---------
+    ndvar : NDVar  (..., source, ...)
+        NDVar with SourceSpace dimension that is missing some vertices.
+    fill : scalar
+        Value to fill in for missing vertices.
+
+    Returns
+    -------
+    completed_ndvar : NDVar
+        Copy of ``ndvar`` with its SourceSpace dimension completed.
+    """
+    source = ndvar.get_dim('source')
+    axis = ndvar.get_axis('source')
+    lh_vertices, rh_vertices = source_space_vertices(source.kind, source.grade,
+                                                     source.subject,
+                                                     source.subjects_dir)
+    shape = list(ndvar.shape)
+    shape[axis] = len(lh_vertices) + len(rh_vertices)
+    x = np.empty(shape, ndvar.x.dtype)
+    x.fill(fill)
+    lh_index = np.in1d(lh_vertices, source.lh_vertices, True)
+    rh_index = np.in1d(rh_vertices, source.rh_vertices, True)
+    index = (slice(None,),) * axis + (np.concatenate((lh_index, rh_index)),)
+    x[index] = ndvar.x
+    dims = list(ndvar.dims)
+    parc = None if source.parc is None else source.parc.name
+    dims[axis] = SourceSpace((lh_vertices, rh_vertices), source.subject,
+                             source.src, source.subjects_dir, parc)
+    return NDVar(x, dims, ndvar.info.copy(), ndvar.name)
+
+
 def source_space_vertices(kind, grade, subject, subjects_dir):
     """Vertices in ico-``grade`` source space"""
     if kind == 'ico' and subject in ICO_SLICE_SUBJECTS:

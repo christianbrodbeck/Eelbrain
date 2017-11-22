@@ -128,6 +128,7 @@ and more specific operations:
    :toctree: generated
 
    Butterworth
+   complete_source_space
    concatenate
    convolve
    cross_correlation

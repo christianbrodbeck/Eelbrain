@@ -21,7 +21,9 @@ from ._data_obj import (Datalist, Dataset, Var, Factor, Interaction, Model,
                         Celltable, choose, combine, align, align1, cellname,
                         shuffled_index)
 from ._experiment import MneExperiment
-from ._mne import labels_from_clusters, morph_source_space, xhemi
+from ._mne import (
+    complete_source_space, labels_from_clusters, morph_source_space, xhemi,
+)
 from ._ndvar import (
     Butterworth, concatenate, convolve, cross_correlation, cwt_morlet, dss,
     filter_data, find_intervals, find_peaks, frequency_response, label_operator,
