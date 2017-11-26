@@ -4817,6 +4817,7 @@ class MneExperiment(FileTree):
         for term in rlm.column_names:
             res = rlm.tests[term]
             ds = rlm.coefficients_dataset(term)
+            ds[res.Y] = ds.pop('coeff')
             report.append(_report.source_time_results(res, ds, None, include,
                                                       surfer_kwargs, term))
 
