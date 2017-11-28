@@ -31,7 +31,7 @@ requirements:
     - ipython
     - keyring >=5
     - matplotlib >=1.1
-    - mne >=0.15
+    - mne >=0.15.2
     - nibabel >=2.0
     - olefile  # [linux]
     - numpy
