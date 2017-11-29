@@ -70,6 +70,16 @@ def test_sample():
     e = Experiment(root)
     eq_([s for s in e], ['R0000', 'R0001', 'R0002'])
 
+    # changes
+    class Changed(e_module.SampleExperiment):
+        tests = {
+            'twostage': {'kind': 'two-stage',
+                         'stage 1': 'side_left + modality_a',
+                         'vars': {'side_left': "side == 'left'",
+                                  'modality_a': "modality == 'auditory"}}
+        }
+    e = Changed(root)
+
 
 @requires_mne_sample_data
 def test_samples_sesssions():

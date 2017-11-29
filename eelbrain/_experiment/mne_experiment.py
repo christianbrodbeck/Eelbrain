@@ -5881,7 +5881,7 @@ class MneExperiment(FileTree):
             return parc, self._parcs[SEEDED_PARC_RE.match(parc).group(1)]
 
     def _post_set_test(self, _, test):
-        if test != '*':
+        if test != '*' and test in self._tests:  # with vmatch=False, test object might not be availale
             test_obj = self._tests[test]
             if test_obj.model is not None:
                 self.set(model=test_obj.model)
