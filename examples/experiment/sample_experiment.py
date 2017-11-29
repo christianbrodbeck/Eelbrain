@@ -52,4 +52,10 @@ class SampleExperiment(MneExperiment):
         # One-tailed test for auditory > visual stimulation
         'a>v': {'kind': 'ttest_rel', 'model': 'modality',
                 'c1': 'auditory', 'c0': 'visual', 'tail': 1},
+        # Two-stage
+        'twostage': {'kind': 'two-stage',
+                     'model': 'side % modality',
+                     'stage 1': 'side_left + modality_a',
+                     'vars': {'side_left': "side == 'left'",
+                              'modality_a': "modality == 'auditory"}}
     }
