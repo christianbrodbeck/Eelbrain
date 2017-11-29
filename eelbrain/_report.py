@@ -260,9 +260,9 @@ def source_cluster_im(ndvar, surfer_kwargs, mark_sources=None):
 
 
 def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={},
-                        title="Results", parc=True):
+                        title="Results", parc=True, y=None):
     report = Section(title)
-    y = ds[res.Y]
+    y = ds[y or res.Y]
     if parc is True:
         parc = res._first_cdist.parc
     model = res._plot_model()
