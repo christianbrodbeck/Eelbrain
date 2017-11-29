@@ -286,7 +286,7 @@ class Boxplot(_SimpleFigure):
         Set the upper x axis limit (default is to fit all the data).
     ylabel : str | None
         Y axis label (default is inferred from the data).
-    xlabel : str | None
+    xlabel : str | bool
         X axis label (default is ``X.name``).
     xtick_delim : str
         Delimiter for x axis category descriptors (default is ``'\n'``,
@@ -480,7 +480,7 @@ class Barplot(_SimpleFigure):
         (1994).
     ec : matplotlib color
         Error bar color.
-    xlabel : str | None
+    xlabel : str | bool
         X axis label (default is ``X.name``).
     xticks : None | sequence of str
         X-axis tick labels describing the categories. None to plot no labels
@@ -677,7 +677,7 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
         Upper end of the y axis (default is determined from the data).
     ylabel : str | None
         Y axis label (default is inferred from the data).
-    xlabel : str | None
+    xlabel : str | bool
         X axis label (default is inferred from the data).
     timelabels : sequence | dict | 'all'
         Labels for the x (time) axis. Exact labels can be specified in the form 

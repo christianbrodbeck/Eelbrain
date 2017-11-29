@@ -394,7 +394,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
     axtitle : bool | sequence of str
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.
-    xlabel : str | None
+    xlabel : str | bool
         X-axis labels. By default the label is inferred from the data.
     ylabel : str | None
         Y-axis labels. By default the label is inferred from the data.
