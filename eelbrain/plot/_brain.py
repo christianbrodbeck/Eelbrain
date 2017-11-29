@@ -998,9 +998,11 @@ class SequencePlotter(object):
     subjects_dir : None | str
         Override the subjects_dir associated with the source space dimension.
     """
-    def __init__(self, source):
-        self.source = source
+    max_n_bins = 25
+
+    def __init__(self):
         self._data = []
+        self._source = None
         self._time = None
         self._bins = None
         self._brain_args = {}
@@ -1012,15 +1014,33 @@ class SequencePlotter(object):
             'parallel': parallel, 'cortex': cortex, 'mask': mask}
 
     def add_ndvar(self, ndvar, *args, **kwargs):
-        self._data.append(('data', ndvar, args, kwargs))
+        source = ndvar.get_dim('source')
+        if self._source is None:
+            self._source = source
+        elif source.subject != self._source.subject:
+            raise ValueError("NDVar has different subject (%s) than previously "
+                             "added data (%s)" %
+                             (source.subject, self._source.subject))
+        elif source.subjects_dir != self._source.subjects_dir:
+            raise ValueError("NDVar has different subjects_dir (%s) than "
+                             "previously added data (%s)" %
+                             (source.subjects_dir, self._source.subjects_dir))
+
         if ndvar.has_dim('time'):
             if self._time is None:
+                if len(ndvar.time) > self.max_n_bins:
+                    raise ValueError(
+                        "Trying to plot %i time bins. If this is intentional, "
+                        "set SequencePlotter.max_n_bins to a larger value." %
+                        (len(ndvar.time,)))
                 self._time = ndvar.time
             elif not ndvar.time == self._time:
                 raise ValueError("Incompatible time axes")
 
             if self._bins is None and 'bins' in ndvar.info:
                 self._bins = ndvar.info['bins']
+
+        self._data.append(('data', ndvar, args, kwargs))
 
     def plot_table(self, hemi=('lh', 'rh'), view=('lateral', 'medial'),
                    *args, **kwargs):
@@ -1054,7 +1074,7 @@ class SequencePlotter(object):
             hemi_rows = [[] for _ in views]
 
             # plot brain
-            b = brain(self.source, hemi=hemi, views=views[0], w=figure._res_w,
+            b = brain(self._source, hemi=hemi, views=views[0], w=figure._res_w,
                       h=figure._res_h, time_label='', **self._brain_args)
             # add data layers
             for layer in self._data:
