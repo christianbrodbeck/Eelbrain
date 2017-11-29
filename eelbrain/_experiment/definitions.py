@@ -106,7 +106,7 @@ def find_dependent_epochs(epoch, epochs):
 
 def find_test_vars(params):
     "Find variables used in a test definition"
-    if 'model' in params:
+    if 'model' in params and params['model'] is not None:
         vs = set(find_variables(params['model']))
     else:
         vs = set()
