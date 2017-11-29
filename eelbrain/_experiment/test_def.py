@@ -78,8 +78,8 @@ class TTestRel(EvokedTest):
         self.tail = tail
 
     def as_dict(self):
-        return {'model': self.model, 'c1': self.c1, 'c0': self.c0,
-                'tail': self.tail}
+        return {'kind': self.test_kind, 'model': self.model, 'c1': self.c1,
+                'c0': self.c0, 'tail': self.tail}
 
     def make(self, y, ds, force_permutation, kwargs):
         return testnd.ttest_rel(
@@ -98,8 +98,8 @@ class TContrastRel(EvokedTest):
         self.tail = tail
 
     def as_dict(self):
-        return {'model': self.model, 'contrast': self.contrast,
-                'tail': self.tail}
+        return {'kind': self.test_kind, 'model': self.model,
+                'contrast': self.contrast, 'tail': self.tail}
 
     def make(self, y, ds, force_permutation, kwargs):
         return testnd.t_contrast_rel(
@@ -119,7 +119,7 @@ class ANOVA(EvokedTest):
         self.x = x
 
     def as_dict(self):
-        return {'model': self.model, 'x': self.x}
+        return {'kind': self.test_kind, 'model': self.model, 'x': self.x}
 
     def make(self, y, ds, force_permutation, kwargs):
         return testnd.anova(
@@ -138,7 +138,8 @@ class TwoStageTest(Test):
         self.model = model
 
     def as_dict(self):
-        return {'stage_1': self.stage_1, 'vars': self.vars, 'model': self.model}
+        return {'kind': self.test_kind, 'stage_1': self.stage_1,
+                'vars': self.vars, 'model': self.model}
 
 
 TEST_CLASSES = {
