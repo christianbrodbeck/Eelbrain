@@ -17,7 +17,11 @@ def find_variables(expr):
     variables : tuple of str
         Variables occurring in expr.
     """
-    return _find_vars(parser.expr(expr).totuple())
+    try:
+        parse = parser.expr(expr)
+    except SyntaxError as error:
+        raise ValueError("Invalid expression: %r (%s)" % (expr, error))
+    return _find_vars(parse.totuple())
 
 
 def _find_vars(st):

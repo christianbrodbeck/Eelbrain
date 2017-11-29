@@ -72,11 +72,19 @@ def test_sample():
 
     # changes
     class Changed(e_module.SampleExperiment):
+        variables = {
+            'event': {(1, 2, 3, 4): 'target', 5: 'smiley', 32: 'button'},
+            'side': {(1, 3): 'left', (2, 4): 'right_changed'},
+            'modality': {(1, 2): 'auditory', (3, 4): 'visual'}
+        }
+    e = Changed(root)
+
+    class Changed(e_module.SampleExperiment):
         tests = {
             'twostage': {'kind': 'two-stage',
                          'stage 1': 'side_left + modality_a',
                          'vars': {'side_left': "side == 'left'",
-                                  'modality_a': "modality == 'auditory"}}
+                                  'modality_a': "modality == 'auditory'"}}
         }
     e = Changed(root)
 

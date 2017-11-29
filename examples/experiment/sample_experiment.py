@@ -42,7 +42,7 @@ class SampleExperiment(MneExperiment):
         # all target stimuli:
         'target': {'sel': "event == 'target'", 'tmax': 0.3},
         # only auditory stimulation
-        'auditory': {'base': 'target', 'sel': "modality == 'auditory"}
+        'auditory': {'base': 'target', 'sel': "modality == 'auditory'"}
     }
 
     tests = {
@@ -57,5 +57,5 @@ class SampleExperiment(MneExperiment):
                      'model': 'side % modality',
                      'stage 1': 'side_left + modality_a',
                      'vars': {'side_left': "side == 'left'",
-                              'modality_a': "modality == 'auditory"}}
+                              'modality_a': "modality == 'auditory'"}}
     }

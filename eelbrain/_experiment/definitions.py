@@ -112,7 +112,7 @@ def find_test_vars(params):
         vs = set()
 
     if params['kind'] == 'two-stage':
-        vs.update(find_variables(params['stage 1']))
+        vs.update(find_variables(params['stage_1']))
 
     if 'vars' in params:
         vardef = params['vars']
