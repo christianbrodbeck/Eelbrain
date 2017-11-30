@@ -8607,13 +8607,13 @@ class SourceSpace(Dimension):
     _vertex_re = re.compile('([RL])(\d+)')
 
     def __init__(self, vertices, subject=None, src=None, subjects_dir=None,
-                 parc='aparc', connectivity='custom'):
+                 parc='aparc', connectivity='custom', name='source'):
         self.vertices = vertices
         self.subject = subject
         self.src = src
         self._subjects_dir = subjects_dir
         self._init_secondary()
-        Dimension.__init__(self, 'source', connectivity)
+        Dimension.__init__(self, name, connectivity)
 
         # parc
         if parc is None or parc is False:
@@ -8717,8 +8717,11 @@ class SourceSpace(Dimension):
         self._init_secondary()
 
     def __repr__(self):
+        out = "<SourceSpace"
+        if self.name != 'source':
+            out += ' ' + self.name
         vert_repr = ', '.join(str(len(v)) for v in self.vertices)
-        out = "<SourceSpace [%s], %r" % (vert_repr, self.subject)
+        out += " [%s], %r" % (vert_repr, self.subject)
         if self.src is not None:
             out += ', %r' % self.src
         if self.parc is not None:
@@ -8766,7 +8769,7 @@ class SourceSpace(Dimension):
             parc = self.parc[index]
 
         dim = SourceSpace(vertices, self.subject, self.src, self.subjects_dir,
-                          parc, self._subgraph(int_index))
+                          parc, self._subgraph(int_index), self.name)
         return dim
 
     def _as_uv(self):
@@ -8934,18 +8937,21 @@ class SourceSpace(Dimension):
         return connectivity
 
     def circular_index(self, seeds, extent=0.05, name="globe"):
-        """Return an index into all vertices within extent of seed
+        """Return an index into all vertices closer than ``extent`` of a seed
 
         Parameters
         ----------
         seeds : array_like, (3,) | (n, 3)
             Seed location(s) around which to build index.
-        extent :
+        extent : float
+            Index vertices closer than this (in m in 3d space).
+        name : str
+            Name of the NDVar.
 
         Returns
         -------
-        roi : NDVar, ('source',)
-            Index into the spherical area around seeds.
+        roi : NDVar  ('source',)
+            Index into the spherical area around ``seeds``.
         """
         seeds = np.atleast_2d(seeds)
         dist = cdist(self.coordinates, seeds)
@@ -9167,7 +9173,7 @@ class SourceSpace(Dimension):
         data = [np.in1d(vert, self_vert) for vert, self_vert in
                 izip(vertices, self.vertices)]
         source = SourceSpace(vertices, self.subject, self.src, subjects_dir,
-                             self.parc.name)
+                             self.parc.name, name=self.name)
         return NDVar(np.concatenate(data), (source,))
 
     def set_parc(self, parc):

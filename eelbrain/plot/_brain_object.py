@@ -54,6 +54,18 @@ def assert_can_save_movies():
         raise ImportError("Saving movies requires PySurfer 0.6")
 
 
+def get_source_dim(ndvar):
+    if isinstance(ndvar, SourceSpace):
+        return ndvar
+    elif isinstance(ndvar, NDVar):
+        for source in ndvar.dims:
+            if isinstance(source, SourceSpace):
+                return source
+        raise ValueError("ndvar has no SourceSpace dimension")
+    else:
+        raise TypeError("ndvar=%r; needs to be NDVar or SourceSpace")
+
+
 class Brain(TimeSlicer, surfer.Brain):
     """PySurfer :class:`Brain` subclass returned by :mod:`plot.brain` functions
 
@@ -223,6 +235,7 @@ class Brain(TimeSlicer, surfer.Brain):
 
     def _check_source_space(self, source):
         "Make sure SourceSpace is compatible"
+        source = get_source_dim(source)
         if source.subject != self.subject_id:
             raise ValueError(
                 "Trying to plot NDVar from subject %s on Brain from subject "
@@ -231,6 +244,7 @@ class Brain(TimeSlicer, surfer.Brain):
             raise ValueError("Trying to add NDVar without lh data to plot of lh")
         elif self._hemi == 'rh' and source.rh_n == 0:
             raise ValueError("Trying to add NDVar without rh data to plot of rh")
+        return source
 
     def add_mask(self, source, color=(1, 1, 1), smoothing_steps=None,
                  alpha=None, subjects_dir=None):
@@ -250,13 +264,7 @@ class Brain(TimeSlicer, surfer.Brain):
         subjects_dir : str
             Use this directory as the subjects directory.
         """
-        if isinstance(source, NDVar):
-            source = source.get_dim('source')
-        if not isinstance(source, SourceSpace):
-            raise TypeError("source needs to be a SourceSpace or NDVar, got "
-                            "%s" % (source,))
-        self._check_source_space(source)
-
+        source = self._check_source_space(source)
         color = colorConverter.to_rgba(color, alpha)
         if smoothing_steps is not None:
             # generate LUT
@@ -318,7 +326,7 @@ class Brain(TimeSlicer, surfer.Brain):
         remove_existing : bool
             Remove data layers that have been added previously (default False).
         """
-        self._check_source_space(ndvar.source)
+        source = self._check_source_space(ndvar)
         # find standard args
         meas = ndvar.info.get('meas')
         if cmap is None or isinstance(cmap, basestring):
@@ -340,8 +348,8 @@ class Brain(TimeSlicer, surfer.Brain):
 
         # general PySurfer data args
         alpha = 1
-        if smoothing_steps is None and ndvar.source.kind == 'ico':
-            smoothing_steps = ndvar.source.grade + 1
+        if smoothing_steps is None and source.kind == 'ico':
+            smoothing_steps = source.grade + 1
 
         # remove existing data before modifying attributes
         if remove_existing:
@@ -357,7 +365,7 @@ class Brain(TimeSlicer, surfer.Brain):
                     "time dimension (current: %s;  new: %s)" %
                     (self._time_dim, ndvar.time))
             times = ndvar.time.times
-            data_dims = ('source', 'time')
+            data_dims = (source.name, 'time')
             if time_label == 'ms':
                 time_label = lambda x: '%s ms' % int(round(x * 1000))
             elif time_label == 's':
@@ -366,14 +374,14 @@ class Brain(TimeSlicer, surfer.Brain):
                 time_label = None
         else:
             times = None
-            data_dims = ('source',)
+            data_dims = (source.name,)
 
         # determine which hemi we're adding data to
         if self._hemi in ('lh', 'rh'):
             data_hemi = self._hemi
-        elif not ndvar.source.lh_n:
+        elif not source.lh_n:
             data_hemi = 'rh'
-        elif not ndvar.source.rh_n:
+        elif not source.rh_n:
             data_hemi = 'lh'
         else:
             data_hemi = 'both'
@@ -393,17 +401,17 @@ class Brain(TimeSlicer, surfer.Brain):
                 colorbar_ = False
                 time_label_ = None
 
-            src_hemi = ndvar.sub(source='lh')
+            src_hemi = ndvar.sub(**{source.name: 'lh'})
             data = src_hemi.get_data(data_dims)
-            vertices = ndvar.source.lh_vertices
+            vertices = source.lh_vertices
             self.add_data(data, vmin, vmax, None, cmap, alpha, vertices,
                           smoothing_steps, times, time_label_, colorbar_, 'lh')
             new_surfaces.extend(self.data_dict['lh']['surfaces'])
 
         if data_hemi != 'lh':
-            src_hemi = ndvar.sub(source='rh')
+            src_hemi = ndvar.sub(**{source.name: 'rh'})
             data = src_hemi.get_data(data_dims)
-            vertices = ndvar.source.rh_vertices
+            vertices = source.rh_vertices
             self.add_data(data, vmin, vmax, None, cmap, alpha, vertices,
                           smoothing_steps, times, time_label, colorbar, 'rh')
             new_surfaces.extend(self.data_dict['rh']['surfaces'])
@@ -450,9 +458,8 @@ class Brain(TimeSlicer, surfer.Brain):
         lighting : bool
             Labels are affected by lights (default True).
         """
-        x = ndvar.get_data('source')
-        source = ndvar.get_dim('source')
-        self._check_source_space(source)
+        source = self._check_source_space(ndvar)
+        x = ndvar.get_data(source.name)
         if x.dtype.kind not in 'iu':
             raise TypeError("Need NDVar of integer type, not %r" % (x.dtype,))
         # determine colors
@@ -488,7 +495,7 @@ class Brain(TimeSlicer, surfer.Brain):
             except ValueError:
                 pass
         # generate annotation
-        sss = ndvar.source.get_source_space()
+        sss = source.get_source_space()
         indexes = (slice(None, source.lh_n), slice(source.lh_n, None))
         annot = []
         has_annot = []
@@ -550,13 +557,12 @@ class Brain(TimeSlicer, surfer.Brain):
         -----
         To remove previously added labels, run Brain.remove_labels().
         """
-        x = ndvar.get_data('source')
+        source = self._check_source_space(ndvar)
+        x = ndvar.get_data(source.name)
         if x.dtype.kind != 'b':
             raise ValueError("Require NDVar of type bool, got %r" % (x.dtype,))
         if name is None:
             name = str(ndvar.name)
-        source = ndvar.get_dim('source')
-        self._check_source_space(source)
         color = colorConverter.to_rgba(color, alpha)
         lh_vertices = source.lh_vertices[x[:source.lh_n]]
         rh_vertices = source.rh_vertices[x[source.lh_n:]]

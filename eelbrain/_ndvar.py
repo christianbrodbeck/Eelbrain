@@ -7,6 +7,7 @@ depend on the presence of specific dimensions as functions, as well as
 operations that operate on more than one NDVar.
 """
 from collections import defaultdict
+from copy import copy
 from itertools import izip, repeat
 from math import floor
 from numbers import Real
@@ -654,6 +655,39 @@ def psd_welch(ndvar, fmin=0, fmax=np.inf, n_fft=256, n_overlap=0, n_per_seg=None
     return NDVar(psds, dims, ndvar.info.copy(), ndvar.name)
 
 
+def rename_dim(ndvar, old_name, new_name):
+    """Rename an NDVar dimension
+
+    Parameters
+    ----------
+    ndvar : NDVar
+        NDVar on which a dimension should be renamed.
+    old_name : str
+        Current name of the dimension.
+    new_name : str
+        New name for the dimension.
+
+    Returns
+    -------
+    ndvar_out : NDVar
+        Shallow copy of ``ndvar`` with the dimension ``old_name`` renamed to
+        ``new_name``.
+
+    Notes
+    -----
+    This is needed when creating an NDVar with two instances of the same
+    dimension (for example, point spread functions, mapping :class:`SourceSpace`
+    to :class:`SourceSpace`).
+    """
+    axis = ndvar.get_axis(old_name)
+    old_dim = ndvar.dims[axis]
+    new_dim = copy(old_dim)
+    dims = list(ndvar.dims)
+    new_dim.name = new_name
+    dims[axis] = new_dim
+    return NDVar(ndvar.x, dims, ndvar.info.copy(), ndvar.name)
+
+
 def resample(ndvar, sfreq, npad=100, window='none'):
     """Resample an NDVar along the 'time' dimension with appropriate filter
 
@@ -834,7 +868,7 @@ def segment(continuous, times, tstart, tstop, decim=1):
                  continuous.info.copy(), continuous.name)
 
 
-def set_parc(ndvar, parc):
+def set_parc(ndvar, parc, dim='source'):
     """Change the parcellation of an :class:`NDVar` with SourceSpace dimension
 
     Parameters
@@ -846,6 +880,8 @@ def set_parc(ndvar, parc):
         Can be specified as Factor assigning a label to each source, or a
         string specifying a FreeSurfer parcellation (stored as ``*.annot``
         files with the MRI).
+    dim : str
+        Name of the dimension to operate on (usually 'source', the default).
 
     Returns
     -------
@@ -853,10 +889,10 @@ def set_parc(ndvar, parc):
         Shallow copy of ``ndvar`` with the source space parcellation set to
         ``parc``.
     """
-    axis = ndvar.get_axis('source')
+    axis = ndvar.get_axis(dim)
     old = ndvar.dims[axis]
     new = SourceSpace(old.vertices, old.subject, old.src, old.subjects_dir,
-                      parc, old._subgraph())
+                      parc, old._subgraph(), dim)
     dims = list(ndvar.dims)
     dims[axis] = new
     return NDVar(ndvar.x, dims, ndvar.info.copy(), ndvar.name)

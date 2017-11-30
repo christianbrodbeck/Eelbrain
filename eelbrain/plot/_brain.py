@@ -477,6 +477,8 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
     brain : surfer.Brain
         PySurfer Brain instance containing the plot.
     """
+    from ._brain_object import Brain, get_source_dim
+
     if colormap is not None:
         warn("The colormap parameter is deprecated, use cmap instead",
              DeprecationWarning)
@@ -493,7 +495,7 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
         ndvar = asndvar(src)
         if ndvar.has_case:
             ndvar = ndvar.summary()
-        source = ndvar.get_dim('source')
+        source = get_source_dim(ndvar)
         # check that ndvar has the right dimensions
         if ndvar.ndim == 2 and not ndvar.has_dim('time') or ndvar.ndim > 2:
             raise ValueError("NDVar should have dimesions source and "
@@ -512,13 +514,12 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
         if ndvar is None:
             source = source[source._array_index(hemi)]
         else:
-            ndvar = ndvar.sub(source=hemi)
-            source = ndvar.source
+            ndvar = ndvar.sub(**{source.name: hemi})
+            source = ndvar.get_dim(source.name)
 
     if subjects_dir is None:
         subjects_dir = source.subjects_dir
 
-    from ._brain_object import Brain
     brain = Brain(source.subject, hemi, surf, title, cortex,
                   views=views, w=w, h=h, axw=axw, axh=axh,
                   foreground=foreground, background=background,
