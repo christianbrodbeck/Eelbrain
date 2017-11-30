@@ -26,7 +26,7 @@ def test_correlations():
     res = test.correlations('fltvar', 'fltvar2', 'A', ds=ds)
     print(res)
     eq_(str(res[2][0]).strip(), 'a1')
-    eq_(str(res[2][1]).strip(), '-0.149')
+    eq_(str(res[2][1]).strip(), '-.149')
     eq_(str(res[3][1]).strip(), '.740')
     res = test.correlations('fltvar', 'fltvar2', 'A', ds=ds, asds=True)
     eq_(res[0, 'A'], 'a1')
@@ -37,7 +37,7 @@ def test_correlations():
 
     res = test.correlations('fltvar', 'fltvar2', 'A%B', ds=ds)
     print(res)
-    eq_(str(res[2][2]).strip(), '-0.276')
+    eq_(str(res[2][2]).strip(), '-.276')
     res = test.correlations('fltvar', 'fltvar2', 'A%B', ds=ds, asds=True)
     assert_almost_equal(res[0, 'r'], -0.276, 3)
 
@@ -45,7 +45,7 @@ def test_correlations():
     print(res)
     eq_(str(res[2][1]).strip(), 'a1')
     eq_(str(res[2][2]).strip(), 'b1')
-    eq_(str(res[2][3]).strip(), '-0.276')
+    eq_(str(res[2][3]).strip(), '-.276')
     res = test.correlations('fltvar', ('fltvar2', 'intvar'), 'A%B', ds=ds, asds=True)
     assert_almost_equal(res[0, 'r'], -0.276, 3)
     res = test.Correlation('fltvar', 'intvar', "(A=='a1')&(B=='b1')", ds)
