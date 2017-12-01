@@ -437,7 +437,7 @@ class Boxplot(_SimpleFigure):
         self._show()
 
 
-class Barplot(_SimpleFigure):
+class Barplot(_SimpleFigure, YLimMixin):
     r"""Barplot for a continuous variable
 
     Parameters
@@ -532,16 +532,16 @@ class Barplot(_SimpleFigure):
         self._set_xlabel_categorial(xlabel, ct.X)
         self._configure_yaxis(ct.Y, ylabel)
 
-        x0, x1, y0, y1 = _plt_barplot(self._ax, ct, error, pool_error, hatch,
-                                      colors, bottom, top, origin, c=c,
-                                      edgec=edgec, ec=ec, test=test, par=par,
-                                      trend=trend, corr=corr,
-                                      test_markers=test_markers)
+        p = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors,
+                         bottom, top, origin, c=c, edgec=edgec, ec=ec,
+                         test=test, par=par, trend=trend, corr=corr,
+                         test_markers=test_markers)
+        p.set_ylim(p.bottom, p.top)
+        p.ax.set_xlim(p.left, p.right)
+        if p.top > 0 > p.bottom:
+            p.ax.axhline(0, color='k')
 
-        self._ax.set_xlim(x0, x1)
-        self._ax.set_ylim(y0, y1)
-        if y1 > 0 > y0:
-            self._ax.axhline(0, color='k')
+        YLimMixin.__init__(self, (p,))
 
         # figure decoration
         if xticks:
@@ -555,10 +555,7 @@ class Barplot(_SimpleFigure):
         self._show()
 
 
-def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom, top=None,
-                 origin=None, left=None, width=.5, c='#0099FF', edgec=None,
-                 ec='k', test=True, par=True, trend="'", corr='Hochberg',
-                 test_markers=True):
+class _plt_barplot(object):
     """Draw a barplot to axes ax for Celltable ct.
 
     Parameters
@@ -573,72 +570,80 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom, top=None,
         Pool the errors for the estimate of variability.
     ...
     """
-    # kwargs
-    if hatch is True:
-        hatch = defaults['hatch']
+    def __init__(self, ax, ct, error, pool_error, hatch, colors, bottom, top=None,
+                 origin=None, left=None, width=.5, c='#0099FF', edgec=None,
+                 ec='k', test=True, par=True, trend="'", corr='Hochberg',
+                 test_markers=True):
+        # kwargs
+        if hatch is True:
+            hatch = defaults['hatch']
 
-    if colors is True:
-        if defaults['mono']:
-            colors = defaults['cm']['colors']
+        if colors is True:
+            if defaults['mono']:
+                colors = defaults['cm']['colors']
+            else:
+                colors = defaults['c']['colors']
+        elif isinstance(colors, dict):
+            colors = [colors[cell] for cell in ct.cells]
+
+        # data means
+        k = len(ct.cells)
+        if left is None:
+            left = np.arange(k) - width / 2
+        height = np.array(ct.get_statistic(np.mean))
+
+        # origin
+        if origin is None:
+            origin = max(0, bottom)
+
+        # error bars
+        if ct.X is None:
+            error_match = None
         else:
-            colors = defaults['c']['colors']
-    elif isinstance(colors, dict):
-        colors = [colors[cell] for cell in ct.cells]
+            error_match = ct.match
+        y_error = stats.variability(ct.Y.x, ct.X, error_match, error, pool_error, ct.cells)
 
-    # data means
-    k = len(ct.cells)
-    if left is None:
-        left = np.arange(k) - width / 2
-    height = np.array(ct.get_statistic(np.mean))
+        # fig spacing
+        plot_max = np.max(height + y_error)
+        plot_min = np.min(height - y_error)
+        plot_span = plot_max - plot_min
+        y_bottom = min(bottom, plot_min - plot_span * .05)
 
-    # origin
-    if origin is None:
-        origin = max(0, bottom)
+        # main BARPLOT
+        bars = ax.bar(left, height - origin, width, bottom=origin, align='edge',
+                      color=c, edgecolor=edgec, ecolor=ec, yerr=y_error)
 
-    # error bars
-    if ct.X is None:
-        error_match = None
-    else:
-        error_match = ct.match
-    y_error = stats.variability(ct.Y.x, ct.X, error_match, error, pool_error, ct.cells)
+        # hatch
+        if hatch:
+            for bar, h in zip(bars, hatch):
+                bar.set_hatch(h)
+        if colors:
+            for bar, c in zip(bars, colors):
+                bar.set_facecolor(c)
 
-    # fig spacing
-    plot_max = np.max(height + y_error)
-    plot_min = np.min(height - y_error)
-    plot_span = plot_max - plot_min
-    y_bottom = min(bottom, plot_min - plot_span * .05)
+        # pairwise tests
+        if ct.X is None and test is True:
+            test = 0.
+        y_unit = (plot_max - y_bottom) / 15
+        if test is True:
+            y_top = _mark_plot_pairwise(ax, ct, par, plot_max, y_unit, corr, trend,
+                                        test_markers, top=top)
+        elif (test is False) or (test is None):
+            y_top = plot_max + y_unit
+        else:
+            ax.axhline(test, color='black')
+            y_top = _mark_plot_1sample(ax, ct, par, plot_max, y_unit, test, corr, trend)
 
-    # main BARPLOT
-    bars = ax.bar(left, height - origin, width, bottom=origin, align='edge',
-                  color=c, edgecolor=edgec, ecolor=ec, yerr=y_error)
+        self.vmin, self.vmax = ax.get_ylim()
+        self.ax = ax
+        self.left = min(left) - .5 * width
+        self.right = max(left) + 1.5 * width
+        self.bottom = y_bottom
+        self.top = y_top if top is None else top
 
-    # hatch
-    if hatch:
-        for bar, h in zip(bars, hatch):
-            bar.set_hatch(h)
-    if colors:
-        for bar, c in zip(bars, colors):
-            bar.set_facecolor(c)
-
-    # pairwise tests
-    if ct.X is None and test is True:
-        test = 0.
-    y_unit = (plot_max - y_bottom) / 15
-    if test is True:
-        y_top = _mark_plot_pairwise(ax, ct, par, plot_max, y_unit, corr, trend,
-                                    test_markers, top=top)
-    elif (test is False) or (test is None):
-        y_top = plot_max + y_unit
-    else:
-        ax.axhline(test, color='black')
-        y_top = _mark_plot_1sample(ax, ct, par, plot_max, y_unit, test, corr, trend)
-
-    if top is None:
-        top = y_top
-
-    #      x0,                     x1,                      y0,       y1
-    lim = (min(left) - .5 * width, max(left) + 1.5 * width, y_bottom, top)
-    return lim
+    def set_ylim(self, bottom, top):
+        self.ax.set_ylim(bottom, top)
+        self.vmin, self.vmax = self.ax.get_ylim()
 
 
 class Timeplot(LegendMixin, YLimMixin, EelFigure):
