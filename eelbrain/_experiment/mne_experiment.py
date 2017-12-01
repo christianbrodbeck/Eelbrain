@@ -78,7 +78,7 @@ from .test_def import EvokedTest, TwoStageTest, assemble_tests
 
 
 # current cache state version
-CACHE_STATE_VERSION = 7
+CACHE_STATE_VERSION = 8
 
 # Allowable parameters
 ICA_REJ_PARAMS = {'kind', 'source', 'epoch', 'interpolation', 'n_components',
@@ -1118,6 +1118,10 @@ class MneExperiment(FileTree):
                         del params['desc']
                 cache_tests = {k: v.as_dict() for k, v in
                                assemble_tests(cache_tests).iteritems()}
+            elif cache_state_v == 7:  # 'kind' key missing
+                for name, params in cache_tests.iteritems():
+                    if name in tests_state:
+                        params['kind'] = tests_state[name]['kind']
 
             # Find modified definitions
             # =========================
