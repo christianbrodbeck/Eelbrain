@@ -35,6 +35,11 @@ running, from the ``Eelbrain`` root directory::
     $ python setup.py develop
 
 
+On macOS, the ``$ eelbrain`` shell script to run iPython with the framework
+build is not installed properly by ``setup.py``; in order to fix this, run
+
+    $ ./fix-bin
+
 For further information on working with GitHub see `GitHub's instructions
 <https://help.github.com/articles/fork-a-repo/>`_.
 

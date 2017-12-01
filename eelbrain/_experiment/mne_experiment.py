@@ -2298,7 +2298,8 @@ class MneExperiment(FileTree):
         Override this method in MneExperiment subclasses to add event labels.
         The session the events are from can be determined with
         ``ds.info['session']``.
-        Call the original (super-class) method to add T (time) and SOA (stimulus
+        Call the original (super-class) method to add variables defined in
+        :attr:`MneExperiment.variables``, as well as T (time) and SOA (stimulus
         onset asynchrony) to the Dataset.
         """
         ds['T'] = ds['i_start'] / ds.info['sfreq']
