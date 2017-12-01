@@ -2,12 +2,12 @@
 from itertools import izip
 from math import floor, log10
 from os import mkdir
-from os.path import exists, expanduser, isdir, join
+from os.path import basename, dirname, exists, expanduser, isdir, join
 
 import matplotlib as mpl
 import numpy as np
 
-from . import plot, testnd
+from . import fmtxt, plot, testnd
 from .plot._base import POINT
 from ._data_obj import combine
 
@@ -38,8 +38,20 @@ for key in mpl.rcParams:
 
 
 class PlotDestDir(object):
-    """Generate paths for saving plots in figure-specific subdirectories"""
-    def __init__(self, root, pix_fmt='png', vec_fmt='pdf'):
+    """Generate paths for saving plots in figure-specific subdirectories
+
+    Parameters
+    ----------
+    root : str
+        Directory in which to save files.
+    pix_fmt : str
+        Pixel graphics format (default ``png``).
+    vec_fmt : str
+        Vector graphics format (default ``pdf``).
+    name : str
+        Name for the info report (default is ``basename(root)``).
+    """
+    def __init__(self, root, pix_fmt='png', vec_fmt='pdf', name=None):
         root = expanduser(root)
         if not exists(root):
             mkdir(root)
@@ -47,33 +59,55 @@ class PlotDestDir(object):
             assert isdir(root)
         assert pix_fmt.isalnum()
         assert vec_fmt.isalnum()
+        if name is None:
+            name = basename(root)
+            if not name:
+                name = basename(dirname(root))
         self.root = root
         self._pix_fmt = pix_fmt
         self._vec_fmt = vec_fmt
         self.pix = join(root, '%s.' + pix_fmt)
         self.vec = join(root, '%s.' + vec_fmt)
         self.txt = join(root, '%s.txt')
-        self._info = []
+        self.name = name
+        self.report = fmtxt.Report(name)
+        self._active_section = [self.report]
 
     def with_ext(self, ext):
         """Generate path template with extension ``ext``"""
         assert ext.isalnum()
         return join(self.root, '%s.' + ext)
 
-    def subdir(self, dirname):
+    def subdir(self, dirname, name=None):
         """PlotDestDir object for a sub-directory"""
-        return PlotDestDir(join(self.root, dirname), self._pix_fmt, self._vec_fmt)
+        return PlotDestDir(join(self.root, dirname), self._pix_fmt,
+                           self._vec_fmt, name)
 
-    def info(self, info_string):
+    # MARK:  report
+
+    def section(self, heading, level=1):
+        if level <= 0:
+            raise ValueError("level=%r; must be >= 1, section 0 is the document")
+        elif level > len(self._active_section):
+            raise RuntimeError("Can't add section with level %i before adding "
+                               "section with level %i" % (level, level - 1))
+        while len(self._active_section) > level:
+            self._active_section.pop(-1)
+        section = self._active_section[-1].add_section(heading)
+        self._active_section.append(section)
+
+    def info(self, content):
         """Add ``info_string`` to the info list"""
-        print(info_string)
-        self._info.append(info_string)
+        section = self._active_section[-1]
+        section.append(content)
 
-    def save_info(self):
+    def save_info(self, format='html'):
         """Save info to ``info.txt``"""
-        with open(self.txt % 'info', 'w') as fid:
-            fid.write('\n'.join(self._info))
-        del self._info[:]
+        dst = join(self.root, self.name)
+        try:
+            getattr(self.report, 'save_' + format)(dst)
+        except AttributeError:
+            raise ValueError("format=%r; Invalid format" % (format,))
 
 
 def cname(cid):
