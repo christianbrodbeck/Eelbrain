@@ -87,15 +87,15 @@ def frequencies(y, x=None, of=None, sub=None, ds=None):
 
     Parameters
     ----------
-    y : categorial
-        Factor with values whose frequencies are of interest.
-    x : None | categorial
+    y : univariate
+        Values whose frequencies are of interest.
+    x : categorial
         Optional model defining cells for which frequencies are displayed
-        separately. Each row corresponds to one level of ``x``.
-    of : None | categorial
+        separately.
+    of : categorial
         With ``x`` constant within ``of``, only count frequencies for each value
         in ``of`` once. (Compress y and x before calculating frequencies.)
-    sub : None | index
+    sub : index
         Only use a subset of the data.
     ds : Dataset
         If ds is specified, other parameters can be strings naming for
@@ -133,7 +133,7 @@ def frequencies(y, x=None, of=None, sub=None, ds=None):
 
     """
     sub = assub(sub, ds)
-    y = ascategorial(y, sub, ds)
+    y = asuv(y, sub, ds, interaction=True)
     if x is not None:
         x = ascategorial(x, sub, ds)
     if of is not None:
@@ -142,11 +142,11 @@ def frequencies(y, x=None, of=None, sub=None, ds=None):
         if x is not None:
             x = x.aggregate(of)
 
-    # find name
-    if getattr(y, 'name', None):
-        name = "Frequencies of %s" % y.name
+    name = "Frequencies of %s" % (y.name,) if y.name else "Frequencies"
+    if isinstance(y, Var):
+        cells = np.unique(y.x)
     else:
-        name = "Frequencies"
+        cells = y.cells
 
     # special case
     if x is None:
@@ -155,10 +155,13 @@ def frequencies(y, x=None, of=None, sub=None, ds=None):
             for i, f in enumerate(y.base):
                 out[f.name] = Factor((c[i] for c in x.cells),
                                      random=getattr(f, 'random', False))
+        elif isinstance(y, Factor):
+            out[y.name] = Factor(cells, random=y.random)
+        elif isinstance(y, Var):
+            out[y.name] = Var(cells)
         else:
-            out[y.name] = Factor(y.cells, random=y.random)
-        n = np.fromiter((np.sum(y == cell) for cell in y.cells), int,
-                        len(y.cells))
+            raise RuntimeError("y=%r" % (y,))
+        n = np.fromiter((np.sum(y == cell) for cell in cells), int, len(cells))
         out['n'] = Var(n)
         return out
 
@@ -174,9 +177,9 @@ def frequencies(y, x=None, of=None, sub=None, ds=None):
     else:
         out[x.name] = Factor(x.cells)
 
-    y_idx = {cell: y == cell for cell in y.cells}
+    y_idx = {cell: y == cell for cell in cells}
     x_idx = {cell: x == cell for cell in x.cells}
-    for y_cell in y.cells:
+    for y_cell in cells:
         n = (np.sum(np.logical_and(y_idx[y_cell], x_idx[x_cell]))
              for x_cell in x.cells)
         name = as_legal_dataset_key(cellname(y_cell, '_'))

@@ -303,9 +303,12 @@ def isnumeric(x):
     return isinstance(x, (NDVar, Var))
 
 
-def isuv(x):
+def isuv(x, interaction=False):
     "Determine whether x is univariate (a Var or a Factor)"
-    return isinstance(x, (Factor, Var))
+    if interaction:
+        return isinstance(x, (Factor, Var, Interaction))
+    else:
+        return isinstance(x, (Factor, Var))
 
 
 def isboolvar(x):
@@ -594,9 +597,8 @@ def asnumeric(x, sub=None, ds=None, n=None):
     "Var, NDVar"
     if isinstance(x, basestring):
         if ds is None:
-            err = ("Numeric argument was specified as string, but no Dataset "
-                   "was specified")
-            raise TypeError(err)
+            raise TypeError("Numeric argument was specified as string, but no "
+                            "Dataset was specified")
         x = ds.eval(x)
 
     if not isnumeric(x):
@@ -617,9 +619,8 @@ def assub(sub, ds=None):
         return None
     elif isinstance(sub, basestring):
         if ds is None:
-            err = ("the sub parameter was specified as string, but no Dataset "
-                   "was specified")
-            raise TypeError(err)
+            raise TypeError("the sub parameter was specified as string, but no "
+                            "Dataset was specified")
         sub = ds.eval(sub)
 
     if not isinstance(sub, (Var, np.ndarray)):
@@ -627,16 +628,15 @@ def assub(sub, ds=None):
     return sub
 
 
-def asuv(x, sub=None, ds=None, n=None):
+def asuv(x, sub=None, ds=None, n=None, interaction=False):
     "Coerce to Var or Factor"
     if isinstance(x, basestring):
         if ds is None:
-            err = ("Parameter was specified as string, but no Dataset was "
-                   "specified")
-            raise TypeError(err)
+            raise TypeError("Parameter was specified as string, but no Dataset "
+                            "was specified")
         x = ds.eval(x)
 
-    if isuv(x):
+    if isuv(x, interaction):
         pass
     elif all(isinstance(v, basestring) for v in x):
         x = Factor(x)
@@ -656,8 +656,8 @@ def asvar(x, sub=None, ds=None, n=None):
     "Coerce to Var"
     if isinstance(x, basestring):
         if ds is None:
-            err = "Var was specified as string, but no Dataset was specified"
-            raise TypeError(err)
+            raise TypeError("Var was specified as string, but no Dataset was "
+                            "specified")
         x = ds.eval(x)
 
     if not isinstance(x, Var):

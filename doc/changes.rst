@@ -13,6 +13,8 @@ New in 0.27
     method has been removed because dimension objects should be treated
     as immutable, as they can be shared between different :class:`NDVar`
     instances.
+  - :func:`table.frequencies`: If the input ``y`` is a :class:`Var` object, the
+    output will also be a :class:`Var` (was :class:`Factor`).
 
 * :func:`concatenate`: concatenate multiple :class:`NDVar` objects to form a
   new dimension.
