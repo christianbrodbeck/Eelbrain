@@ -200,6 +200,7 @@ Univariate statistical tests:
    test.pairwise
    test.ttest
    test.correlations
+   test.pairwise_correlations
    test.lilliefors
 
 

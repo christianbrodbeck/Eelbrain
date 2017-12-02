@@ -22,8 +22,8 @@ ICO_SLICE_SUBJECTS = ('fsaverage', 'fsaverage_sym')
 def complete_source_space(ndvar, fill=0.):
     """Fill in missing vertices on an NDVar with a partial source space
 
-    Parmeters
-    ---------
+    Parameters
+    ----------
     ndvar : NDVar  (..., source, ...)
         NDVar with SourceSpace dimension that is missing some vertices.
     fill : scalar

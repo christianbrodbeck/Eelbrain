@@ -25,6 +25,7 @@ New in 0.27
   - :func:`psd_welch`
   - :func:`frequency_response`
   - :class:`test.Correlation`, :func:`test.pairwise_correlations`
+  - :func:`xhemi`
 
 * New methods:
 
