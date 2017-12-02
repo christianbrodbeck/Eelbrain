@@ -3068,8 +3068,7 @@ class Factor(_Effect):
         return table
 
     def repeat(self, repeats, name=True):
-        """
-        Repeat each element ``repeats`` times
+        """Repeat each element ``repeats`` times
 
         Parameters
         ----------
@@ -3083,6 +3082,21 @@ class Factor(_Effect):
         if name is True:
             name = self.name
         return Factor(self.x, name, self.random, repeats, labels=self._labels)
+
+    def tile(self, repeats, name=True):
+        """Construct a Factor by repeating ``self`` ``repeats`` times
+
+        Parameters
+        ----------
+        repeats : int
+            Number of repeats.
+        name : None | True | str
+            Name of the output Var, ``True`` to keep the current name (default
+            ``True``).
+        """
+        if name is True:
+            name = self.name
+        return Factor(self.x, name, self.random, tile=repeats, labels=self._labels)
 
 
 class NDVar(object):
