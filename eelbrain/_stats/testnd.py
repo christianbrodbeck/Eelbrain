@@ -1134,7 +1134,6 @@ class ttest_rel(_Result):
                             "related measures t-test.")
         ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar,
                        dtype=np.float64)
-        check_variance(ct.Y.x)
         c1, c0 = ct.cat
         if not ct.all_within:
             raise ValueError("conditions %r and %r do not have the same values "

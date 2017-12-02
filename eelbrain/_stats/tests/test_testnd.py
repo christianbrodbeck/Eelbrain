@@ -602,7 +602,8 @@ def test_ttest_rel():
 
     # zero variance
     ds['utsnd'].x[:, 1, 10] = 0.
-    assert_raises(ZeroVariance, testnd.ttest_rel, 'utsnd', 'A', match='rm', ds=ds)
+    res = testnd.ttest_rel('utsnd', 'A', match='rm', ds=ds)
+    eq_(res.t.x[1, 10], 0)
 
 
 def test_cwt():
