@@ -8,6 +8,11 @@ at the `Computational sensorimotor systems lab
 <http://www.isr.umd.edu/Labs/CSSL/simonlab/Home.html>`_
 at University of Maryland, College Park.
 
+Eelbrain is fully open-source and new contributions are welcome on
+`GitHub <https://github.com/christianbrodbeck/Eelbrain>`_. Suggestions can be
+raised as issues, and modifications can be made as pull requests into the
+``master`` branch.
+
 
 .. _obtain-source:
 
@@ -15,33 +20,28 @@ The Development Version
 -----------------------
 
 The Eelbrain source code is hosted on
-`GitHub <https://github.com/christianbrodbeck/Eelbrain>`_.
-To clone the repository, use::
+`GitHub <https://github.com/christianbrodbeck/Eelbrain>`_. Development takes
+place on the ``master`` branch, while release versions are maintained on
+branches called ``r/0.26`` etc. For further information on working with
+GitHub see
+`GitHub's instructions <https://help.github.com/articles/fork-a-repo/>`_.
 
-    $ git clone https://github.com/christianbrodbeck/Eelbrain.git
-
-
-Installing as Development Version
----------------------------------
-
-Installation requires the presence of a compiler.
+Installing the development version requires the presence of a compiler.
 On macOS, make sure Xcode is installed (open it once to accept the license
 agreement).
 Windows will indicate any needed files when the install command is run.
 
 After cloning the repository, the development version can be installed by
-running, from the ``Eelbrain`` root directory::
+running, from the ``Eelbrain`` repository's root directory::
 
     $ python setup.py develop
 
 
-On macOS, the ``$ eelbrain`` shell script to run iPython with the framework
-build is not installed properly by ``setup.py``; in order to fix this, run
+On macOS, the ``$ eelbrain`` shell script to run ``iPython`` with the framework
+build is not installed properly by ``setup.py``; in order to fix this, run::
 
     $ ./fix-bin
 
-For further information on working with GitHub see `GitHub's instructions
-<https://help.github.com/articles/fork-a-repo/>`_.
 
 In Python, you can make sure that you are working with the development version::
 
@@ -55,14 +55,11 @@ To switch back to the release version use ``$ pip uninstall eelbrain``.
 Building with Conda
 -------------------
 
-To Build Eelbrain with ``conda``, make sure that you are in your root
-environment and that ``conda-build`` is installed. Then, from
-``Eelbrain/conda`` run::
+To Build Eelbrain with ``conda``, make sure that  ``conda-build`` is installed.
+Then, from ``Eelbrain/conda`` run::
 
-    $ conda build eelbrain --numpy=1.11
+    $ conda build eelbrain
 
-This builds against numpy 1.11, to build against another version replace
-``1.11``.
 After building successfully, the build can be installed with::
 
     $ conda install --use-local eelbrain
@@ -70,14 +67,6 @@ After building successfully, the build can be installed with::
 
 Contributing
 ------------
-
-Eelbrain is fully open-source and you are welcome to contribute.
-New contributions can be made as pull requests into the master branch on GitHub.
-
-I am focusing development on macOS, in particular for the GUI components.
-However, the underlying libraries are all available on the major platforms and
-it would be possible to make Eelbrain work on other platform with little effort.
-
 
 Style guides:
 
@@ -89,16 +78,17 @@ Style guides:
 
 Useful tools:
 
- - Graphical frontends for git:
-   - `GitX <http://rowanj.github.io/gitx>`_
-   - `SourceTree <https://www.sourcetreeapp.com>`_
- - Python IDE: `PyCharm <https://www.jetbrains.com/pycharm>`_
+- Graphical frontends for git: `SourceTree <https://www.sourcetreeapp.com>`_
+- Python IDE: `PyCharm <https://www.jetbrains.com/pycharm>`_
 
 
 Testing
 -------
 
-Eelbrain uses `nose <https://nose.readthedocs.org>`_ for testing. To run all
-tests, run ``$ make test`` from the Eelbrain project directory. Tests for
-individual modules are included in folders called "tests", usually on the same
-level as the module.
+Eelbrain uses `nose <https://nose.readthedocs.org>`_ for testing.
+Tests for individual modules are included in folders called ``tests``, usually
+on the same level as the module.
+To run all tests, run ``$ make test`` from the Eelbrain project directory.
+On macOS, ``nosetests`` needs to run with the framework build of Python;
+if you get a corresponding error, run ``$ ./fix-bin nosetests`` from the
+``Eelbrain`` repository root.
