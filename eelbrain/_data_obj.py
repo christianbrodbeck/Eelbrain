@@ -7098,6 +7098,7 @@ class Dimension(object):
     """
     _CONNECTIVITY_TYPES = ('grid', 'none', 'custom')
     _axis_unit = None
+    _default_connectivity = 'none'  # for loading old pickles
 
     def __init__(self, name, connectivity):
         # requires __len__ to work
@@ -7141,8 +7142,8 @@ class Dimension(object):
 
     def __setstate__(self, state):
         self.name = state['name']
-        self._connectivity = state['connectivity']
-        self._connectivity_type = state['connectivity_type']
+        self._connectivity = state.get('connectivity', None)
+        self._connectivity_type = state.get('connectivity_type', self._default_connectivity)
 
     def __len__(self):
         raise NotImplementedError
@@ -7649,6 +7650,8 @@ class Scalar(Dimension):
         the array's dtype is uint32, property checks are disabled to improve 
         efficiency.
     """
+    _default_connectivity = 'grid'
+
     def __init__(self, name, values, unit=None, tick_format=None,
                  connectivity='grid'):
         values = np.asarray(values)
@@ -7914,6 +7917,7 @@ class Sensor(Dimension):
     ...         (0, -.25, -.45)]
     >>> sensor_dim = Sensor(locs, names=["Cz", "Pz"])
     """
+    _default_connectivity = 'custom'
     _proj_aliases = {'left': 'x-', 'right': 'x+', 'back': 'y-', 'front': 'y+',
                      'top': 'z+', 'bottom': 'z-'}
 
@@ -8613,6 +8617,7 @@ class SourceSpace(Dimension):
      - 'lh' or 'rh' to select an entire hemisphere
 
     """
+    _default_connectivity = 'custom'
     _SRC_PATH = os.path.join(
         '{subjects_dir}', '{subject}', 'bem', '{subject}-{src}-src.fif')
     _ANNOT_PATH = os.path.join(
@@ -9221,6 +9226,7 @@ class UTS(Dimension):
         None).
 
     """
+    _default_connectivity = 'grid'
     unit = 's'
     _tol = 0.000001  # tolerance for deciding if time values are equal
 
