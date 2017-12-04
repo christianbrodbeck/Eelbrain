@@ -1217,6 +1217,10 @@ class FileTree(TreeModel):
         others :
             Update experiment state.
 
+        See Also
+        --------
+        move : Move files to a different root folder.
+
         Notes
         -----
         Use ``e.show_tree()`` to find out which element(s) to copy.

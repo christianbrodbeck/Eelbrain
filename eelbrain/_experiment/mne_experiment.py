@@ -2749,9 +2749,20 @@ class MneExperiment(FileTree):
 
         # label events
         ds = self.label_events(ds)
-        if ds is None:
-            raise RuntimeError("The MneExperiment.label_events() function must "
-                               "return the events-Dataset")
+        if not isinstance(ds, Dataset):
+            raise DefinitionError(
+                "The %s.label_events() function must return a Dataset, got "
+                "%r" % (self.__class__.__name__, ds))
+        elif 'i_start' not in ds:
+            raise DefinitionError(
+                "The Dataset returned by %s.label_events() does not contain a "
+                "variable called `i_start`. This variable is required to "
+                "ascribe events to data samples." % (self.__class__.__name__,))
+        elif 'trigger' not in ds:
+            raise DefinitionError(
+                "The Dataset returned by %s.label_events() does not "
+                "contain a variable called `trigger`. This variable is required "
+                "to check rejection files." % (self.__class__.__name__,))
         return ds
 
     def load_evoked(self, subject=None, baseline=False, ndvar=True, cat=None,
