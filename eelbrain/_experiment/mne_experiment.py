@@ -5250,9 +5250,10 @@ class MneExperiment(FileTree):
             lm = self._load_spm(sns_baseline, src_baseline)
 
             title = self.format('{session} {epoch} {test} {test_options}')
+            surfer_kwargs = self._surfer_plot_kwargs()
 
         report = Report(title)
-        report.append(_report.source_time_lm(lm, pmin))
+        report.append(_report.source_time_lm(lm, pmin, surfer_kwargs))
 
         # report signature
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))

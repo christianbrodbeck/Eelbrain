@@ -276,7 +276,7 @@ def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={},
 
             clusters = res.find_clusters(source=label)
             source_time_clusters(section, clusters, y, ds, model, include,
-                                 title, colors, res)
+                                 title, colors, res, surfer_kwargs)
     elif not parc and res._kind == 'cluster':
         source_bin_table(report, res, surfer_kwargs)
 
@@ -284,7 +284,7 @@ def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={},
         clusters.sort('tstart')
         title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
         source_time_clusters(report, clusters, y, ds, model, include, title,
-                             colors, res)
+                             colors, res, surfer_kwargs)
     elif not parc and res._kind in ('raw', 'tfce'):
         section = report.add_section("P<=.05")
         source_bin_table(section, res, surfer_kwargs, 0.05)
@@ -293,7 +293,7 @@ def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={},
         title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
         for cluster in clusters.itercases():
             source_time_cluster(section, cluster, y, model, ds, title, colors,
-                                res.match)
+                                res.match, surfer_kwargs)
 
         # trend section
         section = report.add_section("Trend: p<=.1")
@@ -315,7 +315,7 @@ def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={},
             clusters = combine((clusters_sig, clusters_trend, clusters_all))
             clusters.sort('tstart')
             source_time_clusters(section, clusters, y, ds, model, include,
-                                 title, colors, res)
+                                 title, colors, res, surfer_kwargs)
     else:
         raise RuntimeError
     return report
@@ -344,7 +344,7 @@ def source_bin_table(section, res, surfer_kwargs, pmin=1):
         section.add_image_figure(im, caption_)
 
 
-def source_time_lm(lm, pmin):
+def source_time_lm(lm, pmin, surfer_kwargs):
     if pmin == 0.1:
         ps = (0.1, 0.01, 0.05)
     elif pmin == 0.05:
@@ -358,12 +358,14 @@ def source_time_lm(lm, pmin):
     out = Section("SPMs")
     ts = [ttest_t(p, lm.df) for p in ps]
     for term in lm.column_names:
-        im = plot.brain.dspm_bin_table(lm.t(term), *ts, summary='extrema')
+        im = plot.brain.dspm_bin_table(lm.t(term), *ts, summary='extrema',
+                                       **surfer_kwargs)
         out.add_section(term, im)
     return out
 
 
-def source_time_clusters(section, clusters, y, ds, model, include, title, colors, res):
+def source_time_clusters(section, clusters, y, ds, model, include, title,
+                         colors, res, surfer_kwargs):
     """Plot cluster with source and time dimensions
 
     Parameters
@@ -397,10 +399,11 @@ def source_time_clusters(section, clusters, y, ds, model, include, title, colors
             else:
                 cluster['cluster'] = res.cluster(cluster['id'])
         source_time_cluster(section, cluster, y, model, ds, title, colors,
-                            res.match)
+                            res.match, surfer_kwargs)
 
 
-def source_time_cluster(section, cluster, y, model, ds, title, colors, match):
+def source_time_cluster(section, cluster, y, model, ds, title, colors, match,
+                        surfer_kwargs):
     # cluster properties
     tstart_ms = ms(cluster['tstart'])
     tstop_ms = ms(cluster['tstop'])
@@ -426,7 +429,7 @@ def source_time_cluster(section, cluster, y, model, ds, title, colors, match):
     txt.append('.')
 
     # add cluster image to report
-    brain = plot.brain.cluster(cluster['cluster'].sum('time'), surf='inflated')
+    brain = plot.brain.cluster(cluster['cluster'].sum('time'), **surfer_kwargs)
     cbar = brain.plot_colorbar(orientation='vertical', show=False)
     caption = "Cluster"
     if effect:
