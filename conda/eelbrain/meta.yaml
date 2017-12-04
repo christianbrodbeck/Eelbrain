@@ -1,5 +1,5 @@
-{% set version = "0.26.12" %}
-{% set md5 = "784a92a9a433bf301a8a4b9d202e91f9" %}
+{% set version = "0.26.13" %}
+{% set md5 = "d7b2058a890a73606db4b143d7ff7452" %}
 
 package:
   name: eelbrain
