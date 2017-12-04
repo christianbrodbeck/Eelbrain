@@ -933,6 +933,8 @@ def _cluster_bin_table_ims(vmax, data, surf, views, hemi, axw, axh, *args,
 
 
 def _bin_table_ims(data, hemi, views, brain_func):
+    if isinstance(views, basestring):
+        views = (views,)
     ims = []
     if hemi is None:
         hemis = []
