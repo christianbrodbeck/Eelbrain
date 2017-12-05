@@ -24,6 +24,7 @@ def test_concatenate():
 
 
 def test_convolve():
+    # convolve is also tested in test_boosting.py
     ds = datasets._get_continuous()
 
     h1 = ds['h1']

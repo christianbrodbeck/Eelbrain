@@ -224,7 +224,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     n_y = len(y_data)
     n_x = len(x_data)
 
-    # prepare trf (by cropping data)
+    # crop data to align y and x at TRF start
     tstep = data.time.tstep
     i_start = int(round(tstart / tstep))
     i_stop = int(round(tstop / tstep))

@@ -166,12 +166,22 @@ def convolve(h, x):
                     data += np.convolve(h_i, x_i)
             dims = (xt,)
 
+        # full convolution -> decide which slice of data corresponds to x
+        # i.e., if kernel tmin is positive, add zero-padding
         i_start = -int(round(ht.tmin / ht.tstep))
         i_stop = i_start + xt.nsamples
         if i_start < 0:
-            data = np.concatenate((
-                np.zeros((len(hdim), -i_start) if data.ndim == 2 else -i_start),
-                data[..., :i_stop]), -1)
+            if data.ndim == 2:
+                pad = np.zeros((len(hdim), -i_start))
+            else:
+                pad = np.zeros(-i_start)
+            data = np.concatenate((pad, data[..., :i_stop]), -1)
+        elif i_stop > data.shape[-1]:
+            if data.ndim == 2:
+                pad = np.zeros((len(hdim), i_stop - data.shape[-1]))
+            else:
+                pad = np.zeros(i_stop - data.shape[-1])
+            data = np.concatenate((data[..., i_start:], pad), -1)
         else:
             data = data[..., i_start: i_stop]
 
