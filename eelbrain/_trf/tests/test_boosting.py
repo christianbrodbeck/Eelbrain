@@ -7,7 +7,7 @@ import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 import cPickle as pickle
 import scipy.io
-from eelbrain import boosting, convolve, configure, datasets
+from eelbrain import test, boosting, convolve, configure, datasets
 from eelbrain._trf._boosting import boost_1seg, evaluate_kernel
 from eelbrain._utils.testing import assert_dataobj_equal
 
@@ -75,6 +75,7 @@ def test_boosting():
 def test_result():
     "Test boosting results"
     ds = datasets._get_continuous()
+    x1 = ds['x1']
 
     # convolve function
     y = convolve([ds['h1'], ds['h2']], [ds['x1'], ds['x2']])
@@ -89,6 +90,10 @@ def test_result():
     y2 *= res.y_scale
     y2 += y1.mean() - y2.mean()  # mean can't be reconstructed
     assert_dataobj_equal(y1, y2, decimal=12)
+    # reconstriction
+    res = boosting(x1, y, -1, 0)
+    x1r = convolve(res.h_scaled, y[:9.1])
+    assert_almost_equal(test.Correlation(x1r, x1[:9.1]).r, res.r, 2)
 
     # test NaN checks  (modifies data)
     ds['x2'].x[1, 50] = np.nan
