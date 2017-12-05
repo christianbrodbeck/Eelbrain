@@ -29,14 +29,22 @@ class WrappedFormater(logging.Formatter):
             logging.Formatter.format(self, record))
 
 
-def ask(message, options, allow_empty=False):
+def ask(message, options, allow_empty=False, help=None):
     option_keys = [s[0] for s in options]
     print(message)
+    print('---')
     print '\n'.join('%s:  %s' % item for item in options)
+    if help is not None:
+        assert 'help' not in option_keys
+        print('help:  display help')
+        option_keys.append('help')
     while True:
         command = raw_input(" > ")
         if command in option_keys or (allow_empty and not command):
-            return command
+            if help is not None and command == 'help':
+                print help
+            else:
+                return command
         else:
             print("Invalid entry - type one of (%s)" % ', '.join(option_keys))
 

@@ -122,6 +122,16 @@ LEGACY_RAW = {
 }
 
 
+CACHE_HELP = (
+    "A change in the {experiment} class definition means that some {filetype} "
+    "files no longer reflect the current definition. In order to keep local "
+    "results consistent with the definition, these files should be deleted. If "
+    "you want to keep a copy of the results, be sure to move them to a "
+    "different location before proceding. If you think the change in the "
+    "definition was a mistake, you can select 'abort', revert the change and "
+    "try again."
+)
+
 ################################################################################
 # Exceptions
 
@@ -1389,33 +1399,42 @@ class MneExperiment(FileTree):
                     else:
                         msg = []
                     msg.append("Delete %i outdated results?" % (n_result_files,))
-                    options = [
-                        ('delete', 'delete invalid result files'),
-                        ('abort', 'raise an error'),
-                    ]
-                    command = ask('\n'.join(msg), options)
+                    command = ask(
+                        '\n'.join(msg),
+                        options=(
+                            ('delete', 'delete invalid result files'),
+                            ('abort', 'raise an error')),
+                        help=CACHE_HELP.format(
+                            experiment=self.__class__.__name__,
+                            filetype='result'),
+                    )
                     if command == 'abort':
                         raise RuntimeError("User aborted invalid result deletion")
                     elif command != 'delete':
                         raise RuntimeError("command=%r" % (command,))
 
                 if files:
-                    msg = []
                     if self.auto_delete_cache is False:
-                        msg.append("Automatic cache management disabled. Either "
-                                   "revert changes, or set e.auto_delete_cache=True")
-                        raise RuntimeError('\n'.join(msg))
+                        raise RuntimeError(
+                            "Automatic cache management disabled. Either "
+                            "revert changes, or set e.auto_delete_cache=True")
                     elif isinstance(self.auto_delete_cache, basestring):
                         if self.auto_delete_cache != 'debug':
                             raise ValueError("MneExperiment.auto_delete_cache=%r" %
                                              (self.auto_delete_cache,))
-                        options = [
-                            ('delete', 'delete invalid files'),
-                            ('abort', 'raise an error'),
-                            ('ignore', 'proceed without doing anything'),
-                            ('revalidate', "don't delete any cache files but write a new cache-state file"),
-                        ]
-                        command = ask('\n'.join(msg), options)
+                        command = ask(
+                            "Outdated cache files. Choose 'delete' to proceed. "
+                            "WARNING: only choose 'ignore' or 'revalidate' if "
+                            "you know what you are doing.",
+                            options=(
+                                ('delete', 'delete invalid files'),
+                                ('abort', 'raise an error'),
+                                ('ignore', 'proceed without doing anything'),
+                                ('revalidate', "don't delete any cache files but write a new cache-state file")),
+                            help=CACHE_HELP.format(
+                                experiment=self.__class__.__name__,
+                                filetype='cache and/or result'),
+                        )
                         if command == 'delete':
                             pass
                         elif command == 'abort':
