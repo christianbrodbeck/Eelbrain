@@ -9,9 +9,8 @@ install:
   - copy "C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC\bin\vcvars64.bat" "C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC\bin\amd64\vcvarsamd64.bat"  # https://github.com/conda/conda-build/issues/1606
   - conda config --append channels conda-forge
   - conda config --append channels christianbrodbeck
-  - conda install --yes --quiet --file requirements_install.txt
-  - conda install --yes --quiet --file requirements.txt
-  - conda install --yes --quiet nose sphinx numpydoc
+  - conda config --append channels ncil
+  - conda install --yes --quiet --file requirements_dev.txt
   - python setup.py develop
   - python -c "import mne; mne.datasets.testing.data_path()"
 
