@@ -10,12 +10,11 @@ import webbrowser
 
 import wx
 
+from .._utils import IS_OSX, IS_WINDOWS
 from .._wxutils import ID, Icon
 from ..plot._base import CONFIG
 from .about import AboutFrame
-from .frame import (
-    IS_OSX, IS_WINDOWS, FOCUS_UI_UPDATE_FUNC_NAMES, EelbrainFrame,
-)
+from .frame import FOCUS_UI_UPDATE_FUNC_NAMES, EelbrainFrame
 
 
 APP = None  # hold the App instance

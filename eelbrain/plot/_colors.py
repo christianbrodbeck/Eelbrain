@@ -13,6 +13,7 @@ from matplotlib.colorbar import ColorbarBase
 
 from .. import _colorspaces as cs
 from .._data_obj import Factor, Interaction, cellname
+from .._utils import IS_WINDOWS
 from ._base import EelFigure, Layout, find_axis_params_data
 
 
@@ -445,6 +446,8 @@ class ColorList(EelFigure):
 
         self._ax = ax
         self._show()
+        if IS_WINDOWS:
+            self._frame.Fit()
 
 
 class ColorBar(EelFigure):

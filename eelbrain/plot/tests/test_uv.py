@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from nose.tools import eq_, ok_
+from nose.tools import eq_, ok_, assert_less
 
 from eelbrain import Factor, datasets, plot
 
@@ -58,7 +58,7 @@ def test_boxplot():
     labels = p._ax.get_xticklabels()
     bbs = [l.get_window_extent() for l in labels]
     for i in xrange(len(bbs) - 1):
-        ok_(bbs[i].x1 < bbs[i + 1].x0)
+        assert_less(bbs[i].x1, bbs[i + 1].x0)
 
 
 def test_correlation():

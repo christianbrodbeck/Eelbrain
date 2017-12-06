@@ -2,11 +2,10 @@ import sys
 
 import wx
 
+from .._utils import IS_OSX
 from .._wxutils import ID
 
 
-IS_OSX = sys.platform == 'darwin'
-IS_WINDOWS = sys.platform.startswith('win')
 FOCUS_UI_UPDATE_FUNC_NAMES = {
     wx.ID_COPY: 'CanCopy',
     ID.COPY_AS_PNG: 'CanCopyPNG',

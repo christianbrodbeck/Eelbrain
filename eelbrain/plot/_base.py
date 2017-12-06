@@ -79,7 +79,7 @@ import numpy as np
 import PIL
 
 from .._config import CONFIG
-from .._utils import deprecated, intervals
+from .._utils import IS_WINDOWS, deprecated, intervals
 from .._utils.subp import command_exists
 from ..fmtxt import Image
 from .._colorspaces import symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
@@ -89,9 +89,6 @@ from .._data_obj import (UTS, ascategorial, asndvar, assub, isnumeric,
 
 # constants
 POINT = 0.013888888888898
-
-IS_WINDOWS = os.name == 'nt'
-
 
 # defaults
 defaults = {'maxw': 16, 'maxh': 10}

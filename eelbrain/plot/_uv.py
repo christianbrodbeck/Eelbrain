@@ -12,8 +12,8 @@ import scipy.stats  # without this sp.stats is not available
 import matplotlib as mpl
 from matplotlib.artist import setp
 
-from .._stats import test, stats
 from .._data_obj import Celltable, asvar, ascategorial, assub, cellname
+from .._stats import test, stats
 from ._base import EelFigure, Layout, LegendMixin, YLimMixin, frame_title
 from ._colors import find_cell_colors
 

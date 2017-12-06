@@ -143,14 +143,11 @@ class CanvasFrame(EelbrainFrame):
                  *args, **kwargs):
         EelbrainFrame.__init__(self, parent, -1, title=title)
 
-    # set up the canvas
-        # prepare the plot panel
+        # set up the canvas
         self.sizer = sizer = wx.BoxSizer(wx.VERTICAL)
         self.SetSizer(sizer)
         self.canvas = FigureCanvasPanel(self, *args, **kwargs)
         sizer.Add(self.canvas, 1, wx.EXPAND)
-
-        # get figure
         self.figure = self.canvas.figure
 
         if statusbar:

@@ -1,8 +1,14 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from distutils.version import LooseVersion
+import os
 import platform
 from subprocess import Popen
+import sys
 from warnings import warn
+
+
+IS_OSX = sys.platform == 'darwin'
+IS_WINDOWS = os.name == 'nt'
 
 
 class Caffeinator(object):
