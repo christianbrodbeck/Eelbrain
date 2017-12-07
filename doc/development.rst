@@ -14,8 +14,6 @@ raised as issues, and modifications can be made as pull requests into the
 ``master`` branch.
 
 
-.. _obtain-source:
-
 The Development Version
 -----------------------
 
@@ -55,7 +53,7 @@ To switch back to the release version use ``$ pip uninstall eelbrain``.
 Building with Conda
 -------------------
 
-To Build Eelbrain with ``conda``, make sure that  ``conda-build`` is installed.
+To build Eelbrain with ``conda``, make sure that  ``conda-build`` is installed.
 Then, from ``Eelbrain/conda`` run::
 
     $ conda build eelbrain
@@ -78,7 +76,7 @@ Style guides:
 
 Useful tools:
 
-- Graphical frontends for git: `SourceTree <https://www.sourcetreeapp.com>`_
+- Graphical frontend for git: `SourceTree <https://www.sourcetreeapp.com>`_
 - Python IDE: `PyCharm <https://www.jetbrains.com/pycharm>`_
 
 
