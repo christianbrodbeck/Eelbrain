@@ -266,8 +266,8 @@ class CanvasFrame(EelbrainFrame):
                                        wx.OK | wx.ICON_ERROR)
                 msg.ShowModal()
                 msg.Destroy()
-                raise
-            self._eelfigure.set_ylim(bottom, top)
+            else:
+                self._eelfigure.set_ylim(bottom, top)
         dlg.Destroy()
 
     def OnUpdateUISave(self, event):
