@@ -9,11 +9,12 @@ import sys
 from tempfile import mkdtemp
 from time import time, sleep
 
-from matplotlib.colors import ListedColormap, colorConverter
+from matplotlib.colors import ListedColormap
 from mne.io.constants import FIFF
 import numpy as np
 import wx
 
+from .._colorspaces import to_rgb, to_rgba
 from .._data_obj import NDVar, SourceSpace
 from .._wxgui import run as run_gui
 from ..fmtxt import Image, ms
@@ -265,7 +266,7 @@ class Brain(TimeSlicer, surfer.Brain):
             Use this directory as the subjects directory.
         """
         source = self._check_source_space(source)
-        color = colorConverter.to_rgba(color, alpha)
+        color = to_rgba(color, alpha)
         if smoothing_steps is not None:
             # generate LUT
             lut = np.repeat(np.reshape(color, (1, 4)), 256, 0)
@@ -341,7 +342,7 @@ class Brain(TimeSlicer, surfer.Brain):
             elif isinstance(cmap, basestring) and len(cmap) > 1:
                 cmap = cmaps[meas]
             else:
-                contour_color = colorConverter.to_rgb(cmap)
+                contour_color = to_rgb(cmap)
                 cmap = (contour_color, contour_color)
         elif cmap is None or isinstance(cmap, basestring):
             cmap = cmaps[meas]
@@ -489,11 +490,7 @@ class Brain(TimeSlicer, surfer.Brain):
         for i, v in enumerate(label_values):
             if v == 0:
                 continue
-            try:
-                ctab[i, :4] = [int(round(c * 255.)) for c in
-                               colorConverter.to_rgba(plot_colors[v])]
-            except ValueError:
-                pass
+            ctab[i, :4] = [int(round(c * 255.)) for c in to_rgba(plot_colors[v])]
         # generate annotation
         sss = source.get_source_space()
         indexes = (slice(None, source.lh_n), slice(source.lh_n, None))
@@ -563,7 +560,7 @@ class Brain(TimeSlicer, surfer.Brain):
             raise ValueError("Require NDVar of type bool, got %r" % (x.dtype,))
         if name is None:
             name = str(ndvar.name)
-        color = colorConverter.to_rgba(color, alpha)
+        color = to_rgba(color, alpha)
         lh_vertices = source.lh_vertices[x[:source.lh_n]]
         rh_vertices = source.rh_vertices[x[source.lh_n:]]
         lh, rh = source._label((lh_vertices, rh_vertices), name, color[:3])

@@ -2,7 +2,7 @@
 """Configure Eelbrain"""
 from multiprocessing import cpu_count
 
-from matplotlib.colors import colorConverter
+from ._colorspaces import to_rgb
 
 
 CONFIG = {
@@ -99,7 +99,7 @@ def configure(
         if figure_background is True:
             figure_background = 'white'
         elif figure_background is not False:
-            colorConverter.to_rgb(figure_background)
+            to_rgb(figure_background)
         new['figure_background'] = figure_background
     if prompt_toolkit is not None:
         new['prompt_toolkit'] = bool(prompt_toolkit)

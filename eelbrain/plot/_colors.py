@@ -8,7 +8,7 @@ import operator
 
 import numpy as np
 import matplotlib as mpl
-from matplotlib.colors import LinearSegmentedColormap, Normalize, to_rgb
+from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.colorbar import ColorbarBase
 
 from .. import _colorspaces as cs
@@ -217,7 +217,7 @@ def single_hue_colormap(hue):
         Colormap from transparent to ``hue``.
     """
     name = str(hue)
-    color = tuple(to_rgb(hue))
+    color = to_rgb(hue)
     start = color + (0.,)
     stop = color + (1.,)
     return LinearSegmentedColormap.from_list(name, (start, stop))
