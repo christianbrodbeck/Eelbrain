@@ -1192,7 +1192,7 @@ def test_ndvar_timeseries_methods():
     ma_mean = x.mean('case').smooth('time', 0.2, 'blackman')
     assert_allclose(ma.mean('case').x, ma_mean.x)
     # against raw scipy.signal
-    window = signal.get_window('blackman', 20)
+    window = signal.get_window('blackman', 20, False)
     window /= window.sum()
     window.shape = (1, 1, 20)
     assert_array_equal(ma.x, signal.convolve(x.x, window, 'same'))

@@ -4596,7 +4596,7 @@ class NDVar(object):
                 n = int(round(window_size / dim_object.tstep))
             else:
                 raise NotImplementedError("dim=%r" % (dim,))
-            window = scipy.signal.get_window(window, n)
+            window = scipy.signal.get_window(window, n, False)
             window /= window.sum()
             window.shape = (1,) * axis + (n,) + (1,) * (self.ndim - axis - 1)
             if mode == 'center':

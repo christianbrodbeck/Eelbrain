@@ -15,6 +15,8 @@ New in 0.27
     instances.
   - :func:`table.frequencies`: If the input ``y`` is a :class:`Var` object, the
     output will also be a :class:`Var` (was :class:`Factor`).
+  - :meth:`NDVar.smooth`: window-based smoothing now uses a symmetric window,
+    which can lead to slightly different results.
 
 * :func:`concatenate`: concatenate multiple :class:`NDVar` objects to form a
   new dimension.
