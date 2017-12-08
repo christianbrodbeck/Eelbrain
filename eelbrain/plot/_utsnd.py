@@ -356,10 +356,14 @@ class _ax_butterfly(object):
 
         vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
 
+        kwargs = {}
+        if linewidth is not None:
+            kwargs['linewidth'] = linewidth
+
         name = ''
         for l in layers:
             h = _plt_utsnd(ax, l, xdim, linedim, color or l.info.get('color'),
-                           sensors, clip_on=clip, linewidth=linewidth)
+                           sensors, clip_on=clip, **kwargs)
             self.layers.append(h)
             if not name and l.name:
                 name = l.name
