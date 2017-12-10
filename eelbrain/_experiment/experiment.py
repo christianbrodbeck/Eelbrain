@@ -14,7 +14,7 @@ import traceback
 import numpy as np
 
 from .. import fmtxt
-from .._utils import LazyProperty
+from .._utils import LazyProperty, ask
 from .._utils.com import Notifier, NotNotifier
 
 
@@ -1421,17 +1421,14 @@ class FileTree(TreeModel):
         """
         files = self.glob(temp, inclusive, **constants)
         if files:
-            root = self.get('root')
-            print("root: %s\n" % root)
-            root_len = len(root)
-            for name in files:
-                if name.startswith(root):
-                    print(name[root_len:])
-                else:
-                    print(name)
-            msg = ("Delete %i files or directories (confirm with 'yes')? "
-                   % len(files))
-            if confirm or raw_input(msg) == 'yes':
+            print("root: %s\n" % self.get('root'))
+            print('\n'.join(self._remove_root(files)))
+            if confirm or ask(
+                "Delete %i files or directories?" % len(files),
+                (('yes', 'delete files'),
+                 ('no', "don't delete files (default)")),
+                allow_empty=True
+            ) == 'yes':
                 print('deleting...')
                 for path in files:
                     if os.path.isdir(path):
@@ -1442,3 +1439,9 @@ class FileTree(TreeModel):
                 print('aborting...')
         else:
             print("No files found for %r" % temp)
+
+    def _remove_root(self, paths):
+        root = self.get('root')
+        root_len = len(root)
+        return (path[root_len:] if path.startswith(root) else path
+                for path in paths)
