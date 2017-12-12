@@ -9,8 +9,9 @@ import re
 import numpy as np
 
 from . import fmtxt
+from ._celltable import Celltable
 from ._data_obj import (
-    Categorial, Celltable, Dataset, Factor, Interaction, NDVar, Scalar, UTS,
+    Categorial, Dataset, Factor, Interaction, NDVar, Scalar, UTS,
     Var, ascategorial, as_legal_dataset_key, asndvar, asvar, assub, asuv,
     cellname, combine, isuv)
 

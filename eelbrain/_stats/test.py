@@ -9,8 +9,9 @@ import numpy as np
 import scipy.stats
 
 from .. import fmtxt
+from .._celltable import Celltable
 from .._data_obj import (
-    Celltable, Dataset, Factor, Interaction, Var, NDVar,
+    Dataset, Factor, Interaction, Var, NDVar,
     ascategorial, asfactor, asnumeric, assub, asvar,
     cellname, dataobj_repr, nice_label,
 )

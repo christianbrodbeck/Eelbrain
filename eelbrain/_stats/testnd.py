@@ -44,9 +44,10 @@ from tqdm import trange
 
 from .. import fmtxt
 from .. import _colorspaces as _cs
+from .._celltable import Celltable
 from .._config import CONFIG
 from .._data_obj import (
-    Celltable, Dataset, Var, Factor, Interaction, NestedEffect,
+    Dataset, Var, Factor, Interaction, NestedEffect,
     NDVar, Categorial, UTS,
     ascategorial, asmodel, asndvar, asvar, assub,
     hasrandom, cellname, combine, dataobj_repr)

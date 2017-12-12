@@ -16,10 +16,12 @@ For the full documentation see <http://eelbrain.readthedocs.io>.
 from . import mne_fixes
 
 from ._config import configure
-from ._data_obj import (Datalist, Dataset, Var, Factor, Interaction, Model,
-                        NDVar, Case, Categorial, Scalar, Sensor, UTS,
-                        Celltable, choose, combine, align, align1, cellname,
-                        shuffled_index)
+from ._celltable import Celltable
+from ._data_obj import (
+    Datalist, Dataset, Var, Factor, Interaction, Model,
+    NDVar, Case, Categorial, Scalar, Sensor, UTS,
+    choose, combine, align, align1, cellname, shuffled_index
+)
 from ._experiment import MneExperiment
 from ._mne import (
     complete_source_space, labels_from_clusters, morph_source_space, xhemi,

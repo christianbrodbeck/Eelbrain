@@ -9,8 +9,8 @@ import operator
 import matplotlib as mpl
 import numpy as np
 
-from .._data_obj import (
-    ascategorial, asndvar, assub, cellname, Celltable, longname)
+from .._celltable import Celltable
+from .._data_obj import ascategorial, asndvar, assub, cellname, longname
 from .._stats import stats
 from . import _base
 from ._base import (
