@@ -5676,7 +5676,7 @@ class Dataset(OrderedDict):
         ----------
         names : sequence of str
             Names for the variables.
-        cases : sequence of sequence of { str | scalar }
+        cases : sequence of sequence of { str | scalar | NDVar }
             A sequence of cases, whereby each case is itself represented as a
             sequence of values (str or scalar). Variable type (Factor or Var)
             is inferred from whether values are str or not.
@@ -5684,11 +5684,7 @@ class Dataset(OrderedDict):
         ds = cls()
         cases = tuple(cases)
         for i, name in enumerate(names):
-            values = [case[i] for case in cases]
-            if any(isinstance(v, basestring) for v in values):
-                ds[name] = Factor(values)
-            else:
-                ds[name] = Var(values)
+            ds[name] = combine(case[i] for case in cases)
         return ds
 
     @classmethod
