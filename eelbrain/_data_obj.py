@@ -2771,12 +2771,24 @@ class NDVar(object):
     info : dict
         A dictionary with data properties (can contain arbitrary
         information that will be accessible in the info attribute).
-    name : None | str
+    name : str
         Name for the NDVar.
 
 
     Notes
     -----
+    An :class:`NDVar` consists of the following components:
+
+    - A :class:`numpy.ndarray`, stored in the :attr:`.x` attribute.
+    - Meta-information describing each axis of the array using a
+      :class:`Dimension` object (for example, :class:`UTS` for uniform
+      time series, or :class:`Sensor` for a sensor array). These
+      dimensions are stored in the :attr:`.dims` attribute, with the ith
+      element of :attr:`.dims` describing the ith axis of :attr:`.x`.
+    - A dictionary containing other meta-information stored in the
+      :attr:`.info` attribute.
+    - A name stored in the :attr:`.name` attribute.
+
     *Indexing*: For classical indexing, indexes need to be provided in the
     correct sequence. For example, assuming ``ndvar``'s first axis is time,
     ``ndvar[0.1]`` retrieves a slice at time = 0.1 s. If time is the second
@@ -2785,9 +2797,11 @@ class NDVar(object):
     ``ndvar.sub(time=0.1)``, regardless of which axis represents the time
     dimension.
 
-    *Shallow copies*: ``x`` and ``dims`` are stored without copying. A shallow
-    copy of ``info`` is stored. Make sure the relevant objects are not modified
-    externally later. When indexing an NDVar, the new NDVar will contain a view
+    *Shallow copies*: When generating a derived NDVars, :attr:`x` and
+    :attr:`dims` are generated without copying data whenever possible.
+    A shallow copy of :attr:`info` is stored. This means that modifying a
+    derived NDVar in place can affect the NDVar it was derived from.
+    When indexing an NDVar, the new NDVar will contain a view
     on the data whenever possible based on the underlying array (See `NumPy
     Indexing <https://docs.scipy.org/doc/numpy/reference/arrays.indexing
     .html>`_). This only matters when explicitly modifying an NDVar in place
@@ -3560,10 +3574,11 @@ class NDVar(object):
 
         Parameters
         ----------
-        v2 : NDVar, dims={[case, ?,] dim [, ?]}
+        ndvar : NDVar
             Second NDVar, has to have at least the dimension ``dim``.
         dim : str
-            Dimension which to multiple (default is the last dimension).
+            Dimension over which to form the dot product (default is the last
+            dimension).
         name : str
             Name of the output NDVar (default is ``ndvar.name``).
 
@@ -8865,9 +8880,9 @@ class UTS(Dimension):
 
     Parameters
     ----------
-    tmin : scalar
+    tmin : float
         First time point (inclusive).
-    tstep : scalar
+    tstep : float
         Time step between samples.
     nsamples : int
         Number of samples.
@@ -9180,7 +9195,7 @@ class UTS(Dimension):
             return Dimension._dim_index(self, arg)
 
     def intersect(self, dim, check_dims=True):
-        """Create a UTS dimension that is the intersection with dim
+        """Create a UTS dimension that is the intersection with ``dim``
 
         Parameters
         ----------

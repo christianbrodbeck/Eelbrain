@@ -379,8 +379,8 @@ class SensorMapMixin:
             Marker color(s).
         marker : str
             Marker style, default: ``'o'``.
-
-        (Matplotlib :func:`pyplot.scatter` parameters)
+        ... :
+            Matplotlib :func:`pyplot.scatter` parameters.
         """
         for p in self.__sensor_plots:
             p.mark_sensors(sensors, *args, **kwargs)

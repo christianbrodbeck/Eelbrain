@@ -819,8 +819,7 @@ The method for correcting the sensor covariance.
 'reg'
     Use the default regularization parameter (0.1).
 'auto'
-    Use automatic selection of the optimal regularization method (requires
-    mne-python 0.9).
+    Use automatic selection of the optimal regularization method.
 
 
 inv

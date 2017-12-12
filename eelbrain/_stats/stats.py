@@ -406,6 +406,8 @@ def variability(y, x, match, spec, pool, cells=None):
     pool : bool
         Pool the variability to create a single estimate (as opposed to one for
         each cell in x).
+    cells : list of cells
+        Estimate variance in these cells of ``x`` (default ``x.cells``).
 
     Returns
     -------
