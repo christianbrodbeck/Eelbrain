@@ -970,6 +970,8 @@ def _corr(y, x):
     assert len(x) == n
     df = n - 2
     r = np.corrcoef(y, x)[0, 1]
+    if r == 1:
+        return r, 0., df
     t = r / np.sqrt((1 - r ** 2) / df)
     p = scipy.stats.t.sf(np.abs(t), df) * 2
     return r, p, df
