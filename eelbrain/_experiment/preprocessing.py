@@ -9,6 +9,7 @@ from scipy import signal
 
 from .. import load
 from .._data_obj import NDVar
+from .._exceptions import DefinitionError
 from .._ndvar import filter_data
 from .._utils import ask
 from ..mne_fixes import CaptureLog
@@ -157,9 +158,20 @@ class CachedRawPipe(RawPipe):
 class RawFilter(CachedRawPipe):
 
     def __init__(self, name, source, path, log, args, kwargs):
+        if len(args) > 2:
+            raise DefinitionError(
+                "Raw filter args=%r; at most 2 parameters can be specified "
+                "without keywords; use keyword arguments for additional "
+                "parameters.")
         CachedRawPipe.__init__(self, name, source, path, log)
         self.args = args
         self.kwargs = kwargs
+        # mne backwards compatibility (fir_design default change 0.15 -> 0.16)
+        if kwargs.get('fir_design', None) is not None:
+            self._use_kwargs = kwargs
+        else:
+            self._use_kwargs = kwargs.copy()
+            self._use_kwargs['fir_design'] = 'firwin2'
 
     def as_dict(self):
         out = CachedRawPipe.as_dict(self)
@@ -168,13 +180,13 @@ class RawFilter(CachedRawPipe):
         return out
 
     def filter_ndvar(self, ndvar):
-        return filter_data(ndvar, *self.args, **self.kwargs)
+        return filter_data(ndvar, *self.args, **self._use_kwargs)
 
     def _make(self, subject, session):
         raw = self.source.load(subject, session, preload=True)
         self.log.debug("Raw %s: filtering for %s/%s...", self.name, subject,
                        session)
-        raw.filter(*self.args, **self.kwargs)
+        raw.filter(*self.args, **self._use_kwargs)
         return raw
 
 

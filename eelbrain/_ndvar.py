@@ -366,7 +366,7 @@ def dss(ndvar):
 def filter_data(ndvar, l_freq, h_freq, filter_length='auto',
                 l_trans_bandwidth='auto', h_trans_bandwidth='auto',
                 method='fir', iir_params=None, phase='zero',
-                fir_window='hamming'):
+                fir_window='hamming', fir_design=None):
     """Apply :func:`mne.filter.filter_data` to an NDVar
 
     Returns
@@ -384,7 +384,8 @@ def filter_data(ndvar, l_freq, h_freq, filter_length='auto',
 
     x = mne.filter.filter_data(
         data, sfreq, l_freq, h_freq, None, filter_length, l_trans_bandwidth,
-        h_trans_bandwidth, 1, method, iir_params, True, phase, fir_window
+        h_trans_bandwidth, 1, method, iir_params, True, phase, fir_window,
+        fir_design
     )
 
     if axis is not None:
