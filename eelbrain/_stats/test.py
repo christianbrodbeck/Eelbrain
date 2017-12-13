@@ -607,6 +607,10 @@ class TTestRel(object):
         Difference values.
     df : int
         Degrees of freedom.
+    c1_mean : float
+        Mean of condition ``c1``.
+    c0_mean : float
+        Mean of condition ``c0``.
     """
     def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0):
@@ -625,6 +629,8 @@ class TTestRel(object):
 
         self._y = dataobj_repr(ct.Y)
         self._x = dataobj_repr(ct.X)
+        self.c1_mean = ct.Y[:n].mean()
+        self.c0_mean = ct.Y[n:].mean()
         self.diff = ct.Y[:n] - ct.Y[n:]
         self.df = n - 1
         self.t = stats.t_1samp(self.diff.x[:, None])[0]
