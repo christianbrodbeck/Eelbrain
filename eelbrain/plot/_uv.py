@@ -668,12 +668,13 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
     main : numpy function
         draw lines to connect values across time (default: np.mean).
         Can be 'bar' for barplots or False.
-    spread : str
-        How to indicate data spread.
-        None: no indication;
+    error : str | False
+        How to indicate estimate error. For complete within-subject designs,
+        the within-subject measures are displayed (see Loftus & Masson, 1994).
+        Options:
         'box': boxplots;
-        '{x}sem': x standard error of the means (e.g. '2sem');
-        '{x}std': x standard deviations;
+        '[x]sem': x standard error of the means (e.g. 'sem', '2sem');
+        '[x]std': x standard deviations.
     x_jitter : bool
         When plotting error bars, jitter their location on the x-axis to
         increase readability.
@@ -714,11 +715,14 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
 
     def __init__(self, y, categories, time, match=None, sub=None, ds=None,
                  # data plotting
-                 main=np.mean, spread='sem', x_jitter=False,
+                 main=np.mean, error='sem', x_jitter=False,
                  bottom=None, top=None,
                  # labelling
                  ylabel=True, xlabel=True, timelabels=None, legend='upper right',
                  colors=None, hatch=False, markers=True, *args, **kwargs):
+        if 'spread' in kwargs:  # deprecated 0.27
+            raise ValueError("The `spread` argument has been removed from "
+                             "plot.Timeplot. Use the `error` argument instead")
         sub = assub(sub, ds)
         y = asvar(y, sub, ds)
         categories = ascategorial(categories, sub, ds)
@@ -729,16 +733,16 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
         # transform to 3 kwargs:
         # - local_plot ('bar' or 'box')
         # - line_plot (function for values to connect)
-        # - spread
+        # - error
         if main == 'bar':
-            assert spread != 'box'
+            assert error != 'box'
             local_plot = 'bar'
             line_plot = None
         else:
             line_plot = main
-            if spread == 'box':
+            if error == 'box':
                 local_plot = 'box'
-                spread = None
+                error = None
             else:
                 local_plot = None
 
@@ -764,7 +768,7 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
         self._configure_xaxis(time, xlabel)
 
         plot = _ax_timeplot(self._axes[0], y, categories, time, match, colors,
-                            hatch, markers, line_plot, spread, local_plot,
+                            hatch, markers, line_plot, error, local_plot,
                             timelabels, x_jitter, bottom, top)
 
         YLimMixin.__init__(self, (plot,))
@@ -778,7 +782,7 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
 class _ax_timeplot(object):
 
     def __init__(self, ax, y, categories, time, match, colors, hatch, markers,
-                 line_plot, spread, local_plot, timelabels, x_jitter, bottom,
+                 line_plot, error, local_plot, timelabels, x_jitter, bottom,
                  top):
         color_list = [colors[i] for i in categories.cells]
         # categories
@@ -791,11 +795,10 @@ class _ax_timeplot(object):
                       t in time_points]
         line_values = np.array([ct.get_statistic(line_plot) for ct in celltables]).T
         # all_within = all(ct.all_within for ct in celltables)
-        plot_spread = spread and all(ct.n_cases > ct.n_cells for ct in celltables)
-        if plot_spread:
-            spread_values = np.array([ct.get_statistic(spread) for ct in celltables]).T
+        if error and all(ct.n_cases > ct.n_cells for ct in celltables):
+            spread_values = np.array([ct.variability(error) for ct in celltables]).T
         else:
-            spread = spread_values = False
+            error = spread_values = False
 
         time_step = min(np.diff(time_points))
         if local_plot in ['box', 'bar']:
@@ -832,7 +835,7 @@ class _ax_timeplot(object):
                         zorder=-999)
                     ax.add_patch(patch)
             elif local_plot == 'bar':
-                _plt_barplot(ax, ct, spread, False, hatch, color_list, 0, left=pos,
+                _plt_barplot(ax, ct, error, False, hatch, color_list, 0, left=pos,
                              width=within_spacing, test=False)
 
         legend_handles = {}
@@ -865,7 +868,7 @@ class _ax_timeplot(object):
                                   zorder=6, marker=marker, mfc=mfc)
                 legend_handles[cell] = handles[0]
 
-                if spread:
+                if error:
                     if x_jitter:
                         x_errbars = x + rel_pos[i]
                     else:
@@ -900,7 +903,7 @@ class _ax_timeplot(object):
         # data-limits
         data_max = line_values.max()
         data_min = line_values.min()
-        if spread:
+        if error:
             max_spread = max(spread_values.max(), -spread_values.min())
             data_max += max_spread
             data_min -= max_spread
