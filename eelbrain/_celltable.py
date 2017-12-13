@@ -4,7 +4,7 @@ from itertools import combinations, izip
 import numpy as np
 
 from ._data_obj import (
-    NDVar,
+    NDVar, Case,
     ascategorial, asdataobject, assub, cellname, dataobj_repr,
 )
 from ._stats.stats import variability
@@ -320,3 +320,35 @@ class Celltable(object):
         .get_statistic : statistic in a list
         """
         return dict(izip(self.cells, self.get_statistic(func)))
+
+    def variability(self, error='sem', pool=None):
+        """Variability measure
+
+        Parameters
+        ----------
+        error : str
+            Measure of variability. Examples:
+            ``sem``: Standard error of the mean (default);
+            ``2sem``: 2 standard error of the mean;
+            ``ci``: 95% confidence interval;
+            ``99%ci``: 99% confidence interval (default).
+        pool : bool
+            Pool the errors for the estimate of variability (default is True
+            for complete within-subject designs, False otherwise).
+
+        Notes
+        -----
+        Returns within-subject standard error for complete within-subject
+        designs (see Loftus & Masson, 1994).
+        """
+        match = self.match if self.all_within else None
+        if pool is None:
+            pool = self.all_within
+        x = variability(self.Y.x, self.X, match, error, pool)
+        if isinstance(self.Y, NDVar):
+            dims = self.Y.dims[1:]
+            if not pool:
+                dims = (Case,) + dims
+            return NDVar(x, dims, self.Y.info.copy(), error)
+        else:
+            return x
