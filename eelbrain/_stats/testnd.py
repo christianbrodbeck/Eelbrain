@@ -450,23 +450,24 @@ class t_contrast_rel(_Result):
 
         # original data
         tmap = t_contrast.map(ct.Y.x)
-        t = NDVar(tmap, ct.Y.dims[1:], {}, 't')
 
         n_threshold_params = sum((pmin is not None, tmin is not None, tfce))
         if n_threshold_params == 0 and not samples:
+            t_threshold = None
             cdist = None
         elif n_threshold_params > 1:
             raise ValueError("Only one of pmin, tmin and tfce can be specified")
         else:
             if pmin is not None:
                 df = len(ct.match.cells) - 1
-                threshold = stats.ttest_t(pmin, df, tail)
+                t_threshold = threshold = stats.ttest_t(pmin, df, tail)
             elif tmin is not None:
-                threshold = abs(tmin)
+                t_threshold = threshold = abs(tmin)
             elif tfce:
                 threshold = 'tfce'
+                t_threshold = None
             else:
-                threshold = None
+                t_threshold = threshold = None
 
             cdist = _ClusterDist(ct.Y, samples, threshold, tail, 't',
                                  "t-contrast", tstart, tstop, criteria,
@@ -476,6 +477,11 @@ class t_contrast_rel(_Result):
                 iterator = permute_order(len(ct.Y), samples, unit=ct.match)
                 run_permutation(t_contrast, cdist, iterator,
                                 MP_FOR_NON_TOP_LEVEL_FUNCTIONS)
+
+        # NDVar map of t-values
+        info = _cs.stat_info('t', t_threshold, tail=tail)
+        info = _cs.set_info_cs(ct.Y.info, info)
+        t = NDVar(tmap, ct.Y.dims[1:], info, 't')
 
         # store attributes
         _Result.__init__(self, ct.Y, ct.match, sub, samples, tfce, pmin, cdist,
@@ -761,17 +767,19 @@ class ttest_1samp(_Result):
         n_threshold_params = sum((pmin is not None, tmin is not None, tfce))
         if n_threshold_params == 0 and not samples:
             cdist = None
+            t_threshold = None
         elif n_threshold_params > 1:
             raise ValueError("Only one of pmin, tmin and tfce can be specified")
         else:
             if pmin is not None:
-                threshold = stats.ttest_t(pmin, df, tail)
+                t_threshold = threshold = stats.ttest_t(pmin, df, tail)
             elif tmin is not None:
-                threshold = abs(tmin)
+                t_threshold = threshold = abs(tmin)
             elif tfce:
                 threshold = 'tfce'
+                t_threshold = None
             else:
-                threshold = None
+                t_threshold = threshold = None
 
             if popmean:
                 y_perm = ct.Y - popmean
@@ -787,11 +795,9 @@ class ttest_1samp(_Result):
                 run_permutation(opt.t_1samp_perm, cdist, iterator)
 
         # NDVar map of t-values
-        dims = ct.Y.dims[1:]
-        t0, t1, t2 = stats.ttest_t((.05, .01, .001), df, tail)
-        info = _cs.stat_info('t', t0, t1, t2, tail)
+        info = _cs.stat_info('t', t_threshold, tail=tail)
         info = _cs.set_info_cs(ct.Y.info, info)
-        t = NDVar(tmap, dims, info=info, name='T')
+        t = NDVar(tmap, ct.Y.dims[1:], info, 't')
 
         # store attributes
         _Result.__init__(self, ct.Y, ct.match, sub, samples, tfce, pmin, cdist,
@@ -814,7 +820,7 @@ class ttest_1samp(_Result):
         t = self.t
         pmap = stats.ttest_p(t.x, self.df, self.tail)
         info = _cs.set_info_cs(t.info, _cs.sig_info())
-        p_uncorr = NDVar(pmap, t.dims, info=info, name='p')
+        p_uncorr = NDVar(pmap, t.dims, info, 'p')
         self.p_uncorrected = p_uncorr
 
         if self.samples:
@@ -933,18 +939,19 @@ class ttest_ind(_Result):
 
         n_threshold_params = sum((pmin is not None, tmin is not None, tfce))
         if n_threshold_params == 0 and not samples:
-            cdist = None
+            t_threshold = cdist = None
         elif n_threshold_params > 1:
             raise ValueError("Only one of pmin, tmin and tfce can be specified")
         else:
             if pmin is not None:
-                threshold = stats.ttest_t(pmin, df, tail)
+                t_threshold = threshold = stats.ttest_t(pmin, df, tail)
             elif tmin is not None:
-                threshold = abs(tmin)
+                t_threshold = threshold = abs(tmin)
             elif tfce:
                 threshold = 'tfce'
+                t_threshold = None
             else:
-                threshold = None
+                t_threshold = threshold = None
 
             cdist = _ClusterDist(ct.Y, samples, threshold, tail, 't',
                                  'Independent Samples t-Test', tstart, tstop,
@@ -957,12 +964,10 @@ class ttest_ind(_Result):
                 run_permutation(test_func, cdist, iterator,
                                 MP_FOR_NON_TOP_LEVEL_FUNCTIONS)
 
-        dims = ct.Y.dims[1:]
-
-        t0, t1, t2 = stats.ttest_t((.05, .01, .001), df, tail)
-        info = _cs.stat_info('t', t0, t1, t2, tail)
+        # NDVar map of t-values
+        info = _cs.stat_info('t', t_threshold, tail=tail)
         info = _cs.set_info_cs(ct.Y.info, info)
-        t = NDVar(tmap, dims, info=info, name='T')
+        t = NDVar(tmap, ct.Y.dims[1:], info, 't')
 
         c1_mean = ct.data[c1].summary(name=cellname(c1))
         c0_mean = ct.data[c0].summary(name=cellname(c0))
@@ -1002,7 +1007,7 @@ class ttest_ind(_Result):
         # uncorrected p
         pmap = stats.ttest_p(t.x, self.df, self.tail)
         info = _cs.set_info_cs(t.info, _cs.sig_info())
-        p_uncorr = NDVar(pmap, t.dims, info=info, name='p')
+        p_uncorr = NDVar(pmap, t.dims, info, 'p')
         self.p_uncorrected = p_uncorr
 
         # composites
@@ -1148,18 +1153,19 @@ class ttest_rel(_Result):
 
         n_threshold_params = sum((pmin is not None, tmin is not None, tfce))
         if n_threshold_params == 0 and not samples:
-            cdist = None
+            t_threshold = cdist = None
         elif n_threshold_params > 1:
             raise ValueError("Only one of pmin, tmin and tfce can be specified")
         else:
             if pmin is not None:
-                threshold = stats.ttest_t(pmin, df, tail)
+                t_threshold = threshold = stats.ttest_t(pmin, df, tail)
             elif tmin is not None:
-                threshold = abs(tmin)
+                t_threshold = threshold = abs(tmin)
             elif tfce:
                 threshold = 'tfce'
+                t_threshold = None
             else:
-                threshold = None
+                t_threshold = threshold = None
 
             n_samples, samples = _resample_params(len(diff), samples)
             cdist = _ClusterDist(diff, n_samples, threshold, tail, 't',
@@ -1170,10 +1176,10 @@ class ttest_rel(_Result):
                 iterator = permute_sign_flip(n, samples)
                 run_permutation(opt.t_1samp_perm, cdist, iterator)
 
-        dims = ct.Y.dims[1:]
-        t0, t1, t2 = stats.ttest_t((.05, .01, .001), df, tail)
-        info = _cs.stat_info('t', t0, t1, t2, tail)
-        t = NDVar(tmap, dims, info=info, name='T')
+        # NDVar map of t-values
+        info = _cs.stat_info('t', t_threshold, tail=tail)
+        info = _cs.set_info_cs(ct.Y.info, info)
+        t = NDVar(tmap, ct.Y.dims[1:], info, 't')
 
         c1_mean = ct.data[c1].summary(name=cellname(c1))
         c0_mean = ct.data[c0].summary(name=cellname(c0))
@@ -1211,7 +1217,7 @@ class ttest_rel(_Result):
         # uncorrected p
         pmap = stats.ttest_p(t.x, self.df, self.tail)
         info = _cs.sig_info()
-        p_uncorr = NDVar(pmap, t.dims, info=info, name='p')
+        p_uncorr = NDVar(pmap, t.dims, info, 'p')
         self.p_uncorrected = p_uncorr
 
         # composites
@@ -1508,18 +1514,22 @@ class anova(_MultiEffectResult):
         n_threshold_params = sum((pmin is not None, fmin is not None, tfce))
         if n_threshold_params == 0 and not samples:
             cdists = None
+            f_thresholds = (None,) * len(effects)
         elif n_threshold_params > 1:
             raise ValueError("Only one of pmin, fmin and tfce can be specified")
         else:
             if pmin is not None:
-                thresholds = (stats.ftest_f(pmin, e.df, df_den) for e, df_den in
-                              izip(effects, dfs_denom))
+                f_thresholds = thresholds = tuple(
+                    stats.ftest_f(pmin, e.df, df_den) for e, df_den in
+                    izip(effects, dfs_denom))
             elif fmin is not None:
-                thresholds = (abs(fmin) for _ in xrange(len(effects)))
+                f_thresholds = thresholds = tuple(
+                    abs(fmin) for _ in xrange(len(effects)))
             elif tfce:
                 thresholds = ('tfce' for _ in xrange(len(effects)))
+                f_thresholds = (None,) * len(effects)
             else:
-                thresholds = (None for _ in xrange(len(effects)))
+                f_thresholds = thresholds = (None,) * len(effects)
 
             cdists = [_ClusterDist(Y, samples, thresh, 1, 'F', e.name, tstart,
                                    tstop, criteria, parc, force_permutation)
@@ -1538,11 +1548,10 @@ class anova(_MultiEffectResult):
         # create ndvars
         dims = Y.dims[1:]
         f = []
-        for e, fmap, df_den in izip(effects, fmaps, dfs_denom):
-            f0, f1, f2 = stats.ftest_f((0.05, 0.01, 0.001), e.df, df_den)
-            info = _cs.stat_info('f', f0, f1, f2)
-            f_ = NDVar(fmap, dims, info, e.name)
-            f.append(f_)
+        for e, fmap, df_den, f_threshold in izip(effects, fmaps, dfs_denom, f_thresholds):
+            info = _cs.stat_info('f', f_threshold, tail=1)
+            info = _cs.set_info_cs(Y.info, info)
+            f.append(NDVar(fmap, dims, info, e.name))
 
         # store attributes
         _MultiEffectResult.__init__(self, Y, match, sub_arg, samples, tfce, pmin,
@@ -2651,7 +2660,7 @@ class _ClusterDist:
                 param_contours[-threshold] = (0.7, 0, 0.7)
             info = _cs.stat_info(self.meas, contours=param_contours,
                                  summary_func=np.sum)
-            ds['cluster'] = NDVar(c_maps, dims, info=info)
+            ds['cluster'] = NDVar(c_maps, dims, info)
         else:
             ds.info['clusters'] = self.cluster_map
 
