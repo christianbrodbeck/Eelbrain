@@ -79,7 +79,7 @@ import numpy as np
 import PIL
 
 from .._config import CONFIG
-from .._utils import IS_WINDOWS, deprecated, intervals
+from .._utils import IS_WINDOWS, intervals
 from .._utils.subp import command_exists
 from ..fmtxt import Image
 from .._colorspaces import symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
@@ -2549,14 +2549,6 @@ class YLimMixin(object):
         vmin, vmax = self.get_ylim()
         d = (vmax - vmin) * (1 / 22)
         self.__animate(vmin, -d, vmax, d)
-
-    @deprecated('0.26', "Use .set_ylim() (with different arguments)")
-    def set_vlim(self, vmax=None, vmin=None):
-        if vmax is None:
-            return
-        elif vmin is None:
-            vmin = -vmax
-        self.set_ylim(vmin, vmax)
 
 
 class ImageTiler(object):

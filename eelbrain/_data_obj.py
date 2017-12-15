@@ -72,7 +72,7 @@ from ._exceptions import DimensionMismatchError, IncompleteModel
 from ._data_opt import gaussian_smoother
 from ._info import merge_info
 from ._utils import (
-    deprecated, deprecated_attribute, intervals, ui, LazyProperty, n_decimals,
+    deprecated_attribute, intervals, ui, LazyProperty, n_decimals,
     natsorted)
 from ._utils.numpy_utils import (
     apply_numpy_index, digitize_index, digitize_slice_endpoint, FULL_AXIS_SLICE,
@@ -1853,10 +1853,6 @@ class Var(object):
             idx = idx[::-1]
         return idx
 
-    @deprecated('0.23', sort_index)
-    def sort_idx(self):
-        pass
-
     def sum(self):
         "The sum over all values"
         return self.x.sum()
@@ -2030,10 +2026,6 @@ class _Effect(object):
             sort_idx = sort_idx[::-1]
 
         return sort_idx
-
-    @deprecated('0.23', sort_index)
-    def sort_idx(self):
-        pass
 
 
 class Factor(_Effect):
@@ -5711,10 +5703,6 @@ class Dataset(OrderedDict):
             raise ValueError(err)
 
         return order.sort_index(descending=descending)
-
-    @deprecated('0.23', sort_index)
-    def sort_idx(self):
-        pass
 
     def save(self):
         """Shortcut to save the Dataset, will display a system file dialog
