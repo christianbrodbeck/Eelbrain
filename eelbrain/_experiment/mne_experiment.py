@@ -84,6 +84,10 @@ from .test_def import (
 # current cache state version
 CACHE_STATE_VERSION = 8
 
+# paths
+LOG_FILE = join('{root}', 'eelbrain {name}.log')
+LOG_FILE_OLD = join('{root}', '.eelbrain.log')
+
 # Allowable parameters
 ICA_REJ_PARAMS = {'kind', 'source', 'epoch', 'interpolation', 'n_components',
                   'random_state', 'method'}
@@ -203,9 +207,6 @@ class CacheDict(dict):
 
 
 temp = {
-    'eelbrain-log-file': join('{root}', 'eelbrain {class-name}.log'),
-    'old-eelbrain-log-file': join('{root}', '.eelbrain.log'),
-
     # MEG
     'modality': ('', 'eeg', 'meeg'),
     'reference': ('', 'mastoids'),  # EEG reference
@@ -547,7 +548,6 @@ class MneExperiment(FileTree):
         self._subject_re = re.compile(self._subject_re)
         self._mri_subjects = self._mri_subjects.copy()
         self._templates = self._templates.copy()
-        self._templates['class-name'] = self.__class__.__name__
         # templates version
         if self.path_version is None:
             raise ValueError("%s.path_version is not set. This parameter needs "
@@ -769,7 +769,7 @@ class MneExperiment(FileTree):
                 raise ValueError("Cov %s has both epoch and session entry" % k)
             if params.difference(COV_PARAMS):
                 raise ValueError("Cov %s has unused entries: %s" %
-                                 ', '.join(params.difference(COV_PARAMS)))
+                                 (k, ', '.join(params.difference(COV_PARAMS))))
 
         ########################################################################
         # parcellations
@@ -903,25 +903,16 @@ class MneExperiment(FileTree):
         self._bind_cache('src-file', self.make_src)
         self._bind_cache('fwd-file', self.make_fwd)
 
-        # register experimental features
-        self._subclass_init()
-
-        # Check that the template model is complete
-        self._find_missing_fields()
-
-        # set initial values
-        self.set(**state)
-        self._store_state()
-
         ########################################################################
         # logger
         ########
         # log-file
         if root:
-            if exists(self.get('old-eelbrain-log-file')):
-                os.rename(self.get('old-eelbrain-log-file'),
-                          self.get('eelbrain-log-file'))
-            handler = logging.FileHandler(self.get('eelbrain-log-file'))
+            log_file = LOG_FILE.format(root=root, name=self.__class__.__name__)
+            log_file_old = LOG_FILE_OLD.format(root=root)
+            if exists(log_file_old):
+                os.rename(log_file_old, log_file)
+            handler = logging.FileHandler(log_file)
             formatter = logging.Formatter("%(levelname)-8s %(asctime)s %(message)s",
                                           "%m-%d %H:%M")  # %(name)-12s
             handler.setFormatter(formatter)
@@ -952,6 +943,19 @@ class MneExperiment(FileTree):
         if self.auto_delete_cache == 'disable':
             log.warn("Cache-management disabled")
             return
+
+        ########################################################################
+        # Finalize
+        ##########
+        # register experimental features
+        self._subclass_init()
+
+        # Check that the template model is complete
+        self._find_missing_fields()
+
+        # set initial values
+        self.set(**state)
+        self._store_state()
 
         ########################################################################
         # Cache
