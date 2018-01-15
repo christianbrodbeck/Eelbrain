@@ -158,7 +158,7 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
                    izip(xdata, ydata, offsets, color_iter)]
 
         if ylim is None:
-            ymin = ydata.min()
+            ymin = min(y.min() for y in ydata) if isinstance(ydata, tuple) else ydata.min()
             ylim = (ydata[0].min(), offset * ny)
         else:
             ymin, ymax = ylim
