@@ -699,7 +699,7 @@ def rename_dim(ndvar, old_name, new_name):
     return NDVar(ndvar.x, dims, ndvar.info.copy(), ndvar.name)
 
 
-def resample(ndvar, sfreq, npad=100, window='none'):
+def resample(ndvar, sfreq, npad=100, window='none', name=None):
     """Resample an NDVar along the 'time' dimension with appropriate filter
 
     Parameters
@@ -712,6 +712,8 @@ def resample(ndvar, sfreq, npad=100, window='none'):
         Number of samples to use at the beginning and end for padding.
     window : string | tuple
         See :func:`scipy.signal.resample` for description.
+    name : str
+        Name for the new NDVar (default is ``ndvar.name``).
 
     Notes
     -----
@@ -723,6 +725,8 @@ def resample(ndvar, sfreq, npad=100, window='none'):
     This function can be very slow when the number of time samples is uneven
     (see :func:`scipy.signal.resample`).
     """
+    if name is None:
+        name = ndvar.name
     axis = ndvar.get_axis('time')
     if window == 'none':
         new_tstep = 1. / sfreq
@@ -740,13 +744,13 @@ def resample(ndvar, sfreq, npad=100, window='none'):
         dims = (ndvar.dims[:axis] +
                 (UTS(ndvar.time.tmin, new_tstep, new_num),) +
                 ndvar.dims[axis + 1:])
-        return NDVar(x, dims, ndvar.info.copy(), ndvar.name)
+        return NDVar(x, dims, ndvar.info.copy(), name)
     old_sfreq = 1.0 / ndvar.time.tstep
     x = mne.filter.resample(ndvar.x, sfreq, old_sfreq, npad, axis, window)
     new_tstep = 1.0 / sfreq
     time = UTS(ndvar.time.tmin, new_tstep, x.shape[axis])
     dims = ndvar.dims[:axis] + (time,) + ndvar.dims[axis + 1:]
-    return NDVar(x, dims, ndvar.info, ndvar.name)
+    return NDVar(x, dims, ndvar.info, name)
 
 
 class Filter(object):
