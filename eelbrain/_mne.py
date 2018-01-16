@@ -19,6 +19,12 @@ ICO_N_VERTICES = (12, 42, 162, 642, 2562, 10242, 40962)
 ICO_SLICE_SUBJECTS = ('fsaverage', 'fsaverage_sym')
 
 
+def assert_subject_exists(subject, subjects_dir):
+    if not os.path.exists(os.path.join(subjects_dir, subject)):
+        raise IOError("Subject %s does not exist in subjects_dir %s" %
+                      (subject, subjects_dir))
+
+
 def complete_source_space(ndvar, fill=0.):
     """Fill in missing vertices on an NDVar with a partial source space
 
@@ -325,6 +331,7 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     src = source.src
     has_lh_out = bool(source.rh_n if xhemi else source.lh_n)
     has_rh_out = bool(source.lh_n if xhemi else source.rh_n)
+    assert_subject_exists(subject_to, subjects_dir)
     if vertices_to in (None, 'lh', 'rh'):
         default_vertices = source_space_vertices(source.kind, source.grade, subject_to, subjects_dir)
         lh_out = vertices_to == 'lh' or (vertices_to is None and has_lh_out)
