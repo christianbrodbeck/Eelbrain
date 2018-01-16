@@ -78,14 +78,30 @@ def test_sample():
             'modality': {(1, 2): 'auditory', (3, 4): 'visual'}
         }
         tests = {
-            'twostage': {'kind': 'two-stage',
-                         'stage 1': 'side_left + modality_a',
-                         'vars': {'side_left': "side == 'left'",
-                                  'modality_a': "modality == 'auditory'"}}
+            'twostage': {
+                'kind': 'two-stage',
+                'stage 1': 'side_left + modality_a',
+                'vars': {
+                    'side_left': "side == 'left'",
+                    'modality_a': "modality == 'auditory'",
+                }
+            },
+            'novars': {
+                'kind': 'two-stage',
+                'stage 1': 'side + modality'
+            },
         }
     e = Changed(root)
 
     # changed variable, while a test with model=None is not changed
+    class Changed(Changed):
+        variables = {
+            'side': {(1, 3): 'left', (2, 4): 'right_changed'},
+            'modality': {(1, 2): 'auditory', (3, 4): 'visual_changed'}
+        }
+    e = Changed(root)
+
+    # changed variable, unchanged test with vardef=None
     class Changed(Changed):
         variables = {
             'side': {(1, 3): 'left', (2, 4): 'right_changed'},

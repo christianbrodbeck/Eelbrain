@@ -114,8 +114,8 @@ def find_test_vars(params):
     if params['kind'] == 'two-stage':
         vs.update(find_variables(params['stage_1']))
 
-    if 'vars' in params:
-        vardef = params['vars']
+    vardef = params.get('vars', None)
+    if vardef is not None:
         if isinstance(vardef, dict):
             vardef = vardef.iteritems()
         elif isinstance(vardef, tuple):
