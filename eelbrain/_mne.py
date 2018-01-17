@@ -85,8 +85,8 @@ def labels_from_clusters(clusters, names=None):
     Parameters
     ----------
     clusters : NDVar
-        NDVar which is non-zero on the cluster. Can have a case dimension, but
-        does not have to.
+        NDVar which is non-zero on the cluster. Can have a case dimension to
+        define multiple labels (one label per case).
     names : None | list of str | str
         Label names corresponding to clusters (default is "cluster%i").
 
@@ -94,6 +94,10 @@ def labels_from_clusters(clusters, names=None):
     -------
     labels : list of mne.Label
         One label for each cluster.
+
+    See Also
+    --------
+    NDVar.label_clusters : clusters from thresholding data
     """
     from mne.label import _n_colors
 
@@ -104,7 +108,11 @@ def labels_from_clusters(clusters, names=None):
     source_space = clusters.source.get_source_space()
     subject = source.subject
     collapse = tuple(dim for dim in clusters.dimnames if dim not in ('case', 'source'))
-    clusters_index = clusters.any(collapse)
+    if collapse:
+        clusters_index = clusters.any(collapse)
+    else:
+        clusters_index = clusters != 0
+
     if clusters_index.has_case:
         n_clusters = len(clusters)
     else:

@@ -2,7 +2,10 @@
 from itertools import izip
 import os
 
-from nose.tools import eq_, ok_, assert_less_equal, assert_not_equal, assert_in
+from nose.tools import (
+    eq_, ok_, assert_less_equal, assert_not_equal,
+    assert_in, assert_is_instance,
+)
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 
@@ -13,7 +16,7 @@ from nibabel.freesurfer import read_annot
 from eelbrain import (
     datasets, load, testnd,
     Dataset, Factor,
-    concatenate, morph_source_space)
+    combine, concatenate, labels_from_clusters, morph_source_space)
 from eelbrain._data_obj import SourceSpace, asndvar, _matrix_graph
 from eelbrain._mne import shift_mne_epoch_trigger, combination_label
 from eelbrain._utils.testing import requires_mne_sample_data
@@ -21,6 +24,15 @@ from eelbrain.tests.test_data import assert_dataobj_equal
 
 data_dir = mne.datasets.testing.data_path()
 subjects_dir = os.path.join(data_dir, 'subjects')
+
+
+def assert_label_equal(l1, l2):
+    if isinstance(l1, mne.BiHemiLabel):
+        assert_is_instance(l2, mne.BiHemiLabel)
+        assert_labels_equal(l1.lh, l2.lh)
+        assert_labels_equal(l1.rh, l2.rh)
+    else:
+        assert_labels_equal(l1, l2)
 
 
 @requires_mne_sample_data
@@ -245,3 +257,22 @@ def test_source_space():
         ss2 = SourceSpace(vertices, subject, 'ico-4', subjects_dir, 'aparc')
         ss2sub = ss2[ss2._array_index('superiortemporal-rh')]
         assert_array_equal(sssub.connectivity(), ss2sub.connectivity())
+
+
+@requires_mne_sample_data
+def test_source_ndvar():
+    "Test NDVar with source dimension"
+    ds = datasets.get_mne_sample(-0.1, 0.1, src='ico', sub='index<=1')
+
+    # labels_from_cluster
+    v1, v2 = ds['src']
+    v1 = v1 * (v1 > 15)
+    labels1 = labels_from_clusters(v1)
+    eq_(len(labels1), 1)
+    labels1s = labels_from_clusters(v1.sum('time'))
+    eq_(len(labels1s), 1)
+    assert_label_equal(labels1s[0], labels1[0])
+    v2 = v2 * (v2 > 2)
+    labels2 = labels_from_clusters(combine((v1, v2)))
+    eq_(len(labels2), 2)
+    assert_label_equal(labels1[0], labels2[0])
