@@ -587,9 +587,10 @@ def xhemi(ndvar, mask=True, hemi='lh'):
     ----------
     ndvar : NDVar
         NDVar with SourceSpace dimension.
-    mask : bool
-        Restrict the output to cortical data-points (vertices contained in the
-        "cortex" label of ``fsaverage_sym``.
+    mask : bool | str
+        Restrict the output source space. The default (True) is to use the
+        parcellation from ``ndvar`` and remove all "unknown-" vertices. Can be
+        a string specifying another parcellation or label using "*.label".
     hemi : 'lh' | 'rh'
         Hemisphere onto which to morph the data.
 
@@ -601,6 +602,12 @@ def xhemi(ndvar, mask=True, hemi='lh'):
         Data from the right hemisphere on ``hemi`` of ``fsaverage_sym``.
     """
     other_hemi = 'rh' if hemi == 'lh' else 'lh'
+    if mask is True:
+        if ndvar.source.parc is None:
+            mask = 'cortex.label'
+        else:
+            mask = ndvar.source.parc.name
+
     if ndvar.source.subject == 'fsaverage_sym':
         ndvar_sym = ndvar
     else:
@@ -619,11 +626,19 @@ def xhemi(ndvar, mask=True, hemi='lh'):
         out_same.source.vertices, morph_mat, parc=False, xhemi=True)
 
     if mask:
-        path = os.path.join(ndvar.source.subjects_dir, 'fsaverage_sym', 'label',
-                            hemi + '.cortex.label')
-        label = mne.read_label(path)
-        out_same = out_same.sub(source=label)
-        out_other = out_other.sub(source=label)
+        if mask.endswith('.label'):
+            path = os.path.join(ndvar.source.subjects_dir, 'fsaverage_sym',
+                                'label', hemi + '.' + mask)
+            label = mne.read_label(path)
+            out_same = out_same.sub(source=label)
+            out_other = out_other.sub(source=label)
+        else:
+            out_same = set_parc(out_same, mask)
+            index = np.invert(out_same.source.parc.startswith('unknown-'))
+            out_same = out_same.sub(source=index)
+            out_other = set_parc(out_other, mask)
+            index = np.invert(out_other.source.parc.startswith('unknown-'))
+            out_other = out_other.sub(source=index)
 
     if hemi == 'lh':
         return out_same, out_other
