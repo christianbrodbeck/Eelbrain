@@ -5439,8 +5439,7 @@ class MneExperiment(FileTree):
                                               subjects_dir=self.get('mri-sdir'))
             else:
                 spacing = kind + param
-                sss = mne.setup_source_space(subject, fname=None,
-                                             spacing=spacing, add_dist=True,
+                sss = mne.setup_source_space(subject, spacing=spacing, add_dist=True,
                                              subjects_dir=self.get('mri-sdir'))
                 mne.write_source_spaces(dst, sss)
 
