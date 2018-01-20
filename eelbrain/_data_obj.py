@@ -8266,6 +8266,8 @@ class SourceSpace(Dimension):
         connection [i, j] with i < j, with rows sorted in ascending order. If
         the array's dtype is uint32, property checks are disabled to improve 
         efficiency.
+    name : str
+        Dimension name (default ``"source"``).
 
     Notes
     -----
@@ -8357,8 +8359,17 @@ class SourceSpace(Dimension):
         pass
 
     @classmethod
+    def from_file(cls, subjects_dir, subject, src, parc='aparc'):
+        """SourceSpace dimension from MNE source space file"""
+        filename = cls._SRC_PATH.format(subjects_dir=subjects_dir,
+                                        subject=subject, src=src)
+        source_spaces = mne.read_source_spaces(filename)
+        return cls.from_mne_source_spaces(source_spaces, src, subjects_dir, parc)
+
+    @classmethod
     def from_mne_source_spaces(cls, source_spaces, src, subjects_dir,
                                parc='aparc', label=None):
+        """SourceSpace dimension from MNE SourceSpaces object"""
         if label is None:
             vertices = [ss['vertno'] for ss in source_spaces]
         else:
