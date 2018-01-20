@@ -91,7 +91,8 @@ class BoostingResult(object):
     """
     def __init__(self, h, r, isnan, t_run, version, delta, mindelta, error,
                  spearmanr, fit_error, scale_data, y_mean, y_scale, x_mean,
-                 x_scale, y=None, x=None, tstart=None, tstop=None):
+                 x_scale, y=None, x=None, tstart=None, tstop=None,
+                 **experimental_parameters):
         self.h = h
         self.r = r
         self.isnan = isnan
@@ -111,10 +112,13 @@ class BoostingResult(object):
         self.x = x
         self.tstart = tstart
         self.tstop = tstop
+        self._experimental_parameters = experimental_parameters
 
     def __getstate__(self):
-        return {attr: getattr(self, attr) for attr in
-                getargspec(self.__init__).args[1:]}
+        state = {attr: getattr(self, attr) for attr in
+                 getargspec(self.__init__).args[1:]}
+        state.update(self._experimental_parameters)
+        return state
 
     def __setstate__(self, state):
         self.__init__(**state)
