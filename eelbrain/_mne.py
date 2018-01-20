@@ -2,6 +2,7 @@ from itertools import izip
 from math import ceil, floor
 import os
 import re
+import warnings
 
 import numpy as np
 import scipy as sp
@@ -288,7 +289,7 @@ def labels_from_mni_coords(seeds, extent=30., subject='fsaverage',
 
 
 def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
-                       copy=False, parc=True, xhemi=False):
+                       copy=False, parc=True, xhemi=False, mask=None):
     """Morph source estimate to a different MRI subject
 
     Parameters
@@ -317,6 +318,9 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     xhemi : bool
         Mirror hemispheres (i.e., project data from the left hemisphere to the
         right hemisphere and vice versa).
+    mask : bool
+        Remove sources in "unknown-" labels (default is True unless ``ndvar``
+        contains sources with "unknown-" label or ``vertices_to`` is specified).
 
     Returns
     -------
@@ -346,6 +350,11 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
         rh_out = vertices_to == 'rh' or (vertices_to is None and has_rh_out)
         vertices_to = [default_vertices[0] if lh_out else np.empty(0, int),
                        default_vertices[1] if rh_out else np.empty(0, int)]
+        if mask is None:
+            if source.parc is None:
+                mask = False
+            else:
+                mask = not np.any(source.parc.startswith('unknown-'))
     elif not isinstance(vertices_to, list) or not len(vertices_to) == 2:
         raise ValueError('vertices_to must be a list of length 2, got %r' %
                          (vertices_to,))
@@ -364,9 +373,11 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
 
     # parc for new source space
     if parc is True:
-        parc_to = source.parc.name if source.parc else None
+        parc_to = None if source.parc is None else source.parc.name
     else:
         parc_to = parc
+    if mask and parc_to is None:
+        raise ValueError("Can't mask source space without parcellation...")
     # check that annot files are available
     if parc_to:
         fname = SourceSpace._ANNOT_PATH.format(
@@ -380,14 +391,20 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
                 "%s. Use the parc parameter to change the parcellation. The "
                 "following files are missing:\n%s" %
                 (parc_to, subject_to, '\n'.join(missing)))
-
-    if subject_from == subject_to and _vertices_equal(source.vertices,
-                                                      vertices_to):
+    # catch in == out
+    if subject_from == subject_to and _vertices_equal(source.vertices, vertices_to):
         if copy:
             ndvar = ndvar.copy()
         if parc is not True:
             set_parc(ndvar, parc)
         return ndvar
+    # find target source space
+    source_to = SourceSpace(vertices_to, subject_to, src, subjects_dir, parc_to)
+    if mask is True:
+        index = np.invert(source_to.parc.startswith('unknown-'))
+        source_to = source_to[index]
+    elif mask not in (None, False):
+        raise TypeError("mask=%r" % (mask,))
 
     axis = ndvar.get_axis('source')
     x = ndvar.x
@@ -401,24 +418,23 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
             cfg = mne.coreg.read_mri_cfg(subject_from, subjects_dir)
             subject_from = cfg['subject_from']
             if (subject_to == subject_from and
-                    _vertices_equal(source.vertices, vertices_to)):
+                    _vertices_equal(source_to.vertices, source.vertices)):
                 if copy:
                     x_ = x.copy()
                 else:
                     x_ = x
-                vertices_to = source.vertices
                 do_morph = False
 
     if do_morph:
-        vertices_from = source.vertices
         if morph_mat is None:
-            morph_mat = mne.compute_morph_matrix(subject_from, subject_to,
-                                                 vertices_from, vertices_to,
-                                                 None, subjects_dir,
-                                                 xhemi=xhemi)
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', '\d+/\d+ vertices not included in smoothing', module='mne')
+                morph_mat = mne.compute_morph_matrix(
+                    subject_from, subject_to, source.vertices, source_to.vertices,
+                    None, subjects_dir, xhemi=xhemi)
         elif not sp.sparse.issparse(morph_mat):
             raise ValueError('morph_mat must be a sparse matrix')
-        elif not sum(len(v) for v in vertices_to) == morph_mat.shape[0]:
+        elif not sum(len(v) for v in source_to.vertices) == morph_mat.shape[0]:
             raise ValueError('morph_mat.shape[0] must match number of '
                              'vertices in vertices_to')
 
@@ -444,8 +460,7 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
             x_ = x_.swapaxes(axis, 0)
 
     # package output NDVar
-    source = SourceSpace(vertices_to, subject_to, src, subjects_dir, parc_to)
-    dims = ndvar.dims[:axis] + (source,) + ndvar.dims[axis + 1:]
+    dims = ndvar.dims[:axis] + (source_to,) + ndvar.dims[axis + 1:]
     info = ndvar.info.copy()
     return NDVar(x_, dims, info, ndvar.name)
 
@@ -585,22 +600,29 @@ def combination_label(name, exp, labels, subjects_dir):
     return out
 
 
-def xhemi(ndvar, mask=True, hemi='lh'):
-    """Project data from both hemispheres to ``hemi``.
+def xhemi(ndvar, mask=None, hemi='lh', parc=True):
+    """Project data from both hemispheres to ``hemi`` of fsaverage_sym
 
-    Return data from left and right hemisphere, both projected onto ``hemi``
-    of fsaverage_sym for interhemisphere comparisons.
+    Project data from both hemispheres to the same hemisphere for
+    interhemisphere comparisons. The fsaverage_sym brain is a symmetric
+    version of fsaverage to facilitate interhemisphere comparisons. It is
+    included with FreeSurfer > 5.1 and can be obtained as described `here
+    <http://surfer.nmr.mgh.harvard.edu/fswiki/Xhemi>`_. For statistical
+    comparisons between hemispheres, use of the symmetric ``fsaverage_sym``
+    model is recommended to minimize bias [1]_.
 
     Parameters
     ----------
     ndvar : NDVar
         NDVar with SourceSpace dimension.
-    mask : bool | str
-        Restrict the output source space. The default (True) is to use the
-        parcellation from ``ndvar`` and remove all "unknown-" vertices. Can be
-        a string specifying another parcellation or label using "*.label".
+    mask : bool
+        Remove sources in "unknown-" labels (default is True unless ``ndvar``
+        contains sources with "unknown-" label).
     hemi : 'lh' | 'rh'
         Hemisphere onto which to morph the data.
+    parc : bool | str
+        Parcellation for target source space; True to use same as in ``ndvar``
+        (default).
 
     Returns
     -------
@@ -608,45 +630,34 @@ def xhemi(ndvar, mask=True, hemi='lh'):
         Data from the left hemisphere on ``hemi`` of ``fsaverage_sym``.
     rh : NDVar
         Data from the right hemisphere on ``hemi`` of ``fsaverage_sym``.
+
+    References
+    ----------
+    .. [1] Greve D. N., Van der Haegen L., Cai Q., Stufflebeam S., Sabuncu M.
+           R., Fischl B., Brysbaert M.
+           A Surface-based Analysis of Language Lateralization and Cortical
+           Asymmetry. Journal of Cognitive Neuroscience 25(9), 1477-1492, 2013.
     """
     other_hemi = 'rh' if hemi == 'lh' else 'lh'
-    if mask is True:
-        if ndvar.source.parc is None:
-            mask = 'cortex.label'
-        else:
-            mask = ndvar.source.parc.name
 
     if ndvar.source.subject == 'fsaverage_sym':
         ndvar_sym = ndvar
     else:
-        ndvar_sym = morph_source_space(ndvar, 'fsaverage_sym', parc=False)
+        ndvar_sym = morph_source_space(ndvar, 'fsaverage_sym', parc=parc, mask=mask)
 
     vert_lh, vert_rh = ndvar_sym.source.vertices
     vert_from = [[], vert_rh] if hemi == 'lh' else [vert_lh, []]
     vert_to = [vert_lh, []] if hemi == 'lh' else [[], vert_rh]
-    morph_mat = mne.compute_morph_matrix(
-        'fsaverage_sym', 'fsaverage_sym', vert_from, vert_to,
-        subjects_dir=ndvar.source.subjects_dir, xhemi=True)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', '\d+/\d+ vertices not included in smoothing', module='mne')
+        morph_mat = mne.compute_morph_matrix(
+            'fsaverage_sym', 'fsaverage_sym', vert_from, vert_to,
+            subjects_dir=ndvar.source.subjects_dir, xhemi=True)
 
     out_same = ndvar_sym.sub(source=hemi)
     out_other = morph_source_space(
         ndvar_sym.sub(source=other_hemi), 'fsaverage_sym',
-        out_same.source.vertices, morph_mat, parc=False, xhemi=True)
-
-    if mask:
-        if mask.endswith('.label'):
-            path = os.path.join(ndvar.source.subjects_dir, 'fsaverage_sym',
-                                'label', hemi + '.' + mask)
-            label = mne.read_label(path)
-            out_same = out_same.sub(source=label)
-            out_other = out_other.sub(source=label)
-        else:
-            out_same = set_parc(out_same, mask)
-            index = np.invert(out_same.source.parc.startswith('unknown-'))
-            out_same = out_same.sub(source=index)
-            out_other = set_parc(out_other, mask)
-            index = np.invert(out_other.source.parc.startswith('unknown-'))
-            out_other = out_other.sub(source=index)
+        out_same.source.vertices, morph_mat, parc=parc, xhemi=True, mask=mask)
 
     if hemi == 'lh':
         return out_same, out_other
