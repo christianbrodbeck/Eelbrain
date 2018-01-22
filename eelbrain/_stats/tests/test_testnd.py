@@ -12,7 +12,7 @@ import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 
 import eelbrain
-from eelbrain import (NDVar, Categorial, Scalar, UTS, Sensor, configure,
+from eelbrain import (Dataset, NDVar, Categorial, Scalar, UTS, Sensor, configure,
                       datasets, testnd, set_log_level, cwt_morlet)
 from eelbrain._exceptions import ZeroVariance
 from eelbrain._stats.testnd import (Connectivity, _ClusterDist, label_clusters,
@@ -549,6 +549,14 @@ def test_ttest_rel():
                            ds=ds, samples=100)
     eq_(repr(res), "<ttest_rel 'uts', 'A x B', ('a1', 'b1'), ('a0', 'b0'), "
                    "'rm' (n=15), samples=100, p >= 0.000>")
+
+    # alternate argspec
+    ds1 = Dataset()
+    ds1['a1b1'] = ds.eval("uts[A%B == ('a1', 'b1')]")
+    ds1['a0b0'] = ds.eval("uts[A%B == ('a0', 'b0')]")
+    res1 = testnd.ttest_rel('a1b1', 'a0b0', ds=ds1, samples=100)
+    assert_dataobj_equal(res1.t, res.t)
+    eq_(repr(res1), "<ttest_rel 'a1b1', 'a0b0' (n=15), samples=100, p >= 0.000>")
 
     # persistence
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)

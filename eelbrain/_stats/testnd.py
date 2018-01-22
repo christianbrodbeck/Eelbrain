@@ -1059,8 +1059,10 @@ class ttest_rel(_Result):
     ----------
     Y : NDVar
         Dependent variable.
-    X : categorial
-        Model containing the cells which should be compared.
+    X : categorial | NDVar
+        Model containing the cells which should be compared, or NDVar to which
+        ``Y`` should be compared. In the latter case, the next three parameters
+        are ignored.
     c1 : str | tuple | None
         Test condition (cell of ``X``). ``c1`` and ``c0`` can be omitted if
         ``X`` only contains two cells, in which case cells will be used in
@@ -1135,21 +1137,39 @@ class ttest_rel(_Result):
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=0, pmin=None, tmin=None, tfce=False,
                  tstart=None, tstop=None, parc=None, force_permutation=False, **criteria):
-        if match is None:
+        if isinstance(X, NDVar) or isinstance(X, basestring) and X in ds and isinstance(ds[X], NDVar):
+            assert c1 is None
+            assert c0 is None
+            assert match is None
+            y1 = asndvar(Y, sub, ds)
+            n = len(y1)
+            y0 = asndvar(X, sub, ds, n)
+            c1_name = y1.name
+            c0_name = y0.name
+            x_name = y0.name
+        elif match is None:
             raise TypeError("The `match` argument needs to be specified for a "
                             "related measures t-test.")
-        ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar,
-                       dtype=np.float64)
-        c1, c0 = ct.cat
-        if not ct.all_within:
-            raise ValueError("conditions %r and %r do not have the same values "
-                             "on %s" % (c1, c0, dataobj_repr(ct.match)))
+        else:
+            ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar,
+                           dtype=np.float64)
+            c1, c0 = ct.cat
+            c1_name = c1
+            c0_name = c0
+            if not ct.all_within:
+                raise ValueError("conditions %r and %r do not have the same values "
+                                 "on %s" % (c1, c0, dataobj_repr(ct.match)))
 
-        n = len(ct.Y) // 2
+            n = len(ct.Y) // 2
+            y1 = ct.Y[:n]
+            y0 = ct.Y[n:]
+            x_name = ct.X.name
+            match = ct.match
+
         if n <= 2:
             raise ValueError("Not enough observations for t-test (n=%i)" % n)
         df = n - 1
-        diff = ct.Y[:n] - ct.Y[n:]
+        diff = y1 - y0
         tmap = stats.t_1samp(diff.x)
 
         n_threshold_params = sum((pmin is not None, tmin is not None, tfce))
@@ -1179,16 +1199,13 @@ class ttest_rel(_Result):
 
         # NDVar map of t-values
         info = _cs.stat_info('t', t_threshold, tail=tail)
-        info = _cs.set_info_cs(ct.Y.info, info)
-        t = NDVar(tmap, ct.Y.dims[1:], info, 't')
-
-        c1_mean = ct.data[c1].summary(name=cellname(c1))
-        c0_mean = ct.data[c0].summary(name=cellname(c0))
+        info = _cs.set_info_cs(y1.info, info)
+        t = NDVar(tmap, y1.dims[1:], info, 't')
 
         # store attributes
-        _Result.__init__(self, ct.Y, ct.match, sub, samples, tfce, pmin, cdist,
+        _Result.__init__(self, y1, match, sub, samples, tfce, pmin, cdist,
                          tstart, tstop)
-        self.X = ct.X.name
+        self.X = x_name
         self.c0 = c0
         self.c1 = c1
         self.tail = tail
@@ -1197,8 +1214,8 @@ class ttest_rel(_Result):
         self.n = n
         self.df = df
 
-        self.c1_mean = c1_mean
-        self.c0_mean = c0_mean
+        self.c1_mean = y1.mean('case', name=cellname(c1_name))
+        self.c0_mean = y0.mean('case', name=cellname(c0_name))
         self.t = t
 
         self._expand_state()
@@ -1252,8 +1269,10 @@ class ttest_rel(_Result):
         return "(%s).isin(%s)" % (self.X, (self.c1, self.c0))
 
     def _repr_test_args(self):
-        args = [repr(self.Y), repr(self.X), repr(self.c1), repr(self.c0),
-                "%r (n=%i)" % (self.match, self.n)]
+        args = [repr(self.Y), repr(self.X)]
+        if self.c1 is not None:
+            args.extend((repr(self.c1), repr(self.c0), repr(self.match)))
+        args[-1] += " (n=%i)" % self.n
         if self.tail:
             args.append("tail=%i" % self.tail)
         return args
