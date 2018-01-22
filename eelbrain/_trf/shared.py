@@ -111,7 +111,7 @@ class RevCorrData(object):
             y_check = y_data.var(1)
             x_check = x_data.var(1)
         # check for flat data
-        zero_var = [y.name] if np.any(y_check == 0) else []
+        zero_var = [y.name or 'y'] if np.any(y_check == 0) else []
         zero_var.extend(x_name[i] for i, v in enumerate(x_check) if v == 0)
         if zero_var:
             raise ValueError("Flat data: " + ', '.join(zero_var))
