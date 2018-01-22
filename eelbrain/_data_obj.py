@@ -7296,6 +7296,131 @@ class Case(Dimension):
         return arg
 
 
+class Space(Dimension):
+    """Represent multiple directions in space
+
+    Parameters
+    ----------
+    directions : str
+        A sequence of directions, each indicated by a single capitalized
+        character, from the following set: [A]nterior, [P]osterior, [L]eft,
+        [R]ight, [S]uperior and [I]nferior.
+    name : str
+        Dimension name.
+
+    Notes
+    -----
+    Connectivity is set to ``'none'``, but :class:`Space` is not a valid
+    dimension to treat as mass-univariate.
+    """
+
+    _DIRECTIONS = {
+        'A': 'anterior',
+        'P': 'posterior',
+        'L': 'left',
+        'R': 'right',
+        'S': 'superior',
+        'I': 'inferior',
+    }
+
+    def __init__(self, directions, name='space'):
+        if not isinstance(directions, str):
+            raise TypeError("directions=%r" % (directions,))
+        n = len(directions)
+        all_directions = set(directions)
+        if len(all_directions) != n:
+            raise ValueError("directions=%r contains duplicate direction"
+                             % (directions,))
+        invalid = all_directions.difference(self._DIRECTIONS)
+        if invalid:
+            raise ValueError("directions=%r contains invalid directions: %s"
+                             % (directions, ', '.join(map(repr, invalid))))
+        Dimension.__init__(self, name, 'none')
+        self._directions = directions
+
+    def __getstate__(self):
+        out = Dimension.__getstate__(self)
+        out['directions'] = self._directions
+        return out
+
+    def __setstate__(self, state):
+        Dimension.__setstate__(self, state)
+        self._directions = state['directions']
+
+    def __repr__(self):
+        return "Space(%r)" % self._directions
+
+    def __len__(self):
+        return len(self._directions)
+
+    def __eq__(self, other):
+        return isinstance(other, Space) and other._directions == self._directions
+
+    def __getitem__(self, item):
+        if not all(i in self._directions for i in item):
+            raise IndexError(item)
+        return Space(item)
+
+    def __iter__(self):
+        return iter(self._directions)
+
+    def _axis_format(self, scalar, label):
+        # like Categorial
+        return (IndexFormatter(self._directions),
+                FixedLocator(np.arange(len(self._directions))),
+                self._axis_label(label))
+
+    def _array_index(self, arg):
+        if isinstance(arg, str) and len(arg) == 1:
+            return self._directions.index(arg)
+        elif isinstance(arg, tuple):
+            return slice(*map(self._array_index, arg)) if arg else FULL_SLICE
+        elif isinstance(arg, slice):
+            return slice(
+                None if arg.start is None else self._array_index(arg.start),
+                None if arg.stop is None else self._array_index(arg.stop),
+                arg.step)
+        else:
+            return [self._directions.index(s) for s in arg]
+
+    def _dim_index(self, arg):
+        if isinstance(arg, Integral):
+            return self._directions[arg]
+        else:
+            return ''.join(self._directions[i] for i in arg)
+
+    def intersect(self, dim, check_dims=True):
+        """Create a dimension object that is the intersection with dim
+
+        Parameters
+        ----------
+        dim : Space
+            Dimension to intersect with.
+        check_dims : bool
+            Check dimensions for consistency.
+
+        Returns
+        -------
+        intersection : Space
+            The intersection with ``dim`` (returns itself if ``dim`` and
+            ``self`` are equal)
+        """
+        if self.name != dim.name:
+            raise DimensionMismatchError("Dimensions don't match")
+        elif self._directions == dim._directions:
+            return self
+        self_dirs = set(self._directions)
+        dim_dirs = set(dim._directions)
+        out_dirs = self_dirs.intersection(dim_dirs)
+        if self_dirs == out_dirs:
+            return self
+        elif dim_dirs == out_dirs:
+            return dim
+        else:
+            directions = ''.join(c for c in self._directions if c in dim._directions)
+            return Space(directions, self.name)
+
+
 class Categorial(Dimension):
     """Simple categorial dimension
 
