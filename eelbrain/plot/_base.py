@@ -626,7 +626,9 @@ def unpack_epochs_arg(y, dims, xax=None, ds=None, sub=None):
                 "a single NDVar (got y=%r)." % (y,))
         axes = []
         for ax in y:
-            if isinstance(ax, (tuple, list)):
+            if ax is None:
+                axes.append(None)
+            elif isinstance(ax, (tuple, list)):
                 layers = []
                 for layer in ax:
                     layer = asndvar(layer, sub, ds)
@@ -643,6 +645,8 @@ def unpack_epochs_arg(y, dims, xax=None, ds=None, sub=None):
         x_name = None
         y_names = []
         for layers in axes:
+            if layers is None:
+                continue
             for layer in layers:
                 if layer.name and layer.name not in y_names:
                     y_names.append(layer.name)
@@ -1441,8 +1445,9 @@ class Layout(BaseLayout):
 
         Parameters
         ----------
-        nax : int
-            Number of axes required.
+        nax : int | list
+            Number of axes required. If provided as a list, axes are only added
+            for items where ``bool(item)`` is True.
         ax_aspect : scalar
             Width / height aspect of the axes.
         axh_default : scalar
@@ -1512,6 +1517,16 @@ class Layout(BaseLayout):
 
         h_is_implicit = h is None
         w_is_implicit = w is None
+
+        if nax is None:
+            axes = None
+        elif isinstance(nax, int):
+            axes = range(nax)
+        elif isinstance(nax, (list, tuple)):
+            axes = [i for i, ax in enumerate(nax) if ax]
+            nax = len(nax)
+        else:
+            raise TypeError("nax=%r" % (nax,))
 
         if not nax:
             if w is None:
@@ -1610,6 +1625,7 @@ class Layout(BaseLayout):
         BaseLayout.__init__(self, h, w, dpi, tight, show, run, autoscale,
                             title, name)
         self.nax = nax
+        self.axes = axes
         self.axh = axh
         self.axw = axw
         self.nrow = nrow
@@ -1639,8 +1655,8 @@ class Layout(BaseLayout):
             return []
         axes = []
         kwargs = {}
-        for i in xrange(1, self.nax + 1):
-            ax = figure.add_subplot(self.nrow, self.ncol, i,
+        for i in self.axes:
+            ax = figure.add_subplot(self.nrow, self.ncol, i + 1,
                                     autoscale_on=self.autoscale, **kwargs)
             axes.append(ax)
             if self.share_axes:

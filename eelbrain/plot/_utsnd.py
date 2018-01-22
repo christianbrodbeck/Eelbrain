@@ -464,7 +464,8 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
         epochs, (xdim, linedim), data_desc = _base.unpack_epochs_arg(
             epochs, (x, None), xax, ds, sub
         )
-        layout = Layout(len(epochs), 2, 4, *args, **kwargs)
+        layout = Layout(epochs, 2, 4, *args, **kwargs)
+        epochs = filter(None, epochs)
         EelFigure.__init__(self, data_desc, layout)
         self._set_axtitle(axtitle, epochs)
         e0 = epochs[0][0]
