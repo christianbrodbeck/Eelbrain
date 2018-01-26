@@ -622,6 +622,31 @@ class ImageTable(EelFigure, ColorBarMixin):
     def _fill_toolbar(self, tb):
         ColorBarMixin._fill_toolbar(self, tb)
 
+    def add_row_titles(self, titles, x=0.1, y=0, **kwargs):
+        """Add a title for each row of images
+
+        Parameters
+        ----------
+        titles : sequence of str
+            Titles, from top to bottom.
+        x : scalar
+            Horizontal distance from left of the figure.
+        y : scalar
+            Vertical distance from the top of the axes.
+        ...
+            Matplotlib text parameters.
+        """
+        if len(titles) > self._n_rows:
+            raise ValueError("%i titles for %i rows: titles=%r" %
+                             (len(titles), self._n_rows))
+        y_top = self._layout.margins['top'] - y
+        y_offset = self._layout.margins['hspace'] + self._layout.axh
+        x_ = x / self._layout.w
+        for i, label in enumerate(titles):
+            y_ = 1 - (y_top + i * y_offset) / self._layout.h
+            self.figure.text(x_, y_, label, **kwargs)
+        self.draw()
+
 
 class _BinTable(EelFigure, ColorBarMixin):
     """Super-class"""
