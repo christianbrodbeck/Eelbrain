@@ -10,7 +10,7 @@ import mne
 from nibabel.freesurfer import read_annot
 import numpy as np
 
-from .._data_obj import asndvar, NDVar, SourceSpace
+from .._data_obj import asndvar, NDVar, SourceSpace, UTS
 from .._utils import deprecated
 from ..fmtxt import Image, im_table, ms
 from ._base import EelFigure, ImLayout, ColorBarMixin
@@ -590,7 +590,7 @@ class ImageTable(EelFigure, ColorBarMixin):
     #
     #  1) Initialize class to generate layout
     #  2) Use ._res_h and ._res_w to generate images
-    #  3) Finalize bu calling ._add_ims()
+    #  3) Finalize by calling ._add_ims()
     #
 
     def __init__(self, n_rows, n_columns, title=None, margins=None, *args, **kwargs):
@@ -604,16 +604,17 @@ class ImageTable(EelFigure, ColorBarMixin):
         self._res_w = int(round(layout.axw * layout.dpi))
         self._res_h = int(round(layout.axh * layout.dpi))
 
-    def _add_ims(self, ims, header, cmap_params, cmap_data):
+    def _add_ims(self, ims, column_header, cmap_params, cmap_data):
         for row, column in product(xrange(self._n_rows), xrange(self._n_columns)):
             ax = self._axes[row * self._n_columns + column]
             ax.imshow(ims[row][column])
 
-        # time labels
-        y = 0.25 / self._layout.h
-        for i, label in enumerate(header):
-            x = (0.5 + i) / self._layout.ncol
-            self.figure.text(x, y, label, va='center', ha='center')
+        # column header (time labels)
+        if column_header:
+            y = 0.25 / self._layout.h
+            for i, label in enumerate(column_header):
+                x = (0.5 + i) / self._layout.ncol
+                self.figure.text(x, y, label, va='center', ha='center')
 
         ColorBarMixin.__init__(self, lambda: cmap_params, cmap_data)
         self._show()
@@ -970,35 +971,18 @@ def _bin_table_ims(data, hemi, views, brain_func):
 
 
 class SequencePlotter(object):
-    """Plot multiple images of the same data
+    """Grid of anatomical images in one figure
 
-    Parameters
-    ----------
-    source : SourceSpace
-        Source space which to plot.
-    surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
-        Freesurfer surface to use as brain geometry.
-    w, h : scalar
-        Layout parameters (figure width/height).
-    foreground : mayavi color
-        Figure foreground color (i.e., the text color).
-    background : mayavi color
-        Figure background color.
-    parallel : bool
-        Set views to parallel projection (default ``True``).
-    cortex : str | tuple | dict
-        Mark gyri and sulci on the cortex. Presets: ``'classic'`` (default), 
-        ``'high_contrast'``, ``'low_contrast'``, ``'bone'``. Can also be a 
-        single color (e.g. ``'red'``, ``(0.1, 0.4, 1.)``) or a tuple of two 
-        colors for gyri and sulci (e.g. ``['red', 'blue']`` or ``[(1, 0, 0), 
-        (0, 0, 1)]``). For all options see the PySurfer documentation.
-    smoothing_steps : None | int
-        Number of smoothing steps if data is spatially undersampled (pysurfer
-        ``Brain.add_data()`` argument).
-    mask : bool
-        Shade areas that are not in ``src``.
-    subjects_dir : None | str
-        Override the subjects_dir associated with the source space dimension.
+    Example
+    -------
+    Plotting an evoked response in 50 ms bins:
+
+    >>> ndvar_binned = ndvar.bin(0.05, 0, 0.3, 'extrema')
+    >>> sp = SequencePlotter()
+    >>> sp.set_brain_args(surf='smoothwm')
+    >>> sp.add_ndvar(ndvar_binned)
+    >>> p = sp.plot_table(view='lateral')
+    >>> p.save('Figure.pdf')
     """
     max_n_bins = 25
 
@@ -1009,13 +993,31 @@ class SequencePlotter(object):
         self._bins = None
         self._brain_args = {}
 
-    def set_brain_args(self, surf='smoothwm', foreground=None, background=None,
+    def set_brain_args(self, surf='inflated', foreground=None, background=None,
                        parallel=True, cortex='classic', mask=True):
+        """Set parameters for anatomical plot
+
+        For parameter descriptions see :func:`plot.brain.brain`.
+        """
         self._brain_args = {
             'surf': surf, 'foreground': foreground, 'background': background,
             'parallel': parallel, 'cortex': cortex, 'mask': mask}
 
     def add_ndvar(self, ndvar, *args, **kwargs):
+        """Add a data layer to the brain plot
+
+        Multiple data layers can be added sequentially, but each additional
+        layer needs to have a time dimension that is compatible with previous
+        layers (or no time dimension).
+
+        Parameters
+        ----------
+        ndvar : NDVar
+            Data to add. ``Source`` dimension only for a static layer,
+            additional ``time`` or ``case`` dimension for dynamic layers.
+        ...
+            :meth:`~plot._brain_object.Brain.add_ndvar` parameters.
+        """
         source = ndvar.get_dim('source')
         if self._source is None:
             self._source = source
@@ -1029,45 +1031,78 @@ class SequencePlotter(object):
                              (source.subjects_dir, self._source.subjects_dir))
 
         if ndvar.has_dim('time'):
+            time_dim = ndvar.time
+        elif ndvar.has_case:
+            time_dim = ndvar.dims[0]
+        else:
+            time_dim = None
+
+        if time_dim is not None:
             if self._time is None:
-                if len(ndvar.time) > self.max_n_bins:
+                if len(time_dim) > self.max_n_bins:
                     raise ValueError(
-                        "Trying to plot %i time bins. If this is intentional, "
+                        "Trying to plot %s with %i bins. If this is intentional, "
                         "set SequencePlotter.max_n_bins to a larger value." %
-                        (len(ndvar.time,)))
-                self._time = ndvar.time
-            elif not ndvar.time == self._time:
-                raise ValueError("Incompatible time axes")
+                        (time_dim, len(time_dim)))
+                self._time = time_dim
+            elif time_dim != self._time:
+                raise ValueError("New axis %s is incompatible with previously "
+                                 "set axis %s" % (time_dim, self._time))
 
             if self._bins is None and 'bins' in ndvar.info:
                 self._bins = ndvar.info['bins']
 
         self._data.append(('data', ndvar, args, kwargs))
 
+    def _bin_labels(self):
+        if self._bins is not None:
+            return ['%i - %i ms' % (ms(t0), ms(t1)) for t0, t1 in self._bins]
+        elif isinstance(self._time, UTS):
+            return ['%i ms' % ms(t) for t in self._time]
+        else:
+            return False
+
     def plot_table(self, hemi=('lh', 'rh'), view=('lateral', 'medial'),
-                   *args, **kwargs):
+                   orientation='horizontal', column_header=None, *args, **kwargs):
         """Add ims to a figure
 
         Parameters
         ----------
-        figure : _ImTable
-            Figure to which to add images.
+        hemi : str | list of str
+            Hemispheres to plot.
+        view : str | list of {str | tuple}
+            Views to plot. A view can be specified as a string, or as a tuple
+            including parallel-view parameters ``(view, forward, up, scale)``,
+            e.g., ``('lateral', 0, 10, 70)``.
+        orientation : 'vertical' | 'horizontal'
+            Direction of the time/case axis.
         """
-        if self._time is None:
+        if not self._data:
+            raise RuntimeError("No data")
+        elif self._time is None:
             raise RuntimeError("No data with time axis")
-
-        if isinstance(hemi, basestring):
-            hemis = (hemi,)
-        else:
-            hemis = hemi
-
+        hemis = (hemi,) if isinstance(hemi, basestring) else hemi
         if isinstance(view, basestring):
+            views = (view,)
+        elif len(view) > 1 and not isinstance(view[1], basestring):
             views = (view,)
         else:
             views = view
 
-        figure = ImageTable(len(hemis) * len(views), len(self._time), *args,
-                            **kwargs)
+        n_views = len(hemis) * len(views)
+        n_bins = len(self._time)
+        if orientation == 'horizontal':
+            n_columns = n_bins
+            n_rows = n_views
+            transpose = False
+        elif orientation == 'vertical':
+            n_columns = n_views
+            n_rows = n_bins
+            transpose = True
+        else:
+            raise ValueError("orientation=%r" % (orientation,))
+
+        figure = ImageTable(n_rows, n_columns, *args, **kwargs)
 
         im_rows = []
         cmap_params = None
@@ -1076,37 +1111,39 @@ class SequencePlotter(object):
             hemi_rows = [[] for _ in views]
 
             # plot brain
-            b = brain(self._source, hemi=hemi, views=views[0], w=figure._res_w,
+            b = brain(self._source, hemi=hemi, views='lateral', w=figure._res_w,
                       h=figure._res_h, time_label='', **self._brain_args)
             # add data layers
-            for layer in self._data:
-                if layer[0] == 'data':
-                    ndvar, args, kwargs = layer[1:]
+            for layer, ndvar, args, kwargs in self._data:
+                if layer == 'data':
                     b.add_ndvar(ndvar, *args, time_label='', **kwargs)
                 else:
-                    raise RuntimeError("Data of kind %r" % (layer[0],))
+                    raise RuntimeError("%r data layer" % (layer,))
             b.set_parallel_view(scale=True)
 
             # capture images
             for i in xrange(len(self._time)):
                 b.set_data_time_index(i)
                 for row, view in izip(hemi_rows, views):
-                    b.show_view(view)
+                    if isinstance(view, basestring):
+                        b.show_view(view)
+                    else:
+                        b.show_view(view[0])
+                        b.set_parallel_view(*view[1:])
                     row.append(b.screenshot_single('rgba', True))
             im_rows += hemi_rows
 
             if cmap_params is None:
                 cmap_params = b._get_cmap_params()
-                cmap_data = self._data[-1][1]
+                cmap_data = ndvar
             b.close()
 
-        # table header
-        if self._bins is None:
-            header = ['%i ms' % ms(t) for t in self._time]
-        else:
-            header = ['%i - %i ms' % (ms(t0), ms(t1)) for t0, t1 in self._bins]
+        if column_header is None and orientation == 'horizontal':
+            column_header = self._bin_labels()
 
-        figure._add_ims(im_rows, header, cmap_params, cmap_data)
+        if transpose:
+            im_rows = zip(*im_rows)
+        figure._add_ims(im_rows, column_header, cmap_params, cmap_data)
         return figure
 
 
