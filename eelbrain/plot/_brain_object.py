@@ -356,15 +356,9 @@ class Brain(TimeSlicer, surfer.Brain):
         if remove_existing:
             self.remove_data()
 
-        # make sure time axis is compatible with existing data
+        # find ndvar time axis
         if ndvar.has_dim('time'):
-            if self._time_dim is None:
-                self._set_time_dim(ndvar.time)
-            elif self._time_dim != ndvar.time:
-                raise ValueError(
-                    "The brain already displays an NDVar with incompatible "
-                    "time dimension (current: %s;  new: %s)" %
-                    (self._time_dim, ndvar.time))
+            time_dim = ndvar.time
             times = ndvar.time.times
             data_dims = (source.name, 'time')
             if time_label == 'ms':
@@ -373,9 +367,23 @@ class Brain(TimeSlicer, surfer.Brain):
                 time_label = '%.3f s'
             elif time_label is False:
                 time_label = None
+        elif ndvar.has_case:
+            time_dim = ndvar.dims[0]
+            times = np.arange(len(ndvar))
+            data_dims = (source.name, 'case')
+            time_label = None
         else:
-            times = None
+            time_dim = times = None
             data_dims = (source.name,)
+        # make sure time axis is compatible with existing data
+        if time_dim is not None:
+            if self._time_dim is None:
+                self._set_time_dim(time_dim)
+            elif time_dim != self._time_dim:
+                raise ValueError(
+                    "The brain already displays an NDVar with incompatible "
+                    "time dimension (current: %s;  new: %s)" %
+                    (self._time_dim, time_dim))
 
         # determine which hemi we're adding data to
         if self._hemi in ('lh', 'rh'):

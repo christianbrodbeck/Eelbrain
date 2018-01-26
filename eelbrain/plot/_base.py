@@ -83,7 +83,7 @@ from .._utils import IS_WINDOWS, intervals
 from .._utils.subp import command_exists
 from ..fmtxt import Image
 from .._colorspaces import symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
-from .._data_obj import (UTS, ascategorial, asndvar, assub, isnumeric,
+from .._data_obj import (Case, UTS, ascategorial, asndvar, assub, isnumeric,
                          isdataobject, cellname)
 
 
@@ -2168,7 +2168,10 @@ class TimeSlicer(object):
         if self._time_dim is not None:
             raise NotImplementedError("Time dim already set")
         self._time_dim = time_dim
-        self._current_time = time_dim.tmin
+        if isinstance(time_dim, UTS):
+            self._current_time = time_dim.tmin
+        elif isinstance(time_dim, Case):
+            self._current_time = 0
 
     def _set_time_dim_from_ndvars(self, ndvars):
         time_ndvars = tuple(v for v in ndvars if v.has_dim('time'))
