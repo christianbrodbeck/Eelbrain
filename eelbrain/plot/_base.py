@@ -584,9 +584,9 @@ def unpack_epochs_arg(y, dims, xax=None, ds=None, sub=None):
     ----------
     y : NDVar | list
         the first argument.
-    dims : tuple of str
-        The dimensions needed for the plotting function. ``None`` can be for
-        a free dimensions.
+    dims : tuple of {str | None}
+        The dimensions needed for the plotting function. ``None`` to indicate
+        arbitrary dimensions.
     xax : None | categorial
         A model to divide Y into different axes. Xax is currently applied on
         the first level, i.e., it assumes that Y's first dimension is cases.
