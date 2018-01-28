@@ -2994,7 +2994,7 @@ class NDVar(object):
         elif np.isscalar(other):
             return self.dims, self.x, other
         else:
-            raise TypeError("Need Var or NDVar")
+            raise TypeError("%r; need NDVar, Var or scalar")
 
     def _ialign(self, other):
         "Align for self-modifying operations (+=, ...)"
@@ -3015,7 +3015,7 @@ class NDVar(object):
                     i_other.append(None)
             return other.get_data(i_other)
         else:
-            raise TypeError
+            raise TypeError("%r; need NDVar, Var or scalar")
 
     def __add__(self, other):
         dims, x_self, x_other = self._align(other)
@@ -3502,6 +3502,35 @@ class NDVar(object):
         info = self.info.copy()
         info['bins'] = tuple(bins)
         return NDVar(x, dims, info, name or self.name)
+
+    def clip(self, min=None, max=None, name=None, out=None):
+        """Clip data (see :func:`numpy.clip`)
+
+        Parameters
+        ----------
+        min : scalar | Var | NDVar
+            Minimum value.
+        max : scalar | Var | NDVar
+            Maximum value.
+        name : str
+            Name of the output NDVar (default is the current name).
+        out : NDVar
+            Container for output.
+        """
+        if min is not None:
+            min = self._ialign(min)
+        if max is not None:
+            max = self._ialign(max)
+        if out is not None:
+            if out is not self:
+                assert out.dims == self.dims
+            x = self.x.clip(min, max, out.x)
+        else:
+            x = self.x.clip(min, max)
+        if out is None:
+            return NDVar(x, self.dims, self.info.copy(), name or self.name)
+        else:
+            return out
 
     def copy(self, name=None):
         """A deep copy of the NDVar's data
