@@ -159,7 +159,8 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
 
         if ylim is None:
             ymin = min(y.min() for y in ydata) if isinstance(ydata, tuple) else ydata.min()
-            ylim = (ydata[0].min(), offset * ny)
+            ylim = (min(0, ydata[-1].min()) - 0.1 * offset,
+                    offset * (ny - 0.9) + max(0, ydata[0].max()))
         else:
             ymin, ymax = ylim
             ylim = (ymin, offset * (ny - 1) + ymax)
