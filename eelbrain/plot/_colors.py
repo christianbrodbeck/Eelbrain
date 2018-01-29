@@ -590,12 +590,9 @@ class ColorBar(EelFigure):
             axis.set_ticks(tick_norm(ticks))
 
         # unit-based tick-labels
-        if unit:
+        if unit and tick_labels is None:
             formatter, label = find_axis_params_data(unit, label)
-            # axis extent is 0-1
-            if tick_labels is None:
-                tick_locs = norm.inverse(axis.get_ticklocs())
-                tick_labels = map(formatter, tick_locs)
+            tick_labels = map(formatter, colorbar.get_ticks())
 
         if tick_labels is not None:
             axis.set_ticklabels(tick_labels)
