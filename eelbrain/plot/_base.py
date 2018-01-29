@@ -614,7 +614,7 @@ class PlotData(object):
      - NDVar and Xax argument: summary for each  ``plot(meg, subject)
      - nested list of layers (e.g., ttest results: [c1, c0, [c1-c0, p]])
     """
-    def __init__(self, y, dims, xax=None, ds=None, sub=None):
+    def __init__(self, y, dims, xax=None, ds=None, sub=None, can_skip_axes=True):
         if hasattr(y, '_default_plot_obj'):
             y = y._default_plot_obj
 
@@ -699,10 +699,14 @@ class PlotData(object):
                         axes.append([aggregate(v, agg)])
                     x_name = xax.name
 
-        self.data = axes
-        self.n_plots = len(axes)
+        self.plot_used = map(bool, axes)
+        self.data = filter(None, axes)
+        self.n_plots = len(self.data)
         self.dims = dims
         self.frame_title = frame_title(y_name, x_name)
+
+        if not can_skip_axes and not all(self.plot_used):
+            raise NotImplementedError("y can not contain None for this plot")
 
 
 def aggregate(y, agg):
@@ -1449,9 +1453,9 @@ class Layout(BaseLayout):
 
         Parameters
         ----------
-        nax : int | list
+        nax : int | list of bool
             Number of axes required. If provided as a list, axes are only added
-            for items where ``bool(item)`` is True.
+            for items where ``item`` is True.
         ax_aspect : scalar
             Width / height aspect of the axes.
         axh_default : scalar
@@ -1692,8 +1696,8 @@ class ImLayout(Layout):
 
     def make_axes(self, figure):
         axes = []
-        for i in xrange(1, self.nax + 1):
-            ax = figure.add_subplot(self.nrow, self.ncol, i,
+        for i in self.axes:
+            ax = figure.add_subplot(self.nrow, self.ncol, i + 1,
                                     autoscale_on=self.autoscale)
             ax.axis('off')
             axes.append(ax)

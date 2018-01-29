@@ -247,7 +247,7 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
         self.plots = []
         ColorMapMixin.__init__(self, data.data, cmap, vmax, vmin, None, self.plots)
 
-        layout = Layout(data.n_plots, 2, 4, *args, **kwargs)
+        layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data.data)
 
@@ -461,29 +461,28 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
                  clip=True, *args, **kwargs):
         data = _base.PlotData(y, (x, None), xax, ds, sub)
         xdim, linedim = data.dims
-        layout = Layout(data.data, 2, 4, *args, **kwargs)
-        epochs = filter(None, data.data)
+        layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
-        self._set_axtitle(axtitle, epochs)
-        e0 = epochs[0][0]
+        self._set_axtitle(axtitle, data.data)
+        e0 = data.data[0][0]
         self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
         self._configure_yaxis(e0, ylabel)
 
         self.plots = []
-        self._vlims = _base.find_fig_vlims(epochs, vmax, vmin)
+        self._vlims = _base.find_fig_vlims(data.data, vmax, vmin)
         legend_handles = {}
-        for ax, layers in zip(self._axes, epochs):
+        for ax, layers in zip(self._axes, data.data):
             h = _ax_butterfly(ax, layers, xdim, linedim, sensors, color,
                               linewidth, self._vlims, clip)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
-        XAxisMixin._init_with_data(self, epochs, xdim, xlim)
+        XAxisMixin._init_with_data(self, data.data, xdim, xlim)
         YLimMixin.__init__(self, self.plots)
         if linedim == 'sensor':
             TopoMapKey.__init__(self, self._topo_data)
         LegendMixin.__init__(self, 'invisible', legend_handles)
-        TimeSlicerEF.__init__(self, xdim, epochs)
+        TimeSlicerEF.__init__(self, xdim, data.data)
         self._show()
 
     def _fill_toolbar(self, tb):

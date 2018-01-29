@@ -105,7 +105,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         if interpolation is None:
             interpolation = 'nearest' if method else 'bilinear'
 
-        layout = ImLayout(data.n_plots, 1, 5, None, {}, *args, **kwargs)
+        layout = ImLayout(data.plot_used, 1, 5, None, {}, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data.data)
 
@@ -138,7 +138,7 @@ class TopomapBins(EelFigure):
     def __init__(self, y, Xax=None, bin_length=0.05, tstart=None,
                  tstop=None, ds=None, sub=None, vmax=None, vmin=None, *args,
                  **kwargs):
-        data = _base.PlotData(y, ('sensor', 'time'), Xax, ds, sub)
+        data = _base.PlotData(y, ('sensor', 'time'), Xax, ds, sub, can_skip_axes=False)
         ax_data = [[l.bin(bin_length, tstart, tstop) for l in layers]
                    for layers in data.data]
 
@@ -262,7 +262,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
             warn("The axlabel parameter for plot.TopoButterfly() is "
                  "deprecated, please use axtitle instead", DeprecationWarning)
             axtitle = axlabel
-        data = _base.PlotData(y, ('sensor', None), Xax, ds, sub)
+        data = _base.PlotData(y, ('sensor', None), Xax, ds, sub, can_skip_axes=False)
         xdim = data.dims[1]
         self._epochs = data.data
 
@@ -674,7 +674,7 @@ class TopoArray(ColorMapMixin, EelFigure):
         n_topo_total = ntopo * data.n_plots
 
         # create figure
-        layout = Layout(data.n_plots, 1.5, 6, False, title, *args, **kwargs)
+        layout = Layout(data.plot_used, 1.5, 6, False, title, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         all_plots = []
         ColorMapMixin.__init__(self, data.data, cmap, vmax, vmin, None, all_plots)

@@ -349,7 +349,7 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
                  **kwargs):
         data = _base.PlotData(y, (None,), xax, ds, sub)
         xdim = data.dims[0]
-        layout = Layout(data.n_plots, 2, 4, *args, **kwargs)
+        layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data.data)
 
@@ -474,8 +474,7 @@ class UTSClusters(EelFigure):
         data = _base.PlotData(res, (None,))
         xdim = data.dims[0]
         # create figure
-        nax = 1 if overlay else data.n_plots
-        layout = Layout(nax, 2, 4, *args, **kwargs)
+        layout = Layout(1 if overlay else data.plot_used, 2, 4, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data.data)
 
