@@ -188,8 +188,8 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
 
     Parameters
     ----------
-    epochs : NDVar
-        If data has only 1 dimension, the x-axis defines epochs.
+    y : (list of) NDVar
+        Data to plot.
     Xax : None | categorial
         Create a separate plot for each cell in this model.
     xlabel, ylabel : bool | str
@@ -238,30 +238,28 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
     """
     _name = "Array"
 
-    def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
+    def __init__(self, y, Xax=None, xlabel=True, ylabel=True,
                  xticklabels=-1, ds=None, sub=None, x='time', vmax=None,
                  vmin=None, cmap=None, axtitle=True, interpolation=None,
                  xlim=None, *args, **kwargs):
-        epochs, (xdim, ydim), data_desc = _base.unpack_epochs_arg(
-            epochs, (x, None), Xax, ds, sub
-        )
+        data = _base.PlotData(y, (x, None), Xax, ds, sub)
+        xdim, ydim = data.dims
         self.plots = []
-        ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin, None, self.plots)
+        ColorMapMixin.__init__(self, data.data, cmap, vmax, vmin, None, self.plots)
 
-        nax = len(epochs)
-        layout = Layout(nax, 2, 4, *args, **kwargs)
-        EelFigure.__init__(self, data_desc, layout)
-        self._set_axtitle(axtitle, epochs)
+        layout = Layout(data.n_plots, 2, 4, *args, **kwargs)
+        EelFigure.__init__(self, data.frame_title, layout)
+        self._set_axtitle(axtitle, data.data)
 
-        for i, ax, layers in zip(xrange(nax), self._axes, epochs):
+        for i, ax, layers in zip(xrange(data.n_plots), self._axes, data.data):
             p = _ax_im_array(ax, layers, x, interpolation, self._vlims,
                              self._cmaps, self._contours)
             self.plots.append(p)
 
-        self._configure_xaxis_dim(epochs[0][0].get_dim(xdim), xlabel, xticklabels)
-        self._configure_yaxis_dim(epochs, ydim, ylabel, scalar=False)
-        XAxisMixin._init_with_data(self, epochs, xdim, xlim, im=True)
-        TimeSlicerEF.__init__(self, xdim, epochs)
+        self._configure_xaxis_dim(data.data[0][0].get_dim(xdim), xlabel, xticklabels)
+        self._configure_yaxis_dim(data.data, ydim, ylabel, scalar=False)
+        XAxisMixin._init_with_data(self, data.data, xdim, xlim, im=True)
+        TimeSlicerEF.__init__(self, xdim, data.data)
         self._show()
 
     def _fill_toolbar(self, tb):
@@ -389,7 +387,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
 
     Parameters
     ----------
-    epochs : (list of) NDVar
+    y : (list of) NDVar
         Data to plot.
     xax : None | categorial
         Create a separate plot for each cell in this model.
@@ -456,17 +454,16 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
     _contours = None
     _name = "Butterfly"
 
-    def __init__(self, epochs, xax=None, sensors=None, axtitle=True,
+    def __init__(self, y, xax=None, sensors=None, axtitle=True,
                  xlabel=True, ylabel=True, xticklabels=-1, color=None,
                  linewidth=None,
                  ds=None, sub=None, x='time', vmax=None, vmin=None, xlim=None,
                  clip=True, *args, **kwargs):
-        epochs, (xdim, linedim), data_desc = _base.unpack_epochs_arg(
-            epochs, (x, None), xax, ds, sub
-        )
-        layout = Layout(epochs, 2, 4, *args, **kwargs)
-        epochs = filter(None, epochs)
-        EelFigure.__init__(self, data_desc, layout)
+        data = _base.PlotData(y, (x, None), xax, ds, sub)
+        xdim, linedim = data.dims
+        layout = Layout(data.data, 2, 4, *args, **kwargs)
+        epochs = filter(None, data.data)
+        EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, epochs)
         e0 = epochs[0][0]
         self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)

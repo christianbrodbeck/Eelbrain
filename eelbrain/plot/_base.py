@@ -577,7 +577,7 @@ def find_data_dims(ndvar, dims):
             raise ValueError("NDVar does not have the right number of dimensions")
 
 
-def unpack_epochs_arg(y, dims, xax=None, ds=None, sub=None):
+class PlotData(object):
     """Unpack the first argument to top-level NDVar plotting functions
 
     Parameters
@@ -614,91 +614,95 @@ def unpack_epochs_arg(y, dims, xax=None, ds=None, sub=None):
      - NDVar and Xax argument: summary for each  ``plot(meg, subject)
      - nested list of layers (e.g., ttest results: [c1, c0, [c1-c0, p]])
     """
-    if hasattr(y, '_default_plot_obj'):
-        y = y._default_plot_obj
+    def __init__(self, y, dims, xax=None, ds=None, sub=None):
+        if hasattr(y, '_default_plot_obj'):
+            y = y._default_plot_obj
 
-    sub = assub(sub, ds)
+        sub = assub(sub, ds)
 
-    if isinstance(y, (tuple, list)):
-        if xax is not None:
-            raise TypeError(
-                "xax can only be used to divide y into different axes if y is "
-                "a single NDVar (got y=%r)." % (y,))
-        axes = []
-        for ax in y:
-            if ax is None:
-                axes.append(None)
-            elif isinstance(ax, (tuple, list)):
-                layers = []
-                for layer in ax:
-                    layer = asndvar(layer, sub, ds)
-                    agg, dims = find_data_dims(layer, dims)
-                    layers.append(aggregate(layer, agg))
-                axes.append(layers)
+        if isinstance(y, (tuple, list)):
+            if xax is not None:
+                raise TypeError(
+                    "xax can only be used to divide y into different axes if y is "
+                    "a single NDVar (got y=%r)." % (y,))
+            axes = []
+            for ax in y:
+                if ax is None:
+                    axes.append(None)
+                elif isinstance(ax, (tuple, list)):
+                    layers = []
+                    for layer in ax:
+                        layer = asndvar(layer, sub, ds)
+                        agg, dims = find_data_dims(layer, dims)
+                        layers.append(aggregate(layer, agg))
+                    axes.append(layers)
+                else:
+                    ax = asndvar(ax, sub, ds)
+                    agg, dims = find_data_dims(ax, dims)
+                    layer = aggregate(ax, agg)
+                    axes.append([layer])
+
+            # determine names
+            x_name = None
+            y_names = []
+            for layers in axes:
+                if layers is None:
+                    continue
+                for layer in layers:
+                    if layer.name and layer.name not in y_names:
+                        y_names.append(layer.name)
+            if len(y_names) == 0:
+                y_name = None
+            elif len(y_names) == 1:
+                y_name = y_names[0]
             else:
-                ax = asndvar(ax, sub, ds)
-                agg, dims = find_data_dims(ax, dims)
-                layer = aggregate(ax, agg)
-                axes.append([layer])
-
-        # determine names
-        x_name = None
-        y_names = []
-        for layers in axes:
-            if layers is None:
-                continue
-            for layer in layers:
-                if layer.name and layer.name not in y_names:
-                    y_names.append(layer.name)
-        if len(y_names) == 0:
-            y_name = None
-        elif len(y_names) == 1:
-            y_name = y_names[0]
+                y_name = ' | '.join(y_names)
         else:
-            y_name = ' | '.join(y_names)
-    else:
-        y = asndvar(y, sub, ds)
-        y_name = y.name
+            y = asndvar(y, sub, ds)
+            y_name = y.name
 
-        # create list of plots
-        if isinstance(xax, str) and xax.startswith('.'):
-            dimname = xax[1:]
-            if dimname == 'case':
-                if not y.has_case:
-                    raise ValueError(
-                        "Got xax='.case', but y does not have case dimension: "
-                        "y=%r" % (y,))
-                values = range(len(y))
-                unit = ''
+            # create list of plots
+            if isinstance(xax, str) and xax.startswith('.'):
+                dimname = xax[1:]
+                if dimname == 'case':
+                    if not y.has_case:
+                        raise ValueError(
+                            "Got xax='.case', but y does not have case dimension: "
+                            "y=%r" % (y,))
+                    values = range(len(y))
+                    unit = ''
+                else:
+                    dim = y.get_dim(dimname)
+                    values = dim.values
+                    unit = getattr(dim, 'unit', '')
+
+                agg, dims = find_data_dims(y, (dimname,) + dims)
+                dims = dims[1:]
+
+                name = dimname.capitalize() + ' = %s'
+                if unit:
+                    name += ' ' + unit
+                axes = [[aggregate(y.sub(name=name % v, **{dimname: v}), agg)] for
+                        v in values]
+                x_name = xax
             else:
-                dim = y.get_dim(dimname)
-                values = dim.values
-                unit = getattr(dim, 'unit', '')
+                agg, dims = find_data_dims(y, dims)
+                if xax is None:
+                    axes = [[aggregate(y, agg)]]
+                    x_name = None
+                else:
+                    xax = ascategorial(xax, sub, ds)
+                    axes = []
+                    for cell in xax.cells:
+                        v = y[xax == cell]
+                        v.name = cellname(cell)
+                        axes.append([aggregate(v, agg)])
+                    x_name = xax.name
 
-            agg, dims = find_data_dims(y, (dimname,) + dims)
-            dims = dims[1:]
-
-            name = dimname.capitalize() + ' = %s'
-            if unit:
-                name += ' ' + unit
-            axes = [[aggregate(y.sub(name=name % v, **{dimname: v}), agg)] for
-                    v in values]
-            x_name = xax
-        else:
-            agg, dims = find_data_dims(y, dims)
-            if xax is None:
-                axes = [[aggregate(y, agg)]]
-                x_name = None
-            else:
-                xax = ascategorial(xax, sub, ds)
-                axes = []
-                for cell in xax.cells:
-                    v = y[xax == cell]
-                    v.name = cellname(cell)
-                    axes.append([aggregate(v, agg)])
-                x_name = xax.name
-
-    return axes, dims, frame_title(y_name, x_name)
+        self.data = axes
+        self.n_plots = len(axes)
+        self.dims = dims
+        self.frame_title = frame_title(y_name, x_name)
 
 
 def aggregate(y, agg):

@@ -26,7 +26,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
 
     Parameters
     ----------
-    epochs : NDVar | list of NDVar, dims = ([case,] sensor,)
+    y : (list of) NDVar, dims = ([case,] sensor,)
         Data to plot.
     Xax : None | categorial
         Create a separate plot for each cell in this model.
@@ -86,34 +86,31 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
     """
     _name = "Topomap"
 
-    def __init__(self, epochs, xax=None, proj='default', cmap=None, vmax=None,
+    def __init__(self, y, xax=None, proj='default', cmap=None, vmax=None,
                  vmin=None, contours=7, clip='even', clip_distance=0.05,
                  head_radius=None, head_pos=0., mark=None, sensorlabels='none',
                  ds=None, sub=None, res=64, interpolation=None, axtitle=True,
                  xlabel=None, method=None, *args, **kwargs):
-        epochs, _, data_desc = _base.unpack_epochs_arg(
-            epochs, ('sensor',), xax, ds, sub
-        )
+        data = _base.PlotData(y, ('sensor',), xax, ds, sub)
         self.plots = []
-        ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin, contours,
+        ColorMapMixin.__init__(self, data.data, cmap, vmax, vmin, contours,
                                self.plots)
-        nax = len(epochs)
         if isinstance(proj, basestring):
-            proj = repeat(proj, nax)
+            proj = repeat(proj, data.n_plots)
         elif not isinstance(proj, Sequence):
             raise TypeError("proj=%s" % repr(proj))
-        elif len(proj) != nax:
-            raise ValueError("need as many proj as axes (%s)" % nax)
+        elif len(proj) != data.n_plots:
+            raise ValueError("need as many proj as axes (%s)" % data.n_plots)
 
         if interpolation is None:
             interpolation = 'nearest' if method else 'bilinear'
 
-        layout = ImLayout(nax, 1, 5, None, {}, *args, **kwargs)
-        EelFigure.__init__(self, data_desc, layout)
-        self._set_axtitle(axtitle, epochs)
+        layout = ImLayout(data.n_plots, 1, 5, None, {}, *args, **kwargs)
+        EelFigure.__init__(self, data.frame_title, layout)
+        self._set_axtitle(axtitle, data.data)
 
         # plots
-        for ax, layers, proj_ in izip(self._axes, epochs, proj):
+        for ax, layers, proj_ in izip(self._axes, data.data, proj):
             h = _ax_topomap(ax, layers, clip, clip_distance, sensorlabels, mark,
                             None, None, proj_, res, interpolation, xlabel,
                             self._vlims, self._cmaps, self._contours, method,
@@ -138,27 +135,25 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
 class TopomapBins(EelFigure):
     _name = "TopomapBins"
 
-    def __init__(self, epochs, Xax=None, bin_length=0.05, tstart=None,
+    def __init__(self, y, Xax=None, bin_length=0.05, tstart=None,
                  tstop=None, ds=None, sub=None, vmax=None, vmin=None, *args,
                  **kwargs):
-        epochs, _, data_desc = _base.unpack_epochs_arg(
-            epochs, ('sensor', 'time'), Xax, ds, sub
-        )
-        epochs = [[l.bin(bin_length, tstart, tstop) for l in layers]
-                  for layers in epochs]
+        data = _base.PlotData(y, ('sensor', 'time'), Xax, ds, sub)
+        ax_data = [[l.bin(bin_length, tstart, tstop) for l in layers]
+                   for layers in data.data]
 
         # create figure
-        time = epochs[0][0].get_dim('time')
+        time = ax_data[0][0].get_dim('time')
         n_bins = len(time)
-        n_rows = len(epochs)
+        n_rows = len(ax_data)
         layout = Layout(n_bins * n_rows, 1, 1.5, False, *args, nrow=n_rows,
                         ncol=n_bins, **kwargs)
-        EelFigure.__init__(self, data_desc, layout)
+        EelFigure.__init__(self, data.frame_title, layout)
 
-        cmaps = _base.find_fig_cmaps(epochs)
-        vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
+        cmaps = _base.find_fig_cmaps(ax_data)
+        vlims = _base.find_fig_vlims(ax_data, vmax, vmin, cmaps)
 
-        for row, layers in enumerate(epochs):
+        for row, layers in enumerate(ax_data):
             for column, t in enumerate(time):
                 ax = self._axes[row * n_bins + column]
                 topo_layers = [l.sub(time=t) for l in layers]
@@ -174,8 +169,8 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
 
     Parameters
     ----------
-    epochs :
-        Epoch(s) to plot.
+    y : (list of) NDVar
+        Data to plot.
     Xax : None | categorial
         Create a separate plot for each cell in this model.
     xlabel, ylabel : bool | string
@@ -257,7 +252,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
     _default_xlabel_ax = -2
     _name = "TopoButterfly"
 
-    def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
+    def __init__(self, y, Xax=None, xlabel=True, ylabel=True,
                  xticklabels=-1,
                  proj='default', res=100, interpolation='nearest', color=None, linewidth=None,
                  sensorlabels=None, mark=None, mcolor=None, ds=None, sub=None,
@@ -267,18 +262,16 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
             warn("The axlabel parameter for plot.TopoButterfly() is "
                  "deprecated, please use axtitle instead", DeprecationWarning)
             axtitle = axlabel
-        epochs, (_, xdim), data_desc = _base.unpack_epochs_arg(
-            epochs, ('sensor', None), Xax, ds, sub
-        )
-        n_rows = len(epochs)
-        self._epochs = epochs
+        data = _base.PlotData(y, ('sensor', None), Xax, ds, sub)
+        xdim = data.dims[1]
+        self._epochs = data.data
 
         # create figure
         layout = VariableAspectLayout(
-            n_rows, 3, 10, (None, 1), None, (frame, False),
-            self._set_axtitle(axtitle, epochs, n_rows), *args, **kwargs
+            data.n_plots, 3, 10, (None, 1), None, (frame, False),
+            self._set_axtitle(axtitle, data.data, data.n_plots), *args, **kwargs
         )
-        EelFigure.__init__(self, data_desc, layout)
+        EelFigure.__init__(self, data.frame_title, layout)
 
         self.bfly_axes = self._axes[0::2]
         self.topo_axes = self._axes[1::2]
@@ -286,7 +279,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         self.topo_plots = []
         self.t_markers = []  # vertical lines on butterfly plots
 
-        ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin, None,
+        ColorMapMixin.__init__(self, data.data, cmap, vmax, vmin, None,
                                self.topo_plots)
 
         self._topo_kwargs = {'proj': proj,
@@ -298,20 +291,20 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
                              'mcolor': mcolor}
 
         # plot epochs (x/y are in figure coordinates)
-        for ax, layers in izip(self.bfly_axes, epochs):
+        for ax, layers in izip(self.bfly_axes, data.data):
             p = _ax_butterfly(ax, layers, 'time', 'sensor', mark, color,
                               linewidth, self._vlims)
             self.bfly_plots.append(p)
 
         # decorate axes
-        e0 = epochs[0][0]
+        e0 = data.data[0][0]
         self._configure_xaxis_dim(e0.time, xlabel, xticklabels, self.bfly_axes)
         self._configure_yaxis(e0, ylabel, self.bfly_axes)
 
         # setup callback
-        XAxisMixin._init_with_data(self, epochs, xdim, xlim, self.bfly_axes)
+        XAxisMixin._init_with_data(self, data.data, xdim, xlim, self.bfly_axes)
         YLimMixin.__init__(self, self.bfly_plots + self.topo_plots)
-        TimeSlicerEF.__init__(self, xdim, epochs, self.bfly_axes, False)
+        TimeSlicerEF.__init__(self, xdim, data.data, self.bfly_axes, False)
         TopoMapKey.__init__(self, self._topo_data)
         self._realtime_topo = True
         self._t_label = None  # time label under lowest topo-map
@@ -631,8 +624,8 @@ class TopoArray(ColorMapMixin, EelFigure):
 
     Parameters
     ----------
-    epochs :
-        Epoch(s) to plot.
+    y : (list of) NDVar
+        Data to plot.
     Xax : None | categorial
         Create a separate plot for each cell in this model.
     title : None | string
@@ -674,33 +667,30 @@ class TopoArray(ColorMapMixin, EelFigure):
     _make_axes = False
     _name = 'TopoArray'
 
-    def __init__(self, epochs, Xax=None, title=None, ntopo=3, t=[], ds=None,
+    def __init__(self, y, Xax=None, title=None, ntopo=3, t=[], ds=None,
                  sub=None, vmax=None, vmin=None, cmap=None, interpolation=None,
                  xticklabels=-1, axtitle=True, *args, **kwargs):
-        epochs, _, data_desc = _base.unpack_epochs_arg(
-            epochs, ('time', 'sensor'), Xax, ds, sub
-        )
-        n_epochs = len(epochs)
-        n_topo_total = ntopo * n_epochs
+        data = _base.PlotData(y, ('time', 'sensor'), Xax, ds, sub)
+        n_topo_total = ntopo * data.n_plots
 
         # create figure
-        layout = Layout(n_epochs, 1.5, 6, False, title, *args, **kwargs)
-        EelFigure.__init__(self, data_desc, layout)
+        layout = Layout(data.n_plots, 1.5, 6, False, title, *args, **kwargs)
+        EelFigure.__init__(self, data.frame_title, layout)
         all_plots = []
-        ColorMapMixin.__init__(self, epochs, cmap, vmax, vmin, None, all_plots)
+        ColorMapMixin.__init__(self, data.data, cmap, vmax, vmin, None, all_plots)
 
         # fig coordinates
-        x_frame_l = .6 / self._layout.axw / n_epochs
-        x_frame_r = .025 / n_epochs
-        x_sep = .01 / n_epochs
-        x_per_ax = (1 - x_frame_l - x_frame_r) / n_epochs
+        x_frame_l = .6 / self._layout.axw / data.n_plots
+        x_frame_r = .025 / data.n_plots
+        x_sep = .01 / data.n_plots
+        x_per_ax = (1 - x_frame_l - x_frame_r) / data.n_plots
 
         self.figure.subplots_adjust(left=x_frame_l, right=1 - x_frame_r,
                                     bottom=.05, top=.9, wspace=.1, hspace=.3)
         self.title = title
 
         # save important properties
-        self._epochs = epochs
+        self._epochs = data.data
         self._ntopo = ntopo
         self._default_xlabel_ax = -1 - ntopo
 
@@ -710,9 +700,9 @@ class TopoArray(ColorMapMixin, EelFigure):
         self._topo_windows = []
         ax_height = .4 + .07 * (not title)
         ax_bottom = .45  # + .05*(not title)
-        for i, layers in enumerate(epochs):
+        for i, layers in enumerate(data.data):
             ax_left = x_frame_l + i * (x_per_ax + x_sep)
-            ax_right = 1 - x_frame_r - (n_epochs - i - 1) * (x_per_ax + x_sep)
+            ax_right = 1 - x_frame_r - (data.n_plots - i - 1) * (x_per_ax + x_sep)
             ax_width = ax_right - ax_left
             ax = self.figure.add_axes((ax_left, ax_bottom, ax_width, ax_height),
                                       picker=True)
@@ -747,9 +737,9 @@ class TopoArray(ColorMapMixin, EelFigure):
                 t = [t]
             self.set_topo_ts(*t)
 
-        self._set_axtitle(axtitle, epochs, self._array_axes)
-        self._configure_xaxis_dim(epochs[0][0].time, True, xticklabels, self._array_axes)
-        self._configure_yaxis_dim(epochs, 'sensor', True, self._array_axes, False)
+        self._set_axtitle(axtitle, data.data, self._array_axes)
+        self._configure_xaxis_dim(data.data[0][0].time, True, xticklabels, self._array_axes)
+        self._configure_yaxis_dim(data.data, 'sensor', True, self._array_axes, False)
 
         # setup callback
         self._selected_window = None

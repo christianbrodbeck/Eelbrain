@@ -296,8 +296,8 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
 
     Parameters
     ----------
-    epochs : epochs
-        Uts data epochs to plot.
+    y : (list of) NDVar
+        Uts data  to plot.
     xax : None | categorial
         Make separate axes for each category in this categorial model.
     axtitle : bool | sequence of str
@@ -343,38 +343,37 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     """
     _name = "UTS"
 
-    def __init__(self, epochs, xax=None, axtitle=True, ds=None, sub=None,
+    def __init__(self, y, xax=None, axtitle=True, ds=None, sub=None,
                  xlabel=True, ylabel=True, xticklabels=-1, bottom=None,
                  top=None, legend='upper right', xlim=None, color=None, *args,
                  **kwargs):
-        epochs, (xdim,), data_desc = _base.unpack_epochs_arg(
-            epochs, (None,), xax, ds, sub
-        )
-        layout = Layout(len(epochs), 2, 4, *args, **kwargs)
-        EelFigure.__init__(self, data_desc, layout)
-        self._set_axtitle(axtitle, epochs)
+        data = _base.PlotData(y, (None,), xax, ds, sub)
+        xdim = data.dims[0]
+        layout = Layout(data.n_plots, 2, 4, *args, **kwargs)
+        EelFigure.__init__(self, data.frame_title, layout)
+        self._set_axtitle(axtitle, data.data)
 
-        e0 = epochs[0][0]
+        e0 = data.data[0][0]
         self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
         self._configure_yaxis(e0, ylabel)
 
         self.plots = []
         legend_handles = {}
-        vlims = _base.find_fig_vlims(epochs, top, bottom)
+        vlims = _base.find_fig_vlims(data.data, top, bottom)
 
-        n_colors = max(map(len, epochs))
+        n_colors = max(map(len, data.data))
         if color is None:
             colors = oneway_colors(n_colors)
         else:
             colors = (color,) * n_colors
 
-        for ax, layers in izip(self._axes, epochs):
+        for ax, layers in izip(self._axes, data.data):
             h = _ax_uts(ax, layers, xdim, vlims, colors)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
-        self.epochs = epochs
-        XAxisMixin._init_with_data(self, epochs, xdim, xlim)
+        self.epochs = data.data
+        XAxisMixin._init_with_data(self, data.data, xdim, xlim)
         YLimMixin.__init__(self, self.plots)
         LegendMixin.__init__(self, legend, legend_handles)
         self._show()
@@ -472,20 +471,20 @@ class UTSClusters(EelFigure):
                  overlay=False, xticklabels=-1, *args, **kwargs):
         clusters_ = res.clusters
 
-        epochs, (xdim,), data_desc = _base.unpack_epochs_arg(res, (None,))
+        data = _base.PlotData(res, (None,))
+        xdim = data.dims[0]
         # create figure
-        n = len(epochs)
-        nax = 1 if overlay else n
+        nax = 1 if overlay else data.n_plots
         layout = Layout(nax, 2, 4, *args, **kwargs)
-        EelFigure.__init__(self, data_desc, layout)
-        self._set_axtitle(axtitle, epochs)
+        EelFigure.__init__(self, data.frame_title, layout)
+        self._set_axtitle(axtitle, data.data)
 
-        colors = colors_for_oneway(range(n), cmap=cm)
+        colors = colors_for_oneway(range(data.n_plots), cmap=cm)
         self._caxes = []
         if overlay:
             ax = self._axes[0]
 
-        for i, layers in enumerate(epochs):
+        for i, layers in enumerate(data.data):
             stat = layers[0]
             if not overlay:
                 ax = self._axes[i]
@@ -502,7 +501,7 @@ class UTSClusters(EelFigure):
             cax = _ax_uts_clusters(ax, stat, cs, colors[i], pmax, ptrend, xdim)
             self._caxes.append(cax)
 
-        e0 = epochs[0][0]
+        e0 = data.data[0][0]
         self._configure_yaxis(e0, True)
         self._configure_xaxis_dim(e0.get_dim(xdim), True, xticklabels)
         self.clusters = clusters_
