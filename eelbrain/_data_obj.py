@@ -2824,7 +2824,7 @@ class NDVar(object):
         else:
             dims_ = list(dims)
 
-        x = np.asarray(x)
+        x = np.asanyarray(x)
         if len(dims_) != x.ndim:
             raise DimensionMismatchError(
                 "Unequal number of dimensions (data: %i, dims: %i)" %
@@ -3890,13 +3890,15 @@ class NDVar(object):
         info['cids'] = cids
         return NDVar(cmap, self.dims, info, name or self.name)
 
-    def log(self, base=None):
+    def log(self, base=None, name=None):
         """Element-wise log
 
         Parameters
         ----------
         base : scalar
             Base of the log (default is the natural log).
+        name : str
+            Name of the output NDVar (default is the current name).
         """
         if base is None:
             x = np.log(self.x)
@@ -3907,7 +3909,23 @@ class NDVar(object):
         else:
             x = np.log(self.x)
             x /= log(base)
-        return NDVar(x, self.dims, self.info.copy(), self.name)
+        return NDVar(x, self.dims, self.info.copy(), name or self.name)
+
+    def mask(self, mask, name=None):
+        """Create a masked version of this NDVar (see :class:`numpy.ma.MaskedArray`)
+
+        Parameters
+        ----------
+        mask : bool NDVar
+            Mask, with equal dimensions (``True`` values will be masked).
+        name : str
+            Name of the output NDVar (default is the current name).
+        """
+        x_mask = self._ialign(mask)
+        if x_mask.dtype.kind != 'b':
+            x_mask = x_mask.astype(bool)
+        x = np.ma.MaskedArray(self.x, x_mask)
+        return NDVar(x, self.dims, self.info.copy(), name or self.name)
 
     def max(self, dims=(), **regions):
         """Compute the maximum over given dimensions
