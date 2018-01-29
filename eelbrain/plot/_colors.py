@@ -8,7 +8,7 @@ import operator
 
 import numpy as np
 import matplotlib as mpl
-from matplotlib.colors import LinearSegmentedColormap, Normalize
+from matplotlib.colors import LinearSegmentedColormap, Normalize, to_rgb
 from matplotlib.colorbar import ColorbarBase
 
 from .. import _colorspaces as cs
@@ -492,6 +492,8 @@ class ColorBar(EelFigure):
         negative values above ``abs(threshold)``).
     ticklocation : 'auto', 'top', 'bottom', 'left', 'right'
         Where to place ticks and label  on the axis.
+    background : matplotlib color
+        Background color (for colormaps including transparency).
     """
     _name = "ColorBar"
 
@@ -499,7 +501,7 @@ class ColorBar(EelFigure):
                  label_rotation=None,
                  clipmin=None, clipmax=None, orientation='horizontal',
                  unit=None, contours=(), width=None, ticks=None, threshold=None,
-                 ticklocation='auto',
+                 ticklocation='auto', background='white',
                  h=None, w=None, *args, **kwargs):
         # get Colormap
         if isinstance(cmap, np.ndarray):
@@ -577,8 +579,6 @@ class ColorBar(EelFigure):
         else:
             boundaries = None
 
-        # FIXME:  cmaps with alpha https://stackoverflow.com/q/15003353/166700
-        # remove alpha channel from cmap before plotting?
         colorbar = ColorbarBase(ax, cm, norm, boundaries=boundaries,
                                 orientation=orientation,
                                 ticklocation=ticklocation, ticks=ticks,
@@ -613,11 +613,24 @@ class ColorBar(EelFigure):
             axis.label.set_va('center')
 
         self._contours = [contour_func(c, c='k') for c in contours]
+        self._draw_hooks.append(self.__fix_alpha)
 
+        self._background = background
         self._colorbar = colorbar
         self._orientation = orientation
         self._width = width
         self._show()
+
+    def __fix_alpha(self):
+        # fix cmaps with alpha https://stackoverflow.com/q/15003353/166700
+        if self._background is not False:
+            lut = self._colorbar.solids.get_facecolor()
+            bg_color = to_rgb(self._background)
+            lut[:, :3] *= lut[:, 3:]
+            lut[:, :3] += (1 - lut[:, 3:]) * bg_color
+            lut[:, 3] = 1.
+            self._colorbar.solids.set_facecolor(lut)
+            return True
 
     def _tight(self):
         # make sure ticklabels have space
