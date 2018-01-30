@@ -15,8 +15,8 @@ from scipy.spatial import ConvexHull
 
 from . import _base
 from ._base import (
-    EelFigure, Layout, ImLayout, VariableAspectLayout, ColorMapMixin,
-    TimeSlicerEF, TopoMapKey, XAxisMixin, YLimMixin)
+    EelFigure, PlotData, Layout, ImLayout, VariableAspectLayout,
+    ColorMapMixin, TimeSlicerEF, TopoMapKey, XAxisMixin, YLimMixin)
 from ._utsnd import _ax_butterfly, _ax_im_array, _plt_im
 from ._sensors import SENSORMAP_FRAME, SensorMapMixin, _plt_map2d
 
@@ -91,7 +91,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
                  head_radius=None, head_pos=0., mark=None, sensorlabels='none',
                  ds=None, sub=None, res=64, interpolation=None, axtitle=True,
                  xlabel=None, method=None, *args, **kwargs):
-        data = _base.PlotData(y, ('sensor',), xax, ds, sub)
+        data = PlotData.from_args(y, ('sensor',), xax, ds, sub)
         self.plots = []
         ColorMapMixin.__init__(self, data.data, cmap, vmax, vmin, contours,
                                self.plots)
@@ -138,7 +138,8 @@ class TopomapBins(EelFigure):
     def __init__(self, y, Xax=None, bin_length=0.05, tstart=None,
                  tstop=None, ds=None, sub=None, vmax=None, vmin=None, *args,
                  **kwargs):
-        data = _base.PlotData(y, ('sensor', 'time'), Xax, ds, sub, can_skip_axes=False)
+        data = PlotData.from_args(y, ('sensor', 'time'), Xax, ds, sub)
+        data._cannot_skip_axes(self)
         ax_data = [[l.bin(bin_length, tstart, tstop) for l in layers]
                    for layers in data.data]
 
@@ -262,7 +263,8 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
             warn("The axlabel parameter for plot.TopoButterfly() is "
                  "deprecated, please use axtitle instead", DeprecationWarning)
             axtitle = axlabel
-        data = _base.PlotData(y, ('sensor', None), Xax, ds, sub, can_skip_axes=False)
+        data = PlotData.from_args(y, ('sensor', None), Xax, ds, sub)
+        data._cannot_skip_axes(self)
         xdim = data.dims[1]
         self._epochs = data.data
 
@@ -670,7 +672,7 @@ class TopoArray(ColorMapMixin, EelFigure):
     def __init__(self, y, Xax=None, title=None, ntopo=3, t=[], ds=None,
                  sub=None, vmax=None, vmin=None, cmap=None, interpolation=None,
                  xticklabels=-1, axtitle=True, *args, **kwargs):
-        data = _base.PlotData(y, ('time', 'sensor'), Xax, ds, sub)
+        data = PlotData.from_args(y, ('time', 'sensor'), Xax, ds, sub)
         n_topo_total = ntopo * data.n_plots
 
         # create figure

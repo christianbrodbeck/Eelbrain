@@ -14,7 +14,8 @@ from .._data_obj import ascategorial, asndvar, assub, cellname, longname
 from .._stats import stats
 from . import _base
 from ._base import (
-    EelFigure, Layout, LegendMixin, YLimMixin, XAxisMixin, frame_title)
+    EelFigure, PlotData, Layout,
+    LegendMixin, YLimMixin, XAxisMixin, frame_title)
 from ._colors import colors_for_oneway, find_cell_colors
 from .._colorspaces import oneway_colors
 
@@ -347,7 +348,7 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
                  xlabel=True, ylabel=True, xticklabels=-1, bottom=None,
                  top=None, legend='upper right', xlim=None, color=None, *args,
                  **kwargs):
-        data = _base.PlotData(y, (None,), xax, ds, sub)
+        data = PlotData.from_args(y, (None,), xax, ds, sub)
         xdim = data.dims[0]
         layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
@@ -471,7 +472,7 @@ class UTSClusters(EelFigure):
                  overlay=False, xticklabels=-1, *args, **kwargs):
         clusters_ = res.clusters
 
-        data = _base.PlotData(res, (None,))
+        data = PlotData.from_args(res, (None,))
         xdim = data.dims[0]
         # create figure
         layout = Layout(1 if overlay else data.plot_used, 2, 4, *args, **kwargs)

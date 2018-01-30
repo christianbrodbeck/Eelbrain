@@ -11,8 +11,8 @@ import numpy as np
 from .._names import INTERPOLATE_CHANNELS
 from . import _base
 from ._base import (
-    EelFigure, Layout, ColorMapMixin, LegendMixin, TimeSlicerEF, TopoMapKey,
-    YLimMixin, XAxisMixin)
+    EelFigure, PlotData, Layout,
+    ColorMapMixin, LegendMixin, TimeSlicerEF, TopoMapKey, YLimMixin, XAxisMixin)
 
 
 class _plt_im(object):
@@ -242,7 +242,7 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
                  xticklabels=-1, ds=None, sub=None, x='time', vmax=None,
                  vmin=None, cmap=None, axtitle=True, interpolation=None,
                  xlim=None, *args, **kwargs):
-        data = _base.PlotData(y, (x, None), Xax, ds, sub)
+        data = PlotData.from_args(y, (x, None), Xax, ds, sub)
         xdim, ydim = data.dims
         self.plots = []
         ColorMapMixin.__init__(self, data.data, cmap, vmax, vmin, None, self.plots)
@@ -459,7 +459,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
                  linewidth=None,
                  ds=None, sub=None, x='time', vmax=None, vmin=None, xlim=None,
                  clip=True, *args, **kwargs):
-        data = _base.PlotData(y, (x, None), xax, ds, sub)
+        data = PlotData.from_args(y, (x, None), xax, ds, sub)
         xdim, linedim = data.dims
         layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)

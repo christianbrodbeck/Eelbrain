@@ -578,44 +578,63 @@ def find_data_dims(ndvar, dims):
 
 
 class PlotData(object):
-    """Unpack the first argument to top-level NDVar plotting functions
+    """Organize nd-data for plotting
 
-    Parameters
+    Attributes
     ----------
-    y : NDVar | list
-        the first argument.
-    dims : tuple of {str | None}
-        The dimensions needed for the plotting function. ``None`` to indicate
-        arbitrary dimensions.
-    xax : None | categorial
-        A model to divide Y into different axes. Xax is currently applied on
-        the first level, i.e., it assumes that Y's first dimension is cases.
-    ds : None | Dataset
-        Dataset containing data objects which are provided as str.
-    sub : None | str
-        Index selecting a subset of cases.
-
-    Returns
-    -------
-    axes_data : list of list of NDVar
+    plot_used : list of bool
+        List indicating which plot slots are used (as opposed to empty).
+    data : list of list of NDVar
         The processed data to plot.
     dims : tuple of str
         Names of the dimensions.
-    data_desc : str
+    frame_title : str
         Data description for the plot frame.
-
-    Notes
-    -----
-    Ndvar plotting functions above 1-d UTS level should support the following
-    API:
-
-     - simple NDVar: summary ``plot(meg)``
-     - by dim: each case ``plot(meg, '.case')``
-     - NDVar and Xax argument: summary for each  ``plot(meg, subject)
-     - nested list of layers (e.g., ttest results: [c1, c0, [c1-c0, p]])
     """
-    def __init__(self, y, dims, xax=None, ds=None, sub=None, can_skip_axes=True):
-        if hasattr(y, '_default_plot_obj'):
+    def __init__(self, axes, dims, title="unnamed data"):
+        self.plot_used = map(bool, axes)
+        self.data = filter(None, axes)
+        self.n_plots = len(self.data)
+        self.dims = dims
+        self.frame_title = title
+
+    def _cannot_skip_axes(self, parent):
+        if not all(self.plot_used):
+            raise NotImplementedError("y can not contain None for %s plot" %
+                                      parent.__class__.__name__)
+
+    @classmethod
+    def from_args(cls, y, dims, xax=None, ds=None, sub=None):
+        """Unpack the first argument to top-level NDVar plotting functions
+
+        Parameters
+        ----------
+        y : NDVar | list
+            the first argument.
+        dims : tuple of {str | None}
+            The dimensions needed for the plotting function. ``None`` to indicate
+            arbitrary dimensions.
+        xax : None | categorial
+            A model to divide Y into different axes. Xax is currently applied on
+            the first level, i.e., it assumes that Y's first dimension is cases.
+        ds : None | Dataset
+            Dataset containing data objects which are provided as str.
+        sub : None | str
+            Index selecting a subset of cases.
+
+        Notes
+        -----
+        Ndvar plotting functions above 1-d UTS level should support the following
+        API:
+
+         - simple NDVar: summary ``plot(meg)``
+         - by dim: each case ``plot(meg, '.case')``
+         - NDVar and Xax argument: summary for each  ``plot(meg, subject)
+         - nested list of layers (e.g., ttest results: [c1, c0, [c1-c0, p]])
+        """
+        if isinstance(y, cls):
+            return y
+        elif hasattr(y, '_default_plot_obj'):
             y = y._default_plot_obj
 
         sub = assub(sub, ds)
@@ -699,14 +718,8 @@ class PlotData(object):
                         axes.append([aggregate(v, agg)])
                     x_name = xax.name
 
-        self.plot_used = map(bool, axes)
-        self.data = filter(None, axes)
-        self.n_plots = len(self.data)
-        self.dims = dims
-        self.frame_title = frame_title(y_name, x_name)
-
-        if not can_skip_axes and not all(self.plot_used):
-            raise NotImplementedError("y can not contain None for this plot")
+        title = frame_title(y_name, x_name)
+        return cls(axes, dims, title)
 
 
 def aggregate(y, agg):
