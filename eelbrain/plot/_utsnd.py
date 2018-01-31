@@ -12,7 +12,8 @@ from .._names import INTERPOLATE_CHANNELS
 from . import _base
 from ._base import (
     EelFigure, PlotData, LayerData, Layout,
-    ColorMapMixin, LegendMixin, TimeSlicerEF, TopoMapKey, YLimMixin, XAxisMixin)
+    ColorMapMixin, LegendMixin, TimeSlicerEF, TopoMapKey, YLimMixin, XAxisMixin,
+    pop_dict_arg, set_dict_arg)
 
 
 class _plt_im(object):
@@ -285,10 +286,8 @@ class _plt_utsnd(object):
             epoch = epoch.sub(sensor=sensors)
 
         kwargs = layer.line_args(kwargs)
-        if 'color' in kwargs and isinstance(kwargs['color'], dict):
-            color = kwargs.pop('color')
-        else:
-            color = None
+        color = pop_dict_arg(kwargs, 'color')
+        z_order = pop_dict_arg(kwargs, 'zorder')
         self._dims = (line_dim, xdim)
         x = epoch.get_dim(xdim)._axis_data()
         line_dim_obj = epoch.get_dim(line_dim)
@@ -296,24 +295,12 @@ class _plt_utsnd(object):
         self.lines = ax.plot(x, epoch.get_data((xdim, line_dim)),
                              label=epoch.name, **kwargs)
 
+        if z_order:
+            set_dict_arg('zorder', z_order, line_dim_obj, self.lines)
+
         if color:
             self.legend_handles = {}
-            for key, c in color.iteritems():
-                line_index = line_dim_obj._array_index(key)
-                if isinstance(line_index, slice):
-                    lines = self.lines[line_index]
-                elif isinstance(line_index, int):
-                    lines = (self.lines[line_index],)
-                else:
-                    lines = tuple(self.lines[line_index] for i in line_index)
-
-                if not lines:
-                    continue
-
-                for line in lines:
-                    line.set_color(c)
-                    line.set_label(key)
-                self.legend_handles[key] = line
+            set_dict_arg('color', color, line_dim_obj, self.lines, self.legend_handles)
         else:
             self.legend_handles = {epoch.name: self.lines[0]}
 

@@ -577,6 +577,36 @@ def find_data_dims(ndvar, dims):
             raise ValueError("NDVar does not have the right number of dimensions")
 
 
+def pop_dict_arg(kwargs, key):
+    "Helper for artist-sepcific matplotlib kwargs"
+    if key in kwargs and isinstance(kwargs[key], dict):
+        return kwargs.pop(key)
+
+
+def set_dict_arg(key, arg, line_dim_obj, artists, legend_handles=None):
+    "Helper for artist-sepcific matplotlib kwargs"
+    set_attr_name = 'set_' + key
+    for dim_index, value in arg.iteritems():
+        index = line_dim_obj._array_index(dim_index)
+        if isinstance(index, slice):
+            key_artists = artists[index]
+        elif isinstance(index, int):
+            key_artists = (artists[index],)
+        else:
+            key_artists = tuple(artists[i] for i in index)
+
+        if not key_artists:
+            continue
+
+        for artist in key_artists:
+            getattr(artist, set_attr_name)(value)
+
+        if legend_handles is not None:
+            for artist in key_artists:
+                artist.set_label(dim_index)
+            legend_handles[dim_index] = artist
+
+
 class LayerData(object):
     """Data for one subplot layer"""
     _remap_args = {'c': 'color'}
