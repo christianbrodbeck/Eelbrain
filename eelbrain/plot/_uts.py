@@ -352,7 +352,7 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         xdim = data.dims[0]
         layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
-        self._set_axtitle(axtitle, data.data)
+        self._set_axtitle(axtitle, data)
 
         e0 = data.data[0][0]
         self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
@@ -477,7 +477,7 @@ class UTSClusters(EelFigure):
         # create figure
         layout = Layout(1 if overlay else data.plot_used, 2, 4, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
-        self._set_axtitle(axtitle, data.data)
+        self._set_axtitle(axtitle, data)
 
         colors = colors_for_oneway(range(data.n_plots), cmap=cm)
         self._caxes = []

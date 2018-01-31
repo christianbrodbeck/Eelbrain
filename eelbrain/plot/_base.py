@@ -79,7 +79,7 @@ import numpy as np
 import PIL
 
 from .._config import CONFIG
-from .._utils import IS_WINDOWS, intervals
+from .._utils import IS_WINDOWS, LazyProperty, intervals
 from .._utils.subp import command_exists
 from ..fmtxt import Image
 from .._colorspaces import symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
@@ -577,6 +577,22 @@ def find_data_dims(ndvar, dims):
             raise ValueError("NDVar does not have the right number of dimensions")
 
 
+class LayerData(object):
+    """Data for one subplot layer"""
+    _remap_args = {'c': 'color'}
+
+    def __init__(self, y, line_args={}):
+        self.y = y
+        self._line_args = line_args
+
+    def line_args(self, kwargs):
+        out = {}
+        for k, v in chain(kwargs.iteritems(), self._line_args.iteritems()):
+            if v is not None:
+                out[self._remap_args.get(k, k)] = v
+        return out
+
+
 class PlotData(object):
     """Organize nd-data for plotting
 
@@ -584,17 +600,19 @@ class PlotData(object):
     ----------
     plot_used : list of bool
         List indicating which plot slots are used (as opposed to empty).
-    data : list of list of NDVar
+    plot_data : list of list of LayerData
         The processed data to plot.
+    data : list of list of NDVar
+        The processed data to plot (for backwards compatibility).
     dims : tuple of str
         Names of the dimensions.
     frame_title : str
         Data description for the plot frame.
     """
     def __init__(self, axes, dims, title="unnamed data"):
-        self.plot_used = map(bool, axes)
-        self.data = filter(None, axes)
-        self.n_plots = len(self.data)
+        self.plot_used = [ax is not None for ax in axes]
+        self.plot_data = [ax for ax in axes if ax is not None]
+        self.n_plots = len(self.plot_data)
         self.dims = dims
         self.frame_title = title
 
@@ -718,8 +736,40 @@ class PlotData(object):
                         axes.append([aggregate(v, agg)])
                     x_name = xax.name
 
+        axes = [[LayerData(l) for l in ax] if ax else ax for ax in axes]
         title = frame_title(y_name, x_name)
         return cls(axes, dims, title)
+
+    @classmethod
+    def empty(cls, plots, dims, title):
+        if isinstance(plots, int):
+            plots = [[] for _ in xrange(plots)]
+        else:
+            plots = [[] if p else None for p in plots]
+        return cls(plots, dims, title)
+
+    def add_layer(self, ys, line_args={}):
+        """Add a layer to all plots"""
+        assert len(ys) == len(self.plot_data)
+        if isinstance(line_args, dict):
+            line_args = (line_args,) * len(ys)
+        else:
+            assert len(line_args) == len(ys)
+
+        for layers, y, args in izip(self.plot_data, ys, line_args):
+            if not isinstance(y, LayerData):
+                y = LayerData(y, args)
+            layers.append(y)
+
+    @property
+    def y0(self):
+        if self.plot_data and self.plot_data[0]:
+            return self.plot_data[0][0].y
+
+    @LazyProperty
+    def data(self):
+        "For backwards compatibility with nested list of NDVar"
+        return [[l.y for l in ax] for ax in self.plot_data]
 
 
 def aggregate(y, agg):
@@ -902,15 +952,15 @@ class EelFigure(object):
         self.canvas.mpl_connect('key_press_event', self._on_key_press)
         self.canvas.mpl_connect('key_release_event', self._on_key_release)
 
-    def _set_axtitle(self, axtitle, epochs=None, axes=None, names=None):
+    def _set_axtitle(self, axtitle, data=None, axes=None, names=None):
         """Set axes titles automatically
 
         Parameters
         ----------
         axtitle : bool | str | sequence of str
             Plot parameter.
-        epochs : nested list of NDVar
-            Plotted epochs (if available).
+        data : PlotData
+            Plotted data (if available).
         axes : list of axes | int
             Axes for which to set title (default is self._axes). If an int,
             (n axes) the method does not set axes title but returns ``None``
@@ -931,10 +981,10 @@ class EelFigure(object):
         elif axtitle is True or isinstance(axtitle, basestring):
             if names is None:
                 names = []
-                for layers in epochs:
+                for layers in data.plot_data:
                     for layer in layers:
-                        if layer.name:
-                            names.append(layer.name)
+                        if layer.y.name:
+                            names.append(layer.y.name)
                             break
                     else:
                         names.append(None)

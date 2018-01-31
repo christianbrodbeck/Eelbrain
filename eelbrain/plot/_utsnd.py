@@ -11,7 +11,7 @@ import numpy as np
 from .._names import INTERPOLATE_CHANNELS
 from . import _base
 from ._base import (
-    EelFigure, PlotData, Layout,
+    EelFigure, PlotData, LayerData, Layout,
     ColorMapMixin, LegendMixin, TimeSlicerEF, TopoMapKey, YLimMixin, XAxisMixin)
 
 
@@ -249,7 +249,7 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
 
         layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
-        self._set_axtitle(axtitle, data.data)
+        self._set_axtitle(axtitle, data)
 
         for i, ax, layers in zip(xrange(data.n_plots), self._axes, data.data):
             p = _ax_im_array(ax, layers, x, interpolation, self._vlims,
@@ -274,27 +274,29 @@ class _plt_utsnd(object):
     ----------
     ax : matplotlib axes
         Target axes.
-    epoch : NDVar (sensor by time)
+    layer : LayerData
         Epoch to plot.
     sensors : None | True | numpy index
         The sensors to plot (None or True -> all sensors).
     """
-    def __init__(self, ax, epoch, xdim, line_dim, color, sensors=None, **kwargs):
+    def __init__(self, ax, layer, xdim, line_dim, sensors=None, **kwargs):
+        epoch = layer.y
         if sensors is not None and sensors is not True:
             epoch = epoch.sub(sensor=sensors)
 
+        kwargs = layer.line_args(kwargs)
+        if 'color' in kwargs and isinstance(kwargs['color'], dict):
+            color = kwargs.pop('color')
+        else:
+            color = None
         self._dims = (line_dim, xdim)
         x = epoch.get_dim(xdim)._axis_data()
         line_dim_obj = epoch.get_dim(line_dim)
         self.legend_handles = {}
-        if isinstance(color, dict):
-            line_color = color.get('default', 'k')
-        else:
-            line_color = color
         self.lines = ax.plot(x, epoch.get_data((xdim, line_dim)),
-                             color=line_color, label=epoch.name, **kwargs)
+                             label=epoch.name, **kwargs)
 
-        if isinstance(color, dict):
+        if color:
             self.legend_handles = {}
             for key, c in color.iteritems():
                 line_index = line_dim_obj._array_index(key)
@@ -343,28 +345,25 @@ class _ax_butterfly(object):
     ----------
     vmin, vmax: None | scalar
         Y axis limits.
+    layers : list of LayerData
+        Data layers to plot.
     """
     def __init__(self, ax, layers, xdim, linedim, sensors, color, linewidth,
                  vlims, clip=True):
         self.ax = ax
-        self.data = layers
+        self.data = [l.y for l in layers]
         self.layers = []
         self.legend_handles = {}
         self._meas = None
 
-        vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
-
-        kwargs = {}
-        if linewidth is not None:
-            kwargs['linewidth'] = linewidth
+        vmin, vmax = _base.find_uts_ax_vlim(self.data, vlims)
 
         name = ''
         for l in layers:
-            h = _plt_utsnd(ax, l, xdim, linedim, color or l.info.get('color'),
-                           sensors, clip_on=clip, **kwargs)
+            h = _plt_utsnd(ax, l, xdim, linedim, sensors, clip_on=clip, color=color, linewidth=linewidth)
             self.layers.append(h)
-            if not name and l.name:
-                name = l.name
+            if not name and l.y.name:
+                name = l.y.name
 
             self.legend_handles.update(h.legend_handles)
 
@@ -463,15 +462,14 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
         xdim, linedim = data.dims
         layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
-        self._set_axtitle(axtitle, data.data)
-        e0 = data.data[0][0]
-        self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
-        self._configure_yaxis(e0, ylabel)
+        self._set_axtitle(axtitle, data)
+        self._configure_xaxis_dim(data.y0.get_dim(xdim), xlabel, xticklabels)
+        self._configure_yaxis(data.y0, ylabel)
 
         self.plots = []
         self._vlims = _base.find_fig_vlims(data.data, vmax, vmin)
         legend_handles = {}
-        for ax, layers in zip(self._axes, data.data):
+        for ax, layers in zip(self._axes, data.plot_data):
             h = _ax_butterfly(ax, layers, xdim, linedim, sensors, color,
                               linewidth, self._vlims, clip)
             self.plots.append(h)
@@ -518,8 +516,8 @@ class _ax_bfly_epoch:
         mlw : scalar
             Marked sensor plot line width (default 1).
         """
-        self.lines = _plt_utsnd(ax, epoch, 'time', 'sensor', color, lw=lw,
-                                antialiased=antialiased)
+        self.lines = _plt_utsnd(ax, LayerData(epoch), 'time', 'sensor',
+                                color=color, lw=lw, antialiased=antialiased)
         ax.set_xlim(epoch.time[0], epoch.time[-1])
 
         self.ax = ax

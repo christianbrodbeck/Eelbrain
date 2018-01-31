@@ -107,7 +107,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
 
         layout = ImLayout(data.plot_used, 1, 5, None, {}, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
-        self._set_axtitle(axtitle, data.data)
+        self._set_axtitle(axtitle, data)
 
         # plots
         for ax, layers, proj_ in izip(self._axes, data.data, proj):
@@ -271,7 +271,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         # create figure
         layout = VariableAspectLayout(
             data.n_plots, 3, 10, (None, 1), None, (frame, False),
-            self._set_axtitle(axtitle, data.data, data.n_plots), *args, **kwargs
+            self._set_axtitle(axtitle, data, data.n_plots), *args, **kwargs
         )
         EelFigure.__init__(self, data.frame_title, layout)
 
@@ -293,7 +293,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
                              'mcolor': mcolor}
 
         # plot epochs (x/y are in figure coordinates)
-        for ax, layers in izip(self.bfly_axes, data.data):
+        for ax, layers in izip(self.bfly_axes, data.plot_data):
             p = _ax_butterfly(ax, layers, 'time', 'sensor', mark, color,
                               linewidth, self._vlims)
             self.bfly_plots.append(p)
@@ -739,8 +739,8 @@ class TopoArray(ColorMapMixin, EelFigure):
                 t = [t]
             self.set_topo_ts(*t)
 
-        self._set_axtitle(axtitle, data.data, self._array_axes)
-        self._configure_xaxis_dim(data.data[0][0].time, True, xticklabels, self._array_axes)
+        self._set_axtitle(axtitle, data, self._array_axes)
+        self._configure_xaxis_dim(data.y0.time, True, xticklabels, self._array_axes)
         self._configure_yaxis_dim(data.data, 'sensor', True, self._array_axes, False)
 
         # setup callback
