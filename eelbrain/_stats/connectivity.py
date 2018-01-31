@@ -1,7 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import numpy as np
 from numpy import newaxis
-from scipy.ndimage import generate_binary_structure, label
+from scipy.ndimage import generate_binary_structure
 
 
 VALID_TYPES = {'none', 'grid', 'custom'}
