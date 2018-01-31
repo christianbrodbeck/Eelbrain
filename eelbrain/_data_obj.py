@@ -2908,6 +2908,9 @@ class NDVar(object):
     def __abs__(self):
         return self.abs()
 
+    def __invert__(self):
+        return NDVar(~self.x, self.dims, self.info.copy(), self.name)
+
     def __lt__(self, other):
         return NDVar(self.x < self._ialign(other),
                      self.dims, self.info.copy(), self.name)
