@@ -149,7 +149,7 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
         else:
             color_iter = colors
 
-        layout = Layout(1, 0.5, 6, *args, **kwargs)
+        layout = Layout(1, 2. / ny, 6, *args, **kwargs)
         EelFigure.__init__(self, frame_title(y, x), layout)
         ax = self._axes[0]
 
