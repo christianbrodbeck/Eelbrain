@@ -116,7 +116,7 @@ def test_mne_experiment_templates():
            'free', 3, 'MNE')
     yield (set_inv, 'free-3-dSPM-0.2-pick_normal',
            {'loose': 1, 'depth': 0.2},
-           {'method': 'dSPM', 'lambda2': SNR3, 'pick_normal': True},
+           {'method': 'dSPM', 'lambda2': SNR3, 'pick_ori': 'normal'},
            'free', 3, 'dSPM', .2, True)
     yield (set_inv, 'fixed-2-MNE-0.2',
            {'fixed': True, 'depth': 0.2},
@@ -124,7 +124,7 @@ def test_mne_experiment_templates():
            'fixed', 2, 'MNE', .2)
     yield (set_inv, 'fixed-2-MNE-pick_normal',
            {'fixed': True, 'depth': 0.8},
-           {'method': 'MNE', 'lambda2': SNR2, 'pick_normal': True},
+           {'method': 'MNE', 'lambda2': SNR2, 'pick_ori': 'normal'},
            'fixed', 2, 'MNE', None, True)
     yield (set_inv, 'loose.5-3-sLORETA',
            {'loose': 0.5, 'depth': 0.8},

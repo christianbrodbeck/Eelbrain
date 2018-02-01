@@ -5964,7 +5964,7 @@ class MneExperiment(FileTree):
 
         apply_kw = {'method': method, 'lambda2': 1. / snr ** 2}
         if pick_normal:
-            apply_kw['pick_normal'] = pick_normal
+            apply_kw['pick_ori'] = 'normal'
 
         self._params['make_inv_kw'] = make_kw
         self._params['apply_inv_kw'] = apply_kw
