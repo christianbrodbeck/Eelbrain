@@ -43,13 +43,12 @@ class RevCorrData(object):
 
         # y_data:  ydim x time array
         if y.ndim == 1:
-            ydim = None
+            ydims = ()
             y_data = y.x[None, :]
-        elif y.ndim == 2:
-            ydim = y.dims[not y.get_axis('time')]
-            y_data = y.get_data((ydim.name, 'time'))
         else:
-            raise NotImplementedError("y with more than 2 dimensions")
+            dimnames = y.get_dimnames(last='time')
+            ydims = y.get_dims(dimnames[:-1])
+            y_data = y.get_data(dimnames).reshape((-1, len(y.time)))
 
         # x_data:  predictor x time array
         x_data = []
@@ -129,7 +128,8 @@ class RevCorrData(object):
         self.y_scale = y_scale
         self.y_name = y.name
         self._y_info = y.info
-        self.ydim = ydim
+        self.ydims = ydims
+        self.yshape = tuple(map(len, ydims))
         # x
         self.x = x_data
         self.x_mean = x_mean
@@ -142,10 +142,9 @@ class RevCorrData(object):
     def data_scale_ndvars(self):
         if self._scale_data:
             # y
-            if self.ydim:
-                dims = (self.ydim,)
-                y_mean = NDVar(self.y_mean, dims, self._y_info.copy(), self.y_name)
-                y_scale = NDVar(self.y_scale, dims, self._y_info.copy(), self.y_name)
+            if self.ydims:
+                y_mean = NDVar(self.y_mean.reshape(self.yshape), self.ydims, self._y_info.copy(), self.y_name)
+                y_scale = NDVar(self.y_scale.reshape(self.yshape), self.ydims, self._y_info.copy(), self.y_name)
             else:
                 y_mean = self.y_mean[0]
                 y_scale = self.y_scale[0]
@@ -186,10 +185,12 @@ class RevCorrData(object):
                 dims = (h_time,)
             else:
                 dims = (dim, h_time)
-            if self.ydim is None:
-                x = x[0]
+            if self.ydims:
+                dims = self.ydims + dims
+                if len(self.ydims) > 1:
+                    x = x.reshape(self.yshape + x.shape[1:])
             else:
-                dims = (self.ydim,) + dims
+                x = x[0]
             hs.append(NDVar(x, dims, self._y_info.copy(), name))
 
         if self._multiple_x:
@@ -198,13 +199,15 @@ class RevCorrData(object):
             return hs[0]
 
     def package_statistic(self, stat, meas, name):
-        if self.ydim is None:
+        if not self.ydims:
             return stat[0]
-        else:
-            return NDVar(stat, (self.ydim,), cs.stat_info(meas), name)
+        elif len(self.ydims) > 1:
+            stat = stat.reshape(self.yshape)
+        return NDVar(stat, self.ydims, cs.stat_info(meas), name)
 
     def package_value(self, value, name):
-        if self.ydim is None:
+        if not self.ydims:
             return value[0]
-        else:
-            return NDVar(value, (self.ydim,), self._y_info.copy(), name)
+        elif len(self.ydims) > 1:
+            value = value.reshape(self.yshape)
+        return NDVar(value, self.ydims, self._y_info.copy(), name)
