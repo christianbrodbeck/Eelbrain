@@ -17,7 +17,7 @@ dependencies:
 - pillow
 - psutil
 # mne-python
-#- mne
+#- mne >= 0.16
 - mkl
 - pyqt
 #- vtk >= 8.1.1
@@ -59,4 +59,4 @@ dependencies:
 - pip:
   - mayavi >= 4.6
   - pysurfer >= 0.7
-  - mne
+  - mne >= 0.16

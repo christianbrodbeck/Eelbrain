@@ -40,7 +40,7 @@ from .. import table
 from .. import testnd
 from .._config import CONFIG
 from .._data_obj import (
-    Datalist, Dataset, Factor, Var,
+    Datalist, Dataset, Factor, Var, SourceSpace, VolumeSourceSpace,
     align, align1, all_equal, assert_is_legal_dataset_key, combine)
 from .._exceptions import DefinitionError, DimensionMismatchError, OldVersionError
 from .._info import BAD_CHANNELS
@@ -56,7 +56,7 @@ from .._mne import (
 from ..mne_fixes import (
     write_labels_to_annot, _interpolate_bads_eeg, _interpolate_bads_meg)
 from ..mne_fixes._trans import hsp_equal, mrk_equal
-from ..mne_fixes._source_space import merge_volume_source_space
+from ..mne_fixes._source_space import merge_volume_source_space, prune_volume_source_space
 from .._ndvar import cwt_morlet
 from ..fmtxt import List, Report, Image, read_meta
 from .._report import named_list, enumeration, plural
@@ -107,7 +107,7 @@ COV_PARAMS = {'epoch', 'session', 'method', 'reg', 'keep_sample_mean',
 
 
 SRC_RE = re.compile('(ico|vol)-(\d+)$')
-inv_re = re.compile("(free|fixed|loose\.\d+)-"  # orientation constraint
+inv_re = re.compile("(free|fixed|loose\.\d+|vec)-"  # orientation constraint
                     "(\d*\.?\d+)-"  # SNR
                     "(MNE|dSPM|sLORETA)"  # method
                     "(?:-((?:0\.)?\d+))?"  # depth weighting
@@ -3286,6 +3286,13 @@ class MneExperiment(FileTree):
             self.set(parc=mask)
             mask = True
 
+        src = self.get('src')
+        if src[:3] == 'vol':
+            inv = self.get('inv')
+            if not (inv.startswith('vec') or inv.startswith('free')):
+                raise ValueError('inv=%r with src=%r: volume source space '
+                                 'requires free or vector inverse' % (inv, src))
+
         if fiff is None:
             fiff = self.load_raw()
 
@@ -3684,17 +3691,26 @@ class MneExperiment(FileTree):
                                   vardef=test_obj.vars)
         return testnd.LM('src', test_obj.stage_1, ds, subject=subject)
 
-    def load_src(self, add_geom=False, **state):
+    def load_src(self, add_geom=False, ndvar=False, **state):
         """Load the current source space
         
         Parameters
         ----------
         add_geom : bool
             Parameter for :func:`mne.read_source_spaces`.
+        ndvar : bool
+            Return as NDVar Dimension object (default False).
         ...
             State parameters.
         """
         fpath = self.get('src-file', make=True, **state)
+        if ndvar:
+            src = self.get('src')
+            if src.startswith('vol'):
+                return VolumeSourceSpace.from_file(
+                    self.get('mri-sdir'), self.get('mrisubject'), src)
+            return SourceSpace.from_file(
+                self.get('mri-sdir'), self.get('mrisubject'), src, self.get('parc'))
         return mne.read_source_spaces(fpath, add_geom)
 
     def load_test(self, test, tstart=None, tstop=None, pmin=None, parc=None,
@@ -5626,19 +5642,21 @@ class MneExperiment(FileTree):
                     return
 
             src = self.get('src')
+            self._log.info(f"Scaling {src} source space for {subject}...")
             subjects_dir = self.get('mri-sdir')
             mne.scale_source_space(subject, src, subjects_dir=subjects_dir)
         elif exists(dst):
             return
         else:
             src = self.get('src')
+            self._log.info(f"Generating {src} source space for {subject}...")
             kind, param = src.split('-')
             if kind == 'vol':
                 if subject == 'fsaverage':
                     bem = self.get('bem-file')
                 else:
-                    raise NotImplementedError("Volume source space for subject "
-                                              "other than fsaverage")
+                    raise NotImplementedError(
+                        "Volume source space for subject other than fsaverage")
                 hemis = ('Left', 'Right')
                 voi = ('Cerebral-Cortex', 'Cerebral-White-Matter')
                 sss = mne.setup_volume_source_space(
@@ -5647,6 +5665,7 @@ class MneExperiment(FileTree):
                     volume_label=['%s-%s' % fmt for fmt in product(hemis, voi)],
                     subjects_dir=self.get('mri-sdir'))
                 sss = merge_volume_source_space(sss, 'Eelbrain-volume')
+                sss = prune_volume_source_space(sss, int(param), 2)
             else:
                 spacing = kind + param
                 sss = mne.setup_source_space(
@@ -6078,7 +6097,7 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        ori : 'free' | 'fixed' | float ]0, 1]
+        ori : 'free' | 'fixed' | 'vec' | float ]0, 1]
             Orientation constraint (default 'free'; use a float to specify a
             loose constraint).
         snr : scalar
@@ -6098,7 +6117,7 @@ class MneExperiment(FileTree):
     def _inv_str(ori, snr, method, depth, pick_normal):
         "Construct inv str from settings"
         if isinstance(ori, str):
-            if ori not in ('free', 'fixed'):
+            if ori not in ('free', 'fixed', 'vec'):
                 raise ValueError('ori=%r' % (ori,))
         elif not 0 <= ori <= 1:
             raise ValueError("ori=%r; must be in range [0, 1]" % (ori,))
@@ -6121,6 +6140,8 @@ class MneExperiment(FileTree):
             items.append('%g' % depth)
 
         if pick_normal:
+            if ori == 'vec':
+                raise ValueError("ori='vec' and pick_normal=True are incompatible")
             items.append('pick_normal')
 
         return '-'.join(items)
@@ -6138,8 +6159,9 @@ class MneExperiment(FileTree):
             if not 0 <= ori <= 1:
                 raise ValueError('inv=%r (first value of inv (loose '
                                  'parameter) needs to be in [0, 1]' % (inv,))
-        elif ori not in ('free', 'fixed'):
-            raise ValueError('inv=%r (ori=%r)' % (inv, ori))
+        elif ori == 'vec' and pick_normal:
+            raise ValueError("inv=%r (vector source estimates and pick_normal"
+                             "are mutually exclusive)")
 
         snr = float(snr)
         if snr <= 0:
@@ -6171,7 +6193,7 @@ class MneExperiment(FileTree):
 
         if ori == 'fixed':
             make_kw = {'fixed': True}
-        elif ori == 'free':
+        elif ori == 'free' or ori == 'vec':
             make_kw = {'loose': 1}
         elif isinstance(ori, float):
             make_kw = {'loose': ori}
@@ -6186,7 +6208,9 @@ class MneExperiment(FileTree):
             make_kw['depth'] = depth
 
         apply_kw = {'method': method, 'lambda2': 1. / snr ** 2}
-        if pick_normal:
+        if ori == 'vec':
+            apply_kw['pick_ori'] = 'vector'
+        elif pick_normal:
             apply_kw['pick_ori'] = 'normal'
 
         self._params['make_inv_kw'] = make_kw
