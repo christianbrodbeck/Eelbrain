@@ -8735,7 +8735,7 @@ class SourceSpace(Dimension):
             return arg
         elif isinstance(arg, Sequence) and all(isinstance(label, basestring) for
                                                label in arg):
-            if all(a in self.parc.cells for a in arg):
+            if self.parc is not None and all(a in self.parc.cells for a in arg):
                 return self.parc.isin(arg)
             else:
                 return [self._array_index(a) for a in arg]
