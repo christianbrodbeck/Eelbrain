@@ -1395,6 +1395,38 @@ class BaseLayout(object):
             ax.spines['left'].set_visible(False)
 
 
+class LayoutDim(object):
+    "Helper function to determine figure spacing"
+    _properties = ('total', 'first', 'space', 'last', 'ax')
+    _equations = dict(
+        ax='(total - first - last - (n_ax - 1) * space) / n_ax',
+        total='first + n_ax * ax + (n_ax - 1) * space + last',
+        first='total - n_ax * ax  - (n_ax - 1) * space - last',
+        last='total - first - n_ax * ax - (n_ax - 1) * space',
+        space='(total - first - n_ax * ax - last) / (n_ax - 1)',
+    )
+
+    def __init__(self, n_ax, total, ax, first, space, last, ax_default, first_default, space_default, last_default):
+        if space is None and n_ax == 1:
+            space = 0.
+        values = {'total': total, 'first': first, 'space': space, 'last': last,
+                  'ax': ax, 'n_ax': n_ax}
+        defaults = {'first': first_default, 'space': space_default,
+                    'last': last_default, 'ax': ax_default}
+        for i, p in enumerate(self._properties):
+            if values[p] is None:
+                for p2 in self._properties[i + 1:]:
+                    if values[p2] is None:
+                        values[p2] = defaults[p2]
+                values[p] = eval(self._equations[p], values)
+                break
+        self.total = values['total']
+        self.ax = values['ax']
+        self.first = values['first']
+        self.space = values['space']
+        self.last = values['last']
+
+
 class Layout(BaseLayout):
     """Layout for figures with several axes of the same size"""
     _default_margins = {'left': 0.4, 'bottom': 0.5, 'right': 0.05, 'top': 0.05,
@@ -1469,12 +1501,11 @@ class Layout(BaseLayout):
         elif margins is not None:
             use_margins = True
             tight = False
-            margins_in = dict(margins)
-            margins = {key: margins_in.pop(key, default) for key, default in
-                       self._default_margins.iteritems()}
-            if margins_in:
+            margins = dict(margins)
+            invalid = set(margins).difference(self._default_margins)
+            if invalid:
                 raise ValueError("Invalid entries in margins (unknown keys): "
-                                 "%r" % (margins_in,))
+                                 "%s" % ', '.join(map(repr, invalid)))
         else:
             margins = {k: 0 for k in self._default_margins}
             use_margins = False
@@ -1580,20 +1611,25 @@ class Layout(BaseLayout):
                 nrow = min(nax, nrow)
                 ncol = int(math.ceil(nax / nrow))
 
-            if h and not axh:
-                h_empty = margins['bottom'] + margins['hspace'] * (nrow - 1) + margins['top']
-                axh = (h - h_empty) / nrow
-            if w and not axw:
-                w_empty = margins['left'] + margins['wspace'] * (ncol - 1) + margins['right']
-                axw = (w - w_empty) / ncol
-
-            if not axw and not axh:
-                axh = axh_default
-
-            if axh and not axw:
-                axw = axh * ax_aspect
-            elif axw and not axh:
-                axh = axw / ax_aspect
+            axh_default = axh_default if axw is None else axw / ax_aspect
+            h_dim = LayoutDim(
+                nrow, h, axh, margins.get('top'), margins.get('hspace'),
+                margins.get('bottom'), axh_default, self._default_margins['top'],
+                self._default_margins['hspace'], self._default_margins['bottom']
+            )
+            w_dim = LayoutDim(
+                ncol, w, axw, margins.get('left'), margins.get('wspace'),
+                margins.get('right'), h_dim.ax * ax_aspect, self._default_margins['left'],
+                self._default_margins['wspace'], self._default_margins['right']
+            )
+            h = h_dim.total
+            w = w_dim.total
+            axh = h_dim.ax
+            axw = w_dim.ax
+            margins = {
+                'top': h_dim.first, 'bottom': h_dim.last, 'hspace': h_dim.space,
+                'left': w_dim.first, 'right': w_dim.last, 'wspace': w_dim.space}
+            h_is_implicit = w_is_implicit = False
 
         if nax:
             nrow = int(nrow)

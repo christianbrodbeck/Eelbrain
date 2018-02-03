@@ -34,6 +34,14 @@ def test_layout():
     assert_raises(ValueError, Layout, 2, 1.5, 2, True, h=5, axh=6)
     assert_raises(ValueError, Layout, 2, 1.5, 2, True, w=5, axw=6)
 
+    # left margin & axw
+    margins = dict(left=1, top=2, bottom=1, wspace=1, hspace=2)
+    layout = Layout(2, 2, 2, margins=margins, axw=5, w=10, ncol=1)
+    assert layout.w == 10
+    assert layout.margins == dict(right=10 - 1 - 5, **margins)
+    assert layout.axh == 2.5
+    assert layout.h == 5 + 2 * layout.axh
+
 
 def test_time_slicer():
     "Test linked time axes"
