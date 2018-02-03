@@ -1079,8 +1079,6 @@ class SequencePlotter(object):
         """
         if not self._data:
             raise RuntimeError("No data")
-        elif self._time is None:
-            raise RuntimeError("No data with time axis")
         hemis = (hemi,) if isinstance(hemi, basestring) else hemi
         if isinstance(view, basestring):
             views = (view,)
@@ -1090,7 +1088,7 @@ class SequencePlotter(object):
             views = view
 
         n_views = len(hemis) * len(views)
-        n_bins = len(self._time)
+        n_bins = 1 if self._time is None else len(self._time)
         if orientation == 'horizontal':
             n_columns = n_bins
             n_rows = n_views
@@ -1122,8 +1120,9 @@ class SequencePlotter(object):
             b.set_parallel_view(scale=True)
 
             # capture images
-            for i in xrange(len(self._time)):
-                b.set_data_time_index(i)
+            for i in xrange(n_bins):
+                if self._time is not None:
+                    b.set_data_time_index(i)
                 for row, view in izip(hemi_rows, views):
                     if isinstance(view, basestring):
                         b.show_view(view)
