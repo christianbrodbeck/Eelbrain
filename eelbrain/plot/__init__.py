@@ -1,6 +1,7 @@
 """Plotting for data-objects"""
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 
+from ._base import reset_rc
 from ._colors import (
     ColorBar, ColorGrid, ColorList,
     colors_for_categorial, colors_for_oneway, colors_for_twoway,

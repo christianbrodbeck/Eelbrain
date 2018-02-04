@@ -146,6 +146,14 @@ DEFAULT_CMAPS = {
     't': 'xpolar',
 }
 
+INITIAL_RC = mpl.rcParams.copy()
+del INITIAL_RC['backend']
+
+
+def reset_rc():
+    "Reset matplotlib rc-parameters to state at Eelbrain initialization"
+    mpl.rcParams.update(INITIAL_RC)
+
 
 def find_axis_params_data(v, label):
     """Find matching number formatter and label for display unit != data unit
