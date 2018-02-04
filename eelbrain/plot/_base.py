@@ -1520,90 +1520,51 @@ class Layout(BaseLayout):
                 w = ax_aspect * h
             elif h is None:
                 h = w / ax_aspect
+        elif nax == 1:
+            ncol = nrow = 1
         elif nrow is None and ncol is None:
             if w and axw:
                 ncol = math.floor(w / axw)
-                nrow = math.ceil(nax / ncol)
-                if h:
-                    axh = axh or h / nrow
-                elif axh:
-                    h = axh * nrow
-                else:
-                    axh = axw / ax_aspect
-                    h = axh * nrow
             elif h and axh:
                 nrow = math.floor(h / axh)
-                ncol = math.ceil(nax / nrow)
-                if w:
-                    axw = axw or w / ncol
-                elif axw:
-                    w = axw * ncol
-                else:
-                    axw = axh * ax_aspect
-                    w = axw * ncol
             elif w:
                 if axh:
                     ncol = round(w / (axh * ax_aspect))
                 else:
                     ncol = round(w / (axh_default * ax_aspect))
                 ncol = max(1, min(nax, ncol))
-                axw = w / ncol
-                nrow = math.ceil(nax / ncol)
-                if h:
-                    axh = h / nrow
-                else:
-                    if not axh:
-                        axh = axw / ax_aspect
-                    h = nrow * axh
             elif h:
                 if axw:
                     nrow = round(h / (axw / ax_aspect))
                 else:
                     nrow = round(h / axh_default)
-
-                if nax < nrow:
-                    nrow = nax
-                elif nrow < 1:
-                    nrow = 1
-
-                axh = h / nrow
-                ncol = math.ceil(nax / nrow)
-                if w:
-                    axw = w / ncol
-                else:
-                    if not axw:
-                        axw = axh * ax_aspect
-                    w = ncol * axw
+                nrow = max(1, min(nax, nrow))
             elif axh or axw:
-                axh = axh or axw / ax_aspect
-                axw = axw or axh * ax_aspect
-                ncol = min(nax, math.floor(defaults['maxw'] / axw))
-                nrow = math.ceil(nax / ncol)
-                h = nrow * axh
-                w = ncol * axw
+                if not axh:
+                    axh = axw / ax_aspect
+                nrow = min(nax, math.floor(defaults['maxh'] / axh))
             else:
-                maxh = defaults['maxh']
-                maxw = defaults['maxw']
+                # default: minimum number of columns (max number of rows)
+                hspace = margins.get('hspace', 0)
+                maxh = defaults['maxh'] - margins.get('top', 0) - margins.get('bottom', 0) + hspace
+                axh_with_space = axh_default + hspace
+                nrow = min(nax, math.floor(maxh / axh_with_space))
+                # test width
+                ncol = math.ceil(nax / nrow)
+                wspace = margins.get('wspace', 0)
+                maxw = defaults['maxw'] - margins.get('left', 0) - margins.get('right', 0) + wspace
+                axw_with_space = axh_default * ax_aspect + wspace
+                if ncol * axw_with_space > maxw:
+                    # nrow/ncol proportional to (maxh / axh) / (maxw / axw)
+                    ratio = (maxh / axh_with_space) / (maxw / axw_with_space)
+                    # nax = ncol * (ncol * ratio)
+                    # ncol = sqrt(nax / ratio)
+                    ncol = math.floor(math.sqrt(nax / ratio))
+                    nrow = math.ceil(nax / ncol)
+                    axh = (maxh - nrow * hspace) / nrow
+                    axw = axh * ax_aspect
 
-                # try default
-                axh = axh_default
-                axw = axh_default * ax_aspect
-                ncol = min(nax, math.floor(maxw / axw))
-                nrow = math.ceil(nax / ncol)
-                h = axh * nrow
-                if h > maxh:
-                    col_to_row_ratio = maxw / (ax_aspect * maxh)
-                    # nax = ncol * nrow
-                    # nax = (col_to_row * nrow) * nrow
-                    nrow = math.ceil(math.sqrt(nax / col_to_row_ratio))
-                    ncol = math.ceil(nax / nrow)
-                    h = maxh
-                    axh = h / nrow
-                    w = maxw
-                    axw = w / ncol
-                else:
-                    w = axw * ncol
-        else:
+        if nax:
             if nrow is None:
                 ncol = min(nax, ncol)
                 nrow = int(math.ceil(nax / ncol))
