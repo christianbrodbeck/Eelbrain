@@ -245,12 +245,14 @@ class ColorGrid(EelFigure):
     labels : dict (optional)
         Condition labels that are used instead of the keys in ``row_cells`` and
         ``column_cells``.
+    shape : 'box' | 'line'
+        Shape for color samples (default 'box').
     """
     _name = "ColorGrid"
 
     def __init__(self, row_cells, column_cells, colors, size=None,
                  column_label_position='top', row_first=None, labels=None,
-                 *args, **kwargs):
+                 shape='box', *args, **kwargs):
         if row_first is None:
             row_cell_0 = row_cells[0]
             col_cell_0 = column_cells[0]
@@ -283,9 +285,16 @@ class ColorGrid(EelFigure):
                     cell = (row_cells[row], column_cells[col])
                 else:
                     cell = (column_cells[col], row_cells[row])
-                patch = mpl.patches.Rectangle((col, row), 1, 1, fc=colors[cell],
-                                              ec='none')
-                ax.add_patch(patch)
+
+                if shape == 'box':
+                    patch = mpl.patches.Rectangle((col, row), 1, 1, fc=colors[cell],
+                                                  ec='none')
+                    ax.add_patch(patch)
+                elif shape == 'line':
+                    y = row + 0.5
+                    ax.plot([col, col + 1], [y, y], color=colors[cell])
+                else:
+                    raise ValueError("shape=%r" % (shape,))
 
         # prepare labels
         if labels:
