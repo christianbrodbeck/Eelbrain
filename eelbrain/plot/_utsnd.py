@@ -400,7 +400,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
         epochs, but only if multiple axes are plotted.
     xlabel : str | bool
         X-axis labels. By default the label is inferred from the data.
-    ylabel : str | None
+    ylabel : str | bool
         Y-axis labels. By default the label is inferred from the data.
     xticklabels : bool | int
         Add tick-labels to the x-axis. ``int`` to add tick-labels to a single
