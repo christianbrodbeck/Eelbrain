@@ -176,9 +176,9 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         Create a separate plot for each cell in this model.
     xlabel, ylabel : bool | string
         Labels for x and y axes. If True, labels are automatically chosen.
-    xticklabels : bool | int
-        Add tick-labels to the x-axis. ``int`` to add tick-labels to a single
-        axis (default ``-1``).
+    xticklabels : bool | int | list of int
+        Add tick-labels to the x-axis. Specify which axes should carry
+        x-axis tick labels using ``int`` axes indices (default ``-1``).
     proj : str
         The sensor projection to use for topomaps.
     res : int
@@ -652,9 +652,9 @@ class TopoArray(ColorMapMixin, EelFigure):
         :meth:`~matplotlib.axes.Axes.imshow`). Matplotlib 1.5.3's SVG output
         can't handle uneven aspect with ``interpolation='none'``, use
         ``interpolation='nearest'`` instead.
-    xticklabels : bool | int
-        Add tick-labels to the x-axis. ``int`` to add tick-labels to a single
-        axis (default ``-1``).
+    xticklabels : bool | int | list of int
+        Add tick-labels to the x-axis. Specify which axes should carry
+        x-axis tick labels using ``int`` axes indices (default ``-1``).
     axtitle : bool | sequence of str
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.

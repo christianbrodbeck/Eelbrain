@@ -62,9 +62,9 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         X-axis label. By default the label is inferred from the data.
     ylabel : bool | str
         Y-axis label. By default the label is inferred from the data.
-    xticklabels : bool | int
-        Add tick-labels to the x-axis. ``int`` to add tick-labels to a single
-        axis (default ``-1``).
+    xticklabels : bool | int | list of int
+        Add tick-labels to the x-axis. Specify which axes should carry
+        x-axis tick labels using ``int`` axes indices (default ``-1``).
     invy : bool
         Invert the y axis (if ``bottom`` and/or ``top`` are specified explicitly
         they take precedence; an inverted y-axis can also be produced by
@@ -205,7 +205,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             self._set_axtitle(axtitle, names=map(cellname, ct.cells))
 
         self._configure_yaxis(ct.Y, ylabel)
-        self._configure_xaxis_dim(ct.Y.get_dim(xdim), xlabel, xticklabels)#
+        self._configure_xaxis_dim(ct.Y.get_dim(xdim), xlabel, xticklabels)
         XAxisMixin._init_with_data(self, ((Y,),), xdim, xlim)
         YLimMixin.__init__(self, self._plots)
         LegendMixin.__init__(self, legend, legend_handles)
@@ -312,9 +312,9 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     xlabel, ylabel : str | None
         X- and y axis labels. By default the labels will be inferred from
         the data.
-    xticklabels : bool | int
-        Add tick-labels to the x-axis. ``int`` to add tick-labels to a single
-        axis (default ``-1``).
+    xticklabels : bool | int | list of int
+        Add tick-labels to the x-axis. Specify which axes should carry
+        x-axis tick labels using ``int`` axes indices (default ``-1``).
     bottom, top : scalar
         Y-axis limits.
     legend : str | int | 'fig' | None
@@ -457,9 +457,9 @@ class UTSClusters(EelFigure):
     overlay : bool
         Plot epochs (time course for different effects) on top of each
         other (as opposed to on separate axes).
-    xticklabels : bool | int
-        Add tick-labels to the x-axis. ``int`` to add tick-labels to a single
-        axis (default ``-1``).
+    xticklabels : bool | int | list of int
+        Add tick-labels to the x-axis. Specify which axes should carry
+        x-axis tick labels using ``int`` axes indices (default ``-1``).
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)

@@ -195,9 +195,9 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
         Create a separate plot for each cell in this model.
     xlabel, ylabel : bool | str
         Labels for x- and y-axis; the default is determined from the data.
-    xticklabels : bool | int
-        Add tick-labels to the x-axis. ``int`` to add tick-labels to a single
-        axis (default ``-1``).
+    xticklabels : bool | int | list of int
+        Add tick-labels to the x-axis. Specify which axes should carry
+        x-axis tick labels using ``int`` axes indices (default ``-1``).
     ds : None | Dataset
         If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
         as strings.
@@ -386,9 +386,9 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
         X-axis labels. By default the label is inferred from the data.
     ylabel : str | bool
         Y-axis labels. By default the label is inferred from the data.
-    xticklabels : bool | int
-        Add tick-labels to the x-axis. ``int`` to add tick-labels to a single
-        axis (default ``-1``).
+    xticklabels : bool | int | list of int
+        Add tick-labels to the x-axis. Specify which axes should carry
+        x-axis tick labels using ``int`` axes indices (default ``-1``).
     color : matplotlib color | dict
         Either a color for all lines, or a dictionary mapping levels of the 
         line dimension to colors. The default is to use ``NDVar.info['color']``

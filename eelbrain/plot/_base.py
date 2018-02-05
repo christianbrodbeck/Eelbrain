@@ -1188,7 +1188,7 @@ class EelFigure(object):
         else:
             return (self._axes[i] for i in axes)
 
-    def _configure_xaxis_dim(self, dim, label, ticklabels, axes=None,
+    def _configure_xaxis_dim(self, dim, label, xticklabels, axes=None,
                              scalar=True):
         """Configure the x-axis based on a dimension
 
@@ -1196,11 +1196,11 @@ class EelFigure(object):
         ----------
         dim : Dimension
             The dimension assigned to the axis.
-        label : None | str
+        label : bool | str
             Axis label.
-        xticklabels : bool | int
-            Add tick-labels to the x-axis. ``int`` to add tick-labels to a
-            single axis (default ``-1``).
+        xticklabels : bool | int | list of int
+            Add tick-labels to the x-axis. Specify which axes should carry
+            x-axis tick labels using ``int`` axes indices (default ``-1``).
         axes : list of Axes
             Axes which to format (default is EelFigure._axes)
         """
@@ -1209,16 +1209,22 @@ class EelFigure(object):
         formatter, locator, label = dim._axis_format(scalar, label)
 
         n_axes = len(axes)
-        if isinstance(ticklabels, bool):
-            add_tick_labels = [ticklabels] * n_axes
-        elif isinstance(ticklabels, int):
-            if ticklabels >= n_axes or ticklabels < -n_axes:
-                raise ValueError("ticklabels=%r for a plot with %i axes" %
-                                 (ticklabels, n_axes))
-            add_tick_labels = [False] * n_axes
-            add_tick_labels[ticklabels] = True
+        if isinstance(xticklabels, bool):
+            add_tick_labels = [xticklabels] * n_axes
         else:
-            raise TypeError("ticklabels=%r" % (ticklabels,))
+            if isinstance(xticklabels, int):
+                tick_label_i = (xticklabels,)
+            else:
+                try:
+                    tick_label_i = map(int, xticklabels)
+                except TypeError:
+                    raise TypeError("xticklabels=%r" % (xticklabels,))
+            add_tick_labels = [False] * n_axes
+            for i in tick_label_i:
+                if i >= n_axes or i < -n_axes:
+                    raise ValueError("xticklabels=%r for a plot with %i axes"
+                                     % (xticklabels, n_axes))
+                add_tick_labels[i] = True
 
         for ax, add_tick_labels_ in izip(axes, add_tick_labels):
             if locator:
