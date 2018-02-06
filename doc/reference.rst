@@ -144,6 +144,7 @@ and more specific operations:
    resample
    segment
    set_parc
+   set_tmin
    xhemi
 
 

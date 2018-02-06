@@ -12,7 +12,7 @@ New in 0.27
     use the new function :func:`set_parc`. The :meth:`SourceSpace.set_parc`
     method has been removed because dimension objects should be treated
     as immutable, as they can be shared between different :class:`NDVar`
-    instances.
+    instances. Analogously, :meth:`UTS.set_tmin` is now :func:`set_tmin`.
   - :func:`table.frequencies`: If the input ``y`` is a :class:`Var` object, the
     output will also be a :class:`Var` (was :class:`Factor`).
   - :meth:`NDVar.smooth`: window-based smoothing now uses a symmetric window,

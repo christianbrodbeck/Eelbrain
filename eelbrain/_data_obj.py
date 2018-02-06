@@ -8945,8 +8945,9 @@ class UTS(Dimension):
         self._n_decimals = max(n_decimals(self.tmin), n_decimals(self.tstep))
 
     def set_tmin(self, tmin):
-        "Modify the value of tmin"
-        self.__init__(tmin, self.tstep, self.nsamples)
+        """Superseded. Use :func:`eelbrain.set_tmin`."""
+        raise RuntimeError("The UTS.set_tmin() method has been removed. Use "
+                           "eelbrain.set_tmin() instead")
 
     @property  # not a LazyProperty because ithas to change after .set_time()
     def times(self):

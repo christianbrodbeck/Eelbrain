@@ -23,7 +23,8 @@ from scipy import signal
 
 from eelbrain import (
     datasets, load, Var, Factor, NDVar, Datalist, Dataset, Celltable,
-    Case, Categorial, Scalar, Sensor, UTS, align, align1, choose, combine,
+    Case, Categorial, Scalar, Sensor, UTS, set_tmin,
+    align, align1, choose, combine,
     cwt_morlet, shuffled_index)
 from eelbrain._data_obj import (
     all_equal, asvar, assub, FULL_AXIS_SLICE, FULL_SLICE, longname, SourceSpace,
@@ -1214,7 +1215,7 @@ def test_ndvar_timeseries_methods():
 
     # update tmin
     eq_(x.time.times[0], -0.2)
-    x.time.set_tmin(3.2)
+    x = set_tmin(x, 3.2)
     eq_(x.time.times[0], 3.2)
 
 

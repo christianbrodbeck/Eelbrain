@@ -911,3 +911,23 @@ def set_parc(ndvar, parc, dim='source'):
     dims = list(ndvar.dims)
     dims[axis] = new
     return NDVar(ndvar.x, dims, ndvar.info.copy(), ndvar.name)
+
+
+def set_tmin(ndvar, tmin=0.):
+    """Change the time axis of an :class:`NDVar`
+
+    Parameters
+    ----------
+    tmin : scalar
+        New ``tmin`` value (default 0).
+
+    Returns
+    -------
+    out_ndvar : NDVar
+        Shallow copy of ``ndvar`` with updated time axis.
+    """
+    axis = ndvar.get_axis('time')
+    old = ndvar.dims[axis]
+    dims = list(ndvar.dims)
+    dims[axis] = UTS(tmin, old.tstep, old.nsamples)
+    return NDVar(ndvar.x, dims, ndvar.info.copy(), ndvar.name)
