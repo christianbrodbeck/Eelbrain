@@ -55,7 +55,7 @@ class _plt_im(object):
             self._contour_h = None
 
         if self._contours:
-            h = self.ax.contour(self._data, origin='lower', aspect=self._aspect,
+            h = self.ax.contour(self._data, origin='lower',
                                 extent=self._extent, **self._contours)
             if self._mask is not None:
                 for c in h.collections:
