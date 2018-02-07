@@ -8,10 +8,10 @@ import operator
 
 import numpy as np
 import matplotlib as mpl
-from matplotlib.colors import LinearSegmentedColormap, Normalize, to_rgb
+from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.colorbar import ColorbarBase
 
-from .. import _colorspaces as cs
+from .._colorspaces import to_rgb, oneway_colors, twoway_colors, SymmetricNormalize
 from .._data_obj import Factor, Interaction, cellname
 from .._utils import IS_WINDOWS
 from ._base import EelFigure, Layout, find_axis_params_data
@@ -118,8 +118,7 @@ def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None,
     """
     n = len(cells)
     if cmap is None:
-        colors = cs.oneway_colors(n, hue_start, light_range, light_cycle,
-                                  always_cycle_hue)
+        colors = oneway_colors(n, hue_start, light_range, light_cycle, always_cycle_hue)
         return dict(izip(cells, colors))
     else:
         cm = mpl.cm.get_cmap(cmap)
@@ -156,7 +155,7 @@ def colors_for_twoway(x1_cells, x2_cells, hue_start=0.2, hue_shift=0.,
     if n1 < 2 or n2 < 2:
         raise ValueError("Need at least 2 cells on each factor")
 
-    clist = cs.twoway_colors(n1, n2, hue_start, hue_shift, hues)
+    clist = twoway_colors(n1, n2, hue_start, hue_shift, hues)
     return dict(izip(product(x1_cells, x2_cells), clist))
 
 
@@ -198,7 +197,7 @@ def colors_for_nway(cell_lists, hue_start=0.2):
             distance = 2 * d / (n_current - 1)
         hues = np.asarray(hues)
         hues %= 1
-        colors = cs.twoway_colors(n_outer, n_inner, hues=hues)
+        colors = twoway_colors(n_outer, n_inner, hues=hues)
         return dict(izip(product(*cell_lists), colors))
     else:
         return {}
@@ -563,7 +562,7 @@ class ColorBar(EelFigure):
 
         # show only part of the colorbar
         if clipmin is not None or clipmax is not None:
-            if isinstance(norm, cs.SymmetricNormalize):
+            if isinstance(norm, SymmetricNormalize):
                 raise NotImplementedError(
                     "clipmin or clipmax with SymmetricNormalize")
             boundaries = norm.inverse(np.linspace(0, 1, cm.N + 1))
@@ -585,7 +584,7 @@ class ColorBar(EelFigure):
                                 label=label)
 
         # fix tick location
-        if isinstance(norm, cs.SymmetricNormalize) and ticks is not None:
+        if isinstance(norm, SymmetricNormalize) and ticks is not None:
             tick_norm = Normalize(norm.vmin, norm.vmax, norm.clip)
             axis.set_ticks(tick_norm(ticks))
 
