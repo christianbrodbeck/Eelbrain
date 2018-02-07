@@ -51,11 +51,11 @@ def test_sample():
     res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=100, data='sensor.rms',
                       sns_baseline=False, make=True)
     meg_rms = combine(meg.rms('sensor') for meg in megs).mean('case', name='auditory')
-    assert_dataobj_equal(res.c1_mean, meg_rms, decimal=22)
+    assert_dataobj_equal(res.c1_mean, meg_rms, decimal=21)
     res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=100, data='sensor.mean',
                       sns_baseline=False, make=True)
     meg_mean = combine(meg.mean('sensor') for meg in megs).mean('case', name='auditory')
-    assert_dataobj_equal(res.c1_mean, meg_mean)
+    assert_dataobj_equal(res.c1_mean, meg_mean, decimal=21)
 
     # e._report_subject_info() broke with non-alphabetic subject order
     subjects = e.get_field_values('subject')
