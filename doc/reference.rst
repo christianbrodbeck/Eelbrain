@@ -435,14 +435,15 @@ More specific control over the plots can be achieved through the
 .. autosummary::
    :toctree: generated
 
-    plot.brain.brain
-    plot.brain.butterfly
-    plot.brain.cluster
-    plot.brain.dspm
-    plot.brain.p_map
-    plot.brain.annot
-    plot.brain.annot_legend
-    ~plot._brain_object.Brain
+   plot.brain.brain
+   plot.brain.butterfly
+   plot.brain.cluster
+   plot.brain.dspm
+   plot.brain.p_map
+   plot.brain.annot
+   plot.brain.annot_legend
+   plot.brain.SequencePlotter
+   ~plot._brain_object.Brain
 
 In order to make custom plots, a :class:`~plot._brain_object.Brain` figure
 without any data added can be created with

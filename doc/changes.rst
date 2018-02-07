@@ -21,6 +21,8 @@ New in 0.27
 * :func:`concatenate`: concatenate multiple :class:`NDVar` objects to form a
   new dimension.
 * :meth:`NDVar.ols`: regress on a dimension.
+* :class:`plot.brain.SequencePlotter` to plot multiple anatomical images on one
+  figure.
 * New functions and objects:
 
   - :func:`complete_source_space`

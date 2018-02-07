@@ -998,8 +998,8 @@ def _bin_table_ims(data, hemi, views, brain_func):
 class SequencePlotter(object):
     """Grid of anatomical images in one figure
 
-    Example
-    -------
+    Examples
+    --------
     Plotting an evoked response in 50 ms bins:
 
     >>> ndvar_binned = ndvar.bin(0.05, 0, 0.3, 'extrema')
@@ -1088,8 +1088,8 @@ class SequencePlotter(object):
             return False
 
     def plot_table(self, hemi=('lh', 'rh'), view=('lateral', 'medial'),
-                   orientation='horizontal', column_header=None, *args, **kwargs):
-        """Add ims to a figure
+                   orientation='horizontal', column_header=True, *args, **kwargs):
+        """Create a figure with the images
 
         Parameters
         ----------
@@ -1101,6 +1101,15 @@ class SequencePlotter(object):
             e.g., ``('lateral', 0, 10, 70)``.
         orientation : 'vertical' | 'horizontal'
             Direction of the time/case axis.
+        column_header : bool | list of str
+            Headers for columns of images (default is inferred from the data).
+        ...
+            Layout parameters for the figure.
+
+        Returns
+        -------
+        fig : EelFigure
+            Figure created by the plot.
         """
         if not self._data:
             raise RuntimeError("No data")
@@ -1162,7 +1171,7 @@ class SequencePlotter(object):
                 cmap_data = ndvar
             b.close()
 
-        if column_header is None and orientation == 'horizontal':
+        if column_header is True and orientation == 'horizontal':
             column_header = self._bin_labels()
 
         if transpose:
