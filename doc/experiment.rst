@@ -266,11 +266,45 @@ The default pre-processing pipeline is defined as follows::
             'kwargs': {'method': 'iir'}},
     }
 
-Additional pipes can be added in a ``MneExperiment.raw`` attribute. For
-example, to use TSSS, ICA and finally band-pass filter::
+Additional pipes can be added in a ``MneExperiment.raw`` attribute.
+
+:mod:`mne` changed default values for filtering occasionally. Eelbrain tries to
+correct for this, but can't guarantee it. For this reason it is advantageous
+to fully define filter parameters when starting a new experiment, to both use
+the newest settings and keep them consistent over time, for example::
+
+    # as of mne 0.16
+    FILTER_KWARGS = {
+        'filter_length': 'auto',
+        'l_trans_bandwidth': 'auto',
+        'h_trans_bandwidth': 'auto',
+        'phase': 'zero',
+        'fir_window': 'hamming',
+        'fir_design': 'firwin',
+    }
+
+For example, to use TSSS, ICA and finally band-pass filter::
 
     raw = {
-        'tsss':
+        'tsss': {
+            'type': 'maxwell_filter',
+            'source': 'raw',
+            'kwargs': {'st_duration': 10.,
+                       'ignore_ref': True,
+                       'st_correlation': .9,
+                       'st_only': True}},
+        'ica': {
+            'type': 'ica',
+            'source': 'tsss',
+            'session': 'session',
+            'kwargs': {'n_components': 0.99,
+                       'random_state': 0,
+                       'method': 'extended-infomax'}},
+        'ica1-40': {
+            'type': 'filter',
+            'source': 'ica',
+            'args': (1, 40),
+            'kwargs': FILTER_KWARGS},
     }
 
 
