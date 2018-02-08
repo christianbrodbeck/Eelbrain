@@ -82,7 +82,7 @@ setup(
         'full': [
             'numpy >= 1.8',
             'scipy >= 0.17',
-            'matplotlib >= 1.1',
+            'matplotlib >= 2.1',
         ],
         'dev': [
             'nose',

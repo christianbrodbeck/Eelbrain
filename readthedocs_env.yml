@@ -16,7 +16,7 @@ dependencies:
   - Sphinx >= 1.6
   - scipy >= 0.17
   - nibabel >= 2.0
-  - matplotlib >= 1.1
+  - matplotlib >= 2.1
   - wxpython >= 3.0
   - pip:
     - mne  # to avoid adding mayavi through PySurfer (when mayavi is imported
