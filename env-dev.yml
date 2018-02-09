@@ -1,5 +1,5 @@
-# usage: $ conda install --file=env_dev.yml
-name: eelbrain-dev
+# usage: $ conda env create --file=env-dev.yml
+name: eeldev
 channels:
 - defaults
 - conda-forge
