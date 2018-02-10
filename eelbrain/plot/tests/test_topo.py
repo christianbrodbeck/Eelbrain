@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from nose.tools import eq_
+from nose.tools import eq_, assert_raises
 
 from eelbrain import datasets, plot, testnd
 from eelbrain._utils.testing import requires_mne_sample_data
@@ -27,6 +27,9 @@ def test_plot_topomap_mne():
     ds = datasets.get_mne_sample(sub=[0, 1], sns=True)
     p = plot.Topomap(ds['meg'].summary(time=(.1, .12)), proj='left', show=False)
     p.close()
+    # grad
+    ds = datasets.get_mne_sample(sub=[0], sns='grad')
+    assert_raises(NotImplementedError, plot.Topomap, 'meg.sub(time=.1)', ds=ds, show=False)
 
 
 def test_plot_topo_butterfly():

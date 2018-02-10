@@ -437,6 +437,9 @@ class _plt_topomap(_plt_im):
             v = v[self._visible_data]
             locs = locs[self._visible_data]
 
+        # axis parameter in numpy >= 0.13
+        # unique_locs = np.unique(locs, axis=0)
+
         if self._method is None:
             # interpolate data
             xi, yi = self._mgrid
@@ -449,7 +452,13 @@ class _plt_topomap(_plt_im):
 
             g = (d * d) * (np.log(d) - 1.)
             g.flat[::diagonal_step] = 0.
-            weights = linalg.solve(g, v.ravel())
+            try:
+                weights = linalg.solve(g, v.ravel())
+            except ValueError:
+                raise NotImplementedError(
+                    "Error determining sensor map projection, possibly due to "
+                    "more than one sensor in a single location; try using a "
+                    "different projection.")
 
             m, n = xi.shape
             out = np.empty_like(xi)
