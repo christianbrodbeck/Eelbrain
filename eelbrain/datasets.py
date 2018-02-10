@@ -163,7 +163,7 @@ def _mne_source_space(subject, src_tag, subjects_dir):
 
 def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
                    src=None, sub="modality=='A'", fixed=False, snr=2,
-                   method='dSPM', rm=False, stc=False):
+                   method='dSPM', rm=False, stc=False, hpf=0):
     """Load events and epochs from the MNE sample data
 
     Parameters
@@ -174,8 +174,9 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
         Relative time of the last sample of the epoch.
     baseline : {None, tuple of 2 {scalar, None}}
         Period for baseline correction.
-    sns : bool
+    sns : bool | str
         Add sensor space data as NDVar as ``ds['meg']`` (default ``False``).
+        Set to ``'grad'`` to load gradiometer data.
     src : False | 'ico' | 'vol'
         Add source space data as NDVar as ``ds['src']`` (default ``False``).
     sub : str | list | None
@@ -192,6 +193,8 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     stc : bool
         Add mne SourceEstimate for source space data as ``ds['stc']`` (default
         ``False``).
+    hpf : scalar
+        High pass filter cutoff.
 
     Returns
     -------
@@ -211,6 +214,9 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
         events = mne.find_events(raw, stim_channel='STI 014')
         mne.write_events(event_file, events)
     ds = load.fiff.events(raw_file, events=event_file)
+    if hpf:
+        ds.info['raw'].load_data()
+        ds.info['raw'].filter(hpf, None)
     ds.index()
     ds.info['subjects_dir'] = subjects_dir
     ds.info['subject'] = subject
@@ -238,8 +244,9 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
 
     load.fiff.add_mne_epochs(ds, tmin, tmax, baseline)
     if sns:
-        ds['meg'] = load.fiff.epochs_ndvar(ds['epochs'], data='mag',
-                                           sysname='neuromag306mag')
+        ds['meg'] = load.fiff.epochs_ndvar(ds['epochs'],
+                                           data='mag' if sns is True else sns,
+                                           sysname='neuromag')
 
     if not src:
         return ds

@@ -391,7 +391,9 @@ def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
     i_start : str
         name of the variable containing the index of the events.
     sysname : str
-        Name of the sensor system (used to load sensor connectivity).
+        Name of the sensor system to load sensor connectivity (e.g. 'neuromag',
+        inferred automatically for KIT data converted with a recent version of
+        MNE-Python).
     tstop : scalar
         Alternative to ``tmax``: While ``tmax`` specifies the last samples to 
         include, ``tstop`` can be used to specify the epoch time excluding the 
@@ -576,7 +578,9 @@ def sensor_dim(info, picks=None, sysname=None):
         Channel picks (as used in mne-python). By default all MEG and EEG
         channels are included.
     sysname : str
-        Name of the sensor system (used to load sensor connectivity).
+        Name of the sensor system to load sensor connectivity (e.g. 'neuromag',
+        inferred automatically for KIT data converted with a recent version of
+        MNE-Python).
 
     Returns
     -------
@@ -605,6 +609,19 @@ def sensor_dim(info, picks=None, sysname=None):
 
     # use KIT system ID if available
     sysname = KIT_NEIGHBORS.get(info.get('kit_system_id'), sysname)
+    if sysname == 'neuromag':
+        ch_unit = {ch['unit'] for ch in chs}
+        if len(ch_unit) > 1:
+            raise RuntimeError("More than one channel kind for "
+                               "sysname='neuromag': %s" % (tuple(ch_unit),))
+        ch_unit = ch_unit.pop()
+        if ch_unit == FIFF.FIFF_UNIT_T_M:
+            sysname = 'neuromag306planar'
+        elif ch_unit == FIFF.FIFF_UNIT_T:
+            sysname = 'neuromag306mag'
+        else:
+            raise ValueError("Unknown channel unit for sysname='neuromag': %r"
+                             % (ch_unit,))
 
     if sysname is not None:
         c_matrix, names = mne.channels.read_ch_connectivity(sysname)
@@ -749,7 +766,9 @@ def epochs_ndvar(epochs, name=None, data=None, exclude='bads', mult=1,
     vmax : None | scalar
         Set a default range for plotting.
     sysname : str
-        Name of the sensor system (used to load sensor connectivity).
+        Name of the sensor system to load sensor connectivity (e.g. 'neuromag',
+        inferred automatically for KIT data converted with a recent version of
+        MNE-Python).
     """
     if isinstance(epochs, basestring):
         epochs = mne.read_epochs(epochs)
@@ -810,7 +829,9 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
     vmax : None | scalar
         Set a default range for plotting.
     sysname : str
-        Name of the sensor system (used to load sensor connectivity).
+        Name of the sensor system to load sensor connectivity (e.g. 'neuromag',
+        inferred automatically for KIT data converted with a recent version of
+        MNE-Python).
 
     Notes
     -----
