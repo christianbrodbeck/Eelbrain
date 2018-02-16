@@ -47,11 +47,28 @@ def tail_arg(tail):
 class Test(object):
     "Baseclass for any test"
     test_kind = None
-    model = None
     vars = None
 
-    def __init__(self, desc):
+    def __init__(self, desc, model, groups=None):
         self.desc = desc
+        self.model = model
+        self.groups = groups
+
+        if model is None:  # no averaging
+            self._between = None
+            self._within_model = None
+            self._within_model_items = None
+        else:
+            model_elements = map(str.strip, model.split('%'))
+            if 'group' in model_elements:
+                assert groups
+                self._between = model_elements.index('group')
+                del model_elements[self._between]
+            else:
+                self._between = None
+                assert groups is None
+            self._within_model_items = model_elements
+            self._within_model = '%'.join(model_elements)
 
     def as_dict(self):
         raise NotImplementedError
@@ -59,23 +76,28 @@ class Test(object):
 
 class EvokedTest(Test):
     "Group level test applied to subject averages"
-    def __init__(self, desc, model, cat=None):
-        Test.__init__(self, desc)
-        self.model = model
+    def __init__(self, desc, model, cat=None, groups=None):
+        Test.__init__(self, desc, model, groups)
         self.cat = cat
+        if cat is not None:
+            if self._within_model is None or len(self._within_model_items) == 0:
+                cat = None
+            elif self._between is not None:
+                # remove between factor from cat
+                cat = [[c for i, c in enumerate(cat) if i != self._between]
+                       for cat in self.cat]
+        self._within_cat = cat
 
     def make(self, y, ds, force_permutation, kwargs):
         raise NotImplementedError
 
 
-class TTestRel(EvokedTest):
-    "Related measures t-test"
-    test_kind = 'ttest_rel'
+class TTest(EvokedTest):
 
-    def __init__(self, model, c1, c0, tail=0):
+    def __init__(self, model, c1, c0, tail, groups=None):
         tail = tail_arg(tail)
         desc = '%s %s %s' % (c1, TAIL_REPR[tail], c0)
-        EvokedTest.__init__(self, desc, model, (c1, c0))
+        EvokedTest.__init__(self, desc, model, (c1, c0), groups)
         self.c1 = c1
         self.c0 = c0
         self.tail = tail
@@ -83,6 +105,29 @@ class TTestRel(EvokedTest):
     def as_dict(self):
         return {'kind': self.test_kind, 'model': self.model, 'c1': self.c1,
                 'c0': self.c0, 'tail': self.tail}
+
+
+class TTestInd(TTest):
+    "Independent measures t-test"
+    test_kind = 'ttest_ind'
+
+    def __init__(self, model, c1, c0, tail=0):
+        assert model == 'group'
+        TTest.__init__(self, model, c1, c0, tail, (c1, c0))
+
+    def make(self, y, ds, force_permutation, kwargs):
+        return testnd.ttest_ind(
+            y, self.model, self.c1, self.c0, 'subject', ds=ds, tail=self.tail,
+            force_permutation=force_permutation, **kwargs)
+
+
+class TTestRel(TTest):
+    "Related measures t-test"
+    test_kind = 'ttest_rel'
+
+    def __init__(self, model, c1, c0, tail=0):
+        TTest.__init__(self, model, c1, c0, tail)
+        assert self._between is None
 
     def make(self, y, ds, force_permutation, kwargs):
         return testnd.ttest_rel(
@@ -111,6 +156,16 @@ class TContrastRel(EvokedTest):
 
 
 class ANOVA(EvokedTest):
+    """ANOVA test
+
+    Parameters
+    ----------
+    x : str
+        ANOVA model specification (see :func:`test.anova`).
+    model : str
+        Model for grouping trials before averaging (does not need to be
+        specified unless it should include variables not in ``x``).
+    """
     test_kind = 'anova'
 
     def __init__(self, x, model=None):
@@ -119,6 +174,8 @@ class ANOVA(EvokedTest):
             items = sorted(i.strip() for i in x.split('*'))
             model = '%'.join(i for i in items if i != 'subject')
         EvokedTest.__init__(self, x, model)
+        if self._between is not None:
+            raise NotImplementedError("Between-subject ANOVA")
         self.x = x
 
     def as_dict(self):
@@ -135,10 +192,9 @@ class TwoStageTest(Test):
     test_kind = 'two-stage'
 
     def __init__(self, stage_1, vars=None, model=None):
-        Test.__init__(self, stage_1)
+        Test.__init__(self, stage_1, model)
         self.stage_1 = stage_1
         self.vars = vars
-        self.model = model
 
     def as_dict(self):
         return {'kind': self.test_kind, 'stage_1': self.stage_1,
@@ -148,6 +204,7 @@ class TwoStageTest(Test):
 TEST_CLASSES = {
     'anova': ANOVA,
     'ttest_rel': TTestRel,
+    'ttest_ind': TTestInd,
     't_contrast_rel': TContrastRel,
     'two-stage': TwoStageTest,
 }

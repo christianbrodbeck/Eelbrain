@@ -78,7 +78,8 @@ from .preprocessing import (
     assemble_pipeline, RawICA, pipeline_dict, compare_pipelines,
     ask_to_delete_ica_files)
 from .test_def import (
-    EvokedTest, ROITestResult, TestDims, TwoStageTest, assemble_tests,
+    Test, EvokedTest, TTestInd,
+    ROITestResult, TestDims, TwoStageTest, assemble_tests,
 )
 
 
@@ -2359,17 +2360,35 @@ class MneExperiment(FileTree):
         ds['subject'] = Factor([ds.info['subject']], repeat=ds.n_cases, random=True)
         return ds
 
-    def label_subjects(self, ds):
+    def label_subjects(self, ds, groups=None):
         """Label the subjects in ds based on .groups
 
         Parameters
         ----------
         ds : Dataset
             A Dataset with 'subject' entry.
+        groups : str
+            Groups which to label. By default (``groups`` unspecified), this
+            function creates a boolean :class:`Var` for each group marking group
+            membership. If ``groups`` is specified as a list of group names, a
+            single :class:`Factor` called "group" is created that labels the
+            group for each subject (raises an error if group membership is not
+            unique).
         """
         subject = ds['subject']
-        for name, subjects in self._groups.iteritems():
-            ds[name] = Var(subject.isin(subjects))
+        if groups is None:
+            for name, subjects in self._groups.iteritems():
+                ds[name] = Var(subject.isin(subjects))
+        else:
+            labels = {s: [g for g in groups if s in self._groups[g]] for s in subject.cells}
+            problems = [s for s, g in labels.iteritems() if len(g) != 1]
+            if problems:
+                desc = [', '.join(labels[s]) if labels[s] else 'no group' for s in problems]
+                msg = ', '.join('%s (%s)' % pair for pair in zip(problems, desc))
+                raise ValueError("Groups %s are not unique for subjects: %s"
+                                 % (groups, msg))
+            labels = {s: g[0] for s, g in labels.iteritems()}
+            ds['group'] = Factor(subject, labels=labels)
 
     def load_annot(self, **state):
         """Load a parcellation (from an annot file)
@@ -2898,7 +2917,10 @@ class MneExperiment(FileTree):
             ds = self._make_evoked(decim, data_raw)
 
             if cat:
-                model = ds.eval(self.get('model'))
+                model = self.get('model')
+                if not model:
+                    raise TypeError("cat=%r: Can't set cat when model is ''" % (cat,))
+                model = ds.eval(model)
                 idx = model.isin(cat)
                 ds = ds.sub(idx)
                 if ds.n_cases == 0:
@@ -3714,7 +3736,7 @@ class MneExperiment(FileTree):
                 raise NotImplementedError("Two-stage test with data=%r" % (data.string,))
 
             if test_obj.model is not None:
-                self.set(model=test_obj.model)
+                self.set(model=test_obj._within_model)
 
             # stage 1
             lms = []
@@ -3749,10 +3771,10 @@ class MneExperiment(FileTree):
         else:
             if data.sensor:
                 res_data = self.load_evoked(True, sns_baseline, True,
-                                            test_obj.cat, data=data)
+                                            test_obj._within_cat, data=data)
             elif data.source:
                 res_data = self.load_evoked_stc(True, sns_baseline, src_baseline,
-                                                morph_ndvar=True, cat=test_obj.cat,
+                                                morph_ndvar=True, cat=test_obj._within_cat,
                                                 mask=mask)
             else:
                 raise RuntimeError("data=%r" % (data.string,))
@@ -4970,11 +4992,11 @@ class MneExperiment(FileTree):
 
     def _two_stage_report(self, report, test, sns_baseline, src_baseline, pmin,
                           samples, tstart, tstop, parc, mask, include):
-        model = self._tests[test].model
+        return_data = self._tests[test]._within_model is not None
         rlm = self._load_test(test, tstart, tstop, pmin, parc, mask, samples,
-                              'source', sns_baseline, src_baseline, bool(model),
+                              'source', sns_baseline, src_baseline, return_data,
                               True)
-        if model:
+        if return_data:
             group_ds, rlm = rlm
         else:
             group_ds = None
@@ -5468,15 +5490,17 @@ class MneExperiment(FileTree):
             Dependent variable.
         ds : Dataset
             Other variables.
-        test : str
-            Name of the test to perform
+        test : Test | str
+            Test, or name of the test to perform.
         kwargs : dict
             Test parameters (from :meth:`._test_kwargs`).
         force_permutation : bool
             Conduct permutations regardless of whether there are any clusters.
         """
-        test_obj = self._tests[test]
-        if not isinstance(test_obj, EvokedTest):
+        test_obj = test if isinstance(test, Test) else self._tests[test]
+        if isinstance(test_obj, TTestInd):
+            self.label_subjects(ds, test_obj.groups)
+        elif not isinstance(test_obj, EvokedTest):
             raise RuntimeError("Test kind=%s" % test_obj.test_kind)
         return test_obj.make(y, ds, force_permutation, kwargs)
 
@@ -6046,7 +6070,7 @@ class MneExperiment(FileTree):
         if test != '*' and test in self._tests:  # with vmatch=False, test object might not be availale
             test_obj = self._tests[test]
             if test_obj.model is not None:
-                self.set(model=test_obj.model)
+                self.set(model=test_obj._within_model)
 
     def _set_analysis_options(self, data, sns_baseline, src_baseline, pmin,
                               tstart, tstop, parc=None, mask=None, decim=None,
