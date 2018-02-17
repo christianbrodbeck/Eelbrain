@@ -90,6 +90,21 @@ class EvokedTest(Test):
         raise NotImplementedError
 
 
+class TTestOneSample(EvokedTest):
+    kind = 'ttest_1samp'
+    DICT_ATTRS = Test.DICT_ATTRS + ('tail',)
+
+    def __init__(self, tail=0):
+        desc = "%s 0" % TAIL_REPR[tail]
+        EvokedTest.__init__(self, desc, '')
+        self.tail = tail
+
+    def make(self, y, ds, force_permutation, kwargs):
+        return testnd.ttest_1samp(
+            y, match='subject', ds=ds, tail=self.tail,
+            force_permutation=force_permutation, **kwargs)
+
+
 class TTest(EvokedTest):
     DICT_ATTRS = Test.DICT_ATTRS + ('c1', 'c0', 'tail')
 
@@ -190,6 +205,7 @@ class TwoStageTest(Test):
 
 TEST_CLASSES = {
     'anova': ANOVA,
+    'ttest_1samp': TTestOneSample,
     'ttest_rel': TTestRel,
     'ttest_ind': TTestInd,
     't_contrast_rel': TContrastRel,
