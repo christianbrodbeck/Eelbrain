@@ -2101,15 +2101,18 @@ class _ClusterDist:
         if criteria:
             criteria_ = []
             for k, v in criteria.iteritems():
-                if k == 'mintime':
-                    ax = y.get_axis('time') - 1
-                    v = int(ceil(v / y.time.tstep))
+                m = re.match('min(\w+)', k)
+                if m:
+                    dimname = m.group(1)
+                    if not y.has_dim(dimname):
+                        raise TypeError(
+                            "%r is an invalid keyword argument for this testnd "
+                            "function (no dimension named %r)" % (k, dimname))
+                    ax = y.get_axis(dimname) - 1
+                    if dimname == 'time':
+                        v = int(ceil(v / y.time.tstep))
                 else:
-                    m = re.match('min(\w+)', k)
-                    if m:
-                        ax = y.get_axis(m.group(1)) - 1
-                    else:
-                        raise ValueError("Unknown argument: %s" % k)
+                    raise TypeError("%r is an invalid keyword argument for this testnd function" % (k,))
 
                 if nad_ax:
                     if ax == 0:

@@ -819,7 +819,7 @@ class Brain(TimeSlicer, surfer.Brain):
             Move the view upward (mm).
         scale : scalar
             Mayavi parallel_scale parameter. Default is 95 for the inflated
-            surface, 75 otherwise.
+            surface, 75 otherwise. Smaller numbers correspond to zooming in.
         """
         if scale is True:
             surf = self.geo.values()[0].surf

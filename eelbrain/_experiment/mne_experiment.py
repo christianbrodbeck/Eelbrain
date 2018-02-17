@@ -3596,9 +3596,11 @@ class MneExperiment(FileTree):
             Number of random permutations of the data used to determine cluster
             p values (default 10'000).
         data : str
-            Dta for test. Whether the analysis is in sensor or source space.
-            ``source.mean`` to load tests for ROI mean time course.
-            ``sensor.rms`` for RMS across sensors.
+            Data to test, for example:
+            ``sensor`` spatio-temporal test in sensor space.
+            ``source`` spatio-temporal test in source space.
+            ``source.mean`` ROI mean time course.
+            ``sensor.rms`` RMS across sensors.
         sns_baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
@@ -6336,6 +6338,11 @@ class MneExperiment(FileTree):
             number.
         asds : bool
             Return a Dataset with the information (default is to print it).
+
+        Notes
+        -----
+        To display the number of components rejected of an ICA raw pipe, use
+        :meth:`~MneExperiment.show_raw_info`.
         """
         # TODO: include ICA raw preprocessing pipes
         raw_name = self.get('raw')
