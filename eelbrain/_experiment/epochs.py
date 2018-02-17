@@ -3,6 +3,49 @@ from .._exceptions import DefinitionError
 from .definitions import Definition, typed_arg
 
 
+def assemble_epochs(epoch_def, epoch_default):
+    epochs = {}
+    secondary_epochs = []
+    super_epochs = []
+    for name, parameters in epoch_def.iteritems():
+        # filter out secondary epochs
+        if 'sub_epochs' in parameters:
+            super_epochs.append((name, parameters.copy()))
+        elif 'base' in parameters:
+            secondary_epochs.append((name, parameters.copy()))
+        else:
+            kwargs = epoch_default.copy()
+            kwargs.update(parameters)
+            epochs[name] = PrimaryEpoch(name, **kwargs)
+
+    # integrate secondary epochs (epochs with base parameter)
+    while secondary_epochs:
+        n_secondary_epochs = len(secondary_epochs)
+        for i in xrange(n_secondary_epochs - 1, -1, -1):
+            name, parameters = secondary_epochs[i]
+            if parameters['base'] in epochs:
+                parameters['base'] = epochs[parameters['base']]
+                epochs[name] = SecondaryEpoch(name, **parameters)
+                del secondary_epochs[i]
+        if len(secondary_epochs) == n_secondary_epochs:
+            raise ValueError("Invalid epoch definition: " +
+                             '; '.join('Epoch %s has non-existing base '
+                                       '%r.' % p for p in secondary_epochs))
+    # integrate super-epochs
+    epochs_ = {}
+    for name, parameters in super_epochs:
+        try:
+            sub_epochs = [epochs[n] for n in parameters.pop('sub_epochs')]
+        except KeyError as err:
+            msg = 'no epoch named %r' % err.args
+            if err.args[0] in super_epochs:
+                msg += '. SuperEpochs can not be defined recursively'
+            raise KeyError(msg)
+        epochs_[name] = SuperEpoch(name, sub_epochs, parameters)
+    epochs.update(epochs_)
+    return epochs
+
+
 class Epoch(Definition):
     """Epoch definition base (non-functional baseclass)
 

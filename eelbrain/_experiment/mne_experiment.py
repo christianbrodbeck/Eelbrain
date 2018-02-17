@@ -66,7 +66,7 @@ from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .definitions import (
     assert_dict_has_args, find_dependent_epochs,
     find_epochs_vars, find_test_vars, log_dict_change, log_list_change)
-from .epochs import PrimaryEpoch, SecondaryEpoch, SuperEpoch
+from .epochs import PrimaryEpoch, SecondaryEpoch, SuperEpoch, assemble_epochs
 from .experiment import FileTree
 from .parc import (
     FS_PARC, FSA_PARC, PARC_CLASSES, SEEDED_PARC_RE,
@@ -693,47 +693,7 @@ class MneExperiment(FileTree):
         # epochs
         epoch_default = {'session': self._sessions[0]}
         epoch_default.update(self.epoch_default)
-        epochs = {}
-        secondary_epochs = []
-        super_epochs = []
-        for name, parameters in self.epochs.iteritems():
-            # filter out secondary epochs
-            if 'sub_epochs' in parameters:
-                super_epochs.append((name, parameters.copy()))
-            elif 'base' in parameters:
-                secondary_epochs.append((name, parameters.copy()))
-            else:
-                kwargs = epoch_default.copy()
-                kwargs.update(parameters)
-                epochs[name] = PrimaryEpoch(name, **kwargs)
-
-        # integrate secondary epochs (epochs with base parameter)
-        while secondary_epochs:
-            n_secondary_epochs = len(secondary_epochs)
-            for i in xrange(n_secondary_epochs - 1, -1, -1):
-                name, parameters = secondary_epochs[i]
-                if parameters['base'] in epochs:
-                    parameters['base'] = epochs[parameters['base']]
-                    epochs[name] = SecondaryEpoch(name, **parameters)
-                    del secondary_epochs[i]
-            if len(secondary_epochs) == n_secondary_epochs:
-                raise ValueError("Invalid epoch definition: " +
-                                 '; '.join('Epoch %s has non-existing base '
-                                           '%r.' % p for p in secondary_epochs))
-        # integrate super-epochs
-        epochs_ = {}
-        for name, parameters in super_epochs:
-            try:
-                sub_epochs = [epochs[n] for n in parameters.pop('sub_epochs')]
-            except KeyError as err:
-                msg = 'no epoch named %r' % err.args
-                if err.args[0] in super_epochs:
-                    msg += '. SuperEpochs can not be defined recursively'
-                raise KeyError(msg)
-            epochs_[name] = SuperEpoch(name, sub_epochs, parameters)
-        epochs.update(epochs_)
-
-        self._epochs = epochs
+        self._epochs = assemble_epochs(self.epochs, epoch_default)
 
         ########################################################################
         # store epoch rejection settings
