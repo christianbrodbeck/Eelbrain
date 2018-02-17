@@ -16,7 +16,7 @@ dependencies:
 - keyring >= 5
 - pillow
 - wxpython == 3
-- numpy >= 1.13
+- numpy >= 1.11
 - scipy >= 0.17
 - nibabel >= 2.0
 - matplotlib >= 2.1
