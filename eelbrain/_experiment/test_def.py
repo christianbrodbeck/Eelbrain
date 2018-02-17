@@ -4,6 +4,7 @@ import re
 
 from .. import testnd
 from .._exceptions import DefinitionError
+from .definitions import Definition
 
 
 __test__ = False
@@ -44,10 +45,10 @@ def tail_arg(tail):
         raise TypeError("tail=%r; needs to be 0, -1 or 1" % (tail,))
 
 
-class Test(object):
+class Test(Definition):
     "Baseclass for any test"
-    test_kind = None
-    vars = None
+    kind = None
+    DICT_ATTRS = ('kind', 'model')
 
     def __init__(self, desc, model, groups=None):
         self.desc = desc
@@ -70,9 +71,6 @@ class Test(object):
             self._within_model_items = model_elements
             self._within_model = '%'.join(model_elements)
 
-    def as_dict(self):
-        raise NotImplementedError
-
 
 class EvokedTest(Test):
     "Group level test applied to subject averages"
@@ -93,6 +91,7 @@ class EvokedTest(Test):
 
 
 class TTest(EvokedTest):
+    DICT_ATTRS = Test.DICT_ATTRS + ('c1', 'c0', 'tail')
 
     def __init__(self, model, c1, c0, tail, groups=None):
         tail = tail_arg(tail)
@@ -102,14 +101,10 @@ class TTest(EvokedTest):
         self.c0 = c0
         self.tail = tail
 
-    def as_dict(self):
-        return {'kind': self.test_kind, 'model': self.model, 'c1': self.c1,
-                'c0': self.c0, 'tail': self.tail}
-
 
 class TTestInd(TTest):
     "Independent measures t-test"
-    test_kind = 'ttest_ind'
+    kind = 'ttest_ind'
 
     def __init__(self, model, c1, c0, tail=0):
         assert model == 'group'
@@ -123,7 +118,7 @@ class TTestInd(TTest):
 
 class TTestRel(TTest):
     "Related measures t-test"
-    test_kind = 'ttest_rel'
+    kind = 'ttest_rel'
 
     def __init__(self, model, c1, c0, tail=0):
         TTest.__init__(self, model, c1, c0, tail)
@@ -137,17 +132,14 @@ class TTestRel(TTest):
 
 class TContrastRel(EvokedTest):
     "T-contrast"
-    test_kind = 't_contrast_rel'
+    kind = 't_contrast_rel'
+    DICT_ATTRS = Test.DICT_ATTRS + ('contrast', 'tail')
 
     def __init__(self, model, contrast, tail=0):
         tail = tail_arg(tail)
         EvokedTest.__init__(contrast, model)
         self.contrast = contrast
         self.tail = tail
-
-    def as_dict(self):
-        return {'kind': self.test_kind, 'model': self.model,
-                'contrast': self.contrast, 'tail': self.tail}
 
     def make(self, y, ds, force_permutation, kwargs):
         return testnd.t_contrast_rel(
@@ -166,7 +158,8 @@ class ANOVA(EvokedTest):
         Model for grouping trials before averaging (does not need to be
         specified unless it should include variables not in ``x``).
     """
-    test_kind = 'anova'
+    kind = 'anova'
+    DICT_ATTRS = Test.DICT_ATTRS + ('x',)
 
     def __init__(self, x, model=None):
         x = ''.join(x.split())
@@ -178,9 +171,6 @@ class ANOVA(EvokedTest):
             raise NotImplementedError("Between-subject ANOVA")
         self.x = x
 
-    def as_dict(self):
-        return {'kind': self.test_kind, 'model': self.model, 'x': self.x}
-
     def make(self, y, ds, force_permutation, kwargs):
         return testnd.anova(
             y, self.x, match='subject', ds=ds,
@@ -189,16 +179,13 @@ class ANOVA(EvokedTest):
 
 class TwoStageTest(Test):
     "Two-stage test on epoched or evoked data"
-    test_kind = 'two-stage'
+    kind = 'two-stage'
+    DICT_ATTRS = Test.DICT_ATTRS + ('stage_1', 'vars')
 
     def __init__(self, stage_1, vars=None, model=None):
         Test.__init__(self, stage_1, model)
         self.stage_1 = stage_1
         self.vars = vars
-
-    def as_dict(self):
-        return {'kind': self.test_kind, 'stage_1': self.stage_1,
-                'vars': self.vars, 'model': self.model}
 
 
 TEST_CLASSES = {

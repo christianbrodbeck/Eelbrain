@@ -5,6 +5,21 @@ from .._exceptions import DefinitionError
 from .._utils.parse import find_variables
 
 
+class Definition(object):
+    DICT_ATTRS = None
+
+    def as_dict(self):
+        return {k: getattr(self, k) for k in self.DICT_ATTRS}
+
+    def __eq__(self, other):
+        if isinstance(other, dict):
+            return self.as_dict() == other
+        elif isinstance(other, Definition):
+            return self.as_dict() == other.as_dict()
+        else:
+            return False
+
+
 def assert_dict_has_args(d, cls, kind, name, n_internal=0):
     "Make sure the dictionary ``d`` has all keys required by ``cls``"
     argspec = getargspec(cls.__init__)

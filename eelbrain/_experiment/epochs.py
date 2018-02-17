@@ -1,9 +1,9 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from .._exceptions import DefinitionError
-from .definitions import typed_arg
+from .definitions import Definition, typed_arg
 
 
-class Epoch(object):
+class Epoch(Definition):
     """Epoch definition base (non-functional baseclass)
 
     Parameters
@@ -62,9 +62,6 @@ class Epoch(object):
         self.post_baseline_trigger_shift_min = post_baseline_trigger_shift_min
         self.post_baseline_trigger_shift_max = post_baseline_trigger_shift_max
 
-    def as_dict(self):
-        return {k: getattr(self, k) for k in self.DICT_ATTRS}
-
     def as_dict_24(self):
         "Dict to be compared with Eelbrain 0.24 cache"
         out = {k: v for k, v in self.as_dict().items() if v is not None}
@@ -75,9 +72,6 @@ class Epoch(object):
         if out['trigger_shift'] == 0:
             del out['trigger_shift']
         return out
-
-    def __eq__(self, other):
-        return self.as_dict() == other
 
 
 class PrimaryEpoch(Epoch):

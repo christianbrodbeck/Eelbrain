@@ -5292,7 +5292,7 @@ class MneExperiment(FileTree):
     def _report_test_info(self, section, ds, test, res, data, include=None):
         info = self._analysis_info(data)
         test_obj = self._tests[test]
-        info.add_item("test = %s  (%s)" % (test_obj.test_kind, test_obj.desc))
+        info.add_item("test = %s  (%s)" % (test_obj.kind, test_obj.desc))
         if include is not None:
             info.add_item("Separate plots of all clusters with a p-value < %s"
                           % include)
@@ -5501,7 +5501,7 @@ class MneExperiment(FileTree):
         if isinstance(test_obj, TTestInd):
             self.label_subjects(ds, test_obj.groups)
         elif not isinstance(test_obj, EvokedTest):
-            raise RuntimeError("Test kind=%s" % test_obj.test_kind)
+            raise RuntimeError("Test kind=%s" % test_obj.kind)
         return test_obj.make(y, ds, force_permutation, kwargs)
 
     def merge_bad_channels(self):
