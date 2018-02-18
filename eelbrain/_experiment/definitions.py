@@ -90,6 +90,11 @@ def find_epochs_vars(epochs):
                     out[e] = sum((out[se] for se in p['sub_epochs']),
                                  find_epoch_vars(p))
                     todo.remove(e)
+            elif 'collect' in p:
+                if all(se in out for se in p['collect']):
+                    out[e] = sum((out[se] for se in p['collect']),
+                                 find_epoch_vars(p))
+                    todo.remove(e)
             else:
                 out[e] = find_epoch_vars(p)
                 todo.remove(e)
@@ -97,7 +102,7 @@ def find_epochs_vars(epochs):
 
 
 def find_dependent_epochs(epoch, epochs):
-    "Find all epochs whise definition depends on epoch"
+    "Find all epochs whose definition depends on epoch"
     todo = set(epochs).difference(epoch)
     out = [epoch]
     while todo:
@@ -110,6 +115,10 @@ def find_dependent_epochs(epoch, epochs):
                     todo.remove(e)
             elif 'sub_epochs' in p:
                 if any(se in out for se in p['sub_epochs']):
+                    out.append(e)
+                    todo.remove(e)
+            elif 'collect' in p:
+                if any(se in out for se in p['collect']):
                     out.append(e)
                     todo.remove(e)
             else:

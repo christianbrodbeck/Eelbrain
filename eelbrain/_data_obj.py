@@ -1004,8 +1004,11 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
     elif isinstance(first_item, basestring):
         return Factor(items)
     stype = type(first_item)
-    if not isdatacontainer(first_item):
-        raise TypeError("Can only combine data-objects, got %r" % (first_item,))
+    if isinstance(first_item, mne.BaseEpochs):
+        return mne.concatenate_epochs(items)
+    elif not isdatacontainer(first_item):
+        raise TypeError("%r: combine does not support objects of type %s" %
+                        (first_item, first_item.__class__.__name__))
     elif any(type(item) is not stype for item in items[1:]):
         raise TypeError("All items to be combined need to have the same type, "
                         "got %s." %

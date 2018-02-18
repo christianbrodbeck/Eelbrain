@@ -66,7 +66,9 @@ from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .definitions import (
     assert_dict_has_args, find_dependent_epochs,
     find_epochs_vars, find_test_vars, log_dict_change, log_list_change)
-from .epochs import PrimaryEpoch, SecondaryEpoch, SuperEpoch, assemble_epochs
+from .epochs import (
+    PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, assemble_epochs,
+)
 from .experiment import FileTree
 from .parc import (
     FS_PARC, FSA_PARC, PARC_CLASSES, SEEDED_PARC_RE,
@@ -2590,6 +2592,18 @@ class MneExperiment(FileTree):
             return ds
         # single subject, single modality
         epoch = self._epochs[self.get('epoch')]
+        if isinstance(epoch, EpochCollection):
+            dss = []
+            with self._temporary_state:
+                for sub_epoch in epoch.collect:
+                    ds = self.load_epochs(
+                        subject, baseline, ndvar, add_bads, reject, cat, decim,
+                        pad, data_raw, vardef, eog, trigger_shift, apply_ica,
+                        tmin, tmax, tstop, epoch=sub_epoch)
+                    ds[:, 'epoch'] = sub_epoch
+                    dss.append(ds)
+            return combine(dss)
+
         with self._temporary_state:
             ds = self.load_selected_events(add_bads=add_bads, reject=reject,
                                            data_raw=data_raw or True,
@@ -3376,6 +3390,9 @@ class MneExperiment(FileTree):
             return ds
 
         epoch = self._epochs[self.get('epoch')]
+        if isinstance(epoch, EpochCollection):
+            raise ValueError("epoch=%r; can't load events for collection epoch" %
+                             (self.get('epoch'),))
 
         # rejection comes from somewhere else
         if isinstance(epoch, SuperEpoch):

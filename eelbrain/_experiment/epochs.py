@@ -7,12 +7,15 @@ def assemble_epochs(epoch_def, epoch_default):
     epochs = {}
     secondary_epochs = []
     super_epochs = []
+    collections = []
     for name, parameters in epoch_def.iteritems():
         # filter out secondary epochs
-        if 'sub_epochs' in parameters:
-            super_epochs.append((name, parameters.copy()))
-        elif 'base' in parameters:
+        if 'base' in parameters:
             secondary_epochs.append((name, parameters.copy()))
+        elif 'sub_epochs' in parameters:
+            super_epochs.append((name, parameters))
+        elif 'collect' in parameters:
+            collections.append((name, parameters))
         else:
             kwargs = epoch_default.copy()
             kwargs.update(parameters)
@@ -32,17 +35,20 @@ def assemble_epochs(epoch_def, epoch_default):
                              '; '.join('Epoch %s has non-existing base '
                                        '%r.' % p for p in secondary_epochs))
     # integrate super-epochs
-    epochs_ = {}
-    for name, parameters in super_epochs:
-        try:
-            sub_epochs = [epochs[n] for n in parameters.pop('sub_epochs')]
-        except KeyError as err:
-            msg = 'no epoch named %r' % err.args
-            if err.args[0] in super_epochs:
-                msg += '. SuperEpochs can not be defined recursively'
-            raise KeyError(msg)
-        epochs_[name] = SuperEpoch(name, sub_epochs, parameters)
-    epochs.update(epochs_)
+    for cls, arg, items in ((SuperEpoch, 'sub_epochs', super_epochs),
+                            (EpochCollection, 'collect', collections)):
+        epochs_ = {}
+        for name, parameters in items:
+            parameters = parameters.copy()
+            sub_keys = parameters.pop(arg)
+            try:
+                sub_epochs = [epochs[n] for n in sub_keys]
+            except KeyError as err:
+                raise DefinitionError(
+                    '%s %r %s=%s: no epoch named %r (recursive definitions are '
+                    'not allowed)' % (cls.__name__, name, arg, sub_keys, err.args))
+            epochs_[name] = cls(name, sub_epochs, **parameters)
+        epochs.update(epochs_)
     return epochs
 
 
@@ -176,7 +182,7 @@ class SuperEpoch(Epoch):
     DICT_ATTRS = Epoch.DICT_ATTRS + ('sub_epochs',)
     INHERITED_PARAMS = ('tmin', 'tmax', 'decim', 'baseline')
 
-    def __init__(self, name, sub_epochs, kwargs):
+    def __init__(self, name, sub_epochs, **kwargs):
         for e in sub_epochs:
             if isinstance(e, SuperEpoch):
                 raise TypeError("SuperEpochs can not be defined recursively")
@@ -204,3 +210,21 @@ class SuperEpoch(Epoch):
         self.sessions = {e.session for e in sub_epochs}
         self.sub_epochs = tuple(e.name for e in sub_epochs)
         self.rej_file_epochs = sum((e.rej_file_epochs for e in sub_epochs), ())
+
+
+class EpochCollection(Definition):
+    DICT_ATTRS = ('collect',)
+
+    def __init__(self, name, collect):
+        self.name = name
+        self.collect = tuple(e.name for e in collect)
+        # cache dependencies
+        self.sessions = {e.session for e in collect}
+        self.rej_file_epochs = sum((e.rej_file_epochs for e in collect), ())
+        # inherited
+        for attr in SuperEpoch.INHERITED_PARAMS:
+            values = {getattr(e, attr) for e in collect}
+            if len(values) > 1:
+                raise DefinitionError("EpochCollection base with incompatible "
+                                      "values for %s: %s" % (attr, values))
+            setattr(self, attr, values.pop())
