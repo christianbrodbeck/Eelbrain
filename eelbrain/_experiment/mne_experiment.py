@@ -83,10 +83,11 @@ from .test_def import (
     Test, EvokedTest, TTestInd,
     ROITestResult, TestDims, TwoStageTest, assemble_tests,
 )
+from .vardef import Vars
 
 
 # current cache state version
-CACHE_STATE_VERSION = 8
+CACHE_STATE_VERSION = 9
 
 # paths
 LOG_FILE = join('{root}', 'eelbrain {name}.log')
@@ -105,15 +106,6 @@ inv_re = re.compile("(free|fixed|loose\.\d+)-"  # orientation constraint
                     "(?:-((?:0\.)?\d+))?"  # depth weighting
                     "(?:-(pick_normal))?"
                     "$")  # pick normal
-
-
-def as_vardef_var(v):
-    "Coerce ds.eval() output for use as variable"
-    if isinstance(v, np.ndarray):
-        if v.dtype.kind == 'b':
-            return Var(v.astype(int))
-        return Var(v)
-    return v
 
 
 # Eelbrain 0.24 raw/preprocessing pipeline
@@ -1104,6 +1096,10 @@ class MneExperiment(FileTree):
                 for name, params in cache_tests.iteritems():
                     if name in tests_state:
                         params['kind'] = tests_state[name]['kind']
+            if cache_state_v < 9:  # 'vars' entry added to all
+                for params in cache_tests.values():
+                    if 'vars' not in params:
+                        params['vars'] = None
 
             # Find modified definitions
             # =========================
@@ -2004,22 +2000,8 @@ class MneExperiment(FileTree):
         if vardef is None:
             return
 
-        if isinstance(vardef, tuple):
-            for item in vardef:
-                name, vdef = item.split('=', 1)
-                ds[name.strip()] = as_vardef_var(ds.eval(vdef))
-        elif isinstance(vardef, dict):
-            new = {}
-            for name, definition in vardef.iteritems():
-                if isinstance(definition, str):
-                    new[name] = as_vardef_var(ds.eval(definition))
-                else:
-                    source, codes = definition
-                    new[name] = asfactor(source, ds=ds).as_var(codes, 0, name)
-            ds.update(new, True)
-        else:
-            raise TypeError("type(vardef)=%s; needs to be dict or tuple" %
-                            type(vardef))
+        vdef = Vars(vardef)
+        vdef.apply(ds, self)
 
     def _backup(self, dst_root, v=False):
         """Backup all essential files to ``dst_root``.
@@ -2322,35 +2304,46 @@ class MneExperiment(FileTree):
         ds['subject'] = Factor([ds.info['subject']], repeat=ds.n_cases, random=True)
         return ds
 
-    def label_subjects(self, ds, groups=None):
-        """Label the subjects in ds based on .groups
+    def label_subjects(self, ds):
+        """Label the subjects in ds
+
+        Creates a boolean :class:`Var` in ``ds`` for each group marking group
+        membership.
 
         Parameters
         ----------
         ds : Dataset
             A Dataset with 'subject' entry.
-        groups : str
-            Groups which to label. By default (``groups`` unspecified), this
-            function creates a boolean :class:`Var` for each group marking group
-            membership. If ``groups`` is specified as a list of group names, a
-            single :class:`Factor` called "group" is created that labels the
-            group for each subject (raises an error if group membership is not
-            unique).
         """
         subject = ds['subject']
-        if groups is None:
-            for name, subjects in self._groups.iteritems():
-                ds[name] = Var(subject.isin(subjects))
-        else:
-            labels = {s: [g for g in groups if s in self._groups[g]] for s in subject.cells}
-            problems = [s for s, g in labels.iteritems() if len(g) != 1]
-            if problems:
-                desc = [', '.join(labels[s]) if labels[s] else 'no group' for s in problems]
-                msg = ', '.join('%s (%s)' % pair for pair in zip(problems, desc))
-                raise ValueError("Groups %s are not unique for subjects: %s"
-                                 % (groups, msg))
-            labels = {s: g[0] for s, g in labels.iteritems()}
-            ds['group'] = Factor(subject, labels=labels)
+        for name, subjects in self._groups.iteritems():
+            ds[name] = Var(subject.isin(subjects))
+
+    def label_groups(self, subject, groups):
+        """Generate Factor for group membership
+
+        Parameters
+        ----------
+        subject : Factor
+            A Factor with subjects.
+        groups : list of str
+            Groups which to label (raises an error if group membership is not
+            unique).
+
+        Returns
+        -------
+        group : Factor
+            A :class:`Factor` that labels the group for each subject.
+        """
+        labels = {s: [g for g in groups if s in self._groups[g]] for s in subject.cells}
+        problems = [s for s, g in labels.iteritems() if len(g) != 1]
+        if problems:
+            desc = [', '.join(labels[s]) if labels[s] else 'no group' for s in problems]
+            msg = ', '.join('%s (%s)' % pair for pair in zip(problems, desc))
+            raise ValueError("Groups %s are not unique for subjects: %s"
+                             % (groups, msg))
+        labels = {s: g[0] for s, g in labels.iteritems()}
+        return Factor(subject, labels=labels)
 
     def load_annot(self, **state):
         """Load a parcellation (from an annot file)
@@ -3743,22 +3736,23 @@ class MneExperiment(FileTree):
             res_data = combine(dss) if return_data else None
         elif isinstance(data.source, basestring):
             res_data, res = self._make_test_rois(
-                sns_baseline, src_baseline, test, samples, pmin,
+                sns_baseline, src_baseline, test_obj, samples, pmin,
                 test_kwargs, res, data)
         else:
             if data.sensor:
                 res_data = self.load_evoked(True, sns_baseline, True,
-                                            test_obj._within_cat, data=data)
+                                            test_obj._within_cat, data=data,
+                                            vardef=test_obj.vars)
             elif data.source:
                 res_data = self.load_evoked_stc(True, sns_baseline, src_baseline,
                                                 morph_ndvar=True, cat=test_obj._within_cat,
-                                                mask=mask)
+                                                mask=mask, vardef=test_obj.vars)
             else:
                 raise RuntimeError("data=%r" % (data.string,))
 
             if do_test:
                 self._log.info("Make test: %s", desc)
-                res = self._make_test(y_name, res_data, test, test_kwargs)
+                res = self._make_test(y_name, res_data, test_obj, test_kwargs)
 
         if do_test:
             save.pickle(res, dst)
@@ -3768,7 +3762,7 @@ class MneExperiment(FileTree):
         else:
             return res
 
-    def _make_test_rois(self, sns_baseline, src_baseline, test, samples, pmin,
+    def _make_test_rois(self, sns_baseline, src_baseline, test_obj, samples, pmin,
                         test_kwargs, res, data):
         # load data
         dss = defaultdict(list)
@@ -3777,7 +3771,8 @@ class MneExperiment(FileTree):
         n_subjects = len(subjects)
         for _ in tqdm(self, "Loading data", n_subjects, unit='subject',
                       disable=CONFIG['tqdm']):
-            ds = self.load_evoked_stc(None, sns_baseline, src_baseline, ind_ndvar=True)
+            ds = self.load_evoked_stc(None, sns_baseline, src_baseline,
+                                      ind_ndvar=True, vardef=test_obj.vars)
             src = ds.pop('src')
             n_trials_dss.append(ds.copy())
             for label in src.source.parc.cells:
@@ -3805,8 +3800,8 @@ class MneExperiment(FileTree):
             len(set(n_per_label.values())) == 1  # equal n permutations
         )
         label_results = {
-            label: self._make_test('label_tc', ds, test, test_kwargs, do_mcc) for
-            label, ds in label_data.iteritems()
+            label: self._make_test('label_tc', ds, test_obj, test_kwargs, do_mcc)
+            for label, ds in label_data.iteritems()
         }
 
         if do_mcc:
@@ -5206,7 +5201,8 @@ class MneExperiment(FileTree):
             return
 
         # load data
-        ds = self.load_evoked(self.get('group'), baseline, True)
+        test_obj = self._tests[test]
+        ds = self.load_evoked(self.get('group'), baseline, True, vardef=test_obj.vars)
 
         # test that sensors are in the data
         eeg = ds['eeg']
@@ -5230,7 +5226,7 @@ class MneExperiment(FileTree):
         # main body
         caption = "Signal at %s."
         test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, ('time', 'sensor'), None)
-        ress = [self._make_test(eeg.sub(sensor=sensor), ds, test, test_kwargs) for
+        ress = [self._make_test(eeg.sub(sensor=sensor), ds, test_obj, test_kwargs) for
                 sensor in sensors]
         colors = plot.colors_for_categorial(ds.eval(ress[0]._plot_model()))
         for sensor, res in izip(sensors, ress):
@@ -5475,9 +5471,7 @@ class MneExperiment(FileTree):
             Conduct permutations regardless of whether there are any clusters.
         """
         test_obj = test if isinstance(test, Test) else self._tests[test]
-        if isinstance(test_obj, TTestInd):
-            self.label_subjects(ds, test_obj.groups)
-        elif not isinstance(test_obj, EvokedTest):
+        if not isinstance(test_obj, EvokedTest):
             raise RuntimeError("Test kind=%s" % test_obj.kind)
         return test_obj.make(y, ds, force_permutation, kwargs)
 

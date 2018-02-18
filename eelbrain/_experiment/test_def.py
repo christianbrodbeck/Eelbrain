@@ -48,12 +48,13 @@ def tail_arg(tail):
 class Test(Definition):
     "Baseclass for any test"
     kind = None
-    DICT_ATTRS = ('kind', 'model')
+    DICT_ATTRS = ('kind', 'model', 'vars')
 
-    def __init__(self, desc, model, groups=None):
+    def __init__(self, desc, model, groups=None, vars=None):
         self.desc = desc
         self.model = model
         self.groups = groups
+        self.vars = vars
 
         if model is None:  # no averaging
             self._between = None
@@ -74,8 +75,8 @@ class Test(Definition):
 
 class EvokedTest(Test):
     "Group level test applied to subject averages"
-    def __init__(self, desc, model, cat=None, groups=None):
-        Test.__init__(self, desc, model, groups)
+    def __init__(self, desc, model, cat=None, groups=None, vars=None):
+        Test.__init__(self, desc, model, groups, vars)
         self.cat = cat
         if cat is not None:
             if self._within_model is None or len(self._within_model_items) == 0:
@@ -172,16 +173,19 @@ class ANOVA(EvokedTest):
     model : str
         Model for grouping trials before averaging (does not need to be
         specified unless it should include variables not in ``x``).
+    vars : tuple | dict
+        Variables to add dynamically.
     """
     kind = 'anova'
     DICT_ATTRS = Test.DICT_ATTRS + ('x',)
 
-    def __init__(self, x, model=None):
+    def __init__(self, x, model=None, vars=None):
         x = ''.join(x.split())
         if model is None:
             items = sorted(i.strip() for i in x.split('*'))
-            model = '%'.join(i for i in items if i != 'subject')
-        EvokedTest.__init__(self, x, model)
+            within_items = (i for i in items if not re.match('^subject(\(\w+\))$', i))
+            model = '%'.join(within_items)
+        EvokedTest.__init__(self, x, model, vars=vars)
         if self._between is not None:
             raise NotImplementedError("Between-subject ANOVA")
         self.x = x
@@ -195,12 +199,11 @@ class ANOVA(EvokedTest):
 class TwoStageTest(Test):
     "Two-stage test on epoched or evoked data"
     kind = 'two-stage'
-    DICT_ATTRS = Test.DICT_ATTRS + ('stage_1', 'vars')
+    DICT_ATTRS = Test.DICT_ATTRS + ('stage_1',)
 
     def __init__(self, stage_1, vars=None, model=None):
-        Test.__init__(self, stage_1, model)
+        Test.__init__(self, stage_1, model, vars=vars)
         self.stage_1 = stage_1
-        self.vars = vars
 
 
 TEST_CLASSES = {
