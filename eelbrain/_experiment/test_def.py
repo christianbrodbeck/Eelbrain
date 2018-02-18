@@ -156,11 +156,20 @@ DATA_RE = re.compile("(source|sensor)(?:\.(%s))?$" % '|'.join(AGGREGATE_FUNCTION
 
 
 class TestDims(object):
-    time = True
+    """Data shape for test
+
+    Paremeters
+    ----------
+    string : str
+        String describing data.
+    time : bool
+        Whether the base data contains a time axis.
+    """
     source = None
     sensor = None
 
-    def __init__(self, string):
+    def __init__(self, string, time=True):
+        self.time = time
         substrings = string.split()
         for substring in substrings:
             m = DATA_RE.match(substring)
@@ -192,11 +201,14 @@ class TestDims(object):
             self.parc_level = None
 
     @classmethod
-    def coerce(cls, obj):
+    def coerce(cls, obj, time=True):
         if isinstance(obj, cls):
-            return obj
+            if bool(obj.time) == time:
+                return obj
+            else:
+                return cls(obj.string, time)
         else:
-            return cls(obj)
+            return cls(obj, time)
 
     def __repr__(self):
         return "TestDims(%r)" % (self.string,)
