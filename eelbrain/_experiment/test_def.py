@@ -205,6 +205,15 @@ class TwoStageTest(Test):
         Test.__init__(self, stage_1, model, vars=vars)
         self.stage_1 = stage_1
 
+    def make_stage_1(self, y, ds, subject):
+        """Assumes that model has already been applied"""
+        return testnd.LM(y, self.stage_1, ds, subject=subject)
+
+    def make_stage_2(self, lms, kwargs):
+        lm = testnd.LMGroup(lms)
+        lm.compute_column_ttests(**kwargs)
+        return lm
+
 
 TEST_CLASSES = {
     'anova': ANOVA,

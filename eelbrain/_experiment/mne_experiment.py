@@ -3724,14 +3724,12 @@ class MneExperiment(FileTree):
                                               mask=mask, vardef=test_obj.vars)
 
                 if do_test:
-                    lms.append(testnd.LM(y_name, test_obj.stage_1, ds,
-                                         subject=subject))
+                    lms.append(test_obj.make_stage_1(y_name, ds, subject))
                 if return_data:
                     dss.append(ds)
 
             if do_test:
-                res = testnd.LMGroup(lms)
-                res.compute_column_ttests(**test_kwargs)
+                res = test_obj.make_stage_2(lms, test_kwargs)
 
             res_data = combine(dss) if return_data else None
         elif isinstance(data.source, basestring):
