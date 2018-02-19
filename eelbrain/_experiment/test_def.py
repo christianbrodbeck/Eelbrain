@@ -213,6 +213,11 @@ class TestDims(object):
     def __repr__(self):
         return "TestDims(%r)" % (self.string,)
 
+    def __eq__(self, other):
+        if not isinstance(other, TestDims):
+            return False
+        return self.string == other.string and self.time == other.time
+
 
 class ROITestResult(object):
     """Store samples as attribute"""
