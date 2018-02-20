@@ -23,7 +23,14 @@ class VarDef(object):
 class EvalVar(VarDef):
 
     def __init__(self, code):
+        assert isinstance(code, basestring)
         self.code = code
+
+    def __repr__(self):
+        return "EvalVar(%r)" % self.code
+
+    def __eq__(self, other):
+        return isinstance(other, EvalVar) and other.code == self.code
 
     def apply(self, ds, e):
         return as_vardef_var(ds.eval(self.code))
@@ -35,6 +42,13 @@ class LabelVar(VarDef):
         self.source = source
         self.codes = codes
 
+    def __repr__(self):
+        return "LabelVar(%r, %r)" % (self.source, self.codes)
+
+    def __eq__(self, other):
+        return (isinstance(other, LabelVar) and other.source == self.source
+                and other.codes == self.codes)
+
     def apply(self, ds, e):
         v = asfactor(self.source, ds=ds).as_var(self.codes, 0)
         return as_vardef_var(v)
@@ -43,7 +57,13 @@ class LabelVar(VarDef):
 class GroupVar(VarDef):
 
     def __init__(self, groups):
-        self.groups = groups
+        self.groups = sorted(groups)
+
+    def __repr__(self):
+        return "GroupVar(%r)" % (self.groups,)
+
+    def __eq__(self, other):
+        return isinstance(other, GroupVar) and other.groups == self.groups
 
     def apply(self, ds, e):
         return e.label_groups(ds['subject'], self.groups)
@@ -88,6 +108,12 @@ class Vars(object):
                     vdef = LabelVar(*vdef)
             items.append((name, vdef))
         self.items = items
+
+    def __repr__(self):
+        return "Vars(%s)" % (self.items,)
+
+    def __eq__(self, other):
+        return isinstance(other, Vars) and other.items == self.items
 
     def apply(self, ds, e):
         for name, vdef in self.items:

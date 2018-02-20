@@ -5,6 +5,7 @@ import re
 from .. import testnd
 from .._exceptions import DefinitionError
 from .definitions import Definition
+from .vardef import GroupVar
 
 
 __test__ = False
@@ -50,10 +51,9 @@ class Test(Definition):
     kind = None
     DICT_ATTRS = ('kind', 'model', 'vars')
 
-    def __init__(self, desc, model, groups=None, vars=None):
+    def __init__(self, desc, model, vars=None):
         self.desc = desc
         self.model = model
-        self.groups = groups
         self.vars = vars
 
         if model is None:  # no averaging
@@ -63,20 +63,18 @@ class Test(Definition):
         else:
             model_elements = map(str.strip, model.split('%'))
             if 'group' in model_elements:
-                assert groups
                 self._between = model_elements.index('group')
                 del model_elements[self._between]
             else:
                 self._between = None
-                assert groups is None
             self._within_model_items = model_elements
             self._within_model = '%'.join(model_elements)
 
 
 class EvokedTest(Test):
     "Group level test applied to subject averages"
-    def __init__(self, desc, model, cat=None, groups=None, vars=None):
-        Test.__init__(self, desc, model, groups, vars)
+    def __init__(self, desc, model, cat=None, vars=None):
+        Test.__init__(self, desc, model, vars)
         self.cat = cat
         if cat is not None:
             if self._within_model is None or len(self._within_model_items) == 0:
@@ -109,10 +107,10 @@ class TTestOneSample(EvokedTest):
 class TTest(EvokedTest):
     DICT_ATTRS = Test.DICT_ATTRS + ('c1', 'c0', 'tail')
 
-    def __init__(self, model, c1, c0, tail, groups=None):
+    def __init__(self, model, c1, c0, tail, vars=None):
         tail = tail_arg(tail)
         desc = '%s %s %s' % (c1, TAIL_REPR[tail], c0)
-        EvokedTest.__init__(self, desc, model, (c1, c0), groups)
+        EvokedTest.__init__(self, desc, model, (c1, c0), vars)
         self.c1 = c1
         self.c0 = c0
         self.tail = tail
@@ -123,8 +121,10 @@ class TTestInd(TTest):
     kind = 'ttest_ind'
 
     def __init__(self, model, c1, c0, tail=0):
-        assert model == 'group'
-        TTest.__init__(self, model, c1, c0, tail, (c1, c0))
+        if model != 'group':
+            raise DefinitionError("model=%r; TTestInd always needs model="
+                                  "'group'" % (model,))
+        TTest.__init__(self, model, c1, c0, tail, (('group', GroupVar((c1, c0))),))
 
     def make(self, y, ds, force_permutation, kwargs):
         return testnd.ttest_ind(
@@ -202,7 +202,7 @@ class TwoStageTest(Test):
     DICT_ATTRS = Test.DICT_ATTRS + ('stage_1',)
 
     def __init__(self, stage_1, vars=None, model=None):
-        Test.__init__(self, stage_1, model, vars=vars)
+        Test.__init__(self, stage_1, model, vars)
         self.stage_1 = stage_1
 
     def make_stage_1(self, y, ds, subject):
