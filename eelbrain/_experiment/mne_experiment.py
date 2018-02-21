@@ -74,7 +74,7 @@ from .parc import (
     FS_PARC, FSA_PARC, PARC_CLASSES, SEEDED_PARC_RE,
     Parcellation, CombinationParcellation, EelbrainParcellation,
     FreeSurferParcellation, FSAverageParcellation, SeededParcellation,
-    IndividualSeededParcellation,
+    IndividualSeededParcellation, LabelParcellation,
 )
 from .preprocessing import (
     assemble_pipeline, RawICA, pipeline_dict, compare_pipelines,
@@ -463,6 +463,7 @@ class MneExperiment(FileTree):
         'aparc.a2009s': FS_PARC,
         'aparc': FS_PARC,
         'aparc.DKTatlas': FS_PARC,
+        'cortex': LabelParcellation('cortex', ('cortex',), ('lateral', 'medial')),
         'PALS_B12_Brodmann': FSA_PARC,
         'PALS_B12_Lobes': FSA_PARC,
         'PALS_B12_OrbitoFrontal': FSA_PARC,
@@ -754,6 +755,7 @@ class MneExperiment(FileTree):
             elif p == FSA_PARC:
                 parcs[name] = FSAverageParcellation(name, ('lateral', 'medial'))
             elif isinstance(p, Parcellation):
+                assert p.name == name
                 parcs[name] = p
             elif isinstance(p, dict):
                 p = p.copy()
@@ -3926,6 +3928,15 @@ class MneExperiment(FileTree):
             dissolve_label(labels, '???', targets, subjects_dir)
             dissolve_label(labels, '????', targets, subjects_dir, 'rh')
             dissolve_label(labels, '???????', targets, subjects_dir, 'rh')
+        elif isinstance(p, LabelParcellation):
+            labels = []
+            hemis = ('lh.', 'rh.')
+            path = join(subjects_dir, subject, 'label', '%s.label')
+            for label in p.labels:
+                if label.startswith(hemis):
+                    labels.append(mne.read_label(path % label))
+                else:
+                    labels.extend(mne.read_label(path % (hemi + label)) for hemi in hemis)
         else:
             raise NotImplementedError(
                 "At least one of the annot files for the custom parcellation "

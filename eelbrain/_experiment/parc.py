@@ -1,6 +1,6 @@
 import re
 
-from .definitions import DefinitionError
+from .definitions import DefinitionError, Definition
 
 
 COMBINATION_PARC = 'combination'
@@ -11,7 +11,8 @@ INDIVIDUAL_SEEDED_PARC = 'individual seeded'
 SEEDED_PARC_RE = re.compile('^(.+)-(\d+)$')
 
 
-class Parcellation(object):
+class Parcellation(Definition):
+    DICT_ATTRS = ('kind',)
     make = False
     morph_from_fsaverage = False
 
@@ -19,12 +20,11 @@ class Parcellation(object):
         self.name = name
         self.views = views
 
-    def as_dict(self):
-        return NotImplemented
-
 
 class CombinationParcellation(Parcellation):
-    "Recombine labels from an existingparcellation"
+    "Recombine labels from an existing parcellation"
+    DICT_ATTRS = ('kind', 'base', 'labels')
+    kind = COMBINATION_PARC
     make = True
 
     def __init__(self, name, base, labels, views=None):
@@ -32,40 +32,43 @@ class CombinationParcellation(Parcellation):
         self.base = base
         self.labels = labels
 
-    def as_dict(self):
-        return {'kind': COMBINATION_PARC, 'base': self.base,
-                'labels': self.labels}
-
 
 class EelbrainParcellation(Parcellation):
     "Parcellation that has special make rule"
+    kind = 'eelbrain_parc'
     make = True
 
     def __init__(self, name, morph_from_fsaverage, views=None):
         Parcellation.__init__(self, name, views)
         self.morph_from_fsaverage = morph_from_fsaverage
 
-    def as_dict(self):
-        return {'kind': 'eelbrain_parc'}
-
 
 class FreeSurferParcellation(Parcellation):
     "Parcellation that comes with FreeSurfer"
-
-    def as_dict(self):
-        return {'kind': FS_PARC}
+    kind = FS_PARC
 
 
 class FSAverageParcellation(Parcellation):
     "Parcellation that comes with FSAverage"
+    kind = FSA_PARC
     morph_from_fsaverage = True
 
-    def as_dict(self):
-        return {'kind': FSA_PARC}
+
+class LabelParcellation(Parcellation):
+    "Assemble parcellation from labels"
+    DICT_ATTRS = ('kind', 'labels')
+    kind = 'label_parc'
+    make = True
+
+    def __init__(self, name, labels, views=None):
+        Parcellation.__init__(self, name, views)
+        self.labels = labels if isinstance(labels, tuple) else tuple(labels)
 
 
 class SeededParcellation(Parcellation):
     "Parcellation that is grown from seed vertices"
+    DICT_ATTRS = ('kind', 'seeds', 'surface', 'mask')
+    kind = SEEDED_PARC
     make = True
 
     def __init__(self, name, seeds, mask=None, surface='white', views=None):
@@ -74,16 +77,13 @@ class SeededParcellation(Parcellation):
         self.mask = mask
         self.surface = surface
 
-    def as_dict(self):
-        return {'kind': SEEDED_PARC, 'seeds': self.seeds,
-                'surface': self.surface, 'mask': self.mask}
-
     def seeds_for_subject(self, subject):
         return self.seeds
 
 
 class IndividualSeededParcellation(SeededParcellation):
     "Seed parcellation with individual seeds for each subject"
+    kind = INDIVIDUAL_SEEDED_PARC
     morph_from_fsaverage = False
 
     def __init__(self, name, seeds, mask=None, surface='white', views=None):
@@ -96,10 +96,6 @@ class IndividualSeededParcellation(SeededParcellation):
                 "parc %s: Some labels are missing subjects. if a subject does not "
                 "have a label, use an empty tuple as seed, e.g.: 'R0001': ()" % self.name)
         self.subjects = subjects
-
-    def as_dict(self):
-        return {'kind': INDIVIDUAL_SEEDED_PARC, 'seeds': self.seeds,
-                'surface': self.surface, 'mask': self.mask}
 
     def seeds_for_subject(self, subject):
         if subject not in self.subjects:
