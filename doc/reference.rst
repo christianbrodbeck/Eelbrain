@@ -54,10 +54,20 @@ Load
 .. py:module:: load
 .. py:currentmodule:: eelbrain
 
-For convenient storage, Eelbrain objects can be
+Eelbrain objects can be saved with serialization based on :mod:`pyarrow`:
+
+.. autosummary::
+   :toctree: generated
+
+   load.arrow
+   save.arrow
+
+
+Eelbrain objects can be
 `pickled <https://docs.python.org/2/library/pickle.html>`_, although there is
 no guarantee that objects can be exchanged across versions. Eelbrain's own
-pickle I/O functions provide backwards compatibility:
+pickle I/O functions provide backwards compatibility for Eelbrain objects, but
+files saved in Python 2 can not be opened in Python 3:
 
 .. autosummary::
    :toctree: generated

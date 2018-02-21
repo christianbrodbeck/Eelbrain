@@ -22,4 +22,5 @@ from . import txt
 
 from .txt import tsv
 from .._io.pickle import unpickle, update_subjects_dir
+from .._io.pyarrow_context import load_arrow as arrow
 from .._io.wav import load_wav as wav

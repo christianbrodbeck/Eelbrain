@@ -43,6 +43,8 @@ def pickle(obj, dest=None, protocol=HIGHEST_PROTOCOL):
 
     Parameters
     ----------
+    obj : object
+        Python object to save.
     dest : None | str
         Path to destination where to save the  file. If no destination is
         provided, a file dialog is shown. If a destination without extension is
@@ -96,7 +98,7 @@ def unpickle(file_path=None):
         if file_path is False:
             raise RuntimeError("User canceled")
         else:
-            print(repr(file_path))
+            print("unpick %r" % (file_path,))
     else:
         file_path = os.path.expanduser(file_path)
         if not os.path.exists(file_path):
