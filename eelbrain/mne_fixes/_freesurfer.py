@@ -2,6 +2,18 @@
 from __future__ import print_function
 import os
 
+import mne
+from nibabel import freesurfer
+
+
+def morph_annot(parc, subject_from, subject_to, subjects_dir):
+    temp = os.path.join('{subjects_dir}', '{subject}', 'label', '{hemi}.{parc}.annot')
+    mm = mne.compute_morph_matrix()
+
+    fname = temp.format(subjects_dir=subjects_dir, subject=subject_from,
+                        hemi='%s', parc=parc)
+    labels, ctab, names = freesurfer.read_annot()
+
 
 def rename_mri(subject_from, subject_to, subjects_dir, preview=False):
     """Rename an MRI subject
