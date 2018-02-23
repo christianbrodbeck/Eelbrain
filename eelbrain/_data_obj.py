@@ -5565,12 +5565,16 @@ class Dataset(OrderedDict):
 
         return ds
 
-    def copy(self, name=True):
-        "ds.copy() returns an shallow copy of ds"
-        if name is True:
-            name = self.name
-        return Dataset(self.items(), name, self._caption, self.info,
-                       self.n_cases)
+    def copy(self, name=None):
+        """Create a shallow copy of the dataset
+
+        Parameters
+        ----------
+        name : str
+            Name for the new dataset (default is ``self.name``).
+        """
+        return Dataset(self.items(), name or self.name, self._caption,
+                       self.info, self.n_cases)
 
     def equalize_counts(self, X, n=None):
         """Create a copy of the Dataset with equal counts in each cell of X
@@ -5941,6 +5945,20 @@ class Dataset(OrderedDict):
     def tail(self, n=10):
         "Table with the last n cases in the Dataset"
         return self.as_table(xrange(-n, 0), '%.5g', midrule=True, lfmt=True)
+
+    def tile(self, repeats, name=None):
+        """Concatenate ``repeats`` copies of the dataset
+
+        Parameters
+        ----------
+        repeats : int
+            Number of repeats.
+        name : str
+            Name for the new dataset (default is ``self.name``).
+        """
+        return Dataset(
+            ((name, item.tile(repeats)) for name, item in self.iteritems()),
+            name or self.name, self._caption, self.info, self.n_cases * repeats)
 
     def to_r(self, name=None):
         """Place the Dataset into R as dataframe using rpy2
