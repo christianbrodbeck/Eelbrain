@@ -301,6 +301,8 @@ class Brain(TimeSlicer, surfer.Brain):
         ----------
         ndvar : NDVar  (source[, time])
             NDVar with SourceSpace dimension and optional time dimension.
+            Values outside of the source-space, as well as masked values are
+            set to 0, assuming a colormap in which 0 is transparent.
         cmap : str | list of matplotlib colors | array
             Colormap. Can be the name of a matplotlib colormap, a list of
             colors, or a custom lookup table (an n x 4 array with RBGA values
@@ -412,6 +414,8 @@ class Brain(TimeSlicer, surfer.Brain):
 
             src_hemi = ndvar.sub(**{source.name: 'lh'})
             data = src_hemi.get_data(data_dims)
+            if isinstance(data, np.ma.MaskedArray):
+                data = data.data * np.invert(data.mask)
             vertices = source.lh_vertices
             self.add_data(data, vmin, vmax, None, cmap, alpha, vertices,
                           smoothing_steps, times, time_label_, colorbar_, 'lh')
