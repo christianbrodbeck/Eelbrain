@@ -500,7 +500,7 @@ class ColorBar(EelFigure):
                  label_rotation=None,
                  clipmin=None, clipmax=None, orientation='horizontal',
                  unit=None, contours=(), width=None, ticks=None, threshold=None,
-                 ticklocation='auto', background='white',
+                 ticklocation='auto', background='white', tight=True,
                  h=None, w=None, *args, **kwargs):
         # get Colormap
         if isinstance(cmap, np.ndarray):
@@ -524,7 +524,7 @@ class ColorBar(EelFigure):
         else:
             raise ValueError("orientation=%s" % repr(orientation))
 
-        layout = Layout(1, ax_aspect, 2, True, False, h, w, *args, **kwargs)
+        layout = Layout(1, ax_aspect, 2, tight, False, h, w, *args, **kwargs)
         EelFigure.__init__(self, cm.name, layout)
         ax = self._axes[0]
 
@@ -610,6 +610,7 @@ class ColorBar(EelFigure):
 
         self._contours = [contour_func(c, c='k') for c in contours]
         self._draw_hooks.append(self.__fix_alpha)
+        self._draw_hooks.append(self.__update_bar_tickness)
 
         self._background = background
         self._colorbar = colorbar
@@ -641,14 +642,18 @@ class ColorBar(EelFigure):
                 w -= (x0 / self._layout.dpi)
                 self.figure.set_size_inches(w, h, forward=True)
         super(ColorBar, self)._tight()
+
+    def __update_bar_tickness(self):
         # Override to keep bar thickness
-        if self._width:
-            x = (self._width, self._width)
-            x = self.figure.dpi_scale_trans.transform(x)
-            x = self.figure.transFigure.inverted().transform(x)
-            pos = ax.get_position()
-            if self._orientation == 'vertical':
-                ax.set_position((pos.xmin, pos.ymin, x[0], pos.height))
-            else:
-                ax.set_position((pos.xmin, pos.ymin, pos.width, x[1]))
-            self.draw()
+        if not self._width:
+            return
+        ax = self._axes[0]
+        x = (self._width, self._width)
+        x = self.figure.dpi_scale_trans.transform(x)
+        x = self.figure.transFigure.inverted().transform(x)
+        pos = ax.get_position()
+        if self._orientation == 'vertical':
+            ax.set_position((pos.xmin, pos.ymin, x[0], pos.height))
+        else:
+            ax.set_position((pos.xmin, pos.ymin, pos.width, x[1]))
+        return True

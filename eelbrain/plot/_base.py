@@ -945,9 +945,9 @@ class EelFigure(object):
         self.draw()
 
         # Allow hooks to modify figure after first draw
-        need_redraw = any(func() for func in self._draw_hooks)
+        need_redraw = any([func() for func in self._draw_hooks])
         if not self._layout.tight:
-            need_redraw = any(func() for func in self._untight_draw_hooks) or need_redraw
+            need_redraw = any([func() for func in self._untight_draw_hooks]) or need_redraw
         if need_redraw:
             self.draw()
 
