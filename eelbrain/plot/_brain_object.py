@@ -2,6 +2,7 @@
 """PySurfer Brain subclass to embed in Eelbrain"""
 from __future__ import division
 
+from collections import OrderedDict
 from distutils.version import LooseVersion
 from itertools import izip
 import os
@@ -161,7 +162,7 @@ class Brain(TimeSlicer, surfer.Brain):
 
         self.__data = []
         self.__annot = None
-        self.__labels = []  # [(name, color), ...]
+        self.__labels = OrderedDict()  # {name: color}
         self.__time_index = 0
 
         if isinstance(views, basestring):
@@ -246,6 +247,15 @@ class Brain(TimeSlicer, surfer.Brain):
         elif self._hemi == 'rh' and source.rh_n == 0:
             raise ValueError("Trying to add NDVar without rh data to plot of rh")
         return source
+
+    def add_label(self, label, color=None, alpha=1, scalar_thresh=None,
+                  borders=False, hemi=None, subdir=None):
+        surfer.Brain.add_label(self, label, color, alpha, scalar_thresh,
+                               borders, hemi, subdir)
+        if color is None:
+            color = getattr(label, 'color', None) or "crimson"
+        name = label if isinstance(label, basestring) else label.name
+        self.__labels[name] = color
 
     def add_mask(self, source, color=(1, 1, 1), smoothing_steps=None,
                  alpha=None, subjects_dir=None):
@@ -586,7 +596,7 @@ class Brain(TimeSlicer, surfer.Brain):
                 rh.name += '_'
             self.add_label(rh, color[:3], color[3], borders=borders)
             self.labels_dict[rh.name][0].actor.property.lighting = lighting
-        self.__labels.append((name, color))
+        self.__labels[name] = color
 
     def add_ndvar_p_map(self, p_map, param_map=None, p0=0.05, p1=0.01,
                         p0alpha=0.5, *args, **kwargs):
@@ -786,9 +796,7 @@ class Brain(TimeSlicer, surfer.Brain):
         """
         from ._brain import annot_legend
         if self.__labels:
-            return ColorList(dict(self.__labels),
-                             tuple(name for name, color in self.__labels),
-                             *args, **kwargs)
+            return ColorList(self.__labels, self.__labels.keys(), *args, **kwargs)
         elif self.__annot is None:
             raise RuntimeError("Can only plot legend for brain displaying "
                                "parcellation")
@@ -807,10 +815,23 @@ class Brain(TimeSlicer, surfer.Brain):
         del self.__data[:]
         self._time_dim = None
 
-    def remove_labels(self):
+    def remove_labels(self, labels=None):
         """Remove labels shown with ``Brain.add_ndvar_label``"""
-        surfer.Brain.remove_labels(self)
-        del self.__labels[:]
+        if labels is None:
+            pass
+        elif isinstance(labels, basestring):
+            labels = (labels,)
+        else:
+            if not isinstance(labels, tuple):
+                labels = tuple(labels)
+            if not all(isinstance(l, basestring) for l in labels):
+                raise TypeError("labels=%r" % (labels,))
+        surfer.Brain.remove_labels(self, labels)
+        if labels is None:
+            self.__labels.clear()
+        else:
+            for label in labels:
+                del self.__labels[label]
 
     def set_parallel_view(self, forward=None, up=None, scale=None):
         """Set view to parallel projection
@@ -881,3 +902,6 @@ class Brain(TimeSlicer, surfer.Brain):
             return
         self.set_data_time_index(index)
         self.__time_index = index
+
+
+Brain.add_label.__func__.__doc__ = surfer.Brain.add_label.__doc__
