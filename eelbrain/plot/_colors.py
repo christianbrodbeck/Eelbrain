@@ -573,7 +573,7 @@ class ColorBar(EelFigure):
             if clipmax is None:
                 stop = None
             else:
-                stop = np.digitize(clipmax, boundaries, True)
+                stop = np.digitize(clipmax, boundaries) + 1
             boundaries = boundaries[start:stop]
         else:
             boundaries = None
