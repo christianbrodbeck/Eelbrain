@@ -40,6 +40,7 @@ NDVar dimensions (not usually initialized by themselves but through
    Categorial
    Scalar
    Sensor
+   SourceSpace
    UTS
 
 
