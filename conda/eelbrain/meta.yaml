@@ -1,6 +1,8 @@
 {% set version = "0.VERSION" %}
 {% set md5 = "5678c7f90282992de8ec5bd2ca2756cd" %}
 
+# https://github.com/conda/conda-build/issues/2717
+
 package:
   name: eelbrain
   version: {{ version }}
@@ -22,7 +24,7 @@ requirements:
     - olefile  # [win or linux]
     - pywin32-ctypes  # [win]
     - setuptools >=17
-    - numpy  {{ numpy }}
+    - numpy 1.11.*
 
   run:
     - python  {{ python }}
@@ -34,7 +36,7 @@ requirements:
     - mne >=0.15.2
     - nibabel >=2.0
     - olefile  # [linux]
-    - numpy
+    - {{ pin_compatible('numpy') }}
     - pillow
     - pysurfer >=0.8
     - scipy >=0.17
