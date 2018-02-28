@@ -145,20 +145,20 @@ def _mne_source_space(subject, src_tag, subjects_dir):
     if os.path.exists(src_file):
         return mne.read_source_spaces(src_file, False)
     elif src == 'ico':
-        ss = mne.setup_source_space(subject, fname=None, spacing=src + spacing,
+        ss = mne.setup_source_space(subject, spacing=src + spacing,
                                     subjects_dir=subjects_dir, add_dist=True)
-        mne.write_source_spaces(src_file, ss)
-        return ss
     elif src == 'vol':
         mri_file = os.path.join(subjects_dir, subject, 'mri', 'orig.mgz')
         bem_file = os.path.join(subjects_dir, subject, 'bem',
                                 'sample-5120-5120-5120-bem-sol.fif')
-        return mne.setup_volume_source_space(subject, src_file, float(spacing),
-                                             mri=mri_file, bem=bem_file,
-                                             mindist=0., exclude=0.,
-                                             subjects_dir=subjects_dir)
+        ss = mne.setup_volume_source_space(subject, pos=float(spacing),
+                                           mri=mri_file, bem=bem_file,
+                                           mindist=0., exclude=0.,
+                                           subjects_dir=subjects_dir)
     else:
         raise ValueError("src_tag=%s" % repr(src_tag))
+    mne.write_source_spaces(src_file, ss)
+    return ss
 
 
 def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
@@ -272,8 +272,8 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
             fwd = mne.read_forward_solution(fwd_file)
         else:
             src_ = _mne_source_space(subject, src_tag, subjects_dir)
-            fwd = mne.make_forward_solution(epochs.info, trans_file, src_,
-                                            bem_file, fwd_file)
+            fwd = mne.make_forward_solution(epochs.info, trans_file, src_, bem_file)
+            mne.write_forward_solution(fwd_file, fwd)
 
         cov_file = os.path.join(meg_dir, 'sample_audvis-cov.fif')
         cov = mne.read_cov(cov_file)
