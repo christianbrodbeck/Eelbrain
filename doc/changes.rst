@@ -33,7 +33,7 @@ New in 0.27
 
 * New methods:
 
-  - :meth:`Dataset.zip`
+  - :meth:`Dataset.zip`, :meth:`Dataset.tile`
   - :meth:`Factor.sort_cells`
 
 
