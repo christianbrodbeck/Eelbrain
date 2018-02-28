@@ -153,8 +153,6 @@ class intervals:
     def __init__(self, seq):
         self.seq = seq
         self.i = 0
-        if len(self.seq) < 2:
-            raise StopIteration
 
     def __iter__(self):
         return self
