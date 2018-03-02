@@ -4,6 +4,7 @@ from __future__ import division
 
 from functools import partial
 from itertools import izip, product
+from numbers import Number
 from warnings import warn
 
 import mne
@@ -1014,8 +1015,10 @@ class SequencePlotter(object):
     def __init__(self):
         self._data = []
         self._source = None
-        self._time = None
+        self._frame_dim = None
         self._bins = None
+        self._frame_order = None
+        self._frame_labels = None
         self._brain_args = {}
 
     def set_brain_args(self, surf='inflated', foreground=None, background=None,
@@ -1055,37 +1058,96 @@ class SequencePlotter(object):
                              "previously added data (%s)" %
                              (source.subjects_dir, self._source.subjects_dir))
 
-        if ndvar.has_dim('time'):
-            time_dim = ndvar.time
-        elif ndvar.has_case:
-            time_dim = ndvar.dims[0]
+        if ndvar.ndim == 1:
+            frame_dim = None
+        elif ndvar.ndim == 2:
+            dim_name = ndvar.get_dimnames((None, 'source'))[0]
+            frame_dim = ndvar.get_dim(dim_name)
         else:
-            time_dim = None
+            raise ValueError("Need NDVar with 1 or 2 dimensions, for %r" % (ndvar,))
 
-        if time_dim is not None:
-            if self._time is None:
-                if len(time_dim) > self.max_n_bins:
+        if frame_dim is not None:
+            if self._frame_dim is None:
+                if len(frame_dim) > self.max_n_bins:
                     raise ValueError(
                         "Trying to plot %s with %i bins. If this is intentional, "
                         "set SequencePlotter.max_n_bins to a larger value." %
-                        (time_dim, len(time_dim)))
-                self._time = time_dim
-            elif time_dim != self._time:
+                        (frame_dim, len(frame_dim)))
+                self._frame_dim = frame_dim
+            elif frame_dim != self._frame_dim:
                 raise ValueError("New axis %s is incompatible with previously "
-                                 "set axis %s" % (time_dim, self._time))
+                                 "set axis %s" % (frame_dim, self._frame_dim))
 
             if self._bins is None and 'bins' in ndvar.info:
                 self._bins = ndvar.info['bins']
 
         self._data.append(('data', ndvar, args, kwargs))
 
-    def _bin_labels(self):
-        if self._bins is not None:
-            return ['%i - %i ms' % (ms(t0), ms(t1)) for t0, t1 in self._bins]
-        elif isinstance(self._time, UTS):
-            return ['%i ms' % ms(t) for t in self._time]
+    def set_frame_labels(self, labels):
+        """Set a label for each frame
+
+        Parameters
+        ----------
+        labels : list of { str | float | (float, float) }
+            One label for each frame. If the frame order has been set, labels
+            should correspond to frame-order. Floats will be converted to time
+            in ms.
+        """
+        if self._frame_dim is None:
+            raise RuntimeError("Need to set at least one NDVar first")
+        n_frames = len(self._frame_dim) if self._frame_order is None else len(self._frame_order)
+        if len(labels) != n_frames:
+            raise ValueError(
+                "labels=%r; the number of labels does not match the number of "
+                "frames (%i)" % (labels, n_frames))
+
+        # store labels in frame_dim order
+        if self._frame_order is None:
+            ordered_labels = labels
         else:
-            return False
+            ordered_labels = [None] * len(self._frame_dim)
+            indices = self._frame_dim._array_index(self._frame_order)
+            for i, label in izip(indices, labels):
+                ordered_labels[i] = label
+
+        self._frame_labels = ordered_labels
+
+    def set_frame_order(self, order):
+        """Set the order in which frames are plotted
+
+        Parameters
+        ----------
+        order : list
+            Sequence of frame dimension indices.
+        """
+        if self._frame_dim is None:
+            raise RuntimeError("Need to set at least one NDVar first")
+        missing = [x for x in order if x not in self._frame_dim]
+        if missing:
+            raise ValueError("order=%r; the following elements are not part of "
+                             "the frame dimension: %s" % (order, ', '.join(missing)))
+        self._frame_order = order
+
+    def _get_frame_labels(self):
+        is_time = isinstance(self._frame_dim, UTS)
+        source = self._frame_labels or self._bins or self._frame_dim
+        labels = []
+        index = range(len(self._frame_dim)) if self._frame_order is None else self._frame_dim._array_index(self._frame_order)
+        for i in index:
+            item = source[i]
+            if isinstance(item, basestring):
+                labels.append(item)
+            elif is_time:
+                if isinstance(item, Number):
+                    labels.append('%i ms' % ms(item))
+                elif len(item) == 2:
+                    t0, t1 = item
+                    labels.append('%i - %i ms' % (ms(t0), ms(t1)))
+                else:
+                    labels.apend(str(item))
+            else:
+                labels.append(str(item))
+        return labels
 
     def plot_table(self, hemi=None, view=('lateral', 'medial'),
                    orientation='horizontal', column_header=True, *args, **kwargs):
@@ -1137,7 +1199,13 @@ class SequencePlotter(object):
             views = view
 
         n_views = len(hemis) * len(views)
-        n_bins = 1 if self._time is None else len(self._time)
+        if self._frame_order:
+            bins = self._frame_dim._array_index(self._frame_order)
+        elif self._frame_dim:
+            bins = range(len(self._frame_dim))
+        else:
+            bins = [None]
+        n_bins = len(bins)
         if orientation == 'horizontal':
             n_columns = n_bins
             n_rows = n_views
@@ -1169,8 +1237,8 @@ class SequencePlotter(object):
             b.set_parallel_view(scale=True)
 
             # capture images
-            for i in xrange(n_bins):
-                if self._time is not None:
+            for i in bins:
+                if i is not None:
                     b.set_data_time_index(i)
                 for row, view in izip(hemi_rows, views):
                     if isinstance(view, basestring):
@@ -1187,7 +1255,7 @@ class SequencePlotter(object):
             b.close()
 
         if column_header is True and orientation == 'horizontal':
-            column_header = self._bin_labels()
+            column_header = self._get_frame_labels()
 
         if transpose:
             im_rows = zip(*im_rows)
