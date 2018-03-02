@@ -1087,14 +1087,14 @@ class SequencePlotter(object):
         else:
             return False
 
-    def plot_table(self, hemi=('lh', 'rh'), view=('lateral', 'medial'),
+    def plot_table(self, hemi=None, view=('lateral', 'medial'),
                    orientation='horizontal', column_header=True, *args, **kwargs):
         """Create a figure with the images
 
         Parameters
         ----------
-        hemi : str | list of str
-            Hemispheres to plot.
+        hemi : 'lh' | 'rh' | 'both'
+            Hemispheres to plot (default is all hemispheres with data).
         view : str | list of {str | tuple}
             Views to plot. A view can be specified as a string, or as a tuple
             including parallel-view parameters ``(view, forward, up, scale)``,
@@ -1113,7 +1113,22 @@ class SequencePlotter(object):
         """
         if not self._data:
             raise RuntimeError("No data")
-        hemis = (hemi,) if isinstance(hemi, basestring) else hemi
+        # determine hemisphere(s) to plot
+        if hemi is None:
+            hemis = []
+            sss = [data[1].source for data in self._data]
+            if any(ss.lh_n for ss in sss):
+                hemis.append('lh')
+            if any(ss.rh_n for ss in sss):
+                hemis.append('rh')
+            assert hemis, "Data in neither hemisphere"
+        elif hemi == 'both':
+            hemis = ('lh', 'rh')
+        elif hemi in ('lh', 'rh'):
+            hemis = (hemi,)
+        else:
+            raise ValueError("hemi=%r" % (hemi,))
+        # views
         if isinstance(view, basestring):
             views = (view,)
         elif len(view) > 1 and not isinstance(view[1], basestring):
