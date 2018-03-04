@@ -459,7 +459,8 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
         colors for gyri and sulci (e.g. ``['red', 'blue']`` or ``[(1, 0, 0), 
         (0, 0, 1)]``). For all options see the PySurfer documentation.
     title : str
-        title for the window (default is the subject name).
+        title for the window (default is based on the subject name and
+        ``src``).
     smoothing_steps : None | int
         Number of smoothing steps if data is spatially undersampled (pysurfer
         ``Brain.add_data()`` argument).
@@ -501,6 +502,8 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
         if ndvar.ndim == 2 and not ndvar.has_dim('time') or ndvar.ndim > 2:
             raise ValueError("NDVar should have dimesions source and "
                              "optionally time, got %r" % (ndvar,))
+        if title is None and name is None and ndvar.name is not None:
+            title = "%s - %s" % (source.subject, ndvar.name)
 
     if hemi is None:
         if source.lh_n and source.rh_n:
