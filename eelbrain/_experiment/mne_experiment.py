@@ -4936,27 +4936,27 @@ class MneExperiment(FileTree):
         report = Report(title)
 
         if isinstance(self._tests[test], TwoStageTest):
-            self._two_stage_report(report, test, sns_baseline, src_baseline,
+            self._two_stage_report(report, data, test, sns_baseline, src_baseline,
                                    pmin, samples, tstart, tstop, parc, mask,
                                    include)
         else:
-            self._evoked_report(report, test, sns_baseline, src_baseline, pmin,
+            self._evoked_report(report, data, test, sns_baseline, src_baseline, pmin,
                                 samples, tstart, tstop, parc, mask, include)
 
         # report signature
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
         report.save_html(dst, meta={'samples': samples})
 
-    def _evoked_report(self, report, test, sns_baseline, src_baseline, pmin,
+    def _evoked_report(self, report, data, test, sns_baseline, src_baseline, pmin,
                        samples, tstart, tstop, parc, mask, include):
         # load data
         ds, res = self._load_test(test, tstart, tstop, pmin, parc, mask, samples,
-                                  'source', sns_baseline, src_baseline, True, True)
+                                  data, sns_baseline, src_baseline, True, True)
 
         # info
         surfer_kwargs = self._surfer_plot_kwargs()
         self._report_test_info(report.add_section("Test Info"), ds, test, res,
-                               'source', include)
+                               data, include)
         if parc:
             section = report.add_section(parc)
             caption = "Labels in the %s parcellation." % parc
@@ -4971,12 +4971,11 @@ class MneExperiment(FileTree):
         report.append(_report.source_time_results(res, ds, colors, include,
                                                   surfer_kwargs, parc=parc))
 
-    def _two_stage_report(self, report, test, sns_baseline, src_baseline, pmin,
+    def _two_stage_report(self, report, data, test, sns_baseline, src_baseline, pmin,
                           samples, tstart, tstop, parc, mask, include):
         return_data = self._tests[test]._within_model is not None
         rlm = self._load_test(test, tstart, tstop, pmin, parc, mask, samples,
-                              'source', sns_baseline, src_baseline, return_data,
-                              True)
+                              data, sns_baseline, src_baseline, return_data, True)
         if return_data:
             group_ds, rlm = rlm
         else:
@@ -5007,7 +5006,7 @@ class MneExperiment(FileTree):
                 _report.source_time_results(
                     res, ds, None, include, surfer_kwargs, term, y='coeff'))
 
-        self._report_test_info(info_section, group_ds or ds, test, res, 'source')
+        self._report_test_info(info_section, group_ds or ds, test, res, data)
 
     def make_report_rois(self, test, parc=None, pmin=None, tstart=0.15, tstop=None,
                          samples=10000, sns_baseline=True, src_baseline=False,
@@ -5061,9 +5060,9 @@ class MneExperiment(FileTree):
         if self._need_not_recompute_report(dst, samples, data, redo):
             return
 
-        res_data, res = self._load_test(test, tstart, tstop, pmin, parc, None,
-                                    samples, data, sns_baseline, src_baseline,
-                                    True, True)
+        res_data, res = self._load_test(
+            test, tstart, tstop, pmin, parc, None, samples, data, sns_baseline,
+            src_baseline, True, True)
         ds0 = res_data.values()[0]
         res0 = res.res.values()[0]
 
@@ -5073,7 +5072,7 @@ class MneExperiment(FileTree):
 
         # method intro (compose it later when data is available)
         info_section = report.add_section("Test Info")
-        self._report_test_info(info_section, res.n_trials_ds, test, res0, 'source')
+        self._report_test_info(info_section, res.n_trials_ds, test, res0, data)
 
         # add parc image
         section = report.add_section(parc)
@@ -5157,7 +5156,7 @@ class MneExperiment(FileTree):
 
         # info
         info_section = report.add_section("Test Info")
-        self._report_test_info(info_section, ds, test, res, 'sensor', include)
+        self._report_test_info(info_section, ds, test, res, data, include)
 
         # add connectivity image
         p = plot.SensorMap(ds['eeg'], connectivity=True, show=False)
@@ -5241,7 +5240,7 @@ class MneExperiment(FileTree):
         for sensor, res in izip(sensors, ress):
             report.append(_report.time_results(res, ds, colors, sensor, caption % sensor))
 
-        self._report_test_info(info_section, ds, test, res, 'sensor')
+        self._report_test_info(info_section, ds, test, res, data)
         report.sign(('eelbrain', 'mne', 'scipy', 'numpy'))
         report.save_html(dst)
 
@@ -5266,7 +5265,7 @@ class MneExperiment(FileTree):
         if model:
             epoch += ' ~ ' + model
         info.add_item(epoch)
-        if data == 'source':
+        if data.source:
             info.add_item(self.format("cov = {cov}"))
             info.add_item(self.format("inv = {inv}"))
         return info
@@ -5281,7 +5280,7 @@ class MneExperiment(FileTree):
         section.append(info)
 
         # Test info (for temporal tests, res is only representative)
-        info = res.info_list(data is not None)
+        info = res.info_list()
         section.append(info)
 
         section.append(self._report_subject_info(ds, test_obj.model))
