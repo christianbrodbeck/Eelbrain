@@ -2414,7 +2414,7 @@ class _ClusterDist:
                 info.append("%i clusters" % self.n_clusters)
 
         if self.n_clusters and self.samples:
-            info.append("p >= %.3f" % self.probability_map.min())
+            info.append("p=%s" % ("%.3f" % self.probability_map.min())[1:])
 
         return info
 

@@ -39,8 +39,8 @@ def test_anova():
     eq_(res._plot_model(), 'A%B')
     res = testnd.anova('utsnd', 'A*B*rm', match='rm', ds=ds, samples=2, pmin=0.05)
     eq_(repr(res), "<anova 'utsnd', 'A*B*rm', match='rm', samples=2, pmin=0.05, "
-                   "'A': 17 clusters, p >= 0.000, 'B': 20 clusters, p >= 0.000, "
-                   "'A x B': 22 clusters, p >= 0.000>")
+                   "'A': 17 clusters, p=.000, 'B': 20 clusters, p=.000, "
+                   "'A x B': 22 clusters, p=.000>")
     eq_(res._plot_model(), 'A%B')
 
     # persistence
@@ -548,7 +548,7 @@ def test_ttest_rel():
     res = testnd.ttest_rel('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm',
                            ds=ds, samples=100)
     eq_(repr(res), "<ttest_rel 'uts', 'A x B', ('a1', 'b1'), ('a0', 'b0'), "
-                   "'rm' (n=15), samples=100, p >= 0.000>")
+                   "'rm' (n=15), samples=100, p=.000>")
 
     # alternate argspec
     ds1 = Dataset()
@@ -556,7 +556,7 @@ def test_ttest_rel():
     ds1['a0b0'] = ds.eval("uts[A%B == ('a0', 'b0')]")
     res1 = testnd.ttest_rel('a1b1', 'a0b0', ds=ds1, samples=100)
     assert_dataobj_equal(res1.t, res.t)
-    eq_(repr(res1), "<ttest_rel 'a1b1', 'a0b0' (n=15), samples=100, p >= 0.000>")
+    eq_(repr(res1), "<ttest_rel 'a1b1', 'a0b0' (n=15), samples=100, p=.000>")
 
     # persistence
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
