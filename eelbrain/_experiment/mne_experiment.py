@@ -6331,7 +6331,7 @@ class MneExperiment(FileTree):
         else:
             print(ds)
 
-    def show_rej_info(self, flagp=None, asds=False):
+    def show_rej_info(self, flagp=None, asds=False, **state):
         """Information about artifact rejection
 
         Parameters
@@ -6348,10 +6348,13 @@ class MneExperiment(FileTree):
         :meth:`~MneExperiment.show_raw_info`.
         """
         # TODO: include ICA raw preprocessing pipes
+        if state:
+            self.set(**state)
         raw_name = self.get('raw')
         epoch_name = self.get('epoch')
         rej_name = self.get('rej')
         rej = self._artifact_rejection[rej_name]
+        has_epoch_rejection = rej['kind'] is not None
         has_ica = rej['kind'] == 'ica'
         has_interp = rej.get('interpolation')
 
@@ -6371,14 +6374,16 @@ class MneExperiment(FileTree):
                 ds = self.load_selected_events(reject='keep')
             except FileMissing:
                 ds = self.load_selected_events(reject=False)
-                n_good.append(float('nan'))
                 bad_chs.append(str(len(bads_raw)))
+                if has_epoch_rejection:
+                    n_good.append(float('nan'))
                 if has_interp:
                     n_interp.append(float('nan'))
             else:
-                n_good.append(ds['accept'].sum())
                 bads_rej = set(ds.info[BAD_CHANNELS]).difference(bads_raw)
                 bad_chs.append("%i + %i" % (len(bads_raw), len(bads_rej)))
+                if has_epoch_rejection:
+                    n_good.append(ds['accept'].sum())
                 if has_interp:
                     n_interp.append(np.mean([len(chi) for chi in ds[INTERPOLATE_CHANNELS]]))
             n_events.append(ds.n_cases)
@@ -6402,8 +6407,9 @@ class MneExperiment(FileTree):
         out = Dataset(caption=caption)
         out['subject'] = Factor(subjects)
         out['n_events'] = Var(n_events)
-        out['n_good'] = Var(n_good)
-        out['percent'] = Var(np.round(100 * out['n_good'] / out['n_events'], 1))
+        if has_epoch_rejection:
+            out['n_good'] = Var(n_good)
+            out['percent'] = Var(np.round(100 * out['n_good'] / out['n_events'], 1))
         if flagp:
             out['flag'] = Factor(out['percent'] < flagp, labels={False: '', True: '*'})
         out['bad_channels'] = Factor(bad_chs)
