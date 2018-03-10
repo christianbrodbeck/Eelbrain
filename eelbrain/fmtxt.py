@@ -50,12 +50,14 @@ The module also provides functions that work with fmtxt objects:
 import datetime
 from html.parser import HTMLParser
 from importlib import import_module
+from itertools import repeat
+from math import ceil
 import os
 import pickle
 import re
 import shutil
 import socket
-from io import StringIO
+from io import StringIO, BytesIO
 import tempfile
 import time
 
@@ -138,7 +140,7 @@ def _html_repl(m):
 
 
 def escape_html(text):
-    return _html_escape_pattern.sub(_html_repl, text).encode('ascii', 'xmlcharrefreplace')
+    return _html_escape_pattern.sub(_html_repl, text)#.encode('ascii', 'xmlcharrefreplace')
 
 
 def _tex_repl(m):
@@ -252,7 +254,7 @@ def save_html(fmtxt, path=None, embed_images=True, meta=None):
         resource_dir = os.path.relpath(resource_dir, root)
 
     buf = make_html_doc(fmtxt, root, resource_dir, meta=meta)
-    buf_enc = buf.encode('utf-8')
+    buf_enc = buf.encode('ascii', 'xmlcharrefreplace')
     with open(file_path, 'wb') as fid:
         fid.write(buf_enc)
 
@@ -303,8 +305,6 @@ def _save_txt(text, path=None):
                              filetypes=[("Plain Text File (*.txt)", "*.txt")])
     if path:
         with open(path, 'w') as fid:
-            if isinstance(text, str):
-                text = text.encode('utf-8')
             fid.write(text)
 
 
@@ -437,7 +437,7 @@ def _html_element(tag, body, env, options=None):
         HTML options to be inserted in the start tag.
     """
     if options:
-        opt = ' '.join('%s="%s"' % item for item in options.items())
+        opt = ' '.join('%s="%s"' % (k, options[k]) for k in sorted(options))
         txt = _html_temp_opt.format(tag=tag, options=opt, body=html(body, env))
     else:
         txt = _html_temp.format(tag=tag, body=html(body, env))
@@ -548,9 +548,6 @@ class FMTextElement(object):
         return items
 
     def __str__(self):
-        return str(self).encode('utf-8')
-
-    def __unicode__(self):
         return self.get_str()
 
     def __add__(self, other):
@@ -997,7 +994,7 @@ class List(FMTextElement):
     def get_str(self, env={}):
         out = []
         if self.head is not None:
-            out.append(self.head)
+            out.append(self.head.get_str(env))
 
         for item in self.items:
             if isinstance(item, List):
@@ -1128,9 +1125,6 @@ class Row(list):
         return "Row(%s)" % list.__repr__(self)
 
     def __str__(self):
-        return str(self).encode('utf-8')
-
-    def __unicode__(self):
         return ' '.join([str(cell) for cell in self])
 
     def _strlen(self, env):
@@ -1138,8 +1132,13 @@ class Row(list):
         lens = []
         for cell in self:
             cell_len = len(cell.get_str(env))
-            for _ in range(len(cell)):
-                lens.append(cell_len / len(cell))  # TODO: better handling of multicolumn
+            n_columns = len(cell)
+            if n_columns == 1:
+                lens.append(cell_len)
+            else:
+                # TODO: better handling of multicolumn
+                col_len = int(ceil(cell_len / n_columns))
+                lens.extend(repeat(col_len, n_columns))
         return lens
 
     def get_html(self, env={}):
@@ -1441,7 +1440,7 @@ class Table(FMTextElement):
                 while len(row_strlen) < len(self.columns):
                     row_strlen.append(0)
                 widths.append(row_strlen)
-        widths = np.array(widths)
+        widths = np.array(widths, dtype=int)
         c_width = np.max(widths, axis=0)  # column widths!
 
         # FIXME: take into account tab length:
@@ -2232,9 +2231,9 @@ def _array_as_png(im):
     data : str
         Encoded PNG image.
     """
-    buf = StringIO()
+    buf = BytesIO()
     imsave(buf, np.asarray(im), format='png')
-    data = buf.getvalue().encode('base64').replace('\n', '')
+    data = buf.getvalue()
     return data
 
 

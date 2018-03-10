@@ -34,15 +34,19 @@ def test_fmtext():
 
 def test_list():
     list_ = fmtxt.List("Head")
+    eq_(str(list_), 'Head')
     eq_(html(list_), 'Head\n<ul>\n</ul>')
     list_.add_item("child")
+    eq_(str(list_), 'Head\n- child')
     eq_(html(list_), 'Head\n<ul>\n<li>child</li>\n</ul>')
     sublist = list_.add_sublist("unicode:")
+    eq_(str(list_), 'Head\n- child\n- unicode:')
     eq_(html(list_), 'Head\n<ul>\n<li>child</li>\n<li>unicode:\n<ul>\n'
                      '</ul></li>\n</ul>')
     sublist.add_item('delta: ∂')
+    eq_(str(list_), 'Head\n- child\n- unicode:\n  - delta: ∂')
     eq_(html(list_), 'Head\n<ul>\n<li>child</li>\n<li>unicode:\n<ul>\n'
-                     '<li>delta: &#8706;</li>\n</ul></li>\n</ul>')
+                     '<li>delta: ∂</li>\n</ul></li>\n</ul>')
 
 
 def test_report():
@@ -101,11 +105,10 @@ def test_table():
     table.midrule()
     table.cells('a1', 'b1', 'a2', 'b2')
     eq_(str(table), 'A    B \n-------\na1   b1\na2   b2')
-    eq_(table.get_html(), '<figure><table rules="none" cellpadding="2" '
-                          'frame="hsides" border="1"><tr>\n'
-                          ' <td>A</td>\n <td>B</td>\n</tr>\n<tr>\n'
-                          ' <td>a1</td>\n <td>b1</td>\n</tr>\n<tr>\n'
-                          ' <td>a2</td>\n <td>b2</td>\n</tr></table></figure>')
+    eq_(html(table), '<figure><table border="1" cellpadding="2" frame="hsides" rules="none"><tr>\n'
+                     ' <td>A</td>\n <td>B</td>\n</tr>\n<tr>\n'
+                     ' <td>a1</td>\n <td>b1</td>\n</tr>\n<tr>\n'
+                     ' <td>a2</td>\n <td>b2</td>\n</tr></table></figure>')
     eq_(table.get_rtf(), '\\trowd\n\\cellx0000\n\\cellx1000\n\\row\n'
                          'A\\intbl\\cell\nB\\intbl\\cell\n\\row\n'
                          'a1\\intbl\\cell\nb1\\intbl\\cell\n\\row\n'
@@ -128,8 +131,7 @@ def test_table():
                             '<style>\n\n.float {\n    float:left\n}\n\n'
                             '</style>\n</head>\n\n'
                             '<body>\n\n<figure>'
-                            '<table rules="none" cellpadding="2" frame="hsides" '
-                            'border="1"><tr>\n'
+                            '<table border="1" cellpadding="2" frame="hsides" rules="none"><tr>\n'
                             ' <td>A</td>\n <td>B</td>\n</tr>\n<tr>\n'
                             ' <td>a1</td>\n <td>b1</td>\n</tr>\n<tr>\n'
                             ' <td>a2</td>\n <td>b2</td>\n</tr>'

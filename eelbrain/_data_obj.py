@@ -5201,9 +5201,6 @@ class Dataset(OrderedDict):
             raise NotImplementedError("Advanced Dataset indexing")
 
     def __str__(self):
-        return str(self).encode('utf-8')
-
-    def __unicode__(self):
         if sum(isuv(i) or isdatalist(i) for i in self.values()) == 0:
             return self.__repr__()
 
