@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 "A few basic operations needed throughout Eelbrain"
+from __future__ import print_function
 from collections import defaultdict
 import functools
 import logging
@@ -33,7 +34,7 @@ def ask(message, options, allow_empty=False, help=None):
     option_keys = [s[0] for s in options]
     print(message)
     print('---')
-    print '\n'.join('%s:  %s' % item for item in options)
+    print('\n'.join('%s:  %s' % item for item in options))
     if help is not None:
         assert 'help' not in option_keys
         print('help:  display help')
@@ -42,7 +43,7 @@ def ask(message, options, allow_empty=False, help=None):
         command = raw_input(" > ")
         if command in option_keys or (allow_empty and not command):
             if help is not None and command == 'help':
-                print help
+                print(help)
             else:
                 return command
         else:

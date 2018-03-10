@@ -85,6 +85,7 @@ from ..fmtxt import Image
 from .._colorspaces import symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
 from .._data_obj import (Case, UTS, ascategorial, asndvar, assub, isnumeric,
                          isdataobject, cellname)
+from functools import reduce
 
 
 # constants

@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """I/O for wave files"""
+from __future__ import print_function
 import os
 
 import numpy as np

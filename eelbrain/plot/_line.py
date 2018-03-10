@@ -11,6 +11,7 @@ from .._data_obj import ascategorial, asndvar, assub
 from ._base import (
     EelFigure, Layout, LegendMixin, XAxisMixin, find_axis_params_data,
     frame_title)
+from functools import reduce
 
 
 class LineStack(LegendMixin, XAxisMixin, EelFigure):

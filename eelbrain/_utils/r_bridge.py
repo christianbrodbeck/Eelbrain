@@ -1,4 +1,5 @@
 """Use r (rpy2) for testing"""
+from __future__ import print_function
 import warnings
 from rpy2.robjects import r
 

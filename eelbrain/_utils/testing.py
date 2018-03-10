@@ -14,6 +14,7 @@ import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 
 from .._data_obj import Dataset, NDVar, Var, isdatalist, isdatacontainer, isuv
+from functools import reduce
 
 
 class TempDir(str):

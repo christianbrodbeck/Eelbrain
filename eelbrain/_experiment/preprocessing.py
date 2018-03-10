@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Pre-processing operations based on NDVars"""
+from __future__ import print_function
 from os import mkdir, remove
 from os.path import dirname, exists, getmtime
 

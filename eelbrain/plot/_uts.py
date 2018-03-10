@@ -18,6 +18,7 @@ from ._base import (
     LegendMixin, YLimMixin, XAxisMixin, frame_title)
 from ._colors import colors_for_oneway, find_cell_colors
 from .._colorspaces import oneway_colors
+from functools import reduce
 
 
 class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
