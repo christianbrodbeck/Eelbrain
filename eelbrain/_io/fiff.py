@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """I/O for MNE"""
-from __future__ import division
-
 from collections import Iterable
 import fnmatch
-from itertools import izip_longest, izip
+from itertools import zip_longest
 from logging import getLogger
 import os
 
@@ -73,7 +71,7 @@ def mne_raw(path=None, proj=False, **kwargs):
         if not path:
             return
 
-    if isinstance(path, basestring):
+    if isinstance(path, str):
         _, ext = os.path.splitext(path)
         ext = ext.lower()
         if ext.startswith('.fif'):
@@ -167,7 +165,7 @@ def events(raw=None, merge=-1, proj=False, name=None, bads=None,
          - *raw*: the mne Raw object.
 
     """
-    if (raw is None and events is None) or isinstance(raw, basestring):
+    if (raw is None and events is None) or isinstance(raw, str):
         raw = mne_raw(raw, proj=proj, **kwargs)
 
     if bads is not None and raw is not None :
@@ -175,7 +173,7 @@ def events(raw=None, merge=-1, proj=False, name=None, bads=None,
 
     if name is None and raw is not None:
         raw_path = _get_raw_filename(raw)
-        if isinstance(raw_path, basestring):
+        if isinstance(raw_path, str):
             name = os.path.basename(raw_path)
         else:
             name = None
@@ -463,12 +461,12 @@ def add_mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, target='epochs',
 
 def _mne_events(ds=None, i_start='i_start', trigger='trigger'):
     """Convert events from a Dataset into mne events"""
-    if isinstance(i_start, basestring):
+    if isinstance(i_start, str):
         i_start = ds[i_start]
 
     N = len(i_start)
 
-    if isinstance(trigger, basestring):
+    if isinstance(trigger, str):
         trigger = ds[trigger]
     elif trigger is None:
         trigger = np.ones(N)
@@ -720,7 +718,7 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, inv=None, lambda2=1,
         inv = prepare_inverse_operator(inv, 1, lambda2, method)
 
     out = []
-    for start, stop in izip(i_start, i_stop):
+    for start, stop in zip(i_start, i_stop):
         if inv is None:
             x = raw[picks, start:stop][0]
         else:
@@ -770,7 +768,7 @@ def epochs_ndvar(epochs, name=None, data=None, exclude='bads', mult=1,
         inferred automatically for KIT data converted with a recent version of
         MNE-Python).
     """
-    if isinstance(epochs, basestring):
+    if isinstance(epochs, str):
         epochs = mne.read_epochs(epochs)
 
     if data is None:
@@ -785,9 +783,9 @@ def epochs_ndvar(epochs, name=None, data=None, exclude='bads', mult=1,
         summary_vmax = 0.1 * vmax if vmax else None
         summary_info = _cs.meg_info(summary_vmax, mult)
     elif data == 'grad':
-        info_ = _cs.meg_info(vmax, mult, 'T/cm', u'∆U')
+        info_ = _cs.meg_info(vmax, mult, 'T/cm', '∆U')
         summary_vmax = 0.1 * vmax if vmax else None
-        summary_info = _cs.meg_info(summary_vmax, mult, 'T/cm', u'∆U')
+        summary_info = _cs.meg_info(summary_vmax, mult, 'T/cm', '∆U')
     else:
         raise ValueError("data=%r" % data)
     info_.update(proj='z root', samplingrate=epochs.info['sfreq'],
@@ -838,7 +836,7 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
     If evoked objects have different channels, the intersection is used (i.e.,
     only the channels present in all objects are retained).
     """
-    if isinstance(evoked, basestring):
+    if isinstance(evoked, str):
         evoked = mne.read_evokeds(evoked)
 
     if isinstance(evoked, MNE_EVOKED):
@@ -897,7 +895,7 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
         ch_sets = [set(e.info['ch_names']) for e in evoked]
         all_chs = set.union(*ch_sets)
         common = set.intersection(*ch_sets)
-        exclude = set.union(*map(set, (e.info['bads'] for e in evoked)))
+        exclude = set.union(*list(map(set, (e.info['bads'] for e in evoked))))
         exclude.update(all_chs.difference(common))
         exclude = list(exclude)
 
@@ -939,7 +937,7 @@ def forward_operator(fwd, src, subjects_dir=None, parc='aparc', name=None):
     fwd : NDVar  (sensor, source)
         NDVar containing the gain matrix.
     """
-    if isinstance(fwd, basestring):
+    if isinstance(fwd, str):
         if name is None:
             name = os.path.basename(fwd)
         fwd = mne.read_forward_solution(fwd)
@@ -977,7 +975,7 @@ def inverse_operator(inv, src, subjects_dir=None, parc='aparc', name=None):
     inv : NDVar  (source, sensor)
         NDVar containing the inverse operator.
     """
-    if isinstance(inv, basestring):
+    if isinstance(inv, str):
         if name is None:
             name = os.path.basename(inv)
         inv = mne.minimum_norm.read_inverse_operator(inv)
@@ -1026,7 +1024,7 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
     """
     subjects_dir = mne.utils.get_subjects_dir(subjects_dir)
 
-    if isinstance(stc, basestring):
+    if isinstance(stc, str):
         stc = mne.read_source_estimate(stc)
 
     # construct data array
@@ -1042,7 +1040,7 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
             vertices = stc.vertices
             for stc_ in stcs[1:]:
                 assert np.array_equal(stc_.times, times)
-                for v1, v0 in izip_longest(stc_.vertices, vertices):
+                for v1, v0 in zip_longest(stc_.vertices, vertices):
                     assert np.array_equal(v1, v0)
         x = np.array([s.data for s in stcs])
 

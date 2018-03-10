@@ -1,5 +1,4 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from __future__ import print_function
 import logging
 from nose.tools import eq_
 

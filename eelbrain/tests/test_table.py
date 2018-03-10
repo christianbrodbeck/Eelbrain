@@ -1,5 +1,4 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from __future__ import print_function
 from nose.tools import eq_, ok_, assert_is_instance, assert_raises
 import numpy as np
 from numpy.testing import assert_array_equal

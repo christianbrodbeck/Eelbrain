@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 "Line plots"
-from __future__ import division
-
-from itertools import cycle, izip, repeat
+from itertools import cycle, repeat
 
 import numpy as np
 
@@ -15,7 +13,7 @@ from functools import reduce
 
 
 class LineStack(LegendMixin, XAxisMixin, EelFigure):
-    u"""Stack multiple lines vertically
+    """Stack multiple lines vertically
     
     Parameters
     ----------
@@ -89,7 +87,7 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
             xdata = tuple(d._axis_data() for d in xdim_objs)
             xdim_obj = reduce(lambda d1, d2: d1._union(d2), xdim_objs)
 
-            if isinstance(offset, basestring):
+            if isinstance(offset, str):
                 offset = max(eval(offset, {'y': y_}) for y_ in ydata)
 
             cells = cell_labels = tuple(y_.name for y_ in ys)
@@ -112,13 +110,13 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
             # get data
             ydata = y.get_data((ydim, xdim))
 
-            if isinstance(offset, basestring):
+            if isinstance(offset, str):
                 offset = eval(offset, {'y': y})
 
             # find cells
             if x is None:
                 cells = y.get_dim(ydim)
-                cell_labels = map(str, cells)
+                cell_labels = tuple(map(str, cells))
             else:
                 cells = cell_labels = x.cells
 
@@ -156,7 +154,7 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
 
         handles = [ax.plot(x_, y_ + offset_, color=color, clip_on=clip)[0] for
                    x_, y_, offset_, color in
-                   izip(xdata, ydata, offsets, color_iter)]
+                   zip(xdata, ydata, offsets, color_iter)]
 
         if ylim is None:
             ymin = min(y.min() for y in ydata) if isinstance(ydata, tuple) else ydata.min()
@@ -177,5 +175,5 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
         if ylabel:
             ax.set_ylabel(ylabel)
         XAxisMixin._init_with_data(self, epochs, xdim, xlim)
-        LegendMixin.__init__(self, legend, dict(izip(cell_labels, handles)))
+        LegendMixin.__init__(self, legend, dict(zip(cell_labels, handles)))
         self._show()

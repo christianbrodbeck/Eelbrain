@@ -67,7 +67,7 @@ def find_epoch_vars(params):
     out = ()
     if params.get('sel'):
         out += find_variables(params['sel'])
-    if 'trigger_shift' in params and isinstance(params['trigger_shift'], basestring):
+    if 'trigger_shift' in params and isinstance(params['trigger_shift'], str):
         out += (params['trigger_shift'],)
     if 'post_baseline_trigger_shift' in params:
         out += (params['post_baseline_trigger_shift'],)
@@ -141,7 +141,7 @@ def find_test_vars(params):
     vardef = params.get('vars', None)
     if vardef is not None:
         if isinstance(vardef, dict):
-            vardef = vardef.iteritems()
+            vardef = vardef.items()
         elif isinstance(vardef, tuple):
             vardef = (map(str.strip, v.split('=', 1)) for v in vardef)
         else:

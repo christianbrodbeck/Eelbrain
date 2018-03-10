@@ -5,7 +5,6 @@ for testing:
 src = datasets.get_mne_sample(src='ico', sub=[0])['src']
 brain = plot.brain.brain(src.source, mask=False,hemi='lh',views='lat')
 """
-from itertools import izip
 from logging import getLogger
 
 from mayavi.core.ui.api import SceneEditor, MlabSceneModel
@@ -39,7 +38,7 @@ class MayaviView(HasTraits):
         if n_scenes < 1:
             raise ValueError("n_rows=%r, n_columns=%r" % (n_rows, n_columns))
 
-        self.scenes = tuple(MlabSceneModel() for _ in xrange(n_scenes))
+        self.scenes = tuple(MlabSceneModel() for _ in range(n_scenes))
         for i, scene in enumerate(self.scenes):
             self.add_trait(SCENE_NAME % i, scene)
 
@@ -50,9 +49,9 @@ class MayaviView(HasTraits):
                              width=width, height=height, resizable=True)
         else:
             rows = []
-            for row in xrange(n_rows):
+            for row in range(n_rows):
                 columns = []
-                for column in xrange(n_columns):
+                for column in range(n_columns):
                     i = row * n_columns + column
                     item = Item(SCENE_NAME % i,
                                 editor=SceneEditor(scene_class=Scene),
@@ -165,7 +164,7 @@ class BrainFrame(EelbrainFrame):
     def OnKeyDown(self, event):
         if self._brain is None:
             return  # plot is closed
-        key = unichr(event.GetUnicodeKey())
+        key = chr(event.GetUnicodeKey())
         if key == '.':
             self._brain._nudge_time(1)
         elif key == ',':
@@ -228,7 +227,7 @@ class BrainFrame(EelbrainFrame):
         else:
             return
 
-        for row, view in izip(self._brain.brain_matrix, views):
+        for row, view in zip(self._brain.brain_matrix, views):
             for b in row:
                 b.show_view(view)
 

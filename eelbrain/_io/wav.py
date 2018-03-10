@@ -1,6 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """I/O for wave files"""
-from __future__ import print_function
 import os
 
 import numpy as np
@@ -42,7 +41,7 @@ def load_wav(filename=None, name=None):
                                "NDVar", FILETYPES)
         if not filename:
             return
-    elif not isinstance(filename, basestring):
+    elif not isinstance(filename, str):
         raise TypeError("filename must be string, got %s" % repr(filename))
     elif not os.path.exists(filename):
         _, ext = os.path.splitext(filename)

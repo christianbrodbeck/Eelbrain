@@ -1,6 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Statistical Parametric Mapping"""
-from itertools import izip
 from operator import mul
 
 import numpy as np
@@ -38,7 +37,7 @@ class LM(object):
     """
     def __init__(self, y, model, ds=None, coding='dummy', subject=None,
                  sub=None):
-        if subject is not None and not isinstance(subject, basestring):
+        if subject is not None and not isinstance(subject, str):
             raise TypeError("subject needs to be None or string, got %s"
                             % repr(subject))
         sub = assub(sub, ds)
@@ -119,7 +118,7 @@ class LM(object):
         return NDVar(t.reshape(self._shape), self.dims, info, term)
 
     def _n_columns(self):
-        return {term: s.stop - s.start for term, s in self._p.terms.iteritems()}
+        return {term: s.stop - s.start for term, s in self._p.terms.items()}
 
 
 class LMGroup(object):
@@ -155,11 +154,11 @@ class LMGroup(object):
         # make sure to have a unique subject label for each lm
         name_i = 0
         subjects = [lm.subject for lm in lms]
-        str_names = filter(None, subjects)
+        str_names = tuple(filter(None, subjects))
         if len(set(str_names)) < len(str_names):
             raise ValueError("Duplicate subject names in %s" % str_names)
         new_name = 'S000'
-        for i in xrange(len(subjects)):
+        for i in range(len(subjects)):
             if not subjects[i]:
                 while new_name in subjects:
                     name_i += 1
@@ -207,7 +206,7 @@ class LMGroup(object):
             terms are stacked vertically and the ``term`` :class:`Factor`
             specifies which term the coefficients correspond to.
         """
-        if isinstance(terms, basestring):
+        if isinstance(terms, str):
             terms = (terms,)
         coeffs = []
         for term in terms:
@@ -282,7 +281,7 @@ class LMGroup(object):
             lm = self._lms[0]
             subject = self._subjects[0]
         else:
-            for lm, lm_subject in izip(self._lms, self._subjects):
+            for lm, lm_subject in zip(self._lms, self._subjects):
                 if lm_subject == subject:
                     break
             else:

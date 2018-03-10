@@ -12,8 +12,6 @@ http://www.doughellmann.com/PyMOTW/subprocess/
 http://explanatorygap.net/2010/05/10/python-subprocess-over-shell/
 http://codeghar.wordpress.com/2011/12/09/introduction-to-python-subprocess-module/
 """
-from __future__ import print_function
-
 import fnmatch
 import logging
 import os
@@ -184,9 +182,8 @@ def _run(cmd, v=None, cwd=None, block=True):
         for line in cmd:
             print(repr(line))
 
-    cmd = map(unicode, cmd)
-    sp = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE)
+    sp = subprocess.Popen(list(map(str, cmd)), cwd=cwd,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     if block:
         stdout, stderr = sp.communicate()
@@ -397,7 +394,7 @@ def _fs_subjects(arg, exclude=[], subjects_dir=None):
     if '*' in arg:
         subjects_dir = get_subjects_dir(subjects_dir)
         subjects = fnmatch.filter(os.listdir(subjects_dir), arg)
-        subjects = filter(os.path.isdir, subjects)
+        subjects = list(filter(os.path.isdir, subjects))
         for subject in exclude:
             if subject in subjects:
                 subjects.remove(subject)

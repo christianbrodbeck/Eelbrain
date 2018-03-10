@@ -90,7 +90,7 @@ def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None):
                                  "values, average difference=%s." %
                                  (msg, n_different, n, mean_diff))
     elif isdatalist(d1):
-        for i in xrange(len(d1)):
+        for i in range(len(d1)):
             assert_equal(d1[i], d2[i], "%s unequal values" % msg)
 
 

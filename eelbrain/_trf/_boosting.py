@@ -11,9 +11,8 @@ x2 = ds['x2']
 %prun -s cumulative res = boosting(y, x1, 0, 1)
 
 """
-from __future__ import division
 from inspect import getargspec
-from itertools import izip, product
+from itertools import product
 from math import floor
 from multiprocessing import Process, Queue
 from multiprocessing.sharedctypes import RawArray
@@ -124,7 +123,7 @@ class BoostingResult(object):
         self.__init__(**state)
 
     def __repr__(self):
-        if self.x is None or isinstance(self.x, basestring):
+        if self.x is None or isinstance(self.x, str):
             x = self.x
         else:
             x = ' + '.join(map(str, self.x))
@@ -132,7 +131,7 @@ class BoostingResult(object):
                  '%g - %g' % (self.tstart, self.tstop)]
         argspec = getargspec(boosting)
         names = argspec.args[-len(argspec.defaults):]
-        for name, default in izip(names, argspec.defaults):
+        for name, default in zip(names, argspec.defaults):
             value = getattr(self, name)
             if value != default:
                 items.append('%s=%r' % (name, value))
@@ -146,7 +145,7 @@ class BoostingResult(object):
             return self.h * (self.y_scale / self.x_scale)
         else:
             return tuple(h * (self.y_scale / sx) for h, sx in
-                         izip(self.h, self.x_scale))
+                         zip(self.h, self.x_scale))
 
     def _set_parc(self, parc):
         """Change the parcellation of source-space result
@@ -262,7 +261,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         # collect results
         try:
             h_segs = {}
-            for _ in xrange(n_y * N_SEGS):
+            for _ in range(n_y * N_SEGS):
                 y_i, seg_i, h = result_queue.get()
                 pbar.update()
                 if y_i in h_segs:
@@ -270,7 +269,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
                     h_seg[seg_i] = h
                     if len(h_seg) == N_SEGS:
                         del h_segs[y_i]
-                        hs = [h for h in (h_seg[i] for i in xrange(N_SEGS)) if
+                        hs = [h for h in (h_seg[i] for i in range(N_SEGS)) if
                               h is not None]
                         if hs:
                             h = np.mean(hs, 0, out=h_x[y_i])
@@ -286,7 +285,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     else:
         for y_i, y_ in enumerate(y_data):
             hs = []
-            for i in xrange(N_SEGS):
+            for i in range(N_SEGS):
                 h = boost_1seg(x_data, y_, trf_length, delta, N_SEGS, i,
                                mindelta_, error)
                 if h is not None:
@@ -431,7 +430,7 @@ def boost_segs(y, x, train_index, test_index, trf_length, delta, mindelta,
     history = []
     test_error_history = []
     # pre-assign iterators
-    for i_boost in xrange(999999):
+    for i_boost in range(999999):
         # evaluate current h
         e_test = error(y_error, test_index)
         e_train = error(y_error, train_index)
@@ -515,7 +514,7 @@ def setup_workers(y, x, trf_length, delta, mindelta, nsegs, error):
 
     args = (y_buffer, x_buffer, n_y, n_times, n_x, trf_length, delta,
             mindelta, nsegs, error, job_queue, result_queue)
-    for _ in xrange(CONFIG['n_workers']):
+    for _ in range(CONFIG['n_workers']):
         process = Process(target=boosting_worker, args=args)
         process.daemon = True
         process.start()
@@ -543,13 +542,13 @@ def boosting_worker(y_buffer, x_buffer, n_y, n_times, n_x, trf_length,
 
 def put_jobs(queue, n_y, n_segs, stop):
     "Feed boosting jobs into a Queue"
-    for job in product(xrange(n_y), xrange(n_segs)):
+    for job in product(range(n_y), range(n_segs)):
         queue.put(job)
         if stop.isSet():
             while not queue.empty():
                 queue.get()
             break
-    for _ in xrange(CONFIG['n_workers']):
+    for _ in range(CONFIG['n_workers']):
         queue.put((JOB_TERMINATE, None))
 
 
@@ -564,7 +563,7 @@ def apply_kernel(x, h, out=None):
     else:
         out.fill(0)
 
-    for ind in xrange(len(h)):
+    for ind in range(len(h)):
         out += np.convolve(h[ind], x[ind])[:len(out)]
 
     return out

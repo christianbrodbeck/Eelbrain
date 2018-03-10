@@ -102,7 +102,7 @@ class IndividualSeededParcellation(SeededParcellation):
             raise DefinitionError("Parc %s not defined for subject %s" % (self.name, subject))
         seeds = {name: self.seeds[name][subject] for name in self.seeds}
         # filter out missing
-        return {name: seed for name, seed in seeds.iteritems() if seed}
+        return {name: seed for name, seed in seeds.items() if seed}
 
 
 PARC_CLASSES = {

@@ -34,19 +34,15 @@ These are elementary effects in a Model, and identified by :func:`is_effect`
 
 
 """
-
-from __future__ import division
-from __future__ import print_function
-
 from collections import Iterator, OrderedDict, Sequence
 from copy import deepcopy
 from functools import partial
 import itertools
-from itertools import chain, izip
+from itertools import chain
 from keyword import iskeyword
 from math import ceil, log
 from numbers import Integral, Number
-import cPickle as pickle
+import pickle
 import operator
 import os
 import re
@@ -140,7 +136,7 @@ def cellname(cell, delim=' '):
     elif cell is None:
         return ''
     else:
-        return unicode(cell)
+        return str(cell)
 
 
 def longname(x):
@@ -380,7 +376,7 @@ def hasrandom(x):
 
 def as_case_identifier(x, sub=None, ds=None):
     "Coerce input to a variable that can identify each of its cases"
-    if isinstance(x, basestring):
+    if isinstance(x, str):
         if ds is None:
             err = ("Parameter was specified as string, but no Dataset was "
                    "specified")
@@ -425,7 +421,7 @@ def asarray(x, kind=None):
 
 
 def ascategorial(x, sub=None, ds=None, n=None):
-    if isinstance(x, basestring):
+    if isinstance(x, str):
         if ds is None:
             err = ("Parameter was specified as string, but no Dataset was "
                    "specified")
@@ -451,7 +447,7 @@ def ascategorial(x, sub=None, ds=None, n=None):
 
 def asdataobject(x, sub=None, ds=None, n=None):
     "Convert to any data object or numpy array."
-    if isinstance(x, basestring):
+    if isinstance(x, str):
         if ds is None:
             err = ("Data object was specified as string, but no Dataset was "
                    "specified")
@@ -476,7 +472,7 @@ def asdataobject(x, sub=None, ds=None, n=None):
 
 def asepochs(x, sub=None, ds=None, n=None):
     "Convert to mne Epochs object"
-    if isinstance(x, basestring):
+    if isinstance(x, str):
         if ds is None:
             err = ("Epochs object was specified as string, but no Dataset was "
                    "specified")
@@ -498,7 +494,7 @@ def asepochs(x, sub=None, ds=None, n=None):
 
 
 def asfactor(x, sub=None, ds=None, n=None):
-    if isinstance(x, basestring):
+    if isinstance(x, str):
         if ds is None:
             err = ("Factor was specified as string, but no Dataset was "
                    "specified")
@@ -522,7 +518,7 @@ def asfactor(x, sub=None, ds=None, n=None):
 
 
 def asmodel(x, sub=None, ds=None, n=None):
-    if isinstance(x, basestring):
+    if isinstance(x, str):
         if ds is None:
             raise TypeError("Model was specified as string, but no Dataset was "
                             "specified")
@@ -530,7 +526,7 @@ def asmodel(x, sub=None, ds=None, n=None):
             # need to sub dataset before building model to get right number of
             # df
             names = set(re.findall('\w+', x))
-            if isinstance(sub, basestring):
+            if isinstance(sub, str):
                 names.update(re.findall('\w+', sub))
             names.intersection_update(ds)
             ds = ds[names].sub(sub)
@@ -552,7 +548,7 @@ def asmodel(x, sub=None, ds=None, n=None):
 
 
 def asndvar(x, sub=None, ds=None, n=None, dtype=None):
-    if isinstance(x, basestring):
+    if isinstance(x, str):
         if ds is None:
             err = ("Ndvar was specified as string, but no Dataset was "
                    "specified")
@@ -594,7 +590,7 @@ def asndvar(x, sub=None, ds=None, n=None, dtype=None):
 
 def asnumeric(x, sub=None, ds=None, n=None):
     "Var, NDVar"
-    if isinstance(x, basestring):
+    if isinstance(x, str):
         if ds is None:
             raise TypeError("Numeric argument was specified as string, but no "
                             "Dataset was specified")
@@ -616,7 +612,7 @@ def assub(sub, ds=None):
     "Interpret the sub argument."
     if sub is None:
         return None
-    elif isinstance(sub, basestring):
+    elif isinstance(sub, str):
         if ds is None:
             raise TypeError("the sub parameter was specified as string, but no "
                             "Dataset was specified")
@@ -629,7 +625,7 @@ def assub(sub, ds=None):
 
 def asuv(x, sub=None, ds=None, n=None, interaction=False):
     "Coerce to Var or Factor"
-    if isinstance(x, basestring):
+    if isinstance(x, str):
         if ds is None:
             raise TypeError("Parameter was specified as string, but no Dataset "
                             "was specified")
@@ -637,7 +633,7 @@ def asuv(x, sub=None, ds=None, n=None, interaction=False):
 
     if isuv(x, interaction):
         pass
-    elif all(isinstance(v, basestring) for v in x):
+    elif all(isinstance(v, str) for v in x):
         x = Factor(x)
     else:
         x = Var(x)
@@ -653,7 +649,7 @@ def asuv(x, sub=None, ds=None, n=None, interaction=False):
 
 def asvar(x, sub=None, ds=None, n=None):
     "Coerce to Var"
-    if isinstance(x, basestring):
+    if isinstance(x, str):
         if ds is None:
             raise TypeError("Var was specified as string, but no Dataset was "
                             "specified")
@@ -798,7 +794,7 @@ def align(d1, d2, i1='index', i2=None, out='data'):
     See `examples/datasets/align.py <https://github.com/christianbrodbeck/
     Eelbrain/blob/master/examples/datasets/align.py>`_.
     """
-    if i2 is None and isinstance(i1, basestring):
+    if i2 is None and isinstance(i1, str):
         i2 = i1
     i1 = as_case_identifier(i1, ds=d1)
     i2 = as_case_identifier(i2, ds=d2)
@@ -855,7 +851,7 @@ def align1(d, idx, d_idx='index', out='data'):
     align : Align two data-objects
     """
     idx = asuv(idx)
-    if not isinstance(d_idx, basestring):
+    if not isinstance(d_idx, str):
         # check d_idx length
         if isinstance(d, Dataset):
             if len(d_idx) != d.n_cases:
@@ -986,7 +982,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
     The info dict inherits only entries that are equal (``x is y or
     np.array_equal(x, y)``) for all items.
     """
-    if not isinstance(incomplete, basestring):
+    if not isinstance(incomplete, str):
         raise TypeError("incomplete=%s, need str" % repr(incomplete))
     elif incomplete not in ('raise', 'drop', 'fill in'):
         raise ValueError("incomplete=%s" % repr(incomplete))
@@ -1001,7 +997,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
     first_item = items[0]
     if isinstance(first_item, Number):
         return Var(items, name=name)
-    elif isinstance(first_item, basestring):
+    elif isinstance(first_item, str):
         return Factor(items)
     stype = type(first_item)
     if isinstance(first_item, mne.BaseEpochs):
@@ -1016,7 +1012,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
 
     # find name
     if name is None:
-        names = filter(None, (item.name for item in items))
+        names = tuple(filter(None, (item.name for item in items)))
         name = os.path.commonprefix(names) or None
 
     # combine objects
@@ -1024,10 +1020,10 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
         out = Dataset(name=name, info=merge_info(items))
         if incomplete == 'fill in':
             # find all keys and data types
-            keys = first_item.keys()
+            keys = list(first_item.keys())
             sample = dict(first_item)
             for item in items:
-                for key in item.keys():
+                for key in item:
                     if key not in keys:
                         keys.append(key)
                         sample[key] = item[key]
@@ -1183,7 +1179,7 @@ class Var(object):
     ndim = 1
 
     def __init__(self, x, name=None, repeat=1, tile=1, info=None):
-        if isinstance(x, basestring):
+        if isinstance(x, str):
             raise TypeError("Var can't be initialized with a string")
 
         if isinstance(x, Iterator):
@@ -1564,8 +1560,8 @@ class Var(object):
         labels_ = {}
         if isinstance(labels, dict):
             # flatten
-            for key, v in labels.iteritems():
-                if (isinstance(key, Sequence) and not isinstance(key, basestring)):
+            for key, v in labels.items():
+                if (isinstance(key, Sequence) and not isinstance(key, str)):
                     for k in key:
                         labels_[k] = v
                 else:
@@ -1759,7 +1755,7 @@ class Var(object):
     def isin(self, values):
         "Boolean index, True where the Var value is in values"
         if isinstance(values, dict):
-            values = values.keys()
+            values = tuple(values)
         return np.in1d(self.x, values)
 
     def isnot(self, *values):
@@ -2110,11 +2106,9 @@ class Factor(_Effect):
             label_values = [pair[1] for pair in labels]
 
         if isinstance(x, Factor):
-            labels_dict = {x._codes.get(s): d for s, d in
-                           labels_dict.iteritems()}
-            labels_dict.update({code: label for code, label in
-                                x._labels.iteritems() if
-                                code not in labels_dict})
+            labels_dict = {x._codes.get(s): d for s, d in labels_dict.items()}
+            labels_dict.update({code: label for code, label in x._labels.items()
+                                if code not in labels_dict})
             x = x.x
 
         if isinstance(x, np.ndarray) and x.dtype.kind in 'ifb':
@@ -2129,7 +2123,7 @@ class Factor(_Effect):
 
             x_ = u_label_index[np.digitize(x, unique, True)]
             # {label: code}
-            codes = dict(izip(u_labels, u_label_index))
+            codes = dict(zip(u_labels, u_label_index))
         else:
             # convert x to codes
             highest_code = -1
@@ -2138,7 +2132,7 @@ class Factor(_Effect):
             for i, value in enumerate(x):
                 if value in labels_dict:
                     label = labels_dict[value]
-                elif isinstance(value, unicode):
+                elif isinstance(value, str):
                     label = value
                 else:
                     label = str(value)
@@ -2173,11 +2167,11 @@ class Factor(_Effect):
         if 'ordered_labels' in state:
             # 0.13:  ordered_labels replaced labels
             self._labels = state['ordered_labels']
-            self._codes = {lbl: code for code, lbl in self._labels.iteritems()}
+            self._codes = {lbl: code for code, lbl in self._labels.items()}
         else:
             labels = state['labels']
             cells = natsorted(labels.values())
-            self._codes = codes = {lbl: code for code, lbl in labels.iteritems()}
+            self._codes = codes = {lbl: code for code, lbl in labels.items()}
             self._labels = OrderedDict([(codes[label], label) for label in cells])
 
         self._n_cases = len(x)
@@ -2237,10 +2231,10 @@ class Factor(_Effect):
 
     def __setitem__(self, index, x):
         # convert x to code
-        if isinstance(x, basestring):
+        if isinstance(x, str):
             self.x[index] = self._get_code(x)
         else:
-            self.x[index] = map(self._get_code, x)
+            self.x[index] = tuple(map(self._get_code, x))
 
         # obliterate redundant labels
         for code in set(self._labels).difference(self.x):
@@ -2276,13 +2270,13 @@ class Factor(_Effect):
         return self.x != self._encode(other)
 
     def _encode(self, x):
-        if isinstance(x, basestring):
+        if isinstance(x, str):
             return self._codes.get(x, -1)
         elif len(x) == 0:
             return np.empty(0, dtype=int)
         elif isinstance(x, Factor):
             mapping = [self._codes.get(x._labels.get(xcode, -1), -1) for
-                       xcode in xrange(x.x.max() + 1)]
+                       xcode in range(x.x.max() + 1)]
             return np.array(mapping)[x.x]
         else:
             return np.array([self._codes.get(label, -1) for label in x])
@@ -2347,8 +2341,8 @@ class Factor(_Effect):
     def _cellsize(self):
         "int if all cell sizes are equal, otherwise a {cell: size} dict"
         buf = np.empty(self.x.shape, bool)
-        ns = {self._labels[code]: np.equal(self.x, code, buf).sum() for
-              code in self._labels.keys()}
+        ns = {value: np.equal(self.x, code, buf).sum() for code, value
+              in self._labels.items()}
         n_set = set(ns.values())
         if len(n_set) == 1:
             return n_set.pop()
@@ -2478,7 +2472,7 @@ class Factor(_Effect):
             i_region_start = 0
             region_v = -1 if regions[0] is None else None
             fill_with = empty
-            for i in xrange(self._n_cases):
+            for i in range(self._n_cases):
                 if regions[i] == region_v:
                     if x[i] == empty:
                         if fill_with != empty:
@@ -2591,7 +2585,7 @@ class Factor(_Effect):
         >>> f.label_length()
         Var([1, 2, 10])
         """
-        label_lengths = {code: len(label) for code, label in self._labels.iteritems()}
+        label_lengths = {code: len(label) for code, label in self._labels.items()}
         x = np.empty(len(self))
         for i, code in enumerate(self.x):
             x[i] = label_lengths[code]
@@ -2648,7 +2642,7 @@ class Factor(_Effect):
             raise KeyError(msg)
 
         # check for merged labels
-        new_labels = {c: labels.get(l, l) for c, l in self._labels.iteritems()}
+        new_labels = {c: labels.get(l, l) for c, l in self._labels.items()}
         codes_ = sorted(new_labels)
         labels_ = tuple(new_labels[c] for c in codes_)
         for i, label in enumerate(labels_):
@@ -2659,7 +2653,7 @@ class Factor(_Effect):
                 del new_labels[old_code]
 
         self._labels = new_labels
-        self._codes = {l: c for c, l in new_labels.iteritems()}
+        self._codes = {l: c for c, l in new_labels.items()}
 
     def sort_cells(self, order):
         """Reorder the cells of the Factor
@@ -2715,7 +2709,7 @@ class Factor(_Effect):
         for title in ['i', 'Label', 'n']:
             table.cell(title)
         table.midrule()
-        for code, label in self._labels.iteritems():
+        for code, label in self._labels.items():
             table.cell(code)
             table.cell(label)
             table.cell(np.sum(self.x == code))
@@ -2821,8 +2815,7 @@ class NDVar(object):
     """
     def __init__(self, x, dims, info={}, name=None):
         # check data shape
-        if (isinstance(dims, Dimension) or dims is Case or
-                isinstance(dims, basestring)):
+        if (isinstance(dims, Dimension) or dims is Case or isinstance(dims, str)):
             dims_ = [dims]
         else:
             dims_ = list(dims)
@@ -2834,8 +2827,7 @@ class NDVar(object):
                 (x.ndim, len(dims_)))
 
         first_dim = dims_[0]
-        if first_dim is Case or (isinstance(first_dim, basestring) and
-                                 first_dim == 'case'):
+        if first_dim is Case or (isinstance(first_dim, str) and first_dim == 'case'):
             dims_[0] = Case(len(x))
 
         if not all(isinstance(dim, Dimension) for dim in dims_):
@@ -2867,7 +2859,7 @@ class NDVar(object):
         self.dimnames = tuple(dim.name for dim in self.dims)
         self.ndim = len(self.dims)
         self.shape = self.x.shape
-        self._dim_2_ax = dict(izip(self.dimnames, xrange(self.ndim)))
+        self._dim_2_ax = {dimname: i for i, dimname in enumerate(self.dimnames)}
         # Dimension attributes
         for dim in self._truedims:
             if hasattr(self, dim.name):
@@ -2880,7 +2872,7 @@ class NDVar(object):
         # backwards compatibility
         if 'properties' in state:
             state['info'] = state.pop('properties')
-        if isinstance(state['dims'][0], basestring):
+        if isinstance(state['dims'][0], str):
             state['dims'] = (Case(len(state['x'])),) + state['dims'][1:]
 
         self.x = state['x']
@@ -2969,7 +2961,7 @@ class NDVar(object):
             crop = False
             crop_self = []
             crop_other = []
-            for name, other_name in izip(self_axes, other_axes):
+            for name, other_name in zip(self_axes, other_axes):
                 if name is None:
                     dim = other.get_dim(other_name)
                     cs = co = FULL_SLICE
@@ -3131,7 +3123,7 @@ class NDVar(object):
     def _dim_index(self, index):
         "Convert array index to dimension index"
         if isinstance(index, tuple):
-            return tuple(dim._dim_index(i) for dim, i in izip(self.dims, index))
+            return tuple(dim._dim_index(i) for dim, i in zip(self.dims, index))
         return self.dims[0]._dim_index(index)
 
     def __getitem__(self, index):
@@ -3290,7 +3282,7 @@ class NDVar(object):
                 return args.x
             raise NotImplementedError
         elif isinstance(args, tuple):
-            return tuple(dim._array_index(i) for dim, i in izip(self.dims, args))
+            return tuple(dim._array_index(i) for dim, i in zip(self.dims, args))
         elif isinstance(args, np.ndarray) and args.ndim > 1:
             raise NotImplementedError
         else:
@@ -3354,7 +3346,7 @@ class NDVar(object):
                     axis = additional_axis
                 elif not axis:
                     axis = additional_axis
-                elif isinstance(axis, basestring):
+                elif isinstance(axis, str):
                     axis = [axis] + additional_axis
                 else:
                     axis = list(axis) + additional_axis
@@ -3371,7 +3363,7 @@ class NDVar(object):
                 dim_axis = self.get_axis(dim.name)
                 index = FULL_AXIS_SLICE * dim_axis + (axis.x,)
                 x = func(self.x[index], dim_axis)
-                dims = tuple(self.dims[i] for i in xrange(self.ndim) if i != dim_axis)
+                dims = tuple(self.dims[i] for i in range(self.ndim) if i != dim_axis)
             else:
                 # if the index does not contain all dimensions, numpy indexing
                 # is weird
@@ -3382,7 +3374,7 @@ class NDVar(object):
                 dims, self_x, index = self._align(axis)
                 if self.has_case:
                     if axis.has_case:
-                        x = np.array([func(x_[i]) for x_, i in izip(self_x, index)])
+                        x = np.array([func(x_[i]) for x_, i in zip(self_x, index)])
                     else:
                         index = index[0]
                         x = np.array([func(x_[index]) for x_ in self_x])
@@ -3392,14 +3384,14 @@ class NDVar(object):
                                      "applied to data without case dimension")
                 else:
                     return func(self_x[index])
-        elif isinstance(axis, basestring):
+        elif isinstance(axis, str):
             axis = self._dim_2_ax[axis]
             x = func(self.x, axis=axis)
-            dims = tuple(self.dims[i] for i in xrange(self.ndim) if i != axis)
+            dims = tuple(self.dims[i] for i in range(self.ndim) if i != axis)
         else:
             axes = tuple(self._dim_2_ax[dim_name] for dim_name in axis)
             x = func(self.x, axes)
-            dims = tuple(self.dims[i] for i in xrange(self.ndim) if i not in axes)
+            dims = tuple(self.dims[i] for i in range(self.ndim) if i not in axes)
 
         return self._package_aggregated_output(x, dims, self.info.copy(), name)
 
@@ -4078,7 +4070,7 @@ class NDVar(object):
         if 'summary_info' in info:
             del info['summary_info']
 
-        if isinstance(x, basestring):
+        if isinstance(x, str):
             if x.startswith('.'):
                 x = x[:]
             dimnames = self.get_dimnames((x,) + (None,) * (self.ndim - 1))
@@ -4498,7 +4490,7 @@ class NDVar(object):
                 index_args[i] = arg
 
         # sequence kwargs
-        for dimname, arg in kwargs.iteritems():
+        for dimname, arg in kwargs.items():
             dimax = self.get_axis(dimname)
             if index_args[dimax] is None:
                 index_args[dimax] = arg
@@ -4528,7 +4520,7 @@ class NDVar(object):
         # adjust index dimension
         if sum(isinstance(idx, np.ndarray) for idx in index) > 1:
             ndim_increment = 0
-            for i in xrange(n_axes - 1, -1, -1):
+            for i in range(n_axes - 1, -1, -1):
                 idx = index[i]
                 if ndim_increment and isinstance(idx, (slice, np.ndarray)):
                     if isinstance(idx, slice):
@@ -4639,7 +4631,7 @@ class NDVar(object):
         Like :func:`numpy.nonzero`.
         """
         return tuple(dim._dim_index(index) for dim, index in
-                     izip(self.dims, self.x.nonzero()))
+                     zip(self.dims, self.x.nonzero()))
 
 
 def extrema(x, axis=0):
@@ -4727,12 +4719,12 @@ class Datalist(list):
     def __eq__(self, other):
         if len(self) != len(other):
             raise ValueError("Unequal length")
-        return np.array([s == o for s, o in izip(self, other)])
+        return np.array([s == o for s, o in zip(self, other)])
 
     def __ne__(self, other):
         if len(self) != len(other):
             raise ValueError("Unequal length")
-        return np.array([s != o for s, o in izip(self, other)])
+        return np.array([s != o for s, o in zip(self, other)])
 
     def __getitem__(self, index):
         if isinstance(index, Integral):
@@ -4755,7 +4747,7 @@ class Datalist(list):
                 if len(key) != len(value):
                     raise ValueError("Need one value per index when setting a "
                                      "range of entries in a Datalist.")
-                for k, v in izip(key, value):
+                for k, v in zip(key, value):
                     list.__setitem__(self, k, v)
             else:
                 for k in key:
@@ -4820,7 +4812,7 @@ class Datalist(list):
         "Update list elements from another list of lists"
         if len(self) != len(other):
             raise ValueError("Unequal length")
-        for i in xrange(len(self)):
+        for i in range(len(self)):
             if any(item not in self[i] for item in other[i]):
                 self[i] = sorted(set(self[i]).union(other[i]))
 
@@ -4873,7 +4865,7 @@ def cases_arg(cases, n_cases):
         else:
             cases = min(cases, n_cases)
         if cases is not None:
-            return xrange(cases)
+            return range(cases)
     else:
         return cases
 
@@ -5036,11 +5028,11 @@ class Dataset(OrderedDict):
         self._caption = state.get('caption', None)
 
     def __reduce__(self):
-        return self.__class__, (self.items(), self.name, self._caption,
+        return self.__class__, (tuple(self.items()), self.name, self._caption,
                                 self.info, self.n_cases)
 
     def __delitem__(self, key):
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             super(Dataset, self).__delitem__(key)
         elif isinstance(key, tuple):
             m = super(Dataset, self).__delitem__
@@ -5062,30 +5054,30 @@ class Dataset(OrderedDict):
         """
         if isinstance(index, slice):
             return self.sub(index)
-        elif isinstance(index, basestring):
+        elif isinstance(index, str):
             return super(Dataset, self).__getitem__(index)
         elif isinstance(index, Integral):
             return self.get_case(index)
         elif not np.iterable(index):
             raise KeyError("Invalid index for Dataset: %r" % index)
-        elif all(isinstance(item, basestring) for item in index):
+        elif all(isinstance(item, str) for item in index):
             return self.sub(keys=index)
         elif isinstance(index, tuple):
             if len(index) != 2:
                 raise KeyError("Invalid index for Dataset: %s" % repr(index))
 
             i0, i1 = index
-            if isinstance(i0, basestring):
+            if isinstance(i0, str):
                 return self[i0][i1]
-            elif isinstance(i1, basestring):
+            elif isinstance(i1, str):
                 return self[i1][i0]
-            elif np.iterable(i0) and isinstance(i0[0], basestring):
+            elif np.iterable(i0) and isinstance(i0[0], str):
                 return self[i1, i0]
-            elif np.iterable(i1) and all(isinstance(item, basestring) for item in i1):
+            elif np.iterable(i1) and all(isinstance(item, str) for item in i1):
                 keys = i1
             else:
                 keys = Datalist(self.keys())[i1]
-                if isinstance(keys, basestring):
+                if isinstance(keys, str):
                     return self[i1][i0]
             return Dataset(((k, self[k][i0]) for k in keys), self.name,
                            self._caption, self.info)
@@ -5137,7 +5129,7 @@ class Dataset(OrderedDict):
         p.text(self.__repr__())
 
     def __setitem__(self, index, item, overwrite=True):
-        if isinstance(index, basestring):
+        if isinstance(index, str):
             # test if name already exists
             if (not overwrite) and (index in self):
                 raise KeyError("Dataset already contains variable of name %r" % index)
@@ -5179,9 +5171,9 @@ class Dataset(OrderedDict):
                     "Dataset indexes can have at most two components; direct "
                     "access to NDVars is not implemented")
             idx, key = index
-            if isinstance(idx, basestring):
+            if isinstance(idx, str):
                 key, idx = idx, key
-            elif not isinstance(key, basestring):
+            elif not isinstance(key, str):
                 raise TypeError("Dataset key needs to be str; got %r" % (key,))
 
             if key in self:
@@ -5190,7 +5182,7 @@ class Dataset(OrderedDict):
                 if idx.start is None and idx.stop is None:
                     if self.n_cases is None:
                         raise TypeError("Can't assign slice of empty Dataset")
-                    elif isinstance(item, basestring):
+                    elif isinstance(item, str):
                         self[key] = Factor([item], repeat=self.n_cases)
                     elif np.isscalar(item):
                         self[key] = Var([item], repeat=self.n_cases)
@@ -5209,7 +5201,7 @@ class Dataset(OrderedDict):
             raise NotImplementedError("Advanced Dataset indexing")
 
     def __str__(self):
-        return unicode(self).encode('utf-8')
+        return str(self).encode('utf-8')
 
     def __unicode__(self):
         if sum(isuv(i) or isdatalist(i) for i in self.values()) == 0:
@@ -5222,7 +5214,7 @@ class Dataset(OrderedDict):
             caption = None
         txt = self.as_table(maxn, '%.5g', midrule=True, caption=caption,
                             lfmt=True)
-        return unicode(txt)
+        return str(txt)
 
     def _check_n_cases(self, X, empty_ok=True):
         """Check that an input argument has the appropriate length.
@@ -5318,7 +5310,7 @@ class Dataset(OrderedDict):
         cases = cases_arg(cases, self.n_cases)
         if cases is None:
             return fmtxt.Table('')
-        keys = [k for k, v in self.iteritems() if isuv(v) or (lfmt and isdatalist(v))]
+        keys = [k for k, v in self.items() if isuv(v) or (lfmt and isdatalist(v))]
         if sort:
             keys = sorted(keys)
 
@@ -5355,7 +5347,7 @@ class Dataset(OrderedDict):
             if count:
                 table.cell(i)
 
-            for v, fmt_ in izip(values, fmts):
+            for v, fmt_ in zip(values, fmts):
                 if fmt_ is None:
                     table.cell(v.x[i])
                 elif fmt_ == 'dl':
@@ -5393,7 +5385,7 @@ class Dataset(OrderedDict):
             A % B
 
         """
-        if not isinstance(expression, basestring):
+        if not isinstance(expression, str):
             raise TypeError("Eval needs expression of type unicode or str. Got "
                             "%s" % repr(expression))
         return eval(expression, EVAL_CONTEXT, self)
@@ -5476,7 +5468,7 @@ class Dataset(OrderedDict):
 
     def get_case(self, i):
         "The i'th case as a dictionary"
-        return dict((k, v[i]) for k, v in self.iteritems())
+        return {k: v[i] for k, v in self.items()}
 
     def get_subsets_by(self, x, exclude=(), name='{name}[{cell}]'):
         """Split the Dataset by the cells of ``x``
@@ -5496,7 +5488,7 @@ class Dataset(OrderedDict):
         sub_datasets : dict
             ``{cell: sub_dataset}`` dictionary.
         """
-        if isinstance(x, basestring):
+        if isinstance(x, str):
             x = self.eval(x)
         return {cell: self.sub(x == cell, name.format(name=self.name, cell=cell)) for
                 cell in x.cells if cell not in exclude}
@@ -5552,10 +5544,9 @@ class Dataset(OrderedDict):
         ds = Dataset(name=name.format(name=self.name), info=self.info)
 
         if count:
-            n_cases = filter(None, (np.sum(x == cell) for cell in x.cells))
-            ds[count] = Var(n_cases)
+            ds[count] = Var(filter(None, (np.sum(x == cell) for cell in x.cells)))
 
-        for k, v in self.iteritems():
+        for k, v in self.items():
             if k in drop:
                 continue
             try:
@@ -5660,7 +5651,7 @@ class Dataset(OrderedDict):
         elif stop < 0:
             stop = self.n_cases - stop
 
-        for i in xrange(start, stop):
+        for i in range(start, stop):
             yield self.get_case(i)
 
     @property
@@ -5718,7 +5709,7 @@ class Dataset(OrderedDict):
         else:
             n_cases = sum(repeats)
 
-        return Dataset(((k, v.repeat(repeats)) for k, v in self.iteritems()),
+        return Dataset(((k, v.repeat(repeats)) for k, v in self.items()),
                        name.format(name=self.name), self._caption, self.info,
                        n_cases)
 
@@ -5762,7 +5753,7 @@ class Dataset(OrderedDict):
         .sort : sort the Dataset in place
         .sorted : Create a sorted copy of the Dataset
         """
-        if isinstance(order, basestring):
+        if isinstance(order, str):
             order = self.eval(order)
 
         if not len(order) == self.n_cases:
@@ -5833,7 +5824,7 @@ class Dataset(OrderedDict):
         midrule : bool
             print a midrule after table header.
         """
-        if not isinstance(path, basestring):
+        if not isinstance(path, str):
             title = "Save Dataset"
             if self.name:
                 title += ' %s' % self.name
@@ -5864,7 +5855,7 @@ class Dataset(OrderedDict):
         header : bool
             write the variables' names in the first line
         """
-        if not isinstance(path, basestring):
+        if not isinstance(path, str):
             title = "Save Dataset"
             if self.name:
                 title += ' %s' % self.name
@@ -5889,7 +5880,7 @@ class Dataset(OrderedDict):
             Target file name (if ``None`` is supplied, a save file dialog is
             displayed). If no extension is specified, '.pickled' is appended.
         """
-        if not isinstance(path, basestring):
+        if not isinstance(path, str):
             title = "Pickle Dataset"
             if self.name:
                 title += ' %s' % self.name
@@ -5953,19 +5944,19 @@ class Dataset(OrderedDict):
         if index is None:
             if keys is None:
                 return self.copy(name)
-            elif isinstance(keys, basestring):
+            elif isinstance(keys, str):
                 return OrderedDict.__getitem__(self, keys)
             else:
                 items = ((k, OrderedDict.__getitem__(self, k)) for k in keys)
         elif isinstance(index, Integral):
             if keys is None:
                 return self.get_case(index)
-            elif isinstance(keys, basestring):
+            elif isinstance(keys, str):
                 return OrderedDict.__getitem__(self, keys)[index]
             else:
                 return {k: OrderedDict.__getitem__(self, k)[index] for k in keys}
         else:
-            if isinstance(index, basestring):
+            if isinstance(index, str):
                 index = self.eval(index)
             if keys is None:
                 keys = self.keys()
@@ -5975,7 +5966,7 @@ class Dataset(OrderedDict):
 
     def tail(self, n=10):
         "Table with the last n cases in the Dataset"
-        return self.as_table(xrange(-n, 0), '%.5g', midrule=True, lfmt=True)
+        return self.as_table(range(-n, 0), '%.5g', midrule=True, lfmt=True)
 
     def tile(self, repeats, name=None):
         """Concatenate ``repeats`` copies of the dataset
@@ -5988,7 +5979,7 @@ class Dataset(OrderedDict):
             Name for the new dataset (default is ``self.name``).
         """
         return Dataset(
-            ((name, item.tile(repeats)) for name, item in self.iteritems()),
+            ((name, item.tile(repeats)) for name, item in self.items()),
             name or self.name, self._caption, self.info, self.n_cases * repeats)
 
     def to_r(self, name=None):
@@ -6031,7 +6022,7 @@ class Dataset(OrderedDict):
                 raise TypeError('Need a valid name for the R data frame')
 
         items = OrderedDict()
-        for k, v in self.iteritems():
+        for k, v in self.items():
             if isinstance(v, Var):
                 if v.x.dtype.kind == 'b':
                     item = ro.BoolVector(v.x)
@@ -6090,7 +6081,7 @@ class Dataset(OrderedDict):
             if unequal:
                 raise ValueError(
                     "The following variables are present twice but are not "
-                    "equal: %s" % ', '.join('%r (%s)' % item for item in unequal.iteritems()))
+                    "equal: %s" % ', '.join('%r (%s)' % item for item in unequal.items()))
 
         super(Dataset, self).update(ds)
 
@@ -6102,7 +6093,7 @@ class Dataset(OrderedDict):
 
         ``ds.zip('a', 'b')`` is equivalent to ``izip(ds['a'], ds['b'])``.
         """
-        return izip(*map(self.eval, variables))
+        return zip(*map(self.eval, variables))
 
 
 class Interaction(_Effect):
@@ -6198,26 +6189,26 @@ class Interaction(_Effect):
         return self.base.__contains__(item)
 
     def __iter__(self):
-        for i in xrange(len(self)):
+        for i in range(len(self)):
             yield tuple(b[i] for b in self.base)
 
     # numeric ---
     def __eq__(self, other):
         if isinstance(other, Interaction) and len(other.base) == len(self.base):
-            x = np.vstack((b == bo for b, bo in izip(self.base, other.base)))
+            x = np.vstack((b == bo for b, bo in zip(self.base, other.base)))
             return np.all(x, 0)
         elif isinstance(other, tuple) and len(other) == len(self.base):
-            x = np.vstack(factor == level for factor, level in izip(self.base, other))
+            x = np.vstack(factor == level for factor, level in zip(self.base, other))
             return np.all(x, 0)
         else:
             return np.zeros(len(self), bool)
 
     def __ne__(self, other):
         if isinstance(other, Interaction) and len(other.base) == len(self.base):
-            x = np.vstack((b != bo for b, bo in izip(self.base, other.base)))
+            x = np.vstack((b != bo for b, bo in zip(self.base, other.base)))
             return np.any(x, 0)
         elif isinstance(other, tuple) and len(other) == len(self.base):
-            x = np.vstack(factor != level for factor, level in izip(self.base, other))
+            x = np.vstack(factor != level for factor, level in zip(self.base, other))
             return np.any(x, 0)
         return np.ones(len(self), bool)
 
@@ -6262,7 +6253,7 @@ class Interaction(_Effect):
     def _coefficient_names(self, method):
         if self.df == 1:
             return [self.name]
-        return ["%s %i" % (self.name, i) for i in xrange(self.df)]
+        return ["%s %i" % (self.name, i) for i in range(self.df)]
 
     def as_labels(self, delim=' '):
         """All values as a list of strings.
@@ -6380,7 +6371,7 @@ class NestedEffect(_Effect):
         return codes
 
     def _coefficient_names(self, method):
-        return ["%s %i" % (self.name, i) for i in xrange(self.df)]
+        return ["%s %i" % (self.name, i) for i in range(self.df)]
 
 
 class NonbasicEffect(object):
@@ -6409,7 +6400,7 @@ class NonbasicEffect(object):
 
     def _coefficient_names(self, method):
         if self.beta_labels is None:
-            return ["%s %i" % (self.name, i) for i in xrange(self.df)]
+            return ["%s %i" % (self.name, i) for i in range(self.df)]
         else:
             return self.beta_labels
 
@@ -6579,7 +6570,7 @@ class Model(object):
         elif not len(self.effects) == len(other.effects):
             return False
 
-        for e, eo in izip(self.effects, other.effects):
+        for e, eo in zip(self.effects, other.effects):
             if not np.all(e == eo):
                 return False
         return True
@@ -6718,7 +6709,7 @@ class Model(object):
 
     def tail(self, n=10):
         "Table with the last n cases in the Model"
-        return self.as_table(cases=xrange(-n, 0))
+        return self.as_table(cases=range(-n, 0))
 
 
 class Parametrization(object):
@@ -6860,7 +6851,7 @@ class Dimension(object):
     def __init__(self, name, connectivity):
         # requires __len__ to work
         self.name = name
-        if isinstance(connectivity, basestring):
+        if isinstance(connectivity, str):
             self._connectivity = None
         else:
             if not (isinstance(connectivity, np.ndarray) and connectivity.dtype == np.uint32):
@@ -6879,7 +6870,7 @@ class Dimension(object):
                 elif np.any(connectivity[:, 0] >= connectivity[:, 1]):
                     raise ValueError("All edges [i, j] must have i < j")
                 elif np.any(np.diff(connectivity, axis=0) > 0):
-                    edges = map(tuple, connectivity)
+                    edges = list(map(tuple, connectivity))
                     edges.sort()
                     connectivity = np.array(edges, np.uint32)
                 else:
@@ -6887,7 +6878,7 @@ class Dimension(object):
             self._connectivity = connectivity
             connectivity = 'custom'
 
-        if not isinstance(connectivity, basestring):
+        if not isinstance(connectivity, str):
             raise TypeError("connectivity=%r" % (connectivity,))
         elif connectivity not in self._CONNECTIVITY_TYPES:
             raise ValueError("connectivity=%r" % (connectivity,))
@@ -6906,7 +6897,7 @@ class Dimension(object):
         raise NotImplementedError
 
     def __eq__(self, other):
-        if isinstance(other, basestring):
+        if isinstance(other, str):
             return False
         return self.name == other.name
 
@@ -7240,7 +7231,7 @@ class Case(Dimension):
             return Case(index_length(item, self.n), self._subgraph(item))
 
     def __iter__(self):
-        return iter(xrange(self.n))
+        return iter(range(self.n))
 
     def _as_scalar_array(self):
         return np.arange(self.n)
@@ -7291,7 +7282,7 @@ class Categorial(Dimension):
         self.values = tuple(values)
         if len(set(self.values)) < len(self.values):
             raise ValueError("Dimension can not have duplicate values")
-        if not all(isinstance(x, basestring) for x in self.values):
+        if not all(isinstance(x, str) for x in self.values):
             raise ValueError("All Categorial values must be strings; got %r." %
                              (self.values,))
         Dimension.__init__(self, name, connectivity)
@@ -7308,7 +7299,7 @@ class Categorial(Dimension):
             state['connectivity_type'] = 'none'
         self.values = state['values']
         if isinstance(self.values, np.ndarray):
-            self.values = tuple(unicode(v) for v in self.values)
+            self.values = tuple(str(v) for v in self.values)
         # /backwards compatibility
         Dimension.__setstate__(self, state)
 
@@ -7339,7 +7330,7 @@ class Categorial(Dimension):
                 self._axis_label(label))
 
     def _array_index(self, arg):
-        if isinstance(arg, basestring):
+        if isinstance(arg, str):
             if arg in self.values:
                 return self.values.index(arg)
             else:
@@ -7498,7 +7489,7 @@ class Scalar(Dimension):
             istep = int(n_source_steps / nbins)
             ilast = istep - 1
             out_values = [(self[i] + self[i + ilast]) / 2. for i in
-                          xrange(istart, istop, istep)]
+                          range(istart, istop, istep)]
             edges = list(self.values[istart:istop:istep])
         else:
             if stop is None:
@@ -7514,7 +7505,7 @@ class Scalar(Dimension):
             dim_start = start + step / 2
             dim_stop = dim_start + n_bins * step
             out_values = np.arange(dim_start, dim_stop, step)
-            edges = [start + n * step for n in xrange(n_bins)]
+            edges = [start + n * step for n in range(n_bins)]
         edges.append(stop)
         out_dim = Scalar(self.name, out_values, self.unit, self.tick_format)
         return edges, out_dim
@@ -7690,7 +7681,7 @@ class Sensor(Dimension):
         self.default_proj2d = self._interpret_proj(proj2d)
 
         if names is None:
-            names = [str(i) for i in xrange(n)]
+            names = [str(i) for i in range(n)]
         elif len(names) != n:
             raise ValueError("Length mismatch: got %i locs but %i names" %
                              (n, len(names)))
@@ -7774,7 +7765,7 @@ class Sensor(Dimension):
 
     def _array_index(self, arg):
         "Convert a dimension-semantic index to an array-like index"
-        if isinstance(arg, basestring):
+        if isinstance(arg, str):
             return self.channel_idx[arg]
         elif isinstance(arg, Sensor):
             return np.array([self.names.index(name) for name in arg.names])
@@ -8008,7 +7999,7 @@ class Sensor(Dimension):
             # find duplicate points
             # TODO OPT:  use pairwise distance
             x, y = np.where(cdist(locs2d, locs2d) == 0)
-            duplicate_vertices = ((v1, v2) for v1, v2 in izip(x, y) if v1 < v2)
+            duplicate_vertices = ((v1, v2) for v1, v2 in zip(x, y) if v1 < v2)
             for v1, v2 in duplicate_vertices:
                 if depth[v1] > depth[v2]:
                     out[v2] = False
@@ -8160,7 +8151,7 @@ class Sensor(Dimension):
         pd = pdist(self.locs)
         pd = squareform(pd)
         n = len(self)
-        for i in xrange(n):
+        for i in range(n):
             d = pd[i, np.arange(n)]
             d[i] = d.max()
             idx = np.nonzero(d < d.min() * connect_dist)[0]
@@ -8193,7 +8184,7 @@ class Sensor(Dimension):
                     pairs.add((b, a))
         else:
             nb = self.neighbors(connect_dist)
-            for k, vals in nb.iteritems():
+            for k, vals in nb.items():
                 for v in vals:
                     if k < v:
                         pairs.add((k, v))
@@ -8261,7 +8252,7 @@ def _point_graph(coords, dist_threshold):
     # construct vertex pairs corresponding to dist
     graph = np.empty((len(dist), 2), np.uint32)
     i0 = 0
-    for vert, di in enumerate(xrange(n - 1, 0, -1)):
+    for vert, di in enumerate(range(n - 1, 0, -1)):
         i1 = i0 + di
         graph[i0:i1, 0] = vert
         graph[i0:i1, 1] = np.arange(vert + 1, n)
@@ -8274,7 +8265,7 @@ def _matrix_graph(matrix):
     "Create connectivity from matrix"
     coo = matrix.tocoo()
     assert np.all(coo.data)
-    edges = {(min(a, b), max(a, b)) for a, b in izip(coo.col, coo.row) if a != b}
+    edges = {(min(a, b), max(a, b)) for a, b in zip(coo.col, coo.row) if a != b}
     return np.array(sorted(edges), np.uint32)
 
 
@@ -8304,7 +8295,7 @@ def _mne_tri_soure_space_graph(source_space, vertices_list):
     "Connectivity graph for a triangulated mne source space"
     i = 0
     graphs = []
-    for ss, verts in izip(source_space, vertices_list):
+    for ss, verts in zip(source_space, vertices_list):
         if len(verts) == 0:
             continue
 
@@ -8401,7 +8392,7 @@ class SourceSpace(Dimension):
                 raise ValueError("parc has wrong length (%i) for SourceSpace "
                                  "with %i vertices" % (len(parc), self._n_vert))
             self.parc = parc
-        elif isinstance(parc, basestring):
+        elif isinstance(parc, str):
             if self.kind == 'ico':
                 fname = self._ANNOT_PATH.format(
                     subjects_dir=self.subjects_dir, subject=self.subject,
@@ -8518,7 +8509,7 @@ class SourceSpace(Dimension):
     def __iter__(self):
         if self.kind == 'ico':
             return (temp % v for temp, vertices in
-                    izip(('L%i', 'R%i'), self.vertices) for v in vertices)
+                    zip(('L%i', 'R%i'), self.vertices) for v in vertices)
         else:
             return iter(self.vertices[0])
 
@@ -8529,7 +8520,7 @@ class SourceSpace(Dimension):
         return (Dimension.__eq__(self, other) and
                 self.subject == other.subject and len(self) == len(other) and
                 all(np.array_equal(s, o) for s, o in
-                    izip(self.vertices, other.vertices)))
+                    zip(self.vertices, other.vertices)))
 
     def __getitem__(self, index):
         if isinstance(index, Integral):
@@ -8563,7 +8554,7 @@ class SourceSpace(Dimension):
         if self.kind == 'vol':
             return Dimension._as_uv(self)
         return Factor(('%s%i' % (hemi, i) for hemi, vertices in
-                       izip(('L', 'R'), self.vertices) for i in vertices),
+                       zip(('L', 'R'), self.vertices) for i in vertices),
                       name=self.name)
 
     def _axis_format(self, scalar, label):
@@ -8635,7 +8626,7 @@ class SourceSpace(Dimension):
         dist = -np.ones((self._n_vert, self._n_vert))
         sss = self.get_source_space()
         i0 = 0
-        for vertices, ss in izip(self.vertices, sss):
+        for vertices, ss in zip(self.vertices, sss):
             if ss['dist'] is None:
                 raise RuntimeError("Source-space does not contain distances")
             i = i0 + len(vertices)
@@ -8751,19 +8742,19 @@ class SourceSpace(Dimension):
     @LazyProperty
     def coordinates(self):
         sss = self.get_source_space()
-        coords = (ss['rr'][v] for ss, v in izip(sss, self.vertices))
+        coords = (ss['rr'][v] for ss, v in zip(sss, self.vertices))
         return np.vstack(coords)
 
     @LazyProperty
     def normals(self):
         sss = self.get_source_space()
-        normals = (ss['nn'][v] for ss, v in izip(sss, self.vertices))
+        normals = (ss['nn'][v] for ss, v in zip(sss, self.vertices))
         return np.vstack(normals)
 
     def _array_index(self, arg):
         if isinstance(arg, MNE_LABEL):
             return self._array_index_label(arg)
-        elif isinstance(arg, basestring):
+        elif isinstance(arg, str):
             if arg == 'lh':
                 return slice(self.lh_n)
             elif arg == 'rh':
@@ -8791,16 +8782,16 @@ class SourceSpace(Dimension):
         elif isinstance(arg, SourceSpace):
             sv = self.vertices
             ov = arg.vertices
-            if all(np.array_equal(s, o) for s, o in izip(sv, ov)):
+            if all(np.array_equal(s, o) for s, o in zip(sv, ov)):
                 return FULL_SLICE
-            elif any(any(np.setdiff1d(o, s)) for o, s in izip(ov, sv)):
+            elif any(any(np.setdiff1d(o, s)) for o, s in zip(ov, sv)):
                 raise IndexError("Index contains unknown sources")
             else:
-                return np.hstack([np.in1d(s, o, True) for s, o in izip(sv, ov)])
+                return np.hstack([np.in1d(s, o, True) for s, o in zip(sv, ov)])
         elif isinstance(arg, Integral) or (isinstance(arg, np.ndarray) and
                                            arg.dtype.kind == 'i'):
             return arg
-        elif isinstance(arg, Sequence) and all(isinstance(label, basestring) for
+        elif isinstance(arg, Sequence) and all(isinstance(label, str) for
                                                label in arg):
             if self.parc is not None and all(a in self.parc.cells for a in arg):
                 return self.parc.isin(arg)
@@ -8810,7 +8801,7 @@ class SourceSpace(Dimension):
             return super(SourceSpace, self)._array_index(arg)
 
     def _array_index_label(self, label):
-        if isinstance(label, basestring):
+        if isinstance(label, str):
             if self.parc is None:
                 raise RuntimeError("SourceSpace has no parcellation")
             elif label not in self.parc:
@@ -8884,7 +8875,7 @@ class SourceSpace(Dimension):
             Index into the source space dim that corresponds to the label.
         """
         idx = self._array_index_label(label)
-        if isinstance(label, basestring):
+        if isinstance(label, str):
             name = label
         else:
             name = label.name
@@ -8921,7 +8912,7 @@ class SourceSpace(Dimension):
                              % (self.subjects_dir, other.subjects_dir))
 
         index = np.hstack(np.in1d(s, o) for s, o
-                          in izip(self.vertices, other.vertices))
+                          in zip(self.vertices, other.vertices))
         return self[index]
 
     def _label(self, vertices, name, color, subjects_dir=None, sss=None):
@@ -8963,7 +8954,7 @@ class SourceSpace(Dimension):
         sss = self.get_source_space(subjects_dir)
         vertices = [sss[0]['vertno'], sss[1]['vertno']]
         data = [np.in1d(vert, self_vert) for vert, self_vert in
-                izip(vertices, self.vertices)]
+                zip(vertices, self.vertices)]
         source = SourceSpace(vertices, self.subject, self.src, subjects_dir,
                              self.parc.name, name=self.name)
         return NDVar(np.concatenate(data), (source,))
@@ -9101,7 +9092,7 @@ class UTS(Dimension):
             stop = self.tstop
 
         n_bins = int(ceil(round((stop - start) / step, 2)))
-        edges = [start + n * step for n in xrange(n_bins)]
+        edges = [start + n * step for n in range(n_bins)]
         edges.append(stop)
         out_dim = UTS(start + step / 2, step, n_bins)
         return edges, out_dim
@@ -9164,7 +9155,7 @@ class UTS(Dimension):
         # find indices of cluster extent
         row, col = np.nonzero(x)
         try:
-            ts = [col[row == i][[0, -1]] for i in xrange(len(x))]
+            ts = [col[row == i][[0, -1]] for i in range(len(x))]
         except IndexError:
             raise ValueError("Empty cluster")
         ts = np.array(ts)

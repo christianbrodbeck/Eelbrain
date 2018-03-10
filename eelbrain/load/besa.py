@@ -10,7 +10,6 @@
 
 """
 # Authors: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from __future__ import division
 from glob import glob
 import re
 
@@ -54,7 +53,7 @@ def dat_file(path):
 
         # time axis
         line = fid.readline()
-        times = map(float, line.split()[2:])
+        times = tuple(map(float, line.split()[2:]))
         tstep = (times[1] - times[0]) / 1000
         tstart = times[0] / 1000
         nsamples = len(times)
@@ -287,7 +286,7 @@ def roi_results(path=None, varname=None):
     conds = [c[0] for c in res['conditions'][0][0][0]]
     ds['condition'] = Factor(conds, repeat=n_s)
 
-    ds['subject'] = Factor(map(str, xrange(n_s)), tile=n_c, random=True)
+    ds['subject'] = Factor(map(str, range(n_s)), tile=n_c, random=True)
 
     return ds
 
@@ -343,7 +342,7 @@ def mrat_data(path=None, tstart=-0.1, roi=None, varname=None):
         if n_s is None:
             n_s = len(data['data'][0][0][cond][0][0][0])
         x_ = np.array([data['data'][0][0][cond][0][0][0][i]
-                       for i in xrange(n_s)])
+                       for i in range(n_s)])
         xs.append(x_)
     x = np.concatenate(xs)
 
@@ -359,6 +358,6 @@ def mrat_data(path=None, tstart=-0.1, roi=None, varname=None):
 
     ds['condition'] = Factor(conds, repeat=n_s)
 
-    ds['subject'] = Factor(map(str, xrange(n_s)), tile=len(conds), random=True)
+    ds['subject'] = Factor(map(str, range(n_s)), tile=len(conds), random=True)
 
     return ds

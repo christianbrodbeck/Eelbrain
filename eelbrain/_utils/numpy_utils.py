@@ -1,6 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from distutils.version import LooseVersion
-from itertools import izip
 from math import floor
 
 import numpy as np
@@ -108,7 +107,7 @@ def apply_numpy_index(data, index):
         return (data[i] for i in array)
     elif array.dtype.kind == 'b':
         assert len(array) == len(data), "Index must have same length as data"
-        return (d for d, i in izip(data, array) if i)
+        return (d for d, i in zip(data, array) if i)
     raise TypeError("Invalid numpy-like index: %r" % (index,))
 
 

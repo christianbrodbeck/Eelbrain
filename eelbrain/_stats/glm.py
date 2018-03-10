@@ -9,11 +9,6 @@ Hopkins, K. D. (1976). A Simplified Method for Determining Expected Mean
     Squares and Error Terms in the Analysis of Variance. Journal of
     Experimental Education, 45(2), 13--18.
 """
-from __future__ import division
-from __future__ import print_function
-
-from itertools import izip
-
 import numpy as np
 from scipy.linalg import lstsq
 import scipy.stats
@@ -168,17 +163,10 @@ class LM(object):
 
     def __repr__(self):
         # repr kwargs
-        kwargs = []
+        args = [self.Y.name, self.X.name]
         if self.sub:
-            kwargs.append(('sub', getattr(self.sub, 'name', '<...>')))
-
-        fmt = {'Y': getattr(self.Y, 'name', '<Y>'),
-               'X': repr(self.X)}
-        if kwargs:
-            fmt['kw'] = ', '.join([''] + map('='.join, kwargs))
-        else:
-            fmt['kw'] = ''
-        return "LM({Y}, {X}{kw})".format(**fmt)
+            args.append('sub=%r' % getattr(self.sub, 'name', '<...>'))
+        return "LM(%s)" % ', '.join(args)
 
     def anova(self, title='ANOVA', empty=True, ems=False):
         """ANOVA table for the linear model"""
@@ -396,7 +384,7 @@ class _NDANOVA(object):
             Maps of uncorrected p values (corresponding to f_maps).
         """
         p_maps = np.empty_like(f_maps)
-        for i in xrange(len(f_maps)):
+        for i in range(len(f_maps)):
             p_maps[i] = ftest_p(f_maps[i], self.dfs_nom[i], self.dfs_denom[i])
         return p_maps
 
@@ -551,7 +539,7 @@ class _IncrementalNDANOVA(_NDANOVA):
             x_dict = self._x_perm
             if x_dict is None:
                 self._x_perm = x_dict = {}
-                for i, x in x_orig.iteritems():
+                for i, x in x_orig.items():
                     if x is None:
                         x_dict[i] = None
                     else:
@@ -563,7 +551,7 @@ class _IncrementalNDANOVA(_NDANOVA):
                     x_orig[i][1].take(perm, 1, x_dict[i][1])
 
         # calculate SS_res for all models
-        for i, x in x_dict.iteritems():
+        for i, x in x_dict.items():
             if x is None:  # TODO:  use the same across permutations?
                 ss(y, SS_res[i])
             else:
@@ -621,7 +609,7 @@ class IncrementalComparisons(object):
         if is_mixed:
             ems = hopkins_ems(x)
             # find relevant models for E(MS) computation
-            for e_test, e_ms_effects in ems.iteritems():
+            for e_test, e_ms_effects in ems.items():
                 if not e_ms_effects:
                     idx = None
                 elif e_ms_effects in model_idxs:
@@ -915,7 +903,7 @@ class ANOVA(object):
         table.midrule()
 
         # table body
-        for name, f_test in izip(self.effects, self.f_tests):
+        for name, f_test in zip(self.effects, self.f_tests):
             table.cell(name)
             table.cell(fmtxt.stat(f_test.SS))
             table.cell(f_test.df)

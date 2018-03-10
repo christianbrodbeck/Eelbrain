@@ -7,8 +7,6 @@ cmap ticks
     Non-standard cmap-ticks; used by plot.brain.p_map to transmit proper tick
     labels for remapped p-values
 """
-from itertools import izip
-
 import numpy as np
 
 
@@ -36,9 +34,9 @@ def _values_equal(a, b):
         else:
             return False
     elif isinstance(a, (tuple, list)):
-        return all(_values_equal(a_, b_) for a_, b_ in izip(a, b))
+        return all(_values_equal(a_, b_) for a_, b_ in zip(a, b))
     elif isinstance(a, dict):
-        if a.viewkeys() == b.viewkeys():
+        if a.keys() == b.keys():
             return all(_values_equal(a[k], b[k]) for k in a)
         else:
             return False

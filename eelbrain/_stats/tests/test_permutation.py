@@ -20,17 +20,17 @@ def test_permutation():
         res[i] = y.x
 
     # check we have only appropriate cells
-    cols = [np.unique(res[:, i]) for i in xrange(res.shape[1])]
-    for i in xrange(3):
+    cols = [np.unique(res[:, i]) for i in range(res.shape[1])]
+    for i in range(3):
         eq_(len(np.setdiff1d(cols[i], [i, i + 3])), 0)
-    for i in xrange(3, 6):
+    for i in range(3, 6):
         eq_(len(np.setdiff1d(cols[i], [i, i - 3])), 0)
 
     # check we have some variability
     eq_(max(map(len, cols)), 2)
 
     # make sure sequence is stable
-    eq_(map(tuple, permute_order(4, 3)),
+    eq_(list(map(tuple, permute_order(4, 3))),
         [(2, 3, 1, 0), (2, 1, 3, 0), (0, 2, 3, 1)])
 
 
@@ -45,11 +45,11 @@ def test_permutation_sign_flip():
         eq_(np.any(np.all(row == res[:i], 1)), False)
 
     # n > 62
-    res = map(tuple, permute_sign_flip(66, 2))
+    res = list(map(tuple, permute_sign_flip(66, 2)))
     eq_(len(res[0]), 66)
     eq_(len(res), 2)
     assert_not_equal(res[0], res[1])
 
     # make sure sequence is stable
-    eq_(map(tuple, permute_sign_flip(4, 3)),
+    eq_(list(map(tuple, permute_sign_flip(4, 3))),
         [(-1, 1, -1, -1), (-1, -1, 1, -1), (1, -1, -1, 1)])

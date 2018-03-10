@@ -1,6 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 "A few basic operations needed throughout Eelbrain"
-from __future__ import print_function
 from collections import defaultdict
 import functools
 import logging
@@ -40,7 +39,7 @@ def ask(message, options, allow_empty=False, help=None):
         print('help:  display help')
         option_keys.append('help')
     while True:
-        command = raw_input(" > ")
+        command = input(" > ")
         if command in option_keys or (allow_empty and not command):
             if help is not None and command == 'help':
                 print(help)
@@ -68,7 +67,7 @@ def deprecated(version, replacement):
     def dec(func):
         msg = ('%s is deprecated and will be removed in version %s' %
                (func.__name__, version))
-        if isinstance(replacement, basestring):
+        if isinstance(replacement, str):
             msg += '; ' + replacement
             call_func = func
         elif replacement is not None:
@@ -88,7 +87,7 @@ def deprecated(version, replacement):
 
 
 def deprecated_attribute(version, class_name, replacement):
-    if not isinstance(replacement, basestring):
+    if not isinstance(replacement, str):
         raise TypeError("replacement=%r" % (replacement,))
 
     class Dec(object):
@@ -114,7 +113,7 @@ def log_level(arg):
     """Convert string to logging module constant"""
     if isinstance(arg, int):
         return arg
-    elif isinstance(arg, basestring):
+    elif isinstance(arg, str):
         try:
             return LOG_LEVELS[arg.upper()]
         except KeyError:
@@ -158,7 +157,7 @@ class intervals:
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         self.i += 1
         if len(self.seq) <= self.i:
             raise StopIteration

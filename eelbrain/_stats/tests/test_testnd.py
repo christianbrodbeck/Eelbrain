@@ -1,8 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from __future__ import print_function
-
-from itertools import izip
-import cPickle as pickle
+import pickle
 import logging
 
 from nose.tools import (eq_, ok_, assert_equal, assert_not_equal,
@@ -119,7 +116,7 @@ def test_anova():
     # thresholded
     res = testnd.anova('utsnd', 'A*B*rm', match='rm', ds=ds, pmin=0.05, samples=samples)
     clusters = res.find_clusters()
-    for dist, effect in izip(res._cdist, res.effects):
+    for dist, effect in zip(res._cdist, res.effects):
         effect_idx = clusters.eval("effect == %r" % effect)
         vmax = clusters[effect_idx, 'v'].abs().max()
         eq_(len(dist.dist), samples)
@@ -637,7 +634,7 @@ def test_merged_temporal_cluster_dist():
         merged_dist = _MergedTemporalClusterDist([res1._cdist, res2._cdist])
         if isinstance(res1, testnd.anova):
             assert_equal(len(merged_dist.dist), len(res1.effects))
-            for effect, dist in merged_dist.dist.iteritems():
+            for effect, dist in merged_dist.dist.items():
                 assert_in(effect, res1.effects)
                 assert_equal(len(dist), res1.samples)
         else:

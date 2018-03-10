@@ -15,7 +15,7 @@ TAIL_REPR = {0: '=', 1: '>', -1: '<'}
 def assemble_tests(test_dict):
     "Interpret dict with test definitions"
     out = {}
-    for key, params in test_dict.iteritems():
+    for key, params in test_dict.items():
         if isinstance(params, Test):
             out[key] = params
             continue
@@ -61,7 +61,7 @@ class Test(Definition):
             self._within_model = None
             self._within_model_items = None
         else:
-            model_elements = map(str.strip, model.split('%'))
+            model_elements = list(map(str.strip, model.split('%')))
             if 'group' in model_elements:
                 self._between = model_elements.index('group')
                 del model_elements[self._between]

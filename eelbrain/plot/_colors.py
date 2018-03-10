@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Color tools for plotting."""
-from __future__ import division
-
-from itertools import izip, product
+from collections import Iterator
+from itertools import product
 import operator
 
 import numpy as np
@@ -117,10 +116,12 @@ def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None,
     dict : {str: tuple}
         Mapping from cells to colors.
     """
+    if isinstance(cells, Iterator):
+        cells = tuple(cells)
     n = len(cells)
     if cmap is None:
         colors = oneway_colors(n, hue_start, light_range, light_cycle, always_cycle_hue)
-        return dict(izip(cells, colors))
+        return dict(zip(cells, colors))
     else:
         cm = mpl.cm.get_cmap(cmap)
         return {cell: cm(i / n) for i, cell in enumerate(cells)}
@@ -157,7 +158,7 @@ def colors_for_twoway(x1_cells, x2_cells, hue_start=0.2, hue_shift=0.,
         raise ValueError("Need at least 2 cells on each factor")
 
     clist = twoway_colors(n1, n2, hue_start, hue_shift, hues)
-    return dict(izip(product(x1_cells, x2_cells), clist))
+    return dict(zip(product(x1_cells, x2_cells), clist))
 
 
 def colors_for_nway(cell_lists, hue_start=0.2):
@@ -181,7 +182,7 @@ def colors_for_nway(cell_lists, hue_start=0.2):
     elif len(cell_lists) == 2:
         return colors_for_twoway(cell_lists[0], cell_lists[1], hue_start)
     elif len(cell_lists) > 2:
-        ns = map(len, cell_lists)
+        ns = tuple(map(len, cell_lists))
         n_outer = reduce(operator.mul, ns[:-1])
         n_inner = ns[-1]
 
@@ -199,7 +200,7 @@ def colors_for_nway(cell_lists, hue_start=0.2):
         hues = np.asarray(hues)
         hues %= 1
         colors = twoway_colors(n_outer, n_inner, hues=hues)
-        return dict(izip(product(*cell_lists), colors))
+        return dict(zip(product(*cell_lists), colors))
     else:
         return {}
 
@@ -280,8 +281,8 @@ class ColorGrid(EelFigure):
         n_cols = len(column_cells)
 
         # color patches
-        for col in xrange(n_cols):
-            for row in xrange(n_rows):
+        for col in range(n_cols):
+            for row in range(n_rows):
                 if row_first:
                     cell = (row_cells[row], column_cells[col])
                 else:
@@ -409,7 +410,9 @@ class ColorList(EelFigure):
     def __init__(self, colors, cells=None, labels=None, h='auto', *args,
                  **kwargs):
         if cells is None:
-            cells = colors.keys()
+            cells = tuple(colors.keys())
+        elif isinstance(cells, Iterator):
+            cells = tuple(cells)
 
         if h == 'auto':
             h = len(cells) * mpl.rcParams['font.size'] * POINT_SIZE * LEGEND_SIZE
@@ -460,7 +463,7 @@ class ColorList(EelFigure):
 
 
 class ColorBar(EelFigure):
-    u"""A color-bar for a matplotlib color-map
+    """A color-bar for a matplotlib color-map
 
     Parameters
     ----------
@@ -602,7 +605,7 @@ class ColorBar(EelFigure):
         # unit-based tick-labels
         if unit and tick_labels is None:
             formatter, label = find_axis_params_data(unit, label)
-            tick_labels = map(formatter, colorbar.get_ticks())
+            tick_labels = tuple(map(formatter, colorbar.get_ticks()))
 
         if tick_labels is not None:
             axis.set_ticklabels(tick_labels)

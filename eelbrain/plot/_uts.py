@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Plot uniform time-series of one variable."""
-from __future__ import division
-
-from itertools import izip
 import operator
 
 import matplotlib as mpl
@@ -22,7 +19,7 @@ from functools import reduce
 
 
 class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
-    u"""
+    """
     Plot statistics for a one-dimensional NDVar
 
     Parameters
@@ -190,7 +187,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             if len(ct) < 2:
                 legend = False
         else:
-            for i, ax, cell in zip(xrange(nax), self._axes, ct.cells):
+            for i, ax, cell in zip(range(nax), self._axes, ct.cells):
                 if X is not None:
                     X_ = Xct.data[cell]
 
@@ -278,7 +275,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         """
         nax = len(self._axes)
         if ax is None:
-            axes = xrange(nax)
+            axes = range(nax)
         else:
             axes = [ax]
 
@@ -294,7 +291,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
 
 
 class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
-    u"""Value by time plot for UTS data
+    """Value by time plot for UTS data
 
     Parameters
     ----------
@@ -369,7 +366,7 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         else:
             colors = (color,) * n_colors
 
-        for ax, layers in izip(self._axes, data.data):
+        for ax, layers in zip(self._axes, data.data):
             h = _ax_uts(ax, layers, xdim, vlims, colors)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
@@ -533,13 +530,13 @@ class _ax_uts(object):
         vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
 
         self.legend_handles = {}
-        for l, color in izip(layers, colors):
+        for l, color in zip(layers, colors):
             color = l.info.get('color', color)
             p = _plt_uts(ax, l, xdim, color)
             self.legend_handles[longname(l)] = p.plot_handle
             contours = l.info.get('contours', None)
             if contours:
-                for v, color in contours.iteritems():
+                for v, color in contours.items():
                     if v in contours:
                         continue
                     contours[v] = ax.axhline(v, color=color)

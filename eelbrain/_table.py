@@ -1,9 +1,5 @@
 """Create tables from data-objects"""
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-
-from __future__ import division
-
-from itertools import izip
 import re
 
 import numpy as np
@@ -52,7 +48,7 @@ def difference(y, x, c1, c0, match, by=None, sub=None, ds=None):
         out.add(ct.groups[c1])
         if not ct.all_within:
             raise ValueError("Design is not fully balanced")
-        yname = y if isinstance(y, basestring) else ct.Y.name
+        yname = y if isinstance(y, str) else ct.Y.name
         out[yname] = ct.data[c1] - ct.data[c0]
     else:
         by = ascategorial(by, sub, ds)
@@ -60,7 +56,7 @@ def difference(y, x, c1, c0, match, by=None, sub=None, ds=None):
         if not ct.all_within:
             raise ValueError("Design is not fully balanced")
 
-        yname = y if isinstance(y, basestring) else ct.Y.name
+        yname = y if isinstance(y, str) else ct.Y.name
         dss = []
         if isinstance(c1, str):
             c1 = (c1,)
@@ -233,7 +229,7 @@ def melt(name, cells, cell_var_name, ds):
 
     """
     # find source cells
-    if isinstance(cells, basestring):
+    if isinstance(cells, str):
         cell_expression = cells
         cells = []
         cell_values = []
@@ -253,7 +249,7 @@ def melt(name, cells, cell_var_name, ds):
 
     # melt the Dataset
     dss = []
-    for cell, cell_value in izip(cells, cell_values):
+    for cell, cell_value in zip(cells, cell_values):
         cell_ds = ds.copy()
         cell_ds.rename(cell, name)
         for src in cells:
@@ -314,7 +310,7 @@ def melt_ndvar(ndvar, dim=None, cells=None, ds=None, varname=None):
     if ds is None:
         base_ds = Dataset()
     else:
-        uv_keys = tuple(k for k, v in ds.iteritems() if isuv(v))
+        uv_keys = tuple(k for k, v in ds.items() if isuv(v))
         base_ds = ds[uv_keys]
 
     dss = []
@@ -552,7 +548,7 @@ def repmeas(y, x, match, sub=None, ds=None):
         raise ValueError("Incomplete data")
 
     out = Dataset()
-    x_ = ct.groups.values()[0]
+    x_ = ct.groups[ct.X.cells[0]]
     if isinstance(x_, Interaction):
         for f in x_.base:
             out.add(f)

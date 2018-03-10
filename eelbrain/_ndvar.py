@@ -8,7 +8,7 @@ operations that operate on more than one NDVar.
 """
 from collections import defaultdict
 from copy import copy
-from itertools import izip, repeat
+from itertools import repeat
 from math import floor
 from numbers import Real
 
@@ -64,7 +64,7 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None):
         else:
             info = merge_info(ndvars)
 
-    if dim is Case or (isinstance(dim, basestring) and dim == 'case'):
+    if dim is Case or (isinstance(dim, str) and dim == 'case'):
         n = sum(1 if not v.has_case else len(v) for v in ndvars)
         dim = Case(n)
 
@@ -81,7 +81,7 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None):
         x = np.concatenate([v.get_data(dim_names) for v in ndvars], axis)
         dim_obj = ndvar.dims[axis]
         if isinstance(dim_obj, UTS):
-            if isinstance(tmin, basestring):
+            if isinstance(tmin, str):
                 if tmin == 'first':
                     tmin = ndvar.time.tmin
                 else:
@@ -180,7 +180,7 @@ def convolve(h, x):
             dims = (hdim, xt)
         else:
             data = None
-            for h_i, x_i in izip(h.get_data((hdim.name, 'time')),
+            for h_i, x_i in zip(h.get_data((hdim.name, 'time')),
                                  x.get_data((xdim.name, 'time'))):
                 if data is None:
                     data = np.convolve(h_i, x_i)
@@ -210,7 +210,7 @@ def convolve(h, x):
         return NDVar(data, dims, x.info.copy(), x.name)
     else:
         out = None
-        for h_, x_ in izip(h, x):
+        for h_, x_ in zip(h, x):
             if out is None:
                 out = convolve(h_, x_)
             else:
@@ -321,7 +321,7 @@ def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
 
 
 def dss(ndvar):
-    u"""Denoising source separation (DSS)
+    """Denoising source separation (DSS)
 
     Parameters
     ----------
@@ -438,7 +438,7 @@ def find_intervals(ndvar, interpolate=False):
         onsets += shift
         offsets += shift
 
-    return tuple(izip(onsets, offsets))
+    return tuple(zip(onsets, offsets))
 
 
 def find_peaks(ndvar):
@@ -562,7 +562,7 @@ def label_operator(labels, operation='mean', exclude=None, weights=None,
         label_dim = Scalar(dim_name, label_values)
     else:
         values = tuple(dim_values[i] for i in label_values)
-        if all(isinstance(v, basestring) for v in values):
+        if all(isinstance(v, str) for v in values):
             label_dim = Categorial(dim_name, values)
         elif all(isinstance(v, Real) for v in values):
             label_dim = Scalar(dim_name, values)
@@ -572,7 +572,7 @@ def label_operator(labels, operation='mean', exclude=None, weights=None,
                             (dim_values,))
     # construct operator
     x = np.empty((len(label_values), len(dim)))
-    for v, xs in izip(label_values, x):
+    for v, xs in zip(label_values, x):
         np.equal(label_data, v, xs)
         if weights is not None:
             xs *= weights
@@ -619,7 +619,7 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
     data = x.get_data((dim, obs))
     cc = np.corrcoef(data)
     y = np.empty(len(dim_obj))
-    for i in xrange(len(dim_obj)):
+    for i in range(len(dim_obj)):
         y[i] = np.mean(cc[i, neighbors[i]])
 
     info = cs.set_info_cs(x.info, cs.stat_info('r'))

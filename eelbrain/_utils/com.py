@@ -1,6 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 "Internet communication utilities"
-from __future__ import print_function
 from distutils.version import LooseVersion
 from email.mime.text import MIMEText
 import keyring
@@ -8,7 +7,7 @@ import smtplib
 import socket
 import sys
 import traceback
-import xmlrpclib
+import xmlrpc.client
 
 from .system import caffeine
 from . import ui
@@ -26,8 +25,9 @@ def check_for_update():
     """
     current = sys.modules['eelbrain'].__version__
     if current == 'dev':
-        return print("Using Eelbrain development version")
-    pypi = xmlrpclib.ServerProxy('https://pypi.python.org/pypi')
+        print("Using Eelbrain development version")
+        return
+    pypi = xmlrpc.client.ServerProxy('https://pypi.python.org/pypi')
     versions = pypi.package_releases('eelbrain')
     newest = versions[-1]
     if LooseVersion(newest) > LooseVersion(current):
@@ -162,10 +162,10 @@ class Notifier(object):
             Email body; if a list, successive entries are joined with three
             line breaks.
         """
-        if isinstance(info, basestring):
+        if isinstance(info, str):
             body = info
         else:
-            body = '\n\n\n'.join(map(unicode, info))
+            body = '\n\n\n'.join(map(str, info))
 
         try:
             send_email(self.to, subject, body, self._password)

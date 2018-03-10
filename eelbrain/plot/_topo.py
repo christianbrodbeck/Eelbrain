@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Plot topographic maps of sensor space data."""
-from __future__ import division
-
 from collections import Sequence
-from itertools import izip, repeat
+from itertools import repeat
 from math import floor, sqrt
 from warnings import warn
 
@@ -95,7 +93,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         self.plots = []
         ColorMapMixin.__init__(self, data.data, cmap, vmax, vmin, contours,
                                self.plots)
-        if isinstance(proj, basestring):
+        if isinstance(proj, str):
             proj = repeat(proj, data.n_plots)
         elif not isinstance(proj, Sequence):
             raise TypeError("proj=%s" % repr(proj))
@@ -110,7 +108,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         self._set_axtitle(axtitle, data)
 
         # plots
-        for ax, layers, proj_ in izip(self._axes, data.data, proj):
+        for ax, layers, proj_ in zip(self._axes, data.data, proj):
             h = _ax_topomap(ax, layers, clip, clip_distance, sensorlabels, mark,
                             None, None, proj_, res, interpolation, xlabel,
                             self._vlims, self._cmaps, self._contours, method,
@@ -166,7 +164,7 @@ class TopomapBins(EelFigure):
 
 class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
                     XAxisMixin, EelFigure):
-    u"""Butterfly plot with corresponding topomaps
+    """Butterfly plot with corresponding topomaps
 
     Parameters
     ----------
@@ -293,7 +291,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
                              'mcolor': mcolor}
 
         # plot epochs (x/y are in figure coordinates)
-        for ax, layers in izip(self.bfly_axes, data.plot_data):
+        for ax, layers in zip(self.bfly_axes, data.plot_data):
             p = _ax_butterfly(ax, layers, 'time', 'sensor', mark, color,
                               linewidth, self._vlims)
             self.bfly_plots.append(p)
@@ -405,8 +403,7 @@ class _plt_topomap(_plt_im):
             default_head_radius = sqrt(np.min(np.sum((points - [0.5, 0.5]) ** 2, 1)))
             if clip == 'even':
                 # find offset due to clip_distance
-                tangents = points[range(1, len(points)) + [0]] \
-                           - points[range(-1, len(points) - 1)]
+                tangents = np.roll(points, -1, axis=0) - np.roll(points, 1, axis=0)
                 verticals = np.dot(tangents, [[0, -1], [1, 0]])
                 verticals /= np.sqrt(np.sum(verticals ** 2, 1)[:, None])
                 verticals *= clip_distance
@@ -536,7 +533,7 @@ class _ax_topomap(_ax_im_array):
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
 
-        if isinstance(xlabel, basestring):
+        if isinstance(xlabel, str):
             x, y = ax.transData.inverted().transform(ax.transAxes.transform((0.5, 0)))
             ax.text(x, y, xlabel, ha='center', va='top')
 
@@ -846,7 +843,7 @@ class TopoArray(ColorMapMixin, EelFigure):
         .set_topo_ts : set several topomap time points at once
         .set_topo_t_single : set the time point of a single topomap
         """
-        for i in xrange(len(self._array_plots)):
+        for i in range(len(self._array_plots)):
             _topo = self._ntopo * i + topo_id
             self.set_topo_t_single(_topo, t, parent_im_id=i)
 

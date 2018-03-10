@@ -1,5 +1,5 @@
 from fnmatch import fnmatchcase
-from itertools import combinations, izip
+from itertools import combinations
 
 import numpy as np
 
@@ -254,12 +254,12 @@ class Celltable(object):
             return self.data[cell]
 
         # find cells matched by `cell`
-        if isinstance(cell, basestring):
+        if isinstance(cell, str):
             cells = [c for c in self.cells if fnmatchcase(c, cell)]
             name = cell
         else:
-            cells = [c for c in self.cells if all(fnmatchcase(c_, cp)
-                                                  for c_, cp in izip(c, cell))]
+            cells = [c for c in self.cells if
+                     all(fnmatchcase(c_, cp) for c_, cp in zip(c, cell))]
             name = '|'.join(cell)
 
         # check that all are repeated measures
@@ -298,7 +298,7 @@ class Celltable(object):
         --------
         .get_statistic_dict : return statistics in a ``{cell: data}`` dict
         """
-        if isinstance(func, basestring):
+        if isinstance(func, str):
             var_spec = func
 
             def func(y):
@@ -319,7 +319,7 @@ class Celltable(object):
         --------
         .get_statistic : statistic in a list
         """
-        return dict(izip(self.cells, self.get_statistic(func)))
+        return dict(zip(self.cells, self.get_statistic(func)))
 
     def variability(self, error='sem', pool=None):
         """Variability measure

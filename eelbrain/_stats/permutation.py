@@ -1,5 +1,4 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from itertools import izip
 from math import ceil
 import random
 
@@ -78,7 +77,7 @@ def permute_order(n, samples=10000, replacement=False, unit=None, seed=0):
 
     if _YIELD_ORIGINAL:
         original = np.arange(n)
-        for _ in xrange(samples):
+        for _ in range(samples):
             yield original
         return
 
@@ -87,11 +86,11 @@ def permute_order(n, samples=10000, replacement=False, unit=None, seed=0):
 
     if unit is None:
         if replacement:
-            for _ in xrange(samples):
+            for _ in range(samples):
                 yield np.random.randint(n, n)
         else:
             index = np.arange(n)
-            for _ in xrange(samples):
+            for _ in range(samples):
                 np.random.shuffle(index)
                 yield index
     else:
@@ -101,7 +100,7 @@ def permute_order(n, samples=10000, replacement=False, unit=None, seed=0):
             idx_orig = np.arange(n)
             idx_perm = np.arange(n)
             unit_idxs = [np.nonzero(unit == cell)[0] for cell in unit.cells]
-            for _ in xrange(samples):
+            for _ in range(samples):
                 for idx_ in unit_idxs:
                     v = idx_orig[idx_]
                     np.random.shuffle(v)
@@ -145,9 +144,9 @@ def permute_sign_flip(n, samples=10000, seed=0, out=None):
             raise NotImplementedError("All possibilities for more than 62 cases")
         n_groups = ceil(n / 62.)
         group_size = int(ceil(n / n_groups))
-        for _ in izip(*(permute_sign_flip(stop - start, samples, None,
-                                          out[start: stop]) for
-                        start, stop in intervals(range(0, n, group_size) + [n]))):
+        out_parts = list(range(0, n, group_size)) + [n]
+        for _ in zip(*(permute_sign_flip(stop - start, samples, None, out[start: stop])
+                       for start, stop in intervals(out_parts))):
             yield out
         return
 
@@ -155,10 +154,10 @@ def permute_sign_flip(n, samples=10000, seed=0, out=None):
     n_perm_possible = 2 ** n
     if samples < 0:
         # do all permutations
-        sample_sequences = xrange(1, n_perm_possible)
+        sample_sequences = range(1, n_perm_possible)
     else:
         # random resampling
-        sample_sequences = random.sample(xrange(1, n_perm_possible), samples)
+        sample_sequences = random.sample(range(1, n_perm_possible), samples)
 
     for seq in sample_sequences:
         out.fill(1)

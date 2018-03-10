@@ -1,10 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """PySurfer Brain subclass to embed in Eelbrain"""
-from __future__ import division
-
 from collections import OrderedDict
 from distutils.version import LooseVersion
-from itertools import izip
 import os
 import sys
 from tempfile import mkdtemp
@@ -165,7 +162,7 @@ class Brain(TimeSlicer, surfer.Brain):
         self.__labels = OrderedDict()  # {name: color}
         self.__time_index = 0
 
-        if isinstance(views, basestring):
+        if isinstance(views, str):
             views = [views]
         elif not isinstance(views, list):
             views = list(views)
@@ -201,11 +198,11 @@ class Brain(TimeSlicer, surfer.Brain):
         if title is None:
             if name is None:
                 title = subject
-            elif isinstance(name, basestring):
+            elif isinstance(name, str):
                 title = name
             else:
                 raise TypeError("name=%r (str required)" % (name,))
-        elif not isinstance(title, basestring):
+        elif not isinstance(title, str):
             raise TypeError("title=%r (str required)" % (title,))
 
         self._frame = BrainFrame(None, self, title, w, h, n_rows, n_columns,
@@ -254,7 +251,7 @@ class Brain(TimeSlicer, surfer.Brain):
                                borders, hemi, subdir)
         if color is None:
             color = getattr(label, 'color', None) or "crimson"
-        name = label if isinstance(label, basestring) else label.name
+        name = label if isinstance(label, str) else label.name
         self.__labels[name] = color
 
     def add_mask(self, source, color=(1, 1, 1), smoothing_steps=None,
@@ -342,7 +339,7 @@ class Brain(TimeSlicer, surfer.Brain):
         source = self._check_source_space(ndvar)
         # find standard args
         meas = ndvar.info.get('meas')
-        if cmap is None or isinstance(cmap, basestring):
+        if cmap is None or isinstance(cmap, str):
             epochs = ((ndvar,),)
             cmaps = find_fig_cmaps(epochs, cmap, alpha=True)
             vlims = find_fig_vlims(epochs, vmax, vmin, cmaps)
@@ -351,12 +348,12 @@ class Brain(TimeSlicer, surfer.Brain):
         if contours is not None:
             if cmap is None:
                 cmap = ('w', 'w')
-            elif isinstance(cmap, basestring) and len(cmap) > 1:
+            elif isinstance(cmap, str) and len(cmap) > 1:
                 cmap = cmaps[meas]
             else:
                 contour_color = to_rgb(cmap)
                 cmap = (contour_color, contour_color)
-        elif cmap is None or isinstance(cmap, basestring):
+        elif cmap is None or isinstance(cmap, str):
             cmap = cmaps[meas]
 
         # general PySurfer data args
@@ -498,7 +495,7 @@ class Brain(TimeSlicer, surfer.Brain):
                 raise ValueError(
                     "The following values of ndvar are missing from colors: %s" %
                     ', '.join(set(label_values - 1).difference(colors)))
-            colors = {k - 1: v for k, v in plot_colors.iteritems()}
+            colors = {k - 1: v for k, v in plot_colors.items()}
         else:
             try:
                 colors = plot_colors = {k: colors[k] for k in label_values if k}
@@ -518,7 +515,7 @@ class Brain(TimeSlicer, surfer.Brain):
         indexes = (slice(None, source.lh_n), slice(source.lh_n, None))
         annot = []
         has_annot = []
-        for ss, vertices, index in izip(sss, source.vertices, indexes):
+        for ss, vertices, index in zip(sss, source.vertices, indexes):
             hemi = HEMI_ID_TO_STR[ss['id']]
             if self._hemi == OTHER_HEMI[hemi]:
                 continue
@@ -731,7 +728,7 @@ class Brain(TimeSlicer, surfer.Brain):
             raise RuntimeError("Brain has no data to plot colorbar for")
 
         if layer is None:
-            layers = xrange(len(self.__data))
+            layers = range(len(self.__data))
         else:
             layers = (layer,)
 
@@ -767,7 +764,7 @@ class Brain(TimeSlicer, surfer.Brain):
         max_wait = 1 / fps
         start = 0 if tstart is None else self.index_for_time(tstart)
         stop = self.n_times if tstop is None else self.index_for_time(tstop)
-        for i in xrange(start, stop):
+        for i in range(start, stop):
             t0 = time()
             self.set_data_time_index(i)
             dt = time() - t0
@@ -800,7 +797,7 @@ class Brain(TimeSlicer, surfer.Brain):
         elif self.__annot is None:
             raise RuntimeError("Can only plot legend for brain displaying "
                                "parcellation")
-        elif isinstance(self.__annot, basestring):
+        elif isinstance(self.__annot, str):
             lh = os.path.join(self.subjects_dir, self.subject_id, 'label',
                               'lh.%s.annot' % self.__annot)
             rh = os.path.join(self.subjects_dir, self.subject_id, 'label',
@@ -819,12 +816,12 @@ class Brain(TimeSlicer, surfer.Brain):
         """Remove labels shown with ``Brain.add_ndvar_label``"""
         if labels is None:
             pass
-        elif isinstance(labels, basestring):
+        elif isinstance(labels, str):
             labels = (labels,)
         else:
             if not isinstance(labels, tuple):
                 labels = tuple(labels)
-            if not all(isinstance(l, basestring) for l in labels):
+            if not all(isinstance(l, str) for l in labels):
                 raise TypeError("labels=%r" % (labels,))
         surfer.Brain.remove_labels(self, labels)
         if labels is None:
@@ -847,7 +844,7 @@ class Brain(TimeSlicer, surfer.Brain):
             surface, 75 otherwise. Smaller numbers correspond to zooming in.
         """
         if scale is True:
-            surf = self.geo.values()[0].surf
+            surf = self.geo['rh' if self._hemi == 'rh' else 'lh'].surf
             if surf == 'inflated':
                 scale = 95
             else:
@@ -892,7 +889,7 @@ class Brain(TimeSlicer, surfer.Brain):
 
     def set_title(self, title):
         "Set the window title"
-        self._frame.SetTitle(unicode(title))
+        self._frame.SetTitle(str(title))
 
     def _update_time(self, t, fixate):
         index = self._time_dim._array_index(t)

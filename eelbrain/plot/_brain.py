@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from __future__ import division
-
 from functools import partial
-from itertools import izip, product
+from itertools import product
 from numbers import Number
 from warnings import warn
 
@@ -148,8 +146,8 @@ def annot_legend(lh, rh, *args, **kwargs):
     """
     _, lh_colors, lh_names = read_annot(lh)
     _, rh_colors, rh_names = read_annot(rh)
-    lh_colors = dict(izip(lh_names, lh_colors[:, :4] / 255.))
-    rh_colors = dict(izip(rh_names, rh_colors[:, :4] / 255.))
+    lh_colors = dict(zip(lh_names, lh_colors[:, :4] / 255.))
+    rh_colors = dict(zip(rh_names, rh_colors[:, :4] / 255.))
     names = set(lh_names)
     names.update(rh_names)
     colors = {}
@@ -617,7 +615,7 @@ class ImageTable(EelFigure, ColorBarMixin):
         self._res_h = int(round(layout.axh * layout.dpi))
 
     def _add_ims(self, ims, column_header, cmap_params, cmap_data):
-        for row, column in product(xrange(self._n_rows), xrange(self._n_columns)):
+        for row, column in product(range(self._n_rows), range(self._n_columns)):
             ax = self._axes[row * self._n_columns + column]
             ax.imshow(ims[row][column])
 
@@ -687,8 +685,8 @@ class _BinTable(EelFigure, ColorBarMixin):
                                            parallel=parallel,
                                            smoothing_steps=smoothing_steps,
                                            mask=mask)
-        for row in xrange(n_rows):
-            for column in xrange(n_columns):
+        for row in range(n_rows):
+            for column in range(n_columns):
                 ax = self._axes[row * n_columns + column]
                 ax.imshow(ims[row][column])
 
@@ -971,7 +969,7 @@ def _cluster_bin_table_ims(vmax, data, surf, views, hemi, axw, axh, *args,
 
 
 def _bin_table_ims(data, hemi, views, brain_func):
-    if isinstance(views, basestring):
+    if isinstance(views, str):
         views = (views,)
     ims = []
     if hemi is None:
@@ -992,9 +990,9 @@ def _bin_table_ims(data, hemi, views, brain_func):
         brain = brain_func(hemi)
 
         hemi_lines = [[] for _ in views]
-        for i in xrange(len(data.time)):
+        for i in range(len(data.time)):
             brain.set_data_time_index(i)
-            for line, view in izip(hemi_lines, views):
+            for line, view in zip(hemi_lines, views):
                 brain.show_view(view)
                 im = brain.screenshot_single('rgba', True)
                 line.append(im)
@@ -1118,7 +1116,7 @@ class SequencePlotter(object):
         else:
             ordered_labels = [None] * len(self._frame_dim)
             indices = self._frame_dim._array_index(self._frame_order)
-            for i, label in izip(indices, labels):
+            for i, label in zip(indices, labels):
                 ordered_labels[i] = label
 
         self._frame_labels = ordered_labels
@@ -1143,10 +1141,14 @@ class SequencePlotter(object):
         is_time = isinstance(self._frame_dim, UTS)
         source = self._frame_labels or self._bins or self._frame_dim
         labels = []
-        index = range(len(self._frame_dim)) if self._frame_order is None else self._frame_dim._array_index(self._frame_order)
+        if self._frame_order is None:
+            index = range(len(self._frame_dim))
+        else:
+            index = self._frame_dim._array_index(self._frame_order)
+
         for i in index:
             item = source[i]
-            if isinstance(item, basestring):
+            if isinstance(item, str):
                 labels.append(item)
             elif is_time:
                 if isinstance(item, Number):
@@ -1202,9 +1204,9 @@ class SequencePlotter(object):
         else:
             raise ValueError("hemi=%r" % (hemi,))
         # views
-        if isinstance(view, basestring):
+        if isinstance(view, str):
             views = (view,)
-        elif len(view) > 1 and not isinstance(view[1], basestring):
+        elif len(view) > 1 and not isinstance(view[1], str):
             views = (view,)
         else:
             views = view
@@ -1213,7 +1215,7 @@ class SequencePlotter(object):
         if self._frame_order:
             bins = self._frame_dim._array_index(self._frame_order)
         elif self._frame_dim:
-            bins = range(len(self._frame_dim))
+            bins = tuple(range(len(self._frame_dim)))
         else:
             bins = [None]
         n_bins = len(bins)
@@ -1251,8 +1253,8 @@ class SequencePlotter(object):
             for i in bins:
                 if i is not None:
                     b.set_data_time_index(i)
-                for row, view in izip(hemi_rows, views):
-                    if isinstance(view, basestring):
+                for row, view in zip(hemi_rows, views):
+                    if isinstance(view, str):
                         b.show_view(view)
                     else:
                         b.show_view(view[0])
@@ -1272,7 +1274,7 @@ class SequencePlotter(object):
                 column_header = False
 
         if transpose:
-            im_rows = zip(*im_rows)
+            im_rows = tuple(zip(*im_rows))
         figure._add_ims(im_rows, column_header, cmap_params, cmap_data)
         return figure
 
@@ -1315,7 +1317,7 @@ def copy(brain):
 
 def butterfly(y, cmap=None, vmin=None, vmax=None, hemi=None, name=None, h=2.5,
               w=5):
-    u"""Shortcut for a Butterfly-plot with a time-linked brain plot
+    """Shortcut for a Butterfly-plot with a time-linked brain plot
 
     Parameters
     ----------

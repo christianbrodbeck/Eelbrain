@@ -1,4 +1,3 @@
-from itertools import izip
 from math import ceil, floor
 import os
 import re
@@ -164,7 +163,7 @@ def labels_from_clusters(clusters, names=None):
     """
     from mne.label import _n_colors
 
-    if isinstance(names, basestring):
+    if isinstance(names, str):
         names = [names]
 
     source = clusters.source
@@ -183,14 +182,14 @@ def labels_from_clusters(clusters, names=None):
         clusters_index = (clusters_index,)
 
     if names is None:
-        names = ("cluster%i" % i for i in xrange(n_clusters))
+        names = ("cluster%i" % i for i in range(n_clusters))
     elif len(names) != n_clusters:
         err = "Number of names difference from number of clusters."
         raise ValueError(err)
 
     colors = _n_colors(n_clusters)
     labels = []
-    for cluster, color, name in izip(clusters_index, colors, names):
+    for cluster, color, name in zip(clusters_index, colors, names):
         lh_vertices = source.lh_vertices[cluster.x[:source.lh_n]]
         rh_vertices = source.rh_vertices[cluster.x[source.lh_n:]]
         if len(lh_vertices) and len(rh_vertices):
@@ -238,7 +237,7 @@ def labels_from_mni_coords(seeds, extent=30., subject='fsaverage',
     """
     name_re = re.compile("^\w+-(lh|rh)$")
     matches = {name: name_re.match(name) for name in seeds}
-    invalid = sorted(name for name, m in matches.iteritems() if m is None)
+    invalid = sorted(name for name, m in matches.items() if m is None)
     if invalid:
         raise ValueError(
             "Invalid seed names in parc %r: %s; seed names need to conform to "
@@ -254,7 +253,7 @@ def labels_from_mni_coords(seeds, extent=30., subject='fsaverage',
     vertices = []
     names = []
     hemis = []
-    for name, coords_ in seeds.iteritems():
+    for name, coords_ in seeds.items():
         coords = np.atleast_2d(coords_)
         if coords.ndim != 2 or coords.shape[1] != 3:
             raise ValueError("Invalid coordinate specification for seed %r in "
@@ -514,7 +513,7 @@ def dissolve_label(labels, source, targets, subjects_dir=None,
         tgt_labels = [labels[i] for i in tgt_idxs]
         tgt_points = [points[label.vertices] for label in tgt_labels]
 
-        vert_by_tgt = {i: [] for i in xrange(len(targets))}
+        vert_by_tgt = {i: [] for i in range(len(targets))}
         for src_vert in src_label.vertices:
             point = points[src_vert:src_vert + 1]
             dist = [cdist(point, pts).min() for pts in tgt_points]
@@ -588,7 +587,7 @@ def combination_label(name, exp, labels, subjects_dir):
     out = []
     env = {'split': split}
     for hemi in hemis:
-        local_env = {k[:-3].replace('.', '_'): v for k, v in labels.iteritems()
+        local_env = {k[:-3].replace('.', '_'): v for k, v in labels.items()
                      if k.endswith(hemi)}
         try:
             label = eval(exp.replace('.', '_'), env, local_env)

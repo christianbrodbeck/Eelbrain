@@ -8,7 +8,7 @@ def assemble_epochs(epoch_def, epoch_default):
     secondary_epochs = []
     super_epochs = []
     collections = []
-    for name, parameters in epoch_def.iteritems():
+    for name, parameters in epoch_def.items():
         # filter out secondary epochs
         if 'base' in parameters:
             secondary_epochs.append((name, parameters.copy()))
@@ -24,7 +24,7 @@ def assemble_epochs(epoch_def, epoch_default):
     # integrate secondary epochs (epochs with base parameter)
     while secondary_epochs:
         n_secondary_epochs = len(secondary_epochs)
-        for i in xrange(n_secondary_epochs - 1, -1, -1):
+        for i in range(n_secondary_epochs - 1, -1, -1):
             name, parameters = secondary_epochs[i]
             if parameters['base'] in epochs:
                 parameters['base'] = epochs[parameters['base']]
@@ -96,7 +96,7 @@ class Epoch(Definition):
             baseline = (typed_arg(baseline[0], float),
                         typed_arg(baseline[1], float))
 
-        if not isinstance(trigger_shift, (float, basestring)):
+        if not isinstance(trigger_shift, (float, str)):
             raise TypeError("trigger_shift needs to be float or str, got %s" %
                             repr(trigger_shift))
 

@@ -50,7 +50,7 @@ class Connectivity(object):
         return {k: getattr(self, k) for k in self.__slots__}
 
     def __setstate__(self, state):
-        for k, v in state.iteritems():
+        for k, v in state.items():
             setattr(self, k, v)
 
 
@@ -74,7 +74,7 @@ def find_peaks(x, connectivity, out=None):
 
     # move through each axis in both directions and discard descending
     # slope. Do most computationally intensive axis last.
-    for ax in xrange(x.ndim - 1, -1, -1):
+    for ax in range(x.ndim - 1, -1, -1):
         if ax in connectivity.custom:
             shape = (len(x), -1)
             xsa = x.reshape(shape)
@@ -82,7 +82,7 @@ def find_peaks(x, connectivity, out=None):
             axlen = xsa.shape[1]
 
             conn_src, conn_dst = connectivity.custom[ax][0].T
-            for i in xrange(axlen):
+            for i in range(axlen):
                 data = xsa[:, i]
                 outslice = outsa[:, i]
                 if not np.any(outslice):
@@ -132,7 +132,7 @@ def find_peaks(x, connectivity, out=None):
 
             # forward
             kernel.fill(True)
-            for i in xrange(axlen - 1):
+            for i in range(axlen - 1):
                 kernel &= outsa[i]
                 kernel[diff[i] > 0] = True
                 kernel[diff[i] < 0] = False
@@ -140,7 +140,7 @@ def find_peaks(x, connectivity, out=None):
 
             # backward
             kernel.fill(True)
-            for i in xrange(axlen - 2, -1, -1):
+            for i in range(axlen - 2, -1, -1):
                 kernel &= outsa[i + 1]
                 kernel[diff[i] < 0] = True
                 kernel[diff[i] > 0] = False

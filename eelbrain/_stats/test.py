@@ -1,9 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Statistical tests for univariate variables"""
-from __future__ import division
-
 import itertools
-from itertools import izip
 
 import numpy as np
 import scipy.stats
@@ -428,7 +425,7 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
     table.midrule()
 
     # body
-    for name, diff, t, mark, df, p, p_adj in izip(names, diffs, ts, stars, dfs, ps, ps_adjusted):
+    for name, diff, t, mark, df, p, p_adj in zip(names, diffs, ts, stars, dfs, ps, ps_adjusted):
         table.cell(name)
         table.cell(diff)
         table.cell(fmtxt.stat(t, stars=mark, of=3))
@@ -705,14 +702,14 @@ def pairwise(Y, X, match=None, sub=None, ds=None,  # data in
 
     # tex_df = fmtxt.Element(df, "_", digits=0)
     if corr and not mirror:
-        subrows = range(3)
+        subrows = 3
     else:
-        subrows = range(2)
+        subrows = 2
 
     for row in range(0, k - 1 + mirror):
-        for subrow in subrows:  # contains t/p
+        for subrow in range(subrows):  # contains t/p
             # names column
-            if subrow is 0:
+            if subrow == 0:
                 table.cell(cellnames[row])
             else:
                 table.cell()
@@ -722,12 +719,12 @@ def pairwise(Y, X, match=None, sub=None, ds=None,  # data in
                     table.cell()
                 elif col > row:
                     index = indexes[(row, col)]
-                    if subrow is 0:
+                    if subrow == 0:
                         table.cell(fmtxt.eq(statistic, _K[index], _df[index],
                                             stars=symbols[index], of=3 + trend))
-                    elif subrow is 1:
+                    elif subrow == 1:
                         table.cell(fmtxt.peq(_P[index]))
-                    elif subrow is 2:
+                    elif subrow == 2:
                         table.cell(fmtxt.peq(_Pc[index], 'c'))
                 elif mirror and corr and subrow == 0:
                     index = indexes[(col, row)]
@@ -851,7 +848,7 @@ def pairwise_correlations(xs, sub=None, ds=None, labels={}):
     table = fmtxt.Table('l' + 'c' * n_vars)
     # header
     table.cell()
-    for i in xrange(1, n_vars + 1):
+    for i in range(1, n_vars + 1):
         table.cell(i)
     table.midrule()
     # body
@@ -894,7 +891,7 @@ def correlations(y, x, cat=None, sub=None, ds=None, asds=False):
     """
     sub = assub(sub, ds)
     y = asvar(y, sub, ds)
-    if isinstance(x, (Var, basestring)):
+    if isinstance(x, (Var, str)):
         x = (x,)
         print_x_name = False
     else:
@@ -1090,7 +1087,7 @@ class bootstrap_pairwise(object):
         stars_parametric = star(p_corr)
         stars_boot = star(self._p_boot)
 
-        for name, t, p1, pc, s1, p2, s2 in izip(self._comp_names, self.t,
+        for name, t, p1, pc, s1, p2, s2 in zip(self._comp_names, self.t,
                                                 self._p_parametric, p_corr,
                                                 stars_parametric,
                                                 self._p_boot, stars_boot):

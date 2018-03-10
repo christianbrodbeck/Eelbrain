@@ -1,6 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Pre-processing operations based on NDVars"""
-from __future__ import print_function
 from os import mkdir, remove
 from os.path import dirname, exists, getmtime
 
@@ -72,7 +71,7 @@ class RawSource(RawPipe):
         else:
             old_bads = None
         # find new bad channels
-        if isinstance(bad_chs, (basestring, int)):
+        if isinstance(bad_chs, (str, int)):
             bad_chs = (bad_chs,)
         raw = self.load(subject, session, add_bads=False)
         sensor = load.fiff.sensor_dim(raw)
@@ -246,7 +245,7 @@ class RawICA(CachedRawPipe):
 
     def __init__(self, name, source, path, ica_path, log, session, kwargs):
         CachedRawPipe.__init__(self, name, source, path, log)
-        if isinstance(session, basestring):
+        if isinstance(session, str):
             session = (session,)
         else:
             assert isinstance(session, tuple)
@@ -384,7 +383,7 @@ def assemble_pipeline(raw_dict, raw_path, bads_path, cache_path, ica_path, log):
 
 
 def pipeline_dict(pipeline):
-    return {k: v.as_dict() for k, v in pipeline.iteritems()}
+    return {k: v.as_dict() for k, v in pipeline.items()}
 
 
 def compare_pipelines(old, new, log):
@@ -431,8 +430,8 @@ def compare_pipelines(old, new, log):
         if len(to_check) == n:
             raise RuntimeError("Queue not decreasing")
 
-    bad_raw = {k: v for k, v in out.iteritems() if v != 'good'}
-    bad_ica = {k: v for k, v in bad_raw.iteritems() if
+    bad_raw = {k: v for k, v in out.items() if v != 'good'}
+    bad_ica = {k: v for k, v in bad_raw.items() if
                new.get(k, old.get(k))['type'] == 'RawICA'}
     return bad_raw, bad_ica
 

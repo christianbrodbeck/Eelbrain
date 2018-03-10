@@ -1,9 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from __future__ import print_function
-
 from collections import defaultdict
 from glob import glob
-from itertools import chain, izip, product
+from itertools import chain, product
 import os
 import re
 import shutil
@@ -19,11 +17,11 @@ from .._utils.com import Notifier, NotNotifier
 
 
 def _etree_expand(node, state):
-    for tk, tv in node.iteritems():
+    for tk, tv in node.items():
         if tk == '.':
             continue
 
-        for k, v in state.iteritems():
+        for k, v in state.items():
             name = '{%s}' % tk
             if str(v).startswith(name):
                 tv[k] = {'.': v.replace(name, '')}
@@ -34,7 +32,7 @@ def _etree_expand(node, state):
 def _etree_node_repr(node, name, indent=0):
     head = ' ' * indent
     out = [(name, head + node['.'])]
-    for k, v in node.iteritems():
+    for k, v in node.items():
         if k == '.':
             continue
 
@@ -157,8 +155,8 @@ class TreeModel(object):
         # many values as we can
         self._defaults = dict(self.defaults)
         self._defaults.update(state)
-        for k, v in self._templates.iteritems():
-            if v is None or isinstance(v, basestring):
+        for k, v in self._templates.items():
+            if v is None or isinstance(v, str):
                 self._register_constant(k, v)
             elif isinstance(v, tuple):
                 self._register_field(k, v, v[0])
@@ -218,7 +216,7 @@ class TreeModel(object):
         # out.append(source)
 
         try:
-            tree = unicode(self.show_state())
+            tree = str(self.show_state())
         except Exception as e:
             tree = "Failed to retrieve state:\n" + traceback.format_exc(e)
         out.append(tree)
@@ -331,6 +329,7 @@ class TreeModel(object):
         default = self._defaults.get(key, default)
 
         if values is not None:
+            values = tuple(values)
             if default is None:
                 if len(values):
                     default = values[0]
@@ -342,7 +341,7 @@ class TreeModel(object):
                        "%s" % (default, key, str(values)))
                 raise ValueError(err)
 
-            self._field_values[key] = tuple(values)
+            self._field_values[key] = values
 
         self._terminal_fields.append(key)
         if depends_on is None and not internal:
@@ -370,7 +369,7 @@ class TreeModel(object):
         - Slave fields can not have any other handlers
         - Slave fields can not depend on other slave fields
         """
-        if isinstance(depends_on, basestring):
+        if isinstance(depends_on, str):
             depends_on = (depends_on,)
         for dep in depends_on:
             self._slave_fields[dep].append(key)
@@ -493,7 +492,7 @@ class TreeModel(object):
         values = self._field_values[field]
         if exclude is True:
             exclude = self.exclude.get(field, None)
-        elif isinstance(exclude, basestring):
+        elif isinstance(exclude, str):
             exclude = (exclude,)
 
         if exclude:
@@ -528,7 +527,7 @@ class TreeModel(object):
         # set constants
         self.set(**constants)
 
-        if isinstance(fields, basestring):
+        if isinstance(fields, str):
             fields = (fields,)
             yield_str = True
         else:
@@ -657,7 +656,7 @@ class TreeModel(object):
         for k in state.keys():
             eval_handlers = self._eval_handlers[k]
             v = state[k]
-            if not isinstance(v, basestring):
+            if not isinstance(v, str):
                 msg = "Values have to be strings, got %s=%r" % (k, v)
                 raise TypeError(msg)
             elif '*' in v and allow_asterisk:
@@ -670,7 +669,7 @@ class TreeModel(object):
                         if match:
                             raise
 
-                    if not isinstance(v, basestring):
+                    if not isinstance(v, str):
                         err = "Invalid conversion: %s=%r" % (k, v)
                         raise RuntimeError(err)
                     state[k] = v
@@ -698,8 +697,7 @@ class TreeModel(object):
         self._fields.update(slave_state)
 
         # call post_set handlers
-        for k, v in chain(state.iteritems(), handled_state.iteritems(),
-                          slave_state.iteritems()):
+        for k, v in chain(state.items(), handled_state.items(), slave_state.items()):
             for handler in self._post_set_handlers[k]:
                 handler(k, v)
 
@@ -805,7 +803,7 @@ class TreeModel(object):
 
         tree = {'.': self.get(root)}
         root_temp = '{%s}' % root
-        for k, v in fields.iteritems():
+        for k, v in fields.items():
             if str(v).startswith(root_temp):
                 tree[k] = {'.': v.replace(root_temp, '')}
         _etree_expand(tree, fields)
@@ -1050,7 +1048,7 @@ class FileTree(TreeModel):
         dst_filenames = [os.path.join(dst_root, filename) for filename in
                          rel_filenames]
         if not overwrite:
-            exist = filter(os.path.exists, dst_filenames)
+            exist = tuple(filter(os.path.exists, dst_filenames))
             if exist:
                 raise ValueError("%i of %i files already exist (%s, ...)" %
                                  (len(exist), len(src_filenames),
@@ -1063,10 +1061,10 @@ class FileTree(TreeModel):
             print("moving %s -> %s:" % (root, dst_root))
             for filename in rel_filenames:
                 print("  " + filename)
-            if raw_input("Move %i files? (confirm with 'yes'): " % n) != 'yes':
+            if input("Move %i files? (confirm with 'yes'): " % n) != 'yes':
                 return
         print("Moving %i files..." % n)
-        for src, dst in izip(src_filenames, dst_filenames):
+        for src, dst in zip(src_filenames, dst_filenames):
             dirname = os.path.dirname(dst)
             if not os.path.exists(dirname):
                 os.makedirs(dirname)
@@ -1225,7 +1223,7 @@ class FileTree(TreeModel):
         -----
         Use ``e.show_tree()`` to find out which element(s) to copy.
         """
-        if isinstance(names, basestring):
+        if isinstance(names, str):
             names = [names]
 
         # find files
@@ -1258,7 +1256,7 @@ class FileTree(TreeModel):
             print(' '.join((flag, src[-78:])))
         print("Flags: o=overwrite, e=skip, it exists, m=skip, source is "
               "missing")
-        if raw_input("Proceed? (confirm with 'yes'): ") != 'yes':
+        if input("Proceed? (confirm with 'yes'): ") != 'yes':
             return
 
         # copy the files
@@ -1329,7 +1327,7 @@ class FileTree(TreeModel):
         print(table)
 
         msg = "Rename %s files (confirm with 'yes')? " % len(files)
-        if raw_input(msg) == 'yes':
+        if input(msg) == 'yes':
             for old, new in files:
                 dirname = os.path.dirname(new)
                 if not os.path.exists(dirname):
@@ -1388,7 +1386,7 @@ class FileTree(TreeModel):
             return
 
         msg = "Rename %i files (confirm with 'yes')? " % len(rename)
-        if raw_input(msg) != 'yes':
+        if input(msg) != 'yes':
             return
 
         for _, src, dst in rename:

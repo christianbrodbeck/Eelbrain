@@ -1,11 +1,10 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from __future__ import print_function
 from copy import deepcopy
-from itertools import chain, izip, product
+from itertools import chain, product
 from operator import (
     add, iadd, sub, isub, mul, imul, div, idiv, floordiv, ifloordiv, mod, imod)
 import os
-import cPickle as pickle
+import pickle
 import shutil
 from string import ascii_lowercase
 import tempfile
@@ -292,17 +291,17 @@ def test_datalist():
     eq_(dl[3], 3)
     x = dl[:3]
     assert_is_instance(x, Datalist)
-    assert_array_equal(x, range(3))
-    assert_array_equal(dl[8:], range(8, 10))
+    assert_array_equal(x, list(range(3)))
+    assert_array_equal(dl[8:], list(range(8, 10)))
     x = dl[np.arange(10) < 3]
     assert_is_instance(x, Datalist)
-    assert_array_equal(x, range(3))
-    assert_array_equal(dl[np.arange(3)], range(3))
+    assert_array_equal(x, list(range(3)))
+    assert_array_equal(dl[np.arange(3)], list(range(3)))
 
     # __add__
-    x = dl + range(10, 12)
+    x = dl + list(range(10, 12))
     assert_is_instance(x, Datalist)
-    assert_array_equal(x, range(12))
+    assert_array_equal(x, list(range(12)))
 
     # aggregate
     x = dl.aggregate(Factor('ab', repeat=5))
@@ -333,7 +332,7 @@ def test_datalist():
     ac[:2] = (1, 2)
     assert_array_equal(ac == [1, 2, [], [1]], True)
     ac[np.arange(2, 4)] = [3, 4]
-    assert_array_equal(ac == range(1, 5), True)
+    assert_array_equal(ac == list(range(1, 5)), True)
     assert_raises(ValueError, ac.__setitem__, np.arange(2), np.arange(3))
 
     # update
@@ -503,7 +502,7 @@ def test_dim_categorial():
     eq_(dim_i, Categorial(name, ['b', 'c']))
 
     # unicode
-    dimu = Categorial(name, [u'c', 'b', 'e'])
+    dimu = Categorial(name, ['c', 'b', 'e'])
     eq_(dimu, dim2)
 
 
@@ -814,7 +813,7 @@ def test_ndvar():
     s_time = slice(0.1, 0.2)
     b_case = np.bincount([10, 11, 12], minlength=len(x)).astype(bool)
     b_sensor = np.array([False, False, True, True, False])
-    b_time = np.bincount(xrange(30, 40), minlength=len(x.time)).astype(bool)
+    b_time = np.bincount(range(30, 40), minlength=len(x.time)).astype(bool)
     a_case = np.arange(10, 13)
     a_sensor = ['2', '3']
     a_time = np.arange(0.1, 0.2, 0.01)
@@ -1114,7 +1113,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.any(dim), x.x.any(axis))
     assert_array_equal(x.any(dims), x.x.any(axes))
     assert_array_equal(x.any(idx0), [x_[idx0.x].any() for x_ in x.x])
-    assert_array_equal(x.any(idx), [x_[i].any() for x_, i in izip(x.x, idx.x)])
+    assert_array_equal(x.any(idx), [x_[i].any() for x_, i in zip(x.x, idx.x)])
     assert_array_equal(x0.any(idx0), x0.x[idx0.x].any())
     assert_array_equal(x.any(idxsub), xsub.any(idxsub))
     assert_array_equal(x.any(idx1d), x.x[:, idx1d.x].any(1))
@@ -1123,7 +1122,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.max(dim), x.x.max(axis))
     assert_array_equal(x.max(dims), x.x.max(axes))
     assert_array_equal(x.max(idx0), [x_[idx0.x].max() for x_ in x.x])
-    assert_array_equal(x.max(idx), [x_[i].max() for x_, i in izip(x.x, idx.x)])
+    assert_array_equal(x.max(idx), [x_[i].max() for x_, i in zip(x.x, idx.x)])
     assert_array_equal(x0.max(idx0), x0.x[idx0.x].max())
     assert_array_equal(x.max(idxsub), xsub.max(idxsub))
     assert_array_equal(x.max(idx1d), x.x[:, idx1d.x].max(1))
@@ -1132,7 +1131,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.mean(dim), x.x.mean(axis))
     assert_array_equal(x.mean(dims), x.x.mean(axes))
     assert_array_equal(x.mean(idx0), [x_[idx0.x].mean() for x_ in x.x])
-    assert_array_equal(x.mean(idx), [x_[i].mean() for x_, i in izip(x.x, idx.x)])
+    assert_array_equal(x.mean(idx), [x_[i].mean() for x_, i in zip(x.x, idx.x)])
     assert_array_equal(x0.mean(idx0), x0.x[idx0.x].mean())
     assert_array_equal(x.mean(idxsub), xsub.mean(idxsub))
     assert_array_equal(x.mean(idx1d), x.x[:, idx1d.x].mean(1))
@@ -1141,7 +1140,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.min(dim), x.x.min(axis))
     assert_array_equal(x.min(dims), x.x.min(axes))
     assert_array_equal(x.min(idx0), [x_[idx0.x].min() for x_ in x.x])
-    assert_array_equal(x.min(idx), [x_[i].min() for x_, i in izip(x.x, idx.x)])
+    assert_array_equal(x.min(idx), [x_[i].min() for x_, i in zip(x.x, idx.x)])
     assert_array_equal(x0.min(idx0), x0.x[idx0.x].min())
     assert_array_equal(x.min(idxsub), xsub.min(idxsub))
     assert_array_equal(x.min(idx1d), x.x[:, idx1d.x].min(1))
@@ -1151,7 +1150,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.var(dim), x.x.var(axis))
     assert_array_equal(x.var(dims, ddof=1), x.x.var(axes, ddof=1))
     assert_array_equal(x.var(idx0), [x_[idx0.x].var() for x_ in x.x])
-    assert_array_equal(x.var(idx), [x_[i].var() for x_, i in izip(x.x, idx.x)])
+    assert_array_equal(x.var(idx), [x_[i].var() for x_, i in zip(x.x, idx.x)])
     assert_array_equal(x0.var(idx0), x0.x[idx0.x].var())
     assert_array_equal(x.var(idxsub), xsub.var(idxsub))
     assert_array_equal(x.var(idx1d), x.x[:, idx1d.x].var(1))
@@ -1160,7 +1159,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.std(dim), x.x.std(axis))
     assert_array_equal(x.std(dims), x.x.std(axes))
     assert_array_equal(x.std(idx0), [x_[idx0.x].std() for x_ in x.x])
-    assert_array_equal(x.std(idx), [x_[i].std() for x_, i in izip(x.x, idx.x)])
+    assert_array_equal(x.std(idx), [x_[i].std() for x_, i in zip(x.x, idx.x)])
     assert_array_equal(x0.std(idx0), x0.x[idx0.x].std())
     assert_array_equal(x.std(idxsub), xsub.std(idxsub))
     assert_array_equal(x.std(idx1d), x.x[:, idx1d.x].std(1))
@@ -1170,7 +1169,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.rms(dim), rms(x.x, axis))
     assert_array_equal(x.rms(dims), rms(x.x, axes))
     assert_array_equal(x.rms(idx0), [rms(x_[idx0.x]) for x_ in x.x])
-    assert_array_equal(x.rms(idx), [rms(x_[i]) for x_, i in izip(x.x, idx.x)])
+    assert_array_equal(x.rms(idx), [rms(x_[i]) for x_, i in zip(x.x, idx.x)])
     assert_array_equal(x0.rms(idx0), rms(x0.x[idx0.x]))
     assert_array_equal(x.rms(idxsub), xsub.rms(idxsub))
     assert_array_equal(x.rms(idx1d), rms(x.x[:, idx1d.x], 1))
@@ -1273,7 +1272,7 @@ def test_ols():
     res2 = utsc.residuals(m2)
     t2 = utsc.ols_t(m2)
     # compare with R
-    for i in xrange(n_times):
+    for i in range(n_times):
         ds_['y'] = Var(utsc.x[:, i])
         ds_.to_r('ds')
         # 1 predictor
@@ -1300,7 +1299,7 @@ def test_ols():
     b1 = ds_.eval("utsnd.ols(x)")
     res1 = ds_.eval("utsnd.residuals(x)")
     t1 = ds_.eval("utsnd.ols_t(x)")
-    for i in xrange(len(b1.time)):
+    for i in range(len(b1.time)):
         ds_['y'] = Var(utsnd.x[:, 1, i])
         ds_.to_r('ds')
         # 1 predictor
@@ -1361,7 +1360,7 @@ def test_r():
     extra = (0.7, -1.6, -0.2, -1.2, -0.1, 3.4, 3.7, 0.8, 0.0, 2.0, 1.9, 0.8,
              1.1, 0.1, -0.1, 4.4, 5.5, 1.6, 4.6, 3.4)
     assert_array_equal(ds.eval('extra'), extra)
-    assert_array_equal(ds.eval('ID'), map(str, xrange(1, 11)) * 2)
+    assert_array_equal(ds.eval('ID'), list(map(str, range(1, 11))) * 2)
     assert_array_equal(ds.eval('group'), ['1'] * 10 + ['2'] * 10)
 
     # test putting
@@ -1389,10 +1388,10 @@ def test_sensor():
 
 def test_shuffle():
     x = Factor('aabbaa')
-    for _ in xrange(3):
+    for _ in range(3):
         i = shuffled_index(6, x)
         eq_(sorted(i[2:4]), [2, 3])
-        eq_(sorted(i), range(6))
+        eq_(sorted(i), list(range(6)))
 
 @requires_mne_sample_data
 def test_source_space():
@@ -1433,7 +1432,7 @@ def test_source_space():
                if len(label) > 10]
     x = np.vstack([index.x for index in indexes])
     ds = source._cluster_properties(x)
-    for i in xrange(ds.n_cases):
+    for i in range(ds.n_cases):
         eq_(ds[i, 'location'], parc[i].name)
 
     # multiple labels
@@ -1452,7 +1451,7 @@ def test_source_space():
     # indexing
     tgt = ['L%i' % i for i in chain(*sub_source.vertices)]
     assert_array_equal([i for i in sub_source], tgt)
-    assert_array_equal([sub_source[i] for i in xrange(len(sub_source))], tgt)
+    assert_array_equal([sub_source[i] for i in range(len(sub_source))], tgt)
     # hemisphere indexing
     lh = source._array_index('lh')
     source_lh = source[lh]
@@ -1534,7 +1533,7 @@ def test_var():
 
     # .split()
     y = Var(np.arange(16))
-    for i in xrange(1, 9):
+    for i in range(1, 9):
         split = y.split(i)
         eq_(len(split.cells), i)
 

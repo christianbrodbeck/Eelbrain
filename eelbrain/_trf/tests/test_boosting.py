@@ -5,7 +5,7 @@ import os
 from nose.tools import eq_, assert_almost_equal, assert_is_none, assert_raises
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
-import cPickle as pickle
+import pickle
 import scipy.io
 from eelbrain import test, boosting, convolve, configure, datasets
 from eelbrain._trf._boosting import boost_1seg, evaluate_kernel

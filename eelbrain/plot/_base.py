@@ -58,11 +58,10 @@ functions executed are:
 #. ------> _plt_(p(A, B))
 
 """
-from __future__ import division
 import __main__
 
 from collections import Iterable, Iterator
-from itertools import chain, izip
+from itertools import chain
 from logging import getLogger
 import math
 import os
@@ -109,24 +108,24 @@ def do_autorun(run=None):
 
 
 MEAS_DISPLAY_UNIT = {
-    'time': u'ms',
-    'V': u'µV',
-    'B': u'fT',
+    'time': 'ms',
+    'V': 'µV',
+    'B': 'fT',
     'sensor': int,
 }
 UNIT_FORMAT = {
-    u'A': 1,
-    u'Am': 1,
-    u'V': 1,
-    u'ms': 1e3,
-    u'mV': 1e3,
-    u'µV': 1e6,
-    u'pT': 1e12,
-    u'fT': 1e15,
-    u'dSPM': 1,
-    u'p': 1,
-    u'T': 1,
-    u'n': int,  # %i format
+    'A': 1,
+    'Am': 1,
+    'V': 1,
+    'ms': 1e3,
+    'mV': 1e3,
+    'µV': 1e6,
+    'pT': 1e12,
+    'fT': 1e15,
+    'dSPM': 1,
+    'p': 1,
+    'T': 1,
+    'n': int,  # %i format
     int: int,
 }
 SCALE_FORMATTERS = {
@@ -173,7 +172,7 @@ def find_axis_params_data(v, label):
     label : str | None
         Axis label.
     """
-    if isinstance(v, basestring):
+    if isinstance(v, str):
         unit = v
         scale = UNIT_FORMAT.get(v, 1)
     elif isinstance(v, float):
@@ -593,7 +592,7 @@ def pop_dict_arg(kwargs, key):
 def set_dict_arg(key, arg, line_dim_obj, artists, legend_handles=None):
     "Helper for artist-sepcific matplotlib kwargs"
     set_attr_name = 'set_' + key
-    for dim_index, value in arg.iteritems():
+    for dim_index, value in arg.items():
         index = line_dim_obj._array_index(dim_index)
         if isinstance(index, slice):
             key_artists = artists[index]
@@ -624,7 +623,7 @@ class LayerData(object):
 
     def line_args(self, kwargs):
         out = {}
-        for k, v in chain(kwargs.iteritems(), self._line_args.iteritems()):
+        for k, v in chain(kwargs.items(), self._line_args.items()):
             if v is not None:
                 out[self._remap_args.get(k, k)] = v
         return out
@@ -756,8 +755,7 @@ class PlotData(object):
                 name = dimname.capitalize() + ' = %s'
                 if unit:
                     name += ' ' + unit
-                axes = [[aggregate(y.sub(name=name % v, **{dimname: v}), agg)] for
-                        v in values]
+                axes = [[aggregate(y.sub(name=name % v, **{dimname: v}), agg)] for v in values]
                 x_name = xax
             else:
                 agg, dims = find_data_dims(y, dims)
@@ -792,7 +790,7 @@ class PlotData(object):
             Data description for the plot frame.
         """
         if isinstance(plots, int):
-            plots = [[] for _ in xrange(plots)]
+            plots = [[] for _ in range(plots)]
         else:
             plots = [[] if p else None for p in plots]
         return cls(plots, dims, title)
@@ -805,7 +803,7 @@ class PlotData(object):
         else:
             assert len(line_args) == len(ys)
 
-        for layers, y, args in izip(self.plot_data, ys, line_args):
+        for layers, y, args in zip(self.plot_data, ys, line_args):
             if not isinstance(y, LayerData):
                 y = LayerData(y, args)
             layers.append(y)
@@ -867,14 +865,14 @@ class mpl_figure:
 
 def _loc(name, size=(0, 0), title_space=0, frame=.01):
     """Convert loc argument to ``(x, y)`` of bottom left edge"""
-    if isinstance(name, basestring):
+    if isinstance(name, str):
         y, x = name.split()
     # interpret x
     elif len(name) == 2:
         x, y = name
     else:
         raise NotImplementedError("loc needs to be string or len=2 tuple/list")
-    if isinstance(x, basestring):
+    if isinstance(x, str):
         if x == 'left':
             x = frame
         elif x in ['middle', 'center', 'centre']:
@@ -884,7 +882,7 @@ def _loc(name, size=(0, 0), title_space=0, frame=.01):
         else:
             raise ValueError(x)
     # interpret y
-    if isinstance(y, basestring):
+    if isinstance(y, str):
         if y in ['top', 'upper']:
             y = 1 - frame - title_space - size[1]
         elif y in ['middle', 'center', 'centre']:
@@ -1029,7 +1027,7 @@ class EelFigure(object):
 
         if axtitle is True and naxes == 1:
             return
-        elif axtitle is True or isinstance(axtitle, basestring):
+        elif axtitle is True or isinstance(axtitle, str):
             if names is None:
                 names = []
                 for layers in data.plot_data:
@@ -1056,7 +1054,7 @@ class EelFigure(object):
         if isinstance(axes, int):
             return axtitle
 
-        for title, ax in izip(axtitle, axes):
+        for title, ax in zip(axtitle, axes):
             ax.set_title(title)
 
     def _show(self, crosshair_axes=None):
@@ -1118,7 +1116,7 @@ class EelFigure(object):
             self._remove_crosshairs(True)
 
     def _on_leave_axes_status_text(self, event):
-        return u'☺︎'
+        return '☺︎'
 
     def _on_motion(self, event):
         "Update the status bar for mouse movement"
@@ -1239,7 +1237,7 @@ class EelFigure(object):
                                      % (xticklabels, n_axes))
                 add_tick_labels[i] = True
 
-        for ax, add_tick_labels_ in izip(axes, add_tick_labels):
+        for ax, add_tick_labels_ in zip(axes, add_tick_labels):
             if locator:
                 ax.xaxis.set_major_locator(locator)
 
@@ -1268,7 +1266,7 @@ class EelFigure(object):
             axes = self._axes
 
         labels = []
-        for ax, layers in izip(axes, epochs):
+        for ax, layers in zip(axes, epochs):
             formatter, locator, label_ = layers[0].get_dim(
                 dim)._axis_format(scalar, label)
             if locator:
@@ -1281,7 +1279,7 @@ class EelFigure(object):
             if len(set(labels)) == 1:
                 self.set_ylabel(labels[0])
             else:
-                for ax, label in izip(axes, labels):
+                for ax, label in zip(axes, labels):
                     if label:
                         self.set_ylabel(label, ax)
 
@@ -1650,7 +1648,7 @@ class Layout(BaseLayout):
         if nax is None:
             axes = None
         elif isinstance(nax, int):
-            axes = range(nax)
+            axes = list(range(nax))
         elif isinstance(nax, (list, tuple)):
             axes = [i for i, ax in enumerate(nax) if ax]
             nax = len(nax)
@@ -1907,8 +1905,8 @@ class VariableAspectLayout(BaseLayout):
         fixed = sum(axw for axw in axws if axw is not None)
         w_free = (w - fixed - left_buffer) / self.n_flexible
         widths = [w_free if axw is None else axw for axw in axws]
-        lefts = (sum(widths[:i]) + left_buffer for i in xrange(len(widths)))
-        bottoms = (i * axh + bottom_buffer for i in xrange(self.nrow - 1, -1, -1))
+        lefts = (sum(widths[:i]) + left_buffer for i in range(len(widths)))
+        bottoms = (i * axh + bottom_buffer for i in range(self.nrow - 1, -1, -1))
 
         # convert to figure coords
         height = axh / h
@@ -1917,14 +1915,14 @@ class VariableAspectLayout(BaseLayout):
         bottoms_ = (b / h for b in bottoms)
 
         # rectangles:  (left, bottom, width, height)
-        rects = (((l, bottom, w, height) for l, w in izip(lefts_, widths_)) for
+        rects = (((l, bottom, w, height) for l, w in zip(lefts_, widths_)) for
                  bottom in bottoms_)
         self._ax_rects = rects
 
     def make_axes(self, figure):
         axes = []
         for row, row_rects in enumerate(self._ax_rects):
-            for rect, kwa, frame in izip(row_rects, self.ax_kwargs, self.ax_frames):
+            for rect, kwa, frame in zip(row_rects, self.ax_kwargs, self.ax_frames):
                 ax = figure.add_axes(rect, autoscale_on=self.autoscale, **kwa)
                 self._format_axes(ax, frame, True)
                 axes.append(ax)
@@ -2440,7 +2438,7 @@ class TopoMapKey(object):
 
 
 class XAxisMixin(object):
-    u"""Manage x-axis
+    """Manage x-axis
 
     Parameters
     ----------
@@ -2513,7 +2511,7 @@ class XAxisMixin(object):
         if n_steps > 1:
             vmin_d = vmin_dst - vmin
             vmax_d = vmax_dst - vmax
-            for i in xrange(1, n_steps):
+            for i in range(1, n_steps):
                 x = i / n_steps
                 self.set_xlim(vmin + x * vmin_d, vmax + x * vmax_d)
         self.set_xlim(vmin_dst, vmax_dst)
@@ -2587,7 +2585,7 @@ class XAxisMixin(object):
 
 
 class YLimMixin(object):
-    u"""Manage y-axis
+    """Manage y-axis
 
     Parameters
     ----------
@@ -2671,7 +2669,7 @@ class YLimMixin(object):
         if n_steps <= 1:
             self.set_ylim(vmin + vmin_d, vmax + vmax_d)
         else:
-            for i in xrange(1, n_steps + 1):
+            for i in range(1, n_steps + 1):
                 x = i / n_steps
                 self.set_ylim(vmin + x * vmin_d, vmax + x * vmax_d)
 
@@ -2776,9 +2774,9 @@ class ImageTiler(object):
         images = []
         colw = [0] * self.ncol
         rowh = [0] * self.nrow
-        for r in xrange(self.nrow):
+        for r in range(self.nrow):
             row = []
-            for c in xrange(self.ncol):
+            for c in range(self.ncol):
                 fname = self.get_tile_fname(c, r, t)
                 if os.path.exists(fname):
                     im = PIL.Image.open(fname)
@@ -2801,7 +2799,7 @@ class ImageTiler(object):
         out.save(dest)
 
     def make_frames(self):
-        for t in xrange(self.nt):
+        for t in range(self.nt):
             self.make_frame(t=t)
 
     def make_movie(self, dest, framerate=10, codec='mpeg4'):

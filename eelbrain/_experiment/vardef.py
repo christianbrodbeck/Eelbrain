@@ -23,7 +23,7 @@ class VarDef(object):
 class EvalVar(VarDef):
 
     def __init__(self, code):
-        assert isinstance(code, basestring)
+        assert isinstance(code, str)
         self.code = code
 
     def __repr__(self):
@@ -87,7 +87,7 @@ def parse_vardef(string):
 class Vars(object):
 
     def __init__(self, arg):
-        if isinstance(arg, basestring):
+        if isinstance(arg, str):
             arg = (arg,)
         elif isinstance(arg, dict):
             arg = arg.items()
@@ -96,11 +96,11 @@ class Vars(object):
 
         items = []
         for item in arg:
-            if isinstance(item, basestring):
+            if isinstance(item, str):
                 name, vdef = parse_named_vardef(item)
             else:
                 name, vdef = item
-                if isinstance(vdef, basestring):
+                if isinstance(vdef, str):
                     vdef = parse_vardef(vdef)
                 elif isinstance(vdef, VarDef):
                     pass

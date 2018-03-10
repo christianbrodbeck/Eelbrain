@@ -61,7 +61,7 @@ np_ufuncs = {'abs': np.abs,
 
 FUNCS = {name: (kind, func) for funcs, kind in
          ((np_afuncs, 'afunc'), (np_bfuncs, 'bfunc'), (np_ufuncs, 'ufunc'))
-         for name, func in funcs.iteritems()}
+         for name, func in funcs.items()}
 OP_FUNCS = {'-': np.subtract, '+': np.add}
 
 

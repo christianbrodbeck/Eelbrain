@@ -1,6 +1,4 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from __future__ import print_function
-
 from nose.tools import eq_
 
 from eelbrain import datasets, plot

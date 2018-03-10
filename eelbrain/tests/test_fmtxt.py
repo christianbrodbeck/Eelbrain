@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import print_function
 from nose.tools import eq_
 import os
 import shutil
@@ -23,10 +22,10 @@ def test_fmtext():
     t = fmtxt.FMText('test')
     print(t)
 
-    tuc = fmtxt.FMText(u'FMText with unicode: \x80abc')
+    tuc = fmtxt.FMText('FMText with unicode: \x80abc')
     print(str(tuc))
 
-    ts = fmtxt.FMText((t, tuc, u'unicode: \x80abc'))
+    ts = fmtxt.FMText((t, tuc, 'unicode: \x80abc'))
 
     print(str(ts))
     print(html(ts))
@@ -35,15 +34,15 @@ def test_fmtext():
 
 def test_list():
     list_ = fmtxt.List("Head")
-    eq_(html(list_), u'Head\n<ul>\n</ul>')
+    eq_(html(list_), 'Head\n<ul>\n</ul>')
     list_.add_item("child")
-    eq_(html(list_), u'Head\n<ul>\n<li>child</li>\n</ul>')
-    sublist = list_.add_sublist(u"unicode:")
-    eq_(html(list_), u'Head\n<ul>\n<li>child</li>\n<li>unicode:\n<ul>\n'
-                     u'</ul></li>\n</ul>')
-    sublist.add_item(u'delta: ∂')
-    eq_(html(list_), u'Head\n<ul>\n<li>child</li>\n<li>unicode:\n<ul>\n'
-                     u'<li>delta: &#8706;</li>\n</ul></li>\n</ul>')
+    eq_(html(list_), 'Head\n<ul>\n<li>child</li>\n</ul>')
+    sublist = list_.add_sublist("unicode:")
+    eq_(html(list_), 'Head\n<ul>\n<li>child</li>\n<li>unicode:\n<ul>\n'
+                     '</ul></li>\n</ul>')
+    sublist.add_item('delta: ∂')
+    eq_(html(list_), 'Head\n<ul>\n<li>child</li>\n<li>unicode:\n<ul>\n'
+                     '<li>delta: &#8706;</li>\n</ul></li>\n</ul>')
 
 
 def test_report():
@@ -51,7 +50,7 @@ def test_report():
     tempdir = tempfile.mkdtemp()
     report = fmtxt.Report("Test Report")
 
-    section = report.add_section(u'unicode: \xe2 abc')
+    section = report.add_section('unicode: \xe2 abc')
     ds = datasets.get_uv()
     p = plot.Barplot('fltvar', 'A', sub="B=='b1'", ds=ds, show=False)
     image = p.image()
@@ -102,11 +101,11 @@ def test_table():
     table.midrule()
     table.cells('a1', 'b1', 'a2', 'b2')
     eq_(str(table), 'A    B \n-------\na1   b1\na2   b2')
-    eq_(table.get_html(), u'<figure><table rules="none" cellpadding="2" '
-                          u'frame="hsides" border="1"><tr>\n'
-                          u' <td>A</td>\n <td>B</td>\n</tr>\n<tr>\n'
-                          u' <td>a1</td>\n <td>b1</td>\n</tr>\n<tr>\n'
-                          u' <td>a2</td>\n <td>b2</td>\n</tr></table></figure>')
+    eq_(table.get_html(), '<figure><table rules="none" cellpadding="2" '
+                          'frame="hsides" border="1"><tr>\n'
+                          ' <td>A</td>\n <td>B</td>\n</tr>\n<tr>\n'
+                          ' <td>a1</td>\n <td>b1</td>\n</tr>\n<tr>\n'
+                          ' <td>a2</td>\n <td>b2</td>\n</tr></table></figure>')
     eq_(table.get_rtf(), '\\trowd\n\\cellx0000\n\\cellx1000\n\\row\n'
                          'A\\intbl\\cell\nB\\intbl\\cell\n\\row\n'
                          'a1\\intbl\\cell\nb1\\intbl\\cell\n\\row\n'
