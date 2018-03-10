@@ -5058,26 +5058,26 @@ class Dataset(OrderedDict):
         elif not np.iterable(index):
             raise KeyError("Invalid index for Dataset: %r" % index)
         elif all(isinstance(item, basestring) for item in index):
-            return Dataset(((item, self[item]) for item in index))
+            return self.sub(keys=index)
         elif isinstance(index, tuple):
             if len(index) != 2:
                 raise KeyError("Invalid index for Dataset: %s" % repr(index))
 
             i0, i1 = index
             if isinstance(i0, basestring):
-                return self[i1, i0]
+                return self[i0][i1]
             elif isinstance(i1, basestring):
                 return self[i1][i0]
             elif np.iterable(i0) and isinstance(i0[0], basestring):
                 return self[i1, i0]
-            elif np.iterable(i1) and all(isinstance(item, basestring) for item
-                                         in i1):
+            elif np.iterable(i1) and all(isinstance(item, basestring) for item in i1):
                 keys = i1
             else:
                 keys = Datalist(self.keys())[i1]
                 if isinstance(keys, basestring):
                     return self[i1][i0]
-            return Dataset((k, self[k][i0]) for k in keys)
+            return Dataset(((k, self[k][i0]) for k in keys), self.name,
+                           self._caption, self.info)
         else:
             return self.sub(index)
 
@@ -5912,9 +5912,8 @@ class Dataset(OrderedDict):
         idx = self.sort_index(order, descending)
         return self[idx]
 
-    def sub(self, index, name='{name}'):
-        """
-        Return a Dataset containing only the cases selected by `index`.
+    def sub(self, index=None, keys=None, name=None):
+        """Access a subset of the data in the Dataset.
 
         Parameters
         ----------
@@ -5922,28 +5921,46 @@ class Dataset(OrderedDict):
             Index for selecting a subset of cases. Can be an valid numpy index
             or a string (the name of a variable in Dataset, or an expression
             to be evaluated in the Dataset's namespace).
+        keys : sequence of str | str
+            Only include items with those keys (default all items). Use a
+            :class:`str` to retrieve a single item directly.
         name : str
             name for the new Dataset.
 
+        Returns
+        -------
+        data : Dataset | data_object
+            Either the :class:`Dataset` with cases restricted to ``index``, or,
+            if ``key`` is a :class:`str`, a single item restricted to ``index``.
+
         Notes
         -----
-        Keep in mind that index is passed on to numpy objects, which means
-        that advanced indexing always returns a copy of the data, whereas
-        basic slicing (using slices) returns a view.
+        Index is passed on to numpy objects, which means that advanced indexing
+        always returns a copy of the data, whereas basic slicing (using slices)
+        returns a view.
         """
-        if isinstance(index, Integral):
-            if index == -1:
-                index = slice(-1, None)
+        if index is None:
+            if keys is None:
+                return self.copy(name)
+            elif isinstance(keys, basestring):
+                return OrderedDict.__getitem__(self, keys)
             else:
-                index = slice(index, index + 1)
-        elif isinstance(index, basestring):
-            index = self.eval(index)
+                items = ((k, OrderedDict.__getitem__(self, k)) for k in keys)
+        elif isinstance(index, Integral):
+            if keys is None:
+                return self.get_case(index)
+            elif isinstance(keys, basestring):
+                return OrderedDict.__getitem__(self, keys)[index]
+            else:
+                return {k: OrderedDict.__getitem__(self, k)[index] for k in keys}
+        else:
+            if isinstance(index, basestring):
+                index = self.eval(index)
+            if keys is None:
+                keys = self.keys()
+            items = ((k, OrderedDict.__getitem__(self, k)[index]) for k in keys)
 
-        if isinstance(index, Var):
-            index = index.x
-
-        return Dataset(((k, v[index]) for k, v in self.iteritems()),
-                       name.format(name=self.name), self._caption, self.info)
+        return Dataset(items, name or self.name, self._caption, self.info)
 
     def tail(self, n=10):
         "Table with the last n cases in the Dataset"
