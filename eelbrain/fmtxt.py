@@ -467,7 +467,7 @@ class FMTextConstant(object):
     def get_tex(self, env):
         return self.tex
 
-    def get_text(self, env):
+    def get_str(self, env):
         return self.text
 
 
@@ -1870,6 +1870,8 @@ class Report(Section):
         if date:
             if date is True:
                 date = str(datetime.date.today())
+            elif isinstance(date, basestring) and '%' in date:
+                date = datetime.datetime.now().strftime(date)
             date = asfmtext(date, r'\date')
         self._author = author
         self._date = date
