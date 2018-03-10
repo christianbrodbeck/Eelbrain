@@ -73,11 +73,11 @@ class BrainFrame(EelbrainFrame):
         # toolbar
         tb = self.CreateToolBar(wx.TB_HORIZONTAL)
         tb.SetToolBitmapSize(size=(32, 32))
-        tb.AddLabelTool(wx.ID_SAVE, "Save", Icon("tango/actions/document-save"))
+        tb.AddTool(wx.ID_SAVE, "Save", Icon("tango/actions/document-save"))
         self.Bind(wx.EVT_TOOL, self.OnSaveAs, id=wx.ID_SAVE)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISave, id=wx.ID_SAVE)
         # color-bar
-        tb.AddLabelTool(ID.PLOT_COLORBAR, "Plot Colorbar", Icon("plot/colorbar"))
+        tb.AddTool(ID.PLOT_COLORBAR, "Plot Colorbar", Icon("plot/colorbar"))
         tb.Bind(wx.EVT_TOOL, self.OnPlotColorBar, id=ID.PLOT_COLORBAR)
         # surface
         self._surf_selector = wx.Choice(
@@ -89,15 +89,15 @@ class BrainFrame(EelbrainFrame):
         self._surf_selector.Bind(
             wx.EVT_CHOICE, self.OnChoiceSurface, source=self._surf_selector)
         # view
-        tb.AddLabelTool(ID.VIEW_LATERAL, "Lateral View", Icon('brain/lateral'))
+        tb.AddTool(ID.VIEW_LATERAL, "Lateral View", Icon('brain/lateral'))
         self.Bind(wx.EVT_TOOL, self.OnSetView, id=ID.VIEW_LATERAL)
-        tb.AddLabelTool(ID.VIEW_MEDIAL, "Medial View", Icon('brain/medial'))
+        tb.AddTool(ID.VIEW_MEDIAL, "Medial View", Icon('brain/medial'))
         self.Bind(wx.EVT_TOOL, self.OnSetView, id=ID.VIEW_MEDIAL)
-        tb.AddLabelTool(ID.SMOOTHING, "Smoothing Steps", Icon('brain/smoothing'))
+        tb.AddTool(ID.SMOOTHING, "Smoothing Steps", Icon('brain/smoothing'))
         self.Bind(wx.EVT_TOOL, self.OnSetSmoothing, id=ID.SMOOTHING)
         # attach
         tb.AddStretchableSpace()
-        tb.AddLabelTool(ID.ATTACH, "Attach", Icon("actions/attach"))
+        tb.AddTool(ID.ATTACH, "Attach", Icon("actions/attach"))
         self.Bind(wx.EVT_TOOL, self.OnAttach, id=ID.ATTACH)
         tb.Realize()
 

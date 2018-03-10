@@ -621,14 +621,10 @@ class SourceFrame(FileFrameChild):
         # Toolbar
         tb = self.InitToolbar(can_open=False)
         tb.AddSeparator()
-        self.up_button = tb.AddLabelTool(wx.ID_UP, "Up",
-                                         Icon("tango/actions/go-up"))
-        self.down_button = tb.AddLabelTool(wx.ID_DOWN, "Down",
-                                           Icon("tango/actions/go-down"))
-        self.back_button = tb.AddLabelTool(wx.ID_BACKWARD, "Back",
-                                           Icon("tango/actions/go-previous"))
-        self.next_button = tb.AddLabelTool(wx.ID_FORWARD, "Next",
-                                           Icon("tango/actions/go-next"))
+        self.up_button = tb.AddTool(wx.ID_UP, "Up", Icon("tango/actions/go-up"))
+        self.down_button = tb.AddTool(wx.ID_DOWN, "Down", Icon("tango/actions/go-down"))
+        self.back_button = tb.AddTool(wx.ID_BACKWARD, "Back", Icon("tango/actions/go-previous"))
+        self.next_button = tb.AddTool(wx.ID_FORWARD, "Next", Icon("tango/actions/go-next"))
         tb.AddStretchableSpace()
         self.InitToolbarTail(tb)
         tb.Realize()

@@ -7,6 +7,7 @@ from time import sleep
 import webbrowser
 
 import wx
+from wx.adv import TaskBarIcon, TBI_DOCK
 
 from .._utils import IS_OSX, IS_WINDOWS
 from .._wxutils import ID, Icon
@@ -413,7 +414,7 @@ class App(wx.App):
             # clear old entries
             while self.window_menu_window_items:
                 item = self.window_menu_window_items.pop()
-                menu.RemoveItem(item)
+                menu.Remove(item)
                 self.Unbind(wx.EVT_MENU, id=item.GetId())
             # add new entries
             for window in wx.GetTopLevelWindows():
@@ -426,7 +427,7 @@ class App(wx.App):
                 self.window_menu_window_items.append(item)
         elif menu.GetTitle() == 'Tools':
             for item in menu.GetMenuItems():
-                menu.RemoveItem(item)
+                menu.Remove(item)
             frame = self._get_parent_gui()
             if frame:
                 frame.MakeToolsMenu(menu)
@@ -675,10 +676,10 @@ def run(block=False):
             app.MainLoop()
 
 
-class DockIcon(wx.TaskBarIcon):
+class DockIcon(TaskBarIcon):
     # http://stackoverflow.com/a/38249390/166700
     def __init__(self, app):
-        wx.TaskBarIcon.__init__(self, iconType=wx.TBI_DOCK)
+        TaskBarIcon.__init__(self, iconType=TBI_DOCK)
         self.app = app
 
         # Set the image

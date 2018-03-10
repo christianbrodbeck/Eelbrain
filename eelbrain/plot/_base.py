@@ -1955,7 +1955,7 @@ class ColorBarMixin(object):
         import wx
         from .._wxutils import ID, Icon
 
-        tb.AddLabelTool(ID.PLOT_COLORBAR, "Plot Colorbar", Icon("plot/colorbar"))
+        tb.AddTool(ID.PLOT_COLORBAR, "Plot Colorbar", Icon("plot/colorbar"))
         tb.Bind(wx.EVT_TOOL, self.__OnPlotColorBar, id=ID.PLOT_COLORBAR)
 
     def __OnPlotColorBar(self, event):

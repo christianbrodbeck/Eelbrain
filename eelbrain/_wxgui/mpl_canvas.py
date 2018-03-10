@@ -75,7 +75,7 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
 
     def ChangeCursor(self, event):
         "http://matplotlib.sourceforge.net/examples/user_interfaces/wxcursor_demo.html"
-        self.SetCursor(wx.StockCursor(wx.CURSOR_CROSS))
+        self.SetCursor(wx.Cursor(wx.CURSOR_CROSS))
 
     def Copy(self):
         # By default, copy PDF
@@ -169,10 +169,10 @@ class CanvasFrame(EelbrainFrame):
     def FillToolBar(self, tb, eelfigure):
         "Subclass should call this after adding their own items"
         if hasattr(self.Parent, 'attach'):
-            tb.AddLabelTool(ID.ATTACH, "Attach", Icon("actions/attach"))
+            tb.AddTool(ID.ATTACH, "Attach", Icon("actions/attach"))
             self.Bind(wx.EVT_TOOL, self.OnAttach, id=ID.ATTACH)
 
-        tb.AddLabelTool(wx.ID_SAVE, "Save", Icon("tango/actions/document-save"))
+        tb.AddTool(wx.ID_SAVE, "Save", Icon("tango/actions/document-save"))
         self.Bind(wx.EVT_TOOL, self.OnSaveAs, id=wx.ID_SAVE)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISave, id=wx.ID_SAVE)
 
@@ -186,10 +186,10 @@ class CanvasFrame(EelbrainFrame):
 
         # right-most part
         tb.AddStretchableSpace()
-        tb.AddLabelTool(ID.ATTACH, "Attach", Icon("actions/attach"))
+        tb.AddTool(ID.ATTACH, "Attach", Icon("actions/attach"))
         self.Bind(wx.EVT_TOOL, self.OnAttach, id=ID.ATTACH)
         if self.__doc__:
-            tb.AddLabelTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
+            tb.AddTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
             self.Bind(wx.EVT_TOOL, self.OnHelp, id=wx.ID_HELP)
 
     def _fill_toolbar(self, tb):

@@ -682,10 +682,10 @@ class Frame(FileFrame):
         tb.Bind(wx.EVT_CHOICE, self.OnPageChoice)
 
         # --> forward / backward
-        self.back_button = tb.AddLabelTool(wx.ID_BACKWARD, "Back",
+        self.back_button = tb.AddTool(wx.ID_BACKWARD, "Back",
                                            Icon("tango/actions/go-previous"))
         self.Bind(wx.EVT_TOOL, self.OnBackward, id=wx.ID_BACKWARD)
-        self.next_button = tb.AddLabelTool(wx.ID_FORWARD, "Next",
+        self.next_button = tb.AddTool(wx.ID_FORWARD, "Next",
                                            Icon("tango/actions/go-next"))
         self.Bind(wx.EVT_TOOL, self.OnForward, id=wx.ID_FORWARD)
         tb.AddSeparator()
@@ -710,7 +710,7 @@ class Frame(FileFrame):
         tb.AddControl(button)
 
         # Info
-        tb.AddLabelTool(wx.ID_INFO, 'Info', Icon("actions/info"))
+        tb.AddTool(wx.ID_INFO, 'Info', Icon("actions/info"))
         self.Bind(wx.EVT_TOOL, self.OnInfo, id=wx.ID_INFO)
 
         # --> Help

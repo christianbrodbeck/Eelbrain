@@ -15,7 +15,7 @@ dependencies:
 - tqdm >= 4.19
 - keyring >= 5
 - pillow
-- wxpython == 3
+- wxpython >=4
 - numpy >= 1.11
 - scipy >= 0.17
 - nibabel >= 2.0

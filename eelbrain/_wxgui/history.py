@@ -222,24 +222,22 @@ class FileFrame(EelbrainFrame):
         tb = self.CreateToolBar(wx.TB_HORIZONTAL)
         tb.SetToolBitmapSize(size=(32, 32))
 
-        tb.AddLabelTool(wx.ID_SAVE, "Save", Icon("tango/actions/document-save"),
-                        shortHelp="Save")
+        tb.AddTool(wx.ID_SAVE, "Save", Icon("tango/actions/document-save"),
+                   shortHelp="Save")
         self.Bind(wx.EVT_TOOL, self.OnSave, id=wx.ID_SAVE)
-        tb.AddLabelTool(wx.ID_SAVEAS, "Save As", Icon("tango/actions/document-save-as"),
-                        shortHelp="Save As")
+        tb.AddTool(wx.ID_SAVEAS, "Save As", Icon("tango/actions/document-save-as"),
+                   shortHelp="Save As")
         self.Bind(wx.EVT_TOOL, self.OnSaveAs, id=wx.ID_SAVEAS)
         if can_open:
-            tb.AddLabelTool(wx.ID_OPEN, "Load", Icon("tango/actions/document-open"),
-                            shortHelp="Open Rejections")
+            tb.AddTool(wx.ID_OPEN, "Load", Icon("tango/actions/document-open"),
+                       shortHelp="Open Rejections")
             self.Bind(wx.EVT_TOOL, self.OnOpen, id=wx.ID_OPEN)
-        tb.AddLabelTool(ID.UNDO, "Undo", Icon("tango/actions/edit-undo"),
-                        shortHelp="Undo")
-        tb.AddLabelTool(ID.REDO, "Redo", Icon("tango/actions/edit-redo"),
-                        shortHelp="Redo")
+        tb.AddTool(ID.UNDO, "Undo", Icon("tango/actions/edit-undo"), shortHelp="Undo")
+        tb.AddTool(ID.REDO, "Redo", Icon("tango/actions/edit-redo"), shortHelp="Redo")
         return tb
 
     def InitToolbarTail(self, tb):
-        tb.AddLabelTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
+        tb.AddTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
         self.Bind(wx.EVT_TOOL, self.OnHelp, id=wx.ID_HELP)
 
     def CanRedo(self):
