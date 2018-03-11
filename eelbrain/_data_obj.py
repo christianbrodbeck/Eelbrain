@@ -374,24 +374,20 @@ def hasrandom(x):
     return False
 
 
-def as_case_identifier(x, sub=None, ds=None):
+def as_case_identifier(x, ds=None):
     "Coerce input to a variable that can identify each of its cases"
     if isinstance(x, str):
         if ds is None:
-            err = ("Parameter was specified as string, but no Dataset was "
-                   "specified")
-            raise TypeError(err)
+            raise TypeError("Parameter was specified as string, but no Dataset "
+                            "was specified")
         x = ds.eval(x)
-
-    if sub is not None:
-        x = x[sub]
 
     if isinstance(x, Var):
         n = len(x.values)
     elif isinstance(x, Factor):
-        n = len(x.n_cells)
+        n = x.n_cells
     elif isinstance(x, Interaction):
-        n = set(map(tuple, x.as_effects))
+        n = len(set(x))
     else:
         raise TypeError("Need a Var, Factor or Interaction to identify cases, "
                         "got %s" % repr(x))
@@ -798,11 +794,7 @@ def align(d1, d2, i1='index', i2=None, out='data'):
         i2 = i1
     i1 = as_case_identifier(i1, ds=d1)
     i2 = as_case_identifier(i2, ds=d2)
-
-    if not isinstance(i1, (Var, Factor, Interaction)):
-        raise TypeError("i1 and i2 need to be data-objects, got: \n"
-                        "i1=%r\ni2=%r" % (i1, i2))
-    elif type(i1) is not type(i2):
+    if type(i1) is not type(i2):
         raise TypeError("i1 and i2 need to be of the same type, got: \n"
                         "i1=%r\ni2=%r" % (i1, i2))
 
@@ -6141,8 +6133,11 @@ class Interaction(_Effect):
         self.is_categorial = state['is_categorial']
         # secondary attributes
         self._n_cases = len(self.base[0])
-        self.nestedin = EffectList({e.nestedin for e in self.base if
-                                    isinstance(e, NestedEffect)})
+        self.nestedin = EffectList()
+        for e in self.base:
+            if (isinstance(e, NestedEffect) and
+                    not any(np.all(e.nestedin == ne) for ne in self.nestedin)):
+                self.nestedin.append(e.nestedin)
         self.base_names = [str(f.name) for f in self.base]
         self.name = ' x '.join(self.base_names)
         self.random = False
@@ -6310,8 +6305,11 @@ def box_cox_transform(X, p, name=None):
 class NestedEffect(_Effect):
 
     def __init__(self, effect, nestedin):
-        if not iscategorial(nestedin):
-            raise TypeError("Effects can only be nested in categorial base")
+        if not isinstance(nestedin, (Factor, Interaction)):
+            raise TypeError("Nested in %r; Effects can only be nested in Factor "
+                            "or Interaction" % (dataobj_repr(nestedin),))
+        elif not iscategorial(nestedin):
+            raise ValueError("Effects can only be nested in categorial base")
 
         self.effect = effect
         self.nestedin = nestedin
@@ -6461,20 +6459,14 @@ class Model(object):
                 (n_cases, df))
 
         # beta indices
-        beta_index = {}
-        i = 1
         for e in effects:
             if isinstance(e, Factor) and len(e.cells) == 1:
                 raise ValueError("The Factor %s has only one level (%s). The "
                                  "intercept is implicit in each model and "
                                  "should not be specified explicitly."
                                  % (dataobj_repr(e), e.cells[0]))
-            k = i + e.df
-            beta_index[e] = slice(i, k)
-            i = k
 
         self.effects = effects
-        self.beta_index = beta_index
         self.df = df
         self._init_secondary()
 
@@ -6485,12 +6477,11 @@ class Model(object):
 
     def __setstate__(self, state):
         self.effects = state['effects']
-        self.beta_index = state['beta_index']
         self.df = sum(e.df for e in self.effects) + 1  # intercept
         self._init_secondary()
 
     def __getstate__(self):
-        return {'effects': self.effects, 'beta_index': self.beta_index}
+        return {'effects': self.effects}
 
     def __repr__(self):
         names = self.effects.names()
@@ -8401,8 +8392,8 @@ class SourceSpace(Dimension):
                 x_rh = labels_rh[self.rh_vertices]
                 x_rh[x_rh >= 0] += len(names_lh)
                 names = chain(('unknown-lh', 'unknown-rh'),
-                              (name + '-lh' for name in names_lh),
-                              (name + '-rh' for name in names_rh))
+                              (name.decode('utf-8') + '-lh' for name in names_lh),
+                              (name.decode('utf-8') + '-rh' for name in names_rh))
                 self.parc = Factor(np.hstack((x_lh, x_rh)), parc,
                                    labels={i: name for i, name in
                                            enumerate(names, -2)})

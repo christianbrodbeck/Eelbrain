@@ -2,7 +2,7 @@
 from copy import deepcopy
 from itertools import chain, product
 from operator import (
-    add, iadd, sub, isub, mul, imul, div, idiv, floordiv, ifloordiv, mod, imod)
+    add, iadd, sub, isub, mul, imul, truediv, itruediv, floordiv, ifloordiv, mod, imod)
 import os
 import pickle
 import shutil
@@ -38,7 +38,7 @@ from eelbrain._utils.testing import (
 OPERATORS = ((add, iadd, '+'),
              (sub, isub, '-'),
              (mul, imul, '*'),
-             (div, idiv, '/'),
+             (truediv, itruediv, '/'),
              (floordiv, ifloordiv, '//'),
              (mod, imod, '%'))
 
