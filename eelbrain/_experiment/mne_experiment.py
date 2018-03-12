@@ -38,6 +38,7 @@ from .. import plot
 from .. import save
 from .. import table
 from .. import testnd
+from .._config import CONFIG
 from .._data_obj import (
     Datalist, Dataset, Factor, Var,
     align, align1, all_equal, as_legal_dataset_key,
@@ -3719,7 +3720,8 @@ class MneExperiment(FileTree):
             lms = []
             dss = []
             for subject in tqdm(self, "Loading stage 1 models",
-                                len(self.get_field_values('subject'))):
+                                len(self.get_field_values('subject')),
+                                disable=CONFIG['tqdm']):
                 if test_obj.model is None:
                     ds = self.load_epochs_stc(subject, sns_baseline,
                                               src_baseline, morph=True,
@@ -3774,7 +3776,8 @@ class MneExperiment(FileTree):
         n_trials_dss = []
         subjects = self.get_field_values('subject')
         n_subjects = len(subjects)
-        for _ in tqdm(self, "Loading data", n_subjects, unit='subject'):
+        for _ in tqdm(self, "Loading data", n_subjects, unit='subject',
+                      disable=CONFIG['tqdm']):
             ds = self.load_evoked_stc(None, sns_baseline, src_baseline, ind_ndvar=True)
             src = ds.pop('src')
             n_trials_dss.append(ds.copy())

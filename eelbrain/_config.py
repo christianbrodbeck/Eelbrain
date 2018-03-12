@@ -15,6 +15,7 @@ CONFIG = {
     'prompt_toolkit': True,
     'animate': True,
     'nice': 0,
+    'tqdm': False,  # disable=CONFIG['tqdm']
 }
 
 
@@ -28,6 +29,7 @@ def configure(
         prompt_toolkit=None,
         animate=None,
         nice=None,
+        tqdm=None,
 ):
     """Set basic configuration parameters for the current session
 
@@ -69,6 +71,8 @@ def configure(
     nice : int [0, 19]
         Scheduling priority for muliprocessing (larger number yields more to
         other processes).
+    tqdm : bool
+        Enable or disable :mod:`tqdm` progress bars.
     """
     # don't change values before raising an error
     new = {}
@@ -110,5 +114,7 @@ def configure(
         if not 0 <= nice < 20:
             raise ValueError("nice=%i; needs to be in range [0, 19]" % (nice,))
         new['nice'] = nice
+    if tqdm is not None:
+        new['tqdm'] = not tqdm
 
     CONFIG.update(new)

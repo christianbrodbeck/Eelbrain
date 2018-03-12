@@ -2910,7 +2910,8 @@ def distribution_worker(dist_array, dist_shape, in_queue, kill_beacon):
     dist = np.frombuffer(dist_array, np.float64, n)
     dist.shape = dist_shape
     samples = dist_shape[0]
-    for i in trange(samples, desc="Permutation test", unit=' permutations'):
+    for i in trange(samples, desc="Permutation test", unit=' permutations',
+                    disable=CONFIG['tqdm']):
         dist[i] = in_queue.get()
         if kill_beacon.is_set():
             return
@@ -3104,7 +3105,8 @@ def distribution_worker_me(dist_arrays, dist_shape, in_queue, kill_beacon):
     dists = [d if d is None else np.frombuffer(d, np.float64, n).reshape(dist_shape)
              for d in dist_arrays]
     samples = dist_shape[0]
-    for i in trange(samples, desc="Permutation test", unit=' permutations'):
+    for i in trange(samples, desc="Permutation test", unit=' permutations',
+                    disable=CONFIG['tqdm']):
         for dist, v in izip(dists, in_queue.get()):
             if dist is not None:
                 dist[i] = v
