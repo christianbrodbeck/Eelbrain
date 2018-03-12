@@ -2481,7 +2481,7 @@ class YLimMixin(object):
         for p in self.__plots:
             # decimate overlapping ticklabels
             locs = p.ax.yaxis.get_ticklocs()
-            we = tuple(l.get_window_extent() for l in p.ax.yaxis.get_ticklabels())
+            we = tuple(l.get_window_extent(self.canvas.renderer) for l in p.ax.yaxis.get_ticklabels())
             start = 0
             step = 1
             locs_list = list(locs) if 0 in locs else None
