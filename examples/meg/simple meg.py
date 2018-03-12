@@ -23,9 +23,9 @@ raw_path = os.path.join(datapath, 'MEG', 'sample',
 ds = load.fiff.events(raw_path)
 
 # print the first 10 events to check what we loaded
-print ds[:10]
+print(ds[:10])
 # check how many events of which trigger we have
-print table.frequencies('trigger', ds=ds)
+print(table.frequencies('trigger', ds=ds))
 
 # retrieve the trigger variable form the dataset for easier access
 trigger = ds['trigger']
@@ -38,11 +38,11 @@ modality_labels = {1: 'A', 2:'A', 3:'V', 4:'V', 5:'None', 32:'None'}
 ds['modality'] = Factor(trigger, labels=modality_labels)
 
 # print the first 10 events with the new labels
-print ds[:10]
+print(ds[:10])
 # print a nicer table with event frequencies
-print table.frequencies('side', 'modality', ds=ds)
+print(table.frequencies('side', 'modality', ds=ds))
 # don't print None cells
-print table.frequencies('side', 'modality', ds=ds, sub="modality != 'None'")
+print(table.frequencies('side', 'modality', ds=ds, sub="modality != 'None'"))
 
 # Extract a subset of events for which to load data
 ds_sub = ds.sub("modality != 'None'")
@@ -57,7 +57,7 @@ ds_sub = ds.sub("modality != 'None'")
 ds_sub = load.fiff.add_epochs(ds_sub, -0.1, 0.6, baseline=(None, 0),
                               reject=3e-12, sysname='neuromag306mag')
 # check how many events are left
-print table.frequencies('modality', ds=ds_sub)
+print(table.frequencies('modality', ds=ds_sub))
 
 # Plot a butterfly plot with flexible topography of the grand average
 plot.TopoButterfly('meg', ds=ds_sub)
@@ -70,9 +70,9 @@ res = testnd.ttest_ind('meg', 'side', 'L', 'R', sub="modality == 'V'",
                         ds=ds_sub, samples=100, pmin=0.05, tstart=0,
                         tstop=0.4, mintime=0.01)
 # show parameters for all clusters
-print res.clusters
+print(res.clusters)
 # show parameters for cluster with p <= 0.1 (res.clusters is a Dataset)
-print res.clusters.sub("p <= 0.1")
+print(res.clusters.sub("p <= 0.1"))
 # plot the significant clusters
 p = plot.TopoArray(res)
 p.set_topo_ts(0.1, 0.17, 0.26)

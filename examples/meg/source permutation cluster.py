@@ -61,7 +61,7 @@ section.add_figure("All clusters", cluster_table)
 
 # plot clusters with p values smaller than 0.25 separately
 clusters = res.clusters.sub("p < 0.25")
-for i in xrange(clusters.n_cases):
+for i in range(clusters.n_cases):
     p = clusters[i, 'p']
 
     # add a section with appropriate title
