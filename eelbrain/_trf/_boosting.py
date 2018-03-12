@@ -243,7 +243,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
 
     # progress bar
     pbar = tqdm(desc="Boosting %i signals" % n_y if n_y > 1 else "Boosting",
-                total=n_y * 10)
+                total=n_y * 10, disable=CONFIG['tqdm'])
     # result containers
     res = np.empty((3, n_y))  # r, rank-r, error
     h_x = np.empty((n_y, n_x, trf_length))
