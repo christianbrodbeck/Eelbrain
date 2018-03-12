@@ -1091,17 +1091,13 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
 def find_factors(obj):
     "Return the list of all factors contained in obj"
     if isinstance(obj, EffectList):
-        f = set()
-        for e in obj:
-            f.update(find_factors(e))
-        return EffectList(f)
+        f = OrderedDict((id(f), f) for e in obj for f in find_factors(e))
+        return EffectList(f.values())
     elif isuv(obj):
         return EffectList([obj])
     elif isinstance(obj, Model):
-        f = set()
-        for e in obj.effects:
-            f.update(find_factors(e))
-        return EffectList(f)
+        f = OrderedDict((id(f), f) for e in obj.effects for f in find_factors(e))
+        return EffectList(f.values())
     elif isinstance(obj, NestedEffect):
         return find_factors(obj.effect)
     elif isinstance(obj, Interaction):

@@ -54,7 +54,7 @@ def hopkins_ems(x):
             "Need at least one random effect in fully specified model "
             "(got %s)" % x.name)
 
-    return {e: _find_hopkins_ems(e, x) for e in x.effects}
+    return {id(e): _find_hopkins_ems(e, x) for e in x.effects}
 
 
 def _hopkins_ems_array(x):
@@ -210,7 +210,7 @@ class LM(object):
         for e in X.effects:
             MS = MSs[e]
             if e_ms:
-                e_EMS = e_ms[e]
+                e_EMS = e_ms[id(e)]
                 df_d = sum(c.df for c in e_EMS)
                 MS_d = sum(MSs[c] for c in e_EMS)
                 e_ms_name = ' + '.join(repr(c) for c in e_EMS)
@@ -469,12 +469,11 @@ class _BalancedMixedNDANOVA(_BalancedNDANOVA):
     """
     def __init__(self, x):
         e_ms = hopkins_ems(x)
-        df_den = {e: sum(e_.df for e_ in e_ms[e]) for e in x.effects}
-        effects = tuple(e for e in x.effects if df_den[e])
-        dfs_denom = [df_den[e] for e in effects]
+        df_den = tuple(sum(e_.df for e_ in e_ms[id(e)]) for e in x.effects)
+        keep = tuple(i for i, df in enumerate(df_den) if df)
+        effects = tuple(x.effects[i] for i in keep)
+        dfs_denom = tuple(df_den[i] for i in keep)
         _BalancedNDANOVA.__init__(self, x, effects, dfs_denom)
-
-        self.e_ms = e_ms
         self._e_ms_array = _hopkins_ems_array(x)
 
     def _map_balanced(self, y, flat_f_map, x_full, xsinv):
@@ -487,7 +486,7 @@ class _IncrementalNDANOVA(_NDANOVA):
         comparisons = IncrementalComparisons(x)
         if comparisons.mixed:
             dfs_denom = tuple(comparisons.models[i].df - 1 for i in
-                              (comparisons.ems_idx[e_test] for e_test in
+                              (comparisons._ems_idx[id(e_test)] for e_test in
                                comparisons.effects))
         else:
             dfs_denom = (x.df_error,) * len(comparisons.effects)
@@ -563,12 +562,16 @@ class _IncrementalNDANOVA(_NDANOVA):
             np.divide(SS_res[0], self.x.df_error, MS_e)
         for i, (e_test, i1, i0) in enumerate(self._comparisons.comparisons):
             if self._comparisons.mixed:
-                i_ems = self._comparisons.ems_idx[e_test]
+                i_ems = self._comparisons._ems_idx[id(e_test)]
                 np.subtract(SS_res[self._full_ss_i], SS_res[i_ems], MS_e)
                 np.divide(MS_e, self.dfs_denom[i], MS_e)
             np.subtract(SS_res[i0], SS_res[i1], SS_diff)
             np.divide(SS_diff, e_test.df, MS_diff)
             np.divide(MS_diff, MS_e, flat_f_map[i])
+
+
+def effect_id(effects):
+    return tuple(map(id, effects))
 
 
 class IncrementalComparisons(object):
@@ -602,36 +605,40 @@ class IncrementalComparisons(object):
         self.models = {0: x}  # int -> Model
         relevant_models = set()
         self.skipped = []
-        model_idxs = {tuple(x.effects): 0}  # effect tuple -> ind
+        model_idxs = {effect_id(x.effects): 0}  # effect tuple -> ind
         next_idx = 1
-        self.ems_idx = {}
+        self._ems_idx = {}
 
         if is_mixed:
             ems = hopkins_ems(x)
             # find relevant models for E(MS) computation
-            for e_test, e_ms_effects in ems.items():
+            for e_test in x.effects:
+                e_ms_effects = ems[id(e_test)]
                 if not e_ms_effects:
                     idx = None
-                elif e_ms_effects in model_idxs:
-                    idx = model_idxs[e_ms_effects]
                 else:
-                    idx = model_idxs[e_ms_effects] = next_idx
-                    next_idx += 1
-                    self.models[idx] = Model(e_ms_effects)
-                    relevant_models.add(idx)
-                self.ems_idx[e_test] = idx
+                    id_ = effect_id(e_ms_effects)
+                    if id_ in model_idxs:
+                        idx = model_idxs[id_]
+                    else:
+                        idx = model_idxs[id_] = next_idx
+                        next_idx += 1
+                        self.models[idx] = Model(e_ms_effects)
+                        relevant_models.add(idx)
+                self._ems_idx[id(e_test)] = idx
 
         # Find comparisons for each effect
         for e_test in x.effects:
             model0_effects = tuple(e for e in x.effects if e is not e_test and
                                    not is_higher_order_effect(e, e_test))
+            model0_id = effect_id(model0_effects)
 
             # get model 0
-            if model0_effects in model_idxs:
-                idx0 = model_idxs[model0_effects]
+            if model0_id in model_idxs:
+                idx0 = model_idxs[model0_id]
                 model0 = self.models[idx0]
             else:
-                idx0 = model_idxs[model0_effects] = next_idx
+                idx0 = model_idxs[model0_id] = next_idx
                 next_idx += 1
                 if len(model0_effects):
                     model0 = Model(model0_effects)
@@ -647,7 +654,7 @@ class IncrementalComparisons(object):
             if e_test.df > df_res_0:
                 self.skipped.append((e_test, "overspecified"))
                 continue
-            elif is_mixed and self.ems_idx[e_test] is None:
+            elif is_mixed and self._ems_idx[id(e_test)] is None:
                 self.skipped.append((e_test, "no E(MS)"))
                 continue
             elif idx0 not in self.models:
@@ -655,10 +662,11 @@ class IncrementalComparisons(object):
 
             # get model 1
             model1_effects = model0_effects + (e_test,)
-            if model1_effects in model_idxs:
-                idx1 = model_idxs[model1_effects]
+            model1_id = effect_id(model1_effects)
+            if model1_id in model_idxs:
+                idx1 = model_idxs[model1_id]
             else:
-                idx1 = model_idxs[model1_effects] = next_idx
+                idx1 = model_idxs[model1_id] = next_idx
                 next_idx += 1
                 self.models[idx1] = Model(model1_effects)
 
@@ -679,11 +687,11 @@ class IncrementalComparisons(object):
         out = ["Incremental comparisons:"]
         for e_test, i1, i0 in self.comparisons:
             out.append("  %s > %s" % (e_test.name, self.models[i0].name))
-        if self.ems_idx:
+        if self._ems_idx:
             out.append("E(MS):")
             for e_test, i1, i0 in self.comparisons:
-                if e_test in self.ems_idx:
-                    ems = self.ems_idx[e_test]
+                if id(e_test) in self._ems_idx:
+                    ems = self._ems_idx[id(e_test)]
                     out.append("  %s: %s" % (e_test.name, "N/A" if ems is None else self.models[ems].name))
         return '\n'.join(out)
 
@@ -852,7 +860,7 @@ class ANOVA(object):
                 lm1 = lms[i1]
 
                 if is_mixed:
-                    lm_ems = lms[comparisons.ems_idx[e_test]]
+                    lm_ems = lms[comparisons._ems_idx[id(e_test)]]
                     ms_e = lm_ems.MS_model
                     df_e = lm_ems.df_model
                 else:

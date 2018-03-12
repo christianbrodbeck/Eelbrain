@@ -23,8 +23,7 @@ n_samples : None | int
 from datetime import datetime, timedelta
 from itertools import chain
 from math import ceil
-from multiprocessing import Process, Event
-from multiprocessing.queues import SimpleQueue
+from multiprocessing import Process, Event, SimpleQueue
 from multiprocessing.sharedctypes import RawArray
 import logging
 import operator
