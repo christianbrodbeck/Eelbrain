@@ -1257,8 +1257,11 @@ class SequencePlotter(object):
                 cmap_data = ndvar
             b.close()
 
-        if column_header is True and orientation == 'horizontal':
-            column_header = self._get_frame_labels()
+        if column_header is True:
+            if orientation == 'horizontal':
+                column_header = self._get_frame_labels()
+            else:
+                column_header = False
 
         if transpose:
             im_rows = zip(*im_rows)
