@@ -80,14 +80,14 @@ class Streamer(object):
         self._imax = len(tokens) - 1
         self.eof = False
 
-    def __iter__(self):
-        return self
-
     @property
     def current(self):
         return self._tokens[self._i]
 
-    def next(self, increment=1):
+    def __iter__(self):
+        return self
+
+    def __next__(self, increment=1):
         self._i += increment
         if self._i >= self._imax:
             if self._i == self._imax:
@@ -185,7 +185,8 @@ def parse_spm(streamer, process_op=True):
 def parse_cell(streamer):
     cell = [next(streamer)]
     while streamer.lookahead() == '|':
-        cell.append(streamer.next(2))
+        next(streamer)
+        cell.append(next(streamer))
     if len(cell) == 1:
         return cell[0]
     else:
