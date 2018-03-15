@@ -1,4 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+import sys
+
 from nose.tools import eq_, ok_, assert_not_equal
 import numpy as np
 
@@ -51,5 +53,8 @@ def test_permutation_sign_flip():
     assert_not_equal(res[0], res[1])
 
     # make sure sequence is stable
-    eq_(list(map(tuple, permute_sign_flip(4, 3))),
-        [(-1, 1, -1, -1), (-1, -1, 1, -1), (1, -1, -1, 1)])
+    if sys.version_info[0] == 3:
+        target = [(1, -1, -1, -1), (-1, -1, -1, 1), (-1, 1, -1, -1)]
+    else:
+        target = [(-1, 1, -1, -1), (-1, -1, 1, -1), (1, -1, -1, 1)]
+    eq_(list(map(tuple, permute_sign_flip(4, 3))), target)

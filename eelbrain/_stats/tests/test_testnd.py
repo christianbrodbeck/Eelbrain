@@ -1,6 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import pickle
 import logging
+import sys
 
 from nose.tools import (eq_, ok_, assert_equal, assert_not_equal,
                         assert_greater, assert_greater_equal, assert_less,
@@ -302,8 +303,11 @@ def test_clusterdist():
     assert_array_equal(peaks, tgt)
     # testnd permutation result
     res = testnd.ttest_1samp(y, tfce=True, samples=3)
-    assert_allclose(np.sort(res._cdist.dist),
-                    [77.5852307, 119.1976153, 217.6270428])
+    if sys.version_info[0] == 3:
+        target = [96.84232967, 205.83207424, 425.65942084]
+    else:
+        target = [77.5852307, 119.1976153, 217.6270428]
+    assert_allclose(np.sort(res._cdist.dist), target)
 
     # parc with TFCE on unconnected dimension
     configure(False)
