@@ -121,7 +121,7 @@ def test_t_ind():
     ds = datasets.get_uts(True)
     y = ds.eval("utsnd.x")
     n_cases = len(y)
-    n = n_cases / 2
+    n = n_cases // 2
     groups = (np.arange(n_cases) < n)
     groups.dtype = np.int8
 
