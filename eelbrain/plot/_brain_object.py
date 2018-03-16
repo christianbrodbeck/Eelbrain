@@ -6,6 +6,7 @@ import os
 import sys
 from tempfile import mkdtemp
 from time import time, sleep
+from warnings import warn
 
 from matplotlib.colors import ListedColormap
 from mne.io.constants import FIFF
@@ -32,8 +33,9 @@ try:
     from traits.trait_base import ETSConfig
     ETSConfig.toolkit = 'wx'
     import surfer
-except ImportError:
+except ImportError as exception:
     from . import _mock_surfer as surfer
+    warn("Error importing PySurfer: %s" % exception)
 else:
     if first_import:
         reset_logger(surfer.utils.logger)
@@ -901,4 +903,8 @@ class Brain(TimeSlicer, surfer.Brain):
         self.__time_index = index
 
 
-Brain.add_label.__func__.__doc__ = surfer.Brain.add_label.__doc__
+if hasattr(surfer.Brain, 'add_label'):
+    try:
+        Brain.add_label.__doc__ = surfer.Brain.add_label.__doc__  # py3
+    except AttributeError:
+        Brain.add_label.__func__.__doc__ = surfer.Brain.add_label.__doc__
