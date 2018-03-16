@@ -3,6 +3,15 @@ Changes
 
 .. currentmodule:: eelbrain
 
+New in 0.28
+-----------
+
+* API changes:
+
+  - :class:`plot.Histogram`: following :mod:`matplotlib`, the ``normed``
+    parameter was renamed to ``density``.
+
+
 New in 0.27
 -----------
 

@@ -873,8 +873,8 @@ class _ax_timeplot(object):
                         x_errbars = x + rel_pos[i]
                     else:
                         x_errbars = x
-                    ax.errorbar(x_errbars, y, yerr=spread_values[i], fmt=None, zorder=5,
-                                ecolor=color, linestyle=ls, label=name)
+                    ax.errorbar(x_errbars, y, yerr=spread_values[i], fmt='none',
+                                zorder=5, ecolor=color, linestyle=ls, label=name)
 
         # x-ticks
         if timelabels is not None:
@@ -1101,16 +1101,16 @@ def _difference(data, names):
     return data_differences, diffnames, diffnames_2lines
 
 
-def _ax_histogram(ax, data, normed, test_normality, **kwargs):
+def _ax_histogram(ax, data, density, test_normality, **kwargs):
     """Create normality test figure"""
-    n, bins, patches = ax.hist(data, normed=normed, **kwargs)
+    n, bins, patches = ax.hist(data, density=density, **kwargs)
 
     if test_normality:
         # normal line
         mu = np.mean(data)
         sigma = np.std(data)
         y = mpl.mlab.normpdf(bins, mu, sigma)
-        if not normed:
+        if not density:
             y *= len(data) * np.diff(bins)[0]
         ax.plot(bins, y, 'r--', linewidth=1)
 
@@ -1151,7 +1151,7 @@ class Histogram(EelFigure):
         names of Dataset variables
     pooled : bool
         Add one plot with all values/differences pooled.
-    normed : bool
+    density : bool
         Norm counts to approximate a probability density (default False).
     test : bool
         Test for normality.
@@ -1164,7 +1164,7 @@ class Histogram(EelFigure):
     _name = "Histogram"
 
     def __init__(self, Y, X=None, match=None, sub=None, ds=None, pooled=True,
-                 normed=False, test=False, tight=True, title=None, xlabel=True,
+                 density=False, test=False, tight=True, title=None, xlabel=True,
                  *args, **kwargs):
         ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
 
@@ -1192,7 +1192,7 @@ class Histogram(EelFigure):
         EelFigure.__init__(self, frame_title(ct.Y, ct.X), layout)
 
         if X is None:
-            _ax_histogram(self._axes[0], ct.Y.x, normed, test)
+            _ax_histogram(self._axes[0], ct.Y.x, density, test)
         elif ct.all_within:  # distribution of differences
             data = [v.x for v in ct.get_data()]
             names = ct.cellnames()
@@ -1207,7 +1207,7 @@ class Histogram(EelFigure):
                     ax_i = n_comp * i + (n_comp + 1 - j)
                     ax = self.figure.add_subplot(n_comp, n_comp, ax_i)
                     self._axes.append(ax)
-                    _ax_histogram(ax, difference, normed, test)
+                    _ax_histogram(ax, difference, density, test)
                     if i == 0:
                         ax.set_title(names[j], size=12)
                     if j == n_comp:
@@ -1217,12 +1217,12 @@ class Histogram(EelFigure):
             if pooled and len(names) > 2:
                 ax = self.figure.add_subplot(n_comp, n_comp, n_comp ** 2)
                 self._axes.append(ax)
-                _ax_histogram(ax, pooled_data, normed, test, facecolor='g')
+                _ax_histogram(ax, pooled_data, density, test, facecolor='g')
                 ax.set_title("Pooled Differences")
         else:  # independent measures
             for cell, ax in izip(ct.cells, self._axes):
                 ax.set_title(cellname(cell))
-                _ax_histogram(ax, ct.data[cell].x, normed, test)
+                _ax_histogram(ax, ct.data[cell].x, density, test)
 
         if test:
             self.figure.text(.99, .01, "$^{*}$ Anderson and Darling test "
@@ -1231,7 +1231,7 @@ class Histogram(EelFigure):
                              horizontalalignment='right')
             xlabel = False  # xlabel is used for test result
 
-        if normed:
+        if density:
             self._configure_yaxis('p', 'probability density')
         else:
             self._configure_yaxis('n', 'count')
