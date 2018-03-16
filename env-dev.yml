@@ -1,4 +1,5 @@
 # usage: $ conda env create --file=env-dev.yml
+# need traitsui and pyface >5.1 for WXPython 4
 name: eeldev
 channels:
 - defaults
@@ -25,6 +26,7 @@ dependencies:
 # building
 - cython
 # docs
+- sphinx
 - numpydoc
 - pydocstyle
 # testing
