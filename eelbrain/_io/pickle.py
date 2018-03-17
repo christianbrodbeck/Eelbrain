@@ -8,6 +8,36 @@ from .._data_obj import NDVar
 from .._utils import ui
 
 
+class EelUnpickler(Unpickler):
+
+    def find_class(self, module, name):
+        # Python 3
+        return self.find_global(module, name)
+
+    def find_global(self, module_name, class_name):
+        "Subclass to handle changes in module paths"
+        if module_name == 'eelbrain.vessels.data':
+            module_name = 'eelbrain._data_obj'
+            class_names = {'var': 'Var', 'factor': 'Factor',
+                           'ndvar': 'NDVar',
+                           'datalist': 'Datalist', 'dataset': 'Dataset'}
+            class_name = class_names[class_name]
+        elif module_name.startswith('eelbrain.data.'):
+            if module_name.startswith('eelbrain.data.load'):
+                rev = module_name.replace('.data.load', '.load')
+            elif module_name.startswith('eelbrain.data.stats'):
+                rev = module_name.replace('.data.stats', '._stats')
+            elif module_name.startswith('eelbrain.data.data_obj'):
+                rev = module_name.replace('.data.data_obj', '._data_obj')
+            else:
+                raise NotImplementedError(
+                    "%r / %r" % (module_name, class_name))
+            module_name = rev
+
+        module = import_module(module_name)
+        return getattr(module, class_name)
+
+
 def pickle(obj, dest=None, protocol=HIGHEST_PROTOCOL):
     """Pickle a Python object.
 
@@ -46,28 +76,6 @@ def pickle(obj, dest=None, protocol=HIGHEST_PROTOCOL):
             raise
 
 
-def map_paths(module_name, class_name):
-    "Subclass to handle changes in module paths"
-    if module_name == 'eelbrain.vessels.data':
-        module_name = 'eelbrain._data_obj'
-        class_names = {'var': 'Var', 'factor': 'Factor', 'ndvar': 'NDVar',
-                       'datalist': 'Datalist', 'dataset': 'Dataset'}
-        class_name = class_names[class_name]
-    elif module_name.startswith('eelbrain.data.'):
-        if module_name.startswith('eelbrain.data.load'):
-            rev = module_name.replace('.data.load', '.load')
-        elif module_name.startswith('eelbrain.data.stats'):
-            rev = module_name.replace('.data.stats', '._stats')
-        elif module_name.startswith('eelbrain.data.data_obj'):
-            rev = module_name.replace('.data.data_obj', '._data_obj')
-        else:
-            raise NotImplementedError("%r / %r" % (module_name, class_name))
-        module_name = rev
-
-    module = import_module(module_name)
-    return getattr(module, class_name)
-
-
 def unpickle(file_path=None):
     """Load pickled Python objects from a file.
 
@@ -97,11 +105,8 @@ def unpickle(file_path=None):
                 file_path = new_path
 
     with open(file_path, 'rb') as fid:
-        unpickler = Unpickler(fid)
-        unpickler.find_global = map_paths
-        obj = unpickler.load()
-
-    return obj
+        unpickler = EelUnpickler(fid)
+        return unpickler.load()
 
 
 def update_subjects_dir(obj, subjects_dir, depth=0):
