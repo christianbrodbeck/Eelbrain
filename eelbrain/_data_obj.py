@@ -5658,21 +5658,7 @@ class Dataset(OrderedDict):
         if new in self:
             raise ValueError("Dataset already has variable named %r" % new)
         assert_is_legal_dataset_key(new)
-
-        # update map
-        node = self._OrderedDict__map.pop(old)
-        node[2] = new
-        self._OrderedDict__map[new] = node
-
-        # update dict entry
-        obj = self[old]
-        dict.__delitem__(self, old)
-        dict.__setitem__(self, new, obj)
-
-        # update object name
-        if hasattr(obj, 'name'):
-            obj.name = new
-        self[new] = obj
+        self[new] = self.pop(old)
 
     def repeat(self, repeats, name='{name}'):
         """
