@@ -64,13 +64,13 @@ def log_list_change(log, kind, name, old, new):
 
 def find_epoch_vars(params):
     "Find variables used in a primary epoch definition"
-    out = ()
+    out = set()
     if params.get('sel'):
-        out += find_variables(params['sel'])
+        out.update(find_variables(params['sel']))
     if 'trigger_shift' in params and isinstance(params['trigger_shift'], str):
-        out += (params['trigger_shift'],)
+        out.add(params['trigger_shift'])
     if 'post_baseline_trigger_shift' in params:
-        out += (params['post_baseline_trigger_shift'],)
+        out.add(params['post_baseline_trigger_shift'])
     return out
 
 
@@ -83,17 +83,20 @@ def find_epochs_vars(epochs):
             p = epochs[e]
             if 'sel_epoch' in p:
                 if p['sel_epoch'] in out:
-                    out[e] = out[p['sel_epoch']] + find_epoch_vars(p)
+                    out[e] = find_epoch_vars(p)
+                    out[e].update(out[p['sel_epoch']])
                     todo.remove(e)
             elif 'sub_epochs' in p:
                 if all(se in out for se in p['sub_epochs']):
-                    out[e] = sum((out[se] for se in p['sub_epochs']),
-                                 find_epoch_vars(p))
+                    out[e] = find_epoch_vars(p)
+                    for se in p['sub_epochs']:
+                        out[e].update(out[se])
                     todo.remove(e)
             elif 'collect' in p:
                 if all(se in out for se in p['collect']):
-                    out[e] = sum((out[se] for se in p['collect']),
-                                 find_epoch_vars(p))
+                    out[e] = find_epoch_vars(p)
+                    for se in p['collect']:
+                        out[e].update(out[se])
                     todo.remove(e)
             else:
                 out[e] = find_epoch_vars(p)
@@ -131,7 +134,7 @@ def find_dependent_epochs(epoch, epochs):
 def find_test_vars(params):
     "Find variables used in a test definition"
     if 'model' in params and params['model'] is not None:
-        vs = set(find_variables(params['model']))
+        vs = find_variables(params['model'])
     else:
         vs = set()
 

@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-import parser
+import ast
 
 
 FLOAT_PATTERN = "^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$"
@@ -18,19 +18,7 @@ def find_variables(expr):
         Variables occurring in expr.
     """
     try:
-        parse = parser.expr(expr)
+        st = ast.parse(expr)
     except SyntaxError as error:
         raise ValueError("Invalid expression: %r (%s)" % (expr, error))
-    return _find_vars(parse.totuple())
-
-
-def _find_vars(st):
-    if isinstance(st, str):
-        return ()
-    elif st[0] == 318:
-        if st[1][0] == 1:
-            return st[1][1],
-        else:
-            return ()
-    else:
-        return sum((_find_vars(b) for b in st[1:]), ())
+    return {n.id for n in ast.walk(st) if isinstance(n, ast.Name)}
