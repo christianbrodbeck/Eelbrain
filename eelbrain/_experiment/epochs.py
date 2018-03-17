@@ -206,8 +206,15 @@ class SuperEpoch(Epoch):
                                  "{%s}." % (param, name, param_repr))
             kwargs[param] = values.pop()
 
+        # sessions with preserved order
+        sessions = []
+        for e in sub_epochs:
+            if e.session not in sessions:
+                sessions.append(e.session)
+
         Epoch.__init__(self, name, **kwargs)
-        self.sessions = {e.session for e in sub_epochs}
+
+        self.sessions = sessions
         self.sub_epochs = tuple(e.name for e in sub_epochs)
         self.rej_file_epochs = sum((e.rej_file_epochs for e in sub_epochs), ())
 
