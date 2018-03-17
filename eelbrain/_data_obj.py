@@ -7159,7 +7159,7 @@ class Case(Dimension):
     >>> NDVar([[1, 2], [3, 4]], (Case, Categorial('column', ['1', '2'])))
     <NDVar: 2 case, 2 column>
     """
-    _DIMINDEX_RAW_TYPES = (int, slice, list)
+    _DIMINDEX_RAW_TYPES = (int, slice, list, np.intp)
 
     def __init__(self, n, connectivity='none'):
         Dimension.__init__(self, 'case', connectivity)
