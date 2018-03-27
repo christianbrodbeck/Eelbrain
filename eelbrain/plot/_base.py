@@ -644,7 +644,7 @@ class PlotData(object):
         The processed data to plot (for backwards compatibility).
     dims : tuple of str
         Names of the dimensions.
-    frame_title : str
+    title : str
         Data description for the plot frame.
     """
     def __init__(self, axes, dims, title="unnamed data"):
@@ -780,6 +780,18 @@ class PlotData(object):
 
     @classmethod
     def empty(cls, plots, dims, title):
+        """Empty PlotData object that can be filled by appending to layers
+
+        Parameters
+        ----------
+        plots : int | list of bool
+            Number of plots, or list of booleans indicating for each plot
+            whether its slot is used.
+        dims : tuple of str
+            Names of the dimensions.
+        title : str
+            Data description for the plot frame.
+        """
         if isinstance(plots, int):
             plots = [[] for _ in xrange(plots)]
         else:
@@ -801,8 +813,10 @@ class PlotData(object):
 
     @property
     def y0(self):
-        if self.plot_data and self.plot_data[0]:
-            return self.plot_data[0][0].y
+        for ax in self.plot_data:
+            for layer in ax:
+                return layer.y
+        raise IndexError("%r has no data" % (self,))
 
     @LazyProperty
     def data(self):
