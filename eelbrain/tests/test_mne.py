@@ -251,7 +251,7 @@ def test_source_space():
                 if label == -1:
                     eq_(ss.parc[i], 'unknown' + hemi_tag)
                 else:
-                    eq_(ss.parc[i], names[label] + hemi_tag)
+                    eq_(ss.parc[i], names[label].decode() + hemi_tag)
 
         # connectivity
         conn = ss.connectivity()
