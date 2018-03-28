@@ -118,7 +118,23 @@ _html_alignments = {'l': 'left',
                     'c': 'center'}
 
 _html_reserved_chars = {'<': '&lt;', '>': '&gt;', '&': '&amp;'}
-_html_escape_pattern = re.compile('|'.join(_html_reserved_chars))
+_html_escape_pattern = re.compile('|'.join(map(re.escape, _html_reserved_chars)))
+
+_tex_escape_chars = {
+    '&': r'\&',
+    '%': r'\%',
+    '$': r'\$',
+    '#': r'\#',
+    '_': r'\_',
+    '{': r'\{',
+    '}': r'\}',
+    '~': r'\textasciitilde{}',
+    '^': r'\^{}',
+    '\\': r'\textbackslash{}',
+    '<': r'\textless ',
+    '>': r'\textgreater ',
+}
+_tex_escape_pattern = re.compile('|'.join(map(re.escape, _tex_escape_chars)))
 
 
 def _html_repl(m):
@@ -127,6 +143,14 @@ def _html_repl(m):
 
 def escape_html(text):
     return _html_escape_pattern.sub(_html_repl, text).encode('ascii', 'xmlcharrefreplace')
+
+
+def _tex_repl(m):
+    return _tex_escape_chars[m.group(0)]
+
+
+def escape_tex(text):
+    return _tex_escape_pattern.sub(_tex_repl, text)
 
 
 STYLE = u"""
@@ -593,7 +617,11 @@ class FMTextElement(object):
         return txt
 
     def _get_tex_core(self, env):
-        return self._get_core(env)
+        out = self._get_core(env)
+        if self.tag == 'math':
+            return out
+        else:
+            return escape_tex(out)
 
     def save_html(self, path=None, embed_images=True, meta=None):
         """Save in HTML format
