@@ -877,7 +877,7 @@ class Brain(TimeSlicer, surfer.Brain):
         index = self._time_dim._array_index(t)
         if index == self.__time_index:
             return
-        elif not self._frame.IsShown():
+        elif self._frame is None or not self._frame.IsShown():
             return
         self.set_data_time_index(index)
         self.__time_index = index
