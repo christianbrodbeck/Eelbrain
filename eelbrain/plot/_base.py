@@ -1494,6 +1494,7 @@ class Layout(BaseLayout):
                 raise ValueError("w < axw")
 
         self.w_fixed = w or axw
+        self._margins_arg = margins
 
         if margins is True:
             use_margins = True

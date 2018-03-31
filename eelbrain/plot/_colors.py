@@ -490,7 +490,7 @@ class ColorBar(EelFigure):
         Set the alpha of values below ``threshold`` to 0 (as well as for
         negative values above ``abs(threshold)``).
     ticklocation : 'auto', 'top', 'bottom', 'left', 'right'
-        Where to place ticks and label  on the axis.
+        Where to place ticks and label.
     background : matplotlib color
         Background color (for colormaps including transparency).
     """
@@ -652,8 +652,14 @@ class ColorBar(EelFigure):
         x = self.figure.dpi_scale_trans.transform(x)
         x = self.figure.transFigure.inverted().transform(x)
         pos = ax.get_position()
+        xmin, ymin, width, height = pos.xmin, pos.ymin, pos.width, pos.height
         if self._orientation == 'vertical':
-            ax.set_position((pos.xmin, pos.ymin, x[0], pos.height))
+            if self._layout._margins_arg and 'right' in self._layout._margins_arg:
+                xmin += width - x[0]
+            width = x[0]
         else:
-            ax.set_position((pos.xmin, pos.ymin, pos.width, x[1]))
+            if self._layout._margins_arg and 'top' in self._layout._margins_arg:
+                ymin += height - x[1]
+            height = x[1]
+        ax.set_position((xmin, ymin, width, height))
         return True
