@@ -2752,7 +2752,7 @@ class _ClusterDist:
 
                 # p-values: "the proportion of random partitions that resulted
                 # in a larger test statistic than the observed one" (179)
-                n_larger = np.sum(dist > np.abs(cluster_v[:, None]), 1)
+                n_larger = np.sum(dist >= np.abs(cluster_v[:, None]), 1)
                 cluster_p = n_larger / self.samples
 
                 c_mask = np.empty(self.shape, dtype=np.bool8)
@@ -2785,7 +2785,7 @@ class _ClusterDist:
                 dist = self._aggregate_dist(**sub)
                 idx = np.empty(stat_map.shape, dtype=np.bool8)
                 for v in dist:
-                    cpmap += np.greater(v, stat_map.x, idx)
+                    cpmap += np.greater_equal(v, stat_map.x, idx)
                 cpmap /= self.samples
             dims = stat_map.dims
 
