@@ -2243,7 +2243,7 @@ class _ClusterDist:
         if self.kind == 'tfce':
             cmap = tfce(stat_map, self.tail, self._connectivity)
             cids = None
-            n_clusters = True
+            n_clusters = cmap.max() > 0
         elif self.kind == 'cluster':
             cmap, cids = label_clusters(stat_map, self.threshold, self.tail,
                                         self._connectivity, self._criteria)
@@ -2775,15 +2775,18 @@ class _ClusterDist:
                 else:
                     stat_map = self.parameter_map
 
-            dist = self._aggregate_dist(**sub)
             if sub:
                 stat_map = stat_map.sub(**sub)
 
-            idx = np.empty(stat_map.shape, dtype=np.bool8)
-            cpmap = np.zeros(stat_map.shape)
-            for v in dist:
-                cpmap += np.greater(v, stat_map.x, idx)
-            cpmap /= self.samples
+            if self.dist is None:  # flat stat-map
+                cpmap = np.ones(stat_map.shape)
+            else:
+                cpmap = np.zeros(stat_map.shape)
+                dist = self._aggregate_dist(**sub)
+                idx = np.empty(stat_map.shape, dtype=np.bool8)
+                for v in dist:
+                    cpmap += np.greater(v, stat_map.x, idx)
+                cpmap /= self.samples
             dims = stat_map.dims
 
         info = _cs.cluster_pmap_info()
