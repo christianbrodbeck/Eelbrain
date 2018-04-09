@@ -3569,8 +3569,8 @@ class MneExperiment(FileTree):
         fpath = self.get('src-file', make=True, **state)
         return mne.read_source_spaces(fpath, add_geom)
 
-    def load_test(self, test, tstart, tstop, pmin, parc=None, mask=None,
-                  samples=10000, data='source', sns_baseline=True,
+    def load_test(self, test, tstart=None, tstop=None, pmin=None, parc=None,
+                  mask=None, samples=10000, data='source', sns_baseline=True,
                   src_baseline=None, return_data=False, make=False, **kwargs):
         """Create and load spatio-temporal cluster test results
 
@@ -3579,8 +3579,12 @@ class MneExperiment(FileTree):
         test : None | str
             Test for which to create a report (entry in MneExperiment.tests;
             None to use the test that was specified most recently).
-        tstart, tstop : None | scalar
-            Time window for finding clusters.
+        tstart : None | scalar
+            Beginning of the time window for finding clusters (default is from
+            the beginning of the epoch).
+        tstop : None | scalar
+            End of the time window for finding clusters (default is to the end
+            of the epoch).
         pmin : float | 'tfce' | None
             Kind of test.
         parc : None | str
@@ -4878,7 +4882,7 @@ class MneExperiment(FileTree):
                                 "to recompute: %s", desc)
                 return True
 
-    def make_report(self, test, parc=None, mask=None, pmin=None, tstart=0.15,
+    def make_report(self, test, parc=None, mask=None, pmin=None, tstart=None,
                     tstop=None, samples=10000, sns_baseline=True,
                     src_baseline=None, include=0.2, redo=False, **state):
         """Create an HTML report on spatio-temporal clusters
@@ -4896,9 +4900,11 @@ class MneExperiment(FileTree):
             Equivalent p-value for cluster threshold, or 'tfce' for
             threshold-free cluster enhancement.
         tstart : None | scalar
-            Beginning of the time window for finding clusters.
+            Beginning of the time window for finding clusters (default is from
+            the beginning of the epoch).
         tstop : None | scalar
-            End of the time window for finding clusters.
+            End of the time window for finding clusters (default is to the end
+            of the epoch).
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
             temporal clusters (default 10,000).
@@ -5008,7 +5014,7 @@ class MneExperiment(FileTree):
 
         self._report_test_info(info_section, group_ds or ds, test, res, data)
 
-    def make_report_rois(self, test, parc=None, pmin=None, tstart=0.15, tstop=None,
+    def make_report_rois(self, test, parc=None, pmin=None, tstart=None, tstop=None,
                          samples=10000, sns_baseline=True, src_baseline=False,
                          redo=False, **state):
         """Create an HTML report on ROI time courses
@@ -5023,9 +5029,11 @@ class MneExperiment(FileTree):
             Equivalent p-value for cluster threshold, or 'tfce' for
             threshold-free cluster enhancement.
         tstart : None | scalar
-            Beginning of the time window for finding clusters.
+            Beginning of the time window for finding clusters (default is from
+            the beginning of the epoch).
         tstop : None | scalar
-            End of the time window for finding clusters.
+            End of the time window for finding clusters (default is to the end
+            of the epoch).
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
             temporal clusters (default 1000).
@@ -5110,7 +5118,7 @@ class MneExperiment(FileTree):
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
         report.save_html(dst, meta={'samples': samples})
 
-    def _make_report_eeg(self, test, pmin=None, tstart=0.15, tstop=None,
+    def _make_report_eeg(self, test, pmin=None, tstart=None, tstop=None,
                          samples=10000, baseline=True, include=1, **state):
         # outdated (cache, load_test())
         """Create an HTML report on EEG sensor space spatio-temporal clusters
@@ -5123,9 +5131,11 @@ class MneExperiment(FileTree):
             Equivalent p-value for cluster threshold, or 'tfce' for
             threshold-free cluster enhancement.
         tstart : None | scalar
-            Beginning of the time window for finding clusters.
+            Beginning of the time window for finding clusters (default is from
+            the beginning of the epoch).
         tstop : None | scalar
-            End of the time window for finding clusters.
+            End of the time window for finding clusters (default is to the end
+            of the epoch).
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
             temporal clusters (default 1000).
@@ -5170,7 +5180,7 @@ class MneExperiment(FileTree):
         report.save_html(dst)
 
     def _make_report_eeg_sensors(self, test, sensors=('FZ', 'CZ', 'PZ', 'O1', 'O2'),
-                                 pmin=None, tstart=0.15, tstop=None,
+                                 pmin=None, tstart=None, tstop=None,
                                  samples=10000, baseline=True, redo=False,
                                  **state):
         # outdated (cache)
@@ -5186,9 +5196,11 @@ class MneExperiment(FileTree):
             Equivalent p-value for cluster threshold, or 'tfce' for
             threshold-free cluster enhancement.
         tstart : None | scalar
-            Beginning of the time window for finding clusters.
+            Beginning of the time window for finding clusters (default is from
+            the beginning of the epoch).
         tstop : None | scalar
-            End of the time window for finding clusters.
+            End of the time window for finding clusters (default is to the end
+            of the epoch).
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
             temporal clusters (default 1000).
