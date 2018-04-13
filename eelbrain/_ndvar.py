@@ -28,7 +28,7 @@ from ._stats.connectivity import find_peaks as _find_peaks
 from ._trf._boosting_opt import l1
 
 
-def concatenate(ndvars, dim='time', name=None, tmin=0):
+def concatenate(ndvars, dim='time', name=None, tmin=0, info=None):
     """Concatenate multiple NDVars
 
     Parameters
@@ -44,6 +44,8 @@ def concatenate(ndvars, dim='time', name=None, tmin=0):
     tmin : scalar | 'first'
         Time axis start, only applies when ``dim == 'time'``; default is 0.
         Set ``tmin='first'`` to use ``tmin`` of ``ndvars[0]``.
+    info : dict
+        Info for the returned ``ndvar``.
 
     Returns
     -------
@@ -56,10 +58,11 @@ def concatenate(ndvars, dim='time', name=None, tmin=0):
         ndvars = tuple(ndvars)
         ndvar = ndvars[0]
 
-    if isinstance(ndvars, NDVar):
-        info = ndvars.info
-    else:
-        info = merge_info(ndvars)
+    if info is None:
+        if isinstance(ndvars, NDVar):
+            info = ndvars.info
+        else:
+            info = merge_info(ndvars)
 
     if dim is Case or (isinstance(dim, basestring) and dim == 'case'):
         n = sum(1 if not v.has_case else len(v) for v in ndvars)
