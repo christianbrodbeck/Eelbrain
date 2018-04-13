@@ -119,8 +119,8 @@ def update_subjects_dir(obj, subjects_dir, depth=0):
     subjects_dir : str
         New values for subjects_dir.
     depth : int
-        Recursion depth for examining attributes (default 2). Negative number
-        for exhaustive search.
+        Recursion depth for examining attributes (default 0, i.e. only apply to
+        ``obj`` without recursion). Negative number for exhaustive search.
 
     Notes
     -----
