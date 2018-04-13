@@ -303,13 +303,11 @@ def find_uts_ax_vlim(layers, vlims={}):
             if bottom is None:
                 bottom = bottom_
             elif bottom_ != bottom:
-                raise NotImplementedError("Data layers with incompatible "
-                                          "y-axis limits")
+                bottom = min(bottom, bottom_)
             if top is None:
                 top = top_
             elif top_ != top:
-                raise NotImplementedError("Data layers with incompatible "
-                                          "y-axis limits")
+                top = max(top, top_)
 
     return bottom, top
 
