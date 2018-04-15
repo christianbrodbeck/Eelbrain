@@ -5,12 +5,11 @@ shallow_clone: true
 os: Visual Studio 2015
 
 install:
-  - set PATH=C:\Miniconda-x64;C:\Miniconda-x64\Scripts;%PATH%
   - copy "C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC\bin\vcvars64.bat" "C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC\bin\amd64\vcvarsamd64.bat"  # https://github.com/conda/conda-build/issues/1606
-  - conda config --append channels conda-forge
-  - conda config --append channels christianbrodbeck
-  - conda config --append channels ncil
-  - conda install --yes --quiet --file requirements_dev.txt
+  - C:\Miniconda-x64\Scripts\activate.bat
+  - conda update --yes -n base conda
+  - conda env create -n condaenv --file env-dev3-win.yml
+  - conda activate condaenv
   - python setup.py develop
   - python -c "import mne; mne.datasets.testing.data_path()"
 
