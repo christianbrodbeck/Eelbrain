@@ -401,7 +401,7 @@ def make_html_doc(body, root, resource_dir=None, title=None, meta=None):
                                      body=txt_body)
 
 
-def tex(text, env={}):
+def tex(text, env=None):
     """Create html code for any object with a string representation
 
     Parameters
@@ -413,6 +413,10 @@ def tex(text, env={}):
         Environment for FMTXT compilation.
     """
     if hasattr(text, 'get_tex'):
+        if env is None:
+            env = {'math': False}
+        elif 'math' not in env:
+            env['math'] = False
         return text.get_tex(env)
     else:
         return str(text)
@@ -606,7 +610,13 @@ class FMTextElement(object):
         return self._get_core(env)
 
     def get_tex(self, env):
+        if self.tag == 'math':
+            if env['math']:
+                raise RuntimeError("Nested math tag")
+            env['math'] = True
         txt = self._get_tex_core(env)
+        if self.tag == 'math':
+            env['math'] = False
 
         if self.tag and self.tag not in _TEX_IGNORE:
             if self.tag in _TEX_SUBS:
@@ -618,7 +628,7 @@ class FMTextElement(object):
 
     def _get_tex_core(self, env):
         out = self._get_core(env)
-        if self.tag == 'math':
+        if env['math']:
             return out
         else:
             return escape_tex(out)
@@ -1171,7 +1181,9 @@ class Row(list):
             out.append(txt)
         return delimiter.join(out)
 
-    def get_tex(self, env={}):
+    def get_tex(self, env=None):
+        if env is None:
+            return tex(self)
         out = ' & '.join(cell.get_tex(env) for cell in self)
         out += r" \\"
         return out
@@ -1478,7 +1490,9 @@ class Table(FMTextElement):
 
         return linesep.join(out)
 
-    def get_tex(self, env={}):
+    def get_tex(self, env=None):
+        if env is None:
+            return tex(self)
         standalone = env.get('standalone')  # https://stackoverflow.com/a/17235546
         # init
         items = []
