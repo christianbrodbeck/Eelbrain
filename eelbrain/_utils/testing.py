@@ -148,6 +148,23 @@ def requires_module(name, version):
     return wrapper
 
 
+def requires_r_ez(function):
+    from .r_bridge import r, r_warning_filter
+
+    with r_warning_filter:
+        success = r('require(ez)')[0]
+
+    if success:
+        @wraps(function)
+        def decorator(*args, **kwargs):
+            return function(*args, **kwargs)
+    else:
+        @wraps(function)
+        def decorator(*args, **kwargs):
+            raise SkipTest('Skipped %s, requires r-ez' % function.__name__)
+    return decorator
+
+
 def skip_on_windows(function):
     @wraps(function)
     def decorator(*args, **kwargs):
