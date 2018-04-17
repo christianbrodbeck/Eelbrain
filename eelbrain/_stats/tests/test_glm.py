@@ -14,6 +14,7 @@ from eelbrain._exceptions import IncompleteModel
 from eelbrain._stats import glm
 from eelbrain._stats.permutation import permute_order
 from eelbrain._utils.r_bridge import r, r_require, r_warning_filter
+from eelbrain._utils.testing import requires_r_ez
 
 
 @nottest
@@ -92,7 +93,6 @@ def run_as_ndanova(y, x, ds):
 def test_anova():
     "Test ANOVA"
     r_require('car')
-    r_require('ez')
 
     ds = datasets.get_uv(nrm=True)
     ds.to_r('ds')
@@ -114,6 +114,15 @@ def test_anova():
     print(r('test.summary <- summary(test.aov)'))
     r_res = r['test.summary'][1:]
     assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'rmaov')
+
+
+@requires_r_ez
+def test_anova_eq():
+    "Test ANOVA against r-ez"
+    r_require('ez')
+
+    ds = datasets.get_uv(nrm=True)
+    ds.to_r('ds')
 
     # nested random effect
     aov_explicit = test.ANOVA('fltvar', 'A + B + A%B + nrm(B) + A%nrm(B)', ds=ds)
