@@ -1,5 +1,5 @@
-{% set version = "0.27.3" %}
-{% set md5 = "a3bb42defe10b6687db0ae987e416fe3" %}
+{% set version = "0.27.4" %}
+{% set sha256 = "2a95972c21c782ebbec3cf469d463c151cf23ad5bac1ac3a388fbb091d280706" %}
 
 # https://github.com/conda/conda-build/issues/2717
 
@@ -10,7 +10,7 @@ package:
 source:
   fn: eelbrain-{{ version }}.tar.gz
   url: https://pypi.io/packages/source/e/eelbrain/eelbrain-{{ version }}.tar.gz
-  md5: {{ md5 }}
+  sha256: {{ sha256 }}
 
 build:
   number: 0
