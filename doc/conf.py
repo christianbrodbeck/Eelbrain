@@ -108,7 +108,7 @@ suppress_warnings = ['image.nonlocal_uri']
 intersphinx_mapping = {
     'python': ('https://docs.python.org/2.7', None),
     'mne': ('http://martinos.org/mne/stable', None),
-    'matplotlib': ('http://matplotlib.org', None),
+    'matplotlib': ('https://matplotlib.org', None),
     'numpy': ('https://docs.scipy.org/doc/numpy', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/reference', None),
     'pyarrow': ('https://arrow.apache.org/docs/python/objects.inv', None),

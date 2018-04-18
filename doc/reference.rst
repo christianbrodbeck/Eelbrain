@@ -48,67 +48,50 @@ NDVar dimensions (not usually initialized by themselves but through
 File I/O
 ^^^^^^^^
 
-Load
-====
-
 .. py:module:: load
+.. py:module:: save
 .. py:currentmodule:: eelbrain
 
-Eelbrain objects can be saved with serialization based on :mod:`pyarrow`:
+Eelbrain objects can be
+`pickled <https://docs.python.org/library/pickle.html>`_. Eelbrain's own
+pickle I/O functions provide backwards compatibility for Eelbrain objects
+(although files saved in Python 3 can only be opened in Python 2 if they are
+saved with ``protocol<=2``):
 
 .. autosummary::
    :toctree: generated
 
+   save.pickle
+   load.unpickle
    load.arrow
    save.arrow
-
-
-Eelbrain objects can be
-`pickled <https://docs.python.org/2/library/pickle.html>`_, although there is
-no guarantee that objects can be exchanged across versions. Eelbrain's own
-pickle I/O functions provide backwards compatibility for Eelbrain objects, but
-files saved in Python 2 can not be opened in Python 3:
-
-.. autosummary::
-   :toctree: generated
-
-   load.unpickle
    load.update_subjects_dir
 
 
-Functions for loading specific file formats as Eelbrain object:
+Import
+======
+
+Functions and modules for loading specific file formats as Eelbrain object:
 
 .. autosummary::
    :toctree: generated
 
    load.wav
-
-Modules:
-
-.. autosummary::
-   :toctree: generated
-
    load.eyelink
    load.fiff
    load.txt
    load.besa
 
 
-Save
-====
+Export
+======
 
-.. py:module:: save
-.. py:currentmodule:: eelbrain
-
-* `Pickling <http://docs.python.org/library/pickle.html>`_: All data-objects
-  can be pickled. :func:`save.pickle` provides a shortcut for pickling objects.
-* Text file export: Save a Dataset using its :py:meth:`~Dataset.save_txt`
-  method. Save any iterator with :py:func:`save.txt`.
+Dataset with only univariate data can be saved as text using the
+:meth:`~Dataset.save_txt` method. Additional export functions:
 
 .. autosummary::
    :toctree: generated
 
-   save.pickle
    save.txt
    save.wav
 

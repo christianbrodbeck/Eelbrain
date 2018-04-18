@@ -18,7 +18,7 @@ flake:
 	flake8 --count eelbrain examples scripts
 
 test:
-	nosetests -v eelbrain eelbrain/_experiment eelbrain/_stats eelbrain/_trf eelbrain/_utils eelbrain/_wxgui eelbrain/load eelbrain/mne_fixes eelbrain/plot
+	nosetests -v eelbrain eelbrain/_experiment eelbrain/_io eelbrain/_stats eelbrain/_trf eelbrain/_utils eelbrain/_wxgui eelbrain/load eelbrain/mne_fixes eelbrain/plot
 
 test_travis_osx:
 	pythonw $(shell which nosetests) -v eelbrain eelbrain/_experiment eelbrain/_stats eelbrain/_trf eelbrain/_utils eelbrain/_wxgui eelbrain/load eelbrain/mne_fixes eelbrain/plot

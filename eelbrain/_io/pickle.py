@@ -1,6 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from pickle import dump, HIGHEST_PROTOCOL, Unpickler
-from importlib import import_module
 from itertools import chain
 import os
 
@@ -11,31 +10,24 @@ from .._utils import ui
 class EelUnpickler(Unpickler):
 
     def find_class(self, module, name):
-        # Python 3
-        return self.find_global(module, name)
+        "Backwards-compatibility for changes in module paths"
+        if module.startswith('eelbrain.'):
+            if module == 'eelbrain.vessels.data':
+                module = 'eelbrain._data_obj'
+                class_names = {'var': 'Var', 'factor': 'Factor', 'ndvar': 'NDVar',
+                               'datalist': 'Datalist', 'dataset': 'Dataset'}
+                name = class_names[name]
+            elif module.startswith('eelbrain.data.'):
+                if module.startswith('eelbrain.data.load'):
+                    module = module.replace('.data.load', '.load')
+                elif module.startswith('eelbrain.data.stats'):
+                    module = module.replace('.data.stats', '._stats')
+                elif module.startswith('eelbrain.data.data_obj'):
+                    module = module.replace('.data.data_obj', '._data_obj')
+                else:
+                    raise NotImplementedError("%r / %r" % (module, name))
 
-    def find_global(self, module_name, class_name):
-        "Subclass to handle changes in module paths"
-        if module_name == 'eelbrain.vessels.data':
-            module_name = 'eelbrain._data_obj'
-            class_names = {'var': 'Var', 'factor': 'Factor',
-                           'ndvar': 'NDVar',
-                           'datalist': 'Datalist', 'dataset': 'Dataset'}
-            class_name = class_names[class_name]
-        elif module_name.startswith('eelbrain.data.'):
-            if module_name.startswith('eelbrain.data.load'):
-                rev = module_name.replace('.data.load', '.load')
-            elif module_name.startswith('eelbrain.data.stats'):
-                rev = module_name.replace('.data.stats', '._stats')
-            elif module_name.startswith('eelbrain.data.data_obj'):
-                rev = module_name.replace('.data.data_obj', '._data_obj')
-            else:
-                raise NotImplementedError(
-                    "%r / %r" % (module_name, class_name))
-            module_name = rev
-
-        module = import_module(module_name)
-        return getattr(module, class_name)
+        return Unpickler.find_class(self, module, name)
 
 
 def pickle(obj, dest=None, protocol=HIGHEST_PROTOCOL):
@@ -50,7 +42,8 @@ def pickle(obj, dest=None, protocol=HIGHEST_PROTOCOL):
         provided, a file dialog is shown. If a destination without extension is
         provided, '.pickled' is appended.
     protocol : int
-        Pickle protocol (default is HIGHEST_PROTOCOL).
+        Pickle protocol (default is ``HIGHEST_PROTOCOL``). For pickles that can
+        be opened in Python 2, use ``protocol<=2``.
     """
     if dest is None:
         filetypes = [("Pickled Python Objects (*.pickled)", '*.pickled')]
@@ -81,15 +74,22 @@ def pickle(obj, dest=None, protocol=HIGHEST_PROTOCOL):
 def unpickle(file_path=None):
     """Load pickled Python objects from a file.
 
-    Almost like ``cPickle.load(open(file_path))``, but also loads object saved
+    Almost like ``pickle.load(open(file_path))``, but also loads object saved
     with older versions of Eelbrain, and allows using a system file dialog to
     select a file.
 
     Parameters
     ----------
     file_path : None | str
-        Path to a pickled file. If None (default), a system file dialog will be
-        shown. If the user cancels the file dialog, a RuntimeError is raised.
+        Path to a pickled file. If ``None`` (default), a system file dialog
+        will be shown. If the user cancels the file dialog, a RuntimeError is
+        raised.
+
+    Notes
+    -----
+    If you see ``ValueError: unsupported pickle protocol: 4``, the pickle file
+    was saved with Python 3; in order to make pickles backwards-compatible, use
+    :func:`~eelbrain.save.pickle` with ``protocol=2``.
     """
     if file_path is None:
         filetypes = [("Pickles (*.pickled)", '*.pickled'), ("All files", '*')]
@@ -107,7 +107,7 @@ def unpickle(file_path=None):
                 file_path = new_path
 
     with open(file_path, 'rb') as fid:
-        unpickler = EelUnpickler(fid)
+        unpickler = EelUnpickler(fid, encoding='latin1')
         return unpickler.load()
 
 
