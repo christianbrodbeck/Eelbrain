@@ -89,8 +89,8 @@ class EelbrainFrame(wx.Frame, EelbrainWindow):
     def __init__(self, *args, **kwargs):
         wx.Frame.__init__(self, *args, **kwargs)
         if not IS_OSX:
-            from .app import APP
-            self.SetMenuBar(APP.CreateMenu(self))
+            from .app import get_app
+            self.SetMenuBar(get_app().CreateMenu(self))
 
     def OnClear(self, event):
         raise RuntimeError(str(self))
