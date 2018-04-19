@@ -9,7 +9,7 @@ colormath >= 2.1
 tqdm >= 4.8
 keyring >= 5
 pillow
-wxpython >= 3.0
+wxpython == 3.0
 numpy >= 1.8
 scipy >= 0.17
 nibabel >= 2.0
