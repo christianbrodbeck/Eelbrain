@@ -4474,6 +4474,7 @@ class NDVar(object):
         n_axes = len(dims)
         index = [FULL_SLICE] * n_axes
         index_args = [None] * n_axes
+        add_axis = False
 
         # sequence args
         for i, arg in enumerate(args):
@@ -4487,6 +4488,12 @@ class NDVar(object):
                 else:
                     raise IndexError("Index for %s dimension specified twice."
                                      % arg.dims[0].name)
+            elif arg is newaxis:
+                if i > 0:
+                    raise IndexError("newaxis must be in first index position")
+                elif self.has_case:
+                    raise IndexError("NDVar already has case dimension")
+                add_axis = True
             else:
                 index_args[i] = arg
 
@@ -4514,7 +4521,9 @@ class NDVar(object):
             elif dimax >= self.has_case:
                 dims[dimax] = dim[idx]
             else:
-                dims[dimax] = 'case'
+                dims[dimax] = Case
+        if add_axis:
+            dims.insert(0, Case)
 
         # adjust index dimension
         if sum(isinstance(idx, np.ndarray) for idx in index) > 1:
@@ -4532,9 +4541,11 @@ class NDVar(object):
                     ndim_increment += 1
 
         # create NDVar
-        return self._package_aggregated_output(
-            self.x[tuple(index)], tuple(dim for dim in dims if dim is not None),
-            info, var_name)
+        x = self.x[tuple(index)]
+        if add_axis:
+            x = np.expand_dims(x, 0)
+        dims = tuple(dim for dim in dims if dim is not None)
+        return self._package_aggregated_output(x, dims, info, var_name)
 
     def sum(self, dims=(), **regions):
         """Compute the sum over given dimensions
@@ -8849,6 +8860,11 @@ class SourceSpace(Dimension):
         path = self._SRC_PATH.format(
             subjects_dir=subjects_dir or self.subjects_dir,
             subject=self.subject, src=self.src)
+        if not os.path.exists(path):
+            raise IOError(
+                "%s does not exist; if the MRI files for %s were moved since "
+                "this object was created, use eelbrain.load."
+                "update_subjects_dir()" % (path, self.subject))
         src = mne.read_source_spaces(path)
         return src
 

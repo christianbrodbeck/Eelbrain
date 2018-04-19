@@ -1025,6 +1025,12 @@ def test_ndvar_indexing():
     test_ndvar_index(x, 'time', slice(0.1, None, 0.1), slice(30, None, 10))
     test_ndvar_index(x, 'time', slice(0.1, None, 1), slice(30, None, 100))
 
+    # newaxis
+    assert_raises(IndexError, x.__getitem__, np.newaxis)
+    x0 = x[0]
+    assert_false(x0.has_case)
+    ok_(x0[np.newaxis].has_case)
+
     # Scalar
     x = cwt_morlet(ds['uts'], [8, 10, 13, 17])
     assert_raises(IndexError, x.__getitem__, (FULL_SLICE, 9))
