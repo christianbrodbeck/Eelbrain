@@ -105,6 +105,7 @@ inv_re = re.compile("(free|fixed|loose\.\d+)-"  # orientation constraint
                     "(?:-(pick_normal))?"
                     "$")  # pick normal
 
+INT_TYPES = (int, np.integer)
 
 # Eelbrain 0.24 raw/preprocessing pipeline
 LEGACY_RAW = {
@@ -677,7 +678,7 @@ class MneExperiment(FileTree):
                     triggers.append(trigger)
 
             invalid = [t for t in triggers
-                       if not (isinstance(t, int) or t == 'default')]
+                       if not (isinstance(t, INT_TYPES) or t == 'default')]
             if invalid:
                 raise TypeError("Invalid trigger %s in variable definition %r: "
                                 "%r" % (named_list(invalid, 'code'), k, v))
