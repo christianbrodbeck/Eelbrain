@@ -8,7 +8,7 @@ tqdm >= 4.8
 keyring >= 5
 pillow
 wxpython >= 3.0
-numpy >= 1.8
+numpy >= 1.11
 scipy >= 0.17
 nibabel >= 2.0
 matplotlib >= 2.1

@@ -1,5 +1,4 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from distutils.version import LooseVersion
 from math import floor
 
 import numpy as np
@@ -22,7 +21,7 @@ def digitize_index(index, values, tol=None):
         Tolerance for suppressing an IndexError when index only falls near a
         value.
     """
-    i = int(digitize(index, values, True))
+    i = int(np.digitize(index, values, True))
     if index == values[i]:
         return i
     elif not tol:
@@ -59,7 +58,7 @@ def digitize_slice_endpoint(index, values):
     values : array
         1-dimensional array on which to locate ``index``.
     """
-    return int(digitize(index, values, True))
+    return int(np.digitize(index, values, True))
 
 
 def index_to_int_array(index, n):
@@ -138,16 +137,3 @@ def slice_to_arange(s, length):
         stop = s.stop
 
     return np.arange(start, stop, s.step)
-
-
-# pre numpy 0.10, digitize requires 1d-array
-if LooseVersion(np.__version__) < LooseVersion('1.10'):
-    def digitize(x, bins, right=False):
-        if np.isscalar(x):
-            return np.digitize(np.atleast_1d(x), bins, right)[0]
-        elif x.ndim != 1:
-            raise NotImplementedError("digitize for pre 1.10 numpy with ndim > "
-                                      "1 array")
-        return np.digitize(x, bins, right)
-else:
-    digitize = np.digitize
