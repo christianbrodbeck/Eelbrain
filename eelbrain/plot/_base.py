@@ -984,8 +984,9 @@ class EelFigure(object):
 
     def _on_leave_axes(self, event):
         "Update the status bar when the cursor leaves axes"
-        self._frame.SetStatusText(
-            self._on_leave_axes_status_text(event))
+        if self._frame is None:
+            return
+        self._frame.SetStatusText(self._on_leave_axes_status_text(event))
         if self._draw_crosshairs:
             self._remove_crosshairs(True)
 
@@ -994,6 +995,8 @@ class EelFigure(object):
 
     def _on_motion(self, event):
         "Update the status bar for mouse movement"
+        if self._frame is None:
+            return
         redraw_axes = self._on_motion_sub(event)
         ax = event.inaxes
         # draw crosshairs
