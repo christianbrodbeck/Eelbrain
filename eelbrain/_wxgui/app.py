@@ -104,8 +104,8 @@ class App(wx.App):
 
         # View Menu
         m = view_menu = wx.Menu()
-        m.Append(ID.SET_VLIM, "Set Y-Axis Limit... \tCtrl+l", "Change the Y-"
-                 "axis limit in epoch plots")
+        m.Append(ID.SET_VLIM, "Set Axis Limits... \tCtrl+l", "Change the "
+                 "current figure's axis limits")
         m.Append(ID.SET_MARKED_CHANNELS, "Mark Channels...", "Mark specific "
                  "channels in plots")
         m.Append(ID.DRAW_CROSSHAIRS, "Draw &Crosshairs",

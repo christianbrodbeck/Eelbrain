@@ -17,7 +17,7 @@ import wx
 
 from .._wxutils import ID, Icon
 from .app import get_app
-from .frame import EelbrainFrame
+from .frame import EelbrainFrame, EelbrainDialog
 from .help import show_help_txt
 
 
@@ -247,28 +247,14 @@ class CanvasFrame(EelbrainFrame):
         dlg.Destroy()
 
     def OnSetVLim(self, event):
-        bottom, top = self._eelfigure.get_ylim()
-        dlg = wx.TextEntryDialog(self, "New Y-axis limits:", "Set Y-Axis Limit",
-                                 "%s %s" % (bottom, top))
-
+        ylim = self._eelfigure.get_ylim() if self._eelfigure._can_set_ylim else None
+        xlim = self._eelfigure.get_xlim() if self._eelfigure._can_set_xlim else None
+        dlg = AxisLimitsDialog(ylim, xlim, self)
         if dlg.ShowModal() == wx.ID_OK:
-            value = dlg.GetValue()
-            try:
-                values = value.replace(',', ' ').split()
-                if len(values) == 1:
-                    top = float(values[0])
-                    bottom = -top
-                elif len(values) == 2:
-                    bottom, top = map(float, values)
-                else:
-                    raise ValueError("Wrong number of values")
-            except Exception as exception:
-                msg = wx.MessageDialog(self, str(exception), "Invalid Entry",
-                                       wx.OK | wx.ICON_ERROR)
-                msg.ShowModal()
-                msg.Destroy()
-            else:
-                self._eelfigure.set_ylim(bottom, top)
+            if ylim is not None:
+                self._eelfigure.set_ylim(*dlg.ylim)
+            if xlim is not None:
+                self._eelfigure.set_xlim(*dlg.xlim)
         dlg.Destroy()
 
     def OnUpdateUIDrawCrosshairs(self, event):
@@ -282,7 +268,7 @@ class CanvasFrame(EelbrainFrame):
         event.Enable(True)
 
     def OnUpdateUISetVLim(self, event):
-        event.Enable(hasattr(self._eelfigure, 'set_ylim'))
+        event.Enable(self._eelfigure._can_set_xlim or self._eelfigure._can_set_ylim)
 
 
 class TestCanvas(CanvasFrame):
@@ -297,3 +283,111 @@ class TestCanvas(CanvasFrame):
         t = np.arange(0.0, 3.0, 0.01)
         s = np.sin(2 * np.pi * t)
         self.axes.plot(t, s)
+
+
+class LimitsValidator(wx.Validator):
+
+    def __init__(self, parent, attr):
+        wx.Validator.__init__(self)
+        self.parent = parent
+        self.attr = attr
+        self.value = None
+
+    def Clone(self):
+        return LimitsValidator(self.parent, self.attr)
+
+    def Validate(self, parent):
+        ctrl = self.GetWindow()
+        value = ctrl.GetValue()
+        try:
+            values = value.replace(',', ' ').split()
+            if len(values) == 1:
+                upper = float(values[0])
+                lower = -upper
+            elif len(values) == 2:
+                lower, upper = map(float, values)
+            else:
+                raise ValueError("Wrong number of values")
+        except Exception as exception:
+            msg = wx.MessageDialog(
+                self.parent, str(exception), "Invalid Entry",
+                wx.OK | wx.ICON_ERROR)
+            msg.ShowModal()
+            msg.Destroy()
+            return False
+        else:
+            self.value = (lower, upper)
+            return True
+
+    def TransferToWindow(self):
+        ctrl = self.GetWindow()
+        ctrl.SetValue("%s %s" % getattr(self.parent, self.attr))
+        ctrl.SelectAll()
+        return True
+
+    def TransferFromWindow(self):
+        if self.value is None:
+            return False
+        else:
+            setattr(self.parent, self.attr, self.value)
+            return True
+
+
+class AxisLimitsDialog(EelbrainDialog):
+    """Dialog to set axis limits
+
+    Parameters
+    ----------
+    ylim : None | tuple
+        ``(bottom, top)`` if the y-limits can be adjusted, else ``None``.
+    xlim : None | tuple
+        ``(left, right)`` if the x-limits can be adjusted, else ``None``.
+    ... :
+        Wx-Python Dialog parameters.
+    """
+
+    def __init__(self, ylim, xlim, parent, *args, **kwargs):
+        EelbrainDialog.__init__(self, parent, wx.ID_ANY, "Set Axis Limits",
+                                *args, **kwargs)
+        self.ylim = ylim
+        self.xlim = xlim
+
+        # Layout
+        mainsizer = wx.BoxSizer(wx.VERTICAL)
+
+        sizer = wx.GridSizer(2, 5, 5)
+        # y-axis
+        if ylim is not None:
+            sizer.Add(wx.StaticText(self, label="Y-Axis Limits:"))
+            self.y_text = wx.TextCtrl(self, validator=LimitsValidator(self, 'ylim'))
+            sizer.Add(self.y_text)
+            self.y_text.SetFocus()
+        else:
+            self.y_text = None
+        # x-axis
+        if xlim is not None:
+            sizer.Add(wx.StaticText(self, label="X-Axis Limits:"))
+            self.x_text = wx.TextCtrl(self, validator=LimitsValidator(self, 'xlim'))
+            sizer.Add(self.x_text)
+            if self.y_text is None:
+                self.x_text.SetFocus()
+        else:
+            self.x_text = None
+
+        # buttons
+        button_sizer = wx.StdDialogButtonSizer()
+        # ok
+        btn = wx.Button(self, wx.ID_OK)
+        btn.SetDefault()
+        button_sizer.AddButton(btn)
+        # cancel
+        btn = wx.Button(self, wx.ID_CANCEL)
+        button_sizer.AddButton(btn)
+        button_sizer.Realize()
+
+        # finalize
+        mainsizer.Add(sizer, flag=wx.ALL, border=10)
+        # mainsizer.AddSpacer(10)
+        mainsizer.Add(button_sizer, flag=wx.ALL | wx.ALIGN_RIGHT, border=10)
+        self.SetSizer(mainsizer)
+        mainsizer.Fit(self)

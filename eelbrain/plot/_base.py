@@ -939,6 +939,8 @@ class EelFigure(object):
     _default_xlabel_ax = -1
     _default_ylabel_ax = 0
     _make_axes = True
+    _can_set_ylim = False
+    _can_set_xlim = False
 
     def __init__(self, data_desc, layout):
         """Parent class for Eelbrain figures.
@@ -2461,6 +2463,8 @@ class XAxisMixin(object):
      - ``f``: x-axis zoom in (reduce x axis range)
      - ``d``: x-axis zoom out (increase x axis range)
     """
+    _can_set_xlim = True
+
     def __init__(self, xmin, xmax, xlim=None, axes=None):
         self.__xmin = xmin
         self.__xmax = xmax
@@ -2503,7 +2507,7 @@ class XAxisMixin(object):
             xmax = max(dim[-1] for dim in dims)
         XAxisMixin.__init__(self, xmin, xmax, xlim, axes)
 
-    def _get_xlim(self):
+    def get_xlim(self):
         return self.__axes[0].get_xlim()
 
     def __animate(self, vmin, vmin_dst, vmax, vmax_dst):
@@ -2517,35 +2521,35 @@ class XAxisMixin(object):
         self.set_xlim(vmin_dst, vmax_dst)
 
     def __on_beginning(self, event):
-        left, right = self._get_xlim()
+        left, right = self.get_xlim()
         d = right - left
         self.set_xlim(self.__xmin, min(self.__xmax, self.__xmin + d))
 
     def __on_end(self, event):
-        left, right = self._get_xlim()
+        left, right = self.get_xlim()
         d = right - left
         self.set_xlim(max(self.__xmin, self.__xmax - d), self.__xmax)
 
     def __on_zoom_plus(self, event):
-        left, right = self._get_xlim()
+        left, right = self.get_xlim()
         d = (right - left) / 4.
         self.__animate(left, left + d, right, right - d)
 
     def __on_zoom_minus(self, event):
-        left, right = self._get_xlim()
+        left, right = self.get_xlim()
         d = right - left
         new_left = max(self.__xmin, left - (d / 2.))
         new_right = min(self.__xmax, new_left + 2 * d)
         self.__animate(left, new_left, right, new_right)
 
     def __on_left(self, event):
-        left, right = self._get_xlim()
+        left, right = self.get_xlim()
         d = right - left
         new_left = max(self.__xmin, left - d)
         self.__animate(left, new_left, right, new_left + d)
 
     def __on_right(self, event):
-        left, right = self._get_xlim()
+        left, right = self.get_xlim()
         d = right - left
         new_right = min(self.__xmax, right + d)
         self.__animate(left, new_right - d, right, new_right)
@@ -2607,6 +2611,7 @@ class YLimMixin(object):
     # one figure? Use cases:
     # - 2 axes with different data
     # - (not implemented) one axis with two y-axes
+    _can_set_ylim = True
 
     def __init__(self, plots):
         self.__plots = plots
