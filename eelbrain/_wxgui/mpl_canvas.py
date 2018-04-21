@@ -222,7 +222,7 @@ class CanvasFrame(EelbrainFrame):
     def OnClose(self, event):
         # remove circular reference
         if getattr(self, '_eelfigure', None):
-            del self._eelfigure._frame
+            self._eelfigure._frame = None
             del self._eelfigure
         event.Skip()
 
