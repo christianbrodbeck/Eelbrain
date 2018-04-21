@@ -3396,7 +3396,7 @@ class NDVar(object):
 
     def bin(self, step=None, start=None, stop=None, func=None, dim=None,
             name=None, nbins=None):
-        """Bin the data along the time axis
+        """Bin the data along a given dimension (default ``'time'``)
 
         Parameters
         ----------
@@ -3418,7 +3418,7 @@ class NDVar(object):
             otherwise: mean.
         dim : str
             Dimension over which to bin. If the NDVar has more than one
-            dimension, the default is time.
+            dimension, the default is ``'time'``.
         name : str
             Name of the output NDVar (default is the current name).
         nbins : int
@@ -7453,9 +7453,9 @@ class Scalar(Dimension):
             istart = 0 if start is None else self._array_index(start)
             n_source_steps = istop - istart
             if n_source_steps % nbins != 0:
-                raise ValueError("length %i source dimension can not be "
-                                 "divided equally into %i bins" %
-                                 (n_source_steps, nbins))
+                raise ValueError("length %i dimension %s can not be divided "
+                                 "equally into %i bins" %
+                                 (n_source_steps, self.name, nbins))
             istep = int(n_source_steps / nbins)
             ilast = istep - 1
             out_values = [(self[i] + self[i + ilast]) / 2. for i in
