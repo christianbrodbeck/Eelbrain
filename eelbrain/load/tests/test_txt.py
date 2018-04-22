@@ -8,9 +8,17 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from eelbrain import Dataset, datasets, load
+from eelbrain._utils.testing import file_path
 
 from ...tests.test_data import assert_dataobj_equal, assert_dataset_equal
 
+
+def test_r_tsv_io():
+    "Test reading output of write.table"
+    ds = load.tsv(file_path('r-write.table.txt'))
+    assert_array_equal(ds['row'], ['1', '2'])
+    assert_array_equal(ds['bin'], [0, 0])
+    
 
 def test_tsv_io():
     """Test tsv I/O"""
