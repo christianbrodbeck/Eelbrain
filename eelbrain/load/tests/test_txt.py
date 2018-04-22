@@ -18,7 +18,7 @@ def test_r_tsv_io():
     ds = load.tsv(file_path('r-write.table.txt'))
     assert_array_equal(ds['row'], ['1', '2'])
     assert_array_equal(ds['bin'], [0, 0])
-    
+
 
 def test_tsv_io():
     """Test tsv I/O"""
