@@ -1,0 +1,3 @@
+"participant"	"condition"	"trial_number"	"item_number"	"time"	"time_label"	"context_bin"	"critical_in"	"which_region"	"group"	"real_condition"	"bin"
+"1"	1	"3B"	1	111	3233288	"pre_audio"	0	0	"distractor_2"	1	NA	0
+"2"	1	"3B"	1	111	3233289	"pre_audio"	0	0	"distractor_2"	1	NA	0

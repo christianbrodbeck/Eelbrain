@@ -96,18 +96,24 @@ def tsv(path=None, names=True, types='auto', delimiter='\t', skiprows=0,
 
     row_lens = set(len(row) for row in rows)
     if len(row_lens) > 1 and not ignore_missing:
-        msg = ("Not all rows have same number of entries. Set ignore_missing "
-               "to True in order to ignore this error.")
-        raise ValueError(msg)
+        raise IOError(
+            "Not all rows have same number of entries. Set ignore_missing to "
+            "True in order to ignore this error.")
     n_cols = max(row_lens)
     n_rows = len(rows)
 
     if names:
-        if len(names) != n_cols:
-            msg = ("The number of names in the header (%i) does not "
-                   "correspond to the number of columns in the table (%i)"
-                   % (len(names), n_cols))
-            raise ValueError(msg)
+        n_names = len(names)
+        if n_names == n_cols - 1:
+            # R write.table saves unnamed column with row names
+            name = "row"
+            while name in names:
+                name += '_'
+            names.insert(0, name)
+        elif n_names != n_cols:
+            raise IOError(
+                "The number of names in the header (%i) does not correspond to "
+                "the number of columns in the table (%i)" % (n_names, n_cols))
     else:
         names = ['v%i' % i for i in range(n_cols)]
 
