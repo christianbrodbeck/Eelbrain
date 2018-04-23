@@ -43,6 +43,11 @@ report.add_figure("Two plots in one figure", [p, p_legend])
 p.close()
 p_legend.close()
 
+# PNG figure (vector plots with many lines can be slow to display)
+p = plot.UTSStat('uts', 'A%B', match='rm', ds=ds, error='all')
+report.add_figure("All trials", p.image('all', 'png'))
+p.close()
+
 # add information on package versions used
 report.sign()
 

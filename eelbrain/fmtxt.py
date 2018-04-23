@@ -47,6 +47,7 @@ The module also provides functions that work with fmtxt objects:
 - :func:`save_html` for saving an HTML file
 
 """
+import base64
 import datetime
 from html.parser import HTMLParser
 from importlib import import_module
@@ -57,7 +58,7 @@ import pickle
 import re
 import shutil
 import socket
-from io import StringIO, BytesIO
+from io import BytesIO
 import tempfile
 import time
 
@@ -1568,10 +1569,10 @@ class Table(FMTextElement):
         _save_txt(self.get_str({'fmt': fmt}, delim, linesep), path)
 
 
-class Image(FMTextElement, StringIO):
+class Image(FMTextElement, BytesIO):
     "Represent an image file"
 
-    def __init__(self, name=None, format='png', alt=None, buf=''):
+    def __init__(self, name=None, format='png', alt=None, buf=b''):
         """Represent an image file
 
         Parameters
@@ -1583,8 +1584,10 @@ class Image(FMTextElement, StringIO):
         alt : None | str
             Alternate text, placeholder in case the image can not be found
             (HTML `alt` tag, default is ``name``).
+        buf : bytes
+            Image buffer (optional).
         """
-        StringIO.__init__(self, buf)
+        BytesIO.__init__(self, buf)
 
         self.name = name or 'image'
         self.format = format
@@ -1599,8 +1602,10 @@ class Image(FMTextElement, StringIO):
         ----------
         array : array_like
             RGBA image array.
-        filename : None | str
-            Filename for the target image.
+        name : None | str
+            Name for the target image.
+        format : str
+            Format to save (default ``'png'``).
         alt : None | str
             Alternate text, placeholder in case the image can not be found
             (HTML `alt` tag).
@@ -1648,13 +1653,10 @@ class Image(FMTextElement, StringIO):
         resource_dir = env.get('resource_dir', None)
         if resource_dir is None:
             buf = self.getvalue()
-            if self.format == 'svg':  # special case for embedded svg
-                # SVGs can contain non-ASCII characters which cause
-                # UnicodeDecodeError when combined with unicode
-                out = ''.join(map(chr, list(map(ord, buf))))
-                return out
+            if self.format == 'svg':
+                return buf.decode()
             # http://stackoverflow.com/a/7389616/166700
-            data = buf.encode('base64').replace('\n', '')
+            data = base64.b64encode(buf).decode().replace('\n', '')
             src = 'data:image/{};base64,{}'.format(self.format, data)
         else:
             dirpath = os.path.join(env['root'], resource_dir)
@@ -1670,8 +1672,7 @@ class Image(FMTextElement, StringIO):
             self.save_image(abspath)
             src = os.path.relpath(abspath, env['root'])
 
-        txt = ' <img src="%s" alt="%s">' % (src, html(self._alt))
-        return ' ' + txt
+        return '<img src="%s" alt="%s">' % (src, html(self._alt))
 
     def get_str(self, env={}):
         txt = "Image (%s)" % str(self._alt)

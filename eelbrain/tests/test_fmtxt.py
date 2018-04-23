@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
-from nose.tools import eq_
+from nose.tools import eq_, ok_
 import os
 import shutil
 import tempfile
+
+import numpy as np
 
 from eelbrain import fmtxt
 from eelbrain._utils.testing import TempDir
@@ -15,6 +17,29 @@ def test_code():
     eq_(html(fmtxt.Code("a = 5\nb = a + 2")),
         "<code>a{s}={s}5{br}b{s}={s}a{s}+{s}2</code>".
         format(s='&nbsp;', br='<br style="clear:left">\n'))
+
+
+def test_eq():
+    "Test equation factory"
+    s = fmtxt.eq('t', 0.1234)
+    eq_(str(s), "t = 0.12")
+    eq_(html(s), "t = 0.12")
+    eq_(tex(s), "$t = 0.12$")
+
+    s = fmtxt.eq('t', 0.1234, 18)
+    eq_(str(s), "t(18) = 0.12")
+    eq_(html(s), "t<sub>18</sub> = 0.12")
+    eq_(tex(s), "$t_{18} = 0.12$")
+
+    s = fmtxt.peq(0.1299)
+    eq_(str(s), "p = .130")
+    eq_(html(s), "p = .130")
+    eq_(tex(s), "$p = .130$")
+
+    s = fmtxt.peq(0.0009)
+    eq_(str(s), "p < .001")
+    eq_(html(s), "p &lt; .001")
+    eq_(tex(s), "$p < .001$")
 
 
 def test_fmtext():
@@ -30,6 +55,22 @@ def test_fmtext():
     print(str(ts))
     print(html(ts))
     print(tex(ts))
+
+
+def test_image():
+    "Test FMText Image"
+    tempdir = TempDir()
+    filename = os.path.join(tempdir, 'rgb.png')
+    rgba = np.random.uniform(0, 1, (100, 100, 4))
+    rgb = rgba[:, :, :3]
+
+    for array in (rgb, rgba):
+        im = fmtxt.Image.from_array(array, alt='array')
+        im.save_image(filename)
+        ok_(im.get_html().startswith('<img src='))
+
+        im2 = fmtxt.Image.from_file(filename, alt='array')
+        eq_(im.get_html(), im2.get_html())
 
 
 def test_list():
@@ -74,29 +115,6 @@ def test_report():
 
     # clean up
     shutil.rmtree(tempdir)
-
-
-def test_eq():
-    "Test equation factory"
-    s = fmtxt.eq('t', 0.1234)
-    eq_(str(s), "t = 0.12")
-    eq_(html(s), "t = 0.12")
-    eq_(tex(s), "$t = 0.12$")
-
-    s = fmtxt.eq('t', 0.1234, 18)
-    eq_(str(s), "t(18) = 0.12")
-    eq_(html(s), "t<sub>18</sub> = 0.12")
-    eq_(tex(s), "$t_{18} = 0.12$")
-
-    s = fmtxt.peq(0.1299)
-    eq_(str(s), "p = .130")
-    eq_(html(s), "p = .130")
-    eq_(tex(s), "$p = .130$")
-
-    s = fmtxt.peq(0.0009)
-    eq_(str(s), "p < .001")
-    eq_(html(s), "p &lt; .001")
-    eq_(tex(s), "$p < .001$")
 
 
 def test_table():
