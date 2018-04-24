@@ -4313,6 +4313,9 @@ class NDVar(object):
             else:
                 raise NotImplementedError("dim=%r" % (dim,))
             window = scipy.signal.get_window(window, n, False)
+            if not window.size:
+                raise ValueError("window_size=%r: window too small for the "
+                                 "NDVar's sampling rate" % (window_size,))
             window /= window.sum()
             window.shape = (1,) * axis + (n,) + (1,) * (self.ndim - axis - 1)
             if mode == 'center':
@@ -5634,6 +5637,8 @@ class Dataset(OrderedDict):
         start : int
             Number at which to start the index.
         """
+        if not isinstance(name, str):
+            raise TypeError("name=%r" % (name,))
         self[name] = Var(np.arange(start, self.n_cases + start))
 
     def itercases(self, start=None, stop=None):
