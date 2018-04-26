@@ -4,7 +4,6 @@
 setuptools >= 17
 ipdb
 ipython
-tex >= 1.8
 colormath >= 2.1
 tqdm >= 4.8
 keyring >= 5

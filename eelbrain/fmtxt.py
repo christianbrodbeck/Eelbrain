@@ -67,6 +67,7 @@ import matplotlib.figure
 from matplotlib.image import imsave
 from matplotlib.mathtext import math_to_image
 
+from ._utils.tex import latex2pdf
 from ._utils import ui
 
 
@@ -127,11 +128,14 @@ _tex_escape_chars = {
     '_': r'\_',
     '{': r'\{',
     '}': r'\}',
+    '[': '{[}',
+    ']': '{]}',
+    '"':  "{''}",
     '~': r'\textasciitilde{}',
     '^': r'\^{}',
     '\\': r'\textbackslash{}',
-    '<': r'\textless ',
-    '>': r'\textgreater ',
+    '<': r'\textless{}',
+    '>': r'\textgreater{}',
 }
 _tex_escape_pattern = re.compile('|'.join(map(re.escape, _tex_escape_chars)))
 
@@ -186,12 +190,6 @@ def _add_to_recent(tex_obj):
 
 def get_pdf(tex_obj):
     "Generate PDF from an FMText object (using :mod:`tex`)"
-    try:
-        import tex as _tex
-    except ImportError:
-        raise ImportError("Module tex not found, LaTeX to PDF conversion not "
-                          "available")
-
     if isinstance(tex_obj, (Report, Section)):
         doc_class = '{article}'
         standalone = False
@@ -206,7 +204,7 @@ def get_pdf(tex_obj):
 %s
 \\end{document}
 """ % (doc_class, txt)
-    pdf = _tex.latex2pdf(document)
+    pdf = latex2pdf(document)
     return pdf
 
 
@@ -267,7 +265,7 @@ def save_pdf(tex_obj, path=None):
         msg = "Save as PDF"
         path = ui.ask_saveas(msg, msg, [('PDF (*.pdf)', '*.pdf')])
     if path:
-        with open(path, 'w') as f:
+        with open(path, 'wb') as f:
             f.write(pdf)
 
 
@@ -323,7 +321,7 @@ def copy_pdf(tex_obj=-1):
 
     # save pdf to temp file
     pdf = get_pdf(tex_obj)
-    fd, path = tempfile.mkstemp('.pdf', text=True)
+    fd, path = tempfile.mkstemp('.pdf')
     os.write(fd, pdf)
     os.close(fd)
 

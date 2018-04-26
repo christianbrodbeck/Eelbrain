@@ -43,11 +43,6 @@ Eelbrain
 Dependencies
 ------------
 
-On all platforms:
-
-  - tex
-  - mne
-
 Windows only:
 
   - pywin32-ctypes

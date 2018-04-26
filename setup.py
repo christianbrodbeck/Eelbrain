@@ -76,7 +76,6 @@ setup(
             'mne >= 0.14',
             'nibabel >= 2.0',
             'pillow',
-            'tex >= 1.8',
             'tqdm >= 4.8',
         ],
         'full': [

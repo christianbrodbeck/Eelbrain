@@ -35,11 +35,9 @@ dependencies:
 # Eelbrain additions
 - ipdb
 - ipython
-- tex >= 1.8
 - colormath >= 2.1
 - tqdm >= 4.19
 - keyring >= 5
-- pillow
 - pyarrow
 - wxpython >=4
 - nibabel >= 2.0
