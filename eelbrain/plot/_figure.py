@@ -23,7 +23,7 @@ class Figure(EelFigure):
         self._show()
 
 
-class XFigure(Figure, XAxisMixin):
+class XFigure(XAxisMixin, Figure):
 
     def __init__(self, nax, xmin, xmax, xlim, *args, **kwargs):
         Figure.__init__(self, nax, *args, **kwargs)
