@@ -2187,7 +2187,7 @@ class MneExperiment(FileTree):
             else:
                 raise ValueError("Unknown reference: reference=%r" % reference)
 
-    def get_field_values(self, field, exclude=False):
+    def get_field_values(self, field, exclude=False, **state):
         """Find values for a field taking into account exclusion
 
         Parameters
@@ -2198,7 +2198,11 @@ class MneExperiment(FileTree):
             Exclude values. If True, exclude values based on ``self.exclude``.
             For 'mrisubject', exclusions are done on 'subject'. For 'group',
             no exclusions are done.
+        ...
+            State parameters.
         """
+        if state:
+            self.set(**state)
         if exclude is True:
             exclude = self.exclude.get(field, None)
         elif isinstance(exclude, str):
