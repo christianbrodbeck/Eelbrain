@@ -28,17 +28,18 @@ from ._stats.connectivity import find_peaks as _find_peaks
 from ._trf._boosting_opt import l1
 
 
-def concatenate(ndvars, dim='time', name=None, tmin=0, info=None):
+def concatenate(ndvars, dim='time', name=None, tmin=0, info=None, ravel=None):
     """Concatenate multiple NDVars
 
     Parameters
     ----------
     ndvars : NDVar | sequence of NDVar
-        NDVars to be concatenated. Can also be a single NDVar with ``case``
-        dimension to concatenate the different cases.
+        NDVars to be concatenated. Can also be a single 2d NDVar to concatenate
+        the levels of the dimension other than ``dim``.
     dim : str | Dimension
         Either a string specifying an existsing dimension along which to
-        concatenate, or a Dimension object to create a new dimension.
+        concatenate, or a Dimension object to create a new dimension (default
+        ``'time'``).
     name : str (optional)
         Name the NDVar holding the result.
     tmin : scalar | 'first'
@@ -46,12 +47,29 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None):
         Set ``tmin='first'`` to use ``tmin`` of ``ndvars[0]``.
     info : dict
         Info for the returned ``ndvar``.
+    ravel : str
+        If ``ndvars`` is a single NDVar with more than 2 dimensions, ``ravel``
+        specifies which dimension to unravel for concatenation.
 
     Returns
     -------
     ndvar : NDVar
         NDVar with concatenated data.
     """
+    if isinstance(ndvars, NDVar):
+        if ravel is not None:
+            assert ndvars.has_dim(ravel)
+        elif ndvars.ndim == 2:
+            ravel = ndvars.get_dimnames(last=dim)[0]
+        elif ndvars.has_case:
+            ravel = 'case'
+        else:
+            raise ValueError("ndvars=%r: more than one dimension that could be "
+                             "split for concatenation; use ravel parameter to specify " % (ndvars,))
+        ndvars = tuple(ndvars.sub(**{ravel: v}) for v in ndvars.get_dim(ravel))
+    elif ravel is not None:
+        raise TypeError('ravel=%r: ravel ony applies when ndvars is an NDVar')
+
     try:
         ndvar = ndvars[0]
     except TypeError:
