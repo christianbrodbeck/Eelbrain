@@ -15,7 +15,7 @@ import operator
 
 import mne
 import numpy as np
-from scipy import linalg, signal
+from scipy import linalg, signal, stats
 
 from . import _info, mne_fixes
 from ._data_obj import (
@@ -234,6 +234,72 @@ def convolve(h, x):
             else:
                 out += convolve(h_, x_)
         return out
+
+
+def correlation_coefficient(x, y, dim=None, name=None):
+    """Correlation between two NDVars along a specific dimension
+
+    Parameters
+    ----------
+    x : NDVar
+        First variable.
+    y : NDVar
+        Second variable.
+    dim : str | tuple of str
+        Dimension over which to compute correlation (by default all shared
+        dimensions).
+    name : str
+        Name for output variable.
+
+    Returns
+    -------
+    correlation_coefficient : float | NDVar
+        Correlation coefficient over ``dim``. Any other dimensions in ``x`` and
+        ``y`` are retained in the output.
+    """
+    if dim is None:
+        shared = set(x.dimnames).intersection(y.dimnames)
+        if not shared:
+            raise ValueError("%r and %r have no shared dimensions" % (x, y))
+        dims = list(shared)
+    elif isinstance(dim, str):
+        dims = [dim]
+    else:
+        dims = list(dim)
+    ndims = len(dims)
+
+    # determine dimensions
+    assert x.get_dims(dims) == y.get_dims(dims)
+    x_dimnames = x.get_dimnames(last=dims)[:-ndims]
+    y_dimnames = y.get_dimnames(last=dims)[:-ndims]
+    shared_dims = [dim for dim in x_dimnames if dim in y_dimnames]
+    assert x.get_dims(shared_dims) == y.get_dims(shared_dims)
+    x_only = [dim for dim in x_dimnames if dim not in shared_dims]
+    y_only = [dim for dim in y_dimnames if dim not in shared_dims]
+
+    # align axes
+    x_order = shared_dims + x_only + [np.newaxis] * len(y_only) + dims
+    y_order = shared_dims + [np.newaxis] * len(x_only) + y_only + dims
+    x_data = x.get_data(x_order)
+    y_data = y.get_data(y_order)
+    # ravel axes over which to aggregate
+    x_data = x_data.reshape(x_data.shape[:-ndims] + (-1,))
+    y_data = y_data.reshape(y_data.shape[:-ndims] + (-1,))
+
+    # correlation coefficient
+    z_x = stats.zscore(x_data, -1, 1)
+    z_y = stats.zscore(y_data, -1, 1)
+    z_y *= z_x
+    out = z_y.sum(-1)
+    out /= z_y.shape[-1] - 1
+
+    if np.isscalar(out):
+        return float(out)
+    isnan = np.isnan(out)
+    if np.any(isnan):
+        np.place(out, isnan, 0)
+    dims = x.get_dims(shared_dims + x_only) + y.get_dims(y_only)
+    return NDVar(out, dims, x.info.copy(), name or x.name)
 
 
 def cross_correlation(in1, in2, name="{in1} * {in2}"):

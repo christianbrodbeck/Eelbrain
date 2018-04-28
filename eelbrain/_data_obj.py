@@ -3843,7 +3843,7 @@ class NDVar(object):
         ----------
         names : sequence of {str | None}
             Dimension names. Names specified as ``None`` are inferred.
-        last : str
+        last : str | sequence of str
             Instead of ptoviding ``names``, specify a constraint on the last
             dimension only.
 
@@ -3855,11 +3855,13 @@ class NDVar(object):
         if last is not None:
             if names is not None:
                 raise TypeError("Can only specify names or last, not both")
-            elif last not in self.dimnames:
-                raise ValueError(f"{self} has no dimension called {last!r}")
+            tail = (last,) if isinstance(last, str) else last
             dims = list(self.dimnames)
-            dims.remove(last)
-            dims.append(last)
+            for dim in tail:
+                if dim not in dims:
+                    raise ValueError("last=%r: NDVar has no %r dimension" % (last, dim))
+                dims.remove(dim)
+                dims.append(dim)
             return tuple(dims)
 
         if not all(n is None or n in self.dimnames for n in names):

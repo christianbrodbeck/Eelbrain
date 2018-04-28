@@ -1,13 +1,13 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from nose.tools import eq_
+from nose.tools import eq_, assert_almost_equal
 import numpy as np
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_equal, assert_allclose
 from scipy import signal
 
 from eelbrain import (
     NDVar, Case, Scalar, UTS, datasets,
-    concatenate, convolve, cross_correlation, cwt_morlet, find_intervals,
-    find_peaks, frequency_response, psd_welch,
+    concatenate, convolve, correlation_coefficient, cross_correlation,
+    cwt_morlet, find_intervals, find_peaks, frequency_response, psd_welch,
 )
 from eelbrain._utils.testing import assert_dataobj_equal
 
@@ -54,6 +54,23 @@ def test_convolve():
     xc_np = np.vstack((np.convolve(h2.x[0], x1.x)[:100],
                        np.convolve(h2.x[1], x1.x)[:100]))
     assert_array_equal(xc.x, xc_np)
+
+
+def test_correlation_coefficient():
+    ds = datasets.get_uts()
+    uts = ds['uts']
+    uts2 = uts.copy()
+    uts2.x += np.random.normal(0, 1, uts2.shape)
+
+    assert_almost_equal(
+        correlation_coefficient(uts, uts2),
+        np.corrcoef(uts.x.ravel(), uts2.x.ravel())[0, 1])
+    assert_allclose(
+        correlation_coefficient(uts[:10], uts2[:10], 'time').x,
+        [np.corrcoef(uts.x[i], uts2.x[i])[0, 1] for i in range(10)])
+    assert_allclose(
+        correlation_coefficient(uts[:, :-.1], uts2[:, :-.1], 'case').x,
+        [np.corrcoef(uts.x[:, i], uts2.x[:, i])[0, 1] for i in range(10)])
 
 
 def test_cross_correlation():

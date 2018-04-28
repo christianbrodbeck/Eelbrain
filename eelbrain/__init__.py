@@ -28,7 +28,8 @@ from ._mne import (
     complete_source_space, labels_from_clusters, morph_source_space, xhemi,
 )
 from ._ndvar import (
-    Butterworth, concatenate, convolve, cross_correlation, cwt_morlet, dss,
+    Butterworth, concatenate, convolve, correlation_coefficient,
+    cross_correlation, cwt_morlet, dss,
     filter_data, find_intervals, find_peaks, frequency_response, label_operator,
     neighbor_correlation, psd_welch, rename_dim, resample, segment, set_parc,
     set_tmin,

@@ -117,8 +117,7 @@ Sorting and Reordering
 NDVar Operations
 ^^^^^^^^^^^^^^^^
 
-For the most common operations see :class:`NDVar` methods. Here are less common
-and more specific operations:
+See also :class:`NDVar` methods.
 
 .. autosummary::
    :toctree: generated
@@ -127,6 +126,7 @@ and more specific operations:
    complete_source_space
    concatenate
    convolve
+   correlation_coefficient
    cross_correlation
    cwt_morlet
    dss
