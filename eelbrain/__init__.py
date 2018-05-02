@@ -30,8 +30,8 @@ from ._mne import (
 from ._ndvar import (
     Butterworth, concatenate, convolve, cross_correlation, cwt_morlet, dss,
     filter_data, find_intervals, find_peaks, frequency_response, label_operator,
-    neighbor_correlation, psd_welch, rename_dim, resample, segment, set_parc,
-    set_tmin,
+    lfilter, neighbor_correlation, psd_welch, rename_dim, resample, segment,
+    set_parc, set_tmin,
 )
 from ._stats.testnd import NDTest, MultiEffectNDTest
 from ._trf import boosting, BoostingResult

@@ -134,6 +134,7 @@ and more specific operations:
    frequency_response
    label_operator
    labels_from_clusters
+   lfilter
    morph_source_space
    neighbor_correlation
    psd_welch

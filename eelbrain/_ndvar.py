@@ -9,6 +9,7 @@ operations that operate on more than one NDVar.
 from collections import defaultdict
 from copy import copy
 from functools import reduce
+from itertools import product, repeat
 from math import floor
 from numbers import Real
 import operator
@@ -598,6 +599,100 @@ def label_operator(labels, operation='mean', exclude=None, weights=None,
         if operation == 'mean':
             xs /= l1(xs, np.array(((0, len(xs)),), np.int64))
     return NDVar(x, (label_dim, dim), {}, labels.name)
+
+
+def lfilter(*args):
+    """FIR or IIR filter along one dimension
+
+    Call with ``lfliter(h, x)`` for FIR filter, ``lfilter(b, a, x)`` for IIR.
+    Uses :func:`scipy.signal.lfilter`.
+
+    Parameters
+    ----------
+    b : NDVar
+        Numerator coefficient.
+    a: NDVar (optional)
+        Denominator coefficient. Omit for FIR filter.
+    x : NDVar
+        Input signal.
+    """
+    if len(args) == 2:
+        b, x = args
+        a = None
+    elif len(args) == 3:
+        b, a, x = args
+    else:
+        raise TypeError('lfilter takes 2 or 3 parameters (%i given)' % len(args))
+
+    is_single = isinstance(x, NDVar)
+    if isinstance(b, NDVar) != is_single:
+        raise TypeError(f"b={b}: needs to match x")
+    elif a is not None and isinstance(a, NDVar) != is_single:
+        raise TypeError(f"a={a}: needs to match x")
+
+    if not is_single:
+        n = len(x)
+        assert len(b) == n
+        if a is None:
+            a = repeat(None, n)
+        else:
+            assert len(a) == n
+        out = None
+        for b_, a_, x_ in zip(b, a, x):
+            y_i = lfilter(b_, a_, x_)
+            if out is None:
+                out = y_i
+            else:
+                out += y_i
+        return out
+
+    time = x.get_dim('time')
+    if b.get_dim('time').tstep != time.tstep:
+        raise ValueError(f"b={b}: incompatible time axis (unequel tstep; x: {time.tstep} b: {b.time.tstep})")
+
+    if a is None:
+        a_data = np.ones(1)
+    else:
+        assert a.dims == b.dims
+        a_data = a.x
+
+    if b.ndim == 1:
+        y_data = signal.lfilter(b.x, a_data, x.x, x.get_axis('time'))
+        return NDVar(y_data, x.dims, x.info.copy(), x.name)
+
+    # structure data such that shared dimensions are first, time is last
+    x_dimnames = x.get_dimnames(last='time')[:-1]
+    b_dimnames = b.get_dimnames(last='time')[:-1]
+    # one x -> many y
+    b_only = [dim for dim in b_dimnames if dim not in x_dimnames]
+    outer_dims = b.get_dims(b_only)
+    # many x -> one y
+    shared = [dim for dim in b_dimnames if dim in x_dimnames]
+    inner_dims = b.get_dims(shared)
+    assert x.get_dims(shared) == inner_dims
+    # many x -> many y
+    x_only = [dim for dim in x_dimnames if dim not in b_dimnames]
+    x_only_dims = x.get_dims(x_only)
+
+    b_data = b.get_data(b_only + shared + ['time'])
+    x_data = x.get_data(shared + x_only + ['time'])
+    y_dims = x_only_dims + outer_dims + (time,)
+    y_data_ = y_data = np.zeros(tuple(map(len, y_dims)))
+    # swap axes for computation
+    n = len(x_only_dims)
+    for i in range(n):
+        y_data_ = np.rollaxis(y_data_, i, i + n + 1)
+    outer_shape = tuple(range(len(dim)) for dim in outer_dims)
+    inner_shape = tuple(range(len(dim)) for dim in inner_dims)
+    for outer_index in product(*outer_shape):
+        b_i = b_data[outer_index]
+        if a is not None:
+            raise NotImplementedError("IIR filter")
+        for inner_index in product(*inner_shape):
+            y_data_[outer_index] += signal.lfilter(b_i[inner_index], a_data, x_data[inner_index])
+
+    # TODO: reshape output to match input
+    return NDVar(y_data, y_dims, x.info.copy(), x.name)
 
 
 def neighbor_correlation(x, dim='sensor', obs='time', name=None):
