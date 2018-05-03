@@ -141,6 +141,7 @@ class TreeModel(object):
         self._params = LayeredDict()
         self._terminal_fields = []
         self._user_fields = []  # terminal fields that are relevant for user
+        self._secondary_cache = defaultdict(tuple)  # secondary cache-files
 
         # scaffold for hooks
         self._compound_members = {}
@@ -1418,23 +1419,47 @@ class FileTree(TreeModel):
         move : Move files to a different root folder.
         """
         files = self.glob(temp, inclusive, **constants)
-        if files:
+        secondary_files = []
+        for stemp in self._secondary_cache[temp]:
+            secondary_files.extend(self.glob(stemp, inclusive, **constants))
+
+        if files or secondary_files:
             print("root: %s\n" % self.get('root'))
             print('\n'.join(self._remove_root(files)))
-            if confirm or ask(
-                "Delete %i files or directories?" % len(files),
-                (('yes', 'delete files'),
-                 ('no', "don't delete files (default)")),
-                allow_empty=True
-            ) == 'yes':
-                print('deleting...')
-                for path in files:
-                    if os.path.isdir(path):
-                        shutil.rmtree(path)
+            is_dir = tuple(map(os.path.isdir, files))
+            if not confirm:
+                n_dirs = sum(is_dir)
+                n_files = len(files) - n_dirs
+                if n_files and n_dirs:
+                    info = "Delete %i files and %i directories" % (n_files, n_dirs)
+                elif n_files:
+                    info = "Delete %i files" % n_files
+                elif n_dirs:
+                    info = "Delete %i directories" % n_dirs
+                else:
+                    info = ''
+
+                if secondary_files:
+                    sinfo = '%i secondary files' % len(secondary_files)
+                    if info:
+                        info += ' (%s)' % sinfo
                     else:
-                        os.remove(path)
-            else:
-                print('aborting...')
+                        info = "Delete %s" % sinfo
+                info += '?'
+
+                if ask(info, (('yes', 'delete files'),
+                              ('no', "don't delete files (default)")),
+                       allow_empty=True) != 'yes':
+                    print('aborting...')
+                    return
+
+            print('deleting...')
+            dirs = (p for p, isdir in zip(files, is_dir) if isdir)
+            files = (p for p, isdir in zip(files, is_dir) if not isdir)
+            for path in dirs:
+                shutil.rmtree(path)
+            for path in chain(files, secondary_files):
+                os.remove(path)
         else:
             print("No files found for %r" % temp)
 
