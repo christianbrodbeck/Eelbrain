@@ -11,6 +11,7 @@ import tempfile
 
 import numpy as np
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
+from matplotlib.backend_bases import FigureCanvasBase
 from matplotlib.backends import backend_wx
 from matplotlib.figure import Figure
 import wx
@@ -66,6 +67,14 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
         FigureCanvasWxAgg.__init__(self, parent, wx.ID_ANY, self.figure)
         self.Bind(wx.EVT_ENTER_WINDOW, self.ChangeCursor)
         self._background = None
+
+    def _onKeyDown(self, evt):
+        # Override to avoid system chime
+        FigureCanvasBase.key_press_event(self, self._get_key(evt), guiEvent=evt)
+
+    def _onKeyUp(self, evt):
+        # Override to avoid system chime
+        FigureCanvasBase.key_release_event(self, self._get_key(evt), guiEvent=evt)
 
     def CanCopy(self):
         return True
