@@ -330,6 +330,13 @@ class RawICA(CachedRawPipe):
         ica.apply(raw)
         return raw
 
+    def mtime(self, subject, session, bad_chs=True):
+        mtime = CachedRawPipe.mtime(self, subject, session, bad_chs)
+        if mtime:
+            path = self.ica_path.format(subject=subject)
+            if exists(path):
+                return max(mtime, getmtime(path))
+
 
 class RawMaxwell(CachedRawPipe):
     "Maxwell filter raw pipe"
