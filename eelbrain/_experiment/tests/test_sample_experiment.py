@@ -4,6 +4,7 @@ import imp
 from os.path import join, realpath
 
 from nose.tools import eq_, assert_raises
+import numpy as np
 
 from eelbrain import *
 from eelbrain._exceptions import DefinitionError
@@ -139,6 +140,21 @@ def test_sample():
             'modality': {(1, 2): 'auditory', (3, 4): 'visual_changed'}
         }
     e = Changed(root)
+
+    # ICA
+    # ---
+    e = e_module.SampleExperiment(root)
+    e.set(raw='ica')
+    ica_path = e.make_ica()
+    e.set(raw='ica1-40', model='')
+    e.make_rej(auto=2e-12, overwrite=True)
+    ds1 = e.load_evoked(raw='ica1-40')
+    e.set(raw='ica')
+    ica = e.load_ica()
+    ica.exclude = [0, 1, 2]
+    ica.save(ica_path)
+    ds2 = e.load_evoked(raw='ica1-40')
+    assert not np.allclose(ds1['meg'].x, ds2['meg'].x, atol=1e-20), "ICA change ignored"
 
 
 @requires_mne_sample_data
