@@ -245,6 +245,7 @@ temp = {
     'cached-raw-file': '{raw-cache-base}-raw.fif',
     'event-file': '{raw-cache-base}-evts.pickled',
     'interp-file': '{raw-cache-base}-interp.pickled',
+    'cached-raw-log-file': '{raw-cache-base}-raw.log',
 
     # forward modeling:
     # Two raw files with
@@ -903,6 +904,10 @@ class MneExperiment(FileTree):
         self._bind_cache('cov-file', self.make_cov)
         self._bind_cache('src-file', self.make_src)
         self._bind_cache('fwd-file', self.make_fwd)
+
+        # currently only used for .rm()
+        self._secondary_cache['cached-raw-file'] = (
+            'event-file', 'interp-file', 'cached-raw-log-file')
 
         ########################################################################
         # logger
