@@ -1315,8 +1315,8 @@ def copy(brain):
     return brain.copy_screenshot()
 
 
-def butterfly(y, cmap=None, vmin=None, vmax=None, hemi=None, name=None, h=2.5,
-              w=5):
+def butterfly(y, cmap=None, vmin=None, vmax=None, hemi=None, xlim=None,
+              name=None, h=2.5, w=5):
     """Shortcut for a Butterfly-plot with a time-linked brain plot
 
     Parameters
@@ -1332,6 +1332,9 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, hemi=None, name=None, h=2.5,
     hemi : 'lh' | 'rh'
         Plot only this hemisphere (the default is to plot all hemispheres with
         data in ``y``).
+    xlim : scalar | (scalar, scalar)
+        Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
+        scalar (default is the full x-axis in the data).
     name : str
         The window title (default is y.name).
     h : scalar
@@ -1375,7 +1378,7 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, hemi=None, name=None, h=2.5,
 
     # butterfly-plot
     plot_data = [y.sub(source=hemi_, name=hemi_.capitalize()) for hemi_ in hemis]
-    p = Butterfly(plot_data, vmin=vmin, vmax=vmax,
+    p = Butterfly(plot_data, vmin=vmin, vmax=vmax, xlim=xlim,
                   h=h, w=w, ncol=1, name=name, color='black', ylabel=False)
 
     # position the brain window next to the butterfly-plot

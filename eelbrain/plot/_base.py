@@ -2485,8 +2485,9 @@ class XAxisMixin(object):
         Upper bound of the x axis.
     axes : list of Axes
         Axes that should be managed by the mixin.
-    xlim : tuple of 2 scalar
-        Initial x-axis display limits.
+    xlim : scalar | (scalar, scalar)
+        Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
+        scalar (default is the full x-axis in the data).
 
     Notes
     -----
@@ -2513,6 +2514,8 @@ class XAxisMixin(object):
         self._register_key('end', self.__on_end)
         if xlim is None:
             xlim = (self.__xmin, self.__xmax)
+        elif np.isscalar(xlim):
+            xlim = (self.__xmin, self.__xmin + xlim)
         self._set_xlim(*xlim)
 
     def _init_with_data(self, epochs, xdim, xlim=None, axes=None, im=False):
@@ -2526,8 +2529,9 @@ class XAxisMixin(object):
             Dimension that is plotted on the x-axis.
         axes : list of Axes
             Axes that should be managed by the mixin.
-        xlim : tuple of 2 scalar
-            Initial x-axis display limits.
+        xlim : scalar | (scalar, scalar)
+            Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
+            scalar (default is the full x-axis in the data).
         im : bool
             Plot displays an im, i.e. the axes limits need to extend beyond the
             dimension endpoints by half a step (default False).

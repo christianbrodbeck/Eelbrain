@@ -210,8 +210,9 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
         :meth:`~matplotlib.axes.Axes.imshow`). Matplotlib 1.5.3's SVG output
         can't handle uneven aspect with ``interpolation='none'``, use
         ``interpolation='nearest'`` instead.
-    xlim : (scalar, scalar)
-        Initial x-axis view limits (default is the full x-axis in the data).
+    xlim : scalar | (scalar, scalar)
+        Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
+        scalar (default is the full x-axis in the data).
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
@@ -398,8 +399,9 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
         Top of the y axis (default depends on data).
     vmin : scalar
         Bottom of the y axis (default depends on data).
-    xlim : (scalar, scalar)
-        Initial x-axis view limits (default is the full x-axis in the data).
+    xlim : scalar | (scalar, scalar)
+        Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
+        scalar (default is the full x-axis in the data).
     clip : bool
         Clip lines outside of axes (default ``True``).
     tight : bool

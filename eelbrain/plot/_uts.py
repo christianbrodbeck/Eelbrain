@@ -75,8 +75,9 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         the call to matplotlib axhline call.
     xdim : str
         dimension for the x-axis (default is 'time')
-    xlim : None | (scalar, scalar)
-        Tuple of xmin and xmax to set the initial x-axis limits.
+    xlim : scalar | (scalar, scalar)
+        Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
+        scalar (default is the full x-axis in the data).
     color : matplotlib color
         Color if just a single category of data is plotted.
     colors : str | list | dict
@@ -318,8 +319,9 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     legend : str | int | 'fig' | None
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
-    xlim : (scalar, scalar)
-        Initial x-axis view limits (default is the full x-axis in the data).
+    xlim : scalar | (scalar, scalar)
+        Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
+        scalar (default is the full x-axis in the data).
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)

@@ -218,8 +218,9 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         epochs, but only if multiple axes are plotted.
     frame : 't'
         Use T-frame for the Butterfly plots (default is rectangular frame).
-    xlim : (scalar, scalar)
-        Initial x-axis view limits (default is the full x-axis in the data).
+    xlim : scalar | (scalar, scalar)
+        Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
+        scalar (default is the full x-axis in the data).
     title : None | string
         Figure title.
 
