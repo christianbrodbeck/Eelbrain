@@ -110,14 +110,15 @@ the corresponding :py:class:`numpy.ndarray` can be retrieved in the
 NDVar
 =====
 
-:class:`NDVar` object are containers for multidimensional data, and manage the
-description of the dimensions along with the data. :class:`NDVars` are usually
-derived from some import function, for example :func:`load.fiff.stc_ndvar`,
-rather than being constructed manually. As an example, consider single trial
-data from the mne sample dataset::
+:class:`NDVar` objects are containers for multidimensional data, and manage the
+description of the dimensions along with the data. :class:`NDVars` are often
+derived from some import function, for example :func:`load.fiff.stc_ndvar`.
+As an example, consider single trial data from the :mod:`mne` sample dataset::
 
+    >>> ds = datasets.get_mne_sample(src='ico')
+    >>> src = ds['src']
     >>> src
-    <NDVar 'src': 145 (case) X 5120 (source) X 76 (time)>
+    <NDVar 'src': 145 case, 5120 source, 76 time>
 
 This representation shows that ``src`` contains 145 trials of data, with
 5120 sources and 76 time points. :class:`NDVars` offer :mod:`numpy`
@@ -126,17 +127,17 @@ functionality that takes into account the dimensions. Through the
 such as selecting data for only the left hemisphere::
 
     >>> src.sub(source='lh')
-    <NDVar 'src': 145 (case) X 2559 (source) X 76 (time)>
+    <NDVar 'src': 145 case, 2559 source, 76 time>
 
-Throught several methods data can be aggregated, for example a mean over time::
+Through several methods data can be aggregated, for example a mean over time::
 
     >>> src.mean('time')
-    <NDVar 'src': 145 (case) X 5120 (source)>
+    <NDVar 'src': 145 case, 5120 source>
 
 Or a root mean square over sources::
 
     >>> src.rms('source')
-    <NDVar 'src': 145 (case) X 76 (time)>
+    <NDVar 'src': 145 case, 76 time>
 
 As with a :class:`Var`, the corresponding :class:`numpy.ndarray` can always be
 accessed in the :attr:`NDVar.x` attribute::
@@ -145,6 +146,21 @@ accessed in the :attr:`NDVar.x` attribute::
     numpy.ndarray
     >>> src.x.shape
     (145, 5120, 76)
+
+:class:`NDVar` objects can be constructed from an array and corresponding
+dimension objects, for example::
+
+    >>> frequency = Scalar('frequency', [1, 2, 3, 4])
+    >>> time = UTS(0, 0.01, 50)
+    >>> data = numpy.random.normal(0, 1, (4, 50))
+    >>> NDVar(data, (frequency, time))
+    <NDVar: 4 frequency, 50 time>
+
+A case dimension can be added by including the bare :class:`Case` class::
+
+    >>> data = numpy.random.normal(0, 1, (10, 4, 50))
+    >>> NDVar(data, (Case, frequency, time))
+    <NDVar: 10 case, 4 frequency, 50 time>
 
 
 Dataset
