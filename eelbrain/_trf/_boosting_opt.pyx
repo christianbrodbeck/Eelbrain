@@ -50,26 +50,37 @@ cdef void l1_for_delta(
         FLOAT64 [:] x,
         INT64 [:,:] indexes,  # training segment indexes
         double delta,
-        size_t shift,
+        int shift,  # TRF element offset
         double* e_add,
         double* e_sub,
     ) nogil:
     cdef:
         double d, temp_sum
-        size_t i, seg_i, seg_start
+        size_t i, seg_i, seg_start, seg_stop, conv_start, conv_stop
 
     e_add[0] = 0.
     e_sub[0] = 0.
 
     for seg_i in range(indexes.shape[0]):
         seg_start = indexes[seg_i, 0]
-        # start of the segment before the shift-delay
+        seg_stop = indexes[seg_i, 1]
+        # determine part of overlap
+        conv_start = seg_start
+        conv_stop = seg_stop
+        if shift >= 0:
+            conv_start += shift
+        else:
+            conv_stop += shift
+        # start/end of the segment
         temp_sum = 0.
-        for i in range(seg_start, seg_start + shift):
+        for i in range(seg_start, conv_start):
+            temp_sum += fabs(y_error[i])
+        for i in range(conv_stop, seg_stop):
             temp_sum += fabs(y_error[i])
         e_add[0] += temp_sum
         e_sub[0] += temp_sum
-        for i in range(seg_start + shift, indexes[seg_i, 1]):
+        # part of the segment that is affected
+        for i in range(conv_start, conv_stop):
             d = delta * x[i - shift]
             e_add[0] += fabs(y_error[i] - d)
             e_sub[0] += fabs(y_error[i] + d)
@@ -80,26 +91,37 @@ cdef void l2_for_delta(
         FLOAT64 [:] x,
         INT64 [:,:] indexes,  # training segment indexes
         double delta,
-        size_t shift,
+        int shift,
         double* e_add,
         double* e_sub,
     ) nogil:
     cdef:
         double d, temp_sum
-        size_t i, seg_i, seg_start
+        size_t i, seg_i, seg_start, seg_stop, conv_start, conv_stop
 
     e_add[0] = 0.
     e_sub[0] = 0.
 
     for seg_i in range(indexes.shape[0]):
         seg_start = indexes[seg_i, 0]
-        # start of the segment before the shift-delay
+        seg_stop = indexes[seg_i, 1]
+        # determine part of overlap
+        conv_start = seg_start
+        conv_stop = seg_stop
+        if shift >= 0:
+            conv_start += shift
+        else:
+            conv_stop += shift
+        # start/end of the segment
         temp_sum = 0.
-        for i in range(seg_start, seg_start + shift):
+        for i in range(seg_start, conv_start):
+            temp_sum += y_error[i] ** 2
+        for i in range(conv_stop, seg_stop):
             temp_sum += y_error[i] ** 2
         e_add[0] += temp_sum
         e_sub[0] += temp_sum
-        for i in range(seg_start + shift, indexes[seg_i, 1]):
+        # part of the segment that is affected
+        for i in range(conv_start, conv_stop):
             d = delta * x[i - shift]
             e_add[0] += (y_error[i] - d) ** 2
             e_sub[0] += (y_error[i] + d) ** 2
@@ -109,7 +131,8 @@ def generate_options(
         FLOAT64 [:] y_error,
         FLOAT64 [:,:] x,  # (n_stims, n_times)
         INT64 [:,:] indexes,  # training segment indexes
-        int error,
+        int i_start,  # kernel start index (y/x offset)
+        size_t error,  # ID of the error function (l1/l2)
         double delta,
         # buffers
         FLOAT64 [:,:] new_error,  # (n_stims, n_times_trf)
@@ -132,9 +155,9 @@ def generate_options(
             for i_time in range(n_times_trf):
                 # +/- delta
                 if error == 1:
-                    l1_for_delta(y_error, x_stim, indexes, delta, i_time, &e_add, &e_sub)
+                    l1_for_delta(y_error, x_stim, indexes, delta, i_time + i_start, &e_add, &e_sub)
                 else:
-                    l2_for_delta(y_error, x_stim, indexes, delta, i_time, &e_add, &e_sub)
+                    l2_for_delta(y_error, x_stim, indexes, delta, i_time + i_start, &e_add, &e_sub)
 
                 if e_add > e_sub:
                     new_error[i_stim, i_time] = e_sub
@@ -147,9 +170,9 @@ def generate_options(
 def update_error(
         FLOAT64 [:] y_error,
         FLOAT64 [:] x,
-        INT64 [:,:] indexes,  # training segment indexes
+        INT64 [:,:] indexes,  # segment indexes
         double delta,
-        size_t shift,
+        int shift,
     ):
     cdef:
         size_t i, seg_i

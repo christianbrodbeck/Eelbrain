@@ -1,15 +1,20 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from math import floor
 import os
+from warnings import catch_warnings, filterwarnings
 
 from nose.tools import eq_, assert_almost_equal, assert_is_none, assert_raises
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 import pickle
 import scipy.io
-from eelbrain import test, boosting, convolve, configure, datasets
-from eelbrain._trf._boosting import boost_1seg, evaluate_kernel
+from eelbrain import (
+    datasets, test, configure,
+    boosting, convolve, correlation_coefficient, epoch_impulse_predictor,
+)
+
 from eelbrain._utils.testing import assert_dataobj_equal
+from eelbrain._trf._boosting import boost, evaluate_kernel
 
 
 def assert_res_equal(res1, res):
@@ -72,6 +77,24 @@ def test_boosting():
     yield run_boosting, ds
 
 
+def test_boosting_epochs():
+    """Test boosting with epoched data"""
+    ds = datasets.get_uts(True)
+    p1 = epoch_impulse_predictor('uts', 'A=="a1"', name='a1', ds=ds)
+    p0 = epoch_impulse_predictor('uts', 'A=="a0"', name='a0', ds=ds)
+    p1 = p1.smooth('time', .05, 'hamming')
+    p0 = p0.smooth('time', .05, 'hamming')
+    # 1d
+    res = boosting('uts', [p0, p1], 0, 0.6, model='A', ds=ds)
+    assert_almost_equal(res.h[0].rms(), 0.0128, 3)
+    assert_almost_equal(res.h[1].rms(), 0.000569, 3)
+    # 2d
+    res = boosting('utsnd', [p0, p1], 0, 0.6, model='A', ds=ds)
+    eq_(len(res.h), 2)
+    eq_(res.h[0].shape, (5, 60))
+    eq_(res.h[1].shape, (5, 60))
+
+
 def test_result():
     "Test boosting results"
     ds = datasets._get_continuous()
@@ -90,20 +113,22 @@ def test_result():
     y2 *= res.y_scale
     y2 += y1.mean() - y2.mean()  # mean can't be reconstructed
     assert_dataobj_equal(y1, y2, decimal=12)
-    # reconstriction
+    # reconstruction
     res = boosting(x1, y, -1, 0)
-    x1r = convolve(res.h_scaled, y[:9.1])
-    assert_almost_equal(test.Correlation(x1r, x1[:9.1]).r, res.r, 2)
+    x1r = convolve(res.h_scaled, y)
+    assert_almost_equal(test.Correlation(x1r, x1).r, res.r, 2)
 
     # test NaN checks  (modifies data)
     ds['x2'].x[1, 50] = np.nan
     assert_raises(ValueError, boosting, ds['y'], ds['x2'], 0, .5)
     assert_raises(ValueError, boosting, ds['y'], ds['x2'], 0, .5, False)
     ds['x2'].x[1, :] = 1
-    assert_raises(ValueError, boosting, ds['y'], ds['x2'], 0, .5)
-    ds['y'].x[50] = np.nan
-    assert_raises(ValueError, boosting, ds['y'], ds['x1'], 0, .5)
-    assert_raises(ValueError, boosting, ds['y'], ds['x1'], 0, .5, False)
+    with catch_warnings():
+        filterwarnings('ignore', category=RuntimeWarning)
+        assert_raises(ValueError, boosting, ds['y'], ds['x2'], 0, .5)
+        ds['y'].x[50] = np.nan
+        assert_raises(ValueError, boosting, ds['y'], ds['x1'], 0, .5)
+        assert_raises(ValueError, boosting, ds['y'], ds['x1'], 0, .5, False)
 
 
 def test_boosting_func():
@@ -114,9 +139,15 @@ def test_boosting_func():
     x = mat['stim']
     y = mat['signal'][0]
 
-    h, test_sse_history = boost_1seg(x, y, 10, 0.005, 40, 0, 0.01, 'l2', True)
+    y_len = len(y)
+    seg_len = int(y_len / 40)
+    all_segments = np.array([[0, seg_len], [seg_len, y_len]], np.int64)
+    train_segments = all_segments[1:]
+    test_segments = all_segments[:1]
+    h, test_sse_history = boost(y, x, all_segments, train_segments, test_segments,
+                                0, 10, 0.005, 0.005, 'l2', True)
     test_seg_len = int(floor(x.shape[1] / 40))
-    r, rr, _ = evaluate_kernel(y[:test_seg_len], x[:, :test_seg_len], h, 'l2')
+    r, rr, _ = evaluate_kernel(y[:test_seg_len], x[:, :test_seg_len], h, 0, 'l2', h.shape[1] - 1)
 
     assert_array_equal(h, mat['h'])
     assert_almost_equal(r, mat['crlt'][0, 0], 10)
@@ -129,9 +160,10 @@ def test_boosting_func():
     x = mat['stim']
     y = mat['signal'][0]
 
-    h, test_sse_history = boost_1seg(x, y, 10, 0.005, 40, 0, 0.01, 'l2', True)
+    h, test_sse_history = boost(y, x, all_segments, train_segments, test_segments,
+                                0, 10, 0.005, 0.005, 'l2', True)
     test_seg_len = int(floor(x.shape[1] / 40))
-    r, rr, _ = evaluate_kernel(y[:test_seg_len], x[:, :test_seg_len], h, 'l2')
+    r, rr, _ = evaluate_kernel(y[:test_seg_len], x[:, :test_seg_len], h, 0, 'l2', h.shape[1] - 1)
 
     assert_array_equal(h, mat['h'])
     assert_almost_equal(r, mat['crlt'][0, 0], 10)

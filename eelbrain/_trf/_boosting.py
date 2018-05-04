@@ -1,6 +1,11 @@
 """
 Boosting as described by David et al. (2007).
 
+Versions
+--------
+7: Accept segmented data, respect segmentation (don't concatenate data)
+
+
 Profiling
 ---------
 ds = datasets._get_continuous()
@@ -13,7 +18,6 @@ x2 = ds['x2']
 """
 import inspect
 from itertools import product
-from math import floor
 from multiprocessing import Process, Queue
 from multiprocessing.sharedctypes import RawArray
 import os
@@ -22,6 +26,7 @@ import time
 from threading import Event, Thread
 
 import numpy as np
+import scipy.signal
 from scipy.stats import spearmanr
 from tqdm import tqdm
 
@@ -33,10 +38,7 @@ from .shared import RevCorrData
 
 
 # BoostingResult version
-VERSION = 6
-
-# cross-validation
-N_SEGS = 10
+VERSION = 7
 
 # process messages
 JOB_TERMINATE = -1
@@ -93,7 +95,7 @@ class BoostingResult(object):
     def __init__(self, h, r, isnan, t_run, version, delta, mindelta, error,
                  spearmanr, fit_error, scale_data, y_mean, y_scale, x_mean,
                  x_scale, y=None, x=None, tstart=None, tstop=None,
-                 **experimental_parameters):
+                 n_segments=None, model=None, **experimental_parameters):
         self.h = h
         self.r = r
         self.isnan = isnan
@@ -113,6 +115,8 @@ class BoostingResult(object):
         self.x = x
         self.tstart = tstart
         self.tstop = tstop
+        self.n_segments = n_segments
+        self.model = model
         self._experimental_parameters = experimental_parameters
 
     def __getstate__(self):
@@ -133,7 +137,7 @@ class BoostingResult(object):
         items = ['boosting %s ~ %s' % (self.y, x),
                  '%g - %g' % (self.tstart, self.tstop)]
         for name, param in inspect.signature(boosting).parameters.items():
-            if param.default is inspect.Signature.empty:
+            if param.default is inspect.Signature.empty or name == 'ds':
                 continue
             value = getattr(self, name)
             if value != param.default:
@@ -184,8 +188,8 @@ class BoostingResult(object):
 
 @user_activity
 def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
-             error='l2'):
-    """Estimate a temporal response function through boosting
+             error='l2', n_segments=None, model=None, ds=None):
+    """Estimate a filter with boosting
 
     Parameters
     ----------
@@ -212,6 +216,21 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         i.e. ``delta`` is constant.
     error : 'l2' | 'l1'
         Error function to use (default is ``l2``).
+    n_segments : int
+        Divide the data into ``n_segments`` for early stopping based on
+        cross-validation. In each iteration, ``n - 1`` segments are used for
+        training, and the remaining segment is used for validation.
+        If data is continuous, data are divided into ``n_segments`` contiguous
+        segments of equal length (default 10).
+        If data has cases, cases are divided with ``[::n_segments]`` slices
+        (default ``min(n_cases, 10)``, where if ``model`` is specified,
+        ``n_cases`` is the lowest number of cases in any cell of the model).
+    model : Categorial
+        If data has cases, divide cases into different categories (division
+        for crossvalidation is done separately for each cell).
+    ds : Dataset
+        If provided, other parameters can be specified as string for items in
+        ``ds``.
 
     Returns
     -------
@@ -233,27 +252,25 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     # check arguments
     mindelta_ = delta if mindelta is None else mindelta
 
-    data = RevCorrData(y, x, error, scale_data)
-    y_data = data.y
-    x_data = data.x
-    n_y = len(y_data)
-    n_x = len(x_data)
+    data = RevCorrData(y, x, error, scale_data, ds)
+    data.initialize_cross_validation(n_segments, model, ds)
+    n_y = len(data.y)
+    n_x = len(data.x)
 
-    # crop data to align y and x at TRF start
+    # TRF extent in indices
     tstep = data.time.tstep
     i_start = int(round(tstart / tstep))
     i_stop = int(round(tstop / tstep))
     trf_length = i_stop - i_start
-    if i_start < 0:
-        x_data = x_data[:, -i_start:]
-        y_data = y_data[:, :i_start]
-    elif i_start > 0:
-        x_data = x_data[:, :-i_start]
-        y_data = y_data[:, i_start:]
+
+    if data.segments is None:
+        i_skip = trf_length - 1
+    else:
+        i_skip = 0
 
     # progress bar
-    pbar = tqdm(desc="Boosting %i signals" % n_y if n_y > 1 else "Boosting",
-                total=n_y * 10, disable=CONFIG['tqdm'])
+    n_cv = len(data.cv_segments)
+    pbar = tqdm(desc=f"Boosting{f' {n_y} signals' if n_y > 1 else ''}", total=n_y * n_cv, disable=CONFIG['tqdm'])
     t_start = time.time()
     # result containers
     res = np.empty((3, n_y))  # r, rank-r, error
@@ -262,28 +279,27 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     if CONFIG['n_workers']:
         # Make sure cross-validations are added in the same order, otherwise
         # slight numerical differences can occur
-        job_queue, result_queue = setup_workers(
-            y_data, x_data, trf_length, delta, mindelta_, N_SEGS, error)
+        job_queue, result_queue = setup_workers(data, i_start, trf_length, delta, mindelta_, error)
         stop_jobs = Event()
-        thread = Thread(target=put_jobs, args=(job_queue, n_y, N_SEGS, stop_jobs))
+        thread = Thread(target=put_jobs, args=(job_queue, n_y, n_cv, stop_jobs))
         thread.start()
 
         # collect results
         try:
             h_segs = {}
-            for _ in range(n_y * N_SEGS):
+            for _ in range(n_y * n_cv):
                 y_i, seg_i, h = result_queue.get()
                 pbar.update()
                 if y_i in h_segs:
                     h_seg = h_segs[y_i]
                     h_seg[seg_i] = h
-                    if len(h_seg) == N_SEGS:
+                    if len(h_seg) == n_cv:
                         del h_segs[y_i]
-                        hs = [h for h in (h_seg[i] for i in range(N_SEGS)) if
+                        hs = [h for h in (h_seg[i] for i in range(n_cv)) if
                               h is not None]
                         if hs:
                             h = np.mean(hs, 0, out=h_x[y_i])
-                            res[:, y_i] = evaluate_kernel(y_data[y_i], x_data, h, error)
+                            res[:, y_i] = evaluate_kernel(data.y[y_i], data.x, h, i_start, error, i_skip, data.segments)
                         else:
                             h_x[y_i] = 0
                             res[:, y_i] = 0.
@@ -293,18 +309,18 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
             stop_jobs.set()
             raise
     else:
-        for y_i, y_ in enumerate(y_data):
+        for y_i, y_ in enumerate(data.y):
             hs = []
-            for i in range(N_SEGS):
-                h = boost_1seg(x_data, y_, trf_length, delta, N_SEGS, i,
-                               mindelta_, error)
+            for segments, train, test in data.cv_segments:
+                h = boost(y_, data.x, segments, train, test, i_start, trf_length, delta,
+                          mindelta_, error)
                 if h is not None:
                     hs.append(h)
                 pbar.update()
 
             if hs:
                 h = np.mean(hs, 0, out=h_x[y_i])
-                res[:, y_i] = evaluate_kernel(y_, x_data, h, error)
+                res[:, y_i] = evaluate_kernel(y_, data.x, h, i_start, error, i_skip, data.segments)
             else:
                 h_x[y_i].fill(0)
                 res[:, y_i].fill(0.)
@@ -322,73 +338,15 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
 
     y_mean, y_scale, x_mean, x_scale = data.data_scale_ndvars()
 
-    return BoostingResult(data.package_kernel(h_x, tstart), r, isnan, dt, VERSION,
-                          delta, mindelta, error, rr, err,
-                          scale_data, y_mean, y_scale, x_mean, x_scale,
-                          data.y_name, data.x_name, tstart, tstop)
+    return BoostingResult(
+        data.package_kernel(h_x, tstart), r, isnan, dt, VERSION, delta,
+        mindelta, error, rr, err, scale_data, y_mean, y_scale, x_mean, x_scale,
+        data.y_name, data.x_name, tstart, tstop)
 
 
-def boost_1seg(x, y, trf_length, delta, nsegs, segno, mindelta, error,
-               return_history=False):
-    """Boosting with one test segment determined by regular division
-
-    Based on port of svdboostV4pred
-
-    Parameters
-    ----------
-    x : array (n_stims, n_times)
-        Stimulus.
-    y : array (n_times,)
-        Dependent signal, time series to predict.
-    trf_length : int
-        Length of the TRF (in time samples).
-    delta : scalar
-        Step of the adjustment.
-    nsegs : int
-        Number of segments
-    segno : int [0, nsegs-1]
-        which segment to use for testing
-    mindelta : scalar
-        Smallest delta to use. If no improvement can be found in an iteration,
-        the first step is to divide delta in half, but stop if delta becomes
-        smaller than ``mindelta``.
-    error : 'l2' | 'Sabs'
-        Error function to use.
-    return_history : bool
-        Return error history as second return value.
-
-    Returns
-    -------
-    history[best_iter] : None | array
-        Winning kernel, or None if 0 is the best kernel.
-    test_sse_history : list (only if ``return_history==True``)
-        SSE for test data at each iteration.
-    """
-    assert x.ndim == 2
-    assert y.shape == (x.shape[1],)
-
-    # separate training and testing signal
-    n_times = x.shape[1]
-    test_seg_len = int(floor(x.shape[1] / nsegs))
-    test_index = ((test_seg_len * segno, test_seg_len * (segno + 1)),)
-    if segno == 0:
-        train_index = ((test_seg_len, n_times),)
-    elif segno == nsegs-1:
-        train_index = ((0, n_times - test_seg_len),)
-    elif segno < 0 or segno >= nsegs:
-        raise ValueError("segno=%r" % segno)
-    else:
-        train_index = ((0, test_seg_len * segno),
-                       (test_seg_len * (segno + 1), n_times))
-
-    return boost_segs(y, x, np.array(train_index, np.int64),
-                      np.array(test_index, np.int64), trf_length, delta,
-                      mindelta, error, return_history)
-
-
-def boost_segs(y, x, train_index, test_index, trf_length, delta, mindelta,
-               error, return_history):
-    """Boosting supporting multiple array segments
+def boost(y, x, all_index, train_index, test_index, i_start, trf_length, delta, mindelta,
+          error, return_history=False):
+    """Estimate one filter with boosting
 
     Parameters
     ----------
@@ -420,15 +378,12 @@ def boost_segs(y, x, train_index, test_index, trf_length, delta, mindelta,
     test_sse_history : list (only if ``return_history==True``)
         SSE for test data at each iteration.
     """
-    delta_error = DELTA_ERROR_FUNC[error]
+    delta_error_func = DELTA_ERROR_FUNC[error]
     error = ERROR_FUNC[error]
     n_stims, n_times = x.shape
     assert y.shape == (n_times,)
 
     h = np.zeros((n_stims, trf_length))
-
-    # index for computing all segments
-    all_index = np.vstack((train_index, test_index))
 
     # buffers
     y_error = y.copy()
@@ -461,7 +416,7 @@ def boost_segs(y, x, train_index, test_index, trf_length, delta, mindelta,
             break
 
         # generate possible movements -> training error
-        generate_options(y_error, x, train_index, delta_error, delta, new_error, new_sign)
+        generate_options(y_error, x, train_index, i_start, delta_error_func, delta, new_error, new_sign)
 
         i_stim, i_time = np.unravel_index(np.argmin(new_error), h.shape)
         new_train_error = new_error[i_stim, i_time]
@@ -491,7 +446,7 @@ def boost_segs(y, x, train_index, test_index, trf_length, delta, mindelta,
         # update h with best movement
         h[i_stim, i_time] += delta_signed
         history.append((i_stim, i_time, delta_signed))
-        update_error(y_error, x[i_stim], all_index, delta_signed, i_time)
+        update_error(y_error, x[i_stim], all_index, delta_signed, i_time + i_start)
     else:
         raise RuntimeError("Maximum number of iterations exceeded")
     # print('  (%i iterations)' % (i_boost + 1))
@@ -510,20 +465,21 @@ def boost_segs(y, x, train_index, test_index, trf_length, delta, mindelta,
         return h
 
 
-def setup_workers(y, x, trf_length, delta, mindelta, nsegs, error):
-    n_y, n_times = y.shape
-    n_x, _ = x.shape
+def setup_workers(data, i_start, trf_length, delta, mindelta, error):
+    n_y, n_times = data.y.shape
+    n_x, _ = data.x.shape
 
     y_buffer = RawArray('d', n_y * n_times)
-    y_buffer[:] = y.ravel()
+    y_buffer[:] = data.y.ravel()
     x_buffer = RawArray('d', n_x * n_times)
-    x_buffer[:] = x.ravel()
+    x_buffer[:] = data.x.ravel()
 
     job_queue = Queue(200)
     result_queue = Queue(200)
 
-    args = (y_buffer, x_buffer, n_y, n_times, n_x, trf_length, delta,
-            mindelta, nsegs, error, job_queue, result_queue)
+    args = (y_buffer, x_buffer, n_y, n_times, n_x, data.cv_segments,
+            i_start, trf_length, delta, mindelta, error,
+            job_queue, result_queue)
     for _ in range(CONFIG['n_workers']):
         process = Process(target=boosting_worker, args=args)
         process.start()
@@ -531,8 +487,9 @@ def setup_workers(y, x, trf_length, delta, mindelta, nsegs, error):
     return job_queue, result_queue
 
 
-def boosting_worker(y_buffer, x_buffer, n_y, n_times, n_x, trf_length,
-                    delta, mindelta, nsegs, error, job_queue, result_queue):
+def boosting_worker(y_buffer, x_buffer, n_y, n_times, n_x, cv_segments,
+                    i_start, trf_length, delta, mindelta, error,
+                    job_queue, result_queue):
     if CONFIG['nice']:
         os.nice(CONFIG['nice'])
     signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -544,8 +501,9 @@ def boosting_worker(y_buffer, x_buffer, n_y, n_times, n_x, trf_length,
         y_i, seg_i = job_queue.get()
         if y_i == JOB_TERMINATE:
             return
-        h = boost_1seg(x, y[y_i], trf_length, delta, nsegs, seg_i, mindelta,
-                       error)
+        all_index, train_index, test_index = cv_segments[seg_i]
+        h = boost(y[y_i], x, all_index, train_index, test_index,
+                  i_start, trf_length, delta, mindelta, error)
         result_queue.put((y_i, seg_i, h))
 
 
@@ -561,25 +519,45 @@ def put_jobs(queue, n_y, n_segs, stop):
         queue.put((JOB_TERMINATE, None))
 
 
-def apply_kernel(x, h, out=None):
-    """Predict ``y`` by applying kernel ``h`` to ``x``
-
-    x.shape is (n_stims, n_samples)
-    h.shape is (n_stims, n_trf_samples)
-    """
+def convolve(h, x, i_start, segments=None, out=None):
+    "h * x with time axis matching x"
+    n_times = x.shape[1]
     if out is None:
-        out = np.zeros(x.shape[1])
+        out = np.zeros(n_times)
     else:
         out.fill(0)
 
-    for ind in range(len(h)):
-        out += np.convolve(h[ind], x[ind])[:len(out)]
+    if segments is None:
+        segments = ((0, n_times),)
+
+    for start, stop in segments:
+        out_index = slice(start + max(0, i_start), stop + min(0, i_start))
+        y_index = slice(max(0, -i_start), stop - start + min(0, -i_start))
+        for ind in range(len(h)):
+            out[out_index] += scipy.signal.convolve(h[ind], x[ind, start:stop])[y_index]
 
     return out
 
 
-def evaluate_kernel(y, x, h, error):
+def evaluate_kernel(y, x, h, i_start, error, i_skip, segments=None):
     """Fit quality statistics
+
+    Parameters
+    ----------
+    y : array, (n_samples)
+        Y.
+    x : array, (n_stims, n_samples)
+        X.
+    h : array, (n_stims, h_n_samples)
+        H.
+    i_start : int
+        Time shift of the first sample of ``h``.
+    error : str
+        Error metric.
+    segments : array (n_segnents, 2)
+        Data segments.
+    i_skip : int
+        Skip this many samples for evaluating model fit.
 
     Returns
     -------
@@ -590,12 +568,13 @@ def evaluate_kernel(y, x, h, error):
     error : float | array
         Error corresponding to error_func.
     """
-    y_pred = apply_kernel(x, h)
+    y_pred = convolve(h, x, i_start, segments)
 
-    # discard onset (length of kernel)
-    i0 = h.shape[-1] - 1
-    y = y[i0:]
-    y_pred = y_pred[i0:]
+    # discard onset
+    if i_skip:
+        assert segments is None, "Not implemented"
+        y = y[i_skip:]
+        y_pred = y_pred[i_skip:]
 
     error_func = ERROR_FUNC[error]
     index = np.array(((0, len(y)),), np.int64)

@@ -1,8 +1,13 @@
+from collections import Iterator
+from functools import reduce
+from math import ceil, floor
+from operator import mul
+
 import numpy as np
 from numpy import newaxis
 
 from .. import _info
-from .._data_obj import NDVar, UTS, dataobj_repr
+from .._data_obj import NDVar, UTS, dataobj_repr, ascategorial, asndvar
 
 
 class RevCorrData(object):
@@ -10,12 +15,26 @@ class RevCorrData(object):
     
     Attributes
     ----------
-    y : array  (n_y, n_times)
+    y : NDVar
         Dependent variable.
-    x : array  (n_x, n_times)
+    x : NDVar | sequence of NDVar
         Predictors.
+    segments : np.ndarray
+        ``(n_segments, 2)`` array of segment ``[start, stop]`` indices.
+    cv_segments : Sequence
+        Sequence of ``(all_segments, train, test)`` tuples, where each is a
+        2d-array of ``[start, stop]`` indices.
+    cv_indexes : Sequence
+        Only available for segmented data. For each partition, the index into
+        :attr:`.segments` used as test set.
     """
-    def __init__(self, y, x, error, scale_data):
+    def __init__(self, y, x, error, scale_data, ds=None):
+        y = asndvar(y, ds=ds)
+        if isinstance(x, (tuple, list, Iterator)):
+            x = (asndvar(x_, ds=ds) for x_ in x)
+        else:
+            x = asndvar(x, ds=ds)
+
         # scale_data param
         if isinstance(scale_data, bool):
             scale_in_place = False
@@ -40,15 +59,46 @@ class RevCorrData(object):
         time_dim = y.get_dim('time')
         if any(x_.get_dim('time') != time_dim for x_ in x):
             raise ValueError("Not all NDVars have the same time dimension")
+        n_times = len(time_dim)
+
+        # determine cases (used as segments)
+        n_cases = segments = None
+        for x_ in x:
+            # determine cases
+            if n_cases is None:
+                if x_.has_case:
+                    n_cases = len(x_)
+                    # check y
+                    if not y.has_case:
+                        raise ValueError('y=%r: x has case dimension but y has not case' % (y,))
+                    elif len(y) != n_cases:
+                        raise ValueError('y=%r: has different number of cases from x (%i)' % (y, n_cases))
+                    # prepare segment index
+                    seg_i = np.arange(0, n_cases * n_times + 1, n_times, np.int64)[:, newaxis]
+                    segments = np.hstack((seg_i[:-1], seg_i[1:]))
+                else:
+                    n_cases = 0
+            elif n_cases:
+                if len(x_) != n_cases:
+                    raise ValueError(f'x={x}: not all components have same number of cases')
+            else:
+                assert not x_.has_case, 'some but not all x have case'
+        case_to_segments = n_cases > 0
 
         # y_data:  ydim x time array
         if y.ndim == 1:
+            dimnames = ('time',)
             ydims = ()
-            y_data = y.x[None, :]
+        elif case_to_segments:
+            dimnames = y.get_dimnames(last=('case', 'time'))
+            ydims = y.get_dims(dimnames[:-2])
         else:
             dimnames = y.get_dimnames(last='time')
             ydims = y.get_dims(dimnames[:-1])
-            y_data = y.get_data(dimnames).reshape((-1, len(y.time)))
+        shape = (
+            reduce(mul, map(len, ydims), 1),
+            n_cases * n_times if case_to_segments else n_times)
+        y_data = y.get_data(dimnames).reshape(shape)
 
         # x_data:  predictor x time array
         x_data = []
@@ -56,20 +106,27 @@ class RevCorrData(object):
         x_names = []
         n_x = 0
         for x_ in x:
-            if x_.ndim == 1:
+            ndim = x_.ndim - bool(n_cases)
+            if ndim == 1:
                 xdim = None
-                data = x_.x[newaxis, :]
+                dimnames = ('case' if n_cases else np.newaxis, 'time')
+                data = x_.get_data(dimnames)
                 index = n_x
                 x_names.append(dataobj_repr(x_))
-            elif x_.ndim == 2:
-                xdim = x_.dims[not x_.get_axis('time')]
-                data = x_.get_data((xdim.name, 'time'))
+            elif ndim == 2:
+                dimnames = x_.get_dimnames(last='time')
+                xdim = x_.get_dim(dimnames[-2])
+                if n_cases:
+                    dimnames = (xdim.name, 'case', 'time')
+                data = x_.get_data(dimnames)
                 index = slice(n_x, n_x + len(data))
                 x_repr = dataobj_repr(x_)
                 for v in xdim:
                     x_names.append("%s-%s" % (x_repr, v))
             else:
                 raise NotImplementedError("x with more than 2 dimensions")
+            if n_cases:
+                data = data.reshape((-1, n_cases * n_times))
             x_data.append(data)
             x_meta.append((x_.name, xdim, index))
             n_x += len(data)
@@ -78,7 +135,7 @@ class RevCorrData(object):
             x_data = x_data[0]
             x_is_copy = False
         else:
-            x_data = np.vstack(x_data)
+            x_data = np.concatenate(x_data)
             x_is_copy = True
 
         if scale_data:
@@ -121,7 +178,10 @@ class RevCorrData(object):
             raise ValueError("Data with NaN: " + ', '.join(has_nan))
 
         self.time = time_dim
+        self.segments = segments
+        self.cv_segments = self.cv_indexes = self.n_segments = self.model = None
         self._scale_data = bool(scale_data)
+        self.shortest_segment_n_times = n_times
         # y
         self.y = y_data
         self.y_mean = y_mean
@@ -138,6 +198,54 @@ class RevCorrData(object):
         self._x_meta = x_meta
         self._multiple_x = multiple_x
         self._x_is_copy = x_is_copy
+
+    def initialize_cross_validation(self, n_segments=None, model=None, ds=None):
+        if n_segments is not None and n_segments <= 1:
+            raise ValueError(f"n_segments={n_segments}")
+        cv_segments = []  # list of (segments, train, test)
+        n_times = len(self.time)
+        if self.segments is None:
+            if model is not None:
+                raise TypeError('model=%r: model cannot be specified in unsegmented data' % (dataobj_repr(model),))
+            if n_segments is None:
+                n_segments = 10
+            seg_n_times = int(floor(n_times / n_segments))
+            # first
+            for i in range(n_segments):
+                test = ((seg_n_times * i, seg_n_times * (i + 1)),)
+                if i == 0:  # first
+                    train = ((seg_n_times, n_times),)
+                elif i == n_segments - 1:  # last
+                    train = ((0, n_times - seg_n_times),)
+                else:
+                    train = ((0, seg_n_times * i),
+                             (seg_n_times * (i + 1), n_times))
+                cv_segments.append((np.vstack((train, test)), train, test))
+            cv_segments = (tuple(np.array(s, np.int64) for s in cv) for cv in cv_segments)
+        else:
+            n_total = len(self.segments)
+            irange = np.arange(n_total)
+            if model is None:
+                cell_indexes = [irange]
+            else:
+                model = ascategorial(model, ds=ds, n=n_total)
+                cell_indexes = [irange[model == cell] for cell in model.cells]
+            cell_size = min(len(i) for i in cell_indexes)
+            if n_segments is None:
+                n_segments = min(cell_size, 10)
+            elif n_segments > cell_size:
+                raise ValueError('n_segments=%r with cell size %i' % (n_segments, cell_size))
+            indexes = []
+            for i in range(n_segments):
+                index = np.zeros(n_total, bool)
+                for cell_index in cell_indexes:
+                    index[cell_index[i::n_segments]] = True
+                indexes.append(index)
+            cv_segments = ((self.segments, self.segments[np.invert(i)], self.segments[i]) for i in indexes)
+            self.cv_indexes = tuple(indexes)
+        self.n_segments = n_segments
+        self.cv_segments = tuple(cv_segments)
+        self.model = dataobj_repr(model)
 
     def data_scale_ndvars(self):
         if self._scale_data:
