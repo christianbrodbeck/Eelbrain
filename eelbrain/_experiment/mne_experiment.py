@@ -179,6 +179,10 @@ class DictSet(object):
         if item not in self._list:
             self._list.append(item)
 
+    def update(self, items):
+        for item in items:
+            self.add(item)
+
 
 class CacheDict(dict):
 
@@ -1346,6 +1350,11 @@ class MneExperiment(FileTree):
                 for test in invalid_cache['tests']:
                     rm['test-file'].add({'test': test})
                     rm['report-file'].add({'test': test})
+
+                # secondary cache files
+                for temp in tuple(rm):
+                    for stemp in self._secondary_cache[temp]:
+                        rm[stemp].update(rm[temp])
 
                 # find actual files to delete
                 log.debug("Outdated cache files:")
