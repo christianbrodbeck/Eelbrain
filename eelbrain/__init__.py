@@ -34,7 +34,7 @@ from ._ndvar import (
     set_tmin,
 )
 from ._stats.testnd import NDTest, MultiEffectNDTest
-from ._trf import boosting, BoostingResult
+from ._trf import boosting, BoostingResult, epoch_impulse_predictor
 from ._utils import set_log_level
 from ._utils.com import check_for_update
 

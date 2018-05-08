@@ -399,8 +399,14 @@ def as_case_identifier(x, ds=None):
     return x
 
 
-def asarray(x, kind=None):
+def asarray(x, kind=None, ds=None):
     "Coerce input to array"
+    if isinstance(x, str):
+        if ds is None:
+            raise TypeError("Parameter was specified as string, but no Dataset "
+                            "was specified")
+        x = ds.eval(x)
+
     if isinstance(x, Var):
         x = x.x
     else:
