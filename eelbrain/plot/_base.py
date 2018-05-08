@@ -77,13 +77,14 @@ from matplotlib.ticker import FuncFormatter
 import numpy as np
 import PIL
 
+from .._colorspaces import symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
 from .._config import CONFIG
+from .._data_obj import (Case, UTS, ascategorial, asndvar, assub, isnumeric,
+                         isdataobject, cellname)
 from .._utils import IS_WINDOWS, LazyProperty, intervals
 from .._utils.subp import command_exists
 from ..fmtxt import Image
-from .._colorspaces import symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
-from .._data_obj import (Case, UTS, ascategorial, asndvar, assub, isnumeric,
-                         isdataobject, cellname)
+from ..mne_fixes import MNE_EPOCHS
 from functools import reduce
 
 
@@ -692,8 +693,11 @@ class PlotData(object):
             y = y._default_plot_obj
 
         sub = assub(sub, ds)
+        if isinstance(y, MNE_EPOCHS):
+            # Epochs are Iterators over arrays
+            y = asndvar(y, sub, ds)
 
-        if isinstance(y, (tuple, list)):
+        if isinstance(y, (tuple, list, Iterator)):
             if xax is not None:
                 raise TypeError(
                     "xax can only be used to divide y into different axes if y is "
