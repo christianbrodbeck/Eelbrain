@@ -11,7 +11,7 @@ x2 = ds['x2']
 %prun -s cumulative res = boosting(y, x1, 0, 1)
 
 """
-from inspect import getargspec
+import inspect
 from itertools import product
 from math import floor
 from multiprocessing import Process, Queue
@@ -115,8 +115,9 @@ class BoostingResult(object):
         self._experimental_parameters = experimental_parameters
 
     def __getstate__(self):
-        state = {attr: getattr(self, attr) for attr in
-                 getargspec(self.__init__).args[1:]}
+        state = {attr: getattr(self, attr) for attr, param in
+                 inspect.signature(self.__class__).parameters.items()
+                 if param.kind is not inspect.Parameter.VAR_KEYWORD}
         state.update(self._experimental_parameters)
         return state
 
@@ -130,11 +131,11 @@ class BoostingResult(object):
             x = ' + '.join(map(str, self.x))
         items = ['boosting %s ~ %s' % (self.y, x),
                  '%g - %g' % (self.tstart, self.tstop)]
-        argspec = getargspec(boosting)
-        names = argspec.args[-len(argspec.defaults):]
-        for name, default in zip(names, argspec.defaults):
+        for name, param in inspect.signature(boosting).parameters.items():
+            if param.default is inspect.Signature.empty:
+                continue
             value = getattr(self, name)
-            if value != default:
+            if value != param.default:
                 items.append('%s=%r' % (name, value))
         return '<%s>' % ', '.join(items)
 
