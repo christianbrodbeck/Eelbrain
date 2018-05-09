@@ -1,5 +1,5 @@
-{% set version = "0.27.4" %}
-{% set sha256 = "2a95972c21c782ebbec3cf469d463c151cf23ad5bac1ac3a388fbb091d280706" %}
+{% set version = "0.27.5" %}
+{% set sha256 = "009ee31f6d0eec5514e0c5ed65dd43f6c8f40b375d551107b26c0af6b47b6124" %}
 
 # https://github.com/conda/conda-build/issues/2717
 
@@ -18,7 +18,7 @@ build:
 
 requirements:
   build:
-    - python  {{ python }}
+    - python 2.7
     - python.app  # [osx]
     - cython >=0.21
     - olefile  # [win or linux]
@@ -27,7 +27,7 @@ requirements:
     - numpy 1.11.*
 
   run:
-    - python  {{ python }}
+    - python 2.7
     - python.app  # [osx]
     - colormath >=2.1
     - ipython
