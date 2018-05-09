@@ -4438,11 +4438,14 @@ class NDVar(object):
         Indexes for dimensions can be either specified as arguments in the
         order of the data axes, or with dimension names as keywords; for::
 
+        >>> x = datasets.get_uts(True)['utsnd']
         >>> x
-        >>> <NDVar 'uts': 60 (case) X 100 (time)>
+        <NDVar 'utsnd': 60 case, 5 sensor, 100 time>
+        >>> x.sub(time=0.1)
+        <NDVar 'utsnd': 60 case, 5 sensor>
 
-        ``x.sub(time=0.1)`` is equivalent to ``x.sub(slice(None), 0.1)`` and
-        ``x[:, 0.1]``.
+        ``x.sub(time=0.1)`` is equivalent to ``x.sub((), (), 0.1)`` and
+        ``x[:, :, 0.1]``.
 
         Tuples are reserved for slicing and are treated like ``slice`` objects.
         Use lists for indexing arbitrary sequences of elements.
@@ -7008,7 +7011,7 @@ class Dimension(object):
         else:
             return arg.x
 
-    def _array_index_for_slice(self, start, stop=None, step=None):
+    def _array_index_for_slice(self, start=None, stop=None, step=None):
         if step is not None and not isinstance(step, Integral):
             raise TypeError("Slice index step for %s must be int, not %r" %
                             (self._dimname(), step))
@@ -7227,6 +7230,8 @@ class Case(Dimension):
             return arg.x
         elif isinstance(arg, np.ndarray) and arg.dtype.kind in 'bi':
             return arg
+        elif isinstance(arg, tuple):
+            return slice(*arg) if arg else FULL_SLICE
         else:
             raise TypeError("Unknown index type for case dimension: %r" %
                             (arg,))
