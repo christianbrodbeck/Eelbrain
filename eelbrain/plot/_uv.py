@@ -873,7 +873,7 @@ class _ax_timeplot(object):
                         x_errbars = x + rel_pos[i]
                     else:
                         x_errbars = x
-                    ax.errorbar(x_errbars, y, yerr=spread_values[i], fmt=None, zorder=5,
+                    ax.errorbar(x_errbars, y, yerr=spread_values[i], zorder=5,
                                 ecolor=color, linestyle=ls, label=name)
 
         # x-ticks
