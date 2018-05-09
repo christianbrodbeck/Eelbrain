@@ -614,14 +614,15 @@ class corr(_Result):
             raise ValueError("Only one of pmin, rmin and tfce can be specified")
         else:
             if pmin is not None:
-                threshold = stats.rtest_r(pmin, df)
+                r_threshold = threshold = stats.rtest_r(pmin, df)
             elif rmin is not None:
-                threshold = abs(rmin)
+                r_threshold = threshold = abs(rmin)
             elif tfce:
                 threshold = 'tfce'
+                r_threshold = None
             else:
-                threshold = None
-            info = _cs.stat_info('r', threshold)
+                r_threshold = threshold = None
+            info = _cs.stat_info('r', r_threshold)
 
             cdist = _ClusterDist(Y, samples, threshold, 0, 'r', name, tstart,
                                  tstop, criteria, parc)
