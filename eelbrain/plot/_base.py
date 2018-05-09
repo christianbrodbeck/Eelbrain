@@ -2357,6 +2357,16 @@ class TimeSlicer(object):
             new_i = max(0, current_i + offset)
         self._set_time(self._time_dim.times[new_i], True)
 
+    def set_time(self, time):
+        """Set the time point to display
+
+        Parameters
+        ----------
+        time : scalar
+            Time to display.
+        """
+        self._set_time(time, True)
+
     def _set_time(self, t, fixate=False):
         "Called by the plot"
         if self._time_controller is None:
