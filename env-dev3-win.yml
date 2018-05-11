@@ -14,16 +14,11 @@ dependencies:
 - numpy
 - scipy >= 0.17, !=1.0.0  # 1.0 has bug: UnboundLocalError: local variable 'iprint' referenced before assignment
 - matplotlib
-- vtk #>=8
 - scikit-learn
 - pillow
-- statsmodels
 - nose
 - pytest
 - pytest-cov
-- numpydoc
-- flake8
-- mayavi
 # Eelbrain additions
 - ipdb
 - ipython
@@ -42,7 +37,6 @@ dependencies:
 - pytest
 # testing of R integration
 - pip:
-  - "git+https://github.com/nipy/PySurfer.git"
   - mne
   - pytest-sugar
   - pytest-faulthandler
