@@ -71,8 +71,9 @@ from ._utils import (
     deprecated_attribute, intervals, ui, LazyProperty, n_decimals,
     natsorted)
 from ._utils.numpy_utils import (
-    apply_numpy_index, digitize_index, digitize_slice_endpoint, FULL_AXIS_SLICE,
-    FULL_SLICE, index_length, index_to_int_array, slice_to_arange)
+    INT_TYPES, FULL_SLICE, FULL_AXIS_SLICE,
+    apply_numpy_index, digitize_index, digitize_slice_endpoint,
+    index_length, index_to_int_array, slice_to_arange)
 from .mne_fixes import MNE_EPOCHS, MNE_EVOKED, MNE_RAW, MNE_LABEL
 from functools import reduce
 
@@ -91,7 +92,7 @@ preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __
 
 
 UNNAMED = '<?>'
-LIST_INDEX_TYPES = (int, slice)
+LIST_INDEX_TYPES = (*INT_TYPES, slice)
 _pickled_ds_wildcard = ("Pickled Dataset (*.pickled)", '*.pickled')
 _tex_wildcard = ("TeX (*.tex)", '*.tex')
 _tsv_wildcard = ("Plain Text Tab Separated Values (*.txt)", '*.txt')
