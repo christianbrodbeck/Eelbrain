@@ -11,7 +11,6 @@ dependencies:
 # mne-python
 - python>=3.6
 - pip
-- mkl
 - numpy
 - scipy >= 0.17, !=1.0.0  # 1.0 has bug: UnboundLocalError: local variable 'iprint' referenced before assignment
 - matplotlib
@@ -22,16 +21,13 @@ dependencies:
 - h5py
 - pillow
 - statsmodels
-- jupyter
 - nose
 - pytest
 - pytest-cov
 - sphinx
-- joblib
 - psutil
 - numpydoc
 - flake8
-- spyder
 - mayavi
 # Eelbrain additions
 - ipdb
@@ -56,9 +52,6 @@ dependencies:
 - pytest
 - coverage
 # testing of R integration
-- rpy2
-- r-car
-# - r-ez  # requires ncil channel
 - pip:
   - "git+https://github.com/nipy/PySurfer.git"
   - mne
