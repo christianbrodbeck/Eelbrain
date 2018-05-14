@@ -727,7 +727,7 @@ class ttest_1samp(_Result):
     ----------
     clusters : None | Dataset
         When performing a cluster permutation test, a Dataset of all clusters.
-    diff : NDVar
+    difference : NDVar
         The difference value entering the test (``y`` if popmean is 0).
     n : int
         Number of cases.
@@ -746,7 +746,7 @@ class ttest_1samp(_Result):
     -----
     Cases with zero variance are set to t=0.
     """
-    _state_specific = ('popmean', 'tail', 'n', 'df', 't', 'diff')
+    _state_specific = ('popmean', 'tail', 'n', 'df', 't', 'difference')
 
     @caffeine
     def __init__(self, Y, popmean=0, match=None, sub=None, ds=None, tail=0,
@@ -812,10 +812,15 @@ class ttest_1samp(_Result):
         self.n = n
         self.df = df
 
-        self.diff = diff
+        self.difference = diff
         self.t = t
 
         self._expand_state()
+
+    def __setstate__(self, state):
+        if 'diff' in state:
+            state['difference'] = state.pop('diff')
+        _Result.__setstate__(self, state)
 
     def _expand_state(self):
         _Result._expand_state(self)
@@ -827,9 +832,9 @@ class ttest_1samp(_Result):
         self.p_uncorrected = p_uncorr
 
         if self.samples:
-            self._default_plot_obj = [[self.diff, self.p]]
+            self._default_plot_obj = [[self.difference, self.p]]
         else:
-            self._default_plot_obj = [[self.diff, t]]
+            self._default_plot_obj = [[self.difference, t]]
 
     def _name(self):
         if self.Y:
