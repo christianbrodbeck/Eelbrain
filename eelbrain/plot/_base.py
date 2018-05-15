@@ -2268,7 +2268,7 @@ class Legend(EelFigure):
 class TimeController(object):
     # Link plots that have the TimeSlicer mixin
     def __init__(self, t=0, fixate=False):
-        self.plots = []
+        self.plots = []  # list of weakref to plots
         self.current_time = t
         self.fixate = fixate
 
@@ -2281,8 +2281,8 @@ class TimeController(object):
             self.merge(plot._time_controller)
 
     def iter_plots(self):
-        self.plots = [p for p in self.plots if p() is not None]
-        return self.plots
+        plots = (p() for p in self.plots)
+        return (p for p in plots if p is not None)
 
     def merge(self, time_controller):
         "Merge another TimeController into self"
@@ -2294,8 +2294,11 @@ class TimeController(object):
     def set_time(self, t, fixate):
         if t == self.current_time and fixate == self.fixate:
             return
-        for p in self.iter_plots():
-            p()._update_time_wrapper(t, fixate)
+        plots = tuple(self.iter_plots())
+        for p in plots:
+            t = p._validate_time(t)
+        for p in plots:
+            p._update_time_wrapper(t, fixate)
         self.current_time = t
         self.fixate = fixate
 
@@ -2384,6 +2387,14 @@ class TimeSlicer(object):
 
     def _update_time(self, t, fixate):
         raise NotImplementedError
+
+    def _validate_time(self, t):
+        if self._time_dim is not None:
+            if t < self._time_dim.tmin:
+                return self._time_dim.tmin
+            elif t > self._time_dim.tmax:
+                return self._time_dim.tmax
+        return t
 
 
 class TimeSlicerEF(TimeSlicer):
