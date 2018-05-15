@@ -1454,8 +1454,7 @@ class Frame(FileFrame):
                 mark = [ch for ch in self._mark if ch not in self.doc.bad_channel_names]
             else:
                 mark = None
-            self._topo_plot = _ax_topomap(self._topo_ax, [tseg], False,
-                                          mark=mark, **self._topo_kwargs)
+            self._topo_plot = _ax_topomap(self._topo_ax, [tseg], mark=mark, **self._topo_kwargs)
             self._topo_plot_info_str = ""
 
         self.canvas.draw()
