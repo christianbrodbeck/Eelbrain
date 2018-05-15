@@ -943,6 +943,7 @@ class EelFigure(object):
     _default_xlabel_ax = -1
     _default_ylabel_ax = 0
     _make_axes = True
+    _can_set_vlim = False
     _can_set_ylim = False
     _can_set_xlim = False
 
@@ -2008,6 +2009,8 @@ class ColorBarMixin(object):
 
 class ColorMapMixin(ColorBarMixin):
     """takes care of color-map and includes color-bar"""
+    _can_set_vlim = True
+
     def __init__(self, epochs, cmap, vmax, vmin, contours, plots):
         ColorBarMixin.__init__(self, self.__get_cmap_params, epochs[0][0])
         self.__plots = plots  # can be empty list at __init__
@@ -2089,7 +2092,11 @@ class ColorMapMixin(ColorBarMixin):
         for p in self.__plots:
             p.set_vlim(vmin, vmax, meas)
         self._vlims[meas] = vmin, vmax
-        self.draw()
+
+        if self._can_set_ylim:
+            self.set_ylim(vmin, vmax)
+        else:
+            self.draw()
 
     def get_vlim(self, meas=None):
         "Retrieve colormap value limits as ``(vmin, vmax)`` tuple"

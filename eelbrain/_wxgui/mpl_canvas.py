@@ -256,10 +256,17 @@ class CanvasFrame(EelbrainFrame):
         dlg.Destroy()
 
     def OnSetVLim(self, event):
-        ylim = self._eelfigure.get_ylim() if self._eelfigure._can_set_ylim else None
+        if self._eelfigure._can_set_vlim:
+            vlim = self._eelfigure.get_vlim()
+            ylim = None
+        else:
+            vlim = None
+            ylim = self._eelfigure.get_ylim() if self._eelfigure._can_set_ylim else None
         xlim = self._eelfigure.get_xlim() if self._eelfigure._can_set_xlim else None
-        dlg = AxisLimitsDialog(ylim, xlim, self)
+        dlg = AxisLimitsDialog(vlim, ylim, xlim, self)
         if dlg.ShowModal() == wx.ID_OK:
+            if vlim is not None:
+                self._eelfigure.set_vlim(*dlg.vlim)
             if ylim is not None:
                 self._eelfigure.set_ylim(*dlg.ylim)
             if xlim is not None:
@@ -359,9 +366,10 @@ class AxisLimitsDialog(EelbrainDialog):
         Wx-Python Dialog parameters.
     """
 
-    def __init__(self, ylim, xlim, parent, *args, **kwargs):
+    def __init__(self, vlim, ylim, xlim, parent, *args, **kwargs):
         EelbrainDialog.__init__(self, parent, wx.ID_ANY, "Set Axis Limits",
                                 *args, **kwargs)
+        self.vlim = vlim
         self.ylim = ylim
         self.xlim = xlim
 
@@ -369,6 +377,14 @@ class AxisLimitsDialog(EelbrainDialog):
         mainsizer = wx.BoxSizer(wx.VERTICAL)
 
         sizer = wx.GridSizer(2, 5, 5)
+        # v-limit
+        if vlim is not None:
+            sizer.Add(wx.StaticText(self, label="Value Limits:"))
+            self.v_text = wx.TextCtrl(self, validator=LimitsValidator(self, 'vlim'))
+            sizer.Add(self.v_text)
+            self.v_text.SetFocus()
+        else:
+            self.v_text = None
         # y-axis
         if ylim is not None:
             sizer.Add(wx.StaticText(self, label="Y-Axis Limits:"))
