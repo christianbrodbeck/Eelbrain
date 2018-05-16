@@ -683,6 +683,16 @@ def get_app():
 
 
 def run(block=False):
+    """Hand over command to the GUI (quit the GUI to return to the terminal)
+
+    Parameters
+    ----------
+    block : bool
+        Block the Terminal even if the GUI is capable of being run in parallel.
+        Control returns to the Terminal when the user quits the GUI application.
+        This is also useful to prevent plots from closing at the end of a
+        script.
+    """
     app = get_app()
     if app.using_prompt_toolkit:
         if block:

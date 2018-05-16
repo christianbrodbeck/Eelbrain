@@ -22,13 +22,13 @@ from wx.lib.scrolledpanel import ScrolledPanel
 
 from .. import load, plot, fmtxt
 from .._data_obj import Factor, NDVar, asndvar, Categorial, Scalar
-from ..plot._topo import _ax_topomap
 from .._wxutils import Icon, ID, REValidator
 from .._utils.parse import POS_FLOAT_PATTERN
+from ..plot._topo import _ax_topomap
+from .frame import EelbrainDialog
+from .history import Action, FileDocument, FileModel, FileFrame, FileFrameChild
 from .mpl_canvas import FigureCanvasPanel
 from .text import HTMLFrame
-from .history import Action, FileDocument, FileModel, FileFrame, FileFrameChild
-from .frame import EelbrainDialog
 
 
 COLOR = {True: (.5, 1, .5), False: (1, .3, .3)}

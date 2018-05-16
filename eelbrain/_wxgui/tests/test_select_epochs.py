@@ -106,7 +106,7 @@ def test_select_epochs():
 
     # Test GUI
     # ========
-    g = gui.select_epochs(ds)
-    assert_false(g.frame.CanBackward())
-    ok_(g.frame.CanForward())
-    g.frame.OnForward(None)
+    frame = gui.select_epochs(ds)
+    assert_false(frame.CanBackward())
+    ok_(frame.CanForward())
+    frame.OnForward(None)
