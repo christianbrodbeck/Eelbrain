@@ -1317,10 +1317,10 @@ class Table(FMTextElement):
                 self._active_row.append(Cell())
         self._active_row = None
 
-    def cells(self, *cells):
+    def cells(self, *cells, **kwargs):
         "Add several simple cells with one command"
         for cell in cells:
-            self.cell(cell)
+            self.cell(cell, **kwargs)
 
     def midrule(self, span=None):
         """Add a midrule
