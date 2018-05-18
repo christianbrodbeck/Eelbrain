@@ -253,7 +253,7 @@ def _ndvar_epochs_reject(data, reject):
 
 def epochs(ds, tmin=-0.1, tmax=None, baseline=None, decim=1, mult=1, proj=False,
            data=None, reject=None, exclude='bads', info=None, name=None,
-           raw=None, sensors=None, i_start='i_start', tstop=None):
+           raw=None, sensors=None, i_start='i_start', tstop=None, sysname=None):
     """
     Load epochs as :class:`NDVar`.
 
@@ -308,6 +308,10 @@ def epochs(ds, tmin=-0.1, tmax=None, baseline=None, decim=1, mult=1, proj=False,
         For example, at 100 Hz the epoch with ``tmin=-0.1, tmax=0.4`` will have 
         51 samples, while the epoch specified with ``tmin=-0.1, tstop=0.4`` will
         have 50 samples.
+    sysname : str
+        Name of the sensor system to load sensor connectivity (e.g. 'neuromag',
+        inferred automatically for KIT data converted with a recent version of
+        MNE-Python).
 
     Returns
     -------
@@ -325,7 +329,7 @@ def epochs(ds, tmin=-0.1, tmax=None, baseline=None, decim=1, mult=1, proj=False,
     epochs_ = mne_epochs(ds, tmin, tmax, baseline, i_start, raw, decim=decim,
                          picks=picks, reject=reject, proj=proj, tstop=tstop)
     ndvar = epochs_ndvar(epochs_, name, data, mult=mult, info=info,
-                         sensors=sensors)
+                         sensors=sensors, sysname=sysname)
 
     if len(epochs_) == 0:
         raise RuntimeError("No events left in %r" % _get_raw_filename(raw))
