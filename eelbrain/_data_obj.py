@@ -2076,11 +2076,9 @@ class Factor(_Effect):
         Factor(['i', 'i', 'i', 'o', 'o', 'o'])
     """
     def __init__(self, x, name=None, random=False, repeat=1, tile=1, labels={}):
-        try:
-            n_cases = len(x)
-        except TypeError:  # for generators:
+        if isinstance(x, Iterator):
             x = tuple(x)
-            n_cases = len(x)
+        n_cases = len(x)
 
         if n_cases == 0 or not (np.any(repeat) or np.any(tile)):
             self.__setstate__({'x': np.empty(0, np.uint32), 'labels': {},
@@ -5401,8 +5399,18 @@ class Dataset(OrderedDict):
             sequence of values (str or scalar). Variable type (Factor or Var)
             is inferred from whether values are str or not.
         """
+        if isinstance(names, Iterator):
+            names = tuple(names)
+        if isinstance(cases, Iterator):
+            cases = tuple(cases)
+        n_cases = set(map(len, cases))
+        if len(n_cases) > 1:
+            raise ValueError('not all cases have same length')
+        n_cases = n_cases.pop()
+        if len(names) != n_cases:
+            raise ValueError('names=%r: %i names but %i cases' % (names, len(names), n_cases))
+
         ds = cls()
-        cases = tuple(cases)
         for i, name in enumerate(names):
             ds[name] = combine(case[i] for case in cases)
         return ds
