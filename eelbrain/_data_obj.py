@@ -1463,6 +1463,9 @@ class Var(object):
         info['longname'] = longname(self) + ' ** ' + longname(other)
         return Var(x, info=info)
 
+    def __round__(self, n=0):
+        return Var(np.round(self.x, n), self.name)
+
     def _coefficient_names(self, method):
         return longname(self),
 
@@ -3057,6 +3060,9 @@ class NDVar(object):
 
     def __rpow__(self, other):
         return NDVar(other ** self.x, self.dims, self.info.copy(), self.name)
+
+    def __round__(self, n=0):
+        return NDVar(np.round(self.x, n), self.dims, self.info.copy(), self.name)
 
     def __sub__(self, other):
         dims, x_self, x_other = self._align(other)
