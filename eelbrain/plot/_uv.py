@@ -104,7 +104,7 @@ def _mark_plot_pairwise(ax, ct, parametric, bottom, y_unit, corr, trend, markers
             connections.append((level, i, j, index, stars))
 
     # plan spatial distances
-    used_levels = np.flatnonzero(reservation[:, i:j].sum(1) > 0)
+    used_levels = np.flatnonzero(reservation.sum(1))
     if len(used_levels) == 0:
         if top is None:
             return bottom + y_unit
@@ -249,17 +249,18 @@ class _SimpleFigure(EelFigure):
             # make sure x axis labels don't overlap
             self.draw()
             labels = self._ax.get_xticklabels()
+            n = len(labels)
             if len(labels) > 1:
-                bbs = [l.get_window_extent() for l in labels]
-                overlap = max(bbs[i].x1 - bbs[i + 1].x0 for i in range(len(bbs)-1))
-                extend = len(bbs) * (overlap + 10)
+                bbs = [l.get_window_extent(self.figure.canvas.renderer) for l in labels]
+                overlap = max(bbs[i].x1 - bbs[i + 1].x0 for i in range(n - 1))
+                extend = n * (overlap + 10)
                 w, h = self._frame.GetSize()
                 w += int(extend)
                 self._frame.SetSize((w, h))
         EelFigure._show(self)
 
 
-class Boxplot(_SimpleFigure):
+class Boxplot(YLimMixin, _SimpleFigure):
     r"""Boxplot for a continuous variable
 
     Parameters
@@ -286,6 +287,9 @@ class Boxplot(_SimpleFigure):
         Y axis label (default is inferred from the data).
     xlabel : str | bool
         X axis label (default is ``X.name``).
+    xticks : None | sequence of str
+        X-axis tick labels describing the categories. None to plot no labels
+        (Default uses cell names from ``X``).
     xtick_delim : str
         Delimiter for x axis category descriptors (default is ``'\n'``,
         i.e. the level on each Factor of ``X`` on a separate line).
@@ -326,8 +330,9 @@ class Boxplot(_SimpleFigure):
 
     def __init__(self, Y, X=None, match=None, sub=None, cells=None, datalabels=None,
                  bottom=None, top=None, ylabel=True, xlabel=True,
-                 xtick_delim='\n', test=True, par=True, trend="'", test_markers=True,
-                 corr='Hochberg', hatch=False, colors=False, ds=None, *args,
+                 xticks=True, xtick_delim='\n',
+                 test=True, par=True, trend="'", test_markers=True, corr='Hochberg',
+                 hatch=False, colors=False, ds=None, *args,
                  **kwargs):
         # get data
         ct = Celltable(Y, X, match, sub, cells, ds, asvar)
@@ -339,9 +344,9 @@ class Boxplot(_SimpleFigure):
             hatch = defaults['hatch']
 
         if hatch and len(hatch) < ct.n_cells:
-            msg = ("hatch needs at least as many values as there are cells "
-                   "(%i) got %s" % (ct.n_cells, repr(hatch)))
-            raise ValueError(msg)
+            raise ValueError(
+                "hatch needs at least as many values as there are cells (%i) "
+                "got %r" % (ct.n_cells, hatch))
 
         if colors is True:
             if defaults['mono']:
@@ -352,90 +357,27 @@ class Boxplot(_SimpleFigure):
             colors = [colors[cell] for cell in ct.cells]
 
         if colors and len(colors) < ct.n_cells:
-            msg = ("colors needs at least as many values as there are cells "
-                   "(%i) got %s" % (ct.n_cells, repr(colors)))
-            raise ValueError(msg)
+            raise ValueError(
+                "colors needs at least as many values as there are cells (%i) "
+                "got %r" % (ct.n_cells, colors))
 
-        # get axes
         _SimpleFigure.__init__(self, frame_title(ct.Y, ct.X), *args, **kwargs)
         self._set_xlabel_categorial(xlabel, ct.X)
         self._configure_yaxis(ct.Y, ylabel)
-        ax = self._axes[0]
 
-        # determine ax lim
-        if bottom is None:
-            if np.min(ct.Y.x) >= 0:
-                bottom = 0
-            else:
-                d_min = np.min(ct.Y.x)
-                d_max = np.max(ct.Y.x)
-                d_range = d_max - d_min
-                bottom = d_min - .05 * d_range
+        p = _plt_boxplot(self._ax, ct, colors, hatch, bottom, top, xticks,
+                         xtick_delim, test, par, corr, trend, test_markers,
+                         datalabels)
+        p.set_ylim(p.bottom, p.top)
+        p.ax.set_xlim(p.left, p.right)
+        if p.top > 0 > p.bottom:
+            p.ax.axhline(0, color='k')
 
-        # boxplot
-        k = len(ct.cells)
-        all_data = ct.get_data()
-        bp = ax.boxplot(all_data, labels=ct.cellnames(xtick_delim))
-
-        # Now fill the boxes with desired colors
-        if hatch or colors:
-            for i in range(ct.n_cells):
-                box = bp['boxes'][i]
-                box_x = box.get_xdata()[:5]  # []
-                box_y = box.get_ydata()[:5]  # []
-                box_coords = list(zip(box_x, box_y))
-                if colors:
-                    c = colors[i]
-                else:
-                    c = '.5'
-
-                if hatch:
-                    h = hatch[i]
-                else:
-                    h = ''
-
-                poly = mpl.patches.Polygon(box_coords, facecolor=c, hatch=h,
-                                           zorder=-999)
-                ax.add_patch(poly)
-        if defaults['mono']:
-            for itemname in bp:
-                bp[itemname].set_color('black')
-
-        # labelling
-        y_min = np.max(np.hstack(all_data))
-        y_unit = (y_min - bottom) / 15
-
-        # tests
-        if test is True:
-            y_top = _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr, trend,
-                                        test_markers, x0=1)
-        elif test is not False and test is not None:
-            ax.axhline(test, color='black')
-            y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit, test, corr, trend,
-                                       x0=1)
-        else:
-            y_top = None
-
-        if top is None:
-            top = y_top
-
-        # data labels
-        if datalabels:
-            for i, cell in enumerate(ct.cells):
-                d = ct.data[cell]
-                indexes = np.where(np.abs(d) / d.std() >= datalabels)[0]
-                for index in indexes:
-                    label = ct.matchlabels[cell][index]
-                    ax.annotate(label, (i + 1, d[index]))
-
-        # set ax limits
-        ax.set_ylim(bottom, top)
-        ax.set_xlim(.5, k + .5)
-
+        YLimMixin.__init__(self, (p,))
         self._show()
 
 
-class Barplot(_SimpleFigure, YLimMixin):
+class Barplot(YLimMixin, _SimpleFigure):
     r"""Barplot for a continuous variable
 
     Parameters
@@ -531,29 +473,113 @@ class Barplot(_SimpleFigure, YLimMixin):
         self._configure_yaxis(ct.Y, ylabel)
 
         p = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors,
-                         bottom, top, origin, c=c, edgec=edgec, ec=ec,
-                         test=test, par=par, trend=trend, corr=corr,
-                         test_markers=test_markers)
+                         bottom, top, origin, None, .5, c, edgec, ec, test, par,
+                         trend, corr, test_markers, xticks, xtick_delim)
         p.set_ylim(p.bottom, p.top)
         p.ax.set_xlim(p.left, p.right)
         if p.top > 0 > p.bottom:
             p.ax.axhline(0, color='k')
 
         YLimMixin.__init__(self, (p,))
+        self._show()
 
+
+class _plt_uv_base(object):
+    """Base for barplot and boxplot"""
+
+    def __init__(self, ax, ct, xticks, xtick_delim):
         # figure decoration
         if xticks:
             if xticks is True:
                 xticks = ct.cellnames(xtick_delim)
-            self._ax.set_xticklabels(xticks)
-            self._ax.set_xticks(np.arange(len(ct.cells)))
+            ax.set_xticklabels(xticks)
+            ax.set_xticks(np.arange(len(ct.cells)))
+        elif xticks is False:
+            ax.set_xticks(())
+
+        self.vmin, self.vmax = ax.get_ylim()
+        self.ax = ax
+
+    def set_ylim(self, bottom, top):
+        self.ax.set_ylim(bottom, top)
+        self.vmin, self.vmax = self.ax.get_ylim()
+
+
+class _plt_boxplot(_plt_uv_base):
+    """Boxplot"""
+
+    def __init__(self, ax, ct, colors, hatch, bottom, top, xticks, xtick_delim,
+                 test, par, corr, trend, test_markers, datalabels):
+        # determine ax lim
+        if bottom is None:
+            if np.min(ct.Y.x) >= 0:
+                bottom = 0
+            else:
+                d_min = np.min(ct.Y.x)
+                d_max = np.max(ct.Y.x)
+                d_range = d_max - d_min
+                bottom = d_min - .05 * d_range
+
+        # boxplot
+        k = len(ct.cells)
+        all_data = ct.get_data()
+        bp = ax.boxplot(all_data)#, labels=ct.cellnames(xtick_delim))
+
+        # Now fill the boxes with desired colors
+        if hatch or colors:
+            for i in range(ct.n_cells):
+                box = bp['boxes'][i]
+                box_x = box.get_xdata()[:5]  # []
+                box_y = box.get_ydata()[:5]  # []
+                box_coords = list(zip(box_x, box_y))
+                if colors:
+                    c = colors[i]
+                else:
+                    c = '.5'
+
+                if hatch:
+                    h = hatch[i]
+                else:
+                    h = ''
+
+                poly = mpl.patches.Polygon(box_coords, facecolor=c, hatch=h, zorder=-999)
+                ax.add_patch(poly)
+        if defaults['mono']:
+            for itemname in bp:
+                bp[itemname].set_color('black')
+
+        # tests
+        y_min = max(x.max() for x in all_data)
+        y_unit = (y_min - bottom) / 15
+        if test is True:
+            y_top = _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr, trend, test_markers, x0=1)
+        elif test is not False and test is not None:
+            ax.axhline(test, color='black')
+            y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit, test, corr, trend, x0=1)
         else:
-            self._ax.set_xticks(())
+            y_top = None
 
-        self._show()
+        if top is None:
+            top = y_top
+
+        # data labels
+        if datalabels:
+            for i, cell in enumerate(ct.cells):
+                d = ct.data[cell]
+                indexes = np.where(np.abs(d) / d.std() >= datalabels)[0]
+                for index in indexes:
+                    label = ct.matchlabels[cell][index]
+                    ax.annotate(label, (i + 1, d[index]))
+
+        # set ax limits
+        self.left = .5
+        self.right = k + .5
+        self.bottom = bottom
+        self.top = ax.get_ylim()[1] if top is None else top
+        _plt_uv_base.__init__(self, ax, ct, xticks, xtick_delim)
 
 
-class _plt_barplot(object):
+class _plt_barplot(_plt_uv_base):
     """Draw a barplot to axes ax for Celltable ct.
 
     Parameters
@@ -571,7 +597,7 @@ class _plt_barplot(object):
     def __init__(self, ax, ct, error, pool_error, hatch, colors, bottom, top=None,
                  origin=None, left=None, width=.5, c='#0099FF', edgec=None,
                  ec='k', test=True, par=True, trend="'", corr='Hochberg',
-                 test_markers=True):
+                 test_markers=True, xticks=None, xtick_delim=None):
         # kwargs
         if hatch is True:
             hatch = defaults['hatch']
@@ -632,16 +658,11 @@ class _plt_barplot(object):
             ax.axhline(test, color='black')
             y_top = _mark_plot_1sample(ax, ct, par, plot_max, y_unit, test, corr, trend)
 
-        self.vmin, self.vmax = ax.get_ylim()
-        self.ax = ax
         self.left = min(left) - .5 * width
         self.right = max(left) + 1.5 * width
         self.bottom = y_bottom
         self.top = y_top if top is None else top
-
-    def set_ylim(self, bottom, top):
-        self.ax.set_ylim(bottom, top)
-        self.vmin, self.vmax = self.ax.get_ylim()
+        _plt_uv_base.__init__(self, ax, ct, xticks, xtick_delim)
 
 
 class Timeplot(LegendMixin, YLimMixin, EelFigure):
