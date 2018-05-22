@@ -308,6 +308,10 @@ class LimitsValidator(wx.Validator):
     def Validate(self, parent):
         ctrl = self.GetWindow()
         value = ctrl.GetValue()
+        if not value.strip():
+            self.TransferToWindow()
+            return False
+
         try:
             values = value.replace(',', ' ').split()
             if len(values) == 1:
