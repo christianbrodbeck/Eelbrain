@@ -1714,7 +1714,8 @@ class MneExperiment(FileTree):
         return {'min' + dim: criteria[dim] for dim in data.dims if dim in criteria}
 
     def _add_epochs(self, ds, epoch, baseline, ndvar, data_raw, pad, decim,
-                    reject, apply_ica, trigger_shift, eog, tmin, tmax, tstop):
+                    reject, apply_ica, trigger_shift, eog, tmin, tmax, tstop,
+                    data):
         modality = self.get('modality')
         if tmin is None:
             tmin = epoch.tmin
@@ -1777,6 +1778,9 @@ class MneExperiment(FileTree):
                 del ds['epochs']
             if modality == 'eeg':
                 self._fix_eeg_ndvar(ds[ndvar], True)
+
+            if isinstance(data.sensor, str):
+                ds[name] = getattr(ds[name], data.sensor)('sensor')
 
         if data_raw is False:
             del ds.info['raw']
@@ -2512,7 +2516,7 @@ class MneExperiment(FileTree):
 
     def load_epochs(self, subject=None, baseline=False, ndvar=True,
                     add_bads=True, reject=True, cat=None,
-                    decim=None, pad=0, data_raw=False, vardef=None,
+                    decim=None, pad=0, data_raw=False, vardef=None, data='sensor',
                     eog=False, trigger_shift=True, apply_ica=True, tmin=None,
                     tmax=None, tstop=None, **kwargs):
         """
@@ -2553,6 +2557,10 @@ class MneExperiment(FileTree):
             analysis).
         vardef : str
             Name of a 2-stage test defining additional variables.
+        data : str
+            Data to load; 'sensor' to load all sensor data (default);
+            'sensor.rms' to return RMS over sensors. Only applies to NDVar
+            output.
         eog : bool
             When loading EEG data as NDVar, also add the EOG channels.
         trigger_shift : bool
@@ -2570,6 +2578,12 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
+        data = TestDims.coerce(data)
+        if not data.sensor:
+            raise ValueError("data=%r; load_evoked is for loading sensor data" %
+                             (data.string,))
+        elif data.sensor is not True and not ndvar:
+            raise ValueError("data=%r with ndvar=False" % (data.string,))
         if ndvar:
             if isinstance(ndvar, str):
                 if ndvar != 'both':
@@ -2580,7 +2594,7 @@ class MneExperiment(FileTree):
             dss = []
             for _ in self.iter(group=group):
                 ds = self.load_epochs(None, baseline, ndvar, add_bads, reject,
-                                      cat, decim, pad, data_raw, vardef,
+                                      cat, decim, pad, data_raw, vardef, data,
                                       tmin=tmin, tmax=tmax, tstop=tstop)
                 dss.append(ds)
 
@@ -2590,11 +2604,11 @@ class MneExperiment(FileTree):
             with self._temporary_state:
                 ds_meg = self.load_epochs(subject, baseline, ndvar, add_bads,
                                           reject, cat, decim, pad, data_raw,
-                                          vardef, tmin=tmin, tmax=tmax,
+                                          vardef, data, tmin=tmin, tmax=tmax,
                                           tstop=tstop, modality='')
                 ds_eeg = self.load_epochs(subject, baseline, ndvar, add_bads,
                                           reject, cat, decim, pad, data_raw,
-                                          vardef, tmin=tmin, tmax=tmax,
+                                          vardef, data, tmin=tmin, tmax=tmax,
                                           tstop=tstop, modality='eeg')
             ds, eeg_epochs = align(ds_meg, ds_eeg['epochs'], 'index',
                                    ds_eeg['index'])
@@ -2608,7 +2622,7 @@ class MneExperiment(FileTree):
                 for sub_epoch in epoch.collect:
                     ds = self.load_epochs(
                         subject, baseline, ndvar, add_bads, reject, cat, decim,
-                        pad, data_raw, vardef, eog, trigger_shift, apply_ica,
+                        pad, data_raw, vardef, data, eog, trigger_shift, apply_ica,
                         tmin, tmax, tstop, epoch=sub_epoch)
                     ds[:, 'epoch'] = sub_epoch
                     dss.append(ds)
@@ -2628,7 +2642,7 @@ class MneExperiment(FileTree):
             # load sensor space data
             ds = self._add_epochs(ds, epoch, baseline, ndvar, data_raw, pad,
                                   decim, reject, apply_ica, trigger_shift, eog,
-                                  tmin, tmax, tstop)
+                                  tmin, tmax, tstop, data)
 
         return ds
 
