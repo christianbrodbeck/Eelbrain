@@ -4443,11 +4443,11 @@ class NDVar(object):
         Indexes for dimensions can be either specified as arguments in the
         order of the data axes, or with dimension names as keywords; for::
 
-        >>> x = datasets.get_uts(True)['utsnd']
-        >>> x
-        <NDVar 'utsnd': 60 case, 5 sensor, 100 time>
-        >>> x.sub(time=0.1)
-        <NDVar 'utsnd': 60 case, 5 sensor>
+            >>> x = datasets.get_uts(True)['utsnd']
+            >>> x
+            <NDVar 'utsnd': 60 case, 5 sensor, 100 time>
+            >>> x.sub(time=0.1)
+            <NDVar 'utsnd': 60 case, 5 sensor>
 
         ``x.sub(time=0.1)`` is equivalent to ``x.sub((), (), 0.1)`` and
         ``x[:, :, 0.1]``.
