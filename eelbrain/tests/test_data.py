@@ -1,6 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from copy import deepcopy
 from itertools import chain, product
+from math import log
 from operator import (
     add, iadd, sub, isub, mul, imul, truediv, itruediv, floordiv, ifloordiv, mod, imod)
 import os
@@ -1509,9 +1510,16 @@ def test_var():
     w = v.abs()
     eq_(w.info, {'a': 1, 'longname': 'abs(v)'})
     assert_array_equal(w, np.abs(v.x))
+    # log
     x = w.log()
     eq_(x.info, {'a': 1, 'longname': 'log(abs(v))'})
     assert_array_equal(x, np.log(w.x))
+    x = w.log(10)
+    eq_(x.info, {'a': 1, 'longname': 'log10(abs(v))'})
+    assert_array_equal(x, np.log10(w.x))
+    x = w.log(42)
+    eq_(x.info, {'a': 1, 'longname': 'log42(abs(v))'})
+    assert_array_equal(x, np.log(w.x) / log(42))
 
     # assignment
     tgt1 = np.arange(10)

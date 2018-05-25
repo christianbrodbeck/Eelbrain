@@ -1758,11 +1758,31 @@ class Var(object):
         "Boolean index, True where the Var value is not in values"
         return np.in1d(self.x, values, invert=True)
 
-    def log(self, name=None):
-        "Natural logarithm"
+    def log(self, base=None, name=None):
+        """Element-wise log
+
+        Parameters
+        ----------
+        base : scalar
+            Base of the log (default is the natural log).
+        name : str
+            Name of the output Var (default is the current name).
+        """
+        if base is None:
+            x = np.log(self.x)
+        elif base == 2:
+            x = np.log2(self.x)
+        elif base == 10:
+            x = np.log10(self.x)
+        else:
+            x = np.log(self.x)
+            x /= log(base)
         info = self.info.copy()
-        info['longname'] = 'log(' + longname(self) + ')'
-        return Var(np.log(self.x), name, info=info)
+        if base is None:
+            info['longname'] = f'log({longname(self)})'
+        else:
+            info['longname'] = f'log{base}({longname(self)})'
+        return Var(x, name, info=info)
 
     def max(self):
         "The highest value"
