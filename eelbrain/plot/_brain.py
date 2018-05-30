@@ -472,7 +472,10 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
         ``Brain.add_data()`` argument).
     mask : bool | matplotlib color
         Shade areas that are not in ``src``. Can be matplotlib color, including
-        alpha (e.g., ``(1, 1, 1, 0.5)`` for semi-transparent white).
+        alpha (e.g., ``(1, 1, 1, 0.5)`` for semi-transparent white). If
+        smoothing  is enabled through ``smoothing_steps``, the mask is added as
+        data layer, otherwise it is added as label. To add a mask independently,
+        use the :meth:`Brain.add_mask` method.
     subjects_dir : None | str
         Override the subjects_dir associated with the source space dimension.
     name : str

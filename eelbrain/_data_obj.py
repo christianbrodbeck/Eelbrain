@@ -2665,11 +2665,10 @@ class Factor(_Effect):
         self._codes = {l: c for c, l in new_labels.items()}
 
     def sort_cells(self, order):
-        """Reorder the cells of the Factor
+        """Reorder the cells of the Factor (in-place)
 
-        Function using Factors, such as tables and plotting, often display data
-        in an order determined by Factor; the Factor cell order can be used to
-        control the order in which cells are displayed.
+        The cell order controls the order in which data are displayed in tables
+        and plots.
 
         Parameters
         ----------

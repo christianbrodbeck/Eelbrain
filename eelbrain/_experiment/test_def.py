@@ -133,7 +133,13 @@ class TTestInd(TTest):
 
 
 class TTestRel(TTest):
-    "Related measures t-test"
+    """Related measures t-test
+
+    Notes
+    -----
+    For a t-test between two epochs, use an :class:`EpochCollection` epoch
+    and ``model='epoch'``.
+    """
     kind = 'ttest_rel'
 
     def __init__(self, model, c1, c0, tail=0):

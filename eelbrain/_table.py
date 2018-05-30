@@ -435,11 +435,11 @@ def stats(y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
     a0   0.1668    -0.3646
     a1   -0.4897   0.8746
 
-    >>> A.table.stats(Y, condition, funcs=[np.mean, np.std])
+    >>> table.stats('Y', 'A', ds=ds, funcs=[np.mean, np.std])
     Condition   mean     std
-    ----------------------------
-    control     0.0512   0.08075
-    test        0.2253   0.2844
+    --------------------------
+    a0          0.6691   1.37
+    a1          0.8596   1.192
 
     """
     sub = assub(sub, ds)

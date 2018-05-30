@@ -256,7 +256,7 @@ class Brain(TimeSlicer, surfer.Brain):
         name = label if isinstance(label, str) else label.name
         self.__labels[name] = color
 
-    def add_mask(self, source, color=(1, 1, 1), smoothing_steps=None,
+    def add_mask(self, source, color=(0, 0, 0, 0.5), smoothing_steps=None,
                  alpha=None, subjects_dir=None):
         """Add a mask shading areas that are not included in an NDVar
 
@@ -268,7 +268,8 @@ class Brain(TimeSlicer, surfer.Brain):
             Mask color, can include alpha (defauls is black with alpha=0.5:
             ``(0, 0, 0, 0.5)``).
         smoothing_steps : scalar (optional)
-            Smooth transition at the mask's border.
+            Smooth transition at the mask's border. If smoothing, the mask is
+            added as data layer, otherwise it is added as label.
         alpha : scalar
             Alpha for the mask (supercedes alpha in ``color``).
         subjects_dir : str
