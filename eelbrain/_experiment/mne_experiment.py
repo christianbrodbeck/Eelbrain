@@ -4997,7 +4997,8 @@ class MneExperiment(FileTree):
 
     def _two_stage_report(self, report, data, test, sns_baseline, src_baseline, pmin,
                           samples, tstart, tstop, parc, mask, include):
-        return_data = self._tests[test]._within_model is not None
+        test_obj = self._tests[test]
+        return_data = test_obj._within_model is not None
         rlm = self._load_test(test, tstart, tstop, pmin, parc, mask, samples,
                               data, sns_baseline, src_baseline, return_data, True)
         if return_data:
@@ -5030,7 +5031,7 @@ class MneExperiment(FileTree):
                 _report.source_time_results(
                     res, ds, None, include, surfer_kwargs, term, y='coeff'))
 
-        self._report_test_info(info_section, group_ds or ds, test, res, data)
+        self._report_test_info(info_section, group_ds or ds, test_obj, res, data)
 
     def make_report_rois(self, test, parc=None, pmin=None, tstart=None, tstop=None,
                          samples=10000, sns_baseline=True, src_baseline=False,
@@ -5111,7 +5112,7 @@ class MneExperiment(FileTree):
         ds0 = res_data[label]
         res0 = res.res[label]
         info_section = report.add_section("Test Info")
-        self._report_test_info(info_section, res.n_trials_ds, test, res0, data)
+        self._report_test_info(info_section, res.n_trials_ds, test_obj, res0, data)
 
         # add parc image
         section = report.add_section(parc)
@@ -5275,34 +5276,50 @@ class MneExperiment(FileTree):
         report.save_html(dst)
 
     def _report_subject_info(self, ds, model):
-        # add subject information to experiment
-        if model:
-            s_ds = table.repmeas('n', model, 'subject', ds=ds)
-        else:
-            s_ds = ds
-        s_ds2 = self.show_subjects(asds=True)
-        s_ds2_aligned = align1(s_ds2[('subject', 'mri')], s_ds['subject'], 'subject')
-        s_ds.update(s_ds2_aligned)
-        s_table = s_ds.as_table(midrule=True, count=True, caption="All "
-                                "subjects included in the analysis with "
-                                "trials per condition")
-        return s_table
+        """Table with subject information
 
-    def _analysis_info(self, data):
+        Parameters
+        ----------
+        ds : Dataset
+            Dataset with ``subject`` and ``n`` variables, and any factors in
+            ``model``.
+        model : str
+            The model used for aggregating.
+        """
+        s_ds = self.show_subjects(asds=True)
+        if 'n' in ds:
+            if model:
+                n_ds = table.repmeas('n', model, 'subject', ds=ds)
+            else:
+                n_ds = ds
+            n_ds_aligned = align1(n_ds, s_ds['subject'], 'subject')
+            s_ds.update(n_ds_aligned)
+        return s_ds.as_table(
+            midrule=True, count=True,
+            caption="All subjects included in the analysis with trials per "
+                    "condition")
+
+    def _report_test_info(self, section, ds, test, res, data, include=None):
+        """Top-level report info function
+
+        Returns
+        -------
+        info : Table
+            Table with preprocessing and test info.
+        """
+        model = self.get('model')
+        test_obj = self._tests[test] if isinstance(test, str) else test
+
+        # List of preprocessing parameters
         info = List("Analysis:")
-        epoch = self.format('epoch = {epoch} {evoked_kind}').strip()
-        model = self.format('{model}').strip()
+        epoch = self.format('epoch = {epoch} {evoked_kind}')
         if model:
             epoch += ' ~ ' + model
         info.add_item(epoch)
         if data.source:
             info.add_item(self.format("cov = {cov}"))
             info.add_item(self.format("inv = {inv}"))
-        return info
 
-    def _report_test_info(self, section, ds, test, res, data, include=None):
-        info = self._analysis_info(data)
-        test_obj = self._tests[test]
         info.add_item("test = %s  (%s)" % (test_obj.kind, test_obj.desc))
         if include is not None:
             info.add_item("Separate plots of all clusters with a p-value < %s"
@@ -5315,6 +5332,7 @@ class MneExperiment(FileTree):
 
         section.append(self._report_subject_info(ds, test_obj.model))
         section.append(self.show_state(hide=('hemi', 'subject', 'mrisubject')))
+        return info
 
     def _report_parc_image(self, section, caption, subjects=None):
         "Add picture of the current parcellation"
