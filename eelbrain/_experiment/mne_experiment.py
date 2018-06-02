@@ -3888,12 +3888,16 @@ class MneExperiment(FileTree):
             return mtime
         elif not p.make:
             if redo and mtime:
-                msg = ("The %s parcellation can not be created automatically "
-                       "for %s." % (parc, mrisubject))
+                raise RuntimeError(
+                    f"The {parc} parcellation cannot be created automatically "
+                    f"for {mrisubject}. Please update the corresponding "
+                    f"*.annot files manually.")
             else:
-                msg = ("The %s parcellation can not be created automatically "
-                       "and is missing for %s." % (parc, mrisubject))
-            raise RuntimeError(msg)
+                raise RuntimeError(
+                    f"The {parc} parcellation cannot be created automatically "
+                    f"and is missing for {mrisubject}. Please add the "
+                    f"corresponding *.annot files to the subject's label "
+                    f"directory.")
 
         # make parcs:  common_brain | non-morphed
         labels = self._make_annot(parc, p, mrisubject)
@@ -6063,6 +6067,15 @@ class MneExperiment(FileTree):
             raise ValueError("parc=%r" % parc)
 
     def _get_parc(self):
+        """Parc information
+
+        Returns
+        -------
+        parc : str
+            The current parc setting.
+        params : dict | None
+            The parc definition (``None`` for ``parc=''``).
+        """
         parc = self.get('parc')
         if parc == '':
             return '', None
