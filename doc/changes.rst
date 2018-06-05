@@ -12,6 +12,8 @@ New in 0.28
     :attr:`testnd.ttest_1samp.difference`.
   - :class:`plot.Histogram`: following :mod:`matplotlib`, the ``normed``
     parameter was renamed to ``density``.
+  - Previously capitalized argument and attribute names ``Y``, ``X`` and ``Xax``
+    are now lowercase.
 
 
 New in 0.27

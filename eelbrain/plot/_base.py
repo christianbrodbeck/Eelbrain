@@ -670,10 +670,11 @@ class PlotData(object):
             The dimensions needed for the plotting function. ``None`` to indicate
             arbitrary dimensions.
         xax : None | categorial
-            A model to divide Y into different axes. Xax is currently applied on
-            the first level, i.e., it assumes that Y's first dimension is cases.
+            A model to divide ``y`` into different axes. ``xax`` is currently
+            applied on the first level, i.e., it assumes that ``y``'s first
+            dimension is cases.
         ds : None | Dataset
-            Dataset containing data objects which are provided as str.
+            Dataset containing data objects which are provided as :class:`str`.
         sub : None | str
             Index selecting a subset of cases.
 
@@ -684,7 +685,7 @@ class PlotData(object):
 
          - simple NDVar: summary ``plot(meg)``
          - by dim: each case ``plot(meg, '.case')``
-         - NDVar and Xax argument: summary for each  ``plot(meg, subject)
+         - NDVar and xax argument: summary for each  ``plot(meg, subject)
          - nested list of layers (e.g., ttest results: [c1, c0, [c1-c0, p]])
         """
         if isinstance(y, cls):

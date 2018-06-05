@@ -166,13 +166,13 @@ def permute_sign_flip(n, samples=10000, seed=0, out=None):
         yield out
 
 
-def resample(Y, samples=10000, replacement=False, unit=None, seed=0):
+def resample(y, samples=10000, replacement=False, unit=None, seed=0):
     """
-    Generator function to resample a dependent variable (Y) multiple times
+    Generator function to resample a dependent variable (y) multiple times
 
     Parameters
     ----------
-    Y : Var | NDVar
+    y : Var | NDVar
         Variable which is to be resampled.
     samples : int
         Number of samples to yield. If < 0, all possible permutations are
@@ -191,19 +191,19 @@ def resample(Y, samples=10000, replacement=False, unit=None, seed=0):
 
     Returns
     -------
-    Iterator over Y_resampled. One copy of ``Y`` is made, and this copy is
+    Iterator over Y_resampled. One copy of ``y`` is made, and this copy is
     yielded in each iteration with shuffled data.
     """
-    if isinstance(Y, Var):
+    if isinstance(y, Var):
         pass
-    elif isinstance(Y, NDVar):
-        if not Y.has_case:
+    elif isinstance(y, NDVar):
+        if not y.has_case:
             raise ValueError("Need NDVar with cases")
     else:
         raise TypeError("Need Var or NDVar")
 
-    out = Y.copy('{name}_resampled')
+    out = y.copy('{name}_resampled')
 
     for index in permute_order(len(out), samples, replacement, unit, seed):
-        out.x[index] = Y.x
+        out.x[index] = y.x
         yield out

@@ -1354,7 +1354,7 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, hemi=None, xlim=None,
     from ._utsnd import Butterfly
 
     if isinstance(y, (testnd.ttest_1samp, testnd.ttest_rel, testnd.ttest_ind)):
-        y = y.masked_parameter_map(0.05, name=y.Y)
+        y = y.masked_parameter_map(0.05, name=y.y)
 
     if name is None:
         name = y.name

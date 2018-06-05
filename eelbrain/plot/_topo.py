@@ -28,7 +28,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
     ----------
     y : (list of) NDVar, dims = ([case,] sensor,)
         Data to plot.
-    Xax : None | categorial
+    xax : None | categorial
         Create a separate plot for each cell in this model.
     proj : str | list of str
         The sensor projection to use for topomaps (or one projection per plot).
@@ -58,7 +58,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         Show sensor labels. For 'name', any prefix common to all names
         is removed; with 'fullname', the full name is shown.
     ds : None | Dataset
-        If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
+        If a Dataset is provided, ``epochs`` and ``xax`` can be specified
         as strings.
     sub : str | array
         Specify a subset of the data.
@@ -135,10 +135,10 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
 class TopomapBins(EelFigure):
     _name = "TopomapBins"
 
-    def __init__(self, y, Xax=None, bin_length=0.05, tstart=None,
+    def __init__(self, y, xax=None, bin_length=0.05, tstart=None,
                  tstop=None, ds=None, sub=None, vmax=None, vmin=None, *args,
                  **kwargs):
-        data = PlotData.from_args(y, ('sensor', 'time'), Xax, ds, sub)
+        data = PlotData.from_args(y, ('sensor', 'time'), xax, ds, sub)
         data._cannot_skip_axes(self)
         ax_data = [[l.bin(bin_length, tstart, tstop) for l in layers]
                    for layers in data.data]
@@ -172,7 +172,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
     ----------
     y : (list of) NDVar
         Data to plot.
-    Xax : None | categorial
+    xax : None | categorial
         Create a separate plot for each cell in this model.
     xlabel, ylabel : bool | string
         Labels for x and y axes. If True, labels are automatically chosen.
@@ -203,7 +203,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
     mcolor : matplotlib color
         Color for marked sensors.
     ds : None | Dataset
-        If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
+        If a Dataset is provided, ``epochs`` and ``xax`` can be specified
     sub : str | array
         Specify a subset of the data.
         as strings.
@@ -262,7 +262,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
     _default_xlabel_ax = -2
     _name = "TopoButterfly"
 
-    def __init__(self, y, Xax=None, xlabel=True, ylabel=True, xticklabels=-1,
+    def __init__(self, y, xax=None, xlabel=True, ylabel=True, xticklabels=-1,
                  color=None, linewidth=None,
                  proj='default', res=None, interpolation=None, clip='even',
                  clip_distance=0.05,
@@ -273,7 +273,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
             warn("The axlabel parameter for plot.TopoButterfly() is "
                  "deprecated, please use axtitle instead", DeprecationWarning)
             axtitle = axlabel
-        data = PlotData.from_args(y, ('sensor', None), Xax, ds, sub)
+        data = PlotData.from_args(y, ('sensor', None), xax, ds, sub)
         data._cannot_skip_axes(self)
         xdim = data.dims[1]
         self._epochs = data.data
@@ -671,7 +671,7 @@ class TopoArray(ColorMapMixin, EelFigure):
     ----------
     y : (list of) NDVar
         Data to plot.
-    Xax : None | categorial
+    xax : None | categorial
         Create a separate plot for each cell in this model.
     title : None | string
         Figure title.
@@ -680,7 +680,7 @@ class TopoArray(ColorMapMixin, EelFigure):
     t : list of scalar (len <= ntopo)
         Time points for topomaps.
     ds : None | Dataset
-        If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
+        If a Dataset is provided, ``epochs`` and ``xax`` can be specified
         as strings.
     sub : str | array
         Specify a subset of the data.
@@ -715,11 +715,11 @@ class TopoArray(ColorMapMixin, EelFigure):
     _make_axes = False
     _name = 'TopoArray'
 
-    def __init__(self, y, Xax=None, title=None, ntopo=3, t=(), ds=None,
+    def __init__(self, y, xax=None, title=None, ntopo=3, t=(), ds=None,
                  sub=None, vmax=None, vmin=None, cmap=None, interpolation=None,
                  im_interpolation=None, xticklabels=-1, axtitle=True, *args,
                  **kwargs):
-        data = PlotData.from_args(y, ('time', 'sensor'), Xax, ds, sub)
+        data = PlotData.from_args(y, ('time', 'sensor'), xax, ds, sub)
         n_topo_total = ntopo * data.n_plots
 
         # create figure

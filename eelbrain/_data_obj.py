@@ -1180,9 +1180,9 @@ class Var(object):
             if sum(i > 1 for i in x.shape) <= 1:
                 x = np.ravel(x)
             else:
-                err = ("X needs to be one-dimensional. Use NDVar class for "
-                       "data with more than one dimension.")
-                raise ValueError(err)
+                raise ValueError(
+                    f"x with shape {x.shape}; x needs to be one-dimensional. "
+                    f"Use NDVar class for data with more than one dimension.")
 
         if not (isinstance(repeat, Integral) and repeat == 1):
             x = np.repeat(x, repeat)
@@ -1600,16 +1600,16 @@ class Var(object):
             x[index] = np.arange(index.sum())
         return Var(x)
 
-    def aggregate(self, X, func=np.mean, name=True):
-        """Summarize cases within cells of X
+    def aggregate(self, x, func=np.mean, name=True):
+        """Summarize cases within cells of x
 
         Parameters
         ----------
-        X : categorial
+        x : categorial
             Model defining cells in which to aggregate.
         func : callable
             Function that converts arrays into scalars, used to summarize data
-            within each cell of X.
+            within each cell of x.
         name : None | True | str
             Name of the output Var, ``True`` to keep the current name (default
             ``True``).
@@ -1617,23 +1617,22 @@ class Var(object):
         Returns
         -------
         aggregated_var : Var
-            A Var instance with a single value for each cell in X.
+            A Var instance with a single value for each cell in x.
         """
-        if len(X) != len(self):
-            err = "Length mismatch: %i (Var) != %i (X)" % (len(self), len(X))
+        if len(x) != len(self):
+            err = "Length mismatch: %i (Var) != %i (x)" % (len(self), len(x))
             raise ValueError(err)
 
-        x = []
-        for cell in X.cells:
-            x_cell = self.x[X == cell]
+        x_out = []
+        for cell in x.cells:
+            x_cell = self.x[x == cell]
             if len(x_cell) > 0:
-                x.append(func(x_cell))
+                x_out.append(func(x_cell))
 
         if name is True:
             name = self.name
 
-        x = np.array(x)
-        return Var(x, name, info=self.info.copy())
+        return Var(x_out, name, info=self.info.copy())
 
     @property
     def beta_labels(self):
@@ -1658,30 +1657,30 @@ class Var(object):
             return Var(np.empty(0), info=self.info.copy())
         return Var(np.ediff1d(self.x, to_end, to_begin), info=self.info.copy())
 
-    # def difference(self, X, v1, v2, match):
+    # def difference(self, x, v1, v2, match):
     #     """
-    #     Subtract X==v2 from X==v1; sorts values according to match (ascending)
+    #     Subtract x==v2 from x==v1; sorts values according to match (ascending)
     #
     #     Parameters
     #     ----------
-    #     X : categorial
+    #     x : categorial
     #         Model to define cells.
     #     v1, v2 : str | tuple
-    #         Cells on X for subtraction.
+    #         Cells on x for subtraction.
     #     match : categorial
     #         Model that defines how to mach cells in v1 to cells in v2.
     #     """
     #     raise NotImplementedError
     #     # FIXME: use celltable
-    #     assert isinstance(X, Factor)
-    #     I1 = (X == v1);         I2 = (X == v2)
+    #     assert isinstance(x, Factor)
+    #     I1 = (x == v1);         I2 = (x == v2)
     #     Y1 = self[I1];          Y2 = self[I2]
     #     m1 = match[I1];         m2 = match[I2]
     #     s1 = np.argsort(m1);    s2 = np.argsort(m2)
     #     y = Y1[s1] - Y2[s2]
     #     name = "{n}({x1}-{x2})".format(n=self.name,
-    #                                    x1=X.cells[v1],
-    #                                    x2=X.cells[v2])
+    #                                    x1=x.cells[v1],
+    #                                    x2=x.cells[v2])
     #     return Var(y, name, info=self.info.copy())
 
     @classmethod
@@ -1814,7 +1813,7 @@ class Var(object):
 
     def split(self, n=2, name=None):
         """
-        A Factor splitting Y in ``n`` categories with equal number of cases
+        A Factor splitting y into ``n`` categories with equal number of cases
 
         Parameters
         ----------
@@ -2358,15 +2357,15 @@ class Factor(_Effect):
         else:
             return ns
 
-    def aggregate(self, X, name=True):
+    def aggregate(self, x, name=True):
         """
-        Summarize the Factor by collapsing within cells in `X`.
+        Summarize the Factor by collapsing within cells in `x`.
 
         Raises an error if there are cells that contain more than one value.
 
         Parameters
         ----------
-        X : categorial
+        x : categorial
             A categorial model defining cells to collapse.
         name : None | True | str
             Name of the output Factor, ``True`` to keep the current name
@@ -2375,33 +2374,33 @@ class Factor(_Effect):
         Returns
         -------
         f : Factor
-            A copy of self with only one value for each cell in X
+            A copy of self with only one value for each cell in x
         """
-        if len(X) != len(self):
-            err = "Length mismatch: %i (Var) != %i (X)" % (len(self), len(X))
-            raise ValueError(err)
+        if len(x) != len(self):
+            raise ValueError(
+                f"x={dataobj_repr(x)} of length {len(x)} for Factor "
+                f"{dataobj_repr(self)} of length {len(self)}")
 
-        x = []
-        for cell in X.cells:
-            idx = (X == cell)
+        x_out = []
+        for cell in x.cells:
+            idx = (x == cell)
             if np.sum(idx):
                 x_i = np.unique(self.x[idx])
                 if len(x_i) > 1:
                     labels = tuple(self._labels[code] for code in x_i)
-                    err = ("Can not determine aggregated value for Factor %r "
-                           "in cell %r because the cell contains multiple "
-                           "values %r. Set drop_bad=True in order to ignore "
-                           "this inconsistency and drop the Factor."
-                           % (self.name, cell, labels))
-                    raise ValueError(err)
+                    raise ValueError(
+                        f"Can not determine aggregated value for Factor "
+                        f"{dataobj_repr(self)} in cell {cell!r} because the "
+                        f"cell contains multiple values {labels}. Set "
+                        f"drop_bad=True in order to ignore this inconsistency "
+                        f"and drop the Factor.")
                 else:
-                    x.append(x_i[0])
+                    x_out.append(x_i[0])
 
         if name is True:
             name = self.name
 
-        out = Factor(x, name, self.random, labels=self._labels)
-        return out
+        return Factor(x_out, name, self.random, labels=self._labels)
 
     def copy(self, name=True, repeat=1, tile=1):
         "A deep copy"
@@ -3304,17 +3303,17 @@ class NDVar(object):
             err = "Dimensions of %r do not match %r" % (self, dims)
             raise DimensionMismatchError(err)
 
-    def aggregate(self, X, func=np.mean, name=None):
+    def aggregate(self, x, func=np.mean, name=None):
         """
-        Summarize data in each cell of ``X``.
+        Summarize data in each cell of ``x``.
 
         Parameters
         ----------
-        X : categorial
+        x : categorial
             Categorial whose cells define which cases to aggregate.
         func : function with axis argument
             Function that is used to create a summary of the cases falling
-            into each cell of X. The function needs to accept the data as
+            into each cell of x. The function needs to accept the data as
             first argument and ``axis`` as keyword-argument. Default is
             ``numpy.mean``.
         name : str
@@ -3323,28 +3322,27 @@ class NDVar(object):
         Returns
         -------
         aggregated_ndvar : NDVar
-            NDVar with data aggregated over cells of ``X``.
+            NDVar with data aggregated over cells of ``x``.
         """
         if not self.has_case:
             raise DimensionMismatchError("%r has no case dimension" % self)
-        if len(X) != len(self):
-            err = "Length mismatch: %i (Var) != %i (X)" % (len(self), len(X))
+        if len(x) != len(self):
+            err = "Length mismatch: %i (Var) != %i (x)" % (len(self), len(x))
             raise ValueError(err)
 
-        x = []
-        for cell in X.cells:
-            idx = (X == cell)
+        x_out = []
+        for cell in x.cells:
+            idx = (x == cell)
             if np.sum(idx):
                 x_cell = self.x[idx]
-                x.append(func(x_cell, axis=0))
-        x = np.array(x)
+                x_out.append(func(x_cell, axis=0))
 
         # update info for summary
         info = self.info.copy()
         if 'summary_info' in info:
             info.update(info.pop('summary_info'))
 
-        return NDVar(x, (Case(len(x)),) + self.dims[1:], info, name or self.name)
+        return NDVar(np.array(x_out), (Case(len(x_out)),) + self.dims[1:], info, name or self.name)
 
     def _aggregate_over_dims(self, axis, regions, func):
         name = regions.pop('name', self.name)
@@ -4401,17 +4399,17 @@ class NDVar(object):
         Assuming ``data`` is a normal time series. Get the average in a time
         window::
 
-            >>> Y = data.summary(time=(.1, .2))
+            >>> y = data.summary(time=(.1, .2))
 
         Get the peak in a time window::
 
-            >>> Y = data.summary(time=(.1, .2), func=np.max)
+            >>> y = data.summary(time=(.1, .2), func=np.max)
 
         Assuming ``meg`` is an NDVar with dimensions time and sensor. Get the
         average across sensors 5, 6, and 8 in a time window::
 
             >>> roi = [5, 6, 8]
-            >>> Y = meg.summary(sensor=roi, time=(.1, .2))
+            >>> y = meg.summary(sensor=roi, time=(.1, .2))
 
         Get the peak in the same data:
 
@@ -4778,37 +4776,37 @@ class Datalist(list):
     def __add__(self, other):
         return Datalist(super(Datalist, self).__add__(other), fmt=self._fmt)
 
-    def aggregate(self, X, merge='mean'):
+    def aggregate(self, x, merge='mean'):
         """
-        Summarize cases for each cell in X
+        Summarize cases for each cell in x
 
         Parameters
         ----------
-        X : categorial
+        x : categorial
             Cells which to aggregate.
         merge : str
             How to merge entries.
             ``'mean'``: sum elements and dividie by cell length
         """
-        if len(X) != len(self):
-            err = "Length mismatch: %i (Var) != %i (X)" % (len(self), len(X))
+        if len(x) != len(self):
+            err = "Length mismatch: %i (Var) != %i (x)" % (len(self), len(x))
             raise ValueError(err)
 
-        x = []
-        for cell in X.cells:
-            x_cell = self[X == cell]
+        x_out = []
+        for cell in x.cells:
+            x_cell = self[x == cell]
             n = len(x_cell)
             if n == 1:
                 x.append(x_cell)
             elif n > 1:
                 if merge == 'mean':
-                    xc = reduce(lambda x, y: x + y, x_cell)
+                    xc = reduce(operator.add, x_cell)
                     xc /= n
                 else:
                     raise ValueError("Invalid value for merge: %r" % merge)
-                x.append(xc)
+                x_out.append(xc)
 
-        return Datalist(x, fmt=self._fmt)
+        return Datalist(x_out, fmt=self._fmt)
 
     def __iadd__(self, other):
         return self + other
@@ -5230,7 +5228,7 @@ class Dataset(OrderedDict):
                             lfmt=True)
         return str(txt)
 
-    def _check_n_cases(self, X, empty_ok=True):
+    def _check_n_cases(self, x, empty_ok=True):
         """Check that an input argument has the appropriate length.
 
         Also raise an error if empty_ok is False and the Dataset is empty.
@@ -5238,9 +5236,10 @@ class Dataset(OrderedDict):
         if self.n_cases is None:
             if not empty_ok:
                 raise RuntimeError("Dataset is empty.")
-        elif self.n_cases != len(X):
-            raise ValueError("The Dataset has a different length (%i) than %s "
-                             "(%i)" % (self.n_cases, dataobj_repr(X), len(X)))
+        elif self.n_cases != len(x):
+            raise ValueError(
+                f"{dataobj_repr(x)} with length {len(x)}: The Dataset has a "
+                f"different length ({self.n_cases})")
 
     def add(self, item, replace=False):
         """``ds.add(item)`` -> ``ds[item.name] = item``
@@ -5520,7 +5519,7 @@ class Dataset(OrderedDict):
     def aggregate(self, x=None, drop_empty=True, name='{name}', count='n',
                   drop_bad=False, drop=(), equal_count=False, never_drop=()):
         """
-        Return a Dataset with one case for each cell in X.
+        Return a Dataset with one case for each cell in x.
 
         Parameters
         ----------
@@ -5528,17 +5527,17 @@ class Dataset(OrderedDict):
             Model defining cells to which to reduce cases. By default (``None``)
             the Dataset is reduced to a single case.
         drop_empty : bool
-            Drops empty cells in X from the Dataset. This is currently the only
+            Drops empty cells in x from the Dataset. This is currently the only
             option.
         name : str
             Name of the new Dataset.
         count : None | str
             Add a variable with this name to the new Dataset, containing the
-            number of cases in each cell in X.
+            number of cases in each cell in x.
         drop_bad : bool
             Drop bad items: silently drop any items for which compression
             raises an error. This concerns primarily factors with non-unique
-            values for cells in X (if drop_bad is False, an error is raised
+            values for cells in x (if drop_bad is False, an error is raised
             when such a Factor is encountered)
         drop : sequence of str
             Additional data-objects to drop.
@@ -5605,12 +5604,12 @@ class Dataset(OrderedDict):
         return Dataset(self.items(), name or self.name, self._caption,
                        self.info, self.n_cases)
 
-    def equalize_counts(self, X, n=None):
-        """Create a copy of the Dataset with equal counts in each cell of X
+    def equalize_counts(self, x, n=None):
+        """Create a copy of the Dataset with equal counts in each cell of x
 
         Parameters
         ----------
-        X : categorial
+        x : categorial
             Model which defines the cells in which to equalize the counts.
         n : int
             Number of cases per cell (the default is the maximum possible, i.e.
@@ -5620,7 +5619,7 @@ class Dataset(OrderedDict):
         Returns
         -------
         equalized_ds : Dataset
-            Dataset with equal number of cases in each cell of X.
+            Dataset with equal number of cases in each cell of x.
 
         Notes
         -----
@@ -5628,9 +5627,9 @@ class Dataset(OrderedDict):
         cells are ignored). Then, for each cell, rows beyond that number are
         dropped.
         """
-        X = ascategorial(X, ds=self)
-        self._check_n_cases(X, empty_ok=False)
-        indexes = np.array([X == cell for cell in X.cells])
+        x = ascategorial(x, ds=self)
+        self._check_n_cases(x, empty_ok=False)
+        indexes = np.array([x == cell for cell in x.cells])
         n_by_cell = indexes.sum(1)
         n_max = np.setdiff1d(n_by_cell, [0]).min()
         if n is None:
@@ -6282,8 +6281,8 @@ class Interaction(_Effect):
         """
         return [delim.join(filter(None, map(str, case))) for case in self]
 
-    def aggregate(self, X):
-        return Interaction(f.aggregate(X) for f in self.base)
+    def aggregate(self, x):
+        return Interaction(f.aggregate(x) for f in self.base)
 
     def isin(self, cells):
         """An index that is true where the Interaction equals any of the cells.
@@ -6302,27 +6301,27 @@ class Interaction(_Effect):
         return set(self)
 
 
-def box_cox_transform(X, p, name=None):
-    """The Box-Cox transform of X as :class:`Var`
+def box_cox_transform(x, p, name=None):
+    """The Box-Cox transform of x as :class:`Var`
 
-    With ``p=0``, this is the log of X; otherwise ``(X**p - 1) / p``
+    With ``p=0``, this is the log of x; otherwise ``(x**p - 1) / p``
 
     Parameters
     ----------
-    X : Var
+    x : Var
         Source data.
     p : scalar
         Parameter for Box-Cox transform.
     name : str
         Name for the output Var.
     """
-    if isinstance(X, Var):
-        X = X.x
+    if isinstance(x, Var):
+        x = x.x
 
     if p == 0:
-        y = np.log(X)
+        y = np.log(x)
     else:
-        y = (X ** p - 1) / p
+        y = (x ** p - 1) / p
 
     return Var(y, name)
 
@@ -6675,8 +6674,8 @@ class Model(object):
             for j in range(i + 1, ne):
                 e1 = self.effects[i]
                 e2 = self.effects[j]
-                X = np.hstack((codes[i], codes[j]))
-                if rank(X) < X.shape[1]:
+                x = np.hstack((codes[i], codes[j]))
+                if rank(x) < x.shape[1]:
                     if v:
                         errtxt = "Linear Dependence Warning: {0} and {1}"
                         msg.append(errtxt.format(e1.name, e2.name))
@@ -6943,7 +6942,7 @@ class Dimension(object):
         return Var(self._axis_data(), name=self.name)
 
     def _axis_data(self):
-        "X for plot command"
+        "x for plot command"
         return np.arange(len(self))
 
     def _axis_im_extent(self):

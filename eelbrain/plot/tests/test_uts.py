@@ -24,7 +24,7 @@ def test_uts_stat():
     p.plot_legend('center')
     pl.close()
     p.close()
-    p = plot.UTSStat('uts', 'A', Xax='B', ds=ds, show=False)
+    p = plot.UTSStat('uts', 'A', xax='B', ds=ds, show=False)
     p.close()
     p = plot.UTSStat('uts', 'A%B', 'rm', sub="rm.isin(('R00', 'R01'))", ds=ds,
                      show=False)
@@ -107,5 +107,5 @@ def test_clusters():
     p = plot.UTSStat(Y, A % B, match=subject, show=False)
     p.set_clusters(res.clusters)
     p.close()
-    p = plot.UTSStat(Y, A, Xax=B, match=subject, show=False)
+    p = plot.UTSStat(Y, A, xax=B, match=subject, show=False)
     p.close()

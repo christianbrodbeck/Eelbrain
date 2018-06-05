@@ -639,9 +639,9 @@ def test_merged_temporal_cluster_dist():
     ds1 = datasets.get_uts()
     ds2 = datasets.get_uts(seed=42)
 
-    anova_kw = dict(Y='uts', X='A*B*rm', match='rm', pmin=0.05, samples=10)
-    ttest_kw = dict(Y='uts', X='A', c1='a1', c0='a0', pmin=0.05, samples=10)
-    contrast_kw = dict(Y='uts', X='A', contrast='a1>a0', pmin=0.05, samples=10)
+    anova_kw = dict(y='uts', x='A*B*rm', match='rm', pmin=0.05, samples=10)
+    ttest_kw = dict(y='uts', x='A', c1='a1', c0='a0', pmin=0.05, samples=10)
+    contrast_kw = dict(y='uts', x='A', contrast='a1>a0', pmin=0.05, samples=10)
 
     def test_merged(res1, res2):
         merged_dist = _MergedTemporalClusterDist([res1._cdist, res2._cdist])

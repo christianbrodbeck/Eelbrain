@@ -265,16 +265,16 @@ class Boxplot(YLimMixin, _SimpleFigure):
 
     Parameters
     ----------
-    Y : Var
+    y : Var
         Dependent variable.
-    X : categorial
-        Category definition (draw one box for every cell in X).
+    x : categorial
+        Category definition (draw one box for every cell in ``x``).
     match : None | categorial
         Match cases for a repeated measures design.
     sub : None | index-array
         Use a subset of the data.
-    cells : None | sequence of cells of X
-        Cells to plot (optional). All entries have to be cells of X). Can be
+    cells : None | sequence of cells of x
+        Cells to plot (optional). All entries have to be cells of ``x``). Can be
         used to change the order of the bars or plot only certain cells.
     datalabels : scalar
         Threshold for labeling outliers (in standard-deviation).
@@ -286,13 +286,13 @@ class Boxplot(YLimMixin, _SimpleFigure):
     ylabel : str | None
         Y axis label (default is inferred from the data).
     xlabel : str | bool
-        X axis label (default is ``X.name``).
+        X axis label (default is ``x.name``).
     xticks : None | sequence of str
         X-axis tick labels describing the categories. None to plot no labels
-        (Default uses cell names from ``X``).
+        (Default uses cell names from ``x``).
     xtick_delim : str
         Delimiter for x axis category descriptors (default is ``'\n'``,
-        i.e. the level on each Factor of ``X`` on a separate line).
+        i.e. the level on each Factor of ``x`` on a separate line).
     titlekwargs : dict
         Keyword arguments for the figure title.
     test : bool | scalar
@@ -328,15 +328,15 @@ class Boxplot(YLimMixin, _SimpleFigure):
     """
     _name = "Boxplot"
 
-    def __init__(self, Y, X=None, match=None, sub=None, cells=None, datalabels=None,
+    def __init__(self, y, x=None, match=None, sub=None, cells=None, datalabels=None,
                  bottom=None, top=None, ylabel=True, xlabel=True,
                  xticks=True, xtick_delim='\n',
                  test=True, par=True, trend="'", test_markers=True, corr='Hochberg',
                  hatch=False, colors=False, ds=None, *args,
                  **kwargs):
         # get data
-        ct = Celltable(Y, X, match, sub, cells, ds, asvar)
-        if ct.X is None and test is True:
+        ct = Celltable(y, x, match, sub, cells, ds, asvar)
+        if ct.x is None and test is True:
             test = 0.
 
         # kwargs
@@ -361,9 +361,9 @@ class Boxplot(YLimMixin, _SimpleFigure):
                 "colors needs at least as many values as there are cells (%i) "
                 "got %r" % (ct.n_cells, colors))
 
-        _SimpleFigure.__init__(self, frame_title(ct.Y, ct.X), *args, **kwargs)
-        self._set_xlabel_categorial(xlabel, ct.X)
-        self._configure_yaxis(ct.Y, ylabel)
+        _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), *args, **kwargs)
+        self._set_xlabel_categorial(xlabel, ct.x)
+        self._configure_yaxis(ct.y, ylabel)
 
         p = _plt_boxplot(self._ax, ct, colors, hatch, bottom, top, xticks,
                          xtick_delim, test, par, corr, trend, test_markers,
@@ -384,14 +384,14 @@ class Barplot(YLimMixin, _SimpleFigure):
     ----------
     Y : Var
         Dependent variable.
-    X : categorial
+    x : categorial
         Model (Factor or Interaction).
     match : None | categorial
         Match cases for a repeated measures design.
     sub : None | index-array
         Use a subset of the data.
-    cells : None | sequence of cells of X
-        Cells to plot (optional). All entries have to be cells of X). Can be
+    cells : None | sequence of cells of x
+        Cells to plot (optional). All entries have to be cells of ``x``). Can be
         used to change the order of the bars or plot only certain cells.
     test : bool | scalar
         True (default): perform pairwise tests;  False: no tests;
@@ -421,13 +421,13 @@ class Barplot(YLimMixin, _SimpleFigure):
     ec : matplotlib color
         Error bar color.
     xlabel : str | bool
-        X axis label (default is ``X.name``).
+        X axis label (default is ``x.name``).
     xticks : None | sequence of str
         X-axis tick labels describing the categories. None to plot no labels
-        (Default uses cell names from ``X``).
+        (Default uses cell names from ``x``).
     xtick_delim : str
         Delimiter for x axis category descriptors (default is ``'\n'``,
-        i.e. the level on each Factor of ``X`` on a separate line).
+        i.e. the level on each Factor of ``x`` on a separate line).
     hatch : bool | str
         Matplotlib Hatch pattern to fill boxes (True to use the module
         default; default is False).
@@ -458,19 +458,19 @@ class Barplot(YLimMixin, _SimpleFigure):
     """
     _name = "Barplot"
 
-    def __init__(self, Y, X=None, match=None, sub=None, cells=None, test=True, par=True,
+    def __init__(self, y, x=None, match=None, sub=None, cells=None, test=True, par=True,
                  corr='Hochberg', trend="'", test_markers=True, ylabel=True,
                  error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
                  xtick_delim='\n', hatch=False, colors=False, bottom=0, top=None,
                  origin=None, c='#0099FF', edgec=None, ds=None, *args, **kwargs):
-        ct = Celltable(Y, X, match, sub, cells, ds, asvar)
+        ct = Celltable(y, x, match, sub, cells, ds, asvar)
 
         if pool_error is None:
             pool_error = ct.all_within
 
-        _SimpleFigure.__init__(self, frame_title(ct.Y, ct.X), *args, **kwargs)
-        self._set_xlabel_categorial(xlabel, ct.X)
-        self._configure_yaxis(ct.Y, ylabel)
+        _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), *args, **kwargs)
+        self._set_xlabel_categorial(xlabel, ct.x)
+        self._configure_yaxis(ct.y, ylabel)
 
         p = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors,
                          bottom, top, origin, None, .5, c, edgec, ec, test, par,
@@ -512,11 +512,11 @@ class _plt_boxplot(_plt_uv_base):
                  test, par, corr, trend, test_markers, datalabels):
         # determine ax lim
         if bottom is None:
-            if np.min(ct.Y.x) >= 0:
+            if np.min(ct.y.x) >= 0:
                 bottom = 0
             else:
-                d_min = np.min(ct.Y.x)
-                d_max = np.max(ct.Y.x)
+                d_min = np.min(ct.y.x)
+                d_max = np.max(ct.y.x)
                 d_range = d_max - d_min
                 bottom = d_min - .05 * d_range
 
@@ -621,11 +621,11 @@ class _plt_barplot(_plt_uv_base):
             origin = max(0, bottom)
 
         # error bars
-        if ct.X is None:
+        if ct.x is None:
             error_match = None
         else:
             error_match = ct.match
-        y_error = stats.variability(ct.Y.x, ct.X, error_match, error, pool_error, ct.cells)
+        y_error = stats.variability(ct.y.x, ct.x, error_match, error, pool_error, ct.cells)
 
         # fig spacing
         plot_max = np.max(height + y_error)
@@ -646,7 +646,7 @@ class _plt_barplot(_plt_uv_base):
                 bar.set_facecolor(c)
 
         # pairwise tests
-        if ct.X is None and test is True:
+        if ct.x is None and test is True:
             test = 0.
         y_unit = (plot_max - y_bottom) / 15
         if test is True:
@@ -701,9 +701,9 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
     top : scalar
         Upper end of the y axis (default is determined from the data).
     ylabel : str | None
-        Y axis label (default is inferred from the data).
+        y axis label (default is inferred from the data).
     xlabel : str | bool
-        X axis label (default is inferred from the data).
+        x axis label (default is inferred from the data).
     timelabels : sequence | dict | 'all'
         Labels for the x (time) axis. Exact labels can be specified in the form 
         of a list of labels corresponsing to all unique values of ``time``, or a 
@@ -942,9 +942,9 @@ class _ax_timeplot(object):
         self.vmin, self.vmax = self.ax.get_ylim()
 
 
-def _reg_line(Y, reg):
+def _reg_line(y, reg):
     coeff = np.hstack([np.ones((len(reg), 1)), reg[:, None]])
-    (a, b), residues, rank, s = np.linalg.lstsq(coeff, Y)
+    (a, b), residues, rank, s = np.linalg.lstsq(coeff, y)
     regline_x = np.array([min(reg), max(reg)])
     regline_y = a + b * regline_x
     return regline_x, regline_y
@@ -955,9 +955,9 @@ class Correlation(EelFigure, LegendMixin):
 
     Parameters
     ----------
-    Y : Var
+    y : Var
         Variable for the y-axis.
-    X : Var
+    x : Var
         Variable for the x-axis.
     cat : categorial
         Plot the correlation separately for different categories.
@@ -1016,13 +1016,13 @@ class Correlation(EelFigure, LegendMixin):
 
 
 class Regression(EelFigure, LegendMixin):
-    """Plot the regression of Y on X
+    """Plot the regression of ``y`` on ``x``
 
     parameters
     ----------
-    Y : Var
+    y : Var
         Variable for the y-axis.
-    X : Var
+    x : Var
         Variable for the x-axis.
     cat : categorial
         Plot the regression separately for different categories.
@@ -1034,7 +1034,7 @@ class Regression(EelFigure, LegendMixin):
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     ylabel : str
-        Y-axis label (default is ``Y.name``).
+        Y-axis label (default is ``y.name``).
     alpha : scalar
         alpha for individual data points (to control visualization of
         overlap)
@@ -1050,26 +1050,26 @@ class Regression(EelFigure, LegendMixin):
     """
     _name = "Regression"
 
-    def __init__(self, Y, X, cat=None, match=None, sub=None, ds=None,
+    def __init__(self, y, x, cat=None, match=None, sub=None, ds=None,
                  xlabel=True, ylabel=True, alpha=.2, legend='upper right',
                  c=['#009CFF', '#FF7D26', '#54AF3A', '#FE58C6', '#20F2C3'],
                  *args, **kwargs):
         sub = assub(sub, ds)
-        Y = asvar(Y, sub, ds)
-        X = asvar(X, sub, ds)
+        y = asvar(y, sub, ds)
+        x = asvar(x, sub, ds)
         if cat is not None:
             cat = ascategorial(cat, sub, ds)
         if match is not None:
             raise NotImplementedError("match kwarg")
 
         if ylabel is True:
-            ylabel = Y.name
+            ylabel = y.name
 
         # figure
         layout = Layout(1, 1, 5, *args, autoscale=True, **kwargs)
-        EelFigure.__init__(self, frame_title(Y, X, cat), layout)
-        self._configure_xaxis(X, xlabel)
-        self._configure_yaxis(Y, ylabel)
+        EelFigure.__init__(self, frame_title(y, x, cat), layout)
+        self._configure_xaxis(x, xlabel)
+        self._configure_yaxis(y, ylabel)
 
         ax = self._axes[0]
         legend_handles = {}
@@ -1079,25 +1079,23 @@ class Regression(EelFigure, LegendMixin):
                 color = c[0]
             else:
                 color = c
-            y = Y.x
-            reg = X.x
-            ax.scatter(reg, y, edgecolor=color, facecolor=color, s=100,
+            ax.scatter(x.x, y.x, edgecolor=color, facecolor=color, s=100,
                        alpha=alpha, marker='o', label='_nolegend_')
-            x, y = _reg_line(y, reg)
-            ax.plot(x, y, c=color)
+            reg_x, reg_y = _reg_line(y.x, x.x)
+            ax.plot(reg_x, reg_y, c=color)
         else:
             for i, cell in enumerate(cat.cells):
                 idx = (cat == cell)
                 # scatter
-                y = Y.x[idx]
-                reg = X.x[idx]
+                y_i = y.x[idx]
+                x_i = x.x[idx]
                 color = c[i % len(c)]
-                h = ax.scatter(reg, y, edgecolor=color, facecolor=color, s=100,
+                h = ax.scatter(x_i, y_i, edgecolor=color, facecolor=color, s=100,
                                alpha=alpha, marker='o', label='_nolegend_')
                 legend_handles[cell] = h
                 # regression line
-                x, y = _reg_line(y, reg)
-                ax.plot(x, y, c=color, label=cellname(cell))
+                reg_x, reg_y = _reg_line(y_i, x_i)
+                ax.plot(reg_x, reg_y, c=color, label=cellname(cell))
 
         LegendMixin.__init__(self, legend, legend_handles)
         self._show()
@@ -1158,7 +1156,7 @@ class Histogram(EelFigure):
     ----------
     Y : Var
         Dependent variable.
-    X : categorial
+    x : categorial
         Categories for separate histograms.
     match : None | categorial
         Match cases for a repeated measures design.
@@ -1181,13 +1179,13 @@ class Histogram(EelFigure):
     """
     _name = "Histogram"
 
-    def __init__(self, Y, X=None, match=None, sub=None, ds=None, pooled=True,
+    def __init__(self, y, x=None, match=None, sub=None, ds=None, pooled=True,
                  density=False, test=False, tight=True, title=None, xlabel=True,
                  *args, **kwargs):
-        ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
+        ct = Celltable(y, x, match=match, sub=sub, ds=ds, coercion=asvar)
 
         # layout
-        if X is None:
+        if x is None:
             nax = 1
             if title is True:
                 title = "Test for Normality" if test else "Histogram"
@@ -1207,10 +1205,10 @@ class Histogram(EelFigure):
                 title = "Tests for Normality" if test else "Histogram"
 
         layout = Layout(nax, 1, 3, tight, title, *args, **kwargs)
-        EelFigure.__init__(self, frame_title(ct.Y, ct.X), layout)
+        EelFigure.__init__(self, frame_title(ct.y, ct.x), layout)
 
-        if X is None:
-            _ax_histogram(self._axes[0], ct.Y.x, density, test)
+        if x is None:
+            _ax_histogram(self._axes[0], ct.y.x, density, test)
         elif ct.all_within:  # distribution of differences
             data = [v.x for v in ct.get_data()]
             names = ct.cellnames()
@@ -1253,17 +1251,17 @@ class Histogram(EelFigure):
             self._configure_yaxis('p', 'probability density')
         else:
             self._configure_yaxis('n', 'count')
-        self._configure_xaxis(ct.Y, xlabel)
+        self._configure_xaxis(ct.y, xlabel)
         self._show()
 
 
-def boxcox_explore(Y, params=[-1, -.5, 0, .5, 1], crange=False, ax=None, box=True):
+def boxcox_explore(y, params=[-1, -.5, 0, .5, 1], crange=False, ax=None, box=True):
     """
     Plot the distribution resulting from a Box-Cox transformation
 
     Parameters
     ----------
-    Y : array-like
+    y : array-like
         array containing data whose distribution is to be examined
     crange :
         correct range of transformed data
@@ -1273,27 +1271,27 @@ def boxcox_explore(Y, params=[-1, -.5, 0, .5, 1], crange=False, ax=None, box=Tru
         use Box-Cox family
 
     """
-    if hasattr(Y, 'x'):
-        Y = Y.x
+    if hasattr(y, 'x'):
+        y = y.x
     else:
-        Y = np.ravel(Y)
+        y = np.ravel(y)
 
-    if np.any(Y == 0):
+    if np.any(y == 0):
         raise ValueError("data contains 0")
 
     y = []
     for p in params:
         if p == 0:
             if box:
-                xi = np.log(Y)
+                xi = np.log(y)
             else:
-                xi = np.log10(Y)
+                xi = np.log10(y)
                 # xi = np.log1p(x)
         else:
             if box:
-                xi = (Y ** p - 1) / p
+                xi = (y ** p - 1) / p
             else:
-                xi = Y ** p
+                xi = y ** p
         if crange:
             xi -= min(xi)
             xi /= max(xi)

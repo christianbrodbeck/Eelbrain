@@ -142,8 +142,8 @@ def test_celltable():
     # cat argument
     ct = Celltable('Y', 'cat', cat=('c', 'b'), ds=ds)
     eq_(ct.n_cases, 30)
-    eq_(ct.X[0], 'c')
-    eq_(ct.X[-1], 'b')
+    eq_(ct.x[0], 'c')
+    eq_(ct.x[-1], 'b')
     assert_raises(ValueError, Celltable, 'Y', 'cat', cat=('c', 'e'), ds=ds)
 
     ct = Celltable('Y', 'A', match='rm', ds=ds)
@@ -152,8 +152,8 @@ def test_celltable():
 
     ct = Celltable('Y', 'cat', match='rm', cat=('c', 'b'), ds=ds)
     eq_(ct.n_cases, 30)
-    eq_(ct.X[0], 'c')
-    eq_(ct.X[-1], 'b')
+    eq_(ct.x[0], 'c')
+    eq_(ct.x[-1], 'b')
 
     # catch unequal length
     assert_raises(ValueError, Celltable, ds['Y', :-1], 'cat', ds=ds)
@@ -171,20 +171,20 @@ def test_celltable():
 
     # test coercion of Y
     ct = Celltable(ds['Y'].x, 'A', ds=ds)
-    assert_is_instance(ct.Y, np.ndarray)
+    assert_is_instance(ct.y, np.ndarray)
     ct = Celltable(ds['Y'].x, 'A', ds=ds, coercion=asvar)
-    assert_is_instance(ct.Y, Var)
+    assert_is_instance(ct.y, Var)
 
     # test sub
     ds_sub = ds.sub("A == 'a0'")
     ct_sub = Celltable('Y', 'B', ds=ds_sub)
     ct = Celltable('Y', 'B', sub="A == 'a0'", ds=ds)
-    assert_dataobj_equal(ct_sub.Y, ct.Y)
+    assert_dataobj_equal(ct_sub.y, ct.y)
 
     # test sub with rm
     ct_sub = Celltable('Y', 'B', match='rm', ds=ds_sub)
     ct = Celltable('Y', 'B', match='rm', sub="A == 'a0'", ds=ds)
-    assert_dataobj_equal(ct_sub.Y, ct.Y)
+    assert_dataobj_equal(ct_sub.y, ct.y)
 
     # Interaction match
     ct = Celltable('Y', 'A', match='B % rm', ds=ds)
@@ -201,8 +201,8 @@ def test_celltable():
     ds = ds[idx]
     ct = Celltable('Y', 'X', 'rm', ds=ds)
     assert_array_equal(ct.match, Factor('abc', tile=2))
-    assert_array_equal(ct.Y, np.tile(np.arange(3.), 2))
-    assert_array_equal(ct.X, Factor('ab', repeat=3))
+    assert_array_equal(ct.y, np.tile(np.arange(3.), 2))
+    assert_array_equal(ct.x, Factor('ab', repeat=3))
 
 
 def test_coercion():

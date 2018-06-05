@@ -105,78 +105,78 @@ class LM(object):
         Test of the null-hypothesis that the model does not explain a
         significant amount of the variance in the dependent variable.
     """
-    def __init__(self, Y, X, sub=None, ds=None):
-        """Fit the model X to the dependent variable Y
+    def __init__(self, y, x, sub=None, ds=None):
+        """Fit the model x to the dependent variable y
 
         Parameters
         ----------
-        Y : Var
+        y : Var
             Dependent variable.
-        X : Model
+        x : Model
             Model.
         sub : None | index
             Only use part of the data
         """
         # prepare input
         sub = assub(sub, ds)
-        Y = asvar(Y, sub, ds)
-        X = asmodel(X, sub, ds)
+        y = asvar(y, sub, ds)
+        x = asmodel(x, sub, ds)
 
-        assert len(Y) == len(X)
-        assert X.df_error > 0
+        assert len(y) == len(x)
+        assert x.df_error > 0
 
         # fit
-        p = X._parametrize()
+        p = x._parametrize()
         if _lm_lsq == 0:  # use scipy (faster)
-            beta, SS_res, _, _ = lstsq(p.x, Y.x)
+            beta, SS_res, _, _ = lstsq(p.x, y.x)
         elif _lm_lsq == 1:  # Fox
             # estimate least squares approximation
-            beta = np.dot(p.projector, Y.x)
+            beta = np.dot(p.projector, y.x)
             # estimate
             y_est = np.dot(p.x, beta)
-            self._residuals = residuals = Y.x - y_est
+            self._residuals = residuals = y.x - y_est
             SS_res = np.sum(residuals ** 2)
         else:
             raise ValueError
 
         # SS total
-        SS_total = self.SS_total = np.sum((Y.x - Y.mean()) ** 2)
-        df_total = self.df_total = X.df_total
+        SS_total = self.SS_total = np.sum((y.x - y.mean()) ** 2)
+        df_total = self.df_total = x.df_total
         self.MS_total = SS_total / df_total
 
         # SS residuals
         self.SS_res = SS_res
-        df_res = self.df_res = X.df_error
+        df_res = self.df_res = x.df_error
         self.MS_res = SS_res / df_res
 
         # SS explained
         SS_model = self.SS = self.SS_model = SS_total - SS_res
-        df_model = self.df = self.df_model = X.df - 1  # don't count intercept
+        df_model = self.df = self.df_model = x.df - 1  # don't count intercept
         self.MS_model = self.MS = SS_model / df_model
 
         # store stuff
-        self.Y = Y
-        self.X = X
+        self.y = y
+        self.x = x
         self._p = p
         self.sub = sub
         self.beta = beta
 
     def __repr__(self):
         # repr kwargs
-        args = [self.Y.name, self.X.name]
+        args = [self.y.name, self.x.name]
         if self.sub:
             args.append('sub=%r' % getattr(self.sub, 'name', '<...>'))
         return "LM(%s)" % ', '.join(args)
 
     def anova(self, title='ANOVA', empty=True, ems=False):
         """ANOVA table for the linear model"""
-        X = self.X
+        x = self.x
         values = np.dot(self._p.x, self.beta)
 
-        if X.df_error == 0:
-            e_ms = hopkins_ems(X)
-        elif hasrandom(X):
-            raise X._incomplete_error("Mixed effects ANOVA")
+        if x.df_error == 0:
+            e_ms = hopkins_ems(x)
+        elif hasrandom(x):
+            raise x._incomplete_error("Mixed effects ANOVA")
         else:
             e_ms = False
 
@@ -185,7 +185,7 @@ class LM(object):
         if title:
             table.title(title)
 
-        if not isbalanced(X):
+        if not isbalanced(x):
             table.caption("Warning: Model is unbalanced, use anova class")
 
         table.cell()
@@ -200,14 +200,14 @@ class LM(object):
         # MS for factors (Needed for models involving random effects)
         MSs = {}
         SSs = {}
-        for e in X.effects:
-            idx = X.full_index[e]
+        for e in x.effects:
+            idx = x.full_index[e]
             SSs[e] = SS = np.sum(values[:, idx].sum(1) ** 2)
             MSs[e] = (SS / e.df)
 
         # table body
         results = {}
-        for i, e in enumerate(X.effects):
+        for i, e in enumerate(x.effects):
             MS = MSs[e]
             if e_ms:
                 e_ems = e_ms[i]
@@ -268,7 +268,7 @@ class LM(object):
         """
         # header
         table = fmtxt.Table('l' * 4)
-        df = self.X.df_error
+        df = self.x.df_error
         table.cell()
         table.cell('\\beta', mat=True)
         table.cell('T_{%i}' % df, mat=True)
@@ -276,8 +276,8 @@ class LM(object):
         table.midrule()
         # body
         q = 1
-        ne = len(self.X.effects)
-        for ie, e in enumerate(self.X.effects):
+        ne = len(self.x.effects)
+        for ie, e in enumerate(self.x.effects):
             table.cell(e.name + ':')
             table.endline()
             for i, name in enumerate(e.beta_labels):  # Fox pp. 106 ff.
@@ -296,7 +296,7 @@ class LM(object):
 
     @LazyProperty
     def residuals(self):
-        return self.Y.x - np.dot(self._p.x, self.beta)
+        return self.y.x - np.dot(self._p.x, self.beta)
 
 
 def _nd_anova(x):
@@ -337,7 +337,7 @@ class _NDANOVA(object):
         Parameters
         ----------
         y : np.array (n_cases, ...)
-            Assumes that the first dimension of Y provides cases.
+            Assumes that the first dimension of y provides cases.
             Other than that, shape is free to vary and output shape will match
             input shape.
         perm : None | array (n_cases, )
@@ -349,7 +349,7 @@ class _NDANOVA(object):
             A list with maps of F values (order corresponding to self.effects).
         """
         if y.shape[0] != self._n_obs:
-            raise ValueError("Y has wrong number of observations (%i, model "
+            raise ValueError("y has wrong number of observations (%i, model "
                              "has %i)" % (y.shape[0], self._n_obs))
 
         # find result container
@@ -784,7 +784,7 @@ class ANOVA(object):
     y : Var
         dependent variable
     x : Model
-        Model to fit to Y
+        Model to fit to y
     sub : index
         Only use part of the data.
     title : str
@@ -958,7 +958,7 @@ def anova(y, x, sub=None, title=None, ds=None):
     y : Var
         dependent variable
     x : Model
-        Model to fit to Y
+        Model to fit to y
     sub : index
         Only use part of the data.
     title : str
