@@ -607,8 +607,8 @@ class Brain(TimeSlicer, surfer.Brain):
 
         Parameters
         ----------
-        p_map : NDVar
-            Statistic to plot (normally a map of p values).
+        p_map : NDVar | Result
+            Map of p values, or test result.
         param_map : NDVar
             Statistical parameter covering the same data points as p_map. Only the
             sign is used, for incorporating the directionality of the effect into
@@ -623,6 +623,14 @@ class Brain(TimeSlicer, surfer.Brain):
         ...
             Other parameters for :meth:`.add_ndvar`.
         """
+        from .._stats.testnd import _Result, _MultiEffectResult
+
+        if isinstance(p_map, _Result):
+            if isinstance(p_map, _MultiEffectResult):
+                raise NotImplementedError(f"plot.brain.p_map for {p_map.__class__.__name__}")
+            res = p_map
+            p_map = res.p
+            param_map = res.t
         p_map, lut, vmax = p_lut(p_map, param_map, p0, p1, p0alpha)
         self.add_ndvar(p_map, lut, -vmax, vmax, *args, **kwargs)
 

@@ -256,7 +256,7 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, p0alpha=0.5, *args,
     Parameters
     ----------
     p_map : NDVar | Result
-        Map of p values, or test-result.
+        Map of p values, or test result.
     param_map : NDVar
         Statistical parameter covering the same data points as p_map. Only the
         sign is used, for incorporating the directionality of the effect into
@@ -333,9 +333,9 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, p0alpha=0.5, *args,
     from .._stats.testnd import _Result, _MultiEffectResult
 
     if isinstance(p_map, _Result):
-        res = p_map
         if isinstance(p_map, _MultiEffectResult):
-            raise NotImplementedError
+            raise NotImplementedError(f"plot.brain.p_map for {p_map.__class__.__name__}")
+        res = p_map
         p_map = res.p
         param_map = res.t
     p_map, lut, vmax = p_lut(p_map, param_map, p0, p1, p0alpha)
