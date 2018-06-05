@@ -523,7 +523,7 @@ class _plt_boxplot(_plt_uv_base):
         # boxplot
         k = len(ct.cells)
         all_data = ct.get_data()
-        bp = ax.boxplot(all_data)#, labels=ct.cellnames(xtick_delim))
+        bp = ax.boxplot(all_data, positions=np.arange(k))
 
         # Now fill the boxes with desired colors
         if hatch or colors:
@@ -552,7 +552,7 @@ class _plt_boxplot(_plt_uv_base):
         y_min = max(x.max() for x in all_data)
         y_unit = (y_min - bottom) / 15
         if test is True:
-            y_top = _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr, trend, test_markers, x0=1)
+            y_top = _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr, trend, test_markers)
         elif test is not False and test is not None:
             ax.axhline(test, color='black')
             y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit, test, corr, trend, x0=1)
@@ -572,8 +572,8 @@ class _plt_boxplot(_plt_uv_base):
                     ax.annotate(label, (i + 1, d[index]))
 
         # set ax limits
-        self.left = .5
-        self.right = k + .5
+        self.left = -.5
+        self.right = k - .5
         self.bottom = bottom
         self.top = ax.get_ylim()[1] if top is None else top
         _plt_uv_base.__init__(self, ax, ct, xticks, xtick_delim)
