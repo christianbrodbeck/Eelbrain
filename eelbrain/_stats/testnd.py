@@ -99,10 +99,7 @@ class _Result(object):
     def __init__(self, y, match, sub, samples, tfce, pmin, cdist, tstart,
                  tstop):
         self.y = y.name
-        if match:
-            self.match = match.name
-        else:
-            self.match = None
+        self.match = dataobj_repr(match) if match else match
         self.sub = sub
         self.samples = samples
         self.tfce = tfce
@@ -1481,9 +1478,8 @@ class anova(_MultiEffectResult):
         Restrict time window for permutation cluster test.
     match : categorial | False
         When permuting data, only shuffle the cases within the categories
-        of match. If running permutations for a model with random effects
-        without specifying ``match``, a TypeError is raised; set
-        ``match=False`` to confirm that permutations shoud not be restricted.
+        of match. By default, ``match`` is determined automatically based on
+        the random efects structure of ``x``.
     parc : str
         Collect permutation extrema for all regions of the parcellation of
         this dimension. For threshold-based test, the regions are
@@ -1523,24 +1519,26 @@ class anova(_MultiEffectResult):
     def __init__(self, y, x, sub=None, ds=None, samples=0, pmin=None,
                  fmin=None, tfce=False, tstart=None, tstop=None, match=None,
                  parc=None, force_permutation=False, **criteria):
+        x_arg = x
         sub_arg = sub
         sub = assub(sub, ds)
         y = asndvar(y, sub, ds, dtype=np.float64)
-        x_ = asmodel(x, sub, ds)
+        x = asmodel(x, sub, ds)
         if match is None:
-            if samples and hasrandom(x_):
-                raise TypeError(
-                    "Model %s has random effects, but the match parameter is "
-                    "not specified. Are you sure you don't want to restrict "
-                    "permutation to within random effects? To confirm, set "
-                    "match=False." % (x_.name,))
-        elif match is False:
-            match = None
-        else:
+            random_effects = [e for e in x.effects if e.random]
+            if not random_effects:
+                match = None
+            elif len(random_effects) > 1:
+                raise NotImplementedError(
+                    "Automatic match parameter for model with more than one "
+                    "random effect. Set match manually.")
+            else:
+                match = random_effects[0]
+        elif match is not False:
             match = ascategorial(match, sub, ds)
 
         check_variance(y.x)
-        lm = _nd_anova(x_)
+        lm = _nd_anova(x)
         effects = lm.effects
         dfs_denom = lm.dfs_denom
         fmaps = lm.map(y.x)
@@ -1576,7 +1574,8 @@ class anova(_MultiEffectResult):
                 do_permutation += cdist.do_permutation
 
             if do_permutation:
-                iterator = permute_order(len(y), samples, unit=match)
+                iterator = permute_order(len(y), samples,
+                                         unit=None if match is False else match)
                 run_permutation_me(lm, cdists, iterator)
 
         # create ndvars
@@ -1590,7 +1589,7 @@ class anova(_MultiEffectResult):
         # store attributes
         _MultiEffectResult.__init__(self, y, match, sub_arg, samples, tfce, pmin,
                                     cdists, tstart, tstop)
-        self.x = x if isinstance(x, str) else x_.name
+        self.x = x_arg if isinstance(x_arg, str) else x.name
         self._effects = effects
         self._dfs_denom = dfs_denom
         self.f = f

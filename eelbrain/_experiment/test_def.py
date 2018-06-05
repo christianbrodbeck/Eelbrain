@@ -197,9 +197,7 @@ class ANOVA(EvokedTest):
         self.x = x
 
     def make(self, y, ds, force_permutation, kwargs):
-        return testnd.anova(
-            y, self.x, match='subject', ds=ds,
-            force_permutation=force_permutation, **kwargs)
+        return testnd.anova(y, self.x, ds=ds, force_permutation=force_permutation, **kwargs)
 
 
 class TwoStageTest(Test):
