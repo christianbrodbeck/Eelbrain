@@ -1,10 +1,11 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from itertools import repeat
 from math import ceil
 import random
 
 import numpy as np
 
-from .._data_obj import NDVar, Var
+from .._data_obj import NDVar, Var, NestedEffect
 from .._utils import intervals
 
 
@@ -96,16 +97,21 @@ def permute_order(n, samples=10000, replacement=False, unit=None, seed=0):
     else:
         if replacement:
             raise NotImplementedError("Replacement and units")
+        idx_orig = np.arange(n)
+        idx_perm = np.empty_like(idx_orig)
+        unit_idxs = [np.flatnonzero(unit == cell) for cell in unit.cells]
+        if isinstance(unit, NestedEffect):
+            dst_idxs_iter = ((unit_idxs[i] for i in order)
+                             for order in permute_order(len(unit_idxs), samples, seed=None))
         else:
-            idx_orig = np.arange(n)
-            idx_perm = np.arange(n)
-            unit_idxs = [np.nonzero(unit == cell)[0] for cell in unit.cells]
-            for _ in range(samples):
-                for idx_ in unit_idxs:
-                    v = idx_orig[idx_]
-                    np.random.shuffle(v)
-                    idx_perm[idx_] = v
-                yield idx_perm
+            dst_idxs_iter = repeat(unit_idxs, samples)
+
+        for dst_idxs in dst_idxs_iter:
+            for src, dst in zip(unit_idxs, dst_idxs):
+                v = idx_orig[src]
+                np.random.shuffle(v)
+                idx_perm[dst] = v
+            yield idx_perm
 
 
 def permute_sign_flip(n, samples=10000, seed=0, out=None):
