@@ -2555,8 +2555,13 @@ class _ClusterDist:
         -----
         Clusters only have stable ids for thresholded cluster distributions.
         """
-        if cluster_id not in self._cids:
-            raise ValueError("No cluster with id " + repr(cluster_id))
+        if self.kind != 'cluster':
+            raise RuntimeError(
+                f'Only cluster-based tests have clusters with stable ids, this '
+                f'is a {self.kind} distribution. Use the .find_clusters() '
+                f'method instead with maps=True.')
+        elif cluster_id not in self._cids:
+            raise ValueError(f'No cluster with id {cluster_id!r}')
 
         out = self.parameter_map * (self.cluster_map == cluster_id)
         properties = self._cluster_properties(self.cluster_map, (cluster_id,))
