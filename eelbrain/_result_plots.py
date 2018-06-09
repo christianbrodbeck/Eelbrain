@@ -126,7 +126,7 @@ class ClusterPlotter(object):
     ----------
     ds : Dataset
         Dataset with the data on which the test is based.
-    res : Result
+    res : NDTest
         Test result object with spatio-temporal cluster test result.
     colors : dict
         Colors for plotting data in a ``{cell: color}`` dictionary.

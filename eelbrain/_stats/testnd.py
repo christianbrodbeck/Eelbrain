@@ -76,7 +76,7 @@ def check_variance(x):
         raise ZeroVariance("y contains data column with zero variance")
 
 
-class _Result(object):
+class NDTest(object):
     """Baseclass for testnd test results
 
     Attributes
@@ -354,7 +354,7 @@ class _Result(object):
         return None
 
 
-class t_contrast_rel(_Result):
+class t_contrast_rel(NDTest):
     """Mass-univariate contrast based on t-values
 
     Parameters
@@ -486,8 +486,8 @@ class t_contrast_rel(_Result):
         t = NDVar(tmap, ct.y.dims[1:], info, 't')
 
         # store attributes
-        _Result.__init__(self, ct.y, ct.match, sub, samples, tfce, pmin, cdist,
-                         tstart, tstop)
+        NDTest.__init__(self, ct.y, ct.match, sub, samples, tfce, pmin, cdist,
+                        tstart, tstop)
         self.x = ('%'.join(ct.x.base_names) if isinstance(ct.x, Interaction) else
                   ct.x.name)
         self.contrast = contrast
@@ -515,7 +515,7 @@ class t_contrast_rel(_Result):
         return args
 
 
-class corr(_Result):
+class corr(NDTest):
     """Mass-univariate correlation
 
     Parameters
@@ -640,8 +640,8 @@ class corr(_Result):
         r = NDVar(rmap, dims, info, name)
 
         # store attributes
-        _Result.__init__(self, y, match, sub, samples, tfce, pmin, cdist,
-                         tstart, tstop)
+        NDTest.__init__(self, y, match, sub, samples, tfce, pmin, cdist,
+                        tstart, tstop)
         self.x = x.name
         self.norm = None if norm is None else norm.name
         self.rmin = rmin
@@ -652,7 +652,7 @@ class corr(_Result):
         self._expand_state()
 
     def _expand_state(self):
-        _Result._expand_state(self)
+        NDTest._expand_state(self)
 
         r = self.r
 
@@ -681,7 +681,7 @@ class corr(_Result):
         return args
 
 
-class ttest_1samp(_Result):
+class ttest_1samp(NDTest):
     """Mass-univariate one sample t-test
 
     Parameters
@@ -804,8 +804,8 @@ class ttest_1samp(_Result):
         t = NDVar(tmap, ct.y.dims[1:], info, 't')
 
         # store attributes
-        _Result.__init__(self, ct.y, ct.match, sub, samples, tfce, pmin, cdist,
-                         tstart, tstop)
+        NDTest.__init__(self, ct.y, ct.match, sub, samples, tfce, pmin, cdist,
+                        tstart, tstop)
         self.popmean = popmean
         self.tail = tail
         self.tmin = tmin
@@ -821,10 +821,10 @@ class ttest_1samp(_Result):
     def __setstate__(self, state):
         if 'diff' in state:
             state['difference'] = state.pop('diff')
-        _Result.__setstate__(self, state)
+        NDTest.__setstate__(self, state)
 
     def _expand_state(self):
-        _Result._expand_state(self)
+        NDTest._expand_state(self)
 
         t = self.t
         pmap = stats.ttest_p(t.x, self.df, self.tail)
@@ -854,7 +854,7 @@ class ttest_1samp(_Result):
         return args
 
 
-class ttest_ind(_Result):
+class ttest_ind(NDTest):
     """Mass-univariate independent samples t-test
 
     Parameters
@@ -983,8 +983,8 @@ class ttest_ind(_Result):
         c0_mean = ct.data[c0].summary(name=cellname(c0))
 
         # store attributes
-        _Result.__init__(self, ct.y, ct.match, sub, samples, tfce, pmin, cdist,
-                         tstart, tstop)
+        NDTest.__init__(self, ct.y, ct.match, sub, samples, tfce, pmin, cdist,
+                        tstart, tstop)
         self.x = ct.x.name
         self.c0 = c0
         self.c1 = c1
@@ -1002,7 +1002,7 @@ class ttest_ind(_Result):
         self._expand_state()
 
     def _expand_state(self):
-        _Result._expand_state(self)
+        NDTest._expand_state(self)
 
         c1_mean = self.c1_mean
         c0_mean = self.c0_mean
@@ -1061,7 +1061,7 @@ class ttest_ind(_Result):
         return args
 
 
-class ttest_rel(_Result):
+class ttest_rel(NDTest):
     """Mass-univariate related samples t-test
 
     Parameters
@@ -1213,8 +1213,8 @@ class ttest_rel(_Result):
         t = NDVar(tmap, y1.dims[1:], info, 't')
 
         # store attributes
-        _Result.__init__(self, y1, match, sub, samples, tfce, pmin, cdist,
-                         tstart, tstop)
+        NDTest.__init__(self, y1, match, sub, samples, tfce, pmin, cdist,
+                        tstart, tstop)
         self.x = x_name
         self.c0 = c0
         self.c1 = c1
@@ -1231,7 +1231,7 @@ class ttest_rel(_Result):
         self._expand_state()
 
     def _expand_state(self):
-        _Result._expand_state(self)
+        NDTest._expand_state(self)
 
         cdist = self._cdist
         t = self.t
@@ -1288,7 +1288,7 @@ class ttest_rel(_Result):
         return args
 
 
-class _MultiEffectResult(_Result):
+class MultiEffectNDTest(NDTest):
 
     def _repr_test_args(self):
         args = [repr(self.y), repr(self.x)]
@@ -1448,7 +1448,7 @@ class _MultiEffectResult(_Result):
         return combine(dss)
 
 
-class anova(_MultiEffectResult):
+class anova(MultiEffectNDTest):
     """Mass-univariate ANOVA
 
     Parameters
@@ -1587,8 +1587,8 @@ class anova(_MultiEffectResult):
             f.append(NDVar(fmap, dims, info, e.name))
 
         # store attributes
-        _MultiEffectResult.__init__(self, y, match, sub_arg, samples, tfce, pmin,
-                                    cdists, tstart, tstop)
+        MultiEffectNDTest.__init__(self, y, match, sub_arg, samples, tfce, pmin,
+                                   cdists, tstart, tstop)
         self.x = x_arg if isinstance(x_arg, str) else x.name
         self._effects = effects
         self._dfs_denom = dfs_denom
@@ -1601,7 +1601,7 @@ class anova(_MultiEffectResult):
         if hasattr(self, 'effects'):
             self._effects = self.effects
 
-        _MultiEffectResult._expand_state(self)
+        MultiEffectNDTest._expand_state(self)
 
         # backwards compatibility
         if hasattr(self, 'df_den'):
@@ -2907,7 +2907,7 @@ class _MergedTemporalClusterDist:
 
         if not clusters.n_cases:
             return clusters
-        if isinstance(res, _MultiEffectResult):
+        if isinstance(res, MultiEffectNDTest):
             keys.insert(-1, 'p_parc')
             cluster_p_corr = []
             for cl in clusters.itercases():

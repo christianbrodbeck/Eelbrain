@@ -607,7 +607,7 @@ class Brain(TimeSlicer, surfer.Brain):
 
         Parameters
         ----------
-        p_map : NDVar | Result
+        p_map : NDVar | NDTest
             Map of p values, or test result.
         param_map : NDVar
             Statistical parameter covering the same data points as p_map. Only the
@@ -623,10 +623,10 @@ class Brain(TimeSlicer, surfer.Brain):
         ...
             Other parameters for :meth:`.add_ndvar`.
         """
-        from .._stats.testnd import _Result, _MultiEffectResult
+        from .._stats.testnd import NDTest, MultiEffectNDTest
 
-        if isinstance(p_map, _Result):
-            if isinstance(p_map, _MultiEffectResult):
+        if isinstance(p_map, NDTest):
+            if isinstance(p_map, MultiEffectNDTest):
                 raise NotImplementedError(f"plot.brain.p_map for {p_map.__class__.__name__}")
             res = p_map
             p_map = res.p

@@ -506,7 +506,7 @@ def time_results(res, ds, colors, title='Results', caption="Timecourse",
 
     Parameters
     ----------
-    res : Result
+    res : NDTest
         Result of the temporal cluster test.
     ds : Dataset
         Data.
@@ -592,11 +592,11 @@ def time_results(res, ds, colors, title='Results', caption="Timecourse",
 
 
 def result_report(res, ds, title=None, colors=None):
-    """Automatically generate section from testnd Result
+    """Automatically generate section from an NDTest result object
 
     Parameters
     ----------
-    res : Result
+    res : NDTest
         Test-result.
     ds : Dataset
         Dataset containing the data on which the test was performed.

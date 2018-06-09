@@ -302,7 +302,7 @@ class App(wx.App):
 
         Returns
         -------
-        Result : list | str | None
+        result : list | str | None
             Paths(s) or False.
         """
         style = wx.FD_OPEN
