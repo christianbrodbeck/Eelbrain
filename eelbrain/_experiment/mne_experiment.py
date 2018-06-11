@@ -3435,6 +3435,7 @@ class MneExperiment(FileTree):
                         ds[:, 'epoch'] = sub_epoch
                         session_dss.append(ds)
                     ds = combine(session_dss)
+                    ds.info['raw'] = session_dss[0].info['raw']
                     # combine raw
                     if raw is None:
                         raw = ds.info['raw']

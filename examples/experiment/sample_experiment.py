@@ -42,7 +42,11 @@ class SampleExperiment(MneExperiment):
         # all target stimuli:
         'target': {'sel': "event == 'target'", 'tmax': 0.3},
         # only auditory stimulation
-        'auditory': {'base': 'target', 'sel': "modality == 'auditory'"}
+        'auditory': {'base': 'target', 'sel': "modality == 'auditory'"},
+        # only visual stimulation
+        'visual': {'base': 'target', 'sel': "modality == 'visual'"},
+        # recombine auditory and visual
+        'av': {'sub_epochs': ('auditory', 'visual')},
     }
 
     tests = {
