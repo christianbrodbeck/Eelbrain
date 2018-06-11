@@ -29,8 +29,17 @@ def test_sample():
     eq_(e.get('subject'), 'R0000')
     eq_(e.get('subject', subject='R0002'), 'R0002')
 
-    # evoked cache invalidated by change in bads
+    # events
     e.set('R0001', rej='')
+    ds = e.load_selected_events(epoch='target')
+    assert ds.n_cases == 39
+    ds = e.load_selected_events(epoch='auditory')
+    assert ds.n_cases == 20
+    ds = e.load_selected_events(epoch='av')
+    assert ds.n_cases == 39
+    
+    # evoked cache invalidated by change in bads
+    e.set('R0001', rej='', epoch='target')
     ds = e.load_evoked()
     eq_(ds[0, 'evoked'].info['bads'], [])
     e.make_bad_channels(['MEG 0331'])
