@@ -2759,9 +2759,7 @@ class MneExperiment(FileTree):
         raw_mtime = self._raw_mtime(bad_chs=False)
         if exists(evt_file):
             ds = load.unpickle(evt_file)
-            if 'sfreq' not in ds.info:  # Eelbrain < 0.19
-                ds = None
-            elif 'raw-mtime' not in ds.info:  # Eelbrain < 0.27
+            if 'subject' not in ds.info:  # Eelbrain < 0.28
                 ds = None
             elif ds.info['raw-mtime'] != raw_mtime:
                 ds = None
@@ -2781,6 +2779,8 @@ class MneExperiment(FileTree):
             del ds.info['raw']
             ds.info['sfreq'] = raw.info['sfreq']
             ds.info['raw-mtime'] = raw_mtime
+            ds.info['session'] = self.get('session')
+            ds.info['subject'] = subject
 
             # add edf
             if self.has_edf[subject]:
@@ -2800,8 +2800,6 @@ class MneExperiment(FileTree):
             raise TypeError("data_raw=%s; needs to be str or bool"
                             % repr(data_raw))
 
-        ds.info['subject'] = subject
-        ds.info['session'] = self.get('session')
         if data_raw is not False:
             ds.info['raw'] = raw
 
@@ -2815,7 +2813,10 @@ class MneExperiment(FileTree):
                 ds['i_start'] += int(round(trigger_shift * ds.info['sfreq']))
 
         # label events
+        info = ds.info
         ds = self.label_events(ds)
+        if ds.info is not info:
+            ds.info.update(info)
         if not isinstance(ds, Dataset):
             raise DefinitionError(
                 "The %s.label_events() function must return a Dataset, got "
