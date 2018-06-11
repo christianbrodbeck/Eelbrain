@@ -1,5 +1,5 @@
-{% set version = "0.27.5" %}
-{% set sha256 = "009ee31f6d0eec5514e0c5ed65dd43f6c8f40b375d551107b26c0af6b47b6124" %}
+{% set version = "0.27.6" %}
+{% set sha256 = "8d74847259b649a3e563ccf115a8fc470976f70d9c3967a5781002cb9fed1bb2" %}
 
 # https://github.com/conda/conda-build/issues/2717
 
@@ -33,7 +33,7 @@ requirements:
     - ipython
     - keyring >=5
     - matplotlib >=2.1
-    - mne >=0.15.2
+    - mne >=0.15.2, <0.16
     - nibabel >=2.0
     - olefile  # [linux]
     - {{ pin_compatible('numpy') }}
