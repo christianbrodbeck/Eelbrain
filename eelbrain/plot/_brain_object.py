@@ -15,7 +15,6 @@ import wx
 
 from .._colorspaces import to_rgb, to_rgba
 from .._data_obj import NDVar, SourceSpace
-from .._wxgui import run as run_gui
 from ..fmtxt import Image, ms
 from ..mne_fixes import reset_logger
 from ._base import (CONFIG, TimeSlicer, do_autorun, find_axis_params_data,
@@ -224,6 +223,7 @@ class Brain(TimeSlicer, surfer.Brain):
         if CONFIG['show'] and show:
             self._frame.Show()
             if CONFIG['eelbrain'] and do_autorun(run):
+                from .._wxgui import run as run_gui  # lazy import for docs
                 run_gui()
 
     def __repr__(self):
