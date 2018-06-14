@@ -19,6 +19,7 @@ from ._base import (
     ColorMapMixin, TimeSlicerEF, TopoMapKey, XAxisMixin, YLimMixin)
 from ._utsnd import _ax_butterfly, _ax_im_array, _plt_im
 from ._sensors import SENSORMAP_FRAME, SensorMapMixin, _plt_map2d
+from .._utils import deprecated
 
 
 class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
@@ -347,8 +348,8 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
             for layers, p in zip(epochs, self.topo_plots):
                 p.set_data(layers)
 
+    @deprecated('0.29', 'TopoButterfly.set_time')
     def set_topo_t(self, t):
-        "Set the time point of the topo-maps"
         self._set_time(t, True)
 
     def _topo_data(self, event):

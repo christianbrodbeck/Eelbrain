@@ -36,7 +36,7 @@ def test_plot_topo_butterfly():
     "Test plot.TopoButterfly"
     ds = datasets.get_uts(utsnd=True)
     p = plot.TopoButterfly('utsnd', ds=ds, show=False)
-    p.set_topo_t(0.2)
+    p.set_time(0.2)
     p.close()
     p = plot.TopoButterfly('utsnd', ds=ds, vmax=0.2, w=6, show=False)
     p.close()
