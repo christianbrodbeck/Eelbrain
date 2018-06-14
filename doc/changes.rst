@@ -17,6 +17,8 @@ New in 0.28
     parameter was renamed to ``density``.
   - Previously capitalized argument and attribute names ``Y``, ``X`` and ``Xax``
     are now lowercase.
+  - Topomap-plot argument order changed to provide consistency between different
+    plots.
 
 * :class:`NDVar` and :class:`Var` support for ``round(x)``
 

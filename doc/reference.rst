@@ -335,6 +335,7 @@ Plot topographic maps of sensor space data:
    plot.TopoArray
    plot.TopoButterfly
    plot.Topomap
+   plot.TopomapBins
 
 
 Plot sensor layout maps:
