@@ -81,7 +81,7 @@ from .._colorspaces import symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
 from .._config import CONFIG
 from .._data_obj import (Case, UTS, ascategorial, asndvar, assub, isnumeric,
                          isdataobject, cellname)
-from .._utils import IS_WINDOWS, LazyProperty, intervals
+from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
 from .._utils.subp import command_exists
 from ..fmtxt import Image
 from ..mne_fixes import MNE_EPOCHS
@@ -2448,6 +2448,40 @@ class TimeSlicerEF(TimeSlicer):
 
         if self.__redraw and redraw:
             self.canvas.redraw(self.__axes)
+
+    def save_movie(self, filename=None, time_dilation=4., **kwargs):
+        """Save the figure with moving time axis as movie
+
+        Parameters
+        ----------
+        filename : str
+            Filename for the movie (omit to use a GUI).
+        time_dilation : float
+            Factor by which to stretch time (default 4). Time dilation is
+            controlled through the frame-rate; if the ``fps`` keyword argument
+            is specified, ``time_dilation`` is ignored.
+        **
+            :func:`imageio.mimwrite` parmeters.
+        """
+        import imageio
+
+        if filename is None:
+            filename = ui.ask_saveas("Save movie...", None, [('Movie (*.mov)', '*.mov')])
+            if not filename:
+                return
+        else:
+            filename = os.path.expanduser(filename)
+
+        if 'fps' not in kwargs:
+            kwargs['fps'] = 1. / self._time_dim.tstep / time_dilation
+
+        ims = []
+        for t in self._time_dim:
+            self._set_time(t, True)
+            # private attr usage is official: https://matplotlib.org/gallery/misc/agg_buffer_to_array.html
+            im = np.array(self.figure.canvas.renderer._renderer)
+            ims.append(im)
+        imageio.mimwrite(filename, ims, **kwargs)
 
 
 class TopoMapKey(object):
