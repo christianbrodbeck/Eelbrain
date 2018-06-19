@@ -3,6 +3,7 @@
 from distutils.version import LooseVersion
 from functools import wraps
 from importlib import import_module
+from importlib.util import spec_from_file_location, module_from_spec
 import os
 from operator import mul
 import shutil
@@ -77,6 +78,10 @@ def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None):
         assert_true(np.all(d1 == d2), "%s unequal values: %r vs "
                     "%r" % (msg, d1, d2))
     elif isinstance(d1, NDVar):
+        if d1.shape != d2.shape:
+            raise AssertionError(
+                f"NDVars have different shape:\n  {d1.name}: {d1.shape}\n"
+                f"  {d2.name}: {d2.shape}")
         if decimal:
             is_different = np.max(np.abs(d1.x - d2.x)) >= 10**-decimal
         else:
@@ -116,6 +121,13 @@ def assert_source_space_equal(src1, src2, msg="SourceSpace Dimension objects "
                  ")" % (msg, src1.src, src2.src))
     assert_equal(src1.subjects_dir, src2.subjects_dir, "%s unequal names (%r "
                  "vs %r)" % (msg, src1.subjects_dir, src2.subjects_dir))
+
+
+def import_attr(path, attr):
+    spec = spec_from_file_location('module', path)
+    mod = module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return getattr(mod, attr)
 
 
 def requires_mne_sample_data(function):
