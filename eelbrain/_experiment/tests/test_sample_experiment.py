@@ -73,6 +73,18 @@ def test_sample():
     ds['n'] = Var(range(3))
     s_table = e._report_subject_info(ds, '')
 
+    # test multiple epochs with same time stamp
+    class Experiment(SampleExperiment):
+        epochs = SampleExperiment.epochs.copy()
+    Experiment.epochs['v1'] = {'base': 'visual', 'vars': {'shift': 'Var([0.0], repeat=len(side))'}}
+    Experiment.epochs['v2'] = {'base': 'visual', 'vars': {'shift': 'Var([0.1], repeat=len(side))'}}
+    Experiment.epochs['vc'] = {'sub_epochs': ('v1', 'v2'), 'post_baseline_trigger_shift': 'shift', 'post_baseline_trigger_shift_max': 0.1, 'post_baseline_trigger_shift_min': 0.0}
+    e = Experiment(root)
+    ds = e.load_epochs(baseline=True, epoch='vc')
+    v1 = ds.sub("epoch=='v1'", 'meg').sub(time=(0, 0.199))
+    v2 = ds.sub("epoch=='v2'", 'meg').sub(time=(-0.1, 0.099))
+    assert_dataobj_equal(v1, v2, decimal=20)
+
     # duplicate subject
     class BadExperiment(e_module.SampleExperiment):
         groups = {'group': ('R0001', 'R0002', 'R0002')}
