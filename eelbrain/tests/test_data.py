@@ -379,6 +379,7 @@ def test_dataset_combining():
 def test_dataset_indexing():
     """Test Dataset indexing"""
     ds = datasets.get_uv()
+    ds.index('case')
 
     # indexing values
     eq_(ds['A', 1], ds['A'][1])
@@ -389,6 +390,7 @@ def test_dataset_indexing():
     assert_dataobj_equal(ds['A', :], ds['A'])
     assert_dataobj_equal(ds[:10, 'A'], ds['A'][:10])
     assert_dataobj_equal(ds['A', :10], ds['A'][:10])
+    assert_dataobj_equal(ds.sub("case < 10", 'A'), ds['A'][:10])
 
     # new Dataset through indexing
     ds2 = Dataset()

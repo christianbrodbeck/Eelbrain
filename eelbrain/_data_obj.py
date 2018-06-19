@@ -5973,6 +5973,8 @@ class Dataset(OrderedDict):
                 index = self.eval(index)
             if keys is None:
                 keys = self.keys()
+            elif isinstance(keys, str):
+                return OrderedDict.__getitem__(self, keys)[index]
             items = ((k, OrderedDict.__getitem__(self, k)[index]) for k in keys)
 
         return Dataset(items, name or self.name, self._caption, self.info)
