@@ -38,6 +38,8 @@ requirements:
     - olefile  # [linux]
     - {{ pin_compatible('numpy') }}
     - pillow
+    - mayavi 4.5
+    - vtk 6.3
     - pysurfer >=0.8
     - scipy >=0.17
     - tex >=1.8
