@@ -317,7 +317,14 @@ type-specific parameters:
 ^^^^^^^^^^
 
 ``args`` (:class:`tuple`) and ``kwargs`` (:class:`dict`) for
-:func:`mne.io.Raw.filter`.
+:func:`mne.io.Raw.filter`. 
+
+.. warning:
+    Unspecified parameters are derived from mne-python :func:`mne.io.Raw.filter` 
+    defaults. Because these defaults can change between versions of :mod:`mne`,  
+    it is recommended to explicitly specify all parameters. To provide backwards-
+    compatibility, if the ``fir_design`` parameter is unspecified, ``'firwin2'``
+    is used.
 
 
 ``ica``
