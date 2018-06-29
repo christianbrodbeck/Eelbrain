@@ -662,7 +662,7 @@ class MneExperiment(FileTree):
         raw_dict = self._raw.copy()
         raw_dict.update(self.raw)
         self._raw = assemble_pipeline(raw_dict, raw_path, bads_path, cache_path,
-                                      ica_path, log)
+                                      ica_path, self._sessions, log)
 
         ########################################################################
         # variables
@@ -1080,7 +1080,7 @@ class MneExperiment(FileTree):
             # raw pipeline
             if cache_state_v < 5:
                 cache_raw = pipeline_dict(
-                    assemble_pipeline(LEGACY_RAW, '', '', '', '', log))
+                    assemble_pipeline(LEGACY_RAW, '', '', '', '', self._sessions, log))
             else:
                 cache_raw = cache_state['raw']
 
@@ -3130,22 +3130,17 @@ class MneExperiment(FileTree):
                 mne.convert_forward_solution(fwd, surf_ori, copy=False)
             return fwd
 
-    def load_ica(self):
-        """Load the ICA object for the current subject/rej setting
+    def load_ica(self, **state):
+        """Load the mne-python ICA object
 
         Returns
         -------
         ica : mne.preprocessing.ICA
-            ICA object for the current subject/rej setting.
+            ICA object for the current raw/rej setting.
+        ...
+            State parameters.
         """
-        pipe = self._raw[self.get('raw')]
-        if isinstance(pipe, RawICA):
-            return pipe.load_ica(self.get('subject'))
-        path = self.get('ica-file')
-        if not exists(path):
-            raise RuntimeError("ICA file does not exist at %s. Run "
-                               "e.make_ica_selection() to create it." %
-                               relpath(path, self.get('root')))
+        path = self.make_ica(return_data=False, **state)
         return mne.preprocessing.read_ica(path)
 
     def load_inv(self, fiff=None, ndvar=False, mask=None, **kwargs):
@@ -4268,7 +4263,7 @@ class MneExperiment(FileTree):
             path, ds, self._sysname(
                 ds['epochs'], ds.info['subject'], self.get('modality')))
 
-    def make_ica(self, return_data=False, decim=None):
+    def make_ica(self, return_data=False, decim=None, **state):
         """Compute the ICA decomposition
 
         If a corresponding file exists, a basic check is done as to whether the
@@ -4281,6 +4276,8 @@ class MneExperiment(FileTree):
             load secific epoch.
         decim : int (optional)
             Downsample epochs (for visualization only).
+        ...
+            State parameters.
 
         Returns
         -------
@@ -4300,6 +4297,8 @@ class MneExperiment(FileTree):
             ...     e.make_ica()
 
         """
+        if state:
+            self.set(**state)
         pipe = self._raw[self.get('raw')]
         if isinstance(pipe, RawICA):
             path = pipe.make_ica(self.get('subject'))

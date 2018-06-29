@@ -352,7 +352,8 @@ class RawMaxwell(CachedRawPipe):
         return mne.preprocessing.maxwell_filter(raw, **self.kwargs)
 
 
-def assemble_pipeline(raw_dict, raw_path, bads_path, cache_path, ica_path, log):
+def assemble_pipeline(raw_dict, raw_path, bads_path, cache_path, ica_path,
+                      sessions, log):
     "Assemble preprocessing pipeline form a definition in a dict"
     raw = {}
     unassigned = raw_dict.copy()
@@ -376,9 +377,15 @@ def assemble_pipeline(raw_dict, raw_path, bads_path, cache_path, ica_path, log):
                                           params['args'],
                                           params.get('kwargs', {}))
                 elif pipe_type == 'ica':
+                    session = params['session']
+                    if session not in sessions:
+                        raise DefinitionError(
+                            f"Raw definition {name!r} references non-existing "
+                            f"session {session!r}; existing sessions are: "
+                            f"{', '.join(map(repr, sessions))}")
                     raw[name] = RawICA(name, raw[source], cache_path,
                                        ica_path.replace('{raw}', name), log,
-                                       params['session'], params['kwargs'])
+                                       session, params['kwargs'])
                 elif pipe_type == 'maxwell_filter':
                     raw[name] = RawMaxwell(name, raw[source], cache_path, log,
                                            params['kwargs'])
