@@ -6541,6 +6541,8 @@ class Model(object):
                 if e.name == sub:
                     return e
             raise KeyError(sub)
+        elif isinstance(sub, INT_TYPES):
+            return tuple(e[sub] for e in self.effects)
         else:
             return Model((x[sub] for x in self.effects))
 
