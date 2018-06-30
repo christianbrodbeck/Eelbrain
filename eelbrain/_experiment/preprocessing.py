@@ -384,15 +384,15 @@ def assemble_pipeline(raw_dict, raw_path, bads_path, cache_path, ica_path,
                                           params['args'],
                                           params.get('kwargs', {}))
                 elif pipe_type == 'ica':
-                    session = params['session']
-                    if session not in sessions:
-                        raise DefinitionError(
-                            f"Raw definition {name!r} references non-existing "
-                            f"session {session!r}; existing sessions are: "
-                            f"{', '.join(map(repr, sessions))}")
                     raw[name] = RawICA(name, raw[source], cache_path,
                                        ica_path.replace('{raw}', name), log,
-                                       session, params['kwargs'])
+                                       params['session'], params['kwargs'])
+                    if not all(s in sessions for s in raw[name].session):
+                        missing = (repr(s) for s in raw[name].session if s not in sessions)
+                        raise DefinitionError(
+                            f"Raw definition {name!r} references one or more "
+                            f"non-existing sessions {', '.join(missing)}; "
+                            f"existing sessions are: {', '.join(map(repr, sessions))}")
                 elif pipe_type == 'maxwell_filter':
                     raw[name] = RawMaxwell(name, raw[source], cache_path, log,
                                            params['kwargs'])
