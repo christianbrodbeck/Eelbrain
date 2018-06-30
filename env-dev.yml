@@ -61,5 +61,5 @@ dependencies:
   - nitime
   - nilearn
   - neo
-  - pytest-sugar
+#  - pytest-sugar  # errors on macOS
   - pytest-faulthandler
