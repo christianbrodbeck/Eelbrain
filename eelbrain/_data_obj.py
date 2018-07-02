@@ -8433,7 +8433,7 @@ class SourceSpace(Dimension):
 
     def _init_secondary(self):
         self._n_vert = sum(len(v) for v in self.vertices)
-        match = re.match("(ico|vol)-(\d)", self.src)
+        match = re.match("(ico|vol)-(10|\d)", self.src)
         # The source-space type is needed to determine connectivity
         if match is None:
             raise ValueError("src=%r; needs to be 'ico-i' or 'vol-i'" % self.src)
