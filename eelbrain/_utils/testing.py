@@ -1,7 +1,8 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 "Utilities for testing"
+from contextlib import ContextDecorator
 from distutils.version import LooseVersion
-from functools import wraps
+from functools import reduce, wraps
 from importlib import import_module
 from importlib.util import spec_from_file_location, module_from_spec
 import os
@@ -14,8 +15,8 @@ from nose.tools import assert_equal, assert_true, eq_
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 
+import eelbrain._wxgui
 from .._data_obj import Dataset, NDVar, Var, isdatalist, isdatacontainer, isuv
-from functools import reduce
 
 
 class TempDir(str):
@@ -123,6 +124,32 @@ def assert_source_space_equal(src1, src2, msg="SourceSpace Dimension objects "
                  "vs %r)" % (msg, src1.subjects_dir, src2.subjects_dir))
 
 
+class GUITestContext(ContextDecorator):
+    modules = (
+        eelbrain._wxgui.select_epochs,
+        eelbrain._wxgui.select_components,
+        eelbrain._wxgui.history,
+    )
+
+    def __init__(self):
+        self._i = 0
+
+    def __enter__(self):
+        self._i += 1
+        if self._i == 1:
+            for mod in self.modules:
+                mod.TEST_MODE = True
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._i -= 1
+        if self._i == 0:
+            for mod in self.modules:
+                mod.TEST_MODE = False
+
+
+gui_test = GUITestContext()
+
+
 def import_attr(path, attr):
     spec = spec_from_file_location('module', path)
     mod = module_from_spec(spec)
@@ -132,6 +159,7 @@ def import_attr(path, attr):
 
 def requires_mne_sample_data(function):
     import mne
+
     if mne.datasets.sample.data_path(download=False):
         @wraps(function)
         def decorator(*args, **kwargs):

@@ -35,6 +35,9 @@ COLOR = {True: (.5, 1, .5), False: (1, .3, .3)}
 LINE_COLOR = {True: 'k', False: (1, 0, 0)}
 LINK = 'component:%i epoch:%s'
 
+# For unit-tests
+TEST_MODE = False
+
 
 class ChangeAction(Action):
     """Action objects are kept in the history and can do and undo themselves
