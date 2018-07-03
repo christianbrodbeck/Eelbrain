@@ -1,22 +1,28 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-import os
+from os.path import join
 
+import mne
 from nose.tools import eq_, ok_, assert_false
 from numpy.testing import assert_array_equal
 
-from eelbrain import datasets, gui, load, set_log_level
-from eelbrain._utils.testing import requires_mne_sample_data, TempDir, gui_test
+from eelbrain import gui, load, set_log_level
+from eelbrain._utils.testing import TempDir, gui_test
 from eelbrain._wxgui.select_epochs import Document, Model
 
 
 @gui_test
-@requires_mne_sample_data
 def test_select_epochs():
     "Test Select-Epochs GUI Document"
     set_log_level('warning', 'mne')
-    ds = datasets.get_mne_sample(sns=True)
+
+    data_path = mne.datasets.testing.data_path()
+    raw_path = join(data_path, 'MEG', 'sample', 'sample_audvis_trunc_raw.fif')
+    raw = mne.io.Raw(raw_path, preload=True).pick_types('mag', stim=True)
+    ds = load.fiff.events(raw)
+    ds['meg'] = load.fiff.epochs(ds, tmax=0.1)
+
     tempdir = TempDir()
-    path = os.path.join(tempdir, 'rej.pickled')
+    path = join(tempdir, 'rej.pickled')
 
     # Test Document
     # =============
@@ -41,7 +47,6 @@ def test_select_epochs():
     eq_(doc.epochs.sensor._array_index(ds_.info['bad_channels']), [1])
 
     # load the file
-    ds = datasets.get_mne_sample(sns=True)
     doc = Document(ds, 'meg', path=path)
     # modification checks
     eq_(doc.accept[1], False)
@@ -53,7 +58,6 @@ def test_select_epochs():
 
     # Test Model
     # ==========
-    ds = datasets.get_mne_sample(sns=True)
     doc = Document(ds, 'meg')
     model = Model(doc)
 
@@ -103,7 +107,7 @@ def test_select_epochs():
 
     # Test GUI
     # ========
-    frame = gui.select_epochs(ds)
+    frame = gui.select_epochs(ds, nplots=9)
     assert_false(frame.CanBackward())
     ok_(frame.CanForward())
     frame.OnForward(None)

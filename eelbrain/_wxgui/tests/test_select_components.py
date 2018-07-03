@@ -2,21 +2,23 @@
 from os.path import join
 
 import mne
-from eelbrain import datasets, gui
-from eelbrain._utils.testing import gui_test, requires_mne_sample_data, TempDir
+from eelbrain import gui, load
+from eelbrain._utils.testing import gui_test, TempDir
 
 
 @gui_test
-@requires_mne_sample_data
 def test_select_components():
     "Test Select-Epochs GUI Document"
     tempdir = TempDir()
     PATH = join(tempdir, 'test-ica.fif')
 
-    ds = datasets.get_mne_sample()
-    ds['epochs'] = ds['epochs'].pick_types('mag')
-    ica = mne.preprocessing.ICA(0.95)
-    ica.fit(ds['epochs'])
+    data_path = mne.datasets.testing.data_path()
+    raw_path = join(data_path, 'MEG', 'sample', 'sample_audvis_trunc_raw.fif')
+    raw = mne.io.Raw(raw_path, preload=True).pick_types('mag', stim=True)
+    ds = load.fiff.events(raw)
+    ds['epochs'] = load.fiff.mne_epochs(ds, tmax=0.1)
+    ica = mne.preprocessing.ICA(0.95, fit_params={'tol': 0.001})
+    ica.fit(raw)
     ica.save(PATH)
 
     frame = gui.select_components(PATH, ds)
