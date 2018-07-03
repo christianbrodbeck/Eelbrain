@@ -196,6 +196,10 @@ class Frame(FileFrame):
     _wildcard = "ICA fiff file (*-ica.fif)|*.fif"
 
     def __init__(self, parent, pos, size, model):
+        self.last_model = ""
+        self.source_frame = None
+        self.butterfly_baseline = ID.BASELINE_NONE
+
         super(Frame, self).__init__(parent, pos, size, model)
 
         # setup layout
@@ -245,11 +249,6 @@ class Frame(FileFrame):
         # re-Bind right click
         self.canvas.Unbind(wx.EVT_RIGHT_DOWN)
         self.canvas.Bind(wx.EVT_RIGHT_DOWN, self.OnRightDown)
-
-        # attributes
-        self.last_model = ""
-        self.source_frame = None
-        self.butterfly_baseline = ID.BASELINE_NONE
 
         # Finalize
         self.plot()
