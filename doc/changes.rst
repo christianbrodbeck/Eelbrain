@@ -6,6 +6,7 @@ Changes
 New in 0.28
 -----------
 
+* Transition to `Python 3.6 <https://docs.python.org/3.6/>`_
 * API changes:
 
   - :class:`testnd.anova`: The ``match`` parameter is now determined
@@ -16,6 +17,8 @@ New in 0.28
     parameter was renamed to ``density``.
   - Previously capitalized argument and attribute names ``Y``, ``X`` and ``Xax``
     are now lowercase.
+
+* :class:`NDVar` and :class:`Var` support for ``round(x)``
 
 
 New in 0.27
