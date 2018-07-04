@@ -47,7 +47,7 @@ from .._data_obj import (
     Dataset, Var, Factor, Interaction, NestedEffect,
     NDVar, Categorial, UTS,
     ascategorial, asmodel, asndvar, asvar, assub,
-    hasrandom, cellname, combine, dataobj_repr)
+    cellname, combine, dataobj_repr)
 from .._exceptions import OldVersionError, ZeroVariance
 from .._report import enumeration, format_timewindow, ms
 from .._utils import LazyProperty
