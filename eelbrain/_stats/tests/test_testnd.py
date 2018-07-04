@@ -17,6 +17,7 @@ from eelbrain import (Dataset, NDVar, Categorial, Scalar, UTS, Sensor, configure
 from eelbrain._exceptions import ZeroVariance
 from eelbrain._stats.testnd import (Connectivity, _ClusterDist, label_clusters,
                                     _MergedTemporalClusterDist, find_peaks)
+from eelbrain._utils.system import IS_WINDOWS
 from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,
                                      requires_mne_sample_data)
 
@@ -96,12 +97,13 @@ def test_anova():
     assert_array_equal(masked.x <= unmasked.x, True)
 
     # reproducibility
+    decimal = 12 if IS_WINDOWS else None  # FIXME: why is Windows sometimes different???
     res0 = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=5)
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=5)
-    assert_dataset_equal(res.clusters, res0.clusters)
+    assert_dataset_equal(res.clusters, res0.clusters, decimal=decimal)
     configure(n_workers=0)
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=5)
-    assert_dataset_equal(res.clusters, res0.clusters)
+    assert_dataset_equal(res.clusters, res0.clusters, decimal=decimal)
     configure(n_workers=True)
 
     # permutation

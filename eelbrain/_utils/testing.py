@@ -11,12 +11,12 @@ import shutil
 import tempfile
 
 from nose.plugins.skip import SkipTest
-from nose.tools import assert_equal, assert_true, eq_
+from nose.tools import assert_equal, eq_
 import numpy as np
-from numpy.testing import assert_array_equal, assert_allclose
+from numpy.testing import assert_array_equal
 
 import eelbrain._wxgui
-from .._data_obj import Dataset, NDVar, Var, isdatalist, isdatacontainer, isuv
+from .._data_obj import Dataset, NDVar, Var, Factor, isdatalist, isdatacontainer, isuv
 
 
 class TempDir(str):
@@ -73,11 +73,20 @@ def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None):
     len1 = len(d1)
     len2 = len(d2)
     assert_equal(len1, len2, "%s unequal length: %i/%i" % (msg, len1, len2))
-    if isinstance(d1, Var) and decimal:
-        assert_allclose(d1.x, d2.x, 0, 10**-decimal)
-    elif isuv(d1):
-        assert_true(np.all(d1 == d2), "%s unequal values: %r vs "
-                    "%r" % (msg, d1, d2))
+    if isuv(d1):
+        if isinstance(d1, Var):
+            is_equal = np.allclose(d1.x, d2.x, equal_nan=True, rtol=0,
+                                   atol=10**-decimal if decimal else 0)
+        else:
+            is_equal = d1 == d2
+        if not np.all(is_equal):
+            ds = Dataset()
+            ds['value'] = d1
+            ds['target'] = d2
+            ds['unequal'] = Factor(is_equal, labels={True: '', False: 'x'})
+            if isinstance(d1, Var):
+                ds['difference'] = d1 - d2
+            raise AssertionError(f'{msg} unequal values:\n\n{ds}')
     elif isinstance(d1, NDVar):
         if d1.shape != d2.shape:
             raise AssertionError(
