@@ -1256,7 +1256,7 @@ class EelFigure(object):
                 ax.xaxis.set_major_formatter(formatter)
 
             if not add_tick_labels_:
-                ax.tick_params(labelbottom='off')
+                ax.tick_params(labelbottom=False)
 
         if label:
             self.set_xlabel(label)

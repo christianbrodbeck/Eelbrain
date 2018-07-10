@@ -1125,7 +1125,7 @@ def _ax_histogram(ax, data, density, test_normality, **kwargs):
         # normal line
         mu = np.mean(data)
         sigma = np.std(data)
-        y = mpl.mlab.normpdf(bins, mu, sigma)
+        y = scipy.stats.norm.pdf(bins, mu, sigma)
         if not density:
             y *= len(data) * np.diff(bins)[0]
         ax.plot(bins, y, 'r--', linewidth=1)
