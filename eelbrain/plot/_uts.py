@@ -677,7 +677,7 @@ class _plt_uts_stat(object):
         if error == 'all':
             self.error = ax.plot(x, y.T, color=color, alpha=error_alpha,
                                  clip_on=clip)
-        elif error:
+        elif error and len(y) > 1:
             if error == 'data':
                 pass
             elif hasattr(error, '__call__'):

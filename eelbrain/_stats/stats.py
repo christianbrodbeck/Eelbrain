@@ -137,6 +137,7 @@ def residual_mean_square(y, x=None):
         Estimate of the mean square within x.
     """
     n = len(y)
+    assert n > 1, "Can't compute dispersion from a single measurement"
     out = np.empty(y.shape[1:])
     out_ = out.ravel()
     y_ = y.reshape((n, -1))
