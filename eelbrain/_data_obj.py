@@ -7203,7 +7203,7 @@ class Case(Dimension):
     >>> NDVar([[1, 2], [3, 4]], (Case, Categorial('column', ['1', '2'])))
     <NDVar: 2 case, 2 column>
     """
-    _DIMINDEX_RAW_TYPES = (int, slice, list, np.intp)
+    _DIMINDEX_RAW_TYPES = INT_TYPES + (slice, list)
 
     def __init__(self, n, connectivity='none'):
         Dimension.__init__(self, 'case', connectivity)
@@ -7269,8 +7269,7 @@ class Case(Dimension):
         elif isinstance(arg, tuple):
             return slice(*arg) if arg else FULL_SLICE
         else:
-            raise TypeError("Unknown index type for case dimension: %r" %
-                            (arg,))
+            raise TypeError(f"Index {arg} of type {type(arg)} for Case dimension")
 
     def _dim_index(self, arg):
         return arg
