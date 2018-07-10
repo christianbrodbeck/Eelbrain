@@ -67,7 +67,7 @@ setup(
     author_email='christianbrodbeck@nyu.edu',
     license='BSD (3-clause)',
     long_description=DESC,
-    python_requires='>=2.7',
+    python_requires='>=3.6',
     setup_requires=[
         "numpy >= 1.11",
         "cython >= 0.21",
@@ -85,11 +85,6 @@ setup(
             'numpy >= 1.8',
             'scipy >= 0.17',
             'matplotlib >= 2.1',
-        ],
-        'dev': [
-            'nose',
-            'numpydoc >= 0.5',
-            'sphinx >= 1.1',
         ],
         'plot.brain': [
             'pysurfer[save_movie] >= 0.8',
