@@ -47,19 +47,19 @@ def dict_change(old, new):
 
 
 def log_dict_change(log, kind, name, old, new):
-    log.warn("  %s %s changed:", kind, name)
+    log.warning("  %s %s changed:", kind, name)
     for line in dict_change(old, new):
-        log.warn("    %s", line)
+        log.warning("    %s", line)
 
 
 def log_list_change(log, kind, name, old, new):
-    log.warn("  %s %s changed:", kind, name)
+    log.warning("  %s %s changed:", kind, name)
     removed = tuple(v for v in old if v not in new)
     if removed:
-        log.warn("    Members removed: %s", ', '.join(map(str, removed)))
+        log.warning("    Members removed: %s", ', '.join(map(str, removed)))
     added = tuple(v for v in new if v not in old)
     if added:
-        log.warn("    Members added: %s", ', '.join(map(str, added)))
+        log.warning("    Members added: %s", ', '.join(map(str, added)))
 
 
 def find_epoch_vars(params):

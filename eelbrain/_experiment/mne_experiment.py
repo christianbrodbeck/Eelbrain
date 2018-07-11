@@ -899,13 +899,12 @@ class MneExperiment(FileTree):
                  root, datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         msg = "Using eelbrain %s, mne %s." % (__version__, mne.__version__)
         if any('dev' in v for v in (__version__, mne.__version__)):
-            log.warn(msg + " Development versions are more likely to contain "
-                     "errors.")
+            log.warning(f"{msg} Development versions are more likely to contain errors.")
         else:
             log.info(msg)
 
         if self.auto_delete_cache == 'disable':
-            log.warn("Cache-management disabled")
+            log.warning("Cache-management disabled")
             return
 
         ########################################################################
@@ -1126,42 +1125,39 @@ class MneExperiment(FileTree):
                 new_events = events.get(key)
                 if new_events is None:
                     invalid_cache['events'].add(key)
-                    log.warn("  raw file removed: %s", '/'.join(key))
+                    log.warning("  raw file removed: %s", '/'.join(key))
                 elif new_events.n_cases != old_events.n_cases:
                     invalid_cache['events'].add(key)
-                    log.warn("  event length: %s %i->%i", '/'.join(key),
+                    log.warning("  event length: %s %i->%i", '/'.join(key),
                              old_events.n_cases, new_events.n_cases)
                 elif not np.all(new_events['i_start'] == old_events['i_start']):
                     invalid_cache['events'].add(key)
-                    log.warn("  trigger timing changed: %s", '/'.join(key))
+                    log.warning("  trigger timing changed: %s", '/'.join(key))
                 else:
                     for var in old_events:
                         if var == 'i_start':
                             continue
                         elif var not in new_events:
                             invalid_cache['variables'].add(var)
-                            log.warn("  var removed: %s (%s)", var, '/'.join(key))
+                            log.warning("  var removed: %s (%s)", var, '/'.join(key))
                             continue
                         old = old_events[var]
                         new = new_events[var]
                         if old.name != new.name:
                             invalid_cache['variables'].add(var)
-                            log.warn("  var name changed: %s (%s) %s->%s", var,
-                                     '/'.join(key), old.name, new.name)
+                            log.warning("  var name changed: %s (%s) %s->%s", var, '/'.join(key), old.name, new.name)
                         elif new.__class__ is not old.__class__:
                             invalid_cache['variables'].add(var)
-                            log.warn("  var type changed: %s (%s) %s->%s", var,
-                                     '/'.join(key), old.__class__, new.__class)
+                            log.warning("  var type changed: %s (%s) %s->%s", var, '/'.join(key), old.__class__, new.__class)
                         elif not all_equal(old, new, True):
                             invalid_cache['variables'].add(var)
-                            log.warn("  var changed: %s (%s) %i values", var,
-                                     '/'.join(key), np.sum(new != old))
+                            log.warning("  var changed: %s (%s) %i values", var, '/'.join(key), np.sum(new != old))
 
             # groups
             for group, members in cache_state['groups'].items():
                 if group not in self._groups:
                     invalid_cache['groups'].add(group)
-                    log.warn("  Group removed: %s", group)
+                    log.warning("  Group removed: %s", group)
                 elif set(members) != set(self._groups[group]):
                     invalid_cache['groups'].add(group)
                     log_list_change(log, "Group", group, members, self._groups[group])
@@ -1183,7 +1179,7 @@ class MneExperiment(FileTree):
                 if old_params != new_params:
                     invalid_cache['epochs'].add(epoch)
                     if new_params is None:
-                        log.warn("  Epoch removed: %s", epoch)
+                        log.warning("  Epoch removed: %s", epoch)
                     else:
                         log_dict_change(log, 'Epoch', epoch, old_params, new_params)
 
@@ -1191,7 +1187,7 @@ class MneExperiment(FileTree):
             for parc, params in cache_parcs.items():
                 if parc not in parcs_state:
                     invalid_cache['parcs'].add(parc)
-                    log.warn("  Parc %s removed", parc)
+                    log.warning("  Parc %s removed", parc)
                 elif params != parcs_state[parc]:
                     # FS_PARC:  Parcellations that are provided by the user
                     # should not be automatically removed.
@@ -1210,7 +1206,7 @@ class MneExperiment(FileTree):
                     if test in tests_state:
                         log_dict_change(log, "Test", test, params, tests_state[test])
                     else:
-                        log.warn("  Test %s removed", test)
+                        log.warning("  Test %s removed", test)
 
             # create message here, before secondary invalidations are added
             msg = []
@@ -1425,10 +1421,10 @@ class MneExperiment(FileTree):
                         elif command == 'abort':
                             raise RuntimeError("User aborted invalid cache deletion")
                         elif command == 'ignore':
-                            log.warn("Ignoring invalid cache")
+                            log.warning("Ignoring invalid cache")
                             return
                         elif command == 'revalidate':
-                            log.warn("Revalidating invalid cache")
+                            log.warning("Revalidating invalid cache")
                             files.clear()
                         else:
                             raise RuntimeError("command=%s" % repr(command))
@@ -1456,7 +1452,7 @@ class MneExperiment(FileTree):
                 shutil.rmtree(cache_dir)
                 os.mkdir(cache_dir)
             elif self.auto_delete_cache == 'disable':
-                log.warn("Ignoring cache-dir without history")
+                log.warning("Ignoring cache-dir without history")
                 pass
             elif self.auto_delete_cache == 'debug':
                 command = ask("Cache directory without history",
@@ -1465,7 +1461,7 @@ class MneExperiment(FileTree):
                 if command == 'abort':
                     raise RuntimeError("User aborted")
                 elif command == 'validate':
-                    log.warn("Validating cache-dir without history")
+                    log.warning("Validating cache-dir without history")
                 else:
                     raise RuntimeError("command=%r" % (command,))
             else:
@@ -2084,8 +2080,7 @@ class MneExperiment(FileTree):
                     if dst_m == src_m:
                         continue
                     elif dst_m > src_m:
-                        self._log.warn("Backup more recent than original: %s",
-                                       tail)
+                        self._log.warning("Backup more recent than original: %s", tail)
                         continue
                 else:
                     i = 0
@@ -3505,10 +3500,10 @@ class MneExperiment(FileTree):
                     #  TODO:  this warning should be given in make_rej already
                     if np.all(ds[:-1, 'trigger'] == ds_sel['trigger']):
                         ds = ds[:-1]
-                        self._log.warn(self.format("Last epoch for {subject} is missing"))
+                        self._log.warning(self.format("Last epoch for {subject} is missing"))
                     elif np.all(ds[1:, 'trigger'] == ds_sel['trigger']):
                         ds = ds[1:]
-                        self._log.warn(self.format("First epoch for {subject} is missing"))
+                        self._log.warning(self.format("First epoch for {subject} is missing"))
                     else:
                         raise RuntimeError(
                             "The epoch selection file contains different events (trigger IDs) "
