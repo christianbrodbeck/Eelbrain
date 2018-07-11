@@ -2628,10 +2628,9 @@ class MneExperiment(FileTree):
                                            data_raw=data_raw or True,
                                            vardef=vardef, cat=cat)
             if ds.n_cases == 0:
-                err = ("No events left for epoch=%r, subject=%r" %
-                       (epoch.name, subject))
+                err = f"No events left for epoch={epoch.name!r}, subject={subject!r}"
                 if cat:
-                    err += ", cat=%s" % repr(cat)
+                    err += f", cat={cat!r}"
                 raise RuntimeError(err)
 
             # load sensor space data
@@ -2651,8 +2650,10 @@ class MneExperiment(FileTree):
         ----------
         subject : str
             Subject(s) for which to load epochs. Can be a single subject
-            name or a group name such as 'all'. The default is the current
-            subject in the experiment's state.
+            name or a group name such as 'all' (warning: loading single trial 
+            data for multiple subjects at once uses a lot of memory, which can 
+            lead to a periodically unresponsive terminal). The default is the 
+            current subject in the experiment's state.
         sns_baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
@@ -3263,11 +3264,13 @@ class MneExperiment(FileTree):
             Add bad channel information to the bad channels text file (default
             True).
         preload : bool
-            Mne Raw parameter.
+            Load raw data into memory (default False; see
+            :func:`mne.io.read_raw_fif` parameter).
         ndvar : bool
             Load as NDVar instead of mne Raw object (default False).
         decim : int
-            Decimate data (implies preload=True; default 1, i.e. no decimation)
+            Decimate data (default 1, i.e. no decimation; value other than 1
+            implies ``preload=True``)
         ...
             State parameters.
 
@@ -3280,10 +3283,9 @@ class MneExperiment(FileTree):
             raise TypeError("add_bads must be boolean, got %s" % repr(add_bads))
         pipe = self._raw[self.get('raw', **kwargs)]
         raw = pipe.load(self.get('subject'), self.get('session'), add_bads,
-                        preload)
+                        preload if decim == 1 else True)
         if decim > 1:
             sfreq = int(round(raw.info['sfreq'] / decim))
-            raw.load_data()
             raw.resample(sfreq)
 
         if ndvar:
