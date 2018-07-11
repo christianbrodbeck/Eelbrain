@@ -2461,7 +2461,7 @@ class TimeSlicerEF(TimeSlicer):
             Factor by which to stretch time (default 4). Time dilation is
             controlled through the frame-rate; if the ``fps`` keyword argument
             is specified, ``time_dilation`` is ignored.
-        **
+        ...
             :func:`imageio.mimwrite` parmeters.
         """
         import imageio

@@ -3,3 +3,4 @@
 
 from .experiment import TreeModel, FileTree
 from .mne_experiment import MneExperiment
+from .test_def import ROITestResult

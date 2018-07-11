@@ -3643,8 +3643,9 @@ class MneExperiment(FileTree):
         -------
         ds : Dataset (if return_data==True)
             Data that forms the basis of the test.
-        res : TestResult
-            Test result for the specified test.
+        res : NDTest | ROITestResult
+            Test result for the specified test (when performing tests in ROIs,
+            an :class:`~_experiment.ROITestResult` object is returned).
         """
         self.set(test=test, **kwargs)
         data = TestDims.coerce(data)
@@ -3837,8 +3838,7 @@ class MneExperiment(FileTree):
         else:
             merged_dist = None
 
-        res = ROITestResult(subjects, samples, n_trials_ds, merged_dist,
-                            label_results)
+        res = ROITestResult(subjects, samples, n_trials_ds, merged_dist, label_results)
         return label_data, res
 
     def make_annot(self, redo=False, **state):

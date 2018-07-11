@@ -536,6 +536,7 @@ data (gradiometer only) with MNE:
    :toctree: generated
 
    MneExperiment
+   ~_experiment.ROITestResult
 
 .. seealso::
     For the guide on working with the MneExperiment class see

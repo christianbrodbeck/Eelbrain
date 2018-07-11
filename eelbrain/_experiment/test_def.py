@@ -296,7 +296,20 @@ class TestDims(object):
 
 
 class ROITestResult(object):
-    """Store samples as attribute"""
+    """Test results for temporal tests in one or more ROIs
+
+    Attributes
+    ----------
+    subjects : tuple of str
+        Subjects included in the test.
+    samples : int
+        ``samples`` parameter used for permutation tests.
+    res : {str: NDTest} dict
+        Test result for each ROI.
+    n_trials_ds : Dataset
+        Dataset describing how many trials were used in each condition per
+        subject.
+    """
 
     def __init__(self, subjects, samples, n_trials_ds, merged_dist, res):
         self.subjects = subjects
