@@ -4,7 +4,6 @@ from os.path import join
 import mne
 from eelbrain import gui, load
 from eelbrain._utils.testing import gui_test, TempDir
-from eelbrain._utils.system import IS_OSX
 
 
 @gui_test
@@ -23,8 +22,6 @@ def test_select_components():
     ica.save(PATH)
 
     frame = gui.select_components(PATH, ds)
-    if not IS_OSX:  # FIXME:  Linux and Windows
-        return
     frame.model.toggle(1)
     frame.OnSave(None)
     ica = mne.preprocessing.read_ica(PATH)
