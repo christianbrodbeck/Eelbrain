@@ -30,6 +30,9 @@ class CallBackManager(object):
     def subscribe(self, key, func):
         self._callbacks[key].append(func)
 
+    def remove(self, key, func):
+        self._callbacks[key].remove(func)
+
 
 class Action(object):
 
@@ -269,8 +272,11 @@ class FileFrame(EelbrainFrame):
                 raise RuntimeError("Unknown answer: %r" % cmd)
 
         logger = getLogger(__name__)
-        logger.debug("%s.OnClose(), saving window properties...",
-                     self.__class__.__name__)
+        logger.debug("%s.OnClose()", self.__class__.__name__)
+        # remove callbacks
+        self.doc.callbacks.remove('path_change', self.UpdateTitle)
+        self.history.callbacks.remove('saved_change', self.UpdateTitle)
+        # save configuration
         pos_h, pos_v = self.GetPosition()
         w, h = self.GetSize()
         self.config.WriteInt("pos_horizontal", pos_h)

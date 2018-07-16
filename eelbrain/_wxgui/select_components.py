@@ -824,6 +824,7 @@ class SourceFrame(FileFrameChild):
 
     def OnClose(self, event):
         if super(SourceFrame, self).OnClose(event):
+            self.doc.callbacks.remove('case_change', self.CaseChanged)
             self.config.WriteInt('layout_n_comp', self.n_comp)
             self.config.WriteInt('layout_n_epochs', self.n_epochs)
             self.config.WriteFloat('y_scale', self.y_scale)
