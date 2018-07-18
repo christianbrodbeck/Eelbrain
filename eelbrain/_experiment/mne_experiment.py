@@ -203,6 +203,14 @@ class CacheDict(dict):
         return out
 
 
+def cache_valid(mtime, *source_mtimes):
+    "Determine whether mtime is up-to-date"
+    return (
+        mtime is not None
+        and all(t is not None for t in source_mtimes)
+        and mtime > max(source_mtimes))
+
+
 temp = {
     # MEG
     'modality': ('', 'eeg', 'meeg'),
@@ -1612,7 +1620,7 @@ class MneExperiment(FileTree):
                 return mtime
             # incorporate ICA-file
             ica_mtime = self._ica_file_mtime(rej)
-            if ica_mtime > mtime:
+            if cache_valid(ica_mtime, mtime):
                 return ica_mtime
 
     def _result_file_mtime(self, dst, data, single_subject=False):
@@ -2628,10 +2636,9 @@ class MneExperiment(FileTree):
                                            data_raw=data_raw or True,
                                            vardef=vardef, cat=cat)
             if ds.n_cases == 0:
-                err = ("No events left for epoch=%r, subject=%r" %
-                       (epoch.name, subject))
+                err = f"No events left for epoch={epoch.name!r}, subject={subject!r}"
                 if cat:
-                    err += ", cat=%s" % repr(cat)
+                    err += f", cat={cat!r}"
                 raise RuntimeError(err)
 
             # load sensor space data
@@ -2651,8 +2658,10 @@ class MneExperiment(FileTree):
         ----------
         subject : str
             Subject(s) for which to load epochs. Can be a single subject
-            name or a group name such as 'all'. The default is the current
-            subject in the experiment's state.
+            name or a group name such as 'all' (warning: loading single trial 
+            data for multiple subjects at once uses a lot of memory, which can 
+            lead to a periodically unresponsive terminal). The default is the 
+            current subject in the experiment's state.
         sns_baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
@@ -3263,11 +3272,13 @@ class MneExperiment(FileTree):
             Add bad channel information to the bad channels text file (default
             True).
         preload : bool
-            Mne Raw parameter.
+            Load raw data into memory (default False; see
+            :func:`mne.io.read_raw_fif` parameter).
         ndvar : bool
             Load as NDVar instead of mne Raw object (default False).
         decim : int
-            Decimate data (implies preload=True; default 1, i.e. no decimation)
+            Decimate data (default 1, i.e. no decimation; value other than 1
+            implies ``preload=True``)
         ...
             State parameters.
 
@@ -3280,10 +3291,9 @@ class MneExperiment(FileTree):
             raise TypeError("add_bads must be boolean, got %s" % repr(add_bads))
         pipe = self._raw[self.get('raw', **kwargs)]
         raw = pipe.load(self.get('subject'), self.get('session'), add_bads,
-                        preload)
+                        preload if decim == 1 else True)
         if decim > 1:
             sfreq = int(round(raw.info['sfreq'] / decim))
-            raw.load_data()
             raw.resample(sfreq)
 
         if ndvar:
@@ -3641,8 +3651,9 @@ class MneExperiment(FileTree):
         -------
         ds : Dataset (if return_data==True)
             Data that forms the basis of the test.
-        res : TestResult
-            Test result for the specified test.
+        res : NDTest | ROITestResult
+            Test result for the specified test (when performing tests in ROIs,
+            an :class:`~_experiment.ROITestResult` object is returned).
         """
         self.set(test=test, **kwargs)
         data = TestDims.coerce(data)
@@ -3835,8 +3846,7 @@ class MneExperiment(FileTree):
         else:
             merged_dist = None
 
-        res = ROITestResult(subjects, samples, n_trials_ds, merged_dist,
-                            label_results)
+        res = ROITestResult(subjects, samples, n_trials_ds, merged_dist, label_results)
         return label_data, res
 
     def make_annot(self, redo=False, **state):
@@ -3872,7 +3882,7 @@ class MneExperiment(FileTree):
                 self.set(mrisubject=common_brain, match=False)
                 common_brain_mtime = self.make_annot()
                 self.set(mrisubject=mrisubject, match=False)
-                if not redo and mtime > common_brain_mtime:
+                if not redo and cache_valid(mtime, common_brain_mtime):
                     return mtime
                 elif is_fake:
                     for _ in self.iter('hemi'):
@@ -4190,8 +4200,7 @@ class MneExperiment(FileTree):
         model = self.get('model')
         equal_count = self.get('equalize_evoked_count') == 'eq'
         if use_cache and exists(dst):
-            mtime = self._evoked_mtime()
-            if mtime and getmtime(dst) > mtime:
+            if cache_valid(getmtime(dst), self._evoked_mtime()):
                 ds = self.load_selected_events(data_raw=data_raw)
                 ds = ds.aggregate(model, drop_bad=True, equal_count=equal_count,
                                   drop=('i_start', 't_edf', 'T', 'index'))

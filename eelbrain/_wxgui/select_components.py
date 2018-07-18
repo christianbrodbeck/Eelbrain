@@ -24,6 +24,7 @@ from .. import load, plot, fmtxt
 from .._data_obj import Factor, NDVar, asndvar, Categorial, Scalar
 from .._wxutils import Icon, ID, REValidator
 from .._utils.parse import POS_FLOAT_PATTERN
+from .._utils.system import IS_OSX
 from ..plot._topo import _ax_topomap
 from .frame import EelbrainDialog
 from .history import Action, FileDocument, FileModel, FileFrame, FileFrameChild
@@ -305,7 +306,10 @@ class Frame(FileFrame):
             ax.background.set_color(COLOR[self.doc.accept[idx]])
             axes.append(ax)
 
-        self.canvas.redraw(axes=axes)
+        if IS_OSX:
+            self.canvas.redraw(axes=axes)
+        else:
+            self.canvas.draw()  # FIXME
 
     def GoToComponentEpoch(self, component, epoch):
         if not self.source_frame:
@@ -820,6 +824,7 @@ class SourceFrame(FileFrameChild):
 
     def OnClose(self, event):
         if super(SourceFrame, self).OnClose(event):
+            self.doc.callbacks.remove('case_change', self.CaseChanged)
             self.config.WriteInt('layout_n_comp', self.n_comp)
             self.config.WriteInt('layout_n_epochs', self.n_epochs)
             self.config.WriteFloat('y_scale', self.y_scale)
