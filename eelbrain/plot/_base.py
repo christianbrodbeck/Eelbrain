@@ -2505,7 +2505,7 @@ class TopoMapKey(object):
                     contours=self._contours, title=title)
         else:
             Topomap(data, proj=proj, cmap=self._cmaps, vmax=self._vlims,
-                    contours=self._contours, title=title, w=10,
+                    contours=self._contours, title=title, axw=9,
                     sensorlabels='name')
 
 
