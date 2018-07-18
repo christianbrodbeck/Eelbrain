@@ -4011,7 +4011,7 @@ class MneExperiment(FileTree):
         pipe.make_bad_channels(self.get('subject'), self.get('session'),
                                bad_chs, redo)
 
-    def make_bad_channels_auto(self, flat=1e-14):
+    def make_bad_channels_auto(self, flat=1e-14, redo=False, **state):
         """Automatically detect bad channels
 
         Works on ``raw='raw'``
@@ -4021,10 +4021,15 @@ class MneExperiment(FileTree):
         flat : scalar
             Threshold for detecting flat channels: channels with ``std < flat``
             are considered bad (default 1e-14).
+        redo : bool
+            If the file already exists, replace it (instead of adding).
+        ...
+            State parameters.
         """
+        if state:
+            self.set(**state)
         pipe = self._raw['raw']
-        pipe.make_bad_channels_auto(self.get('subject'), self.get('session'),
-                                    flat)
+        pipe.make_bad_channels_auto(self.get('subject'), self.get('session'), flat, redo)
 
     def make_besa_evt(self, redo=False, **state):
         """Make the trigger and event files needed for besa
