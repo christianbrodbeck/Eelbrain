@@ -203,6 +203,14 @@ class CacheDict(dict):
         return out
 
 
+def cache_valid(mtime, *source_mtimes):
+    "Determine whether mtime is up-to-date"
+    return (
+        mtime is not None
+        and all(t is not None for t in source_mtimes)
+        and mtime > max(source_mtimes))
+
+
 temp = {
     # MEG
     'modality': ('', 'eeg', 'meeg'),
@@ -1612,7 +1620,7 @@ class MneExperiment(FileTree):
                 return mtime
             # incorporate ICA-file
             ica_mtime = self._ica_file_mtime(rej)
-            if ica_mtime > mtime:
+            if cache_valid(ica_mtime, mtime):
                 return ica_mtime
 
     def _result_file_mtime(self, dst, data, single_subject=False):
@@ -3874,7 +3882,7 @@ class MneExperiment(FileTree):
                 self.set(mrisubject=common_brain, match=False)
                 common_brain_mtime = self.make_annot()
                 self.set(mrisubject=mrisubject, match=False)
-                if not redo and mtime > common_brain_mtime:
+                if not redo and cache_valid(mtime, common_brain_mtime):
                     return mtime
                 elif is_fake:
                     for _ in self.iter('hemi'):
@@ -4192,8 +4200,7 @@ class MneExperiment(FileTree):
         model = self.get('model')
         equal_count = self.get('equalize_evoked_count') == 'eq'
         if use_cache and exists(dst):
-            mtime = self._evoked_mtime()
-            if mtime and getmtime(dst) > mtime:
+            if cache_valid(getmtime(dst), self._evoked_mtime()):
                 ds = self.load_selected_events(data_raw=data_raw)
                 ds = ds.aggregate(model, drop_bad=True, equal_count=equal_count,
                                   drop=('i_start', 't_edf', 'T', 'index'))
