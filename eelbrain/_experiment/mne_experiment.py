@@ -2350,22 +2350,24 @@ class MneExperiment(FileTree):
         ----------
         subject : Factor
             A Factor with subjects.
-        groups : list of str
+        groups : list of str | {str: str} dict
             Groups which to label (raises an error if group membership is not
-            unique).
+            unique). To use labels other than the group names themselves, use
+            a ``{group: label}`` dict.
 
         Returns
         -------
         group : Factor
             A :class:`Factor` that labels the group for each subject.
         """
-        labels = {s: [g for g in groups if s in self._groups[g]] for s in subject.cells}
+        if not isinstance(groups, dict):
+            groups = {g: g for g in groups}
+        labels = {s: [l for g, l in groups.items() if s in self._groups[g]] for s in subject.cells}
         problems = [s for s, g in labels.items() if len(g) != 1]
         if problems:
-            desc = [', '.join(labels[s]) if labels[s] else 'no group' for s in problems]
+            desc = (', '.join(labels[s]) if labels[s] else 'no group' for s in problems)
             msg = ', '.join('%s (%s)' % pair for pair in zip(problems, desc))
-            raise ValueError("Groups %s are not unique for subjects: %s"
-                             % (groups, msg))
+            raise ValueError(f"Groups {groups} are not unique for subjects: {msg}")
         labels = {s: g[0] for s, g in labels.items()}
         return Factor(subject, labels=labels)
 
