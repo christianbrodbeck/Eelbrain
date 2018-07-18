@@ -120,11 +120,10 @@ class TTestInd(TTest):
     "Independent measures t-test"
     kind = 'ttest_ind'
 
-    def __init__(self, model, c1, c0, tail=0):
-        if model != 'group':
-            raise DefinitionError("model=%r; TTestInd always needs model="
-                                  "'group'" % (model,))
-        TTest.__init__(self, model, c1, c0, tail, (('group', GroupVar((c1, c0))),))
+    def __init__(self, model, c1, c0, tail=0, vars=None):
+        if vars is None and model == 'group':
+            vars = (('group', GroupVar((c1, c0))),)
+        TTest.__init__(self, model, c1, c0, tail, vars)
 
     def make(self, y, ds, force_permutation, kwargs):
         return testnd.ttest_ind(
