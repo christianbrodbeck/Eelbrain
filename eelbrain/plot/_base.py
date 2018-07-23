@@ -1221,8 +1221,9 @@ class EelFigure(object):
         label : bool | str
             Axis label.
         xticklabels : bool | int | list of int
-            Add tick-labels to the x-axis. Specify which axes should carry
-            x-axis tick labels using ``int`` axes indices (default ``-1``).
+            Specify which axes should be annotated with x-axis tick labels.
+            Use ``int`` for a single axis (default ``-1``), a sequence of
+            ``int`` for multiple specific axes, or ``bool`` for all/none.
         axes : list of Axes
             Axes which to format (default is EelFigure._axes)
         """

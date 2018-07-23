@@ -3199,10 +3199,10 @@ class NDVar(object):
 
         Returns
         -------
-        any : NDVar | Var | float
+        any : NDVar | Var | bool
             Boolean data indicating presence of nonzero value over specified
             dimensions. Return a Var if only the case dimension remains, and a
-            float if the function collapses over all data.
+            boolean if the function collapses over all data.
             
         Examples
         --------
@@ -3250,10 +3250,10 @@ class NDVar(object):
 
         Returns
         -------
-        any : NDVar | Var | float
+        any : NDVar | Var | bool
             Boolean data indicating presence of nonzero value over specified
             dimensions. Return a Var if only the case dimension remains, and a
-            float if the function collapses over all data.
+            boolean if the function collapses over all data.
         """
         return self._aggregate_over_dims(dims, regions, np.any)
 
@@ -6125,7 +6125,7 @@ class Dataset(OrderedDict):
     def zip(self, *variables):
         """Iterate through the values of multiple variables
 
-        ``ds.zip('a', 'b')`` is equivalent to ``izip(ds['a'], ds['b'])``.
+        ``ds.zip('a', 'b')`` is equivalent to ``zip(ds['a'], ds['b'])``.
         """
         return zip(*map(self.eval, variables))
 
@@ -8561,8 +8561,8 @@ class SourceSpaceBase(Dimension):
 
     def _read_parc(self, parc):
         raise NotImplementedError(
-            "Can't set parcellation from annotation files for %s. Consider "
-            "using a Factor instead." % self.__class__.__name__)
+            f"parc={parc!r}: can't set parcellation from annotation files for "
+            f"{self.__class__.__name__}. Consider using a Factor instead.")
 
     def _init_secondary(self):
         self._n_vert = sum(len(v) for v in self.vertices)
@@ -8700,7 +8700,15 @@ class SourceSpaceBase(Dimension):
         i0 = 0
         for vertices, ss in zip(self.vertices, sss):
             if ss['dist'] is None:
-                raise RuntimeError("Source-space does not contain distances")
+                path = self._SRC_PATH.format(
+                    subjects_dir=self.subjects_dir, subject=self.subject,
+                    src=self.src)
+                raise RuntimeError(
+                    f"Source space does not contain source distance "
+                    f"information. To add distance information, run:\n"
+                    f"src = mne.read_source_spaces({path!r})\n"
+                    f"mne.add_source_space_distances(src)\n"
+                    f"src.save({path!r}, overwrite=True)")
             i = i0 + len(vertices)
             dist[i0:i, i0:i] = ss['dist'][vertices, vertices[:, None]].toarray()
             i0 = i
@@ -8845,9 +8853,9 @@ class SourceSpaceBase(Dimension):
             subject=self.subject, src=self.src)
         if not os.path.exists(path):
             raise IOError(
-                "%s does not exist; if the MRI files for %s were moved since "
-                "this object was created, use eelbrain.load."
-                "update_subjects_dir()" % (path, self.subject))
+                f"Can't load source space because {path} does not exist; if "
+                f"the MRI files for {self.subject} were moved, use "
+                f"eelbrain.load.update_subjects_dir()")
         return mne.read_source_spaces(path)
 
     def index_for_label(self, label):

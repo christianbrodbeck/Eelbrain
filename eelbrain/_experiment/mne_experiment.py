@@ -16,7 +16,7 @@ import inspect
 from itertools import chain, product
 import logging
 import os
-from os.path import exists, getmtime, isdir, join, relpath
+from os.path import basename, exists, getmtime, isdir, join, relpath
 import re
 import shutil
 import time
@@ -4264,11 +4264,11 @@ class MneExperiment(FileTree):
                                         ignore_ref=True)
         for s, s0 in zip(fwd['src'], src):
             if s['nuse'] != s0['nuse']:
-                msg = ("The forward solution %s contains fewer sources than "
-                       "the source space. This could be due to a corrupted "
-                       "bem file with source outside the inner skull surface." %
-                       (os.path.split(dst)[1]))
-                raise RuntimeError(msg)
+                raise RuntimeError(
+                    f"The forward solution {basename(dst)} contains fewer "
+                    f"sources than the source space. This could be due to a "
+                    f"corrupted bem file with source outside the inner skull "
+                    f"surface.")
         mne.write_forward_solution(dst, fwd, True)
 
     def make_ica_selection(self, epoch=None, decim=None):

@@ -61,8 +61,9 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
     ylabel : bool | str
         Y-axis label. By default the label is inferred from the data.
     xticklabels : bool | int | list of int
-        Add tick-labels to the x-axis. Specify which axes should carry
-        x-axis tick labels using ``int`` axes indices (default ``-1``).
+        Specify which axes should be annotated with x-axis tick labels.
+        Use ``int`` for a single axis (default ``-1``), a sequence of
+        ``int`` for multiple specific axes, or ``bool`` for all/none.
     invy : bool
         Invert the y axis (if ``bottom`` and/or ``top`` are specified explicitly
         they take precedence; an inverted y-axis can also be produced by
@@ -312,8 +313,9 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         X- and y axis labels. By default the labels will be inferred from
         the data.
     xticklabels : bool | int | list of int
-        Add tick-labels to the x-axis. Specify which axes should carry
-        x-axis tick labels using ``int`` axes indices (default ``-1``).
+        Specify which axes should be annotated with x-axis tick labels.
+        Use ``int`` for a single axis (default ``-1``), a sequence of
+        ``int`` for multiple specific axes, or ``bool`` for all/none.
     bottom, top : scalar
         Y-axis limits.
     legend : str | int | 'fig' | None
@@ -458,8 +460,9 @@ class UTSClusters(EelFigure):
         Plot epochs (time course for different effects) on top of each
         other (as opposed to on separate axes).
     xticklabels : bool | int | list of int
-        Add tick-labels to the x-axis. Specify which axes should carry
-        x-axis tick labels using ``int`` axes indices (default ``-1``).
+        Specify which axes should be annotated with x-axis tick labels.
+        Use ``int`` for a single axis (default ``-1``), a sequence of
+        ``int`` for multiple specific axes, or ``bool`` for all/none.
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)

@@ -172,7 +172,8 @@ class ANOVA(EvokedTest):
     Parameters
     ----------
     x : str
-        ANOVA model specification (see :func:`test.anova`).
+        ANOVA model specification, including ``subject`` for participant random
+        effect (see :func:`test.anova`).
     model : str
         Model for grouping trials before averaging (does not need to be
         specified unless it should include variables not in ``x``).
