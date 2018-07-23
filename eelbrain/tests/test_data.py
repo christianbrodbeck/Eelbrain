@@ -1090,6 +1090,14 @@ def test_ndvar_indexing():
     x[:3, :.0] = 0
     assert_array_equal(x.x[:3, :20], 0.)
     assert_array_equal(x.x[3:, 20:], ds['uts'].x[3:, 20:])
+    # set with index NDVar
+    x = ds['uts'].copy()
+    index = x.mean('case') < 0
+    x[index] = -1
+    assert x.sum(index).sum() == -index.sum()
+    i_index = ~index
+    assert x.sum(i_index).sum() == ds['uts'].sum(i_index).sum()
+    assert_raises(DimensionMismatchError, index.__setitem__, x != 0, 0.)
 
 
 def test_ndvar_summary_methods():
