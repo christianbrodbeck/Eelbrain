@@ -5673,27 +5673,26 @@ class MneExperiment(FileTree):
 
         return Brain(mrisubject, **brain_args)
 
-    def plot_coreg(self, ch_type=None, dig=True, **kwargs):
+    def plot_coreg(self, dig=True, **kwargs):
         """Plot the coregistration (Head shape and MEG helmet)
 
         Parameters
         ----------
-        ch_type : 'meg' | 'eeg'
-            Plot only MEG or only EEG sensors (default is both).
         dig : bool
-            Plot the digitization points (default True).
+            Plot the digitization points (default True; 'fiducials' to plot
+            fiducial points only).
         ...
             State parameters.
 
         Notes
         -----
-        Uses :func:`mne.viz.plot_trans`
+        Uses :func:`mne.viz.plot_alignment`
         """
         self.set(**kwargs)
         raw = self.load_raw()
-        return mne.viz.plot_trans(raw.info, self.get('trans-file'),
-                                  self.get('mrisubject'), self.get('mri-sdir'),
-                                  ch_type, 'head', dig=dig)
+        return mne.viz.plot_alignment(
+            raw.info, self.get('trans-file'), self.get('mrisubject'),
+            self.get('mri-sdir'), meg=('helmet', 'sensors'), dig=dig)
 
     def plot_whitened_gfp(self, s_start=None, s_stop=None, run=None):
         """Plot the GFP of the whitened evoked to evaluate the the covariance matrix
