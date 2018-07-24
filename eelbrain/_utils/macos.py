@@ -41,9 +41,7 @@ objc.objc_msgSend.argtypes = [void_p, void_p]
 
 msg = objc.objc_msgSend
 n = objc.sel_registerName
-
-NSProcessInfo = objc.objc_getClass(b'NSProcessInfo')
-NSString = objc.objc_getClass(b'NSString')
+c = objc.objc_getClass
 
 # constants from Foundation
 NSActivityIdleDisplaySleepDisabled = (1 << 40)
@@ -70,11 +68,11 @@ def beginActivityWithOptions(options, reason=""):
 
     Notes
     -----
-    Indicate completion of the activity by calling :func:`endActivity`,
+    Indicate completion of the activity by calling :func:`end_activity`,
     passing the returned identifier as the argument.
     """
-    reason = msg(NSString, n(b'stringWithUTF8String:'), _utf8(reason))
-    info = msg(NSProcessInfo, n(b'processInfo'))
+    reason = msg(c(b'NSString'), n(b'stringWithUTF8String:'), _utf8(reason))
+    info = msg(c(b'NSProcessInfo'), n(b'processInfo'))
     return msg(info, n(b'beginActivityWithOptions:reason:'), ull(options),
                void_p(reason))
 
@@ -88,10 +86,10 @@ def end_activity(activity):
         Identifier for the activity, returned by
         :func:`beginActivityWithOptions`.
     """
-    info = msg(NSProcessInfo, n(b'processInfo'))
+    info = msg(c(b'NSProcessInfo'), n(b'processInfo'))
     msg(info, n(b'endActivity:'), void_p(activity))
 
 
-def begin_activity(reason='Eelbrain long-running computation'):
+def begin_activity(options=NSActivityUserInitiated, reason='Eelbrain'):
     """Disable macOS system sleep"""
-    return beginActivityWithOptions(NSActivityUserInitiated | NSActivityLatencyCritical, reason)
+    return beginActivityWithOptions(options, reason)

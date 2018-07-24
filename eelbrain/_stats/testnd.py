@@ -49,9 +49,8 @@ from .._data_obj import (
     cellname, combine, dataobj_repr)
 from .._exceptions import OldVersionError, ZeroVariance
 from .._report import enumeration, format_timewindow, ms
-from .._utils import LazyProperty
+from .._utils import LazyProperty, user_activity
 from .._utils.numpy_utils import FULL_AXIS_SLICE
-from .._utils.system import caffeine
 from . import opt, stats, vector
 from .connectivity import Connectivity, find_peaks
 from .connectivity_opt import merge_labels, tfce_increment
@@ -437,7 +436,7 @@ class t_contrast_rel(NDTest):
     """
     _state_specific = ('x', 'contrast', 't', 'tail')
 
-    @caffeine
+    @user_activity
     def __init__(self, y, x, contrast, match=None, sub=None, ds=None, tail=0,
                  samples=0, pmin=None, tmin=None, tfce=False, tstart=None,
                  tstop=None, parc=None, force_permutation=False, **criteria):
@@ -571,7 +570,7 @@ class corr(NDTest):
     """
     _state_specific = ('x', 'norm', 'n', 'df', 'r')
 
-    @caffeine
+    @user_activity
     def __init__(self, y, x, norm=None, sub=None, ds=None, samples=0,
                  pmin=None, rmin=None, tfce=False, tstart=None, tstop=None,
                  match=None, parc=None, **criteria):
@@ -746,7 +745,7 @@ class ttest_1samp(NDTest):
     """
     _state_specific = ('popmean', 'tail', 'n', 'df', 't', 'difference')
 
-    @caffeine
+    @user_activity
     def __init__(self, y, popmean=0, match=None, sub=None, ds=None, tail=0,
                  samples=0, pmin=None, tmin=None, tfce=False, tstart=None,
                  tstop=None, parc=None, force_permutation=False, **criteria):
@@ -928,7 +927,7 @@ class ttest_ind(NDTest):
     _state_specific = ('x', 'c1', 'c0', 'tail', 't', 'n1', 'n0', 'df', 'c1_mean',
                        'c0_mean')
 
-    @caffeine
+    @user_activity
     def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=0, pmin=None, tmin=None, tfce=False,
                  tstart=None, tstop=None, parc=None, force_permutation=False, **criteria):
@@ -1138,7 +1137,7 @@ class ttest_rel(NDTest):
     _state_specific = ('x', 'c1', 'c0', 'tail', 't', 'n', 'df', 'c1_mean',
                        'c0_mean')
 
-    @caffeine
+    @user_activity
     def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=0, pmin=None, tmin=None, tfce=False,
                  tstart=None, tstop=None, parc=None, force_permutation=False, **criteria):
@@ -1511,7 +1510,7 @@ class anova(MultiEffectNDTest):
     """
     _state_specific = ('x', 'pmin', '_effects', '_dfs_denom', 'f')
 
-    @caffeine
+    @user_activity
     def __init__(self, y, x, sub=None, ds=None, samples=0, pmin=None,
                  fmin=None, tfce=False, tstart=None, tstop=None, match=None,
                  parc=None, force_permutation=False, **criteria):
@@ -1717,7 +1716,7 @@ class Vector(NDTest):
     """
     _state_specific = ('mean', 'n', '_v_dim')
 
-    @caffeine
+    @user_activity
     def __init__(self, y, match=None, sub=None, ds=None,
                  samples=10000, vmin=None, tfce=False, tstart=None,
                  tstop=None, parc=None, force_permutation=False, **criteria):

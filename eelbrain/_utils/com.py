@@ -9,7 +9,7 @@ import sys
 import traceback
 import xmlrpc.client
 
-from .system import caffeine
+from .system import user_activity
 from . import ui
 
 
@@ -112,12 +112,12 @@ class Notifier(object):
 
     def __enter__(self):
         print("Notification enabled for %s..." % self.name)
-        caffeine.__enter__()
+        user_activity.__enter__()
         return self
 
     def __exit__(self, type_, value, traceback_):
         host = socket.gethostname()
-        caffeine.__exit__(type_, value, traceback_)
+        user_activity.__exit__(type_, value, traceback_)
         if isinstance(value, Exception):
             error = type_.__name__
             temp = '{host} encountered {error}: {value} in {task}'

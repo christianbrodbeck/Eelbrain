@@ -27,8 +27,7 @@ from tqdm import tqdm
 
 from .._config import CONFIG
 from .._data_obj import NDVar
-from .._utils import LazyProperty
-from .._utils.system import caffeine
+from .._utils import LazyProperty, user_activity
 from ._boosting_opt import l1, l2, generate_options, update_error
 from .shared import RevCorrData
 
@@ -183,7 +182,7 @@ class BoostingResult(object):
             setattr(self, attr, sub_func(getattr(self, attr)))
 
 
-@caffeine
+@user_activity
 def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
              error='l2'):
     """Estimate a temporal response function through boosting
