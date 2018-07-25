@@ -259,7 +259,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             enable = not all(p.cluster_plt.clusters is None for p in self._plots)
             self._cluster_btn.Enable(enable)
 
-    def set_clusters(self, clusters, pmax=0.05, ptrend=0.1, color='.7', ax=None):
+    def set_clusters(self, clusters, pmax=0.05, ptrend=None, color='.7', ax=None, y=None, dy=None):
         """Add clusters from a cluster test to the plot (as shaded area).
 
         Parameters
@@ -268,26 +268,28 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             The clusters, as stored in test results' :py:attr:`.clusters`.
             Use ``None`` to remove the clusters plotted on a given axis.
         pmax : scalar
-            Maximum p-value of clusters to plot as solid.
+            Only plot clusters with ``p <= pmax``.
         ptrend : scalar
             Maximum p-value of clusters to plot as trend.
-        color : matplotlib color
-            Color for the clusters.
+        color : matplotlib color | dict
+            Color for the clusters, or a ``{effect: color}`` dict.
         ax : None | int
             Index of the axes to which the clusters are to be added. If None,
             add the clusters to all axes.
+        y : scalar | dict
+            Y level at which to plot clusters (default is boxes spanning the
+            whole y-axis).
+        dy : scalar
+            Height of bars.
         """
-        nax = len(self._axes)
-        if ax is None:
-            axes = range(nax)
-        else:
-            axes = [ax]
+        axes = range(len(self._axes)) if ax is None else [ax]
 
         # update plots
         for ax in axes:
             p = self._plots[ax].cluster_plt
             p.set_clusters(clusters, False)
             p.set_color(color, False)
+            p.set_y(y, dy, False)
             p.set_pmax(pmax, ptrend)
         self.draw()
 
@@ -618,6 +620,8 @@ class _plt_uts_clusters:
         self.clusters = clusters
         self.color = color
         self.hatch = hatch
+        self.y = None
+        self.dy = None
         self.update()
 
     def set_clusters(self, clusters, update=True):
@@ -636,6 +640,12 @@ class _plt_uts_clusters:
         if update:
             self.update()
 
+    def set_y(self, y, dy, update=True):
+        self.y = y
+        self.dy = dy
+        if update:
+            self.update()
+
     def update(self):
         h = self.h
         while len(h):
@@ -644,6 +654,12 @@ class _plt_uts_clusters:
         clusters = self.clusters
         if clusters is None:
             return
+
+        if self.dy is None:
+            bottom, top = self.ax.get_ylim()
+            dy = (top - bottom) / 40.
+        else:
+            dy = self.dy
 
         p_include = self.ptrend or self.pmax
         for cluster in clusters.itercases():
@@ -655,10 +671,19 @@ class _plt_uts_clusters:
             else:
                 alpha = 0.5
 
-            x0 = cluster['tstart']
-            x1 = cluster['tstop']
-            h = self.ax.axvspan(x0, x1, color=self.color,  # , hatch=self.hatch,
-                                fill=True, alpha=alpha, zorder=-1)
+            tstart = cluster['tstart']
+            tstop = cluster['tstop']
+            effect = cluster.get('effect')
+            color = self.color[effect] if isinstance(self.color, dict) else self.color
+            y = self.y[effect] if isinstance(self.y, dict) else self.y
+            if y is None:
+                h = self.ax.axvspan(
+                    tstart, tstop, color=color, fill=True, alpha=alpha, zorder=-10)
+            else:
+                h = mpl.patches.Rectangle(
+                    (tstart, y - dy / 2.), tstop - tstart, dy, facecolor=color,
+                    linewidth=0, zorder=-10)
+                self.ax.add_patch(h)
             self.h.append(h)
 
 
