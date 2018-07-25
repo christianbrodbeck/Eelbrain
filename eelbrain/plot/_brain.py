@@ -335,11 +335,12 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, p0alpha=0.5, *args,
     if isinstance(p_map, NDTest):
         if isinstance(p_map, MultiEffectNDTest):
             raise NotImplementedError(f"plot.brain.p_map for {p_map.__class__.__name__}")
-        res = p_map
-        p_map = res.p
-        param_map = res.t
-    p_map, lut, vmax = p_lut(p_map, param_map, p0, p1, p0alpha)
-    return _plot(p_map, lut, -vmax, vmax, *args, **kwargs)
+        source = p_map.p.source
+    else:
+        source = p_map.source
+    p = brain(source, None, None, None, *args, **kwargs)
+    p.add_ndvar_p_map(p_map, param_map, p0, p1, p0alpha)
+    return p
 
 
 def cluster(cluster, vmax=None, *args, **kwargs):
