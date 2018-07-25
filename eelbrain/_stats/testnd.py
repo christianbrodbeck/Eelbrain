@@ -22,7 +22,7 @@ n_samples : None | int
 '''
 from datetime import datetime, timedelta
 from itertools import chain
-from math import ceil
+from math import ceil, pi
 from multiprocessing import Process, Event, SimpleQueue
 from multiprocessing.sharedctypes import RawArray
 import logging
@@ -53,11 +53,12 @@ from .._report import enumeration, format_timewindow, ms
 from .._utils import LazyProperty
 from .._utils.numpy_utils import FULL_AXIS_SLICE
 from .._utils.system import caffeine
-from . import opt, stats
+from . import opt, stats, vector
 from .connectivity import Connectivity, find_peaks
 from .connectivity_opt import merge_labels, tfce_increment
 from .glm import _nd_anova
-from .permutation import _resample_params, permute_order, permute_sign_flip
+from .permutation import (
+    _resample_params, permute_order, permute_sign_flip, random_seeds)
 from .t_contrast import TContrastRel
 from .test import star, star_factor
 from functools import reduce
@@ -387,8 +388,12 @@ class t_contrast_rel(NDTest):
         Threshold for forming clusters as t-value.
     tfce : bool
         Use threshold-free cluster enhancement (default False).
-    tstart, tstop : None | scalar
-        Restrict time window for permutation cluster test.
+    tstart : scalar
+        Start of the time window for the permutation test (default is the
+        beginning of ``y``).
+    tstop : scalar
+        Stop of the time window for the permutation test (default is the
+        end of ``y``).
     parc : str
         Collect permutation extrema for all regions of the parcellation of
         this dimension. For threshold-based test, the regions are
@@ -540,8 +545,12 @@ class corr(NDTest):
         Threshold for forming clusters.
     tfce : bool
         Use threshold-free cluster enhancement (default False).
-    tstart, tstop : None | scalar
-        Restrict time window for permutation cluster test.
+    tstart : scalar
+        Start of the time window for the permutation test (default is the
+        beginning of ``y``).
+    tstop : scalar
+        Stop of the time window for the permutation test (default is the
+        end of ``y``).
     match : None | categorial
         When permuting data, only shuffle the cases within the categories
         of match.
@@ -711,8 +720,12 @@ class ttest_1samp(NDTest):
         Threshold for forming clusters as t-value.
     tfce : bool
         Use threshold-free cluster enhancement (default False).
-    tstart, tstop : None | scalar
-        Restrict time window for permutation cluster test.
+    tstart : scalar
+        Start of the time window for the permutation test (default is the
+        beginning of ``y``).
+    tstop : scalar
+        Stop of the time window for the permutation test (default is the
+        end of ``y``).
     parc : str
         Collect permutation extrema for all regions of the parcellation of
         this dimension. For threshold-based test, the regions are
@@ -890,8 +903,12 @@ class ttest_ind(NDTest):
         Threshold for forming clusters as t-value.
     tfce : bool
         Use threshold-free cluster enhancement (default False).
-    tstart, tstop : None | scalar
-        Restrict time window for permutation cluster test.
+    tstart : scalar
+        Start of the time window for the permutation test (default is the
+        beginning of ``y``).
+    tstop : scalar
+        Stop of the time window for the permutation test (default is the
+        end of ``y``).
     parc : str
         Collect permutation extrema for all regions of the parcellation of
         this dimension. For threshold-based test, the regions are
@@ -1100,8 +1117,12 @@ class ttest_rel(NDTest):
         Threshold for forming clusters as t-value.
     tfce : bool
         Use threshold-free cluster enhancement (default False).
-    tstart, tstop : None | scalar
-        Restrict time window for permutation cluster test.
+    tstart : scalar
+        Start of the time window for the permutation test (default is the
+        beginning of ``y``).
+    tstop : scalar
+        Stop of the time window for the permutation test (default is the
+        end of ``y``).
     parc : str
         Collect permutation extrema for all regions of the parcellation of
         this dimension. For threshold-based test, the regions are
@@ -1474,8 +1495,12 @@ class anova(MultiEffectNDTest):
     replacement : bool
         whether random samples should be drawn with replacement or
         without
-    tstart, tstop : None | scalar
-        Restrict time window for permutation cluster test.
+    tstart : scalar
+        Start of the time window for the permutation test (default is the
+        beginning of ``y``).
+    tstop : scalar
+        Stop of the time window for the permutation test (default is the
+        end of ``y``).
     match : categorial | False
         When permuting data, only shuffle the cases within the categories
         of match. By default, ``match`` is determined automatically based on
@@ -1668,6 +1693,122 @@ class anova(MultiEffectNDTest):
                 table.cell(fmtxt.p(pmin))
                 table.cell(star(pmin))
         return table
+
+
+class Vector(NDTest):
+    """Test a vector field for vectors with non-random directions
+
+    Parameters
+    ----------
+    y : NDVar
+        Dependent variable (needs to include one vector dimension).
+    match : None | categorial
+        Combine data for these categories before testing.
+    sub : None | index-array
+        Perform test with a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables
+    samples : int
+        Number of samples for permutation test (default 0).
+    tfce : bool
+        Use threshold-free cluster enhancement (default False).
+    tstart : scalar
+        Start of the time window for the permutation test (default is the
+        beginning of ``y``).
+    tstop : scalar
+        Stop of the time window for the permutation test (default is the
+        end of ``y``).
+    parc : str
+        Collect permutation extrema for all regions of the parcellation of
+        this dimension. For threshold-based test, the regions are
+        disconnected.
+    force_permutation: bool
+        Conduct permutations regardless of whether there are any clusters.
+    mintime : scalar
+        Minimum duration for clusters (in seconds).
+    minsource : int
+        Minimum number of sources per cluster.
+
+    Attributes
+    ----------
+    mean : NDVar
+        The vector field averaged across cases.
+    n : int
+        Number of cases.
+    p : NDVar
+        Map of p-values corrected for multiple comparison.
+    tfce_map : NDVar | None
+        Map of the test statistic processed with the threshold-free cluster
+        enhancement algorithm (or None if no TFCE was performed).
+
+    Notes
+    -----
+    Cases with zero variance are set to t=0.
+    """
+
+    _state_specific = ('mean', 'n', '_v_dim')
+
+    @caffeine
+    def __init__(self, y, match=None, sub=None, ds=None,
+                 samples=10000, tfce=False, tstart=None,
+                 tstop=None, parc=None, force_permutation=False, **criteria):
+        ct = Celltable(y, match=match, sub=sub, ds=ds, coercion=asndvar,
+                       dtype=np.float64)
+
+        n = len(ct.y)
+        threshold = 'tfce' if tfce else None
+        n_samples, samples = _resample_params(n, samples)
+        cdist = _ClusterDist(ct.y, n_samples, threshold, 1, 'norm',
+                             'Vector Test', tstart, tstop, criteria,
+                             parc, force_permutation)
+
+        v_dim = ct.y.dimnames[cdist._vector_ax + 1]
+        v_mean = ct.y.mean('case')
+        cdist.add_original(v_mean.norm(v_dim).x)
+
+        if cdist.do_permutation:
+            iterator = random_seeds(samples)
+            run_permutation(self.vector_mean_norm_perm, cdist, iterator)
+
+        # store attributes
+        NDTest.__init__(self, ct.y, ct.match, sub, samples, tfce, None, cdist, tstart, tstop)
+        self.mean = v_mean
+        self._v_dim = v_dim
+        self.n = n
+
+        self._expand_state()
+
+    def __setstate__(self, state):
+        if 'diff' in state:
+            state['difference'] = state.pop('diff')
+        NDTest.__setstate__(self, state)
+
+    def _expand_state(self):
+        NDTest._expand_state(self)
+        self.norm = self.mean.norm(self._v_dim)
+
+    def _name(self):
+        if self.y:
+            return "Vector Test:  %s" % self.y
+        else:
+            return "Vector Test"
+
+    def _repr_test_args(self):
+        args = [repr(self.y)]
+        if self.match:
+            args.append(f'match={self.match!r}')
+        return args
+
+    @staticmethod
+    def vector_mean_norm_perm(y, out, seed):
+        n_cases, n_dims, n_tests = y.shape
+        np.random.seed(seed)
+        if n_dims == 3:
+            phi = np.random.uniform(0, 2 * pi, n_cases)
+            theta = np.arccos(np.random.uniform(-1, 1, n_cases))
+            rotation = vector.rotation_matrices(phi, theta, np.empty((n_cases, 3, 3)))
+            return vector.mean_norm_rotated(y, rotation, out)
 
 
 def flatten(array, connectivity):
@@ -2016,6 +2157,10 @@ class _ClusterDist:
 
       - proceed to add statistical maps from permuted data with
         ``cdist.add_perm(pmap)``.
+
+
+    Permutation data shape: case, [vector, ][non-adjacent, ] ...
+    internal shape: [non-adjacent, ] ...
     """
     def __init__(self, y, samples, threshold, tail=0, meas='?', name=None,
                  tstart=None, tstop=None, criteria={}, parc=None, force_permutation=False):
@@ -2073,6 +2218,14 @@ class _ClusterDist:
             else:
                 raise ValueError("Invalid value for pmin: %s" % repr(threshold))
 
+        # vector: will be removed for stat_map
+        vector = [d._connectivity_type == 'vector' for d in y.dims[1:]]
+        has_vector_ax = any(vector)
+        if has_vector_ax:
+            vector_ax = vector.index(True)
+        else:
+            vector_ax = None
+
         # prepare temporal cropping
         if (tstart is None) and (tstop is None):
             self._crop_for_permutation = False
@@ -2081,34 +2234,32 @@ class _ClusterDist:
             t_ax = y.get_axis('time') - 1
             self._crop_for_permutation = True
             y_perm = y.sub(time=(tstart, tstop))
+            # for stat-maps
+            if vector_ax is not None and vector_ax < t_ax:
+                t_ax -= 1
             t_slice = y.time._array_index(slice(tstart, tstop))
             self._crop_idx = FULL_AXIS_SLICE * t_ax + (t_slice,)
-            self._uncropped_shape = y.shape[1:]
+
+        dims = list(y_perm.dims[1:])
+        if has_vector_ax:
+            del dims[vector_ax]
+
+        # custom connectivity: move non-adjacent connectivity to first axis
+        custom = [d._connectivity_type == 'custom' for d in dims]
+        n_custom = sum(custom)
+        if n_custom > 1:
+            raise NotImplementedError("More than one axis with custom connectivity")
+        nad_ax = None if n_custom == 0 else custom.index(True)
+        if nad_ax:
+            swapped_dims = list(dims)
+            swapped_dims[0], swapped_dims[nad_ax] = dims[nad_ax], dims[0]
+        else:
+            swapped_dims = dims
+        connectivity = Connectivity(swapped_dims, parc)
+        assert connectivity.vector is None
 
         # cluster map properties
-        ndim = y_perm.ndim - 1
-        shape = y_perm.shape[1:]
-        dims = swapped_dims = y_perm.dims[1:]
-
-        # prepare connectivity and axis swapping
-        custom = [d._connectivity_type == 'custom' for d in dims]
-        all_adjacent = not any(custom)
-        if all_adjacent:
-            nad_ax = 0
-            nad_dim = None
-        else:
-            if sum(custom) > 1:
-                raise NotImplementedError(
-                    "More than one axis with custom connectivity")
-            nad_ax = custom.index(True)
-            nad_dim = dims[nad_ax]
-            if nad_ax:
-                swap_index = list(range(len(shape)))
-                swap_index[nad_ax] = 0
-                swap_index[0] = nad_ax
-                shape = tuple(shape[i] for i in swap_index)
-                swapped_dims = tuple(dims[i] for i in swap_index)
-        connectivity = Connectivity(swapped_dims, parc)
+        ndim = len(dims)
 
         # prepare cluster minimum size criteria
         if criteria:
@@ -2156,17 +2307,16 @@ class _ClusterDist:
             if parc_dim._connectivity_type == 'none':
                 parc_indexes = np.arange(len(parc_dim))
             elif kind == 'tfce':
-                raise NotImplementedError("TFCE for parc=%r (%s dimension)" %
-                                          (parc, parc_dim.__class__.__name__))
+                raise NotImplementedError(
+                    f"TFCE for parc={parc!r} ({parc_dim.__class__.__name__} dimension)")
             elif parc_dim._connectivity_type == 'custom':
                 if not hasattr(parc_dim, 'parc'):
-                    raise NotImplementedError("parc=%r: dimension has no "
-                                              "parcellation" % nad_dim.name)
+                    raise NotImplementedError(f"parc={parc!r}: dimension has no parcellation")
                 parc_indexes = tuple(np.flatnonzero(parc_dim.parc == cell) for
                                      cell in parc_dim.parc.cells)
-                parc_dim = Categorial(nad_dim.name, parc_dim.parc.cells)
+                parc_dim = Categorial(parc, parc_dim.parc.cells)
             else:
-                raise NotImplementedError("parc=%r" % (parc,))
+                raise NotImplementedError(f"parc={parc!r}")
             dist_shape = (samples, len(parc_dim))
             dist_dims = ('case', parc_dim)
             max_axes = tuple(chain(range(parc_ax), range(parc_ax + 1, ndim)))
@@ -2177,18 +2327,18 @@ class _ClusterDist:
             parc_indexes = None
 
         # arguments for the map processor
+        shape = tuple(map(len, swapped_dims))
         if kind == 'raw':
             map_args = (kind, tail, max_axes, parc_indexes)
         elif kind == 'tfce':
             map_args = (kind, tail, max_axes, parc_indexes, shape, connectivity)
         else:
-            map_args = (kind, tail, max_axes, parc_indexes, shape, connectivity,
-                        threshold, criteria_)
+            map_args = (kind, tail, max_axes, parc_indexes, shape, connectivity, threshold, criteria_)
 
         self.kind = kind
         self.y_perm = y_perm
-        self.dims = dims
-        self.shape = shape  # internal shape for maps
+        self.dims = tuple(dims)  # external stat map dims (cropped time)
+        self.shape = shape  # internal stat map shape
         self._connectivity = connectivity
         self.samples = samples
         self.dist_shape = dist_shape
@@ -2198,6 +2348,7 @@ class _ClusterDist:
         self.threshold = threshold
         self.tail = tail
         self._nad_ax = nad_ax
+        self._vector_ax = vector_ax
         self.tstart = tstart
         self.tstop = tstop
         self.parc = parc
@@ -2221,16 +2372,6 @@ class _ClusterDist:
         "Crop an original stat_map"
         if self._crop_for_permutation:
             return im[self._crop_idx]
-        else:
-            return im
-
-    def _uncrop(self, im, background=0):
-        "Expand a permutation-stat_map to dimensions of the original data"
-        if self._crop_for_permutation:
-            im_ = np.empty(self._uncropped_shape, dtype=im.dtype)
-            im_[:] = background
-            im_[self._crop_idx] = im
-            return im_
         else:
             return im
 
@@ -2350,12 +2491,12 @@ class _ClusterDist:
                  'kind', 'threshold', 'tail', 'criteria', 'samples', 'tstart',
                  'tstop', 'parc',
                  # data properties ...
-                 'dims', 'shape', '_nad_ax', '_criteria', '_connectivity',
+                 'dims', 'shape', '_nad_ax', '_vector_ax', '_criteria', '_connectivity',
                  # results ...
                  'dt_original', 'dt_perm', 'n_clusters', '_dist_dims', 'dist',
                  '_original_param_map', '_original_cluster_map', '_cids')
         state = {name: getattr(self, name) for name in attrs}
-        state['version'] = 1
+        state['version'] = 2
         return state
 
     def __setstate__(self, state):
@@ -2397,6 +2538,8 @@ class _ClusterDist:
             state['_connectivity'] = Connectivity(
                 (dims[nad_ax],) + dims[:nad_ax] + dims[nad_ax + 1:],
                 state['parc'])
+        if version < 2:
+            state['_vector_ax'] = None
 
         for k, v in state.items():
             setattr(self, k, v)
@@ -2431,48 +2574,41 @@ class _ClusterDist:
 
         return info
 
+    def _package_ndvar(self, x, info=None):
+        "Generate NDVar from map with internal shape"
+        if self._nad_ax:
+            x = x.swapaxes(0, self._nad_ax)
+        if info is None:
+            info = {}
+        return NDVar(x, self.dims, info, self.name)
+
     def finalize(self):
         "Package results and delete temporary data"
         if self.dt_perm is None:
             self.dt_perm = current_time() - self._t0
 
-        # prepare container for clusters
+        # original parameter map
         param_contours = {}
         if self.kind == 'cluster':
             if self.tail >= 0:
                 param_contours[self.threshold] = (0.7, 0.7, 0)
             if self.tail <= 0:
                 param_contours[-self.threshold] = (0.7, 0, 0.7)
-
-        # original parameter-map
-        param_map = self._original_param_map
+        info = _cs.stat_info(self.meas, contours=param_contours)
+        self.parameter_map = self._package_ndvar(self._original_param_map, info)
 
         # TFCE map
         if self.kind == 'tfce':
-            stat_map = self._original_cluster_map
-            x = stat_map.swapaxes(0, self._nad_ax)
-            tfce_map_ = NDVar(x, self.dims, {}, self.name)
+            self.tfce_map = self._package_ndvar(self._original_cluster_map)
         else:
-            tfce_map_ = None
+            self.tfce_map = None
 
         # cluster map
         if self.kind == 'cluster':
-            cluster_map = self._original_cluster_map
-            x = cluster_map.swapaxes(0, self._nad_ax)
-            cluster_map_ = NDVar(x, self.dims, {}, self.name)
+            self.cluster_map = self._package_ndvar(self._original_cluster_map)
         else:
-            cluster_map_ = None
+            self.cluster_map = None
 
-        # original parameter map
-        info = _cs.stat_info(self.meas, contours=param_contours)
-        if self._nad_ax:
-            param_map = param_map.swapaxes(0, self._nad_ax)
-        param_map_ = NDVar(param_map, self.dims, info, self.name)
-
-        # store attributes
-        self.tfce_map = tfce_map_
-        self.parameter_map = param_map_
-        self.cluster_map = cluster_map_
         self._finalized = True
 
     def data_for_permutation(self, raw=True):
@@ -2485,16 +2621,28 @@ class _ClusterDist:
         """
         # get data in the right shape
         x = self.y_perm.x
-        if self._nad_ax:
-            x = x.swapaxes(1, 1 + self._nad_ax)
+        if self._vector_ax:
+            x = np.moveaxis(x, self._vector_ax + 1, 1)
+        if self._nad_ax is not None:
+            dst = 1
+            src = 1 + self._nad_ax
+            if self._vector_ax is not None:
+                dst += 1
+                if self._vector_ax > self._nad_ax:
+                    src += 1
+            if dst != src:
+                x = x.swapaxes(dst, src)
+        # flat y shape
+        ndims = 1 + (self._vector_ax is not None)
+        y_flat_shape = x.shape[:ndims] + (reduce(operator.mul, x.shape[ndims:]),)
 
         if not raw:
-            return x.reshape((len(x), -1))
+            return x.reshape(y_flat_shape)
 
-        n = reduce(operator.mul, self.y_perm.shape)
+        n = reduce(operator.mul, y_flat_shape)
         ra = RawArray('d', n)
         ra[:] = x.ravel()  # OPT: don't copy data
-        return ra, x.shape
+        return ra, y_flat_shape, x.shape[ndims:]
 
     def _cluster_properties(self, cluster_map, cids):
         """Create a Dataset with cluster properties
@@ -2938,16 +3086,16 @@ def distribution_worker(dist_array, dist_shape, in_queue, kill_beacon):
             return
 
 
-def permutation_worker(in_queue, out_queue, y, shape, test_func, map_args,
-                       kill_beacon):
+def permutation_worker(in_queue, out_queue, y, y_flat_shape, stat_map_shape,
+                       test_func, map_args, kill_beacon):
     "Worker for 1 sample t-test"
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     if CONFIG['nice']:
         os.nice(CONFIG['nice'])
 
-    n = reduce(operator.mul, shape)
-    y = np.frombuffer(y, np.float64, n).reshape((shape[0], -1))
-    stat_map = np.empty(shape[1:])
+    n = reduce(operator.mul, y_flat_shape)
+    y = np.frombuffer(y, np.float64, n).reshape(y_flat_shape)
+    stat_map = np.empty(stat_map_shape)
     stat_map_flat = stat_map.ravel()
     map_processor = get_map_processor(*map_args)
     while not kill_beacon.is_set():
@@ -2997,9 +3145,9 @@ def setup_workers(test_func, dist):
     kill_beacon = Event()
 
     # permutation workers
-    y, shape = dist.data_for_permutation()
-    args = (permutation_queue, dist_queue, y, shape, test_func, dist.map_args,
-            kill_beacon)
+    y, y_flat_shape, stat_map_shape = dist.data_for_permutation()
+    args = (permutation_queue, dist_queue, y, y_flat_shape, stat_map_shape,
+            test_func, dist.map_args, kill_beacon)
     workers = []
     for _ in range(CONFIG['n_workers']):
         w = Process(target=permutation_worker, args=args)
@@ -3043,7 +3191,7 @@ def run_permutation_me(test, dists, iterator):
         y = dist.data_for_permutation(False)
         map_processor = get_map_processor(*dist.map_args)
 
-        stat_maps = test.preallocate((0,) + dist.shape)
+        stat_maps = test.preallocate(dist.shape)
         if thresholds:
             stat_maps_iter = tuple(zip(stat_maps, thresholds, dists))
         else:
@@ -3075,9 +3223,9 @@ def setup_workers_me(test_func, dists, thresholds):
 
     # permutation workers
     dist = dists[0]
-    y, shape = dist.data_for_permutation()
-    args = (permutation_queue, dist_queue, y, shape, test_func, dist.map_args,
-            thresholds, kill_beacon)
+    y, y_flat_shape, stat_map_shape = dist.data_for_permutation()
+    args = (permutation_queue, dist_queue, y, y_flat_shape, stat_map_shape,
+            test_func, dist.map_args, thresholds, kill_beacon)
     workers = []
     for _ in range(CONFIG['n_workers']):
         w = Process(target=permutation_worker_me, args=args)
@@ -3093,15 +3241,15 @@ def setup_workers_me(test_func, dists, thresholds):
     return workers, permutation_queue, kill_beacon
 
 
-def permutation_worker_me(in_queue, out_queue, y, shape, test, map_args,
-                          thresholds, kill_beacon):
+def permutation_worker_me(in_queue, out_queue, y, y_flat_shape, stat_map_shape,
+                          test, map_args, thresholds, kill_beacon):
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     if CONFIG['nice']:
         os.nice(CONFIG['nice'])
 
-    n = reduce(operator.mul, shape)
-    y = np.frombuffer(y, np.float64, n).reshape((shape[0], -1))
-    iterator = test.preallocate(shape)
+    n = reduce(operator.mul, y_flat_shape)
+    y = np.frombuffer(y, np.float64, n).reshape(y_flat_shape)
+    iterator = test.preallocate(stat_map_shape)
     if thresholds:
         iterator = tuple(zip(iterator, thresholds))
     else:

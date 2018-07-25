@@ -394,7 +394,8 @@ class _NDANOVA(object):
         Parameters
         ----------
         y_shape : tuple
-            Data shape, will allow preallocation of containers for results.
+            Data shape (excluding case), will allow preallocation of containers
+            for results.
 
         Returns
         -------
@@ -403,7 +404,7 @@ class _NDANOVA(object):
             content of this array will change (and map() will not return
             anything)
         """
-        shape = (self.n_effects,) + y_shape[1:]
+        shape = (self.n_effects,) + y_shape
         f_map = np.empty(shape)
         self._flat_f_map = f_map.reshape((self.n_effects, -1))
         return f_map

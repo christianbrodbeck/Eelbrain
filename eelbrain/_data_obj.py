@@ -6879,7 +6879,7 @@ class Dimension(object):
     values : sequence
         Meaningful point descriptions (e.g. time points, sensor names, ...).
     """
-    _CONNECTIVITY_TYPES = ('grid', 'none', 'custom')
+    _CONNECTIVITY_TYPES = ('grid', 'none', 'custom', 'vector')
     _axis_unit = None
     _default_connectivity = 'none'  # for loading old pickles
 
@@ -7335,7 +7335,7 @@ class Space(Dimension):
         if invalid:
             raise ValueError("directions=%r contains invalid directions: %s"
                              % (directions, ', '.join(map(repr, invalid))))
-        Dimension.__init__(self, name, 'none')
+        Dimension.__init__(self, name, 'vector')
         self._directions = directions
 
     def __getstate__(self):

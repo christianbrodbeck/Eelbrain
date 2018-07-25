@@ -193,7 +193,7 @@ def test_anova_perm():
 
     # balanced anova
     aov = glm._BalancedFixedNDANOVA(ds.eval('A*B'))
-    r1 = aov.preallocate(y.shape)
+    r1 = aov.preallocate(y.shape[1:])
     for perm in permute_order(n_cases, 2):
         aov.map(y, perm)
         r2 = r1.copy()
@@ -203,7 +203,7 @@ def test_anova_perm():
 
     # full repeated measures anova
     aov = glm._BalancedMixedNDANOVA(ds.eval('A*B*rm'))
-    r1 = aov.preallocate(y.shape)
+    r1 = aov.preallocate(y.shape[1:])
     for perm in permute_order(n_cases, 2):
         aov.map(y, perm)
         r2 = r1.copy()
@@ -217,7 +217,7 @@ def test_anova_perm():
     y_perm = np.empty_like(y)
     n_cases, n_tests = y.shape
     aov = glm._IncrementalNDANOVA(ds.eval('A*B'))
-    r1 = aov.preallocate(y.shape)
+    r1 = aov.preallocate(y.shape[1:])
     for perm in permute_order(n_cases, 2):
         aov.map(y, perm)
         r2 = r1.copy()
