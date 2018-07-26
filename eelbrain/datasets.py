@@ -162,7 +162,7 @@ def _mne_source_space(subject, src_tag, subjects_dir):
 
 
 def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
-                   src=None, sub="modality=='A'", fixed=False, snr=2,
+                   src=None, sub="modality=='A'", ori='free', snr=2,
                    method='dSPM', rm=False, stc=False, hpf=0):
     """Load events and epochs from the MNE sample data
 
@@ -182,8 +182,8 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     sub : str | list | None
         Expresion for subset of events to load. For a very small dataset use e.g.
         ``[0,1]``.
-    fixed : bool
-        MNE inverse parameter.
+    ori : 'free' | 'fixed' | 'vector'
+        Orientation of sources.
     snr : scalar
         MNE inverse parameter.
     method : str
@@ -201,6 +201,21 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     ds : Dataset
         Dataset with epochs from the MNE sample dataset in ``ds['epochs']``.
     """
+    if ori == 'free':
+        loose = 1
+        fixed = False
+        pick_ori = None
+    elif ori == 'fixed':
+        loose = 0
+        fixed = True
+        pick_ori = None
+    elif ori == 'vector':
+        loose = 1
+        fixed = False
+        pick_ori = 'vector'
+    else:
+        raise ValueError(f"ori={ori!r}")
+
     data_dir = mne.datasets.sample.data_path()
     meg_dir = os.path.join(data_dir, 'MEG', 'sample')
     raw_file = os.path.join(meg_dir, 'sample_audvis_filt-0-40_raw.fif')
@@ -259,7 +274,7 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     epochs = ds['epochs']
 
     # get inverse operator
-    inv_file = os.path.join(meg_dir, 'sample_eelbrain_%s-inv.fif' % src_tag)
+    inv_file = os.path.join(meg_dir, f'sample_eelbrain_{src_tag}-inv.fif')
     if os.path.exists(inv_file):
         inv = mne.minimum_norm.read_inverse_operator(inv_file)
     else:
@@ -277,13 +292,13 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
 
         cov_file = os.path.join(meg_dir, 'sample_audvis-cov.fif')
         cov = mne.read_cov(cov_file)
-        inv = mn.make_inverse_operator(epochs.info, fwd, cov,
-                                       loose=0 if fixed else 1, depth=None,
-                                       fixed=fixed)
+        inv = mn.make_inverse_operator(epochs.info, fwd, cov, loose=loose,
+                                       depth=None, fixed=fixed)
         mne.minimum_norm.write_inverse_operator(inv_file, inv)
     ds.info['inv'] = inv
 
-    stcs = mn.apply_inverse_epochs(epochs, inv, 1. / (snr ** 2), method)
+    stcs = mn.apply_inverse_epochs(epochs, inv, 1. / (snr ** 2), method,
+                                   pick_ori=pick_ori)
     ds['src'] = load.fiff.stc_ndvar(stcs, subject, src_tag, subjects_dir,
                                     method, fixed)
     if stc:

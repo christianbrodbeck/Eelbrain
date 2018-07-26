@@ -293,3 +293,14 @@ def test_source_ndvar():
     labels2 = labels_from_clusters(concatenate((v1, v2), 'case'))
     eq_(len(labels2), 2)
     assert_label_equal(labels1[0], labels2[0])
+
+
+@requires_mne_sample_data
+def test_vec_source():
+    "Test vector source space"
+    ds = datasets.get_mne_sample(-0.1, 0.1, src='vol',
+                                 sub="(modality=='A') & (side == 'L')",
+                                 ori='vector')
+    res = testnd.Vector('src', ds=ds, samples=2)
+    clusters = res.find_clusters()
+    assert_array_equal(clusters['n_sources'], [35, 46])
