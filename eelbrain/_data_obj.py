@@ -8984,6 +8984,10 @@ class SourceSpace(Dimension):
         raise NotImplementedError
 
 
+class VolumeSourceSpace(SourceSpace):
+    pass
+
+
 class UTS(Dimension):
     """Dimension object for representing uniform time series
 
