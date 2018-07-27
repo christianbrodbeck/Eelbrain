@@ -34,7 +34,7 @@ requirements:
     - keyring >=5
     - matplotlib >=2.1
     - mne >=0.15.2
-    - nibabel >=2.0
+    - nibabel >=2.0, <2.3
     - olefile  # [linux]
     - {{ pin_compatible('numpy') }}
     - pillow
