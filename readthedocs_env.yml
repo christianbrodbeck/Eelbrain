@@ -15,7 +15,7 @@ dependencies:
   - numpydoc
   - Sphinx >= 1.6
   - scipy >= 0.17
-  - nibabel >= 2.0
+  - nibabel >= 2.0, <2.3
   - matplotlib >= 2.1
   - wxpython >= 3.0
   - pip:
