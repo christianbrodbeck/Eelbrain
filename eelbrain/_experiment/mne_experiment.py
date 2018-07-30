@@ -3114,7 +3114,7 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_fwd(self, surf_ori=True, ndvar=False, mask=None):
+    def load_fwd(self, surf_ori=True, ndvar=False, mask=None, **state):
         """Load the forward solution
 
         Parameters
@@ -3129,6 +3129,8 @@ class MneExperiment(FileTree):
         mask : str | bool
             Remove source labelled "unknown". Can be parcellation name or True,
             in which case the current parcellation is used.
+        ...
+            State parameters.
 
         Returns
         -------
@@ -3138,9 +3140,9 @@ class MneExperiment(FileTree):
         if mask and not ndvar:
             raise NotImplemented("mask is only implemented for ndvar=True")
         elif isinstance(mask, str):
-            self.set(parc=mask)
+            state['parc'] = mask
             mask = True
-        fwd_file = self.get('fwd-file', make=True)
+        fwd_file = self.get('fwd-file', make=True, **state)
         src = self.get('src')
         if ndvar:
             if src.startswith('vol'):
