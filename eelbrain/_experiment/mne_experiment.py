@@ -4238,8 +4238,7 @@ class MneExperiment(FileTree):
         """Make the forward model"""
         dst = self.get('fwd-file')
         if exists(dst):
-            fwd_mtime = getmtime(dst)
-            if fwd_mtime > self._fwd_mtime():
+            if cache_valid(getmtime(dst), self._fwd_mtime()):
                 return
         elif self.get('modality') != '':
             raise NotImplementedError("Source reconstruction with EEG")
