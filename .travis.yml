@@ -16,6 +16,7 @@ before_install:
   - wget -q http://repo.continuum.io/miniconda/Miniconda2-latest-$CONDA_OS-x86_64.sh -O miniconda.sh
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p $HOME/miniconda
+  - export KMP_DUPLICATE_LIB_OK=TRUE
   - export PATH=$HOME/miniconda/bin:$PATH
   - conda update --yes --quiet conda
   - conda config --append channels conda-forge

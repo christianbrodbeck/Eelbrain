@@ -12,10 +12,8 @@ pillow
 wxpython == 3.0
 numpy >= 1.8
 scipy >= 0.17
-nibabel >= 2.0
+nibabel >= 2.0, <2.3
 matplotlib >= 2.1
-mayavi == 4.5
-vtk == 6.3
 pysurfer >= 0.7
 mne >= 0.15
 
