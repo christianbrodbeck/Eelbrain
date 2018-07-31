@@ -211,7 +211,7 @@ class App(wx.App):
         if IS_WINDOWS:
             # On Windows, select.poll() is not available
             def thread():
-                while not context.input_is_ready():
+                while context._input_is_ready is None or not context.input_is_ready():
                     sleep(.02)
                 wx.CallAfter(self.pt_yield)
         else:
