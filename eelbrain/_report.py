@@ -6,7 +6,12 @@ from . import plot
 from . import test
 from ._data_obj import cellname, combine
 from ._stats.stats import ttest_t
-from .fmtxt import ms, Section, Figure, linebreak
+from .fmtxt import ms, Section, linebreak
+
+
+PLURALS = {
+    'is': 'are',
+}
 
 
 def n_of(n, of, plural_for_0=False):
@@ -16,12 +21,14 @@ def n_of(n, of, plural_for_0=False):
     return str(n) + ' ' + plural(of, n)
 
 
-def plural(noun, n):
+def plural(singular, n):
     "plural('house', 2) -> 'houses'"
     if n == 1:
-        return noun
+        return singular
+    elif singular in PLURALS:
+        return PLURALS[singular]
     else:
-        return noun + 's'
+        return singular + 's'
 
 
 def enumeration(items, link='and'):
