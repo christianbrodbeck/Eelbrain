@@ -80,22 +80,19 @@ class RawSource(RawPipe):
         if old_bads is not None and not redo:
             new_bads = sorted(set(old_bads).union(new_bads))
         # print change
-        if old_bads is None:
-            print("-> %s" % new_bads)
-        else:
-            print("%s -> %s" % (old_bads, new_bads))
+        print(f"{old_bads} -> {new_bads}")
         # write new bad channels
         text = '\n'.join(new_bads)
         with open(path, 'w') as fid:
             fid.write(text)
 
-    def make_bad_channels_auto(self, subject, session, flat=1e-14):
+    def make_bad_channels_auto(self, subject, session, flat=1e-14, redo=False):
         if not flat:
             return
         raw = self.load(subject, session, preload=True, add_bads=False)
         raw = load.fiff.raw_ndvar(raw)
         bad_chs = raw.sensor.names[raw.std('time') < flat]
-        self.make_bad_channels(subject, session, bad_chs, False)
+        self.make_bad_channels(subject, session, bad_chs, redo)
 
     def mtime(self, subject, session, bad_chs=True):
         path = self.path.format(subject=subject, session=session)

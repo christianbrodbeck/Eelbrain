@@ -20,8 +20,7 @@ def assemble_tests(test_dict):
             out[key] = params
             continue
         elif not isinstance(params, dict):
-            raise TypeError("Invalid object for test definitions %s: %r" %
-                            (key, params))
+            raise TypeError(f"Invalid object for test definition {key}: {params!r}")
         params = params.copy()
         if 'stage 1' in params:
             params['stage_1'] = params.pop('stage 1')
@@ -29,8 +28,7 @@ def assemble_tests(test_dict):
         if kind in TEST_CLASSES:
             out[key] = TEST_CLASSES[kind](**params)
         else:
-            raise DefinitionError("Unknown test kind in test definition %s: "
-                                  "%r" % (key, kind))
+            raise DefinitionError(f"Unknown test kind in test definition {key}: {kind}")
     return out
 
 
@@ -120,11 +118,10 @@ class TTestInd(TTest):
     "Independent measures t-test"
     kind = 'ttest_ind'
 
-    def __init__(self, model, c1, c0, tail=0):
-        if model != 'group':
-            raise DefinitionError("model=%r; TTestInd always needs model="
-                                  "'group'" % (model,))
-        TTest.__init__(self, model, c1, c0, tail, (('group', GroupVar((c1, c0))),))
+    def __init__(self, model, c1, c0, tail=0, vars=None):
+        if vars is None and model == 'group':
+            vars = (('group', GroupVar((c1, c0))),)
+        TTest.__init__(self, model, c1, c0, tail, vars)
 
     def make(self, y, ds, force_permutation, kwargs):
         return testnd.ttest_ind(

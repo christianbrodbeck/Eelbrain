@@ -496,11 +496,16 @@ def test_ttest_1samp():
     dss = ds.sub("logical_and(A=='a0', B=='b0')")[:8]
     res3 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=dss, samples=10000,
                               pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
+    assert_equal(repr(res3),
+                 '<ttest_1samp \'uts\', sub="A == \'a0\'", samples=255, '
+                 'pmin=0.05, tstop=0.6, mintime=0.05, 2 clusters, p=.020>')
     assert_equal(res3.clusters.n_cases, 2)
     assert_equal(res3.samples, -1)
-    assert_less(res3.clusters['p'].x.min(), 0.05)
-    repr3 = repr(res3)
-    assert_in('samples', repr3)
+    assert_equal(str(res3.clusters),
+                 'id   tstart   tstop   duration   v        p          sig\n'
+                 '--------------------------------------------------------\n'
+                 '3    0.08     0.34    0.26       95.692   0.015686   *  \n'
+                 '4    0.35     0.56    0.21       81.819   0.019608   *  ')
 
     # nd
     dss = ds.sub("A == 'a0'")

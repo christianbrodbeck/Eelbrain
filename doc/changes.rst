@@ -21,6 +21,9 @@ New in 0.28
     plots.
 
 * :class:`NDVar` and :class:`Var` support for ``round(x)``
+* :class:`MneExperiment`:
+
+  - Intependent measures t-test
 
 
 New in 0.27

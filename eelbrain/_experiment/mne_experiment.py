@@ -2350,22 +2350,24 @@ class MneExperiment(FileTree):
         ----------
         subject : Factor
             A Factor with subjects.
-        groups : list of str
+        groups : list of str | {str: str} dict
             Groups which to label (raises an error if group membership is not
-            unique).
+            unique). To use labels other than the group names themselves, use
+            a ``{group: label}`` dict.
 
         Returns
         -------
         group : Factor
             A :class:`Factor` that labels the group for each subject.
         """
-        labels = {s: [g for g in groups if s in self._groups[g]] for s in subject.cells}
+        if not isinstance(groups, dict):
+            groups = {g: g for g in groups}
+        labels = {s: [l for g, l in groups.items() if s in self._groups[g]] for s in subject.cells}
         problems = [s for s, g in labels.items() if len(g) != 1]
         if problems:
-            desc = [', '.join(labels[s]) if labels[s] else 'no group' for s in problems]
+            desc = (', '.join(labels[s]) if labels[s] else 'no group' for s in problems)
             msg = ', '.join('%s (%s)' % pair for pair in zip(problems, desc))
-            raise ValueError("Groups %s are not unique for subjects: %s"
-                             % (groups, msg))
+            raise ValueError(f"Groups {groups} are not unique for subjects: {msg}")
         labels = {s: g[0] for s, g in labels.items()}
         return Factor(subject, labels=labels)
 
@@ -4011,7 +4013,7 @@ class MneExperiment(FileTree):
         pipe.make_bad_channels(self.get('subject'), self.get('session'),
                                bad_chs, redo)
 
-    def make_bad_channels_auto(self, flat=1e-14):
+    def make_bad_channels_auto(self, flat=1e-14, redo=False, **state):
         """Automatically detect bad channels
 
         Works on ``raw='raw'``
@@ -4021,10 +4023,15 @@ class MneExperiment(FileTree):
         flat : scalar
             Threshold for detecting flat channels: channels with ``std < flat``
             are considered bad (default 1e-14).
+        redo : bool
+            If the file already exists, replace it (instead of adding).
+        ...
+            State parameters.
         """
+        if state:
+            self.set(**state)
         pipe = self._raw['raw']
-        pipe.make_bad_channels_auto(self.get('subject'), self.get('session'),
-                                    flat)
+        pipe.make_bad_channels_auto(self.get('subject'), self.get('session'), flat, redo)
 
     def make_besa_evt(self, redo=False, **state):
         """Make the trigger and event files needed for besa

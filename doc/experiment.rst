@@ -516,6 +516,27 @@ Example::
                           'c1': 'a_lot_of_noise', 'c0': 'no_noise'}}
 
 
+ttest_ind
+^^^^^^^^^
+
+model : :class:`str`
+    The model which defines the cells that are used in the test. Usually
+    ``"group"``.
+c1 : :class:`str` | :class:`tuple`
+    The experimental group. Should be a group name.
+c0 : :class:`str` | :class:`tuple`
+    The control group, defined like ``c1``.
+tail : :class:`int` (optional)
+    Tailedness of the test. ``0`` for two-tailed (default), ``1`` for upper tail
+    and ``-1`` for lower tail.
+
+Example::
+
+    tests = {'group_difference': {'kind': 'ttest_ind', 'model': 'group',
+                                  'c1': 'group_1', 'c0': 'group_2'}}
+
+
+
 t_contrast_rel
 ^^^^^^^^^^^^^^
 

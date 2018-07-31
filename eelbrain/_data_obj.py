@@ -3283,20 +3283,41 @@ class NDVar(object):
         """
         return self._dim_index_unravel(self.x.argmin())
 
-    def _array_index(self, args):
+    def _array_index(self, arg):
         "Convert dimension index to array index"
-        if isinstance(args, NDVar):
-            if args.x.dtype.kind != 'b':
+        if isinstance(arg, NDVar):
+            if arg.x.dtype.kind != 'b':
                 raise IndexError("Only boolean NDVar can be used as index")
-            elif args.dims == self.dims:
-                return args.x
-            raise NotImplementedError
-        elif isinstance(args, tuple):
-            return tuple(dim._array_index(i) for dim, i in zip(self.dims, args))
-        elif isinstance(args, np.ndarray) and args.ndim > 1:
+            elif arg.dims == self.dims:
+                return arg.x
+            target_dims = tuple(dim if dim in arg.dimnames else None for dim in self.dimnames)
+            shared_dims = tuple(filter(None, target_dims))
+            self_dims = self.get_dims(shared_dims)
+            args_dims = arg.get_dims(shared_dims)
+            if args_dims != self_dims:
+                raise DimensionMismatchError(
+                    f'The index has different dimensions than the NDVar\n'
+                    f'NDVar: {self_dims}\nIndex: {args_dims}')
+            x = arg.x
+            if arg.dimnames != shared_dims:
+                if any(dim not in shared_dims for dim in arg.dimnames):
+                    missing = (dim for dim in arg.dimnames if dim not in shared_dims)
+                    raise DimensionMismatchError(
+                        f"Index has dimensions {', '.join(missing)} not in {self}")
+                source_axes = tuple(range(arg.ndim))
+                dest_axes = tuple(shared_dims.index(dim) for dim in arg.dimnames)
+                x = np.moveaxis(x, source_axes, dest_axes)
+            for axis, dim in enumerate(target_dims):
+                if dim is None:
+                    x = np.expand_dims(x, axis)
+                    x = np.repeat(x, self.shape[axis], axis)
+            return x
+        elif isinstance(arg, tuple):
+            return tuple(dim._array_index(i) for dim, i in zip(self.dims, arg))
+        elif isinstance(arg, np.ndarray) and arg.ndim > 1:
             raise NotImplementedError
         else:
-            return self.dims[0]._array_index(args)
+            return self.dims[0]._array_index(arg)
 
     def assert_dims(self, dims):
         if self.dimnames != dims:

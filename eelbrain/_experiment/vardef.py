@@ -1,3 +1,4 @@
+"""Secondary variables"""
 from .._data_obj import Var, asfactor
 
 import numpy as np
@@ -55,9 +56,18 @@ class LabelVar(VarDef):
 
 
 class GroupVar(VarDef):
+    """Group membership for each subject
+
+    Parameters
+    ----------
+    groups : tuple | dict
+        Groups to consider. A tuple of group names to lookup for each subject
+        which of those groups it belongs to. A {group: label} dict to assign
+        a label based on group membership.
+    """
 
     def __init__(self, groups):
-        self.groups = sorted(groups)
+        self.groups = groups
 
     def __repr__(self):
         return "GroupVar(%r)" % (self.groups,)
@@ -67,6 +77,19 @@ class GroupVar(VarDef):
 
     def apply(self, ds, e):
         return e.label_groups(ds['subject'], self.groups)
+
+    @classmethod
+    def from_string(cls, string):
+        groups = {}
+        for item in string.split(','):
+            if ':' in item:
+                src, dst = map(str.strip, item.split(':'))
+            else:
+                src = dst = item.strip()
+            groups[src] = dst
+        if all(k == v for k, v in groups.items()):
+            groups = tuple(sorted(groups))
+        return cls(groups)
 
 
 def parse_named_vardef(string):
@@ -79,12 +102,19 @@ def parse_named_vardef(string):
 def parse_vardef(string):
     string = string.strip()
     if string.startswith('group:'):
-        return GroupVar(map(str.strip, string[6:].split(',')))
+        return GroupVar.from_string(string[6:])
     else:
         return EvalVar(string)
 
 
 class Vars(object):
+    """Set of variable definitions
+
+    Parameters
+    ----------
+    arg : str | tuple | dict
+        The ``vars`` argument.
+    """
 
     def __init__(self, arg):
         if isinstance(arg, str):
