@@ -861,6 +861,10 @@ class FileTree(TreeModel):
 
         The cache function is called every time the file name is retrieved and
         should recreate the file if it is outdated.
+
+        The cache function can return the filename of the created file since
+        it is called every time the specific file is requested. Note that this
+        causes problems for ``glob()``.
         """
         if key in self._cache_handlers:
             raise RuntimeError("Cache handler for %r already defined." % key)
@@ -957,7 +961,7 @@ class FileTree(TreeModel):
         # make the file
         if make:
             if temp in self._cache_handlers:
-                self._cache_handlers[temp]()
+                path = self._cache_handlers[temp]() or path
             elif not os.path.exists(path):
                 if temp in self._make_handlers:
                     with self._temporary_state:
