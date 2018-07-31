@@ -8,9 +8,10 @@ operations that operate on more than one NDVar.
 """
 from collections import defaultdict
 from copy import copy
-from itertools import izip, repeat
+from itertools import izip
 from math import floor
 from numbers import Real
+import operator
 
 import mne
 import numpy as np
@@ -285,10 +286,11 @@ def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
         raise ValueError("out=%r" % (out,))
     else:
         magnitude_out = False
-    dimnames = y.get_dimnames((None,) * (y.ndim - 1) + ('time',))
+    dimnames = y.get_dimnames(last='time')
     data = y.get_data(dimnames)
     dims = y.get_dims(dimnames)
-    data_flat = data.reshape((1, np.prod(data.shape[:-1]), data.shape[-1]))
+    shape_outer = 1 if y.ndim == 1 else reduce(operator.mul, data.shape[:-1])
+    data_flat = data.reshape((1, shape_outer, data.shape[-1]))
     time_dim = dims[-1]
     sfreq = 1. / time_dim.tstep
     if np.isscalar(freqs):

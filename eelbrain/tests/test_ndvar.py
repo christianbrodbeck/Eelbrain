@@ -6,8 +6,8 @@ from scipy import signal
 
 from eelbrain import (
     NDVar, Case, Scalar, UTS, datasets,
-    concatenate, convolve, cross_correlation, find_intervals, find_peaks,
-    frequency_response, psd_welch,
+    concatenate, convolve, cross_correlation, cwt_morlet, find_intervals,
+    find_peaks, frequency_response, psd_welch,
 )
 
 
@@ -65,6 +65,16 @@ def test_cross_correlation():
     eq_(cross_correlation(x, x[1:]).argmax(), 0)
     eq_(cross_correlation(x, x[:8]).argmax(), 0)
     eq_(cross_correlation(x[2:], x[:8]).argmax(), 0)
+
+
+def test_cwt():
+    ds = datasets._get_continuous()
+    # 1d
+    y = cwt_morlet(ds['x1'], [4, 6, 8])
+    assert y.ndim == 2
+    # 2d
+    y = cwt_morlet(ds['x2'], [4, 6, 8])
+    assert y.ndim == 3
 
 
 def test_find_intervals():
