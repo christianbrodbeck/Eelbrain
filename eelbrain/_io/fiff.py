@@ -115,7 +115,7 @@ def mne_raw(path=None, proj=False, **kwargs):
     return raw
 
 
-def events(raw=None, merge=-1, proj=False, name=None, bads=None,
+def events(raw=None, merge=None, proj=False, name=None, bads=None,
            stim_channel=None, events=None, **kwargs):
     """
     Load events from a raw fiff file.
@@ -129,7 +129,8 @@ def events(raw=None, merge=-1, proj=False, name=None, bads=None,
         Merge steps occurring in neighboring samples. The integer value
         indicates over how many samples events should be merged, and the sign
         indicates in which direction they should be merged (negative means
-        towards the earlier event, positive towards the later event).
+        towards the earlier event, positive towards the later event). By
+        default, this parameter is inferred from the data.
     proj : bool | str
         Path to the projections file that will be loaded with the raw file.
         ``'{raw}'`` will be expanded to the raw file's path minus extension.
@@ -179,7 +180,13 @@ def events(raw=None, merge=-1, proj=False, name=None, bads=None,
             name = None
 
     if events is None:
-        evts = mne.find_stim_steps(raw, merge=merge, stim_channel=stim_channel)
+        raw.load_data()
+        if merge is None:
+            evts = mne.find_stim_steps(raw, merge=-1, stim_channel=stim_channel)
+            if len(evts) == 0:
+                evts = mne.find_stim_steps(raw, merge=0, stim_channel=stim_channel)
+        else:
+            evts = mne.find_stim_steps(raw, merge=merge, stim_channel=stim_channel)
         evts = evts[np.flatnonzero(evts[:, 2])]
     else:
         evts = mne.read_events(events)
