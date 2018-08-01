@@ -67,6 +67,7 @@ from .definitions import (
 from .epochs import (
     PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, assemble_epochs,
 )
+from .exceptions import FileDeficient, FileMissing
 from .experiment import FileTree
 from .parc import (
     FS_PARC, FSA_PARC, PARC_CLASSES, SEEDED_PARC_RE,
@@ -136,17 +137,7 @@ CACHE_HELP = (
 )
 
 ################################################################################
-# Exceptions
 
-class FileMissing(Exception):
-    "An input file is missing"
-
-
-class FileDeficient(Exception):
-    "An input file is deficient"
-
-
-################################################################################
 
 def _mask_ndvar(ds, name):
     y = ds[name]
@@ -4292,7 +4283,7 @@ class MneExperiment(FileTree):
         trans = self.get('trans-file')
         src = self.get('src-file', make=True)
         pipe = self._raw[self.get('raw')]
-        raw = pipe.path.format(subject=subject, session=fwd_session)
+        raw = pipe.cache(subject, fwd_session)
         bem = self._load_bem()
         src = mne.read_source_spaces(src)
 
