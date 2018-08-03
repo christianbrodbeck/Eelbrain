@@ -7,7 +7,7 @@ import numpy as np
 
 from . import load
 from ._colorspaces import eeg_info
-from ._data_obj import Dataset, Factor, Var, NDVar, Scalar, Sensor, UTS
+from ._data_obj import Dataset, Factor, Var, NDVar, Case, Scalar, Sensor, Space, UTS
 from ._design import permute
 
 
@@ -394,7 +394,7 @@ def get_uts(utsnd=False, seed=0, nrm=False):
     return ds
 
 
-def get_uv(seed=0, nrm=False):
+def get_uv(seed=0, nrm=False, vector=False):
     """Dataset with random univariate data
 
     Parameters
@@ -403,6 +403,8 @@ def get_uv(seed=0, nrm=False):
         Seed the numpy random state before generating random data.
     nrm : bool
         Add a nested random-effects variable (default False).
+    vector : bool
+        Add a 3d vector variable as ``ds['v']`` (default ``False``).
     """
     if seed is not None:
         np.random.seed(seed)
@@ -420,6 +422,10 @@ def get_uv(seed=0, nrm=False):
     ds['index'] = Var(np.repeat([True, False], 40))
     if nrm:
         ds['nrm'] = Factor(['s%03i' % i for i in range(40)], tile=2, random=True)
+    if vector:
+        x = np.random.normal(0, 1, (80, 3))
+        x[:40] += [.3, .3, .3]
+        ds['v'] = NDVar(x, (Case, Space('RAS')))
     return ds
 
 

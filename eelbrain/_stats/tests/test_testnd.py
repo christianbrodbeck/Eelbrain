@@ -638,6 +638,16 @@ def test_ttest_rel():
     eq_(res.t.x[1, 10], 0)
 
 
+def test_vector():
+    """Test vector tests"""
+    # single vector
+    ds = datasets.get_uv(vector=True)
+    res = testnd.Vector('v[:40]', ds=ds, samples=10)
+    assert res.p == 0.0
+    res = testnd.Vector('v[40:]', ds=ds, samples=10)
+    assert res.p == 0.8
+
+
 def test_cwt():
     "Test tests with wavelet transform"
     ds = datasets.get_uts(True)

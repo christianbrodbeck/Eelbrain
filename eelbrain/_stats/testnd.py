@@ -1734,6 +1734,8 @@ class Vector(NDTest):
     ----------
     mean : NDVar
         The vector field averaged across cases.
+    norm : NDVar
+        The norm of the ``mean`` vector field.
     n : int
         Number of cases.
     p : NDVar
@@ -1765,11 +1767,12 @@ class Vector(NDTest):
 
         v_dim = ct.y.dimnames[cdist._vector_ax + 1]
         v_mean = ct.y.mean('case')
-        cdist.add_original(v_mean.norm(v_dim).x)
+        v_mean_norm = v_mean.norm(v_dim)
+        cdist.add_original(v_mean_norm.x if v_mean.ndim > 1 else v_mean_norm)
 
         if cdist.do_permutation:
             iterator = random_seeds(samples)
-            run_permutation(self.vector_mean_norm_perm, cdist, iterator)
+            run_permutation(self._vector_mean_norm_perm, cdist, iterator)
 
         # store attributes
         NDTest.__init__(self, ct.y, ct.match, sub, samples, tfce, None, cdist, tstart, tstop)
@@ -1801,7 +1804,7 @@ class Vector(NDTest):
         return args
 
     @staticmethod
-    def vector_mean_norm_perm(y, out, seed):
+    def _vector_mean_norm_perm(y, out, seed):
         n_cases, n_dims, n_tests = y.shape
         np.random.seed(seed)
         if n_dims == 3:
@@ -2574,9 +2577,13 @@ class _ClusterDist:
 
         return info
 
-    def _package_ndvar(self, x, info=None):
+    def _package_ndvar(self, x, info=None, external_shape=False):
         "Generate NDVar from map with internal shape"
-        if self._nad_ax:
+        if not self.dims:
+            if isinstance(x, np.ndarray):
+                return x.item()
+            return x
+        if not external_shape and self._nad_ax:
             x = x.swapaxes(0, self._nad_ax)
         if info is None:
             info = {}
@@ -2634,7 +2641,8 @@ class _ClusterDist:
                 x = x.swapaxes(dst, src)
         # flat y shape
         ndims = 1 + (self._vector_ax is not None)
-        y_flat_shape = x.shape[:ndims] + (reduce(operator.mul, x.shape[ndims:]),)
+        n_flat = 1 if x.ndim == ndims else reduce(operator.mul, x.shape[ndims:])
+        y_flat_shape = x.shape[:ndims] + (n_flat,)
 
         if not raw:
             return x.reshape(y_flat_shape)
@@ -2943,20 +2951,23 @@ class _ClusterDist:
 
             if sub:
                 stat_map = stat_map.sub(**sub)
+            dims = stat_map.dims if isinstance(stat_map, NDVar) else None
 
+            cpmap = np.zeros(stat_map.shape) if dims else 0.
             if self.dist is None:  # flat stat-map
-                cpmap = np.ones(stat_map.shape)
+                cpmap += 1
             else:
-                cpmap = np.zeros(stat_map.shape)
                 dist = self._aggregate_dist(**sub)
                 idx = np.empty(stat_map.shape, dtype=np.bool8)
+                actual = stat_map.x if self.dims else stat_map
                 for v in dist:
-                    cpmap += np.greater_equal(v, stat_map.x, idx)
+                    cpmap += np.greater_equal(v, actual, idx)
                 cpmap /= self.samples
-            dims = stat_map.dims
 
-        info = _cs.cluster_pmap_info()
-        return NDVar(cpmap, dims, info, self.name)
+        if dims:
+            return NDVar(cpmap, dims, _cs.cluster_pmap_info(), self.name)
+        else:
+            return cpmap
 
     def masked_parameter_map(self, pmin=0.05, name=None, **sub):
         """Create a copy of the parameter map masked by significance
