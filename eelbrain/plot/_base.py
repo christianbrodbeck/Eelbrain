@@ -1025,7 +1025,7 @@ class EelFigure(object):
         names : sequence of str
             Instead of using ``epochs`` name attributes, use these names.
         """
-        if not axtitle:
+        if axtitle is False or axtitle is None:
             return
 
         if axes is None:
