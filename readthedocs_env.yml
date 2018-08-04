@@ -14,7 +14,7 @@ dependencies:
   - numpydoc
   - sphinx >= 1.6
   - scipy >= 0.17
-  - nibabel >= 2.0
+  - nibabel >= 2.0, != 2.3.0  # read_annot bug
   - matplotlib >= 2.1
   - wxpython >= 4.0
   - pip:
