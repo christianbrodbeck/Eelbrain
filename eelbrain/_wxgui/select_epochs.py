@@ -1332,7 +1332,7 @@ class Frame(FileFrame):
         if self._mean_plot:
             self._mean_plot.set_ylim(vlim)
         if self._topo_plot:
-            self._topo_plot.set_vlim(vlim)
+            self._topo_plot.set_vlim(-vlim, vlim, None)
 
         if np.isscalar(vlim):
             vlim = (-vlim, vlim)
