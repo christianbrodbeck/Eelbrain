@@ -461,6 +461,8 @@ class TTest1Sample(object):
 
     Attributes
     ----------
+    mean : float
+        Mean of ``y``.
     t : float
         T-value.
     p : float
@@ -476,6 +478,7 @@ class TTest1Sample(object):
         if n <= 2:
             raise ValueError("Not enough observations for t-test (n=%i)" % n)
 
+        self.mean = ct.y.mean()
         self._y = dataobj_repr(ct.y)
         self.df = n - 1
         self.t = stats.t_1samp(ct.y.x[:, None])[0]
@@ -570,9 +573,11 @@ class TTestRel(object):
     Parameters
     ----------
     y : Var
-        Dependent variable.
+        Dependent variable. Alternatively, the first of two variables that are
+        compared.
     x : categorial
-        Model containing the cells which should be compared.
+        Model containing the cells which should be compared. Alternatively, the
+        second of two varaibles that are compared.
     c1 : str | tuple | None
         Test condition (cell of ``x``). ``c1`` and ``c0`` can be omitted if
         ``x`` only contains two cells, in which case cells will be used in
@@ -581,7 +586,8 @@ class TTestRel(object):
         Control condition (cell of ``x``).
     match : categorial
         Units within which measurements are related (e.g. 'subject' in a
-        within-subject comparison).
+        within-subject comparison). If match is unspecified, it is assumed that
+        ``y`` and ``x`` are two measurements with matched cases.
     sub : None | index-array
         Perform the test with a subset of the data.
     ds : None | Dataset
@@ -601,7 +607,7 @@ class TTestRel(object):
         P-value.
     tail : 0 | 1 | -1
         Tailedness of the p value.
-    diff : Var
+    difference : Var
         Difference values.
     df : int
         Degrees of freedom.
@@ -613,34 +619,45 @@ class TTestRel(object):
     def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0):
         if match is None:
-            raise TypeError("The `match` argument needs to be specified for a "
-                            "related measures t-test.")
-        ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asvar)
-        c1, c0 = ct.cat
-        if not ct.all_within:
-            raise ValueError("conditions %r and %r do not have the same values "
-                             "on %s" % (c1, c0, dataobj_repr(ct.match)))
+            assert c1 is None and c0 is None
+            y1 = asvar(y, sub, ds)
+            n = len(y1)
+            y0 = asvar(x, sub, ds, n)
+            self._y = dataobj_repr(y1)
+            self._x = dataobj_repr(y0)
+        else:
+            ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asvar)
+            c1, c0 = ct.cat
+            if not ct.all_within:
+                raise ValueError("conditions %r and %r do not have the same values "
+                                 "on %s" % (c1, c0, dataobj_repr(ct.match)))
 
-        n = len(ct.y) // 2
+            n = len(ct.y) // 2
+            self._y = dataobj_repr(ct.y)
+            self._x = dataobj_repr(ct.x)
+            y1 = ct.y[:n]
+            y0 = ct.y[n:]
         if n <= 2:
             raise ValueError("Not enough observations for t-test (n=%i)" % n)
 
-        self._y = dataobj_repr(ct.y)
-        self._x = dataobj_repr(ct.x)
-        self.c1_mean = ct.y[:n].mean()
-        self.c0_mean = ct.y[n:].mean()
-        self.diff = ct.y[:n] - ct.y[n:]
+        self.c1_mean = y1.mean()
+        self.c0_mean = y0.mean()
+        self.difference = y1 - y0
         self.df = n - 1
-        self.t = stats.t_1samp(self.diff.x[:, None])[0]
+        self.t = stats.t_1samp(self.difference.x[:, None])[0]
         self.p = stats.ttest_p(self.t, self.df, tail)
         self.tail = tail
+        self._match = None if match is None else dataobj_repr(match)
         self._c1 = c1
         self._c0 = c0
 
     def __repr__(self):
-        return ("<TTestRel: %s ~ %s, %s%s%s; t(%i)=%.2f, p=%.3f>" %
-                (self._y, self._x, self._c1, '=><'[self.tail], self._c0,
-                 self.df, self.t, self.p))
+        cmp = '=><'[self.tail]
+        if self._match is None:
+            out = f"<TTestRel: {self._c1} {cmp} {self._c0}"
+        else:
+            out = f"<TTestRel: {self._y} ~ {self._x}, {self._c1} {cmp} {self._c0}"
+        return out + f"; t({self.df})={self.t:.2}, p={self.p:.3}>"
 
     def _asfmtext(self):
         return fmtxt.FMText([fmtxt.eq('t', self.t, self.df), ', ',
