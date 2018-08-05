@@ -2,12 +2,6 @@
 Installing
 **********
 
-.. note::
-    Eelbrain comes with a C extension. Precompiled binaries are currently
-    provided for macOS and Windows through ``conda``. On other platforms,
-    installing Eelbrain requires compilation.
-
-
 .. contents:: Contents
    :local:
 
@@ -50,7 +44,7 @@ Installing from PYPI
 
 .. note::
    If you are setting up a new Python environment, the easier option is
-   `Anaconda <https://store.continuum.io/cshop/anaconda/>`_.
+   Anaconda (see above).
 
 Eelbrain can be installed from the
 `Python Package Index (PYPI) <https://pypi.python.org/pypi/eelbrain>`_::

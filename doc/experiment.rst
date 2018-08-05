@@ -114,18 +114,81 @@ estimation.
 Pre-processing
 --------------
 
-For each subject, define bad channels using
+Make sure an appropriate pre-processing pipeline is defined as
+:attr:`MneExperiment.raw`.
+
+To inspect raw data for a given pre-processing stage use::
+
+    >>> e.set(raw='1-40')
+    >>> y = e.load_raw(ndvar=True)
+    >>> p = plot.TopoButterfly(y, xlim=5)
+
+Which will plot 5 s excerpts and allow scrolling through the data.
+
+If this inspection reveals bad channels, they can be excluded using
 :meth:`MneExperiment.make_bad_channels`.
 
-For each primary epoch that is defined, do artifact rejection using
-:meth:`MneExperiment.make_rej`. A simple way to cycle through
-subjects for doing rejection is :meth:`MneExperiment.next`, like::
+Another good check for bad channels is plotting the average evoked response,
+and looking for channels which are uncorrelated with neighboring
+channels. To plot the average before trial rejection, use::
 
+    >>> ds = e.load_epochs(epoch='epoch', reject=False)
+    >>> plot.TopoButterfly('meg', ds=ds)
+
+The neighbor correlation can also be quantified, using::
+
+    >>> nc = neighbor_correlation(concatenate(ds['meg']))
+    >>> nc.sensor.names[nc < 0.3]
+    Datalist([u'MEG 099'])
+
+A simple way to cycle through subjects when performing a given pre-processing
+step is :meth:`MneExperiment.next`.
+
+
+ICA
+---
+
+If preprocessing includes ICA, select which ICA components should be removed.
+The experiment ``raw`` state needs to be set to the ICA stage of the pipeline::
+
+    >>> e.set(raw='ica')
+    >>> e.make_ica_selection(epoch='epoch', decim=10)
+
+Set ``epoch`` to the epoch whose data you want to display in the GUI (see
+:meth:`MneExperiment.make_ica_selection` for more information, in particular on
+how to precompute ICA decomposition for all subjects).
+
+In order to select ICA components for multiple subject, a simple way to cycle
+through subjects is :meth:`MneExperiment.next`, like::
+
+    >>> e.make_ica_selection(epoch='epoch', decim=10)
+    >>> e.next()
+    subject: 'R1801' -> 'R2079'
+    >>> e.make_ica_selection(epoch='epoch', decim=10)
+    >>> e.next()
+    subject: 'R2079' -> 'R2085'
+    ...
+
+
+Trial selection
+---------------
+
+For each primary epoch that is defined, bad trials can be rejected using
+:meth:`MneExperiment.make_rej`. Rejections are specific to a given ``raw``
+state::
+
+    >>> e.set(raw='ica1-40')
     >>> e.make_rej()
     >>> e.next()
+    subject: 'R1801' -> 'R2079'
     >>> e.make_rej()
-    >>> e.next()
-    >>> # ...
+    ...
+
+To reject trials based on a pre-determined threshold, a loop can be used::
+
+    >>> for subject in e:
+    ...     e.make_rej(auto=1e-12)
+    ...
 
 
 .. _MneExperiment-intro-analysis:
@@ -293,6 +356,11 @@ For example, to use TSSS, ICA and finally band-pass filter::
                        'ignore_ref': True,
                        'st_correlation': .9,
                        'st_only': True}},
+        '1-40': {
+            'type': 'filter',
+            'source': 'tsss',
+            'args': (1, 40),
+            'kwargs': FILTER_KWARGS},
         'ica': {
             'type': 'ica',
             'source': 'tsss',
@@ -824,6 +892,14 @@ epoch
 
 Any epoch defined in :attr:`MneExperiment.epochs`. Specify the epoch on which
 the analysis should be conducted.
+
+
+Trial rejection
+---------------
+
+Trial rejection can be turned off ``e.set(rej='')``, meaning that no trials are
+rejected, and back on, meaning that the corresponding rejection files are used
+``e.set(rej='')``.
 
 
 equalize_evoked_count
