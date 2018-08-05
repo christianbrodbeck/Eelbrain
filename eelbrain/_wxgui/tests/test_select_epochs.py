@@ -111,3 +111,4 @@ def test_select_epochs():
     assert_false(frame.CanBackward())
     ok_(frame.CanForward())
     frame.OnForward(None)
+    frame.SetVLim(1e-12)
