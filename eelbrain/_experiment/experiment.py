@@ -945,7 +945,10 @@ class FileTree(TreeModel):
 
         # create the directory
         if mkdir:
-            dirname = os.path.dirname(path)
+            if temp.endswith('dir'):
+                dirname = path
+            else:
+                dirname = os.path.dirname(path)
             if not os.path.exists(dirname):
                 root = self.get('root')
                 if root == '':
