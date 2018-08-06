@@ -909,9 +909,9 @@ class Stars(FMTextElement):
         FMTextElement.__init__(self, text, tag)
 
     @classmethod
-    def from_p(cls, p):
+    def from_p(cls, p, of=3, tag='^'):
         n = sum((p <= 0.001, p <= 0.01, p <= 0.05))
-        return cls(n)
+        return cls(n, of, tag)
 
     def _get_tex_core(self, env):
         txt = self._get_core(env)
@@ -2095,25 +2095,29 @@ def stat(x, fmt="%.2f", stars=None, of=3, tag='math', drop0=False):
         return FMText([Number(x, None, fmt, drop0), Stars(stars, of=of)], tag)
 
 
-def eq(name, result, subscript=None, fmt='%.2f', stars=None, of=3,
-       drop0=False):
+def eq(name, result, subscript=None, fmt='%.2f', stars=None, of=3, drop0=False):
+    "``$name_{subscript} = result^stars$``"
     symbol_ = symbol(name, subscript, None)
     stat_ = stat(result, fmt, stars, of, None, drop0)
     return FMText([symbol_, Text(' = '), stat_], 'math')
 
 
-def peq(content, subscript=None, stars=None, of=3):
+def peq(p, subscript=None, stars=None, of=3):
     symbol_ = symbol('p', subscript, None)
 
-    if content < .001:
+    if p < .001:
         eq_ = Text(' ')
     else:
         eq_ = Text(' = ')
 
     if stars is None:
-        return FMText([symbol_, eq_, P(content)], 'math')
+        return FMText([symbol_, eq_, P(p)], 'math')
     else:
-        return FMText([symbol_, eq_, P(content), Stars(stars, of)], 'math')
+        if stars is True:
+            stars_obj = Stars.from_p(p, of)
+        else:
+            stars_obj = Stars(stars, of)
+        return FMText([symbol_, eq_, P(p), stars_obj], 'math')
 
 
 def delim_list(items, delimiter=', '):
