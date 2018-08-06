@@ -251,6 +251,27 @@ def _ndvar_epochs_reject(data, reject):
     return reject
 
 
+def _sensor_info(data, vmax, mne_info, user_info=None, mult=1):
+    if data == 'eeg' or data == 'eeg&eog':
+        info = _cs.eeg_info(vmax, mult)
+        summary_vmax = 0.1 * vmax if vmax else None
+        summary_info = _cs.eeg_info(summary_vmax, mult)
+    elif data == 'mag':
+        info = _cs.meg_info(vmax, mult)
+        summary_vmax = 0.1 * vmax if vmax else None
+        summary_info = _cs.meg_info(summary_vmax, mult)
+    elif data == 'grad':
+        info = _cs.meg_info(vmax, mult, 'T/cm', '∆U')
+        summary_vmax = 0.1 * vmax if vmax else None
+        summary_info = _cs.meg_info(summary_vmax, mult, 'T/cm', '∆U')
+    else:
+        raise ValueError("data=%r" % data)
+    info.update(proj='z root', samplingrate=mne_info['sfreq'], summary_info=summary_info)
+    if user_info:
+        info.update(user_info)
+    return info
+
+
 def epochs(ds, tmin=-0.1, tmax=None, baseline=None, decim=1, mult=1, proj=False,
            data=None, reject=None, exclude='bads', info=None, name=None,
            raw=None, sensors=None, i_start='i_start', tstop=None, sysname=None):
@@ -738,11 +759,13 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
             data = _guess_ndvar_data_type(raw.info)
         picks = _picks(raw.info, data, exclude)
         dim = sensor_dim(raw, picks)
+        info = _sensor_info(data, None, raw.info)
     else:
         assert data is None
         dim = SourceSpace.from_mne_source_spaces(inv['src'], src, subjects_dir,
                                                  parc, label)
         inv = prepare_inverse_operator(inv, 1, lambda2, method)
+        info = {}  # FIXME
 
     out = []
     for start, stop in zip(i_start, i_stop):
@@ -755,7 +778,7 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
         if decim != 1:
             x = x[:, ::decim]
         time = UTS(0, float(decim) / raw.info['sfreq'], x.shape[1])
-        out.append(NDVar(x, (dim, time), _cs.meg_info(), name))
+        out.append(NDVar(x, (dim, time), info, name))
 
     if scalar:
         return out[0]
@@ -801,24 +824,7 @@ def epochs_ndvar(epochs, name=None, data=None, exclude='bads', mult=1,
     if data is None:
         data = _guess_ndvar_data_type(epochs.info)
     picks = _picks(epochs.info, data, exclude)
-    if data == 'eeg' or data == 'eeg&eog':
-        info_ = _cs.eeg_info(vmax, mult)
-        summary_vmax = 0.1 * vmax if vmax else None
-        summary_info = _cs.eeg_info(summary_vmax, mult)
-    elif data == 'mag':
-        info_ = _cs.meg_info(vmax, mult)
-        summary_vmax = 0.1 * vmax if vmax else None
-        summary_info = _cs.meg_info(summary_vmax, mult)
-    elif data == 'grad':
-        info_ = _cs.meg_info(vmax, mult, 'T/cm', '∆U')
-        summary_vmax = 0.1 * vmax if vmax else None
-        summary_info = _cs.meg_info(summary_vmax, mult, 'T/cm', '∆U')
-    else:
-        raise ValueError("data=%r" % data)
-    info_.update(proj='z root', samplingrate=epochs.info['sfreq'],
-                 summary_info=summary_info)
-    if info:
-        info_.update(info)
+    info_ = _sensor_info(data, vmax, epochs.info, info, mult)
 
     x = epochs.get_data()
     if len(picks) < x.shape[1]:
