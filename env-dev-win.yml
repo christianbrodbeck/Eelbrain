@@ -20,7 +20,7 @@ dependencies:
 - mne
 - mkl
 - pyqt
-- vtk
+- vtk >= 8.1.1
 - h5py
 - pandas
 - scikit-learn
@@ -45,6 +45,8 @@ dependencies:
 - nose
 - pytest
 - pytest-cov
+- pytest-faulthandler
+#- pytest-sugar  # errors on Linux
 # testing of R integration
 - rpy2
 - r-car
@@ -53,9 +55,4 @@ dependencies:
 - nibabel >= 2.0, != 2.3.0  # read_annot bug
 - mayavi >= 4.6
 - pysurfer >= 0.7
-- pip:
-  - nitime
-  - nilearn
-  - neo
-  - pytest-sugar
-  - pytest-faulthandler
+- nilearn
