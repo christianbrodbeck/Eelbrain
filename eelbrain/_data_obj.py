@@ -8944,11 +8944,6 @@ class SourceSpaceBase(Dimension):
         index = np.hstack(np.in1d(s, o) for s, o in zip(self.vertices, other.vertices))
         return self[index]
 
-    def set_parc(self, parc):
-        """Superseded. Use :func:`eelbrain.set_parc`."""
-        raise RuntimeError("The SourceSpace.set_parc() method has been "
-                           "removed. Use eelbrain.set_parc() instead")
-
     @property
     def values(self):
         raise NotImplementedError
@@ -9238,11 +9233,6 @@ class UTS(Dimension):
         self.tstop = self.tmin + self.tstep * self.nsamples
         self._times = None
         self._n_decimals = max(n_decimals(self.tmin), n_decimals(self.tstep))
-
-    def set_tmin(self, tmin):
-        """Superseded. Use :func:`eelbrain.set_tmin`."""
-        raise RuntimeError("The UTS.set_tmin() method has been removed. Use "
-                           "eelbrain.set_tmin() instead")
 
     @property  # not a LazyProperty because ithas to change after .set_time()
     def times(self):
