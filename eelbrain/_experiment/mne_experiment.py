@@ -4166,6 +4166,8 @@ class MneExperiment(FileTree):
             # save cov value
             with open(self.get('cov-info-file', mkdir=True), 'w') as fid:
                 fid.write('%s\n' % reg_vs[i])
+        elif reg is not None:
+            raise RuntimeError(f"reg={reg!r} in {params}")
 
         cov.save(dest)
 
