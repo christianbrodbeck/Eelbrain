@@ -3839,23 +3839,21 @@ class NDVar(object):
             if names is not None:
                 raise TypeError("Can only specify names or last, not both")
             elif last not in self.dimnames:
-                raise ValueError("NDVar has no %r dimension" % (last,))
+                raise ValueError(f"{self} has no dimension called {last!r}")
             dims = list(self.dimnames)
             dims.remove(last)
             dims.append(last)
             return tuple(dims)
 
         if not all(n is None or n in self.dimnames for n in names):
-            raise ValueError("%s contains dimension that is not in %r" %
-                             (names, self))
+            raise ValueError(f"{names} contains dimension not in {self}")
         elif len(names) != len(self.dims):
-            raise ValueError("Wrong number of dimensions. NDVar has %i "
-                             "dimensions: %s" % (len(self.dims), self))
+            raise ValueError(f"{names}: wrong number of dimensions for {self}")
         elif any(names.count(n) > 1 for n in names if n is not None):
-            raise ValueError("Dimension specified twice in " + repr(names))
+            raise ValueError(f"{names}: duplicate name")
         elif None in names:
             if len(names) != len(self.dims):
-                raise ValueError("Ambiguous dimension specification")
+                raise ValueError(f"{names}: ambiguous (more than one unspecified dimension)")
             none_dims = [n for n in self.dimnames if n not in names]
             return tuple(n if n is not None else none_dims.pop(0) for
                          n in names)

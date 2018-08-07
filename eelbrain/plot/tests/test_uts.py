@@ -75,10 +75,21 @@ def test_uts():
     eq_(p.get_ylim(), (1, -1))
     p.close()
 
-    p = plot.UTS(x_long, h=2, w=5, xlim=2)
+    p = plot.UTS(x_long, h=2, w=5, xlim=2, show=False)
     eq_(p.get_xlim(), (-1, 1))
     p.set_xlim(2, 4)
     eq_(p.get_xlim(), (2, 4))
+    p.close()
+
+    # multiple y with xax
+    y1 = ds.eval("uts[(A == 'a1') & (B == 'b1')]")
+    y1.name='y'
+    y2 = ds.eval("uts[(A == 'a0') & (B == 'b1')]")
+    y2.name='y2'
+    rm = ds.eval("rm[(A == 'a0') & (B == 'b1')]")
+    p = plot.UTS(y1, rm, show=False)
+    p.close()
+    p = plot.UTS([y1, y2], rm, show=False)
     p.close()
 
 

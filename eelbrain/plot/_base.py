@@ -548,7 +548,7 @@ def fix_vlim_for_cmap(vmin, vmax, cmap):
     return vmin, vmax
 
 
-def find_data_dims(ndvar, dims):
+def find_data_dims(ndvar, dims, extra_dim=None):
     """Find dimensions in data.
 
     Raise a ValueError if the dimensions don't match, except when the ``case``
@@ -560,6 +560,8 @@ def find_data_dims(ndvar, dims):
         NDVar instance to query.
     dims : int | tuple of str
         The requested dimensions. ``None`` for a free dimensions.
+    extra_dim : str
+        Dimension that will be removed by other operation (e.g. ``xax``).
 
     Returns
     -------
@@ -569,19 +571,40 @@ def find_data_dims(ndvar, dims):
         Dimension names with all instances of ``None`` replaced by a string.
     """
     if isinstance(dims, int):
+        if extra_dim:
+            dims += 1
+
+        dimnames = list(ndvar.dimnames)
         if ndvar.ndim == dims:
-            return None, ndvar.dimnames
-        elif ndvar.ndim - 1 == dims:
-            return ndvar.dimnames[0], ndvar.dimnames[1:]
+            agg = None
+        elif ndvar.ndim == dims + 1:
+            for agg in dimnames:
+                if agg != extra_dim:
+                    break
+            dimnames.remove(agg)
         else:
-            raise ValueError("NDVar does not have the right number of dimensions")
+            raise ValueError(f"y={ndvar} has wrong number of dimensions; {dims} or {dims + 1} required")
     else:
-        if len(dims) == ndvar.ndim:
-            return None, ndvar.get_dimnames(dims)
-        elif len(dims) == ndvar.ndim - 1 and ndvar.has_case:
-            return 'case', ndvar.get_dimnames(('case',) + dims)[1:]
+        required_dims = (extra_dim,) + dims if extra_dim else dims
+        if ndvar.ndim == len(required_dims):
+            agg = None
+            dimnames = list(ndvar.get_dimnames(required_dims))
+        elif ndvar.ndim  == len(required_dims) + 1:
+            if any(d is None for d in required_dims):
+                if ndvar.has_case and 'case' not in required_dims:
+                    agg = 'case'
+                else:
+                    raise ValueError(f"y={ndvar} is ambiguous for required dimensions {required_dims}")
+            else:
+                agg = None
+            dimnames = list(ndvar.get_dimnames((agg,) + required_dims))
+            agg = dimnames.pop(0)
         else:
-            raise ValueError("NDVar does not have the right number of dimensions")
+            raise ValueError(f"y={ndvar} has wrong dimensions; {required_dims} or one more required")
+
+        if extra_dim:
+            dimnames.remove(extra_dim)
+        return agg, tuple(dimnames)
 
 
 def pop_dict_arg(kwargs, key):
@@ -633,6 +656,17 @@ class LayerData(object):
 class PlotData(object):
     """Organize nd-data for plotting
 
+    Parameters
+    ----------
+    axes : list of {None | list of NDVar}
+        Data to be plotted on each axes.
+    dims : list of str
+        Dimensions assigned to the axes.
+    title : str
+        Default window title.
+    plot_names : list of str
+        Titles for the plots (all non-None axes).
+
     Attributes
     ----------
     plot_used : list of bool
@@ -642,16 +676,21 @@ class PlotData(object):
     data : list of list of NDVar
         The processed data to plot (for backwards compatibility).
     dims : tuple of str
-        Names of the dimensions.
+        Dimensions assigned to the axes.
     title : str
         Data description for the plot frame.
+    plot_names : list of str
+        Titles for the plots.
     """
-    def __init__(self, axes, dims, title="unnamed data"):
+    def __init__(self, axes, dims, title="unnamed data", plot_names=None):
         self.plot_used = [ax is not None for ax in axes]
         self.plot_data = [ax for ax in axes if ax is not None]
         self.n_plots = len(self.plot_data)
         self.dims = dims
         self.frame_title = title
+        if plot_names is not None:
+            assert len(plot_names) == self.n_plots
+        self._plot_names = plot_names
 
     def _cannot_skip_axes(self, parent):
         if not all(self.plot_used):
@@ -690,24 +729,25 @@ class PlotData(object):
         """
         if isinstance(y, cls):
             return y
-        elif hasattr(y, '_default_plot_obj'):
-            y = y._default_plot_obj
-
         sub = assub(sub, ds)
-        if isinstance(y, MNE_EPOCHS):
+        if hasattr(y, '_default_plot_obj'):
+            ys = y._default_plot_obj
+        elif isinstance(y, MNE_EPOCHS):
             # Epochs are Iterators over arrays
-            y = asndvar(y, sub, ds)
+            ys = (asndvar(y, sub, ds),)
+        elif not isinstance(y, (tuple, list, Iterator)):
+            ys = (y,)
+        else:
+            ys = y
 
-        if isinstance(y, (tuple, list, Iterator)):
-            if xax is not None:
-                raise TypeError(
-                    "xax can only be used to divide y into different axes if y is "
-                    "a single NDVar (got y=%r)." % (y,))
+        ax_names = None
+        if xax is None:
+            # y=[[y1], y2], xax=None
             axes = []
-            for ax in y:
+            for ax in ys:
                 if ax is None:
                     axes.append(None)
-                elif isinstance(ax, (tuple, list)):
+                elif isinstance(ax, (tuple, list, Iterator)):
                     layers = []
                     for layer in ax:
                         layer = asndvar(layer, sub, ds)
@@ -719,9 +759,8 @@ class PlotData(object):
                     agg, dims = find_data_dims(ax, dims)
                     layer = aggregate(ax, agg)
                     axes.append([layer])
-
-            # determine names
             x_name = None
+            # determine y names
             y_names = []
             for layers in axes:
                 if layers is None:
@@ -729,56 +768,47 @@ class PlotData(object):
                 for layer in layers:
                     if layer.name and layer.name not in y_names:
                         y_names.append(layer.name)
-            if len(y_names) == 0:
-                y_name = None
-            elif len(y_names) == 1:
-                y_name = y_names[0]
-            else:
-                y_name = ' | '.join(y_names)
+        elif any(isinstance(ax, (tuple, list, Iterator)) for ax in ys):
+            raise TypeError(f"y={y!r}, xax={xax!r}: y can't be nested list if xax is specified, use single list")
         else:
-            y = asndvar(y, sub, ds)
-            y_name = y.name
-
-            # create list of plots
+            ys = [asndvar(layer, sub, ds) for layer in ys]
+            y_names = [layer.name for layer in ys]
+            layers = []
             if isinstance(xax, str) and xax.startswith('.'):
+                # y=[y1, y2], xax='.dim'
                 dimname = xax[1:]
-                if dimname == 'case':
-                    if not y.has_case:
-                        raise ValueError(
-                            "Got xax='.case', but y does not have case dimension: "
-                            "y=%r" % (y,))
-                    values = range(len(y))
-                    unit = ''
-                else:
-                    dim = y.get_dim(dimname)
-                    values = dim.values
-                    unit = getattr(dim, 'unit', '')
-
-                agg, dims = find_data_dims(y, (dimname,) + dims)
-                dims = dims[1:]
-
-                name = dimname.capitalize() + ' = %s'
-                if unit:
-                    name += ' ' + unit
-                axes = [[aggregate(y.sub(name=name % v, **{dimname: v}), agg)] for v in values]
+                xax_dim = None
+                for layer in ys:
+                    dim = layer.get_dim(dimname)
+                    if xax_dim is None:
+                        xax_dim = dim
+                    elif dim != xax_dim:
+                        raise ValueError(f"y={y}, xax={xax!r}: dimension not equal on different y")
+                    agg, dims = find_data_dims(layer, dims, dimname)
+                    layers.append([aggregate(layer.sub(**{dimname: v}), agg) for v in dim])
                 x_name = xax
+                unit = f' {xax_dim._axis_unit}' if xax_dim._axis_unit else ''
+                ax_names = [f'{v}{unit}' for v in xax_dim]
             else:
-                agg, dims = find_data_dims(y, dims)
-                if xax is None:
-                    axes = [[aggregate(y, agg)]]
-                    x_name = None
-                else:
-                    xax = ascategorial(xax, sub, ds)
-                    axes = []
-                    for cell in xax.cells:
-                        v = y[xax == cell]
-                        v.name = cellname(cell)
-                        axes.append([aggregate(v, agg)])
-                    x_name = xax.name
+                # y=[y1, y2], xax=categorial
+                xax = ascategorial(xax, sub, ds)
+                xax_indexes = [xax == cell for cell in xax.cells]
+                for layer in ys:
+                    agg, dims = find_data_dims(layer, dims)
+                    layers.append([aggregate(layer.sub(index), agg) for index in xax_indexes])
+                x_name = xax.name
+                ax_names = [cellname(cell) for cell in xax.cells]
+            axes = list(zip(*layers))
+        if len(y_names) == 0:
+            y_name = None
+        elif len(y_names) == 1:
+            y_name = y_names[0]
+        else:
+            y_name = ', '.join(y_names)
 
         axes = [[LayerData(l) for l in ax] if ax else ax for ax in axes]
         title = frame_title(y_name, x_name)
-        return cls(axes, dims, title)
+        return cls(axes, dims, title, ax_names)
 
     @classmethod
     def empty(cls, plots, dims, title):
@@ -824,6 +854,20 @@ class PlotData(object):
     def data(self):
         "For backwards compatibility with nested list of NDVar"
         return [[l.y for l in ax] for ax in self.plot_data]
+
+    @LazyProperty
+    def plot_names(self):
+        if self._plot_names:
+            return self._plot_names
+        names = []
+        for layers in self.plot_data:
+            for layer in layers:
+                if layer.y.name:
+                    names.append(layer.y.name)
+                    break
+            else:
+                names.append(None)
+        return names
 
 
 def aggregate(y, agg):
@@ -1037,14 +1081,9 @@ class EelFigure(object):
             return
         elif axtitle is True or isinstance(axtitle, str):
             if names is None:
-                names = []
-                for layers in data.plot_data:
-                    for layer in layers:
-                        if layer.y.name:
-                            names.append(layer.y.name)
-                            break
-                    else:
-                        names.append(None)
+                if data is None:
+                    raise RuntimeError(f"data=None and names=None with axtitle={axtitle!r}")
+                names = data.plot_names
 
             if axtitle is True:
                 axtitle = names
