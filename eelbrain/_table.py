@@ -185,7 +185,7 @@ def frequencies(y, x=None, of=None, sub=None, ds=None):
     return out
 
 
-def melt(name, cells, cell_var_name, ds):
+def melt(name, cells, cell_var_name, ds, labels=None):
     """
     Restructure a Dataset such that a measured variable is in a single column
 
@@ -205,6 +205,9 @@ def melt(name, cells, cell_var_name, ds):
         Name of the variable to contain the cell identifier.
     ds : Dataset
         Input Dataset.
+    labels : dict
+        Labels mapping from names in ``cells`` to labels assigned in the new
+        :class:`Factor` describing the cells.
 
     Examples
     --------
@@ -228,6 +231,9 @@ def melt(name, cells, cell_var_name, ds):
     6   y2
 
     """
+    if labels is None:
+        labels = {}
+
     # find source cells
     if isinstance(cells, str):
         cell_expression = cells
@@ -255,7 +261,7 @@ def melt(name, cells, cell_var_name, ds):
         for src in cells:
             if src != cell:
                 del cell_ds[src]
-        cell_ds[cell_var_name, :] = cell_value
+        cell_ds[cell_var_name, :] = labels.get(cell_value, cell_value)
         dss.append(cell_ds)
     out = combine(dss)
     return out
