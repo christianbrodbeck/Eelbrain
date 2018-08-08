@@ -1025,7 +1025,7 @@ class EelFigure(object):
         names : sequence of str
             Instead of using ``epochs`` name attributes, use these names.
         """
-        if not axtitle:
+        if axtitle is False or axtitle is None:
             return
 
         if axes is None:
@@ -2366,7 +2366,7 @@ class TimeSlicer(object):
             new_i = min(self._time_dim.nsamples - 1, current_i + offset)
         else:
             new_i = max(0, current_i + offset)
-        self._set_time(self._time_dim.times[new_i], True)
+        self._set_time(self._time_dim[new_i], True)
 
     def set_time(self, time):
         """Set the time point to display

@@ -298,6 +298,7 @@ temp = {
     # (method) plots
     'plot-dir': join('{root}', 'plots'),
     'plot-file': join('{plot-dir}', '{analysis}', '{name}.{ext}'),
+    'methods-dir': join('{root}', 'methods'),
 
     # result output files
     # data processing parameters
@@ -4238,8 +4239,7 @@ class MneExperiment(FileTree):
         """Make the forward model"""
         dst = self.get('fwd-file')
         if exists(dst):
-            fwd_mtime = getmtime(dst)
-            if fwd_mtime > self._fwd_mtime():
+            if cache_valid(getmtime(dst), self._fwd_mtime()):
                 return
         elif self.get('modality') != '':
             raise NotImplementedError("Source reconstruction with EEG")
@@ -5421,23 +5421,29 @@ class MneExperiment(FileTree):
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
         report.save_html(dst)
 
-    def make_report_coreg(self, file_name):
+    def make_report_coreg(self, file_name=None, **state):
         """Create HTML report with plots of the MEG/MRI coregistration
 
         Parameters
         ----------
         file_name : str
-            Where to save the report.
+            Where to save the report (default is in the root/methods director).
+        ...
+            State parameters.
         """
         from matplotlib import pyplot
         from mayavi import mlab
 
-        mri = self.get('mri')
+        mri = self.get('mri', **state)
+        group = self.get('group')
         title = 'Coregistration'
+        if group != 'all':
+            title += ' ' + group
         if mri:
             title += ' ' + mri
+        if file_name is None:
+            file_name = join(self.get('methods-dir', mkdir=True), title + '.html')
         report = Report(title)
-
         for subject in self:
             mrisubject = self.get('mrisubject')
             fig = self.plot_coreg()
@@ -5735,27 +5741,37 @@ class MneExperiment(FileTree):
 
         return Brain(mrisubject, **brain_args)
 
-    def plot_coreg(self, ch_type=None, dig=True, **kwargs):
+    def plot_coreg(self, dig=True, parallel=True, **state):
         """Plot the coregistration (Head shape and MEG helmet)
 
         Parameters
         ----------
-        ch_type : 'meg' | 'eeg'
-            Plot only MEG or only EEG sensors (default is both).
         dig : bool
-            Plot the digitization points (default True).
+            Plot the digitization points (default True; 'fiducials' to plot
+            fiducial points only).
+        parallel : bool
+            Set parallel view.
         ...
             State parameters.
 
         Notes
         -----
-        Uses :func:`mne.viz.plot_trans`
+        Uses :func:`mne.viz.plot_alignment`
         """
-        self.set(**kwargs)
-        raw = self.load_raw()
-        return mne.viz.plot_trans(raw.info, self.get('trans-file'),
-                                  self.get('mrisubject'), self.get('mri-sdir'),
-                                  ch_type, 'head', dig=dig)
+        self.set(**state)
+        with self._temporary_state:
+            raw = self.load_raw(raw='raw')
+        fig = mne.viz.plot_alignment(
+            raw.info, self.get('trans-file'), self.get('mrisubject'),
+            self.get('mri-sdir'), meg=('helmet', 'sensors'), dig=dig,
+            interaction='terrain')
+        if parallel:
+            fig.scene.camera.parallel_projection = True
+            fig.scene.camera.parallel_scale = .2
+            fig.scene.camera.position = [0, .5, .04]
+            fig.scene.camera.focal_point = [0, 0, .04]
+            fig.render()
+        return fig
 
     def plot_whitened_gfp(self, s_start=None, s_stop=None, run=None):
         """Plot the GFP of the whitened evoked to evaluate the the covariance matrix

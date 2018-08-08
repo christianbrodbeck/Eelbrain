@@ -11,7 +11,7 @@ dependencies:
 - python >= 3.6
 - pip
 - numpy
-- scipy >= 0.17, !=1.0.0  # 1.0 has bug: UnboundLocalError: local variable 'iprint' referenced before assignment
+- scipy >= 0.17, != 1.0.0  # 1.0 has bug: UnboundLocalError: local variable 'iprint' referenced before assignment
 - matplotlib
 - pyarrow
 - pillow
@@ -32,7 +32,7 @@ dependencies:
 - colormath >= 2.1
 - tqdm >= 4.19
 - keyring >= 5
-- wxpython >=4
+- wxpython >= 4
 # building
 - setuptools >= 17
 - cython
@@ -50,7 +50,7 @@ dependencies:
 - r-car
 # - r-ez  # requires ncil channel
 # plotting brains
-- nibabel >= 2.0, !=2.3.0  # read_annot bug
+- nibabel >= 2.0, != 2.3.0  # read_annot bug
 - mayavi >= 4.6
 - pysurfer >= 0.7
 - pip:
