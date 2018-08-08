@@ -56,6 +56,7 @@ class CaptureLog(object):
         if logger.level == 0 or logger.level > self.level:
             self._old_level = logger.level
             logger.setLevel(self.level)
+        return logger
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.handler.close()
