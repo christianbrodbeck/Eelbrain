@@ -1073,6 +1073,12 @@ def test_ndvar_indexing():
     test_ndvar_index(x, 'source', 'lh', slice(n_lh), False)
     test_ndvar_index(x, 'source', 'rh', slice(n_lh, None), False)
 
+    # index dim != dim
+    source_rh = x.source[x.source.lh_n:]
+    index = NDVar(np.arange(len(source_rh)) > 100, (source_rh,))
+    assert_dataobj_equal(x.sub(source=index), x.sub(source='rh').sub(source=index))
+    assert_raises(IndexError, x.sub(source='lh').sub, index)
+
     # multiple arguments
     y = ds['utsnd'].sub(sensor=[1, 2], time=[0, 0.1])
     eq_(y.shape, (60, 2, 2))

@@ -7057,16 +7057,16 @@ class Dimension(object):
 
     def _array_index_for_ndvar(self, arg):
         if arg.x.dtype.kind != 'b':
-            raise IndexError("Only NDVars with boolean data can serve "
-                             "as indexes. Got %s." % repr(arg))
+            raise IndexError(f"{arg}: only NDVars with boolean data can serve as indexes")
         elif arg.ndim != 1:
-            raise IndexError("Only NDVars with ndim 1 can serve as "
-                             "indexes. Got %s." % repr(arg))
-        elif arg.dims[0] != self:
-            raise IndexError("Index dimension %s is different from data "
-                             "dimension" % arg.dims[0].name)
-        else:
+            raise IndexError(f"{arg}: only NDVars with ndim == 1 can serve as indexes")
+        dim = arg.dims[0]
+        if not isinstance(dim, self.__class__):
+            raise IndexError(f"{arg}: must have {self.__class__} dimension")
+        elif dim == self:
             return arg.x
+        index_to_arg = self._array_index_to(dim)
+        return index_to_arg[arg.x]
 
     def _array_index_for_slice(self, start=None, stop=None, step=None):
         if step is not None and not isinstance(step, Integral):
@@ -7090,6 +7090,10 @@ class Dimension(object):
                                 (stop, self._dimname()))
 
         return slice(start_, stop_, step)
+
+    def _array_index_to(self, other):
+        "Int index to access data from self in an order consistent with other"
+        raise NotImplementedError(f"Internal alignment for {self.__class__}")
 
     def _dimname(self):
         if self.name.lower() == self.__class__.__name__.lower():
@@ -7936,6 +7940,14 @@ class Sensor(Dimension):
         else:
             return super(Sensor, self)._array_index(arg)
 
+    def _array_index_to(self, other):
+        "Int index to access data from self in an order consistent with other"
+        try:
+            return np.array([self.names.index(name) for name in other.names])
+        except ValueError:
+            missing = (name for name in other.names if name not in self.names)
+            raise IndexError(f"{other}: contains different sensors {', '.join(missing)}")
+
     def _dim_index(self, index):
         if np.isscalar(index):
             return self.names[index]
@@ -8637,10 +8649,22 @@ class SourceSpaceBase(Dimension):
         return self._n_vert
 
     def __eq__(self, other):
-        return (Dimension.__eq__(self, other) and
-                self.subject == other.subject and len(self) == len(other) and
-                all(np.array_equal(s, o) for s, o in
-                    zip(self.vertices, other.vertices)))
+        return (
+            Dimension.__eq__(self, other) and
+            self.subject == other.subject and
+            self.src == other.src and
+            len(self) == len(other) and
+            all(np.array_equal(s, o) for s, o in zip(self.vertices, other.vertices))
+        )
+
+    def _assert_same_base(self, other):
+        "Assert that ``other`` is based on the same source space"
+        if self.subject != other.subject:
+            raise IndexError(f"Source spaces can not be compared because they are defined on different MRI subjects ({self.subject} vs {other.subject}). Consider using eelbrain.morph_source_space().")
+        elif self.src != other.src:
+            raise IndexError(f"Source spaces of different types ({self.src} vs {other.src})")
+        elif self.subjects_dir != other.subjects_dir:
+            raise IndexError(f"Source spaces have differing subjects_dir:\n{self.subjects_dir}\n{other.subjects_dir}")
 
     def __getitem__(self, index):
         raise NotImplementedError
@@ -8843,6 +8867,14 @@ class SourceSpaceBase(Dimension):
         idx = np.in1d(stc_vertices, label.vertices, True)
         return idx
 
+    def _array_index_to(self, other):
+        "Int index to access data from self in an order consistent with other"
+        self._assert_same_base(other)
+        if any(np.any(np.setdiff1d(o, s, True)) for s, o in zip(self.vertices, other.vertices)):
+            raise IndexError(f"{other}: contains sources not in {self}")
+        bool_index = np.hstack(np.in1d(s, o) for s, o in zip(self.vertices, other.vertices))
+        return np.flatnonzero(bool_index)
+
     def get_source_space(self, subjects_dir=None):
         "Read the corresponding MNE source space"
         if self.src is None:
@@ -8896,22 +8928,8 @@ class SourceSpaceBase(Dimension):
             The intersection with dim (returns itself if dim and self are
             equal)
         """
-        if self.subject != other.subject:
-            raise ValueError("Source spaces can not be compared because they "
-                             "are defined on different MRI subjects (%s, %s). "
-                             "Consider using eelbrain.morph_source_space()."
-                             % (self.subject, other.subject))
-        elif self.src != other.src:
-            raise ValueError("Source spaces can not be compared because they "
-                             "are defined with different spatial decimation "
-                             "parameters (%s, %s)." % (self.src, other.src))
-        elif self.subjects_dir != other.subjects_dir:
-            raise ValueError("Source spaces can not be compared because they "
-                             "have differing subjects_dir parameters:\n%s\n%s"
-                             % (self.subjects_dir, other.subjects_dir))
-
-        index = np.hstack(np.in1d(s, o) for s, o
-                          in zip(self.vertices, other.vertices))
+        self._assert_same_base(other)
+        index = np.hstack(np.in1d(s, o) for s, o in zip(self.vertices, other.vertices))
         return self[index]
 
     def set_parc(self, parc):
