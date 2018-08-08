@@ -2056,7 +2056,7 @@ class Report(Section):
         self.add_paragraph(signature)
 
 
-def symbol(symbol, subscript, tag='math'):
+def symbol(symbol, subscript=None, tag='math'):
     if subscript is None:
         return Text(symbol, tag)
     else:
