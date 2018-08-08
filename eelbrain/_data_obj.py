@@ -3637,9 +3637,19 @@ class NDVar(object):
         >>> x_dss_6 = to_dss[:6].dot(x, 'sensor')
         """
         if dim is None:
-            dim = self.dimnames[-1]
-        if self.get_dim(dim) != ndvar.get_dim(dim):
-            raise ValueError("self.{0} != ndvar.{0}".format(dim))
+            for dim in self.dimnames[::-1]:
+                if ndvar.has_dim(dim):
+                    break
+        if dim == 'case':
+            raise NotImplementedError("dim='case': dot-product along Case dimension")
+        dim_x1 = self.get_dim(dim)
+        dim_x2 = ndvar.get_dim(dim)
+        if dim_x1 == dim_x2:
+            x1_index = x2_index = None
+        else:
+            out_dim = dim_x1.intersect(dim_x2)
+            x1_index = None if dim_x1 == out_dim else dim_x1._array_index_to(out_dim)
+            x2_index = None if dim_x2 == out_dim else dim_x2._array_index_to(out_dim)
 
         v1_dimnames = self.get_dimnames((None,) * (self.ndim - 1) + (dim,))
         dims = tuple(self.get_dim(d) for d in v1_dimnames[:-1])
@@ -3653,7 +3663,12 @@ class NDVar(object):
         dims += tuple(ndvar.get_dim(d) for d in v2_dimnames[1 + ndvar.has_case:])
 
         x1 = self.get_data(v1_dimnames)
+        if x1_index is not None:
+            x1 = np.take(x1, x1_index, -1)
         x2 = ndvar.get_data(v2_dimnames)
+        if x2_index is not None:
+            x2 = np.take(x2, x2_index, v2_dimnames.index(dim))
+
         if ndvar.has_case:
             x = np.array([np.tensordot(x1, x2_, 1) for x2_ in x2])
         else:
