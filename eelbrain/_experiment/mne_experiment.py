@@ -1704,9 +1704,14 @@ class MneExperiment(FileTree):
             group = self.get('group', **kwargs)
             subject_ = None
         elif subject in self.get_field_values('group'):
+            if 'group' in kwargs:
+                if kwargs['group'] != subject:
+                    raise ValueError(f"group={kwargs['group']!r} inconsistent with subject={subject!r}")
+                self.set(**kwargs)
+            else:
+                self.set(group=subject, **kwargs)
             group = subject
             subject_ = None
-            self.set(group=group, **kwargs)
         else:
             group = None
             subject_ = subject
@@ -2532,8 +2537,9 @@ class MneExperiment(FileTree):
         ----------
         subject : str
             Subject(s) for which to load epochs. Can be a single subject
-            name or a group name such as 'all'. The default is the current
-            subject in the experiment's state.
+            name or a group name such as ``'all'``. The default (``None``) is
+            the current subject in the experiment's state. ``True`` to load the
+            current group.
         baseline : bool | tuple
             Apply baseline correction using this period. True to use the
             epoch's baseline specification. The default is to not apply baseline
@@ -2661,10 +2667,12 @@ class MneExperiment(FileTree):
         ----------
         subject : str
             Subject(s) for which to load epochs. Can be a single subject
-            name or a group name such as 'all' (warning: loading single trial 
-            data for multiple subjects at once uses a lot of memory, which can 
-            lead to a periodically unresponsive terminal). The default is the 
-            current subject in the experiment's state.
+            name or a group name such as ``'all'``. The default (``None``) is
+            the current subject in the experiment's state. ``True`` to load the
+            current group.
+            Warning: loading single trial data for multiple subjects at once
+            uses a lot of memory, which can lead to a periodically unresponsive
+            terminal).
         sns_baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
@@ -2745,8 +2753,9 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        subject : str (state)
-            Subject for which to load events.
+        subject : str
+            Subject for which to load events (default is the current subject
+            in the experiment's state).
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from the 'bads-file'. Alternatively,
@@ -2849,9 +2858,10 @@ class MneExperiment(FileTree):
         Parameters
         ----------
         subject : str
-            Subject(s) for which to load evoked files. Can be a single subject
-            name or a group name such as 'all'. The default is the current
-            subject in the experiment's state.
+            Subject(s) for which to load evoked responses. Can be a single subject
+            name or a group name such as ``'all'``. The default (``None``) is
+            the current subject in the experiment's state. ``True`` to load the
+            current group.
         baseline : bool | tuple
             Apply baseline correction using this period. True to use the
             epoch's baseline specification. The default is to not apply baseline
@@ -2966,7 +2976,7 @@ class MneExperiment(FileTree):
         Parameters
         ----------
         subject : str
-            Subject(s) for which to load evoked files. Can be a single subject
+            Subject(s) for which to load epochs. Can be a single subject
             name or a group name such as 'all'. The default is the current
             subject in the experiment's state.
         sns_baseline : None | True | tuple
@@ -3007,9 +3017,10 @@ class MneExperiment(FileTree):
         Parameters
         ----------
         subject : str
-            Subject(s) for which to load evoked files. Can be a single subject
-            name or a group name such as 'all'. The default is the current
-            subject in the experiment's state.
+            Subject(s) for which to load evoked responses. Can be a single subject
+            name or a group name such as ``'all'``. The default (``None``) is
+            the current subject in the experiment's state. ``True`` to load the
+            current group.
         sns_baseline : None | True | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
@@ -3051,9 +3062,10 @@ class MneExperiment(FileTree):
         Parameters
         ----------
         subject : str
-            Subject(s) for which to load evoked files. Can be a single subject
-            name or a group name such as 'all'. The default is the current
-            subject in the experiment's state.
+            Subject(s) for which to load evoked responses. Can be a single subject
+            name or a group name such as ``'all'``. The default (``None``) is
+            the current subject in the experiment's state. ``True`` to load the
+            current group.
         sns_baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
@@ -3367,8 +3379,9 @@ class MneExperiment(FileTree):
         ----------
         subject : str
             Subject(s) for which to load events. Can be a single subject
-            name or a group name such as 'all'. The default is the current
-            subject in the experiment's state.
+            name or a group name such as ``'all'``. The default (``None``) is
+            the current subject in the experiment's state. ``True`` to load the
+            current group.
         reject : bool | 'keep'
             Reject bad trials. For True, bad trials are removed from the
             Dataset. For 'keep', the 'accept' variable is added to the Dataset
@@ -5817,7 +5830,10 @@ class MneExperiment(FileTree):
         Parameters
         ----------
         subject : str
-            Subject or group name (default is current subject).
+            Subject(s) for which to plot evoked responses. Can be a single subject
+            name or a group name such as ``'all'``. The default (``None``) is
+            the current subject in the experiment's state. ``True`` to load the
+            current group.
         separate : bool
             When plotting a group, plot all subjects separately instead or the group
             average (default False).
