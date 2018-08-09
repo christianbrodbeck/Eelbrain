@@ -69,7 +69,7 @@ def default_info(meas, **kwargs):
     return kwargs
 
 
-def cluster_pmap_info():
+def for_cluster_pmap():
     return {
         'meas': 'p',
         'cmap': 'sig',
@@ -78,7 +78,7 @@ def cluster_pmap_info():
     }
 
 
-def sig_info(p=.05, contours={.01: '.5', .001: '0'}):
+def for_p_map(p=.05, contours={.01: '.5', .001: '0'}):
     "Info dict for significance map"
     return {
         'meas': 'p',
@@ -88,7 +88,7 @@ def sig_info(p=.05, contours={.01: '.5', .001: '0'}):
     }
 
 
-def stat_info(meas, c0=None, c1=None, c2=None, tail=0, **kwargs):
+def for_stat_map(meas, c0=None, c1=None, c2=None, tail=0, **kwargs):
     if 'contours' not in kwargs:
         contours = kwargs['contours'] = {}
         if c0 is not None:
@@ -119,7 +119,7 @@ def stat_info(meas, c0=None, c1=None, c2=None, tail=0, **kwargs):
     return info
 
 
-def eeg_info(vmax=None, mult=1, unit='V', meas="V"):
+def for_eeg(vmax=None, mult=1, unit='V', meas="V"):
     unit = _unit_fmt[1 / mult] % unit
     out = dict(cmap='xpolar', meas=meas, unit=unit)
     if vmax is not None:
@@ -127,7 +127,7 @@ def eeg_info(vmax=None, mult=1, unit='V', meas="V"):
     return out
 
 
-def meg_info(vmax=None, mult=1, unit='T', meas="B"):
+def for_meg(vmax=None, mult=1, unit='T', meas="B"):
     unit = _unit_fmt[1 / mult] % unit
     out = dict(cmap='xpolar', meas=meas, unit=unit)
     if vmax is not None:

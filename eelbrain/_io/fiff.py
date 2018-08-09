@@ -253,17 +253,17 @@ def _ndvar_epochs_reject(data, reject):
 
 def _sensor_info(data, vmax, mne_info, user_info=None, mult=1):
     if data == 'eeg' or data == 'eeg&eog':
-        info = _info.eeg_info(vmax, mult)
+        info = _info.for_eeg(vmax, mult)
         summary_vmax = 0.1 * vmax if vmax else None
-        summary_info = _info.eeg_info(summary_vmax, mult)
+        summary_info = _info.for_eeg(summary_vmax, mult)
     elif data == 'mag':
-        info = _info.meg_info(vmax, mult)
+        info = _info.for_meg(vmax, mult)
         summary_vmax = 0.1 * vmax if vmax else None
-        summary_info = _info.meg_info(summary_vmax, mult)
+        summary_info = _info.for_meg(summary_vmax, mult)
     elif data == 'grad':
-        info = _info.meg_info(vmax, mult, 'T/cm', '∆U')
+        info = _info.for_meg(vmax, mult, 'T/cm', '∆U')
         summary_vmax = 0.1 * vmax if vmax else None
-        summary_info = _info.meg_info(summary_vmax, mult, 'T/cm', '∆U')
+        summary_info = _info.for_meg(summary_vmax, mult, 'T/cm', '∆U')
     else:
         raise ValueError("data=%r" % data)
     info.update(proj='z root', samplingrate=mne_info['sfreq'], summary_info=summary_info)
@@ -897,11 +897,11 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
         sysname = KIT_NEIGHBORS.get(kit_sys_ids.pop(), sysname)
 
     if data == 'mag':
-        info = _info.meg_info(vmax)
+        info = _info.for_meg(vmax)
     elif data == 'eeg':
-        info = _info.eeg_info(vmax)
+        info = _info.for_eeg(vmax)
     elif data == 'grad':
-        info = _info.meg_info(vmax, unit='T/cm')
+        info = _info.for_meg(vmax, unit='T/cm')
     else:
         raise ValueError("data=%s" % repr(data))
 

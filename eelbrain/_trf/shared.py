@@ -203,7 +203,7 @@ class RevCorrData(object):
             return stat[0]
         elif len(self.ydims) > 1:
             stat = stat.reshape(self.yshape)
-        return NDVar(stat, self.ydims, _info.stat_info(meas), name)
+        return NDVar(stat, self.ydims, _info.for_stat_map(meas), name)
 
     def package_value(self, value, name):
         if not self.ydims:

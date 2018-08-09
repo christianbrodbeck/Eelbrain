@@ -114,7 +114,7 @@ class LM(object):
         if any_flat:
             t[np.logical_and(flat_index, t == 0)] = 0.
             t[np.logical_and(flat_index, t != 0)] *= np.inf
-        info = _info.stat_info('t', term=term)
+        info = _info.for_stat_map('t', term=term)
         return NDVar(t.reshape(self._shape), self.dims, info, term)
 
     def _n_columns(self):

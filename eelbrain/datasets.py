@@ -383,7 +383,7 @@ def get_uts(utsnd=False, seed=0, nrm=False):
             y[i, 4, 25:75] += 0.5 * win * x[shift: 50 + shift]
 
         dims = ('case', sensor, time)
-        ds['utsnd'] = NDVar(y, dims, _info.eeg_info())
+        ds['utsnd'] = NDVar(y, dims, _info.for_eeg())
 
     # nested random effect
     if nrm:

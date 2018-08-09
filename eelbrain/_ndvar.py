@@ -641,7 +641,7 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
     for i in range(len(dim_obj)):
         y[i] = np.mean(cc[i, neighbors[i]])
 
-    info = _info.set_plot_args(x.info, _info.stat_info('r'))
+    info = _info.set_plot_args(x.info, _info.for_stat_map('r'))
     return NDVar(y, (dim_obj,), info, name or x.name)
 
 
