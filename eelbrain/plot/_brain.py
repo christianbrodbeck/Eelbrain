@@ -1308,8 +1308,10 @@ def copy(brain):
     return brain.copy_screenshot()
 
 
-def butterfly(y, cmap=None, vmin=None, vmax=None, hemi=None, xlim=None,
-              name=None, h=2.5, w=5):
+def butterfly(y, cmap=None, vmin=None, vmax=None, surf='inflated',
+              views='lateral', hemi=None,
+              w=5, h=2.5, smoothing_steps=None, mask=False,
+              xlim=None, name=None):
     """Shortcut for a Butterfly-plot with a time-linked brain plot
 
     Parameters
@@ -1318,22 +1320,38 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, hemi=None, xlim=None,
         Data to plot; if ``y`` has a case dimension, the mean is plotted.
         ``y`` can also be a :mod:`~eelbrain.testnd` t-test result, in which
         case a masked parameter map is plotted (p ≤ 0.05).
+    cmap : str | array
+        Colormap (name of a matplotlib colormap).
     vmin : scalar
         Plot data range minimum.
     vmax : scalar
         Plot data range maximum.
+    surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
+        Freesurfer surface to use as brain geometry.
+    views : str | iterator of str
+        View or views to show in the figure. Options are: 'rostral', 'parietal',
+        'frontal', 'ventral', 'lateral', 'caudal', 'medial', 'dorsal'.
     hemi : 'lh' | 'rh'
         Plot only this hemisphere (the default is to plot all hemispheres with
         data in ``y``).
+    w : scalar
+        Butterfly plot width (inches).
+    h : scalar
+        Plot height (inches; applies to butterfly and brain plot).
+    smoothing_steps : None | int
+        Number of smoothing steps if data is spatially undersampled (pysurfer
+        ``Brain.add_data()`` argument).
+    mask : bool | matplotlib color
+        Shade areas that are not in ``src``. Can be matplotlib color, including
+        alpha (e.g., ``(1, 1, 1, 0.5)`` for semi-transparent white). If
+        smoothing  is enabled through ``smoothing_steps``, the mask is added as
+        data layer, otherwise it is added as label. To add a mask independently,
+        use the :meth:`Brain.add_mask` method.
     xlim : scalar | (scalar, scalar)
         Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
         scalar (default is the full x-axis in the data).
     name : str
         The window title (default is y.name).
-    h : scalar
-        Plot height (inches).
-    w : scalar
-        Butterfly plot width (inches).
 
     Returns
     -------
@@ -1387,8 +1405,9 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, hemi=None, xlim=None,
         pos = wx.DefaultPosition
 
     # Brain plot
-    p_brain = brain(y, cmap, vmin, vmax, hemi=hemi, name=name, axh=brain_h,
-                    mask=False, pos=pos)
+    p_brain = brain(y, cmap, vmin, vmax, surf, views, hemi, mask=mask,
+                    smoothing_steps=smoothing_steps, axh=brain_h, name=name,
+                    pos=pos)
     p.link_time_axis(p_brain)
 
     return p, p_brain
