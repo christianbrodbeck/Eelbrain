@@ -15,11 +15,11 @@ from mne.io.constants import FIFF
 from mne.io.kit.constants import KIT
 from mne.minimum_norm import prepare_inverse_operator, apply_inverse_raw
 
-from .. import _colorspaces as _cs
+from .. import _info
 from .._info import BAD_CHANNELS
 from .._utils import ui
 from .._data_obj import (Var, NDVar, Dataset, Case, Sensor, Space, SourceSpace,
-                         VolumeSourceSpace, Space, UTS, _matrix_graph)
+                         VolumeSourceSpace, UTS, _matrix_graph)
 from ..mne_fixes import MNE_EVOKED, MNE_RAW
 
 
@@ -253,17 +253,17 @@ def _ndvar_epochs_reject(data, reject):
 
 def _sensor_info(data, vmax, mne_info, user_info=None, mult=1):
     if data == 'eeg' or data == 'eeg&eog':
-        info = _cs.eeg_info(vmax, mult)
+        info = _info.eeg_info(vmax, mult)
         summary_vmax = 0.1 * vmax if vmax else None
-        summary_info = _cs.eeg_info(summary_vmax, mult)
+        summary_info = _info.eeg_info(summary_vmax, mult)
     elif data == 'mag':
-        info = _cs.meg_info(vmax, mult)
+        info = _info.meg_info(vmax, mult)
         summary_vmax = 0.1 * vmax if vmax else None
-        summary_info = _cs.meg_info(summary_vmax, mult)
+        summary_info = _info.meg_info(summary_vmax, mult)
     elif data == 'grad':
-        info = _cs.meg_info(vmax, mult, 'T/cm', '∆U')
+        info = _info.meg_info(vmax, mult, 'T/cm', '∆U')
         summary_vmax = 0.1 * vmax if vmax else None
-        summary_info = _cs.meg_info(summary_vmax, mult, 'T/cm', '∆U')
+        summary_info = _info.meg_info(summary_vmax, mult, 'T/cm', '∆U')
     else:
         raise ValueError("data=%r" % data)
     info.update(proj='z root', samplingrate=mne_info['sfreq'], summary_info=summary_info)
@@ -897,11 +897,11 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
         sysname = KIT_NEIGHBORS.get(kit_sys_ids.pop(), sysname)
 
     if data == 'mag':
-        info = _cs.meg_info(vmax)
+        info = _info.meg_info(vmax)
     elif data == 'eeg':
-        info = _cs.eeg_info(vmax)
+        info = _info.eeg_info(vmax)
     elif data == 'grad':
-        info = _cs.meg_info(vmax, unit='T/cm')
+        info = _info.meg_info(vmax, unit='T/cm')
     else:
         raise ValueError("data=%s" % repr(data))
 

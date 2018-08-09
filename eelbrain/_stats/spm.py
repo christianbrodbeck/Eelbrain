@@ -4,7 +4,7 @@ from operator import mul
 
 import numpy as np
 
-from .._colorspaces import stat_info
+from .. import _info
 from .._data_obj import (
     Dataset, Factor, Var, NDVar,
     asmodel, asndvar, assub,
@@ -114,7 +114,7 @@ class LM(object):
         if any_flat:
             t[np.logical_and(flat_index, t == 0)] = 0.
             t[np.logical_and(flat_index, t != 0)] *= np.inf
-        info = stat_info('t', term=term)
+        info = _info.stat_info('t', term=term)
         return NDVar(t.reshape(self._shape), self.dims, info, term)
 
     def _n_columns(self):

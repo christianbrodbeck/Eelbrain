@@ -5,8 +5,7 @@ import mne
 from mne import minimum_norm as mn
 import numpy as np
 
-from . import load
-from ._colorspaces import eeg_info
+from . import _info, load
 from ._data_obj import Dataset, Factor, Var, NDVar, Case, Scalar, Sensor, Space, UTS
 from ._design import permute
 
@@ -384,7 +383,7 @@ def get_uts(utsnd=False, seed=0, nrm=False):
             y[i, 4, 25:75] += 0.5 * win * x[shift: 50 + shift]
 
         dims = ('case', sensor, time)
-        ds['utsnd'] = NDVar(y, dims, eeg_info())
+        ds['utsnd'] = NDVar(y, dims, _info.eeg_info())
 
     # nested random effect
     if nrm:

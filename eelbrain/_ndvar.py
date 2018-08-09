@@ -17,8 +17,7 @@ import mne
 import numpy as np
 from scipy import linalg, signal
 
-from . import mne_fixes
-from . import _colorspaces as cs
+from . import _info, mne_fixes
 from ._data_obj import (
     NDVar, Case, Categorial, Dimension, Scalar, SourceSpace, UTS,
     asndvar, combine)
@@ -336,7 +335,7 @@ def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
     x = x_flat.reshape(out_shape)
     if magnitude_out:
         x **= 0.5
-    info = cs.set_info_cs(y.info, cs.default_info('A'))
+    info = _info.set_plot_args(y.info, _info.default_info('A'))
     return NDVar(x, out_dims, info, y.name)
 
 
@@ -642,7 +641,7 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
     for i in range(len(dim_obj)):
         y[i] = np.mean(cc[i, neighbors[i]])
 
-    info = cs.set_info_cs(x.info, cs.stat_info('r'))
+    info = _info.set_plot_args(x.info, _info.stat_info('r'))
     return NDVar(y, (dim_obj,), info, name or x.name)
 
 

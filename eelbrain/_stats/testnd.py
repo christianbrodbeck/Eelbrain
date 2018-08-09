@@ -39,8 +39,7 @@ import scipy.stats
 from scipy import ndimage
 from tqdm import trange
 
-from .. import fmtxt
-from .. import _colorspaces as _cs
+from .. import fmtxt, _info
 from .._celltable import Celltable
 from .._config import CONFIG
 from .._data_obj import (
@@ -486,8 +485,8 @@ class t_contrast_rel(NDTest):
                                 MP_FOR_NON_TOP_LEVEL_FUNCTIONS)
 
         # NDVar map of t-values
-        info = _cs.stat_info('t', t_threshold, tail=tail)
-        info = _cs.set_info_cs(ct.y.info, info)
+        info = _info.stat_info('t', t_threshold, tail=tail)
+        info = _info.set_plot_args(ct.y.info, info)
         t = NDVar(tmap, ct.y.dims[1:], info, 't')
 
         # store attributes
@@ -619,7 +618,7 @@ class corr(NDTest):
         if n_threshold_params == 0 and not samples:
             cdist = None
             r0, r1, r2 = stats.rtest_r((.05, .01, .001), df)
-            info = _cs.stat_info('r', r0, r1, r2)
+            info = _info.stat_info('r', r0, r1, r2)
         elif n_threshold_params > 1:
             raise ValueError("Only one of pmin, rmin and tfce can be specified")
         else:
@@ -632,7 +631,7 @@ class corr(NDTest):
                 r_threshold = None
             else:
                 r_threshold = threshold = None
-            info = _cs.stat_info('r', r_threshold)
+            info = _info.stat_info('r', r_threshold)
 
             cdist = _ClusterDist(y, samples, threshold, 0, 'r', name, tstart,
                                  tstop, criteria, parc)
@@ -667,7 +666,7 @@ class corr(NDTest):
 
         # uncorrected probability
         pmap = stats.rtest_p(r.x, self.df)
-        info = _cs.sig_info()
+        info = _info.sig_info()
         p_uncorrected = NDVar(pmap, r.dims, info, 'p_uncorrected')
         self.p_uncorrected = p_uncorrected
 
@@ -812,8 +811,8 @@ class ttest_1samp(NDTest):
                 run_permutation(opt.t_1samp_perm, cdist, iterator)
 
         # NDVar map of t-values
-        info = _cs.stat_info('t', t_threshold, tail=tail)
-        info = _cs.set_info_cs(ct.y.info, info)
+        info = _info.stat_info('t', t_threshold, tail=tail)
+        info = _info.set_plot_args(ct.y.info, info)
         t = NDVar(tmap, ct.y.dims[1:], info, 't')
 
         # store attributes
@@ -841,7 +840,7 @@ class ttest_1samp(NDTest):
 
         t = self.t
         pmap = stats.ttest_p(t.x, self.df, self.tail)
-        info = _cs.set_info_cs(t.info, _cs.sig_info())
+        info = _info.set_plot_args(t.info, _info.sig_info())
         p_uncorr = NDVar(pmap, t.dims, info, 'p')
         self.p_uncorrected = p_uncorr
 
@@ -992,8 +991,8 @@ class ttest_ind(NDTest):
                                 MP_FOR_NON_TOP_LEVEL_FUNCTIONS)
 
         # NDVar map of t-values
-        info = _cs.stat_info('t', t_threshold, tail=tail)
-        info = _cs.set_info_cs(ct.y.info, info)
+        info = _info.stat_info('t', t_threshold, tail=tail)
+        info = _info.set_plot_args(ct.y.info, info)
         t = NDVar(tmap, ct.y.dims[1:], info, 't')
 
         c1_mean = ct.data[c1].summary(name=cellname(c1))
@@ -1033,7 +1032,7 @@ class ttest_ind(NDTest):
 
         # uncorrected p
         pmap = stats.ttest_p(t.x, self.df, self.tail)
-        info = _cs.set_info_cs(t.info, _cs.sig_info())
+        info = _info.set_plot_args(t.info, _info.sig_info())
         p_uncorr = NDVar(pmap, t.dims, info, 'p')
         self.p_uncorrected = p_uncorr
 
@@ -1229,8 +1228,8 @@ class ttest_rel(NDTest):
                 run_permutation(opt.t_1samp_perm, cdist, iterator)
 
         # NDVar map of t-values
-        info = _cs.stat_info('t', t_threshold, tail=tail)
-        info = _cs.set_info_cs(y1.info, info)
+        info = _info.stat_info('t', t_threshold, tail=tail)
+        info = _info.set_plot_args(y1.info, info)
         t = NDVar(tmap, y1.dims[1:], info, 't')
 
         # store attributes
@@ -1265,7 +1264,7 @@ class ttest_rel(NDTest):
 
         # uncorrected p
         pmap = stats.ttest_p(t.x, self.df, self.tail)
-        info = _cs.sig_info()
+        info = _info.sig_info()
         p_uncorr = NDVar(pmap, t.dims, info, 'p')
         self.p_uncorrected = p_uncorr
 
@@ -1607,8 +1606,8 @@ class anova(MultiEffectNDTest):
         dims = y.dims[1:]
         f = []
         for e, fmap, df_den, f_threshold in zip(effects, fmaps, dfs_denom, f_thresholds):
-            info = _cs.stat_info('f', f_threshold, tail=1)
-            info = _cs.set_info_cs(y.info, info)
+            info = _info.stat_info('f', f_threshold, tail=1)
+            info = _info.set_plot_args(y.info, info)
             f.append(NDVar(fmap, dims, info, e.name))
 
         # store attributes
@@ -1642,7 +1641,7 @@ class anova(MultiEffectNDTest):
                                                self._dfs_denom, self._cdist):
                 # create f-map with cluster threshold
                 f0 = stats.ftest_f(pmin, e.df, df_den)
-                info = _cs.stat_info('f', f0)
+                info = _info.stat_info('f', f0)
                 f_ = NDVar(fmap.x, fmap.dims, info, e.name)
                 # add overlay with cluster
                 if cdist.probability_map is not None:
@@ -1654,7 +1653,7 @@ class anova(MultiEffectNDTest):
         # uncorrected probability
         p_uncorr = []
         for e, f, df_den in zip(self._effects, self.f, self._dfs_denom):
-            info = _cs.sig_info()
+            info = _info.sig_info()
             pmap = stats.ftest_p(f.x, e.df, df_den)
             p_ = NDVar(pmap, f.dims, info, e.name)
             p_uncorr.append(p_)
@@ -2601,7 +2600,7 @@ class _ClusterDist:
                 param_contours[self.threshold] = (0.7, 0.7, 0)
             if self.tail <= 0:
                 param_contours[-self.threshold] = (0.7, 0, 0.7)
-        info = _cs.stat_info(self.meas, contours=param_contours)
+        info = _info.stat_info(self.meas, contours=param_contours)
         self.parameter_map = self._package_ndvar(self._original_param_map, info)
 
         # TFCE map
@@ -2855,7 +2854,7 @@ class _ClusterDist:
                 param_contours[threshold] = (0.7, 0.7, 0)
             if self.tail <= 0:
                 param_contours[-threshold] = (0.7, 0, 0.7)
-            info = _cs.stat_info(self.meas, contours=param_contours,
+            info = _info.stat_info(self.meas, contours=param_contours,
                                  summary_func=np.sum)
             ds['cluster'] = NDVar(c_maps, dims, info)
         else:
@@ -2965,7 +2964,7 @@ class _ClusterDist:
                 cpmap /= self.samples
 
         if dims:
-            return NDVar(cpmap, dims, _cs.cluster_pmap_info(), self.name)
+            return NDVar(cpmap, dims, _info.cluster_pmap_info(), self.name)
         else:
             return cpmap
 

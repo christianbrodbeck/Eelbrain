@@ -1,7 +1,7 @@
 import numpy as np
 from numpy import newaxis
 
-from .. import _colorspaces as cs
+from .. import _info
 from .._data_obj import NDVar, UTS, dataobj_repr
 
 
@@ -203,7 +203,7 @@ class RevCorrData(object):
             return stat[0]
         elif len(self.ydims) > 1:
             stat = stat.reshape(self.yshape)
-        return NDVar(stat, self.ydims, cs.stat_info(meas), name)
+        return NDVar(stat, self.ydims, _info.stat_info(meas), name)
 
     def package_value(self, value, name):
         if not self.ydims:

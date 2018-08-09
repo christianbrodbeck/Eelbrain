@@ -62,14 +62,11 @@ from scipy.optimize import leastsq
 from scipy.spatial import ConvexHull
 from scipy.spatial.distance import cdist, pdist, squareform
 
-from . import fmtxt
-from . import _colorspaces as cs
+from . import fmtxt, _info
 from ._exceptions import DimensionMismatchError, IncompleteModel
 from ._data_opt import gaussian_smoother
-from ._info import merge_info
 from ._utils import (
-    deprecated_attribute, intervals, ui, LazyProperty, n_decimals,
-    natsorted)
+    intervals, ui, LazyProperty, n_decimals, natsorted)
 from ._utils.numpy_utils import (
     INT_TYPES, FULL_SLICE, FULL_AXIS_SLICE,
     apply_numpy_index, digitize_index, digitize_slice_endpoint,
@@ -1009,7 +1006,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
 
     # combine objects
     if stype is Dataset:
-        out = Dataset(name=name, info=merge_info(items))
+        out = Dataset(name=name, info=_info.merge_info(items))
         if incomplete == 'fill in':
             # find all keys and data types
             keys = list(first_item.keys())
@@ -1041,7 +1038,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
         return out
     elif stype is Var:
         x = np.hstack(i.x for i in items)
-        return Var(x, name, info=merge_info(items))
+        return Var(x, name, info=_info.merge_info(items))
     elif stype is Factor:
         random = set(f.random for f in items)
         if len(random) > 1:
@@ -1081,7 +1078,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
         else:
             x = np.array([v.x for v in sub_items])
         dims = ('case',) + dims
-        return NDVar(x, dims, merge_info(sub_items), name)
+        return NDVar(x, dims, _info.merge_info(sub_items), name)
     elif stype is Datalist:
         return Datalist(sum(items, []), name, items[0]._fmt)
     else:
@@ -3769,7 +3766,7 @@ class NDVar(object):
             freqs = np.fft.rfftfreq(n, 1. / n)
             freq = Scalar('frequency', freqs, 'Hz')
         dims = self.dims[:axis] + (freq,) + self.dims[axis + 1:]
-        info = cs.set_info_cs(self.info, cs.default_info('Amplitude'))
+        info = _info.set_plot_args(self.info, _info.default_info('Amplitude'))
         return NDVar(x, dims, info, name or self.name)
 
     def get_axis(self, name):
