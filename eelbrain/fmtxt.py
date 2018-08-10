@@ -1218,12 +1218,12 @@ class Table(FMTextElement):
     >>> table.cell("Number")
     >>> table.cell(4.5)
     >>> table.cell(2./3, fmt='%.4g')
-    >>> print table
+    >>> print(table)
              example 1   example 2
     -----------------------------------
     string   ???         another string
     Number   4.5         0.6667
-    >>> print table.get_tex()
+    >>> print(table.get_tex())
     \begin{center}
     \begin{tabular}{lll}
     \toprule

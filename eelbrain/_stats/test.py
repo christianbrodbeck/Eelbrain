@@ -73,7 +73,7 @@ class Correlation(object):
 
 
 def lilliefors(data, formatted=False, **kwargs):
-    """Lilliefors' test for normal distribution.
+    """Lilliefors' test for normal distribution
 
     The Lilliefors test is an adaptation of the Kolmogorov-Smirnov test. It
     is used to test the null hypothesis that data come from a normally
@@ -306,7 +306,7 @@ def star_factor(p, levels={.1: '`', .05: '*', .01: '**', .001: '***'}):
 
 def ttest(y, x=None, against=0, match=None, sub=None, corr='Hochberg',
           title='{desc}', ds=None):
-    """T tests for one or more samples.
+    """T-tests for one or more samples
 
     parameters
     ----------
@@ -651,7 +651,7 @@ def pairwise(y, x, match=None, sub=None, ds=None,  # data in
              par=True, corr='Hochberg', trend=True,  # stats
              title='{desc}', mirror=False,  # layout
              ):
-    """Pairwise comparison table.
+    """Pairwise comparison table
 
     Parameters
     ----------
@@ -866,7 +866,7 @@ def pairwise_correlations(xs, sub=None, ds=None, labels={}):
 
 
 def correlations(y, x, cat=None, sub=None, ds=None, asds=False):
-    """Correlation with one or more predictors.
+    """Correlation with one or more predictors
 
     Parameters
     ----------

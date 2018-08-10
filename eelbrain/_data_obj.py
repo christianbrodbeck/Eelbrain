@@ -4721,9 +4721,9 @@ class Datalist(list):
     Concise string representation:
 
     >>> l = [['a', 'b'], [], ['a']]
-    >>> print Datalist(l)
+    >>> print(Datalist(l))
     [['a', 'b'], [], ['a']]
-    >>> print Datalist(l, fmt='strlist')
+    >>> print(Datalist(l, fmt='strlist'))
     [[a, b], [], [a]]
     """
     _fmt = 'repr'  # for backwards compatibility with old pickles
@@ -5030,7 +5030,7 @@ class Dataset(OrderedDict):
         >>> ds = Dataset(n_cases=3)
         >>> ds['var', :] = 0
         >>> ds['factor', :] = 'a'
-        >>> print ds
+        >>> print(ds)
         var    factor
         -------------
         0      a
@@ -5484,7 +5484,7 @@ class Dataset(OrderedDict):
         >>> from rpy2.robjects import r
         >>> r('data(sleep)')
         >>> ds = Dataset.from_r('sleep')
-        >>> print ds
+        >>> print(ds)
         extra   group   ID
         ------------------
         0.7     1       1
@@ -6043,7 +6043,7 @@ class Dataset(OrderedDict):
         --------
         >>> from rpy2.robjects import r
         >>> ds = datasets.get_uv()
-        >>> print ds[:6]
+        >>> print(ds[:6])
         A    B    rm     intvar   fltvar     fltvar2    index
         -----------------------------------------------------
         a1   b1   s000   13       0.25614    0.7428     True
@@ -6053,7 +6053,7 @@ class Dataset(OrderedDict):
         a1   b1   s004   15       -0.19358   -1.03      True
         a1   b1   s005   17       2.141      -0.51745   True
         >>> ds.to_r('df')
-        >>> print r("head(df)")
+        >>> print(r("head(df)"))
            A  B   rm intvar     fltvar    fltvar2 index
         1 a1 b1 s000     13  0.2561439  0.7427957  TRUE
         2 a1 b1 s001      8 -1.5174371 -0.7549815  TRUE
@@ -6276,14 +6276,14 @@ class Interaction(_Effect):
 
         Examples
         --------
-        >>> print ds[::20, 'A']
+        >>> print(ds[::20, 'A'])
         Factor(['a1', 'a1', 'a2', 'a2'], name='A')
-        >>> print ds[::20, 'B']
+        >>> print(ds[::20, 'B'])
         Factor(['b1', 'b2', 'b1', 'b2'], name='B')
         >>> i = ds.eval("A % B")
-        >>> print i.as_factor()[::20]
+        >>> print(i.as_factor()[::20])
         Factor(['a1 b1', 'a1 b2', 'a2 b1', 'a2 b2'], name='AxB')
-        >>> print i.as_factor("_")[::20]
+        >>> print(i.as_factor("_")[::20])
         Factor(['a1_b1', 'a1_b2', 'a2_b1', 'a2_b2'], name='AxB')
         """
         return Factor(self.as_labels(delim), name)
