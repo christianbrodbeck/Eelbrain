@@ -43,6 +43,8 @@ import numpy as np
 
 # Key constants for info dictionaries
 BAD_CHANNELS = 'bad_channels'
+# Parameters that should be reset if measurement type changes
+MAIN_ARGS = ('meas', 'unit', 'cmap', 'vmin', 'vmax', 'contours')
 
 
 ###########
@@ -63,34 +65,45 @@ _unit_fmt = {
 # Generate info dicts
 #####################
 
-def default_info(meas, **kwargs):
+def default_info(meas, old=None):
     "Default colorspace info"
-    kwargs['meas'] = meas
-    return kwargs
+    info = {'meas': meas}
+    return _update(info, old)
 
 
-def for_cluster_pmap():
-    return {
+def for_cluster_pmap(old=None):
+    info = {
         'meas': 'p',
         'cmap': 'sig',
         'vmax': 0.05,
         'contours': {0.05: (0., 0., 0.)},
     }
+    return _update(info, old)
 
 
-def for_p_map(p=.05, contours={.01: '.5', .001: '0'}):
+def for_p_map(old=None):
     "Info dict for significance map"
-    return {
+    info = {
         'meas': 'p',
         'cmap': 'sig',
-        'vmax': p,
-        'contours': contours,
+        'vmax': .05,
+        'contours': {.01: '.5', .001: '0'},
     }
+    return _update(info, old)
 
 
-def for_stat_map(meas, c0=None, c1=None, c2=None, tail=0, **kwargs):
-    if 'contours' not in kwargs:
-        contours = kwargs['contours'] = {}
+def for_stat_map(meas, c0=None, c1=None, c2=None, tail=0, contours=None, old=None):
+    if meas == 'r':
+        info = {'meas': meas, 'cmap': 'RdBu_r'}
+    elif meas == 't':
+        info = {'meas': meas, 'cmap': 'RdBu_r'}
+    elif meas == 'f':
+        info = {'meas': meas, 'cmap': 'BuPu_r', 'vmin': 0}
+    else:
+        info = default_info(meas)
+
+    if contours is None:
+        contours = {}
         if c0 is not None:
             if tail >= 0:
                 contours[c0] = (1.0, 0.5, 0.1)
@@ -106,64 +119,54 @@ def for_stat_map(meas, c0=None, c1=None, c2=None, tail=0, **kwargs):
                 contours[c2] = (1.0, 1.0, 0.8)
             if tail <= 0:
                 contours[-c2] = (1.0, 0.8, 1.0)
-
-    if meas == 'r':
-        info = {'meas': meas, 'cmap': 'RdBu_r'}
-    elif meas == 't':
-        info = {'meas': meas, 'cmap': 'RdBu_r'}
-    elif meas == 'f':
-        info = {'meas': meas, 'cmap': 'BuPu_r', 'vmin': 0}
-    else:
-        info = default_info(meas)
-    info.update(kwargs)
-    return info
+    info['contours'] = contours
+    return _update(info, old)
 
 
-def for_eeg(vmax=None, mult=1, unit='V', meas="V"):
-    unit = _unit_fmt[1 / mult] % unit
-    out = dict(cmap='xpolar', meas=meas, unit=unit)
+def for_eeg(vmax=None, mult=1, old=None):
+    info = {
+        'meas': 'V',
+        'unit': _unit_fmt[1 / mult] % 'V',
+        'cmap': 'xpolar',
+    }
     if vmax is not None:
-        out['vmax'] = vmax
-    return out
+        info['vmax'] = vmax
+    return _update(info, old)
 
 
-def for_meg(vmax=None, mult=1, unit='T', meas="B"):
-    unit = _unit_fmt[1 / mult] % unit
-    out = dict(cmap='xpolar', meas=meas, unit=unit)
+def for_meg(vmax=None, mult=1, meas="B", unit='T', old=None):
+    info = {
+        'meas': meas,
+        'unit': _unit_fmt[1 / mult] % unit,
+        'cmap': 'xpolar',
+    }
     if vmax is not None:
-        out['vmax'] = vmax
-    return out
+        info['vmax'] = vmax
+    return _update(info, old)
 
 
 ###################
 # Update info dicts
 ###################
 
-def set_plot_args(info, args={'cmap': 'jet'}, copy=True):
-    """Update the plotting arguments in info to reflect a new colorspace
+def _update(new, old):
+    """Update the plotting arguments in ``old`` to reflect a new colorspace
 
     Parameters
     ----------
-    info : dict
+    new : dict
+        The new info that should be updated.
+    old : dict
         The previous info dictionary.
-    args : dict
-        The new colorspace info dictionary.
-    copy : bool
-        Make a copy of the dictionary before modifying it.
 
     Returns
     -------
     info : dict
         The updated dictionary.
     """
-    if copy:
-        info = info.copy()
-    # remove
-    for key in ('meas', 'unit', 'cmap', 'vmin', 'vmax', 'contours'):
-        if key in info and key not in args:
-            info.pop(key)
-    info.update(args)
-    return info
+    if old:
+        new.update({k: v for k, v in old.items() if k not in MAIN_ARGS})
+    return new
 
 
 #######################

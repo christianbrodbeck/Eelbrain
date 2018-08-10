@@ -3766,7 +3766,7 @@ class NDVar(object):
             freqs = np.fft.rfftfreq(n, 1. / n)
             freq = Scalar('frequency', freqs, 'Hz')
         dims = self.dims[:axis] + (freq,) + self.dims[axis + 1:]
-        info = _info.set_plot_args(self.info, _info.default_info('Amplitude'))
+        info = _info.default_info('Amplitude', self.info)
         return NDVar(x, dims, info, name or self.name)
 
     def get_axis(self, name):

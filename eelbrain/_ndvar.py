@@ -335,7 +335,7 @@ def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
     x = x_flat.reshape(out_shape)
     if magnitude_out:
         x **= 0.5
-    info = _info.set_plot_args(y.info, _info.default_info('A'))
+    info = _info.default_info('A', y.info)
     return NDVar(x, out_dims, info, y.name)
 
 
@@ -640,8 +640,7 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
     y = np.empty(len(dim_obj))
     for i in range(len(dim_obj)):
         y[i] = np.mean(cc[i, neighbors[i]])
-
-    info = _info.set_plot_args(x.info, _info.for_stat_map('r'))
+    info = _info.for_stat_map('r', old=x.info)
     return NDVar(y, (dim_obj,), info, name or x.name)
 
 

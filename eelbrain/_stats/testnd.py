@@ -485,8 +485,7 @@ class t_contrast_rel(NDTest):
                                 MP_FOR_NON_TOP_LEVEL_FUNCTIONS)
 
         # NDVar map of t-values
-        info = _info.for_stat_map('t', t_threshold, tail=tail)
-        info = _info.set_plot_args(ct.y.info, info)
+        info = _info.for_stat_map('t', t_threshold, tail=tail, old=ct.y.info)
         t = NDVar(tmap, ct.y.dims[1:], info, 't')
 
         # store attributes
@@ -811,8 +810,7 @@ class ttest_1samp(NDTest):
                 run_permutation(opt.t_1samp_perm, cdist, iterator)
 
         # NDVar map of t-values
-        info = _info.for_stat_map('t', t_threshold, tail=tail)
-        info = _info.set_plot_args(ct.y.info, info)
+        info = _info.for_stat_map('t', t_threshold, tail=tail, old=ct.y.info)
         t = NDVar(tmap, ct.y.dims[1:], info, 't')
 
         # store attributes
@@ -840,7 +838,7 @@ class ttest_1samp(NDTest):
 
         t = self.t
         pmap = stats.ttest_p(t.x, self.df, self.tail)
-        info = _info.set_plot_args(t.info, _info.for_p_map())
+        info = _info.for_p_map(t.info)
         p_uncorr = NDVar(pmap, t.dims, info, 'p')
         self.p_uncorrected = p_uncorr
 
@@ -991,8 +989,7 @@ class ttest_ind(NDTest):
                                 MP_FOR_NON_TOP_LEVEL_FUNCTIONS)
 
         # NDVar map of t-values
-        info = _info.for_stat_map('t', t_threshold, tail=tail)
-        info = _info.set_plot_args(ct.y.info, info)
+        info = _info.for_stat_map('t', t_threshold, tail=tail, old=ct.y.info)
         t = NDVar(tmap, ct.y.dims[1:], info, 't')
 
         c1_mean = ct.data[c1].summary(name=cellname(c1))
@@ -1032,7 +1029,7 @@ class ttest_ind(NDTest):
 
         # uncorrected p
         pmap = stats.ttest_p(t.x, self.df, self.tail)
-        info = _info.set_plot_args(t.info, _info.for_p_map())
+        info = _info.for_p_map(t.info)
         p_uncorr = NDVar(pmap, t.dims, info, 'p')
         self.p_uncorrected = p_uncorr
 
@@ -1228,8 +1225,7 @@ class ttest_rel(NDTest):
                 run_permutation(opt.t_1samp_perm, cdist, iterator)
 
         # NDVar map of t-values
-        info = _info.for_stat_map('t', t_threshold, tail=tail)
-        info = _info.set_plot_args(y1.info, info)
+        info = _info.for_stat_map('t', t_threshold, tail=tail, old=y1.info)
         t = NDVar(tmap, y1.dims[1:], info, 't')
 
         # store attributes
@@ -1606,8 +1602,7 @@ class anova(MultiEffectNDTest):
         dims = y.dims[1:]
         f = []
         for e, fmap, df_den, f_threshold in zip(effects, fmaps, dfs_denom, f_thresholds):
-            info = _info.for_stat_map('f', f_threshold, tail=1)
-            info = _info.set_plot_args(y.info, info)
+            info = _info.for_stat_map('f', f_threshold, tail=1, old=y.info)
             f.append(NDVar(fmap, dims, info, e.name))
 
         # store attributes
@@ -2854,8 +2849,8 @@ class _ClusterDist:
                 param_contours[threshold] = (0.7, 0.7, 0)
             if self.tail <= 0:
                 param_contours[-threshold] = (0.7, 0, 0.7)
-            info = _info.for_stat_map(self.meas, contours=param_contours,
-                                 summary_func=np.sum)
+            info = _info.for_stat_map(self.meas, contours=param_contours)
+            info['summary_func'] = np.sum
             ds['cluster'] = NDVar(c_maps, dims, info)
         else:
             ds.info['clusters'] = self.cluster_map
