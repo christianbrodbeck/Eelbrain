@@ -1700,7 +1700,7 @@ class Figure(FMText):
         options : dict
             HTML options for ``<figure>`` tag.
         """
-        self._caption = caption
+        self._caption = asfmtext(caption)
         FMText.__init__(self, content, None, options)
 
     def get_html(self, env={}):
