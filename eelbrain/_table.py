@@ -434,7 +434,7 @@ def cast_to_ndvar(data, dim_values, match, sub=None, ds=None, dim=None,
 
 
 def stats(y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
-          ds=None):
+          ds=None, title=None, caption=None):
     """Make a table with statistics
 
     Parameters
@@ -451,7 +451,16 @@ def stats(y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
     ds : Dataset
         If a Dataset is provided, y, row, and col can be strings specifying
         members.
+    title : str | FMText
+        Table title.
+    caption : str | FMText
+        Table caption.
 
+
+    Returns
+    -------
+    table : fmtxt.Table
+        Table with statistics.
 
     Examples
     --------
@@ -482,7 +491,7 @@ def stats(y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
 
         # table header
         n_disp = len(funcs)
-        table = fmtxt.Table('l' * (n_disp + 1))
+        table = fmtxt.Table('l' * (n_disp + 1), title=title, caption=caption)
         table.cell('Condition', 'bf')
         for func in funcs:
             table.cell(func.__name__, 'bf')
@@ -499,7 +508,7 @@ def stats(y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
         ct = Celltable(y, row % col, match=match)
 
         N = len(col.cells)
-        table = fmtxt.Table('l' * (N + 1))
+        table = fmtxt.Table('l' * (N + 1), title=title, caption=caption)
 
         # table header
         table.cell()
