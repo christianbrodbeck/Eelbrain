@@ -2912,27 +2912,27 @@ class NDVar(object):
 
     def __lt__(self, other):
         return NDVar(self.x < self._ialign(other),
-                     self.dims, self.info.copy(), self.name)
+                     self.dims, _info.for_boolean(self.info), self.name)
 
     def __le__(self, other):
         return NDVar(self.x <= self._ialign(other),
-                     self.dims, self.info.copy(), self.name)
+                     self.dims, _info.for_boolean(self.info), self.name)
 
     def __eq__(self, other):
         return NDVar(self.x == self._ialign(other),
-                     self.dims, self.info.copy(), self.name)
+                     self.dims, _info.for_boolean(self.info), self.name)
 
     def __ne__(self, other):
         return NDVar(self.x != self._ialign(other),
-                     self.dims, self.info.copy(), self.name)
+                     self.dims, _info.for_boolean(self.info), self.name)
 
     def __gt__(self, other):
         return NDVar(self.x > self._ialign(other),
-                     self.dims, self.info.copy(), self.name)
+                     self.dims, _info.for_boolean(self.info), self.name)
 
     def __ge__(self, other):
         return NDVar(self.x >= self._ialign(other),
-                     self.dims, self.info.copy(), self.name)
+                     self.dims, _info.for_boolean(self.info), self.name)
 
     def _align(self, other):
         """Align data from 2 NDVars.
@@ -3405,7 +3405,7 @@ class NDVar(object):
                     else:
                         index = index[0]
                         x = np.array([func(x_[index]) for x_ in self_x])
-                    return Var(x, name, info=self.info.copy())
+                    return Var(x, name, info=_info.for_data(x, self.info))
                 elif axis.has_case:
                     raise IndexError("Index with case dimension can not be "
                                      "applied to data without case dimension")
@@ -3420,7 +3420,7 @@ class NDVar(object):
             x = func(self.x, axes)
             dims = tuple(self.dims[i] for i in range(self.ndim) if i not in axes)
 
-        return self._package_aggregated_output(x, dims, self.info.copy(), name)
+        return self._package_aggregated_output(x, dims, _info.for_data(x, self.info), name)
 
     def astype(self, dtype):
         """Copy of the NDVar with data cast to the specified type

@@ -1111,6 +1111,7 @@ def test_ndvar_summary_methods():
     ds = datasets.get_uts(utsnd=True)
     x = ds['utsnd']
 
+    x.info['test_item'] = 1
     dim = 'sensor'
     axis = x.get_axis(dim)
     dims = ('case', 'sensor')
@@ -1123,7 +1124,9 @@ def test_ndvar_summary_methods():
     idx1d = x.mean(('case', 'time')) > 0
 
     # info inheritance
-    eq_(x.any(('sensor', 'time')).info, x.info)
+    eq_(x.mean(('sensor', 'time')).info, x.info)
+    # info update for booleans
+    eq_(x.any(('sensor', 'time')).info, {'test_item': 1})
 
     # numpy functions
     eq_(x.any(), x.x.any())

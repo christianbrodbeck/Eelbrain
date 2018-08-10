@@ -145,6 +145,20 @@ def for_meg(vmax=None, mult=1, meas="B", unit='T', old=None):
     return _update(info, old)
 
 
+def for_boolean(old=None):
+    return _update({}, old)
+
+
+def for_data(x, old=None):
+    "For data, depending on type"
+    if x.dtype.kind == 'b':
+        return for_boolean(old)
+    elif old:
+        return old.copy()
+    else:
+        return {}
+
+
 ###################
 # Update info dicts
 ###################
