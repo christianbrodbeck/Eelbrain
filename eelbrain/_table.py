@@ -193,6 +193,8 @@ def melt(name, cells, cell_var_name, ds, labels=None):
     columns into a longer dataset in which the variable is represented in a
     single column along with an identifying variable.
 
+    Additional variables are automatically included.
+
     Parameters
     ----------
     name : str
@@ -211,24 +213,45 @@ def melt(name, cells, cell_var_name, ds, labels=None):
 
     Examples
     --------
-    >>> ds = Dataset()
-    >>> ds['y1'] = Var([1, 2, 3])
-    >>> ds['y2'] = Var([4, 5, 6])
-    >>> print(ds)
-    y1   y2
-    -------
-    1    4
-    2    5
-    3    6
-    >>> print(table.melt('y', ['y1', 'y2'], 'id', ds))
-    y   id
-    ------
-    1   y1
-    2   y1
-    3   y1
-    4   y2
-    5   y2
-    6   y2
+    Simple example data::
+
+        >>> ds = Dataset()
+        >>> ds['y1'] = Var([1, 2, 3])
+        >>> ds['y2'] = Var([4, 5, 6])
+        >>> print(ds)
+        y1   y2
+        -------
+        1    4
+        2    5
+        3    6
+        >>> print(table.melt('y', ['y1', 'y2'], 'id', ds))
+        y   id
+        ------
+        1   y1
+        2   y1
+        3   y1
+        4   y2
+        5   y2
+        6   y2
+
+    Additional variables are automatically included::
+
+        >>> ds['rm'] = Factor('abc')
+        >>> print(ds)
+        y1   y2   rm
+        ------------
+        1    4    a
+        2    5    b
+        3    6    c
+        >>> print(table.melt('y', ['y1', 'y2'], 'id', ds))
+        rm   y   id
+        -----------
+        a    1   y1
+        b    2   y1
+        c    3   y1
+        a    4   y2
+        b    5   y2
+        c    6   y2
 
     """
     if labels is None:
@@ -548,6 +571,42 @@ def repmeas(y, x, match, sub=None, ds=None):
         Repeated measures table. Entries for cells of ``x`` correspond to the
         data in ``y`` on these levels of ``x`` (if cell names are not valid
         Dataset keys they are modified).
+
+    Examples
+    --------
+    Generate test data in long format::
+
+        >>> ds = Dataset()
+        >>> ds['y'] = Var([1,2,3,5,6,4])
+        >>> ds['x'] = Factor('aaabbb')
+        >>> ds['rm'] = Factor('123231', random=True)
+        >>> print(ds)
+        y   x   rm
+        ----------
+        1   a   1
+        2   a   2
+        3   a   3
+        5   b   2
+        6   b   3
+        4   b   1
+
+    Compute difference between two conditions::
+
+        >>> ds_rm = table.repmeas('y', 'x', 'rm', ds=ds)
+        >>> print(ds_rm)
+        rm   a   b
+        ----------
+        1    1   4
+        2    2   5
+        3    3   6
+        >>> ds_rm['difference'] = ds_rm.eval("b - a")
+        >>> print(ds_rm)
+        rm   a   b   difference
+        -----------------------
+        1    1   4   3
+        2    2   5   3
+        3    3   6   3
+
     """
     ct = Celltable(y, x, match, sub, ds=ds)
     if not ct.all_within:
