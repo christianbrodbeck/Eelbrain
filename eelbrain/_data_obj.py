@@ -3772,6 +3772,16 @@ class NDVar(object):
         info = _info.default_info('Amplitude', self.info)
         return NDVar(x, dims, info, name or self.name)
 
+    def flatnonzero(self):
+        """Return indices where a 1-d NDVar is non-zero
+
+        Like :func:`numpy.flatnonzero`.
+        """
+        if self.ndim != 1:
+            raise ValueError("flatnonzero only applies to 1-d NDVars")
+        dim = self.dims[0]
+        return [dim._dim_index(index) for index in np.flatnonzero(self.x)]
+
     def get_axis(self, name):
         "Return the data axis for a given dimension name"
         if self.has_dim(name):
