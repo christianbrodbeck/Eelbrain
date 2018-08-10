@@ -976,7 +976,7 @@ def anova(y, x, sub=None, title=None, ds=None):
     Simple n-way between subjects ANOVA::
 
         >>> ds = datasets.get_uv(nrm=True)
-        >>> print test.anova('fltvar', 'A*B', ds=ds)
+        >>> print(test.anova('fltvar', 'A*B', ds=ds))
                         SS   df      MS          F        p
         ---------------------------------------------------
         A            28.69    1   28.69   25.69***   < .001
@@ -997,7 +997,7 @@ def anova(y, x, sub=None, title=None, ds=None):
     within-subject design), the ``A*B`` model can be fitted as repeated measures
     design::
 
-        >>> print test.anova('fltvar', 'A*B*rm', ds=ds)
+        >>> print(test.anova('fltvar', 'A*B*rm', ds=ds))
                     SS   df      MS   MS(denom)   df(denom)          F        p
         -----------------------------------------------------------------------
         A        28.69    1   28.69        1.21          19   23.67***   < .001
@@ -1011,7 +1011,7 @@ def anova(y, x, sub=None, title=None, ds=None):
     a between-subjects factor), ``subject`` is nested in ``B``, which is specified
     as ``subject(B)``::
 
-        >>> print test.anova('fltvar', 'A * B * nrm(B)', ds=ds)
+        >>> print(test.anova('fltvar', 'A * B * nrm(B)', ds=ds))
                     SS   df      MS   MS(denom)   df(denom)          F        p
         -----------------------------------------------------------------------
         A        28.69    1   28.69        1.11          38   25.80***   < .001
@@ -1023,7 +1023,7 @@ def anova(y, x, sub=None, title=None, ds=None):
     Numerical variables can be coerced to categorial factors in the model::
 
         >>> ds = datasets.get_loftus_masson_1994()
-        >>> print test.anova('n_recalled', 'exposure.as_factor()*subject', ds=ds)
+        >>> print=(test.anova('n_recalled', 'exposure.as_factor()*subject', ds=ds))
                     SS       df   MS         F         p
         ---------------------------------------------------
         exposure     52.27    2   26.13   42.51***   < .001

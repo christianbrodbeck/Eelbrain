@@ -113,7 +113,7 @@ def frequencies(y, x=None, of=None, sub=None, ds=None):
 
     Display frequency of a single factor's cells::
 
-        >>> print table.frequencies('a', ds=ds)
+        >>> print(table.frequencies('a', ds=ds))
         cell   n
         --------
         a      2
@@ -122,7 +122,7 @@ def frequencies(y, x=None, of=None, sub=None, ds=None):
 
     Display frequency of interaction cells::
 
-        >>> print table.frequencies('a', 'x', ds=ds)
+        >>> print(table.frequencies('a', 'x', ds=ds))
         x   a   b   c
         -------------
         x   2   1   0
@@ -211,13 +211,13 @@ def melt(name, cells, cell_var_name, ds):
     >>> ds = Dataset()
     >>> ds['y1'] = Var([1, 2, 3])
     >>> ds['y2'] = Var([4, 5, 6])
-    >>> print ds
+    >>> print(ds)
     y1   y2
     -------
     1    4
     2    5
     3    6
-    >>> print table.melt('y', ['y1', 'y2'], 'id', ds)
+    >>> print(table.melt('y', ['y1', 'y2'], 'id', ds))
     y   id
     ------
     1   y1
