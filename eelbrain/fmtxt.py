@@ -61,6 +61,7 @@ import socket
 from io import BytesIO
 import tempfile
 import time
+import webbrowser
 
 import numpy as np
 import matplotlib.figure
@@ -2022,6 +2023,13 @@ class Report(Section):
 
         save_html(self, path, embed_images, meta)
 
+    def show(self):
+        "Save the report as temporary file and open in browser"
+        temp_dir = tempfile.mkdtemp()
+        path = os.path.join(temp_dir, 'report.html')
+        self.save_html(path)
+        webbrowser.open('file:/' + os.path.realpath(path))
+
     def sign(self, packages=('eelbrain',)):
         """Add a signature to the report
 
@@ -2134,6 +2142,10 @@ def delim_list(items, delimiter=', '):
 def ms(t_s):
     "Convert time in seconds to rounded milliseconds"
     return int(round(t_s * 1000))
+
+
+def ms_window(t0, t1):
+    return f"{ms(t0)} - {ms(t1)} ms"
 
 
 def unindent(text, skip1=False):
