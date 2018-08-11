@@ -615,7 +615,9 @@ def assub(sub, ds=None):
                             "Dataset was specified")
         sub = ds.eval(sub)
 
-    if not isinstance(sub, (Var, np.ndarray)):
+    if isinstance(sub, Var):
+        return sub.x
+    elif not isinstance(sub, np.ndarray):
         raise TypeError("sub parameters needs to be Var or array, got %r" % (sub,))
     return sub
 

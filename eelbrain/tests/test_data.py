@@ -180,6 +180,8 @@ def test_celltable():
     ct_sub = Celltable('Y', 'B', ds=ds_sub)
     ct = Celltable('Y', 'B', sub="A == 'a0'", ds=ds)
     assert_dataobj_equal(ct_sub.y, ct.y)
+    ct_sub = Celltable('Y', 'B', sub="Var(A == 'a0')", cat=('b0', 'b1'), ds=ds)
+    assert_dataobj_equal(ct_sub.y, ct.y)
 
     # test sub with rm
     ct_sub = Celltable('Y', 'B', match='rm', ds=ds_sub)
