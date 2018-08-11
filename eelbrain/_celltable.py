@@ -88,7 +88,7 @@ class Celltable(object):
 
         if x is None:
             if cat is not None:
-                raise TypeError("cat is only a valid argument if x is provided")
+                raise TypeError(f"cat={cat!r}: cat is only a valid argument if x is provided")
             y = coercion(y, sub, ds)
         else:
             x = ascategorial(x, sub, ds)
@@ -101,19 +101,18 @@ class Celltable(object):
                             cat = x.cells
                         else:
                             cells = [c for c in x.cells if c not in cat]
-                            cat = tuple(cells.pop(0) if c is None else c
-                                        for c in cat)
+                            cat = tuple(cells.pop(0) if c is None else c for c in cat)
                     else:
-                        err = ("Categories can only be specified as None if x "
-                               "contains exactly as many cells as categories are "
-                               "required (%i)." % len(cat))
-                        raise ValueError(err)
+                        raise ValueError(
+                            f"cat={cat!r}: categories can only be specified as "
+                            f"None if all cells in x are used, but there are more "
+                            f"than {len(cat)} cells: {x.cells}")
 
                 # make sure all categories are in data
-                missing = [c for c in cat if c not in x.cells]
-                if missing:
-                    raise ValueError("Categories not in data: %s" %
-                                     ', '.join(map(str, missing)))
+                if not all(c in x.cells for c in cat):
+                    raise ValueError(
+                        f"cat={cat!r} contains categories that are not in the "
+                        f"data: {', '.join(str(c) for c in cat if c not in x.cells)}")
 
                 # apply cat
                 sort_idx = x.sort_index(order=cat)
@@ -121,8 +120,9 @@ class Celltable(object):
                 if sub is None:
                     sub = sort_idx
                 else:
-                    imax = max(len(sub), np.max(sub))
-                    sub = np.arange(imax)[sub][sort_idx]
+                    if sub.dtype.kind == 'b':
+                        sub = np.flatnonzero(sub)
+                    sub = sub[sort_idx]
             y = coercion(y, sub, ds, len(x))
 
         if match is not None:
