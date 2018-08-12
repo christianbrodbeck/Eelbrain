@@ -2091,8 +2091,11 @@ def stat(x, fmt="%.2f", stars=None, of=3, tag='math', drop0=False):
     ":class:`FMText` with properties for a statistic (e.g. a t-value)"
     if stars is None:
         return Number(x, tag, fmt, drop0)
+    elif isinstance(stars, float):
+        stars_obj = Stars.from_p(stars, of)
     else:
-        return FMText([Number(x, None, fmt, drop0), Stars(stars, of=of)], tag)
+        stars_obj = Stars(stars, of)
+    return FMText([Number(x, None, fmt, drop0), stars_obj], tag)
 
 
 def eq(name, result, subscript=None, fmt='%.2f', stars=None, of=3, drop0=False):
