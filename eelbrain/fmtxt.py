@@ -1170,7 +1170,7 @@ class Row(list):
             elif just == 'r':
                 txt = txt.rjust(strlen)
             elif just == 'c':
-                rj = strlen / 2
+                rj = strlen // 2
                 txt = txt.rjust(rj).ljust(strlen)
             out.append(txt)
         return delimiter.join(out)
