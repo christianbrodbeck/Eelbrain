@@ -21,7 +21,7 @@ n_samples : None | int
     number of permutations that constitute the complete set.
 '''
 from datetime import datetime, timedelta
-from itertools import chain
+from itertools import chain, repeat
 from math import ceil, pi
 from multiprocessing import Process, Event, SimpleQueue
 from multiprocessing.sharedctypes import RawArray
@@ -385,8 +385,9 @@ class t_contrast_rel(NDTest):
         len(match.cells) - 1).
     tmin : scalar
         Threshold for forming clusters as t-value.
-    tfce : bool
-        Use threshold-free cluster enhancement (default False).
+    tfce : bool | scalar
+        Use threshold-free cluster enhancement. Use a scalar to specify the
+        step of TFCE levels (for ``tfce is True`` it is 0.2).
     tstart : scalar
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
@@ -457,27 +458,23 @@ class t_contrast_rel(NDTest):
         # original data
         tmap = t_contrast.map(ct.y.x)
 
-        n_threshold_params = sum((pmin is not None, tmin is not None, tfce))
+        n_threshold_params = sum((pmin is not None, tmin is not None, bool(tfce)))
         if n_threshold_params == 0 and not samples:
-            t_threshold = None
-            cdist = None
+            threshold = cdist = None
         elif n_threshold_params > 1:
             raise ValueError("Only one of pmin, tmin and tfce can be specified")
         else:
             if pmin is not None:
                 df = len(ct.match.cells) - 1
-                t_threshold = threshold = stats.ttest_t(pmin, df, tail)
+                threshold = stats.ttest_t(pmin, df, tail)
             elif tmin is not None:
-                t_threshold = threshold = abs(tmin)
-            elif tfce:
-                threshold = 'tfce'
-                t_threshold = None
+                threshold = abs(tmin)
             else:
-                t_threshold = threshold = None
+                threshold = None
 
-            cdist = _ClusterDist(ct.y, samples, threshold, tail, 't',
-                                 "t-contrast", tstart, tstop, criteria,
-                                 parc, force_permutation)
+            cdist = NDPermutationDistribution(
+                ct.y, samples, threshold, tfce, tail, 't', "t-contrast",
+                tstart, tstop, criteria, parc, force_permutation)
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 iterator = permute_order(len(ct.y), samples, unit=ct.match)
@@ -485,7 +482,7 @@ class t_contrast_rel(NDTest):
                                 MP_FOR_NON_TOP_LEVEL_FUNCTIONS)
 
         # NDVar map of t-values
-        info = _info.for_stat_map('t', t_threshold, tail=tail, old=ct.y.info)
+        info = _info.for_stat_map('t', threshold, tail=tail, old=ct.y.info)
         t = NDVar(tmap, ct.y.dims[1:], info, 't')
 
         # store attributes
@@ -541,8 +538,9 @@ class corr(NDTest):
         uncorrected p-value.
     rmin : None | scalar
         Threshold for forming clusters.
-    tfce : bool
-        Use threshold-free cluster enhancement (default False).
+    tfce : bool | scalar
+        Use threshold-free cluster enhancement. Use a scalar to specify the
+        step of TFCE levels (for ``tfce is True`` it is 0.2).
     tstart : scalar
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
@@ -613,27 +611,22 @@ class corr(NDTest):
 
         rmap = stats.corr(y.x, x.x)
 
-        n_threshold_params = sum((pmin is not None, rmin is not None, tfce))
+        n_threshold_params = sum((pmin is not None, rmin is not None, bool(tfce)))
         if n_threshold_params == 0 and not samples:
-            cdist = None
-            r0, r1, r2 = stats.rtest_r((.05, .01, .001), df)
-            info = _info.for_stat_map('r', r0, r1, r2)
+            threshold = cdist = None
         elif n_threshold_params > 1:
             raise ValueError("Only one of pmin, rmin and tfce can be specified")
         else:
             if pmin is not None:
-                r_threshold = threshold = stats.rtest_r(pmin, df)
+                threshold = stats.rtest_r(pmin, df)
             elif rmin is not None:
-                r_threshold = threshold = abs(rmin)
-            elif tfce:
-                threshold = 'tfce'
-                r_threshold = None
+                threshold = abs(rmin)
             else:
-                r_threshold = threshold = None
-            info = _info.for_stat_map('r', r_threshold)
+                threshold = None
 
-            cdist = _ClusterDist(y, samples, threshold, 0, 'r', name, tstart,
-                                 tstop, criteria, parc)
+            cdist = NDPermutationDistribution(
+                y, samples, threshold, tfce, 0, 'r', name,
+                tstart, tstop, criteria, parc)
             cdist.add_original(rmap)
             if cdist.do_permutation:
                 def test_func(y, out, perm):
@@ -643,8 +636,8 @@ class corr(NDTest):
                                 MP_FOR_NON_TOP_LEVEL_FUNCTIONS)
 
         # compile results
-        dims = y.dims[1:]
-        r = NDVar(rmap, dims, info, name)
+        info = _info.for_stat_map('r', threshold)
+        r = NDVar(rmap, y.dims[1:], info, name)
 
         # store attributes
         NDTest.__init__(self, y, match, sub, samples, tfce, pmin, cdist,
@@ -716,8 +709,9 @@ class ttest_1samp(NDTest):
         uncorrected p-value.
     tmin : scalar
         Threshold for forming clusters as t-value.
-    tfce : bool
-        Use threshold-free cluster enhancement (default False).
+    tfce : bool | scalar
+        Use threshold-free cluster enhancement. Use a scalar to specify the
+        step of TFCE levels (for ``tfce is True`` it is 0.2).
     tstart : scalar
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
@@ -779,38 +773,34 @@ class ttest_1samp(NDTest):
         else:
             diff = y
 
-        n_threshold_params = sum((pmin is not None, tmin is not None, tfce))
+        n_threshold_params = sum((pmin is not None, tmin is not None, bool(tfce)))
         if n_threshold_params == 0 and not samples:
-            cdist = None
-            t_threshold = None
+            threshold = cdist = None
         elif n_threshold_params > 1:
             raise ValueError("Only one of pmin, tmin and tfce can be specified")
         else:
             if pmin is not None:
-                t_threshold = threshold = stats.ttest_t(pmin, df, tail)
+                threshold = stats.ttest_t(pmin, df, tail)
             elif tmin is not None:
-                t_threshold = threshold = abs(tmin)
-            elif tfce:
-                threshold = 'tfce'
-                t_threshold = None
+                threshold = abs(tmin)
             else:
-                t_threshold = threshold = None
+                threshold = None
 
             if popmean:
                 y_perm = ct.y - popmean
             else:
                 y_perm = ct.y
             n_samples, samples = _resample_params(len(y_perm), samples)
-            cdist = _ClusterDist(y_perm, n_samples, threshold, tail, 't',
-                                 '1-Sample t-Test', tstart, tstop, criteria,
-                                 parc, force_permutation)
+            cdist = NDPermutationDistribution(
+                y_perm, n_samples, threshold, tfce, tail, 't', '1-Sample t-Test',
+                tstart, tstop, criteria, parc, force_permutation)
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 iterator = permute_sign_flip(n, samples)
                 run_permutation(opt.t_1samp_perm, cdist, iterator)
 
         # NDVar map of t-values
-        info = _info.for_stat_map('t', t_threshold, tail=tail, old=ct.y.info)
+        info = _info.for_stat_map('t', threshold, tail=tail, old=ct.y.info)
         t = NDVar(tmap, ct.y.dims[1:], info, 't')
 
         # store attributes
@@ -898,8 +888,9 @@ class ttest_ind(NDTest):
         cluster enhancement.
     tmin : scalar
         Threshold for forming clusters as t-value.
-    tfce : bool
-        Use threshold-free cluster enhancement (default False).
+    tfce : bool | scalar
+        Use threshold-free cluster enhancement. Use a scalar to specify the
+        step of TFCE levels (for ``tfce is True`` it is 0.2).
     tstart : scalar
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
@@ -961,25 +952,22 @@ class ttest_ind(NDTest):
         groups.dtype = np.int8
         tmap = stats.t_ind(ct.y.x, groups)
 
-        n_threshold_params = sum((pmin is not None, tmin is not None, tfce))
+        n_threshold_params = sum((pmin is not None, tmin is not None, bool(tfce)))
         if n_threshold_params == 0 and not samples:
-            t_threshold = cdist = None
+            threshold = cdist = None
         elif n_threshold_params > 1:
             raise ValueError("Only one of pmin, tmin and tfce can be specified")
         else:
             if pmin is not None:
-                t_threshold = threshold = stats.ttest_t(pmin, df, tail)
+                threshold = stats.ttest_t(pmin, df, tail)
             elif tmin is not None:
-                t_threshold = threshold = abs(tmin)
-            elif tfce:
-                threshold = 'tfce'
-                t_threshold = None
+                threshold = abs(tmin)
             else:
-                t_threshold = threshold = None
+                threshold = None
 
-            cdist = _ClusterDist(ct.y, samples, threshold, tail, 't',
-                                 'Independent Samples t-Test', tstart, tstop,
-                                 criteria, parc, force_permutation)
+            cdist = NDPermutationDistribution(
+                ct.y, samples, threshold, tfce, tail, 't', 'Independent Samples t-Test',
+                tstart, tstop, criteria, parc, force_permutation)
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 def test_func(y, out, perm):
@@ -989,7 +977,7 @@ class ttest_ind(NDTest):
                                 MP_FOR_NON_TOP_LEVEL_FUNCTIONS)
 
         # NDVar map of t-values
-        info = _info.for_stat_map('t', t_threshold, tail=tail, old=ct.y.info)
+        info = _info.for_stat_map('t', threshold, tail=tail, old=ct.y.info)
         t = NDVar(tmap, ct.y.dims[1:], info, 't')
 
         c1_mean = ct.data[c1].summary(name=cellname(c1))
@@ -1111,8 +1099,9 @@ class ttest_rel(NDTest):
         uncorrected p-value.
     tmin : scalar
         Threshold for forming clusters as t-value.
-    tfce : bool
-        Use threshold-free cluster enhancement (default False).
+    tfce : bool | scalar
+        Use threshold-free cluster enhancement. Use a scalar to specify the
+        step of TFCE levels (for ``tfce is True`` it is 0.2).
     tstart : scalar
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
@@ -1199,33 +1188,30 @@ class ttest_rel(NDTest):
         diff = y1 - y0
         tmap = stats.t_1samp(diff.x)
 
-        n_threshold_params = sum((pmin is not None, tmin is not None, tfce))
+        n_threshold_params = sum((pmin is not None, tmin is not None, bool(tfce)))
         if n_threshold_params == 0 and not samples:
-            t_threshold = cdist = None
+            threshold = cdist = None
         elif n_threshold_params > 1:
             raise ValueError("Only one of pmin, tmin and tfce can be specified")
         else:
             if pmin is not None:
-                t_threshold = threshold = stats.ttest_t(pmin, df, tail)
+                threshold = stats.ttest_t(pmin, df, tail)
             elif tmin is not None:
-                t_threshold = threshold = abs(tmin)
-            elif tfce:
-                threshold = 'tfce'
-                t_threshold = None
+                threshold = abs(tmin)
             else:
-                t_threshold = threshold = None
+                threshold = None
 
             n_samples, samples = _resample_params(len(diff), samples)
-            cdist = _ClusterDist(diff, n_samples, threshold, tail, 't',
-                                 'Related Samples t-Test', tstart, tstop,
-                                 criteria, parc, force_permutation)
+            cdist = NDPermutationDistribution(
+                diff, n_samples, threshold, tfce, tail, 't', 'Related Samples t-Test',
+                tstart, tstop, criteria, parc, force_permutation)
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 iterator = permute_sign_flip(n, samples)
                 run_permutation(opt.t_1samp_perm, cdist, iterator)
 
         # NDVar map of t-values
-        info = _info.for_stat_map('t', t_threshold, tail=tail, old=y1.info)
+        info = _info.for_stat_map('t', threshold, tail=tail, old=y1.info)
         t = NDVar(tmap, y1.dims[1:], info, 't')
 
         # store attributes
@@ -1485,8 +1471,9 @@ class anova(MultiEffectNDTest):
         uncorrected p-value.
     fmin : scalar
         Threshold for forming clusters as f-value.
-    tfce : bool
-        Use threshold-free cluster enhancement (default False).
+    tfce : bool | scalar
+        Use threshold-free cluster enhancement. Use a scalar to specify the
+        step of TFCE levels (for ``tfce is True`` it is 0.2).
     replacement : bool
         whether random samples should be drawn with replacement or
         without
@@ -1563,29 +1550,25 @@ class anova(MultiEffectNDTest):
         dfs_denom = lm.dfs_denom
         fmaps = lm.map(y.x)
 
-        n_threshold_params = sum((pmin is not None, fmin is not None, tfce))
+        n_threshold_params = sum((pmin is not None, fmin is not None, bool(tfce)))
         if n_threshold_params == 0 and not samples:
             cdists = None
-            f_thresholds = (None,) * len(effects)
+            thresholds = tuple(repeat(None, len(effects)))
         elif n_threshold_params > 1:
             raise ValueError("Only one of pmin, fmin and tfce can be specified")
         else:
             if pmin is not None:
-                f_thresholds = thresholds = tuple(
-                    stats.ftest_f(pmin, e.df, df_den) for e, df_den in
-                    zip(effects, dfs_denom))
+                thresholds = tuple(stats.ftest_f(pmin, e.df, df_den) for e, df_den in zip(effects, dfs_denom))
             elif fmin is not None:
-                f_thresholds = thresholds = tuple(
-                    abs(fmin) for _ in range(len(effects)))
-            elif tfce:
-                thresholds = ('tfce' for _ in range(len(effects)))
-                f_thresholds = (None,) * len(effects)
+                thresholds = tuple(repeat(abs(fmin), len(effects)))
             else:
-                f_thresholds = thresholds = (None,) * len(effects)
+                thresholds = tuple(repeat(None, len(effects)))
 
-            cdists = [_ClusterDist(y, samples, thresh, 1, 'F', e.name, tstart,
-                                   tstop, criteria, parc, force_permutation)
-                      for e, thresh in zip(effects, thresholds)]
+            cdists = [
+                NDPermutationDistribution(
+                    y, samples, thresh, tfce, 1, 'F', e.name,
+                    tstart, tstop, criteria, parc, force_permutation)
+                for e, thresh in zip(effects, thresholds)]
 
             # Find clusters in the actual data
             do_permutation = 0
@@ -1601,7 +1584,7 @@ class anova(MultiEffectNDTest):
         # create ndvars
         dims = y.dims[1:]
         f = []
-        for e, fmap, df_den, f_threshold in zip(effects, fmaps, dfs_denom, f_thresholds):
+        for e, fmap, df_den, f_threshold in zip(effects, fmaps, dfs_denom, thresholds):
             info = _info.for_stat_map('f', f_threshold, tail=1, old=y.info)
             f.append(NDVar(fmap, dims, info, e.name))
 
@@ -1705,8 +1688,11 @@ class Vector(NDTest):
         names of Dataset variables
     samples : int
         Number of samples for permutation test (default 0).
-    tfce : bool
-        Use threshold-free cluster enhancement (default False).
+    vmin : scalar
+        Threshold value for forming clusters.
+    tfce : bool | scalar
+        Use threshold-free cluster enhancement. Use a scalar to specify the
+        step of TFCE levels (for ``tfce is True`` it is 0.2).
     tstart : scalar
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
@@ -1747,17 +1733,16 @@ class Vector(NDTest):
 
     @caffeine
     def __init__(self, y, match=None, sub=None, ds=None,
-                 samples=10000, tfce=False, tstart=None,
+                 samples=10000, vmin=None, tfce=False, tstart=None,
                  tstop=None, parc=None, force_permutation=False, **criteria):
         ct = Celltable(y, match=match, sub=sub, ds=ds, coercion=asndvar,
                        dtype=np.float64)
 
         n = len(ct.y)
-        threshold = 'tfce' if tfce else None
         n_samples, samples = _resample_params(n, samples)
-        cdist = _ClusterDist(ct.y, n_samples, threshold, 1, 'norm',
-                             'Vector Test', tstart, tstop, criteria,
-                             parc, force_permutation)
+        cdist = NDPermutationDistribution(
+            ct.y, n_samples, vmin, tfce, 1, 'norm', 'Vector Test',
+            tstart, tstop, criteria, parc, force_permutation)
 
         v_dim = ct.y.dimnames[cdist._vector_ax + 1]
         v_mean = ct.y.mean('case')
@@ -1800,12 +1785,12 @@ class Vector(NDTest):
     @staticmethod
     def _vector_mean_norm_perm(y, out, seed):
         n_cases, n_dims, n_tests = y.shape
-        np.random.seed(seed)
-        if n_dims == 3:
-            phi = np.random.uniform(0, 2 * pi, n_cases)
-            theta = np.arccos(np.random.uniform(-1, 1, n_cases))
-            rotation = vector.rotation_matrices(phi, theta, np.empty((n_cases, 3, 3)))
-            return vector.mean_norm_rotated(y, rotation, out)
+        assert n_dims == 3
+        np.random.seed(seed)  # FIXME: introducing race condition?
+        phi = np.random.uniform(0, 2 * pi, n_cases)
+        theta = np.arccos(np.random.uniform(-1, 1, n_cases))
+        rotation = vector.rotation_matrices(phi, theta, np.empty((n_cases, 3, 3)))
+        return vector.mean_norm_rotated(y, rotation, out)
 
 
 def flatten(array, connectivity):
@@ -1987,7 +1972,7 @@ def _label_clusters_binary(bin_map, cmap, cmap_flat, connectivity, criteria):
     return cids
 
 
-def tfce(stat_map, tail, connectivity):
+def tfce(stat_map, tail, connectivity, dh=0.1):
     tfce_im = np.empty(stat_map.shape, np.float64)
     tfce_im_1d = flatten_1d(tfce_im)
     bin_buff = np.empty(stat_map.shape, np.bool8)
@@ -1995,7 +1980,7 @@ def tfce(stat_map, tail, connectivity):
     int_buff_flat = flatten(int_buff, connectivity)
     int_buff_1d = flatten_1d(int_buff)
     return _tfce(stat_map, tail, connectivity, tfce_im, tfce_im_1d, bin_buff, int_buff,
-                 int_buff_flat, int_buff_1d)
+                 int_buff_flat, int_buff_1d, dh)
 
 
 def _tfce(stat_map, tail, conn, out, out_1d, bin_buff, int_buff,
@@ -2053,10 +2038,11 @@ class StatMapProcessor(object):
 
 class TFCEProcessor(StatMapProcessor):
 
-    def __init__(self, tail, max_axes, parc, shape, connectivity):
+    def __init__(self, tail, max_axes, parc, shape, connectivity, dh):
         StatMapProcessor.__init__(self, tail, max_axes, parc)
         self.shape = shape
         self.connectivity = connectivity
+        self.dh = dh
 
         # Pre-allocate memory buffers used for cluster processing
         self._bin_buff = np.empty(shape, np.bool8)
@@ -2068,9 +2054,9 @@ class TFCEProcessor(StatMapProcessor):
 
     def max_stat(self, stat_map):
         v = _tfce(
-            stat_map, self.tail, self.connectivity, self._tfce_im,
-            self._tfce_im_1d,
+            stat_map, self.tail, self.connectivity, self._tfce_im, self._tfce_im_1d,
             self._bin_buff, self._int_buff, self._int_buff_flat, self._int_buff_1d,
+            self.dh,
         ).max(self.max_axes)
         if self.parc is None:
             return v
@@ -2139,14 +2125,14 @@ def get_map_processor(kind, *args):
         raise ValueError("kind=%s" % repr(kind))
 
 
-class _ClusterDist:
+class NDPermutationDistribution(object):
     """Accumulate information on a cluster statistic.
 
     Notes
     -----
-    Use of the _ClusterDist proceeds in 3 steps:
+    Use of the NDPermutationDistribution proceeds in 3 steps:
 
-    - initialize the _ClusterDist object: ``cdist = _ClusterDist(...)``
+    - initialize the NDPermutationDistribution object: ``cdist = NDPermutationDistribution(...)``
     - use a copy of y cropped to the time window of interest:
       ``y = cdist.Y_perm``
     - add the actual statistical map with ``cdist.add_original(pmap)``
@@ -2159,7 +2145,7 @@ class _ClusterDist:
     Permutation data shape: case, [vector, ][non-adjacent, ] ...
     internal shape: [non-adjacent, ] ...
     """
-    def __init__(self, y, samples, threshold, tail=0, meas='?', name=None,
+    def __init__(self, y, samples, threshold, tfce=False, tail=0, meas='?', name=None,
                  tstart=None, tstop=None, criteria={}, parc=None, force_permutation=False):
         """Accumulate information on a cluster statistic.
 
@@ -2169,10 +2155,10 @@ class _ClusterDist:
             Dependent variable.
         samples : int
             Number of permutations.
-        threshold : None | scalar > 0 | 'tfce'
-            Threshold for finding clusters. None for forming distribution of
-            largest value in parameter map. 'TFCE' for threshold-free cluster
-            enhancement.
+        threshold : scalar > 0
+            Threshold-based clustering.
+        tfce : bool | scalar
+            Threshold-free cluster enhancement.
         tail : 1 | 0 | -1
             Which tail(s) of the distribution to consider. 0 is two-tailed,
             whereas 1 only considers positive values and -1 only considers
@@ -2196,24 +2182,18 @@ class _ClusterDist:
         """
         assert y.has_case
         assert parc is None or isinstance(parc, str)
-        if threshold is None:
-            kind = 'raw'
-        elif isinstance(threshold, str):
-            if threshold.lower() == 'tfce':
-                kind = 'tfce'
-                threshold = None
-            else:
-                raise ValueError("Invalid value for pmin: %s" % repr(threshold))
+        if tfce and threshold:
+            raise RuntimeError(f"threshold={threshold!r}, tfce={tfce!r}: mutually exclusive parameters")
+        elif tfce:
+            if tfce is not True:
+                tfce = abs(tfce)
+            kind = 'tfce'
+        elif threshold:
+            threshold = float(threshold)
+            kind = 'cluster'
+            assert threshold > 0
         else:
-            try:
-                threshold = float(threshold)
-            except:
-                raise TypeError("Invalid value for pmin: %s" % repr(threshold))
-
-            if threshold > 0:
-                kind = 'cluster'
-            else:
-                raise ValueError("Invalid value for pmin: %s" % repr(threshold))
+            kind = 'raw'
 
         # vector: will be removed for stat_map
         vector = [d._connectivity_type == 'vector' for d in y.dims[1:]]
@@ -2328,7 +2308,8 @@ class _ClusterDist:
         if kind == 'raw':
             map_args = (kind, tail, max_axes, parc_indexes)
         elif kind == 'tfce':
-            map_args = (kind, tail, max_axes, parc_indexes, shape, connectivity)
+            dh = 0.1 if tfce is True else tfce
+            map_args = (kind, tail, max_axes, parc_indexes, shape, connectivity, dh)
         else:
             map_args = (kind, tail, max_axes, parc_indexes, shape, connectivity, threshold, criteria_)
 
@@ -2343,6 +2324,7 @@ class _ClusterDist:
         self._max_axes = max_axes
         self.dist = None
         self.threshold = threshold
+        self.tfce = tfce
         self.tail = tail
         self._nad_ax = nad_ax
         self._vector_ax = vector_ax
@@ -2392,7 +2374,10 @@ class _ClusterDist:
 
         # process map
         if self.kind == 'tfce':
-            cmap = tfce(stat_map, self.tail, self._connectivity)
+            dh = 0.1 if self.tfce is True else self.tfce
+            if max(stat_map.max(), -stat_map.min()) < dh:
+                raise ValueError(f"tfce={self.tfce!r}: the TFCE step is larger than the largest value in the data. Consider setting tfce to a lower value.")
+            cmap = tfce(stat_map, self.tail, self._connectivity, dh)
             cids = None
             n_clusters = cmap.max() > 0
         elif self.kind == 'cluster':
@@ -2483,17 +2468,17 @@ class _ClusterDist:
         if not self._finalized:
             raise RuntimeError("Cannot pickle cluster distribution before all "
                                "permutations have been added.")
-        attrs = ('name', 'meas', '_version', '_host', '_init_time',
-                 # settings ...
-                 'kind', 'threshold', 'tail', 'criteria', 'samples', 'tstart',
-                 'tstop', 'parc',
-                 # data properties ...
-                 'dims', 'shape', '_nad_ax', '_vector_ax', '_criteria', '_connectivity',
-                 # results ...
-                 'dt_original', 'dt_perm', 'n_clusters', '_dist_dims', 'dist',
-                 '_original_param_map', '_original_cluster_map', '_cids')
-        state = {name: getattr(self, name) for name in attrs}
-        state['version'] = 2
+        state = {
+            name: getattr(self, name) for name in (
+                'name', 'meas', '_version', '_host', '_init_time',
+                # settings ...
+                'kind', 'threshold', 'tfce', 'tail', 'criteria', 'samples', 'tstart', 'tstop', 'parc',
+                # data properties ...
+                'dims', 'shape', '_nad_ax', '_vector_ax', '_criteria', '_connectivity',
+                # results ...
+                'dt_original', 'dt_perm', 'n_clusters', '_dist_dims', 'dist', '_original_param_map', '_original_cluster_map', '_cids',
+            )}
+        state['version'] = 3
         return state
 
     def __setstate__(self, state):
@@ -2537,6 +2522,8 @@ class _ClusterDist:
                 state['parc'])
         if version < 2:
             state['_vector_ax'] = None
+        if version < 3:
+            state['tfce'] = ['kind'] == 'tfce'
 
         for k, v in state.items():
             setattr(self, k, v)
@@ -2547,15 +2534,15 @@ class _ClusterDist:
         "Argument representation for TestResult repr"
         args = ['samples=%r' % self.samples]
         if pmin:
-            args.append("pmin=%r" % pmin)
+            args.append(f"pmin={pmin!r}")
         elif self.kind == 'tfce':
-            args.append("tfce=True")
+            args.append(f"tfce={self.tfce!r}")
         if self.tstart:
-            args.append("tstart=%r" % self.tstart)
+            args.append(f"tstart{self.tstart!r}")
         if self.tstop:
-            args.append("tstop=%r" % self.tstop)
-        for item in self.criteria.items():
-            args.append("%s=%r" % item)
+            args.append(f"tstop={self.tstop!r}")
+        for k, v in self.criteria.items():
+            args.append(f"{k}={v!r}")
         return args
 
     def _repr_clusters(self):
@@ -3287,3 +3274,7 @@ def distribution_worker_me(dist_arrays, dist_shape, in_queue, kill_beacon):
                 dist[i] = v
         if kill_beacon.is_set():
             return
+
+
+# Backwards compatibility for pickling
+_ClusterDist = NDPermutationDistribution

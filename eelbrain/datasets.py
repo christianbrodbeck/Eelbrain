@@ -306,7 +306,7 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     return ds
 
 
-def get_uts(utsnd=False, seed=0, nrm=False):
+def get_uts(utsnd=False, seed=0, nrm=False, vector3d=False):
     """Create a sample Dataset with 60 cases and random data.
 
     Parameters
@@ -389,6 +389,14 @@ def get_uts(utsnd=False, seed=0, nrm=False):
     if nrm:
         ds['nrm'] = Factor([a + '%02i' % i for a in 'AB' for _ in range(2) for
                             i in range(15)], random=True)
+
+    if vector3d:
+        x = np.random.normal(0, 1, (60, 3, 100))
+        # main effect
+        x[:30, 0, 50:80] += np.hanning(30) * 0.7
+        x[:30, 1, 50:80] += np.hanning(30) * -0.5
+        x[:30, 2, 50:80] += np.hanning(30) * 0.3
+        ds['v3d'] = NDVar(x, (Case, Space('RAS'), time))
 
     return ds
 
