@@ -61,6 +61,7 @@ import socket
 from io import BytesIO
 import tempfile
 import time
+from typing import Union, Iterable, List as ListType, Tuple
 import webbrowser
 
 import numpy as np
@@ -70,6 +71,10 @@ from matplotlib.mathtext import math_to_image
 
 from ._utils.tex import latex2pdf
 from ._utils import ui
+
+
+# types
+FMTextLike = Union['FMTextElement', str, ListType['FMTextLike'], Tuple['FMTextLike']]
 
 
 preferences = dict(
@@ -692,7 +697,7 @@ class FMText(FMTextElement):
 
     Parameters
     ----------
-    content : FMTextElement | list of FMTextElement
+    content : FMTextLike
         Any item with a string representation (str, FMText, scalar, ...)
         or an object that iterates over such items (e.g. a list of FMText).
     tag : str
@@ -712,8 +717,15 @@ class FMText(FMTextElement):
     'paragraph'
         A <p> tag in HTML, and simple line breaks in TeX.
     """
-    def __init__(self, content, tag=None, options=None):
-        if isinstance(content, (list, tuple)):
+    def __init__(
+            self,
+            content: FMTextLike = None,
+            tag: str = None,
+            options: dict = None,
+    ):
+        if content is None:
+            content = []
+        elif isinstance(content, (list, tuple)):
             content = [asfmtext(item) for item in content]
         else:
             content = [asfmtext(content)]
@@ -773,7 +785,7 @@ class Text(FMTextElement):
 
 class Link(FMTextElement):
 
-    def __init__(self, content, url):
+    def __init__(self, content: FMTextLike, url: str):
         FMTextElement.__init__(self, content)
         self.url = str(url)
 
@@ -922,22 +934,30 @@ class Stars(FMTextElement):
 
 class List(FMTextElement):
     """Bulletted list of FMText elements"""
-    def __init__(self, head=None, items=None, ordered=False):
+    def __init__(
+            self,
+            head: FMTextLike = None,
+            items: Iterable[FMTextLike] = None,
+            ordered: bool = False,
+    ):
         """Bulletted list of FMText elements
 
         Parameters
         ----------
-        head : None | FMText
+        head : FMTextLike
             First line on higher level (no bullet for highest list, or list
             element for subordinate list).
-        items : None | list of FMText
+        items : iterable of FMTextLike
             List items.
         ordered : bool
             Whether to use the "ol" HTML tag (instead of "ul").
         """
         self.ordered = ordered
         self.head = asfmtext_or_none(head)
-        self.items = [] if items is None else list(map(asfmtext(items)))
+        if items is None:
+            self.items = []
+        else:
+            self.items = list(map(asfmtext, items))
 
     def _repr_items(self):
         if self.ordered:
@@ -949,22 +969,27 @@ class List(FMTextElement):
         else:
             return []
 
-    def add_item(self, item):
+    def add_item(self, item: FMTextLike):
         "Add an item to the list"
         self.items.append(asfmtext(item))
 
-    def add_sublist(self, head, items=None, ordered=None):
+    def add_sublist(
+            self,
+            head: FMTextLike = None,
+            items: Iterable[FMTextLike] = None,
+            ordered: bool = False,
+    ):
         """Add an item with a subordinate list
 
         Parameters
         ----------
-        head : FMText
+        head : FMTextLike
             Text for the parent item
-        items : None | list of FMText
+        items : iterable of FMTextLike
             Subordinate list items.
         ordered : None | bool
-            Whether to use the "ol" HTML tag (instead of "ul"). If None, the
-            parent List's setting is used.
+            Whether to use the "ol" HTML tag (instead of "ul"). The default is
+            to inherit the parent list's setting.
 
         Returns
         -------
@@ -1282,7 +1307,13 @@ class Table(FMTextElement):
             raise IndexError("Table index %r" % (key,))
 
     # adding texstrs ---
-    def cell(self, content='', tag=None, width=1, just=None):
+    def cell(
+            self,
+            content: FMTextLike = None,
+            tag: str = None,
+            width: int = 1,
+            just: str = None,
+    ):
         """Add a cell to the table
 
         Parameters
@@ -1293,8 +1324,8 @@ class Table(FMTextElement):
             Formatting tag.
         width : int
             Width in columns for multicolumn cells.
-        just : None | 'l' | 'r' | 'c'
-            Justification. None: use column standard.
+        just : 'l' | 'r' | 'c'
+            Justification (default: use column standard).
         """
         cell = Cell(content, tag, width, just)
 
@@ -1348,12 +1379,12 @@ class Table(FMTextElement):
                 raise TypeError("span=%r" % (span,))
             self._table.append(r"\cmidrule{%s}" % span)
 
-    def title(self, content):
-        """Set the table title (with FMText args/kwargs)"""
+    def title(self, content: FMTextLike):
+        """Set the table title"""
         self._title = asfmtext_or_none(content)
 
-    def caption(self, content):
-        """Set the table caption (with FMText args/kwargs)"""
+    def caption(self, content: FMTextLike):
+        """Set the table caption"""
         self._caption = asfmtext_or_none(content)
 
     def __repr__(self):
@@ -1689,14 +1720,19 @@ class Image(FMTextElement, BytesIO):
 class Figure(FMText):
     "Represent a figure"
 
-    def __init__(self, content, caption=None, options=None):
+    def __init__(
+            self,
+            content: FMTextLike,
+            caption: FMTextLike = None,
+            options: dict = None,
+    ):
         """Represent a figure
 
         Parameters
         ----------
-        content : FMText
+        content : FMTextLike
             Figure content.
-        caption : FMText
+        caption : FMTextLike
             Figure caption.
         options : dict
             HTML options for ``<figure>`` tag.
@@ -1722,29 +1758,40 @@ class Figure(FMText):
 
 class Section(FMText):
 
-    def __init__(self, heading, content=[]):
+    def __init__(
+            self,
+            heading: FMTextLike,
+            content: FMTextLike = None,
+    ):
         """Represent a section of an FMText document
 
         Parameters
         ----------
-        heading : FMText
+        heading : FMTextLike
             Section heading.
-        content : list of FMText
+        content : FMTextLike
             Section content. Can also be constructed dynamically through the
             different .add_... methods.
         """
         self._heading = asfmtext(heading)
         FMText.__init__(self, content)
 
-    def add_figure(self, caption, content=None, options=None):
+    def add_figure(
+            self,
+            caption: FMTextLike,
+            content: FMTextLike = None,
+            options: dict = None,
+    ):
         """Add a figure frame to the section
 
         Parameters
         ----------
-        caption : FMText
+        caption : FMTextLike
             Figure caption.
-        content : None | FMText
+        content : FMTextLike
             Figure content.
+        options : dict
+            HTML options for ``<figure>`` tag.
 
         Returns
         -------
@@ -1813,14 +1860,17 @@ class Section(FMText):
         self.append(paragraph)
         return paragraph
 
-    def add_section(self, heading, content=[]):
+    def add_section(
+            self,
+            heading: FMTextLike,
+            content: FMTextLike = ()):
         """Add a new subordinate section
 
         Parameters
         ----------
-        heading : FMText
+        heading : FMTextLike
             Heading for the section.
-        content : None | list of FMText
+        content : FMTextLike
             Content for the section.
 
         Returns
@@ -1883,20 +1933,26 @@ class Section(FMText):
 
 class Report(Section):
 
-    def __init__(self, title, author=None, date=True, content=[],
-                 site_title=None):
+    def __init__(
+            self,
+            title: FMTextLike,
+            author: FMTextLike = None,
+            date: Union[FMTextLike, bool] = True,
+            content: FMTextLike = None,
+            site_title: str = None,
+    ):
         """Represent an FMText report document
 
         Parameters
         ----------
-        title : FMText
+        title : FMTextLike
             Document title.
-        author : None | FMText
+        author : FMTextLike
             Document autho.
-        date : None | True | FMText
-            Date to print on the report. If True, the current day (object
-            initialization) is used.
-        content : list of FMText
+        date : bool | FMTextLike
+            Date to print on the report. If True (default), the current day
+            (object initialization) is used.
+        content : FMTextLike
             Report content. Can also be constructed dynamically through the
             different .add_... methods.
         site_title : str
