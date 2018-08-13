@@ -43,16 +43,23 @@ class VoxelLayer(object):
 
 class VectorLayer(object):
 
-    def __init__(self, ndvar):
+    def __init__(self, ndvar, mode):
         from mayavi import mlab
 
         x, y, z = ndvar.source.coordinates.T
         u, v, w = ndvar.get_data(('space', 'source'))
+        c = np.linspace(0, 1, ndvar.source._n_vert, endpoint=False)
         self.q = mlab.quiver3d(
             x, y, z, u, v, w,
             scale_factor=0.4,  # length of the arrows
-            mode='arrow'
+            colormap='Accent',
+            mode=mode,
+            scalars=c
         )
+        self.q.glyph.color_mode = 'color_by_scalar'
+        self.q.glyph.glyph_source.glyph_source.shaft_radius = 0.02
+        self.q.glyph.glyph_source.glyph_source.tip_length = 0.2
+        self.q.glyph.glyph_source.glyph_source.tip_radius = 0.05
 
     def update(self, ndvar):
         q_array = self.q.mlab_source.dataset.point_data.get_array(0)
@@ -62,10 +69,12 @@ class VectorLayer(object):
 
 class VolBrain(TimeSlicer):
 
-    def __init__(self, ndvar, src=False, bem=True, surf='pial'):
+    def __init__(self, ndvar, mode='arrow', src='ico-4', bem=False, surf='pial_avg'):
         from mayavi import mlab
+        mlab.options.backend = 'envisage'
 
         self.mlab = mlab
+        self.mode = mode
         self.figure = mlab.figure(bgcolor=(1, 1, 1))
         # BEM
         if bem:
@@ -75,8 +84,8 @@ class VolBrain(TimeSlicer):
             bem = mne.read_bem_surfaces(bem_file)[0]
             x, y, z = bem['rr'].T
             tris = bem['tris'][:, ::-1]
-            self.bem = mlab.triangular_mesh(x, y, z, tris, #opacity=0.25,
-                                            color=(1, 1, 1))
+            self.bem = mlab.triangular_mesh(x, y, z, tris, opacity=0.25,
+                                            color=(1, 1, 1),  representation='wireframe')
             self.bem.actor.property.backface_culling = True
         else:
             self.bem = None
@@ -89,8 +98,12 @@ class VolBrain(TimeSlicer):
                 rr, tris = mne.read_surface(surf_temp % hemi)
                 rr /= 1000
                 x, y, z = rr.T
-                obj = mlab.triangular_mesh(x, y, z, tris, color=(1, 1, 1), opacity=1,
-                                           representation='wireframe')
+                obj = mlab.triangular_mesh(x, y, z,
+                                           tris,
+                                           # color=(1, 1, 1),
+                                           colormap='bone',
+                                           opacity=0.05,
+                                           representation='surface')
                 obj.actor.property.backface_culling = True
                 self.surfs.append(obj)
         if src:
@@ -100,21 +113,24 @@ class VolBrain(TimeSlicer):
             src.mlab_source.dataset.lines = ss.connectivity()
             lines = mlab.pipeline.stripper(src)
             mlab.pipeline.surface(lines,
-                                  color=(0, 0, 0),
+                                  color=(0.5, 0.5, 0.5),
                                   # colormap='Accent',
                                   line_width=0.1,
-                                  opacity=0.25,
+                                  opacity=0.3,
                                   figure=self.figure)
 
         if ndvar.has_dim('time'):
+            t_in = 0
             self.time = ndvar.get_dim('time')
             ndvar0 = ndvar.sub(time=self.time[0])
+            text = 'time = %s ms' % round (t_in * 1e3)
+            self.text = mlab.text(.8, 0.01, text, width=0.2, color=(0, 0, 0), line_width=2.0)
         else:
             self.time = None
             ndvar0 = ndvar
 
         if ndvar.has_dim('space'):
-            self.p = VectorLayer(ndvar0)
+            self.p = VectorLayer(ndvar0, self.mode)
         else:
             self.p = VoxelLayer(ndvar0)
 
@@ -128,6 +144,7 @@ class VolBrain(TimeSlicer):
 
     def _update_time(self, t, fixate):
         self.p.update(self._ndvar.sub(time=t))
+        self.text.text = 'time = %s ms' % round (t * 1e3)
 
     def animate(self):
         for t in self.time:
@@ -145,7 +162,7 @@ class VolBrain(TimeSlicer):
         self._set_time(time, True)
 
 
-def butterfly(ndvar, src=False, bem=True, surf='pial', vmin=None, vmax=None):
+def butterfly(ndvar, src='ico-4', bem=False, surf='pial_avg', vmin=None, vmax=None):
     if ndvar.has_dim ('space'):
         p = plot.Butterfly (ndvar.norm ('space'), vmin=vmin, vmax=vmax)
     else:
