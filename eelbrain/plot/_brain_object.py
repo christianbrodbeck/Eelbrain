@@ -234,7 +234,7 @@ class Brain(TimeSlicer, surfer.Brain):
                          ms(self._time_dim.tstop)))
         return "<plot.brain.Brain: %s>" % ', '.join(args)
 
-    def _asfmtxt(self):
+    def _asfmtext(self):
         return self.image()
 
     def _check_source_space(self, source):
