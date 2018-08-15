@@ -1,4 +1,6 @@
-# Standard library imports
+# -*- coding: utf-8 -*-
+# Author: Proloy Das <proloy@umd.edu>
+
 import warnings
 from os.path import join
 
