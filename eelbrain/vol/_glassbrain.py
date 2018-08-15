@@ -17,7 +17,7 @@ from nilearn.plotting.img_plotting import _get_colorbar_and_data_ranges
 from ..plot._base import TimeSlicer, Layout, EelFigure
 from ._nifti_utils import _save_stc_as_volume
 
-# default GlassBrain geheight and width
+# default GlassBrain height and width
 DEFAULT_H = 2.6
 DEFAULT_W = 2.2
 
@@ -58,7 +58,7 @@ def _crop_colorbar(cbar, cbar_vmin, cbar_vmax):
 
 
 class GlassBrain(TimeSlicer, EelFigure):
-    """`GlassBrain` Claass to hold 2d projections of an ROI/mask image
+    """`GlassBrain` Class to hold 2d projections of an ROI/mask image
     (by default 3 projections: Frontal, Axial, and Lateral).
 
     `GlassBrain` subclass comes with Eelbrain GUI integration and
@@ -348,7 +348,7 @@ def butterfly(ndvar, dest='mri', mri_resolution=False, black_bg=False, display_m
         huge.
     black_bg : boolean, optional
         If True, the background of the image is set to be black.
-    display_mode : string, optional. Default is 'ortho'
+    display_mode : string, optional. Default is 'lyrz'
         Choose the direction of the cuts: 'x' - sagittal, 'y' - coronal,
         'z' - axial, 'l' - sagittal left hemisphere only,
         'r' - sagittal right hemisphere only, 'ortho' - three cuts are
