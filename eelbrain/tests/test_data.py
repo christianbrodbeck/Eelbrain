@@ -1185,6 +1185,8 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.rms(idxsub), xsub.rms(idxsub))
     assert_array_equal(x.rms(idx1d), rms(x.x[:, idx1d.x], 1))
 
+    assert x.extrema() == max(abs(x.min()), abs(x.max()))
+
 
 def test_ndvar_timeseries_methods():
     "Test NDVar time-series methods"

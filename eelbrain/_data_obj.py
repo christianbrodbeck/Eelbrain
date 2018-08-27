@@ -4670,10 +4670,12 @@ class NDVar(object):
                      zip(self.dims, self.x.nonzero()))
 
 
-def extrema(x, axis=0):
+def extrema(x, axis=None):
     "Extract the extreme values in x"
     max = np.max(x, axis)
     min = np.min(x, axis)
+    if np.isscalar(max):
+        return max if abs(max) > abs(min) else min
     return np.where(np.abs(max) >= np.abs(min), max, min)
 
 
