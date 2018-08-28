@@ -438,7 +438,6 @@ class t_contrast_rel(NDTest):
     this difference is greater than the difference between c and d, one
     could use ``"(a > b) - abs(c > d)"``.
     """
-
     _state_specific = ('x', 'contrast', 't', 'tail')
 
     @caffeine
@@ -1576,8 +1575,7 @@ class anova(MultiEffectNDTest):
                 do_permutation += cdist.do_permutation
 
             if do_permutation:
-                iterator = permute_order(len(y), samples,
-                                         unit=None if match is False else match)
+                iterator = permute_order(len(y), samples, unit=match)
                 run_permutation_me(lm, cdists, iterator)
 
         # create ndvars
@@ -1727,7 +1725,6 @@ class Vector(NDTest):
     -----
     Cases with zero variance are set to t=0.
     """
-
     _state_specific = ('mean', 'n', '_v_dim')
 
     @caffeine
@@ -2437,7 +2434,7 @@ class NDPermutationDistribution(object):
 
         if sub:
             if self._dist_dims is None:
-                raise TypeError("ClusterDist does not have parcellation")
+                raise TypeError("NDPermutationDistribution does not have parcellation")
             dist_ = NDVar(dist, self._dist_dims)
             dist_sub = dist_.sub(**sub)
             dist = dist_sub.x
@@ -2461,7 +2458,7 @@ class NDPermutationDistribution(object):
         else:
             items.append("no data")
 
-        return "<ClusterDist: %s>" % ', '.join(items)
+        return "<NDPermutationDistribution: %s>" % ', '.join(items)
 
     def __getstate__(self):
         if not self._finalized:

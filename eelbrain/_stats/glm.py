@@ -305,11 +305,10 @@ def _nd_anova(x):
     assert_has_no_empty_cells(x)
     if hasrandom(x):
         if not iscategorial(x):
-            raise NotImplementedError("Random effects ANOVA with continuous "
-                                      "predictors")
+            raise NotImplementedError("Random effects ANOVA with continuous predictors")
         elif x.df_error != 0:
             raise x._incomplete_error("Mixed effects ANOVA")
-        if isbalanced(x):
+        elif isbalanced(x):
             return _BalancedMixedNDANOVA(x)
     elif isbalanced(x):
         return _BalancedFixedNDANOVA(x)
