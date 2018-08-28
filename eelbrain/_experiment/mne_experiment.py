@@ -16,7 +16,7 @@ import inspect
 from itertools import chain, product
 import logging
 import os
-from os.path import exists, getmtime, isdir, join, relpath
+from os.path import basename, exists, getmtime, isdir, join, relpath
 import re
 import shutil
 import time
@@ -52,6 +52,7 @@ from .._mne import (
 from ..mne_fixes import (
     write_labels_to_annot, _interpolate_bads_eeg, _interpolate_bads_meg)
 from ..mne_fixes._trans import hsp_equal, mrk_equal
+from ..mne_fixes._source_space import merge_volume_source_space
 from .._ndvar import cwt_morlet
 from ..fmtxt import List, Report, Image, read_meta
 from .._report import named_list, enumeration, plural
@@ -98,6 +99,7 @@ COV_PARAMS = {'epoch', 'session', 'method', 'reg', 'keep_sample_mean',
               'reg_eval_win_pad'}
 
 
+SRC_RE = re.compile('(ico|vol)-(\d+)$')
 inv_re = re.compile("(free|fixed|loose\.\d+)-"  # orientation constraint
                     "(\d*\.?\d+)-"  # SNR
                     "(MNE|dSPM|sLORETA)"  # method
@@ -144,6 +146,8 @@ class FileMissing(Exception):
 
 def _mask_ndvar(ds, name):
     y = ds[name]
+    if y.source.parc is None:
+        raise RuntimeError('%r has no parcellation' % (y,))
     mask = y.source.parc.startswith('unknown')
     if mask.any():
         ds[name] = y.sub(source=np.invert(mask))
@@ -298,6 +302,7 @@ temp = {
     # (method) plots
     'plot-dir': join('{root}', 'plots'),
     'plot-file': join('{plot-dir}', '{analysis}', '{name}.{ext}'),
+    'methods-dir': join('{root}', 'methods'),
 
     # result output files
     # data processing parameters
@@ -840,8 +845,7 @@ class MneExperiment(FileTree):
         self._register_field('parc', parc_values, 'aparc',
                              eval_handler=self._eval_parc)
         self._register_field('freq', self._freqs.keys())
-        self._register_field('src', ('ico-2', 'ico-3', 'ico-4', 'ico-5',
-                                     'vol-10', 'vol-7', 'vol-5'), 'ico-4')
+        self._register_field('src', default='ico-4', eval_handler=self._eval_src)
         self._register_field('connectivity', ('', 'link-midline'))
         self._register_field('select_clusters', self._cluster_criteria.keys())
 
@@ -2350,22 +2354,24 @@ class MneExperiment(FileTree):
         ----------
         subject : Factor
             A Factor with subjects.
-        groups : list of str
+        groups : list of str | {str: str} dict
             Groups which to label (raises an error if group membership is not
-            unique).
+            unique). To use labels other than the group names themselves, use
+            a ``{group: label}`` dict.
 
         Returns
         -------
         group : Factor
             A :class:`Factor` that labels the group for each subject.
         """
-        labels = {s: [g for g in groups if s in self._groups[g]] for s in subject.cells}
+        if not isinstance(groups, dict):
+            groups = {g: g for g in groups}
+        labels = {s: [l for g, l in groups.items() if s in self._groups[g]] for s in subject.cells}
         problems = [s for s, g in labels.items() if len(g) != 1]
         if problems:
-            desc = [', '.join(labels[s]) if labels[s] else 'no group' for s in problems]
+            desc = (', '.join(labels[s]) if labels[s] else 'no group' for s in problems)
             msg = ', '.join('%s (%s)' % pair for pair in zip(problems, desc))
-            raise ValueError("Groups %s are not unique for subjects: %s"
-                             % (groups, msg))
+            raise ValueError(f"Groups {groups} are not unique for subjects: {msg}")
         labels = {s: g[0] for s, g in labels.items()}
         return Factor(subject, labels=labels)
 
@@ -3108,7 +3114,7 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_fwd(self, surf_ori=True, ndvar=False, mask=None):
+    def load_fwd(self, surf_ori=True, ndvar=False, mask=None, **state):
         """Load the forward solution
 
         Parameters
@@ -3123,6 +3129,8 @@ class MneExperiment(FileTree):
         mask : str | bool
             Remove source labelled "unknown". Can be parcellation name or True,
             in which case the current parcellation is used.
+        ...
+            State parameters.
 
         Returns
         -------
@@ -3132,13 +3140,18 @@ class MneExperiment(FileTree):
         if mask and not ndvar:
             raise NotImplemented("mask is only implemented for ndvar=True")
         elif isinstance(mask, str):
-            self.set(parc=mask)
+            state['parc'] = mask
             mask = True
-        fwd_file = self.get('fwd-file', make=True)
+        fwd_file = self.get('fwd-file', make=True, **state)
+        src = self.get('src')
         if ndvar:
-            self.make_annot()
-            fwd = load.fiff.forward_operator(
-                fwd_file, self.get('src'), self.get('mri-sdir'), self.get('parc'))
+            if src.startswith('vol'):
+                parc = None
+                assert mask is None
+            else:
+                self.make_annot()
+                parc = self.get('parc')
+            fwd = load.fiff.forward_operator(fwd_file, src, self.get('mri-sdir'), parc)
             if mask:
                 fwd = fwd.sub(source=np.invert(
                     fwd.source.parc.startswith('unknown')))
@@ -4011,7 +4024,7 @@ class MneExperiment(FileTree):
         pipe.make_bad_channels(self.get('subject'), self.get('session'),
                                bad_chs, redo)
 
-    def make_bad_channels_auto(self, flat=1e-14):
+    def make_bad_channels_auto(self, flat=1e-14, redo=False, **state):
         """Automatically detect bad channels
 
         Works on ``raw='raw'``
@@ -4021,10 +4034,15 @@ class MneExperiment(FileTree):
         flat : scalar
             Threshold for detecting flat channels: channels with ``std < flat``
             are considered bad (default 1e-14).
+        redo : bool
+            If the file already exists, replace it (instead of adding).
+        ...
+            State parameters.
         """
+        if state:
+            self.set(**state)
         pipe = self._raw['raw']
-        pipe.make_bad_channels_auto(self.get('subject'), self.get('session'),
-                                    flat)
+        pipe.make_bad_channels_auto(self.get('subject'), self.get('session'), flat, redo)
 
     def make_besa_evt(self, redo=False, **state):
         """Make the trigger and event files needed for besa
@@ -4231,8 +4249,7 @@ class MneExperiment(FileTree):
         """Make the forward model"""
         dst = self.get('fwd-file')
         if exists(dst):
-            fwd_mtime = getmtime(dst)
-            if fwd_mtime > self._fwd_mtime():
+            if cache_valid(getmtime(dst), self._fwd_mtime()):
                 return
         elif self.get('modality') != '':
             raise NotImplementedError("Source reconstruction with EEG")
@@ -4249,11 +4266,11 @@ class MneExperiment(FileTree):
                                         ignore_ref=True)
         for s, s0 in zip(fwd['src'], src):
             if s['nuse'] != s0['nuse']:
-                msg = ("The forward solution %s contains fewer sources than "
-                       "the source space. This could be due to a corrupted "
-                       "bem file with source outside the inner skull surface." %
-                       (os.path.split(dst)[1]))
-                raise RuntimeError(msg)
+                raise RuntimeError(
+                    f"The forward solution {basename(dst)} contains fewer "
+                    f"sources than the source space. This could be due to a "
+                    f"corrupted bem file with source outside the inner skull "
+                    f"surface.")
         mne.write_forward_solution(dst, fwd, True)
 
     def make_ica_selection(self, epoch=None, decim=None):
@@ -5414,23 +5431,29 @@ class MneExperiment(FileTree):
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
         report.save_html(dst)
 
-    def make_report_coreg(self, file_name):
+    def make_report_coreg(self, file_name=None, **state):
         """Create HTML report with plots of the MEG/MRI coregistration
 
         Parameters
         ----------
         file_name : str
-            Where to save the report.
+            Where to save the report (default is in the root/methods director).
+        ...
+            State parameters.
         """
         from matplotlib import pyplot
         from mayavi import mlab
 
-        mri = self.get('mri')
+        mri = self.get('mri', **state)
+        group = self.get('group')
         title = 'Coregistration'
+        if group != 'all':
+            title += ' ' + group
         if mri:
             title += ' ' + mri
+        if file_name is None:
+            file_name = join(self.get('methods-dir', mkdir=True), title + '.html')
         report = Report(title)
-
         for subject in self:
             mrisubject = self.get('mrisubject')
             fig = self.plot_coreg()
@@ -5506,17 +5529,25 @@ class MneExperiment(FileTree):
             src = self.get('src')
             kind, param = src.split('-')
             if kind == 'vol':
-                mri = self.get('mri-file')
-                bem = self._load_bem()
-                mne.setup_volume_source_space(subject, dst, pos=float(param),
-                                              mri=mri, bem=bem, mindist=0.,
-                                              exclude=0.,
-                                              subjects_dir=self.get('mri-sdir'))
+                if subject == 'fsaverage':
+                    bem = self.get('bem-file')
+                else:
+                    raise NotImplementedError("Volume source space for subject "
+                                              "other than fsaverage")
+                hemis = ('Left', 'Right')
+                voi = ('Cerebral-Cortex', 'Cerebral-White-Matter')
+                sss = mne.setup_volume_source_space(
+                    subject, pos=float(param), bem=bem,
+                    mri=join(self.get('mri-dir'), 'mri', 'aseg.mgz'),
+                    volume_label=['%s-%s' % fmt for fmt in product(hemis, voi)],
+                    subjects_dir=self.get('mri-sdir'))
+                sss = merge_volume_source_space(sss, 'Eelbrain-volume')
             else:
                 spacing = kind + param
-                sss = mne.setup_source_space(subject, spacing=spacing, add_dist=True,
-                                             subjects_dir=self.get('mri-sdir'))
-                mne.write_source_spaces(dst, sss)
+                sss = mne.setup_source_space(
+                    subject, spacing=spacing, add_dist=True,
+                    subjects_dir=self.get('mri-sdir'))
+            mne.write_source_spaces(dst, sss)
 
     def _test_kwargs(self, samples, pmin, tstart, tstop, data, parc_dim):
         "Compile kwargs for testnd tests"
@@ -5728,27 +5759,37 @@ class MneExperiment(FileTree):
 
         return Brain(mrisubject, **brain_args)
 
-    def plot_coreg(self, ch_type=None, dig=True, **kwargs):
+    def plot_coreg(self, dig=True, parallel=True, **state):
         """Plot the coregistration (Head shape and MEG helmet)
 
         Parameters
         ----------
-        ch_type : 'meg' | 'eeg'
-            Plot only MEG or only EEG sensors (default is both).
         dig : bool
-            Plot the digitization points (default True).
+            Plot the digitization points (default True; 'fiducials' to plot
+            fiducial points only).
+        parallel : bool
+            Set parallel view.
         ...
             State parameters.
 
         Notes
         -----
-        Uses :func:`mne.viz.plot_trans`
+        Uses :func:`mne.viz.plot_alignment`
         """
-        self.set(**kwargs)
-        raw = self.load_raw()
-        return mne.viz.plot_trans(raw.info, self.get('trans-file'),
-                                  self.get('mrisubject'), self.get('mri-sdir'),
-                                  ch_type, 'head', dig=dig)
+        self.set(**state)
+        with self._temporary_state:
+            raw = self.load_raw(raw='raw')
+        fig = mne.viz.plot_alignment(
+            raw.info, self.get('trans-file'), self.get('mrisubject'),
+            self.get('mri-sdir'), meg=('helmet', 'sensors'), dig=dig,
+            interaction='terrain')
+        if parallel:
+            fig.scene.camera.parallel_projection = True
+            fig.scene.camera.parallel_scale = .2
+            fig.scene.camera.position = [0, .5, .04]
+            fig.scene.camera.focal_point = [0, 0, .04]
+            fig.render()
+        return fig
 
     def plot_whitened_gfp(self, s_start=None, s_stop=None, run=None):
         """Plot the GFP of the whitened evoked to evaluate the the covariance matrix
@@ -6048,7 +6089,7 @@ class MneExperiment(FileTree):
         if model == '':
             return model
         elif len(model) > 1 and '*' in model:
-            raise ValueError("Specify model with '%' instead of '*'")
+            raise ValueError("model=%r; To specify interactions, use '%' instead of '*'")
 
         factors = [v.strip() for v in model.split('%')]
 
@@ -6067,6 +6108,12 @@ class MneExperiment(FileTree):
         if unordered_factors:
             model.extend(unordered_factors)
         return '%'.join(model)
+
+    def _eval_src(self, src):
+        m = SRC_RE.match(src)
+        if not m:
+            raise ValueError('src=%r' % (src,))
+        return src
 
     def _update_mrisubject(self, fields):
         subject = fields['subject']

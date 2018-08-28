@@ -909,9 +909,9 @@ class Stars(FMTextElement):
         FMTextElement.__init__(self, text, tag)
 
     @classmethod
-    def from_p(cls, p):
+    def from_p(cls, p, of=3, tag='^'):
         n = sum((p <= 0.001, p <= 0.01, p <= 0.05))
-        return cls(n)
+        return cls(n, of, tag)
 
     def _get_tex_core(self, env):
         txt = self._get_core(env)
@@ -1170,7 +1170,7 @@ class Row(list):
             elif just == 'r':
                 txt = txt.rjust(strlen)
             elif just == 'c':
-                rj = strlen / 2
+                rj = strlen // 2
                 txt = txt.rjust(rj).ljust(strlen)
             out.append(txt)
         return delimiter.join(out)
@@ -1218,12 +1218,12 @@ class Table(FMTextElement):
     >>> table.cell("Number")
     >>> table.cell(4.5)
     >>> table.cell(2./3, fmt='%.4g')
-    >>> print table
+    >>> print(table)
              example 1   example 2
     -----------------------------------
     string   ???         another string
     Number   4.5         0.6667
-    >>> print table.get_tex()
+    >>> print(table.get_tex())
     \begin{center}
     \begin{tabular}{lll}
     \toprule
@@ -1700,7 +1700,7 @@ class Figure(FMText):
         options : dict
             HTML options for ``<figure>`` tag.
         """
-        self._caption = caption
+        self._caption = asfmtext(caption)
         FMText.__init__(self, content, None, options)
 
     def get_html(self, env={}):
@@ -2056,7 +2056,7 @@ class Report(Section):
         self.add_paragraph(signature)
 
 
-def symbol(symbol, subscript, tag='math'):
+def symbol(symbol, subscript=None, tag='math'):
     if subscript is None:
         return Text(symbol, tag)
     else:
@@ -2095,25 +2095,29 @@ def stat(x, fmt="%.2f", stars=None, of=3, tag='math', drop0=False):
         return FMText([Number(x, None, fmt, drop0), Stars(stars, of=of)], tag)
 
 
-def eq(name, result, subscript=None, fmt='%.2f', stars=None, of=3,
-       drop0=False):
+def eq(name, result, subscript=None, fmt='%.2f', stars=None, of=3, drop0=False):
+    "``$name_{subscript} = result^stars$``"
     symbol_ = symbol(name, subscript, None)
     stat_ = stat(result, fmt, stars, of, None, drop0)
     return FMText([symbol_, Text(' = '), stat_], 'math')
 
 
-def peq(content, subscript=None, stars=None, of=3):
+def peq(p, subscript=None, stars=None, of=3):
     symbol_ = symbol('p', subscript, None)
 
-    if content < .001:
+    if p < .001:
         eq_ = Text(' ')
     else:
         eq_ = Text(' = ')
 
     if stars is None:
-        return FMText([symbol_, eq_, P(content)], 'math')
+        return FMText([symbol_, eq_, P(p)], 'math')
     else:
-        return FMText([symbol_, eq_, P(content), Stars(stars, of)], 'math')
+        if stars is True:
+            stars_obj = Stars.from_p(p, of)
+        else:
+            stars_obj = Stars(stars, of)
+        return FMText([symbol_, eq_, P(p), stars_obj], 'math')
 
 
 def delim_list(items, delimiter=', '):

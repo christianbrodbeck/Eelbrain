@@ -15,7 +15,7 @@ import eelbrain
 from eelbrain import (Dataset, NDVar, Categorial, Scalar, UTS, Sensor, configure,
                       datasets, test, testnd, set_log_level, cwt_morlet)
 from eelbrain._exceptions import ZeroVariance
-from eelbrain._stats.testnd import (Connectivity, _ClusterDist, label_clusters,
+from eelbrain._stats.testnd import (Connectivity, NDPermutationDistribution, label_clusters,
                                     _MergedTemporalClusterDist, find_peaks)
 from eelbrain._utils.system import IS_WINDOWS
 from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,
@@ -201,7 +201,7 @@ def test_anova_parc():
 
 
 def test_clusterdist():
-    "Test _ClusterDist class"
+    "Test NDPermutationDistribution class"
     shape = (10, 6, 6, 4)
     locs = [[0, 0, 0],
             [1, 0, 0],
@@ -221,7 +221,7 @@ def test_clusterdist():
     pmap = np.random.normal(0, 1, shape[1:])
     np.clip(pmap, -1, 1, pmap)
     pmap[bin_map] = 2
-    cdist = _ClusterDist(y, 0, 1.5)
+    cdist = NDPermutationDistribution(y, 0, 1.5)
     print(repr(cdist))
     cdist.add_original(pmap)
     print(repr(cdist))
@@ -237,7 +237,7 @@ def test_clusterdist():
     pmap = np.random.normal(0, 1, shape[1:])
     np.clip(pmap, -1, 1, pmap)
     pmap[bin_map] = 2
-    cdist = _ClusterDist(y, 0, 1.5)
+    cdist = NDPermutationDistribution(y, 0, 1.5)
     cdist.add_original(pmap)
     assert_equal(cdist.n_clusters, 1)
     assert_array_equal(cdist._original_cluster_map == cdist._cids[0],
@@ -251,7 +251,7 @@ def test_clusterdist():
     pmap = np.random.normal(0, 1, shape[1:])
     np.clip(pmap, -1, 1, pmap)
     pmap[bin_map] = 2
-    cdist = _ClusterDist(y, 1, 1.5)
+    cdist = NDPermutationDistribution(y, 1, 1.5)
     cdist.add_original(pmap)
     assert_equal(cdist.n_clusters, 2)
 
@@ -279,7 +279,7 @@ def test_clusterdist():
     dims = ('case', time, sensor, scalar)
     np.random.seed(0)
     y = NDVar(np.random.normal(0, 1, (10, 4, 4, 10)), dims)
-    cdist = _ClusterDist(y, 3, None)
+    cdist = NDPermutationDistribution(y, 3, None)
     cdist.add_original(y.x[0])
     cdist.finalize()
     assert_equal(cdist.dist.shape, (3,))
@@ -496,11 +496,16 @@ def test_ttest_1samp():
     dss = ds.sub("logical_and(A=='a0', B=='b0')")[:8]
     res3 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=dss, samples=10000,
                               pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
+    assert_equal(repr(res3),
+                 '<ttest_1samp \'uts\', sub="A == \'a0\'", samples=255, '
+                 'pmin=0.05, tstop=0.6, mintime=0.05, 2 clusters, p=.020>')
     assert_equal(res3.clusters.n_cases, 2)
     assert_equal(res3.samples, -1)
-    assert_less(res3.clusters['p'].x.min(), 0.05)
-    repr3 = repr(res3)
-    assert_in('samples', repr3)
+    assert_equal(str(res3.clusters),
+                 'id   tstart   tstop   duration   v        p          sig\n'
+                 '--------------------------------------------------------\n'
+                 '3    0.08     0.34    0.26       95.692   0.015686   *  \n'
+                 '4    0.35     0.56    0.21       81.819   0.019608   *  ')
 
     # nd
     dss = ds.sub("A == 'a0'")
@@ -631,6 +636,28 @@ def test_ttest_rel():
     ds['utsnd'].x[:, 1, 10] = 0.
     res = testnd.ttest_rel('utsnd', 'A', match='rm', ds=ds)
     eq_(res.t.x[1, 10], 0)
+
+
+def test_vector():
+    """Test vector tests"""
+    # single vector
+    ds = datasets.get_uv(vector=True)
+    res = testnd.Vector('v[:40]', ds=ds, samples=10)
+    assert res.p == 0.0
+    res = testnd.Vector('v[40:]', ds=ds, samples=10)
+    assert res.p == 0.8
+
+    # vector in time
+    ds = datasets.get_uts(vector3d=True)
+    res = testnd.Vector(ds[:30, 'v3d'], samples=10)
+    assert res.p.min() == 0.0
+    res = testnd.Vector(ds[30:, 'v3d'], samples=10)
+    assert res.p.min() == 0.2
+
+    v_small = ds[:30, 'v3d'] / 100
+    assert_raises(ValueError, testnd.Vector, v_small, tfce=True, samples=10)
+    res = testnd.Vector(v_small, tfce=0.001, samples=10)
+    assert res.p.min() == 0.0
 
 
 def test_cwt():

@@ -303,15 +303,29 @@ class TestCanvas(CanvasFrame):
 
 
 class LimitsValidator(wx.Validator):
+    """Validator for axis limits
 
-    def __init__(self, parent, attr):
+    Parameters
+    ----------
+    parent : wx Dialog
+        Parent.
+    attr : str
+        Attribute on ``parent`` to operate on.
+    single : 'symmetric' | 'offset'
+        How to interpret input when only one value is provided;
+        ``symmetric``: ``[-v, v]``
+        ``offset``: ``[v, v + old_range]``
+    """
+
+    def __init__(self, parent, attr, single='symmetric'):
         wx.Validator.__init__(self)
         self.parent = parent
         self.attr = attr
         self.value = None
+        self.single = single
 
     def Clone(self):
-        return LimitsValidator(self.parent, self.attr)
+        return LimitsValidator(self.parent, self.attr, self.single)
 
     def Validate(self, parent):
         ctrl = self.GetWindow()
@@ -323,8 +337,15 @@ class LimitsValidator(wx.Validator):
         try:
             values = value.replace(',', ' ').split()
             if len(values) == 1:
-                upper = float(values[0])
-                lower = -upper
+                if self.single == 'symmetric':
+                    upper = float(values[0])
+                    lower = -upper
+                elif self.single == 'offset':
+                    lower = float(values[0])
+                    old_lower, old_upper = getattr(self.parent, self.attr)
+                    upper = lower + old_upper - old_lower
+                else:
+                    raise RuntimeError(f'single={self.single!r}')
             elif len(values) == 2:
                 lower, upper = map(float, values)
             else:
@@ -397,7 +418,7 @@ class AxisLimitsDialog(EelbrainDialog):
         # x-axis
         if xlim is not None:
             sizer.Add(wx.StaticText(self, label="X-Axis Limits:"))
-            self.x_text = wx.TextCtrl(self, validator=LimitsValidator(self, 'xlim'))
+            self.x_text = wx.TextCtrl(self, validator=LimitsValidator(self, 'xlim', 'offset'))
             sizer.Add(self.x_text)
             if self.y_text is None:
                 self.x_text.SetFocus()

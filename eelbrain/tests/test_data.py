@@ -1073,6 +1073,12 @@ def test_ndvar_indexing():
     test_ndvar_index(x, 'source', 'lh', slice(n_lh), False)
     test_ndvar_index(x, 'source', 'rh', slice(n_lh, None), False)
 
+    # index dim != dim
+    source_rh = x.source[x.source.lh_n:]
+    index = NDVar(np.arange(len(source_rh)) > 100, (source_rh,))
+    assert_dataobj_equal(x.sub(source=index), x.sub(source='rh').sub(source=index))
+    assert_raises(IndexError, x.sub(source='lh').sub, index)
+
     # multiple arguments
     y = ds['utsnd'].sub(sensor=[1, 2], time=[0, 0.1])
     eq_(y.shape, (60, 2, 2))
@@ -1090,6 +1096,14 @@ def test_ndvar_indexing():
     x[:3, :.0] = 0
     assert_array_equal(x.x[:3, :20], 0.)
     assert_array_equal(x.x[3:, 20:], ds['uts'].x[3:, 20:])
+    # set with index NDVar
+    x = ds['uts'].copy()
+    index = x.mean('case') < 0
+    x[index] = -1
+    assert x.sum(index).sum() == -index.sum()
+    i_index = ~index
+    assert x.sum(i_index).sum() == ds['uts'].sum(i_index).sum()
+    assert_raises(DimensionMismatchError, index.__setitem__, x != 0, 0.)
 
 
 def test_ndvar_summary_methods():
@@ -1097,6 +1111,7 @@ def test_ndvar_summary_methods():
     ds = datasets.get_uts(utsnd=True)
     x = ds['utsnd']
 
+    x.info['test_item'] = 1
     dim = 'sensor'
     axis = x.get_axis(dim)
     dims = ('case', 'sensor')
@@ -1109,7 +1124,9 @@ def test_ndvar_summary_methods():
     idx1d = x.mean(('case', 'time')) > 0
 
     # info inheritance
-    eq_(x.any(('sensor', 'time')).info, x.info)
+    eq_(x.mean(('sensor', 'time')).info, x.info)
+    # info update for booleans
+    eq_(x.any(('sensor', 'time')).info, {'test_item': 1})
 
     # numpy functions
     eq_(x.any(), x.x.any())

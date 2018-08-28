@@ -62,14 +62,11 @@ from scipy.optimize import leastsq
 from scipy.spatial import ConvexHull
 from scipy.spatial.distance import cdist, pdist, squareform
 
-from . import fmtxt
-from . import _colorspaces as cs
+from . import fmtxt, _info
 from ._exceptions import DimensionMismatchError, IncompleteModel
 from ._data_opt import gaussian_smoother
-from ._info import merge_info
 from ._utils import (
-    deprecated_attribute, intervals, ui, LazyProperty, n_decimals,
-    natsorted)
+    intervals, ui, LazyProperty, n_decimals, natsorted)
 from ._utils.numpy_utils import (
     INT_TYPES, FULL_SLICE, FULL_AXIS_SLICE,
     apply_numpy_index, digitize_index, digitize_slice_endpoint,
@@ -1009,7 +1006,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
 
     # combine objects
     if stype is Dataset:
-        out = Dataset(name=name, info=merge_info(items))
+        out = Dataset(name=name, info=_info.merge_info(items))
         if incomplete == 'fill in':
             # find all keys and data types
             keys = list(first_item.keys())
@@ -1041,7 +1038,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
         return out
     elif stype is Var:
         x = np.hstack(i.x for i in items)
-        return Var(x, name, info=merge_info(items))
+        return Var(x, name, info=_info.merge_info(items))
     elif stype is Factor:
         random = set(f.random for f in items)
         if len(random) > 1:
@@ -1081,7 +1078,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
         else:
             x = np.array([v.x for v in sub_items])
         dims = ('case',) + dims
-        return NDVar(x, dims, merge_info(sub_items), name)
+        return NDVar(x, dims, _info.merge_info(sub_items), name)
     elif stype is Datalist:
         return Datalist(sum(items, []), name, items[0]._fmt)
     else:
@@ -2915,27 +2912,27 @@ class NDVar(object):
 
     def __lt__(self, other):
         return NDVar(self.x < self._ialign(other),
-                     self.dims, self.info.copy(), self.name)
+                     self.dims, _info.for_boolean(self.info), self.name)
 
     def __le__(self, other):
         return NDVar(self.x <= self._ialign(other),
-                     self.dims, self.info.copy(), self.name)
+                     self.dims, _info.for_boolean(self.info), self.name)
 
     def __eq__(self, other):
         return NDVar(self.x == self._ialign(other),
-                     self.dims, self.info.copy(), self.name)
+                     self.dims, _info.for_boolean(self.info), self.name)
 
     def __ne__(self, other):
         return NDVar(self.x != self._ialign(other),
-                     self.dims, self.info.copy(), self.name)
+                     self.dims, _info.for_boolean(self.info), self.name)
 
     def __gt__(self, other):
         return NDVar(self.x > self._ialign(other),
-                     self.dims, self.info.copy(), self.name)
+                     self.dims, _info.for_boolean(self.info), self.name)
 
     def __ge__(self, other):
         return NDVar(self.x >= self._ialign(other),
-                     self.dims, self.info.copy(), self.name)
+                     self.dims, _info.for_boolean(self.info), self.name)
 
     def _align(self, other):
         """Align data from 2 NDVars.
@@ -3199,10 +3196,10 @@ class NDVar(object):
 
         Returns
         -------
-        any : NDVar | Var | float
+        any : NDVar | Var | bool
             Boolean data indicating presence of nonzero value over specified
             dimensions. Return a Var if only the case dimension remains, and a
-            float if the function collapses over all data.
+            boolean if the function collapses over all data.
             
         Examples
         --------
@@ -3250,10 +3247,10 @@ class NDVar(object):
 
         Returns
         -------
-        any : NDVar | Var | float
+        any : NDVar | Var | bool
             Boolean data indicating presence of nonzero value over specified
             dimensions. Return a Var if only the case dimension remains, and a
-            float if the function collapses over all data.
+            boolean if the function collapses over all data.
         """
         return self._aggregate_over_dims(dims, regions, np.any)
 
@@ -3283,20 +3280,41 @@ class NDVar(object):
         """
         return self._dim_index_unravel(self.x.argmin())
 
-    def _array_index(self, args):
+    def _array_index(self, arg):
         "Convert dimension index to array index"
-        if isinstance(args, NDVar):
-            if args.x.dtype.kind != 'b':
+        if isinstance(arg, NDVar):
+            if arg.x.dtype.kind != 'b':
                 raise IndexError("Only boolean NDVar can be used as index")
-            elif args.dims == self.dims:
-                return args.x
-            raise NotImplementedError
-        elif isinstance(args, tuple):
-            return tuple(dim._array_index(i) for dim, i in zip(self.dims, args))
-        elif isinstance(args, np.ndarray) and args.ndim > 1:
+            elif arg.dims == self.dims:
+                return arg.x
+            target_dims = tuple(dim if dim in arg.dimnames else None for dim in self.dimnames)
+            shared_dims = tuple(filter(None, target_dims))
+            self_dims = self.get_dims(shared_dims)
+            args_dims = arg.get_dims(shared_dims)
+            if args_dims != self_dims:
+                raise DimensionMismatchError(
+                    f'The index has different dimensions than the NDVar\n'
+                    f'NDVar: {self_dims}\nIndex: {args_dims}')
+            x = arg.x
+            if arg.dimnames != shared_dims:
+                if any(dim not in shared_dims for dim in arg.dimnames):
+                    missing = (dim for dim in arg.dimnames if dim not in shared_dims)
+                    raise DimensionMismatchError(
+                        f"Index has dimensions {', '.join(missing)} not in {self}")
+                source_axes = tuple(range(arg.ndim))
+                dest_axes = tuple(shared_dims.index(dim) for dim in arg.dimnames)
+                x = np.moveaxis(x, source_axes, dest_axes)
+            for axis, dim in enumerate(target_dims):
+                if dim is None:
+                    x = np.expand_dims(x, axis)
+                    x = np.repeat(x, self.shape[axis], axis)
+            return x
+        elif isinstance(arg, tuple):
+            return tuple(dim._array_index(i) for dim, i in zip(self.dims, arg))
+        elif isinstance(arg, np.ndarray) and arg.ndim > 1:
             raise NotImplementedError
         else:
-            return self.dims[0]._array_index(args)
+            return self.dims[0]._array_index(arg)
 
     def assert_dims(self, dims):
         if self.dimnames != dims:
@@ -3387,7 +3405,7 @@ class NDVar(object):
                     else:
                         index = index[0]
                         x = np.array([func(x_[index]) for x_ in self_x])
-                    return Var(x, name, info=self.info.copy())
+                    return Var(x, name, info=_info.for_data(x, self.info))
                 elif axis.has_case:
                     raise IndexError("Index with case dimension can not be "
                                      "applied to data without case dimension")
@@ -3402,7 +3420,7 @@ class NDVar(object):
             x = func(self.x, axes)
             dims = tuple(self.dims[i] for i in range(self.ndim) if i not in axes)
 
-        return self._package_aggregated_output(x, dims, self.info.copy(), name)
+        return self._package_aggregated_output(x, dims, _info.for_data(x, self.info), name)
 
     def astype(self, dtype):
         """Copy of the NDVar with data cast to the specified type
@@ -3616,9 +3634,19 @@ class NDVar(object):
         >>> x_dss_6 = to_dss[:6].dot(x, 'sensor')
         """
         if dim is None:
-            dim = self.dimnames[-1]
-        if self.get_dim(dim) != ndvar.get_dim(dim):
-            raise ValueError("self.{0} != ndvar.{0}".format(dim))
+            for dim in self.dimnames[::-1]:
+                if ndvar.has_dim(dim):
+                    break
+        if dim == 'case':
+            raise NotImplementedError("dim='case': dot-product along Case dimension")
+        dim_x1 = self.get_dim(dim)
+        dim_x2 = ndvar.get_dim(dim)
+        if dim_x1 == dim_x2:
+            x1_index = x2_index = None
+        else:
+            out_dim = dim_x1.intersect(dim_x2)
+            x1_index = None if dim_x1 == out_dim else dim_x1._array_index_to(out_dim)
+            x2_index = None if dim_x2 == out_dim else dim_x2._array_index_to(out_dim)
 
         v1_dimnames = self.get_dimnames((None,) * (self.ndim - 1) + (dim,))
         dims = tuple(self.get_dim(d) for d in v1_dimnames[:-1])
@@ -3632,7 +3660,12 @@ class NDVar(object):
         dims += tuple(ndvar.get_dim(d) for d in v2_dimnames[1 + ndvar.has_case:])
 
         x1 = self.get_data(v1_dimnames)
+        if x1_index is not None:
+            x1 = np.take(x1, x1_index, -1)
         x2 = ndvar.get_data(v2_dimnames)
+        if x2_index is not None:
+            x2 = np.take(x2, x2_index, v2_dimnames.index(dim))
+
         if ndvar.has_case:
             x = np.array([np.tensordot(x1, x2_, 1) for x2_ in x2])
         else:
@@ -3733,7 +3766,7 @@ class NDVar(object):
             freqs = np.fft.rfftfreq(n, 1. / n)
             freq = Scalar('frequency', freqs, 'Hz')
         dims = self.dims[:axis] + (freq,) + self.dims[axis + 1:]
-        info = cs.set_info_cs(self.info, cs.default_info('Amplitude'))
+        info = _info.default_info('Amplitude', self.info)
         return NDVar(x, dims, info, name or self.name)
 
     def get_axis(self, name):
@@ -3803,23 +3836,21 @@ class NDVar(object):
             if names is not None:
                 raise TypeError("Can only specify names or last, not both")
             elif last not in self.dimnames:
-                raise ValueError("NDVar has no %r dimension" % (last,))
+                raise ValueError(f"{self} has no dimension called {last!r}")
             dims = list(self.dimnames)
             dims.remove(last)
             dims.append(last)
             return tuple(dims)
 
         if not all(n is None or n in self.dimnames for n in names):
-            raise ValueError("%s contains dimension that is not in %r" %
-                             (names, self))
+            raise ValueError(f"{names} contains dimension not in {self}")
         elif len(names) != len(self.dims):
-            raise ValueError("Wrong number of dimensions. NDVar has %i "
-                             "dimensions: %s" % (len(self.dims), self))
+            raise ValueError(f"{names}: wrong number of dimensions for {self}")
         elif any(names.count(n) > 1 for n in names if n is not None):
-            raise ValueError("Dimension specified twice in " + repr(names))
+            raise ValueError(f"{names}: duplicate name")
         elif None in names:
             if len(names) != len(self.dims):
-                raise ValueError("Ambiguous dimension specification")
+                raise ValueError(f"{names}: ambiguous (more than one unspecified dimension)")
             none_dims = [n for n in self.dimnames if n not in names]
             return tuple(n if n is not None else none_dims.pop(0) for
                          n in names)
@@ -4685,9 +4716,9 @@ class Datalist(list):
     Concise string representation:
 
     >>> l = [['a', 'b'], [], ['a']]
-    >>> print Datalist(l)
+    >>> print(Datalist(l))
     [['a', 'b'], [], ['a']]
-    >>> print Datalist(l, fmt='strlist')
+    >>> print(Datalist(l, fmt='strlist'))
     [[a, b], [], [a]]
     """
     _fmt = 'repr'  # for backwards compatibility with old pickles
@@ -4994,7 +5025,7 @@ class Dataset(OrderedDict):
         >>> ds = Dataset(n_cases=3)
         >>> ds['var', :] = 0
         >>> ds['factor', :] = 'a'
-        >>> print ds
+        >>> print(ds)
         var    factor
         -------------
         0      a
@@ -5448,7 +5479,7 @@ class Dataset(OrderedDict):
         >>> from rpy2.robjects import r
         >>> r('data(sleep)')
         >>> ds = Dataset.from_r('sleep')
-        >>> print ds
+        >>> print(ds)
         extra   group   ID
         ------------------
         0.7     1       1
@@ -6007,7 +6038,7 @@ class Dataset(OrderedDict):
         --------
         >>> from rpy2.robjects import r
         >>> ds = datasets.get_uv()
-        >>> print ds[:6]
+        >>> print(ds[:6])
         A    B    rm     intvar   fltvar     fltvar2    index
         -----------------------------------------------------
         a1   b1   s000   13       0.25614    0.7428     True
@@ -6017,7 +6048,7 @@ class Dataset(OrderedDict):
         a1   b1   s004   15       -0.19358   -1.03      True
         a1   b1   s005   17       2.141      -0.51745   True
         >>> ds.to_r('df')
-        >>> print r("head(df)")
+        >>> print(r("head(df)"))
            A  B   rm intvar     fltvar    fltvar2 index
         1 a1 b1 s000     13  0.2561439  0.7427957  TRUE
         2 a1 b1 s001      8 -1.5174371 -0.7549815  TRUE
@@ -6104,7 +6135,7 @@ class Dataset(OrderedDict):
     def zip(self, *variables):
         """Iterate through the values of multiple variables
 
-        ``ds.zip('a', 'b')`` is equivalent to ``izip(ds['a'], ds['b'])``.
+        ``ds.zip('a', 'b')`` is equivalent to ``zip(ds['a'], ds['b'])``.
         """
         return zip(*map(self.eval, variables))
 
@@ -6240,14 +6271,14 @@ class Interaction(_Effect):
 
         Examples
         --------
-        >>> print ds[::20, 'A']
+        >>> print(ds[::20, 'A'])
         Factor(['a1', 'a1', 'a2', 'a2'], name='A')
-        >>> print ds[::20, 'B']
+        >>> print(ds[::20, 'B'])
         Factor(['b1', 'b2', 'b1', 'b2'], name='B')
         >>> i = ds.eval("A % B")
-        >>> print i.as_factor()[::20]
+        >>> print(i.as_factor()[::20])
         Factor(['a1 b1', 'a1 b2', 'a2 b1', 'a2 b2'], name='AxB')
-        >>> print i.as_factor("_")[::20]
+        >>> print(i.as_factor("_")[::20])
         Factor(['a1_b1', 'a1_b2', 'a2_b1', 'a2_b2'], name='AxB')
         """
         return Factor(self.as_labels(delim), name)
@@ -6858,7 +6889,7 @@ class Dimension(object):
     values : sequence
         Meaningful point descriptions (e.g. time points, sensor names, ...).
     """
-    _CONNECTIVITY_TYPES = ('grid', 'none', 'custom')
+    _CONNECTIVITY_TYPES = ('grid', 'none', 'custom', 'vector')
     _axis_unit = None
     _default_connectivity = 'none'  # for loading old pickles
 
@@ -7036,16 +7067,16 @@ class Dimension(object):
 
     def _array_index_for_ndvar(self, arg):
         if arg.x.dtype.kind != 'b':
-            raise IndexError("Only NDVars with boolean data can serve "
-                             "as indexes. Got %s." % repr(arg))
+            raise IndexError(f"{arg}: only NDVars with boolean data can serve as indexes")
         elif arg.ndim != 1:
-            raise IndexError("Only NDVars with ndim 1 can serve as "
-                             "indexes. Got %s." % repr(arg))
-        elif arg.dims[0] != self:
-            raise IndexError("Index dimension %s is different from data "
-                             "dimension" % arg.dims[0].name)
-        else:
+            raise IndexError(f"{arg}: only NDVars with ndim == 1 can serve as indexes")
+        dim = arg.dims[0]
+        if not isinstance(dim, self.__class__):
+            raise IndexError(f"{arg}: must have {self.__class__} dimension")
+        elif dim == self:
             return arg.x
+        index_to_arg = self._array_index_to(dim)
+        return index_to_arg[arg.x]
 
     def _array_index_for_slice(self, start=None, stop=None, step=None):
         if step is not None and not isinstance(step, Integral):
@@ -7069,6 +7100,10 @@ class Dimension(object):
                                 (stop, self._dimname()))
 
         return slice(start_, stop_, step)
+
+    def _array_index_to(self, other):
+        "Int index to access data from self in an order consistent with other"
+        raise NotImplementedError(f"Internal alignment for {self.__class__}")
 
     def _dimname(self):
         if self.name.lower() == self.__class__.__name__.lower():
@@ -7273,6 +7308,131 @@ class Case(Dimension):
 
     def _dim_index(self, arg):
         return arg
+
+
+class Space(Dimension):
+    """Represent multiple directions in space
+
+    Parameters
+    ----------
+    directions : str
+        A sequence of directions, each indicated by a single capitalized
+        character, from the following set: [A]nterior, [P]osterior, [L]eft,
+        [R]ight, [S]uperior and [I]nferior.
+    name : str
+        Dimension name.
+
+    Notes
+    -----
+    Connectivity is set to ``'none'``, but :class:`Space` is not a valid
+    dimension to treat as mass-univariate.
+    """
+
+    _DIRECTIONS = {
+        'A': 'anterior',
+        'P': 'posterior',
+        'L': 'left',
+        'R': 'right',
+        'S': 'superior',
+        'I': 'inferior',
+    }
+
+    def __init__(self, directions, name='space'):
+        if not isinstance(directions, str):
+            raise TypeError("directions=%r" % (directions,))
+        n = len(directions)
+        all_directions = set(directions)
+        if len(all_directions) != n:
+            raise ValueError("directions=%r contains duplicate direction"
+                             % (directions,))
+        invalid = all_directions.difference(self._DIRECTIONS)
+        if invalid:
+            raise ValueError("directions=%r contains invalid directions: %s"
+                             % (directions, ', '.join(map(repr, invalid))))
+        Dimension.__init__(self, name, 'vector')
+        self._directions = directions
+
+    def __getstate__(self):
+        out = Dimension.__getstate__(self)
+        out['directions'] = self._directions
+        return out
+
+    def __setstate__(self, state):
+        Dimension.__setstate__(self, state)
+        self._directions = state['directions']
+
+    def __repr__(self):
+        return "Space(%r)" % self._directions
+
+    def __len__(self):
+        return len(self._directions)
+
+    def __eq__(self, other):
+        return isinstance(other, Space) and other._directions == self._directions
+
+    def __getitem__(self, item):
+        if not all(i in self._directions for i in item):
+            raise IndexError(item)
+        return Space(item)
+
+    def __iter__(self):
+        return iter(self._directions)
+
+    def _axis_format(self, scalar, label):
+        # like Categorial
+        return (IndexFormatter(self._directions),
+                FixedLocator(np.arange(len(self._directions))),
+                self._axis_label(label))
+
+    def _array_index(self, arg):
+        if isinstance(arg, str) and len(arg) == 1:
+            return self._directions.index(arg)
+        elif isinstance(arg, tuple):
+            return slice(*map(self._array_index, arg)) if arg else FULL_SLICE
+        elif isinstance(arg, slice):
+            return slice(
+                None if arg.start is None else self._array_index(arg.start),
+                None if arg.stop is None else self._array_index(arg.stop),
+                arg.step)
+        else:
+            return [self._directions.index(s) for s in arg]
+
+    def _dim_index(self, arg):
+        if isinstance(arg, Integral):
+            return self._directions[arg]
+        else:
+            return ''.join(self._directions[i] for i in arg)
+
+    def intersect(self, dim, check_dims=True):
+        """Create a dimension object that is the intersection with dim
+
+        Parameters
+        ----------
+        dim : Space
+            Dimension to intersect with.
+        check_dims : bool
+            Check dimensions for consistency.
+
+        Returns
+        -------
+        intersection : Space
+            The intersection with ``dim`` (returns itself if ``dim`` and
+            ``self`` are equal)
+        """
+        if self.name != dim.name:
+            raise DimensionMismatchError("Dimensions don't match")
+        elif self._directions == dim._directions:
+            return self
+        self_dirs = set(self._directions)
+        dim_dirs = set(dim._directions)
+        out_dirs = self_dirs.intersection(dim_dirs)
+        if self_dirs == out_dirs:
+            return self
+        elif dim_dirs == out_dirs:
+            return dim
+        else:
+            directions = ''.join(c for c in self._directions if c in dim._directions)
+            return Space(directions, self.name)
 
 
 class Categorial(Dimension):
@@ -7789,6 +7949,14 @@ class Sensor(Dimension):
             return arg
         else:
             return super(Sensor, self)._array_index(arg)
+
+    def _array_index_to(self, other):
+        "Int index to access data from self in an order consistent with other"
+        try:
+            return np.array([self.names.index(name) for name in other.names])
+        except ValueError:
+            missing = (name for name in other.names if name not in self.names)
+            raise IndexError(f"{other}: contains different sensors {', '.join(missing)}")
 
     def _dim_index(self, index):
         if np.isscalar(index):
@@ -8345,7 +8513,7 @@ def _mne_tri_soure_space_graph(source_space, vertices_list):
     return np.vstack(graphs)
 
 
-class SourceSpace(Dimension):
+class SourceSpaceBase(Dimension):
     """MNE source space dimension.
 
     Parameters
@@ -8382,6 +8550,7 @@ class SourceSpace(Dimension):
      - 'lh' or 'rh' to select an entire hemisphere
 
     """
+    kind = 'ico'
     _default_connectivity = 'custom'
     _SRC_PATH = os.path.join(
         '{subjects_dir}', '{subject}', 'bem', '{subject}-{src}-src.fif')
@@ -8408,64 +8577,29 @@ class SourceSpace(Dimension):
                                  "with %i vertices" % (len(parc), self._n_vert))
             self.parc = parc
         elif isinstance(parc, str):
-            if self.kind == 'ico':
-                fname = self._ANNOT_PATH.format(
-                    subjects_dir=self.subjects_dir, subject=self.subject,
-                    hemi='%s', parc=parc)
-                labels_lh, _, names_lh = read_annot(fname % 'lh')
-                labels_rh, _, names_rh = read_annot(fname % 'rh')
-                x_lh = labels_lh[self.lh_vertices]
-                x_lh[x_lh == -1] = -2
-                x_rh = labels_rh[self.rh_vertices]
-                x_rh[x_rh >= 0] += len(names_lh)
-                names = chain(('unknown-lh', 'unknown-rh'),
-                              (name.decode('utf-8') + '-lh' for name in names_lh),
-                              (name.decode('utf-8') + '-rh' for name in names_rh))
-                self.parc = Factor(np.hstack((x_lh, x_rh)), parc,
-                                   labels={i: name for i, name in
-                                           enumerate(names, -2)})
-            else:
-                raise NotImplementedError(
-                    "Can't set parcellation from annotation files for volume "
-                    "source space. Consider using a Factor instead.")
+            self.parc = self._read_parc(parc)
         else:
-            raise TypeError("Parc needs to be Factor or string, got %s" % repr(parc))
+            raise TypeError("Parc needs to be Factor or string, got %r" % (parc,))
+
+    def _read_parc(self, parc):
+        raise NotImplementedError(
+            f"parc={parc!r}: can't set parcellation from annotation files for "
+            f"{self.__class__.__name__}. Consider using a Factor instead.")
 
     def _init_secondary(self):
         self._n_vert = sum(len(v) for v in self.vertices)
-        match = re.match("(ico|vol)-(\d)", self.src)
+        match = re.match("%s-(\d+)$" % self.kind, self.src)
         # The source-space type is needed to determine connectivity
         if match is None:
-            raise ValueError("src=%r; needs to be 'ico-i' or 'vol-i'" % self.src)
-        kind, grade = match.groups()
-        self.kind = kind
-        self.grade = int(grade)
-        if kind == 'ico':
-            assert len(self.vertices) == 2, "ico-based SourceSpaces need " \
-                                            "exactly two vertices arrays"
-            self.lh_vertices = self.vertices[0]
-            self.rh_vertices = self.vertices[1]
-            self.lh_n = len(self.lh_vertices)
-            self.rh_n = len(self.rh_vertices)
-        elif kind == 'vol':
-            assert len(self.vertices) == 1, "volume-based SourceSpaces need " \
-                                            "exactly one vertices array"
-
-    @deprecated_attribute('0.27', 'SourceSpace', 'vertices')
-    def vertno(self):
-        pass
-
-    @deprecated_attribute('0.27', 'SourceSpace', 'lh_vertices')
-    def lh_vertno(self):
-        pass
-
-    @deprecated_attribute('0.27', 'SourceSpace', 'rh_vertices')
-    def rh_vertno(self):
-        pass
+            raise ValueError("src=%r; needs to be '%s-i' where i is an integer"
+                             % (self.src, self.kind))
+        self.grade = int(match.group(1))
 
     @classmethod
-    def from_file(cls, subjects_dir, subject, src, parc='aparc'):
+    def from_file(cls, subjects_dir, subject, src, parc=None):
         """SourceSpace dimension from MNE source space file"""
+        if parc is None and cls is SourceSpace:
+            parc = 'aparc'
         filename = cls._SRC_PATH.format(subjects_dir=subjects_dir,
                                         subject=subject, src=src)
         source_spaces = mne.read_source_spaces(filename)
@@ -8510,7 +8644,7 @@ class SourceSpace(Dimension):
         self._init_secondary()
 
     def __repr__(self):
-        out = "<SourceSpace"
+        out = "<" + self.__class__.__name__
         if self.name != 'source':
             out += ' ' + self.name
         vert_repr = ', '.join(str(len(v)) for v in self.vertices)
@@ -8521,56 +8655,29 @@ class SourceSpace(Dimension):
             out += ', parc=%s' % self.parc.name
         return out + '>'
 
-    def __iter__(self):
-        if self.kind == 'ico':
-            return (temp % v for temp, vertices in
-                    zip(('L%i', 'R%i'), self.vertices) for v in vertices)
-        else:
-            return iter(self.vertices[0])
-
     def __len__(self):
         return self._n_vert
 
     def __eq__(self, other):
-        return (Dimension.__eq__(self, other) and
-                self.subject == other.subject and len(self) == len(other) and
-                all(np.array_equal(s, o) for s, o in
-                    zip(self.vertices, other.vertices)))
+        return (
+            Dimension.__eq__(self, other) and
+            self.subject == other.subject and
+            self.src == other.src and
+            len(self) == len(other) and
+            all(np.array_equal(s, o) for s, o in zip(self.vertices, other.vertices))
+        )
+
+    def _assert_same_base(self, other):
+        "Assert that ``other`` is based on the same source space"
+        if self.subject != other.subject:
+            raise IndexError(f"Source spaces can not be compared because they are defined on different MRI subjects ({self.subject} vs {other.subject}). Consider using eelbrain.morph_source_space().")
+        elif self.src != other.src:
+            raise IndexError(f"Source spaces of different types ({self.src} vs {other.src})")
+        elif self.subjects_dir != other.subjects_dir:
+            raise IndexError(f"Source spaces have differing subjects_dir:\n{self.subjects_dir}\n{other.subjects_dir}")
 
     def __getitem__(self, index):
-        if isinstance(index, Integral):
-            if self.kind == 'vol':
-                return self.vertices[0][index]
-            elif index < self.lh_n:
-                return 'L%i' % self.lh_vertices[index]
-            elif index < self._n_vert:
-                return 'R%i' % self.rh_vertices[index - self.lh_n]
-            else:
-                raise ValueError("SourceSpace Index out of range: %i" % index)
-        int_index = index_to_int_array(index, self._n_vert)
-        bool_index = np.bincount(int_index, minlength=self._n_vert).astype(bool)
-
-        # vertices
-        boundaries = np.cumsum(tuple(chain((0,), (len(v) for v in self.vertices))))
-        vertices = [v[bool_index[boundaries[i]:boundaries[i + 1]]]
-                  for i, v in enumerate(self.vertices)]
-
-        # parc
-        if self.parc is None:
-            parc = None
-        else:
-            parc = self.parc[index]
-
-        dim = SourceSpace(vertices, self.subject, self.src, self.subjects_dir,
-                          parc, self._subgraph(int_index), self.name)
-        return dim
-
-    def _as_uv(self):
-        if self.kind == 'vol':
-            return Dimension._as_uv(self)
-        return Factor(('%s%i' % (hemi, i) for hemi, vertices in
-                       zip(('L', 'R'), self.vertices) for i in vertices),
-                      name=self.name)
+        raise NotImplementedError
 
     def _axis_format(self, scalar, label):
         return (FormatStrFormatter('%i'),
@@ -8608,22 +8715,6 @@ class SourceSpace(Dimension):
         # n sources
         ds['n_sources'] = Var(x.sum(1))
 
-        if self.kind == 'vol':
-            return ds
-
-        # hemi
-        hemis = []
-        for x_ in x:
-            where = np.flatnonzero(x_)
-            src_in_lh = (where < self.lh_n)
-            if np.all(src_in_lh):
-                hemis.append('lh')
-            elif np.any(src_in_lh):
-                hemis.append('bh')
-            else:
-                hemis.append('rh')
-        ds['hemi'] = Factor(hemis)
-
         # location
         if self.parc is not None:
             locations = []
@@ -8643,42 +8734,19 @@ class SourceSpace(Dimension):
         i0 = 0
         for vertices, ss in zip(self.vertices, sss):
             if ss['dist'] is None:
-                raise RuntimeError("Source-space does not contain distances")
+                path = self._SRC_PATH.format(
+                    subjects_dir=self.subjects_dir, subject=self.subject,
+                    src=self.src)
+                raise RuntimeError(
+                    f"Source space does not contain source distance "
+                    f"information. To add distance information, run:\n"
+                    f"src = mne.read_source_spaces({path!r})\n"
+                    f"mne.add_source_space_distances(src)\n"
+                    f"src.save({path!r}, overwrite=True)")
             i = i0 + len(vertices)
             dist[i0:i, i0:i] = ss['dist'][vertices, vertices[:, None]].toarray()
             i0 = i
         return dist
-
-    def _link_midline(self, maxdist=0.015):
-        """Link sources in the left and right hemispheres
-
-        Link each source to the nearest source in the opposing hemisphere if
-        that source is closer than ``maxdist``.
-
-        Parameters
-        ----------
-        maxdist : scalar [m]
-            Add an interhemispheric connection between any two vertices whose
-            distance is less than this number (in meters; default 0.015).
-        """
-        if self.kind != 'ico':
-            raise ValueError("Can only link hemispheres in 'ico' source "
-                             "spaces, not in %s" % repr(self.kind))
-        old_con = self.connectivity()
-
-        # find vertices to connect
-        coords_lh = self.coordinates[:self.lh_n]
-        coords_rh = self.coordinates[self.lh_n:]
-        dists = cdist(coords_lh, coords_rh)
-        close_lh, close_rh = np.nonzero(dists < maxdist)
-        unique_close_lh = np.unique(close_lh)
-        unique_close_rh = np.unique(close_rh)
-        new_con = {(lh, np.argmin(dists[lh]) + self.lh_n) for lh in
-                   unique_close_lh}
-        new_con.update((np.argmin(dists[:, rh]), rh + self.lh_n) for rh in
-                       unique_close_rh)
-        new_con = np.array(sorted(new_con), np.uint32)
-        self._connectivity = np.vstack((old_con, new_con))
 
     def connectivity(self, disconnect_parc=False):
         """Create source space connectivity
@@ -8702,20 +8770,8 @@ class SourceSpace(Dimension):
                     "connectivity information it needs to be initialized with "
                     "src, subject and subjects_dir parameters")
 
-            src = self.get_source_space()
-            if self.kind == 'vol':
-                coords = src[0]['rr'][self.vertices[0]]
-                dist_threshold = self.grade * 0.0011
-                connectivity = _point_graph(coords, dist_threshold)
-            elif self.kind == 'ico':
-                connectivity = _mne_tri_soure_space_graph(src, self.vertices)
-            else:
-                msg = "Connectivity for %r source space" % self.kind
-                raise NotImplementedError(msg)
-
-            if connectivity.max() >= len(self):
-                raise RuntimeError("SourceSpace connectivity failed")
-            self._connectivity = connectivity
+            self._connectivity = connectivity = self._compute_connectivity()
+            assert connectivity.max() < len(self)
         else:
             connectivity = self._connectivity
 
@@ -8728,6 +8784,9 @@ class SourceSpace(Dimension):
             connectivity = connectivity[idx]
 
         return connectivity
+
+    def _compute_connectivity(self):
+        raise NotImplementedError("Connectivity for %r source space" % self.kind)
 
     def circular_index(self, seeds, extent=0.05, name="globe"):
         """Return an index into all vertices closer than ``extent`` of a seed
@@ -8767,34 +8826,7 @@ class SourceSpace(Dimension):
         return np.vstack(normals)
 
     def _array_index(self, arg):
-        if isinstance(arg, MNE_LABEL):
-            return self._array_index_label(arg)
-        elif isinstance(arg, str):
-            if arg == 'lh':
-                return slice(self.lh_n)
-            elif arg == 'rh':
-                if self.rh_n:
-                    return slice(self.lh_n, None)
-                else:
-                    return slice(0, 0)
-            else:
-                m = self._vertex_re.match(arg)
-                if m is None:
-                    return self._array_index_label(arg)
-                else:
-                    hemi, vertex = m.groups()
-                    vertex = int(vertex)
-                    vertices = self.vertices[hemi == 'R']
-                    i = int(np.searchsorted(vertices, vertex))
-                    if vertices[i] == vertex:
-                        if hemi == 'R':
-                            return i + self.lh_n
-                        else:
-                            return i
-                    else:
-                        raise IndexError("SourceSpace does not contain vertex "
-                                         "%r" % (arg,))
-        elif isinstance(arg, SourceSpace):
+        if isinstance(arg, SourceSpace):
             sv = self.vertices
             ov = arg.vertices
             if all(np.array_equal(s, o) for s, o in zip(sv, ov)):
@@ -8813,16 +8845,15 @@ class SourceSpace(Dimension):
             else:
                 return [self._array_index(a) for a in arg]
         else:
-            return super(SourceSpace, self)._array_index(arg)
+            return Dimension._array_index(self, arg)
 
     def _array_index_label(self, label):
         if isinstance(label, str):
             if self.parc is None:
                 raise RuntimeError("SourceSpace has no parcellation")
             elif label not in self.parc:
-                err = ("SourceSpace parcellation has no label called %r"
-                       % label)
-                raise KeyError(err)
+                raise KeyError("SourceSpace parcellation has no label called "
+                               "%r" % label)
             idx = self.parc == label
         elif label.hemi == 'both':
             lh_idx = self._array_index_hemilabel(label.lh)
@@ -8842,21 +8873,17 @@ class SourceSpace(Dimension):
         return idx
 
     def _array_index_hemilabel(self, label):
-        if label.hemi == 'lh':
-            stc_vertices = self.vertices[0]
-        else:
-            stc_vertices = self.vertices[1]
+        stc_vertices = self.vertices[label.hemi == 'rh']
         idx = np.in1d(stc_vertices, label.vertices, True)
         return idx
 
-    def _dim_index(self, index):
-        if np.isscalar(index):
-            if index >= self.lh_n:
-                return 'R%i' % (self.rh_vertices[index - self.lh_n])
-            else:
-                return 'L%i' % (self.lh_vertices[index])
-        else:
-            return Dimension._dim_index(self, index)
+    def _array_index_to(self, other):
+        "Int index to access data from self in an order consistent with other"
+        self._assert_same_base(other)
+        if any(np.any(np.setdiff1d(o, s, True)) for s, o in zip(self.vertices, other.vertices)):
+            raise IndexError(f"{other}: contains sources not in {self}")
+        bool_index = np.hstack(np.in1d(s, o) for s, o in zip(self.vertices, other.vertices))
+        return np.flatnonzero(bool_index)
 
     def get_source_space(self, subjects_dir=None):
         "Read the corresponding MNE source space"
@@ -8868,11 +8895,10 @@ class SourceSpace(Dimension):
             subject=self.subject, src=self.src)
         if not os.path.exists(path):
             raise IOError(
-                "%s does not exist; if the MRI files for %s were moved since "
-                "this object was created, use eelbrain.load."
-                "update_subjects_dir()" % (path, self.subject))
-        src = mne.read_source_spaces(path)
-        return src
+                f"Can't load source space because {path} does not exist; if "
+                f"the MRI files for {self.subject} were moved, use "
+                f"eelbrain.load.update_subjects_dir()")
+        return mne.read_source_spaces(path)
 
     def index_for_label(self, label):
         """Return the index for a label
@@ -8912,23 +8938,169 @@ class SourceSpace(Dimension):
             The intersection with dim (returns itself if dim and self are
             equal)
         """
-        if self.subject != other.subject:
-            raise ValueError("Source spaces can not be compared because they "
-                             "are defined on different MRI subjects (%s, %s). "
-                             "Consider using eelbrain.morph_source_space()."
-                             % (self.subject, other.subject))
-        elif self.src != other.src:
-            raise ValueError("Source spaces can not be compared because they "
-                             "are defined with different spatial decimation "
-                             "parameters (%s, %s)." % (self.src, other.src))
-        elif self.subjects_dir != other.subjects_dir:
-            raise ValueError("Source spaces can not be compared because they "
-                             "have differing subjects_dir parameters:\n%s\n%s"
-                             % (self.subjects_dir, other.subjects_dir))
-
-        index = np.hstack(np.in1d(s, o) for s, o
-                          in zip(self.vertices, other.vertices))
+        self._assert_same_base(other)
+        index = np.hstack(np.in1d(s, o) for s, o in zip(self.vertices, other.vertices))
         return self[index]
+
+    def set_parc(self, parc):
+        """Superseded. Use :func:`eelbrain.set_parc`."""
+        raise RuntimeError("The SourceSpace.set_parc() method has been "
+                           "removed. Use eelbrain.set_parc() instead")
+
+    @property
+    def values(self):
+        raise NotImplementedError
+
+
+class SourceSpace(SourceSpaceBase):
+    kind = 'ico'
+
+    def _init_secondary(self):
+        SourceSpaceBase._init_secondary(self)
+        assert len(self.vertices) == 2, "ico-based SourceSpaces need " \
+                                        "exactly two vertices arrays"
+        self.lh_vertices = self.vertices[0]
+        self.rh_vertices = self.vertices[1]
+        self.lh_n = len(self.lh_vertices)
+        self.rh_n = len(self.rh_vertices)
+
+    def _read_parc(self, parc):
+        fname = self._ANNOT_PATH.format(
+            subjects_dir=self.subjects_dir, subject=self.subject,
+            hemi='%s', parc=parc)
+        labels_lh, _, names_lh = read_annot(fname % 'lh')
+        labels_rh, _, names_rh = read_annot(fname % 'rh')
+        x_lh = labels_lh[self.lh_vertices]
+        x_lh[x_lh == -1] = -2
+        x_rh = labels_rh[self.rh_vertices]
+        x_rh[x_rh >= 0] += len(names_lh)
+        names = chain(('unknown-lh', 'unknown-rh'),
+                      (name.decode() + '-lh' for name in names_lh),
+                      (name.decode() + '-rh' for name in names_rh))
+        return Factor(np.hstack((x_lh, x_rh)), parc,
+                      labels={i: name for i, name in enumerate(names, -2)})
+
+    def __iter__(self):
+        return (temp % v for temp, vertices in
+                zip(('L%i', 'R%i'), self.vertices) for v in vertices)
+
+    def __getitem__(self, index):
+        if isinstance(index, Integral):
+            if index < self.lh_n:
+                return 'L%i' % self.lh_vertices[index]
+            elif index < self._n_vert:
+                return 'R%i' % self.rh_vertices[index - self.lh_n]
+            else:
+                raise IndexError("SourceSpace Index out of range: %i" % index)
+
+        int_index = index_to_int_array(index, self._n_vert)
+        bool_index = np.bincount(int_index, minlength=self._n_vert).astype(bool)
+
+        # vertices
+        boundaries = np.cumsum(tuple(chain((0,), (len(v) for v in self.vertices))))
+        vertices = [v[bool_index[boundaries[i]:boundaries[i + 1]]]
+                    for i, v in enumerate(self.vertices)]
+
+        # parc
+        parc = None if self.parc is None else self.parc[index]
+
+        return SourceSpace(vertices, self.subject, self.src, self.subjects_dir,
+                           parc, self._subgraph(int_index), self.name)
+
+    def _as_uv(self):
+        return Factor(('%s%i' % (hemi, i) for hemi, vertices in
+                       zip(('L', 'R'), self.vertices) for i in vertices),
+                      name=self.name)
+
+    def _cluster_properties(self, x):
+        ds = SourceSpaceBase._cluster_properties(self, x)
+        # hemi
+        hemis = []
+        for x_ in x:
+            where = np.flatnonzero(x_)
+            src_in_lh = (where < self.lh_n)
+            if np.all(src_in_lh):
+                hemis.append('lh')
+            elif np.any(src_in_lh):
+                hemis.append('bh')
+            else:
+                hemis.append('rh')
+        ds['hemi'] = Factor(hemis)
+        return ds
+
+    def _link_midline(self, maxdist=0.015):
+        """Link sources in the left and right hemispheres
+
+        Link each source to the nearest source in the opposing hemisphere if
+        that source is closer than ``maxdist``.
+
+        Parameters
+        ----------
+        maxdist : scalar [m]
+            Add an interhemispheric connection between any two vertices whose
+            distance is less than this number (in meters; default 0.015).
+        """
+        if self.kind != 'ico':
+            raise ValueError("Can only link hemispheres in 'ico' source "
+                             "spaces, not in %s" % repr(self.kind))
+        old_con = self.connectivity()
+
+        # find vertices to connect
+        coords_lh = self.coordinates[:self.lh_n]
+        coords_rh = self.coordinates[self.lh_n:]
+        dists = cdist(coords_lh, coords_rh)
+        close_lh, close_rh = np.nonzero(dists < maxdist)
+        unique_close_lh = np.unique(close_lh)
+        unique_close_rh = np.unique(close_rh)
+        new_con = {(lh, np.argmin(dists[lh]) + self.lh_n) for lh in
+                   unique_close_lh}
+        new_con.update((np.argmin(dists[:, rh]), rh + self.lh_n) for rh in
+                       unique_close_rh)
+        new_con = np.array(sorted(new_con), np.uint32)
+        self._connectivity = np.vstack((old_con, new_con))
+
+    def _compute_connectivity(self):
+        src = self.get_source_space()
+        return _mne_tri_soure_space_graph(src, self.vertices)
+
+    def _array_index(self, arg):
+        if isinstance(arg, MNE_LABEL):
+            return self._array_index_label(arg)
+        elif isinstance(arg, str):
+            if arg == 'lh':
+                return slice(self.lh_n)
+            elif arg == 'rh':
+                if self.rh_n:
+                    return slice(self.lh_n, None)
+                else:
+                    return slice(0, 0)
+            else:
+                m = self._vertex_re.match(arg)
+                if m is None:
+                    return self._array_index_label(arg)
+                else:
+                    hemi, vertex = m.groups()
+                    vertex = int(vertex)
+                    vertices = self.vertices[hemi == 'R']
+                    i = int(np.searchsorted(vertices, vertex))
+                    if vertices[i] == vertex:
+                        if hemi == 'R':
+                            return i + self.lh_n
+                        else:
+                            return i
+                    else:
+                        raise IndexError("SourceSpace does not contain vertex "
+                                         "%r" % (arg,))
+        return SourceSpaceBase._array_index(self, arg)
+
+    def _dim_index(self, index):
+        if np.isscalar(index):
+            if index >= self.lh_n:
+                return 'R%i' % (self.rh_vertices[index - self.lh_n])
+            else:
+                return 'L%i' % (self.lh_vertices[index])
+        else:
+            return SourceSpaceBase._dim_index(self, index)
 
     def _label(self, vertices, name, color, subjects_dir=None, sss=None):
         lh_vertices, rh_vertices = vertices
@@ -8974,14 +9146,64 @@ class SourceSpace(Dimension):
                              self.parc.name, name=self.name)
         return NDVar(np.concatenate(data), (source,))
 
-    def set_parc(self, parc):
-        """Superseded. Use :func:`eelbrain.set_parc`."""
-        raise RuntimeError("The SourceSpace.set_parc() method has been "
-                           "removed. Use eelbrain.set_parc() instead")
 
-    @property
-    def values(self):
-        raise NotImplementedError
+class VolumeSourceSpace(SourceSpaceBase):
+    kind = 'vol'
+
+    def _init_secondary(self):
+        SourceSpaceBase._init_secondary(self)
+        if len(self.vertices) != 1:
+            raise ValueError("A VolumeSourceSpace needs exactly one vertices "
+                             "array")
+
+    def __iter__(self):
+        return iter(self.vertices[0])
+
+    def __getitem__(self, index):
+        if isinstance(index, Integral):
+            try:
+                return str(self.vertices[0][index])
+            except IndexError:
+                raise IndexError("VolumeSourceSpace Index out of range: %i" % index)
+        else:
+            parc = None if self.parc is None else self.parc[index]
+            return VolumeSourceSpace(
+                [self.vertices[0][index]], self.subject, self.src,
+                self.subjects_dir, parc, self._subgraph(index), self.name)
+
+    def _as_uv(self):
+        return Factor(self.vertices[0], name=self.name)
+
+    def _compute_connectivity(self):
+        src = self.get_source_space()
+        coords = src[0]['rr'][self.vertices[0]]
+        dist_threshold = self.grade * 0.0011
+        return _point_graph(coords, dist_threshold)
+
+    def _distances(self):
+        sss = self.get_source_space()
+        coords = sss[0]['rr'][self.vertices[0]]
+        return squareform(pdist(coords))
+
+    def _array_index(self, arg):
+        if isinstance(arg, str):
+            m = re.match('\d+$', arg)
+            if m:
+                return np.searchsorted(self.vertices[0], int(m.groups(1)))
+        return SourceSpaceBase._array_index(self, arg)
+
+    def _dim_index(self, index):
+        if np.isscalar(index):
+            return str(self.vertices[0][index])
+        else:
+            return SourceSpaceBase._dim_index(self, index)
+<<<<<<< HEAD
+
+
+class VolumeSourceSpace(SourceSpace):
+    pass
+=======
+>>>>>>> c58b931725243b4b00842c28bc7592c031ac458c
 
 
 class UTS(Dimension):

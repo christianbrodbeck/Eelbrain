@@ -126,7 +126,7 @@ def permute_sign_flip(n, samples=10000, seed=0, out=None):
         performed.
     seed : None | int
         Seed the random state of the :mod:`random` module to make replication 
-        possible. None to skip seeding (default 0).
+        possible. ``None`` to skip seeding (default 0).
     out : array of int8  (n,)
         Buffer for the ``sign`` variable that is yielded in each iteration.
 
@@ -213,3 +213,25 @@ def resample(y, samples=10000, replacement=False, unit=None, seed=0):
     for index in permute_order(len(out), samples, replacement, unit, seed):
         out.x[index] = y.x
         yield out
+
+
+def random_seeds(samples, seed=0):
+    """Sequence of seeds for permutation based on random numbers
+
+    Parameters
+    ----------
+    samples : int
+        Number of samples to yield.
+    seed : None | int
+        Seed the random state of the :mod:`random` module to make replication
+        possible. ``None`` to skip seeding (default 0).
+
+    Returns
+    -------
+    sign : array of int8  (n,)
+        Sign for each case (``1`` or ``-1``; ``sign`` is the same array object
+        but its content modified in every iteration).
+    """
+    if seed is not None:
+        random.seed(seed)
+    return np.random.randint(2**32, size=samples, dtype=np.uint32)

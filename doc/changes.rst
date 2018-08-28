@@ -3,6 +3,16 @@ Changes
 
 .. currentmodule:: eelbrain
 
+New in 0.29
+-----------
+
+* Support for vector data:
+
+  - :class:`Space` dimension to represent physical space
+  - :class:`VolumeSourceSpace` to represent volume source spaces
+  - :class:`testnd.Vector` for statistical testing of vector data
+
+
 New in 0.28
 -----------
 
@@ -21,6 +31,9 @@ New in 0.28
     plots.
 
 * :class:`NDVar` and :class:`Var` support for ``round(x)``
+* :class:`MneExperiment`:
+
+  - Intependent measures t-test
 
 
 New in 0.27
