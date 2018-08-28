@@ -88,6 +88,7 @@ preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __
                    )
 
 
+SRC_RE = re.compile('^(ico|vol)-(\d+)(?:-(\w+))?$')
 UNNAMED = '<?>'
 LIST_INDEX_TYPES = (*INT_TYPES, slice)
 _pickled_ds_wildcard = ("Pickled Dataset (*.pickled)", '*.pickled')
@@ -8516,43 +8517,7 @@ def _mne_tri_soure_space_graph(source_space, vertices_list):
 
 
 class SourceSpaceBase(Dimension):
-    """MNE source space dimension.
-
-    Parameters
-    ----------
-    vertices : list of int array
-        The vertex identities of the dipoles in the source space (left and
-        right hemisphere separately).
-    subject : str
-        The mri-subject name.
-    src : str
-        The kind of source space used (e.g., 'ico-4').
-    subjects_dir : str
-        The path to the subjects_dir (needed to locate the source space
-        file).
-    parc : None | str
-        Add a parcellation to the source space to identify vertex location.
-        Only applies to ico source spaces, default is 'aparc'.
-    connectivity : 'grid' | 'none' | array of int, (n_edges, 2)
-        Connectivity between elements. Set to ``"none"`` for no connections or 
-        ``"grid"`` to use adjacency in the sequence of elements as connection. 
-        Set to :class:`numpy.ndarray` to specify custom connectivity. The array
-        should be of shape (n_edges, 2), and each row should specify one 
-        connection [i, j] with i < j, with rows sorted in ascending order. If
-        the array's dtype is uint32, property checks are disabled to improve 
-        efficiency.
-    name : str
-        Dimension name (default ``"source"``).
-
-    Notes
-    -----
-    besides numpy indexing, the following indexes are possible:
-
-     - mne Label objects
-     - 'lh' or 'rh' to select an entire hemisphere
-
-    """
-    kind = 'ico'
+    kind = None
     _default_connectivity = 'custom'
     _SRC_PATH = os.path.join(
         '{subjects_dir}', '{subject}', 'bem', '{subject}-{src}-src.fif')
@@ -8561,8 +8526,7 @@ class SourceSpaceBase(Dimension):
 
     _vertex_re = re.compile('([RL])(\d+)')
 
-    def __init__(self, vertices, subject=None, src=None, subjects_dir=None,
-                 parc='aparc', connectivity='custom', name='source'):
+    def __init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name):
         self.vertices = vertices
         self.subject = subject
         self.src = src
@@ -8590,12 +8554,14 @@ class SourceSpaceBase(Dimension):
 
     def _init_secondary(self):
         self._n_vert = sum(len(v) for v in self.vertices)
-        match = re.match("%s-(\d+)$" % self.kind, self.src)
         # The source-space type is needed to determine connectivity
-        if match is None:
-            raise ValueError("src=%r; needs to be '%s-i' where i is an integer"
-                             % (self.src, self.kind))
-        self.grade = int(match.group(1))
+        m = SRC_RE.match(self.src)
+        if not m:
+            raise ValueError(f"src={self.src!r}; needs to be '{self.kind}-i' where i is an integer")
+        kind, grade, suffix = m.groups()
+        if kind != self.kind:
+            raise ValueError(f'src={self.src!r}: {self.__class__.__name__} is wrong class')
+        self.grade = int(grade)
 
     @classmethod
     def from_file(cls, subjects_dir, subject, src, parc=None):
@@ -8950,7 +8916,52 @@ class SourceSpaceBase(Dimension):
 
 
 class SourceSpace(SourceSpaceBase):
+    """MNE surface-based source space
+
+    Parameters
+    ----------
+    vertices : list of 2 int arrays
+        The vertex identities of the dipoles in the source space (left and
+        right hemisphere separately).
+    subject : str
+        The mri-subject name.
+    src : str
+        The kind of source space used (e.g., 'ico-4'; only ``ico`` is currently
+        supported.
+    subjects_dir : str
+        The path to the subjects_dir (needed to locate the source space
+        file).
+    parc : None | str
+        Add a parcellation to the source space to identify vertex location.
+        Only applies to ico source spaces, default is 'aparc'.
+    connectivity : 'grid' | 'none' | array of int, (n_edges, 2)
+        Connectivity between elements. Set to ``"none"`` for no connections or
+        ``"grid"`` to use adjacency in the sequence of elements as connection.
+        Set to :class:`numpy.ndarray` to specify custom connectivity. The array
+        should be of shape (n_edges, 2), and each row should specify one
+        connection [i, j] with i < j, with rows sorted in ascending order. If
+        the array's dtype is uint32, property checks are disabled to improve
+        efficiency.
+    name : str
+        Dimension name (default ``"source"``).
+
+    See Also
+    --------
+    VolumeSourceSpace : volume source space
+
+    Notes
+    -----
+    besides numpy indexing, the following indexes are possible:
+
+     - mne Label objects
+     - 'lh' or 'rh' to select an entire hemisphere
+
+    """
     kind = 'ico'
+
+    def __init__(self, vertices, subject=None, src=None, subjects_dir=None,
+                 parc='aparc', connectivity='custom', name='source'):
+        SourceSpaceBase.__init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name)
 
     def _init_secondary(self):
         SourceSpaceBase._init_secondary(self)
@@ -9145,7 +9156,48 @@ class SourceSpace(SourceSpaceBase):
 
 
 class VolumeSourceSpace(SourceSpaceBase):
+    """MNE volume source space
+
+    Parameters
+    ----------
+    vertices : list of 2 int arrays
+        The vertex identities of the dipoles in the source space (left and
+        right hemisphere separately).
+    subject : str
+        The mri-subject name.
+    src : str
+        The kind of source space used (e.g., 'ico-4'; only ``ico`` is currently
+        supported.
+    subjects_dir : str
+        The path to the subjects_dir (needed to locate the source space
+        file).
+    parc : None | str
+        Add a parcellation to the source space to identify vertex location.
+        Only applies to ico source spaces, default is 'aparc'.
+    connectivity : 'grid' | 'none' | array of int, (n_edges, 2)
+        Connectivity between elements. Set to ``"none"`` for no connections or
+        ``"grid"`` to use adjacency in the sequence of elements as connection.
+        Set to :class:`numpy.ndarray` to specify custom connectivity. The array
+        should be of shape (n_edges, 2), and each row should specify one
+        connection [i, j] with i < j, with rows sorted in ascending order. If
+        the array's dtype is uint32, property checks are disabled to improve
+        efficiency.
+    name : str
+        Dimension name (default ``"source"``).
+
+    See Also
+    --------
+    SourceSpace : surface-based source space
+    """
     kind = 'vol'
+
+    def __init__(self, vertices, subject=None, src=None, subjects_dir=None,
+                 parc=None, connectivity='custom', name='source'):
+        if isinstance(parc, str):
+            raise NotImplementedError(f"parc={parc!r}: specify parcellation as Factor")
+        if isinstance(vertices, np.ndarray):
+            vertices = [vertices]
+        SourceSpaceBase.__init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name)
 
     def _init_secondary(self):
         SourceSpaceBase._init_secondary(self)
