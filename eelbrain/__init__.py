@@ -20,7 +20,12 @@ from ._celltable import Celltable
 from ._data_obj import (
     Datalist, Dataset, Var, Factor, Interaction, Model,
 <<<<<<< HEAD
+<<<<<<< HEAD
     NDVar, Case, Categorial, Scalar, Sensor, SourceSpace, UTS, VolumeSourceSpace,
+=======
+    NDVar, Case, Categorial, Scalar, Sensor, SourceSpace, VolumeSourceSpace,
+    UTS, Space,
+>>>>>>> c58b931725243b4b00842c28bc7592c031ac458c
 =======
     NDVar, Case, Categorial, Scalar, Sensor, SourceSpace, VolumeSourceSpace,
     UTS, Space,
