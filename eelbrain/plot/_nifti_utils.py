@@ -7,6 +7,7 @@ from .._data_obj import asndvar, NDVar, SourceSpace, UTS
 
 def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False):
     """Save a volume source estimate in a NIfTI file.
+
     Parameters
     ----------
     fname : string | None
@@ -26,6 +27,7 @@ def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False):
         It True the image is saved in MRI resolution.
         WARNING: if you have many time points the file produced can be
         huge.
+
     Returns
     -------
     img : instance Nifti1Image
