@@ -1544,7 +1544,6 @@ class anova(MultiEffectNDTest):
         elif match is not False:
             match = ascategorial(match, sub, ds)
 
-        check_variance(y.x)
         lm = _nd_anova(x)
         effects = lm.effects
         dfs_denom = lm.dfs_denom

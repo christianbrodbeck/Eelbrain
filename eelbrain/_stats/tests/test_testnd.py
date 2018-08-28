@@ -120,9 +120,9 @@ def test_anova():
         eq_(len(dist.dist), samples)
         assert_array_equal(dist.dist, dist.tfce_map.abs().max())
     # thresholded
-    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=samples)
-    clusters = res.find_clusters()
-    for dist, effect in zip(res._cdist, res.effects):
+    res1 = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=samples)
+    clusters = res1.find_clusters()
+    for dist, effect in zip(res1._cdist, res1.effects):
         effect_idx = clusters.eval("effect == %r" % effect)
         vmax = clusters[effect_idx, 'v'].abs().max()
         eq_(len(dist.dist), samples)
@@ -135,15 +135,23 @@ def test_anova():
     configure(n_workers=True)
 
     # zero variance
+    res2 = testnd.anova('utsnd', 'A', ds=ds)
     ds['utsnd'].x[:, 1, 10] = 0.
-    assert_raises(ZeroVariance, testnd.anova, 'utsnd', 'A', ds=ds)
-    assert_raises(ZeroVariance, testnd.anova, 'utsnd', 'A*B*rm', ds=ds)
+    zero_var = ds['utsnd'].var('case') == 0
+    zv_index = tuple(i[0] for i in zero_var.nonzero())
+    res1_zv = testnd.anova('utsnd', 'A*B*rm', ds=ds)
+    res2_zv = testnd.anova('utsnd', 'A', ds=ds)
+    for res, res_zv in ((res1, res1_zv), (res2, res2_zv)):
+        for f, f_zv in zip(res.f, res_zv.f):
+            assert_array_equal((f_zv == 0).x, zero_var.x)
+            assert f_zv[zv_index] == 0
+            f_zv[zv_index] = f[zv_index]
+            assert_dataobj_equal(f_zv, f)
 
     # nested random effect
     res = testnd.anova('uts', 'A * B * nrm(A)', ds=ds, samples=10, tstart=.4)
     assert res.match == 'nrm(A)'
     assert [p.min() for p in res.p] == [0.0, 0.6, 0.9]
-
 
 
 def test_anova_incremental():
