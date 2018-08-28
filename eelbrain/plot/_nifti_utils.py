@@ -51,9 +51,8 @@ def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False):
     if ndvar.has_dim('time'):
         data = ndvar.get_data(('source', 'time'))
     else:
-        data = ndvar.get_data('source', np.newaxis)
-        # if data.ndim == 1:
-        #     data = data[:, np.newaxis]
+        data = ndvar.get_data(('source', np.newaxis))
+
     n_times = data.shape[1]
     shape = src[0]['shape']
     shape3d = (shape[2], shape[1], shape[0])

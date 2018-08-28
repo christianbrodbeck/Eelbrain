@@ -24,14 +24,6 @@ DEFAULT_H = 2.6
 DEFAULT_W = 2.2
 
 
-def _get_mne_source_space(ndvar):
-    """load a mne source space from a ndvar source space"""
-    # mne src
-    from mne import read_source_spaces
-    return read_source_spaces (join(ndvar.source.subjects_dir, ndvar.source.subject, 'bem',
-                                         '%s-%s-src.fif' % (ndvar.source.subject, ndvar.source.src)))
-
-
 # Copied from nilear.plotting.img_plotting
 # Weired that it could not be imported!
 def _crop_colorbar(cbar, cbar_vmin, cbar_vmax):
@@ -153,7 +145,6 @@ class GlassBrain(TimeSlicer, EelFigure):
                 ndvar = ndvar.norm('space')
 
             self._ndvar = ndvar
-            # self.src = _get_mne_source_space(ndvar)
             self.src = ndvar.source.get_source_space()
             src_type = self.src[0]['type']
             if src_type != 'vol':
