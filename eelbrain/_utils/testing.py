@@ -48,7 +48,8 @@ def assert_dataset_equal(ds1, ds2, msg="Datasets unequal", decimal=None):
     assert_equal(ds1.info.keys(), ds2.info.keys(), "%s: keys in info" % msg)
 
 
-def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None):
+def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None,
+                         name=True):
     """Assert that two data-objects are equal up to desired precision.
 
     Parameters
@@ -59,6 +60,8 @@ def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None):
         Prefix of the error message to be printed in case of failure.
     decimal : None | int
         Desired precision (default is exact match).
+    name : bool
+        Assert that ``d1.name == d2.name``.
     """
     if not isdatacontainer(d1):
         raise TypeError("d1 is not a data-object but %s" % repr(d1))
@@ -67,8 +70,8 @@ def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None):
     else:
         eq_(type(d1), type(d2))
     msg += ":"
-    assert_equal(d1.name, d2.name, "%s unequal names (%r vs %r"
-                 ")" % (msg, d1.name, d2.name))
+    if name:
+        assert d1.name == d2.name
     msg += ' Two %ss named %r have' % (d1.__class__.__name__, d1.name)
     len1 = len(d1)
     len2 = len(d2)
