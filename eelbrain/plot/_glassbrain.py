@@ -24,7 +24,7 @@ DEFAULT_H = 2.6
 DEFAULT_W = 2.2
 
 
-# Copied from nilear.plotting.img_plotting
+# Copied from nilearn.plotting.img_plotting
 # Weired that it could not be imported!
 def _crop_colorbar(cbar, cbar_vmin, cbar_vmax):
     """crop a colorbar to show from cbar_vmin to cbar_vmax.(symmetric_cbar=False)"""
@@ -48,9 +48,10 @@ def _crop_colorbar(cbar, cbar_vmin, cbar_vmax):
 
 class GlassBrain(TimeSlicer, EelFigure):
     """`GlassBrain` Class to hold 2d projections of an ROI/mask image
-    (by default 3 projections: Frontal, Axial, and Lateral).
+
     `GlassBrain` subclass comes with Eelbrain GUI integration and
     methods to visualize data in :class:`NDVar` format.
+    (by default 3 projections: Frontal, Axial, and Lateral).
 
     Parameters
     ----------
@@ -125,6 +126,7 @@ class GlassBrain(TimeSlicer, EelFigure):
     This function internally converts the ndvar (or its time-slices)
     to NIfTI image.
     """
+
     def __init__(self, ndvar, dest='mri', mri_resolution=False, black_bg=False, display_mode='ortho',
                  threshold='auto', cmap=None, colorbar=False, draw_cross=True, annotate=True, alpha=0.7,
                  vmin=None, vmax=None, plot_abs=True, symmetric_cbar="auto", interpolation='nearest', h=None, w=None,
@@ -389,7 +391,6 @@ def butterfly(ndvar, dest='mri', mri_resolution=False, black_bg=False, display_m
     glassbrain : GlassBrain
         GlassBrain plot.
     """
-
     from ..plot._utsnd import Butterfly
 
     if name is None:
