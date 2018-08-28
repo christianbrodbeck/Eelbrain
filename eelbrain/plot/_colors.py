@@ -123,6 +123,7 @@ def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None,
         colors = oneway_colors(n, hue_start, light_range, light_cycle, always_cycle_hue)
         return dict(zip(cells, colors))
     else:
+        n -= 1
         cm = mpl.cm.get_cmap(cmap)
         return {cell: cm(i / n) for i, cell in enumerate(cells)}
 
