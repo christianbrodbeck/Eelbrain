@@ -39,7 +39,7 @@ def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False):
         src = src
 
     src_type = src[0]['type']
-    if src_type != '_vol':
+    if src_type != 'vol':
         raise ValueError('You need a volume source space. Got type: %s.'
                          % src_type)
 
@@ -119,7 +119,7 @@ def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False):
 #     fname = ROOTDIR + 'Group analysis/Dataset audspec-u.pickled'
 #     ds = pickle.load(open(fname, 'rb'))
 #     h = ds['trf'].mean('case')
-#     fname = ROOTDIR + '/mri/fsaverage/bem/fsaverage-_vol-10-src.fif'
+#     fname = ROOTDIR + '/mri/fsaverage/bem/fsaverage-vol-10-src.fif'
 #     src = read_source_spaces(fname)
 #     niftimg = _save_stc_as_volume(None, h, src, 'surf')
 #     gb = plot_glass_brain (
