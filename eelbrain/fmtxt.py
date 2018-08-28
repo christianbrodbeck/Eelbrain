@@ -1605,6 +1605,43 @@ class Table(FMTextElement):
                 table.append(row.get_tsv(delimiter, fmt=fmt))
         return linesep.join(table)
 
+    def save_docx(self, path=None):
+        """Save table as *.docx (requires `python-docx <https://python-docx.readthedocs.io>`_)
+
+        Parameters
+        ----------
+        path : str
+            Target file name (leave unspecified to use Save As dialog).
+
+        Notes
+        -----
+        Most style options are not implemented.
+        """
+        from docx import Document
+
+        if path is None:
+            path = ui.ask_saveas(
+                "Save Text File", filetypes=[("Word Document (*.docx)", "*.docx")])
+        if not path:
+            return
+        document = Document()
+        if self._title:
+            document.add_heading(str(self._title), 0)
+
+        table = document.add_table(rows=0, cols=self.n_columns)
+
+        # Body
+        for row in self.rows:
+            if isinstance(row, str):
+                continue
+            d_row = table.add_row()
+            i = 0
+            for cell in row:
+                d_row.cells[i].text = str(cell)
+                i += cell.width
+
+        document.save(path)
+
     def save_tsv(self, path=None, delimiter='\t', linesep='\n', fmt='%.15g'):
         r"""
         Save the table as tab-separated values file.
@@ -1620,7 +1657,7 @@ class Table(FMTextElement):
         fmt : str
             Format string for representing numerical cells.
             (see 'Python String Formatting Documentation
-            <http://docs.python.org/library/stdtypes.html#string-formatting-operations>'_ )
+            <http://docs.python.org/library/stdtypes.html#string-formatting-operations>'_)
         """
         _save_txt(self.get_tsv(delimiter, linesep, fmt), path)
 
