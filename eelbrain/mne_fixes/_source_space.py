@@ -26,7 +26,7 @@ def merge_volume_source_space(sss, name='Volume'):
     return SourceSpaces([ss], sss.info)
 
 
-def prune_volume_source_space(sss, grade, n=1, mirror=True, remove_midline=True):
+def prune_volume_source_space(sss, grade, n=1, mirror=True, remove_midline=False):
     """Remove sources that have ``n`` or fewer neighboring sources"""
     assert len(sss) == 1
     ss = sss[0].copy()

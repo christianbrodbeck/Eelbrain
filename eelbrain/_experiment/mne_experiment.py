@@ -84,7 +84,7 @@ from .preprocessing import (
     assemble_pipeline, RawICA, pipeline_dict, compare_pipelines,
     ask_to_delete_ica_files)
 from .test_def import (
-    Test, EvokedTest, TTestInd,
+    Test, EvokedTest,
     ROITestResult, TestDims, TwoStageTest, assemble_tests,
 )
 from .vardef import Vars
@@ -105,9 +105,9 @@ ICA_REJ_PARAMS = {'kind', 'source', 'epoch', 'interpolation', 'n_components',
 COV_PARAMS = {'epoch', 'session', 'method', 'reg', 'keep_sample_mean',
               'reg_eval_win_pad'}
 
-
-SRC_RE = re.compile('(ico|vol)-(\d+)$')
-inv_re = re.compile("(free|fixed|loose\.\d+|vec)-"  # orientation constraint
+SRC_RE = re.compile('^(ico|vol)-(\d+)(?:-(brainstem))?$')
+inv_re = re.compile("^"
+                    "(free|fixed|loose\.\d+|vec)-"  # orientation constraint
                     "(\d*\.?\d+)-"  # SNR
                     "(MNE|dSPM|sLORETA)"  # method
                     "(?:-((?:0\.)?\d+))?"  # depth weighting
@@ -5644,29 +5644,38 @@ class MneExperiment(FileTree):
             src = self.get('src')
             self._log.info(f"Scaling {src} source space for {subject}...")
             subjects_dir = self.get('mri-sdir')
-            mne.scale_source_space(subject, src, subjects_dir=subjects_dir)
+            mne.scale_source_space(subject, f'{{subject}}-{src}-src.fif', subjects_dir=subjects_dir)
         elif exists(dst):
             return
         else:
             src = self.get('src')
+            kind, param, special = SRC_RE.match(src).groups()
             self._log.info(f"Generating {src} source space for {subject}...")
-            kind, param = src.split('-')
             if kind == 'vol':
                 if subject == 'fsaverage':
                     bem = self.get('bem-file')
                 else:
                     raise NotImplementedError(
                         "Volume source space for subject other than fsaverage")
-                hemis = ('Left', 'Right')
-                voi = ('Cerebral-Cortex', 'Cerebral-White-Matter')
+                if special == 'brainstem':
+                    name = 'brainstem'
+                    voi = ['Brain-Stem', '3rd-Ventricle']
+                    voi_lat = ('Thalamus-Proper', 'VentralDC')
+                    remove_midline = False
+                else:
+                    name = 'cortex'
+                    voi = []
+                    voi_lat = ('Cerebral-Cortex', 'Cerebral-White-Matter')
+                    remove_midline = True
+                voi.extend('%s-%s' % fmt for fmt in product(('Left', 'Right'), voi_lat))
                 sss = mne.setup_volume_source_space(
                     subject, pos=float(param), bem=bem,
                     mri=join(self.get('mri-dir'), 'mri', 'aseg.mgz'),
-                    volume_label=['%s-%s' % fmt for fmt in product(hemis, voi)],
-                    subjects_dir=self.get('mri-sdir'))
-                sss = merge_volume_source_space(sss, 'Eelbrain-volume')
-                sss = prune_volume_source_space(sss, int(param), 2)
+                    volume_label=voi, subjects_dir=self.get('mri-sdir'))
+                sss = merge_volume_source_space(sss, name)
+                sss = prune_volume_source_space(sss, int(param), 2, remove_midline=remove_midline)
             else:
+                assert not special
                 spacing = kind + param
                 sss = mne.setup_source_space(
                     subject, spacing=spacing, add_dist=True,
@@ -6243,7 +6252,10 @@ class MneExperiment(FileTree):
     def _eval_src(self, src):
         m = SRC_RE.match(src)
         if not m:
-            raise ValueError('src=%r' % (src,))
+            raise ValueError(f'src={src}')
+        kind, param, special = m.groups()
+        if special and kind != 'vol':
+            raise ValueError(f'src={src}')
         return src
 
     def _update_mrisubject(self, fields):
