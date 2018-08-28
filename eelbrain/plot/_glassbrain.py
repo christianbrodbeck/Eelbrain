@@ -162,7 +162,7 @@ class GlassBrain(TimeSlicer, EelFigure):
             self._ndvar = ndvar
             self.src = _get_mne_source_space(ndvar)
             src_type = self.src[0]['type']
-            if src_type != '_vol':
+            if src_type != 'vol':
                 raise ValueError('You need a volume source space. Got type: %s.'
                                   % src_type)
 
