@@ -71,7 +71,7 @@ class GlassBrain(TimeSlicer, EelFigure):
         of the FreeSurfer surface is used (Surface RAS).
     mri_resolution: bool
         It True the image is saved in MRI resolution.
-        WARNING: if you have many time points the file produced can be
+        WARNING: if you have many time points the RAM consumption can be
         huge.
     black_bg : boolean, optional
         If True, the background of the image is set to be black.
@@ -153,7 +153,8 @@ class GlassBrain(TimeSlicer, EelFigure):
                 ndvar = ndvar.norm('space')
 
             self._ndvar = ndvar
-            self.src = _get_mne_source_space(ndvar)
+            # self.src = _get_mne_source_space(ndvar)
+            self.src = ndvar.source.get_source_space()
             src_type = self.src[0]['type']
             if src_type != 'vol':
                 raise ValueError('You need a volume source space. Got type: %s.'

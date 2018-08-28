@@ -51,9 +51,9 @@ def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False):
     if ndvar.has_dim('time'):
         data = ndvar.get_data(('source', 'time'))
     else:
-        data = ndvar.get_data('source')
-        if data.ndim == 1:
-            data = data[:, np.newaxis]
+        data = ndvar.get_data('source', np.newaxis)
+        # if data.ndim == 1:
+        #     data = data[:, np.newaxis]
     n_times = data.shape[1]
     shape = src[0]['shape']
     shape3d = (shape[2], shape[1], shape[0])
@@ -95,11 +95,8 @@ def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False):
         affine = np.dot(src[0]['mri_ras_t']['trans'], affine)
     affine[:3] *= 1e3
 
-    try:
-        import nibabel as nib  # lazy import to avoid dependency
-    except ImportError:
-        raise ImportError("nibabel is required to save volume images.")
-
+    # write the image in nifty format
+    import nibabel as nib
     header = nib.nifti1.Nifti1Header()
     header.set_xyzt_units('mm', 'msec')
     if ndvar.has_dim('time'):
