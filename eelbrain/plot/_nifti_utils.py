@@ -110,19 +110,3 @@ def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False):
             nib.save(img, fname)
     return img
 
-
-# if __name__ == '__main__':
-#     from nilearn.plotting import plot_glass_brain
-#     from nilearn.image import index_img
-#     import cPickle as pickle
-#     ROOTDIR = 'G:/My Drive/Proloy/'
-#     fname = ROOTDIR + 'Group analysis/Dataset audspec-u.pickled'
-#     ds = pickle.load(open(fname, 'rb'))
-#     h = ds['trf'].mean('case')
-#     fname = ROOTDIR + '/mri/fsaverage/bem/fsaverage-vol-10-src.fif'
-#     src = read_source_spaces(fname)
-#     niftimg = _save_stc_as_volume(None, h, src, 'surf')
-#     gb = plot_glass_brain (
-#         index_img(niftimg, 20), title='plot_glass_brain',
-#         black_bg=True, display_mode='lyrz', threshold=1e-13
-#     )
