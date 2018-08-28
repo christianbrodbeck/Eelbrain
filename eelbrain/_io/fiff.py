@@ -15,11 +15,11 @@ from mne.io.constants import FIFF
 from mne.io.kit.constants import KIT
 from mne.minimum_norm import prepare_inverse_operator, apply_inverse_raw
 
-from .. import _colorspaces as _cs
+from .. import _info
 from .._info import BAD_CHANNELS
 from .._utils import ui
-from .._data_obj import (Var, NDVar, Dataset, Sensor, SourceSpace, UTS,
-                         _matrix_graph)
+from .._data_obj import (Var, NDVar, Dataset, Case, Sensor, Space, SourceSpace,
+                         VolumeSourceSpace, UTS, _matrix_graph)
 from ..mne_fixes import MNE_EVOKED, MNE_RAW
 
 
@@ -249,6 +249,27 @@ def _ndvar_epochs_reject(data, reject):
     else:
         reject = None
     return reject
+
+
+def _sensor_info(data, vmax, mne_info, user_info=None, mult=1):
+    if data == 'eeg' or data == 'eeg&eog':
+        info = _info.for_eeg(vmax, mult)
+        summary_vmax = 0.1 * vmax if vmax else None
+        summary_info = _info.for_eeg(summary_vmax, mult)
+    elif data == 'mag':
+        info = _info.for_meg(vmax, mult)
+        summary_vmax = 0.1 * vmax if vmax else None
+        summary_info = _info.for_meg(summary_vmax, mult)
+    elif data == 'grad':
+        info = _info.for_meg(vmax, mult, 'T/cm', '∆U')
+        summary_vmax = 0.1 * vmax if vmax else None
+        summary_info = _info.for_meg(summary_vmax, mult, 'T/cm', '∆U')
+    else:
+        raise ValueError("data=%r" % data)
+    info.update(proj='z root', samplingrate=mne_info['sfreq'], summary_info=summary_info)
+    if user_info:
+        info.update(user_info)
+    return info
 
 
 def epochs(ds, tmin=-0.1, tmax=None, baseline=None, decim=1, mult=1, proj=False,
@@ -738,11 +759,13 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
             data = _guess_ndvar_data_type(raw.info)
         picks = _picks(raw.info, data, exclude)
         dim = sensor_dim(raw, picks)
+        info = _sensor_info(data, None, raw.info)
     else:
         assert data is None
         dim = SourceSpace.from_mne_source_spaces(inv['src'], src, subjects_dir,
                                                  parc, label)
         inv = prepare_inverse_operator(inv, 1, lambda2, method)
+        info = {}  # FIXME
 
     out = []
     for start, stop in zip(i_start, i_stop):
@@ -755,7 +778,7 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
         if decim != 1:
             x = x[:, ::decim]
         time = UTS(0, float(decim) / raw.info['sfreq'], x.shape[1])
-        out.append(NDVar(x, (dim, time), _cs.meg_info(), name))
+        out.append(NDVar(x, (dim, time), info, name))
 
     if scalar:
         return out[0]
@@ -801,24 +824,7 @@ def epochs_ndvar(epochs, name=None, data=None, exclude='bads', mult=1,
     if data is None:
         data = _guess_ndvar_data_type(epochs.info)
     picks = _picks(epochs.info, data, exclude)
-    if data == 'eeg' or data == 'eeg&eog':
-        info_ = _cs.eeg_info(vmax, mult)
-        summary_vmax = 0.1 * vmax if vmax else None
-        summary_info = _cs.eeg_info(summary_vmax, mult)
-    elif data == 'mag':
-        info_ = _cs.meg_info(vmax, mult)
-        summary_vmax = 0.1 * vmax if vmax else None
-        summary_info = _cs.meg_info(summary_vmax, mult)
-    elif data == 'grad':
-        info_ = _cs.meg_info(vmax, mult, 'T/cm', '∆U')
-        summary_vmax = 0.1 * vmax if vmax else None
-        summary_info = _cs.meg_info(summary_vmax, mult, 'T/cm', '∆U')
-    else:
-        raise ValueError("data=%r" % data)
-    info_.update(proj='z root', samplingrate=epochs.info['sfreq'],
-                 summary_info=summary_info)
-    if info:
-        info_.update(info)
+    info_ = _sensor_info(data, vmax, epochs.info, info, mult)
 
     x = epochs.get_data()
     if len(picks) < x.shape[1]:
@@ -891,11 +897,11 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
         sysname = KIT_NEIGHBORS.get(kit_sys_ids.pop(), sysname)
 
     if data == 'mag':
-        info = _cs.meg_info(vmax)
+        info = _info.for_meg(vmax)
     elif data == 'eeg':
-        info = _cs.eeg_info(vmax)
+        info = _info.for_eeg(vmax)
     elif data == 'grad':
-        info = _cs.meg_info(vmax, unit='T/cm')
+        info = _info.for_meg(vmax, unit='T/cm')
     else:
         raise ValueError("data=%s" % repr(data))
 
@@ -963,19 +969,26 @@ def forward_operator(fwd, src, subjects_dir=None, parc='aparc', name=None):
     fwd : NDVar  (sensor, source)
         NDVar containing the gain matrix.
     """
+    is_vol = src.startswith('vol')
     if isinstance(fwd, str):
         if name is None:
             name = os.path.basename(fwd)
         fwd = mne.read_forward_solution(fwd)
-        mne.convert_forward_solution(fwd, force_fixed=True, use_cps=True,
+        mne.convert_forward_solution(fwd, force_fixed=not is_vol, use_cps=True,
                                      copy=False)
     elif name is None:
         name = 'fwd'
     sensor = sensor_dim(fwd['info'])
     assert np.all(sensor.names == fwd['sol']['row_names'])
-    source = SourceSpace.from_mne_source_spaces(fwd['src'], src, subjects_dir,
-                                                parc)
-    return NDVar(fwd['sol']['data'], (sensor, source), {}, name)
+    if is_vol:
+        source = VolumeSourceSpace.from_mne_source_spaces(fwd['src'], src, subjects_dir, parc)
+        x = fwd['sol']['data'].reshape(((len(sensor), len(source), 3)))
+        dims = (sensor, source, Space('RAS'))
+    else:
+        source = SourceSpace.from_mne_source_spaces(fwd['src'], src, subjects_dir, parc)
+        x = fwd['sol']['data']
+        dims = (sensor, source)
+    return NDVar(x, dims, {}, name)
 
 
 def inverse_operator(inv, src, subjects_dir=None, parc='aparc', name=None):
@@ -1071,11 +1084,13 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
         x = np.array([s.data for s in stcs])
 
     # Construct NDVar Dimensions
-    time = UTS(stc.tmin, stc.tstep, stc.shape[1])
+    time = UTS(stc.tmin, stc.tstep, stc.times.size)
     if isinstance(stc, mne.VolSourceEstimate):
-        ss = SourceSpace([stc.vertices], subject, src, subjects_dir, parc)
+        ss = VolumeSourceSpace([stc.vertices], subject, src, subjects_dir, None)
+        is_vector = stc.data.ndim == 3
     else:
         ss = SourceSpace(stc.vertices, subject, src, subjects_dir, parc)
+        is_vector = isinstance(stc, mne.VectorSourceEstimate)
     # Apply connectivity modification
     if isinstance(connectivity, str):
         if connectivity == 'link-midline':
@@ -1085,10 +1100,11 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
     elif connectivity is not None:
         raise TypeError("connectivity=%s" % repr(connectivity))
     # assemble dims
+    dims = [ss, time]
+    if is_vector:
+        dims.insert(1, Space('RAS'))
     if case:
-        dims = ('case', ss, time)
-    else:
-        dims = (ss, time)
+        dims.insert(0, Case)
 
     # find the right measurement info
     info = {}

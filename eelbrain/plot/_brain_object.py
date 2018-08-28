@@ -372,7 +372,12 @@ class Brain(TimeSlicer, surfer.Brain):
             self.remove_data()
 
         # find ndvar time axis
-        if ndvar.has_dim('time'):
+        if ndvar.ndim == 1:
+            time_dim = times = None
+            data_dims = (source.name,)
+        elif ndvar.ndim != 2:
+            raise ValueError(f"{ndvar}: must be one- or two dimensional")
+        elif ndvar.has_dim('time'):
             time_dim = ndvar.time
             times = ndvar.time.times
             data_dims = (source.name, 'time')
@@ -382,14 +387,11 @@ class Brain(TimeSlicer, surfer.Brain):
                 time_label = '%.3f s'
             elif time_label is False:
                 time_label = None
-        elif ndvar.has_case:
-            time_dim = ndvar.dims[0]
-            times = np.arange(len(ndvar))
-            data_dims = (source.name, 'case')
-            time_label = None
         else:
-            time_dim = times = None
-            data_dims = (source.name,)
+            data_dims = ndvar.get_dimnames((source.name, None))
+            time_dim = ndvar.get_dim(data_dims[1])
+            times = np.arange(len(time_dim))
+            time_label = None
         # make sure time axis is compatible with existing data
         if time_dim is not None:
             if self._time_dim is None:
@@ -899,7 +901,7 @@ class Brain(TimeSlicer, surfer.Brain):
         index = self._time_dim._array_index(t)
         if index == self.__time_index:
             return
-        elif self._frame is None or not self._frame.IsShown():
+        elif self.closed:
             return
         self.set_data_time_index(index)
         self.__time_index = index

@@ -6,9 +6,10 @@ from scipy import signal
 
 from eelbrain import (
     NDVar, Case, Scalar, UTS, datasets,
-    concatenate, convolve, cross_correlation, find_intervals, find_peaks,
-    frequency_response, psd_welch,
+    concatenate, convolve, cross_correlation, cwt_morlet, find_intervals,
+    find_peaks, frequency_response, psd_welch,
 )
+from eelbrain._utils.testing import assert_dataobj_equal
 
 
 def test_concatenate():
@@ -65,6 +66,28 @@ def test_cross_correlation():
     eq_(cross_correlation(x, x[1:]).argmax(), 0)
     eq_(cross_correlation(x, x[:8]).argmax(), 0)
     eq_(cross_correlation(x[2:], x[:8]).argmax(), 0)
+
+
+def test_cwt():
+    ds = datasets._get_continuous()
+    # 1d
+    y = cwt_morlet(ds['x1'], [4, 6, 8])
+    assert y.ndim == 2
+    # 2d
+    y = cwt_morlet(ds['x2'], [4, 6, 8])
+    assert y.ndim == 3
+
+
+def test_dot():
+    ds = datasets.get_uts(True)
+
+    # x subset of y
+    index = ['3', '2']
+    utsnd = ds['utsnd']
+    topo = utsnd.mean(('case', 'time'))
+    y1 = topo.sub(sensor=index).dot(utsnd.sub(sensor=index))
+    assert_dataobj_equal(topo[index].dot(utsnd), y1)
+    assert_dataobj_equal(topo.dot(utsnd.sub(sensor=index)), y1)
 
 
 def test_find_intervals():

@@ -1,7 +1,38 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Info dictionary
 
-Internally used entries:
+Main entries
+------------
+
+meas
+    Measurement:
+
+    B
+        Magnetic field strength (MEG).
+    V
+        Voltage (EEG).
+    p
+        Probability (statistics).
+    r, t, f
+        Statistic (correlation, t- and f- values).
+
+contours
+    Default plotting argument.
+cmap
+    Default plotting argument.
+vmin, vmax
+    Default plotting argument.
+
+
+Used by GUIs
+------------
+
+bad_channels
+    Bad channels.
+
+
+Internally used
+---------------
 
 cmap ticks
     Non-standard cmap-ticks; used by plot.brain.p_map to transmit proper tick
@@ -12,7 +43,149 @@ import numpy as np
 
 # Key constants for info dictionaries
 BAD_CHANNELS = 'bad_channels'
+# Parameters that should be reset if measurement type changes
+MAIN_ARGS = ('meas', 'unit', 'cmap', 'vmin', 'vmax', 'contours')
 
+
+###########
+# Constants
+###########
+
+_unit_fmt = {
+    1: "%s",
+    1e-3: "m%s",
+    1e-6: r"$\mu$%s",
+    1e-9: "n%s",
+    1e-12: "p%s",
+    1e-15: "f%s",
+}
+
+
+#####################
+# Generate info dicts
+#####################
+
+def default_info(meas, old=None):
+    "Default colorspace info"
+    info = {'meas': meas}
+    return _update(info, old)
+
+
+def for_cluster_pmap(old=None):
+    info = {
+        'meas': 'p',
+        'cmap': 'sig',
+        'vmax': 0.05,
+        'contours': {0.05: (0., 0., 0.)},
+    }
+    return _update(info, old)
+
+
+def for_p_map(old=None):
+    "Info dict for significance map"
+    info = {
+        'meas': 'p',
+        'cmap': 'sig',
+        'vmax': .05,
+        'contours': {.01: '.5', .001: '0'},
+    }
+    return _update(info, old)
+
+
+def for_stat_map(meas, c0=None, c1=None, c2=None, tail=0, contours=None, old=None):
+    if meas == 'r':
+        info = {'meas': meas, 'cmap': 'RdBu_r'}
+    elif meas == 't':
+        info = {'meas': meas, 'cmap': 'RdBu_r'}
+    elif meas == 'f':
+        info = {'meas': meas, 'cmap': 'BuPu_r', 'vmin': 0}
+    else:
+        info = default_info(meas)
+
+    if contours is None:
+        contours = {}
+        if c0 is not None:
+            if tail >= 0:
+                contours[c0] = (1.0, 0.5, 0.1)
+            if tail <= 0:
+                contours[-c0] = (0.5, 0.1, 1.0)
+        if c1 is not None:
+            if tail >= 0:
+                contours[c1] = (1.0, 0.9, 0.2)
+            if tail <= 0:
+                contours[-c1] = (0.9, 0.2, 1.0)
+        if c2 is not None:
+            if tail >= 0:
+                contours[c2] = (1.0, 1.0, 0.8)
+            if tail <= 0:
+                contours[-c2] = (1.0, 0.8, 1.0)
+    info['contours'] = contours
+    return _update(info, old)
+
+
+def for_eeg(vmax=None, mult=1, old=None):
+    info = {
+        'meas': 'V',
+        'unit': _unit_fmt[1 / mult] % 'V',
+        'cmap': 'xpolar',
+    }
+    if vmax is not None:
+        info['vmax'] = vmax
+    return _update(info, old)
+
+
+def for_meg(vmax=None, mult=1, meas="B", unit='T', old=None):
+    info = {
+        'meas': meas,
+        'unit': _unit_fmt[1 / mult] % unit,
+        'cmap': 'xpolar',
+    }
+    if vmax is not None:
+        info['vmax'] = vmax
+    return _update(info, old)
+
+
+def for_boolean(old=None):
+    return _update({}, old)
+
+
+def for_data(x, old=None):
+    "For data, depending on type"
+    if x.dtype.kind == 'b':
+        return for_boolean(old)
+    elif old:
+        return old.copy()
+    else:
+        return {}
+
+
+###################
+# Update info dicts
+###################
+
+def _update(new, old):
+    """Update the plotting arguments in ``old`` to reflect a new colorspace
+
+    Parameters
+    ----------
+    new : dict
+        The new info that should be updated.
+    old : dict
+        The previous info dictionary.
+
+    Returns
+    -------
+    info : dict
+        The updated dictionary.
+    """
+    if old:
+        new.update({k: v for k, v in old.items() if k not in MAIN_ARGS})
+    return new
+
+
+#######################
+# operate on info dicts
+#######################
 
 def _values_equal(a, b):
     "Test equality, taking into account array values"

@@ -80,22 +80,19 @@ class RawSource(RawPipe):
         if old_bads is not None and not redo:
             new_bads = sorted(set(old_bads).union(new_bads))
         # print change
-        if old_bads is None:
-            print("-> %s" % new_bads)
-        else:
-            print("%s -> %s" % (old_bads, new_bads))
+        print(f"{old_bads} -> {new_bads}")
         # write new bad channels
         text = '\n'.join(new_bads)
         with open(path, 'w') as fid:
             fid.write(text)
 
-    def make_bad_channels_auto(self, subject, session, flat=1e-14):
+    def make_bad_channels_auto(self, subject, session, flat=1e-14, redo=False):
         if not flat:
             return
         raw = self.load(subject, session, preload=True, add_bads=False)
         raw = load.fiff.raw_ndvar(raw)
         bad_chs = raw.sensor.names[raw.std('time') < flat]
-        self.make_bad_channels(subject, session, bad_chs, False)
+        self.make_bad_channels(subject, session, bad_chs, redo)
 
     def mtime(self, subject, session, bad_chs=True):
         path = self.path.format(subject=subject, session=session)
@@ -128,11 +125,18 @@ class CachedRawPipe(RawPipe):
         path = self.path.format(subject=subject, session=session)
         if (not exists(path) or getmtime(path) <
                 self.mtime(subject, session, self._bad_chs_affect_cache)):
+            from .. import __version__
+            # make sure directory exists
             dir_path = dirname(path)
             if not exists(dir_path):
                 mkdir(dir_path)
-            with CaptureLog(path[:-3] + 'log'):
+            # generate new raw
+            with CaptureLog(path[:-3] + 'log') as logger:
+                logger.info(f"eelbrain {__version__}")
+                logger.info(f"mne {mne.__version__}")
+                logger.info(repr(self.as_dict()))
                 raw = self._make(subject, session)
+            # save
             raw.save(path, overwrite=True)
 
     def load(self, subject, session, add_bads=True, preload=False):

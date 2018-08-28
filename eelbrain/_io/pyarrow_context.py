@@ -75,7 +75,7 @@ def pyarrow_context():
         # find all classes
         classes = [
             (collections, 'OrderedDict'),
-            (eelbrain._stats.testnd, '_ClusterDist'),
+            (eelbrain._stats.testnd, 'NDPermutationDistribution'),
             (eelbrain._stats.testnd, '_MergedTemporalClusterDist'),
         ]
         for module in (eelbrain, eelbrain.test, eelbrain.testnd):

@@ -108,7 +108,7 @@ def permute(variables):
 
     Examples
     --------
-    >>> print permute((('A', ('a1', 'a2')),('B', ('b1', 'b2'))))
+    >>> print(permute((('A', ('a1', 'a2')),('B', ('b1', 'b2')))))
     A    B
     -------
     a1   b1

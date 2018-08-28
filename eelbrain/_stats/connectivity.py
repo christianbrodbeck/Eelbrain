@@ -3,20 +3,28 @@ import numpy as np
 from numpy import newaxis
 from scipy.ndimage import generate_binary_structure
 
-
-VALID_TYPES = {'none', 'grid', 'custom'}
+from .._data_obj import Dimension
 
 
 class Connectivity(object):
     """N-dimensional connectivity"""
-    __slots__ = ('struct', 'custom')
+    __slots__ = ('struct', 'custom', 'vector')
 
     def __init__(self, dims, parc=None):
-        types = tuple(dim._connectivity_type for dim in dims)
-        invalid = set(types).difference(VALID_TYPES)
+        types = [dim._connectivity_type for dim in dims]
+        invalid = set(types).difference(Dimension._CONNECTIVITY_TYPES)
         if invalid:
-            raise RuntimeError("Invalid connectivity type: %s" %
-                               (', '.join(invalid),))
+            raise RuntimeError(f"Invalid connectivity type: {', '.join(invalid)}")
+
+        # vector: will be collapsed by test function
+        n_vector = types.count('vector')
+        if n_vector > 1:
+            raise NotImplementedError("More than one axis with vector connectivity")
+        elif n_vector:
+            self.vector = types.index('vector')
+            types = types[:self.vector] + type[self.vector + 1:]
+        else:
+            self.vector = None
 
         # custom connectivity
         self.custom = {}

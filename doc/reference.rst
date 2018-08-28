@@ -41,6 +41,7 @@ NDVar dimensions (not usually initialized by themselves but through
    Scalar
    Sensor
    SourceSpace
+   Space
    UTS
 
 
@@ -216,6 +217,7 @@ Mass-Univariate Statistics
    testnd.t_contrast_rel
    testnd.anova
    testnd.corr
+   testnd.Vector
 
 By default the tests in this module produce maps of statistical parameters
 along with maps of p-values uncorrected for multiple comparison. Using different

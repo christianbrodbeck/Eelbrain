@@ -30,7 +30,7 @@ By default, the :class:`Dataset` contains a variable called ``"trigger"``
 with trigger values, and a variable called ``"i_start"`` with the indices of
 the events::
 
-    >>> print ds[:10]
+    >>> print(ds[:10])
     trigger   i_start
     -----------------
     2         27977

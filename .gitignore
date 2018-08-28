@@ -38,3 +38,5 @@ distribute-*
 scripts/eelbrain_alias.py
 *.c
 *.fif
+*.pyd
+.pytest_cache/

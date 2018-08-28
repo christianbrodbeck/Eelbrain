@@ -326,8 +326,9 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
     xlabel, ylabel : bool | string
         Labels for x and y axes. If True, labels are automatically chosen.
     xticklabels : bool | int | list of int
-        Add tick-labels to the x-axis. Specify which axes should carry
-        x-axis tick labels using ``int`` axes indices (default ``-1``).
+        Specify which axes should be annotated with x-axis tick labels.
+        Use ``int`` for a single axis (default ``-1``), a sequence of
+        ``int`` for multiple specific axes, or ``bool`` for all/none.
     axtitle : bool | sequence of str
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.
@@ -834,8 +835,9 @@ class TopoArray(ColorMapMixin, EelFigure):
     mcolor : matplotlib color
         Color for marked sensors.
     xticklabels : bool | int | list of int
-        Add tick-labels to the x-axis. Specify which axes should carry
-        x-axis tick labels using ``int`` axes indices (default ``-1``).
+        Specify which axes should be annotated with x-axis tick labels.
+        Use ``int`` for a single axis (default ``-1``), a sequence of
+        ``int`` for multiple specific axes, or ``bool`` for all/none.
     axtitle : bool | sequence of str
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.

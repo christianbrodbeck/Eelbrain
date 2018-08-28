@@ -84,7 +84,7 @@ class LayeredDict(dict):
             state = self._states[index]
             if discard_tip:
                 del self._states[index:]
-            elif index != -1:
+            elif index != -1:  # -1 + 1 = 0
                 del self._states[index + 1:]
         elif not isinstance(state, dict):
             raise TypeError("state needs to be either int or dict, got %r" %
