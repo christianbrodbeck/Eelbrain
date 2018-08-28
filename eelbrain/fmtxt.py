@@ -1166,6 +1166,36 @@ class Row(list):
                 lens.extend(repeat(col_len, n_columns))
         return lens
 
+    def cell(
+            self,
+            content: FMTextLike = None,
+            tag: str = None,
+            width: int = 1,
+            just: str = None,
+    ):
+        """Add a cell to the row
+
+        Parameters
+        ----------
+        content : FMText
+            Cell content.
+        tag : str
+            Formatting tag.
+        width : int
+            Width in columns for multicolumn cells.
+        just : 'l' | 'r' | 'c'
+            Justification (default: use column standard).
+        """
+        cell = Cell(content, tag, width, just)
+        if len(cell) + len(self) > self.n_columns:
+            raise ValueError(f"width={cell.width}: exceeds table width")
+        self.append(cell)
+
+    def cells(self, *cells, **kwargs):
+        "Add several simple cells with one command"
+        for cell in cells:
+            self.cell(cell, **kwargs)
+
     def get_html(self, env={}):
         html = '\n'.join(cell.get_html(env) for cell in self)
         html = '<tr>\n%s\n</tr>' % html
@@ -1266,7 +1296,7 @@ class Table(FMTextElement):
     def __init__(self, columns, rules=True, title=None, caption=None, rows=[]):
         self.columns = columns
         self.n_columns = len(columns)
-        self._table = rows[:]
+        self.rows = rows[:]
         self.rules = rules
         self.title(title)
         self.caption(caption)
@@ -1274,35 +1304,34 @@ class Table(FMTextElement):
 
     @property
     def shape(self):
-        return (len(self._table), len(self.columns))
+        return len(self.rows), self.n_columns
 
     def __len__(self):
-        return len(self._table)
+        return len(self.rows)
 
     def __getitem__(self, item):
         if isinstance(item, int):
-            return self._table[item]
+            return self.rows[item]
         elif isinstance(item, slice):
-            rows = self._table[item]
+            rows = self.rows[item]
             return Table(self.columns, rules=self.rules, title=self._title,
                          caption=self._caption, rows=rows)
-        elif isinstance(item, tuple):
-            raise NotImplementedError
+        raise TypeError(f'Table index {item}')
 
     def __setitem__(self, key, value):
         if isinstance(key, int):
-            self._table[key] = Row.coerce(value, self.n_columns)
+            self.rows[key] = Row.coerce(value, self.n_columns)
         elif isinstance(key, tuple) and len(key) == 2:
             row, column = key
             if isinstance(row, slice):
                 value = tuple(value)
-                start, stop, stride = row.indices(len(self._table))
+                start, stop, stride = row.indices(len(self.rows))
                 for i, v in zip(range(start, stop, stride), value):
                     self[i, column] = v
             elif not isinstance(row, int):
                 raise TypeError("Table index %r" % (key,))
             else:
-                self._table[row][column] = value
+                self.rows[row][column] = value
         else:
             raise IndexError("Table index %r" % (key,))
 
@@ -1327,32 +1356,46 @@ class Table(FMTextElement):
         just : 'l' | 'r' | 'c'
             Justification (default: use column standard).
         """
-        cell = Cell(content, tag, width, just)
-
-        if self._active_row is None or len(self._active_row) == len(self.columns):
-            new_row = Row(self.n_columns)
-            self._table.append(new_row)
-            self._active_row = new_row
-
-        if len(cell) + len(self._active_row) > len(self.columns):
-            raise ValueError("Cell too long -- row width exceeds table width")
-        self._active_row.append(cell)
-
-    def empty_row(self):
-        self.endline()
-        self._table.append(Row(self.n_columns))
-
-    def endline(self):
-        "Finish the active row"
-        if self._active_row is not None:
-            for _ in range(len(self.columns) - len(self._active_row)):
-                self._active_row.append(Cell())
-        self._active_row = None
+        if self._active_row is None or len(self._active_row) == self.n_columns:
+            self._active_row = self.add_row()
+        self._active_row.cell(content, tag, width, just)
 
     def cells(self, *cells, **kwargs):
         "Add several simple cells with one command"
         for cell in cells:
             self.cell(cell, **kwargs)
+
+    def add_row(self, at=None):
+        """Add a row without affecting the cursor
+
+        Parameters
+        ----------
+        at : int
+            Index at which to insert row (default is after the current row;
+            midrules also count as rows).
+
+        Returns
+        -------
+        row : Row
+            the new row.
+        """
+        row = Row(self.n_columns)
+        if at is None:
+            self.rows.append(row)
+        else:
+            self.rows.insert(at, row)
+        return row
+
+    def empty_row(self):
+        self.endline()
+        self._active_row = self.add_row()
+
+    def endline(self):
+        "Finish the active row"
+        if self._active_row is not None:
+            for _ in range(self.n_columns - len(self._active_row)):
+                self._active_row.append(Cell())
+            self._active_row = None
 
     def midrule(self, span=None):
         """Add a midrule
@@ -1368,7 +1411,7 @@ class Table(FMTextElement):
         """
         self.endline()
         if span is None:
-            self._table.append("\\midrule")
+            self.rows.append("\\midrule")
         else:
             if isinstance(span, (list, tuple)):
                 span = '%i-%i' % span
@@ -1377,7 +1420,7 @@ class Table(FMTextElement):
                     raise ValueError("span=%r" % span)
             else:
                 raise TypeError("span=%r" % (span,))
-            self._table.append(r"\cmidrule{%s}" % span)
+            self.rows.append(r"\cmidrule{%s}" % span)
 
     def title(self, content: FMTextLike):
         """Set the table title"""
@@ -1406,7 +1449,7 @@ class Table(FMTextElement):
         table = []
         if caption and not preferences['html_tables_in_fig']:
             table.append(caption)
-        for row in self._table:
+        for row in self.rows:
             if isinstance(row, str):
                 if row == "\\midrule":
                     pass
@@ -1437,7 +1480,7 @@ class Table(FMTextElement):
         rows.insert(0, '\\trowd')
         rows.append('\\row')
         # body
-        for row in self._table:
+        for row in self.rows:
             if isinstance(row, str):
                 if row == "\\midrule":
                     pass
@@ -1460,15 +1503,15 @@ class Table(FMTextElement):
         # append to recent tex out
         _add_to_recent(self)
 
-        if len(self._table) == 0:
+        if len(self.rows) == 0:
             return ''
 
         # determine column widths
         widths = []
-        for row in self._table:
+        for row in self.rows:
             if not isinstance(row, str):  # some commands are str
                 row_strlen = row._strlen(env)
-                while len(row_strlen) < len(self.columns):
+                while len(row_strlen) < self.n_columns:
                     row_strlen.append(0)
                 widths.append(row_strlen)
         widths = np.array(widths, dtype=int)
@@ -1480,7 +1523,7 @@ class Table(FMTextElement):
 
         # collect lines
         txtlines = []
-        for row in self._table:
+        for row in self.rows:
             if isinstance(row, str):  # commands
                 if row == r'\midrule':
                     txtlines.append(midrule)  # "_"*l_len)
@@ -1528,7 +1571,7 @@ class Table(FMTextElement):
         if self.rules:
             items.append(r"\toprule")
         # Body
-        for row in self._table:
+        for row in self.rows:
             if isinstance(row, str):
                 items.append(row)
             else:
@@ -1555,7 +1598,7 @@ class Table(FMTextElement):
             Format string for numerical entries (default ``'%.9g'``).
         """
         table = []
-        for row in self._table:
+        for row in self.rows:
             if isinstance(row, str):
                 pass
             else:
