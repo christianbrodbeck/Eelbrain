@@ -110,7 +110,7 @@ def twoway_cmap(n1, hue_start=0.1, hue_shift=0.5, name=None, hues=None):
 
 
 def oneway_colors(n, hue_start=0.2, light_range=0.5, light_cycle=None,
-                  always_cycle_hue=False):
+                  always_cycle_hue=False, locations=None):
     """Create colors for categories
 
     Parameters
@@ -129,7 +129,13 @@ def oneway_colors(n, hue_start=0.2, light_range=0.5, light_cycle=None,
     always_cycle_hue : bool
         Cycle hue even when cycling lightness. With ``False`` (default), hue
         is constant within a lightness cycle.
+    locations : sequence of float
+        Locations of the cells on the color-map (all in range [0, 1]; default is
+        evenly spaced; example: ``numpy.linspace(0, 1, n) ** 0.5``).
     """
+    if locations is not None:
+        raise NotImplementedError('locations for non-cmap based colors')
+
     if light_cycle is None or always_cycle_hue:
         n_hues = n
     else:
