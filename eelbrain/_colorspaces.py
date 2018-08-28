@@ -272,9 +272,11 @@ def make_cmaps():
 
 make_cmaps()
 
-symmetric_cmaps = ['polar', 'polar-a', 'xpolar', 'xpolar-a',
-                   'BrBG', 'BrBG_r', 'PRGn', 'PRGn_r', 'PuOr', 'PuOr_',
-                   'RdBu', 'RdBu_r', 'RdGy', 'RdGy_r', 'seismic', 'seismic_r']
+# https://matplotlib.org/tutorials/colors/colormaps.html
+mpl_diverging = ('PiYG', 'PRGn', 'BrBG', 'PuOr', 'RdGy', 'RdBu', 'RdYlBu', 'RdYlGn', 'Spectral', 'coolwarm', 'bwr', 'seismic')
+symmetric_cmaps = ['polar', 'polar-a', 'xpolar', 'xpolar-a']
+symmetric_cmaps.extend(mpl_diverging)
+symmetric_cmaps.extend(f'{name}_r' for name in mpl_diverging)
 zerobased_cmaps = ('sig',)
 # corresponding cmaps with transparency (alpha channel)
 ALPHA_CMAPS = {'xpolar': 'xpolar-a',
