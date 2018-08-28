@@ -33,7 +33,7 @@ New in 0.28
 * :class:`NDVar` and :class:`Var` support for ``round(x)``
 * :class:`MneExperiment`:
 
-  - Intependent measures t-test
+  - Independent measures t-test
 
 
 New in 0.27

@@ -419,7 +419,7 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
           w=None, h=None, axw=None, axh=None, foreground=None, background=None,
           parallel=True, cortex='classic', title=None, smoothing_steps=None,
           mask=True, subjects_dir=None, name=None, pos=None):
-    """Create a PySurfer Brain object with a data layer
+    """Create a :class:`Brain` object with a data layer
 
     Parameters
     ----------
@@ -485,8 +485,8 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
 
     Returns
     -------
-    brain : surfer.Brain
-        PySurfer Brain instance containing the plot.
+    brain : Brain
+        Brain instance containing the plot.
     """
     from ._brain_object import Brain, get_source_dim
 

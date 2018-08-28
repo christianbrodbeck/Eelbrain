@@ -8957,6 +8957,15 @@ class SourceSpace(SourceSpaceBase):
     name : str
         Dimension name (default ``"source"``).
 
+    Attributes
+    ----------
+    coordinates : array (n_sources, 3)
+        Spatial coordinate for each source.
+    normals : array (n_sources, 3)
+        Orientation (direction) of each source.
+    parc : Factor
+        Parcellation (one label for each source).
+
     See Also
     --------
     VolumeSourceSpace : volume source space
