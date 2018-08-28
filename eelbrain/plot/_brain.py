@@ -485,8 +485,8 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
 
     Returns
     -------
-    brain : surfer.Brain
-        PySurfer Brain instance containing the plot.
+    brain : Brain
+        Brain instance containing the plot.
     """
     from ._brain_object import Brain, get_source_dim
 

@@ -74,7 +74,7 @@ class PlotDestDir(object):
         self._active_section = [self.report]
 
     def with_ext(self, ext):
-        """Generate path template with extension ``ext``"""
+        """Generate path template ``%s.{ext}``"""
         assert ext.isalnum()
         return join(self.root, '%s.' + ext)
 

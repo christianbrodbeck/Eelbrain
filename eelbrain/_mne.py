@@ -299,7 +299,7 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     ----------
     ndvar : NDVar
         NDVar with SourceSpace dimension.
-    subject_to : string
+    subject_to : str
         Name of the subject on which to morph.
     vertices_to : None | list of array of int | 'lh' | 'rh'
         The vertices on the destination subject's brain. If ndvar contains a

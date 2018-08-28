@@ -233,7 +233,7 @@ def star(p_list, out=str, levels=True, trend=False, eq_strlen=False):
         Return string with stars ('**') or an integer indicating the number of
         stars.
     levels : dict
-        ``{p: string, ...}`` dictionary. The default is ``{.05 : '*',
+        ``{p: str, ...}`` dictionary. The default is ``{.05 : '*',
         .01 : '**', .001: '***'}``; ``trend=True`` adds ``{.1: "'"}``.
     trend : bool
         Add trend to default ``levels`` (default ``False``).
