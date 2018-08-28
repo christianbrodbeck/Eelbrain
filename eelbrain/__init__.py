@@ -47,7 +47,6 @@ from . import save
 from . import table
 from . import test
 from . import testnd
-from . import vol
 
 from .fmtxt import Report
 
