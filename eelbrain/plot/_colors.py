@@ -436,7 +436,7 @@ class ColorList(EelFigure):
             patch = mpl.patches.Rectangle((0, bottom), 1, 1, fc=colors[cell],
                                           ec='none', zorder=1)
             ax.add_patch(patch)
-            h = ax.text(1.1, y, labels[cell], va='center', ha='left', zorder=2)
+            h = ax.text(1.1, y, labels.get(cell, cell), va='center', ha='left', zorder=2)
             self._labels.append(h)
 
         ax.set_ylim(0, n)
