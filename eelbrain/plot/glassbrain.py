@@ -1,6 +1,6 @@
 # Author: Proloy Das <proloy@umd.edu>
 
-# osx
+# fix matplotlib backend for osx
 from sys import platform
 if platform == "darwin":
     import matplotlib
