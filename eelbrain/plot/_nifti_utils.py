@@ -110,7 +110,7 @@ def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False):
 
 
 def _safe_get_data(img):
-    """ Get the data in the Nifti1Image object avoiding non-finite values
+    """Get the data in the Nifti1Image object avoiding non-finite values
 
     Parameters
     ----------
@@ -132,7 +132,7 @@ def _safe_get_data(img):
 
 
 def _fast_abs_percentile(ndvar, percentile=80):
-    """ A fast version of the percentile of the absolute value.
+    """A fast version of the percentile of the absolute value.
 
     Parameters
     ----------
