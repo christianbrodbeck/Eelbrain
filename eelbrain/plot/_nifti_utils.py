@@ -1,6 +1,5 @@
 # Author: Proloy Das <proloy@umd.edu>
 import numpy as np
-from mne import read_source_spaces
 import warnings
 from .._data_obj import asndvar, NDVar, SourceSpace, UTS
 
@@ -36,6 +35,7 @@ def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False):
     # check if file name
     if isinstance(src, str):
         print(('Reading src file %s...' %src))
+        from mne import read_source_spaces
         src = read_source_spaces(src)
     else:
         src = src
@@ -107,4 +107,62 @@ def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False):
         if fname is not None:
             nib.save(img, fname)
     return img
+
+
+# inspired from nilearn._utils.niimg._safe_get_data
+def _safe_get_data(img):
+    """ Get the data in the Nifti1Image object avoiding non-finite values
+
+    Parameters
+    ----------
+    img: Nifti image/object
+        Image to get data.
+
+    Returns
+    -------
+    data: numpy array
+        get_data() return from Nifti image.
+    """
+    data = img.get_data()
+    non_finite_mask = np.logical_not(np.isfinite(data))
+    if non_finite_mask.sum() > 0: # any non_finite_mask values?
+        data[non_finite_mask] = 0
+
+    return data
+
+
+# inspired from nilearn._utils.extmath.fast_abs_percentile
+def _fast_abs_percentile(ndvar, percentile=80):
+    """ A fast version of the percentile of the absolute value.
+
+    Parameters
+    ----------
+    data: ndvar
+        The input data
+    percentile: number between 0 and 100
+        The percentile that we are asking for
+
+    Returns
+    -------
+    value: number
+        The score at percentile
+
+    Notes
+    -----
+
+    This is a faster, and less accurate version of
+    scipy.stats.scoreatpercentile(np.abs(data), percentile)
+    """
+    data = abs(ndvar.x)
+    data = data.ravel()
+    index = int(data.size * .01 * percentile)
+    try:
+        # Partial sort: faster than sort
+        # partition is available only in numpy >= 1.8.0
+        from numpy import partition
+        data = partition(data, index)
+    except ImportError:
+        data.sort()
+
+    return data[index]
 

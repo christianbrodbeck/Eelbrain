@@ -7,13 +7,10 @@ import warnings
 # delayed, so that the part module can be used without them).
 import numpy as np
 
-from nilearn._utils.numpy_conversions import as_ndarray
-from nilearn._utils.niimg import _safe_get_data
-from nilearn._utils.extmath import fast_abs_percentile
 from nilearn.image import new_img_like
 
 from ..plot._base import TimeSlicer, Layout, EelFigure
-from ._nifti_utils import _save_stc_as_volume
+from ._nifti_utils import _save_stc_as_volume, _safe_get_data, _fast_abs_percentile
 
 # default GlassBrain height and width
 DEFAULT_H = 2.6
@@ -63,13 +60,13 @@ class GlassBrain(TimeSlicer, EelFigure):
         WARNING: it can result in significantly high memory usage.
     black_bg : boolean. Default is 'False'
         If True, the background of the image is set to be black.
-    display_mode : Default is 'ortho'
-        Choose the direction of the cuts: 'x' - sagittal, 'y' - coronal,
+    display_mode : str
+        Direction of the cuts: 'x' - sagittal, 'y' - coronal,
         'z' - axial, 'l' - sagittal left hemisphere only,
         'r' - sagittal right hemisphere only, 'ortho' - three cuts are
-        performed in orthogonal directions. Possible values are: 'ortho',
-        'x', 'y', 'z', 'xz', 'yx', 'yz', 'l', 'r', 'lr', 'lzr', 'lyr',
-        'lzry', 'lyrz'.
+        performed in orthogonal directions(Default).
+        Possible values are: 'ortho', 'x', 'y', 'z', 'xz', 'yx', 'yz',
+        'l', 'r', 'lr', 'lzr', 'lyr', 'lzry', 'lyrz'.
     threshold : a number, None, or 'auto'
         If None is given, the image is not thresholded.
         If a number is given, it is used to threshold the image:
@@ -122,10 +119,10 @@ class GlassBrain(TimeSlicer, EelFigure):
     to NIfTI image.
     """
 
-    def __init__( self, ndvar, dest='mri', mri_resolution=False, black_bg=False, display_mode='ortho',
+    def __init__(self, ndvar, dest='mri', mri_resolution=False, black_bg=False, display_mode='ortho',
             threshold='auto', cmap=None, colorbar=False, draw_cross=True, annotate=True, alpha=0.7,
             vmin=None, vmax=None, plot_abs=True, symmetric_cbar="auto", interpolation='nearest', h=None, w=None,
-            **kwargs ):
+            **kwargs):
         # Lazy import of matplotlib.pyplot
         from nilearn.plotting import cm
         from nilearn.plotting.displays import get_projector
@@ -191,7 +188,7 @@ class GlassBrain(TimeSlicer, EelFigure):
             warnings.warn(nan_msg)
 
         img = _save_stc_as_volume(None, ndvar0, self._src, **self.kwargs0)
-        data = _safe_get_data(img, ensure_finite=True)
+        data = _safe_get_data(img)
         affine = img.affine
 
         if np.isnan(np.sum(data)):
@@ -199,11 +196,11 @@ class GlassBrain(TimeSlicer, EelFigure):
 
         # Deal with automatic settings of plot parameters
         if threshold == 'auto':
-            # Threshold epsilon below a percentile value, to be sure that some
+            # Threshold below a percentile value, to be sure that some
             # voxels pass the threshold
-            threshold = fast_abs_percentile(data) - 1e-5
+            threshold = _fast_abs_percentile(self._ndvar)
 
-        img = new_img_like(img, as_ndarray(data), affine)
+        img = new_img_like(img, data, affine)
 
         # layout
         if w is None:
@@ -256,13 +253,13 @@ class GlassBrain(TimeSlicer, EelFigure):
     # used by _update_time
     def _add_overlay(self, ndvar0, threshold, interpolation, vmin, vmax, cmap, **kwargs):
         img = _save_stc_as_volume(None, ndvar0, self._src, **self.kwargs0)
-        data = _safe_get_data(img, ensure_finite=True)
+        data = _safe_get_data(img)
         affine = img.affine
 
         if np.isnan(np.sum(data)):
             data = np.nan_to_num(data)
 
-        img = new_img_like(img, as_ndarray(data), affine)
+        img = new_img_like(img, data, affine)
         self.display.add_overlay(new_img_like(img, data, affine),
                                  threshold=threshold, interpolation=interpolation,
                                  colorbar=False, vmin=vmin, vmax=vmax, cmap=cmap,
