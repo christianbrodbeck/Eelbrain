@@ -113,8 +113,6 @@ class GlassBrain(TimeSlicer, EelFigure):
 
     Notes
     -----
-    The plotted image should be in MNI space for this function to work
-    properly.
     This function internally converts the ndvar (or its time-slices)
     to NIfTI image.
     """
@@ -143,6 +141,10 @@ class GlassBrain(TimeSlicer, EelFigure):
                 ndvar = ndvar.norm('space')
 
             self._ndvar = ndvar
+            if ndvar.source.subject != 'fsaverage':
+                mni_msg = ('The plotted image should be in MNI space for this function to work properly.\n'
+                           'Tip: use fsaverage source instead.')
+                warnings.warn(mni_msg)
             self._src = ndvar.source.get_source_space()
             src_type = self._src[0]['type']
             if src_type != 'vol':
