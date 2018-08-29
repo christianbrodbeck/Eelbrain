@@ -109,7 +109,6 @@ def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False):
     return img
 
 
-# inspired from nilearn._utils.niimg._safe_get_data
 def _safe_get_data(img):
     """ Get the data in the Nifti1Image object avoiding non-finite values
 
@@ -122,6 +121,7 @@ def _safe_get_data(img):
     -------
     data: numpy array
         get_data() return from Nifti image.
+        # inspired from nilearn._utils.niimg._safe_get_data
     """
     data = img.get_data()
     non_finite_mask = np.logical_not(np.isfinite(data))
@@ -131,7 +131,6 @@ def _safe_get_data(img):
     return data
 
 
-# inspired from nilearn._utils.extmath.fast_abs_percentile
 def _fast_abs_percentile(ndvar, percentile=80):
     """ A fast version of the percentile of the absolute value.
 
@@ -149,9 +148,9 @@ def _fast_abs_percentile(ndvar, percentile=80):
 
     Notes
     -----
-
     This is a faster, and less accurate version of
     scipy.stats.scoreatpercentile(np.abs(data), percentile)
+    # inspired from nilearn._utils.extmath.fast_abs_percentile
     """
     data = abs(ndvar.x)
     data = data.ravel()
@@ -165,4 +164,3 @@ def _fast_abs_percentile(ndvar, percentile=80):
         data.sort()
 
     return data[index]
-
