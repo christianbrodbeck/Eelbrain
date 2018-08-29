@@ -2,7 +2,6 @@
 # Author: Proloy Das <proloy@umd.edu>
 
 import warnings
-from os.path import join
 
 # Standard scientific libraries imports (more specific imports are
 # delayed, so that the part module can be used without them).
@@ -12,9 +11,6 @@ from nilearn._utils.numpy_conversions import as_ndarray
 from nilearn._utils.niimg import _safe_get_data
 from nilearn._utils.extmath import fast_abs_percentile
 from nilearn.image import new_img_like
-from nilearn.plotting import cm
-from nilearn.plotting.displays import get_projector
-from nilearn.plotting.img_plotting import _get_colorbar_and_data_ranges
 
 from ..plot._base import TimeSlicer, Layout, EelFigure
 from ._nifti_utils import _save_stc_as_volume
@@ -131,6 +127,10 @@ class GlassBrain(TimeSlicer, EelFigure):
                  threshold='auto', cmap=None, colorbar=False, draw_cross=True, annotate=True, alpha=0.7,
                  vmin=None, vmax=None, plot_abs=True, symmetric_cbar="auto", interpolation='nearest', h=None, w=None,
                  **kwargs):
+        # Lazy import of matplotlib.pyplot
+        from nilearn.plotting import cm
+        from nilearn.plotting.displays import get_projector
+        from nilearn.plotting.img_plotting import _get_colorbar_and_data_ranges
 
         self.kwargs0 = dict(dest=dest,
                             mri_resolution=mri_resolution)
