@@ -30,8 +30,8 @@ before_install:
   - conda env create -n condaenv --file env-dev.yml
   # handling issues in osx (more info: https://matplotlib.org/users/installing.html)
   - if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
-      export PATH=$HOME/miniconda/envs/condaenv/lib/site-packages:$PATH
-      export DYLD_FALLBACK_LIBRARY_PATH=$HOME/miniconda/envs/condaenv/lib:$DYLD_FALLBACK_LIBRARY_PATH
+      export PATH=$HOME/miniconda/envs/condaenv/lib/site-packages:$PATH;
+      export DYLD_FALLBACK_LIBRARY_PATH=$HOME/miniconda/envs/condaenv/lib:$DYLD_FALLBACK_LIBRARY_PATH;
     fi;
   - . $HOME/miniconda/etc/profile.d/conda.sh
   - conda activate condaenv
