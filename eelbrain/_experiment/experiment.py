@@ -10,9 +10,10 @@ from time import localtime, strftime
 import traceback
 
 import numpy as np
+from tqdm import tqdm
 
 from .. import fmtxt
-from .._utils import LazyProperty, ask
+from .._utils import LazyProperty, ask, deprecated
 from .._utils.com import Notifier, NotNotifier
 
 
@@ -988,7 +989,8 @@ class FileTree(TreeModel):
 
         See Also
         --------
-        move : Move files to a different root folder.
+        copy : Copy files.
+        move : Move files.
         rm : Delete files.
 
         Notes
@@ -1008,6 +1010,85 @@ class FileTree(TreeModel):
             pattern = self.get(temp, allow_asterisk=True, **state)
         return pattern
 
+    def _find_files_with_target(self, action, temp, dst_root, inclusive, overwrite, confirm, state):
+        if dst_root is None:
+            if 'root' not in state:
+                raise TypeError("Need to specify at least one of root and dst_root")
+            dst_root = self.get('root')
+        src_filenames = self.glob(temp, inclusive, **state)
+        root = self.get('root')
+        errors = [filename for filename in src_filenames if not
+                  filename.startswith(root)]
+        if errors:
+            raise ValueError(
+                f"{len(errors)} files are not located in the root directory "
+                f"({errors[0]}, ...)")
+        rel_filenames = [os.path.relpath(filename, root) for filename in
+                         src_filenames]
+        dst_filenames = [os.path.join(dst_root, filename) for filename in
+                         rel_filenames]
+        if not overwrite:
+            exist = tuple(filter(os.path.exists, dst_filenames))
+            if exist:
+                raise ValueError(
+                    f"{len(exist)} of {len(src_filenames)} files already exist "
+                    f"({dst_filenames[0]}, ...)")
+
+        n = len(src_filenames)
+        if not n:
+            print("No files matching pattern.")
+            return 0, None, None
+        if not confirm:
+            print(f"{action} {self.get('root')} -> {dst_root}:")
+            for filename in rel_filenames:
+                print("  " + filename)
+            if input(f"{action} {n} files? (confirm with 'yes'): ") != 'yes':
+                return 0, None, None
+        return n, src_filenames, dst_filenames
+
+    def copy(self, temp, dst_root=None, inclusive=False, confirm=False,
+             overwrite=False, **state):
+        """Copy files to a different root folder
+
+        Parameters
+        ----------
+        temp : str
+            Name of the path template for which to find files.
+        dst_root : str
+            Path to the root to which the files should be moved. If the target
+            is the experiment's root directory, specify ``root`` as the source
+            root and leave ``dst_root`` unspecified.
+        inclusive : bool
+            Treat all unspecified fields as ``*`` (default False).
+        confirm : bool
+            Skip asking for confirmation before copying the files.
+        overwrite : bool
+            Overwrite target files if they already exist.
+
+        See Also
+        --------
+        glob : Find all files matching a template.
+        move : Move files.
+        rm : Delete files.
+
+        Notes
+        -----
+        State parameters can include an asterisk ('*') to match multiple files.
+        """
+        n, src_filenames, dst_filenames = self._find_files_with_target(
+            'Copy', temp, dst_root, inclusive, overwrite, confirm, state)
+        if not n:
+            return
+        for src, dst in tqdm(zip(src_filenames, dst_filenames), "Copying", n):
+            dirname = os.path.dirname(dst)
+            if not os.path.exists(dirname):
+                os.makedirs(dirname)
+
+            if os.path.isdir(src):
+                shutil.copytree(src, dst)
+            else:
+                shutil.copy(src, dst)
+
     def move(self, temp, dst_root=None, inclusive=False, confirm=False,
              overwrite=False, **state):
         """Move files to a different root folder
@@ -1023,14 +1104,13 @@ class FileTree(TreeModel):
         inclusive : bool
             Treat all unspecified fields as ``*`` (default False).
         confirm : bool
-            Confirm moving of the selected files. If ``False`` (default) the
-            user is prompted for confirmation with a list of files; if ``True``,
-            the files are moved immediately.
+            Skip asking for confirmation before moving the files.
         overwrite : bool
             Overwrite target files if they already exist.
 
         See Also
         --------
+        copy : Copy files.
         glob : Find all files matching a template.
         rm : Delete files.
 
@@ -1038,40 +1118,11 @@ class FileTree(TreeModel):
         -----
         State parameters can include an asterisk ('*') to match multiple files.
         """
-        if dst_root is None:
-            if 'root' not in state:
-                raise TypeError("Need to specify at least one of root and "
-                                "dst_root")
-            dst_root = self.get('root')
-        root = state['root'] if 'root' in state else self.get('root')
-        src_filenames = self.glob(temp, inclusive, **state)
-        errors = [filename for filename in src_filenames if not
-                  filename.startswith(root)]
-        if errors:
-            raise ValueError("%i files are not located in the root directory "
-                             "(%s, ...)" % (len(errors), errors[0],))
-        rel_filenames = [os.path.relpath(filename, root) for filename in
-                         src_filenames]
-        dst_filenames = [os.path.join(dst_root, filename) for filename in
-                         rel_filenames]
-        if not overwrite:
-            exist = tuple(filter(os.path.exists, dst_filenames))
-            if exist:
-                raise ValueError("%i of %i files already exist (%s, ...)" %
-                                 (len(exist), len(src_filenames),
-                                  dst_filenames[0]))
-        n = len(src_filenames)
+        n, src_filenames, dst_filenames = self._find_files_with_target(
+            'Move', temp, dst_root, inclusive, overwrite, confirm, state)
         if not n:
-            print("No files matching pattern.")
             return
-        if not confirm:
-            print("moving %s -> %s:" % (root, dst_root))
-            for filename in rel_filenames:
-                print("  " + filename)
-            if input("Move %i files? (confirm with 'yes'): " % n) != 'yes':
-                return
-        print("Moving %i files..." % n)
-        for src, dst in zip(src_filenames, dst_filenames):
+        for src, dst in tqdm(zip(src_filenames, dst_filenames), "Moving", n):
             dirname = os.path.dirname(dst)
             if not os.path.exists(dirname):
                 os.makedirs(dirname)
@@ -1206,6 +1257,7 @@ class FileTree(TreeModel):
         fname = self.get(temp, **kwargs)
         subprocess.call(["open", "-R", fname])
 
+    @deprecated('0.30', 'use .copy() or .move() instead')
     def push(self, dst_root, names, overwrite=False, exclude=False, **kwargs):
         """Copy files to another experiment root folder.
 
@@ -1422,7 +1474,8 @@ class FileTree(TreeModel):
         See Also
         --------
         glob : Find all files matching a template.
-        move : Move files to a different root folder.
+        copy : Copy files
+        move : Move files.
         """
         files = self.glob(temp, inclusive, **constants)
         secondary_files = []
