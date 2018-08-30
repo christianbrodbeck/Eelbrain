@@ -5236,13 +5236,15 @@ class Dataset(OrderedDict):
             if isinstance(idx, str):
                 key, idx = idx, key
             elif not isinstance(key, str):
-                raise TypeError("Dataset key needs to be str; got %r" % (key,))
+                raise TypeError(f"Dataset key {key!r}; needs to be str")
 
             if key in self:
                 self[key][idx] = item
             elif isinstance(idx, slice):
                 if idx.start is None and idx.stop is None:
-                    if self.n_cases is None:
+                    if isdataobject(item):
+                        self[key] = item
+                    elif self.n_cases is None:
                         raise TypeError("Can't assign slice of empty Dataset")
                     elif isinstance(item, str):
                         self[key] = Factor([item], repeat=self.n_cases)
@@ -5250,13 +5252,13 @@ class Dataset(OrderedDict):
                         self[key] = Var([item], repeat=self.n_cases)
                     else:
                         raise TypeError(
-                            "Value %r is not supported for slice-assignment of "
-                            "new variable. Use a str for a new Factor or a "
-                            "scalar for a new Var." % (item,))
+                            f"{item!r} is not supported for slice-assignment of "
+                            f"a new variable. Use a str for a new Factor or a "
+                            f"scalar for a new Var.")
                 else:
                     raise NotImplementedError(
-                        "If creating a new Factor or Var using a slice, all "
-                        "values need to be set (ds[:,'name'] = ...)")
+                        "When assigning a new item in a Dataset, all values "
+                        "need to be set (ds[:,'name'] = ...)")
             else:
                 raise NotImplementedError("Advanced Dataset indexing")
         else:
