@@ -306,4 +306,4 @@ def test_vec_source():
     # test
     res = testnd.Vector('src', ds=ds, samples=2)
     clusters = res.find_clusters()
-    assert_array_equal(clusters['n_sources'], [35, 46])
+    assert_array_equal(clusters['n_sources'], [33, 44])

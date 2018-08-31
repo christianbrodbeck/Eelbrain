@@ -651,16 +651,22 @@ def test_vector():
     # single vector
     ds = datasets.get_uv(vector=True)
     res = testnd.Vector('v[:40]', ds=ds, samples=10)
-    assert res.p == 0.0
+    assert res.p == 0.1
     res = testnd.Vector('v[40:]', ds=ds, samples=10)
     assert res.p == 0.8
 
     # vector in time
     ds = datasets.get_uts(vector3d=True)
+    res = testnd.Vector(ds[30:, 'v3d'], samples=10)
+    assert res.p.min() == 0.1
     res = testnd.Vector(ds[:30, 'v3d'], samples=10)
     assert res.p.min() == 0.0
-    res = testnd.Vector(ds[30:, 'v3d'], samples=10)
-    assert res.p.min() == 0.2
+
+    # without mp
+    configure(n_workers=0)
+    res0 = testnd.Vector(ds[:30, 'v3d'], samples=10)
+    assert_array_equal(np.sort(res0._cdist.dist), np.sort(res._cdist.dist))
+    configure(n_workers=True)
 
     v_small = ds[:30, 'v3d'] / 100
     assert_raises(ValueError, testnd.Vector, v_small, tfce=True, samples=10)

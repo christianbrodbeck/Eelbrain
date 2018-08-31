@@ -1771,7 +1771,7 @@ class Vector(NDTest):
     def _vector_mean_norm_perm(y, out, seed):
         n_cases, n_dims, n_tests = y.shape
         assert n_dims == 3
-        np.random.seed(seed)  # FIXME: introducing race condition?
+        np.random.seed(seed)
         phi = np.random.uniform(0, 2 * pi, n_cases)
         theta = np.arccos(np.random.uniform(-1, 1, n_cases))
         rotation = vector.rotation_matrices(phi, theta, np.empty((n_cases, 3, 3)))

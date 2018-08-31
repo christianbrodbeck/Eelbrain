@@ -233,5 +233,5 @@ def random_seeds(samples, seed=0):
         but its content modified in every iteration).
     """
     if seed is not None:
-        random.seed(seed)
+        np.random.seed(seed)
     return np.random.randint(2**32, size=samples, dtype=np.uint32)
