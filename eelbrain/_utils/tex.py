@@ -88,7 +88,7 @@ def convert(tex_source, input_format, output_format, max_runs=5):
             if tex_process.returncode != 0:
                 with open(os.path.join(tex_dir, 'texput.log'), 'rb') as fid:
                     log = fid.read()
-                raise ValueError(log)
+                raise ValueError(log.decode())
 
             with open(os.path.join(tex_dir, 'texput.aux'), 'rb') as fid:
                 aux = fid.read()
