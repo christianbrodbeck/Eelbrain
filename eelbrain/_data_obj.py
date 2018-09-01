@@ -42,6 +42,7 @@ from itertools import chain
 from keyword import iskeyword
 from math import ceil, log
 from numbers import Integral, Number
+from pathlib import Path
 import pickle
 import operator
 import os
@@ -9174,6 +9175,32 @@ class SourceSpace(SourceSpaceBase):
         source = SourceSpace(vertices, self.subject, self.src, subjects_dir,
                              self.parc.name, name=self.name)
         return NDVar(np.concatenate(data), (source,))
+
+    def surface_coordinates(self, surf='white'):
+        """Load surface coordinates for any FreeSurfer surface
+
+        Parameters
+        ----------
+        surf : str
+            Name of the FreeSurfer surface.
+
+        Returns
+        -------
+        coords : array (n_sources, 3)
+            Coordinates for each source contained in the source space.
+        """
+        out = []
+        for hemi, vertices in zip(('lh', 'rh'), self.vertices):
+            if len(vertices) == 0:
+                continue
+            path = Path(f'{self.subjects_dir}/{self.subject}/surf/{hemi}.{surf}')
+            coords, tris = mne.read_surface(str(path))
+            out.append(coords[vertices])
+
+        if len(out) == 1:
+            return out[0]
+        else:
+            return np.vstack(out)
 
 
 class VolumeSourceSpace(SourceSpaceBase):
