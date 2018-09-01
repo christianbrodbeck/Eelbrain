@@ -375,8 +375,10 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
         Mirror hemispheres (i.e., project data from the left hemisphere to the
         right hemisphere and vice versa).
     mask : bool
-        Remove sources in "unknown-" labels (default is True unless ``ndvar``
-        contains sources with "unknown-" label or ``vertices_to`` is specified).
+        Restrict output to known sources. If the parcellation of ``ndvar`` is
+        retained keep only sources with labels contained in ``ndvar``, otherwise
+        remove only sourves with ``”unknown-*”`` label (default is True unless
+        ``vertices_to`` is specified).
 
     Returns
     -------
@@ -463,10 +465,13 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     # find target source space
     source_to = SourceSpace(vertices_to, subject_to, src, subjects_dir, parc_to)
     if mask is True:
-        index = np.invert(source_to.parc.startswith('unknown-'))
+        if parc is True:
+            index = source_to.parc.isin(source.parc.cells)
+        else:
+            index = source_to.parc.isnotin(('unknown-lh', 'unknown-rh'))
         source_to = source_to[index]
     elif mask not in (None, False):
-        raise TypeError("mask=%r" % (mask,))
+        raise TypeError(f"mask={mask!r}")
 
     axis = ndvar.get_axis('source')
     x = ndvar.x
