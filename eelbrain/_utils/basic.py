@@ -65,16 +65,15 @@ def deprecated(version, replacement):
         used anymore.
     """
     def dec(func):
-        msg = ('%s is deprecated and will be removed in version %s' %
-               (func.__name__, version))
+        msg = f"{func.__name__} is deprecated and will be removed in version {version}"
         if isinstance(replacement, str):
             msg += '; ' + replacement
             call_func = func
         elif replacement is not None:
-            msg += "; use %s instead" % replacement.__name__
+            msg += f"; use {replacement.__name__} instead"
             call_func = replacement
         else:
-            raise TypeError("replacement=%r" % (replacement,))
+            raise TypeError(f"replacement={replacement!r}")
         func.__doc__ = msg
 
         @functools.wraps(func)

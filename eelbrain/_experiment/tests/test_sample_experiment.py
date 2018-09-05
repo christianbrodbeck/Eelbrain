@@ -76,11 +76,14 @@ def test_sample():
 
     # test multiple epochs with same time stamp
     class Experiment(SampleExperiment):
-        epochs = SampleExperiment.epochs.copy()
-    Experiment.epochs['v1'] = {'base': 'visual', 'vars': {'shift': 'Var([0.0], repeat=len(side))'}}
-    Experiment.epochs['v2'] = {'base': 'visual', 'vars': {'shift': 'Var([0.1], repeat=len(side))'}}
-    Experiment.epochs['vc'] = {'sub_epochs': ('v1', 'v2'), 'post_baseline_trigger_shift': 'shift', 'post_baseline_trigger_shift_max': 0.1, 'post_baseline_trigger_shift_min': 0.0}
+        epochs = {
+            **SampleExperiment.epochs,
+            'v1': {'base': 'visual', 'vars': {'shift': 'Var([0.0], repeat=len(side))'}},
+            'v2': {'base': 'visual', 'vars': {'shift': 'Var([0.1], repeat=len(side))'}},
+            'vc': {'sub_epochs': ('v1', 'v2'), 'post_baseline_trigger_shift': 'shift', 'post_baseline_trigger_shift_max': 0.1, 'post_baseline_trigger_shift_min': 0.0},
+        }
     e = Experiment(root)
+    events = e.load_selected_events(epoch='vc')
     ds = e.load_epochs(baseline=True, epoch='vc')
     v1 = ds.sub("epoch=='v1'", 'meg').sub(time=(0, 0.199))
     v2 = ds.sub("epoch=='v2'", 'meg').sub(time=(-0.1, 0.099))

@@ -2571,7 +2571,7 @@ class MneExperiment(FileTree):
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from the 'bads-file'. Alternatively,
-            a list of bad channels can be sumbitted.
+            a list of bad channels can be specified.
         reject : bool
             Whether to apply epoch rejection or not. The kind of rejection
             employed depends on the ``rej`` setting.

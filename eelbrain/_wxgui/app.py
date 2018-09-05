@@ -18,6 +18,7 @@ from .frame import FOCUS_UI_UPDATE_FUNC_NAMES, EelbrainFrame
 
 APP = None  # hold the App instance
 
+
 def wildcard(filetypes):
     if filetypes:
         return '|'.join(map('|'.join, filetypes))
