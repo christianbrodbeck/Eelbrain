@@ -349,9 +349,9 @@ def assert_has_no_empty_cells(x):
         empty = []
         for e in x.effects:
             if isinstance(e, Interaction) and e.is_categorial:
-                empty_ = empty_cells(e)
-                if empty_:
-                    empty.append((dataobj_repr(e), ', '.join(empty)))
+                empty_in_e = empty_cells(e)
+                if empty_in_e:
+                    empty.append((dataobj_repr(e), ', '.join(empty_in_e)))
         if empty:
             items = ['%s (%s)' % pair for pair in empty]
             raise NotImplementedError("%s contains empty cells in %s" %
