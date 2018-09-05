@@ -24,7 +24,7 @@ __all__ = ('tsv', 'var')
 def tsv(
         path: str = None,
         names: Union[Sequence[str], bool] = True,
-        types: Sequence[str] = None,
+        types: str = None,
         delimiter: Union[str, None] = '\t',
         skiprows: int = 0,
         start_tag: str = None,
@@ -43,10 +43,14 @@ def tsv(
         * ``True`` (default): look for names on the first line of the file
         * ``['name1', ...]`` use these names
         * ``False``: use "v1", "v2", ...
-    types : Sequence of int
-        Column data types, with 0=auto, 1=Factor, 2=Var (e.g. ``[0,1,1,0]``).
-        By default (and for 0), the types are inferred: if all values can be
-        converted float use :class:`Var`, otherwise use :class:`Factor`.
+    types : str
+        Column data types (e.g. ``'ffvva'``; default all ``'a'``)
+
+         - 'a': determine automatically
+         - 'f': Factor
+         - 'v': Var
+         - 'b': boolean Var
+
     delimiter : None | str
         Value delimiting cells in the input file (default: ``'\t'`` (tab);
         ``None`` = any whitespace).
@@ -69,6 +73,11 @@ def tsv(
         '']``, this is read by default as ``Factor(['5', '3', ''])``. With
         ``empty='nan'``, it is read as ``Var([5, 3, nan])``.
     """
+    # backwards compatibility
+    if isinstance(types, (list, tuple)):
+        d = {0: 'a', 1: 'f', 2: 'v'}
+        types = ''.join(d[v] for v in types)
+
     if path is None:
         path = ui.ask_file("Load TSV", "Select tsv file to import as Dataset")
         if not path:
@@ -125,13 +134,17 @@ def tsv(
     else:
         names = ['v%i' % i for i in range(n_cols)]
 
-    if types in ('auto', None, False, True):
-        types = [0] * n_cols
+    if types is None:
+        types = ['a'] * n_cols
+    elif not isinstance(types, str):
+        raise TypeError(f'types={types!r}')
+    elif len(types) != n_cols:
+        raise ValueError(f'types={types!r}: {len(types)} values for file with {n_cols} columns')
+    elif set(types).difference('afvb'):
+        invalid = ', '.join(map(repr, set(types).difference('afvb')))
+        raise ValueError(f'types={types!r}: invalid values {invalid}')
     else:
         types = list(types)
-        if len(types) != n_cols:
-            raise ValueError('types=%r: %i values provided for file with %i '
-                             'columns' % (types, len(types), n_cols))
 
     # find quotes (imply type 1)
     quotes = "'\""
@@ -141,7 +154,7 @@ def tsv(
             for str_del in quotes:
                 if len(v) > 0 and v[0] == str_del:
                     v = v.strip(str_del)
-                    types[c] = 1
+                    types[c] = 'f'
             data[r, c] = v
 
     # convert values to data-objects
@@ -151,30 +164,30 @@ def tsv(
     bool_dict = {'True': True, 'False': False, None: False}
     for name, values, type_ in zip(names, data.T, types):
         # infer type
-        if type_ > 0:
+        if type_ in 'fv':
             pass
         elif all(v in bool_dict for v in values):
-            type_ = 3
+            type_ = 'b'
         elif empty is not None:
             if all(v in (None, '') or float_pattern.match(v) for v in values):
-                type_ = 2
+                type_ = 'v'
             else:
-                type_ = 1
+                type_ = 'f'
         elif all(v is None or float_pattern.match(v) for v in values):
-            type_ = 2
+            type_ = 'v'
         else:
-            type_ = 1
+            type_ = 'f'
 
         # substitute values
-        if type_ == 2:
+        if type_ == 'v':
             if empty is not None:
                 values = [empty if v == '' else v for v in values]
             values = [np.nan if v is None else eval(v, np_vars) for v in values]
-        elif type_ == 3:
+        elif type_ == 'b':
             values = [bool_dict[v] for v in values]
 
         # create data-object
-        if type_ == 1:
+        if type_ == 'f':
             dob = _data.Factor(values, labels={None: ''}, name=name)
         else:
             dob = _data.Var(values, name=name)
