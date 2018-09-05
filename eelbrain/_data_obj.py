@@ -5905,9 +5905,9 @@ class Dataset(OrderedDict):
 
         Parameters
         ----------
-        path : None | str
-            Target file name (if ``None`` is supplied, a save file dialog is
-            displayed). If no extension is specified, '.txt' is appended.
+        path : str
+            Target file name (by default, a Save As dialog is displayed). If
+            ``path`` is missing an extension, ``'.txt'`` is appended.
         fmt : format string
             Formatting for scalar values.
         delim : str
@@ -5915,18 +5915,12 @@ class Dataset(OrderedDict):
         header : bool
             write the variables' names in the first line
         """
-        if not isinstance(path, str):
-            title = "Save Dataset"
-            if self.name:
-                title += ' %s' % self.name
-            title += " as Text"
-            msg = ""
-            path = ui.ask_saveas(title, msg, [_tsv_wildcard],
-                                 defaultFile=self.name)
-
-        _, ext = os.path.splitext(path)
-        if not ext:
-            path += '.txt'
+        if path is None:
+            path = ui.ask_saveas(f"Save {self.name or 'Dataset'} as Text", "",
+                                 [_tsv_wildcard], defaultFile=self.name)
+        path = Path(path)
+        if not path.suffix:
+            path = path.with_suffix('.txt')
 
         table = self.as_table(fmt=fmt, header=header)
         table.save_tsv(path, fmt=fmt, delimiter=delim)
