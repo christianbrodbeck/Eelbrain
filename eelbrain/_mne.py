@@ -142,7 +142,9 @@ def shift_mne_epoch_trigger(epochs, trigger_shift, min_shift=None, max_shift=Non
     events = epochs.events.copy()
     events[:, 0] += shifts
 
-    return mne.EpochsArray(new_data, epochs.info, events, tmin, epochs.event_id)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'The events passed to the Epochs constructor', RuntimeWarning)
+        return mne.EpochsArray(new_data, epochs.info, events, tmin, epochs.event_id)
 
 
 def labels_from_clusters(clusters, names=None):
