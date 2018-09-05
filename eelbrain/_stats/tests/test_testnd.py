@@ -146,7 +146,7 @@ def test_anova():
             assert_array_equal((f_zv == 0).x, zero_var.x)
             assert f_zv[zv_index] == 0
             f_zv[zv_index] = f[zv_index]
-            assert_dataobj_equal(f_zv, f)
+            assert_dataobj_equal(f_zv, f, decimal=decimal)
 
     # nested random effect
     res = testnd.anova('uts', 'A * B * nrm(A)', ds=ds, samples=10, tstart=.4)
