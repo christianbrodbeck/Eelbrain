@@ -1049,6 +1049,36 @@ class ttest_ind(NDTest):
         return args
 
 
+def _related_measures_args(y, x, c1, c0, match, ds, sub):
+    "Interpret parameters for related measures tests (2 different argspecs)"
+    if isinstance(x, NDVar) or isinstance(x, str) and x in ds and isinstance(ds[x], NDVar):
+        assert c1 is None
+        assert c0 is None
+        assert match is None
+        y1 = asndvar(y, sub, ds)
+        n = len(y1)
+        y0 = asndvar(x, sub, ds, n)
+        c1_name = y1.name
+        c0_name = y0.name
+        x_name = y0.name
+    elif match is None:
+        raise TypeError("The `match` argument needs to be specified for related measures tests")
+    else:
+        ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar,
+                       dtype=np.float64)
+        c1, c0 = ct.cat
+        c1_name = c1
+        c0_name = c0
+        if not ct.all_within:
+            raise ValueError(f"conditions {c1!r} and {c0!r} do not have the same values on {dataobj_repr(ct.match)}")
+        n = len(ct.y) // 2
+        y1 = ct.y[:n]
+        y0 = ct.y[n:]
+        x_name = ct.x.name
+        match = ct.match
+    return y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name
+
+
 class ttest_rel(NDTest):
     """Mass-univariate related samples t-test
 
@@ -1140,34 +1170,7 @@ class ttest_rel(NDTest):
     def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=0, pmin=None, tmin=None, tfce=False,
                  tstart=None, tstop=None, parc=None, force_permutation=False, **criteria):
-        if isinstance(x, NDVar) or isinstance(x, str) and x in ds and isinstance(ds[x], NDVar):
-            assert c1 is None
-            assert c0 is None
-            assert match is None
-            y1 = asndvar(y, sub, ds)
-            n = len(y1)
-            y0 = asndvar(x, sub, ds, n)
-            c1_name = y1.name
-            c0_name = y0.name
-            x_name = y0.name
-        elif match is None:
-            raise TypeError("The `match` argument needs to be specified for a "
-                            "related measures t-test.")
-        else:
-            ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar,
-                           dtype=np.float64)
-            c1, c0 = ct.cat
-            c1_name = c1
-            c0_name = c0
-            if not ct.all_within:
-                raise ValueError("conditions %r and %r do not have the same values "
-                                 "on %s" % (c1, c0, dataobj_repr(ct.match)))
-
-            n = len(ct.y) // 2
-            y1 = ct.y[:n]
-            y0 = ct.y[n:]
-            x_name = ct.x.name
-            match = ct.match
+        y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
 
         if n <= 2:
             raise ValueError("Not enough observations for t-test (n=%i)" % n)
@@ -1719,13 +1722,12 @@ class Vector(NDTest):
     def __init__(self, y, match=None, sub=None, ds=None,
                  samples=10000, vmin=None, tfce=False, tstart=None,
                  tstop=None, parc=None, force_permutation=False, **criteria):
-        ct = Celltable(y, match=match, sub=sub, ds=ds, coercion=asndvar,
-                       dtype=np.float64)
+        ct = Celltable(y, match=match, sub=sub, ds=ds, coercion=asndvar, dtype=np.float64)
 
         n = len(ct.y)
         n_samples, samples = _resample_params(n, samples)
         cdist = NDPermutationDistribution(
-            ct.y, n_samples, vmin, tfce, 1, 'norm', 'Vector Test',
+            ct.y, n_samples, vmin, tfce, 1, 'norm', 'Vector test',
             tstart, tstop, criteria, parc, force_permutation)
 
         v_dim = ct.y.dimnames[cdist._vector_ax + 1]
@@ -1756,12 +1758,14 @@ class Vector(NDTest):
 
     def _name(self):
         if self.y:
-            return "Vector Test:  %s" % self.y
+            return f"Vector test:  {self.y}"
         else:
-            return "Vector Test"
+            return "Vector test"
 
     def _repr_test_args(self):
-        args = [repr(self.y)]
+        args = []
+        if self.y:
+            args.append(repr(self.y))
         if self.match:
             args.append(f'match={self.match!r}')
         return args
@@ -1775,6 +1779,53 @@ class Vector(NDTest):
         theta = np.arccos(np.random.uniform(-1, 1, n_cases))
         rotation = vector.rotation_matrices(phi, theta, np.empty((n_cases, 3, 3)))
         return vector.mean_norm_rotated(y, rotation, out)
+
+
+class VectorDifferenceRelated(Vector):
+    _state_specific = ('difference', 'c1_mean', 'c0_mean' 'n', '_v_dim')
+    _statistic = 'norm'
+
+    @user_activity
+    def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
+                 samples=10000, vmin=None, tfce=False, tstart=None,
+                 tstop=None, parc=None, force_permutation=False, **criteria):
+        y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
+        difference = y1 - y0
+
+        cdist = NDPermutationDistribution(
+            difference, samples, vmin, tfce, 1, 'norm', 'Vector test (related)',
+            tstart, tstop, criteria, parc, force_permutation)
+
+        v_dim = difference.dimnames[cdist._vector_ax + 1]
+        v_mean = difference.mean('case')
+        v_mean_norm = v_mean.norm(v_dim)
+        cdist.add_original(v_mean_norm.x if v_mean.ndim > 1 else v_mean_norm)
+
+        if cdist.do_permutation:
+            iterator = random_seeds(samples)
+            run_permutation(self._vector_mean_norm_perm, cdist, iterator)
+
+        # store attributes
+        NDTest.__init__(self, difference, match, sub, samples, tfce, None, cdist, tstart, tstop)
+        self.difference = v_mean
+        self.c1_mean = y1.mean('case', name=cellname(c1_name))
+        self.c0_mean = y0.mean('case', name=cellname(c0_name))
+        self._v_dim = v_dim
+        self.n = n
+
+        self._expand_state()
+
+    def _expand_state(self):
+        NDTest._expand_state(self)
+        self.difference_norm = self.difference.norm(self._v_dim)
+        self.c1_norm = self.c1_mean.norm(self._v_dim)
+        self.c0_norm = self.c0_mean.norm(self._v_dim)
+
+    def _name(self):
+        if self.y:
+            return f"Vector test (related):  {self.y}"
+        else:
+            return "Vector test (related)"
 
 
 def flatten(array, connectivity):
