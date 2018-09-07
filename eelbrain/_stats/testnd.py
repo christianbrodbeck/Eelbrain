@@ -967,8 +967,8 @@ class ttest_ind(NDTest):
         info = _info.for_stat_map('t', threshold, tail=tail, old=ct.y.info)
         t = NDVar(tmap, ct.y.dims[1:], info, 't')
 
-        c1_mean = ct.data[c1].summary(name=cellname(c1))
-        c0_mean = ct.data[c0].summary(name=cellname(c0))
+        c1_mean = ct.data[c1].mean('case', name=cellname(c1))
+        c0_mean = ct.data[c0].mean('case', name=cellname(c0))
 
         # store attributes
         NDTest.__init__(self, ct.y, ct.match, sub, samples, tfce, pmin, cdist,
@@ -1779,6 +1779,67 @@ class Vector(NDTest):
         theta = np.arccos(np.random.uniform(-1, 1, n_cases))
         rotation = vector.rotation_matrices(phi, theta, np.empty((n_cases, 3, 3)))
         return vector.mean_norm_rotated(y, rotation, out)
+
+
+class VectorDifferenceIndependent(Vector):
+    _state_specific = ('difference', 'c1_mean', 'c0_mean' 'n', '_v_dim')
+    _statistic = 'norm'
+
+    @user_activity
+    def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
+                 samples=10000, vmin=None, tfce=False, tstart=None,
+                 tstop=None, parc=None, force_permutation=False, **criteria):
+        ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar, dtype=np.float64)
+        c1, c0 = ct.cat
+
+        self.n1 = len(ct.data[c1])
+        self.n0 = len(ct.data[c0])
+        self.n = len(ct.y)
+
+        cdist = NDPermutationDistribution(
+            ct.y, samples, vmin, tfce, 1, 'norm', 'Vector test (independent)',
+            tstart, tstop, criteria, parc, force_permutation)
+
+        self._v_dim = v_dim = ct.y.dimnames[cdist._vector_ax + 1]
+        self.c1_mean = ct.data[c1].mean('case', name=cellname(c1))
+        self.c0_mean = ct.data[c0].mean('case', name=cellname(c0))
+        self.difference = self.c1_mean - self.c0_mean
+        v_mean_norm = self.difference.norm(v_dim)
+        cdist.add_original(v_mean_norm.x if self.difference.ndim > 1 else v_mean_norm)
+
+        if cdist.do_permutation:
+            iterator = permute_order(self.n, samples)
+            groups = np.arange(self.n) < self.n1
+            run_permutation(self._vector_mean_difference_norm, cdist, iterator, groups)
+
+        NDTest.__init__(self, ct.y, ct.match, sub, samples, tfce, None, cdist, tstart, tstop)
+        self._expand_state()
+
+    def _expand_state(self):
+        NDTest._expand_state(self)
+        self.difference_norm = self.difference.norm(self._v_dim)
+        self.c1_norm = self.c1_mean.norm(self._v_dim)
+        self.c0_norm = self.c0_mean.norm(self._v_dim)
+
+    def _name(self):
+        if self.y:
+            return f"Vector test (independent):  {self.y}"
+        else:
+            return "Vector test (independent)"
+
+    @staticmethod
+    def _vector_mean_difference_norm(y, group, out, perm):
+        n_cases, n_dims, n_tests = y.shape
+        assert n_dims == 3
+        if perm is not None:
+            group = group[perm]
+        mean_1 = y[group].mean(0)
+        mean_0 = y[~group].mean(0)
+        mean_diff = mean_1 - mean_0
+        norm = np.linalg.norm(mean_diff, axis=0)
+        if out is not None:
+            out[:] = norm
+        return norm
 
 
 class VectorDifferenceRelated(Vector):
