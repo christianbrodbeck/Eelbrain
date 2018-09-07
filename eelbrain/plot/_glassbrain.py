@@ -58,6 +58,9 @@ class GlassBrain(TimeSlicer, EelFigure):
     mri_resolution: bool
         If True the image is created in MRI resolution through upsampling.
         WARNING: it can result in significantly high memory usage.
+    mni_correction: bool
+        Set to True to convert RAS coordinates of a voxel in MNI305 space (fsaverage space)
+        to MNI152 space while plotting.
     black_bg : boolean. Default is 'False'
         If True, the background of the image is set to be black.
     display_mode : str
@@ -113,14 +116,18 @@ class GlassBrain(TimeSlicer, EelFigure):
 
     Notes
     -----
-    This function internally converts the ndvar (or its time-slices)
-    to NIfTI image.
+    1. This function internally converts the ndvar (or its time-slices)
+    to NIfTI image, so there can be a bit delay in redering in low end machines.
+    2. for this function to work properly the coordinates has to be in MNI152 space.
+    tip: While using fsaverage template(i.e. FreeSurfer coordinates) make sure to set
+    ``mni_correction`` flag True, otherwise it can lead to poor visualization.
+    For possible distortions refer to `Link here <http://imaging.mrc-cbu.cam.ac.uk/imaging/MniTalairach>`_
     """
 
-    def __init__(self, ndvar, dest='mri', mri_resolution=False, black_bg=False, display_mode='ortho',
-            threshold='auto', cmap=None, colorbar=False, draw_cross=True, annotate=True, alpha=0.7,
-            vmin=None, vmax=None, plot_abs=True, symmetric_cbar="auto", interpolation='nearest', h=None, w=None,
-            **kwargs):
+    def __init__(self, ndvar, dest='mri', mri_resolution=False, mni_correction=False, black_bg=False,
+                 display_mode='ortho', threshold='auto', cmap=None, colorbar=False, draw_cross=True,
+                 annotate=True, alpha=0.7, vmin=None, vmax=None, plot_abs=True, symmetric_cbar="auto",
+                 interpolation='nearest', h=None, w=None, **kwargs):
         # Lazy import of matplotlib.pyplot
         from nilearn.plotting import cm
         from nilearn.plotting.displays import get_projector
@@ -141,10 +148,12 @@ class GlassBrain(TimeSlicer, EelFigure):
                 ndvar = ndvar.norm('space')
 
             self._ndvar = ndvar
-            if ndvar.source.subject != 'fsaverage':
-                mni_msg = ('The plotted image should be in MNI space for this function to work properly.\n'
-                           'Tip: use fsaverage source instead.')
+            if ndvar.source.subject == 'fsaverage' and not mni_correction:
+                mni_msg = ('The plotted image should be in MNI152 space for this function to work properly.\n'
+                           'Tip: try using mni_correction=True for better visualization.')
                 warnings.warn(mni_msg)
+            self._mni_correction = mni_correction
+            self.kwargs0['mni_correction'] = mni_correction
             self._src = ndvar.source.get_source_space()
             src_type = self._src[0]['type']
             if src_type != 'vol':
@@ -315,9 +324,9 @@ class GlassBrain(TimeSlicer, EelFigure):
         self._set_time(time, True)
 
 
-def butterfly(ndvar, dest='mri', mri_resolution=False, black_bg=False, display_mode='lyrz',
-        threshold='auto', cmap=None, colorbar=False, alpha=0.7, vmin=None, vmax=None, plot_abs=True,
-        symmetric_cbar="auto", interpolation='nearest', name=None, h=2.5, w=5, **kwargs):
+def butterfly(ndvar, dest='mri', mri_resolution=False, mni_correction=False, black_bg=False, display_mode='lyrz',
+              threshold='auto', cmap=None, colorbar=False, alpha=0.7, vmin=None, vmax=None, plot_abs=True,
+              symmetric_cbar="auto", interpolation='nearest', name=None, h=2.5, w=5, **kwargs):
     """Shortcut for a Butterfly-plot with a time-linked glassbrain plot
 
     Parameters
@@ -332,6 +341,9 @@ def butterfly(ndvar, dest='mri', mri_resolution=False, black_bg=False, display_m
     mri_resolution: bool, Default is False
         If True the image will be created in MRI resolution.
         WARNING: it can result in significantly high memory usage.
+    mni_correction: bool
+        Set to True to convert RAS coordinates of a voxel in MNI305 space (fsaverage space)
+        to MNI152 space while plotting.
     black_bg : boolean, optional, Default is False
         If True, the background of the image is set to be black.
     display_mode : Default is 'lyrz'
@@ -411,7 +423,7 @@ def butterfly(ndvar, dest='mri', mri_resolution=False, black_bg=False, display_m
                               dest=dest, mri_resolution=mri_resolution, draw_cross=True, annotate=True,
                               black_bg=black_bg, cmap=cmap, alpha=alpha, vmin=vmin, vmax=vmax,
                               plot_abs=plot_abs, symmetric_cbar=symmetric_cbar, interpolation=interpolation,
-                              **kwargs)
+                              mni_correction=mni_correction, **kwargs)
 
     p.link_time_axis(p_glassbrain)
 

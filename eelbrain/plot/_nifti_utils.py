@@ -1,10 +1,32 @@
 # Author: Proloy Das <proloy@umd.edu>
 import numpy as np
 import warnings
-from .._data_obj import asndvar, NDVar, SourceSpace, UTS
+from .._data_obj import NDVar
 
 
-def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False):
+def _to_MNI152(trans):
+    """ transfrom from MNI305 space (fsaverage space) to MNI152
+
+    parameters
+    ----------
+    trans: ndarray
+        the affine transform
+
+    Notes
+    -----
+    uses approximate transformation mentioned `Link here <https://surfer.nmr.mgh.harvard.edu/fswiki/CoordinateSystems>`_
+    """
+
+    T = np.array([[ 0.9975, -0.0073,  0.0176, -0.0429],
+                     [ 0.0146,  1.0009, -0.0024,  1.5496],
+                     [-0.0130, -0.0093,  0.9971,  1.1840],
+                     [      0,       0,       0,       1]])
+    trans = np.dot(T, trans)
+
+    return trans
+
+
+def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False, mni_correction=False):
     """Save a volume source estimate in a NIfTI file.
 
     Parameters
@@ -26,6 +48,9 @@ def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False):
         It True the image is saved in MRI resolution.
         WARNING: if you have many time points the file produced can be
         huge.
+    mni_correction: bool
+        Set to True to convert RAS coordinates of a voxel in MNI305 space (fsaverage space)
+        to MNI152 space via updating the affine transformation matrix.
 
     Returns
     -------
@@ -68,7 +93,7 @@ def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False):
         interpolator = src[0]['interpolator']
 
     n_vertices_seen = 0
-    for this_src in src: # loop over source instants, which is basically one element only!
+    for this_src in src:  # loop over source instants, which is basically one element only!
         assert tuple(this_src['shape']) == tuple(src[0]['shape'])
         mask3d = this_src['inuse'].reshape(shape3d).astype(np.bool)
         n_vertices = np.sum(mask3d)
@@ -92,7 +117,10 @@ def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False):
         affine = src[0]['src_mri_t']['trans'].copy()
     if dest == 'mri':
         affine = np.dot(src[0]['mri_ras_t']['trans'], affine)
+
     affine[:3] *= 1e3
+    if mni_correction:
+        affine = _to_MNI152(affine)
 
     # write the image in nifty format
     import nibabel as nib
