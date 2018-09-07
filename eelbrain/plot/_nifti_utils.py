@@ -5,7 +5,7 @@ from .._data_obj import NDVar
 
 
 def _to_MNI152(trans):
-    """ transfrom from MNI305 space (fsaverage space) to MNI152
+    """transfrom from MNI305 space (fsaverage space) to MNI152
 
     parameters
     ----------
