@@ -629,19 +629,16 @@ class Brain(TimeSlicer, surfer.Brain):
         ...
             Other parameters for :meth:`.add_ndvar`.
         """
-        from .._stats.testnd import NDTest, MultiEffectNDTest, corr, Vector
+        from .._stats.testnd import NDTest, MultiEffectNDTest
 
         if isinstance(p_map, NDTest):
             if isinstance(p_map, MultiEffectNDTest):
                 raise NotImplementedError(f"plot.brain.p_map for {p_map.__class__.__name__}")
+            elif param_map is not None:
+                raise TypeError(f"param_map={param_map!r} when p_map is NDTest result")
             res = p_map
             p_map = res.p
-            if isinstance(res, corr):
-                param_map = res.r
-            elif isinstance(res, Vector):
-                pass
-            else:
-                param_map = res.t
+            param_map = res._statistic_map
         p_map, lut, vmax = p_lut(p_map, param_map, p0, p1, p0alpha)
         self.add_ndvar(p_map, lut, -vmax, vmax, *args, **kwargs)
 

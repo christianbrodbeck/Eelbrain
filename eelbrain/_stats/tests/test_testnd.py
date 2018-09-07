@@ -40,16 +40,14 @@ def test_anova():
     eq_(res._plot_model(), 'A%B')
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=2, pmin=0.05)
     assert res.match == 'rm'
-    eq_(repr(res), "<anova 'utsnd', 'A*B*rm', match='rm', samples=2, pmin=0.05, "
-                   "'A': 17 clusters, p=.000, 'B': 20 clusters, p=.000, "
-                   "'A x B': 22 clusters, p=.000>")
+    assert repr(res) == "<anova 'utsnd', 'A*B*rm', match='rm', samples=2, pmin=0.05, 'A': 17 clusters, p < .001, 'B': 20 clusters, p < .001, 'A x B': 22 clusters, p < .001>"
     eq_(res._plot_model(), 'A%B')
 
     # persistence
     string = pickle.dumps(res, protocol=pickle.HIGHEST_PROTOCOL)
     res_ = pickle.loads(string)
-    assert_equal(repr(res_), repr(res))
-    eq_(res_._plot_model(), 'A%B')
+    assert repr(res_) == repr(res)
+    assert res_._plot_model() == 'A%B'
 
     # threshold-free
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=10)
@@ -294,7 +292,7 @@ def test_clusterdist():
     # I/O
     string = pickle.dumps(cdist, pickle.HIGHEST_PROTOCOL)
     cdist_ = pickle.loads(string)
-    assert_equal(repr(cdist_), repr(cdist))
+    assert repr(cdist_) == repr(cdist)
     # find peaks
     x = np.array([[[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                    [7, 7, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -388,7 +386,7 @@ def test_corr():
     # persistence
     string = pickle.dumps(res, protocol=pickle.HIGHEST_PROTOCOL)
     res_ = pickle.loads(string)
-    assert_equal(repr(res_), repr(res))
+    assert repr(res_) == repr(res)
     assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
     assert_dataobj_equal(res.p, res_.p)
 
@@ -416,7 +414,7 @@ def test_t_contrast():
     # persistence
     string = pickle.dumps(res, protocol=pickle.HIGHEST_PROTOCOL)
     res_ = pickle.loads(string)
-    assert_equal(repr(res_), repr(res))
+    assert repr(res_) == repr(res)
     assert_dataobj_equal(res.p, res_.p)
 
     # contrast with "*"
@@ -465,48 +463,35 @@ def test_ttest_1samp():
     # no clusters
     res0 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds)
     assert_less(res0.p_uncorrected.min(), 0.05)
-    repr0 = repr(res0)
-    assert_in("'uts'", repr0)
-    assert_not_in('clusters', repr0)
-    assert_not_in('mintime', repr0)
+    assert repr(res0) == "<ttest_1samp 'uts', sub=\"A == 'a0'\">"
 
     # sub as array
     res1 = testnd.ttest_1samp('uts', sub=ds.eval("A == 'a0'"), ds=ds)
-    repr1 = repr(res1)
-    assert_not_equal(repr1, repr0)
+    assert repr(res1) == "<ttest_1samp 'uts', sub=<array>>"
 
     # clusters without resampling
-    res1 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds, samples=0,
-                              pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
+    res1 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds, samples=0, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
     assert_equal(res1.clusters.n_cases, 1)
     assert_not_in('p', res1.clusters)
-    repr1 = repr(res1)
-    assert_in('clusters', repr1)
-    assert_in('samples', repr1)
-    assert_in('mintime', repr1)
+    assert repr(res1) == "<ttest_1samp 'uts', sub=\"A == 'a0'\", samples=0, pmin=0.05, tstop=0.6, mintime=0.05, 1 clusters>"
 
     # persistence
     string = pickle.dumps(res1, pickle.HIGHEST_PROTOCOL)
     res1_ = pickle.loads(string)
-    assert_equal(repr(res1_), repr1)
+    assert repr(res1_) == repr(res1)
     assert_dataobj_equal(res1.p_uncorrected, res1_.p_uncorrected)
 
     # clusters with resampling
-    res2 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds, samples=10,
-                              pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
+    res2 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds, samples=10, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
     assert_equal(res2.clusters.n_cases, 1)
     assert_equal(res2.samples, 10)
     assert_in('p', res2.clusters)
-    repr2 = repr(res2)
-    assert_in('samples', repr2)
+    assert repr(res2) == "<ttest_1samp 'uts', sub=\"A == 'a0'\", samples=10, pmin=0.05, tstop=0.6, mintime=0.05, 1 clusters, p < .001>"
 
     # clusters with permutations
     dss = ds.sub("logical_and(A=='a0', B=='b0')")[:8]
-    res3 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=dss, samples=10000,
-                              pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
-    assert_equal(repr(res3),
-                 '<ttest_1samp \'uts\', sub="A == \'a0\'", samples=255, '
-                 'pmin=0.05, tstop=0.6, mintime=0.05, 2 clusters, p=.020>')
+    res3 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=dss, samples=10000, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
+    assert repr(res3) == "<ttest_1samp 'uts', sub=\"A == 'a0'\", samples=255, pmin=0.05, tstop=0.6, mintime=0.05, 2 clusters, p = .020>"
     assert_equal(res3.clusters.n_cases, 2)
     assert_equal(res3.samples, -1)
     assert_equal(str(res3.clusters),
@@ -545,12 +530,12 @@ def test_ttest_ind():
 
     # basic
     res = testnd.ttest_ind('uts', 'A', 'a1', 'a0', ds=ds)
-    eq_(repr(res), "<ttest_ind 'uts', 'A', 'a1' (n=30), 'a0' (n=30)>")
+    assert repr(res) == "<ttest_ind 'uts', 'A', 'a1' (n=30), 'a0' (n=30)>"
     assert_less(res.p_uncorrected.min(), 0.05)
     # persistence
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res_ = pickle.loads(string)
-    eq_(repr(res_), "<ttest_ind 'uts', 'A', 'a1' (n=30), 'a0' (n=30)>")
+    assert repr(res_) == "<ttest_ind 'uts', 'A', 'a1' (n=30), 'a0' (n=30)>"
     assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
 
     # cluster
@@ -558,7 +543,7 @@ def test_ttest_ind():
     # persistence
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res_ = pickle.loads(string)
-    assert_equal(repr(res_), repr(res))
+    assert repr(res_) == repr(res)
     assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
 
     # nd
@@ -579,8 +564,7 @@ def test_ttest_rel():
     # basic
     res = testnd.ttest_rel('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm',
                            ds=ds, samples=100)
-    eq_(repr(res), "<ttest_rel 'uts', 'A x B', ('a1', 'b1'), ('a0', 'b0'), "
-                   "'rm' (n=15), samples=100, p=.000>")
+    assert repr(res) == "<ttest_rel 'uts', 'A x B', ('a1', 'b1'), ('a0', 'b0'), 'rm' (n=15), samples=100, p < .001>"
 
     # alternate argspec
     ds1 = Dataset()
@@ -588,13 +572,12 @@ def test_ttest_rel():
     ds1['a0b0'] = ds.eval("uts[A%B == ('a0', 'b0')]")
     res1 = testnd.ttest_rel('a1b1', 'a0b0', ds=ds1, samples=100)
     assert_dataobj_equal(res1.t, res.t)
-    eq_(repr(res1), "<ttest_rel 'a1b1', 'a0b0' (n=15), samples=100, p=.000>")
+    assert repr(res1) == "<ttest_rel 'a1b1', 'a0b0' (n=15), samples=100, p < .001>"
 
     # persistence
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res_ = pickle.loads(string)
-    repr(res_)
-    assert_equal(repr(res_), repr(res))
+    assert repr(res_) == repr(res)
     assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
 
     # collapsing cells

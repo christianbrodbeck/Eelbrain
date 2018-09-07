@@ -39,6 +39,7 @@ from scipy import ndimage
 from tqdm import trange
 
 from .. import fmtxt, _info
+from ..fmtxt import FMText
 from .._celltable import Celltable
 from .._config import CONFIG
 from .._data_obj import (
@@ -86,6 +87,8 @@ class NDTest(object):
     _state_common = ('y', 'match', 'sub', 'samples', 'tfce', 'pmin', '_cdist',
                      'tstart', 'tstop', '_dims')
     _state_specific = ()
+    _statistic = None
+    _statistic_tail = 0
 
     @property
     def _attributes(self):
@@ -145,7 +148,7 @@ class NDTest(object):
         if self._cdist:
             args += self._repr_cdist()
 
-        return "<%s %s>" % (self.__class__.__name__, ', '.join(args))
+        return f"<{self.__class__.__name__} {', '.join(args)}>"
 
     def _repr_test_args(self):
         """List of strings describing parameters unique to the test
@@ -170,6 +173,11 @@ class NDTest(object):
             self.tfce_map = cdist.tfce_map
             self.p = cdist.probability_map
             self._kind = cdist.kind
+
+    def _asfmtext(self):
+        p = self.p.min()
+        max_stat = self._max_statistic()
+        return FMText((fmtxt.eq(self._statistic, max_stat, 'max', stars=p), ', ', fmtxt.peq(p)))
 
     def _iter_cdists(self):
         yield (None, self._cdist)
@@ -335,6 +343,26 @@ class NDTest(object):
         return out
 
     @property
+    def _statistic_map(self):
+        return getattr(self, self._statistic)
+
+    def _max_statistic(self, masked=True):
+        tail = getattr(self, 'tail', self._statistic_tail)
+        if tail == 0:
+            func = self._statistic_map.extrema
+        elif tail == 1:
+            func = self._statistic_map.max
+        else:
+            func = self._statistic_map.min
+
+        if masked:
+            mask = self.p <= .05 if self.p.min() <= .05 else None
+        else:
+            mask = None
+
+        return func() if mask is None else func(source=mask)
+
+    @property
     def n_samples(self):
         if self.samples == -1:
             return self._first_cdist.samples
@@ -434,6 +462,7 @@ class t_contrast_rel(NDTest):
     could use ``"(a > b) - abs(c > d)"``.
     """
     _state_specific = ('x', 'contrast', 't', 'tail')
+    _statistic = 't'
 
     @user_activity
     def __init__(self, y, x, contrast, match=None, sub=None, ds=None, tail=0,
@@ -568,6 +597,7 @@ class corr(NDTest):
         enhancement algorithm (or None if no TFCE was performed).
     """
     _state_specific = ('x', 'norm', 'n', 'df', 'r')
+    _statistic = 'r'
 
     @user_activity
     def __init__(self, y, x, norm=None, sub=None, ds=None, samples=0,
@@ -743,6 +773,7 @@ class ttest_1samp(NDTest):
     Cases with zero variance are set to t=0.
     """
     _state_specific = ('popmean', 'tail', 'n', 'df', 't', 'difference')
+    _statistic = 't'
 
     @user_activity
     def __init__(self, y, popmean=0, match=None, sub=None, ds=None, tail=0,
@@ -925,6 +956,7 @@ class ttest_ind(NDTest):
     """
     _state_specific = ('x', 'c1', 'c0', 'tail', 't', 'n1', 'n0', 'df', 'c1_mean',
                        'c0_mean')
+    _statistic = 't'
 
     @user_activity
     def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
@@ -1165,6 +1197,7 @@ class ttest_rel(NDTest):
     """
     _state_specific = ('x', 'c1', 'c0', 'tail', 't', 'n', 'df', 'c1_mean',
                        'c0_mean')
+    _statistic = 't'
 
     @user_activity
     def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
@@ -1511,6 +1544,8 @@ class anova(MultiEffectNDTest):
     :func:`~eelbrain.test.anova` examples.
     """
     _state_specific = ('x', 'pmin', '_effects', '_dfs_denom', 'f')
+    _statistic = 'f'
+    _statistic_tail = 1
 
     @user_activity
     def __init__(self, y, x, sub=None, ds=None, samples=0, pmin=None,
@@ -1645,14 +1680,15 @@ class anova(MultiEffectNDTest):
 
     def table(self):
         """Table with effects and smallest p-value"""
-        table = fmtxt.Table('rl' + ('' if self.p is None else 'rl'))
-        table.cells('#', 'Effect')
+        table = fmtxt.Table('rlr' + ('' if self.p is None else 'rl'))
+        table.cells('#', 'Effect', 'f_max')
         if self.p is not None:
             table.cells('p', 'sig')
         table.midrule()
         for i in range(len(self.effects)):
             table.cell(i)
             table.cell(self.effects[i])
+            table.cell(fmtxt.stat(self.f[i].max()))
             if self.p is not None:
                 pmin = self.p[i].min()
                 table.cell(fmtxt.p(pmin))
@@ -1717,6 +1753,7 @@ class Vector(NDTest):
     Cases with zero variance are set to t=0.
     """
     _state_specific = ('mean', 'n', '_v_dim')
+    _statistic = 'norm'
 
     @user_activity
     def __init__(self, y, match=None, sub=None, ds=None,
@@ -2650,7 +2687,7 @@ class NDPermutationDistribution(object):
                 info.append("%i clusters" % self.n_clusters)
 
         if self.n_clusters and self.samples:
-            info.append("p=%s" % ("%.3f" % self.probability_map.min())[1:])
+            info.append(f"{fmtxt.peq(self.probability_map.min())}")
 
         return info
 
