@@ -2283,6 +2283,8 @@ class NDPermutationDistribution(object):
     Permutation data shape: case, [vector, ][non-adjacent, ] ...
     internal shape: [non-adjacent, ] ...
     """
+    tfce_warning = None
+
     def __init__(self, y, samples, threshold, tfce=False, tail=0, meas='?', name=None,
                  tstart=None, tstop=None, criteria={}, parc=None, force_permutation=False):
         """Accumulate information on a cluster statistic.
@@ -2513,8 +2515,7 @@ class NDPermutationDistribution(object):
         # process map
         if self.kind == 'tfce':
             dh = 0.1 if self.tfce is True else self.tfce
-            if max(stat_map.max(), -stat_map.min()) < dh:
-                raise ValueError(f"tfce={self.tfce!r}: the TFCE step is larger than the largest value in the data. Consider setting tfce to a lower value.")
+            self.tfce_warning = max(stat_map.max(), -stat_map.min()) < dh
             cmap = tfce(stat_map, self.tail, self._connectivity, dh)
             cids = None
             n_clusters = cmap.max() > 0
@@ -2674,7 +2675,10 @@ class NDPermutationDistribution(object):
         if pmin:
             args.append(f"pmin={pmin!r}")
         elif self.kind == 'tfce':
-            args.append(f"tfce={self.tfce!r}")
+            arg = f"tfce={self.tfce!r}"
+            if self.tfce_warning:
+                arg = f"{arg} [WARNING: The TFCE step is larger than the largest value in the data]"
+            args.append(arg)
         if self.tstart:
             args.append(f"tstart{self.tstart!r}")
         if self.tstop:

@@ -652,7 +652,8 @@ def test_vector():
     configure(n_workers=True)
 
     v_small = ds[:30, 'v3d'] / 100
-    assert_raises(ValueError, testnd.Vector, v_small, tfce=True, samples=10)
+    res = testnd.Vector(v_small, tfce=True, samples=10)
+    assert 'WARNING' in repr(res)
     res = testnd.Vector(v_small, tfce=0.001, samples=10)
     assert res.p.min() == 0.0
 
