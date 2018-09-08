@@ -15,3 +15,4 @@ from ._utsnd import Array, Butterfly
 from ._uv import (Barplot, Boxplot, Correlation, Histogram, PairwiseLegend,
                   Regression, Timeplot)
 from . import brain
+from . import glassbrain
