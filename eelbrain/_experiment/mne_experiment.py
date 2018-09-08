@@ -20,6 +20,7 @@ from os.path import basename, exists, getmtime, isdir, join, relpath
 import re
 import shutil
 import time
+import warnings
 
 import numpy as np
 
@@ -1745,8 +1746,9 @@ class MneExperiment(FileTree):
             ica = None
             baseline_ = baseline
 
-        ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline_, decim=decim,
-                                      drop_bad_chs=False, tstop=tstop)
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', 'The events passed to the Epochs constructor', RuntimeWarning)
+            ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline_, decim=decim, drop_bad_chs=False, tstop=tstop)
 
         # post baseline-correction trigger shift
         if trigger_shift and epoch.post_baseline_trigger_shift:
@@ -4166,6 +4168,8 @@ class MneExperiment(FileTree):
             # save cov value
             with open(self.get('cov-info-file', mkdir=True), 'w') as fid:
                 fid.write('%s\n' % reg_vs[i])
+        elif reg is not None:
+            raise RuntimeError(f"reg={reg!r} in {params}")
 
         cov.save(dest)
 

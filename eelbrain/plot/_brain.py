@@ -418,7 +418,7 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
           views='lateral', hemi=None, colorbar=False, time_label='ms',
           w=None, h=None, axw=None, axh=None, foreground=None, background=None,
           parallel=True, cortex='classic', title=None, smoothing_steps=None,
-          mask=True, subjects_dir=None, colormap=None, name=None, pos=None):
+          mask=True, subjects_dir=None, name=None, pos=None):
     """Create a PySurfer Brain object with a data layer
 
     Parameters
@@ -489,11 +489,6 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
         PySurfer Brain instance containing the plot.
     """
     from ._brain_object import Brain, get_source_dim
-
-    if colormap is not None:
-        warn("The colormap parameter is deprecated, use cmap instead",
-             DeprecationWarning)
-        cmap = colormap
 
     if isinstance(src, SourceSpace):
         if cmap is not None or vmin is not None or vmax is not None:
