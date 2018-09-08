@@ -58,9 +58,11 @@ class GlassBrain(TimeSlicer, EelFigure):
     mri_resolution: bool
         If True the image is created in MRI resolution through upsampling.
         WARNING: it can result in significantly high memory usage.
-    mni_correction: bool
-        Set to True to convert RAS coordinates of a voxel in MNI305 space (fsaverage space)
-        to MNI152 space while plotting.
+    mni_correction: bool | None (default)
+        Set to True to force conversion of RAS coordinates of a voxel in
+        MNI305 space (fsaverage space) to MNI152 space while plotting.
+        Currently it does the conversion automatically if `fsaverage`
+        src is used in source dimension.
     black_bg : boolean. Default is 'False'
         If True, the background of the image is set to be black.
     display_mode : str
@@ -124,7 +126,7 @@ class GlassBrain(TimeSlicer, EelFigure):
     For possible distortions refer to `Link here <http://imaging.mrc-cbu.cam.ac.uk/imaging/MniTalairach>`_
     """
 
-    def __init__(self, ndvar, dest='mri', mri_resolution=False, mni_correction=False, black_bg=False,
+    def __init__(self, ndvar, dest='mri', mri_resolution=False, mni_correction=None, black_bg=False,
                  display_mode='ortho', threshold='auto', cmap=None, colorbar=False, draw_cross=True,
                  annotate=True, alpha=0.7, vmin=None, vmax=None, plot_abs=True, symmetric_cbar="auto",
                  interpolation='nearest', h=None, w=None, **kwargs):
@@ -148,12 +150,8 @@ class GlassBrain(TimeSlicer, EelFigure):
                 ndvar = ndvar.norm('space')
 
             self._ndvar = ndvar
-            if ndvar.source.subject == 'fsaverage' and not mni_correction:
-                mni_msg = ('The plotted image should be in MNI152 space for this function to work properly.\n'
-                           'Tip: try using mni_correction=True for better visualization.')
-                warnings.warn(mni_msg)
-            self._mni_correction = mni_correction
-            self.kwargs0['mni_correction'] = mni_correction
+            self.mni_correction = ndvar.source.subject == 'fsaverage'
+            self.kwargs0['mni_correction'] = self.mni_correction
             self._src = ndvar.source.get_source_space()
             src_type = self._src[0]['type']
             if src_type != 'vol':
@@ -324,7 +322,7 @@ class GlassBrain(TimeSlicer, EelFigure):
         self._set_time(time, True)
 
 
-def butterfly(ndvar, dest='mri', mri_resolution=False, mni_correction=False, black_bg=False, display_mode='lyrz',
+def butterfly(ndvar, dest='mri', mri_resolution=False, mni_correction=None, black_bg=False, display_mode='lyrz',
               threshold='auto', cmap=None, colorbar=False, alpha=0.7, vmin=None, vmax=None, plot_abs=True,
               symmetric_cbar="auto", interpolation='nearest', name=None, h=2.5, w=5, **kwargs):
     """Shortcut for a Butterfly-plot with a time-linked glassbrain plot
@@ -341,9 +339,11 @@ def butterfly(ndvar, dest='mri', mri_resolution=False, mni_correction=False, bla
     mri_resolution: bool, Default is False
         If True the image will be created in MRI resolution.
         WARNING: it can result in significantly high memory usage.
-    mni_correction: bool
-        Set to True to convert RAS coordinates of a voxel in MNI305 space (fsaverage space)
-        to MNI152 space while plotting.
+    mni_correction: bool | None (default)
+        Set to True to force conversion of RAS coordinates of a voxel in
+        MNI305 space (fsaverage space) to MNI152 space while plotting.
+        Currently it does the conversion automatically if `fsaverage`
+        src is used in source dimension.
     black_bg : boolean, optional, Default is False
         If True, the background of the image is set to be black.
     display_mode : Default is 'lyrz'
