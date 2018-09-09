@@ -87,18 +87,18 @@ class RevCorrData(object):
 
         # y_data:  ydim x time array
         if y.ndim == 1:
-            dimnames = ('time',)
+            y_dimnames = ('time',)
             ydims = ()
         elif case_to_segments:
-            dimnames = y.get_dimnames(last=('case', 'time'))
-            ydims = y.get_dims(dimnames[:-2])
+            y_dimnames = y.get_dimnames(last=('case', 'time'))
+            ydims = y.get_dims(y_dimnames[:-2])
         else:
-            dimnames = y.get_dimnames(last='time')
-            ydims = y.get_dims(dimnames[:-1])
+            y_dimnames = y.get_dimnames(last='time')
+            ydims = y.get_dims(y_dimnames[:-1])
         shape = (
             reduce(mul, map(len, ydims), 1),
             n_cases * n_times if case_to_segments else n_times)
-        y_data = y.get_data(dimnames).reshape(shape)
+        y_data = y.get_data(y_dimnames).reshape(shape)
 
         # x_data:  predictor x time array
         x_data = []
@@ -162,10 +162,13 @@ class RevCorrData(object):
             # for data-check
             y_check = y_scale
             x_check = x_scale
+            # zero-padding for convolution
+            x_pads = -x_mean / x_scale
         else:
             y_mean = x_mean = y_scale = x_scale = None
             y_check = y_data.var(1)
             x_check = x_data.var(1)
+            x_pads = np.zeros(n_x)
         # check for flat data
         zero_var = [y.name or 'y'] if np.any(y_check == 0) else []
         zero_var.extend(x_name[i] for i, v in enumerate(x_check) if v == 0)
@@ -190,6 +193,7 @@ class RevCorrData(object):
         self._y_info = y.info
         self.ydims = ydims
         self.yshape = tuple(map(len, ydims))
+        self.full_y_dims = y.get_dims(y_dimnames)
         # x
         self.x = x_data
         self.x_mean = x_mean
@@ -198,6 +202,7 @@ class RevCorrData(object):
         self._x_meta = x_meta
         self._multiple_x = multiple_x
         self._x_is_copy = x_is_copy
+        self.x_pads = x_pads
 
     def initialize_cross_validation(self, n_segments=None, model=None, ds=None):
         if n_segments is not None and n_segments <= 1:
@@ -319,3 +324,7 @@ class RevCorrData(object):
         elif len(self.ydims) > 1:
             value = value.reshape(self.yshape)
         return NDVar(value, self.ydims, self._y_info.copy(), name)
+
+    def package_y_like(self, data, name):
+        shape = tuple(map(len, self.full_y_dims))
+        return NDVar(data.reshape(shape), self.full_y_dims, {}, name)
