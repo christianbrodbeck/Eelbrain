@@ -16,6 +16,7 @@ dependencies:
   - scipy >= 0.17
   - nibabel >= 2.0, != 2.3.0  # read_annot bug
   - matplotlib >= 2.1
+  - nilearn
   - wxpython >= 4.0
   - pip:
     - mne  # to avoid adding mayavi through PySurfer (when mayavi is imported

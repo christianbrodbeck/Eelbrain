@@ -109,9 +109,10 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/2.7', None),
     'mne': ('http://martinos.org/mne/stable', None),
     'matplotlib': ('https://matplotlib.org', None),
+    'nilearn': ('https://nilearn.github.io', None),
     'numpy': ('https://docs.scipy.org/doc/numpy', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/reference', None),
-    'pyarrow': ('https://arrow.apache.org/docs/python/objects.inv', None),
+    'pyarrow': ('https://arrow.apache.org/docs/python', None),
 }
 # http://sphinx.pocoo.org/ext/intersphinx.html
 

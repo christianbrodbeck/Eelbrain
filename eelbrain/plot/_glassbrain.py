@@ -1,16 +1,48 @@
 # -*- coding: utf-8 -*-
 # Author: Proloy Das <proloy@umd.edu>
+"""2d projections of an ROI/mask image visualization via nilearn.plotting.glassbrain
 
+Contains code from nilearn governed by the following license (3-Clause BSD):
+
+Copyright (c) 2007 - 2015 The nilearn developers.
+All rights reserved.
+
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+  a. Redistributions of source code must retain the above copyright notice,
+     this list of conditions and the following disclaimer.
+  b. Redistributions in binary form must reproduce the above copyright
+     notice, this list of conditions and the following disclaimer in the
+     documentation and/or other materials provided with the distribution.
+  c. Neither the name of the nilearn developers nor the names of
+     its contributors may be used to endorse or promote products
+     derived from this software without specific prior written
+     permission.
+
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+DAMAGE.
+
+"""
 import warnings
 
-# Standard scientific libraries imports (more specific imports are
-# delayed, so that the part module can be used without them).
 import numpy as np
-
 from nilearn.image import new_img_like
 
 from ..plot._base import TimeSlicer, Layout, EelFigure
 from ._nifti_utils import _save_stc_as_volume, _safe_get_data, _fast_abs_percentile
+from ..plot._utsnd import Butterfly
 
 # default GlassBrain height and width
 DEFAULT_H = 2.6
@@ -39,7 +71,9 @@ def _crop_colorbar( cbar, cbar_vmin, cbar_vmax ):
 
 
 class GlassBrain(TimeSlicer, EelFigure):
-    """plot 2d projections of brain volume
+    """Plot 2d projections of a brain volume
+
+    Based on :func:`nilearn.plotting.plot_glass_brain`.
 
     Parameters
     ----------
@@ -65,20 +99,19 @@ class GlassBrain(TimeSlicer, EelFigure):
         performed in orthogonal directions(Default).
         Possible values are: 'ortho', 'x', 'y', 'z', 'xz', 'yx', 'yz',
         'l', 'r', 'lr', 'lzr', 'lyr', 'lzry', 'lyrz'.
-    threshold : a number, None, or 'auto'
+    threshold : scalar | None | 'auto'
         If None is given, the image is not thresholded.
-        If a number is given, it is used to threshold the image:
-        values below the threshold (in absolute value) are plotted
-        as transparent. If auto is given, the threshold is determined
-        magically by analysis of the image.
-    cmap : matplotlib colormap, optional
+        If a number is given, values below the threshold (in absolute value) are
+        plotted as transparent. If ``'auto'`` is given, the threshold is
+        determined magically by analysis of the image (default).
+    cmap : matplotlib colormap
         The colormap for specified image
-    colorbar : boolean, optional
+    colorbar : boolean
         If True, display a colorbar on the right of the plots.
-    draw_cross: boolean, optional
+    draw_cross: boolean
         If draw_cross is True, a cross is drawn on the plot to
         indicate the cut plosition.
-    annotate: boolean, optional
+    annotate: boolean
         If annotate is True, positions and left/right annotation
         are added to the plot.
     alpha : float between 0 and 1
@@ -87,14 +120,14 @@ class GlassBrain(TimeSlicer, EelFigure):
         Lower bound for plotting, passed to matplotlib.pyplot.imshow
     vmax : float
         Upper bound for plotting, passed to matplotlib.pyplot.imshow
-    plot_abs : boolean, optional
+    plot_abs : boolean
         If set to True (default) maximum intensity projection of the
         absolute value will be used (rendering positive and negative
         values in the same manner). If set to ``False``, the sign of the
         maximum intensity will be represented with different colors.
         See `examples <http://nilearn.github.io/auto_examples/01_plotting/
         plot_demo_glass_brain_extensive.html>`_.
-    symmetric_cbar : boolean or 'auto', optional, default 'auto'
+    symmetric_cbar : boolean | 'auto'
         Specifies whether the colorbar should range from -vmax to vmax
         or from vmin to vmax. Setting to 'auto' will select the latter if
         the range of the whole image is either positive or negative.
@@ -301,108 +334,108 @@ class GlassBrain(TimeSlicer, EelFigure):
         """
         self._set_time(time, True)
 
+    @classmethod
+    def butterfly(
+            cls, ndvar, dest='mri', mri_resolution=False, mni305=None,
+            black_bg=False, display_mode='lyrz', threshold='auto', cmap=None,
+            colorbar=False, alpha=0.7, vmin=None, vmax=None, plot_abs=True,
+            symmetric_cbar="auto", interpolation='nearest', name=None, h=2.5,
+            w=5, **kwargs):
+        """Shortcut for a butterfly-plot with a time-linked glassbrain plot
 
-def butterfly(ndvar, dest='mri', mri_resolution=False, mni305=None, black_bg=False, display_mode='lyrz',
-              threshold='auto', cmap=None, colorbar=False, alpha=0.7, vmin=None, vmax=None, plot_abs=True,
-              symmetric_cbar="auto", interpolation='nearest', name=None, h=2.5, w=5, **kwargs):
-    """Shortcut for a Butterfly-plot with a time-linked glassbrain plot
+        Parameters
+        ----------
+        ndvar : NDVar  ([case,] time, source[, space])
+            Data to plot; if ``ndvar`` has a case dimension, the mean is plotted.
+            if ``ndvar`` has a space dimension, the norm is plotted.
+        dest : 'mri' | 'surf'
+            If 'mri' the volume is defined in the coordinate system of
+            the original T1 image. If 'surf' the coordinate system
+            of the FreeSurfer surface is used (Surface RAS).
+        mri_resolution: bool, Default is False
+            If True the image will be created in MRI resolution.
+            WARNING: it can result in significantly high memory usage.
+        mni305 : bool
+            Project data from MNI-305 space to MNI-152 space (by default this
+            is enabled iff the source space subject is ``fsaverage``).
+        black_bg : boolean
+            If True, the background of the image is set to be black.
+        display_mode : Default is 'lyrz'
+            Choose the direction of the cuts: 'x' - sagittal, 'y' - coronal,
+            'z' - axial, 'l' - sagittal left hemisphere only,
+            'r' - sagittal right hemisphere only, 'ortho' - three cuts are
+            performed in orthogonal directions. Possible values are: 'ortho',
+            'x', 'y', 'z', 'xz', 'yx', 'yz', 'l', 'r', 'lr', 'lzr', 'lyr',
+            'lzry', 'lyrz'.
+        threshold : scalar | None | 'auto'
+            If None is given, the image is not thresholded.
+            If a number is given, values below the threshold (in absolute value) are
+            plotted as transparent. If ``'auto'`` is given, the threshold is
+            determined magically by analysis of the image (default).
+        cmap : matplotlib colormap
+            The colormap for specified image
+        colorbar : boolean, Default is False
+            If True, display a colorbar on the right of the plots.
+        alpha : float between 0 and 1
+            Alpha transparency for the brain schematics
+        vmin : float
+            Lower bound for plotting, passed to matplotlib.pyplot.imshow
+        vmax : float
+            Upper bound for plotting, passed to matplotlib.pyplot.imshow
+        plot_abs : boolean
+            If set to True (default) maximum intensity projection of the
+            absolute value will be used (rendering positive and negative
+            values in the same manner). If set to false the sign of the
+            maximum intensity will be represented with different colors.
+            See http://nilearn.github.io/auto_examples/01_plotting/plot_demo_glass_brain_extensive.html
+            for examples.
+        symmetric_cbar : boolean or 'auto'
+            Specifies whether the colorbar should range from -vmax to vmax
+            or from vmin to vmax. Setting to 'auto' will select the latter if
+            the range of the whole image is either positive or negative.
+            Note: The colormap will always be set to range from -vmax to vmax.
+        interpolation : str
+            Interpolation to use when resampling the image to the destination
+            space. Can be "continuous" (default) to use 3rd-order spline
+            interpolation, or "nearest" to use nearest-neighbor mapping.
+            "nearest" is faster but can be noisier in some cases.
+        name : str
+            The window title (default is ndvar.name).
+        h : scalar
+            Plot height (inches).
+        w : scalar
+            Butterfly plot width (inches).
 
-    Parameters
-    ----------
-    ndvar : NDVar  ([case,] time, source[, space])
-        Data to plot; if ``ndvar`` has a case dimension, the mean is plotted.
-        if ``ndvar`` has a space dimension, the norm is plotted.
-    dest : 'mri' | 'surf'
-        If 'mri' the volume is defined in the coordinate system of
-        the original T1 image. If 'surf' the coordinate system
-        of the FreeSurfer surface is used (Surface RAS).
-    mri_resolution: bool, Default is False
-        If True the image will be created in MRI resolution.
-        WARNING: it can result in significantly high memory usage.
-    mni305 : bool
-        Project data from MNI-305 space to MNI-152 space (by default this
-        is enabled iff the source space subject is ``fsaverage``).
-    black_bg : boolean, optional, Default is False
-        If True, the background of the image is set to be black.
-    display_mode : Default is 'lyrz'
-        Choose the direction of the cuts: 'x' - sagittal, 'y' - coronal,
-        'z' - axial, 'l' - sagittal left hemisphere only,
-        'r' - sagittal right hemisphere only, 'ortho' - three cuts are
-        performed in orthogonal directions. Possible values are: 'ortho',
-        'x', 'y', 'z', 'xz', 'yx', 'yz', 'l', 'r', 'lr', 'lzr', 'lyr',
-        'lzry', 'lyrz'.
-    threshold : a number, None, or 'auto'
-        If None is given, the image is not thresholded.
-        If a number is given, it is used to threshold the image:
-        values below the threshold (in absolute value) are plotted
-        as transparent. If auto is given, the threshold is determined
-        magically by analysis of the image.
-    cmap : matplotlib colormap, optional
-        The colormap for specified image
-    colorbar : boolean, Default is False
-        If True, display a colorbar on the right of the plots.
-    alpha : float between 0 and 1
-        Alpha transparency for the brain schematics
-    vmin : float
-        Lower bound for plotting, passed to matplotlib.pyplot.imshow
-    vmax : float
-        Upper bound for plotting, passed to matplotlib.pyplot.imshow
-    plot_abs : boolean, Default is True
-        If set to True (default) maximum intensity projection of the
-        absolute value will be used (rendering positive and negative
-        values in the same manner). If set to false the sign of the
-        maximum intensity will be represented with different colors.
-        See http://nilearn.github.io/auto_examples/01_plotting/plot_demo_glass_brain_extensive.html
-        for examples.
-    symmetric_cbar : boolean or 'auto', optional, default 'auto'
-        Specifies whether the colorbar should range from -vmax to vmax
-        or from vmin to vmax. Setting to 'auto' will select the latter if
-        the range of the whole image is either positive or negative.
-        Note: The colormap will always be set to range from -vmax to vmax.
-    interpolation : str
-        Interpolation to use when resampling the image to the destination
-        space. Can be "continuous" (default) to use 3rd-order spline
-        interpolation, or "nearest" to use nearest-neighbor mapping.
-        "nearest" is faster but can be noisier in some cases.
-    name : str
-        The window title (default is ndvar.name).
-    h : scalar
-        Plot height (inches).
-    w : scalar
-        Butterfly plot width (inches).
+        Returns
+        -------
+        butterfly_plot : plot.Butterfly
+            Butterfly plot.
+        glassbrain : GlassBrain
+            GlassBrain plot.
+        """
+        if name is None:
+            name = ndvar.name
 
-    Returns
-    -------
-    butterfly_plot : plot.Butterfly
-        Butterfly plot.
-    glassbrain : GlassBrain
-        GlassBrain plot.
-    """
-    from ..plot._utsnd import Butterfly
+        if ndvar.has_case:
+            ndvar = ndvar.mean('case')
 
-    if name is None:
-        name = ndvar.name
+        # butterfly-plot
+        if ndvar.has_dim('space'):
+            data = ndvar.norm('space')
+        else:
+            data = ndvar
+        p = Butterfly(data, vmin=vmin, vmax=vmax, h=h, w=w, name=name, color='black', ylabel=False)
 
-    if ndvar.has_case:
-        ndvar = ndvar.mean('case')
+        # position the brain window next to the butterfly-plot
+        # needs to be figured out
 
-    # butterfly-plot
-    if ndvar.has_dim('space'):
-        data = ndvar.norm('space')
-    else:
-        data = ndvar
-    p = Butterfly(data, vmin=vmin, vmax=vmax, h=h, w=w, name=name, color='black', ylabel=False)
+        # GlassBrain plot
+        p_glassbrain = GlassBrain(ndvar, display_mode=display_mode, colorbar=colorbar, threshold=threshold,
+                                  dest=dest, mri_resolution=mri_resolution, draw_cross=True, annotate=True,
+                                  black_bg=black_bg, cmap=cmap, alpha=alpha, vmin=vmin, vmax=vmax,
+                                  plot_abs=plot_abs, symmetric_cbar=symmetric_cbar, interpolation=interpolation,
+                                  mni305=mni305, **kwargs)
 
-    # position the brain window next to the butterfly-plot
-    # needs to be figured out
+        p.link_time_axis(p_glassbrain)
 
-    # GlassBrain plot
-    p_glassbrain = GlassBrain(ndvar, display_mode=display_mode, colorbar=colorbar, threshold=threshold,
-                              dest=dest, mri_resolution=mri_resolution, draw_cross=True, annotate=True,
-                              black_bg=black_bg, cmap=cmap, alpha=alpha, vmin=vmin, vmax=vmax,
-                              plot_abs=plot_abs, symmetric_cbar=symmetric_cbar, interpolation=interpolation,
-                              mni305=mni305, **kwargs)
-
-    p.link_time_axis(p_glassbrain)
-
-    return p, p_glassbrain
+        return p, p_glassbrain
