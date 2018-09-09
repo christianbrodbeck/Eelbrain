@@ -18,7 +18,6 @@ DEFAULT_W = 2.2
 
 
 # Copied from nilearn.plotting.img_plotting
-# Weired that it could not be imported!
 def _crop_colorbar( cbar, cbar_vmin, cbar_vmax ):
     """crop a colorbar to show from cbar_vmin to cbar_vmax.(symmetric_cbar=False)"""
     if (cbar_vmin is None) and (cbar_vmax is None):
@@ -40,11 +39,7 @@ def _crop_colorbar( cbar, cbar_vmin, cbar_vmax ):
 
 
 class GlassBrain(TimeSlicer, EelFigure):
-    """plot 2d projections of an ROI/mask image
-
-    ``GlassBrain`` subclass comes with Eelbrain GUI integration and
-    methods to visualize data in :class:``NDVar`` format.
-    (by default 3 projections: Frontal, Axial, and Lateral).
+    """plot 2d projections of brain volume
 
     Parameters
     ----------
@@ -58,11 +53,9 @@ class GlassBrain(TimeSlicer, EelFigure):
     mri_resolution: bool
         If True the image is created in MRI resolution through upsampling.
         WARNING: it can result in significantly high memory usage.
-    mni_correction: bool | None (default)
-        Set to True to force conversion of RAS coordinates of a voxel in
-        MNI305 space (fsaverage space) to MNI152 space while plotting.
-        Currently it does the conversion automatically if `fsaverage`
-        src is used in source dimension.
+    mni305 : bool
+        Project data from MNI-305 space to MNI-152 space (by default this
+        is enabled iff the source space subject is ``fsaverage``).
     black_bg : boolean. Default is 'False'
         If True, the background of the image is set to be black.
     display_mode : str
@@ -97,10 +90,10 @@ class GlassBrain(TimeSlicer, EelFigure):
     plot_abs : boolean, optional
         If set to True (default) maximum intensity projection of the
         absolute value will be used (rendering positive and negative
-        values in the same manner). If set to false the sign of the
+        values in the same manner). If set to ``False``, the sign of the
         maximum intensity will be represented with different colors.
-        See `Link here <http://nilearn.github.io/auto_examples/01_plotting/plot_demo_glass_brain_extensive.html>`_
-        for examples.
+        See `examples <http://nilearn.github.io/auto_examples/01_plotting/
+        plot_demo_glass_brain_extensive.html>`_.
     symmetric_cbar : boolean or 'auto', optional, default 'auto'
         Specifies whether the colorbar should range from -vmax to vmax
         or from vmin to vmax. Setting to 'auto' will select the latter if
@@ -118,15 +111,12 @@ class GlassBrain(TimeSlicer, EelFigure):
 
     Notes
     -----
-    1. This function internally converts the ndvar (or its time-slices)
-    to NIfTI image, so there can be a bit delay in redering in low end machines.
-    2. for this function to work properly the coordinates has to be in MNI152 space.
-    tip: While using fsaverage template(i.e. FreeSurfer coordinates) make sure to set
-    ``mni_correction`` flag True, otherwise it can lead to poor visualization.
-    For possible distortions refer to `Link here <http://imaging.mrc-cbu.cam.ac.uk/imaging/MniTalairach>`_
+    The brain overlay assumes coordinates in MNI152 space
+    (see `The MNI brain and the Talairach atlas
+    <http://imaging.mrc-cbu.cam.ac.uk/imaging/MniTalairach>`_)
     """
 
-    def __init__(self, ndvar, dest='mri', mri_resolution=False, mni_correction=None, black_bg=False,
+    def __init__(self, ndvar, dest='mri', mri_resolution=False, mni305=None, black_bg=False,
                  display_mode='ortho', threshold='auto', cmap=None, colorbar=False, draw_cross=True,
                  annotate=True, alpha=0.7, vmin=None, vmax=None, plot_abs=True, symmetric_cbar="auto",
                  interpolation='nearest', h=None, w=None, **kwargs):
@@ -135,9 +125,6 @@ class GlassBrain(TimeSlicer, EelFigure):
         from nilearn.plotting.displays import get_projector
         from nilearn.plotting.img_plotting import _get_colorbar_and_data_ranges
 
-        self.kwargs0 = dict(dest=dest,
-                            mri_resolution=mri_resolution)
-
         if cmap is None:
             cmap = cm.cold_hot if black_bg else cm.cold_white_hot
         self.cmap = cmap
@@ -145,13 +132,13 @@ class GlassBrain(TimeSlicer, EelFigure):
         if ndvar:
             if ndvar.has_case:
                 ndvar = ndvar.mean('case')
-            # instead check ndvar
             if ndvar.has_dim('space'):
                 ndvar = ndvar.norm('space')
 
+            if mni305 is None:
+                mni305 = ndvar.source.subject == 'fsaverage'
+
             self._ndvar = ndvar
-            self.mni_correction = ndvar.source.subject == 'fsaverage'
-            self.kwargs0['mni_correction'] = self.mni_correction
             self._src = ndvar.source.get_source_space()
             src_type = self._src[0]['type']
             if src_type != 'vol':
@@ -170,19 +157,13 @@ class GlassBrain(TimeSlicer, EelFigure):
 
             if plot_abs:
                 cbar_vmin, cbar_vmax, vmin, vmax = _get_colorbar_and_data_ranges(
-                    ndvar.x,
-                    vmax,
-                    symmetric_cbar,
-                    kwargs,
-                    0)
+                    ndvar.x, vmax, symmetric_cbar, kwargs, 0)
             else:
                 cbar_vmin, cbar_vmax, vmin, vmax = _get_colorbar_and_data_ranges(
-                    ndvar.x,
-                    vmax,
-                    symmetric_cbar,
-                    kwargs)
+                    ndvar.x, vmax, symmetric_cbar, kwargs)
         else:
             cbar_vmin, cbar_vmax = None, None
+        self._vol_kwargs = dict(dest=dest, mri_resolution=mri_resolution, mni305=mni305)
 
         show_nan_msg = False
         if vmax is not None and np.isnan(vmax):
@@ -192,11 +173,10 @@ class GlassBrain(TimeSlicer, EelFigure):
             vmin = None
             show_nan_msg = True
         if show_nan_msg:
-            nan_msg = ('NaN is not permitted for the vmax and vmin arguments.\n'
-                       'Tip: Use np.nanmax() instead of np.max().')
-            warnings.warn(nan_msg)
+            warnings.warn('NaN is not permitted for the vmax and vmin arguments. '
+                          'Tip: Use np.nanmax() instead of np.max().')
 
-        img = _save_stc_as_volume(None, ndvar0, self._src, **self.kwargs0)
+        img = _save_stc_as_volume(None, ndvar0, self._src, **self._vol_kwargs)
         data = _safe_get_data(img)
         affine = img.affine
 
@@ -261,7 +241,7 @@ class GlassBrain(TimeSlicer, EelFigure):
 
     # used by _update_time
     def _add_overlay(self, ndvar0, threshold, interpolation, vmin, vmax, cmap, **kwargs):
-        img = _save_stc_as_volume(None, ndvar0, self._src, **self.kwargs0)
+        img = _save_stc_as_volume(None, ndvar0, self._src, **self._vol_kwargs)
         data = _safe_get_data(img)
         affine = img.affine
 
@@ -322,7 +302,7 @@ class GlassBrain(TimeSlicer, EelFigure):
         self._set_time(time, True)
 
 
-def butterfly(ndvar, dest='mri', mri_resolution=False, mni_correction=None, black_bg=False, display_mode='lyrz',
+def butterfly(ndvar, dest='mri', mri_resolution=False, mni305=None, black_bg=False, display_mode='lyrz',
               threshold='auto', cmap=None, colorbar=False, alpha=0.7, vmin=None, vmax=None, plot_abs=True,
               symmetric_cbar="auto", interpolation='nearest', name=None, h=2.5, w=5, **kwargs):
     """Shortcut for a Butterfly-plot with a time-linked glassbrain plot
@@ -339,11 +319,9 @@ def butterfly(ndvar, dest='mri', mri_resolution=False, mni_correction=None, blac
     mri_resolution: bool, Default is False
         If True the image will be created in MRI resolution.
         WARNING: it can result in significantly high memory usage.
-    mni_correction: bool | None (default)
-        Set to True to force conversion of RAS coordinates of a voxel in
-        MNI305 space (fsaverage space) to MNI152 space while plotting.
-        Currently it does the conversion automatically if `fsaverage`
-        src is used in source dimension.
+    mni305 : bool
+        Project data from MNI-305 space to MNI-152 space (by default this
+        is enabled iff the source space subject is ``fsaverage``).
     black_bg : boolean, optional, Default is False
         If True, the background of the image is set to be black.
     display_mode : Default is 'lyrz'
@@ -423,7 +401,7 @@ def butterfly(ndvar, dest='mri', mri_resolution=False, mni_correction=None, blac
                               dest=dest, mri_resolution=mri_resolution, draw_cross=True, annotate=True,
                               black_bg=black_bg, cmap=cmap, alpha=alpha, vmin=vmin, vmax=vmax,
                               plot_abs=plot_abs, symmetric_cbar=symmetric_cbar, interpolation=interpolation,
-                              mni_correction=mni_correction, **kwargs)
+                              mni305=mni305, **kwargs)
 
     p.link_time_axis(p_glassbrain)
 
