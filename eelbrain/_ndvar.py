@@ -28,6 +28,34 @@ from ._stats.connectivity import find_peaks as _find_peaks
 from ._trf._boosting_opt import l1
 
 
+class Alignement(object):
+
+    def __init__(self, y, x, last=None):
+        shared = set(x.dimnames).intersection(y.dimnames)
+        shared_dims = list(shared)
+        if isinstance(last, str):
+            if last not in shared:
+                raise ValueError(f'Dimension {last!r} missing but required')
+            shared_dims.remove(last)
+            shared_dims.append(last)
+        elif last is None:
+            pass
+        else:
+            raise TypeError(f'last={last!r}')
+
+        # determine dimensions
+        n_shared = len(shared_dims)
+        x_dims = x.get_dimnames(last=shared_dims)
+        y_dims = y.get_dimnames(last=shared_dims)
+
+        self.x_all = x_dims
+        self.x_only = x_dims[:-n_shared]
+        self.y_all = y_dims
+        self.y_only = y_dims[:-n_shared]
+        self.shared = shared_dims
+        self.all = self.y_only + x_dims
+
+
 def concatenate(ndvars, dim='time', name=None, tmin=0, info=None, ravel=None):
     """Concatenate multiple NDVars
 
@@ -159,81 +187,58 @@ def convolve(h, x):
     y : NDVar
         Convolution, with same time dimension as ``x``.
     """
-    if isinstance(h, NDVar):
-        if not isinstance(x, NDVar):
-            raise TypeError("If h is an NDVar, x also needs to be an NDVar "
-                            "(got x=%r)" % (x,))
+    # structure shared with lfilter
+    is_single = isinstance(x, NDVar)
+    if isinstance(h, NDVar) != is_single:
+        raise TypeError(f"h={h}: needs to match x")
 
-        if h.ndim == 1:
-            ht = h.get_dim('time')
-            hdim = None
-        elif h.ndim == 2:
-            hdim, ht = h.get_dims((None, 'time'))
-        else:
-            raise NotImplementedError("h must be 1 or 2 dimensional, got h=%r" % h)
-
-        if x.ndim == 1:
-            xt = x.get_dim('time')
-            xdim = None
-        elif x.ndim == 2:
-            xdim, xt = x.get_dims((None, 'time'))
-            if xdim != hdim:
-                raise ValueError("h %s dimension and x %s dimension do not "
-                                 "match" % (hdim.name, xdim.name))
-        else:
-            raise NotImplementedError("x must be 1 or 2 dimensional, got x=%r" % h)
-
-        if ht.tstep != xt.tstep:
-            raise ValueError(
-                "h and x need to have same time-step (got h.time.tstep=%s, "
-                "x.time.tstep=%s)" % (ht.tstep, xt.tstep))
-
-        if h.ndim == 1:
-            data = np.convolve(h.x, x.x)
-            dims = (xt,)
-        elif x.ndim == 1:
-            xdata = x.get_data('time')
-            data = np.array(tuple(np.convolve(h_i, xdata) for h_i in
-                                  h.get_data((hdim.name, 'time'))))
-            dims = (hdim, xt)
-        else:
-            data = None
-            for h_i, x_i in zip(h.get_data((hdim.name, 'time')),
-                                 x.get_data((xdim.name, 'time'))):
-                if data is None:
-                    data = np.convolve(h_i, x_i)
-                else:
-                    data += np.convolve(h_i, x_i)
-            dims = (xt,)
-
-        # full convolution -> decide which slice of data corresponds to x
-        # i.e., if kernel tmin is positive, add zero-padding
-        i_start = -int(round(ht.tmin / ht.tstep))
-        i_stop = i_start + xt.nsamples
-        if i_start < 0:
-            if data.ndim == 2:
-                pad = np.zeros((len(hdim), -i_start))
-            else:
-                pad = np.zeros(-i_start)
-            data = np.concatenate((pad, data[..., :i_stop]), -1)
-        elif i_stop > data.shape[-1]:
-            if data.ndim == 2:
-                pad = np.zeros((len(hdim), i_stop - data.shape[-1]))
-            else:
-                pad = np.zeros(i_stop - data.shape[-1])
-            data = np.concatenate((data[..., i_start:], pad), -1)
-        else:
-            data = data[..., i_start: i_stop]
-
-        return NDVar(data, dims, x.info.copy(), x.name)
-    else:
+    if not is_single:
+        assert len(h) == len(x)
         out = None
         for h_, x_ in zip(h, x):
+            y_i = convolve(h_, x_)
             if out is None:
-                out = convolve(h_, x_)
+                out = y_i
             else:
-                out += convolve(h_, x_)
+                out += y_i
         return out
+
+    x_time = x.get_dim('time')
+    h_time = h.get_dim('time')
+    if x_time.tstep != h_time.tstep:
+        raise ValueError(f"h={h}: incompatible time axis (unequel tstep; x: {x_time.tstep} h: {h_time.tstep})")
+
+    # initialize output
+    a = Alignement(h, x, 'time')
+    # check alignment
+    shared_dims = x.get_dims(a.shared[:-1])
+    assert shared_dims == h.get_dims(a.shared[:-1])
+    # output shape
+    x_only_shape = tuple(len(d) for d in x.get_dims(a.x_only))
+    h_only_shape = tuple(len(d) for d in h.get_dims(a.y_only))
+    shared_shape = tuple(len(d) for d in shared_dims)
+    out_shape = x_only_shape + h_only_shape + (x_time.nsamples,)
+    out = np.zeros(out_shape)
+    # reshape input
+    n_x_only = sum(x_only_shape) or 1
+    n_h_only = sum(h_only_shape) or 1
+    n_shared = sum(shared_shape) or 1
+    x_flat = x.get_data(a.x_all).reshape((n_x_only, n_shared, x_time.nsamples))
+    h_flat = h.get_data(a.y_all).reshape((n_h_only, n_shared, len(h_time)))
+    out_flat = out.reshape((n_x_only, n_h_only, x_time.nsamples))
+    # cropping
+    h_i_start = int(round(h_time.tmin / h_time.tstep))
+    h_i_max = int(round(h_time.tmax / h_time.tstep))
+    out_index = slice(max(0, h_i_start), x_time.nsamples + min(0, h_i_max))
+    conv_index = slice(max(0, -h_i_start), x_time.nsamples - h_i_start)
+
+    for ix, xi in enumerate(x_flat):
+        for ih, hi in enumerate(h_flat):
+            for x_, h_ in zip(xi, hi):
+                out_flat[ix, ih, out_index] += signal.convolve(h_, x_)[conv_index]
+
+    dims = x.get_dims(a.x_only) + h.get_dims(a.y_only) + (x_time,)
+    return NDVar(out, dims, x.info.copy(), x.name)
 
 
 def correlation_coefficient(x, y, dim=None, name=None):
