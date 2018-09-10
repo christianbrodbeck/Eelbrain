@@ -9312,6 +9312,22 @@ class UTS(Dimension):
     nsamples : int
         Number of samples.
 
+    Attributes
+    ----------
+    tmin : float
+        Lowest time point in seconds.
+    tmax : float
+        Largest time point [s].
+    tstep : float
+        Time step for each sample [s].
+    nsamples : int
+        Number of samples.
+    tstop : float
+        Time sample after ``tmax`` [s] (consistent with indexing excluding end
+        point).
+    times : array (nsamples,)
+        Array with all time points.
+
     Notes
     -----
     Special indexing:
@@ -9335,14 +9351,11 @@ class UTS(Dimension):
     def _init_secondary(self):
         self.tmax = self.tmin + self.tstep * (self.nsamples - 1)
         self.tstop = self.tmin + self.tstep * self.nsamples
-        self._times = None
         self._n_decimals = max(n_decimals(self.tmin), n_decimals(self.tstep))
 
-    @property  # not a LazyProperty because ithas to change after .set_time()
+    @LazyProperty
     def times(self):
-        if self._times is None:
-            self._times = self.tmin + np.arange(self.nsamples) * self.tstep
-        return self._times
+        return self.tmin + np.arange(self.nsamples) * self.tstep
 
     @classmethod
     def from_int(cls, first, last, sfreq):
