@@ -4979,6 +4979,10 @@ class MneExperiment(FileTree):
             only applies to the HTML result file, not to the test.
         ...
             State parameters.
+
+        See Also
+        --------
+        load_test : load corresponding data and tests
         """
         if samples < 1:
             raise ValueError("samples needs to be > 0")
@@ -5106,6 +5110,10 @@ class MneExperiment(FileTree):
             If the target file already exists, delete and recreate it.
         ...
             State parameters.
+
+        See Also
+        --------
+        load_test : load corresponding data and tests (use ``data="source.mean"``)
         """
         test_obj = self._tests[test]
         if samples < 1:

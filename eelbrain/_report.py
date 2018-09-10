@@ -532,6 +532,8 @@ def time_results(res, ds, colors, title='Results', caption="Timecourse",
     if clusters.n_cases:
         c_caption = ("Clusters in time window %s based on %s."
                      % (format_timewindow(res), format_samples(res)))
+        if 'p_parc' in clusters:
+            c_caption += " p: p-value in ROI; p_parc: p-value corrected across ROIs."
         tc_caption = caption
     else:
         c_caption = "No clusters found %s." % format_timewindow(res)
