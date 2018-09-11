@@ -17,6 +17,7 @@ import wx
 
 from .._wxgui.app import get_app
 from .._wxgui.frame import EelbrainFrame
+from .._wxgui.mpl_canvas import AxisLimitsDialog
 from .._wxutils import ID, Icon
 
 
@@ -232,11 +233,21 @@ class BrainFrame(EelbrainFrame):
             for b in row:
                 b.show_view(view)
 
+    def OnSetVLim(self, event):
+        vlim = self._brain.get_vlim()
+        dlg = AxisLimitsDialog(vlim, None, None, self)
+        if dlg.ShowModal() == wx.ID_OK:
+            self._brain.set_vlim(*dlg.vlim)
+        dlg.Destroy()
+
     def OnUpdateUISave(self, event):
         event.Enable(True)
 
     def OnUpdateUISaveAs(self, event):
         event.Enable(True)
+
+    def OnUpdateUISetVLim(self, event):
+        event.Enable(self._brain._has_data())
 
     def SetImageSize(self, width, height):
         if self._n_columns == 1 and self._n_rows == 1:
