@@ -18,7 +18,7 @@ from .._data_obj import NDVar, SourceSpace
 from ..fmtxt import Image, ms
 from ..mne_fixes import reset_logger
 from ._base import (CONFIG, TimeSlicer, do_autorun, find_axis_params_data,
-                    find_fig_cmaps, find_fig_vlims)
+                    find_fig_cmaps, find_fig_vlims, fix_vlim_for_cmap)
 from ._color_luts import p_lut
 from ._colors import ColorBar, ColorList, colors_for_oneway
 
@@ -464,6 +464,9 @@ class Brain(TimeSlicer, surfer.Brain):
             'data': ndvar,
             'dict_hemi': dict_hemi,
             'dict_index': data_index,
+            'cmap': cmap,
+            'vmin': vmin,
+            'vmax': vmax,
         })
 
     def add_ndvar_annotation(self, ndvar, colors=None, borders=True, alpha=1,
@@ -896,6 +899,56 @@ class Brain(TimeSlicer, surfer.Brain):
     def set_title(self, title):
         "Set the window title"
         self._frame.SetTitle(str(title))
+
+    def set_vlim(self, v=None, vmax=None):
+        """Change the colormap limits
+
+        If the limit is symmetric, use ``set_vlim(vlim)``; if it is not, use
+        ``set_vlim(vmin, vmax)``.
+
+        Parameters
+        ----------
+        v : scalar
+            If this is the only value specified it is interpreted as the upper
+            end of the scale, and the lower end is determined based on
+            the colormap to be ``-v`` or ``0``. If ``vmax`` is also specified,
+            ``v`` specifies the lower end of the scale.
+        vmax : scalar (optional)
+            Upper end of the color scale.
+
+        Notes
+        -----
+        Only affects the most recently added data layer.
+        """
+        if self.__data:
+            data = self.__data[-1]
+            cmap = data['cmap']
+            if vmax is None:
+                vmin, vmax = fix_vlim_for_cmap(None, abs(v), cmap)
+            else:
+                vmin = v
+        else:
+            data = None
+            if vmax is None:
+                surfer_data = self.data_dict.values()[0]
+                vmax = abs(v)
+                if surfer_data['fmin'] >= 0:
+                    vmin = surfer_data['fmin']
+                else:
+                    vmin = -vmax
+            else:
+                vmin = v
+        self.scale_data_colormap(vmin, (vmin + vmax) / 2, vmax, False)
+        if data is not None:
+            data['vmin'] = vmin
+            data['vmax'] = vmax
+
+    def get_vlim(self):
+        "``(vmin, vmax)`` for the most recently added data layer"
+        if not self.__data:
+            raise RuntimeError('No data added with Brain.add_ndvar()')
+        data = self.__data[-1]
+        return data['vmin'], data['vmax']
 
     def _update_time(self, t, fixate):
         index = self._time_dim._array_index(t)
