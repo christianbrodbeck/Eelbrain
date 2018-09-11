@@ -229,24 +229,45 @@ class RevCorrData(object):
             cv_segments = (tuple(np.array(s, np.int64) for s in cv) for cv in cv_segments)
         else:
             n_total = len(self.segments)
-            irange = np.arange(n_total)
             if model is None:
-                cell_indexes = [irange]
+                cell_indexes = [np.arange(n_total)]
             else:
                 model = ascategorial(model, ds=ds, n=n_total)
-                cell_indexes = [irange[model == cell] for cell in model.cells]
-            cell_size = min(len(i) for i in cell_indexes)
+                cell_indexes = [np.flatnonzero(model == cell) for cell in model.cells]
+            cell_sizes = [len(i) for i in cell_indexes]
+            cell_size = min(cell_sizes)
+            cell_sizes_are_equal = len(set(cell_sizes)) == 1
             if n_segments is None:
                 n_segments = min(cell_size, 10)
-            elif n_segments > cell_size:
-                raise ValueError('n_segments=%r with cell size %i' % (n_segments, cell_size))
-            indexes = []
-            for i in range(n_segments):
-                index = np.zeros(n_total, bool)
-                for cell_index in cell_indexes:
-                    index[cell_index[i::n_segments]] = True
-                indexes.append(index)
-            cv_segments = ((self.segments, self.segments[np.invert(i)], self.segments[i]) for i in indexes)
+
+            if n_segments > cell_size:
+                if not cell_sizes_are_equal:
+                    raise ValueError(f'n_segments={n_segments}: > smallest cell size ({cell_size}) with unequal cell sizes')
+                elif n_segments % cell_size:
+                    raise ValueError(f'n_segments={n_segments}: not a multiple of cell_size ({cell_size})')
+                elif len(cell_sizes) > 1:
+                    raise NotImplementedError(f'n_segments={n_segments} with more than one cell')
+                n_parts = n_segments // cell_size
+                segments = []
+                for start, stop in self.segments:
+                    d = (stop - start) / n_parts
+                    starts = [int(round(start + i * d)) for i in range(n_parts)]
+                    starts.append(stop)
+                    for i in range(n_parts):
+                        segments.append((starts[i], starts[i+1]))
+                segments = np.array(segments, np.int64)
+                index_range = np.arange(n_segments)
+                indexes = [index_range == i for i in range(n_segments)]
+            else:
+                segments = self.segments
+                indexes = []
+                for i in range(n_segments):
+                    index = np.zeros(n_total, bool)
+                    for cell_index in cell_indexes:
+                        index[cell_index[i::n_segments]] = True
+                    indexes.append(index)
+
+            cv_segments = ((segments, segments[np.invert(i)], segments[i]) for i in indexes)
             self.cv_indexes = tuple(indexes)
         self.n_segments = n_segments
         self.cv_segments = tuple(cv_segments)
