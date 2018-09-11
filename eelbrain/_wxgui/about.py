@@ -37,6 +37,6 @@ class AboutFrame(EelbrainFrame):
         text.SetForegroundColour(wx.Colour(120, 120, 120))
         sizer.Add(text, 0, wx.LEFT | wx.BOTTOM | wx.RIGHT | wx.ALIGN_CENTER_HORIZONTAL, 10)
 
-        sizer.AddSpacer((300, 40))
+        sizer.Add(300, 40)
         self.Fit()
-        self.Center(wx.CENTER_ON_SCREEN | wx.HORIZONTAL)
+        self.CenterOnScreen(wx.HORIZONTAL)
