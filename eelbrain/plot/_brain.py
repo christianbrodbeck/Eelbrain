@@ -423,11 +423,11 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
 
     Parameters
     ----------
-    src : NDVar ([case,] source, [time]) | SourceSpace
-        NDVar with SourceSpace dimension. If stc contains a case dimension,
-        the average across cases is taken. If a SourceSpace, the Brain is
-        returned without adding any data and corresponding arguments are
-        ignored. If ndvar contains integer data, it is plotted as annotation,
+    src : NDVar ([case,] source, [time]) | SourceSpace | str
+        Data to plot; can be specified as :class:`NDVar` with source-space data,
+        :class:`SourceSpace` dimension, or as subject name (:class:`str`).
+        If ``src`` contains a ``Case`` dimension, the average across cases is
+        taken. If it contains integer data, it is plotted as annotation,
         otherwise as data layer.
     cmap : str | array
         Colormap (name of a matplotlib colormap) or LUT array. If ``src`` is an
@@ -497,11 +497,21 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
                             ', '.join((cmap, vmin, vmax)))
         ndvar = None
         source = src
+        subject = source.subject
+    elif isinstance(src, str):
+        subject = src
+        subjects_dir = mne.utils.get_subjects_dir(subjects_dir, True)
+        ndvar = None
+        source = None
+        mask = False
+        if hemi is None:
+            hemi = 'split'
     else:
         ndvar = asndvar(src)
         if ndvar.has_case:
             ndvar = ndvar.summary()
         source = get_source_dim(ndvar)
+        subject = source.subject
         # check that ndvar has the right dimensions
         if ndvar.ndim == 2 and not ndvar.has_dim('time') or ndvar.ndim > 2:
             raise ValueError("NDVar should have dimesions source and "
@@ -528,7 +538,7 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
     if subjects_dir is None:
         subjects_dir = source.subjects_dir
 
-    brain = Brain(source.subject, hemi, surf, title, cortex,
+    brain = Brain(subject, hemi, surf, title, cortex,
                   views=views, w=w, h=h, axw=axw, axh=axh,
                   foreground=foreground, background=background,
                   subjects_dir=subjects_dir, name=name, pos=pos)
