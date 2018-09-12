@@ -5350,6 +5350,21 @@ class Dataset(OrderedDict):
                 f"{dataobj_repr(x)} with length {len(x)}: The Dataset has a "
                 f"different length ({self.n_cases})")
 
+    @staticmethod
+    def as_key(name):
+        """Convert a string ``name`` to a legal dataset key
+
+        This is a shortcut to simplify storing varaibles with non-compliant
+        names, consisting mostly of replacing invalid characters with '_'.
+        Note that the result is not unique.
+
+        Examples
+        --------
+        >>> Dataset.as_key('var-1|2')
+        'var_1_2'
+        """
+        return as_legal_dataset_key(name)
+
     def add(self, item, replace=False):
         """``ds.add(item)`` -> ``ds[item.name] = item``
 
