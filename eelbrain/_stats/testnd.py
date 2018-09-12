@@ -29,7 +29,6 @@ import logging
 import operator
 import os
 import re
-import signal
 import socket
 from time import time as current_time
 from warnings import warn
@@ -3051,7 +3050,6 @@ class _MergedTemporalClusterDist:
 
 def distribution_worker(dist_array, dist_shape, in_queue, kill_beacon):
     "Worker that accumulates values and places them into the distribution"
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
     n = reduce(operator.mul, dist_shape)
     dist = np.frombuffer(dist_array, np.float64, n)
     dist.shape = dist_shape
@@ -3066,7 +3064,6 @@ def distribution_worker(dist_array, dist_shape, in_queue, kill_beacon):
 def permutation_worker(in_queue, out_queue, y, y_flat_shape, stat_map_shape,
                        test_func, args, map_args, kill_beacon):
     "Worker for 1 sample t-test"
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
     if CONFIG['nice']:
         os.nice(CONFIG['nice'])
 
@@ -3220,7 +3217,6 @@ def setup_workers_me(test_func, dists, thresholds):
 
 def permutation_worker_me(in_queue, out_queue, y, y_flat_shape, stat_map_shape,
                           test, map_args, thresholds, kill_beacon):
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
     if CONFIG['nice']:
         os.nice(CONFIG['nice'])
 
@@ -3247,7 +3243,6 @@ def permutation_worker_me(in_queue, out_queue, y, y_flat_shape, stat_map_shape,
 
 def distribution_worker_me(dist_arrays, dist_shape, in_queue, kill_beacon):
     "Worker that accumulates values and places them into the distribution"
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
     n = reduce(operator.mul, dist_shape)
     dists = [d if d is None else np.frombuffer(d, np.float64, n).reshape(dist_shape)
              for d in dist_arrays]
