@@ -823,18 +823,19 @@ def align(d1, d2, i1='index', i2=None, out='data'):
         raise ValueError("Invalid value for out parameter: %r" % out)
 
 
-def align1(d, idx, d_idx='index', out='data'):
+def align1(d, to, by='index', out='data'):
     """Align a data object to an index variable
 
     Parameters
     ----------
-    d : data-object, n_cases = n1
+    d : data-object
         Data object with cases that should be aligned to ``idx``.
-    idx : Var | array_like, len = n2
-        Index array to which ``d`` should be aligned.
-    d_idx : str | index array, len = n1
-        Variable labeling cases in ``d`` for aligning them to ``idx``. If ``d``
-        is a Dataset, ``d_idx`` can be the name of a variable in ``d``.
+    to : data-object
+        Index array to which ``d`` should be aligned. If ``to`` is a
+        :class:`Dataset`, use ``to[by]``.
+    by : str | data-object
+        Variable labeling cases in ``d`` for aligning them to ``to``. If ``d``
+        is a :class:`Dataset`, ``by`` can be the name of a variable in ``d``.
     out : 'data' | 'index'
         Return a restructured copy of ``d`` (default) or an index array into
         ``d``.
@@ -849,37 +850,37 @@ def align1(d, idx, d_idx='index', out='data'):
     --------
     align : Align two data-objects
     """
-    idx = asuv(idx)
-    if not isinstance(d_idx, str):
+    if isinstance(to, Dataset):
+        if not isinstance(by, str):
+            raise TypeError(f"by={by}: needs to be a str if to is a Dataset")
+        to = asuv(by, ds=to)
+    else:
+        to = asuv(to)
+    if not isinstance(by, str):
         # check d_idx length
         if isinstance(d, Dataset):
-            if len(d_idx) != d.n_cases:
-                msg = ("d_idx does not have the same number of cases as d "
-                       "(d_idx: %i, d: %i)" % (len(d_idx), d.n_cases))
-                raise ValueError(msg)
-        else:
-            if len(d_idx) != len(d):
-                msg = ("d_idx does not have the same number of cases as d "
-                       "(d_idx: %i, d: %i)" % (len(d_idx), len(d)))
-                raise ValueError(msg)
-    d_idx = asuv(d_idx, ds=d)
+            if len(by) != d.n_cases:
+                raise ValueError(f"by={by}: does not have the same number of cases as d (by: {len(by)}, d: {d.n_cases})")
+        elif len(by) != len(d):
+            raise ValueError(f"by={by}: does not have the same number of cases as d (d_idx: {len(by)}, d: {len(d)})")
+    by = asuv(by, ds=d)
 
-    align_idx = np.empty(len(idx), int)
-    for i, v in enumerate(idx):
-        where = d_idx.index(v)
+    align_idx = np.empty(len(to), int)
+    for i, v in enumerate(to):
+        where = by.index(v)
         if len(where) == 1:
             align_idx[i] = where[0]
         elif len(where) == 0:
-            raise ValueError("%s does not occur in d_idx" % v)
+            raise ValueError(f"{v} does not occur in d_idx")
         else:
-            raise ValueError("%s occurs more than once in d_idx" % v)
+            raise ValueError(f"{v} occurs more than once in d_idx")
 
     if out == 'data':
         return d[align_idx]
     elif out == 'index':
         return align_idx
     else:
-        ValueError("Invalid value for out parameter: %r" % out)
+        ValueError(f"out={out!r}")
 
 
 def choose(choice, sources, name=None):
