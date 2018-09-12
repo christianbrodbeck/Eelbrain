@@ -17,6 +17,7 @@ from .frame import FOCUS_UI_UPDATE_FUNC_NAMES, EelbrainFrame
 
 
 APP = None  # hold the App instance
+JUMPSTART_TIME = 250  # ms
 
 
 def wildcard(filetypes):
@@ -28,6 +29,7 @@ def wildcard(filetypes):
 
 class App(wx.App):
     _pt_thread = None
+    about_frame = None
 
     def OnInit(self):
         self.SetAppName("Eelbrain")
@@ -226,6 +228,10 @@ class App(wx.App):
         Thread(target=self._pt_thread, args=(context,)).start()
         self.MainLoop()
 
+    def jumpstart(self):
+        wx.CallLater(JUMPSTART_TIME, self.ExitMainLoop)
+        self.MainLoop()
+
     def _get_active_frame(self):
         win = wx.Window.FindFocus()
         win_parent = wx.GetTopLevelParent(win)
@@ -383,12 +389,11 @@ class App(wx.App):
             self._ipython.user_global_ns[name] = obj
 
     def OnAbout(self, event):
-        if hasattr(self, '_about_frame') and hasattr(self._about_frame, 'Raise'):
-            self._about_frame.Raise()
+        if self.about_frame is None or not hasattr(self.about_frame, 'Raise'):
+            self.about_frame = AboutFrame(None)
+            self.about_frame.Show()
         else:
-            self._about_frame = AboutFrame(None)
-            self._about_frame.Show()
-#             frame.SetFocus()
+            self.about_frame.Raise()
 
     def OnClear(self, event):
         frame = self._get_active_frame()
@@ -664,7 +669,7 @@ class App(wx.App):
         self.ExitMainLoop()
 
 
-def get_app():
+def get_app(jumpstart=False):
     global APP
     if APP is None:
         try:
@@ -678,7 +683,18 @@ def get_app():
             else:
                 raise
 
+        if jumpstart and IS_OSX:
+            # Give wx a chance to initialize the GUI backend
+            APP.OnAbout(None)
+            wx.CallLater(JUMPSTART_TIME, APP.about_frame.Close)
+            wx.CallLater(JUMPSTART_TIME, APP.ExitMainLoop)
+            APP.MainLoop()
+
     return APP
+
+
+def needs_jumpstart():
+    return APP is None and IS_OSX
 
 
 def run(block=False):

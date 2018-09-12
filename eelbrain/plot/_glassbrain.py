@@ -152,6 +152,10 @@ class GlassBrain(TimeSlicer, EelFigure):
                  display_mode='ortho', threshold='auto', cmap=None, colorbar=False, draw_cross=True,
                  annotate=True, alpha=0.7, vmin=None, vmax=None, plot_abs=True, symmetric_cbar="auto",
                  interpolation='nearest', h=None, w=None, **kwargs):
+        # Give wxPython a chance to initialize the menu before pyplot
+        from .._wxgui import get_app
+        get_app(jumpstart=True)
+
         # Lazy import of matplotlib.pyplot
         from nilearn.plotting import cm
         from nilearn.plotting.displays import get_projector
@@ -412,6 +416,9 @@ class GlassBrain(TimeSlicer, EelFigure):
         glassbrain : GlassBrain
             GlassBrain plot.
         """
+        from .._wxgui import get_app, needs_jumpstart
+        jumpstart = needs_jumpstart()
+
         if name is None:
             name = ndvar.name
 
@@ -424,6 +431,10 @@ class GlassBrain(TimeSlicer, EelFigure):
         else:
             data = ndvar
         p = Butterfly(data, vmin=vmin, vmax=vmax, h=h, w=w, name=name, color='black', ylabel=False)
+
+        # Give wxPython a chance to initialize the menu before pyplot
+        if jumpstart:
+            get_app().jumpstart()
 
         # position the brain window next to the butterfly-plot
         # needs to be figured out
