@@ -71,7 +71,7 @@ from ._utils import (
 from ._utils.numpy_utils import (
     INT_TYPES, FULL_SLICE, FULL_AXIS_SLICE,
     apply_numpy_index, digitize_index, digitize_slice_endpoint,
-    index_length, index_to_int_array, slice_to_arange)
+    index_length, index_to_int_array, take_slice, slice_to_arange)
 from .mne_fixes import MNE_EPOCHS, MNE_EVOKED, MNE_RAW, MNE_LABEL
 from functools import reduce
 
@@ -4349,6 +4349,7 @@ class NDVar(object):
         """
         axis = self.get_axis(dim)
         dim_object = self.get_dim(dim)
+        dims = self.dims
         if window == 'gaussian':
             if mode != 'center':
                 raise ValueError("For gaussian smoothing, mode must be "
@@ -4362,8 +4363,7 @@ class NDVar(object):
             if axis:
                 x = x.swapaxes(0, axis)
         elif dim_object._connectivity_type == 'custom':
-            raise ValueError("For non-regular dimensions window must be "
-                             "'gaussian', got %r" % (window,))
+            raise ValueError(f"window={window}; for {dim_object.__class__.__name__} dimension (must be 'gaussian')")
         else:
             if dim == 'time':
                 n = int(round(window_size / dim_object.tstep))
@@ -4379,14 +4379,19 @@ class NDVar(object):
                 x = scipy.signal.convolve(self.x, window, 'same')
             else:
                 x = scipy.signal.convolve(self.x, window, 'full')
-                index = FULL_AXIS_SLICE * axis
                 if mode == 'left':
-                    x = x[index + (slice(self.shape[axis]),)]
+                    x = take_slice(x, axis, stop=self.shape[axis])
                 elif mode == 'right':
-                    x = x[index + (slice(-self.shape[axis], None),)]
+                    x = take_slice(x, axis, start=-self.shape[axis])
+                elif mode == 'full':
+                    if not isinstance(dim_object, UTS):
+                        raise NotImplementedError(f"mode='full' for {dim_object.__class__.__name__} dimension")
+                    dims = list(dims)
+                    tmin = dim_object.tmin - dim_object.tstep * ((n - 1) / 2)
+                    dims[axis] = UTS(tmin, dim_object.tstep, dim_object.nsamples + n -1)
                 else:
                     raise ValueError("mode=%r" % (mode,))
-        return NDVar(x, self.dims, self.info.copy(), name or self.name)
+        return NDVar(x, dims, self.info.copy(), name or self.name)
 
     def std(self, dims=(), **regions):
         """Compute the standard deviation over given dimensions

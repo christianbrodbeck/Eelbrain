@@ -64,6 +64,9 @@ class BoostingResult(object):
         ``h`` scaled such that it applies to the original input ``y`` and ``x``.
         If boosting was done with ``scale_data=False``, ``h_scaled`` is the same
         as ``h``.
+    h_source : NDVar | tuple of NDVar
+        If ``h`` was constructed using a basis, ``h_source`` represents the
+        source of ``h`` before being convolved with the basis.
     h_time : UTS
         Time dimension of the kernel.
     r : float | NDVar
@@ -93,44 +96,67 @@ class BoostingResult(object):
     x_scale : NDVar | scalar | tuple
         Scale by which ``x`` was divided.
     """
-    def __init__(self, h, r, isnan, t_run, version, delta, mindelta, error,
-                 spearmanr, fit_error, scale_data, y_mean, y_scale, x_mean,
-                 x_scale, y=None, x=None, tstart=None, tstop=None,
-                 _n_segments_arg=None, n_segments=None, model=None, **debug_attrs):
-        self.h = h
-        self.r = r
-        self.isnan = isnan
-        self.t_run = t_run
-        self.version = version
-        self.delta = delta
-        self.mindelta = mindelta
-        self.error = error
-        self.spearmanr = spearmanr
-        self.fit_error = fit_error
-        self.scale_data = scale_data
-        self.y_mean = y_mean
-        self.y_scale = y_scale
-        self.x_mean = x_mean
-        self.x_scale = x_scale
+    def __init__(
+            self,
+            # input parameters
+            y, x, tstart, tstop, scale_data, delta, mindelta, error,
+            n_segments_arg, n_segments, model, basis, basis_window,
+            # result parameters
+            h, r, isnan, spearmanr, fit_error, t_run, version,
+            y_mean, y_scale, x_mean, x_scale, **debug_attrs,
+    ):
+        # input parameters
         self.y = y
         self.x = x
         self.tstart = tstart
         self.tstop = tstop
-        self._n_segments_arg = _n_segments_arg
+        self.scale_data = scale_data
+        self.delta = delta
+        self.mindelta = mindelta
+        self.error = error
+        self._n_segments_arg = n_segments_arg
         self.n_segments = n_segments
         self.model = model
+        self.basis = basis
+        self.basis_window = basis_window
+        # results
+        self._h = h
+        self.r = r
+        self._isnan = isnan
+        self.spearmanr = spearmanr
+        self.fit_error = fit_error
+        self.t_run = t_run
+        self._version = version
+        self.y_mean = y_mean
+        self.y_scale = y_scale
+        self.x_mean = x_mean
+        self.x_scale = x_scale
         self._debug_attrs = debug_attrs
         for k, v in debug_attrs.items():
             setattr(self, k, v)
 
     def __getstate__(self):
-        state = {attr: getattr(self, attr) for attr, param in
-                 inspect.signature(self.__class__).parameters.items()
-                 if param.kind is not inspect.Parameter.VAR_KEYWORD}
-        state.update(self._debug_attrs)
-        return state
+        return {
+            # input parameters
+            'y': self.y, 'x': self.x, 'tstart': self.tstart, 'tstop': self.tstop,
+            'scale_data': self.scale_data, 'delta': self.delta,
+            'mindelta': self.mindelta, 'error': self.error,
+            'n_segments_arg': self._n_segments_arg, 'n_segments': self.n_segments,
+            'model': self.model, 'basis': self.basis,
+            'basis_window': self.basis_window,
+            # results
+            'h': self._h, 'r': self.r, 'isnan': self._isnan,
+            'spearmanr': self.spearmanr, 'fit_error': self.fit_error,
+            't_run': self.t_run, 'version': self._version,
+            'y_mean': self.y_mean, 'y_scale': self.y_scale,
+            'x_mean': self.x_mean, 'x_scale': self.x_scale,
+            **self._debug_attrs,
+        }
 
     def __setstate__(self, state):
+        if state['version'] < 7:
+            state.update(n_segments=None, n_segments_arg=None, model=None,
+                         basis=0, basis_window='hamming')
         self.__init__(**state)
 
     def __repr__(self):
@@ -156,6 +182,15 @@ class BoostingResult(object):
         return f"<{', '.join(items)}>"
 
     @LazyProperty
+    def h(self):
+        if not self.basis:
+            return self._h
+        elif isinstance(self._h, tuple):
+            return tuple(h.smooth('time', self.basis, self.basis_window, 'full') for h in self._h)
+        else:
+            return self._h.smooth('time', self.basis, self.basis_window, 'full')
+
+    @LazyProperty
     def h_scaled(self):
         if self.y_scale is None:
             return self.h
@@ -164,6 +199,13 @@ class BoostingResult(object):
         else:
             return tuple(h * (self.y_scale / sx) for h, sx in
                          zip(self.h, self.x_scale))
+
+    @LazyProperty
+    def h_source(self):
+        if self.basis:
+            return self._h
+        else:
+            return None
 
     @LazyProperty
     def h_time(self):
@@ -199,7 +241,8 @@ class BoostingResult(object):
 
 @user_activity
 def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
-             error='l2', n_segments=None, model=None, ds=None, debug=False):
+             error='l2', n_segments=None, model=None, ds=None, basis=0,
+             basis_window='hamming', debug=False):
     """Estimate a filter with boosting
 
     Parameters
@@ -242,6 +285,12 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     ds : Dataset
         If provided, other parameters can be specified as string for items in
         ``ds``.
+    basis : float
+        Use a basis of windows with this length for the kernel (by default,
+        impulses are used).
+    basis_window : str | float | tuple
+        Basis window (see :func:`scipy.signal.get_window` for options; default
+        is ``'hamming'``).
     debug : bool
         Store additional properties in the result object (increases memory
         consumption).
@@ -281,6 +330,13 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         i_skip = trf_length - 1
     else:
         i_skip = 0
+
+    if basis:
+        n = int(round(basis / data.time.tstep))
+        w = scipy.signal.get_window(basis_window, n, False)
+        w /= w.sum()
+        for xi in data.x:
+            xi[:] = scipy.signal.convolve(xi, w, 'same')
 
     # progress bar
     n_cv = len(data.cv_segments)
@@ -343,31 +399,34 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
                 res[:, y_i] = 0
 
     pbar.close()
-    dt = time.time() - t_start
+    t_run = time.time() - t_start
 
     # fit-evaluation statistics
     rs, rrs, errs = res
     isnan = np.isnan(rs)
     rs[isnan] = 0
     r = data.package_statistic(rs, 'r', 'correlation')
-    rr = data.package_statistic(rrs, 'r', 'rank correlation')
-    err = data.package_value(errs, 'fit error')
+    spearmanr = data.package_statistic(rrs, 'r', 'rank correlation')
+    fit_error = data.package_value(errs, 'fit error')
 
     y_mean, y_scale, x_mean, x_scale = data.data_scale_ndvars()
 
     if debug:
-        debug_args = {
+        debug_attrs = {
             'y_pred': data.package_y_like(y_pred, 'y-pred'),
         }
     else:
-        debug_args = {}
+        debug_attrs = {}
 
+    h = data.package_kernel(h_x, tstart)
     model_repr = None if model is None else data.model
     return BoostingResult(
-        data.package_kernel(h_x, tstart), r, isnan, dt, VERSION, delta,
-        mindelta, error, rr, err, scale_data, y_mean, y_scale, x_mean, x_scale,
-        data.y_name, data.x_name, tstart, tstop, n_segments, data.n_segments,
-        model_repr, **debug_args)
+        # input parameters
+        data.y_name, data.x_name, tstart, tstop, scale_data, delta, mindelta, error,
+        n_segments, data.n_segments, model_repr, basis, basis_window,
+        # result parameters
+        h, r, isnan, spearmanr, fit_error, t_run, VERSION,
+        y_mean, y_scale, x_mean, x_scale, **debug_attrs)
 
 
 def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,

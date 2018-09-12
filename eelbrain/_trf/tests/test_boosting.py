@@ -1,4 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from itertools import product
 from math import floor
 import os
 from warnings import catch_warnings, filterwarnings
@@ -85,16 +86,14 @@ def test_boosting_epochs():
     p1 = p1.smooth('time', .05, 'hamming')
     p0 = p0.smooth('time', .05, 'hamming')
     # 1d
-    for tstart in (-0.1, 0.1, 0):
-        print(f"tstart={tstart}")
-        res = boosting('uts', [p0, p1], tstart, 0.6, model='A', ds=ds, debug=True)
+    for tstart, basis in product((-0.1, 0.1, 0), (0, 0.05)):
+        print(f"tstart={tstart}, basis={basis}")
+        res = boosting('uts', [p0, p1], tstart, 0.6, model='A', ds=ds, basis=basis, debug=True)
         y = convolve(res.h_scaled, [p0, p1])
         assert correlation_coefficient(y, res.y_pred) > .999
         r = correlation_coefficient(y, ds['uts'])
         assert_almost_equal(res.r, r, 3)
         assert res.n_segments == 10
-    assert_almost_equal(res.h[0].rms(), 0.0136, 3)
-    assert_almost_equal(res.h[1].rms(), 0.000569, 3)
     # 2d
     res = boosting('utsnd', [p0, p1], 0, 0.6, model='A', ds=ds)
     eq_(len(res.h), 2)
