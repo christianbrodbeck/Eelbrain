@@ -31,6 +31,7 @@ from mne.minimum_norm import (make_inverse_operator, apply_inverse,
 from tqdm import tqdm
 
 from .. import _report
+from .. import fmtxt
 from .. import gui
 from .. import load
 from .. import plot
@@ -6368,45 +6369,71 @@ class MneExperiment(FileTree):
         self.set(test_options=' '.join(items), analysis=analysis, folder=folder,
                  **kwargs)
 
-    def show_bad_channels(self):
-        """List bad channels for each subject/session combination
+    def show_bad_channels(self, sessions=None, **state):
+        """List bad channels
+
+        Parameters
+        ----------
+        sessions : True | sequence of str
+            By default, bad channels for the current session are shown. Set
+            ``sessions`` to ``True`` to show bad channels for all sessions, or
+            a list of session names to show bad channeles for tehse sessions.
+        ...
+            State parameters.
 
         Notes
         -----
         ICA Raw pipes merge bad channels from different sessions (by combining
         the bad channels from all sessions).
         """
-        bad_channels = {k: self.load_bad_channels() for k in
-                        self.iter(('subject', 'session'))}
+        if state:
+            self.set(**state)
 
-        # whether they are equal between sessions
-        bad_by_s = {}
-        for (subject, session), bads in bad_channels.items():
-            if subject in bad_by_s:
-                if bad_by_s[subject] != bads:
-                    sessions_congruent = False
-                    break
+        if sessions is True:
+            use_sessions = self._sessions
+        elif sessions:
+            use_sessions = sessions
+        else:
+            use_sessions = None
+
+        if use_sessions is None:
+            bad_by_s = {k: self.load_bad_channels() for k in self}
+            list_sessions = False
+        else:
+            bad_channels = {k: self.load_bad_channels() for k in
+                            self.iter(('subject', 'session'), values={'session': use_sessions})}
+            # whether they are equal between sessions
+            bad_by_s = {}
+            for (subject, session), bads in bad_channels.items():
+                if subject in bad_by_s:
+                    if bad_by_s[subject] != bads:
+                        list_sessions = True
+                        break
+                else:
+                    bad_by_s[subject] = bads
             else:
-                bad_by_s[subject] = bads
-        else:
-            sessions_congruent = True
+                list_sessions = False
 
-        # display
-        if sessions_congruent:
-            print("All sessions equal:")
+        # table
+        session_desc = ', '.join(use_sessions) if use_sessions else self.get('session')
+        caption = f"Bad channels in {session_desc}"
+        if list_sessions:
+            t = fmtxt.Table('l' * (1 + len(use_sessions)), caption=caption)
+            t.cells('Subject', *use_sessions)
+            t.midrule()
             for subject in sorted(bad_by_s):
-                print("%s: %s" % (subject, bad_by_s[subject]))
+                t.cell(subject)
+                for session in use_sessions:
+                    t.cell(', '.join(bad_channels[subject, session]))
         else:
-            subject_len = 1
-            session_len = 1
-            for subject, session in bad_channels:
-                subject_len = max(subject_len, len(subject))
-                session_len = max(session_len, len(session))
-
-            template = '{:%i} {:%i}: {}' % (subject_len + 1, session_len + 1)
-            for subject, session in sorted(bad_channels):
-                print(template.format(subject, session,
-                                      bad_channels[subject, session]))
+            if use_sessions is not None:
+                caption += " (all sessions equal)"
+            t = fmtxt.Table('ll', caption=caption)
+            t.cells('Subject', 'Bad channels')
+            t.midrule()
+            for subject in sorted(bad_by_s):
+                t.cells(subject, ', '.join(bad_by_s[subject]))
+        return t
 
     def show_file_status(self, temp, col=None, row='subject', *args, **kwargs):
         """Compile a table about the existence of files
