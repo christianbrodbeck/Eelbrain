@@ -142,7 +142,9 @@ def shift_mne_epoch_trigger(epochs, trigger_shift, min_shift=None, max_shift=Non
     events = epochs.events.copy()
     events[:, 0] += shifts
 
-    return mne.EpochsArray(new_data, epochs.info, events, tmin, epochs.event_id)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'The events passed to the Epochs constructor', RuntimeWarning)
+        return mne.EpochsArray(new_data, epochs.info, events, tmin, epochs.event_id)
 
 
 def labels_from_clusters(clusters, names=None):
@@ -299,7 +301,7 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     ----------
     ndvar : NDVar
         NDVar with SourceSpace dimension.
-    subject_to : string
+    subject_to : str
         Name of the subject on which to morph.
     vertices_to : None | list of array of int | 'lh' | 'rh'
         The vertices on the destination subject's brain. If ndvar contains a

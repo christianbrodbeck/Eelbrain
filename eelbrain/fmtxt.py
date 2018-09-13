@@ -61,6 +61,8 @@ import socket
 from io import BytesIO
 import tempfile
 import time
+from typing import Union, Iterable, List as ListType, Tuple
+import webbrowser
 
 import numpy as np
 import matplotlib.figure
@@ -69,6 +71,10 @@ from matplotlib.mathtext import math_to_image
 
 from ._utils.tex import latex2pdf
 from ._utils import ui
+
+
+# types
+FMTextLike = Union['FMTextElement', str, ListType['FMTextLike'], Tuple['FMTextLike']]
 
 
 preferences = dict(
@@ -691,7 +697,7 @@ class FMText(FMTextElement):
 
     Parameters
     ----------
-    content : FMTextElement | list of FMTextElement
+    content : FMTextLike
         Any item with a string representation (str, FMText, scalar, ...)
         or an object that iterates over such items (e.g. a list of FMText).
     tag : str
@@ -711,8 +717,15 @@ class FMText(FMTextElement):
     'paragraph'
         A <p> tag in HTML, and simple line breaks in TeX.
     """
-    def __init__(self, content, tag=None, options=None):
-        if isinstance(content, (list, tuple)):
+    def __init__(
+            self,
+            content: FMTextLike = None,
+            tag: str = None,
+            options: dict = None,
+    ):
+        if content is None:
+            content = []
+        elif isinstance(content, (list, tuple)):
             content = [asfmtext(item) for item in content]
         else:
             content = [asfmtext(content)]
@@ -772,7 +785,7 @@ class Text(FMTextElement):
 
 class Link(FMTextElement):
 
-    def __init__(self, content, url):
+    def __init__(self, content: FMTextLike, url: str):
         FMTextElement.__init__(self, content)
         self.url = str(url)
 
@@ -921,22 +934,30 @@ class Stars(FMTextElement):
 
 class List(FMTextElement):
     """Bulletted list of FMText elements"""
-    def __init__(self, head=None, items=None, ordered=False):
+    def __init__(
+            self,
+            head: FMTextLike = None,
+            items: Iterable[FMTextLike] = None,
+            ordered: bool = False,
+    ):
         """Bulletted list of FMText elements
 
         Parameters
         ----------
-        head : None | FMText
+        head : FMTextLike
             First line on higher level (no bullet for highest list, or list
             element for subordinate list).
-        items : None | list of FMText
+        items : iterable of FMTextLike
             List items.
         ordered : bool
             Whether to use the "ol" HTML tag (instead of "ul").
         """
         self.ordered = ordered
         self.head = asfmtext_or_none(head)
-        self.items = [] if items is None else list(map(asfmtext(items)))
+        if items is None:
+            self.items = []
+        else:
+            self.items = list(map(asfmtext, items))
 
     def _repr_items(self):
         if self.ordered:
@@ -948,22 +969,27 @@ class List(FMTextElement):
         else:
             return []
 
-    def add_item(self, item):
+    def add_item(self, item: FMTextLike):
         "Add an item to the list"
         self.items.append(asfmtext(item))
 
-    def add_sublist(self, head, items=None, ordered=None):
+    def add_sublist(
+            self,
+            head: FMTextLike = None,
+            items: Iterable[FMTextLike] = None,
+            ordered: bool = False,
+    ):
         """Add an item with a subordinate list
 
         Parameters
         ----------
-        head : FMText
+        head : FMTextLike
             Text for the parent item
-        items : None | list of FMText
+        items : iterable of FMTextLike
             Subordinate list items.
         ordered : None | bool
-            Whether to use the "ol" HTML tag (instead of "ul"). If None, the
-            parent List's setting is used.
+            Whether to use the "ol" HTML tag (instead of "ul"). The default is
+            to inherit the parent list's setting.
 
         Returns
         -------
@@ -1140,6 +1166,36 @@ class Row(list):
                 lens.extend(repeat(col_len, n_columns))
         return lens
 
+    def cell(
+            self,
+            content: FMTextLike = None,
+            tag: str = None,
+            width: int = 1,
+            just: str = None,
+    ):
+        """Add a cell to the row
+
+        Parameters
+        ----------
+        content : FMText
+            Cell content.
+        tag : str
+            Formatting tag.
+        width : int
+            Width in columns for multicolumn cells.
+        just : 'l' | 'r' | 'c'
+            Justification (default: use column standard).
+        """
+        cell = Cell(content, tag, width, just)
+        if len(cell) + len(self) > self.n_columns:
+            raise ValueError(f"width={cell.width}: exceeds table width")
+        self.append(cell)
+
+    def cells(self, *cells, **kwargs):
+        "Add several simple cells with one command"
+        for cell in cells:
+            self.cell(cell, **kwargs)
+
     def get_html(self, env={}):
         html = '\n'.join(cell.get_html(env) for cell in self)
         html = '<tr>\n%s\n</tr>' % html
@@ -1240,7 +1296,7 @@ class Table(FMTextElement):
     def __init__(self, columns, rules=True, title=None, caption=None, rows=[]):
         self.columns = columns
         self.n_columns = len(columns)
-        self._table = rows[:]
+        self.rows = rows[:]
         self.rules = rules
         self.title(title)
         self.caption(caption)
@@ -1248,40 +1304,45 @@ class Table(FMTextElement):
 
     @property
     def shape(self):
-        return (len(self._table), len(self.columns))
+        return len(self.rows), self.n_columns
 
     def __len__(self):
-        return len(self._table)
+        return len(self.rows)
 
     def __getitem__(self, item):
         if isinstance(item, int):
-            return self._table[item]
+            return self.rows[item]
         elif isinstance(item, slice):
-            rows = self._table[item]
+            rows = self.rows[item]
             return Table(self.columns, rules=self.rules, title=self._title,
                          caption=self._caption, rows=rows)
-        elif isinstance(item, tuple):
-            raise NotImplementedError
+        raise TypeError(f'Table index {item}')
 
     def __setitem__(self, key, value):
         if isinstance(key, int):
-            self._table[key] = Row.coerce(value, self.n_columns)
+            self.rows[key] = Row.coerce(value, self.n_columns)
         elif isinstance(key, tuple) and len(key) == 2:
             row, column = key
             if isinstance(row, slice):
                 value = tuple(value)
-                start, stop, stride = row.indices(len(self._table))
+                start, stop, stride = row.indices(len(self.rows))
                 for i, v in zip(range(start, stop, stride), value):
                     self[i, column] = v
             elif not isinstance(row, int):
                 raise TypeError("Table index %r" % (key,))
             else:
-                self._table[row][column] = value
+                self.rows[row][column] = value
         else:
             raise IndexError("Table index %r" % (key,))
 
     # adding texstrs ---
-    def cell(self, content='', tag=None, width=1, just=None):
+    def cell(
+            self,
+            content: FMTextLike = None,
+            tag: str = None,
+            width: int = 1,
+            just: str = None,
+    ):
         """Add a cell to the table
 
         Parameters
@@ -1292,35 +1353,49 @@ class Table(FMTextElement):
             Formatting tag.
         width : int
             Width in columns for multicolumn cells.
-        just : None | 'l' | 'r' | 'c'
-            Justification. None: use column standard.
+        just : 'l' | 'r' | 'c'
+            Justification (default: use column standard).
         """
-        cell = Cell(content, tag, width, just)
-
-        if self._active_row is None or len(self._active_row) == len(self.columns):
-            new_row = Row(self.n_columns)
-            self._table.append(new_row)
-            self._active_row = new_row
-
-        if len(cell) + len(self._active_row) > len(self.columns):
-            raise ValueError("Cell too long -- row width exceeds table width")
-        self._active_row.append(cell)
-
-    def empty_row(self):
-        self.endline()
-        self._table.append(Row(self.n_columns))
-
-    def endline(self):
-        "Finish the active row"
-        if self._active_row is not None:
-            for _ in range(len(self.columns) - len(self._active_row)):
-                self._active_row.append(Cell())
-        self._active_row = None
+        if self._active_row is None or len(self._active_row) == self.n_columns:
+            self._active_row = self.add_row()
+        self._active_row.cell(content, tag, width, just)
 
     def cells(self, *cells, **kwargs):
         "Add several simple cells with one command"
         for cell in cells:
             self.cell(cell, **kwargs)
+
+    def add_row(self, at=None):
+        """Add a row without affecting the cursor
+
+        Parameters
+        ----------
+        at : int
+            Index at which to insert row (default is after the current row;
+            midrules also count as rows).
+
+        Returns
+        -------
+        row : Row
+            the new row.
+        """
+        row = Row(self.n_columns)
+        if at is None:
+            self.rows.append(row)
+        else:
+            self.rows.insert(at, row)
+        return row
+
+    def empty_row(self):
+        self.endline()
+        self._active_row = self.add_row()
+
+    def endline(self):
+        "Finish the active row"
+        if self._active_row is not None:
+            for _ in range(self.n_columns - len(self._active_row)):
+                self._active_row.append(Cell())
+            self._active_row = None
 
     def midrule(self, span=None):
         """Add a midrule
@@ -1336,7 +1411,7 @@ class Table(FMTextElement):
         """
         self.endline()
         if span is None:
-            self._table.append("\\midrule")
+            self.rows.append("\\midrule")
         else:
             if isinstance(span, (list, tuple)):
                 span = '%i-%i' % span
@@ -1345,14 +1420,14 @@ class Table(FMTextElement):
                     raise ValueError("span=%r" % span)
             else:
                 raise TypeError("span=%r" % (span,))
-            self._table.append(r"\cmidrule{%s}" % span)
+            self.rows.append(r"\cmidrule{%s}" % span)
 
-    def title(self, content):
-        """Set the table title (with FMText args/kwargs)"""
+    def title(self, content: FMTextLike):
+        """Set the table title"""
         self._title = asfmtext_or_none(content)
 
-    def caption(self, content):
-        """Set the table caption (with FMText args/kwargs)"""
+    def caption(self, content: FMTextLike):
+        """Set the table caption"""
         self._caption = asfmtext_or_none(content)
 
     def __repr__(self):
@@ -1374,7 +1449,7 @@ class Table(FMTextElement):
         table = []
         if caption and not preferences['html_tables_in_fig']:
             table.append(caption)
-        for row in self._table:
+        for row in self.rows:
             if isinstance(row, str):
                 if row == "\\midrule":
                     pass
@@ -1405,7 +1480,7 @@ class Table(FMTextElement):
         rows.insert(0, '\\trowd')
         rows.append('\\row')
         # body
-        for row in self._table:
+        for row in self.rows:
             if isinstance(row, str):
                 if row == "\\midrule":
                     pass
@@ -1428,15 +1503,15 @@ class Table(FMTextElement):
         # append to recent tex out
         _add_to_recent(self)
 
-        if len(self._table) == 0:
+        if len(self.rows) == 0:
             return ''
 
         # determine column widths
         widths = []
-        for row in self._table:
+        for row in self.rows:
             if not isinstance(row, str):  # some commands are str
                 row_strlen = row._strlen(env)
-                while len(row_strlen) < len(self.columns):
+                while len(row_strlen) < self.n_columns:
                     row_strlen.append(0)
                 widths.append(row_strlen)
         widths = np.array(widths, dtype=int)
@@ -1448,7 +1523,7 @@ class Table(FMTextElement):
 
         # collect lines
         txtlines = []
-        for row in self._table:
+        for row in self.rows:
             if isinstance(row, str):  # commands
                 if row == r'\midrule':
                     txtlines.append(midrule)  # "_"*l_len)
@@ -1496,7 +1571,7 @@ class Table(FMTextElement):
         if self.rules:
             items.append(r"\toprule")
         # Body
-        for row in self._table:
+        for row in self.rows:
             if isinstance(row, str):
                 items.append(row)
             else:
@@ -1523,12 +1598,49 @@ class Table(FMTextElement):
             Format string for numerical entries (default ``'%.9g'``).
         """
         table = []
-        for row in self._table:
+        for row in self.rows:
             if isinstance(row, str):
                 pass
             else:
                 table.append(row.get_tsv(delimiter, fmt=fmt))
         return linesep.join(table)
+
+    def save_docx(self, path=None):
+        """Save table as *.docx (requires `python-docx <https://python-docx.readthedocs.io>`_)
+
+        Parameters
+        ----------
+        path : str
+            Target file name (leave unspecified to use Save As dialog).
+
+        Notes
+        -----
+        Most style options are not implemented.
+        """
+        from docx import Document
+
+        if path is None:
+            path = ui.ask_saveas(
+                "Save Text File", filetypes=[("Word Document (*.docx)", "*.docx")])
+        if not path:
+            return
+        document = Document()
+        if self._title:
+            document.add_heading(str(self._title), 0)
+
+        table = document.add_table(rows=0, cols=self.n_columns)
+
+        # Body
+        for row in self.rows:
+            if isinstance(row, str):
+                continue
+            d_row = table.add_row()
+            i = 0
+            for cell in row:
+                d_row.cells[i].text = str(cell)
+                i += cell.width
+
+        document.save(path)
 
     def save_tsv(self, path=None, delimiter='\t', linesep='\n', fmt='%.15g'):
         r"""
@@ -1545,7 +1657,7 @@ class Table(FMTextElement):
         fmt : str
             Format string for representing numerical cells.
             (see 'Python String Formatting Documentation
-            <http://docs.python.org/library/stdtypes.html#string-formatting-operations>'_ )
+            <http://docs.python.org/library/stdtypes.html#string-formatting-operations>'_)
         """
         _save_txt(self.get_tsv(delimiter, linesep, fmt), path)
 
@@ -1688,14 +1800,19 @@ class Image(FMTextElement, BytesIO):
 class Figure(FMText):
     "Represent a figure"
 
-    def __init__(self, content, caption=None, options=None):
+    def __init__(
+            self,
+            content: FMTextLike,
+            caption: FMTextLike = None,
+            options: dict = None,
+    ):
         """Represent a figure
 
         Parameters
         ----------
-        content : FMText
+        content : FMTextLike
             Figure content.
-        caption : FMText
+        caption : FMTextLike
             Figure caption.
         options : dict
             HTML options for ``<figure>`` tag.
@@ -1721,29 +1838,40 @@ class Figure(FMText):
 
 class Section(FMText):
 
-    def __init__(self, heading, content=[]):
+    def __init__(
+            self,
+            heading: FMTextLike,
+            content: FMTextLike = None,
+    ):
         """Represent a section of an FMText document
 
         Parameters
         ----------
-        heading : FMText
+        heading : FMTextLike
             Section heading.
-        content : list of FMText
+        content : FMTextLike
             Section content. Can also be constructed dynamically through the
             different .add_... methods.
         """
         self._heading = asfmtext(heading)
         FMText.__init__(self, content)
 
-    def add_figure(self, caption, content=None, options=None):
+    def add_figure(
+            self,
+            caption: FMTextLike,
+            content: FMTextLike = None,
+            options: dict = None,
+    ):
         """Add a figure frame to the section
 
         Parameters
         ----------
-        caption : FMText
+        caption : FMTextLike
             Figure caption.
-        content : None | FMText
+        content : FMTextLike
             Figure content.
+        options : dict
+            HTML options for ``<figure>`` tag.
 
         Returns
         -------
@@ -1812,14 +1940,17 @@ class Section(FMText):
         self.append(paragraph)
         return paragraph
 
-    def add_section(self, heading, content=[]):
+    def add_section(
+            self,
+            heading: FMTextLike,
+            content: FMTextLike = ()):
         """Add a new subordinate section
 
         Parameters
         ----------
-        heading : FMText
+        heading : FMTextLike
             Heading for the section.
-        content : None | list of FMText
+        content : FMTextLike
             Content for the section.
 
         Returns
@@ -1882,20 +2013,26 @@ class Section(FMText):
 
 class Report(Section):
 
-    def __init__(self, title, author=None, date=True, content=[],
-                 site_title=None):
+    def __init__(
+            self,
+            title: FMTextLike,
+            author: FMTextLike = None,
+            date: Union[FMTextLike, bool] = True,
+            content: FMTextLike = None,
+            site_title: str = None,
+    ):
         """Represent an FMText report document
 
         Parameters
         ----------
-        title : FMText
+        title : FMTextLike
             Document title.
-        author : None | FMText
+        author : FMTextLike
             Document autho.
-        date : None | True | FMText
-            Date to print on the report. If True, the current day (object
-            initialization) is used.
-        content : list of FMText
+        date : bool | FMTextLike
+            Date to print on the report. If True (default), the current day
+            (object initialization) is used.
+        content : FMTextLike
             Report content. Can also be constructed dynamically through the
             different .add_... methods.
         site_title : str
@@ -2022,6 +2159,13 @@ class Report(Section):
 
         save_html(self, path, embed_images, meta)
 
+    def show(self):
+        "Save the report as temporary file and open in browser"
+        temp_dir = tempfile.mkdtemp()
+        path = os.path.join(temp_dir, 'report.html')
+        self.save_html(path)
+        webbrowser.open('file:/' + os.path.realpath(path))
+
     def sign(self, packages=('eelbrain',)):
         """Add a signature to the report
 
@@ -2091,8 +2235,11 @@ def stat(x, fmt="%.2f", stars=None, of=3, tag='math', drop0=False):
     ":class:`FMText` with properties for a statistic (e.g. a t-value)"
     if stars is None:
         return Number(x, tag, fmt, drop0)
+    elif isinstance(stars, float):
+        stars_obj = Stars.from_p(stars, of)
     else:
-        return FMText([Number(x, None, fmt, drop0), Stars(stars, of=of)], tag)
+        stars_obj = Stars(stars, of)
+    return FMText([Number(x, None, fmt, drop0), stars_obj], tag)
 
 
 def eq(name, result, subscript=None, fmt='%.2f', stars=None, of=3, drop0=False):
@@ -2131,6 +2278,10 @@ def delim_list(items, delimiter=', '):
 def ms(t_s):
     "Convert time in seconds to rounded milliseconds"
     return int(round(t_s * 1000))
+
+
+def ms_window(t0, t1):
+    return f"{ms(t0)} - {ms(t1)} ms"
 
 
 def unindent(text, skip1=False):

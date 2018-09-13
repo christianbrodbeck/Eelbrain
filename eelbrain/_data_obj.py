@@ -42,6 +42,7 @@ from itertools import chain
 from keyword import iskeyword
 from math import ceil, log
 from numbers import Integral, Number
+from pathlib import Path
 import pickle
 import operator
 import os
@@ -88,6 +89,7 @@ preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __
                    )
 
 
+SRC_RE = re.compile('^(ico|vol)-(\d+)(?:-(\w+))?$')
 UNNAMED = '<?>'
 LIST_INDEX_TYPES = (*INT_TYPES, slice)
 _pickled_ds_wildcard = ("Pickled Dataset (*.pickled)", '*.pickled')
@@ -348,9 +350,9 @@ def assert_has_no_empty_cells(x):
         empty = []
         for e in x.effects:
             if isinstance(e, Interaction) and e.is_categorial:
-                empty_ = empty_cells(e)
-                if empty_:
-                    empty.append((dataobj_repr(e), ', '.join(empty)))
+                empty_in_e = empty_cells(e)
+                if empty_in_e:
+                    empty.append((dataobj_repr(e), ', '.join(empty_in_e)))
         if empty:
             items = ['%s (%s)' % pair for pair in empty]
             raise NotImplementedError("%s contains empty cells in %s" %
@@ -612,7 +614,9 @@ def assub(sub, ds=None):
                             "Dataset was specified")
         sub = ds.eval(sub)
 
-    if not isinstance(sub, (Var, np.ndarray)):
+    if isinstance(sub, Var):
+        return sub.x
+    elif not isinstance(sub, np.ndarray):
         raise TypeError("sub parameters needs to be Var or array, got %r" % (sub,))
     return sub
 
@@ -3769,6 +3773,16 @@ class NDVar(object):
         info = _info.default_info('Amplitude', self.info)
         return NDVar(x, dims, info, name or self.name)
 
+    def flatnonzero(self):
+        """Return indices where a 1-d NDVar is non-zero
+
+        Like :func:`numpy.flatnonzero`.
+        """
+        if self.ndim != 1:
+            raise ValueError("flatnonzero only applies to 1-d NDVars")
+        dim = self.dims[0]
+        return [dim._dim_index(index) for index in np.flatnonzero(self.x)]
+
     def get_axis(self, name):
         "Return the data axis for a given dimension name"
         if self.has_dim(name):
@@ -4680,10 +4694,12 @@ class NDVar(object):
                      zip(self.dims, self.x.nonzero()))
 
 
-def extrema(x, axis=0):
+def extrema(x, axis=None):
     "Extract the extreme values in x"
     max = np.max(x, axis)
     min = np.min(x, axis)
+    if np.isscalar(max):
+        return max if abs(max) > abs(min) else min
     return np.where(np.abs(max) >= np.abs(min), max, min)
 
 
@@ -5220,13 +5236,15 @@ class Dataset(OrderedDict):
             if isinstance(idx, str):
                 key, idx = idx, key
             elif not isinstance(key, str):
-                raise TypeError("Dataset key needs to be str; got %r" % (key,))
+                raise TypeError(f"Dataset key {key!r}; needs to be str")
 
             if key in self:
                 self[key][idx] = item
             elif isinstance(idx, slice):
                 if idx.start is None and idx.stop is None:
-                    if self.n_cases is None:
+                    if isdataobject(item):
+                        self[key] = item
+                    elif self.n_cases is None:
                         raise TypeError("Can't assign slice of empty Dataset")
                     elif isinstance(item, str):
                         self[key] = Factor([item], repeat=self.n_cases)
@@ -5234,13 +5252,13 @@ class Dataset(OrderedDict):
                         self[key] = Var([item], repeat=self.n_cases)
                     else:
                         raise TypeError(
-                            "Value %r is not supported for slice-assignment of "
-                            "new variable. Use a str for a new Factor or a "
-                            "scalar for a new Var." % (item,))
+                            f"{item!r} is not supported for slice-assignment of "
+                            f"a new variable. Use a str for a new Factor or a "
+                            f"scalar for a new Var.")
                 else:
                     raise NotImplementedError(
-                        "If creating a new Factor or Var using a slice, all "
-                        "values need to be set (ds[:,'name'] = ...)")
+                        "When assigning a new item in a Dataset, all values "
+                        "need to be set (ds[:,'name'] = ...)")
             else:
                 raise NotImplementedError("Advanced Dataset indexing")
         else:
@@ -5887,9 +5905,9 @@ class Dataset(OrderedDict):
 
         Parameters
         ----------
-        path : None | str
-            Target file name (if ``None`` is supplied, a save file dialog is
-            displayed). If no extension is specified, '.txt' is appended.
+        path : str
+            Target file name (by default, a Save As dialog is displayed). If
+            ``path`` is missing an extension, ``'.txt'`` is appended.
         fmt : format string
             Formatting for scalar values.
         delim : str
@@ -5897,18 +5915,12 @@ class Dataset(OrderedDict):
         header : bool
             write the variables' names in the first line
         """
-        if not isinstance(path, str):
-            title = "Save Dataset"
-            if self.name:
-                title += ' %s' % self.name
-            title += " as Text"
-            msg = ""
-            path = ui.ask_saveas(title, msg, [_tsv_wildcard],
-                                 defaultFile=self.name)
-
-        _, ext = os.path.splitext(path)
-        if not ext:
-            path += '.txt'
+        if path is None:
+            path = ui.ask_saveas(f"Save {self.name or 'Dataset'} as Text", "",
+                                 [_tsv_wildcard], defaultFile=self.name)
+        path = Path(path)
+        if not path.suffix:
+            path = path.with_suffix('.txt')
 
         table = self.as_table(fmt=fmt, header=header)
         table.save_tsv(path, fmt=fmt, delimiter=delim)
@@ -8514,43 +8526,7 @@ def _mne_tri_soure_space_graph(source_space, vertices_list):
 
 
 class SourceSpaceBase(Dimension):
-    """MNE source space dimension.
-
-    Parameters
-    ----------
-    vertices : list of int array
-        The vertex identities of the dipoles in the source space (left and
-        right hemisphere separately).
-    subject : str
-        The mri-subject name.
-    src : str
-        The kind of source space used (e.g., 'ico-4').
-    subjects_dir : str
-        The path to the subjects_dir (needed to locate the source space
-        file).
-    parc : None | str
-        Add a parcellation to the source space to identify vertex location.
-        Only applies to ico source spaces, default is 'aparc'.
-    connectivity : 'grid' | 'none' | array of int, (n_edges, 2)
-        Connectivity between elements. Set to ``"none"`` for no connections or 
-        ``"grid"`` to use adjacency in the sequence of elements as connection. 
-        Set to :class:`numpy.ndarray` to specify custom connectivity. The array
-        should be of shape (n_edges, 2), and each row should specify one 
-        connection [i, j] with i < j, with rows sorted in ascending order. If
-        the array's dtype is uint32, property checks are disabled to improve 
-        efficiency.
-    name : str
-        Dimension name (default ``"source"``).
-
-    Notes
-    -----
-    besides numpy indexing, the following indexes are possible:
-
-     - mne Label objects
-     - 'lh' or 'rh' to select an entire hemisphere
-
-    """
-    kind = 'ico'
+    kind = None
     _default_connectivity = 'custom'
     _SRC_PATH = os.path.join(
         '{subjects_dir}', '{subject}', 'bem', '{subject}-{src}-src.fif')
@@ -8559,8 +8535,7 @@ class SourceSpaceBase(Dimension):
 
     _vertex_re = re.compile('([RL])(\d+)')
 
-    def __init__(self, vertices, subject=None, src=None, subjects_dir=None,
-                 parc='aparc', connectivity='custom', name='source'):
+    def __init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name):
         self.vertices = vertices
         self.subject = subject
         self.src = src
@@ -8588,12 +8563,14 @@ class SourceSpaceBase(Dimension):
 
     def _init_secondary(self):
         self._n_vert = sum(len(v) for v in self.vertices)
-        match = re.match("%s-(\d+)$" % self.kind, self.src)
         # The source-space type is needed to determine connectivity
-        if match is None:
-            raise ValueError("src=%r; needs to be '%s-i' where i is an integer"
-                             % (self.src, self.kind))
-        self.grade = int(match.group(1))
+        m = SRC_RE.match(self.src)
+        if not m:
+            raise ValueError(f"src={self.src!r}; needs to be '{self.kind}-i' where i is an integer")
+        kind, grade, suffix = m.groups()
+        if kind != self.kind:
+            raise ValueError(f'src={self.src!r}: {self.__class__.__name__} is wrong class')
+        self.grade = int(grade)
 
     @classmethod
     def from_file(cls, subjects_dir, subject, src, parc=None):
@@ -8942,18 +8919,67 @@ class SourceSpaceBase(Dimension):
         index = np.hstack(np.in1d(s, o) for s, o in zip(self.vertices, other.vertices))
         return self[index]
 
-    def set_parc(self, parc):
-        """Superseded. Use :func:`eelbrain.set_parc`."""
-        raise RuntimeError("The SourceSpace.set_parc() method has been "
-                           "removed. Use eelbrain.set_parc() instead")
-
     @property
     def values(self):
         raise NotImplementedError
 
 
 class SourceSpace(SourceSpaceBase):
+    """MNE surface-based source space
+
+    Parameters
+    ----------
+    vertices : list of 2 int arrays
+        The vertex identities of the dipoles in the source space (left and
+        right hemisphere separately).
+    subject : str
+        The mri-subject name.
+    src : str
+        The kind of source space used (e.g., 'ico-4'; only ``ico`` is currently
+        supported.
+    subjects_dir : str
+        The path to the subjects_dir (needed to locate the source space
+        file).
+    parc : None | str
+        Add a parcellation to the source space to identify vertex location.
+        Only applies to ico source spaces, default is 'aparc'.
+    connectivity : 'grid' | 'none' | array of int, (n_edges, 2)
+        Connectivity between elements. Set to ``"none"`` for no connections or
+        ``"grid"`` to use adjacency in the sequence of elements as connection.
+        Set to :class:`numpy.ndarray` to specify custom connectivity. The array
+        should be of shape (n_edges, 2), and each row should specify one
+        connection [i, j] with i < j, with rows sorted in ascending order. If
+        the array's dtype is uint32, property checks are disabled to improve
+        efficiency.
+    name : str
+        Dimension name (default ``"source"``).
+
+    Attributes
+    ----------
+    coordinates : array (n_sources, 3)
+        Spatial coordinate for each source.
+    normals : array (n_sources, 3)
+        Orientation (direction) of each source.
+    parc : Factor
+        Parcellation (one label for each source).
+
+    See Also
+    --------
+    VolumeSourceSpace : volume source space
+
+    Notes
+    -----
+    besides numpy indexing, the following indexes are possible:
+
+     - mne Label objects
+     - 'lh' or 'rh' to select an entire hemisphere
+
+    """
     kind = 'ico'
+
+    def __init__(self, vertices, subject=None, src=None, subjects_dir=None,
+                 parc='aparc', connectivity='custom', name='source'):
+        SourceSpaceBase.__init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name)
 
     def _init_secondary(self):
         SourceSpaceBase._init_secondary(self)
@@ -9146,9 +9172,76 @@ class SourceSpace(SourceSpaceBase):
                              self.parc.name, name=self.name)
         return NDVar(np.concatenate(data), (source,))
 
+    def surface_coordinates(self, surf='white'):
+        """Load surface coordinates for any FreeSurfer surface
+
+        Parameters
+        ----------
+        surf : str
+            Name of the FreeSurfer surface.
+
+        Returns
+        -------
+        coords : array (n_sources, 3)
+            Coordinates for each source contained in the source space.
+        """
+        out = []
+        for hemi, vertices in zip(('lh', 'rh'), self.vertices):
+            if len(vertices) == 0:
+                continue
+            path = Path(f'{self.subjects_dir}/{self.subject}/surf/{hemi}.{surf}')
+            coords, tris = mne.read_surface(str(path))
+            out.append(coords[vertices])
+
+        if len(out) == 1:
+            return out[0]
+        else:
+            return np.vstack(out)
+
 
 class VolumeSourceSpace(SourceSpaceBase):
+    """MNE volume source space
+
+    Parameters
+    ----------
+    vertices : list of 2 int arrays
+        The vertex identities of the dipoles in the source space (left and
+        right hemisphere separately).
+    subject : str
+        The mri-subject name.
+    src : str
+        The kind of source space used (e.g., 'ico-4'; only ``ico`` is currently
+        supported.
+    subjects_dir : str
+        The path to the subjects_dir (needed to locate the source space
+        file).
+    parc : None | str
+        Add a parcellation to the source space to identify vertex location.
+        Only applies to ico source spaces, default is 'aparc'.
+    connectivity : 'grid' | 'none' | array of int, (n_edges, 2)
+        Connectivity between elements. Set to ``"none"`` for no connections or
+        ``"grid"`` to use adjacency in the sequence of elements as connection.
+        Set to :class:`numpy.ndarray` to specify custom connectivity. The array
+        should be of shape (n_edges, 2), and each row should specify one
+        connection [i, j] with i < j, with rows sorted in ascending order. If
+        the array's dtype is uint32, property checks are disabled to improve
+        efficiency.
+    name : str
+        Dimension name (default ``"source"``).
+
+    See Also
+    --------
+    SourceSpace : surface-based source space
+    """
     kind = 'vol'
+
+    def __init__(self, vertices, subject=None, src=None, subjects_dir=None,
+                 parc=None, connectivity='custom', name='source'):
+        if isinstance(parc, str):
+            raise NotImplementedError(f"parc={parc!r}: specify parcellation as Factor")
+        if isinstance(vertices, np.ndarray):
+            vertices = [vertices]
+        SourceSpaceBase.__init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name)
 
     def _init_secondary(self):
         SourceSpaceBase._init_secondary(self)
@@ -9243,11 +9336,6 @@ class UTS(Dimension):
         self.tstop = self.tmin + self.tstep * self.nsamples
         self._times = None
         self._n_decimals = max(n_decimals(self.tmin), n_decimals(self.tstep))
-
-    def set_tmin(self, tmin):
-        """Superseded. Use :func:`eelbrain.set_tmin`."""
-        raise RuntimeError("The UTS.set_tmin() method has been removed. Use "
-                           "eelbrain.set_tmin() instead")
 
     @property  # not a LazyProperty because ithas to change after .set_time()
     def times(self):

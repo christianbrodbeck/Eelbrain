@@ -47,6 +47,11 @@ def anova_full_fmaps(cnp.ndarray[FLOAT64, ndim=2] y,
     cdef double *mss = <double *>malloc(sizeof(double) * n_effects)
 
     for i in range(n_tests):
+        if zero_variance(y, i) == 1:
+            for i_fmap in range(f_map.shape[0]):
+                f_map[i_fmap, i] = 0
+            continue
+
         _lm_betas(y, i, xsinv, betas)
 
         # find MS of effects
@@ -114,6 +119,11 @@ def anova_fmaps(cnp.ndarray[FLOAT64, ndim=2] y,
     cdef double *predicted_y = <double *>malloc(sizeof(double) * n_cases)
 
     for i in range(n_tests):
+        if zero_variance(y, i) == 1:
+            for i_fmap in range(f_map.shape[0]):
+                f_map[i_fmap, i] = 0
+            continue
+
         _lm_betas(y, i, xsinv, betas)
 
         # expand accounted variance
@@ -203,6 +213,18 @@ def ss(cnp.ndarray[FLOAT64, ndim=2] y,
             ss_ += (y[case, i] - mean) ** 2
 
         out[i] = ss_
+
+
+cdef int zero_variance(cnp.ndarray[FLOAT64, ndim=2] y,
+                            unsigned long i):
+    """Check whether a column of y has zero variance"""
+    cdef unsigned int case
+    cdef double ref_value = y[0, i]
+
+    for case in range(1, y.shape[0]):
+        if y[case, i] != ref_value:
+            return 0
+    return 1
 
 
 cdef void _lm_betas(cnp.ndarray[FLOAT64, ndim=2] y,

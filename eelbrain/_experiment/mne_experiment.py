@@ -20,6 +20,7 @@ from os.path import basename, exists, getmtime, isdir, join, relpath
 import re
 import shutil
 import time
+import warnings
 
 import numpy as np
 
@@ -68,6 +69,7 @@ from .definitions import (
 from .epochs import (
     PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, assemble_epochs,
 )
+from .exceptions import FileDeficient, FileMissing
 from .experiment import FileTree
 from .parc import (
     FS_PARC, FSA_PARC, PARC_CLASSES, SEEDED_PARC_RE,
@@ -86,7 +88,9 @@ from .vardef import Vars
 
 
 # current cache state version
-CACHE_STATE_VERSION = 9
+CACHE_STATE_VERSION = 10
+# History:
+#  10:  input_state: share forward-solutions between sessions
 
 # paths
 LOG_FILE = join('{root}', 'eelbrain {name}.log')
@@ -136,13 +140,7 @@ CACHE_HELP = (
 )
 
 ################################################################################
-# Exceptions
 
-class FileMissing(Exception):
-    "An input file is missing"
-
-
-################################################################################
 
 def _mask_ndvar(ds, name):
     y = ds[name]
@@ -612,19 +610,18 @@ class MneExperiment(FileTree):
             if not exists(sub_dir):
                 raise IOError("Subjects directory not found: %s. Initialize "
                               "with root=None or find_subjects=False" % sub_dir)
-            subjects = sorted(s for s in os.listdir(sub_dir) if
-                              self._subject_re.match(s) and
-                              isdir(join(sub_dir, s)))
+            subjects = tuple(sorted(
+                s for s in os.listdir(sub_dir)
+                if self._subject_re.match(s) and isdir(join(sub_dir, s))))
 
             if len(subjects) == 0:
-                print("%s: No subjects found in %r"
-                      % (self.__class__.__name__, sub_dir))
+                log.warning("No subjects found in {sub_dir}")
         else:
             subjects = ()
 
         ########################################################################
         # groups
-        groups = {'all': tuple(subjects)}
+        groups = {'all': subjects}
         group_definitions = self.groups.copy()
         while group_definitions:
             n_def = len(group_definitions)
@@ -948,26 +945,33 @@ class MneExperiment(FileTree):
         # collect input file information
         # ==============================
         raw_missing = []  # [(subject, session), ...]
-        subjects_with_dig_changes = set()  # {subject, ...}
+        subjects_with_raw_changes = set()  # {subject, ...}
         events = {}  # {(subject, session): event_dataset}
 
         # saved mtimes
-        input_state_file = self.get('input-state-file')
-        if len(self._sessions) == 1:
-            input_state = None  # currently no check is necessary
-        elif exists(input_state_file):
+        input_state_file = self.get('input-state-file', mkdir=True)
+        if exists(input_state_file):
             input_state = load.unpickle(input_state_file)
-            if input_state['version'] > CACHE_STATE_VERSION:
+            if input_state['version'] < 10:
+                input_state = None
+            elif input_state['version'] > CACHE_STATE_VERSION:
                 raise RuntimeError(
                     "You are trying to initialize an experiment with an older "
                     "version of Eelbrain than that which wrote the cache. If "
                     "you really need this, delete the eelbrain-cache folder "
-                    "before proceeding."
-                )
+                    "before proceeding.")
         else:
-            input_state = {'version': CACHE_STATE_VERSION}
+            input_state = None
+
+        if input_state is None:
+            input_state = {
+                'version': CACHE_STATE_VERSION,
+                'raw-mtimes': {},
+                'fwd-sessions': {s: {} for s in subjects},
+            }
 
         # collect current events and mtime
+        raw_mtimes = input_state['raw-mtimes']
         with self._temporary_state:
             for key in self.iter(('subject', 'session'), group='all', raw='raw'):
                 raw_file = self.get('raw-file')
@@ -977,14 +981,10 @@ class MneExperiment(FileTree):
                 # events
                 events[key] = self.load_events(add_bads=False, data_raw=False)
                 # mtime
-                if input_state is not None:
-                    mtime = getmtime(raw_file)
-                    if key not in input_state or mtime != input_state[key]['raw-mtime']:
-                        subjects_with_dig_changes.add(key[0])
-                        input_state[key] = {'raw-mtime': mtime}
-            # save input-state
-            if input_state is not None:
-                save.pickle(input_state, input_state_file)
+                mtime = getmtime(raw_file)
+                if key not in raw_mtimes or mtime != raw_mtimes[key]:
+                    subjects_with_raw_changes.add(key[0])
+                    raw_mtimes[key] = mtime
 
         # check for digitizer data differences
         # ====================================
@@ -992,50 +992,67 @@ class MneExperiment(FileTree):
         #    trans files, which is currently not implemented
         #  - SuperEpochs currently need to have a single forward solution,
         #    hence marker positions need to be the same between sub-epochs
-            if subjects_with_dig_changes:
+            if subjects_with_raw_changes:
                 log.info("Raw input files changed, checking digitizer data")
                 super_epochs = tuple(epoch for epoch in self._epochs.values() if
                                      isinstance(epoch, SuperEpoch))
-            for subject in subjects_with_dig_changes:
+            for subject in subjects_with_raw_changes:
                 self.set(subject)
+                # collect digitizer data
                 digs = {}  # {session: dig}
-                dig_ids = {}  # {session: id}
                 for session in self.iter('session'):
-                    key = subject, session
-                    if key in raw_missing:
+                    if (subject, session) in raw_missing:
                         continue
                     raw = self.load_raw(False)
-                    dig = raw.info['dig']
+                    digs[session] = raw.info['dig']
+                # find unique digitizer datasets
+                unique_digs = []
+                dig_ids = {}  # {session: id}
+                dig_missing = []
+                sessions = sorted(digs)
+                for session in sessions:
+                    dig = digs[session]
                     if dig is None:
-                        continue  # assume that it is not used or the same
-
-                    for session_, dig_ in digs.items():
-                        if not hsp_equal(dig, dig_):
-                            raise NotImplementedError(
-                                "Subject %s has different head shape data "
-                                "for sessions %s and %s. This would require "
-                                "different trans-files for the different "
-                                "sessions, which is currently not implemented "
-                                "in the MneExperiment class." %
-                                (subject, session, session_)
-                            )
-                        elif mrk_equal(dig, dig_):
-                            dig_ids[session] = dig_ids[session_]
+                        dig_missing.append(session)
+                        continue
+                    if unique_digs and not hsp_equal(dig, unique_digs[0]):
+                        raise NotImplementedError(
+                            f"Subject {subject} has different head shape data "
+                            f"for sessions {session} and {session_}. This "
+                            f"would require different trans-files for the "
+                            f"different sessions, which is not yet implemented "
+                            f"in the MneExperiment class.")
+                    for i, dig_i in enumerate(unique_digs):
+                        if mrk_equal(dig, dig_i):
+                            dig_ids[session] = i
                             break
                     else:
-                        dig_ids[session] = len(digs)
-                        digs[session] = dig
+                        dig_ids[session] = len(unique_digs)
+                        unique_digs.append(dig)
+                # checks for missing digitizer data
+                if len(unique_digs) > 1:
+                    if dig_missing:
+                        n = len(dig_missing)
+                        raise FileDeficient(f"The raw {plural('file', n)} for {subject}, {plural('session', n)} {enumeration(dig_missing)} {plural('is', n)} missing digitizer information")
+                    for epoch in super_epochs:
+                        if len(set(dig_ids[s] for s in epoch.sessions)) > 1:
+                            groups = defaultdict(list)
+                            for s in epoch.sessions:
+                                groups[dig_ids[s]].append(s)
+                            group_desc = ' vs '.join('/'.join(group) for group in groups.values())
+                            raise NotImplementedError(f"SuperEpoch {epoch.name} has sessions with incompatible marker positions ({group_desc}); SuperEpochs with different forward solutions are not implemented.")
+                # determine which to use for forward solution
+                fwd_sessions = input_state['fwd-sessions'][subject]
+                previous_masters = (s for _, s in fwd_sessions.items() if s in dig_ids)
+                masters = {dig_ids[s]: s for s in previous_masters}
+                for s in sessions:
+                    if dig_ids[s] not in masters:
+                        masters[dig_ids[s]] = s
+                    fwd_sessions[s] = masters[dig_ids[s]]
 
-                # check super-epochs
-                for epoch in super_epochs:
-                    if len(set(dig_ids[s] for s in epoch.sessions if s in
-                               dig_ids)) > 1:
-                        raise NotImplementedError(
-                            "SuperEpoch %s has sessions with incompatible "
-                            "marker positions: %s; SuperEpochs with different "
-                            "forward solutions are not implemented." %
-                            (epoch.name, dig_ids)
-                        )
+        # save input-state
+        save.pickle(input_state, input_state_file)
+        self._fwd_sessions = input_state['fwd-sessions']
 
         # Check the cache, delete invalid files
         # =====================================
@@ -1707,9 +1724,14 @@ class MneExperiment(FileTree):
             group = self.get('group', **kwargs)
             subject_ = None
         elif subject in self.get_field_values('group'):
+            if 'group' in kwargs:
+                if kwargs['group'] != subject:
+                    raise ValueError(f"group={kwargs['group']!r} inconsistent with subject={subject!r}")
+                self.set(**kwargs)
+            else:
+                self.set(group=subject, **kwargs)
             group = subject
             subject_ = None
-            self.set(group=group, **kwargs)
         else:
             group = None
             subject_ = subject
@@ -1745,8 +1767,9 @@ class MneExperiment(FileTree):
             ica = None
             baseline_ = baseline
 
-        ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline_, decim=decim,
-                                      drop_bad_chs=False, tstop=tstop)
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', 'The events passed to the Epochs constructor', RuntimeWarning)
+            ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline_, decim=decim, drop_bad_chs=False, tstop=tstop)
 
         # post baseline-correction trigger shift
         if trigger_shift and epoch.post_baseline_trigger_shift:
@@ -2535,8 +2558,9 @@ class MneExperiment(FileTree):
         ----------
         subject : str
             Subject(s) for which to load epochs. Can be a single subject
-            name or a group name such as 'all'. The default is the current
-            subject in the experiment's state.
+            name or a group name such as ``'all'``. The default (``None``) is
+            the current subject in the experiment's state. ``True`` to load the
+            current group.
         baseline : bool | tuple
             Apply baseline correction using this period. True to use the
             epoch's baseline specification. The default is to not apply baseline
@@ -2664,10 +2688,12 @@ class MneExperiment(FileTree):
         ----------
         subject : str
             Subject(s) for which to load epochs. Can be a single subject
-            name or a group name such as 'all' (warning: loading single trial 
-            data for multiple subjects at once uses a lot of memory, which can 
-            lead to a periodically unresponsive terminal). The default is the 
-            current subject in the experiment's state.
+            name or a group name such as ``'all'``. The default (``None``) is
+            the current subject in the experiment's state. ``True`` to load the
+            current group.
+            Warning: loading single trial data for multiple subjects at once
+            uses a lot of memory, which can lead to a periodically unresponsive
+            terminal).
         sns_baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
@@ -2748,8 +2774,9 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        subject : str (state)
-            Subject for which to load events.
+        subject : str
+            Subject for which to load events (default is the current subject
+            in the experiment's state).
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from the 'bads-file'. Alternatively,
@@ -2852,9 +2879,10 @@ class MneExperiment(FileTree):
         Parameters
         ----------
         subject : str
-            Subject(s) for which to load evoked files. Can be a single subject
-            name or a group name such as 'all'. The default is the current
-            subject in the experiment's state.
+            Subject(s) for which to load evoked responses. Can be a single subject
+            name or a group name such as ``'all'``. The default (``None``) is
+            the current subject in the experiment's state. ``True`` to load the
+            current group.
         baseline : bool | tuple
             Apply baseline correction using this period. True to use the
             epoch's baseline specification. The default is to not apply baseline
@@ -2969,7 +2997,7 @@ class MneExperiment(FileTree):
         Parameters
         ----------
         subject : str
-            Subject(s) for which to load evoked files. Can be a single subject
+            Subject(s) for which to load epochs. Can be a single subject
             name or a group name such as 'all'. The default is the current
             subject in the experiment's state.
         sns_baseline : None | True | tuple
@@ -3010,9 +3038,10 @@ class MneExperiment(FileTree):
         Parameters
         ----------
         subject : str
-            Subject(s) for which to load evoked files. Can be a single subject
-            name or a group name such as 'all'. The default is the current
-            subject in the experiment's state.
+            Subject(s) for which to load evoked responses. Can be a single subject
+            name or a group name such as ``'all'``. The default (``None``) is
+            the current subject in the experiment's state. ``True`` to load the
+            current group.
         sns_baseline : None | True | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
@@ -3054,9 +3083,10 @@ class MneExperiment(FileTree):
         Parameters
         ----------
         subject : str
-            Subject(s) for which to load evoked files. Can be a single subject
-            name or a group name such as 'all'. The default is the current
-            subject in the experiment's state.
+            Subject(s) for which to load evoked responses. Can be a single subject
+            name or a group name such as ``'all'``. The default (``None``) is
+            the current subject in the experiment's state. ``True`` to load the
+            current group.
         sns_baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
@@ -3377,8 +3407,9 @@ class MneExperiment(FileTree):
         ----------
         subject : str
             Subject(s) for which to load events. Can be a single subject
-            name or a group name such as 'all'. The default is the current
-            subject in the experiment's state.
+            name or a group name such as ``'all'``. The default (``None``) is
+            the current subject in the experiment's state. ``True`` to load the
+            current group.
         reject : bool | 'keep'
             Reject bad trials. For True, bad trials are removed from the
             Dataset. For 'keep', the 'accept' variable is added to the Dataset
@@ -4166,6 +4197,8 @@ class MneExperiment(FileTree):
             # save cov value
             with open(self.get('cov-info-file', mkdir=True), 'w') as fid:
                 fid.write('%s\n' % reg_vs[i])
+        elif reg is not None:
+            raise RuntimeError(f"reg={reg!r} in {params}")
 
         cov.save(dest)
 
@@ -4247,23 +4280,30 @@ class MneExperiment(FileTree):
 
     def make_fwd(self):
         """Make the forward model"""
-        dst = self.get('fwd-file')
-        if exists(dst):
-            if cache_valid(getmtime(dst), self._fwd_mtime()):
-                return
-        elif self.get('modality') != '':
-            raise NotImplementedError("Source reconstruction with EEG")
+        subject = self.get('subject')
+        session = self.get('session')
+        with self._temporary_state:
+            try:
+                fwd_session = self._fwd_sessions[subject][session]
+            except KeyError:
+                raise FileMissing(f"Raw data missing for {subject}, session {session}")
+            dst = self.get('fwd-file', session=fwd_session)
+            if exists(dst):
+                if cache_valid(getmtime(dst), self._fwd_mtime()):
+                    return dst
+            elif self.get('modality') != '':
+                raise NotImplementedError("Source reconstruction with EEG")
 
         trans = self.get('trans-file')
         src = self.get('src-file', make=True)
-        raw = self.get('raw-file')
+        pipe = self._raw[self.get('raw')]
+        raw = pipe.cache(subject, fwd_session)
         bem = self._load_bem()
         src = mne.read_source_spaces(src)
 
-        self._log.debug("make_fwd %s...", os.path.split(dst)[1])
+        self._log.debug(f"make_fwd {basename(dst)}...")
         bemsol = mne.make_bem_solution(bem)
-        fwd = mne.make_forward_solution(raw, trans, src, bemsol,
-                                        ignore_ref=True)
+        fwd = mne.make_forward_solution(raw, trans, src, bemsol, ignore_ref=True)
         for s, s0 in zip(fwd['src'], src):
             if s['nuse'] != s0['nuse']:
                 raise RuntimeError(
@@ -4272,6 +4312,7 @@ class MneExperiment(FileTree):
                     f"corrupted bem file with source outside the inner skull "
                     f"surface.")
         mne.write_forward_solution(dst, fwd, True)
+        return dst
 
     def make_ica_selection(self, epoch=None, decim=None):
         """Select ICA components to remove through a GUI.
@@ -4976,6 +5017,10 @@ class MneExperiment(FileTree):
             only applies to the HTML result file, not to the test.
         ...
             State parameters.
+
+        See Also
+        --------
+        load_test : load corresponding data and tests
         """
         if samples < 1:
             raise ValueError("samples needs to be > 0")
@@ -5103,6 +5148,10 @@ class MneExperiment(FileTree):
             If the target file already exists, delete and recreate it.
         ...
             State parameters.
+
+        See Also
+        --------
+        load_test : load corresponding data and tests (use ``data="source.mean"``)
         """
         test_obj = self._tests[test]
         if samples < 1:
@@ -5835,7 +5884,10 @@ class MneExperiment(FileTree):
         Parameters
         ----------
         subject : str
-            Subject or group name (default is current subject).
+            Subject(s) for which to plot evoked responses. Can be a single subject
+            name or a group name such as ``'all'``. The default (``None``) is
+            the current subject in the experiment's state. ``True`` to load the
+            current group.
         separate : bool
             When plotting a group, plot all subjects separately instead or the group
             average (default False).

@@ -93,9 +93,9 @@ def test_ttest():
     res = test.TTestRel('fltvar', 'A', 'a1', 'a2', 'rm', "B=='b1'", ds)
     a1 = ds[a1_in_b1_index, 'fltvar'].x
     a2 = ds[a2_in_b1_index, 'fltvar'].x
-    diff = a1 - a2
+    difference = a1 - a2
     t, p = scipy.stats.ttest_rel(a1, a2)
-    assert_array_equal(res.diff.x, diff)
+    assert_array_equal(res.difference.x, difference)
     eq_(res.df, len(a1) - 1)
     eq_(res.tail, 0)
     assert_almost_equal(res.t, t, 10)
@@ -104,7 +104,7 @@ def test_ttest():
     print(asfmtext(res))
 
     res = test.TTestRel('fltvar', 'A', 'a1', 'a2', 'rm', "B=='b1'", ds, 1)
-    assert_array_equal(res.diff.x, diff)
+    assert_array_equal(res.difference.x, difference)
     eq_(res.df, len(a1) - 1)
     eq_(res.tail, 1)
     assert_almost_equal(res.t, t, 10)
@@ -113,10 +113,17 @@ def test_ttest():
     print(asfmtext(res))
 
     res = test.TTestRel('fltvar', 'A', 'a1', 'a2', 'rm', "B=='b1'", ds, -1)
-    assert_array_equal(res.diff.x, diff)
+    assert_array_equal(res.difference.x, difference)
     eq_(res.df, len(a1) - 1)
     eq_(res.tail, -1)
     assert_almost_equal(res.t, t, 10)
     assert_almost_equal(res.p, p / 2 if t < 0 else 1 - p / 2, 10)
     print(res)
     print(asfmtext(res))
+    # alternative argspec
+    a1 = ds.eval("fltvar[(B == 'b1') & (A == 'a1')]")
+    a2 = ds.eval("fltvar[(B == 'b1') & (A == 'a2')]")
+    res_alt = test.TTestRel(a1, a2, tail=-1)
+    print(res_alt)
+    assert res_alt.t == res.t
+    assert res_alt.p == res.p

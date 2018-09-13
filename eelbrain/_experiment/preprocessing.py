@@ -13,6 +13,7 @@ from .._exceptions import DefinitionError
 from .._ndvar import filter_data
 from .._utils import ask
 from ..mne_fixes import CaptureLog
+from .exceptions import FileMissing
 
 
 class RawPipe(object):
@@ -24,6 +25,10 @@ class RawPipe(object):
 
     def as_dict(self):
         return {'type': self.__class__.__name__, 'name': self.name}
+
+    def cache(self, subject, session):
+        "Make sure the file exists and is up to date"
+        raise NotImplementedError
 
     def load(self, subject, session, add_bads=True, preload=False):
         path = self.path.format(subject=subject, session=session)
@@ -53,6 +58,13 @@ class RawSource(RawPipe):
     def __init__(self, name, path, bads_path, log):
         RawPipe.__init__(self, name, path, log)
         self.bads_path = bads_path
+
+    def cache(self, subject, session):
+        "Make sure the file exists and is up to date"
+        path = self.path.format(subject=subject, session=session)
+        if not exists(path):
+            raise FileMissing(f"Raw input file for {subject}/{session} does not exist at expected location {path}")
+        return path
 
     def load_bad_channels(self, subject, session):
         path = self.bads_path.format(subject=subject, session=session)
@@ -138,6 +150,7 @@ class CachedRawPipe(RawPipe):
                 raw = self._make(subject, session)
             # save
             raw.save(path, overwrite=True)
+        return path
 
     def load(self, subject, session, add_bads=True, preload=False):
         self.cache(subject, session)

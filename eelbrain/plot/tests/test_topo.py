@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from nose.tools import eq_, assert_raises
+import numpy as np
 
 from eelbrain import datasets, plot, testnd
 from eelbrain._utils.testing import requires_mne_sample_data
@@ -18,6 +19,9 @@ def test_plot_topomap():
     p = plot.Topomap(topo, 'A%B', ds=ds, axw=2, show=False)
     p.close()
     p = plot.Topomap(topo, ds=ds, sensorlabels=None, show=False)
+    p.close()
+    index = np.array([1, 3, 2])
+    p = plot.Topomap(topo[index], '.case', nrow=1, axh=2, h=2.4, axtitle=index, show=False)
     p.close()
 
 

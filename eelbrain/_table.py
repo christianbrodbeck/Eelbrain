@@ -185,13 +185,15 @@ def frequencies(y, x=None, of=None, sub=None, ds=None):
     return out
 
 
-def melt(name, cells, cell_var_name, ds):
+def melt(name, cells, cell_var_name, ds, labels=None):
     """
     Restructure a Dataset such that a measured variable is in a single column
 
     Restructure a Dataset with a certain variable represented in several
     columns into a longer dataset in which the variable is represented in a
     single column along with an identifying variable.
+
+    Additional variables are automatically included.
 
     Parameters
     ----------
@@ -205,29 +207,56 @@ def melt(name, cells, cell_var_name, ds):
         Name of the variable to contain the cell identifier.
     ds : Dataset
         Input Dataset.
+    labels : dict
+        Labels mapping from names in ``cells`` to labels assigned in the new
+        :class:`Factor` describing the cells.
 
     Examples
     --------
-    >>> ds = Dataset()
-    >>> ds['y1'] = Var([1, 2, 3])
-    >>> ds['y2'] = Var([4, 5, 6])
-    >>> print(ds)
-    y1   y2
-    -------
-    1    4
-    2    5
-    3    6
-    >>> print(table.melt('y', ['y1', 'y2'], 'id', ds))
-    y   id
-    ------
-    1   y1
-    2   y1
-    3   y1
-    4   y2
-    5   y2
-    6   y2
+    Simple example data::
+
+        >>> ds = Dataset()
+        >>> ds['y1'] = Var([1, 2, 3])
+        >>> ds['y2'] = Var([4, 5, 6])
+        >>> print(ds)
+        y1   y2
+        -------
+        1    4
+        2    5
+        3    6
+        >>> print(table.melt('y', ['y1', 'y2'], 'id', ds))
+        y   id
+        ------
+        1   y1
+        2   y1
+        3   y1
+        4   y2
+        5   y2
+        6   y2
+
+    Additional variables are automatically included::
+
+        >>> ds['rm'] = Factor('abc')
+        >>> print(ds)
+        y1   y2   rm
+        ------------
+        1    4    a
+        2    5    b
+        3    6    c
+        >>> print(table.melt('y', ['y1', 'y2'], 'id', ds))
+        rm   y   id
+        -----------
+        a    1   y1
+        b    2   y1
+        c    3   y1
+        a    4   y2
+        b    5   y2
+        c    6   y2
 
     """
+    if labels is None:
+        labels = {}
+
     # find source cells
     if isinstance(cells, str):
         cell_expression = cells
@@ -255,7 +284,7 @@ def melt(name, cells, cell_var_name, ds):
         for src in cells:
             if src != cell:
                 del cell_ds[src]
-        cell_ds[cell_var_name, :] = cell_value
+        cell_ds[cell_var_name, :] = labels.get(cell_value, cell_value)
         dss.append(cell_ds)
     out = combine(dss)
     return out
@@ -405,7 +434,7 @@ def cast_to_ndvar(data, dim_values, match, sub=None, ds=None, dim=None,
 
 
 def stats(y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
-          ds=None):
+          ds=None, title=None, caption=None):
     """Make a table with statistics
 
     Parameters
@@ -422,7 +451,16 @@ def stats(y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
     ds : Dataset
         If a Dataset is provided, y, row, and col can be strings specifying
         members.
+    title : str | FMText
+        Table title.
+    caption : str | FMText
+        Table caption.
 
+
+    Returns
+    -------
+    table : fmtxt.Table
+        Table with statistics.
 
     Examples
     --------
@@ -453,7 +491,7 @@ def stats(y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
 
         # table header
         n_disp = len(funcs)
-        table = fmtxt.Table('l' * (n_disp + 1))
+        table = fmtxt.Table('l' * (n_disp + 1), title=title, caption=caption)
         table.cell('Condition', 'bf')
         for func in funcs:
             table.cell(func.__name__, 'bf')
@@ -470,7 +508,7 @@ def stats(y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
         ct = Celltable(y, row % col, match=match)
 
         N = len(col.cells)
-        table = fmtxt.Table('l' * (N + 1))
+        table = fmtxt.Table('l' * (N + 1), title=title, caption=caption)
 
         # table header
         table.cell()
@@ -542,6 +580,42 @@ def repmeas(y, x, match, sub=None, ds=None):
         Repeated measures table. Entries for cells of ``x`` correspond to the
         data in ``y`` on these levels of ``x`` (if cell names are not valid
         Dataset keys they are modified).
+
+    Examples
+    --------
+    Generate test data in long format::
+
+        >>> ds = Dataset()
+        >>> ds['y'] = Var([1,2,3,5,6,4])
+        >>> ds['x'] = Factor('aaabbb')
+        >>> ds['rm'] = Factor('123231', random=True)
+        >>> print(ds)
+        y   x   rm
+        ----------
+        1   a   1
+        2   a   2
+        3   a   3
+        5   b   2
+        6   b   3
+        4   b   1
+
+    Compute difference between two conditions::
+
+        >>> ds_rm = table.repmeas('y', 'x', 'rm', ds=ds)
+        >>> print(ds_rm)
+        rm   a   b
+        ----------
+        1    1   4
+        2    2   5
+        3    3   6
+        >>> ds_rm['difference'] = ds_rm.eval("b - a")
+        >>> print(ds_rm)
+        rm   a   b   difference
+        -----------------------
+        1    1   4   3
+        2    2   5   3
+        3    3   6   3
+
     """
     ct = Celltable(y, x, match, sub, ds=ds)
     if not ct.all_within:

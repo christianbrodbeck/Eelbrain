@@ -7,25 +7,27 @@ IS_OSX = sys.platform == 'darwin'
 IS_WINDOWS = os.name == 'nt'
 
 if IS_OSX:
-    from .macos import begin_activity, end_activity
+    from . import macos as c
 else:
-    from .dummy_os import begin_activity, end_activity
+    from . import dummy_os as c
 
 
-class Caffeinator(ContextDecorator):
+class ActivityContext(ContextDecorator):
     """Context disabling idle sleep and App Nap"""
-    def __init__(self):
+    def __init__(self, options, message):
         self.n_processes = 0
+        self.options = options
+        self.message = message
 
     def __enter__(self):
         if self.n_processes == 0 and IS_OSX:
-            self._activity = begin_activity()
+            self._activity = c.begin_activity(self.options, self.message)
         self.n_processes += 1
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.n_processes -= 1
         if self.n_processes == 0 and IS_OSX:
-            end_activity(self._activity)
+            c.end_activity(self._activity)
 
 
-caffeine = Caffeinator()
+user_activity = ActivityContext(c.NSActivityUserInitiated, 'Eelbrain user activity')

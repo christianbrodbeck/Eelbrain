@@ -418,16 +418,16 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
           views='lateral', hemi=None, colorbar=False, time_label='ms',
           w=None, h=None, axw=None, axh=None, foreground=None, background=None,
           parallel=True, cortex='classic', title=None, smoothing_steps=None,
-          mask=True, subjects_dir=None, colormap=None, name=None, pos=None):
-    """Create a PySurfer Brain object with a data layer
+          mask=True, subjects_dir=None, name=None, pos=None):
+    """Create a :class:`Brain` object with a data layer
 
     Parameters
     ----------
-    src : NDVar ([case,] source, [time]) | SourceSpace
-        NDVar with SourceSpace dimension. If stc contains a case dimension,
-        the average across cases is taken. If a SourceSpace, the Brain is
-        returned without adding any data and corresponding arguments are
-        ignored. If ndvar contains integer data, it is plotted as annotation,
+    src : NDVar ([case,] source, [time]) | SourceSpace | str
+        Data to plot; can be specified as :class:`NDVar` with source-space data,
+        :class:`SourceSpace` dimension, or as subject name (:class:`str`).
+        If ``src`` contains a ``Case`` dimension, the average across cases is
+        taken. If it contains integer data, it is plotted as annotation,
         otherwise as data layer.
     cmap : str | array
         Colormap (name of a matplotlib colormap) or LUT array. If ``src`` is an
@@ -485,15 +485,10 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
 
     Returns
     -------
-    brain : surfer.Brain
-        PySurfer Brain instance containing the plot.
+    brain : Brain
+        Brain instance containing the plot.
     """
     from ._brain_object import Brain, get_source_dim
-
-    if colormap is not None:
-        warn("The colormap parameter is deprecated, use cmap instead",
-             DeprecationWarning)
-        cmap = colormap
 
     if isinstance(src, SourceSpace):
         if cmap is not None or vmin is not None or vmax is not None:
@@ -502,11 +497,21 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
                             ', '.join((cmap, vmin, vmax)))
         ndvar = None
         source = src
+        subject = source.subject
+    elif isinstance(src, str):
+        subject = src
+        subjects_dir = mne.utils.get_subjects_dir(subjects_dir, True)
+        ndvar = None
+        source = None
+        mask = False
+        if hemi is None:
+            hemi = 'split'
     else:
         ndvar = asndvar(src)
         if ndvar.has_case:
             ndvar = ndvar.summary()
         source = get_source_dim(ndvar)
+        subject = source.subject
         # check that ndvar has the right dimensions
         if ndvar.ndim == 2 and not ndvar.has_dim('time') or ndvar.ndim > 2:
             raise ValueError("NDVar should have dimesions source and "
@@ -533,7 +538,7 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
     if subjects_dir is None:
         subjects_dir = source.subjects_dir
 
-    brain = Brain(source.subject, hemi, surf, title, cortex,
+    brain = Brain(subject, hemi, surf, title, cortex,
                   views=views, w=w, h=h, axw=axw, axh=axh,
                   foreground=foreground, background=background,
                   subjects_dir=subjects_dir, name=name, pos=pos)
@@ -1313,8 +1318,10 @@ def copy(brain):
     return brain.copy_screenshot()
 
 
-def butterfly(y, cmap=None, vmin=None, vmax=None, hemi=None, xlim=None,
-              name=None, h=2.5, w=5):
+def butterfly(y, cmap=None, vmin=None, vmax=None, surf='inflated',
+              views='lateral', hemi=None,
+              w=5, h=2.5, smoothing_steps=None, mask=False,
+              xlim=None, name=None):
     """Shortcut for a Butterfly-plot with a time-linked brain plot
 
     Parameters
@@ -1323,22 +1330,38 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, hemi=None, xlim=None,
         Data to plot; if ``y`` has a case dimension, the mean is plotted.
         ``y`` can also be a :mod:`~eelbrain.testnd` t-test result, in which
         case a masked parameter map is plotted (p ≤ 0.05).
+    cmap : str | array
+        Colormap (name of a matplotlib colormap).
     vmin : scalar
         Plot data range minimum.
     vmax : scalar
         Plot data range maximum.
+    surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
+        Freesurfer surface to use as brain geometry.
+    views : str | iterator of str
+        View or views to show in the figure. Options are: 'rostral', 'parietal',
+        'frontal', 'ventral', 'lateral', 'caudal', 'medial', 'dorsal'.
     hemi : 'lh' | 'rh'
         Plot only this hemisphere (the default is to plot all hemispheres with
         data in ``y``).
+    w : scalar
+        Butterfly plot width (inches).
+    h : scalar
+        Plot height (inches; applies to butterfly and brain plot).
+    smoothing_steps : None | int
+        Number of smoothing steps if data is spatially undersampled (pysurfer
+        ``Brain.add_data()`` argument).
+    mask : bool | matplotlib color
+        Shade areas that are not in ``src``. Can be matplotlib color, including
+        alpha (e.g., ``(1, 1, 1, 0.5)`` for semi-transparent white). If
+        smoothing  is enabled through ``smoothing_steps``, the mask is added as
+        data layer, otherwise it is added as label. To add a mask independently,
+        use the :meth:`Brain.add_mask` method.
     xlim : scalar | (scalar, scalar)
         Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
         scalar (default is the full x-axis in the data).
     name : str
         The window title (default is y.name).
-    h : scalar
-        Plot height (inches).
-    w : scalar
-        Butterfly plot width (inches).
 
     Returns
     -------
@@ -1392,8 +1415,9 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, hemi=None, xlim=None,
         pos = wx.DefaultPosition
 
     # Brain plot
-    p_brain = brain(y, cmap, vmin, vmax, hemi=hemi, name=name, axh=brain_h,
-                    mask=False, pos=pos)
+    p_brain = brain(y, cmap, vmin, vmax, surf, views, hemi, mask=mask,
+                    smoothing_steps=smoothing_steps, axh=brain_h, name=name,
+                    pos=pos)
     p.link_time_axis(p_brain)
 
     return p, p_brain

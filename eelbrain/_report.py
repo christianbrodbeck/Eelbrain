@@ -6,7 +6,12 @@ from . import plot
 from . import test
 from ._data_obj import cellname, combine
 from ._stats.stats import ttest_t
-from .fmtxt import ms, Section, Figure, linebreak
+from .fmtxt import ms, Section, linebreak
+
+
+PLURALS = {
+    'is': 'are',
+}
 
 
 def n_of(n, of, plural_for_0=False):
@@ -16,12 +21,14 @@ def n_of(n, of, plural_for_0=False):
     return str(n) + ' ' + plural(of, n)
 
 
-def plural(noun, n):
+def plural(singular, n):
     "plural('house', 2) -> 'houses'"
     if n == 1:
-        return noun
+        return singular
+    elif singular in PLURALS:
+        return PLURALS[singular]
     else:
-        return noun + 's'
+        return singular + 's'
 
 
 def enumeration(items, link='and'):
@@ -57,7 +64,7 @@ def format_samples(res):
 def format_timewindow(res):
     "Format a description of the time window for a test result"
     uts = res._time_dim
-    return '%s - %s ms' % (tstart(res.tstart, uts), tstop(res.tstop, uts))
+    return f"{tstart(res.tstart, uts)} - {tstop(res.tstop, uts)} ms"
 
 
 def tstart(tstart, uts):
@@ -532,6 +539,8 @@ def time_results(res, ds, colors, title='Results', caption="Timecourse",
     if clusters.n_cases:
         c_caption = ("Clusters in time window %s based on %s."
                      % (format_timewindow(res), format_samples(res)))
+        if 'p_parc' in clusters:
+            c_caption += " p: p-value in ROI; p_parc: p-value corrected across ROIs."
         tc_caption = caption
     else:
         c_caption = "No clusters found %s." % format_timewindow(res)

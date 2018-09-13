@@ -180,6 +180,8 @@ def test_celltable():
     ct_sub = Celltable('Y', 'B', ds=ds_sub)
     ct = Celltable('Y', 'B', sub="A == 'a0'", ds=ds)
     assert_dataobj_equal(ct_sub.y, ct.y)
+    ct_sub = Celltable('Y', 'B', sub="Var(A == 'a0')", cat=('b0', 'b1'), ds=ds)
+    assert_dataobj_equal(ct_sub.y, ct.y)
 
     # test sub with rm
     ct_sub = Celltable('Y', 'B', match='rm', ds=ds_sub)
@@ -1193,6 +1195,8 @@ def test_ndvar_summary_methods():
     assert_array_equal(x0.rms(idx0), rms(x0.x[idx0.x]))
     assert_array_equal(x.rms(idxsub), xsub.rms(idxsub))
     assert_array_equal(x.rms(idx1d), rms(x.x[:, idx1d.x], 1))
+
+    assert x.extrema() == max(abs(x.min()), abs(x.max()))
 
 
 def test_ndvar_timeseries_methods():

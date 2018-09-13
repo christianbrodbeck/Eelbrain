@@ -49,9 +49,8 @@ from .._data_obj import (
     cellname, combine, dataobj_repr)
 from .._exceptions import OldVersionError, ZeroVariance
 from .._report import enumeration, format_timewindow, ms
-from .._utils import LazyProperty
+from .._utils import LazyProperty, user_activity
 from .._utils.numpy_utils import FULL_AXIS_SLICE
-from .._utils.system import caffeine
 from . import opt, stats, vector
 from .connectivity import Connectivity, find_peaks
 from .connectivity_opt import merge_labels, tfce_increment
@@ -64,9 +63,6 @@ from functools import reduce
 
 
 __test__ = False
-
-# toggle multiprocessing for problematic functions on Windows
-MP_FOR_NON_TOP_LEVEL_FUNCTIONS = os.name != 'nt'  # FIXME
 
 
 def check_variance(x):
@@ -438,10 +434,9 @@ class t_contrast_rel(NDTest):
     this difference is greater than the difference between c and d, one
     could use ``"(a > b) - abs(c > d)"``.
     """
-
     _state_specific = ('x', 'contrast', 't', 'tail')
 
-    @caffeine
+    @user_activity
     def __init__(self, y, x, contrast, match=None, sub=None, ds=None, tail=0,
                  samples=0, pmin=None, tmin=None, tfce=False, tstart=None,
                  tstop=None, parc=None, force_permutation=False, **criteria):
@@ -478,8 +473,7 @@ class t_contrast_rel(NDTest):
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 iterator = permute_order(len(ct.y), samples, unit=ct.match)
-                run_permutation(t_contrast, cdist, iterator,
-                                MP_FOR_NON_TOP_LEVEL_FUNCTIONS)
+                run_permutation(t_contrast, cdist, iterator)
 
         # NDVar map of t-values
         info = _info.for_stat_map('t', threshold, tail=tail, old=ct.y.info)
@@ -576,7 +570,7 @@ class corr(NDTest):
     """
     _state_specific = ('x', 'norm', 'n', 'df', 'r')
 
-    @caffeine
+    @user_activity
     def __init__(self, y, x, norm=None, sub=None, ds=None, samples=0,
                  pmin=None, rmin=None, tfce=False, tstart=None, tstop=None,
                  match=None, parc=None, **criteria):
@@ -629,11 +623,8 @@ class corr(NDTest):
                 tstart, tstop, criteria, parc)
             cdist.add_original(rmap)
             if cdist.do_permutation:
-                def test_func(y, out, perm):
-                    return stats.corr(y, x.x, out, perm)
                 iterator = permute_order(n, samples, unit=match)
-                run_permutation(test_func, cdist, iterator,
-                                MP_FOR_NON_TOP_LEVEL_FUNCTIONS)
+                run_permutation(stats.corr, cdist, iterator, x.x)
 
         # compile results
         info = _info.for_stat_map('r', threshold)
@@ -754,7 +745,7 @@ class ttest_1samp(NDTest):
     """
     _state_specific = ('popmean', 'tail', 'n', 'df', 't', 'difference')
 
-    @caffeine
+    @user_activity
     def __init__(self, y, popmean=0, match=None, sub=None, ds=None, tail=0,
                  samples=0, pmin=None, tmin=None, tfce=False, tstart=None,
                  tstop=None, parc=None, force_permutation=False, **criteria):
@@ -936,7 +927,7 @@ class ttest_ind(NDTest):
     _state_specific = ('x', 'c1', 'c0', 'tail', 't', 'n1', 'n0', 'df', 'c1_mean',
                        'c0_mean')
 
-    @caffeine
+    @user_activity
     def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=0, pmin=None, tmin=None, tfce=False,
                  tstart=None, tstop=None, parc=None, force_permutation=False, **criteria):
@@ -970,11 +961,8 @@ class ttest_ind(NDTest):
                 tstart, tstop, criteria, parc, force_permutation)
             cdist.add_original(tmap)
             if cdist.do_permutation:
-                def test_func(y, out, perm):
-                    return stats.t_ind(y, groups, out, perm)
                 iterator = permute_order(n, samples)
-                run_permutation(test_func, cdist, iterator,
-                                MP_FOR_NON_TOP_LEVEL_FUNCTIONS)
+                run_permutation(stats.t_ind, cdist, iterator, groups)
 
         # NDVar map of t-values
         info = _info.for_stat_map('t', threshold, tail=tail, old=ct.y.info)
@@ -1149,7 +1137,7 @@ class ttest_rel(NDTest):
     _state_specific = ('x', 'c1', 'c0', 'tail', 't', 'n', 'df', 'c1_mean',
                        'c0_mean')
 
-    @caffeine
+    @user_activity
     def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=0, pmin=None, tmin=None, tfce=False,
                  tstart=None, tstop=None, parc=None, force_permutation=False, **criteria):
@@ -1522,7 +1510,7 @@ class anova(MultiEffectNDTest):
     """
     _state_specific = ('x', 'pmin', '_effects', '_dfs_denom', 'f')
 
-    @caffeine
+    @user_activity
     def __init__(self, y, x, sub=None, ds=None, samples=0, pmin=None,
                  fmin=None, tfce=False, tstart=None, tstop=None, match=None,
                  parc=None, force_permutation=False, **criteria):
@@ -1544,7 +1532,6 @@ class anova(MultiEffectNDTest):
         elif match is not False:
             match = ascategorial(match, sub, ds)
 
-        check_variance(y.x)
         lm = _nd_anova(x)
         effects = lm.effects
         dfs_denom = lm.dfs_denom
@@ -1577,8 +1564,7 @@ class anova(MultiEffectNDTest):
                 do_permutation += cdist.do_permutation
 
             if do_permutation:
-                iterator = permute_order(len(y), samples,
-                                         unit=None if match is False else match)
+                iterator = permute_order(len(y), samples, unit=match)
                 run_permutation_me(lm, cdists, iterator)
 
         # create ndvars
@@ -1728,10 +1714,9 @@ class Vector(NDTest):
     -----
     Cases with zero variance are set to t=0.
     """
-
     _state_specific = ('mean', 'n', '_v_dim')
 
-    @caffeine
+    @user_activity
     def __init__(self, y, match=None, sub=None, ds=None,
                  samples=10000, vmin=None, tfce=False, tstart=None,
                  tstop=None, parc=None, force_permutation=False, **criteria):
@@ -1786,7 +1771,7 @@ class Vector(NDTest):
     def _vector_mean_norm_perm(y, out, seed):
         n_cases, n_dims, n_tests = y.shape
         assert n_dims == 3
-        np.random.seed(seed)  # FIXME: introducing race condition?
+        np.random.seed(seed)
         phi = np.random.uniform(0, 2 * pi, n_cases)
         theta = np.arccos(np.random.uniform(-1, 1, n_cases))
         rotation = vector.rotation_matrices(phi, theta, np.empty((n_cases, 3, 3)))
@@ -2438,7 +2423,7 @@ class NDPermutationDistribution(object):
 
         if sub:
             if self._dist_dims is None:
-                raise TypeError("ClusterDist does not have parcellation")
+                raise TypeError("NDPermutationDistribution does not have parcellation")
             dist_ = NDVar(dist, self._dist_dims)
             dist_sub = dist_.sub(**sub)
             dist = dist_sub.x
@@ -2462,7 +2447,7 @@ class NDPermutationDistribution(object):
         else:
             items.append("no data")
 
-        return "<ClusterDist: %s>" % ', '.join(items)
+        return "<NDPermutationDistribution: %s>" % ', '.join(items)
 
     def __getstate__(self):
         if not self._finalized:
@@ -3079,7 +3064,7 @@ def distribution_worker(dist_array, dist_shape, in_queue, kill_beacon):
 
 
 def permutation_worker(in_queue, out_queue, y, y_flat_shape, stat_map_shape,
-                       test_func, map_args, kill_beacon):
+                       test_func, args, map_args, kill_beacon):
     "Worker for 1 sample t-test"
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     if CONFIG['nice']:
@@ -3094,14 +3079,14 @@ def permutation_worker(in_queue, out_queue, y, y_flat_shape, stat_map_shape,
         perm = in_queue.get()
         if perm is None:
             break
-        test_func(y, stat_map_flat, perm)
+        test_func(y, *args, stat_map_flat, perm)
         max_v = map_processor.max_stat(stat_map)
         out_queue.put(max_v)
 
 
-def run_permutation(test_func, dist, iterator, use_mp=True):
-    if use_mp and CONFIG['n_workers']:
-        workers, out_queue, kill_beacon = setup_workers(test_func, dist)
+def run_permutation(test_func, dist, iterator, *args):
+    if CONFIG['n_workers']:
+        workers, out_queue, kill_beacon = setup_workers(test_func, dist, args)
 
         try:
             for perm in iterator:
@@ -3123,12 +3108,12 @@ def run_permutation(test_func, dist, iterator, use_mp=True):
         stat_map = np.empty(dist.shape)
         stat_map_flat = stat_map.ravel()
         for i, perm in enumerate(iterator):
-            test_func(y, stat_map_flat, perm)
+            test_func(y, *args, stat_map_flat, perm)
             dist.dist[i] = map_processor.max_stat(stat_map)
     dist.finalize()
 
 
-def setup_workers(test_func, dist):
+def setup_workers(test_func, dist, func_args):
     "Initialize workers for permutation tests"
     logger = logging.getLogger(__name__)
     logger.debug("Setting up %i worker processes..." % CONFIG['n_workers'])
@@ -3139,7 +3124,7 @@ def setup_workers(test_func, dist):
     # permutation workers
     y, y_flat_shape, stat_map_shape = dist.data_for_permutation()
     args = (permutation_queue, dist_queue, y, y_flat_shape, stat_map_shape,
-            test_func, dist.map_args, kill_beacon)
+            test_func, func_args, dist.map_args, kill_beacon)
     workers = []
     for _ in range(CONFIG['n_workers']):
         w = Process(target=permutation_worker, args=args)

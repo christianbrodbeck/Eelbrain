@@ -388,7 +388,7 @@ def dss(ndvar):
 def filter_data(ndvar, l_freq, h_freq, filter_length='auto',
                 l_trans_bandwidth='auto', h_trans_bandwidth='auto',
                 method='fir', iir_params=None, phase='zero',
-                fir_window='hamming', fir_design=None):
+                fir_window='hamming', fir_design='firwin'):
     """Apply :func:`mne.filter.filter_data` to an NDVar
 
     Returns
@@ -731,7 +731,7 @@ def resample(ndvar, sfreq, npad=100, window='none', name=None):
         New sampling frequency.
     npad : int
         Number of samples to use at the beginning and end for padding.
-    window : string | tuple
+    window : str | tuple
         See :func:`scipy.signal.resample` for description.
     name : str
         Name for the new NDVar (default is ``ndvar.name``).

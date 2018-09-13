@@ -305,11 +305,10 @@ def _nd_anova(x):
     assert_has_no_empty_cells(x)
     if hasrandom(x):
         if not iscategorial(x):
-            raise NotImplementedError("Random effects ANOVA with continuous "
-                                      "predictors")
+            raise NotImplementedError("Random effects ANOVA with continuous predictors")
         elif x.df_error != 0:
             raise x._incomplete_error("Mixed effects ANOVA")
-        if isbalanced(x):
+        elif isbalanced(x):
             return _BalancedMixedNDANOVA(x)
     elif isbalanced(x):
         return _BalancedFixedNDANOVA(x)
@@ -788,8 +787,6 @@ class ANOVA(object):
         Model to fit to y
     sub : index
         Only use part of the data.
-    title : str
-        Title for the results table (optional).
     ds : Dataset
         Dataset to use data from.
 
@@ -812,7 +809,7 @@ class ANOVA(object):
     For information about model specification, see the :func:`anova`
     documentation.
     """
-    def __init__(self, y, x, sub=None, title=None, ds=None):
+    def __init__(self, y, x, sub=None, ds=None):
         # prepare kwargs
         sub = assub(sub, ds)
         y = asvar(y, sub, ds)
@@ -825,7 +822,6 @@ class ANOVA(object):
         # save args
         self.y = y
         self.x = x
-        self.title = title
         self._log = []
 
         # decide which E(MS) model to use
@@ -893,7 +889,7 @@ class ANOVA(object):
         out = self._log[:]
         print('\n'.join(out))
 
-    def table(self):
+    def table(self, title=None, caption=None):
         """Create an ANOVA table
 
         Returns
@@ -902,9 +898,8 @@ class ANOVA(object):
             Anova table.
         """
         # table head
-        table = fmtxt.Table('l' + 'r' * (5 + 2 * self._is_mixed))
-        if self.title:
-            table.title(self.title)
+        table = fmtxt.Table('l' + 'r' * (5 + 2 * self._is_mixed), title=title,
+                            caption=caption)
         table.cell()
         table.cells("SS", "df", "MS")
         if self._is_mixed:
@@ -948,8 +943,8 @@ class ANOVA(object):
         return table
 
 
-def anova(y, x, sub=None, title=None, ds=None):
-    """Univariate ANOVA.
+def anova(y, x, sub=None, ds=None, title=None, caption=None):
+    """Univariate ANOVA
 
     Mixed effects models require balanced models and full model specification
     so that E(MS) can be estimated according to Hopkins (1976).
@@ -962,10 +957,12 @@ def anova(y, x, sub=None, title=None, ds=None):
         Model to fit to y
     sub : index
         Only use part of the data.
-    title : str
-        Title for the results table (optional).
     ds : Dataset
         Dataset to use data from.
+    title : str | FMText
+        Title for the results table.
+    caption : str | FMText
+        Caption for the results table.
 
     Returns
     -------
@@ -1032,5 +1029,5 @@ def anova(y, x, sub=None, title=None, ds=None):
         Total      1005.87   29
 
     """
-    anova_ = ANOVA(y, x, sub, title, ds)
-    return anova_.table()
+    anova_ = ANOVA(y, x, sub, ds)
+    return anova_.table(title, caption)

@@ -39,6 +39,7 @@ requirements:
     - {{ pin_compatible('numpy') }}
     - pillow
     - pysurfer >=0.8
+    - nilearn
     - scipy >=0.17
     - tqdm >=4.8
     - wxpython >=4

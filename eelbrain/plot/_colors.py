@@ -79,12 +79,11 @@ def colors_for_categorial(x, hue_start=0.2, cmap=None):
     elif isinstance(x, Interaction):
         return colors_for_nway([f.cells for f in x.base], hue_start)
     else:
-        msg = ("x needs to be Factor or Interaction, got %s" % repr(x))
-        raise TypeError(msg)
+        raise TypeError(f"x={x!r}: needs to be Factor or Interaction")
 
 
 def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None,
-                      light_cycle=None, always_cycle_hue=False):
+                      light_cycle=None, always_cycle_hue=False, locations=None):
     """Define colors for a single factor design
 
     Parameters
@@ -100,7 +99,7 @@ def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None,
         ``(1.0, 0.4)``). ``0.2`` is equivalent to ``(0.4, 0.6)``.
         The ``light_cycle`` parameter can be used to cycle between light and 
         dark more than once. 
-    cmap : str (optional)
+    cmap : str
         Use a matplotlib colormap instead of the default color generation
         algorithm. Name of a matplotlib colormap to use (e.g., 'jet'). If
         specified, ``hue_start`` and ``light_range`` are ignored.
@@ -110,6 +109,9 @@ def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None,
     always_cycle_hue : bool
         Cycle hue even when cycling lightness. With ``False`` (default), hue
         is constant within a lightness cycle.
+    locations : sequence of float
+        Locations of the cells on the color-map (all in range [0, 1]; default is
+        evenly spaced; example: ``numpy.linspace(0, 1, len(cells)) ** 0.5``).
 
     Returns
     -------
@@ -120,11 +122,14 @@ def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None,
         cells = tuple(cells)
     n = len(cells)
     if cmap is None:
-        colors = oneway_colors(n, hue_start, light_range, light_cycle, always_cycle_hue)
-        return dict(zip(cells, colors))
+        colors = oneway_colors(n, hue_start, light_range, light_cycle, always_cycle_hue, locations)
     else:
         cm = mpl.cm.get_cmap(cmap)
-        return {cell: cm(i / n) for i, cell in enumerate(cells)}
+        if locations is None:
+            imax = n - 1
+            locations = (i / imax for i in range(n))
+        colors = (cm(x) for x in locations)
+    return dict(zip(cells, colors))
 
 
 def colors_for_twoway(x1_cells, x2_cells, hue_start=0.2, hue_shift=0.,
@@ -436,7 +441,7 @@ class ColorList(EelFigure):
             patch = mpl.patches.Rectangle((0, bottom), 1, 1, fc=colors[cell],
                                           ec='none', zorder=1)
             ax.add_patch(patch)
-            h = ax.text(1.1, y, labels[cell], va='center', ha='left', zorder=2)
+            h = ax.text(1.1, y, labels.get(cell, cell), va='center', ha='left', zorder=2)
             self._labels.append(h)
 
         ax.set_ylim(0, n)
