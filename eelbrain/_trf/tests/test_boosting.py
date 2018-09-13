@@ -93,7 +93,7 @@ def test_boosting_epochs():
         assert correlation_coefficient(y, res.y_pred) > .999
         r = correlation_coefficient(y, ds['uts'])
         assert_almost_equal(res.r, r, 3)
-        assert res.n_segments == 10
+        assert res.n_partitions == 10
     # 2d
     res = boosting('utsnd', [p0, p1], 0, 0.6, model='A', ds=ds)
     eq_(len(res.h), 2)

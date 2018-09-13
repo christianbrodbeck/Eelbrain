@@ -100,7 +100,7 @@ class BoostingResult(object):
             self,
             # input parameters
             y, x, tstart, tstop, scale_data, delta, mindelta, error,
-            n_segments_arg, n_segments, model, basis, basis_window,
+            basis, basis_window, n_partitions_arg, n_partitions, model,
             # result parameters
             h, r, isnan, spearmanr, fit_error, t_run, version,
             y_mean, y_scale, x_mean, x_scale, **debug_attrs,
@@ -114,8 +114,8 @@ class BoostingResult(object):
         self.delta = delta
         self.mindelta = mindelta
         self.error = error
-        self._n_segments_arg = n_segments_arg
-        self.n_segments = n_segments
+        self._n_partitions_arg = n_partitions_arg
+        self.n_partitions = n_partitions
         self.model = model
         self.basis = basis
         self.basis_window = basis_window
@@ -141,7 +141,7 @@ class BoostingResult(object):
             'y': self.y, 'x': self.x, 'tstart': self.tstart, 'tstop': self.tstop,
             'scale_data': self.scale_data, 'delta': self.delta,
             'mindelta': self.mindelta, 'error': self.error,
-            'n_segments_arg': self._n_segments_arg, 'n_segments': self.n_segments,
+            'n_partitions_arg': self._n_partitions_arg, 'n_partitions': self.n_partitions,
             'model': self.model, 'basis': self.basis,
             'basis_window': self.basis_window,
             # results
@@ -155,7 +155,7 @@ class BoostingResult(object):
 
     def __setstate__(self, state):
         if state['version'] < 7:
-            state.update(n_segments=None, n_segments_arg=None, model=None,
+            state.update(n_partitions=None, n_partitions_arg=None, model=None,
                          basis=0, basis_window='hamming')
         self.__init__(**state)
 
@@ -173,8 +173,8 @@ class BoostingResult(object):
                 continue
             elif name == 'debug':
                 continue
-            elif name == 'n_segments':
-                value = self._n_segments_arg
+            elif name == 'n_partitions':
+                value = self._n_partitions_arg
             else:
                 value = getattr(self, name)
             if value != param.default:
@@ -241,8 +241,8 @@ class BoostingResult(object):
 
 @user_activity
 def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
-             error='l2', n_segments=None, model=None, ds=None, basis=0,
-             basis_window='hamming', debug=False):
+             error='l2', basis=0, basis_window='hamming',
+             n_partitions=None, model=None, ds=None, debug=False):
     """Estimate a filter with boosting
 
     Parameters
@@ -270,27 +270,27 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         i.e. ``delta`` is constant.
     error : 'l2' | 'l1'
         Error function to use (default is ``l2``).
-    n_segments : int
-        Divide the data into ``n_segments`` for early stopping based on
-        cross-validation. In each iteration, ``n - 1`` segments are used for
-        training, and the remaining segment is used for validation.
-        If data is continuous, data are divided into ``n_segments`` contiguous
-        segments of equal length (default 10).
-        If data has cases, cases are divided with ``[::n_segments]`` slices
-        (default ``min(n_cases, 10)``, where if ``model`` is specified,
-        ``n_cases`` is the lowest number of cases in any cell of the model).
-    model : Categorial
-        If data has cases, divide cases into different categories (division
-        for crossvalidation is done separately for each cell).
-    ds : Dataset
-        If provided, other parameters can be specified as string for items in
-        ``ds``.
     basis : float
         Use a basis of windows with this length for the kernel (by default,
         impulses are used).
     basis_window : str | float | tuple
         Basis window (see :func:`scipy.signal.get_window` for options; default
         is ``'hamming'``).
+    n_partitions : int
+        Divide the data into ``n_partitions`` for cross-validation-based early
+        stopping. In each partition, ``n - 1`` segments are used for
+        training, and the remaining segment is used for validation.
+        If data is continuous, data are divided into contiguous segments of
+        equal length (default 10).
+        If data has cases, cases are divided with ``[::n_partitions]`` slices
+        (default ``min(n_cases, 10)``; if ``model`` is specified, ``n_cases``
+        is the lowest number of cases in any cell of the model).
+    model : Categorial
+        If data has cases, divide cases into different categories (division
+        for crossvalidation is done separately for each cell).
+    ds : Dataset
+        If provided, other parameters can be specified as string for items in
+        ``ds``.
     debug : bool
         Store additional properties in the result object (increases memory
         consumption).
@@ -316,7 +316,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     mindelta_ = delta if mindelta is None else mindelta
 
     data = RevCorrData(y, x, error, scale_data, ds)
-    data.initialize_cross_validation(n_segments, model, ds)
+    data.initialize_cross_validation(n_partitions, model, ds)
     n_y = len(data.y)
     n_x = len(data.x)
 
@@ -423,7 +423,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     return BoostingResult(
         # input parameters
         data.y_name, data.x_name, tstart, tstop, scale_data, delta, mindelta, error,
-        n_segments, data.n_segments, model_repr, basis, basis_window,
+        basis, basis_window, n_partitions, data.n_partitions, model_repr,
         # result parameters
         h, r, isnan, spearmanr, fit_error, t_run, VERSION,
         y_mean, y_scale, x_mean, x_scale, **debug_attrs)
