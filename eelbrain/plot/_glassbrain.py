@@ -196,7 +196,7 @@ class GlassBrain(TimeSlicer, EelFigure):
                     ndvar.x, vmax, symmetric_cbar, kwargs)
         else:
             cbar_vmin, cbar_vmax = None, None
-        self._vol_kwargs = dict(dest=dest, mri_resolution=mri_resolution, mni305=mni305)
+        self._vol_kwargs = dict(dest=dest, mri_resolution=mri_resolution, mni_correction=mni305)
 
         show_nan_msg = False
         if vmax is not None and np.isnan(vmax):
