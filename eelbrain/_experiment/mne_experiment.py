@@ -1711,6 +1711,15 @@ class MneExperiment(FileTree):
     def _process_subject_arg(self, subject, kwargs):
         """Process subject arg for methods that work on groups and subjects
 
+        Parameters
+        ----------
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
+        kwargs : dict
+            Additional state parameters to set.
+
         Returns
         -------
         subject : None | str
@@ -1718,27 +1727,35 @@ class MneExperiment(FileTree):
         group : None | str
             Group name if the value specifies a group, None otherwise.
         """
-        if subject is None:
-            group = None
-            subject_ = self.get('subject', **kwargs)
-        elif subject is True:
-            group = self.get('group', **kwargs)
-            subject_ = None
-        elif subject in self.get_field_values('group'):
-            if 'group' in kwargs:
-                if kwargs['group'] != subject:
-                    raise ValueError(f"group={kwargs['group']!r} inconsistent with subject={subject!r}")
-                self.set(**kwargs)
-            else:
-                self.set(group=subject, **kwargs)
-            group = subject
-            subject_ = None
-        else:
-            group = None
-            subject_ = subject
-            self.set(subject=subject, **kwargs)
+        # legacy values
+        if subject is True:
+            subject = -1
+        elif subject is None:
+            subject = 1
 
-        return subject_, group
+        if isinstance(subject, int):
+            if subject == 1:
+                return self.get('subject', **kwargs), None
+            elif subject == -1:
+                return None, self.get('group', **kwargs)
+            else:
+                raise ValueError(f"subject={subject}")
+        elif isinstance(subject, str):
+            if subject in self.get_field_values('group'):
+                if 'group' in kwargs:
+                    if kwargs['group'] != subject:
+                        raise ValueError(f"group={kwargs['group']!r} inconsistent with subject={subject!r}")
+                    self.set(**kwargs)
+                else:
+                    self.set(group=subject, **kwargs)
+                return None, subject
+            elif subject in self.get_field_values('subject', **kwargs):
+                self.set(subject=subject)
+                return subject, None
+            else:
+                raise ValueError(f"subject={subject!r}: neither group nor subject with that name")
+        else:
+            raise TypeError(f"subject={subject!r}")
 
     def _cluster_criteria_kwargs(self, data):
         criteria = self._cluster_criteria[self.get('select_clusters')]
@@ -2551,7 +2568,7 @@ class MneExperiment(FileTree):
         else:
             raise ValueError("modality=%r" % modality)
 
-    def load_epochs(self, subject=None, baseline=False, ndvar=True,
+    def load_epochs(self, subject=1, baseline=False, ndvar=True,
                     add_bads=True, reject=True, cat=None,
                     decim=None, pad=0, data_raw=False, vardef=None, data='sensor',
                     eog=False, trigger_shift=True, apply_ica=True, tmin=None,
@@ -2561,11 +2578,10 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        subject : str
-            Subject(s) for which to load epochs. Can be a single subject
-            name or a group name such as ``'all'``. The default (``None``) is
-            the current subject in the experiment's state. ``True`` to load the
-            current group.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
         baseline : bool | tuple
             Apply baseline correction using this period. True to use the
             epoch's baseline specification. The default is to not apply baseline
@@ -2693,7 +2709,7 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_epochs_stc(self, subject=None, sns_baseline=True,
+    def load_epochs_stc(self, subject=1, sns_baseline=True,
                         src_baseline=False, ndvar=True, cat=None,
                         keep_epochs=False, morph=False, mask=False,
                         data_raw=False, vardef=None, decim=None, **kwargs):
@@ -2701,11 +2717,10 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        subject : str
-            Subject(s) for which to load epochs. Can be a single subject
-            name or a group name such as ``'all'``. The default (``None``) is
-            the current subject in the experiment's state. ``True`` to load the
-            current group.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
             Warning: loading single trial data for multiple subjects at once
             uses a lot of memory, which can lead to a periodically unresponsive
             terminal).
@@ -2901,7 +2916,7 @@ class MneExperiment(FileTree):
                 "to check rejection files." % (self.__class__.__name__,))
         return ds
 
-    def load_evoked(self, subject=None, baseline=False, ndvar=True, cat=None,
+    def load_evoked(self, subject=1, baseline=False, ndvar=True, cat=None,
                     decim=None, data_raw=False, vardef=None, data='sensor',
                     **kwargs):
         """
@@ -2909,11 +2924,10 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        subject : str
-            Subject(s) for which to load evoked responses. Can be a single subject
-            name or a group name such as ``'all'``. The default (``None``) is
-            the current subject in the experiment's state. ``True`` to load the
-            current group.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
         baseline : bool | tuple
             Apply baseline correction using this period. True to use the
             epoch's baseline specification. The default is to not apply baseline
@@ -3021,16 +3035,16 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_epochs_stf(self, subject=None, sns_baseline=True, mask=True,
+    def load_epochs_stf(self, subject=1, sns_baseline=True, mask=True,
                         morph=False, keep_stc=False, **kwargs):
         """Load frequency space single trial data
 
         Parameters
         ----------
-        subject : str
-            Subject(s) for which to load epochs. Can be a single subject
-            name or a group name such as 'all'. The default is the current
-            subject in the experiment's state.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
         sns_baseline : None | True | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
@@ -3062,17 +3076,16 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_evoked_stf(self, subject=None, sns_baseline=True, mask=True,
+    def load_evoked_stf(self, subject=1, sns_baseline=True, mask=True,
                         morph=False, keep_stc=False, **kwargs):
         """Load frequency space evoked data
 
         Parameters
         ----------
-        subject : str
-            Subject(s) for which to load evoked responses. Can be a single subject
-            name or a group name such as ``'all'``. The default (``None``) is
-            the current subject in the experiment's state. ``True`` to load the
-            current group.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
         sns_baseline : None | True | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
@@ -3104,7 +3117,7 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_evoked_stc(self, subject=None, sns_baseline=True,
+    def load_evoked_stc(self, subject=1, sns_baseline=True,
                         src_baseline=False, sns_ndvar=False, ind_stc=False,
                         ind_ndvar=False, morph_stc=False, morph_ndvar=False,
                         cat=None, keep_evoked=False, mask=False, data_raw=False,
@@ -3113,11 +3126,10 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        subject : str
-            Subject(s) for which to load evoked responses. Can be a single subject
-            name or a group name such as ``'all'``. The default (``None``) is
-            the current subject in the experiment's state. ``True`` to load the
-            current group.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
         sns_baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
@@ -3428,7 +3440,7 @@ class MneExperiment(FileTree):
         return ClusterPlotter(ds, res, colors, dst, vec_fmt, pix_fmt, labels, h,
                               rc)
 
-    def load_selected_events(self, subject=None, reject=True, add_bads=True,
+    def load_selected_events(self, subject=1, reject=True, add_bads=True,
                              index=True, data_raw=False, vardef=None, cat=None,
                              **kwargs):
         """
@@ -3436,11 +3448,10 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        subject : str
-            Subject(s) for which to load events. Can be a single subject
-            name or a group name such as ``'all'``. The default (``None``) is
-            the current subject in the experiment's state. ``True`` to load the
-            current group.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
         reject : bool | 'keep'
             Reject bad trials. For True, bad trials are removed from the
             Dataset. For 'keep', the 'accept' variable is added to the Dataset
@@ -4501,7 +4512,7 @@ class MneExperiment(FileTree):
         src_path = self.get(temp, **{field: src})
         os.link(src_path, dst_path)
 
-    def make_mov_ga_dspm(self, subject=None, sns_baseline=True, src_baseline=False,
+    def make_mov_ga_dspm(self, subject=1, sns_baseline=True, src_baseline=False,
                          fmin=2, surf=None, views=None, hemi=None, time_dilation=4.,
                          foreground=None, background=None, smoothing_steps=None,
                          dst=None, redo=False, **kwargs):
@@ -4509,8 +4520,10 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        subject : None | str
-            Subject or group.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
         sns_baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
@@ -4582,7 +4595,7 @@ class MneExperiment(FileTree):
         brain.save_movie(dst, time_dilation)
         brain.close()
 
-    def make_mov_ttest(self, subject, model='', c1=None, c0=None, p=0.05,
+    def make_mov_ttest(self, subject=1, model='', c1=None, c0=None, p=0.05,
                        sns_baseline=True, src_baseline=False,
                        surf=None, views=None, hemi=None, time_dilation=4.,
                        foreground=None,  background=None, smoothing_steps=None,
@@ -4591,9 +4604,10 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        subject : str
-            Group name for a between-subject t-test, or subject name for a
-            within-subject t-test.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
         model : None | str
             Model on which the conditions c1 and c0 are defined. The default
             (``''``) is the grand average.
@@ -5908,17 +5922,16 @@ class MneExperiment(FileTree):
         fig.show()
         return fig
 
-    def plot_evoked(self, subject=None, separate=False, baseline=True, ylim='same',
+    def plot_evoked(self, subject=1, separate=False, baseline=True, ylim='same',
                     run=None, **kwargs):
         """Plot evoked sensor data
 
         Parameters
         ----------
-        subject : str
-            Subject(s) for which to plot evoked responses. Can be a single subject
-            name or a group name such as ``'all'``. The default (``None``) is
-            the current subject in the experiment's state. ``True`` to load the
-            current group.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
         separate : bool
             When plotting a group, plot all subjects separately instead or the group
             average (default False).
