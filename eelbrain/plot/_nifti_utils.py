@@ -191,3 +191,4 @@ def _fast_abs_percentile(ndvar, percentile=80):
         data.sort()
 
     return data[index]
+
