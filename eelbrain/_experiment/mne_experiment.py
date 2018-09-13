@@ -2721,9 +2721,10 @@ class MneExperiment(FileTree):
             SourceEstimate objects named "stc" (default True).
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
-        keep_epochs : bool
+        keep_epochs : bool | 'ndvar' | 'both'
             Keep the sensor space data in the Dataset that is returned (default
-            False).
+            False; True to keep :class:`mne.Epochs` object; ``'ndvar'`` to keep
+            :class:`NDVar`; ``'both'`` to keep both).
         morph : bool
             Morph the source estimates to the common_brain (default False).
         mask : bool | str
@@ -2773,10 +2774,25 @@ class MneExperiment(FileTree):
                 dss.append(ds)
             return combine(dss)
         else:
-            ds = self.load_epochs(subject, sns_baseline, False, cat=cat,
+            if keep_epochs is True:
+                sns_ndvar = False
+                del_epochs = False
+            elif keep_epochs is False:
+                sns_ndvar = False
+                del_epochs = True
+            elif keep_epochs == 'ndvar':
+                sns_ndvar = 'both'
+                del_epochs = True
+            elif keep_epochs == 'both':
+                sns_ndvar = 'both'
+                del_epochs = False
+            else:
+                raise ValueError(f'keep_epochs={keep_epochs!r}')
+
+            ds = self.load_epochs(subject, sns_baseline, sns_ndvar, cat=cat,
                                   decim=decim, data_raw=data_raw, vardef=vardef)
             self._add_epochs_stc(ds, ndvar, src_baseline, morph, mask)
-            if not keep_epochs:
+            if del_epochs:
                 del ds['epochs']
             return ds
 
