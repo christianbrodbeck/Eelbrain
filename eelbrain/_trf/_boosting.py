@@ -521,14 +521,13 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
                 break
 
         # abort if we're moving in circles
-        if i_boost >= 2 and (i_stim, i_time, -delta_signed) == history[-1]:
-            # print("Same h after 2 iterations")
+        if i_boost >= 2 and history[-1] == (i_stim, i_time, -delta_signed):
             break
-        elif i_boost >= 4 and history[-3] is DELTA_REDUCTION_STEP:
-            step = (i_stim, i_time, -delta_signed / 2.)
-            if history[-1] == step and history[-2] == step:
-                # print("Same h after 3 iterations")
-                break
+        elif (i_boost >= 4 and
+              history[-2] is DELTA_REDUCTION_STEP and
+              history[-3] == (i_stim, i_time, -2 * delta_signed) and
+              history[-1] == (i_stim, i_time, delta_signed)):
+            break
 
         # update h with best movement
         h[i_stim, i_time] += delta_signed
