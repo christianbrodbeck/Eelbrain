@@ -1746,7 +1746,7 @@ class MneExperiment(FileTree):
 
     def _add_epochs(self, ds, epoch, baseline, ndvar, data_raw, pad, decim,
                     reject, apply_ica, trigger_shift, eog, tmin, tmax, tstop,
-                    data):
+                    data, add_bads_to_info=False):
         modality = self.get('modality')
         if tmin is None:
             tmin = epoch.tmin
@@ -1805,7 +1805,11 @@ class MneExperiment(FileTree):
             sysname = self._sysname(ds.info['raw'], ds.info['subject'], modality)
             name = self._ndvar_name_for_modality(modality)
             ds[name] = load.fiff.epochs_ndvar(ds['epochs'], sysname=sysname,
+                                              exclude=() if add_bads_to_info else 'bads',
                                               data=self._data_arg(modality, eog))
+            if add_bads_to_info:
+                ds[name].info[BAD_CHANNELS] = ds['epochs'].info['bads']
+
             if ndvar != 'both':
                 del ds['epochs']
             if modality == 'eeg':
@@ -2614,8 +2618,7 @@ class MneExperiment(FileTree):
         """
         data = TestDims.coerce(data)
         if not data.sensor:
-            raise ValueError("data=%r; load_evoked is for loading sensor data" %
-                             (data.string,))
+            raise ValueError(f"data={data.string!r}; load_evoked is for loading sensor data")
         elif data.sensor is not True and not ndvar:
             raise ValueError("data=%r with ndvar=False" % (data.string,))
         if ndvar:
@@ -2662,6 +2665,17 @@ class MneExperiment(FileTree):
                     dss.append(ds)
             return combine(dss)
 
+        if isinstance(add_bads, str):
+            if add_bads == 'info':
+                add_bads_to_info = True
+                add_bads = True
+            else:
+                raise ValueError(f"add_bads={add_bads!r}")
+        elif isinstance(add_bads, bool):
+            add_bads_to_info = False
+        else:
+            raise TypeError(f"add_bads={add_bads!r}")
+
         with self._temporary_state:
             ds = self.load_selected_events(add_bads=add_bads, reject=reject,
                                            data_raw=data_raw or True,
@@ -2675,7 +2689,7 @@ class MneExperiment(FileTree):
             # load sensor space data
             ds = self._add_epochs(ds, epoch, baseline, ndvar, data_raw, pad,
                                   decim, reject, apply_ica, trigger_shift, eog,
-                                  tmin, tmax, tstop, data)
+                                  tmin, tmax, tstop, data, add_bads_to_info)
 
         return ds
 
