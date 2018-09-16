@@ -18,7 +18,7 @@ https://docs.python.org/2/distutils/sourcedist.html#manifest-template
 from ez_setup import use_setuptools
 use_setuptools('17')
 
-from distutils.version import StrictVersion
+from distutils.version import LooseVersion
 from distutils.extension import Extension
 from glob import glob
 from os.path import pathsep
@@ -39,8 +39,7 @@ match = re.search("__version__ = '([.\w]+)'", text)
 if match is None:
     raise ValueError("No valid version string found in:\n\n" + text)
 version = match.group(1)
-if version != 'dev':
-    s = StrictVersion(version)  # check that it's a valid version
+LooseVersion(version)  # check that it's a valid version
 
 # Use cython only if *.pyx files are present (i.e., not in sdist)
 ext_paths = ('eelbrain/*%s', 'eelbrain/_trf/*%s', 'eelbrain/_stats/*%s')
