@@ -4898,7 +4898,7 @@ class MneExperiment(FileTree):
                     "inherits rejections from other epochs. Generate trial "
                     "rejection for these epochs.".format(cur=epoch.name))
 
-        path = self.get('rej-file', mkdir=True)
+        path = self.get('rej-file', mkdir=True, session=epoch.session)
         modality = self.get('modality')
 
         if auto is not None and overwrite is not True and exists(path):

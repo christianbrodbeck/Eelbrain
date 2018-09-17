@@ -1,7 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Test MneExperiment using mne-python sample data"""
 from pathlib import Path
-from os.path import join
+from os.path import join, exists
 
 from nose.tools import eq_, assert_raises
 import numpy as np
@@ -189,3 +189,11 @@ def test_samples_sesssions():
     ds2 = e.load_epochs(epoch='target2')
     ds_super = e.load_epochs(epoch='super')
     assert_dataobj_equal(ds_super['meg'], combine((ds1['meg'], ds2['meg'])))
+
+    # conflicting session and epoch settings
+    rej_path = join(root, 'meg', 'R0000', 'epoch selection', 'sample2_1-40_target2-man.pickled')
+    e.set(epoch='target2', raw='1-40')
+    assert not exists(rej_path)
+    e.set(session='sample1')
+    e.make_rej(auto=2e-12)
+    assert exists(rej_path)
