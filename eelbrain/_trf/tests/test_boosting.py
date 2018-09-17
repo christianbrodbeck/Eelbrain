@@ -88,14 +88,14 @@ def test_boosting_epochs():
     # 1d
     for tstart, basis in product((-0.1, 0.1, 0), (0, 0.05)):
         print(f"tstart={tstart}, basis={basis}")
-        res = boosting('uts', [p0, p1], tstart, 0.6, model='A', ds=ds, basis=basis, debug=True)
+        res = boosting('uts', [p0, p1], tstart, 0.6, model='A', ds=ds, basis=basis, n_partitions=10, debug=True)
         y = convolve(res.h_scaled, [p0, p1])
         assert correlation_coefficient(y, res.y_pred) > .999
         r = correlation_coefficient(y, ds['uts'])
         assert_almost_equal(res.r, r, 3)
         assert res.n_partitions == 10
     # 2d
-    res = boosting('utsnd', [p0, p1], 0, 0.6, model='A', ds=ds)
+    res = boosting('utsnd', [p0, p1], 0, 0.6, model='A', ds=ds, n_partitions=10)
     eq_(len(res.h), 2)
     eq_(res.h[0].shape, (5, 60))
     eq_(res.h[1].shape, (5, 60))

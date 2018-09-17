@@ -211,7 +211,7 @@ class RevCorrData(object):
         n_times = len(self.time)
         if self.segments is None:
             if model is not None:
-                raise TypeError('model=%r: model cannot be specified in unsegmented data' % (dataobj_repr(model),))
+                raise TypeError(f'model={dataobj_repr(model)!r}: model cannot be specified in unsegmented data')
             if n_partitions is None:
                 n_partitions = 10
             seg_n_times = int(floor(n_times / n_partitions))
@@ -238,7 +238,11 @@ class RevCorrData(object):
             cell_size = min(cell_sizes)
             cell_sizes_are_equal = len(set(cell_sizes)) == 1
             if n_partitions is None:
-                n_partitions = min(cell_size, 10)
+                if cell_sizes_are_equal:
+                    if 4 <= cell_size <= 10:
+                        n_partitions = cell_size
+            if n_partitions is None:
+                raise NotImplementedError('n_partitions can not be determined automatically for this data and needs to be specified explicitly')
 
             if n_partitions > cell_size:
                 if not cell_sizes_are_equal:
