@@ -439,20 +439,23 @@ def get_uv(seed=0, nrm=False, vector=False):
     return ds
 
 
-def setup_samples_experiment(dst, n_subjects=3, n_segments=4, n_sessions=1):
+def setup_samples_experiment(dst, n_subjects=3, n_segments=4, n_sessions=1, name='SampleExperiment'):
     """Setup up file structure for the SampleExperiment class
 
     Parameters
     ----------
     dst : str
-        Path. ``dst`` should exist, a new folder called ``SampleExperiment``
-        will be created within ``dst``.
+        Path. ``dst`` should exist, a new folder called ``name`` will be
+        created within ``dst``.
     n_subjects : int
         Number of subjects.
     n_segments : int
         Number of data segments to include in each file.
     n_sessions : int
         Number of sessions.
+    name : str
+        Name for the directory for the new experiment (default
+        ``'SampleExperiment'``).
     """
     data_path = mne.datasets.sample.data_path()
     raw_path = os.path.join(data_path, 'MEG', 'sample', 'sample_audvis_raw.fif')
@@ -479,7 +482,7 @@ def setup_samples_experiment(dst, n_subjects=3, n_segments=4, n_sessions=1):
     else:
         raise ValueError("Not enough data in sample raw. Try smaller ns.")
     dst = os.path.realpath(os.path.expanduser(dst))
-    root = os.path.join(dst, 'SampleExperiment')
+    root = os.path.join(dst, name)
     meg_sdir = os.path.join(root, 'meg')
     meg_dir = os.path.join(meg_sdir, '{subject}')
     raw_file = os.path.join(meg_dir, '{subject}_{session}-raw.fif')
