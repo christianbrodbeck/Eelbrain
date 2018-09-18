@@ -27,8 +27,9 @@ def test_sample():
     root = join(tempdir, 'SampleExperiment')
     e = SampleExperiment(root)
 
-    eq_(e.get('subject'), 'R0000')
-    eq_(e.get('subject', subject='R0002'), 'R0002')
+    assert e.get('raw') == '1-40'
+    assert e.get('subject') == 'R0000'
+    assert e.get('subject', subject='R0002') == 'R0002'
 
     # events
     e.set('R0001', rej='')

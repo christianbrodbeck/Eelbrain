@@ -815,7 +815,8 @@ class MneExperiment(FileTree):
         self._register_field('group', self._groups.keys(), 'all',
                              post_set_handler=self._post_set_group)
 
-        self._register_field('raw', sorted(self._raw))
+        raw_default = sorted(self.raw)[0] if self.raw else None
+        self._register_field('raw', sorted(self._raw), default=raw_default)
         self._register_field('rej', self._artifact_rejection.keys(), 'man')
 
         # epoch

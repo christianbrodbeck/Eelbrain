@@ -56,6 +56,11 @@ class SampleExperiment(MneExperiment):
                        'ignore_ref':     True,
                        'st_correlation': .9,
                        'st_only':        True}},
+        '1-40': {
+            'type':   'filter',
+            'source': 'tsss',
+            'args':   (1, 40),
+            'kwargs': FILTER_KWARGS},
         'ica':     {
             'type':    'ica',
             'source':  'tsss',
