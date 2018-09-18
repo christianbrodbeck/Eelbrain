@@ -30,6 +30,8 @@ def wildcard(filetypes):
 class App(wx.App):
     _pt_thread = None
     about_frame = None
+    _result = None
+    _bash_ui_from_mainloop = None
 
     def OnInit(self):
         self.SetAppName("Eelbrain")
@@ -256,18 +258,19 @@ class App(wx.App):
 
     def _bash_ui(self, func, *args):
         "Launch a modal dialog based on terminal input"
-        if self.using_prompt_toolkit or self.IsMainLoopRunning():
+        self._bash_ui_from_mainloop = self.using_prompt_toolkit or self.IsMainLoopRunning()
+        if self._bash_ui_from_mainloop:
             return func(*args)
         else:
             if not self.GetTopWindow():
                 self.SetTopWindow(wx.Frame(None))
-            wx.CallLater(10, func, *args)
+            wx.CallAfter(func, *args)
             print("Please switch to the Python Application to provide input.")
             self.MainLoop()
             return self._result
 
     def _bash_ui_finalize(self, result):
-        if self.using_prompt_toolkit or self.IsMainLoopRunning():
+        if self._bash_ui_from_mainloop:
             return result
         else:
             self._result = result
