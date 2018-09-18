@@ -1,4 +1,4 @@
-# skip test (requires LaTeX)
+# skip test: requires LaTeX
 """Performs ANOVA and creates a PDF of the ANOVA table.
 
 Generating PDFs requires the ``tex`` Python module to be installed.
