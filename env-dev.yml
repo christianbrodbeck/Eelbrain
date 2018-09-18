@@ -17,10 +17,10 @@ dependencies:
 - pillow
 - psutil
 # mne-python
-- mne
+#- mne
 - mkl
 - pyqt
-- vtk >= 8.1.1
+#- vtk >= 8.1.1
 - h5py
 - pandas
 - scikit-learn
@@ -53,6 +53,10 @@ dependencies:
 # - r-ez  # requires ncil channel
 # plotting brains
 - nibabel >= 2.0, != 2.3.0  # read_annot bug
-- mayavi >= 4.6
-- pysurfer >= 0.7
+#- mayavi >= 4.6
+#- pysurfer >= 0.7
 - nilearn
+- pip:
+  - mayavi >= 4.6
+  - pysurfer >= 0.7
+  - mne
