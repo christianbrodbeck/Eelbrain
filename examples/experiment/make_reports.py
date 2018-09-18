@@ -1,4 +1,4 @@
-# skip test
+# skip test: data unavailable
 """A script that creates test reports for an MneExperiment subclass
 
 """

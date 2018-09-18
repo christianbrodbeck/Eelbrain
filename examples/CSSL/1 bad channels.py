@@ -1,4 +1,4 @@
-# skip test
+# skip test: data unavailable
 """Load data from *.sqd file, look for bad channels and filter data"""
 import mne
 from eelbrain import *

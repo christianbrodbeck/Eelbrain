@@ -1,4 +1,4 @@
-# skip test
+# skip test: data unavailable
 """Compute TRFs with boosting"""
 from eelbrain import *
 
