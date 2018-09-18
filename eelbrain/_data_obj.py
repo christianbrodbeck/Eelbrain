@@ -3034,6 +3034,8 @@ class NDVar(object):
         return NDVar(x_self + x_other, dims, self.info.copy(), self.name)
 
     def __iadd__(self, other):
+        if self.x.dtype.kind == 'b':
+            return self.__add__(other)
         self.x += self._ialign(other)
         return self
 
@@ -3045,6 +3047,8 @@ class NDVar(object):
         return NDVar(x_self / x_other, dims, self.info.copy(), self.name)
 
     def __idiv__(self, other):
+        if self.x.dtype.kind == 'b':
+            return self.__div__(other)
         self.x /= self._ialign(other)
         return self
 
@@ -3065,6 +3069,8 @@ class NDVar(object):
         return NDVar(x_self * x_other, dims, self.info.copy(), self.name)
 
     def __imul__(self, other):
+        if self.x.dtype.kind == 'b':
+            return self.__mul__(other)
         self.x *= self._ialign(other)
         return self
 
@@ -3077,6 +3083,8 @@ class NDVar(object):
                      self.name)
 
     def __ipow__(self, other):
+        if self.x.dtype.kind == 'b':
+            return self.__pow__(other)
         self.x **= self._ialign(other)
         return self
 
@@ -3091,6 +3099,8 @@ class NDVar(object):
         return NDVar(x_self - x_other, dims, self.info.copy(), self.name)
 
     def __isub__(self, other):
+        if self.x.dtype.kind == 'b':
+            return self.__sub__(other)
         self.x -= self._ialign(other)
         return self
 
