@@ -488,6 +488,8 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
     brain : Brain
         Brain instance containing the plot.
     """
+    from .._wxgui import get_app
+    get_app(jumpstart=True)
     from ._brain_object import Brain, get_source_dim
 
     if isinstance(src, SourceSpace):
