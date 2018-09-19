@@ -182,7 +182,7 @@ class RevCorrData(object):
 
         self.time = time_dim
         self.segments = segments
-        self.cv_segments = self.cv_indexes = self.n_partitions = self.model = None
+        self.cv_segments = self.cv_indexes = self.partitions = self.model = None
         self._scale_data = bool(scale_data)
         self.shortest_segment_n_times = n_times
         # y
@@ -204,23 +204,23 @@ class RevCorrData(object):
         self._x_is_copy = x_is_copy
         self.x_pads = x_pads
 
-    def initialize_cross_validation(self, n_partitions=None, model=None, ds=None):
-        if n_partitions is not None and n_partitions <= 1:
-            raise ValueError(f"n_partitions={n_partitions}")
+    def initialize_cross_validation(self, partitions=None, model=None, ds=None):
+        if partitions is not None and partitions <= 1:
+            raise ValueError(f"partitions={partitions}")
         cv_segments = []  # list of (segments, train, test)
         n_times = len(self.time)
         if self.segments is None:
             if model is not None:
                 raise TypeError(f'model={dataobj_repr(model)!r}: model cannot be specified in unsegmented data')
-            if n_partitions is None:
-                n_partitions = 10
-            seg_n_times = int(floor(n_times / n_partitions))
+            if partitions is None:
+                partitions = 10
+            seg_n_times = int(floor(n_times / partitions))
             # first
-            for i in range(n_partitions):
+            for i in range(partitions):
                 test = ((seg_n_times * i, seg_n_times * (i + 1)),)
                 if i == 0:  # first
                     train = ((seg_n_times, n_times),)
-                elif i == n_partitions - 1:  # last
+                elif i == partitions - 1:  # last
                     train = ((0, n_times - seg_n_times),)
                 else:
                     train = ((0, seg_n_times * i),
@@ -237,21 +237,23 @@ class RevCorrData(object):
             cell_sizes = [len(i) for i in cell_indexes]
             cell_size = min(cell_sizes)
             cell_sizes_are_equal = len(set(cell_sizes)) == 1
-            if n_partitions is None:
+            if partitions is None:
                 if cell_sizes_are_equal:
-                    if 4 <= cell_size <= 10:
-                        n_partitions = cell_size
-            if n_partitions is None:
-                raise NotImplementedError('n_partitions can not be determined automatically for this data and needs to be specified explicitly')
+                    if 3 <= cell_size <= 10:
+                        partitions = cell_size
+                    else:
+                        raise NotImplementedError(f"Automatic partition for {cell_size} cases")
+                else:
+                    raise NotImplementedError(f'Automatic partition for variable cell size {tuple(cell_sizes)}')
 
-            if n_partitions > cell_size:
+            if partitions > cell_size:
                 if not cell_sizes_are_equal:
-                    raise ValueError(f'n_partitions={n_partitions}: > smallest cell size ({cell_size}) with unequal cell sizes')
-                elif n_partitions % cell_size:
-                    raise ValueError(f'n_partitions={n_partitions}: not a multiple of cell_size ({cell_size})')
+                    raise ValueError(f'partitions={partitions}: > smallest cell size ({cell_size}) with unequal cell sizes')
+                elif partitions % cell_size:
+                    raise ValueError(f'partitions={partitions}: not a multiple of cell_size ({cell_size})')
                 elif len(cell_sizes) > 1:
-                    raise NotImplementedError(f'n_partitions={n_partitions} with more than one cell')
-                n_parts = n_partitions // cell_size
+                    raise NotImplementedError(f'partitions={partitions} with more than one cell')
+                n_parts = partitions // cell_size
                 segments = []
                 for start, stop in self.segments:
                     d = (stop - start) / n_parts
@@ -260,20 +262,20 @@ class RevCorrData(object):
                     for i in range(n_parts):
                         segments.append((starts[i], starts[i+1]))
                 segments = np.array(segments, np.int64)
-                index_range = np.arange(n_partitions)
-                indexes = [index_range == i for i in range(n_partitions)]
+                index_range = np.arange(partitions)
+                indexes = [index_range == i for i in range(partitions)]
             else:
                 segments = self.segments
                 indexes = []
-                for i in range(n_partitions):
+                for i in range(partitions):
                     index = np.zeros(n_total, bool)
                     for cell_index in cell_indexes:
-                        index[cell_index[i::n_partitions]] = True
+                        index[cell_index[i::partitions]] = True
                     indexes.append(index)
 
             cv_segments = ((segments, segments[np.invert(i)], segments[i]) for i in indexes)
             self.cv_indexes = tuple(indexes)
-        self.n_partitions = n_partitions
+        self.partitions = partitions
         self.cv_segments = tuple(cv_segments)
         self.model = dataobj_repr(model)
 

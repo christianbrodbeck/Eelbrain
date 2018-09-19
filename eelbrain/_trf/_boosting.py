@@ -39,7 +39,7 @@ from .shared import RevCorrData
 
 
 # BoostingResult version
-VERSION = 7
+VERSION = 8
 
 # process messages
 JOB_TERMINATE = -1
@@ -95,12 +95,14 @@ class BoostingResult(object):
         Mean that was subtracted from ``x``.
     x_scale : NDVar | scalar | tuple
         Scale by which ``x`` was divided.
+    partitions : int
+        Numbers of partitions of the data used for cross validation.
     """
     def __init__(
             self,
             # input parameters
             y, x, tstart, tstop, scale_data, delta, mindelta, error,
-            basis, basis_window, n_partitions_arg, n_partitions, model,
+            basis, basis_window, partitions_arg, partitions, model,
             # result parameters
             h, r, isnan, spearmanr, fit_error, t_run, version,
             y_mean, y_scale, x_mean, x_scale, **debug_attrs,
@@ -114,8 +116,8 @@ class BoostingResult(object):
         self.delta = delta
         self.mindelta = mindelta
         self.error = error
-        self._n_partitions_arg = n_partitions_arg
-        self.n_partitions = n_partitions
+        self._partitions_arg = partitions_arg
+        self.partitions = partitions
         self.model = model
         self.basis = basis
         self.basis_window = basis_window
@@ -141,7 +143,7 @@ class BoostingResult(object):
             'y': self.y, 'x': self.x, 'tstart': self.tstart, 'tstop': self.tstop,
             'scale_data': self.scale_data, 'delta': self.delta,
             'mindelta': self.mindelta, 'error': self.error,
-            'n_partitions_arg': self._n_partitions_arg, 'n_partitions': self.n_partitions,
+            'partitions_arg': self._partitions_arg, 'partitions': self.partitions,
             'model': self.model, 'basis': self.basis,
             'basis_window': self.basis_window,
             # results
@@ -155,8 +157,11 @@ class BoostingResult(object):
 
     def __setstate__(self, state):
         if state['version'] < 7:
-            state.update(n_partitions=None, n_partitions_arg=None, model=None,
+            state.update(partitions=None, partitions_arg=None, model=None,
                          basis=0, basis_window='hamming')
+        elif state['version'] < 8:
+            state['partitions'] = state.pop('n_partitions')
+            state['partitions_arg'] = state.pop('n_partitions_arg')
         self.__init__(**state)
 
     def __repr__(self):
@@ -173,8 +178,8 @@ class BoostingResult(object):
                 continue
             elif name == 'debug':
                 continue
-            elif name == 'n_partitions':
-                value = self._n_partitions_arg
+            elif name == 'partitions':
+                value = self._partitions_arg
             else:
                 value = getattr(self, name)
             if value != param.default:
@@ -242,7 +247,7 @@ class BoostingResult(object):
 @user_activity
 def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
              error='l2', basis=0, basis_window='hamming',
-             n_partitions=None, model=None, ds=None, debug=False):
+             partitions=None, model=None, ds=None, debug=False):
     """Estimate a filter with boosting
 
     Parameters
@@ -276,13 +281,13 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     basis_window : str | float | tuple
         Basis window (see :func:`scipy.signal.get_window` for options; default
         is ``'hamming'``).
-    n_partitions : int
-        Divide the data into ``n_partitions`` for cross-validation-based early
-        stopping. In each partition, ``n - 1`` segments are used for
+    partitions : int
+        Divide the data into this many ``partitions`` for cross-validation-based
+        early stopping. In each partition, ``n - 1`` segments are used for
         training, and the remaining segment is used for validation.
         If data is continuous, data are divided into contiguous segments of
         equal length (default 10).
-        If data has cases, cases are divided with ``[::n_partitions]`` slices
+        If data has cases, cases are divided with ``[::partitions]`` slices
         (default ``min(n_cases, 10)``; if ``model`` is specified, ``n_cases``
         is the lowest number of cases in any cell of the model).
     model : Categorial
@@ -316,7 +321,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     mindelta_ = delta if mindelta is None else mindelta
 
     data = RevCorrData(y, x, error, scale_data, ds)
-    data.initialize_cross_validation(n_partitions, model, ds)
+    data.initialize_cross_validation(partitions, model, ds)
     n_y = len(data.y)
     n_x = len(data.x)
 
@@ -423,7 +428,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     return BoostingResult(
         # input parameters
         data.y_name, data.x_name, tstart, tstop, scale_data, delta, mindelta, error,
-        basis, basis_window, n_partitions, data.n_partitions, model_repr,
+        basis, basis_window, partitions, data.partitions, model_repr,
         # result parameters
         h, r, isnan, spearmanr, fit_error, t_run, VERSION,
         y_mean, y_scale, x_mean, x_scale, **debug_attrs)
