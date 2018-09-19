@@ -123,10 +123,20 @@ corresponding methods and functions, for example::
 Defining data epochs
 --------------------
 
-Once events are properly labeled, define :attr:`MneExperiment.epochs`. There is
-one special epoch to define, which is called ``'cov'``. This is the data epoch
-that will be used to estimate the sensor noise covariance matrix for source
-estimation.
+Once events are properly labeled, define :attr:`MneExperiment.epochs`.
+
+There is one special epoch to define, which is called ``'cov'``. This is the
+data epoch that will be used to estimate the sensor noise covariance matrix for
+source estimation.
+
+In order to find the right ``sel`` epoch parameter, it can be useful to actually
+load the events with :meth:`MneExperiment.load_events` and test different
+selection strings. The epoch selection is determined by
+``selection = event_ds.eval(epoch['sel'])``. Thus, a specific setting could be
+tested with::
+
+    >>> ds = e.load_events()
+    >>> print(ds.sub("event == 'value'"))
 
 
 Bad channels
