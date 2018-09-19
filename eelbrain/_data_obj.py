@@ -989,7 +989,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
 
     # check input
     if isinstance(items, Iterator):
-        items = tuple(items)
+        items = list(items)
     if len(items) == 0:
         raise ValueError("combine() called with empty sequence %s" % repr(items))
 
@@ -1011,7 +1011,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
 
     # find name
     if name is None:
-        names = tuple(filter(None, (item.name for item in items)))
+        names = list(filter(None, (item.name for item in items)))
         name = os.path.commonprefix(names) or None
 
     # combine objects
@@ -1178,7 +1178,7 @@ class Var(object):
             raise TypeError("Var can't be initialized with a string")
 
         if isinstance(x, Iterator):
-            x = tuple(x)
+            x = list(x)
         x = np.asarray(x)
         if x.dtype.kind == 'O':
             raise TypeError("Var can not handle object-type arrays. Consider "
@@ -2102,7 +2102,7 @@ class Factor(_Effect):
     """
     def __init__(self, x, name=None, random=False, repeat=1, tile=1, labels={}):
         if isinstance(x, Iterator):
-            x = tuple(x)
+            x = list(x)
         n_cases = len(x)
 
         if n_cases == 0 or not (np.any(repeat) or np.any(tile)):
@@ -2249,7 +2249,7 @@ class Factor(_Effect):
         if isinstance(x, str):
             self.x[index] = self._get_code(x)
         else:
-            self.x[index] = tuple(map(self._get_code, x))
+            self.x[index] = list(map(self._get_code, x))
 
         # obliterate redundant labels
         for code in set(self._labels).difference(self.x):
@@ -2647,7 +2647,7 @@ class Factor(_Effect):
         If ``labels`` contains a key that is not a label of the Factor, a
         ``KeyError`` is raised.
         """
-        missing = tuple(old for old in labels if old not in self._codes)
+        missing = [old for old in labels if old not in self._codes]
         if missing:
             if len(missing) == 1:
                 msg = ("Factor does not contain label %r" % missing[0])

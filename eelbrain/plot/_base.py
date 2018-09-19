@@ -2461,7 +2461,7 @@ class TimeSlicerEF(TimeSlicer):
         if x_dimname != 'time':
             self._time_fixed = True
             return
-        ndvars = tuple(e for layer in epochs for e in layer)
+        ndvars = [e for layer in epochs for e in layer]
         TimeSlicer.__init__(self, ndvars)
         self.__axes = self._axes if axes is None else axes
         self.__time_lines = []
