@@ -4,13 +4,14 @@ from math import floor
 import os
 from warnings import catch_warnings, filterwarnings
 
-from nose.tools import eq_, assert_almost_equal, assert_is_none, assert_raises
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 import pickle
+import pytest
+from pytest import approx
 import scipy.io
 from eelbrain import (
-    datasets, test, configure,
+    datasets, configure,
     boosting, convolve, correlation_coefficient, epoch_impulse_predictor,
 )
 
@@ -20,12 +21,16 @@ from eelbrain._trf._boosting import boost, evaluate_kernel
 
 def assert_res_equal(res1, res):
     assert_array_equal(res1.h, res.h)
-    eq_(res1.r, res.r)
-    eq_(res1.spearmanr, res.spearmanr)
+    assert res1.r == res.r
+    assert res1.spearmanr == res.spearmanr
 
 
-def run_boosting(ds):
-    "Run boosting tests"
+@pytest.mark.parametrize('n_workers', [0, True])
+def test_boosting(n_workers):
+    "Test boosting NDVars"
+    ds = datasets._get_continuous()
+    configure(n_workers=n_workers)
+
     y = ds['y']
     x1 = ds['x1']
     x2 = ds['x2']
@@ -34,18 +39,17 @@ def run_boosting(ds):
 
     # test values from running function, not verified independently
     res = boosting(y, x1 * 2000, 0, 1, scale_data=False, mindelta=0.0025)
-    eq_(repr(res),
-        '<boosting y ~ x1, 0 - 1, scale_data=False, mindelta=0.0025>')
-    eq_(round(res.r, 2), 0.75)
-    assert_is_none(res.y_mean)
+    assert repr(res) == '<boosting y ~ x1, 0 - 1, scale_data=False, mindelta=0.0025>'
+    assert round(res.r, 2) == 0.75
+    assert res.y_mean is None
 
     res = boosting(y, x1, 0, 1)
-    eq_(repr(res), '<boosting y ~ x1, 0 - 1>')
-    eq_(round(res.r, 2), 0.83)
-    eq_(res.y_mean, y_mean)
-    eq_(res.y_scale, y.std())
-    eq_(res.x_mean, x1.mean())
-    eq_(res.x_scale, x1.std())
+    assert repr(res) == '<boosting y ~ x1, 0 - 1>'
+    assert round(res.r, 2) == 0.83
+    assert res.y_mean == y_mean
+    assert res.y_scale == y.std()
+    assert res.x_mean == x1.mean()
+    assert res.x_scale == x1.std()
     # inplace
     res_ip = boosting(y.copy(), x1.copy(), 0, 1, 'inplace')
     assert_res_equal(res_ip, res)
@@ -54,28 +58,17 @@ def run_boosting(ds):
     assert_res_equal(res_p, res)
 
     res = boosting(y, x2, 0, 1)
-    eq_(round(res.r, 2), 0.60)
+    assert round(res.r, 2) == 0.60
 
     res = boosting(y, x2, 0, 1, error='l1')
-    eq_(round(res.r, 2), 0.55)
-    eq_(res.y_mean, y.mean())
-    eq_(res.y_scale, (y - y_mean).abs().mean())
-    eq_(res.x_mean, x2_mean)
-    eq_(res.x_scale, (x2 - x2_mean).abs().mean())
+    assert round(res.r, 2) == 0.55
+    assert res.y_mean == y.mean()
+    assert res.y_scale == (y - y_mean).abs().mean()
+    assert res.x_mean == x2_mean
+    assert res.x_scale == (x2 - x2_mean).abs().mean()
 
     res = boosting(y, [x1, x2], 0, 1)
-    eq_(round(res.r, 2), 0.95)
-
-
-def test_boosting():
-    "Test boosting NDVars"
-    ds = datasets._get_continuous()
-
-    # test boosting results
-    configure(n_workers=0)
-    yield run_boosting, ds
-    configure(n_workers=True)
-    yield run_boosting, ds
+    assert round(res.r, 2) == 0.95
 
 
 def test_boosting_epochs():
@@ -92,13 +85,13 @@ def test_boosting_epochs():
         y = convolve(res.h_scaled, [p0, p1])
         assert correlation_coefficient(y, res.y_pred) > .999
         r = correlation_coefficient(y, ds['uts'])
-        assert_almost_equal(res.r, r, 3)
+        assert res.r == approx(r, abs=1e-3)
         assert res.n_partitions == 10
     # 2d
     res = boosting('utsnd', [p0, p1], 0, 0.6, model='A', ds=ds, n_partitions=10)
-    eq_(len(res.h), 2)
-    eq_(res.h[0].shape, (5, 60))
-    eq_(res.h[1].shape, (5, 60))
+    assert len(res.h) == 2
+    assert res.h[0].shape == (5, 60)
+    assert res.h[1].shape == (5, 60)
     y = convolve(res.h_scaled, [p0, p1])
     r = correlation_coefficient(y, ds['utsnd'], ('case', 'time'))
     assert_dataobj_equal(res.r, r, decimal=3, name=False)
@@ -125,19 +118,24 @@ def test_result():
     res = boosting(x1, y, -1, 0, debug=True)
     x1r = convolve(res.h_scaled, y)
     assert correlation_coefficient(res.y_pred, x1r) > .999
-    assert_almost_equal(correlation_coefficient(x1r[0.9:], x1[0.9:]), res.r, 3)
+    assert correlation_coefficient(x1r[0.9:], x1[0.9:]) == approx(res.r, abs=1e-3)
 
     # test NaN checks  (modifies data)
     ds['x2'].x[1, 50] = np.nan
-    assert_raises(ValueError, boosting, ds['y'], ds['x2'], 0, .5)
-    assert_raises(ValueError, boosting, ds['y'], ds['x2'], 0, .5, False)
+    with pytest.raises(ValueError):
+        boosting(ds['y'], ds['x2'], 0, .5)
+    with pytest.raises(ValueError):
+        boosting(ds['y'], ds['x2'], 0, .5, False)
     ds['x2'].x[1, :] = 1
     with catch_warnings():
         filterwarnings('ignore', category=RuntimeWarning)
-        assert_raises(ValueError, boosting, ds['y'], ds['x2'], 0, .5)
+        with pytest.raises(ValueError):
+            boosting(ds['y'], ds['x2'], 0, .5)
         ds['y'].x[50] = np.nan
-        assert_raises(ValueError, boosting, ds['y'], ds['x1'], 0, .5)
-        assert_raises(ValueError, boosting, ds['y'], ds['x1'], 0, .5, False)
+        with pytest.raises(ValueError):
+            boosting(ds['y'], ds['x1'], 0, .5)
+        with pytest.raises(ValueError):
+            boosting(ds['y'], ds['x1'], 0, .5, False)
 
 
 def test_boosting_func():
@@ -160,8 +158,8 @@ def test_boosting_func():
     r, rr, _ = evaluate_kernel(y[:test_seg_len], x[:, :test_seg_len], x_pads, h, 0, 'l2', h.shape[1] - 1)
 
     assert_array_equal(h, mat['h'])
-    assert_almost_equal(r, mat['crlt'][0, 0], 10)
-    assert_almost_equal(rr, mat['crlt'][1, 0], 10)
+    assert r == approx(mat['crlt'][0, 0])
+    assert rr == approx(mat['crlt'][1, 0])
     assert_allclose(test_sse_history, mat['Str_testE'][0])
 
     # 2d-TRF
@@ -177,7 +175,7 @@ def test_boosting_func():
     r, rr, _ = evaluate_kernel(y[:test_seg_len], x[:, :test_seg_len], x_pads, h, 0, 'l2', h.shape[1] - 1)
 
     assert_array_equal(h, mat['h'])
-    assert_almost_equal(r, mat['crlt'][0, 0], 10)
-    assert_almost_equal(rr, mat['crlt'][1, 0])
+    assert r == approx(mat['crlt'][0, 0])
+    assert rr == approx(mat['crlt'][1, 0])
     # svdboostV4pred multiplies error by number of predictors
     assert_allclose(test_sse_history, mat['Str_testE'][0] / 3)
