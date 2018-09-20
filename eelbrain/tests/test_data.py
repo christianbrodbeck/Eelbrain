@@ -19,6 +19,7 @@ import numpy as np
 from numpy.testing import (
     assert_equal, assert_array_equal, assert_allclose,
     assert_array_almost_equal)
+import pytest
 from scipy import signal
 
 from eelbrain import (
@@ -346,19 +347,33 @@ def test_datalist():
 def test_dataset():
     "Basic dataset operations"
     ds = Dataset()
+
     # naming
     ds['f'] = Factor('abab')
-    eq_(ds['f'].name, 'f')
+    assert ds['f'].name == 'f'
 
     # ds.add()
-    assert_raises(ValueError, ds.add, Factor('aabb'))
+    with pytest.raises(ValueError):
+        ds.add(Factor('aabb'))  # no name
     ds.add(Factor('aabb', name='g'))
-    eq_(ds['g'].name, 'g')
+    assert ds['g'].name == 'g'
 
     # ds.update()
     ds = Dataset()
     ds.update({'f': Factor('abab')})
-    eq_(ds['f'].name, 'f')
+    assert ds['f'].name == 'f'
+
+    # checks on assignemnt
+    ds = Dataset()
+    ds['a'] = Factor('abab')
+    # key check
+    with pytest.raises(ValueError):
+        ds[:, '1'] = 'value'
+    # value check
+    with pytest.raises(ValueError):
+        ds['b'] = Factor('abcde')  # length mismatch
+    with pytest.raises(TypeError):
+        ds['b'] = {i: i for i in range(4)}
 
 
 def test_dataset_combining():

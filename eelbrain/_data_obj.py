@@ -4996,6 +4996,22 @@ class Dataset(OrderedDict):
     of variables in the Dataset (i.e., the number of rows).
 
 
+    **Assigning data**
+
+    The :class:`Dataset` assumes certain properties of the items that are
+    assigned, for example they need to support :mod:`numpy` indexing.
+    When assigning items that are not :mod:`eelbrain` data containers, they are
+    coerced in the following manner:
+
+    - 1-d :class:`numpy.ndarray` are coerced to :class:`Var`; other
+      :class:`numpy.ndarray` are assigned as is
+    - Objects conforming to the Python :class:`collections.Sequence` abstract
+      base class are coerced to :class:`Datalist`
+    - :class:`mne.Epochs` are assigned as is
+    - For advanced use, additional classes can be assigned as is by extending the
+      :attr:`Dataset._value_type_exceptions` class attribute tuple
+
+
     **Accessing Data**
 
     Standard indexing with :class:`str` is used to access the contained Var
@@ -5062,19 +5078,18 @@ class Dataset(OrderedDict):
         0      a
 
     """
+    _value_type_exceptions = (MNE_EPOCHS,)
+
     @staticmethod
     def _args(items=(), name=None, caption=None, info={}, n_cases=None):
         return items, name, caption, info, n_cases
 
     def __init__(self, *args, **kwargs):
         # backwards compatibility
-        if args:
-            if isinstance(args[0], tuple) and isinstance(args[0][0], str):
-                items, name, caption, info, n_cases = self._args(args, **kwargs)
-            else:
-                items, name, caption, info, n_cases = self._args(*args, **kwargs)
+        if args and isinstance(args[0], tuple) and isinstance(args[0][0], str):
+            items, name, caption, info, n_cases = self._args(args, **kwargs)
         else:
-            items, name, caption, info, n_cases = self._args(**kwargs)
+            items, name, caption, info, n_cases = self._args(*args, **kwargs)
 
         # unpack data-objects
         args = []
@@ -5203,41 +5218,31 @@ class Dataset(OrderedDict):
             raise NotImplementedError
         p.text(self.__repr__())
 
-    def __setitem__(self, index, item, overwrite=True):
+    def __setitem__(self, index, item):
         if isinstance(index, str):
-            # test if name already exists
-            if (not overwrite) and (index in self):
-                raise KeyError("Dataset already contains variable of name %r" % index)
             assert_is_legal_dataset_key(index)
 
             # coerce to data-object
             if isdataobject(item) or isinstance(object, Datalist):
-                if (item.name is None or (item.name != index and
-                                          item.name != as_legal_dataset_key(index))):
-                    item.name = index
+                item.name = index
                 n = 0 if (isinstance(item, NDVar) and not item.has_case) else len(item)
-            elif isinstance(item, (list, tuple)):
-                item = Datalist(item, index)
-                n = len(item)
-            elif isinstance(item, np.ndarray):
-                n = len(item)
-                if item.ndim == 1:
-                    item = Var(item, index)
             else:
-                try:
-                    n = len(item)
-                except TypeError:
-                    raise TypeError("Only items with length can be assigned to "
-                                    "a Dataset; got %r" % (item,))
+                if isinstance(item, np.ndarray):
+                    if item.ndim == 1:
+                        item = Var(item, index)
+                elif isinstance(item, self._value_type_exceptions):
+                    pass
+                elif isinstance(item, Sequence):
+                    item = Datalist(item, index)
+                else:
+                    raise TypeError(f"{item!r}: Unsupported type for Dataset; consider using an eelbrain data-object or a list")
+                n = len(item)
 
             # make sure the item has the right length
             if self.n_cases is None:
                 self.n_cases = n
             elif self.n_cases != n:
-                raise ValueError(
-                    "Can not assign item to Dataset. The item`s length (%i) is "
-                    "different from the number of cases in the Dataset (%i)." %
-                    (n, self.n_cases))
+                raise ValueError(f"Can not assign item to Dataset. The item`s length {n} is different from the number of cases in the Dataset {self.n_cases}.")
 
             super(Dataset, self).__setitem__(index, item)
         elif isinstance(index, tuple):
@@ -5645,8 +5650,7 @@ class Dataset(OrderedDict):
                             evokeds.append(v[idx].average())
                     ds[k] = evokeds
                 else:
-                    err = ("Unsupported value type: %s" % type(v))
-                    raise TypeError(err)
+                    raise TypeError(f"{v}: unsupported type for Dataset.aggregate()")
             except:
                 if drop_bad and k not in never_drop:
                     pass
