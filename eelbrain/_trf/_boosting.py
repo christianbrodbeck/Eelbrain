@@ -307,6 +307,14 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
 
     Notes
     -----
+    In order to predict data, use the :func:`convolve` function::
+
+    >>> ds = datasets.get_uts()
+    >>> ds['a1'] = epoch_impulse_predictor('uts', 'A=="a1"', ds=ds)
+    >>> ds['a0'] = epoch_impulse_predictor('uts', 'A=="a0"', ds=ds)
+    >>> res = boosting('uts', ['a0', 'a1'], 0, 0.5, partitions=10, model='A', ds=ds)
+    >>> y_pred = convolve(res.h_scaled, ['a0', 'a1'], ds=ds)
+
     The boosting algorithm is described in [1]_.
 
     References
