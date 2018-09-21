@@ -172,7 +172,7 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None, ravel=None):
     return NDVar(x, dims, info, name or ndvar.name)
 
 
-def convolve(h, x):
+def convolve(h, x, ds=None):
     """Convolve ``h`` and ``x`` along the time dimension
 
     Parameters
@@ -181,14 +181,23 @@ def convolve(h, x):
         Kernel.
     x : NDVar | sequence of NDVar
         Data to convolve, corresponding to ``h``.
+    ds : Dataset
+        If provided, elements of ``x`` can be specified as :class:`str`.
 
     Returns
     -------
     y : NDVar
         Convolution, with same time dimension as ``x``.
     """
-    # structure shared with lfilter
-    is_single = isinstance(x, NDVar)
+    if isinstance(x, str):
+        x = asndvar(x, ds=ds)
+        is_single = True
+    elif isinstance(x, NDVar):
+        is_single = True
+    else:
+        x = [asndvar(xi, ds=ds) for xi in x]
+        is_single = False
+
     if isinstance(h, NDVar) != is_single:
         raise TypeError(f"h={h}: needs to match x")
 
