@@ -106,11 +106,10 @@ class GlassBrain(TimeSlicer, EelFigure):
         Possible values are: 'ortho', 'x', 'y', 'z', 'xz', 'yx', 'yz',
         'l', 'r', 'lr', 'lzr', 'lyr', 'lzry', 'lyrz'. Default depends on
         hemispheres in data.
-    threshold : scalar | None | 'auto'
-        If None is given, the image is not thresholded.
+    threshold : scalar | 'auto'
         If a number is given, values below the threshold (in absolute value) are
         plotted as transparent. If ``'auto'`` is given, the threshold is
-        determined magically by analysis of the image (default).
+        determined magically by analysis of the image.
     cmap : matplotlib colormap
         The colormap for specified image
     colorbar : boolean
@@ -157,7 +156,7 @@ class GlassBrain(TimeSlicer, EelFigure):
     """
 
     def __init__(self, ndvar, dest='mri', mri_resolution=False, mni305=None, black_bg=False,
-                 display_mode=None, threshold='auto', cmap=None, colorbar=False, draw_cross=True,
+                 display_mode=None, threshold=None, cmap=None, colorbar=False, draw_cross=True,
                  annotate=True, alpha=0.7, vmin=None, vmax=None, plot_abs=True, symmetric_cbar="auto",
                  interpolation='nearest', h=None, w=None, **kwargs):
         # Give wxPython a chance to initialize the menu before pyplot
@@ -356,7 +355,7 @@ class GlassBrain(TimeSlicer, EelFigure):
     @classmethod
     def butterfly(
             cls, y, dest='mri', mri_resolution=False, mni305=None,
-            black_bg=False, display_mode=None, threshold='auto', cmap=None,
+            black_bg=False, display_mode=None, threshold=None, cmap=None,
             colorbar=False, alpha=0.7, vmin=None, vmax=None, plot_abs=True,
             symmetric_cbar="auto", interpolation='nearest', name=None, h=2.5,
             w=5, **kwargs):
@@ -393,11 +392,10 @@ class GlassBrain(TimeSlicer, EelFigure):
             Possible values are: 'ortho', 'x', 'y', 'z', 'xz', 'yx', 'yz',
             'l', 'r', 'lr', 'lzr', 'lyr', 'lzry', 'lyrz'. Default depends on
             hemispheres in data.
-        threshold : scalar | None | 'auto'
-            If None is given, the image is not thresholded.
+        threshold : scalar | 'auto'
             If a number is given, values below the threshold (in absolute value) are
             plotted as transparent. If ``'auto'`` is given, the threshold is
-            determined magically by analysis of the image (default).
+            determined magically by analysis of the image.
         cmap : matplotlib colormap
             The colormap for specified image
         colorbar : boolean, Default is False
