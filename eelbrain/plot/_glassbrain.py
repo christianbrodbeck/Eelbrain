@@ -219,7 +219,7 @@ class GlassBrain(TimeSlicer, EelFigure):
             warnings.warn('NaN is not permitted for the vmax and vmin arguments. '
                           'Tip: Use np.nanmax() instead of np.max().')
 
-        img = _save_stc_as_volume(None, ndvar0, self._src, **self._vol_kwargs)
+        img = _stc_to_volume(ndvar0, self._src, **self._vol_kwargs)
         data = _safe_get_data(img)
         affine = img.affine
 
@@ -292,7 +292,7 @@ class GlassBrain(TimeSlicer, EelFigure):
 
     # used by _update_time
     def _add_overlay(self, ndvar0, threshold, interpolation, vmin, vmax, cmap, **kwargs):
-        img = _save_stc_as_volume(None, ndvar0, self._src, **self._vol_kwargs)
+        img = _stc_to_volume(ndvar0, self._src, **self._vol_kwargs)
         data = _safe_get_data(img)
         affine = img.affine
 
@@ -492,14 +492,11 @@ def _to_MNI152(trans):
     return np.dot(t, trans)
 
 
-def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False, mni305=False):
+def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
     """Save a volume source estimate in a NIfTI file.
 
     Parameters
     ----------
-    fname : string | None
-        The name of the generated nifti file. If None, the image is only
-        returned and not saved.
     ndvar : NDVar
         The source estimate
     src : list | string
@@ -522,18 +519,9 @@ def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False, mni
     img : instance Nifti1Image
         The image object.
     """
-    # check if file name
-    if isinstance(src, str):
-        print(('Reading src file %s...' %src))
-        from mne import read_source_spaces
-        src = read_source_spaces(src)
-    else:
-        src = src
-
     src_type = src[0]['type']
     if src_type != 'vol':
-        raise ValueError('You need a volume source space. Got type: %s.'
-                         % src_type)
+        raise ValueError(f"You need a volume source space. Got type: {src_type}")
 
     if ndvar.has_dim('space'):
         ndvar = ndvar.norm('space')
@@ -597,8 +585,6 @@ def _save_stc_as_volume(fname, ndvar, src, dest='mri', mri_resolution=False, mni
         header['pixdim'][4] = None
     with warnings.catch_warnings(record=True):  # nibabel<->numpy warning
         img = nib.Nifti1Image(vol, affine, header=header)
-        if fname is not None:
-            nib.save(img, fname)
     return img
 
 
