@@ -8854,10 +8854,9 @@ class SourceSpaceBase(Dimension):
     def _array_index_label(self, label):
         if isinstance(label, str):
             if self.parc is None:
-                raise RuntimeError("SourceSpace has no parcellation")
+                raise IndexError(f"{label!r}: {self.__class__.__name__} has no parcellation")
             elif label not in self.parc:
-                raise KeyError("SourceSpace parcellation has no label called "
-                               "%r" % label)
+                raise IndexError(f"{label!r}: {self.__class__.__name__} has no such label")
             idx = self.parc == label
         elif label.hemi == 'both':
             lh_idx = self._array_index_hemilabel(label.lh)
@@ -9142,8 +9141,7 @@ class SourceSpace(SourceSpaceBase):
                         else:
                             return i
                     else:
-                        raise IndexError("SourceSpace does not contain vertex "
-                                         "%r" % (arg,))
+                        raise IndexError(f"SourceSpace does not contain vertex {arg!r}")
         return SourceSpaceBase._array_index(self, arg)
 
     def _dim_index(self, index):
@@ -9280,8 +9278,16 @@ class VolumeSourceSpace(SourceSpaceBase):
     def hemi(self):
         return Factor(np.sign(self.coordinates[:, 0]), labels={-1: 'lh', 0: 'midline', 1: 'rh'})
 
+    @LazyProperty
+    def lh_n(self):
+        return np.sum(self.hemi == 'lh')
+
+    @LazyProperty
+    def rh_n(self):
+        return np.sum(self.hemi == 'rh')
+
     def __iter__(self):
-        return iter(self.vertices[0])
+        return map(str, self.vertices[0])
 
     def __getitem__(self, index):
         if isinstance(index, Integral):
@@ -9311,9 +9317,11 @@ class VolumeSourceSpace(SourceSpaceBase):
 
     def _array_index(self, arg):
         if isinstance(arg, str):
-            m = re.match('\d+$', arg)
+            if arg in ('lh', 'rh'):
+                return self.hemi == arg
+            m = re.match('(\d+)$', arg)
             if m:
-                return np.searchsorted(self.vertices[0], int(m.groups(1)))
+                return int(np.searchsorted(self.vertices[0], int(m.group(1))))
         return SourceSpaceBase._array_index(self, arg)
 
     def _dim_index(self, index):
