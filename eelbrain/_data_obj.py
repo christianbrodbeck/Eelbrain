@@ -9276,6 +9276,10 @@ class VolumeSourceSpace(SourceSpaceBase):
             raise ValueError("A VolumeSourceSpace needs exactly one vertices "
                              "array")
 
+    @LazyProperty
+    def hemi(self):
+        return Factor(np.sign(self.coordinates[:, 0]), labels={-1: 'lh', 0: 'midline', 1: 'rh'})
+
     def __iter__(self):
         return iter(self.vertices[0])
 

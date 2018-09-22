@@ -92,12 +92,19 @@ class GlassBrain(TimeSlicer, EelFigure):
     black_bg : boolean. Default is 'False'
         If True, the background of the image is set to be black.
     display_mode : str
-        Direction of the cuts: 'x' - sagittal, 'y' - coronal,
-        'z' - axial, 'l' - sagittal left hemisphere only,
-        'r' - sagittal right hemisphere only, 'ortho' - three cuts are
-        performed in orthogonal directions(Default).
+        Direction of the cuts:
+
+        - ``'x'``: sagittal
+        - ``'y'``: coronal
+        - ``'z'``: axial
+        - ``'l'``: sagittal, left hemisphere only
+        - ``'r'``: sagittal, right hemisphere only
+        - ``'ortho'``: three cuts in orthogonal directions, equivalent to
+          ``'yxz'``
+
         Possible values are: 'ortho', 'x', 'y', 'z', 'xz', 'yx', 'yz',
-        'l', 'r', 'lr', 'lzr', 'lyr', 'lzry', 'lyrz'.
+        'l', 'r', 'lr', 'lzr', 'lyr', 'lzry', 'lyrz'. Default depends on
+        hemispheres in data.
     threshold : scalar | None | 'auto'
         If None is given, the image is not thresholded.
         If a number is given, values below the threshold (in absolute value) are
@@ -149,7 +156,7 @@ class GlassBrain(TimeSlicer, EelFigure):
     """
 
     def __init__(self, ndvar, dest='mri', mri_resolution=False, mni305=None, black_bg=False,
-                 display_mode='ortho', threshold='auto', cmap=None, colorbar=False, draw_cross=True,
+                 display_mode=None, threshold='auto', cmap=None, colorbar=False, draw_cross=True,
                  annotate=True, alpha=0.7, vmin=None, vmax=None, plot_abs=True, symmetric_cbar="auto",
                  interpolation='nearest', h=None, w=None, **kwargs):
         # Give wxPython a chance to initialize the menu before pyplot
@@ -228,6 +235,14 @@ class GlassBrain(TimeSlicer, EelFigure):
         img = new_img_like(img, data, affine)
 
         # layout
+        if display_mode is None:
+            display_mode = ''
+            if 'lh' in ndvar.source.hemi:
+                display_mode += 'l'
+            display_mode += 'y'
+            if 'rh' in ndvar.source.hemi:
+                display_mode += 'r'
+            display_mode += 'z'
         if w is None:
             w = DEFAULT_W
             w *= 3 if display_mode == 'ortho' else len(display_mode)
@@ -340,7 +355,7 @@ class GlassBrain(TimeSlicer, EelFigure):
     @classmethod
     def butterfly(
             cls, ndvar, dest='mri', mri_resolution=False, mni305=None,
-            black_bg=False, display_mode='lyrz', threshold='auto', cmap=None,
+            black_bg=False, display_mode=None, threshold='auto', cmap=None,
             colorbar=False, alpha=0.7, vmin=None, vmax=None, plot_abs=True,
             symmetric_cbar="auto", interpolation='nearest', name=None, h=2.5,
             w=5, **kwargs):
@@ -363,13 +378,20 @@ class GlassBrain(TimeSlicer, EelFigure):
             is enabled iff the source space subject is ``fsaverage``).
         black_bg : boolean
             If True, the background of the image is set to be black.
-        display_mode : Default is 'lyrz'
-            Choose the direction of the cuts: 'x' - sagittal, 'y' - coronal,
-            'z' - axial, 'l' - sagittal left hemisphere only,
-            'r' - sagittal right hemisphere only, 'ortho' - three cuts are
-            performed in orthogonal directions. Possible values are: 'ortho',
-            'x', 'y', 'z', 'xz', 'yx', 'yz', 'l', 'r', 'lr', 'lzr', 'lyr',
-            'lzry', 'lyrz'.
+        display_mode : str
+            Direction of the cuts:
+
+            - ``'x'``: sagittal
+            - ``'y'``: coronal
+            - ``'z'``: axial
+            - ``'l'``: sagittal, left hemisphere only
+            - ``'r'``: sagittal, right hemisphere only
+            - ``'ortho'``: three cuts in orthogonal directions, equivalent to
+              ``'yxz'``
+
+            Possible values are: 'ortho', 'x', 'y', 'z', 'xz', 'yx', 'yz',
+            'l', 'r', 'lr', 'lzr', 'lyr', 'lzry', 'lyrz'. Default depends on
+            hemispheres in data.
         threshold : scalar | None | 'auto'
             If None is given, the image is not thresholded.
             If a number is given, values below the threshold (in absolute value) are
