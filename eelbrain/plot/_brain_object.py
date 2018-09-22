@@ -430,9 +430,7 @@ class Brain(TimeSlicer, surfer.Brain):
                 time_label_ = None
 
             src_hemi = ndvar.sub(**{source.name: 'lh'})
-            data = src_hemi.get_data(data_dims)
-            if isinstance(data, np.ma.MaskedArray):
-                data = data.data * np.invert(data.mask)
+            data = src_hemi.get_data(data_dims, 0)
             vertices = source.lh_vertices
             self.add_data(data, vmin, vmax, None, cmap, alpha, vertices,
                           smoothing_steps, times, time_label_, colorbar_, 'lh')
@@ -440,7 +438,7 @@ class Brain(TimeSlicer, surfer.Brain):
 
         if data_hemi != 'lh':
             src_hemi = ndvar.sub(**{source.name: 'rh'})
-            data = src_hemi.get_data(data_dims)
+            data = src_hemi.get_data(data_dims, 0)
             vertices = source.rh_vertices
             self.add_data(data, vmin, vmax, None, cmap, alpha, vertices,
                           smoothing_steps, times, time_label, colorbar, 'rh')

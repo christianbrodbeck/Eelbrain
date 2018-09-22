@@ -527,9 +527,9 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
         ndvar = ndvar.norm('space')
 
     if ndvar.has_dim('time'):
-        data = ndvar.get_data(('source', 'time'))
+        data = ndvar.get_data(('source', 'time'), 0)
     else:
-        data = ndvar.get_data(('source', np.newaxis))
+        data = ndvar.get_data(('source', np.newaxis), 0)
 
     n_times = data.shape[1]
     shape = src[0]['shape']

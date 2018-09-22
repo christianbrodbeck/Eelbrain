@@ -3826,7 +3826,7 @@ class NDVar(object):
             raise DimensionMismatchError("%r has no dimension named %r" %
                                          (self, name))
 
-    def get_data(self, dims):
+    def get_data(self, dims, mask=None):
         """Retrieve the NDVar's data with a specific axes order.
 
         Parameters
@@ -3835,6 +3835,8 @@ class NDVar(object):
             Sequence of dimension names (or single dimension name). The array
             that is returned will have axes in this order. To insert a new
             axis with size 1 use ``numpy.newaxis``/``None``.
+        mask : scalar
+            If data is a masked array, set masked values to ``mask``.
 
         Notes
         -----
@@ -3853,11 +3855,21 @@ class NDVar(object):
         axes = tuple(self.dimnames.index(d) for d in dims_)
         x = self.x.transpose(axes)
 
+        # apply mask
+        if mask is not None and isinstance(x, np.ma.MaskedArray):
+            if x.mask.any():
+                mask_index = x.mask
+                x = x.data.copy()
+                x[mask_index] = mask
+            else:
+                x = x.data
+
         # insert axes
         if len(dims) > len(dims_):
+            expand_dims = np.ma.expand_dims if isinstance(x, np.ma.MaskedArray) else np.expand_dims
             for ax, dim in enumerate(dims):
                 if dim is newaxis:
-                    x = np.expand_dims(x, ax)
+                    x = expand_dims(x, ax)
 
         return x
 
