@@ -618,12 +618,10 @@ def set_dict_arg(key, arg, line_dim_obj, artists, legend_handles=None):
     set_attr_name = 'set_' + key
     for dim_index, value in arg.items():
         index = line_dim_obj._array_index(dim_index)
-        if isinstance(index, slice):
-            key_artists = artists[index]
-        elif isinstance(index, int):
-            key_artists = (artists[index],)
+        if isinstance(index, int):
+            key_artists = [artists[index]]
         else:
-            key_artists = tuple(artists[i] for i in index)
+            key_artists = artists[index]
 
         if not key_artists:
             continue
@@ -646,11 +644,7 @@ class LayerData(object):
         self._line_args = line_args
 
     def line_args(self, kwargs):
-        out = {}
-        for k, v in chain(kwargs.items(), self._line_args.items()):
-            if v is not None:
-                out[self._remap_args.get(k, k)] = v
-        return out
+        return {self._remap_args.get(k, k): v for k, v in chain(kwargs.items(), self._line_args.items())}
 
 
 class PlotData(object):
