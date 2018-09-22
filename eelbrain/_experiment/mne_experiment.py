@@ -26,8 +26,8 @@ import numpy as np
 
 import mne
 from mne.baseline import rescale
-from mne.minimum_norm import (make_inverse_operator, apply_inverse,
-                              apply_inverse_epochs)
+from mne.minimum_norm import (
+    make_inverse_operator, apply_inverse, apply_inverse_epochs)
 from tqdm import tqdm
 
 from .. import _report
@@ -59,10 +59,10 @@ from ..mne_fixes._trans import hsp_equal, mrk_equal
 from ..mne_fixes._source_space import merge_volume_source_space, prune_volume_source_space
 from .._ndvar import cwt_morlet
 from ..fmtxt import List, Report, Image, read_meta
-from .._report import named_list, enumeration, plural
 from .._resources import predefined_connectivity
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
+from .._text import named_list, enumeration, plural
 from .._utils import WrappedFormater, ask, subp, keydefaultdict, log_level
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .._utils.numpy_utils import INT_TYPES

@@ -6,79 +6,9 @@ from . import plot
 from . import test
 from ._data_obj import cellname, combine
 from ._stats.stats import ttest_t
-from .fmtxt import ms, Section, linebreak
+from ._text import ms
+from .fmtxt import Section, linebreak
 
-
-PLURALS = {
-    'is': 'are',
-}
-
-
-def n_of(n, of, plural_for_0=False):
-    "n_of(3, 'epoch') -> '3 epochs'"
-    if n == 0:
-        return "no " + plural(of, not plural_for_0)
-    return str(n) + ' ' + plural(of, n)
-
-
-def plural(singular, n):
-    "plural('house', 2) -> 'houses'"
-    if n == 1:
-        return singular
-    elif singular in PLURALS:
-        return PLURALS[singular]
-    else:
-        return singular + 's'
-
-
-def enumeration(items, link='and'):
-    "['a', 'b', 'c'] -> 'a, b and c'"
-    items = tuple(map(str, items))
-    if len(items) >= 2:
-        return (' %s ' % link).join((', '.join(items[:-1]), items[-1]))
-    elif len(items) == 1:
-        return items[0]
-    else:
-        raise ValueError("items=%s" % repr(items))
-
-
-def named_list(items, name='item'):
-    "named_list([1, 2, 3], 'number') -> 'numbers (1, 2, 3)"
-    if len(items) == 1:
-        return "%s (%r)" % (name, items[0])
-    else:
-        if name.endswith('y'):
-            name = name[:-1] + 'ie'
-        return "%ss (%s)" % (name, ', '.join(map(repr, items)))
-
-
-def format_samples(res):
-    if res.samples == -1:
-        return "a complete set of %i permutations" % res.n_samples
-    elif res.samples is None:
-        return "no permutations"
-    else:
-        return "%i random permutations" % res.n_samples
-
-
-def format_timewindow(res):
-    "Format a description of the time window for a test result"
-    uts = res._time_dim
-    return f"{tstart(res.tstart, uts)} - {tstop(res.tstop, uts)} ms"
-
-
-def tstart(tstart, uts):
-    if tstart is None:
-        return ms(uts.tmin)
-    else:
-        return ms(tstart)
-
-
-def tstop(tstop, uts):
-    if tstop is None:
-        return ms(uts.tmax + uts.tstep)
-    else:
-        return ms(tstop)
 
 
 def sensor_results(res, ds, color):
@@ -537,13 +467,12 @@ def time_results(res, ds, colors, title='Results', caption="Timecourse",
 
     # compose captions
     if clusters.n_cases:
-        c_caption = ("Clusters in time window %s based on %s."
-                     % (format_timewindow(res), format_samples(res)))
+        c_caption = f"Clusters in time window {res._desc_timewindow()} based on {res._desc_samples}."
         if 'p_parc' in clusters:
             c_caption += " p: p-value in ROI; p_parc: p-value corrected across ROIs."
         tc_caption = caption
     else:
-        c_caption = "No clusters found %s." % format_timewindow(res)
+        c_caption = f"No clusters found {res._desc_timewindow()}."
         tc_caption = ' '.join((caption, c_caption))
 
     # plotting arguments

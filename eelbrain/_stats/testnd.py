@@ -38,7 +38,7 @@ import scipy.stats
 from scipy import ndimage
 from tqdm import trange
 
-from .. import fmtxt, _info
+from .. import fmtxt, _info, _text
 from ..fmtxt import FMText
 from .._celltable import Celltable
 from .._config import CONFIG
@@ -48,7 +48,6 @@ from .._data_obj import (
     ascategorial, asmodel, asndvar, asvar, assub,
     cellname, combine, dataobj_repr)
 from .._exceptions import OldVersionError, ZeroVariance
-from .._report import enumeration, format_timewindow, ms
 from .._utils import LazyProperty, user_activity
 from .._utils.numpy_utils import FULL_AXIS_SLICE
 from . import opt, stats, vector
@@ -174,6 +173,19 @@ class NDTest(object):
             self.p = cdist.probability_map
             self._kind = cdist.kind
 
+    def _desc_samples(self):
+        if self.samples == -1:
+            return f"a complete set of {self.n_samples} permutations"
+        elif self.samples is None:
+            return "no permutations"
+        else:
+            return f"{self.n_samples} random permutations"
+
+    def _desc_timewindow(self):
+        tstart = self._time_dim.tmin if self.tstart is None else self.tstart
+        tstop = self._time_dim.tstop if self.tstop is None else self.tstop
+        return f"{_text.ms(tstart)} - {_text.ms(tstop)} ms"
+
     def _asfmtext(self):
         p = self.p.min()
         max_stat = self._max_statistic()
@@ -297,9 +309,9 @@ class NDTest(object):
         out = fmtxt.List("Mass-univariate statistics:")
         out.add_item(self._name())
         dimnames = [dim.name for dim in self._dims]
-        dimlist = out.add_sublist("Over %s" % enumeration(dimnames))
+        dimlist = out.add_sublist(f"Over {_text.enumeration(dimnames)}")
         if 'time' in dimnames:
-            dimlist.add_item("Time interval: %s." % format_timewindow(self))
+            dimlist.add_item(f"Time interval: {self._desc_timewindow()}.")
 
         cdist = self._first_cdist
         if cdist is None:
@@ -314,27 +326,20 @@ class NDTest(object):
             l.add_item("Based on maximum statistic with threshold-"
                        "free cluster enhancement (Smith & Nichols, 2009)")
         elif cdist.kind == 'cluster':
-            l.add_item("Based on maximum cluster sum statistic")
+            l.add_item("Based on maximum cluster mass statistic")
             sl = l.add_sublist("Cluster criteria:")
             for dim in dimnames:
                 if dim == 'time':
-                    sl.add_item("Minimum cluster duration:  %s ms"
-                                % ms(cdist.criteria.get('mintime', 0)))
+                    sl.add_item(f"Minimum cluster duration {_text.ms(cdist.criteria.get('mintime', 0))} ms")
                 elif dim == 'source':
-                    sl.add_item("At least %s contiguous sources."
-                                % cdist.criteria.get('minsource', 0))
+                    sl.add_item(f"At least {cdist.criteria.get('minsource', 0)} contiguous sources.")
                 elif dim == 'sensor':
-                    sl.add_item("At least %s contiguous sensors."
-                                % cdist.criteria.get('minsensor', 0))
+                    sl.add_item(f"At least {cdist.criteria.get('minsensor', 0)} contiguous sensors.")
                 else:
-                    sl.add_item("Minimum number of contiguous elements in %s: "
-                                "%s"
-                                % (dim, cdist.criteria.get("min%s" % dim, 0)))
+                    value = cdist.criteria.get(f'min{dim}', 0)
+                    sl.add_item(f"Minimum number of contiguous elements in {dim}: {value}")
         # n samples
-        if self.samples == -1:
-            l.add_item("In all %s possible permutations" % self.n_samples)
-        else:
-            l.add_item("In %s random permutations" % self.samples)
+        l.add_item(f"In {self._desc_samples()}")
 
         # computation
         if computation:

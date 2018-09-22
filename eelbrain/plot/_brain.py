@@ -11,8 +11,9 @@ import numpy as np
 
 from .._data_obj import asndvar, NDVar, SourceSpace, UTS
 from .._utils import deprecated
-from ..fmtxt import Image, im_table, ms
 from ._base import EelFigure, ImLayout, ColorBarMixin
+from ..fmtxt import Image, im_table
+from .._text import ms
 from ._color_luts import p_lut, dspm_lut
 from ._colors import ColorList
 
