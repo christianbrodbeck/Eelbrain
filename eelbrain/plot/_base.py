@@ -61,7 +61,7 @@ functions executed are:
 import __main__
 
 from collections import Iterable, Iterator
-from itertools import chain
+from itertools import chain, repeat
 from logging import getLogger
 import math
 import os
@@ -69,6 +69,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+from typing import List, Union
 import weakref
 
 import matplotlib as mpl
@@ -79,12 +80,17 @@ import PIL
 
 from .._colorspaces import symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
 from .._config import CONFIG
-from .._data_obj import (Case, UTS, ascategorial, asndvar, assub, isnumeric,
-                         isdataobject, cellname)
+from .._data_obj import (
+    NDVar, Case, UTS,
+    ascategorial, asndvar, assub, isnumeric, isdataobject, cellname,
+)
+from .. import testnd
 from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
 from .._utils.subp import command_exists
 from ..fmtxt import Image
 from ..mne_fixes import MNE_EPOCHS
+from .._ndvar import erode, resample
+from ._utils import adjust_hsv
 from functools import reduce
 
 
@@ -607,6 +613,106 @@ def find_data_dims(ndvar, dims, extra_dim=None):
         return agg, tuple(dimnames)
 
 
+def butterfly_data(
+        data: Union[NDVar, testnd.NDTest],
+        hemi: str,
+        resample_: int = None,
+        colors: bool = False,
+) -> (List, List, NDVar):
+    """Data for plotting butterfly plot with brain
+
+    Returns
+    -------
+    hemis : list of str
+        Hemispheres in the data.
+    butterfly_daya :
+        Data for Butterfly plot.
+    brain_data :
+        Data for brain plot.
+    """
+    # find input type
+    if isinstance(data, NDVar):
+        y = data
+        kind = 'ndvar'
+    elif isinstance(data, (testnd.ttest_1samp, testnd.ttest_rel, testnd.ttest_ind)):
+        y = data.difference
+        kind = 'test'
+    elif isinstance(data, testnd.Vector):
+        y = data.difference_norm
+        kind = 'test'
+    else:
+        raise TypeError(f"ndvar={data!r}")
+    source = y.get_dim('source')
+
+    # find samplingrate
+    if resample_ is not None:
+        raise NotImplementedError(f"resample_={resample_}")
+
+    # find hemispheres to include
+    if hemi is None:
+        hemis = []
+        if source.lh_n:
+            hemis.append('lh')
+        if source.rh_n:
+            hemis.append('rh')
+    elif hemi in ('lh', 'rh'):
+        hemis = [hemi]
+    else:
+        raise ValueError("hemi=%r" % (hemi,))
+
+    if kind == 'ndvar':
+        if y.has_case:
+            y = y.mean('case')
+        if y.has_dim('space'):
+            y = y.norm('space')
+        if resample_:
+            y = resample(y, resample_, window='hamming')
+        bfly_data = [y.sub(source=hemi, name=hemi.capitalize()) for hemi in hemis]
+        brain_data = y
+    elif kind == 'test':
+        sig = data.p <= 0.05
+        y_magnitude = y.rms('time')
+        # resample
+        if resample_:
+            y = resample(y, resample_, window='hamming')
+            sig = resample(sig, resample_) > 0.5
+        brain_data = y.mask(~sig)
+        # mask
+        non_sig = erode(~sig, 'time')
+        y_sig = y.mask(non_sig)
+        y_ns = y.mask(sig)
+        # line-styles
+        if colors:
+            lh_color = '#046AAD'
+            rh_color = '#A60628'
+            line_color_sig = {'lh': lh_color, 'rh': rh_color}
+            line_color_ns = {'lh': adjust_hsv(lh_color, 0, -0.5, -0.),
+                             'rh': adjust_hsv(rh_color, 0, -0.7, -0.)}
+        else:
+            color_sig = (0,) * 3
+            color_ns = (.7,) * 3
+            line_color_sig = {'lh': color_sig, 'rh': color_sig}
+            line_color_ns = {'lh': color_ns, 'rh': color_ns}
+        linestyle_ns = {'linewidth': 0.2, 'color': line_color_ns, 'alpha': 0.2}
+        linestyle_sig = {'linewidth': 0.2, 'color': line_color_sig, 'alpha': 1.0}
+        # layer-data
+        axes = []
+        for hemi in hemis:
+            # z-order
+            y_mag = y_magnitude.sub(source=hemi)
+            z_order = dict(zip(y_mag.source, -y_mag.x.argsort()))
+            # data
+            layers = []
+            for y, linestyle in ((y_ns, linestyle_ns), (y_sig, linestyle_sig)):
+                kwargs = {'zorder': z_order, **linestyle}
+                layers.append(LayerData(y.sub(source=hemi), kwargs))
+            axes.append(layers)
+        bfly_data = PlotData(axes, ('time', 'source'), plot_names=hemis)
+    else:
+        raise RuntimeError(f"kind={kind}")
+    return hemis, bfly_data, brain_data
+
+
 def pop_dict_arg(kwargs, key):
     "Helper for artist-sepcific matplotlib kwargs"
     if key in kwargs and isinstance(kwargs[key], dict):
@@ -652,7 +758,7 @@ class PlotData(object):
 
     Parameters
     ----------
-    axes : list of {None | list of NDVar}
+    axes : list of {None | list of LayerData}
         Data to be plotted on each axes.
     dims : list of str
         Dimensions assigned to the axes.
@@ -828,7 +934,7 @@ class PlotData(object):
         """Add a layer to all plots"""
         assert len(ys) == len(self.plot_data)
         if isinstance(line_args, dict):
-            line_args = (line_args,) * len(ys)
+            line_args = repeat(line_args, len(ys))
         else:
             assert len(line_args) == len(ys)
 
@@ -1335,8 +1441,11 @@ class EelFigure(object):
         for ax in axes:
             ax.yaxis.set_major_formatter(formatter)
 
-        if label:
+        if isinstance(label, str):
             self.set_ylabel(label)
+        elif isinstance(label, Iterable):
+            for i, l in enumerate(label):
+                self.set_ylabel(l, i)
 
     def draw(self):
         "(Re-)draw the figure (after making manual changes)."

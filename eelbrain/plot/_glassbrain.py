@@ -40,8 +40,9 @@ import warnings
 import numpy as np
 from nilearn.image import new_img_like
 
-from ..plot._base import TimeSlicer, Layout, EelFigure
-from ..plot._utsnd import Butterfly
+from ._base import TimeSlicer, Layout, EelFigure, butterfly_data
+from ._utsnd import Butterfly
+
 
 # default GlassBrain height and width
 DEFAULT_H = 2.6
@@ -354,7 +355,7 @@ class GlassBrain(TimeSlicer, EelFigure):
 
     @classmethod
     def butterfly(
-            cls, ndvar, dest='mri', mri_resolution=False, mni305=None,
+            cls, y, dest='mri', mri_resolution=False, mni305=None,
             black_bg=False, display_mode=None, threshold='auto', cmap=None,
             colorbar=False, alpha=0.7, vmin=None, vmax=None, plot_abs=True,
             symmetric_cbar="auto", interpolation='nearest', name=None, h=2.5,
@@ -363,7 +364,7 @@ class GlassBrain(TimeSlicer, EelFigure):
 
         Parameters
         ----------
-        ndvar : NDVar  ([case,] time, source[, space])
+        y : NDVar  ([case,] time, source[, space])
             Data to plot; if ``ndvar`` has a case dimension, the mean is plotted.
             if ``ndvar`` has a space dimension, the norm is plotted.
         dest : 'mri' | 'surf'
@@ -441,18 +442,12 @@ class GlassBrain(TimeSlicer, EelFigure):
         from .._wxgui import get_app, needs_jumpstart
         jumpstart = needs_jumpstart()
 
+        hemis, bfly_data, brain_data = butterfly_data(y, None)
+
         if name is None:
-            name = ndvar.name
+            name = brain_data.name
 
-        if ndvar.has_case:
-            ndvar = ndvar.mean('case')
-
-        # butterfly-plot
-        if ndvar.has_dim('space'):
-            data = ndvar.norm('space')
-        else:
-            data = ndvar
-        p = Butterfly(data, vmin=vmin, vmax=vmax, h=h, w=w, name=name, color='black', ylabel=False)
+        p = Butterfly(bfly_data, vmin=vmin, vmax=vmax, h=h, w=w, name=name, color='black', ylabel=hemis, axtitle=False)
 
         # Give wxPython a chance to initialize the menu before pyplot
         if jumpstart:
@@ -462,7 +457,7 @@ class GlassBrain(TimeSlicer, EelFigure):
         # needs to be figured out
 
         # GlassBrain plot
-        p_glassbrain = GlassBrain(ndvar, display_mode=display_mode, colorbar=colorbar, threshold=threshold,
+        p_glassbrain = GlassBrain(brain_data, display_mode=display_mode, colorbar=colorbar, threshold=threshold,
                                   dest=dest, mri_resolution=mri_resolution, draw_cross=True, annotate=True,
                                   black_bg=black_bg, cmap=cmap, alpha=alpha, vmin=vmin, vmax=vmax,
                                   plot_abs=plot_abs, symmetric_cbar=symmetric_cbar, interpolation=interpolation,

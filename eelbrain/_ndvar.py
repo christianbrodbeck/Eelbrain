@@ -15,7 +15,7 @@ import operator
 
 import mne
 import numpy as np
-from scipy import linalg, signal, stats
+from scipy import linalg, ndimage, signal, stats
 
 from . import _info, mne_fixes
 from ._data_obj import (
@@ -463,6 +463,15 @@ def dss(ndvar):
     to_dss = NDVar(dss_mat, (dss_dim, data_dim), {}, 'to dss')
     from_dss = NDVar(linalg.inv(dss_mat), (data_dim, dss_dim), {}, 'from dss')
     return to_dss, from_dss
+
+
+def erode(ndvar, dim):
+    ax = ndvar.get_axis(dim)
+    struct = np.zeros((3,) * ndvar.ndim, bool)
+    index = tuple(slice(None) if i == ax else 1 for i in range(ndvar.ndim))
+    struct[index] = True
+    x = ndimage.binary_erosion(ndvar.x, struct)
+    return NDVar(x, ndvar.dims, ndvar.info.copy(), ndvar.name)
 
 
 def filter_data(ndvar, l_freq, h_freq, filter_length='auto',

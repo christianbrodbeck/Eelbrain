@@ -11,9 +11,9 @@ import numpy as np
 
 from .._data_obj import asndvar, NDVar, SourceSpace, UTS
 from .._utils import deprecated
-from ._base import EelFigure, ImLayout, ColorBarMixin
 from ..fmtxt import Image, im_table
 from .._text import ms
+from ._base import EelFigure, ImLayout, ColorBarMixin, butterfly_data
 from ._color_luts import p_lut, dspm_lut
 from ._colors import ColorList
 
@@ -1375,35 +1375,17 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, surf='inflated',
         Brain plot.
     """
     import wx
-    from .._stats import testnd
     from .._wxgui.mpl_canvas import CanvasFrame
     from ._brain_object import BRAIN_H, BRAIN_W
     from ._utsnd import Butterfly
 
-    if isinstance(y, (testnd.ttest_1samp, testnd.ttest_rel, testnd.ttest_ind)):
-        y = y.masked_parameter_map(0.05, name=y.y)
+    hemis, bfly_data, brain_data = butterfly_data(y, hemi)
 
     if name is None:
-        name = y.name
-
-    if y.has_case:
-        y = y.mean('case')
-
-    # find hemispheres to include
-    if hemi is None:
-        hemis = []
-        if y.source.lh_n:
-            hemis.append('lh')
-        if y.source.rh_n:
-            hemis.append('rh')
-    elif hemi in ('lh', 'rh'):
-        hemis = (hemi,)
-    else:
-        raise ValueError("hemi=%r" % (hemi,))
+        name = brain_data.name
 
     # butterfly-plot
-    plot_data = [y.sub(source=hemi_, name=hemi_.capitalize()) for hemi_ in hemis]
-    p = Butterfly(plot_data, vmin=vmin, vmax=vmax, xlim=xlim,
+    p = Butterfly(bfly_data, vmin=vmin, vmax=vmax, xlim=xlim,
                   h=h, w=w, ncol=1, name=name, color='black', ylabel=False)
 
     # position the brain window next to the butterfly-plot
@@ -1419,7 +1401,7 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, surf='inflated',
         pos = wx.DefaultPosition
 
     # Brain plot
-    p_brain = brain(y, cmap, vmin, vmax, surf, views, hemi, mask=mask,
+    p_brain = brain(brain_data, cmap, vmin, vmax, surf, views, hemi, mask=mask,
                     smoothing_steps=smoothing_steps, axh=brain_h, name=name,
                     pos=pos)
     p.link_time_axis(p_brain)
