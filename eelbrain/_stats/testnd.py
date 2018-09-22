@@ -1741,10 +1741,10 @@ class Vector(NDTest):
 
     Attributes
     ----------
-    mean : NDVar
+    difference : NDVar
         The vector field averaged across cases.
-    norm : NDVar
-        The norm of the ``mean`` vector field.
+    difference_norm : NDVar
+        The norm of the ``difference`` vector field.
     n : int
         Number of cases.
     p : NDVar
@@ -1757,7 +1757,7 @@ class Vector(NDTest):
     -----
     Cases with zero variance are set to t=0.
     """
-    _state_specific = ('mean', 'n', '_v_dim')
+    _state_specific = ('difference', 'n', '_v_dim')
     _statistic = 'norm'
 
     @user_activity
@@ -1783,7 +1783,7 @@ class Vector(NDTest):
 
         # store attributes
         NDTest.__init__(self, ct.y, ct.match, sub, samples, tfce, None, cdist, tstart, tstop)
-        self.mean = v_mean
+        self.difference = v_mean
         self._v_dim = v_dim
         self.n = n
 
@@ -1796,7 +1796,7 @@ class Vector(NDTest):
 
     def _expand_state(self):
         NDTest._expand_state(self)
-        self.norm = self.mean.norm(self._v_dim)
+        self.difference_norm = self.difference.norm(self._v_dim)
 
     def _name(self):
         if self.y:
