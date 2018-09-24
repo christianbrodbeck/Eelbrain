@@ -39,7 +39,7 @@ import warnings
 
 import numpy as np
 
-from ._base import TimeSlicer, Layout, EelFigure, butterfly_data
+from ._base import TimeSlicerEF, Layout, EelFigure, butterfly_data
 from ._utsnd import Butterfly
 
 
@@ -64,7 +64,7 @@ def _crop_colorbar( cbar, cbar_vmin, cbar_vmax ):
     cbar.set_ticks(new_tick_locs, update_ticks=True)
 
 
-class GlassBrain(TimeSlicer, EelFigure):
+class GlassBrain(TimeSlicerEF, EelFigure):
     """Plot 2d projections of a brain volume
 
     Based on :func:`nilearn.plotting.plot_glass_brain`.
@@ -147,6 +147,7 @@ class GlassBrain(TimeSlicer, EelFigure):
     (see `The MNI brain and the Talairach atlas
     <http://imaging.mrc-cbu.cam.ac.uk/imaging/MniTalairach>`_)
     """
+    _name = 'GlassBrain'
     _make_axes = False
     _display_time_in_frame_title = True
 
@@ -235,7 +236,16 @@ class GlassBrain(TimeSlicer, EelFigure):
             display_mode += 'z'
         n_plots = 3 if display_mode == 'ortho' else len(display_mode)
         layout = Layout(n_plots, 0.85, 2.6, tight=False, ncol=n_plots, **kwargs)
-        EelFigure.__init__(self, 'GlassBrain-%s' % ndvar.source.subject, layout)
+        # frame title
+        if layout.name:
+            frame_title = layout.name
+        elif isinstance(layout.title, str):
+            frame_title = layout.title
+        elif ndvar.name:
+            frame_title = ndvar.name
+        else:
+            frame_title = ndvar.source.subject
+        EelFigure.__init__(self, frame_title, layout)
 
         display = get_projector(display_mode)(img0, alpha=alpha, plot_abs=plot_abs,
                                               threshold=threshold, figure=self.figure, axes=None,
@@ -266,7 +276,7 @@ class GlassBrain(TimeSlicer, EelFigure):
             cbar = display._cbar
             _crop_colorbar(cbar, cbar_vmin, cbar_vmax)
 
-        TimeSlicer.__init__(self, (ndvar,))
+        TimeSlicerEF.__init__(self, 'time', [[ndvar]])
 
         self._show()
 
