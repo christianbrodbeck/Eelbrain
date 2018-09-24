@@ -38,15 +38,9 @@ DAMAGE.
 import warnings
 
 import numpy as np
-from nilearn.image import new_img_like
 
 from ._base import TimeSlicer, Layout, EelFigure, butterfly_data
 from ._utsnd import Butterfly
-
-
-# default GlassBrain height and width
-DEFAULT_H = 2.6
-DEFAULT_W = 2.2
 
 
 # Copied from nilearn.plotting.img_plotting
@@ -143,10 +137,9 @@ class GlassBrain(TimeSlicer, EelFigure):
         space. Can be "continuous" (default) to use 3rd-order spline
         interpolation, or "nearest" to use nearest-neighbor mapping.
         "nearest" is faster but can be noisier in some cases.
-    h : scalar
-        Plot height (inches).
-    w : scalar
-        Plot width (inches).
+    title : str | bool
+        Figure title. Set to ``True`` to display current time point as figure
+        title.
 
     Notes
     -----
@@ -154,16 +147,18 @@ class GlassBrain(TimeSlicer, EelFigure):
     (see `The MNI brain and the Talairach atlas
     <http://imaging.mrc-cbu.cam.ac.uk/imaging/MniTalairach>`_)
     """
+    _make_axes = False
 
     def __init__(self, ndvar, dest='mri', mri_resolution=False, mni305=None, black_bg=False,
                  display_mode=None, threshold=None, cmap=None, colorbar=False, draw_cross=True,
                  annotate=True, alpha=0.7, vmin=None, vmax=None, plot_abs=True, symmetric_cbar="auto",
-                 interpolation='nearest', h=None, w=None, **kwargs):
+                 interpolation='nearest', **kwargs):
         # Give wxPython a chance to initialize the menu before pyplot
         from .._wxgui import get_app
         get_app(jumpstart=True)
 
         # Lazy import of matplotlib.pyplot
+        from nilearn.image import index_img
         from nilearn.plotting import cm
         from nilearn.plotting.displays import get_projector
         from nilearn.plotting.img_plotting import _get_colorbar_and_data_ranges
@@ -181,22 +176,21 @@ class GlassBrain(TimeSlicer, EelFigure):
             if mni305 is None:
                 mni305 = ndvar.source.subject == 'fsaverage'
 
-            self._ndvar = ndvar
-            self._src = ndvar.source.get_source_space()
-            src_type = self._src[0]['type']
+            src = ndvar.source.get_source_space()
+            src_type = src[0]['type']
             if src_type != 'vol':
                 raise ValueError('You need a volume source space. Got type: %s.'
                                  % src_type)
 
+            img = _stc_to_volume(ndvar, src, dest, mri_resolution, mni305)
             if ndvar.has_dim('time'):
-                t_in = 0
-                self.time = ndvar.get_dim('time')
-                ndvar0 = ndvar.sub(time=self.time[t_in])
-                title = 'time = %s ms' % round(t_in * 1e3)
+                time = ndvar.get_dim('time')
+                t0 = time[0]
+                imgs = [index_img(img, i) for i in range(len(ndvar.time))]
+                img0 = imgs[0]
             else:
-                self.time = None
-                title = None
-                ndvar0 = ndvar
+                img0 = img
+                imgs = time = t0 = None
 
             if plot_abs:
                 cbar_vmin, cbar_vmax, vmin, vmax = _get_colorbar_and_data_ranges(
@@ -205,8 +199,12 @@ class GlassBrain(TimeSlicer, EelFigure):
                 cbar_vmin, cbar_vmax, vmin, vmax = _get_colorbar_and_data_ranges(
                     ndvar.x, vmax, symmetric_cbar, kwargs)
         else:
-            cbar_vmin, cbar_vmax = None, None
-        self._vol_kwargs = dict(dest=dest, mri_resolution=mri_resolution, mni305=mni305)
+            cbar_vmin = cbar_vmax = src = imgs = img0 = time = t0 = None
+
+        self.time = time
+        self._src = src
+        self._ndvar = ndvar
+        self._imgs = imgs
 
         show_nan_msg = False
         if vmax is not None and np.isnan(vmax):
@@ -219,20 +217,11 @@ class GlassBrain(TimeSlicer, EelFigure):
             warnings.warn('NaN is not permitted for the vmax and vmin arguments. '
                           'Tip: Use np.nanmax() instead of np.max().')
 
-        img = _stc_to_volume(ndvar0, self._src, **self._vol_kwargs)
-        data = _safe_get_data(img)
-        affine = img.affine
-
-        if np.isnan(np.sum(data)):
-            data = np.nan_to_num(data)
-
         # Deal with automatic settings of plot parameters
         if threshold == 'auto':
             # Threshold below a percentile value, to be sure that some
             # voxels pass the threshold
             threshold = _fast_abs_percentile(self._ndvar)
-
-        img = new_img_like(img, data, affine)
 
         # layout
         if display_mode is None:
@@ -243,24 +232,16 @@ class GlassBrain(TimeSlicer, EelFigure):
             if 'rh' in ndvar.source.hemi:
                 display_mode += 'r'
             display_mode += 'z'
-        if w is None:
-            w = DEFAULT_W
-            w *= 3 if display_mode == 'ortho' else len(display_mode)
-            if colorbar:
-                w += .7
-        if h is None:
-            h = DEFAULT_H
-        layout = Layout(None, ax_aspect=0, axh_default=0, h=h, w=w, tight=False)
+        n_plots = 3 if display_mode == 'ortho' else len(display_mode)
+        layout = Layout(n_plots, 0.85, 2.6, tight=False, ncol=n_plots, **kwargs)
         EelFigure.__init__(self, 'GlassBrain-%s' % ndvar.source.subject, layout)
 
-        display = get_projector(display_mode)(img, alpha=alpha, plot_abs=plot_abs,
+        display = get_projector(display_mode)(img0, alpha=alpha, plot_abs=plot_abs,
                                               threshold=threshold, figure=self.figure, axes=None,
                                               black_bg=black_bg, colorbar=colorbar)
 
-        display.add_overlay(new_img_like(img, data, affine),
-                            threshold=threshold, interpolation=interpolation,
-                            colorbar=colorbar, vmin=vmin, vmax=vmax, cmap=cmap,
-                            **kwargs)
+        display.add_overlay(img0, threshold=threshold, interpolation=interpolation,
+                            colorbar=colorbar, vmin=vmin, vmax=vmax, cmap=cmap)
 
         self.display = display
         self.threshold = threshold
@@ -273,8 +254,13 @@ class GlassBrain(TimeSlicer, EelFigure):
             display.annotate()
         if draw_cross:
             display.draw_cross()
-        if title is not None and not title == '':
-            display.title(title)
+        if layout.title is True:
+            if t0 is None:
+                raise TypeError(f"title=True; only allowed when displaying data with multiple time points")
+            display.title("???")
+            self._update_title(t0)
+        elif layout.title:
+            display.title(layout.title)
         if hasattr(display, '_cbar'):
             cbar = display._cbar
             _crop_colorbar(cbar, cbar_vmin, cbar_vmax)
@@ -282,34 +268,6 @@ class GlassBrain(TimeSlicer, EelFigure):
         TimeSlicer.__init__(self, (ndvar,))
 
         self._show()
-
-    def save_as(self, output_file):
-        if output_file is not None:
-            self.display.savefig(output_file)
-
-    def close(self):
-        self.display.close()
-
-    # used by _update_time
-    def _add_overlay(self, ndvar0, threshold, interpolation, vmin, vmax, cmap, **kwargs):
-        img = _stc_to_volume(ndvar0, self._src, **self._vol_kwargs)
-        data = _safe_get_data(img)
-        affine = img.affine
-
-        if np.isnan(np.sum(data)):
-            data = np.nan_to_num(data)
-
-        img = new_img_like(img, data, affine)
-        self.display.add_overlay(new_img_like(img, data, affine),
-                                 threshold=threshold, interpolation=interpolation,
-                                 colorbar=False, vmin=vmin, vmax=vmax, cmap=cmap,
-                                 **kwargs)
-        # A little hack to make sure that the display
-        # still has correct colorbar flag.
-        self.display._colorbar = self.colorbar
-
-        for axis in self.display._cut_displayed:
-            self.display.axes[axis].ax.redraw_in_frame()
 
     # used by _update_time
     def _remove_overlay(self):
@@ -319,38 +277,29 @@ class GlassBrain(TimeSlicer, EelFigure):
 
     # used by _update_time
     def _update_title(self, t):
-        first_axis = self.display._cut_displayed[0]
-        ax = self.display.axes[first_axis].ax
-        ax.texts[-1].set_text('time = %s ms' % round(t * 1e3))
-        ax.redraw_in_frame()
+        if self._layout.title is True:
+            first_axis = self.display._cut_displayed[0]
+            ax = self.display.axes[first_axis].ax
+            ax.texts[-1].set_text('time = %s ms' % round(t * 1e3))
 
     def _update_time(self, t, fixate):
-        ndvart = self._ndvar.sub(time=t)
-
-        # remove the last overlay
+        index = self.time._array_index(t)
         self._remove_overlay()
-
-        self._add_overlay(ndvart, threshold=self.threshold, interpolation=self.interpolation,
-                          vmin=self.vmin, vmax=self.vmax, cmap=self.cmap)
-
+        self.display.add_overlay(
+            self._imgs[index], threshold=self.threshold, interpolation=self.interpolation,
+            colorbar=False, vmin=self.vmin, vmax=self.vmax, cmap=self.cmap)
+        # A little hack to make sure that the display
+        # still has correct colorbar flag.
+        self.display._colorbar = self.colorbar
         self._update_title(t)
 
-        self._show()
+        # for axis in self.display._cut_displayed:
+        #     self.display.axes[axis].ax.redraw_in_frame()
+        self.draw()
 
     def animate(self):
         for t in self.time:
             self.set_time(t)
-
-    # this is only needed for Eelbrain < 0.28
-    def set_time(self, time):
-        """Set the time point to display
-
-        Parameters
-        ----------
-        time : scalar
-            Time to display.
-        """
-        self._set_time(time, True)
 
     @classmethod
     def butterfly(
@@ -524,6 +473,9 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
     else:
         data = ndvar.get_data(('source', np.newaxis), 0)
 
+    if not np.all(np.isfinite(data)):
+        raise ValueError("Not all values are finite")
+
     n_times = data.shape[1]
     shape = src[0]['shape']
     shape3d = (shape[2], shape[1], shape[0])
@@ -579,28 +531,6 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
     with warnings.catch_warnings(record=True):  # nibabel<->numpy warning
         img = nib.Nifti1Image(vol, affine, header=header)
     return img
-
-
-def _safe_get_data(img):
-    """Get the data in the Nifti1Image object avoiding non-finite values
-
-    Parameters
-    ----------
-    img: Nifti image/object
-        Image to get data.
-
-    Returns
-    -------
-    data: numpy array
-        get_data() return from Nifti image.
-        # inspired from nilearn._utils.niimg._safe_get_data
-    """
-    data = img.get_data()
-    non_finite_mask = np.logical_not(np.isfinite(data))
-    if non_finite_mask.sum() > 0:  # any non_finite_mask values?
-        data[non_finite_mask] = 0
-
-    return data
 
 
 def _fast_abs_percentile(ndvar, percentile=80):
