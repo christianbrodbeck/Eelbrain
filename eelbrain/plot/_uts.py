@@ -108,6 +108,8 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         ``True`` (default): normal matplotlib frame;
         ``False``: omit top and right lines;
         ``'t'``: draw spines at x=0 and y=0, common for ERPs.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
 
     Notes
     -----
@@ -327,8 +329,8 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
-    title : None | str
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
 
     Notes
     -----
@@ -466,8 +468,8 @@ class UTSClusters(EelFigure):
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
-    title : str
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
     _name = "UTSClusters"
 

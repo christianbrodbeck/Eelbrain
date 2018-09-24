@@ -225,8 +225,8 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
-    title : None | string
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
 
     Notes
     -----
@@ -419,8 +419,8 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
-    title : None | string
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
 
     Notes
     -----

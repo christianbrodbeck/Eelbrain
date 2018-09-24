@@ -375,8 +375,10 @@ For example, to plot each case of ``meg`` separately, use::
    >>> plot.Butterfly('meg', '.case', ds=ds)
 
 
-Layout
-======
+.. _general-layout-parameters:
+
+General layout parameters
+=========================
 
 Most plots that also share certain layout keyword arguments. By default, all
 those parameters are determined automatically, but individual values can be
@@ -392,7 +394,9 @@ nrow, ncol : None | int
 ax_aspect : scalar
    Width / height aspect of the axes.
 name : str
-   Window title (i.e. not displayed on the figure itself).
+   Window title (not displayed on the figure itself).
+title : str
+   Figure title (displayed on the figure).
 
 Plots that do take those parameters can be identified by the ``**layout`` in
 their function signature.

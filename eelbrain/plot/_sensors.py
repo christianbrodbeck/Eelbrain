@@ -447,8 +447,8 @@ class SensorMaps(EelFigure):
         Marker for the sensor positions.
     frame : scalar
         Size of the empty space around sensors in axes.
-    title : None | str
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
 
     Notes
     -----
@@ -687,8 +687,8 @@ class SensorMap(SensorMapMixin, EelFigure):
         the top end of the plot).
     connectivity : bool
         Show sensor connectivity (default False).
-    title : None | string
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
     _make_axes = False
     _name = 'SensorMap'

@@ -140,6 +140,8 @@ class GlassBrain(TimeSlicerEF, EelFigure):
     title : str | bool
         Figure title. Set to ``True`` to display current time point as figure
         title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
 
     Notes
     -----
