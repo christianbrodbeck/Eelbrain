@@ -151,6 +151,8 @@ class Brain(TimeSlicer, surfer.Brain):
     from the PySurfer :class:`~surfer.Brain` super-class. For complete PySurfer
     functionality see te PySurfer documentation.
     """
+    _display_time_in_frame_title = True
+
     def __init__(self, subject, hemi, surf='inflated', title=None,
                  cortex="classic", alpha=1.0, background="white",
                  foreground="black", subjects_dir=None, views='lat',

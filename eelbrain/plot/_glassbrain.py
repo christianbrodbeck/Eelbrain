@@ -148,6 +148,7 @@ class GlassBrain(TimeSlicer, EelFigure):
     <http://imaging.mrc-cbu.cam.ac.uk/imaging/MniTalairach>`_)
     """
     _make_axes = False
+    _display_time_in_frame_title = True
 
     def __init__(self, ndvar, dest='mri', mri_resolution=False, mni305=None, black_bg=False,
                  display_mode=None, threshold=None, cmap=None, colorbar=False, draw_cross=True,

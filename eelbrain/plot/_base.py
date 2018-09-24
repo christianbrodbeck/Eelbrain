@@ -90,6 +90,7 @@ from .._utils.subp import command_exists
 from ..fmtxt import Image
 from ..mne_fixes import MNE_EPOCHS
 from .._ndvar import erode, resample
+from .._text import ms
 from ._utils import adjust_hsv
 from functools import reduce
 
@@ -2469,6 +2470,7 @@ class TimeSlicer(object):
     # update data in a child plot of time-slices
     _time_dim = None
     _current_time = None
+    _display_time_in_frame_title = False
 
     def __init__(self, ndvars=None):
         if ndvars is not None:
@@ -2545,6 +2547,8 @@ class TimeSlicer(object):
         self._update_time(t, fixate)
         self._current_time = t
         self._time_fixed = fixate
+        if self._display_time_in_frame_title:
+            self._frame.SetTitleSuffix(f' [{ms(t)} ms]')
 
     def _update_time(self, t, fixate):
         raise NotImplementedError
