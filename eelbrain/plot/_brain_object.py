@@ -312,10 +312,11 @@ class Brain(TimeSlicer, surfer.Brain):
 
         Parameters
         ----------
-        ndvar : NDVar  (source[, time])
-            NDVar with SourceSpace dimension and optional time dimension.
-            Values outside of the source-space, as well as masked values are
-            set to 0, assuming a colormap in which 0 is transparent.
+        ndvar : NDVar  ([case,] source[, time])
+            NDVar with SourceSpace dimension and optional time dimension. If it
+            contains a :class:`Case` dimension, the average over cases is
+            displayed. Values outside of the source-space, as well as masked
+            values are set to 0, assuming a colormap in which 0 is transparent.
         cmap : str | list of matplotlib colors | array
             Colormap. Can be the name of a matplotlib colormap, a list of
             colors, or a custom lookup table (an n x 4 array with RBGA values
@@ -342,8 +343,39 @@ class Brain(TimeSlicer, surfer.Brain):
         remove_existing : bool
             Remove data layers that have been added previously (default False).
         """
+        # check input data and dimensions
         source = self._check_source_space(ndvar)
-        # find standard args
+        # find ndvar time axis
+        if ndvar.ndim == 1 + ndvar.has_case:
+            if ndvar.has_case:
+                ndvar = ndvar.mean('case')
+            time_dim = times = None
+            data_dims = (source.name,)
+        elif ndvar.ndim != 2:
+            raise ValueError(f"{ndvar}: must be one- or two dimensional")
+        elif ndvar.has_dim('time'):
+            time_dim = ndvar.time
+            times = ndvar.time.times
+            data_dims = (source.name, 'time')
+            if time_label == 'ms':
+                time_label = lambda x: '%s ms' % int(round(x * 1000))
+            elif time_label == 's':
+                time_label = '%.3f s'
+            elif time_label is False:
+                time_label = None
+        else:
+            data_dims = ndvar.get_dimnames((source.name, None))
+            time_dim = ndvar.get_dim(data_dims[1])
+            times = np.arange(len(time_dim))
+            time_label = None
+        # make sure time axis is compatible with existing data
+        if time_dim is not None:
+            if self._time_dim is None:
+                self._set_time_dim(time_dim)
+            elif time_dim != self._time_dim:
+                raise ValueError(f"The brain already displays an NDVar with incompatible time dimension (current: {self._time_dim};  new: {time_dim})")
+
+        # find colormap parameters
         meas = ndvar.info.get('meas')
         if cmap is None or isinstance(cmap, str):
             epochs = ((ndvar,),)
@@ -370,37 +402,6 @@ class Brain(TimeSlicer, surfer.Brain):
         # remove existing data before modifying attributes
         if remove_existing:
             self.remove_data()
-
-        # find ndvar time axis
-        if ndvar.ndim == 1:
-            time_dim = times = None
-            data_dims = (source.name,)
-        elif ndvar.ndim != 2:
-            raise ValueError(f"{ndvar}: must be one- or two dimensional")
-        elif ndvar.has_dim('time'):
-            time_dim = ndvar.time
-            times = ndvar.time.times
-            data_dims = (source.name, 'time')
-            if time_label == 'ms':
-                time_label = lambda x: '%s ms' % int(round(x * 1000))
-            elif time_label == 's':
-                time_label = '%.3f s'
-            elif time_label is False:
-                time_label = None
-        else:
-            data_dims = ndvar.get_dimnames((source.name, None))
-            time_dim = ndvar.get_dim(data_dims[1])
-            times = np.arange(len(time_dim))
-            time_label = None
-        # make sure time axis is compatible with existing data
-        if time_dim is not None:
-            if self._time_dim is None:
-                self._set_time_dim(time_dim)
-            elif time_dim != self._time_dim:
-                raise ValueError(
-                    "The brain already displays an NDVar with incompatible "
-                    "time dimension (current: %s;  new: %s)" %
-                    (self._time_dim, time_dim))
 
         # determine which hemi we're adding data to
         if self._hemi in ('lh', 'rh'):
