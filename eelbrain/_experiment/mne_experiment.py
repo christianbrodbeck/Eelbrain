@@ -1008,8 +1008,8 @@ class MneExperiment(FileTree):
                     raw = self.load_raw(False)
                     digs[session] = raw.info['dig']
                 # find unique digitizer datasets
-                unique_digs = []
-                dig_ids = {}  # {session: id}
+                unique_digs = []  # unique marker point location sets
+                dig_ids = {}  # {session: dig_id}; dig_id is index in unique_digs
                 dig_missing = []
                 sessions = sorted(digs)
                 for session in sessions:
@@ -1044,17 +1044,23 @@ class MneExperiment(FileTree):
                             group_desc = ' vs '.join('/'.join(group) for group in groups.values())
                             raise NotImplementedError(f"SuperEpoch {epoch.name} has sessions with incompatible marker positions ({group_desc}); SuperEpochs with different forward solutions are not implemented.")
                 # determine which to use for forward solution
-                fwd_sessions = input_state['fwd-sessions'][subject]
-                previous_masters = (s for _, s in fwd_sessions.items() if s in dig_ids)
-                masters = {dig_ids[s]: s for s in previous_masters}
-                for s in sessions:
-                    if dig_ids[s] not in masters:
-                        masters[dig_ids[s]] = s
-                    fwd_sessions[s] = masters[dig_ids[s]]
+                fwd_sessions = input_state['fwd-sessions'][subject]  # {for_session: use_session}
+                fwd_session_for_id = {dig_ids[s]: s for s in fwd_sessions.values() if s in dig_ids}  # {dig_id: use_session}, initialize with previously used sessions
+                for session in sorted(dig_ids):
+                    if session in fwd_sessions:
+                        continue
+                    dig_id = dig_ids[session]
+                    if dig_id not in fwd_session_for_id:
+                        fwd_session_for_id[dig_id] = session
+                    fwd_sessions[session] = fwd_session_for_id[dig_id]
+                for session in dig_missing:
+                    if fwd_session_for_id:
+                        assert len(fwd_session_for_id) == 1
+                        fwd_sessions[session] = fwd_session_for_id[0]
 
         # save input-state
         save.pickle(input_state, input_state_file)
-        self._fwd_sessions = input_state['fwd-sessions']
+        self._fwd_sessions = input_state['fwd-sessions']  # {subject: {for_session: use_session}}
 
         # Check the cache, delete invalid files
         # =====================================
