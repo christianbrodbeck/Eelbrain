@@ -50,7 +50,9 @@ from .._names import INTERPOLATE_CHANNELS
 from .._meeg import new_rejection_ds
 from .._mne import (
     dissolve_label, labels_from_mni_coords, rename_label, combination_label,
-    morph_source_space, shift_mne_epoch_trigger)
+    morph_source_space, shift_mne_epoch_trigger, find_source_subject,
+    label_from_annot,
+)
 from ..mne_fixes import (
     write_labels_to_annot, _interpolate_bads_eeg, _interpolate_bads_meg)
 from ..mne_fixes._trans import hsp_equal, mrk_equal
@@ -1872,31 +1874,35 @@ class MneExperiment(FileTree):
         """
         subject = ds['subject']
         if len(subject.cells) != 1:
-            err = "ds must have a subject variable with exactly one subject"
-            raise ValueError(err)
+            raise ValueError("ds must have a subject variable with exactly one subject")
         subject = subject.cells[0]
         self.set(subject=subject)
         if baseline is True:
             baseline = self._epochs[self.get('epoch')].baseline
-
+        parc = self.get('parc') or None
+        if isinstance(mask, str) and parc != mask:
+            parc = mask
+            self.set(parc=mask)
         epochs = ds['epochs']
         inv = self.load_inv(epochs)
-        stc = apply_inverse_epochs(epochs, inv, **self._params['apply_inv_kw'])
+
+        # determine whether initial source-space can be restricted
+        mri_sdir = self.get('mri-sdir')
+        mrisubject = self.get('mrisubject')
+        is_scaled = find_source_subject(mrisubject, mri_sdir)
+        if mask and (is_scaled or not morph):
+            label = label_from_annot(inv['src'], mrisubject, mri_sdir, parc)
+        else:
+            label = None
+        stc = apply_inverse_epochs(epochs, inv, label=label, **self._params['apply_inv_kw'])
 
         if ndvar:
-            parc = self.get('parc') or None
-            if isinstance(mask, str) and parc != mask:
-                parc = mask
-                self.set(parc=mask)
             self.make_annot()
-            subject = self.get('mrisubject')
             src = self.get('src')
-            mri_sdir = self.get('mri-sdir')
-            src = load.fiff.stc_ndvar(stc, subject, src, mri_sdir,
-                                      self._params['apply_inv_kw']['method'],
-                                      self._params['make_inv_kw'].get('fixed', False),
-                                      parc=parc,
-                                      connectivity=self.get('connectivity'))
+            src = load.fiff.stc_ndvar(
+                stc, mrisubject, src, mri_sdir, self._params['apply_inv_kw']['method'],
+                self._params['make_inv_kw'].get('fixed', False), parc=parc,
+                connectivity=self.get('connectivity'))
             if baseline:
                 src -= src.summary(time=baseline)
 
@@ -1905,12 +1911,10 @@ class MneExperiment(FileTree):
                 with self._temporary_state:
                     self.make_annot(mrisubject=common_brain)
                 ds['srcm'] = morph_source_space(src, common_brain)
-                if mask:
+                if mask and not is_scaled:
                     _mask_ndvar(ds, 'srcm')
             else:
                 ds['src'] = src
-                if mask:
-                    _mask_ndvar(ds, 'src')
         else:
             if baseline:
                 raise NotImplementedError("Baseline for SourceEstimate")
