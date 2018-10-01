@@ -220,9 +220,9 @@ def convolve(h, x):
     out_shape = x_only_shape + h_only_shape + (x_time.nsamples,)
     out = np.zeros(out_shape)
     # reshape input
-    n_x_only = sum(x_only_shape) or 1
-    n_h_only = sum(h_only_shape) or 1
-    n_shared = sum(shared_shape) or 1
+    n_x_only = reduce(operator.mul, x_only_shape, 1)
+    n_h_only = reduce(operator.mul, h_only_shape, 1)
+    n_shared = reduce(operator.mul, shared_shape, 1)
     x_flat = x.get_data(a.x_all).reshape((n_x_only, n_shared, x_time.nsamples))
     h_flat = h.get_data(a.y_all).reshape((n_h_only, n_shared, len(h_time)))
     out_flat = out.reshape((n_x_only, n_h_only, x_time.nsamples))
