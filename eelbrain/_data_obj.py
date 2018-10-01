@@ -551,9 +551,7 @@ def asmodel(x, sub=None, ds=None, n=None):
 def asndvar(x, sub=None, ds=None, n=None, dtype=None):
     if isinstance(x, str):
         if ds is None:
-            err = ("Ndvar was specified as string, but no Dataset was "
-                   "specified")
-            raise TypeError(err)
+            raise TypeError("Ndvar was specified as string, but no Dataset was specified")
         x = ds.eval(x)
 
     # convert MNE objects
@@ -9230,8 +9228,7 @@ class SourceSpace(SourceSpaceBase):
         else:
             rh_verts = ()
 
-        return self._label((lh_verts, rh_verts), 'mask', (0, 0, 0),
-                           subjects_dir, sss)
+        return self._label((lh_verts, rh_verts), 'mask', (0, 0, 0), subjects_dir, sss)
 
     def _mask_ndvar(self, subjects_dir=None):
         if subjects_dir is None:
