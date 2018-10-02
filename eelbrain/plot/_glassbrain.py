@@ -74,6 +74,12 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
     ndvar : NDVar  ([case,] time, source[, space])
         Data to plot; if ``ndvar`` has a case dimension, the mean is plotted.
         if ``ndvar`` has a space dimension, the norm is plotted.
+    cmap : str
+        Colormap (name of a matplotlib colormap).
+    vmin : scalar
+        Plot data range minimum.
+    vmax : scalar
+        Plot data range maximum.
     dest : 'mri' | 'surf'
         If 'mri' the volume is defined in the coordinate system of
         the original T1 image. If 'surf' the coordinate system
@@ -104,8 +110,6 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         If a number is given, values below the threshold (in absolute value) are
         plotted as transparent. If ``'auto'`` is given, the threshold is
         determined magically by analysis of the image.
-    cmap : matplotlib colormap
-        The colormap for specified image
     colorbar : boolean
         If True, display a colorbar on the right of the plots.
     draw_cross: boolean
@@ -116,10 +120,6 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         are added to the plot.
     alpha : float between 0 and 1
         Alpha transparency for the brain schematics
-    vmin : float
-        Lower bound for plotting, passed to matplotlib.pyplot.imshow
-    vmax : float
-        Upper bound for plotting, passed to matplotlib.pyplot.imshow
     plot_abs : boolean
         If set to True (default) maximum intensity projection of the
         absolute value will be used (rendering positive and negative
@@ -153,10 +153,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
     _make_axes = False
     _display_time_in_frame_title = True
 
-    def __init__(self, ndvar, dest='mri', mri_resolution=False, mni305=None, black_bg=False,
-                 display_mode=None, threshold=None, cmap=None, colorbar=False, draw_cross=True,
-                 annotate=True, alpha=0.7, vmin=None, vmax=None, plot_abs=True, symmetric_cbar="auto",
-                 interpolation='nearest', **kwargs):
+    def __init__(self, ndvar, cmap=None, vmin=None, vmax=None, dest='mri', mri_resolution=False, mni305=None, black_bg=False, display_mode=None, threshold=None, colorbar=False, draw_cross=True, annotate=True, alpha=0.7, plot_abs=True, symmetric_cbar="auto", interpolation='nearest', **kwargs):
         # Give wxPython a chance to initialize the menu before pyplot
         from .._wxgui import get_app
         get_app(jumpstart=True)
@@ -325,11 +322,12 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
 
     @classmethod
     def butterfly(
-            cls, y, dest='mri', mri_resolution=False, mni305=None,
-            black_bg=False, display_mode=None, threshold=None, cmap=None,
-            colorbar=False, alpha=0.7, vmin=None, vmax=None, plot_abs=True,
-            symmetric_cbar="auto", interpolation='nearest', name=None, h=2.5,
-            w=5, **kwargs):
+            cls, y, cmap=None, vmin=None, vmax=None,
+            dest='mri', mri_resolution=False, mni305=None,
+            black_bg=False, display_mode=None, threshold=None,
+            colorbar=False, alpha=0.7, plot_abs=True,
+            symmetric_cbar="auto", interpolation='nearest',
+            w=5, h=2.5, xlim=None, name=None, **kwargs):
         """Shortcut for a butterfly-plot with a time-linked glassbrain plot
 
         Parameters
@@ -337,6 +335,12 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         y : NDVar  ([case,] time, source[, space])
             Data to plot; if ``ndvar`` has a case dimension, the mean is plotted.
             if ``ndvar`` has a space dimension, the norm is plotted.
+        cmap : str
+            Colormap (name of a matplotlib colormap).
+        vmin : scalar
+            Plot data range minimum.
+        vmax : scalar
+            Plot data range maximum.
         dest : 'mri' | 'surf'
             If 'mri' the volume is defined in the coordinate system of
             the original T1 image. If 'surf' the coordinate system
@@ -367,16 +371,10 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             If a number is given, values below the threshold (in absolute value) are
             plotted as transparent. If ``'auto'`` is given, the threshold is
             determined magically by analysis of the image.
-        cmap : matplotlib colormap
-            The colormap for specified image
         colorbar : boolean, Default is False
             If True, display a colorbar on the right of the plots.
         alpha : float between 0 and 1
             Alpha transparency for the brain schematics
-        vmin : float
-            Lower bound for plotting, passed to matplotlib.pyplot.imshow
-        vmax : float
-            Upper bound for plotting, passed to matplotlib.pyplot.imshow
         plot_abs : boolean
             If set to True (default) maximum intensity projection of the
             absolute value will be used (rendering positive and negative
@@ -394,12 +392,15 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             space. Can be "continuous" (default) to use 3rd-order spline
             interpolation, or "nearest" to use nearest-neighbor mapping.
             "nearest" is faster but can be noisier in some cases.
-        name : str
-            The window title (default is ndvar.name).
-        h : scalar
-            Plot height (inches).
         w : scalar
             Butterfly plot width (inches).
+        h : scalar
+            Plot height (inches; applies to butterfly and brain plot).
+        xlim : scalar | (scalar, scalar)
+            Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
+            scalar (default is the full x-axis in the data).
+        name : str
+            The window title (default is ndvar.name).
 
         Returns
         -------
@@ -416,7 +417,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         if name is None:
             name = brain_data.name
 
-        p = Butterfly(bfly_data, vmin=vmin, vmax=vmax, h=h, w=w, name=name, color='black', ylabel=hemis, axtitle=False)
+        p = Butterfly(bfly_data, vmin=vmin, vmax=vmax, xlim=xlim, h=h, w=w, ncol=1, name=name, color='black', ylabel=hemis, axtitle=False)
 
         # Give wxPython a chance to initialize the menu before pyplot
         if jumpstart:
@@ -426,11 +427,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         # needs to be figured out
 
         # GlassBrain plot
-        p_glassbrain = GlassBrain(brain_data, display_mode=display_mode, colorbar=colorbar, threshold=threshold,
-                                  dest=dest, mri_resolution=mri_resolution, draw_cross=True, annotate=True,
-                                  black_bg=black_bg, cmap=cmap, alpha=alpha, vmin=vmin, vmax=vmax,
-                                  plot_abs=plot_abs, symmetric_cbar=symmetric_cbar, interpolation=interpolation,
-                                  mni305=mni305, **kwargs)
+        p_glassbrain = GlassBrain(brain_data, cmap, vmin, vmax, dest, mri_resolution, mni305, black_bg, display_mode, threshold, colorbar, True, True, alpha, plot_abs, symmetric_cbar, interpolation, **kwargs)
 
         p.link_time_axis(p_glassbrain)
 

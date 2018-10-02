@@ -1385,8 +1385,7 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, surf='inflated',
         name = brain_data.name
 
     # butterfly-plot
-    p = Butterfly(bfly_data, vmin=vmin, vmax=vmax, xlim=xlim,
-                  h=h, w=w, ncol=1, name=name, color='black', ylabel=False)
+    p = Butterfly(bfly_data, vmin=vmin, vmax=vmax, xlim=xlim, h=h, w=w, ncol=1, name=name, color='black', ylabel=hemis, axtitle=False)
 
     # position the brain window next to the butterfly-plot
     brain_h = h * p._layout.dpi
