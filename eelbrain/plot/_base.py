@@ -2355,6 +2355,11 @@ class TimeController(object):
         self.current_time = t
         self.fixate = fixate
 
+    def set_xlim(self, xmin, xmax):
+        for p in self.iter_plots():
+            if isinstance(p, XAxisMixin):
+                p._set_xlim(xmin, xmax, draw=True)
+
 
 class TimeSlicer(object):
     # Interface to link time axes of multiple plots.
@@ -2673,9 +2678,11 @@ class XAxisMixin(object):
         new_right = min(self.__xmax, right + d)
         self.__animate(left, new_right - d, right, new_right)
 
-    def _set_xlim(self, left, right):
+    def _set_xlim(self, left, right, draw=False):
         for ax in self.__axes:
             ax.set_xlim(left, right)
+        if draw:
+            self.draw()
 
     def add_vspans(self, intervals, axes=None, *args, **kwargs):
         """Draw vertical bars over axes
@@ -2703,8 +2710,16 @@ class XAxisMixin(object):
 
     def set_xlim(self, left=None, right=None):
         """Set the x-axis limits for all axes"""
-        self._set_xlim(left, right)
-        self.draw()
+        if isinstance(self, TimeSlicer) and self._time_controller is not None:
+            if left is None or right is None:
+                ax_left, ax_right = self.__axes[0].get_xlim()
+                if left is None:
+                    left = ax_left
+                if right is None:
+                    right = ax_right
+            self._time_controller.set_xlim(left, right)
+        else:
+            self._set_xlim(left, right, draw=True)
 
 
 class YLimMixin(object):
