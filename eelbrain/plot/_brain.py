@@ -601,7 +601,7 @@ def _voxel_brain(data, lut, vmin, vmax):
 # - _x_bin_table_ims() wrap 'x' brain plot function
 # - _bin_table_ims() creates ims given a brain plot function
 
-class ImageTable(EelFigure, ColorBarMixin):
+class ImageTable(ColorBarMixin, EelFigure):
     _name = "ImageTable"
     # Initialize in two steps
     #

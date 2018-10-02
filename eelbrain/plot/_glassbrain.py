@@ -39,7 +39,7 @@ import warnings
 
 import numpy as np
 
-from ._base import TimeSlicerEF, Layout, EelFigure, butterfly_data
+from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, butterfly_data
 from ._utsnd import Butterfly
 
 
@@ -64,7 +64,7 @@ def _crop_colorbar( cbar, cbar_vmin, cbar_vmax ):
     cbar.set_ticks(new_tick_locs, update_ticks=True)
 
 
-class GlassBrain(TimeSlicerEF, EelFigure):
+class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
     """Plot 2d projections of a brain volume
 
     Based on :func:`nilearn.plotting.plot_glass_brain`.
@@ -256,10 +256,13 @@ class GlassBrain(TimeSlicerEF, EelFigure):
         display.add_overlay(img0, threshold=threshold, interpolation=interpolation,
                             colorbar=colorbar, vmin=vmin, vmax=vmax, cmap=cmap)
 
+        ColorBarMixin.__init__(self, self._colorbar_params, ndvar)
+
         self.display = display
         self.threshold = threshold
         self.interpolation = interpolation
         self.colorbar = colorbar
+        self.cmap = cmap
         self.vmin = vmin
         self.vmax = vmax
 
@@ -281,6 +284,9 @@ class GlassBrain(TimeSlicerEF, EelFigure):
         TimeSlicerEF.__init__(self, 'time', [[ndvar]])
 
         self._show()
+
+    def _fill_toolbar(self, tb):
+        ColorBarMixin._fill_toolbar(self, tb)
 
     # used by _update_time
     def _remove_overlay(self):
@@ -313,6 +319,9 @@ class GlassBrain(TimeSlicerEF, EelFigure):
     def animate(self):
         for t in self.time:
             self.set_time(t)
+
+    def _colorbar_params(self):
+        return self.cmap, self.vmin, self.vmax
 
     @classmethod
     def butterfly(
