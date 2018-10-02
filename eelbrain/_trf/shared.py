@@ -7,7 +7,7 @@ import numpy as np
 from numpy import newaxis
 
 from .. import _info
-from .._data_obj import NDVar, UTS, dataobj_repr, ascategorial, asndvar
+from .._data_obj import NDVar, Case, UTS, dataobj_repr, ascategorial, asndvar
 
 
 class RevCorrData(object):
@@ -354,4 +354,14 @@ class RevCorrData(object):
 
     def package_y_like(self, data, name):
         shape = tuple(map(len, self.full_y_dims))
-        return NDVar(data.reshape(shape), self.full_y_dims, {}, name)
+        data = data.reshape(shape)
+        # roll Case to first axis
+        for axis, dim in enumerate(self.full_y_dims):
+            if isinstance(dim, Case):
+                data = np.rollaxis(data, axis)
+                dims = list(self.full_y_dims)
+                dims.insert(0, dims.pop(axis))
+                break
+        else:
+            dims = self.full_y_dims
+        return NDVar(data, dims, {}, name)
