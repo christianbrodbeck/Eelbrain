@@ -2276,36 +2276,41 @@ class Legend(EelFigure):
 class TimeController(object):
     # Link plots that have the TimeSlicer mixin
     def __init__(self, t=0, fixate=False):
-        self.plots = []  # list of weakref to plots
+        self._plots = []  # list of weakref to plots
         self.current_time = t
         self.fixate = fixate
 
     def add_plot(self, plot):
         if plot._time_controller is None:
             plot._set_time(self.current_time, self.fixate)
-            self.plots.append(weakref.ref(plot))
+            self._plots.append(weakref.ref(plot))
             plot._time_controller = self
         else:
             self.merge(plot._time_controller)
 
     def iter_plots(self):
-        plots = (p() for p in self.plots)
-        return (p for p in plots if p is not None)
+        needs_cleaning = False
+        for ref in self._plots:
+            plot = ref()
+            if plot is None:
+                needs_cleaning = True
+            else:
+                yield plot
+        if needs_cleaning:
+            self._plots = [ref for ref in self._plots if ref() is not None]
 
     def merge(self, time_controller):
         "Merge another TimeController into self"
-        time_controller.set_time(self.current_time, self.fixate)
         for plot in time_controller.iter_plots():
-            plot()._time_controller = self
-            self.plots.append(plot)
+            plot._time_controller = None
+            self.add_plot(plot)
 
     def set_time(self, t, fixate):
         if t == self.current_time and fixate == self.fixate:
             return
-        plots = tuple(self.iter_plots())
-        for p in plots:
+        for p in self.iter_plots():
             t = p._validate_time(t)
-        for p in plots:
+        for p in self.iter_plots():
             p._update_time_wrapper(t, fixate)
         self.current_time = t
         self.fixate = fixate
