@@ -120,13 +120,12 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         are added to the plot.
     alpha : float between 0 and 1
         Alpha transparency for the brain schematics
-    plot_abs : boolean
-        If set to True (default) maximum intensity projection of the
-        absolute value will be used (rendering positive and negative
-        values in the same manner). If set to ``False``, the sign of the
-        maximum intensity will be represented with different colors.
-        See `examples <http://nilearn.github.io/auto_examples/01_plotting/
-        plot_demo_glass_brain_extensive.html>`_.
+    plot_abs : bool
+        Plot the maximum intensity projection of the absolute value (rendering
+        positive and negative values in the same manner). By default,
+        (``False``), the sign of the maximum intensity will be represented with
+        different colors. See `examples <http://nilearn.github.io/auto_examples/
+        01_plotting/plot_demo_glass_brain_extensive.html>`_.
     symmetric_cbar : boolean | 'auto'
         Specifies whether the colorbar should range from -vmax to vmax
         or from vmin to vmax. Setting to 'auto' will select the latter if
@@ -153,7 +152,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
     _make_axes = False
     _display_time_in_frame_title = True
 
-    def __init__(self, ndvar, cmap=None, vmin=None, vmax=None, dest='mri', mri_resolution=False, mni305=None, black_bg=False, display_mode=None, threshold=None, colorbar=False, draw_cross=True, annotate=True, alpha=0.7, plot_abs=True, symmetric_cbar="auto", interpolation='nearest', **kwargs):
+    def __init__(self, ndvar, cmap=None, vmin=None, vmax=None, dest='mri', mri_resolution=False, mni305=None, black_bg=False, display_mode=None, threshold=None, colorbar=False, draw_cross=True, annotate=True, alpha=0.7, plot_abs=False, symmetric_cbar="auto", interpolation='nearest', **kwargs):
         # Give wxPython a chance to initialize the menu before pyplot
         from .._wxgui import get_app
         get_app(jumpstart=True)
@@ -325,7 +324,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             cls, y, cmap=None, vmin=None, vmax=None,
             dest='mri', mri_resolution=False, mni305=None,
             black_bg=False, display_mode=None, threshold=None,
-            colorbar=False, alpha=0.7, plot_abs=True,
+            colorbar=False, alpha=0.7, plot_abs=False,
             symmetric_cbar="auto", interpolation='nearest',
             w=5, h=2.5, xlim=None, name=None, **kwargs):
         """Shortcut for a butterfly-plot with a time-linked glassbrain plot
@@ -375,13 +374,13 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             If True, display a colorbar on the right of the plots.
         alpha : float between 0 and 1
             Alpha transparency for the brain schematics
-        plot_abs : boolean
-            If set to True (default) maximum intensity projection of the
-            absolute value will be used (rendering positive and negative
-            values in the same manner). If set to false the sign of the
-            maximum intensity will be represented with different colors.
-            See http://nilearn.github.io/auto_examples/01_plotting/plot_demo_glass_brain_extensive.html
-            for examples.
+        plot_abs : bool
+            Plot the maximum intensity projection of the absolute value (rendering
+            positive and negative values in the same manner). By default,
+            (``False``), the sign of the maximum intensity will be represented with
+            different colors. See `examples <http://nilearn.github.io/auto_examples/
+            01_plotting/plot_demo_glass_brain_extensive.html>`_. Only affects
+            GlassBrain plot.
         symmetric_cbar : boolean or 'auto'
             Specifies whether the colorbar should range from -vmax to vmax
             or from vmin to vmax. Setting to 'auto' will select the latter if
