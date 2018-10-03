@@ -400,8 +400,7 @@ class MneExperiment(FileTree):
     epoch_default = {}
 
     # named epochs
-    epochs = {'epoch': dict(sel="stim=='target'"),
-              'cov': dict(base='epoch', tmin=-0.1, tmax=0)}
+    epochs = {}
 
     # Rejection
     # =========
@@ -701,8 +700,7 @@ class MneExperiment(FileTree):
 
         ########################################################################
         # epochs
-        epoch_default = {'session': self._sessions[0]}
-        epoch_default.update(self.epoch_default)
+        epoch_default = {'session': self._sessions[0], **self.epoch_default}
         self._epochs = assemble_epochs(self.epochs, epoch_default)
 
         ########################################################################

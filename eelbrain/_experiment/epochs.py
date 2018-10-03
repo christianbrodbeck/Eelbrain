@@ -11,14 +11,13 @@ def assemble_epochs(epoch_def, epoch_default):
     for name, parameters in epoch_def.items():
         # filter out secondary epochs
         if 'base' in parameters:
-            secondary_epochs.append((name, parameters.copy()))
+            secondary_epochs.append((name, parameters))
         elif 'sub_epochs' in parameters:
             super_epochs.append((name, parameters))
         elif 'collect' in parameters:
             collections.append((name, parameters))
         else:
-            kwargs = epoch_default.copy()
-            kwargs.update(parameters)
+            kwargs = {**epoch_default, **parameters}
             epochs[name] = PrimaryEpoch(name, **kwargs)
 
     # integrate secondary epochs (epochs with base parameter)
@@ -27,8 +26,8 @@ def assemble_epochs(epoch_def, epoch_default):
         for i in range(n_secondary_epochs - 1, -1, -1):
             name, parameters = secondary_epochs[i]
             if parameters['base'] in epochs:
-                parameters['base'] = epochs[parameters['base']]
-                epochs[name] = SecondaryEpoch(name, **parameters)
+                kwargs = {**parameters, 'base': epochs[parameters['base']]}
+                epochs[name] = SecondaryEpoch(name, **kwargs)
                 del secondary_epochs[i]
         if len(secondary_epochs) == n_secondary_epochs:
             raise ValueError("Invalid epoch definition: " +
@@ -72,7 +71,7 @@ class Epoch(Definition):
     rej_file_epochs = None
     sessions = None
 
-    def __init__(self, name, tmin=-0.1, tmax=0.6, decim=5, baseline=(None, 0),
+    def __init__(self, name, tmin=-0.1, tmax=0.6, decim=5, baseline=None,
                  vars=None, trigger_shift=0., post_baseline_trigger_shift=None,
                  post_baseline_trigger_shift_min=None,
                  post_baseline_trigger_shift_max=None, sel_epoch=None):
@@ -88,13 +87,17 @@ class Epoch(Definition):
                              "and/or post_baseline_trigger_shift_max" % name)
 
         if baseline is None:
-            baseline = (None, 0)
+            if tmin >= 0:
+                baseline = False
+            else:
+                baseline = (None, 0)
+        elif baseline is False:
+            pass
         elif len(baseline) != 2:
             raise ValueError("Epoch baseline needs to be length 2 tuple, got "
                              "%s" % repr(baseline))
         else:
-            baseline = (typed_arg(baseline[0], float),
-                        typed_arg(baseline[1], float))
+            baseline = (typed_arg(baseline[0], float), typed_arg(baseline[1], float))
 
         if not isinstance(trigger_shift, (float, str)):
             raise TypeError("trigger_shift needs to be float or str, got %s" %
