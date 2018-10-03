@@ -1,10 +1,10 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Pre-processing operations based on NDVars"""
+import functools
 from os import mkdir, remove
-from os.path import dirname, exists, getmtime
+from os.path import dirname, exists, getmtime, join, splitext
 
 import mne
-from mne.io import read_raw_fif
 from scipy import signal
 
 from .. import load
@@ -18,9 +18,12 @@ from .exceptions import FileMissing
 
 class RawPipe(object):
 
-    def __init__(self, name, path, log):
+    reader = staticmethod(mne.io.read_raw_fif)
+
+    def __init__(self, name, path, root, log):
         self.name = name
         self.path = path
+        self.root = root
         self.log = log
 
     def as_dict(self):
@@ -31,8 +34,8 @@ class RawPipe(object):
         raise NotImplementedError
 
     def load(self, subject, session, add_bads=True, preload=False):
-        path = self.path.format(subject=subject, session=session)
-        raw = read_raw_fif(path, preload=preload)
+        path = self.path.format(root=self.root, subject=subject, session=session)
+        raw = self.reader(path, preload=preload)
         if add_bads:
             raw.info['bads'] = self.load_bad_channels(subject, session)
         else:
@@ -55,19 +58,27 @@ class RawPipe(object):
 
 class RawSource(RawPipe):
     "Raw data source"
-    def __init__(self, name, path, bads_path, log):
-        RawPipe.__init__(self, name, path, log)
-        self.bads_path = bads_path
+    def __init__(self, name, raw_dir, root, log, filename='{subject}_{session}-raw.fif', kwargs=None, reader=mne.io.read_raw_fif):
+        path = join(raw_dir, filename)
+        RawPipe.__init__(self, name, path, root, log)
+        if filename.endswith('-raw.fif'):
+            head = path[:-8]
+        else:
+            head = splitext(path)[0]
+        self.bads_path = head + '-bad_channels.txt'
+        if kwargs:
+            reader = functools.partial(reader, **kwargs)
+        self.reader = reader
 
     def cache(self, subject, session):
         "Make sure the file exists and is up to date"
-        path = self.path.format(subject=subject, session=session)
+        path = self.path.format(root=self.root, subject=subject, session=session)
         if not exists(path):
             raise FileMissing(f"Raw input file for {subject}/{session} does not exist at expected location {path}")
         return path
 
     def load_bad_channels(self, subject, session):
-        path = self.bads_path.format(subject=subject, session=session)
+        path = self.bads_path.format(root=self.root, subject=subject, session=session)
         if not exists(path):
             # need to create one to know mtime after user deletes the file
             self.log.info("Generating bad_channels file for %s %s",
@@ -77,7 +88,7 @@ class RawSource(RawPipe):
             return [l for l in fid.read().splitlines() if l]
 
     def make_bad_channels(self, subject, session, bad_chs, redo):
-        path = self.bads_path.format(subject=subject, session=session)
+        path = self.bads_path.format(root=self.root, subject=subject, session=session)
         if exists(path):
             old_bads = self.load_bad_channels(subject, session)
         else:
@@ -107,12 +118,12 @@ class RawSource(RawPipe):
         self.make_bad_channels(subject, session, bad_chs, redo)
 
     def mtime(self, subject, session, bad_chs=True):
-        path = self.path.format(subject=subject, session=session)
+        path = self.path.format(root=self.root, subject=subject, session=session)
         if exists(path):
             mtime = getmtime(path)
             if not bad_chs:
                 return mtime
-            path = self.bads_path.format(subject=subject, session=session)
+            path = self.bads_path.format(root=self.root, subject=subject, session=session)
             if exists(path):
                 return max(mtime, getmtime(path))
 
@@ -121,10 +132,10 @@ class CachedRawPipe(RawPipe):
 
     _bad_chs_affect_cache = False
 
-    def __init__(self, name, source, path, log):
+    def __init__(self, name, source, path, root, log):
         assert isinstance(source, RawPipe)
-        path = path.format(raw=name, subject='{subject}', session='{session}')
-        RawPipe.__init__(self, name, path, log)
+        path = path.format(root='{root}', raw=name, subject='{subject}', session='{session}')
+        RawPipe.__init__(self, name, path, root, log)
         self.source = source
 
     def as_dict(self):
@@ -134,7 +145,7 @@ class CachedRawPipe(RawPipe):
 
     def cache(self, subject, session):
         "Make sure the cache is up to date"
-        path = self.path.format(subject=subject, session=session)
+        path = self.path.format(root=self.root, subject=subject, session=session)
         if (not exists(path) or getmtime(path) <
                 self.mtime(subject, session, self._bad_chs_affect_cache)):
             from .. import __version__
@@ -174,13 +185,13 @@ class CachedRawPipe(RawPipe):
 
 class RawFilter(CachedRawPipe):
 
-    def __init__(self, name, source, path, log, args, kwargs):
+    def __init__(self, name, source, path, root, log, args, kwargs):
         if len(args) > 2:
             raise DefinitionError(
                 "Raw filter args=%r; at most 2 parameters can be specified "
                 "without keywords; use keyword arguments for additional "
                 "parameters.")
-        CachedRawPipe.__init__(self, name, source, path, log)
+        CachedRawPipe.__init__(self, name, source, path, root, log)
         self.args = args
         self.kwargs = kwargs
         # mne backwards compatibility (fir_design default change 0.15 -> 0.16)
@@ -209,9 +220,9 @@ class RawFilter(CachedRawPipe):
 
 class RawFilterElliptic(CachedRawPipe):
 
-    def __init__(self, name, source, path, log, low_stop, low_pass, high_pass,
+    def __init__(self, name, source, path, root, log, low_stop, low_pass, high_pass,
                  high_stop, gpass, gstop):
-        CachedRawPipe.__init__(self, name, source, path, log)
+        CachedRawPipe.__init__(self, name, source, path, root, log)
         self.args = (low_stop, low_pass, high_pass, high_stop, gpass, gstop)
 
     def as_dict(self):
@@ -283,8 +294,8 @@ class RawICA(CachedRawPipe):
     recomputed.
     """
 
-    def __init__(self, name, source, path, ica_path, log, session, kwargs):
-        CachedRawPipe.__init__(self, name, source, path, log)
+    def __init__(self, name, source, path, ica_path, root, log, session, kwargs):
+        CachedRawPipe.__init__(self, name, source, path, root, log)
         if isinstance(session, str):
             session = (session,)
         else:
@@ -306,7 +317,7 @@ class RawICA(CachedRawPipe):
         return sorted(bad_chs)
 
     def load_ica(self, subject):
-        path = self.ica_path.format(subject=subject)
+        path = self.ica_path.format(root=self.root, subject=subject)
         if not exists(path):
             raise RuntimeError("ICA file does not exist for raw=%r, "
                                "subject=%r. Run e.make_ica_selection() to "
@@ -314,7 +325,7 @@ class RawICA(CachedRawPipe):
         return mne.preprocessing.read_ica(path)
 
     def make_ica(self, subject):
-        path = self.ica_path.format(subject=subject)
+        path = self.ica_path.format(root=self.root, subject=subject)
         raw = self.source.load(subject, self.session[0], add_bads=False)
         bad_channels = self.load_bad_channels(subject)
         raw.info['bads'] = bad_channels
@@ -350,7 +361,7 @@ class RawICA(CachedRawPipe):
     def mtime(self, subject, session, bad_chs=True):
         mtime = CachedRawPipe.mtime(self, subject, session, bad_chs)
         if mtime:
-            path = self.ica_path.format(subject=subject)
+            path = self.ica_path.format(root=self.root, subject=subject)
             if exists(path):
                 return max(mtime, getmtime(path))
 
@@ -360,8 +371,8 @@ class RawMaxwell(CachedRawPipe):
 
     _bad_chs_affect_cache = True
 
-    def __init__(self, name, source, path, log, kwargs):
-        CachedRawPipe.__init__(self, name, source, path, log)
+    def __init__(self, name, source, path, root, log, kwargs):
+        CachedRawPipe.__init__(self, name, source, path, root, log)
         self.kwargs = kwargs
 
     def as_dict(self):
@@ -371,13 +382,11 @@ class RawMaxwell(CachedRawPipe):
 
     def _make(self, subject, session):
         raw = self.source.load(subject, session)
-        self.log.debug("Raw %s: computing Maxwell filter for %s/%s", self.name,
-                       subject, session)
+        self.log.debug("Raw %s: computing Maxwell filter for %s/%s", self.name, subject, session)
         return mne.preprocessing.maxwell_filter(raw, **self.kwargs)
 
 
-def assemble_pipeline(raw_dict, raw_path, bads_path, cache_path, ica_path,
-                      sessions, log):
+def assemble_pipeline(raw_dict, raw_dir, cache_path, ica_path, root, sessions, log):
     "Assemble preprocessing pipeline form a definition in a dict"
     raw = {}
     unassigned = raw_dict.copy()
@@ -389,21 +398,18 @@ def assemble_pipeline(raw_dict, raw_path, bads_path, cache_path, ica_path,
             source = params.get('source')
             if source is None:
                 if has_source:
-                    raise NotImplementedError("Preprocessing pipeline with "
-                                              "more than one raw source")
-                raw[name] = RawSource(name, raw_path, bads_path, log)
+                    raise NotImplementedError("Preprocessing pipeline with more than one raw source")
+                raw[name] = RawSource(name, raw_dir, root, log, **params)
                 has_source = name or True
                 del unassigned[name]
             elif source in raw:
-                pipe_type = params['type']
+                params = params.copy()
+                del params['source']
+                pipe_type = params.pop('type')
                 if pipe_type == 'filter':
-                    raw[name] = RawFilter(name, raw[source], cache_path, log,
-                                          params['args'],
-                                          params.get('kwargs', {}))
+                    raw[name] = RawFilter(name, raw[source], cache_path, root, log, **params)
                 elif pipe_type == 'ica':
-                    raw[name] = RawICA(name, raw[source], cache_path,
-                                       ica_path.replace('{raw}', name), log,
-                                       params['session'], params['kwargs'])
+                    raw[name] = RawICA(name, raw[source], cache_path, ica_path.replace('{raw}', name), root, log, **params)
                     if not all(s in sessions for s in raw[name].session):
                         missing = (repr(s) for s in raw[name].session if s not in sessions)
                         raise DefinitionError(
@@ -411,21 +417,18 @@ def assemble_pipeline(raw_dict, raw_path, bads_path, cache_path, ica_path,
                             f"non-existing sessions {', '.join(missing)}; "
                             f"existing sessions are: {', '.join(map(repr, sessions))}")
                 elif pipe_type == 'maxwell_filter':
-                    raw[name] = RawMaxwell(name, raw[source], cache_path, log,
-                                           params['kwargs'])
+                    raw[name] = RawMaxwell(name, raw[source], cache_path, root, log, **params)
                 elif pipe_type == 'elliptical filter':
-                    raw[name] = RawFilterElliptic(name, raw[source], cache_path,
-                                                  log, *params['args'])
+                    raw[name] = RawFilterElliptic(name, raw[source], cache_path, root, log, *params['args'])
                 else:
-                    raise ValueError("unknonw raw pipe type=%r" % (pipe_type,))
+                    raise DefinitionError("unknonw raw pipe type=%r" % (pipe_type,))
                 del unassigned[name]
 
         if len(unassigned) == n_unassigned:
-            raise RuntimeError("unable to resolve preprocessing pipeline "
-                               "definition: %s" % unassigned)
+            raise DefinitionError(f"Unable to resolve preprocessing pipeline definition: {unassigned}")
 
     if not has_source:
-        raise ValueError("Preprocssing pipeline has not raw source")
+        raise DefinitionError("Preprocssing pipeline has no raw source")
     elif has_source != 'raw':
         raise NotImplementedError("The raw source must be called 'raw'")
     return raw

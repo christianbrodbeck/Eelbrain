@@ -43,10 +43,10 @@ def test_sample():
     # evoked cache invalidated by change in bads
     e.set('R0001', rej='', epoch='target')
     ds = e.load_evoked()
-    eq_(ds[0, 'evoked'].info['bads'], [])
+    assert ds[0, 'evoked'].info['bads'] == []
     e.make_bad_channels(['MEG 0331'])
     ds = e.load_evoked()
-    eq_(ds[0, 'evoked'].info['bads'], ['MEG 0331'])
+    assert ds[0, 'evoked'].info['bads'] == ['MEG 0331']
 
     e.set(rej='man', model='modality')
     sds = []
@@ -104,7 +104,7 @@ def test_sample():
     class Experiment(SampleExperiment):
         groups = {'group': ('R0002', 'R0000', 'R0001')}
     e = Experiment(root)
-    eq_([s for s in e], ['R0000', 'R0001', 'R0002'])
+    assert [s for s in e] == ['R0000', 'R0001', 'R0002']
 
     # changes
     class Changed(SampleExperiment):
@@ -170,11 +170,11 @@ def test_samples_sesssions():
     e = SampleExperiment(root)
     # bad channels
     e.make_bad_channels('0111')
-    eq_(e.load_bad_channels(), ['MEG 0111'])
-    eq_(e.load_bad_channels(session='sample2'), [])
+    assert e.load_bad_channels() == ['MEG 0111']
+    assert e.load_bad_channels(session='sample2') == []
     e.show_bad_channels()
     e.merge_bad_channels()
-    eq_(e.load_bad_channels(session='sample2'), ['MEG 0111'])
+    assert e.load_bad_channels(session='sample2') == ['MEG 0111']
     e.show_bad_channels()
 
     # rejection

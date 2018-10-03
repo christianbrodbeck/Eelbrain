@@ -336,12 +336,9 @@ class TreeModel(object):
                 if len(values):
                     default = values[0]
                 else:
-                    msg = "Values for %r empty, can`t set default" % key
-                    raise RuntimeError(msg)
+                    raise RuntimeError(f"Values for {key!r} empty, can`t set default")
             elif default not in values:
-                err = ("Default %r for %r not in values "
-                       "%s" % (default, key, str(values)))
-                raise ValueError(err)
+                raise ValueError(f"Default {default!r} for {key!r} not in values {values}")
 
             self._field_values[key] = values
 
@@ -659,8 +656,7 @@ class TreeModel(object):
             eval_handlers = self._eval_handlers[k]
             v = state[k]
             if not isinstance(v, str):
-                msg = "Values have to be strings, got %s=%r" % (k, v)
-                raise TypeError(msg)
+                raise TypeError(f"Values have to be strings, got {k}={v!r}")
             elif '*' in v and allow_asterisk:
                 pass
             elif eval_handlers:

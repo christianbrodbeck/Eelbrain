@@ -222,25 +222,21 @@ temp = {
     'reference': ('', 'mastoids'),  # EEG reference
     'equalize_evoked_count': ('', 'eq'),
     # locations
-    'meg-sdir': join('{root}', 'meg'),
-    'meg-dir': join('{meg-sdir}', '{subject}'),
-    'raw-dir': '{meg-dir}',
+    'raw-sdir': join('{root}', 'meg'),
+    'raw-dir': join('{raw-sdir}', '{subject}'),
 
     # raw input files
-    'raw-file': join('{raw-dir}', '{subject}_{session}-raw.fif'),
-    'raw-file-bkp': join('{raw-dir}', '{subject}_{session}-raw*.fif'),
     'trans-file': join('{raw-dir}', '{mrisubject}-trans.fif'),
     # log-files (eye-tracker etc.)
-    'log-dir': join('{meg-dir}', 'logs'),
+    'log-dir': join('{raw-dir}', 'logs'),
     'log-rnd': '{log-dir}/rand_seq.mat',
     'log-data-file': '{log-dir}/data.txt',
     'log-file': '{log-dir}/log.txt',
     'edf-file': join('{log-dir}', '*.edf'),
 
     # created input files
-    'bads-file': join('{raw-dir}', '{subject}_{session}-bad_channels.txt'),
     'raw-ica-file': join('{raw-dir}', '{subject} {raw}-ica.fif'),
-    'rej-dir': join('{meg-dir}', 'epoch selection'),
+    'rej-dir': join('{raw-dir}', 'epoch selection'),
     'rej-file': join('{rej-dir}', '{session}_{sns_kind}_{epoch}-{rej}.pickled'),
     'ica-file': join('{rej-dir}', '{session} {sns_kind} {rej}-ica.fif'),
 
@@ -387,7 +383,6 @@ class MneExperiment(FileTree):
     sessions = None
 
     # Raw preprocessing pipeline
-    _raw = LEGACY_RAW
     raw = {}
 
     # add this value to all trigger times
@@ -470,7 +465,7 @@ class MneExperiment(FileTree):
     # Where to search for subjects (defined as a template name). If the
     # experiment searches for subjects automatically, it scans this directory
     # for subfolders matching _subject_re.
-    _subject_loc = 'meg-sdir'
+    _subject_loc = 'raw-sdir'
 
     # Parcellations
     __parcs = {
@@ -519,9 +514,7 @@ class MneExperiment(FileTree):
     _backup_state = {'subject': '*', 'mrisubject': '*', 'session': '*',
                      'raw': 'raw', 'modality': '*'}
     # files to back up, together with state modifications on the basic state
-    _backup_files = (('raw-file-bkp', {}),
-                     ('bads-file', {}),
-                     ('rej-file', {'raw': '*', 'epoch': '*', 'rej': '*'}),
+    _backup_files = (('rej-file', {'raw': '*', 'epoch': '*', 'rej': '*'}),
                      ('ica-file', {'raw': '*', 'epoch': '*', 'rej': '*'}),
                      ('trans-file', {}),
                      ('mri-cfg-file', {}),
@@ -561,18 +554,16 @@ class MneExperiment(FileTree):
         self._mri_subjects = self._mri_subjects.copy()
         self._templates = self._templates.copy()
         # templates version
+        raw_def = LEGACY_RAW
         if self.path_version is None:
-            raise ValueError("%s.path_version is not set. This parameter needs "
-                             "to be specified explicitlty. See <https://"
-                             "pythonhosted.org/eelbrain/experiment.html#"
-                             "eelbrain.MneExperiment.path_version>" %
-                             self.__class__.__name__)
+            raise ValueError(
+                f"{self.__class__.__name__}.path_version is not set. This "
+                f"parameter needs to be specified explicitlty. See "
+                f"<http://eelbrain.readthedocs.io/en/r-0.27/experiment.html"
+                f"#eelbrain.MneExperiment.path_version>")
         elif self.path_version == 0:
-            self._templates['raw-dir'] = join('{meg-dir}', 'raw')
-            self._templates['raw-file'] = join(
-                '{raw-dir}', '{subject}_{session}_clm-raw.fif')
-            self._templates['raw-file-bkp'] = join(
-                '{raw-dir}', '{subject}_{session}_{sns_kind}-raw*.fif')
+            self._templates['raw-dir'] = join('{raw-sdir}', 'meg', 'raw')
+            raw_def = {**raw_def, 'raw': {'filename': '{subject}_{session}_clm-raw.fif'}}
         elif self.path_version != 1:
             raise ValueError("MneExperiment.path_version needs to be 0 or 1")
         # update templates with _values
@@ -665,16 +656,16 @@ class MneExperiment(FileTree):
 
         ########################################################################
         # Preprocessing
-        skip = {'subject', 'session'}
-        raw_path = self._partial('raw-file', skip)
-        bads_path = self._partial('bads-file', skip)
-        skip.add('raw')
+        skip = {'root', 'subject', 'session', 'raw'}
+        raw_dir = self._partial('raw-dir', skip)
         cache_path = self._partial('cached-raw-file', skip)
         ica_path = self._partial('raw-ica-file', skip)
-        raw_dict = self._raw.copy()
-        raw_dict.update(self.raw)
-        self._raw = assemble_pipeline(raw_dict, raw_path, bads_path, cache_path,
-                                      ica_path, self._sessions, log)
+        raw_def = {**raw_def, **self.raw}
+        self._raw = assemble_pipeline(raw_def, raw_dir, cache_path, ica_path, root, self._sessions, log)
+
+        # update templates
+        pipe = self._raw['raw']
+        self._register_constant('raw-file', pipe.path)
 
         ########################################################################
         # variables
@@ -820,12 +811,15 @@ class MneExperiment(FileTree):
         self._register_field('rej', self._artifact_rejection.keys(), 'man')
 
         # epoch
-        epoch_keys = sorted(self._epochs)
-        for default_epoch in epoch_keys:
-            if isinstance(self._epochs[default_epoch], PrimaryEpoch):
-                break
+        if self._epochs:
+            epoch_keys = sorted(self._epochs)
+            for default_epoch in epoch_keys:
+                if isinstance(self._epochs[default_epoch], PrimaryEpoch):
+                    break
+            else:
+                raise RuntimeError("No primary epoch")
         else:
-            raise RuntimeError("No primary epoch")
+            epoch_keys = default_epoch = None
         self._register_field('epoch', epoch_keys, default_epoch)
         self._register_field('session', self._sessions, depends_on=('epoch',),
                              slave_handler=self._update_session)
@@ -961,7 +955,7 @@ class MneExperiment(FileTree):
                     "You are trying to initialize an experiment with an older "
                     "version of Eelbrain than that which wrote the cache. If "
                     "you really need this, delete the eelbrain-cache folder "
-                    "before proceeding.")
+                    "and try again.")
         else:
             input_state = None
 
@@ -975,15 +969,14 @@ class MneExperiment(FileTree):
         # collect current events and mtime
         raw_mtimes = input_state['raw-mtimes']
         with self._temporary_state:
+            pipe = self._raw['raw']
             for key in self.iter(('subject', 'session'), group='all', raw='raw'):
-                raw_file = self.get('raw-file')
-                if not exists(raw_file):
+                mtime = pipe.mtime(*key, bad_chs=False)
+                if mtime is None:
                     raw_missing.append(key)
                     continue
                 # events
                 events[key] = self.load_events(add_bads=False, data_raw=False)
-                # mtime
-                mtime = getmtime(raw_file)
                 if key not in raw_mtimes or mtime != raw_mtimes[key]:
                     subjects_with_raw_changes.add(key[0])
                     raw_mtimes[key] = mtime
@@ -1104,9 +1097,7 @@ class MneExperiment(FileTree):
             # events did not include session
             if cache_state_v < 4:
                 if not events:
-                    raise DefinitionError(
-                        "No raw files or events found. Did you set the MneExperiment.session "
-                        "parameter correctly?")
+                    raise DefinitionError("No raw files or events found. Did you set the MneExperiment.session parameter correctly?")
                 session = self._sessions[0]
                 cache_events = {(subject, session): v for subject, v in
                                 cache_state['events'].items()}
@@ -1116,7 +1107,7 @@ class MneExperiment(FileTree):
             # raw pipeline
             if cache_state_v < 5:
                 cache_raw = pipeline_dict(
-                    assemble_pipeline(LEGACY_RAW, '', '', '', '', self._sessions, log))
+                    assemble_pipeline(LEGACY_RAW, '', '', '', '', '', self._sessions, log))
             else:
                 cache_raw = cache_state['raw']
 
@@ -1562,14 +1553,11 @@ class MneExperiment(FileTree):
                 return self._raw_mtime()
 
     def _epochs_mtime(self):
-        bads_path = self.get('bads-file')
-        if exists(bads_path):
-            raw_mtime = self._raw_mtime()
-            bads_mtime = getmtime(bads_path)
-            epoch = self._epochs[self.get('epoch')]
-            rej_mtime = self._rej_mtime(epoch)
-            if rej_mtime:
-                return max(raw_mtime, bads_mtime, rej_mtime)
+        raw_mtime = self._raw_mtime()
+        epoch = self._epochs[self.get('epoch')]
+        rej_mtime = self._rej_mtime(epoch)
+        if rej_mtime:
+            return max(raw_mtime, rej_mtime)
 
     def _epochs_stc_mtime(self):
         "Mtime affecting source estimates; does not check annot"
@@ -2102,8 +2090,6 @@ class MneExperiment(FileTree):
 
         Currently, the following files are included in the backup::
 
-         * Input raw file (raw='raw')
-         * Bad channels file
          * All rejection files
          * The trans-file
          * All files in the ``meg/{subject}/logs`` directory
@@ -2600,7 +2586,7 @@ class MneExperiment(FileTree):
             EEG data). Use 'both' to include NDVar and MNE Epochs.
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
-            information is retrieved from the 'bads-file'. Alternatively,
+            information is retrieved from the bad channels file. Alternatively,
             a list of bad channels can be specified.
         reject : bool
             Whether to apply epoch rejection or not. The kind of rejection
@@ -2834,8 +2820,8 @@ class MneExperiment(FileTree):
             in the experiment's state).
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
-            information is retrieved from the 'bads-file'. Alternatively,
-            a list of bad channels can be sumbitted.
+            information is retrieved from the bad channels file. Alternatively,
+            a list of bad channels can be specified.
         data_raw : bool | str
             Keep the mne.io.Raw instance in ds.info['raw'] (default True).
             Can be specified as raw name (str) to include a different raw object
@@ -2860,14 +2846,9 @@ class MneExperiment(FileTree):
 
         # refresh cache
         if ds is None:
-            self._log.debug("Extracting events for %s %s %s", self.get('raw'),
-                            subject, self.get('session'))
-            if self.get('modality') == '':
-                merge = -1
-            else:
-                merge = 0
+            self._log.debug("Extracting events for %s %s %s", self.get('raw'), subject, self.get('session'))
             raw = self.load_raw(add_bads)
-            ds = load.fiff.events(raw, merge)
+            ds = load.fiff.events(raw)
             del ds.info['raw']
             ds.info['sfreq'] = raw.info['sfreq']
             ds.info['raw-mtime'] = raw_mtime
@@ -3474,7 +3455,7 @@ class MneExperiment(FileTree):
             and bad trials are kept.
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
-            information is retrieved from the 'bads-file'. Alternatively,
+            information is retrieved from the bad channels file. Alternatively,
             a list of bad channels can be specified.
         index : bool | str
             Index the Dataset before rejection (provide index name as str).
@@ -6264,11 +6245,16 @@ class MneExperiment(FileTree):
         return self._mri_subjects[mri][subject]
 
     def _update_session(self, fields):
-        epoch = self._epochs.get(fields['epoch'])
-        if epoch is None:
-            return '*'
-        if isinstance(epoch, (PrimaryEpoch, SecondaryEpoch)):
-            return epoch.session
+        epoch = fields['epoch']
+        if epoch in self._epochs:
+            epoch = self._epochs[epoch]
+            if isinstance(epoch, (PrimaryEpoch, SecondaryEpoch)):
+                return epoch.session
+            else:
+                return  # default for non-primary epoch
+        elif epoch == '':
+            return  # default if .epochs is empty
+        return '*'  # if it is not in _epochs it might be a removed epoch
 
     def _update_src_name(self, fields):
         "Becuase 'ico-4' is treated in filenames  as ''"
