@@ -47,6 +47,7 @@ import operator
 import os
 import re
 import string
+import typing
 
 from matplotlib.ticker import (
     FixedLocator, FormatStrFormatter, FuncFormatter, IndexFormatter)
@@ -9770,3 +9771,8 @@ def intersect_dims(dims1, dims2, check_dims=True):
 
 
 EVAL_CONTEXT.update(Var=Var, Factor=Factor, extrema=extrema)
+
+NDVarArg = typing.Union[NDVar, str]
+CategorialArg = typing.Union[Factor, Interaction, NestedEffect, str]
+FactorArg = typing.Union[Factor, str]
+IndexArg = typing.Union[Var, np.ndarray, str]

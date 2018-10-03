@@ -31,6 +31,7 @@ import os
 import re
 import socket
 from time import time as current_time
+import typing
 from warnings import warn
 
 import numpy as np
@@ -43,6 +44,7 @@ from ..fmtxt import FMText
 from .._celltable import Celltable
 from .._config import CONFIG
 from .._data_obj import (
+    NDVarArg, CategorialArg, IndexArg,
     Dataset, Var, Factor, Interaction, NestedEffect,
     NDVar, Categorial, UTS,
     ascategorial, asmodel, asndvar, asvar, assub,
@@ -964,11 +966,26 @@ class ttest_ind(NDTest):
     _statistic = 't'
 
     @user_activity
-    def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
-                 tail=0, samples=0, pmin=None, tmin=None, tfce=False,
-                 tstart=None, tstop=None, parc=None, force_permutation=False, **criteria):
-        ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar,
-                       dtype=np.float64)
+    def __init__(
+            self,
+            y: NDVarArg,
+            x: CategorialArg,
+            c1: str = None,
+            c0: str = None,
+            match: CategorialArg=None,
+            sub: IndexArg = None,
+            ds: Dataset = None,
+            tail: int = 0,
+            samples: int = 0,
+            pmin: float = None,
+            tmin: float = None,
+            tfce: typing.Union[float, bool] = False,
+            tstart: float = None,
+            tstop: float = None,
+            parc: str = None,
+            force_permutation: bool = False,
+            **criteria):
+        ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar, dtype=np.float64)
         c1, c0 = ct.cat
 
         n1 = len(ct.data[c1])
