@@ -87,8 +87,8 @@ class EelbrainWindow(object):
 class EelbrainFrame(wx.Frame, EelbrainWindow):
     _allow_user_set_title = False
 
-    def __init__(self, *args, **kwargs):
-        wx.Frame.__init__(self, *args, **kwargs)
+    def __init__(self, parent=None, id=wx.ID_ANY, title="", pos=wx.DefaultPosition, *args, **kwargs):
+        wx.Frame.__init__(self, parent, id, title, pos, *args, **kwargs)
         if not IS_OSX:
             from .app import get_app
             self.SetMenuBar(get_app().CreateMenu(self))
