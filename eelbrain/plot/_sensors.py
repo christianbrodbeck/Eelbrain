@@ -433,7 +433,8 @@ class SensorMaps(EelFigure):
     Parameters
     ----------
     sensors : Sensor | NDVar
-        The sensors to use, or an NDVar with a sensor dimension.
+        The :class:`Sensor` dimension, or an :class:`NDVar` with a sensor
+        dimension.
     select : list of int
         Initial selection.
     proj : str
@@ -658,8 +659,9 @@ class SensorMap(SensorMapMixin, EelFigure):
 
     Parameters
     ----------
-    sensors : NDVar | Sensor
-        sensor-net object or object containing sensor-net
+    sensors : Sensor | NDVar
+        The :class:`Sensor` dimension, or an :class:`NDVar` with a sensor
+        dimension.
     labels : 'none' | 'index' | 'name' | 'fullname'
         Content of the labels. For 'name', any prefix common to all names
         is removed; with 'fullname', the full name is shown.
