@@ -4889,8 +4889,7 @@ class Datalist(list):
             ``'mean'``: sum elements and dividie by cell length
         """
         if len(x) != len(self):
-            err = "Length mismatch: %i (Var) != %i (x)" % (len(self), len(x))
-            raise ValueError(err)
+            raise ValueError(f"x={dataobj_repr(x)}: Length mismatch, len(x)={len(x)}, len(self)={len(self)}")
 
         x_out = []
         for cell in x.cells:
@@ -4900,10 +4899,13 @@ class Datalist(list):
                 x.append(x_cell)
             elif n > 1:
                 if merge == 'mean':
-                    xc = reduce(operator.add, x_cell)
-                    xc /= n
+                    try:
+                        xc = reduce(operator.add, x_cell)
+                        xc /= n
+                    except TypeError:
+                        raise TypeError(f"{dataobj_repr(self)}: Objects in Datalist do not support averaging (if aggregating a Dataset, dry dropping this variable)")
                 else:
-                    raise ValueError("Invalid value for merge: %r" % merge)
+                    raise ValueError(f"merge={merge!r}")
                 x_out.append(xc)
 
         return Datalist(x_out, fmt=self._fmt)
