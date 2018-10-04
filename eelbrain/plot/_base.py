@@ -1111,8 +1111,7 @@ class EelFigure(object):
             from .._wxgui import get_app
             from .._wxgui.mpl_canvas import CanvasFrame
             get_app()
-            frame_ = CanvasFrame(None, frame_title, eelfigure=self,
-                                 **layout.fig_kwa())
+            frame_ = CanvasFrame(title=frame_title, eelfigure=self, **layout.fig_kwa())
         else:
             frame_ = mpl_figure(**layout.fig_kwa())
 
@@ -1680,6 +1679,23 @@ class BaseLayout(object):
             ax.spines['left'].set_visible(False)
 
 
+def resolve_plot_rect(w, h, dpi):
+    w_applies = w is not None and w <= 0
+    h_applies = h is not None and h <= 0
+    if w_applies or h_applies:
+        from .._wxgui import get_app
+        import wx
+
+        get_app()
+        effective_dpi = dpi or mpl.rcParams['figure.dpi']
+        display_w, display_h = wx.GetDisplaySize()
+        if h_applies:
+            h = display_h / effective_dpi + h
+        if w_applies:
+            w = display_w / effective_dpi + w
+    return w, h
+
+
 class LayoutDim(object):
     "Helper function to determine figure spacing"
     _properties = ('total', 'first', 'space', 'last', 'ax')
@@ -1778,6 +1794,7 @@ class Layout(BaseLayout):
         if w and axw:
             if w < axw:
                 raise ValueError("w < axw")
+        w, h = resolve_plot_rect(w, h, dpi)
 
         self.w_fixed = w or axw
         self._margins_arg = margins
@@ -2008,11 +2025,11 @@ class VariableAspectLayout(BaseLayout):
                  title=None, h=None, w=None, axh=None,
                  dpi=None, show=True, run=None, frame=True, yaxis=True,
                  autoscale=False, name=None):
+        w, h = resolve_plot_rect(w, h, dpi)
         self.w_fixed = w
 
         if axh and h:
-            raise ValueError("h and axh can not be specified both at the same "
-                             "time")
+            raise ValueError("h and axh can not be specified both at the same time")
         elif h:
             axh = h / nrow
         elif axh:

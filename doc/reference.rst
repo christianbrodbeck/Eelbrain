@@ -385,7 +385,8 @@ those parameters are determined automatically, but individual values can be
 specified manually by supplying them as keyword arguments.
 
 h, w : scalar
-   Height and width of the figure.
+   Height and width of the figure. Use a number ≤ 0 to defined the size relative
+   to the screen (e.g., ``w=0`` to use the full screen width).
 axh, axw : scalar
    Height and width of the axes.
 nrow, ncol : None | int
