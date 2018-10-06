@@ -442,10 +442,8 @@ class MneExperiment(FileTree):
     # Pattern for subject names. The first group is used to determine what
     # MEG-system the data was recorded from
     _subject_re = '(R|A|Y|AD|QP)(\d{3,})$'
-    # MEG-system. If None, the subject pattern is used to guess the system.
+    # MEG-system (legacy variable).
     meg_system = None
-    _meg_systems = {'R': 'KIT-NY',
-                    'A': 'KIT-AD', 'Y': 'KIT-AD', 'AD': 'KIT-AD', 'QP': 'KIT-AD'}
 
     # kwargs for regularization of the covariance matrix (see .make_cov())
     _covs = {'auto': {'epoch': 'cov', 'method': 'auto'},
@@ -662,9 +660,13 @@ class MneExperiment(FileTree):
         raw_def = {**raw_def, **self.raw}
         self._raw = assemble_pipeline(raw_def, raw_dir, cache_path, root, self._sessions, log)
 
+        raw_pipe = self._raw['raw']
+        # legacy connectivity detemrination
+        if raw_pipe._connectivity is None:
+            if self.meg_system is not None:
+                raw_pipe._connectivity = self.meg_system
         # update templates
-        pipe = self._raw['raw']
-        self._register_constant('raw-file', pipe.path)
+        self._register_constant('raw-file', raw_pipe.path)
 
         ########################################################################
         # variables
@@ -1813,7 +1815,8 @@ class MneExperiment(FileTree):
                 ds['epochs'].apply_baseline(baseline)
 
         if ndvar:
-            sysname = self._sysname(ds.info['raw'], ds.info['subject'], modality)
+            pipe = self._raw[self.get('raw')]
+            sysname = pipe.connectivity(ds.info['raw'].info, ds.info['subject'])
             name = self._ndvar_name_for_modality(modality)
             ds[name] = load.fiff.epochs_ndvar(ds['epochs'], sysname=sysname,
                                               exclude=() if add_bads_to_info else 'bads',
@@ -2522,30 +2525,6 @@ class MneExperiment(FileTree):
         else:
             raise ValueError("modality=%r" % modality)
 
-    def _sysname(self, fiff, subject, modality):
-        if fiff.info.get('kit_system_id'):
-            try:
-                return KIT_NEIGHBORS[fiff.info['kit_system_id']]
-            except KeyError:
-                raise NotImplementedError("Unknown KIT system-ID: %r" %
-                                          (fiff.info['kit_system_id'],))
-        elif modality != '':
-            return  # handled in self._fix_eeg_ndvar()
-        if isinstance(self.meg_system, str):
-            return self.meg_system
-        subject_prefix = self._subject_re.match(subject).group(1)
-        if isinstance(self.meg_system, dict):
-            return self.meg_system.get(subject_prefix)
-        elif self.meg_system is not None:
-            raise TypeError("MneExperiment.meg_system needs to be a str or a "
-                            "dict, not %s" % repr(self.meg_system))
-        # go by nothing but subject name
-        if subject_prefix.startswith('A'):
-            return 'KIT-208'
-        else:
-            raise RuntimeError("Unknown MEG system encountered. Please set "
-                               "MneExperiment.meg_system.")
-
     @staticmethod
     def _data_arg(modality, eog=False):
         "Data argument for FIFF-to-NDVar conversion"
@@ -3008,7 +2987,8 @@ class MneExperiment(FileTree):
                     rescale(e.data, e.times, baseline, 'mean', copy=False)
 
             # info
-            ds.info['sysname'] = self._sysname(ds[0, 'evoked'], subject, modality)
+            pipe = self._raw[self.get('raw')]
+            ds.info['sysname'] = pipe.connectivity(ds[0, 'evoked'].info, subject)
 
         # convert to NDVar
         if ndvar:
@@ -4383,9 +4363,9 @@ class MneExperiment(FileTree):
             ...
         """
         path, ds = self.make_ica(epoch or True, decim)
-        self._g = gui.select_components(
-            path, ds, self._sysname(
-                ds['epochs'], ds.info['subject'], self.get('modality')))
+        pipe = self._raw[self.get('raw')]
+        sysname = pipe.connectivity(ds['epochs'].info, ds.info['subject'])
+        gui.select_components(path, ds, sysname)
 
     def make_ica(self, return_data=False, decim=None, **state):
         """Compute the ICA decomposition

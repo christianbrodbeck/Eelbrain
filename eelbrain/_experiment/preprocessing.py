@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Pre-processing operations based on NDVars"""
+import fnmatch
 import functools
 from os import mkdir, remove
 from os.path import dirname, exists, getmtime, join, splitext
@@ -10,6 +11,7 @@ from scipy import signal
 from .. import load
 from .._data_obj import NDVar
 from .._exceptions import DefinitionError
+from .._io.fiff import KIT_NEIGHBORS
 from .._ndvar import filter_data
 from .._utils import ask
 from ..mne_fixes import CaptureLog
@@ -34,6 +36,9 @@ class RawPipe(object):
 
     def cache(self, subject, session):
         "Make sure the file exists and is up to date"
+        raise NotImplementedError
+
+    def connectivity(self, info, subject):
         raise NotImplementedError
 
     def load(self, subject, session, add_bads=True, preload=False):
@@ -61,7 +66,7 @@ class RawPipe(object):
 
 class RawSource(RawPipe):
     "Raw data source"
-    def __init__(self, filename='{subject}_{session}-raw.fif', reader=mne.io.read_raw_fif, **kwargs):
+    def __init__(self, filename='{subject}_{session}-raw.fif', reader=mne.io.read_raw_fif, connectivity=None, **kwargs):
         RawPipe.__init__(self)
         self.filename = filename
         self.kwargs = kwargs
@@ -69,6 +74,7 @@ class RawSource(RawPipe):
         if kwargs:
             reader = functools.partial(reader, **kwargs)
         self.reader = reader
+        self._connectivity = connectivity
 
     def _link(self, name, pipes, root, raw_dir, cache_dir, log):
         if name != 'raw':
@@ -94,6 +100,21 @@ class RawSource(RawPipe):
         if not exists(path):
             raise FileMissing(f"Raw input file for {subject}/{session} does not exist at expected location {path}")
         return path
+
+    def connectivity(self, info, subject):
+        kit_system_id = info.get('kit_system_id')
+        if kit_system_id:
+            try:
+                return KIT_NEIGHBORS[kit_system_id]
+            except KeyError:
+                raise NotImplementedError(f"Unknown KIT system-ID: {kit_system_id}; please contact developers")
+        elif isinstance(self._connectivity, str):
+            return self._connectivity
+        elif isinstance(self._connectivity, dict):
+            for k, v in self._connectivity.items():
+                if fnmatch.fnmatch(subject, k):
+                    return v
+        raise RuntimeError(f"Unknown sensor configuration for {subject}. Please set MneExperiment.meg_system.")
 
     def load_bad_channels(self, subject, session):
         path = self.bads_path.format(root=self.root, subject=subject, session=session)
@@ -185,6 +206,9 @@ class CachedRawPipe(RawPipe):
             # save
             raw.save(path, overwrite=True)
         return path
+
+    def connectivity(self, info, subject):
+        return self.source.connectivity(info, subject)
 
     def load(self, subject, session, add_bads=True, preload=False):
         self.cache(subject, session)
