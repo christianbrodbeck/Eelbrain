@@ -20,7 +20,10 @@ class RawPipe(object):
 
     reader = staticmethod(mne.io.read_raw_fif)
 
-    def __init__(self, name, path, root, log):
+    def _link(self, name, pipes, root, raw_dir, cache_dir, log):
+        raise NotImplementedError
+
+    def _link_base(self, name, path, root, log):
         self.name = name
         self.path = path
         self.root = root
@@ -58,17 +61,32 @@ class RawPipe(object):
 
 class RawSource(RawPipe):
     "Raw data source"
-    def __init__(self, name, raw_dir, root, log, filename='{subject}_{session}-raw.fif', kwargs=None, reader=mne.io.read_raw_fif):
-        path = join(raw_dir, filename)
-        RawPipe.__init__(self, name, path, root, log)
-        if filename.endswith('-raw.fif'):
+    def __init__(self, filename='{subject}_{session}-raw.fif', reader=mne.io.read_raw_fif, **kwargs):
+        RawPipe.__init__(self)
+        self.filename = filename
+        self.kwargs = kwargs
+        self._reader_name = reader.__name__
+        if kwargs:
+            reader = functools.partial(reader, **kwargs)
+        self.reader = reader
+
+    def _link(self, name, pipes, root, raw_dir, cache_dir, log):
+        if name != 'raw':
+            raise NotImplementedError("RawSource with name {name!r}: the raw source must be called 'raw'")
+        path = join(raw_dir, self.filename)
+        if self.filename.endswith('-raw.fif'):
             head = path[:-8]
         else:
             head = splitext(path)[0]
         self.bads_path = head + '-bad_channels.txt'
-        if kwargs:
-            reader = functools.partial(reader, **kwargs)
-        self.reader = reader
+        RawPipe._link_base(self, name, path, root, log)
+
+    def as_dict(self):
+        out = RawPipe.as_dict(self)
+        out.update(self.kwargs)
+        if self._reader_name != 'read_raw_fif':
+            out['reader'] = self._reader_name
+        return out
 
     def cache(self, subject, session):
         "Make sure the file exists and is up to date"
@@ -132,15 +150,20 @@ class CachedRawPipe(RawPipe):
 
     _bad_chs_affect_cache = False
 
-    def __init__(self, name, source, path, root, log):
-        assert isinstance(source, RawPipe)
-        path = path.format(root='{root}', raw=name, subject='{subject}', session='{session}')
-        RawPipe.__init__(self, name, path, root, log)
-        self.source = source
+    def __init__(self, source):
+        RawPipe.__init__(self)
+        self._source_name = source
+
+    def _link(self, name, pipes, root, raw_dir, cache_path, log):
+        path = cache_path.format(root='{root}', raw=name, subject='{subject}', session='{session}')
+        if self._source_name not in pipes:
+            raise DefinitionError(f"{self.__class__.__name__} {name!r} source {self._source_name!r} does not exist")
+        self.source = pipes[self._source_name]
+        RawPipe._link_base(self, name, path, root, log)
 
     def as_dict(self):
         out = RawPipe.as_dict(self)
-        out['source'] = self.source.name
+        out['source'] = self._source_name
         return out
 
     def cache(self, subject, session):
@@ -185,14 +208,9 @@ class CachedRawPipe(RawPipe):
 
 class RawFilter(CachedRawPipe):
 
-    def __init__(self, name, source, path, root, log, args, kwargs):
-        if len(args) > 2:
-            raise DefinitionError(
-                "Raw filter args=%r; at most 2 parameters can be specified "
-                "without keywords; use keyword arguments for additional "
-                "parameters.")
-        CachedRawPipe.__init__(self, name, source, path, root, log)
-        self.args = args
+    def __init__(self, source, l_freq=None, h_freq=None, **kwargs):
+        CachedRawPipe.__init__(self, source)
+        self.args = (l_freq, h_freq)
         self.kwargs = kwargs
         # mne backwards compatibility (fir_design default change 0.15 -> 0.16)
         if kwargs.get('fir_design', None) is not None:
@@ -212,17 +230,15 @@ class RawFilter(CachedRawPipe):
 
     def _make(self, subject, session):
         raw = self.source.load(subject, session, preload=True)
-        self.log.debug("Raw %s: filtering for %s/%s...", self.name, subject,
-                       session)
+        self.log.debug("Raw %s: filtering for %s/%s...", self.name, subject, session)
         raw.filter(*self.args, **self._use_kwargs)
         return raw
 
 
 class RawFilterElliptic(CachedRawPipe):
 
-    def __init__(self, name, source, path, root, log, low_stop, low_pass, high_pass,
-                 high_stop, gpass, gstop):
-        CachedRawPipe.__init__(self, name, source, path, root, log)
+    def __init__(self, source, low_stop, low_pass, high_pass, high_stop, gpass, gstop):
+        CachedRawPipe.__init__(self, source)
         self.args = (low_stop, low_pass, high_pass, high_stop, gpass, gstop)
 
     def as_dict(self):
@@ -294,15 +310,20 @@ class RawICA(CachedRawPipe):
     recomputed.
     """
 
-    def __init__(self, name, source, path, ica_path, root, log, session, kwargs):
-        CachedRawPipe.__init__(self, name, source, path, root, log)
+    def __init__(self, source, session, **kwargs):
+        CachedRawPipe.__init__(self, source)
         if isinstance(session, str):
             session = (session,)
         else:
-            assert isinstance(session, tuple)
-        self.ica_path = ica_path
+            if not isinstance(session, tuple):
+                session = tuple(session)
+            assert all(isinstance(s, str) for s in session)
         self.session = session
         self.kwargs = kwargs
+
+    def _link(self, name, pipes, root, raw_dir, cache_path, log):
+        CachedRawPipe._link(self, name, pipes, root, raw_dir, cache_path, log)
+        self.ica_path = join(raw_dir, f'{{subject}} {name}-ica.fif')
 
     def as_dict(self):
         out = CachedRawPipe.as_dict(self)
@@ -371,8 +392,8 @@ class RawMaxwell(CachedRawPipe):
 
     _bad_chs_affect_cache = True
 
-    def __init__(self, name, source, path, root, log, kwargs):
-        CachedRawPipe.__init__(self, name, source, path, root, log)
+    def __init__(self, source, **kwargs):
+        CachedRawPipe.__init__(self, source)
         self.kwargs = kwargs
 
     def as_dict(self):
@@ -386,51 +407,54 @@ class RawMaxwell(CachedRawPipe):
         return mne.preprocessing.maxwell_filter(raw, **self.kwargs)
 
 
-def assemble_pipeline(raw_dict, raw_dir, cache_path, ica_path, root, sessions, log):
+def assemble_pipeline(raw_dict, raw_dir, cache_path, root, sessions, log):
     "Assemble preprocessing pipeline form a definition in a dict"
+    # convert to Raw objects
     raw = {}
-    unassigned = raw_dict.copy()
-    has_source = False
-    while unassigned:
-        n_unassigned = len(unassigned)
-        for name in tuple(unassigned):
-            params = unassigned[name]
-            source = params.get('source')
+    for key, raw_def in raw_dict.items():
+        if not isinstance(raw_def, RawPipe):
+            params = {**raw_def}
+            source = params.pop('source', None)
             if source is None:
-                if has_source:
-                    raise NotImplementedError("Preprocessing pipeline with more than one raw source")
-                raw[name] = RawSource(name, raw_dir, root, log, **params)
-                has_source = name or True
-                del unassigned[name]
-            elif source in raw:
-                params = params.copy()
-                del params['source']
+                raw_def = RawSource(**params)
+            else:
                 pipe_type = params.pop('type')
                 if pipe_type == 'filter':
-                    raw[name] = RawFilter(name, raw[source], cache_path, root, log, **params)
+                    raw_def = RawFilter(source, *params.pop('args', ()), **params.pop('kwargs', {}))
                 elif pipe_type == 'ica':
-                    raw[name] = RawICA(name, raw[source], cache_path, ica_path.replace('{raw}', name), root, log, **params)
-                    if not all(s in sessions for s in raw[name].session):
-                        missing = (repr(s) for s in raw[name].session if s not in sessions)
-                        raise DefinitionError(
-                            f"Raw definition {name!r} references one or more "
-                            f"non-existing sessions {', '.join(missing)}; "
-                            f"existing sessions are: {', '.join(map(repr, sessions))}")
+                    raw_def = RawICA(source, params.pop('session'), **params.pop('kwargs', {}))
                 elif pipe_type == 'maxwell_filter':
-                    raw[name] = RawMaxwell(name, raw[source], cache_path, root, log, **params)
-                elif pipe_type == 'elliptical filter':
-                    raw[name] = RawFilterElliptic(name, raw[source], cache_path, root, log, *params['args'])
+                    raw_def = RawMaxwell(source, **params.pop('kwargs', {}))
                 else:
-                    raise DefinitionError("unknonw raw pipe type=%r" % (pipe_type,))
-                del unassigned[name]
-
-        if len(unassigned) == n_unassigned:
-            raise DefinitionError(f"Unable to resolve preprocessing pipeline definition: {unassigned}")
-
-    if not has_source:
-        raise DefinitionError("Preprocssing pipeline has no raw source")
-    elif has_source != 'raw':
-        raise NotImplementedError("The raw source must be called 'raw'")
+                    raise DefinitionError(f"Raw {key!r}: unknonw type {pipe_type!r}")
+                if params:
+                    raise DefinitionError(f"Unused parameters in raw definition {key!r}: {raw_def}")
+        raw[key] = raw_def
+    n_source = sum(isinstance(p, RawSource) for p in raw.values())
+    if n_source == 0:
+        raise DefinitionError("No RawSource pipe")
+    elif n_source > 1:
+        raise NotImplementedError("More than one RawSource pipes")
+    # link sources
+    for key, pipe in raw.items():
+        pipe._link(key, raw, root, raw_dir, cache_path, log)
+        if isinstance(pipe, RawICA):
+            missing = set(pipe.session).difference(sessions)
+            if missing:
+                raise DefinitionError(f"RawICA {key!r} lists one or more non-exising sessions: {', '.join(missing)}")
+    # check tree
+    is_ok = ['raw']
+    for key, pipe in raw.items():
+        tested = []
+        name = key
+        while True:
+            if name in is_ok:
+                is_ok.append(key)
+                break
+            elif name in tested:
+                raise DefinitionError(f"Unable to resolve source for {name!r} preprocessing pipeline, circular dependency?")
+            tested.append(name)
+            name = raw[name]._source_name
     return raw
 
 

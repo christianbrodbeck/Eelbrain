@@ -235,7 +235,7 @@ temp = {
     'edf-file': join('{log-dir}', '*.edf'),
 
     # created input files
-    'raw-ica-file': join('{raw-dir}', '{subject} {raw}-ica.fif'),
+    'raw-ica-file': join('{raw-dir}', '{subject} {raw}-ica.fif'),  # this is also hard-coded in RawICA
     'rej-dir': join('{raw-dir}', 'epoch selection'),
     'rej-file': join('{rej-dir}', '{session}_{sns_kind}_{epoch}-{rej}.pickled'),
     'ica-file': join('{rej-dir}', '{session} {sns_kind} {rej}-ica.fif'),
@@ -659,9 +659,8 @@ class MneExperiment(FileTree):
         skip = {'root', 'subject', 'session', 'raw'}
         raw_dir = self._partial('raw-dir', skip)
         cache_path = self._partial('cached-raw-file', skip)
-        ica_path = self._partial('raw-ica-file', skip)
         raw_def = {**raw_def, **self.raw}
-        self._raw = assemble_pipeline(raw_def, raw_dir, cache_path, ica_path, root, self._sessions, log)
+        self._raw = assemble_pipeline(raw_def, raw_dir, cache_path, root, self._sessions, log)
 
         # update templates
         pipe = self._raw['raw']
@@ -1107,7 +1106,7 @@ class MneExperiment(FileTree):
             # raw pipeline
             if cache_state_v < 5:
                 cache_raw = pipeline_dict(
-                    assemble_pipeline(LEGACY_RAW, '', '', '', '', '', self._sessions, log))
+                    assemble_pipeline(LEGACY_RAW, '', '', '', '', self._sessions, log))
             else:
                 cache_raw = cache_state['raw']
 
