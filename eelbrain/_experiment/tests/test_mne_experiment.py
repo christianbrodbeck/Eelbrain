@@ -104,7 +104,7 @@ def test_mne_experiment_templates():
 
     # find terminal field names
     assert e.find_keys('raw-file') == {'root', 'subject', 'session'}
-    assert e.find_keys('evoked-file', False) == {'subject', 'session', 'modality', 'raw', 'epoch', 'rej', 'equalize_evoked_count', 'model', }
+    assert e.find_keys('evoked-file', False) == {'subject', 'session', 'raw', 'epoch', 'rej', 'equalize_evoked_count', 'model', }
 
     assert_inv_works(e, 'free-3-MNE', ('free', 3, 'MNE'),
                      {'loose': 1, 'depth': 0.8},

@@ -197,6 +197,29 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
     return Dataset((trigger, i_start), name, info=info)
 
 
+def find_mne_channel_types(info):
+    chs = {(ch['kind'], ch['unit']) for ch in info['chs']}
+    types = {ch[0] for ch in chs}
+    if FIFF.FIFFV_MEG_CH in types:
+        units = {ch[1] for ch in chs if ch[0] == FIFF.FIFFV_MEG_CH}
+        mag = FIFF.FIFF_UNIT_T in units
+        grad = FIFF.FIFF_UNIT_T_M in units
+    else:
+        mag = grad = False
+    eeg = FIFF.FIFFV_EEG_CH in types
+    eog = FIFF.FIFFV_EOG_CH in types
+    out = []
+    if mag:
+        out.append('mag')
+    if grad:
+        out.append('grad')
+    if eeg:
+        out.append('eeg')
+    if eog:
+        out.append('eog')
+    return out
+
+
 def _guess_ndvar_data_type(info):
     """Guess which type of data to extract from an mne object.
 
@@ -213,15 +236,11 @@ def _guess_ndvar_data_type(info):
     data : str
         Kind of data to extract
     """
-    chs = info['chs']
-    if any(ch['kind'] == FIFF.FIFFV_MEG_CH for ch in chs):
-        if any(ch['unit'] == FIFF.FIFF_UNIT_T for ch in chs):
-            return 'mag'
-        elif any(ch['unit'] == FIFF.FIFF_UNIT_T_M for ch in chs):
-            return 'grad'
-    elif any(ch['kind'] == FIFF.FIFFV_EEG_CH for ch in chs):
-        return 'eeg'
-    raise ValueError("No MEG or EEG channel found in info.")
+    data_types = find_mne_channel_types(info)
+    if data_types:
+        return data_types[0]
+    else:
+        raise ValueError("No MEG, EEG or EOG channel found in data")
 
 
 def _picks(info, data, exclude):
@@ -229,6 +248,10 @@ def _picks(info, data, exclude):
         meg = False
         eeg = True
         eog = False
+    elif data == 'eog':
+        meg = False
+        eeg = False
+        eog = True
     elif data == 'eeg&eog':
         meg = False
         eeg = True
@@ -259,7 +282,7 @@ def _ndvar_epochs_reject(data, reject):
 
 
 def _sensor_info(data, vmax, mne_info, user_info=None, mult=1):
-    if data == 'eeg' or data == 'eeg&eog':
+    if data == 'eeg' or data == 'eog' or data == 'eeg&eog':
         info = _info.for_eeg(vmax, mult)
         summary_vmax = 0.1 * vmax if vmax else None
         summary_info = _info.for_eeg(summary_vmax, mult)

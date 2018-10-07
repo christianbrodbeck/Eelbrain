@@ -41,10 +41,9 @@ from .. import testnd
 from .._config import CONFIG
 from .._data_obj import (
     Datalist, Dataset, Factor, Var, SourceSpace, VolumeSourceSpace,
-    align, align1, all_equal, assert_is_legal_dataset_key, combine)
+    align1, all_equal, assert_is_legal_dataset_key, combine)
 from .._exceptions import DefinitionError, DimensionMismatchError, OldVersionError
 from .._info import BAD_CHANNELS
-from .._io.fiff import KIT_NEIGHBORS
 from .._io.pickle import update_subjects_dir
 from .._names import INTERPOLATE_CHANNELS
 from .._meeg import new_rejection_ds
@@ -218,7 +217,6 @@ def cache_valid(mtime, *source_mtimes):
 
 temp = {
     # MEG
-    'modality': ('', 'eeg', 'meeg'),
     'reference': ('', 'mastoids'),  # EEG reference
     'equalize_evoked_count': ('', 'eq'),
     # locations
@@ -509,8 +507,7 @@ class MneExperiment(FileTree):
     # Backup
     # ------
     # basic state for a backup
-    _backup_state = {'subject': '*', 'mrisubject': '*', 'session': '*',
-                     'raw': 'raw', 'modality': '*'}
+    _backup_state = {'subject': '*', 'mrisubject': '*', 'session': '*', 'raw': 'raw'}
     # files to back up, together with state modifications on the basic state
     _backup_files = (('rej-file', {'raw': '*', 'epoch': '*', 'rej': '*'}),
                      ('ica-file', {'raw': '*', 'epoch': '*', 'rej': '*'}),
@@ -858,9 +855,8 @@ class MneExperiment(FileTree):
         self._register_field('ext', internal=True)
 
         # compounds
-        self._register_compound('sns_kind', ('modality', 'raw'))
-        self._register_compound('src_kind', ('sns_kind', 'cov', 'mri',
-                                             'src-name', 'inv'))
+        self._register_compound('sns_kind', ('raw',))
+        self._register_compound('src_kind', ('sns_kind', 'cov', 'mri', 'src-name', 'inv'))
         self._register_compound('evoked_kind', ('rej', 'equalize_evoked_count'))
         self._register_compound('eeg_kind', ('sns_kind', 'reference'))
 
@@ -870,8 +866,7 @@ class MneExperiment(FileTree):
         self._bind_cache('fwd-file', self.make_fwd)
 
         # currently only used for .rm()
-        self._secondary_cache['cached-raw-file'] = (
-            'event-file', 'interp-file', 'cached-raw-log-file')
+        self._secondary_cache['cached-raw-file'] = ('event-file', 'interp-file', 'cached-raw-log-file')
 
         ########################################################################
         # logger
@@ -1681,8 +1676,7 @@ class MneExperiment(FileTree):
                         else:
                             out = max(out, mtime)
                 else:
-                    raise RuntimeError("data=%r, parc_level=%r" %
-                                       (data, data.parc_level,))
+                    raise RuntimeError(f"data={data.string!r}, parc_level={data.parc_level!r}")
             else:
                 out = 1
 
@@ -1758,9 +1752,8 @@ class MneExperiment(FileTree):
         return {'min' + dim: criteria[dim] for dim in data.dims if dim in criteria}
 
     def _add_epochs(self, ds, epoch, baseline, ndvar, data_raw, pad, decim,
-                    reject, apply_ica, trigger_shift, eog, tmin, tmax, tstop,
+                    reject, apply_ica, trigger_shift, tmin, tmax, tstop,
                     data, add_bads_to_info=False):
-        modality = self.get('modality')
         if tmin is None:
             tmin = epoch.tmin
         if tmax is None and tstop is None:
@@ -1792,9 +1785,12 @@ class MneExperiment(FileTree):
                                                    epoch.post_baseline_trigger_shift_min,
                                                    epoch.post_baseline_trigger_shift_max)
 
+        info = ds['epochs'].info
+        data_to_ndvar = data.data_to_ndvar(info)
+
         # interpolate channels
         if reject and ds.info[INTERPOLATE_CHANNELS]:
-            if modality == '':
+            if 'mag' in data_to_ndvar:
                 interp_path = self.get('interp-file')
                 if exists(interp_path):
                     interp_cache = load.unpickle(interp_path)
@@ -1805,7 +1801,7 @@ class MneExperiment(FileTree):
                                       interp_cache)
                 if len(interp_cache) > n_in_cache:
                     save.pickle(interp_cache, interp_path)
-            else:
+            if 'eeg' in data_to_ndvar:
                 _interpolate_bads_eeg(ds['epochs'], ds[INTERPOLATE_CHANNELS])
 
         # ICA
@@ -1816,21 +1812,19 @@ class MneExperiment(FileTree):
 
         if ndvar:
             pipe = self._raw[self.get('raw')]
-            sysname = pipe.connectivity(ds.info['raw'].info, ds.info['subject'])
-            name = self._ndvar_name_for_modality(modality)
-            ds[name] = load.fiff.epochs_ndvar(ds['epochs'], sysname=sysname,
-                                              exclude=() if add_bads_to_info else 'bads',
-                                              data=self._data_arg(modality, eog))
-            if add_bads_to_info:
-                ds[name].info[BAD_CHANNELS] = ds['epochs'].info['bads']
+            for data_kind in data_to_ndvar:
+                sysname = pipe.connectivity(info, ds.info['subject'], data_kind)
+                name = 'meg' if data_kind == 'mag' else data_kind
+                ds[name] = load.fiff.epochs_ndvar(ds['epochs'], sysname=sysname, exclude=() if add_bads_to_info else 'bads', data=data_kind)
+                if add_bads_to_info:
+                    ds[name].info[BAD_CHANNELS] = ds['epochs'].info['bads']
+                if data_kind == 'eeg':
+                    self._fix_eeg_ndvar(ds[name], True)
+                if isinstance(data.sensor, str):
+                    ds[name] = getattr(ds[name], data.sensor)('sensor')
 
             if ndvar != 'both':
                 del ds['epochs']
-            if modality == 'eeg':
-                self._fix_eeg_ndvar(ds[ndvar], True)
-
-            if isinstance(data.sensor, str):
-                ds[name] = getattr(ds[name], data.sensor)('sensor')
 
         if data_raw is False:
             del ds.info['raw']
@@ -2074,6 +2068,9 @@ class MneExperiment(FileTree):
 
     def _backup(self, dst_root, v=False):
         """Backup all essential files to ``dst_root``.
+
+        .. warning::
+            Method is out of data and probably does not work as expected.
 
         Parameters
         ----------
@@ -2513,38 +2510,10 @@ class MneExperiment(FileTree):
         path = self.get('edf-file', fmatch=False, **kwargs)
         return load.eyelink.Edf(path)
 
-    @staticmethod
-    def _ndvar_name_for_modality(modality):
-        if modality == 'meeg':
-            raise NotImplementedError("NDVar for sensor space data combining "
-                                      "EEG and MEG data")
-        elif modality == '':
-            return 'meg'
-        elif modality == 'eeg':
-            return 'eeg'
-        else:
-            raise ValueError("modality=%r" % modality)
-
-    @staticmethod
-    def _data_arg(modality, eog=False):
-        "Data argument for FIFF-to-NDVar conversion"
-        if modality == 'meeg':
-            raise NotImplementedError("NDVar for sensor space data combining "
-                                      "EEG and MEG data")
-        elif modality == '':
-            return 'mag'
-        elif modality == 'eeg':
-            if eog:
-                return 'eeg&eog'
-            else:
-                return 'eeg'
-        else:
-            raise ValueError("modality=%r" % modality)
-
     def load_epochs(self, subject=1, baseline=False, ndvar=True,
                     add_bads=True, reject=True, cat=None,
                     decim=None, pad=0, data_raw=False, vardef=None, data='sensor',
-                    eog=False, trigger_shift=True, apply_ica=True, tmin=None,
+                    trigger_shift=True, apply_ica=True, tmin=None,
                     tmax=None, tstop=None, **kwargs):
         """
         Load a Dataset with epochs for a given epoch definition
@@ -2588,8 +2557,6 @@ class MneExperiment(FileTree):
             Data to load; 'sensor' to load all sensor data (default);
             'sensor.rms' to return RMS over sensors. Only applies to NDVar
             output.
-        eog : bool
-            When loading EEG data as NDVar, also add the EOG channels.
         trigger_shift : bool
             Apply post-baseline trigger-shift if it applies to the epoch
             (default True).
@@ -2609,7 +2576,7 @@ class MneExperiment(FileTree):
         if not data.sensor:
             raise ValueError(f"data={data.string!r}; load_evoked is for loading sensor data")
         elif data.sensor is not True and not ndvar:
-            raise ValueError("data=%r with ndvar=False" % (data.string,))
+            raise ValueError(f"data={data.string!r} with ndvar=False")
         if ndvar:
             if isinstance(ndvar, str):
                 if ndvar != 'both':
@@ -2625,22 +2592,8 @@ class MneExperiment(FileTree):
                 dss.append(ds)
 
             return combine(dss)
-        elif self.get('modality') == 'meeg':  # single subject, combine MEG and EEG
-            # FIXME: combine MEG/EEG based on different pipes
-            with self._temporary_state:
-                ds_meg = self.load_epochs(subject, baseline, ndvar, add_bads,
-                                          reject, cat, decim, pad, data_raw,
-                                          vardef, data, tmin=tmin, tmax=tmax,
-                                          tstop=tstop, modality='')
-                ds_eeg = self.load_epochs(subject, baseline, ndvar, add_bads,
-                                          reject, cat, decim, pad, data_raw,
-                                          vardef, data, tmin=tmin, tmax=tmax,
-                                          tstop=tstop, modality='eeg')
-            ds, eeg_epochs = align(ds_meg, ds_eeg['epochs'], 'index',
-                                   ds_eeg['index'])
-            ds['epochs'] = mne.epochs.add_channels_epochs((ds['epochs'], eeg_epochs))
-            return ds
-        # single subject, single modality
+
+        # single subject
         epoch = self._epochs[self.get('epoch')]
         if isinstance(epoch, EpochCollection):
             dss = []
@@ -2648,7 +2601,7 @@ class MneExperiment(FileTree):
                 for sub_epoch in epoch.collect:
                     ds = self.load_epochs(
                         subject, baseline, ndvar, add_bads, reject, cat, decim,
-                        pad, data_raw, vardef, data, eog, trigger_shift, apply_ica,
+                        pad, data_raw, vardef, data, trigger_shift, apply_ica,
                         tmin, tmax, tstop, epoch=sub_epoch)
                     ds[:, 'epoch'] = sub_epoch
                     dss.append(ds)
@@ -2677,7 +2630,7 @@ class MneExperiment(FileTree):
 
             # load sensor space data
             ds = self._add_epochs(ds, epoch, baseline, ndvar, data_raw, pad,
-                                  decim, reject, apply_ica, trigger_shift, eog,
+                                  decim, reject, apply_ica, trigger_shift,
                                   tmin, tmax, tstop, data, add_bads_to_info)
 
         return ds
@@ -2925,14 +2878,12 @@ class MneExperiment(FileTree):
             State parameters.
         """
         subject, group = self._process_subject_arg(subject, kwargs)
-        modality = self.get('modality')
         epoch = self._epochs[self.get('epoch')]
         data = TestDims.coerce(data)
         if not data.sensor:
-            raise ValueError("data=%r; load_evoked is for loading sensor data" %
-                             (data.string,))
+            raise ValueError(f"data={data.string!r}; load_evoked is for loading sensor data")
         elif data.sensor is not True and not ndvar:
-            raise ValueError("data=%r with ndvar=False" % (data.string,))
+            raise ValueError(f"data={data.string!r} with ndvar=False")
         if baseline is True:
             baseline = epoch.baseline
 
@@ -2945,13 +2896,6 @@ class MneExperiment(FileTree):
                    for _ in self.iter(group=group)]
             if individual_ndvar:
                 ndvar = False
-            elif ndvar and data.sensor is True:
-                sysnames = set(ds.info['sysname'] for ds in dss)
-                if len(sysnames) != 1:
-                    raise NotImplementedError(
-                        "Can not combine different MEG systems in a single "
-                        "NDVar (trying to load data with systems %s)" %
-                        (enumeration(sysnames),))
             ds = combine(dss, incomplete='drop')
 
             # check consistency in MNE objects' number of time points
@@ -2969,13 +2913,12 @@ class MneExperiment(FileTree):
             if cat:
                 model = self.get('model')
                 if not model:
-                    raise TypeError("cat=%r: Can't set cat when model is ''" % (cat,))
+                    raise TypeError(f"cat={cat!r}: Can't set cat when model is ''")
                 model = ds.eval(model)
                 idx = model.isin(cat)
                 ds = ds.sub(idx)
                 if ds.n_cases == 0:
-                    raise RuntimeError("Selection with cat=%s resulted in "
-                                       "empty Dataset" % repr(cat))
+                    raise RuntimeError(f"Selection with cat={cat!r} resulted in empty Dataset")
 
             self._add_vars(ds, vardef)
 
@@ -2986,21 +2929,20 @@ class MneExperiment(FileTree):
                 for e in ds['evoked']:
                     rescale(e.data, e.times, baseline, 'mean', copy=False)
 
-            # info
-            pipe = self._raw[self.get('raw')]
-            ds.info['sysname'] = pipe.connectivity(ds[0, 'evoked'].info, subject)
-
         # convert to NDVar
         if ndvar:
-            name = self._ndvar_name_for_modality(modality)
-            ds[name] = load.fiff.evoked_ndvar(ds['evoked'],
-                                              data=self._data_arg(modality),
-                                              sysname=ds.info['sysname'])
-            if modality == 'eeg':
-                self._fix_eeg_ndvar(ds[name], group)
-
-            if isinstance(data.sensor, str):
-                ds[name] = getattr(ds[name], data.sensor)('sensor')
+            pipe = self._raw[self.get('raw')]
+            info = ds[0, 'evoked'].info
+            for data_kind in data.data_to_ndvar(info):
+                sysname = pipe.connectivity(info, subject, data_kind)
+                name = 'meg' if data_kind == 'mag' else data_kind
+                ds[name] = load.fiff.evoked_ndvar(ds['evoked'], data=data_kind, sysname=sysname)
+                if data_kind == 'eeg':
+                    self._fix_eeg_ndvar(ds[name], group)
+                if data_kind != 'eog' and isinstance(data.sensor, str):
+                    ds[name] = getattr(ds[name], data.sensor)('sensor')
+            # if ndvar != 'both':
+            #     del ds['evoked']
 
         return ds
 
@@ -3236,9 +3178,9 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        if self.get('modality', **kwargs) != '':
-            raise NotImplementedError("Source reconstruction for EEG data")
-        elif mask and not ndvar:
+        if kwargs:
+            self.set(**kwargs)
+        if mask and not ndvar:
             raise NotImplemented("mask is only implemented for ndvar=True")
         elif isinstance(mask, str):
             self.set(parc=mask)
@@ -3248,8 +3190,7 @@ class MneExperiment(FileTree):
         if src[:3] == 'vol':
             inv = self.get('inv')
             if not (inv.startswith('vec') or inv.startswith('free')):
-                raise ValueError('inv=%r with src=%r: volume source space '
-                                 'requires free or vector inverse' % (inv, src))
+                raise ValueError(f'inv={inv!r} with src={src!r}: volume source space requires free or vector inverse')
 
         if fiff is None:
             fiff = self.load_raw()
@@ -3261,8 +3202,7 @@ class MneExperiment(FileTree):
             inv = load.fiff.inverse_operator(
                 inv, self.get('src'), self.get('mri-sdir'), self.get('parc'))
             if mask:
-                inv = inv.sub(source=np.invert(
-                    inv.source.parc.startswith('unknown')))
+                inv = inv.sub(source=~inv.source.parc.startswith('unknown'))
         return inv
 
     def load_label(self, label, **kwargs):
@@ -3350,7 +3290,7 @@ class MneExperiment(FileTree):
         bad channels in the bad channels file.
         """
         if not isinstance(add_bads, int):
-            raise TypeError("add_bads must be boolean, got %s" % repr(add_bads))
+            raise TypeError(f"add_bads={add_bads!r}: boolean expected")
         pipe = self._raw[self.get('raw', **kwargs)]
         raw = pipe.load(self.get('subject'), self.get('session'), add_bads,
                         preload if decim == 1 else True)
@@ -3739,20 +3679,6 @@ class MneExperiment(FileTree):
         "Load a cached test after _set_analysis_options() has been called"
         test_obj = self._tests[test]
 
-        # find data to use
-        if data.sensor:
-            modality = self.get('modality')
-            if modality == '':
-                y_name = 'meg'
-            elif modality == 'eeg':
-                y_name = 'eeg'
-            else:
-                raise ValueError("data=%r, modality=%r" % (data.string, modality))
-        elif data.source:
-            y_name = 'srcm'
-        else:
-            raise RuntimeError("data=%r" % (data.string,))
-
         dst = self.get('test-file', mkdir=True)
 
         # try to load cached test
@@ -3812,7 +3738,7 @@ class MneExperiment(FileTree):
 
         if isinstance(test_obj, TwoStageTest):
             if data.source is not True:
-                raise NotImplementedError("Two-stage test with data=%r" % (data.string,))
+                raise NotImplementedError(f"Two-stage test with data={data.string!r}")
 
             if test_obj.model is not None:
                 self.set(model=test_obj._within_model)
@@ -3824,16 +3750,12 @@ class MneExperiment(FileTree):
                                 len(self.get_field_values('subject')),
                                 disable=CONFIG['tqdm']):
                 if test_obj.model is None:
-                    ds = self.load_epochs_stc(subject, sns_baseline,
-                                              src_baseline, morph=True,
-                                              mask=mask, vardef=test_obj.vars)
+                    ds = self.load_epochs_stc(subject, sns_baseline, src_baseline, morph=True, mask=mask, vardef=test_obj.vars)
                 else:
-                    ds = self.load_evoked_stc(subject, sns_baseline,
-                                              src_baseline, morph_ndvar=True,
-                                              mask=mask, vardef=test_obj.vars)
+                    ds = self.load_evoked_stc(subject, sns_baseline, src_baseline, morph_ndvar=True, mask=mask, vardef=test_obj.vars)
 
                 if do_test:
-                    lms.append(test_obj.make_stage_1(y_name, ds, subject))
+                    lms.append(test_obj.make_stage_1(data.y_name, ds, subject))
                 if return_data:
                     dss.append(ds)
 
@@ -3847,19 +3769,15 @@ class MneExperiment(FileTree):
                 test_kwargs, res, data)
         else:
             if data.sensor:
-                res_data = self.load_evoked(True, sns_baseline, True,
-                                            test_obj._within_cat, data=data,
-                                            vardef=test_obj.vars)
+                res_data = self.load_evoked(True, sns_baseline, True, test_obj._within_cat, data=data, vardef=test_obj.vars)
             elif data.source:
-                res_data = self.load_evoked_stc(True, sns_baseline, src_baseline,
-                                                morph_ndvar=True, cat=test_obj._within_cat,
-                                                mask=mask, vardef=test_obj.vars)
+                res_data = self.load_evoked_stc(True, sns_baseline, src_baseline, morph_ndvar=True, cat=test_obj._within_cat, mask=mask, vardef=test_obj.vars)
             else:
-                raise RuntimeError("data=%r" % (data.string,))
+                raise ValueError(f"data={data.string!r}")
 
             if do_test:
                 self._log.info("Make test: %s", desc)
-                res = self._make_test(y_name, res_data, test_obj, test_kwargs)
+                res = self._make_test(data.y_name, res_data, test_obj, test_kwargs)
 
         if do_test:
             save.pickle(res, dst)
@@ -4318,8 +4236,6 @@ class MneExperiment(FileTree):
             if exists(dst):
                 if cache_valid(getmtime(dst), self._fwd_mtime()):
                     return dst
-            elif self.get('modality') != '':
-                raise NotImplementedError("Source reconstruction with EEG")
 
         trans = self.get('trans-file')
         src = self.get('src-file', make=True)
@@ -4546,9 +4462,9 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        data = TestDims("source")
         kwargs['model'] = ''
         subject, group = self._process_subject_arg(subject, kwargs)
+        data = TestDims("source", morph=bool(group))
         brain_kwargs = self._surfer_plot_kwargs(surf, views, foreground, background,
                                                 smoothing_steps, hemi)
         self._set_analysis_options(data, sns_baseline, src_baseline, None, None, None)
@@ -4654,7 +4570,7 @@ class MneExperiment(FileTree):
         else:
             raise ValueError("p=%s" % p)
 
-        data = TestDims("source")
+        data = TestDims("source", morph=True)
         brain_kwargs = self._surfer_plot_kwargs(surf, views, foreground, background,
                                                 smoothing_steps, hemi)
         surf = brain_kwargs['surf']
@@ -4929,7 +4845,6 @@ class MneExperiment(FileTree):
                     "rejection for these epochs.".format(cur=epoch.name))
 
         path = self.get('rej-file', mkdir=True, session=epoch.session)
-        modality = self.get('modality')
 
         if auto is not None and overwrite is not True and exists(path):
             msg = ("A rejection file already exists for {subject}, epoch "
@@ -4940,47 +4855,52 @@ class MneExperiment(FileTree):
         if decim is None:
             decim = rej_args.get('decim', None)
 
-        if modality == '':
-            ds = self.load_epochs(reject=False, trigger_shift=False,
-                                  apply_ica=apply_ica, eog=True, decim=decim)
-            eog_sns = self._eog_sns.get(ds['meg'].sensor.sysname)
-            data = 'meg'
+        ds = self.load_epochs(reject=False, trigger_shift=False, apply_ica=apply_ica, decim=decim)
+        has_meg = 'meg' in ds
+        has_grad = 'grad' in ds
+        has_eeg = 'eeg' in ds
+        has_eog = 'eog' in ds
+        if sum((has_meg, has_grad, has_eeg)) > 1:
+            raise NotImplementedError("Rejection GUI for multiple channel types")
+        elif has_meg:
+            y_name = 'meg'
             vlim = 2e-12
-        elif modality == 'eeg':
-            ds = self.load_epochs(reject=False, eog=True, baseline=True,
-                                  decim=decim, trigger_shift=False)
-            eog_sns = self._eog_sns['KIT-BRAINVISION']
-            data = 'eeg'
+        elif has_grad:
+            raise NotImplementedError("Rejection GUI for gradiometer data")
+        elif has_eeg:
+            y_name = 'eeg'
             vlim = 1.5e-4
         else:
-            raise ValueError("modality=%r" % modality)
+            raise RuntimeError("No data found")
+
+        if has_eog:
+            eog_sns = []  # TODO:  use EOG
+        else:
+            eog_sns = self._eog_sns.get(ds[y_name].sensor.sysname)
 
         if auto is not None:
             # create rejection
             rej_ds = new_rejection_ds(ds)
-            rej_ds[:, 'accept'] = ds[data].abs().max(('sensor', 'time')) <= auto
+            rej_ds[:, 'accept'] = ds[y_name].abs().max(('sensor', 'time')) <= auto
             # create description for info
-            args = ["auto=%r" % auto]
+            args = [f"auto={auto!r}"]
             if overwrite is True:
                 args.append("overwrite=True")
             if decim is not None:
-                args.append("decim=%s" % repr(decim))
-            rej_ds.info['desc'] = ("Created with %s.make_rej(%s)" %
-                                   (self.__class__.__name__, ', '.join(args)))
+                args.append(f"decim={decim!r}")
+            rej_ds.info['desc'] = f"Created with {self.__class__.__name__}.make_rej({', '.join(args)})"
             # save
             save.pickle(rej_ds, path)
             # print info
             n_rej = rej_ds.eval("sum(accept == False)")
-            msg = ("%i of %i epochs rejected with threshold %s for {subject}, "
-                   "epoch {epoch}" % (n_rej, rej_ds.n_cases, auto))
-            print(self.format(msg))
+            print(self.format(f"{n_rej} of {rej_ds.n_cases} epochs rejected with threshold {auto} for {{subject}}, epoch {{epoch}}"))
             return
 
         # don't mark eog sns if it is bad
         bad_channels = self.load_bad_channels()
         eog_sns = [c for c in eog_sns if c not in bad_channels]
 
-        gui.select_epochs(ds, data, path=path, vlim=vlim, mark=eog_sns, **kwargs)
+        gui.select_epochs(ds, y_name, path=path, vlim=vlim, mark=eog_sns, **kwargs)
 
     def _need_not_recompute_report(self, dst, samples, data, redo):
         "Check (and log) whether the report needs to be redone"
@@ -5059,7 +4979,7 @@ class MneExperiment(FileTree):
                              % repr(include))
 
         self.set(**state)
-        data = TestDims('source')
+        data = TestDims('source', morph=True)
         self._set_analysis_options(data, sns_baseline, src_baseline, pmin,
                                    tstart, tstop, parc, mask)
         dst = self.get('report-file', mkdir=True, test=test)
@@ -5945,24 +5865,27 @@ class MneExperiment(FileTree):
             State parameters.
         """
         subject, group = self._process_subject_arg(subject, kwargs)
-        y = self._ndvar_name_for_modality(self.get('modality'))
         model = self.get('model') or None
         epoch = self.get('epoch')
         if model:
-            model_name = " ~" + model
+            model_name = f"~{model}"
+        elif subject or separate:
+            model_name = "Average"
         else:
-            model_name = None
+            model_name = "Grand Average"
 
         if subject:
             ds = self.load_evoked(baseline=baseline)
-            title = subject + " " + epoch + (model_name or " Average")
+            y = ds.info['primary_data']
+            title = f"{subject} {epoch} {model_name}"
             return plot.TopoButterfly(y, model, ds=ds, title=title, run=run)
         elif separate:
             plots = []
             vlim = []
             for subject in self.iter(group=group):
                 ds = self.load_evoked(baseline=baseline)
-                title = subject + " " + epoch + (model_name or " Average")
+                y = ds.info['primary_data']
+                title = f"{subject} {epoch} {model_name}"
                 p = plot.TopoButterfly(y, model, ds=ds, title=title, run=False)
                 plots.append(p)
                 vlim.append(p.get_vlim())
@@ -5979,7 +5902,8 @@ class MneExperiment(FileTree):
                 gui.run()
         else:
             ds = self.load_evoked(group, baseline=baseline)
-            title = group + " " + epoch + (model_name or " Grand Average")
+            y = ds.info['primary_data']
+            title = f"{group} {epoch} {model_name}"
             return plot.TopoButterfly(y, model, ds=ds, title=title, run=run)
 
     def plot_label(self, label, surf='inflated', w=600, clear=False):
@@ -6307,15 +6231,14 @@ class MneExperiment(FileTree):
         """
         data = TestDims.coerce(data)
         # data kind (sensor or source space)
-        if data.sensor:
-            if self.get('modality') == 'eeg':
-                analysis = '{eeg_kind} {evoked_kind}'
-            else:
-                analysis = '{sns_kind} {evoked_kind}'
+        if data.y_name == 'eeg':
+            analysis = '{eeg_kind} {evoked_kind}'
+        elif data.y_name == 'meg':
+            analysis = '{sns_kind} {evoked_kind}'
         elif data.source:
             analysis = '{src_kind} {evoked_kind}'
         else:
-            raise RuntimeError("data=%r" % (data.string,))
+            raise RuntimeError(f"data={data.string!r}")
 
         # determine report folder (reports) and test_dims (test-files)
         kwargs = {'test_dims': data.string}
@@ -6356,14 +6279,13 @@ class MneExperiment(FileTree):
             else:
                 folder = '%s %s' % (parc, data.source)
         elif parc:
-            raise ValueError("Sensor analysis (data=%r) can't have parc" %
-                             (data.string,))
-        elif data.sensor is True:
-            folder = 'Sensor'
+            raise ValueError(f"Sensor analysis (data={data.string!r}) can't have parc")
         elif data.sensor:
-            folder = 'Sensor %s' % (data.sensor,)
+            folder = 'Sensor' if data.y_name == 'meg' else 'EEG'
+            if data.sensor is not True:
+                folder = f'{folder} {data.sensor}'
         else:
-            raise RuntimeError('data=%r' % (data.string,))
+            raise RuntimeError(f"data={data.string!r}")
 
         if folder_options:
             folder += ' ' + ' '.join(folder_options)
@@ -6397,8 +6319,7 @@ class MneExperiment(FileTree):
             # source connectivity
             connectivity = self.get('connectivity')
             if connectivity and not data.source:
-                raise NotImplementedError("connectivity=%r is not implemented "
-                                          "for data=%r" % (connectivity, data))
+                raise NotImplementedError(f"connectivity={connectivity!r} is not implemented for data={data!r}")
             elif connectivity:
                 items.append(connectivity)
 
@@ -6419,8 +6340,7 @@ class MneExperiment(FileTree):
 
         items.extend(test_options)
 
-        self.set(test_options=' '.join(items), analysis=analysis, folder=folder,
-                 **kwargs)
+        self.set(test_options=' '.join(items), analysis=analysis, folder=folder, **kwargs)
 
     def show_bad_channels(self, sessions=None, **state):
         """List bad channels

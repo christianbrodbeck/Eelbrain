@@ -38,7 +38,7 @@ class RawPipe(object):
         "Make sure the file exists and is up to date"
         raise NotImplementedError
 
-    def connectivity(self, info, subject):
+    def connectivity(self, info, subject, data):
         raise NotImplementedError
 
     def load(self, subject, session, add_bads=True, preload=False):
@@ -101,20 +101,23 @@ class RawSource(RawPipe):
             raise FileMissing(f"Raw input file for {subject}/{session} does not exist at expected location {path}")
         return path
 
-    def connectivity(self, info, subject):
-        kit_system_id = info.get('kit_system_id')
-        if kit_system_id:
-            try:
-                return KIT_NEIGHBORS[kit_system_id]
-            except KeyError:
-                raise NotImplementedError(f"Unknown KIT system-ID: {kit_system_id}; please contact developers")
-        elif isinstance(self._connectivity, str):
+    def connectivity(self, info, subject, data):
+        if data == 'eog':
+            return None
+        elif data == 'mag':
+            kit_system_id = info.get('kit_system_id')
+            if kit_system_id:
+                try:
+                    return KIT_NEIGHBORS[kit_system_id]
+                except KeyError:
+                    raise NotImplementedError(f"Unknown KIT system-ID: {kit_system_id}; please contact developers")
+        if isinstance(self._connectivity, str):
             return self._connectivity
         elif isinstance(self._connectivity, dict):
             for k, v in self._connectivity.items():
                 if fnmatch.fnmatch(subject, k):
                     return v
-        raise RuntimeError(f"Unknown sensor configuration for {subject}. Please set MneExperiment.meg_system.")
+        raise RuntimeError(f"Unknown sensor configuration for {subject}, data={data!r}. Consider setting MneExperiment.meg_system explicitly.")
 
     def load_bad_channels(self, subject, session):
         path = self.bads_path.format(root=self.root, subject=subject, session=session)
@@ -207,8 +210,8 @@ class CachedRawPipe(RawPipe):
             raw.save(path, overwrite=True)
         return path
 
-    def connectivity(self, info, subject):
-        return self.source.connectivity(info, subject)
+    def connectivity(self, info, subject, data):
+        return self.source.connectivity(info, subject, data)
 
     def load(self, subject, session, add_bads=True, preload=False):
         self.cache(subject, session)
