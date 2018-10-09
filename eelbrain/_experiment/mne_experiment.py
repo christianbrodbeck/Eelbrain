@@ -16,7 +16,7 @@ import inspect
 from itertools import chain, product
 import logging
 import os
-from os.path import exists, getmtime, isdir, join, relpath
+from os.path import basename, exists, getmtime, isdir, join, relpath
 import re
 import shutil
 import time
