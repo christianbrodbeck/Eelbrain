@@ -4195,13 +4195,12 @@ class MneExperiment(FileTree):
                      (isinstance(data_raw, int) or data_raw == self.get('raw')))
         model = self.get('model')
         equal_count = self.get('equalize_evoked_count') == 'eq'
-        if use_cache and exists(dst):
-            if cache_valid(getmtime(dst), self._evoked_mtime()):
-                ds = self.load_selected_events(data_raw=data_raw)
-                ds = ds.aggregate(model, drop_bad=True, equal_count=equal_count,
-                                  drop=('i_start', 't_edf', 'T', 'index'))
-                ds['evoked'] = mne.read_evokeds(dst, proj=False)
-                return ds
+        if use_cache and exists(dst) and cache_valid(getmtime(dst), self._evoked_mtime()):
+            ds = self.load_selected_events(data_raw=data_raw)
+            ds = ds.aggregate(model, drop_bad=True, equal_count=equal_count,
+                              drop=('i_start', 't_edf', 'T', 'index', 'trigger'))
+            ds['evoked'] = mne.read_evokeds(dst, proj=False)
+            return ds
 
         # load the epochs (post baseline-correction trigger shift requires
         # baseline corrected evoked
@@ -4213,7 +4212,7 @@ class MneExperiment(FileTree):
 
         # aggregate
         ds_agg = ds.aggregate(model, drop_bad=True, equal_count=equal_count,
-                              drop=('i_start', 't_edf', 'T', 'index'),
+                              drop=('i_start', 't_edf', 'T', 'index', 'trigger'),
                               never_drop=('epochs',))
         ds_agg.rename('epochs', 'evoked')
 
