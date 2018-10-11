@@ -42,9 +42,12 @@ class RawPipe(object):
     def get_sysname(self, info, subject, data):
         raise NotImplementedError
 
-    def load(self, subject, session, add_bads=True, preload=False):
-        path = self.path.format(root=self.root, subject=subject, session=session)
-        raw = self._load(path, preload)
+    def load(self, subject, session, add_bads=True, preload=False, raw=None):
+        # raw
+        if raw is None:
+            path = self.path.format(root=self.root, subject=subject, session=session)
+            raw = self._load(path, preload)
+        # bad channels
         if add_bads:
             raw.info['bads'] = self.load_bad_channels(subject, session)
         else:
@@ -203,9 +206,10 @@ class CachedRawPipe(RawPipe):
 
     _bad_chs_affect_cache = False
 
-    def __init__(self, source):
+    def __init__(self, source, cache=True):
         RawPipe.__init__(self)
         self._source_name = source
+        self._cache = cache
 
     def _link(self, name, pipes, root, raw_dir, cache_path, log):
         path = cache_path.format(root='{root}', raw=name, subject='{subject}', session='{session}')
@@ -237,7 +241,7 @@ class CachedRawPipe(RawPipe):
                 raw = self._make(subject, session)
             # save
             raw.save(path, overwrite=True)
-        return path
+            return raw
 
     def get_connectivity(self, data):
         return self.source.get_connectivity(data)
@@ -245,9 +249,16 @@ class CachedRawPipe(RawPipe):
     def get_sysname(self, info, subject, data):
         return self.source.get_sysname(info, subject, data)
 
-    def load(self, subject, session, add_bads=True, preload=False):
-        self.cache(subject, session)
-        return RawPipe.load(self, subject, session, add_bads, preload)
+    def load(self, subject, session, add_bads=True, preload=False, raw=None):
+        if raw is not None:
+            pass
+        elif self._cache:
+            raw = self.cache(subject, session)
+        else:
+            raw = self._make(subject, session)
+        if not isinstance(raw, mne.io.Raw):
+            raw = None  # only propagate fiff raw for appending
+        return RawPipe.load(self, subject, session, add_bads, preload, raw)
 
     def load_bad_channels(self, subject, session):
         return self.source.load_bad_channels(subject, session)
@@ -406,7 +417,7 @@ class RawICA(CachedRawPipe):
 
     def make_ica(self, subject):
         path = self.ica_path.format(root=self.root, subject=subject)
-        raw = self.source.load(subject, self.session[0], add_bads=False)
+        raw = self.source.load(subject, self.session[0], False)
         bad_channels = self.load_bad_channels(subject)
         raw.info['bads'] = bad_channels
         if exists(path):
@@ -414,16 +425,14 @@ class RawICA(CachedRawPipe):
             picks = mne.pick_types(raw.info, eeg=True, ref_meg=False)
             if ica.ch_names == [raw.ch_names[i] for i in picks]:
                 return path
-            self.log.info("Raw %s: ICA outdated due to change in bad channels "
-                          "for %s", self.name, subject)
+            self.log.info("Raw %s: ICA outdated due to change in bad channels for %s", self.name, subject)
 
         for session in self.session[1:]:
             raw_ = self.source.load(subject, session, False)
             raw_.info['bads'] = bad_channels
             raw.append(raw_)
 
-        self.log.debug("Raw %s: computing ICA decomposition for %s", self.name,
-                       subject)
+        self.log.debug("Raw %s: computing ICA decomposition for %s", self.name, subject)
         ica = mne.preprocessing.ICA(max_iter=256, **self.kwargs)
         # reject presets from meeg-preprocessing
         ica.fit(raw, reject={'mag': 5e-12, 'grad': 5000e-13, 'eeg': 300e-6})
@@ -464,6 +473,27 @@ class RawMaxwell(CachedRawPipe):
         raw = self.source.load(subject, session)
         self.log.debug("Raw %s: computing Maxwell filter for %s/%s", self.name, subject, session)
         return mne.preprocessing.maxwell_filter(raw, **self.kwargs)
+
+
+class RawReReference(CachedRawPipe):
+
+    def __init__(self, source, reference='average'):
+        CachedRawPipe.__init__(self, source, False)
+        if not isinstance(reference, str):
+            reference = list(reference)
+            if not all(isinstance(ch, str) for ch in reference):
+                raise TypeError(f"reference={reference}: must be list of str")
+        self.reference = reference
+
+    def as_dict(self):
+        out = CachedRawPipe.as_dict(self)
+        out['reference'] = self.reference
+        return out
+
+    def _make(self, subject, session):
+        raw = self.source.load(subject, session, preload=True)
+        raw.set_eeg_reference(self.reference)
+        return raw
 
 
 def assemble_pipeline(raw_dict, raw_dir, cache_path, root, sessions, log):

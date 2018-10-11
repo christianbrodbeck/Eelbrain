@@ -58,7 +58,6 @@ from ..mne_fixes._trans import hsp_equal, mrk_equal
 from ..mne_fixes._source_space import merge_volume_source_space, prune_volume_source_space
 from .._ndvar import cwt_morlet
 from ..fmtxt import List, Report, Image, read_meta
-from .._resources import predefined_connectivity
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
 from .._text import named_list, enumeration, plural
@@ -217,7 +216,6 @@ def cache_valid(mtime, *source_mtimes):
 
 temp = {
     # MEG
-    'reference': ('', 'mastoids'),  # EEG reference
     'equalize_evoked_count': ('', 'eq'),
     # locations
     'raw-sdir': join('{root}', 'meg'),
@@ -858,7 +856,6 @@ class MneExperiment(FileTree):
         self._register_compound('sns_kind', ('raw',))
         self._register_compound('src_kind', ('sns_kind', 'cov', 'mri', 'src-name', 'inv'))
         self._register_compound('evoked_kind', ('rej', 'equalize_evoked_count'))
-        self._register_compound('eeg_kind', ('sns_kind', 'reference'))
 
         # Define make handlers
         self._bind_cache('cov-file', self.make_cov)
@@ -1817,8 +1814,6 @@ class MneExperiment(FileTree):
                 ds[name] = load.fiff.epochs_ndvar(ds['epochs'], data=data_kind, sysname=sysname, connectivity=connectivity, exclude=exclude)
                 if add_bads_to_info:
                     ds[name].info[BAD_CHANNELS] = ds['epochs'].info['bads']
-                if data_kind == 'eeg':
-                    self._fix_eeg_ndvar(ds[name], True)
                 if isinstance(data.sensor, str):
                     ds[name] = getattr(ds[name], data.sensor)('sensor')
 
@@ -2228,25 +2223,6 @@ class MneExperiment(FileTree):
             if level <= 5:
                 self.rm('test-dir', confirm=True)
                 print("Cached tests cleared.")
-
-    def _fix_eeg_ndvar(self, ndvar, apply_standard_montag):
-        # connectivity
-        ndvar.sensor.set_connectivity(predefined_connectivity('BrainCap32Ch'))
-        # montage
-        if apply_standard_montag:
-            m = mne.channels.read_montage('easycap-M1')
-            m.ch_names = [n.upper() for n in m.ch_names]
-            m.ch_names[m.ch_names.index('TP9')] = 'A1'
-            m.ch_names[m.ch_names.index('TP10')] = 'A2'
-            m.ch_names[m.ch_names.index('FP2')] = 'VEOGt'
-            ndvar.sensor.set_sensor_positions(m)
-        # reference
-        reference = self.get('reference')
-        if reference:
-            if reference == 'mastoids':
-                ndvar -= ndvar.summary(sensor=['A1', 'A2'])
-            else:
-                raise ValueError("Unknown reference: reference=%r" % reference)
 
     def get_field_values(self, field, exclude=(), **state):
         """Find values for a field taking into account exclusion
@@ -2932,8 +2908,6 @@ class MneExperiment(FileTree):
                 connectivity = pipe.get_connectivity(data_kind)
                 name = 'meg' if data_kind == 'mag' else data_kind
                 ds[name] = load.fiff.evoked_ndvar(ds['evoked'], data=data_kind, sysname=sysname, connectivity=connectivity)
-                if data_kind == 'eeg':
-                    self._fix_eeg_ndvar(ds[name], group)
                 if data_kind != 'eog' and isinstance(data.sensor, str):
                     ds[name] = getattr(ds[name], data.sensor)('sensor')
             # if ndvar != 'both':
@@ -6244,9 +6218,7 @@ class MneExperiment(FileTree):
         """
         data = TestDims.coerce(data)
         # data kind (sensor or source space)
-        if data.y_name == 'eeg':
-            analysis = '{eeg_kind} {evoked_kind}'
-        elif data.y_name == 'meg':
+        if data.sensor:
             analysis = '{sns_kind} {evoked_kind}'
         elif data.source:
             analysis = '{src_kind} {evoked_kind}'
