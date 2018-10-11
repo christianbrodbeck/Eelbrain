@@ -1,7 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Pre-processing operations based on NDVars"""
 import fnmatch
-import functools
 from os import mkdir, remove
 from os.path import dirname, exists, getmtime, join, splitext
 
@@ -15,12 +14,11 @@ from .._io.fiff import KIT_NEIGHBORS
 from .._ndvar import filter_data
 from .._utils import ask
 from ..mne_fixes import CaptureLog
+from .definitions import typed_arg
 from .exceptions import FileMissing
 
 
 class RawPipe(object):
-
-    reader = staticmethod(mne.io.read_raw_fif)
 
     def _link(self, name, pipes, root, raw_dir, cache_dir, log):
         raise NotImplementedError
@@ -43,12 +41,15 @@ class RawPipe(object):
 
     def load(self, subject, session, add_bads=True, preload=False):
         path = self.path.format(root=self.root, subject=subject, session=session)
-        raw = self.reader(path, preload=preload)
+        raw = self._load(path, preload)
         if add_bads:
             raw.info['bads'] = self.load_bad_channels(subject, session)
         else:
             raw.info['bads'] = []
         return raw
+
+    def _load(self, path, preload):
+        return mne.io.read_raw_fif(path, preload=preload)
 
     def load_bad_channels(self, subject, session):
         raise NotImplementedError
@@ -66,15 +67,18 @@ class RawPipe(object):
 
 class RawSource(RawPipe):
     "Raw data source"
-    def __init__(self, filename='{subject}_{session}-raw.fif', reader=mne.io.read_raw_fif, connectivity=None, **kwargs):
+    def __init__(self, filename='{subject}_{session}-raw.fif', reader=mne.io.read_raw_fif, rename_channels=None, montage=None, connectivity=None, **kwargs):
         RawPipe.__init__(self)
-        self.filename = filename
-        self.kwargs = kwargs
-        self._reader_name = reader.__name__
-        if kwargs:
-            reader = functools.partial(reader, **kwargs)
+        self.filename = typed_arg(filename, str)
         self.reader = reader
+        self.rename_channels = typed_arg(rename_channels, dict)
+        self.montage = typed_arg(montage, str)
         self._connectivity = connectivity
+        self._kwargs = kwargs
+        if reader is mne.io.read_raw_cnt:
+            self._read_raw_kwargs = {'montage': None, **kwargs}
+        else:
+            self._read_raw_kwargs = kwargs
 
     def _link(self, name, pipes, root, raw_dir, cache_dir, log):
         if name != 'raw':
@@ -89,10 +93,24 @@ class RawSource(RawPipe):
 
     def as_dict(self):
         out = RawPipe.as_dict(self)
-        out.update(self.kwargs)
-        if self._reader_name != 'read_raw_fif':
-            out['reader'] = self._reader_name
+        out.update(self._kwargs)
+        if self.reader != mne.io.read_raw_fif:
+            out['reader'] = self.reader.__name__
+        if self.rename_channels:
+            out['rename_channels'] = self.rename_channels
+        if self.montage:
+            out['montage'] = self.montage
+        if self._connectivity is not None:
+            out['connectivity'] = self._connectivity
         return out
+    
+    def _load(self, path, preload):
+        raw = self.reader(path, preload=preload, **self._read_raw_kwargs)
+        if self.rename_channels:
+            raw.rename_channels(self.rename_channels)
+        if self.montage:
+            raw.set_montage(self.montage)
+        return raw
 
     def cache(self, subject, session):
         "Make sure the file exists and is up to date"
@@ -379,7 +397,7 @@ class RawICA(CachedRawPipe):
         raw.info['bads'] = bad_channels
         if exists(path):
             ica = mne.preprocessing.read_ica(path)
-            picks = mne.pick_types(raw.info, ref_meg=False)
+            picks = mne.pick_types(raw.info, eeg=True, ref_meg=False)
             if ica.ch_names == [raw.ch_names[i] for i in picks]:
                 return path
             self.log.info("Raw %s: ICA outdated due to change in bad channels "
@@ -517,7 +535,6 @@ def compare_pipelines(old, new, log):
     """
     out = {k: 'new' for k in new if k not in old}
     out.update({k: 'removed' for k in old if k not in new})
-    out['raw'] = 'good'
 
     # parameter changes
     to_check = set(new) - set(out)
@@ -526,6 +543,11 @@ def compare_pipelines(old, new, log):
             log.debug("  raw changed: %s %s -> %s", key, old[key], new[key])
             out[key] = 'changed'
             to_check.remove(key)
+
+    # does not need to be checked for source
+    if 'raw' in to_check:
+        to_check.remove('raw')
+        out['raw'] = 'good'
 
     # secondary changes
     while to_check:
