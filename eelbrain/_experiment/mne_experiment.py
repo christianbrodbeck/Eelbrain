@@ -924,10 +924,7 @@ class MneExperiment(FileTree):
         ########################################################################
         # Cache
         #######
-        if self.exclude:
-            raise ValueError("MneExperiment.exclude must be unspecified for "
-                             "cache management to work")
-        elif not root:
+        if not root:
             return
 
         # loading events will create cache-dir
@@ -2249,25 +2246,21 @@ class MneExperiment(FileTree):
             else:
                 raise ValueError("Unknown reference: reference=%r" % reference)
 
-    def get_field_values(self, field, exclude=False, **state):
+    def get_field_values(self, field, exclude=(), **state):
         """Find values for a field taking into account exclusion
 
         Parameters
         ----------
         field : str
             Field for which to find values.
-        exclude : bool | list of values
-            Exclude values. If True, exclude values based on ``self.exclude``.
-            For 'mrisubject', exclusions are done on 'subject'. For 'group',
-            no exclusions are done.
+        exclude : list of str
+            Exclude these values.
         ...
             State parameters.
         """
         if state:
             self.set(**state)
-        if exclude is True:
-            exclude = self.exclude.get(field, None)
-        elif isinstance(exclude, str):
+        if isinstance(exclude, str):
             exclude = (exclude,)
 
         if field == 'mrisubject':
@@ -2283,7 +2276,7 @@ class MneExperiment(FileTree):
         else:
             return FileTree.get_field_values(self, field, exclude)
 
-    def iter(self, fields='subject', exclude=True, values={}, group=None,
+    def iter(self, fields='subject', exclude=None, values={}, group=None,
              **kwargs):
         """
         Cycle the experiment's state through all values on the given fields
@@ -2292,9 +2285,8 @@ class MneExperiment(FileTree):
         ----------
         fields : sequence | str
             Field(s) over which should be iterated.
-        exclude : dict  {str: str, str: iterator over str, ...}
-            Values to exclude from the iteration with {name: value} and/or
-            {name: (sequence of values, )} entries.
+        exclude : dict  {str: iterator over str}
+            Exclude values from iteration (``{field: values_to_exclude}``).
         values : dict  {str: iterator over str}
             Fields with custom values to iterate over (instead of the
             corresponding field values) with {name: (sequence of values)}

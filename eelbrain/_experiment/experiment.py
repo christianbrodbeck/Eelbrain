@@ -128,14 +128,10 @@ class TreeModel(object):
     _templates = {}
     defaults = {}
 
-    exclude = {}  # field_values to exclude (e.g. subjects)
-
     _repr_args = ()
     _repr_kwargs = ()
 
     def __init__(self, **state):
-        self.exclude = self.exclude.copy()
-
         # scaffold for state
         self._fields = LayeredDict()
         self._field_values = LayeredDict()
@@ -478,20 +474,18 @@ class TreeModel(object):
         start_ = self.get(start)
         return os.path.relpath(abs_, start_)
 
-    def get_field_values(self, field, exclude=True):
+    def get_field_values(self, field, exclude=()):
         """Find values for a field taking into account exclusion
 
         Parameters
         ----------
         field : str
             Field for which to find values.
-        exclude : bool | list of str | str
-            Exclude values. If True, exclude values based on ``self.exclude``.
+        exclude : list of str
+            Exclude these values.
         """
         values = self._field_values[field]
-        if exclude is True:
-            exclude = self.exclude.get(field, None)
-        elif isinstance(exclude, str):
+        if isinstance(exclude, str):
             exclude = (exclude,)
 
         if exclude:
@@ -501,7 +495,7 @@ class TreeModel(object):
 
         return values
 
-    def iter(self, fields, exclude=True, values={}, mail=False, prog=False,
+    def iter(self, fields, exclude=None, values={}, mail=False, prog=False,
              **constants):
         """
         Cycle the experiment's state through all values on the given fields
@@ -510,12 +504,8 @@ class TreeModel(object):
         ----------
         fields : sequence | str
             Field(s) over which should be iterated.
-        exclude : bool | dict  {str: bool, str: str, str: iterator over str}
-            Exclude values from iteration. Boolean specifies whether to apply
-            standard exclusion (``self.exclude``). A ``dict`` can be used to
-            customize the exclusion per field with one of {field: bool,
-            field: value, field: (sequence of values, )}. If only some fields
-            are specified in a dict, True is assumed for absent fields.
+        exclude : dict  {str: iterator over str}
+            Exclude values from iteration (``{field: values_to_exclude}``).
         values : dict  {str: iterator over str}
             Fields with custom values to iterate over (instead of the
             corresponding field values) with {name: (sequence of values)}
@@ -531,7 +521,7 @@ class TreeModel(object):
             yield_str = True
         else:
             yield_str = False
-        iter_fields = tuple(f for f in chain(fields, values) if f not in constants)
+        iter_fields = [f for f in chain(fields, values) if f not in constants]
 
         # gather possible values to iterate over
         field_values = {}
@@ -539,12 +529,12 @@ class TreeModel(object):
             if field in values:
                 field_values[field] = values[field]
             else:
-                if isinstance(exclude, bool):
-                    exclude_ = exclude
-                elif field in exclude:
-                    exclude_ = exclude[field]
+                if exclude:
+                    if not isinstance(exclude, dict):
+                        raise TypeError(f"exclude={exclude!r}")
+                    exclude_ = exclude.get(field, None)
                 else:
-                    exclude_ = True
+                    exclude_ = None
                 field_values[field] = self.get_field_values(field, exclude_)
 
         # pick out the fields to iterate, but drop excluded cases:
@@ -565,7 +555,7 @@ class TreeModel(object):
         else:
             yield ()
 
-    def iter_temp(self, temp, exclude=True, values={}, **constants):
+    def iter_temp(self, temp, exclude=None, values={}, **constants):
         """
         Iterate through all paths conforming to a template given in ``temp``.
 
