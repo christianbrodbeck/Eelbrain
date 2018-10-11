@@ -5907,6 +5907,18 @@ class MneExperiment(FileTree):
         brain.add_label(label, alpha=0.75)
         return brain
 
+    def plot_raw(self, decim=10, xlim=5, add_bads=True, **state):
+        """Plot raw sensor data"""
+        raw = self.load_raw(add_bads, ndvar=True, decim=decim, **state)
+        name = self.format("{subject} {session} {raw}")
+        if raw.info['meas'] == 'V':
+            vmax = 1.5e-4
+        elif raw.info['meas'] == 'B':
+            vmax = 2e-12
+        else:
+            vmax = None
+        return plot.TopoButterfly(raw, w=0, h=3, xlim=xlim, vmax=vmax, name=name)
+
     def reset(self):
         """Reset all field values to the state at initialization
         
