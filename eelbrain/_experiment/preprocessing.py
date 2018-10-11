@@ -36,7 +36,10 @@ class RawPipe(object):
         "Make sure the file exists and is up to date"
         raise NotImplementedError
 
-    def connectivity(self, info, subject, data):
+    def get_connectivity(self, data):
+        raise NotImplementedError
+
+    def get_sysname(self, info, subject, data):
         raise NotImplementedError
 
     def load(self, subject, session, add_bads=True, preload=False):
@@ -67,13 +70,14 @@ class RawPipe(object):
 
 class RawSource(RawPipe):
     "Raw data source"
-    def __init__(self, filename='{subject}_{session}-raw.fif', reader=mne.io.read_raw_fif, rename_channels=None, montage=None, connectivity=None, **kwargs):
+    def __init__(self, filename='{subject}_{session}-raw.fif', reader=mne.io.read_raw_fif, sysname=None, rename_channels=None, montage=None, connectivity=None, **kwargs):
         RawPipe.__init__(self)
         self.filename = typed_arg(filename, str)
         self.reader = reader
+        self.sysname = sysname
         self.rename_channels = typed_arg(rename_channels, dict)
         self.montage = typed_arg(montage, str)
-        self._connectivity = connectivity
+        self.connectivity = connectivity
         self._kwargs = kwargs
         if reader is mne.io.read_raw_cnt:
             self._read_raw_kwargs = {'montage': None, **kwargs}
@@ -100,8 +104,8 @@ class RawSource(RawPipe):
             out['rename_channels'] = self.rename_channels
         if self.montage:
             out['montage'] = self.montage
-        if self._connectivity is not None:
-            out['connectivity'] = self._connectivity
+        if self.connectivity is not None:
+            out['connectivity'] = self.connectivity
         return out
     
     def _load(self, path, preload):
@@ -119,7 +123,13 @@ class RawSource(RawPipe):
             raise FileMissing(f"Raw input file for {subject}/{session} does not exist at expected location {path}")
         return path
 
-    def connectivity(self, info, subject, data):
+    def get_connectivity(self, data):
+        if data == 'eog':
+            return None
+        else:
+            return self.connectivity
+
+    def get_sysname(self, info, subject, data):
         if data == 'eog':
             return None
         elif data == 'mag':
@@ -129,13 +139,14 @@ class RawSource(RawPipe):
                     return KIT_NEIGHBORS[kit_system_id]
                 except KeyError:
                     raise NotImplementedError(f"Unknown KIT system-ID: {kit_system_id}; please contact developers")
-        if isinstance(self._connectivity, str):
-            return self._connectivity
-        elif isinstance(self._connectivity, dict):
-            for k, v in self._connectivity.items():
+        if isinstance(self.sysname, str):
+            return self.sysname
+        elif isinstance(self.sysname, dict):
+            for k, v in self.sysname.items():
                 if fnmatch.fnmatch(subject, k):
                     return v
-        raise RuntimeError(f"Unknown sensor configuration for {subject}, data={data!r}. Consider setting MneExperiment.meg_system explicitly.")
+        elif self.connectivity is None:
+            raise RuntimeError(f"Unknown sensor configuration for {subject}, data={data!r}. Consider setting connectivity or sysname explicitly.")
 
     def load_bad_channels(self, subject, session):
         path = self.bads_path.format(root=self.root, subject=subject, session=session)
@@ -228,8 +239,11 @@ class CachedRawPipe(RawPipe):
             raw.save(path, overwrite=True)
         return path
 
-    def connectivity(self, info, subject, data):
-        return self.source.connectivity(info, subject, data)
+    def get_connectivity(self, data):
+        return self.source.get_connectivity(data)
+
+    def get_sysname(self, info, subject, data):
+        return self.source.get_sysname(info, subject, data)
 
     def load(self, subject, session, add_bads=True, preload=False):
         self.cache(subject, session)

@@ -658,10 +658,10 @@ class MneExperiment(FileTree):
         self._raw = assemble_pipeline(raw_def, raw_dir, cache_path, root, self._sessions, log)
 
         raw_pipe = self._raw['raw']
-        # legacy connectivity detemrination
-        if raw_pipe._connectivity is None:
+        # legacy connectivity determination
+        if raw_pipe.sysname is None:
             if self.meg_system is not None:
-                raw_pipe._connectivity = self.meg_system
+                raw_pipe.sysname = self.meg_system
         # update templates
         self._register_constant('raw-file', raw_pipe.path)
 
@@ -1809,10 +1809,12 @@ class MneExperiment(FileTree):
 
         if ndvar:
             pipe = self._raw[self.get('raw')]
+            exclude = () if add_bads_to_info else 'bads'
             for data_kind in data_to_ndvar:
-                sysname = pipe.connectivity(info, ds.info['subject'], data_kind)
+                sysname = pipe.get_sysname(info, ds.info['subject'], data_kind)
+                connectivity = pipe.get_connectivity(data_kind)
                 name = 'meg' if data_kind == 'mag' else data_kind
-                ds[name] = load.fiff.epochs_ndvar(ds['epochs'], sysname=sysname, exclude=() if add_bads_to_info else 'bads', data=data_kind)
+                ds[name] = load.fiff.epochs_ndvar(ds['epochs'], data=data_kind, sysname=sysname, connectivity=connectivity, exclude=exclude)
                 if add_bads_to_info:
                     ds[name].info[BAD_CHANNELS] = ds['epochs'].info['bads']
                 if data_kind == 'eeg':
@@ -2926,9 +2928,10 @@ class MneExperiment(FileTree):
             pipe = self._raw[self.get('raw')]
             info = ds[0, 'evoked'].info
             for data_kind in data.data_to_ndvar(info):
-                sysname = pipe.connectivity(info, subject, data_kind)
+                sysname = pipe.get_sysname(info, subject, data_kind)
+                connectivity = pipe.get_connectivity(data_kind)
                 name = 'meg' if data_kind == 'mag' else data_kind
-                ds[name] = load.fiff.evoked_ndvar(ds['evoked'], data=data_kind, sysname=sysname)
+                ds[name] = load.fiff.evoked_ndvar(ds['evoked'], data=data_kind, sysname=sysname, connectivity=connectivity)
                 if data_kind == 'eeg':
                     self._fix_eeg_ndvar(ds[name], group)
                 if data_kind != 'eog' and isinstance(data.sensor, str):
@@ -3291,7 +3294,11 @@ class MneExperiment(FileTree):
             raw.resample(sfreq)
 
         if ndvar:
-            raw = load.fiff.raw_ndvar(raw)
+            data = TestDims('sensor')
+            data_kind = data.data_to_ndvar(raw.info)[0]
+            sysname = pipe.get_sysname(raw.info, self.get('subject'), data_kind)
+            connectivity = pipe.get_connectivity(data_kind)
+            raw = load.fiff.raw_ndvar(raw, sysname=sysname, connectivity=connectivity)
 
         return raw
 
@@ -4271,7 +4278,10 @@ class MneExperiment(FileTree):
         """
         path, ds = self.make_ica(epoch or True, decim)
         pipe = self._raw[self.get('raw')]
-        sysname = pipe.connectivity(ds['epochs'].info, ds.info['subject'])
+        info = ds['epochs'].info
+        data = TestDims('sensor')
+        data_kind = data.data_to_ndvar(info)[0]
+        sysname = pipe.get_sysname(info, ds.info['subject'], data_kind)
         gui.select_components(path, ds, sysname)
 
     def make_ica(self, return_data=False, decim=None, **state):
