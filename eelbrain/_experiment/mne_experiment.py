@@ -5596,19 +5596,23 @@ class MneExperiment(FileTree):
                 print(session.ljust(n_chars), end=': ')
                 self.make_bad_channels(bads, session=session)
 
-    def next(self, field='subject', group=None):
+    def next(self, field='subject'):
         """Change field to the next value
 
         Parameters
         ----------
-        field : str
+        field : str | list of str
             The field for which the value should be changed (default 'subject').
-        group : str
-            If cycling through subjects, only use subjects form that group.
-            Does not set change the experiment's group value.
+            Can also contain multiple fields, e.g. ``['subject', 'session']``.
         """
-        current = self.get(field)
-        values = self.get_field_values(field)
+        if isinstance(field, str):
+            current = self.get(field)
+            values = self.get_field_values(field)
+            def fmt(x): return x
+        else:
+            current = tuple(self.get(f) for f in field)
+            values = list(product(*(self.get_field_values(f) for f in field)))
+            def fmt(x): return '/'.join(x)
 
         # find the index of the next value
         if current in values:
@@ -5625,12 +5629,15 @@ class MneExperiment(FileTree):
         # set the next value
         if idx == -1:
             next_ = values[0]
-            print("The last %s was reached; rewinding to "
-                  "%r" % (field, next_))
+            print(f"The last {fmt(field)} was reached; rewinding to {fmt(next_)}")
         else:
             next_ = values[idx]
-            print("%s: %r -> %r" % (field, current, next_))
-        self.set(**{field: next_})
+            print(f"{fmt(field)}: {fmt(current)} -> {fmt(next_)}")
+
+        if isinstance(field, str):
+            self.set(**{field: next_})
+        else:
+            self.set(**dict(zip(field, next_)))
 
     def plot_annot(self, parc=None, surf=None, views=None, hemi=None,
                    borders=False, alpha=0.7, w=None, h=None, axw=None, axh=None,
