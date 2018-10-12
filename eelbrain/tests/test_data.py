@@ -1122,6 +1122,18 @@ def test_ndvar_indexing():
     assert x.sum(i_index).sum() == ds['uts'].sum(i_index).sum()
     assert_raises(DimensionMismatchError, index.__setitem__, x != 0, 0.)
 
+    # set to NDVar
+    x = ds['utsnd'].copy()
+    x[0] = x[1]
+    assert_array_equal(x[0].x, x[1].x)
+    x3 = NDVar(x[3].x.swapaxes(0, 1), x.dims[:0:-1])
+    x[2] = x3
+    assert_array_equal(x[2].x, x[3].x)
+    x[:, '1'] = x[0, '2']
+    assert_array_equal(x.x[30, 1], x.x[0, 2])
+    with pytest.raises(ValueError):
+        x[:, '1'] = x[6]
+
 
 def test_ndvar_summary_methods():
     "Test NDVar methods for summarizing data over axes"

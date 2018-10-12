@@ -37,8 +37,7 @@ These are elementary effects in a Model, and identified by :func:`is_effect`
 from collections import Iterator, OrderedDict, Sequence
 from copy import deepcopy
 from functools import partial
-import itertools
-from itertools import chain
+from itertools import chain, product, zip_longest
 from keyword import iskeyword
 from math import ceil, log
 from numbers import Integral, Number
@@ -3008,8 +3007,16 @@ class NDVar(object):
         else:
             raise TypeError("%r; need NDVar, Var or scalar")
 
-    def _ialign(self, other):
-        "Align for self-modifying operations (+=, ...)"
+    def _ialign(self, other, index=None):
+        """Align for self-modifying operations (+=, ...)
+
+        Parameters
+        ----------
+        other : NDVar
+            NDVar with data to align
+        index : tuple
+            Array-index into self to which to align (for assignment).
+        """
         if np.isscalar(other):
             return other
         elif isinstance(other, Var):
@@ -3018,16 +3025,27 @@ class NDVar(object):
             shape = (n,) + (1,) * (self.x.ndim - 1)
             return other.x.reshape(shape)
         elif isinstance(other, NDVar):
-            assert all(dim in self.dimnames for dim in other.dimnames)
+            # filter out dimensions that are skipped in assignment
+            if index is None:
+                self_dims = self.dimnames
+            elif isinstance(index, INT_TYPES):
+                self_dims = self.dimnames[1:]
+            else:
+                self_dims = [dim for i, dim in zip_longest(index, self.dimnames) if not isinstance(i, INT_TYPES)]
+            # make sure other does not have dimensions not in self
+            missing = set(other.dimnames).difference(self_dims)
+            if missing:
+                raise ValueError(f"{other!r} contains dimensions not in NDVar: {', '.join(missing)}")
+            # find index into other
             i_other = []
-            for dim in self.dimnames:
+            for dim in self_dims:
                 if dim in other.dimnames:
                     i_other.append(dim)
                 else:
                     i_other.append(None)
             return other.get_data(i_other)
         else:
-            raise TypeError("%r; need NDVar, Var or scalar")
+            raise TypeError(f"{other!r}; need NDVar, Var or scalar")
 
     def __add__(self, other):
         dims, x_self, x_other = self._align(other)
@@ -3160,9 +3178,10 @@ class NDVar(object):
             return self.sub(index)
 
     def __setitem__(self, key, value):
+        index = self._array_index(key)
         if isinstance(value, NDVar):
-            raise NotImplementedError("Setting NDVar to NDVar")
-        self.x[self._array_index(key)] = value
+            value = self._ialign(value, index)
+        self.x[index] = value
 
     def __len__(self):
         return len(self.x)
@@ -6239,7 +6258,7 @@ class Interaction(_Effect):
         # cells
         factors = EffectList(e for e in self.base if
                              isinstance(e, (Factor, NestedEffect)))
-        self.cells = tuple(itertools.product(*(f.cells for f in factors)))
+        self.cells = tuple(product(*(f.cells for f in factors)))
         self.cell_header = tuple(f.name for f in factors)
         # TODO: beta-labels
         self.beta_labels = ['?'] * self.df
