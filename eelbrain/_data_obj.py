@@ -4018,11 +4018,20 @@ class NDVar(object):
             Mask, with equal dimensions (``True`` values will be masked).
         name : str
             Name of the output NDVar (default is the current name).
+
+        See Also
+        --------
+        .unmask : remove mask
         """
         x_mask = self._ialign(mask)
         if x_mask.dtype.kind != 'b':
             x_mask = x_mask.astype(bool)
         x = np.ma.MaskedArray(self.x, x_mask)
+        return NDVar(x, self.dims, self.info.copy(), name or self.name)
+
+    def unmask(self, name=None):
+        """Remove mask from a masked ``NDVar``"""
+        x = self.x.data if isinstance(self.x, np.ma.masked_array) else self.x
         return NDVar(x, self.dims, self.info.copy(), name or self.name)
 
     def max(self, dims=(), **regions):
