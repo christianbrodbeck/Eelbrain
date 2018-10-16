@@ -365,7 +365,7 @@ class NDTest(object):
         else:
             mask = None
 
-        return func() if mask is None else func(source=mask)
+        return func() if mask is None else func(mask)
 
     @property
     def n_samples(self):
