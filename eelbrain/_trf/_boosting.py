@@ -104,7 +104,7 @@ class BoostingResult(object):
             basis, basis_window, partitions_arg, partitions, model,
             # result parameters
             h, r, isnan, spearmanr, fit_error, t_run, version,
-            y_mean, y_scale, x_mean, x_scale, **debug_attrs,
+            y_mean, y_scale, x_mean, x_scale, y_info={}, **debug_attrs,
     ):
         # input parameters
         self.y = y
@@ -122,6 +122,7 @@ class BoostingResult(object):
         self.basis_window = basis_window
         # results
         self._h = h
+        self._y_info = y_info
         self.r = r
         self._isnan = isnan
         self.spearmanr = spearmanr
@@ -151,6 +152,7 @@ class BoostingResult(object):
             't_run': self.t_run, 'version': self._version,
             'y_mean': self.y_mean, 'y_scale': self.y_scale,
             'x_mean': self.x_mean, 'x_scale': self.x_scale,
+            'y_info': self._y_info,
             **self._debug_attrs,
         }
 
@@ -199,10 +201,16 @@ class BoostingResult(object):
         if self.y_scale is None:
             return self.h
         elif isinstance(self.h, NDVar):
-            return self.h * (self.y_scale / self.x_scale)
+            out = (self.y_scale / self.x_scale) * self.h
+            out.info.update(self._y_info)
+            return out
         else:
-            return tuple(h * (self.y_scale / sx) for h, sx in
-                         zip(self.h, self.x_scale))
+            out = []
+            for h, sx in zip(self.h, self.x_scale):
+                h = (self.y_scale / sx) * h
+                h.info.update(self._y_info)
+                out.append(h)
+            return tuple(out)
 
     @LazyProperty
     def h_source(self):
@@ -438,7 +446,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         basis, basis_window, partitions, data.partitions, model_repr,
         # result parameters
         h, r, isnan, spearmanr, fit_error, t_run, VERSION,
-        y_mean, y_scale, x_mean, x_scale, **debug_attrs)
+        y_mean, y_scale, x_mean, x_scale, data.y_info, **debug_attrs)
 
 
 def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,

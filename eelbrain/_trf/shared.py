@@ -190,7 +190,7 @@ class RevCorrData(object):
         self.y_mean = y_mean
         self.y_scale = y_scale
         self.y_name = y.name
-        self._y_info = y.info
+        self.y_info = _info.copy(y.info)
         self.ydims = ydims
         self.yshape = tuple(map(len, ydims))
         self.full_y_dims = y.get_dims(y_dimnames)
@@ -283,8 +283,8 @@ class RevCorrData(object):
         if self._scale_data:
             # y
             if self.ydims:
-                y_mean = NDVar(self.y_mean.reshape(self.yshape), self.ydims, self._y_info.copy(), self.y_name)
-                y_scale = NDVar(self.y_scale.reshape(self.yshape), self.ydims, self._y_info.copy(), self.y_name)
+                y_mean = NDVar(self.y_mean.reshape(self.yshape), self.ydims, self.y_info, self.y_name)
+                y_scale = NDVar(self.y_scale.reshape(self.yshape), self.ydims, self.y_info, self.y_name)
             else:
                 y_mean = self.y_mean[0]
                 y_scale = self.y_scale[0]
@@ -319,6 +319,11 @@ class RevCorrData(object):
         """
         h_time = UTS(tstart, self.time.tstep, h.shape[-1])
         hs = []
+        if self._scale_data:
+            info = _info.for_normalized_data(self.y_info, 'Response')
+        else:
+            info = self.y_info
+
         for name, dim, index in self._x_meta:
             x = h[:, index, :]
             if dim is None:
@@ -331,7 +336,7 @@ class RevCorrData(object):
                     x = x.reshape(self.yshape + x.shape[1:])
             else:
                 x = x[0]
-            hs.append(NDVar(x, dims, self._y_info.copy(), name))
+            hs.append(NDVar(x, dims, info, name))
 
         if self._multiple_x:
             return tuple(hs)
@@ -350,7 +355,7 @@ class RevCorrData(object):
             return value[0]
         elif len(self.ydims) > 1:
             value = value.reshape(self.yshape)
-        return NDVar(value, self.ydims, self._y_info.copy(), name)
+        return NDVar(value, self.ydims, self.y_info, name)
 
     def package_y_like(self, data, name):
         shape = tuple(map(len, self.full_y_dims))

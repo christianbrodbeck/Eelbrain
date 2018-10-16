@@ -115,10 +115,10 @@ def do_autorun(run=None):
         return CONFIG['autorun']
 
 
-MEAS_DISPLAY_UNIT = {
-    'time': 'ms',
+DISPLAY_UNIT = {
+    's': 'ms',
     'V': 'µV',
-    'B': 'fT',
+    'T': 'fT',
     'sensor': int,
 }
 UNIT_FORMAT = {
@@ -134,6 +134,7 @@ UNIT_FORMAT = {
     'p': 1,
     'T': 1,
     'n': int,  # %i format
+    'normalized': 1,
     int: int,
 }
 SCALE_FORMATTERS = {
@@ -189,8 +190,8 @@ def find_axis_params_data(v, label):
     elif isnumeric(v):
         meas = v.info.get('meas')
         data_unit = v.info.get('unit')
-        if meas in MEAS_DISPLAY_UNIT:
-            unit = MEAS_DISPLAY_UNIT[meas]
+        if data_unit in DISPLAY_UNIT:
+            unit = DISPLAY_UNIT[data_unit]
             scale = UNIT_FORMAT[unit]
             if data_unit in UNIT_FORMAT:
                 scale /= UNIT_FORMAT[data_unit]

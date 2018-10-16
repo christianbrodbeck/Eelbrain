@@ -66,7 +66,7 @@ def _get_continuous(n_samples=100, seed=0):
 
     y = _apply_kernel(x1.x[np.newaxis], h1.x[np.newaxis])
     y += _apply_kernel(x2.x, h2.x)
-    y = NDVar(y, (time,), name='y')
+    y = NDVar(y, (time,), _info.for_eeg(), 'y')
     return {'y': y, 'x1': x1, 'h1': h1, 'x2': x2, 'h2': h2}
 
 
