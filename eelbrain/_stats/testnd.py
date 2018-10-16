@@ -32,7 +32,6 @@ import re
 import socket
 from time import time as current_time
 import typing
-from warnings import warn
 
 import numpy as np
 import scipy.stats
@@ -95,8 +94,7 @@ class NDTest(object):
     def _attributes(self):
         return self._state_common + self._state_specific
 
-    def __init__(self, y, match, sub, samples, tfce, pmin, cdist, tstart,
-                 tstop):
+    def __init__(self, y, match, sub, samples, tfce, pmin, cdist, tstart, tstop):
         self.y = y.name
         self.match = dataobj_repr(match) if match else match
         self.sub = sub
@@ -192,6 +190,9 @@ class NDTest(object):
         p = self.p.min()
         max_stat = self._max_statistic()
         return FMText((fmtxt.eq(self._statistic, max_stat, 'max', stars=p), ', ', fmtxt.peq(p)))
+
+    def _default_plot_obj(self):
+        raise NotImplementedError
 
     def _iter_cdists(self):
         yield (None, self._cdist)
@@ -688,12 +689,7 @@ class corr(NDTest):
         info = _info.for_p_map()
         p_uncorrected = NDVar(pmap, r.dims, info, 'p_uncorrected')
         self.p_uncorrected = p_uncorrected
-
-        self.r_p_uncorrected = [[r, r]]
-        if self.samples:
-            self.r_p = self._default_plot_obj = [[r, self.p]]
-        else:
-            self._default_plot_obj = self.r_p_uncorrected
+        self.r_p = [[r, self.p]] if self.samples else None
 
     def _name(self):
         if self.y and self.x:
@@ -707,8 +703,41 @@ class corr(NDTest):
             args.append('norm=%r' % self.norm)
         return args
 
+    def _default_plot_obj(self):
+        if self.samples:
+            return self.masked_parameter_map()
+        else:
+            return self.r
 
-class ttest_1samp(NDTest):
+
+class NDDifferenceTest(NDTest):
+
+    difference = None
+
+    def masked_difference(self, p=0.05):
+        """Difference map masked by significance
+
+        Parameters
+        ----------
+        p : scalar
+            Threshold p-value for masking (default 0.05). For threshold-based
+            cluster tests, ``pmin=1`` includes all clusters regardless of their
+            p-value.
+        """
+        self._assert_has_cdist()
+        if not 1 >= p > 0:
+            raise ValueError(f"pmin={pmin}: needs to be between 1 and 0")
+        if p == 1:
+            if self._cdist.kind != 'cluster':
+                raise ValueError(f"p=1 is only a valid mask for threshold-based cluster tests")
+            mask = self._cdist.cluster_map == 0
+        else:
+            mask = self.p > p
+        mask = self._cdist.uncrop(mask, self.difference, True)
+        return self.difference.mask(mask)
+
+
+class ttest_1samp(NDDifferenceTest):
     """Mass-univariate one sample t-test
 
     Parameters
@@ -832,18 +861,14 @@ class ttest_1samp(NDTest):
         t = NDVar(tmap, ct.y.dims[1:], info, 't')
 
         # store attributes
-        NDTest.__init__(self, ct.y, ct.match, sub, samples, tfce, pmin, cdist,
-                        tstart, tstop)
+        NDDifferenceTest.__init__(self, ct.y, ct.match, sub, samples, tfce, pmin, cdist, tstart, tstop)
         self.popmean = popmean
-        self.tail = tail
-        self.tmin = tmin
-
         self.n = n
         self.df = df
-
-        self.difference = diff
+        self.tail = tail
         self.t = t
-
+        self.tmin = tmin
+        self.difference = diff
         self._expand_state()
 
     def __setstate__(self, state):
@@ -859,11 +884,6 @@ class ttest_1samp(NDTest):
         info = _info.for_p_map(t.info)
         p_uncorr = NDVar(pmap, t.dims, info, 'p')
         self.p_uncorrected = p_uncorr
-
-        if self.samples:
-            self._default_plot_obj = [[self.difference, self.p]]
-        else:
-            self._default_plot_obj = [[self.difference, t]]
 
     def _name(self):
         if self.y:
@@ -881,8 +901,14 @@ class ttest_1samp(NDTest):
             args.append("tail=%i" % self.tail)
         return args
 
+    def _default_plot_obj(self):
+        if self.samples:
+            return self.masked_difference()
+        else:
+            return self.difference
 
-class ttest_ind(NDTest):
+
+class ttest_ind(NDDifferenceTest):
     """Mass-univariate independent samples t-test
 
     Parameters
@@ -1025,54 +1051,44 @@ class ttest_ind(NDTest):
         c0_mean = ct.data[c0].mean('case', name=cellname(c0))
 
         # store attributes
-        NDTest.__init__(self, ct.y, ct.match, sub, samples, tfce, pmin, cdist,
-                        tstart, tstop)
+        NDDifferenceTest.__init__(self, ct.y, ct.match, sub, samples, tfce, pmin, cdist, tstart, tstop)
         self.x = ct.x.name
         self.c0 = c0
         self.c1 = c1
-        self.tail = tail
-        self.tmin = tmin
 
         self.n1 = n1
         self.n0 = n0
         self.df = df
+        self.tail = tail
+        self.t = t
+        self.tmin = tmin
 
         self.c1_mean = c1_mean
         self.c0_mean = c0_mean
-        self.t = t
 
         self._expand_state()
 
     def _expand_state(self):
         NDTest._expand_state(self)
 
-        c1_mean = self.c1_mean
-        c0_mean = self.c0_mean
-        t = self.t
-
         # difference
-        diff = c1_mean - c0_mean
+        diff = self.c1_mean - self.c0_mean
         if np.any(diff.x < 0):
             diff.info['cmap'] = 'xpolar'
         self.difference = diff
 
         # uncorrected p
-        pmap = stats.ttest_p(t.x, self.df, self.tail)
-        info = _info.for_p_map(t.info)
-        p_uncorr = NDVar(pmap, t.dims, info, 'p')
+        pmap = stats.ttest_p(self.t.x, self.df, self.tail)
+        info = _info.for_p_map(self.t.info)
+        p_uncorr = NDVar(pmap, self.t.dims, info, 'p')
         self.p_uncorrected = p_uncorr
 
         # composites
-        diff_p_uncorrected = [diff, t]
-        self.diff_p_uncorrected = [diff_p_uncorrected]
-        self.all_uncorrected = [c1_mean, c0_mean, diff_p_uncorrected]
         if self.samples:
-            diff_p = [diff, self.p]
-            self.diff_p = [diff_p]
-            self.all = [c1_mean, c0_mean, diff_p]
-            self._default_plot_obj = self.all
+            diff_p = self.masked_difference()
         else:
-            self._default_plot_obj = self.all_uncorrected
+            diff_p = self.difference
+        self.all = [self.c1_mean, self.c0_mean, diff_p]
 
     def _name(self):
         if self.tail == 0:
@@ -1101,6 +1117,13 @@ class ttest_ind(NDTest):
         if self.tail:
             args.append("tail=%i" % self.tail)
         return args
+
+    def _default_plot_obj(self):
+        if self.samples:
+            diff = self.masked_difference()
+        else:
+            diff = self.difference
+        return [self.c1_mean, self.c0_mean, diff]
 
 
 def _related_measures_args(y, x, c1, c0, match, ds, sub):
@@ -1133,7 +1156,7 @@ def _related_measures_args(y, x, c1, c0, match, ds, sub):
     return y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name
 
 
-class ttest_rel(NDTest):
+class ttest_rel(NDDifferenceTest):
     """Mass-univariate related samples t-test
 
     Parameters
@@ -1260,20 +1283,19 @@ class ttest_rel(NDTest):
         t = NDVar(tmap, y1.dims[1:], info, 't')
 
         # store attributes
-        NDTest.__init__(self, y1, match, sub, samples, tfce, pmin, cdist,
-                        tstart, tstop)
+        NDDifferenceTest.__init__(self, y1, match, sub, samples, tfce, pmin, cdist, tstart, tstop)
         self.x = x_name
         self.c0 = c0
         self.c1 = c1
-        self.tail = tail
-        self.tmin = tmin
 
         self.n = n
         self.df = df
+        self.tail = tail
+        self.t = t
+        self.tmin = tmin
 
         self.c1_mean = y1.mean('case', name=cellname(c1_name))
         self.c0_mean = y0.mean('case', name=cellname(c0_name))
-        self.t = t
 
         self._expand_state()
 
@@ -1292,19 +1314,14 @@ class ttest_rel(NDTest):
         # uncorrected p
         pmap = stats.ttest_p(t.x, self.df, self.tail)
         info = _info.for_p_map()
-        p_uncorr = NDVar(pmap, t.dims, info, 'p')
-        self.p_uncorrected = p_uncorr
+        self.p_uncorrected = NDVar(pmap, t.dims, info, 'p')
 
         # composites
-        diff_p_uncorr = [diff, t]
-        self.difference_p_uncorrected = [diff_p_uncorr]
-        self.uncorrected = [self.c1_mean, self.c0_mean, diff_p_uncorr]
         if self.samples:
-            diff_p_corr = [diff, cdist.probability_map]
-            self.difference_p = [diff_p_corr]
-            self._default_plot_obj = [self.c1_mean, self.c0_mean, diff_p_corr]
+            diff_p = self.masked_difference()
         else:
-            self._default_plot_obj = self.uncorrected
+            diff_p = self.difference
+        self.all = [self.c1_mean, self.c0_mean, diff_p]
 
     def _name(self):
         if self.tail == 0:
@@ -1333,6 +1350,13 @@ class ttest_rel(NDTest):
         if self.tail:
             args.append("tail=%i" % self.tail)
         return args
+
+    def _default_plot_obj(self):
+        if self.samples:
+            diff = self.masked_difference()
+        else:
+            diff = self.difference
+        return [self.c1_mean, self.c0_mean, diff]
 
 
 class MultiEffectNDTest(NDTest):
@@ -1682,11 +1706,6 @@ class anova(MultiEffectNDTest):
             p_uncorr.append(p_)
         self.p_uncorrected = p_uncorr
 
-        if self.samples:
-            self._default_plot_obj = f_and_clusters
-        else:
-            self._default_plot_obj = self.f
-
     def _name(self):
         if self.y:
             return "ANOVA:  %s ~ %s" % (self.y, self.x)
@@ -1699,6 +1718,12 @@ class anova(MultiEffectNDTest):
 
     def _plot_sub(self):
         return super(anova, self)._plot_sub()
+
+    def _default_plot_obj(self):
+        if self.samples:
+            return self.f_probability
+        else:
+            return self.f
 
     def table(self):
         """Table with effects and smallest p-value"""
@@ -1718,7 +1743,7 @@ class anova(MultiEffectNDTest):
         return table
 
 
-class Vector(NDTest):
+class Vector(NDDifferenceTest):
     """Test a vector field for vectors with non-random directions
 
     Parameters
@@ -2362,16 +2387,17 @@ class NDPermutationDistribution(object):
 
         # prepare temporal cropping
         if (tstart is None) and (tstop is None):
-            self._crop_for_permutation = False
             y_perm = y
+            self._crop_for_permutation = False
+            self._crop_idx = None
         else:
             t_ax = y.get_axis('time') - 1
-            self._crop_for_permutation = True
             y_perm = y.sub(time=(tstart, tstop))
             # for stat-maps
             if vector_ax is not None and vector_ax < t_ax:
                 t_ax -= 1
             t_slice = y.time._array_index(slice(tstart, tstop))
+            self._crop_for_permutation = True
             self._crop_idx = FULL_AXIS_SLICE * t_ax + (t_slice,)
 
         dims = list(y_perm.dims[1:])
@@ -2510,6 +2536,17 @@ class NDPermutationDistribution(object):
             return im[self._crop_idx]
         else:
             return im
+
+    def uncrop(self, ndvar: NDVar, to: NDVar, default: float = 0):
+        if self.tstart is None and self.tstop is None:
+            return ndvar
+        t_ax = to.get_axis('time')
+        t_dim = to.get_dim('time')
+        t_slice = t_dim._array_index(slice(self.tstart, self.tstop))
+        x = np.empty(to.shape, ndvar.x.dtype)
+        x.fill(default)
+        x[FULL_AXIS_SLICE * t_ax + (t_slice,)] = ndvar.x
+        return NDVar(x, to.dims, ndvar.info, ndvar.name)
 
     def add_original(self, stat_map):
         """Add the original statistical parameter map.
@@ -2658,18 +2695,14 @@ class NDPermutationDistribution(object):
                 if state['_dist_dims'] is None:
                     state['parc'] = None
                 else:
-                    raise OldVersionError("This pickled file is from a previous "
-                                          "version of Eelbrain and is not compatible "
-                                          "anymore. Please recompute this test.")
+                    raise OldVersionError("This pickled file is from a previous version of Eelbrain and is not compatible anymore. Please recompute this test.")
             elif isinstance(state['parc'], tuple):
                 if len(state['parc']) == 0:
                     state['parc'] = None
                 elif len(state['parc']) == 1:
                     state['parc'] = state['parc'][0]
                 else:
-                    raise RuntimeError("This pickled file is from a previous "
-                                       "version of Eelbrain and is not compatible "
-                                       "anymore. Please recompute this test.")
+                    raise OldVersionError("This pickled file is from a previous version of Eelbrain and is not compatible anymore. Please recompute this test.")
 
             nad_ax = state['_nad_ax']
             state['dims'] = dims = state['dims'][1:]
@@ -3110,7 +3143,7 @@ class NDPermutationDistribution(object):
             return cpmap
 
     def masked_parameter_map(self, pmin=0.05, name=None, **sub):
-        """Create a copy of the parameter map masked by significance
+        """Parameter map masked by significance
 
         Parameters
         ----------
@@ -3122,33 +3155,28 @@ class NDPermutationDistribution(object):
         Returns
         -------
         masked_map : NDVar
-            NDVar with data from the original parameter map wherever p <= pmin
-            and 0 everywhere else.
+            NDVar with data from the original parameter map, masked with
+            p <= pmin.
         """
-        if pmin is None:
-            pmin = 1
-            warn("Use of pmin=None for .masked_parameter_map() is deprecated "
-                 "and will stop working after Eelbrain 0.24. Use pmin=1 "
-                 "instead.", DeprecationWarning)
+        if not 1 >= pmin > 0:
+            raise ValueError(f"pmin={pmin}: needs to be between 1 and 0")
 
         if name is None:
             name = self.parameter_map.name
 
         if sub:
-            param_map = self.parameter_map.sub(name=name, **sub)
+            param_map = self.parameter_map.sub(**sub)
         else:
-            param_map = self.parameter_map.copy(name)
+            param_map = self.parameter_map
 
         if pmin == 1:
             if self.kind != 'cluster':
-                raise ValueError("pmin can only be 1 for thresholded "
-                                 "cluster tests")
-            c_mask = self.cluster_map.x != 0
+                raise ValueError(f"pmin=1 is only a valid mask for threshold-based cluster tests")
+            mask = self.cluster_map == 0
         else:
             probability_map = self.compute_probability_map(**sub)
-            c_mask = np.less_equal(probability_map.x, pmin)
-        param_map.x *= c_mask
-        return param_map
+            mask = probability_map > pmin
+        return param_map.mask(mask, name)
 
     @LazyProperty
     def probability_map(self):

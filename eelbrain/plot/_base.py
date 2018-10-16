@@ -84,7 +84,7 @@ from .._data_obj import (
     NDVar, Case, UTS,
     ascategorial, asndvar, assub, isnumeric, isdataobject, cellname,
 )
-from .. import testnd
+from .._stats import testnd
 from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
 from .._utils.subp import command_exists
 from ..fmtxt import Image
@@ -636,12 +636,9 @@ def butterfly_data(
     if isinstance(data, NDVar):
         y = data
         kind = 'ndvar'
-    elif isinstance(data, (testnd.ttest_1samp, testnd.ttest_rel, testnd.ttest_ind)):
-        y = data.difference
-        kind = 'test'
-    elif isinstance(data, testnd.Vector):
-        y = data.difference_norm
-        kind = 'test'
+    elif isinstance(data, testnd.NDDifferenceTest):
+        y = data.masked_difference()
+        kind = 'ndvar'
     else:
         raise TypeError(f"ndvar={data!r}")
     source = y.get_dim('source')
@@ -747,12 +744,39 @@ class LayerData(object):
     """Data for one subplot layer"""
     _remap_args = {'c': 'color'}
 
-    def __init__(self, y, line_args={}):
+    def __init__(self, y: NDVar, line_args: dict = None):
         self.y = y
         self._line_args = line_args
+        self.is_masked = isinstance(y.x, np.ma.masked_array)
 
-    def line_args(self, kwargs):
-        return {self._remap_args.get(k, k): v for k, v in chain(kwargs.items(), self._line_args.items())}
+    def line_args(self, kwargs: dict):
+        if self._line_args is None:
+            items = kwargs.items()
+        else:
+            items = chain(kwargs.items(), self._line_args.items())
+        return {self._remap_args.get(k, k): v for k, v in items}
+
+    def get_data(self, masking: str = None):
+        if not self.is_masked:
+            yield self
+        elif masking is None:
+            yield LayerData(self.y.unmask(), self._line_args)
+        elif masking == 'line':
+            un_mask = NDVar(~self.y.x.mask, self.y.dims)
+            # kwargs = {}
+            if self.y.has_dim('time'):
+                un_mask = erode(un_mask, 'time')
+                # if self.y.ndim == 2:
+                #     mag = self.y.rms('time')
+                #     z_dim = mag.dimnames[0]
+                #     kwargs['zorder'] = dict(zip(mag.get_dim(z_dim), -mag.x.argsort()))
+            y_masked = self.y.unmask().mask(un_mask)
+            args_main = {'alpha': 1., 'zorder': 1}
+            args_masked = {'alpha': 0.4, 'color': (.7, .7, .7), 'zorder': 0}
+            for y, args in ((self.y, args_main), (y_masked, args_masked)):
+                yield LayerData(y, args)
+        else:
+            raise RuntimeError(f"masking={masking!r}")
 
 
 class PlotData(object):
@@ -784,7 +808,13 @@ class PlotData(object):
     plot_names : list of str
         Titles for the plots.
     """
-    def __init__(self, axes, dims, title="unnamed data", plot_names=None):
+    def __init__(
+            self,
+            axes: List[Union[None, List[LayerData]]],
+            dims: List[str],
+            title: str = "unnamed data",
+            plot_names: List[str] = None,
+    ):
         self.plot_used = [ax is not None for ax in axes]
         self.plot_data = [ax for ax in axes if ax is not None]
         self.n_plots = len(self.plot_data)
@@ -832,15 +862,15 @@ class PlotData(object):
         if isinstance(y, cls):
             return y
         sub = assub(sub, ds)
-        if hasattr(y, '_default_plot_obj'):
-            ys = y._default_plot_obj
-        elif isinstance(y, MNE_EPOCHS):
+        ys = y._default_plot_obj() if hasattr(y, '_default_plot_obj') else y
+
+        if isinstance(ys, MNE_EPOCHS):
             # Epochs are Iterators over arrays
-            ys = (asndvar(y, sub, ds),)
-        elif not isinstance(y, (tuple, list, Iterator)):
-            ys = (y,)
+            ys = (asndvar(ys, sub, ds),)
+        elif not isinstance(ys, (tuple, list, Iterator)):
+            ys = (ys,)
         else:
-            ys = y
+            ys = ys
 
         ax_names = None
         if xax is None:
@@ -955,7 +985,7 @@ class PlotData(object):
     @LazyProperty
     def data(self):
         "For backwards compatibility with nested list of NDVar"
-        return [[l.y for l in ax] for ax in self.plot_data]
+        return [[l.y for l in self.get_axis_data(i)] for i in range(self.n_plots)]
 
     @LazyProperty
     def plot_names(self):
@@ -970,6 +1000,21 @@ class PlotData(object):
             else:
                 names.append(None)
         return names
+
+    def get_axis_data(self, ax: int, masking: str = None):
+        """Data for ``ax``
+
+        Parameters
+        ----------
+        ax : int
+            Index of the axes.
+        masking : str
+            Type of masking (if supported).
+        """
+        out = []
+        for layer in self.plot_data[ax]:
+            out.extend(layer.get_data(masking))
+        return out
 
 
 def aggregate(y, agg):

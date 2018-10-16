@@ -461,9 +461,9 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
         self.plots = []
         self._vlims = _base.find_fig_vlims(data.data, vmax, vmin)
         legend_handles = {}
-        for ax, layers in zip(self._axes, data.plot_data):
-            h = _ax_butterfly(ax, layers, xdim, linedim, sensors, color,
-                              linewidth, self._vlims, clip)
+        for i, ax in enumerate(self._axes):
+            layers = data.get_axis_data(i, 'line')
+            h = _ax_butterfly(ax, layers, xdim, linedim, sensors, color, linewidth, self._vlims, clip)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
