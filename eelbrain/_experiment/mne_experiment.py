@@ -1745,86 +1745,6 @@ class MneExperiment(FileTree):
         criteria = self._cluster_criteria[self.get('select_clusters')]
         return {'min' + dim: criteria[dim] for dim in data.dims if dim in criteria}
 
-    def _add_epochs(self, ds, epoch, baseline, ndvar, data_raw, pad, decim,
-                    reject, apply_ica, trigger_shift, tmin, tmax, tstop,
-                    data, add_bads_to_info=False):
-        if tmin is None:
-            tmin = epoch.tmin
-        if tmax is None and tstop is None:
-            tmax = epoch.tmax
-        if baseline is True:
-            baseline = epoch.baseline
-        if pad:
-            tmin -= pad
-            tmax += pad
-        if decim is None:
-            decim = epoch.decim
-
-        # determine ICA
-        if apply_ica and self._artifact_rejection[self.get('rej')]['kind'] == 'ica':
-            ica = self.load_ica()
-            baseline_ = None
-        else:
-            ica = None
-            baseline_ = baseline
-
-        with warnings.catch_warnings():
-            warnings.filterwarnings('ignore', 'The events passed to the Epochs constructor', RuntimeWarning)
-            ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline_, decim=decim, drop_bad_chs=False, tstop=tstop)
-
-        # post baseline-correction trigger shift
-        if trigger_shift and epoch.post_baseline_trigger_shift:
-            ds['epochs'] = shift_mne_epoch_trigger(ds['epochs'],
-                                                   ds[epoch.post_baseline_trigger_shift],
-                                                   epoch.post_baseline_trigger_shift_min,
-                                                   epoch.post_baseline_trigger_shift_max)
-
-        info = ds['epochs'].info
-        data_to_ndvar = data.data_to_ndvar(info)
-
-        # interpolate channels
-        if reject and ds.info[INTERPOLATE_CHANNELS]:
-            if 'mag' in data_to_ndvar:
-                interp_path = self.get('interp-file')
-                if exists(interp_path):
-                    interp_cache = load.unpickle(interp_path)
-                else:
-                    interp_cache = {}
-                n_in_cache = len(interp_cache)
-                _interpolate_bads_meg(ds['epochs'], ds[INTERPOLATE_CHANNELS],
-                                      interp_cache)
-                if len(interp_cache) > n_in_cache:
-                    save.pickle(interp_cache, interp_path)
-            if 'eeg' in data_to_ndvar:
-                _interpolate_bads_eeg(ds['epochs'], ds[INTERPOLATE_CHANNELS])
-
-        # ICA
-        if ica is not None:
-            ica.apply(ds['epochs'])
-            if baseline:
-                ds['epochs'].apply_baseline(baseline)
-
-        if ndvar:
-            pipe = self._raw[self.get('raw')]
-            exclude = () if add_bads_to_info else 'bads'
-            for data_kind in data_to_ndvar:
-                sysname = pipe.get_sysname(info, ds.info['subject'], data_kind)
-                connectivity = pipe.get_connectivity(data_kind)
-                name = 'meg' if data_kind == 'mag' else data_kind
-                ds[name] = load.fiff.epochs_ndvar(ds['epochs'], data=data_kind, sysname=sysname, connectivity=connectivity, exclude=exclude)
-                if add_bads_to_info:
-                    ds[name].info[BAD_CHANNELS] = ds['epochs'].info['bads']
-                if isinstance(data.sensor, str):
-                    ds[name] = getattr(ds[name], data.sensor)('sensor')
-
-            if ndvar != 'both':
-                del ds['epochs']
-
-        if data_raw is False:
-            del ds.info['raw']
-
-        return ds
-
     def _add_epochs_stc(self, ds, ndvar, baseline, morph, mask):
         """
         Transform epochs contained in ds into source space
@@ -2598,10 +2518,82 @@ class MneExperiment(FileTree):
                     err += f", cat={cat!r}"
                 raise RuntimeError(err)
 
-            # load sensor space data
-            ds = self._add_epochs(ds, epoch, baseline, ndvar, data_raw, pad,
-                                  decim, reject, apply_ica, trigger_shift,
-                                  tmin, tmax, tstop, data, add_bads_to_info)
+        # load sensor space data
+        if tmin is None:
+            tmin = epoch.tmin
+        if tmax is None and tstop is None:
+            tmax = epoch.tmax
+        if baseline is True:
+            baseline = epoch.baseline
+        if pad:
+            tmin -= pad
+            tmax += pad
+        if decim is None:
+            decim = epoch.decim
+
+        # determine ICA
+        rej = self._artifact_rejection[self.get('rej')]
+        if apply_ica and rej['kind'] == 'ica':
+            ica = self.load_ica()
+            baseline_ = None
+        else:
+            ica = None
+            baseline_ = baseline
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', 'The events passed to the Epochs constructor', RuntimeWarning)
+            ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline_, decim=decim, drop_bad_chs=False, tstop=tstop)
+
+        # post baseline-correction trigger shift
+        if trigger_shift and epoch.post_baseline_trigger_shift:
+            ds['epochs'] = shift_mne_epoch_trigger(ds['epochs'],
+                                                   ds[epoch.post_baseline_trigger_shift],
+                                                   epoch.post_baseline_trigger_shift_min,
+                                                   epoch.post_baseline_trigger_shift_max)
+
+        info = ds['epochs'].info
+        data_to_ndvar = data.data_to_ndvar(info)
+
+        # interpolate channels
+        if reject and ds.info[INTERPOLATE_CHANNELS]:
+            if 'mag' in data_to_ndvar:
+                interp_path = self.get('interp-file')
+                if exists(interp_path):
+                    interp_cache = load.unpickle(interp_path)
+                else:
+                    interp_cache = {}
+                n_in_cache = len(interp_cache)
+                _interpolate_bads_meg(ds['epochs'], ds[INTERPOLATE_CHANNELS],
+                                      interp_cache)
+                if len(interp_cache) > n_in_cache:
+                    save.pickle(interp_cache, interp_path)
+            if 'eeg' in data_to_ndvar:
+                _interpolate_bads_eeg(ds['epochs'], ds[INTERPOLATE_CHANNELS])
+
+        # ICA
+        if ica is not None:
+            ica.apply(ds['epochs'])
+            if baseline:
+                ds['epochs'].apply_baseline(baseline)
+
+        if ndvar:
+            pipe = self._raw[self.get('raw')]
+            exclude = () if add_bads_to_info else 'bads'
+            for data_kind in data_to_ndvar:
+                sysname = pipe.get_sysname(info, ds.info['subject'], data_kind)
+                connectivity = pipe.get_connectivity(data_kind)
+                name = 'meg' if data_kind == 'mag' else data_kind
+                ds[name] = load.fiff.epochs_ndvar(ds['epochs'], data=data_kind, sysname=sysname, connectivity=connectivity, exclude=exclude)
+                if add_bads_to_info:
+                    ds[name].info[BAD_CHANNELS] = ds['epochs'].info['bads']
+                if isinstance(data.sensor, str):
+                    ds[name] = getattr(ds[name], data.sensor)('sensor')
+
+            if ndvar != 'both':
+                del ds['epochs']
+
+        if data_raw is False:
+            del ds.info['raw']
 
         return ds
 
