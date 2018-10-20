@@ -17,6 +17,7 @@ from eelbrain import (
 
 from eelbrain._utils.testing import assert_dataobj_equal
 from eelbrain._trf._boosting import boost, evaluate_kernel
+from eelbrain._trf._boosting import convolve as boosting_convolve
 
 
 def assert_res_equal(res1, res):
@@ -77,7 +78,7 @@ def test_boosting(n_workers):
 
 def test_boosting_epochs():
     """Test boosting with epoched data"""
-    ds = datasets.get_uts(True)
+    ds = datasets.get_uts(True, vector3d=True)
     p1 = epoch_impulse_predictor('uts', 'A=="a1"', name='a1', ds=ds)
     p0 = epoch_impulse_predictor('uts', 'A=="a0"', name='a0', ds=ds)
     p1 = p1.smooth('time', .05, 'hamming')
@@ -99,6 +100,9 @@ def test_boosting_epochs():
     y = convolve(res.h_scaled, [p0, p1])
     r = correlation_coefficient(y, ds['utsnd'], ('case', 'time'))
     assert_dataobj_equal(res.r, r, decimal=3, name=False)
+    # vector
+    res = boosting('v3d', [p0, p1], 0, 0.6, error='l1', model='A', ds=ds, partitions=10)
+    assert res.fit_error.ndim == 0
 
 
 def test_result():
@@ -159,7 +163,8 @@ def test_boosting_func():
     h, test_sse_history = boost(y, x, x_pads, all_segments, train_segments, test_segments,
                                 0, 10, 0.005, 0.005, 'l2', True)
     test_seg_len = int(floor(x.shape[1] / 40))
-    r, rr, _ = evaluate_kernel(y[:test_seg_len], x[:, :test_seg_len], x_pads, h, 0, 'l2', h.shape[1] - 1)
+    y_pred = boosting_convolve(h, x[:, :test_seg_len], x_pads, 0)
+    r, rr, _ = evaluate_kernel(y[:test_seg_len], y_pred, 'l2', h.shape[1] - 1)
 
     assert_array_equal(h, mat['h'])
     assert r == approx(mat['crlt'][0, 0])
@@ -176,7 +181,8 @@ def test_boosting_func():
     h, test_sse_history = boost(y, x, x_pads, all_segments, train_segments, test_segments,
                                 0, 10, 0.005, 0.005, 'l2', True)
     test_seg_len = int(floor(x.shape[1] / 40))
-    r, rr, _ = evaluate_kernel(y[:test_seg_len], x[:, :test_seg_len], x_pads, h, 0, 'l2', h.shape[1] - 1)
+    y_pred = boosting_convolve(h, x[:, :test_seg_len], x_pads, 0)
+    r, rr, _ = evaluate_kernel(y[:test_seg_len], y_pred, 'l2', h.shape[1] - 1)
 
     assert_array_equal(h, mat['h'])
     assert r == approx(mat['crlt'][0, 0])
