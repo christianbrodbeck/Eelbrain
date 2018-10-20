@@ -2404,7 +2404,7 @@ class MneExperiment(FileTree):
                     add_bads=True, reject=True, cat=None,
                     decim=None, pad=0, data_raw=False, vardef=None, data='sensor',
                     trigger_shift=True, apply_ica=True, tmin=None,
-                    tmax=None, tstop=None, **kwargs):
+                    tmax=None, tstop=None, interpolate_bads=False, **kwargs):
         """
         Load a Dataset with epochs for a given epoch definition
 
@@ -2459,14 +2459,20 @@ class MneExperiment(FileTree):
             Override the epoch's ``tmax`` parameter.
         tstop : scalar
             Override the epoch's ``tmax`` parameter as exclusive ``tstop``.
+        interpolate_bads : bool
+            Interpolate channels marked as bad for the whole recording (useful
+            when comparing topographies across subjects; default False).
         ...
             State parameters.
         """
         data = TestDims.coerce(data)
         if not data.sensor:
             raise ValueError(f"data={data.string!r}; load_evoked is for loading sensor data")
-        elif data.sensor is not True and not ndvar:
-            raise ValueError(f"data={data.string!r} with ndvar=False")
+        elif data.sensor is not True:
+            if not ndvar:
+                raise ValueError(f"data={data.string!r} with ndvar=False")
+            elif interpolate_bads:
+                raise ValueError(f"interpolate_bads={interpolate_bads!r} with data={data.string}")
         if ndvar:
             if isinstance(ndvar, str):
                 if ndvar != 'both':
@@ -2476,9 +2482,7 @@ class MneExperiment(FileTree):
         if group is not None:
             dss = []
             for _ in self.iter(group=group):
-                ds = self.load_epochs(None, baseline, ndvar, add_bads, reject,
-                                      cat, decim, pad, data_raw, vardef, data,
-                                      tmin=tmin, tmax=tmax, tstop=tstop)
+                ds = self.load_epochs(None, baseline, ndvar, add_bads, reject, cat, decim, pad, data_raw, vardef, data, True, True, tmin, tmax, tstop, interpolate_bads)
                 dss.append(ds)
 
             return combine(dss)
@@ -2489,10 +2493,7 @@ class MneExperiment(FileTree):
             dss = []
             with self._temporary_state:
                 for sub_epoch in epoch.collect:
-                    ds = self.load_epochs(
-                        subject, baseline, ndvar, add_bads, reject, cat, decim,
-                        pad, data_raw, vardef, data, trigger_shift, apply_ica,
-                        tmin, tmax, tstop, epoch=sub_epoch)
+                    ds = self.load_epochs(subject, baseline, ndvar, add_bads, reject, cat, decim, pad, data_raw, vardef, data, trigger_shift, apply_ica, tmin, tmax, tstop, interpolate_bads, epoch=sub_epoch)
                     ds[:, 'epoch'] = sub_epoch
                     dss.append(ds)
             return combine(dss)
@@ -2543,6 +2544,13 @@ class MneExperiment(FileTree):
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', 'The events passed to the Epochs constructor', RuntimeWarning)
             ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline_, decim=decim, drop_bad_chs=False, tstop=tstop)
+
+        # interpolate bad channels
+        if interpolate_bads and ds['epochs'].info['bads']:
+            if ds.info[INTERPOLATE_CHANNELS]:
+                # TODO: combine with trial-wise interpolation
+                raise NotImplementedError("set interpolate_bads=False")
+            ds['epochs'].interpolate_bads()
 
         # post baseline-correction trigger shift
         if trigger_shift and epoch.post_baseline_trigger_shift:
@@ -2692,8 +2700,7 @@ class MneExperiment(FileTree):
             else:
                 raise ValueError(f'keep_epochs={keep_epochs!r}')
 
-            ds = self.load_epochs(subject, sns_baseline, sns_ndvar, cat=cat,
-                                  decim=decim, data_raw=data_raw, vardef=vardef)
+            ds = self.load_epochs(subject, sns_baseline, sns_ndvar, cat=cat, decim=decim, data_raw=data_raw, vardef=vardef)
             self._add_epochs_stc(ds, ndvar, src_baseline, morph, mask)
             if del_epochs:
                 del ds['epochs']
@@ -4061,8 +4068,8 @@ class MneExperiment(FileTree):
 
         if 'epoch' in params:
             with self._temporary_state:
-                epochs = self.load_epochs(None, True, False, decim=1,
-                                          epoch=params['epoch'])['epochs']
+                ds = self.load_epochs(None, True, False, decim=1, epoch=params['epoch'])
+            epochs = ds['epochs']
             cov = mne.compute_covariance(epochs, keep_sample_mean, method=method)
         else:
             with self._temporary_state:
@@ -4165,8 +4172,7 @@ class MneExperiment(FileTree):
         # load the epochs (post baseline-correction trigger shift requires
         # baseline corrected evoked
         if epoch.post_baseline_trigger_shift:
-            ds = self.load_epochs(ndvar=False, baseline=True, decim=decim,
-                                  data_raw=data_raw)
+            ds = self.load_epochs(ndvar=False, baseline=True, decim=decim, data_raw=data_raw)
         else:
             ds = self.load_epochs(ndvar=False, decim=decim, data_raw=data_raw)
 
@@ -4288,8 +4294,7 @@ class MneExperiment(FileTree):
                 return path
             epoch = self.get('epoch') if return_data is True else return_data
             with self._temporary_state:
-                ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False,
-                                      raw=pipe.source.name, decim=decim)
+                ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False, raw=pipe.source.name, decim=decim)
             return path, ds
 
         # ICA as rej setting
@@ -4322,9 +4327,7 @@ class MneExperiment(FileTree):
                     epoch = params['epoch'][self.get('session')]
                 else:
                     raise TypeError("ICA param epoch=%s" % repr(params['epoch']))
-                ds = self.load_epochs(ndvar=False, apply_ica=False, epoch=epoch,
-                                      reject=not params['source'] == 'raw',
-                                      decim=decim)
+                ds = self.load_epochs(ndvar=False, apply_ica=False, epoch=epoch, reject=not params['source'] == 'raw', decim=decim)
             if params['source'] == 'epochs':
                 inst = ds['epochs']
 
