@@ -4,11 +4,11 @@ from math import ceil, floor
 from operator import mul
 
 import numpy as np
-from numpy import newaxis
 from scipy.linalg import norm
 
 from .. import _info
 from .._data_obj import NDVar, Case, UTS, dataobj_repr, ascategorial, asndvar
+from .._utils.numpy_utils import newaxis
 
 
 class RevCorrData(object):
@@ -129,7 +129,7 @@ class RevCorrData(object):
             ndim = x_.ndim - bool(n_cases)
             if ndim == 1:
                 xdim = None
-                dimnames = ('case' if n_cases else np.newaxis, 'time')
+                dimnames = ('case' if n_cases else newaxis, 'time')
                 data = x_.get_data(dimnames)
                 index = n_x
                 x_names.append(dataobj_repr(x_))

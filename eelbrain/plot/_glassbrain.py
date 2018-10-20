@@ -39,6 +39,7 @@ import warnings
 
 import numpy as np
 
+from .._utils.numpy_utils import newaxis
 from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, butterfly_data
 from ._utsnd import Butterfly
 
@@ -489,7 +490,7 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
     if ndvar.has_dim('time'):
         data = ndvar.get_data(('source', 'time'), 0)
     else:
-        data = ndvar.get_data(('source', np.newaxis), 0)
+        data = ndvar.get_data(('source', newaxis), 0)
 
     if not np.all(np.isfinite(data)):
         raise ValueError("Not all values are finite")

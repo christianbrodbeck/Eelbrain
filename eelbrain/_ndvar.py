@@ -26,6 +26,7 @@ from ._info import merge_info
 from ._stats.connectivity import Connectivity
 from ._stats.connectivity import find_peaks as _find_peaks
 from ._trf._boosting_opt import l1
+from ._utils.numpy_utils import newaxis
 
 
 class Alignement(object):
@@ -115,10 +116,8 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None, ravel=None):
         dim = Case(n)
 
     if isinstance(dim, Dimension):
-        dim_names = (ndvar.dimnames[:ndvar.has_case] + (np.newaxis,) +
-                     ndvar.dimnames[ndvar.has_case:])
-        x = np.concatenate([v.get_data(dim_names) for v in ndvars],
-                           int(ndvar.has_case))
+        dim_names = ndvar.dimnames[:ndvar.has_case] + (newaxis,) + ndvar.dimnames[ndvar.has_case:]
+        x = np.concatenate([v.get_data(dim_names) for v in ndvars], int(ndvar.has_case))
         dims = ndvar.dims[:ndvar.has_case] + (dim,) + ndvar.dims[ndvar.has_case:]
     else:
         axis = ndvar.get_axis(dim)
@@ -292,8 +291,8 @@ def correlation_coefficient(x, y, dim=None, name=None):
     y_only = [dim for dim in y_dimnames if dim not in shared_dims]
 
     # align axes
-    x_order = shared_dims + x_only + [np.newaxis] * len(y_only) + dims
-    y_order = shared_dims + [np.newaxis] * len(x_only) + y_only + dims
+    x_order = shared_dims + x_only + [newaxis] * len(y_only) + dims
+    y_order = shared_dims + [newaxis] * len(x_only) + y_only + dims
     x_data = x.get_data(x_order)
     y_data = y.get_data(y_order)
     # ravel axes over which to aggregate

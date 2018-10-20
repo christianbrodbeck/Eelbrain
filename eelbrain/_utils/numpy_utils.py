@@ -2,6 +2,7 @@
 from math import floor
 
 import numpy as np
+from numpy import newaxis
 
 
 FULL_SLICE = slice(None)

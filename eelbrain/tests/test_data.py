@@ -28,10 +28,11 @@ from eelbrain import (
     align, align1, choose, combine,
     cwt_morlet, shuffled_index)
 from eelbrain._data_obj import (
-    all_equal, asvar, assub, FULL_AXIS_SLICE, FULL_SLICE, longname, SourceSpace,
+    all_equal, asvar, assub, FULL_AXIS_SLICE, longname, SourceSpace,
     assert_has_no_empty_cells)
 from eelbrain._exceptions import DimensionMismatchError
 from eelbrain._stats.stats import rms
+from eelbrain._utils.numpy_utils import newaxis
 from eelbrain._utils.testing import (
     assert_dataobj_equal, assert_dataset_equal, assert_source_space_equal,
     requires_mne_sample_data, skip_on_windows)
@@ -1045,15 +1046,18 @@ def test_ndvar_indexing():
     test_ndvar_index(x, 'time', slice(0.1, None, 1), slice(30, None, 100))
 
     # newaxis
-    assert_raises(IndexError, x.__getitem__, np.newaxis)
+    with pytest.raises(IndexError):
+        _ = x[newaxis]
     x0 = x[0]
-    assert_false(x0.has_case)
-    ok_(x0[np.newaxis].has_case)
+    assert not x0.has_case
+    assert x0[newaxis].has_case
 
     # Scalar
     x = cwt_morlet(ds['uts'], [8, 10, 13, 17])
-    assert_raises(IndexError, x.__getitem__, (FULL_SLICE, 9))
-    assert_raises(IndexError, x.__getitem__, (FULL_SLICE, 6))
+    with pytest.raises(IndexError):
+        _ = x[:, 9]
+    with pytest.raises(IndexError):
+        _ = x[:, 6]
     test_ndvar_index(x, 'frequency', 10, 1)
     test_ndvar_index(x, 'frequency', 10.1, 1, False)
     test_ndvar_index(x, 'frequency', 9.9, 1, False)
@@ -1064,8 +1068,10 @@ def test_ndvar_indexing():
 
     # Categorial
     x = NDVar(x.x, ('case', Categorial('cat', ['8', '10', '13', '17']), x.time))
-    assert_raises(TypeError, x.__getitem__, (FULL_SLICE, 9))
-    assert_raises(IndexError, x.__getitem__, (FULL_SLICE, '9'))
+    with pytest.raises(TypeError):
+        _ = x[:, 9]
+    with pytest.raises(IndexError):
+        _ = x[:, '9']
     test_ndvar_index(x, 'cat', '13', 2)
     test_ndvar_index(x, 'cat', ['8', '13'], [0, 2])
     test_ndvar_index(x, 'cat', slice('8', '13'), slice(0, 2))
@@ -1073,9 +1079,12 @@ def test_ndvar_indexing():
 
     # SourceSpace
     x = datasets.get_mne_stc(True)
-    assert_raises(TypeError, x.__getitem__, slice('insula-rh'))
-    assert_raises(TypeError, x.__getitem__, slice('insula-lh', 'insula-rh'))
-    assert_raises(TypeError, x.__getitem__, ('insula-lh', 'insula-rh'))
+    with pytest.raises(TypeError):
+        _ = x[:'insula-rh']
+    with pytest.raises(TypeError):
+        _ = x['insula-lh':'insula-rh']
+    with pytest.raises(TypeError):
+        _ = x['insula-lh', 'insula-rh']
     test_ndvar_index(x, 'source', 'L90', 90)
     test_ndvar_index(x, 'source', 'R90', 642 + 90)
     test_ndvar_index(x, 'source', ['L90', 'R90'], [90, 642 + 90])
@@ -1094,19 +1103,20 @@ def test_ndvar_indexing():
     source_rh = x.source[x.source.lh_n:]
     index = NDVar(np.arange(len(source_rh)) > 100, (source_rh,))
     assert_dataobj_equal(x.sub(source=index), x.sub(source='rh').sub(source=index))
-    assert_raises(IndexError, x.sub(source='lh').sub, index)
+    with pytest.raises(IndexError):
+        x.sub(source='lh').sub(index)
 
     # multiple arguments
     y = ds['utsnd'].sub(sensor=[1, 2], time=[0, 0.1])
-    eq_(y.shape, (60, 2, 2))
+    assert y.shape == (60, 2, 2)
     assert_array_equal(y.x, ds['utsnd'].x[:, 1:3, [20, 30]])
 
     # argmax
     x.x[10, 10] = 20
-    eq_(x.argmax(), ('L10', 0.1))
-    eq_(x[('L10', 0.1)], 20)
-    eq_(x.sub(source='L10').argmax(), 0.1)
-    eq_(x.sub(time=0.1).argmax(), 'L10')
+    assert x.argmax()== ('L10', 0.1)
+    assert x[('L10', 0.1)] == 20
+    assert x.sub(source='L10').argmax() == 0.1
+    assert x.sub(time=0.1).argmax() == 'L10'
 
     # set
     x = ds['uts'].copy()
