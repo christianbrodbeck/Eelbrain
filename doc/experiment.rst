@@ -37,8 +37,6 @@ of the experiment::
 
     class WordExperiment(MneExperiment):
 
-        path_version = 1
-
         sessions = 'words'
 
 
@@ -293,15 +291,6 @@ information about the system they were collected with. For files converted
 earlier, the :attr:`MneExperiment.meg_system` attribute needs to specify the
 system the data were collected with. For data from NYU New York, the
 correct value is ``meg_system="KIT-157"``.
-
-
-.. py:attribute:: MneExperiment.path_version
-
-:attr:`MneExperiment.path_version` determines the file naming scheme. If you
-are starting a new experiment, set it to ``1`` to use the most recent file
-naming scheme. If your experiment class was defined before Eelbrain version
-0.13, set it to ``0``.
-
 
 .. py:attribute:: MneExperiment.trigger_shift
 

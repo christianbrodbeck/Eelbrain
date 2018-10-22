@@ -3,7 +3,6 @@
 
 For testing purposed, set up an experiment class without checking for data:
 
-MneExperiment.path_version = 1
 MneExperiment.auto_delete_cache = 'disable'
 MneExperiment.sessions = ('session',)
 e = MneExperiment('.', find_subjects=False)
@@ -365,7 +364,7 @@ class MneExperiment(FileTree):
     .. seealso::
         Guide on using :ref:`experiment-class-guide`.
     """
-    path_version = None
+    path_version = 1
     screen_log_level = logging.INFO
     auto_delete_results = False
     auto_delete_cache = True
@@ -547,17 +546,11 @@ class MneExperiment(FileTree):
         self._templates = self._templates.copy()
         # templates version
         raw_def = LEGACY_RAW
-        if self.path_version is None:
-            raise ValueError(
-                f"{self.__class__.__name__}.path_version is not set. This "
-                f"parameter needs to be specified explicitlty. See "
-                f"<http://eelbrain.readthedocs.io/en/r-0.27/experiment.html"
-                f"#eelbrain.MneExperiment.path_version>")
-        elif self.path_version == 0:
+        if self.path_version == 0:
             self._templates['raw-dir'] = join('{raw-sdir}', 'meg', 'raw')
             raw_def = {**raw_def, 'raw': {'filename': '{subject}_{session}_clm-raw.fif'}}
         elif self.path_version != 1:
-            raise ValueError("MneExperiment.path_version needs to be 0 or 1")
+            raise ValueError(f"MneExperiment.path_version={self.path_version}; needs to be 0 or 1")
         # update templates with _values
         for cls in reversed(inspect.getmro(self.__class__)):
             if hasattr(cls, '_values'):

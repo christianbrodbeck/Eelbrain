@@ -18,14 +18,10 @@ I_START = np.arange(1001, 1441, 55)
 
 class BaseExperiment(MneExperiment):
 
-    path_version = 1
-
     sessions = 'file'
 
 
 class EventExperiment(MneExperiment):
-
-    path_version = 1
 
     trigger_shift = 0.03
 
@@ -163,8 +159,6 @@ def test_test_experiment():
 
 
 class FileExperiment(MneExperiment):
-
-    path_version = 1
 
     auto_delete_cache = 'disable'
 

@@ -31,8 +31,6 @@ class SampleExperiment(MneExperiment):
 
     owner = "me@nyu.edu"
 
-    path_version = 1
-
     meg_system = 'neuromag306mag'
 
     sessions = 'sample'
