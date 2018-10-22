@@ -72,7 +72,36 @@ class RawPipe(object):
 
 
 class RawSource(RawPipe):
-    "Raw data source"
+    """Raw data source
+
+    Parameters
+    ----------
+    filename : str
+        Pattern for filename (default ``'{subject}_{session}-raw.fif'``).
+    reader : callable
+        Function for reading data (default is :func:`mne.io.read_raw_fif`).
+    sysname : str
+        Used to determine sensor positions (not needed for KIT files, or when a
+        montage is specified).
+    rename_channels : dict
+        Rename channels before applying montage, ``{from: to}`` dictionary;
+        useful to convert idiosyncratic naming conventions to standard montages.
+    montage : str
+        Name of a montage that is applied to raw data to set sensor positions.
+    connectivity : str | list of (str, str)
+        Connectivity between sensors. Can be specified as:
+
+        - list of connections (e.g., ``[('OZ', 'O1'), ('OZ', 'O2'), ...]``)
+        - :class:`numpy.ndarray` of int, shape (n_edges, 2), to specify
+          connections in terms of indices. Each row should specify one
+          connection [i, j] with i < j. If the array's dtype is uint32,
+          property checks are disabled to improve efficiency.
+        - ``"grid"`` to use adjacency in the sensor names
+
+        If unspecified, it is inferred from ``sysname`` if possible.
+    ...
+        Additional parameters for the ``reader`` function.
+    """
     def __init__(self, filename='{subject}_{session}-raw.fif', reader=mne.io.read_raw_fif, sysname=None, rename_channels=None, montage=None, connectivity=None, **kwargs):
         RawPipe.__init__(self)
         self.filename = typed_arg(filename, str)
@@ -370,6 +399,15 @@ class RawFilterElliptic(CachedRawPipe):
 
 class RawICA(CachedRawPipe):
     """ICA raw pipe
+
+    Parameters
+    ----------
+    source : str
+        Name of the raw pipe to use for input data.
+    session : str | sequence of str
+        Session(s) to use as input data for ICA.
+    ...
+        Parameters for :class:`mne.preprocessing.ICA`.
 
     Notes
     -----
