@@ -8097,6 +8097,14 @@ class Sensor(Dimension):
         else:
             return proj
 
+    def get_connectivity(self):
+        """Sensor connectivity as list of ``(name_1, name_2)``"""
+        if self._connectivity_type != 'custom':
+            raise ValueError("No custom connectivity")
+        pairs = [(self.names[a], self.names[b]) for a, b in self._connectivity]
+        sorted_pairs = [tuple(sorted(pair)) for pair in pairs]
+        return sorted(sorted_pairs)
+
     def get_locs_2d(self, proj='default', extent=1, frame=0, invisible=True):
         """Compute a 2 dimensional projection of the sensor locations
 
