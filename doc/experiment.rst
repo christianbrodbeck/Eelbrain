@@ -313,6 +313,17 @@ subject names to shift values, e.g.
 ``trigger_shift = {'R0001': 0.02, 'R0002': 0.05, ...}``.
 
 
+Subjects
+--------
+
+.. py:attribute:: MneExperiment.subject_re
+
+Subjects are identified by looking for folders in the subjects-directory whose
+name matches the ``subject_re`` regular expression (see :mod:`re`). By
+default, this is ``'(R|A|Y|AD|QP)(\d{3,})$'``, which matches R-numbers like
+``R1234``, but also numbers prefixed by ``A``, ``Y``, ``AD`` or ``QP``.
+
+
 Defaults
 --------
 

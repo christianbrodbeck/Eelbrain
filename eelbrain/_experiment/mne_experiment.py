@@ -437,7 +437,7 @@ class MneExperiment(FileTree):
 
     # Pattern for subject names. The first group is used to determine what
     # MEG-system the data was recorded from
-    _subject_re = '(R|A|Y|AD|QP)(\d{3,})$'
+    subject_re = '(R|A|Y|AD|QP)(\d{3,})$'
     # MEG-system (legacy variable).
     meg_system = None
 
@@ -458,7 +458,7 @@ class MneExperiment(FileTree):
 
     # Where to search for subjects (defined as a template name). If the
     # experiment searches for subjects automatically, it scans this directory
-    # for subfolders matching _subject_re.
+    # for subfolders matching subject_re.
     _subject_loc = 'raw-sdir'
 
     # Parcellations
@@ -543,7 +543,6 @@ class MneExperiment(FileTree):
                                  "parameter.")
 
         # create attributes (overwrite class attributes)
-        self._subject_re = re.compile(self._subject_re)
         self._mri_subjects = self._mri_subjects.copy()
         self._templates = self._templates.copy()
         # templates version
@@ -592,16 +591,15 @@ class MneExperiment(FileTree):
             root = self.get('root', root=root)
 
         if find_subjects:
+            subject_re = re.compile(self.subject_re)
             sub_dir = self.get(self._subject_loc)
             if not exists(sub_dir):
-                raise IOError("Subjects directory not found: %s. Initialize "
-                              "with root=None or find_subjects=False" % sub_dir)
-            subjects = tuple(sorted(
-                s for s in os.listdir(sub_dir)
-                if self._subject_re.match(s) and isdir(join(sub_dir, s))))
-
+                raise IOError(f"Subjects directory {sub_dir}: does notexist. To initialize {self.__class__.__name__} without data, initialize with root=None or find_subjects=False")
+            subjects = [s for s in os.listdir(sub_dir) if subject_re.match(s) and isdir(join(sub_dir, s))]
             if len(subjects) == 0:
                 log.warning("No subjects found in {sub_dir}")
+            subjects.sort()
+            subjects = tuple(subjects)
         else:
             subjects = ()
 
