@@ -453,6 +453,11 @@ class RawICA(CachedRawPipe):
                                "create it." % (self.name, subject))
         return mne.preprocessing.read_ica(path)
 
+    @staticmethod
+    def _check_ica_channels(ica, raw):
+        picks = mne.pick_types(raw.info, eeg=True, ref_meg=False)
+        return ica.ch_names == [raw.ch_names[i] for i in picks]
+
     def make_ica(self, subject):
         path = self.ica_path.format(root=self.root, subject=subject)
         raw = self.source.load(subject, self.session[0], False)
@@ -460,8 +465,7 @@ class RawICA(CachedRawPipe):
         raw.info['bads'] = bad_channels
         if exists(path):
             ica = mne.preprocessing.read_ica(path)
-            picks = mne.pick_types(raw.info, eeg=True, ref_meg=False)
-            if ica.ch_names == [raw.ch_names[i] for i in picks]:
+            if self._check_ica_channels(ica, raw):
                 return path
             self.log.info("Raw %s: ICA outdated due to change in bad channels for %s", self.name, subject)
 
@@ -478,10 +482,12 @@ class RawICA(CachedRawPipe):
         return path
 
     def _make(self, subject, session):
-        self.log.debug("Raw %s: applying ICA for %s/%s...", self.name, subject,
-                       session)
         raw = self.source.load(subject, session, preload=True)
+        raw.info['bads'] = self.load_bad_channels(subject)
         ica = self.load_ica(subject)
+        if not self._check_ica_channels(ica, raw):
+            raise RuntimeError(f"Raw {self.name}, ICA for {subject} outdated due to change in bad channels. Reset bad channels or re-run .make_ica().")
+        self.log.debug("Raw %s: applying ICA for %s/%s...", self.name, subject, session)
         ica.apply(raw)
         return raw
 
