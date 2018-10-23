@@ -55,7 +55,7 @@ from ..mne_fixes import (
     write_labels_to_annot, _interpolate_bads_eeg, _interpolate_bads_meg)
 from ..mne_fixes._trans import hsp_equal, mrk_equal
 from ..mne_fixes._source_space import merge_volume_source_space, prune_volume_source_space
-from .._ndvar import cwt_morlet
+from .._ndvar import concatenate, cwt_morlet, neighbor_correlation
 from ..fmtxt import List, Report, Image, read_meta
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
@@ -3955,8 +3955,7 @@ class MneExperiment(FileTree):
         merge_bad_channels : merge bad channel definitions for all sessions
         """
         pipe = self._raw[self.get('raw', **kwargs)]
-        pipe.make_bad_channels(self.get('subject'), self.get('session'),
-                               bad_chs, redo)
+        pipe.make_bad_channels(self.get('subject'), self.get('session'), bad_chs, redo)
 
     def make_bad_channels_auto(self, flat=1e-14, redo=False, **state):
         """Automatically detect bad channels
@@ -3977,6 +3976,41 @@ class MneExperiment(FileTree):
             self.set(**state)
         pipe = self._raw['raw']
         pipe.make_bad_channels_auto(self.get('subject'), self.get('session'), flat, redo)
+
+    def make_bad_channels_neighbor_correlation(self, r, epoch=None, **state):
+        """Exclude bad channels based on low average neighbor-correlation
+
+        Parameters
+        ----------
+        r : scalar
+            Minimum admissible neighbor correlation. Any channel whose average
+            correlation with its neighbors is below this value is added to the
+            list of bad channels (e.g., 0.3).
+        epoch : str
+            Epoch to use for computing neighbor-correlation (by default, the
+            whole session is used).
+        ...
+            State parameters.
+
+        Notes
+        -----
+        Data is loaded for the currently specified ``raw`` setting, but bad
+        channels apply to all ``raw`` settings equally. Hence, when using this
+        method with multiple subjects, it is important to set ``raw`` to the
+        same value.
+        """
+        if epoch:
+            epoch_params = self._epochs[epoch]
+            if len(epoch_params.sessions) != 1:
+                raise ValueError(f"epoch={epoch!r}: epoch has multiple session")
+            ds = self.load_epochs(epoch=epoch, reject=False, decim=1, **state)
+            data = concatenate(ds['meg'])
+        else:
+            data = self.load_raw(ndvar=True, **state)
+        nc = neighbor_correlation(data)
+        bad_chs = nc.sensor.names[nc < r]
+        if bad_chs:
+            self.make_bad_channels(bad_chs)
 
     def make_besa_evt(self, redo=False, **state):
         """Make the trigger and event files needed for besa
