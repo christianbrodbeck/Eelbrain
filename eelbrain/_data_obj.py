@@ -2031,10 +2031,10 @@ class Factor(_Effect):
         Repeat ``x`` as a whole ``tile`` many times.
     labels : dict | OrderedDict | tuple
         An optional dictionary mapping values as they occur in ``x`` to the
-        Factor's cell labels. Since :class`dict`s are unordered, labels are
+        Factor's cell labels. Since :class`dict` is unordered, labels are
         sorted alphabetically by default. In order to define cells in a
-        different order, use a :class:`collections.OrderedDict` object or
-        define labels as ``((key, value), ...)`` tuple.
+        different order, use a :class:`collections.OrderedDict` or define
+        labels as ``((key, value), ...)`` tuple.
 
     Attributes
     ----------
@@ -7613,7 +7613,8 @@ class Scalar(Dimension):
     unit : str (optional)
         Unit of the values.
     tick_format : str (optional)
-        Format string for formatting axis tick labels ('%'-format, e.g. '%.2f').
+        Format string for formatting axis tick labels ('%'-format, e.g. '%.0f'
+        to round to nearest integer).
     connectivity : 'grid' | 'none' | array of int, (n_edges, 2)
         Connectivity between elements. Set to ``"none"`` for no connections or 
         ``"grid"`` to use adjacency in the sequence of elements as connection. 
@@ -7625,17 +7626,14 @@ class Scalar(Dimension):
     """
     _default_connectivity = 'grid'
 
-    def __init__(self, name, values, unit=None, tick_format=None,
-                 connectivity='grid'):
+    def __init__(self, name, values, unit=None, tick_format=None, connectivity='grid'):
         values = np.asarray(values)
         if values.ndim != 1:
-            raise ValueError("values needs to be one-dimensional array, got "
-                             "array of shape %s" % repr(values.shape))
+            raise ValueError(f"values.shape={values.shape}, needs to be one-dimensional")
         elif np.any(np.diff(values) <= 0):
             raise ValueError("Values for Scalar must increase monotonically")
         elif tick_format and '%' not in tick_format:
-            raise ValueError("tick_format needs to include '%%'; got %r" %
-                             (tick_format,))
+            raise ValueError(f"tick_format={tick_format}, needs to include '%'")
         self.values = values
         self.unit = unit
         self._axis_unit = unit

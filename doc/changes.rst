@@ -16,6 +16,14 @@ New in 0.29
 
   - :func:`correlation_coefficient`
 
+* Plotting:
+
+  - :ref:`general-layout-parameters` for plot size relative to screen size
+
+* :class:`MneExperiment`:
+
+  - New method :meth:`MneExperiment.plot_raw`
+
 
 New in 0.28
 -----------
