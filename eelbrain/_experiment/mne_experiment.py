@@ -4247,7 +4247,7 @@ class MneExperiment(FileTree):
         mne.write_forward_solution(dst, fwd, True)
         return dst
 
-    def make_ica_selection(self, epoch=None, decim=None):
+    def make_ica_selection(self, epoch=None, decim=None, **state):
         """Select ICA components to remove through a GUI.
 
         Parameters
@@ -4257,6 +4257,8 @@ class MneExperiment(FileTree):
             epoch; does not apply to ICA specified through artifact_rejection).
         decim : int (optional)
             Downsample epochs (for visualization only).
+        ...
+            State parameters.
 
         Notes
         -----
@@ -4268,7 +4270,7 @@ class MneExperiment(FileTree):
             ...     e.make_ica()
             ...
         """
-        path, ds = self.make_ica(epoch or True, decim)
+        path, ds = self.make_ica(epoch or True, decim, **state)
         pipe = self._raw[self.get('raw')]
         info = ds['epochs'].info
         data = TestDims('sensor')
