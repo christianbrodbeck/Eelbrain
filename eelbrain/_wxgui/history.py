@@ -31,7 +31,10 @@ class CallBackManager(object):
         self._callbacks[key].append(func)
 
     def remove(self, key, func):
-        self._callbacks[key].remove(func)
+        try:
+            self._callbacks[key].remove(func)
+        except ValueError:
+            getLogger(__name__).debug("Trying to remove %r which is not in callbacks[%r]", func, key)
 
 
 class Action(object):
