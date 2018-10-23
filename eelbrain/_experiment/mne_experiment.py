@@ -1192,10 +1192,10 @@ class MneExperiment(FileTree):
             if changed:
                 invalid_cache['raw'].update(changed)
             for raw, status in changed_ica.items():
-                filenames = self.glob('raw-ica-file', raw=raw, subject='*')
+                filenames = self.glob('raw-ica-file', raw=raw, subject='*', match=False)
                 if filenames:
-                    print("Outdated ICA files:\n" + '\n'.join(
-                          relpath(path, root) for path in filenames))
+                    rel_paths = '\n'.join(relpath(path, root) for path in filenames)
+                    print(f"Outdated ICA files:\n{rel_paths}")
                     ask_to_delete_ica_files(raw, status, filenames)
 
             # epochs
