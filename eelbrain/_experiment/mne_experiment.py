@@ -4744,7 +4744,7 @@ class MneExperiment(FileTree):
         pipe = self._raw[self.get('raw')]
         pipe.cache(self.get('subject'), self.get('session'))
 
-    def make_rej(self, decim=None, auto=None, overwrite=False, **kwargs):
+    def make_rej(self, decim=None, auto=None, overwrite=False, **state):
         """Open :func:`gui.select_epochs` for manual epoch selection
 
         The GUI is opened with the correct file name; if the corresponding
@@ -4767,10 +4767,10 @@ class MneExperiment(FileTree):
         overwrite : bool
             If ``auto`` is specified and a rejection file already exists,
             overwrite has to be set to ``True`` to overwrite the old file.
-        ... :
-            Keyword arguments for :func:`gui.select_epochs`.
+        ...
+            State parameters.
         """
-        rej_args = self._artifact_rejection[self.get('rej')]
+        rej_args = self._artifact_rejection[self.get('rej', **state)]
         if rej_args['kind'] == 'manual':
             apply_ica = False
         elif rej_args['kind'] == 'ica':
@@ -4856,7 +4856,7 @@ class MneExperiment(FileTree):
         bad_channels = self.load_bad_channels()
         eog_sns = [c for c in eog_sns if c not in bad_channels]
 
-        gui.select_epochs(ds, y_name, path=path, vlim=vlim, mark=eog_sns, **kwargs)
+        gui.select_epochs(ds, y_name, path=path, vlim=vlim, mark=eog_sns)
 
     def _need_not_recompute_report(self, dst, samples, data, redo):
         "Check (and log) whether the report needs to be redone"
