@@ -3,6 +3,7 @@
 """Plot multidimensional uniform time series."""
 import numpy as np
 
+from .._data_obj import Datalist
 from .._names import INTERPOLATE_CHANNELS
 from . import _base
 from ._base import (
@@ -224,8 +225,8 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
-    title : None | string
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
 
     Notes
     -----
@@ -295,12 +296,14 @@ class _plt_utsnd(object):
         self.lines = ax.plot(x, epoch.get_data((xdim, line_dim)),
                              label=epoch.name, **kwargs)
 
+        # apply line-specific formatting
+        lines = Datalist(self.lines)
         if z_order:
-            set_dict_arg('zorder', z_order, line_dim_obj, self.lines)
+            set_dict_arg('zorder', z_order, line_dim_obj, lines)
 
         if color:
             self.legend_handles = {}
-            set_dict_arg('color', color, line_dim_obj, self.lines, self.legend_handles)
+            set_dict_arg('color', color, line_dim_obj, lines, self.legend_handles)
         else:
             self.legend_handles = {epoch.name: self.lines[0]}
 
@@ -416,8 +419,8 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
-    title : None | string
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
 
     Notes
     -----

@@ -138,3 +138,8 @@ def slice_to_arange(s, length):
         stop = s.stop
 
     return np.arange(start, stop, s.step)
+
+
+def take_slice(x, axis, start=None, stop=None, step=None):
+    """Like :func:`numpy.take` but with a slice"""
+    return x[FULL_AXIS_SLICE * axis + (slice(start, stop, step),)]

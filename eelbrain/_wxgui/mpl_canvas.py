@@ -147,16 +147,14 @@ class CanvasFrame(EelbrainFrame):
     _plot_name = "CanvasFrame"
     _allow_user_set_title = True
 
-    def __init__(self, parent=None, title="Matplotlib Frame",
-                 eelfigure=None,
-                 statusbar=True, toolbar=True, mpl_toolbar=False,
-                 *args, **kwargs):
-        EelbrainFrame.__init__(self, parent, -1, title=title)
+    def __init__(self, parent=None, title="Matplotlib Frame", pos=wx.DefaultPosition, eelfigure=None, statusbar=True, toolbar=True, mpl_toolbar=False, **kwargs):
+        EelbrainFrame.__init__(self, parent, -1, title, pos)
+        self._pos_arg = pos
 
         # set up the canvas
         self.sizer = sizer = wx.BoxSizer(wx.VERTICAL)
         self.SetSizer(sizer)
-        self.canvas = FigureCanvasPanel(self, *args, **kwargs)
+        self.canvas = FigureCanvasPanel(self, **kwargs)
         sizer.Add(self.canvas, 1, wx.EXPAND)
         self.figure = self.canvas.figure
 
@@ -204,6 +202,18 @@ class CanvasFrame(EelbrainFrame):
 
     def _fill_toolbar(self, tb):
         pass
+
+    def Show(self, show=True):
+        if self._pos_arg == wx.DefaultPosition:
+            rect = self.GetRect()
+            display_w, display_h = wx.DisplaySize()
+            # print(self.Rect.Right)
+            dx = -rect.Left if rect.Right > display_w else 0
+            dy = -rect.Top + 22 if rect.Bottom > display_h else 0
+            if dx or dy:
+                rect.Offset(dx, dy)
+                self.SetRect(rect)
+        EelbrainFrame.Show(self, show)
 
     def add_mpl_toolbar(self):
         self.toolbar = backend_wx.NavigationToolbar2Wx(self.canvas)

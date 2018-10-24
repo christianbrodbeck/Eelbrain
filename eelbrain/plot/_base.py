@@ -61,7 +61,7 @@ functions executed are:
 import __main__
 
 from collections import Iterable, Iterator
-from itertools import chain
+from itertools import chain, repeat
 from logging import getLogger
 import math
 import os
@@ -69,6 +69,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+from typing import List, Union
 import weakref
 
 import matplotlib as mpl
@@ -79,12 +80,18 @@ import PIL
 
 from .._colorspaces import symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
 from .._config import CONFIG
-from .._data_obj import (Case, UTS, ascategorial, asndvar, assub, isnumeric,
-                         isdataobject, cellname)
+from .._data_obj import (
+    NDVar, Case, UTS,
+    ascategorial, asndvar, assub, isnumeric, isdataobject, cellname,
+)
+from .. import testnd
 from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
 from .._utils.subp import command_exists
 from ..fmtxt import Image
 from ..mne_fixes import MNE_EPOCHS
+from .._ndvar import erode, resample
+from .._text import ms
+from ._utils import adjust_hsv
 from functools import reduce
 
 
@@ -607,6 +614,106 @@ def find_data_dims(ndvar, dims, extra_dim=None):
         return agg, tuple(dimnames)
 
 
+def butterfly_data(
+        data: Union[NDVar, testnd.NDTest],
+        hemi: str,
+        resample_: int = None,
+        colors: bool = False,
+) -> (List, List, NDVar):
+    """Data for plotting butterfly plot with brain
+
+    Returns
+    -------
+    hemis : list of str
+        Hemispheres in the data.
+    butterfly_daya :
+        Data for Butterfly plot.
+    brain_data :
+        Data for brain plot.
+    """
+    # find input type
+    if isinstance(data, NDVar):
+        y = data
+        kind = 'ndvar'
+    elif isinstance(data, (testnd.ttest_1samp, testnd.ttest_rel, testnd.ttest_ind)):
+        y = data.difference
+        kind = 'test'
+    elif isinstance(data, testnd.Vector):
+        y = data.difference_norm
+        kind = 'test'
+    else:
+        raise TypeError(f"ndvar={data!r}")
+    source = y.get_dim('source')
+
+    # find samplingrate
+    if resample_ is not None:
+        raise NotImplementedError(f"resample_={resample_}")
+
+    # find hemispheres to include
+    if hemi is None:
+        hemis = []
+        if source.lh_n:
+            hemis.append('lh')
+        if source.rh_n:
+            hemis.append('rh')
+    elif hemi in ('lh', 'rh'):
+        hemis = [hemi]
+    else:
+        raise ValueError("hemi=%r" % (hemi,))
+
+    if kind == 'ndvar':
+        if y.has_case:
+            y = y.mean('case')
+        if y.has_dim('space'):
+            y = y.norm('space')
+        if resample_:
+            y = resample(y, resample_, window='hamming')
+        bfly_data = [y.sub(source=hemi, name=hemi.capitalize()) for hemi in hemis]
+        brain_data = y
+    elif kind == 'test':
+        sig = data.p <= 0.05
+        y_magnitude = y.rms('time')
+        # resample
+        if resample_:
+            y = resample(y, resample_, window='hamming')
+            sig = resample(sig, resample_) > 0.5
+        brain_data = y.mask(~sig)
+        # mask
+        non_sig = erode(~sig, 'time')
+        y_sig = y.mask(non_sig)
+        y_ns = y.mask(sig)
+        # line-styles
+        if colors:
+            lh_color = '#046AAD'
+            rh_color = '#A60628'
+            line_color_sig = {'lh': lh_color, 'rh': rh_color}
+            line_color_ns = {'lh': adjust_hsv(lh_color, 0, -0.5, -0.),
+                             'rh': adjust_hsv(rh_color, 0, -0.7, -0.)}
+        else:
+            color_sig = (0,) * 3
+            color_ns = (.7,) * 3
+            line_color_sig = {'lh': color_sig, 'rh': color_sig}
+            line_color_ns = {'lh': color_ns, 'rh': color_ns}
+        linestyle_ns = {'linewidth': 0.2, 'color': line_color_ns, 'alpha': 0.2}
+        linestyle_sig = {'linewidth': 0.2, 'color': line_color_sig, 'alpha': 1.0}
+        # layer-data
+        axes = []
+        for hemi in hemis:
+            # z-order
+            y_mag = y_magnitude.sub(source=hemi)
+            z_order = dict(zip(y_mag.source, -y_mag.x.argsort()))
+            # data
+            layers = []
+            for y, linestyle in ((y_ns, linestyle_ns), (y_sig, linestyle_sig)):
+                kwargs = {'zorder': z_order, **linestyle}
+                layers.append(LayerData(y.sub(source=hemi), kwargs))
+            axes.append(layers)
+        bfly_data = PlotData(axes, ('time', 'source'), plot_names=hemis)
+    else:
+        raise RuntimeError(f"kind={kind}")
+    return hemis, bfly_data, brain_data
+
+
 def pop_dict_arg(kwargs, key):
     "Helper for artist-sepcific matplotlib kwargs"
     if key in kwargs and isinstance(kwargs[key], dict):
@@ -618,12 +725,10 @@ def set_dict_arg(key, arg, line_dim_obj, artists, legend_handles=None):
     set_attr_name = 'set_' + key
     for dim_index, value in arg.items():
         index = line_dim_obj._array_index(dim_index)
-        if isinstance(index, slice):
-            key_artists = artists[index]
-        elif isinstance(index, int):
-            key_artists = (artists[index],)
+        if isinstance(index, int):
+            key_artists = [artists[index]]
         else:
-            key_artists = tuple(artists[i] for i in index)
+            key_artists = artists[index]
 
         if not key_artists:
             continue
@@ -646,11 +751,7 @@ class LayerData(object):
         self._line_args = line_args
 
     def line_args(self, kwargs):
-        out = {}
-        for k, v in chain(kwargs.items(), self._line_args.items()):
-            if v is not None:
-                out[self._remap_args.get(k, k)] = v
-        return out
+        return {self._remap_args.get(k, k): v for k, v in chain(kwargs.items(), self._line_args.items())}
 
 
 class PlotData(object):
@@ -658,7 +759,7 @@ class PlotData(object):
 
     Parameters
     ----------
-    axes : list of {None | list of NDVar}
+    axes : list of {None | list of LayerData}
         Data to be plotted on each axes.
     dims : list of str
         Dimensions assigned to the axes.
@@ -834,7 +935,7 @@ class PlotData(object):
         """Add a layer to all plots"""
         assert len(ys) == len(self.plot_data)
         if isinstance(line_args, dict):
-            line_args = (line_args,) * len(ys)
+            line_args = repeat(line_args, len(ys))
         else:
             assert len(line_args) == len(ys)
 
@@ -1010,8 +1111,7 @@ class EelFigure(object):
             from .._wxgui import get_app
             from .._wxgui.mpl_canvas import CanvasFrame
             get_app()
-            frame_ = CanvasFrame(None, frame_title, eelfigure=self,
-                                 **layout.fig_kwa())
+            frame_ = CanvasFrame(title=frame_title, eelfigure=self, **layout.fig_kwa())
         else:
             frame_ = mpl_figure(**layout.fig_kwa())
 
@@ -1341,8 +1441,11 @@ class EelFigure(object):
         for ax in axes:
             ax.yaxis.set_major_formatter(formatter)
 
-        if label:
+        if isinstance(label, str):
             self.set_ylabel(label)
+        elif isinstance(label, Iterable):
+            for i, l in enumerate(label):
+                self.set_ylabel(l, i)
 
     def draw(self):
         "(Re-)draw the figure (after making manual changes)."
@@ -1576,6 +1679,23 @@ class BaseLayout(object):
             ax.spines['left'].set_visible(False)
 
 
+def resolve_plot_rect(w, h, dpi):
+    w_applies = w is not None and w <= 0
+    h_applies = h is not None and h <= 0
+    if w_applies or h_applies:
+        from .._wxgui import get_app
+        import wx
+
+        get_app()
+        effective_dpi = dpi or mpl.rcParams['figure.dpi']
+        display_w, display_h = wx.GetDisplaySize()
+        if h_applies:
+            h = display_h / effective_dpi + h
+        if w_applies:
+            w = display_w / effective_dpi + w
+    return w, h
+
+
 class LayoutDim(object):
     "Helper function to determine figure spacing"
     _properties = ('total', 'first', 'space', 'last', 'ax')
@@ -1674,6 +1794,7 @@ class Layout(BaseLayout):
         if w and axw:
             if w < axw:
                 raise ValueError("w < axw")
+        w, h = resolve_plot_rect(w, h, dpi)
 
         self.w_fixed = w or axw
         self._margins_arg = margins
@@ -1904,11 +2025,11 @@ class VariableAspectLayout(BaseLayout):
                  title=None, h=None, w=None, axh=None,
                  dpi=None, show=True, run=None, frame=True, yaxis=True,
                  autoscale=False, name=None):
+        w, h = resolve_plot_rect(w, h, dpi)
         self.w_fixed = w
 
         if axh and h:
-            raise ValueError("h and axh can not be specified both at the same "
-                             "time")
+            raise ValueError("h and axh can not be specified both at the same time")
         elif h:
             axh = h / nrow
         elif axh:
@@ -2316,39 +2437,49 @@ class Legend(EelFigure):
 class TimeController(object):
     # Link plots that have the TimeSlicer mixin
     def __init__(self, t=0, fixate=False):
-        self.plots = []  # list of weakref to plots
+        self._plots = []  # list of weakref to plots
         self.current_time = t
         self.fixate = fixate
 
     def add_plot(self, plot):
         if plot._time_controller is None:
             plot._set_time(self.current_time, self.fixate)
-            self.plots.append(weakref.ref(plot))
+            self._plots.append(weakref.ref(plot))
             plot._time_controller = self
         else:
             self.merge(plot._time_controller)
 
     def iter_plots(self):
-        plots = (p() for p in self.plots)
-        return (p for p in plots if p is not None)
+        needs_cleaning = False
+        for ref in self._plots:
+            plot = ref()
+            if plot is None:
+                needs_cleaning = True
+            else:
+                yield plot
+        if needs_cleaning:
+            self._plots = [ref for ref in self._plots if ref() is not None]
 
     def merge(self, time_controller):
         "Merge another TimeController into self"
-        time_controller.set_time(self.current_time, self.fixate)
         for plot in time_controller.iter_plots():
-            plot()._time_controller = self
-            self.plots.append(plot)
+            plot._time_controller = None
+            self.add_plot(plot)
 
     def set_time(self, t, fixate):
         if t == self.current_time and fixate == self.fixate:
             return
-        plots = tuple(self.iter_plots())
-        for p in plots:
+        for p in self.iter_plots():
             t = p._validate_time(t)
-        for p in plots:
+        for p in self.iter_plots():
             p._update_time_wrapper(t, fixate)
         self.current_time = t
         self.fixate = fixate
+
+    def set_xlim(self, xmin, xmax):
+        for p in self.iter_plots():
+            if isinstance(p, XAxisMixin):
+                p._set_xlim(xmin, xmax, draw=True)
 
 
 class TimeSlicer(object):
@@ -2356,6 +2487,7 @@ class TimeSlicer(object):
     # update data in a child plot of time-slices
     _time_dim = None
     _current_time = None
+    _display_time_in_frame_title = False
 
     def __init__(self, ndvars=None):
         if ndvars is not None:
@@ -2432,6 +2564,8 @@ class TimeSlicer(object):
         self._update_time(t, fixate)
         self._current_time = t
         self._time_fixed = fixate
+        if self._display_time_in_frame_title:
+            self._frame.SetTitleSuffix(f' [{ms(t)} ms]')
 
     def _update_time(self, t, fixate):
         raise NotImplementedError
@@ -2451,7 +2585,7 @@ class TimeSlicerEF(TimeSlicer):
         if x_dimname != 'time':
             self._time_fixed = True
             return
-        ndvars = tuple(e for layer in epochs for e in layer)
+        ndvars = [e for layer in epochs for e in layer]
         TimeSlicer.__init__(self, ndvars)
         self.__axes = self._axes if axes is None else axes
         self.__time_lines = []
@@ -2668,9 +2802,11 @@ class XAxisMixin(object):
         new_right = min(self.__xmax, right + d)
         self.__animate(left, new_right - d, right, new_right)
 
-    def _set_xlim(self, left, right):
+    def _set_xlim(self, left, right, draw=False):
         for ax in self.__axes:
             ax.set_xlim(left, right)
+        if draw:
+            self.draw()
 
     def add_vspans(self, intervals, axes=None, *args, **kwargs):
         """Draw vertical bars over axes
@@ -2698,8 +2834,16 @@ class XAxisMixin(object):
 
     def set_xlim(self, left=None, right=None):
         """Set the x-axis limits for all axes"""
-        self._set_xlim(left, right)
-        self.draw()
+        if isinstance(self, TimeSlicer) and self._time_controller is not None:
+            if left is None or right is None:
+                ax_left, ax_right = self.__axes[0].get_xlim()
+                if left is None:
+                    left = ax_left
+                if right is None:
+                    right = ax_right
+            self._time_controller.set_xlim(left, right)
+        else:
+            self._set_xlim(left, right, draw=True)
 
 
 class YLimMixin(object):

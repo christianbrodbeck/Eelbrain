@@ -117,8 +117,7 @@ Sorting and Reordering
 NDVar Operations
 ^^^^^^^^^^^^^^^^
 
-For the most common operations see :class:`NDVar` methods. Here are less common
-and more specific operations:
+See also :class:`NDVar` methods.
 
 .. autosummary::
    :toctree: generated
@@ -127,6 +126,7 @@ and more specific operations:
    complete_source_space
    concatenate
    convolve
+   correlation_coefficient
    cross_correlation
    cwt_morlet
    dss
@@ -375,15 +375,18 @@ For example, to plot each case of ``meg`` separately, use::
    >>> plot.Butterfly('meg', '.case', ds=ds)
 
 
-Layout
-======
+.. _general-layout-parameters:
+
+General layout parameters
+=========================
 
 Most plots that also share certain layout keyword arguments. By default, all
 those parameters are determined automatically, but individual values can be
 specified manually by supplying them as keyword arguments.
 
 h, w : scalar
-   Height and width of the figure.
+   Height and width of the figure. Use a number ≤ 0 to defined the size relative
+   to the screen (e.g., ``w=0`` to use the full screen width).
 axh, axw : scalar
    Height and width of the axes.
 nrow, ncol : None | int
@@ -392,7 +395,9 @@ nrow, ncol : None | int
 ax_aspect : scalar
    Width / height aspect of the axes.
 name : str
-   Window title (i.e. not displayed on the figure itself).
+   Window title (not displayed on the figure itself).
+title : str
+   Figure title (displayed on the figure).
 
 Plots that do take those parameters can be identified by the ``**layout`` in
 their function signature.

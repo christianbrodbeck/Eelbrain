@@ -44,9 +44,10 @@ def test_plot_brain():
     print(image)
 
     # plot p-map
-    pmap = src.abs()
-    pmap /= src.max()
-    p = plot.brain.p_map(pmap, src)
+    stat_map = src[0]
+    pmap = stat_map.abs()
+    pmap /= pmap.max()
+    p = plot.brain.p_map(pmap, stat_map)
     cb = p.plot_colorbar(show=False)
     cb.close()
     p.close()

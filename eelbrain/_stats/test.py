@@ -68,8 +68,10 @@ class Correlation(object):
         self._x = dataobj_repr(x)
 
     def __repr__(self):
-        return ("<Correlation %s, %s: r(%i)=%.2f, p=%.3f>" %
-                (self._y, self._x, self.df, self.r, self.p))
+        return f"<Correlation: {self._y} ~ {self._x}; {self._asfmtext()}> "
+
+    def _asfmtext(self):
+        return fmtxt.FMText([fmtxt.eq('r', self.r, self.df), ', ', fmtxt.peq(self.p)])
 
 
 def lilliefors(data, formatted=False, **kwargs):
@@ -438,7 +440,19 @@ def ttest(y, x=None, against=0, match=None, sub=None, corr='Hochberg',
     return table
 
 
-class TTest1Sample(object):
+class TTest(object):
+
+    def __init__(self, t, df, tail):
+        self.t = t
+        self.df = df
+        self.p = stats.ttest_p(self.t, self.df, tail)
+        self.tail = tail
+
+    def _asfmtext(self):
+        return fmtxt.FMText([fmtxt.eq('t', self.t, self.df), ', ', fmtxt.peq(self.p)])
+
+
+class TTest1Sample(TTest):
     """1-sample t-test
 
     Parameters
@@ -480,24 +494,15 @@ class TTest1Sample(object):
 
         self.mean = ct.y.mean()
         self._y = dataobj_repr(ct.y)
-        self.df = n - 1
-        self.t = stats.t_1samp(ct.y.x[:, None])[0]
-        self.p = stats.ttest_p(self.t, self.df, tail)
-        self.tail = tail
+        t = stats.t_1samp(ct.y.x[:, None])[0]
+        TTest.__init__(self, t, n - 1, tail)
 
     def __repr__(self):
-        out = "<TTest1Samp: " + self._y
-        if self.tail:
-            out += 'tail=%i' % self.tail
-        out += "; t(%i)=%.2f, p=%.3f>" % (self.df, self.t, self.p)
-        return out
-
-    def _asfmtext(self):
-        return fmtxt.FMText([fmtxt.eq('t', self.t, self.df), ', ',
-                             fmtxt.peq(self.p)])
+        cmp = '=><'[self.tail]
+        return f"<TTest1Samp: {self._y} {cmp} 0; {self._asfmtext()}> "
 
 
-class TTestInd(object):
+class TTestInd(TTest):
     """Related-measures t-test
 
     Parameters
@@ -548,26 +553,19 @@ class TTestInd(object):
 
         self._y = dataobj_repr(ct.y)
         self._x = dataobj_repr(ct.x)
-        self.df = n - 2
         groups = ct.x == c1
         groups.dtype = np.int8
-        self.t = stats.t_ind(ct.y.x[:, None], groups)[0]
-        self.p = stats.ttest_p(self.t, self.df, tail)
-        self.tail = tail
+        t = stats.t_ind(ct.y.x[:, None], groups)[0]
+        TTest.__init__(self, t, n - 2, tail)
         self._c1 = c1
         self._c0 = c0
 
     def __repr__(self):
-        return ("<TTestInd: %s ~ %s, %s%s%s; t(%i)=%.2f, p=%.3f>" %
-                (self._y, self._x, self._c1, '=><'[self.tail], self._c0,
-                 self.df, self.t, self.p))
-
-    def _asfmtext(self):
-        return fmtxt.FMText([fmtxt.eq('t', self.t, self.df), ', ',
-                             fmtxt.peq(self.p)])
+        cmp = '=><'[self.tail]
+        return f"<TTestInd: {self._y} ~ {self._x}, {self._c1} {cmp} {self._c0}; {self._asfmtext()}>"
 
 
-class TTestRel(object):
+class TTestRel(TTest):
     """Related-measures t-test
 
     Parameters
@@ -643,10 +641,8 @@ class TTestRel(object):
         self.c1_mean = y1.mean()
         self.c0_mean = y0.mean()
         self.difference = y1 - y0
-        self.df = n - 1
-        self.t = stats.t_1samp(self.difference.x[:, None])[0]
-        self.p = stats.ttest_p(self.t, self.df, tail)
-        self.tail = tail
+        t = stats.t_1samp(self.difference.x[:, None])[0]
+        TTest.__init__(self, t, n - 1, tail)
         self._match = None if match is None else dataobj_repr(match)
         self._c1 = c1
         self._c0 = c0
@@ -657,11 +653,7 @@ class TTestRel(object):
             out = f"<TTestRel: {self._c1} {cmp} {self._c0}"
         else:
             out = f"<TTestRel: {self._y} ~ {self._x}, {self._c1} {cmp} {self._c0}"
-        return out + f"; t({self.df})={self.t:.2}, p={self.p:.3}>"
-
-    def _asfmtext(self):
-        return fmtxt.FMText([fmtxt.eq('t', self.t, self.df), ', ',
-                             fmtxt.peq(self.p)])
+        return out + f"; {self._asfmtext()}>"
 
 
 def pairwise(y, x, match=None, sub=None, ds=None,  # data in

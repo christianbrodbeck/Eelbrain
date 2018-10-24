@@ -220,6 +220,26 @@ class SuperEpoch(Epoch):
 
 
 class EpochCollection(Definition):
+    """A collection of epochs that are loaded separately.
+
+    For TRFs, a separate TRF will be estimated for each collected epoch (as
+    opposed to a SuperEpoch, for which sub-epochs will be merged before estimating
+    a single TRF).
+
+    Parameters
+    ----------
+    name : str
+        Name.
+    collect : Sequence of Epoch
+        Epochs to collect.
+    """
+    # IMPLEMENTATION ALTERNATIVE?
+    # ---------------------------
+    # In analogy to standard epochs, the "model" parameter could be used to fit
+    # a separate TRF per cell.
+    #
+    #  - Logistic complication: I would want to be able to fit only cell 1
+    #    first, and later fit cell 2, without redundant refitting.
     DICT_ATTRS = ('collect',)
 
     def __init__(self, name, collect):

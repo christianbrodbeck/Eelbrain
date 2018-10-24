@@ -1,7 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Test MneExperiment using mne-python sample data"""
 from pathlib import Path
-from os.path import join
+from os.path import join, exists
 
 from nose.tools import eq_, assert_raises
 import numpy as np
@@ -27,8 +27,9 @@ def test_sample():
     root = join(tempdir, 'SampleExperiment')
     e = SampleExperiment(root)
 
-    eq_(e.get('subject'), 'R0000')
-    eq_(e.get('subject', subject='R0002'), 'R0002')
+    assert e.get('raw') == '1-40'
+    assert e.get('subject') == 'R0000'
+    assert e.get('subject', subject='R0002') == 'R0002'
 
     # events
     e.set('R0001', rej='')
@@ -76,11 +77,14 @@ def test_sample():
 
     # test multiple epochs with same time stamp
     class Experiment(SampleExperiment):
-        epochs = SampleExperiment.epochs.copy()
-    Experiment.epochs['v1'] = {'base': 'visual', 'vars': {'shift': 'Var([0.0], repeat=len(side))'}}
-    Experiment.epochs['v2'] = {'base': 'visual', 'vars': {'shift': 'Var([0.1], repeat=len(side))'}}
-    Experiment.epochs['vc'] = {'sub_epochs': ('v1', 'v2'), 'post_baseline_trigger_shift': 'shift', 'post_baseline_trigger_shift_max': 0.1, 'post_baseline_trigger_shift_min': 0.0}
+        epochs = {
+            **SampleExperiment.epochs,
+            'v1': {'base': 'visual', 'vars': {'shift': 'Var([0.0], repeat=len(side))'}},
+            'v2': {'base': 'visual', 'vars': {'shift': 'Var([0.1], repeat=len(side))'}},
+            'vc': {'sub_epochs': ('v1', 'v2'), 'post_baseline_trigger_shift': 'shift', 'post_baseline_trigger_shift_max': 0.1, 'post_baseline_trigger_shift_min': 0.0},
+        }
     e = Experiment(root)
+    events = e.load_selected_events(epoch='vc')
     ds = e.load_epochs(baseline=True, epoch='vc')
     v1 = ds.sub("epoch=='v1'", 'meg').sub(time=(0, 0.199))
     v2 = ds.sub("epoch=='v2'", 'meg').sub(time=(-0.1, 0.099))
@@ -189,3 +193,11 @@ def test_samples_sesssions():
     ds2 = e.load_epochs(epoch='target2')
     ds_super = e.load_epochs(epoch='super')
     assert_dataobj_equal(ds_super['meg'], combine((ds1['meg'], ds2['meg'])))
+
+    # conflicting session and epoch settings
+    rej_path = join(root, 'meg', 'R0000', 'epoch selection', 'sample2_1-40_target2-man.pickled')
+    e.set(epoch='target2', raw='1-40')
+    assert not exists(rej_path)
+    e.set(session='sample1')
+    e.make_rej(auto=2e-12)
+    assert exists(rej_path)

@@ -10,6 +10,7 @@ class Figure(EelFigure):
     nax : int (optional)
         Create this many axes (default is to not create any axes).
     ...
+        Also accepts :ref:`general-layout-parameters`.
     autoscale : bool
         Autoscale data axes (default False).
     """

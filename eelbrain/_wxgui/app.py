@@ -17,6 +17,8 @@ from .frame import FOCUS_UI_UPDATE_FUNC_NAMES, EelbrainFrame
 
 
 APP = None  # hold the App instance
+JUMPSTART_TIME = 250  # ms
+
 
 def wildcard(filetypes):
     if filetypes:
@@ -26,6 +28,11 @@ def wildcard(filetypes):
 
 
 class App(wx.App):
+    _pt_thread = None
+    about_frame = None
+    _result = None
+    _bash_ui_from_mainloop = None
+
     def OnInit(self):
         self.SetAppName("Eelbrain")
         self.SetAppDisplayName("Eelbrain")
@@ -38,10 +45,10 @@ class App(wx.App):
                 LooseVersion('5') and CONFIG['prompt_toolkit']):
             import IPython
 
-            IPython.terminal.pt_inputhooks.register('eelbrain',
-                                                    self.pt_inputhook)
+            IPython.terminal.pt_inputhooks.register('eelbrain', self.pt_inputhook)
             shell = IPython.get_ipython()
             if shell is not None:
+                self._pt_thread = self._pt_thread_win if IS_WINDOWS else self._pt_thread_linux
                 try:
                     shell.enable_gui('eelbrain')
                 except IPython.core.error.UsageError:
@@ -205,27 +212,27 @@ class App(wx.App):
 
         return menu_bar
 
+    def _pt_thread_win(self, context):
+        # On Windows, select.poll() is not available
+        while context._input_is_ready is None or not context.input_is_ready():
+            sleep(0.020)
+        wx.CallAfter(self.ExitMainLoop, True)
+
+    def _pt_thread_linux(self, context):
+        poll = select.poll()
+        poll.register(context.fileno(), select.POLLIN)
+        poll.poll(-1)
+        wx.CallAfter(self.ExitMainLoop, True)
+
     def pt_inputhook(self, context):
         """prompt_toolkit inputhook"""
         # prompt_toolkit.eventloop.inputhook.InputHookContext
-        if IS_WINDOWS:
-            # On Windows, select.poll() is not available
-            def thread():
-                while context._input_is_ready is None or not context.input_is_ready():
-                    sleep(.02)
-                wx.CallAfter(self.pt_yield)
-        else:
-            def thread():
-                poll = select.poll()
-                poll.register(context.fileno(), select.POLLIN)
-                poll.poll(-1)
-                wx.CallAfter(self.pt_yield)
-
-        Thread(target=thread).start()
+        Thread(target=self._pt_thread, args=(context,)).start()
         self.MainLoop()
 
-    def pt_yield(self):
-        self.ExitMainLoop(True)
+    def jumpstart(self):
+        wx.CallLater(JUMPSTART_TIME, self.ExitMainLoop)
+        self.MainLoop()
 
     def _get_active_frame(self):
         win = wx.Window.FindFocus()
@@ -251,18 +258,19 @@ class App(wx.App):
 
     def _bash_ui(self, func, *args):
         "Launch a modal dialog based on terminal input"
-        if self.using_prompt_toolkit or self.IsMainLoopRunning():
+        self._bash_ui_from_mainloop = self.using_prompt_toolkit or self.IsMainLoopRunning()
+        if self._bash_ui_from_mainloop:
             return func(*args)
         else:
             if not self.GetTopWindow():
                 self.SetTopWindow(wx.Frame(None))
-            wx.CallLater(10, func, *args)
+            wx.CallAfter(func, *args)
             print("Please switch to the Python Application to provide input.")
             self.MainLoop()
             return self._result
 
     def _bash_ui_finalize(self, result):
-        if self.using_prompt_toolkit or self.IsMainLoopRunning():
+        if self._bash_ui_from_mainloop:
             return result
         else:
             self._result = result
@@ -384,12 +392,11 @@ class App(wx.App):
             self._ipython.user_global_ns[name] = obj
 
     def OnAbout(self, event):
-        if hasattr(self, '_about_frame') and hasattr(self._about_frame, 'Raise'):
-            self._about_frame.Raise()
+        if self.about_frame is None or not hasattr(self.about_frame, 'Raise'):
+            self.about_frame = AboutFrame(None)
+            self.about_frame.Show()
         else:
-            self._about_frame = AboutFrame(None)
-            self._about_frame.Show()
-#             frame.SetFocus()
+            self.about_frame.Raise()
 
     def OnClear(self, event):
         frame = self._get_active_frame()
@@ -665,7 +672,7 @@ class App(wx.App):
         self.ExitMainLoop()
 
 
-def get_app():
+def get_app(jumpstart=False):
     global APP
     if APP is None:
         try:
@@ -679,7 +686,18 @@ def get_app():
             else:
                 raise
 
+        if jumpstart and IS_OSX:
+            # Give wx a chance to initialize the GUI backend
+            APP.OnAbout(None)
+            wx.CallLater(JUMPSTART_TIME, APP.about_frame.Close)
+            wx.CallLater(JUMPSTART_TIME, APP.ExitMainLoop)
+            APP.MainLoop()
+
     return APP
+
+
+def needs_jumpstart():
+    return APP is None and IS_OSX
 
 
 def run(block=False):

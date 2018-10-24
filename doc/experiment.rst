@@ -87,29 +87,7 @@ a list of the subjects that were discovered and the MRIs used::
     ...
 
 
-Labeling events
----------------
-
-Initially, events are only labeled with the trigger ID. Use the
-:attr:`MneExperiment.variables` settings to add labels.
-For more complex designs and variables, you can override
-:meth:`MneExperiment.label_events`. Check events using::
-
-    >>> e = WordExperiment("/files")
-    >>> ds = e.load_events()
-    >>> ds.head()
-
-and other functions to examine :class:`Dataset` s.
-
-
-Defining data epochs
---------------------
-
-Once events are properly labeled, define :attr:`MneExperiment.epochs`. There is
-one special epoch to define, which is called ``'cov'``. This is the data epoch
-that will be used to estimate the sensor noise covariance matrix for source
-estimation.
-
+.. _MneExperiment-preprocessing:
 
 Pre-processing
 --------------
@@ -125,10 +103,53 @@ To inspect raw data for a given pre-processing stage use::
 
 Which will plot 5 s excerpts and allow scrolling through the data.
 
+
+Labeling events
+---------------
+
+Initially, events are only labeled with the trigger ID. Use the
+:attr:`MneExperiment.variables` settings to add labels.
+For more complex designs and variables, you can override
+:meth:`MneExperiment.label_events`.
+Events are represented as :class:`Dataset` objects and can be inspected with
+corresponding methods and functions, for example::
+
+    >>> e = WordExperiment("/files")
+    >>> ds = e.load_events()
+    >>> ds.head()
+    >>> print(table.frequencies('trigger', ds=ds))
+
+
+Defining data epochs
+--------------------
+
+Once events are properly labeled, define :attr:`MneExperiment.epochs`.
+
+There is one special epoch to define, which is called ``'cov'``. This is the
+data epoch that will be used to estimate the sensor noise covariance matrix for
+source estimation.
+
+In order to find the right ``sel`` epoch parameter, it can be useful to actually
+load the events with :meth:`MneExperiment.load_events` and test different
+selection strings. The epoch selection is determined by
+``selection = event_ds.eval(epoch['sel'])``. Thus, a specific setting could be
+tested with::
+
+    >>> ds = e.load_events()
+    >>> print(ds.sub("event == 'value'"))
+
+
+Bad channels
+------------
+
+Flat channels are automatically excluded from the analysis.
+
+An initial check for noisy channels can be done by looking at the raw data (see
+:ref:`MneExperiment-preprocessing` above).
 If this inspection reveals bad channels, they can be excluded using
 :meth:`MneExperiment.make_bad_channels`.
 
-Another good check for bad channels is plotting the average evoked response,
+Another good check for bad channels is plotting the average evoked response,,
 and looking for channels which are uncorrelated with neighboring
 channels. To plot the average before trial rejection, use::
 
@@ -385,7 +406,7 @@ type-specific parameters:
 ^^^^^^^^^^
 
 ``args`` (:class:`tuple`) and ``kwargs`` (:class:`dict`) for
-:func:`mne.io.Raw.filter`.
+:meth:`mne.io.Raw.filter`.
 
 
 ``ica``
@@ -885,8 +906,8 @@ filter, and to use sensor covariance matrices without regularization.
 
 .. _MneExperiment-raw-parameter:
 
-raw
----
+``raw``
+-------
 
 Which raw FIFF files to use. Can be customized (see :attr:`MneExperiment.raw`).
 The default values are:
@@ -901,30 +922,30 @@ The default values are:
     Band-pass filtered between 1 and 40 Hz.
 
 
-group
------
+``group``
+---------
 
 Any group defined in :attr:`MneExperiment.groups`. Will restrict the analysis
 to that group of subjects.
 
 
-epoch
------
+``epoch``
+---------
 
 Any epoch defined in :attr:`MneExperiment.epochs`. Specify the epoch on which
 the analysis should be conducted.
 
 
-Trial rejection
----------------
+``rej`` (trial rejection)
+-------------------------
 
 Trial rejection can be turned off ``e.set(rej='')``, meaning that no trials are
 rejected, and back on, meaning that the corresponding rejection files are used
-``e.set(rej='')``.
+``e.set(rej='man')``.
 
 
-equalize_evoked_count
----------------------
+``equalize_evoked_count``
+-------------------------
 
 By default, the analysis uses all epoch marked as good during rejection. Set
 equalize_evoked_count='eq' to discard trials to make sure the same number of
@@ -937,8 +958,8 @@ epochs goes into each cell of the model.
     epochs.
 
 
-cov
----
+``cov``
+-------
 
 The method for correcting the sensor covariance.
 
@@ -953,16 +974,16 @@ The method for correcting the sensor covariance.
     Use automatic selection of the optimal regularization method.
 
 
-inv
----
+``inv``
+-------
 
 To set the inverse solution use :meth:`MneExperiment.set_inv`.
 
 
 .. _analysis-params-parc:
 
-Parcellations
--------------
+``parc``/``mask`` (parcellations)
+---------------------------------
 
 The parcellation determines how the brain surface is divided into regions.
 Parcellation are mainly used in tests and report generation:
@@ -990,8 +1011,8 @@ Freesurfer Parcellations
 
 .. _analysis-params-connectivity:
 
-Connectivity
-------------
+``connectivity``
+----------------
 
 Possible values: ``''``, ``'link-midline'``
 
@@ -1004,10 +1025,11 @@ modified so that the midline gyri of the two hemispheres get linked at sources
 that are at most 15 mm apart. This parameter currently does not affect sensor
 space connectivity.
 
+
 .. _analysis-params-select_clusters:
 
-Cluster selection criteria
---------------------------
+``select_clusters`` (cluster selection criteria)
+------------------------------------------------
 
 In thresholded cluster test, clusters are initially filtered with a minimum
 size criterion. This can be changed with the ``select_clusters`` analysis

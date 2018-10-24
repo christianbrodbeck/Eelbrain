@@ -5,7 +5,7 @@ To produce the data directory for this experiment use (make sure
 that the directory you specify exists)::
 
     >>> from eelbrain import datasets
-    >>> datasets.setup_samples_experiment('~/Data', n_segments=2, n_sessions=2)
+    >>> datasets.setup_samples_experiment('~/Data', n_segments=2, n_sessions=2, name='SampleExperimentSessions')
 
 Then you can use::
 
@@ -16,7 +16,7 @@ Then you can use::
 from eelbrain import MneExperiment
 
 
-ROOT = "~/Data/SampleExperiment"
+ROOT = "~/Data/SampleExperimentSessions"
 
 
 class SampleExperiment(MneExperiment):

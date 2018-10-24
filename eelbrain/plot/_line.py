@@ -50,7 +50,9 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
         legend in a separate figure.
     clip : bool
         Clip lines outside of axes (default ``True``).
-        
+    ...
+        Also accepts :ref:`general-layout-parameters`.
+
     Notes
     -----
     Navigation:

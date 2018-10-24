@@ -12,6 +12,10 @@ New in 0.29
   - :class:`VolumeSourceSpace` to represent volume source spaces
   - :class:`testnd.Vector` for statistical testing of vector data
 
+* New :class:`NDVar` functions:
+
+  - :func:`correlation_coefficient`
+
 
 New in 0.28
 -----------

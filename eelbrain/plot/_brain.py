@@ -11,8 +11,9 @@ import numpy as np
 
 from .._data_obj import asndvar, NDVar, SourceSpace, UTS
 from .._utils import deprecated
-from ..fmtxt import Image, im_table, ms
-from ._base import EelFigure, ImLayout, ColorBarMixin
+from ..fmtxt import Image, im_table
+from .._text import ms
+from ._base import EelFigure, ImLayout, ColorBarMixin, butterfly_data
 from ._color_luts import p_lut, dspm_lut
 from ._colors import ColorList
 
@@ -335,11 +336,12 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, p0alpha=0.5, *args,
     if isinstance(p_map, NDTest):
         if isinstance(p_map, MultiEffectNDTest):
             raise NotImplementedError(f"plot.brain.p_map for {p_map.__class__.__name__}")
-        res = p_map
-        p_map = res.p
-        param_map = res.t
-    p_map, lut, vmax = p_lut(p_map, param_map, p0, p1, p0alpha)
-    return _plot(p_map, lut, -vmax, vmax, *args, **kwargs)
+        source = p_map.p.source
+    else:
+        source = p_map.source
+    p = brain(source, None, None, None, *args, **kwargs)
+    p.add_ndvar_p_map(p_map, param_map, p0, p1, p0alpha)
+    return p
 
 
 def cluster(cluster, vmax=None, *args, **kwargs):
@@ -488,6 +490,8 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
     brain : Brain
         Brain instance containing the plot.
     """
+    from .._wxgui import get_app
+    get_app(jumpstart=True)
     from ._brain_object import Brain, get_source_dim
 
     if isinstance(src, SourceSpace):
@@ -597,7 +601,7 @@ def _voxel_brain(data, lut, vmin, vmax):
 # - _x_bin_table_ims() wrap 'x' brain plot function
 # - _bin_table_ims() creates ims given a brain plot function
 
-class ImageTable(EelFigure, ColorBarMixin):
+class ImageTable(ColorBarMixin, EelFigure):
     _name = "ImageTable"
     # Initialize in two steps
     #
@@ -1371,36 +1375,17 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, surf='inflated',
         Brain plot.
     """
     import wx
-    from .._stats import testnd
     from .._wxgui.mpl_canvas import CanvasFrame
     from ._brain_object import BRAIN_H, BRAIN_W
     from ._utsnd import Butterfly
 
-    if isinstance(y, (testnd.ttest_1samp, testnd.ttest_rel, testnd.ttest_ind)):
-        y = y.masked_parameter_map(0.05, name=y.y)
+    hemis, bfly_data, brain_data = butterfly_data(y, hemi)
 
     if name is None:
-        name = y.name
-
-    if y.has_case:
-        y = y.mean('case')
-
-    # find hemispheres to include
-    if hemi is None:
-        hemis = []
-        if y.source.lh_n:
-            hemis.append('lh')
-        if y.source.rh_n:
-            hemis.append('rh')
-    elif hemi in ('lh', 'rh'):
-        hemis = (hemi,)
-    else:
-        raise ValueError("hemi=%r" % (hemi,))
+        name = brain_data.name
 
     # butterfly-plot
-    plot_data = [y.sub(source=hemi_, name=hemi_.capitalize()) for hemi_ in hemis]
-    p = Butterfly(plot_data, vmin=vmin, vmax=vmax, xlim=xlim,
-                  h=h, w=w, ncol=1, name=name, color='black', ylabel=False)
+    p = Butterfly(bfly_data, vmin=vmin, vmax=vmax, xlim=xlim, h=h, w=w, ncol=1, name=name, color='black', ylabel=hemis, axtitle=False)
 
     # position the brain window next to the butterfly-plot
     brain_h = h * p._layout.dpi
@@ -1415,7 +1400,7 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, surf='inflated',
         pos = wx.DefaultPosition
 
     # Brain plot
-    p_brain = brain(y, cmap, vmin, vmax, surf, views, hemi, mask=mask,
+    p_brain = brain(brain_data, cmap, vmin, vmax, surf, views, hemi, mask=mask,
                     smoothing_steps=smoothing_steps, axh=brain_h, name=name,
                     pos=pos)
     p.link_time_axis(p_brain)

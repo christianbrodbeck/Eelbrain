@@ -183,6 +183,8 @@ class PairwiseLegend(EelFigure):
         Side length in inches of a virtual square containing each bar.
     trend : bool
         Also include a bar for trends (p<0.1). Default is True.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
     _name = "ColorGrid"
 
@@ -323,8 +325,8 @@ class Boxplot(YLimMixin, _SimpleFigure):
     tight : bool
         Use matplotlib's tight_layout to resize all axes to fill the figure
         (default True).
-    title : str
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
     _name = "Boxplot"
 
@@ -453,8 +455,8 @@ class Barplot(YLimMixin, _SimpleFigure):
     tight : bool
         Use matplotlib's tight_layout to resize all axes to fill the figure
         (default True).
-    title : str
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
     _name = "Barplot"
 
@@ -726,8 +728,8 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
     tight : bool
         Use matplotlib's tight_layout to resize all axes to fill the figure
         (default True).
-    title : str
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
     _name = "Timeplot"
 
@@ -976,8 +978,8 @@ class Correlation(EelFigure, LegendMixin):
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
-    title : str
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
     _name = "Correlation"
 
@@ -1041,12 +1043,13 @@ class Regression(EelFigure, LegendMixin):
     legend : str | int | 'fig' | None
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
-    ...
+    c : color | sequence of colors
+        Colors.
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
-    title : str
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
     _name = "Regression"
 
@@ -1174,8 +1177,8 @@ class Histogram(EelFigure):
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
-    title : None | str
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
     _name = "Histogram"
 

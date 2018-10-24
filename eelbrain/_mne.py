@@ -10,6 +10,7 @@ from scipy.spatial.distance import cdist
 import mne
 from mne.label import Label, BiHemiLabel
 from mne.utils import get_subjects_dir
+from nibabel.freesurfer import read_annot
 
 from ._data_obj import NDVar, SourceSpace, VolumeSourceSpace
 from ._ndvar import set_parc
@@ -23,6 +24,13 @@ def assert_subject_exists(subject, subjects_dir):
     if not os.path.exists(os.path.join(subjects_dir, subject)):
         raise IOError("Subject %s does not exist in subjects_dir %s" %
                       (subject, subjects_dir))
+
+
+def find_source_subject(subject, subjects_dir):
+    cfg_path = os.path.join(subjects_dir, subject, 'MRI scaling parameters.cfg')
+    if os.path.exists(cfg_path):
+        cfg = mne.coreg.read_mri_cfg(subject, subjects_dir)
+        return cfg['subject_from']
 
 
 def complete_source_space(ndvar, fill=0.):
@@ -145,6 +153,49 @@ def shift_mne_epoch_trigger(epochs, trigger_shift, min_shift=None, max_shift=Non
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', 'The events passed to the Epochs constructor', RuntimeWarning)
         return mne.EpochsArray(new_data, epochs.info, events, tmin, epochs.event_id)
+
+
+def label_from_annot(sss, subject, subjects_dir, parc=None, color=(0, 0, 0)):
+    """Label for known regions of a source space
+
+    Parameters
+    ----------
+    sss : mne.SourceSpaces
+        Source space.
+    subject : str
+        MRI-subject.
+    subjects_dir : str
+        MRI subjects-directory.
+    parc : str
+        Parcellation name.
+    color : matplotlib color
+        Label color.
+
+    Returns
+    -------
+    label : mne.Label
+        Label encompassing known regions of ``parc`` in ``sss``.
+    """
+    fname = SourceSpace._ANNOT_PATH.format(subjects_dir=subjects_dir, subject=subject, hemi='%s', parc=parc)
+
+    # find vertices for each hemisphere
+    labels = []
+    for hemi, ss in zip(('lh', 'rh'), sss):
+        annotation, _, names = read_annot(fname % 'lh')
+        bad = [-1, names.index(b'unknown')]
+        keep = ~np.in1d(annotation[ss['vertno']], bad)
+        if np.any(keep):
+            label = mne.Label(ss['vertno'][keep], hemi=hemi, color=color)
+            labels.append(label)
+
+    # combine hemispheres
+    if len(labels) == 2:
+        lh, rh = labels
+        return lh + rh
+    elif len(labels) == 1:
+        return labels.pop(0)
+    else:
+        raise RuntimeError("No vertices left")
 
 
 def labels_from_clusters(clusters, names=None):
@@ -324,8 +375,10 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
         Mirror hemispheres (i.e., project data from the left hemisphere to the
         right hemisphere and vice versa).
     mask : bool
-        Remove sources in "unknown-" labels (default is True unless ``ndvar``
-        contains sources with "unknown-" label or ``vertices_to`` is specified).
+        Restrict output to known sources. If the parcellation of ``ndvar`` is
+        retained keep only sources with labels contained in ``ndvar``, otherwise
+        remove only sourves with ``”unknown-*”`` label (default is True unless
+        ``vertices_to`` is specified).
 
     Returns
     -------
@@ -412,10 +465,13 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     # find target source space
     source_to = SourceSpace(vertices_to, subject_to, src, subjects_dir, parc_to)
     if mask is True:
-        index = np.invert(source_to.parc.startswith('unknown-'))
+        if parc is True:
+            index = source_to.parc.isin(source.parc.cells)
+        else:
+            index = source_to.parc.isnotin(('unknown-lh', 'unknown-rh'))
         source_to = source_to[index]
     elif mask not in (None, False):
-        raise TypeError("mask=%r" % (mask,))
+        raise TypeError(f"mask={mask!r}")
 
     axis = ndvar.get_axis('source')
     x = ndvar.x
@@ -423,18 +479,13 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     # check whether it is a scaled brain
     do_morph = True
     if not xhemi:
-        cfg_path = os.path.join(subjects_dir, subject_from,
-                                'MRI scaling parameters.cfg')
-        if os.path.exists(cfg_path):
-            cfg = mne.coreg.read_mri_cfg(subject_from, subjects_dir)
-            subject_from = cfg['subject_from']
-            if (subject_to == subject_from and
-                    _vertices_equal(source_to.vertices, source.vertices)):
-                if copy:
-                    x_ = x.copy()
-                else:
-                    x_ = x
-                do_morph = False
+        source_subject = find_source_subject(subject_to, subjects_dir)
+        if subject_to == source_subject and _vertices_equal(source_to.vertices, source.vertices):
+            if copy:
+                x_ = x.copy()
+            else:
+                x_ = x
+            do_morph = False
 
     if do_morph:
         if morph_mat is None:

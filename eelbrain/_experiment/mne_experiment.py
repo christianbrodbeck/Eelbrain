@@ -26,11 +26,12 @@ import numpy as np
 
 import mne
 from mne.baseline import rescale
-from mne.minimum_norm import (make_inverse_operator, apply_inverse,
-                              apply_inverse_epochs)
+from mne.minimum_norm import (
+    make_inverse_operator, apply_inverse, apply_inverse_epochs)
 from tqdm import tqdm
 
 from .. import _report
+from .. import fmtxt
 from .. import gui
 from .. import load
 from .. import plot
@@ -39,7 +40,7 @@ from .. import table
 from .. import testnd
 from .._config import CONFIG
 from .._data_obj import (
-    Datalist, Dataset, Factor, Var,
+    Datalist, Dataset, Factor, Var, SourceSpace, VolumeSourceSpace,
     align, align1, all_equal, assert_is_legal_dataset_key, combine)
 from .._exceptions import DefinitionError, DimensionMismatchError, OldVersionError
 from .._info import BAD_CHANNELS
@@ -49,17 +50,19 @@ from .._names import INTERPOLATE_CHANNELS
 from .._meeg import new_rejection_ds
 from .._mne import (
     dissolve_label, labels_from_mni_coords, rename_label, combination_label,
-    morph_source_space, shift_mne_epoch_trigger)
+    morph_source_space, shift_mne_epoch_trigger, find_source_subject,
+    label_from_annot,
+)
 from ..mne_fixes import (
     write_labels_to_annot, _interpolate_bads_eeg, _interpolate_bads_meg)
 from ..mne_fixes._trans import hsp_equal, mrk_equal
-from ..mne_fixes._source_space import merge_volume_source_space
+from ..mne_fixes._source_space import merge_volume_source_space, prune_volume_source_space
 from .._ndvar import cwt_morlet
 from ..fmtxt import List, Report, Image, read_meta
-from .._report import named_list, enumeration, plural
 from .._resources import predefined_connectivity
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
+from .._text import named_list, enumeration, plural
 from .._utils import WrappedFormater, ask, subp, keydefaultdict, log_level
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .._utils.numpy_utils import INT_TYPES
@@ -81,7 +84,7 @@ from .preprocessing import (
     assemble_pipeline, RawICA, pipeline_dict, compare_pipelines,
     ask_to_delete_ica_files)
 from .test_def import (
-    Test, EvokedTest, TTestInd,
+    Test, EvokedTest,
     ROITestResult, TestDims, TwoStageTest, assemble_tests,
 )
 from .vardef import Vars
@@ -102,9 +105,9 @@ ICA_REJ_PARAMS = {'kind', 'source', 'epoch', 'interpolation', 'n_components',
 COV_PARAMS = {'epoch', 'session', 'method', 'reg', 'keep_sample_mean',
               'reg_eval_win_pad'}
 
-
-SRC_RE = re.compile('(ico|vol)-(\d+)$')
-inv_re = re.compile("(free|fixed|loose\.\d+)-"  # orientation constraint
+SRC_RE = re.compile('^(ico|vol)-(\d+)(?:-(brainstem))?$')
+inv_re = re.compile("^"
+                    "(free|fixed|loose\.\d+|vec)-"  # orientation constraint
                     "(\d*\.?\d+)-"  # SNR
                     "(MNE|dSPM|sLORETA)"  # method
                     "(?:-((?:0\.)?\d+))?"  # depth weighting
@@ -814,7 +817,8 @@ class MneExperiment(FileTree):
         self._register_field('group', self._groups.keys(), 'all',
                              post_set_handler=self._post_set_group)
 
-        self._register_field('raw', sorted(self._raw))
+        raw_default = sorted(self.raw)[0] if self.raw else None
+        self._register_field('raw', sorted(self._raw), default=raw_default)
         self._register_field('rej', self._artifact_rejection.keys(), 'man')
 
         # epoch
@@ -1006,8 +1010,8 @@ class MneExperiment(FileTree):
                     raw = self.load_raw(False)
                     digs[session] = raw.info['dig']
                 # find unique digitizer datasets
-                unique_digs = []
-                dig_ids = {}  # {session: id}
+                unique_digs = []  # unique marker point location sets
+                dig_ids = {}  # {session: dig_id}; dig_id is index in unique_digs
                 dig_missing = []
                 sessions = sorted(digs)
                 for session in sessions:
@@ -1042,17 +1046,23 @@ class MneExperiment(FileTree):
                             group_desc = ' vs '.join('/'.join(group) for group in groups.values())
                             raise NotImplementedError(f"SuperEpoch {epoch.name} has sessions with incompatible marker positions ({group_desc}); SuperEpochs with different forward solutions are not implemented.")
                 # determine which to use for forward solution
-                fwd_sessions = input_state['fwd-sessions'][subject]
-                previous_masters = (s for _, s in fwd_sessions.items() if s in dig_ids)
-                masters = {dig_ids[s]: s for s in previous_masters}
-                for s in sessions:
-                    if dig_ids[s] not in masters:
-                        masters[dig_ids[s]] = s
-                    fwd_sessions[s] = masters[dig_ids[s]]
+                fwd_sessions = input_state['fwd-sessions'].get(subject, {})  # {for_session: use_session}
+                fwd_session_for_id = {dig_ids[s]: s for s in fwd_sessions.values() if s in dig_ids}  # {dig_id: use_session}, initialize with previously used sessions
+                for session in sorted(dig_ids):
+                    if session in fwd_sessions:
+                        continue
+                    dig_id = dig_ids[session]
+                    if dig_id not in fwd_session_for_id:
+                        fwd_session_for_id[dig_id] = session
+                    fwd_sessions[session] = fwd_session_for_id[dig_id]
+                for session in dig_missing:
+                    if fwd_session_for_id:
+                        assert len(fwd_session_for_id) == 1
+                        fwd_sessions[session] = fwd_session_for_id[0]
 
         # save input-state
         save.pickle(input_state, input_state_file)
-        self._fwd_sessions = input_state['fwd-sessions']
+        self._fwd_sessions = input_state['fwd-sessions']  # {subject: {for_session: use_session}}
 
         # Check the cache, delete invalid files
         # =====================================
@@ -1710,6 +1720,15 @@ class MneExperiment(FileTree):
     def _process_subject_arg(self, subject, kwargs):
         """Process subject arg for methods that work on groups and subjects
 
+        Parameters
+        ----------
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
+        kwargs : dict
+            Additional state parameters to set.
+
         Returns
         -------
         subject : None | str
@@ -1717,27 +1736,35 @@ class MneExperiment(FileTree):
         group : None | str
             Group name if the value specifies a group, None otherwise.
         """
-        if subject is None:
-            group = None
-            subject_ = self.get('subject', **kwargs)
-        elif subject is True:
-            group = self.get('group', **kwargs)
-            subject_ = None
-        elif subject in self.get_field_values('group'):
-            if 'group' in kwargs:
-                if kwargs['group'] != subject:
-                    raise ValueError(f"group={kwargs['group']!r} inconsistent with subject={subject!r}")
-                self.set(**kwargs)
-            else:
-                self.set(group=subject, **kwargs)
-            group = subject
-            subject_ = None
-        else:
-            group = None
-            subject_ = subject
-            self.set(subject=subject, **kwargs)
+        # legacy values
+        if subject is True:
+            subject = -1
+        elif subject is None:
+            subject = 1
 
-        return subject_, group
+        if isinstance(subject, int):
+            if subject == 1:
+                return self.get('subject', **kwargs), None
+            elif subject == -1:
+                return None, self.get('group', **kwargs)
+            else:
+                raise ValueError(f"subject={subject}")
+        elif isinstance(subject, str):
+            if subject in self.get_field_values('group'):
+                if 'group' in kwargs:
+                    if kwargs['group'] != subject:
+                        raise ValueError(f"group={kwargs['group']!r} inconsistent with subject={subject!r}")
+                    self.set(**kwargs)
+                else:
+                    self.set(group=subject, **kwargs)
+                return None, subject
+            elif subject in self.get_field_values('subject', **kwargs):
+                self.set(subject=subject)
+                return subject, None
+            else:
+                raise ValueError(f"subject={subject!r}: neither group nor subject with that name")
+        else:
+            raise TypeError(f"subject={subject!r}")
 
     def _cluster_criteria_kwargs(self, data):
         criteria = self._cluster_criteria[self.get('select_clusters')]
@@ -1745,7 +1772,7 @@ class MneExperiment(FileTree):
 
     def _add_epochs(self, ds, epoch, baseline, ndvar, data_raw, pad, decim,
                     reject, apply_ica, trigger_shift, eog, tmin, tmax, tstop,
-                    data):
+                    data, add_bads_to_info=False):
         modality = self.get('modality')
         if tmin is None:
             tmin = epoch.tmin
@@ -1804,7 +1831,11 @@ class MneExperiment(FileTree):
             sysname = self._sysname(ds.info['raw'], ds.info['subject'], modality)
             name = self._ndvar_name_for_modality(modality)
             ds[name] = load.fiff.epochs_ndvar(ds['epochs'], sysname=sysname,
+                                              exclude=() if add_bads_to_info else 'bads',
                                               data=self._data_arg(modality, eog))
+            if add_bads_to_info:
+                ds[name].info[BAD_CHANNELS] = ds['epochs'].info['bads']
+
             if ndvar != 'both':
                 del ds['epochs']
             if modality == 'eeg':
@@ -1843,31 +1874,35 @@ class MneExperiment(FileTree):
         """
         subject = ds['subject']
         if len(subject.cells) != 1:
-            err = "ds must have a subject variable with exactly one subject"
-            raise ValueError(err)
+            raise ValueError("ds must have a subject variable with exactly one subject")
         subject = subject.cells[0]
         self.set(subject=subject)
         if baseline is True:
             baseline = self._epochs[self.get('epoch')].baseline
-
+        parc = self.get('parc') or None
+        if isinstance(mask, str) and parc != mask:
+            parc = mask
+            self.set(parc=mask)
         epochs = ds['epochs']
         inv = self.load_inv(epochs)
-        stc = apply_inverse_epochs(epochs, inv, **self._params['apply_inv_kw'])
+
+        # determine whether initial source-space can be restricted
+        mri_sdir = self.get('mri-sdir')
+        mrisubject = self.get('mrisubject')
+        is_scaled = find_source_subject(mrisubject, mri_sdir)
+        if mask and (is_scaled or not morph):
+            label = label_from_annot(inv['src'], mrisubject, mri_sdir, parc)
+        else:
+            label = None
+        stc = apply_inverse_epochs(epochs, inv, label=label, **self._params['apply_inv_kw'])
 
         if ndvar:
-            parc = self.get('parc') or None
-            if isinstance(mask, str) and parc != mask:
-                parc = mask
-                self.set(parc=mask)
             self.make_annot()
-            subject = self.get('mrisubject')
             src = self.get('src')
-            mri_sdir = self.get('mri-sdir')
-            src = load.fiff.stc_ndvar(stc, subject, src, mri_sdir,
-                                      self._params['apply_inv_kw']['method'],
-                                      self._params['make_inv_kw'].get('fixed', False),
-                                      parc=parc,
-                                      connectivity=self.get('connectivity'))
+            src = load.fiff.stc_ndvar(
+                stc, mrisubject, src, mri_sdir, self._params['apply_inv_kw']['method'],
+                self._params['make_inv_kw'].get('fixed', False), parc=parc,
+                connectivity=self.get('connectivity'))
             if baseline:
                 src -= src.summary(time=baseline)
 
@@ -1876,12 +1911,10 @@ class MneExperiment(FileTree):
                 with self._temporary_state:
                     self.make_annot(mrisubject=common_brain)
                 ds['srcm'] = morph_source_space(src, common_brain)
-                if mask:
+                if mask and not is_scaled:
                     _mask_ndvar(ds, 'srcm')
             else:
                 ds['src'] = src
-                if mask:
-                    _mask_ndvar(ds, 'src')
         else:
             if baseline:
                 raise NotImplementedError("Baseline for SourceEstimate")
@@ -2546,7 +2579,7 @@ class MneExperiment(FileTree):
         else:
             raise ValueError("modality=%r" % modality)
 
-    def load_epochs(self, subject=None, baseline=False, ndvar=True,
+    def load_epochs(self, subject=1, baseline=False, ndvar=True,
                     add_bads=True, reject=True, cat=None,
                     decim=None, pad=0, data_raw=False, vardef=None, data='sensor',
                     eog=False, trigger_shift=True, apply_ica=True, tmin=None,
@@ -2556,11 +2589,10 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        subject : str
-            Subject(s) for which to load epochs. Can be a single subject
-            name or a group name such as ``'all'``. The default (``None``) is
-            the current subject in the experiment's state. ``True`` to load the
-            current group.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
         baseline : bool | tuple
             Apply baseline correction using this period. True to use the
             epoch's baseline specification. The default is to not apply baseline
@@ -2571,7 +2603,7 @@ class MneExperiment(FileTree):
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from the 'bads-file'. Alternatively,
-            a list of bad channels can be sumbitted.
+            a list of bad channels can be specified.
         reject : bool
             Whether to apply epoch rejection or not. The kind of rejection
             employed depends on the ``rej`` setting.
@@ -2613,8 +2645,7 @@ class MneExperiment(FileTree):
         """
         data = TestDims.coerce(data)
         if not data.sensor:
-            raise ValueError("data=%r; load_evoked is for loading sensor data" %
-                             (data.string,))
+            raise ValueError(f"data={data.string!r}; load_evoked is for loading sensor data")
         elif data.sensor is not True and not ndvar:
             raise ValueError("data=%r with ndvar=False" % (data.string,))
         if ndvar:
@@ -2661,6 +2692,17 @@ class MneExperiment(FileTree):
                     dss.append(ds)
             return combine(dss)
 
+        if isinstance(add_bads, str):
+            if add_bads == 'info':
+                add_bads_to_info = True
+                add_bads = True
+            else:
+                raise ValueError(f"add_bads={add_bads!r}")
+        elif isinstance(add_bads, bool):
+            add_bads_to_info = False
+        else:
+            raise TypeError(f"add_bads={add_bads!r}")
+
         with self._temporary_state:
             ds = self.load_selected_events(add_bads=add_bads, reject=reject,
                                            data_raw=data_raw or True,
@@ -2674,11 +2716,11 @@ class MneExperiment(FileTree):
             # load sensor space data
             ds = self._add_epochs(ds, epoch, baseline, ndvar, data_raw, pad,
                                   decim, reject, apply_ica, trigger_shift, eog,
-                                  tmin, tmax, tstop, data)
+                                  tmin, tmax, tstop, data, add_bads_to_info)
 
         return ds
 
-    def load_epochs_stc(self, subject=None, sns_baseline=True,
+    def load_epochs_stc(self, subject=1, sns_baseline=True,
                         src_baseline=False, ndvar=True, cat=None,
                         keep_epochs=False, morph=False, mask=False,
                         data_raw=False, vardef=None, decim=None, **kwargs):
@@ -2686,11 +2728,10 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        subject : str
-            Subject(s) for which to load epochs. Can be a single subject
-            name or a group name such as ``'all'``. The default (``None``) is
-            the current subject in the experiment's state. ``True`` to load the
-            current group.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
             Warning: loading single trial data for multiple subjects at once
             uses a lot of memory, which can lead to a periodically unresponsive
             terminal).
@@ -2706,9 +2747,10 @@ class MneExperiment(FileTree):
             SourceEstimate objects named "stc" (default True).
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
-        keep_epochs : bool
+        keep_epochs : bool | 'ndvar' | 'both'
             Keep the sensor space data in the Dataset that is returned (default
-            False).
+            False; True to keep :class:`mne.Epochs` object; ``'ndvar'`` to keep
+            :class:`NDVar`; ``'both'`` to keep both).
         morph : bool
             Morph the source estimates to the common_brain (default False).
         mask : bool | str
@@ -2758,10 +2800,25 @@ class MneExperiment(FileTree):
                 dss.append(ds)
             return combine(dss)
         else:
-            ds = self.load_epochs(subject, sns_baseline, False, cat=cat,
+            if keep_epochs is True:
+                sns_ndvar = False
+                del_epochs = False
+            elif keep_epochs is False:
+                sns_ndvar = False
+                del_epochs = True
+            elif keep_epochs == 'ndvar':
+                sns_ndvar = 'both'
+                del_epochs = True
+            elif keep_epochs == 'both':
+                sns_ndvar = 'both'
+                del_epochs = False
+            else:
+                raise ValueError(f'keep_epochs={keep_epochs!r}')
+
+            ds = self.load_epochs(subject, sns_baseline, sns_ndvar, cat=cat,
                                   decim=decim, data_raw=data_raw, vardef=vardef)
             self._add_epochs_stc(ds, ndvar, src_baseline, morph, mask)
-            if not keep_epochs:
+            if del_epochs:
                 del ds['epochs']
             return ds
 
@@ -2870,7 +2927,7 @@ class MneExperiment(FileTree):
                 "to check rejection files." % (self.__class__.__name__,))
         return ds
 
-    def load_evoked(self, subject=None, baseline=False, ndvar=True, cat=None,
+    def load_evoked(self, subject=1, baseline=False, ndvar=True, cat=None,
                     decim=None, data_raw=False, vardef=None, data='sensor',
                     **kwargs):
         """
@@ -2878,11 +2935,10 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        subject : str
-            Subject(s) for which to load evoked responses. Can be a single subject
-            name or a group name such as ``'all'``. The default (``None``) is
-            the current subject in the experiment's state. ``True`` to load the
-            current group.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
         baseline : bool | tuple
             Apply baseline correction using this period. True to use the
             epoch's baseline specification. The default is to not apply baseline
@@ -2990,16 +3046,16 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_epochs_stf(self, subject=None, sns_baseline=True, mask=True,
+    def load_epochs_stf(self, subject=1, sns_baseline=True, mask=True,
                         morph=False, keep_stc=False, **kwargs):
         """Load frequency space single trial data
 
         Parameters
         ----------
-        subject : str
-            Subject(s) for which to load epochs. Can be a single subject
-            name or a group name such as 'all'. The default is the current
-            subject in the experiment's state.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
         sns_baseline : None | True | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
@@ -3031,17 +3087,16 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_evoked_stf(self, subject=None, sns_baseline=True, mask=True,
+    def load_evoked_stf(self, subject=1, sns_baseline=True, mask=True,
                         morph=False, keep_stc=False, **kwargs):
         """Load frequency space evoked data
 
         Parameters
         ----------
-        subject : str
-            Subject(s) for which to load evoked responses. Can be a single subject
-            name or a group name such as ``'all'``. The default (``None``) is
-            the current subject in the experiment's state. ``True`` to load the
-            current group.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
         sns_baseline : None | True | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
@@ -3073,7 +3128,7 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_evoked_stc(self, subject=None, sns_baseline=True,
+    def load_evoked_stc(self, subject=1, sns_baseline=True,
                         src_baseline=False, sns_ndvar=False, ind_stc=False,
                         ind_ndvar=False, morph_stc=False, morph_ndvar=False,
                         cat=None, keep_evoked=False, mask=False, data_raw=False,
@@ -3082,11 +3137,10 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        subject : str
-            Subject(s) for which to load evoked responses. Can be a single subject
-            name or a group name such as ``'all'``. The default (``None``) is
-            the current subject in the experiment's state. ``True`` to load the
-            current group.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
         sns_baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
@@ -3231,6 +3285,13 @@ class MneExperiment(FileTree):
         elif isinstance(mask, str):
             self.set(parc=mask)
             mask = True
+
+        src = self.get('src')
+        if src[:3] == 'vol':
+            inv = self.get('inv')
+            if not (inv.startswith('vec') or inv.startswith('free')):
+                raise ValueError('inv=%r with src=%r: volume source space '
+                                 'requires free or vector inverse' % (inv, src))
 
         if fiff is None:
             fiff = self.load_raw()
@@ -3397,7 +3458,7 @@ class MneExperiment(FileTree):
         return ClusterPlotter(ds, res, colors, dst, vec_fmt, pix_fmt, labels, h,
                               rc)
 
-    def load_selected_events(self, subject=None, reject=True, add_bads=True,
+    def load_selected_events(self, subject=1, reject=True, add_bads=True,
                              index=True, data_raw=False, vardef=None, cat=None,
                              **kwargs):
         """
@@ -3405,11 +3466,10 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        subject : str
-            Subject(s) for which to load events. Can be a single subject
-            name or a group name such as ``'all'``. The default (``None``) is
-            the current subject in the experiment's state. ``True`` to load the
-            current group.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
         reject : bool | 'keep'
             Reject bad trials. For True, bad trials are removed from the
             Dataset. For 'keep', the 'accept' variable is added to the Dataset
@@ -3631,17 +3691,26 @@ class MneExperiment(FileTree):
                                   vardef=test_obj.vars)
         return testnd.LM('src', test_obj.stage_1, ds, subject=subject)
 
-    def load_src(self, add_geom=False, **state):
+    def load_src(self, add_geom=False, ndvar=False, **state):
         """Load the current source space
         
         Parameters
         ----------
         add_geom : bool
             Parameter for :func:`mne.read_source_spaces`.
+        ndvar : bool
+            Return as NDVar Dimension object (default False).
         ...
             State parameters.
         """
         fpath = self.get('src-file', make=True, **state)
+        if ndvar:
+            src = self.get('src')
+            if src.startswith('vol'):
+                return VolumeSourceSpace.from_file(
+                    self.get('mri-sdir'), self.get('mrisubject'), src)
+            return SourceSpace.from_file(
+                self.get('mri-sdir'), self.get('mrisubject'), src, self.get('parc'))
         return mne.read_source_spaces(fpath, add_geom)
 
     def load_test(self, test, tstart=None, tstop=None, pmin=None, parc=None,
@@ -4470,7 +4539,7 @@ class MneExperiment(FileTree):
         src_path = self.get(temp, **{field: src})
         os.link(src_path, dst_path)
 
-    def make_mov_ga_dspm(self, subject=None, sns_baseline=True, src_baseline=False,
+    def make_mov_ga_dspm(self, subject=1, sns_baseline=True, src_baseline=False,
                          fmin=2, surf=None, views=None, hemi=None, time_dilation=4.,
                          foreground=None, background=None, smoothing_steps=None,
                          dst=None, redo=False, **kwargs):
@@ -4478,8 +4547,10 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        subject : None | str
-            Subject or group.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
         sns_baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
@@ -4551,7 +4622,7 @@ class MneExperiment(FileTree):
         brain.save_movie(dst, time_dilation)
         brain.close()
 
-    def make_mov_ttest(self, subject, model='', c1=None, c0=None, p=0.05,
+    def make_mov_ttest(self, subject=1, model='', c1=None, c0=None, p=0.05,
                        sns_baseline=True, src_baseline=False,
                        surf=None, views=None, hemi=None, time_dilation=4.,
                        foreground=None,  background=None, smoothing_steps=None,
@@ -4560,9 +4631,10 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        subject : str
-            Group name for a between-subject t-test, or subject name for a
-            within-subject t-test.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
         model : None | str
             Model on which the conditions c1 and c0 are defined. The default
             (``''``) is the grand average.
@@ -4898,7 +4970,7 @@ class MneExperiment(FileTree):
                     "inherits rejections from other epochs. Generate trial "
                     "rejection for these epochs.".format(cur=epoch.name))
 
-        path = self.get('rej-file', mkdir=True)
+        path = self.get('rej-file', mkdir=True, session=epoch.session)
         modality = self.get('modality')
 
         if auto is not None and overwrite is not True and exists(path):
@@ -5570,28 +5642,40 @@ class MneExperiment(FileTree):
                     return
 
             src = self.get('src')
+            self._log.info(f"Scaling {src} source space for {subject}...")
             subjects_dir = self.get('mri-sdir')
-            mne.scale_source_space(subject, src, subjects_dir=subjects_dir)
+            mne.scale_source_space(subject, f'{{subject}}-{src}-src.fif', subjects_dir=subjects_dir)
         elif exists(dst):
             return
         else:
             src = self.get('src')
-            kind, param = src.split('-')
+            kind, param, special = SRC_RE.match(src).groups()
+            self._log.info(f"Generating {src} source space for {subject}...")
             if kind == 'vol':
                 if subject == 'fsaverage':
                     bem = self.get('bem-file')
                 else:
-                    raise NotImplementedError("Volume source space for subject "
-                                              "other than fsaverage")
-                hemis = ('Left', 'Right')
-                voi = ('Cerebral-Cortex', 'Cerebral-White-Matter')
+                    raise NotImplementedError(
+                        "Volume source space for subject other than fsaverage")
+                if special == 'brainstem':
+                    name = 'brainstem'
+                    voi = ['Brain-Stem', '3rd-Ventricle']
+                    voi_lat = ('Thalamus-Proper', 'VentralDC')
+                    remove_midline = False
+                else:
+                    name = 'cortex'
+                    voi = []
+                    voi_lat = ('Cerebral-Cortex', 'Cerebral-White-Matter')
+                    remove_midline = True
+                voi.extend('%s-%s' % fmt for fmt in product(('Left', 'Right'), voi_lat))
                 sss = mne.setup_volume_source_space(
                     subject, pos=float(param), bem=bem,
                     mri=join(self.get('mri-dir'), 'mri', 'aseg.mgz'),
-                    volume_label=['%s-%s' % fmt for fmt in product(hemis, voi)],
-                    subjects_dir=self.get('mri-sdir'))
-                sss = merge_volume_source_space(sss, 'Eelbrain-volume')
+                    volume_label=voi, subjects_dir=self.get('mri-sdir'))
+                sss = merge_volume_source_space(sss, name)
+                sss = prune_volume_source_space(sss, int(param), 2, remove_midline=remove_midline)
             else:
+                assert not special
                 spacing = kind + param
                 sss = mne.setup_source_space(
                     subject, spacing=spacing, add_dist=True,
@@ -5877,17 +5961,16 @@ class MneExperiment(FileTree):
         fig.show()
         return fig
 
-    def plot_evoked(self, subject=None, separate=False, baseline=True, ylim='same',
+    def plot_evoked(self, subject=1, separate=False, baseline=True, ylim='same',
                     run=None, **kwargs):
         """Plot evoked sensor data
 
         Parameters
         ----------
-        subject : str
-            Subject(s) for which to plot evoked responses. Can be a single subject
-            name or a group name such as ``'all'``. The default (``None``) is
-            the current subject in the experiment's state. ``True`` to load the
-            current group.
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
         separate : bool
             When plotting a group, plot all subjects separately instead or the group
             average (default False).
@@ -6023,7 +6106,7 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        ori : 'free' | 'fixed' | float ]0, 1]
+        ori : 'free' | 'fixed' | 'vec' | float ]0, 1]
             Orientation constraint (default 'free'; use a float to specify a
             loose constraint).
         snr : scalar
@@ -6043,7 +6126,7 @@ class MneExperiment(FileTree):
     def _inv_str(ori, snr, method, depth, pick_normal):
         "Construct inv str from settings"
         if isinstance(ori, str):
-            if ori not in ('free', 'fixed'):
+            if ori not in ('free', 'fixed', 'vec'):
                 raise ValueError('ori=%r' % (ori,))
         elif not 0 <= ori <= 1:
             raise ValueError("ori=%r; must be in range [0, 1]" % (ori,))
@@ -6066,6 +6149,8 @@ class MneExperiment(FileTree):
             items.append('%g' % depth)
 
         if pick_normal:
+            if ori == 'vec':
+                raise ValueError("ori='vec' and pick_normal=True are incompatible")
             items.append('pick_normal')
 
         return '-'.join(items)
@@ -6083,8 +6168,9 @@ class MneExperiment(FileTree):
             if not 0 <= ori <= 1:
                 raise ValueError('inv=%r (first value of inv (loose '
                                  'parameter) needs to be in [0, 1]' % (inv,))
-        elif ori not in ('free', 'fixed'):
-            raise ValueError('inv=%r (ori=%r)' % (inv, ori))
+        elif ori == 'vec' and pick_normal:
+            raise ValueError("inv=%r (vector source estimates and pick_normal"
+                             "are mutually exclusive)")
 
         snr = float(snr)
         if snr <= 0:
@@ -6116,7 +6202,7 @@ class MneExperiment(FileTree):
 
         if ori == 'fixed':
             make_kw = {'fixed': True}
-        elif ori == 'free':
+        elif ori == 'free' or ori == 'vec':
             make_kw = {'loose': 1}
         elif isinstance(ori, float):
             make_kw = {'loose': ori}
@@ -6131,7 +6217,9 @@ class MneExperiment(FileTree):
             make_kw['depth'] = depth
 
         apply_kw = {'method': method, 'lambda2': 1. / snr ** 2}
-        if pick_normal:
+        if ori == 'vec':
+            apply_kw['pick_ori'] = 'vector'
+        elif pick_normal:
             apply_kw['pick_ori'] = 'normal'
 
         self._params['make_inv_kw'] = make_kw
@@ -6164,7 +6252,10 @@ class MneExperiment(FileTree):
     def _eval_src(self, src):
         m = SRC_RE.match(src)
         if not m:
-            raise ValueError('src=%r' % (src,))
+            raise ValueError(f'src={src}')
+        kind, param, special = m.groups()
+        if special and kind != 'vol':
+            raise ValueError(f'src={src}')
         return src
 
     def _update_mrisubject(self, fields):
@@ -6368,45 +6459,71 @@ class MneExperiment(FileTree):
         self.set(test_options=' '.join(items), analysis=analysis, folder=folder,
                  **kwargs)
 
-    def show_bad_channels(self):
-        """List bad channels for each subject/session combination
+    def show_bad_channels(self, sessions=None, **state):
+        """List bad channels
+
+        Parameters
+        ----------
+        sessions : True | sequence of str
+            By default, bad channels for the current session are shown. Set
+            ``sessions`` to ``True`` to show bad channels for all sessions, or
+            a list of session names to show bad channeles for tehse sessions.
+        ...
+            State parameters.
 
         Notes
         -----
         ICA Raw pipes merge bad channels from different sessions (by combining
         the bad channels from all sessions).
         """
-        bad_channels = {k: self.load_bad_channels() for k in
-                        self.iter(('subject', 'session'))}
+        if state:
+            self.set(**state)
 
-        # whether they are equal between sessions
-        bad_by_s = {}
-        for (subject, session), bads in bad_channels.items():
-            if subject in bad_by_s:
-                if bad_by_s[subject] != bads:
-                    sessions_congruent = False
-                    break
+        if sessions is True:
+            use_sessions = self._sessions
+        elif sessions:
+            use_sessions = sessions
+        else:
+            use_sessions = None
+
+        if use_sessions is None:
+            bad_by_s = {k: self.load_bad_channels() for k in self}
+            list_sessions = False
+        else:
+            bad_channels = {k: self.load_bad_channels() for k in
+                            self.iter(('subject', 'session'), values={'session': use_sessions})}
+            # whether they are equal between sessions
+            bad_by_s = {}
+            for (subject, session), bads in bad_channels.items():
+                if subject in bad_by_s:
+                    if bad_by_s[subject] != bads:
+                        list_sessions = True
+                        break
+                else:
+                    bad_by_s[subject] = bads
             else:
-                bad_by_s[subject] = bads
-        else:
-            sessions_congruent = True
+                list_sessions = False
 
-        # display
-        if sessions_congruent:
-            print("All sessions equal:")
+        # table
+        session_desc = ', '.join(use_sessions) if use_sessions else self.get('session')
+        caption = f"Bad channels in {session_desc}"
+        if list_sessions:
+            t = fmtxt.Table('l' * (1 + len(use_sessions)), caption=caption)
+            t.cells('Subject', *use_sessions)
+            t.midrule()
             for subject in sorted(bad_by_s):
-                print("%s: %s" % (subject, bad_by_s[subject]))
+                t.cell(subject)
+                for session in use_sessions:
+                    t.cell(', '.join(bad_channels[subject, session]))
         else:
-            subject_len = 1
-            session_len = 1
-            for subject, session in bad_channels:
-                subject_len = max(subject_len, len(subject))
-                session_len = max(session_len, len(session))
-
-            template = '{:%i} {:%i}: {}' % (subject_len + 1, session_len + 1)
-            for subject, session in sorted(bad_channels):
-                print(template.format(subject, session,
-                                      bad_channels[subject, session]))
+            if use_sessions is not None:
+                caption += " (all sessions equal)"
+            t = fmtxt.Table('ll', caption=caption)
+            t.cells('Subject', 'Bad channels')
+            t.midrule()
+            for subject in sorted(bad_by_s):
+                t.cells(subject, ', '.join(bad_by_s[subject]))
+        return t
 
     def show_file_status(self, temp, col=None, row='subject', *args, **kwargs):
         """Compile a table about the existence of files

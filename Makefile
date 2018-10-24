@@ -17,7 +17,7 @@ style-check:
 flake:
 	flake8 --count eelbrain examples scripts
 
-test:
+test: style-check
 	pytest eelbrain
 
 testw:

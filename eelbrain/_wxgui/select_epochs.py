@@ -20,7 +20,7 @@ from scipy.spatial.distance import cdist
 import wx
 
 from .. import _meeg as meeg
-from .. import _report
+from .. import _text
 from .. import load, save, plot, fmtxt
 from .._data_obj import Dataset, Factor, Var, Datalist, asndvar, combine
 from .._info import BAD_CHANNELS
@@ -963,14 +963,14 @@ class Frame(FileFrame):
 
         # rejected epochs
         rejected = np.invert(self.doc.accept.x)
-        sec = doc.add_section(_report.n_of(rejected.sum(), 'epoch') + ' rejected')
+        sec = doc.add_section(_text.n_of(rejected.sum(), 'epoch') + ' rejected')
         if np.any(rejected):
             para = fmtxt.delim_list((fmtxt.Link(epoch, "epoch:%i" % epoch) for
                                      epoch in np.flatnonzero(rejected)))
             sec.add_paragraph(para)
 
         # bad channels
-        heading = _report.n_of(len(self.doc.bad_channels), "bad channel", True)
+        heading = _text.n_of(len(self.doc.bad_channels), "bad channel", True)
         sec = doc.add_section(heading.capitalize())
         if self.doc.bad_channels:
             sec.add_paragraph(', '.join(self.doc.bad_channel_names))

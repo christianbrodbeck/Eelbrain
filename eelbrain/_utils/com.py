@@ -17,6 +17,10 @@ NOOB_DOMAIN = "Eelbrain"
 NOOB_ADDRESS = 'n00b.eelbrain@gmail.com'
 
 
+class KeychainError(Exception):
+    "Error retrieving password from Keychain"
+
+
 def check_for_update():
     """Check whether a new version of Eelbrain is available
 
@@ -36,9 +40,8 @@ def check_for_update():
 
 
 def get_smtpserver(password, new_password=False):
-    smtpserver = smtplib.SMTP('smtp.gmail.com', 587)
+    smtpserver = smtplib.SMTP_SSL('smtp.gmail.com', 465)
     smtpserver.ehlo()
-    smtpserver.starttls()
     while True:
         try:
             smtpserver.login(NOOB_ADDRESS, password)
@@ -95,7 +98,20 @@ class Notifier(object):
     """
     def __init__(self, to, name='job', crash_info_func=None, debug=True):
         # get the password
-        password = keyring.get_password(NOOB_DOMAIN, NOOB_ADDRESS)
+        try:
+            password = keyring.get_password(NOOB_DOMAIN, NOOB_ADDRESS)
+        except Exception as exception:
+            if exception.args[0] == -25293:
+                raise KeychainError(
+                    "Notifier password could not be retrieved from Keychain. Try the following:\n"
+                    " - Open the Keychain application\n"
+                    " - Search for an item with the name 'Eelbrain'\n"
+                    " - Open the information on this item (select it and use the menu command \n"
+                    "   'File'/'Get Info')\n"
+                    " - Select the 'Access Control' panel"
+                    " - Select 'Allow all applications to access this item'\n"
+                    " - Save changes, exit, and try again.")
+            raise
         if password is None:
             password = ui.ask_str("Please enter the Eelbrain notifier "
                                   "password.", "Notifier Password")

@@ -2275,15 +2275,6 @@ def delim_list(items, delimiter=', '):
     return out
 
 
-def ms(t_s):
-    "Convert time in seconds to rounded milliseconds"
-    return int(round(t_s * 1000))
-
-
-def ms_window(t0, t1):
-    return f"{ms(t0)} - {ms(t1)} ms"
-
-
 def unindent(text, skip1=False):
     """Remove leading spaces that are present in all lines of ``text``.
 

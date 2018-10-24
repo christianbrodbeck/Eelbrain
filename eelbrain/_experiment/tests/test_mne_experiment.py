@@ -1,9 +1,9 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import os
 
-from nose.tools import eq_, ok_, assert_raises
 import numpy as np
 from numpy.testing import assert_array_equal
+import pytest
 
 from eelbrain import Dataset, Factor, Var, MneExperiment
 from eelbrain._utils.testing import assert_dataobj_equal, TempDir
@@ -61,88 +61,80 @@ def gen_triggers():
     return ds
 
 
+def assert_inv_works(e, inv, args, make_kw, apply_kw):
+    e.reset()
+    e.set(inv=inv)
+    assert e._params['make_inv_kw'] == make_kw
+    assert e._params['apply_inv_kw'] == apply_kw
+    e.reset()
+    e.set_inv(*args)
+    assert e.get('inv') == inv
+    assert e._params['make_inv_kw'] == make_kw
+    assert e._params['apply_inv_kw'] == apply_kw
+
+
 def test_mne_experiment_templates():
     "Test MneExperiment template formatting"
     tempdir = TempDir()
     e = BaseExperiment(tempdir, False)
 
     # Don't create dirs without root
-    ok_(e.get('raw-file', mkdir=True).endswith('-raw.fif'))
+    assert e.get('raw-file', mkdir=True).endswith('-raw.fif')
 
     # model
-    eq_(e.get('model', model='a % b'), 'a%b')
-    eq_(e.get('model', model='b % a'), 'a%b')
-    assert_raises(ValueError, e.set, model='a*b')
-    assert_raises(ValueError, e.set, model='log(a)')
+    assert e.get('model', model='a % b') == 'a%b'
+    assert e.get('model', model='b % a') == 'a%b'
+    with pytest.raises(ValueError):
+        e.set(model='a*b')
+    with pytest.raises(ValueError):
+        e.set(model='log(a)')
 
     # compounds
-    eq_(e.get('src_kind'), '0-40 bestreg free-3-dSPM')
+    assert e.get('src_kind') == '0-40 bestreg free-3-dSPM'
     e.set_inv('fixed')
-    eq_(e.get('src_kind'), '0-40 bestreg fixed-3-dSPM')
+    assert e.get('src_kind') == '0-40 bestreg fixed-3-dSPM'
     e.set(cov='noreg')
-    eq_(e.get('src_kind'), '0-40 noreg fixed-3-dSPM')
+    assert e.get('src_kind') == '0-40 noreg fixed-3-dSPM'
     e.set(raw='1-40')
-    eq_(e.get('src_kind'), '1-40 noreg fixed-3-dSPM')
+    assert e.get('src_kind') == '1-40 noreg fixed-3-dSPM'
     e.set(src='ico-5')
-    eq_(e.get('src_kind'), '1-40 noreg ico-5 fixed-3-dSPM')
+    assert e.get('src_kind') == '1-40 noreg ico-5 fixed-3-dSPM'
     e.set(src='ico-4')
-    eq_(e.get('src_kind'), '1-40 noreg fixed-3-dSPM')
+    assert e.get('src_kind') == '1-40 noreg fixed-3-dSPM'
 
     # find terminal field names
-    eq_(e.find_keys('raw-file'), {'root', 'subject', 'session'})
-    eq_(e.find_keys('evoked-file', False),
-        {'subject', 'session', 'modality', 'raw', 'epoch', 'rej',
-         'equalize_evoked_count', 'model', })
+    assert e.find_keys('raw-file') == {'root', 'subject', 'session'}
+    assert e.find_keys('evoked-file', False) == {'subject', 'session', 'modality', 'raw', 'epoch', 'rej', 'equalize_evoked_count', 'model', }
 
-    # inv
-    SNR1 = 1.
-    SNR2 = 1. / 2**2
-    SNR3 = 1. / 3**2
-
-    def set_inv(inv, make_kw, apply_kw, *args):
-        e.reset()
-        e.set(inv=inv)
-        eq_(e._params['make_inv_kw'], make_kw)
-        eq_(e._params['apply_inv_kw'], apply_kw)
-        e.reset()
-        e.set_inv(*args)
-        eq_(e.get('inv'), inv)
-        eq_(e._params['make_inv_kw'], make_kw)
-        eq_(e._params['apply_inv_kw'], apply_kw)
-
-    yield (set_inv, 'free-3-MNE',
-           {'loose': 1, 'depth': 0.8},
-           {'method': 'MNE', 'lambda2': SNR3},
-           'free', 3, 'MNE')
-    yield (set_inv, 'free-3-dSPM-0.2-pick_normal',
-           {'loose': 1, 'depth': 0.2},
-           {'method': 'dSPM', 'lambda2': SNR3, 'pick_ori': 'normal'},
-           'free', 3, 'dSPM', .2, True)
-    yield (set_inv, 'fixed-2-MNE-0.2',
-           {'fixed': True, 'depth': 0.2},
-           {'method': 'MNE', 'lambda2': SNR2},
-           'fixed', 2, 'MNE', .2)
-    yield (set_inv, 'fixed-2-MNE-pick_normal',
-           {'fixed': True, 'depth': 0.8},
-           {'method': 'MNE', 'lambda2': SNR2, 'pick_ori': 'normal'},
-           'fixed', 2, 'MNE', None, True)
-    yield (set_inv, 'loose.5-3-sLORETA',
-           {'loose': 0.5, 'depth': 0.8},
-           {'method': 'sLORETA', 'lambda2': SNR3},
-           0.5, 3, 'sLORETA')
-    yield (set_inv, 'fixed-1-MNE-0',
-           {'fixed': True, 'depth': None},
-           {'method': 'MNE', 'lambda2': SNR1},
-           'fixed', 1, 'MNE', 0)
+    assert_inv_works(e, 'free-3-MNE', ('free', 3, 'MNE'),
+                     {'loose': 1, 'depth': 0.8},
+                     {'method': 'MNE', 'lambda2': 1/9})
+    assert_inv_works(e, 'free-3-dSPM-0.2-pick_normal', ('free', 3, 'dSPM', .2, True),
+                     {'loose': 1, 'depth': 0.2},
+                     {'method': 'dSPM', 'lambda2': 1/9, 'pick_ori': 'normal'})
+    assert_inv_works(e, 'fixed-2-MNE-0.2', ('fixed', 2, 'MNE', .2),
+                     {'fixed': True, 'depth': 0.2},
+                     {'method': 'MNE', 'lambda2': 1/4})
+    assert_inv_works(e, 'fixed-2-MNE-pick_normal', ('fixed', 2, 'MNE', None, True),
+                     {'fixed': True, 'depth': 0.8},
+                     {'method': 'MNE', 'lambda2': 1/4, 'pick_ori': 'normal'})
+    assert_inv_works(e, 'loose.5-3-sLORETA', (0.5, 3, 'sLORETA'),
+                     {'loose': 0.5, 'depth': 0.8},
+                     {'method': 'sLORETA', 'lambda2': 1/9})
+    assert_inv_works(e, 'fixed-1-MNE-0', ('fixed', 1, 'MNE', 0),
+                     {'fixed': True, 'depth': None},
+                     {'method': 'MNE', 'lambda2': 1})
     # should remove this
-    yield (set_inv, 'fixed-1-MNE-0.8',
-           {'fixed': True, 'depth': 0.8},
-           {'method': 'MNE', 'lambda2': SNR1},
-           'fixed', 1, 'MNE', 0.8)
+    assert_inv_works(e, 'fixed-1-MNE-0.8', ('fixed', 1, 'MNE', 0.8),
+                     {'fixed': True, 'depth': 0.8},
+                     {'method': 'MNE', 'lambda2': 1})
 
-    assert_raises(ValueError, e.set_inv, 'free', -3, 'dSPM')
-    assert_raises(ValueError, e.set, inv='free-3-mne')
-    assert_raises(ValueError, e.set, inv='free-3-MNE-2')
+    with pytest.raises(ValueError):
+        e.set_inv('free', -3, 'dSPM')
+    with pytest.raises(ValueError):
+        e.set(inv='free-3-mne')
+    with pytest.raises(ValueError):
+        e.set(inv='free-3-MNE-2')
 
 
 def test_test_experiment():
@@ -150,8 +142,8 @@ def test_test_experiment():
     e = EventExperiment()
 
     # test defaults
-    eq_(e.get('session'), 'cheese')
-    eq_(e.get('model'), 'name')
+    assert e.get('session') == 'cheese'
+    assert e.get('model') == 'name'
 
     # test event labeling
     ds = e.label_events(gen_triggers())
@@ -164,22 +156,10 @@ def test_test_experiment():
     assert_array_equal(ds['i_start'], I_START)
     assert_array_equal(ds['subject'] == SUBJECT, True)
 
-    # tests disabled (trigger-shift applied in load_events):
-    # ---
-    #  assert_equal(ds['i_start'], I_START + round(0.03 * SAMPLINGRATE))
-    # # test without trigger shift
-    # e.trigger_shift = 0
-    # ds = e.label_events(gen_triggers())
-    # assert_equal(ds['i_start'], I_START)
-    # # trigger shift dict
-    # e2 = EventExperimentTriggerShiftDict('', False)
-    # ds = e2.label_events(gen_triggers())
-    # assert_equal(ds['i_start'], I_START + round(0.04 * SAMPLINGRATE))
-
     # epochs
-    eq_(e._epochs['cheese'].tmin, -0.2)
-    eq_(e._epochs['cheese-leicester'].tmin, -0.1)
-    eq_(e._epochs['cheese-tilsit'].tmin, -0.2)
+    assert e._epochs['cheese'].tmin == -0.2
+    assert e._epochs['cheese-leicester'].tmin == -0.1
+    assert e._epochs['cheese-tilsit'].tmin == -0.2
 
 
 class FileExperiment(MneExperiment):
@@ -210,17 +190,17 @@ def test_file_handling():
 
     e = FileExperiment(tempdir)
 
-    eq_(e.get('subject'), SUBJECTS[0])
-    eq_([s for s in e.iter(group='all')], SUBJECTS)
-    eq_([s for s in e.iter(group='gsub')], SUBJECTS[1:])
-    eq_([s for s in e.iter(group='gexc')], SUBJECTS[1:])
-    eq_([s for s in e.iter(group='gexc2')], SUBJECTS[1:-1])
-    eq_(e.get('subject'), SUBJECTS[1])
-    eq_(e.get('subject', group='all'), SUBJECTS[1])
+    assert e.get('subject') == SUBJECTS[0]
+    assert [s for s in e.iter(group='all')] == SUBJECTS
+    assert [s for s in e.iter(group='gsub')] == SUBJECTS[1:]
+    assert [s for s in e.iter(group='gexc')] == SUBJECTS[1:]
+    assert [s for s in e.iter(group='gexc2')] == SUBJECTS[1:-1]
+    assert e.get('subject') == SUBJECTS[1]
+    assert e.get('subject', group='all') == SUBJECTS[1]
     e.set(SUBJECTS[0])
-    eq_(e.get('subject'), SUBJECTS[0])
-    eq_(e.get('subject', group='gsub'), SUBJECTS[1])
+    assert e.get('subject') == SUBJECTS[0]
+    assert e.get('subject', group='gsub') == SUBJECTS[1]
 
     e = FileExperimentDefaults(tempdir)
-    eq_(e.get('group'), 'gsub')
-    eq_(e.get('subject'), SUBJECTS[1])
+    assert e.get('group'), 'gsub'
+    assert e.get('subject') == SUBJECTS[1]

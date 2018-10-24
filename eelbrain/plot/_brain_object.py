@@ -15,10 +15,11 @@ import wx
 
 from .._colorspaces import to_rgb, to_rgba
 from .._data_obj import NDVar, SourceSpace
-from ..fmtxt import Image, ms
+from ..fmtxt import Image
 from ..mne_fixes import reset_logger
+from .._text import ms
 from ._base import (CONFIG, TimeSlicer, do_autorun, find_axis_params_data,
-                    find_fig_cmaps, find_fig_vlims)
+                    find_fig_cmaps, find_fig_vlims, fix_vlim_for_cmap)
 from ._color_luts import p_lut
 from ._colors import ColorBar, ColorList, colors_for_oneway
 
@@ -150,6 +151,8 @@ class Brain(TimeSlicer, surfer.Brain):
     from the PySurfer :class:`~surfer.Brain` super-class. For complete PySurfer
     functionality see te PySurfer documentation.
     """
+    _display_time_in_frame_title = True
+
     def __init__(self, subject, hemi, surf='inflated', title=None,
                  cortex="classic", alpha=1.0, background="white",
                  foreground="black", subjects_dir=None, views='lat',
@@ -312,10 +315,11 @@ class Brain(TimeSlicer, surfer.Brain):
 
         Parameters
         ----------
-        ndvar : NDVar  (source[, time])
-            NDVar with SourceSpace dimension and optional time dimension.
-            Values outside of the source-space, as well as masked values are
-            set to 0, assuming a colormap in which 0 is transparent.
+        ndvar : NDVar  ([case,] source[, time])
+            NDVar with SourceSpace dimension and optional time dimension. If it
+            contains a :class:`Case` dimension, the average over cases is
+            displayed. Values outside of the source-space, as well as masked
+            values are set to 0, assuming a colormap in which 0 is transparent.
         cmap : str | list of matplotlib colors | array
             Colormap. Can be the name of a matplotlib colormap, a list of
             colors, or a custom lookup table (an n x 4 array with RBGA values
@@ -342,8 +346,39 @@ class Brain(TimeSlicer, surfer.Brain):
         remove_existing : bool
             Remove data layers that have been added previously (default False).
         """
+        # check input data and dimensions
         source = self._check_source_space(ndvar)
-        # find standard args
+        # find ndvar time axis
+        if ndvar.ndim == 1 + ndvar.has_case:
+            if ndvar.has_case:
+                ndvar = ndvar.mean('case')
+            time_dim = times = None
+            data_dims = (source.name,)
+        elif ndvar.ndim != 2:
+            raise ValueError(f"{ndvar}: must be one- or two dimensional")
+        elif ndvar.has_dim('time'):
+            time_dim = ndvar.time
+            times = ndvar.time.times
+            data_dims = (source.name, 'time')
+            if time_label == 'ms':
+                time_label = lambda x: '%s ms' % int(round(x * 1000))
+            elif time_label == 's':
+                time_label = '%.3f s'
+            elif time_label is False:
+                time_label = None
+        else:
+            data_dims = ndvar.get_dimnames((source.name, None))
+            time_dim = ndvar.get_dim(data_dims[1])
+            times = np.arange(len(time_dim))
+            time_label = None
+        # make sure time axis is compatible with existing data
+        if time_dim is not None:
+            if self._time_dim is None:
+                self._set_time_dim(time_dim)
+            elif time_dim != self._time_dim:
+                raise ValueError(f"The brain already displays an NDVar with incompatible time dimension (current: {self._time_dim};  new: {time_dim})")
+
+        # find colormap parameters
         meas = ndvar.info.get('meas')
         if cmap is None or isinstance(cmap, str):
             epochs = ((ndvar,),)
@@ -371,37 +406,6 @@ class Brain(TimeSlicer, surfer.Brain):
         if remove_existing:
             self.remove_data()
 
-        # find ndvar time axis
-        if ndvar.ndim == 1:
-            time_dim = times = None
-            data_dims = (source.name,)
-        elif ndvar.ndim != 2:
-            raise ValueError(f"{ndvar}: must be one- or two dimensional")
-        elif ndvar.has_dim('time'):
-            time_dim = ndvar.time
-            times = ndvar.time.times
-            data_dims = (source.name, 'time')
-            if time_label == 'ms':
-                time_label = lambda x: '%s ms' % int(round(x * 1000))
-            elif time_label == 's':
-                time_label = '%.3f s'
-            elif time_label is False:
-                time_label = None
-        else:
-            data_dims = ndvar.get_dimnames((source.name, None))
-            time_dim = ndvar.get_dim(data_dims[1])
-            times = np.arange(len(time_dim))
-            time_label = None
-        # make sure time axis is compatible with existing data
-        if time_dim is not None:
-            if self._time_dim is None:
-                self._set_time_dim(time_dim)
-            elif time_dim != self._time_dim:
-                raise ValueError(
-                    "The brain already displays an NDVar with incompatible "
-                    "time dimension (current: %s;  new: %s)" %
-                    (self._time_dim, time_dim))
-
         # determine which hemi we're adding data to
         if self._hemi in ('lh', 'rh'):
             data_hemi = self._hemi
@@ -428,9 +432,7 @@ class Brain(TimeSlicer, surfer.Brain):
                 time_label_ = None
 
             src_hemi = ndvar.sub(**{source.name: 'lh'})
-            data = src_hemi.get_data(data_dims)
-            if isinstance(data, np.ma.MaskedArray):
-                data = data.data * np.invert(data.mask)
+            data = src_hemi.get_data(data_dims, 0)
             vertices = source.lh_vertices
             self.add_data(data, vmin, vmax, None, cmap, alpha, vertices,
                           smoothing_steps, times, time_label_, colorbar_, 'lh')
@@ -438,7 +440,7 @@ class Brain(TimeSlicer, surfer.Brain):
 
         if data_hemi != 'lh':
             src_hemi = ndvar.sub(**{source.name: 'rh'})
-            data = src_hemi.get_data(data_dims)
+            data = src_hemi.get_data(data_dims, 0)
             vertices = source.rh_vertices
             self.add_data(data, vmin, vmax, None, cmap, alpha, vertices,
                           smoothing_steps, times, time_label, colorbar, 'rh')
@@ -464,6 +466,9 @@ class Brain(TimeSlicer, surfer.Brain):
             'data': ndvar,
             'dict_hemi': dict_hemi,
             'dict_index': data_index,
+            'cmap': cmap,
+            'vmin': vmin,
+            'vmax': vmax,
         })
 
     def add_ndvar_annotation(self, ndvar, colors=None, borders=True, alpha=1,
@@ -630,9 +635,11 @@ class Brain(TimeSlicer, surfer.Brain):
         if isinstance(p_map, NDTest):
             if isinstance(p_map, MultiEffectNDTest):
                 raise NotImplementedError(f"plot.brain.p_map for {p_map.__class__.__name__}")
+            elif param_map is not None:
+                raise TypeError(f"param_map={param_map!r} when p_map is NDTest result")
             res = p_map
             p_map = res.p
-            param_map = res.t
+            param_map = res._statistic_map
         p_map, lut, vmax = p_lut(p_map, param_map, p0, p1, p0alpha)
         self.add_ndvar(p_map, lut, -vmax, vmax, *args, **kwargs)
 
@@ -896,6 +903,56 @@ class Brain(TimeSlicer, surfer.Brain):
     def set_title(self, title):
         "Set the window title"
         self._frame.SetTitle(str(title))
+
+    def set_vlim(self, v=None, vmax=None):
+        """Change the colormap limits
+
+        If the limit is symmetric, use ``set_vlim(vlim)``; if it is not, use
+        ``set_vlim(vmin, vmax)``.
+
+        Parameters
+        ----------
+        v : scalar
+            If this is the only value specified it is interpreted as the upper
+            end of the scale, and the lower end is determined based on
+            the colormap to be ``-v`` or ``0``. If ``vmax`` is also specified,
+            ``v`` specifies the lower end of the scale.
+        vmax : scalar (optional)
+            Upper end of the color scale.
+
+        Notes
+        -----
+        Only affects the most recently added data layer.
+        """
+        if self.__data:
+            data = self.__data[-1]
+            cmap = data['cmap']
+            if vmax is None:
+                vmin, vmax = fix_vlim_for_cmap(None, abs(v), cmap)
+            else:
+                vmin = v
+        else:
+            data = None
+            if vmax is None:
+                surfer_data = self.data_dict.values()[0]
+                vmax = abs(v)
+                if surfer_data['fmin'] >= 0:
+                    vmin = surfer_data['fmin']
+                else:
+                    vmin = -vmax
+            else:
+                vmin = v
+        self.scale_data_colormap(vmin, (vmin + vmax) / 2, vmax, False)
+        if data is not None:
+            data['vmin'] = vmin
+            data['vmax'] = vmax
+
+    def get_vlim(self):
+        "``(vmin, vmax)`` for the most recently added data layer"
+        if not self.__data:
+            raise RuntimeError('No data added with Brain.add_ndvar()')
+        data = self.__data[-1]
+        return data['vmin'], data['vmax']
 
     def _update_time(self, t, fixate):
         index = self._time_dim._array_index(t)
