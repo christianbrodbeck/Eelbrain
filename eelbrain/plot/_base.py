@@ -526,7 +526,11 @@ def find_vlim_args(ndvar, vmin=None, vmax=None):
 
     if vmax is None or vmin is None:
         xmax = np.nanmax(ndvar.x)
+        if np.ma.is_masked(xmax):
+            xmax = xmax.data
         xmin = np.nanmin(ndvar.x)
+        if np.ma.is_masked(xmin):
+            xmin = xmin.data
         abs_max = max(abs(xmax), abs(xmin)) or 1e-14
         scale = math.floor(np.log10(abs_max))
         if vmax is None:

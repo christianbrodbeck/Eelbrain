@@ -51,3 +51,8 @@ def test_plot_brain():
     cb = p.plot_colorbar(show=False)
     cb.close()
     p.close()
+
+    # mask
+    stc = datasets.get_mne_stc(True)
+    stcm = stc.mask(stc < 11)
+    p = plot.brain.brain(stcm)
