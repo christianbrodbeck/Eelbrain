@@ -270,8 +270,7 @@ temp = {
     # test files
     'test-dir': join('{cache-dir}', 'test'),
     'test_dims': 'unmasked',  # for some tests, parc and mask parameter can be saved in same file
-    'test-file': join('{test-dir}', '{analysis} {group}',
-                      '{epoch} {test} {test_options} {test_dims}.pickled'),
+    'test-file': join('{test-dir}', '{analysis} {group}', '{test-desc} {test_dims}.pickled'),
 
     # MRIs
     'common_brain': 'fsaverage',
@@ -306,8 +305,7 @@ temp = {
     'res-dir': join('{root}', 'results'),
     'res-file': join('{res-dir}', '{analysis}', '{resname}.{ext}'),
     'res-deep-file': join('{res-dir}', '{analysis}', '{folder}', '{resname}.{ext}'),
-    'report-file': join('{res-dir}', '{analysis} {group}', '{folder}',
-                        '{epoch} {test} {test_options}.html'),
+    'report-file': join('{res-dir}', '{analysis} {group}', '{folder}', '{test-desc}.html'),
     'group-mov-file': join('{res-dir}', '{analysis} {group}',
                            '{epoch} {test_options} {resname}.mov'),
     'subject-res-dir': join('{res-dir}', '{analysis} subjects'),
@@ -319,8 +317,7 @@ temp = {
     # plots
     # plot corresponding to a report (and using same folder structure)
     'res-plot-root': join('{root}', 'result plots'),
-    'res-plot-dir': join('{res-plot-root}', '{analysis} {group}', '{folder}',
-                         '{epoch} {test} {test_options}'),
+    'res-plot-dir': join('{res-plot-root}', '{analysis} {group}', '{folder}', '{test-desc}'),
 
     # besa
     'besa-root': join('{root}', 'besa'),
@@ -847,6 +844,7 @@ class MneExperiment(FileTree):
         self._register_compound('sns_kind', ('raw',))
         self._register_compound('src_kind', ('sns_kind', 'cov', 'mri', 'src-name', 'inv'))
         self._register_compound('evoked_kind', ('rej', 'equalize_evoked_count'))
+        self._register_compound('test-desc', ('epoch', 'test', 'test_options'))
 
         # Define make handlers
         self._bind_cache('cov-file', self.make_cov)
@@ -4979,7 +4977,7 @@ class MneExperiment(FileTree):
             return
 
         # start report
-        title = self.format('{session} {epoch} {test} {test_options}')
+        title = self.format('{session} {test-desc}')
         report = Report(title)
 
         if isinstance(self._tests[test], TwoStageTest):
@@ -5132,7 +5130,7 @@ class MneExperiment(FileTree):
         labels_rh.sort()
 
         # start report
-        title = self.format('{session} {epoch} {test} {test_options}')
+        title = self.format('{session} {test-desc}')
         report = Report(title)
 
         # method intro (compose it later when data is available)
@@ -5207,7 +5205,7 @@ class MneExperiment(FileTree):
                                  'sensor', baseline, None, True, True)
 
         # start report
-        title = self.format('{session} {epoch} {test} {test_options}')
+        title = self.format('{session} {test-desc}')
         report = Report(title)
 
         # info
@@ -5277,7 +5275,7 @@ class MneExperiment(FileTree):
             raise ValueError("The following sensors are not in the data: %s" % missing)
 
         # start report
-        title = self.format('{session} {epoch} {test} {test_options}')
+        title = self.format('{session} {test-desc}')
         report = Report(title)
 
         # info
@@ -5412,7 +5410,7 @@ class MneExperiment(FileTree):
             dst = self.get('subject-spm-report', mkdir=True)
             lm = self._load_spm(sns_baseline, src_baseline)
 
-            title = self.format('{session} {epoch} {test} {test_options}')
+            title = self.format('{session} {test-desc}')
             surfer_kwargs = self._surfer_plot_kwargs()
 
         report = Report(title)
