@@ -12,7 +12,7 @@ from .._stats import stats
 from . import _base
 from ._base import (
     EelFigure, PlotData, Layout,
-    LegendMixin, YLimMixin, XAxisMixin, frame_title)
+    LegendMixin, YLimMixin, XAxisMixin, TimeSlicerEF, frame_title)
 from ._colors import colors_for_oneway, find_cell_colors
 from .._colorspaces import oneway_colors
 from functools import reduce
@@ -294,7 +294,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         self._update_ui_cluster_button()
 
 
-class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
+class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     """Value by time plot for UTS data
 
     Parameters
@@ -381,6 +381,7 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         XAxisMixin._init_with_data(self, data.data, xdim, xlim)
         YLimMixin.__init__(self, self.plots)
         LegendMixin.__init__(self, legend, legend_handles)
+        TimeSlicerEF.__init__(self, xdim, data.data)
         self._show()
 
     def _fill_toolbar(self, tb):

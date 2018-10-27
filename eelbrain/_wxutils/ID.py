@@ -98,6 +98,7 @@ TABLE_COL = wx.NewId()
 TABLE_ROW = wx.NewId()
 TABLE_SAVE = wx.NewId()
 THRESHOLD = wx.NewId()
+TIME = wx.NewId()
 TOOLS = wx.NewId()
 
 UNDO = wx.NewId()

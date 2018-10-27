@@ -1139,6 +1139,7 @@ class EelFigure(object):
     _default_xlabel_ax = -1
     _default_ylabel_ax = 0
     _make_axes = True
+    _can_set_time = False
     _can_set_vlim = False
     _can_set_ylim = False
     _can_set_xlim = False
@@ -2590,6 +2591,10 @@ class TimeSlicer(object):
             new_i = max(0, current_i + offset)
         self._set_time(self._time_dim[new_i], True)
 
+    def get_time(self):
+        "Retrieve the current time"
+        return self._current_time
+
     def set_time(self, time):
         """Set the time point to display
 
@@ -2631,6 +2636,8 @@ class TimeSlicer(object):
 
 class TimeSlicerEF(TimeSlicer):
     # TimeSlicer for Eelfigure
+    _can_set_time = True
+
     def __init__(self, x_dimname, epochs, axes=None, redraw=True):
         if x_dimname != 'time':
             self._time_fixed = True

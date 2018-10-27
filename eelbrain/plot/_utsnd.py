@@ -370,8 +370,7 @@ class _ax_butterfly(object):
         self.vmin, self.vmax = self.ax.get_ylim()
 
 
-class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
-                EelFigure):
+class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
     """Butterfly plot for NDVars
 
     Parameters

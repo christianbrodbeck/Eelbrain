@@ -134,6 +134,7 @@ class App(wx.App):
         m = go_menu = wx.Menu()
         m.Append(wx.ID_FORWARD, '&Forward \tCtrl+]', 'Go One Page Forward')
         m.Append(wx.ID_BACKWARD, '&Back \tCtrl+[', 'Go One Page Back')
+        m.Append(ID.TIME, '&Time... \tCtrl+t', 'Go to time...')
         if not self.using_prompt_toolkit:
             m.AppendSeparator()
             m.Append(ID.YIELD_TO_TERMINAL, '&Yield to Terminal \tAlt+Ctrl+Q')
@@ -178,6 +179,7 @@ class App(wx.App):
         t.Bind(wx.EVT_MENU, t.OnSetLayout, id=ID.SET_LAYOUT)
         t.Bind(wx.EVT_MENU, t.OnSetMarkedChannels, id=ID.SET_MARKED_CHANNELS)
         t.Bind(wx.EVT_MENU, t.OnSetVLim, id=ID.SET_VLIM)
+        t.Bind(wx.EVT_MENU, t.OnSetTime, id=ID.TIME)
         t.Bind(wx.EVT_MENU, t.OnUndo, id=ID.UNDO)
         t.Bind(wx.EVT_MENU, t.OnWindowIconize, id=ID.WINDOW_MINIMIZE)
         t.Bind(wx.EVT_MENU, self.OnWindowTile, id=ID.WINDOW_TILE)
@@ -200,6 +202,7 @@ class App(wx.App):
         t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUISetLayout, id=ID.SET_LAYOUT)
         t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUISetMarkedChannels, id=ID.SET_MARKED_CHANNELS)
         t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUISetVLim, id=ID.SET_VLIM)
+        t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUISetTime, id=ID.TIME)
         t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUITools, id=ID.TOOLS)
         t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUIUndo, id=ID.UNDO)
         t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUIUp, id=wx.ID_UP)
@@ -498,6 +501,10 @@ class App(wx.App):
         frame = self._get_active_frame()
         frame.OnSetMarkedChannels(event)
 
+    def OnSetTime(self, event):
+        frame = self._get_active_frame()
+        frame.OnSetTime(event)
+
     def OnSetWindowTitle(self, event):
         frame = self._get_active_frame()
         frame.OnSetWindowTitle(event)
@@ -607,6 +614,13 @@ class App(wx.App):
         frame = self._get_active_frame()
         if frame and hasattr(frame, 'OnUpdateUISetVLim'):
             frame.OnUpdateUISetVLim(event)
+        else:
+            event.Enable(False)
+
+    def OnUpdateUISetTime(self, event):
+        frame = self._get_active_frame()
+        if frame and hasattr(frame, 'OnUpdateUISetTime'):
+            frame.OnUpdateUISetTime(event)
         else:
             event.Enable(False)
 
