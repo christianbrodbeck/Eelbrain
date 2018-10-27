@@ -31,7 +31,7 @@ import os
 import re
 import socket
 from time import time as current_time
-import typing
+from typing import Union
 
 import numpy as np
 import scipy.stats
@@ -354,17 +354,21 @@ class NDTest(object):
     def _statistic_map(self):
         return getattr(self, self._statistic)
 
-    def _max_statistic(self, masked=True):
+    def _max_statistic(self):
         tail = getattr(self, 'tail', self._statistic_tail)
-        if tail == 0:
-            func = self._statistic_map.extrema
-        elif tail == 1:
-            func = self._statistic_map.max
-        else:
-            func = self._statistic_map.min
+        return self._max_statistic_from_map(self._statistic_map, self.p, tail)
 
-        if masked:
-            mask = self.p <= .05 if self.p.min() <= .05 else None
+    @staticmethod
+    def _max_statistic_from_map(stat_map: NDVar, p_map: NDVar, tail: int):
+        if tail == 0:
+            func = stat_map.extrema
+        elif tail == 1:
+            func = stat_map.max
+        else:
+            func = stat_map.min
+
+        if p_map:
+            mask = p_map <= .05 if p_map.min() <= .05 else None
         else:
             mask = None
 
@@ -1005,7 +1009,7 @@ class ttest_ind(NDDifferenceTest):
             samples: int = 0,
             pmin: float = None,
             tmin: float = None,
-            tfce: typing.Union[float, bool] = False,
+            tfce: Union[float, bool] = False,
             tstart: float = None,
             tstop: float = None,
             parc: str = None,
@@ -1386,6 +1390,12 @@ class MultiEffectNDTest(NDTest):
             self.p = [cdist.probability_map for cdist in cdists]
             self._kind = cdists[0].kind
 
+    def _effect_index(self, effect: Union[int, str]):
+        if isinstance(effect, str):
+            return self.effects.index(effect)
+        else:
+            return effect
+
     def _iter_cdists(self):
         for cdist in self._cdist:
             yield cdist.name.capitalize(), cdist
@@ -1396,6 +1406,12 @@ class MultiEffectNDTest(NDTest):
             return None
         else:
             return self._cdist[0]
+
+    def _max_statistic(self, effect: Union[str, int]):
+        i = self._effect_index(effect)
+        stat_map = self._statistic_map[i]
+        tail = getattr(self, 'tail', self._statistic_tail)
+        return self._max_statistic_from_map(stat_map, self.p[i], tail)
 
     def cluster(self, cluster_id, effect=0):
         """Retrieve a specific cluster as NDVar
@@ -1418,9 +1434,8 @@ class MultiEffectNDTest(NDTest):
         Clusters only have stable ids for thresholded cluster distributions.
         """
         self._assert_has_cdist()
-        if isinstance(effect, str):
-            effect = self.effects.index(effect)
-        return self._cdist[effect].cluster(cluster_id)
+        i = self._effect_index(effect)
+        return self._cdist[i].cluster(cluster_id)
 
     def compute_probability_map(self, effect=0, **sub):
         """Compute a probability map
@@ -1437,9 +1452,8 @@ class MultiEffectNDTest(NDTest):
             Map of p-values.
         """
         self._assert_has_cdist()
-        if isinstance(effect, str):
-            effect = self.effects.index(effect)
-        return self._cdist[effect].compute_probability_map(**sub)
+        i = self._effect_index(effect)
+        return self._cdist[i].compute_probability_map(**sub)
 
     def masked_parameter_map(self, effect=0, pmin=0.05, **sub):
         """Create a copy of the parameter map masked by significance
@@ -1460,9 +1474,8 @@ class MultiEffectNDTest(NDTest):
             and 0 everywhere else.
         """
         self._assert_has_cdist()
-        if isinstance(effect, str):
-            effect = self.effects.index(effect)
-        return self._cdist[effect].masked_parameter_map(pmin, **sub)
+        i = self._effect_index(effect)
+        return self._cdist[i].masked_parameter_map(pmin, **sub)
 
     def find_clusters(self, pmin=None, maps=False, effect=None, **sub):
         """Find significant regions in a TFCE distribution
@@ -1487,9 +1500,8 @@ class MultiEffectNDTest(NDTest):
         """
         self._assert_has_cdist()
         if effect is not None:
-            if isinstance(effect, str):
-                effect = self.effects.index(effect)
-            return self._cdist[effect].clusters(pmin, maps, **sub)
+            i = self._effect_index(effect)
+            return self._cdist[i].clusters(pmin, maps, **sub)
         dss = []
         info = {}
         for cdist in self._cdist:
