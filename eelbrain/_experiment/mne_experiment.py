@@ -817,7 +817,7 @@ class MneExperiment(FileTree):
                              eval_handler=self._eval_inv,
                              post_set_handler=self._post_set_inv)
         self._register_field('model', eval_handler=self._eval_model)
-        self._register_field('test', sorted(self._tests) or None,
+        self._register_field('test', chain(sorted(self._tests), ('',)),
                              post_set_handler=self._post_set_test)
         self._register_field('parc', parc_values, 'aparc',
                              eval_handler=self._eval_parc)
