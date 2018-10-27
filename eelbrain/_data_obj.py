@@ -3480,9 +3480,9 @@ class NDVar(object):
             if step is not None:
                 raise TypeError("can only specify one of step and nbins")
             elif not isinstance(nbins, int):
-                raise TypeError("nbins needs to be int, got %r" % (nbins,))
+                raise TypeError(f"nbins={nbins!r}: need int")
             elif nbins < 1:
-                raise ValueError("nbins needs to be >= 1, got %r" % (nbins,))
+                raise ValueError(f"nbins={nbins}: needs to be >= 1")
         elif step is None and nbins is None:
             raise TypeError("need to specify one of step and nbins")
 
@@ -3492,8 +3492,7 @@ class NDVar(object):
             elif self.has_dim('time'):
                 dim = 'time'
             else:
-                raise TypeError("NDVar has more then 1 dimensions, the dim "
-                                "argument needs to be specified")
+                raise TypeError("NDVar has more then 1 dimensions, the dim argument needs to be specified")
 
         # summary-func
         if func is None:
@@ -3508,10 +3507,10 @@ class NDVar(object):
                 func = np.mean
         elif isinstance(func, str):
             if func not in EVAL_CONTEXT:
-                raise ValueError("Unknown summary function: func=%r" % func)
+                raise ValueError(f"func={func!r}: unknown summary function")
             func = EVAL_CONTEXT[func]
         elif not callable(func):
-            raise TypeError("func=%s" % repr(func))
+            raise TypeError(f"func={func!r}")
 
         axis = self.get_axis(dim)
         dim = self.get_dim(dim)
@@ -7697,7 +7696,13 @@ class Scalar(Dimension):
                 None if scalar else FixedLocator(np.arange(len(self)), 10),
                 self._axis_label(label))
 
-    def _bin(self, start, stop, step, nbins):
+    def _bin(
+            self,
+            start: float,
+            stop: float,
+            step: int,  # -> step in dim space
+            nbins: int,  # -> equally divide in array space
+    ) -> (list, 'Scalar'):
         if start is None:
             start = self.values[0]
 
@@ -7706,14 +7711,15 @@ class Scalar(Dimension):
             istart = 0 if start is None else self._array_index(start)
             n_source_steps = istop - istart
             if n_source_steps % nbins != 0:
-                raise ValueError("length %i dimension %s can not be divided "
-                                 "equally into %i bins" %
-                                 (n_source_steps, self.name, nbins))
+                raise ValueError(f"nbins={nbins!r}: length {n_source_steps} {self.name} can not be divided equally")
             istep = int(n_source_steps / nbins)
-            ilast = istep - 1
-            out_values = [(self[i] + self[i + ilast]) / 2. for i in
-                          range(istart, istop, istep)]
             edges = list(self.values[istart:istop:istep])
+            # values for new Dimension
+            if istep % 2:
+                loc = np.arange(istart + istep / 2, istep, istop)
+                out_values = np.interp(loc, np.arange(len(self.values)), self.values)
+            else:
+                out_values = self.values[istart + istep // 2: istop: istep]
         else:
             if stop is None:
                 n_bins_fraction = (self[-1] - start) / step
