@@ -1,7 +1,9 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from eelbrain import datasets, plot
+from eelbrain._wxgui.testing import hide_plots
 
 
+@hide_plots
 def test_glassbrain():
     ndvar = datasets.get_mne_stc(True, True)
 
