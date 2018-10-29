@@ -39,6 +39,7 @@ import warnings
 
 import numpy as np
 
+from .._data_obj import NDVar, VolumeSourceSpace
 from .._utils.numpy_utils import newaxis
 from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, butterfly_data
 from ._utsnd import Butterfly
@@ -168,26 +169,33 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             cmap = cm.cold_hot if black_bg else cm.cold_white_hot
         self.cmap = cmap
 
+        if isinstance(ndvar, NDVar):
+            source = ndvar.get_dim('source')
+            if not isinstance(source, VolumeSourceSpace):
+                raise ValueError(f"ndvar={ndvar!r}:  need volume source space data")
+            if isinstance(ndvar.x, np.ma.MaskedArray) and np.all(ndvar.x.mask):
+                ndvar = None
+        elif isinstance(ndvar, VolumeSourceSpace):
+            source = ndvar
+            ndvar = None
+        else:
+            raise TypeError(f"ndvar={ndvar!r}")
+
+        if mni305 is None:
+            mni305 = source.subject == 'fsaverage'
+
         if ndvar:
             if ndvar.has_case:
                 ndvar = ndvar.mean('case')
             if ndvar.has_dim('space'):
                 ndvar = ndvar.norm('space')
 
-            if mni305 is None:
-                mni305 = ndvar.source.subject == 'fsaverage'
-
-            src = ndvar.source.get_source_space()
-            src_type = src[0]['type']
-            if src_type != 'vol':
-                raise ValueError('You need a volume source space. Got type: %s.'
-                                 % src_type)
-
+            src = source.get_source_space()
             img = _stc_to_volume(ndvar, src, dest, mri_resolution, mni305)
             if ndvar.has_dim('time'):
                 time = ndvar.get_dim('time')
                 t0 = time[0]
-                imgs = [index_img(img, i) for i in range(len(ndvar.time))]
+                imgs = [index_img(img, i) for i in range(len(time))]
                 img0 = imgs[0]
             else:
                 img0 = img
@@ -227,10 +235,10 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         # layout
         if display_mode is None:
             display_mode = ''
-            if 'lh' in ndvar.source.hemi:
+            if 'lh' in source.hemi:
                 display_mode += 'l'
             display_mode += 'y'
-            if 'rh' in ndvar.source.hemi:
+            if 'rh' in source.hemi:
                 display_mode += 'r'
             display_mode += 'z'
         n_plots = 3 if display_mode == 'ortho' else len(display_mode)
@@ -240,18 +248,16 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             frame_title = layout.name
         elif isinstance(layout.title, str):
             frame_title = layout.title
-        elif ndvar.name:
+        elif ndvar and ndvar.name:
             frame_title = ndvar.name
         else:
-            frame_title = ndvar.source.subject
+            frame_title = source.subject
         EelFigure.__init__(self, frame_title, layout)
 
-        display = get_projector(display_mode)(img0, alpha=alpha, plot_abs=plot_abs,
-                                              threshold=threshold, figure=self.figure, axes=None,
-                                              black_bg=black_bg, colorbar=colorbar)
-
-        display.add_overlay(img0, threshold=threshold, interpolation=interpolation,
-                            colorbar=colorbar, vmin=vmin, vmax=vmax, cmap=cmap)
+        project = get_projector(display_mode)
+        display = project(img0, alpha=alpha, plot_abs=plot_abs, threshold=threshold, figure=self.figure, axes=None, black_bg=black_bg, colorbar=colorbar)
+        if img0:
+            display.add_overlay(img0, threshold=threshold, interpolation=interpolation, colorbar=colorbar, vmin=vmin, vmax=vmax, cmap=cmap)
 
         ColorBarMixin.__init__(self, self._colorbar_params, ndvar)
 
@@ -278,7 +284,8 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             cbar = display._cbar
             _crop_colorbar(cbar, cbar_vmin, cbar_vmax)
 
-        TimeSlicerEF.__init__(self, 'time', [[ndvar]])
+        ndvars = [[ndvar]] if ndvar else None
+        TimeSlicerEF.__init__(self, 'time', ndvars)
 
         self._show()
 

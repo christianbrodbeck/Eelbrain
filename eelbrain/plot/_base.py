@@ -2171,8 +2171,12 @@ class ColorBarMixin(object):
     """
     def __init__(self, param_func, data):
         self.__get_params = param_func
-        self.__unit = data.info.get('unit', None)
-        _, self.__label = find_axis_params_data(data, True)
+        if data is None:
+            self.__unit = None
+            self.__label = 'colormap'
+        else:
+            self.__unit = data.info.get('unit', None)
+            _, self.__label = find_axis_params_data(data, True)
 
     def _fill_toolbar(self, tb):
         import wx
@@ -2642,7 +2646,7 @@ class TimeSlicerEF(TimeSlicer):
         if x_dimname != 'time':
             self._time_fixed = True
             return
-        ndvars = [e for layer in epochs for e in layer]
+        ndvars = [e for layer in epochs for e in layer] if epochs else None
         TimeSlicer.__init__(self, ndvars)
         self.__axes = self._axes if axes is None else axes
         self.__time_lines = []
