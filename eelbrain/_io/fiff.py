@@ -6,6 +6,7 @@ import fnmatch
 from itertools import zip_longest
 from logging import getLogger
 import os
+from pathlib import Path
 
 import numpy as np
 
@@ -1116,7 +1117,8 @@ def inverse_operator(inv, src, subjects_dir=None, parc='aparc', name=None):
 
 
 def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
-              name=None, check=True, parc='aparc', connectivity=None):
+              name=None, check=True, parc='aparc', connectivity=None,
+              sss_filename='{subject}-{src}-src.fif'):
     """
     Convert one or more :class:`mne.SourceEstimate` objects to an :class:`NDVar`.
 
@@ -1146,9 +1148,12 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
     connectivity : 'link-midline'
         Modify source space connectivity to link medial sources of the two
         hemispheres across the midline.
+    sss_filename : str
+        Filename template for the MNE source space file.
     """
     subjects_dir = mne.utils.get_subjects_dir(subjects_dir)
-
+    if isinstance(stc, Path):
+        stc = str(stc)
     if isinstance(stc, str):
         stc = mne.read_source_estimate(stc)
 
@@ -1172,10 +1177,10 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
     # Construct NDVar Dimensions
     time = UTS(stc.tmin, stc.tstep, stc.times.size)
     if isinstance(stc, mne.VolSourceEstimate):
-        ss = VolumeSourceSpace([stc.vertices], subject, src, subjects_dir, None)
+        ss = VolumeSourceSpace([stc.vertices], subject, src, subjects_dir, None, filename=sss_filename)
         is_vector = stc.data.ndim == 3
     else:
-        ss = SourceSpace(stc.vertices, subject, src, subjects_dir, parc)
+        ss = SourceSpace(stc.vertices, subject, src, subjects_dir, parc, filename=sss_filename)
         is_vector = isinstance(stc, mne.VectorSourceEstimate)
     # Apply connectivity modification
     if isinstance(connectivity, str):

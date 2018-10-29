@@ -1,6 +1,7 @@
 """Some basic example datasets for testing."""
 from distutils.version import LooseVersion
 import os
+from pathlib import Path
 
 import mne
 from mne import minimum_norm as mn
@@ -113,7 +114,7 @@ def get_mne_evoked(ndvar=False):
         return evoked
 
 
-def get_mne_stc(ndvar=False):
+def get_mne_stc(ndvar=False, vol=False):
     """MNE-Python SourceEstimate
 
     Parameters
@@ -122,12 +123,22 @@ def get_mne_stc(ndvar=False):
         Convert to NDVar (default False; src="ico-4" is false, but it works as
         long as the source space is not accessed).
     """
-    data_path = mne.datasets.testing.data_path()
-    stc_path = os.path.join(data_path, 'MEG', 'sample', 'fsaverage_audvis_trunc-meg')
-    if not ndvar:
+    data_path = Path(mne.datasets.testing.data_path())
+    meg_sdir = data_path / 'MEG/sample'
+    subjects_dir = data_path / 'subjects'
+    if vol:
+        inv = mn.read_inverse_operator(str(meg_sdir / 'sample_audvis_trunc-meg-vol-7-meg-inv.fif'))
+        evoked = mne.read_evokeds(str(meg_sdir / 'sample_audvis_trunc-ave.fif'), 'Left Auditory')
+        stc = mn.apply_inverse(evoked, inv, pick_ori='vector')
+        if ndvar:
+            return load.fiff.stc_ndvar(stc, 'sample', 'vol-7', subjects_dir, 'dSPM', sss_filename='{subject}-volume-7mm-src.fif')
+        else:
+            return stc
+    stc_path = meg_sdir / 'fsaverage_audvis_trunc-meg'
+    if ndvar:
+        return load.fiff.stc_ndvar(stc_path, 'fsaverage', 'ico-5', subjects_dir)
+    else:
         return mne.read_source_estimate(stc_path, 'sample')
-    subjects_dir = os.path.join(data_path, 'subjects')
-    return load.fiff.stc_ndvar(stc_path, 'fsaverage', 'ico-5', subjects_dir)
 
 
 def _mne_source_space(subject, src_tag, subjects_dir):

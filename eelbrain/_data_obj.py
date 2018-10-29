@@ -8595,18 +8595,15 @@ def _mne_tri_soure_space_graph(source_space, vertices_list):
 class SourceSpaceBase(Dimension):
     kind = None
     _default_connectivity = 'custom'
-    _SRC_PATH = os.path.join(
-        '{subjects_dir}', '{subject}', 'bem', '{subject}-{src}-src.fif')
-    _ANNOT_PATH = os.path.join(
-        '{subjects_dir}', '{subject}', 'label', '{hemi}.{parc}.annot')
-
+    _ANNOT_PATH = os.path.join('{subjects_dir}', '{subject}', 'label', '{hemi}.{parc}.annot')
     _vertex_re = re.compile('([RL])(\d+)')
 
-    def __init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name):
+    def __init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name, filename):
         self.vertices = vertices
         self.subject = subject
         self.src = src
         self._subjects_dir = subjects_dir
+        self._filename = filename
         self._init_secondary()
         Dimension.__init__(self, name, connectivity)
 
@@ -8614,14 +8611,13 @@ class SourceSpaceBase(Dimension):
         if parc is None or parc is False:
             self.parc = None
         elif isinstance(parc, Factor):
-            if len(parc) != len(self):
-                raise ValueError("parc has wrong length (%i) for SourceSpace "
-                                 "with %i vertices" % (len(parc), self._n_vert))
+            if len(parc) != self._n_vert:
+                raise ValueError(f"parc={parc!r}: wrong length {len(parc)} for SourceSpace with {self._n_vert} vertices")
             self.parc = parc
         elif isinstance(parc, str):
             self.parc = self._read_parc(parc)
         else:
-            raise TypeError("Parc needs to be Factor or string, got %r" % (parc,))
+            raise TypeError(f"parc={parc!r}: needs to be Factor or string")
 
     def _read_parc(self, parc):
         raise NotImplementedError(
@@ -8644,9 +8640,8 @@ class SourceSpaceBase(Dimension):
         """SourceSpace dimension from MNE source space file"""
         if parc is None and cls is SourceSpace:
             parc = 'aparc'
-        filename = cls._SRC_PATH.format(subjects_dir=subjects_dir,
-                                        subject=subject, src=src)
-        source_spaces = mne.read_source_spaces(filename)
+        filename = Path(subjects_dir) / subject / 'bem' / f'{subject}-{src}-src.fif'
+        source_spaces = mne.read_source_spaces(str(filename))
         return cls.from_mne_source_spaces(source_spaces, src, subjects_dir, parc)
 
     @classmethod
@@ -8669,10 +8664,14 @@ class SourceSpaceBase(Dimension):
             raise TypeError("subjects_dir was neither specified on SourceSpace "
                             "dimension nor as environment variable")
 
+    def _sss_path(self, subjects_dir=None):
+        if subjects_dir is None:
+            subjects_dir = self.subjects_dir
+        return Path(subjects_dir) / self.subject / 'bem' / self._filename.format(subject=self.subject, src=self.src)
+
     def __getstate__(self):
         state = Dimension.__getstate__(self)
-        state.update(vertno=self.vertices, subject=self.subject, src=self.src,
-                     subjects_dir=self._subjects_dir, parc=self.parc)
+        state.update(vertno=self.vertices, subject=self.subject, src=self.src, subjects_dir=self._subjects_dir, parc=self.parc, filename=self._filename)
         return state
 
     def __setstate__(self, state):
@@ -8684,6 +8683,7 @@ class SourceSpaceBase(Dimension):
         self.subject = state['subject']
         self.src = state['src']
         self._subjects_dir = state['subjects_dir']
+        self._filename = state.get('filename', '{subject}-{src}-src.fif')
         self.parc = state['parc']
         self._init_secondary()
 
@@ -8778,9 +8778,7 @@ class SourceSpaceBase(Dimension):
         i0 = 0
         for vertices, ss in zip(self.vertices, sss):
             if ss['dist'] is None:
-                path = self._SRC_PATH.format(
-                    subjects_dir=self.subjects_dir, subject=self.subject,
-                    src=self.src)
+                path = self._sss_path()
                 raise RuntimeError(
                     f"Source space does not contain source distance "
                     f"information. To add distance information, run:\n"
@@ -8933,15 +8931,13 @@ class SourceSpaceBase(Dimension):
         if self.src is None:
             raise TypeError("Unknown source-space. Specify the src parameter "
                             "when initializing SourceSpace.")
-        path = self._SRC_PATH.format(
-            subjects_dir=subjects_dir or self.subjects_dir,
-            subject=self.subject, src=self.src)
-        if not os.path.exists(path):
+        path = self._sss_path(subjects_dir)
+        if not path.exists():
             raise IOError(
                 f"Can't load source space because {path} does not exist; if "
                 f"the MRI files for {self.subject} were moved, use "
                 f"eelbrain.load.update_subjects_dir()")
-        return mne.read_source_spaces(path)
+        return mne.read_source_spaces(str(path))
 
     def index_for_label(self, label):
         """Return the index for a label
@@ -9019,6 +9015,8 @@ class SourceSpace(SourceSpaceBase):
         efficiency.
     name : str
         Dimension name (default ``"source"``).
+    filename : str
+        Filename template for the MNE source space file.
 
     Attributes
     ----------
@@ -9044,8 +9042,8 @@ class SourceSpace(SourceSpaceBase):
     kind = 'ico'
 
     def __init__(self, vertices, subject=None, src=None, subjects_dir=None,
-                 parc='aparc', connectivity='custom', name='source'):
-        SourceSpaceBase.__init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name)
+                 parc='aparc', connectivity='custom', name='source', filename='{subject}-{src}-src.fif'):
+        SourceSpaceBase.__init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name, filename)
 
     def _init_secondary(self):
         SourceSpaceBase._init_secondary(self)
@@ -9292,6 +9290,8 @@ class VolumeSourceSpace(SourceSpaceBase):
         efficiency.
     name : str
         Dimension name (default ``"source"``).
+    filename : str
+        Filename template for the MNE source space file.
 
     See Also
     --------
@@ -9300,18 +9300,17 @@ class VolumeSourceSpace(SourceSpaceBase):
     kind = 'vol'
 
     def __init__(self, vertices, subject=None, src=None, subjects_dir=None,
-                 parc=None, connectivity='custom', name='source'):
+                 parc=None, connectivity='custom', name='source', filename='{subject}-{src}-src.fif'):
         if isinstance(parc, str):
             raise NotImplementedError(f"parc={parc!r}: specify parcellation as Factor")
         if isinstance(vertices, np.ndarray):
             vertices = [vertices]
-        SourceSpaceBase.__init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name)
+        SourceSpaceBase.__init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name, filename)
 
     def _init_secondary(self):
         SourceSpaceBase._init_secondary(self)
         if len(self.vertices) != 1:
-            raise ValueError("A VolumeSourceSpace needs exactly one vertices "
-                             "array")
+            raise ValueError("A VolumeSourceSpace needs exactly one vertices array")
 
     @LazyProperty
     def hemi(self):

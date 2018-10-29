@@ -1,5 +1,6 @@
 from math import ceil, floor
 import os
+from pathlib import Path
 import re
 import warnings
 
@@ -73,10 +74,9 @@ def source_space_vertices(kind, grade, subject, subjects_dir):
     if kind == 'ico' and subject in ICO_SLICE_SUBJECTS:
         n = ICO_N_VERTICES[grade]
         return np.arange(n), np.arange(n)
-    path = SourceSpace._SRC_PATH.format(subjects_dir=subjects_dir,
-                                        subject=subject, src='ico-%i' % grade)
-    if os.path.exists(path):
-        src_to = mne.read_source_spaces(path)
+    path = Path(subjects_dir) / subject / 'bem' / f'{subject}-ico-{grade}-src.fif'
+    if path.exists():
+        src_to = mne.read_source_spaces(str(path))
         return src_to[0]['vertno'], src_to[1]['vertno']
     elif kind != 'ico':
         raise NotImplementedError("Can't infer vertices for non-ico source space")
