@@ -102,7 +102,7 @@ def test_boosting_epochs():
     assert_dataobj_equal(res.r, r, decimal=3, name=False)
     # vector
     res = boosting('v3d', [p0, p1], 0, 0.6, error='l1', model='A', ds=ds, partitions=10)
-    assert res.fit_error.ndim == 0
+    assert res.residual.ndim == 0
 
 
 def test_result():

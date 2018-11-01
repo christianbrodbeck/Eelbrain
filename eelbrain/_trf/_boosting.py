@@ -39,7 +39,7 @@ from .shared import RevCorrData
 
 
 # BoostingResult version
-VERSION = 8
+VERSION = 9
 
 # process messages
 JOB_TERMINATE = -1
@@ -78,7 +78,7 @@ class BoostingResult(object):
         Time it took to run the boosting algorithm (in seconds).
     error : str
         The error evaluation method used.
-    fit_error : float | NDVar
+    residual : float | NDVar
         The fit error, i.e. the result of the ``error`` error function on the
         final fit.
     delta : scalar
@@ -104,7 +104,7 @@ class BoostingResult(object):
             y, x, tstart, tstop, scale_data, delta, mindelta, error,
             basis, basis_window, partitions_arg, partitions, model,
             # result parameters
-            h, r, isnan, spearmanr, fit_error, t_run, version,
+            h, r, isnan, spearmanr, residual, t_run,
             y_mean, y_scale, x_mean, x_scale, y_info={}, r_l1=None,
             **debug_attrs,
     ):
@@ -129,9 +129,8 @@ class BoostingResult(object):
         self.r_l1 = r_l1
         self._isnan = isnan
         self.spearmanr = spearmanr
-        self.fit_error = fit_error
+        self.residual = residual
         self.t_run = t_run
-        self._version = version
         self.y_mean = y_mean
         self.y_scale = y_scale
         self.x_mean = x_mean
@@ -151,8 +150,8 @@ class BoostingResult(object):
             'basis_window': self.basis_window,
             # results
             'h': self._h, 'r': self.r, 'r_l1': self.r_l1, 'isnan': self._isnan,
-            'spearmanr': self.spearmanr, 'fit_error': self.fit_error,
-            't_run': self.t_run, 'version': self._version,
+            'spearmanr': self.spearmanr, 'residual': self.residual,
+            't_run': self.t_run, 'version': VERSION,
             'y_mean': self.y_mean, 'y_scale': self.y_scale,
             'x_mean': self.x_mean, 'x_scale': self.x_scale,
             'y_info': self._y_info,
@@ -161,11 +160,12 @@ class BoostingResult(object):
 
     def __setstate__(self, state):
         if state['version'] < 7:
-            state.update(partitions=None, partitions_arg=None, model=None,
-                         basis=0, basis_window='hamming')
+            state.update(partitions=None, partitions_arg=None, model=None, basis=0, basis_window='hamming')
         elif state['version'] < 8:
             state['partitions'] = state.pop('n_partitions')
             state['partitions_arg'] = state.pop('n_partitions_arg')
+        if state['version'] < 9:
+            state['residual'] = state.pop('fit_error')
         self.__init__(**state)
 
     def __repr__(self):
@@ -250,7 +250,7 @@ class BoostingResult(object):
             index = np.invert(obj_new.source.parc.startswith('unknown-'))
             return obj_new.sub(source=index)
 
-        for attr in ('h', 'r', 'spearmanr', 'fit_error', 'y_mean', 'y_scale'):
+        for attr in ('h', 'r', 'spearmanr', 'residual', 'y_mean', 'y_scale'):
             setattr(self, attr, sub_func(getattr(self, attr)))
 
 
@@ -458,7 +458,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     isnan = np.isnan(rs)
     rs[isnan] = 0
     r = data.package_value(rs, 'correlation', meas='r')
-    fit_error = data.package_value(errs, 'fit error')
+    residual = data.package_value(errs, 'fit error')
 
     y_mean, y_scale, x_mean, x_scale = data.data_scale_ndvars()
 
@@ -476,7 +476,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         data.y_name, data.x_name, tstart, tstop, scale_data, delta, mindelta, error,
         basis, basis_window, partitions, data.partitions, model_repr,
         # result parameters
-        h, r, isnan, spearmanr, fit_error, t_run, VERSION,
+        h, r, isnan, spearmanr, residual, t_run,
         y_mean, y_scale, x_mean, x_scale, data.y_info,
         # vector results
         r_l1,
