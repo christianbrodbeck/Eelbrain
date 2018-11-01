@@ -573,6 +573,8 @@ def asndvar(x, sub=None, ds=None, n=None, dtype=None):
             x = evoked_ndvar(x)
         else:
             x = combine(map(asndvar, x))
+    elif hasattr(x, '_default_plot_obj'):
+        x = x._default_plot_obj()
     else:
         raise TypeError("NDVar required, got %s" % repr(x))
 

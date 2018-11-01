@@ -39,7 +39,7 @@ import warnings
 
 import numpy as np
 
-from .._data_obj import NDVar, VolumeSourceSpace
+from .._data_obj import NDVar, VolumeSourceSpace, asndvar
 from .._utils.numpy_utils import newaxis
 from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, butterfly_data
 from ._utsnd import Butterfly
@@ -169,17 +169,16 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             cmap = cm.cold_hot if black_bg else cm.cold_white_hot
         self.cmap = cmap
 
-        if isinstance(ndvar, NDVar):
+        if isinstance(ndvar, VolumeSourceSpace):
+            source = ndvar
+            ndvar = None
+        else:
+            ndvar = asndvar(ndvar)
             source = ndvar.get_dim('source')
             if not isinstance(source, VolumeSourceSpace):
                 raise ValueError(f"ndvar={ndvar!r}:  need volume source space data")
             if isinstance(ndvar.x, np.ma.MaskedArray) and np.all(ndvar.x.mask):
                 ndvar = None
-        elif isinstance(ndvar, VolumeSourceSpace):
-            source = ndvar
-            ndvar = None
-        else:
-            raise TypeError(f"ndvar={ndvar!r}")
 
         if mni305 is None:
             mni305 = source.subject == 'fsaverage'
