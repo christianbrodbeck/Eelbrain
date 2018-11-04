@@ -89,7 +89,7 @@ class Document(FileDocument):
         epochs) and variables describing cases in epochs, used to plot
         condition averages.
     """
-    def __init__(self, path, ds, sysname):
+    def __init__(self, path, ds, sysname, connectivity):
         FileDocument.__init__(self, path)
         self.saved = True
 
@@ -100,7 +100,7 @@ class Document(FileDocument):
         self.accept = np.ones(self.ica.n_components_, bool)
         self.accept[ica.exclude] = False
         self.epochs = epochs = ds['epochs']
-        self.epochs_ndvar = load.fiff.epochs_ndvar(epochs, sysname=sysname)
+        self.epochs_ndvar = load.fiff.epochs_ndvar(epochs, sysname=sysname, connectivity=connectivity)
         self.ds = ds
 
         data = np.dot(ica.mixing_matrix_.T, ica.pca_components_[:ica.n_components_])

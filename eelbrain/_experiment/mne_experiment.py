@@ -4274,7 +4274,8 @@ class MneExperiment(FileTree):
         data = TestDims('sensor')
         data_kind = data.data_to_ndvar(info)[0]
         sysname = pipe.get_sysname(info, ds.info['subject'], data_kind)
-        gui.select_components(path, ds, sysname)
+        connectivity = pipe.get_connectivity(data_kind)
+        gui.select_components(path, ds, sysname, connectivity)
 
     def make_ica(self, return_data=False, decim=None, **state):
         """Compute the ICA decomposition

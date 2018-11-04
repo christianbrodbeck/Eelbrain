@@ -17,7 +17,7 @@ def run(block=False):
     run(block)
 
 
-def select_components(path, ds, sysname=None):
+def select_components(path, ds, sysname=None, connectivity=None):
     """GUI for selecting ICA-components
 
     Parameters
@@ -31,6 +31,9 @@ def select_components(path, ds, sysname=None):
         Further :class:`Factor` can be used to plot condition averages.
     sysname : str
         Optional, to define sensor connectivity.
+    connectivity :
+        Optional, to define sensor connectivity (see
+        :func:`eelbrain.load.fiff.sensor_dim`).
 
     Notes
     -----
@@ -42,7 +45,7 @@ def select_components(path, ds, sysname=None):
     from ._wxgui.select_components import TEST_MODE, Document, Frame, Model
 
     get_app()  # make sure app is created
-    doc = Document(path, ds, sysname)
+    doc = Document(path, ds, sysname, connectivity)
     model = Model(doc)
     frame = Frame(None, None, None, model)
     frame.Show()
