@@ -812,6 +812,8 @@ class SourceFrame(FileFrameChild):
         elif not event.inaxes:
             return
         elif event.key in 'tT':
+            if event.inaxes.i_comp is None:  # source time course axes
+                return
             self.parent.PlotCompTopomap(event.inaxes.i_comp)
         elif event.key == 'a':
             self.parent.PlotCompSourceArray(event.inaxes.i_comp)
