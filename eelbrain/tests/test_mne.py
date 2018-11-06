@@ -87,7 +87,7 @@ def test_source_estimate():
     mp = res.masked_parameter_map()
     assert mp.min() == res.t.min()
     assert mp.max() == res.t.max(res.p <= 0.05)
-    assert mp.max() == -4.958177320510397
+    assert mp.max() == pytest.approx(-4.95817732)
 
     # indexing source space
     s_sub = src.sub(source='fusiform-lh')
