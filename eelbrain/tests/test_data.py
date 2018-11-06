@@ -19,6 +19,7 @@ import numpy as np
 from numpy.testing import (
     assert_equal, assert_array_equal, assert_allclose,
     assert_array_almost_equal)
+import pytest
 from scipy import signal
 
 from eelbrain import (
@@ -1488,7 +1489,13 @@ def test_var():
     assert_array_equal(y, x.repeat(x))
     y = Var.from_dict(base, {'a': 5, 'e': 8}, default=0)
     assert_array_equal(y.x, [5, 5, 0, 0, 0, 0, 8])
-    assert_raises(TypeError, Var, x, info=1)
+    with pytest.raises(TypeError):
+        Var(x, info=1)
+    # invalid dtypes
+    with pytest.raises(TypeError):
+        Var(np.array(['a', 'b', 'c']))
+    with pytest.raises(TypeError):
+        Var(np.array([None, 1, 2]))
 
     # basic operations
     info = {'a': 1}

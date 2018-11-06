@@ -1175,9 +1175,9 @@ class Var(object):
         if isinstance(x, Iterator):
             x = tuple(x)
         x = np.asarray(x)
-        if x.dtype.kind == 'O':
-            raise TypeError("Var can not handle object-type arrays. Consider "
-                            "using a Datalist.")
+        if x.dtype.kind in 'OUSV':
+            alt_type = 'Factor' if x.dtype.kind == 'S' else 'Datalist'
+            raise TypeError(f"x with numpy dtype.kind={x.dtype.kind!r}: Var needs numerical data type. Consider using a {alt_type} instead.")
         elif x.ndim > 1:
             if sum(i > 1 for i in x.shape) <= 1:
                 x = np.ravel(x)
