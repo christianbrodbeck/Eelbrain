@@ -1734,79 +1734,6 @@ class MneExperiment(FileTree):
         criteria = self._cluster_criteria[self.get('select_clusters')]
         return {'min' + dim: criteria[dim] for dim in data.dims if dim in criteria}
 
-    def _add_epochs_stc(self, ds, ndvar, baseline, morph, mask):
-        """
-        Transform epochs contained in ds into source space
-
-        Data is added to ``ds`` as a list of :class:`mne.SourceEstimate`.
-
-        Parameters
-        ----------
-        ds : Dataset
-            The Dataset containing the mne Epochs for the desired trials.
-        ndvar : bool
-            Add the source estimates as NDVar named 'src' (default). Set to
-            False to add a list of MNE SourceEstimate objects named 'stc'.
-        baseline : None | True | tuple
-            Apply baseline correction using this period. True to use the
-            epoch's baseline specification. The default is to apply no baseline
-            correction (None).
-        morph : bool
-            Morph the source estimates to the common_brain (default False).
-        mask : bool | str
-            Discard data that is labelled 'unknown' by the parcellation (only
-            applies to NDVars, default False).
-        """
-        subject = ds['subject']
-        if len(subject.cells) != 1:
-            raise ValueError("ds must have a subject variable with exactly one subject")
-        subject = subject.cells[0]
-        self.set(subject=subject)
-        if baseline is True:
-            baseline = self._epochs[self.get('epoch')].baseline
-        parc = self.get('parc') or None
-        if isinstance(mask, str) and parc != mask:
-            parc = mask
-            self.set(parc=mask)
-        epochs = ds['epochs']
-        inv = self.load_inv(epochs)
-
-        # determine whether initial source-space can be restricted
-        mri_sdir = self.get('mri-sdir')
-        mrisubject = self.get('mrisubject')
-        is_scaled = find_source_subject(mrisubject, mri_sdir)
-        if mask and (is_scaled or not morph):
-            label = label_from_annot(inv['src'], mrisubject, mri_sdir, parc)
-        else:
-            label = None
-        stc = apply_inverse_epochs(epochs, inv, label=label, **self._params['apply_inv_kw'])
-
-        if ndvar:
-            self.make_annot()
-            src = self.get('src')
-            src = load.fiff.stc_ndvar(
-                stc, mrisubject, src, mri_sdir, self._params['apply_inv_kw']['method'],
-                self._params['make_inv_kw'].get('fixed', False), parc=parc,
-                connectivity=self.get('connectivity'))
-            if baseline:
-                src -= src.summary(time=baseline)
-
-            if morph:
-                common_brain = self.get('common_brain')
-                with self._temporary_state:
-                    self.make_annot(mrisubject=common_brain)
-                ds['srcm'] = morph_source_space(src, common_brain)
-                if mask and not is_scaled:
-                    _mask_ndvar(ds, 'srcm')
-            else:
-                ds['src'] = src
-        else:
-            if baseline:
-                raise NotImplementedError("Baseline for SourceEstimate")
-            if morph:
-                raise NotImplementedError("Morphing for SourceEstimate")
-            ds['stc'] = stc
-
     def _add_evoked_stc(self, ds, ind_stc=False, ind_ndvar=False, morph_stc=False,
                         morph_ndvar=False, baseline=None, keep_evoked=False,
                         mask=False):
@@ -2647,25 +2574,17 @@ class MneExperiment(FileTree):
         epochs_dataset : Dataset
             Dataset containing single trial data (epochs).
         """
-        if not sns_baseline and src_baseline and \
-                self._epochs[self.get('epoch')].post_baseline_trigger_shift:
-            raise NotImplementedError("post_baseline_trigger_shift is not "
-                                      "implemented for baseline correction in "
-                                      "source space")
-
+        epoch = self._epochs[self.get('epoch')]
+        if not sns_baseline and src_baseline and epoch.post_baseline_trigger_shift:
+            raise NotImplementedError("src_baseline with post_baseline_trigger_shift")
         subject, group = self._process_subject_arg(subject, kwargs)
         if group is not None:
             if data_raw is not False:
-                raise ValueError("Can not keep data_raw when combining data "
-                                 "from multiple subjects. Set data_raw=False "
-                                 "(default).")
+                raise ValueError(f"data_raw={data_raw!r} with group: Can not keep data_raw when combining data from multiple subjects.")
             elif keep_epochs:
-                raise ValueError("Can not combine Epochs objects for different "
-                                 "subjects. Set keep_epochs=False (default).")
+                raise ValueError(f"keep_epochs={keep_epochs!r} with group: Can not combine Epochs objects for different subjects. Set keep_epochs=False (default).")
             elif not morph:
-                raise ValueError("Source estimates can only be combined after "
-                                 "morphing data to common brain model. Set "
-                                 "morph=True.")
+                raise ValueError(f"morph={morph!r} with group: Source estimates can only be combined after morphing data to common brain model. Set morph=True.")
             dss = []
             for _ in self.iter(group=group):
                 ds = self.load_epochs_stc(None, sns_baseline, src_baseline,
@@ -2673,27 +2592,73 @@ class MneExperiment(FileTree):
                                           False, vardef, decim)
                 dss.append(ds)
             return combine(dss)
-        else:
-            if keep_epochs is True:
-                sns_ndvar = False
-                del_epochs = False
-            elif keep_epochs is False:
-                sns_ndvar = False
-                del_epochs = True
-            elif keep_epochs == 'ndvar':
-                sns_ndvar = 'both'
-                del_epochs = True
-            elif keep_epochs == 'both':
-                sns_ndvar = 'both'
-                del_epochs = False
-            else:
-                raise ValueError(f'keep_epochs={keep_epochs!r}')
 
-            ds = self.load_epochs(subject, sns_baseline, sns_ndvar, cat=cat, decim=decim, data_raw=data_raw, vardef=vardef)
-            self._add_epochs_stc(ds, ndvar, src_baseline, morph, mask)
-            if del_epochs:
-                del ds['epochs']
-            return ds
+        if keep_epochs is True:
+            sns_ndvar = False
+            del_epochs = False
+        elif keep_epochs is False:
+            sns_ndvar = False
+            del_epochs = True
+        elif keep_epochs == 'ndvar':
+            sns_ndvar = 'both'
+            del_epochs = True
+        elif keep_epochs == 'both':
+            sns_ndvar = 'both'
+            del_epochs = False
+        else:
+            raise ValueError(f'keep_epochs={keep_epochs!r}')
+
+        ds = self.load_epochs(subject, sns_baseline, sns_ndvar, cat=cat, decim=decim, data_raw=data_raw, vardef=vardef)
+
+        # load inv
+        if src_baseline is True:
+            src_baseline = epoch.baseline
+        parc = self.get('parc') or None
+        if isinstance(mask, str) and parc != mask:
+            parc = mask
+            self.set(parc=mask)
+        epochs = ds['epochs']
+        inv = self.load_inv(epochs)
+
+        # determine whether initial source-space can be restricted
+        mri_sdir = self.get('mri-sdir')
+        mrisubject = self.get('mrisubject')
+        is_scaled = find_source_subject(mrisubject, mri_sdir)
+        if mask and (is_scaled or not morph):
+            label = label_from_annot(inv['src'], mrisubject, mri_sdir, parc)
+        else:
+            label = None
+        stc = apply_inverse_epochs(epochs, inv, label=label, **self._params['apply_inv_kw'])
+
+        if ndvar:
+            self.make_annot()
+            src = self.get('src')
+            src = load.fiff.stc_ndvar(
+                stc, mrisubject, src, mri_sdir, self._params['apply_inv_kw']['method'],
+                self._params['make_inv_kw'].get('fixed', False), parc=parc,
+                connectivity=self.get('connectivity'))
+            if src_baseline:
+                src -= src.summary(time=src_baseline)
+
+            if morph:
+                common_brain = self.get('common_brain')
+                with self._temporary_state:
+                    self.make_annot(mrisubject=common_brain)
+                ds['srcm'] = morph_source_space(src, common_brain)
+                if mask and not is_scaled:
+                    _mask_ndvar(ds, 'srcm')
+            else:
+                ds['src'] = src
+        else:
+            if src_baseline:
+                raise NotImplementedError("Baseline for SourceEstimate")
+            if morph:
+                raise NotImplementedError("Morphing for SourceEstimate")
+            ds['stc'] = stc
+
+        if del_epochs:
+            del ds['epochs']
+        return ds
 
     def load_events(self, subject=None, add_bads=True, data_raw=True, **kwargs):
         """
