@@ -23,8 +23,7 @@ ICO_SLICE_SUBJECTS = ('fsaverage', 'fsaverage_sym')
 
 def assert_subject_exists(subject, subjects_dir):
     if not os.path.exists(os.path.join(subjects_dir, subject)):
-        raise IOError("Subject %s does not exist in subjects_dir %s" %
-                      (subject, subjects_dir))
+        raise IOError(f"Subject {subject} does not exist in subjects_dir {subjects_dir}")
 
 
 def find_source_subject(subject, subjects_dir):
@@ -477,17 +476,17 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     x = ndvar.x
 
     # check whether it is a scaled brain
-    do_morph = True
+    x_m = None
     if not xhemi:
-        source_subject = find_source_subject(subject_to, subjects_dir)
-        if subject_to == source_subject and _vertices_equal(source_to.vertices, source.vertices):
+        subject_is_scaled = find_source_subject(subject_to, subjects_dir) == subject_from or find_source_subject(subject_from, subjects_dir) == subject_to
+        if subject_is_scaled and _vertices_equal(source_to.vertices, source.vertices):
+            # vertices are different if source space was regenerated rather than scaled
             if copy:
-                x_ = x.copy()
+                x_m = x.copy()
             else:
-                x_ = x
-            do_morph = False
+                x_m = x
 
-    if do_morph:
+    if x_m is None:
         if morph_mat is None:
             with warnings.catch_warnings():
                 warnings.filterwarnings('ignore', '\d+/\d+ vertices not included in smoothing', module='mne')
@@ -512,19 +511,19 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
             x = x.reshape((n_sources, -1))
 
         # apply morph matrix
-        x_ = morph_mat * x
+        x_m = morph_mat * x
 
         # restore data shape
         if ndvar.ndim > 2:
-            shape_ = (len(x_),) + shape[1:]
-            x_ = x_.reshape(shape_)
+            shape_ = (len(x_m),) + shape[1:]
+            x_m = x_m.reshape(shape_)
         if axis != 0:
-            x_ = x_.swapaxes(axis, 0)
+            x_m = x_m.swapaxes(axis, 0)
 
     # package output NDVar
-    dims = ndvar.dims[:axis] + (source_to,) + ndvar.dims[axis + 1:]
+    dims = (*ndvar.dims[:axis], source_to, *ndvar.dims[axis + 1:])
     info = ndvar.info.copy()
-    return NDVar(x_, dims, info, ndvar.name)
+    return NDVar(x_m, dims, info, ndvar.name)
 
 
 # label operations ---
