@@ -4966,8 +4966,7 @@ class MneExperiment(FileTree):
 
         # info
         surfer_kwargs = self._surfer_plot_kwargs()
-        self._report_test_info(report.add_section("Test Info"), ds, test, res,
-                               data, include)
+        self._report_test_info(report.add_section("Test Info"), ds, test, res, data, include)
         if parc:
             section = report.add_section(parc)
             caption = "Labels in the %s parcellation." % parc
@@ -5290,7 +5289,7 @@ class MneExperiment(FileTree):
             caption="All subjects included in the analysis with trials per "
                     "condition")
 
-    def _report_test_info(self, section, ds, test, res, data, include=None):
+    def _report_test_info(self, section, ds, test, res, data, include=None, model=True):
         """Top-level report info function
 
         Returns
@@ -5298,29 +5297,35 @@ class MneExperiment(FileTree):
         info : Table
             Table with preprocessing and test info.
         """
-        model = self.get('model')
         test_obj = self._tests[test] if isinstance(test, str) else test
 
         # List of preprocessing parameters
         info = List("Analysis:")
-        epoch = self.format('epoch = {epoch} {evoked_kind}')
+        # epoch
+        epoch = self.format('epoch = {epoch}')
+        evoked_kind = self.get('evoked_kind')
+        if evoked_kind:
+            epoch += f' {evoked_kind}'
+        if model is True:
+            model = self.get('model')
         if model:
-            epoch += ' ~ ' + model
+            epoch += f" ~ {model}"
         info.add_item(epoch)
+        # inverse solution
         if data.source:
             info.add_item(self.format("cov = {cov}"))
             info.add_item(self.format("inv = {inv}"))
-
+        # test
         info.add_item("test = %s  (%s)" % (test_obj.kind, test_obj.desc))
         if include is not None:
-            info.add_item("Separate plots of all clusters with a p-value < %s"
-                          % include)
+            info.add_item(f"Separate plots of all clusters with a p-value < {include}")
         section.append(info)
 
-        # Test info (for temporal tests, res is only representative)
+        # Statistical methods (for temporal tests, res is only representative)
         info = res.info_list()
         section.append(info)
 
+        # subjects and state
         section.append(self._report_subject_info(ds, test_obj.model))
         section.append(self.show_state(hide=('hemi', 'subject', 'mrisubject')))
         return info
