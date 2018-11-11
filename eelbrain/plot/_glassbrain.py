@@ -415,7 +415,9 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         glassbrain : GlassBrain
             GlassBrain plot.
         """
+        import wx
         from .._wxgui import get_app, needs_jumpstart
+        from .._wxgui.mpl_canvas import CanvasFrame
         jumpstart = needs_jumpstart()
 
         hemis, bfly_data, brain_data = butterfly_data(y, None)
@@ -429,11 +431,17 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         if jumpstart:
             get_app().jumpstart()
 
-        # position the brain window next to the butterfly-plot
-        # needs to be figured out
-
         # GlassBrain plot
-        p_glassbrain = GlassBrain(brain_data, cmap, vmin, vmax, dest, mri_resolution, mni305, black_bg, display_mode, threshold, colorbar, True, True, alpha, plot_abs, symmetric_cbar, interpolation, **kwargs)
+        p_glassbrain = GlassBrain(brain_data, cmap, vmin, vmax, dest, mri_resolution, mni305, black_bg, display_mode, threshold, colorbar, True, True, alpha, plot_abs, symmetric_cbar, interpolation, h=h, **kwargs)
+
+        # position the brain window next to the butterfly-plot
+        if isinstance(p._frame, CanvasFrame):
+            px, py = p._frame.GetPosition()
+            pw, _ = p._frame.GetSize()
+            display_w, _ = wx.DisplaySize()
+            brain_w, _ = p_glassbrain._frame.GetSize()
+            brain_x = min(px + pw, display_w - brain_w)
+            p_glassbrain._frame.SetPosition((brain_x, py))
 
         p.link_time_axis(p_glassbrain)
 
