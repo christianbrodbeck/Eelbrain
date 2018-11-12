@@ -394,19 +394,37 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     altering ``ndvar``. To make sure the date of the output is independent from
     the data of the input, set the argument ``copy=True``.
     """
+    axis = ndvar.get_axis('source')
     source = ndvar.get_dim('source')
     subjects_dir = source.subjects_dir
     subject_from = source.subject
-    src = source.src
-    if isinstance(source, VolumeSourceSpace):
-        source_to = VolumeSourceSpace.from_file(subjects_dir, subject_to, src, None)
-        assert np.all(source_to.vertices[0] == source.vertices[0])
-        dims = list(ndvar.dims)
-        dims[ndvar.get_axis('source')] = source_to
-        return NDVar(ndvar.x, dims, ndvar.info.copy(), ndvar.name)
+    assert_subject_exists(subject_to, subjects_dir)
+    # catch cases that don't require morphing
+    if not xhemi:
+        subject_is_same = subject_from == subject_to
+        subject_is_scaled = find_source_subject(subject_to, subjects_dir) == subject_from or find_source_subject(subject_from, subjects_dir) == subject_to
+        if subject_is_same or subject_is_scaled:
+            if vertices_to is None:
+                pass
+            elif vertices_to in ('lh', 'rh'):
+                ndvar = ndvar.sub(source=vertices_to)
+            elif isinstance(vertices_to, str):
+                raise ValueError(f"vertices_to={vertices_to!r}")
+            else:
+                raise TypeError(f"vertices_to={vertices_to!r}")
+
+            x = ndvar.x.copy() if copy else ndvar.x
+            parc_arg = None if parc is True else parc
+            if subject_is_scaled or parc_arg is not None:
+                source_to = source._copy(subject_to, parc=parc_arg)
+            else:
+                source_to = source
+
+            dims = (*ndvar.dims[:axis], source_to, *ndvar.dims[axis + 1:])
+            return NDVar(x, dims, ndvar.info, ndvar.name)
+
     has_lh_out = bool(source.rh_n if xhemi else source.lh_n)
     has_rh_out = bool(source.lh_n if xhemi else source.rh_n)
-    assert_subject_exists(subject_to, subjects_dir)
     if vertices_to in (None, 'lh', 'rh'):
         default_vertices = source_space_vertices(source.kind, source.grade, subject_to, subjects_dir)
         lh_out = vertices_to == 'lh' or (vertices_to is None and has_lh_out)
@@ -419,18 +437,15 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
             else:
                 mask = not np.any(source.parc.startswith('unknown-'))
     elif not isinstance(vertices_to, list) or not len(vertices_to) == 2:
-        raise ValueError('vertices_to must be a list of length 2, got %r' %
-                         (vertices_to,))
+        raise ValueError(f"vertices_to={vertices_to!r}: must be a list of length 2")
 
     # check that requested data is available
     n_to_lh = len(vertices_to[0])
     n_to_rh = len(vertices_to[1])
     if n_to_lh and not has_lh_out:
-        raise ValueError("Data on the left hemisphere was requested in "
-                         "vertices_to but is not available in ndvar")
+        raise ValueError("Data on the left hemisphere was requested in vertices_to but is not available in ndvar")
     elif n_to_rh and not has_rh_out:
-        raise ValueError("Data on the right hemisphere was requested in "
-                         "vertices_to but is not available in ndvar")
+        raise ValueError("Data on the right hemisphere was requested in vertices_to but is not available in ndvar")
     elif n_to_lh == 0 and n_to_rh == 0:
         raise ValueError("No target vertices")
 
@@ -449,20 +464,10 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
         fnames = tuple(fname % hemi for hemi in ('lh', 'rh'))
         missing = tuple(fname for fname in fnames if not os.path.exists(fname))
         if missing:
-            raise IOError(
-                "Annotation files are missing for parc=%r for target subject "
-                "%s. Use the parc parameter to change the parcellation. The "
-                "following files are missing:\n%s" %
-                (parc_to, subject_to, '\n'.join(missing)))
-    # catch in == out
-    if subject_from == subject_to and _vertices_equal(source.vertices, vertices_to):
-        if copy:
-            ndvar = ndvar.copy()
-        if parc is not True:
-            set_parc(ndvar, parc)
-        return ndvar
+            missing = '\n'.join(missing)
+            raise IOError(f"Annotation files are missing for parc={parc_to!r}, subject={subject_to!r}. Use the parc parameter when morphing to set a different parcellation. The following files are missing:\n{missing}")
     # find target source space
-    source_to = SourceSpace(vertices_to, subject_to, src, subjects_dir, parc_to)
+    source_to = SourceSpace(vertices_to, subject_to, source.src, subjects_dir, parc_to)
     if mask is True:
         if parc is True:
             index = source_to.parc.isin(source.parc.cells)
@@ -472,58 +477,39 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     elif mask not in (None, False):
         raise TypeError(f"mask={mask!r}")
 
-    axis = ndvar.get_axis('source')
+    if morph_mat is None:
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', '\d+/\d+ vertices not included in smoothing', module='mne')
+            morph_mat = mne.compute_morph_matrix(subject_from, subject_to, source.vertices, source_to.vertices, None, subjects_dir, xhemi=xhemi)
+    elif not sp.sparse.issparse(morph_mat):
+        raise ValueError('morph_mat must be a sparse matrix')
+    elif not sum(len(v) for v in source_to.vertices) == morph_mat.shape[0]:
+        raise ValueError('morph_mat.shape[0] must match number of vertices in vertices_to')
+
+    # flatten data
     x = ndvar.x
+    if axis != 0:
+        x = x.swapaxes(0, axis)
+    n_sources = len(x)
+    if not n_sources == morph_mat.shape[1]:
+        raise ValueError('ndvar source dimension length must be the same as morph_mat.shape[0]')
+    if ndvar.ndim > 2:
+        shape = x.shape
+        x = x.reshape((n_sources, -1))
 
-    # check whether it is a scaled brain
-    x_m = None
-    if not xhemi:
-        subject_is_scaled = find_source_subject(subject_to, subjects_dir) == subject_from or find_source_subject(subject_from, subjects_dir) == subject_to
-        if subject_is_scaled and _vertices_equal(source_to.vertices, source.vertices):
-            # vertices are different if source space was regenerated rather than scaled
-            if copy:
-                x_m = x.copy()
-            else:
-                x_m = x
+    # apply morph matrix
+    x_m = morph_mat * x
 
-    if x_m is None:
-        if morph_mat is None:
-            with warnings.catch_warnings():
-                warnings.filterwarnings('ignore', '\d+/\d+ vertices not included in smoothing', module='mne')
-                morph_mat = mne.compute_morph_matrix(
-                    subject_from, subject_to, source.vertices, source_to.vertices,
-                    None, subjects_dir, xhemi=xhemi)
-        elif not sp.sparse.issparse(morph_mat):
-            raise ValueError('morph_mat must be a sparse matrix')
-        elif not sum(len(v) for v in source_to.vertices) == morph_mat.shape[0]:
-            raise ValueError('morph_mat.shape[0] must match number of '
-                             'vertices in vertices_to')
-
-        # flatten data
-        if axis != 0:
-            x = x.swapaxes(0, axis)
-        n_sources = len(x)
-        if not n_sources == morph_mat.shape[1]:
-            raise ValueError('ndvar source dimension length must be the same '
-                             'as morph_mat.shape[0]')
-        if ndvar.ndim > 2:
-            shape = x.shape
-            x = x.reshape((n_sources, -1))
-
-        # apply morph matrix
-        x_m = morph_mat * x
-
-        # restore data shape
-        if ndvar.ndim > 2:
-            shape_ = (len(x_m),) + shape[1:]
-            x_m = x_m.reshape(shape_)
-        if axis != 0:
-            x_m = x_m.swapaxes(axis, 0)
+    # restore data shape
+    if ndvar.ndim > 2:
+        shape_ = (len(x_m),) + shape[1:]
+        x_m = x_m.reshape(shape_)
+    if axis != 0:
+        x_m = x_m.swapaxes(axis, 0)
 
     # package output NDVar
     dims = (*ndvar.dims[:axis], source_to, *ndvar.dims[axis + 1:])
-    info = ndvar.info.copy()
-    return NDVar(x_m, dims, info, ndvar.name)
+    return NDVar(x_m, dims, ndvar.info, ndvar.name)
 
 
 # label operations ---

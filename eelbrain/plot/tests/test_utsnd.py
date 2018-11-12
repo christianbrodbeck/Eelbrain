@@ -22,7 +22,7 @@ def test_plot_butterfly():
     p.close()
 
     # other y-dim
-    stc = datasets.get_mne_stc(True)
+    stc = datasets.get_mne_stc(True, subject='fsaverage')
     p = plot.Butterfly(stc)
     p.close()
 

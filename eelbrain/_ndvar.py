@@ -1015,11 +1015,9 @@ def set_parc(ndvar, parc, dim='source'):
     """
     axis = ndvar.get_axis(dim)
     old = ndvar.dims[axis]
-    new = SourceSpace(old.vertices, old.subject, old.src, old.subjects_dir,
-                      parc, old._subgraph(), dim)
-    dims = list(ndvar.dims)
-    dims[axis] = new
-    return NDVar(ndvar.x, dims, ndvar.info.copy(), ndvar.name)
+    new = old._copy(parc=parc)
+    dims = (*ndvar.dims[:axis], new, *ndvar.dims[axis + 1:])
+    return NDVar(ndvar.x, dims, ndvar.info, ndvar.name)
 
 
 def set_tmin(ndvar, tmin=0.):

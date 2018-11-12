@@ -128,20 +128,30 @@ def get_mne_stc(ndvar=False, vol=False, subject='sample'):
     data_path = Path(mne.datasets.testing.data_path())
     meg_sdir = data_path / 'MEG/sample'
     subjects_dir = data_path / 'subjects'
+    # scaled subject
+    if subject == 'fsaverage_scaled':
+        subject_dir = os.path.join(subjects_dir, subject)
+        if not os.path.exists(subject_dir):
+            mne.scale_mri('fsaverage', subject, .9, subjects_dir=subjects_dir, skip_fiducials=True, labels=False, annot=True)
+        data_subject = 'fsaverage'
+    else:
+        data_subject = subject
+
     if vol:
         inv = mn.read_inverse_operator(str(meg_sdir / 'sample_audvis_trunc-meg-vol-7-meg-inv.fif'))
         evoked = mne.read_evokeds(str(meg_sdir / 'sample_audvis_trunc-ave.fif'), 'Left Auditory')
         stc = mn.apply_inverse(evoked, inv, method='MNE', pick_ori='vector')
-        if subject == 'fsaverage':
-            m = mne.compute_source_morph(stc, 'sample', 'fsaverage', subjects_dir)
+        if data_subject == 'fsaverage':
+            m = mne.compute_source_morph(stc, 'sample', data_subject, subjects_dir)
             stc = m.apply(stc)
+            stc.subject = subject
         elif subject != 'sample':
             raise ValueError(f"subject={subject!r}")
         if ndvar:
             return load.fiff.stc_ndvar(stc, subject, 'vol-7', subjects_dir, 'MNE', sss_filename='{subject}-volume-7mm-src.fif')
         else:
             return stc
-    stc_path = meg_sdir / f'{subject}_audvis_trunc-meg'
+    stc_path = meg_sdir / f'{data_subject}_audvis_trunc-meg'
     if ndvar:
         return load.fiff.stc_ndvar(stc_path, subject, 'ico-5', subjects_dir)
     else:

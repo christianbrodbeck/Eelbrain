@@ -8730,6 +8730,13 @@ class SourceSpaceBase(Dimension):
                 FixedLocator(np.arange(len(self)), 10),
                 self._axis_label(label))
 
+    def _copy(self, subject=None, parc=None):
+        if subject is None:
+            subject = self.subject
+        if parc is None:
+            parc = self.parc
+        return self.__class__(self.vertices, subject, self.src, self.subjects_dir, parc, self._subgraph(), self.name, self._filename)
+
     def _cluster_properties(self, x):
         """Find cluster properties for this dimension
 

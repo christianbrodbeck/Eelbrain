@@ -197,13 +197,25 @@ def test_morphing():
     stc = datasets.get_mne_stc()
     y = load.fiff.stc_ndvar(stc, 'sample', 'ico-5', subjects_dir, 'dSPM', name='src')
 
-    # to fsaverage
+    # sample to fsaverage
     m = mne.compute_source_morph(stc, 'sample', 'fsaverage', subjects_dir)
     stc_fsa = m.apply(stc)
     y_fsa = morph_source_space(y, 'fsaverage')
     assert_array_equal(y_fsa.x, stc_fsa.data)
     stc_fsa_ndvar = load.fiff.stc_ndvar(stc_fsa, 'fsaverage', 'ico-5', subjects_dir, 'dSPM', False, 'src', parc=None)
     assert_dataobj_equal(stc_fsa_ndvar, y_fsa)
+
+    # scaled to fsaverage
+    y_scaled = datasets.get_mne_stc(True, subject='fsaverage_scaled')
+    y_scaled_m = morph_source_space(y_scaled, 'fsaverage')
+    assert y_scaled_m.source.subject == 'fsaverage'
+    assert_array_equal(y_scaled_m.x, y_scaled.x)
+
+    # scaled to fsaverage [masked]
+    y_sub = y_scaled.sub(source='superiortemporal-lh')
+    y_sub_m = morph_source_space(y_sub, 'fsaverage')
+    assert y_sub_m.source.subject == 'fsaverage'
+    assert_array_equal(y_sub_m.x, y_sub.x)
 
 
 @requires_mne_sample_data

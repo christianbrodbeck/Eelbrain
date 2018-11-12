@@ -1078,7 +1078,7 @@ def test_ndvar_indexing():
     test_ndvar_index(x, 'cat', slice('8', None, 2), slice(0, None, 2))
 
     # SourceSpace
-    x = datasets.get_mne_stc(True)
+    x = datasets.get_mne_stc(True, subject='fsaverage')
     with pytest.raises(TypeError):
         _ = x[:'insula-rh']
     with pytest.raises(TypeError):
