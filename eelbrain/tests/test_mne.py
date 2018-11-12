@@ -193,35 +193,31 @@ def test_combination_label():
     assert_array_equal(l.vertices, labels['LOBE.FRONTAL-lh'].vertices)
 
 
-@requires_mne_sample_data
 def test_morphing():
-    mne.set_log_level('warning')
+    stc = datasets.get_mne_stc()
+    y = load.fiff.stc_ndvar(stc, 'sample', 'ico-5', subjects_dir, 'dSPM', name='src')
+
+    # to fsaverage
+    m = mne.compute_source_morph(stc, 'sample', 'fsaverage', subjects_dir)
+    stc_fsa = m.apply(stc)
+    y_fsa = morph_source_space(y, 'fsaverage')
+    assert_array_equal(y_fsa.x, stc_fsa.data)
+    stc_fsa_ndvar = load.fiff.stc_ndvar(stc_fsa, 'fsaverage', 'ico-5', subjects_dir, 'dSPM', False, 'src', parc=None)
+    assert_dataobj_equal(stc_fsa_ndvar, y_fsa)
+
+
+@requires_mne_sample_data
+def test_xhemi():
+    y = datasets.get_mne_stc(ndvar=True)
     data_dir = mne.datasets.sample.data_path()
     subjects_dir = os.path.join(data_dir, 'subjects')
-    sss = datasets._mne_source_space('fsaverage', 'ico-4', subjects_dir)
-    vertices_to = [sss[0]['vertno'], sss[1]['vertno']]
-    ds = datasets.get_mne_sample(-0.1, 0.1, src='ico', sub='index==0', stc=True)
+    load.update_subjects_dir(y, subjects_dir)
 
-    stc = ds['stc', 0]
-    morph_mat = mne.compute_morph_matrix('sample', 'fsaverage', stc.vertices,
-                                         vertices_to, None, subjects_dir)
-    ndvar = ds['src']
-
-    morphed_ndvar = morph_source_space(ndvar, 'fsaverage')
-    morphed_stc = mne.morph_data_precomputed('sample', 'fsaverage', stc,
-                                             vertices_to, morph_mat)
-    assert_array_equal(morphed_ndvar.x[0], morphed_stc.data)
-    morphed_stc_ndvar = load.fiff.stc_ndvar([morphed_stc], 'fsaverage', 'ico-4',
-                                            subjects_dir, 'dSPM', False, 'src',
-                                            parc=None)
-    assert_dataobj_equal(morphed_ndvar, morphed_stc_ndvar)
-
-    # xhemi
-    lh, rh = xhemi(ndvar, mask=False)
+    lh, rh = xhemi(y, mask=False)
     assert lh.source.rh_n == 0
     assert rh.source.rh_n == 0
-    assert lh.max() == pytest.approx(19.63, abs=1e-2)
-    assert rh.max() == pytest.approx(22.79, abs=1e-2)
+    assert lh.max() == pytest.approx(10.80, abs=1e-2)
+    assert rh.max() == pytest.approx(7.91, abs=1e-2)
 
 
 @requires_mne_sample_data  # source space distance computation times out

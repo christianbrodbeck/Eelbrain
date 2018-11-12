@@ -114,7 +114,7 @@ def get_mne_evoked(ndvar=False):
         return evoked
 
 
-def get_mne_stc(ndvar=False, vol=False):
+def get_mne_stc(ndvar=False, vol=False, subject='sample'):
     """MNE-Python SourceEstimate
 
     Parameters
@@ -122,6 +122,8 @@ def get_mne_stc(ndvar=False, vol=False):
     ndvar : bool
         Convert to NDVar (default False; src="ico-4" is false, but it works as
         long as the source space is not accessed).
+    vol : bool
+        Volume source estimate.
     """
     data_path = Path(mne.datasets.testing.data_path())
     meg_sdir = data_path / 'MEG/sample'
@@ -129,16 +131,21 @@ def get_mne_stc(ndvar=False, vol=False):
     if vol:
         inv = mn.read_inverse_operator(str(meg_sdir / 'sample_audvis_trunc-meg-vol-7-meg-inv.fif'))
         evoked = mne.read_evokeds(str(meg_sdir / 'sample_audvis_trunc-ave.fif'), 'Left Auditory')
-        stc = mn.apply_inverse(evoked, inv, pick_ori='vector')
+        stc = mn.apply_inverse(evoked, inv, method='MNE', pick_ori='vector')
+        if subject == 'fsaverage':
+            m = mne.compute_source_morph(stc, 'sample', 'fsaverage', subjects_dir)
+            stc = m.apply(stc)
+        elif subject != 'sample':
+            raise ValueError(f"subject={subject!r}")
         if ndvar:
-            return load.fiff.stc_ndvar(stc, 'sample', 'vol-7', subjects_dir, 'dSPM', sss_filename='{subject}-volume-7mm-src.fif')
+            return load.fiff.stc_ndvar(stc, subject, 'vol-7', subjects_dir, 'MNE', sss_filename='{subject}-volume-7mm-src.fif')
         else:
             return stc
-    stc_path = meg_sdir / 'fsaverage_audvis_trunc-meg'
+    stc_path = meg_sdir / f'{subject}_audvis_trunc-meg'
     if ndvar:
-        return load.fiff.stc_ndvar(stc_path, 'fsaverage', 'ico-5', subjects_dir)
+        return load.fiff.stc_ndvar(stc_path, subject, 'ico-5', subjects_dir)
     else:
-        return mne.read_source_estimate(stc_path, 'sample')
+        return mne.read_source_estimate(str(stc_path), subject)
 
 
 def _mne_source_space(subject, src_tag, subjects_dir):
