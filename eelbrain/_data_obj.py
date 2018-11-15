@@ -7700,17 +7700,20 @@ class Scalar(Dimension):
 
     def _bin(
             self,
-            start: float,
-            stop: float,
-            step: int,  # -> step in dim space
-            nbins: int,  # -> equally divide in array space
+            start: float = None,
+            stop: float = None,
+            step: int = None,  # -> step in dim space
+            nbins: int = None,  # -> equally divide in array space
     ) -> (list, 'Scalar'):
-        if start is None:
-            start = self.values[0]
 
+        islice = self._array_index_for_slice(start, stop, step)
+        istart = 0 if islice.start is None else islice.start
+        istop = None if islice.stop is None else islice.stop
+        start = self.values[0] if istart is None else self.values[istart]
+        stop = None if istop is None else self.values[istop]
         if nbins is not None:
-            istop = len(self) if stop is None else self._array_index(stop)
-            istart = 0 if start is None else self._array_index(start)
+            if istop is None:
+                istop = len(self)
             n_source_steps = istop - istart
             if n_source_steps % nbins != 0:
                 raise ValueError(f"nbins={nbins!r}: length {n_source_steps} {self.name} can not be divided equally")
@@ -7784,8 +7787,7 @@ class Scalar(Dimension):
             try:
                 return digitize_index(arg, self.values, 0.3)
             except IndexError as error:
-                raise IndexError("Ambiguous index for %s: %s" %
-                                 (self._dimname(), error.args[0]))
+                raise IndexError(f"{error.args[0]}: Ambiguous index for {self._dimname()}")
         elif isinstance(arg, np.ndarray) and arg.dtype.kind == self.values.dtype.kind:
             if np.setdiff1d(arg, self.values):
                 raise IndexError("Index %r includes values not in dimension: %s" %

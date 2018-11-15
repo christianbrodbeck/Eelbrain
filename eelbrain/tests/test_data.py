@@ -527,6 +527,32 @@ def test_dim_categorial():
     eq_(dimu, dim2)
 
 
+def test_dim_scalar():
+    "Test Scalar Dimension"
+    d = Scalar('scalar', [20, 30, 40, 50, 60, 70])
+
+    assert d._array_index(20) == 0
+    assert d._array_index(30) == 1
+    assert d._array_index(21) == 0
+    with pytest.raises(IndexError):
+        d._array_index(25)
+
+    # binning
+    edges, dim = d._bin(step=20)
+    assert edges == [20, 40, 60, None]
+    edges, dim = d._bin(start=30, step=20)
+    assert edges == [30, 50, 70, None]
+    edges, dim = d._bin(stop=70, step=20)
+    assert edges == [20, 40, 60, 70]
+    edges, dim = d._bin(nbins=3)
+    assert edges == [20, 40, 60, None]
+    # approximate start/stop
+    edges, dim = d._bin(25, 65, nbins=2)
+    assert edges == [30, 50, 70]
+    edges, dim = d._bin(25, 65, 20)
+    assert edges == [30, 50, 70]
+
+
 def test_dim_uts():
     "Test UTS Dimension"
     uts = UTS(-0.1, 0.005, 301)
