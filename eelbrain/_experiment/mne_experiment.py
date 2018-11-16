@@ -4193,13 +4193,13 @@ class MneExperiment(FileTree):
         trans = self.get('trans-file')
         src = self.get('src-file', make=True)
         pipe = self._raw[self.get('raw')]
-        raw = pipe.cache(subject, fwd_session)
+        raw = pipe.load(subject, fwd_session)
         bem = self._load_bem()
         src = mne.read_source_spaces(src)
 
         self._log.debug(f"make_fwd {basename(dst)}...")
         bemsol = mne.make_bem_solution(bem)
-        fwd = mne.make_forward_solution(raw, trans, src, bemsol, ignore_ref=True)
+        fwd = mne.make_forward_solution(raw.info, trans, src, bemsol, ignore_ref=True)
         for s, s0 in zip(fwd['src'], src):
             if s['nuse'] != s0['nuse']:
                 raise RuntimeError(
