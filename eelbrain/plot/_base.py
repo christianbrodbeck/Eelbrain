@@ -2544,11 +2544,11 @@ class TimeSlicer(object):
     _current_time = None
     _display_time_in_frame_title = False
 
-    def __init__(self, ndvars=None):
+    def __init__(self, ndvars=None, time_fixed=False):
         if ndvars is not None:
             self._set_time_dim_from_ndvars(ndvars)
         self._time_controller = None
-        self._time_fixed = False
+        self._time_fixed = time_fixed
 
     def _init_controller(self):
         tc = TimeController(self._current_time, self._time_fixed)
@@ -2644,7 +2644,7 @@ class TimeSlicerEF(TimeSlicer):
 
     def __init__(self, x_dimname, epochs, axes=None, redraw=True):
         if x_dimname != 'time':
-            self._time_fixed = True
+            TimeSlicer.__init__(self, time_fixed=True)
             return
         ndvars = [e for layer in epochs for e in layer] if epochs else None
         TimeSlicer.__init__(self, ndvars)
