@@ -60,7 +60,7 @@ from ..fmtxt import List, Report, Image, read_meta
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
 from .._text import named_list, enumeration, plural
-from .._utils import WrappedFormater, ask, subp, keydefaultdict, log_level
+from .._utils import ask, subp, keydefaultdict, log_level, ScreenHandler
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .._utils.numpy_utils import INT_TYPES
 from .definitions import (
@@ -587,7 +587,7 @@ class MneExperiment(FileTree):
                 raise IOError(f"Subjects directory {sub_dir}: does notexist. To initialize {self.__class__.__name__} without data, initialize with root=None or find_subjects=False")
             subjects = [s for s in os.listdir(sub_dir) if subject_re.match(s) and isdir(join(sub_dir, s))]
             if len(subjects) == 0:
-                log.warning("No subjects found in {sub_dir}")
+                log.warning(f"No subjects found in {sub_dir}")
             subjects.sort()
             subjects = tuple(subjects)
         else:
@@ -870,11 +870,7 @@ class MneExperiment(FileTree):
             handler.setLevel(logging.DEBUG)
             log.addHandler(handler)
         # Terminal log
-        handler = logging.StreamHandler()
-        # formatter = WrappedFormater("%(levelname)-8s %(name)s:  %(message)s",
-        #                             width=100, indent=9)
-        formatter = logging.Formatter("%(levelname)-8s:  %(message)s")
-        handler.setFormatter(formatter)
+        handler = ScreenHandler()
         self._screen_log_level = log_level(self.screen_log_level)
         handler.setLevel(self._screen_log_level)
         log.addHandler(handler)
