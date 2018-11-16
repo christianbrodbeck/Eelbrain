@@ -45,8 +45,7 @@ class RawPipe(object):
     def load(self, subject, session, add_bads=True, preload=False, raw=None):
         # raw
         if raw is None:
-            path = self.path.format(root=self.root, subject=subject, session=session)
-            raw = self._load(path, preload)
+            raw = self._load(subject, session, preload)
         # bad channels
         if add_bads:
             raw.info['bads'] = self.load_bad_channels(subject, session)
@@ -54,7 +53,8 @@ class RawPipe(object):
             raw.info['bads'] = []
         return raw
 
-    def _load(self, path, preload):
+    def _load(self, subject, session, preload):
+        path = self.path.format(root=self.root, subject=subject, session=session)
         return mne.io.read_raw_fif(path, preload=preload)
 
     def load_bad_channels(self, subject, session):
@@ -102,6 +102,8 @@ class RawSource(RawPipe):
     ...
         Additional parameters for the ``reader`` function.
     """
+    _dig_sessions = None
+
     def __init__(self, filename='{subject}_{session}-raw.fif', reader=mne.io.read_raw_fif, sysname=None, rename_channels=None, montage=None, connectivity=None, **kwargs):
         RawPipe.__init__(self)
         self.filename = typed_arg(filename, str)
@@ -140,12 +142,17 @@ class RawSource(RawPipe):
             out['connectivity'] = self.connectivity
         return out
     
-    def _load(self, path, preload):
+    def _load(self, subject, session, preload):
+        path = self.path.format(root=self.root, subject=subject, session=session)
         raw = self.reader(path, preload=preload, **self._read_raw_kwargs)
         if self.rename_channels:
             raw.rename_channels(self.rename_channels)
         if self.montage:
             raw.set_montage(self.montage)
+        if raw.info['dig'] is None:
+            dig_session = self._dig_sessions[subject][session]
+            dig_raw = self._load(subject, dig_session, False)
+            raw.info['dig'] = dig_raw.info['dig']
         return raw
 
     def cache(self, subject, session):

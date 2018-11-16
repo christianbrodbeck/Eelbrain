@@ -947,8 +947,8 @@ class MneExperiment(FileTree):
 
         # collect current events and mtime
         raw_mtimes = input_state['raw-mtimes']
+        pipe = self._raw['raw']
         with self._temporary_state:
-            pipe = self._raw['raw']
             for key in self.iter(('subject', 'session'), group='all', raw='raw'):
                 mtime = pipe.mtime(*key, bad_chs=False)
                 if mtime is None:
@@ -990,12 +990,7 @@ class MneExperiment(FileTree):
                         dig_missing.append(session)
                         continue
                     if unique_digs and not hsp_equal(dig, unique_digs[0]):
-                        raise NotImplementedError(
-                            f"Subject {subject} has different head shape data "
-                            f"for sessions {session} and {session_}. This "
-                            f"would require different trans-files for the "
-                            f"different sessions, which is not yet implemented "
-                            f"in the MneExperiment class.")
+                        raise NotImplementedError(f"Raw file for Subject {subject}, session {session} has different head shape data from {enumeration(dig_ids)}. This would require different trans-files for the different sessions, which is not yet implemented in the MneExperiment class.")
                     for i, dig_i in enumerate(unique_digs):
                         if mrk_equal(dig, dig_i):
                             dig_ids[session] = i
@@ -1032,7 +1027,7 @@ class MneExperiment(FileTree):
 
         # save input-state
         save.pickle(input_state, input_state_file)
-        self._fwd_sessions = input_state['fwd-sessions']  # {subject: {for_session: use_session}}
+        self._dig_sessions = pipe._dig_sessions = input_state['fwd-sessions']  # {subject: {for_session: use_session}}
 
         # Check the cache, delete invalid files
         # =====================================
@@ -4182,7 +4177,7 @@ class MneExperiment(FileTree):
         session = self.get('session')
         with self._temporary_state:
             try:
-                fwd_session = self._fwd_sessions[subject][session]
+                fwd_session = self._dig_sessions[subject][session]
             except KeyError:
                 raise FileMissing(f"Raw data missing for {subject}, session {session}")
             dst = self.get('fwd-file', session=fwd_session)
