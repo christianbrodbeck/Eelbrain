@@ -54,7 +54,7 @@ test:
     - eelbrain.save
 
 about:
-  home: https://pythonhosted.org/eelbrain
+  home: http://eelbrain.readthedocs.io
   summary: 'MEG/EEG analysis tools'
   license: BSD-3-Clause
   license_family: BSD

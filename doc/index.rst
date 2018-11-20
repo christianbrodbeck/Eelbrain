@@ -9,6 +9,12 @@ Eelbrain
 .. image:: https://zenodo.org/badge/3651023.svg
    :target: https://zenodo.org/badge/latestdoi/3651023
 
+.. image:: https://anaconda.org/christianbrodbeck/eelbrain/badges/installer/conda.svg
+   :target: https://github.com/christianbrodbeck/Eelbrain/wiki/Installing
+
+.. image:: https://anaconda.org/christianbrodbeck/eelbrain/badges/platforms.svg
+   :target: https://anaconda.org/christianbrodbeck/eelbrain
+
 Eelbrain is an open-source `Python <https://www.python.org>`_ package for
 accessible statistical analysis of MEG and EEG data.
 It is maintained by
