@@ -432,7 +432,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             get_app().jumpstart()
 
         # GlassBrain plot
-        p_glassbrain = GlassBrain(brain_data, cmap, vmin, vmax, dest, mri_resolution, mni305, black_bg, display_mode, threshold, colorbar, True, True, alpha, plot_abs, symmetric_cbar, interpolation, h=h, **kwargs)
+        p_glassbrain = GlassBrain(brain_data, cmap, vmin, vmax, dest, mri_resolution, mni305, black_bg, display_mode, threshold, colorbar, True, True, alpha, plot_abs, symmetric_cbar, interpolation, h=h, name=name, **kwargs)
 
         # position the brain window next to the butterfly-plot
         if isinstance(p._frame, CanvasFrame):
