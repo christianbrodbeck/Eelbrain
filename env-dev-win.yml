@@ -17,7 +17,7 @@ dependencies:
 - pillow
 - psutil
 # mne-python
-- mne >= 0.16
+- mne >= 0.17
 - mkl
 - pyqt
 - vtk >= 8.1.1
