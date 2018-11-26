@@ -1,12 +1,10 @@
-# Environment for macOS and Linux
+# Environment for development
 # usage: $ conda env create --file=env-dev.yml
 # to run stats test, install r-ez with $ conda install -c ncil r-ez --no-deps
 name: eeldev
 channels:
 - defaults
 - conda-forge
-- christianbrodbeck
-# - ncil  # for r-ez
 dependencies:
 - python >= 3.6
 - pip
@@ -20,7 +18,6 @@ dependencies:
 - mne >= 0.17
 - mkl
 - pyqt
-#- vtk >= 8.1.1
 - h5py
 - pandas
 - scikit-learn
