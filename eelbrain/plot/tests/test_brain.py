@@ -1,5 +1,8 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+import sys
+
 import numpy as np
+import pytest
 
 from eelbrain import datasets, plot, _info, NDVar
 from eelbrain._wxgui.testing import hide_plots
@@ -8,12 +11,15 @@ from eelbrain._wxgui.testing import hide_plots
 @hide_plots
 def test_plot_brain():
     """Test plot.brain plots"""
+    if sys.platform.startswith('win'):
+        pytest.xfail("Hangs on Appveyor")
     stc = datasets.get_mne_stc(True)
-    # Plot without mask seems to hang...
 
     # size
     b = plot.brain.brain(stc.source, hemi='rh', w=400, h=300, mask=False)
     assert b.screenshot().shape == (300, 400, 3)
+    if sys.platform == 'linux':
+        pytest.xfail("Brain.set_size() on Linux/Travis")
     b.set_size(200, 150)
     assert b.screenshot().shape == (150, 200, 3)
     b.close()
