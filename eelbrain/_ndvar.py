@@ -808,37 +808,45 @@ def rename_dim(ndvar, old_name, new_name):
     return NDVar(ndvar.x, dims, ndvar.info.copy(), ndvar.name)
 
 
-def resample(ndvar, sfreq, npad=100, window='none', name=None):
-    """Resample an NDVar along the 'time' dimension with appropriate filter
+def resample(ndvar, sfreq, npad='auto', window=None, pad='edge', name=None):
+    """Resample an NDVar along the time dimension
 
     Parameters
     ----------
     ndvar : NDVar
-        Ndvar which should be resampled.
+        Input data.
     sfreq : scalar
         New sampling frequency.
-    npad : int
-        Number of samples to use at the beginning and end for padding.
+    npad : int | 'auto'
+        Number of samples for padding at the beginning and end (default is
+        determined automatically).
     window : str | tuple
-        See :func:`scipy.signal.resample` for description.
+        Window applied to the signal in the fourier domain (default is no
+        window; see :func:`scipy.signal.resample`).
+    pad : str
+        Padding method (default ``'edge'``; see :func:`numpy.pad` ``mode``
+        parameter).
     name : str
         Name for the new NDVar (default is ``ndvar.name``).
 
     Notes
     -----
-    By default (``window='none'``) this function uses
-    :func:`scipy.signal.resample` directly. If ``window`` is set to a different
-    value, the more sophisticated but slower :func:`mne.filter.resample` is
-    used.
+    If padding is enabled, this function uses :func:`mne.filter.resample`. If
+    not, :func:`scipy.signal.resample` is used directly.
 
     This function can be very slow when the number of time samples is uneven
-    (see :func:`scipy.signal.resample`).
+    (see :func:`scipy.signal.resample`). Using ``npad='auto'`` (default) ensures
+    an optimal number of samples.
     """
     if name is None:
         name = ndvar.name
     axis = ndvar.get_axis('time')
-    if window == 'none':
-        new_tstep = 1. / sfreq
+    new_tstep = 1. / sfreq
+    if npad:
+        old_sfreq = 1.0 / ndvar.time.tstep
+        x = mne.filter.resample(ndvar.x, sfreq, old_sfreq, npad, axis, window, pad=pad)
+        new_num = x.shape[axis]
+    else:
         new_num = int(floor((ndvar.time.tstop - ndvar.time.tmin) / new_tstep))
         # crop input data
         new_duration = new_tstep * new_num
@@ -848,17 +856,10 @@ def resample(ndvar, sfreq, npad=100, window='none', name=None):
         else:
             idx = (slice(None),) * axis + (slice(None, old_num),)
             x = ndvar.x[idx]
-        # resamples
-        x = signal.resample(x, new_num, axis=axis)
-        dims = (ndvar.dims[:axis] +
-                (UTS(ndvar.time.tmin, new_tstep, new_num),) +
-                ndvar.dims[axis + 1:])
-        return NDVar(x, dims, ndvar.info.copy(), name)
-    old_sfreq = 1.0 / ndvar.time.tstep
-    x = mne.filter.resample(ndvar.x, sfreq, old_sfreq, npad, axis, window)
-    new_tstep = 1.0 / sfreq
-    time = UTS(ndvar.time.tmin, new_tstep, x.shape[axis])
-    dims = ndvar.dims[:axis] + (time,) + ndvar.dims[axis + 1:]
+        # resample
+        x = signal.resample(x, new_num, axis=axis, window=window)
+    time_dim = UTS(ndvar.time.tmin, new_tstep, new_num)
+    dims = (*ndvar.dims[:axis], time_dim, *ndvar.dims[axis + 1:])
     return NDVar(x, dims, ndvar.info, name)
 
 

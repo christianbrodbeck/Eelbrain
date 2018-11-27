@@ -6,6 +6,10 @@ Changes
 New in 0.29
 -----------
 
+* API changes:
+
+  - Better default parameters for :func:`resample`
+
 * Support for vector data:
 
   - :class:`Space` dimension to represent physical space
