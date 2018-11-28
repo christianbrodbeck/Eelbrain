@@ -12,7 +12,7 @@ Eelbrain
 Eelbrain is an open-source `Python <https://www.python.org>`_ package for
 accessible statistical analysis of MEG and EEG data.
 It is maintained by
-`Christian Brodbeck <http://loop.frontiersin.org/people/120185>`_
+`Christian Brodbeck <http://christianbrodbeck.net>`_
 at the `Computational sensorimotor systems lab
 <http://www.isr.umd.edu/Labs/CSSL/simonlab/Home.html>`_
 at University of Maryland, College Park.
