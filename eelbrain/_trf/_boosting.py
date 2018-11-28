@@ -105,7 +105,7 @@ class BoostingResult(object):
             h, r, isnan, spearmanr, residual, t_run,
             y_mean, y_scale, x_mean, x_scale, y_info={}, r_l1=None,
             # new parameters
-            selective_stopping=False,
+            selective_stopping=0,
             **debug_attrs,
     ):
         # input parameters
@@ -259,7 +259,7 @@ class BoostingResult(object):
 @user_activity
 def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
              error='l2', basis=0, basis_window='hamming',
-             partitions=None, model=None, ds=None, selective_stopping=False,
+             partitions=None, model=None, ds=None, selective_stopping=0,
              debug=False):
     """Estimate a filter with boosting
 
@@ -309,11 +309,13 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     ds : Dataset
         If provided, other parameters can be specified as string for items in
         ``ds``.
-    selective_stopping : bool
-        By default, boosting stops when the testing error stops decreasing. With
-        ``selective_stopping=True``, boosting continues but excludes the
-        predictor (one time-series in ``x``) that caused the increase in
-        testing error, until all predictors are stopped.
+    selective_stopping : int
+        By default, the boosting algorithm stops when the testing error stops
+        decreasing. With ``selective_stopping=True``, boosting continues but
+        excludes the predictor (one time-series in ``x``) that caused the
+        increase in testing error, and continues until all predictors are
+        stopped. The integer value of ``selective_stopping`` determines after
+        how many steps with error increases each predictor is excluded.
     debug : bool
         Store additional properties in the result object (increases memory
         consumption).
@@ -345,7 +347,9 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     """
     # check arguments
     mindelta_ = delta if mindelta is None else mindelta
-    selective_stopping = bool(selective_stopping)
+    selective_stopping = int(selective_stopping)
+    if selective_stopping < 0:
+        raise ValueError(f"selective_stopping={selective_stopping}")
 
     data = RevCorrData(y, x, error, scale_data, ds)
     data.initialize_cross_validation(partitions, model, ds)
@@ -504,7 +508,7 @@ class BoostingStep(object):
 
 
 def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
-          delta, mindelta, error, selective_stopping=False, return_history=False):
+          delta, mindelta, error, selective_stopping=0, return_history=False):
     """Estimate one filter with boosting
 
     Parameters
@@ -529,6 +533,8 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
         smaller than ``mindelta``.
     error : str
         Error function to use.
+    selective_stopping : int
+        Selective stopping.
     return_history : bool
         Return error history as second return value.
 
@@ -571,17 +577,38 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
             best_iteration = i_boost
         elif i_boost >= 2 and e_test > history[-2].e_test:
             if selective_stopping:
-                # revert last change
-                del history[-1]
-                h[i_stim, i_time] -= step.delta
-                update_error(y_error, x[step.i_stim], x_pads[step.i_stim], all_index, -step.delta, step.i_time + i_start)
-                step = history[-1]
-                e_train = step.e_train
-                # disable predictor
-                x_active[i_stim] = False
-                if not np.any(x_active):
-                    break
-                new_error[i_stim, :] = np.inf
+                if selective_stopping > 1:
+                    n_bad = selective_stopping - 1
+                    # only stop if the predictor overfits twice without intermittent improvement
+                    undo = 0
+                    for i in range(-2, -len(history), -1):
+                        step = history[i]
+                        if step.e_test > e_test:
+                            break  # the error improved
+                        elif step.i_stim == i_stim:
+                            if step.e_test > history[i - 1].e_test:
+                                # the same stimulus caused an error increase
+                                if n_bad == 1:
+                                    undo = i
+                                    break
+                                n_bad -= 1
+                            else:
+                                break
+                else:
+                    undo = -1
+
+                if undo:
+                    # revert changes
+                    for i in range(-undo):
+                        step = history.pop(-1)
+                        h[step.i_stim, step.i_time] -= step.delta
+                        update_error(y_error, x[step.i_stim], x_pads[step.i_stim], all_index, -step.delta, step.i_time + i_start)
+                    step = history[-1]
+                    # disable predictor
+                    x_active[i_stim] = False
+                    if not np.any(x_active):
+                        break
+                    new_error[i_stim, :] = np.inf
             # Basic
             # -----
             # stop the iteration if all the following requirements are met
@@ -600,7 +627,7 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
         delta_signed = new_sign[i_stim, i_time] * delta
 
         # If no improvements can be found reduce delta
-        if new_train_error > e_train:
+        if new_train_error > step.e_train:
             delta *= 0.5
             if delta >= mindelta:
                 i_stim = i_time = delta_signed = None
