@@ -180,7 +180,7 @@ def label_from_annot(sss, subject, subjects_dir, parc=None, color=(0, 0, 0)):
     # find vertices for each hemisphere
     labels = []
     for hemi, ss in zip(('lh', 'rh'), sss):
-        annotation, _, names = read_annot(fname % 'lh')
+        annotation, _, names = read_annot(fname % hemi)
         bad = [-1, names.index(b'unknown')]
         keep = ~np.in1d(annotation[ss['vertno']], bad)
         if np.any(keep):
