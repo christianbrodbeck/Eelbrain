@@ -331,31 +331,31 @@ Pre-processing (raw)
 
 .. py:attribute:: MneExperiment.raw
 
-Define a pre-processing pipeline as a series of processing steps.
+Define a pre-processing pipeline as a series of processing steps:
 
-The default pre-processing pipeline is defined as follows::
+.. currentmodule:: eelbrain.pipeline
 
-    default_raw = {
-        '0-40': {
-            'source': 'raw', 'type': 'filter', 'args': (None, 40),
-            'kwargs': {'method': 'iir'}},
-        '0.1-40': {
-            'source': 'raw', 'type': 'filter', 'args': (0.1, 40),
-            'kwargs': {'l_trans_bandwidth': 0.08, 'filter_length': '60s'}},
-        '0.2-40': {
-            'source': 'raw', 'type': 'filter', 'args': (0.2, 40),
-            'kwargs': {'l_trans_bandwidth': 0.08, 'filter_length': '60s'}},
-        '1-40': {
-            'source': 'raw', 'type': 'filter', 'args': (1, 40),
-            'kwargs': {'method': 'iir'}},
-    }
+.. autosummary::
+   :toctree: generated
+   :template: class_nomethods.rst
 
-Additional pipes can be added in a ``MneExperiment.raw`` attribute.
+   RawFilter
+   RawICA
+   RawMaxwell
+   RawSource
+   RawReReference
 
-:mod:`mne` changed default values for filtering occasionally. Eelbrain tries to
-correct for this, but can't guarantee it. For this reason it is advantageous
-to fully define filter parameters when starting a new experiment, to both use
-the newest settings and keep them consistent over time, for example::
+
+- Each preprocessing step is defined with its input as first argument.
+- If using FIFF files, no ``RawSource`` pipe is neded, and the raw data can be
+  accessed as ``"raw"`` input.
+- :mod:`mne` has changed default values for filtering in the past.
+  Eelbrain tries to maintain consistent processing for older experiments.
+  For this reason it is advantageous to fully define filter parameters when
+  starting a new experiment, both to use the newest settings and keep them
+  consistent over time.
+
+For example, to use TSSS, ICA and band-pass filters::
 
     # as of mne 0.16
     FILTER_KWARGS = {
@@ -367,66 +367,27 @@ the newest settings and keep them consistent over time, for example::
         'fir_design': 'firwin',
     }
 
-For example, to use TSSS, ICA and finally band-pass filter::
 
-    raw = {
-        'tsss': {
-            'type': 'maxwell_filter',
-            'source': 'raw',
-            'kwargs': {'st_duration': 10.,
-                       'ignore_ref': True,
-                       'st_correlation': .9,
-                       'st_only': True}},
-        '1-40': {
-            'type': 'filter',
-            'source': 'tsss',
-            'args': (1, 40),
-            'kwargs': FILTER_KWARGS},
-        'ica': {
-            'type': 'ica',
-            'source': 'tsss',
-            'session': 'session',
-            'kwargs': {'n_components': 0.99,
-                       'random_state': 0,
-                       'method': 'extended-infomax'}},
-        'ica1-40': {
-            'type': 'filter',
-            'source': 'ica',
-            'args': (1, 40),
-            'kwargs': FILTER_KWARGS},
+    class Experiment(MneExperiment):
+
+        raw = {
+            'tsss': RawMaxwell('raw', st_duration=10., ignore_ref=True, st_correlation=0.9, st_only=True),
+            '1-40': RawFilter('tsss', 1, 40, **FILTER_KWARGS),
+            'ica': RawICA('tsss', 'session', 'extended-infomax', n_components=0.99),
+            'ica1-40': RawFilter('ica', 1, 40, **FILTER_KWARGS),
+        }
+
+
+
+The (outdated) default pre-processing pipeline is defined as follows::
+
+    default_raw = {
+        '0-40': RawFilter('raw', None, 40, method='iir'),
+        '0.1-40': RawFilter('raw', 0.1, 40, l_trans_bandwidth=0.08, filter_length='60s'),
+        '0.2-40': RawFilter('raw', 0.2, 40, l_trans_bandwidth=0.08, filter_length='60s'),
+        '1-40': RawFilter('raw', 1, 40, method='iir'),
     }
 
-
-Each ``raw`` dictionary entry constitutes one pipe, with in input (``source``)
-from another pipe, or raw data (``'raw'``) and a ``'type'``, and the following
-type-specific parameters:
-
-
-``filter``
-^^^^^^^^^^
-
-``args`` (:class:`tuple`) and ``kwargs`` (:class:`dict`) for
-:meth:`mne.io.Raw.filter`.
-
-
-``ica``
-^^^^^^^
-
-session : str | tuple of str
-    One or several sessions from which the raw data is used for estimating ICA
-    components.
-kwargs : dict
-    :class:`mne.preprocessing.ICA` parameters.
-
-Use :meth:`MneExperiment.make_ica_selection` to select ICA components to reject
-for each subject.
-
-
-``tsss``
-^^^^^^^^
-
-Temporal signal space separation; ``kwargs`` (:class:`dict`) with
-:func:`mne.preprocessing.maxwell_filter` parameters.
 
 
 Event variables
@@ -458,83 +419,31 @@ Epochs
 
 .. py:attribute:: MneExperiment.epochs
 
-Epochs are specified as a {:class:`str`: :class:`dict`} dictionary. Keys are
-names for epochs, and values are corresponding definitions. Epoch definitions
-can use the following keys:
+Epochs are specified as a ``{name: epoch_definition}`` dictionary. Names are
+:class:`str`, and ``epoch_definition`` are instances of the classes
+described below:
 
-sel : :class:`str`
-    Expression which evaluates in the events Dataset to the index of the
-    events included in this Epoch specification.
-tmin : :class:`float`
-    Start of the epoch (default -0.1).
-tmax : :class:`float`
-    End of the epoch (default 0.6).
-decim : :class:`int`
-    Decimate the data by this factor (i.e., only keep every ``decim``'th
-    sample; default 5).
-baseline : :class:`tuple`
-    The baseline of the epoch (default ``(None, 0)``).
-n_cases : :class:`int`
-    Expected number of epochs. If n_cases is defined, a RuntimeError error
-    will be raised whenever the actual number of matching events is different.
-trigger_shift : :class:`float` | :class:`str`
-    Shift event triggers before extracting the data [in seconds]. Can be a
-    float to shift all triggers by the same value, or a str indicating an event
-    variable that specifies the trigger shift for each trigger separately.
-    For secondary epochs the ``trigger_shift`` is applied additively with the
-    ``trigger_shift`` of their base epochs.
-post_baseline_trigger_shift : :class:`str`
-    Shift the trigger (i.e., where epoch time = 0) after baseline correction.
-    The value of this entry has to be the name of an event variable providing
-    for each epoch the actual amount of time shift (in seconds). If the
-    ``post_baseline_trigger_shift`` parameter is specified, the parameters
-    ``post_baseline_trigger_shift_min`` and ``post_baseline_trigger_shift_max``
-    are also needed, specifying the smallest and largest possible shift. These
-    are used to crop the resulting epochs appropriately, to the region from
-    ``new_tmin = epoch['tmin'] - post_baseline_trigger_shift_min`` to
-    ``new_tmax = epoch['tmax'] - post_baseline_trigger_shift_max``.
-vars : :class:`dict`
-    Add new variables only for this epoch.
-    Each entry specifies a variable with the following schema:
-    ``{name: definition}``. ``definition`` can be either a string that is
-    evaluated in the events-:class:`Dataset`, or a
-    ``(source_name, {value: code})``-tuple.
-    ``source_name`` can also be an interaction, in which case cells are joined
-    with spaces (``"f1_cell f2_cell"``).
+.. autosummary::
+   :toctree: generated
+   :template: class_nomethods.rst
 
-A **secondary epoch** can be defined using a ``base`` entry.
-Secondary epochs inherit trial rejection and all parameters from a primary
-epoch (the ``base``).
-Additional parameters can be used to modify the definition, for example ``sel``
-can be used to select a subset of the events in the primary epoch.
+   PrimaryEpoch
+   SecondaryEpoch
+   SuperEpoch
 
-base : :class:`str`
-    Name of the epoch whose parameters provide defaults for all parameters.
-    Additional parameters override parameters of the ``base`` epoch, with the
-    exception of ``trigger_shift``, which is applied additively to the
-    ``trigger_shift`` of the ``base`` epoch.
-
-A **superset epoch** is an epoch that combines multiple other epochs.
-A superset epoch can be defined with a single ``sub_epochs`` parameter:
-
-sub_epochs : :class:`tuple` of :class:`str`
-    Tuple of epoch names. These epochs are combined to form the current epoch.
-    Epochs are merged at the level of events, so the base epochs can not contain
-    post-baseline trigger shifts which are applied after loading data (however,
-    the super-epoch can have a post-baseline trigger shift).
 
 Examples::
 
     epochs = {
         # some primary epochs:
-        'picture': {'sel': "stimulus == 'picture'"},
-        'word': {'sel': "stimulus == 'word'"},
+        'picture': PrimaryEpoch('words', "stimulus == 'picture'"),
+        'word': PrimaryEpoch('words', "stimulus == 'word'"),
         # use the picture baseline for the sensor covariance estimate
-        'cov': {'base': 'picture', 'tmax': 0}
+        'cov': SecondaryEpoch('picture', tmax=0),
         # another secondary epoch:
-        'animal_words': {'base': 'noun', 'sel': "word_type == 'animal'"},
+        'animal_words': SecondaryEpoch('noun', sel="word_type == 'animal'"),
         # a superset-epoch:
-        'all_stimuli': {'sub_epochs': ('picture', 'word')},
+        'all_stimuli': SuperEpoch(('picture', 'word')),
     }
 
 
@@ -543,156 +452,27 @@ Tests
 
 .. py:attribute:: MneExperiment.tests
 
-The :attr:`MneExperiment.tests` dictionary defines statistical tests that
-apply to the experiment's data. Each test is defined as a dictionary. The
-dictionary's ``"kind"`` entry defines the test (e.g., ANOVA, related samples
-T-test, ...). The other entries specify the details of the test and depend on
-the test kind (see subsections on specific tests below).
+Statistical tests are defined as ``{name: test_definition}`` dictionary. Test-
+definitions are defined from the following:
 
-kind : 'anova' | 'ttest_rel' | 't_contrast_rel' | 'two-stage'
-    The test kind.
+.. autosummary::
+   :toctree: generated
+   :template: class_nomethods.rst
 
-Example::
+   TTestOneSample
+   TTestRel
+   TTestInd
+   ANOVA
+   TContrastRel
+   TwoStageTest
 
-    tests = {'my_anova': {'kind': 'anova', 'model': 'noise % word_type',
-                          'x': 'noise * word_type * subject'},
-             'my_ttest': {'kind': 'ttest_rel', 'model': 'noise',
-                          'c1': 'a_lot_of_noise', 'c0': 'no_noise'}}
-
-
-anova
-^^^^^
-
-x : :class:`str`
-    ANOVA model (e.g., ``"x * y * subject"``). The ANOVA model has to be fully
-    specified and include ``subject``.
-model : :class:`str`
-    The model which defines the cells into which the data is divided before
-    computing the ANOVA. This parameter can be left out if it includes the same
-    variables as ``x`` (excluding ``"subject"``). Otherwise, the ``model``
-    should be specified in the ``"x % y"`` format (like interaction definitions)
-    where ``x`` and ``y`` are variables in the experiment's events.
 
 Example::
 
     tests = {
-        'one_way': {'kind': 'anova', 'x': 'word_type * subject'},
-        'two_way': {'kind': 'anova', 'x': 'word_type * meaning * subject'},
+        'my_anova': ANOVA('noise * word_type * subject'),
+        'my_ttest': TTestRel('noise', 'a_lot_of_noise', 'no_noise'),
     }
-
-
-ttest_rel
-^^^^^^^^^
-
-model : :class:`str`
-    The model which defines the cells that are used in the test. It is
-    specified in the ``"x % y"`` format (like interaction definitions) where
-    ``x`` and ``y`` are variables in the experiment's events.
-c1 : :class:`str` | :class:`tuple`
-    The experimental condition. If the ``model`` is a single factor the
-    condition is a :class:`str` specifying a value on that factor. If
-    ``model`` is composed of several factors the cell is defined as a
-    :class:`tuple` of :class:`str`, one value on each of the factors.
-c0 : :class:`str` | :class:`tuple`
-    The control condition, defined like ``c1``.
-tail : :class:`int` (optional)
-    Tailedness of the test. ``0`` for two-tailed (default), ``1`` for upper tail
-    and ``-1`` for lower tail.
-
-Example::
-
-    tests = {'my_ttest': {'kind': 'ttest_rel', 'model': 'noise',
-                          'c1': 'a_lot_of_noise', 'c0': 'no_noise'}}
-
-
-ttest_ind
-^^^^^^^^^
-
-model : :class:`str`
-    The model which defines the cells that are used in the test. Usually
-    ``"group"``.
-c1 : :class:`str` | :class:`tuple`
-    The experimental group. Should be a group name.
-c0 : :class:`str` | :class:`tuple`
-    The control group, defined like ``c1``.
-tail : :class:`int` (optional)
-    Tailedness of the test. ``0`` for two-tailed (default), ``1`` for upper tail
-    and ``-1`` for lower tail.
-
-Example::
-
-    tests = {'group_difference': {'kind': 'ttest_ind', 'model': 'group',
-                                  'c1': 'group_1', 'c0': 'group_2'}}
-
-
-
-t_contrast_rel
-^^^^^^^^^^^^^^
-
-Contrasts involving different T-maps (see :class:`testnd.t_contrast_rel`)
-
-model : :class:`str`
-    The model which defines the cells that are used in the test. It is
-    specified in the ``"x % y"`` format (like interaction definitions) where
-    ``x`` and ``y`` are variables in the experiment's events.
-contrast : :class:`str`
-    Contrast specification using cells form the specified model (see test
-    documentation).
-tail : :class:`int` (optional)
-    Tailedness of the test. ``0`` for two-tailed (default), ``1`` for upper tail
-    and ``-1`` for lower tail.
-
-Example::
-
-    tests = {'a_b_intersection': {'kind': 't_contrast_rel', 'model': 'abc',
-                                  'contrast': 'min(a > c, b > c)', 'tail': 1}}
-
-
-two-stage
-^^^^^^^^^
-
-Two-stage test. Stage 1: fit a regression model to the data for each subject.
-Stage 2: test coefficients from stage 1 against 0 across subjects.
-
-stage 1 : :class:`str`
-    Stage 1 model specification. Coding for categorial predictors uses 0/1 dummy
-    coding.
-vars : :class:`dict` (optional)
-    Add new variables for the stage 1 model. This is useful for specifying
-    coding schemes based on categorial variables.
-    Each entry specifies a variable with the following schema:
-    ``{name: definition}``. ``definition`` can be either a string that is
-    evaluated in the events-:class:`Dataset`, or a
-    ``(source_name, {value: code})``-tuple (see example below).
-    ``source_name`` can also be an interaction, in which case cells are joined
-    with spaces (``"f1_cell f2_cell"``).
-model : :class:`str` (optional)
-    This parameter can be supplied to perform stage 1 tests on condition
-    averages. If ``model`` is not specified, the stage1 model is fit on single
-    trial data.
-
-Example: The first example assumes 2 categorical variables present in events,
-'a' with values 'a1' and 'a2', and 'b' with values 'b1' and 'b2'. These are
-recoded into 0/1 codes. The second test definition (``'a_x_time'`` uses the
-"index" variable which is always present and specifies the chronological index
-of the event within subject as an integer count and can be used to test for
-change over time. Due to the numeric nature of these variables interactions
-can be computed by multiplication::
-
-    tests = {'word_basic': {'kind': 'two-stage',
-                            'vars': {'wordlength': 'word.label_length()'},
-                            'stage 1': 'wordlength'},
-             'a_x_b': {'kind': 'two-stage',
-                       'vars': {'a_num': ('a', {'a1': 0, 'a2': 1}),
-                                'b_num': ('b', {'b1': 0, 'b2': 1})},
-                       'stage 1': "a_num + b_num + a_num * b_num + index + a_num * index"},
-             'a_x_time': {'kind': 'two-stage',
-                          'vars': {'a_num': ('a', {'a1': 0, 'a2': 1})},
-                          'stage 1': "a_num + index + a_num * index"},
-             'ab_linear': {'kind': 'two-stage',
-                           'vars': {'ab': ('a%b', {'a1 b1': 0, 'a1 b2': 1, 'a2 b1': 1, 'a2 b2': 2})},
-                           'stage 1': "ab"},
-            }
 
 
 Subject groups

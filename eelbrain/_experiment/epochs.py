@@ -132,16 +132,56 @@ class Epoch(EpochBase):
 
 
 class PrimaryEpoch(Epoch):
-    """Epoch based on selecting events from raw file
+    """Epoch based on selecting events from a raw file
 
-    Attributes
+    Parameters
     ----------
     session : str
-        Session of the raw file.
+        Session (raw file) from which to load data.
+    sel : str
+        Expression which evaluates in the events Dataset to the index of the
+        events included in this Epoch specification.
+    tmin : float
+        Start of the epoch (default -0.1).
+    tmax : float
+        End of the epoch (default 0.6).
+    decim : int
+        Decimate the data by this factor (i.e., only keep every ``decim``'th
+        sample; default 5).
+    baseline : tuple
+        The baseline of the epoch (default ``(None, 0)``).
+    n_cases : int
+        Expected number of epochs. If n_cases is defined, a RuntimeError error
+        will be raised whenever the actual number of matching events is different.
+    trigger_shift : float | str
+        Shift event triggers before extracting the data [in seconds]. Can be a
+        float to shift all triggers by the same value, or a str indicating an event
+        variable that specifies the trigger shift for each trigger separately.
+        For secondary epochs the ``trigger_shift`` is applied additively with the
+        ``trigger_shift`` of their base epochs.
+    post_baseline_trigger_shift : str
+        Shift the trigger (i.e., where epoch time = 0) after baseline correction.
+        The value of this entry has to be the name of an event variable providing
+        for each epoch the actual amount of time shift (in seconds). If the
+        ``post_baseline_trigger_shift`` parameter is specified, the parameters
+        ``post_baseline_trigger_shift_min`` and ``post_baseline_trigger_shift_max``
+        are also needed, specifying the smallest and largest possible shift. These
+        are used to crop the resulting epochs appropriately, to the region from
+        ``new_tmin = epoch['tmin'] - post_baseline_trigger_shift_min`` to
+        ``new_tmax = epoch['tmax'] - post_baseline_trigger_shift_max``.
+    vars : dict
+        Add new variables only for this epoch.
+        Each entry specifies a variable with the following schema:
+        ``{name: definition}``. ``definition`` can be either a string that is
+        evaluated in the events-Dataset`, or a
+        ``(source_name, {value: code})``-tuple.
+        ``source_name`` can also be an interaction, in which case cells are joined
+        with spaces (``"f1_cell f2_cell"``).
     """
     DICT_ATTRS = Epoch.DICT_ATTRS + ('sel',)
 
-    def __init__(self, session, sel=None, n_cases=None, **kwargs):
+    def __init__(self, session, sel=None, **kwargs):
+        n_cases = kwargs.pop('n_cases', None)
         Epoch.__init__(self, **kwargs)
         self.session = session
         self.sel = typed_arg(sel, str)
@@ -154,14 +194,22 @@ class PrimaryEpoch(Epoch):
 
 
 class SecondaryEpoch(Epoch):
-    """Epoch inheriting event selection from another epoch
+    """Epoch inheriting events from another epoch
 
-    sel, vars and trigger shift will be applied from the sel_epoch
+    Secondary epochs inherits events and corresponding trial rejection from
+    another epoch (the ``base``). They also inherit all other parameters unless
+    they are explicitly overridden. For example ``sel`` can be used to select
+    a subset of the events in the base epoch.
 
-    Attributes
+    Parameters
     ----------
-    sel_epoch : str
-        Name of the epoch form which selection is inherited
+    base : str
+        Name of the epoch whose parameters provide defaults for all parameters.
+        Additional parameters override parameters of the ``base`` epoch, with the
+        exception of ``trigger_shift``, which is applied additively to the
+        ``trigger_shift`` of the ``base`` epoch.
+    ...
+        Override base-epoch parameters.
     """
     DICT_ATTRS = Epoch.DICT_ATTRS + ('sel_epoch', 'sel')
     INHERITED_PARAMS = ('tmin', 'tmax', 'decim', 'baseline',
@@ -193,12 +241,17 @@ class SecondaryEpoch(Epoch):
 
 
 class SuperEpoch(Epoch):
-    """Epoch combining several other epochs
+    """Combine several other epochs
 
-    Attributes
+    Parameters
     ----------
     sub_epochs : tuple of str
-        Names of the epochs that are combined.
+        Tuple of epoch names. These epochs are combined to form the super-epoch.
+        Epochs are merged at the level of events, so the base epochs can not
+        contain post-baseline trigger shifts which are applied after loading
+        data (however, the super-epoch can have a post-baseline trigger shift).
+    ...
+        Override sub-epoch parameters.
     """
     DICT_ATTRS = Epoch.DICT_ATTRS + ('sub_epochs',)
     INHERITED_PARAMS = ('tmin', 'tmax', 'decim', 'baseline')

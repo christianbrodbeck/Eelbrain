@@ -313,6 +313,15 @@ class CachedRawPipe(RawPipe):
 
 
 class RawFilter(CachedRawPipe):
+    """Filter raw pipe
+
+    Parameters
+    ----------
+    source : str
+        Name of the raw pipe to use for input data.
+    ...
+        :meth:`mne.io.Raw.filter` parameters.
+    """
 
     def __init__(self, source, l_freq=None, h_freq=None, **kwargs):
         CachedRawPipe.__init__(self, source)
@@ -411,20 +420,19 @@ class RawICA(CachedRawPipe):
     source : str
         Name of the raw pipe to use for input data.
     session : str | sequence of str
-        Session(s) to use as input data for ICA.
+        Session(s) to use for estimating ICA components.
     ...
         Parameters for :class:`mne.preprocessing.ICA`.
 
     Notes
     -----
-    This pipe merges bad channels from its source raw pipes.
+    Use :meth:`MneExperiment.make_ica_selection` for each subject to select ICA
+    components that should be removed.
 
-    When checking whether the ICA file is up to date, the ICA does not check
-    raw source mtime. However, if bad channels change the ICA is automatically
-    recomputed.
+    This pipe merges bad channels from all sessions.
     """
 
-    def __init__(self, source, session, **kwargs):
+    def __init__(self, source, session, method='extended-infomax', random_state=0, **kwargs):
         CachedRawPipe.__init__(self, source)
         if isinstance(session, str):
             session = (session,)
@@ -433,7 +441,7 @@ class RawICA(CachedRawPipe):
                 session = tuple(session)
             assert all(isinstance(s, str) for s in session)
         self.session = session
-        self.kwargs = kwargs
+        self.kwargs = {'method': method, 'random_state': random_state, **kwargs}
 
     def _link(self, name, pipes, root, raw_dir, cache_path, log):
         CachedRawPipe._link(self, name, pipes, root, raw_dir, cache_path, log)
@@ -506,7 +514,17 @@ class RawICA(CachedRawPipe):
 
 
 class RawMaxwell(CachedRawPipe):
-    "Maxwell filter raw pipe"
+    """Maxwell filter raw pipe
+
+    Parameters
+    ----------
+    source : str
+        Name of the raw pipe to use for input data.
+    session : str | sequence of str
+        Session(s) to use for estimating ICA components.
+    ...
+        :func:`mne.preprocessing.maxwell_filter` parameters.
+    """
 
     _bad_chs_affect_cache = True
 
@@ -526,6 +544,16 @@ class RawMaxwell(CachedRawPipe):
 
 
 class RawReReference(CachedRawPipe):
+    """Re-reference EEG data
+
+    Parameters
+    ----------
+    source : str
+        Name of the raw pipe to use for input data.
+    reference : str | sequence of str
+        New reference: ``'average'`` (default) or one or several electrode
+        names.
+    """
 
     def __init__(self, source, reference='average'):
         CachedRawPipe.__init__(self, source, False)
