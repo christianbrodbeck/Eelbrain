@@ -1038,6 +1038,8 @@ class MneExperiment(FileTree):
                             group_desc = ' vs '.join('/'.join(group) for group in groups.values())
                             raise NotImplementedError(f"SuperEpoch {epoch.name} has sessions with incompatible marker positions ({group_desc}); SuperEpochs with different forward solutions are not implemented.")
                 # determine which to use for forward solution
+                if subject not in input_state['fwd-sessions']:
+                    input_state['fwd-sessions'][subject] = {}
                 fwd_sessions = input_state['fwd-sessions'][subject]
                 previous_masters = (s for _, s in fwd_sessions.items() if s in dig_ids)
                 masters = {dig_ids[s]: s for s in previous_masters}
