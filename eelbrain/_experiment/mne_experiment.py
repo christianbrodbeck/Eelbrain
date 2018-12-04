@@ -406,7 +406,7 @@ class MneExperiment(FileTree):
 
     # Pattern for subject names. The first group is used to determine what
     # MEG-system the data was recorded from
-    subject_re = '(R|A|Y|AD|QP)(\d{3,})$'
+    subject_re = '(R|S|A|Y|AD|QP)(\d{3,})$'
     # MEG-system (legacy variable).
     meg_system = None
 
