@@ -2037,6 +2037,9 @@ class Factor(_Effect):
         sorted alphabetically by default. In order to define cells in a
         different order, use a :class:`collections.OrderedDict` or define
         labels as ``((key, value), ...)`` tuple.
+    default : str
+        Label to assign values not in ``label`` (by default this is
+        ``str(value)``).
 
     Attributes
     ----------
@@ -2071,7 +2074,7 @@ class Factor(_Effect):
         >>> Factor('iiiooo')
         Factor(['i', 'i', 'i', 'o', 'o', 'o'])
     """
-    def __init__(self, x, name=None, random=False, repeat=1, tile=1, labels={}):
+    def __init__(self, x, name=None, random=False, repeat=1, tile=1, labels={}, default=None):
         if isinstance(x, Iterator):
             x = list(x)
         n_cases = len(x)
@@ -2100,13 +2103,16 @@ class Factor(_Effect):
         if isinstance(x, np.ndarray) and x.dtype.kind in 'ifb':
             assert x.ndim == 1
             unique = np.unique(x)
+            for v in unique:
+                if v not in labels_dict:
+                    if default is None:
+                        labels_dict[v] = str(v)
+                    else:
+                        labels_dict[v] = default
             # find labels corresponding to unique values
-            u_labels = [labels_dict[v] if v in labels_dict else str(v) for
-                        v in unique]
+            u_labels = [labels_dict[v] for v in unique]
             # merge identical labels
-            u_label_index = np.array([u_labels.index(label) for label in
-                                      u_labels])
-
+            u_label_index = np.array([u_labels.index(label) for label in u_labels])
             x_ = u_label_index[np.digitize(x, unique, True)]
             # {label: code}
             codes = dict(zip(u_labels, u_label_index))
@@ -2118,6 +2124,8 @@ class Factor(_Effect):
             for i, value in enumerate(x):
                 if value in labels_dict:
                     label = labels_dict[value]
+                elif default is not None:
+                    label = default
                 elif isinstance(value, str):
                     label = value
                 else:

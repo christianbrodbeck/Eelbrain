@@ -395,23 +395,32 @@ Event variables
 
 .. py:attribute:: MneExperiment.variables
 
-Categorial event variables can be specified in a dictionary mapping variable
-names to trigger-schemes, for example::
+Event variables add labels and variables to the events:
 
-    class MyExperiment(MneExperiment):
+.. autosummary::
+   :toctree: generated
+   :template: class_nomethods.rst
 
-        variables = {'word_type': {1: 'adjective', 2: 'noun', 3: 'verb',
-                                   (4, 5, 6): 'other'}}
+   LabelVar
+   EvalVar
+   GroupVar
 
-This defines a variable called "word_type", and on this variable all events
-that have trigger 1 have the value "adjective", events with trigger 2 have
-the value "noun" and events with trigger 3 have the value "verb". The last
-entry shows how to map multiple trigger values to the same value, i.e. all
-events that have a trigger value of either 4, 5 or 6 are labelled as "other".
+
+Most of the time, the main purpose of this attribute is to turn trigger
+values into meaningful labels::
+
+
+    class Mouse(MneExperiment):
+
+        variables = {
+            'stimulus': LabelVar('trigger', {(162, 163): 'target', (166, 167): 'prime'}),
+            'prediction': LabelVar('trigger', {162: 'expected', 163: 'unexpected'}),
+        }
+
+This defines a variable called "stimulus", and on this variable all events
+that have triggers 162 and 163 have the value ``"target"``, and events with
+trigger 166 and 167 have the value ``"prime"``.
 Unmentioned trigger values are assigned the empty string (``''``).
-
-These variables are assigned to the events-Dataset in
-:meth:`MneExperiment.label_events`.
 
 
 Epochs

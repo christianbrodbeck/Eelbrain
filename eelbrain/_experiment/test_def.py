@@ -6,7 +6,7 @@ from .. import testnd
 from .._exceptions import DefinitionError
 from .._io.fiff import find_mne_channel_types
 from .definitions import Definition
-from .vardef import GroupVar
+from .variable_def import GroupVar
 
 
 __test__ = False

@@ -59,10 +59,9 @@ from .._ndvar import concatenate, cwt_morlet, neighbor_correlation
 from ..fmtxt import List, Report, Image, read_meta
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
-from .._text import named_list, enumeration, plural
+from .._text import enumeration, plural
 from .._utils import ask, subp, keydefaultdict, log_level, ScreenHandler
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
-from .._utils.numpy_utils import INT_TYPES
 from .definitions import (
     assert_dict_has_args, find_dependent_epochs,
     find_epochs_vars, find_test_vars, log_dict_change, log_list_change)
@@ -84,7 +83,7 @@ from .test_def import (
     Test, EvokedTest,
     ROITestResult, TestDims, TwoStageTest, assemble_tests,
 )
-from .vardef import Vars
+from .variable_def import Variables
 
 
 # current cache state version
@@ -654,25 +653,8 @@ class MneExperiment(FileTree):
 
         ########################################################################
         # variables
-        self.variables = self.variables.copy()
-        for k, v in self.variables.items():
-            assert_is_legal_dataset_key(k)
-            triggers = []
-            for trigger, name in v.items():
-                if not isinstance(name, str):
-                    raise TypeError("Invalid cell name in variable "
-                                    "definition: %s" % repr(name))
-
-                if isinstance(trigger, tuple):
-                    triggers.extend(trigger)
-                else:
-                    triggers.append(trigger)
-
-            invalid = [t for t in triggers
-                       if not (isinstance(t, INT_TYPES) or t == 'default')]
-            if invalid:
-                raise TypeError("Invalid trigger %s in variable definition %r: "
-                                "%r" % (named_list(invalid, 'code'), k, v))
+        self._variables = Variables(self.variables)
+        self._variables._check_trigger_vars()
 
         ########################################################################
         # epochs
@@ -1882,7 +1864,7 @@ class MneExperiment(FileTree):
         if vardef is None:
             return
 
-        vdef = Vars(vardef)
+        vdef = Variables(vardef)
         vdef.apply(ds, self)
 
     def _backup(self, dst_root, v=False):
@@ -2158,9 +2140,7 @@ class MneExperiment(FileTree):
         ds['SOA'] = ds['T'].diff(0)
         if len(self._sessions) > 1:
             ds[:, 'session'] = ds.info['session']
-
-        for name, coding in self.variables.items():
-            ds[name] = ds['trigger'].as_factor(coding, name)
+        self._variables.apply(ds, self)
 
         # add subject label
         ds['subject'] = Factor([ds.info['subject']], repeat=ds.n_cases, random=True)
