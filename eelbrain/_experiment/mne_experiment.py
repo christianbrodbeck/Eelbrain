@@ -77,8 +77,8 @@ from .parc import (
     IndividualSeededParcellation, LabelParcellation,
 )
 from .preprocessing import (
-    assemble_pipeline, RawICA, pipeline_dict, compare_pipelines,
-    ask_to_delete_ica_files)
+    assemble_pipeline, RawSource, RawFilter, RawICA, pipeline_dict,
+    compare_pipelines, ask_to_delete_ica_files)
 from .test_def import (
     Test, EvokedTest,
     ROITestResult, TestDims, TwoStageTest, assemble_tests,
@@ -112,19 +112,10 @@ inv_re = re.compile("^"
 
 # Eelbrain 0.24 raw/preprocessing pipeline
 LEGACY_RAW = {
-    'raw': {},
-    '0-40': {
-        'source': 'raw', 'type': 'filter', 'args': (None, 40),
-        'kwargs': {'method': 'iir'}},
-    '0.1-40': {
-        'source': 'raw', 'type': 'filter', 'args': (0.1, 40),
-        'kwargs': {'l_trans_bandwidth': 0.08, 'filter_length': '60s'}},
-    '0.2-40': {
-        'source': 'raw', 'type': 'filter', 'args': (0.2, 40),
-        'kwargs': {'l_trans_bandwidth': 0.08, 'filter_length': '60s'}},
-    '1-40': {
-        'source': 'raw', 'type': 'filter', 'args': (1, 40),
-        'kwargs': {'method': 'iir'}},
+    '0-40': RawFilter('raw', None, 40, method='iir'),
+    '0.1-40': RawFilter('raw', 0.1, 40, l_trans_bandwidth=0.08, filter_length='60s'),
+    '0.2-40': RawFilter('raw', 0.2, 40, l_trans_bandwidth=0.08, filter_length='60s'),
+    '1-40': RawFilter('raw', 1, 40, method='iir'),
 }
 
 
@@ -361,7 +352,7 @@ class MneExperiment(FileTree):
     .. seealso::
         Guide on using :ref:`experiment-class-guide`.
     """
-    path_version = 1
+    path_version = 2
     screen_log_level = logging.INFO
     auto_delete_results = False
     auto_delete_cache = True
@@ -542,12 +533,15 @@ class MneExperiment(FileTree):
         self._mri_subjects = self._mri_subjects.copy()
         self._templates = self._templates.copy()
         # templates version
-        raw_def = LEGACY_RAW
         if self.path_version == 0:
             self._templates['raw-dir'] = join('{raw-sdir}', 'meg', 'raw')
-            raw_def = {**raw_def, 'raw': {'filename': '{subject}_{session}_clm-raw.fif'}}
-        elif self.path_version != 1:
-            raise ValueError(f"MneExperiment.path_version={self.path_version}; needs to be 0 or 1")
+            raw_def = {**LEGACY_RAW, 'raw': RawSource('{subject}_{session}_clm-raw.fif'), **self.raw}
+        elif self.path_version == 1:
+            raw_def = {**LEGACY_RAW, 'raw': RawSource(), **self.raw}
+        elif self.path_version == 2:
+            raw_def = {'raw': RawSource(), **self.raw}
+        else:
+            raise ValueError(f"MneExperiment.path_version={self.path_version}; needs to be 0, 1 or 2")
         # update templates with _values
         for cls in reversed(inspect.getmro(self.__class__)):
             if hasattr(cls, '_values'):
@@ -640,7 +634,6 @@ class MneExperiment(FileTree):
         skip = {'root', 'subject', 'session', 'raw'}
         raw_dir = self._partial('raw-dir', skip)
         cache_path = self._partial('cached-raw-file', skip)
-        raw_def = {**raw_def, **self.raw}
         self._raw = assemble_pipeline(raw_def, raw_dir, cache_path, root, self._sessions, log)
 
         raw_pipe = self._raw['raw']

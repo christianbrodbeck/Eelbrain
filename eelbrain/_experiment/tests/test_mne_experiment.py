@@ -5,7 +5,8 @@ import numpy as np
 from numpy.testing import assert_array_equal
 import pytest
 
-from eelbrain import Dataset, Factor, Var, MneExperiment
+from eelbrain import Dataset, Factor, Var
+from eelbrain.pipeline import *
 from eelbrain._utils.testing import assert_dataobj_equal, TempDir
 
 
@@ -20,6 +21,11 @@ class BaseExperiment(MneExperiment):
 
     sessions = 'file'
 
+    raw = {
+        '0-40': RawFilter('raw', None, 40, method='iir'),
+        '1-40': RawFilter('raw', 1, 40, method='iir'),
+    }
+
 
 class EventExperiment(MneExperiment):
 
@@ -27,19 +33,23 @@ class EventExperiment(MneExperiment):
 
     sessions = 'cheese'
 
-    variables = {'kind': {(1, 2, 3, 4): 'cheese', (11, 12, 13, 14): 'pet'},
-                 'name': {1: 'Leicester', 2: 'Tilsit', 3: 'Caerphilly',
-                          4: 'Bel Paese'},
-                 'backorder': {(1, 4): 'no', (2, 3): 'yes'},
-                 'taste': {(1, 2): 'good', 'default': 'bad'}}
+    raw = {
+        '0-40': RawFilter('raw', None, 40, method='iir'),
+        '1-40': RawFilter('raw', 1, 40, method='iir'),
+    }
 
-    epochs = {'cheese': {'sel': "kind == 'cheese'",
-                         'tmin': -0.2},
-              'cheese-leicester': {'base': 'cheese',
-                                   'tmin': -0.1,
-                                   'sel': "name == 'Leicester'"},
-              'cheese-tilsit': {'base': 'cheese',
-                                'sel': "name == 'Tilsit"}}
+    variables = {
+        'kind': {(1, 2, 3, 4): 'cheese', (11, 12, 13, 14): 'pet'},
+        'name': {1: 'Leicester', 2: 'Tilsit', 3: 'Caerphilly', 4: 'Bel Paese'},
+        'backorder': {(1, 4): 'no', (2, 3): 'yes'},
+        'taste': {(1, 2): 'good', 'default': 'bad'},
+    }
+
+    epochs = {
+        'cheese': {'sel': "kind == 'cheese'", 'tmin': -0.2},
+        'cheese-leicester': {'base': 'cheese', 'tmin': -0.1, 'sel': "name == 'Leicester'"},
+        'cheese-tilsit': {'base': 'cheese', 'sel': "name == 'Tilsit"},
+    }
 
     defaults = {'model': 'name'}
 

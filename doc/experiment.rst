@@ -349,15 +349,13 @@ Define a pre-processing pipeline as a series of processing steps:
 - Each preprocessing step is defined with its input as first argument.
 - If using FIFF files, no ``RawSource`` pipe is neded, and the raw data can be
   accessed as ``"raw"`` input.
-- :mod:`mne` has changed default values for filtering in the past.
-  Eelbrain tries to maintain consistent processing for older experiments.
-  For this reason it is advantageous to fully define filter parameters when
-  starting a new experiment, both to use the newest settings and keep them
-  consistent over time.
+- :mod:`mne` has changed default values for filtering in the past. In order to
+  keep consistent settings across different versions it is advantageous to fully
+  define filter parameters when starting a new experiment.
 
-For example, to use TSSS, ICA and band-pass filters::
+For example, to use TSSS and a band-pass, and optionally ICA::
 
-    # as of mne 0.16
+    # as of mne 0.17
     FILTER_KWARGS = {
         'filter_length': 'auto',
         'l_trans_bandwidth': 'auto',
@@ -370,24 +368,14 @@ For example, to use TSSS, ICA and band-pass filters::
 
     class Experiment(MneExperiment):
 
+        sessions = 'session'
+
         raw = {
             'tsss': RawMaxwell('raw', st_duration=10., ignore_ref=True, st_correlation=0.9, st_only=True),
             '1-40': RawFilter('tsss', 1, 40, **FILTER_KWARGS),
             'ica': RawICA('tsss', 'session', 'extended-infomax', n_components=0.99),
             'ica1-40': RawFilter('ica', 1, 40, **FILTER_KWARGS),
         }
-
-
-
-The (outdated) default pre-processing pipeline is defined as follows::
-
-    default_raw = {
-        '0-40': RawFilter('raw', None, 40, method='iir'),
-        '0.1-40': RawFilter('raw', 0.1, 40, l_trans_bandwidth=0.08, filter_length='60s'),
-        '0.2-40': RawFilter('raw', 0.2, 40, l_trans_bandwidth=0.08, filter_length='60s'),
-        '1-40': RawFilter('raw', 1, 40, method='iir'),
-    }
-
 
 
 Event variables

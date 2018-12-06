@@ -328,11 +328,10 @@ class RawFilter(CachedRawPipe):
         self.args = (l_freq, h_freq)
         self.kwargs = kwargs
         # mne backwards compatibility (fir_design default change 0.15 -> 0.16)
-        if kwargs.get('fir_design', None) is not None:
-            self._use_kwargs = kwargs
+        if 'use_kwargs' in kwargs:
+            self._use_kwargs = kwargs.pop('use_kwargs')
         else:
-            self._use_kwargs = kwargs.copy()
-            self._use_kwargs['fir_design'] = 'firwin2'
+            self._use_kwargs = kwargs
 
     def as_dict(self):
         out = CachedRawPipe.as_dict(self)
@@ -586,12 +585,15 @@ def assemble_pipeline(raw_dict, raw_dir, cache_path, root, sessions, log):
                 raw_def = RawSource(**params)
             else:
                 pipe_type = params.pop('type')
+                kwargs = params.pop('kwargs', {})
                 if pipe_type == 'filter':
-                    raw_def = RawFilter(source, *params.pop('args', ()), **params.pop('kwargs', {}))
+                    if 'fir_design' not in kwargs:
+                        kwargs['use_kwargs'] = {**kwargs, 'fir_design': 'firwin2'}
+                    raw_def = RawFilter(source, *params.pop('args', ()), **kwargs)
                 elif pipe_type == 'ica':
-                    raw_def = RawICA(source, params.pop('session'), **params.pop('kwargs', {}))
+                    raw_def = RawICA(source, params.pop('session'), **kwargs)
                 elif pipe_type == 'maxwell_filter':
-                    raw_def = RawMaxwell(source, **params.pop('kwargs', {}))
+                    raw_def = RawMaxwell(source, **kwargs)
                 else:
                     raise DefinitionError(f"Raw {key!r}: unknonw type {pipe_type!r}")
                 if params:
