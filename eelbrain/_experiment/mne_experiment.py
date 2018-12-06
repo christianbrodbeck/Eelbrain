@@ -2608,6 +2608,9 @@ class MneExperiment(FileTree):
         if isinstance(mask, str) and parc != mask:
             parc = mask
             self.set(parc=mask)
+        # make sure annotation exists
+        if parc:
+            self.make_annot()
         epochs = ds['epochs']
         inv = self.load_inv(epochs)
 
@@ -2622,7 +2625,6 @@ class MneExperiment(FileTree):
         stc = apply_inverse_epochs(epochs, inv, label=label, **self._params['apply_inv_kw'])
 
         if ndvar:
-            self.make_annot()
             src = self.get('src')
             src = load.fiff.stc_ndvar(
                 stc, mrisubject, src, mri_sdir, self._params['apply_inv_kw']['method'],
