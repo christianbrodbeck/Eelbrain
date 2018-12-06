@@ -61,7 +61,7 @@ class EventExperimentTriggerShiftDict(EventExperiment):
 
 def gen_triggers():
     raw = Var([], info={'sfreq': SAMPLINGRATE})
-    ds = Dataset(info={'subject': SUBJECT, 'raw': raw, 'sfreq': SAMPLINGRATE})
+    ds = Dataset(info={'subject': SUBJECT, 'session': 'cheese', 'raw': raw, 'sfreq': SAMPLINGRATE})
     ds['trigger'] = Var(TRIGGERS)
     ds['i_start'] = Var(I_START)
     return ds
@@ -152,7 +152,7 @@ def test_test_experiment():
     assert e.get('model') == 'name'
 
     # test event labeling
-    ds = e.label_events(gen_triggers())
+    ds = e._label_events(gen_triggers())
     name = Factor([e.variables['name'][t] for t in TRIGGERS], name='name')
     assert_dataobj_equal(ds['name'], name)
     tgt = ds['trigger'].as_factor(e.variables['backorder'], 'backorder')

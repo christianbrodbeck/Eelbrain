@@ -2111,6 +2111,28 @@ class MneExperiment(FileTree):
                 self.set(**{field: value})
                 yield value
 
+    def _label_events(self, ds):
+        # add standard variables
+        ds['T'] = ds['i_start'] / ds.info['sfreq']
+        ds['SOA'] = ds['T'].diff(0)
+        if len(self._sessions) > 1:
+            ds[:, 'session'] = ds.info['session']
+        self._variables.apply(ds, self)
+        ds['subject'] = Factor([ds.info['subject']], repeat=ds.n_cases, random=True)
+
+        # subclass label_events
+        info = ds.info
+        ds = self.label_events(ds)
+        if not isinstance(ds, Dataset):
+            raise DefinitionError(f"{self.__class__.__name__}.label_events() needs to return the events Dataset. Got {ds!r}.")
+        elif 'i_start' not in ds:
+            raise DefinitionError(f"The Dataset returned by {self.__class__.__name__}.label_events() does not contain a variable called `i_start`. This variable is required to ascribe events to data samples.")
+        elif 'trigger' not in ds:
+            raise DefinitionError(f"The Dataset returned by {self.__class__.__name__}.label_events() does not contain a variable called `trigger`. This variable is required to check rejection files.")
+        elif ds.info is not info:
+            ds.info.update(info)
+        return ds
+
     def label_events(self, ds):
         """Add event labels to events loaded from raw files
 
@@ -2123,20 +2145,10 @@ class MneExperiment(FileTree):
         Notes
         -----
         Override this method in MneExperiment subclasses to add event labels.
-        The session the events are from can be determined with
+        The session that the events are from can be determined with
         ``ds.info['session']``.
-        Call the original (super-class) method to add variables defined in
-        :attr:`MneExperiment.variables``, as well as T (time) and SOA (stimulus
-        onset asynchrony) to the Dataset.
+        Calling the original (super-class) method is not necessary.
         """
-        ds['T'] = ds['i_start'] / ds.info['sfreq']
-        ds['SOA'] = ds['T'].diff(0)
-        if len(self._sessions) > 1:
-            ds[:, 'session'] = ds.info['session']
-        self._variables.apply(ds, self)
-
-        # add subject label
-        ds['subject'] = Factor([ds.info['subject']], repeat=ds.n_cases, random=True)
         return ds
 
     def label_subjects(self, ds):
@@ -2703,26 +2715,7 @@ class MneExperiment(FileTree):
             if trigger_shift:
                 ds['i_start'] += int(round(trigger_shift * ds.info['sfreq']))
 
-        # label events
-        info = ds.info
-        ds = self.label_events(ds)
-        if ds.info is not info:
-            ds.info.update(info)
-        if not isinstance(ds, Dataset):
-            raise DefinitionError(
-                "The %s.label_events() function must return a Dataset, got "
-                "%r" % (self.__class__.__name__, ds))
-        elif 'i_start' not in ds:
-            raise DefinitionError(
-                "The Dataset returned by %s.label_events() does not contain a "
-                "variable called `i_start`. This variable is required to "
-                "ascribe events to data samples." % (self.__class__.__name__,))
-        elif 'trigger' not in ds:
-            raise DefinitionError(
-                "The Dataset returned by %s.label_events() does not "
-                "contain a variable called `trigger`. This variable is required "
-                "to check rejection files." % (self.__class__.__name__,))
-        return ds
+        return self._label_events(ds)
 
     def load_evoked(self, subject=1, baseline=False, ndvar=True, cat=None,
                     decim=None, data_raw=False, vardef=None, data='sensor',
