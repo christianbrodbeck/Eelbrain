@@ -52,7 +52,7 @@ def test_sample():
     e.set(rej='man', model='modality')
     sds = []
     for _ in e:
-        e.make_rej(auto=2.5e-12)
+        e.make_epoch_selection(auto=2.5e-12)
         sds.append(e.load_evoked())
 
     ds = e.load_evoked('all')
@@ -151,7 +151,7 @@ def test_sample():
     e = SampleExperiment(root)
     ica_path = e.make_ica(raw='ica')
     e.set(raw='ica1-40', model='')
-    e.make_rej(auto=2e-12, overwrite=True)
+    e.make_epoch_selection(auto=2e-12, overwrite=True)
     ds1 = e.load_evoked(raw='ica1-40')
     ica = e.load_ica(raw='ica')
     ica.exclude = [0, 1, 2]
@@ -191,7 +191,7 @@ def test_samples_sesssions():
     for _ in e:
         for epoch in ('target1', 'target2'):
             e.set(epoch=epoch)
-            e.make_rej(auto=2e-12)
+            e.make_epoch_selection(auto=2e-12)
 
     ds = e.load_evoked('R0000', epoch='target2')
     e.set(session='sample1')
@@ -209,5 +209,5 @@ def test_samples_sesssions():
     e.set(epoch='target2', raw='1-40')
     assert not exists(rej_path)
     e.set(session='sample1')
-    e.make_rej(auto=2e-12)
+    e.make_epoch_selection(auto=2e-12)
     assert exists(rej_path)

@@ -9,6 +9,7 @@ New in 0.29
 * API changes:
 
   - Better default parameters for :func:`resample`
+  - :meth:`MneExperiment.make_rej` renamed to :meth:`MneExperiment.make_epoch_selection`
 
 * Support for vector data:
 

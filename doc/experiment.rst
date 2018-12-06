@@ -193,20 +193,20 @@ Trial selection
 ---------------
 
 For each primary epoch that is defined, bad trials can be rejected using
-:meth:`MneExperiment.make_rej`. Rejections are specific to a given ``raw``
+:meth:`MneExperiment.make_epoch_selection`. Rejections are specific to a given ``raw``
 state::
 
     >>> e.set(raw='ica1-40')
-    >>> e.make_rej()
+    >>> e.make_epoch_selection()
     >>> e.next()
     subject: 'R1801' -> 'R2079'
-    >>> e.make_rej()
+    >>> e.make_epoch_selection()
     ...
 
 To reject trials based on a pre-determined threshold, a loop can be used::
 
     >>> for subject in e:
-    ...     e.make_rej(auto=1e-12)
+    ...     e.make_epoch_selection(auto=1e-12)
     ...
 
 

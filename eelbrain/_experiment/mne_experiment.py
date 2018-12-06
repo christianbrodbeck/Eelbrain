@@ -60,7 +60,7 @@ from ..fmtxt import List, Report, Image, read_meta
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
 from .._text import enumeration, plural
-from .._utils import ask, subp, keydefaultdict, log_level, ScreenHandler
+from .._utils import ask, subp, keydefaultdict, log_level, ScreenHandler, deprecated
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .definitions import (
     assert_dict_has_args, find_dependent_epochs,
@@ -398,7 +398,7 @@ class MneExperiment(FileTree):
     # kind : 'manual' | 'make' | 'ica'
     #     How the rejection is derived:
     #     'manual': manually create a rejection file (use the selection GUI
-    #     through .make_rej())
+    #     through .make_epoch_selection())
     #     'make' a rejection file is created by the user
     # interpolation : bool
     #     enable by-epoch channel interpolation
@@ -1988,7 +1988,7 @@ class MneExperiment(FileTree):
             Epoched files - these need to be cleared when anything about the
             epoch definition changes (tmin, tmax, event inclusion, ...). Note
             that you might also have to manually update epoch rejection files
-            with the :meth:`MneExperiment.make_rej` method.
+            with the :meth:`MneExperiment.make_epoch_selection` method.
         ``5``
             tests - these need to be cleared when the members of the relevant
             subject groups change.
@@ -3369,7 +3369,7 @@ class MneExperiment(FileTree):
                         ds_sel = load.unpickle(rej_file)
                     else:
                         raise FileMissing("The rejection file at %s does not "
-                                          "exist. Run .make_rej() first." %
+                                          "exist. Run .make_epoch_selection() first." %
                                           self._get_rel('rej-file', 'root'))
                 else:
                     ds_sel = None
@@ -3387,7 +3387,7 @@ class MneExperiment(FileTree):
             if ds_sel is not None:
                 # check file
                 if not np.all(ds['trigger'] == ds_sel['trigger']):
-                    #  TODO:  this warning should be given in make_rej already
+                    #  TODO:  this warning should be given in make_epoch_selection already
                     if np.all(ds[:-1, 'trigger'] == ds_sel['trigger']):
                         ds = ds[:-1]
                         self._log.warning(self.format("Last epoch for {subject} is missing"))
@@ -4706,7 +4706,7 @@ class MneExperiment(FileTree):
         pipe = self._raw[self.get('raw')]
         pipe.cache(self.get('subject'), self.get('session'))
 
-    def make_rej(self, decim=None, auto=None, overwrite=False, **state):
+    def make_epoch_selection(self, decim=None, auto=None, overwrite=False, **state):
         """Open :func:`gui.select_epochs` for manual epoch selection
 
         The GUI is opened with the correct file name; if the corresponding
@@ -4744,23 +4744,11 @@ class MneExperiment(FileTree):
         epoch = self._epochs[self.get('epoch')]
         if not isinstance(epoch, PrimaryEpoch):
             if isinstance(epoch, SecondaryEpoch):
-                raise ValueError(
-                    "The current epoch {cur!r} inherits rejections from "
-                    "{sel!r}. To access a rejection file for this epoch, call "
-                    "`e.set(epoch={sel!r})` and then call `e.make_rej()` "
-                    "again.".format(cur=epoch.name, sel=epoch.sel_epoch))
+                raise ValueError(f"The current epoch {epoch.name!r} inherits selections from {epoch.sel_epoch!r}. To access a rejection file for this epoch, call `e.set(epoch={epoch.sel_epoch!r})` and then call `e.make_epoch_selection()` again.")
             elif isinstance(epoch, SuperEpoch):
-                raise ValueError(
-                    "The current epoch {cur!r} inherits rejections from these "
-                    "other epochs: {sel!r}. To access trial rejection for "
-                    "these epochs, call `e.set(epoch=epoch)` and then call "
-                    "`e.make_rej()` "
-                    "again.".format(cur=epoch.name, sel=epoch.sub_epochs))
+                raise ValueError(f"The current epoch {epoch.name!r} inherits selections from these other epochs: {epoch.sub_epochs!r}. To access selections for these epochs, call `e.make_epoch_selection(epoch=epoch)` for each.")
             else:
-                raise ValueError(
-                    "The current epoch {cur!r} is not a primary epoch and "
-                    "inherits rejections from other epochs. Generate trial "
-                    "rejection for these epochs.".format(cur=epoch.name))
+                raise ValueError(f"The current epoch {epoch.name!r} is not a primary epoch and inherits selections from other epochs. Generate trial rejection for these epochs.")
 
         path = self.get('rej-file', mkdir=True, session=epoch.session)
 
@@ -4806,7 +4794,7 @@ class MneExperiment(FileTree):
                 args.append("overwrite=True")
             if decim is not None:
                 args.append(f"decim={decim!r}")
-            rej_ds.info['desc'] = f"Created with {self.__class__.__name__}.make_rej({', '.join(args)})"
+            rej_ds.info['desc'] = f"Created with {self.__class__.__name__}.make_epoch_selection({', '.join(args)})"
             # save
             save.pickle(rej_ds, path)
             # print info
@@ -4819,6 +4807,10 @@ class MneExperiment(FileTree):
         eog_sns = [c for c in eog_sns if c not in bad_channels]
 
         gui.select_epochs(ds, y_name, path=path, vlim=vlim, mark=eog_sns)
+
+    @deprecated('0.30', make_epoch_selection)
+    def make_rej(self, decim=None, auto=None, overwrite=False, **state):
+        pass
 
     def _need_not_recompute_report(self, dst, samples, data, redo):
         "Check (and log) whether the report needs to be redone"
