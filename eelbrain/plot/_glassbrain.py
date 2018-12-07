@@ -134,6 +134,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         If set to True arrows pointing the direction of activation is
         drawn over the glassbrain plots. Naturally, for this to work
         ndvar needs to contain space dimension i.e (3D vectors).
+        ndvar needs to contain space dimension i.e (3D vector data).
         By default it is set to False.
     symmetric_cbar : boolean | 'auto'
         Specifies whether the colorbar should range from -vmax to vmax
@@ -204,6 +205,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
 
             src = source.get_source_space()
             img = _stc_to_volume(ndvar, src, dest, mri_resolution, mni305)
+            img = _stc_to_volume(ndvar, dest, mri_resolution, mni305)
             if ndvar.has_dim('time'):
                 time = ndvar.get_dim('time')
                 t0 = time[0]
@@ -253,9 +255,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         else:
             cbar_vmin = cbar_vmax = imgs = img0 = dir_imgs = time = t0 = None
 
-
         self.time = time
-        self._src = src
         self._ndvar = ndvar
         self._imgs = imgs
         self._dir_imgs = dir_imgs
@@ -268,7 +268,8 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             vmin = None
             show_nan_msg = True
         if show_nan_msg:
-            warnings.warn('NaN is not permitted for the vmax and vmin arguments. '
+            warnings.warn('NaN is not permitted for the vmax and vmin'
+                          'arguments.\n'
                           'Tip: Use np.nanmax() instead of np.max().')
 
         # Deal with automatic settings of plot parameters
@@ -309,6 +310,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         self.display = display
         self.threshold = threshold
         self.interpolation = interpolation
+        self.cmap = cmap
         self.colorbar = colorbar
         self.cmap = cmap
         self.vmin = vmin
@@ -401,7 +403,6 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                         dir_data = (-data_2d[1][indices], data_2d[2][indices])
                     elif display_ax.direction in 'xr':
                         dir_data = (data_2d[1][indices], data_2d[2][indices])
-                        dir_data = (data_2d[1][indices], data_2d[2][indices])
                     elif display_ax.direction == 'z':
                         dir_data = (data_2d[0][indices], data_2d[1][indices])
 
@@ -420,7 +421,12 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
     def _remove_overlay(self):
         for axis in self.display._cut_displayed:
             if len(self.display.axes[axis].ax.images) > 0:
-                self.display.axes[axis].ax.images[-1].remove()
+                self.display.axes[axis].ax.images.clear()
+
+    # used by _update_time
+    def _remove_arrows(self):
+        for q in self._quivers:
+            q.remove()
 
     def _remove_arrows(self):
         for q in self._quivers:
@@ -604,16 +610,14 @@ def _to_MNI152(trans):
     return np.dot(t, trans)
 
 
-def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
+def _stc_to_volume(ndvar, dest='mri', mri_resolution=False, mni305=False,
+                   src=None):
     """Save a volume source estimate in a NIfTI file.
 
     Parameters
     ----------
     ndvar : NDVar
         The source estimate
-    src : list | string
-        The list of source spaces (should actually be of length 1). If
-        string, it is the filepath.
     dest : 'mri' | 'surf'
         If 'mri' the volume is defined in the coordinate system of
         the original T1 image. If 'surf' the coordinate system
@@ -625,12 +629,17 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
     mni305 : bool
         Set to True to convert RAS coordinates of a voxel in MNI305 space (fsaverage space)
         to MNI152 space via updating the affine transformation matrix.
+    src : list | None
+        The list of source spaces (should actually be of length 1). If None
+        it reads the src using ndvar source dimension.
 
     Returns
     -------
     img : instance Nifti1Image
         The image object.
     """
+    if src is None:
+        src = ndvar.source.get_source_space()
     src_type = src[0]['type']
     if src_type != 'vol':
         raise ValueError(f"You need a volume source space. Got type: {src_type}")
