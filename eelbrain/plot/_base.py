@@ -640,6 +640,9 @@ def butterfly_data(
     if isinstance(data, NDVar):
         y = data
         kind = 'ndvar'
+    elif isinstance(data, testnd.Vector):
+        y = data.masked_difference()
+        kind = 'vector'
     elif isinstance(data, testnd.NDDifferenceTest):
         y = data.masked_difference()
         kind = 'ndvar'
@@ -672,6 +675,9 @@ def butterfly_data(
             y = resample(y, resample_, window='hamming')
         bfly_data = [y.sub(source=hemi, name=hemi.capitalize()) for hemi in hemis]
         brain_data = y
+    elif kind == 'vector':
+        bfly_data = [y.sub(source=hemi, name=hemi.capitalize()) for hemi in hemis]
+        brain_data = data.difference * (data.p <= 0.05)
     elif kind == 'test':
         sig = data.p <= 0.05
         y_magnitude = y.rms('time')

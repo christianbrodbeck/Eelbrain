@@ -1866,6 +1866,28 @@ class Vector(NDDifferenceTest):
             args.append(f'match={self.match!r}')
         return args
 
+    def masked_difference(self, p=0.05):
+        """Difference map masked by significance
+
+        Parameters
+        ----------
+        p : scalar
+            Threshold p-value for masking (default 0.05). For threshold-based
+            cluster tests, ``pmin=1`` includes all clusters regardless of their
+            p-value.
+        """
+        self._assert_has_cdist()
+        if not 1 >= p > 0:
+            raise ValueError(f"pmin={pmin}: needs to be between 1 and 0")
+        if p == 1:
+            if self._cdist.kind != 'cluster':
+                raise ValueError(f"p=1 is only a valid mask for threshold-based cluster tests")
+            mask = self._cdist.cluster_map == 0
+        else:
+            mask = self.p > p
+        mask = self._cdist.uncrop(mask, self.difference.norm('space'), True)
+        return self.difference.norm('space').mask(mask)
+
     @staticmethod
     def _vector_mean_norm_perm(y, out, seed):
         n_cases, n_dims, n_tests = y.shape
