@@ -37,6 +37,8 @@ DAMAGE.
 """
 import warnings
 
+from nilearn.image.resampling import get_bounds
+
 import numpy as np
 
 from .._data_obj import NDVar, VolumeSourceSpace, asndvar
@@ -131,7 +133,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
     draw_arrows: boolean
         If set to True arrows pointing the direction of activation is
         drawn over the glassbrain plots. Naturally, for this to work
-        ndvar needs to contain space dimension i.e (3D vector data).
+        ndvar needs to contain space dimension i.e (3D vectors).
         By default it is set to False.
     symmetric_cbar : boolean | 'auto'
         Specifies whether the colorbar should range from -vmax to vmax
@@ -221,7 +223,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                     dir_imgs = []
                     dir_img0 = []
                     for direction in ndvar.space._directions:
-                        dir_img = _stc_to_volume(ndvar.sub(space=direction),
+                        dir_img = _stc_to_volume(ndvar.sub(space=direction), src,
                                                  dest, mri_resolution, mni305)
                         if ndvar.has_dim('time'):
                             dir_imgs.append([index_img(dir_img, i)
@@ -399,6 +401,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                         dir_data = (-data_2d[1][indices], data_2d[2][indices])
                     elif display_ax.direction in 'xr':
                         dir_data = (data_2d[1][indices], data_2d[2][indices])
+                        dir_data = (data_2d[1][indices], data_2d[2][indices])
                     elif display_ax.direction == 'z':
                         dir_data = (data_2d[0][indices], data_2d[1][indices])
 
@@ -418,6 +421,10 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         for axis in self.display._cut_displayed:
             if len(self.display.axes[axis].ax.images) > 0:
                 self.display.axes[axis].ax.images[-1].remove()
+
+    def _remove_arrows(self):
+        for q in self._quivers:
+            q.remove()
 
     # used by _update_time
     def _update_title(self, t):
@@ -515,7 +522,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         draw_arrows: boolean
             If set to True arrows pointing the direction of activation is
             drawn over the glassbrain plots. Naturally, for this to work
-            ndvar needs to contain space dimension. By default it is set to
+            ndvar needs to contain space dimension (i.e 3D vectors). By default it is set to
             False.
         symmetric_cbar : boolean or 'auto'
             Specifies whether the colorbar should range from -vmax to vmax
@@ -561,8 +568,9 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             get_app().jumpstart()
 
         # GlassBrain plot
-        p_glassbrain = GlassBrain(y, cmap, vmin, vmax, dest, mri_resolution, mni305, black_bg, display_mode, threshold, colorbar, True, True, alpha, plot_abs, symmetric_cbar, interpolation, h=h, name=name, **kwargs)
-
+        p_glassbrain = GlassBrain(y, cmap, vmin, vmax, dest, draw_arrows, mri_resolution, mni305,
+                                  black_bg, display_mode, threshold, colorbar, True, True, alpha,
+                                  plot_abs, symmetric_cbar, interpolation, h=h, name=name, **kwargs)
         # position the brain window next to the butterfly-plot
         if isinstance(p._frame, CanvasFrame):
             px, py = p._frame.GetPosition()

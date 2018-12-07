@@ -9380,10 +9380,6 @@ class VolumeSourceSpace(SourceSpaceBase):
             return SourceSpaceBase._dim_index(self, index)
 
 
-class VolumeSourceSpace(SourceSpace):
-    pass
-
-
 class UTS(Dimension):
     """Dimension object for representing uniform time series
 

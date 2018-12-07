@@ -19,4 +19,3 @@ from ._uv import (
     Timeplot,
 )
 from . import brain
-from . import glassbrain
