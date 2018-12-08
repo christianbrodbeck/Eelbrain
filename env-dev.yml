@@ -10,6 +10,7 @@ channels:
 dependencies:
 - python >= 3.6
 - pip
+- twine
 - numpy
 - openblas >=0.2.20
 - scipy >= 0.17, != 1.0.0  # 1.0 has bug: UnboundLocalError: local variable 'iprint' referenced before assignment
