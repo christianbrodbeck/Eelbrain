@@ -47,6 +47,7 @@ from .._text import enumeration, n_of, plural
 from .._utils import IS_WINDOWS, ask, intervals, subp, keydefaultdict, log_level, ScreenHandler
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .._utils.notebooks import tqdm
+from .covariance import EpochCovariance, RawCovariance
 from .definitions import FieldCode, find_dependent_epochs, find_epochs_vars, log_dict_change, log_list_change
 from .epochs import ContinuousEpoch, PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochBase, EpochCollection, assemble_epochs, decim_param
 from .exceptions import FileDeficient, FileMissing
@@ -301,11 +302,13 @@ class MneExperiment(FileTree):
     meg_system = None
 
     # kwargs for regularization of the covariance matrix (see .make_cov())
-    _covs = {'auto': {'epoch': 'cov', 'method': 'auto'},
-             'bestreg': {'epoch': 'cov', 'reg': 'best'},
-             'reg': {'epoch': 'cov', 'reg': True},
-             'noreg': {'epoch': 'cov', 'reg': None},
-             'emptyroom': {'session': 'emptyroom', 'reg': None}}
+    _covs = {
+        'auto': EpochCovariance('cov', 'auto'),
+        'bestreg': EpochCovariance('cov', 'best'),
+        'reg': EpochCovariance('cov', 'diagonal_fixed'),
+        'noreg': EpochCovariance('cov', 'empirical'),
+        'emptyroom': RawCovariance('emptyroom'),
+    }
 
     # MRI subject names: {subject: mrisubject} mappings
     # selected with e.set(mri=dict_name)
@@ -584,17 +587,8 @@ class MneExperiment(FileTree):
 
         ########################################################################
         # noise covariance
-        for k, params in self._covs.items():
-            params = set(params)
-            n_datasource = ('epoch' in params) + ('session' in params)
-            if n_datasource != 1:
-                if n_datasource == 0:
-                    raise ValueError("Cov %s has neither epoch nor session "
-                                     "entry" % k)
-                raise ValueError("Cov %s has both epoch and session entry" % k)
-            if params.difference(COV_PARAMS):
-                raise ValueError("Cov %s has unused entries: %s" %
-                                 (k, ', '.join(params.difference(COV_PARAMS))))
+        for key, cov in self._covs.items():
+            cov.key = key
 
         ########################################################################
         # parcellations
@@ -1237,9 +1231,9 @@ class MneExperiment(FileTree):
                 invalid_cache['epochs'].update(find_dependent_epochs(e, cache_state['epochs']))
 
             # epochs -> cov
-            for cov, cov_params in self._covs.items():
-                if cov_params.get('epoch') in invalid_cache['epochs']:
-                    invalid_cache['cov'].add(cov)
+            for key, cov in self._covs.items():
+                if isinstance(cov, EpochCovariance) and cov.epoch in invalid_cache['epochs']:
+                    invalid_cache['cov'].add(key)
 
         return invalid_cache
 
@@ -1393,14 +1387,16 @@ class MneExperiment(FileTree):
         return mtime
 
     def _cov_mtime(self):
-        params = self._covs[self.get('cov')]
+        cov = self._covs[self.get('cov')]
         with self._temporary_state:
-            if 'epoch' in params:
-                self.set(epoch=params['epoch'])
+            if isinstance(cov, EpochCovariance):
+                self.set(epoch=cov.epoch)
                 return self._epochs_mtime()
-            else:
-                self.set(session=params['session'])
+            elif isinstance(cov, RawCovariance):
+                self.set(session=cov.session)
                 return self._raw_mtime()
+            else:
+                raise TypeError(f"{cov=}")
 
     def _epochs_mtime(self):
         raw_mtime = self._raw_mtime()
@@ -4265,65 +4261,18 @@ class MneExperiment(FileTree):
             mtime = self._cov_mtime()
             if mtime and getmtime(dest) > mtime:
                 return
-
         self._log.debug("Make cov-file %s", dest)
-        params = self._covs[self.get('cov')]
-        method = params.get('method', 'empirical')
-        keep_sample_mean = params.get('keep_sample_mean', True)
-        reg = params.get('reg', None)
-
-        if 'epoch' in params:
+        cov = self._covs[self.get('cov')]
+        if isinstance(cov, EpochCovariance):
+            log_path = self.get('cov-info-file', mkdir=True)
             with self._temporary_state:
-                ds = self.load_epochs(None, True, False, decim=1, epoch=params['epoch'])
-            epochs = ds['epochs']
-            cov = mne.compute_covariance(epochs, keep_sample_mean, method=method)
-            info = epochs.info
+                ds = self.load_epochs(None, True, False, decim=1, epoch=cov.epoch)
+            covariance = cov.make(ds['epochs'], log_path)
         else:
             with self._temporary_state:
-                raw = self.load_raw(session=params['session'])
-            cov = mne.compute_raw_covariance(raw, method=method)
-            info = raw.info
-            epochs = None
-
-        if reg is True:
-            cov = mne.cov.regularize(cov, info, rank=None)
-        elif isinstance(reg, dict):
-            cov = mne.cov.regularize(cov, info, **reg)
-        elif reg == 'best':
-            if mne.pick_types(epochs.info, meg='grad', eeg=True, ref_meg=False).size:
-                raise NotImplementedError(f"cov={cov!r}: 'best' regularization is not implemented for EEG or gradiometer sensors; use a different setting for cov.")
-            elif epochs is None:
-                raise NotImplementedError(f"cov={cov!r}: 'best' regularization is not implemented for covariance based on raw data; use a different setting for cov.")
-            reg_vs = np.arange(0, 0.21, 0.01)
-            covs = [mne.cov.regularize(cov, epochs.info, mag=v, rank=None) for v in reg_vs]
-
-            # compute whitened global field power
-            evoked = epochs.average()
-            picks = mne.pick_types(evoked.info, meg='mag', ref_meg=False)
-            gfps = [mne.whiten_evoked(evoked, cov, picks).data.std(0)
-                    for cov in covs]
-
-            # apply padding
-            t_pad = params.get('reg_eval_win_pad', 0)
-            if t_pad:
-                n_pad = int(t_pad * epochs.info['sfreq'])
-                if len(gfps[0]) <= 2 * n_pad:
-                    msg = "Covariance padding (%s) is bigger than epoch" % t_pad
-                    raise ValueError(msg)
-                padding = slice(n_pad, -n_pad)
-                gfps = [gfp[padding] for gfp in gfps]
-
-            vs = [gfp.mean() for gfp in gfps]
-            i = np.argmin(np.abs(1 - np.array(vs)))
-            cov = covs[i]
-
-            # save cov value
-            with open(self.get('cov-info-file', mkdir=True), 'w') as fid:
-                fid.write('%s\n' % reg_vs[i])
-        elif reg is not None:
-            raise RuntimeError(f"reg={reg!r} in {params}")
-
-        cov.save(dest)
+                raw = self.load_raw(session=cov.session)
+            covariance = cov.make(raw)
+        covariance.save(dest)
 
     def _make_evoked(self, samplingrate, decim, data_raw, vardef):
         """Make files with evoked sensor data"""
