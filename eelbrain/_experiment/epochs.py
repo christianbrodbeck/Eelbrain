@@ -325,6 +325,13 @@ class EpochCollection(EpochBase):
     def _link(self, name, epochs):
         EpochBase._link(self, name, epochs)
         sub_epochs = [epochs[e] for e in self.collect]
+        # make sure basic attributes match
+        for param in SuperEpoch.INHERITED_PARAMS:
+            values = {getattr(e, param) for e in sub_epochs}
+            if len(values) > 1:
+                param_repr = ', '.join(repr(v) for v in values)
+                raise DefinitionError(f"Epoch {name}: All sub-epochs must have the same setting for {param}, got {param_repr}")
+            setattr(self, param, values.pop())
         # sessions, with preserved order
         self.sessions = []
         self.rej_file_epochs = []
