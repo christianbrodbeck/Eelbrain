@@ -362,7 +362,7 @@ class App(wx.App):
         dialog = wx.MessageDialog(parent, message, caption, style)
         result = dialog.ShowModal()
         dialog.Destroy()
-        self._bash_ui_finalize(result)
+        return self._bash_ui_finalize(result)
 
     def ExitMainLoop(self, event_with_pt=True):
         if event_with_pt or not self.using_prompt_toolkit:
