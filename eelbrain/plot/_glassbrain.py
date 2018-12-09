@@ -133,7 +133,6 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
     draw_arrows: boolean
         If set to True arrows pointing the direction of activation is
         drawn over the glassbrain plots. Naturally, for this to work
-        ndvar needs to contain space dimension i.e (3D vectors).
         ndvar needs to contain space dimension i.e (3D vector data).
         By default it is set to False.
     symmetric_cbar : boolean | 'auto'
@@ -778,7 +777,7 @@ def _safe_get_data(img):
     """
     data = img.get_data()
     non_finite_mask = np.logical_not(np.isfinite(data))
-    if non_finite_mask.sum() > 0: # any non_finite_mask values?
+    if non_finite_mask.sum() > 0:  # any non_finite_mask values?
         data[non_finite_mask] = 0
 
     return data

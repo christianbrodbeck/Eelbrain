@@ -1886,7 +1886,7 @@ class Vector(NDDifferenceTest):
         else:
             mask = self.p > p
         mask = self._cdist.uncrop(mask, self.difference.norm('space'), True)
-        return self.difference.norm('space').mask(mask)
+        return self.difference.norm('space').mask(mask), self.difference * (self.p <= p)
 
     @staticmethod
     def _vector_mean_norm_perm(y, out, seed):
