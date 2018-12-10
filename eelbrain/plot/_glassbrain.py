@@ -248,8 +248,14 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             else:
                 cbar_vmin, cbar_vmax, vmin, vmax = _get_colorbar_and_data_ranges(
                     data, vmax, symmetric_cbar, kwargs)
+
+            # Deal with automatic settings of plot parameters
+            if threshold == 'auto':
+                # Threshold below a percentile value, to be sure that some
+                # voxels pass the threshold
+                threshold = _fast_abs_percentile(ndvar)
         else:
-            cbar_vmin = cbar_vmax = imgs = img0 = dir_imgs = time = t0 = None
+            cbar_vmin = cbar_vmax = imgs = img0 = dir_imgs = time = t0 = threshold = None
 
         self.time = time
         self._ndvar = ndvar
@@ -267,12 +273,6 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             warnings.warn('NaN is not permitted for the vmax and vmin'
                           'arguments.\n'
                           'Tip: Use np.nanmax() instead of np.max().')
-
-        # Deal with automatic settings of plot parameters
-        if threshold == 'auto':
-            # Threshold below a percentile value, to be sure that some
-            # voxels pass the threshold
-            threshold = _fast_abs_percentile(self._ndvar)
 
         # layout
         if display_mode is None:
@@ -314,8 +314,9 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         self._arrows = draw_arrows
 
         if draw_arrows:
-            self.arrow_scale = 7*np.max(np.abs([vmax, vmin]))
-            self._add_arrows(0)
+            if img0:
+                self.arrow_scale = 7 * np.max(np.abs([vmax, vmin]))
+                self._add_arrows(0)
         if annotate:
             display.annotate()
         if draw_cross:
@@ -765,6 +766,7 @@ def coord_transform_2d(indices, affine):
 
 def _safe_get_data(img):
     """Get the data in the Nifti1Image object avoiding non-finite values
+
     Parameters
     ----------
     img: Nifti image/object
