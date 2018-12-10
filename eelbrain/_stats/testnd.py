@@ -738,6 +738,10 @@ class NDDifferenceTest(NDTest):
         else:
             mask = self.p > p
         mask = self._cdist.uncrop(mask, self.difference, True)
+        # since masked array creation does not support broadcasting
+        if isinstance(self, Vector):
+            mask_x = np.repeat(self.difference._ialign(mask), 3, self.difference.get_axis('space'))
+            mask = NDVar(mask_x, self.difference.dims)
         return self.difference.mask(mask)
 
 
