@@ -246,6 +246,11 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                 # Threshold below a percentile value, to be sure that some
                 # voxels pass the threshold
                 threshold = _fast_abs_percentile(ndvar)
+            if threshold is not None:
+                threshold = float(threshold)
+                if isinstance(ndvar.x, np.ma.MaskedArray):
+                    raise ValueError(f"Cannot use threshold={threshold} with masked data")
+
         else:
             cbar_vmin = cbar_vmax = imgs = img0 = dir_imgs = time = t0 = threshold = None
 
@@ -375,8 +380,11 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         for display_ax, data_2d, extent in to_iterate_over:
             if data_2d is not None:
                 # get data mask
-                thr = self.threshold ** 2
-                data = (data_2d.copy() ** 2).sum(axis=0)
+                if self.threshold is None:
+                    thr = 0
+                else:
+                    thr = self.threshold ** 2
+                data = (data_2d ** 2).sum(axis=0)
                 not_mask = data > thr
 
                 # If data_2d is completely masked, then there is nothing to
@@ -624,12 +632,6 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
     if src_type != 'vol':
         raise ValueError(f"You need a volume source space. Got type: {src_type}")
 
-    # take care of masked array.
-    if isinstance(ndvar.x, np.ma.MaskedArray):
-        ndvar = ndvar.copy('copy')
-        ndvar.x[ndvar.x.mask] = 0
-        ndvar.x = ndvar.x.data
-
     if ndvar.has_dim('space'):
         ndvar = ndvar.norm('space')
 
@@ -721,6 +723,8 @@ def _fast_abs_percentile(ndvar, percentile=80):
     scipy.stats.scoreatpercentile(np.abs(data), percentile)
     # inspired from nilearn._utils.extmath.fast_abs_percentile
     """
+    if isinstance(ndvar.x, np.ma.masked_array):
+        return
     if ndvar.has_dim('space'):
         data = ndvar.norm('space').x
     else:
@@ -733,7 +737,6 @@ def _fast_abs_percentile(ndvar, percentile=80):
         data = np.partition(data, index)
     except ImportError:
         data.sort()
-
     return data[index]
 
 
