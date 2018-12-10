@@ -4108,11 +4108,12 @@ class NDVar(object):
         if self.ndim == 1:
             return x
         if isinstance(self.x, np.ma.masked_array):
-            if dim == 'space':
-                mask = np.rollaxis(self.x.mask, self.get_axis('space'))[0]
-                x = np.ma.masked_array(x, mask)
-            else:
-                raise NotImplementedError(f"masked data norm along dim={dim}")
+            all_masked = np.all(self.x.mask, axis)
+            any_masked = np.any(self.x.mask, axis)
+            if np.any(all_masked != any_masked):
+                raise ValueError(f"Norm along {dim!r} with inconsistent mask")
+            mask = all_masked
+            x = np.ma.masked_array(x, mask)
         dims = self.dims[:axis] + self.dims[axis + 1:]
         return NDVar(x, dims, self.info, name or self.name)
 
