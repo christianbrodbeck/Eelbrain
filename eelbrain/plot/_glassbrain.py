@@ -225,10 +225,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                         else:
                             dir_imgs.append([dir_img])
                     if plot_abs:
-                        warnings.warn('Cannot use maximum intensity projection'
-                                      'of the absolute value in draw_arrows'
-                                      'mode.')
-                        plot_abs = False
+                        raise ValueError(f"Cannot use plot_abs={plot_abs} with draw_arrows={draw_arrows}")
             else:
                 dir_imgs = None
 
