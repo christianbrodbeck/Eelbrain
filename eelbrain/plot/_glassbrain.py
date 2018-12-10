@@ -131,10 +131,9 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         different colors. See `examples <http://nilearn.github.io/auto_examples/
         01_plotting/plot_demo_glass_brain_extensive.html>`_.
     draw_arrows: boolean
-        If set to True arrows pointing the direction of activation is
-        drawn over the glassbrain plots. Naturally, for this to work
-        ndvar needs to contain space dimension i.e (3D vector data).
-        By default it is set to False.
+        Draw arrows in the direction of activation over the glassbrain plots.
+        Naturally, for this to work ``ndvar`` needs to contain space dimension
+        (i.e 3D vectors). By default it is set to (``True``).
     symmetric_cbar : boolean | 'auto'
         Specifies whether the colorbar should range from -vmax to vmax
         or from vmin to vmax. Setting to 'auto' will select the latter if
@@ -162,10 +161,9 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
     _display_time_in_frame_title = True
 
     def __init__(self, ndvar, cmap=None, vmin=None, vmax=None, dest='mri',
-                 draw_arrows=False, mri_resolution=False, mni305=None,
-                 black_bg=False, display_mode=None, threshold='auto',
-                 colorbar=False, draw_cross=True, annotate=True,
-                 alpha=0.7, plot_abs=False, symmetric_cbar="auto",
+                 mri_resolution=False, mni305=None, black_bg=False, display_mode=None,
+                 threshold='auto', colorbar=False, draw_cross=True, annotate=True,
+                 alpha=0.7, plot_abs=False, draw_arrows=True, symmetric_cbar='auto',
                  interpolation='nearest', **kwargs):
         # Give wxPython a chance to initialize the menu before pyplot
         from .._wxgui import get_app
@@ -352,7 +350,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             for k, direction in enumerate(self._ndvar.space._directions):
                 vol = self._dir_imgs[k][t]
                 try:
-                    vol_data = np.squeeze(_safe_get_data(vol))
+                    vol_data = np.squeeze(vol.get_data())
                     data_2d = display_ax.transform_to_2d(vol_data,
                                                          vol.affine)
                     data_2d = np.squeeze(data_2d)
@@ -462,11 +460,10 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         return self.cmap, self.vmin, self.vmax
 
     @classmethod
-    def butterfly(cls, y, cmap=None, vmin=None, vmax=None, draw_arrows=False,
-                  dest='mri', mri_resolution=False, mni305=None,
-                  black_bg=False, display_mode=None, threshold='auto',
-                  colorbar=False, alpha=0.7, plot_abs=False,
-                  symmetric_cbar="auto", interpolation='nearest',
+    def butterfly(cls, y, cmap=None, vmin=None, vmax=None, dest='mri',
+                  mri_resolution=False, mni305=None, black_bg=False, display_mode=None,
+                  threshold='auto', colorbar=False, alpha=0.7, plot_abs=False,
+                  draw_arrows=True, symmetric_cbar="auto", interpolation='nearest',
                   w=5, h=2.5, xlim=None, name=None, **kwargs):
         """Shortcut for a butterfly-plot with a time-linked glassbrain plot
 
@@ -523,10 +520,9 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             01_plotting/plot_demo_glass_brain_extensive.html>`_. Only affects
             GlassBrain plot.
         draw_arrows: boolean
-            If set to True arrows pointing the direction of activation is
-            drawn over the glassbrain plots. Naturally, for this to work
-            ndvar needs to contain space dimension (i.e 3D vectors). By default it is set to
-            False.
+            Draw arrows in the direction of activation over the glassbrain plots. Naturally, for this to work
+            ``ndvar`` needs to contain space dimension (i.e 3D vectors). By default it is set to
+            (``True``).
         symmetric_cbar : boolean or 'auto'
             Specifies whether the colorbar should range from -vmax to vmax
             or from vmin to vmax. Setting to 'auto' will select the latter if
@@ -559,7 +555,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         from .._wxgui.mpl_canvas import CanvasFrame
         jumpstart = needs_jumpstart()
 
-        hemis, bfly_data, brain_data = butterfly_data(y, None)
+        hemis, bfly_data, brain_data = butterfly_data(y, None, return_vector_data=draw_arrows)
 
         if name is None:
             name = brain_data.name
@@ -571,9 +567,10 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             get_app().jumpstart()
 
         # GlassBrain plot
-        p_glassbrain = GlassBrain(brain_data, cmap, vmin, vmax, dest, draw_arrows, mri_resolution, mni305,
+        p_glassbrain = GlassBrain(brain_data, cmap, vmin, vmax, dest, mri_resolution, mni305,
                                   black_bg, display_mode, threshold, colorbar, True, True, alpha,
-                                  plot_abs, symmetric_cbar, interpolation, h=h, name=name, **kwargs)
+                                  plot_abs, draw_arrows, symmetric_cbar, interpolation, h=h, name=name, **kwargs)
+
         # position the brain window next to the butterfly-plot
         if isinstance(p._frame, CanvasFrame):
             px, py = p._frame.GetPosition()
@@ -632,10 +629,17 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
     -------
     img : instance Nifti1Image
         The image object.
+    Note: always use copy of the original variable
     """
     src_type = src[0]['type']
     if src_type != 'vol':
         raise ValueError(f"You need a volume source space. Got type: {src_type}")
+
+    # take care of masked array.
+    if isinstance(ndvar.x, np.ma.MaskedArray):
+        ndvar = ndvar.copy('copy')
+        ndvar.x[ndvar.x.mask] = 0
+        ndvar.x = ndvar.x.data
 
     if ndvar.has_dim('space'):
         ndvar = ndvar.norm('space')
@@ -645,8 +649,10 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
     else:
         data = ndvar.get_data(('source', newaxis), 0)
 
-    if not np.all(np.isfinite(data)):
-        raise ValueError("Not all values are finite")
+    # check for infinite values and make them zero
+    non_finite_mask = np.logical_not(np.isfinite(ndvar.x))
+    if non_finite_mask.sum() > 0:  # any non_finite_mask values?
+        ndvar.x[non_finite_mask] = 0
 
     n_times = data.shape[1]
     shape = src[0]['shape']
@@ -761,25 +767,4 @@ def coord_transform_2d(indices, affine):
     rows, cols = indices
     old_coords = np.array([np.array(rows), np.array(cols), np.ones(len(rows))])
     y, x, _ = np.dot(affine, old_coords)
-    return (x, y)
-
-
-def _safe_get_data(img):
-    """Get the data in the Nifti1Image object avoiding non-finite values
-
-    Parameters
-    ----------
-    img: Nifti image/object
-        Image to get data.
-    Returns
-    -------
-    data: numpy array
-        get_data() return from Nifti image.
-        # inspired from nilearn._utils.niimg._safe_get_data
-    """
-    data = img.get_data()
-    non_finite_mask = np.logical_not(np.isfinite(data))
-    if non_finite_mask.sum() > 0:  # any non_finite_mask values?
-        data[non_finite_mask] = 0
-
-    return data
+    return x, y
