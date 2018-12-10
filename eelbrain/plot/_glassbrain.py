@@ -212,9 +212,6 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                 imgs = time = t0 = None
             if draw_arrows:
                 if not ndvar.has_dim('space'):
-                    warnings.warn('Cannot draw arrows:'
-                                  'ndvar does not have space dimension.'
-                                  'Continuing without arrows...')
                     draw_arrows = False
                     dir_imgs = None
                 else:
