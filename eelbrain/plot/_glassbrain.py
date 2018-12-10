@@ -359,7 +359,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                     data_2d = None
                 data.append(data_2d)
             data_list.append(np.array(data))
-            data_bounds = get_bounds(vol.shape, vol.affine)
+            data_bounds = get_bounds(vol_data.shape, vol.affine)
             if display_ax.direction == 'y':
                 (xmin, xmax), (_, _), (zmin, zmax) = data_bounds
             elif display_ax.direction in 'xlr':
