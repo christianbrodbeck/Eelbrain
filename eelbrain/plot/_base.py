@@ -624,7 +624,7 @@ def butterfly_data(
         hemi: str,
         resample_: int = None,
         colors: bool = False,
-        return_vector_data = False,
+        return_vector_data: bool = False,
 ) -> (List, List, NDVar):
     """Data for plotting butterfly plot with brain
 
