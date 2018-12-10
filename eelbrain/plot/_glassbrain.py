@@ -423,10 +423,6 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         for q in self._quivers:
             q.remove()
 
-    def _remove_arrows(self):
-        for q in self._quivers:
-            q.remove()
-
     # used by _update_time
     def _update_title(self, t):
         if self._layout.title is True:
@@ -756,10 +752,6 @@ def get_transform(extent, shape):
     T[1, 1] = (xmax - xmin) / shape[1]
     T[1, 2] = xmin
 
-    # T[1, 0] = (zmin - zmax) / shape[0]
-    # T[1, 2] = zmax
-    # T[0, 1] = (xmax - xmin) / shape[1]
-    # T[0, 2] = xmin
     return T
 
 
