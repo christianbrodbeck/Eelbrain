@@ -622,7 +622,6 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
     -------
     img : instance Nifti1Image
         The image object.
-    Note: always use copy of the original variable
     """
     src_type = src[0]['type']
     if src_type != 'vol':
