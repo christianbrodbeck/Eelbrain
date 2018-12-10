@@ -3990,6 +3990,9 @@ class NDVar(object):
         x_mask = self._ialign(mask)
         if x_mask.dtype.kind != 'b':
             x_mask = x_mask.astype(bool)
+        # Masked array creation does not support broadcasting
+        if self.has_dim('space'):
+            x_mask = np.repeat(x_mask, 3, self.get_axis('space'))
         x = np.ma.MaskedArray(self.x, x_mask)
         return NDVar(x, self.dims, self.info, name or self.name)
 
