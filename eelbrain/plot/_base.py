@@ -670,19 +670,11 @@ def butterfly_data(
         if resample_:
             y = resample(y, resample_, window='hamming')
         if y.has_dim('space'):
-            # don't forget to take care of the mask
-            mask = None
-            if isinstance(y.x, np.ma.masked_array):
-                mask = np.rollaxis(y.x.mask, y.get_axis('space'))[0]
             if return_vector_data:
                 brain_data = y
                 y = y.norm('space')
-                if mask is not None:
-                    y.x = np.ma.masked_array(y, mask=mask)
             else:
                 y = y.norm('space')
-                if mask is not None:
-                    y.x = np.ma.masked_array(y, mask=mask)
                 brain_data = y
         else:
             brain_data = y
