@@ -588,7 +588,7 @@ def assemble_pipeline(raw_dict, raw_dir, cache_path, root, sessions, log):
                 kwargs = params.pop('kwargs', {})
                 if pipe_type == 'filter':
                     if 'fir_design' not in kwargs:
-                        kwargs['use_kwargs'] = {**kwargs, 'fir_design': 'firwin2'}
+                        kwargs = {**kwargs, 'use_kwargs': {**kwargs, 'fir_design': 'firwin2'}}
                     raw_def = RawFilter(source, *params.pop('args', ()), **kwargs)
                 elif pipe_type == 'ica':
                     raw_def = RawICA(source, params.pop('session'), **kwargs)
