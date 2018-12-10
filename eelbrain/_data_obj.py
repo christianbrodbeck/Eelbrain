@@ -4107,6 +4107,12 @@ class NDVar(object):
         x = norm(self.x, ord, axis)
         if self.ndim == 1:
             return x
+        if isinstance(self.x, np.ma.masked_array):
+            if dim == 'space':
+                mask = np.rollaxis(self.x.mask, self.get_axis('space'))[0]
+                x = np.ma.masked_array(x, mask)
+            else:
+                raise NotImplementedError(f"masked data norm along dim={dim}")
         dims = self.dims[:axis] + self.dims[axis + 1:]
         return NDVar(x, dims, self.info, name or self.name)
 
