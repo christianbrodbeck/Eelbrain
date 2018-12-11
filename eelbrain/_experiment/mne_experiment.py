@@ -348,7 +348,8 @@ class MneExperiment(FileTree):
     ----------
     root : str | None
         the root directory for the experiment (usually the directory
-        containing the 'meg' and 'mri' directories)
+        containing the 'meg' and 'mri' directories). The experiment can be
+        initialized without the root for testing purposes.
     find_subjects : bool
         Automatically look for subjects in the MEG-directory (default
         True). Set ``find_subjects=False`` to initialize the experiment
@@ -6130,9 +6131,9 @@ class MneExperiment(FileTree):
                 return epoch.session
             else:
                 return  # default for non-primary epoch
-        elif epoch == '':
-            return  # default if .epochs is empty
-        return '*'  # if it is not in _epochs it might be a removed epoch
+        elif not epoch or epoch == '*':
+            return  # don't force session
+        return '*'  # if a named epoch is not in _epochs it might be a removed epoch
 
     def _update_src_name(self, fields):
         "Becuase 'ico-4' is treated in filenames  as ''"
