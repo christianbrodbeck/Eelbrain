@@ -162,7 +162,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
 
     def __init__(self, ndvar, cmap=None, vmin=None, vmax=None, dest='mri',
                  mri_resolution=False, mni305=None, black_bg=False, display_mode=None,
-                 threshold='auto', colorbar=False, draw_cross=True, annotate=True,
+                 threshold=None, colorbar=False, draw_cross=True, annotate=True,
                  alpha=0.7, plot_abs=False, draw_arrows=True, symmetric_cbar='auto',
                  interpolation='nearest', **kwargs):
         # Give wxPython a chance to initialize the menu before pyplot
@@ -460,7 +460,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
     @classmethod
     def butterfly(cls, y, cmap=None, vmin=None, vmax=None, dest='mri',
                   mri_resolution=False, mni305=None, black_bg=False, display_mode=None,
-                  threshold='auto', colorbar=False, alpha=0.7, plot_abs=False,
+                  threshold=None, colorbar=False, alpha=0.7, plot_abs=False,
                   draw_arrows=True, symmetric_cbar="auto", interpolation='nearest',
                   w=5, h=2.5, xlim=None, name=None, **kwargs):
         """Shortcut for a butterfly-plot with a time-linked glassbrain plot
