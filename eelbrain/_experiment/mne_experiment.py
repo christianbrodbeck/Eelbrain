@@ -1014,12 +1014,7 @@ class MneExperiment(FileTree):
                         dig_missing.append(session)
                         continue
                     if unique_digs and not hsp_equal(dig, unique_digs[0]):
-                        raise NotImplementedError(
-                            f"Subject {subject} has different head shape data "
-                            f"for sessions {session} and {session_}. This "
-                            f"would require different trans-files for the "
-                            f"different sessions, which is not yet implemented "
-                            f"in the MneExperiment class.")
+                        raise NotImplementedError(f"Subject {subject} has different head shape data for different sessions. This would require different trans-files for the different sessions, which is not yet implemented in the MneExperiment class.")
                     for i, dig_i in enumerate(unique_digs):
                         if mrk_equal(dig, dig_i):
                             dig_ids[session] = i
