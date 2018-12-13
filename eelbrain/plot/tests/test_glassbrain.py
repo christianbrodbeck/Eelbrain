@@ -27,10 +27,10 @@ def test_glassbrain():
     # masked data
     import numpy as np
     h = ndvar.sub(time=0.030)
-    c = _fast_abs_percentile(h)
+    c =  6.15459575929912e-10  # precomputed _fast_abs_percentile(h)
     mask = h.norm('space') < c
     mask_x = np.repeat(h._ialign(mask), 3, h.get_axis('space'))
     mask = NDVar(mask_x, h.dims)
     y = h.mask(mask)
-    p = plot.GlassBrain(y, show=False)
+    p = plot.GlassBrain(y)
     p.close()
