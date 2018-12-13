@@ -443,8 +443,9 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         self.display._colorbar = self.colorbar
 
         # take care of arrows
-        if self._arrows: self._remove_arrows()
-        if self._arrows: self._add_arrows(index)
+        if self._arrows:
+            self._remove_arrows()
+            self._add_arrows(index)
 
         self._update_title(t)
 
@@ -518,9 +519,9 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             01_plotting/plot_demo_glass_brain_extensive.html>`_. Only affects
             GlassBrain plot.
         draw_arrows: boolean
-            Draw arrows in the direction of activation over the glassbrain plots. Naturally, for this to work
-            ``ndvar`` needs to contain space dimension (i.e 3D vectors). By default it is set to
-            (``True``).
+            Draw arrows in the direction of activation over the glassbrain plots.
+            Naturally, for this to work ``ndvar`` needs to contain space dimension
+            (i.e 3D vectors). By default it is set to (``True``).
         symmetric_cbar : boolean or 'auto'
             Specifies whether the colorbar should range from -vmax to vmax
             or from vmin to vmax. Setting to 'auto' will select the latter if
