@@ -718,16 +718,7 @@ class NDDifferenceTest(NDTest):
 
     difference = None
 
-    def masked_difference(self, p=0.05):
-        """Difference map masked by significance
-
-        Parameters
-        ----------
-        p : scalar
-            Threshold p-value for masking (default 0.05). For threshold-based
-            cluster tests, ``pmin=1`` includes all clusters regardless of their
-            p-value.
-        """
+    def _get_mask(self, p=0.05):
         self._assert_has_cdist()
         if not 1 >= p > 0:
             raise ValueError(f"p={p}: needs to be between 1 and 0")
@@ -742,7 +733,36 @@ class NDDifferenceTest(NDTest):
         if isinstance(self, Vector):
             mask_x = np.repeat(self.difference._ialign(mask), 3, self.difference.get_axis('space'))
             mask = NDVar(mask_x, self.difference.dims)
+        return mask
+
+    def masked_difference(self, p=0.05):
+        """Difference map masked by significance
+
+        Parameters
+        ----------
+        p : scalar
+            Threshold p-value for masking (default 0.05). For threshold-based
+            cluster tests, ``pmin=1`` includes all clusters regardless of their
+            p-value.
+        """
+        mask = self._get_mask(p)
         return self.difference.mask(mask)
+
+
+class NDMaskedC1Mixin(object):
+
+    def masked_c1(self, p=0.05):
+        """``c1`` map masked by significance of the ``c1``-``c0`` difference
+
+        Parameters
+        ----------
+        p : scalar
+            Threshold p-value for masking (default 0.05). For threshold-based
+            cluster tests, ``pmin=1`` includes all clusters regardless of their
+            p-value.
+        """
+        mask = self._get_mask(p)
+        return self.c1_mean.mask(mask)
 
 
 class ttest_1samp(NDDifferenceTest):
@@ -1164,7 +1184,7 @@ def _related_measures_args(y, x, c1, c0, match, ds, sub):
     return y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name
 
 
-class ttest_rel(NDDifferenceTest):
+class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
     """Mass-univariate related samples t-test
 
     Parameters
@@ -1942,7 +1962,7 @@ class VectorDifferenceIndependent(Vector):
         return norm
 
 
-class VectorDifferenceRelated(Vector):
+class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
     _state_specific = ('difference', 'c1_mean', 'c0_mean' 'n', '_v_dim')
     _statistic = 'norm'
 

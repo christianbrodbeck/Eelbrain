@@ -301,7 +301,7 @@ def test_source_ndvar():
 @requires_mne_sample_data
 def test_vec_source():
     "Test vector source space"
-    ds = datasets.get_mne_sample(-0.1, 0.1, src='vol', sub="(modality=='A') & (side == 'L')", ori='vector', stc=True)
+    ds = datasets.get_mne_sample(0, 0.1, src='vol', sub="(modality=='A') & (side == 'L')", ori='vector', stc=True)
     # conversion
     stc = ds[0, 'stc']
     stc2 = load.fiff.stc_ndvar([stc, stc], ds.info['subject'], 'vol-10', ds.info['subjects_dir'])
@@ -309,4 +309,4 @@ def test_vec_source():
     # test
     res = testnd.Vector('src', ds=ds, samples=2)
     clusters = res.find_clusters()
-    assert_array_equal(clusters['n_sources'], [33, 44])
+    assert_array_equal(clusters['n_sources'], [472, 4])

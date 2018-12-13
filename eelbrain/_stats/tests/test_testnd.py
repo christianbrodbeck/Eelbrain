@@ -562,9 +562,13 @@ def test_ttest_rel():
     ds = datasets.get_uts(True)
 
     # basic
-    res = testnd.ttest_rel('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm',
-                           ds=ds, samples=100)
+    res = testnd.ttest_rel('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm', ds=ds, samples=100)
     assert repr(res) == "<ttest_rel 'uts', 'A x B', ('a1', 'b1'), ('a0', 'b0'), 'rm' (n=15), samples=100, p < .001>"
+    difference = res.masked_difference()
+    assert difference.x.mask.sum() == 84
+    c1 = res.masked_c1()
+    assert c1.x.mask.sum() == 84
+    assert_array_equal(c1.x.data, res.c1_mean.x)
 
     # alternate argspec
     ds1 = Dataset()
@@ -644,6 +648,8 @@ def test_vector():
     assert res.p.min() == 0.1
     res = testnd.Vector(ds[:30, 'v3d'], samples=10)
     assert res.p.min() == 0.0
+    difference = res.masked_difference()
+    assert difference.x.mask.sum() == 291
 
     # without mp
     configure(n_workers=0)
