@@ -730,7 +730,7 @@ class NDDifferenceTest(NDTest):
         """
         self._assert_has_cdist()
         if not 1 >= p > 0:
-            raise ValueError(f"pmin={pmin}: needs to be between 1 and 0")
+            raise ValueError(f"p={p}: needs to be between 1 and 0")
         if p == 1:
             if self._cdist.kind != 'cluster':
                 raise ValueError(f"p=1 is only a valid mask for threshold-based cluster tests")
