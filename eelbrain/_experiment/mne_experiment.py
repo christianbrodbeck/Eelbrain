@@ -96,10 +96,7 @@ LOG_FILE = join('{root}', 'eelbrain {name}.log')
 LOG_FILE_OLD = join('{root}', '.eelbrain.log')
 
 # Allowable parameters
-ICA_REJ_PARAMS = {'kind', 'source', 'epoch', 'interpolation', 'n_components',
-                  'random_state', 'method'}
-COV_PARAMS = {'epoch', 'session', 'method', 'reg', 'keep_sample_mean',
-              'reg_eval_win_pad'}
+COV_PARAMS = {'epoch', 'session', 'method', 'reg', 'keep_sample_mean', 'reg_eval_win_pad'}
 
 SRC_RE = re.compile('^(ico|vol)-(\d+)(?:-(brainstem))?$')
 inv_re = re.compile("^"
@@ -220,10 +217,9 @@ temp = {
     'edf-file': join('{log-dir}', '*.edf'),
 
     # created input files
-    'raw-ica-file': join('{raw-dir}', '{subject} {raw}-ica.fif'),  # this is also hard-coded in RawICA
+    'ica-file': join('{raw-dir}', '{subject} {raw}-ica.fif'),  # this is also hard-coded in RawICA
     'rej-dir': join('{raw-dir}', 'epoch selection'),
     'rej-file': join('{rej-dir}', '{session}_{sns_kind}_{epoch}-{rej}.pickled'),
-    'ica-file': join('{rej-dir}', '{session} {sns_kind} {rej}-ica.fif'),
 
     # cache
     'cache-dir': join('{root}', 'eelbrain-cache'),
@@ -395,7 +391,7 @@ class MneExperiment(FileTree):
     #
     # artifact_rejection dict:
     #
-    # kind : 'manual' | 'make' | 'ica'
+    # kind : 'manual' | 'make'
     #     How the rejection is derived:
     #     'manual': manually create a rejection file (use the selection GUI
     #     through .make_epoch_selection())
@@ -407,10 +403,10 @@ class MneExperiment(FileTree):
     # ^^^^^^^^^^^^^^^^^^^^
     # decim : int
     #     Decim factor for the rejection GUI (default is to use epoch setting).
-    _artifact_rejection = {'': {'kind': None},
-                           'man': {'kind': 'manual',
-                                   'interpolation': True,
-                                   }}
+    _artifact_rejection = {
+        '': {'kind': None},
+        'man': {'kind': 'manual', 'interpolation': True},
+    }
     artifact_rejection = {}
 
     exclude = {}  # field_values to exclude (e.g. subjects)
@@ -495,7 +491,6 @@ class MneExperiment(FileTree):
     _backup_state = {'subject': '*', 'mrisubject': '*', 'session': '*', 'raw': 'raw'}
     # files to back up, together with state modifications on the basic state
     _backup_files = (('rej-file', {'raw': '*', 'epoch': '*', 'rej': '*'}),
-                     ('ica-file', {'raw': '*', 'epoch': '*', 'rej': '*'}),
                      ('trans-file', {}),
                      ('mri-cfg-file', {}),
                      ('log-dir', {}),)
@@ -657,24 +652,13 @@ class MneExperiment(FileTree):
         ########################################################################
         # store epoch rejection settings
         artifact_rejection = {}
-        for name, params in chain(self._artifact_rejection.items(),
-                                  self.artifact_rejection.items()):
-            if params['kind'] not in ('manual', 'make', 'ica', None):
-                raise ValueError("Invalid value in %r rejection setting: "
-                                 "kind=%r" % (name, params['kind']))
-            params = params.copy()
-            if params['kind'] == 'ica':
-                if set(params) != ICA_REJ_PARAMS:
-                    missing = ICA_REJ_PARAMS.difference(params)
-                    unused = set(params).difference(ICA_REJ_PARAMS)
-                    msg = "artifact_rejection definition %s" % name
-                    if missing:
-                        msg += " is missing parameters: (%s)" % ', '.join(missing)
-                    if unused:
-                        msg += " has unused parameters: (%s)" % ', '.join(unused)
-                    raise ValueError(msg)
-            artifact_rejection[name] = params
-
+        for name, params in chain(self._artifact_rejection.items(), self.artifact_rejection.items()):
+            if params['kind'] in ('manual', 'make', None):
+                artifact_rejection[name] = params.copy()
+            elif params['kind'] == 'ica':
+                raise ValueError(f"kind={params['kind']!r} in artifact_rejection {name!r}; The ICA option has been removed, use the RawICA raw pipe instead.")
+            else:
+                raise ValueError(f"kind={params['kind']!r} in artifact_rejection {name!r}")
         self._artifact_rejection = artifact_rejection
 
         ########################################################################
@@ -1141,7 +1125,7 @@ class MneExperiment(FileTree):
             if changed:
                 invalid_cache['raw'].update(changed)
             for raw, status in changed_ica.items():
-                filenames = self.glob('raw-ica-file', raw=raw, subject='*', match=False)
+                filenames = self.glob('ica-file', raw=raw, subject='*', match=False)
                 if filenames:
                     rel_paths = '\n'.join(relpath(path, root) for path in filenames)
                     print(f"Outdated ICA files:\n{rel_paths}")
@@ -1531,19 +1515,6 @@ class MneExperiment(FileTree):
                 src_mtime = getmtime(src)
                 return max(self._raw_mtime('raw', bad_chs=False), trans_mtime, src_mtime)
 
-    def _ica_file_mtime(self, rej):
-        "Mtime if the file exists, else None; do not check raw mtime"
-        ica_path = self.get('ica-file')
-        if exists(ica_path):
-            ica_mtime = getmtime(ica_path)
-            if rej['source'] == 'raw':
-                return ica_mtime
-            else:
-                ica_epoch = self._epochs[rej['epoch']]
-                rej_mtime = self._rej_mtime(ica_epoch, pre_ica=True)
-                if rej_mtime and ica_mtime > rej_mtime:
-                    return ica_mtime
-
     def _inv_mtime(self):
         fwd_mtime = self._fwd_mtime()
         if fwd_mtime:
@@ -1576,12 +1547,7 @@ class MneExperiment(FileTree):
             paths = [self.get('rej-file', epoch=e) for e in epoch.rej_file_epochs]
         if all(exists(path) for path in paths):
             mtime = max(getmtime(path) for path in paths)
-            if pre_ica or rej['kind'] != 'ica' or rej['source'] == 'raw':
-                return mtime
-            # incorporate ICA-file
-            ica_mtime = self._ica_file_mtime(rej)
-            if cache_valid(ica_mtime, mtime):
-                return ica_mtime
+            return mtime
 
     def _result_file_mtime(self, dst, data, single_subject=False):
         """MTime if up-to-date, else None (for reports and movies)
@@ -2293,7 +2259,7 @@ class MneExperiment(FileTree):
     def load_epochs(self, subject=1, baseline=False, ndvar=True,
                     add_bads=True, reject=True, cat=None,
                     decim=None, pad=0, data_raw=False, vardef=None, data='sensor',
-                    trigger_shift=True, apply_ica=True, tmin=None,
+                    trigger_shift=True, tmin=None,
                     tmax=None, tstop=None, interpolate_bads=False, **kwargs):
         """
         Load a Dataset with epochs for a given epoch definition
@@ -2340,9 +2306,6 @@ class MneExperiment(FileTree):
         trigger_shift : bool
             Apply post-baseline trigger-shift if it applies to the epoch
             (default True).
-        apply_ica : bool
-            If the current rej setting uses ICA, remove the excluded ICA
-            components from the Epochs.
         tmin : scalar
             Override the epoch's ``tmin`` parameter.
         tmax : scalar
@@ -2372,7 +2335,7 @@ class MneExperiment(FileTree):
         if group is not None:
             dss = []
             for _ in self.iter(group=group):
-                ds = self.load_epochs(None, baseline, ndvar, add_bads, reject, cat, decim, pad, data_raw, vardef, data, True, True, tmin, tmax, tstop, interpolate_bads)
+                ds = self.load_epochs(None, baseline, ndvar, add_bads, reject, cat, decim, pad, data_raw, vardef, data, True, tmin, tmax, tstop, interpolate_bads)
                 dss.append(ds)
 
             return combine(dss)
@@ -2383,7 +2346,7 @@ class MneExperiment(FileTree):
             dss = []
             with self._temporary_state:
                 for sub_epoch in epoch.collect:
-                    ds = self.load_epochs(subject, baseline, ndvar, add_bads, reject, cat, decim, pad, data_raw, vardef, data, trigger_shift, apply_ica, tmin, tmax, tstop, interpolate_bads, epoch=sub_epoch)
+                    ds = self.load_epochs(subject, baseline, ndvar, add_bads, reject, cat, decim, pad, data_raw, vardef, data, trigger_shift, tmin, tmax, tstop, interpolate_bads, epoch=sub_epoch)
                     ds[:, 'epoch'] = sub_epoch
                     dss.append(ds)
             return combine(dss)
@@ -2422,18 +2385,9 @@ class MneExperiment(FileTree):
         if decim is None:
             decim = epoch.decim
 
-        # determine ICA
-        rej = self._artifact_rejection[self.get('rej')]
-        if apply_ica and rej['kind'] == 'ica':
-            ica = self.load_ica()
-            baseline_ = None
-        else:
-            ica = None
-            baseline_ = baseline
-
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', 'The events passed to the Epochs constructor', RuntimeWarning)
-            ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline_, decim=decim, drop_bad_chs=False, tstop=tstop)
+            ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim, drop_bad_chs=False, tstop=tstop)
 
         # interpolate bad channels
         if interpolate_bads and ds['epochs'].info['bads']:
@@ -2467,12 +2421,6 @@ class MneExperiment(FileTree):
                     save.pickle(interp_cache, interp_path)
             if 'eeg' in data_to_ndvar:
                 _interpolate_bads_eeg(ds['epochs'], ds[INTERPOLATE_CHANNELS])
-
-        # ICA
-        if ica is not None:
-            ica.apply(ds['epochs'])
-            if baseline:
-                ds['epochs'].apply_baseline(baseline)
 
         if ndvar:
             pipe = self._raw[self.get('raw')]
@@ -4173,13 +4121,13 @@ class MneExperiment(FileTree):
         return dst
 
     def make_ica_selection(self, epoch=None, decim=None, **state):
-        """Select ICA components to remove through a GUI.
+        """Select ICA components to remove through a GUI
 
         Parameters
         ----------
         epoch : str
             Epoch to use for visualization in the GUI (default is current
-            epoch; does not apply to ICA specified through artifact_rejection).
+            epoch).
         decim : int (optional)
             Downsample epochs (for visualization only).
         ...
@@ -4191,7 +4139,7 @@ class MneExperiment(FileTree):
         the decomposition for all subjects before doing the selection use
         :meth:`.make_ica()` in a loop as in::
 
-            >>> for _ in e:
+            >>> for subject in e:
             ...     e.make_ica()
             ...
         """
@@ -4205,7 +4153,7 @@ class MneExperiment(FileTree):
         gui.select_components(path, ds, sysname, connectivity)
 
     def make_ica(self, return_data=False, decim=None, **state):
-        """Compute the ICA decomposition
+        """Compute ICA decomposition for a :class:`pipeline.RawICA` preprocessing step
 
         If a corresponding file exists, a basic check is done as to whether the
         bad channels have changed, and if so the ICA is recomputed.
@@ -4214,7 +4162,7 @@ class MneExperiment(FileTree):
         ----------
         return_data : bool | str
             Return epoch data for ICA component selection. Can be a string to
-            load secific epoch.
+            load a specific epoch.
         decim : int (optional)
             Downsample epochs (for visualization only).
         ...
@@ -4225,8 +4173,7 @@ class MneExperiment(FileTree):
         path : str
             Path to the ICA file.
         [ds : Dataset]
-            Dataset with the epoch data the ICA is based on (only if
-            ``return_data`` is ``True``)
+            Dataset with epoch data (only if ``return_data`` is ``True``).
 
         Notes
         -----
@@ -4234,76 +4181,27 @@ class MneExperiment(FileTree):
         precompute ICA decompositions for all subjects after trial pre-rejection
         has been completed::
 
-            >>> for s in e:
+            >>> for subject in e:
             ...     e.make_ica()
 
         """
         if state:
             self.set(**state)
         pipe = self._raw[self.get('raw')]
-        if isinstance(pipe, RawICA):
-            path = pipe.make_ica(self.get('subject'))
-            if not return_data:
-                return path
-            epoch = self.get('epoch') if return_data is True else return_data
-            with self._temporary_state:
-                ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False, raw=pipe.source.name, decim=decim)
-            return path, ds
-
-        # ICA as rej setting
-        params = self._artifact_rejection[self.get('rej')]
-        if params['kind'] != 'ica':
-            raise RuntimeError("Current raw (%s) or rej (%s) do not involve "
-                               "ICA" % (self.get('raw'), self.get('rej')))
-
-        path = self.get('ica-file', mkdir=True)
-        make = not exists(path)
-        if params['source'] == 'raw':
-            load_epochs = return_data
-            inst = self.load_raw()
-        elif params['source'] == 'epochs':
-            if decim is not None:
-                raise TypeError("decim can not be specified for ICA based on "
-                                "epochs")
-            load_epochs = True
-            if not make and not self._rej_mtime(self._epochs[params['epoch']]):
-                make = True
-        else:
-            raise ValueError("rej['source']=%r, needs to be 'raw' or 'epochs'" %
-                             params['source'])
-
-        if load_epochs:
-            with self._temporary_state:
-                if isinstance(params['epoch'], str):
-                    epoch = params['epoch']
-                elif isinstance(params['epoch'], dict):
-                    epoch = params['epoch'][self.get('session')]
-                else:
-                    raise TypeError("ICA param epoch=%s" % repr(params['epoch']))
-                ds = self.load_epochs(ndvar=False, apply_ica=False, epoch=epoch, reject=not params['source'] == 'raw', decim=decim)
-            if params['source'] == 'epochs':
-                inst = ds['epochs']
-
-        if not make:  # check bad channels
-            ica = self.load_ica()
-            picks = mne.pick_types(inst.info, ref_meg=False)
-            if ica.ch_names != [inst.ch_names[i] for i in picks]:
-                self._log.info("%s: ICA outdated due to change in bad "
-                               "channels", self.get('subject'))
-                make = True
-
-        if make:
-            ica = mne.preprocessing.ICA(params['n_components'],
-                                        random_state=params['random_state'],
-                                        method=params['method'], max_iter=256)
-            # reject presets from meeg-preprocessing
-            ica.fit(inst, reject={'mag': 5e-12, 'grad': 5000e-13, 'eeg': 300e-6})
-            ica.save(path)
-
-        if return_data:
-            return path, ds
-        else:
+        if not isinstance(pipe, RawICA):
+            ica_raws = [key for key, pipe in self._raw.items() if isinstance(pipe, RawICA)]
+            if ica_raws:
+                msg = f"set raw to an ICA processing step ({', '.join(map(repr, ica_raws))})"
+            else:
+                msg = f"add a RawICA processing step to MneExperiment.raw"
+            raise ValueError(f"raw={self.get('raw')!r} does not involve ICA; {msg}")
+        path = pipe.make_ica(self.get('subject'))
+        if not return_data:
             return path
+        epoch = self.get('epoch') if return_data is True else return_data
+        with self._temporary_state:
+            ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False, raw=pipe.source.name, decim=decim)
+        return path, ds
 
     def make_link(self, temp, field, src, dst, redo=False):
         """Make a hard link
@@ -4732,14 +4630,10 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        rej_args = self._artifact_rejection[self.get('rej', **state)]
-        if rej_args['kind'] == 'manual':
-            apply_ica = False
-        elif rej_args['kind'] == 'ica':
-            apply_ica = rej_args['source'] == 'raw'
-        else:
-            raise RuntimeError("Epoch rejection for rej=%r is not manual" %
-                               self.get('rej'))
+        rej = self.get('rej', **state)
+        rej_args = self._artifact_rejection[rej]
+        if rej_args['kind'] != 'manual':
+            raise ValueError(f"rej={rej!r}; Epoch rejection is not manual")
 
         epoch = self._epochs[self.get('epoch')]
         if not isinstance(epoch, PrimaryEpoch):
@@ -4761,7 +4655,7 @@ class MneExperiment(FileTree):
         if decim is None:
             decim = rej_args.get('decim', None)
 
-        ds = self.load_epochs(reject=False, trigger_shift=False, apply_ica=apply_ica, decim=decim)
+        ds = self.load_epochs(reject=False, trigger_shift=False, decim=decim)
         has_meg = 'meg' in ds
         has_grad = 'grad' in ds
         has_eeg = 'eeg' in ds
@@ -6397,7 +6291,7 @@ class MneExperiment(FileTree):
             statuses = []
             for s in self:
                 subjects.append(s)
-                filename = self.get('raw-ica-file')
+                filename = self.get('ica-file')
                 if exists(filename):
                     ica = self.load_ica()
                     status = "%i components rejected" % len(ica.exclude)
@@ -6465,7 +6359,6 @@ class MneExperiment(FileTree):
         rej_name = self.get('rej')
         rej = self._artifact_rejection[rej_name]
         has_epoch_rejection = rej['kind'] is not None
-        has_ica = rej['kind'] == 'ica'
         has_interp = rej.get('interpolation')
 
         subjects = []
@@ -6474,8 +6367,6 @@ class MneExperiment(FileTree):
         bad_chs = []
         if has_interp:
             n_interp = []
-        if has_ica:
-            n_ics = []
 
         for subject in self:
             subjects.append(subject)
@@ -6497,13 +6388,6 @@ class MneExperiment(FileTree):
                 if has_interp:
                     n_interp.append(np.mean([len(chi) for chi in ds[INTERPOLATE_CHANNELS]]))
             n_events.append(ds.n_cases)
-            if has_ica:
-                ica_path = self.get('ica-file')
-                if exists(ica_path):
-                    ica = mne.preprocessing.read_ica(ica_path)
-                    n_ics.append(len(ica.exclude))
-                else:
-                    n_ics.append(np.nan)
 
         caption = ("Rejection info for raw=%s, epoch=%s, rej=%s. "
                    "Percent is rounded to one decimal. Bad channels: "
@@ -6525,8 +6409,6 @@ class MneExperiment(FileTree):
         out['bad_channels'] = Factor(bad_chs)
         if has_interp:
             out['ch_interp'] = Var(np.round(n_interp, 1))
-        if has_ica:
-            out['ics_rejected'] = Var(n_ics)
 
         if asds:
             return out
