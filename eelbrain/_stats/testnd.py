@@ -730,7 +730,7 @@ class NDDifferenceTest(NDTest):
         """
         self._assert_has_cdist()
         if not 1 >= p > 0:
-            raise ValueError(f"pmin={pmin}: needs to be between 1 and 0")
+            raise ValueError(f"p={p}: needs to be between 1 and 0")
         if p == 1:
             if self._cdist.kind != 'cluster':
                 raise ValueError(f"p=1 is only a valid mask for threshold-based cluster tests")
@@ -738,6 +738,10 @@ class NDDifferenceTest(NDTest):
         else:
             mask = self.p > p
         mask = self._cdist.uncrop(mask, self.difference, True)
+        # since masked array creation does not support broadcasting
+        if isinstance(self, Vector):
+            mask_x = np.repeat(self.difference._ialign(mask), 3, self.difference.get_axis('space'))
+            mask = NDVar(mask_x, self.difference.dims)
         return self.difference.mask(mask)
 
 

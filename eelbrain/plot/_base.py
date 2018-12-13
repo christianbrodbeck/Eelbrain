@@ -624,6 +624,7 @@ def butterfly_data(
         hemi: str,
         resample_: int = None,
         colors: bool = False,
+        return_vector_data: bool = False,
 ) -> (List, List, NDVar):
     """Data for plotting butterfly plot with brain
 
@@ -666,12 +667,18 @@ def butterfly_data(
     if kind == 'ndvar':
         if y.has_case:
             y = y.mean('case')
-        if y.has_dim('space'):
-            y = y.norm('space')
         if resample_:
             y = resample(y, resample_, window='hamming')
+        if y.has_dim('space'):
+            if return_vector_data:
+                brain_data = y
+                y = y.norm('space')
+            else:
+                y = y.norm('space')
+                brain_data = y
+        else:
+            brain_data = y
         bfly_data = [y.sub(source=hemi, name=hemi.capitalize()) for hemi in hemis]
-        brain_data = y
     elif kind == 'test':
         sig = data.p <= 0.05
         y_magnitude = y.rms('time')
