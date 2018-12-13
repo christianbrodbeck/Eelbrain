@@ -20,6 +20,7 @@ from os.path import basename, exists, getmtime, isdir, join, relpath
 import re
 import shutil
 import time
+import warnings
 
 import numpy as np
 
@@ -707,6 +708,7 @@ class MneExperiment(FileTree):
                                  "kind=%r" % (name, params['kind']))
             params = params.copy()
             if params['kind'] == 'ica':
+                warnings.warn(f"{name!r} artifact_rejection: 'ica' kind is deprecated and will be removed in version 0.29. Consider using ICA as preprocessing step (in MneExperiment.raw)", DeprecationWarning)
                 if set(params) != ICA_REJ_PARAMS:
                     missing = ICA_REJ_PARAMS.difference(params)
                     unused = set(params).difference(ICA_REJ_PARAMS)
@@ -1759,6 +1761,8 @@ class MneExperiment(FileTree):
 
         # determine ICA
         if apply_ica and self._artifact_rejection[self.get('rej')]['kind'] == 'ica':
+            if trigger_shift and epoch.post_baseline_trigger_shift:
+                raise NotImplementedError(f"post-baseline trigger shift can't be used together with rej={self.get('rej')} (ICA). Consider using ICA as preprocessing step (in MneExperiment.raw)")
             ica = self.load_ica()
             baseline_ = None
         else:
