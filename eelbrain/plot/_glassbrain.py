@@ -133,7 +133,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
     draw_arrows: boolean
         Draw arrows in the direction of activation over the glassbrain plots.
         Naturally, for this to work ``ndvar`` needs to contain space dimension
-        (i.e 3D vectors). By default it is set to (``True``).
+        (i.e 3D vectors). By default it is set to ``True``.
     symmetric_cbar : boolean | 'auto'
         Specifies whether the colorbar should range from -vmax to vmax
         or from vmin to vmax. Setting to 'auto' will select the latter if
@@ -521,7 +521,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         draw_arrows: boolean
             Draw arrows in the direction of activation over the glassbrain plots.
             Naturally, for this to work ``ndvar`` needs to contain space dimension
-            (i.e 3D vectors). By default it is set to (``True``).
+            (i.e 3D vectors). By default it is set to ``True``.
         symmetric_cbar : boolean or 'auto'
             Specifies whether the colorbar should range from -vmax to vmax
             or from vmin to vmax. Setting to 'auto' will select the latter if
