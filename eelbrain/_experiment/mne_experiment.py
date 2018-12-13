@@ -1399,8 +1399,7 @@ class MneExperiment(FileTree):
                             "revert changes, or set e.auto_delete_cache=True")
                     elif isinstance(self.auto_delete_cache, str):
                         if self.auto_delete_cache != 'debug':
-                            raise ValueError("MneExperiment.auto_delete_cache=%r" %
-                                             (self.auto_delete_cache,))
+                            raise ValueError(f"MneExperiment.auto_delete_cache={self.auto_delete_cache!r}")
                         command = ask(
                             "Outdated cache files. Choose 'delete' to proceed. "
                             "WARNING: only choose 'ignore' or 'revalidate' if "
@@ -1427,8 +1426,7 @@ class MneExperiment(FileTree):
                         else:
                             raise RuntimeError("command=%s" % repr(command))
                     elif self.auto_delete_cache is not True:
-                        raise TypeError("MneExperiment.auto_delete_cache=%s" %
-                                        repr(self.auto_delete_cache))
+                        raise TypeError(f"MneExperiment.auto_delete_cache={self.auto_delete_cache!r}")
 
                     # delete invalid files
                     n_cache_files = len(files) - n_result_files
@@ -1463,8 +1461,7 @@ class MneExperiment(FileTree):
                 else:
                     raise RuntimeError("command=%r" % (command,))
             else:
-                raise IOError("Cache directory without history, but "
-                              "auto_delete_cache is not True")
+                raise IOError("Cache directory without history, but auto_delete_cache is not True")
         elif not exists(cache_dir):
             os.mkdir(cache_dir)
 

@@ -1669,7 +1669,7 @@ class LayoutDialog(EelbrainDialog):
         self.topo = self.topo_ctrl.GetValue()
         self.mean = self.mean_ctrl.GetValue()
         value = self.text.GetValue()
-        m = re.match("(\d+)\s*(\d*)", value)
+        m = re.match(r"(\d+)\s*(\d*)", value)
         if m:
             rows_str, columns_str = m.groups()
             rows = int(rows_str)
@@ -1864,7 +1864,7 @@ class ThresholdDialog(EelbrainDialog):
 class InfoFrame(HTMLFrame):
 
     def OpenURL(self, url):
-        m = re.match('^(\w+):(\w+)$', url)
+        m = re.match(r'^(\w+):(\w+)$', url)
         if m:
             kind, address = m.groups()
             if kind == 'epoch':

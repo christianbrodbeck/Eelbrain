@@ -12,9 +12,7 @@ import tempfile
 import warnings
 
 import mne
-from nose.tools import (
-    eq_, ok_, assert_almost_equal, assert_false, assert_is_instance,
-    assert_raises, assert_not_equal, nottest)
+from nose.tools import eq_, assert_almost_equal,  nottest
 import numpy as np
 from numpy.testing import (
     assert_equal, assert_array_equal, assert_allclose,
@@ -52,7 +50,8 @@ def test_aggregate():
     drop = ('rm', 'ind', 'YBin', 'YCat')
 
     # don't handle inconsistencies silently
-    assert_raises(ValueError, ds.aggregate, 'A%B')
+    with pytest.raises(ValueError):
+        ds.aggregate('A%B')
 
     dsa = ds.aggregate('A%B', drop=drop)
     assert_array_equal(dsa['n'], [15, 15, 15, 15])
@@ -101,10 +100,12 @@ def test_align():
     # d_idx as Var
     dsa = align1(ds2[::2], idx4, idx4i)
     assert_array_equal(dsa['index'], idx4i, "align1() failure")
-    assert_raises(ValueError, align1, ds2, idx4, idx4i)
+    with pytest.raises(ValueError):
+        align1(ds2, idx4, idx4i)
 
     # Factor index
-    assert_raises(ValueError, align1, ds, ds['rm', ::-1], 'rm')
+    with pytest.raises(ValueError):
+        align1(ds, ds['rm', ::-1], 'rm')
     fds = ds[:20]
     dsa = align1(fds, fds['rm', ::-1], 'rm')
     assert_array_equal(dsa['index'], np.arange(19, -1, -1), "align1 Factor")
@@ -130,41 +131,43 @@ def test_celltable():
     ds['cat'] = Factor('abcd', repeat=15)
 
     ct = Celltable('Y', 'A', ds=ds)
-    eq_(ct.n_cases, 60)
-    eq_(ct.n_cells, 2)
-    eq_(repr(ct), "Celltable(Y, A)")
-    eq_(repr(Celltable(ds['Y'].x, 'A', ds=ds)), "Celltable(<ndarray>, A)")
-    eq_(repr(Celltable(ds['Y'].x, ds['A'].x, ds=ds)),
-        "Celltable(<ndarray>, <Factor>)")
+    assert ct.n_cases == 60
+    assert ct.n_cells == 2
+    assert repr(ct) == "Celltable(Y, A)"
+    assert repr(Celltable(ds['Y'].x, 'A', ds=ds)) == "Celltable(<ndarray>, A)"
+    assert repr(Celltable(ds['Y'].x, ds['A'].x, ds=ds)) == "Celltable(<ndarray>, <Factor>)"
 
     ct = Celltable('Y', 'A', match='rm', ds=ds)
-    eq_(ct.n_cases, 30)
-    eq_(ct.n_cells, 2)
+    assert ct.n_cases == 30
+    assert ct.n_cells == 2
 
     # cat argument
     ct = Celltable('Y', 'cat', cat=('c', 'b'), ds=ds)
-    eq_(ct.n_cases, 30)
-    eq_(ct.x[0], 'c')
-    eq_(ct.x[-1], 'b')
-    assert_raises(ValueError, Celltable, 'Y', 'cat', cat=('c', 'e'), ds=ds)
+    assert ct.n_cases == 30
+    assert ct.x[0] == 'c'
+    assert ct.x[-1] == 'b'
+    with pytest.raises(ValueError):
+        Celltable('Y', 'cat', cat=('c', 'e'), ds=ds)
 
     ct = Celltable('Y', 'A', match='rm', ds=ds)
-    eq_(ct.n_cases, 30)
+    assert ct.n_cases == 30
     assert np.all(ct.groups['a0'] == ct.groups['a1'])
 
     ct = Celltable('Y', 'cat', match='rm', cat=('c', 'b'), ds=ds)
-    eq_(ct.n_cases, 30)
-    eq_(ct.x[0], 'c')
-    eq_(ct.x[-1], 'b')
+    assert ct.n_cases == 30
+    assert ct.x[0] == 'c'
+    assert ct.x[-1] == 'b'
 
     # catch unequal length
-    assert_raises(ValueError, Celltable, ds['Y', :-1], 'cat', ds=ds)
-    assert_raises(ValueError, Celltable, ds['Y', :-1], 'cat', match='rm', ds=ds)
+    with pytest.raises(ValueError):
+        Celltable(ds['Y', :-1], 'cat', ds=ds)
+    with pytest.raises(ValueError):
+        Celltable(ds['Y', :-1], 'cat', match='rm', ds=ds)
 
     # coercion of numerical X
     X = ds.eval("A == 'a0'")
     ct = Celltable('Y', X, cat=(None, None), ds=ds)
-    eq_(('False', 'True'), ct.cat)
+    assert ct.cat == ('False', 'True')
     assert_array_equal(ct.data['True'], ds['Y', X])
 
     ct = Celltable('Y', X, cat=('True', 'False'), ds=ds)
@@ -173,9 +176,9 @@ def test_celltable():
 
     # test coercion of Y
     ct = Celltable(ds['Y'].x, 'A', ds=ds)
-    assert_is_instance(ct.y, np.ndarray)
+    assert isinstance(ct.y, np.ndarray)
     ct = Celltable(ds['Y'].x, 'A', ds=ds, coercion=asvar)
-    assert_is_instance(ct.y, Var)
+    assert isinstance(ct.y, Var)
 
     # test sub
     ds_sub = ds.sub("A == 'a0'")
@@ -192,7 +195,7 @@ def test_celltable():
 
     # Interaction match
     ct = Celltable('Y', 'A', match='B % rm', ds=ds)
-    ok_(ct.all_within)
+    assert ct.all_within
     assert_dataobj_equal(combine((ct.data['a0'], ct.data['a1'])), ds['Y'])
 
     # test rm sorting
@@ -218,7 +221,8 @@ def test_coercion():
     assert_array_equal(assub("avar == 0", ds), ds['avar'] == 0)
     with warnings.catch_warnings():  # element-wise comparison
         warnings.simplefilter("ignore")
-        assert_raises(TypeError, assub, "avar == '0'", ds)
+        with pytest.raises(TypeError):
+            assub("avar == '0'", ds)
 
 
 def test_choose():
@@ -233,7 +237,8 @@ def test_choose():
     assert_array_equal(y.x[idx], utsnd2.x[idx])
     assert_array_equal(y.x[idxi], utsnd.x[idxi])
 
-    assert_raises(DimensionMismatchError, choose, idx, (utsnd, utsnd.sub(sensor='1')))
+    with pytest.raises(DimensionMismatchError):
+        choose(idx, (utsnd, utsnd.sub(sensor='1')))
 
 
 def test_combine():
@@ -251,13 +256,15 @@ def test_combine():
     # combine Datasets with unequal keys
     del ds1['Y']
     # raise
-    assert_raises(KeyError, combine, (ds1, ds2))
-    assert_raises(KeyError, combine, (ds2, ds1))
+    with pytest.raises(KeyError):
+        combine((ds1, ds2))
+    with pytest.raises(KeyError):
+        combine((ds2, ds1))
     # drop
     del ds2['YCat']
     ds = combine((ds1, ds2), incomplete='drop')
-    ok_('Y' not in ds)
-    ok_('YCat' not in ds)
+    assert 'Y' not in ds
+    assert 'YCat' not in ds
     # fill in
     ds = combine((ds1, ds2), incomplete='fill in')
     assert_array_equal(ds['Y'].x[n:], ds2['Y'].x)
@@ -266,8 +273,10 @@ def test_combine():
     assert_array_equal(ds['YCat'][n:], '')
 
     # invalid input
-    assert_raises(ValueError, combine, ())
-    assert_raises(TypeError, combine, (ds2['A'], ds2['Y']))
+    with pytest.raises(ValueError):
+        combine(())
+    with pytest.raises(TypeError):
+        combine((ds2['A'], ds2['Y']))
 
     # combine NDVar with unequel dimensions
     ds = datasets.get_uts(utsnd=True)
@@ -278,13 +287,13 @@ def test_combine():
     ds2 = Dataset((y2,), info={'a': np.arange(2), 'b': [np.arange(2)]})
     dsc = combine((ds1, ds2))
     y = dsc['utsnd']
-    eq_(list(y.sensor.names), ['1', '2', '3'], "Sensor dimension intersection")
+    assert list(y.sensor.names) == ['1', '2', '3']
     dims = ('case', 'sensor', 'time')
     ref = np.concatenate((y1.get_data(dims)[:, 1:], y2.get_data(dims)[:, :3]))
     assert_array_equal(y.get_data(dims), ref, "combine utsnd")
     # info
     assert_array_equal(dsc.info['a'], np.arange(2))
-    eq_(len(dsc.info['b']), 1)
+    assert len(dsc.info['b']) == 1
     assert_array_equal(dsc.info['b'][0], np.arange(2))
 
 
@@ -295,22 +304,22 @@ def test_datalist():
     # indexing
     eq_(dl[3], 3)
     x = dl[:3]
-    assert_is_instance(x, Datalist)
+    assert isinstance(x, Datalist)
     assert_array_equal(x, list(range(3)))
     assert_array_equal(dl[8:], list(range(8, 10)))
     x = dl[np.arange(10) < 3]
-    assert_is_instance(x, Datalist)
+    assert isinstance(x, Datalist)
     assert_array_equal(x, list(range(3)))
     assert_array_equal(dl[np.arange(3)], list(range(3)))
 
     # __add__
     x = dl + list(range(10, 12))
-    assert_is_instance(x, Datalist)
+    assert isinstance(x, Datalist)
     assert_array_equal(x, list(range(12)))
 
     # aggregate
     x = dl.aggregate(Factor('ab', repeat=5))
-    assert_is_instance(x, Datalist)
+    assert isinstance(x, Datalist)
     assert_array_equal(x, [2.0, 7.0])
 
     # repr
@@ -328,7 +337,7 @@ def test_datalist():
 
     # deepcopy
     ac = deepcopy(a)
-    ok_(ac is not a)
+    assert ac is not a
     assert_array_equal(ac, a)
     ac[0].append(1)
     assert_array_equal(ac == a, [False, True, True, True])
@@ -338,7 +347,8 @@ def test_datalist():
     assert_array_equal(ac == [1, 2, [], [1]], True)
     ac[np.arange(2, 4)] = [3, 4]
     assert_array_equal(ac == list(range(1, 5)), True)
-    assert_raises(ValueError, ac.__setitem__, np.arange(2), np.arange(3))
+    with pytest.raises(ValueError):
+        ac[np.arange(2)] = np.arange(3)
 
     # update
     a._update_listlist(b)
@@ -391,7 +401,8 @@ def test_dataset_combining():
     del ds2['fltvar'], ds2['intvar']
     ds2['B'][5] = 'something_else'
     del ds['A']
-    assert_raises(ValueError, ds.update, ds2)
+    with pytest.raises(ValueError):
+        ds.update(ds2)
 
 
 def test_dataset_indexing():
@@ -427,7 +438,7 @@ def test_dataset_indexing():
 
     # assigning new factor
     ds['C', :] = 'c'
-    ok_(np.all(ds.eval("C == 'c'")))
+    assert np.all(ds.eval("C == 'c'"))
 
     # assigning new Var
     ds['D1', :] = 5.
@@ -437,19 +448,26 @@ def test_dataset_indexing():
 
     # test illegal names
     f = Factor('aaabbb')
-    assert_raises(ValueError, ds.__setitem__, '%dsa', f)
-    assert_raises(ValueError, ds.__setitem__, '432', f)
-    assert_raises(ValueError, ds.__setitem__, ('%dsa', slice(None)), 'value')
-    assert_raises(ValueError, ds.__setitem__, (slice(None), '%dsa'), 'value')
-    assert_raises(ValueError, ds.__setitem__, ('432', slice(None)), 4.)
-    assert_raises(ValueError, ds.__setitem__, (slice(None), '432'), 4.)
+    with pytest.raises(ValueError):
+        ds['%dsa'] = f
+    with pytest.raises(ValueError):
+        ds['432'] = f
+    with pytest.raises(ValueError):
+        ds['%dsa', :] = 'value'
+    with pytest.raises(ValueError):
+        ds[:, '%dsa'] = 'value'
+    with pytest.raises(ValueError):
+        ds['432', :] = 4.
+    with pytest.raises(ValueError):
+        ds[:, '432'] = 4.
 
     # deleting items
     del ds['A']
-    ok_('A' not in ds)
-    assert_raises(KeyError, ds.__getitem__, 'A')
+    assert 'A' not in ds
+    with pytest.raises(KeyError):
+        _ = ds['A']
     del ds['B', 'rm']
-    ok_('B' not in ds and 'rm' not in ds)
+    assert 'B' not in ds and 'rm' not in ds
 
 
 def test_dataset_repr():
@@ -459,8 +477,8 @@ def test_dataset_repr():
     print(ds)
     print(repr(ds))
 
-    eq_(str(ds.head()), str(ds[:10]))
-    eq_(str(ds.tail()), str(ds[-10:]))
+    assert str(ds.head()) == str(ds[:10])
+    assert str(ds.tail()) == str(ds[-10:])
 
     print(ds['A'])
     print(repr(ds['A']))
@@ -515,7 +533,8 @@ def test_dim_categorial():
     eq_(dim[idx], Categorial(name, sub_values))
     eq_(dim._array_index('a'), values.index('a'))
     eq_(dim._array_index('abc'), values.index('abc'))
-    assert_raises(TypeError, dim._array_index, ('a', 'b', 'c'))
+    with pytest.raises(TypeError):
+        dim._array_index(('a', 'b', 'c'))
 
     # intersection
     dim2 = Categorial(name, ['c', 'b', 'e'])
@@ -558,8 +577,10 @@ def test_dim_uts():
     uts = UTS(-0.1, 0.005, 301)
 
     # basic indexing
-    assert_raises(ValueError, uts._array_index, 1.5)
-    assert_raises(ValueError, uts._array_index, -.15)
+    with pytest.raises(ValueError):
+        uts._array_index(1.5)
+    with pytest.raises(ValueError):
+        uts._array_index(-.15)
 
     # make sure indexing rounds correctly for floats
     for i, s in enumerate(np.arange(0, 1.4, 0.05)):
@@ -592,12 +613,12 @@ def test_effect():
 def test_equality():
     u = Var(np.arange(5.))
     v = Var(np.arange(5.))
-    ok_(all_equal(u, v))
+    assert all_equal(u, v)
     u[-1] = np.nan
-    assert_false(all_equal(u, v))
+    assert not all_equal(u, v)
     v[-1] = np.nan
-    assert_false(all_equal(u, v))
-    ok_(all_equal(u, v, True))
+    assert not all_equal(u, v)
+    assert all_equal(u, v, True)
 
 
 def test_factor():
@@ -658,7 +679,8 @@ def test_factor():
     # Factor.as_var()
     assert_array_equal(f.as_var(dict(zip('abc', range(3)))), [0, 0, 1, 1, 2, 2])
     assert_array_equal(f.as_var({'a': 1}, 2), [1, 1, 2, 2, 2, 2])
-    assert_raises(KeyError, f.as_var, {'a': 1})
+    with pytest.raises(KeyError):
+        f.as_var({'a': 1})
 
     # Factor.floodfill()
     f = Factor([' ', ' ', '1', '2', ' ', ' ', '3', ' ', ' ', '2', ' ', ' ', '1'])
@@ -684,7 +706,8 @@ def test_factor_relabel():
     assert_array_equal(f, Factor('cccbbbddd'))
     f.update_labels({'d': 'c'})
     assert_array_equal(f, Factor('cccbbbccc'))
-    assert_raises(KeyError, f.update_labels, {'a':'c'})
+    with pytest.raises(KeyError):
+        f.update_labels({'a':'c'})
 
 
 def test_interaction():
@@ -804,7 +827,8 @@ def test_model():
 
     # catch explicit intercept
     intercept = Factor('i', repeat=4, name='intercept')
-    assert_raises(ValueError, a.__mul__, intercept)
+    with pytest.raises(ValueError):
+        _ = a * intercept
 
     # different var/factor combinations
     eq_(a * b, a + b + a % b)
@@ -848,7 +872,8 @@ def test_ndvar():
     x = ds['utsnd']
 
     # meaningful slicing
-    assert_raises(KeyError, x.sub, sensor='5')
+    with pytest.raises(KeyError):
+        x.sub(sensor='5')
     assert_equal(x.sub(sensor='4'), x.x[:, 4])
     assert_equal(x.sub(sensor=['4', '3', '2']), x.x[:, [4, 3, 2]])
     assert_equal(x.sub(sensor=['4']), x.x[:, [4]])
@@ -905,7 +930,7 @@ def test_ndvar():
     y = x / x.norm('sensor')
     assert_allclose(y.norm('sensor'), 1.)
     y = ds['uts'].mean('case').norm('time')
-    assert_is_instance(y, float)
+    assert isinstance(y, float)
 
     # Var
     v_case = Var(b_case)
@@ -920,7 +945,7 @@ def test_ndvar():
     x_bl = x - x.summary(time=(None, 0))
     # assert that the baseline is 0
     bl = x_bl.summary('case', 'sensor', time=(None, 0))
-    ok_(abs(bl) < 1e-10, "Baseline correction")
+    assert abs(bl) < 1e-10
 
     # NDVar as index
     sens_mean = x.mean(('case', 'time'))
@@ -934,8 +959,10 @@ def test_ndvar():
     assert_dataobj_equal(x_tc[x_time], x_tc.sub(time=(0.3, None)))
 
     # out of range index
-    assert_raises(ValueError, x.sub, time=(0.1, 0.81))
-    assert_raises(IndexError, x.sub, time=(-0.25, 0.1))
+    with pytest.raises(ValueError):
+        x.sub(time=(0.1, 0.81))
+    with pytest.raises(IndexError):
+        x.sub(time=(-0.25, 0.1))
 
     # iteration
     for i, xi in enumerate(x):
@@ -1156,7 +1183,8 @@ def test_ndvar_indexing():
     assert x.sum(index).sum() == -index.sum()
     i_index = ~index
     assert x.sum(i_index).sum() == ds['uts'].sum(i_index).sum()
-    assert_raises(DimensionMismatchError, index.__setitem__, x != 0, 0.)
+    with pytest.raises(DimensionMismatchError):
+        index[x != 0] = 0.
 
     # set to NDVar
     x = ds['utsnd'].copy()
@@ -1468,7 +1496,7 @@ def test_sensor():
     eq_(tuple(s1.names), ('1', '2'))
     eq_(tuple(s2.names), ('2', '3'))
     eq_(s1, sensor[[0, 1]])
-    assert_not_equal(s1, s2)
+    assert s1 != s2
     eq_(s1.intersect(s2), sensor[[1]])
     eq_(sensor._dim_index(np.array([0, 1, 1], bool)), ['2', '3'])
 
@@ -1529,7 +1557,8 @@ def test_source_space():
                        np.logical_or(cuneus_index, lingual_index))
     lingual_source = source[lingual_index]
     cuneus_source = source[cuneus_index]
-    assert_raises(IndexError, lingual_source._array_index, cuneus_source)
+    with pytest.raises(IndexError):
+        _ = lingual_source._array_index(cuneus_source)
     sub_source = source[source._array_index(('cuneus-lh', 'lingual-lh'))]
     eq_(sub_source[sub_source._array_index('lingual-lh')], lingual_source)
     eq_(sub_source[sub_source._array_index('cuneus-lh')], cuneus_source)
