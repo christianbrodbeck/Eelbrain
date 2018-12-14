@@ -4049,18 +4049,23 @@ class MneExperiment(FileTree):
                 ds = self.load_epochs(None, True, False, decim=1, epoch=params['epoch'])
             epochs = ds['epochs']
             cov = mne.compute_covariance(epochs, keep_sample_mean, method=method)
+            info = epochs.info
         else:
             with self._temporary_state:
                 raw = self.load_raw(session=params['session'])
             cov = mne.compute_raw_covariance(raw, method=method)
+            info = raw.info
+            epochs = None
 
         if reg is True:
-            cov = mne.cov.regularize(cov, epochs.info)
+            cov = mne.cov.regularize(cov, info)
         elif isinstance(reg, dict):
-            cov = mne.cov.regularize(cov, epochs.info, **reg)
+            cov = mne.cov.regularize(cov, info, **reg)
         elif reg == 'best':
             if mne.pick_types(epochs.info, meg='grad', eeg=True, ref_meg=False):
                 raise NotImplementedError("EEG or gradiometer sensors")
+            elif epochs is None:
+                raise NotImplementedError("reg='best' for raw covariance")
             reg_vs = np.arange(0, 0.21, 0.01)
             covs = [mne.cov.regularize(cov, epochs.info, mag=v) for v in reg_vs]
 
