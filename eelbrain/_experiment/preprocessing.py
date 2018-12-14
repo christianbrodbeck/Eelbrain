@@ -276,7 +276,13 @@ class CachedRawPipe(RawPipe):
                 logger.info(repr(self.as_dict()))
                 raw = self._make(subject, session)
             # save
-            raw.save(path, overwrite=True)
+            try:
+                raw.save(path, overwrite=True)
+            except:
+                # clean up potentially corrupted file
+                if exists(path):
+                    remove(path)
+                raise
             return raw
 
     def get_connectivity(self, data):
