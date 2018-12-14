@@ -370,7 +370,7 @@ AGGREGATE_FUNCTIONS = ('mean', 'rms')
 DATA_RE = re.compile(r"(source|sensor|meg|eeg)(?:\.(%s))?$" % '|'.join(AGGREGATE_FUNCTIONS))
 
 
-class TestDims(object):
+class TestDims:
     """Data shape for test
 
     Paremeters
@@ -458,7 +458,7 @@ class TestDims(object):
             return self._to_ndvar
 
 
-class ROITestResult(object):
+class ROITestResult:
     """Test results for temporal tests in one or more ROIs
 
     Attributes

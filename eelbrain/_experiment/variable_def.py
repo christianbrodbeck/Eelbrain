@@ -24,7 +24,7 @@ def as_vardef_var(v):
     return v
 
 
-class VarDef(object):
+class VarDef:
     _pickle_args = ('session',)
 
     def __init__(self, session):
@@ -184,7 +184,7 @@ def parse_vardef(string):
         return EvalVar(string)
 
 
-class Variables(object):
+class Variables:
     """Set of variable definitions
 
     Parameters

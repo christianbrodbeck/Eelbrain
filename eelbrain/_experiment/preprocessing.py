@@ -18,7 +18,7 @@ from .definitions import typed_arg
 from .exceptions import FileMissing
 
 
-class RawPipe(object):
+class RawPipe:
 
     def _link(self, name, pipes, root, raw_dir, cache_dir, log):
         raise NotImplementedError

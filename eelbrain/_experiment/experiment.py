@@ -99,7 +99,7 @@ class LayeredDict(dict):
         self._states.append(self.copy())
 
 
-class _TempStateController(object):
+class _TempStateController:
     def __init__(self, experiment):
         self.experiment = experiment
 
@@ -110,7 +110,7 @@ class _TempStateController(object):
         self.experiment._restore_state()
 
 
-class TreeModel(object):
+class TreeModel:
     """
     A hierarchical collection of format strings and field values
 

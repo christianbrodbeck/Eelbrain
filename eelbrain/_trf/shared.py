@@ -11,7 +11,7 @@ from .._data_obj import NDVar, Case, UTS, dataobj_repr, ascategorial, asndvar
 from .._utils.numpy_utils import newaxis
 
 
-class RevCorrData(object):
+class RevCorrData:
     """Restructure input NDVars into arrays for reverse correlation
     
     Attributes

@@ -149,7 +149,7 @@ def _time_window_str(window, delim='-'):
     return delim.join(map(_time_str, window))
 
 
-class DictSet(object):
+class DictSet:
     """Helper class for list of dicts without duplicates"""
     def __init__(self):
         self._list = []

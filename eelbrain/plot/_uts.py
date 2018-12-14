@@ -388,7 +388,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         LegendMixin._fill_toolbar(self, tb)
 
 
-class _ax_uts_stat(object):
+class _ax_uts_stat:
 
     def __init__(self, ax, ct, colors, main, error, dev_data, xdim,
                  invy, bottom, top, hline, clusters, pmax, ptrend, clip,
@@ -532,7 +532,7 @@ class UTSClusters(EelFigure):
         self.draw()
 
 
-class _ax_uts(object):
+class _ax_uts:
 
     def __init__(self, ax, layers, xdim, vlims, colors):
         vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
@@ -557,7 +557,7 @@ class _ax_uts(object):
         self.vmin, self.vmax = self.ax.get_ylim()
 
 
-class _plt_uts(object):
+class _plt_uts:
 
     def __init__(self, ax, ndvar, xdim, color):
         y = ndvar.get_data((xdim,))
@@ -662,7 +662,7 @@ class _plt_uts_clusters:
             self.h.append(h)
 
 
-class _plt_uts_stat(object):
+class _plt_uts_stat:
 
     def __init__(self, ax, x, y, main, error, dev_data, color, label, clip,
                  error_alpha):

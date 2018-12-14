@@ -1139,7 +1139,7 @@ class EffectList(list):
         return [UNNAMED if n is None else n for n in names]
 
 
-class Var(object):
+class Var:
     """Container for scalar data.
 
     Parameters
@@ -1849,7 +1849,7 @@ class Var(object):
         return np.unique(self.x)
 
 
-class _Effect(object):
+class _Effect:
     # numeric ---
     def __add__(self, other):
         return Model(self) + other
@@ -2740,7 +2740,7 @@ class Factor(_Effect):
         return Factor(self.x, name, self.random, tile=repeats, labels=self._labels)
 
 
-class NDVar(object):
+class NDVar:
     """Container for n-dimensional data.
 
     Parameters
@@ -6489,7 +6489,7 @@ class NestedEffect(_Effect):
         return ["%s %i" % (self.name, i) for i in range(self.df)]
 
 
-class NonbasicEffect(object):
+class NonbasicEffect:
 
     def __init__(self, effect_codes, factors, name, nestedin=[],
                  beta_labels=None):
@@ -6520,7 +6520,7 @@ class NonbasicEffect(object):
             return self.beta_labels
 
 
-class Model(object):
+class Model:
     """A list of effects.
 
     Parameters
@@ -6822,7 +6822,7 @@ class Model(object):
         return self.as_table(cases=range(-n, 0))
 
 
-class Parametrization(object):
+class Parametrization:
     """Parametrization of a statistical model
 
     Parameters
@@ -6931,7 +6931,7 @@ def _subgraph_edges(connectivity, int_index):
         return np.empty((0, 2), dtype=np.uint32)
 
 
-class Dimension(object):
+class Dimension:
     """Base class for dimensions.
     
     Parameters

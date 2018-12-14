@@ -74,7 +74,7 @@ def deprecated_attribute(version, class_name, replacement):
     if not isinstance(replacement, str):
         raise TypeError("replacement=%r" % (replacement,))
 
-    class Dec(object):
+    class Dec:
 
         def __init__(self, meth):
             self._meth = meth
@@ -161,7 +161,7 @@ class intervals:
         return self.seq[self.i - 1], self.seq[self.i]
 
 
-class LazyProperty(object):
+class LazyProperty:
     "http://blog.pythonisito.com/2008/08/lazy-descriptors.html"
     def __init__(self, func):
         self._func = func

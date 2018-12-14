@@ -20,7 +20,7 @@ def r_require(package):
             raise RuntimeError("Could not install R package %r" % package)
 
 
-class RWarningFilter(object):
+class RWarningFilter:
 
     def __enter__(self):
         self.context = warnings.catch_warnings()

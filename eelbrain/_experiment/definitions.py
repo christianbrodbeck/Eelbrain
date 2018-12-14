@@ -5,7 +5,7 @@ from .._exceptions import DefinitionError
 from .._utils.parse import find_variables
 
 
-class Definition(object):
+class Definition:
     DICT_ATTRS = None
 
     def as_dict(self):

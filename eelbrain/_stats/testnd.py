@@ -72,7 +72,7 @@ def check_variance(x):
         raise ZeroVariance("y contains data column with zero variance")
 
 
-class NDTest(object):
+class NDTest:
     """Baseclass for testnd test results
 
     Attributes
@@ -749,7 +749,7 @@ class NDDifferenceTest(NDTest):
         return self.difference.mask(mask)
 
 
-class NDMaskedC1Mixin(object):
+class NDMaskedC1Mixin:
 
     def masked_c1(self, p=0.05):
         """``c1`` map masked by significance of the ``c1``-``c0`` difference
@@ -2230,7 +2230,7 @@ def _tfce(stat_map, tail, conn, out, out_1d, bin_buff, int_buff,
     return out
 
 
-class StatMapProcessor(object):
+class StatMapProcessor:
 
     def __init__(self, tail, max_axes, parc):
         """Reduce a statistical map to the relevant maximum statistic"""
@@ -2341,7 +2341,7 @@ def get_map_processor(kind, *args):
         raise ValueError("kind=%s" % repr(kind))
 
 
-class NDPermutationDistribution(object):
+class NDPermutationDistribution:
     """Accumulate information on a cluster statistic.
 
     Notes

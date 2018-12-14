@@ -751,7 +751,7 @@ def set_dict_arg(key, arg, line_dim_obj, artists, legend_handles=None):
             legend_handles[dim_index] = artist
 
 
-class LayerData(object):
+class LayerData:
     """Data for one subplot layer"""
     _remap_args = {'c': 'color'}
 
@@ -790,7 +790,7 @@ class LayerData(object):
             raise RuntimeError(f"masking={masking!r}")
 
 
-class PlotData(object):
+class PlotData:
     """Organize nd-data for plotting
 
     Parameters
@@ -1131,7 +1131,7 @@ def frame_title(y, x=None, xax=None):
         return "%s ~ %s | %s" % (y, x, xax)
 
 
-class EelFigure(object):
+class EelFigure:
     """Parent class for Eelbrain figures.
 
     In order to subclass:
@@ -1692,7 +1692,7 @@ class EelFigure(object):
         ax.set_ylabel(label)
 
 
-class BaseLayout(object):
+class BaseLayout:
     def __init__(self, h, w, dpi, tight, show, run, autoscale, title, name):
         self.h = h
         self.w = w
@@ -1756,7 +1756,7 @@ def resolve_plot_rect(w, h, dpi):
     return w, h
 
 
-class LayoutDim(object):
+class LayoutDim:
     "Helper function to determine figure spacing"
     _properties = ('total', 'first', 'space', 'last', 'ax')
     _equations = dict(
@@ -2170,7 +2170,7 @@ class VariableAspectLayout(BaseLayout):
         return axes
 
 
-class ColorBarMixin(object):
+class ColorBarMixin:
     """Colorbar toolbar button mixin
 
     Parameters
@@ -2331,7 +2331,7 @@ class ColorMapMixin(ColorBarMixin):
         return self._vlims[meas]
 
 
-class LegendMixin(object):
+class LegendMixin:
     __choices = ('invisible', 'separate window', 'draggable', 'upper right',
                  'upper left', 'lower left', 'lower right', 'right',
                  'center left', 'center right', 'lower center', 'upper center',
@@ -2498,7 +2498,7 @@ class Legend(EelFigure):
         self._show()
 
 
-class TimeController(object):
+class TimeController:
     # Link plots that have the TimeSlicer mixin
     def __init__(self, t=0, fixate=False):
         self._plots = []  # list of weakref to plots
@@ -2546,7 +2546,7 @@ class TimeController(object):
                 p._set_xlim(xmin, xmax, draw=True)
 
 
-class TimeSlicer(object):
+class TimeSlicer:
     # Interface to link time axes of multiple plots.
     # update data in a child plot of time-slices
     _time_dim = None
@@ -2729,7 +2729,7 @@ class TimeSlicerEF(TimeSlicer):
         imageio.mimwrite(filename, ims, **kwargs)
 
 
-class TopoMapKey(object):
+class TopoMapKey:
 
     def __init__(self, data_func):
         self.__topo_data = data_func
@@ -2753,7 +2753,7 @@ class TopoMapKey(object):
                     sensorlabels='name')
 
 
-class XAxisMixin(object):
+class XAxisMixin:
     """Manage x-axis
 
     Parameters
@@ -2916,7 +2916,7 @@ class XAxisMixin(object):
             self._set_xlim(left, right, draw=True)
 
 
-class YLimMixin(object):
+class YLimMixin:
     """Manage y-axis
 
     Parameters
@@ -3027,7 +3027,7 @@ class YLimMixin(object):
         self.__animate(vmin, -d, vmax, d)
 
 
-class ImageTiler(object):
+class ImageTiler:
     """
     Create tiled images and animations from individual image files.
 

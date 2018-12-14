@@ -486,7 +486,7 @@ class Barplot(YLimMixin, _SimpleFigure):
         self._show()
 
 
-class _plt_uv_base(object):
+class _plt_uv_base:
     """Base for barplot and boxplot"""
 
     def __init__(self, ax, ct, xticks, xtick_delim):
@@ -799,7 +799,7 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
         LegendMixin._fill_toolbar(self, tb)
 
 
-class _ax_timeplot(object):
+class _ax_timeplot:
 
     def __init__(self, ax, y, categories, time, match, colors, hatch, markers,
                  line_plot, error, local_plot, timelabels, x_jitter, bottom,

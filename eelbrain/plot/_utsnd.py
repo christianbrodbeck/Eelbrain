@@ -12,7 +12,7 @@ from ._base import (
     pop_dict_arg, set_dict_arg)
 
 
-class _plt_im(object):
+class _plt_im:
 
     _aspect = 'auto'
 
@@ -125,7 +125,7 @@ class _plt_im_array(_plt_im):
         return ndvar.get_data(self._dimnames)
 
 
-class _ax_im_array(object):
+class _ax_im_array:
 
     def __init__(self, ax, layers, x='time', interpolation=None, vlims={},
                  cmaps={}, contours={}):
@@ -268,7 +268,7 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
         ColorMapMixin._fill_toolbar(self, tb)
 
 
-class _plt_utsnd(object):
+class _plt_utsnd:
     """
     UTS-plot for a single epoch
 
@@ -328,7 +328,7 @@ class _plt_utsnd(object):
             line.set_ydata(y)
 
 
-class _ax_butterfly(object):
+class _ax_butterfly:
     """Axis with butterfly plot
 
     Parameters

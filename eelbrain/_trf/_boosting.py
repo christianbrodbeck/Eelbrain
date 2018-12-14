@@ -49,7 +49,7 @@ ERROR_FUNC = {'l2': l2, 'l1': l1}
 DELTA_ERROR_FUNC = {'l2': 2, 'l1': 1}
 
 
-class BoostingResult(object):
+class BoostingResult:
     """Result from boosting a temporal response function
 
     Attributes
@@ -496,7 +496,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         **debug_attrs)
 
 
-class BoostingStep(object):
+class BoostingStep:
     __slots__ = ('i_stim', 'i_time', 'delta', 'e_train', 'e_test')
 
     def __init__(self, i_stim, i_time, delta_signed, e_test, e_train):

@@ -475,7 +475,7 @@ def asfmtext_or_none(content, tag=None):
         return asfmtext(content, tag)
 
 
-class FMTextConstant(object):
+class FMTextConstant:
 
     def __init__(self, name, html, rtf, tex, text):
         self.name = name
@@ -509,7 +509,7 @@ linebreak = FMTextConstant(
 )
 
 
-class FMTextElement(object):
+class FMTextElement:
     """Represent a text element along with formatting properties.
 
     The elementary unit of the :py:mod:`fmtxt` module. It can function as a

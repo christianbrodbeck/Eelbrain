@@ -6,7 +6,7 @@ from scipy.ndimage import generate_binary_structure
 from .._data_obj import Dimension
 
 
-class Connectivity(object):
+class Connectivity:
     """N-dimensional connectivity"""
     __slots__ = ('struct', 'custom', 'vector')
 

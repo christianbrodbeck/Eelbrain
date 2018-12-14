@@ -22,7 +22,7 @@ from .frame import EelbrainFrame, EelbrainDialog
 from .help import show_help_txt
 
 
-class DummyMouseEvent(object):
+class DummyMouseEvent:
     "Emulate Matplotlib MouseEvent"
     def __init__(self, x, y):
         self.x = x

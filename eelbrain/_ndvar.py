@@ -29,7 +29,7 @@ from ._trf._boosting_opt import l1
 from ._utils.numpy_utils import newaxis
 
 
-class Alignement(object):
+class Alignement:
 
     def __init__(self, y, x, last=None):
         shared = set(x.dimnames).intersection(y.dimnames)
@@ -863,7 +863,7 @@ def resample(ndvar, sfreq, npad='auto', window=None, pad='edge', name=None):
     return NDVar(x, dims, ndvar.info, name)
 
 
-class Filter(object):
+class Filter:
     "Filter and downsample"
     def __init__(self, sfreq=None):
         self.sfreq = sfreq

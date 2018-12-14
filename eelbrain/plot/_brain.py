@@ -1012,7 +1012,7 @@ def _bin_table_ims(data, hemi, views, brain_func):
     return ims, header, cmap_params
 
 
-class SequencePlotter(object):
+class SequencePlotter:
     """Grid of anatomical images in one figure
 
     Examples

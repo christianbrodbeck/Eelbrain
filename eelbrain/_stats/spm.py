@@ -16,7 +16,7 @@ from .testnd import ttest_1samp
 from functools import reduce
 
 
-class LM(object):
+class LM:
     """Fixed effects linear model
 
     Parameters
@@ -122,7 +122,7 @@ class LM(object):
         return {term: s.stop - s.start for term, s in self._p.terms.items()}
 
 
-class LMGroup(object):
+class LMGroup:
     """Group level analysis for linear model :class:`LM` objects
     
     Parameters

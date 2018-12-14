@@ -210,7 +210,7 @@ def rmssd(y):
     return np.sqrt(x)
 
 
-class SEM(object):
+class SEM:
 
     def __init__(self, y, x=None, match=None):
         """Standard error of the mean (SEM)
