@@ -544,19 +544,13 @@ class MneExperiment(FileTree):
         ########################################################################
         # sessions
         if self.sessions is None:
-            raise TypeError("The MneExperiment.sessions parameter needs to be "
-                            "specified. The session name is contained in your "
-                            "raw data files. For example if your file is named "
-                            "`R0026_mysession-raw.fif` your session name is "
-                            "'mysession' and you should set "
-                            "MneExperiment.sessions='mysession'.")
+            raise TypeError("The MneExperiment.sessions parameter needs to be specified. The session name is contained in your raw data files. For example if your file is named `R0026_mysession-raw.fif` your session name is 'mysession' and you should set MneExperiment.sessions to 'mysession'.")
         elif isinstance(self.sessions, str):
             self._sessions = (self.sessions,)
         elif isinstance(self.sessions, Sequence):
             self._sessions = tuple(self.sessions)
         else:
-            raise TypeError("MneExperiment.sessions needs to be a string or a "
-                            "tuple, got %s" % repr(self.sessions))
+            raise TypeError(f"MneExperiment.sessions={self.sessions!r}; needs to be a string or a tuple")
 
         ########################################################################
         # subjects
@@ -993,20 +987,13 @@ class MneExperiment(FileTree):
             if getmtime(cache_state_path) > time.time():
                 tc = time.ctime(getmtime(cache_state_path))
                 tsys = time.asctime()
-                raise RuntimeError("The cache's time stamp is in the future "
-                                   "(%s). If the system time (%s) is wrong, "
-                                   "adjust the system clock; if not, delete "
-                                   "the eelbrain-cache folder." % (tc, tsys))
+                raise RuntimeError(f"The cache's time stamp is in the future ({tc}). If the system time ({tsys}) is wrong, adjust the system clock; if not, delete the eelbrain-cache folder.")
             cache_state = load.unpickle(cache_state_path)
             cache_state_v = cache_state.get('version', 0)
             if cache_state_v < CACHE_STATE_VERSION:
-                log.debug("Updating cache-state %i -> %i", cache_state_v,
-                          CACHE_STATE_VERSION)
+                log.debug("Updating cache-state %i -> %i", cache_state_v, CACHE_STATE_VERSION)
             elif cache_state_v > CACHE_STATE_VERSION:
-                raise RuntimeError("The %s cache is from a newer version of "
-                                   "Eelbrain than you are currently using. "
-                                   "Either upgrade Eelbrain or delete the cache "
-                                   "folder.")
+                raise RuntimeError(f"The cache is from a newer version of Eelbrain than you are currently using. Either upgrade Eelbrain or delete the cache folder.")
 
             # Backwards compatibility
             # =======================
@@ -1085,11 +1072,10 @@ class MneExperiment(FileTree):
                     log.warning("  raw file removed: %s", '/'.join(key))
                 elif new_events.n_cases != old_events.n_cases:
                     invalid_cache['events'].add(key)
-                    log.warning("  event length: %s %i->%i", '/'.join(key),
-                             old_events.n_cases, new_events.n_cases)
+                    log.warning("  event length: %s %i->%i", '/'.join(key), old_events.n_cases, new_events.n_cases)
                 elif not np.all(new_events['i_start'] == old_events['i_start']):
                     invalid_cache['events'].add(key)
-                    log.warning("  trigger timing changed: %s", '/'.join(key))
+                    log.warning("  trigger times changed: %s", '/'.join(key))
                 else:
                     for var in old_events:
                         if var == 'i_start':
@@ -1193,16 +1179,14 @@ class MneExperiment(FileTree):
                         bad = bad_vars.intersection(find_test_vars(params))
                         if bad:
                             invalid_cache['tests'].add(test)
-                            log.debug("  Test %s depends on changed variables %s",
-                                      test, ', '.join(bad))
+                            log.debug("  Test %s depends on changed variables %s", test, ', '.join(bad))
                 # epochs using bad variable
                 epochs_vars = find_epochs_vars(cache_state['epochs'])
                 for epoch, evars in epochs_vars.items():
                     bad = bad_vars.intersection(evars)
                     if bad:
                         invalid_cache['epochs'].add(epoch)
-                        log.debug("  Epoch %s depends on changed variables %s",
-                                  epoch, ', '.join(bad))
+                        log.debug("  Epoch %s depends on changed variables %s", epoch, ', '.join(bad))
 
             # secondary epochs
             if 'epochs' in invalid_cache:
@@ -1229,8 +1213,7 @@ class MneExperiment(FileTree):
                         if params['kind'] == 'anova' and params['x'].count('*') > 1:
                             bad_tests.append(test)
                     if bad_tests and bad_parcs:
-                        log.warning("  Invalid ANOVA tests: %s for %s",
-                                    bad_tests, bad_parcs)
+                        log.warning("  Invalid ANOVA tests: %s for %s", bad_tests, bad_parcs)
                     for test, parc in product(bad_tests, bad_parcs):
                         rm['test-file'].add({'test': test, 'test_dims': parc})
                         rm['report-file'].add({'test': test, 'folder': parc})
@@ -3226,29 +3209,25 @@ class MneExperiment(FileTree):
         """
         # process arguments
         if reject not in (True, False, 'keep'):
-            raise ValueError("reject=%s" % repr(reject))
+            raise ValueError(f"reject={reject!r}")
 
         if index is True:
             index = 'index'
         elif index and not isinstance(index, str):
-            raise TypeError("index=%s" % repr(index))
+            raise TypeError(f"index={index!r}")
 
         # case of loading events for a group
         subject, group = self._process_subject_arg(subject, kwargs)
         if group is not None:
             if data_raw is not False:
-                raise ValueError("data_var=%s: can't load data raw when "
-                                 "combining different subjects" % repr(data_raw))
-            dss = [self.load_selected_events(reject=reject, add_bads=add_bads,
-                                             index=index, vardef=vardef)
-                   for _ in self.iter(group=group)]
+                raise ValueError(f"data_var={data_raw!r}: can't keep raw when combining subjects")
+            dss = [self.load_selected_events(reject=reject, add_bads=add_bads, index=index, vardef=vardef) for _ in self.iter(group=group)]
             ds = combine(dss)
             return ds
 
         epoch = self._epochs[self.get('epoch')]
         if isinstance(epoch, EpochCollection):
-            raise ValueError("epoch=%r; can't load events for collection epoch" %
-                             (self.get('epoch'),))
+            raise ValueError(f"epoch={self.get('epoch')!r}; can't load events for collection epoch")
 
         # rejection comes from somewhere else
         if isinstance(epoch, SuperEpoch):
@@ -3291,9 +3270,7 @@ class MneExperiment(FileTree):
             ds.info[BAD_CHANNELS] = bad_channels
         elif isinstance(epoch, SecondaryEpoch):
             with self._temporary_state:
-                ds = self.load_selected_events(None, 'keep' if reject else False,
-                                               add_bads, index, data_raw,
-                                               epoch=epoch.sel_epoch)
+                ds = self.load_selected_events(None, 'keep' if reject else False, add_bads, index, data_raw, epoch=epoch.sel_epoch)
 
             if epoch.sel:
                 ds = ds.sub(epoch.sel)
@@ -3314,9 +3291,8 @@ class MneExperiment(FileTree):
                     if exists(rej_file):
                         ds_sel = load.unpickle(rej_file)
                     else:
-                        raise FileMissing("The rejection file at %s does not "
-                                          "exist. Run .make_epoch_selection() first." %
-                                          self._get_rel('rej-file', 'root'))
+                        rej_file = self._get_rel('rej-file', 'root')
+                        raise FileMissing(f"The rejection file at {rej_file} does not exist. Run .make_epoch_selection() first.")
                 else:
                     ds_sel = None
 
@@ -3326,8 +3302,7 @@ class MneExperiment(FileTree):
             if index:
                 ds.index(index)
             if epoch.n_cases is not None and ds.n_cases != epoch.n_cases:
-                raise RuntimeError("Number of epochs %i, expected %i" %
-                                   (ds.n_cases, epoch.n_cases))
+                raise RuntimeError(f"Number of epochs {ds.n_cases}, expected {epoch.n_cases}")
 
             # rejection
             if ds_sel is not None:
@@ -3341,12 +3316,7 @@ class MneExperiment(FileTree):
                         ds = ds[1:]
                         self._log.warning(self.format("First epoch for {subject} is missing"))
                     else:
-                        raise RuntimeError(
-                            "The epoch selection file contains different events (trigger IDs) "
-                            "from the epoch data loaded from the raw file. If the "
-                            "events included in the epoch were changed intentionally, "
-                            "delete the corresponding trial rejection file and create a new "
-                            "one:\n %s" % (rej_file,))
+                        raise RuntimeError(f"The epoch selection file contains different events (trigger IDs) from the epoch data loaded from the raw file. If the events included in the epoch were changed intentionally, delete the corresponding epoch rejection file and redo epoch rejection: {rej_file}")
 
                 if rej_params['interpolation']:
                     ds.info[INTERPOLATE_CHANNELS] = True
