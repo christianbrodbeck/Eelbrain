@@ -66,17 +66,8 @@ class EpochBase(Definition):
 
 
 class Epoch(EpochBase):
-    """Epoch definition base (non-functional baseclass)
-
-    Parameters
-    ----------
-    ...
-    trigger_shift : float | str
-        Trigger shift applied after loading selected events. Trigger shift is
-        applied for all Epoch subtypes, i.e., it combines additively for
-        secondary epochs.
-    """
-    DICT_ATTRS = ('name', 'tmin', 'tmax', 'decim', 'baseline', 'vars',
+    """Epoch definition base (non-functional baseclass)"""
+    DICT_ATTRS = ('name', 'tmin', 'tmax', 'decim', 'samplingrate', 'baseline', 'vars',
                   'trigger_shift', 'post_baseline_trigger_shift',
                   'post_baseline_trigger_shift_min',
                   'post_baseline_trigger_shift_max')
@@ -85,7 +76,7 @@ class Epoch(EpochBase):
     rej_file_epochs = None
     sessions = None
 
-    def __init__(self, tmin=-0.1, tmax=0.6, decim=5, baseline=None,
+    def __init__(self, tmin=-0.1, tmax=0.6, samplingrate=None, decim=None, baseline=None,
                  vars=None, trigger_shift=0., post_baseline_trigger_shift=None,
                  post_baseline_trigger_shift_min=None,
                  post_baseline_trigger_shift_max=None):
@@ -93,6 +84,17 @@ class Epoch(EpochBase):
                 (post_baseline_trigger_shift_min is None or
                  post_baseline_trigger_shift_max is None)):
             raise ValueError(f"{self.__class__.__name__} contains post_baseline_trigger_shift but is missing post_baseline_trigger_shift_min and/or post_baseline_trigger_shift_max")
+
+        if decim is not None:
+            if decim < 1:
+                raise ValueError(f"decim={decim!r}")
+            elif samplingrate is not None:
+                raise TypeError(f"deimc={decim} with samplingrate={samplingrate}: only one of these parameters can be specified at a time")
+        elif samplingrate is not None:
+            if samplingrate <= 0:
+                raise ValueError(f"samplingrate={samplingrate!r}")
+        else:
+            samplingrate = 200
 
         if baseline is None:
             if tmin >= 0:
@@ -111,6 +113,7 @@ class Epoch(EpochBase):
 
         self.tmin = typed_arg(tmin, float)
         self.tmax = typed_arg(tmax, float)
+        self.samplingrate = typed_arg(samplingrate, float)
         self.decim = typed_arg(decim, int)
         self.baseline = baseline
         self.vars = vars
@@ -145,9 +148,12 @@ class PrimaryEpoch(Epoch):
         Start of the epoch (default -0.1).
     tmax : float
         End of the epoch (default 0.6).
+    samplingrate : scalar
+        Target samplingrate. Needs to divide data samplingrate evenly (e.g.
+        ``200`` for data sampled at 1000 Hz; default ``200``).
     decim : int
-        Decimate the data by this factor (i.e., only keep every ``decim``'th
-        sample; default 5).
+        Alternative to ``samplingrate``. Decimate the data by this factor
+        (i.e., only keep every ``decim``'th sample).
     baseline : tuple
         The baseline of the epoch (default ``(None, 0)``).
     n_cases : int
@@ -157,8 +163,9 @@ class PrimaryEpoch(Epoch):
         Shift event triggers before extracting the data [in seconds]. Can be a
         float to shift all triggers by the same value, or a str indicating an event
         variable that specifies the trigger shift for each trigger separately.
+        The ``trigger_shift`` applied after loading selected events.
         For secondary epochs the ``trigger_shift`` is applied additively with the
-        ``trigger_shift`` of their base epochs.
+        ``trigger_shift`` of their base epoch.
     post_baseline_trigger_shift : str
         Shift the trigger (i.e., where epoch time = 0) after baseline correction.
         The value of this entry has to be the name of an event variable providing
@@ -212,7 +219,7 @@ class SecondaryEpoch(Epoch):
         Override base-epoch parameters.
     """
     DICT_ATTRS = Epoch.DICT_ATTRS + ('sel_epoch', 'sel')
-    INHERITED_PARAMS = ('tmin', 'tmax', 'decim', 'baseline',
+    INHERITED_PARAMS = ('tmin', 'tmax', 'decim', 'samplingrate', 'baseline',
                         'post_baseline_trigger_shift',
                         'post_baseline_trigger_shift_min',
                         'post_baseline_trigger_shift_max')
@@ -254,7 +261,7 @@ class SuperEpoch(Epoch):
         Override sub-epoch parameters.
     """
     DICT_ATTRS = Epoch.DICT_ATTRS + ('sub_epochs',)
-    INHERITED_PARAMS = ('tmin', 'tmax', 'decim', 'baseline')
+    INHERITED_PARAMS = ('tmin', 'tmax', 'decim', 'samplingrate', 'baseline')
 
     def __init__(self, sub_epochs, **kwargs):
         self.sub_epochs = tuple(sub_epochs)
@@ -339,3 +346,15 @@ class EpochCollection(EpochBase):
             if e.session not in self.sessions:
                 self.sessions.append(e.session)
             self.rej_file_epochs.extend(e.rej_file_epochs)
+
+
+def decim_param(epoch: Epoch, decim: int, info: dict):
+    if decim:
+        return decim
+    elif epoch.decim:
+        return epoch.decim
+    else:
+        decim_ratio = info['sfreq'] / epoch.samplingrate
+        if decim_ratio % 1:
+            raise ValueError(f"samplingrate={epoch.samplingrate} with data at {info['sfreq']} Hz: needs to be integer ratio")
+        return int(decim_ratio)

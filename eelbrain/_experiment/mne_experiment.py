@@ -65,9 +65,7 @@ from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .definitions import (
     assert_dict_has_args, find_dependent_epochs,
     find_epochs_vars, find_test_vars, log_dict_change, log_list_change)
-from .epochs import (
-    PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, assemble_epochs,
-)
+from .epochs import PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, assemble_epochs, decim_param
 from .exceptions import FileDeficient, FileMissing
 from .experiment import FileTree
 from .parc import (
@@ -77,7 +75,7 @@ from .parc import (
     IndividualSeededParcellation, LabelParcellation,
 )
 from .preprocessing import (
-    assemble_pipeline, RawSource, RawFilter, RawICA, pipeline_dict,
+    assemble_pipeline, RawSource, RawFilter, RawICA,
     compare_pipelines, ask_to_delete_ica_files)
 from .test_def import (
     Test, EvokedTest,
@@ -87,7 +85,7 @@ from .variable_def import Variables
 
 
 # current cache state version
-CACHE_STATE_VERSION = 10
+CACHE_STATE_VERSION = 11
 # History:
 #  10:  input_state: share forward-solutions between sessions
 
@@ -371,7 +369,7 @@ class MneExperiment(FileTree):
     variables = {}
 
     # Default values for epoch definitions
-    epoch_default = {}
+    epoch_default = {'decim': 5}
 
     # named epochs
     epochs = {}
@@ -401,8 +399,6 @@ class MneExperiment(FileTree):
     #
     # For manual rejection
     # ^^^^^^^^^^^^^^^^^^^^
-    # decim : int
-    #     Decim factor for the rejection GUI (default is to use epoch setting).
     _artifact_rejection = {
         '': {'kind': None},
         'man': {'kind': 'manual', 'interpolation': True},
@@ -988,7 +984,7 @@ class MneExperiment(FileTree):
         # Check the cache, delete invalid files
         # =====================================
         cache_state_path = self.get('cache-state-file')
-        raw_state = pipeline_dict(self._raw)
+        raw_state = {k: v.as_dict() for k, v in self._raw.items()}
         epoch_state = {k: v.as_dict() for k, v in self._epochs.items()}
         parcs_state = {k: v.as_dict() for k, v in self._parcs.items()}
         tests_state = {k: v.as_dict() for k, v in self._tests.items()}
@@ -1014,10 +1010,13 @@ class MneExperiment(FileTree):
 
             # Backwards compatibility
             # =======================
-            # Epochs represented as dict up to Eelbrain 0.24
-            if cache_state_v >= 3:
+            if cache_state_v >= 11:
                 epoch_state_v = epoch_state
+            elif cache_state_v >= 3:
+                # remove samplingrate parameter
+                epoch_state_v = {k: {ki: vi for ki, vi in v.items() if ki != 'samplingrate'} for k, v in epoch_state.items()}
             else:
+                # Epochs represented as dict up to Eelbrain 0.24
                 epoch_state_v = {k: v.as_dict_24() for k, v in self._epochs.items()}
                 for e in cache_state['epochs'].values():
                     e.pop('base', None)
@@ -1036,8 +1035,8 @@ class MneExperiment(FileTree):
 
             # raw pipeline
             if cache_state_v < 5:
-                cache_raw = pipeline_dict(
-                    assemble_pipeline(LEGACY_RAW, '', '', '', '', self._sessions, log))
+                legacy_raw = assemble_pipeline(LEGACY_RAW, '', '', '', '', self._sessions, log)
+                cache_raw = {k: v.as_dict() for k, v in legacy_raw.items()}
             else:
                 cache_raw = cache_state['raw']
 
@@ -2382,8 +2381,7 @@ class MneExperiment(FileTree):
         if pad:
             tmin -= pad
             tmax += pad
-        if decim is None:
-            decim = epoch.decim
+        decim = decim_param(epoch, decim, ds.info['raw'].info)
 
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', 'The events passed to the Epochs constructor', RuntimeWarning)
@@ -4056,8 +4054,16 @@ class MneExperiment(FileTree):
         """
         dst = self.get('evoked-file', mkdir=True)
         epoch = self._epochs[self.get('epoch')]
-        use_cache = ((not decim or decim == epoch.decim) and
-                     (isinstance(data_raw, int) or data_raw == self.get('raw')))
+        # determine whether using default decimation
+        if decim:
+            if epoch.decim:
+                default_decim = decim == epoch.decim
+            else:
+                raw = self.load_raw(False)
+                default_decim = decim == raw.info['sfreq'] / epoch.samplingrate
+        else:
+            default_decim = True
+        use_cache = default_decim and (isinstance(data_raw, int) or data_raw == self.get('raw'))
         model = self.get('model')
         equal_count = self.get('equalize_evoked_count') == 'eq'
         if use_cache and exists(dst) and cache_valid(getmtime(dst), self._evoked_mtime()):
@@ -4651,9 +4657,6 @@ class MneExperiment(FileTree):
                    "{epoch}, rej {rej}. Set overwrite=True if you are sure you "
                    "want to replace that file.")
             raise IOError(self.format(msg))
-
-        if decim is None:
-            decim = rej_args.get('decim', None)
 
         ds = self.load_epochs(reject=False, trigger_shift=False, decim=decim)
         has_meg = 'meg' in ds

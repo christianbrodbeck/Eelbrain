@@ -638,10 +638,6 @@ def assemble_pipeline(raw_dict, raw_dir, cache_path, root, sessions, log):
 ######################
 
 
-def pipeline_dict(pipeline):
-    return {k: v.as_dict() for k, v in pipeline.items()}
-
-
 def compare_pipelines(old, new, log):
     """Return a tuple of raw keys for which definitions changed
 
