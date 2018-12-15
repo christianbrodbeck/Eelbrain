@@ -291,7 +291,7 @@ def labels_from_mni_coords(seeds, extent=30., subject='fsaverage',
         Name of the parcellation under construction (only used for error
         messages).
     """
-    name_re = re.compile("^\w+-(lh|rh)$")
+    name_re = re.compile(r"^\w+-(lh|rh)$")
     matches = {name: name_re.match(name) for name in seeds}
     invalid = sorted(name for name, m in matches.items() if m is None)
     if invalid:
@@ -479,7 +479,7 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
 
     if morph_mat is None:
         with warnings.catch_warnings():
-            warnings.filterwarnings('ignore', '\d+/\d+ vertices not included in smoothing', module='mne')
+            warnings.filterwarnings('ignore', r'\d+/\d+ vertices not included in smoothing', module='mne')
             morph_mat = mne.compute_morph_matrix(subject_from, subject_to, source.vertices, source_to.vertices, None, subjects_dir, xhemi=xhemi)
     elif not sp.sparse.issparse(morph_mat):
         raise ValueError('morph_mat must be a sparse matrix')
@@ -620,7 +620,7 @@ def combination_label(name, exp, labels, subjects_dir):
     labels : list
         List of labels, one or two depending on what hemispheres are included.
     """
-    m = re.match("([\w.]+)-([lr]h)", name)
+    m = re.match(r"([\w.]+)-([lr]h)", name)
     if m:
         name = m.group(1)
         hemis = (m.group(2),)
@@ -696,7 +696,7 @@ def xhemi(ndvar, mask=None, hemi='lh', parc=True):
     vert_from = [[], vert_rh] if hemi == 'lh' else [vert_lh, []]
     vert_to = [vert_lh, []] if hemi == 'lh' else [[], vert_rh]
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', '\d+/\d+ vertices not included in smoothing', module='mne')
+        warnings.filterwarnings('ignore', r'\d+/\d+ vertices not included in smoothing', module='mne')
         morph_mat = mne.compute_morph_matrix(
             'fsaverage_sym', 'fsaverage_sym', vert_from, vert_to,
             subjects_dir=ndvar.source.subjects_dir, xhemi=True)

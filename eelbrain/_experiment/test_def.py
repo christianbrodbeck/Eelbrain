@@ -190,7 +190,7 @@ class ANOVA(EvokedTest):
         x = ''.join(x.split())
         if model is None:
             items = sorted(i.strip() for i in x.split('*'))
-            within_items = (i for i in items if not re.match('^subject(\(\w+\))$', i))
+            within_items = (i for i in items if not re.match(r'^subject(\(\w+\))$', i))
             model = '%'.join(within_items)
         EvokedTest.__init__(self, x, model, vars=vars)
         if self._between is not None:
@@ -229,7 +229,7 @@ TEST_CLASSES = {
     'two-stage': TwoStageTest,
 }
 AGGREGATE_FUNCTIONS = ('mean', 'rms')
-DATA_RE = re.compile("(source|sensor|meg|eeg)(?:\.(%s))?$" % '|'.join(AGGREGATE_FUNCTIONS))
+DATA_RE = re.compile(r"(source|sensor|meg|eeg)(?:\.(%s))?$" % '|'.join(AGGREGATE_FUNCTIONS))
 
 
 class TestDims(object):
