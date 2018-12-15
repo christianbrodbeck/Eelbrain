@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Pre-processing operations based on NDVars"""
+from collections import Sequence
 from os import mkdir, remove
 from os.path import dirname, exists, getmtime
 
@@ -33,7 +34,9 @@ class RawPipe(object):
     def load(self, subject, session, add_bads=True, preload=False):
         path = self.path.format(subject=subject, session=session)
         raw = read_raw_fif(path, preload=preload)
-        if add_bads:
+        if isinstance(add_bads, Sequence):
+            raw.info['bads'] = list(add_bads)
+        elif add_bads:
             raw.info['bads'] = self.load_bad_channels(subject, session)
         else:
             raw.info['bads'] = []

@@ -3300,7 +3300,7 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        add_bads : bool
+        add_bads : bool | list
             Add bad channel information to the bad channels text file (default
             True).
         preload : bool
@@ -3319,8 +3319,6 @@ class MneExperiment(FileTree):
         Bad channels defined in the raw file itself are ignored in favor of the
         bad channels in the bad channels file.
         """
-        if not isinstance(add_bads, int):
-            raise TypeError("add_bads must be boolean, got %s" % repr(add_bads))
         pipe = self._raw[self.get('raw', **kwargs)]
         raw = pipe.load(self.get('subject'), self.get('session'), add_bads,
                         preload if decim == 1 else True)
@@ -3458,7 +3456,9 @@ class MneExperiment(FileTree):
                 dss = []
                 raw = None
                 # find bad channels
-                if add_bads:
+                if isinstance(add_bads, Sequence):
+                    bad_channels = list(add_bads)
+                elif add_bads:
                     bad_channels = sorted(set.union(*(
                         set(self.load_bad_channels(session=session)) for
                         session in epoch.sessions)))
@@ -4365,13 +4365,15 @@ class MneExperiment(FileTree):
             self.set(**state)
         pipe = self._raw[self.get('raw')]
         if isinstance(pipe, RawICA):
-            path = pipe.make_ica(self.get('subject'))
+            subject = self.get('subject')
+            path = pipe.make_ica(subject)
             if not return_data:
                 return path
             epoch = self.get('epoch') if return_data is True else return_data
             with self._temporary_state:
                 ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False,
-                                      raw=pipe.source.name, decim=decim)
+                                      raw=pipe.source.name, decim=decim,
+                                      add_bads=pipe.load_bad_channels(subject))
             return path, ds
 
         # ICA as rej setting
