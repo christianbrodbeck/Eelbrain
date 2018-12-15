@@ -433,7 +433,7 @@ class MneExperiment(FileTree):
     _mri_subjects = {'': keydefaultdict(lambda s: s)}
 
     # state variables that are always shown in self.__repr__():
-    _repr_kwargs = ('subject', 'rej')
+    _repr_kwargs = ('subject', 'raw', 'epoch', 'rej')
 
     # Where to search for subjects (defined as a template name). If the
     # experiment searches for subjects automatically, it scans this directory
