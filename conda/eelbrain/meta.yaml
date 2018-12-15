@@ -1,5 +1,6 @@
-{% set version = "0.28.4" %}
-{% set sha256 = "63c76a2b8ed8db1aa804e8291c8adcc5fbe8c486fa1e293d7e136d95892a733b" %}
+{% set version = "0.28.5" %}
+{% set sha256 = "823cc89db23a52b21a37231b7ca03bdde6abbc18f16006052aff684455770ffc" %}
+{% set python = "3.6" %}
 
 # https://github.com/conda/conda-build/issues/2717
 
@@ -55,7 +56,7 @@ test:
     - eelbrain.save
 
 about:
-  home: https://pythonhosted.org/eelbrain
+  home: http://eelbrain.readthedocs.io
   summary: 'MEG/EEG analysis tools'
   license: BSD-3-Clause
   license_family: BSD
