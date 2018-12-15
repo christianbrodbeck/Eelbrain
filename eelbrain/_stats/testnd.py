@@ -1830,10 +1830,6 @@ class Vector(NDDifferenceTest):
     tfce_map : NDVar | None
         Map of the test statistic processed with the threshold-free cluster
         enhancement algorithm (or None if no TFCE was performed).
-
-    Notes
-    -----
-    Cases with zero variance are set to t=0.
     """
     _state_specific = ('difference', 'n', '_v_dim')
     _statistic = 'norm'
