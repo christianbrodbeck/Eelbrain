@@ -336,7 +336,7 @@ class RawFilter(CachedRawPipe):
 
     def _make(self, subject, session):
         raw = self.source.load(subject, session, preload=True)
-        self.log.debug("Raw %s: filtering for %s/%s...", self.name, subject, session)
+        self.log.info("Raw %s: filtering for %s/%s...", self.name, subject, session)
         raw.filter(*self.args, **self._use_kwargs)
         return raw
 
@@ -388,8 +388,7 @@ class RawFilterElliptic(CachedRawPipe):
 
     def _make(self, subject, session):
         raw = self.source.load(subject, session, preload=True)
-        self.log.debug("Raw %s: filtering for %s/%s...", self.name, subject,
-                       session)
+        self.log.info("Raw %s: filtering for %s/%s...", self.name, subject, session)
         # filter data
         picks = mne.pick_types(raw.info, eeg=True, ref_meg=True)
         sos = self._sos(raw.info['sfreq'])
@@ -481,7 +480,7 @@ class RawICA(CachedRawPipe):
             raw_.info['bads'] = bad_channels
             raw.append(raw_)
 
-        self.log.debug("Raw %s: computing ICA decomposition for %s", self.name, subject)
+        self.log.info("Raw %s: computing ICA decomposition for %s", self.name, subject)
         ica = mne.preprocessing.ICA(max_iter=256, **self.kwargs)
         # reject presets from meeg-preprocessing
         ica.fit(raw, reject={'mag': 5e-12, 'grad': 5000e-13, 'eeg': 300e-6})
@@ -522,7 +521,7 @@ class RawMaxwell(CachedRawPipe):
 
     def _make(self, subject, session):
         raw = self.source.load(subject, session)
-        self.log.debug("Raw %s: computing Maxwell filter for %s/%s", self.name, subject, session)
+        self.log.info("Raw %s: computing Maxwell filter for %s/%s", self.name, subject, session)
         return mne.preprocessing.maxwell_filter(raw, **self.kwargs)
 
 
