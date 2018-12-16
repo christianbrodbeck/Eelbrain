@@ -1767,7 +1767,7 @@ class Image(FMTextElement, BytesIO):
                 return buf.decode()
             # http://stackoverflow.com/a/7389616/166700
             data = base64.b64encode(buf).decode().replace('\n', '')
-            src = 'data:image/{};base64,{}'.format(self.format, data)
+            src = f'data:image/{self.format};base64,{data}'
         else:
             dirpath = os.path.join(env['root'], resource_dir)
             abspath = os.path.join(dirpath, self._filename)
@@ -1781,12 +1781,11 @@ class Image(FMTextElement, BytesIO):
 
             self.save_image(abspath)
             src = os.path.relpath(abspath, env['root'])
-
-        return '<img src="%s" alt="%s">' % (src, html(self._alt))
+        alt = html(self._alt)
+        return f'<img src="{src}" alt="{alt}">'
 
     def get_str(self, env={}):
-        txt = "Image (%s)" % str(self._alt)
-        return txt
+        return f"Image ({self._alt})"
 
     def save_image(self, dst):
         if os.path.isdir(dst):
@@ -2350,12 +2349,10 @@ def im_table(ims, header=None, name="im_table"):
             item = p.format(x=x, y=18, txt=txt)
             svg.append(item)
 
-    p = ('<image x="{x}" y="{y}" width="{w}" height="{h}" xlink:href='
-         '"data:image/png;base64,{data}" />')
     for y, line in zip(ys, ims):
         for x, im in zip(xs, line):
             data = _array_as_png(im)
-            item = p.format(x=x, y=y, w=im_w, h=im_h, data=data)
+            item = f'<image x="{x}" y="{y}" width="{im_w}" height="{im_h}" xlink:href="data:image/png;base64,{data}" />'
             svg.append(item)
 
     svg.append("</svg>")
@@ -2376,9 +2373,10 @@ def _array_as_png(im):
     data : str
         Encoded PNG image.
     """
-    buf = BytesIO()
-    imsave(buf, np.asarray(im), format='png')
-    data = buf.getvalue()
+    bytesio = BytesIO()
+    imsave(bytesio, np.asarray(im), format='png')
+    buf = bytesio.getvalue()
+    data = base64.b64encode(buf).decode().replace('\n', '')
     return data
 
 
