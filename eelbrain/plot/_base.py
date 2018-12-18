@@ -1738,6 +1738,7 @@ class BaseLayout(object):
 
 
 def resolve_plot_rect(w, h, dpi):
+    # infer figure dimensions from screen size
     w_applies = w is not None and w <= 0
     h_applies = h is not None and h <= 0
     if w_applies or h_applies:
@@ -1748,7 +1749,8 @@ def resolve_plot_rect(w, h, dpi):
         effective_dpi = dpi or mpl.rcParams['figure.dpi']
         display_w, display_h = wx.GetDisplaySize()
         if h_applies:
-            h = display_h / effective_dpi + h
+            effective_display_h = display_h - 50
+            h = effective_display_h / effective_dpi + h
         if w_applies:
             w = display_w / effective_dpi + w
     return w, h
