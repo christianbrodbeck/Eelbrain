@@ -13,7 +13,7 @@ import numpy as np
 from tqdm import tqdm
 
 from .. import fmtxt
-from .._utils import LazyProperty, ask, deprecated
+from .._utils import as_sequence, LazyProperty, ask, deprecated
 from .._utils.com import Notifier, NotNotifier
 
 
@@ -522,7 +522,7 @@ class TreeModel:
         for field in fields:
             if field in constants:
                 continue
-            iter_fields.extend(self.find_keys(field))
+            iter_fields.extend(f for f in self.find_keys(field) if f not in constants)
 
         # check values and exclude
         if values:
@@ -545,7 +545,7 @@ class TreeModel:
         field_values = {}
         for field in iter_fields:
             if field in values:
-                field_values[field] = values[field]
+                field_values[field] = as_sequence(values[field])
             else:
                 exclude_ = exclude.get(field, None)
                 field_values[field] = self.get_field_values(field, exclude_)
@@ -626,6 +626,15 @@ class TreeModel:
         self._field_values.restore_state(s2, discard_tip)
         self._params.restore_state(s3, discard_tip)
 
+    def reset(self):
+        """Reset all field values to the state at initialization
+
+        This function can be used in cases where the same MneExperiment instance
+        is used to perform multiple independent operations, where parameters set
+        during one operation should not affect the next operation.
+        """
+        self._restore_state(0, False)
+
     def set(self, match=True, allow_asterisk=False, **state):
         """Set the value of one or more fields.
 
@@ -642,6 +651,26 @@ class TreeModel:
         """
         if not state:
             return
+
+        # expand compounds
+        if state.pop('expand_compounds', True):
+            for k in list(state):
+                if k in self._compound_members:
+                    fields = self._compound_members[k]
+                    v = state.pop(k)
+                    values = v.split(' ')
+                    for i, field in enumerate(fields):
+                        field_values = self.get_field_values(field)
+                        vi = values[i] if len(values) > i else None
+                        if vi in field_values:
+                            continue
+                        elif '' in field_values:
+                            values.insert(i, '')
+                        else:
+                            raise ValueError(f"{k}={v!r}")
+                    if len(values) != len(fields):
+                        raise ValueError(f"{k}={v!r}")
+                    state.update(zip(fields, values))
 
         # fields with special set handlers
         handled_state = {}
@@ -839,7 +868,7 @@ class TreeModel:
                 if compound and not compound.endswith('*'):
                     compound += ' '
                 compound += value
-        self.set(**{key: compound})
+        self.set(**{key: compound}, expand_compounds=False)
 
     def _update_compounds(self, key, _):
         for compound in self._compounds[key]:

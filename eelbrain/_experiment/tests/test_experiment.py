@@ -57,6 +57,7 @@ class SlaveTree(TreeModel):
         self._register_slave_field('s', 'a', lambda f: f['a'].upper())
         self._register_compound('sb', ('s', 'b'))
         self._register_slave_field('comp_slave', 'sb', lambda f: f['sb'].upper())
+        self._store_state()
 
 
 def test_slave_tree():
@@ -66,6 +67,18 @@ def test_slave_tree():
     ab_seq = [f'{a} {b}' if b else a for a, b in product(a_seq, b_seq)]
     tree = SlaveTree(a_seq, b_seq, c_seq)
 
+    # set
+    assert tree.get('a') == 'a1'
+    tree.set(a='a2')
+    assert tree.get('a') == 'a2'
+    tree.set(ab='a1 b2')
+    assert tree.get('a') == 'a1'
+    assert tree.get('b') == 'b2'
+    tree.set(ab='a3')
+    assert tree.get('a') == 'a3'
+    assert tree.get('b') == ''
+
+    tree.reset()
     assert tree.get('ab') == 'a1 b1'
     assert tree.get('sb') == 'A1 b1'
     assert tree.get('comp_slave') == 'A1 B1'
@@ -85,6 +98,8 @@ def test_slave_tree():
     # iter compound
     assert list(tree.iter('ab')) == ab_seq
     assert list(tree.iter(('c', 'ab'))) == list(product(c_seq, ab_seq))
+    assert list(tree.iter('ab', values={'b': ''})) == a_seq
+    assert list(tree.iter('ab', b='')) == a_seq
 
 
 def test_file_tree():

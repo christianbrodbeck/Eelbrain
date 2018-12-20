@@ -14,6 +14,12 @@ LOG_LEVELS = {'DEBUG': logging.DEBUG, 'INFO': logging.INFO,
               'CRITICAL': logging.CRITICAL}
 
 
+def as_sequence(items, item_type=str):
+    if isinstance(items, item_type):
+        return items,
+    return items
+
+
 def ask(message, options, allow_empty=False, help=None):
     option_keys = [s[0] for s in options]
     print(message)

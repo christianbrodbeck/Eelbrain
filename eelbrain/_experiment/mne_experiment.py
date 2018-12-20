@@ -5718,15 +5718,6 @@ class MneExperiment(FileTree):
             vmax = None
         return plot.TopoButterfly(raw, w=0, h=3, xlim=xlim, vmax=vmax, name=name)
 
-    def reset(self):
-        """Reset all field values to the state at initialization
-        
-        This function can be used in cases where the same MneExperiment instance 
-        is used to perform multiple independent operations, where parameters set 
-        during one operation should not affect the next operation.
-        """
-        self._restore_state(0, False)
-
     def run_mne_analyze(self, modal=False):
         """Run mne_analyze
 
