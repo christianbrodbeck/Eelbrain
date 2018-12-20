@@ -1,4 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from itertools import product
 import os
 
 from ..._utils.testing import TempDir
@@ -47,10 +48,11 @@ def test_tree():
 class SlaveTree(TreeModel):
     _templates = {'path': '{a}_{b}_{sb_comp}_{slave}'}
 
-    def __init__(self):
+    def __init__(self, a_seq, b_seq, c_seq):
         TreeModel.__init__(self)
-        self._register_field('a', ('x', 'y'))
-        self._register_field('b', ('u', 'v'))
+        self._register_field('a', a_seq)
+        self._register_field('b', b_seq)
+        self._register_field('c', c_seq)
         self._register_compound('ab', ('a', 'b'))
         self._register_slave_field('s', 'a', lambda f: f['a'].upper())
         self._register_compound('sb', ('s', 'b'))
@@ -58,18 +60,31 @@ class SlaveTree(TreeModel):
 
 
 def test_slave_tree():
-    tree = SlaveTree()
-    assert tree.get('ab') == 'x u'
-    assert tree.get('sb') == 'X u'
-    assert tree.get('comp_slave') == 'X U'
-    tree.set(a='y')
-    assert tree.get('ab') == 'y u'
-    assert tree.get('sb') == 'Y u'
-    assert tree.get('comp_slave') == 'Y U'
+    a_seq = ['a1', 'a2', 'a3']
+    b_seq = ['b1', 'b2', '']
+    c_seq = ['c1', 'c2']
+    ab_seq = [f'{a} {b}' if b else a for a, b in product(a_seq, b_seq)]
+    tree = SlaveTree(a_seq, b_seq, c_seq)
+
+    assert tree.get('ab') == 'a1 b1'
+    assert tree.get('sb') == 'A1 b1'
+    assert tree.get('comp_slave') == 'A1 B1'
+    tree.set(a='a2')
+    assert tree.get('ab') == 'a2 b1'
+    assert tree.get('sb') == 'A2 b1'
+    assert tree.get('comp_slave') == 'A2 B1'
+
+    # finde terminal keys
+    assert tree.find_keys('c') == ['c']
+    assert tree.find_keys('ab') == ['a', 'b']
 
     # .iter()
-    assert tuple(tree.iter(('a', 'b'))) == (('x', 'u'), ('x', 'v'), ('y', 'u'), ('y', 'v'))
-    assert tuple(tree.iter(('b', 'a'))) == (('u', 'x'), ('u', 'y'), ('v', 'x'), ('v', 'y'))
+    assert list(tree.iter('a')) == a_seq
+    assert list(tree.iter(('a', 'b'))) == list(product(a_seq, b_seq))
+    assert list(tree.iter(('b', 'a'))) == list(product(b_seq, a_seq))
+    # iter compound
+    assert list(tree.iter('ab')) == ab_seq
+    assert list(tree.iter(('c', 'ab'))) == list(product(c_seq, ab_seq))
 
 
 def test_file_tree():

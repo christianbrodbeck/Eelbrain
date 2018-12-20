@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from glob import glob
 from itertools import chain, product
 import os
@@ -415,10 +415,11 @@ class TreeModel:
 
         Returns
         -------
-        keys : set
+        keys : list
             All terminal field names that are relevant for formatting ``temp``.
         """
-        keys = set()
+        if temp in self._terminal_fields:
+            return [temp]
 
         if temp in self._compound_members:
             temporary_keys = list(self._compound_members[temp])
@@ -426,20 +427,18 @@ class TreeModel:
             temp = self._fields.get(temp, temp)
             temporary_keys = self._fmt_pattern.findall(temp)
 
+        keys = []
         while temporary_keys:
-            key = temporary_keys.pop()
-
+            key = temporary_keys.pop(0)
             if key == 'root':
                 if root:
-                    keys.add('root')
-            # are there sub-fields?
-            elif (key in self._compound_members or
-                  self._fmt_pattern.findall(self._fields[key])):
-                keys.update(self.find_keys(key, root))
+                    keys.append('root')
+            elif key in self._terminal_fields:
+                keys.append(key)
             else:
-                keys.add(key)
+                keys.extend(self.find_keys(key, root))
 
-        return keys
+        return list(OrderedDict.fromkeys(keys))
 
     def format(self, string, vmatch=True, **kwargs):
         """Format a string (i.e., replace any '{xxx}' fields with their values)
@@ -495,8 +494,7 @@ class TreeModel:
 
         return values
 
-    def iter(self, fields, exclude=None, values={}, mail=False, prog=False,
-             **constants):
+    def iter(self, fields, exclude=None, values=None, **constants):
         """
         Cycle the experiment's state through all values on the given fields
 
@@ -513,15 +511,35 @@ class TreeModel:
         *others* :
             Fields with constant values throughout the iteration.
         """
-        # set constants
-        self.set(**constants)
-
         if isinstance(fields, str):
             fields = (fields,)
             yield_str = True
         else:
             yield_str = False
-        iter_fields = [f for f in chain(fields, values) if f not in constants]
+
+        # find actual fields to iterate over:
+        iter_fields = []
+        for field in fields:
+            if field in constants:
+                continue
+            iter_fields.extend(self.find_keys(field))
+
+        # check values and exclude
+        if values:
+            bad = set(values).difference(iter_fields)
+            if bad:
+                raise ValueError(f"values={values!r}: keys that are not iterated over ({', '.join(bad)})")
+        else:
+            values = {}
+        if exclude:
+            bad = set(exclude).difference(iter_fields)
+            if bad:
+                raise ValueError(f"exclude={exclude!r}: keys that are not iterated over ({', '.join(bad)})")
+        else:
+            exclude = {}
+
+        # set constants (before .get_field_values() call)
+        self.set(**constants)
 
         # gather possible values to iterate over
         field_values = {}
@@ -529,12 +547,7 @@ class TreeModel:
             if field in values:
                 field_values[field] = values[field]
             else:
-                if exclude:
-                    if not isinstance(exclude, dict):
-                        raise TypeError(f"exclude={exclude!r}")
-                    exclude_ = exclude.get(field, None)
-                else:
-                    exclude_ = None
+                exclude_ = exclude.get(field, None)
                 field_values[field] = self.get_field_values(field, exclude_)
 
         # pick out the fields to iterate, but drop excluded cases:
