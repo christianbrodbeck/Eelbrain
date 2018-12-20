@@ -30,7 +30,7 @@ dependencies:
 - colormath >= 2.1
 - tqdm >= 4.19
 - keyring >= 5
-- wxpython >= 4
+- wxpython >= 4.0.3
 # building
 - setuptools >= 17
 - cython

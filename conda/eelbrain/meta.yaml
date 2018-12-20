@@ -44,7 +44,7 @@ requirements:
     - nilearn
     - scipy >=0.17
     - tqdm >=4.8
-    - wxpython >=4
+    - wxpython >=4.0.3
 
 test:
   # Python imports
