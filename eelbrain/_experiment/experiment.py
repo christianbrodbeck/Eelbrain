@@ -863,7 +863,8 @@ class TreeModel:
         for item_key in self._compound_members[key]:
             value = self.get(item_key)
             if value == '*':
-                compound += '*'
+                if not compound.endswith('*'):
+                    compound += '*'
             elif value:
                 if compound and not compound.endswith('*'):
                     compound += ' '
