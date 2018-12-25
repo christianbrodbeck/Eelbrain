@@ -1812,6 +1812,8 @@ class Vector(NDDifferenceTest):
         disconnected.
     force_permutation: bool
         Conduct permutations regardless of whether there are any clusters.
+    use_t2_stat: bool
+        Use Hotelling’s T-Square statistics, instead of vector norm.
     mintime : scalar
         Minimum duration for clusters (in seconds).
     minsource : int
