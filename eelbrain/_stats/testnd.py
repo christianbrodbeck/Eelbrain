@@ -1841,7 +1841,7 @@ class Vector(NDDifferenceTest):
     @user_activity
     def __init__(self, y, match=None, sub=None, ds=None,
                  samples=10000, vmin=None, tfce=False, tstart=None,
-                 tstop=None, parc=None, force_permutation=False, **criteria):
+                 tstop=None, parc=None, force_permutation=False, use_t2_stat=False, **criteria):
         ct = Celltable(y, match=match, sub=sub, ds=ds, coercion=asndvar, dtype=np.float64)
 
         n = len(ct.y)
@@ -1853,12 +1853,18 @@ class Vector(NDDifferenceTest):
         v_dim = ct.y.dimnames[cdist._vector_ax + 1]
         v_mean = ct.y.mean('case')
         v_mean_norm = v_mean.norm(v_dim)
-        cdist.add_original(v_mean_norm.x if v_mean.ndim > 1 else v_mean_norm)
+        if use_t2_stat:
+            t2_map = self._vector_t2_map(ct.y)
+            cdist.add_original(t2_map.x if v_mean.ndim > 1 else v_mean_norm)
+        else:
+            cdist.add_original(v_mean_norm.x if v_mean.ndim > 1 else v_mean_norm)
 
         if cdist.do_permutation:
             iterator = random_seeds(samples)
-            run_permutation(self._vector_mean_norm_perm, cdist, iterator)
-
+            if use_t2_stat:
+                run_permutation(self._vector_t2_map_perm, cdist, iterator)
+            else:
+                run_permutation(self._vector_mean_norm_perm, cdist, iterator)
         # store attributes
         NDTest.__init__(self, ct.y, ct.match, sub, samples, tfce, None, cdist, tstart, tstop)
         self.difference = v_mean
@@ -1899,6 +1905,26 @@ class Vector(NDDifferenceTest):
         theta = np.arccos(np.random.uniform(-1, 1, n_cases))
         rotation = vector.rotation_matrices(phi, theta, np.empty((n_cases, 3, 3)))
         return vector.mean_norm_rotated(y, rotation, out)
+
+    @staticmethod
+    def _vector_t2_map_perm(y, out, seed):
+        n_cases, n_dims, n_tests = y.shape
+        assert n_dims == 3
+        np.random.seed(seed)
+        phi = np.random.uniform(0, 2 * pi, n_cases)
+        theta = np.arccos(np.random.uniform(-1, 1, n_cases))
+        rotation = vector.rotation_matrices(phi, theta, np.empty((n_cases, 3, 3)))
+        return vector.t2_stat_rotated(y, rotation, out)
+
+    @staticmethod
+    def _vector_t2_map(y):
+        dimnames = y.get_dimnames(names=(None, 'case', 'space', None))
+        x = y.get_data(dimnames)
+        t_map = np.zeros((x.shape[0], x.shape[-1]))
+        for out, val in zip(t_map, x):
+            out = vector.t2_stat(val, out)
+        dims = (y.get_dim(dimnames[0]), y.get_dim(dimnames[-1]))
+        return NDVar(t_map, dims)
 
 
 class VectorDifferenceIndependent(Vector):
