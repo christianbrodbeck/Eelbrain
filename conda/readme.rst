@@ -38,15 +38,3 @@ Eelbrain
 - Upload as beta:
 
     $ anaconda upload -l beta /anaconda/conda-bld/<platform>/<package>.tar.bz2
-
-
-Dependencies
-------------
-
-Windows only:
-
-  - pywin32-ctypes
-
-Linux only:
-
-  - secretstorage

@@ -37,8 +37,6 @@ of the experiment::
 
     class WordExperiment(MneExperiment):
 
-        path_version = 1
-
         sessions = 'words'
 
 
@@ -294,15 +292,6 @@ earlier, the :attr:`MneExperiment.meg_system` attribute needs to specify the
 system the data were collected with. For data from NYU New York, the
 correct value is ``meg_system="KIT-157"``.
 
-
-.. py:attribute:: MneExperiment.path_version
-
-:attr:`MneExperiment.path_version` determines the file naming scheme. If you
-are starting a new experiment, set it to ``1`` to use the most recent file
-naming scheme. If your experiment class was defined before Eelbrain version
-0.13, set it to ``0``.
-
-
 .. py:attribute:: MneExperiment.trigger_shift
 
 Set this attribute to shift all trigger times by a constant (in seconds). For
@@ -311,6 +300,17 @@ example, with ``trigger_shift = 0.03`` a trigger that originally occurred
 differs between subjects, this attribute can also be a dictionary mapping
 subject names to shift values, e.g.
 ``trigger_shift = {'R0001': 0.02, 'R0002': 0.05, ...}``.
+
+
+Subjects
+--------
+
+.. py:attribute:: MneExperiment.subject_re
+
+Subjects are identified by looking for folders in the subjects-directory whose
+name matches the ``subject_re`` regular expression (see :mod:`re`). By
+default, this is ``'(R|A|Y|AD|QP)(\d{3,})$'``, which matches R-numbers like
+``R1234``, but also numbers prefixed by ``A``, ``Y``, ``AD`` or ``QP``.
 
 
 Defaults

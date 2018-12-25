@@ -4,29 +4,14 @@ from collections import defaultdict
 import functools
 import logging
 import re
-from textwrap import TextWrapper
 from warnings import warn
+
+from tqdm import tqdm
 
 
 LOG_LEVELS = {'DEBUG': logging.DEBUG, 'INFO': logging.INFO,
               'WARNING': logging.WARNING, 'ERROR': logging.ERROR,
               'CRITICAL': logging.CRITICAL}
-
-
-class WrappedFormater(logging.Formatter):
-    """Logging formatter for screen display
-
-    Break long lines, add indent for
-
-    """
-    # http://stackoverflow.com/a/25335783/166700
-    def __init__(self, fmt=None, datefmt=None, width=80, indent=4):
-        logging.Formatter.__init__(self, fmt, datefmt)
-        self.wrapper = TextWrapper(width, subsequent_indent=' '*indent)
-
-    def format(self, record):
-        return self.wrapper.fill(
-            logging.Formatter.format(self, record))
 
 
 def ask(message, options, allow_empty=False, help=None):
@@ -135,6 +120,19 @@ def set_log_level(level, logger_name='eelbrain'):
         the Eelbrain logger.
     """
     logging.getLogger(logger_name).setLevel(log_level(level))
+
+
+class ScreenHandler(logging.StreamHandler):
+    "Log handler compatible with TQDM"
+
+    def __init__(self, formatter=None):
+        logging.StreamHandler.__init__(self)
+        if formatter is None:
+            formatter = logging.Formatter("%(levelname)-8s:  %(message)s")
+        self.setFormatter(formatter)
+
+    def emit(self, record):
+        tqdm.write(self.format(record))
 
 
 class intervals:

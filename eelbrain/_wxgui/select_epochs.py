@@ -371,7 +371,7 @@ class Document(FileDocument):
                                   % (ds.n_cases, self.n_epochs),
                                   "Truncate the file?", wx.OK | wx.CANCEL |
                                   wx.CANCEL_DEFAULT | wx.ICON_WARNING)
-            if cmd == wx.OK:
+            if cmd == wx.ID_OK:
                 ds = ds[:self.n_epochs]
             else:
                 raise RuntimeError("Unequal number of cases")
@@ -383,7 +383,7 @@ class Document(FileDocument):
                                   "accepted)?" % (ds.n_cases, self.n_epochs),
                                   "Load partial file?", wx.OK | wx.CANCEL |
                                   wx.CANCEL_DEFAULT | wx.ICON_WARNING)
-            if cmd == wx.OK:
+            if cmd == wx.ID_OK:
                 n_missing = self.n_epochs - ds.n_cases
                 tail = Dataset(info = ds.info)
                 tail['trigger'] = Var(self.trigger[-n_missing:])
@@ -399,7 +399,7 @@ class Document(FileDocument):
                                   "the data. Ignore?",
                                   "Ignore trigger mismatch?",
                                   wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT)
-            if cmd == wx.OK:
+            if cmd == wx.ID_OK:
                 ds[self.trigger.name] = self.trigger
             else:
                 raise RuntimeError("Trigger mismatch")
@@ -421,7 +421,7 @@ class Document(FileDocument):
                                       "Clear Channel Interpolation "
                                       "Instructions?",
                                       wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT)
-                if cmd == wx.OK:
+                if cmd == wx.ID_OK:
                     for l in interpolate:
                         del l[:]
                 else:
@@ -1669,7 +1669,7 @@ class LayoutDialog(EelbrainDialog):
         self.topo = self.topo_ctrl.GetValue()
         self.mean = self.mean_ctrl.GetValue()
         value = self.text.GetValue()
-        m = re.match("(\d+)\s*(\d*)", value)
+        m = re.match(r"(\d+)\s*(\d*)", value)
         if m:
             rows_str, columns_str = m.groups()
             rows = int(rows_str)
@@ -1864,7 +1864,7 @@ class ThresholdDialog(EelbrainDialog):
 class InfoFrame(HTMLFrame):
 
     def OpenURL(self, url):
-        m = re.match('^(\w+):(\w+)$', url)
+        m = re.match(r'^(\w+):(\w+)$', url)
         if m:
             kind, address = m.groups()
             if kind == 'epoch':

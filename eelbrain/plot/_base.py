@@ -84,7 +84,7 @@ from .._data_obj import (
     NDVar, Case, UTS,
     ascategorial, asndvar, assub, isnumeric, isdataobject, cellname,
 )
-from .. import testnd
+from .._stats import testnd
 from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
 from .._utils.subp import command_exists
 from ..fmtxt import Image
@@ -115,10 +115,10 @@ def do_autorun(run=None):
         return CONFIG['autorun']
 
 
-MEAS_DISPLAY_UNIT = {
-    'time': 'ms',
+DISPLAY_UNIT = {
+    's': 'ms',
     'V': 'µV',
-    'B': 'fT',
+    'T': 'fT',
     'sensor': int,
 }
 UNIT_FORMAT = {
@@ -134,6 +134,7 @@ UNIT_FORMAT = {
     'p': 1,
     'T': 1,
     'n': int,  # %i format
+    'normalized': 1,
     int: int,
 }
 SCALE_FORMATTERS = {
@@ -189,8 +190,8 @@ def find_axis_params_data(v, label):
     elif isnumeric(v):
         meas = v.info.get('meas')
         data_unit = v.info.get('unit')
-        if meas in MEAS_DISPLAY_UNIT:
-            unit = MEAS_DISPLAY_UNIT[meas]
+        if data_unit in DISPLAY_UNIT:
+            unit = DISPLAY_UNIT[data_unit]
             scale = UNIT_FORMAT[unit]
             if data_unit in UNIT_FORMAT:
                 scale /= UNIT_FORMAT[data_unit]
@@ -525,7 +526,11 @@ def find_vlim_args(ndvar, vmin=None, vmax=None):
 
     if vmax is None or vmin is None:
         xmax = np.nanmax(ndvar.x)
+        if np.ma.is_masked(xmax):
+            xmax = xmax.data
         xmin = np.nanmin(ndvar.x)
+        if np.ma.is_masked(xmin):
+            xmin = xmin.data
         abs_max = max(abs(xmax), abs(xmin)) or 1e-14
         scale = math.floor(np.log10(abs_max))
         if vmax is None:
@@ -619,6 +624,7 @@ def butterfly_data(
         hemi: str,
         resample_: int = None,
         colors: bool = False,
+        return_vector_data: bool = False,
 ) -> (List, List, NDVar):
     """Data for plotting butterfly plot with brain
 
@@ -635,12 +641,9 @@ def butterfly_data(
     if isinstance(data, NDVar):
         y = data
         kind = 'ndvar'
-    elif isinstance(data, (testnd.ttest_1samp, testnd.ttest_rel, testnd.ttest_ind)):
-        y = data.difference
-        kind = 'test'
-    elif isinstance(data, testnd.Vector):
-        y = data.difference_norm
-        kind = 'test'
+    elif isinstance(data, testnd.NDDifferenceTest):
+        y = data.masked_difference()
+        kind = 'ndvar'
     else:
         raise TypeError(f"ndvar={data!r}")
     source = y.get_dim('source')
@@ -664,12 +667,18 @@ def butterfly_data(
     if kind == 'ndvar':
         if y.has_case:
             y = y.mean('case')
-        if y.has_dim('space'):
-            y = y.norm('space')
         if resample_:
             y = resample(y, resample_, window='hamming')
+        if y.has_dim('space'):
+            if return_vector_data:
+                brain_data = y
+                y = y.norm('space')
+            else:
+                y = y.norm('space')
+                brain_data = y
+        else:
+            brain_data = y
         bfly_data = [y.sub(source=hemi, name=hemi.capitalize()) for hemi in hemis]
-        brain_data = y
     elif kind == 'test':
         sig = data.p <= 0.05
         y_magnitude = y.rms('time')
@@ -746,12 +755,39 @@ class LayerData(object):
     """Data for one subplot layer"""
     _remap_args = {'c': 'color'}
 
-    def __init__(self, y, line_args={}):
+    def __init__(self, y: NDVar, line_args: dict = None):
         self.y = y
         self._line_args = line_args
+        self.is_masked = isinstance(y.x, np.ma.masked_array)
 
-    def line_args(self, kwargs):
-        return {self._remap_args.get(k, k): v for k, v in chain(kwargs.items(), self._line_args.items())}
+    def line_args(self, kwargs: dict):
+        if self._line_args is None:
+            items = kwargs.items()
+        else:
+            items = chain(kwargs.items(), self._line_args.items())
+        return {self._remap_args.get(k, k): v for k, v in items}
+
+    def get_data(self, masking: str = None):
+        if not self.is_masked:
+            yield self
+        elif masking is None:
+            yield LayerData(self.y.unmask(), self._line_args)
+        elif masking == 'line':
+            un_mask = NDVar(~self.y.x.mask, self.y.dims)
+            # kwargs = {}
+            if self.y.has_dim('time'):
+                un_mask = erode(un_mask, 'time')
+                # if self.y.ndim == 2:
+                #     mag = self.y.rms('time')
+                #     z_dim = mag.dimnames[0]
+                #     kwargs['zorder'] = dict(zip(mag.get_dim(z_dim), -mag.x.argsort()))
+            y_masked = self.y.unmask().mask(un_mask)
+            args_main = {'alpha': 1., 'zorder': 1}
+            args_masked = {'alpha': 0.4, 'color': (.7, .7, .7), 'zorder': 0}
+            for y, args in ((self.y, args_main), (y_masked, args_masked)):
+                yield LayerData(y, args)
+        else:
+            raise RuntimeError(f"masking={masking!r}")
 
 
 class PlotData(object):
@@ -783,7 +819,13 @@ class PlotData(object):
     plot_names : list of str
         Titles for the plots.
     """
-    def __init__(self, axes, dims, title="unnamed data", plot_names=None):
+    def __init__(
+            self,
+            axes: List[Union[None, List[LayerData]]],
+            dims: List[str],
+            title: str = "unnamed data",
+            plot_names: List[str] = None,
+    ):
         self.plot_used = [ax is not None for ax in axes]
         self.plot_data = [ax for ax in axes if ax is not None]
         self.n_plots = len(self.plot_data)
@@ -831,15 +873,15 @@ class PlotData(object):
         if isinstance(y, cls):
             return y
         sub = assub(sub, ds)
-        if hasattr(y, '_default_plot_obj'):
-            ys = y._default_plot_obj
-        elif isinstance(y, MNE_EPOCHS):
+        ys = y._default_plot_obj() if hasattr(y, '_default_plot_obj') else y
+
+        if isinstance(ys, MNE_EPOCHS):
             # Epochs are Iterators over arrays
-            ys = (asndvar(y, sub, ds),)
-        elif not isinstance(y, (tuple, list, Iterator)):
-            ys = (y,)
+            ys = (asndvar(ys, sub, ds),)
+        elif not isinstance(ys, (tuple, list, Iterator)):
+            ys = (ys,)
         else:
-            ys = y
+            ys = ys
 
         ax_names = None
         if xax is None:
@@ -954,7 +996,7 @@ class PlotData(object):
     @LazyProperty
     def data(self):
         "For backwards compatibility with nested list of NDVar"
-        return [[l.y for l in ax] for ax in self.plot_data]
+        return [[l.y for l in self.get_axis_data(i)] for i in range(self.n_plots)]
 
     @LazyProperty
     def plot_names(self):
@@ -969,6 +1011,21 @@ class PlotData(object):
             else:
                 names.append(None)
         return names
+
+    def get_axis_data(self, ax: int, masking: str = None):
+        """Data for ``ax``
+
+        Parameters
+        ----------
+        ax : int
+            Index of the axes.
+        masking : str
+            Type of masking (if supported).
+        """
+        out = []
+        for layer in self.plot_data[ax]:
+            out.extend(layer.get_data(masking))
+        return out
 
 
 def aggregate(y, agg):
@@ -1089,6 +1146,7 @@ class EelFigure(object):
     _default_xlabel_ax = -1
     _default_ylabel_ax = 0
     _make_axes = True
+    _can_set_time = False
     _can_set_vlim = False
     _can_set_ylim = False
     _can_set_xlim = False
@@ -1680,6 +1738,7 @@ class BaseLayout(object):
 
 
 def resolve_plot_rect(w, h, dpi):
+    # infer figure dimensions from screen size
     w_applies = w is not None and w <= 0
     h_applies = h is not None and h <= 0
     if w_applies or h_applies:
@@ -1690,7 +1749,8 @@ def resolve_plot_rect(w, h, dpi):
         effective_dpi = dpi or mpl.rcParams['figure.dpi']
         display_w, display_h = wx.GetDisplaySize()
         if h_applies:
-            h = display_h / effective_dpi + h
+            effective_display_h = display_h - 50
+            h = effective_display_h / effective_dpi + h
         if w_applies:
             w = display_w / effective_dpi + w
     return w, h
@@ -2120,8 +2180,12 @@ class ColorBarMixin(object):
     """
     def __init__(self, param_func, data):
         self.__get_params = param_func
-        self.__unit = data.info.get('unit', None)
-        _, self.__label = find_axis_params_data(data, True)
+        if data is None:
+            self.__unit = None
+            self.__label = 'colormap'
+        else:
+            self.__unit = data.info.get('unit', None)
+            _, self.__label = find_axis_params_data(data, True)
 
     def _fill_toolbar(self, tb):
         import wx
@@ -2489,11 +2553,11 @@ class TimeSlicer(object):
     _current_time = None
     _display_time_in_frame_title = False
 
-    def __init__(self, ndvars=None):
+    def __init__(self, ndvars=None, time_fixed=False):
         if ndvars is not None:
             self._set_time_dim_from_ndvars(ndvars)
         self._time_controller = None
-        self._time_fixed = False
+        self._time_fixed = time_fixed
 
     def _init_controller(self):
         tc = TimeController(self._current_time, self._time_fixed)
@@ -2540,6 +2604,10 @@ class TimeSlicer(object):
             new_i = max(0, current_i + offset)
         self._set_time(self._time_dim[new_i], True)
 
+    def get_time(self):
+        "Retrieve the current time"
+        return self._current_time
+
     def set_time(self, time):
         """Set the time point to display
 
@@ -2581,11 +2649,13 @@ class TimeSlicer(object):
 
 class TimeSlicerEF(TimeSlicer):
     # TimeSlicer for Eelfigure
+    _can_set_time = True
+
     def __init__(self, x_dimname, epochs, axes=None, redraw=True):
         if x_dimname != 'time':
-            self._time_fixed = True
+            TimeSlicer.__init__(self, time_fixed=True)
             return
-        ndvars = [e for layer in epochs for e in layer]
+        ndvars = [e for layer in epochs for e in layer] if epochs else None
         TimeSlicer.__init__(self, ndvars)
         self.__axes = self._axes if axes is None else axes
         self.__time_lines = []

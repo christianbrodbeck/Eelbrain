@@ -418,10 +418,10 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         }
 
         # plot epochs (x/y are in figure coordinates)
-        for ax, layers in zip(self.bfly_axes, data.plot_data):
-            p = _ax_butterfly(ax, layers, 'time', 'sensor', mark, color,
-                              linewidth, self._vlims, clip)
-            self.bfly_plots.append(p)
+        for i, ax in enumerate(self.bfly_axes):
+            layers = data.get_axis_data(i, 'line')
+            h = _ax_butterfly(ax, layers, 'time', 'sensor', mark, color, linewidth, self._vlims, clip)
+            self.bfly_plots.append(h)
 
         # decorate axes
         e0 = data.data[0][0]

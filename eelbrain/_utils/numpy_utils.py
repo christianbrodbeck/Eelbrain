@@ -2,6 +2,7 @@
 from math import floor
 
 import numpy as np
+from numpy import newaxis
 
 
 FULL_SLICE = slice(None)
@@ -9,7 +10,7 @@ FULL_AXIS_SLICE = (FULL_SLICE,)
 INT_TYPES = (int, np.integer)
 
 
-def digitize_index(index, values, tol=None):
+def digitize_index(index: float, values: np.ndarray, tol: float=None):
     """Locate a scalar ``index`` on ``values``
 
     Parameters
@@ -26,7 +27,7 @@ def digitize_index(index, values, tol=None):
     if index == values[i]:
         return i
     elif not tol:
-        raise IndexError("Index %r does not match any value" % (index,))
+        raise IndexError(f"{index}: does not match any value")
     elif i > 0 and values[i] - index > index - values[i - 1]:
         i -= 1
     diff = abs(index - values[i])

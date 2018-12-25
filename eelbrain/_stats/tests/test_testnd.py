@@ -68,7 +68,7 @@ def test_anova():
     # all effects with clusters
     res = testnd.anova('uts', 'A*B*rm', match=False, ds=ds, samples=5, pmin=0.05,
                        tstart=0.1, mintime=0.02)
-    assert_equal(set(res.clusters['effect'].cells), set(res.effects))
+    assert set(res.clusters['effect'].cells) == set(res.effects)
 
     # some effects with clusters, some without
     res = testnd.anova('uts', 'A*B*rm', ds=ds, samples=5, pmin=0.05,
@@ -89,7 +89,7 @@ def test_anova():
     peaks = resr.find_peaks()
     assert_dataobj_equal(tf_clusters, res.find_clusters(pmin=0.05))
     assert_dataobj_equal(peaks, res.find_peaks())
-    assert_equal(tf_clusters.eval("p.min()"), peaks.eval("p.min()"))
+    assert tf_clusters.eval("p.min()") == peaks.eval("p.min()")
     unmasked = resr.f[0]
     masked = resr.masked_parameter_map(effect=0, pmin=0.05)
     assert_array_equal(masked.x <= unmasked.x, True)
@@ -231,10 +231,10 @@ def test_clusterdist():
     print(repr(cdist))
     cdist.add_original(pmap)
     print(repr(cdist))
-    assert_equal(cdist.n_clusters, 1)
+    assert cdist.n_clusters == 1
     assert_array_equal(cdist._original_cluster_map == cdist._cids[0],
                        cdist._crop(bin_map).swapaxes(0, cdist._nad_ax))
-    assert_equal(cdist.parameter_map.dims, y.dims[1:])
+    assert cdist.parameter_map.dims == y.dims[1:]
 
     # test connecting many sensors
     logging.info("TEST:  connecting sensors")
@@ -245,7 +245,7 @@ def test_clusterdist():
     pmap[bin_map] = 2
     cdist = NDPermutationDistribution(y, 0, 1.5)
     cdist.add_original(pmap)
-    assert_equal(cdist.n_clusters, 1)
+    assert cdist.n_clusters == 1
     assert_array_equal(cdist._original_cluster_map == cdist._cids[0],
                        cdist._crop(bin_map).swapaxes(0, cdist._nad_ax))
 
@@ -259,7 +259,7 @@ def test_clusterdist():
     pmap[bin_map] = 2
     cdist = NDPermutationDistribution(y, 1, 1.5)
     cdist.add_original(pmap)
-    assert_equal(cdist.n_clusters, 2)
+    assert cdist.n_clusters == 2
 
     # criteria
     ds = datasets.get_uts(True)
@@ -288,7 +288,7 @@ def test_clusterdist():
     cdist = NDPermutationDistribution(y, 3, None)
     cdist.add_original(y.x[0])
     cdist.finalize()
-    assert_equal(cdist.dist.shape, (3,))
+    assert cdist.dist.shape == (3,)
     # I/O
     string = pickle.dumps(cdist, pickle.HIGHEST_PROTOCOL)
     cdist_ = pickle.loads(string)
@@ -443,7 +443,7 @@ def test_labeling():
                [0, 3, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 4, 4],
                [0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 4, 4, 4, 0, 0, 0, 0, 0]]
     cmap, cids = label_clusters(pmap, 2, 0, conn, criteria)
-    assert_equal(len(cids), 6)
+    assert len(cids) == 6
     assert_array_equal(cmap > 0, np.abs(pmap) > 2)
 
     # some other clusters
@@ -452,7 +452,7 @@ def test_labeling():
                [0, 0, 4, 4, 0, 4, 4, 0, 4, 0, 0, 0, 4, 4, 1, 0, 4, 4, 0, 0],
                [0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0]]
     cmap, cids = label_clusters(pmap, 2, 0, conn, criteria)
-    assert_equal(len(cids), 6)
+    assert len(cids) == 6
     assert_array_equal(cmap > 0, np.abs(pmap) > 2)
 
 
@@ -471,7 +471,7 @@ def test_ttest_1samp():
 
     # clusters without resampling
     res1 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds, samples=0, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
-    assert_equal(res1.clusters.n_cases, 1)
+    assert res1.clusters.n_cases == 1
     assert_not_in('p', res1.clusters)
     assert repr(res1) == "<ttest_1samp 'uts', sub=\"A == 'a0'\", samples=0, pmin=0.05, tstop=0.6, mintime=0.05, 1 clusters>"
 
@@ -483,8 +483,8 @@ def test_ttest_1samp():
 
     # clusters with resampling
     res2 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds, samples=10, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
-    assert_equal(res2.clusters.n_cases, 1)
-    assert_equal(res2.samples, 10)
+    assert res2.clusters.n_cases == 1
+    assert res2.samples == 10
     assert_in('p', res2.clusters)
     assert repr(res2) == "<ttest_1samp 'uts', sub=\"A == 'a0'\", samples=10, pmin=0.05, tstop=0.6, mintime=0.05, 1 clusters, p < .001>"
 
@@ -492,13 +492,13 @@ def test_ttest_1samp():
     dss = ds.sub("logical_and(A=='a0', B=='b0')")[:8]
     res3 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=dss, samples=10000, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
     assert repr(res3) == "<ttest_1samp 'uts', sub=\"A == 'a0'\", samples=255, pmin=0.05, tstop=0.6, mintime=0.05, 2 clusters, p = .020>"
-    assert_equal(res3.clusters.n_cases, 2)
-    assert_equal(res3.samples, -1)
-    assert_equal(str(res3.clusters),
-                 'id   tstart   tstop   duration   v        p          sig\n'
-                 '--------------------------------------------------------\n'
-                 '3    0.08     0.34    0.26       95.692   0.015686   *  \n'
-                 '4    0.35     0.56    0.21       81.819   0.019608   *  ')
+    assert res3.clusters.n_cases == 2
+    assert res3.samples == -1
+    assert str(res3.clusters) == (
+        'id   tstart   tstop   duration   v        p          sig\n'
+        '--------------------------------------------------------\n'
+        '3    0.08     0.34    0.26       95.692   0.015686   *  \n'
+        '4    0.35     0.56    0.21       81.819   0.019608   *  ')
 
     # nd
     dss = ds.sub("A == 'a0'")
@@ -512,7 +512,7 @@ def test_ttest_1samp():
     res = pickle.loads(string)
     tfce_clusters = res.find_clusters(pmin=0.05)
     peaks = res.find_peaks()
-    assert_equal(tfce_clusters.eval("p.min()"), peaks.eval("p.min()"))
+    assert tfce_clusters.eval("p.min()") == peaks.eval("p.min()")
     masked = res.masked_parameter_map(pmin=0.05)
     assert_array_equal(masked.abs().x <= res.t.abs().x, True)
 
@@ -562,9 +562,13 @@ def test_ttest_rel():
     ds = datasets.get_uts(True)
 
     # basic
-    res = testnd.ttest_rel('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm',
-                           ds=ds, samples=100)
+    res = testnd.ttest_rel('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm', ds=ds, samples=100)
     assert repr(res) == "<ttest_rel 'uts', 'A x B', ('a1', 'b1'), ('a0', 'b0'), 'rm' (n=15), samples=100, p < .001>"
+    difference = res.masked_difference()
+    assert difference.x.mask.sum() == 84
+    c1 = res.masked_c1()
+    assert c1.x.mask.sum() == 84
+    assert_array_equal(c1.x.data, res.c1_mean.x)
 
     # alternate argspec
     ds1 = Dataset()
@@ -583,7 +587,7 @@ def test_ttest_rel():
     # collapsing cells
     res2 = testnd.ttest_rel('uts', 'A', 'a1', 'a0', 'rm', ds=ds)
     assert_less(res2.p_uncorrected.min(), 0.05)
-    assert_equal(res2.n, res.n)
+    assert res2.n == res.n
 
     # reproducibility
     res3 = testnd.ttest_rel('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm',
@@ -644,6 +648,8 @@ def test_vector():
     assert res.p.min() == 0.1
     res = testnd.Vector(ds[:30, 'v3d'], samples=10)
     assert res.p.min() == 0.0
+    difference = res.masked_difference()
+    assert difference.x.mask.sum() == 291
 
     # without mp
     configure(n_workers=0)
@@ -652,7 +658,8 @@ def test_vector():
     configure(n_workers=True)
 
     v_small = ds[:30, 'v3d'] / 100
-    assert_raises(ValueError, testnd.Vector, v_small, tfce=True, samples=10)
+    res = testnd.Vector(v_small, tfce=True, samples=10)
+    assert 'WARNING' in repr(res)
     res = testnd.Vector(v_small, tfce=0.001, samples=10)
     assert res.p.min() == 0.0
 
@@ -679,12 +686,12 @@ def test_merged_temporal_cluster_dist():
     def test_merged(res1, res2):
         merged_dist = _MergedTemporalClusterDist([res1._cdist, res2._cdist])
         if isinstance(res1, testnd.anova):
-            assert_equal(len(merged_dist.dist), len(res1.effects))
+            assert len(merged_dist.dist) == len(res1.effects)
             for effect, dist in merged_dist.dist.items():
                 assert_in(effect, res1.effects)
-                assert_equal(len(dist), res1.samples)
+                assert len(dist) == res1.samples
         else:
-            assert_equal(len(merged_dist.dist), res1.samples)
+            assert len(merged_dist.dist) == res1.samples
         res1_clusters = merged_dist.correct_cluster_p(res1)
         res2_clusters = merged_dist.correct_cluster_p(res2)
         for clusters in [res1_clusters, res2_clusters]:

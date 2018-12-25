@@ -26,6 +26,7 @@ from threading import Event, Thread
 
 import numpy as np
 from numpy import newaxis
+from scipy.linalg import norm
 import scipy.signal
 from scipy.stats import spearmanr
 from tqdm import tqdm
@@ -38,7 +39,7 @@ from .shared import RevCorrData
 
 
 # BoostingResult version
-VERSION = 8
+VERSION = 9
 
 # process messages
 JOB_TERMINATE = -1
@@ -77,7 +78,7 @@ class BoostingResult(object):
         Time it took to run the boosting algorithm (in seconds).
     error : str
         The error evaluation method used.
-    fit_error : float | NDVar
+    residual : float | NDVar
         The fit error, i.e. the result of the ``error`` error function on the
         final fit.
     delta : scalar
@@ -103,8 +104,9 @@ class BoostingResult(object):
             y, x, tstart, tstop, scale_data, delta, mindelta, error,
             basis, basis_window, partitions_arg, partitions, model,
             # result parameters
-            h, r, isnan, spearmanr, fit_error, t_run, version,
-            y_mean, y_scale, x_mean, x_scale, **debug_attrs,
+            h, r, isnan, spearmanr, residual, t_run,
+            y_mean, y_scale, x_mean, x_scale, y_info={}, r_l1=None,
+            **debug_attrs,
     ):
         # input parameters
         self.y = y
@@ -122,12 +124,13 @@ class BoostingResult(object):
         self.basis_window = basis_window
         # results
         self._h = h
+        self._y_info = y_info
         self.r = r
+        self.r_l1 = r_l1
         self._isnan = isnan
         self.spearmanr = spearmanr
-        self.fit_error = fit_error
+        self.residual = residual
         self.t_run = t_run
-        self._version = version
         self.y_mean = y_mean
         self.y_scale = y_scale
         self.x_mean = x_mean
@@ -146,21 +149,23 @@ class BoostingResult(object):
             'model': self.model, 'basis': self.basis,
             'basis_window': self.basis_window,
             # results
-            'h': self._h, 'r': self.r, 'isnan': self._isnan,
-            'spearmanr': self.spearmanr, 'fit_error': self.fit_error,
-            't_run': self.t_run, 'version': self._version,
+            'h': self._h, 'r': self.r, 'r_l1': self.r_l1, 'isnan': self._isnan,
+            'spearmanr': self.spearmanr, 'residual': self.residual,
+            't_run': self.t_run, 'version': VERSION,
             'y_mean': self.y_mean, 'y_scale': self.y_scale,
             'x_mean': self.x_mean, 'x_scale': self.x_scale,
+            'y_info': self._y_info,
             **self._debug_attrs,
         }
 
     def __setstate__(self, state):
         if state['version'] < 7:
-            state.update(partitions=None, partitions_arg=None, model=None,
-                         basis=0, basis_window='hamming')
+            state.update(partitions=None, partitions_arg=None, model=None, basis=0, basis_window='hamming')
         elif state['version'] < 8:
             state['partitions'] = state.pop('n_partitions')
             state['partitions_arg'] = state.pop('n_partitions_arg')
+        if state['version'] < 9:
+            state['residual'] = state.pop('fit_error')
         self.__init__(**state)
 
     def __repr__(self):
@@ -199,10 +204,16 @@ class BoostingResult(object):
         if self.y_scale is None:
             return self.h
         elif isinstance(self.h, NDVar):
-            return self.h * (self.y_scale / self.x_scale)
+            out = (self.y_scale / self.x_scale) * self.h
+            out.info.update(self._y_info)
+            return out
         else:
-            return tuple(h * (self.y_scale / sx) for h, sx in
-                         zip(self.h, self.x_scale))
+            out = []
+            for h, sx in zip(self.h, self.x_scale):
+                h = (self.y_scale / sx) * h
+                h.info.update(self._y_info)
+                out.append(h)
+            return tuple(out)
 
     @LazyProperty
     def h_source(self):
@@ -239,7 +250,7 @@ class BoostingResult(object):
             index = np.invert(obj_new.source.parc.startswith('unknown-'))
             return obj_new.sub(source=index)
 
-        for attr in ('h', 'r', 'spearmanr', 'fit_error', 'y_mean', 'y_scale'):
+        for attr in ('h', 'r', 'spearmanr', 'residual', 'y_mean', 'y_scale'):
             setattr(self, attr, sub_func(getattr(self, attr)))
 
 
@@ -357,7 +368,8 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     # result containers
     res = np.empty((3, n_y))  # r, rank-r, error
     h_x = np.empty((n_y, n_x, trf_length))
-    y_pred = np.empty_like(data.y) if debug else np.empty(data.y.shape[1:])
+    store_y_pred = bool(data.vector_dim) or debug
+    y_pred = np.empty_like(data.y) if store_y_pred else np.empty(data.y.shape[1:])
     # boosting
     if CONFIG['n_workers']:
         # Make sure cross-validations are added in the same order, otherwise
@@ -378,15 +390,19 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
                     h_seg[seg_i] = h
                     if len(h_seg) == n_cv:
                         del h_segs[y_i]
-                        hs = [h for h in (h_seg[i] for i in range(n_cv)) if
-                              h is not None]
+                        hs = [h for h in (h_seg[i] for i in range(n_cv)) if h is not None]
                         if hs:
                             h = np.mean(hs, 0, out=h_x[y_i])
-                            y_i_pred = y_pred[y_i] if debug else y_pred
-                            res[:, y_i] = evaluate_kernel(data.y[y_i], data.x, data.x_pads, h, i_start, error, i_skip, data.segments, y_i_pred)
+                            y_i_pred = y_pred[y_i] if store_y_pred else y_pred
+                            convolve(h, data.x, data.x_pads, i_start, data.segments, y_i_pred)
+                            if not data.vector_dim:
+                                res[:, y_i] = evaluate_kernel(data.y[y_i], y_i_pred, error, i_skip, data.segments)
                         else:
                             h_x[y_i] = 0
-                            res[:, y_i] = 0
+                            if not data.vector_dim:
+                                res[:, y_i] = 0
+                            if store_y_pred:
+                                y_pred[y_i] = 0
                 else:
                     h_segs[y_i] = {seg_i: h}
         except KeyboardInterrupt:
@@ -396,30 +412,53 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         for y_i, y_ in enumerate(data.y):
             hs = []
             for segments, train, test in data.cv_segments:
-                h = boost(y_, data.x, data.x_pads, segments, train, test, i_start, trf_length, delta,
-                          mindelta_, error)
+                h = boost(y_, data.x, data.x_pads, segments, train, test, i_start, trf_length, delta, mindelta_, error)
                 if h is not None:
                     hs.append(h)
                 pbar.update()
 
             if hs:
                 h = np.mean(hs, 0, out=h_x[y_i])
-                y_i_pred = y_pred[y_i] if debug else y_pred
-                res[:, y_i] = evaluate_kernel(y_, data.x, data.x_pads, h, i_start, error, i_skip, data.segments, y_i_pred)
+                y_i_pred = y_pred[y_i] if store_y_pred else y_pred
+                convolve(h, data.x, data.x_pads, i_start, data.segments, y_i_pred)
+                if not data.vector_dim:
+                    res[:, y_i] = evaluate_kernel(data.y[y_i], y_i_pred, error, i_skip, data.segments)
             else:
                 h_x[y_i] = 0
-                res[:, y_i] = 0
+                if not data.vector_dim:
+                    res[:, y_i] = 0
+                if store_y_pred:
+                    y_pred[y_i] = 0
 
     pbar.close()
     t_run = time.time() - t_start
 
     # fit-evaluation statistics
-    rs, rrs, errs = res
+    if data.vector_dim:
+        y_vector = data.y.reshape(data.vector_shape)
+        y_pred_vector = y_pred.reshape(data.vector_shape)
+        # error: distance between actual and modeled
+        y_pred_error = norm(y_vector - y_pred_vector, axis=1)
+        if error == 'l1':
+            errs = y_pred_error.mean(-1)
+        elif error == 'l2':
+            errs = y_pred_error.std(-1)
+        else:
+            raise RuntimeError(f"error={error!r}")
+        rs, rs_l1 = data.vector_correlation(y_vector, y_pred_vector)
+        if rs_l1 is None:
+            r_l1 = None
+        else:
+            r_l1 = data.package_value(rs_l1, 'l1 correlation', meas='r')
+        spearmanr = None
+    else:
+        rs, rrs, errs = res
+        r_l1 = None
+        spearmanr = data.package_value(rrs, 'rank correlation', meas='r')
     isnan = np.isnan(rs)
     rs[isnan] = 0
-    r = data.package_statistic(rs, 'r', 'correlation')
-    spearmanr = data.package_statistic(rrs, 'r', 'rank correlation')
-    fit_error = data.package_value(errs, 'fit error')
+    r = data.package_value(rs, 'correlation', meas='r')
+    residual = data.package_value(errs, 'fit error')
 
     y_mean, y_scale, x_mean, x_scale = data.data_scale_ndvars()
 
@@ -437,8 +476,11 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         data.y_name, data.x_name, tstart, tstop, scale_data, delta, mindelta, error,
         basis, basis_window, partitions, data.partitions, model_repr,
         # result parameters
-        h, r, isnan, spearmanr, fit_error, t_run, VERSION,
-        y_mean, y_scale, x_mean, x_scale, **debug_attrs)
+        h, r, isnan, spearmanr, residual, t_run,
+        y_mean, y_scale, x_mean, x_scale, data.y_info,
+        # vector results
+        r_l1,
+        **debug_attrs)
 
 
 def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
@@ -620,7 +662,23 @@ def put_jobs(queue, n_y, n_segs, stop):
 
 
 def convolve(h, x, x_pads, h_i_start, segments=None, out=None):
-    "h * x with time axis matching x"
+    """h * x with time axis matching x
+
+    Parameters
+    ----------
+    h : array, (n_stims, h_n_samples)
+        H.
+    x : array, (n_stims, n_samples)
+        X.
+    x_pads : array (n_stims,)
+        Padding for x.
+    h_i_start : int
+        Time shift of the first sample of ``h``.
+    segments : array (n_segments, 2)
+        Data segments.
+    out : array
+        Buffer for predicted ``y``.
+    """
     n_x, n_times = x.shape
     h_n_times = h.shape[1]
     if out is None:
@@ -671,29 +729,21 @@ def convolve(h, x, x_pads, h_i_start, segments=None, out=None):
     return out
 
 
-def evaluate_kernel(y, x, x_pads, h, i_start, error, i_skip, segments=None, y_pred_out=None):
+def evaluate_kernel(y, y_pred, error, i_skip, segments=None):
     """Fit quality statistics
 
     Parameters
     ----------
     y : array, (n_samples)
         Y.
-    x : array, (n_stims, n_samples)
-        X.
-    x_pads : array (n_stims,)
-        Padding for x.
-    h : array, (n_stims, h_n_samples)
-        H.
-    i_start : int
-        Time shift of the first sample of ``h``.
+    y_pred : array, (n_samples)
+        Predicted Y.
     error : str
         Error metric.
-    segments : array (n_segnents, 2)
-        Data segments.
     i_skip : int
         Skip this many samples for evaluating model fit.
-    y_pred_out : array
-        Buffer for predicted ``y``.
+    segments : array (n_segments, 2)
+        Data segments.
 
     Returns
     -------
@@ -704,8 +754,6 @@ def evaluate_kernel(y, x, x_pads, h, i_start, error, i_skip, segments=None, y_pr
     error : float | array
         Error corresponding to error_func.
     """
-    y_pred = convolve(h, x, x_pads, i_start, segments, y_pred_out)
-
     # discard onset
     if i_skip:
         assert segments is None, "Not implemented"

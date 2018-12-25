@@ -37,8 +37,12 @@ DAMAGE.
 """
 import warnings
 
+from nilearn.image.resampling import get_bounds
+
 import numpy as np
 
+from .._data_obj import NDVar, VolumeSourceSpace, asndvar
+from .._utils.numpy_utils import newaxis
 from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, butterfly_data
 from ._utsnd import Butterfly
 
@@ -126,6 +130,10 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         (``False``), the sign of the maximum intensity will be represented with
         different colors. See `examples <http://nilearn.github.io/auto_examples/
         01_plotting/plot_demo_glass_brain_extensive.html>`_.
+    draw_arrows: boolean
+        Draw arrows in the direction of activation over the glassbrain plots.
+        Naturally, for this to work ``ndvar`` needs to contain space dimension
+        (i.e 3D vectors). By default it is set to ``True``.
     symmetric_cbar : boolean | 'auto'
         Specifies whether the colorbar should range from -vmax to vmax
         or from vmin to vmax. Setting to 'auto' will select the latter if
@@ -152,7 +160,11 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
     _make_axes = False
     _display_time_in_frame_title = True
 
-    def __init__(self, ndvar, cmap=None, vmin=None, vmax=None, dest='mri', mri_resolution=False, mni305=None, black_bg=False, display_mode=None, threshold=None, colorbar=False, draw_cross=True, annotate=True, alpha=0.7, plot_abs=False, symmetric_cbar="auto", interpolation='nearest', **kwargs):
+    def __init__(self, ndvar, cmap=None, vmin=None, vmax=None, dest='mri',
+                 mri_resolution=False, mni305=None, black_bg=False, display_mode=None,
+                 threshold=None, colorbar=False, draw_cross=True, annotate=True,
+                 alpha=0.7, plot_abs=False, draw_arrows=True, symmetric_cbar='auto',
+                 interpolation='nearest', **kwargs):
         # Give wxPython a chance to initialize the menu before pyplot
         from .._wxgui import get_app
         get_app(jumpstart=True)
@@ -167,44 +179,85 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             cmap = cm.cold_hot if black_bg else cm.cold_white_hot
         self.cmap = cmap
 
+        if isinstance(ndvar, VolumeSourceSpace):
+            source = ndvar
+            ndvar = None
+        else:
+            ndvar = asndvar(ndvar)
+            source = ndvar.get_dim('source')
+            if not isinstance(source, VolumeSourceSpace):
+                raise ValueError(f"ndvar={ndvar!r}:  need volume source space data")
+            if isinstance(ndvar.x, np.ma.MaskedArray) and np.all(ndvar.x.mask):
+                ndvar = None
+
+        if mni305 is None:
+            mni305 = source.subject == 'fsaverage'
+
         if ndvar:
             if ndvar.has_case:
                 ndvar = ndvar.mean('case')
-            if ndvar.has_dim('space'):
-                ndvar = ndvar.norm('space')
 
             if mni305 is None:
                 mni305 = ndvar.source.subject == 'fsaverage'
 
-            src = ndvar.source.get_source_space()
-            src_type = src[0]['type']
-            if src_type != 'vol':
-                raise ValueError('You need a volume source space. Got type: %s.'
-                                 % src_type)
-
+            src = source.get_source_space()
             img = _stc_to_volume(ndvar, src, dest, mri_resolution, mni305)
             if ndvar.has_dim('time'):
                 time = ndvar.get_dim('time')
                 t0 = time[0]
-                imgs = [index_img(img, i) for i in range(len(ndvar.time))]
+                imgs = [index_img(img, i) for i in range(len(time))]
                 img0 = imgs[0]
             else:
                 img0 = img
                 imgs = time = t0 = None
+            if draw_arrows:
+                if not ndvar.has_dim('space'):
+                    draw_arrows = False
+                    dir_imgs = None
+                else:
+                    dir_imgs = []
+                    for direction in ndvar.space._directions:
+                        dir_img = _stc_to_volume(ndvar.sub(space=direction), src,
+                                                 dest, mri_resolution, mni305)
+                        if ndvar.has_dim('time'):
+                            dir_imgs.append([index_img(dir_img, i)
+                                             for i in range(len(ndvar.time))])
+                        else:
+                            dir_imgs.append([dir_img])
+                    if plot_abs:
+                        raise ValueError(f"Cannot use plot_abs={plot_abs} with draw_arrows={draw_arrows}")
+            else:
+                dir_imgs = None
 
+            # determine parameters for colorbar
+            if ndvar.has_dim('space'):
+                data = ndvar.norm('space').x
+            else:
+                data = ndvar.x
             if plot_abs:
                 cbar_vmin, cbar_vmax, vmin, vmax = _get_colorbar_and_data_ranges(
-                    ndvar.x, vmax, symmetric_cbar, kwargs, 0)
+                    data, vmax, symmetric_cbar, kwargs, 0)
             else:
                 cbar_vmin, cbar_vmax, vmin, vmax = _get_colorbar_and_data_ranges(
-                    ndvar.x, vmax, symmetric_cbar, kwargs)
+                    data, vmax, symmetric_cbar, kwargs)
+
+            # Deal with automatic settings of plot parameters
+            if threshold == 'auto':
+                # Threshold below a percentile value, to be sure that some
+                # voxels pass the threshold
+                threshold = _fast_abs_percentile(ndvar)
+            if threshold is not None:
+                threshold = float(threshold)
+                if isinstance(ndvar.x, np.ma.MaskedArray):
+                    raise ValueError(f"Cannot use threshold={threshold} with masked data")
+
         else:
-            cbar_vmin = cbar_vmax = src = imgs = img0 = time = t0 = None
+            cbar_vmin = cbar_vmax = imgs = img0 = dir_imgs = time = t0 = threshold = None
 
         self.time = time
-        self._src = src
         self._ndvar = ndvar
         self._imgs = imgs
+        self._dir_imgs = dir_imgs
 
         show_nan_msg = False
         if vmax is not None and np.isnan(vmax):
@@ -214,22 +267,17 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             vmin = None
             show_nan_msg = True
         if show_nan_msg:
-            warnings.warn('NaN is not permitted for the vmax and vmin arguments. '
+            warnings.warn('NaN is not permitted for the vmax and vmin'
+                          'arguments.\n'
                           'Tip: Use np.nanmax() instead of np.max().')
-
-        # Deal with automatic settings of plot parameters
-        if threshold == 'auto':
-            # Threshold below a percentile value, to be sure that some
-            # voxels pass the threshold
-            threshold = _fast_abs_percentile(self._ndvar)
 
         # layout
         if display_mode is None:
             display_mode = ''
-            if 'lh' in ndvar.source.hemi:
+            if 'lh' in source.hemi:
                 display_mode += 'l'
             display_mode += 'y'
-            if 'rh' in ndvar.source.hemi:
+            if 'rh' in source.hemi:
                 display_mode += 'r'
             display_mode += 'z'
         n_plots = 3 if display_mode == 'ortho' else len(display_mode)
@@ -239,29 +287,33 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             frame_title = layout.name
         elif isinstance(layout.title, str):
             frame_title = layout.title
-        elif ndvar.name:
+        elif ndvar and ndvar.name:
             frame_title = ndvar.name
         else:
-            frame_title = ndvar.source.subject
+            frame_title = source.subject
         EelFigure.__init__(self, frame_title, layout)
 
-        display = get_projector(display_mode)(img0, alpha=alpha, plot_abs=plot_abs,
-                                              threshold=threshold, figure=self.figure, axes=None,
-                                              black_bg=black_bg, colorbar=colorbar)
-
-        display.add_overlay(img0, threshold=threshold, interpolation=interpolation,
-                            colorbar=colorbar, vmin=vmin, vmax=vmax, cmap=cmap)
+        project = get_projector(display_mode)
+        display = project(img0, alpha=alpha, plot_abs=plot_abs, threshold=threshold, figure=self.figure, axes=None, black_bg=black_bg, colorbar=colorbar)
+        if img0:
+            display.add_overlay(img0, threshold=threshold, interpolation=interpolation, colorbar=colorbar, vmin=vmin, vmax=vmax, cmap=cmap)
 
         ColorBarMixin.__init__(self, self._colorbar_params, ndvar)
 
         self.display = display
         self.threshold = threshold
         self.interpolation = interpolation
+        self.cmap = cmap
         self.colorbar = colorbar
         self.cmap = cmap
         self.vmin = vmin
         self.vmax = vmax
+        self._arrows = draw_arrows
 
+        if draw_arrows:
+            if img0:
+                self.arrow_scale = 7 * np.max(np.abs([vmax, vmin]))
+                self._add_arrows(0)
         if annotate:
             display.annotate()
         if draw_cross:
@@ -277,18 +329,101 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             cbar = display._cbar
             _crop_colorbar(cbar, cbar_vmin, cbar_vmax)
 
-        TimeSlicerEF.__init__(self, 'time', [[ndvar]])
+        ndvars = [[ndvar]] if ndvar else None
+        TimeSlicerEF.__init__(self, 'time', ndvars)
 
         self._show()
 
     def _fill_toolbar(self, tb):
         ColorBarMixin._fill_toolbar(self, tb)
 
+    # used by update_time
+    def _add_arrows(self, t, **kwargs):
+        """Adds arrows using matplotlib.quiver"""
+        # Format 3D data
+        data_list = []
+        extent_list = []
+
+        for display_ax in self.display.axes.values():
+            data = []
+            for k, direction in enumerate(self._ndvar.space._directions):
+                vol = self._dir_imgs[k][t]
+                try:
+                    vol_data = np.squeeze(vol.get_data())
+                    data_2d = display_ax.transform_to_2d(vol_data,
+                                                         vol.affine)
+                    data_2d = np.squeeze(data_2d)
+                except IndexError:
+                    # We are cutting outside the indices of the data
+                    data_2d = None
+                data.append(data_2d)
+            data_list.append(np.array(data))
+            data_bounds = get_bounds(vol_data.shape, vol.affine)
+            if display_ax.direction == 'y':
+                (xmin, xmax), (_, _), (zmin, zmax) = data_bounds
+            elif display_ax.direction in 'xlr':
+                (_, _), (xmin, xmax), (zmin, zmax) = data_bounds
+            elif display_ax.direction == 'z':
+                (xmin, xmax), (zmin, zmax), (_, _) = data_bounds
+            extent = (xmin, xmax, zmin, zmax)
+            extent_list.append(extent)
+
+        to_iterate_over = zip(self.display.axes.values(), data_list,
+                              extent_list)
+
+        # Plotting using quiver
+        if self.display._black_bg:
+            color = 'w'
+        else:
+            color = 'k'
+        ims = []
+        for display_ax, data_2d, extent in to_iterate_over:
+            if data_2d is not None:
+                # get data mask
+                if self.threshold is None:
+                    thr = 0
+                else:
+                    thr = self.threshold ** 2
+                data = (data_2d ** 2).sum(axis=0)
+                not_mask = data > thr
+
+                # If data_2d is completely masked, then there is nothing to
+                # plot. Hence, continued to loop over. This problem came up
+                # with matplotlib 2.1.0. See issue #9280 in matplotlib.
+                if not_mask.any():
+                    affine_2d = get_transform(extent, data.shape)
+                    indices = np.where(not_mask)
+                    x, y = coord_transform_2d(indices, affine_2d)
+                    if display_ax.direction == 'y':
+                        dir_data = (data_2d[0][indices], data_2d[2][indices])
+                    elif display_ax.direction == 'l':
+                        dir_data = (-data_2d[1][indices], data_2d[2][indices])
+                    elif display_ax.direction in 'xr':
+                        dir_data = (data_2d[1][indices], data_2d[2][indices])
+                    elif display_ax.direction == 'z':
+                        dir_data = (data_2d[0][indices], data_2d[1][indices])
+
+                    im = display_ax.ax.quiver(x, y, dir_data[0], dir_data[1],
+                                              color=color,
+                                              scale=self.arrow_scale)
+                else:
+                    continue
+            ims.append(im)
+
+        self._quivers = ims
+
+        return
+
     # used by _update_time
     def _remove_overlay(self):
         for axis in self.display._cut_displayed:
             if len(self.display.axes[axis].ax.images) > 0:
-                self.display.axes[axis].ax.images[-1].remove()
+                self.display.axes[axis].ax.images.clear()
+
+    # used by _update_time
+    def _remove_arrows(self):
+        for q in self._quivers:
+            q.remove()
 
     # used by _update_time
     def _update_title(self, t):
@@ -306,10 +441,14 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         # A little hack to make sure that the display
         # still has correct colorbar flag.
         self.display._colorbar = self.colorbar
+
+        # take care of arrows
+        if self._arrows:
+            self._remove_arrows()
+            self._add_arrows(index)
+
         self._update_title(t)
 
-        # for axis in self.display._cut_displayed:
-        #     self.display.axes[axis].ax.redraw_in_frame()
         self.draw()
 
     def animate(self):
@@ -320,13 +459,11 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         return self.cmap, self.vmin, self.vmax
 
     @classmethod
-    def butterfly(
-            cls, y, cmap=None, vmin=None, vmax=None,
-            dest='mri', mri_resolution=False, mni305=None,
-            black_bg=False, display_mode=None, threshold=None,
-            colorbar=False, alpha=0.7, plot_abs=False,
-            symmetric_cbar="auto", interpolation='nearest',
-            w=5, h=2.5, xlim=None, name=None, **kwargs):
+    def butterfly(cls, y, cmap=None, vmin=None, vmax=None, dest='mri',
+                  mri_resolution=False, mni305=None, black_bg=False, display_mode=None,
+                  threshold=None, colorbar=False, alpha=0.7, plot_abs=False,
+                  draw_arrows=True, symmetric_cbar="auto", interpolation='nearest',
+                  w=5, h=2.5, xlim=None, name=None, **kwargs):
         """Shortcut for a butterfly-plot with a time-linked glassbrain plot
 
         Parameters
@@ -381,6 +518,10 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             different colors. See `examples <http://nilearn.github.io/auto_examples/
             01_plotting/plot_demo_glass_brain_extensive.html>`_. Only affects
             GlassBrain plot.
+        draw_arrows: boolean
+            Draw arrows in the direction of activation over the glassbrain plots.
+            Naturally, for this to work ``ndvar`` needs to contain space dimension
+            (i.e 3D vectors). By default it is set to ``True``.
         symmetric_cbar : boolean or 'auto'
             Specifies whether the colorbar should range from -vmax to vmax
             or from vmin to vmax. Setting to 'auto' will select the latter if
@@ -408,10 +549,12 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         glassbrain : GlassBrain
             GlassBrain plot.
         """
+        import wx
         from .._wxgui import get_app, needs_jumpstart
+        from .._wxgui.mpl_canvas import CanvasFrame
         jumpstart = needs_jumpstart()
 
-        hemis, bfly_data, brain_data = butterfly_data(y, None)
+        hemis, bfly_data, brain_data = butterfly_data(y, None, return_vector_data=draw_arrows)
 
         if name is None:
             name = brain_data.name
@@ -422,11 +565,19 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         if jumpstart:
             get_app().jumpstart()
 
-        # position the brain window next to the butterfly-plot
-        # needs to be figured out
-
         # GlassBrain plot
-        p_glassbrain = GlassBrain(brain_data, cmap, vmin, vmax, dest, mri_resolution, mni305, black_bg, display_mode, threshold, colorbar, True, True, alpha, plot_abs, symmetric_cbar, interpolation, **kwargs)
+        p_glassbrain = GlassBrain(brain_data, cmap, vmin, vmax, dest, mri_resolution, mni305,
+                                  black_bg, display_mode, threshold, colorbar, True, True, alpha,
+                                  plot_abs, draw_arrows, symmetric_cbar, interpolation, h=h, name=name, **kwargs)
+
+        # position the brain window next to the butterfly-plot
+        if isinstance(p._frame, CanvasFrame):
+            px, py = p._frame.GetPosition()
+            pw, _ = p._frame.GetSize()
+            display_w, _ = wx.DisplaySize()
+            brain_w, _ = p_glassbrain._frame.GetSize()
+            brain_x = min(px + pw, display_w - brain_w)
+            p_glassbrain._frame.SetPosition((brain_x, py))
 
         p.link_time_axis(p_glassbrain)
 
@@ -459,9 +610,8 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
     ----------
     ndvar : NDVar
         The source estimate
-    src : list | string
-        The list of source spaces (should actually be of length 1). If
-        string, it is the filepath.
+    src : list
+        The list of source spaces (should actually be of length 1).
     dest : 'mri' | 'surf'
         If 'mri' the volume is defined in the coordinate system of
         the original T1 image. If 'surf' the coordinate system
@@ -489,10 +639,12 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
     if ndvar.has_dim('time'):
         data = ndvar.get_data(('source', 'time'), 0)
     else:
-        data = ndvar.get_data(('source', np.newaxis), 0)
+        data = ndvar.get_data(('source', newaxis), 0)
 
-    if not np.all(np.isfinite(data)):
-        raise ValueError("Not all values are finite")
+    # check for infinite values and make them zero
+    non_finite_mask = np.logical_not(np.isfinite(ndvar.x))
+    if non_finite_mask.sum() > 0:  # any non_finite_mask values?
+        ndvar.x[non_finite_mask] = 0
 
     n_times = data.shape[1]
     shape = src[0]['shape']
@@ -572,7 +724,13 @@ def _fast_abs_percentile(ndvar, percentile=80):
     scipy.stats.scoreatpercentile(np.abs(data), percentile)
     # inspired from nilearn._utils.extmath.fast_abs_percentile
     """
-    data = abs(ndvar.x)
+    if isinstance(ndvar.x, np.ma.masked_array):
+        return
+    if ndvar.has_dim('space'):
+        data = ndvar.norm('space').x
+    else:
+        data = abs(ndvar.x)
+
     data = data.ravel()
     index = int(data.size * .01 * percentile)
     try:
@@ -580,5 +738,22 @@ def _fast_abs_percentile(ndvar, percentile=80):
         data = np.partition(data, index)
     except ImportError:
         data.sort()
-
     return data[index]
+
+
+def get_transform(extent, shape):
+    xmin, xmax, zmin, zmax = extent
+    T = np.eye(3)
+    T[0, 0] = (zmin - zmax) / shape[0]
+    T[0, 2] = zmax
+    T[1, 1] = (xmax - xmin) / shape[1]
+    T[1, 2] = xmin
+
+    return T
+
+
+def coord_transform_2d(indices, affine):
+    rows, cols = indices
+    old_coords = np.array([np.array(rows), np.array(cols), np.ones(len(rows))])
+    y, x, _ = np.dot(affine, old_coords)
+    return x, y

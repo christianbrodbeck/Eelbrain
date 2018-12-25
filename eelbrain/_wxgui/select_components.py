@@ -89,7 +89,7 @@ class Document(FileDocument):
         epochs) and variables describing cases in epochs, used to plot
         condition averages.
     """
-    def __init__(self, path, ds, sysname):
+    def __init__(self, path, ds, sysname, connectivity):
         FileDocument.__init__(self, path)
         self.saved = True
 
@@ -100,7 +100,7 @@ class Document(FileDocument):
         self.accept = np.ones(self.ica.n_components_, bool)
         self.accept[ica.exclude] = False
         self.epochs = epochs = ds['epochs']
-        self.epochs_ndvar = load.fiff.epochs_ndvar(epochs, sysname=sysname)
+        self.epochs_ndvar = load.fiff.epochs_ndvar(epochs, sysname=sysname, connectivity=connectivity)
         self.ds = ds
 
         data = np.dot(ica.mixing_matrix_.T, ica.pca_components_[:ica.n_components_])
@@ -551,11 +551,10 @@ class Frame(FileFrame):
         if i_epoch == -1:
             self._PlotButterfly(self.doc.epochs.average(), "Epochs Average")
         else:
-            self._PlotButterfly(self.doc.epochs[i_epoch],
-                                "Epoch " + self.doc.epoch_labels[i_epoch],
-                                vmax=2e-12)
+            name = f"Epoch {self.doc.epoch_labels[i_epoch]}"
+            self._PlotButterfly(self.doc.epochs[i_epoch], name)
 
-    def _PlotButterfly(self, epoch, title, vmax=None):
+    def _PlotButterfly(self, epoch, title):
         original = asndvar(epoch)
         clean = asndvar(self.doc.apply(epoch))
         if self.butterfly_baseline == ID.BASELINE_CUSTOM:
@@ -568,14 +567,11 @@ class Frame(FileFrame):
         if original.has_case:
             if isinstance(title, str):
                 title = repeat(title, len(original))
-            if vmax is None:
-                vmax = 1.1 * max(abs(original.min()), original.max())
+            vmax = 1.1 * max(abs(original.min()), original.max())
             for data, title_ in zip(zip(original, clean), title):
-                plot.TopoButterfly(data, vmax=vmax, title=title_,
-                                   axtitle=("Original", "Cleaned"))
+                plot.TopoButterfly(data, vmax=vmax, title=title_, axtitle=("Original", "Cleaned"))
         else:
-            plot.TopoButterfly([original, clean], title=title,
-                               axtitle=("Original", "Cleaned"))
+            plot.TopoButterfly([original, clean], title=title, axtitle=("Original", "Cleaned"))
 
     def ShowSources(self, i_first):
         if self.source_frame:
@@ -816,6 +812,8 @@ class SourceFrame(FileFrameChild):
         elif not event.inaxes:
             return
         elif event.key in 'tT':
+            if event.inaxes.i_comp is None:  # source time course axes
+                return
             self.parent.PlotCompTopomap(event.inaxes.i_comp)
         elif event.key == 'a':
             self.parent.PlotCompSourceArray(event.inaxes.i_comp)

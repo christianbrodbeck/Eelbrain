@@ -4,6 +4,7 @@ import re
 
 from .. import testnd
 from .._exceptions import DefinitionError
+from .._io.fiff import find_mne_channel_types
 from .definitions import Definition
 from .vardef import GroupVar
 
@@ -16,6 +17,8 @@ def assemble_tests(test_dict):
     "Interpret dict with test definitions"
     out = {}
     for key, params in test_dict.items():
+        if not key:
+            raise DefinitionError(f"Test {key!r}: reserved name")
         if isinstance(params, Test):
             out[key] = params
             continue
@@ -187,7 +190,7 @@ class ANOVA(EvokedTest):
         x = ''.join(x.split())
         if model is None:
             items = sorted(i.strip() for i in x.split('*'))
-            within_items = (i for i in items if not re.match('^subject(\(\w+\))$', i))
+            within_items = (i for i in items if not re.match(r'^subject(\(\w+\))$', i))
             model = '%'.join(within_items)
         EvokedTest.__init__(self, x, model, vars=vars)
         if self._between is not None:
@@ -226,7 +229,7 @@ TEST_CLASSES = {
     'two-stage': TwoStageTest,
 }
 AGGREGATE_FUNCTIONS = ('mean', 'rms')
-DATA_RE = re.compile("(source|sensor)(?:\.(%s))?$" % '|'.join(AGGREGATE_FUNCTIONS))
+DATA_RE = re.compile(r"(source|sensor|meg|eeg)(?:\.(%s))?$" % '|'.join(AGGREGATE_FUNCTIONS))
 
 
 class TestDims(object):
@@ -238,24 +241,41 @@ class TestDims(object):
         String describing data.
     time : bool
         Whether the base data contains a time axis.
+    morph : bool
+        If loading source space data, whether the data is morphed to the common
+        brain.
     """
+    # eventually, specify like 'source' vs 'source time.rms'
     source = None
     sensor = None
 
-    def __init__(self, string, time=True):
-        self.time = time
-        substrings = string.split()
-        for substring in substrings:
-            m = DATA_RE.match(substring)
-            if m is None:
-                raise ValueError("Invalid test dimension description: %r" %
-                                 (string,))
-            dim, aggregate = m.groups()
-            setattr(self, dim, aggregate or True)
+    def __init__(self, string, time=True, morph=False):
+        self.time = bool(time)
+        self.morph = bool(morph)
+        m = DATA_RE.match(string)
+        if m is None:
+            raise ValueError(f"data={string!r}: invalid test dimension description")
+        dim, aggregate = m.groups()
+        if dim == 'meg':
+            self._to_ndvar = ('mag',)
+            self.y_name = 'meg'
+            dim = 'sensor'
+        elif dim == 'eeg':
+            self._to_ndvar = ('eeg',)
+            self.y_name = 'eeg'
+            dim = 'sensor'
+        elif dim == 'sensor':
+            self._to_ndvar = None
+            self.y_name = 'meg'
+        elif dim == 'source':
+            self._to_ndvar = None
+            self.y_name = 'srcm' if self.morph else 'src'
+        else:
+            raise RuntimeError(f"dim={dim!r}")
+        setattr(self, dim, aggregate or True)
         if sum(map(bool, (self.source, self.sensor))) != 1:
-            raise ValueError("Invalid test dimension description: %r. Need "
-                             "exactly one of 'sensor' or 'source'" % (string,))
-        self.string = ' '.join(substrings)
+            raise ValueError(f"data={string!r}: invalid test dimension description")
+        self.string = string
 
         dims = []
         if self.source is True:
@@ -275,14 +295,14 @@ class TestDims(object):
             self.parc_level = None
 
     @classmethod
-    def coerce(cls, obj, time=True):
+    def coerce(cls, obj, time=True, morph=False):
         if isinstance(obj, cls):
-            if bool(obj.time) == time:
+            if obj.time == time and obj.morph == morph:
                 return obj
             else:
-                return cls(obj.string, time)
+                return cls(obj.string, time, morph)
         else:
-            return cls(obj, time)
+            return cls(obj, time, morph)
 
     def __repr__(self):
         return "TestDims(%r)" % (self.string,)
@@ -291,6 +311,13 @@ class TestDims(object):
         if not isinstance(other, TestDims):
             return False
         return self.string == other.string and self.time == other.time
+
+    def data_to_ndvar(self, info):
+        assert self.sensor
+        if self._to_ndvar is None:
+            return find_mne_channel_types(info)
+        else:
+            return self._to_ndvar
 
 
 class ROITestResult(object):

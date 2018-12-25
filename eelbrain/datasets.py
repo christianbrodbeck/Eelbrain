@@ -1,6 +1,7 @@
 """Some basic example datasets for testing."""
 from distutils.version import LooseVersion
 import os
+from pathlib import Path
 
 import mne
 from mne import minimum_norm as mn
@@ -9,6 +10,7 @@ import numpy as np
 from . import _info, load
 from ._data_obj import Dataset, Factor, Var, NDVar, Case, Scalar, Sensor, Space, UTS
 from ._design import permute
+from ._utils.numpy_utils import newaxis
 
 
 def _apply_kernel(x, h, out=None):
@@ -64,9 +66,9 @@ def _get_continuous(n_samples=100, seed=0):
                          [0, 0, 2, 2, 0, 0, 0, 0, 0, 0]]),
                (xdim, h_time), name='h2')
 
-    y = _apply_kernel(x1.x[np.newaxis], h1.x[np.newaxis])
+    y = _apply_kernel(x1.x[newaxis], h1.x[newaxis])
     y += _apply_kernel(x2.x, h2.x)
-    y = NDVar(y, (time,), name='y')
+    y = NDVar(y, (time,), _info.for_eeg(), 'y')
     return {'y': y, 'x1': x1, 'h1': h1, 'x2': x2, 'h2': h2}
 
 
@@ -112,7 +114,7 @@ def get_mne_evoked(ndvar=False):
         return evoked
 
 
-def get_mne_stc(ndvar=False):
+def get_mne_stc(ndvar=False, vol=False, subject='sample'):
     """MNE-Python SourceEstimate
 
     Parameters
@@ -120,13 +122,40 @@ def get_mne_stc(ndvar=False):
     ndvar : bool
         Convert to NDVar (default False; src="ico-4" is false, but it works as
         long as the source space is not accessed).
+    vol : bool
+        Volume source estimate.
     """
-    data_path = mne.datasets.testing.data_path()
-    stc_path = os.path.join(data_path, 'MEG', 'sample', 'fsaverage_audvis_trunc-meg')
-    if not ndvar:
-        return mne.read_source_estimate(stc_path, 'sample')
-    subjects_dir = os.path.join(data_path, 'subjects')
-    return load.fiff.stc_ndvar(stc_path, 'fsaverage', 'ico-5', subjects_dir)
+    data_path = Path(mne.datasets.testing.data_path())
+    meg_sdir = data_path / 'MEG/sample'
+    subjects_dir = data_path / 'subjects'
+    # scaled subject
+    if subject == 'fsaverage_scaled':
+        subject_dir = os.path.join(subjects_dir, subject)
+        if not os.path.exists(subject_dir):
+            mne.scale_mri('fsaverage', subject, .9, subjects_dir=subjects_dir, skip_fiducials=True, labels=False, annot=True)
+        data_subject = 'fsaverage'
+    else:
+        data_subject = subject
+
+    if vol:
+        inv = mn.read_inverse_operator(str(meg_sdir / 'sample_audvis_trunc-meg-vol-7-meg-inv.fif'))
+        evoked = mne.read_evokeds(str(meg_sdir / 'sample_audvis_trunc-ave.fif'), 'Left Auditory')
+        stc = mn.apply_inverse(evoked, inv, method='MNE', pick_ori='vector')
+        if data_subject == 'fsaverage':
+            m = mne.compute_source_morph(stc, 'sample', data_subject, subjects_dir)
+            stc = m.apply(stc)
+            stc.subject = subject
+        elif subject != 'sample':
+            raise ValueError(f"subject={subject!r}")
+        if ndvar:
+            return load.fiff.stc_ndvar(stc, subject, 'vol-7', subjects_dir, 'MNE', sss_filename='{subject}-volume-7mm-src.fif')
+        else:
+            return stc
+    stc_path = meg_sdir / f'{data_subject}_audvis_trunc-meg'
+    if ndvar:
+        return load.fiff.stc_ndvar(stc_path, subject, 'ico-5', subjects_dir)
+    else:
+        return mne.read_source_estimate(str(stc_path), subject)
 
 
 def _mne_source_space(subject, src_tag, subjects_dir):

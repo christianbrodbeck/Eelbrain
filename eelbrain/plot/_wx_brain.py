@@ -17,7 +17,7 @@ import wx
 
 from .._wxgui.app import get_app
 from .._wxgui.frame import EelbrainFrame
-from .._wxgui.mpl_canvas import AxisLimitsDialog
+from .._wxgui.mpl_canvas import AxisLimitsDialog, SetTimeDialog
 from .._wxutils import ID, Icon
 
 
@@ -240,6 +240,13 @@ class BrainFrame(EelbrainFrame):
             self._brain.set_vlim(*dlg.vlim)
         dlg.Destroy()
 
+    def OnSetTime(self, event):
+        current_time = self._brain.get_time()
+        dlg = SetTimeDialog(self, current_time)
+        if dlg.ShowModal() == wx.ID_OK:
+            self._brain.set_time(dlg.time)
+        dlg.Destroy()
+
     def OnUpdateUISave(self, event):
         event.Enable(True)
 
@@ -247,6 +254,9 @@ class BrainFrame(EelbrainFrame):
         event.Enable(True)
 
     def OnUpdateUISetVLim(self, event):
+        event.Enable(self._brain._has_data())
+
+    def OnUpdateUISetTime(self, event):
         event.Enable(self._brain._has_data())
 
     def SetImageSize(self, width, height):

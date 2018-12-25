@@ -75,7 +75,7 @@ setup(
         'base': [
             'colormath >= 2.1',
             'keyring >= 5',
-            'mne >= 0.16',
+            'mne >= 0.17',
             'nibabel >= 2.0',
             'pillow',
             'tqdm >= 4.8',

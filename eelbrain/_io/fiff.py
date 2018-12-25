@@ -6,6 +6,7 @@ import fnmatch
 from itertools import zip_longest
 from logging import getLogger
 import os
+from pathlib import Path
 
 import numpy as np
 
@@ -197,6 +198,29 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
     return Dataset((trigger, i_start), name, info=info)
 
 
+def find_mne_channel_types(info):
+    chs = {(ch['kind'], ch['unit']) for ch in info['chs']}
+    types = {ch[0] for ch in chs}
+    if FIFF.FIFFV_MEG_CH in types:
+        units = {ch[1] for ch in chs if ch[0] == FIFF.FIFFV_MEG_CH}
+        mag = FIFF.FIFF_UNIT_T in units
+        grad = FIFF.FIFF_UNIT_T_M in units
+    else:
+        mag = grad = False
+    eeg = FIFF.FIFFV_EEG_CH in types
+    eog = FIFF.FIFFV_EOG_CH in types
+    out = []
+    if mag:
+        out.append('mag')
+    if grad:
+        out.append('grad')
+    if eeg:
+        out.append('eeg')
+    if eog:
+        out.append('eog')
+    return out
+
+
 def _guess_ndvar_data_type(info):
     """Guess which type of data to extract from an mne object.
 
@@ -213,15 +237,11 @@ def _guess_ndvar_data_type(info):
     data : str
         Kind of data to extract
     """
-    chs = info['chs']
-    if any(ch['kind'] == FIFF.FIFFV_MEG_CH for ch in chs):
-        if any(ch['unit'] == FIFF.FIFF_UNIT_T for ch in chs):
-            return 'mag'
-        elif any(ch['unit'] == FIFF.FIFF_UNIT_T_M for ch in chs):
-            return 'grad'
-    elif any(ch['kind'] == FIFF.FIFFV_EEG_CH for ch in chs):
-        return 'eeg'
-    raise ValueError("No MEG or EEG channel found in info.")
+    data_types = find_mne_channel_types(info)
+    if data_types:
+        return data_types[0]
+    else:
+        raise ValueError("No MEG, EEG or EOG channel found in data")
 
 
 def _picks(info, data, exclude):
@@ -229,6 +249,10 @@ def _picks(info, data, exclude):
         meg = False
         eeg = True
         eog = False
+    elif data == 'eog':
+        meg = False
+        eeg = False
+        eog = True
     elif data == 'eeg&eog':
         meg = False
         eeg = True
@@ -259,7 +283,7 @@ def _ndvar_epochs_reject(data, reject):
 
 
 def _sensor_info(data, vmax, mne_info, user_info=None, mult=1):
-    if data == 'eeg' or data == 'eeg&eog':
+    if data == 'eeg' or data == 'eog' or data == 'eeg&eog':
         info = _info.for_eeg(vmax, mult)
         summary_vmax = 0.1 * vmax if vmax else None
         summary_info = _info.for_eeg(summary_vmax, mult)
@@ -610,7 +634,7 @@ def mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, i_start='i_start',
     return epochs
 
 
-def sensor_dim(info, picks=None, sysname=None):
+def sensor_dim(info, picks=None, sysname=None, connectivity=None):
     """Create a :class:`Sensor` dimension from an :class:`mne.Info` object.
 
     Parameters
@@ -625,6 +649,18 @@ def sensor_dim(info, picks=None, sysname=None):
         Name of the sensor system to load sensor connectivity (e.g. 'neuromag',
         inferred automatically for KIT data converted with a recent version of
         MNE-Python).
+    connectivity : str | list of (str, str) | array of int, (n_edges, 2)
+        Connectivity between elements. Can be specified as:
+
+        - ``"none"`` for no connections
+        - list of connections (e.g., ``[('OZ', 'O1'), ('OZ', 'O2'), ...]``)
+        - :class:`numpy.ndarray` of int, shape (n_edges, 2), to specify
+          connections in terms of indices. Each row should specify one
+          connection [i, j] with i < j. If the array's dtype is uint32,
+          property checks are disabled to improve efficiency.
+        - ``"grid"`` to use adjacency in the sensor names
+
+        If unspecified, it is inferred from ``sysname`` if possible.
 
     Returns
     -------
@@ -667,7 +703,9 @@ def sensor_dim(info, picks=None, sysname=None):
             raise ValueError("Unknown channel unit for sysname='neuromag': %r"
                              % (ch_unit,))
 
-    if sysname is not None:
+    if connectivity is not None:
+        pass
+    elif sysname is not None:
         c_matrix, names = mne.channels.read_ch_connectivity(sysname)
 
         # fix channel names
@@ -679,14 +717,15 @@ def sensor_dim(info, picks=None, sysname=None):
             index = np.array([names.index(name) for name in ch_names])
             c_matrix = c_matrix[index][:, index]
 
-        conn = _matrix_graph(c_matrix)
+        connectivity = _matrix_graph(c_matrix)
     else:
-        conn = 'custom'
+        connectivity = 'none'
 
-    return Sensor(ch_locs, ch_names, sysname, connectivity=conn)
+    return Sensor(ch_locs, ch_names, sysname, connectivity=connectivity)
 
 
 def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads',
+              sysname=None,  connectivity=None,
               inv=None, lambda2=1, method='dSPM', pick_ori=None, src=None,
               subjects_dir=None, parc='aparc', label=None):
     """Raw dta as NDVar
@@ -709,6 +748,22 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
         Channels to exclude (:func:`mne.pick_types` kwarg).
         If 'bads' (default), exclude channels in info['bads'].
         If empty do not exclude any.
+    sysname : str
+        Name of the sensor system to load sensor connectivity (e.g. 'neuromag',
+        inferred automatically for KIT data converted with a recent version of
+        MNE-Python).
+    connectivity : str | list of (str, str) | array of int, (n_edges, 2)
+        Connectivity between elements. Can be specified as:
+
+        - ``"none"`` for no connections
+        - list of connections (e.g., ``[('OZ', 'O1'), ('OZ', 'O2'), ...]``)
+        - :class:`numpy.ndarray` of int, shape (n_edges, 2), to specify
+          connections in terms of indices. Each row should specify one
+          connection [i, j] with i < j. If the array's dtype is uint32,
+          property checks are disabled to improve efficiency.
+        - ``"grid"`` to use adjacency in the sensor names
+
+        If unspecified, it is inferred from ``sysname`` if possible.
     inv : InverseOperator
         MNE inverse operator to transform data to source space (by default, data
         are loaded in sensor space). If ``inv`` is specified, subsequent
@@ -765,7 +820,7 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
         if data is None:
             data = _guess_ndvar_data_type(raw.info)
         picks = _picks(raw.info, data, exclude)
-        dim = sensor_dim(raw, picks)
+        dim = sensor_dim(raw, picks, sysname, connectivity)
         info = _sensor_info(data, None, raw.info)
     else:
         assert data is None
@@ -794,7 +849,8 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
 
 
 def epochs_ndvar(epochs, name=None, data=None, exclude='bads', mult=1,
-                 info=None, sensors=None, vmax=None, sysname=None):
+                 info=None, sensors=None, vmax=None, sysname=None,
+                 connectivity=None):
     """
     Convert an :class:`mne.Epochs` object to an :class:`NDVar`.
 
@@ -824,6 +880,18 @@ def epochs_ndvar(epochs, name=None, data=None, exclude='bads', mult=1,
         Name of the sensor system to load sensor connectivity (e.g. 'neuromag',
         inferred automatically for KIT data converted with a recent version of
         MNE-Python).
+    connectivity : str | list of (str, str) | array of int, (n_edges, 2)
+        Connectivity between elements. Can be specified as:
+
+        - ``"none"`` for no connections
+        - list of connections (e.g., ``[('OZ', 'O1'), ('OZ', 'O2'), ...]``)
+        - :class:`numpy.ndarray` of int, shape (n_edges, 2), to specify
+          connections in terms of indices. Each row should specify one
+          connection [i, j] with i < j. If the array's dtype is uint32,
+          property checks are disabled to improve efficiency.
+        - ``"grid"`` to use adjacency in the sensor names
+
+        If unspecified, it is inferred from ``sysname`` if possible.
     """
     if isinstance(epochs, str):
         epochs = mne.read_epochs(epochs)
@@ -840,13 +908,13 @@ def epochs_ndvar(epochs, name=None, data=None, exclude='bads', mult=1,
     if mult != 1:
         x *= mult
 
-    sensor = sensors or sensor_dim(epochs, picks, sysname)
+    sensor = sensors or sensor_dim(epochs, picks, sysname, connectivity)
     time = UTS(epochs.times[0], 1. / epochs.info['sfreq'], len(epochs.times))
     return NDVar(x, ('case', sensor, time), info=info_, name=name)
 
 
 def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
-                 sysname=None):
+                 sysname=None, connectivity=None):
     """
     Convert one or more mne :class:`Evoked` objects to an :class:`NDVar`.
 
@@ -869,6 +937,18 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
         Name of the sensor system to load sensor connectivity (e.g. 'neuromag',
         inferred automatically for KIT data converted with a recent version of
         MNE-Python).
+    connectivity : str | list of (str, str) | array of int, (n_edges, 2)
+        Connectivity between elements. Can be specified as:
+
+        - ``"none"`` for no connections
+        - list of connections (e.g., ``[('OZ', 'O1'), ('OZ', 'O2'), ...]``)
+        - :class:`numpy.ndarray` of int, shape (n_edges, 2), to specify
+          connections in terms of indices. Each row should specify one
+          connection [i, j] with i < j. If the array's dtype is uint32,
+          property checks are disabled to improve efficiency.
+        - ``"grid"`` to use adjacency in the sensor names
+
+        If unspecified, it is inferred from ``sysname`` if possible.
 
     Notes
     -----
@@ -944,7 +1024,7 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
             picks = _picks(e.info, data, exclude)
             x.append(e.data[picks])
 
-    sensor = sensor_dim(e0, picks, sysname)
+    sensor = sensor_dim(e0, picks, sysname, connectivity)
     time = UTS.from_int(first, last, sfreq)
     if case_out:
         dims = ('case', sensor, time)
@@ -1037,7 +1117,8 @@ def inverse_operator(inv, src, subjects_dir=None, parc='aparc', name=None):
 
 
 def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
-              name=None, check=True, parc='aparc', connectivity=None):
+              name=None, check=True, parc='aparc', connectivity=None,
+              sss_filename='{subject}-{src}-src.fif'):
     """
     Convert one or more :class:`mne.SourceEstimate` objects to an :class:`NDVar`.
 
@@ -1067,9 +1148,12 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
     connectivity : 'link-midline'
         Modify source space connectivity to link medial sources of the two
         hemispheres across the midline.
+    sss_filename : str
+        Filename template for the MNE source space file.
     """
     subjects_dir = mne.utils.get_subjects_dir(subjects_dir)
-
+    if isinstance(stc, Path):
+        stc = str(stc)
     if isinstance(stc, str):
         stc = mne.read_source_estimate(stc)
 
@@ -1093,10 +1177,10 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
     # Construct NDVar Dimensions
     time = UTS(stc.tmin, stc.tstep, stc.times.size)
     if isinstance(stc, mne.VolSourceEstimate):
-        ss = VolumeSourceSpace([stc.vertices], subject, src, subjects_dir, None)
+        ss = VolumeSourceSpace([stc.vertices], subject, src, subjects_dir, None, filename=sss_filename)
         is_vector = stc.data.ndim == 3
     else:
-        ss = SourceSpace(stc.vertices, subject, src, subjects_dir, parc)
+        ss = SourceSpace(stc.vertices, subject, src, subjects_dir, parc, filename=sss_filename)
         is_vector = isinstance(stc, mne.VectorSourceEstimate)
     # Apply connectivity modification
     if isinstance(connectivity, str):

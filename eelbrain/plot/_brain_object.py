@@ -14,7 +14,7 @@ import numpy as np
 import wx
 
 from .._colorspaces import to_rgb, to_rgba
-from .._data_obj import NDVar, SourceSpace
+from .._data_obj import NDVar, SourceSpace, asndvar
 from ..fmtxt import Image
 from ..mne_fixes import reset_logger
 from .._text import ms
@@ -346,6 +346,7 @@ class Brain(TimeSlicer, surfer.Brain):
         remove_existing : bool
             Remove data layers that have been added previously (default False).
         """
+        ndvar = asndvar(ndvar)
         # check input data and dimensions
         source = self._check_source_space(ndvar)
         # find ndvar time axis

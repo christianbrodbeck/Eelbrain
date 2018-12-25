@@ -4,10 +4,11 @@ from math import ceil, floor
 from operator import mul
 
 import numpy as np
-from numpy import newaxis
+from scipy.linalg import norm
 
 from .. import _info
 from .._data_obj import NDVar, Case, UTS, dataobj_repr, ascategorial, asndvar
+from .._utils.numpy_utils import newaxis
 
 
 class RevCorrData(object):
@@ -70,9 +71,9 @@ class RevCorrData(object):
                     n_cases = len(x_)
                     # check y
                     if not y.has_case:
-                        raise ValueError('y=%r: x has case dimension but y has not case' % (y,))
+                        raise ValueError(f'y={y!r}: x has case dimension but y does not')
                     elif len(y) != n_cases:
-                        raise ValueError('y=%r: has different number of cases from x (%i)' % (y, n_cases))
+                        raise ValueError(f'y={y!r}: different number of cases from x {n_cases}')
                     # prepare segment index
                     seg_i = np.arange(0, n_cases * n_times + 1, n_times, np.int64)[:, newaxis]
                     segments = np.hstack((seg_i[:-1], seg_i[1:]))
@@ -85,20 +86,39 @@ class RevCorrData(object):
                 assert not x_.has_case, 'some but not all x have case'
         case_to_segments = n_cases > 0
 
-        # y_data:  ydim x time array
-        if y.ndim == 1:
-            y_dimnames = ('time',)
-            ydims = ()
-        elif case_to_segments:
-            y_dimnames = y.get_dimnames(last=('case', 'time'))
-            ydims = y.get_dims(y_dimnames[:-2])
+        # vector dimension
+        vector_dims = [dim.name for dim in y.dims if dim._connectivity_type == 'vector']
+        if not vector_dims:
+            vector_dim = None
+        elif len(vector_dims) == 1:
+            vector_dim = vector_dims.pop()
         else:
-            y_dimnames = y.get_dimnames(last='time')
-            ydims = y.get_dims(y_dimnames[:-1])
-        shape = (
-            reduce(mul, map(len, ydims), 1),
-            n_cases * n_times if case_to_segments else n_times)
+            raise NotImplementedError(f"y={y!r}: more than one vector dimension ({', '.join(vector_dims)})")
+
+        # y_data: flatten to ydim x time array
+        last = ('time',)
+        n_ydims = -1
+        if case_to_segments:
+            last = ('case',) + last
+            n_ydims -= 1
+        if vector_dim:
+            last = (vector_dim,) + last
+        y_dimnames = y.get_dimnames(last=last)
+        ydims = y.get_dims(y_dimnames[:n_ydims])
+        n_times_flat = n_cases * n_times if case_to_segments else n_times
+        n_flat = reduce(mul, map(len, ydims), 1)
+        shape = (n_flat, n_times_flat)
         y_data = y.get_data(y_dimnames).reshape(shape)
+        # shape for exposing vector dimension
+        if vector_dim:
+            if not scale_data:
+                raise NotImplementedError("Vector data without scaling")
+            n_flat_prevector = reduce(mul, map(len, ydims[:-1]), 1)
+            n_vector = len(ydims[-1])
+            assert n_vector > 1
+            vector_shape = (n_flat_prevector, n_vector, n_times_flat)
+        else:
+            vector_shape = None
 
         # x_data:  predictor x time array
         x_data = []
@@ -109,7 +129,7 @@ class RevCorrData(object):
             ndim = x_.ndim - bool(n_cases)
             if ndim == 1:
                 xdim = None
-                dimnames = ('case' if n_cases else np.newaxis, 'time')
+                dimnames = ('case' if n_cases else newaxis, 'time')
                 data = x_.get_data(dimnames)
                 index = n_x
                 x_names.append(dataobj_repr(x_))
@@ -149,15 +169,27 @@ class RevCorrData(object):
             x_mean = x_data.mean(1)
             y_data -= y_mean[:, newaxis]
             x_data -= x_mean[:, newaxis]
-            if error == 'l1':
-                y_scale = np.abs(y_data).mean(1)
-                x_scale = np.abs(x_data).mean(1)
-            elif error == 'l2':
-                y_scale = y_data.std(1)
-                x_scale = x_data.std(1)
+            # for vector data, scale by vector norm
+            if vector_shape:
+                y_data_vector_shape = y_data.reshape(vector_shape)
+                y_data_scale = norm(y_data_vector_shape, axis=1)
             else:
-                raise RuntimeError("error=%r" % (error,))
-            y_data /= y_scale[:, newaxis]
+                y_data_vector_shape = None
+                y_data_scale = y_data
+
+            if error == 'l1':
+                y_scale = np.abs(y_data_scale).mean(-1)
+                x_scale = np.abs(x_data).mean(-1)
+            elif error == 'l2':
+                y_scale = (y_data_scale ** 2).mean(-1) ** 0.5
+                x_scale = (x_data ** 2).mean(-1) ** 0.5
+            else:
+                raise RuntimeError(f"error={error!r}")
+
+            if vector_shape:
+                y_data_vector_shape /= y_scale[:, newaxis, newaxis]
+            else:
+                y_data /= y_scale[:, newaxis]
             x_data /= x_scale[:, newaxis]
             # for data-check
             y_check = y_scale
@@ -180,6 +212,7 @@ class RevCorrData(object):
         if has_nan:
             raise ValueError("Data with NaN: " + ', '.join(has_nan))
 
+        self.error = error
         self.time = time_dim
         self.segments = segments
         self.cv_segments = self.cv_indexes = self.partitions = self.model = None
@@ -190,10 +223,12 @@ class RevCorrData(object):
         self.y_mean = y_mean
         self.y_scale = y_scale
         self.y_name = y.name
-        self._y_info = y.info
+        self.y_info = _info.copy(y.info)
         self.ydims = ydims
         self.yshape = tuple(map(len, ydims))
         self.full_y_dims = y.get_dims(y_dimnames)
+        self.vector_dim = vector_dim  # vector dimension name
+        self.vector_shape = vector_shape  # flat shape with vector dim separate
         # x
         self.x = x_data
         self.x_mean = x_mean
@@ -282,11 +317,20 @@ class RevCorrData(object):
     def data_scale_ndvars(self):
         if self._scale_data:
             # y
-            if self.ydims:
-                y_mean = NDVar(self.y_mean.reshape(self.yshape), self.ydims, self._y_info.copy(), self.y_name)
-                y_scale = NDVar(self.y_scale.reshape(self.yshape), self.ydims, self._y_info.copy(), self.y_name)
+            if self.yshape:
+                y_mean = NDVar(self.y_mean.reshape(self.yshape), self.ydims, self.y_info, self.y_name)
             else:
                 y_mean = self.y_mean[0]
+            # scale does not include vector dim
+            if self.vector_dim:
+                dims = self.ydims[:-1]
+                shape = self.yshape[:-1]
+            else:
+                dims = self.ydims
+                shape = self.yshape
+            if shape:
+                y_scale = NDVar(self.y_scale.reshape(shape), dims, self.y_info, self.y_name)
+            else:
                 y_scale = self.y_scale[0]
             # x
             x_mean = []
@@ -319,6 +363,11 @@ class RevCorrData(object):
         """
         h_time = UTS(tstart, self.time.tstep, h.shape[-1])
         hs = []
+        if self._scale_data:
+            info = _info.for_normalized_data(self.y_info, 'Response')
+        else:
+            info = self.y_info
+
         for name, dim, index in self._x_meta:
             x = h[:, index, :]
             if dim is None:
@@ -331,26 +380,43 @@ class RevCorrData(object):
                     x = x.reshape(self.yshape + x.shape[1:])
             else:
                 x = x[0]
-            hs.append(NDVar(x, dims, self._y_info.copy(), name))
+            hs.append(NDVar(x, dims, info, name))
 
         if self._multiple_x:
             return tuple(hs)
         else:
             return hs[0]
 
-    def package_statistic(self, stat, meas, name):
-        if not self.ydims:
-            return stat[0]
-        elif len(self.ydims) > 1:
-            stat = stat.reshape(self.yshape)
-        return NDVar(stat, self.ydims, _info.for_stat_map(meas), name)
-
-    def package_value(self, value, name):
-        if not self.ydims:
+    def package_value(
+            self,
+            value: np.ndarray,  # data
+            name: str,  # NDVar name
+            info: dict = None,  # NDVar info
+            meas: str = None,  # for NDVar info
+    ):
+        if not self.yshape:
             return value[0]
-        elif len(self.ydims) > 1:
-            value = value.reshape(self.yshape)
-        return NDVar(value, self.ydims, self._y_info.copy(), name)
+
+        # shape
+        has_vector = value.shape[0] > self.yshape[0]
+        if self.vector_dim and not has_vector:
+            dims = self.ydims[:-1]
+            shape = self.yshape[:-1]
+        else:
+            dims = self.ydims
+            shape = self.yshape
+        if not dims:
+            return value[0]
+        elif len(shape) > 1:
+            value = value.reshape(shape)
+
+        # info
+        if meas:
+            info = _info.for_stat_map(meas, old=info)
+        elif info is None:
+            info = self.y_info
+
+        return NDVar(value, dims, info, name)
 
     def package_y_like(self, data, name):
         shape = tuple(map(len, self.full_y_dims))
@@ -365,3 +431,37 @@ class RevCorrData(object):
         else:
             dims = self.full_y_dims
         return NDVar(data, dims, {}, name)
+
+    def vector_correlation(self, y, y_pred):
+        "Correlation for vector data"
+        assert self._scale_data
+        assert self.error in ('l1', 'l2')
+        assert y.ndim == y_pred.ndim == 3
+        # import ipdb; ipdb.set_trace()
+        y_pred_norm = norm(y_pred, axis=1)
+        y_norm = norm(y, axis=1)
+        # l2 correlation
+        y_pred_scale = (y_pred_norm ** 2).mean(1) ** 0.5
+        y_pred_scale[y_pred_scale == 0] = 1
+        y_pred_l2 = y_pred / y_pred_scale[:, newaxis, newaxis]
+        if self.error == 'l1':
+            y_scale = (y_norm ** 2).mean(1) ** 0.5
+            y_l2 = y / y_scale[:, newaxis, newaxis]
+        else:
+            y_l2 = y
+        r_l2 = np.multiply(y_l2, y_pred_l2, out=y_pred_l2).sum(1).mean(1)
+        # l1 correlation
+        if self.error == 'l1':
+            y_pred_scale = y_pred_norm.mean(1)
+            y_pred_scale[y_pred_scale == 0] = 1
+            y_pred_l1 = y_pred / y_pred_scale[:, newaxis, newaxis]
+            # E|X| = 1 --> E√XX = 1
+            yy = np.multiply(y, y_pred_l1, out=y_pred_l1).sum(1)
+            sign = np.sign(yy)
+            np.abs(yy, out=yy)
+            yy **= 0.5
+            yy *= sign
+            r_l1 = yy.mean(1)
+        else:
+            r_l1 = None
+        return r_l2, r_l1

@@ -74,6 +74,9 @@ class EelbrainWindow(object):
     def OnUpdateUISetVLim(self, event):
         event.Enable(False)
 
+    def OnUpdateUISetTime(self, event):
+        event.Enable(False)
+
     def OnUpdateUITools(self, event):
         event.Enable(hasattr(self, 'MakeToolsMenu'))
 
@@ -128,6 +131,9 @@ class EelbrainFrame(wx.Frame, EelbrainWindow):
         raise RuntimeError(str(self))
 
     def OnSetMarkedChannels(self, event):
+        raise RuntimeError(str(self))
+
+    def OnSetTime(self, event):
         raise RuntimeError(str(self))
 
     def OnSetWindowTitle(self, event):

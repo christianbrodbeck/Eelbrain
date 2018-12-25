@@ -16,7 +16,7 @@ from matplotlib.backends import backend_wx
 from matplotlib.figure import Figure
 import wx
 
-from .._wxutils import ID, Icon
+from .._wxutils import ID, FloatValidator, Icon
 from .app import get_app
 from .frame import EelbrainFrame, EelbrainDialog
 from .help import show_help_txt
@@ -266,6 +266,12 @@ class CanvasFrame(EelbrainFrame):
             self.figure.savefig(dlg.GetPath())
         dlg.Destroy()
 
+    def OnSetTime(self, event):
+        dlg = SetTimeDialog(self, self._eelfigure.get_time())
+        if dlg.ShowModal() == wx.ID_OK:
+            self._eelfigure.set_time(dlg.time)
+        dlg.Destroy()
+
     def OnSetVLim(self, event):
         if self._eelfigure._can_set_vlim:
             vlim = self._eelfigure.get_vlim()
@@ -296,6 +302,9 @@ class CanvasFrame(EelbrainFrame):
 
     def OnUpdateUISetVLim(self, event):
         event.Enable(self._eelfigure._can_set_xlim or self._eelfigure._can_set_ylim)
+
+    def OnUpdateUISetTime(self, event):
+        event.Enable(self._eelfigure._can_set_time)
 
 
 class TestCanvas(CanvasFrame):
@@ -447,6 +456,38 @@ class AxisLimitsDialog(EelbrainDialog):
         button_sizer.Realize()
 
         # finalize
+        mainsizer.Add(sizer, flag=wx.ALL, border=10)
+        # mainsizer.AddSpacer(10)
+        mainsizer.Add(button_sizer, flag=wx.ALL | wx.ALIGN_RIGHT, border=10)
+        self.SetSizer(mainsizer)
+        mainsizer.Fit(self)
+
+
+class SetTimeDialog(EelbrainDialog):
+
+    def __init__(self, parent, current_time):
+        EelbrainDialog.__init__(self, parent, title="Set Time")
+        self.time = current_time
+
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sizer.Add(wx.StaticText(self, label="New time:"))
+        self.text_ctrl = wx.TextCtrl(self, validator=FloatValidator(self, 'time'))
+        sizer.Add(self.text_ctrl)
+        self.text_ctrl.SetFocus()
+
+        # buttons
+        button_sizer = wx.StdDialogButtonSizer()
+        # ok
+        btn = wx.Button(self, wx.ID_OK)
+        btn.SetDefault()
+        button_sizer.AddButton(btn)
+        # cancel
+        btn = wx.Button(self, wx.ID_CANCEL)
+        button_sizer.AddButton(btn)
+        button_sizer.Realize()
+
+        # finalize
+        mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(sizer, flag=wx.ALL, border=10)
         # mainsizer.AddSpacer(10)
         mainsizer.Add(button_sizer, flag=wx.ALL | wx.ALIGN_RIGHT, border=10)

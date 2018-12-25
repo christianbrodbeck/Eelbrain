@@ -263,7 +263,7 @@ def melt(name, cells, cell_var_name, ds, labels=None):
         cells = []
         cell_values = []
         if '%i' in cell_expression:
-            pattern = cell_expression.replace('%i', '(\d+)')
+            pattern = cell_expression.replace('%i', r'(\d+)')
             for key in ds:
                 m = re.match(pattern, key)
                 if m:

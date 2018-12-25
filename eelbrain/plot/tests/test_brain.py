@@ -1,53 +1,63 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from nose.tools import eq_
+import sys
 
-from eelbrain import datasets, plot
-from eelbrain._utils.testing import requires_mne_sample_data
+import numpy as np
+import pytest
+
+from eelbrain import datasets, plot, _info, NDVar
+from eelbrain._wxgui.testing import hide_plots
 
 
-@requires_mne_sample_data
+@hide_plots
 def test_plot_brain():
     """Test plot.brain plots"""
-    src = datasets.get_mne_sample(src='ico', sub=[0])['src']
+    if sys.platform.startswith('win'):
+        pytest.xfail("Hangs on Appveyor")
+    stc = datasets.get_mne_stc(True)
 
     # size
-    b = plot.brain.brain(src.source, hemi='rh', w=400, h=300, mask=False)
-    eq_(b.screenshot().shape, (300, 400, 3))
+    b = plot.brain.brain(stc.source, hemi='rh', w=400, h=300, mask=False)
+    assert b.screenshot().shape == (300, 400, 3)
+    if sys.platform == 'linux':
+        pytest.xfail("Brain.set_size() on Linux/Travis")
     b.set_size(200, 150)
-    eq_(b.screenshot().shape, (150, 200, 3))
+    assert b.screenshot().shape == (150, 200, 3)
     b.close()
     # both hemispheres
-    b = plot.brain.brain(src.source, w=600, h=300, mask=False)
-    eq_(b.screenshot().shape, (300, 600, 3))
+    b = plot.brain.brain(stc.source, w=600, h=300, mask=False)
+    assert b.screenshot().shape == (300, 600, 3)
     b.set_size(400, 150)
-    eq_(b.screenshot().shape, (150, 400, 3))
+    assert b.screenshot().shape == (150, 400, 3)
     b.close()
 
     # plot shortcuts
-    p = plot.brain.dspm(src)
-    cb = p.plot_colorbar(show=False)
+    p = plot.brain.dspm(stc, mask=False)
+    cb = p.plot_colorbar()
     cb.close()
     p.close()
 
-    p = plot.brain.dspm(src, hemi='lh')
-    cb = p.plot_colorbar(show=False)
+    p = plot.brain.dspm(stc, hemi='lh', mask=False)
+    cb = p.plot_colorbar()
     cb.close()
     p.close()
 
-    p = plot.brain.cluster(src, hemi='rh', views='parietal')
-    cb = p.plot_colorbar(show=False)
+    p = plot.brain.cluster(stc, hemi='rh', views='parietal', mask=False)
+    cb = p.plot_colorbar()
     cb.close()
     p.close()
 
-    image = plot.brain.bin_table(src, tstart=0.1, tstop=0.3, tstep=0.1)
+    image = plot.brain.bin_table(stc, tstart=0.05, tstop=0.07, tstep=0.01, surf='white', mask=False)
     print(repr(image))
     print(image)
 
     # plot p-map
-    stat_map = src[0]
-    pmap = stat_map.abs()
-    pmap /= pmap.max()
-    p = plot.brain.p_map(pmap, stat_map)
-    cb = p.plot_colorbar(show=False)
+    pmap = NDVar(np.random.uniform(0, 1, stc.shape), stc.dims, _info.for_p_map(stc.info))
+    p = plot.brain.p_map(pmap, stc, mask=False)
+    cb = p.plot_colorbar()
     cb.close()
+    p.close()
+
+    # mask
+    stcm = stc.mask(stc < 11)
+    p = plot.brain.brain(stcm, mask=False)
     p.close()

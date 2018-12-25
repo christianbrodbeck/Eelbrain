@@ -18,14 +18,10 @@ I_START = np.arange(1001, 1441, 55)
 
 class BaseExperiment(MneExperiment):
 
-    path_version = 1
-
     sessions = 'file'
 
 
 class EventExperiment(MneExperiment):
-
-    path_version = 1
 
     trigger_shift = 0.03
 
@@ -104,7 +100,7 @@ def test_mne_experiment_templates():
 
     # find terminal field names
     assert e.find_keys('raw-file') == {'root', 'subject', 'session'}
-    assert e.find_keys('evoked-file', False) == {'subject', 'session', 'modality', 'raw', 'epoch', 'rej', 'equalize_evoked_count', 'model', }
+    assert e.find_keys('evoked-file', False) == {'subject', 'session', 'raw', 'epoch', 'rej', 'equalize_evoked_count', 'model', }
 
     assert_inv_works(e, 'free-3-MNE', ('free', 3, 'MNE'),
                      {'loose': 1, 'depth': 0.8},
@@ -163,8 +159,6 @@ def test_test_experiment():
 
 
 class FileExperiment(MneExperiment):
-
-    path_version = 1
 
     auto_delete_cache = 'disable'
 

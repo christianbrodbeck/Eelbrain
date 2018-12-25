@@ -41,6 +41,7 @@ NDVar dimensions (not usually initialized by themselves but through
    Scalar
    Sensor
    SourceSpace
+   VolumeSourceSpace
    Space
    UTS
 

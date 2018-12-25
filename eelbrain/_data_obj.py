@@ -47,6 +47,7 @@ import operator
 import os
 import re
 import string
+import typing
 
 from matplotlib.ticker import (
     FixedLocator, FormatStrFormatter, FuncFormatter, IndexFormatter)
@@ -572,6 +573,8 @@ def asndvar(x, sub=None, ds=None, n=None, dtype=None):
             x = evoked_ndvar(x)
         else:
             x = combine(map(asndvar, x))
+    elif hasattr(x, '_default_plot_obj'):
+        x = x._default_plot_obj()
     else:
         raise TypeError("NDVar required, got %s" % repr(x))
 
@@ -1178,9 +1181,9 @@ class Var(object):
         if isinstance(x, Iterator):
             x = list(x)
         x = np.asarray(x)
-        if x.dtype.kind == 'O':
-            raise TypeError("Var can not handle object-type arrays. Consider "
-                            "using a Datalist.")
+        if x.dtype.kind in 'OUSV':
+            alt_type = 'Factor' if x.dtype.kind == 'S' else 'Datalist'
+            raise TypeError(f"x with numpy dtype.kind={x.dtype.kind!r}: Var needs numerical data type. Consider using a {alt_type} instead.")
         elif x.ndim > 1:
             if sum(i > 1 for i in x.shape) <= 1:
                 x = np.ravel(x)
@@ -1195,11 +1198,7 @@ class Var(object):
         if tile > 1:
             x = np.tile(x, tile)
 
-        if info is None:
-            info = {}
-        elif not isinstance(info, dict):
-            raise TypeError("type(info)=%s; need dict" % type(info))
-
+        info = {} if info is None else dict(info)
         self.__setstate__((x, name, info))
 
     def __setstate__(self, state):
@@ -1278,8 +1277,7 @@ class Var(object):
     # numeric ---
     def __neg__(self):
         x = -self.x
-        info = self.info.copy()
-        info['longname'] = '-' + longname(self)
+        info = {**self.info, 'longname': f"-{longname(self)}"}
         return Var(x, info=info)
 
     def __pos__(self):
@@ -1292,10 +1290,8 @@ class Var(object):
         if isdataobject(other):
             # ??? should Var + Var return sum or Model?
             return Model((self, other))
-
         x = self.x + other
-        info = self.info.copy()
-        info['longname'] = longname(self) + ' + ' + longname(other)
+        info = {**self.info, 'longname': f"{longname(self)} + {longname(other)}"}
         return Var(x, info=info)
 
     def __iadd__(self, other):
@@ -1306,13 +1302,10 @@ class Var(object):
         if np.isscalar(other):
             x = other + self.x
         elif len(other) != len(self):
-            raise ValueError("Objects have different length (%i vs "
-                             "%i)" % (len(other), len(self)))
+            raise ValueError(f"Objects have different length ({len(other)} vs {len(self)})")
         else:
             x = other + self.x
-
-        info = self.info.copy()
-        info['longname'] = longname(other) + ' + ' + longname(self)
+        info = {**self.info, 'longname': f"{longname(other)} + {longname(self)}"}
         return Var(x, info=info)
 
     def __sub__(self, other):
@@ -1320,14 +1313,10 @@ class Var(object):
         if np.isscalar(other):
             x = self.x - other
         elif len(other) != len(self):
-            err = ("Objects have different length (%i vs "
-                   "%i)" % (len(self), len(other)))
-            raise ValueError(err)
+            raise ValueError(f"Objects have different length ({len(self)} vs {len(other)})")
         else:
             x = self.x - other.x
-
-        info = self.info.copy()
-        info['longname'] = longname(self) + ' - ' + longname(other)
+        info = {**self.info, 'longname': f"{longname(self)} - {longname(other)}"}
         return Var(x, info=info)
 
     def __isub__(self, other):
@@ -1338,13 +1327,10 @@ class Var(object):
         if np.isscalar(other):
             x = other - self.x
         elif len(other) != len(self):
-            raise ValueError("Objects have different length (%i vs "
-                             "%i)" % (len(other), len(self)))
+            raise ValueError(f"Objects have different length ({len(other)} vs {len(self)})")
         else:
             x = other - self.x
-
-        info = self.info.copy()
-        info['longname'] = longname(other) + ' - ' + longname(self)
+        info = {**self.info, 'longname': f"{longname(other)} - {longname(self)}"}
         return Var(x, info=info)
 
     def __mul__(self, other):
@@ -1356,9 +1342,7 @@ class Var(object):
             x = self.x * other.x
         else:
             x = self.x * other
-
-        info = self.info.copy()
-        info['longname'] = longname(self) + ' * ' + longname(other)
+        info = {**self.info, 'longname': f"{longname(self)} * {longname(other)}"}
         return Var(x, info=info)
 
     def __imul__(self, other):
@@ -1369,13 +1353,10 @@ class Var(object):
         if np.isscalar(other):
             x = other * self.x
         elif len(other) != len(self):
-            raise ValueError("Objects have different length (%i vs "
-                             "%i)" % (len(other), len(self)))
+            raise ValueError(f"Objects have different length ({len(other)} vs {len(self)})")
         else:
             x = other * self.x
-
-        info = self.info.copy()
-        info['longname'] = longname(other) + ' * ' + longname(self)
+        info = {**self.info, 'longname': f"{longname(other)} * {longname(self)}"}
         return Var(x, info=info)
 
     def __floordiv__(self, other):
@@ -1383,9 +1364,7 @@ class Var(object):
             x = self.x // other.x
         else:
             x = self.x // other
-
-        info = self.info.copy()
-        info['longname'] = longname(self) + ' // ' + longname(other)
+        info = {**self.info, 'longname': f"{longname(self)} // {longname(other)}"}
         return Var(x, info=info)
 
     def __ifloordiv__(self, other):
@@ -1401,9 +1380,7 @@ class Var(object):
             return Interaction((self, other))
         else:
             x = self.x % other
-
-        info = self.info.copy()
-        info['longname'] = longname(self) + ' % ' + longname(other)
+        info = {**self.info, 'longname': f"{longname(self)} % {longname(other)}"}
         return Var(x, info=info)
 
     def __imod__(self, other):
@@ -1449,9 +1426,7 @@ class Var(object):
                                   beta_labels=other.dummy_complete_labels)
         else:
             x = self.x / other
-
-        info = self.info.copy()
-        info['longname'] = longname(self) + ' / ' + longname(other)
+        info = {**self.info, 'longname': f"{longname(self)} / {longname(other)}"}
         return Var(x, info=info)
 
     def __idiv__(self, other):
@@ -1463,8 +1438,7 @@ class Var(object):
             x = self.x ** other.x
         else:
             x = self.x ** other
-        info = self.info.copy()
-        info['longname'] = longname(self) + ' ** ' + longname(other)
+        info = {**self.info, 'longname': f"{longname(self)} ** {longname(other)}"}
         return Var(x, info=info)
 
     def __round__(self, n=0):
@@ -1475,8 +1449,7 @@ class Var(object):
 
     def abs(self, name=None):
         "Return a Var with the absolute value."
-        info = self.info.copy()
-        info['longname'] = 'abs(' + longname(self) + ')'
+        info = {**self.info, 'longname': f"abs({longname(self)})"}
         return Var(np.abs(self.x), name, info=info)
 
     def argmax(self):
@@ -2060,10 +2033,10 @@ class Factor(_Effect):
         Repeat ``x`` as a whole ``tile`` many times.
     labels : dict | OrderedDict | tuple
         An optional dictionary mapping values as they occur in ``x`` to the
-        Factor's cell labels. Since :class`dict`s are unordered, labels are
+        Factor's cell labels. Since :class`dict` is unordered, labels are
         sorted alphabetically by default. In order to define cells in a
-        different order, use a :class:`collections.OrderedDict` object or
-        define labels as ``((key, value), ...)`` tuple.
+        different order, use a :class:`collections.OrderedDict` or define
+        labels as ``((key, value), ...)`` tuple.
 
     Attributes
     ----------
@@ -2907,7 +2880,7 @@ class NDVar(object):
 
     # numeric ---
     def __neg__(self):
-        return NDVar(-self.x, self.dims, self.info.copy(), self.name)
+        return NDVar(-self.x, self.dims, self.info, self.name)
 
     def __pos__(self):
         return self
@@ -2916,7 +2889,7 @@ class NDVar(object):
         return self.abs()
 
     def __invert__(self):
-        return NDVar(~self.x, self.dims, self.info.copy(), self.name)
+        return NDVar(~self.x, self.dims, self.info, self.name)
 
     def __lt__(self, other):
         return NDVar(self.x < self._ialign(other),
@@ -3048,7 +3021,7 @@ class NDVar(object):
 
     def __add__(self, other):
         dims, x_self, x_other = self._align(other)
-        return NDVar(x_self + x_other, dims, self.info.copy(), self.name)
+        return NDVar(x_self + x_other, dims, self.info, self.name)
 
     def __iadd__(self, other):
         if self.x.dtype.kind == 'b':
@@ -3057,11 +3030,11 @@ class NDVar(object):
         return self
 
     def __radd__(self, other):
-        return NDVar(other + self.x, self.dims, self.info.copy(), self.name)
+        return NDVar(other + self.x, self.dims, self.info, self.name)
 
     def __div__(self, other):
         dims, x_self, x_other = self._align(other)
-        return NDVar(x_self / x_other, dims, self.info.copy(), self.name)
+        return NDVar(x_self / x_other, dims, self.info, self.name)
 
     def __idiv__(self, other):
         if self.x.dtype.kind == 'b':
@@ -3070,7 +3043,7 @@ class NDVar(object):
         return self
 
     def __rdiv__(self, other):
-        return NDVar(other / self.x, self.dims, self.info.copy(), self.name)
+        return NDVar(other / self.x, self.dims, self.info, self.name)
 
     def __truediv__(self, other):
         return self.__div__(other)
@@ -3083,7 +3056,7 @@ class NDVar(object):
 
     def __mul__(self, other):
         dims, x_self, x_other = self._align(other)
-        return NDVar(x_self * x_other, dims, self.info.copy(), self.name)
+        return NDVar(x_self * x_other, dims, self.info, self.name)
 
     def __imul__(self, other):
         if self.x.dtype.kind == 'b':
@@ -3092,12 +3065,11 @@ class NDVar(object):
         return self
 
     def __rmul__(self, other):
-        return NDVar(other * self.x, self.dims, self.info.copy(), self.name)
+        return NDVar(other * self.x, self.dims, self.info, self.name)
 
     def __pow__(self, other):
         dims, x_self, x_other = self._align(other)
-        return NDVar(np.power(x_self, x_other), dims, self.info.copy(),
-                     self.name)
+        return NDVar(np.power(x_self, x_other), dims, self.info, self.name)
 
     def __ipow__(self, other):
         if self.x.dtype.kind == 'b':
@@ -3106,14 +3078,14 @@ class NDVar(object):
         return self
 
     def __rpow__(self, other):
-        return NDVar(other ** self.x, self.dims, self.info.copy(), self.name)
+        return NDVar(other ** self.x, self.dims, self.info, self.name)
 
     def __round__(self, n=0):
-        return NDVar(np.round(self.x, n), self.dims, self.info.copy(), self.name)
+        return NDVar(np.round(self.x, n), self.dims, self.info, self.name)
 
     def __sub__(self, other):
         dims, x_self, x_other = self._align(other)
-        return NDVar(x_self - x_other, dims, self.info.copy(), self.name)
+        return NDVar(x_self - x_other, dims, self.info, self.name)
 
     def __isub__(self, other):
         if self.x.dtype.kind == 'b':
@@ -3122,40 +3094,40 @@ class NDVar(object):
         return self
 
     def __rsub__(self, other):
-        return NDVar(other - self.x, self.dims, self.info.copy(), self.name)
+        return NDVar(other - self.x, self.dims, self.info, self.name)
 
     def __and__(self, other):
         dims, x_self, x_other = self._align(other)
-        return NDVar(x_self & x_other, dims, self.info.copy(), self.name)
+        return NDVar(x_self & x_other, dims, self.info, self.name)
 
     def __iand__(self, other):
         self.x &= self._ialign(other)
         return self
 
     def __rand__(self, other):
-        return NDVar(other & self.x, self.dims, self.info.copy(), self.name)
+        return NDVar(other & self.x, self.dims, self.info, self.name)
 
     def __xor__(self, other):
         dims, x_self, x_other = self._align(other)
-        return NDVar(x_self ^ x_other, dims, self.info.copy(), self.name)
+        return NDVar(x_self ^ x_other, dims, self.info, self.name)
 
     def __ixor__(self, other):
         self.x ^= self._ialign(other)
         return self
 
     def __rxor__(self, other):
-        return NDVar(other ^ self.x, self.dims, self.info.copy(), self.name)
+        return NDVar(other ^ self.x, self.dims, self.info, self.name)
 
     def __or__(self, other):
         dims, x_self, x_other = self._align(other)
-        return NDVar(x_self | x_other, dims, self.info.copy(), self.name)
+        return NDVar(x_self | x_other, dims, self.info, self.name)
 
     def __ior__(self, other):
         self.x |= self._ialign(other)
         return self
 
     def __ror__(self, other):
-        return NDVar(other | self.x, self.dims, self.info.copy(), self.name)
+        return NDVar(other | self.x, self.dims, self.info, self.name)
 
     # container ---
     def _dim_index_unravel(self, index):
@@ -3210,8 +3182,7 @@ class NDVar(object):
         abs : NDVar
             NDVar with same dimensions and absolute values.
         """
-        return NDVar(np.abs(self.x), self.dims, self.info.copy(),
-                     name or self.name)
+        return NDVar(np.abs(self.x), self.dims, self.info, name or self.name)
 
     def all(self, dims=(), **regions):
         """Whether all values are nonzero over given dimensions
@@ -3394,10 +3365,10 @@ class NDVar(object):
                 x_out.append(func(x_cell, axis=0))
 
         # update info for summary
-        info = self.info.copy()
+        info = self.info
         if 'summary_info' in info:
+            info = info.copy()
             info.update(info.pop('summary_info'))
-
         return NDVar(np.array(x_out), (Case(len(x_out)),) + self.dims[1:], info, name or self.name)
 
     def _aggregate_over_dims(self, axis, regions, func):
@@ -3468,8 +3439,7 @@ class NDVar(object):
         dtype : numpy dtype
             Numpy data-type specification (see :meth:`numpy.ndarray.astype`).
         """
-        return NDVar(self.x.astype(dtype), self.dims, self.info.copy(),
-                     self.name)
+        return NDVar(self.x.astype(dtype), self.dims, self.info, self.name)
 
     def bin(self, step=None, start=None, stop=None, func=None, dim=None,
             name=None, nbins=None):
@@ -3512,9 +3482,9 @@ class NDVar(object):
             if step is not None:
                 raise TypeError("can only specify one of step and nbins")
             elif not isinstance(nbins, int):
-                raise TypeError("nbins needs to be int, got %r" % (nbins,))
+                raise TypeError(f"nbins={nbins!r}: need int")
             elif nbins < 1:
-                raise ValueError("nbins needs to be >= 1, got %r" % (nbins,))
+                raise ValueError(f"nbins={nbins}: needs to be >= 1")
         elif step is None and nbins is None:
             raise TypeError("need to specify one of step and nbins")
 
@@ -3524,8 +3494,7 @@ class NDVar(object):
             elif self.has_dim('time'):
                 dim = 'time'
             else:
-                raise TypeError("NDVar has more then 1 dimensions, the dim "
-                                "argument needs to be specified")
+                raise TypeError("NDVar has more then 1 dimensions, the dim argument needs to be specified")
 
         # summary-func
         if func is None:
@@ -3540,10 +3509,10 @@ class NDVar(object):
                 func = np.mean
         elif isinstance(func, str):
             if func not in EVAL_CONTEXT:
-                raise ValueError("Unknown summary function: func=%r" % func)
+                raise ValueError(f"func={func!r}: unknown summary function")
             func = EVAL_CONTEXT[func]
         elif not callable(func):
-            raise TypeError("func=%s" % repr(func))
+            raise TypeError(f"func={func!r}")
 
         axis = self.get_axis(dim)
         dim = self.get_dim(dim)
@@ -3562,8 +3531,7 @@ class NDVar(object):
 
         dims = list(self.dims)
         dims[axis] = out_dim
-        info = self.info.copy()
-        info['bins'] = tuple(bins)
+        info = {**self.info, 'bins': tuple(bins)}
         return NDVar(x, dims, info, name or self.name)
 
     def clip(self, min=None, max=None, name=None, out=None):
@@ -3591,7 +3559,7 @@ class NDVar(object):
         else:
             x = self.x.clip(min, max)
         if out is None:
-            return NDVar(x, self.dims, self.info.copy(), name or self.name)
+            return NDVar(x, self.dims, self.info, name or self.name)
         else:
             return out
 
@@ -3612,8 +3580,7 @@ class NDVar(object):
         -----
         The info dictionary is still a shallow copy.
         """
-        return NDVar(self.x.copy(), self.dims, self.info.copy(),
-                     name or self.name)
+        return NDVar(self.x.copy(), self.dims, self.info, name or self.name)
 
     def diff(self, dim=None, n=1, pad=True, name=None):
         """Discrete difference
@@ -3651,7 +3618,7 @@ class NDVar(object):
         else:
             raise NotImplementedError("pad != 1")
 
-        return NDVar(x, self.dims, self.info.copy(), name or self.name)
+        return NDVar(x, self.dims, self.info, name or self.name)
 
     def dot(self, ndvar, dim=None, name=None):
         """Dot product
@@ -3735,8 +3702,7 @@ class NDVar(object):
         uneven.
         """
         x = np.abs(scipy.signal.hilbert(self.x, axis=self.get_axis(dim)))
-        info = self.info.copy()
-        return NDVar(x, self.dims, info, name or self.name)
+        return NDVar(x, self.dims, self.info, name or self.name)
 
     def extrema(self, dims=(), **regions):
         """Extrema (value farthest away from 0) over given dimensions
@@ -3983,8 +3949,7 @@ class NDVar(object):
         if nad_ax:
             cmap = cmap.swapaxes(0, nad_ax)
 
-        info = self.info.copy()
-        info['cids'] = cids
+        info = {**self.info, 'cids': cids}
         return NDVar(cmap, self.dims, info, name or self.name)
 
     def log(self, base=None, name=None):
@@ -4006,7 +3971,7 @@ class NDVar(object):
         else:
             x = np.log(self.x)
             x /= log(base)
-        return NDVar(x, self.dims, self.info.copy(), name or self.name)
+        return NDVar(x, self.dims, self.info, name or self.name)
 
     def mask(self, mask, name=None):
         """Create a masked version of this NDVar (see :class:`numpy.ma.MaskedArray`)
@@ -4017,12 +3982,21 @@ class NDVar(object):
             Mask, with equal dimensions (``True`` values will be masked).
         name : str
             Name of the output NDVar (default is the current name).
+
+        See Also
+        --------
+        .unmask : remove mask
         """
         x_mask = self._ialign(mask)
         if x_mask.dtype.kind != 'b':
             x_mask = x_mask.astype(bool)
         x = np.ma.MaskedArray(self.x, x_mask)
-        return NDVar(x, self.dims, self.info.copy(), name or self.name)
+        return NDVar(x, self.dims, self.info, name or self.name)
+
+    def unmask(self, name=None):
+        """Remove mask from a masked ``NDVar``"""
+        x = self.x.data if isinstance(self.x, np.ma.masked_array) else self.x
+        return NDVar(x, self.dims, self.info, name or self.name)
 
     def max(self, dims=(), **regions):
         """Compute the maximum over given dimensions
@@ -4133,8 +4107,15 @@ class NDVar(object):
         x = norm(self.x, ord, axis)
         if self.ndim == 1:
             return x
+        if isinstance(self.x, np.ma.masked_array):
+            all_masked = np.all(self.x.mask, axis)
+            any_masked = np.any(self.x.mask, axis)
+            if np.any(all_masked != any_masked):
+                raise ValueError(f"Norm along {dim!r} with inconsistent mask")
+            mask = all_masked
+            x = np.ma.masked_array(x, mask)
         dims = self.dims[:axis] + self.dims[axis + 1:]
-        return NDVar(x, dims, self.info.copy(), name or self.name)
+        return NDVar(x, dims, self.info, name or self.name)
 
     def ols(self, x, name=None):
         """Sample-wise ordinary least squares regressions
@@ -4167,8 +4148,7 @@ class NDVar(object):
         """
         from ._stats import stats
 
-        info = self.info.copy()
-        info.update(meas='beta', unit=None)
+        info = _info.default_info('beta', self.info)
         if 'summary_info' in info:
             del info['summary_info']
 
@@ -4234,8 +4214,7 @@ class NDVar(object):
                 "dependent variable (%i)" % (len(x), len(self)))
 
         t = stats.lm_t(self.x, x._parametrize())[1:]  # drop intercept
-        return NDVar(t, ('case',) + self.dims[1:], self.info.copy(),
-                     name or self.name)
+        return NDVar(t, ('case',) + self.dims[1:], self.info, name or self.name)
 
     @staticmethod
     def _package_aggregated_output(x, dims, info, name):
@@ -4264,7 +4243,7 @@ class NDVar(object):
         else:
             x = self.x[newaxis].repeat(repeats, axis=0)
             dims = (Case(repeats),) + self.dims
-        return NDVar(x, dims, self.info.copy(), name or self.name)
+        return NDVar(x, dims, self.info, name or self.name)
 
     def residuals(self, x, name=None):
         """
@@ -4295,8 +4274,7 @@ class NDVar(object):
 
         from ._stats import stats
         res = stats.residuals(self.x, x)
-        info = self.info.copy()
-        return NDVar(res, self.dims, info, name or self.name)
+        return NDVar(res, self.dims, self.info, name or self.name)
 
     def rms(self, axis=(), **regions):
         """Compute the root mean square over given dimensions
@@ -4343,8 +4321,7 @@ class NDVar(object):
         -----
         Like :func:`numpy.sign`.
         """
-        return NDVar(np.sign(self.x), self.dims, self.info.copy(),
-                     name or self.name)
+        return NDVar(np.sign(self.x), self.dims, self.info, name or self.name)
 
     def smooth(self, dim, window_size, window='hamming', mode='center',
                name=None):
@@ -4431,7 +4408,7 @@ class NDVar(object):
                     dims[axis] = UTS(tmin, dim_object.tstep, dim_object.nsamples + n -1)
                 else:
                     raise ValueError("mode=%r" % (mode,))
-        return NDVar(x, dims, self.info.copy(), name or self.name)
+        return NDVar(x, dims, self.info, name or self.name)
 
     def std(self, dims=(), **regions):
         """Compute the standard deviation over given dimensions
@@ -4543,8 +4520,9 @@ class NDVar(object):
                 dims.pop(axis)
 
             # update info for summary
-            info = self.info.copy()
+            info = self.info
             if 'summary_info' in info:
+                info = info.copy()
                 info.update(info.pop('summary_info'))
             return self._package_aggregated_output(x, dims, info, name)
 
@@ -4574,7 +4552,6 @@ class NDVar(object):
         current NDVar.
         """
         var_name = kwargs.pop('name', self.name)
-        info = self.info.copy()
         dims = list(self.dims)
         n_axes = len(dims)
         index = [FULL_SLICE] * n_axes
@@ -4650,7 +4627,7 @@ class NDVar(object):
         if add_axis:
             x = np.expand_dims(x, 0)
         dims = tuple(dim for dim in dims if dim is not None)
-        return self._package_aggregated_output(x, dims, info, var_name)
+        return self._package_aggregated_output(x, dims, self.info, var_name)
 
     def sum(self, dims=(), **regions):
         """Compute the sum over given dimensions
@@ -4704,9 +4681,7 @@ class NDVar(object):
             idx = self.x <= v
         else:
             raise ValueError("Invalid value tail=%r; need -1, 0 or 1" % (tail,))
-        info = self.info.copy()
-        return NDVar(np.where(idx, self.x, 0), self.dims, info,
-                     name or self.name)
+        return NDVar(np.where(idx, self.x, 0), self.dims, self.info, name or self.name)
 
     def var(self, dims=(), ddof=0, **regions):
         """Compute the variance over given dimensions
@@ -4939,13 +4914,9 @@ legal_dataset_key_re = re.compile("[_A-Za-z][_a-zA-Z0-9]*$")
 
 def assert_is_legal_dataset_key(key):
     if iskeyword(key):
-        msg = ("%r is a reserved keyword and can not be used as variable name "
-               "in a Dataset" % key)
-        raise ValueError(msg)
+        raise ValueError(f"{key!r} is a reserved keyword and can not be used as variable name in a Dataset")
     elif not legal_dataset_key_re.match(key):
-        msg = ("%r is not a valid keyword and can not be used as variable name "
-               "in a Dataset" % key)
-        raise ValueError(msg)
+        raise ValueError(f"{key!r} is not a valid keyword and can not be used as variable name in a Dataset")
 
 
 def as_legal_dataset_key(key):
@@ -5150,7 +5121,7 @@ class Dataset(OrderedDict):
         # uses __setitem__() which checks items and length:
         super(Dataset, self).__init__(args)
         self.name = name
-        self.info = info.copy()
+        self.info = dict(info)
         self._caption = caption
 
     def __setstate__(self, state):
@@ -6988,16 +6959,13 @@ class Dimension(object):
             if not (isinstance(connectivity, np.ndarray) and connectivity.dtype == np.uint32):
                 connectivity = np.asarray(connectivity)
                 if connectivity.dtype.kind != 'i':
-                    raise TypeError("connectivity needs to be integer type, got"
-                                    "dtype=%r" % (connectivity.dtype,))
+                    raise TypeError(f"connectivity array needs to be integer type, got {connectivity.dtype}")
                 elif connectivity.shape != (len(connectivity), 2):
-                    raise ValueError("connectivity requires shape (n_edges, 2), "
-                                     "got array with shape %s" %
-                                     (connectivity.shape,))
+                    raise ValueError(f"connectivity requires shape (n_edges, 2), got array with shape {connectivity.shape}")
                 elif connectivity.min() < 0:
                     raise ValueError("connectivity can not have negative values")
                 elif connectivity.max() >= len(self):
-                    raise ValueError("connectivity can not have negative values")
+                    raise ValueError("connectivity has value larger than number of elements in dimension")
                 elif np.any(connectivity[:, 0] >= connectivity[:, 1]):
                     raise ValueError("All edges [i, j] must have i < j")
                 elif np.any(np.diff(connectivity, axis=0) > 0):
@@ -7649,7 +7617,8 @@ class Scalar(Dimension):
     unit : str (optional)
         Unit of the values.
     tick_format : str (optional)
-        Format string for formatting axis tick labels ('%'-format, e.g. '%.2f').
+        Format string for formatting axis tick labels ('%'-format, e.g. '%.0f'
+        to round to nearest integer).
     connectivity : 'grid' | 'none' | array of int, (n_edges, 2)
         Connectivity between elements. Set to ``"none"`` for no connections or 
         ``"grid"`` to use adjacency in the sequence of elements as connection. 
@@ -7661,17 +7630,14 @@ class Scalar(Dimension):
     """
     _default_connectivity = 'grid'
 
-    def __init__(self, name, values, unit=None, tick_format=None,
-                 connectivity='grid'):
+    def __init__(self, name, values, unit=None, tick_format=None, connectivity='grid'):
         values = np.asarray(values)
         if values.ndim != 1:
-            raise ValueError("values needs to be one-dimensional array, got "
-                             "array of shape %s" % repr(values.shape))
+            raise ValueError(f"values.shape={values.shape}, needs to be one-dimensional")
         elif np.any(np.diff(values) <= 0):
             raise ValueError("Values for Scalar must increase monotonically")
         elif tick_format and '%' not in tick_format:
-            raise ValueError("tick_format needs to include '%%'; got %r" %
-                             (tick_format,))
+            raise ValueError(f"tick_format={tick_format}, needs to include '%'")
         self.values = values
         self.unit = unit
         self._axis_unit = unit
@@ -7735,23 +7701,33 @@ class Scalar(Dimension):
                 None if scalar else FixedLocator(np.arange(len(self)), 10),
                 self._axis_label(label))
 
-    def _bin(self, start, stop, step, nbins):
-        if start is None:
-            start = self.values[0]
+    def _bin(
+            self,
+            start: float = None,
+            stop: float = None,
+            step: int = None,  # -> step in dim space
+            nbins: int = None,  # -> equally divide in array space
+    ) -> (list, 'Scalar'):
 
+        islice = self._array_index_for_slice(start, stop, step)
+        istart = 0 if islice.start is None else islice.start
+        istop = None if islice.stop is None else islice.stop
+        start = self.values[0] if istart is None else self.values[istart]
+        stop = None if istop is None else self.values[istop]
         if nbins is not None:
-            istop = len(self) if stop is None else self._array_index(stop)
-            istart = 0 if start is None else self._array_index(start)
+            if istop is None:
+                istop = len(self)
             n_source_steps = istop - istart
             if n_source_steps % nbins != 0:
-                raise ValueError("length %i dimension %s can not be divided "
-                                 "equally into %i bins" %
-                                 (n_source_steps, self.name, nbins))
+                raise ValueError(f"nbins={nbins!r}: length {n_source_steps} {self.name} can not be divided equally")
             istep = int(n_source_steps / nbins)
-            ilast = istep - 1
-            out_values = [(self[i] + self[i + ilast]) / 2. for i in
-                          range(istart, istop, istep)]
             edges = list(self.values[istart:istop:istep])
+            # values for new Dimension
+            if istep % 2:
+                loc = np.arange(istart + istep / 2, istep, istop)
+                out_values = np.interp(loc, np.arange(len(self.values)), self.values)
+            else:
+                out_values = self.values[istart + istep // 2: istop: istep]
         else:
             if stop is None:
                 n_bins_fraction = (self[-1] - start) / step
@@ -7814,8 +7790,7 @@ class Scalar(Dimension):
             try:
                 return digitize_index(arg, self.values, 0.3)
             except IndexError as error:
-                raise IndexError("Ambiguous index for %s: %s" %
-                                 (self._dimname(), error.args[0]))
+                raise IndexError(f"{error.args[0]}: Ambiguous index for {self._dimname()}")
         elif isinstance(arg, np.ndarray) and arg.dtype.kind == self.values.dtype.kind:
             if np.setdiff1d(arg, self.values):
                 raise IndexError("Index %r includes values not in dimension: %s" %
@@ -7886,14 +7861,16 @@ class Sensor(Dimension):
     proj2d : str
         Default 2d projection (default is ``'z-root'``; for options see notes
         below).
-    connectivity : 'grid' | 'none' | array of int, (n_edges, 2)
-        Connectivity between elements. Set to ``"none"`` for no connections or 
-        ``"grid"`` to use adjacency in the sequence of elements as connection. 
-        Set to :class:`numpy.ndarray` to specify custom connectivity. The array
-        should be of shape (n_edges, 2), and each row should specify one 
-        connection [i, j] with i < j, with rows sorted in ascending order. If
-        the array's dtype is uint32, property checks are disabled to improve 
-        efficiency.
+    connectivity : str | list of (str, str) | array of int, (n_edges, 2)
+        Connectivity between elements. Can be specified as:
+
+        - ``"none"`` for no connections
+        - list of connections (e.g., ``[('OZ', 'O1'), ('OZ', 'O2'), ...]``)
+        - :class:`numpy.ndarray` of int, shape (n_edges, 2), to specify
+          connections in terms of indices. Each row should specify one
+          connection [i, j] with i < j. If the array's dtype is uint32,
+          property checks are disabled to improve efficiency.
+        - ``"grid"`` to use adjacency in the sensor names
 
     Attributes
     ----------
@@ -7930,8 +7907,7 @@ class Sensor(Dimension):
     _proj_aliases = {'left': 'x-', 'right': 'x+', 'back': 'y-', 'front': 'y+',
                      'top': 'z+', 'bottom': 'z-'}
 
-    def __init__(self, locs, names=None, sysname=None, proj2d='z root',
-                 connectivity='custom'):
+    def __init__(self, locs, names=None, sysname=None, proj2d='z root', connectivity='none'):
         # 'z root' transformation fails with 32-bit floats
         self.locs = locs = np.asarray(locs, dtype=np.float64)
         n = len(locs)
@@ -7947,6 +7923,9 @@ class Sensor(Dimension):
             raise ValueError("Length mismatch: got %i locs but %i names" %
                              (n, len(names)))
         self.names = Datalist(names)
+        # allow connectivity as sensor pairs
+        if not isinstance(connectivity, str) and isinstance(connectivity[0][0], str):
+            connectivity = self._connectivity_from_name_pairs(connectivity)
         Dimension.__init__(self, 'sensor', connectivity)
         self._init_secondary()
 
@@ -7965,6 +7944,19 @@ class Sensor(Dimension):
 
         # cache for transformed locations
         self._transformed = {}
+
+    def _connectivity_from_name_pairs(self, neighbors):
+        pairs = set()
+        for src, dst in neighbors:
+            if src not in self.names or dst not in self.names:
+                continue
+            a = self.names.index(src)
+            b = self.names.index(dst)
+            if a < b:
+                pairs.add((a, b))
+            else:
+                pairs.add((b, a))
+        return np.array(sorted(pairs), np.uint32)
 
     def __getstate__(self):
         out = Dimension.__getstate__(self)
@@ -8115,6 +8107,14 @@ class Sensor(Dimension):
             return 'z+'
         else:
             return proj
+
+    def get_connectivity(self):
+        """Sensor connectivity as list of ``(name_1, name_2)``"""
+        if self._connectivity_type != 'custom':
+            raise ValueError("No custom connectivity")
+        pairs = [(self.names[a], self.names[b]) for a, b in self._connectivity]
+        sorted_pairs = [tuple(sorted(pair)) for pair in pairs]
+        return sorted(sorted_pairs)
 
     def get_locs_2d(self, proj='default', extent=1, frame=0, invisible=True):
         """Compute a 2 dimensional projection of the sensor locations
@@ -8602,18 +8602,15 @@ def _mne_tri_soure_space_graph(source_space, vertices_list):
 class SourceSpaceBase(Dimension):
     kind = None
     _default_connectivity = 'custom'
-    _SRC_PATH = os.path.join(
-        '{subjects_dir}', '{subject}', 'bem', '{subject}-{src}-src.fif')
-    _ANNOT_PATH = os.path.join(
-        '{subjects_dir}', '{subject}', 'label', '{hemi}.{parc}.annot')
-
+    _ANNOT_PATH = os.path.join('{subjects_dir}', '{subject}', 'label', '{hemi}.{parc}.annot')
     _vertex_re = re.compile('([RL])(\d+)')
 
-    def __init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name):
+    def __init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name, filename):
         self.vertices = vertices
         self.subject = subject
         self.src = src
         self._subjects_dir = subjects_dir
+        self._filename = filename
         self._init_secondary()
         Dimension.__init__(self, name, connectivity)
 
@@ -8621,14 +8618,13 @@ class SourceSpaceBase(Dimension):
         if parc is None or parc is False:
             self.parc = None
         elif isinstance(parc, Factor):
-            if len(parc) != len(self):
-                raise ValueError("parc has wrong length (%i) for SourceSpace "
-                                 "with %i vertices" % (len(parc), self._n_vert))
+            if len(parc) != self._n_vert:
+                raise ValueError(f"parc={parc!r}: wrong length {len(parc)} for SourceSpace with {self._n_vert} vertices")
             self.parc = parc
         elif isinstance(parc, str):
             self.parc = self._read_parc(parc)
         else:
-            raise TypeError("Parc needs to be Factor or string, got %r" % (parc,))
+            raise TypeError(f"parc={parc!r}: needs to be Factor or string")
 
     def _read_parc(self, parc):
         raise NotImplementedError(
@@ -8651,9 +8647,8 @@ class SourceSpaceBase(Dimension):
         """SourceSpace dimension from MNE source space file"""
         if parc is None and cls is SourceSpace:
             parc = 'aparc'
-        filename = cls._SRC_PATH.format(subjects_dir=subjects_dir,
-                                        subject=subject, src=src)
-        source_spaces = mne.read_source_spaces(filename)
+        filename = Path(subjects_dir) / subject / 'bem' / f'{subject}-{src}-src.fif'
+        source_spaces = mne.read_source_spaces(str(filename))
         return cls.from_mne_source_spaces(source_spaces, src, subjects_dir, parc)
 
     @classmethod
@@ -8676,10 +8671,14 @@ class SourceSpaceBase(Dimension):
             raise TypeError("subjects_dir was neither specified on SourceSpace "
                             "dimension nor as environment variable")
 
+    def _sss_path(self, subjects_dir=None):
+        if subjects_dir is None:
+            subjects_dir = self.subjects_dir
+        return Path(subjects_dir) / self.subject / 'bem' / self._filename.format(subject=self.subject, src=self.src)
+
     def __getstate__(self):
         state = Dimension.__getstate__(self)
-        state.update(vertno=self.vertices, subject=self.subject, src=self.src,
-                     subjects_dir=self._subjects_dir, parc=self.parc)
+        state.update(vertno=self.vertices, subject=self.subject, src=self.src, subjects_dir=self._subjects_dir, parc=self.parc, filename=self._filename)
         return state
 
     def __setstate__(self, state):
@@ -8691,6 +8690,7 @@ class SourceSpaceBase(Dimension):
         self.subject = state['subject']
         self.src = state['src']
         self._subjects_dir = state['subjects_dir']
+        self._filename = state.get('filename', '{subject}-{src}-src.fif')
         self.parc = state['parc']
         self._init_secondary()
 
@@ -8734,6 +8734,13 @@ class SourceSpaceBase(Dimension):
         return (FormatStrFormatter('%i'),
                 FixedLocator(np.arange(len(self)), 10),
                 self._axis_label(label))
+
+    def _copy(self, subject=None, parc=None):
+        if subject is None:
+            subject = self.subject
+        if parc is None:
+            parc = self.parc
+        return self.__class__(self.vertices, subject, self.src, self.subjects_dir, parc, self._subgraph(), self.name, self._filename)
 
     def _cluster_properties(self, x):
         """Find cluster properties for this dimension
@@ -8785,9 +8792,7 @@ class SourceSpaceBase(Dimension):
         i0 = 0
         for vertices, ss in zip(self.vertices, sss):
             if ss['dist'] is None:
-                path = self._SRC_PATH.format(
-                    subjects_dir=self.subjects_dir, subject=self.subject,
-                    src=self.src)
+                path = self._sss_path()
                 raise RuntimeError(
                     f"Source space does not contain source distance "
                     f"information. To add distance information, run:\n"
@@ -8940,15 +8945,13 @@ class SourceSpaceBase(Dimension):
         if self.src is None:
             raise TypeError("Unknown source-space. Specify the src parameter "
                             "when initializing SourceSpace.")
-        path = self._SRC_PATH.format(
-            subjects_dir=subjects_dir or self.subjects_dir,
-            subject=self.subject, src=self.src)
-        if not os.path.exists(path):
+        path = self._sss_path(subjects_dir)
+        if not path.exists():
             raise IOError(
                 f"Can't load source space because {path} does not exist; if "
                 f"the MRI files for {self.subject} were moved, use "
                 f"eelbrain.load.update_subjects_dir()")
-        return mne.read_source_spaces(path)
+        return mne.read_source_spaces(str(path))
 
     def index_for_label(self, label):
         """Return the index for a label
@@ -9026,6 +9029,8 @@ class SourceSpace(SourceSpaceBase):
         efficiency.
     name : str
         Dimension name (default ``"source"``).
+    filename : str
+        Filename template for the MNE source space file.
 
     Attributes
     ----------
@@ -9051,8 +9056,8 @@ class SourceSpace(SourceSpaceBase):
     kind = 'ico'
 
     def __init__(self, vertices, subject=None, src=None, subjects_dir=None,
-                 parc='aparc', connectivity='custom', name='source'):
-        SourceSpaceBase.__init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name)
+                 parc='aparc', connectivity='custom', name='source', filename='{subject}-{src}-src.fif'):
+        SourceSpaceBase.__init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name, filename)
 
     def _init_secondary(self):
         SourceSpaceBase._init_secondary(self)
@@ -9299,6 +9304,8 @@ class VolumeSourceSpace(SourceSpaceBase):
         efficiency.
     name : str
         Dimension name (default ``"source"``).
+    filename : str
+        Filename template for the MNE source space file.
 
     See Also
     --------
@@ -9307,18 +9314,17 @@ class VolumeSourceSpace(SourceSpaceBase):
     kind = 'vol'
 
     def __init__(self, vertices, subject=None, src=None, subjects_dir=None,
-                 parc=None, connectivity='custom', name='source'):
+                 parc=None, connectivity='custom', name='source', filename='{subject}-{src}-src.fif'):
         if isinstance(parc, str):
             raise NotImplementedError(f"parc={parc!r}: specify parcellation as Factor")
         if isinstance(vertices, np.ndarray):
             vertices = [vertices]
-        SourceSpaceBase.__init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name)
+        SourceSpaceBase.__init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name, filename)
 
     def _init_secondary(self):
         SourceSpaceBase._init_secondary(self)
         if len(self.vertices) != 1:
-            raise ValueError("A VolumeSourceSpace needs exactly one vertices "
-                             "array")
+            raise ValueError("A VolumeSourceSpace needs exactly one vertices array")
 
     @LazyProperty
     def hemi(self):
@@ -9777,3 +9783,8 @@ def intersect_dims(dims1, dims2, check_dims=True):
 
 
 EVAL_CONTEXT.update(Var=Var, Factor=Factor, extrema=extrema)
+
+NDVarArg = typing.Union[NDVar, str]
+CategorialArg = typing.Union[Factor, Interaction, NestedEffect, str]
+FactorArg = typing.Union[Factor, str]
+IndexArg = typing.Union[Var, np.ndarray, str]

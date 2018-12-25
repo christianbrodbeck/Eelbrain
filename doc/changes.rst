@@ -6,6 +6,10 @@ Changes
 New in 0.29
 -----------
 
+* API changes:
+
+  - Better default parameters for :func:`resample`
+
 * Support for vector data:
 
   - :class:`Space` dimension to represent physical space
@@ -15,6 +19,14 @@ New in 0.29
 * New :class:`NDVar` functions:
 
   - :func:`correlation_coefficient`
+
+* Plotting:
+
+  - :ref:`general-layout-parameters` for plot size relative to screen size
+
+* :class:`MneExperiment`:
+
+  - New method :meth:`MneExperiment.plot_raw`
 
 
 New in 0.28

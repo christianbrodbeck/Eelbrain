@@ -110,7 +110,8 @@ class Notifier(object):
                     "   'File'/'Get Info')\n"
                     " - Select the 'Access Control' panel"
                     " - Select 'Allow all applications to access this item'\n"
-                    " - Save changes, exit, and try again.")
+                    " - Save changes, exit, and try again\n\n"
+                    " - If this does not solve the issue, delete the item and repeat")
             raise
         if password is None:
             password = ui.ask_str("Please enter the Eelbrain notifier "
