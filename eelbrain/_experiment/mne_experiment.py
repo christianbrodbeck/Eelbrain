@@ -63,7 +63,7 @@ from .._text import enumeration, plural
 from .._utils import ask, subp, keydefaultdict, log_level, ScreenHandler, deprecated
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .definitions import (
-    assert_dict_has_args, find_dependent_epochs,
+    assert_dict_has_args, check_names, find_dependent_epochs,
     find_epochs_vars, find_test_vars, log_dict_change, log_list_change)
 from .epochs import PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, assemble_epochs, decim_param
 from .exceptions import FileDeficient, FileMissing
@@ -551,14 +551,8 @@ class MneExperiment(FileTree):
             self._sessions = tuple(self.sessions)
         else:
             raise TypeError(f"MneExperiment.sessions={self.sessions!r}; needs to be a string or a tuple")
-        if any(' ' in session for session in self._sessions):
-            raise ValueError(f"MneExperiment.sessions={self.sessions!r}: names with ' ' not allowed")
-
+        check_names(self._sessions, 'session')
         self._visits = (self._visits,) if isinstance(self.visits, str) else tuple(self.visits)
-        if not all(isinstance(visit, str) for visit in self._visits):
-            raise ValueError(f"MneExperiment.visits={self.visits!r}: must be list of str")
-        elif any(' ' in visit for visit in self._visits):
-            raise ValueError(f"MneExperiment.visits={self.visits!r}: names with ' ' not allowed")
 
         ########################################################################
         # subjects

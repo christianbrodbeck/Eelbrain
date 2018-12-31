@@ -15,6 +15,7 @@ from tqdm import tqdm
 from .. import fmtxt
 from .._utils import as_sequence, LazyProperty, ask, deprecated
 from .._utils.com import Notifier, NotNotifier
+from .definitions import check_names
 
 
 def _etree_expand(node, state):
@@ -328,6 +329,7 @@ class TreeModel:
 
         if values is not None:
             values = tuple(values)
+            check_names(values, key)
             if default is None:
                 if len(values):
                     default = values[0]

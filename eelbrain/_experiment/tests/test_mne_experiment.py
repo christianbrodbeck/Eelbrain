@@ -6,6 +6,7 @@ from numpy.testing import assert_array_equal
 import pytest
 
 from eelbrain import Dataset, Factor, Var
+from eelbrain._exceptions import DefinitionError
 from eelbrain.pipeline import *
 from eelbrain._utils.testing import assert_dataobj_equal, TempDir
 
@@ -208,3 +209,17 @@ def test_file_handling():
     e = FileExperimentDefaults(tempdir)
     assert e.get('group'), 'gsub'
     assert e.get('subject') == SUBJECTS[1]
+
+
+# definition checks
+
+class BadRawExperiment(BaseExperiment):
+    raw = {'bad raw': RawFilter('raw', 1, 40), **BaseExperiment.raw}
+
+
+def test_bad_definitions():
+    "Test invalid definitions raise errors"
+    tempdir = TempDir()
+
+    with pytest.raises(DefinitionError):
+        BadRawExperiment()

@@ -2,6 +2,7 @@
 from inspect import getargspec
 
 from .._exceptions import DefinitionError
+from .._text import enumeration, plural
 from .._utils.parse import find_variables
 
 
@@ -29,6 +30,19 @@ def assert_dict_has_args(d, cls, kind, name, n_internal=0):
         raise DefinitionError(
             "%s definition %s is missing the following parameters: %s" %
             (kind, name, ', '.join(missing)))
+
+
+def name_ok(key: str) -> bool:
+    try:
+        return all(c not in key for c in ' ')
+    except TypeError:
+        return False
+
+
+def check_names(keys, attribute):
+    invalid = [key for key in keys if not name_ok(key)]
+    if invalid:
+        raise DefinitionError(f"Invalid {plural('name', len(invalid))} for {attribute}: {enumeration(invalid)}")
 
 
 def dict_change(old, new):
