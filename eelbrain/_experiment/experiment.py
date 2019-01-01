@@ -662,7 +662,7 @@ class TreeModel:
                     v = state.pop(k)
                     values = v.split(' ')
                     for i, field in enumerate(fields):
-                        field_values = self.get_field_values(field)
+                        field_values = self._field_values[field]
                         vi = values[i] if len(values) > i else None
                         if vi in field_values:
                             continue
@@ -674,26 +674,24 @@ class TreeModel:
                         raise ValueError(f"{k}={v!r}")
                     state.update(zip(fields, values))
 
-        # fields with special set handlers
-        handled_state = {}
-        for k in state.keys():
-            if k in self._set_handlers:
-                handled_state[k] = self._set_handlers[k](state.pop(k))
-
-        # make sure only valid fields are set
-        for k in state:
-            if k not in self._fields:
-                raise KeyError("No template named %r" % k)
-
-        # eval all values
-        for k in state.keys():
-            eval_handlers = self._eval_handlers[k]
+        handled_state = {}  # fields with special set handlers
+        for k in list(state):
             v = state[k]
-            if not isinstance(v, str):
-                raise TypeError(f"Values have to be strings, got {k}={v!r}")
+            if k not in self._fields:
+                raise TypeError(f"{k}={v!r}: No template named {k!r}")
+            elif v is None:
+                state.pop(k)
+                continue
+            elif k in self._set_handlers:
+                handled_state[k] = self._set_handlers[k](state.pop(k))
+                continue
+            elif not isinstance(v, str):
+                raise TypeError(f"{k}={v!r}: Values have to be strings")
             elif '*' in v and allow_asterisk:
-                pass
-            elif eval_handlers:
+                continue
+            # eval values
+            eval_handlers = self._eval_handlers[k]
+            if eval_handlers:
                 for handler in eval_handlers:
                     try:
                         v = handler(v)
@@ -705,15 +703,8 @@ class TreeModel:
                         err = "Invalid conversion: %s=%r" % (k, v)
                         raise RuntimeError(err)
                     state[k] = v
-            elif not match:
-                pass
-            elif k not in self._field_values:
-                pass
-            elif v not in self.get_field_values(k, False):
-                raise ValueError(
-                    f"Variable {k!r} has no value {v!r}. In order to see valid "
-                    f"values use e.show_fields(); In order to set a non-"
-                    f"existent value, use e.set({k!s}={v!r}, match=False).")
+            elif match and k in self._field_values and v not in self._field_values[k]:
+                raise ValueError(f"Variable {k!r} has no value {v!r}. In order to see valid values use e.show_fields(); In order to set a non-existent value, use e.set({k!s}={v!r}, match=False).")
 
         self._fields.update(state)
 
@@ -743,7 +734,7 @@ class TreeModel:
         """
         lines = []
         for key in self._field_values:
-            values = list(self.get_field_values(key))
+            values = list(self._field_values[key])
             line = '%s:' % key
             head_len = len(line) + 1
             while values:
