@@ -2273,7 +2273,7 @@ class MneExperiment(FileTree):
         ndvar : bool | 'both'
             Convert epochs to an NDVar (named 'meg' for MEG data and 'eeg' for
             EEG data). Use 'both' to include NDVar and MNE Epochs.
-        add_bads : False | True | list
+        add_bads : bool | list
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from the bad channels file. Alternatively,
             a list of bad channels can be specified.
@@ -2353,10 +2353,8 @@ class MneExperiment(FileTree):
                 add_bads = True
             else:
                 raise ValueError(f"add_bads={add_bads!r}")
-        elif isinstance(add_bads, bool):
-            add_bads_to_info = False
         else:
-            raise TypeError(f"add_bads={add_bads!r}")
+            add_bads_to_info = False
 
         with self._temporary_state:
             ds = self.load_selected_events(add_bads=add_bads, reject=reject,
