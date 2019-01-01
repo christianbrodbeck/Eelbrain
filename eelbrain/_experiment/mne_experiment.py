@@ -3953,7 +3953,7 @@ class MneExperiment(FileTree):
             epochs = None
 
         if reg is True:
-            cov = mne.cov.regularize(cov, info)
+            cov = mne.cov.regularize(cov, info, rank=None)
         elif isinstance(reg, dict):
             cov = mne.cov.regularize(cov, info, **reg)
         elif reg == 'best':
@@ -3962,7 +3962,7 @@ class MneExperiment(FileTree):
             elif epochs is None:
                 raise NotImplementedError("reg='best' for raw covariance")
             reg_vs = np.arange(0, 0.21, 0.01)
-            covs = [mne.cov.regularize(cov, epochs.info, mag=v) for v in reg_vs]
+            covs = [mne.cov.regularize(cov, epochs.info, mag=v, rank=None) for v in reg_vs]
 
             # compute whitened global field power
             evoked = epochs.average()
