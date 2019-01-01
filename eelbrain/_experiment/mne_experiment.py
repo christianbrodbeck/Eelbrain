@@ -2976,7 +2976,7 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        path = self.make_ica(return_data=False, **state)
+        path = self.make_ica(**state)
         return mne.preprocessing.read_ica(path)
 
     def load_inv(self, fiff=None, ndvar=False, mask=None, **kwargs):
@@ -4115,8 +4115,8 @@ class MneExperiment(FileTree):
         Parameters
         ----------
         epoch : str
-            Epoch to use for visualization in the GUI (default is current
-            epoch).
+            Epoch to use for visualization in the GUI (default is to use the
+            raw data).
         decim : int (optional)
             Downsample epochs (for visualization only).
         ...
@@ -4132,8 +4132,14 @@ class MneExperiment(FileTree):
             ...     e.make_ica()
             ...
         """
-        path, ds = self.make_ica(epoch or True, decim, **state)
+        # ICA
+        path = self.make_ica(**state)
+        # display data
+        subject = self.get('subject')
         pipe = self._raw[self.get('raw')]
+        with self._temporary_state, warnings.catch_warnings():
+            warnings.filterwarnings('ignore', 'The measurement information indicates a low-pass', RuntimeWarning)
+            ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False, raw=pipe.source.name, decim=decim, add_bads=pipe.load_bad_channels(subject))
         info = ds['epochs'].info
         data = TestDims('sensor')
         data_kind = data.data_to_ndvar(info)[0]
@@ -4141,7 +4147,7 @@ class MneExperiment(FileTree):
         connectivity = pipe.get_connectivity(data_kind)
         gui.select_components(path, ds, sysname, connectivity)
 
-    def make_ica(self, return_data=False, decim=None, **state):
+    def make_ica(self, **state):
         """Compute ICA decomposition for a :class:`pipeline.RawICA` preprocessing step
 
         If a corresponding file exists, a basic check is done as to whether the
@@ -4149,11 +4155,6 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        return_data : bool | str
-            Return epoch data for ICA component selection. Can be a string to
-            load a specific epoch.
-        decim : int (optional)
-            Downsample epochs (for visualization only).
         ...
             State parameters.
 
@@ -4161,8 +4162,6 @@ class MneExperiment(FileTree):
         -------
         path : str
             Path to the ICA file.
-        [ds : Dataset]
-            Dataset with epoch data (only if ``return_data`` is ``True``).
 
         Notes
         -----
@@ -4186,12 +4185,7 @@ class MneExperiment(FileTree):
             raise ValueError(f"raw={pipe.name!r} does not involve ICA; {msg}")
         subject = self.get('subject')
         path = pipe.make_ica(subject)
-        if not return_data:
-            return path
-        epoch = self.get('epoch') if return_data is True else return_data
-        with self._temporary_state:
-            ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False, raw=pipe.source.name, decim=decim, add_bads=pipe.load_bad_channels(subject))
-        return path, ds
+        return path
 
     def make_link(self, temp, field, src, dst, redo=False):
         """Make a hard link
@@ -6377,15 +6371,9 @@ class MneExperiment(FileTree):
                     n_interp.append(np.mean([len(chi) for chi in ds[INTERPOLATE_CHANNELS]]))
             n_events.append(ds.n_cases)
 
-        caption = ("Rejection info for raw=%s, epoch=%s, rej=%s. "
-                   "Percent is rounded to one decimal. Bad channels: "
-                   "defined in bad_channels file and in rej-file." %
-                   (raw_name, epoch_name, rej_name))
+        caption = f"Rejection info for raw={raw_name}, epoch={epoch_name}, rej={rej_name}. Percent is rounded to one decimal. Bad channels: defined in bad_channels file and in rej-file."
         if has_interp:
-            caption += (" ch_interp: average number of channels interpolated "
-                        "per epoch, rounded to one decimal.")
-        else:
-            caption += " Channel interpolation disabled."
+            caption += " ch_interp: average number of channels interpolated per epoch, rounded to one decimal."
         out = Dataset(caption=caption)
         out['subject'] = Factor(subjects)
         out['n_events'] = Var(n_events)
