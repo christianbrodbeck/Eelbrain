@@ -7,9 +7,10 @@ from .._data_obj import Datalist
 from .._names import INTERPOLATE_CHANNELS
 from . import _base
 from ._base import (
+    PlotType,
     EelFigure, PlotData, LayerData, Layout,
     ColorMapMixin, LegendMixin, TimeSlicerEF, TopoMapKey, YLimMixin, XAxisMixin,
-    pop_dict_arg, set_dict_arg)
+    pop_if_dict, set_dict_arg)
 
 
 class _plt_im:
@@ -286,9 +287,9 @@ class _plt_utsnd:
         if sensors is not None and sensors is not True:
             epoch = epoch.sub(sensor=sensors)
 
-        kwargs = layer.line_args(kwargs)
-        color = pop_dict_arg(kwargs, 'color')
-        z_order = pop_dict_arg(kwargs, 'zorder')
+        kwargs = layer.plot_args(kwargs)
+        color = pop_if_dict(kwargs, 'color')
+        z_order = pop_if_dict(kwargs, 'zorder')
         self._dims = (line_dim, xdim)
         x = epoch.get_dim(xdim)._axis_data()
         line_dim_obj = epoch.get_dim(line_dim)
@@ -507,7 +508,7 @@ class _ax_bfly_epoch:
         mlw : scalar
             Marked sensor plot line width (default 1).
         """
-        self.lines = _plt_utsnd(ax, LayerData(epoch), 'time', 'sensor',
+        self.lines = _plt_utsnd(ax, LayerData(epoch, PlotType.LINE), 'time', 'sensor',
                                 color=color, lw=lw, antialiased=antialiased)
         ax.set_xlim(epoch.time[0], epoch.time[-1])
 

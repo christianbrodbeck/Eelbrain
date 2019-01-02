@@ -61,6 +61,7 @@ functions executed are:
 import __main__
 
 from collections import Iterable, Iterator
+from enum import Enum, auto
 from itertools import chain, repeat
 from logging import getLogger
 import math
@@ -69,7 +70,7 @@ import shutil
 import subprocess
 import tempfile
 import time
-from typing import List, Union
+from typing import Iterator, List, Sequence, Union
 import weakref
 
 import matplotlib as mpl
@@ -103,6 +104,14 @@ defaults = {'maxw': 16, 'maxh': 10}
 
 # store figures (they need to be preserved)
 figures = []
+
+
+class PlotType(Enum):
+    GENERAL = auto()
+    LEGACY = auto()
+    LINE = auto()
+    IMAGE = auto()
+    CONTOUR = auto()
 
 
 def do_autorun(run=None):
@@ -715,7 +724,7 @@ def butterfly_data(
             layers = []
             for y, linestyle in ((y_ns, linestyle_ns), (y_sig, linestyle_sig)):
                 kwargs = {'zorder': z_order, **linestyle}
-                layers.append(LayerData(y.sub(source=hemi), kwargs))
+                layers.append(LayerData(y.sub(source=hemi), PlotType.LINE, kwargs))
             axes.append(layers)
         bfly_data = PlotData(axes, ('time', 'source'), plot_names=hemis)
     else:
@@ -723,7 +732,7 @@ def butterfly_data(
     return hemis, bfly_data, brain_data
 
 
-def pop_dict_arg(kwargs, key):
+def pop_if_dict(kwargs, key):
     "Helper for artist-sepcific matplotlib kwargs"
     if key in kwargs and isinstance(kwargs[key], dict):
         return kwargs.pop(key)
@@ -755,24 +764,35 @@ class LayerData:
     """Data for one subplot layer"""
     _remap_args = {'c': 'color'}
 
-    def __init__(self, y: NDVar, line_args: dict = None):
+    def __init__(
+            self,
+            y: NDVar,
+            plot_type: PlotType = PlotType.GENERAL,
+            plot_args: dict = None,
+    ):
         self.y = y
-        self._line_args = line_args
+        self._plot_args = plot_args
+        self.plot_type = plot_type
         self.is_masked = isinstance(y.x, np.ma.masked_array)
 
-    def line_args(self, kwargs: dict):
-        if self._line_args is None:
+    def plot_args(self, kwargs: dict) -> dict:
+        # needs to be a copy?
+        if self._plot_args is None:
             items = kwargs.items()
         else:
-            items = chain(kwargs.items(), self._line_args.items())
+            items = chain(kwargs.items(), self._plot_args.items())
         return {self._remap_args.get(k, k): v for k, v in items}
 
-    def get_data(self, masking: str = None):
-        if not self.is_masked:
+    def for_plot(self, plot_type: PlotType) -> Iterator['LayerData']:
+        if self.plot_type == plot_type:
             yield self
-        elif masking is None:
-            yield LayerData(self.y.unmask(), self._line_args)
-        elif masking == 'line':
+        elif self.plot_type != PlotType.GENERAL:
+            raise RuntimeError(f"Invalid PlotData conversion: {self.plot_type} -> {plot_type}")
+        elif not self.is_masked:
+            yield LayerData(self.y, plot_type, self._plot_args)
+        elif plot_type == PlotType.LEGACY:
+            yield LayerData(self.y.unmask(), plot_type, self._plot_args)
+        elif plot_type == PlotType.LINE:
             un_mask = NDVar(~self.y.x.mask, self.y.dims)
             # kwargs = {}
             if self.y.has_dim('time'):
@@ -785,9 +805,9 @@ class LayerData:
             args_main = {'alpha': 1., 'zorder': 1}
             args_masked = {'alpha': 0.4, 'color': (.7, .7, .7), 'zorder': 0}
             for y, args in ((self.y, args_main), (y_masked, args_masked)):
-                yield LayerData(y, args)
+                yield LayerData(y, plot_type, args)
         else:
-            raise RuntimeError(f"masking={masking!r}")
+            raise RuntimeError(f"plot_type={plot_type!r}")
 
 
 class PlotData:
@@ -822,23 +842,30 @@ class PlotData:
     def __init__(
             self,
             axes: List[Union[None, List[LayerData]]],
-            dims: List[str],
+            dims: Sequence[str],
             title: str = "unnamed data",
             plot_names: List[str] = None,
+            use_axes: List[bool] = None,
+            plot_type: PlotType = PlotType.GENERAL,
     ):
-        self.plot_used = [ax is not None for ax in axes]
-        self.plot_data = [ax for ax in axes if ax is not None]
-        self.n_plots = len(self.plot_data)
+        self.plot_data = axes
+        self.n_plots = len(axes)
+        if use_axes is None:
+            self.plot_used = (True,) * self.n_plots
+        else:
+            assert sum(use_axes) == self.n_plots
+            self.plot_used = use_axes
+        self.has_masked_data = any(l.is_masked for ax in self.plot_data for l in ax)
         self.dims = dims
         self.frame_title = title
         if plot_names is not None:
             assert len(plot_names) == self.n_plots
         self._plot_names = plot_names
+        self.plot_type = plot_type
 
     def _cannot_skip_axes(self, parent):
         if not all(self.plot_used):
-            raise NotImplementedError("y can not contain None for %s plot" %
-                                      parent.__class__.__name__)
+            raise NotImplementedError(f"y can not contain None for {parent.__class__.__name__} plot")
 
     @classmethod
     def from_args(cls, y, dims, xax=None, ds=None, sub=None):
@@ -949,12 +976,13 @@ class PlotData:
         else:
             y_name = ', '.join(y_names)
 
-        axes = [[LayerData(l) for l in ax] if ax else ax for ax in axes]
+        use_axes = [ax is not None for ax in axes]
+        axes = [[LayerData(l) for l in ax] for ax in axes if ax]
         title = frame_title(y_name, x_name)
-        return cls(axes, dims, title, ax_names)
+        return cls(axes, dims, title, ax_names, use_axes)
 
     @classmethod
-    def empty(cls, plots, dims, title):
+    def empty(cls, plots: Union[int, List[bool]], dims: Sequence[str], title: str):
         """Empty PlotData object that can be filled by appending to layers
 
         Parameters
@@ -962,7 +990,7 @@ class PlotData:
         plots : int | list of bool
             Number of plots, or list of booleans indicating for each plot
             whether its slot is used.
-        dims : tuple of str
+        dims : sequence of str
             Names of the dimensions.
         title : str
             Data description for the plot frame.
@@ -973,30 +1001,23 @@ class PlotData:
             plots = [[] if p else None for p in plots]
         return cls(plots, dims, title)
 
-    def add_layer(self, ys, line_args={}):
-        """Add a layer to all plots"""
-        assert len(ys) == len(self.plot_data)
-        if isinstance(line_args, dict):
-            line_args = repeat(line_args, len(ys))
-        else:
-            assert len(line_args) == len(ys)
-
-        for layers, y, args in zip(self.plot_data, ys, line_args):
-            if not isinstance(y, LayerData):
-                y = LayerData(y, args)
-            layers.append(y)
-
     @property
     def y0(self):
         for ax in self.plot_data:
             for layer in ax:
                 return layer.y
-        raise IndexError("%r has no data" % (self,))
+        raise IndexError("No data")
 
     @LazyProperty
     def data(self):
         "For backwards compatibility with nested list of NDVar"
-        return [[l.y for l in self.get_axis_data(i)] for i in range(self.n_plots)]
+        return [[l.y for l in self.get_axis_data(i, PlotType.LEGACY)] for i in range(self.n_plots)]
+
+    def for_plot(self, plot_type: PlotType):
+        if self.plot_type == plot_type:
+            return self
+        axes = [[new_l for l in ls for new_l in l.for_plot(plot_type)] for ls in self.plot_data]
+        return PlotData(axes, self.dims, self.frame_title, self._plot_names, self.plot_used, plot_type)
 
     @LazyProperty
     def plot_names(self):
@@ -1012,20 +1033,23 @@ class PlotData:
                 names.append(None)
         return names
 
-    def get_axis_data(self, ax: int, masking: str = None):
+    def get_axis_data(self, ax: int, plot_type: PlotType) -> List[LayerData]:
         """Data for ``ax``
 
         Parameters
         ----------
         ax : int
             Index of the axes.
-        masking : str
-            Type of masking (if supported).
+        plot_type : PlotType
+            How to handle masked arrays and layers in plot data.
         """
-        out = []
+        return [new_l for l in self.plot_data[ax] for new_l in l.for_plot(plot_type)]
+
+    def get_axis_ndvars(self, ax: int, time: float) -> List[NDVar]:
+        """Efficient method for extracting plot data for one time point"""
         for layer in self.plot_data[ax]:
-            out.extend(layer.get_data(masking))
-        return out
+            if time in layer.y.time:
+                yield layer.sub(time)
 
 
 def aggregate(y, agg):

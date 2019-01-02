@@ -13,7 +13,7 @@ from scipy.spatial import ConvexHull
 
 from .._data_obj import NDVar
 from ._base import (
-    EelFigure, PlotData, Layout, ImLayout, VariableAspectLayout,
+    PlotType, EelFigure, PlotData, Layout, ImLayout, VariableAspectLayout,
     ColorMapMixin, TimeSlicerEF, TopoMapKey, XAxisMixin, YLimMixin)
 from ._utsnd import _ax_butterfly, _ax_im_array, _plt_im
 from ._sensors import SENSORMAP_FRAME, SensorMapMixin, _plt_map2d
@@ -419,7 +419,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
 
         # plot epochs (x/y are in figure coordinates)
         for i, ax in enumerate(self.bfly_axes):
-            layers = data.get_axis_data(i, 'line')
+            layers = data.get_axis_data(i, PlotType.LINE)
             h = _ax_butterfly(ax, layers, 'time', 'sensor', mark, color, linewidth, self._vlims, clip)
             self.bfly_plots.append(h)
 
