@@ -30,11 +30,11 @@ from .._utils.parse import FLOAT_PATTERN, POS_FLOAT_PATTERN, INT_PATTERN
 from .._utils.numpy_utils import FULL_SLICE, INT_TYPES
 from .._wxutils import Icon, ID, REValidator
 from ..mne_fixes import MNE_EPOCHS
-from ..plot._base import find_axis_params_data, find_fig_vlims, find_fig_cmaps
+from ..plot._base import AxisData, LayerData, PlotType, find_axis_params_data, find_fig_vlims, find_fig_cmaps
 from ..plot._nuts import _plt_bin_nuts
 from ..plot._topo import _ax_topomap
 from ..plot._utsnd import _ax_bfly_epoch
-from .app import get_app, run
+from .app import get_app
 from .frame import EelbrainDialog
 from .mpl_canvas import FigureCanvasPanel
 from .history import Action, FileDocument, FileModel, FileFrame
@@ -1454,7 +1454,8 @@ class Frame(FileFrame):
                 mark = [ch for ch in self._mark if ch not in self.doc.bad_channel_names]
             else:
                 mark = None
-            self._topo_plot = _ax_topomap(self._topo_ax, [tseg], mark=mark, **self._topo_kwargs)
+            layers = AxisData([LayerData(tseg, PlotType.IMAGE)])
+            self._topo_plot = _ax_topomap(self._topo_ax, layers, mark=mark, **self._topo_kwargs)
             self._topo_plot_info_str = ""
 
         self.canvas.draw()

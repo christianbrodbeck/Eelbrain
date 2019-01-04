@@ -62,7 +62,7 @@ import __main__
 
 from collections import Iterable, Iterator
 from enum import Enum, auto
-from itertools import chain, repeat
+from itertools import chain
 from logging import getLogger
 import math
 import os
@@ -70,7 +70,8 @@ import shutil
 import subprocess
 import tempfile
 import time
-from typing import Iterator, List, Sequence, Union
+from typing import List, Sequence, Union
+from typing import Iterator as IteratorType
 import weakref
 
 import matplotlib as mpl
@@ -224,60 +225,6 @@ def find_axis_params_data(v, label):
     # (needs separate instance because it adapts to data)
     # fmt = ScalarFormatter() if scale == 1 else scale_formatters[scale]
     return SCALE_FORMATTERS[scale], label
-
-
-def find_im_args(ndvar, overlay, vlims={}, cmaps={}):
-    """Construct a dict with kwargs for an im plot
-
-    Parameters
-    ----------
-    ndvar : NDVar
-        Data to be plotted.
-    overlay : bool
-        Whether the NDVar is plotted as a first layer or as an overlay.
-    vlims : dict
-        {meas: (vmax, vmin)} mapping to replace v-limits based on the
-        ndvar.info dict.
-    cmaps : dict
-        {meas: cmap} mapping to replace the cmap in the ndvar.info dict.
-
-    Returns
-    -------
-    im_args : dict
-        Arguments for the im plot (cmap, vmin, vmax).
-
-    Notes
-    -----
-    The NDVar's info dict contains default arguments that determine how the
-    NDVar is plotted as base and as overlay. In case of insufficient
-    information, defaults apply. On the other hand, defaults can be overridden
-    by providing specific arguments to plotting functions.
-    """
-    if overlay:
-        kind = ndvar.info.get('overlay', ('contours',))
-    else:
-        kind = ndvar.info.get('base', ('im',))
-
-    if 'im' in kind:
-        meas = ndvar.info.get('meas')
-
-        if meas in cmaps:
-            cmap = cmaps[meas]
-        elif 'cmap' in ndvar.info:
-            cmap = ndvar.info['cmap']
-        else:
-            cmap = DEFAULT_CMAPS.get(meas, 'xpolar')
-
-        if meas in vlims:
-            vmin, vmax = vlims[meas]
-        else:
-            vmin, vmax = find_vlim_args(ndvar)
-            vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cmap)
-        im_args = {'cmap': cmap, 'vmin': vmin, 'vmax': vmax}
-    else:
-        im_args = None
-
-    return im_args
 
 
 def find_uts_hlines(ndvar):
@@ -634,7 +581,7 @@ def butterfly_data(
         resample_: int = None,
         colors: bool = False,
         return_vector_data: bool = False,
-) -> (List, List, NDVar):
+):
     """Data for plotting butterfly plot with brain
 
     Returns
@@ -725,7 +672,7 @@ def butterfly_data(
             for y, linestyle in ((y_ns, linestyle_ns), (y_sig, linestyle_sig)):
                 kwargs = {'zorder': z_order, **linestyle}
                 layers.append(LayerData(y.sub(source=hemi), PlotType.LINE, kwargs))
-            axes.append(layers)
+            axes.append(AxisData(layers))
         bfly_data = PlotData(axes, ('time', 'source'), plot_names=hemis)
     else:
         raise RuntimeError(f"kind={kind}")
@@ -760,38 +707,87 @@ def set_dict_arg(key, arg, line_dim_obj, artists, legend_handles=None):
             legend_handles[dim_index] = artist
 
 
+_remap_args = {'c': 'color'}
+
+
 class LayerData:
     """Data for one subplot layer"""
-    _remap_args = {'c': 'color'}
 
     def __init__(
             self,
             y: NDVar,
             plot_type: PlotType = PlotType.GENERAL,
             plot_args: dict = None,
+            plot_args_2: dict = None,  # for contour plot of IMAGE layer
+            bin_func: callable = np.mean,
     ):
         self.y = y
-        self._plot_args = plot_args
-        self.plot_type = plot_type
         self.is_masked = isinstance(y.x, np.ma.masked_array)
+        self.plot_type = plot_type
+        self._plot_args = self._dict_arg(plot_args)
+        self._bin_func = bin_func
+        if plot_type == PlotType.IMAGE:
+            self._plot_args_2 = self._dict_arg(plot_args_2)
+        elif plot_args_2:
+            raise TypeError(f"plot_args_2={plot_args_2!r} for {plot_type}")
+        else:
+            self._plot_args_2 = None
+
+    @staticmethod
+    def _dict_arg(arg: dict = None) -> dict:
+        if arg is None:
+            return {}
+        elif any(k in arg for k in _remap_args):
+            return {_remap_args.get(k, k): v for k, v in arg.items()}
+        else:
+            return arg
 
     def plot_args(self, kwargs: dict) -> dict:
         # needs to be a copy?
-        if self._plot_args is None:
-            items = kwargs.items()
-        else:
-            items = chain(kwargs.items(), self._plot_args.items())
-        return {self._remap_args.get(k, k): v for k, v in items}
+        return {**self._dict_arg(kwargs), **self._plot_args}
 
-    def for_plot(self, plot_type: PlotType) -> Iterator['LayerData']:
+    def contour_plot_args(self, contours):
+        out = {}
+        # contours arg
+        meas = self.y.info.get('meas')
+        if meas in contours:
+            if contours[meas] is not None:
+                out.update(contours[meas])
+        # layer
+        if self.plot_type == PlotType.IMAGE:
+            out.update(self._plot_args_2)
+        elif self.plot_type == PlotType.CONTOUR:
+            out.update(self._plot_args)
+        else:
+            raise RuntimeError(f"layer of type {self.plot_type}")
+        return out
+
+    def im_plot_args(self, vlims: dict, cmaps: dict) -> dict:
+        assert self.plot_type == PlotType.IMAGE
+        meas = self.y.info.get('meas')
+        if meas in cmaps:
+            cmap = cmaps[meas]
+        elif 'cmap' in self.y.info:
+            cmap = self.y.info['cmap']
+        else:
+            cmap = DEFAULT_CMAPS.get(meas, 'xpolar')
+
+        if meas in vlims:
+            vmin, vmax = vlims[meas]
+        else:
+            vmin, vmax = find_vlim_args(self.y)
+            vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cmap)
+        return {'cmap': cmap, 'vmin': vmin, 'vmax': vmax, **self._plot_args}
+
+    def for_plot(self, plot_type: PlotType) -> IteratorType['LayerData']:
         if self.plot_type == plot_type:
             yield self
-        elif self.plot_type != PlotType.GENERAL:
-            raise RuntimeError(f"Invalid PlotData conversion: {self.plot_type} -> {plot_type}")
         elif not self.is_masked:
             yield LayerData(self.y, plot_type, self._plot_args)
         elif plot_type == PlotType.LEGACY:
             yield LayerData(self.y.unmask(), plot_type, self._plot_args)
+        elif self.plot_type != PlotType.GENERAL:
+            raise RuntimeError(f"Invalid PlotData conversion: {self.plot_type} -> {plot_type}")
         elif plot_type == PlotType.LINE:
             un_mask = NDVar(~self.y.x.mask, self.y.dims)
             # kwargs = {}
@@ -806,8 +802,58 @@ class LayerData:
             args_masked = {'alpha': 0.4, 'color': (.7, .7, .7), 'zorder': 0}
             for y, args in ((self.y, args_main), (y_masked, args_masked)):
                 yield LayerData(y, plot_type, args)
+        elif plot_type == PlotType.IMAGE:
+            x = NDVar(self.y.x.data, self.y.dims, self.y.info, self.y.name)
+            yield LayerData(x, PlotType.IMAGE)
+            x = NDVar(1. - self.y.x.mask, self.y.dims, name=self.y.name)
+            yield LayerData(x, PlotType.CONTOUR, {'levels': [0.5], 'colors': ['black']}, bin_func=np.max)
         else:
             raise RuntimeError(f"plot_type={plot_type!r}")
+
+    def bin(self, bin_length, tstart, tstop):
+        y = self.y.bin(bin_length, tstart, tstop, self._bin_func)
+        return LayerData(y, self.plot_type, self._plot_args, self._plot_args_2, self._bin_func)
+
+    def sub_time(self, time: float, data_only: bool = False):
+        y = self.y.sub(time=time)
+        if data_only:
+            return y
+        else:
+            return LayerData(y, self.plot_type, self._plot_args, self._plot_args_2, self._bin_func)
+
+
+class AxisData:
+    """Represent one axis (multiple layers)"""
+    def __init__(
+            self,
+            layers: List[LayerData],
+    ):
+        self.layers = layers
+
+    def __iter__(self):
+        return iter(self.layers)
+
+    @property
+    def y0(self):
+        for layer in self.layers:
+            return layer.y
+        raise IndexError("No data")
+
+    def for_plot(self, plot_type: PlotType) -> 'AxisData':
+        return AxisData([l for layer in self.layers for l in layer.for_plot(plot_type)])
+
+    def bin(self, bin_length, tstart, tstop):
+        return AxisData([l.bin(bin_length, tstart, tstop) for l in self.layers])
+
+    def sub_time(self, time: float, data_only: bool = False):
+        axis = []
+        for layer in self.layers:
+            if time in layer.y.time:
+                axis.append(layer.sub_time(time, data_only))
+        if data_only:
+            return axis
+        else:
+            return AxisData(axis)
 
 
 class PlotData:
@@ -838,10 +884,15 @@ class PlotData:
         Data description for the plot frame.
     plot_names : list of str
         Titles for the plots.
+
+    Notes
+    -----
+    :class:`PlotData` is initially independent of plot type, and can be rendered
+    into specific plot-types with :meth:`PlotData.for_plot` methods.
     """
     def __init__(
             self,
-            axes: List[Union[None, List[LayerData]]],
+            axes: List[Union[None, AxisData]],
             dims: Sequence[str],
             title: str = "unnamed data",
             plot_names: List[str] = None,
@@ -866,6 +917,9 @@ class PlotData:
     def _cannot_skip_axes(self, parent):
         if not all(self.plot_used):
             raise NotImplementedError(f"y can not contain None for {parent.__class__.__name__} plot")
+
+    def __iter__(self):
+        return iter(self.plot_data)
 
     @classmethod
     def from_args(cls, y, dims, xax=None, ds=None, sub=None):
@@ -977,7 +1031,7 @@ class PlotData:
             y_name = ', '.join(y_names)
 
         use_axes = [ax is not None for ax in axes]
-        axes = [[LayerData(l) for l in ax] for ax in axes if ax]
+        axes = [AxisData([LayerData(l) for l in ax]) for ax in axes if ax]
         title = frame_title(y_name, x_name)
         return cls(axes, dims, title, ax_names, use_axes)
 
@@ -996,9 +1050,9 @@ class PlotData:
             Data description for the plot frame.
         """
         if isinstance(plots, int):
-            plots = [[] for _ in range(plots)]
+            plots = [AxisData([]) for _ in range(plots)]
         else:
-            plots = [[] if p else None for p in plots]
+            plots = [AxisData([]) if p else None for p in plots]
         return cls(plots, dims, title)
 
     @property
@@ -1011,12 +1065,12 @@ class PlotData:
     @LazyProperty
     def data(self):
         "For backwards compatibility with nested list of NDVar"
-        return [[l.y for l in self.get_axis_data(i, PlotType.LEGACY)] for i in range(self.n_plots)]
+        return [[l.y for l in self.axis_for_plot(i, PlotType.LEGACY)] for i in range(self.n_plots)]
 
-    def for_plot(self, plot_type: PlotType):
+    def for_plot(self, plot_type: PlotType) -> 'PlotData':
         if self.plot_type == plot_type:
             return self
-        axes = [[new_l for l in ls for new_l in l.for_plot(plot_type)] for ls in self.plot_data]
+        axes = [ax.for_plot(plot_type) for ax in self.plot_data]
         return PlotData(axes, self.dims, self.frame_title, self._plot_names, self.plot_used, plot_type)
 
     @LazyProperty
@@ -1033,7 +1087,7 @@ class PlotData:
                 names.append(None)
         return names
 
-    def get_axis_data(self, ax: int, plot_type: PlotType) -> List[LayerData]:
+    def axis_for_plot(self, ax: int, plot_type: PlotType) -> List[LayerData]:
         """Data for ``ax``
 
         Parameters
@@ -1043,13 +1097,19 @@ class PlotData:
         plot_type : PlotType
             How to handle masked arrays and layers in plot data.
         """
-        return [new_l for l in self.plot_data[ax] for new_l in l.for_plot(plot_type)]
+        return self.plot_data[ax].for_plot(plot_type)
 
-    def get_axis_ndvars(self, ax: int, time: float) -> List[NDVar]:
-        """Efficient method for extracting plot data for one time point"""
-        for layer in self.plot_data[ax]:
-            if time in layer.y.time:
-                yield layer.sub(time)
+    def bin(self, bin_length, tstart, tstop):
+        axes = [ax.bin(bin_length, tstart, tstop) for ax in self.plot_data]
+        return PlotData(axes, self.dims, self.frame_title, self._plot_names, self.plot_used, self.plot_type)
+
+    def sub_time(self, time: float, data_only: bool = False):
+        axes = [ax.sub_time(time, data_only) for ax in self.plot_data]
+        if data_only:
+            return axes
+        else:
+            dims = [dim for dim in self.dims if dim != 'time']
+            return PlotData(axes, dims, self.frame_title, self._plot_names, self.plot_used, self.plot_type)
 
 
 def aggregate(y, agg):
