@@ -1103,6 +1103,7 @@ class ttest_ind(NDDifferenceTest):
         diff = self.c1_mean - self.c0_mean
         if np.any(diff.x < 0):
             diff.info['cmap'] = 'xpolar'
+        diff.name = 'difference'
         self.difference = diff
 
         # uncorrected p
@@ -1337,6 +1338,7 @@ class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
         diff = self.c1_mean - self.c0_mean
         if np.any(diff.x < 0):
             diff.info['cmap'] = 'xpolar'
+        diff.name = 'difference'
         self.difference = diff
 
         # uncorrected p
@@ -1920,6 +1922,7 @@ class VectorDifferenceIndependent(Vector):
         self.c1_mean = ct.data[c1].mean('case', name=cellname(c1))
         self.c0_mean = ct.data[c0].mean('case', name=cellname(c0))
         self.difference = self.c1_mean - self.c0_mean
+        self.difference.name = 'difference'
         v_mean_norm = self.difference.norm(v_dim)
         cdist.add_original(v_mean_norm.x if self.difference.ndim > 1 else v_mean_norm)
 
@@ -1968,6 +1971,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
                  tstop=None, parc=None, force_permutation=False, **criteria):
         y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
         difference = y1 - y0
+        difference.name = 'difference'
 
         cdist = NDPermutationDistribution(
             difference, samples, vmin, tfce, 1, 'norm', 'Vector test (related)',
