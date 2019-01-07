@@ -114,15 +114,7 @@ LEGACY_RAW = {
 }
 
 
-CACHE_HELP = (
-    "A change in the {experiment} class definition means that some {filetype} "
-    "files no longer reflect the current definition. In order to keep local "
-    "results consistent with the definition, these files should be deleted. If "
-    "you want to keep a copy of the results, be sure to move them to a "
-    "different location before proceding. If you think the change in the "
-    "definition was a mistake, you can select 'abort', revert the change and "
-    "try again."
-)
+CACHE_HELP = "A change in the {experiment} class definition (or the input files) means that some {filetype} files no longer reflect the current definition. In order to keep local results consistent with the definition, these files should be deleted. If you want to keep a copy of the results, be sure to move them to a different location before proceding. If you think the change in the definition was a mistake, you can select 'abort', revert the change and try again."
 
 ################################################################################
 
@@ -514,11 +506,7 @@ class MneExperiment(FileTree):
     def __init__(self, root=None, find_subjects=True, **state):
         # checks
         if hasattr(self, 'cluster_criteria'):
-            raise AttributeError("MneExperiment subclasses can not have a "
-                                 ".cluster_criteria attribute. Please remove "
-                                 "the attribute, delete the eelbrain-cache "
-                                 "folder and use the select_clusters analysis "
-                                 "parameter.")
+            raise AttributeError("MneExperiment subclasses can not have a .cluster_criteria attribute anymore. Please remove the attribute, delete the eelbrain-cache folder and use the select_clusters analysis parameter.")
 
         # create attributes (overwrite class attributes)
         self._mri_subjects = self._mri_subjects.copy()

@@ -425,9 +425,7 @@ def asarray(x, kind=None, ds=None):
 def ascategorial(x, sub=None, ds=None, n=None):
     if isinstance(x, str):
         if ds is None:
-            err = ("Parameter was specified as string, but no Dataset was "
-                   "specified")
-            raise TypeError(err)
+            raise TypeError(f"{x!r}: Parameter was specified as string, but no Dataset was specified")
         x = ds.eval(x)
 
     if iscategorial(x):
@@ -498,9 +496,7 @@ def asepochs(x, sub=None, ds=None, n=None):
 def asfactor(x, sub=None, ds=None, n=None):
     if isinstance(x, str):
         if ds is None:
-            err = ("Factor was specified as string, but no Dataset was "
-                   "specified")
-            raise TypeError(err)
+            raise TypeError(f"{x!r}: Factor was specified as string, but no Dataset was specified")
         x = ds.eval(x)
 
     if isinstance(x, Factor):
