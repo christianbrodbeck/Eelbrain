@@ -175,6 +175,12 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         from nilearn.plotting.displays import get_projector
         from nilearn.plotting.img_plotting import _get_colorbar_and_data_ranges
 
+        # check parameters
+        if vmax is not None and np.isnan(vmax):
+            raise ValueError(f"vmax={vmax!r} (Tip: Use np.nanmax() instead of np.max())")
+        elif vmin is not None and np.isnan(vmin):
+            raise ValueError(f"vmin={vmin!r} (Tip: Use np.nanmin() instead of np.min())")
+
         if cmap is None:
             cmap = cm.cold_hot if black_bg else cm.cold_white_hot
         self.cmap = cmap
@@ -259,18 +265,6 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         self._imgs = imgs
         self._dir_imgs = dir_imgs
 
-        show_nan_msg = False
-        if vmax is not None and np.isnan(vmax):
-            vmax = None
-            show_nan_msg = True
-        if vmin is not None and np.isnan(vmin):
-            vmin = None
-            show_nan_msg = True
-        if show_nan_msg:
-            warnings.warn('NaN is not permitted for the vmax and vmin'
-                          'arguments.\n'
-                          'Tip: Use np.nanmax() instead of np.max().')
-
         # layout
         if display_mode is None:
             display_mode = ''
@@ -338,7 +332,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         ColorBarMixin._fill_toolbar(self, tb)
 
     # used by update_time
-    def _add_arrows(self, t, **kwargs):
+    def _add_arrows(self, t):
         """Adds arrows using matplotlib.quiver"""
         # Format 3D data
         data_list = []
@@ -350,8 +344,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                 vol = self._dir_imgs[k][t]
                 try:
                     vol_data = np.squeeze(vol.get_data())
-                    data_2d = display_ax.transform_to_2d(vol_data,
-                                                         vol.affine)
+                    data_2d = display_ax.transform_to_2d(vol_data, vol.affine)
                     data_2d = np.squeeze(data_2d)
                 except IndexError:
                     # We are cutting outside the indices of the data
@@ -368,8 +361,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             extent = (xmin, xmax, zmin, zmax)
             extent_list.append(extent)
 
-        to_iterate_over = zip(self.display.axes.values(), data_list,
-                              extent_list)
+        to_iterate_over = zip(self.display.axes.values(), data_list, extent_list)
 
         # Plotting using quiver
         if self.display._black_bg:
