@@ -422,7 +422,7 @@ class t_contrast_rel(NDTest):
         Threshold for forming clusters as t-value.
     tfce : bool | scalar
         Use threshold-free cluster enhancement. Use a scalar to specify the
-        step of TFCE levels (for ``tfce is True`` it is 0.2).
+        step of TFCE levels (for ``tfce is True``, 0.1 is used).
     tstart : scalar
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
@@ -574,7 +574,7 @@ class corr(NDTest):
         Threshold for forming clusters.
     tfce : bool | scalar
         Use threshold-free cluster enhancement. Use a scalar to specify the
-        step of TFCE levels (for ``tfce is True`` it is 0.2).
+        step of TFCE levels (for ``tfce is True``, 0.1 is used).
     tstart : scalar
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
@@ -795,7 +795,7 @@ class ttest_1samp(NDDifferenceTest):
         Threshold for forming clusters as t-value.
     tfce : bool | scalar
         Use threshold-free cluster enhancement. Use a scalar to specify the
-        step of TFCE levels (for ``tfce is True`` it is 0.2).
+        step of TFCE levels (for ``tfce is True``, 0.1 is used).
     tstart : scalar
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
@@ -972,7 +972,7 @@ class ttest_ind(NDDifferenceTest):
         Threshold for forming clusters as t-value.
     tfce : bool | scalar
         Use threshold-free cluster enhancement. Use a scalar to specify the
-        step of TFCE levels (for ``tfce is True`` it is 0.2).
+        step of TFCE levels (for ``tfce is True``, 0.1 is used).
     tstart : scalar
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
@@ -1224,7 +1224,7 @@ class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
         Threshold for forming clusters as t-value.
     tfce : bool | scalar
         Use threshold-free cluster enhancement. Use a scalar to specify the
-        step of TFCE levels (for ``tfce is True`` it is 0.2).
+        step of TFCE levels (for ``tfce is True``, 0.1 is used).
     tstart : scalar
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
@@ -1580,7 +1580,7 @@ class anova(MultiEffectNDTest):
         Threshold for forming clusters as f-value.
     tfce : bool | scalar
         Use threshold-free cluster enhancement. Use a scalar to specify the
-        step of TFCE levels (for ``tfce is True`` it is 0.2).
+        step of TFCE levels (for ``tfce is True``, 0.1 is used).
     replacement : bool
         whether random samples should be drawn with replacement or
         without
@@ -1801,7 +1801,7 @@ class Vector(NDDifferenceTest):
         Threshold value for forming clusters.
     tfce : bool | scalar
         Use threshold-free cluster enhancement. Use a scalar to specify the
-        step of TFCE levels (for ``tfce is True`` it is 0.2).
+        step of TFCE levels (for ``tfce is True``, 0.1 is used).
     tstart : scalar
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
