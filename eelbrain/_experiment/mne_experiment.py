@@ -4127,11 +4127,17 @@ class MneExperiment(FileTree):
         pipe = self._raw[self.get('raw')]
         with self._temporary_state, warnings.catch_warnings():
             warnings.filterwarnings('ignore', 'The measurement information indicates a low-pass', RuntimeWarning)
-            ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False, raw=pipe.source.name, decim=decim, add_bads=pipe.load_bad_channels(subject))
+            if epoch is None:
+                raw = self.load_raw(raw=pipe.source.name)
+                events = mne.make_fixed_length_events(raw)
+                ds = Dataset()
+                ds['epochs'] = mne.Epochs(raw, events, 1, 0, 1, baseline=None, proj=False, decim=decim, preload=True)
+            else:
+                ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False, raw=pipe.source.name, decim=decim, add_bads=pipe.load_bad_channels(subject))
         info = ds['epochs'].info
         data = TestDims('sensor')
         data_kind = data.data_to_ndvar(info)[0]
-        sysname = pipe.get_sysname(info, ds.info['subject'], data_kind)
+        sysname = pipe.get_sysname(info, subject, data_kind)
         connectivity = pipe.get_connectivity(data_kind)
         gui.select_components(path, ds, sysname, connectivity)
 
