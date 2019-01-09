@@ -751,6 +751,18 @@ The method for correcting the sensor covariance.
     Use automatic selection of the optimal regularization method.
 
 
+``src``
+-------
+
+The source space to use.
+
+ - ``ico-x``: Surface source space based on icosahedral subdivision of the
+   white matter surface ``x`` steps (e.g., ``ico-4``, the default).
+ - ``vol-x``: Volume source space based on a volume grid with ``x`` mm
+   resolution (``x`` is the distance between sources, e.g. ``vol-10`` for a
+   10 mm grid).
+
+
 ``inv``
 -------
 
