@@ -298,7 +298,7 @@ def t2_1samp(y, out=None):
     n_dim = len(y[0])
     if out is None:
         if y.ndim == 2:
-            out = np.empty(1)
+            out = np.empty(None)
             y = y[:, np.newaxis]
         else:
             out = np.empty(y.shape[2:])

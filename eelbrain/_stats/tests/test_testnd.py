@@ -642,6 +642,12 @@ def test_vector():
     res = testnd.Vector('v[40:]', ds=ds, samples=10)
     assert res.p == 0.8
 
+    # single vector with t2-stat
+    res_t = testnd.Vector('v[:40]', ds=ds, samples=10, use_t2_stat=True)
+    assert res_t.p == 0.0
+    res_t = testnd.Vector('v[40:]', ds=ds, samples=10, use_t2_stat=True)
+    assert res_t.p == 0.8
+
     # vector in time
     ds = datasets.get_uts(vector3d=True)
     res = testnd.Vector(ds[30:, 'v3d'], samples=10)

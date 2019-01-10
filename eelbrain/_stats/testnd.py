@@ -1857,7 +1857,7 @@ class Vector(NDDifferenceTest):
         v_mean_norm = v_mean.norm(v_dim)
         if use_t2_stat:
             t2_map = self._vector_t2_map(ct.y)
-            cdist.add_original(t2_map.x if v_mean.ndim > 1 else v_mean_norm)
+            cdist.add_original(t2_map.x if v_mean.ndim > 1 else t2_map)
         else:
             cdist.add_original(v_mean_norm.x if v_mean.ndim > 1 else v_mean_norm)
 
@@ -1924,10 +1924,11 @@ class Vector(NDDifferenceTest):
         dimnames = ('case', 'space',) + (None,) * (ndim - 2)
         dimnames = y.get_dimnames(names=dimnames)
         x = y.get_data(dimnames)
-        t2_map = stats.t2_1samp(x)
         if len(dimnames) == 2:
-            return t2_map.data
+            t2_map = stats.t2_1samp(x,)
+            return np.float64(t2_map)
         else:
+            t2_map = stats.t2_1samp(x)
             dims = (y.get_dim(dimnames[i]) for i in range(2, ndim))
             return NDVar(t2_map, dims)
 
