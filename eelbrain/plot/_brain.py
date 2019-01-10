@@ -147,6 +147,8 @@ def annot_legend(lh, rh, *args, **kwargs):
     """
     _, lh_colors, lh_names = read_annot(lh)
     _, rh_colors, rh_names = read_annot(rh)
+    lh_names = [name.decode() for name in lh_names]
+    rh_names = [name.decode() for name in rh_names]
     lh_colors = dict(zip(lh_names, lh_colors[:, :4] / 255.))
     rh_colors = dict(zip(rh_names, rh_colors[:, :4] / 255.))
     names = set(lh_names)
