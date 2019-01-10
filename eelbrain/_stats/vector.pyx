@@ -81,8 +81,8 @@ def mean_norm_rotated(cnp.ndarray[FLOAT64, ndim=3] y,
 
 @cython.cdivision(True)
 def t2_stat_rotated(cnp.ndarray[FLOAT64, ndim=3] y,
-                      cnp.ndarray[FLOAT64, ndim=3] rotation,
-                      cnp.ndarray[FLOAT64, ndim=1] out):
+                    cnp.ndarray[FLOAT64, ndim=3] rotation,
+                    cnp.ndarray[FLOAT64, ndim=1] out):
     cdef unsigned long i, v, case, vi
     cdef double norm, mean, var, temp
 
@@ -113,7 +113,7 @@ def t2_stat_rotated(cnp.ndarray[FLOAT64, ndim=3] y,
 
 @cython.cdivision(True)
 def t2_stat(cnp.ndarray[FLOAT64, ndim=3] y,
-               cnp.ndarray[FLOAT64, ndim=1] out):
+            cnp.ndarray[FLOAT64, ndim=1] out):
     cdef unsigned long i, v, case
     cdef double norm, mean, var, temp
 
