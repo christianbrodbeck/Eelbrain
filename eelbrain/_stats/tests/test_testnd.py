@@ -638,7 +638,7 @@ def test_vector():
     # single vector
     ds = datasets.get_uv(vector=True)
     res = testnd.Vector('v[:40]', ds=ds, samples=10)
-    assert res.p == 0.1
+    assert res.p == 0.0
     res = testnd.Vector('v[40:]', ds=ds, samples=10)
     assert res.p == 0.8
 
@@ -649,7 +649,15 @@ def test_vector():
     res = testnd.Vector(ds[:30, 'v3d'], samples=10)
     assert res.p.min() == 0.0
     difference = res.masked_difference()
-    assert difference.x.mask.sum() == 291
+    assert difference.x.mask.sum() == 288
+
+    # vector in time with t2-stat
+    res_t = testnd.Vector(ds[30:, 'v3d'], samples=10, use_t2_stat=True)
+    assert res_t.p.min() == 0.0
+    res_t = testnd.Vector(ds[:30, 'v3d'], samples=10, use_t2_stat=True)
+    assert res_t.p.min() == 0.0
+    difference = res_t.masked_difference()
+    assert difference.x.mask.sum() == 297
 
     # without mp
     configure(n_workers=0)

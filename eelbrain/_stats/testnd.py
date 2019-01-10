@@ -1923,28 +1923,15 @@ class Vector(NDDifferenceTest):
         """TODO: Incorporate this for all possible ndim. :(
         """
         ndim = len(y.dimnames)
-        if ndim == 4:
-            dimnames = y.get_dimnames(names=(None, 'case', 'space', None))
-            x = y.get_data(dimnames)
-            t_map = np.zeros((x.shape[0], x.shape[-1]))
-            dims = (y.get_dim(dimnames[0]), y.get_dim(dimnames[-1]))
-            for out, val in zip(t_map, x):
-                out = vector.t2_stat(val, out)
-        elif ndim == 3:
-            dimnames = y.get_dimnames(names=('case', 'space', None))
-            x = y.get_data(dimnames)
-            t_map = np.zeros((x.shape[-1]))
-            dims = (y.get_dim(dimnames[-1]),)
-            t_map = vector.t2_stat(x, t_map)
-        elif ndim == 2:
-            x = y.get_data(('case', 'space'))
-            t_map = np.zeros(1)
-            t_map = vector.t2_stat(x[:, np.newaxis], t_map)
-            return t_map.data
+        dimnames = ('case', 'space',) + (None,) * (ndim - 2)
+        dimnames = y.get_dimnames(names=dimnames)
+        x = y.get_data(dimnames)
+        t2_map = stats.t2_1samp(x)
+        if len(dimnames) == 2:
+            return t2_map.data
         else:
-            raise ValueError(f'Vector with ndim={ndim} is not supported')
-
-        return NDVar(t_map, dims)
+            dims = (y.get_dim(dimnames[i]) for i in range(2, ndim))
+            return NDVar(t2_map, dims)
 
 
 class VectorDifferenceIndependent(Vector):
