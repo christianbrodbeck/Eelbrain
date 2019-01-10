@@ -4,14 +4,14 @@ from .definitions import DefinitionError, Definition
 
 
 COMBINATION_PARC = 'combination'
-FS_PARC = 'subject_parc'  # Parc that come with every MRI-subject
-FSA_PARC = 'fsaverage_parc'  # Parc that comes with fsaverage
+FS_PARC = 'subject_parc'  # Parcellation that come with every MRI-subject
+FSA_PARC = 'fsaverage_parc'  # Parcellation that comes with fsaverage
 SEEDED_PARC = 'seeded'
 INDIVIDUAL_SEEDED_PARC = 'individual seeded'
-SEEDED_PARC_RE = re.compile('^(.+)-(\d+)$')
+SEEDED_PARC_RE = re.compile(r'^(.+)-(\d+)$')
 
 
-class Parc(Definition):
+class Parcellation(Definition):
     DICT_ATTRS = ('kind',)
     make = False
     morph_from_fsaverage = False
@@ -23,7 +23,7 @@ class Parc(Definition):
         self.name = name
 
 
-class CombinationParc(Parc):
+class CombinationParc(Parcellation):
     """Recombine labels from an existing parcellation
 
     Parameters
@@ -69,23 +69,23 @@ class CombinationParc(Parc):
     make = True
 
     def __init__(self, base, labels, views=None):
-        Parc.__init__(self, views)
+        Parcellation.__init__(self, views)
         self.base = base
         self.labels = labels
 
 
-class EelbrainParc(Parc):
-    "Parc that has special make rule"
+class EelbrainParc(Parcellation):
+    "Parcellation that has special make rule"
     kind = 'eelbrain_parc'
     make = True
 
     def __init__(self, morph_from_fsaverage, views=None):
-        Parc.__init__(self, views)
+        Parcellation.__init__(self, views)
         self.morph_from_fsaverage = morph_from_fsaverage
 
 
-class FreeSurferParc(Parc):
-    """Parc that is created outside Eelbrain for each subject
+class FreeSurferParc(Parcellation):
+    """Parcellation that is created outside Eelbrain for each subject
 
     Parcs that can not be generated automatically (e.g.,
     parcellation that comes with FreeSurfer). These parcellations are
@@ -105,7 +105,7 @@ class FreeSurferParc(Parc):
     kind = FS_PARC
 
 
-class FSAverageParc(Parc):
+class FSAverageParc(Parcellation):
     """Fsaverage parcellation that is morphed to individual subjects
 
     Parcs that are defined for the fsaverage brain and should be morphed
@@ -124,7 +124,7 @@ class FSAverageParc(Parc):
     morph_from_fsaverage = True
 
 
-class LabelParc(Parc):
+class LabelParc(Parcellation):
     """Assemble parcellation from FreeSurfer labels
 
     Combine one or several ``*.label`` files into a parcellation.
@@ -135,12 +135,12 @@ class LabelParc(Parc):
     make = True
 
     def __init__(self, labels, views=None):
-        Parc.__init__(self, views)
+        Parcellation.__init__(self, views)
         self.labels = labels if isinstance(labels, tuple) else tuple(labels)
 
 
-class SeededParc(Parc):
-    """Parc that is grown from seed coordinates
+class SeededParc(Parcellation):
+    """Parcellation that is grown from seed coordinates
 
     Seeds are defined on fsaverage which is in MNI305 space (`FreeSurfer wiki
     <https://surfer.nmr.mgh.harvard.edu/fswiki/CoordinateSystems>`_).
@@ -182,7 +182,7 @@ class SeededParc(Parc):
     make = True
 
     def __init__(self, seeds, mask=None, surface='white', views=None):
-        Parc.__init__(self, views)
+        Parcellation.__init__(self, views)
         self.seeds = seeds
         self.mask = mask
         self.surface = surface
@@ -199,7 +199,7 @@ class IndividualSeededParc(SeededParc):
 
     Examples
     --------
-    Parc with subject-specific seeds::
+    Parcellation with subject-specific seeds::
 
     parcs = {
         'stg': IndividualSeededParc({
@@ -228,7 +228,7 @@ class IndividualSeededParc(SeededParc):
 
     def seeds_for_subject(self, subject):
         if subject not in self.subjects:
-            raise DefinitionError(f"Parc {self.name} not defined for subject {subject}")
+            raise DefinitionError(f"Parcellation {self.name} not defined for subject {subject}")
         seeds = {name: self.seeds[name][subject] for name in self.seeds}
         # filter out missing
         return {name: seed for name, seed in seeds.items() if seed}
@@ -238,9 +238,9 @@ def parc_from_dict(name, params):
     p = params.copy()
     kind = p.pop('kind', None)
     if kind is None:
-        raise KeyError(f"Parc {name} does not contain the required 'kind' entry")
+        raise KeyError(f"Parcellation {name} does not contain the required 'kind' entry")
     elif kind not in PARC_CLASSES:
-        raise ValueError(f"Parc {name} contains an invalid 'kind' entry: {kind!r}")
+        raise ValueError(f"Parcellation {name} contains an invalid 'kind' entry: {kind!r}")
     cls = PARC_CLASSES[kind]
     return cls(**p)
 
