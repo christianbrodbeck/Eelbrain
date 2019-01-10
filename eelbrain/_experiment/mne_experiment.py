@@ -62,17 +62,15 @@ from .._stats.testnd import _MergedTemporalClusterDist
 from .._text import enumeration, plural
 from .._utils import ask, subp, keydefaultdict, log_level, ScreenHandler, deprecated
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
-from .definitions import (
-    assert_dict_has_args, check_names, find_dependent_epochs,
-    find_epochs_vars, find_test_vars, log_dict_change, log_list_change)
+from .definitions import check_names, find_dependent_epochs, find_epochs_vars, find_test_vars, log_dict_change, log_list_change
 from .epochs import PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, assemble_epochs, decim_param
 from .exceptions import FileDeficient, FileMissing
 from .experiment import FileTree
 from .parc import (
-    FS_PARC, FSA_PARC, PARC_CLASSES, SEEDED_PARC_RE,
-    Parcellation, CombinationParcellation, EelbrainParcellation,
-    FreeSurferParcellation, FSAverageParcellation, SeededParcellation,
-    IndividualSeededParcellation, LabelParcellation,
+    FS_PARC, FSA_PARC, SEEDED_PARC_RE,
+    Parcellation, CombinationParc, EelbrainParc,
+    FreeSurferParc, FSAverageParc, SeededParc,
+    IndividualSeededParc, LabelParc, parc_from_dict
 )
 from .preprocessing import (
     assemble_pipeline, RawSource, RawFilter, RawICA,
@@ -438,19 +436,14 @@ class MneExperiment(FileTree):
         'aparc.a2009s': FS_PARC,
         'aparc': FS_PARC,
         'aparc.DKTatlas': FS_PARC,
-        'cortex': LabelParcellation('cortex', ('cortex',), ('lateral', 'medial')),
+        'cortex': LabelParc(('cortex',), ('lateral', 'medial')),
         'PALS_B12_Brodmann': FSA_PARC,
         'PALS_B12_Lobes': FSA_PARC,
         'PALS_B12_OrbitoFrontal': FSA_PARC,
         'PALS_B12_Visuotopic': FSA_PARC,
-        'lobes': EelbrainParcellation('lobes', morph_from_fsaverage=True,
-                                      views=('lateral', 'medial')),
-        'lobes-op': CombinationParcellation(
-            'lobes-op', 'lobes', {'occipitoparietal': "occipital + parietal"},
-            views=('lateral', 'medial')),
-        'lobes-ot': CombinationParcellation(
-            'lobes-ot', 'lobes', {'occipitotemporal': "occipital + temporal"},
-            views=('lateral', 'medial')),
+        'lobes': EelbrainParc(True, ('lateral', 'medial')),
+        'lobes-op': CombinationParc('lobes', {'occipitoparietal': "occipital + parietal"}, ('lateral', 'medial')),
+        'lobes-ot': CombinationParc('lobes', {'occipitotemporal': "occipital + temporal"}, ('lateral', 'medial')),
     }
     parcs = {}
 
@@ -661,47 +654,21 @@ class MneExperiment(FileTree):
         ###############
         # make : can be made if non-existent
         # morph_from_fraverage : can be morphed from fsaverage to other subjects
-        if isinstance(self.parcs, dict):
-            user_parcs = self.parcs
-        elif self.parcs is None:
-            user_parcs = {}
-        elif isinstance(self.parcs, tuple):
-            user_parcs = {name: FSA_PARC for name in self.parcs}
-        else:
-            raise TypeError("The MneExperiment.parcs attribute should be a "
-                            "dict, got %s" % repr(self.parcs))
-
-        illegal = set(user_parcs).intersection(self.__parcs)
-        if illegal:
-            raise KeyError("The following parc names are already used by "
-                           "builtin parcellations: %s" % ', '.join(illegal))
-
-        parcs = {}
-        for name, p in chain(self.__parcs.items(), user_parcs.items()):
-            if p == FS_PARC:
-                parcs[name] = FreeSurferParcellation(name, ('lateral', 'medial'))
+        self._parcs = {}
+        for name, p in chain(self.__parcs.items(), self.parcs.items()):
+            if isinstance(p, Parcellation):
+                parc = p
+            elif p == FS_PARC:
+                parc = FreeSurferParc(('lateral', 'medial'))
             elif p == FSA_PARC:
-                parcs[name] = FSAverageParcellation(name, ('lateral', 'medial'))
-            elif isinstance(p, Parcellation):
-                assert p.name == name
-                parcs[name] = p
+                parc = FSAverageParc(('lateral', 'medial'))
             elif isinstance(p, dict):
-                p = p.copy()
-                kind = p.pop('kind', None)
-                if kind is None:
-                    raise KeyError("Parcellation %s does not contain the "
-                                   "required 'kind' entry" % name)
-                elif kind not in PARC_CLASSES:
-                    raise ValueError("Parcellation %s contains an invalid "
-                                     "'kind' entry: %r" % (name, kind))
-                cls = PARC_CLASSES[kind]
-                assert_dict_has_args(p, cls, 'parc', name, 1)
-                parcs[name] = cls(name, **p)
+                parc = parc_from_dict(name, p)
             else:
-                raise ValueError("Parcellations need to be defined as %r, %r or "
-                                 "dict, got %s: %r" % (FS_PARC, FSA_PARC, name, p))
-        self._parcs = parcs
-        parc_values = list(parcs.keys())
+                raise DefinitionError(f"parcellation {name!r}: {p!r}")
+            parc._link(name)
+            self._parcs[name] = parc
+        parc_values = list(self._parcs.keys())
         parc_values.append('')
 
         ########################################################################
@@ -1140,7 +1107,7 @@ class MneExperiment(FileTree):
                     # should automatically update if the user changes the
                     # fsaverage file.
                     if not isinstance(self._parcs[parc],
-                                      (FreeSurferParcellation, FSAverageParcellation)):
+                                      (FreeSurferParc, FSAverageParc)):
                         invalid_cache['parcs'].add(parc)
                         log_dict_change(log, "Parc", parc, params, parcs_state[parc])
 
@@ -3712,13 +3679,13 @@ class MneExperiment(FileTree):
         Only called to make custom annotation files for the common_brain
         """
         subjects_dir = self.get('mri-sdir')
-        if isinstance(p, CombinationParcellation):
+        if isinstance(p, CombinationParc):
             with self._temporary_state:
                 base = {l.name: l for l in self.load_annot(parc=p.base)}
             labels = []
             for name, exp in p.labels.items():
                 labels += combination_label(name, exp, base, subjects_dir)
-        elif isinstance(p, SeededParcellation):
+        elif isinstance(p, SeededParc):
             if p.mask:
                 with self._temporary_state:
                     self.make_annot(parc=p.mask)
@@ -3726,7 +3693,7 @@ class MneExperiment(FileTree):
             labels = labels_from_mni_coords(
                 p.seeds_for_subject(subject), float(extent), subject, p.surface,
                 p.mask, subjects_dir, parc)
-        elif isinstance(p, EelbrainParcellation) and p.name == 'lobes':
+        elif isinstance(p, EelbrainParc) and p.name == 'lobes':
             if subject != 'fsaverage':
                 raise RuntimeError("lobes parcellation can only be created for "
                                    "fsaverage, not for %s" % subject)
@@ -3751,7 +3718,7 @@ class MneExperiment(FileTree):
             dissolve_label(labels, '???', targets, subjects_dir)
             dissolve_label(labels, '????', targets, subjects_dir, 'rh')
             dissolve_label(labels, '???????', targets, subjects_dir, 'rh')
-        elif isinstance(p, LabelParcellation):
+        elif isinstance(p, LabelParc):
             labels = []
             hemis = ('lh.', 'rh.')
             path = join(subjects_dir, subject, 'label', '%s.label')
@@ -5160,7 +5127,7 @@ class MneExperiment(FileTree):
         "Add picture of the current parcellation"
         parc_name, parc = self._get_parc()
         with self._temporary_state:
-            if isinstance(parc, IndividualSeededParcellation):
+            if isinstance(parc, IndividualSeededParc):
                 if subjects is None:
                     raise RuntimeError("subjects needs to be specified for "
                                        "plotting individual parcellations")
@@ -5498,13 +5465,13 @@ class MneExperiment(FileTree):
 
         parc_name, parc = self._get_parc()
         if seeds:
-            if not isinstance(parc, SeededParcellation):
+            if not isinstance(parc, SeededParc):
                 raise ValueError(
                     "seeds=True is only valid for seeded parcellation, "
                     "not for parc=%r" % (parc_name,))
             # if seeds are defined on a scaled common-brain, we need to plot the
             # scaled brain:
-            plot_on_scaled_common_brain = isinstance(parc, IndividualSeededParcellation)
+            plot_on_scaled_common_brain = isinstance(parc, IndividualSeededParc)
         else:
             plot_on_scaled_common_brain = False
 
@@ -5972,7 +5939,7 @@ class MneExperiment(FileTree):
 
     def _eval_parc(self, parc):
         if parc in self._parcs:
-            if isinstance(self._parcs[parc], SeededParcellation):
+            if isinstance(self._parcs[parc], SeededParc):
                 raise ValueError("Seeded parc set without size, use e.g. "
                                  "parc='%s-25'" % parc)
             else:
@@ -5980,7 +5947,7 @@ class MneExperiment(FileTree):
         m = SEEDED_PARC_RE.match(parc)
         if m:
             name = m.group(1)
-            if isinstance(self._parcs.get(name), SeededParcellation):
+            if isinstance(self._parcs.get(name), SeededParc):
                 return parc
             else:
                 raise ValueError("No seeded parc with name %r" % name)

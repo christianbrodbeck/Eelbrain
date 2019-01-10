@@ -21,17 +21,6 @@ class Definition:
             return False
 
 
-def assert_dict_has_args(d, cls, kind, name, n_internal=0):
-    "Make sure the dictionary ``d`` has all keys required by ``cls``"
-    argspec = getargspec(cls.__init__)
-    required = argspec.args[1 + n_internal: -len(argspec.defaults)]
-    missing = set(required).difference(d)
-    if missing:
-        raise DefinitionError(
-            "%s definition %s is missing the following parameters: %s" %
-            (kind, name, ', '.join(missing)))
-
-
 def name_ok(key: str) -> bool:
     try:
         return all(c not in key for c in ' ')

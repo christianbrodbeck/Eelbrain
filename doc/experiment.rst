@@ -42,11 +42,12 @@ of the experiment::
 
 Where ``sessions`` is the name which you included in your raw data files after
 the subject identifier.
-Once this basic experiment class is defined, it can be initialized without root
-(i.e., without data files). This is useful to see the required file structure::
 
-    >>> e = WordExperiment()
-    >>> e.show_input_tree()
+The pipeline expects input files in a strictly determined folder/file structure.
+In the schema below, curly brackets indicate slots to be replaced with specific
+names, for example ``'{subject}'`` should be replaced with each specific
+subject's label.::
+
     root
     mri-sdir                                /mri
     mri-dir                                    /{mrisubject}
@@ -57,8 +58,8 @@ Once this basic experiment class is defined, it can be initialized without root
     raw-file                                         /{subject}_{session}-raw.fif
 
 
-This output shows a template for the path structure according to which the input
-files have to be organized. Assuming that ``root="/files"``, for a subject
+This schema shows path templates according to which the input
+files should be organized. Assuming that ``root="/files"``, for a subject
 called "R0001" this includes:
 
 - MRI-directory at ``/files/mri/R0001``
@@ -511,136 +512,16 @@ the :attr:`MneExperiment.parcs` dictionary with ``{name: parc_definition}``
 entries. There are a couple of different ways in which parcellations can be
 defined, described below.
 
-Each ``parc_definition`` can have a ``"views"`` entry to set the views shown in
-anatomical plots, e.g. ``{"views": ("medial", "lateral")}``.
 
+.. autosummary::
+   :toctree: generated
+   :template: class_nomethods.rst
 
-Recombinations
-^^^^^^^^^^^^^^
-
-Recombinations of existing parcellations can be defined as dictionaries
-include the following entries:
-
-kind : ``'combination'``
-    Has to be 'combination'.
-base : :class:`str`
-    The name of the parcellation that provides the input labels.
-labels : :class:`dict` {:class:`str`: :class:`str`}
-    New labels to create in ``{name: expression}`` format. All label names
-    should be composed of alphanumeric characters (plus underline) and should
-    not contain the -hemi tags. In order to create a given label only on one
-    hemisphere, add the -hemi tag in the name (not in the expression, e.g.,
-    ``{'occipitotemporal-lh': "occipital + temporal"}``).
-
-Examples (these are pre-defined parcellations)::
-
-    parcs = {'lobes-op': {'kind': 'combination',
-                          'base': 'lobes',
-                          'labels': {'occipitoparietal': "occipital + parietal"}},
-             'lobes-ot': {'kind': 'combination',
-                          'base': 'lobes',
-                          'labels': {'occipitotemporal': "occipital + temporal"}}}
-
-
-An example using a split label::
-
-    parcs = {
-        'medial': {
-            'kind': 'combination',
-            'base': 'aparc',
-            'labels': {
-                'medialparietal': 'precuneus + posteriorcingulate',
-                'medialfrontal': 'medialorbitofrontal + '
-                                 'rostralanteriorcingulate + '
-                                 'split(superiorfrontal, 3)[2]',
-            },
-            'views': 'medial',
-        },
-    }
-
-
-.. _MneExperiment.parc-seeded:
-
-MNI coordinates
-^^^^^^^^^^^^^^^
-
-Labels can be constructed around known MNI coordinates using the foillowing
-entries:
-
-kind : 'seeded'
-    Has to be 'seeded'.
-seeds : :class:`dict`
-    {name: seed(s)} dictionary, where names are strings, including -hemi tags
-    (e.g., ``"mylabel-lh"``) and seed(s) are array-like, specifying one or more
-    seed coordinate (shape ``(3,)`` or ``(n_seeds, 3)``).
-mask : :class:`str`
-    Name of a parcellation to use as mask (i.e., anything that is "unknown" in
-    that parcellation is excluded from the new parcellation. Use
-    ``{'mask': 'lobes'}`` to exclude the subcortical areas around the
-    diencephalon.
-
-For each seed entry, the source space vertex closest to the given MNI coordinate
-will be used as actual seed, and a label will be created including all points
-with a surface distance smaller than a given extent from the seed
-vertex/vertices. The extent is determined when setting the parc as analysis
-parameter as in ``e.set(parc="myparc-25")``, which specifies a radius of 25 mm.
-
-Example::
-
-     parcs = {'stg': {'kind': 'seeded',
-                      'mask': 'lobes',
-                      'seeds': {'anteriorstg-lh': ((-54, 10, -8), (-47, 14, -28)),
-                                'middlestg-lh': (-66, -24, 8),
-                                'posteriorstg-lh': (-54, -57, 16)}}}
-
-
-Individual coordinates
-^^^^^^^^^^^^^^^^^^^^^^
-
-Labels can also be constructured from subjects-specific seeds. They work
-like :ref:`MneExperiment.parc-seeded` parcellations, except that seeds are
-provided for each subject.
-
-Example::
-
-     parcs = {
-         'stg': {
-             'kind': 'individual seeded',
-             'mask': 'lobes',
-             'seeds': {
-                 'anteriorstg-lh': {
-                     'R0001': (-54, 10, -8),
-                     'R0002': (-47, 14, -28),
-                 },
-                 'middlestg-lh': {
-                     'R0001': (-66, -24, 8),
-                     'R0002': (-60, -26, 9),
-                 }
-             }
-         }
-     }
-
-
-Externally created parcellations
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-For parcellations that are user-created, the following two definitions can be
-used to determine how they are handled:
-
-"subject_parc"
-    Parcellations that are created outside Eelbrain for each subject. These
-    parcellations are automatically generated only for scaled brains, for
-    subjects' MRIs the user is responsible for creating the respective
-    annot-files.
-"fsaverage_parc"
-    Parcellations that are defined for the fsaverage brain and should be morphed
-    to every other subject's brain. These parcellations are automatically
-    morphed to individual subjects' MRIs.
-
-Examples (pre-defined parcellations)::
-
-    parcs = {'aparc': 'subject_parc',
-             'PALS_B12_Brodmann': 'fsaverage_parc'}
+   CombinationParcellation
+   SeededParcellation
+   IndividualSeededParcellation
+   FreeSurferParcellation
+   FSAverageParcellation
 
 
 Visualization defaults
