@@ -1669,7 +1669,7 @@ class MneExperiment(FileTree):
             :class:`mne.SourceEstimate`.
         morph_ndvar : bool
             Add source estimates morphed to the common brain as :class:`NDVar`.
-        baseline : None | True | tuple
+        baseline : bool | tuple
             Apply baseline correction (in source space) using this period. True
             to use the epoch's baseline specification. The default is to not
             apply baseline correction (None).
@@ -2424,10 +2424,10 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_epochs_stc(self, subject=1, sns_baseline=True,
+    def load_epochs_stc(self, subject=1, baseline=True,
                         src_baseline=False, ndvar=True, cat=None,
                         keep_epochs=False, morph=False, mask=False,
-                        data_raw=False, vardef=None, decim=None, **kwargs):
+                        data_raw=False, vardef=None, decim=None, **state):
         """Load a Dataset with stcs for single epochs
 
         Parameters
@@ -2439,7 +2439,7 @@ class MneExperiment(FileTree):
             Warning: loading single trial data for multiple subjects at once
             uses a lot of memory, which can lead to a periodically unresponsive
             terminal).
-        sns_baseline : bool | tuple
+        baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
         src_baseline : bool | tuple
@@ -2477,10 +2477,13 @@ class MneExperiment(FileTree):
         epochs_dataset : Dataset
             Dataset containing single trial data (epochs).
         """
+        if 'sns_baseline' in state:
+            baseline = state.pop('sns_baseline')
+            warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
         epoch = self._epochs[self.get('epoch')]
-        if not sns_baseline and src_baseline and epoch.post_baseline_trigger_shift:
+        if not baseline and src_baseline and epoch.post_baseline_trigger_shift:
             raise NotImplementedError("src_baseline with post_baseline_trigger_shift")
-        subject, group = self._process_subject_arg(subject, kwargs)
+        subject, group = self._process_subject_arg(subject, state)
         if group is not None:
             if data_raw is not False:
                 raise ValueError(f"data_raw={data_raw!r} with group: Can not keep data_raw when combining data from multiple subjects.")
@@ -2490,9 +2493,7 @@ class MneExperiment(FileTree):
                 raise ValueError(f"morph={morph!r} with group: Source estimates can only be combined after morphing data to common brain model. Set morph=True.")
             dss = []
             for _ in self.iter(group=group):
-                ds = self.load_epochs_stc(None, sns_baseline, src_baseline,
-                                          ndvar, cat, keep_epochs, morph, mask,
-                                          False, vardef, decim)
+                ds = self.load_epochs_stc(None, baseline, src_baseline, ndvar, cat, keep_epochs, morph, mask, False, vardef, decim)
                 dss.append(ds)
             return combine(dss)
 
@@ -2511,7 +2512,7 @@ class MneExperiment(FileTree):
         else:
             raise ValueError(f'keep_epochs={keep_epochs!r}')
 
-        ds = self.load_epochs(subject, sns_baseline, sns_ndvar, cat=cat, decim=decim, data_raw=data_raw, vardef=vardef)
+        ds = self.load_epochs(subject, baseline, sns_ndvar, cat=cat, decim=decim, data_raw=data_raw, vardef=vardef)
 
         # load inv
         if src_baseline is True:
@@ -2754,8 +2755,8 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_epochs_stf(self, subject=1, sns_baseline=True, mask=True,
-                        morph=False, keep_stc=False, **kwargs):
+    def load_epochs_stf(self, subject=1, baseline=True, mask=True,
+                        morph=False, keep_stc=False, **state):
         """Load frequency space single trial data
 
         Parameters
@@ -2764,7 +2765,7 @@ class MneExperiment(FileTree):
             Subject(s) for which to load data. Can be a single subject
             name or a group name such as ``'all'``. ``1`` to use the current
             subject (default); ``-1`` for the current group.
-        sns_baseline : None | True | tuple
+        baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
         mask : bool | str
@@ -2778,9 +2779,10 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        ds = self.load_epochs_stc(subject, sns_baseline, ndvar=True,
-                                  morph=morph, mask=mask, data_raw='raw',
-                                  **kwargs)
+        if 'sns_baseline' in state:
+            baseline = state.pop('sns_baseline')
+            warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
+        ds = self.load_epochs_stc(subject, baseline, ndvar=True, morph=morph, mask=mask, data_raw='raw', **state)
         name = 'srcm' if morph else 'src'
 
         # apply morlet transformation
@@ -2795,8 +2797,8 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_evoked_stf(self, subject=1, sns_baseline=True, mask=True,
-                        morph=False, keep_stc=False, **kwargs):
+    def load_evoked_stf(self, subject=1, baseline=True, mask=True,
+                        morph=False, keep_stc=False, **state):
         """Load frequency space evoked data
 
         Parameters
@@ -2805,7 +2807,7 @@ class MneExperiment(FileTree):
             Subject(s) for which to load data. Can be a single subject
             name or a group name such as ``'all'``. ``1`` to use the current
             subject (default); ``-1`` for the current group.
-        sns_baseline : None | True | tuple
+        baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
         mask : bool | str
@@ -2819,9 +2821,12 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        ds = self.load_evoked_stc(subject, sns_baseline, morph_ndvar=morph,
+        if 'sns_baseline' in state:
+            baseline = state.pop('sns_baseline')
+            warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
+        ds = self.load_evoked_stc(subject, baseline, morph_ndvar=morph,
                                   ind_ndvar=not morph, mask=mask,
-                                  data_raw='raw', **kwargs)
+                                  data_raw='raw', **state)
         name = 'srcm' if morph else 'src'
 
         # apply morlet transformation
@@ -2836,11 +2841,11 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_evoked_stc(self, subject=1, sns_baseline=True,
+    def load_evoked_stc(self, subject=1, baseline=True,
                         src_baseline=False, sns_ndvar=False, ind_stc=False,
                         ind_ndvar=False, morph_stc=False, morph_ndvar=False,
                         cat=None, keep_evoked=False, mask=False, data_raw=False,
-                        vardef=None, **kwargs):
+                        vardef=None, **state):
         """Load evoked source estimates.
 
         Parameters
@@ -2849,7 +2854,7 @@ class MneExperiment(FileTree):
             Subject(s) for which to load data. Can be a single subject
             name or a group name such as ``'all'``. ``1`` to use the current
             subject (default); ``-1`` for the current group.
-        sns_baseline : bool | tuple
+        baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
         src_baseline : bool | tuple
@@ -2885,22 +2890,20 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
+        if 'sns_baseline' in state:
+            baseline = state.pop('sns_baseline')
+            warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
+
         if not any((ind_stc, ind_ndvar, morph_stc, morph_ndvar)):
-            err = ("Nothing to load, set at least one of (ind_stc, ind_ndvar, "
-                   "morph_stc, morph_ndvar) to True")
-            raise ValueError(err)
+            raise ValueError("Nothing to load, set at least one of (ind_stc, ind_ndvar, morph_stc, morph_ndvar) to True")
 
-        if kwargs:
-            self.set(**kwargs)
+        if state:
+            self.set(**state)
 
-        if not sns_baseline and src_baseline and \
-                self._epochs[self.get('epoch')].post_baseline_trigger_shift:
-            raise NotImplementedError("post_baseline_trigger_shift is not "
-                                      "implemented for baseline correction in "
-                                      "source space")
+        if not baseline and src_baseline and self._epochs[self.get('epoch')].post_baseline_trigger_shift:
+            raise NotImplementedError("post_baseline_trigger_shift is not implemented for baseline correction in source space")
 
-        ds = self.load_evoked(subject, sns_baseline, sns_ndvar, cat, None,
-                              data_raw, vardef)
+        ds = self.load_evoked(subject, baseline, sns_ndvar, cat, None, data_raw, vardef)
         self._add_evoked_stc(ds, ind_stc, ind_ndvar, morph_stc, morph_ndvar,
                              src_baseline, keep_evoked, mask)
 
@@ -3115,7 +3118,7 @@ class MneExperiment(FileTree):
 
     def _load_result_plotter(self, test, tstart, tstop, pmin, parc=None,
                              mask=None, samples=10000, data='source',
-                             sns_baseline=True, src_baseline=None,
+                             baseline=True, src_baseline=None,
                              colors=None, labels=None, h=1.2, rc=None,
                              dst=None, vec_fmt='svg', pix_fmt='png', **kwargs):
         """Load cluster-based test result plotter
@@ -3124,7 +3127,7 @@ class MneExperiment(FileTree):
         ----------
         test : str
             Name of the test.
-        tstart, tstop, pmin, parc, mask, samples, data, sns_baseline, src_baseline
+        tstart, tstop, pmin, parc, mask, samples, data, baseline, src_baseline
             Test parameters.
         colors : dict
             Colors for data cells as ``{cell: matplotlib_color}`` dictionary.
@@ -3158,7 +3161,7 @@ class MneExperiment(FileTree):
 
         # calls _set_analysis_options():
         ds, res = self.load_test(test, tstart, tstop, pmin, parc, mask, samples,
-                                 data, sns_baseline, src_baseline, True,
+                                 data, baseline, src_baseline, True,
                                  **kwargs)
         if dst is None:
             dst = self.get('res-plot-dir', mkdir=True)
@@ -3372,15 +3375,14 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def _load_spm(self, sns_baseline=True, src_baseline=False):
+    def _load_spm(self, baseline=True, src_baseline=False):
         "Load LM"
         subject = self.get('subject')
         test = self.get('test')
         test_obj = self._tests[test]
         if not isinstance(test_obj, TwoStageTest):
             raise NotImplementedError("Test kind %r" % test_obj.__class__.__name__)
-        ds = self.load_epochs_stc(subject, sns_baseline, src_baseline, mask=True,
-                                  vardef=test_obj.vars)
+        ds = self.load_epochs_stc(subject, baseline, src_baseline, mask=True, vardef=test_obj.vars)
         return testnd.LM('src', test_obj.stage_1, ds, subject=subject)
 
     def load_src(self, add_geom=False, ndvar=False, **state):
@@ -3406,8 +3408,8 @@ class MneExperiment(FileTree):
         return mne.read_source_spaces(fpath, add_geom)
 
     def load_test(self, test, tstart=None, tstop=None, pmin=None, parc=None,
-                  mask=None, samples=10000, data='source', sns_baseline=True,
-                  src_baseline=None, return_data=False, make=False, **kwargs):
+                  mask=None, samples=10000, data='source', baseline=True,
+                  src_baseline=None, return_data=False, make=False, **state):
         """Create and load spatio-temporal cluster test results
 
         Parameters
@@ -3436,7 +3438,7 @@ class MneExperiment(FileTree):
             ``source`` spatio-temporal test in source space.
             ``source.mean`` ROI mean time course.
             ``sensor.rms`` RMS across sensors.
-        sns_baseline : bool | tuple
+        baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
         src_baseline : bool | tuple
@@ -3460,16 +3462,17 @@ class MneExperiment(FileTree):
             Test result for the specified test (when performing tests in ROIs,
             an :class:`~_experiment.ROITestResult` object is returned).
         """
-        self.set(test=test, **kwargs)
+        if 'sns_baseline' in state:
+            baseline = state.pop('sns_baseline')
+            warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
+
+        self.set(test=test, **state)
         data = TestDims.coerce(data)
-        self._set_analysis_options(data, sns_baseline, src_baseline, pmin,
-                                   tstart, tstop, parc, mask)
-        return self._load_test(test, tstart, tstop, pmin, parc, mask, samples,
-                               data, sns_baseline, src_baseline, return_data,
-                               make)
+        self._set_analysis_options(data, baseline, src_baseline, pmin, tstart, tstop, parc, mask)
+        return self._load_test(test, tstart, tstop, pmin, parc, mask, samples, data, baseline, src_baseline, return_data, make)
 
     def _load_test(self, test, tstart, tstop, pmin, parc, mask, samples, data,
-                   sns_baseline, src_baseline, return_data, make):
+                   baseline, src_baseline, return_data, make):
         "Load a cached test after _set_analysis_options() has been called"
         test_obj = self._tests[test]
 
@@ -3544,9 +3547,9 @@ class MneExperiment(FileTree):
                                 len(self.get_field_values('subject')),
                                 disable=CONFIG['tqdm']):
                 if test_obj.model is None:
-                    ds = self.load_epochs_stc(subject, sns_baseline, src_baseline, morph=True, mask=mask, vardef=test_obj.vars)
+                    ds = self.load_epochs_stc(subject, baseline, src_baseline, morph=True, mask=mask, vardef=test_obj.vars)
                 else:
-                    ds = self.load_evoked_stc(subject, sns_baseline, src_baseline, morph_ndvar=True, mask=mask, vardef=test_obj.vars)
+                    ds = self.load_evoked_stc(subject, baseline, src_baseline, morph_ndvar=True, mask=mask, vardef=test_obj.vars)
 
                 if do_test:
                     lms.append(test_obj.make_stage_1(data.y_name, ds, subject))
@@ -3558,14 +3561,12 @@ class MneExperiment(FileTree):
 
             res_data = combine(dss) if return_data else None
         elif isinstance(data.source, str):
-            res_data, res = self._make_test_rois(
-                sns_baseline, src_baseline, test_obj, samples, pmin,
-                test_kwargs, res, data)
+            res_data, res = self._make_test_rois(baseline, src_baseline, test_obj, samples, pmin, test_kwargs, res, data)
         else:
             if data.sensor:
-                res_data = self.load_evoked(True, sns_baseline, True, test_obj._within_cat, data=data, vardef=test_obj.vars)
+                res_data = self.load_evoked(True, baseline, True, test_obj._within_cat, data=data, vardef=test_obj.vars)
             elif data.source:
-                res_data = self.load_evoked_stc(True, sns_baseline, src_baseline, morph_ndvar=True, cat=test_obj._within_cat, mask=mask, vardef=test_obj.vars)
+                res_data = self.load_evoked_stc(True, baseline, src_baseline, morph_ndvar=True, cat=test_obj._within_cat, mask=mask, vardef=test_obj.vars)
             else:
                 raise ValueError(f"data={data.string!r}")
 
@@ -3581,7 +3582,7 @@ class MneExperiment(FileTree):
         else:
             return res
 
-    def _make_test_rois(self, sns_baseline, src_baseline, test_obj, samples, pmin,
+    def _make_test_rois(self, baseline, src_baseline, test_obj, samples, pmin,
                         test_kwargs, res, data):
         # load data
         dss = defaultdict(list)
@@ -3590,7 +3591,7 @@ class MneExperiment(FileTree):
         n_subjects = len(subjects)
         for _ in tqdm(self, "Loading data", n_subjects, unit='subject',
                       disable=CONFIG['tqdm']):
-            ds = self.load_evoked_stc(None, sns_baseline, src_baseline,
+            ds = self.load_evoked_stc(None, baseline, src_baseline,
                                       ind_ndvar=True, vardef=test_obj.vars)
             src = ds.pop('src')
             n_trials_dss.append(ds.copy())
@@ -4207,10 +4208,10 @@ class MneExperiment(FileTree):
         src_path = self.get(temp, **{field: src})
         os.link(src_path, dst_path)
 
-    def make_mov_ga_dspm(self, subject=1, sns_baseline=True, src_baseline=False,
+    def make_mov_ga_dspm(self, subject=1, baseline=True, src_baseline=False,
                          fmin=2, surf=None, views=None, hemi=None, time_dilation=4.,
                          foreground=None, background=None, smoothing_steps=None,
-                         dst=None, redo=False, **kwargs):
+                         dst=None, redo=False, **state):
         """Make a grand average movie from dSPM values (requires PySurfer 0.6)
 
         Parameters
@@ -4219,7 +4220,7 @@ class MneExperiment(FileTree):
             Subject(s) for which to load data. Can be a single subject
             name or a group name such as ``'all'``. ``1`` to use the current
             subject (default); ``-1`` for the current group.
-        sns_baseline : bool | tuple
+        baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
         src_baseline : bool | tuple
@@ -4256,12 +4257,16 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        kwargs['model'] = ''
-        subject, group = self._process_subject_arg(subject, kwargs)
+        if 'sns_baseline' in state:
+            baseline = state.pop('sns_baseline')
+            warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
+
+        state['model'] = ''
+        subject, group = self._process_subject_arg(subject, state)
         data = TestDims("source", morph=bool(group))
         brain_kwargs = self._surfer_plot_kwargs(surf, views, foreground, background,
                                                 smoothing_steps, hemi)
-        self._set_analysis_options(data, sns_baseline, src_baseline, None, None, None)
+        self._set_analysis_options(data, baseline, src_baseline, None, None, None)
         self.set(equalize_evoked_count='',
                  resname="GA dSPM %s %s" % (brain_kwargs['surf'], fmin))
 
@@ -4278,12 +4283,10 @@ class MneExperiment(FileTree):
 
         plot._brain.assert_can_save_movies()
         if group is None:
-            ds = self.load_evoked_stc(subject, sns_baseline, src_baseline,
-                                      ind_ndvar=True)
+            ds = self.load_evoked_stc(subject, baseline, src_baseline, ind_ndvar=True)
             y = ds['src']
         else:
-            ds = self.load_evoked_stc(group, sns_baseline, src_baseline,
-                                      morph_ndvar=True)
+            ds = self.load_evoked_stc(group, baseline, src_baseline, morph_ndvar=True)
             y = ds['srcm']
 
         brain = plot.brain.dspm(y, fmin, fmin * 3, colorbar=False, **brain_kwargs)
@@ -4291,10 +4294,10 @@ class MneExperiment(FileTree):
         brain.close()
 
     def make_mov_ttest(self, subject=1, model='', c1=None, c0=None, p=0.05,
-                       sns_baseline=True, src_baseline=False,
+                       baseline=True, src_baseline=False,
                        surf=None, views=None, hemi=None, time_dilation=4.,
-                       foreground=None,  background=None, smoothing_steps=None,
-                       dst=None, redo=False, **kwargs):
+                       foreground=None, background=None, smoothing_steps=None,
+                       dst=None, redo=False, **state):
         """Make a t-test movie (requires PySurfer 0.6)
 
         Parameters
@@ -4314,7 +4317,7 @@ class MneExperiment(FileTree):
             compare c1.
         p : 0.1 | 0.05 | 0.01 | .001
             Maximum p value to draw.
-        sns_baseline : bool | tuple
+        baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
         src_baseline : bool | tuple
@@ -4349,6 +4352,10 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
+        if 'sns_baseline' in state:
+            baseline = state.pop('sns_baseline')
+            warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
+
         if p == 0.1:
             pmid = 0.05
             pmin = 0.01
@@ -4386,11 +4393,10 @@ class MneExperiment(FileTree):
             resname = "t-test GA {test_options} %s" % surf
             cat = None
 
-        kwargs.update(resname=resname, model=model)
+        state.update(resname=resname, model=model)
         with self._temporary_state:
-            subject, group = self._process_subject_arg(subject, kwargs)
-            self._set_analysis_options(data, sns_baseline, src_baseline, p,
-                                       None, None)
+            subject, group = self._process_subject_arg(subject, state)
+            self._set_analysis_options(data, baseline, src_baseline, p, None, None)
 
             if dst is None:
                 if group is None:
@@ -4405,29 +4411,29 @@ class MneExperiment(FileTree):
 
             plot._brain.assert_can_save_movies()
             if group is None:
-                ds = self.load_epochs_stc(subject, sns_baseline, src_baseline, cat=cat)
+                ds = self.load_epochs_stc(subject, baseline, src_baseline, cat=cat)
                 y = 'src'
             else:
-                ds = self.load_evoked_stc(group, sns_baseline, src_baseline,
+                ds = self.load_evoked_stc(group, baseline, src_baseline,
                                           morph_ndvar=True, cat=cat)
                 y = 'srcm'
 
             # find/apply cluster criteria
-            kwargs = self._cluster_criteria_kwargs(data)
-            if kwargs:
-                kwargs.update(samples=0, pmin=p)
+            state = self._cluster_criteria_kwargs(data)
+            if state:
+                state.update(samples=0, pmin=p)
 
         # compute t-maps
         if c0:
             if group:
-                res = testnd.ttest_rel(y, model, c1, c0, match='subject', ds=ds, **kwargs)
+                res = testnd.ttest_rel(y, model, c1, c0, match='subject', ds=ds, **state)
             else:
-                res = testnd.ttest_ind(y, model, c1, c0, ds=ds, **kwargs)
+                res = testnd.ttest_ind(y, model, c1, c0, ds=ds, **state)
         else:
-            res = testnd.ttest_1samp(y, ds=ds, **kwargs)
+            res = testnd.ttest_1samp(y, ds=ds, **state)
 
         # select cluster-corrected t-map
-        if kwargs:
+        if state:
             tmap = res.masked_parameter_map(None)
         else:
             tmap = res.t
@@ -4707,7 +4713,7 @@ class MneExperiment(FileTree):
                 return True
 
     def make_report(self, test, parc=None, mask=None, pmin=None, tstart=None,
-                    tstop=None, samples=10000, sns_baseline=True,
+                    tstop=None, samples=10000, baseline=True,
                     src_baseline=None, include=0.2, redo=False, **state):
         """Create an HTML report on spatio-temporal clusters
 
@@ -4732,7 +4738,7 @@ class MneExperiment(FileTree):
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
             temporal clusters (default 10,000).
-        sns_baseline : bool | tuple
+        baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
         src_baseline : bool | tuple
@@ -4751,6 +4757,10 @@ class MneExperiment(FileTree):
         --------
         load_test : load corresponding data and tests
         """
+        if 'sns_baseline' in state:
+            baseline = state.pop('sns_baseline')
+            warnings.warn("The sns_baseline parameter is deprecated and will be remove in version 0.30, use baseline instead", DeprecationWarning)
+
         if samples < 1:
             raise ValueError("samples needs to be > 0")
         elif include <= 0 or include > 1:
@@ -4759,8 +4769,7 @@ class MneExperiment(FileTree):
 
         self.set(**state)
         data = TestDims('source', morph=True)
-        self._set_analysis_options(data, sns_baseline, src_baseline, pmin,
-                                   tstart, tstop, parc, mask)
+        self._set_analysis_options(data, baseline, src_baseline, pmin, tstart, tstop, parc, mask)
         dst = self.get('report-file', mkdir=True, test=test)
         if self._need_not_recompute_report(dst, samples, data, redo):
             return
@@ -4770,22 +4779,17 @@ class MneExperiment(FileTree):
         report = Report(title)
 
         if isinstance(self._tests[test], TwoStageTest):
-            self._two_stage_report(report, data, test, sns_baseline, src_baseline,
-                                   pmin, samples, tstart, tstop, parc, mask,
-                                   include)
+            self._two_stage_report(report, data, test, baseline, src_baseline, pmin, samples, tstart, tstop, parc, mask, include)
         else:
-            self._evoked_report(report, data, test, sns_baseline, src_baseline, pmin,
-                                samples, tstart, tstop, parc, mask, include)
+            self._evoked_report(report, data, test, baseline, src_baseline, pmin, samples, tstart, tstop, parc, mask, include)
 
         # report signature
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
         report.save_html(dst, meta={'samples': samples})
 
-    def _evoked_report(self, report, data, test, sns_baseline, src_baseline, pmin,
-                       samples, tstart, tstop, parc, mask, include):
+    def _evoked_report(self, report, data, test, baseline, src_baseline, pmin, samples, tstart, tstop, parc, mask, include):
         # load data
-        ds, res = self._load_test(test, tstart, tstop, pmin, parc, mask, samples,
-                                  data, sns_baseline, src_baseline, True, True)
+        ds, res = self._load_test(test, tstart, tstop, pmin, parc, mask, samples, data, baseline, src_baseline, True, True)
 
         # info
         surfer_kwargs = self._surfer_plot_kwargs()
@@ -4804,12 +4808,10 @@ class MneExperiment(FileTree):
         report.append(_report.source_time_results(res, ds, colors, include,
                                                   surfer_kwargs, parc=parc))
 
-    def _two_stage_report(self, report, data, test, sns_baseline, src_baseline, pmin,
-                          samples, tstart, tstop, parc, mask, include):
+    def _two_stage_report(self, report, data, test, baseline, src_baseline, pmin, samples, tstart, tstop, parc, mask, include):
         test_obj = self._tests[test]
         return_data = test_obj._within_model is not None
-        rlm = self._load_test(test, tstart, tstop, pmin, parc, mask, samples,
-                              data, sns_baseline, src_baseline, return_data, True)
+        rlm = self._load_test(test, tstart, tstop, pmin, parc, mask, samples, data, baseline, src_baseline, return_data, True)
         if return_data:
             group_ds, rlm = rlm
         else:
@@ -4843,7 +4845,7 @@ class MneExperiment(FileTree):
         self._report_test_info(info_section, group_ds or ds, test_obj, res, data)
 
     def make_report_rois(self, test, parc=None, pmin=None, tstart=None, tstop=None,
-                         samples=10000, sns_baseline=True, src_baseline=False,
+                         samples=10000, baseline=True, src_baseline=False,
                          redo=False, **state):
         """Create an HTML report on ROI time courses
 
@@ -4865,7 +4867,7 @@ class MneExperiment(FileTree):
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
             temporal clusters (default 1000).
-        sns_baseline : bool | tuple
+        baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
         src_baseline : bool | tuple
@@ -4881,6 +4883,10 @@ class MneExperiment(FileTree):
         --------
         load_test : load corresponding data and tests (use ``data="source.mean"``)
         """
+        if 'sns_baseline' in state:
+            baseline = state.pop('sns_baseline')
+            warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
+
         test_obj = self._tests[test]
         if samples < 1:
             raise ValueError("Need samples > 0 to run permutation test.")
@@ -4894,15 +4900,12 @@ class MneExperiment(FileTree):
         if not parc:
             raise ValueError("No parcellation specified")
         data = TestDims('source.mean')
-        self._set_analysis_options(data, sns_baseline, src_baseline, pmin,
-                                   tstart, tstop, parc)
+        self._set_analysis_options(data, baseline, src_baseline, pmin, tstart, tstop, parc)
         dst = self.get('report-file', mkdir=True, test=test)
         if self._need_not_recompute_report(dst, samples, data, redo):
             return
 
-        res_data, res = self._load_test(
-            test, tstart, tstop, pmin, parc, None, samples, data, sns_baseline,
-            src_baseline, True, True)
+        res_data, res = self._load_test(test, tstart, tstop, pmin, parc, None, samples, data, baseline, src_baseline, True, True)
 
         # sorted labels
         labels_lh = []
@@ -5186,7 +5189,7 @@ class MneExperiment(FileTree):
         brain.close()
         legend.close()
 
-    def _make_report_lm(self, pmin=0.01, sns_baseline=True, src_baseline=False,
+    def _make_report_lm(self, pmin=0.01, baseline=True, src_baseline=False,
                         mask='lobes'):
         """Report for a first level (single subject) LM
 
@@ -5199,10 +5202,10 @@ class MneExperiment(FileTree):
             raise NotImplementedError("Only two-stage tests")
 
         with self._temporary_state:
-            self._set_analysis_options('source', sns_baseline, src_baseline, pmin,
+            self._set_analysis_options('source', baseline, src_baseline, pmin,
                                        None, None, mask=mask)
             dst = self.get('subject-spm-report', mkdir=True)
-            lm = self._load_spm(sns_baseline, src_baseline)
+            lm = self._load_spm(baseline, src_baseline)
 
             title = self.format('{session} {test-desc}')
             surfer_kwargs = self._surfer_plot_kwargs()
@@ -6008,7 +6011,7 @@ class MneExperiment(FileTree):
             if test_obj.model is not None:
                 self.set(model=test_obj._within_model)
 
-    def _set_analysis_options(self, data, sns_baseline, src_baseline, pmin,
+    def _set_analysis_options(self, data, baseline, src_baseline, pmin,
                               tstart, tstop, parc=None, mask=None, decim=None,
                               test_options=(), folder_options=()):
         """Set templates for paths with test parameters
@@ -6099,22 +6102,22 @@ class MneExperiment(FileTree):
         epoch_baseline = self._epochs[self.get('epoch')].baseline
         if src_baseline:
             assert data.source
-            if sns_baseline is True or sns_baseline == epoch_baseline:
+            if baseline is True or baseline == epoch_baseline:
                 items.append('snsbl')
-            elif sns_baseline:
-                items.append('snsbl=%s' % _time_window_str(sns_baseline))
+            elif baseline:
+                items.append('snsbl=%s' % _time_window_str(baseline))
 
             if src_baseline is True or src_baseline == epoch_baseline:
                 items.append('srcbl')
             else:
                 items.append('srcbl=%s' % _time_window_str(src_baseline))
         else:
-            if not sns_baseline:
+            if not baseline:
                 items.append('nobl')
-            elif sns_baseline is True or sns_baseline == epoch_baseline:
+            elif baseline is True or baseline == epoch_baseline:
                 pass
             else:
-                items.append('bl=%s' % _time_window_str(sns_baseline))
+                items.append('bl=%s' % _time_window_str(baseline))
 
         # pmin
         if pmin is not None:
