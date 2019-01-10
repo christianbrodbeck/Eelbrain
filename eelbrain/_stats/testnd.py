@@ -1920,8 +1920,6 @@ class Vector(NDDifferenceTest):
 
     @staticmethod
     def _vector_t2_map(y):
-        """TODO: Incorporate this for all possible ndim. :(
-        """
         ndim = len(y.dimnames)
         dimnames = ('case', 'space',) + (None,) * (ndim - 2)
         dimnames = y.get_dimnames(names=dimnames)
