@@ -47,7 +47,7 @@ class Mouse(MneExperiment):
         'frontotemporal-lh': CombinationParc('aparc', {
             'frontal-lh': 'parsorbitalis + parstriangularis + parsopercularis',
             'temporal-lh': 'transversetemporal + superiortemporal + middletemporal + inferiortemporal + bankssts',
-        }, views='lateral'),
+            }, views='lateral'),
     }
 
 

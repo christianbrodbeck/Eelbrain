@@ -51,17 +51,11 @@ class CombinationParc(Parcellation):
     An example using a split label::
 
         parcs = {
-            'medial': {
-                'kind': 'combination',
-                'base': 'aparc',
-                'labels': {
-                    'medialparietal': 'precuneus + posteriorcingulate',
-                    'medialfrontal': 'medialorbitofrontal + '
-                                     'rostralanteriorcingulate + '
-                                     'split(superiorfrontal, 3)[2]',
-                },
-                'views': 'medial',
-            },
+            'medial': CombinationParc('aparc', {
+                'medialparietal': 'precuneus + posteriorcingulate',
+                'medialfrontal': 'medialorbitofrontal + rostralanteriorcingulate'
+                                 ' + split(superiorfrontal, 3)[2]',
+                }, views='medial'),
         }
     """
     DICT_ATTRS = ('kind', 'base', 'labels')
@@ -97,10 +91,9 @@ class FreeSurferParc(Parcellation):
     --------
     Predefined parcellations::
 
-    parcs = {
-        'aparc': FreeSurferParc(),
-        }
-
+        parcs = {
+            'aparc': FreeSurferParc(),
+            }
     """
     kind = FS_PARC
 
@@ -116,9 +109,9 @@ class FSAverageParc(Parcellation):
     --------
     Predefined parcellations::
 
-    parcs = {
-        'PALS_B12_Brodmann': FSAverageParc(),
-        }
+        parcs = {
+            'PALS_B12_Brodmann': FSAverageParc(),
+            }
     """
     kind = FSA_PARC
     morph_from_fsaverage = True
@@ -201,18 +194,18 @@ class IndividualSeededParc(SeededParc):
     --------
     Parcellation with subject-specific seeds::
 
-    parcs = {
-        'stg': IndividualSeededParc({
-            'anteriorstg-lh': {
-                'R0001': (-54, 10, -8),
-                'R0002': (-47, 14, -28),
-            },
-            'middlestg-lh': {
-                'R0001': (-66, -24, 8),
-                'R0002': (-60, -26, 9),
-            }
-            mask='lobes'),
-    }
+        parcs = {
+            'stg': IndividualSeededParc({
+                'anteriorstg-lh': {
+                    'R0001': (-54, 10, -8),
+                    'R0002': (-47, 14, -28),
+                },
+                'middlestg-lh': {
+                    'R0001': (-66, -24, 8),
+                    'R0002': (-60, -26, 9),
+                }
+                mask='lobes'),
+        }
     """
     kind = INDIVIDUAL_SEEDED_PARC
     morph_from_fsaverage = False

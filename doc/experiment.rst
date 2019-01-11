@@ -517,11 +517,11 @@ defined, described below.
    :toctree: generated
    :template: class_nomethods.rst
 
-   CombinationParcellation
-   SeededParcellation
-   IndividualSeededParcellation
-   FreeSurferParcellation
-   FSAverageParcellation
+   CombinationParc
+   SeededParc
+   IndividualSeededParc
+   FreeSurferParc
+   FSAverageParc
 
 
 Visualization defaults
