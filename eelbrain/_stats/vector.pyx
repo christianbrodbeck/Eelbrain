@@ -11,48 +11,48 @@ ctypedef cnp.int64_t INT64
 ctypedef cnp.float64_t FLOAT64
 
 
-# Chistian
-# def rotation_matrices(cnp.ndarray[FLOAT64, ndim=1] phis,
-#                       cnp.ndarray[FLOAT64, ndim=1] thetas,
-#                       cnp.ndarray[FLOAT64, ndim=3] out):
-#     cdef unsigned long i, v, case
-#     cdef FLOAT64 theta, phi
-#     cdef unsigned long n_cases = phis.shape[0]
-#
-#     for case in range(n_cases):
-#         phi = phis[case]
-#         theta = thetas[case]
-#         out[case, 0, 0] = cos(theta)
-#         out[case, 1, 0] = sin(theta)
-#         out[case, 2, 0] = 0
-#         out[case, 0, 1] = -sin(theta) * cos(phi)
-#         out[case, 1, 1] = cos(theta) * cos(phi)
-#         out[case, 2, 1] = sin(phi)
-#         out[case, 0, 2] = sin(theta) * sin(phi)
-#         out[case, 1, 2] = cos(theta) * -sin(phi)
-#         out[case, 2, 2] = cos(phi)
-#     return out
-
-# Proloy
 def rotation_matrices(cnp.ndarray[FLOAT64, ndim=1] phis,
                       cnp.ndarray[FLOAT64, ndim=1] thetas,
+                      cnp.ndarray[FLOAT64, ndim=1] xis,
                       cnp.ndarray[FLOAT64, ndim=3] out):
     cdef unsigned long i, v, case
-    cdef FLOAT64 theta, phi
+    cdef FLOAT64 theta, phi, xi
     cdef unsigned long n_cases = phis.shape[0]
+    cdef double raxis_x, raxis_y, raxis_z
+    cdef double tmp1, tmp2
+
+    cdef double c, s, t
 
     for case in range(n_cases):
         phi = phis[case]
         theta = thetas[case]
-        out[case, 0, 0] = cos(phi)
-        out[case, 1, 0] = - sin(phi)
-        out[case, 2, 0] = 0
-        out[case, 0, 1] = sin(phi) * cos(theta)
-        out[case, 1, 1] = cos(phi) * cos(theta)
-        out[case, 2, 1] = -sin(theta)
-        out[case, 0, 2] = sin(phi) * sin(theta)
-        out[case, 1, 2] = cos(phi) * sin(theta)
-        out[case, 2, 2] = cos(theta)
+        xi = xis[case]
+
+        raxis_x = sin(phi) * cos(theta)
+        raxis_y = sin(phi) * sin(theta)
+        raxis_z = cos(phi)
+        c = cos(xi)
+        s = sin(xi)
+        t = 1.0 - c
+
+        out[case, 0, 0] = c + t * raxis_x ** 2
+        out[case, 1, 1] = c + t * raxis_y ** 2
+        out[case, 2, 2] = c + t * raxis_z ** 2
+
+        tmp1 = raxis_x * raxis_y * t
+        tmp2 = raxis_z * s
+        out[case, 1, 0] = tmp1 + tmp2
+        out[case, 0, 1] = tmp1 - tmp2
+
+        tmp1 = raxis_x * raxis_z * t
+        tmp2 = raxis_y * s
+        out[case, 2, 0] = tmp1 - tmp2
+        out[case, 0, 2] = tmp1 + tmp2
+
+        tmp1 = raxis_y * raxis_z * t
+        tmp2 = raxis_x * s
+        out[case, 2, 1] = tmp1  + tmp2
+        out[case, 1, 2] = tmp1  - tmp2
     return out
 
 

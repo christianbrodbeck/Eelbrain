@@ -1905,7 +1905,8 @@ class Vector(NDDifferenceTest):
         np.random.seed(seed)
         phi = np.random.uniform(0, 2 * pi, n_cases)
         theta = np.arccos(np.random.uniform(-1, 1, n_cases))
-        rotation = vector.rotation_matrices(phi, theta, np.empty((n_cases, 3, 3)))
+        xi = np.random.uniform(0, 2 * pi, n_cases)
+        rotation = vector.rotation_matrices(phi, theta, xi, np.empty((n_cases, 3, 3)))
         return vector.mean_norm_rotated(y, rotation, out)
 
     @staticmethod
@@ -1915,7 +1916,8 @@ class Vector(NDDifferenceTest):
         np.random.seed(seed)
         phi = np.random.uniform(0, 2 * pi, n_cases)
         theta = np.arccos(np.random.uniform(-1, 1, n_cases))
-        rotation = vector.rotation_matrices(phi, theta, np.empty((n_cases, 3, 3)))
+        xi = np.random.uniform(0, 2 * pi, n_cases)
+        rotation = vector.rotation_matrices(phi, theta, xi, np.empty((n_cases, 3, 3)))
         return vector.t2_stat_rotated(y, rotation, out)
 
     @staticmethod
