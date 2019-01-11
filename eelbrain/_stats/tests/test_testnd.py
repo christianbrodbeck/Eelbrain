@@ -643,10 +643,10 @@ def test_vector():
     assert res.p == 0.8
 
     # single vector with t2-stat
-    res_t = testnd.Vector('v[:40]', ds=ds, samples=10, use_t2_stat=True)
+    res_t = testnd.Vector('v[:40]', ds=ds, samples=10, use_t2_stat=False)
     assert res_t.p == 0.0
-    res_t = testnd.Vector('v[40:]', ds=ds, samples=10, use_t2_stat=True)
-    assert res_t.p == 0.8
+    res_t = testnd.Vector('v[40:]', ds=ds, samples=10, use_t2_stat=False)
+    assert res_t.p == 0.7
 
     # vector in time
     ds = datasets.get_uts(vector3d=True)
@@ -655,15 +655,15 @@ def test_vector():
     res = testnd.Vector(ds[:30, 'v3d'], samples=10)
     assert res.p.min() == 0.0
     difference = res.masked_difference()
-    assert difference.x.mask.sum() == 288
+    assert difference.x.mask.sum() == 279
 
     # vector in time with t2-stat
-    res_t = testnd.Vector(ds[30:, 'v3d'], samples=10, use_t2_stat=True)
-    assert res_t.p.min() == 0.0
-    res_t = testnd.Vector(ds[:30, 'v3d'], samples=10, use_t2_stat=True)
+    res_t = testnd.Vector(ds[30:, 'v3d'], samples=10, use_t2_stat=False)
+    assert res_t.p.min() == 0.5
+    res_t = testnd.Vector(ds[:30, 'v3d'], samples=10, use_t2_stat=False)
     assert res_t.p.min() == 0.0
     difference = res_t.masked_difference()
-    assert difference.x.mask.sum() == 297
+    assert difference.x.mask.sum() == 273
 
     # without mp
     configure(n_workers=0)
@@ -672,7 +672,7 @@ def test_vector():
     configure(n_workers=True)
 
     v_small = ds[:30, 'v3d'] / 100
-    res = testnd.Vector(v_small, tfce=True, samples=10)
+    res = testnd.Vector(v_small, tfce=True, samples=10, use_t2_stat=False)
     assert 'WARNING' in repr(res)
     res = testnd.Vector(v_small, tfce=0.001, samples=10)
     assert res.p.min() == 0.0
