@@ -1813,7 +1813,9 @@ class Vector(NDDifferenceTest):
     force_permutation: bool
         Conduct permutations regardless of whether there are any clusters.
     use_t2_stat: bool
-        Use Hotelling’s T-Square statistics, instead of vector norm.
+        Use Hotelling’s T-Square statistics. By default ``Vector`` test
+        chooses this statistic over vector norm. To choose vector norm as
+        test statistic try ``use_t2_stat=False``.
     mintime : scalar
         Minimum duration for clusters (in seconds).
     minsource : int
@@ -1843,7 +1845,7 @@ class Vector(NDDifferenceTest):
     @user_activity
     def __init__(self, y, match=None, sub=None, ds=None,
                  samples=10000, vmin=None, tfce=False, tstart=None,
-                 tstop=None, parc=None, force_permutation=False, use_t2_stat=False, **criteria):
+                 tstop=None, parc=None, force_permutation=False, use_t2_stat=True, **criteria):
         ct = Celltable(y, match=match, sub=sub, ds=ds, coercion=asndvar, dtype=np.float64)
 
         n = len(ct.y)
@@ -1942,7 +1944,7 @@ class VectorDifferenceIndependent(Vector):
     @user_activity
     def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
                  samples=10000, vmin=None, tfce=False, tstart=None,
-                 tstop=None, parc=None, force_permutation=False, **criteria):
+                 tstop=None, parc=None, force_permutation=False, use_t2_stat=False, **criteria):
         ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar, dtype=np.float64)
         c1, c0 = ct.cat
 
@@ -1959,7 +1961,10 @@ class VectorDifferenceIndependent(Vector):
         self.c0_mean = ct.data[c0].mean('case', name=cellname(c0))
         self.difference = self.c1_mean - self.c0_mean
         v_mean_norm = self.difference.norm(v_dim)
-        cdist.add_original(v_mean_norm.x if self.difference.ndim > 1 else v_mean_norm)
+        if use_t2_stat:
+            raise NotImplementedError
+        else:
+            cdist.add_original(v_mean_norm.x if self.difference.ndim > 1 else v_mean_norm)
 
         if cdist.do_permutation:
             iterator = permute_order(self.n, samples)
@@ -2002,8 +2007,8 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
 
     @user_activity
     def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
-                 samples=10000, vmin=None, tfce=False, tstart=None,
-                 tstop=None, parc=None, force_permutation=False, **criteria):
+                 samples=10000, vmin=None, tfce=False, tstart=None, tstop=None,
+                 parc=None, force_permutation=False, use_t2_stat=True, **criteria):
         y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
         difference = y1 - y0
 
@@ -2014,11 +2019,19 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
         v_dim = difference.dimnames[cdist._vector_ax + 1]
         v_mean = difference.mean('case')
         v_mean_norm = v_mean.norm(v_dim)
-        cdist.add_original(v_mean_norm.x if v_mean.ndim > 1 else v_mean_norm)
+        if use_t2_stat:
+            t2_map = self._vector_t2_map(ct.y)
+            cdist.add_original(t2_map.x if v_mean.ndim > 1 else t2_map)
+        else:
+            cdist.add_original(v_mean_norm.x if v_mean.ndim > 1 else v_mean_norm)
 
         if cdist.do_permutation:
             iterator = random_seeds(samples)
-            run_permutation(self._vector_mean_norm_perm, cdist, iterator)
+            iterator = random_seeds(samples)
+            if use_t2_stat:
+                run_permutation(self._vector_t2_map_perm, cdist, iterator)
+            else:
+                run_permutation(self._vector_mean_norm_perm, cdist, iterator)
 
         # store attributes
         NDTest.__init__(self, difference, match, sub, samples, tfce, None, cdist, tstart, tstop)
