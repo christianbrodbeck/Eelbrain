@@ -2337,25 +2337,39 @@ class MneExperiment(FileTree):
             warnings.filterwarnings('ignore', 'The events passed to the Epochs constructor', RuntimeWarning)
             ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim, drop_bad_chs=False, tstop=tstop)
 
-        # interpolate bad channels
-        if interpolate_bads and ds['epochs'].info['bads']:
-            if ds.info[INTERPOLATE_CHANNELS]:
-                # TODO: combine with trial-wise interpolation
-                raise NotImplementedError("set interpolate_bads=False")
-            ds['epochs'].interpolate_bads()
-
         # post baseline-correction trigger shift
         if trigger_shift and epoch.post_baseline_trigger_shift:
             ds['epochs'] = shift_mne_epoch_trigger(ds['epochs'],
                                                    ds[epoch.post_baseline_trigger_shift],
                                                    epoch.post_baseline_trigger_shift_min,
                                                    epoch.post_baseline_trigger_shift_max)
-
         info = ds['epochs'].info
         data_to_ndvar = data.data_to_ndvar(info)
 
+        # determine channels to interpolate
+        bads_all = None
+        bads_individual = None
+        if interpolate_bads:
+            bads_all = info['bads']
+            if ds.info[INTERPOLATE_CHANNELS] and any(ds[INTERPOLATE_CHANNELS]):
+                bads_individual = ds[INTERPOLATE_CHANNELS]
+                if bads_all:
+                    bads_all = set(bads_all)
+                    bads_individual = [sorted(bads_all.union(bads)) for bads in bads_individual]
+
+        # interpolate bad channels
+        if bads_all:
+            if isinstance(interpolate_bads, str):
+                if interpolate_bads == 'keep':
+                    reset_bads = False
+                else:
+                    raise ValueError(f"interpolate_bads={interpolate_bads}")
+            else:
+                reset_bads = True
+            ds['epochs'].interpolate_bads(reset_bads=reset_bads)
+
         # interpolate channels
-        if reject and ds.info[INTERPOLATE_CHANNELS]:
+        if reject and bads_individual:
             if 'mag' in data_to_ndvar:
                 interp_path = self.get('interp-file')
                 if exists(interp_path):
@@ -2363,12 +2377,11 @@ class MneExperiment(FileTree):
                 else:
                     interp_cache = {}
                 n_in_cache = len(interp_cache)
-                _interpolate_bads_meg(ds['epochs'], ds[INTERPOLATE_CHANNELS],
-                                      interp_cache)
+                _interpolate_bads_meg(ds['epochs'], bads_individual, interp_cache)
                 if len(interp_cache) > n_in_cache:
                     save.pickle(interp_cache, interp_path)
             if 'eeg' in data_to_ndvar:
-                _interpolate_bads_eeg(ds['epochs'], ds[INTERPOLATE_CHANNELS])
+                _interpolate_bads_eeg(ds['epochs'], bads_individual)
 
         if ndvar:
             pipe = self._raw[self.get('raw')]
@@ -2668,11 +2681,22 @@ class MneExperiment(FileTree):
             # when aggregating across sensors, do it before combining subjects
             # to avoid losing sensors that are not shared
             individual_ndvar = isinstance(data.sensor, str)
-            dss = [self.load_evoked(None, baseline, individual_ndvar, cat,
-                                    decim, data_raw, vardef, data)
+            dss = [self.load_evoked(None, baseline, individual_ndvar, cat, decim, data_raw, vardef, data)
                    for _ in self.iter(group=group)]
             if individual_ndvar:
                 ndvar = False
+            elif ndvar:
+                # set interpolated channels to good
+                for ds in dss:
+                    for e in ds['evoked']:
+                        if e.info['description'] is None:
+                            continue
+                        m = re.match(r"Eelbrain (\d+)", e.info['description'])
+                        if not m:
+                            continue
+                        v = int(m.group(1))
+                        if v >= 11:
+                            e.info['bads'] = []
             ds = combine(dss, incomplete='drop')
 
             # check consistency in MNE objects' number of time points
@@ -4014,9 +4038,9 @@ class MneExperiment(FileTree):
         # load the epochs (post baseline-correction trigger shift requires
         # baseline corrected evoked
         if epoch.post_baseline_trigger_shift:
-            ds = self.load_epochs(ndvar=False, baseline=True, decim=decim, data_raw=data_raw)
+            ds = self.load_epochs(ndvar=False, baseline=True, decim=decim, data_raw=data_raw, interpolate_bads='keep')
         else:
-            ds = self.load_epochs(ndvar=False, decim=decim, data_raw=data_raw)
+            ds = self.load_epochs(ndvar=False, decim=decim, data_raw=data_raw, interpolate_bads='keep')
 
         # aggregate
         ds_agg = ds.aggregate(model, drop_bad=True, equal_count=equal_count,
@@ -4025,6 +4049,8 @@ class MneExperiment(FileTree):
         ds_agg.rename('epochs', 'evoked')
 
         # save
+        for e in ds_agg['evoked']:
+            e.info['description'] = f"Eelbrain {CACHE_STATE_VERSION}"
         if use_cache:
             mne.write_evokeds(dst, ds_agg['evoked'])
 
@@ -6315,8 +6341,7 @@ class MneExperiment(FileTree):
         n_events = []
         n_good = []
         bad_chs = []
-        if has_interp:
-            n_interp = []
+        n_interp = []
 
         for subject in self:
             subjects.append(subject)
@@ -6338,6 +6363,7 @@ class MneExperiment(FileTree):
                 if has_interp:
                     n_interp.append(np.mean([len(chi) for chi in ds[INTERPOLATE_CHANNELS]]))
             n_events.append(ds.n_cases)
+        has_interp = has_interp and any(n_interp)
 
         caption = f"Rejection info for raw={raw_name}, epoch={epoch_name}, rej={rej_name}. Percent is rounded to one decimal. Bad channels: defined in bad_channels file and in rej-file."
         if has_interp:
