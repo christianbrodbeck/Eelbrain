@@ -4073,8 +4073,10 @@ class MneExperiment(FileTree):
         epoch : str
             Epoch to use for visualization in the GUI (default is to use the
             raw data).
-        decim : int (optional)
-            Downsample epochs (for visualization only).
+        decim : int
+            Downsample data for visualization (to improve GUI performance;
+            for raw data, the default is ~100 Hz, for epochs the default is the
+            epoch setting).
         ...
             State parameters.
 
@@ -4093,15 +4095,17 @@ class MneExperiment(FileTree):
         # display data
         subject = self.get('subject')
         pipe = self._raw[self.get('raw')]
+        bads = pipe.load_bad_channels(subject)
         with self._temporary_state, warnings.catch_warnings():
             warnings.filterwarnings('ignore', 'The measurement information indicates a low-pass', RuntimeWarning)
             if epoch is None:
-                raw = self.load_raw(raw=pipe.source.name)
+                raw = self.load_raw(raw=pipe.source.name, add_bads=bads)
                 events = mne.make_fixed_length_events(raw)
                 ds = Dataset()
+                decim = int(raw.info['sfreq'] // 100) if decim is None else decim
                 ds['epochs'] = mne.Epochs(raw, events, 1, 0, 1, baseline=None, proj=False, decim=decim, preload=True)
             else:
-                ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False, raw=pipe.source.name, decim=decim, add_bads=pipe.load_bad_channels(subject))
+                ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False, raw=pipe.source.name, decim=decim, add_bads=bads)
         info = ds['epochs'].info
         data = TestDims('sensor')
         data_kind = data.data_to_ndvar(info)[0]
