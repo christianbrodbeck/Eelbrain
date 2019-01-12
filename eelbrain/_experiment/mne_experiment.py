@@ -3458,7 +3458,7 @@ class MneExperiment(FileTree):
             warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
 
         self.set(test=test, **state)
-        data = TestDims.coerce(data)
+        data = TestDims.coerce(data, morph=True)
         self._set_analysis_options(data, baseline, src_baseline, pmin, tstart, tstop, parc, mask)
         return self._load_test(test, tstart, tstop, pmin, parc, mask, samples, data, baseline, src_baseline, return_data, make)
 
