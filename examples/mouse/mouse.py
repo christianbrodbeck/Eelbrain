@@ -20,15 +20,13 @@ class Mouse(MneExperiment):
     raw = {
         'tsss': RawMaxwell('raw', st_duration=10., ignore_ref=True, st_correlation=0.9, st_only=True),
         '1-40': RawFilter('tsss', 1, 40, **FILTER_KWARGS),
-        'ica': RawICA('tsss', 'CAT', 'extended-infomax', n_components=0.99),
-        'ica1-40': RawFilter('ica', 1, 40, **FILTER_KWARGS),
         'fastica': RawICA('tsss', 'CAT', 'fastica', n_components=0.99),
         'fastica1-40': RawFilter('fastica', 1, 40, **FILTER_KWARGS),
     }
 
     variables = {
         'stimulus': LabelVar('trigger', {(162, 163): 'target', (166, 167): 'prime'}),
-        'prediction': LabelVar('trigger', {162: 'expected', 163: 'unexpected'}),
+        'prediction': LabelVar('trigger', {(162, 166): 'expected', (163, 167): 'unexpected'}),
     }
 
     epochs = {
