@@ -1432,10 +1432,11 @@ class MneExperiment(FileTree):
 
     def _epochs_mtime(self):
         raw_mtime = self._raw_mtime()
-        epoch = self._epochs[self.get('epoch')]
-        rej_mtime = self._rej_mtime(epoch)
-        if rej_mtime:
-            return max(raw_mtime, rej_mtime)
+        if raw_mtime:
+            epoch = self._epochs[self.get('epoch')]
+            rej_mtime = self._rej_mtime(epoch)
+            if rej_mtime:
+                return max(raw_mtime, rej_mtime)
 
     def _epochs_stc_mtime(self):
         "Mtime affecting source estimates; does not check annot"
