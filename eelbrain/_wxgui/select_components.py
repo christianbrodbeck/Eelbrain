@@ -506,8 +506,7 @@ class Frame(FileFrame):
                    title='# %i' % i_comp, axtitle=False, interpolation='none')
 
     def PlotCompTopomap(self, i_comp):
-        plot.Topomap(self.doc.components[i_comp], w=10, sensorlabels='name',
-                     title='# %i' % i_comp)
+        plot.Topomap(self.doc.components[i_comp], sensorlabels='name', axw=9, title=f'# {i_comp}')
 
     def PlotConditionAverages(self, parent):
         "Prompt for model and plot condition averages"

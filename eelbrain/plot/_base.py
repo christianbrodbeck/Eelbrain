@@ -1940,7 +1940,7 @@ class Layout(BaseLayout):
                 raise ValueError("w < axw")
         w, h = resolve_plot_rect(w, h, dpi)
 
-        self.w_fixed = w or axw
+        self.w_fixed = w if w is not None else axw
         self._margins_arg = margins
 
         if margins is True:
@@ -2030,7 +2030,10 @@ class Layout(BaseLayout):
                 nrow = min(nax, nrow)
                 ncol = int(math.ceil(nax / nrow))
 
-            axh_default = axh_default if axw is None else axw / ax_aspect
+            if axw:
+                axh_default = axw / ax_aspect
+            elif w:
+                axh_default = w / ncol / ax_aspect
             h_dim = LayoutDim(
                 nrow, h, axh, margins.get('top'), margins.get('hspace'),
                 margins.get('bottom'), axh_default, self._default_margins['top'],
