@@ -242,7 +242,6 @@ temp = {
     'evoked-old-file': join('{evoked-base}.pickled'),  # removed for 0.25
     # test files
     'test-dir': join('{cache-dir}', 'test'),
-    'test_dims': 'unmasked',  # for some tests, parc and mask parameter can be saved in same file
     'test-file': join('{test-dir}', '{analysis} {group}', '{test-desc} {test_dims}.pickled'),
 
     # MRIs
@@ -747,6 +746,7 @@ class MneExperiment(FileTree):
         self._register_field('folder', internal=True)
         self._register_field('resname', internal=True)
         self._register_field('ext', internal=True)
+        self._register_field('test_dims', internal=True)
 
         # compounds
         self._register_compound('sns_kind', ('raw',))
@@ -1264,10 +1264,8 @@ class MneExperiment(FileTree):
                 files = set()
                 result_files = []
                 for temp, arg_dicts in rm.items():
-                    keys = self.find_keys(temp, False)
                     for args in arg_dicts:
-                        kwargs = {k: args.get(k, '*') for k in keys}
-                        pattern = self._glob_pattern(temp, vmatch=False, **kwargs)
+                        pattern = self._glob_pattern(temp, True, vmatch=False, **args)
                         filenames = glob(pattern)
                         files.update(filenames)
                         # log
@@ -5937,9 +5935,9 @@ class MneExperiment(FileTree):
 
     def _update_mrisubject(self, fields):
         subject = fields['subject']
-        if subject == '*':
-            return '*'
         mri = fields['mri']
+        if subject == '*' or mri == '*':
+            return '*'
         return self._mri_subjects[mri][subject]
 
     def _update_session(self, fields):

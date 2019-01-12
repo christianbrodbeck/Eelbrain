@@ -143,6 +143,9 @@ def test_mne_experiment_templates():
     with pytest.raises(ValueError):
         e.set(inv='free-3-MNE-2')
 
+    assert e.find_keys('test-file', False) == ['analysis', 'group', 'epoch', 'test', 'test_options', 'test_dims']
+    assert e._glob_pattern('test-file', True, group='all') == os.path.join(tempdir, 'eelbrain-cache', 'test', '* all', '* *.pickled')
+
 
 def test_test_experiment():
     "Test event labeling with the EventExperiment subclass of MneExperiment"
