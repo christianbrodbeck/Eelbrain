@@ -3936,7 +3936,7 @@ class MneExperiment(FileTree):
         elif isinstance(reg, dict):
             cov = mne.cov.regularize(cov, info, **reg)
         elif reg == 'best':
-            if mne.pick_types(epochs.info, meg='grad', eeg=True, ref_meg=False):
+            if mne.pick_types(epochs.info, meg='grad', eeg=True, ref_meg=False).size:
                 raise NotImplementedError("EEG or gradiometer sensors")
             elif epochs is None:
                 raise NotImplementedError("reg='best' for raw covariance")
