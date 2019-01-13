@@ -99,10 +99,13 @@ def test_vlims():
     epochs = [[ds[i: i+5, 'uts'].mean('case')] for i in range(0, 10, 5)]
     meas = ds['uts'].info.get('meas')
 
+    # without cmap
     lims = _base.find_fig_vlims(epochs)
-    assert lims[meas][1] > lims[meas][0]
+    assert lims[meas] == (-1, 3)
     lims = _base.find_fig_vlims(epochs, 1)
     assert lims[meas] == (-1, 1)
+    lims = _base.find_fig_vlims(epochs, .1)
+    assert lims[meas] == (-.1, .1)
     lims = _base.find_fig_vlims(epochs, 1, -2)
     assert lims[meas] == (-2, 1)
 

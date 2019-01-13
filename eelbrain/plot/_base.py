@@ -430,15 +430,15 @@ def find_fig_vlims(plots, vmax=None, vmin=None, cmaps=None):
     """
     if isinstance(vmax, dict):
         vlims = vmax
-        ndvars = [v for v in chain(*plots) if v.info.get('meas') not in vlims]
+        ndvars = [v for v in chain.from_iterable(plots) if v.info.get('meas') not in vlims]
     else:
-        ndvars = tuple(chain(*plots))
+        ndvars = [*chain.from_iterable(plots)]
 
         vlims = {}
         if vmax is None:
             user_vlim = None
         elif vmin is None:
-            if cmaps is None and any((v < 0).any() for v in ndvars):
+            if cmaps is None and any(v.min() < 0 for v in ndvars):
                 user_vlim = (-vmax, vmax)
             else:
                 user_vlim = (0, vmax)
@@ -3035,7 +3035,8 @@ class YLimMixin:
         self._register_key('i' if IS_WINDOWS else 'up', self.__on_move_up)
         self._register_key('k' if IS_WINDOWS else 'down', self.__on_move_down)
         self._draw_hooks.append(self.__draw_hook)
-        self._untight_draw_hooks.append(self.__untight_draw_hook)
+        # disable because it changes y-limits
+        # self._untight_draw_hooks.append(self.__untight_draw_hook)
 
     def __draw_hook(self):
         need_draw = False
