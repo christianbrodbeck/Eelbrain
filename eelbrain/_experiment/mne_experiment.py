@@ -139,12 +139,6 @@ def _time_window_str(window, delim='-'):
     return delim.join(map(_time_str, window))
 
 
-def split_recording(recording: str) -> (str, str):
-    if ' ' in recording:
-        return recording.split(' ', 1)
-    return recording, ''
-
-
 class DictSet:
     """Helper class for list of dicts without duplicates"""
     def __init__(self):
@@ -202,7 +196,7 @@ temp = {
     'raw-dir': join('{raw-sdir}', '{subject}'),
 
     # raw input files
-    'trans-file': join('{raw-dir}', '{trans-name}-trans.fif'),
+    'trans-file': join('{raw-dir}', '{mrisubject}-trans.fif'),
     # log-files (eye-tracker etc.)
     'log-dir': join('{raw-dir}', 'logs'),
     'log-rnd': '{log-dir}/rand_seq.mat',
@@ -228,6 +222,13 @@ temp = {
     'cached-raw-log-file': '{raw-cache-base}-raw.log',
 
     # forward modeling:
+    # Two raw files with
+    #  - different head shapes: raw files require different head-MRI trans-files
+    #    (not implemented).
+    #  - Same head shape, but different markers:  same trans-file, but different
+    #    forward solutions.
+    #  - Same head shape and markers:  raw files could potentially share forward
+    #    solution (not implemented)
     'fwd-file': join('{raw-cache-dir}', '{session}-{mrisubject}-{src}-fwd.fif'),
     # sensor covariance
     'cov-dir': join('{cache-dir}', 'cov'),
@@ -346,7 +347,6 @@ class MneExperiment(FileTree):
 
     # tuple (if the experiment has multiple sessions)
     sessions = None
-    visits = ('',)
 
     # Raw preprocessing pipeline
     raw = {}
@@ -531,8 +531,6 @@ class MneExperiment(FileTree):
             self._sessions = tuple(self.sessions)
         else:
             raise TypeError(f"MneExperiment.sessions={self.sessions!r}; needs to be a string or a tuple")
-        check_names(self._sessions, 'session')
-        self._visits = (self._visits,) if isinstance(self.visits, str) else tuple(self.visits)
 
         ########################################################################
         # subjects
@@ -711,9 +709,8 @@ class MneExperiment(FileTree):
         else:
             epoch_keys = default_epoch = None
         self._register_field('epoch', epoch_keys, default_epoch)
-        self._register_field('protocol', self._sessions, depends_on=('epoch',), slave_handler=self._update_protocol)
-        self._register_field('visit', self._visits, depends_on=('epoch',), slave_handler=self._update_visit)
-
+        self._register_field('session', self._sessions, depends_on=('epoch',),
+                             slave_handler=self._update_session)
         # cov
         if 'bestreg' in self._covs:
             default_cov = 'bestreg'
@@ -751,8 +748,6 @@ class MneExperiment(FileTree):
         # compounds
         self._register_compound('sns_kind', ('raw',))
         self._register_compound('src_kind', ('sns_kind', 'cov', 'mri', 'src-name', 'inv'))
-        self._register_compound('session', ('protocol', 'visit'))
-        self._register_compound('trans-name', ('mrisubject', 'visit'))
         self._register_compound('evoked_kind', ('rej', 'equalize_evoked_count'))
         self._register_compound('test-desc', ('epoch', 'test', 'test_options'))
 
@@ -855,90 +850,81 @@ class MneExperiment(FileTree):
         raw_mtimes = input_state['raw-mtimes']
         pipe = self._raw['raw']
         with self._temporary_state:
-            for subject, visit, session in self.iter(('subject', 'visit', 'session'), group='all', raw='raw'):
-                key = subject, session
-                mtime = pipe.mtime(subject, session, bad_chs=False)
+            for key in self.iter(('subject', 'session'), group='all', raw='raw'):
+                mtime = pipe.mtime(*key, bad_chs=False)
                 if mtime is None:
                     raw_missing.append(key)
                     continue
                 # events
                 events[key] = self.load_events(add_bads=False, data_raw=False)
                 if key not in raw_mtimes or mtime != raw_mtimes[key]:
-                    subjects_with_raw_changes.add((subject, visit))
+                    subjects_with_raw_changes.add(key[0])
                     raw_mtimes[key] = mtime
 
         # check for digitizer data differences
         # ====================================
-        # Coordinate frames:
-        # MEG (markers)  ==raw-file==>  head shape  ==trans-file==>  MRI
-        #
-        #  - raw files with identical head shapes can share trans-file (head-mri)
-        #  - raw files with identical MEG markers (and head shape) can share
-        #    forward solutions
+        #  - raw files with different head shapes require different head-mri
+        #    trans files, which is currently not implemented
         #  - SuperEpochs currently need to have a single forward solution,
         #    hence marker positions need to be the same between sub-epochs
             if subjects_with_raw_changes:
                 log.info("Raw input files changed, checking digitizer data")
-                super_epochs = [epoch for epoch in self._epochs.values() if isinstance(epoch, SuperEpoch)]
-            for subject, visit in subjects_with_raw_changes:
-                # find unique digitizer datasets
-                head_shape = None
-                markers = []  # unique MEG marker measurements
-                marker_ids = {}  # {session: index in markers}
-                dig_missing = []  # raw files without dig
-                for session in self.iter('session', subject=subject, visit=visit):
+                super_epochs = tuple(epoch for epoch in self._epochs.values() if
+                                     isinstance(epoch, SuperEpoch))
+            for subject in subjects_with_raw_changes:
+                self.set(subject)
+                # collect digitizer data
+                digs = {}  # {session: dig}
+                for session in self.iter('session'):
                     if (subject, session) in raw_missing:
                         continue
                     raw = self.load_raw(False)
-                    dig = raw.info['dig']
+                    digs[session] = raw.info['dig']
+                # find unique digitizer datasets
+                unique_digs = []  # unique marker point location sets
+                dig_ids = {}  # {session: dig_id}; dig_id is index in unique_digs
+                dig_missing = []
+                sessions = sorted(digs)
+                for session in sessions:
+                    dig = digs[session]
                     if dig is None:
                         dig_missing.append(session)
                         continue
-                    elif head_shape is None:
-                        head_shape = dig
-                    elif not hsp_equal(dig, head_shape):
-                        raise FileDeficient(f"Raw file {session} for {subject} has head shape that is different from other {enumeration(marker_ids)}; consider defining different visits.")
-
-                    # find if marker pos already exists
-                    for i, dig_i in enumerate(markers):
+                    if unique_digs and not hsp_equal(dig, unique_digs[0]):
+                        raise NotImplementedError(f"Raw file for Subject {subject}, session {session} has different head shape data from {enumeration(dig_ids)}. This would require different trans-files for the different sessions, which is not yet implemented in the MneExperiment class.")
+                    for i, dig_i in enumerate(unique_digs):
                         if mrk_equal(dig, dig_i):
-                            marker_ids[session] = i
+                            dig_ids[session] = i
                             break
                     else:
-                        marker_ids[session] = len(markers)
-                        markers.append(dig)
-
+                        dig_ids[session] = len(unique_digs)
+                        unique_digs.append(dig)
                 # checks for missing digitizer data
-                if len(markers) > 1:
+                if len(unique_digs) > 1:
                     if dig_missing:
                         n = len(dig_missing)
                         raise FileDeficient(f"The raw {plural('file', n)} for {subject}, {plural('session', n)} {enumeration(dig_missing)} {plural('is', n)} missing digitizer information")
                     for epoch in super_epochs:
-                        if len(set(marker_ids[s] for s in epoch.sessions)) > 1:
+                        if len(set(dig_ids[s] for s in epoch.sessions)) > 1:
                             groups = defaultdict(list)
                             for s in epoch.sessions:
-                                groups[marker_ids[s]].append(s)
+                                groups[dig_ids[s]].append(s)
                             group_desc = ' vs '.join('/'.join(group) for group in groups.values())
                             raise NotImplementedError(f"SuperEpoch {epoch.name} has sessions with incompatible marker positions ({group_desc}); SuperEpochs with different forward solutions are not implemented.")
-
-                # determine which sessions to use for forward solutions
-                # -> {for_session: use_session}
-                use_for_session = input_state['fwd-sessions'].setdefault(subject, {})
-                # -> {marker_id: use_session}, initialize with previously used sessions
-                use_for_id = {marker_ids[s]: s for s in use_for_session.values() if s in marker_ids}
-                for session in sorted(marker_ids):
-                    mrk_id = marker_ids[session]
-                    if session in use_for_session:
-                        assert mrk_id == marker_ids[use_for_session[session]]
+                # determine which to use for forward solution
+                fwd_sessions = input_state['fwd-sessions'].setdefault(subject, {})  # {for_session: use_session}
+                fwd_session_for_id = {dig_ids[s]: s for s in fwd_sessions.values() if s in dig_ids}  # {dig_id: use_session}, initialize with previously used sessions
+                for session in sorted(dig_ids):
+                    if session in fwd_sessions:
                         continue
-                    elif mrk_id not in use_for_id:
-                        use_for_id[mrk_id] = session
-                    use_for_session[session] = use_for_id[mrk_id]
-                # for files missing digitizer, use singe available fwd-session
+                    dig_id = dig_ids[session]
+                    if dig_id not in fwd_session_for_id:
+                        fwd_session_for_id[dig_id] = session
+                    fwd_sessions[session] = fwd_session_for_id[dig_id]
                 for session in dig_missing:
-                    if use_for_id:
-                        assert len(use_for_id) == 1
-                        use_for_session[session] = use_for_id[0]
+                    if fwd_session_for_id:
+                        assert len(fwd_session_for_id) == 1
+                        fwd_sessions[session] = fwd_session_for_id[0]
 
         # save input-state
         save.pickle(input_state, input_state_file)
@@ -4068,9 +4054,8 @@ class MneExperiment(FileTree):
             if exists(dst):
                 if cache_valid(getmtime(dst), self._fwd_mtime()):
                     return dst
-            # get trans for correct visit for fwd_session
-            trans = self.get('trans-file')
 
+        trans = self.get('trans-file')
         src = self.get('src-file', make=True)
         pipe = self._raw[self.get('raw')]
         raw = pipe.load(subject, fwd_session)
@@ -5952,18 +5937,8 @@ class MneExperiment(FileTree):
             return  # don't force session
         return '*'  # if a named epoch is not in _epochs it might be a removed epoch
 
-    def _update_protocol(self, fields):
-        session  = self._update_session(fields)
-        if session is not None:
-            return split_recording(session)[0]
-
-    def _update_visit(self, fields):
-        session  = self._update_session(fields)
-        if session is not None:
-            return split_recording(session)[1]
-
     def _update_src_name(self, fields):
-        "Because 'ico-4' is treated in filenames  as ''"
+        "Becuase 'ico-4' is treated in filenames  as ''"
         return '' if fields['src'] == 'ico-4' else fields['src']
 
     def _eval_parc(self, parc):
