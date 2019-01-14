@@ -110,8 +110,8 @@ def test_mne_experiment_templates():
     assert e.get('src_kind') == '1-40 noreg fixed-3-dSPM'
 
     # find terminal field names
-    assert e.find_keys('raw-file') == ['root', 'subject', 'protocol', 'visit']
-    assert e.find_keys('evoked-file', False) == ['subject', 'protocol', 'visit', 'raw', 'epoch', 'model', 'rej', 'equalize_evoked_count']
+    assert e.find_keys('raw-file') == ['root', 'subject', 'session']
+    assert e.find_keys('evoked-file', False) == ['subject', 'session', 'raw', 'epoch', 'model', 'rej', 'equalize_evoked_count']
 
     assert_inv_works(e, 'free-3-MNE', ('free', 3, 'MNE'),
                      {'loose': 1, 'depth': 0.8},
@@ -142,6 +142,9 @@ def test_mne_experiment_templates():
         e.set(inv='free-3-mne')
     with pytest.raises(ValueError):
         e.set(inv='free-3-MNE-2')
+
+    assert e.find_keys('test-file', False) == ['analysis', 'group', 'epoch', 'test', 'test_options', 'test_dims']
+    assert e._glob_pattern('test-file', True, group='all') == os.path.join(tempdir, 'eelbrain-cache', 'test', '* all', '* *.pickled')
 
 
 def test_test_experiment():

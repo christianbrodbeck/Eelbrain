@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from itertools import repeat
+from itertools import chain, repeat
 from math import ceil
 import random
 
@@ -150,7 +150,7 @@ def permute_sign_flip(n, samples=10000, seed=0, out=None):
             raise NotImplementedError("All possibilities for more than 62 cases")
         n_groups = ceil(n / 62.)
         group_size = int(ceil(n / n_groups))
-        out_parts = list(range(0, n, group_size)) + [n]
+        out_parts = chain(range(0, n, group_size), [n])
         for _ in zip(*(permute_sign_flip(stop - start, samples, None, out[start: stop])
                        for start, stop in intervals(out_parts))):
             yield out

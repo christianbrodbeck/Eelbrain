@@ -2,9 +2,9 @@
 """Test MneExperiment using mne-python sample data"""
 from pathlib import Path
 from os.path import join, exists
+import pytest
 import shutil
 
-from nose.tools import eq_, assert_raises
 import numpy as np
 
 from eelbrain import *
@@ -58,16 +58,19 @@ def test_sample():
     ds = e.load_evoked('all')
     assert_dataobj_equal(combine(sds), ds)
 
-    # test with data parameter
+    # sensor space tests
     megs = [e.load_evoked(cat='auditory')['meg'] for _ in e]
-    res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=100, data='sensor.rms',
-                      sns_baseline=False, make=True)
+    res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=100, data='sensor.rms', baseline=False, make=True)
     meg_rms = combine(meg.rms('sensor') for meg in megs).mean('case', name='auditory')
     assert_dataobj_equal(res.c1_mean, meg_rms, decimal=21)
-    res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=100, data='sensor.mean',
-                      sns_baseline=False, make=True)
+    res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=100, data='sensor.mean', baseline=False, make=True)
     meg_mean = combine(meg.mean('sensor') for meg in megs).mean('case', name='auditory')
     assert_dataobj_equal(res.c1_mean, meg_mean, decimal=21)
+    with pytest.raises(IOError):
+        res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=20, data='sensor', baseline=False)
+    res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=20, data='sensor', baseline=False, make=True)
+    assert res.p.min() == pytest.approx(.143, abs=.001)
+    assert res.difference.max() == pytest.approx(4.47e-13, 1e-15)
 
     # e._report_subject_info() broke with non-alphabetic subject order
     subjects = e.get_field_values('subject')
@@ -94,12 +97,14 @@ def test_sample():
     # duplicate subject
     class BadExperiment(SampleExperiment):
         groups = {'group': ('R0001', 'R0002', 'R0002')}
-    assert_raises(DefinitionError, BadExperiment, root)
+    with pytest.raises(DefinitionError):
+        BadExperiment(root)
 
     # non-existing subject
     class BadExperiment(SampleExperiment):
         groups = {'group': ('R0001', 'R0003', 'R0002')}
-    assert_raises(DefinitionError, BadExperiment, root)
+    with pytest.raises(DefinitionError):
+        BadExperiment(root)
 
     # unsorted subjects
     class Experiment(SampleExperiment):
@@ -159,14 +164,35 @@ def test_sample():
     ds2 = e.load_evoked(raw='ica1-40')
     assert not np.allclose(ds1['meg'].x, ds2['meg'].x, atol=1e-20), "ICA change ignored"
 
-    # removed subject
+    # rename subject
+    # --------------
     src = Path(e.get('raw-dir', subject='R0001'))
     dst = Path(e.get('raw-dir', subject='R0003', match=False))
     shutil.move(src, dst)
     for path in dst.glob('*.fif'):
         shutil.move(path, dst / path.parent / path.name.replace('R0001', 'R0003'))
+    # check subject list
     e = SampleExperiment(root)
     assert list(e) == ['R0000', 'R0002', 'R0003']
+    # check that cached test got deleted
+    assert e.get('raw') == '1-40'
+    with pytest.raises(IOError):
+        e.load_test('a>v', 0.05, 0.2, 0.05, samples=20, data='sensor', baseline=False)
+    res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=20, data='sensor', baseline=False, make=True)
+    assert res.df == 2
+    assert res.p.min() == pytest.approx(.143, abs=.001)
+    assert res.difference.max() == pytest.approx(4.47e-13, 1e-15)
+
+    # remove subject
+    # --------------
+    shutil.rmtree(dst)
+    # check cache
+    e = SampleExperiment(root)
+    assert list(e) == ['R0000', 'R0002']
+    # check that cached test got deleted
+    assert e.get('raw') == '1-40'
+    with pytest.raises(IOError):
+        e.load_test('a>v', 0.05, 0.2, 0.05, samples=20, data='sensor', baseline=False)
 
 
 @requires_mne_sample_data

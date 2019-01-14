@@ -57,25 +57,7 @@ class SlaveTree(TreeModel):
         self._register_slave_field('s', 'a', lambda f: f['a'].upper())
         self._register_compound('sb', ('s', 'b'))
         self._register_slave_field('comp_slave', 'sb', lambda f: f['sb'].upper())
-        # session -> protocol visit
-        self._register_field('s_a', a_seq, depends_on='c', slave_handler=self._update_sa)
-        self._register_field('s_b', b_seq, depends_on='c', slave_handler=self._update_sb)
-        self._register_compound('s_ab', ('s_a', 's_b'))
         self._store_state()
-
-    @staticmethod
-    def _update_sa(fields):
-        if fields['c'] == 'c1':
-            return 'a1'
-        else:
-            return 'a2'
-
-    @staticmethod
-    def _update_sb(fields):
-        if fields['c'] == 'c1':
-            return 'b1'
-        else:
-            return 'b2'
 
 
 def test_slave_tree():
@@ -104,12 +86,6 @@ def test_slave_tree():
     assert tree.get('ab') == 'a2 b1'
     assert tree.get('sb') == 'A2 b1'
     assert tree.get('comp_slave') == 'A2 B1'
-
-    # session -> protocol visit
-    tree.set(c='c2')
-    assert tree.get('s_ab') == 'a2 b2'
-    tree.set(c='c1')
-    assert tree.get('s_ab') == 'a1 b1'
 
     # finde terminal keys
     assert tree.find_keys('c') == ['c']
