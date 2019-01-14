@@ -452,10 +452,6 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
             for p, layers in zip(self.topo_plots, data):
                 p.set_data(layers)
 
-    @deprecated('0.29', 'TopoButterfly.set_time')
-    def set_topo_t(self, t):
-        self._set_time(t, True)
-
     def _topo_data(self, event):
         ax = event.inaxes
         if ax in self.bfly_axes:
