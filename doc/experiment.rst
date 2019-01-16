@@ -236,15 +236,15 @@ Example
 
 The following is a complete example for an experiment class definition file
 (the source file can be found in the Eelbrain examples folder at
-``examples/experiment/sample_experiment.py``):
+``examples/mouse/mouse.py``):
 
-.. literalinclude:: ../examples/experiment/sample_experiment.py
+.. literalinclude:: ../examples/mouse/mouse.py
 
 
-Given the ``SampleExperiment`` class definition above, the following is a
+Given the ``Mouse`` class definition above, the following is a
 script that would compute/update analysis reports:
 
-.. literalinclude:: ../examples/experiment/make_reports.py
+.. literalinclude:: ../examples/mouse/make_reports.py
 
 
 Experiment Definition
