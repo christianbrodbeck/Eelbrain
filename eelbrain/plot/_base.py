@@ -1226,7 +1226,6 @@ class EelFigure:
      - end the initialization by calling `_EelFigure._show()`
      - add the :py:meth:`_fill_toolbar` method
     """
-    _name = 'Figure'
     _default_xlabel_ax = -1
     _default_ylabel_ax = 0
     _make_axes = True
@@ -1245,8 +1244,9 @@ class EelFigure:
         layout : Layout
             Layout that determines figure dimensions.
         """
+        name = self.__class__.__name__
         desc = layout.name or data_desc
-        frame_title = '%s: %s' % (self._name, desc) if desc else self._name
+        frame_title = f'{name}: {desc}' if desc else name
 
         # find the right frame
         if CONFIG['eelbrain']:
@@ -1294,6 +1294,9 @@ class EelFigure:
         self.canvas.mpl_connect('resize_event', self._on_resize)
         self.canvas.mpl_connect('key_press_event', self._on_key_press)
         self.canvas.mpl_connect('key_release_event', self._on_key_release)
+
+    def __repr__(self):
+        return f'<{self._frame.GetTitle()}>'
 
     def _set_axtitle(self, axtitle, data=None, axes=None, names=None):
         """Set axes titles automatically
@@ -1730,7 +1733,8 @@ class EelFigure:
 
     def set_name(self, name):
         """Set the figure window title"""
-        self._frame.SetTitle('%s: %s' % (self._name, name) if name else self._name)
+        plot_name = self.__class__.__name__
+        self._frame.SetTitle(f'{plot_name}: {name}' if name else plot_name)
 
     def set_xtick_rotation(self, rotation):
         """Rotate every x-axis tick-label by an angle (counterclockwise, in degrees)
@@ -2565,7 +2569,6 @@ class LegendMixin:
 
 
 class Legend(EelFigure):
-    _name = "Legend"
 
     def __init__(self, handles, labels, *args, **kwargs):
         layout = Layout(0, 1, 2, False, *args, **kwargs)

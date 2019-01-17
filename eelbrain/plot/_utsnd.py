@@ -233,8 +233,6 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
      - ``f``: zoom in (reduce x axis range)
      - ``d``: zoom out (increase x axis range)
     """
-    _name = "Array"
-
     def __init__(self, y, xax=None, xlabel=True, ylabel=True,
                  xticklabels=-1, ds=None, sub=None, x='time', vmax=None,
                  vmin=None, cmap=None, axtitle=True, interpolation=None,
@@ -436,7 +434,6 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
     """
     _cmaps = None  # for TopoMapKey mixin
     _contours = None
-    _name = "Butterfly"
 
     def __init__(self, y, xax=None, sensors=None, axtitle=True,
                  xlabel=True, ylabel=True, xticklabels=-1, color=None,

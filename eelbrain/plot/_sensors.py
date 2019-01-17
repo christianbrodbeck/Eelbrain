@@ -465,8 +465,6 @@ class SensorMaps(EelFigure):
      - The 'Clear' button (or :meth:`clear`) clears the selection.
 
     """
-    _name = 'SensorMaps'
-
     def __init__(self, sensors, select=[], proj='default', size=1,
                  color='k', marker='.', frame=0.05, *args, **kwargs):
         sensors = as_sensor(sensors)
@@ -696,7 +694,6 @@ class SensorMap(SensorMapMixin, EelFigure):
         Also accepts :ref:`general-layout-parameters`.
     """
     _make_axes = False
-    _name = 'SensorMap'
 
     def __init__(self, sensors, labels='name', proj='default', size=1,
                  color='k', marker='.', mark=None, head_radius=None,

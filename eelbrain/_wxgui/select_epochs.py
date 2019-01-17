@@ -642,7 +642,6 @@ class Frame(FileFrame):
     =========== ============================================================
     """
     _doc_name = 'epoch selection'
-    _name = "SelectEpochs"
     _title = "Select Epochs"
 
     def __init__(self, parent, model, nplots, topo, mean, vlim, color, lw, mark,

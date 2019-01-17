@@ -156,7 +156,6 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
     (see `The MNI brain and the Talairach atlas
     <http://imaging.mrc-cbu.cam.ac.uk/imaging/MniTalairach>`_)
     """
-    _name = 'GlassBrain'
     _make_axes = False
     _display_time_in_frame_title = True
 

@@ -604,7 +604,6 @@ def _voxel_brain(data, lut, vmin, vmax):
 # - _bin_table_ims() creates ims given a brain plot function
 
 class ImageTable(ColorBarMixin, EelFigure):
-    _name = "ImageTable"
     # Initialize in two steps
     #
     #  1) Initialize class to generate layout
@@ -669,8 +668,6 @@ class ImageTable(ColorBarMixin, EelFigure):
 
 class _BinTable(EelFigure, ColorBarMixin):
     """Super-class"""
-    _name = "BinTable"
-
     def __init__(self, ndvar, tstart, tstop, tstep, im_func, surf, views, hemi,
                  summary, title, foreground=None, background=None,
                  parallel=True, smoothing_steps=None, mask=True, margins=None,
