@@ -37,12 +37,9 @@ def load_wav(filename=None, name=None):
     from scipy.io import wavfile
 
     if filename is None:
-        filename = ui.ask_file("Load WAV File", "Select WAV file to load as "
-                               "NDVar", FILETYPES)
+        filename = ui.ask_file("Load WAV File", "Select WAV file to load as NDVar", FILETYPES)
         if not filename:
             return
-    elif not isinstance(filename, str):
-        raise TypeError("filename must be string, got %s" % repr(filename))
     elif not os.path.exists(filename):
         _, ext = os.path.splitext(filename)
         if not ext:
