@@ -87,7 +87,7 @@ from .._data_obj import (
     ascategorial, asndvar, assub, isnumeric, isdataobject, cellname,
 )
 from .._stats import testnd
-from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
+from .._utils import IS_WINDOWS, LazyProperty, intervals, natsorted, ui
 from .._utils.subp import command_exists
 from ..fmtxt import Image
 from ..mne_fixes import MNE_EPOCHS
@@ -2536,14 +2536,13 @@ class LegendMixin:
 
     def __plot(self, loc, labels=None, *args, **kwargs):
         if loc and self.__handles:
-            cells = sorted(self.__handles)
             if labels is None:
-                labels = [cellname(cell) for cell in cells]
+                labels = [cellname(cell) for cell in self.__handles]
             elif isinstance(labels, dict):
-                labels = [labels[cell] for cell in cells]
+                labels = [labels[cell] for cell in self.__handles]
             else:
                 raise TypeError("labels=%r; needs to be dict" % (labels,))
-            handles = [self.__handles[cell] for cell in cells]
+            handles = [self.__handles[cell] for cell in self.__handles]
             if loc == 'fig':
                 return Legend(handles, labels, *args, **kwargs)
             else:
