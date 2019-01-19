@@ -7,6 +7,7 @@ from importlib import import_module
 from importlib.util import spec_from_file_location, module_from_spec
 import os
 from operator import mul
+from pathlib import Path
 import shutil
 import tempfile
 
@@ -237,3 +238,8 @@ def file_path(name):
     else:
         raise IOError("Testing file does not exist. Test can only be executed "
                       "from source repository.")
+
+
+def path(string):
+    "OS-independent path check"
+    return str(Path(string))

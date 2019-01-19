@@ -12,7 +12,7 @@ from eelbrain._utils.testing import assert_dataobj_equal, TempDir
 
 
 SUBJECT = 'CheeseMonger'
-SUBJECTS = ['R%04i' % i for i in (1, 11, 111, 1111)]
+SUBJECTS = [f'R{i:04}' for i in (1, 11, 111, 1111)]
 SAMPLINGRATE = 1000.
 TRIGGERS = np.tile(np.arange(1, 5), 2)
 I_START = np.arange(1001, 1441, 55)
@@ -25,6 +25,7 @@ class BaseExperiment(MneExperiment):
     raw = {
         '0-40': RawFilter('raw', None, 40, method='iir'),
         '1-40': RawFilter('raw', 1, 40, method='iir'),
+        'ica': RawICA('raw', 'file'),
     }
 
 
@@ -110,8 +111,8 @@ def test_mne_experiment_templates():
     assert e.get('src_kind') == '1-40 noreg fixed-3-dSPM'
 
     # find terminal field names
-    assert e.find_keys('raw-file') == ['root', 'subject', 'session']
-    assert e.find_keys('evoked-file', False) == ['subject', 'session', 'raw', 'epoch', 'model', 'rej', 'equalize_evoked_count']
+    assert e.find_keys('raw-file') == ['root', 'subject', 'session', 'visit']
+    assert e.find_keys('evoked-file', False) == ['subject', 'raw', 'epoch', 'visit', 'model', 'rej', 'equalize_evoked_count']
 
     assert_inv_works(e, 'free-3-MNE', ('free', 3, 'MNE'),
                      {'loose': 1, 'depth': 0.8},
@@ -143,7 +144,7 @@ def test_mne_experiment_templates():
     with pytest.raises(ValueError):
         e.set(inv='free-3-MNE-2')
 
-    assert e.find_keys('test-file', False) == ['analysis', 'group', 'epoch', 'test', 'test_options', 'test_dims']
+    assert e.find_keys('test-file', False) == ['analysis', 'group', 'epoch', 'visit', 'test', 'test_options', 'test_dims']
     assert e._glob_pattern('test-file', True, group='all') == os.path.join(tempdir, 'eelbrain-cache', 'test', '* all', '* *.pickled')
 
 
@@ -212,6 +213,23 @@ def test_file_handling():
     e = FileExperimentDefaults(tempdir)
     assert e.get('group'), 'gsub'
     assert e.get('subject') == SUBJECTS[1]
+
+
+class VisitExperiment(BaseExperiment):
+
+    visits = ('', '1')
+
+
+def test_visit():
+    tempdir = TempDir()
+    for subject in SUBJECTS:
+        sdir = os.path.join(tempdir, 'meg', subject)
+        os.makedirs(sdir)
+    e = VisitExperiment(tempdir, raw='ica')
+
+    assert e.get('ica-file') == os.path.join(tempdir, 'meg', 'R0001', 'R0001 ica-ica.fif')
+    e.set(visit='1')
+    assert e.get('ica-file') == os.path.join(tempdir, 'meg', 'R0001', 'R0001 1 ica-ica.fif')
 
 
 # definition checks

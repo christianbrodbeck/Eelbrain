@@ -34,6 +34,19 @@ def check_names(keys, attribute, allow_empty: bool):
         raise DefinitionError(f"Invalid {plural('name', len(invalid))} for {attribute}: {enumeration(invalid)}")
 
 
+def compound(items):
+    out = ''
+    for item in items:
+        if item == '*':
+            if not out.endswith('*'):
+                out += '*'
+        elif item:
+            if out and not out.endswith('*'):
+                out += ' '
+            out += item
+    return out
+
+
 def dict_change(old, new):
     "Readable representation of dict change"
     lines = []

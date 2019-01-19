@@ -15,7 +15,7 @@ from tqdm import tqdm
 from .. import fmtxt
 from .._utils import as_sequence, LazyProperty, ask, deprecated
 from .._utils.com import Notifier, NotNotifier
-from .definitions import check_names
+from .definitions import check_names, compound
 
 
 def _etree_expand(node, state):
@@ -855,17 +855,8 @@ class TreeModel:
         return _TempStateController(self)
 
     def _update_compound(self, key):
-        compound = ''
-        for item_key in self._compound_members[key]:
-            value = self.get(item_key)
-            if value == '*':
-                if not compound.endswith('*'):
-                    compound += '*'
-            elif value:
-                if compound and not compound.endswith('*'):
-                    compound += ' '
-                compound += value
-        self.set(**{key: compound}, expand_compounds=False)
+        items = [self.get(k) for k in self._compound_members[key]]
+        self.set(**{key: compound(items)}, expand_compounds=False)
 
     def _update_compounds(self, key, _):
         for compound in self._compounds[key]:
@@ -1029,8 +1020,11 @@ class FileTree(TreeModel):
     def _glob_pattern(self, temp, inclusive=False, **state):
         if inclusive:
             for key in self._terminal_fields:
-                if key not in state and key != 'root':
-                    state[key] = '*'
+                if key in state or key == 'root':
+                    continue
+                elif key in self._field_values and len(self._field_values[key]) == 1:
+                    continue
+                state[key] = '*'
         with self._temporary_state:
             pattern = self.get(temp, allow_asterisk=True, **state)
         return pattern
