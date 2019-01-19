@@ -429,8 +429,16 @@ class RawICA(CachedRawPipe):
         Name of the raw pipe to use for input data.
     session : str | sequence of str
         Session(s) to use for estimating ICA components.
+    method : str
+        Method for ICA decomposition (default: ``'extended-infomax'``; see
+        :class:`mne.preprocessing.ICA`).
+    random_state : int
+        Set the random state for ICA decomposition to make results reproducible
+        (default 0, see :class:`mne.preprocessing.ICA`).
+    cache : bool
+        Cache the resulting raw files (default False).
     ...
-        Parameters for :class:`mne.preprocessing.ICA`.
+        Additional parameters for :class:`mne.preprocessing.ICA`.
 
     Notes
     -----
@@ -440,8 +448,8 @@ class RawICA(CachedRawPipe):
     This pipe merges bad channels from all sessions.
     """
 
-    def __init__(self, source, session, method='extended-infomax', random_state=0, **kwargs):
-        CachedRawPipe.__init__(self, source)
+    def __init__(self, source, session, method='extended-infomax', random_state=0, cache=False, **kwargs):
+        CachedRawPipe.__init__(self, source, cache)
         if isinstance(session, str):
             session = (session,)
         else:
