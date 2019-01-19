@@ -1900,25 +1900,23 @@ class Vector(NDDifferenceTest):
             args.append(f'match={self.match!r}')
         return args
 
-    @staticmethod
-    def _vector_mean_norm_perm(y, out, seed):
+    def _vector_mean_norm_perm(self, y, out, seed):
         n_cases, n_dims, n_tests = y.shape
         assert n_dims == 3
         np.random.seed(seed)
         phi = np.random.uniform(0, 2 * pi, n_cases)
         theta = np.arccos(np.random.uniform(-1, 1, n_cases))
-        xi = np.random.uniform(0, 2 * pi, n_cases)
+        xi = self._rejection_sampling_xi(n_cases)
         rotation = vector.rotation_matrices(phi, theta, xi, np.empty((n_cases, 3, 3)))
         return vector.mean_norm_rotated(y, rotation, out)
 
-    @staticmethod
-    def _vector_t2_map_perm(y, out, seed):
+    def _vector_t2_map_perm(self, y, out, seed):
         n_cases, n_dims, n_tests = y.shape
         assert n_dims == 3
         np.random.seed(seed)
         phi = np.random.uniform(0, 2 * pi, n_cases)
         theta = np.arccos(np.random.uniform(-1, 1, n_cases))
-        xi = np.random.uniform(0, 2 * pi, n_cases)
+        xi = self._rejection_sampling_xi(n_cases)
         rotation = vector.rotation_matrices(phi, theta, xi, np.empty((n_cases, 3, 3)))
         return vector.t2_stat_rotated(y, rotation, out)
 
@@ -1926,7 +1924,7 @@ class Vector(NDDifferenceTest):
     def _vector_t2_map(y):
         ndim = len(y.dimnames)
         dimnames = ('case', 'space',) + (None,) * (ndim - 2)
-        dimnames = y.get_dimnames(names=dimnames)
+        dimnames = y.get_dimnames(dimnames)
         x = y.get_data(dimnames)
         if len(dimnames) == 2:
             t2_map = stats.t2_1samp(x,)
@@ -1935,6 +1933,21 @@ class Vector(NDDifferenceTest):
             t2_map = stats.t2_1samp(x)
             dims = (y.get_dim(dimnames[i]) for i in range(2, ndim))
             return NDVar(t2_map, dims)
+
+    @staticmethod
+    def _rejection_sampling_xi(iter=1000):
+        """Sample from p(x) = 2 * np.sin(x/2) ** 2 / pi"""
+        from math import pi
+        samples = []
+        while True:
+            z = np.random.uniform(0, pi)
+            u = np.random.uniform(0, 2 / pi)
+
+            if u <= 2 * np.sin(z / 2) ** 2 / pi:
+                samples.append(z)
+                if len(samples) == iter:
+                    break
+        return np.array(samples)
 
 
 class VectorDifferenceIndependent(Vector):

@@ -640,13 +640,13 @@ def test_vector():
     res = testnd.Vector('v[:40]', ds=ds, samples=10)
     assert res.p == 0.0
     res = testnd.Vector('v[40:]', ds=ds, samples=10)
-    assert res.p == 0.8
+    assert res.p == 1.0
 
-    # single vector with t2-stat
+    # single vector with norm
     res_t = testnd.Vector('v[:40]', ds=ds, samples=10, use_t2_stat=False)
     assert res_t.p == 0.0
     res_t = testnd.Vector('v[40:]', ds=ds, samples=10, use_t2_stat=False)
-    assert res_t.p == 0.7
+    assert res_t.p == 1.0
 
     # vector in time
     ds = datasets.get_uts(vector3d=True)
@@ -655,15 +655,15 @@ def test_vector():
     res = testnd.Vector(ds[:30, 'v3d'], samples=10)
     assert res.p.min() == 0.0
     difference = res.masked_difference()
-    assert difference.x.mask.sum() == 279
+    assert difference.x.mask.sum() == 282
 
-    # vector in time with t2-stat
+    # vector in time with norm
     res_t = testnd.Vector(ds[30:, 'v3d'], samples=10, use_t2_stat=False)
-    assert res_t.p.min() == 0.5
+    assert res_t.p.min() == 0.3
     res_t = testnd.Vector(ds[:30, 'v3d'], samples=10, use_t2_stat=False)
     assert res_t.p.min() == 0.0
     difference = res_t.masked_difference()
-    assert difference.x.mask.sum() == 273
+    assert difference.x.mask.sum() == 288
 
     # without mp
     configure(n_workers=0)
