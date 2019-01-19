@@ -62,7 +62,7 @@ from .._stats.testnd import _MergedTemporalClusterDist
 from .._text import enumeration, plural
 from .._utils import ask, subp, keydefaultdict, log_level, ScreenHandler, deprecated
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
-from .definitions import check_names, find_dependent_epochs, find_epochs_vars, find_test_vars, log_dict_change, log_list_change
+from .definitions import find_dependent_epochs, find_epochs_vars, find_test_vars, log_dict_change, log_list_change
 from .epochs import PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, assemble_epochs, decim_param
 from .exceptions import FileDeficient, FileMissing
 from .experiment import FileTree
@@ -689,28 +689,23 @@ class MneExperiment(FileTree):
         ########################################################################
         # Experiment class setup
         ########################
-        self._register_field('mri', sorted(self._mri_subjects))
+        self._register_field('mri', sorted(self._mri_subjects), allow_empty=True)
         self._register_field('subject', subjects or None)
-        self._register_field('group', self._groups.keys(), 'all',
-                             post_set_handler=self._post_set_group)
+        self._register_field('group', self._groups.keys(), 'all', post_set_handler=self._post_set_group)
 
         raw_default = sorted(self.raw)[0] if self.raw else None
         self._register_field('raw', sorted(self._raw), default=raw_default)
-        self._register_field('rej', self._artifact_rejection.keys(), 'man')
+        self._register_field('rej', self._artifact_rejection.keys(), 'man', allow_empty=True)
 
         # epoch
-        if self._epochs:
-            epoch_keys = sorted(self._epochs)
-            for default_epoch in epoch_keys:
-                if isinstance(self._epochs[default_epoch], PrimaryEpoch):
-                    break
-            else:
-                raise RuntimeError("No primary epoch")
+        epoch_keys = sorted(self._epochs)
+        for default_epoch in epoch_keys:
+            if isinstance(self._epochs[default_epoch], PrimaryEpoch):
+                break
         else:
-            epoch_keys = default_epoch = None
+            default_epoch = None
         self._register_field('epoch', epoch_keys, default_epoch)
-        self._register_field('session', self._sessions, depends_on=('epoch',),
-                             slave_handler=self._update_session)
+        self._register_field('session', self._sessions, depends_on=('epoch',), slave_handler=self._update_session)
         # cov
         if 'bestreg' in self._covs:
             default_cov = 'bestreg'
@@ -721,14 +716,12 @@ class MneExperiment(FileTree):
                              eval_handler=self._eval_inv,
                              post_set_handler=self._post_set_inv)
         self._register_field('model', eval_handler=self._eval_model)
-        self._register_field('test', chain(sorted(self._tests), ('',)),
-                             post_set_handler=self._post_set_test)
-        self._register_field('parc', parc_values, 'aparc',
-                             eval_handler=self._eval_parc)
+        self._register_field('test', sorted(self._tests), post_set_handler=self._post_set_test)
+        self._register_field('parc', parc_values, 'aparc', eval_handler=self._eval_parc, allow_empty=True)
         self._register_field('freq', self._freqs.keys())
         self._register_field('src', default='ico-4', eval_handler=self._eval_src)
-        self._register_field('connectivity', ('', 'link-midline'))
-        self._register_field('select_clusters', self._cluster_criteria.keys())
+        self._register_field('connectivity', ('', 'link-midline'), allow_empty=True)
+        self._register_field('select_clusters', self._cluster_criteria.keys(), allow_empty=True)
 
         # slave fields
         self._register_field('mrisubject', depends_on=('mri', 'subject'),

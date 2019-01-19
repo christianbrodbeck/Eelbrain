@@ -1,6 +1,4 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from inspect import getargspec
-
 from .._exceptions import DefinitionError
 from .._text import enumeration, plural
 from .._utils.parse import find_variables
@@ -21,15 +19,17 @@ class Definition:
             return False
 
 
-def name_ok(key: str) -> bool:
+def name_ok(key: str, allow_empty: bool) -> bool:
+    if not key and not allow_empty:
+        return False
     try:
         return all(c not in key for c in ' ')
     except TypeError:
         return False
 
 
-def check_names(keys, attribute):
-    invalid = [key for key in keys if not name_ok(key)]
+def check_names(keys, attribute, allow_empty: bool):
+    invalid = [key for key in keys if not name_ok(key, allow_empty)]
     if invalid:
         raise DefinitionError(f"Invalid {plural('name', len(invalid))} for {attribute}: {enumeration(invalid)}")
 

@@ -17,8 +17,6 @@ def assemble_tests(test_dict):
     "Interpret dict with test definitions"
     out = {}
     for key, params in test_dict.items():
-        if not key:
-            raise DefinitionError(f"Test {key!r}: reserved name")
         if isinstance(params, Test):
             out[key] = params
             continue

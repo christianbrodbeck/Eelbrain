@@ -158,7 +158,7 @@ class TreeModel:
             if v is None or isinstance(v, str):
                 self._register_constant(k, v)
             elif isinstance(v, tuple):
-                self._register_field(k, v, v[0])
+                self._register_field(k, v, v[0], allow_empty=True)
             else:
                 err = ("Invalid templates field value: %r. Need None, tuple "
                        "or string" % v)
@@ -277,7 +277,8 @@ class TreeModel:
 
     def _register_field(self, key, values=None, default=None, set_handler=None,
                         eval_handler=None, post_set_handler=None,
-                        depends_on=None, slave_handler=None, internal=False):
+                        depends_on=None, slave_handler=None, internal=False,
+                        allow_empty=False):
         """Register an iterable field
 
         Parameters
@@ -305,6 +306,8 @@ class TreeModel:
         internal : bool
             The field is set by methods as needed but should not be exposed to
             the user.
+        allow_empty : bool
+            Allow empty string in ``values``.
         """
         if key in self._fields:
             raise KeyError("Field already exists: %r" % key)
@@ -327,9 +330,9 @@ class TreeModel:
 
         default = self._defaults.get(key, default)
 
-        if values is not None:
+        if values:
             values = tuple(values)
-            check_names(values, key)
+            check_names(values, key, allow_empty)
             if default is None:
                 if len(values):
                     default = values[0]
