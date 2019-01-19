@@ -628,7 +628,7 @@ def test_factor():
     assert_array_equal(Factor('ab', repeat=2), ['a', 'a', 'b', 'b'])
     assert_array_equal(Factor('ab', repeat=np.array([2, 1])), ['a', 'a', 'b'])
     empty_factor = Factor([])
-    eq_(len(empty_factor), 0)
+    assert len(empty_factor) == 0
     assert_dataobj_equal(Factor(np.empty(0)), empty_factor)
     # from Factor
     f = Factor('aabbcc')
@@ -637,34 +637,33 @@ def test_factor():
 
     # removing a cell
     f = Factor('aabbcc')
-    eq_(f.cells, ('a', 'b', 'c'))
-    eq_(f.n_cells, 3)
+    assert f.cells == ('a', 'b', 'c')
+    assert f.n_cells == 3
     f[f == 'c'] = 'a'
-    eq_(f.cells, ('a', 'b'))
-    eq_(f.n_cells, 2)
+    assert f.cells == ('a', 'b')
+    assert f.n_cells == 2
 
     # cell order
     a = np.tile(np.arange(3), 3)
-    # alphabetical
+    f = Factor(a, labels={2: 'a', 1: 'b', 0: 'c'})
+    assert f.cells == ('a', 'b', 'c')
+    assert f[:2].cells == ('b', 'c')
     f = Factor(a, labels={0: 'c', 1: 'b', 2: 'a'})
-    eq_(f.cells, ('a', 'b', 'c'))
-    # ordered
-    f = Factor(a, labels=((0, 'c'), (1, 'b'), (2, 'a')))
-    eq_(f.cells, ('c', 'b', 'a'))
-    eq_(f[:2].cells, ('c', 'b'))
+    assert f.cells == ('c', 'b', 'a')
+    assert f[:2].cells == ('c', 'b')
     f[f == 'b'] = 'c'
-    eq_(f.cells, ('c', 'a'))
+    assert f.cells == ('c', 'a')
     # sort
-    f = Factor(a, labels=((0, 'c'), (1, 'b'), (2, 'a')))
+    f = Factor(a, labels={0: 'c', 1: 'b', 2: 'a'})
     f.sort_cells(('a', 'c', 'b'))
-    eq_(f.cells, ('a', 'c', 'b'))
+    assert f.cells == ('a', 'c', 'b')
 
     # label length
     lens = [2, 5, 32, 2, 32, 524]
     f = Factor(['a' * l for l in lens], 'f')
     fl = f.label_length()
     assert_array_equal(fl, lens)
-    eq_(fl.info['longname'], 'f.label_length()')
+    assert fl.info['longname'] == 'f.label_length()'
     lens2 = [3, 5, 32, 2, 32, 523]
     f2 = Factor(['b' * l for l in lens2], 'f2')
     assert_array_equal(fl - f2.label_length(), [a - b for a, b in zip(lens, lens2)])
