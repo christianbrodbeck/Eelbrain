@@ -642,7 +642,7 @@ def test_vector():
     res = testnd.Vector('v[40:]', ds=ds, samples=10)
     assert res.p == 1.0
 
-    # single vector with norm
+    # single vector with norm stat
     res_t = testnd.Vector('v[:40]', ds=ds, samples=10, use_t2_stat=False)
     assert res_t.p == 0.0
     res_t = testnd.Vector('v[40:]', ds=ds, samples=10, use_t2_stat=False)
@@ -657,7 +657,7 @@ def test_vector():
     difference = res.masked_difference()
     assert difference.x.mask.sum() == 282
 
-    # vector in time with norm
+    # vector in time with norm stat
     res_t = testnd.Vector(ds[30:, 'v3d'], samples=10, use_t2_stat=False)
     assert res_t.p.min() == 0.3
     res_t = testnd.Vector(ds[:30, 'v3d'], samples=10, use_t2_stat=False)
