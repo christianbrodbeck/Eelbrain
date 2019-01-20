@@ -1904,8 +1904,8 @@ class Vector(NDDifferenceTest):
         n_cases, n_dims, n_tests = y.shape
         assert n_dims == 3
         np.random.seed(seed)
-        phi = np.random.uniform(0, 2 * pi, n_cases)
-        theta = np.arccos(np.random.uniform(-1, 1, n_cases))
+        phi = np.arccos(np.random.uniform(-1, 1, n_cases))
+        theta = np.random.uniform(0, 2 * pi, n_cases)
         xi = self._rejection_sampling_xi(n_cases)
         rotation = vector.rotation_matrices(phi, theta, xi, np.empty((n_cases, 3, 3)))
         return vector.mean_norm_rotated(y, rotation, out)
@@ -1914,8 +1914,8 @@ class Vector(NDDifferenceTest):
         n_cases, n_dims, n_tests = y.shape
         assert n_dims == 3
         np.random.seed(seed)
-        phi = np.random.uniform(0, 2 * pi, n_cases)
-        theta = np.arccos(np.random.uniform(-1, 1, n_cases))
+        phi = np.arccos(np.random.uniform(-1, 1, n_cases))
+        theta = np.random.uniform(0, 2 * pi, n_cases)
         xi = self._rejection_sampling_xi(n_cases)
         rotation = vector.rotation_matrices(phi, theta, xi, np.empty((n_cases, 3, 3)))
         return vector.t2_stat_rotated(y, rotation, out)

@@ -651,19 +651,19 @@ def test_vector():
     # vector in time
     ds = datasets.get_uts(vector3d=True)
     res = testnd.Vector(ds[30:, 'v3d'], samples=10)
-    assert res.p.min() == 0.1
+    assert res.p.min() == 0.0
     res = testnd.Vector(ds[:30, 'v3d'], samples=10)
     assert res.p.min() == 0.0
     difference = res.masked_difference()
-    assert difference.x.mask.sum() == 282
+    assert difference.x.mask.sum() == 279
 
     # vector in time with norm stat
     res_t = testnd.Vector(ds[30:, 'v3d'], samples=10, use_t2_stat=False)
-    assert res_t.p.min() == 0.3
+    assert res_t.p.min() == 0.2
     res_t = testnd.Vector(ds[:30, 'v3d'], samples=10, use_t2_stat=False)
     assert res_t.p.min() == 0.0
     difference = res_t.masked_difference()
-    assert difference.x.mask.sum() == 288
+    assert difference.x.mask.sum() == 273
 
     # without mp
     configure(n_workers=0)
