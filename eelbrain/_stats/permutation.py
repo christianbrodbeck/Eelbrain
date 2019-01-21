@@ -1,12 +1,13 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from itertools import repeat
-from math import ceil
+from math import ceil, pi
 import random
 
 import numpy as np
 
 from .._data_obj import NDVar, Var, NestedEffect
 from .._utils import intervals
+from . import vector
 
 
 _YIELD_ORIGINAL = 0
@@ -235,3 +236,57 @@ def random_seeds(samples, seed=0):
     if seed is not None:
         np.random.seed(seed)
     return np.random.randint(2**32, size=samples, dtype=np.uint32)
+
+
+def _sample_xi_by_rejection(n=1000):
+    """Return a sample (or samples) from the distribution p(x) = 2 * np.sin(x/2) ** 2 / pi
+
+    See [1]_ for why samples from this distribution is required to sample
+    random rotation matrices.
+
+    ..[1] Miles, R. E. (1965). On random rotations in R^3. Biometrika, 52(3/4), 636-639.
+
+    Parameters
+    ----------
+    n : int
+        Number of the samples.
+
+    Returns
+    -------
+    ndarray
+        samples drawn from the distribution
+    """
+    samples = []
+    while True:
+        z = np.random.uniform(0, pi)
+        u = np.random.uniform(0, 2 / pi)
+
+        if u <= 2 * np.sin(z / 2) ** 2 / pi:
+            samples.append(z)
+            if len(samples) == n:
+                break
+    return np.array(samples)
+
+
+def rand_rotation_matrices(n, seed):
+    """Function to create random rotation matrices in 3D
+
+    Parameters
+    ----------
+    n : int
+        Number of rotation matrices to return.
+    seed : None | int
+        Seed the random state of the relevant randomization module
+        (:mod:`random` or :mod:`numpy.random`) to make replication possible.
+        None to skip seeding (default 0).
+
+    Returns
+    -------
+    ndarray
+        sampled rotation matrices
+    """
+    np.random.seed(seed)
+    phi = np.arccos(np.random.uniform(-1, 1, n))
+    theta = np.random.uniform(0, 2 * pi, n)
+    xi = _sample_xi_by_rejection(n)
+    return vector.rotation_matrices(phi, theta, xi, np.empty((n, 3, 3)))

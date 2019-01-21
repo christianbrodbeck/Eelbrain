@@ -56,10 +56,11 @@ from .connectivity import Connectivity, find_peaks
 from .connectivity_opt import merge_labels, tfce_increment
 from .glm import _nd_anova
 from .permutation import (
-    _resample_params, permute_order, permute_sign_flip, random_seeds)
+    _resample_params, permute_order, permute_sign_flip, random_seeds,
+    rand_rotation_matrices)
 from .t_contrast import TContrastRel
 from .test import star, star_factor
-from functools import reduce
+from functools import reduce, partial
 
 
 __test__ = False
@@ -1865,10 +1866,9 @@ class Vector(NDDifferenceTest):
 
         if cdist.do_permutation:
             iterator = random_seeds(samples)
-            if use_t2_stat:
-                run_permutation(self._vector_t2_map_perm, cdist, iterator)
-            else:
-                run_permutation(self._vector_mean_norm_perm, cdist, iterator)
+            vector_perm = partial(self._vector_perm, use_t2_stat=use_t2_stat)
+            run_permutation(vector_perm, cdist, iterator)
+
         # store attributes
         NDTest.__init__(self, ct.y, ct.match, sub, samples, tfce, None, cdist, tstart, tstop)
         self.difference = v_mean
@@ -1900,25 +1900,15 @@ class Vector(NDDifferenceTest):
             args.append(f'match={self.match!r}')
         return args
 
-    def _vector_mean_norm_perm(self, y, out, seed):
+    @staticmethod
+    def _vector_perm(y, out, seed, use_t2_stat):
         n_cases, n_dims, n_tests = y.shape
         assert n_dims == 3
-        np.random.seed(seed)
-        phi = np.arccos(np.random.uniform(-1, 1, n_cases))
-        theta = np.random.uniform(0, 2 * pi, n_cases)
-        xi = self._rejection_sampling_xi(n_cases)
-        rotation = vector.rotation_matrices(phi, theta, xi, np.empty((n_cases, 3, 3)))
-        return vector.mean_norm_rotated(y, rotation, out)
-
-    def _vector_t2_map_perm(self, y, out, seed):
-        n_cases, n_dims, n_tests = y.shape
-        assert n_dims == 3
-        np.random.seed(seed)
-        phi = np.arccos(np.random.uniform(-1, 1, n_cases))
-        theta = np.random.uniform(0, 2 * pi, n_cases)
-        xi = self._rejection_sampling_xi(n_cases)
-        rotation = vector.rotation_matrices(phi, theta, xi, np.empty((n_cases, 3, 3)))
-        return vector.t2_stat_rotated(y, rotation, out)
+        rotation = rand_rotation_matrices(n_cases, seed)
+        if use_t2_stat:
+            return vector.t2_stat_rotated(y, rotation, out)
+        else:
+            return vector.mean_norm_rotated(y, rotation, out)
 
     @staticmethod
     def _vector_t2_map(y):
@@ -1933,21 +1923,6 @@ class Vector(NDDifferenceTest):
             t2_map = stats.t2_1samp(x)
             dims = (y.get_dim(dimnames[i]) for i in range(2, ndim))
             return NDVar(t2_map, dims)
-
-    @staticmethod
-    def _rejection_sampling_xi(iter=1000):
-        """Sample from p(x) = 2 * np.sin(x/2) ** 2 / pi"""
-        from math import pi
-        samples = []
-        while True:
-            z = np.random.uniform(0, pi)
-            u = np.random.uniform(0, 2 / pi)
-
-            if u <= 2 * np.sin(z / 2) ** 2 / pi:
-                samples.append(z)
-                if len(samples) == iter:
-                    break
-        return np.array(samples)
 
 
 class VectorDifferenceIndependent(Vector):
@@ -1982,7 +1957,8 @@ class VectorDifferenceIndependent(Vector):
         if cdist.do_permutation:
             iterator = permute_order(self.n, samples)
             groups = np.arange(self.n) < self.n1
-            run_permutation(self._vector_mean_difference_norm, cdist, iterator, groups)
+            vector_perm = partial(self._vector_perm, use_t2_stat=use_t2_stat)
+            run_permutation(vector_perm, cdist, iterator, groups)
 
         NDTest.__init__(self, ct.y, ct.match, sub, samples, tfce, None, cdist, tstart, tstop)
         self._expand_state()
@@ -2040,11 +2016,8 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
 
         if cdist.do_permutation:
             iterator = random_seeds(samples)
-            iterator = random_seeds(samples)
-            if use_t2_stat:
-                run_permutation(self._vector_t2_map_perm, cdist, iterator)
-            else:
-                run_permutation(self._vector_mean_norm_perm, cdist, iterator)
+            vector_perm = partial(self._vector_perm, use_t2_stat=use_t2_stat)
+            run_permutation(vector_perm, cdist, iterator)
 
         # store attributes
         NDTest.__init__(self, difference, match, sub, samples, tfce, None, cdist, tstart, tstop)
