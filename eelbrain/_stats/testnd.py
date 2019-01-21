@@ -1916,11 +1916,10 @@ class Vector(NDDifferenceTest):
         dimnames = ('case', 'space',) + (None,) * (ndim - 2)
         dimnames = y.get_dimnames(dimnames)
         x = y.get_data(dimnames)
+        t2_map = stats.t2_1samp(x)
         if len(dimnames) == 2:
-            t2_map = stats.t2_1samp(x,)
             return np.float64(t2_map)
         else:
-            t2_map = stats.t2_1samp(x)
             dims = (y.get_dim(dimnames[i]) for i in range(2, ndim))
             return NDVar(t2_map, dims)
 
