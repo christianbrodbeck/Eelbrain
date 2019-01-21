@@ -1,6 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from itertools import chain, repeat
-from math import ceil
+from math import ceil, pi
 import random
 
 import numpy as np
