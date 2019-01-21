@@ -41,14 +41,14 @@ def test_boosting(n_workers):
     # test values from running function, not verified independently
     res = boosting(y, x1 * 2000, 0, 1, scale_data=False, mindelta=0.0025)
     assert repr(res) == '<boosting y ~ x1, 0 - 1, scale_data=False, mindelta=0.0025>'
-    assert round(res.r, 2) == 0.75
+    assert res.r == approx(0.75, abs=0.001)
     assert res.y_mean is None
     assert res.h.info['unit'] == 'V'
     assert res.h_scaled.info['unit'] == 'V'
 
     res = boosting(y, x1, 0, 1)
     assert repr(res) == '<boosting y ~ x1, 0 - 1>'
-    assert round(res.r, 2) == 0.83
+    assert res.r == approx(0.83, abs=0.001)
     assert res.y_mean == y_mean
     assert res.y_scale == y.std()
     assert res.x_mean == x1.mean()
@@ -63,17 +63,23 @@ def test_boosting(n_workers):
     assert_res_equal(res_p, res)
 
     res = boosting(y, x2, 0, 1)
-    assert round(res.r, 2) == 0.60
+    assert res.r == approx(0.601, abs=0.001)
 
     res = boosting(y, x2, 0, 1, error='l1')
-    assert round(res.r, 2) == 0.55
+    assert res.r == approx(0.553, abs=0.001)
     assert res.y_mean == y.mean()
     assert res.y_scale == (y - y_mean).abs().mean()
     assert res.x_mean == x2_mean
     assert res.x_scale == (x2 - x2_mean).abs().mean()
 
+    # 2 predictors
     res = boosting(y, [x1, x2], 0, 1)
-    assert round(res.r, 2) == 0.95
+    assert res.r == approx(0.947, abs=0.001)
+    # selective stopping
+    res = boosting(y, [x1, x2], 0, 1, selective_stopping=1)
+    assert res.r == approx(0.967, abs=0.001)
+    res = boosting(y, [x1, x2], 0, 1, selective_stopping=2)
+    assert res.r == approx(0.992, abs=0.001)
 
 
 def test_boosting_epochs():
@@ -161,7 +167,7 @@ def test_boosting_func():
     train_segments = all_segments[1:]
     test_segments = all_segments[:1]
     h, test_sse_history = boost(y, x, x_pads, all_segments, train_segments, test_segments,
-                                0, 10, 0.005, 0.005, 'l2', True)
+                                0, 10, 0.005, 0.005, 'l2', return_history=True)
     test_seg_len = int(floor(x.shape[1] / 40))
     y_pred = boosting_convolve(h, x[:, :test_seg_len], x_pads, 0)
     r, rr, _ = evaluate_kernel(y[:test_seg_len], y_pred, 'l2', h.shape[1] - 1)
@@ -179,7 +185,7 @@ def test_boosting_func():
     x_pads = np.zeros(len(x))
 
     h, test_sse_history = boost(y, x, x_pads, all_segments, train_segments, test_segments,
-                                0, 10, 0.005, 0.005, 'l2', True)
+                                0, 10, 0.005, 0.005, 'l2', return_history=True)
     test_seg_len = int(floor(x.shape[1] / 40))
     y_pred = boosting_convolve(h, x[:, :test_seg_len], x_pads, 0)
     r, rr, _ = evaluate_kernel(y[:test_seg_len], y_pred, 'l2', h.shape[1] - 1)

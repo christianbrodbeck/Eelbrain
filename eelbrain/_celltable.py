@@ -11,7 +11,7 @@ from ._stats.stats import variability
 from ._utils.numpy_utils import FULL_SLICE
 
 
-class Celltable(object):
+class Celltable:
     """Divide y into cells defined by x.
 
     Parameters

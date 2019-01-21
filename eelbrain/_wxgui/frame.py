@@ -14,7 +14,7 @@ FOCUS_UI_UPDATE_FUNC_NAMES = {
 }
 
 
-class EelbrainWindow(object):
+class EelbrainWindow:
     # Frame subclass to support UI Update
 
     def OnWindowIconize(self, event):

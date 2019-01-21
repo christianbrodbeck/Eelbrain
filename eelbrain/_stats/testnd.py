@@ -73,7 +73,7 @@ def check_variance(x):
         raise ZeroVariance("y contains data column with zero variance")
 
 
-class NDTest(object):
+class NDTest:
     """Baseclass for testnd test results
 
     Attributes
@@ -423,7 +423,7 @@ class t_contrast_rel(NDTest):
         Threshold for forming clusters as t-value.
     tfce : bool | scalar
         Use threshold-free cluster enhancement. Use a scalar to specify the
-        step of TFCE levels (for ``tfce is True`` it is 0.2).
+        step of TFCE levels (for ``tfce is True``, 0.1 is used).
     tstart : scalar
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
@@ -575,7 +575,7 @@ class corr(NDTest):
         Threshold for forming clusters.
     tfce : bool | scalar
         Use threshold-free cluster enhancement. Use a scalar to specify the
-        step of TFCE levels (for ``tfce is True`` it is 0.2).
+        step of TFCE levels (for ``tfce is True``, 0.1 is used).
     tstart : scalar
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
@@ -750,7 +750,7 @@ class NDDifferenceTest(NDTest):
         return self.difference.mask(mask)
 
 
-class NDMaskedC1Mixin(object):
+class NDMaskedC1Mixin:
 
     def masked_c1(self, p=0.05):
         """``c1`` map masked by significance of the ``c1``-``c0`` difference
@@ -796,7 +796,7 @@ class ttest_1samp(NDDifferenceTest):
         Threshold for forming clusters as t-value.
     tfce : bool | scalar
         Use threshold-free cluster enhancement. Use a scalar to specify the
-        step of TFCE levels (for ``tfce is True`` it is 0.2).
+        step of TFCE levels (for ``tfce is True``, 0.1 is used).
     tstart : scalar
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
@@ -973,7 +973,7 @@ class ttest_ind(NDDifferenceTest):
         Threshold for forming clusters as t-value.
     tfce : bool | scalar
         Use threshold-free cluster enhancement. Use a scalar to specify the
-        step of TFCE levels (for ``tfce is True`` it is 0.2).
+        step of TFCE levels (for ``tfce is True``, 0.1 is used).
     tstart : scalar
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
@@ -1104,6 +1104,7 @@ class ttest_ind(NDDifferenceTest):
         diff = self.c1_mean - self.c0_mean
         if np.any(diff.x < 0):
             diff.info['cmap'] = 'xpolar'
+        diff.name = 'difference'
         self.difference = diff
 
         # uncorrected p
@@ -1224,7 +1225,7 @@ class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
         Threshold for forming clusters as t-value.
     tfce : bool | scalar
         Use threshold-free cluster enhancement. Use a scalar to specify the
-        step of TFCE levels (for ``tfce is True`` it is 0.2).
+        step of TFCE levels (for ``tfce is True``, 0.1 is used).
     tstart : scalar
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
@@ -1338,6 +1339,7 @@ class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
         diff = self.c1_mean - self.c0_mean
         if np.any(diff.x < 0):
             diff.info['cmap'] = 'xpolar'
+        diff.name = 'difference'
         self.difference = diff
 
         # uncorrected p
@@ -1579,7 +1581,7 @@ class anova(MultiEffectNDTest):
         Threshold for forming clusters as f-value.
     tfce : bool | scalar
         Use threshold-free cluster enhancement. Use a scalar to specify the
-        step of TFCE levels (for ``tfce is True`` it is 0.2).
+        step of TFCE levels (for ``tfce is True``, 0.1 is used).
     replacement : bool
         whether random samples should be drawn with replacement or
         without
@@ -1800,7 +1802,7 @@ class Vector(NDDifferenceTest):
         Threshold value for forming clusters.
     tfce : bool | scalar
         Use threshold-free cluster enhancement. Use a scalar to specify the
-        step of TFCE levels (for ``tfce is True`` it is 0.2).
+        step of TFCE levels (for ``tfce is True``, 0.1 is used).
     tstart : scalar
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
@@ -1835,10 +1837,6 @@ class Vector(NDDifferenceTest):
     tfce_map : NDVar | None
         Map of the test statistic processed with the threshold-free cluster
         enhancement algorithm (or None if no TFCE was performed).
-
-    Notes
-    -----
-    Cases with zero variance are set to t=0.
     """
     _state_specific = ('difference', 'n', '_v_dim')
     _statistic = 'norm'
@@ -1947,6 +1945,7 @@ class VectorDifferenceIndependent(Vector):
         self.c1_mean = ct.data[c1].mean('case', name=cellname(c1))
         self.c0_mean = ct.data[c0].mean('case', name=cellname(c0))
         self.difference = self.c1_mean - self.c0_mean
+        self.difference.name = 'difference'
         v_mean_norm = self.difference.norm(v_dim)
         if use_t2_stat:
             raise NotImplementedError
@@ -1999,6 +1998,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
                  parc=None, force_permutation=False, use_t2_stat=True, **criteria):
         y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
         difference = y1 - y0
+        difference.name = 'difference'
 
         cdist = NDPermutationDistribution(
             difference, samples, vmin, tfce, 1, 'norm', 'Vector test (related)',
@@ -2262,7 +2262,7 @@ def _tfce(stat_map, tail, conn, out, out_1d, bin_buff, int_buff,
     return out
 
 
-class StatMapProcessor(object):
+class StatMapProcessor:
 
     def __init__(self, tail, max_axes, parc):
         """Reduce a statistical map to the relevant maximum statistic"""
@@ -2373,7 +2373,7 @@ def get_map_processor(kind, *args):
         raise ValueError("kind=%s" % repr(kind))
 
 
-class NDPermutationDistribution(object):
+class NDPermutationDistribution:
     """Accumulate information on a cluster statistic.
 
     Notes

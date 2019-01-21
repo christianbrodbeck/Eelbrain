@@ -61,7 +61,8 @@ functions executed are:
 import __main__
 
 from collections import Iterable, Iterator
-from itertools import chain, repeat
+from enum import Enum, auto
+from itertools import chain
 from logging import getLogger
 import math
 import os
@@ -69,7 +70,8 @@ import shutil
 import subprocess
 import tempfile
 import time
-from typing import List, Union
+from typing import List, Sequence, Union
+from typing import Iterator as IteratorType
 import weakref
 
 import matplotlib as mpl
@@ -103,6 +105,14 @@ defaults = {'maxw': 16, 'maxh': 10}
 
 # store figures (they need to be preserved)
 figures = []
+
+
+class PlotType(Enum):
+    GENERAL = auto()
+    LEGACY = auto()
+    LINE = auto()
+    IMAGE = auto()
+    CONTOUR = auto()
 
 
 def do_autorun(run=None):
@@ -215,60 +225,6 @@ def find_axis_params_data(v, label):
     # (needs separate instance because it adapts to data)
     # fmt = ScalarFormatter() if scale == 1 else scale_formatters[scale]
     return SCALE_FORMATTERS[scale], label
-
-
-def find_im_args(ndvar, overlay, vlims={}, cmaps={}):
-    """Construct a dict with kwargs for an im plot
-
-    Parameters
-    ----------
-    ndvar : NDVar
-        Data to be plotted.
-    overlay : bool
-        Whether the NDVar is plotted as a first layer or as an overlay.
-    vlims : dict
-        {meas: (vmax, vmin)} mapping to replace v-limits based on the
-        ndvar.info dict.
-    cmaps : dict
-        {meas: cmap} mapping to replace the cmap in the ndvar.info dict.
-
-    Returns
-    -------
-    im_args : dict
-        Arguments for the im plot (cmap, vmin, vmax).
-
-    Notes
-    -----
-    The NDVar's info dict contains default arguments that determine how the
-    NDVar is plotted as base and as overlay. In case of insufficient
-    information, defaults apply. On the other hand, defaults can be overridden
-    by providing specific arguments to plotting functions.
-    """
-    if overlay:
-        kind = ndvar.info.get('overlay', ('contours',))
-    else:
-        kind = ndvar.info.get('base', ('im',))
-
-    if 'im' in kind:
-        meas = ndvar.info.get('meas')
-
-        if meas in cmaps:
-            cmap = cmaps[meas]
-        elif 'cmap' in ndvar.info:
-            cmap = ndvar.info['cmap']
-        else:
-            cmap = DEFAULT_CMAPS.get(meas, 'xpolar')
-
-        if meas in vlims:
-            vmin, vmax = vlims[meas]
-        else:
-            vmin, vmax = find_vlim_args(ndvar)
-            vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cmap)
-        im_args = {'cmap': cmap, 'vmin': vmin, 'vmax': vmax}
-    else:
-        im_args = None
-
-    return im_args
 
 
 def find_uts_hlines(ndvar):
@@ -474,15 +430,15 @@ def find_fig_vlims(plots, vmax=None, vmin=None, cmaps=None):
     """
     if isinstance(vmax, dict):
         vlims = vmax
-        ndvars = [v for v in chain(*plots) if v.info.get('meas') not in vlims]
+        ndvars = [v for v in chain.from_iterable(plots) if v.info.get('meas') not in vlims]
     else:
-        ndvars = tuple(chain(*plots))
+        ndvars = [*chain.from_iterable(plots)]
 
         vlims = {}
         if vmax is None:
             user_vlim = None
         elif vmin is None:
-            if cmaps is None and any((v < 0).any() for v in ndvars):
+            if cmaps is None and any(v.min() < 0 for v in ndvars):
                 user_vlim = (-vmax, vmax)
             else:
                 user_vlim = (0, vmax)
@@ -625,7 +581,7 @@ def butterfly_data(
         resample_: int = None,
         colors: bool = False,
         return_vector_data: bool = False,
-) -> (List, List, NDVar):
+):
     """Data for plotting butterfly plot with brain
 
     Returns
@@ -715,15 +671,15 @@ def butterfly_data(
             layers = []
             for y, linestyle in ((y_ns, linestyle_ns), (y_sig, linestyle_sig)):
                 kwargs = {'zorder': z_order, **linestyle}
-                layers.append(LayerData(y.sub(source=hemi), kwargs))
-            axes.append(layers)
+                layers.append(LayerData(y.sub(source=hemi), PlotType.LINE, kwargs))
+            axes.append(AxisData(layers))
         bfly_data = PlotData(axes, ('time', 'source'), plot_names=hemis)
     else:
         raise RuntimeError(f"kind={kind}")
     return hemis, bfly_data, brain_data
 
 
-def pop_dict_arg(kwargs, key):
+def pop_if_dict(kwargs, key):
     "Helper for artist-sepcific matplotlib kwargs"
     if key in kwargs and isinstance(kwargs[key], dict):
         return kwargs.pop(key)
@@ -751,28 +707,88 @@ def set_dict_arg(key, arg, line_dim_obj, artists, legend_handles=None):
             legend_handles[dim_index] = artist
 
 
-class LayerData(object):
+_remap_args = {'c': 'color'}
+
+
+class LayerData:
     """Data for one subplot layer"""
-    _remap_args = {'c': 'color'}
 
-    def __init__(self, y: NDVar, line_args: dict = None):
+    def __init__(
+            self,
+            y: NDVar,
+            plot_type: PlotType = PlotType.GENERAL,
+            plot_args: dict = None,
+            plot_args_2: dict = None,  # for contour plot of IMAGE layer
+            bin_func: callable = np.mean,
+    ):
         self.y = y
-        self._line_args = line_args
         self.is_masked = isinstance(y.x, np.ma.masked_array)
-
-    def line_args(self, kwargs: dict):
-        if self._line_args is None:
-            items = kwargs.items()
+        self.plot_type = plot_type
+        self._plot_args = self._dict_arg(plot_args)
+        self._bin_func = bin_func
+        if plot_type == PlotType.IMAGE:
+            self._plot_args_2 = self._dict_arg(plot_args_2)
+        elif plot_args_2:
+            raise TypeError(f"plot_args_2={plot_args_2!r} for {plot_type}")
         else:
-            items = chain(kwargs.items(), self._line_args.items())
-        return {self._remap_args.get(k, k): v for k, v in items}
+            self._plot_args_2 = None
 
-    def get_data(self, masking: str = None):
-        if not self.is_masked:
+    @staticmethod
+    def _dict_arg(arg: dict = None) -> dict:
+        if arg is None:
+            return {}
+        elif any(k in arg for k in _remap_args):
+            return {_remap_args.get(k, k): v for k, v in arg.items()}
+        else:
+            return arg
+
+    def plot_args(self, kwargs: dict) -> dict:
+        # needs to be a copy?
+        return {**self._dict_arg(kwargs), **self._plot_args}
+
+    def contour_plot_args(self, contours):
+        out = {}
+        # contours arg
+        meas = self.y.info.get('meas')
+        if meas in contours:
+            if contours[meas] is not None:
+                out.update(contours[meas])
+        # layer
+        if self.plot_type == PlotType.IMAGE:
+            out.update(self._plot_args_2)
+        elif self.plot_type == PlotType.CONTOUR:
+            out.update(self._plot_args)
+        else:
+            raise RuntimeError(f"layer of type {self.plot_type}")
+        return out
+
+    def im_plot_args(self, vlims: dict, cmaps: dict) -> dict:
+        assert self.plot_type == PlotType.IMAGE
+        meas = self.y.info.get('meas')
+        if meas in cmaps:
+            cmap = cmaps[meas]
+        elif 'cmap' in self.y.info:
+            cmap = self.y.info['cmap']
+        else:
+            cmap = DEFAULT_CMAPS.get(meas, 'xpolar')
+
+        if meas in vlims:
+            vmin, vmax = vlims[meas]
+        else:
+            vmin, vmax = find_vlim_args(self.y)
+            vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cmap)
+        return {'cmap': cmap, 'vmin': vmin, 'vmax': vmax, **self._plot_args}
+
+    def for_plot(self, plot_type: PlotType) -> IteratorType['LayerData']:
+        if self.plot_type == plot_type:
             yield self
-        elif masking is None:
-            yield LayerData(self.y.unmask(), self._line_args)
-        elif masking == 'line':
+        elif not self.is_masked:
+            yield LayerData(self.y, plot_type, self._plot_args)
+        elif plot_type == PlotType.LEGACY:
+            yield LayerData(self.y.unmask(), plot_type, self._plot_args)
+        elif self.plot_type != PlotType.GENERAL:
+            raise RuntimeError(f"Invalid PlotData conversion: {self.plot_type} -> {plot_type}")
+        elif plot_type == PlotType.LINE:
             un_mask = NDVar(~self.y.x.mask, self.y.dims)
             # kwargs = {}
             if self.y.has_dim('time'):
@@ -785,12 +801,62 @@ class LayerData(object):
             args_main = {'alpha': 1., 'zorder': 1}
             args_masked = {'alpha': 0.4, 'color': (.7, .7, .7), 'zorder': 0}
             for y, args in ((self.y, args_main), (y_masked, args_masked)):
-                yield LayerData(y, args)
+                yield LayerData(y, plot_type, args)
+        elif plot_type == PlotType.IMAGE:
+            x = NDVar(self.y.x.data, self.y.dims, self.y.info, self.y.name)
+            yield LayerData(x, PlotType.IMAGE)
+            x = NDVar(1. - self.y.x.mask, self.y.dims, name=self.y.name)
+            yield LayerData(x, PlotType.CONTOUR, {'levels': [0.5], 'colors': ['black']}, bin_func=np.max)
         else:
-            raise RuntimeError(f"masking={masking!r}")
+            raise RuntimeError(f"plot_type={plot_type!r}")
+
+    def bin(self, bin_length, tstart, tstop):
+        y = self.y.bin(bin_length, tstart, tstop, self._bin_func)
+        return LayerData(y, self.plot_type, self._plot_args, self._plot_args_2, self._bin_func)
+
+    def sub_time(self, time: float, data_only: bool = False):
+        y = self.y.sub(time=time)
+        if data_only:
+            return y
+        else:
+            return LayerData(y, self.plot_type, self._plot_args, self._plot_args_2, self._bin_func)
 
 
-class PlotData(object):
+class AxisData:
+    """Represent one axis (multiple layers)"""
+    def __init__(
+            self,
+            layers: List[LayerData],
+    ):
+        self.layers = layers
+
+    def __iter__(self):
+        return iter(self.layers)
+
+    @property
+    def y0(self):
+        for layer in self.layers:
+            return layer.y
+        raise IndexError("No data")
+
+    def for_plot(self, plot_type: PlotType) -> 'AxisData':
+        return AxisData([l for layer in self.layers for l in layer.for_plot(plot_type)])
+
+    def bin(self, bin_length, tstart, tstop):
+        return AxisData([l.bin(bin_length, tstart, tstop) for l in self.layers])
+
+    def sub_time(self, time: float, data_only: bool = False):
+        axis = []
+        for layer in self.layers:
+            if time in layer.y.time:
+                axis.append(layer.sub_time(time, data_only))
+        if data_only:
+            return axis
+        else:
+            return AxisData(axis)
+
+
+class PlotData:
     """Organize nd-data for plotting
 
     Parameters
@@ -818,27 +884,42 @@ class PlotData(object):
         Data description for the plot frame.
     plot_names : list of str
         Titles for the plots.
+
+    Notes
+    -----
+    :class:`PlotData` is initially independent of plot type, and can be rendered
+    into specific plot-types with :meth:`PlotData.for_plot` methods.
     """
     def __init__(
             self,
-            axes: List[Union[None, List[LayerData]]],
-            dims: List[str],
+            axes: List[Union[None, AxisData]],
+            dims: Sequence[str],
             title: str = "unnamed data",
             plot_names: List[str] = None,
+            use_axes: List[bool] = None,
+            plot_type: PlotType = PlotType.GENERAL,
     ):
-        self.plot_used = [ax is not None for ax in axes]
-        self.plot_data = [ax for ax in axes if ax is not None]
-        self.n_plots = len(self.plot_data)
+        self.plot_data = axes
+        self.n_plots = len(axes)
+        if use_axes is None:
+            self.plot_used = (True,) * self.n_plots
+        else:
+            assert sum(use_axes) == self.n_plots
+            self.plot_used = use_axes
+        self.has_masked_data = any(l.is_masked for ax in self.plot_data for l in ax)
         self.dims = dims
         self.frame_title = title
         if plot_names is not None:
             assert len(plot_names) == self.n_plots
         self._plot_names = plot_names
+        self.plot_type = plot_type
 
     def _cannot_skip_axes(self, parent):
         if not all(self.plot_used):
-            raise NotImplementedError("y can not contain None for %s plot" %
-                                      parent.__class__.__name__)
+            raise NotImplementedError(f"y can not contain None for {parent.__class__.__name__} plot")
+
+    def __iter__(self):
+        return iter(self.plot_data)
 
     @classmethod
     def from_args(cls, y, dims, xax=None, ds=None, sub=None):
@@ -949,12 +1030,13 @@ class PlotData(object):
         else:
             y_name = ', '.join(y_names)
 
-        axes = [[LayerData(l) for l in ax] if ax else ax for ax in axes]
+        use_axes = [ax is not None for ax in axes]
+        axes = [AxisData([LayerData(l) for l in ax]) for ax in axes if ax]
         title = frame_title(y_name, x_name)
-        return cls(axes, dims, title, ax_names)
+        return cls(axes, dims, title, ax_names, use_axes)
 
     @classmethod
-    def empty(cls, plots, dims, title):
+    def empty(cls, plots: Union[int, List[bool]], dims: Sequence[str], title: str):
         """Empty PlotData object that can be filled by appending to layers
 
         Parameters
@@ -962,41 +1044,34 @@ class PlotData(object):
         plots : int | list of bool
             Number of plots, or list of booleans indicating for each plot
             whether its slot is used.
-        dims : tuple of str
+        dims : sequence of str
             Names of the dimensions.
         title : str
             Data description for the plot frame.
         """
         if isinstance(plots, int):
-            plots = [[] for _ in range(plots)]
+            plots = [AxisData([]) for _ in range(plots)]
         else:
-            plots = [[] if p else None for p in plots]
+            plots = [AxisData([]) if p else None for p in plots]
         return cls(plots, dims, title)
-
-    def add_layer(self, ys, line_args={}):
-        """Add a layer to all plots"""
-        assert len(ys) == len(self.plot_data)
-        if isinstance(line_args, dict):
-            line_args = repeat(line_args, len(ys))
-        else:
-            assert len(line_args) == len(ys)
-
-        for layers, y, args in zip(self.plot_data, ys, line_args):
-            if not isinstance(y, LayerData):
-                y = LayerData(y, args)
-            layers.append(y)
 
     @property
     def y0(self):
         for ax in self.plot_data:
             for layer in ax:
                 return layer.y
-        raise IndexError("%r has no data" % (self,))
+        raise IndexError("No data")
 
     @LazyProperty
     def data(self):
         "For backwards compatibility with nested list of NDVar"
-        return [[l.y for l in self.get_axis_data(i)] for i in range(self.n_plots)]
+        return [[l.y for l in self.axis_for_plot(i, PlotType.LEGACY)] for i in range(self.n_plots)]
+
+    def for_plot(self, plot_type: PlotType) -> 'PlotData':
+        if self.plot_type == plot_type:
+            return self
+        axes = [ax.for_plot(plot_type) for ax in self.plot_data]
+        return PlotData(axes, self.dims, self.frame_title, self._plot_names, self.plot_used, plot_type)
 
     @LazyProperty
     def plot_names(self):
@@ -1012,20 +1087,29 @@ class PlotData(object):
                 names.append(None)
         return names
 
-    def get_axis_data(self, ax: int, masking: str = None):
+    def axis_for_plot(self, ax: int, plot_type: PlotType) -> List[LayerData]:
         """Data for ``ax``
 
         Parameters
         ----------
         ax : int
             Index of the axes.
-        masking : str
-            Type of masking (if supported).
+        plot_type : PlotType
+            How to handle masked arrays and layers in plot data.
         """
-        out = []
-        for layer in self.plot_data[ax]:
-            out.extend(layer.get_data(masking))
-        return out
+        return self.plot_data[ax].for_plot(plot_type)
+
+    def bin(self, bin_length, tstart, tstop):
+        axes = [ax.bin(bin_length, tstart, tstop) for ax in self.plot_data]
+        return PlotData(axes, self.dims, self.frame_title, self._plot_names, self.plot_used, self.plot_type)
+
+    def sub_time(self, time: float, data_only: bool = False):
+        axes = [ax.sub_time(time, data_only) for ax in self.plot_data]
+        if data_only:
+            return axes
+        else:
+            dims = [dim for dim in self.dims if dim != 'time']
+            return PlotData(axes, dims, self.frame_title, self._plot_names, self.plot_used, self.plot_type)
 
 
 def aggregate(y, agg):
@@ -1131,7 +1215,7 @@ def frame_title(y, x=None, xax=None):
         return "%s ~ %s | %s" % (y, x, xax)
 
 
-class EelFigure(object):
+class EelFigure:
     """Parent class for Eelbrain figures.
 
     In order to subclass:
@@ -1142,7 +1226,6 @@ class EelFigure(object):
      - end the initialization by calling `_EelFigure._show()`
      - add the :py:meth:`_fill_toolbar` method
     """
-    _name = 'Figure'
     _default_xlabel_ax = -1
     _default_ylabel_ax = 0
     _make_axes = True
@@ -1161,8 +1244,9 @@ class EelFigure(object):
         layout : Layout
             Layout that determines figure dimensions.
         """
+        name = self.__class__.__name__
         desc = layout.name or data_desc
-        frame_title = '%s: %s' % (self._name, desc) if desc else self._name
+        frame_title = f'{name}: {desc}' if desc else name
 
         # find the right frame
         if CONFIG['eelbrain']:
@@ -1210,6 +1294,9 @@ class EelFigure(object):
         self.canvas.mpl_connect('resize_event', self._on_resize)
         self.canvas.mpl_connect('key_press_event', self._on_key_press)
         self.canvas.mpl_connect('key_release_event', self._on_key_release)
+
+    def __repr__(self):
+        return f'<{self._frame.GetTitle()}>'
 
     def _set_axtitle(self, axtitle, data=None, axes=None, names=None):
         """Set axes titles automatically
@@ -1646,7 +1733,8 @@ class EelFigure(object):
 
     def set_name(self, name):
         """Set the figure window title"""
-        self._frame.SetTitle('%s: %s' % (self._name, name) if name else self._name)
+        plot_name = self.__class__.__name__
+        self._frame.SetTitle(f'{plot_name}: {name}' if name else plot_name)
 
     def set_xtick_rotation(self, rotation):
         """Rotate every x-axis tick-label by an angle (counterclockwise, in degrees)
@@ -1692,7 +1780,7 @@ class EelFigure(object):
         ax.set_ylabel(label)
 
 
-class BaseLayout(object):
+class BaseLayout:
     def __init__(self, h, w, dpi, tight, show, run, autoscale, title, name):
         self.h = h
         self.w = w
@@ -1756,7 +1844,7 @@ def resolve_plot_rect(w, h, dpi):
     return w, h
 
 
-class LayoutDim(object):
+class LayoutDim:
     "Helper function to determine figure spacing"
     _properties = ('total', 'first', 'space', 'last', 'ax')
     _equations = dict(
@@ -1856,7 +1944,7 @@ class Layout(BaseLayout):
                 raise ValueError("w < axw")
         w, h = resolve_plot_rect(w, h, dpi)
 
-        self.w_fixed = w or axw
+        self.w_fixed = w if w is not None else axw
         self._margins_arg = margins
 
         if margins is True:
@@ -1946,7 +2034,10 @@ class Layout(BaseLayout):
                 nrow = min(nax, nrow)
                 ncol = int(math.ceil(nax / nrow))
 
-            axh_default = axh_default if axw is None else axw / ax_aspect
+            if axw:
+                axh_default = axw / ax_aspect
+            elif w:
+                axh_default = w / ncol / ax_aspect
             h_dim = LayoutDim(
                 nrow, h, axh, margins.get('top'), margins.get('hspace'),
                 margins.get('bottom'), axh_default, self._default_margins['top'],
@@ -2170,7 +2261,7 @@ class VariableAspectLayout(BaseLayout):
         return axes
 
 
-class ColorBarMixin(object):
+class ColorBarMixin:
     """Colorbar toolbar button mixin
 
     Parameters
@@ -2331,7 +2422,7 @@ class ColorMapMixin(ColorBarMixin):
         return self._vlims[meas]
 
 
-class LegendMixin(object):
+class LegendMixin:
     __choices = ('invisible', 'separate window', 'draggable', 'upper right',
                  'upper left', 'lower left', 'lower right', 'right',
                  'center left', 'center right', 'lower center', 'upper center',
@@ -2478,7 +2569,6 @@ class LegendMixin(object):
 
 
 class Legend(EelFigure):
-    _name = "Legend"
 
     def __init__(self, handles, labels, *args, **kwargs):
         layout = Layout(0, 1, 2, False, *args, **kwargs)
@@ -2498,7 +2588,7 @@ class Legend(EelFigure):
         self._show()
 
 
-class TimeController(object):
+class TimeController:
     # Link plots that have the TimeSlicer mixin
     def __init__(self, t=0, fixate=False):
         self._plots = []  # list of weakref to plots
@@ -2546,7 +2636,7 @@ class TimeController(object):
                 p._set_xlim(xmin, xmax, draw=True)
 
 
-class TimeSlicer(object):
+class TimeSlicer:
     # Interface to link time axes of multiple plots.
     # update data in a child plot of time-slices
     _time_dim = None
@@ -2729,7 +2819,7 @@ class TimeSlicerEF(TimeSlicer):
         imageio.mimwrite(filename, ims, **kwargs)
 
 
-class TopoMapKey(object):
+class TopoMapKey:
 
     def __init__(self, data_func):
         self.__topo_data = data_func
@@ -2753,7 +2843,7 @@ class TopoMapKey(object):
                     sensorlabels='name')
 
 
-class XAxisMixin(object):
+class XAxisMixin:
     """Manage x-axis
 
     Parameters
@@ -2916,7 +3006,7 @@ class XAxisMixin(object):
             self._set_xlim(left, right, draw=True)
 
 
-class YLimMixin(object):
+class YLimMixin:
     """Manage y-axis
 
     Parameters
@@ -2948,7 +3038,8 @@ class YLimMixin(object):
         self._register_key('i' if IS_WINDOWS else 'up', self.__on_move_up)
         self._register_key('k' if IS_WINDOWS else 'down', self.__on_move_down)
         self._draw_hooks.append(self.__draw_hook)
-        self._untight_draw_hooks.append(self.__untight_draw_hook)
+        # disable because it changes y-limits
+        # self._untight_draw_hooks.append(self.__untight_draw_hook)
 
     def __draw_hook(self):
         need_draw = False
@@ -3027,7 +3118,7 @@ class YLimMixin(object):
         self.__animate(vmin, -d, vmax, d)
 
 
-class ImageTiler(object):
+class ImageTiler:
     """
     Create tiled images and animations from individual image files.
 

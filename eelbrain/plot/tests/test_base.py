@@ -3,7 +3,7 @@ import pytest
 
 from eelbrain import datasets, plot
 from eelbrain.plot import _base
-from eelbrain.plot._base import Layout
+from eelbrain.plot._base import Layout, ImLayout
 from eelbrain._utils.testing import skip_on_windows
 from eelbrain._wxgui.testing import hide_plots
 
@@ -38,6 +38,26 @@ def test_layout():
     assert layout.margins == dict(right=10 - 1 - 5, **margins)
     assert layout.axh == 2.5
     assert layout.h == 5 + 2 * layout.axh
+
+
+def test_im_layout():
+    "Test the ImLayout class"
+    l = ImLayout(1, 1, 5, None, {}, w=3)
+    assert l.w == 3
+    assert l.h == 3
+    assert l.axw == l.axh == 3
+    l = ImLayout(2, 1, 5, None, {}, w=3, ncol=2)
+    assert l.w == 3
+    assert l.h == 1.5
+    assert l.axw == l.axh == 1.5
+    l = ImLayout(1, 1, 5, None, {}, axw=3)
+    assert l.w == 3
+    assert l.h == 3
+    assert l.axw == l.axh == 3
+    l = ImLayout(2, 1, 5, None, {}, axw=3, ncol=2)
+    assert l.w == 6
+    assert l.h == 3
+    assert l.axw == l.axh == 3
 
 
 @hide_plots
@@ -79,10 +99,13 @@ def test_vlims():
     epochs = [[ds[i: i+5, 'uts'].mean('case')] for i in range(0, 10, 5)]
     meas = ds['uts'].info.get('meas')
 
+    # without cmap
     lims = _base.find_fig_vlims(epochs)
-    assert lims[meas][1] > lims[meas][0]
+    assert lims[meas] == (-1, 3)
     lims = _base.find_fig_vlims(epochs, 1)
     assert lims[meas] == (-1, 1)
+    lims = _base.find_fig_vlims(epochs, .1)
+    assert lims[meas] == (-.1, .1)
     lims = _base.find_fig_vlims(epochs, 1, -2)
     assert lims[meas] == (-2, 1)
 

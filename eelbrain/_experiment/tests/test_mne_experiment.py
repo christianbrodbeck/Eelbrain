@@ -5,7 +5,9 @@ import numpy as np
 from numpy.testing import assert_array_equal
 import pytest
 
-from eelbrain import Dataset, Factor, Var, MneExperiment
+from eelbrain import Dataset, Factor, Var
+from eelbrain._exceptions import DefinitionError
+from eelbrain.pipeline import *
 from eelbrain._utils.testing import assert_dataobj_equal, TempDir
 
 
@@ -20,6 +22,11 @@ class BaseExperiment(MneExperiment):
 
     sessions = 'file'
 
+    raw = {
+        '0-40': RawFilter('raw', None, 40, method='iir'),
+        '1-40': RawFilter('raw', 1, 40, method='iir'),
+    }
+
 
 class EventExperiment(MneExperiment):
 
@@ -27,19 +34,23 @@ class EventExperiment(MneExperiment):
 
     sessions = 'cheese'
 
-    variables = {'kind': {(1, 2, 3, 4): 'cheese', (11, 12, 13, 14): 'pet'},
-                 'name': {1: 'Leicester', 2: 'Tilsit', 3: 'Caerphilly',
-                          4: 'Bel Paese'},
-                 'backorder': {(1, 4): 'no', (2, 3): 'yes'},
-                 'taste': {(1, 2): 'good', 'default': 'bad'}}
+    raw = {
+        '0-40': RawFilter('raw', None, 40, method='iir'),
+        '1-40': RawFilter('raw', 1, 40, method='iir'),
+    }
 
-    epochs = {'cheese': {'sel': "kind == 'cheese'",
-                         'tmin': -0.2},
-              'cheese-leicester': {'base': 'cheese',
-                                   'tmin': -0.1,
-                                   'sel': "name == 'Leicester'"},
-              'cheese-tilsit': {'base': 'cheese',
-                                'sel': "name == 'Tilsit"}}
+    variables = {
+        'kind': {(1, 2, 3, 4): 'cheese', (11, 12, 13, 14): 'pet'},
+        'name': {1: 'Leicester', 2: 'Tilsit', 3: 'Caerphilly', 4: 'Bel Paese'},
+        'backorder': {(1, 4): 'no', (2, 3): 'yes'},
+        'taste': {(1, 2): 'good', 'default': 'bad'},
+    }
+
+    epochs = {
+        'cheese': {'sel': "kind == 'cheese'", 'tmin': -0.2},
+        'cheese-leicester': {'base': 'cheese', 'tmin': -0.1, 'sel': "name == 'Leicester'"},
+        'cheese-tilsit': {'base': 'cheese', 'sel': "name == 'Tilsit"},
+    }
 
     defaults = {'model': 'name'}
 
@@ -51,7 +62,7 @@ class EventExperimentTriggerShiftDict(EventExperiment):
 
 def gen_triggers():
     raw = Var([], info={'sfreq': SAMPLINGRATE})
-    ds = Dataset(info={'subject': SUBJECT, 'raw': raw, 'sfreq': SAMPLINGRATE})
+    ds = Dataset(info={'subject': SUBJECT, 'session': 'cheese', 'raw': raw, 'sfreq': SAMPLINGRATE})
     ds['trigger'] = Var(TRIGGERS)
     ds['i_start'] = Var(I_START)
     return ds
@@ -99,8 +110,8 @@ def test_mne_experiment_templates():
     assert e.get('src_kind') == '1-40 noreg fixed-3-dSPM'
 
     # find terminal field names
-    assert e.find_keys('raw-file') == {'root', 'subject', 'session'}
-    assert e.find_keys('evoked-file', False) == {'subject', 'session', 'raw', 'epoch', 'rej', 'equalize_evoked_count', 'model', }
+    assert e.find_keys('raw-file') == ['root', 'subject', 'session']
+    assert e.find_keys('evoked-file', False) == ['subject', 'session', 'raw', 'epoch', 'model', 'rej', 'equalize_evoked_count']
 
     assert_inv_works(e, 'free-3-MNE', ('free', 3, 'MNE'),
                      {'loose': 1, 'depth': 0.8},
@@ -132,6 +143,9 @@ def test_mne_experiment_templates():
     with pytest.raises(ValueError):
         e.set(inv='free-3-MNE-2')
 
+    assert e.find_keys('test-file', False) == ['analysis', 'group', 'epoch', 'test', 'test_options', 'test_dims']
+    assert e._glob_pattern('test-file', True, group='all') == os.path.join(tempdir, 'eelbrain-cache', 'test', '* all', '* *.pickled')
+
 
 def test_test_experiment():
     "Test event labeling with the EventExperiment subclass of MneExperiment"
@@ -142,7 +156,7 @@ def test_test_experiment():
     assert e.get('model') == 'name'
 
     # test event labeling
-    ds = e.label_events(gen_triggers())
+    ds = e._label_events(gen_triggers())
     name = Factor([e.variables['name'][t] for t in TRIGGERS], name='name')
     assert_dataobj_equal(ds['name'], name)
     tgt = ds['trigger'].as_factor(e.variables['backorder'], 'backorder')
@@ -198,3 +212,17 @@ def test_file_handling():
     e = FileExperimentDefaults(tempdir)
     assert e.get('group'), 'gsub'
     assert e.get('subject') == SUBJECTS[1]
+
+
+# definition checks
+
+class BadRawExperiment(BaseExperiment):
+    raw = {'bad raw': RawFilter('raw', 1, 40), **BaseExperiment.raw}
+
+
+def test_bad_definitions():
+    "Test invalid definitions raise errors"
+    tempdir = TempDir()
+
+    with pytest.raises(DefinitionError):
+        BadRawExperiment()

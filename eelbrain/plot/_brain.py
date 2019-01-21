@@ -147,6 +147,8 @@ def annot_legend(lh, rh, *args, **kwargs):
     """
     _, lh_colors, lh_names = read_annot(lh)
     _, rh_colors, rh_names = read_annot(rh)
+    lh_names = [name.decode() for name in lh_names]
+    rh_names = [name.decode() for name in rh_names]
     lh_colors = dict(zip(lh_names, lh_colors[:, :4] / 255.))
     rh_colors = dict(zip(rh_names, rh_colors[:, :4] / 255.))
     names = set(lh_names)
@@ -602,7 +604,6 @@ def _voxel_brain(data, lut, vmin, vmax):
 # - _bin_table_ims() creates ims given a brain plot function
 
 class ImageTable(ColorBarMixin, EelFigure):
-    _name = "ImageTable"
     # Initialize in two steps
     #
     #  1) Initialize class to generate layout
@@ -667,8 +668,6 @@ class ImageTable(ColorBarMixin, EelFigure):
 
 class _BinTable(EelFigure, ColorBarMixin):
     """Super-class"""
-    _name = "BinTable"
-
     def __init__(self, ndvar, tstart, tstop, tstep, im_func, surf, views, hemi,
                  summary, title, foreground=None, background=None,
                  parallel=True, smoothing_steps=None, mask=True, margins=None,
@@ -1012,7 +1011,7 @@ def _bin_table_ims(data, hemi, views, brain_func):
     return ims, header, cmap_params
 
 
-class SequencePlotter(object):
+class SequencePlotter:
     """Grid of anatomical images in one figure
 
     Examples

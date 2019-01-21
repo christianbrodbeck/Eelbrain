@@ -13,7 +13,7 @@ Then you can use::
     >>> e = SampleExperiment(ROOT)
 
 """
-from eelbrain import MneExperiment
+from eelbrain.pipeline import *
 
 
 ROOT = "~/Data/SampleExperimentSessions"
@@ -26,6 +26,11 @@ class SampleExperiment(MneExperiment):
     meg_system = 'neuromag306mag'
 
     sessions = ('sample1', 'sample2')
+
+    raw = {
+        '0-40': RawFilter('raw', None, 40, method='iir'),
+        '1-40': RawFilter('raw', 1, 40, method='iir'),
+    }
 
     variables = {
         'event': {(1, 2, 3, 4): 'target', 5: 'smiley', 32: 'button'},

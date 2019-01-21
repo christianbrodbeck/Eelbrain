@@ -36,7 +36,7 @@ for key in mpl.rcParams:
         RC[key] = mpl.rcParams[key] * 0.5
 
 
-class PlotDestDir(object):
+class PlotDestDir:
     """Generate paths for saving plots in figure-specific subdirectories
 
     Parameters
@@ -116,7 +116,7 @@ def cname(cid):
         return str(cid)
 
 
-class ClusterPlotter(object):
+class ClusterPlotter:
     """Make plots for spatio-temporal clusters
 
     returned by :meth:`MneExperiment.load_result_plotter`

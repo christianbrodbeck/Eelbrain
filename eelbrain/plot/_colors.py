@@ -257,8 +257,6 @@ class ColorGrid(EelFigure):
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    _name = "ColorGrid"
-
     def __init__(self, row_cells, column_cells, colors, size=None,
                  column_label_position='top', row_first=None, labels=None,
                  shape='box', *args, **kwargs):
@@ -414,8 +412,6 @@ class ColorList(EelFigure):
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    _name = "Colors"
-
     def __init__(self, colors, cells=None, labels=None, h='auto', *args,
                  **kwargs):
         if cells is None:
@@ -518,8 +514,6 @@ class ColorBar(EelFigure):
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    _name = "ColorBar"
-
     def __init__(self, cmap, vmin, vmax=None, label=True, label_position=None,
                  label_rotation=None,
                  clipmin=None, clipmax=None, orientation='horizontal',
