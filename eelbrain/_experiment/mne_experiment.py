@@ -4562,7 +4562,7 @@ class MneExperiment(FileTree):
         pipe = self._raw[self.get('raw')]
         pipe.cache(self.get('subject'), self.get('session'))
 
-    def make_epoch_selection(self, decim=None, auto=None, overwrite=False, **state):
+    def make_epoch_selection(self, decim=None, auto=None, overwrite=None, **state):
         """Open :func:`gui.select_epochs` for manual epoch selection
 
         The GUI is opened with the correct file name; if the corresponding
@@ -4584,7 +4584,9 @@ class MneExperiment(FileTree):
             If a rejection file already exists also set ``overwrite=True``.
         overwrite : bool
             If ``auto`` is specified and a rejection file already exists,
-            overwrite has to be set to ``True`` to overwrite the old file.
+            overwrite the old file. The default is to raise an error if the
+            file exists (``None``). Set to ``False`` to quietly keep the exising
+            file.
         ...
             State parameters.
         """
@@ -4605,10 +4607,12 @@ class MneExperiment(FileTree):
         path = self.get('rej-file', mkdir=True, session=epoch.session)
 
         if auto is not None and overwrite is not True and exists(path):
-            msg = ("A rejection file already exists for {subject}, epoch "
-                   "{epoch}, rej {rej}. Set overwrite=True if you are sure you "
-                   "want to replace that file.")
-            raise IOError(self.format(msg))
+            if overwrite is False:
+                return
+            elif overwrite is None:
+                raise IOError(self.format("A rejection file already exists for {subject}, epoch {epoch}, rej {rej}. Set the overwrite parameter to specify how to handle existing files."))
+            else:
+                raise TypeError(f"overwrite={overwrite!r}")
 
         ds = self.load_epochs(reject=False, trigger_shift=False, decim=decim)
         has_meg = 'meg' in ds
