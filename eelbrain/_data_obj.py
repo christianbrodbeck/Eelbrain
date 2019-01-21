@@ -515,6 +515,15 @@ def asfactor(x, sub=None, ds=None, n=None):
     return x
 
 
+def asindex(x):
+    if isinstance(x, Factor):
+        return x != ''
+    elif isinstance(x, Var):
+        return x.x
+    else:
+        return x
+
+
 def asmodel(x, sub=None, ds=None, n=None):
     if isinstance(x, str):
         if ds is None:
@@ -1254,10 +1263,7 @@ class Var:
         return self._n_cases
 
     def __getitem__(self, index):
-        if isinstance(index, Factor):
-            raise TypeError("Factor can't be used as index")
-        elif isinstance(index, Var):
-            index = index.x
+        index = asindex(index)
         x = self.x[index]
         if isinstance(x, np.ndarray):
             return Var(x, self.name, info=self.info.copy())
@@ -2199,9 +2205,7 @@ class Factor(_Effect):
         return self._n_cases
 
     def __getitem__(self, index):
-        if isinstance(index, Var):
-            index = index.x
-
+        index = asindex(index)
         x = self.x[index]
         if isinstance(x, np.ndarray):
             return Factor(x, self.name, self.random, labels=self._labels)
@@ -4815,6 +4819,7 @@ class Datalist(list):
         elif isinstance(index, slice):
             return Datalist(list.__getitem__(self, index), fmt=self._fmt)
         else:
+            index = asindex(index)
             return Datalist(apply_numpy_index(self, index), fmt=self._fmt)
 
     def __setitem__(self, key, value):
@@ -6050,6 +6055,7 @@ class Dataset(OrderedDict):
         else:
             if isinstance(index, str):
                 index = self.eval(index)
+            index = asindex(index)
             if keys is None:
                 keys = self.keys()
             elif isinstance(keys, str):
