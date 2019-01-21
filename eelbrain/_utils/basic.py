@@ -14,6 +14,12 @@ LOG_LEVELS = {'DEBUG': logging.DEBUG, 'INFO': logging.INFO,
               'CRITICAL': logging.CRITICAL}
 
 
+def as_sequence(items, item_type=str):
+    if isinstance(items, item_type):
+        return items,
+    return items
+
+
 def ask(message, options, allow_empty=False, help=None):
     option_keys = [s[0] for s in options]
     print(message)
@@ -74,7 +80,7 @@ def deprecated_attribute(version, class_name, replacement):
     if not isinstance(replacement, str):
         raise TypeError("replacement=%r" % (replacement,))
 
-    class Dec(object):
+    class Dec:
 
         def __init__(self, meth):
             self._meth = meth
@@ -130,38 +136,32 @@ class ScreenHandler(logging.StreamHandler):
         if formatter is None:
             formatter = logging.Formatter("%(levelname)-8s:  %(message)s")
         self.setFormatter(formatter)
+        tqdm(disable=True, total=0)  # https://github.com/tqdm/tqdm/issues/457
 
     def emit(self, record):
         tqdm.write(self.format(record))
 
 
-class intervals:
+def intervals(seq):
     """Iterate over each successive pair in a sequence.
 
     Examples
     --------
     >>> for i in intervals([1, 2, 3, 45]):
-    ...     print i
+    ...     print(i)
     ...
     (1, 2)
     (2, 3)
     (3, 45)
     """
-    def __init__(self, seq):
-        self.seq = seq
-        self.i = 0
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        self.i += 1
-        if len(self.seq) <= self.i:
-            raise StopIteration
-        return self.seq[self.i - 1], self.seq[self.i]
+    iterator = iter(seq)
+    last = next(iterator)
+    for item in iterator:
+        yield last, item
+        last = item
 
 
-class LazyProperty(object):
+class LazyProperty:
     "http://blog.pythonisito.com/2008/08/lazy-descriptors.html"
     def __init__(self, func):
         self._func = func

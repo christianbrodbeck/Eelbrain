@@ -15,10 +15,15 @@ import eelbrain
 
 parser = ArgumentParser('eelbrain', description='Start iPython with eelbrain profile')
 parser.add_argument('--version', action='version', version=eelbrain.__version__)
+parser.add_argument('--debug-warnings', action='store_true', help='Print tracebacks for warnings')
 
 
 if __name__ == '__main__':
     args = parser.parse_args()
+    del sys.argv[1:]
+    if args.debug_warnings:
+        from eelbrain._utils.debug import warn_with_traceback
+        warn_with_traceback()
 
     # set ETS toolkit before it is launched
     ETSConfig.toolkit = 'wx'

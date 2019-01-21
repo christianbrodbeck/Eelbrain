@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Pre-processing operations based on NDVars"""
+from collections import Sequence
 import fnmatch
 from os import mkdir, remove
 from os.path import dirname, exists, getmtime, join, splitext
@@ -18,7 +19,7 @@ from .definitions import typed_arg
 from .exceptions import FileMissing
 
 
-class RawPipe(object):
+class RawPipe:
 
     def _link(self, name, pipes, root, raw_dir, cache_dir, log):
         raise NotImplementedError
@@ -47,7 +48,9 @@ class RawPipe(object):
         if raw is None:
             raw = self._load(subject, session, preload)
         # bad channels
-        if add_bads:
+        if isinstance(add_bads, Sequence):
+            raw.info['bads'] = list(add_bads)
+        elif add_bads:
             raw.info['bads'] = self.load_bad_channels(subject, session)
         else:
             raw.info['bads'] = []
@@ -276,7 +279,13 @@ class CachedRawPipe(RawPipe):
                 logger.info(repr(self.as_dict()))
                 raw = self._make(subject, session)
             # save
-            raw.save(path, overwrite=True)
+            try:
+                raw.save(path, overwrite=True)
+            except:
+                # clean up potentially corrupted file
+                if exists(path):
+                    remove(path)
+                raise
             return raw
 
     def get_connectivity(self, data):
@@ -313,17 +322,25 @@ class CachedRawPipe(RawPipe):
 
 
 class RawFilter(CachedRawPipe):
+    """Filter raw pipe
+
+    Parameters
+    ----------
+    source : str
+        Name of the raw pipe to use for input data.
+    ...
+        :meth:`mne.io.Raw.filter` parameters.
+    """
 
     def __init__(self, source, l_freq=None, h_freq=None, **kwargs):
         CachedRawPipe.__init__(self, source)
         self.args = (l_freq, h_freq)
         self.kwargs = kwargs
         # mne backwards compatibility (fir_design default change 0.15 -> 0.16)
-        if kwargs.get('fir_design', None) is not None:
-            self._use_kwargs = kwargs
+        if 'use_kwargs' in kwargs:
+            self._use_kwargs = kwargs.pop('use_kwargs')
         else:
-            self._use_kwargs = kwargs.copy()
-            self._use_kwargs['fir_design'] = 'firwin2'
+            self._use_kwargs = kwargs
 
     def as_dict(self):
         out = CachedRawPipe.as_dict(self)
@@ -411,20 +428,19 @@ class RawICA(CachedRawPipe):
     source : str
         Name of the raw pipe to use for input data.
     session : str | sequence of str
-        Session(s) to use as input data for ICA.
+        Session(s) to use for estimating ICA components.
     ...
         Parameters for :class:`mne.preprocessing.ICA`.
 
     Notes
     -----
-    This pipe merges bad channels from its source raw pipes.
+    Use :meth:`MneExperiment.make_ica_selection` for each subject to select ICA
+    components that should be removed.
 
-    When checking whether the ICA file is up to date, the ICA does not check
-    raw source mtime. However, if bad channels change the ICA is automatically
-    recomputed.
+    This pipe merges bad channels from all sessions.
     """
 
-    def __init__(self, source, session, **kwargs):
+    def __init__(self, source, session, method='extended-infomax', random_state=0, **kwargs):
         CachedRawPipe.__init__(self, source)
         if isinstance(session, str):
             session = (session,)
@@ -433,7 +449,7 @@ class RawICA(CachedRawPipe):
                 session = tuple(session)
             assert all(isinstance(s, str) for s in session)
         self.session = session
-        self.kwargs = kwargs
+        self.kwargs = {'method': method, 'random_state': random_state, **kwargs}
 
     def _link(self, name, pipes, root, raw_dir, cache_path, log):
         CachedRawPipe._link(self, name, pipes, root, raw_dir, cache_path, log)
@@ -506,7 +522,17 @@ class RawICA(CachedRawPipe):
 
 
 class RawMaxwell(CachedRawPipe):
-    "Maxwell filter raw pipe"
+    """Maxwell filter raw pipe
+
+    Parameters
+    ----------
+    source : str
+        Name of the raw pipe to use for input data.
+    session : str | sequence of str
+        Session(s) to use for estimating ICA components.
+    ...
+        :func:`mne.preprocessing.maxwell_filter` parameters.
+    """
 
     _bad_chs_affect_cache = True
 
@@ -526,6 +552,16 @@ class RawMaxwell(CachedRawPipe):
 
 
 class RawReReference(CachedRawPipe):
+    """Re-reference EEG data
+
+    Parameters
+    ----------
+    source : str
+        Name of the raw pipe to use for input data.
+    reference : str | sequence of str
+        New reference: ``'average'`` (default) or one or several electrode
+        names.
+    """
 
     def __init__(self, source, reference='average'):
         CachedRawPipe.__init__(self, source, False)
@@ -558,12 +594,15 @@ def assemble_pipeline(raw_dict, raw_dir, cache_path, root, sessions, log):
                 raw_def = RawSource(**params)
             else:
                 pipe_type = params.pop('type')
+                kwargs = params.pop('kwargs', {})
                 if pipe_type == 'filter':
-                    raw_def = RawFilter(source, *params.pop('args', ()), **params.pop('kwargs', {}))
+                    if 'fir_design' not in kwargs:
+                        kwargs = {**kwargs, 'use_kwargs': {**kwargs, 'fir_design': 'firwin2'}}
+                    raw_def = RawFilter(source, *params.pop('args', ()), **kwargs)
                 elif pipe_type == 'ica':
-                    raw_def = RawICA(source, params.pop('session'), **params.pop('kwargs', {}))
+                    raw_def = RawICA(source, params.pop('session'), **kwargs)
                 elif pipe_type == 'maxwell_filter':
-                    raw_def = RawMaxwell(source, **params.pop('kwargs', {}))
+                    raw_def = RawMaxwell(source, **kwargs)
                 else:
                     raise DefinitionError(f"Raw {key!r}: unknonw type {pipe_type!r}")
                 if params:
@@ -600,10 +639,6 @@ def assemble_pipeline(raw_dict, raw_dir, cache_path, root, sessions, log):
 ###############################################################################
 # Comparing pipelines
 ######################
-
-
-def pipeline_dict(pipeline):
-    return {k: v.as_dict() for k, v in pipeline.items()}
 
 
 def compare_pipelines(old, new, log):

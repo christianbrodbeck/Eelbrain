@@ -70,7 +70,7 @@ def send_email(to, subject, body, password):
     smtpserver.close()
 
 
-class Notifier(object):
+class Notifier:
     """
     A notification email sender supporting ``with`` statements
 
@@ -192,7 +192,7 @@ class Notifier(object):
                    % str(error))
 
 
-class NotNotifier(object):
+class NotNotifier:
     # Helper to raise proper error message when user has not set owner attribute
     def __enter__(self):
         raise AttributeError("The notifier is disabled because the .owner "

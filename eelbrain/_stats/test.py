@@ -21,7 +21,7 @@ DEFAULT_LEVELS = {.05: '*', .01: '**', .001: '***'}
 DEFAULT_LEVELS_TREND = {.05: '*', .01: '**', .001: '***', .1: '`'}
 
 
-class Correlation(object):
+class Correlation:
     """Pearson product moment correlation between y and x
 
     Parameters
@@ -440,7 +440,7 @@ def ttest(y, x=None, against=0, match=None, sub=None, corr='Hochberg',
     return table
 
 
-class TTest(object):
+class TTest:
 
     def __init__(self, t, df, tail):
         self.t = t
@@ -990,7 +990,7 @@ def _corr(y, x):
     return r, p, df
 
 
-class bootstrap_pairwise(object):
+class bootstrap_pairwise:
     def __init__(self, y, x, match=None, sub=None,
                  samples=1000, replacement=True,
                  title="Bootstrapped Pairwise Tests", ds=None):

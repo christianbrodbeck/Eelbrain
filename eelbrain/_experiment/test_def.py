@@ -6,7 +6,7 @@ from .. import testnd
 from .._exceptions import DefinitionError
 from .._io.fiff import find_mne_channel_types
 from .definitions import Definition
-from .vardef import GroupVar
+from .variable_def import GroupVar
 
 
 __test__ = False
@@ -91,6 +91,14 @@ class EvokedTest(Test):
 
 
 class TTestOneSample(EvokedTest):
+    """One-sample t-test
+
+    Parameters
+    ----------
+    tail : int
+        Tailedness of the test. ``0`` for two-tailed (default), ``1`` for upper tail
+        and ``-1`` for lower tail.
+    """
     kind = 'ttest_1samp'
     DICT_ATTRS = Test.DICT_ATTRS + ('tail',)
 
@@ -118,7 +126,29 @@ class TTest(EvokedTest):
 
 
 class TTestInd(TTest):
-    "Independent measures t-test"
+    """Independent measures t-test
+
+    Parameters
+    ----------
+    model : str
+        The model which defines the cells that are used in the test. Usually
+        ``"group"``.
+    c1 : str | tuple
+        The experimental group. Should be a group name.
+    c0 : str | tuple
+        The control group, defined like ``c1``.
+    tail : int
+        Tailedness of the test. ``0`` for two-tailed (default), ``1`` for upper tail
+        and ``-1`` for lower tail.
+
+    Examples
+    --------
+    Sample test definitions::
+
+        tests = {
+            'group_difference': TTestInd('group', 'group_1', 'group_2'),
+        }
+    """
     kind = 'ttest_ind'
 
     def __init__(self, model, c1, c0, tail=0, vars=None):
@@ -135,10 +165,35 @@ class TTestInd(TTest):
 class TTestRel(TTest):
     """Related measures t-test
 
+    Parameters
+    ----------
+    model : str
+        The model which defines the cells that are used in the test. It is
+        specified in the ``"x % y"`` format (like interaction definitions) where
+        ``x`` and ``y`` are variables in the experiment's events.
+    c1 : str | tuple
+        The experimental condition. If the ``model`` is a single factor the
+        condition is a :class:`str` specifying a value on that factor. If
+        ``model`` is composed of several factors the cell is defined as a
+        :class:`tuple` of :class:`str`, one value on each of the factors.
+    c0 : str | tuple
+        The control condition, defined like ``c1``.
+    tail : int
+        Tailedness of the test. ``0`` for two-tailed (default), ``1`` for upper tail
+        and ``-1`` for lower tail.
+
+    Examples
+    --------
+    Sample test definitions::
+
+        tests = {
+            'surprising=expected': TTestRel('surprise', 'surprising', 'expected'),
+        }
+
     Notes
     -----
-    For a t-test between two epochs, use an :class:`EpochCollection` epoch
-    and ``model='epoch'``.
+    For a t-test between two epochs, use an
+    :class:`~eelbrain.pipeline.EpochCollection` epoch and ``model='epoch'``.
     """
     kind = 'ttest_rel'
 
@@ -153,7 +208,30 @@ class TTestRel(TTest):
 
 
 class TContrastRel(EvokedTest):
-    "T-contrast"
+    """Contrasts of T-maps (see :class:`eelbrain.testnd.t_contrast_rel`)
+
+    Parameters
+    ----------
+    model : str
+        The model which defines the cells that are used in the test. It is
+        specified in the ``"x % y"`` format (like interaction definitions) where
+        ``x`` and ``y`` are variables in the experiment's events.
+    contrast : str
+        Contrast specification using cells form the specified model (see
+        :class:`eelbrain.testnd.t_contrast_rel`)).
+    tail : int
+        Tailedness of the test. ``0`` for two-tailed (default), ``1`` for upper tail
+        and ``-1`` for lower tail.
+
+    Examples
+    --------
+    Sample test definitions::
+
+        tests = {
+            'a_b_intersection': TContrastRel{'abc', 'min(a > c, b > c)', tail=1),
+        }
+
+    """
     kind = 't_contrast_rel'
     DICT_ATTRS = Test.DICT_ATTRS + ('contrast', 'tail')
 
@@ -176,12 +254,24 @@ class ANOVA(EvokedTest):
     ----------
     x : str
         ANOVA model specification, including ``subject`` for participant random
-        effect (see :func:`test.anova`).
+        effect (e.g., ``"x * y * subject"``; see :func:`eelbrain.test.anova`).
     model : str
-        Model for grouping trials before averaging (does not need to be
-        specified unless it should include variables not in ``x``).
+        Model for grouping trials before averaging (by default all fixed effects
+        in ``x``). Should be specified in the ``"x % y"`` format (like
+        interaction definitions) where ``x`` and ``y`` are variables in the
+        experiment's events.
     vars : tuple | dict
         Variables to add dynamically.
+
+    Examples
+    --------
+    Sample test definitions::
+
+        tests = {
+            'one_way': ANOVA('word_type * subject'),
+            'two_way': ANOVA('word_type * meaning * subject'),
+        }
+
     """
     kind = 'anova'
     DICT_ATTRS = Test.DICT_ATTRS + ('x',)
@@ -202,7 +292,55 @@ class ANOVA(EvokedTest):
 
 
 class TwoStageTest(Test):
-    "Two-stage test on epoched or evoked data"
+    """Two-stage test: T-test of regression coefficients
+
+    Stage 1: fit a regression model to the data for each subject.
+    Stage 2: test coefficients from stage 1 against 0 across subjects.
+
+    Parameters
+    ----------
+    stage_1 : str
+        Stage 1 model specification. Coding for categorial predictors uses 0/1 dummy
+        coding.
+    vars : dict
+        Add new variables for the stage 1 model. This is useful for specifying
+        coding schemes based on categorial variables.
+        Each entry specifies a variable with the following schema:
+        ``{name: definition}``. ``definition`` can be either a string that is
+        evaluated in the events-:class:`Dataset`, or a
+        ``(source_name, {value: code})``-tuple (see example below).
+        ``source_name`` can also be an interaction, in which case cells are joined
+        with spaces (``"f1_cell f2_cell"``).
+    model : str
+        This parameter can be supplied to perform stage 1 tests on condition
+        averages. If ``model`` is not specified, the stage1 model is fit on single
+        trial data.
+
+    Examples
+    --------
+    The first example assumes 2 categorical variables present in events,
+    'a' with values 'a1' and 'a2', and 'b' with values 'b1' and 'b2'. These are
+    recoded into 0/1 codes::
+
+        TwoStageTest("a_num + b_num + a_num * b_num + index + a_num * index"},
+                     vars={'a_num': ('a', {'a1': 0, 'a2': 1}),
+                           'b_num': ('b', {'b1': 0, 'b2': 1})})
+
+    The second test definition uses the "index" variable which is always present
+    and specifies the chronological index of the events as an integer count.
+    This variable can thus be used to test for a linear change over time. Due
+    to the numeric nature of these variables interactions can be computed by
+    multiplication::
+
+        TwoStageTest("a_num + index + a_num * index",
+                     vars={'a_num': ('a', {'a1': 0, 'a2': 1})
+
+    Numerical variables can also defined using data-object methods (e.g.
+    :meth:`Factor.label_length`) or from interactions::
+
+        TwoStageTest('wordlength', vars={'wordlength': 'word.label_length()'})
+        TwoStageTest("ab", vars={'ab': ('a%b', {'a1 b1': 0, 'a1 b2': 1, 'a2 b1': 1, 'a2 b2': 2})})
+    """
     kind = 'two-stage'
     DICT_ATTRS = Test.DICT_ATTRS + ('stage_1',)
 
@@ -232,7 +370,7 @@ AGGREGATE_FUNCTIONS = ('mean', 'rms')
 DATA_RE = re.compile(r"(source|sensor|meg|eeg)(?:\.(%s))?$" % '|'.join(AGGREGATE_FUNCTIONS))
 
 
-class TestDims(object):
+class TestDims:
     """Data shape for test
 
     Paremeters
@@ -320,7 +458,7 @@ class TestDims(object):
             return self._to_ndvar
 
 
-class ROITestResult(object):
+class ROITestResult:
     """Test results for temporal tests in one or more ROIs
 
     Attributes

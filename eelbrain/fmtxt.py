@@ -58,6 +58,7 @@ import pickle
 import re
 import shutil
 import socket
+import sys
 from io import BytesIO
 import tempfile
 import time
@@ -475,7 +476,7 @@ def asfmtext_or_none(content, tag=None):
         return asfmtext(content, tag)
 
 
-class FMTextConstant(object):
+class FMTextConstant:
 
     def __init__(self, name, html, rtf, tex, text):
         self.name = name
@@ -509,7 +510,7 @@ linebreak = FMTextConstant(
 )
 
 
-class FMTextElement(object):
+class FMTextElement:
     """Represent a text element along with formatting properties.
 
     The elementary unit of the :py:mod:`fmtxt` module. It can function as a
@@ -2182,6 +2183,11 @@ class Report(Section):
         info = ["Created by %s on %s" % (socket.gethostname(),
                                          time.strftime("%c"))]
         for package in packages:
+            if package in sys.modules:
+                mod = sys.modules[package]
+            else:
+                continue
+
             if package == 'eelbrain':
                 name = 'Eelbrain'
             elif package == 'mne':
@@ -2190,10 +2196,7 @@ class Report(Section):
                 name = 'PySurfer'
             else:
                 name = package
-
-            mod = import_module(package)
-            text = "%s version %s" % (name, mod.__version__)
-            info.append(text)
+            info.append(f"{name} version {mod.__version__}")
 
         signature = ' \u2014 \n'.join(info)
         self.add_paragraph(signature)

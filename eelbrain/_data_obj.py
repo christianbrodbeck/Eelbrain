@@ -425,9 +425,7 @@ def asarray(x, kind=None, ds=None):
 def ascategorial(x, sub=None, ds=None, n=None):
     if isinstance(x, str):
         if ds is None:
-            err = ("Parameter was specified as string, but no Dataset was "
-                   "specified")
-            raise TypeError(err)
+            raise TypeError(f"{x!r}: Parameter was specified as string, but no Dataset was specified")
         x = ds.eval(x)
 
     if iscategorial(x):
@@ -498,9 +496,7 @@ def asepochs(x, sub=None, ds=None, n=None):
 def asfactor(x, sub=None, ds=None, n=None):
     if isinstance(x, str):
         if ds is None:
-            err = ("Factor was specified as string, but no Dataset was "
-                   "specified")
-            raise TypeError(err)
+            raise TypeError(f"{x!r}: Factor was specified as string, but no Dataset was specified")
         x = ds.eval(x)
 
     if isinstance(x, Factor):
@@ -1139,7 +1135,7 @@ class EffectList(list):
         return [UNNAMED if n is None else n for n in names]
 
 
-class Var(object):
+class Var:
     """Container for scalar data.
 
     Parameters
@@ -1849,7 +1845,7 @@ class Var(object):
         return np.unique(self.x)
 
 
-class _Effect(object):
+class _Effect:
     # numeric ---
     def __add__(self, other):
         return Model(self) + other
@@ -2037,6 +2033,9 @@ class Factor(_Effect):
         sorted alphabetically by default. In order to define cells in a
         different order, use a :class:`collections.OrderedDict` or define
         labels as ``((key, value), ...)`` tuple.
+    default : str
+        Label to assign values not in ``label`` (by default this is
+        ``str(value)``).
 
     Attributes
     ----------
@@ -2071,7 +2070,7 @@ class Factor(_Effect):
         >>> Factor('iiiooo')
         Factor(['i', 'i', 'i', 'o', 'o', 'o'])
     """
-    def __init__(self, x, name=None, random=False, repeat=1, tile=1, labels={}):
+    def __init__(self, x, name=None, random=False, repeat=1, tile=1, labels={}, default=None):
         if isinstance(x, Iterator):
             x = list(x)
         n_cases = len(x)
@@ -2100,13 +2099,16 @@ class Factor(_Effect):
         if isinstance(x, np.ndarray) and x.dtype.kind in 'ifb':
             assert x.ndim == 1
             unique = np.unique(x)
+            for v in unique:
+                if v not in labels_dict:
+                    if default is None:
+                        labels_dict[v] = str(v)
+                    else:
+                        labels_dict[v] = default
             # find labels corresponding to unique values
-            u_labels = [labels_dict[v] if v in labels_dict else str(v) for
-                        v in unique]
+            u_labels = [labels_dict[v] for v in unique]
             # merge identical labels
-            u_label_index = np.array([u_labels.index(label) for label in
-                                      u_labels])
-
+            u_label_index = np.array([u_labels.index(label) for label in u_labels])
             x_ = u_label_index[np.digitize(x, unique, True)]
             # {label: code}
             codes = dict(zip(u_labels, u_label_index))
@@ -2118,6 +2120,8 @@ class Factor(_Effect):
             for i, value in enumerate(x):
                 if value in labels_dict:
                     label = labels_dict[value]
+                elif default is not None:
+                    label = default
                 elif isinstance(value, str):
                     label = value
                 else:
@@ -2732,7 +2736,7 @@ class Factor(_Effect):
         return Factor(self.x, name, self.random, tile=repeats, labels=self._labels)
 
 
-class NDVar(object):
+class NDVar:
     """Container for n-dimensional data.
 
     Parameters
@@ -6481,7 +6485,7 @@ class NestedEffect(_Effect):
         return ["%s %i" % (self.name, i) for i in range(self.df)]
 
 
-class NonbasicEffect(object):
+class NonbasicEffect:
 
     def __init__(self, effect_codes, factors, name, nestedin=[],
                  beta_labels=None):
@@ -6512,7 +6516,7 @@ class NonbasicEffect(object):
             return self.beta_labels
 
 
-class Model(object):
+class Model:
     """A list of effects.
 
     Parameters
@@ -6814,7 +6818,7 @@ class Model(object):
         return self.as_table(cases=range(-n, 0))
 
 
-class Parametrization(object):
+class Parametrization:
     """Parametrization of a statistical model
 
     Parameters
@@ -6923,7 +6927,7 @@ def _subgraph_edges(connectivity, int_index):
         return np.empty((0, 2), dtype=np.uint32)
 
 
-class Dimension(object):
+class Dimension:
     """Base class for dimensions.
     
     Parameters

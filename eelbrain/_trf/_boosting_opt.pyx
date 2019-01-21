@@ -137,6 +137,7 @@ def generate_options(
         FLOAT64 [:] y_error,
         FLOAT64 [:,:] x,  # (n_stims, n_times)
         FLOAT64 [:] x_pads,  # (n_stims,)
+        INT8 [:] x_active,  # for each predictor whether it is still used
         INT64 [:,:] indexes,  # training segment indexes
         int i_start,  # kernel start index (y/x offset)
         size_t error,  # ID of the error function (l1/l2)
@@ -157,6 +158,8 @@ def generate_options(
 
     with nogil:
         for i_stim in range(n_stims):
+            if x_active[i_stim] == 0:
+                continue
             x_stim = x[i_stim]
             x_pad = x_pads[i_stim]
             for i_time in range(n_times_trf):
