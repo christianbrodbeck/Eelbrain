@@ -1,6 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from itertools import chain, repeat
-from math import ceil, pi
+from math import ceil, pi, sin
 import random
 
 import numpy as np
@@ -256,16 +256,18 @@ def _sample_xi_by_rejection(n=1000):
     ndarray
         samples drawn from the distribution
     """
-    samples = []
+    samples = np.empty(n)
+    i = 0
     while True:
-        z = np.random.uniform(0, pi)
-        u = np.random.uniform(0, 2 / pi)
+        z = np.random.random() * pi
+        u = np.random.random() * 2 / pi
 
-        if u <= 2 * np.sin(z / 2) ** 2 / pi:
-            samples.append(z)
-            if len(samples) == n:
+        if u <= 2 * sin(z / 2) ** 2 / pi:
+            samples[i] = z
+            i += 1
+            if i == n:
                 break
-    return np.array(samples)
+    return samples
 
 
 def rand_rotation_matrices(n, seed):
