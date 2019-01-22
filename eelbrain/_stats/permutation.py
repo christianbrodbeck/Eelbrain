@@ -238,7 +238,7 @@ def random_seeds(samples, seed=0):
     return np.random.randint(2**32, size=samples, dtype=np.uint32)
 
 
-def _sample_xi_by_rejection(n=1000):
+def _sample_xi_by_rejection(n, seed=0):
     """Return a sample (or samples) from the distribution p(x) = 2 * np.sin(x/2) ** 2 / pi
 
     See [1]_ for why samples from this distribution is required to sample
@@ -250,27 +250,31 @@ def _sample_xi_by_rejection(n=1000):
     ----------
     n : int
         Number of the samples.
+    seed : None | int
+        Seed the random state of the relevant randomization module
+        (:mod:`random` or :mod:`numpy.random`) to make replication possible.
+        None to skip seeding (default 0).
 
     Returns
     -------
     ndarray
         samples drawn from the distribution
     """
+    random.seed(seed)
     samples = np.empty(n)
     i = 0
-    while True:
-        z = np.random.random() * pi
-        u = np.random.random() * 2 / pi
+    while i < n:
+        z = random.random() * pi
+        u = random.random() * 2 / pi
 
         if u <= 2 * sin(z / 2) ** 2 / pi:
             samples[i] = z
             i += 1
-            if i == n:
-                break
+
     return samples
 
 
-def rand_rotation_matrices(n, seed):
+def rand_rotation_matrices(n, seed=0):
     """Function to create random rotation matrices in 3D
 
     Parameters
@@ -290,5 +294,5 @@ def rand_rotation_matrices(n, seed):
     np.random.seed(seed)
     phi = np.arccos(np.random.uniform(-1, 1, n))
     theta = np.random.uniform(0, 2 * pi, n)
-    xi = _sample_xi_by_rejection(n)
+    xi = _sample_xi_by_rejection(n, seed)
     return vector.rotation_matrices(phi, theta, xi, np.empty((n, 3, 3)))
