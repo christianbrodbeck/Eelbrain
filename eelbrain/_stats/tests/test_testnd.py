@@ -675,7 +675,7 @@ def test_vector():
     res = testnd.Vector(v_small, tfce=True, samples=10, use_t2_stat=False)
     assert 'WARNING' in repr(res)
     res = testnd.Vector(v_small, tfce=0.001, samples=10)
-    assert res.p.min() == 0.001
+    assert res.p.min() == 0.0
 
 
 def test_cwt():
