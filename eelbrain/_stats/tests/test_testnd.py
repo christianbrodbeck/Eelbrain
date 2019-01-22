@@ -666,10 +666,10 @@ def test_vector():
     assert difference.x.mask.sum() == 273
 
     # without mp
-    # configure(n_workers=0)
-    # res0 = testnd.Vector(ds[:30, 'v3d'], samples=10)
-    # assert_array_equal(np.sort(res0._cdist.dist), np.sort(res._cdist.dist))
-    # configure(n_workers=True)
+    configure(n_workers=0)
+    res0 = testnd.Vector(ds[:30, 'v3d'], samples=10)
+    assert_array_equal(np.sort(res0._cdist.dist), np.sort(res._cdist.dist))
+    configure(n_workers=True)
 
     v_small = ds[:30, 'v3d'] / 100
     res = testnd.Vector(v_small, tfce=True, samples=10, use_t2_stat=False)
