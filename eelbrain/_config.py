@@ -6,6 +6,7 @@ import os
 from ._colorspaces import to_rgb
 
 
+SUPPRESS_WARNINGS = True
 CONFIG = {
     'n_workers': cpu_count(),
     'eelbrain': True,

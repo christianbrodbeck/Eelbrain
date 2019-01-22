@@ -540,8 +540,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         glassbrain : GlassBrain
             GlassBrain plot.
         """
-        import wx
-        from .._wxgui import get_app, needs_jumpstart
+        from .._wxgui import wx, get_app, needs_jumpstart
         from .._wxgui.mpl_canvas import CanvasFrame
         jumpstart = needs_jumpstart()
 

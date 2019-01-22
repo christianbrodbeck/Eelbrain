@@ -1830,8 +1830,7 @@ def resolve_plot_rect(w, h, dpi):
     w_applies = w is not None and w <= 0
     h_applies = h is not None and h <= 0
     if w_applies or h_applies:
-        from .._wxgui import get_app
-        import wx
+        from .._wxgui import wx, get_app
 
         get_app()
         effective_dpi = dpi or mpl.rcParams['figure.dpi']
@@ -2279,7 +2278,7 @@ class ColorBarMixin:
             _, self.__label = find_axis_params_data(data, True)
 
     def _fill_toolbar(self, tb):
-        import wx
+        from .._wxgui import wx
         from .._wxutils import ID, Icon
 
         tb.AddTool(ID.PLOT_COLORBAR, "Plot Colorbar", Icon("plot/colorbar"))
@@ -2446,7 +2445,7 @@ class LegendMixin:
             self.plot_legend(legend)
 
     def _fill_toolbar(self, tb):
-        import wx
+        from .._wxgui import wx
 
         choices = [name.title() for name in self.__choices]
         self.__ctrl = wx.Choice(tb, choices=choices, name='Legend')

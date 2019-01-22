@@ -13,8 +13,8 @@ from traits.api import HasTraits, Instance
 from traitsui.api import View, Item, HGroup, VGroup
 from tvtk.api import tvtk
 from tvtk.pyface.toolkit import toolkit_object
-import wx
 
+from .._wxgui import wx
 from .._wxgui.app import get_app
 from .._wxgui.frame import EelbrainFrame
 from .._wxgui.mpl_canvas import AxisLimitsDialog, SetTimeDialog

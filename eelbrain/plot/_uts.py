@@ -213,7 +213,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         self._show()
 
     def _fill_toolbar(self, tb):
-        import wx
+        from .._wxgui import wx
 
         btn = self._cluster_btn = wx.Button(tb, wx.ID_ABOUT, "Clusters")
         btn.Enable(False)
@@ -510,7 +510,7 @@ class UTSClusters(EelFigure):
         self._show()
 
     def _fill_toolbar(self, tb):
-        import wx
+        from .._wxgui import wx
 
         btn = wx.Button(tb, wx.ID_ABOUT, "Clusters")
         tb.AddControl(btn)

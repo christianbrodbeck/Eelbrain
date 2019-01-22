@@ -1373,7 +1373,7 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, surf='inflated',
     brain : Brain
         Brain plot.
     """
-    import wx
+    from .._wxgui import wx
     from .._wxgui.mpl_canvas import CanvasFrame
     from ._brain_object import BRAIN_H, BRAIN_W
     from ._utsnd import Butterfly

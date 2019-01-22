@@ -1,5 +1,3 @@
-import sys
-
 import wx
 
 from .._utils import IS_OSX
