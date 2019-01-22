@@ -633,49 +633,49 @@ def test_ttest_rel():
     eq_(res.t.x[1, 10], 0)
 
 
-# def test_vector():
-#     """Test vector tests"""
-#     # single vector
-#     ds = datasets.get_uv(vector=True)
-#     res = testnd.Vector('v[:40]', ds=ds, samples=10)
-#     assert res.p == 0.0
-#     res = testnd.Vector('v[40:]', ds=ds, samples=10)
-#     assert res.p == 1.0
-#
-#     # single vector with norm stat
-#     res_t = testnd.Vector('v[:40]', ds=ds, samples=10, use_t2_stat=False)
-#     assert res_t.p == 0.0
-#     res_t = testnd.Vector('v[40:]', ds=ds, samples=10, use_t2_stat=False)
-#     assert res_t.p == 1.0
-#
-#     # vector in time
-#     ds = datasets.get_uts(vector3d=True)
-#     res = testnd.Vector(ds[30:, 'v3d'], samples=10)
-#     assert res.p.min() == 0.0
-#     res = testnd.Vector(ds[:30, 'v3d'], samples=10)
-#     assert res.p.min() == 0.0
-#     difference = res.masked_difference()
-#     assert difference.x.mask.sum() == 279
-#
-#     # vector in time with norm stat
-#     res_t = testnd.Vector(ds[30:, 'v3d'], samples=10, use_t2_stat=False)
-#     assert res_t.p.min() == 0.2
-#     res_t = testnd.Vector(ds[:30, 'v3d'], samples=10, use_t2_stat=False)
-#     assert res_t.p.min() == 0.0
-#     difference = res_t.masked_difference()
-#     assert difference.x.mask.sum() == 273
-#
-#     # without mp
-#     configure(n_workers=0)
-#     res0 = testnd.Vector(ds[:30, 'v3d'], samples=10)
-#     assert_array_equal(np.sort(res0._cdist.dist), np.sort(res._cdist.dist))
-#     configure(n_workers=True)
-#
-#     v_small = ds[:30, 'v3d'] / 100
-#     res = testnd.Vector(v_small, tfce=True, samples=10, use_t2_stat=False)
-#     assert 'WARNING' in repr(res)
-#     res = testnd.Vector(v_small, tfce=0.001, samples=10)
-#     assert res.p.min() == 0.001
+def test_vector():
+    """Test vector tests"""
+    # single vector
+    ds = datasets.get_uv(vector=True)
+    res = testnd.Vector('v[:40]', ds=ds, samples=10)
+    assert res.p == 0.0
+    res = testnd.Vector('v[40:]', ds=ds, samples=10)
+    assert res.p == 1.0
+
+    # single vector with norm stat
+    res_t = testnd.Vector('v[:40]', ds=ds, samples=10, use_t2_stat=False)
+    assert res_t.p == 0.0
+    res_t = testnd.Vector('v[40:]', ds=ds, samples=10, use_t2_stat=False)
+    assert res_t.p == 1.0
+
+    # vector in time
+    ds = datasets.get_uts(vector3d=True)
+    res = testnd.Vector(ds[30:, 'v3d'], samples=10)
+    assert res.p.min() == 0.0
+    res = testnd.Vector(ds[:30, 'v3d'], samples=10)
+    assert res.p.min() == 0.0
+    difference = res.masked_difference()
+    assert difference.x.mask.sum() == 279
+
+    # vector in time with norm stat
+    res_t = testnd.Vector(ds[30:, 'v3d'], samples=10, use_t2_stat=False)
+    assert res_t.p.min() == 0.2
+    res_t = testnd.Vector(ds[:30, 'v3d'], samples=10, use_t2_stat=False)
+    assert res_t.p.min() == 0.0
+    difference = res_t.masked_difference()
+    assert difference.x.mask.sum() == 273
+
+    # without mp
+    # configure(n_workers=0)
+    # res0 = testnd.Vector(ds[:30, 'v3d'], samples=10)
+    # assert_array_equal(np.sort(res0._cdist.dist), np.sort(res._cdist.dist))
+    # configure(n_workers=True)
+
+    v_small = ds[:30, 'v3d'] / 100
+    res = testnd.Vector(v_small, tfce=True, samples=10, use_t2_stat=False)
+    assert 'WARNING' in repr(res)
+    res = testnd.Vector(v_small, tfce=0.001, samples=10)
+    assert res.p.min() == 0.001
 
 
 def test_cwt():
