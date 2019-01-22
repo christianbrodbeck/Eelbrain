@@ -396,8 +396,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
 
                     im = display_ax.ax.quiver(x, y, dir_data[0], dir_data[1],
                                               color=color,
-                                              scale=self.arrow_scale,
-                                              )
+                                              scale=self.arrow_scale,)
                 else:
                     continue
             ims.append(im)
