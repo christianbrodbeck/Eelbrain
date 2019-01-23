@@ -8,6 +8,7 @@ from scipy.linalg import inv
 
 from .._data_obj import asfactor, asmodel, Model
 from . import opt
+from . import vector
 
 
 FLOAT64 = np.dtype('float64')
@@ -285,6 +286,31 @@ def t_1samp(y, out=None):
         out_flat = out.ravel()
 
     opt.t_1samp(y_flat, out_flat)
+    return out
+
+
+def t2_1samp(y, out=None):
+    "T**2-value for 1-sample T**2-test"
+    if y.ndim == 1:
+        raise ValueError('T**2 statistic needs vector valued samples.'
+                         'i.e. try t_1samp().')
+    n_cases = len(y)
+    n_dim = len(y[0])
+    if out is None:
+        if y.ndim == 2:
+            out = np.empty(None)
+            y = y[:, np.newaxis]
+        else:
+            out = np.empty(y.shape[2:])
+
+    if out.ndim == 1:
+        y_flat = y
+        out_flat = out
+    else:
+        y_flat = y.reshape((n_cases, n_dim, -1))
+        out_flat = out.ravel()
+
+    vector.t2_stat(y_flat, out_flat)
     return out
 
 
