@@ -729,7 +729,8 @@ class NDDifferenceTest(NDTest):
             mask = self._cdist.cluster_map == 0
         else:
             mask = self.p > p
-        mask = self._cdist.uncrop(mask, self.difference, True)
+        to_dims = self.difference_norm if isinstance(self, Vector) else self.difference
+        mask = self._cdist.uncrop(mask, to_dims, True)
         # since masked array creation does not support broadcasting
         if isinstance(self, Vector):
             mask_x = np.repeat(self.difference._ialign(mask), 3, self.difference.get_axis('space'))
@@ -2605,7 +2606,12 @@ class NDPermutationDistribution:
         else:
             return im
 
-    def uncrop(self, ndvar: NDVar, to: NDVar, default: float = 0):
+    def uncrop(
+            self,
+            ndvar: NDVar,  # NDVar to uncrop
+            to: NDVar,  # NDVar that has the target dimensions
+            default: float = 0,  # value to fill in uncropped area
+    ):
         if self.tstart is None and self.tstop is None:
             return ndvar
         t_ax = to.get_axis('time')

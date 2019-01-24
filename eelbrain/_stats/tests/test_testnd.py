@@ -656,6 +656,16 @@ def test_vector():
     assert res.p.min() == 0.0
     difference = res.masked_difference()
     assert difference.x.mask.sum() == 279
+    # without mp
+    configure(n_workers=0)
+    res0 = testnd.Vector(ds[:30, 'v3d'], samples=10)
+    assert_array_equal(np.sort(res0._cdist.dist), np.sort(res._cdist.dist))
+    configure(n_workers=True)
+    # time window
+    res = testnd.Vector(ds[:30, 'v3d'], samples=10, tstart=0.1, tstop=0.4)
+    assert res.p.min() == 0.2
+    difference = res.masked_difference(0.5)
+    assert difference.x.mask.sum() == 291
 
     # vector in time with norm stat
     res_t = testnd.Vector(ds[30:, 'v3d'], samples=10, use_t2_stat=False)
@@ -664,12 +674,6 @@ def test_vector():
     assert res_t.p.min() == 0.0
     difference = res_t.masked_difference()
     assert difference.x.mask.sum() == 282
-
-    # without mp
-    configure(n_workers=0)
-    res0 = testnd.Vector(ds[:30, 'v3d'], samples=10)
-    assert_array_equal(np.sort(res0._cdist.dist), np.sort(res._cdist.dist))
-    configure(n_workers=True)
 
     v_small = ds[:30, 'v3d'] / 100
     res = testnd.Vector(v_small, tfce=True, samples=10, use_t2_stat=False)
