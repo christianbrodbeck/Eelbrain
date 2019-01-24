@@ -107,7 +107,7 @@ def for_stat_map(meas, c0=None, c1=None, c2=None, tail=0, contours=None, old=Non
         info = {'meas': meas, 'cmap': 'RdBu_r'}
     elif meas == 't':
         info = {'meas': meas, 'cmap': 'RdBu_r'}
-    elif meas == 'f':
+    elif meas == 'f' or meas == 't2':
         info = {'meas': meas, 'cmap': 'BuPu_r', 'vmin': 0}
     else:
         info = default_info(meas)

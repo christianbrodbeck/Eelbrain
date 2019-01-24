@@ -1839,7 +1839,7 @@ class Vector(NDDifferenceTest):
         Map of the test statistic processed with the threshold-free cluster
         enhancement algorithm (or None if no TFCE was performed).
     """
-    _state_specific = ('difference', 'n', '_v_dim')
+    _state_specific = ('difference', 'n', '_v_dim', 't2')
     _statistic = 'norm'
 
     @user_activity
@@ -1860,8 +1860,13 @@ class Vector(NDDifferenceTest):
         if use_t2_stat:
             t2_map = self._vector_t2_map(ct.y)
             cdist.add_original(t2_map.x if v_mean.ndim > 1 else t2_map)
+            if v_mean.ndim == 1:
+                self.t2 = t2_map
+            else:
+                self.t2 = NDVar(t2_map, v_mean_norm.dims, _info.for_stat_map('t2'), 't2')
         else:
             cdist.add_original(v_mean_norm.x if v_mean.ndim > 1 else v_mean_norm)
+            self.t2 = None
 
         if cdist.do_permutation:
             iterator = random_seeds(n_samples)
@@ -1924,7 +1929,7 @@ class Vector(NDDifferenceTest):
 
 
 class VectorDifferenceIndependent(Vector):
-    _state_specific = ('difference', 'c1_mean', 'c0_mean' 'n', '_v_dim')
+    _state_specific = ('difference', 'c1_mean', 'c0_mean' 'n', '_v_dim', 't2')
     _statistic = 'norm'
 
     @user_activity
@@ -1949,9 +1954,10 @@ class VectorDifferenceIndependent(Vector):
         self.difference.name = 'difference'
         v_mean_norm = self.difference.norm(v_dim)
         if use_t2_stat:
-            raise NotImplementedError
+            raise NotImplementedError("t2 statistic not implemented for VectorDifferenceIndependent")
         else:
             cdist.add_original(v_mean_norm.x if self.difference.ndim > 1 else v_mean_norm)
+            self.t2 = None
 
         if cdist.do_permutation:
             iterator = permute_order(self.n, samples)
@@ -1990,7 +1996,7 @@ class VectorDifferenceIndependent(Vector):
 
 
 class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
-    _state_specific = ('difference', 'c1_mean', 'c0_mean' 'n', '_v_dim')
+    _state_specific = ('difference', 'c1_mean', 'c0_mean' 'n', '_v_dim', 't2')
     _statistic = 'norm'
 
     @user_activity
@@ -2011,8 +2017,13 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
         if use_t2_stat:
             t2_map = self._vector_t2_map(difference)
             cdist.add_original(t2_map.x if v_mean.ndim > 1 else t2_map)
+            if v_mean.ndim == 1:
+                self.t2 = t2_map
+            else:
+                self.t2 = NDVar(t2_map, v_mean_norm.dims, _info.for_stat_map('t2'), 't2')
         else:
             cdist.add_original(v_mean_norm.x if v_mean.ndim > 1 else v_mean_norm)
+            self.t2 = None
 
         if cdist.do_permutation:
             iterator = random_seeds(samples)

@@ -660,6 +660,7 @@ def test_vector():
     # diff related
     resd = testnd.VectorDifferenceRelated(v1, v2, samples=10)
     assert_dataobj_equal(resd.p, res.p, name=False)
+    assert_dataobj_equal(resd.t2, res.t2, name=False)
     res = testnd.Vector(v1, samples=10)
     assert res.p.min() == 0.2
     # without mp
@@ -680,6 +681,7 @@ def test_vector():
     assert difference.x.mask.sum() == 297
     resd = testnd.VectorDifferenceRelated(v1, v2, samples=10, use_t2_stat=False)
     assert_dataobj_equal(resd.p, res.p, name=False)
+    assert_dataobj_equal(resd.difference, res.difference, name=False)
 
     v_small = v2 / 100
     res = testnd.Vector(v_small, tfce=True, samples=10, use_t2_stat=False)
