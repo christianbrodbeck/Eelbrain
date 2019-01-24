@@ -68,7 +68,7 @@ OP_FUNCS = {'-': np.subtract, '+': np.add}
 RE_NAME = re.compile("[*\w\d ]*[*\w\d]")
 
 
-class Streamer(object):
+class Streamer:
 
     def __init__(self, expression):
         tokens, indexes = tokenize(expression)

@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from glob import glob
 from itertools import chain, product
 import os
@@ -13,8 +13,9 @@ import numpy as np
 from tqdm import tqdm
 
 from .. import fmtxt
-from .._utils import LazyProperty, ask, deprecated
+from .._utils import as_sequence, LazyProperty, ask, deprecated
 from .._utils.com import Notifier, NotNotifier
+from .definitions import check_names
 
 
 def _etree_expand(node, state):
@@ -99,7 +100,7 @@ class LayeredDict(dict):
         self._states.append(self.copy())
 
 
-class _TempStateController(object):
+class _TempStateController:
     def __init__(self, experiment):
         self.experiment = experiment
 
@@ -110,7 +111,7 @@ class _TempStateController(object):
         self.experiment._restore_state()
 
 
-class TreeModel(object):
+class TreeModel:
     """
     A hierarchical collection of format strings and field values
 
@@ -128,14 +129,10 @@ class TreeModel(object):
     _templates = {}
     defaults = {}
 
-    exclude = {}  # field_values to exclude (e.g. subjects)
-
     _repr_args = ()
     _repr_kwargs = ()
 
     def __init__(self, **state):
-        self.exclude = self.exclude.copy()
-
         # scaffold for state
         self._fields = LayeredDict()
         self._field_values = LayeredDict()
@@ -161,7 +158,7 @@ class TreeModel(object):
             if v is None or isinstance(v, str):
                 self._register_constant(k, v)
             elif isinstance(v, tuple):
-                self._register_field(k, v, v[0])
+                self._register_field(k, v, v[0], allow_empty=True)
             else:
                 err = ("Invalid templates field value: %r. Need None, tuple "
                        "or string" % v)
@@ -280,7 +277,8 @@ class TreeModel(object):
 
     def _register_field(self, key, values=None, default=None, set_handler=None,
                         eval_handler=None, post_set_handler=None,
-                        depends_on=None, slave_handler=None, internal=False):
+                        depends_on=None, slave_handler=None, internal=False,
+                        allow_empty=False):
         """Register an iterable field
 
         Parameters
@@ -308,6 +306,8 @@ class TreeModel(object):
         internal : bool
             The field is set by methods as needed but should not be exposed to
             the user.
+        allow_empty : bool
+            Allow empty string in ``values``.
         """
         if key in self._fields:
             raise KeyError("Field already exists: %r" % key)
@@ -330,18 +330,16 @@ class TreeModel(object):
 
         default = self._defaults.get(key, default)
 
-        if values is not None:
+        if values:
             values = tuple(values)
+            check_names(values, key, allow_empty)
             if default is None:
                 if len(values):
                     default = values[0]
                 else:
-                    msg = "Values for %r empty, can`t set default" % key
-                    raise RuntimeError(msg)
+                    raise RuntimeError(f"Values for {key!r} empty, can`t set default")
             elif default not in values:
-                err = ("Default %r for %r not in values "
-                       "%s" % (default, key, str(values)))
-                raise ValueError(err)
+                raise ValueError(f"Default {default!r} for {key!r} not in values {values}")
 
             self._field_values[key] = values
 
@@ -422,10 +420,11 @@ class TreeModel(object):
 
         Returns
         -------
-        keys : set
+        keys : list
             All terminal field names that are relevant for formatting ``temp``.
         """
-        keys = set()
+        if temp in self._terminal_fields:
+            return [temp]
 
         if temp in self._compound_members:
             temporary_keys = list(self._compound_members[temp])
@@ -433,20 +432,18 @@ class TreeModel(object):
             temp = self._fields.get(temp, temp)
             temporary_keys = self._fmt_pattern.findall(temp)
 
+        keys = []
         while temporary_keys:
-            key = temporary_keys.pop()
-
+            key = temporary_keys.pop(0)
             if key == 'root':
                 if root:
-                    keys.add('root')
-            # are there sub-fields?
-            elif (key in self._compound_members or
-                  self._fmt_pattern.findall(self._fields[key])):
-                keys.update(self.find_keys(key, root))
+                    keys.append('root')
+            elif key in self._terminal_fields:
+                keys.append(key)
             else:
-                keys.add(key)
+                keys.extend(self.find_keys(key, root))
 
-        return keys
+        return list(OrderedDict.fromkeys(keys))
 
     def format(self, string, vmatch=True, **kwargs):
         """Format a string (i.e., replace any '{xxx}' fields with their values)
@@ -481,20 +478,18 @@ class TreeModel(object):
         start_ = self.get(start)
         return os.path.relpath(abs_, start_)
 
-    def get_field_values(self, field, exclude=True):
+    def get_field_values(self, field, exclude=()):
         """Find values for a field taking into account exclusion
 
         Parameters
         ----------
         field : str
             Field for which to find values.
-        exclude : bool | list of str | str
-            Exclude values. If True, exclude values based on ``self.exclude``.
+        exclude : list of str
+            Exclude these values.
         """
         values = self._field_values[field]
-        if exclude is True:
-            exclude = self.exclude.get(field, None)
-        elif isinstance(exclude, str):
+        if isinstance(exclude, str):
             exclude = (exclude,)
 
         if exclude:
@@ -504,8 +499,7 @@ class TreeModel(object):
 
         return values
 
-    def iter(self, fields, exclude=True, values={}, mail=False, prog=False,
-             **constants):
+    def iter(self, fields, exclude=None, values=None, **constants):
         """
         Cycle the experiment's state through all values on the given fields
 
@@ -513,12 +507,8 @@ class TreeModel(object):
         ----------
         fields : sequence | str
             Field(s) over which should be iterated.
-        exclude : bool | dict  {str: bool, str: str, str: iterator over str}
-            Exclude values from iteration. Boolean specifies whether to apply
-            standard exclusion (``self.exclude``). A ``dict`` can be used to
-            customize the exclusion per field with one of {field: bool,
-            field: value, field: (sequence of values, )}. If only some fields
-            are specified in a dict, True is assumed for absent fields.
+        exclude : dict  {str: iterator over str}
+            Exclude values from iteration (``{field: values_to_exclude}``).
         values : dict  {str: iterator over str}
             Fields with custom values to iterate over (instead of the
             corresponding field values) with {name: (sequence of values)}
@@ -526,28 +516,43 @@ class TreeModel(object):
         *others* :
             Fields with constant values throughout the iteration.
         """
-        # set constants
-        self.set(**constants)
-
         if isinstance(fields, str):
             fields = (fields,)
             yield_str = True
         else:
             yield_str = False
-        iter_fields = tuple(f for f in chain(fields, values) if f not in constants)
+
+        # find actual fields to iterate over:
+        iter_fields = []
+        for field in fields:
+            if field in constants:
+                continue
+            iter_fields.extend(f for f in self.find_keys(field) if f not in constants)
+
+        # check values and exclude
+        if values:
+            bad = set(values).difference(iter_fields)
+            if bad:
+                raise ValueError(f"values={values!r}: keys that are not iterated over ({', '.join(bad)})")
+        else:
+            values = {}
+        if exclude:
+            bad = set(exclude).difference(iter_fields)
+            if bad:
+                raise ValueError(f"exclude={exclude!r}: keys that are not iterated over ({', '.join(bad)})")
+        else:
+            exclude = {}
+
+        # set constants (before .get_field_values() call)
+        self.set(**constants)
 
         # gather possible values to iterate over
         field_values = {}
         for field in iter_fields:
             if field in values:
-                field_values[field] = values[field]
+                field_values[field] = as_sequence(values[field])
             else:
-                if isinstance(exclude, bool):
-                    exclude_ = exclude
-                elif field in exclude:
-                    exclude_ = exclude[field]
-                else:
-                    exclude_ = True
+                exclude_ = exclude.get(field, None)
                 field_values[field] = self.get_field_values(field, exclude_)
 
         # pick out the fields to iterate, but drop excluded cases:
@@ -568,7 +573,7 @@ class TreeModel(object):
         else:
             yield ()
 
-    def iter_temp(self, temp, exclude=True, values={}, **constants):
+    def iter_temp(self, temp, exclude=None, values={}, **constants):
         """
         Iterate through all paths conforming to a template given in ``temp``.
 
@@ -626,6 +631,15 @@ class TreeModel(object):
         self._field_values.restore_state(s2, discard_tip)
         self._params.restore_state(s3, discard_tip)
 
+    def reset(self):
+        """Reset all field values to the state at initialization
+
+        This function can be used in cases where the same MneExperiment instance
+        is used to perform multiple independent operations, where parameters set
+        during one operation should not affect the next operation.
+        """
+        self._restore_state(0, False)
+
     def set(self, match=True, allow_asterisk=False, **state):
         """Set the value of one or more fields.
 
@@ -643,27 +657,44 @@ class TreeModel(object):
         if not state:
             return
 
-        # fields with special set handlers
-        handled_state = {}
-        for k in state.keys():
-            if k in self._set_handlers:
-                handled_state[k] = self._set_handlers[k](state.pop(k))
+        # expand compounds
+        if state.pop('expand_compounds', True):
+            for k in list(state):
+                if k in self._compound_members:
+                    fields = self._compound_members[k]
+                    v = state.pop(k)
+                    values = v.split(' ')
+                    for i, field in enumerate(fields):
+                        field_values = self._field_values[field]
+                        vi = values[i] if len(values) > i else None
+                        if vi in field_values:
+                            continue
+                        elif '' in field_values:
+                            values.insert(i, '')
+                        else:
+                            raise ValueError(f"{k}={v!r}")
+                    if len(values) != len(fields):
+                        raise ValueError(f"{k}={v!r}")
+                    state.update(zip(fields, values))
 
-        # make sure only valid fields are set
-        for k in state:
-            if k not in self._fields:
-                raise KeyError("No template named %r" % k)
-
-        # eval all values
-        for k in state.keys():
-            eval_handlers = self._eval_handlers[k]
+        handled_state = {}  # fields with special set handlers
+        for k in list(state):
             v = state[k]
-            if not isinstance(v, str):
-                msg = "Values have to be strings, got %s=%r" % (k, v)
-                raise TypeError(msg)
+            if k not in self._fields:
+                raise TypeError(f"{k}={v!r}: No template named {k!r}")
+            elif v is None:
+                state.pop(k)
+                continue
+            elif k in self._set_handlers:
+                handled_state[k] = self._set_handlers[k](state.pop(k))
+                continue
+            elif not isinstance(v, str):
+                raise TypeError(f"{k}={v!r}: Values have to be strings")
             elif '*' in v and allow_asterisk:
-                pass
-            elif eval_handlers:
+                continue
+            # eval values
+            eval_handlers = self._eval_handlers[k]
+            if eval_handlers:
                 for handler in eval_handlers:
                     try:
                         v = handler(v)
@@ -675,15 +706,8 @@ class TreeModel(object):
                         err = "Invalid conversion: %s=%r" % (k, v)
                         raise RuntimeError(err)
                     state[k] = v
-            elif not match:
-                pass
-            elif k not in self._field_values:
-                pass
-            elif v not in self.get_field_values(k, False):
-                raise ValueError(
-                    f"Variable {k!r} has no value {v!r}. In order to see valid "
-                    f"values use e.show_fields(); In order to set a non-"
-                    f"existent value, use e.set({k!s}={v!r}, match=False).")
+            elif match and k in self._field_values and v not in self._field_values[k]:
+                raise ValueError(f"Variable {k!r} has no value {v!r}. In order to see valid values use e.show_fields(); In order to set a non-existent value, use e.set({k!s}={v!r}, match=False).")
 
         self._fields.update(state)
 
@@ -713,7 +737,7 @@ class TreeModel(object):
         """
         lines = []
         for key in self._field_values:
-            values = list(self.get_field_values(key))
+            values = list(self._field_values[key])
             line = '%s:' % key
             head_len = len(line) + 1
             while values:
@@ -835,12 +859,13 @@ class TreeModel(object):
         for item_key in self._compound_members[key]:
             value = self.get(item_key)
             if value == '*':
-                compound += '*'
+                if not compound.endswith('*'):
+                    compound += '*'
             elif value:
                 if compound and not compound.endswith('*'):
                     compound += ' '
                 compound += value
-        self.set(**{key: compound})
+        self.set(**{key: compound}, expand_compounds=False)
 
     def _update_compounds(self, key, _):
         for compound in self._compounds[key]:

@@ -27,7 +27,7 @@ def load_wav(filename=None, name=None):
     wav : NDVar
         NDVar with the wav file's data. If the file contains a single channel,
         the NDVar dimensions are ``(time,)``; if it contains several channels,
-        they are ``(channel, time)``. ``wav.info`` contains entries for
+        they are ``(time, channel)``. ``wav.info`` contains entries for
         ``filename`` and ``samplingrate``.
 
     Notes
@@ -37,29 +37,26 @@ def load_wav(filename=None, name=None):
     from scipy.io import wavfile
 
     if filename is None:
-        filename = ui.ask_file("Load WAV File", "Select WAV file to load as "
-                               "NDVar", FILETYPES)
+        filename = ui.ask_file("Load WAV File", "Select WAV file to load as NDVar", FILETYPES)
         if not filename:
             return
-    elif not isinstance(filename, str):
-        raise TypeError("filename must be string, got %s" % repr(filename))
     elif not os.path.exists(filename):
         _, ext = os.path.splitext(filename)
         if not ext:
             filename += '.wav'
 
     srate, data = wavfile.read(filename)
-    time = UTS(0, 1. / srate, data.shape[-1])
+    time = UTS(0, 1. / srate, data.shape[0])
     if name is None:
         name = os.path.basename(filename)
     info = {'filename': filename, 'samplingrate': srate}
     if data.ndim == 1:
         return NDVar(data, (time,), info, name)
     elif data.ndim == 2:
-        chan = Scalar('channel', np.arange(len(data)))
-        return NDVar(data, (chan, time), info, name)
+        chan = Scalar('channel', np.arange(data.shape[1]))
+        return NDVar(data, (time, chan), info, name)
     else:
-        raise NotImplementedError("Data with %i dimensions" % data.ndim)
+        raise NotImplementedError(f"Data with {data.ndim} dimensions")
 
 
 def save_wav(ndvar, filename=None, toint=False):

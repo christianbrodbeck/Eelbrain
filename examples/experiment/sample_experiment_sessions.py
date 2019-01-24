@@ -5,7 +5,7 @@ To produce the data directory for this experiment use (make sure
 that the directory you specify exists)::
 
     >>> from eelbrain import datasets
-    >>> datasets.setup_samples_experiment('~/Data', n_segments=2, n_sessions=2)
+    >>> datasets.setup_samples_experiment('~/Data', n_segments=2, n_sessions=2, name='SampleExperimentSessions')
 
 Then you can use::
 
@@ -13,21 +13,24 @@ Then you can use::
     >>> e = SampleExperiment(ROOT)
 
 """
-from eelbrain import MneExperiment
+from eelbrain.pipeline import *
 
 
-ROOT = "~/Data/SampleExperiment"
+ROOT = "~/Data/SampleExperimentSessions"
 
 
 class SampleExperiment(MneExperiment):
 
     owner = "me@nyu.edu"
 
-    path_version = 1
-
     meg_system = 'neuromag306mag'
 
     sessions = ('sample1', 'sample2')
+
+    raw = {
+        '0-40': RawFilter('raw', None, 40, method='iir'),
+        '1-40': RawFilter('raw', 1, 40, method='iir'),
+    }
 
     variables = {
         'event': {(1, 2, 3, 4): 'target', 5: 'smiley', 32: 'button'},

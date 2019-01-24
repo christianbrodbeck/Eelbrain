@@ -1,26 +1,25 @@
-# Environment for macOS and Linux
+# Environment for development
 # usage: $ conda env create --file=env-dev.yml
 # to run stats test, install r-ez with $ conda install -c ncil r-ez --no-deps
 name: eeldev
 channels:
 - defaults
 - conda-forge
-- christianbrodbeck
-# - ncil  # for r-ez
 dependencies:
 - python >= 3.6
 - pip
+- twine
 - numpy
+- openblas >=0.2.20
 - scipy >= 0.17, != 1.0.0  # 1.0 has bug: UnboundLocalError: local variable 'iprint' referenced before assignment
-- matplotlib
+- matplotlib >= 2.1
 - pyarrow
 - pillow
 - psutil
 # mne-python
-- mne
+- mne >= 0.17
 - mkl
 - pyqt
-- vtk >= 8.1.1
 - h5py
 - pandas
 - scikit-learn
@@ -32,12 +31,13 @@ dependencies:
 - colormath >= 2.1
 - tqdm >= 4.19
 - keyring >= 5
-- wxpython >= 4
+- wxpython >= 4.0.3
 # building
 - setuptools >= 17
 - cython
 # docs
 - sphinx
+- sphinxcontrib-bibtex
 - numpydoc
 - pydocstyle
 # testing
@@ -53,6 +53,7 @@ dependencies:
 # - r-ez  # requires ncil channel
 # plotting brains
 - nibabel >= 2.0, != 2.3.0  # read_annot bug
-- mayavi >= 4.6
-- pysurfer >= 0.7
+- mayavi >= 4.6.2  # conda-forge pinning faulty
+- vtk >= 8.1.1
+- pysurfer >= 0.9
 - nilearn

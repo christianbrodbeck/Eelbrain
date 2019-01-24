@@ -169,9 +169,14 @@ class _plt_map2d:
         ----------
         sensors : None | Sensor dimension index
             Sensors which should be marked (None to clear all markings).
-        others :
-            Matplotlib :func:`pyplot.scatter` parameters for the marking
-            sensors.
+        s : scalar | sequence of scalars
+            Marker size(s) in points^2 (default 20).
+        c : color | sequence of colors
+            Marker color(s) (default ``'yellow'``).
+        marker : str
+            Marker style (default: ``'o'``).
+        ... :
+            Matplotlib :func:`~matplotlib.axes.Axes.scatter` parameters.
         """
         if sensors is None:
             while self._mark_handles:
@@ -372,13 +377,13 @@ class SensorMapMixin:
         sensors : None | Sensor dimension index
             Sensors which should be marked (None to clear all markings).
         s : scalar | sequence of scalars
-            Marker size(s) in points^2.
+            Marker size(s) in points^2 (default 20).
         c : color | sequence of colors
-            Marker color(s).
+            Marker color(s) (default ``'yellow'``).
         marker : str
-            Marker style, default: ``'o'``.
+            Marker style (default: ``'o'``).
         ... :
-            Matplotlib :func:`pyplot.scatter` parameters.
+            Matplotlib :func:`~matplotlib.axes.Axes.scatter` parameters.
         """
         for p in self.__sensor_plots:
             p.mark_sensors(sensors, *args, **kwargs)
@@ -433,7 +438,8 @@ class SensorMaps(EelFigure):
     Parameters
     ----------
     sensors : Sensor | NDVar
-        The sensors to use, or an NDVar with a sensor dimension.
+        The :class:`Sensor` dimension, or an :class:`NDVar` with a sensor
+        dimension.
     select : list of int
         Initial selection.
     proj : str
@@ -446,8 +452,8 @@ class SensorMaps(EelFigure):
         Marker for the sensor positions.
     frame : scalar
         Size of the empty space around sensors in axes.
-    title : None | str
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
 
     Notes
     -----
@@ -459,8 +465,6 @@ class SensorMaps(EelFigure):
      - The 'Clear' button (or :meth:`clear`) clears the selection.
 
     """
-    _name = 'SensorMaps'
-
     def __init__(self, sensors, select=[], proj='default', size=1,
                  color='k', marker='.', frame=0.05, *args, **kwargs):
         sensors = as_sensor(sensors)
@@ -658,8 +662,9 @@ class SensorMap(SensorMapMixin, EelFigure):
 
     Parameters
     ----------
-    sensors : NDVar | Sensor
-        sensor-net object or object containing sensor-net
+    sensors : Sensor | NDVar
+        The :class:`Sensor` dimension, or an :class:`NDVar` with a sensor
+        dimension.
     labels : 'none' | 'index' | 'name' | 'fullname'
         Content of the labels. For 'name', any prefix common to all names
         is removed; with 'fullname', the full name is shown.
@@ -685,11 +690,10 @@ class SensorMap(SensorMapMixin, EelFigure):
         the top end of the plot).
     connectivity : bool
         Show sensor connectivity (default False).
-    title : None | string
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
     _make_axes = False
-    _name = 'SensorMap'
 
     def __init__(self, sensors, labels='name', proj='default', size=1,
                  color='k', marker='.', mark=None, head_radius=None,

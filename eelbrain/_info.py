@@ -65,6 +65,11 @@ _unit_fmt = {
 # Generate info dicts
 #####################
 
+def copy(old: dict):
+    "Carry over all meaningful parameters"
+    return {k: v for k, v in old.items() if k in MAIN_ARGS}
+
+
 def default_info(meas, old=None):
     "Default colorspace info"
     info = {'meas': meas}
@@ -89,6 +94,11 @@ def for_p_map(old=None):
         'vmax': .05,
         'contours': {.01: '.5', .001: '0'},
     }
+    return _update(info, old)
+
+
+def for_normalized_data(old, default_meas):
+    info = {'meas': old.get('meas', default_meas), 'unit': 'normalized'}
     return _update(info, old)
 
 

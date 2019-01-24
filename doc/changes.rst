@@ -6,11 +6,30 @@ Changes
 New in 0.29
 -----------
 
-* Support for vector data:
+* API changes:
+
+  - Better default parameters for :func:`resample`
+  - :meth:`MneExperiment.make_rej` renamed to :meth:`MneExperiment.make_epoch_selection`
+
+* Support for vector data (with many contributions from `Proloy Das`_):
 
   - :class:`Space` dimension to represent physical space
   - :class:`VolumeSourceSpace` to represent volume source spaces
-  - :class:`testnd.Vector` for statistical testing of vector data
+  - Statistical tests: :class:`testnd.Vector`, :class:`testnd.VectorDifferenceRelated`,
+    :class:`testnd.VectorDifferenceIndependent`
+  - Plotting with :class:`plot.GlassBrain`
+
+* New :class:`NDVar` functions:
+
+  - :func:`correlation_coefficient`
+
+* Plotting:
+
+  - :ref:`general-layout-parameters` for plot size relative to screen size
+
+* :class:`MneExperiment`:
+
+  - New method :meth:`MneExperiment.plot_raw`
 
 
 New in 0.28
@@ -493,3 +512,6 @@ New in 0.1.5
 
 * :py:class:`plot.topo.TopoButterfly` plot: new keyboard commands (``t``,
   ``left arrow``, ``right arrow``).
+
+
+.. _Proloy Das: https://ece.umd.edu/~proloy/

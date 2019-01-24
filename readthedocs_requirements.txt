@@ -1,0 +1,16 @@
+setuptools >=17
+cython >=0.21
+colormath >=2.1
+keyring >=5
+matplotlib >=2.1
+mne >=0.17
+nibabel >2.3.0  # read_annot bug
+nilearn
+numpy >=1.11
+numpydoc
+pillow
+sphinx >=1.6
+sphinxcontrib-bibtex
+scipy >=0.17
+sklearn  # nilearn dependency
+tqdm >=4.8

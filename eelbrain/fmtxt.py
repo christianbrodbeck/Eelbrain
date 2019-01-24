@@ -58,6 +58,7 @@ import pickle
 import re
 import shutil
 import socket
+import sys
 from io import BytesIO
 import tempfile
 import time
@@ -475,7 +476,7 @@ def asfmtext_or_none(content, tag=None):
         return asfmtext(content, tag)
 
 
-class FMTextConstant(object):
+class FMTextConstant:
 
     def __init__(self, name, html, rtf, tex, text):
         self.name = name
@@ -509,7 +510,7 @@ linebreak = FMTextConstant(
 )
 
 
-class FMTextElement(object):
+class FMTextElement:
     """Represent a text element along with formatting properties.
 
     The elementary unit of the :py:mod:`fmtxt` module. It can function as a
@@ -1767,7 +1768,7 @@ class Image(FMTextElement, BytesIO):
                 return buf.decode()
             # http://stackoverflow.com/a/7389616/166700
             data = base64.b64encode(buf).decode().replace('\n', '')
-            src = 'data:image/{};base64,{}'.format(self.format, data)
+            src = f'data:image/{self.format};base64,{data}'
         else:
             dirpath = os.path.join(env['root'], resource_dir)
             abspath = os.path.join(dirpath, self._filename)
@@ -1781,12 +1782,11 @@ class Image(FMTextElement, BytesIO):
 
             self.save_image(abspath)
             src = os.path.relpath(abspath, env['root'])
-
-        return '<img src="%s" alt="%s">' % (src, html(self._alt))
+        alt = html(self._alt)
+        return f'<img src="{src}" alt="{alt}">'
 
     def get_str(self, env={}):
-        txt = "Image (%s)" % str(self._alt)
-        return txt
+        return f"Image ({self._alt})"
 
     def save_image(self, dst):
         if os.path.isdir(dst):
@@ -2183,6 +2183,11 @@ class Report(Section):
         info = ["Created by %s on %s" % (socket.gethostname(),
                                          time.strftime("%c"))]
         for package in packages:
+            if package in sys.modules:
+                mod = sys.modules[package]
+            else:
+                continue
+
             if package == 'eelbrain':
                 name = 'Eelbrain'
             elif package == 'mne':
@@ -2191,10 +2196,7 @@ class Report(Section):
                 name = 'PySurfer'
             else:
                 name = package
-
-            mod = import_module(package)
-            text = "%s version %s" % (name, mod.__version__)
-            info.append(text)
+            info.append(f"{name} version {mod.__version__}")
 
         signature = ' \u2014 \n'.join(info)
         self.add_paragraph(signature)
@@ -2275,15 +2277,6 @@ def delim_list(items, delimiter=', '):
     return out
 
 
-def ms(t_s):
-    "Convert time in seconds to rounded milliseconds"
-    return int(round(t_s * 1000))
-
-
-def ms_window(t0, t1):
-    return f"{ms(t0)} - {ms(t1)} ms"
-
-
 def unindent(text, skip1=False):
     """Remove leading spaces that are present in all lines of ``text``.
 
@@ -2359,12 +2352,10 @@ def im_table(ims, header=None, name="im_table"):
             item = p.format(x=x, y=18, txt=txt)
             svg.append(item)
 
-    p = ('<image x="{x}" y="{y}" width="{w}" height="{h}" xlink:href='
-         '"data:image/png;base64,{data}" />')
     for y, line in zip(ys, ims):
         for x, im in zip(xs, line):
             data = _array_as_png(im)
-            item = p.format(x=x, y=y, w=im_w, h=im_h, data=data)
+            item = f'<image x="{x}" y="{y}" width="{im_w}" height="{im_h}" xlink:href="data:image/png;base64,{data}" />'
             svg.append(item)
 
     svg.append("</svg>")
@@ -2385,9 +2376,10 @@ def _array_as_png(im):
     data : str
         Encoded PNG image.
     """
-    buf = BytesIO()
-    imsave(buf, np.asarray(im), format='png')
-    data = buf.getvalue()
+    bytesio = BytesIO()
+    imsave(bytesio, np.asarray(im), format='png')
+    buf = bytesio.getvalue()
+    data = base64.b64encode(buf).decode().replace('\n', '')
     return data
 
 

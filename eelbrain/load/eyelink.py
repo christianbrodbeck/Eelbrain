@@ -16,7 +16,7 @@ from .._utils.subp import get_bin
 __all__ = ('Edf', 'read_edf', 'read_edf_events', 'read_edf_samples')
 
 
-class Edf(object):
+class Edf:
     """Eyelink .edf file reader.
 
     Reads an eyelink .edf file and extracts epoch acceptability

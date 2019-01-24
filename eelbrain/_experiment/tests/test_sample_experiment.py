@@ -1,9 +1,10 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Test MneExperiment using mne-python sample data"""
 from pathlib import Path
-from os.path import join
+from os.path import join, exists
+import pytest
+import shutil
 
-from nose.tools import eq_, assert_raises
 import numpy as np
 
 from eelbrain import *
@@ -27,8 +28,9 @@ def test_sample():
     root = join(tempdir, 'SampleExperiment')
     e = SampleExperiment(root)
 
-    eq_(e.get('subject'), 'R0000')
-    eq_(e.get('subject', subject='R0002'), 'R0002')
+    assert e.get('raw') == '1-40'
+    assert e.get('subject') == 'R0000'
+    assert e.get('subject', subject='R0002') == 'R0002'
 
     # events
     e.set('R0001', rej='')
@@ -42,30 +44,33 @@ def test_sample():
     # evoked cache invalidated by change in bads
     e.set('R0001', rej='', epoch='target')
     ds = e.load_evoked()
-    eq_(ds[0, 'evoked'].info['bads'], [])
+    assert ds[0, 'evoked'].info['bads'] == []
     e.make_bad_channels(['MEG 0331'])
     ds = e.load_evoked()
-    eq_(ds[0, 'evoked'].info['bads'], ['MEG 0331'])
+    assert ds[0, 'evoked'].info['bads'] == ['MEG 0331']
 
     e.set(rej='man', model='modality')
     sds = []
     for _ in e:
-        e.make_rej(auto=2.5e-12)
+        e.make_epoch_selection(auto=2.5e-12)
         sds.append(e.load_evoked())
 
     ds = e.load_evoked('all')
     assert_dataobj_equal(combine(sds), ds)
 
-    # test with data parameter
+    # sensor space tests
     megs = [e.load_evoked(cat='auditory')['meg'] for _ in e]
-    res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=100, data='sensor.rms',
-                      sns_baseline=False, make=True)
+    res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=100, data='sensor.rms', baseline=False, make=True)
     meg_rms = combine(meg.rms('sensor') for meg in megs).mean('case', name='auditory')
     assert_dataobj_equal(res.c1_mean, meg_rms, decimal=21)
-    res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=100, data='sensor.mean',
-                      sns_baseline=False, make=True)
+    res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=100, data='sensor.mean', baseline=False, make=True)
     meg_mean = combine(meg.mean('sensor') for meg in megs).mean('case', name='auditory')
     assert_dataobj_equal(res.c1_mean, meg_mean, decimal=21)
+    with pytest.raises(IOError):
+        res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=20, data='sensor', baseline=False)
+    res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=20, data='sensor', baseline=False, make=True)
+    assert res.p.min() == pytest.approx(.143, abs=.001)
+    assert res.difference.max() == pytest.approx(4.47e-13, 1e-15)
 
     # e._report_subject_info() broke with non-alphabetic subject order
     subjects = e.get_field_values('subject')
@@ -76,11 +81,14 @@ def test_sample():
 
     # test multiple epochs with same time stamp
     class Experiment(SampleExperiment):
-        epochs = SampleExperiment.epochs.copy()
-    Experiment.epochs['v1'] = {'base': 'visual', 'vars': {'shift': 'Var([0.0], repeat=len(side))'}}
-    Experiment.epochs['v2'] = {'base': 'visual', 'vars': {'shift': 'Var([0.1], repeat=len(side))'}}
-    Experiment.epochs['vc'] = {'sub_epochs': ('v1', 'v2'), 'post_baseline_trigger_shift': 'shift', 'post_baseline_trigger_shift_max': 0.1, 'post_baseline_trigger_shift_min': 0.0}
+        epochs = {
+            **SampleExperiment.epochs,
+            'v1': {'base': 'visual', 'vars': {'shift': 'Var([0.0], repeat=len(side))'}},
+            'v2': {'base': 'visual', 'vars': {'shift': 'Var([0.1], repeat=len(side))'}},
+            'vc': {'sub_epochs': ('v1', 'v2'), 'post_baseline_trigger_shift': 'shift', 'post_baseline_trigger_shift_max': 0.1, 'post_baseline_trigger_shift_min': 0.0},
+        }
     e = Experiment(root)
+    events = e.load_selected_events(epoch='vc')
     ds = e.load_epochs(baseline=True, epoch='vc')
     v1 = ds.sub("epoch=='v1'", 'meg').sub(time=(0, 0.199))
     v2 = ds.sub("epoch=='v2'", 'meg').sub(time=(-0.1, 0.099))
@@ -89,18 +97,20 @@ def test_sample():
     # duplicate subject
     class BadExperiment(SampleExperiment):
         groups = {'group': ('R0001', 'R0002', 'R0002')}
-    assert_raises(DefinitionError, BadExperiment, root)
+    with pytest.raises(DefinitionError):
+        BadExperiment(root)
 
     # non-existing subject
     class BadExperiment(SampleExperiment):
         groups = {'group': ('R0001', 'R0003', 'R0002')}
-    assert_raises(DefinitionError, BadExperiment, root)
+    with pytest.raises(DefinitionError):
+        BadExperiment(root)
 
     # unsorted subjects
     class Experiment(SampleExperiment):
         groups = {'group': ('R0002', 'R0000', 'R0001')}
     e = Experiment(root)
-    eq_([s for s in e], ['R0000', 'R0001', 'R0002'])
+    assert [s for s in e] == ['R0000', 'R0001', 'R0002']
 
     # changes
     class Changed(SampleExperiment):
@@ -146,13 +156,43 @@ def test_sample():
     e = SampleExperiment(root)
     ica_path = e.make_ica(raw='ica')
     e.set(raw='ica1-40', model='')
-    e.make_rej(auto=2e-12, overwrite=True)
+    e.make_epoch_selection(auto=2e-12, overwrite=True)
     ds1 = e.load_evoked(raw='ica1-40')
     ica = e.load_ica(raw='ica')
     ica.exclude = [0, 1, 2]
     ica.save(ica_path)
     ds2 = e.load_evoked(raw='ica1-40')
     assert not np.allclose(ds1['meg'].x, ds2['meg'].x, atol=1e-20), "ICA change ignored"
+
+    # rename subject
+    # --------------
+    src = Path(e.get('raw-dir', subject='R0001'))
+    dst = Path(e.get('raw-dir', subject='R0003', match=False))
+    shutil.move(src, dst)
+    for path in dst.glob('*.fif'):
+        shutil.move(path, dst / path.parent / path.name.replace('R0001', 'R0003'))
+    # check subject list
+    e = SampleExperiment(root)
+    assert list(e) == ['R0000', 'R0002', 'R0003']
+    # check that cached test got deleted
+    assert e.get('raw') == '1-40'
+    with pytest.raises(IOError):
+        e.load_test('a>v', 0.05, 0.2, 0.05, samples=20, data='sensor', baseline=False)
+    res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=20, data='sensor', baseline=False, make=True)
+    assert res.df == 2
+    assert res.p.min() == pytest.approx(.143, abs=.001)
+    assert res.difference.max() == pytest.approx(4.47e-13, 1e-15)
+
+    # remove subject
+    # --------------
+    shutil.rmtree(dst)
+    # check cache
+    e = SampleExperiment(root)
+    assert list(e) == ['R0000', 'R0002']
+    # check that cached test got deleted
+    assert e.get('raw') == '1-40'
+    with pytest.raises(IOError):
+        e.load_test('a>v', 0.05, 0.2, 0.05, samples=20, data='sensor', baseline=False)
 
 
 @requires_mne_sample_data
@@ -166,18 +206,18 @@ def test_samples_sesssions():
     e = SampleExperiment(root)
     # bad channels
     e.make_bad_channels('0111')
-    eq_(e.load_bad_channels(), ['MEG 0111'])
-    eq_(e.load_bad_channels(session='sample2'), [])
+    assert e.load_bad_channels() == ['MEG 0111']
+    assert e.load_bad_channels(session='sample2') == []
     e.show_bad_channels()
     e.merge_bad_channels()
-    eq_(e.load_bad_channels(session='sample2'), ['MEG 0111'])
+    assert e.load_bad_channels(session='sample2') == ['MEG 0111']
     e.show_bad_channels()
 
     # rejection
     for _ in e:
         for epoch in ('target1', 'target2'):
             e.set(epoch=epoch)
-            e.make_rej(auto=2e-12)
+            e.make_epoch_selection(auto=2e-12)
 
     ds = e.load_evoked('R0000', epoch='target2')
     e.set(session='sample1')
@@ -189,3 +229,11 @@ def test_samples_sesssions():
     ds2 = e.load_epochs(epoch='target2')
     ds_super = e.load_epochs(epoch='super')
     assert_dataobj_equal(ds_super['meg'], combine((ds1['meg'], ds2['meg'])))
+
+    # conflicting session and epoch settings
+    rej_path = join(root, 'meg', 'R0000', 'epoch selection', 'sample2_1-40_target2-man.pickled')
+    e.set(epoch='target2', raw='1-40')
+    assert not exists(rej_path)
+    e.set(session='sample1')
+    e.make_epoch_selection(auto=2e-12)
+    assert exists(rej_path)

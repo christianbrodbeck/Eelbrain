@@ -96,7 +96,7 @@ def _find_hopkins_ems(e, x):
     return tuple(e2 for e2 in x.effects if _hopkins_test(e, e2))
 
 
-class LM(object):
+class LM:
     """Fit a linear model to a dependent variable
 
     Attributes
@@ -315,7 +315,7 @@ def _nd_anova(x):
     return _IncrementalNDANOVA(x)
 
 
-class _NDANOVA(object):
+class _NDANOVA:
     """Efficiently fit a model to multiple dependent variables."""
     def __init__(self, x, effects, dfs_denom):
         self.x = x
@@ -569,7 +569,7 @@ def effect_id(effects):
     return tuple(map(id, effects))
 
 
-class IncrementalComparisons(object):
+class IncrementalComparisons:
     """Determine models for incremental comparisons
 
     Parameters
@@ -776,7 +776,7 @@ class incremental_f_test:
         return "<incremental_f_test%s: F=%.2f, p=%.3f>" % (name, self.F, self.p)
 
 
-class ANOVA(object):
+class ANOVA:
     """Univariate ANOVA.
 
     Parameters

@@ -30,7 +30,7 @@ if first_mne_import:
     reset_logger(mne.utils.logger)
 
 
-class CaptureLog(object):
+class CaptureLog:
     """Context to capture log from a specific logger and write it to a file
 
     Parameters

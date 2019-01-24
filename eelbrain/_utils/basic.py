@@ -4,8 +4,9 @@ from collections import defaultdict
 import functools
 import logging
 import re
-from textwrap import TextWrapper
 from warnings import warn
+
+from tqdm import tqdm
 
 
 LOG_LEVELS = {'DEBUG': logging.DEBUG, 'INFO': logging.INFO,
@@ -13,20 +14,10 @@ LOG_LEVELS = {'DEBUG': logging.DEBUG, 'INFO': logging.INFO,
               'CRITICAL': logging.CRITICAL}
 
 
-class WrappedFormater(logging.Formatter):
-    """Logging formatter for screen display
-
-    Break long lines, add indent for
-
-    """
-    # http://stackoverflow.com/a/25335783/166700
-    def __init__(self, fmt=None, datefmt=None, width=80, indent=4):
-        logging.Formatter.__init__(self, fmt, datefmt)
-        self.wrapper = TextWrapper(width, subsequent_indent=' '*indent)
-
-    def format(self, record):
-        return self.wrapper.fill(
-            logging.Formatter.format(self, record))
+def as_sequence(items, item_type=str):
+    if isinstance(items, item_type):
+        return items,
+    return items
 
 
 def ask(message, options, allow_empty=False, help=None):
@@ -65,16 +56,15 @@ def deprecated(version, replacement):
         used anymore.
     """
     def dec(func):
-        msg = ('%s is deprecated and will be removed in version %s' %
-               (func.__name__, version))
+        msg = f"{func.__name__} is deprecated and will be removed in version {version}"
         if isinstance(replacement, str):
             msg += '; ' + replacement
             call_func = func
         elif replacement is not None:
-            msg += "; use %s instead" % replacement.__name__
+            msg += f"; use {replacement.__name__} instead"
             call_func = replacement
         else:
-            raise TypeError("replacement=%r" % (replacement,))
+            raise TypeError(f"replacement={replacement!r}")
         func.__doc__ = msg
 
         @functools.wraps(func)
@@ -90,7 +80,7 @@ def deprecated_attribute(version, class_name, replacement):
     if not isinstance(replacement, str):
         raise TypeError("replacement=%r" % (replacement,))
 
-    class Dec(object):
+    class Dec:
 
         def __init__(self, meth):
             self._meth = meth
@@ -138,33 +128,40 @@ def set_log_level(level, logger_name='eelbrain'):
     logging.getLogger(logger_name).setLevel(log_level(level))
 
 
-class intervals:
+class ScreenHandler(logging.StreamHandler):
+    "Log handler compatible with TQDM"
+
+    def __init__(self, formatter=None):
+        logging.StreamHandler.__init__(self)
+        if formatter is None:
+            formatter = logging.Formatter("%(levelname)-8s:  %(message)s")
+        self.setFormatter(formatter)
+        tqdm(disable=True, total=0)  # https://github.com/tqdm/tqdm/issues/457
+
+    def emit(self, record):
+        tqdm.write(self.format(record))
+
+
+def intervals(seq):
     """Iterate over each successive pair in a sequence.
 
     Examples
     --------
     >>> for i in intervals([1, 2, 3, 45]):
-    ...     print i
+    ...     print(i)
     ...
     (1, 2)
     (2, 3)
     (3, 45)
     """
-    def __init__(self, seq):
-        self.seq = seq
-        self.i = 0
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        self.i += 1
-        if len(self.seq) <= self.i:
-            raise StopIteration
-        return self.seq[self.i - 1], self.seq[self.i]
+    iterator = iter(seq)
+    last = next(iterator)
+    for item in iterator:
+        yield last, item
+        last = item
 
 
-class LazyProperty(object):
+class LazyProperty:
     "http://blog.pythonisito.com/2008/08/lazy-descriptors.html"
     def __init__(self, func):
         self._func = func
@@ -181,7 +178,7 @@ class LazyProperty(object):
 def _natural_keys(text):
     "Sorting key for natural sorting"
     # after http://stackoverflow.com/a/5967539/166700
-    return [int(c) if c.isdigit() else c for c in re.split('(\d+)', text)]
+    return [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', text)]
 
 
 def natsorted(seq):

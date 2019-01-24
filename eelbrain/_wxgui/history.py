@@ -13,7 +13,7 @@ from .frame import EelbrainFrame
 TEST_MODE = False
 
 
-class CallBackManager(object):
+class CallBackManager:
 
     def __init__(self, keys):
         self._callbacks = {k: [] for k in keys}
@@ -31,10 +31,13 @@ class CallBackManager(object):
         self._callbacks[key].append(func)
 
     def remove(self, key, func):
-        self._callbacks[key].remove(func)
+        try:
+            self._callbacks[key].remove(func)
+        except ValueError:
+            getLogger(__name__).debug("Trying to remove %r which is not in callbacks[%r]", func, key)
 
 
-class Action(object):
+class Action:
 
     def do(self, doc):
         raise NotImplementedError
@@ -43,7 +46,7 @@ class Action(object):
         raise NotImplementedError
 
 
-class History(object):
+class History:
     """The history as a list of action objects
 
     Public interface
@@ -143,7 +146,7 @@ class History(object):
         self._process_saved_change(was_saved)
 
 
-class FileDocument(object):
+class FileDocument:
     """Represent a file"""
     def __init__(self, path):
         self.saved = False  # managed by the history
@@ -155,7 +158,7 @@ class FileDocument(object):
         self.callbacks.callback('path_change')
 
 
-class FileModel(object):
+class FileModel:
     """Manages a document as well as its history"""
 
     def __init__(self, doc):

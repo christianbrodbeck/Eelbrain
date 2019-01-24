@@ -1,26 +1,33 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Pre-processing operations based on NDVars"""
+from collections import Sequence
+import fnmatch
 from os import mkdir, remove
-from os.path import dirname, exists, getmtime
+from os.path import dirname, exists, getmtime, join, splitext
 
 import mne
-from mne.io import read_raw_fif
 from scipy import signal
 
 from .. import load
 from .._data_obj import NDVar
 from .._exceptions import DefinitionError
+from .._io.fiff import KIT_NEIGHBORS
 from .._ndvar import filter_data
 from .._utils import ask
 from ..mne_fixes import CaptureLog
+from .definitions import typed_arg
 from .exceptions import FileMissing
 
 
-class RawPipe(object):
+class RawPipe:
 
-    def __init__(self, name, path, log):
+    def _link(self, name, pipes, root, raw_dir, cache_dir, log):
+        raise NotImplementedError
+
+    def _link_base(self, name, path, root, log):
         self.name = name
         self.path = path
+        self.root = root
         self.log = log
 
     def as_dict(self):
@@ -30,14 +37,28 @@ class RawPipe(object):
         "Make sure the file exists and is up to date"
         raise NotImplementedError
 
-    def load(self, subject, session, add_bads=True, preload=False):
-        path = self.path.format(subject=subject, session=session)
-        raw = read_raw_fif(path, preload=preload)
-        if add_bads:
+    def get_connectivity(self, data):
+        raise NotImplementedError
+
+    def get_sysname(self, info, subject, data):
+        raise NotImplementedError
+
+    def load(self, subject, session, add_bads=True, preload=False, raw=None):
+        # raw
+        if raw is None:
+            raw = self._load(subject, session, preload)
+        # bad channels
+        if isinstance(add_bads, Sequence):
+            raw.info['bads'] = list(add_bads)
+        elif add_bads:
             raw.info['bads'] = self.load_bad_channels(subject, session)
         else:
             raw.info['bads'] = []
         return raw
+
+    def _load(self, subject, session, preload):
+        path = self.path.format(root=self.root, subject=subject, session=session)
+        return mne.io.read_raw_fif(path, preload=preload)
 
     def load_bad_channels(self, subject, session):
         raise NotImplementedError
@@ -54,20 +75,123 @@ class RawPipe(object):
 
 
 class RawSource(RawPipe):
-    "Raw data source"
-    def __init__(self, name, path, bads_path, log):
-        RawPipe.__init__(self, name, path, log)
-        self.bads_path = bads_path
+    """Raw data source
+
+    Parameters
+    ----------
+    filename : str
+        Pattern for filename (default ``'{subject}_{session}-raw.fif'``).
+    reader : callable
+        Function for reading data (default is :func:`mne.io.read_raw_fif`).
+    sysname : str
+        Used to determine sensor positions (not needed for KIT files, or when a
+        montage is specified).
+    rename_channels : dict
+        Rename channels before applying montage, ``{from: to}`` dictionary;
+        useful to convert idiosyncratic naming conventions to standard montages.
+    montage : str
+        Name of a montage that is applied to raw data to set sensor positions.
+    connectivity : str | list of (str, str)
+        Connectivity between sensors. Can be specified as:
+
+        - list of connections (e.g., ``[('OZ', 'O1'), ('OZ', 'O2'), ...]``)
+        - :class:`numpy.ndarray` of int, shape (n_edges, 2), to specify
+          connections in terms of indices. Each row should specify one
+          connection [i, j] with i < j. If the array's dtype is uint32,
+          property checks are disabled to improve efficiency.
+        - ``"grid"`` to use adjacency in the sensor names
+
+        If unspecified, it is inferred from ``sysname`` if possible.
+    ...
+        Additional parameters for the ``reader`` function.
+    """
+    _dig_sessions = None
+
+    def __init__(self, filename='{subject}_{session}-raw.fif', reader=mne.io.read_raw_fif, sysname=None, rename_channels=None, montage=None, connectivity=None, **kwargs):
+        RawPipe.__init__(self)
+        self.filename = typed_arg(filename, str)
+        self.reader = reader
+        self.sysname = sysname
+        self.rename_channels = typed_arg(rename_channels, dict)
+        self.montage = typed_arg(montage, str)
+        self.connectivity = connectivity
+        self._kwargs = kwargs
+        if reader is mne.io.read_raw_cnt:
+            self._read_raw_kwargs = {'montage': None, **kwargs}
+        else:
+            self._read_raw_kwargs = kwargs
+
+    def _link(self, name, pipes, root, raw_dir, cache_dir, log):
+        if name != 'raw':
+            raise NotImplementedError("RawSource with name {name!r}: the raw source must be called 'raw'")
+        path = join(raw_dir, self.filename)
+        if self.filename.endswith('-raw.fif'):
+            head = path[:-8]
+        else:
+            head = splitext(path)[0]
+        self.bads_path = head + '-bad_channels.txt'
+        RawPipe._link_base(self, name, path, root, log)
+
+    def as_dict(self):
+        out = RawPipe.as_dict(self)
+        out.update(self._kwargs)
+        if self.reader != mne.io.read_raw_fif:
+            out['reader'] = self.reader.__name__
+        if self.rename_channels:
+            out['rename_channels'] = self.rename_channels
+        if self.montage:
+            out['montage'] = self.montage
+        if self.connectivity is not None:
+            out['connectivity'] = self.connectivity
+        return out
+    
+    def _load(self, subject, session, preload):
+        path = self.path.format(root=self.root, subject=subject, session=session)
+        raw = self.reader(path, preload=preload, **self._read_raw_kwargs)
+        if self.rename_channels:
+            raw.rename_channels(self.rename_channels)
+        if self.montage:
+            raw.set_montage(self.montage)
+        if raw.info['dig'] is None and self._dig_sessions is not None:
+            dig_session = self._dig_sessions[subject][session]
+            dig_raw = self._load(subject, dig_session, False)
+            raw.info['dig'] = dig_raw.info['dig']
+        return raw
 
     def cache(self, subject, session):
         "Make sure the file exists and is up to date"
-        path = self.path.format(subject=subject, session=session)
+        path = self.path.format(root=self.root, subject=subject, session=session)
         if not exists(path):
             raise FileMissing(f"Raw input file for {subject}/{session} does not exist at expected location {path}")
         return path
 
+    def get_connectivity(self, data):
+        if data == 'eog':
+            return None
+        else:
+            return self.connectivity
+
+    def get_sysname(self, info, subject, data):
+        if data == 'eog':
+            return None
+        elif data == 'mag':
+            kit_system_id = info.get('kit_system_id')
+            if kit_system_id:
+                try:
+                    return KIT_NEIGHBORS[kit_system_id]
+                except KeyError:
+                    raise NotImplementedError(f"Unknown KIT system-ID: {kit_system_id}; please contact developers")
+        if isinstance(self.sysname, str):
+            return self.sysname
+        elif isinstance(self.sysname, dict):
+            for k, v in self.sysname.items():
+                if fnmatch.fnmatch(subject, k):
+                    return v
+        elif self.connectivity is None:
+            raise RuntimeError(f"Unknown sensor configuration for {subject}, data={data!r}. Consider setting connectivity or sysname explicitly.")
+
     def load_bad_channels(self, subject, session):
-        path = self.bads_path.format(subject=subject, session=session)
+        path = self.bads_path.format(root=self.root, subject=subject, session=session)
         if not exists(path):
             # need to create one to know mtime after user deletes the file
             self.log.info("Generating bad_channels file for %s %s",
@@ -77,7 +201,7 @@ class RawSource(RawPipe):
             return [l for l in fid.read().splitlines() if l]
 
     def make_bad_channels(self, subject, session, bad_chs, redo):
-        path = self.bads_path.format(subject=subject, session=session)
+        path = self.bads_path.format(root=self.root, subject=subject, session=session)
         if exists(path):
             old_bads = self.load_bad_channels(subject, session)
         else:
@@ -107,12 +231,12 @@ class RawSource(RawPipe):
         self.make_bad_channels(subject, session, bad_chs, redo)
 
     def mtime(self, subject, session, bad_chs=True):
-        path = self.path.format(subject=subject, session=session)
+        path = self.path.format(root=self.root, subject=subject, session=session)
         if exists(path):
             mtime = getmtime(path)
             if not bad_chs:
                 return mtime
-            path = self.bads_path.format(subject=subject, session=session)
+            path = self.bads_path.format(root=self.root, subject=subject, session=session)
             if exists(path):
                 return max(mtime, getmtime(path))
 
@@ -121,20 +245,26 @@ class CachedRawPipe(RawPipe):
 
     _bad_chs_affect_cache = False
 
-    def __init__(self, name, source, path, log):
-        assert isinstance(source, RawPipe)
-        path = path.format(raw=name, subject='{subject}', session='{session}')
-        RawPipe.__init__(self, name, path, log)
-        self.source = source
+    def __init__(self, source, cache=True):
+        RawPipe.__init__(self)
+        self._source_name = source
+        self._cache = cache
+
+    def _link(self, name, pipes, root, raw_dir, cache_path, log):
+        path = cache_path.format(root='{root}', raw=name, subject='{subject}', session='{session}')
+        if self._source_name not in pipes:
+            raise DefinitionError(f"{self.__class__.__name__} {name!r} source {self._source_name!r} does not exist")
+        self.source = pipes[self._source_name]
+        RawPipe._link_base(self, name, path, root, log)
 
     def as_dict(self):
         out = RawPipe.as_dict(self)
-        out['source'] = self.source.name
+        out['source'] = self._source_name
         return out
 
     def cache(self, subject, session):
         "Make sure the cache is up to date"
-        path = self.path.format(subject=subject, session=session)
+        path = self.path.format(root=self.root, subject=subject, session=session)
         if (not exists(path) or getmtime(path) <
                 self.mtime(subject, session, self._bad_chs_affect_cache)):
             from .. import __version__
@@ -149,12 +279,31 @@ class CachedRawPipe(RawPipe):
                 logger.info(repr(self.as_dict()))
                 raw = self._make(subject, session)
             # save
-            raw.save(path, overwrite=True)
-        return path
+            try:
+                raw.save(path, overwrite=True)
+            except:
+                # clean up potentially corrupted file
+                if exists(path):
+                    remove(path)
+                raise
+            return raw
 
-    def load(self, subject, session, add_bads=True, preload=False):
-        self.cache(subject, session)
-        return RawPipe.load(self, subject, session, add_bads, preload)
+    def get_connectivity(self, data):
+        return self.source.get_connectivity(data)
+
+    def get_sysname(self, info, subject, data):
+        return self.source.get_sysname(info, subject, data)
+
+    def load(self, subject, session, add_bads=True, preload=False, raw=None):
+        if raw is not None:
+            pass
+        elif self._cache:
+            raw = self.cache(subject, session)
+        else:
+            raw = self._make(subject, session)
+        if not isinstance(raw, mne.io.Raw):
+            raw = None  # only propagate fiff raw for appending
+        return RawPipe.load(self, subject, session, add_bads, preload, raw)
 
     def load_bad_channels(self, subject, session):
         return self.source.load_bad_channels(subject, session)
@@ -173,22 +322,25 @@ class CachedRawPipe(RawPipe):
 
 
 class RawFilter(CachedRawPipe):
+    """Filter raw pipe
 
-    def __init__(self, name, source, path, log, args, kwargs):
-        if len(args) > 2:
-            raise DefinitionError(
-                "Raw filter args=%r; at most 2 parameters can be specified "
-                "without keywords; use keyword arguments for additional "
-                "parameters.")
-        CachedRawPipe.__init__(self, name, source, path, log)
-        self.args = args
+    Parameters
+    ----------
+    source : str
+        Name of the raw pipe to use for input data.
+    ...
+        :meth:`mne.io.Raw.filter` parameters.
+    """
+
+    def __init__(self, source, l_freq=None, h_freq=None, **kwargs):
+        CachedRawPipe.__init__(self, source)
+        self.args = (l_freq, h_freq)
         self.kwargs = kwargs
         # mne backwards compatibility (fir_design default change 0.15 -> 0.16)
-        if kwargs.get('fir_design', None) is not None:
-            self._use_kwargs = kwargs
+        if 'use_kwargs' in kwargs:
+            self._use_kwargs = kwargs.pop('use_kwargs')
         else:
-            self._use_kwargs = kwargs.copy()
-            self._use_kwargs['fir_design'] = 'firwin2'
+            self._use_kwargs = kwargs
 
     def as_dict(self):
         out = CachedRawPipe.as_dict(self)
@@ -201,17 +353,15 @@ class RawFilter(CachedRawPipe):
 
     def _make(self, subject, session):
         raw = self.source.load(subject, session, preload=True)
-        self.log.debug("Raw %s: filtering for %s/%s...", self.name, subject,
-                       session)
+        self.log.info("Raw %s: filtering for %s/%s...", self.name, subject, session)
         raw.filter(*self.args, **self._use_kwargs)
         return raw
 
 
 class RawFilterElliptic(CachedRawPipe):
 
-    def __init__(self, name, source, path, log, low_stop, low_pass, high_pass,
-                 high_stop, gpass, gstop):
-        CachedRawPipe.__init__(self, name, source, path, log)
+    def __init__(self, source, low_stop, low_pass, high_pass, high_stop, gpass, gstop):
+        CachedRawPipe.__init__(self, source)
         self.args = (low_stop, low_pass, high_pass, high_stop, gpass, gstop)
 
     def as_dict(self):
@@ -255,8 +405,7 @@ class RawFilterElliptic(CachedRawPipe):
 
     def _make(self, subject, session):
         raw = self.source.load(subject, session, preload=True)
-        self.log.debug("Raw %s: filtering for %s/%s...", self.name, subject,
-                       session)
+        self.log.info("Raw %s: filtering for %s/%s...", self.name, subject, session)
         # filter data
         picks = mne.pick_types(raw.info, eeg=True, ref_meg=True)
         sos = self._sos(raw.info['sfreq'])
@@ -274,24 +423,45 @@ class RawFilterElliptic(CachedRawPipe):
 class RawICA(CachedRawPipe):
     """ICA raw pipe
 
+    Parameters
+    ----------
+    source : str
+        Name of the raw pipe to use for input data.
+    session : str | sequence of str
+        Session(s) to use for estimating ICA components.
+    method : str
+        Method for ICA decomposition (default: ``'extended-infomax'``; see
+        :class:`mne.preprocessing.ICA`).
+    random_state : int
+        Set the random state for ICA decomposition to make results reproducible
+        (default 0, see :class:`mne.preprocessing.ICA`).
+    cache : bool
+        Cache the resulting raw files (default False).
+    ...
+        Additional parameters for :class:`mne.preprocessing.ICA`.
+
     Notes
     -----
-    This pipe merges bad channels from its source raw pipes.
+    Use :meth:`MneExperiment.make_ica_selection` for each subject to select ICA
+    components that should be removed.
 
-    When checking whether the ICA file is up to date, the ICA does not check
-    raw source mtime. However, if bad channels change the ICA is automatically
-    recomputed.
+    This pipe merges bad channels from all sessions.
     """
 
-    def __init__(self, name, source, path, ica_path, log, session, kwargs):
-        CachedRawPipe.__init__(self, name, source, path, log)
+    def __init__(self, source, session, method='extended-infomax', random_state=0, cache=False, **kwargs):
+        CachedRawPipe.__init__(self, source, cache)
         if isinstance(session, str):
             session = (session,)
         else:
-            assert isinstance(session, tuple)
-        self.ica_path = ica_path
+            if not isinstance(session, tuple):
+                session = tuple(session)
+            assert all(isinstance(s, str) for s in session)
         self.session = session
-        self.kwargs = kwargs
+        self.kwargs = {'method': method, 'random_state': random_state, **kwargs}
+
+    def _link(self, name, pipes, root, raw_dir, cache_path, log):
+        CachedRawPipe._link(self, name, pipes, root, raw_dir, cache_path, log)
+        self.ica_path = join(raw_dir, f'{{subject}} {name}-ica.fif')
 
     def as_dict(self):
         out = CachedRawPipe.as_dict(self)
@@ -306,33 +476,35 @@ class RawICA(CachedRawPipe):
         return sorted(bad_chs)
 
     def load_ica(self, subject):
-        path = self.ica_path.format(subject=subject)
+        path = self.ica_path.format(root=self.root, subject=subject)
         if not exists(path):
             raise RuntimeError("ICA file does not exist for raw=%r, "
                                "subject=%r. Run e.make_ica_selection() to "
                                "create it." % (self.name, subject))
         return mne.preprocessing.read_ica(path)
 
+    @staticmethod
+    def _check_ica_channels(ica, raw):
+        picks = mne.pick_types(raw.info, eeg=True, ref_meg=False)
+        return ica.ch_names == [raw.ch_names[i] for i in picks]
+
     def make_ica(self, subject):
-        path = self.ica_path.format(subject=subject)
-        raw = self.source.load(subject, self.session[0], add_bads=False)
+        path = self.ica_path.format(root=self.root, subject=subject)
+        raw = self.source.load(subject, self.session[0], False)
         bad_channels = self.load_bad_channels(subject)
         raw.info['bads'] = bad_channels
         if exists(path):
             ica = mne.preprocessing.read_ica(path)
-            picks = mne.pick_types(raw.info, ref_meg=False)
-            if ica.ch_names == [raw.ch_names[i] for i in picks]:
+            if self._check_ica_channels(ica, raw):
                 return path
-            self.log.info("Raw %s: ICA outdated due to change in bad channels "
-                          "for %s", self.name, subject)
+            self.log.info("Raw %s: ICA outdated due to change in bad channels for %s", self.name, subject)
 
         for session in self.session[1:]:
             raw_ = self.source.load(subject, session, False)
             raw_.info['bads'] = bad_channels
             raw.append(raw_)
 
-        self.log.debug("Raw %s: computing ICA decomposition for %s", self.name,
-                       subject)
+        self.log.info("Raw %s: computing ICA decomposition for %s", self.name, subject)
         ica = mne.preprocessing.ICA(max_iter=256, **self.kwargs)
         # reject presets from meeg-preprocessing
         ica.fit(raw, reject={'mag': 5e-12, 'grad': 5000e-13, 'eeg': 300e-6})
@@ -340,28 +512,40 @@ class RawICA(CachedRawPipe):
         return path
 
     def _make(self, subject, session):
-        self.log.debug("Raw %s: applying ICA for %s/%s...", self.name, subject,
-                       session)
         raw = self.source.load(subject, session, preload=True)
+        raw.info['bads'] = self.load_bad_channels(subject)
         ica = self.load_ica(subject)
+        if not self._check_ica_channels(ica, raw):
+            raise RuntimeError(f"Raw {self.name}, ICA for {subject} outdated due to change in bad channels. Reset bad channels or re-run .make_ica().")
+        self.log.debug("Raw %s: applying ICA for %s/%s...", self.name, subject, session)
         ica.apply(raw)
         return raw
 
     def mtime(self, subject, session, bad_chs=True):
         mtime = CachedRawPipe.mtime(self, subject, session, bad_chs)
         if mtime:
-            path = self.ica_path.format(subject=subject)
+            path = self.ica_path.format(root=self.root, subject=subject)
             if exists(path):
                 return max(mtime, getmtime(path))
 
 
 class RawMaxwell(CachedRawPipe):
-    "Maxwell filter raw pipe"
+    """Maxwell filter raw pipe
+
+    Parameters
+    ----------
+    source : str
+        Name of the raw pipe to use for input data.
+    session : str | sequence of str
+        Session(s) to use for estimating ICA components.
+    ...
+        :func:`mne.preprocessing.maxwell_filter` parameters.
+    """
 
     _bad_chs_affect_cache = True
 
-    def __init__(self, name, source, path, log, kwargs):
-        CachedRawPipe.__init__(self, name, source, path, log)
+    def __init__(self, source, **kwargs):
+        CachedRawPipe.__init__(self, source)
         self.kwargs = kwargs
 
     def as_dict(self):
@@ -371,73 +555,98 @@ class RawMaxwell(CachedRawPipe):
 
     def _make(self, subject, session):
         raw = self.source.load(subject, session)
-        self.log.debug("Raw %s: computing Maxwell filter for %s/%s", self.name,
-                       subject, session)
+        self.log.info("Raw %s: computing Maxwell filter for %s/%s", self.name, subject, session)
         return mne.preprocessing.maxwell_filter(raw, **self.kwargs)
 
 
-def assemble_pipeline(raw_dict, raw_path, bads_path, cache_path, ica_path,
-                      sessions, log):
+class RawReReference(CachedRawPipe):
+    """Re-reference EEG data
+
+    Parameters
+    ----------
+    source : str
+        Name of the raw pipe to use for input data.
+    reference : str | sequence of str
+        New reference: ``'average'`` (default) or one or several electrode
+        names.
+    """
+
+    def __init__(self, source, reference='average'):
+        CachedRawPipe.__init__(self, source, False)
+        if not isinstance(reference, str):
+            reference = list(reference)
+            if not all(isinstance(ch, str) for ch in reference):
+                raise TypeError(f"reference={reference}: must be list of str")
+        self.reference = reference
+
+    def as_dict(self):
+        out = CachedRawPipe.as_dict(self)
+        out['reference'] = self.reference
+        return out
+
+    def _make(self, subject, session):
+        raw = self.source.load(subject, session, preload=True)
+        raw.set_eeg_reference(self.reference)
+        return raw
+
+
+def assemble_pipeline(raw_dict, raw_dir, cache_path, root, sessions, log):
     "Assemble preprocessing pipeline form a definition in a dict"
+    # convert to Raw objects
     raw = {}
-    unassigned = raw_dict.copy()
-    has_source = False
-    while unassigned:
-        n_unassigned = len(unassigned)
-        for name in tuple(unassigned):
-            params = unassigned[name]
-            source = params.get('source')
+    for key, raw_def in raw_dict.items():
+        if not isinstance(raw_def, RawPipe):
+            params = {**raw_def}
+            source = params.pop('source', None)
             if source is None:
-                if has_source:
-                    raise NotImplementedError("Preprocessing pipeline with "
-                                              "more than one raw source")
-                raw[name] = RawSource(name, raw_path, bads_path, log)
-                has_source = name or True
-                del unassigned[name]
-            elif source in raw:
-                pipe_type = params['type']
+                raw_def = RawSource(**params)
+            else:
+                pipe_type = params.pop('type')
+                kwargs = params.pop('kwargs', {})
                 if pipe_type == 'filter':
-                    raw[name] = RawFilter(name, raw[source], cache_path, log,
-                                          params['args'],
-                                          params.get('kwargs', {}))
+                    if 'fir_design' not in kwargs:
+                        kwargs = {**kwargs, 'use_kwargs': {**kwargs, 'fir_design': 'firwin2'}}
+                    raw_def = RawFilter(source, *params.pop('args', ()), **kwargs)
                 elif pipe_type == 'ica':
-                    raw[name] = RawICA(name, raw[source], cache_path,
-                                       ica_path.replace('{raw}', name), log,
-                                       params['session'], params['kwargs'])
-                    if not all(s in sessions for s in raw[name].session):
-                        missing = (repr(s) for s in raw[name].session if s not in sessions)
-                        raise DefinitionError(
-                            f"Raw definition {name!r} references one or more "
-                            f"non-existing sessions {', '.join(missing)}; "
-                            f"existing sessions are: {', '.join(map(repr, sessions))}")
+                    raw_def = RawICA(source, params.pop('session'), **kwargs)
                 elif pipe_type == 'maxwell_filter':
-                    raw[name] = RawMaxwell(name, raw[source], cache_path, log,
-                                           params['kwargs'])
-                elif pipe_type == 'elliptical filter':
-                    raw[name] = RawFilterElliptic(name, raw[source], cache_path,
-                                                  log, *params['args'])
+                    raw_def = RawMaxwell(source, **kwargs)
                 else:
-                    raise ValueError("unknonw raw pipe type=%r" % (pipe_type,))
-                del unassigned[name]
-
-        if len(unassigned) == n_unassigned:
-            raise RuntimeError("unable to resolve preprocessing pipeline "
-                               "definition: %s" % unassigned)
-
-    if not has_source:
-        raise ValueError("Preprocssing pipeline has not raw source")
-    elif has_source != 'raw':
-        raise NotImplementedError("The raw source must be called 'raw'")
+                    raise DefinitionError(f"Raw {key!r}: unknonw type {pipe_type!r}")
+                if params:
+                    raise DefinitionError(f"Unused parameters in raw definition {key!r}: {raw_def}")
+        raw[key] = raw_def
+    n_source = sum(isinstance(p, RawSource) for p in raw.values())
+    if n_source == 0:
+        raise DefinitionError("No RawSource pipe")
+    elif n_source > 1:
+        raise NotImplementedError("More than one RawSource pipes")
+    # link sources
+    for key, pipe in raw.items():
+        pipe._link(key, raw, root, raw_dir, cache_path, log)
+        if isinstance(pipe, RawICA):
+            missing = set(pipe.session).difference(sessions)
+            if missing:
+                raise DefinitionError(f"RawICA {key!r} lists one or more non-exising sessions: {', '.join(missing)}")
+    # check tree
+    is_ok = ['raw']
+    for key, pipe in raw.items():
+        tested = []
+        name = key
+        while True:
+            if name in is_ok:
+                is_ok.append(key)
+                break
+            elif name in tested:
+                raise DefinitionError(f"Unable to resolve source for {name!r} preprocessing pipeline, circular dependency?")
+            tested.append(name)
+            name = raw[name]._source_name
     return raw
 
 
 ###############################################################################
 # Comparing pipelines
 ######################
-
-
-def pipeline_dict(pipeline):
-    return {k: v.as_dict() for k, v in pipeline.items()}
 
 
 def compare_pipelines(old, new, log):
@@ -463,7 +672,6 @@ def compare_pipelines(old, new, log):
     """
     out = {k: 'new' for k in new if k not in old}
     out.update({k: 'removed' for k in old if k not in new})
-    out['raw'] = 'good'
 
     # parameter changes
     to_check = set(new) - set(out)
@@ -472,6 +680,11 @@ def compare_pipelines(old, new, log):
             log.debug("  raw changed: %s %s -> %s", key, old[key], new[key])
             out[key] = 'changed'
             to_check.remove(key)
+
+    # does not need to be checked for source
+    if 'raw' in to_check:
+        to_check.remove('raw')
+        out['raw'] = 'good'
 
     # secondary changes
     while to_check:

@@ -183,9 +183,9 @@ class PairwiseLegend(EelFigure):
         Side length in inches of a virtual square containing each bar.
     trend : bool
         Also include a bar for trends (p<0.1). Default is True.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
-    _name = "ColorGrid"
-
     def __init__(self, size=.3, trend=True, *args, **kwargs):
         if trend:
             levels = [.1, .05, .01, .001]
@@ -323,11 +323,9 @@ class Boxplot(YLimMixin, _SimpleFigure):
     tight : bool
         Use matplotlib's tight_layout to resize all axes to fill the figure
         (default True).
-    title : str
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
-    _name = "Boxplot"
-
     def __init__(self, y, x=None, match=None, sub=None, cells=None, datalabels=None,
                  bottom=None, top=None, ylabel=True, xlabel=True,
                  xticks=True, xtick_delim='\n',
@@ -453,11 +451,9 @@ class Barplot(YLimMixin, _SimpleFigure):
     tight : bool
         Use matplotlib's tight_layout to resize all axes to fill the figure
         (default True).
-    title : str
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
-    _name = "Barplot"
-
     def __init__(self, y, x=None, match=None, sub=None, cells=None, test=True, par=True,
                  corr='Hochberg', trend="'", test_markers=True, ylabel=True,
                  error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
@@ -484,7 +480,7 @@ class Barplot(YLimMixin, _SimpleFigure):
         self._show()
 
 
-class _plt_uv_base(object):
+class _plt_uv_base:
     """Base for barplot and boxplot"""
 
     def __init__(self, ax, ct, xticks, xtick_delim):
@@ -726,11 +722,9 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
     tight : bool
         Use matplotlib's tight_layout to resize all axes to fill the figure
         (default True).
-    title : str
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
-    _name = "Timeplot"
-
     def __init__(self, y, categories, time, match=None, sub=None, ds=None,
                  # data plotting
                  main=np.mean, error='sem', x_jitter=False,
@@ -797,7 +791,7 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
         LegendMixin._fill_toolbar(self, tb)
 
 
-class _ax_timeplot(object):
+class _ax_timeplot:
 
     def __init__(self, ax, y, categories, time, match, colors, hatch, markers,
                  line_plot, error, local_plot, timelabels, x_jitter, bottom,
@@ -976,11 +970,9 @@ class Correlation(EelFigure, LegendMixin):
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
-    title : str
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
-    _name = "Correlation"
-
     def __init__(self, y, x, cat=None, sub=None, ds=None,
                  c=['b', 'r', 'k', 'c', 'm', 'y', 'g'], legend='upper right',
                  xlabel=True, ylabel=True, *args, **kwargs):
@@ -1041,15 +1033,14 @@ class Regression(EelFigure, LegendMixin):
     legend : str | int | 'fig' | None
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
-    ...
+    c : color | sequence of colors
+        Colors.
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
-    title : str
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
-    _name = "Regression"
-
     def __init__(self, y, x, cat=None, match=None, sub=None, ds=None,
                  xlabel=True, ylabel=True, alpha=.2, legend='upper right',
                  c=['#009CFF', '#FF7D26', '#54AF3A', '#FE58C6', '#20F2C3'],
@@ -1174,11 +1165,9 @@ class Histogram(EelFigure):
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
-    title : None | str
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
-    _name = "Histogram"
-
     def __init__(self, y, x=None, match=None, sub=None, ds=None, pooled=True,
                  density=False, test=False, tight=True, title=None, xlabel=True,
                  *args, **kwargs):

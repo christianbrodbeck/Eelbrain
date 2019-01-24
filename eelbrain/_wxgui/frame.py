@@ -14,7 +14,7 @@ FOCUS_UI_UPDATE_FUNC_NAMES = {
 }
 
 
-class EelbrainWindow(object):
+class EelbrainWindow:
     # Frame subclass to support UI Update
 
     def OnWindowIconize(self, event):
@@ -74,6 +74,9 @@ class EelbrainWindow(object):
     def OnUpdateUISetVLim(self, event):
         event.Enable(False)
 
+    def OnUpdateUISetTime(self, event):
+        event.Enable(False)
+
     def OnUpdateUITools(self, event):
         event.Enable(hasattr(self, 'MakeToolsMenu'))
 
@@ -87,11 +90,12 @@ class EelbrainWindow(object):
 class EelbrainFrame(wx.Frame, EelbrainWindow):
     _allow_user_set_title = False
 
-    def __init__(self, *args, **kwargs):
-        wx.Frame.__init__(self, *args, **kwargs)
+    def __init__(self, parent=None, id=wx.ID_ANY, title="", pos=wx.DefaultPosition, *args, **kwargs):
+        wx.Frame.__init__(self, parent, id, title, pos, *args, **kwargs)
         if not IS_OSX:
             from .app import get_app
             self.SetMenuBar(get_app().CreateMenu(self))
+        self._title = self.GetTitle()
 
     def OnClear(self, event):
         raise RuntimeError(str(self))
@@ -129,11 +133,14 @@ class EelbrainFrame(wx.Frame, EelbrainWindow):
     def OnSetMarkedChannels(self, event):
         raise RuntimeError(str(self))
 
+    def OnSetTime(self, event):
+        raise RuntimeError(str(self))
+
     def OnSetWindowTitle(self, event):
-        old = self.GetTitle()
-        dlg = wx.TextEntryDialog(self, f"New title for '{old}':", "Set Window Title", value=old)
+        dlg = wx.TextEntryDialog(self, f"New title for '{self._title}':", "Set Window Title", value=self._title)
         if dlg.ShowModal() == wx.ID_OK:
-            self.SetTitle(dlg.GetValue())
+            self._title = dlg.GetValue()
+            self.SetTitle(self._title)
         dlg.Destroy()
 
     def OnUndo(self, event):
@@ -141,6 +148,9 @@ class EelbrainFrame(wx.Frame, EelbrainWindow):
 
     def OnWindowClose(self, event):
         self.Close()
+
+    def SetTitleSuffix(self, suffix):
+        self.SetTitle(self._title + suffix)
 
 
 class EelbrainDialog(wx.Dialog, EelbrainWindow):

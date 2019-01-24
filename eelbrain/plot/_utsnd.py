@@ -1,41 +1,50 @@
 # -*- coding: utf-8 -*-
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Plot multidimensional uniform time series."""
+import matplotlib as mpl
 import numpy as np
 
+from .._data_obj import Datalist
 from .._names import INTERPOLATE_CHANNELS
 from . import _base
 from ._base import (
+    PlotType,
     EelFigure, PlotData, LayerData, Layout,
     ColorMapMixin, LegendMixin, TimeSlicerEF, TopoMapKey, YLimMixin, XAxisMixin,
-    pop_dict_arg, set_dict_arg)
+    pop_if_dict, set_dict_arg)
 
 
-class _plt_im(object):
+class _plt_im:
 
     _aspect = 'auto'
 
-    def __init__(self, ax, ndvar, overlay, cmaps, vlims, contours, extent,
-                 interpolation, mask=None):
+    def __init__(
+            self,
+            ax: mpl.axes.Axes,
+            layer: LayerData,
+            cmaps: dict,
+            vlims: dict,
+            contours: dict,
+            extent, interpolation, mask=None):
         self.ax = ax
-        im_kwa = _base.find_im_args(ndvar, overlay, vlims, cmaps)
-        self._meas = meas = ndvar.info.get('meas')
-        self._contours = contours.get(meas, None)
-        self._data = self._data_from_ndvar(ndvar)
+        self._meas = layer.y.info.get('meas')
+        self._contours = layer.contour_plot_args(contours)
+        self._data = self._data_from_ndvar(layer.y)
         self._extent = extent
         self._mask = mask
 
-        if im_kwa is not None:
-            self.im = ax.imshow(self._data, origin='lower', aspect=self._aspect,
-                                extent=extent, interpolation=interpolation,
-                                **im_kwa)
-            self._cmap = im_kwa['cmap']
+        if layer.plot_type == PlotType.IMAGE:
+            kwargs = layer.im_plot_args(vlims, cmaps)
+            self.im = ax.imshow(self._data, origin='lower', aspect=self._aspect, extent=extent, interpolation=interpolation, **kwargs)
             if mask is not None:
                 self.im.set_clip_path(mask)
+            self._cmap = kwargs['cmap']
             self.vmin, self.vmax = self.im.get_clim()
-        else:
+        elif layer.plot_type == PlotType.CONTOUR:
             self.im = None
             self.vmin = self.vmax = None
+        else:
+            raise RuntimeError(f"layer of type {layer.plot_type}")
 
         # draw flexible parts
         self._contour_h = None
@@ -59,8 +68,7 @@ class _plt_im(object):
         if not any(vmax >= l >= vmin for l in self._contours['levels']):
             return
 
-        self._contour_h = self.ax.contour(
-            self._data, origin='lower', extent=self._extent, **self._contours)
+        self._contour_h = self.ax.contour(self._data, origin='lower', extent=self._extent, **self._contours)
         if self._mask is not None:
             for c in self._contour_h.collections:
                 c.set_clip_path(self._mask)
@@ -109,14 +117,12 @@ class _plt_im(object):
 
 class _plt_im_array(_plt_im):
 
-    def __init__(self, ax, ndvar, overlay, dimnames, interpolation, vlims,
-                 cmaps, contours):
+    def __init__(self, ax, layer, dimnames, interpolation, vlims, cmaps, contours):
         self._dimnames = dimnames[::-1]
-        xdim, ydim = ndvar.get_dims(dimnames)
+        xdim, ydim = layer.y.get_dims(dimnames)
         xlim = xdim._axis_im_extent()
         ylim = ydim._axis_im_extent()
-        _plt_im.__init__(self, ax, ndvar, overlay, cmaps, vlims, contours,
-                         xlim + ylim, interpolation)
+        _plt_im.__init__(self, ax, layer, cmaps, vlims, contours, xlim + ylim, interpolation)
         ax.set_xlim(xlim)
         ax.set_ylim(ylim)
 
@@ -124,29 +130,20 @@ class _plt_im_array(_plt_im):
         return ndvar.get_data(self._dimnames)
 
 
-class _ax_im_array(object):
+class _ax_im_array:
 
-    def __init__(self, ax, layers, x='time', interpolation=None, vlims={},
-                 cmaps={}, contours={}):
+    def __init__(self, ax, layers, x='time', interpolation=None, vlims={}, cmaps={}, contours={}):
         self.ax = ax
         self.data = layers
-        self.layers = []
-        dimnames = layers[0].get_dimnames((x, None))
-
-        # plot
-        overlay = False
-        for l in layers:
-            p = _plt_im_array(ax, l, overlay, dimnames, interpolation, vlims,
-                              cmaps, contours)
-            self.layers.append(p)
-            overlay = True
+        dimnames = layers.y0.get_dimnames((x, None))
+        self.plots = [_plt_im_array(ax, l, dimnames, interpolation, vlims, cmaps, contours) for l in layers]
 
     @property
     def title(self):
         return self.ax.get_title()
 
     def add_contour(self, meas, level, color):
-        for l in self.layers:
+        for l in self.plots:
             l.add_contour(meas, level, color)
 
     def set_cmap(self, cmap, meas=None):
@@ -160,7 +157,7 @@ class _ax_im_array(object):
             Measurement to which to apply the colormap. With None, it is
             applied to all.
         """
-        for l in self.layers:
+        for l in self.plots:
             l.set_cmap(cmap, meas)
 
     def set_data(self, layers, vlim=False):
@@ -173,12 +170,11 @@ class _ax_im_array(object):
         vlim : bool
             Update vlims for the new data.
         """
-        self.data = layers
-        for l, p in zip(layers, self.layers):
+        for l, p in zip(layers, self.plots):
             p.set_data(l, vlim)
 
     def set_vlim(self, v, vmax=None, meas=None):
-        for l in self.layers:
+        for l in self.plots:
             l.set_vlim(v, vmax, meas)
 
 
@@ -224,8 +220,8 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
-    title : None | string
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
 
     Notes
     -----
@@ -237,13 +233,11 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
      - ``f``: zoom in (reduce x axis range)
      - ``d``: zoom out (increase x axis range)
     """
-    _name = "Array"
-
     def __init__(self, y, xax=None, xlabel=True, ylabel=True,
                  xticklabels=-1, ds=None, sub=None, x='time', vmax=None,
                  vmin=None, cmap=None, axtitle=True, interpolation=None,
                  xlim=None, *args, **kwargs):
-        data = PlotData.from_args(y, (x, None), xax, ds, sub)
+        data = PlotData.from_args(y, (x, None), xax, ds, sub).for_plot(PlotType.IMAGE)
         xdim, ydim = data.dims
         self.plots = []
         ColorMapMixin.__init__(self, data.data, cmap, vmax, vmin, None, self.plots)
@@ -252,9 +246,8 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data)
 
-        for i, ax, layers in zip(range(data.n_plots), self._axes, data.data):
-            p = _ax_im_array(ax, layers, x, interpolation, self._vlims,
-                             self._cmaps, self._contours)
+        for ax, layers in zip(self._axes, data):
+            p = _ax_im_array(ax, layers, x, interpolation, self._vlims, self._cmaps, self._contours)
             self.plots.append(p)
 
         self._configure_xaxis_dim(data.data[0][0].get_dim(xdim), xlabel, xticklabels)
@@ -267,7 +260,7 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
         ColorMapMixin._fill_toolbar(self, tb)
 
 
-class _plt_utsnd(object):
+class _plt_utsnd:
     """
     UTS-plot for a single epoch
 
@@ -285,9 +278,9 @@ class _plt_utsnd(object):
         if sensors is not None and sensors is not True:
             epoch = epoch.sub(sensor=sensors)
 
-        kwargs = layer.line_args(kwargs)
-        color = pop_dict_arg(kwargs, 'color')
-        z_order = pop_dict_arg(kwargs, 'zorder')
+        kwargs = layer.plot_args(kwargs)
+        color = pop_if_dict(kwargs, 'color')
+        z_order = pop_if_dict(kwargs, 'zorder')
         self._dims = (line_dim, xdim)
         x = epoch.get_dim(xdim)._axis_data()
         line_dim_obj = epoch.get_dim(line_dim)
@@ -295,12 +288,14 @@ class _plt_utsnd(object):
         self.lines = ax.plot(x, epoch.get_data((xdim, line_dim)),
                              label=epoch.name, **kwargs)
 
+        # apply line-specific formatting
+        lines = Datalist(self.lines)
         if z_order:
-            set_dict_arg('zorder', z_order, line_dim_obj, self.lines)
+            set_dict_arg('zorder', z_order, line_dim_obj, lines)
 
         if color:
             self.legend_handles = {}
-            set_dict_arg('color', color, line_dim_obj, self.lines, self.legend_handles)
+            set_dict_arg('color', color, line_dim_obj, lines, self.legend_handles)
         else:
             self.legend_handles = {epoch.name: self.lines[0]}
 
@@ -325,7 +320,7 @@ class _plt_utsnd(object):
             line.set_ydata(y)
 
 
-class _ax_butterfly(object):
+class _ax_butterfly:
     """Axis with butterfly plot
 
     Parameters
@@ -367,8 +362,7 @@ class _ax_butterfly(object):
         self.vmin, self.vmax = self.ax.get_ylim()
 
 
-class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
-                EelFigure):
+class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, EelFigure):
     """Butterfly plot for NDVars
 
     Parameters
@@ -416,8 +410,8 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
-    title : None | string
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
 
     Notes
     -----
@@ -440,7 +434,6 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
     """
     _cmaps = None  # for TopoMapKey mixin
     _contours = None
-    _name = "Butterfly"
 
     def __init__(self, y, xax=None, sensors=None, axtitle=True,
                  xlabel=True, ylabel=True, xticklabels=-1, color=None,
@@ -458,9 +451,9 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin,
         self.plots = []
         self._vlims = _base.find_fig_vlims(data.data, vmax, vmin)
         legend_handles = {}
-        for ax, layers in zip(self._axes, data.plot_data):
-            h = _ax_butterfly(ax, layers, xdim, linedim, sensors, color,
-                              linewidth, self._vlims, clip)
+        for i, ax in enumerate(self._axes):
+            layers = data.axis_for_plot(i, PlotType.LINE)
+            h = _ax_butterfly(ax, layers, xdim, linedim, sensors, color, linewidth, self._vlims, clip)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
@@ -505,7 +498,7 @@ class _ax_bfly_epoch:
         mlw : scalar
             Marked sensor plot line width (default 1).
         """
-        self.lines = _plt_utsnd(ax, LayerData(epoch), 'time', 'sensor',
+        self.lines = _plt_utsnd(ax, LayerData(epoch, PlotType.LINE), 'time', 'sensor',
                                 color=color, lw=lw, antialiased=antialiased)
         ax.set_xlim(epoch.time[0], epoch.time[-1])
 

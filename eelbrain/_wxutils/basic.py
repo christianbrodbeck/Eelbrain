@@ -41,10 +41,48 @@ def show_text_dialog(parent, text, caption):
     return dlg
 
 
-class REValidator(wx.PyValidator):
+class FloatValidator(wx.Validator):
+
+    def __init__(self, parent, attr):
+        wx.Validator.__init__(self)
+        self.parent = parent
+        self.attr = attr
+        self.value = None
+
+    def Clone(self):
+        return FloatValidator(self.parent, self.attr)
+
+    def Validate(self, parent):
+        ctrl = self.GetWindow()
+        value = ctrl.GetValue()
+        try:
+            self.value = float(value)
+        except TypeError:
+            msg = wx.MessageDialog(self.parent, f"Can not convert {value!r} to float", "Invalid Entry", wx.OK | wx.ICON_ERROR)
+            msg.ShowModal()
+            msg.Destroy()
+            return False
+        else:
+            return True
+
+    def TransferToWindow(self):
+        ctrl = self.GetWindow()
+        ctrl.SetValue(str(getattr(self.parent, self.attr)))
+        ctrl.SelectAll()
+        return True
+
+    def TransferFromWindow(self):
+        if self.value is None:
+            return False
+        else:
+            setattr(self.parent, self.attr, self.value)
+            return True
+
+
+class REValidator(wx.Validator):
     "Ensure that the value of a text field matches a regular expression"
     def __init__(self, pattern, message, can_be_empty=False):
-        wx.PyValidator.__init__(self)
+        wx.Validator.__init__(self)
         self.pattern = re.compile(pattern)
         self.message = message
         self.can_be_empty = bool(can_be_empty)

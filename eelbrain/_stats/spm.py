@@ -4,7 +4,7 @@ from operator import mul
 
 import numpy as np
 
-from .. import _info
+from .. import _info, fmtxt
 from .._data_obj import (
     Dataset, Factor, Var, NDVar,
     asmodel, asndvar, assub,
@@ -16,7 +16,7 @@ from .testnd import ttest_1samp
 from functools import reduce
 
 
-class LM(object):
+class LM:
     """Fixed effects linear model
 
     Parameters
@@ -122,7 +122,7 @@ class LM(object):
         return {term: s.stop - s.start for term, s in self._p.terms.items()}
 
 
-class LMGroup(object):
+class LMGroup:
     """Group level analysis for linear model :class:`LM` objects
     
     Parameters
@@ -301,6 +301,13 @@ class LMGroup(object):
         for term in self.column_names:
             self.tests[term] = self.column_ttest(term, False, *args, **kwargs)
         self.samples = self.tests[self.column_names[0]].samples
+
+    def info_list(self):
+        l = fmtxt.List("LMGroup info")
+        for effect in self.column_names:
+            res = self.tests[effect]
+            l.add_sublist(effect, [res.info_list()])
+        return l
 
 
 # for backwards compatibility

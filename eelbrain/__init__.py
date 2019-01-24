@@ -28,13 +28,14 @@ from ._mne import (
     complete_source_space, labels_from_clusters, morph_source_space, xhemi,
 )
 from ._ndvar import (
-    Butterworth, concatenate, convolve, cross_correlation, cwt_morlet, dss,
+    Butterworth, concatenate, convolve, correlation_coefficient,
+    cross_correlation, cwt_morlet, dss,
     filter_data, find_intervals, find_peaks, frequency_response, label_operator,
     neighbor_correlation, psd_welch, rename_dim, resample, segment, set_parc,
     set_tmin,
 )
 from ._stats.testnd import NDTest, MultiEffectNDTest
-from ._trf import boosting, BoostingResult
+from ._trf import boosting, BoostingResult, epoch_impulse_predictor
 from ._utils import set_log_level
 from ._utils.com import check_for_update
 
@@ -51,4 +52,4 @@ from . import testnd
 from .fmtxt import Report
 
 
-__version__ = 'dev'
+__version__ = '0.29.dev0'

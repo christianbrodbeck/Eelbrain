@@ -16,13 +16,13 @@ from matplotlib.backends import backend_wx
 from matplotlib.figure import Figure
 import wx
 
-from .._wxutils import ID, Icon
+from .._wxutils import ID, FloatValidator, Icon
 from .app import get_app
 from .frame import EelbrainFrame, EelbrainDialog
 from .help import show_help_txt
 
 
-class DummyMouseEvent(object):
+class DummyMouseEvent:
     "Emulate Matplotlib MouseEvent"
     def __init__(self, x, y):
         self.x = x
@@ -147,16 +147,14 @@ class CanvasFrame(EelbrainFrame):
     _plot_name = "CanvasFrame"
     _allow_user_set_title = True
 
-    def __init__(self, parent=None, title="Matplotlib Frame",
-                 eelfigure=None,
-                 statusbar=True, toolbar=True, mpl_toolbar=False,
-                 *args, **kwargs):
-        EelbrainFrame.__init__(self, parent, -1, title=title)
+    def __init__(self, parent=None, title="Matplotlib Frame", pos=wx.DefaultPosition, eelfigure=None, statusbar=True, toolbar=True, mpl_toolbar=False, **kwargs):
+        EelbrainFrame.__init__(self, parent, -1, title, pos)
+        self._pos_arg = pos
 
         # set up the canvas
         self.sizer = sizer = wx.BoxSizer(wx.VERTICAL)
         self.SetSizer(sizer)
-        self.canvas = FigureCanvasPanel(self, *args, **kwargs)
+        self.canvas = FigureCanvasPanel(self, **kwargs)
         sizer.Add(self.canvas, 1, wx.EXPAND)
         self.figure = self.canvas.figure
 
@@ -204,6 +202,18 @@ class CanvasFrame(EelbrainFrame):
 
     def _fill_toolbar(self, tb):
         pass
+
+    def Show(self, show=True):
+        if self._pos_arg == wx.DefaultPosition:
+            rect = self.GetRect()
+            display_w, display_h = wx.DisplaySize()
+            # print(self.Rect.Right)
+            dx = -rect.Left if rect.Right > display_w else 0
+            dy = -rect.Top + 22 if rect.Bottom > display_h else 0
+            if dx or dy:
+                rect.Offset(dx, dy)
+                self.SetRect(rect)
+        EelbrainFrame.Show(self, show)
 
     def add_mpl_toolbar(self):
         self.toolbar = backend_wx.NavigationToolbar2Wx(self.canvas)
@@ -256,6 +266,12 @@ class CanvasFrame(EelbrainFrame):
             self.figure.savefig(dlg.GetPath())
         dlg.Destroy()
 
+    def OnSetTime(self, event):
+        dlg = SetTimeDialog(self, self._eelfigure.get_time())
+        if dlg.ShowModal() == wx.ID_OK:
+            self._eelfigure.set_time(dlg.time)
+        dlg.Destroy()
+
     def OnSetVLim(self, event):
         if self._eelfigure._can_set_vlim:
             vlim = self._eelfigure.get_vlim()
@@ -286,6 +302,9 @@ class CanvasFrame(EelbrainFrame):
 
     def OnUpdateUISetVLim(self, event):
         event.Enable(self._eelfigure._can_set_xlim or self._eelfigure._can_set_ylim)
+
+    def OnUpdateUISetTime(self, event):
+        event.Enable(self._eelfigure._can_set_time)
 
 
 class TestCanvas(CanvasFrame):
@@ -437,6 +456,38 @@ class AxisLimitsDialog(EelbrainDialog):
         button_sizer.Realize()
 
         # finalize
+        mainsizer.Add(sizer, flag=wx.ALL, border=10)
+        # mainsizer.AddSpacer(10)
+        mainsizer.Add(button_sizer, flag=wx.ALL | wx.ALIGN_RIGHT, border=10)
+        self.SetSizer(mainsizer)
+        mainsizer.Fit(self)
+
+
+class SetTimeDialog(EelbrainDialog):
+
+    def __init__(self, parent, current_time):
+        EelbrainDialog.__init__(self, parent, title="Set Time")
+        self.time = current_time
+
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sizer.Add(wx.StaticText(self, label="New time:"))
+        self.text_ctrl = wx.TextCtrl(self, validator=FloatValidator(self, 'time'))
+        sizer.Add(self.text_ctrl)
+        self.text_ctrl.SetFocus()
+
+        # buttons
+        button_sizer = wx.StdDialogButtonSizer()
+        # ok
+        btn = wx.Button(self, wx.ID_OK)
+        btn.SetDefault()
+        button_sizer.AddButton(btn)
+        # cancel
+        btn = wx.Button(self, wx.ID_CANCEL)
+        button_sizer.AddButton(btn)
+        button_sizer.Realize()
+
+        # finalize
+        mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(sizer, flag=wx.ALL, border=10)
         # mainsizer.AddSpacer(10)
         mainsizer.Add(button_sizer, flag=wx.ALL | wx.ALIGN_RIGHT, border=10)

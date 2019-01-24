@@ -1,6 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from math import floor, log10
-from os import mkdir
+from os import makedirs
 from os.path import basename, dirname, exists, expanduser, isdir, join
 
 import matplotlib as mpl
@@ -36,7 +36,7 @@ for key in mpl.rcParams:
         RC[key] = mpl.rcParams[key] * 0.5
 
 
-class PlotDestDir(object):
+class PlotDestDir:
     """Generate paths for saving plots in figure-specific subdirectories
 
     Parameters
@@ -53,7 +53,7 @@ class PlotDestDir(object):
     def __init__(self, root, pix_fmt='png', vec_fmt='pdf', name=None):
         root = expanduser(root)
         if not exists(root):
-            mkdir(root)
+            makedirs(root)
         else:
             assert isdir(root)
         assert pix_fmt.isalnum()
@@ -80,8 +80,7 @@ class PlotDestDir(object):
 
     def subdir(self, dirname, name=None):
         """PlotDestDir object for a sub-directory"""
-        return PlotDestDir(join(self.root, dirname), self._pix_fmt,
-                           self._vec_fmt, name)
+        return PlotDestDir(join(self.root, dirname), self._pix_fmt, self._vec_fmt, name)
 
     # MARK:  report
 
@@ -117,7 +116,7 @@ def cname(cid):
         return str(cid)
 
 
-class ClusterPlotter(object):
+class ClusterPlotter:
     """Make plots for spatio-temporal clusters
 
     returned by :meth:`MneExperiment.load_result_plotter`

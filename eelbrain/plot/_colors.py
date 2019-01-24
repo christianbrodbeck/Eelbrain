@@ -254,9 +254,9 @@ class ColorGrid(EelFigure):
         ``column_cells``.
     shape : 'box' | 'line'
         Shape for color samples (default 'box').
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
-    _name = "ColorGrid"
-
     def __init__(self, row_cells, column_cells, colors, size=None,
                  column_label_position='top', row_first=None, labels=None,
                  shape='box', *args, **kwargs):
@@ -409,9 +409,9 @@ class ColorList(EelFigure):
     h : 'auto' | scalar
         Height of the figure in inches. If 'auto' (default), the height is
         automatically increased to fit all labels.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
-    _name = "Colors"
-
     def __init__(self, colors, cells=None, labels=None, h='auto', *args,
                  **kwargs):
         if cells is None:
@@ -511,9 +511,9 @@ class ColorBar(EelFigure):
         Where to place ticks and label.
     background : matplotlib color
         Background color (for colormaps including transparency).
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
-    _name = "ColorBar"
-
     def __init__(self, cmap, vmin, vmax=None, label=True, label_position=None,
                  label_rotation=None,
                  clipmin=None, clipmax=None, orientation='horizontal',

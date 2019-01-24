@@ -2,7 +2,10 @@
 __test__ = False
 
 from ._stats.testnd import (
-    t_contrast_rel, corr, ttest_1samp, ttest_ind, ttest_rel, anova, Vector)
+    NDTest, MultiEffectNDTest,
+    t_contrast_rel, corr, ttest_1samp, ttest_ind, ttest_rel, anova,
+    Vector, VectorDifferenceRelated, VectorDifferenceIndependent,
+)
 from ._stats.spm import LM, LMGroup
 
 

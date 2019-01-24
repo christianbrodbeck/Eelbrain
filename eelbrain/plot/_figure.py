@@ -10,11 +10,10 @@ class Figure(EelFigure):
     nax : int (optional)
         Create this many axes (default is to not create any axes).
     ...
+        Also accepts :ref:`general-layout-parameters`.
     autoscale : bool
         Autoscale data axes (default False).
     """
-    _name = "Figure"
-
     def __init__(self, nax=0, *args, **kwargs):
         layout = Layout(nax, 1, 2, *args, **kwargs)
         EelFigure.__init__(self, None, layout)

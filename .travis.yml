@@ -42,6 +42,3 @@ script:
     else
       make test;
     fi;
-  - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then
-      make style-check;
-    fi;

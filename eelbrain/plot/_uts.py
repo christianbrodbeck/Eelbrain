@@ -12,7 +12,7 @@ from .._stats import stats
 from . import _base
 from ._base import (
     EelFigure, PlotData, Layout,
-    LegendMixin, YLimMixin, XAxisMixin, frame_title)
+    LegendMixin, YLimMixin, XAxisMixin, TimeSlicerEF, frame_title)
 from ._colors import colors_for_oneway, find_cell_colors
 from .._colorspaces import oneway_colors
 from functools import reduce
@@ -108,6 +108,8 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         ``True`` (default): normal matplotlib frame;
         ``False``: omit top and right lines;
         ``'t'``: draw spines at x=0 and y=0, common for ERPs.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
 
     Notes
     -----
@@ -117,8 +119,6 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
      - ``r``: y-axis zoom in (reduce y-axis range)
      - ``c``: y-axis zoom out (increase y-axis range)
     """
-    _name = "UTSStat"
-
     def __init__(self, y, x=None, xax=None, match=None, sub=None, ds=None,
                  main=np.mean, error='sem', pool_error=None, legend='upper right',
                  axtitle=True, xlabel=True, ylabel=True, xticklabels=-1,
@@ -257,7 +257,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             enable = not all(p.cluster_plt.clusters is None for p in self._plots)
             self._cluster_btn.Enable(enable)
 
-    def set_clusters(self, clusters, pmax=0.05, ptrend=0.1, color='.7', ax=None):
+    def set_clusters(self, clusters, pmax=0.05, ptrend=None, color='.7', ax=None, y=None, dy=None):
         """Add clusters from a cluster test to the plot (as shaded area).
 
         Parameters
@@ -266,33 +266,35 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             The clusters, as stored in test results' :py:attr:`.clusters`.
             Use ``None`` to remove the clusters plotted on a given axis.
         pmax : scalar
-            Maximum p-value of clusters to plot as solid.
+            Only plot clusters with ``p <= pmax``.
         ptrend : scalar
             Maximum p-value of clusters to plot as trend.
-        color : matplotlib color
-            Color for the clusters.
+        color : matplotlib color | dict
+            Color for the clusters, or a ``{effect: color}`` dict.
         ax : None | int
             Index of the axes to which the clusters are to be added. If None,
             add the clusters to all axes.
+        y : scalar | dict
+            Y level at which to plot clusters (default is boxes spanning the
+            whole y-axis).
+        dy : scalar
+            Height of bars.
         """
-        nax = len(self._axes)
-        if ax is None:
-            axes = range(nax)
-        else:
-            axes = [ax]
+        axes = range(len(self._axes)) if ax is None else [ax]
 
         # update plots
         for ax in axes:
             p = self._plots[ax].cluster_plt
             p.set_clusters(clusters, False)
             p.set_color(color, False)
+            p.set_y(y, dy, False)
             p.set_pmax(pmax, ptrend)
         self.draw()
 
         self._update_ui_cluster_button()
 
 
-class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
+class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     """Value by time plot for UTS data
 
     Parameters
@@ -327,8 +329,8 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
-    title : None | str
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
 
     Notes
     -----
@@ -344,8 +346,6 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
      - ``r``: y-axis zoom in (reduce y-axis range)
      - ``c``: y-axis zoom out (increase y-axis range)
     """
-    _name = "UTS"
-
     def __init__(self, y, xax=None, axtitle=True, ds=None, sub=None,
                  xlabel=True, ylabel=True, xticklabels=-1, bottom=None,
                  top=None, legend='upper right', xlim=None, color=None, *args,
@@ -379,13 +379,14 @@ class UTS(LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         XAxisMixin._init_with_data(self, data.data, xdim, xlim)
         YLimMixin.__init__(self, self.plots)
         LegendMixin.__init__(self, legend, legend_handles)
+        TimeSlicerEF.__init__(self, xdim, data.data)
         self._show()
 
     def _fill_toolbar(self, tb):
         LegendMixin._fill_toolbar(self, tb)
 
 
-class _ax_uts_stat(object):
+class _ax_uts_stat:
 
     def __init__(self, ax, ct, colors, main, error, dev_data, xdim,
                  invy, bottom, top, hline, clusters, pmax, ptrend, clip,
@@ -466,11 +467,9 @@ class UTSClusters(EelFigure):
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
-    title : str
-        Figure title.
+    ...
+        Also accepts :ref:`general-layout-parameters`.
     """
-    _name = "UTSClusters"
-
     def __init__(self, res, pmax=0.05, ptrend=0.1, axtitle=True, cm=None,
                  overlay=False, xticklabels=-1, *args, **kwargs):
         clusters_ = res.clusters
@@ -529,7 +528,7 @@ class UTSClusters(EelFigure):
         self.draw()
 
 
-class _ax_uts(object):
+class _ax_uts:
 
     def __init__(self, ax, layers, xdim, vlims, colors):
         vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
@@ -554,7 +553,7 @@ class _ax_uts(object):
         self.vmin, self.vmax = self.ax.get_ylim()
 
 
-class _plt_uts(object):
+class _plt_uts:
 
     def __init__(self, ax, ndvar, xdim, color):
         y = ndvar.get_data((xdim,))
@@ -615,6 +614,8 @@ class _plt_uts_clusters:
         self.clusters = clusters
         self.color = color
         self.hatch = hatch
+        self.y = None
+        self.dy = None
         self.update()
 
     def set_clusters(self, clusters, update=True):
@@ -633,6 +634,12 @@ class _plt_uts_clusters:
         if update:
             self.update()
 
+    def set_y(self, y, dy, update=True):
+        self.y = y
+        self.dy = dy
+        if update:
+            self.update()
+
     def update(self):
         h = self.h
         while len(h):
@@ -641,6 +648,12 @@ class _plt_uts_clusters:
         clusters = self.clusters
         if clusters is None:
             return
+
+        if self.dy is None:
+            bottom, top = self.ax.get_ylim()
+            dy = (top - bottom) / 40.
+        else:
+            dy = self.dy
 
         p_include = self.ptrend or self.pmax
         for cluster in clusters.itercases():
@@ -652,14 +665,23 @@ class _plt_uts_clusters:
             else:
                 alpha = 0.5
 
-            x0 = cluster['tstart']
-            x1 = cluster['tstop']
-            h = self.ax.axvspan(x0, x1, color=self.color,  # , hatch=self.hatch,
-                                fill=True, alpha=alpha, zorder=-1)
+            tstart = cluster['tstart']
+            tstop = cluster['tstop']
+            effect = cluster.get('effect')
+            color = self.color[effect] if isinstance(self.color, dict) else self.color
+            y = self.y[effect] if isinstance(self.y, dict) else self.y
+            if y is None:
+                h = self.ax.axvspan(
+                    tstart, tstop, color=color, fill=True, alpha=alpha, zorder=-10)
+            else:
+                h = mpl.patches.Rectangle(
+                    (tstart, y - dy / 2.), tstop - tstart, dy, facecolor=color,
+                    linewidth=0, zorder=-10)
+                self.ax.add_patch(h)
             self.h.append(h)
 
 
-class _plt_uts_stat(object):
+class _plt_uts_stat:
 
     def __init__(self, ax, x, y, main, error, dev_data, color, label, clip,
                  error_alpha):

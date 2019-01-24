@@ -25,6 +25,7 @@ from .._data_obj import Factor, NDVar, asndvar, Categorial, Scalar
 from .._wxutils import Icon, ID, REValidator
 from .._utils.parse import POS_FLOAT_PATTERN
 from .._utils.system import IS_OSX
+from ..plot._base import AxisData, LayerData, PlotType
 from ..plot._topo import _ax_topomap
 from .frame import EelbrainDialog
 from .history import Action, FileDocument, FileModel, FileFrame, FileFrameChild
@@ -89,7 +90,7 @@ class Document(FileDocument):
         epochs) and variables describing cases in epochs, used to plot
         condition averages.
     """
-    def __init__(self, path, ds, sysname):
+    def __init__(self, path, ds, sysname, connectivity):
         FileDocument.__init__(self, path)
         self.saved = True
 
@@ -100,7 +101,7 @@ class Document(FileDocument):
         self.accept = np.ones(self.ica.n_components_, bool)
         self.accept[ica.exclude] = False
         self.epochs = epochs = ds['epochs']
-        self.epochs_ndvar = load.fiff.epochs_ndvar(epochs, sysname=sysname)
+        self.epochs_ndvar = load.fiff.epochs_ndvar(epochs, sysname=sysname, connectivity=connectivity)
         self.ds = ds
 
         data = np.dot(ica.mixing_matrix_.T, ica.pca_components_[:ica.n_components_])
@@ -196,7 +197,6 @@ class Frame(FileFrame):
     =========== ============================================================
     """
     _doc_name = 'component selection'
-    _name = 'SelectComponents'
     _title = 'Select Components'
     _wildcard = "ICA fiff file (*-ica.fif)|*.fif"
 
@@ -276,7 +276,8 @@ class Frame(FileFrame):
         axes = tuple(fig.add_subplot(n_v, n_h, i) for i in range(1, n + 1))
         # bgs = tuple(ax.patch)
         for i, ax, c, accept in zip(range(n), axes, self.doc.components, self.doc.accept):
-            _ax_topomap(ax, [c], **TOPO_ARGS)
+            layers = AxisData([LayerData(c, PlotType.IMAGE)])
+            _ax_topomap(ax, layers, **TOPO_ARGS)
             ax.text(0.5, 1, "# %i" % i, ha='center', va='top')
             p = Rectangle((0, 0), 1, 1, color=COLOR[accept], zorder=-1)
             ax.add_patch(p)
@@ -504,8 +505,7 @@ class Frame(FileFrame):
                    title='# %i' % i_comp, axtitle=False, interpolation='none')
 
     def PlotCompTopomap(self, i_comp):
-        plot.Topomap(self.doc.components[i_comp], w=10, sensorlabels='name',
-                     title='# %i' % i_comp)
+        plot.Topomap(self.doc.components[i_comp], sensorlabels='name', axw=9, title=f'# {i_comp}')
 
     def PlotConditionAverages(self, parent):
         "Prompt for model and plot condition averages"
@@ -551,11 +551,10 @@ class Frame(FileFrame):
         if i_epoch == -1:
             self._PlotButterfly(self.doc.epochs.average(), "Epochs Average")
         else:
-            self._PlotButterfly(self.doc.epochs[i_epoch],
-                                "Epoch " + self.doc.epoch_labels[i_epoch],
-                                vmax=2e-12)
+            name = f"Epoch {self.doc.epoch_labels[i_epoch]}"
+            self._PlotButterfly(self.doc.epochs[i_epoch], name)
 
-    def _PlotButterfly(self, epoch, title, vmax=None):
+    def _PlotButterfly(self, epoch, title):
         original = asndvar(epoch)
         clean = asndvar(self.doc.apply(epoch))
         if self.butterfly_baseline == ID.BASELINE_CUSTOM:
@@ -568,14 +567,11 @@ class Frame(FileFrame):
         if original.has_case:
             if isinstance(title, str):
                 title = repeat(title, len(original))
-            if vmax is None:
-                vmax = 1.1 * max(abs(original.min()), original.max())
+            vmax = 1.1 * max(abs(original.min()), original.max())
             for data, title_ in zip(zip(original, clean), title):
-                plot.TopoButterfly(data, vmax=vmax, title=title_,
-                                   axtitle=("Original", "Cleaned"))
+                plot.TopoButterfly(data, vmax=vmax, title=title_, axtitle=("Original", "Cleaned"))
         else:
-            plot.TopoButterfly([original, clean], title=title,
-                               axtitle=("Original", "Cleaned"))
+            plot.TopoButterfly([original, clean], title=title, axtitle=("Original", "Cleaned"))
 
     def ShowSources(self, i_first):
         if self.source_frame:
@@ -607,7 +603,6 @@ class SourceFrame(FileFrameChild):
     =========== ============================================================
     """
     _doc_name = 'component selection'
-    _name = 'ICASources'
     _title = 'ICA Source Time Course'
     _wildcard = "ICA fiff file (*-ica.fif)|*.fif"
 
@@ -694,7 +689,8 @@ class SourceFrame(FileFrameChild):
         for i in range(n_comp_actual):
             i_comp = self.i_first + i
             ax = self.figure.add_axes((left, 1 - (i + 1) * axheight, axwidth, axheight))
-            p = _ax_topomap(ax, [self.doc.components[i_comp]], **TOPO_ARGS)
+            layers = AxisData([LayerData(self.doc.components[i_comp], PlotType.IMAGE)])
+            p = _ax_topomap(ax, layers, **TOPO_ARGS)
             text = ax.text(0, 0.5, "# %i" % i_comp, va='center', ha='right', color='k')
             ax.i = i
             ax.i_comp = i_comp
@@ -816,6 +812,8 @@ class SourceFrame(FileFrameChild):
         elif not event.inaxes:
             return
         elif event.key in 'tT':
+            if event.inaxes.i_comp is None:  # source time course axes
+                return
             self.parent.PlotCompTopomap(event.inaxes.i_comp)
         elif event.key == 'a':
             self.parent.PlotCompSourceArray(event.inaxes.i_comp)
@@ -1018,7 +1016,7 @@ class FindRareEventsDialog(EelbrainDialog):
 class InfoFrame(HTMLFrame):
 
     def OpenURL(self, url):
-        m = re.match('^component:(\d+) epoch:(\d+)$', url)
+        m = re.match(r'^component:(\d+) epoch:(\d+)$', url)
         if m:
             comp, epoch = m.groups()
             self.Parent.GoToComponentEpoch(int(comp), int(epoch))

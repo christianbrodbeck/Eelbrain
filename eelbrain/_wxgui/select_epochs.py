@@ -20,7 +20,7 @@ from scipy.spatial.distance import cdist
 import wx
 
 from .. import _meeg as meeg
-from .. import _report
+from .. import _text
 from .. import load, save, plot, fmtxt
 from .._data_obj import Dataset, Factor, Var, Datalist, asndvar, combine
 from .._info import BAD_CHANNELS
@@ -30,11 +30,11 @@ from .._utils.parse import FLOAT_PATTERN, POS_FLOAT_PATTERN, INT_PATTERN
 from .._utils.numpy_utils import FULL_SLICE, INT_TYPES
 from .._wxutils import Icon, ID, REValidator
 from ..mne_fixes import MNE_EPOCHS
-from ..plot._base import find_axis_params_data, find_fig_vlims, find_fig_cmaps
+from ..plot._base import AxisData, LayerData, PlotType, find_axis_params_data, find_fig_vlims, find_fig_cmaps
 from ..plot._nuts import _plt_bin_nuts
 from ..plot._topo import _ax_topomap
 from ..plot._utsnd import _ax_bfly_epoch
-from .app import get_app, run
+from .app import get_app
 from .frame import EelbrainDialog
 from .mpl_canvas import FigureCanvasPanel
 from .history import Action, FileDocument, FileModel, FileFrame
@@ -371,7 +371,7 @@ class Document(FileDocument):
                                   % (ds.n_cases, self.n_epochs),
                                   "Truncate the file?", wx.OK | wx.CANCEL |
                                   wx.CANCEL_DEFAULT | wx.ICON_WARNING)
-            if cmd == wx.OK:
+            if cmd == wx.ID_OK:
                 ds = ds[:self.n_epochs]
             else:
                 raise RuntimeError("Unequal number of cases")
@@ -383,7 +383,7 @@ class Document(FileDocument):
                                   "accepted)?" % (ds.n_cases, self.n_epochs),
                                   "Load partial file?", wx.OK | wx.CANCEL |
                                   wx.CANCEL_DEFAULT | wx.ICON_WARNING)
-            if cmd == wx.OK:
+            if cmd == wx.ID_OK:
                 n_missing = self.n_epochs - ds.n_cases
                 tail = Dataset(info = ds.info)
                 tail['trigger'] = Var(self.trigger[-n_missing:])
@@ -399,7 +399,7 @@ class Document(FileDocument):
                                   "the data. Ignore?",
                                   "Ignore trigger mismatch?",
                                   wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT)
-            if cmd == wx.OK:
+            if cmd == wx.ID_OK:
                 ds[self.trigger.name] = self.trigger
             else:
                 raise RuntimeError("Trigger mismatch")
@@ -421,7 +421,7 @@ class Document(FileDocument):
                                       "Clear Channel Interpolation "
                                       "Instructions?",
                                       wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT)
-                if cmd == wx.OK:
+                if cmd == wx.ID_OK:
                     for l in interpolate:
                         del l[:]
                 else:
@@ -642,7 +642,6 @@ class Frame(FileFrame):
     =========== ============================================================
     """
     _doc_name = 'epoch selection'
-    _name = "SelectEpochs"
     _title = "Select Epochs"
 
     def __init__(self, parent, model, nplots, topo, mean, vlim, color, lw, mark,
@@ -963,14 +962,14 @@ class Frame(FileFrame):
 
         # rejected epochs
         rejected = np.invert(self.doc.accept.x)
-        sec = doc.add_section(_report.n_of(rejected.sum(), 'epoch') + ' rejected')
+        sec = doc.add_section(_text.n_of(rejected.sum(), 'epoch') + ' rejected')
         if np.any(rejected):
             para = fmtxt.delim_list((fmtxt.Link(epoch, "epoch:%i" % epoch) for
                                      epoch in np.flatnonzero(rejected)))
             sec.add_paragraph(para)
 
         # bad channels
-        heading = _report.n_of(len(self.doc.bad_channels), "bad channel", True)
+        heading = _text.n_of(len(self.doc.bad_channels), "bad channel", True)
         sec = doc.add_section(heading.capitalize())
         if self.doc.bad_channels:
             sec.add_paragraph(', '.join(self.doc.bad_channel_names))
@@ -1454,7 +1453,8 @@ class Frame(FileFrame):
                 mark = [ch for ch in self._mark if ch not in self.doc.bad_channel_names]
             else:
                 mark = None
-            self._topo_plot = _ax_topomap(self._topo_ax, [tseg], mark=mark, **self._topo_kwargs)
+            layers = AxisData([LayerData(tseg, PlotType.IMAGE)])
+            self._topo_plot = _ax_topomap(self._topo_ax, layers, mark=mark, **self._topo_kwargs)
             self._topo_plot_info_str = ""
 
         self.canvas.draw()
@@ -1669,7 +1669,7 @@ class LayoutDialog(EelbrainDialog):
         self.topo = self.topo_ctrl.GetValue()
         self.mean = self.mean_ctrl.GetValue()
         value = self.text.GetValue()
-        m = re.match("(\d+)\s*(\d*)", value)
+        m = re.match(r"(\d+)\s*(\d*)", value)
         if m:
             rows_str, columns_str = m.groups()
             rows = int(rows_str)
@@ -1864,7 +1864,7 @@ class ThresholdDialog(EelbrainDialog):
 class InfoFrame(HTMLFrame):
 
     def OpenURL(self, url):
-        m = re.match('^(\w+):(\w+)$', url)
+        m = re.match(r'^(\w+):(\w+)$', url)
         if m:
             kind, address = m.groups()
             if kind == 'epoch':

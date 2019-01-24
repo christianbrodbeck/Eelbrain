@@ -60,7 +60,7 @@ class RandomizationError(Exception):
     pass
 
 
-class Variable(object):
+class Variable:
     """Variable for a design
 
     Parameters

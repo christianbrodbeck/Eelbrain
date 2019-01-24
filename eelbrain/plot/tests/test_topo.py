@@ -1,9 +1,10 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from nose.tools import eq_, assert_raises
 import numpy as np
+import pytest
 
 from eelbrain import datasets, plot, testnd
 from eelbrain._utils.testing import requires_mne_sample_data
+from eelbrain._wxgui.testing import hide_plots
 
 
 def test_plot_topomap():
@@ -11,65 +12,71 @@ def test_plot_topomap():
     ds = datasets.get_uts(utsnd=True)
     topo = ds.eval('utsnd.summary(time=(0.075, 0.125))')
 
-    p = plot.Topomap(topo, ds=ds, show=False)
+    p = plot.Topomap(topo, ds=ds)
     p.add_contour('V', 1, '#00FF00')
     p.close()
-    p = plot.Topomap(topo, ds=ds, vmax=0.2, w=2, show=False)
+    p = plot.Topomap(topo, ds=ds, vmax=0.2, w=2)
     p.close()
-    p = plot.Topomap(topo, 'A%B', ds=ds, axw=2, show=False)
+    p = plot.Topomap(topo, 'A%B', ds=ds, axw=2)
     p.close()
-    p = plot.Topomap(topo, ds=ds, sensorlabels=None, show=False)
+    p = plot.Topomap(topo, ds=ds, sensorlabels=None)
     p.close()
     index = np.array([1, 3, 2])
-    p = plot.Topomap(topo[index], '.case', nrow=1, axh=2, h=2.4, axtitle=index, show=False)
+    p = plot.Topomap(topo[index], '.case', nrow=1, axh=2, h=2.4, axtitle=index)
     p.close()
 
 
 @requires_mne_sample_data
+@hide_plots
 def test_plot_topomap_mne():
     "Test plot.Topomap with MNE data"
     ds = datasets.get_mne_sample(sub=[0, 1], sns=True)
-    p = plot.Topomap(ds['meg'].summary(time=(.1, .12)), proj='left', show=False)
+    p = plot.Topomap(ds['meg'].summary(time=(.1, .12)), proj='left')
     p.close()
     # grad
     ds = datasets.get_mne_sample(sub=[0], sns='grad')
-    assert_raises(NotImplementedError, plot.Topomap, 'meg.sub(time=.1)', ds=ds, show=False)
+    with pytest.raises(NotImplementedError), pytest.warns(RuntimeWarning):
+        plot.Topomap('meg.sub(time=.1)', ds=ds)
 
 
+@hide_plots
 def test_plot_topo_butterfly():
     "Test plot.TopoButterfly"
     ds = datasets.get_uts(utsnd=True)
-    p = plot.TopoButterfly('utsnd', ds=ds, show=False)
+    p = plot.TopoButterfly('utsnd', ds=ds)
     p.set_time(0.2)
     p.close()
-    p = plot.TopoButterfly('utsnd', ds=ds, vmax=0.2, w=6, show=False)
+    p = plot.TopoButterfly('utsnd', ds=ds, vmax=0.2, w=6)
     p.close()
-    p = plot.TopoButterfly('utsnd', 'A%B', ds=ds, w=6, show=False)
+    p = plot.TopoButterfly('utsnd', 'A%B', ds=ds, w=6)
     p.close()
-    p = plot.TopoButterfly('utsnd', mark=[1, 2], ds=ds, show=False)
+    p = plot.TopoButterfly('utsnd', mark=[1, 2], ds=ds)
     p.close()
-    p = plot.TopoButterfly('utsnd', mark=['1', '2'], ds=ds, show=False)
+    p = plot.TopoButterfly('utsnd', mark=['1', '2'], ds=ds)
     p.set_vlim(2)
-    eq_(p.get_vlim(), (-2.0, 2.0))
+    assert p.get_vlim() == (-2.0, 2.0)
     p.set_ylim(-1, 1)
-    eq_(p.get_ylim(), (-1.0, 1.0))
+    assert p.get_ylim() == (-1.0, 1.0)
     p.close()
 
 
+@hide_plots
 def test_plot_array():
     "Test plot.TopoArray"
     ds = datasets.get_uts(utsnd=True)
-    p = plot.TopoArray('utsnd', ds=ds, show=False)
+    p = plot.TopoArray('utsnd', ds=ds)
+    assert repr(p) == "<TopoArray: utsnd>"
     p.set_topo_t(0, 0.2)
     p.close()
-    p = plot.TopoArray('utsnd', ds=ds, vmax=0.2, w=2, show=False)
+    p = plot.TopoArray('utsnd', ds=ds, vmax=0.2, w=2)
     p.close()
-    p = plot.TopoArray('utsnd', 'A%B', ds=ds, axw=4, show=False)
+    p = plot.TopoArray('utsnd', 'A%B', ds=ds, axw=4)
+    assert repr(p) == "<TopoArray: utsnd ~ A x B>"
     p.close()
 
     # results
-    res = testnd.ttest_ind('utsnd', 'A', ds=ds, pmin=0.05, tstart=0.1,
-                           tstop=0.3, samples=2)
-    p = plot.TopoArray(res, show=False)
+    res = testnd.ttest_ind('utsnd', 'A', ds=ds, pmin=0.05, tstart=0.1, tstop=0.3, samples=2)
+    p = plot.TopoArray(res)
+    assert repr(p) == "<TopoArray: a0, a1, difference>"
     p.set_topo_t(0, 0.)
     p.close()

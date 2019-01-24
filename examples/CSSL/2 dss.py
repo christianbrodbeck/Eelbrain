@@ -1,4 +1,4 @@
-# skip test
+# skip test: data unavailable
 """Compute DSS on Alex's Toolbox demo data"""
 from eelbrain import *
 

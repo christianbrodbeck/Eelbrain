@@ -15,7 +15,7 @@ import operator
 
 import mne
 import numpy as np
-from scipy import linalg, signal
+from scipy import linalg, ndimage, signal, stats
 
 from . import _info, mne_fixes
 from ._data_obj import (
@@ -26,6 +26,35 @@ from ._info import merge_info
 from ._stats.connectivity import Connectivity
 from ._stats.connectivity import find_peaks as _find_peaks
 from ._trf._boosting_opt import l1
+from ._utils.numpy_utils import newaxis
+
+
+class Alignement:
+
+    def __init__(self, y, x, last=None):
+        shared = set(x.dimnames).intersection(y.dimnames)
+        shared_dims = list(shared)
+        if isinstance(last, str):
+            if last not in shared:
+                raise ValueError(f'Dimension {last!r} missing but required')
+            shared_dims.remove(last)
+            shared_dims.append(last)
+        elif last is None:
+            pass
+        else:
+            raise TypeError(f'last={last!r}')
+
+        # determine dimensions
+        n_shared = len(shared_dims)
+        x_dims = x.get_dimnames(last=shared_dims)
+        y_dims = y.get_dimnames(last=shared_dims)
+
+        self.x_all = x_dims
+        self.x_only = x_dims[:-n_shared]
+        self.y_all = y_dims
+        self.y_only = y_dims[:-n_shared]
+        self.shared = shared_dims
+        self.all = self.y_only + x_dims
 
 
 def concatenate(ndvars, dim='time', name=None, tmin=0, info=None, ravel=None):
@@ -87,10 +116,8 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None, ravel=None):
         dim = Case(n)
 
     if isinstance(dim, Dimension):
-        dim_names = (ndvar.dimnames[:ndvar.has_case] + (np.newaxis,) +
-                     ndvar.dimnames[ndvar.has_case:])
-        x = np.concatenate([v.get_data(dim_names) for v in ndvars],
-                           int(ndvar.has_case))
+        dim_names = ndvar.dimnames[:ndvar.has_case] + (newaxis,) + ndvar.dimnames[ndvar.has_case:]
+        x = np.concatenate([v.get_data(dim_names) for v in ndvars], int(ndvar.has_case))
         dims = ndvar.dims[:ndvar.has_case] + (dim,) + ndvar.dims[ndvar.has_case:]
     else:
         axis = ndvar.get_axis(dim)
@@ -144,7 +171,7 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None, ravel=None):
     return NDVar(x, dims, info, name or ndvar.name)
 
 
-def convolve(h, x):
+def convolve(h, x, ds=None):
     """Convolve ``h`` and ``x`` along the time dimension
 
     Parameters
@@ -153,87 +180,139 @@ def convolve(h, x):
         Kernel.
     x : NDVar | sequence of NDVar
         Data to convolve, corresponding to ``h``.
+    ds : Dataset
+        If provided, elements of ``x`` can be specified as :class:`str`.
 
     Returns
     -------
     y : NDVar
         Convolution, with same time dimension as ``x``.
     """
-    if isinstance(h, NDVar):
-        if not isinstance(x, NDVar):
-            raise TypeError("If h is an NDVar, x also needs to be an NDVar "
-                            "(got x=%r)" % (x,))
-
-        if h.ndim == 1:
-            ht = h.get_dim('time')
-            hdim = None
-        elif h.ndim == 2:
-            hdim, ht = h.get_dims((None, 'time'))
-        else:
-            raise NotImplementedError("h must be 1 or 2 dimensional, got h=%r" % h)
-
-        if x.ndim == 1:
-            xt = x.get_dim('time')
-            xdim = None
-        elif x.ndim == 2:
-            xdim, xt = x.get_dims((None, 'time'))
-            if xdim != hdim:
-                raise ValueError("h %s dimension and x %s dimension do not "
-                                 "match" % (hdim.name, xdim.name))
-        else:
-            raise NotImplementedError("x must be 1 or 2 dimensional, got x=%r" % h)
-
-        if ht.tstep != xt.tstep:
-            raise ValueError(
-                "h and x need to have same time-step (got h.time.tstep=%s, "
-                "x.time.tstep=%s)" % (ht.tstep, xt.tstep))
-
-        if h.ndim == 1:
-            data = np.convolve(h.x, x.x)
-            dims = (xt,)
-        elif x.ndim == 1:
-            xdata = x.get_data('time')
-            data = np.array(tuple(np.convolve(h_i, xdata) for h_i in
-                                  h.get_data((hdim.name, 'time'))))
-            dims = (hdim, xt)
-        else:
-            data = None
-            for h_i, x_i in zip(h.get_data((hdim.name, 'time')),
-                                 x.get_data((xdim.name, 'time'))):
-                if data is None:
-                    data = np.convolve(h_i, x_i)
-                else:
-                    data += np.convolve(h_i, x_i)
-            dims = (xt,)
-
-        # full convolution -> decide which slice of data corresponds to x
-        # i.e., if kernel tmin is positive, add zero-padding
-        i_start = -int(round(ht.tmin / ht.tstep))
-        i_stop = i_start + xt.nsamples
-        if i_start < 0:
-            if data.ndim == 2:
-                pad = np.zeros((len(hdim), -i_start))
-            else:
-                pad = np.zeros(-i_start)
-            data = np.concatenate((pad, data[..., :i_stop]), -1)
-        elif i_stop > data.shape[-1]:
-            if data.ndim == 2:
-                pad = np.zeros((len(hdim), i_stop - data.shape[-1]))
-            else:
-                pad = np.zeros(i_stop - data.shape[-1])
-            data = np.concatenate((data[..., i_start:], pad), -1)
-        else:
-            data = data[..., i_start: i_stop]
-
-        return NDVar(data, dims, x.info.copy(), x.name)
+    if isinstance(x, str):
+        x = asndvar(x, ds=ds)
+        is_single = True
+    elif isinstance(x, NDVar):
+        is_single = True
     else:
+        x = [asndvar(xi, ds=ds) for xi in x]
+        is_single = False
+
+    if isinstance(h, NDVar) != is_single:
+        raise TypeError(f"h={h}: needs to match x")
+
+    if not is_single:
+        assert len(h) == len(x)
         out = None
         for h_, x_ in zip(h, x):
+            y_i = convolve(h_, x_)
             if out is None:
-                out = convolve(h_, x_)
+                out = y_i
             else:
-                out += convolve(h_, x_)
+                out += y_i
         return out
+
+    x_time = x.get_dim('time')
+    h_time = h.get_dim('time')
+    if x_time.tstep != h_time.tstep:
+        raise ValueError(f"h={h}: incompatible time axis (unequel tstep; x: {x_time.tstep} h: {h_time.tstep})")
+
+    # initialize output
+    a = Alignement(h, x, 'time')
+    # check alignment
+    shared_dims = x.get_dims(a.shared[:-1])
+    assert shared_dims == h.get_dims(a.shared[:-1])
+    # output shape
+    x_only_shape = tuple(len(d) for d in x.get_dims(a.x_only))
+    h_only_shape = tuple(len(d) for d in h.get_dims(a.y_only))
+    shared_shape = tuple(len(d) for d in shared_dims)
+    out_shape = x_only_shape + h_only_shape + (x_time.nsamples,)
+    out = np.zeros(out_shape)
+    # reshape input
+    n_x_only = reduce(operator.mul, x_only_shape, 1)
+    n_h_only = reduce(operator.mul, h_only_shape, 1)
+    n_shared = reduce(operator.mul, shared_shape, 1)
+    x_flat = x.get_data(a.x_all).reshape((n_x_only, n_shared, x_time.nsamples))
+    h_flat = h.get_data(a.y_all).reshape((n_h_only, n_shared, len(h_time)))
+    out_flat = out.reshape((n_x_only, n_h_only, x_time.nsamples))
+    # cropping
+    h_i_start = int(round(h_time.tmin / h_time.tstep))
+    h_i_max = int(round(h_time.tmax / h_time.tstep))
+    out_index = slice(max(0, h_i_start), x_time.nsamples + min(0, h_i_max))
+    conv_index = slice(max(0, -h_i_start), x_time.nsamples - h_i_start)
+
+    for ix, xi in enumerate(x_flat):
+        for ih, hi in enumerate(h_flat):
+            for x_, h_ in zip(xi, hi):
+                out_flat[ix, ih, out_index] += signal.convolve(h_, x_)[conv_index]
+
+    dims = x.get_dims(a.x_only) + h.get_dims(a.y_only) + (x_time,)
+    return NDVar(out, dims, x.info.copy(), x.name)
+
+
+def correlation_coefficient(x, y, dim=None, name=None):
+    """Correlation between two NDVars along a specific dimension
+
+    Parameters
+    ----------
+    x : NDVar
+        First variable.
+    y : NDVar
+        Second variable.
+    dim : str | tuple of str
+        Dimension over which to compute correlation (by default all shared
+        dimensions).
+    name : str
+        Name for output variable.
+
+    Returns
+    -------
+    correlation_coefficient : float | NDVar
+        Correlation coefficient over ``dim``. Any other dimensions in ``x`` and
+        ``y`` are retained in the output.
+    """
+    if dim is None:
+        shared = set(x.dimnames).intersection(y.dimnames)
+        if not shared:
+            raise ValueError("%r and %r have no shared dimensions" % (x, y))
+        dims = list(shared)
+    elif isinstance(dim, str):
+        dims = [dim]
+    else:
+        dims = list(dim)
+    ndims = len(dims)
+
+    # determine dimensions
+    assert x.get_dims(dims) == y.get_dims(dims)
+    x_dimnames = x.get_dimnames(last=dims)[:-ndims]
+    y_dimnames = y.get_dimnames(last=dims)[:-ndims]
+    shared_dims = [dim for dim in x_dimnames if dim in y_dimnames]
+    assert x.get_dims(shared_dims) == y.get_dims(shared_dims)
+    x_only = [dim for dim in x_dimnames if dim not in shared_dims]
+    y_only = [dim for dim in y_dimnames if dim not in shared_dims]
+
+    # align axes
+    x_order = shared_dims + x_only + [newaxis] * len(y_only) + dims
+    y_order = shared_dims + [newaxis] * len(x_only) + y_only + dims
+    x_data = x.get_data(x_order)
+    y_data = y.get_data(y_order)
+    # ravel axes over which to aggregate
+    x_data = x_data.reshape(x_data.shape[:-ndims] + (-1,))
+    y_data = y_data.reshape(y_data.shape[:-ndims] + (-1,))
+
+    # correlation coefficient
+    z_x = stats.zscore(x_data, -1, 1)
+    z_y = stats.zscore(y_data, -1, 1)
+    z_y *= z_x
+    out = z_y.sum(-1)
+    out /= z_y.shape[-1] - 1
+
+    if np.isscalar(out):
+        return float(out)
+    isnan = np.isnan(out)
+    if np.any(isnan):
+        np.place(out, isnan, 0)
+    dims = x.get_dims(shared_dims + x_only) + y.get_dims(y_only)
+    return NDVar(out, dims, x.info.copy(), name or x.name)
 
 
 def cross_correlation(in1, in2, name="{in1} * {in2}"):
@@ -383,6 +462,15 @@ def dss(ndvar):
     to_dss = NDVar(dss_mat, (dss_dim, data_dim), {}, 'to dss')
     from_dss = NDVar(linalg.inv(dss_mat), (data_dim, dss_dim), {}, 'from dss')
     return to_dss, from_dss
+
+
+def erode(ndvar, dim):
+    ax = ndvar.get_axis(dim)
+    struct = np.zeros((3,) * ndvar.ndim, bool)
+    index = tuple(slice(None) if i == ax else 1 for i in range(ndvar.ndim))
+    struct[index] = True
+    x = ndimage.binary_erosion(ndvar.x, struct)
+    return NDVar(x, ndvar.dims, ndvar.info.copy(), ndvar.name)
 
 
 def filter_data(ndvar, l_freq, h_freq, filter_length='auto',
@@ -720,37 +808,45 @@ def rename_dim(ndvar, old_name, new_name):
     return NDVar(ndvar.x, dims, ndvar.info.copy(), ndvar.name)
 
 
-def resample(ndvar, sfreq, npad=100, window='none', name=None):
-    """Resample an NDVar along the 'time' dimension with appropriate filter
+def resample(ndvar, sfreq, npad='auto', window=None, pad='edge', name=None):
+    """Resample an NDVar along the time dimension
 
     Parameters
     ----------
     ndvar : NDVar
-        Ndvar which should be resampled.
+        Input data.
     sfreq : scalar
         New sampling frequency.
-    npad : int
-        Number of samples to use at the beginning and end for padding.
+    npad : int | 'auto'
+        Number of samples for padding at the beginning and end (default is
+        determined automatically).
     window : str | tuple
-        See :func:`scipy.signal.resample` for description.
+        Window applied to the signal in the fourier domain (default is no
+        window; see :func:`scipy.signal.resample`).
+    pad : str
+        Padding method (default ``'edge'``; see :func:`numpy.pad` ``mode``
+        parameter).
     name : str
         Name for the new NDVar (default is ``ndvar.name``).
 
     Notes
     -----
-    By default (``window='none'``) this function uses
-    :func:`scipy.signal.resample` directly. If ``window`` is set to a different
-    value, the more sophisticated but slower :func:`mne.filter.resample` is
-    used.
+    If padding is enabled, this function uses :func:`mne.filter.resample`. If
+    not, :func:`scipy.signal.resample` is used directly.
 
     This function can be very slow when the number of time samples is uneven
-    (see :func:`scipy.signal.resample`).
+    (see :func:`scipy.signal.resample`). Using ``npad='auto'`` (default) ensures
+    an optimal number of samples.
     """
     if name is None:
         name = ndvar.name
     axis = ndvar.get_axis('time')
-    if window == 'none':
-        new_tstep = 1. / sfreq
+    new_tstep = 1. / sfreq
+    if npad:
+        old_sfreq = 1.0 / ndvar.time.tstep
+        x = mne.filter.resample(ndvar.x, sfreq, old_sfreq, npad, axis, window, pad=pad)
+        new_num = x.shape[axis]
+    else:
         new_num = int(floor((ndvar.time.tstop - ndvar.time.tmin) / new_tstep))
         # crop input data
         new_duration = new_tstep * new_num
@@ -760,21 +856,14 @@ def resample(ndvar, sfreq, npad=100, window='none', name=None):
         else:
             idx = (slice(None),) * axis + (slice(None, old_num),)
             x = ndvar.x[idx]
-        # resamples
-        x = signal.resample(x, new_num, axis=axis)
-        dims = (ndvar.dims[:axis] +
-                (UTS(ndvar.time.tmin, new_tstep, new_num),) +
-                ndvar.dims[axis + 1:])
-        return NDVar(x, dims, ndvar.info.copy(), name)
-    old_sfreq = 1.0 / ndvar.time.tstep
-    x = mne.filter.resample(ndvar.x, sfreq, old_sfreq, npad, axis, window)
-    new_tstep = 1.0 / sfreq
-    time = UTS(ndvar.time.tmin, new_tstep, x.shape[axis])
-    dims = ndvar.dims[:axis] + (time,) + ndvar.dims[axis + 1:]
+        # resample
+        x = signal.resample(x, new_num, axis=axis, window=window)
+    time_dim = UTS(ndvar.time.tmin, new_tstep, new_num)
+    dims = (*ndvar.dims[:axis], time_dim, *ndvar.dims[axis + 1:])
     return NDVar(x, dims, ndvar.info, name)
 
 
-class Filter(object):
+class Filter:
     "Filter and downsample"
     def __init__(self, sfreq=None):
         self.sfreq = sfreq
@@ -927,11 +1016,9 @@ def set_parc(ndvar, parc, dim='source'):
     """
     axis = ndvar.get_axis(dim)
     old = ndvar.dims[axis]
-    new = SourceSpace(old.vertices, old.subject, old.src, old.subjects_dir,
-                      parc, old._subgraph(), dim)
-    dims = list(ndvar.dims)
-    dims[axis] = new
-    return NDVar(ndvar.x, dims, ndvar.info.copy(), ndvar.name)
+    new = old._copy(parc=parc)
+    dims = (*ndvar.dims[:axis], new, *ndvar.dims[axis + 1:])
+    return NDVar(ndvar.x, dims, ndvar.info, ndvar.name)
 
 
 def set_tmin(ndvar, tmin=0.):

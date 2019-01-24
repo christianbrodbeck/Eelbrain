@@ -30,11 +30,13 @@ needs_sphinx = '1.4.3'
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.autosummary',  # default
-              'sphinx.ext.todo', 'sphinx.ext.imgmath',  # default
-              'sphinx.ext.intersphinx',  # http://sphinx.pocoo.org/ext/intersphinx.html
-              'numpydoc',  # https://github.com/numpy/numpy/tree/master/doc/sphinxext
-              ]
+extensions = [
+    'sphinx.ext.autodoc', 'sphinx.ext.autosummary',  # default
+    'sphinx.ext.todo', 'sphinx.ext.imgmath',  # default
+    'sphinx.ext.intersphinx',  # http://sphinx.pocoo.org/ext/intersphinx.html
+    'numpydoc',  # https://github.com/numpy/numpy/tree/master/doc/sphinxext
+    'sphinxcontrib.bibtex',  # https://sphinxcontrib-bibtex.readthedocs.io
+]
 # enable to  have all methods documented on the same page as a class:
 # autodoc_default_flags=['inherited-members']
 autosummary_generate = True
@@ -106,7 +108,8 @@ suppress_warnings = ['image.nonlocal_uri']
 # -- Custom Options -----------------------------------------------------------
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/2.7', None),
+    'python': ('https://docs.python.org/3.6', None),
+    'imageio': ('https://imageio.readthedocs.io/en/stable/', None),
     'mne': ('http://martinos.org/mne/stable', None),
     'matplotlib': ('https://matplotlib.org', None),
     'nilearn': ('https://nilearn.github.io', None),

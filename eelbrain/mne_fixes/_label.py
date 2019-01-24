@@ -10,12 +10,11 @@ from mne.utils import get_subjects_dir, logger, verbose
 from mne.label import _get_annot_fname, _n_colors, _write_annot
 import nibabel
 
-if LooseVersion(nibabel.__version__) >= LooseVersion('2.3.0'):
+if LooseVersion(nibabel.__version__) == LooseVersion('2.3.0'):
     raise ImportError(
         f"The installed version of nibabel ({nibabel.__version__}) is "
-        f"incompatible with earlier versions (see "
-        f"https://github.com/nipy/nibabel/issues/649). Please install a "
-        f"nibabel version prior to 2.3.")
+        f"defective (see https://github.com/nipy/nibabel/issues/649). Please "
+        f"install a newer (or older) version.")
 
 
 @verbose

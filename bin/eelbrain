@@ -3,15 +3,27 @@
 # when installed through setup.py, the first line is replaced with the normal,
 # non-framework build python. Replace bin/python after ENV with::
 # #!/Users/christian/anaconda/envs/ENV/python.app/Contents/MacOS/python
+from argparse import ArgumentParser
 import os
 import sys
 
 from traits.trait_base import ETSConfig
 from IPython import start_ipython
 from IPython.paths import get_ipython_dir
+import eelbrain
+
+
+parser = ArgumentParser('eelbrain', description='Start iPython with eelbrain profile')
+parser.add_argument('--version', action='version', version=eelbrain.__version__)
+parser.add_argument('--debug-warnings', action='store_true', help='Print tracebacks for warnings')
 
 
 if __name__ == '__main__':
+    args = parser.parse_args()
+    del sys.argv[1:]
+    if args.debug_warnings:
+        from eelbrain._utils.debug import warn_with_traceback
+        warn_with_traceback()
 
     # set ETS toolkit before it is launched
     ETSConfig.toolkit = 'wx'
