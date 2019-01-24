@@ -13,7 +13,7 @@ from eelbrain._exceptions import IncompleteModel
 from eelbrain._stats import glm
 from eelbrain._stats.permutation import permute_order
 from eelbrain._utils.r_bridge import r, r_require, r_warning_filter
-from eelbrain._utils.testing import requires_r_ez
+from eelbrain.testing import requires_r_ez
 
 
 @nottest

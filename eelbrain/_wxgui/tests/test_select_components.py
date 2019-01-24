@@ -3,7 +3,7 @@ from os.path import join
 
 import mne
 from eelbrain import gui, load
-from eelbrain._utils.testing import gui_test, TempDir
+from eelbrain.testing import gui_test, TempDir
 
 
 @gui_test

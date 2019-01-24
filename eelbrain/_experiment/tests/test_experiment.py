@@ -2,7 +2,7 @@
 from itertools import product
 import os
 
-from ..._utils.testing import TempDir
+from eelbrain.testing import TempDir
 from eelbrain._experiment import TreeModel, FileTree
 
 

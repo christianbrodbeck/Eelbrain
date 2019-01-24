@@ -1,5 +1,5 @@
 from eelbrain.pipeline import *
-from eelbrain._utils.testing import path
+from eelbrain.testing import path
 
 
 class Experiment(MneExperiment):

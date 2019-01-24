@@ -3,7 +3,7 @@ from nose.tools import eq_, ok_, assert_is_instance, assert_raises
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from eelbrain._utils.testing import assert_dataobj_equal
+from eelbrain.testing import assert_dataobj_equal
 from eelbrain import (
     Categorial, Factor, NDVar, Scalar, UTS, Var, datasets, table, combine)
 

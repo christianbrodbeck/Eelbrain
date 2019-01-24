@@ -14,7 +14,7 @@ from eelbrain import (
     concatenate, labels_from_clusters, morph_source_space, set_parc, xhemi)
 from eelbrain._data_obj import SourceSpace, asndvar, _matrix_graph
 from eelbrain._mne import shift_mne_epoch_trigger, combination_label
-from eelbrain._utils.testing import requires_mne_sample_data
+from eelbrain.testing import requires_mne_sample_data
 from eelbrain.tests.test_data import assert_dataobj_equal
 
 data_dir = mne.datasets.testing.data_path()

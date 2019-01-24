@@ -4,7 +4,7 @@ import pytest
 from eelbrain import datasets, plot
 from eelbrain.plot import _base
 from eelbrain.plot._base import Layout, ImLayout
-from eelbrain._utils.testing import skip_on_windows
+from eelbrain.testing import skip_on_windows
 from eelbrain._wxgui.testing import hide_plots
 
 

@@ -8,7 +8,7 @@ import pytest
 from eelbrain import Dataset, Factor, Var
 from eelbrain._exceptions import DefinitionError
 from eelbrain.pipeline import *
-from eelbrain._utils.testing import assert_dataobj_equal, TempDir
+from eelbrain.testing import assert_dataobj_equal, TempDir
 
 
 SUBJECT = 'CheeseMonger'

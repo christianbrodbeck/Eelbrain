@@ -9,7 +9,7 @@ import numpy as np
 
 from eelbrain import *
 from eelbrain._exceptions import DefinitionError
-from eelbrain._utils.testing import (
+from eelbrain.testing import (
     TempDir, assert_dataobj_equal, import_attr, requires_mne_sample_data,
 )
 

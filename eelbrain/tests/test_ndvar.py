@@ -9,7 +9,7 @@ from eelbrain import (
     concatenate, convolve, correlation_coefficient, cross_correlation,
     cwt_morlet, find_intervals, find_peaks, frequency_response, psd_welch,
 )
-from eelbrain._utils.testing import assert_dataobj_equal
+from eelbrain.testing import assert_dataobj_equal
 
 
 def test_concatenate():

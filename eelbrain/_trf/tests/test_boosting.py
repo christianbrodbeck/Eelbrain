@@ -15,7 +15,7 @@ from eelbrain import (
     boosting, convolve, correlation_coefficient, epoch_impulse_predictor,
 )
 
-from eelbrain._utils.testing import assert_dataobj_equal
+from eelbrain.testing import assert_dataobj_equal
 from eelbrain._trf._boosting import boost, evaluate_kernel
 from eelbrain._trf._boosting import convolve as boosting_convolve
 

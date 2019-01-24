@@ -6,7 +6,7 @@ from nose.tools import eq_, ok_, assert_false
 from numpy.testing import assert_array_equal
 
 from eelbrain import gui, load, set_log_level
-from eelbrain._utils.testing import TempDir, gui_test
+from eelbrain.testing import TempDir, gui_test
 from eelbrain._wxgui.select_epochs import Document, Model
 
 

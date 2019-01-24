@@ -31,7 +31,7 @@ from eelbrain._data_obj import (
 from eelbrain._exceptions import DimensionMismatchError
 from eelbrain._stats.stats import rms
 from eelbrain._utils.numpy_utils import newaxis
-from eelbrain._utils.testing import (
+from eelbrain.testing import (
     assert_dataobj_equal, assert_dataset_equal, assert_source_space_equal,
     requires_mne_sample_data, skip_on_windows)
 

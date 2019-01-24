@@ -6,7 +6,7 @@ import pytest
 
 from eelbrain import *
 from eelbrain.pipeline import *
-from eelbrain._utils.testing import TempDir, path, requires_mne_sample_data
+from eelbrain.testing import TempDir, path, requires_mne_sample_data
 
 
 class Experiment(MneExperiment):

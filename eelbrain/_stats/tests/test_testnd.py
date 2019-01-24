@@ -18,7 +18,7 @@ from eelbrain._exceptions import ZeroVariance
 from eelbrain._stats.testnd import (Connectivity, NDPermutationDistribution, label_clusters,
                                     _MergedTemporalClusterDist, find_peaks)
 from eelbrain._utils.system import IS_WINDOWS
-from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,
+from eelbrain.testing import (assert_dataobj_equal, assert_dataset_equal,
                                      requires_mne_sample_data)
 
 

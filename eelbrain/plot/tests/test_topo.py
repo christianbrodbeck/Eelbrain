@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 
 from eelbrain import datasets, plot, testnd
-from eelbrain._utils.testing import requires_mne_sample_data
+from eelbrain.testing import requires_mne_sample_data
 from eelbrain._wxgui.testing import hide_plots
 
 

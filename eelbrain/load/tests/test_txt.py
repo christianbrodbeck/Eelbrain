@@ -8,7 +8,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from eelbrain import Dataset, datasets, load
-from eelbrain._utils.testing import file_path
+from eelbrain.testing import file_path
 
 from ...tests.test_data import assert_dataobj_equal, assert_dataset_equal
 
