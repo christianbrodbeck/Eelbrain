@@ -1863,7 +1863,7 @@ class Vector(NDDifferenceTest):
             cdist.add_original(v_mean_norm.x if v_mean.ndim > 1 else v_mean_norm)
 
         if cdist.do_permutation:
-            iterator = random_seeds(samples)
+            iterator = random_seeds(n_samples)
             vector_perm = partial(self._vector_perm, use_t2_stat=use_t2_stat)
             run_permutation(vector_perm, cdist, iterator)
 
