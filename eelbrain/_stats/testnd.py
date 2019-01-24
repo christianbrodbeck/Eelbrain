@@ -2009,7 +2009,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
         v_mean = difference.mean('case')
         v_mean_norm = v_mean.norm(v_dim)
         if use_t2_stat:
-            t2_map = self._vector_t2_map(ct.y)
+            t2_map = self._vector_t2_map(difference)
             cdist.add_original(t2_map.x if v_mean.ndim > 1 else t2_map)
         else:
             cdist.add_original(v_mean_norm.x if v_mean.ndim > 1 else v_mean_norm)
