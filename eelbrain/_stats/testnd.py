@@ -2007,8 +2007,9 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
         difference = y1 - y0
         difference.name = 'difference'
 
+        n_samples, samples = _resample_params(n, samples)
         cdist = NDPermutationDistribution(
-            difference, samples, vmin, tfce, 1, 'norm', 'Vector test (related)',
+            difference, n_samples, vmin, tfce, 1, 'norm', 'Vector test (related)',
             tstart, tstop, criteria, parc, force_permutation)
 
         v_dim = difference.dimnames[cdist._vector_ax + 1]
@@ -2026,7 +2027,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
             self.t2 = None
 
         if cdist.do_permutation:
-            iterator = random_seeds(samples)
+            iterator = random_seeds(n_samples)
             vector_perm = partial(self._vector_perm, use_t2_stat=use_t2_stat)
             run_permutation(vector_perm, cdist, iterator)
 
