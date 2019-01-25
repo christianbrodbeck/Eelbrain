@@ -2567,7 +2567,6 @@ class MneExperiment(FileTree):
             ds.info['raw-mtime'] = raw_mtime
             ds.info['subject'] = subject
             ds.info['session'] = self.get('session')
-            ds.info['visit'] = self.get('visit')
 
             # add edf
             if self.has_edf[subject]:
@@ -2584,11 +2583,13 @@ class MneExperiment(FileTree):
             with self._temporary_state:
                 raw = self.load_raw(add_bads, raw=data_raw)
         elif not isinstance(data_raw, bool):
-            raise TypeError("data_raw=%s; needs to be str or bool"
-                            % repr(data_raw))
+            raise TypeError(f"data_raw={data_raw!r}; needs to be str or bool")
 
         if data_raw is not False:
             ds.info['raw'] = raw
+
+        if len(self._visits) > 1:
+            ds.info['visit'] = self.get('visit')
 
         if self.trigger_shift:
             if isinstance(self.trigger_shift, dict):
