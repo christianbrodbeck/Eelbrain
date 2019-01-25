@@ -156,7 +156,7 @@ def test_mne_experiment_templates():
     assert e._glob_pattern('test-file', True, group='all') == os.path.join(tempdir, 'eelbrain-cache', 'test', '* all', '* *.pickled')
 
 
-def test_test_experiment():
+def test_test_experiment(root_dir):
     "Test event labeling with the EventExperiment subclass of MneExperiment"
     e = EventExperiment()
 
@@ -179,6 +179,17 @@ def test_test_experiment():
     assert e._epochs['cheese'].tmin == -0.2
     assert e._epochs['cheese-leicester'].tmin == -0.1
     assert e._epochs['cheese-tilsit'].tmin == -0.2
+
+    # tests
+    e = EventExperiment(root_dir)
+    # add test
+    EventExperiment.tests['aov'] = ANOVA('backorder * taste * subject')
+    e = EventExperiment(root_dir)
+    e.set(test='aov')
+    assert e.get('model') == 'backorder%taste'
+    # remove test
+    del EventExperiment.tests['aov']
+    e = EventExperiment(root_dir)
 
 
 class FileExperiment(MneExperiment):
