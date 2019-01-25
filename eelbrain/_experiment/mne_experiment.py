@@ -66,6 +66,7 @@ from .definitions import find_dependent_epochs, find_epochs_vars, find_test_vars
 from .epochs import PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, assemble_epochs, decim_param
 from .exceptions import FileDeficient, FileMissing
 from .experiment import FileTree
+from .groups import assemble_groups
 from .parc import (
     FS_PARC, FSA_PARC, SEEDED_PARC_RE,
     Parcellation, CombinationParc, EelbrainParc,
@@ -554,45 +555,7 @@ class MneExperiment(FileTree):
 
         ########################################################################
         # groups
-        groups = {'all': subjects}
-        group_definitions = self.groups.copy()
-        while group_definitions:
-            n_def = len(group_definitions)
-            for name, group_def in tuple(group_definitions.items()):
-                if name == '*':
-                    raise ValueError("'*' is not a valid group name")
-                elif isinstance(group_def, dict):
-                    base = (group_def.get('base', 'all'))
-                    if base not in groups:
-                        continue
-                    exclude = group_def['exclude']
-                    if isinstance(exclude, str):
-                        exclude = (exclude,)
-                    elif not isinstance(exclude, (tuple, list, set)):
-                        raise TypeError("Exclusion must be defined as str | "
-                                        "tuple | list | set; got "
-                                        "%s" % repr(exclude))
-                    group_members = (s for s in groups[base] if s not in exclude)
-                elif isinstance(group_def, (list, tuple)):
-                    missing = tuple(s for s in group_def if s not in subjects)
-                    if missing:
-                        raise DefinitionError(
-                            "Group %s contains non-existing subjects: %s" %
-                            (name, ', '.join(missing)))
-                    group_members = sorted(group_def)
-                    if len(set(group_members)) < len(group_members):
-                        count = Counter(group_members)
-                        duplicates = (s for s, n in count.items() if n > 1)
-                        raise DefinitionError(
-                            "Group %r: the following subjects appear more than "
-                            "once: %s" % (name, ', '.join(duplicates)))
-                else:
-                    raise TypeError("group %s=%r" % (name, group_def))
-                groups[name] = tuple(group_members)
-                group_definitions.pop(name)
-            if len(group_definitions) == n_def:
-                raise ValueError("Groups contain unresolvable definition")
-        self._groups = groups
+        self._groups = assemble_groups(self.groups, set(subjects))
 
         ########################################################################
         # Preprocessing
@@ -1049,7 +1012,7 @@ class MneExperiment(FileTree):
                 if group not in self._groups:
                     invalid_cache['groups'].add(group)
                     log.warning("  Group removed: %s", group)
-                elif set(members) != set(self._groups[group]):
+                elif members != self._groups[group]:
                     invalid_cache['groups'].add(group)
                     log_list_change(log, "Group", group, members, self._groups[group])
 
@@ -1459,15 +1422,13 @@ class MneExperiment(FileTree):
         pipe = self._raw[raw]
         return pipe.mtime(self.get('subject'), self.get('session'), bad_chs)
 
-    def _rej_mtime(self, epoch, pre_ica=False):
+    def _rej_mtime(self, epoch):
         """rej-file mtime for secondary epoch definition
 
         Parameters
         ----------
         epoch : dict
             Epoch definition.
-        pre_ica : bool
-            Only analyze mtime before ICA file estimation.
         """
         rej = self._artifact_rejection[self.get('rej')]
         if rej['kind'] is None:

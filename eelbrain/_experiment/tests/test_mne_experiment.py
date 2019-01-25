@@ -18,6 +18,15 @@ TRIGGERS = np.tile(np.arange(1, 5), 2)
 I_START = np.arange(1001, 1441, 55)
 
 
+@pytest.fixture
+def root_dir():
+    tempdir = TempDir()
+    for subject in SUBJECTS:
+        sdir = os.path.join(tempdir, 'meg', subject)
+        os.makedirs(sdir)
+    return tempdir
+
+
 class BaseExperiment(MneExperiment):
 
     sessions = 'file'
@@ -176,9 +185,11 @@ class FileExperiment(MneExperiment):
 
     auto_delete_cache = 'disable'
 
-    groups = {'gsub': SUBJECTS[1:],
-              'gexc': {'exclude': SUBJECTS[0]},
-              'gexc2': {'base': 'gexc', 'exclude': SUBJECTS[-1]}}
+    groups = {
+        'gsub': Group(SUBJECTS[1:]),
+        'gexc': SubGroup('all', SUBJECTS[0]),
+        'gexc2': SubGroup('gexc', SUBJECTS[-1:]),
+    }
 
     sessions = 'file'
 
@@ -189,15 +200,9 @@ class FileExperimentDefaults(FileExperiment):
                 'group': 'gsub'}
 
 
-def test_file_handling():
+def test_file_handling(root_dir):
     "Test MneExperiment with actual files"
-    tempdir = TempDir()
-    for subject in SUBJECTS:
-        sdir = os.path.join(tempdir, 'meg', subject)
-        os.makedirs(sdir)
-
-    e = FileExperiment(tempdir)
-
+    e = FileExperiment(root_dir)
     assert e.get('subject') == SUBJECTS[0]
     assert [s for s in e.iter(group='all')] == SUBJECTS
     assert [s for s in e.iter(group='gsub')] == SUBJECTS[1:]
@@ -209,7 +214,7 @@ def test_file_handling():
     assert e.get('subject') == SUBJECTS[0]
     assert e.get('subject', group='gsub') == SUBJECTS[1]
 
-    e = FileExperimentDefaults(tempdir)
+    e = FileExperimentDefaults(root_dir)
     assert e.get('group'), 'gsub'
     assert e.get('subject') == SUBJECTS[1]
 
@@ -222,7 +227,5 @@ class BadRawExperiment(BaseExperiment):
 
 def test_bad_definitions():
     "Test invalid definitions raise errors"
-    tempdir = TempDir()
-
     with pytest.raises(DefinitionError):
         BadRawExperiment()
