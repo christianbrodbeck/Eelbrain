@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from inspect import getargspec
+from inspect import getfullargspec
 import re
 
 from .. import testnd
@@ -54,7 +54,10 @@ class Test(Definition):
     def __init__(self, desc, model, vars=None):
         self.desc = desc
         self.model = model
-        self.vars = vars
+        try:
+            self.vars = Variables(vars)
+        except Exception as error:
+            raise DefinitionError(f"vars={vars} ({error})")
 
         if model is None:  # no averaging
             self._between = None
@@ -481,8 +484,7 @@ class ROITestResult:
         self.res = res
 
     def __getstate__(self):
-        return {attr: getattr(self, attr) for attr in
-                getargspec(self.__init__).args[1:]}
+        return {attr: getattr(self, attr) for attr in getfullargspec(self.__init__).args[1:]}
 
     def __setstate__(self, state):
         self.__init__(**state)
@@ -498,13 +500,10 @@ def find_test_vars(params):
     if params['kind'] == 'two-stage':
         vs.update(find_variables(params['stage_1']))
 
-    vardef = params.get('vars', None)
-    if vardef is not None:
-        variables = Variables(vardef)
-        for name, variable in variables.vars.items():
-            if name in vs:
-                vs.remove(name)
-                vs.update(variable.input_vars())
+    for name, variable in params['vars'].vars.items():
+        if name in vs:
+            vs.remove(name)
+            vs.update(variable.input_vars())
     return vs
 
 

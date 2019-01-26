@@ -206,14 +206,16 @@ class Variables:
         The ``vars`` argument.
     """
     def __init__(self, arg):
-        if isinstance(arg, str):
+        if arg is None:
+            arg = ()
+        elif isinstance(arg, str):
             arg = (arg,)
         elif isinstance(arg, dict):
             arg = arg.items()
         elif not isinstance(arg, (tuple, list)):
             raise TypeError(f"vars={arg!r}")
 
-        items = {}
+        self.vars = {}
         for item in arg:
             if isinstance(item, str):
                 name, vdef = parse_named_vardef(item)
@@ -236,8 +238,7 @@ class Variables:
                     raise DefinitionError(f"Variable {name!r}: {vdef!r}")
 
             assert_is_legal_dataset_key(name)
-            items[name] = vdef
-        self.vars = items
+            self.vars[name] = vdef
 
     def __getstate__(self):
         return {'vars': self.vars}

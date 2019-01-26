@@ -85,9 +85,11 @@ from .variable_def import Variables
 
 
 # current cache state version
-CACHE_STATE_VERSION = 11
+CACHE_STATE_VERSION = 12
 # History:
 #  10:  input_state: share forward-solutions between sessions
+#  11:  add samplingrate to epochs
+#  12:  store test-vars as Variables object
 
 # paths
 LOG_FILE = join('{root}', 'eelbrain {name}.log')
@@ -909,6 +911,15 @@ class MneExperiment(FileTree):
 
             # Backwards compatibility
             # =======================
+            if cache_state_v < 12:
+                for test, params in cache_state['tests'].items():
+                    try:
+                        params['vars'] = Variables(params['vars'])
+                    except Exception as error:
+                        log.warning("  Test %s: Defective vardef %r", test, params['vars'])
+                        params['vars'] = None
+
+            # epochs
             if cache_state_v >= 11:
                 epoch_state_v = epoch_state
             elif cache_state_v >= 3:
@@ -1711,13 +1722,10 @@ class MneExperiment(FileTree):
             try:
                 vardef = self._tests[vardef].vars
             except KeyError:
-                raise ValueError("vardef must be a valid test definition, got "
-                                 "vardef=%r" % vardef)
-        if vardef is None:
-            return
-
-        vdef = Variables(vardef)
-        vdef.apply(ds, self)
+                raise ValueError(f"vardef={vardef!r}")
+        elif not isinstance(vardef, Variables):
+            vardef = Variables(vardef)
+        vardef.apply(ds, self)
 
     def _backup(self, dst_root, v=False):
         """Backup all essential files to ``dst_root``.

@@ -230,13 +230,16 @@ def test_file_handling(root_dir):
     assert e.get('subject') == SUBJECTS[1]
 
 
-# definition checks
-
-class BadRawExperiment(BaseExperiment):
-    raw = {'bad raw': RawFilter('raw', 1, 40), **BaseExperiment.raw}
-
-
 def test_bad_definitions():
     "Test invalid definitions raise errors"
+    # bad raw
+    class BadExperiment(BaseExperiment):
+        raw = {'bad raw': RawFilter('raw', 1, 40), **BaseExperiment.raw}
+
     with pytest.raises(DefinitionError):
-        BadRawExperiment()
+        BadExperiment()
+
+    # bad vardef
+    with pytest.raises(DefinitionError):
+        class BadExperiment(BaseExperiment):
+            tests = {'badvars': ANOVA('badvar * subject', vars=((), 'badvar = urk'))}
