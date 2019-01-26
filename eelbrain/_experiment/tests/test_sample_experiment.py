@@ -8,6 +8,7 @@ import shutil
 import numpy as np
 
 from eelbrain import *
+from eelbrain.pipeline import *
 from eelbrain._exceptions import DefinitionError
 from eelbrain._utils.testing import (
     TempDir, assert_dataobj_equal, import_attr, requires_mne_sample_data,
@@ -120,18 +121,13 @@ def test_sample():
             'modality': {(1, 2): 'auditory', (3, 4): 'visual'}
         }
         tests = {
-            'twostage': {
-                'kind': 'two-stage',
-                'stage 1': 'side_left + modality_a',
-                'vars': {
-                    'side_left': "side == 'left'",
-                    'modality_a': "modality == 'auditory'",
-                }
-            },
-            'novars': {
-                'kind': 'two-stage',
-                'stage 1': 'side + modality'
-            },
+            'twostage': TwoStageTest(
+                'side_left + modality_a',
+                {'side_left': "side == 'left'",
+                 'modality_a': "modality == 'auditory'"}),
+            'novars': TwoStageTest('side + modality'),
+            # bad vardef
+            'badvars': ANOVA('badvar * subject', vars=((), 'badvar = urk')),
         }
     e = Changed(root)
 
