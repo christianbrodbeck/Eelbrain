@@ -1676,7 +1676,7 @@ class anova(MultiEffectNDTest):
 
             cdists = [
                 NDPermutationDistribution(
-                    y, samples, thresh, tfce, 1, 'F', e.name,
+                    y, samples, thresh, tfce, 1, 'f', e.name,
                     tstart, tstop, criteria, parc, force_permutation)
                 for e, thresh in zip(effects, thresholds)]
 
@@ -1761,9 +1761,9 @@ class anova(MultiEffectNDTest):
 
     def _default_plot_obj(self):
         if self.samples:
-            return self.f_probability
+            return [self.masked_parameter_map(e) for e in self.effects]
         else:
-            return self.f
+            return self._statistic_map
 
     def table(self):
         """Table with effects and smallest p-value"""
