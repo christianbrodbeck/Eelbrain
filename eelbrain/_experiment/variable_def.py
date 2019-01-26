@@ -12,6 +12,7 @@ import numpy as np
 
 from .._data_obj import Factor, Var, asfactor, assert_is_legal_dataset_key
 from .._utils.numpy_utils import INT_TYPES
+from .._utils.parse import find_variables
 from .definitions import DefinitionError
 
 
@@ -40,6 +41,9 @@ class VarDef:
     def apply(self, ds, e):
         raise NotImplementedError
 
+    def input_vars(self):
+        raise NotImplementedError
+
 
 class EvalVar(VarDef):
     """Variable based on evaluating a statement
@@ -66,6 +70,9 @@ class EvalVar(VarDef):
 
     def apply(self, ds, e):
         return as_vardef_var(ds.eval(self.code))
+
+    def input_vars(self):
+        return find_variables(self.code)
 
 
 class LabelVar(VarDef):
@@ -127,6 +134,9 @@ class LabelVar(VarDef):
             v = asfactor(self.source, ds=ds).as_var(self.codes, self.default)
             return as_vardef_var(v)
 
+    def input_vars(self):
+        return find_variables(self.source)
+
 
 class GroupVar(VarDef):
     """Group membership for each subject
@@ -168,6 +178,9 @@ class GroupVar(VarDef):
             groups = tuple(sorted(groups))
         return cls(groups)
 
+    def input_vars(self):
+        return ()
+
 
 def parse_named_vardef(string):
     if '=' not in string:
@@ -200,7 +213,7 @@ class Variables:
         elif not isinstance(arg, (tuple, list)):
             raise TypeError(f"vars={arg!r}")
 
-        items = []
+        items = {}
         for item in arg:
             if isinstance(item, str):
                 name, vdef = parse_named_vardef(item)
@@ -223,29 +236,29 @@ class Variables:
                     raise DefinitionError(f"Variable {name!r}: {vdef!r}")
 
             assert_is_legal_dataset_key(name)
-            items.append((name, vdef))
-        self.items = items
+            items[name] = vdef
+        self.vars = items
 
     def __getstate__(self):
-        return {'items': self.items}
+        return {'vars': self.vars}
 
     def __setstate__(self, state):
-        self.items = state['items']
+        self.vars = state['vars']
 
     def _check_trigger_vars(self):
-        for key, var in self.items:
+        for key, var in self.vars.items():
             if isinstance(var, LabelVar) and var.source == 'trigger':
                 if not all(isinstance(v, INT_TYPES) for v in var.labels):
                     raise DefinitionError(f"Variable {key!r}: {var} codes must be integers")
 
     def __repr__(self):
-        return '\n'.join(["Variables(", *(f'    {k!r}: {v},' for k, v in self.items), ')'])
+        return '\n'.join(["Variables(", *(f'    {k!r}: {v},' for k, v in self.vars.items()), ')'])
 
     def __eq__(self, other):
-        return isinstance(other, Variables) and other.items == self.items
+        return isinstance(other, Variables) and other.vars == self.vars
 
     def apply(self, ds, e):
         session = ds.info.get('session', None)
-        for name, vdef in self.items:
+        for name, vdef in self.vars.items():
             if vdef.session is None or vdef.session == session:
                 ds[name] = vdef.apply(ds, e)

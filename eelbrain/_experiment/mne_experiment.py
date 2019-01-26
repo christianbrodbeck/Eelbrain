@@ -62,7 +62,7 @@ from .._stats.testnd import _MergedTemporalClusterDist
 from .._text import enumeration, plural
 from .._utils import ask, subp, keydefaultdict, log_level, ScreenHandler, deprecated
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
-from .definitions import find_dependent_epochs, find_epochs_vars, find_test_vars, log_dict_change, log_list_change
+from .definitions import find_dependent_epochs, find_epochs_vars, log_dict_change, log_list_change
 from .epochs import PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, assemble_epochs, decim_param
 from .exceptions import FileDeficient, FileMissing
 from .experiment import FileTree
@@ -78,7 +78,8 @@ from .preprocessing import (
     compare_pipelines, ask_to_delete_ica_files)
 from .test_def import (
     Test, EvokedTest,
-    ROITestResult, TestDims, TwoStageTest, assemble_tests,
+    ROITestResult, TestDims, TwoStageTest,
+    assemble_tests, find_test_vars,
 )
 from .variable_def import Variables
 
@@ -1085,12 +1086,14 @@ class MneExperiment(FileTree):
             if 'variables' in invalid_cache:
                 bad_vars = invalid_cache['variables']
                 # tests using bad variable
-                for test, params in cache_tests.items():
-                    if test not in invalid_cache['tests']:
-                        bad = bad_vars.intersection(find_test_vars(params))
-                        if bad:
-                            invalid_cache['tests'].add(test)
-                            log.debug("  Test %s depends on changed variables %s", test, ', '.join(bad))
+                for test in cache_tests:
+                    if test in invalid_cache['tests']:
+                        continue
+                    params = tests_state[test]
+                    bad = bad_vars.intersection(find_test_vars(params))
+                    if bad:
+                        invalid_cache['tests'].add(test)
+                        log.debug("  Test %s depends on changed variables %s", test, ', '.join(bad))
                 # epochs using bad variable
                 epochs_vars = find_epochs_vars(cache_state['epochs'])
                 for epoch, evars in epochs_vars.items():

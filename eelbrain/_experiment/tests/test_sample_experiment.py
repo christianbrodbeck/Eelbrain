@@ -137,6 +137,7 @@ def test_sample():
             'side': {(1, 3): 'left', (2, 4): 'right_changed'},
             'modality': {(1, 2): 'auditory', (3, 4): 'visual_changed'}
         }
+    del Changed.tests['badvars']
     e = Changed(root)
 
     # changed variable, unchanged test with vardef=None

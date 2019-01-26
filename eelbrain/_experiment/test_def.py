@@ -5,8 +5,9 @@ import re
 from .. import testnd
 from .._exceptions import DefinitionError
 from .._io.fiff import find_mne_channel_types
+from .._utils.parse import find_variables
 from .definitions import Definition
-from .variable_def import GroupVar
+from .variable_def import Variables, GroupVar
 
 
 __test__ = False
@@ -485,3 +486,26 @@ class ROITestResult:
 
     def __setstate__(self, state):
         self.__init__(**state)
+
+
+def find_test_vars(params):
+    "Find variables used in a test definition"
+    if 'model' in params and params['model'] is not None:
+        vs = find_variables(params['model'])
+    else:
+        vs = set()
+
+    if params['kind'] == 'two-stage':
+        vs.update(find_variables(params['stage_1']))
+
+    vardef = params.get('vars', None)
+    if vardef is not None:
+        variables = Variables(vardef)
+        for name, variable in variables.vars.items():
+            if name in vs:
+                vs.remove(name)
+                vs.update(variable.input_vars())
+    return vs
+
+
+find_test_vars.__test__ = False
