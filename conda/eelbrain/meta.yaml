@@ -1,5 +1,5 @@
-{% set version = "0.30a0" %}
-{% set sha256 = "147e5018a0693c2e3ee3ce0a2844352647b6037022f5684c62b68499b0b39f0b" %}
+{% set version = "0.30a1" %}
+{% set sha256 = "f78d055d6dd8afb4c82d3f764379c4e45471155f0cf6103dfae76f7b6e126c6e" %}
 
 # https://github.com/conda/conda-build/issues/2717
 
