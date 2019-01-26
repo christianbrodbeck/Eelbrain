@@ -62,10 +62,11 @@ from .._stats.testnd import _MergedTemporalClusterDist
 from .._text import enumeration, plural
 from .._utils import ask, subp, keydefaultdict, log_level, ScreenHandler, deprecated
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
-from .definitions import find_dependent_epochs, find_epochs_vars, find_test_vars, log_dict_change, log_list_change
+from .definitions import find_dependent_epochs, find_epochs_vars, log_dict_change, log_list_change
 from .epochs import PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, assemble_epochs, decim_param
 from .exceptions import FileDeficient, FileMissing
 from .experiment import FileTree
+from .groups import assemble_groups
 from .parc import (
     FS_PARC, FSA_PARC, SEEDED_PARC_RE,
     Parcellation, CombinationParc, EelbrainParc,
@@ -77,15 +78,18 @@ from .preprocessing import (
     compare_pipelines, ask_to_delete_ica_files)
 from .test_def import (
     Test, EvokedTest,
-    ROITestResult, TestDims, TwoStageTest, assemble_tests,
+    ROITestResult, TestDims, TwoStageTest,
+    assemble_tests, find_test_vars,
 )
 from .variable_def import Variables
 
 
 # current cache state version
-CACHE_STATE_VERSION = 11
+CACHE_STATE_VERSION = 12
 # History:
 #  10:  input_state: share forward-solutions between sessions
+#  11:  add samplingrate to epochs
+#  12:  store test-vars as Variables object
 
 # paths
 LOG_FILE = join('{root}', 'eelbrain {name}.log')
@@ -532,45 +536,7 @@ class MneExperiment(FileTree):
 
         ########################################################################
         # groups
-        groups = {'all': subjects}
-        group_definitions = self.groups.copy()
-        while group_definitions:
-            n_def = len(group_definitions)
-            for name, group_def in tuple(group_definitions.items()):
-                if name == '*':
-                    raise ValueError("'*' is not a valid group name")
-                elif isinstance(group_def, dict):
-                    base = (group_def.get('base', 'all'))
-                    if base not in groups:
-                        continue
-                    exclude = group_def['exclude']
-                    if isinstance(exclude, str):
-                        exclude = (exclude,)
-                    elif not isinstance(exclude, (tuple, list, set)):
-                        raise TypeError("Exclusion must be defined as str | "
-                                        "tuple | list | set; got "
-                                        "%s" % repr(exclude))
-                    group_members = (s for s in groups[base] if s not in exclude)
-                elif isinstance(group_def, (list, tuple)):
-                    missing = tuple(s for s in group_def if s not in subjects)
-                    if missing:
-                        raise DefinitionError(
-                            "Group %s contains non-existing subjects: %s" %
-                            (name, ', '.join(missing)))
-                    group_members = sorted(group_def)
-                    if len(set(group_members)) < len(group_members):
-                        count = Counter(group_members)
-                        duplicates = (s for s, n in count.items() if n > 1)
-                        raise DefinitionError(
-                            "Group %r: the following subjects appear more than "
-                            "once: %s" % (name, ', '.join(duplicates)))
-                else:
-                    raise TypeError("group %s=%r" % (name, group_def))
-                groups[name] = tuple(group_members)
-                group_definitions.pop(name)
-            if len(group_definitions) == n_def:
-                raise ValueError("Groups contain unresolvable definition")
-        self._groups = groups
+        self._groups = assemble_groups(self.groups, set(subjects))
 
         ########################################################################
         # Preprocessing
@@ -938,6 +904,15 @@ class MneExperiment(FileTree):
 
             # Backwards compatibility
             # =======================
+            if cache_state_v < 12:
+                for test, params in cache_state['tests'].items():
+                    try:
+                        params['vars'] = Variables(params['vars'])
+                    except Exception as error:
+                        log.warning("  Test %s: Defective vardef %r", test, params['vars'])
+                        params['vars'] = None
+
+            # epochs
             if cache_state_v >= 11:
                 epoch_state_v = epoch_state
             elif cache_state_v >= 3:
@@ -1042,7 +1017,7 @@ class MneExperiment(FileTree):
                 if group not in self._groups:
                     invalid_cache['groups'].add(group)
                     log.warning("  Group removed: %s", group)
-                elif set(members) != set(self._groups[group]):
+                elif members != self._groups[group]:
                     invalid_cache['groups'].add(group)
                     log_list_change(log, "Group", group, members, self._groups[group])
 
@@ -1115,12 +1090,14 @@ class MneExperiment(FileTree):
             if 'variables' in invalid_cache:
                 bad_vars = invalid_cache['variables']
                 # tests using bad variable
-                for test, params in cache_tests.items():
-                    if test not in invalid_cache['tests']:
-                        bad = bad_vars.intersection(find_test_vars(params))
-                        if bad:
-                            invalid_cache['tests'].add(test)
-                            log.debug("  Test %s depends on changed variables %s", test, ', '.join(bad))
+                for test in cache_tests:
+                    if test in invalid_cache['tests']:
+                        continue
+                    params = tests_state[test]
+                    bad = bad_vars.intersection(find_test_vars(params))
+                    if bad:
+                        invalid_cache['tests'].add(test)
+                        log.debug("  Test %s depends on changed variables %s", test, ', '.join(bad))
                 # epochs using bad variable
                 epochs_vars = find_epochs_vars(cache_state['epochs'])
                 for epoch, evars in epochs_vars.items():
@@ -1452,15 +1429,13 @@ class MneExperiment(FileTree):
         pipe = self._raw[raw]
         return pipe.mtime(self.get('subject'), self.get('recording'), bad_chs)
 
-    def _rej_mtime(self, epoch, pre_ica=False):
+    def _rej_mtime(self, epoch):
         """rej-file mtime for secondary epoch definition
 
         Parameters
         ----------
         epoch : dict
             Epoch definition.
-        pre_ica : bool
-            Only analyze mtime before ICA file estimation.
         """
         rej = self._artifact_rejection[self.get('rej')]
         if rej['kind'] is None:
@@ -1740,13 +1715,10 @@ class MneExperiment(FileTree):
             try:
                 vardef = self._tests[vardef].vars
             except KeyError:
-                raise ValueError("vardef must be a valid test definition, got "
-                                 "vardef=%r" % vardef)
-        if vardef is None:
-            return
-
-        vdef = Variables(vardef)
-        vdef.apply(ds, self)
+                raise ValueError(f"vardef={vardef!r}")
+        elif not isinstance(vardef, Variables):
+            vardef = Variables(vardef)
+        vardef.apply(ds, self)
 
     def _backup(self, dst_root, v=False):
         """Backup all essential files to ``dst_root``.
@@ -2567,7 +2539,6 @@ class MneExperiment(FileTree):
             ds.info['raw-mtime'] = raw_mtime
             ds.info['subject'] = subject
             ds.info['session'] = self.get('session')
-            ds.info['visit'] = self.get('visit')
 
             # add edf
             if self.has_edf[subject]:
@@ -2584,11 +2555,13 @@ class MneExperiment(FileTree):
             with self._temporary_state:
                 raw = self.load_raw(add_bads, raw=data_raw)
         elif not isinstance(data_raw, bool):
-            raise TypeError("data_raw=%s; needs to be str or bool"
-                            % repr(data_raw))
+            raise TypeError(f"data_raw={data_raw!r}; needs to be str or bool")
 
         if data_raw is not False:
             ds.info['raw'] = raw
+
+        if len(self._visits) > 1:
+            ds.info['visit'] = self.get('visit')
 
         if self.trigger_shift:
             if isinstance(self.trigger_shift, dict):

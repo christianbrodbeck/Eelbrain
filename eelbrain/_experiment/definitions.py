@@ -147,36 +147,5 @@ def find_dependent_epochs(epoch, epochs):
     return out[1:]
 
 
-def find_test_vars(params):
-    "Find variables used in a test definition"
-    if 'model' in params and params['model'] is not None:
-        vs = find_variables(params['model'])
-    else:
-        vs = set()
-
-    if params['kind'] == 'two-stage':
-        vs.update(find_variables(params['stage_1']))
-
-    vardef = params.get('vars', None)
-    if vardef is not None:
-        if isinstance(vardef, dict):
-            vardef = vardef.items()
-        elif isinstance(vardef, tuple):
-            vardef = (map(str.strip, v.split('=', 1)) for v in vardef)
-        else:
-            raise TypeError("vardef=%r" % (vardef,))
-
-        for name, definition in vardef:
-            if name in vs:
-                vs.remove(name)
-                if isinstance(definition, tuple):
-                    definition = definition[0]
-                vs.update(find_variables(definition))
-    return vs
-
-
 def typed_arg(arg, type_):
     return None if arg is None else type_(arg)
-
-
-find_test_vars.__test__ = False
