@@ -953,8 +953,8 @@ class ttest_ind(NDDifferenceTest):
         alphabetical order.
     c0 : str | tuple | None
         Control condition (cell of ``x``).
-    match : None | categorial
-        Combine cases with the same cell on x % match for testing.
+    match : categorial
+        Combine cases with the same cell on ``x % match``.
     sub : None | index-array
         Perform the test with a subset of the data.
     ds : None | Dataset
@@ -1265,6 +1265,8 @@ class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
     tfce_map : NDVar | None
         Map of the test statistic processed with the threshold-free cluster
         enhancement algorithm (or None if no TFCE was performed).
+    n : int
+        Number of cases.
 
     Notes
     -----
@@ -1801,7 +1803,7 @@ class Vector(NDDifferenceTest):
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     samples : int
-        Number of samples for permutation test (default 0).
+        Number of samples for permutation test (default 10000).
     vmin : scalar
         Threshold value for forming clusters.
     tfce : bool | scalar
@@ -1926,6 +1928,82 @@ class Vector(NDDifferenceTest):
 
 
 class VectorDifferenceIndependent(Vector):
+    """Test difference between two vector fields for non-random direction
+
+    Parameters
+    ----------
+    y : NDVar
+        Dependent variable.
+    x : categorial | NDVar
+        Model containing the cells which should be compared, or NDVar to which
+        ``y`` should be compared. In the latter case, the next three parameters
+        are ignored.
+    c1 : str | tuple | None
+        Test condition (cell of ``x``). ``c1`` and ``c0`` can be omitted if
+        ``x`` only contains two cells, in which case cells will be used in
+        alphabetical order.
+    c0 : str | tuple | None
+        Control condition (cell of ``x``).
+    match : categorial
+        Combine cases with the same cell on ``x % match``.
+    sub : None | index-array
+        Perform the test with a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables.
+    samples : int
+        Number of samples for permutation test (default 10000).
+    vmin : scalar
+        Threshold value for forming clusters.
+    tfce : bool | scalar
+        Use threshold-free cluster enhancement. Use a scalar to specify the
+        step of TFCE levels (for ``tfce is True``, 0.1 is used).
+    tstart : scalar
+        Start of the time window for the permutation test (default is the
+        beginning of ``y``).
+    tstop : scalar
+        Stop of the time window for the permutation test (default is the
+        end of ``y``).
+    parc : str
+        Collect permutation extrema for all regions of the parcellation of
+        this dimension. For threshold-based test, the regions are
+        disconnected.
+    force_permutation: bool
+        Conduct permutations regardless of whether there are any clusters.
+    use_t2_stat: bool
+        Use Hotelling’s T-Square statistics. By default ``Vector`` test
+        chooses this statistic over vector norm. To choose vector norm as
+        test statistic try ``use_t2_stat=False``.
+    mintime : scalar
+        Minimum duration for clusters (in seconds).
+    minsource : int
+        Minimum number of sources per cluster.
+
+    Attributes
+    ----------
+    c1_mean : NDVar
+        Mean in the c1 condition.
+    c0_mean : NDVar
+        Mean in the c0 condition.
+    clusters : None | Dataset
+        When performing a cluster permutation test, a Dataset of all clusters.
+    difference : NDVar
+        Difference between the mean in condition c1 and condition c0.
+    p : NDVar | None
+        Map of p-values corrected for multiple comparison (or None if no
+        correction was performed).
+    t2 : NDVar
+        Map of t-square values (``None`` with ``use_t2_stat=False``).
+    tfce_map : NDVar | None
+        Map of the test statistic processed with the threshold-free cluster
+        enhancement algorithm (or None if no TFCE was performed).
+    n : int
+        Total number of cases.
+    n1 : int
+        Number of cases in ``c1``.
+    n0 : int
+        Number of cases in ``c0``.
+    """
     _state_specific = ('difference', 'c1_mean', 'c0_mean' 'n', '_v_dim', 't2')
     _statistic = 'norm'
 
@@ -1987,6 +2065,79 @@ class VectorDifferenceIndependent(Vector):
 
 
 class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
+    """Test difference between two vector fields for non-random direction
+
+    Parameters
+    ----------
+    y : NDVar
+        Dependent variable.
+    x : categorial | NDVar
+        Model containing the cells which should be compared, or NDVar to which
+        ``y`` should be compared. In the latter case, the next three parameters
+        are ignored.
+    c1 : str | tuple | None
+        Test condition (cell of ``x``). ``c1`` and ``c0`` can be omitted if
+        ``x`` only contains two cells, in which case cells will be used in
+        alphabetical order.
+    c0 : str | tuple | None
+        Control condition (cell of ``x``).
+    match : categorial
+        Units within which measurements are related (e.g. 'subject' in a
+        within-subject comparison).
+    sub : None | index-array
+        Perform the test with a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables.
+    samples : int
+        Number of samples for permutation test (default 10000).
+    vmin : scalar
+        Threshold value for forming clusters.
+    tfce : bool | scalar
+        Use threshold-free cluster enhancement. Use a scalar to specify the
+        step of TFCE levels (for ``tfce is True``, 0.1 is used).
+    tstart : scalar
+        Start of the time window for the permutation test (default is the
+        beginning of ``y``).
+    tstop : scalar
+        Stop of the time window for the permutation test (default is the
+        end of ``y``).
+    parc : str
+        Collect permutation extrema for all regions of the parcellation of
+        this dimension. For threshold-based test, the regions are
+        disconnected.
+    force_permutation: bool
+        Conduct permutations regardless of whether there are any clusters.
+    use_t2_stat: bool
+        Use Hotelling’s T-Square statistics. By default ``Vector`` test
+        chooses this statistic over vector norm. To choose vector norm as
+        test statistic try ``use_t2_stat=False``.
+    mintime : scalar
+        Minimum duration for clusters (in seconds).
+    minsource : int
+        Minimum number of sources per cluster.
+
+    Attributes
+    ----------
+    c1_mean : NDVar
+        Mean in the c1 condition.
+    c0_mean : NDVar
+        Mean in the c0 condition.
+    clusters : None | Dataset
+        When performing a cluster permutation test, a Dataset of all clusters.
+    difference : NDVar
+        Difference between the mean in condition c1 and condition c0.
+    p : NDVar | None
+        Map of p-values corrected for multiple comparison (or None if no
+        correction was performed).
+    t2 : NDVar
+        Map of t-square values (``None`` with ``use_t2_stat=False``).
+    tfce_map : NDVar | None
+        Map of the test statistic processed with the threshold-free cluster
+        enhancement algorithm (or None if no TFCE was performed).
+    n : int
+        Number of cases.
+    """
     _state_specific = ('difference', 'c1_mean', 'c0_mean' 'n', '_v_dim', 't2')
     _statistic = 'norm'
 
