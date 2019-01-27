@@ -2,10 +2,11 @@
 from itertools import product
 import pickle
 import logging
+import pytest
 import sys
 
 from nose.tools import (
-    eq_, ok_, assert_equal, assert_not_equal, assert_almost_equal,
+    eq_, ok_, assert_almost_equal,
     assert_greater, assert_greater_equal, assert_less, assert_in, assert_not_in,
     assert_raises)
 import numpy as np
@@ -14,7 +15,7 @@ from numpy.testing import assert_array_equal, assert_allclose
 import eelbrain
 from eelbrain import (Dataset, NDVar, Categorial, Scalar, UTS, Sensor, configure,
                       datasets, test, testnd, set_log_level, cwt_morlet)
-from eelbrain._exceptions import ZeroVariance
+from eelbrain._exceptions import DimensionMismatchError, WrongDimension, ZeroVariance
 from eelbrain._stats.testnd import (Connectivity, NDPermutationDistribution, label_clusters,
                                     _MergedTemporalClusterDist, find_peaks)
 from eelbrain._utils.system import IS_WINDOWS
@@ -647,6 +648,20 @@ def test_vector():
     assert res_t.p == 0.0
     res_t = testnd.Vector('v[40:]', ds=ds, samples=10, use_t2_stat=False)
     assert res_t.p == 1.0
+
+    # non-space tests should raise error
+    with pytest.raises(WrongDimension):
+        testnd.ttest_1samp('v', ds=ds)
+    with pytest.raises(WrongDimension):
+        testnd.ttest_rel('v', 'A', match='rm', ds=ds)
+    with pytest.raises(WrongDimension):
+        testnd.ttest_ind('v', 'A', ds=ds)
+    with pytest.raises(WrongDimension):
+        testnd.t_contrast_rel('v', 'A', 'a0 > a1', 'rm', ds=ds)
+    with pytest.raises(WrongDimension):
+        testnd.corr('v', 'fltvar', ds=ds)
+    with pytest.raises(WrongDimension):
+        testnd.anova('v', 'A * B', ds=ds)
 
     # vector in time
     ds = datasets.get_uts(vector3d=True)

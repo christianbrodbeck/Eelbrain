@@ -22,7 +22,7 @@ n_samples : None | int
 '''
 from datetime import datetime, timedelta
 from itertools import chain, repeat
-from math import ceil, pi
+from math import ceil
 from multiprocessing import Process, Event, SimpleQueue
 from multiprocessing.sharedctypes import RawArray
 import logging
@@ -48,7 +48,7 @@ from .._data_obj import (
     NDVar, Categorial, UTS,
     ascategorial, asmodel, asndvar, asvar, assub,
     cellname, combine, dataobj_repr)
-from .._exceptions import OldVersionError, ZeroVariance
+from .._exceptions import OldVersionError, WrongDimension, ZeroVariance
 from .._utils import LazyProperty, user_activity
 from .._utils.numpy_utils import FULL_AXIS_SLICE
 from . import opt, stats, vector
@@ -64,6 +64,12 @@ from functools import reduce, partial
 
 
 __test__ = False
+
+
+def check_for_vector_dim(y: NDVar) -> None:
+    for dim in y.dims:
+        if dim._connectivity_type == 'vector':
+            raise WrongDimension(f"{dim}: mass-univariate methods are not suitable for vectors. Consider using vector norm as test statistic, or using a testnd.Vector test function.")
 
 
 def check_variance(x):
@@ -482,10 +488,9 @@ class t_contrast_rel(NDTest):
                  samples=0, pmin=None, tmin=None, tfce=False, tstart=None,
                  tstop=None, parc=None, force_permutation=False, **criteria):
         if match is None:
-            raise TypeError("The `match` parameter needs to be specified for "
-                            "repeated measures test t_contrast_rel")
-        ct = Celltable(y, x, match, sub, ds=ds, coercion=asndvar,
-                       dtype=np.float64)
+            raise TypeError("The `match` parameter needs to be specified for repeated measures test t_contrast_rel")
+        ct = Celltable(y, x, match, sub, ds=ds, coercion=asndvar, dtype=np.float64)
+        check_for_vector_dim(ct.y)
         check_variance(ct.y.x)
 
         # setup contrast
@@ -618,6 +623,7 @@ class corr(NDTest):
                  match=None, parc=None, **criteria):
         sub = assub(sub, ds)
         y = asndvar(y, sub=sub, ds=ds, dtype=np.float64)
+        check_for_vector_dim(y)
         if not y.has_case:
             raise ValueError("Dependent variable needs case dimension")
         x = asvar(x, sub=sub, ds=ds)
@@ -845,8 +851,8 @@ class ttest_1samp(NDDifferenceTest):
     def __init__(self, y, popmean=0, match=None, sub=None, ds=None, tail=0,
                  samples=0, pmin=None, tmin=None, tfce=False, tstart=None,
                  tstop=None, parc=None, force_permutation=False, **criteria):
-        ct = Celltable(y, match=match, sub=sub, ds=ds, coercion=asndvar,
-                       dtype=np.float64)
+        ct = Celltable(y, match=match, sub=sub, ds=ds, coercion=asndvar, dtype=np.float64)
+        check_for_vector_dim(ct.y)
 
         n = len(ct.y)
         df = n - 1
@@ -1042,8 +1048,9 @@ class ttest_ind(NDDifferenceTest):
             force_permutation: bool = False,
             **criteria):
         ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar, dtype=np.float64)
-        c1, c0 = ct.cat
+        check_for_vector_dim(ct.y)
 
+        c1, c0 = ct.cat
         n1 = len(ct.data[c1])
         n = len(ct.y)
         n0 = n - n1
@@ -1280,6 +1287,7 @@ class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
                  tail=0, samples=0, pmin=None, tmin=None, tfce=False,
                  tstart=None, tstop=None, parc=None, force_permutation=False, **criteria):
         y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
+        check_for_vector_dim(y1)
 
         if n <= 2:
             raise ValueError("Not enough observations for t-test (n=%i)" % n)
@@ -1641,6 +1649,7 @@ class anova(MultiEffectNDTest):
         sub_arg = sub
         sub = assub(sub, ds)
         y = asndvar(y, sub, ds, dtype=np.float64)
+        check_for_vector_dim(y)
         x = asmodel(x, sub, ds)
         if match is None:
             random_effects = [e for e in x.effects if e.random]
