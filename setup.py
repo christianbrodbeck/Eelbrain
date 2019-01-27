@@ -46,7 +46,11 @@ ext_paths = ('eelbrain/*%s', 'eelbrain/_trf/*%s', 'eelbrain/_stats/*%s')
 if glob(ext_paths[0] % '.pyx'):
     from Cython.Build import cythonize
 
-    ext_modules = cythonize([path % '.pyx' for path in ext_paths])
+    # ext_modules = cythonize([path % '.pyx' for path in ext_paths])
+    ext_modules = [Extension(path,
+                             [path % '.pyx'],
+                             extra_compile_args=['-std=c99'],
+                             ) for path in ext_paths]
 else:
     actual_paths = []
     for path in ext_paths:
@@ -91,6 +95,6 @@ setup(
     },
     include_dirs=[np.get_include()],
     packages=find_packages(),
-    ext_modules=ext_modules,
+    ext_modules=cythonize(ext_modules),
     scripts=['bin/eelbrain'],
 )
