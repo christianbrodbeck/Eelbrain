@@ -50,7 +50,7 @@ from .._data_obj import (
     cellname, combine, dataobj_repr)
 from .._exceptions import OldVersionError, WrongDimension, ZeroVariance
 from .._utils import LazyProperty, user_activity
-from .._utils.numpy_utils import FULL_AXIS_SLICE
+from .._utils.numpy_utils import FULL_SLICE, FULL_AXIS_SLICE
 from . import opt, stats, vector
 from .connectivity import Connectivity, find_peaks
 from .connectivity_opt import merge_labels, tfce_increment
@@ -735,13 +735,7 @@ class NDDifferenceTest(NDTest):
             mask = self._cdist.cluster_map == 0
         else:
             mask = self.p > p
-        to_dims = self.difference_norm if isinstance(self, Vector) else self.difference
-        mask = self._cdist.uncrop(mask, to_dims, True)
-        # since masked array creation does not support broadcasting
-        if isinstance(self, Vector):
-            mask_x = np.repeat(self.difference._ialign(mask), 3, self.difference.get_axis('space'))
-            mask = NDVar(mask_x, self.difference.dims)
-        return mask
+        return self._cdist.uncrop(mask, self.difference, True)
 
     def masked_difference(self, p=0.05):
         """Difference map masked by significance
@@ -1838,8 +1832,6 @@ class Vector(NDDifferenceTest):
     ----------
     difference : NDVar
         The vector field averaged across cases.
-    difference_norm : NDVar
-        The norm of the ``difference`` vector field.
     n : int
         Number of cases.
     p : NDVar
@@ -1894,10 +1886,6 @@ class Vector(NDDifferenceTest):
         if 'diff' in state:
             state['difference'] = state.pop('diff')
         NDTest.__setstate__(self, state)
-
-    def _expand_state(self):
-        NDTest._expand_state(self)
-        self.difference_norm = self.difference.norm(self._v_dim)
 
     def _name(self):
         if self.y:
@@ -1977,12 +1965,6 @@ class VectorDifferenceIndependent(Vector):
         NDTest.__init__(self, ct.y, ct.match, sub, samples, tfce, None, cdist, tstart, tstop)
         self._expand_state()
 
-    def _expand_state(self):
-        NDTest._expand_state(self)
-        self.difference_norm = self.difference.norm(self._v_dim)
-        self.c1_norm = self.c1_mean.norm(self._v_dim)
-        self.c0_norm = self.c0_mean.norm(self._v_dim)
-
     def _name(self):
         if self.y:
             return f"Vector test (independent):  {self.y}"
@@ -2047,14 +2029,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
         self.c0_mean = y0.mean('case', name=cellname(c0_name))
         self._v_dim = v_dim
         self.n = n
-
         self._expand_state()
-
-    def _expand_state(self):
-        NDTest._expand_state(self)
-        self.difference_norm = self.difference.norm(self._v_dim)
-        self.c1_norm = self.c1_mean.norm(self._v_dim)
-        self.c0_norm = self.c0_mean.norm(self._v_dim)
 
     def _name(self):
         if self.y:
@@ -2633,14 +2608,28 @@ class NDPermutationDistribution:
             to: NDVar,  # NDVar that has the target dimensions
             default: float = 0,  # value to fill in uncropped area
     ):
-        if self.tstart is None and self.tstop is None:
+        if self.tstart is None and self.tstop is None and self._vector_ax is None:
             return ndvar
-        t_ax = to.get_axis('time')
-        t_dim = to.get_dim('time')
-        t_slice = t_dim._array_index(slice(self.tstart, self.tstop))
-        x = np.empty(to.shape, ndvar.x.dtype)
-        x.fill(default)
-        x[FULL_AXIS_SLICE * t_ax + (t_slice,)] = ndvar.x
+        # Add vector axis
+        if self._vector_ax is not None:
+            shape = list(ndvar.x.shape)
+            shape.insert(self._vector_ax, 1)
+            x_in = ndvar.x.reshape(shape)
+            vector_n = to.shape[self._vector_ax]
+        else:
+            x_in = ndvar.x
+            vector_n = 0
+        # Project time axis
+        if self.tstart is None and self.tstop is None:
+            x = np.repeat(x_in, vector_n, self._vector_ax)
+        else:
+            t_ax = to.get_axis('time')
+            t_dim = to.get_dim('time')
+            t_slice = t_dim._array_index(slice(self.tstart, self.tstop))
+            x = np.empty(to.shape, ndvar.x.dtype)
+            x.fill(default)
+            index = tuple(t_slice if i == t_ax else FULL_SLICE for i in range(x.ndim))
+            x[index] = x_in
         return NDVar(x, to.dims, ndvar.info, ndvar.name)
 
     def add_original(self, stat_map):
