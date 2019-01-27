@@ -509,7 +509,7 @@ class RawICA(CachedRawPipe):
             self.log.info("Raw %s: ICA outdated due to change in bad channels for %s", self.name, subject)
 
         for session in self.session[1:]:
-            recording = compound(session, visit)
+            recording = compound((session, visit))
             raw_ = self.source.load(subject, recording, False)
             raw_.info['bads'] = bad_channels
             raw.append(raw_)
