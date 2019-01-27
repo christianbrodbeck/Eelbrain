@@ -4,6 +4,7 @@ from pathlib import Path
 from os.path import join, exists
 import pytest
 import shutil
+from warnings import catch_warnings, filterwarnings
 
 import numpy as np
 
@@ -196,8 +197,15 @@ def test_samples_sesssions():
     tempdir = TempDir()
     datasets.setup_samples_experiment(tempdir, 2, 1, 2)
 
+    class Experiment(SampleExperiment):
+
+        raw = {
+            'ica': RawICA('raw', ('sample1', 'sample2'), 'fastica', max_iter=1),
+            **SampleExperiment.raw,
+        }
+
     root = join(tempdir, 'SampleExperiment')
-    e = SampleExperiment(root)
+    e = Experiment(root)
     # bad channels
     e.make_bad_channels('0111')
     assert e.load_bad_channels() == ['MEG 0111']
@@ -231,3 +239,9 @@ def test_samples_sesssions():
     e.set(session='sample1')
     e.make_epoch_selection(auto=2e-12)
     assert exists(rej_path)
+
+    # ica
+    e.set('R0000', raw='ica')
+    with catch_warnings():
+        filterwarnings('ignore', "FastICA did not converge", UserWarning)
+        assert e.make_ica() == join(root, 'meg', 'R0000', 'R0000 ica-ica.fif')
