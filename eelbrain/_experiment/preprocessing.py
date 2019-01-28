@@ -1,6 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Pre-processing operations based on NDVars"""
 from collections import Sequence
+from copy import deepcopy
 import fnmatch
 from os import mkdir, remove
 from os.path import basename, dirname, exists, getmtime, join, splitext
@@ -13,6 +14,7 @@ from .._data_obj import NDVar
 from .._exceptions import DefinitionError
 from .._io.fiff import KIT_NEIGHBORS
 from .._ndvar import filter_data
+from .._text import enumeration
 from .._utils import ask
 from ..mne_fixes import CaptureLog
 from .definitions import compound, typed_arg
@@ -30,14 +32,19 @@ def _visit(recording: str) -> str:
 
 class RawPipe:
 
+    def _can_link(self, pipes):
+        raise NotImplementedError
+
     def _link(self, name, pipes, root, raw_dir, cache_dir, log):
         raise NotImplementedError
 
     def _link_base(self, name, path, root, log):
-        self.name = name
-        self.path = path
-        self.root = root
-        self.log = log
+        out = deepcopy(self)
+        out.name = name
+        out.path = path
+        out.root = root
+        out.log = log
+        return out
 
     def as_dict(self):
         return {'type': self.__class__.__name__, 'name': self.name}
@@ -130,6 +137,9 @@ class RawSource(RawPipe):
         else:
             self._read_raw_kwargs = kwargs
 
+    def _can_link(self, pipes):
+        return True
+
     def _link(self, name, pipes, root, raw_dir, cache_dir, log):
         if name != 'raw':
             raise NotImplementedError("RawSource with name {name!r}: the raw source must be called 'raw'")
@@ -138,8 +148,9 @@ class RawSource(RawPipe):
             head = path[:-8]
         else:
             head = splitext(path)[0]
-        self.bads_path = head + '-bad_channels.txt'
-        RawPipe._link_base(self, name, path, root, log)
+        out = RawPipe._link_base(self, name, path, root, log)
+        out.bads_path = head + '-bad_channels.txt'
+        return out
 
     def as_dict(self):
         out = RawPipe.as_dict(self)
@@ -258,12 +269,16 @@ class CachedRawPipe(RawPipe):
         self._source_name = source
         self._cache = cache
 
+    def _can_link(self, pipes):
+        return self._source_name in pipes
+
     def _link(self, name, pipes, root, raw_dir, cache_path, log):
         path = cache_path.format(root='{root}', raw=name, subject='{subject}', recording='{recording}')
         if self._source_name not in pipes:
             raise DefinitionError(f"{self.__class__.__name__} {name!r} source {self._source_name!r} does not exist")
-        self.source = pipes[self._source_name]
-        RawPipe._link_base(self, name, path, root, log)
+        out = RawPipe._link_base(self, name, path, root, log)
+        out.source = pipes[self._source_name]
+        return out
 
     def as_dict(self):
         out = RawPipe.as_dict(self)
@@ -468,8 +483,9 @@ class RawICA(CachedRawPipe):
         self.kwargs = {'method': method, 'random_state': random_state, **kwargs}
 
     def _link(self, name, pipes, root, raw_dir, cache_path, log):
-        CachedRawPipe._link(self, name, pipes, root, raw_dir, cache_path, log)
-        self.ica_path = join(raw_dir, f'{{subject_visit}} {name}-ica.fif')
+        out = CachedRawPipe._link(self, name, pipes, root, raw_dir, cache_path, log)
+        out.ica_path = join(raw_dir, f'{{subject_visit}} {name}-ica.fif')
+        return out
 
     def as_dict(self):
         out = CachedRawPipe.as_dict(self)
@@ -639,26 +655,20 @@ def assemble_pipeline(raw_dict, raw_dir, cache_path, root, sessions, log):
     elif n_source > 1:
         raise NotImplementedError("More than one RawSource pipes")
     # link sources
-    for key, pipe in raw.items():
-        pipe._link(key, raw, root, raw_dir, cache_path, log)
-        if isinstance(pipe, RawICA):
-            missing = set(pipe.session).difference(sessions)
-            if missing:
-                raise DefinitionError(f"RawICA {key!r} lists one or more non-exising sessions: {', '.join(missing)}")
-    # check tree
-    is_ok = ['raw']
-    for key, pipe in raw.items():
-        tested = []
-        name = key
-        while True:
-            if name in is_ok:
-                is_ok.append(key)
-                break
-            elif name in tested:
-                raise DefinitionError(f"Unable to resolve source for {name!r} preprocessing pipeline, circular dependency?")
-            tested.append(name)
-            name = raw[name]._source_name
-    return raw
+    linked_raw = {}
+    while raw:
+        n = len(raw)
+        for key in list(raw):
+            if raw[key]._can_link(linked_raw):
+                pipe = raw.pop(key)._link(key, linked_raw, root, raw_dir, cache_path, log)
+                if isinstance(pipe, RawICA):
+                    missing = set(pipe.session).difference(sessions)
+                    if missing:
+                        raise DefinitionError(f"RawICA {key!r} lists one or more non-exising sessions: {', '.join(missing)}")
+                linked_raw[key] = pipe
+        if len(raw) == n:
+            raise DefinitionError(f"Unable to resolve source for raw {enumeration(raw)}, circular dependency?")
+    return linked_raw
 
 
 ###############################################################################

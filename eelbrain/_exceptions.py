@@ -9,6 +9,10 @@ class DimensionMismatchError(Exception):
     "Trying to align NDVars with mismatching dimensions"
 
 
+class WrongDimension(Exception):
+    "Dimension that is supported"
+
+
 class IncompleteModel(Exception):
     "Function requires a fully specified model"
 
