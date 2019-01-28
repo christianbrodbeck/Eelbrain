@@ -434,7 +434,10 @@ class Frame(FileFrame):
         self.PlotEpochButterfly(-1)
 
     def OnPointerEntersAxes(self, event):
-        sb = self.GetStatusBar()
+        try:
+            sb = self.GetStatusBar()
+        except RuntimeError:
+            return  # can be called after the window closes (Windows)
         if event.inaxes:
             sb.SetStatusText("#%i of %i ICA Components" %
                              (event.inaxes.i, len(self.doc.components)))
