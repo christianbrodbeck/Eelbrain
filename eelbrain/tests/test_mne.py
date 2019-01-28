@@ -306,7 +306,3 @@ def test_vec_source():
     stc = ds[0, 'stc']
     stc2 = load.fiff.stc_ndvar([stc, stc], ds.info['subject'], 'vol-10', ds.info['subjects_dir'])
     assert_dataobj_equal(stc2[1], ds[0, 'src'], name=False)
-    # test
-    res = testnd.Vector('src', ds=ds, samples=2)
-    clusters = res.find_clusters()
-    assert_array_equal(clusters['n_sources'], [1, 719, 1, 11, 4])

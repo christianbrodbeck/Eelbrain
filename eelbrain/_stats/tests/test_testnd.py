@@ -636,19 +636,7 @@ def test_ttest_rel():
 
 def test_vector():
     """Test vector tests"""
-    # single vector
     ds = datasets.get_uv(vector=True)
-    res = testnd.Vector('v[:40]', ds=ds, samples=10)
-    assert res.p == 0.0
-    res = testnd.Vector('v[40:]', ds=ds, samples=10)
-    assert res.p == 1.0
-
-    # single vector with norm stat
-    res_t = testnd.Vector('v[:40]', ds=ds, samples=10, use_t2_stat=False)
-    assert res_t.p == 0.0
-    res_t = testnd.Vector('v[40:]', ds=ds, samples=10, use_t2_stat=False)
-    assert res_t.p == 1.0
-
     # non-space tests should raise error
     with pytest.raises(WrongDimension):
         testnd.ttest_1samp('v', ds=ds)
@@ -662,47 +650,6 @@ def test_vector():
         testnd.corr('v', 'fltvar', ds=ds)
     with pytest.raises(WrongDimension):
         testnd.anova('v', 'A * B', ds=ds)
-
-    # vector in time
-    ds = datasets.get_uts(vector3d=True)
-    v1 = ds[30:, 'v3d']
-    v2 = ds[:30, 'v3d']
-    vd = v1 - v2
-    res = testnd.Vector(vd, samples=10)
-    assert res.p.min() == 0.1
-    difference = res.masked_difference(0.5)
-    assert difference.x.mask.sum() == 288
-    # diff related
-    resd = testnd.VectorDifferenceRelated(v1, v2, samples=10)
-    assert_dataobj_equal(resd.p, res.p, name=False)
-    assert_dataobj_equal(resd.t2, res.t2, name=False)
-    res = testnd.Vector(v1, samples=10)
-    assert res.p.min() == 0.2
-    # without mp
-    configure(n_workers=0)
-    res0 = testnd.Vector(v1, samples=10)
-    assert_array_equal(np.sort(res0._cdist.dist), np.sort(res._cdist.dist))
-    configure(n_workers=True)
-    # time window
-    res = testnd.Vector(v2, samples=10, tstart=0.1, tstop=0.4)
-    assert res.p.min() == 0.2
-    difference = res.masked_difference(0.5)
-    assert difference.x.mask.sum() == 291
-
-    # vector in time with norm stat
-    res = testnd.Vector(vd, samples=10, use_t2_stat=False)
-    assert res.p.min() == 0
-    difference = res.masked_difference()
-    assert difference.x.mask.sum() == 297
-    resd = testnd.VectorDifferenceRelated(v1, v2, samples=10, use_t2_stat=False)
-    assert_dataobj_equal(resd.p, res.p, name=False)
-    assert_dataobj_equal(resd.difference, res.difference, name=False)
-
-    v_small = v2 / 100
-    res = testnd.Vector(v_small, tfce=True, samples=10, use_t2_stat=False)
-    assert 'WARNING' in repr(res)
-    res = testnd.Vector(v_small, tfce=0.001, samples=10)
-    assert res.p.min() == 0.0
 
 
 def test_cwt():

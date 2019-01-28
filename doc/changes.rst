@@ -11,14 +11,6 @@ New in 0.29
   - Better default parameters for :func:`resample`
   - :meth:`MneExperiment.make_rej` renamed to :meth:`MneExperiment.make_epoch_selection`
 
-* Support for vector data (with many contributions from `Proloy Das`_):
-
-  - :class:`Space` dimension to represent physical space
-  - :class:`VolumeSourceSpace` to represent volume source spaces
-  - Statistical tests: :class:`testnd.Vector`, :class:`testnd.VectorDifferenceRelated`,
-    :class:`testnd.VectorDifferenceIndependent`
-  - Plotting with :class:`plot.GlassBrain`
-
 * Predictor-specific stopping for :func:`boosting`
 * New :class:`NDVar` function :func:`correlation_coefficient`
 * Plotting:
@@ -512,6 +504,3 @@ New in 0.1.5
 
 * :py:class:`plot.topo.TopoButterfly` plot: new keyboard commands (``t``,
   ``left arrow``, ``right arrow``).
-
-
-.. _Proloy Das: https://ece.umd.edu/~proloy/
