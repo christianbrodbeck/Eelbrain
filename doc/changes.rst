@@ -19,16 +19,16 @@ New in 0.29
     :class:`testnd.VectorDifferenceIndependent`
   - Plotting with :class:`plot.GlassBrain`
 
-* New :class:`NDVar` functions:
-
-  - :func:`correlation_coefficient`
-
+* Predictor-specific stopping for :func:`boosting`
+* New :class:`NDVar` function :func:`correlation_coefficient`
 * Plotting:
 
   - :ref:`general-layout-parameters` for plot size relative to screen size
+  - Better plots for masked statistic maps
 
 * :class:`MneExperiment`:
 
+  - Object-based definitions (see :ref:`experiment-class-guide`)
   - New method :meth:`MneExperiment.plot_raw`
 
 
