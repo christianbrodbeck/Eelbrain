@@ -122,15 +122,11 @@ class TreeModel:
     """
     owner = None  # email address as string (for notification)
     _auto_debug = False  # in notification block
-
-    _fmt_pattern = re.compile('\{([\w-]+)\}')
-
+    _fmt_pattern = re.compile(r'\{([\w-]+)\}')
     # a dictionary of static templates (i.e., templates that do not have any hooks)
     _templates = {}
     defaults = {}
-
     _repr_args = ()
-    _repr_kwargs = ()
 
     def __init__(self, **state):
         # scaffold for state
@@ -140,6 +136,7 @@ class TreeModel:
         self._terminal_fields = []
         self._user_fields = []  # terminal fields that are relevant for user
         self._secondary_cache = defaultdict(tuple)  # secondary cache-files
+        self._repr_kwargs = []
 
         # scaffold for hooks
         self._compound_members = {}
@@ -160,9 +157,7 @@ class TreeModel:
             elif isinstance(v, tuple):
                 self._register_field(k, v, v[0], allow_empty=True)
             else:
-                err = ("Invalid templates field value: %r. Need None, tuple "
-                       "or string" % v)
-                raise TypeError(err)
+                raise TypeError(f"Invalid templates field value: {v!r}. Need None, tuple or string")
 
         if self.owner:
             task = self.__class__.__name__
@@ -278,7 +273,7 @@ class TreeModel:
     def _register_field(self, key, values=None, default=None, set_handler=None,
                         eval_handler=None, post_set_handler=None,
                         depends_on=None, slave_handler=None, internal=False,
-                        allow_empty=False):
+                        allow_empty=False, repr=None):
         """Register an iterable field
 
         Parameters
@@ -308,6 +303,10 @@ class TreeModel:
             the user.
         allow_empty : bool
             Allow empty string in ``values``.
+        repr : bool
+            By default, fields are shown in ``repr`` if they are different from
+            the value at initialization. Set to ``True`` to always show them
+            (as long as there are at least 2 ``values``).
         """
         if key in self._fields:
             raise KeyError("Field already exists: %r" % key)
@@ -334,14 +333,18 @@ class TreeModel:
             values = tuple(values)
             check_names(values, key, allow_empty)
             if default is None:
-                if len(values):
-                    default = values[0]
-                else:
-                    raise RuntimeError(f"Values for {key!r} empty, can`t set default")
+                default = values[0]
             elif default not in values:
                 raise ValueError(f"Default {default!r} for {key!r} not in values {values}")
-
             self._field_values[key] = values
+
+        # repr
+        if repr is True:
+            if values:
+                if len(values) > 1:
+                    self._repr_kwargs.append(key)
+        elif repr is not None:
+            raise TypeError(f"repr={repr!r}")
 
         self._terminal_fields.append(key)
         if depends_on is None and not internal:

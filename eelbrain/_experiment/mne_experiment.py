@@ -403,9 +403,6 @@ class MneExperiment(FileTree):
     # default is identity (mrisubject = subject)
     _mri_subjects = {'': keydefaultdict(lambda s: s)}
 
-    # state variables that are always shown in self.__repr__():
-    _repr_kwargs = ('subject', 'raw', 'epoch', 'rej')
-
     # Where to search for subjects (defined as a template name). If the
     # experiment searches for subjects automatically, it scans this directory
     # for subfolders matching subject_re.
@@ -626,11 +623,11 @@ class MneExperiment(FileTree):
         # Experiment class setup
         ########################
         self._register_field('mri', sorted(self._mri_subjects), allow_empty=True)
-        self._register_field('subject', subjects or None)
+        self._register_field('subject', subjects or None, repr=True)
         self._register_field('group', self._groups.keys(), 'all', post_set_handler=self._post_set_group)
 
         raw_default = sorted(self.raw)[0] if self.raw else None
-        self._register_field('raw', sorted(self._raw), default=raw_default)
+        self._register_field('raw', sorted(self._raw), default=raw_default, repr=True)
         self._register_field('rej', self._artifact_rejection.keys(), 'man', allow_empty=True)
 
         # epoch
@@ -640,9 +637,9 @@ class MneExperiment(FileTree):
                 break
         else:
             default_epoch = None
-        self._register_field('epoch', epoch_keys, default_epoch)
-        self._register_field('session', self._sessions, depends_on=('epoch',), slave_handler=self._update_session)
-        self._register_field('visit', self._visits, allow_empty=True)
+        self._register_field('epoch', epoch_keys, default_epoch, repr=True)
+        self._register_field('session', self._sessions, depends_on=('epoch',), slave_handler=self._update_session, repr=True)
+        self._register_field('visit', self._visits, allow_empty=True, repr=True)
 
         # cov
         if 'bestreg' in self._covs:
