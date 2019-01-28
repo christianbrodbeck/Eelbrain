@@ -465,6 +465,7 @@ class MneExperiment(FileTree):
     # Make sure dictionary keys (test names) are appropriate for filenames.
     # tests imply a model which is set automatically
     tests = {}
+    _empty_test = False  # for TRFExperiment
     _cluster_criteria = {
         '': {'time': 0.025, 'sensor': 4, 'source': 10},
         'all': {},
@@ -617,6 +618,9 @@ class MneExperiment(FileTree):
         ########################################################################
         # tests
         self._tests = assemble_tests(self.tests)
+        test_values = sorted(self._tests)
+        if self._empty_test:
+            test_values.insert(0, '')
 
         ########################################################################
         # Experiment class setup
@@ -646,11 +650,9 @@ class MneExperiment(FileTree):
         else:
             default_cov = None
         self._register_field('cov', sorted(self._covs), default_cov)
-        self._register_field('inv', default='free-3-dSPM',
-                             eval_handler=self._eval_inv,
-                             post_set_handler=self._post_set_inv)
+        self._register_field('inv', default='free-3-dSPM', eval_handler=self._eval_inv, post_set_handler=self._post_set_inv)
         self._register_field('model', eval_handler=self._eval_model)
-        self._register_field('test', sorted(self._tests), post_set_handler=self._post_set_test)
+        self._register_field('test', test_values, post_set_handler=self._post_set_test, allow_empty=self._empty_test)
         self._register_field('parc', parc_values, 'aparc', eval_handler=self._eval_parc, allow_empty=True)
         self._register_field('freq', self._freqs.keys())
         self._register_field('src', default='ico-4', eval_handler=self._eval_src)
