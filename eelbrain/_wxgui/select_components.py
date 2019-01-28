@@ -868,12 +868,16 @@ class SourceFrame(FileFrameChild):
         while True:
             if dlg.ShowModal() != wx.ID_OK:
                 break
+            error = None
             try:
                 value = float(dlg.GetValue())
+                if value <= 0:
+                    error = f"{value}: must be > 0"
             except Exception as exception:
-                msg = wx.MessageDialog(
-                    self, str(exception), "Invalid Entry",
-                    wx.OK | wx.ICON_ERROR)
+                error = str(exception)
+
+            if error:
+                msg = wx.MessageDialog(self, error, "Invalid Entry", wx.OK | wx.ICON_ERROR)
                 msg.ShowModal()
                 msg.Destroy()
             else:
