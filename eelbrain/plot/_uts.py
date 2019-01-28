@@ -119,8 +119,6 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
      - ``r``: y-axis zoom in (reduce y-axis range)
      - ``c``: y-axis zoom out (increase y-axis range)
     """
-    _name = "UTSStat"
-
     def __init__(self, y, x=None, xax=None, match=None, sub=None, ds=None,
                  main=np.mean, error='sem', pool_error=None, legend='upper right',
                  axtitle=True, xlabel=True, ylabel=True, xticklabels=-1,
@@ -215,7 +213,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         self._show()
 
     def _fill_toolbar(self, tb):
-        import wx
+        from .._wxgui import wx
 
         btn = self._cluster_btn = wx.Button(tb, wx.ID_ABOUT, "Clusters")
         btn.Enable(False)
@@ -348,8 +346,6 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
      - ``r``: y-axis zoom in (reduce y-axis range)
      - ``c``: y-axis zoom out (increase y-axis range)
     """
-    _name = "UTS"
-
     def __init__(self, y, xax=None, axtitle=True, ds=None, sub=None,
                  xlabel=True, ylabel=True, xticklabels=-1, bottom=None,
                  top=None, legend='upper right', xlim=None, color=None, *args,
@@ -474,8 +470,6 @@ class UTSClusters(EelFigure):
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    _name = "UTSClusters"
-
     def __init__(self, res, pmax=0.05, ptrend=0.1, axtitle=True, cm=None,
                  overlay=False, xticklabels=-1, *args, **kwargs):
         clusters_ = res.clusters
@@ -516,7 +510,7 @@ class UTSClusters(EelFigure):
         self._show()
 
     def _fill_toolbar(self, tb):
-        import wx
+        from .._wxgui import wx
 
         btn = wx.Button(tb, wx.ID_ABOUT, "Clusters")
         tb.AddControl(btn)

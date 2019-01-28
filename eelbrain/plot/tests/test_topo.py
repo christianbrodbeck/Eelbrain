@@ -65,15 +65,18 @@ def test_plot_array():
     "Test plot.TopoArray"
     ds = datasets.get_uts(utsnd=True)
     p = plot.TopoArray('utsnd', ds=ds)
+    assert repr(p) == "<TopoArray: utsnd>"
     p.set_topo_t(0, 0.2)
     p.close()
     p = plot.TopoArray('utsnd', ds=ds, vmax=0.2, w=2)
     p.close()
     p = plot.TopoArray('utsnd', 'A%B', ds=ds, axw=4)
+    assert repr(p) == "<TopoArray: utsnd ~ A x B>"
     p.close()
 
     # results
     res = testnd.ttest_ind('utsnd', 'A', ds=ds, pmin=0.05, tstart=0.1, tstop=0.3, samples=2)
     p = plot.TopoArray(res)
+    assert repr(p) == "<TopoArray: a0, a1, difference>"
     p.set_topo_t(0, 0.)
     p.close()

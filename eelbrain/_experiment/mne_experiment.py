@@ -62,11 +62,13 @@ from .._stats.testnd import _MergedTemporalClusterDist
 from .._text import enumeration, plural
 from .._utils import ask, subp, keydefaultdict, log_level, ScreenHandler, deprecated
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
-from .definitions import check_names, find_dependent_epochs, find_epochs_vars, find_test_vars, log_dict_change, log_list_change
+from .definitions import find_dependent_epochs, find_epochs_vars, log_dict_change, log_list_change
 from .epochs import PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, assemble_epochs, decim_param
 from .exceptions import FileDeficient, FileMissing
 from .experiment import FileTree
+from .groups import assemble_groups
 from .parc import (
+    assemble_parcs,
     FS_PARC, FSA_PARC, SEEDED_PARC_RE,
     Parcellation, CombinationParc, EelbrainParc,
     FreeSurferParc, FSAverageParc, SeededParc,
@@ -77,15 +79,18 @@ from .preprocessing import (
     compare_pipelines, ask_to_delete_ica_files)
 from .test_def import (
     Test, EvokedTest,
-    ROITestResult, TestDims, TwoStageTest, assemble_tests,
+    ROITestResult, TestDims, TwoStageTest,
+    assemble_tests, find_test_vars,
 )
 from .variable_def import Variables
 
 
 # current cache state version
-CACHE_STATE_VERSION = 11
+CACHE_STATE_VERSION = 12
 # History:
 #  10:  input_state: share forward-solutions between sessions
+#  11:  add samplingrate to epochs
+#  12:  store test-vars as Variables object
 
 # paths
 LOG_FILE = join('{root}', 'eelbrain {name}.log')
@@ -554,45 +559,7 @@ class MneExperiment(FileTree):
 
         ########################################################################
         # groups
-        groups = {'all': subjects}
-        group_definitions = self.groups.copy()
-        while group_definitions:
-            n_def = len(group_definitions)
-            for name, group_def in tuple(group_definitions.items()):
-                if name == '*':
-                    raise ValueError("'*' is not a valid group name")
-                elif isinstance(group_def, dict):
-                    base = (group_def.get('base', 'all'))
-                    if base not in groups:
-                        continue
-                    exclude = group_def['exclude']
-                    if isinstance(exclude, str):
-                        exclude = (exclude,)
-                    elif not isinstance(exclude, (tuple, list, set)):
-                        raise TypeError("Exclusion must be defined as str | "
-                                        "tuple | list | set; got "
-                                        "%s" % repr(exclude))
-                    group_members = (s for s in groups[base] if s not in exclude)
-                elif isinstance(group_def, (list, tuple)):
-                    missing = tuple(s for s in group_def if s not in subjects)
-                    if missing:
-                        raise DefinitionError(
-                            "Group %s contains non-existing subjects: %s" %
-                            (name, ', '.join(missing)))
-                    group_members = sorted(group_def)
-                    if len(set(group_members)) < len(group_members):
-                        count = Counter(group_members)
-                        duplicates = (s for s, n in count.items() if n > 1)
-                        raise DefinitionError(
-                            "Group %r: the following subjects appear more than "
-                            "once: %s" % (name, ', '.join(duplicates)))
-                else:
-                    raise TypeError("group %s=%r" % (name, group_def))
-                groups[name] = tuple(group_members)
-                group_definitions.pop(name)
-            if len(group_definitions) == n_def:
-                raise ValueError("Groups contain unresolvable definition")
-        self._groups = groups
+        self._groups = assemble_groups(self.groups, set(subjects))
 
         ########################################################################
         # Preprocessing
@@ -651,20 +618,7 @@ class MneExperiment(FileTree):
         ###############
         # make : can be made if non-existent
         # morph_from_fraverage : can be morphed from fsaverage to other subjects
-        self._parcs = {}
-        for name, p in chain(self.__parcs.items(), self.parcs.items()):
-            if isinstance(p, Parcellation):
-                parc = p
-            elif p == FS_PARC:
-                parc = FreeSurferParc(('lateral', 'medial'))
-            elif p == FSA_PARC:
-                parc = FSAverageParc(('lateral', 'medial'))
-            elif isinstance(p, dict):
-                parc = parc_from_dict(name, p)
-            else:
-                raise DefinitionError(f"parcellation {name!r}: {p!r}")
-            parc._link(name)
-            self._parcs[name] = parc
+        self._parcs = assemble_parcs(chain(self.__parcs.items(), self.parcs.items()))
         parc_values = list(self._parcs.keys())
         parc_values.append('')
 
@@ -689,28 +643,23 @@ class MneExperiment(FileTree):
         ########################################################################
         # Experiment class setup
         ########################
-        self._register_field('mri', sorted(self._mri_subjects))
+        self._register_field('mri', sorted(self._mri_subjects), allow_empty=True)
         self._register_field('subject', subjects or None)
-        self._register_field('group', self._groups.keys(), 'all',
-                             post_set_handler=self._post_set_group)
+        self._register_field('group', self._groups.keys(), 'all', post_set_handler=self._post_set_group)
 
         raw_default = sorted(self.raw)[0] if self.raw else None
         self._register_field('raw', sorted(self._raw), default=raw_default)
-        self._register_field('rej', self._artifact_rejection.keys(), 'man')
+        self._register_field('rej', self._artifact_rejection.keys(), 'man', allow_empty=True)
 
         # epoch
-        if self._epochs:
-            epoch_keys = sorted(self._epochs)
-            for default_epoch in epoch_keys:
-                if isinstance(self._epochs[default_epoch], PrimaryEpoch):
-                    break
-            else:
-                raise RuntimeError("No primary epoch")
+        epoch_keys = sorted(self._epochs)
+        for default_epoch in epoch_keys:
+            if isinstance(self._epochs[default_epoch], PrimaryEpoch):
+                break
         else:
-            epoch_keys = default_epoch = None
+            default_epoch = None
         self._register_field('epoch', epoch_keys, default_epoch)
-        self._register_field('session', self._sessions, depends_on=('epoch',),
-                             slave_handler=self._update_session)
+        self._register_field('session', self._sessions, depends_on=('epoch',), slave_handler=self._update_session)
         # cov
         if 'bestreg' in self._covs:
             default_cov = 'bestreg'
@@ -721,14 +670,12 @@ class MneExperiment(FileTree):
                              eval_handler=self._eval_inv,
                              post_set_handler=self._post_set_inv)
         self._register_field('model', eval_handler=self._eval_model)
-        self._register_field('test', chain(sorted(self._tests), ('',)),
-                             post_set_handler=self._post_set_test)
-        self._register_field('parc', parc_values, 'aparc',
-                             eval_handler=self._eval_parc)
+        self._register_field('test', sorted(self._tests), post_set_handler=self._post_set_test)
+        self._register_field('parc', parc_values, 'aparc', eval_handler=self._eval_parc, allow_empty=True)
         self._register_field('freq', self._freqs.keys())
         self._register_field('src', default='ico-4', eval_handler=self._eval_src)
-        self._register_field('connectivity', ('', 'link-midline'))
-        self._register_field('select_clusters', self._cluster_criteria.keys())
+        self._register_field('connectivity', ('', 'link-midline'), allow_empty=True)
+        self._register_field('select_clusters', self._cluster_criteria.keys(), allow_empty=True)
 
         # slave fields
         self._register_field('mrisubject', depends_on=('mri', 'subject'),
@@ -952,6 +899,15 @@ class MneExperiment(FileTree):
 
             # Backwards compatibility
             # =======================
+            if cache_state_v < 12:
+                for test, params in cache_state['tests'].items():
+                    try:
+                        params['vars'] = Variables(params['vars'])
+                    except Exception as error:
+                        log.warning("  Test %s: Defective vardef %r", test, params['vars'])
+                        params['vars'] = None
+
+            # epochs
             if cache_state_v >= 11:
                 epoch_state_v = epoch_state
             elif cache_state_v >= 3:
@@ -1056,7 +1012,7 @@ class MneExperiment(FileTree):
                 if group not in self._groups:
                     invalid_cache['groups'].add(group)
                     log.warning("  Group removed: %s", group)
-                elif set(members) != set(self._groups[group]):
+                elif members != self._groups[group]:
                     invalid_cache['groups'].add(group)
                     log_list_change(log, "Group", group, members, self._groups[group])
 
@@ -1129,12 +1085,14 @@ class MneExperiment(FileTree):
             if 'variables' in invalid_cache:
                 bad_vars = invalid_cache['variables']
                 # tests using bad variable
-                for test, params in cache_tests.items():
-                    if test not in invalid_cache['tests']:
-                        bad = bad_vars.intersection(find_test_vars(params))
-                        if bad:
-                            invalid_cache['tests'].add(test)
-                            log.debug("  Test %s depends on changed variables %s", test, ', '.join(bad))
+                for test in cache_tests:
+                    if test in invalid_cache['tests']:
+                        continue
+                    params = tests_state[test]
+                    bad = bad_vars.intersection(find_test_vars(params))
+                    if bad:
+                        invalid_cache['tests'].add(test)
+                        log.debug("  Test %s depends on changed variables %s", test, ', '.join(bad))
                 # epochs using bad variable
                 epochs_vars = find_epochs_vars(cache_state['epochs'])
                 for epoch, evars in epochs_vars.items():
@@ -1466,15 +1424,13 @@ class MneExperiment(FileTree):
         pipe = self._raw[raw]
         return pipe.mtime(self.get('subject'), self.get('session'), bad_chs)
 
-    def _rej_mtime(self, epoch, pre_ica=False):
+    def _rej_mtime(self, epoch):
         """rej-file mtime for secondary epoch definition
 
         Parameters
         ----------
         epoch : dict
             Epoch definition.
-        pre_ica : bool
-            Only analyze mtime before ICA file estimation.
         """
         rej = self._artifact_rejection[self.get('rej')]
         if rej['kind'] is None:
@@ -1754,13 +1710,10 @@ class MneExperiment(FileTree):
             try:
                 vardef = self._tests[vardef].vars
             except KeyError:
-                raise ValueError("vardef must be a valid test definition, got "
-                                 "vardef=%r" % vardef)
-        if vardef is None:
-            return
-
-        vdef = Variables(vardef)
-        vdef.apply(ds, self)
+                raise ValueError(f"vardef={vardef!r}")
+        elif not isinstance(vardef, Variables):
+            vardef = Variables(vardef)
+        vardef.apply(ds, self)
 
     def _backup(self, dst_root, v=False):
         """Backup all essential files to ``dst_root``.
@@ -4569,7 +4522,7 @@ class MneExperiment(FileTree):
         pipe = self._raw[self.get('raw')]
         pipe.cache(self.get('subject'), self.get('session'))
 
-    def make_epoch_selection(self, decim=None, auto=None, overwrite=False, **state):
+    def make_epoch_selection(self, decim=None, auto=None, overwrite=None, **state):
         """Open :func:`gui.select_epochs` for manual epoch selection
 
         The GUI is opened with the correct file name; if the corresponding
@@ -4591,7 +4544,9 @@ class MneExperiment(FileTree):
             If a rejection file already exists also set ``overwrite=True``.
         overwrite : bool
             If ``auto`` is specified and a rejection file already exists,
-            overwrite has to be set to ``True`` to overwrite the old file.
+            overwrite the old file. The default is to raise an error if the
+            file exists (``None``). Set to ``False`` to quietly keep the exising
+            file.
         ...
             State parameters.
         """
@@ -4612,10 +4567,12 @@ class MneExperiment(FileTree):
         path = self.get('rej-file', mkdir=True, session=epoch.session)
 
         if auto is not None and overwrite is not True and exists(path):
-            msg = ("A rejection file already exists for {subject}, epoch "
-                   "{epoch}, rej {rej}. Set overwrite=True if you are sure you "
-                   "want to replace that file.")
-            raise IOError(self.format(msg))
+            if overwrite is False:
+                return
+            elif overwrite is None:
+                raise IOError(self.format("A rejection file already exists for {subject}, epoch {epoch}, rej {rej}. Set the overwrite parameter to specify how to handle existing files."))
+            else:
+                raise TypeError(f"overwrite={overwrite!r}")
 
         ds = self.load_epochs(reject=False, trigger_shift=False, decim=decim)
         has_meg = 'meg' in ds

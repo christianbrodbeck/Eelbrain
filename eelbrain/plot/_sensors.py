@@ -322,7 +322,7 @@ class SensorMapMixin:
         self.__LabelChoice.SetSelection(sel)
 
     def _fill_toolbar(self, tb):
-        import wx
+        from .._wxgui import wx
 
         # sensor labels
         lbl = wx.StaticText(tb, -1, "Labels:")
@@ -345,7 +345,8 @@ class SensorMapMixin:
         tb.AddControl(btn)
 
     def __OnMarkSensor(self, event):
-        import wx
+        from .._wxgui import wx
+
         msg = "Channels to mark, separated by comma"
         dlg = wx.TextEntryDialog(self._frame, msg, "Mark Sensor")
         if dlg.ShowModal() != wx.ID_OK:
@@ -465,8 +466,6 @@ class SensorMaps(EelFigure):
      - The 'Clear' button (or :meth:`clear`) clears the selection.
 
     """
-    _name = 'SensorMaps'
-
     def __init__(self, sensors, select=[], proj='default', size=1,
                  color='k', marker='.', frame=0.05, *args, **kwargs):
         sensors = as_sensor(sensors)
@@ -537,7 +536,7 @@ class SensorMaps(EelFigure):
         self._show()
 
     def _fill_toolbar(self, tb):
-        import wx
+        from .._wxgui import wx
 
         tb.AddSeparator()
 
@@ -696,7 +695,6 @@ class SensorMap(SensorMapMixin, EelFigure):
         Also accepts :ref:`general-layout-parameters`.
     """
     _make_axes = False
-    _name = 'SensorMap'
 
     def __init__(self, sensors, labels='name', proj='default', size=1,
                  color='k', marker='.', mark=None, head_radius=None,

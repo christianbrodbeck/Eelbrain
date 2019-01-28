@@ -156,7 +156,6 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
     (see `The MNI brain and the Talairach atlas
     <http://imaging.mrc-cbu.cam.ac.uk/imaging/MniTalairach>`_)
     """
-    _name = 'GlassBrain'
     _make_axes = False
     _display_time_in_frame_title = True
 
@@ -541,8 +540,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         glassbrain : GlassBrain
             GlassBrain plot.
         """
-        import wx
-        from .._wxgui import get_app, needs_jumpstart
+        from .._wxgui import wx, get_app, needs_jumpstart
         from .._wxgui.mpl_canvas import CanvasFrame
         jumpstart = needs_jumpstart()
 

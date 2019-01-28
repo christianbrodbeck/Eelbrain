@@ -1,6 +1,4 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from inspect import getargspec
-
 from .._exceptions import DefinitionError
 from .._text import enumeration, plural
 from .._utils.parse import find_variables
@@ -21,15 +19,17 @@ class Definition:
             return False
 
 
-def name_ok(key: str) -> bool:
+def name_ok(key: str, allow_empty: bool) -> bool:
+    if not key and not allow_empty:
+        return False
     try:
         return all(c not in key for c in ' ')
     except TypeError:
         return False
 
 
-def check_names(keys, attribute):
-    invalid = [key for key in keys if not name_ok(key)]
+def check_names(keys, attribute, allow_empty: bool):
+    invalid = [key for key in keys if not name_ok(key, allow_empty)]
     if invalid:
         raise DefinitionError(f"Invalid {plural('name', len(invalid))} for {attribute}: {enumeration(invalid)}")
 
@@ -134,36 +134,5 @@ def find_dependent_epochs(epoch, epochs):
     return out[1:]
 
 
-def find_test_vars(params):
-    "Find variables used in a test definition"
-    if 'model' in params and params['model'] is not None:
-        vs = find_variables(params['model'])
-    else:
-        vs = set()
-
-    if params['kind'] == 'two-stage':
-        vs.update(find_variables(params['stage_1']))
-
-    vardef = params.get('vars', None)
-    if vardef is not None:
-        if isinstance(vardef, dict):
-            vardef = vardef.items()
-        elif isinstance(vardef, tuple):
-            vardef = (map(str.strip, v.split('=', 1)) for v in vardef)
-        else:
-            raise TypeError("vardef=%r" % (vardef,))
-
-        for name, definition in vardef:
-            if name in vs:
-                vs.remove(name)
-                if isinstance(definition, tuple):
-                    definition = definition[0]
-                vs.update(find_variables(definition))
-    return vs
-
-
 def typed_arg(arg, type_):
     return None if arg is None else type_(arg)
-
-
-find_test_vars.__test__ = False

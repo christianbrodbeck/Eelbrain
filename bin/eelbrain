@@ -6,16 +6,20 @@
 from argparse import ArgumentParser
 import os
 import sys
+from warnings import catch_warnings, filterwarnings
 
 from traits.trait_base import ETSConfig
 from IPython import start_ipython
 from IPython.paths import get_ipython_dir
-import eelbrain
+with catch_warnings():
+    filterwarnings('ignore', "can't resolve package from __spec__", ImportWarning)
+    import eelbrain
 
 
 parser = ArgumentParser('eelbrain', description='Start iPython with eelbrain profile')
 parser.add_argument('--version', action='version', version=eelbrain.__version__)
 parser.add_argument('--debug-warnings', action='store_true', help='Print tracebacks for warnings')
+parser.add_argument('--show-warnings', action='store_true', help='Show all warnings; by default, many warnings that are probably irrelevant are suppressed')
 
 
 if __name__ == '__main__':
@@ -24,6 +28,8 @@ if __name__ == '__main__':
     if args.debug_warnings:
         from eelbrain._utils.debug import warn_with_traceback
         warn_with_traceback()
+    if args.show_warnings:
+        eelbrain._config.SUPPRESS_WARNINGS = False
 
     # set ETS toolkit before it is launched
     ETSConfig.toolkit = 'wx'

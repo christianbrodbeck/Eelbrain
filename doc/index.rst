@@ -37,6 +37,7 @@ Manual
    getting_started
    intro
    changes
+   publications
    development
 
 .. toctree::

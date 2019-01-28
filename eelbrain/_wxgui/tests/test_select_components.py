@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from os.path import join
+from warnings import catch_warnings, filterwarnings
 
 import mne
 from eelbrain import gui, load
@@ -17,8 +18,10 @@ def test_select_components():
     raw = mne.io.Raw(raw_path, preload=True).pick_types('mag', stim=True)
     ds = load.fiff.events(raw)
     ds['epochs'] = load.fiff.mne_epochs(ds, tmax=0.1)
-    ica = mne.preprocessing.ICA(0.95, fit_params={'tol': 0.001})
-    ica.fit(raw)
+    ica = mne.preprocessing.ICA(0.95, max_iter=1)
+    with catch_warnings():
+        filterwarnings('ignore', 'FastICA did not converge')
+        ica.fit(raw)
     ica.save(PATH)
 
     frame = gui.select_components(PATH, ds)

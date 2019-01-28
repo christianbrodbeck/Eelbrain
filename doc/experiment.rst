@@ -236,15 +236,15 @@ Example
 
 The following is a complete example for an experiment class definition file
 (the source file can be found in the Eelbrain examples folder at
-``examples/experiment/sample_experiment.py``):
+``examples/mouse/mouse.py``):
 
-.. literalinclude:: ../examples/experiment/sample_experiment.py
+.. literalinclude:: ../examples/mouse/mouse.py
 
 
-Given the ``SampleExperiment`` class definition above, the following is a
+Given the ``Mouse`` class definition above, the following is a
 script that would compute/update analysis reports:
 
-.. literalinclude:: ../examples/experiment/make_reports.py
+.. literalinclude:: ../examples/mouse/make_reports.py
 
 
 Experiment Definition
@@ -480,23 +480,21 @@ Subject groups
 
 A subject group called ``'all'`` containing all subjects is always implicitly
 defined. Additional subject groups can be defined in
-:attr:`MneExperiment.groups` in a dictionary with ``{name: group_definition}``
-entries. The simplest group definition is a tuple
-of subject names, e.g. ``("R0026", "R0042", "R0066")``. In addition, a
-group_definition can be a dictionary with the following entries:
+:attr:`MneExperiment.groups` with ``{name: group_definition}``
+entries:
 
-base : :class:`str`
-    The name of the group to base the new group on.
-exclude : :class:`tuple` of :class:`str`
-    A list of subjects to exclude (e.g., ``("R0026", "R0042", "R0066")``)
+.. autosummary::
+   :toctree: generated
+   :template: class_nomethods.rst
 
-Examples::
+   Group
+   SubGroup
+
+Example::
 
     groups = {
-        'some': ("R0026", "R0042", "R0066"),
-        'others': {'base': 'all', 'exclude': ("R0666",)},
-        # some, buth without R0042:
-        'some_less': {'base': 'some', 'exclude': ("R0042",)}
+        'good': SubGroup('all', ['R0013', 'R0666']),
+        'bad': Group(['R0013', 'R0666']),
     }
 
 

@@ -197,7 +197,6 @@ class Frame(FileFrame):
     =========== ============================================================
     """
     _doc_name = 'component selection'
-    _name = 'SelectComponents'
     _title = 'Select Components'
     _wildcard = "ICA fiff file (*-ica.fif)|*.fif"
 
@@ -604,7 +603,6 @@ class SourceFrame(FileFrameChild):
     =========== ============================================================
     """
     _doc_name = 'component selection'
-    _name = 'ICASources'
     _title = 'ICA Source Time Course'
     _wildcard = "ICA fiff file (*-ica.fif)|*.fif"
 
@@ -1018,7 +1016,7 @@ class FindRareEventsDialog(EelbrainDialog):
 class InfoFrame(HTMLFrame):
 
     def OpenURL(self, url):
-        m = re.match('^component:(\d+) epoch:(\d+)$', url)
+        m = re.match(r'^component:(\d+) epoch:(\d+)$', url)
         if m:
             comp, epoch = m.groups()
             self.Parent.GoToComponentEpoch(int(comp), int(epoch))

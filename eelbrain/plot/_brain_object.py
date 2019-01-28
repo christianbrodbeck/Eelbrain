@@ -11,13 +11,13 @@ from warnings import warn
 from matplotlib.colors import ListedColormap
 from mne.io.constants import FIFF
 import numpy as np
-import wx
 
 from .._colorspaces import to_rgb, to_rgba
 from .._data_obj import NDVar, SourceSpace, asndvar
+from .._text import ms
+from .._wxgui import wx
 from ..fmtxt import Image
 from ..mne_fixes import reset_logger
-from .._text import ms
 from ._base import (CONFIG, TimeSlicer, do_autorun, find_axis_params_data,
                     find_fig_cmaps, find_fig_vlims, fix_vlim_for_cmap)
 from ._color_luts import p_lut

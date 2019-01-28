@@ -2,10 +2,11 @@
 from itertools import product
 import pickle
 import logging
+import pytest
 import sys
 
 from nose.tools import (
-    eq_, ok_, assert_equal, assert_not_equal, assert_almost_equal,
+    eq_, ok_, assert_almost_equal,
     assert_greater, assert_greater_equal, assert_less, assert_in, assert_not_in,
     assert_raises)
 import numpy as np
@@ -14,7 +15,7 @@ from numpy.testing import assert_array_equal, assert_allclose
 import eelbrain
 from eelbrain import (Dataset, NDVar, Categorial, Scalar, UTS, Sensor, configure,
                       datasets, test, testnd, set_log_level, cwt_morlet)
-from eelbrain._exceptions import ZeroVariance
+from eelbrain._exceptions import DimensionMismatchError, WrongDimension, ZeroVariance
 from eelbrain._stats.testnd import (Connectivity, NDPermutationDistribution, label_clusters,
                                     _MergedTemporalClusterDist, find_peaks)
 from eelbrain._utils.system import IS_WINDOWS
@@ -638,27 +639,67 @@ def test_vector():
     # single vector
     ds = datasets.get_uv(vector=True)
     res = testnd.Vector('v[:40]', ds=ds, samples=10)
-    assert res.p == 0.1
+    assert res.p == 0.0
     res = testnd.Vector('v[40:]', ds=ds, samples=10)
-    assert res.p == 0.8
+    assert res.p == 1.0
+
+    # single vector with norm stat
+    res_t = testnd.Vector('v[:40]', ds=ds, samples=10, use_t2_stat=False)
+    assert res_t.p == 0.0
+    res_t = testnd.Vector('v[40:]', ds=ds, samples=10, use_t2_stat=False)
+    assert res_t.p == 1.0
+
+    # non-space tests should raise error
+    with pytest.raises(WrongDimension):
+        testnd.ttest_1samp('v', ds=ds)
+    with pytest.raises(WrongDimension):
+        testnd.ttest_rel('v', 'A', match='rm', ds=ds)
+    with pytest.raises(WrongDimension):
+        testnd.ttest_ind('v', 'A', ds=ds)
+    with pytest.raises(WrongDimension):
+        testnd.t_contrast_rel('v', 'A', 'a0 > a1', 'rm', ds=ds)
+    with pytest.raises(WrongDimension):
+        testnd.corr('v', 'fltvar', ds=ds)
+    with pytest.raises(WrongDimension):
+        testnd.anova('v', 'A * B', ds=ds)
 
     # vector in time
     ds = datasets.get_uts(vector3d=True)
-    res = testnd.Vector(ds[30:, 'v3d'], samples=10)
+    v1 = ds[30:, 'v3d']
+    v2 = ds[:30, 'v3d']
+    vd = v1 - v2
+    res = testnd.Vector(vd, samples=10)
     assert res.p.min() == 0.1
-    res = testnd.Vector(ds[:30, 'v3d'], samples=10)
-    assert res.p.min() == 0.0
-    difference = res.masked_difference()
-    assert difference.x.mask.sum() == 291
-
+    difference = res.masked_difference(0.5)
+    assert difference.x.mask.sum() == 288
+    # diff related
+    resd = testnd.VectorDifferenceRelated(v1, v2, samples=10)
+    assert_dataobj_equal(resd.p, res.p, name=False)
+    assert_dataobj_equal(resd.t2, res.t2, name=False)
+    res = testnd.Vector(v1, samples=10)
+    assert res.p.min() == 0.2
     # without mp
     configure(n_workers=0)
-    res0 = testnd.Vector(ds[:30, 'v3d'], samples=10)
+    res0 = testnd.Vector(v1, samples=10)
     assert_array_equal(np.sort(res0._cdist.dist), np.sort(res._cdist.dist))
     configure(n_workers=True)
+    # time window
+    res = testnd.Vector(v2, samples=10, tstart=0.1, tstop=0.4)
+    assert res.p.min() == 0.2
+    difference = res.masked_difference(0.5)
+    assert difference.x.mask.sum() == 291
 
-    v_small = ds[:30, 'v3d'] / 100
-    res = testnd.Vector(v_small, tfce=True, samples=10)
+    # vector in time with norm stat
+    res = testnd.Vector(vd, samples=10, use_t2_stat=False)
+    assert res.p.min() == 0
+    difference = res.masked_difference()
+    assert difference.x.mask.sum() == 297
+    resd = testnd.VectorDifferenceRelated(v1, v2, samples=10, use_t2_stat=False)
+    assert_dataobj_equal(resd.p, res.p, name=False)
+    assert_dataobj_equal(resd.difference, res.difference, name=False)
+
+    v_small = v2 / 100
+    res = testnd.Vector(v_small, tfce=True, samples=10, use_t2_stat=False)
     assert 'WARNING' in repr(res)
     res = testnd.Vector(v_small, tfce=0.001, samples=10)
     assert res.p.min() == 0.0

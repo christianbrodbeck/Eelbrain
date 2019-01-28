@@ -22,7 +22,7 @@ n_samples : None | int
 '''
 from datetime import datetime, timedelta
 from itertools import chain, repeat
-from math import ceil, pi
+from math import ceil
 from multiprocessing import Process, Event, SimpleQueue
 from multiprocessing.sharedctypes import RawArray
 import logging
@@ -48,21 +48,28 @@ from .._data_obj import (
     NDVar, Categorial, UTS,
     ascategorial, asmodel, asndvar, asvar, assub,
     cellname, combine, dataobj_repr)
-from .._exceptions import OldVersionError, ZeroVariance
+from .._exceptions import OldVersionError, WrongDimension, ZeroVariance
 from .._utils import LazyProperty, user_activity
-from .._utils.numpy_utils import FULL_AXIS_SLICE
+from .._utils.numpy_utils import FULL_SLICE, FULL_AXIS_SLICE
 from . import opt, stats, vector
 from .connectivity import Connectivity, find_peaks
 from .connectivity_opt import merge_labels, tfce_increment
 from .glm import _nd_anova
 from .permutation import (
-    _resample_params, permute_order, permute_sign_flip, random_seeds)
+    _resample_params, permute_order, permute_sign_flip, random_seeds,
+    rand_rotation_matrices)
 from .t_contrast import TContrastRel
 from .test import star, star_factor
-from functools import reduce
+from functools import reduce, partial
 
 
 __test__ = False
+
+
+def check_for_vector_dim(y: NDVar) -> None:
+    for dim in y.dims:
+        if dim._connectivity_type == 'vector':
+            raise WrongDimension(f"{dim}: mass-univariate methods are not suitable for vectors. Consider using vector norm as test statistic, or using a testnd.Vector test function.")
 
 
 def check_variance(x):
@@ -481,10 +488,9 @@ class t_contrast_rel(NDTest):
                  samples=0, pmin=None, tmin=None, tfce=False, tstart=None,
                  tstop=None, parc=None, force_permutation=False, **criteria):
         if match is None:
-            raise TypeError("The `match` parameter needs to be specified for "
-                            "repeated measures test t_contrast_rel")
-        ct = Celltable(y, x, match, sub, ds=ds, coercion=asndvar,
-                       dtype=np.float64)
+            raise TypeError("The `match` parameter needs to be specified for repeated measures test t_contrast_rel")
+        ct = Celltable(y, x, match, sub, ds=ds, coercion=asndvar, dtype=np.float64)
+        check_for_vector_dim(ct.y)
         check_variance(ct.y.x)
 
         # setup contrast
@@ -617,6 +623,7 @@ class corr(NDTest):
                  match=None, parc=None, **criteria):
         sub = assub(sub, ds)
         y = asndvar(y, sub=sub, ds=ds, dtype=np.float64)
+        check_for_vector_dim(y)
         if not y.has_case:
             raise ValueError("Dependent variable needs case dimension")
         x = asvar(x, sub=sub, ds=ds)
@@ -728,12 +735,7 @@ class NDDifferenceTest(NDTest):
             mask = self._cdist.cluster_map == 0
         else:
             mask = self.p > p
-        mask = self._cdist.uncrop(mask, self.difference, True)
-        # since masked array creation does not support broadcasting
-        if isinstance(self, Vector):
-            mask_x = np.repeat(self.difference._ialign(mask), 3, self.difference.get_axis('space'))
-            mask = NDVar(mask_x, self.difference.dims)
-        return mask
+        return self._cdist.uncrop(mask, self.difference, True)
 
     def masked_difference(self, p=0.05):
         """Difference map masked by significance
@@ -843,8 +845,8 @@ class ttest_1samp(NDDifferenceTest):
     def __init__(self, y, popmean=0, match=None, sub=None, ds=None, tail=0,
                  samples=0, pmin=None, tmin=None, tfce=False, tstart=None,
                  tstop=None, parc=None, force_permutation=False, **criteria):
-        ct = Celltable(y, match=match, sub=sub, ds=ds, coercion=asndvar,
-                       dtype=np.float64)
+        ct = Celltable(y, match=match, sub=sub, ds=ds, coercion=asndvar, dtype=np.float64)
+        check_for_vector_dim(ct.y)
 
         n = len(ct.y)
         df = n - 1
@@ -951,8 +953,8 @@ class ttest_ind(NDDifferenceTest):
         alphabetical order.
     c0 : str | tuple | None
         Control condition (cell of ``x``).
-    match : None | categorial
-        Combine cases with the same cell on x % match for testing.
+    match : categorial
+        Combine cases with the same cell on ``x % match``.
     sub : None | index-array
         Perform the test with a subset of the data.
     ds : None | Dataset
@@ -1040,8 +1042,9 @@ class ttest_ind(NDDifferenceTest):
             force_permutation: bool = False,
             **criteria):
         ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar, dtype=np.float64)
-        c1, c0 = ct.cat
+        check_for_vector_dim(ct.y)
 
+        c1, c0 = ct.cat
         n1 = len(ct.data[c1])
         n = len(ct.y)
         n0 = n - n1
@@ -1262,6 +1265,8 @@ class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
     tfce_map : NDVar | None
         Map of the test statistic processed with the threshold-free cluster
         enhancement algorithm (or None if no TFCE was performed).
+    n : int
+        Number of cases.
 
     Notes
     -----
@@ -1278,6 +1283,7 @@ class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
                  tail=0, samples=0, pmin=None, tmin=None, tfce=False,
                  tstart=None, tstop=None, parc=None, force_permutation=False, **criteria):
         y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
+        check_for_vector_dim(y1)
 
         if n <= 2:
             raise ValueError("Not enough observations for t-test (n=%i)" % n)
@@ -1639,6 +1645,7 @@ class anova(MultiEffectNDTest):
         sub_arg = sub
         sub = assub(sub, ds)
         y = asndvar(y, sub, ds, dtype=np.float64)
+        check_for_vector_dim(y)
         x = asmodel(x, sub, ds)
         if match is None:
             random_effects = [e for e in x.effects if e.random]
@@ -1674,7 +1681,7 @@ class anova(MultiEffectNDTest):
 
             cdists = [
                 NDPermutationDistribution(
-                    y, samples, thresh, tfce, 1, 'F', e.name,
+                    y, samples, thresh, tfce, 1, 'f', e.name,
                     tstart, tstop, criteria, parc, force_permutation)
                 for e, thresh in zip(effects, thresholds)]
 
@@ -1759,9 +1766,9 @@ class anova(MultiEffectNDTest):
 
     def _default_plot_obj(self):
         if self.samples:
-            return self.f_probability
+            return [self.masked_parameter_map(e) for e in self.effects]
         else:
-            return self.f
+            return self._statistic_map
 
     def table(self):
         """Table with effects and smallest p-value"""
@@ -1796,7 +1803,7 @@ class Vector(NDDifferenceTest):
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     samples : int
-        Number of samples for permutation test (default 0).
+        Number of samples for permutation test (default 10000).
     vmin : scalar
         Threshold value for forming clusters.
     tfce : bool | scalar
@@ -1814,6 +1821,10 @@ class Vector(NDDifferenceTest):
         disconnected.
     force_permutation: bool
         Conduct permutations regardless of whether there are any clusters.
+    use_t2_stat: bool
+        Use Hotelling’s T-Square statistics. By default ``Vector`` test
+        chooses this statistic over vector norm. To choose vector norm as
+        test statistic try ``use_t2_stat=False``.
     mintime : scalar
         Minimum duration for clusters (in seconds).
     minsource : int
@@ -1823,8 +1834,6 @@ class Vector(NDDifferenceTest):
     ----------
     difference : NDVar
         The vector field averaged across cases.
-    difference_norm : NDVar
-        The norm of the ``difference`` vector field.
     n : int
         Number of cases.
     p : NDVar
@@ -1833,13 +1842,13 @@ class Vector(NDDifferenceTest):
         Map of the test statistic processed with the threshold-free cluster
         enhancement algorithm (or None if no TFCE was performed).
     """
-    _state_specific = ('difference', 'n', '_v_dim')
+    _state_specific = ('difference', 'n', '_v_dim', 't2')
     _statistic = 'norm'
 
     @user_activity
     def __init__(self, y, match=None, sub=None, ds=None,
                  samples=10000, vmin=None, tfce=False, tstart=None,
-                 tstop=None, parc=None, force_permutation=False, **criteria):
+                 tstop=None, parc=None, force_permutation=False, use_t2_stat=True, **criteria):
         ct = Celltable(y, match=match, sub=sub, ds=ds, coercion=asndvar, dtype=np.float64)
 
         n = len(ct.y)
@@ -1851,11 +1860,21 @@ class Vector(NDDifferenceTest):
         v_dim = ct.y.dimnames[cdist._vector_ax + 1]
         v_mean = ct.y.mean('case')
         v_mean_norm = v_mean.norm(v_dim)
-        cdist.add_original(v_mean_norm.x if v_mean.ndim > 1 else v_mean_norm)
+        if use_t2_stat:
+            t2_map = self._vector_t2_map(ct.y)
+            cdist.add_original(t2_map.x if v_mean.ndim > 1 else t2_map)
+            if v_mean.ndim == 1:
+                self.t2 = t2_map
+            else:
+                self.t2 = NDVar(t2_map, v_mean_norm.dims, _info.for_stat_map('t2'), 't2')
+        else:
+            cdist.add_original(v_mean_norm.x if v_mean.ndim > 1 else v_mean_norm)
+            self.t2 = None
 
         if cdist.do_permutation:
-            iterator = random_seeds(samples)
-            run_permutation(self._vector_mean_norm_perm, cdist, iterator)
+            iterator = random_seeds(n_samples)
+            vector_perm = partial(self._vector_perm, use_t2_stat=use_t2_stat)
+            run_permutation(vector_perm, cdist, iterator)
 
         # store attributes
         NDTest.__init__(self, ct.y, ct.match, sub, samples, tfce, None, cdist, tstart, tstop)
@@ -1869,10 +1888,6 @@ class Vector(NDDifferenceTest):
         if 'diff' in state:
             state['difference'] = state.pop('diff')
         NDTest.__setstate__(self, state)
-
-    def _expand_state(self):
-        NDTest._expand_state(self)
-        self.difference_norm = self.difference.norm(self._v_dim)
 
     def _name(self):
         if self.y:
@@ -1889,24 +1904,113 @@ class Vector(NDDifferenceTest):
         return args
 
     @staticmethod
-    def _vector_mean_norm_perm(y, out, seed):
+    def _vector_perm(y, out, seed, use_t2_stat):
         n_cases, n_dims, n_tests = y.shape
         assert n_dims == 3
-        np.random.seed(seed)
-        phi = np.random.uniform(0, 2 * pi, n_cases)
-        theta = np.arccos(np.random.uniform(-1, 1, n_cases))
-        rotation = vector.rotation_matrices(phi, theta, np.empty((n_cases, 3, 3)))
-        return vector.mean_norm_rotated(y, rotation, out)
+        rotation = rand_rotation_matrices(n_cases, seed)
+        if use_t2_stat:
+            return vector.t2_stat_rotated(y, rotation, out)
+        else:
+            return vector.mean_norm_rotated(y, rotation, out)
+
+    @staticmethod
+    def _vector_t2_map(y):
+        ndim = len(y.dimnames)
+        dimnames = ('case', 'space',) + (None,) * (ndim - 2)
+        dimnames = y.get_dimnames(dimnames)
+        x = y.get_data(dimnames)
+        t2_map = stats.t2_1samp(x)
+        if len(dimnames) == 2:
+            return np.float64(t2_map)
+        else:
+            dims = (y.get_dim(dimnames[i]) for i in range(2, ndim))
+            return NDVar(t2_map, dims)
 
 
 class VectorDifferenceIndependent(Vector):
-    _state_specific = ('difference', 'c1_mean', 'c0_mean' 'n', '_v_dim')
+    """Test difference between two vector fields for non-random direction
+
+    Parameters
+    ----------
+    y : NDVar
+        Dependent variable.
+    x : categorial | NDVar
+        Model containing the cells which should be compared, or NDVar to which
+        ``y`` should be compared. In the latter case, the next three parameters
+        are ignored.
+    c1 : str | tuple | None
+        Test condition (cell of ``x``). ``c1`` and ``c0`` can be omitted if
+        ``x`` only contains two cells, in which case cells will be used in
+        alphabetical order.
+    c0 : str | tuple | None
+        Control condition (cell of ``x``).
+    match : categorial
+        Combine cases with the same cell on ``x % match``.
+    sub : None | index-array
+        Perform the test with a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables.
+    samples : int
+        Number of samples for permutation test (default 10000).
+    vmin : scalar
+        Threshold value for forming clusters.
+    tfce : bool | scalar
+        Use threshold-free cluster enhancement. Use a scalar to specify the
+        step of TFCE levels (for ``tfce is True``, 0.1 is used).
+    tstart : scalar
+        Start of the time window for the permutation test (default is the
+        beginning of ``y``).
+    tstop : scalar
+        Stop of the time window for the permutation test (default is the
+        end of ``y``).
+    parc : str
+        Collect permutation extrema for all regions of the parcellation of
+        this dimension. For threshold-based test, the regions are
+        disconnected.
+    force_permutation: bool
+        Conduct permutations regardless of whether there are any clusters.
+    use_t2_stat: bool
+        Use Hotelling’s T-Square statistics. By default ``Vector`` test
+        chooses this statistic over vector norm. To choose vector norm as
+        test statistic try ``use_t2_stat=False``.
+    mintime : scalar
+        Minimum duration for clusters (in seconds).
+    minsource : int
+        Minimum number of sources per cluster.
+
+    Attributes
+    ----------
+    c1_mean : NDVar
+        Mean in the c1 condition.
+    c0_mean : NDVar
+        Mean in the c0 condition.
+    clusters : None | Dataset
+        When performing a cluster permutation test, a Dataset of all clusters.
+    difference : NDVar
+        Difference between the mean in condition c1 and condition c0.
+    p : NDVar | None
+        Map of p-values corrected for multiple comparison (or None if no
+        correction was performed).
+    t2 : NDVar
+        Map of t-square values (``None`` with ``use_t2_stat=False``).
+    tfce_map : NDVar | None
+        Map of the test statistic processed with the threshold-free cluster
+        enhancement algorithm (or None if no TFCE was performed).
+    n : int
+        Total number of cases.
+    n1 : int
+        Number of cases in ``c1``.
+    n0 : int
+        Number of cases in ``c0``.
+    """
+    _state_specific = ('difference', 'c1_mean', 'c0_mean' 'n', '_v_dim', 't2')
     _statistic = 'norm'
 
     @user_activity
     def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
                  samples=10000, vmin=None, tfce=False, tstart=None,
-                 tstop=None, parc=None, force_permutation=False, **criteria):
+                 tstop=None, parc=None, force_permutation=False, use_t2_stat=False, **criteria):
         ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar, dtype=np.float64)
         c1, c0 = ct.cat
 
@@ -1924,21 +2028,20 @@ class VectorDifferenceIndependent(Vector):
         self.difference = self.c1_mean - self.c0_mean
         self.difference.name = 'difference'
         v_mean_norm = self.difference.norm(v_dim)
-        cdist.add_original(v_mean_norm.x if self.difference.ndim > 1 else v_mean_norm)
+        if use_t2_stat:
+            raise NotImplementedError("t2 statistic not implemented for VectorDifferenceIndependent")
+        else:
+            cdist.add_original(v_mean_norm.x if self.difference.ndim > 1 else v_mean_norm)
+            self.t2 = None
 
         if cdist.do_permutation:
             iterator = permute_order(self.n, samples)
             groups = np.arange(self.n) < self.n1
-            run_permutation(self._vector_mean_difference_norm, cdist, iterator, groups)
+            vector_perm = partial(self._vector_perm, use_t2_stat=use_t2_stat)
+            run_permutation(vector_perm, cdist, iterator, groups)
 
         NDTest.__init__(self, ct.y, ct.match, sub, samples, tfce, None, cdist, tstart, tstop)
         self._expand_state()
-
-    def _expand_state(self):
-        NDTest._expand_state(self)
-        self.difference_norm = self.difference.norm(self._v_dim)
-        self.c1_norm = self.c1_mean.norm(self._v_dim)
-        self.c0_norm = self.c0_mean.norm(self._v_dim)
 
     def _name(self):
         if self.y:
@@ -1962,29 +2065,113 @@ class VectorDifferenceIndependent(Vector):
 
 
 class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
-    _state_specific = ('difference', 'c1_mean', 'c0_mean' 'n', '_v_dim')
+    """Test difference between two vector fields for non-random direction
+
+    Parameters
+    ----------
+    y : NDVar
+        Dependent variable.
+    x : categorial | NDVar
+        Model containing the cells which should be compared, or NDVar to which
+        ``y`` should be compared. In the latter case, the next three parameters
+        are ignored.
+    c1 : str | tuple | None
+        Test condition (cell of ``x``). ``c1`` and ``c0`` can be omitted if
+        ``x`` only contains two cells, in which case cells will be used in
+        alphabetical order.
+    c0 : str | tuple | None
+        Control condition (cell of ``x``).
+    match : categorial
+        Units within which measurements are related (e.g. 'subject' in a
+        within-subject comparison).
+    sub : None | index-array
+        Perform the test with a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables.
+    samples : int
+        Number of samples for permutation test (default 10000).
+    vmin : scalar
+        Threshold value for forming clusters.
+    tfce : bool | scalar
+        Use threshold-free cluster enhancement. Use a scalar to specify the
+        step of TFCE levels (for ``tfce is True``, 0.1 is used).
+    tstart : scalar
+        Start of the time window for the permutation test (default is the
+        beginning of ``y``).
+    tstop : scalar
+        Stop of the time window for the permutation test (default is the
+        end of ``y``).
+    parc : str
+        Collect permutation extrema for all regions of the parcellation of
+        this dimension. For threshold-based test, the regions are
+        disconnected.
+    force_permutation: bool
+        Conduct permutations regardless of whether there are any clusters.
+    use_t2_stat: bool
+        Use Hotelling’s T-Square statistics. By default ``Vector`` test
+        chooses this statistic over vector norm. To choose vector norm as
+        test statistic try ``use_t2_stat=False``.
+    mintime : scalar
+        Minimum duration for clusters (in seconds).
+    minsource : int
+        Minimum number of sources per cluster.
+
+    Attributes
+    ----------
+    c1_mean : NDVar
+        Mean in the c1 condition.
+    c0_mean : NDVar
+        Mean in the c0 condition.
+    clusters : None | Dataset
+        When performing a cluster permutation test, a Dataset of all clusters.
+    difference : NDVar
+        Difference between the mean in condition c1 and condition c0.
+    p : NDVar | None
+        Map of p-values corrected for multiple comparison (or None if no
+        correction was performed).
+    t2 : NDVar
+        Map of t-square values (``None`` with ``use_t2_stat=False``).
+    tfce_map : NDVar | None
+        Map of the test statistic processed with the threshold-free cluster
+        enhancement algorithm (or None if no TFCE was performed).
+    n : int
+        Number of cases.
+    """
+    _state_specific = ('difference', 'c1_mean', 'c0_mean' 'n', '_v_dim', 't2')
     _statistic = 'norm'
 
     @user_activity
     def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
-                 samples=10000, vmin=None, tfce=False, tstart=None,
-                 tstop=None, parc=None, force_permutation=False, **criteria):
+                 samples=10000, vmin=None, tfce=False, tstart=None, tstop=None,
+                 parc=None, force_permutation=False, use_t2_stat=True, **criteria):
         y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
         difference = y1 - y0
         difference.name = 'difference'
 
+        n_samples, samples = _resample_params(n, samples)
         cdist = NDPermutationDistribution(
-            difference, samples, vmin, tfce, 1, 'norm', 'Vector test (related)',
+            difference, n_samples, vmin, tfce, 1, 'norm', 'Vector test (related)',
             tstart, tstop, criteria, parc, force_permutation)
 
         v_dim = difference.dimnames[cdist._vector_ax + 1]
         v_mean = difference.mean('case')
         v_mean_norm = v_mean.norm(v_dim)
-        cdist.add_original(v_mean_norm.x if v_mean.ndim > 1 else v_mean_norm)
+        if use_t2_stat:
+            t2_map = self._vector_t2_map(difference)
+            cdist.add_original(t2_map.x if v_mean.ndim > 1 else t2_map)
+            if v_mean.ndim == 1:
+                self.t2 = t2_map
+            else:
+                self.t2 = NDVar(t2_map, v_mean_norm.dims, _info.for_stat_map('t2'), 't2')
+        else:
+            cdist.add_original(v_mean_norm.x if v_mean.ndim > 1 else v_mean_norm)
+            self.t2 = None
 
         if cdist.do_permutation:
-            iterator = random_seeds(samples)
-            run_permutation(self._vector_mean_norm_perm, cdist, iterator)
+            iterator = random_seeds(n_samples)
+            vector_perm = partial(self._vector_perm, use_t2_stat=use_t2_stat)
+            run_permutation(vector_perm, cdist, iterator)
 
         # store attributes
         NDTest.__init__(self, difference, match, sub, samples, tfce, None, cdist, tstart, tstop)
@@ -1993,14 +2180,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
         self.c0_mean = y0.mean('case', name=cellname(c0_name))
         self._v_dim = v_dim
         self.n = n
-
         self._expand_state()
-
-    def _expand_state(self):
-        NDTest._expand_state(self)
-        self.difference_norm = self.difference.norm(self._v_dim)
-        self.c1_norm = self.c1_mean.norm(self._v_dim)
-        self.c0_norm = self.c0_mean.norm(self._v_dim)
 
     def _name(self):
         if self.y:
@@ -2573,15 +2753,34 @@ class NDPermutationDistribution:
         else:
             return im
 
-    def uncrop(self, ndvar: NDVar, to: NDVar, default: float = 0):
-        if self.tstart is None and self.tstop is None:
+    def uncrop(
+            self,
+            ndvar: NDVar,  # NDVar to uncrop
+            to: NDVar,  # NDVar that has the target dimensions
+            default: float = 0,  # value to fill in uncropped area
+    ):
+        if self.tstart is None and self.tstop is None and self._vector_ax is None:
             return ndvar
-        t_ax = to.get_axis('time')
-        t_dim = to.get_dim('time')
-        t_slice = t_dim._array_index(slice(self.tstart, self.tstop))
-        x = np.empty(to.shape, ndvar.x.dtype)
-        x.fill(default)
-        x[FULL_AXIS_SLICE * t_ax + (t_slice,)] = ndvar.x
+        # Add vector axis
+        if self._vector_ax is not None:
+            shape = list(ndvar.x.shape)
+            shape.insert(self._vector_ax, 1)
+            x_in = ndvar.x.reshape(shape)
+            vector_n = to.shape[self._vector_ax]
+        else:
+            x_in = ndvar.x
+            vector_n = 0
+        # Project time axis
+        if self.tstart is None and self.tstop is None:
+            x = np.repeat(x_in, vector_n, self._vector_ax)
+        else:
+            t_ax = to.get_axis('time')
+            t_dim = to.get_dim('time')
+            t_slice = t_dim._array_index(slice(self.tstart, self.tstop))
+            x = np.empty(to.shape, ndvar.x.dtype)
+            x.fill(default)
+            index = tuple(t_slice if i == t_ax else FULL_SLICE for i in range(x.ndim))
+            x[index] = x_in
         return NDVar(x, to.dims, ndvar.info, ndvar.name)
 
     def add_original(self, stat_map):

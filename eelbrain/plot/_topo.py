@@ -17,7 +17,6 @@ from ._base import (
     ColorMapMixin, TimeSlicerEF, TopoMapKey, XAxisMixin, YLimMixin)
 from ._utsnd import _ax_butterfly, _ax_im_array, _plt_im
 from ._sensors import SENSORMAP_FRAME, SensorMapMixin, _plt_map2d
-from .._utils import deprecated
 
 
 class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
@@ -93,8 +92,6 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
      - ``T``: open a larger ``Topomap`` plot with visible sensor names for the
        map under the mouse pointer.
     """
-    _name = "Topomap"
-
     def __init__(self, y, xax=None, ds=None, sub=None,
                  vmax=None, vmin=None, cmap=None, contours=None,
                  # topomap args
@@ -210,8 +207,6 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
      - ``T``: open a larger ``Topomap`` plot with visible sensor names for the
        map under the mouse pointer.
     """
-    _name = "TopomapBins"
-
     def __init__(self, y, xax=None, ds=None, sub=None,
                  bin_length=0.05, tstart=None, tstop=None,
                  vmax=None, vmin=None, cmap=None, contours=None,
@@ -363,7 +358,6 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
      - ``c``: y-axis zoom out (increase y-axis range)
     """
     _default_xlabel_ax = -2
-    _name = "TopoButterfly"
 
     def __init__(self, y, xax=None, ds=None, sub=None,
                  vmax=None, vmin=None, cmap=None, contours=None,
@@ -451,10 +445,6 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
             data = self._topomap_data.sub_time(t, data_only=True)
             for p, layers in zip(self.topo_plots, data):
                 p.set_data(layers)
-
-    @deprecated('0.29', 'TopoButterfly.set_time')
-    def set_topo_t(self, t):
-        self._set_time(t, True)
 
     def _topo_data(self, event):
         ax = event.inaxes
@@ -840,7 +830,6 @@ class TopoArray(ColorMapMixin, EelFigure):
 
     """
     _make_axes = False
-    _name = 'TopoArray'
 
     def __init__(self, y, xax=None, ds=None, sub=None,
                  vmax=None, vmin=None, cmap=None, contours=None,
@@ -935,18 +924,6 @@ class TopoArray(ColorMapMixin, EelFigure):
 
     def _fill_toolbar(self, tb):
         ColorMapMixin._fill_toolbar(self, tb)
-
-    def __repr__(self):
-        e_repr = []
-        for e in self._data:
-            if hasattr(e, 'name'):
-                e_repr.append(e.name)
-            else:
-                e_repr.append([ie.name for ie in e])
-        kwargs = {'s': repr(e_repr),
-                  't': ' %r' % self.title if self.title else ''}
-        txt = "<plot.TopoArray{t} ({s})>".format(**kwargs)
-        return txt
 
     def add_contour(self, meas, level, color='k'):
         """Add a contour line

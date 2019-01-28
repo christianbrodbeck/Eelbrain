@@ -87,7 +87,7 @@ from .._data_obj import (
     ascategorial, asndvar, assub, isnumeric, isdataobject, cellname,
 )
 from .._stats import testnd
-from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
+from .._utils import IS_WINDOWS, LazyProperty, intervals, natsorted, ui
 from .._utils.subp import command_exists
 from ..fmtxt import Image
 from ..mne_fixes import MNE_EPOCHS
@@ -1226,7 +1226,6 @@ class EelFigure:
      - end the initialization by calling `_EelFigure._show()`
      - add the :py:meth:`_fill_toolbar` method
     """
-    _name = 'Figure'
     _default_xlabel_ax = -1
     _default_ylabel_ax = 0
     _make_axes = True
@@ -1245,8 +1244,9 @@ class EelFigure:
         layout : Layout
             Layout that determines figure dimensions.
         """
+        name = self.__class__.__name__
         desc = layout.name or data_desc
-        frame_title = '%s: %s' % (self._name, desc) if desc else self._name
+        frame_title = f'{name}: {desc}' if desc else name
 
         # find the right frame
         if CONFIG['eelbrain']:
@@ -1294,6 +1294,9 @@ class EelFigure:
         self.canvas.mpl_connect('resize_event', self._on_resize)
         self.canvas.mpl_connect('key_press_event', self._on_key_press)
         self.canvas.mpl_connect('key_release_event', self._on_key_release)
+
+    def __repr__(self):
+        return f'<{self._frame.GetTitle()}>'
 
     def _set_axtitle(self, axtitle, data=None, axes=None, names=None):
         """Set axes titles automatically
@@ -1730,7 +1733,8 @@ class EelFigure:
 
     def set_name(self, name):
         """Set the figure window title"""
-        self._frame.SetTitle('%s: %s' % (self._name, name) if name else self._name)
+        plot_name = self.__class__.__name__
+        self._frame.SetTitle(f'{plot_name}: {name}' if name else plot_name)
 
     def set_xtick_rotation(self, rotation):
         """Rotate every x-axis tick-label by an angle (counterclockwise, in degrees)
@@ -1826,8 +1830,7 @@ def resolve_plot_rect(w, h, dpi):
     w_applies = w is not None and w <= 0
     h_applies = h is not None and h <= 0
     if w_applies or h_applies:
-        from .._wxgui import get_app
-        import wx
+        from .._wxgui import wx, get_app
 
         get_app()
         effective_dpi = dpi or mpl.rcParams['figure.dpi']
@@ -2275,7 +2278,7 @@ class ColorBarMixin:
             _, self.__label = find_axis_params_data(data, True)
 
     def _fill_toolbar(self, tb):
-        import wx
+        from .._wxgui import wx
         from .._wxutils import ID, Icon
 
         tb.AddTool(ID.PLOT_COLORBAR, "Plot Colorbar", Icon("plot/colorbar"))
@@ -2442,7 +2445,7 @@ class LegendMixin:
             self.plot_legend(legend)
 
     def _fill_toolbar(self, tb):
-        import wx
+        from .._wxgui import wx
 
         choices = [name.title() for name in self.__choices]
         self.__ctrl = wx.Choice(tb, choices=choices, name='Legend')
@@ -2532,14 +2535,13 @@ class LegendMixin:
 
     def __plot(self, loc, labels=None, *args, **kwargs):
         if loc and self.__handles:
-            cells = sorted(self.__handles)
             if labels is None:
-                labels = [cellname(cell) for cell in cells]
+                labels = [cellname(cell) for cell in self.__handles]
             elif isinstance(labels, dict):
-                labels = [labels[cell] for cell in cells]
+                labels = [labels[cell] for cell in self.__handles]
             else:
                 raise TypeError("labels=%r; needs to be dict" % (labels,))
-            handles = [self.__handles[cell] for cell in cells]
+            handles = [self.__handles[cell] for cell in self.__handles]
             if loc == 'fig':
                 return Legend(handles, labels, *args, **kwargs)
             else:
@@ -2565,7 +2567,6 @@ class LegendMixin:
 
 
 class Legend(EelFigure):
-    _name = "Legend"
 
     def __init__(self, handles, labels, *args, **kwargs):
         layout = Layout(0, 1, 2, False, *args, **kwargs)

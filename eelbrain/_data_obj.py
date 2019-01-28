@@ -515,6 +515,15 @@ def asfactor(x, sub=None, ds=None, n=None):
     return x
 
 
+def asindex(x):
+    if isinstance(x, Factor):
+        return x != ''
+    elif isinstance(x, Var):
+        return x.x
+    else:
+        return x
+
+
 def asmodel(x, sub=None, ds=None, n=None):
     if isinstance(x, str):
         if ds is None:
@@ -1254,10 +1263,7 @@ class Var:
         return self._n_cases
 
     def __getitem__(self, index):
-        if isinstance(index, Factor):
-            raise TypeError("Factor can't be used as index")
-        elif isinstance(index, Var):
-            index = index.x
+        index = asindex(index)
         x = self.x[index]
         if isinstance(x, np.ndarray):
             return Var(x, self.name, info=self.info.copy())
@@ -2027,12 +2033,9 @@ class Factor(_Effect):
         for each element.
     tile : int
         Repeat ``x`` as a whole ``tile`` many times.
-    labels : dict | OrderedDict | tuple
+    labels : dict
         An optional dictionary mapping values as they occur in ``x`` to the
-        Factor's cell labels. Since :class`dict` is unordered, labels are
-        sorted alphabetically by default. In order to define cells in a
-        different order, use a :class:`collections.OrderedDict` or define
-        labels as ``((key, value), ...)`` tuple.
+        Factor's cell labels.
     default : str
         Label to assign values not in ``label`` (by default this is
         ``str(value)``).
@@ -2070,43 +2073,38 @@ class Factor(_Effect):
         >>> Factor('iiiooo')
         Factor(['i', 'i', 'i', 'o', 'o', 'o'])
     """
-    def __init__(self, x, name=None, random=False, repeat=1, tile=1, labels={}, default=None):
+    def __init__(self, x, name=None, random=False, repeat=1, tile=1, labels=None, default=None):
         if isinstance(x, Iterator):
             x = list(x)
         n_cases = len(x)
+        self.name = name
+        self.random = random
 
         if n_cases == 0 or not (np.any(repeat) or np.any(tile)):
-            self.__setstate__({'x': np.empty(0, np.uint32), 'labels': {},
-                               'name': name, 'random': random})
+            self.x = np.empty(0, np.uint32)
+            self._labels = {}
+            self._init_secondary()
             return
 
         # find mapping and ordered values
-        if isinstance(labels, dict):
-            labels_dict = labels
-            label_values = labels.values()
-            if not isinstance(labels, OrderedDict):
-                label_values = natsorted(label_values)
-        else:
-            labels_dict = dict(labels)
-            label_values = [pair[1] for pair in labels]
+        labels = {} if labels is None else dict(labels)
 
         if isinstance(x, Factor):
-            labels_dict = {x._codes.get(s): d for s, d in labels_dict.items()}
-            labels_dict.update({code: label for code, label in x._labels.items()
-                                if code not in labels_dict})
+            labels = {x._codes.get(s): d for s, d in labels.items()}
+            labels.update({code: label for code, label in x._labels.items() if code not in labels})
             x = x.x
 
         if isinstance(x, np.ndarray) and x.dtype.kind in 'ifb':
             assert x.ndim == 1
             unique = np.unique(x)
             for v in unique:
-                if v not in labels_dict:
+                if v not in labels:
                     if default is None:
-                        labels_dict[v] = str(v)
+                        labels[v] = str(v)
                     else:
-                        labels_dict[v] = default
+                        labels[v] = default
             # find labels corresponding to unique values
-            u_labels = [labels_dict[v] for v in unique]
+            u_labels = [labels[v] for v in unique]
             # merge identical labels
             u_label_index = np.array([u_labels.index(label) for label in u_labels])
             x_ = u_label_index[np.digitize(x, unique, True)]
@@ -2118,14 +2116,14 @@ class Factor(_Effect):
             codes = {}  # {label -> code}
             x_ = np.empty(n_cases, dtype=np.uint32)
             for i, value in enumerate(x):
-                if value in labels_dict:
-                    label = labels_dict[value]
+                if value in labels:
+                    label = labels[value]
                 elif default is not None:
-                    label = default
+                    label = labels[value] = default
                 elif isinstance(value, str):
-                    label = value
+                    label = labels[value] = value
                 else:
-                    label = str(value)
+                    label = labels[value] = str(value)
 
                 if label in codes:
                     x_[i] = codes[label]
@@ -2135,20 +2133,20 @@ class Factor(_Effect):
             if highest_code >= 2**32:
                 raise RuntimeError("Too many categories in this Factor")
 
-        # collect ordered_labels
-        ordered_labels = OrderedDict(((codes[label], label) for label in
-                                      label_values if label in codes))
-        for label in natsorted(set(codes).difference(label_values)):
-            ordered_labels[codes[label]] = label
+        # redefine labels for new codes
+        labels = {codes[label]: label for label in labels.values() if label in codes}
 
         if not (isinstance(repeat, int) and repeat == 1):
             x_ = x_.repeat(repeat)
-
-        if tile > 1:
+        if tile != 1:
             x_ = np.tile(x_, tile)
+        self.x = x_
+        self._labels = labels
+        self._init_secondary()
 
-        self.__setstate__({'x': x_, 'ordered_labels': ordered_labels,
-                           'name': name, 'random': random})
+    def _init_secondary(self):
+        self._codes = {label: code for code, label in self._labels.items()}
+        self._n_cases = len(self.x)
 
     def __setstate__(self, state):
         self.x = x = state['x']
@@ -2157,14 +2155,11 @@ class Factor(_Effect):
         if 'ordered_labels' in state:
             # 0.13:  ordered_labels replaced labels
             self._labels = state['ordered_labels']
-            self._codes = {lbl: code for code, lbl in self._labels.items()}
         else:
             labels = state['labels']
-            cells = natsorted(labels.values())
-            self._codes = codes = {lbl: code for code, lbl in labels.items()}
-            self._labels = OrderedDict([(codes[label], label) for label in cells])
-
-        self._n_cases = len(x)
+            codes = {label: code for code, label in labels.items()}
+            self._labels = {codes[label]: label for label in natsorted(labels.values())}
+        self._init_secondary()
 
     def __getstate__(self):
         state = {'x': self.x,
@@ -2210,9 +2205,7 @@ class Factor(_Effect):
         return self._n_cases
 
     def __getitem__(self, index):
-        if isinstance(index, Var):
-            index = index.x
-
+        index = asindex(index)
         x = self.x[index]
         if isinstance(x, np.ndarray):
             return Factor(x, self.name, self.random, labels=self._labels)
@@ -2667,7 +2660,7 @@ class Factor(_Effect):
             if missing:
                 raise ValueError("Factor has cennls not in order: %s" % ', '.join(missing))
             raise RuntimeError("Factor.sort_cells comparing %s and %s" % (old, new))
-        self._labels = OrderedDict((self._codes[cell], cell) for cell in new_order)
+        self._labels = {self._codes[cell]: cell for cell in new_order}
 
     def startswith(self, substr):
         """An index that is true for all cases whose name starts with ``substr``
@@ -4826,6 +4819,7 @@ class Datalist(list):
         elif isinstance(index, slice):
             return Datalist(list.__getitem__(self, index), fmt=self._fmt)
         else:
+            index = asindex(index)
             return Datalist(apply_numpy_index(self, index), fmt=self._fmt)
 
     def __setitem__(self, key, value):
@@ -6061,6 +6055,7 @@ class Dataset(OrderedDict):
         else:
             if isinstance(index, str):
                 index = self.eval(index)
+            index = asindex(index)
             if keys is None:
                 keys = self.keys()
             elif isinstance(keys, str):

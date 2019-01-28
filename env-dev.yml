@@ -37,6 +37,7 @@ dependencies:
 - cython
 # docs
 - sphinx
+- sphinxcontrib-bibtex
 - numpydoc
 - pydocstyle
 # testing

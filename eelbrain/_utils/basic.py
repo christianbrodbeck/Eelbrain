@@ -178,7 +178,7 @@ class LazyProperty:
 def _natural_keys(text):
     "Sorting key for natural sorting"
     # after http://stackoverflow.com/a/5967539/166700
-    return [int(c) if c.isdigit() else c for c in re.split('(\d+)', text)]
+    return [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', text)]
 
 
 def natsorted(seq):

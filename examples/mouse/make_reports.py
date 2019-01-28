@@ -1,5 +1,5 @@
 # skip test: data unavailable
-"""Generate group level result resports for the cat-mouse experiment
+"""Generate group level result resports for the Mouse experiment
 
 This script generates HTML reports based on the experiment defined in
 ``mouse.py``.
