@@ -68,6 +68,7 @@ from .exceptions import FileDeficient, FileMissing
 from .experiment import FileTree
 from .groups import assemble_groups
 from .parc import (
+    assemble_parcs,
     FS_PARC, FSA_PARC, SEEDED_PARC_RE,
     Parcellation, CombinationParc, EelbrainParc,
     FreeSurferParc, FSAverageParc, SeededParc,
@@ -617,20 +618,7 @@ class MneExperiment(FileTree):
         ###############
         # make : can be made if non-existent
         # morph_from_fraverage : can be morphed from fsaverage to other subjects
-        self._parcs = {}
-        for name, p in chain(self.__parcs.items(), self.parcs.items()):
-            if isinstance(p, Parcellation):
-                parc = p
-            elif p == FS_PARC:
-                parc = FreeSurferParc(('lateral', 'medial'))
-            elif p == FSA_PARC:
-                parc = FSAverageParc(('lateral', 'medial'))
-            elif isinstance(p, dict):
-                parc = parc_from_dict(name, p)
-            else:
-                raise DefinitionError(f"parcellation {name!r}: {p!r}")
-            parc._link(name)
-            self._parcs[name] = parc
+        self._parcs = assemble_parcs(chain(self.__parcs.items(), self.parcs.items()))
         parc_values = list(self._parcs.keys())
         parc_values.append('')
 
