@@ -3,13 +3,8 @@ Changes
 
 .. currentmodule:: eelbrain
 
-New in 0.29
+New in 0.30
 -----------
-
-* API changes:
-
-  - Better default parameters for :func:`resample`
-  - :meth:`MneExperiment.make_rej` renamed to :meth:`MneExperiment.make_epoch_selection`
 
 * Support for vector data (with many contributions from `Proloy Das`_):
 
@@ -19,16 +14,25 @@ New in 0.29
     :class:`testnd.VectorDifferenceIndependent`
   - Plotting with :class:`plot.GlassBrain`
 
-* New :class:`NDVar` functions:
 
-  - :func:`correlation_coefficient`
+New in 0.29
+-----------
 
+* API changes:
+
+  - Better default parameters for :func:`resample`
+  - :meth:`MneExperiment.make_rej` renamed to :meth:`MneExperiment.make_epoch_selection`
+
+* Predictor-specific stopping for :func:`boosting`
+* New :class:`NDVar` function :func:`correlation_coefficient`
 * Plotting:
 
   - :ref:`general-layout-parameters` for plot size relative to screen size
+  - Better plots for masked statistic maps
 
 * :class:`MneExperiment`:
 
+  - Object-based definitions (see :ref:`experiment-class-guide`)
   - New method :meth:`MneExperiment.plot_raw`
 
 
