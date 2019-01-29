@@ -190,7 +190,7 @@ def test_sample():
 
 
 @requires_mne_sample_data
-def test_samples_sesssions():
+def test_sample_sessions():
     set_log_level('warning', 'mne')
     SampleExperiment = import_attr(sample_path / 'sample_experiment_sessions.py', 'SampleExperiment')
     tempdir = TempDir()
