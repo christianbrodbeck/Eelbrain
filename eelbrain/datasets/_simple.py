@@ -12,11 +12,11 @@ import numpy as np
 from .. import _info, load
 from .._data_obj import Dataset, Factor, Var, NDVar, Case, Scalar, Sensor, Space, UTS
 from .._design import permute
-from .._ndvar import convolve
+from .._ndvar import concatenate, convolve
 from .._utils.numpy_utils import newaxis
 
 
-def _get_continuous(n_samples=100, seed=0):
+def _get_continuous(n_samples=100, ynd=False, seed=0):
     """Generate continuous data for reverse correlation
 
     Parameters
@@ -54,7 +54,13 @@ def _get_continuous(n_samples=100, seed=0):
     y += convolve(h2, x2)
     y.name = 'y'
     y.info = _info.for_eeg()
-    return {'y': y, 'x1': x1, 'h1': h1, 'x2': x2, 'h2': h2}
+    out = {'y': y, 'x1': x1, 'h1': h1, 'x2': x2, 'h2': h2}
+    if ynd:
+        dim = Sensor([[-1, 0, 0], [1, 0, 0]], ['SL', 'SR'], 'TEST-2-CH')
+        out['h1nd'] = h1 = concatenate([h1, -h1], dim, 'h1')
+        out['h2nd'] = h2 = concatenate([h2, h2 * 0], dim, 'h2')
+        out['ynd'] = convolve(h1, x1) + convolve(h2, x2)
+    return out
 
 
 def get_loftus_masson_1994():

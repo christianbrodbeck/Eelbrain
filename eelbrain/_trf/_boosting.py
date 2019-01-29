@@ -39,7 +39,7 @@ from .shared import RevCorrData
 
 
 # BoostingResult version
-VERSION = 9
+VERSION = 10
 
 # process messages
 JOB_TERMINATE = -1
@@ -100,7 +100,7 @@ class BoostingResult:
             self,
             # input parameters
             y, x, tstart, tstop, scale_data, delta, mindelta, error,
-            basis, basis_window, partitions_arg, partitions, model,
+            basis, basis_window, partitions_arg, partitions, model, prefit,
             # result parameters
             h, r, isnan, spearmanr, residual, t_run,
             y_mean, y_scale, x_mean, x_scale, y_info={}, r_l1=None,
@@ -120,6 +120,7 @@ class BoostingResult:
         self._partitions_arg = partitions_arg
         self.partitions = partitions
         self.model = model
+        self.prefit = prefit
         self.basis = basis
         self.basis_window = basis_window
         self.selective_stopping = selective_stopping
@@ -147,7 +148,7 @@ class BoostingResult:
             'scale_data': self.scale_data, 'delta': self.delta,
             'mindelta': self.mindelta, 'error': self.error,
             'partitions_arg': self._partitions_arg, 'partitions': self.partitions,
-            'model': self.model, 'basis': self.basis,
+            'model': self.model, 'prefit': self.prefit, 'basis': self.basis,
             'basis_window': self.basis_window,
             'selective_stopping': self.selective_stopping,
             # results
@@ -168,6 +169,8 @@ class BoostingResult:
             state['partitions_arg'] = state.pop('n_partitions_arg')
         if state['version'] < 9:
             state['residual'] = state.pop('fit_error')
+        if state['version'] < 10:
+            state['prefit'] = None
         self.__init__(**state)
 
     def __repr__(self):
@@ -219,10 +222,7 @@ class BoostingResult:
 
     @LazyProperty
     def h_source(self):
-        if self.basis:
-            return self._h
-        else:
-            return None
+        return self._h
 
     @LazyProperty
     def h_time(self):
@@ -260,7 +260,7 @@ class BoostingResult:
 def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
              error='l2', basis=0, basis_window='hamming',
              partitions=None, model=None, ds=None, selective_stopping=0,
-             debug=False):
+             prefit=None, debug=False):
     """Estimate a filter with boosting
 
     Parameters
@@ -316,6 +316,11 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         increase in testing error, and continues until all predictors are
         stopped. The integer value of ``selective_stopping`` determines after
         how many steps with error increases each predictor is excluded.
+    prefit : BoostingResult
+        Apply predictions from these estimated response functions before fitting
+        the remaining predictors. This requires that ``x`` contains all the
+        predictors that were used to fit ``prefit``, and that they be identical
+        to the originally used ``x``.
     debug : bool
         Store additional properties in the result object (increases memory
         consumption).
@@ -350,8 +355,12 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     selective_stopping = int(selective_stopping)
     if selective_stopping < 0:
         raise ValueError(f"selective_stopping={selective_stopping}")
+    elif not isinstance(debug, bool):
+        raise TypeError(f"debug={debug!r}")
 
     data = RevCorrData(y, x, error, scale_data, ds)
+    data.apply_basis(basis, basis_window)
+    data.prefit(prefit)
     data.initialize_cross_validation(partitions, model, ds)
     n_y = len(data.y)
     n_x = len(data.x)
@@ -366,13 +375,6 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         i_skip = trf_length - 1
     else:
         i_skip = 0
-
-    if basis:
-        n = int(round(basis / data.time.tstep))
-        w = scipy.signal.get_window(basis_window, n, False)
-        w /= w.sum()
-        for xi in data.x:
-            xi[:] = scipy.signal.convolve(xi, w, 'same')
 
     # progress bar
     n_cv = len(data.cv_segments)
@@ -484,10 +486,11 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
 
     h = data.package_kernel(h_x, tstart)
     model_repr = None if model is None else data.model
+    prefit_repr = None if prefit is None else repr(prefit)
     return BoostingResult(
         # input parameters
         data.y_name, data.x_name, tstart, tstop, scale_data, delta, mindelta, error,
-        basis, basis_window, partitions, data.partitions, model_repr,
+        basis, basis_window, partitions, data.partitions, model_repr, prefit_repr,
         # result parameters
         h, r, isnan, spearmanr, residual, t_run,
         y_mean, y_scale, x_mean, x_scale, data.y_info,
