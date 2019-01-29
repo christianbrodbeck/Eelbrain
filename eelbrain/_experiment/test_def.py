@@ -128,7 +128,7 @@ class TTest(EvokedTest):
 
 
 class TTestInd(TTest):
-    """Independent measures t-test
+    """Independent measures t-test (comparing groups of subjects)
 
     Parameters
     ----------
@@ -145,10 +145,11 @@ class TTestInd(TTest):
 
     Examples
     --------
-    Sample test definitions::
+    Sample test definitions, assuming that the experiment has two groups called
+    ``'younger'`` and ``'older'``::
 
         tests = {
-            'group_difference': TTestInd('group', 'group_1', 'group_2'),
+            'old=young': TTestInd('group', 'older', 'younger', vars={'group': GroupVar(['younger', 'older'])}),
         }
     """
     kind = 'ttest_ind'
