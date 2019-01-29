@@ -791,6 +791,14 @@ class MneExperiment(FileTree):
                 if key not in raw_mtimes or mtime != raw_mtimes[key]:
                     subjects_with_raw_changes.add((subject, visit))
                     raw_mtimes[key] = mtime
+            # log missing raw files
+            if raw_missing:
+                log.debug("Raw files missing:")
+                missing = defaultdict(list)
+                for subject, recording in raw_missing:
+                    missing[subject].append(recording)
+                for subject, recordings in missing.items():
+                    log.debug(f"  {subject}: {', '.join(recordings)}")
 
         # check for digitizer data differences
         # ====================================

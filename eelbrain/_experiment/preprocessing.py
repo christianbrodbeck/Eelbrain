@@ -3,7 +3,7 @@
 from collections import Sequence
 from copy import deepcopy
 import fnmatch
-from os import mkdir, remove
+from os import makedirs, remove
 from os.path import basename, dirname, exists, getmtime, join, splitext
 
 import mne
@@ -291,10 +291,8 @@ class CachedRawPipe(RawPipe):
         if (not exists(path) or getmtime(path) <
                 self.mtime(subject, recording, self._bad_chs_affect_cache)):
             from .. import __version__
-            # make sure directory exists
-            dir_path = dirname(path)
-            if not exists(dir_path):
-                mkdir(dir_path)
+            # make sure the target directory exists
+            makedirs(dirname(path), exist_ok=True)
             # generate new raw
             with CaptureLog(path[:-3] + 'log') as logger:
                 logger.info(f"eelbrain {__version__}")
