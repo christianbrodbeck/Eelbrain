@@ -654,7 +654,7 @@ def test_vector():
     v2 = ds[:30, 'v3d']
     vd = v1 - v2
     res = testnd.Vector(vd, samples=10)
-    assert res.p.min() == 0.1
+    assert res.p.min() == 0.2
     difference = res.masked_difference(0.5)
     assert difference.x.mask.sum() == 288
     # diff related
@@ -662,7 +662,7 @@ def test_vector():
     assert_dataobj_equal(resd.p, res.p, name=False)
     assert_dataobj_equal(resd.t2, res.t2, name=False)
     res = testnd.Vector(v1, samples=10)
-    assert res.p.min() == 0.2
+    assert res.p.min() == 0.4
     # without mp
     configure(n_workers=0)
     res0 = testnd.Vector(v1, samples=10)
@@ -670,9 +670,9 @@ def test_vector():
     configure(n_workers=True)
     # time window
     res = testnd.Vector(v2, samples=10, tstart=0.1, tstop=0.4)
-    assert res.p.min() == 0.2
+    assert res.p.min() == 0.3
     difference = res.masked_difference(0.5)
-    assert difference.x.mask.sum() == 291
+    assert difference.x.mask.sum() == 294
 
     # vector in time with norm stat
     res = testnd.Vector(vd, samples=10, use_t2_stat=False)
@@ -686,7 +686,7 @@ def test_vector():
     v_small = v2 / 100
     res = testnd.Vector(v_small, tfce=True, samples=10, use_t2_stat=False)
     assert 'WARNING' in repr(res)
-    res = testnd.Vector(v_small, tfce=0.001, samples=10)
+    res = testnd.Vector(v_small, tfce=0.1, samples=10)
     assert res.p.min() == 0.0
 
 
