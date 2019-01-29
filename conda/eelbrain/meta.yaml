@@ -35,6 +35,8 @@ requirements:
     - keyring >=5
     - matplotlib >=2.1
     - mne >=0.17
+    - vtk =8.1.1
+    - mayavi =4.6.2
     - nibabel >=2.0, !=2.3.0
     - olefile  # [linux]
     - {{ pin_compatible('numpy') }}
