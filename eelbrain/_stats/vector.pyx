@@ -200,10 +200,10 @@ def t2_stat_rotated(cnp.ndarray[FLOAT64, ndim=3] y,
                 for vi in range(n_dims):
                     tempv[u] += rotation[case, u, vi] * y[case, vi, i]
                 mean[u] += tempv[u]
-                for v in range(u + 1):      # Only upper triangular part need to be meaningful
+                for v in range(u + 1):      # Only upper triangular part need to be meaningful (See dsyevh.c)
                     sigma[v][u] += tempv[u] * tempv[v]
         for u in range(n_dims):
-            for v in range(u + 1):      # Only upper triangular part need to be meaningful
+            for v in range(u + 1):      # Only upper triangular part need to be meaningful (See dsyevh.c)
                 sigma[v][u] -= mean[u] * mean[v] / n_cases
 
         dsyevh3(sigma, vec, eig)

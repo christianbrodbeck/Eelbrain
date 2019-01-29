@@ -97,7 +97,7 @@ setup(
             'pysurfer[save_movie] >= 0.8',
         ],
     },
-    include_dirs=[np.get_include(), 'eelbrain/_stats/dsyevh3C/'],
+    include_dirs=[np.get_include()],
     packages=find_packages(),
     ext_modules=ext_modules,
     scripts=['bin/eelbrain'],
