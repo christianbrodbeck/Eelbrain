@@ -4,10 +4,12 @@ from math import floor
 from operator import mul
 
 import numpy as np
+import scipy.signal
 from scipy.linalg import norm
 
 from .. import _info
 from .._data_obj import NDVar, Case, UTS, dataobj_repr, ascategorial, asndvar
+from .._text import enumeration
 from .._utils.numpy_utils import newaxis
 
 
@@ -219,7 +221,7 @@ class RevCorrData:
         self._scale_data = bool(scale_data)
         self.shortest_segment_n_times = n_times
         # y
-        self.y = y_data
+        self.y = y_data  # (n_signals, n_times)
         self.y_mean = y_mean
         self.y_scale = y_scale
         self.y_name = y.name
@@ -230,14 +232,107 @@ class RevCorrData:
         self.vector_dim = vector_dim  # vector dimension name
         self.vector_shape = vector_shape  # flat shape with vector dim separate
         # x
-        self.x = x_data
+        self.x = x_data  # (n_predictors, n_times)
         self.x_mean = x_mean
         self.x_scale = x_scale
         self.x_name = x_name
-        self._x_meta = x_meta
+        self._x_meta = x_meta  # [(x.name, xdim, index), ...]; index is int or slice
         self._multiple_x = multiple_x
         self._x_is_copy = x_is_copy
         self.x_pads = x_pads
+
+    def apply_basis(self, basis, basis_window):
+        "Apply basis to x"
+        if not basis:
+            return
+        n = int(round(basis / self.time.tstep))
+        w = scipy.signal.get_window(basis_window, n, False)
+        w /= w.sum()
+        for xi in self.x:
+            xi[:] = scipy.signal.convolve(xi, w, 'same')
+
+    def prefit(self, res):
+        if not res:
+            return
+        from ._boosting import convolve
+        hs = (res.h_source,) if isinstance(res.h_source, NDVar) else res.h_source
+        n_y = self.y.shape[0]
+        n_x = self.x.shape[0]
+        # check that prefit matches y dims
+        h0 = hs[0]
+        index = {}
+        for ydim in self.ydims:
+            hdim = h0.get_dim(ydim.name)
+            if hdim == ydim:
+                continue
+            elif not hdim._is_superset_of(ydim):
+                raise ValueError(f"prefit: y dimension {ydim.name} has elements that are not contained in the prefit")
+            index[ydim.name] = hdim.index_into_dim(ydim)
+        if index:
+            hs = [h.sub(**index) for h in hs]
+        # check predictor dims
+        meta = {name: (dim, index) for name, dim, index in self._x_meta}
+        for h in hs:
+            if h.name not in meta:
+                raise ValueError(f"prefit: {h.name} not in x")
+            dim, index = meta[h.name]
+            if (h.ndim == 1 and dim is not None) or (h.ndim == 2 and h.get_dims((None, 'time'))[0] != dim):
+                raise ValueError(f"prefit: {dim.name} dimension mismatch")
+        # generate flat h
+        y_dimnames = [dim.name for dim in self.ydims]
+        h_n_times = len(h0.get_dim('time'))
+        h_flat = []
+        h_index = []
+        for h in hs:
+            dimnames = h.get_dimnames(first=y_dimnames, last='time')
+            h_data = h.get_data(dimnames)
+            index = meta[h.name][1]
+            if isinstance(index, int):
+                h_flat.append(h_data.reshape((n_y, 1, h_n_times)))
+                h_index.append(index)
+            else:
+                n_hdim = index.stop - index.start
+                h_flat.append(h_data.reshape((n_y, n_hdim, h_n_times)))
+                h_index.extend(range(index.start, index.stop))
+        h_flat = np.concatenate(h_flat, 1)
+        # assert scaling equivalent
+        # assert np.all(res.x_mean == self.x_mean[h_index])
+        # assert np.all(res.x_scale == self.x_scale[h_index])
+        # subset to relevant data
+        x = self.x[h_index]
+        x_pads = self.x_pads[h_index]
+        # subtract prefit predictions
+        i_start = int(round(res.tstart / self.time.tstep))
+        for y, h in zip(self.y, h_flat):
+            y -= convolve(h, x, x_pads, i_start, self.segments)
+        # remove prefit predictors
+        keep = np.setdiff1d(np.arange(n_x), h_index)
+        self.x = self.x[keep]
+        self.x_mean = self.x_mean[keep]
+        self.x_scale = self.x_scale[keep]
+        self.x_pads = self.x_pads[keep]
+        self._x_is_copy = True
+        # update x meta-information
+        target_index = np.empty(n_x, int)
+        target_index.fill(-1)
+        target_index[keep] = np.arange(len(keep))
+        new_meta = []
+        self.x_name = []
+        for name, xdim, index in self._x_meta:
+            if isinstance(index, int):
+                new_index = target_index[index]
+                if new_index < 0:
+                    continue
+            else:
+                new_start = target_index[index.start]
+                if new_start < 0:
+                    continue
+                new_stop = target_index[index.stop - 1] + 1
+                new_index = slice(new_start, new_stop)
+            new_meta.append((name, xdim, new_index))
+            self.x_name.append(name)
+        self._x_meta = new_meta
+        self._multiple_x = len(self._x_meta) > 1
 
     def initialize_cross_validation(self, partitions=None, model=None, ds=None):
         if partitions is not None and partitions <= 1:

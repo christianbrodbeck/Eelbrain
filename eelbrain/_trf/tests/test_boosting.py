@@ -98,6 +98,10 @@ def test_boosting_epochs():
         r = correlation_coefficient(y, ds['uts'])
         assert res.r == approx(r, abs=1e-3)
         assert res.partitions == 10
+    # prefit
+    res1 = boosting('uts', p1, 0, 0.6, model='A', ds=ds, partitions=10)
+    res0 = boosting('uts', p0, 0, 0.6, model='A', ds=ds, partitions=10)
+    res01 = boosting('uts', [p0, p1], 0, 0.6, model='A', ds=ds, partitions=10, prefit=res1)
     # 2d
     res = boosting('utsnd', [p0, p1], 0, 0.6, model='A', ds=ds, partitions=10)
     assert len(res.h) == 2
