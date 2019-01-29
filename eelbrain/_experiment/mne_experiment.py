@@ -4048,13 +4048,14 @@ class MneExperiment(FileTree):
         pipe = self._raw[self.get('raw')]
         if not isinstance(pipe, RawICA):
             ica_raws = [key for key, pipe in self._raw.items() if isinstance(pipe, RawICA)]
-            if ica_raws:
-                msg = f"set raw to an ICA processing step ({', '.join(map(repr, ica_raws))})"
+            if len(ica_raws) > 1:
+                raise ValueError(f"raw={pipe.name!r} does not involve ICA; set raw to an ICA processing step ({enumeration(ica_raws)})")
+            elif len(ica_raws) == 1:
+                print(f"raw: {pipe.name} -> {ica_raws[0]}")
+                return self.make_ica(raw=ica_raws[0])
             else:
-                msg = f"add a RawICA processing step to MneExperiment.raw"
-            raise ValueError(f"raw={pipe.name!r} does not involve ICA; {msg}")
-        path = pipe.make_ica(self.get('subject'), self.get('visit'))
-        return path
+                raise RuntimeError("Experiment has no RawICA processing step")
+        return pipe.make_ica(self.get('subject'), self.get('visit'))
 
     def make_link(self, temp, field, src, dst, redo=False):
         """Make a hard link
