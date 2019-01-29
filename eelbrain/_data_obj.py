@@ -3845,31 +3845,39 @@ class NDVar:
         "Return the Dimension object named ``name``"
         return self.dims[self.get_axis(name)]
 
-    def get_dimnames(self, names=None, last=None):
+    def get_dimnames(self, names=None, first=None, last=None):
         """Fill in a partially specified tuple of Dimension names
 
         Parameters
         ----------
         names : sequence of {str | None}
             Dimension names. Names specified as ``None`` are inferred.
+        first : str | sequence of str
+            Instead of ``names``, specify a constraint on the initial
+            dimension(s) only.
         last : str | sequence of str
-            Instead of ptoviding ``names``, specify a constraint on the last
-            dimension only.
+            Instead of ``names``, specify a constraint on the last
+            dimension(s) only.
 
         Returns
         -------
         inferred_names : tuple of str
             Dimension names in the same order as in ``names``.
         """
-        if last is not None:
+        if first is not None or last is not None:
             if names is not None:
-                raise TypeError("Can only specify names or last, not both")
-            tail = (last,) if isinstance(last, str) else last
+                raise TypeError("Can only specify names or first/last, not both")
+            head = () if first is None else (first,) if isinstance(first, str) else first
+            tail = () if last is None else (last,) if isinstance(last, str) else last
             dims = list(self.dimnames)
+            for dim in chain(head, tail):
+                try:
+                    dims.remove(dim)
+                except ValueError:
+                    raise ValueError(f"NDVar has no {dim} dimension")
+            for dim in reversed(head):
+                dims.insert(0, dim)
             for dim in tail:
-                if dim not in dims:
-                    raise ValueError("last=%r: NDVar has no %r dimension" % (last, dim))
-                dims.remove(dim)
                 dims.append(dim)
             return tuple(dims)
 
@@ -3888,7 +3896,7 @@ class NDVar:
         else:
             return tuple(names)
 
-    def get_dims(self, names):
+    def get_dims(self, names=None, first=None, last=None):
         """Return a tuple with the requested Dimension objects
 
         Parameters
@@ -3896,14 +3904,20 @@ class NDVar:
         names : sequence of {str | None}
             Names of the dimension objects. If ``None`` is inserted in place of
             names, these dimensions are inferred.
+        first : str | sequence of str
+            Instead of ``names``, specify a constraint on the initial
+            dimension(s) only.
+        last : str | sequence of str
+            Instead of ``names``, specify a constraint on the last
+            dimension(s) only.
 
         Returns
         -------
         dims : tuple of Dimension
             Dimension objects in the same order as in ``names``.
         """
-        if None in names:
-            names = self.get_dimnames(names)
+        if first or last or names is None or None in names:
+            names = self.get_dimnames(names, first, last)
         return tuple(self.get_dim(name) for name in names)
 
     def has_dim(self, name):
