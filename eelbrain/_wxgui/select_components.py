@@ -22,7 +22,6 @@ from wx.lib.scrolledpanel import ScrolledPanel
 
 from .. import load, plot, fmtxt
 from .._data_obj import Factor, NDVar, asndvar, Categorial, Scalar
-from .._wxutils import Icon, ID, REValidator
 from .._utils.parse import POS_FLOAT_PATTERN
 from .._utils.system import IS_OSX
 from ..plot._base import AxisData, LayerData, PlotType
@@ -31,6 +30,8 @@ from .frame import EelbrainDialog
 from .history import Action, FileDocument, FileModel, FileFrame, FileFrameChild
 from .mpl_canvas import FigureCanvasPanel
 from .text import HTMLFrame
+from .utils import Icon, REValidator
+from . import ID
 
 
 COLOR = {True: (.5, 1, .5), False: (1, .3, .3)}

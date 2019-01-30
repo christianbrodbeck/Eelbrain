@@ -223,7 +223,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         LegendMixin._fill_toolbar(self, tb)
 
     def _OnShowClusterInfo(self, event):
-        from .._wxutils import show_text_dialog
+        from .._wxgui import show_text_dialog
 
         if len(self._plots) == 1:
             clusters = self._plots[0].cluster_plt.clusters
@@ -517,7 +517,8 @@ class UTSClusters(EelFigure):
         btn.Bind(wx.EVT_BUTTON, self._OnShowClusterInfo)
 
     def _OnShowClusterInfo(self, event):
-        from .._wxutils import show_text_dialog
+        from .._wxgui import show_text_dialog
+
         info = str(self.clusters)
         show_text_dialog(self._frame, info, "Clusters")
 

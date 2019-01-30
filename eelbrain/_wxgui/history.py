@@ -5,9 +5,10 @@ import os
 
 import wx
 
-from .._wxutils import Icon, ID
 from .help import show_help_txt
 from .frame import EelbrainFrame
+from .utils import Icon
+from . import ID
 
 
 TEST_MODE = False

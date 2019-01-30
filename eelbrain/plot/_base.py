@@ -87,7 +87,7 @@ from .._data_obj import (
     ascategorial, asndvar, assub, isnumeric, isdataobject, cellname,
 )
 from .._stats import testnd
-from .._utils import IS_WINDOWS, LazyProperty, intervals, natsorted, ui
+from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
 from .._utils.subp import command_exists
 from ..fmtxt import Image
 from ..mne_fixes import MNE_EPOCHS
@@ -2278,8 +2278,7 @@ class ColorBarMixin:
             _, self.__label = find_axis_params_data(data, True)
 
     def _fill_toolbar(self, tb):
-        from .._wxgui import wx
-        from .._wxutils import ID, Icon
+        from .._wxgui import wx, ID, Icon
 
         tb.AddTool(ID.PLOT_COLORBAR, "Plot Colorbar", Icon("plot/colorbar"))
         tb.Bind(wx.EVT_TOOL, self.__OnPlotColorBar, id=ID.PLOT_COLORBAR)
