@@ -7158,6 +7158,14 @@ class Dimension:
         "Int index to access data from self in an order consistent with other"
         raise NotImplementedError(f"Internal alignment for {self.__class__}")
 
+    def _is_superset_of(self, dim):
+        "Test whether self is a superset of dim"
+        raise NotImplementedError
+
+    def index_into_dim(self, dim):
+        "Index into a subset dimension"
+        raise NotImplementedError
+
     def _dimname(self):
         if self.name.lower() == self.__class__.__name__.lower():
             return self.__class__.__name__ + ' dimension'
@@ -8973,6 +8981,16 @@ class SourceSpaceBase(Dimension):
         else:
             name = label.name
         return NDVar(idx, (self,), {}, name)
+
+    def _is_superset_of(self, dim):
+        self._assert_same_base(dim)
+        return all(np.all(np.in1d(d, s)) for s, d in zip(self.vertices, dim.vertices))
+
+    def index_into_dim(self, dim):
+        if not self._is_superset_of(dim):
+            raise ValueError(f"{dim}: Index source space has unknown vertices")
+        index = np.hstack(np.in1d(s, d) for s, d in zip(self.vertices, dim.vertices))
+        return NDVar(index, (self,))
 
     def intersect(self, other, check_dims=True):
         """Create a Source dimension that is the intersection with dim
