@@ -1,8 +1,7 @@
 import wx
 
 from .._utils import IS_OSX
-from .._wxutils import ID
-
+from . import ID
 
 FOCUS_UI_UPDATE_FUNC_NAMES = {
     wx.ID_COPY: 'CanCopy',

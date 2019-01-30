@@ -1,9 +1,5 @@
-'''
-Created on Feb 26, 2012
-
-@author: christian
-'''
-
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+"""Eelbrain-specific wx IDs"""
 import wx
 
 APYDOC_NEW = wx.NewIdRef()

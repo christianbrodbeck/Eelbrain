@@ -5,8 +5,7 @@ import re
 import wx
 from wx.lib.dialogs import ScrolledMessageDialog
 
-from . import icons
-
+from eelbrain._wxgui import icons
 
 # store icons once loaded for repeated access
 _cache = {}

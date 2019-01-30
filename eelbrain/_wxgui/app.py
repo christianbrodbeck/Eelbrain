@@ -10,10 +10,11 @@ import wx
 from wx.adv import TaskBarIcon, TBI_DOCK
 
 from .._utils import IS_OSX, IS_WINDOWS
-from .._wxutils import ID, Icon
 from ..plot._base import CONFIG
 from .about import AboutFrame
 from .frame import FOCUS_UI_UPDATE_FUNC_NAMES, EelbrainFrame
+from .utils import Icon
+from . import ID
 
 
 APP = None  # hold the App instance
