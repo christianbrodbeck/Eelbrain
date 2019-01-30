@@ -14,7 +14,6 @@ from mne.utils import get_subjects_dir
 from nibabel.freesurfer import read_annot
 
 from ._data_obj import NDVar, SourceSpace, VolumeSourceSpace
-from ._ndvar import set_parc
 
 
 ICO_N_VERTICES = (12, 42, 162, 642, 2562, 10242, 40962)
@@ -33,7 +32,7 @@ def find_source_subject(subject, subjects_dir):
         return cfg['subject_from']
 
 
-def complete_source_space(ndvar, fill=0.):
+def complete_source_space(ndvar, fill=0., mask=None):
     """Fill in missing vertices on an NDVar with a partial source space
 
     Parameters
@@ -42,22 +41,36 @@ def complete_source_space(ndvar, fill=0.):
         NDVar with SourceSpace dimension that is missing some vertices.
     fill : scalar
         Value to fill in for missing vertices.
+    mask : bool
+        Mask vertices that are missing in ``ndvar``. By default, vertices are
+        masked only if ``ndvar`` already has a mask.
 
     Returns
     -------
     completed_ndvar : NDVar
         Copy of ``ndvar`` with its SourceSpace dimension completed.
     """
+    if not mask is None or isinstance(mask, bool):
+        raise TypeError(f"mask={mask}")
     source = ndvar.get_dim('source')
     axis = ndvar.get_axis('source')
+    is_masked = isinstance(ndvar.x, np.ma.masked_array)
+    # determine source and target vertices
     vertices = source_space_vertices(source.kind, source.grade, source.subject, source.subjects_dir)
+    vertex_indices = [np.in1d(v, src_v, True) for v, src_v in zip(vertices, source.vertices)]
+    index = (slice(None,),) * axis + (np.concatenate(vertex_indices),)
+    # generate target array
     shape = list(ndvar.shape)
     shape[axis] = sum(map(len, vertices))
     x = np.empty(shape, ndvar.x.dtype)
     x.fill(fill)
-    vertex_indices = [np.in1d(v, src_v, True) for v, src_v in zip(vertices, source.vertices)]
-    index = (slice(None,),) * axis + (np.concatenate(vertex_indices),)
-    x[index] = ndvar.x
+    x[index] = ndvar.x.data if is_masked else ndvar.x
+    if is_masked or mask:
+        x_mask = np.empty(shape, bool)
+        x_mask.fill(True if mask is None else mask)
+        x_mask[index] = ndvar.x.mask if is_masked else False
+        x = np.ma.masked_array(x, x_mask)
+    # set up target Dimension
     parc = None if source.parc is None else source.parc.name
     if isinstance(source, SourceSpace):
         source_out = SourceSpace(vertices, source.subject, source.src, source.subjects_dir, parc)
