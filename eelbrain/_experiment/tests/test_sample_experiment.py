@@ -89,6 +89,14 @@ def test_sample():
             'v2': {'base': 'visual', 'vars': {'shift': 'Var([0.1], repeat=len(side))'}},
             'vc': {'sub_epochs': ('v1', 'v2'), 'post_baseline_trigger_shift': 'shift', 'post_baseline_trigger_shift_max': 0.1, 'post_baseline_trigger_shift_min': 0.0},
         }
+        groups = {
+            'group0': Group(['R0000']),
+            'group1': SubGroup('all', ['R0000']),
+        }
+        variables = {
+            'group': GroupVar(['group0', 'group1']),
+            **SampleExperiment.variables,
+        }
     e = Experiment(root)
     events = e.load_selected_events(epoch='vc')
     ds = e.load_epochs(baseline=True, epoch='vc')
