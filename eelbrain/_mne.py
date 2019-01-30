@@ -50,21 +50,21 @@ def complete_source_space(ndvar, fill=0.):
     """
     source = ndvar.get_dim('source')
     axis = ndvar.get_axis('source')
-    lh_vertices, rh_vertices = source_space_vertices(source.kind, source.grade,
-                                                     source.subject,
-                                                     source.subjects_dir)
+    vertices = source_space_vertices(source.kind, source.grade, source.subject, source.subjects_dir)
     shape = list(ndvar.shape)
-    shape[axis] = len(lh_vertices) + len(rh_vertices)
+    shape[axis] = sum(map(len, vertices))
     x = np.empty(shape, ndvar.x.dtype)
     x.fill(fill)
-    lh_index = np.in1d(lh_vertices, source.lh_vertices, True)
-    rh_index = np.in1d(rh_vertices, source.rh_vertices, True)
-    index = (slice(None,),) * axis + (np.concatenate((lh_index, rh_index)),)
+    vertex_indices = [np.in1d(v, src_v, True) for v, src_v in zip(vertices, source.vertices)]
+    index = (slice(None,),) * axis + (np.concatenate(vertex_indices),)
     x[index] = ndvar.x
-    dims = list(ndvar.dims)
     parc = None if source.parc is None else source.parc.name
-    dims[axis] = SourceSpace((lh_vertices, rh_vertices), source.subject,
-                             source.src, source.subjects_dir, parc)
+    if isinstance(source, SourceSpace):
+        source_out = SourceSpace(vertices, source.subject, source.src, source.subjects_dir, parc)
+    else:
+        source_out = VolumeSourceSpace(vertices, source.subject, source.src, source.subjects_dir, parc)
+    dims = list(ndvar.dims)
+    dims[axis] = source_out
     return NDVar(x, dims, ndvar.info.copy(), ndvar.name)
 
 
@@ -73,14 +73,14 @@ def source_space_vertices(kind, grade, subject, subjects_dir):
     if kind == 'ico' and subject in ICO_SLICE_SUBJECTS:
         n = ICO_N_VERTICES[grade]
         return np.arange(n), np.arange(n)
-    path = Path(subjects_dir) / subject / 'bem' / f'{subject}-ico-{grade}-src.fif'
+    path = Path(subjects_dir) / subject / 'bem' / f'{subject}-{kind}-{grade}-src.fif'
     if path.exists():
         src_to = mne.read_source_spaces(str(path))
-        return src_to[0]['vertno'], src_to[1]['vertno']
-    elif kind != 'ico':
-        raise NotImplementedError("Can't infer vertices for non-ico source space")
-    else:
+        return [ss['vertno'] for ss in src_to]
+    elif kind == 'ico':
         return mne.grade_to_vertices(subject, grade, subjects_dir)
+    else:
+        raise NotImplementedError(f"Can't infer vertices for {kind}-{grade} source space")
 
 
 def _vertices_equal(v1, v0):
