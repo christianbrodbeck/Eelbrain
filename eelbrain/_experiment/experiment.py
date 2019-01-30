@@ -134,9 +134,9 @@ class TreeModel:
         self._field_values = LayeredDict()
         self._params = LayeredDict()
         self._terminal_fields = []
-        self._user_fields = []  # terminal fields that are relevant for user
         self._secondary_cache = defaultdict(tuple)  # secondary cache-files
         self._repr_kwargs = []
+        self._repr_kwargs_optional = []
 
         # scaffold for hooks
         self._compound_members = {}
@@ -167,25 +167,17 @@ class TreeModel:
             self.notification = NotNotifier()
 
     def __repr__(self):
-        args = [repr(self._fields[arg]) for arg in self._repr_args]
-        kwargs = [(arg, repr(self._fields[arg])) for arg in self._repr_kwargs]
+        args = [self._fields[arg] for arg in self._repr_args]
 
+        kwargs = [(arg, self._fields[arg]) for arg in self._repr_kwargs]
         no_initial_state = len(self._fields._states) == 0
-        for k in sorted(self._fields):
-            if k in self._repr_args or k in self._repr_kwargs:
-                continue
-            elif k in self._compound_members:
-                continue
-            elif '{' in self._fields[k]:
-                continue
-
+        for k in self._repr_kwargs_optional:
             v = self._fields[k]
             if no_initial_state or v != self._fields.get_stored(k, level=0):
-                kwargs.append((k, repr(v)))
+                kwargs.append((k, v))
 
-        args.extend('='.join(pair) for pair in kwargs)
-        args = ', '.join(args)
-        return "%s(%s)" % (self.__class__.__name__, args)
+        args.extend(f'{k}={v}' for k, v in kwargs)
+        return f"{self.__class__.__name__}({', '.join(args)})"
 
     def _bind_eval(self, key, handler):
         self._eval_handlers[key].append(handler)
@@ -272,7 +264,7 @@ class TreeModel:
 
     def _register_field(self, key, values=None, default=None, set_handler=None,
                         eval_handler=None, post_set_handler=None,
-                        depends_on=None, slave_handler=None, internal=False,
+                        depends_on=None, slave_handler=None,
                         allow_empty=False, repr=None):
         """Register an iterable field
 
@@ -298,9 +290,6 @@ class TreeModel:
             Slave fields: Fields in depends_on trigger change in ``key``.
         slave_handler : func
             Slave fields: Function that determines the new value of ``key``.
-        internal : bool
-            The field is set by methods as needed but should not be exposed to
-            the user.
         allow_empty : bool
             Allow empty string in ``values``.
         repr : bool
@@ -339,16 +328,18 @@ class TreeModel:
             self._field_values[key] = values
 
         # repr
-        if repr is True:
-            if values:
-                if len(values) > 1:
-                    self._repr_kwargs.append(key)
-        elif repr is not None:
+        if key in self._repr_args:
+            pass
+        elif repr is True:
+            if values and len(values) > 1:
+                self._repr_kwargs.append(key)
+        elif repr is None:
+            if values and len(values) > 1:
+                self._repr_kwargs_optional.append(key)
+        elif repr is not False:
             raise TypeError(f"repr={repr!r}")
 
         self._terminal_fields.append(key)
-        if depends_on is None and not internal:
-            self._user_fields.append(key)
         self._fields[key] = ''
         if default is not None:
             self.set(**{key: default})
@@ -787,7 +778,7 @@ class TreeModel:
         table.midrule()
 
         if temp is None:
-            keys = self._user_fields
+            keys = chain(self._repr_kwargs, self._repr_kwargs_optional)
         else:
             keys = self.find_keys(temp)
 

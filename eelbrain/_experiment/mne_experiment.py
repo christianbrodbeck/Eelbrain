@@ -657,7 +657,7 @@ class MneExperiment(FileTree):
         self._register_field('cov', sorted(self._covs), default_cov)
         self._register_field('inv', default='free-3-dSPM', eval_handler=self._eval_inv, post_set_handler=self._post_set_inv)
         self._register_field('model', eval_handler=self._eval_model)
-        self._register_field('test', test_values, post_set_handler=self._post_set_test, allow_empty=self._empty_test)
+        self._register_field('test', test_values, post_set_handler=self._post_set_test, allow_empty=self._empty_test, repr=False)
         self._register_field('parc', parc_values, 'aparc', eval_handler=self._eval_parc, allow_empty=True)
         self._register_field('freq', self._freqs.keys())
         self._register_field('src', default='ico-4', eval_handler=self._eval_src)
@@ -665,19 +665,17 @@ class MneExperiment(FileTree):
         self._register_field('select_clusters', self._cluster_criteria.keys(), allow_empty=True)
 
         # slave fields
-        self._register_field('mrisubject', depends_on=('mri', 'subject'),
-                             slave_handler=self._update_mrisubject)
-        self._register_field('src-name', depends_on=('src',),
-                             slave_handler=self._update_src_name)
+        self._register_field('mrisubject', depends_on=('mri', 'subject'), slave_handler=self._update_mrisubject, repr=False)
+        self._register_field('src-name', depends_on=('src',), slave_handler=self._update_src_name, repr=False)
 
         # fields used internally
-        self._register_field('analysis', internal=True)
-        self._register_field('test_options', internal=True)
-        self._register_field('name', internal=True)
-        self._register_field('folder', internal=True)
-        self._register_field('resname', internal=True)
-        self._register_field('ext', internal=True)
-        self._register_field('test_dims', internal=True)
+        self._register_field('analysis', repr=False)
+        self._register_field('test_options', repr=False)
+        self._register_field('name', repr=False)
+        self._register_field('folder', repr=False)
+        self._register_field('resname', repr=False)
+        self._register_field('ext', repr=False)
+        self._register_field('test_dims', repr=False)
 
         # compounds
         self._register_compound('sns_kind', ('raw',))
