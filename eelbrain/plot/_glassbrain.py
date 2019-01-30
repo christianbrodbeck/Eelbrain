@@ -180,10 +180,6 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         elif vmin is not None and np.isnan(vmin):
             raise ValueError(f"vmin={vmin!r} (Tip: Use np.nanmin() instead of np.min())")
 
-        if cmap is None:
-            cmap = cm.cold_hot if black_bg else cm.cold_white_hot
-        self.cmap = cmap
-
         if isinstance(ndvar, VolumeSourceSpace):
             source = ndvar
             ndvar = time = None
@@ -239,7 +235,20 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                 data = ndvar.norm('space').x
             else:
                 data = ndvar.x
-            if plot_abs:
+
+            if cmap is None:
+                if data.dtype.kind == 'b':
+                    cmap = 'copper' if black_bg else 'Oranges'
+                else:
+                    cmap = cm.cold_hot if black_bg else cm.cold_white_hot
+
+            if data.dtype.kind == 'b':
+                if vmax is None:
+                    vmax = 1
+                if vmin is None:
+                    vmin = 0
+                cbar_vmin = cbar_vmax = None
+            elif plot_abs:
                 cbar_vmin, cbar_vmax, vmin, vmax = _get_colorbar_and_data_ranges(
                     data, vmax, symmetric_cbar, kwargs, 0)
             else:
@@ -298,7 +307,6 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         self.interpolation = interpolation
         self.cmap = cmap
         self.colorbar = colorbar
-        self.cmap = cmap
         self.vmin = vmin
         self.vmax = vmax
         self._arrows = draw_arrows
