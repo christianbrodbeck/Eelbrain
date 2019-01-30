@@ -562,6 +562,9 @@ class Frame(FileFrame):
         original = asndvar(epoch)
         clean = asndvar(self.doc.apply(epoch))
         if self.butterfly_baseline == ID.BASELINE_CUSTOM:
+            if original.time.tmin >= 0:
+                wx.MessageBox(f"The data displayed does not have a baseline period (tmin={original.time.tmin}). Change the baseline through the Tools menu.", "No Baseline Period", style=wx.ICON_ERROR)
+                return
             original -= original.mean(time=(None, 0))
             clean -= clean.mean(time=(None, 0))
         elif self.butterfly_baseline == ID.BASELINE_GLOABL_MEAN:

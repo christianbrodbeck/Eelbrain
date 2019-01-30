@@ -5,6 +5,7 @@ from warnings import catch_warnings, filterwarnings
 import mne
 from eelbrain import gui, load
 from eelbrain.testing import gui_test, TempDir
+from eelbrain._wxgui import ID
 
 
 @gui_test
@@ -34,5 +35,10 @@ def test_select_components():
     frame.OnSave(None)
     ica = mne.preprocessing.read_ica(PATH)
     assert ica.exclude == []
+
+    # plotting
+    for i in [ID.BASELINE_NONE, ID.BASELINE_GLOABL_MEAN, ID.BASELINE_CUSTOM]:
+        frame.butterfly_baseline = i
+        frame.OnPlotGrandAverage(None)
 
     frame.Close()
