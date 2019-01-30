@@ -1978,10 +1978,10 @@ class MneExperiment(FileTree):
         # add standard variables
         ds['T'] = ds['i_start'] / ds.info['sfreq']
         ds['SOA'] = ds['T'].diff(0)
+        ds['subject'] = Factor([ds.info['subject']], repeat=ds.n_cases, random=True)
         if len(self._sessions) > 1:
             ds[:, 'session'] = ds.info['session']
         self._variables.apply(ds, self)
-        ds['subject'] = Factor([ds.info['subject']], repeat=ds.n_cases, random=True)
 
         # subclass label_events
         info = ds.info
