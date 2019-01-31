@@ -663,7 +663,7 @@ class App(wx.App):
         window.Raise()
 
     def OnWindowTile(self, event):
-        frames = sorted(wx.GetTopLevelWindows(), lambda x, y: x.Position[0] < y.Position[0])
+        frames = sorted(wx.GetTopLevelWindows(), key=lambda x: x.Position[0])
         dx, dy = wx.DisplaySize()
         x = 0
         y = 0
