@@ -3987,6 +3987,12 @@ class NDVar:
         x_mask = self._ialign(mask)
         if x_mask.dtype.kind != 'b':
             x_mask = x_mask.astype(bool)
+        if x_mask.shape != self.x.shape:
+            for ax, (n_mask, n_self) in enumerate(zip(x_mask.shape, self.x.shape)):
+                if n_mask != n_self:
+                    if n_mask != 1:
+                        raise ValueError("Unable to broadcast mask to NDVar")
+                    x_mask = np.repeat(x_mask, n_self, ax)
         x = np.ma.MaskedArray(self.x, x_mask)
         return NDVar(x, self.dims, self.info, name or self.name)
 

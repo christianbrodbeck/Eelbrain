@@ -50,7 +50,7 @@ from .._data_obj import (
     cellname, combine, dataobj_repr)
 from .._exceptions import OldVersionError, WrongDimension, ZeroVariance
 from .._utils import LazyProperty, user_activity
-from .._utils.numpy_utils import FULL_SLICE, FULL_AXIS_SLICE
+from .._utils.numpy_utils import FULL_AXIS_SLICE
 from . import opt, stats, vector
 from .connectivity import Connectivity, find_peaks
 from .connectivity_opt import merge_labels, tfce_increment
@@ -2756,32 +2756,22 @@ class NDPermutationDistribution:
     def uncrop(
             self,
             ndvar: NDVar,  # NDVar to uncrop
-            to: NDVar,  # NDVar that has the target dimensions
+            to: NDVar,  # NDVar that has the target time dimensions
             default: float = 0,  # value to fill in uncropped area
     ):
-        if self.tstart is None and self.tstop is None and self._vector_ax is None:
-            return ndvar
-        # Add vector axis
-        if self._vector_ax is not None:
-            shape = list(ndvar.x.shape)
-            shape.insert(self._vector_ax, 1)
-            x_in = ndvar.x.reshape(shape)
-            vector_n = to.shape[self._vector_ax]
-        else:
-            x_in = ndvar.x
-            vector_n = 0
-        # Project time axis
         if self.tstart is None and self.tstop is None:
-            x = np.repeat(x_in, vector_n, self._vector_ax)
-        else:
-            t_ax = to.get_axis('time')
-            t_dim = to.get_dim('time')
-            t_slice = t_dim._array_index(slice(self.tstart, self.tstop))
-            x = np.empty(to.shape, ndvar.x.dtype)
-            x.fill(default)
-            index = tuple(t_slice if i == t_ax else FULL_SLICE for i in range(x.ndim))
-            x[index] = x_in
-        return NDVar(x, to.dims, ndvar.info, ndvar.name)
+            return ndvar
+        target_time = to.get_dim('time')
+        t_ax = ndvar.get_axis('time')
+        dims = list(ndvar.dims)
+        dims[t_ax] = target_time
+        shape = list(ndvar.shape)
+        shape[t_ax] = len(target_time)
+        t_slice = target_time._array_index(slice(self.tstart, self.tstop))
+        x = np.empty(shape, ndvar.x.dtype)
+        x.fill(default)
+        x[FULL_AXIS_SLICE * t_ax + (t_slice,)] = ndvar.x
+        return NDVar(x, dims, ndvar.info, ndvar.name)
 
     def add_original(self, stat_map):
         """Add the original statistical parameter map.
