@@ -953,6 +953,10 @@ class PlotData:
         """
         if isinstance(y, cls):
             return y
+        elif isinstance(y, AxisData):
+            for layer in y.layers:
+                dims = find_data_dims(layer.y, dims)
+            return PlotData([y], dims)
         sub = assub(sub, ds)
         ys = y._default_plot_obj() if hasattr(y, '_default_plot_obj') else y
 

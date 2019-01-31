@@ -1,6 +1,8 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from matplotlib.backend_bases import KeyEvent
 import numpy as np
 import pytest
+import wx
 
 from eelbrain import datasets, plot, testnd
 from eelbrain._utils.testing import requires_mne_sample_data
@@ -45,6 +47,10 @@ def test_plot_topo_butterfly():
     ds = datasets.get_uts(utsnd=True)
     p = plot.TopoButterfly('utsnd', ds=ds)
     p.set_time(0.2)
+    # t keypress on topomap
+    x, y = p.topo_axes[0].transAxes.transform((.5, .5))
+    event = KeyEvent('test', p.canvas, 't', x, y, wx.KeyEvent())
+    p._on_key_press(event)
     p.close()
     p = plot.TopoButterfly('utsnd', ds=ds, vmax=0.2, w=6)
     p.close()
