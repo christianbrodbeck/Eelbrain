@@ -2720,7 +2720,7 @@ class TimeSlicer:
 
     def _update_time_wrapper(self, t, fixate):
         "Called by the TimeController"
-        if t == self._current_time and fixate == self._time_fixed:
+        if (t == self._current_time and fixate == self._time_fixed) or self._frame is None:
             return
         self._update_time(t, fixate)
         self._current_time = t
@@ -2784,7 +2784,7 @@ class TimeSlicerEF(TimeSlicer):
             while self.__time_lines:
                 self.__time_lines.pop().remove()
 
-        if self.__redraw and redraw:
+        if self.__redraw and redraw and self._frame is not None:
             self.canvas.redraw(self.__axes)
 
     def save_movie(self, filename=None, time_dilation=4., **kwargs):
