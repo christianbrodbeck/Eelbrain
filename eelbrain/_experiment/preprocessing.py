@@ -15,7 +15,7 @@ from .._exceptions import DefinitionError
 from .._io.fiff import KIT_NEIGHBORS
 from .._ndvar import filter_data
 from .._text import enumeration
-from .._utils import ask
+from .._utils import ask, user_activity
 from ..mne_fixes import CaptureLog
 from .definitions import compound, typed_arg
 from .exceptions import FileMissing
@@ -532,7 +532,8 @@ class RawICA(CachedRawPipe):
         kwargs = self.kwargs if 'max_iter' in self.kwargs else {'max_iter': 256, **self.kwargs}
         ica = mne.preprocessing.ICA(**kwargs)
         # reject presets from meeg-preprocessing
-        ica.fit(raw, reject={'mag': 5e-12, 'grad': 5000e-13, 'eeg': 300e-6})
+        with user_activity:
+            ica.fit(raw, reject={'mag': 5e-12, 'grad': 5000e-13, 'eeg': 300e-6})
         ica.save(path)
         return path
 
@@ -587,7 +588,8 @@ class RawMaxwell(CachedRawPipe):
     def _make(self, subject, recording):
         raw = self.source.load(subject, recording)
         self.log.info("Raw %s: computing Maxwell filter for %s/%s", self.name, subject, recording)
-        return mne.preprocessing.maxwell_filter(raw, **self.kwargs)
+        with user_activity:
+            return mne.preprocessing.maxwell_filter(raw, **self.kwargs)
 
 
 class RawReReference(CachedRawPipe):
