@@ -8,7 +8,7 @@ MneExperiment.sessions = ('session',)
 e = MneExperiment('.', find_subjects=False)
 
 """
-from collections import Counter, defaultdict, Sequence
+from collections import defaultdict, Sequence
 from datetime import datetime
 from glob import glob
 import inspect
@@ -60,7 +60,7 @@ from ..fmtxt import List, Report, Image, read_meta
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
 from .._text import enumeration, plural
-from .._utils import ask, subp, keydefaultdict, log_level, ScreenHandler, deprecated
+from .._utils import IS_WINDOWS, ask, subp, keydefaultdict, log_level, ScreenHandler, deprecated
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .definitions import find_dependent_epochs, find_epochs_vars, log_dict_change, log_list_change
 from .epochs import PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, assemble_epochs, decim_param
@@ -213,8 +213,6 @@ temp = {
 
     # cache
     'cache-dir': join('{root}', 'eelbrain-cache'),
-    'input-state-file': join('{cache-dir}', 'input-state.pickle'),
-    'cache-state-file': join('{cache-dir}', 'cache-state.pickle'),
     # raw
     'raw-cache-dir': join('{cache-dir}', 'raw', '{subject}'),
     'raw-cache-base': join('{raw-cache-dir}', '{recording} {raw}'),
@@ -755,7 +753,7 @@ class MneExperiment(FileTree):
         events = {}  # {(subject, recording): event_dataset}
 
         # saved mtimes
-        input_state_file = self.get('input-state-file', mkdir=True)
+        input_state_file = join(cache_dir, 'input-state.pickle')
         if exists(input_state_file):
             input_state = load.unpickle(input_state_file)
             if input_state['version'] < 10:
@@ -874,22 +872,24 @@ class MneExperiment(FileTree):
                         use_for_session[recording] = use_for_id[0]
 
         # save input-state
+        if not cache_dir_existed:
+            os.makedirs(cache_dir, exist_ok=True)
         save.pickle(input_state, input_state_file)
         self._dig_sessions = pipe._dig_sessions = input_state['fwd-sessions']  # {subject: {for_recording: use_recording}}
 
         # Check the cache, delete invalid files
         # =====================================
-        cache_state_path = self.get('cache-state-file')
+        cache_state_path = join(cache_dir, 'cache-state.pickle')
         raw_state = {k: v.as_dict() for k, v in self._raw.items()}
         epoch_state = {k: v.as_dict() for k, v in self._epochs.items()}
         parcs_state = {k: v.as_dict() for k, v in self._parcs.items()}
         tests_state = {k: v.as_dict() for k, v in self._tests.items()}
         if exists(cache_state_path):
             # check time stamp
-            if getmtime(cache_state_path) > time.time():
-                tc = time.ctime(getmtime(cache_state_path))
-                tsys = time.asctime()
-                raise RuntimeError(f"The cache's time stamp is in the future ({tc}). If the system time ({tsys}) is wrong, adjust the system clock; if not, delete the eelbrain-cache folder.")
+            state_mtime = getmtime(cache_state_path)
+            now = time.time() + IS_WINDOWS  # Windows seems to have rounding issue
+            if state_mtime > now:
+                raise RuntimeError(f"The cache's time stamp is in the future ({time.ctime(state_mtime)}). If the system time ({time.ctime(now)}) is wrong, adjust the system clock; if not, delete the eelbrain-cache folder.")
             cache_state = load.unpickle(cache_state_path)
             cache_state_v = cache_state.get('version', 0)
             if cache_state_v < CACHE_STATE_VERSION:
