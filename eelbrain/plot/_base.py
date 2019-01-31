@@ -1598,6 +1598,8 @@ class EelFigure:
 
     def draw(self):
         "(Re-)draw the figure (after making manual changes)."
+        if self._frame is None:
+            return
         t0 = time.time()
         self._frame.canvas.draw()
         self._last_draw_time = time.time() - t0
