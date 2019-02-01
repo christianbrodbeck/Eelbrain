@@ -144,6 +144,16 @@ def _time_window_str(window, delim='-'):
     return delim.join(map(_time_str, window))
 
 
+def guess_y(ds, default=None):
+    "Given a dataset, guess the dependent variable"
+    for y in ('srcm', 'src', 'meg', 'eeg'):
+        if y in ds:
+            return y
+    if default is not None:
+        return default
+    raise RuntimeError(r"Could not find data in {ds}")
+
+
 class DictSet:
     """Helper class for list of dicts without duplicates"""
     def __init__(self):
@@ -5612,7 +5622,7 @@ class MneExperiment(FileTree):
 
         if subject:
             ds = self.load_evoked(baseline=baseline)
-            y = ds.info['primary_data']
+            y = guess_y(ds)
             title = f"{subject} {epoch} {model_name}"
             return plot.TopoButterfly(y, model, ds=ds, title=title, run=run)
         elif separate:
@@ -5620,7 +5630,7 @@ class MneExperiment(FileTree):
             vlim = []
             for subject in self.iter(group=group):
                 ds = self.load_evoked(baseline=baseline)
-                y = ds.info['primary_data']
+                y = guess_y(ds)
                 title = f"{subject} {epoch} {model_name}"
                 p = plot.TopoButterfly(y, model, ds=ds, title=title, run=False)
                 plots.append(p)
@@ -5638,7 +5648,7 @@ class MneExperiment(FileTree):
                 gui.run()
         else:
             ds = self.load_evoked(group, baseline=baseline)
-            y = ds.info['primary_data']
+            y = guess_y(ds)
             title = f"{group} {epoch} {model_name}"
             return plot.TopoButterfly(y, model, ds=ds, title=title, run=run)
 
