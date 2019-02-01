@@ -186,12 +186,13 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
 
         if isinstance(ndvar, VolumeSourceSpace):
             source = ndvar
-            ndvar = None
+            ndvar = time = None
         else:
             ndvar = brain_data(ndvar)
             source = ndvar.get_dim('source')
             if not isinstance(source, VolumeSourceSpace):
                 raise ValueError(f"ndvar={ndvar!r}:  need volume source space data")
+            time = ndvar.get_dim('time') if ndvar.has_dim('time') else None
             if isinstance(ndvar.x, np.ma.MaskedArray) and np.all(ndvar.x.mask):
                 ndvar = None
 
@@ -207,14 +208,13 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
 
             src = source.get_source_space()
             img = _stc_to_volume(ndvar, src, dest, mri_resolution, mni305)
-            if ndvar.has_dim('time'):
-                time = ndvar.get_dim('time')
+            if time is not None:
                 t0 = time[0]
                 imgs = [index_img(img, i) for i in range(len(time))]
                 img0 = imgs[0]
             else:
                 img0 = img
-                imgs = time = t0 = None
+                imgs = t0 = None
             if draw_arrows:
                 if not ndvar.has_dim('space'):
                     draw_arrows = False
@@ -257,7 +257,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                     raise ValueError(f"Cannot use threshold={threshold} with masked data")
 
         else:
-            cbar_vmin = cbar_vmax = imgs = img0 = dir_imgs = time = t0 = threshold = None
+            cbar_vmin = cbar_vmax = imgs = img0 = dir_imgs = t0 = threshold = None
 
         self.time = time
         self._ndvar = ndvar
@@ -322,9 +322,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             cbar = display._cbar
             _crop_colorbar(cbar, cbar_vmin, cbar_vmax)
 
-        ndvars = [[ndvar]] if ndvar else None
-        TimeSlicerEF.__init__(self, 'time', ndvars)
-
+        TimeSlicerEF.__init__(self, 'time', time)
         self._show()
 
     def _fill_toolbar(self, tb):
@@ -424,6 +422,8 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             ax.texts[-1].set_text('time = %s ms' % round(t * 1e3))
 
     def _update_time(self, t, fixate):
+        if self._ndvar is None:
+            return
         index = self.time._array_index(t)
         self._remove_overlay()
         self.display.add_overlay(

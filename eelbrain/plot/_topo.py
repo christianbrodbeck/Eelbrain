@@ -422,7 +422,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         # setup callback
         XAxisMixin._init_with_data(self, data.data, xdim, xlim, self.bfly_axes)
         YLimMixin.__init__(self, self.bfly_plots + self.topo_plots)
-        TimeSlicerEF.__init__(self, xdim, data.data, self.bfly_axes, False)
+        TimeSlicerEF.__init__(self, xdim, data.time_dim, self.bfly_axes, False)
         TopoMapKey.__init__(self, self._topo_data)
         self._realtime_topo = True
         self._t_label = None  # time label under lowest topo-map

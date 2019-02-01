@@ -884,7 +884,7 @@ class PlotData:
     ----------
     plot_used : list of bool
         List indicating which plot slots are used (as opposed to empty).
-    plot_data : list of list of LayerData
+    plot_data : list of AxisData
         The processed data to plot.
     data : list of list of NDVar
         The processed data to plot (for backwards compatibility).
@@ -902,7 +902,7 @@ class PlotData:
     """
     def __init__(
             self,
-            axes: List[Union[None, AxisData]],
+            axes: List[AxisData],
             dims: Sequence[str],
             title: str = "unnamed data",
             plot_names: List[str] = None,
@@ -1080,6 +1080,13 @@ class PlotData:
     def data(self):
         "For backwards compatibility with nested list of NDVar"
         return [[l.y for l in self.axis_for_plot(i, PlotType.LEGACY)] for i in range(self.n_plots)]
+
+    @LazyProperty
+    def time_dim(self):
+        "UTS dimension to expose for time slicer"
+        time_dims = [l.y.get_dim('time') for ax in self.plot_data for l in ax.layers if l.y.has_dim('time')]
+        if time_dims:
+            return reduce(UTS._union, time_dims)
 
     def for_plot(self, plot_type: PlotType) -> 'PlotData':
         if self.plot_type == plot_type:
@@ -2656,9 +2663,9 @@ class TimeSlicer:
     _current_time = None
     _display_time_in_frame_title = False
 
-    def __init__(self, ndvars=None, time_fixed=False):
-        if ndvars is not None:
-            self._set_time_dim_from_ndvars(ndvars)
+    def __init__(self, time_dim=None, time_fixed=False):
+        if time_dim is not None:
+            self._set_time_dim(time_dim)
         self._time_controller = None
         self._time_fixed = time_fixed
 
@@ -2674,12 +2681,6 @@ class TimeSlicer:
             self._current_time = time_dim.tmin
         elif isinstance(time_dim, Case):
             self._current_time = 0
-
-    def _set_time_dim_from_ndvars(self, ndvars):
-        time_ndvars = tuple(v for v in ndvars if v.has_dim('time'))
-        if time_ndvars:
-            time_dim = reduce(UTS._union, (v.time for v in time_ndvars))
-            self._set_time_dim(time_dim)
 
     def link_time_axis(self, other):
         """Link the time axis of this figure with another figure"""
@@ -2754,12 +2755,11 @@ class TimeSlicerEF(TimeSlicer):
     # TimeSlicer for Eelfigure
     _can_set_time = True
 
-    def __init__(self, x_dimname, epochs, axes=None, redraw=True):
+    def __init__(self, x_dimname, x_dim, axes=None, redraw=True):
         if x_dimname != 'time':
             TimeSlicer.__init__(self, time_fixed=True)
             return
-        ndvars = [e for layer in epochs for e in layer] if epochs else None
-        TimeSlicer.__init__(self, ndvars)
+        TimeSlicer.__init__(self, x_dim)
         self.__axes = self._axes if axes is None else axes
         self.__time_lines = []
         self.__redraw = redraw

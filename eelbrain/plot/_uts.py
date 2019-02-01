@@ -379,7 +379,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         XAxisMixin._init_with_data(self, data.data, xdim, xlim)
         YLimMixin.__init__(self, self.plots)
         LegendMixin.__init__(self, legend, legend_handles)
-        TimeSlicerEF.__init__(self, xdim, data.data)
+        TimeSlicerEF.__init__(self, xdim, data.time_dim)
         self._show()
 
     def _fill_toolbar(self, tb):
