@@ -938,6 +938,34 @@ class ttest_1samp(NDDifferenceTest):
             return self.difference
 
 
+def _independent_measures_args(y, x, c1, c0, match, ds, sub):
+    "Interpret parameters for independent measures tests (2 different argspecs)"
+    if isinstance(x, str):
+        x = ds.eval(x)
+
+    if isinstance(x, NDVar):
+        assert c1 is None
+        assert c0 is None
+        assert match is None
+        y1 = asndvar(y, sub, ds)
+        y0 = asndvar(x, sub, ds)
+        y = combine((y1, y0))
+        c1_name = y1.name
+        c0_name = y0.name
+        x_name = y0.name
+    else:
+        ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar, dtype=np.float64)
+        c1, c0 = ct.cat
+        c1_name = c1
+        c0_name = c0
+        x_name = ct.x.name
+        match = ct.match
+        y = ct.y
+        y1 = ct.data[c1]
+        y0 = ct.data[c0]
+    return y, y1, y0, c1, c0, match, x_name, c1_name, c0_name
+
+
 class ttest_ind(NDDifferenceTest):
     """Mass-univariate independent samples t-test
 
@@ -945,8 +973,10 @@ class ttest_ind(NDDifferenceTest):
     ----------
     y : NDVar
         Dependent variable.
-    x : categorial
-        Model containing the cells which should be compared.
+    x : categorial | NDVar
+        Model containing the cells which should be compared, or NDVar to which
+        ``y`` should be compared. In the latter case, the next three parameters
+        are ignored.
     c1 : str | tuple | None
         Test condition (cell of ``x``). ``c1`` and ``c0`` can be omitted if
         ``x`` only contains two cells, in which case cells will be used in
@@ -1041,17 +1071,16 @@ class ttest_ind(NDDifferenceTest):
             parc: str = None,
             force_permutation: bool = False,
             **criteria):
-        ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar, dtype=np.float64)
-        check_for_vector_dim(ct.y)
+        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, ds, sub)
+        check_for_vector_dim(y)
 
-        c1, c0 = ct.cat
-        n1 = len(ct.data[c1])
-        n = len(ct.y)
+        n1 = len(y1)
+        n = len(y)
         n0 = n - n1
         df = n - 2
         groups = np.arange(n) < n1
         groups.dtype = np.int8
-        tmap = stats.t_ind(ct.y.x, groups)
+        tmap = stats.t_ind(y.x, groups)
 
         n_threshold_params = sum((pmin is not None, tmin is not None, bool(tfce)))
         if n_threshold_params == 0 and not samples:
@@ -1066,37 +1095,26 @@ class ttest_ind(NDDifferenceTest):
             else:
                 threshold = None
 
-            cdist = NDPermutationDistribution(
-                ct.y, samples, threshold, tfce, tail, 't', 'Independent Samples t-Test',
-                tstart, tstop, criteria, parc, force_permutation)
+            cdist = NDPermutationDistribution(y, samples, threshold, tfce, tail, 't', 'Independent Samples t-Test', tstart, tstop, criteria, parc, force_permutation)
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 iterator = permute_order(n, samples)
                 run_permutation(stats.t_ind, cdist, iterator, groups)
 
-        # NDVar map of t-values
-        info = _info.for_stat_map('t', threshold, tail=tail, old=ct.y.info)
-        t = NDVar(tmap, ct.y.dims[1:], info, 't')
-
-        c1_mean = ct.data[c1].mean('case', name=cellname(c1))
-        c0_mean = ct.data[c0].mean('case', name=cellname(c0))
-
         # store attributes
-        NDDifferenceTest.__init__(self, ct.y, ct.match, sub, samples, tfce, pmin, cdist, tstart, tstop)
-        self.x = ct.x.name
+        NDDifferenceTest.__init__(self, y, match, sub, samples, tfce, pmin, cdist, tstart, tstop)
+        self.x = x_name
         self.c0 = c0
         self.c1 = c1
-
         self.n1 = n1
         self.n0 = n0
         self.df = df
         self.tail = tail
-        self.t = t
+        info = _info.for_stat_map('t', threshold, tail=tail, old=y.info)
+        self.t = NDVar(tmap, y.dims[1:], info, 't')
         self.tmin = tmin
-
-        self.c1_mean = c1_mean
-        self.c0_mean = c0_mean
-
+        self.c1_mean = y1.mean('case', name=cellname(c1_name))
+        self.c0_mean = y0.mean('case', name=cellname(c0_name))
         self._expand_state()
 
     def _expand_state(self):
@@ -1142,12 +1160,14 @@ class ttest_ind(NDDifferenceTest):
         return "(%s).isin(%s)" % (self.x, (self.c1, self.c0))
 
     def _repr_test_args(self):
-        args = [repr(self.y), repr(self.x), "%r (n=%i)" % (self.c1, self.n1),
-                "%r (n=%i)" % (self.c0, self.n0)]
+        if self.c1 is None:
+            args = [f'{self.y!r} (n={self.n1})', f'{self.x!r} (n={self.n0})']
+        else:
+            args = [f'{self.y!r}', f'{self.x!r}', f'{self.c1!r} (n={self.n1})', f'{self.c0!r} (n={self.n0})']
         if self.match:
-            args.append('match=%r' % self.match)
+            args.append(f'match{self.match!r}')
         if self.tail:
-            args.append("tail=%i" % self.tail)
+            args.append(f'tail={self.tail}')
         return args
 
     def _default_plot_obj(self):
@@ -1160,7 +1180,10 @@ class ttest_ind(NDDifferenceTest):
 
 def _related_measures_args(y, x, c1, c0, match, ds, sub):
     "Interpret parameters for related measures tests (2 different argspecs)"
-    if isinstance(x, NDVar) or isinstance(x, str) and x in ds and isinstance(ds[x], NDVar):
+    if isinstance(x, str):
+        x = ds.eval(x)
+
+    if isinstance(x, NDVar):
         assert c1 is None
         assert c0 is None
         assert match is None
@@ -2011,20 +2034,16 @@ class VectorDifferenceIndependent(Vector):
     def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
                  samples=10000, vmin=None, tfce=False, tstart=None,
                  tstop=None, parc=None, force_permutation=False, use_t2_stat=False, **criteria):
-        ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar, dtype=np.float64)
-        c1, c0 = ct.cat
+        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, ds, sub)
+        self.n1 = len(y1)
+        self.n0 = len(y0)
+        self.n = len(y)
 
-        self.n1 = len(ct.data[c1])
-        self.n0 = len(ct.data[c0])
-        self.n = len(ct.y)
+        cdist = NDPermutationDistribution(y, samples, vmin, tfce, 1, 'norm', 'Vector test (independent)', tstart, tstop, criteria, parc, force_permutation)
 
-        cdist = NDPermutationDistribution(
-            ct.y, samples, vmin, tfce, 1, 'norm', 'Vector test (independent)',
-            tstart, tstop, criteria, parc, force_permutation)
-
-        self._v_dim = v_dim = ct.y.dimnames[cdist._vector_ax + 1]
-        self.c1_mean = ct.data[c1].mean('case', name=cellname(c1))
-        self.c0_mean = ct.data[c0].mean('case', name=cellname(c0))
+        self._v_dim = v_dim = y.dimnames[cdist._vector_ax + 1]
+        self.c1_mean = y1.mean('case', name=cellname(c1_name))
+        self.c0_mean = y0.mean('case', name=cellname(c0_name))
         self.difference = self.c1_mean - self.c0_mean
         self.difference.name = 'difference'
         v_mean_norm = self.difference.norm(v_dim)
@@ -2040,7 +2059,7 @@ class VectorDifferenceIndependent(Vector):
             vector_perm = partial(self._vector_perm, use_t2_stat=use_t2_stat)
             run_permutation(vector_perm, cdist, iterator, groups)
 
-        NDTest.__init__(self, ct.y, ct.match, sub, samples, tfce, None, cdist, tstart, tstop)
+        NDTest.__init__(self, y, match, sub, samples, tfce, None, cdist, tstart, tstop)
         self._expand_state()
 
     def _name(self):

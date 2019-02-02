@@ -538,6 +538,10 @@ def test_ttest_ind():
     res_ = pickle.loads(string)
     assert repr(res_) == "<ttest_ind 'uts', 'A', 'a1' (n=30), 'a0' (n=30)>"
     assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
+    # alternate argspec
+    res_ = testnd.ttest_ind("uts[A == 'a1']", "uts[A == 'a0']", ds=ds)
+    assert repr(res_) == "<ttest_ind 'uts' (n=30), 'uts' (n=30)>"
+    assert_dataobj_equal(res_.t, res.t)
 
     # cluster
     res = testnd.ttest_ind('uts', 'A', 'a1', 'a0', ds=ds, tail=1, samples=1)
@@ -572,6 +576,10 @@ def test_ttest_rel():
     assert_array_equal(c1.x.data, res.c1_mean.x)
 
     # alternate argspec
+    res_ = testnd.ttest_rel("uts[A%B == ('a1', 'b1')]", "uts[A%B == ('a0', 'b0')]", ds=ds, samples=100)
+    assert repr(res_) == "<ttest_rel 'uts', 'uts' (n=15), samples=100, p < .001>"
+    assert_dataobj_equal(res_.t, res.t)
+    # alternate argspec 2
     ds1 = Dataset()
     ds1['a1b1'] = ds.eval("uts[A%B == ('a1', 'b1')]")
     ds1['a0b0'] = ds.eval("uts[A%B == ('a0', 'b0')]")
