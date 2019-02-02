@@ -2957,16 +2957,16 @@ class NDPermutationDistribution:
     def _repr_test_args(self, pmin):
         "Argument representation for TestResult repr"
         args = ['samples=%r' % self.samples]
-        if pmin:
+        if pmin is not None:
             args.append(f"pmin={pmin!r}")
         elif self.kind == 'tfce':
             arg = f"tfce={self.tfce!r}"
             if self.tfce_warning:
                 arg = f"{arg} [WARNING: The TFCE step is larger than the largest value in the data]"
             args.append(arg)
-        if self.tstart:
-            args.append(f"tstart{self.tstart!r}")
-        if self.tstop:
+        if self.tstart is not None:
+            args.append(f"tstart={self.tstart!r}")
+        if self.tstop is not None:
             args.append(f"tstop={self.tstop!r}")
         for k, v in self.criteria.items():
             args.append(f"{k}={v!r}")

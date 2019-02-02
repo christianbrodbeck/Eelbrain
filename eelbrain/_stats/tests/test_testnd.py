@@ -474,7 +474,7 @@ def test_ttest_1samp():
     res1 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds, samples=0, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
     assert res1.clusters.n_cases == 1
     assert_not_in('p', res1.clusters)
-    assert repr(res1) == "<ttest_1samp 'uts', sub=\"A == 'a0'\", samples=0, pmin=0.05, tstop=0.6, mintime=0.05, 1 clusters>"
+    assert repr(res1) == "<ttest_1samp 'uts', sub=\"A == 'a0'\", samples=0, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05, 1 clusters>"
 
     # persistence
     string = pickle.dumps(res1, pickle.HIGHEST_PROTOCOL)
@@ -487,12 +487,12 @@ def test_ttest_1samp():
     assert res2.clusters.n_cases == 1
     assert res2.samples == 10
     assert_in('p', res2.clusters)
-    assert repr(res2) == "<ttest_1samp 'uts', sub=\"A == 'a0'\", samples=10, pmin=0.05, tstop=0.6, mintime=0.05, 1 clusters, p < .001>"
+    assert repr(res2) == "<ttest_1samp 'uts', sub=\"A == 'a0'\", samples=10, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05, 1 clusters, p < .001>"
 
     # clusters with permutations
     dss = ds.sub("logical_and(A=='a0', B=='b0')")[:8]
     res3 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=dss, samples=10000, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
-    assert repr(res3) == "<ttest_1samp 'uts', sub=\"A == 'a0'\", samples=255, pmin=0.05, tstop=0.6, mintime=0.05, 2 clusters, p = .020>"
+    assert repr(res3) == "<ttest_1samp 'uts', sub=\"A == 'a0'\", samples=255, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05, 2 clusters, p = .020>"
     assert res3.clusters.n_cases == 2
     assert res3.samples == -1
     assert str(res3.clusters) == (
