@@ -2802,6 +2802,27 @@ class TimeSlicer:
         "Retrieve the current time"
         return self._current_time
 
+    def play_movie(self, time_dilation=4.):
+        """Cycle through the time axis
+
+        See Also
+        --------
+        .save_movie : Save a movie to disk for smoother playback
+        """
+        t = self._time_dim[0]
+        self.set_time(t)
+        tmax = self._time_dim[-1]
+        last_frame = time.time()
+        time.sleep(0.05)
+        while True:
+            now = time.time()
+            t += (now - last_frame) / time_dilation
+            last_frame = now
+            if t > tmax:
+                break
+            self.set_time(t)
+        self.set_time(tmax)
+
     def set_time(self, time):
         """Set the time point to display
 

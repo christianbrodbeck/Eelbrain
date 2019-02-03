@@ -467,10 +467,6 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
 
         self.draw()
 
-    def animate(self):
-        for t in self.time:
-            self.set_time(t)
-
     def _colorbar_params(self):
         return self.cmap, self.vmin, self.vmax
 
