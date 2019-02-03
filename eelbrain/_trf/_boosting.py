@@ -206,13 +206,13 @@ class BoostingResult:
         if self.y_scale is None:
             return self.h
         elif isinstance(self.h, NDVar):
-            out = (self.y_scale / self.x_scale) * self.h
+            out = self.h * (self.y_scale / self.x_scale)
             out.info.update(self._y_info)
             return out
         else:
             out = []
             for h, sx in zip(self.h, self.x_scale):
-                h = (self.y_scale / sx) * h
+                h = h * (self.y_scale / sx)
                 h.info.update(self._y_info)
                 out.append(h)
             return tuple(out)
