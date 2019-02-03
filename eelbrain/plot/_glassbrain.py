@@ -41,9 +41,9 @@ from nilearn.image.resampling import get_bounds
 
 import numpy as np
 
-from .._data_obj import NDVar, VolumeSourceSpace, asndvar
+from .._data_obj import NDVar, VolumeSourceSpace
 from .._utils.numpy_utils import newaxis
-from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, butterfly_data
+from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, brain_data, butterfly_data
 from ._utsnd import Butterfly
 
 
@@ -188,7 +188,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             source = ndvar
             ndvar = None
         else:
-            ndvar = asndvar(ndvar)
+            ndvar = brain_data(ndvar)
             source = ndvar.get_dim('source')
             if not isinstance(source, VolumeSourceSpace):
                 raise ValueError(f"ndvar={ndvar!r}:  need volume source space data")

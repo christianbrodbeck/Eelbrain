@@ -575,6 +575,16 @@ def find_data_dims(ndvar, dims, extra_dim=None):
         return agg, tuple(dimnames)
 
 
+def brain_data(
+        data: Union[NDVar, testnd.NDTest],
+):
+    # for GlassBrain and surfer brain
+    if isinstance(data, testnd.NDDifferenceTest):
+        return data.masked_difference()
+    else:
+        return asndvar(data)
+
+
 def butterfly_data(
         data: Union[NDVar, testnd.NDTest],
         hemi: str,

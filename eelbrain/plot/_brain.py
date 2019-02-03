@@ -3,18 +3,17 @@
 from functools import partial
 from itertools import product
 from numbers import Number
-from warnings import warn
 
 import mne
 from nibabel.freesurfer import read_annot
 import numpy as np
 
-from .._data_obj import asndvar, NDVar, SourceSpace, UTS
+from .._data_obj import NDVar, SourceSpace, UTS
 from .._utils import deprecated
 from ..fmtxt import Image, im_table
 from .._text import ms
-from ._base import EelFigure, ImLayout, ColorBarMixin, butterfly_data
-from ._color_luts import p_lut, dspm_lut
+from ._base import EelFigure, ImLayout, ColorBarMixin, brain_data, butterfly_data
+from ._color_luts import dspm_lut
 from ._colors import ColorList
 
 
@@ -513,7 +512,7 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
         if hemi is None:
             hemi = 'split'
     else:
-        ndvar = asndvar(src)
+        ndvar = brain_data(src)
         if ndvar.has_case:
             ndvar = ndvar.summary()
         source = get_source_dim(ndvar)
