@@ -676,6 +676,12 @@ def test_vector():
     resd = testnd.VectorDifferenceRelated(v1, v2, samples=10)
     assert_dataobj_equal(resd.p, res.p, name=False)
     assert_dataobj_equal(resd.t2, res.t2, name=False)
+    # diff independent
+    res = testnd.VectorDifferenceIndependent(v1, v2, samples=10)
+    assert_dataobj_equal(res.difference, v1.mean('case') - v2.mean('case'), name=False)
+    assert res.p.max() == 1
+    assert res.p.min() == 0
+    # with mp
     res = testnd.Vector(v1, samples=10)
     assert res.p.min() == 0.2
     # without mp

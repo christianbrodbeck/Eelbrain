@@ -1887,10 +1887,7 @@ class Vector(NDDifferenceTest):
         ct = Celltable(y, match=match, sub=sub, ds=ds, coercion=asndvar, dtype=np.float64)
 
         n = len(ct.y)
-        n_samples, samples = _resample_params(n, samples)
-        cdist = NDPermutationDistribution(
-            ct.y, n_samples, vmin, tfce, 1, 'norm', 'Vector test',
-            tstart, tstop, criteria, parc, force_permutation)
+        cdist = NDPermutationDistribution(ct.y, samples, vmin, tfce, 1, 'norm', 'Vector test', tstart, tstop, criteria, parc, force_permutation)
 
         v_dim = ct.y.dimnames[cdist._vector_ax + 1]
         v_mean = ct.y.mean('case')
@@ -1907,7 +1904,7 @@ class Vector(NDDifferenceTest):
             self.t2 = None
 
         if cdist.do_permutation:
-            iterator = random_seeds(n_samples)
+            iterator = random_seeds(samples)
             vector_perm = partial(self._vector_perm, use_t2_stat=use_t2_stat)
             run_permutation(vector_perm, cdist, iterator)
 
@@ -2066,10 +2063,9 @@ class VectorDifferenceIndependent(Vector):
             self.t2 = None
 
         if cdist.do_permutation:
-            iterator = permute_order(self.n, samples)
-            groups = np.arange(self.n) < self.n1
+            iterator = random_seeds(samples)
             vector_perm = partial(self._vector_perm, use_t2_stat=use_t2_stat)
-            run_permutation(vector_perm, cdist, iterator, groups)
+            run_permutation(vector_perm, cdist, iterator, self.n1)
 
         NDTest.__init__(self, y, match, sub, samples, tfce, None, cdist, tstart, tstop)
         self._expand_state()
@@ -2081,15 +2077,28 @@ class VectorDifferenceIndependent(Vector):
             return "Vector test (independent)"
 
     @staticmethod
-    def _vector_mean_difference_norm(y, group, out, perm):
+    def _vector_perm(y, n1, out, seed, use_t2_stat):
+        assert not use_t2_stat
         n_cases, n_dims, n_tests = y.shape
         assert n_dims == 3
-        if perm is not None:
-            group = group[perm]
-        mean_1 = y[group].mean(0)
-        mean_0 = y[~group].mean(0)
-        mean_diff = mean_1 - mean_0
-        norm = np.linalg.norm(mean_diff, axis=0)
+        # randomize directions
+        rotation = rand_rotation_matrices(n_cases, seed)
+        # randomize groups
+        cases = np.arange(n_cases)
+        np.random.shuffle(cases)
+        # group 1
+        mean_1 = np.zeros((n_dims, n_tests))
+        for case in cases[:n1]:
+            mean_1 += np.tensordot(rotation[case], y[case], ((1,), (0,)))
+        mean_1 /= n1
+        # group 0
+        mean_0 = np.zeros((n_dims, n_tests))
+        for case in cases[n1:]:
+            mean_0 += np.tensordot(rotation[case], y[case], ((1,), (0,)))
+        mean_0 /= (n_cases - n1)
+        # difference
+        mean_1 -= mean_0
+        norm = scipy.linalg.norm(mean_1, 2, axis=0)
         if out is not None:
             out[:] = norm
         return norm
