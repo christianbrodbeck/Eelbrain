@@ -14,6 +14,7 @@ from mne.utils import get_subjects_dir
 from nibabel.freesurfer import read_annot
 
 from ._data_obj import NDVar, SourceSpace, VolumeSourceSpace
+from ._utils.numpy_utils import index
 
 
 ICO_N_VERTICES = (12, 42, 162, 642, 2562, 10242, 40962)
@@ -691,6 +692,10 @@ def xhemi(ndvar, mask=None, hemi='lh', parc=True):
     rh : NDVar
         Data from the right hemisphere on ``hemi`` of ``fsaverage_sym``.
 
+    Notes
+    -----
+    Only symmetric volume source spaces are currently supported.
+
     References
     ----------
     .. [1] Greve D. N., Van der Haegen L., Cai Q., Stufflebeam S., Sabuncu M.
@@ -698,26 +703,44 @@ def xhemi(ndvar, mask=None, hemi='lh', parc=True):
            A Surface-based Analysis of Language Lateralization and Cortical
            Asymmetry. Journal of Cognitive Neuroscience 25(9), 1477-1492, 2013.
     """
+    source = ndvar.get_dim('source')
     other_hemi = 'rh' if hemi == 'lh' else 'lh'
 
-    if ndvar.source.subject == 'fsaverage_sym':
-        ndvar_sym = ndvar
+    if isinstance(source, VolumeSourceSpace):
+        ax = ndvar.get_axis('source')
+        # extract hemi
+        is_in_hemi = source.hemi == hemi
+        source_out = source[is_in_hemi]
+        # map other_hemi into hemi
+        is_in_other = source.hemi == other_hemi
+        coord_map = {tuple(source.coordinates[i]): i for i in np.flatnonzero(is_in_other)}
+        other_source = [coord_map[-x, y, z] for x, y, z in source_out.coordinates]
+        # combine data
+        x_hemi = ndvar.x[index(is_in_hemi, at=ax)]
+        x_other = ndvar.x[index(other_source, at=ax)]
+        dims = list(ndvar.dims)
+        dims[ax] = source_out
+        out_same = NDVar(x_hemi, dims, ndvar.info, ndvar.name)
+        out_other = NDVar(x_other, dims, ndvar.info, ndvar.name)
     else:
-        ndvar_sym = morph_source_space(ndvar, 'fsaverage_sym', parc=parc, mask=mask)
+        if source.subject == 'fsaverage_sym':
+            ndvar_sym = ndvar
+        else:
+            ndvar_sym = morph_source_space(ndvar, 'fsaverage_sym', parc=parc, mask=mask)
 
-    vert_lh, vert_rh = ndvar_sym.source.vertices
-    vert_from = [[], vert_rh] if hemi == 'lh' else [vert_lh, []]
-    vert_to = [vert_lh, []] if hemi == 'lh' else [[], vert_rh]
-    with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', r'\d+/\d+ vertices not included in smoothing', module='mne')
-        morph_mat = mne.compute_morph_matrix(
-            'fsaverage_sym', 'fsaverage_sym', vert_from, vert_to,
-            subjects_dir=ndvar.source.subjects_dir, xhemi=True)
+        vert_lh, vert_rh = ndvar_sym.source.vertices
+        vert_from = [[], vert_rh] if hemi == 'lh' else [vert_lh, []]
+        vert_to = [vert_lh, []] if hemi == 'lh' else [[], vert_rh]
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', r'\d+/\d+ vertices not included in smoothing', module='mne')
+            morph_mat = mne.compute_morph_matrix(
+                'fsaverage_sym', 'fsaverage_sym', vert_from, vert_to,
+                subjects_dir=ndvar.source.subjects_dir, xhemi=True)
 
-    out_same = ndvar_sym.sub(source=hemi)
-    out_other = morph_source_space(
-        ndvar_sym.sub(source=other_hemi), 'fsaverage_sym',
-        out_same.source.vertices, morph_mat, parc=parc, xhemi=True, mask=mask)
+        out_same = ndvar_sym.sub(source=hemi)
+        out_other = morph_source_space(
+            ndvar_sym.sub(source=other_hemi), 'fsaverage_sym',
+            out_same.source.vertices, morph_mat, parc=parc, xhemi=True, mask=mask)
 
     if hemi == 'lh':
         return out_same, out_other

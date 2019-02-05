@@ -63,6 +63,10 @@ def digitize_slice_endpoint(index, values):
     return int(np.digitize(index, values, True))
 
 
+def index(index, at: int):
+    return FULL_AXIS_SLICE * at + (index,)
+
+
 def index_to_int_array(index, n):
     if isinstance(index, np.ndarray):
         if index.dtype.kind == 'i':
