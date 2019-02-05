@@ -37,6 +37,7 @@ DAMAGE.
 """
 import warnings
 
+import nibabel
 from nilearn.image.resampling import get_bounds
 
 import numpy as np
@@ -662,25 +663,30 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
     src_type = src[0]['type']
     if src_type != 'vol':
         raise ValueError(f"You need a volume source space. Got type: {src_type}")
+    if len(src) != 1:
+        raise NotImplementedError("Multiple source spaces")
 
     if ndvar.has_dim('space'):
         ndvar = ndvar.norm('space')
 
     if ndvar.has_dim('time'):
-        data = ndvar.get_data(('source', 'time'), 0)
+        data = ndvar.get_data(('source', 'time'), mask=0)
     else:
-        data = ndvar.get_data(('source', newaxis), 0)
+        data = ndvar.get_data(('source', newaxis), mask=0)
 
     # check for infinite values and make them zero
     non_finite_mask = np.logical_not(np.isfinite(ndvar.x))
     if non_finite_mask.sum() > 0:  # any non_finite_mask values?
         ndvar.x[non_finite_mask] = 0
 
+    # project data to 4d array
     n_times = data.shape[1]
-    shape = src[0]['shape']
-    shape3d = (shape[2], shape[1], shape[0])
-    shape = (n_times, shape[2], shape[1], shape[0])
-    vol = np.zeros(shape)
+    shape3d = src[0]['shape'][::-1]
+    shape4d = (*shape3d, n_times)
+    vol = np.zeros(shape4d)
+    mask3d = src[0]['inuse'].reshape(shape3d).astype(np.bool)
+    vol[mask3d] = data
+    vol = np.moveaxis(vol, 3, 0)  # time on first axis
 
     if mri_resolution:
         mri_shape3d = (src[0]['mri_height'], src[0]['mri_depth'],
@@ -689,30 +695,13 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
                      src[0]['mri_width'])
         mri_vol = np.zeros(mri_shape)
         interpolator = src[0]['interpolator']
-
-    n_vertices_seen = 0
-    for this_src in src:  # loop over source instants, which is basically one element only!
-        assert tuple(this_src['shape']) == tuple(src[0]['shape'])
-        mask3d = this_src['inuse'].reshape(shape3d).astype(np.bool)
-        n_vertices = np.sum(mask3d)
-
-        for k, v in enumerate(vol):  # loop over time instants
-            stc_slice = slice(n_vertices_seen, n_vertices_seen + n_vertices)
-            v[mask3d] = data[stc_slice, k]
-
-        n_vertices_seen += n_vertices
-
-    if mri_resolution:
         for k, v in enumerate(vol):
             mri_vol[k] = (interpolator * v.ravel()).reshape(mri_shape3d)
         vol = mri_vol
-
-    vol = vol.T
-
-    if mri_resolution:
         affine = src[0]['vox_mri_t']['trans'].copy()
     else:
         affine = src[0]['src_mri_t']['trans'].copy()
+
     if dest == 'mri':
         affine = np.dot(src[0]['mri_ras_t']['trans'], affine)
 
@@ -721,15 +710,14 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
         affine = _to_MNI152(affine)
 
     # write the image in nifty format
-    import nibabel as nib
-    header = nib.nifti1.Nifti1Header()
+    header = nibabel.nifti1.Nifti1Header()
     header.set_xyzt_units('mm', 'msec')
     if ndvar.has_dim('time'):
         header['pixdim'][4] = 1e3 * ndvar.time.tstep
     else:
         header['pixdim'][4] = None
     with warnings.catch_warnings(record=True):  # nibabel<->numpy warning
-        img = nib.Nifti1Image(vol, affine, header=header)
+        img = nibabel.Nifti1Image(vol.T, affine, header=header)
     return img
 
 
