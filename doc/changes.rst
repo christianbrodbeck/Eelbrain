@@ -36,6 +36,7 @@ New in 0.30
 * ICA-GUI: tool to find high amplitude signals
 * Documentation: New :ref:`examples` section
 * :meth:`Dataset.summary` method
+* Element-wise :func:`maximum` and :func:`minimum` functions for :class:`NDVar` objects
 * .. currentmodule:: eelbrain.pipeline
   :class:`MneExperiment` pipeline:
 

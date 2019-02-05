@@ -2863,6 +2863,9 @@ class NDVar:
       :attr:`.info` attribute.
     - A name stored in the :attr:`.name` attribute.
 
+    :class:`NDVar` objects support the native :func:`abs` and :func:`round`
+    functions.
+
     *Indexing*: For classical indexing, indexes need to be provided in the
     correct sequence. For example, assuming ``ndvar``'s first axis is time,
     ``ndvar[0.1]`` retrieves a slice at time = 0.1 s. If time is the second

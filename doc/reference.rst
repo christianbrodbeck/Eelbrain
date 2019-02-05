@@ -118,7 +118,8 @@ Sorting and Reordering
 NDVar Operations
 ^^^^^^^^^^^^^^^^
 
-See also :class:`NDVar` methods.
+:class:`NDVar` objects support the native :func:`abs` and :func:`round`
+functions. See also :class:`NDVar` methods.
 
 .. autosummary::
    :toctree: generated
@@ -137,6 +138,8 @@ See also :class:`NDVar` methods.
    frequency_response
    label_operator
    labels_from_clusters
+   maximum
+   minimum
    morph_source_space
    neighbor_correlation
    psd_welch

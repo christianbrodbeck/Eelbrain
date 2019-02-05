@@ -11,6 +11,7 @@ from functools import reduce
 from math import floor
 from numbers import Real
 import operator
+from typing import Sequence
 
 import mne
 import numpy as np
@@ -685,6 +686,28 @@ def label_operator(labels, operation='mean', exclude=None, weights=None,
         if operation == 'mean':
             xs /= l1(xs, np.array(((0, len(xs)),), np.int64))
     return NDVar(x, (label_dim, dim), labels.name)
+
+
+def maximum(ndvars: Sequence[NDVar], name: str = None):
+    "Element-wise maximum of multiple :class:`NDVar` objects"
+    x0 = ndvars[0]
+    dims = x0.dims
+    if any(x.dims != dims for x in ndvars[1:]):
+        raise NotImplementedError("NDVars with mismatching dimensions")
+    x = np.maximum(*(v.x for v in ndvars))
+    info = merge_info(ndvars)
+    return NDVar(x, dims, info, name)
+
+
+def minimum(ndvars: Sequence[NDVar], name: str = None):
+    "Element-wise minimum of multiple :class:`NDVar` objects"
+    x0 = ndvars[0]
+    dims = x0.dims
+    if any(x.dims != dims for x in ndvars[1:]):
+        raise NotImplementedError("NDVars with mismatching dimensions")
+    x = np.minimum(*(v.x for v in ndvars))
+    info = merge_info(ndvars)
+    return NDVar(x, dims, info, name)
 
 
 def neighbor_correlation(x, dim='sensor', obs='time', name=None):

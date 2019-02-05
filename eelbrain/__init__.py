@@ -31,6 +31,7 @@ from ._ndvar import (
     Butterworth, concatenate, convolve, correlation_coefficient,
     cross_correlation, cwt_morlet, dss,
     filter_data, find_intervals, find_peaks, frequency_response, label_operator,
+    maximum, minimum,
     neighbor_correlation, psd_welch, rename_dim, resample, segment, set_parc,
     set_tmin,
 )
