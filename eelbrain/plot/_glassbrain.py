@@ -280,13 +280,12 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
 
         # layout
         if display_mode is None:
-            display_mode = ''
-            if 'lh' in source.hemi:
-                display_mode += 'l'
-            display_mode += 'y'
-            if 'rh' in source.hemi:
-                display_mode += 'r'
-            display_mode += 'z'
+            has_lh = 'lh' in source.hemi
+            has_rh = 'rh' in source.hemi
+            if has_rh != has_lh:
+                display_mode = 'xz'
+            else:
+                display_mode = 'lyr'
         n_plots = 3 if display_mode == 'ortho' else len(display_mode)
         layout = Layout(n_plots, 0.85, 2.6, tight=False, ncol=n_plots, **kwargs)
         # frame title
@@ -668,24 +667,26 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
 
     if ndvar.has_dim('space'):
         ndvar = ndvar.norm('space')
-
+    source = ndvar.get_dim('source')
     if ndvar.has_dim('time'):
         data = ndvar.get_data(('source', 'time'), mask=0)
     else:
         data = ndvar.get_data(('source', newaxis), mask=0)
 
     # check for infinite values and make them zero
-    non_finite_mask = np.logical_not(np.isfinite(ndvar.x))
+    non_finite_mask = np.logical_not(np.isfinite(data))
     if non_finite_mask.sum() > 0:  # any non_finite_mask values?
-        ndvar.x[non_finite_mask] = 0
+        data[non_finite_mask] = 0
 
     # project data to 4d array
     n_times = data.shape[1]
     shape3d = src[0]['shape'][::-1]
     shape4d = (*shape3d, n_times)
     vol = np.zeros(shape4d)
-    mask3d = src[0]['inuse'].reshape(shape3d).astype(np.bool)
-    vol[mask3d] = data
+    mask = src[0]['inuse'].astype(np.bool)
+    if data.shape[0] < mask.sum():
+        mask[mask] = np.in1d(src[0]['vertno'], source.vertices[0], assume_unique=True)
+    vol[mask.reshape(shape3d)] = data
     vol = np.moveaxis(vol, 3, 0)  # time on first axis
 
     if mri_resolution:
