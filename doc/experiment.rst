@@ -409,6 +409,7 @@ values into meaningful labels::
 This defines a variable called "stimulus", and on this variable all events
 that have triggers 162 and 163 have the value ``"target"``, and events with
 trigger 166 and 167 have the value ``"prime"``.
+The "prediction" variable only labels triggers 162 and 163.
 Unmentioned trigger values are assigned the empty string (``''``).
 
 

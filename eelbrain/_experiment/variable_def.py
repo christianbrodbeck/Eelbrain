@@ -143,12 +143,21 @@ class GroupVar(VarDef):
 
     Parameters
     ----------
-    groups : tuple | dict
-        Groups to consider. A tuple of group names to lookup for each subject
-        which of those groups it belongs to. A {group: label} dict to assign
-        a label based on group membership.
+    groups : sequence of str | dict
+        Groups to label. A sequence of group names to label each subject with
+        the group it belongs to (subjects can't be members of more than one
+        group). Alternatively, a ``{group: label}`` dictionary can be used to
+        assign a different label based on group membership.
     session : str
         Only apply the variable to events from this session.
+
+    Examples
+    --------
+    Assuming an experiment that defines two groups, ``'patient'`` and
+    ``'control'``, these groups could be labeled with::
+
+        GroupVar(['patient', 'control'])
+
     """
     _pickle_args = ('session', 'groups')
 
