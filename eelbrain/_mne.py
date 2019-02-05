@@ -33,6 +33,14 @@ def find_source_subject(subject, subjects_dir):
         return cfg['subject_from']
 
 
+def switch_hemi_tag(name):
+    if name.endswith('-rh'):
+        return f'{name[:-3]}-lh'
+    elif name.endswith('-lh'):
+        return f'{name[:-3]}-rh'
+    return name
+
+
 def complete_source_space(ndvar, fill=0., mask=None):
     """Fill in missing vertices on an NDVar with a partial source space
 
@@ -357,7 +365,7 @@ def labels_from_mni_coords(seeds, extent=30., subject='fsaverage',
     return labels
 
 
-def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
+def morph_source_space(ndvar, subject_to=None, vertices_to=None, morph_mat=None,
                        copy=False, parc=True, xhemi=False, mask=None):
     """Morph source estimate to a different MRI subject
 
@@ -366,7 +374,8 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     ndvar : NDVar
         NDVar with SourceSpace dimension.
     subject_to : str
-        Name of the subject on which to morph.
+        Name of the subject on which to morph (by default this is the same as
+        the current subject for ``xhemi`` morphing).
     vertices_to : None | list of array of int | 'lh' | 'rh'
         The vertices on the destination subject's brain. If ndvar contains a
         whole source space, vertices_to can be automatically loaded, although
@@ -412,7 +421,10 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     source = ndvar.get_dim('source')
     subjects_dir = source.subjects_dir
     subject_from = source.subject
-    assert_subject_exists(subject_to, subjects_dir)
+    if subject_to is None:
+        subject_to = subject_from
+    else:
+        assert_subject_exists(subject_to, subjects_dir)
     # catch cases that don't require morphing
     if not xhemi:
         subject_is_same = subject_from == subject_to
@@ -484,7 +496,10 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     source_to = SourceSpace(vertices_to, subject_to, source.src, subjects_dir, parc_to)
     if mask is True:
         if parc is True:
-            index = source_to.parc.isin(source.parc.cells)
+            keep_labels = source.parc.cells
+            if xhemi:
+                keep_labels = [switch_hemi_tag(label) for label in keep_labels]
+            index = source_to.parc.isin(keep_labels)
         else:
             index = source_to.parc.isnotin(('unknown-lh', 'unknown-rh'))
         source_to = source_to[index]
