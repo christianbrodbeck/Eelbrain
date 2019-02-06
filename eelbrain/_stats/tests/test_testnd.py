@@ -5,22 +5,17 @@ import logging
 import pytest
 import sys
 
-from nose.tools import (
-    eq_, ok_, assert_almost_equal,
-    assert_greater, assert_greater_equal, assert_less, assert_in, assert_not_in,
-    assert_raises)
+from nose.tools import eq_, ok_, assert_almost_equal, assert_greater, assert_greater_equal, assert_less, assert_in, assert_not_in
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 
 import eelbrain
-from eelbrain import (Dataset, NDVar, Categorial, Scalar, UTS, Sensor, configure,
-                      datasets, test, testnd, set_log_level, cwt_morlet)
-from eelbrain._exceptions import DimensionMismatchError, WrongDimension, ZeroVariance
-from eelbrain._stats.testnd import (Connectivity, NDPermutationDistribution, label_clusters,
-                                    _MergedTemporalClusterDist, find_peaks)
+from eelbrain import Dataset, NDVar, Categorial, Scalar, UTS, Sensor, configure, datasets, test, testnd, set_log_level, cwt_morlet
+from eelbrain._exceptions import WrongDimension, ZeroVariance
+from eelbrain._stats.testnd import Connectivity, NDPermutationDistribution, label_clusters, _MergedTemporalClusterDist, find_peaks
 from eelbrain._utils.system import IS_WINDOWS
-from eelbrain.testing import (assert_dataobj_equal, assert_dataset_equal,
-                                     requires_mne_sample_data)
+from eelbrain.fmtxt import asfmtext
+from eelbrain.testing import assert_dataobj_equal, assert_dataset_equal, requires_mne_sample_data
 
 
 def test_anova():
@@ -33,16 +28,16 @@ def test_anova():
         testnd.anova('utsnd', 'A*B', ds=ds, samples=samples)
         testnd.anova('utsnd', 'A*B', ds=ds, samples=samples, pmin=0.05)
         res = testnd.anova('utsnd', 'A*B', ds=ds, samples=samples, tfce=True)
-        eq_(res._plot_model(), 'A%B')
+        assert res._plot_model() == 'A%B'
+    asfmtext(res)
 
     res = testnd.anova('utsnd', 'A*B*rm', match=False, ds=ds, samples=0, pmin=0.05)
-    eq_(repr(res), "<anova 'utsnd', 'A*B*rm', match=False, samples=0, pmin=0.05, "
-                   "'A': 17 clusters, 'B': 20 clusters, 'A x B': 22 clusters>")
-    eq_(res._plot_model(), 'A%B')
+    assert repr(res) == "<anova 'utsnd', 'A*B*rm', match=False, samples=0, pmin=0.05, 'A': 17 clusters, 'B': 20 clusters, 'A x B': 22 clusters>"
+    assert res._plot_model() == 'A%B'
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=2, pmin=0.05)
     assert res.match == 'rm'
     assert repr(res) == "<anova 'utsnd', 'A*B*rm', match='rm', samples=2, pmin=0.05, 'A': 17 clusters, p < .001, 'B': 20 clusters, p < .001, 'A x B': 22 clusters, p < .001>"
-    eq_(res._plot_model(), 'A%B')
+    assert res._plot_model() == 'A%B'
 
     # persistence
     string = pickle.dumps(res, protocol=pickle.HIGHEST_PROTOCOL)
@@ -54,26 +49,23 @@ def test_anova():
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=10)
     assert res.match == 'rm'
     repr(res)
-    assert_in('A clusters', res.clusters.info)
-    assert_in('B clusters', res.clusters.info)
-    assert_in('A x B clusters', res.clusters.info)
+    assert 'A clusters' in res.clusters.info
+    assert 'B clusters' in res.clusters.info
+    assert 'A x B clusters' in res.clusters.info
 
     # no clusters
-    res = testnd.anova('uts', 'B', sub="A=='a1'", ds=ds, samples=5, pmin=0.05,
-                       mintime=0.02)
+    res = testnd.anova('uts', 'B', sub="A=='a1'", ds=ds, samples=5, pmin=0.05, mintime=0.02)
     repr(res)
-    assert_in('v', res.clusters)
-    assert_in('p', res.clusters)
-    eq_(res._plot_model(), 'B')
+    assert 'v' in res.clusters
+    assert 'p' in res.clusters
+    assert res._plot_model() == 'B'
 
     # all effects with clusters
-    res = testnd.anova('uts', 'A*B*rm', match=False, ds=ds, samples=5, pmin=0.05,
-                       tstart=0.1, mintime=0.02)
+    res = testnd.anova('uts', 'A*B*rm', match=False, ds=ds, samples=5, pmin=0.05, tstart=0.1, mintime=0.02)
     assert set(res.clusters['effect'].cells) == set(res.effects)
 
     # some effects with clusters, some without
-    res = testnd.anova('uts', 'A*B*rm', ds=ds, samples=5, pmin=0.05,
-                       tstart=0.37, mintime=0.02)
+    res = testnd.anova('uts', 'A*B*rm', ds=ds, samples=5, pmin=0.05, tstart=0.37, mintime=0.02)
     assert res.match == 'rm'
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res_ = pickle.loads(string)
@@ -203,8 +195,8 @@ def test_anova_parc():
     assert_dataset_equal(c2sp, c2)
 
     # not defined
-    assert_raises(NotImplementedError, testnd.anova, y, "side*modality",
-                  tfce=True, parc='source', **kwa)
+    with pytest.raises(NotImplementedError):
+        testnd.anova(y, "side*modality", tfce=True, parc='source', **kwa)
 
 
 def test_clusterdist():
@@ -424,8 +416,8 @@ def test_t_contrast():
 
     # zero variance
     ds['uts'].x[:, 10] = 0.
-    assert_raises(ZeroVariance, testnd.t_contrast_rel, 'uts', 'A%B',
-                  'min(a1|b0>a0|b0, a1|b1>a0|b1)', 'rm', tail=1, ds=ds)
+    with pytest.raises(ZeroVariance):
+        testnd.t_contrast_rel('uts', 'A%B', 'min(a1|b0>a0|b0, a1|b1>a0|b1)', 'rm', tail=1, ds=ds)
 
 
 def test_labeling():

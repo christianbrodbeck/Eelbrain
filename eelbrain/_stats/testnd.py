@@ -1433,6 +1433,18 @@ class MultiEffectNDTest(NDTest):
             args.append("%r: %s" % (cdist.name, ', '.join(effect_args)))
         return args
 
+    def _asfmtext(self):
+        table = fmtxt.Table('llll')
+        table.cells('Effect', fmtxt.symbol(self._statistic, 'max'), fmtxt.symbol('p'), 'sig')
+        table.midrule()
+        for i, effect in enumerate(self.effects):
+            table.cell(effect)
+            table.cell(fmtxt.stat(self._max_statistic(i)))
+            pmin = self.p[i].min()
+            table.cell(fmtxt.p(pmin))
+            table.cell(star(pmin))
+        return table
+
     def _expand_state(self):
         self.effects = tuple(e.name for e in self._effects)
 
