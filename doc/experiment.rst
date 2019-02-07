@@ -562,22 +562,12 @@ filter, and to use sensor covariance matrices without regularization.
    :local:
 
 
-.. _MneExperiment-raw-parameter:
-
 ``raw``
 -------
 
-Which raw FIFF files to use. Can be customized (see :attr:`MneExperiment.raw`).
-The default values are:
-
-``'raw'``
-    The unfiltered files (as they were added to the data).
-``'0-40'`` (default)
-    Low-pass filtered under 40 Hz.
-``'0.1-40'``
-    Band-pass filtered between 0.1 and 40 Hz.
-``'1-40'``
-    Band-pass filtered between 1 and 40 Hz.
+Select the preprocessing pipeline applied to the continuous data. Options are
+all the processing steps defined in :attr:`MneExperiment.raw`, as well as
+``"raw"`` for using unprocessed raw data.
 
 
 ``group``
