@@ -87,7 +87,7 @@ from .._data_obj import (
     ascategorial, asndvar, assub, isnumeric, isdataobject, cellname,
 )
 from .._stats import testnd
-from .._utils import IS_WINDOWS, LazyProperty, intervals, natsorted, ui
+from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
 from .._utils.subp import command_exists
 from ..fmtxt import Image
 from ..mne_fixes import MNE_EPOCHS
@@ -575,6 +575,16 @@ def find_data_dims(ndvar, dims, extra_dim=None):
         return agg, tuple(dimnames)
 
 
+def brain_data(
+        data: Union[NDVar, testnd.NDTest],
+):
+    # for GlassBrain and surfer brain
+    if isinstance(data, testnd.NDDifferenceTest):
+        return data.masked_difference()
+    else:
+        return asndvar(data)
+
+
 def butterfly_data(
         data: Union[NDVar, testnd.NDTest],
         hemi: str,
@@ -874,7 +884,7 @@ class PlotData:
     ----------
     plot_used : list of bool
         List indicating which plot slots are used (as opposed to empty).
-    plot_data : list of list of LayerData
+    plot_data : list of AxisData
         The processed data to plot.
     data : list of list of NDVar
         The processed data to plot (for backwards compatibility).
@@ -892,7 +902,7 @@ class PlotData:
     """
     def __init__(
             self,
-            axes: List[Union[None, AxisData]],
+            axes: List[AxisData],
             dims: Sequence[str],
             title: str = "unnamed data",
             plot_names: List[str] = None,
@@ -953,6 +963,10 @@ class PlotData:
         """
         if isinstance(y, cls):
             return y
+        elif isinstance(y, AxisData):
+            for layer in y.layers:
+                dims = find_data_dims(layer.y, dims)
+            return PlotData([y], dims)
         sub = assub(sub, ds)
         ys = y._default_plot_obj() if hasattr(y, '_default_plot_obj') else y
 
@@ -1066,6 +1080,13 @@ class PlotData:
     def data(self):
         "For backwards compatibility with nested list of NDVar"
         return [[l.y for l in self.axis_for_plot(i, PlotType.LEGACY)] for i in range(self.n_plots)]
+
+    @LazyProperty
+    def time_dim(self):
+        "UTS dimension to expose for time slicer"
+        time_dims = [l.y.get_dim('time') for ax in self.plot_data for l in ax.layers if l.y.has_dim('time')]
+        if time_dims:
+            return reduce(UTS._union, time_dims)
 
     def for_plot(self, plot_type: PlotType) -> 'PlotData':
         if self.plot_type == plot_type:
@@ -1594,6 +1615,8 @@ class EelFigure:
 
     def draw(self):
         "(Re-)draw the figure (after making manual changes)."
+        if self._frame is None:
+            return
         t0 = time.time()
         self._frame.canvas.draw()
         self._last_draw_time = time.time() - t0
@@ -2278,8 +2301,7 @@ class ColorBarMixin:
             _, self.__label = find_axis_params_data(data, True)
 
     def _fill_toolbar(self, tb):
-        from .._wxgui import wx
-        from .._wxutils import ID, Icon
+        from .._wxgui import wx, ID, Icon
 
         tb.AddTool(ID.PLOT_COLORBAR, "Plot Colorbar", Icon("plot/colorbar"))
         tb.Bind(wx.EVT_TOOL, self.__OnPlotColorBar, id=ID.PLOT_COLORBAR)
@@ -2641,9 +2663,9 @@ class TimeSlicer:
     _current_time = None
     _display_time_in_frame_title = False
 
-    def __init__(self, ndvars=None, time_fixed=False):
-        if ndvars is not None:
-            self._set_time_dim_from_ndvars(ndvars)
+    def __init__(self, time_dim=None, time_fixed=False):
+        if time_dim is not None:
+            self._set_time_dim(time_dim)
         self._time_controller = None
         self._time_fixed = time_fixed
 
@@ -2659,12 +2681,6 @@ class TimeSlicer:
             self._current_time = time_dim.tmin
         elif isinstance(time_dim, Case):
             self._current_time = 0
-
-    def _set_time_dim_from_ndvars(self, ndvars):
-        time_ndvars = tuple(v for v in ndvars if v.has_dim('time'))
-        if time_ndvars:
-            time_dim = reduce(UTS._union, (v.time for v in time_ndvars))
-            self._set_time_dim(time_dim)
 
     def link_time_axis(self, other):
         """Link the time axis of this figure with another figure"""
@@ -2715,7 +2731,7 @@ class TimeSlicer:
 
     def _update_time_wrapper(self, t, fixate):
         "Called by the TimeController"
-        if t == self._current_time and fixate == self._time_fixed:
+        if (t == self._current_time and fixate == self._time_fixed) or self._frame is None:
             return
         self._update_time(t, fixate)
         self._current_time = t
@@ -2739,12 +2755,11 @@ class TimeSlicerEF(TimeSlicer):
     # TimeSlicer for Eelfigure
     _can_set_time = True
 
-    def __init__(self, x_dimname, epochs, axes=None, redraw=True):
+    def __init__(self, x_dimname, x_dim, axes=None, redraw=True):
         if x_dimname != 'time':
             TimeSlicer.__init__(self, time_fixed=True)
             return
-        ndvars = [e for layer in epochs for e in layer] if epochs else None
-        TimeSlicer.__init__(self, ndvars)
+        TimeSlicer.__init__(self, x_dim)
         self.__axes = self._axes if axes is None else axes
         self.__time_lines = []
         self.__redraw = redraw
@@ -2779,7 +2794,7 @@ class TimeSlicerEF(TimeSlicer):
             while self.__time_lines:
                 self.__time_lines.pop().remove()
 
-        if self.__redraw and redraw:
+        if self.__redraw and redraw and self._frame is not None:
             self.canvas.redraw(self.__axes)
 
     def save_movie(self, filename=None, time_dilation=4., **kwargs):

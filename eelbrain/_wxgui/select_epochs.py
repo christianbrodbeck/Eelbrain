@@ -28,7 +28,6 @@ from .._names import INTERPOLATE_CHANNELS
 from .._ndvar import neighbor_correlation
 from .._utils.parse import FLOAT_PATTERN, POS_FLOAT_PATTERN, INT_PATTERN
 from .._utils.numpy_utils import FULL_SLICE, INT_TYPES
-from .._wxutils import Icon, ID, REValidator
 from ..mne_fixes import MNE_EPOCHS
 from ..plot._base import AxisData, LayerData, PlotType, find_axis_params_data, find_fig_vlims, find_fig_cmaps
 from ..plot._nuts import _plt_bin_nuts
@@ -39,6 +38,8 @@ from .frame import EelbrainDialog
 from .mpl_canvas import FigureCanvasPanel
 from .history import Action, FileDocument, FileModel, FileFrame
 from .text import HTMLFrame
+from .utils import Icon, REValidator
+from . import ID
 
 
 # IDs

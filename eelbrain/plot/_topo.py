@@ -422,7 +422,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         # setup callback
         XAxisMixin._init_with_data(self, data.data, xdim, xlim, self.bfly_axes)
         YLimMixin.__init__(self, self.bfly_plots + self.topo_plots)
-        TimeSlicerEF.__init__(self, xdim, data.data, self.bfly_axes, False)
+        TimeSlicerEF.__init__(self, xdim, data.time_dim, self.bfly_axes, False)
         TopoMapKey.__init__(self, self._topo_data)
         self._realtime_topo = True
         self._t_label = None  # time label under lowest topo-map
@@ -448,13 +448,13 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
 
     def _topo_data(self, event):
         ax = event.inaxes
+        p = self.bfly_plots[ax.id // 2]
         if ax in self.bfly_axes:
-            p = self.bfly_plots[ax.id // 2]
             t = event.xdata
             seg = [l.sub(time=t) for l in p.data]
         elif ax in self.topo_axes:
-            seg = self.topo_plots[ax.id // 2].data
             t = self._current_time
+            seg = [p.data[ax.id // 2].sub(time=t)]
         else:
             return
 
@@ -640,7 +640,7 @@ class _ax_topomap(_ax_im_array):
             head_pos: Union[float, Tuple[float, float]] = 0.,  # y if centered on x, or (x, y)
             head_linewidth: float = None):
         self.ax = ax
-        self.data = layers
+        self.data = layers  # will not update from .set_data()
         self.proj = proj
         sensor_dim = layers.y0.sensor
 

@@ -16,10 +16,11 @@ from matplotlib.backends import backend_wx
 from matplotlib.figure import Figure
 import wx
 
-from .._wxutils import ID, FloatValidator, Icon
 from .app import get_app
 from .frame import EelbrainFrame, EelbrainDialog
 from .help import show_help_txt
+from .utils import FloatValidator, Icon
+from . import ID
 
 
 class DummyMouseEvent:

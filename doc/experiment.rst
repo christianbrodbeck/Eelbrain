@@ -342,6 +342,7 @@ Define a pre-processing pipeline as a series of processing steps:
 
    RawFilter
    RawICA
+   RawApplyICA
    RawMaxwell
    RawSource
    RawReReference
@@ -409,6 +410,7 @@ values into meaningful labels::
 This defines a variable called "stimulus", and on this variable all events
 that have triggers 162 and 163 have the value ``"target"``, and events with
 trigger 166 and 167 have the value ``"prime"``.
+The "prediction" variable only labels triggers 162 and 163.
 Unmentioned trigger values are assigned the empty string (``''``).
 
 
@@ -560,22 +562,12 @@ filter, and to use sensor covariance matrices without regularization.
    :local:
 
 
-.. _MneExperiment-raw-parameter:
-
 ``raw``
 -------
 
-Which raw FIFF files to use. Can be customized (see :attr:`MneExperiment.raw`).
-The default values are:
-
-``'raw'``
-    The unfiltered files (as they were added to the data).
-``'0-40'`` (default)
-    Low-pass filtered under 40 Hz.
-``'0.1-40'``
-    Band-pass filtered between 0.1 and 40 Hz.
-``'1-40'``
-    Band-pass filtered between 1 and 40 Hz.
+Select the preprocessing pipeline applied to the continuous data. Options are
+all the processing steps defined in :attr:`MneExperiment.raw`, as well as
+``"raw"`` for using unprocessed raw data.
 
 
 ``group``

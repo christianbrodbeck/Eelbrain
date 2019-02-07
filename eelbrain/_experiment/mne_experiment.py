@@ -8,7 +8,7 @@ MneExperiment.sessions = ('session',)
 e = MneExperiment('.', find_subjects=False)
 
 """
-from collections import Counter, defaultdict, Sequence
+from collections import defaultdict, Sequence
 from datetime import datetime
 from glob import glob
 import inspect
@@ -60,7 +60,7 @@ from ..fmtxt import List, Report, Image, read_meta
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
 from .._text import enumeration, plural
-from .._utils import ask, subp, keydefaultdict, log_level, ScreenHandler, deprecated
+from .._utils import IS_WINDOWS, ask, subp, keydefaultdict, log_level, ScreenHandler, deprecated
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .definitions import find_dependent_epochs, find_epochs_vars, log_dict_change, log_list_change
 from .epochs import PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, assemble_epochs, decim_param
@@ -68,6 +68,7 @@ from .exceptions import FileDeficient, FileMissing
 from .experiment import FileTree
 from .groups import assemble_groups
 from .parc import (
+    assemble_parcs,
     FS_PARC, FSA_PARC, SEEDED_PARC_RE,
     Parcellation, CombinationParc, EelbrainParc,
     FreeSurferParc, FSAverageParc, SeededParc,
@@ -143,6 +144,16 @@ def _time_window_str(window, delim='-'):
     return delim.join(map(_time_str, window))
 
 
+def guess_y(ds, default=None):
+    "Given a dataset, guess the dependent variable"
+    for y in ('srcm', 'src', 'meg', 'eeg'):
+        if y in ds:
+            return y
+    if default is not None:
+        return default
+    raise RuntimeError(r"Could not find data in {ds}")
+
+
 class DictSet:
     """Helper class for list of dicts without duplicates"""
     def __init__(self):
@@ -212,8 +223,6 @@ temp = {
 
     # cache
     'cache-dir': join('{root}', 'eelbrain-cache'),
-    'input-state-file': join('{cache-dir}', 'input-state.pickle'),
-    'cache-state-file': join('{cache-dir}', 'cache-state.pickle'),
     # raw
     'raw-cache-dir': join('{cache-dir}', 'raw', '{subject}'),
     'raw-cache-base': join('{raw-cache-dir}', '{recording} {raw}'),
@@ -402,9 +411,6 @@ class MneExperiment(FileTree):
     # default is identity (mrisubject = subject)
     _mri_subjects = {'': keydefaultdict(lambda s: s)}
 
-    # state variables that are always shown in self.__repr__():
-    _repr_kwargs = ('subject', 'raw', 'epoch', 'rej')
-
     # Where to search for subjects (defined as a template name). If the
     # experiment searches for subjects automatically, it scans this directory
     # for subfolders matching subject_re.
@@ -464,6 +470,7 @@ class MneExperiment(FileTree):
     # Make sure dictionary keys (test names) are appropriate for filenames.
     # tests imply a model which is set automatically
     tests = {}
+    _empty_test = False  # for TRFExperiment
     _cluster_criteria = {
         '': {'time': 0.025, 'sensor': 4, 'source': 10},
         'all': {},
@@ -595,20 +602,7 @@ class MneExperiment(FileTree):
         ###############
         # make : can be made if non-existent
         # morph_from_fraverage : can be morphed from fsaverage to other subjects
-        self._parcs = {}
-        for name, p in chain(self.__parcs.items(), self.parcs.items()):
-            if isinstance(p, Parcellation):
-                parc = p
-            elif p == FS_PARC:
-                parc = FreeSurferParc(('lateral', 'medial'))
-            elif p == FSA_PARC:
-                parc = FSAverageParc(('lateral', 'medial'))
-            elif isinstance(p, dict):
-                parc = parc_from_dict(name, p)
-            else:
-                raise DefinitionError(f"parcellation {name!r}: {p!r}")
-            parc._link(name)
-            self._parcs[name] = parc
+        self._parcs = assemble_parcs(chain(self.__parcs.items(), self.parcs.items()))
         parc_values = list(self._parcs.keys())
         parc_values.append('')
 
@@ -629,16 +623,19 @@ class MneExperiment(FileTree):
         ########################################################################
         # tests
         self._tests = assemble_tests(self.tests)
+        test_values = sorted(self._tests)
+        if self._empty_test:
+            test_values.insert(0, '')
 
         ########################################################################
         # Experiment class setup
         ########################
         self._register_field('mri', sorted(self._mri_subjects), allow_empty=True)
-        self._register_field('subject', subjects or None)
+        self._register_field('subject', subjects or None, repr=True)
         self._register_field('group', self._groups.keys(), 'all', post_set_handler=self._post_set_group)
 
         raw_default = sorted(self.raw)[0] if self.raw else None
-        self._register_field('raw', sorted(self._raw), default=raw_default)
+        self._register_field('raw', sorted(self._raw), default=raw_default, repr=True)
         self._register_field('rej', self._artifact_rejection.keys(), 'man', allow_empty=True)
 
         # epoch
@@ -648,9 +645,9 @@ class MneExperiment(FileTree):
                 break
         else:
             default_epoch = None
-        self._register_field('epoch', epoch_keys, default_epoch)
-        self._register_field('session', self._sessions, depends_on=('epoch',), slave_handler=self._update_session)
-        self._register_field('visit', self._visits, allow_empty=True)
+        self._register_field('epoch', epoch_keys, default_epoch, repr=True)
+        self._register_field('session', self._sessions, depends_on=('epoch',), slave_handler=self._update_session, repr=True)
+        self._register_field('visit', self._visits, allow_empty=True, repr=True)
 
         # cov
         if 'bestreg' in self._covs:
@@ -658,11 +655,9 @@ class MneExperiment(FileTree):
         else:
             default_cov = None
         self._register_field('cov', sorted(self._covs), default_cov)
-        self._register_field('inv', default='free-3-dSPM',
-                             eval_handler=self._eval_inv,
-                             post_set_handler=self._post_set_inv)
+        self._register_field('inv', default='free-3-dSPM', eval_handler=self._eval_inv, post_set_handler=self._post_set_inv)
         self._register_field('model', eval_handler=self._eval_model)
-        self._register_field('test', sorted(self._tests), post_set_handler=self._post_set_test)
+        self._register_field('test', test_values, post_set_handler=self._post_set_test, allow_empty=self._empty_test, repr=False)
         self._register_field('parc', parc_values, 'aparc', eval_handler=self._eval_parc, allow_empty=True)
         self._register_field('freq', self._freqs.keys())
         self._register_field('src', default='ico-4', eval_handler=self._eval_src)
@@ -670,19 +665,17 @@ class MneExperiment(FileTree):
         self._register_field('select_clusters', self._cluster_criteria.keys(), allow_empty=True)
 
         # slave fields
-        self._register_field('mrisubject', depends_on=('mri', 'subject'),
-                             slave_handler=self._update_mrisubject)
-        self._register_field('src-name', depends_on=('src',),
-                             slave_handler=self._update_src_name)
+        self._register_field('mrisubject', depends_on=('mri', 'subject'), slave_handler=self._update_mrisubject, repr=False)
+        self._register_field('src-name', depends_on=('src',), slave_handler=self._update_src_name, repr=False)
 
         # fields used internally
-        self._register_field('analysis', internal=True)
-        self._register_field('test_options', internal=True)
-        self._register_field('name', internal=True)
-        self._register_field('folder', internal=True)
-        self._register_field('resname', internal=True)
-        self._register_field('ext', internal=True)
-        self._register_field('test_dims', internal=True)
+        self._register_field('analysis', repr=False)
+        self._register_field('test_options', repr=False)
+        self._register_field('name', repr=False)
+        self._register_field('folder', repr=False)
+        self._register_field('resname', repr=False)
+        self._register_field('ext', repr=False)
+        self._register_field('test_dims', repr=False)
 
         # compounds
         self._register_compound('sns_kind', ('raw',))
@@ -768,7 +761,7 @@ class MneExperiment(FileTree):
         events = {}  # {(subject, recording): event_dataset}
 
         # saved mtimes
-        input_state_file = self.get('input-state-file', mkdir=True)
+        input_state_file = join(cache_dir, 'input-state.pickle')
         if exists(input_state_file):
             input_state = load.unpickle(input_state_file)
             if input_state['version'] < 10:
@@ -804,6 +797,14 @@ class MneExperiment(FileTree):
                 if key not in raw_mtimes or mtime != raw_mtimes[key]:
                     subjects_with_raw_changes.add((subject, visit))
                     raw_mtimes[key] = mtime
+            # log missing raw files
+            if raw_missing:
+                log.debug("Raw files missing:")
+                missing = defaultdict(list)
+                for subject, recording in raw_missing:
+                    missing[subject].append(recording)
+                for subject, recordings in missing.items():
+                    log.debug(f"  {subject}: {', '.join(recordings)}")
 
         # check for digitizer data differences
         # ====================================
@@ -879,22 +880,24 @@ class MneExperiment(FileTree):
                         use_for_session[recording] = use_for_id[0]
 
         # save input-state
+        if not cache_dir_existed:
+            os.makedirs(cache_dir, exist_ok=True)
         save.pickle(input_state, input_state_file)
         self._dig_sessions = pipe._dig_sessions = input_state['fwd-sessions']  # {subject: {for_recording: use_recording}}
 
         # Check the cache, delete invalid files
         # =====================================
-        cache_state_path = self.get('cache-state-file')
+        cache_state_path = join(cache_dir, 'cache-state.pickle')
         raw_state = {k: v.as_dict() for k, v in self._raw.items()}
         epoch_state = {k: v.as_dict() for k, v in self._epochs.items()}
         parcs_state = {k: v.as_dict() for k, v in self._parcs.items()}
         tests_state = {k: v.as_dict() for k, v in self._tests.items()}
         if exists(cache_state_path):
             # check time stamp
-            if getmtime(cache_state_path) > time.time():
-                tc = time.ctime(getmtime(cache_state_path))
-                tsys = time.asctime()
-                raise RuntimeError(f"The cache's time stamp is in the future ({tc}). If the system time ({tsys}) is wrong, adjust the system clock; if not, delete the eelbrain-cache folder.")
+            state_mtime = getmtime(cache_state_path)
+            now = time.time() + IS_WINDOWS  # Windows seems to have rounding issue
+            if state_mtime > now:
+                raise RuntimeError(f"The cache's time stamp is in the future ({time.ctime(state_mtime)}). If the system time ({time.ctime(now)}) is wrong, adjust the system clock; if not, delete the eelbrain-cache folder.")
             cache_state = load.unpickle(cache_state_path)
             cache_state_v = cache_state.get('version', 0)
             if cache_state_v < CACHE_STATE_VERSION:
@@ -5617,7 +5620,7 @@ class MneExperiment(FileTree):
 
         if subject:
             ds = self.load_evoked(baseline=baseline)
-            y = ds.info['primary_data']
+            y = guess_y(ds)
             title = f"{subject} {epoch} {model_name}"
             return plot.TopoButterfly(y, model, ds=ds, title=title, run=run)
         elif separate:
@@ -5625,7 +5628,7 @@ class MneExperiment(FileTree):
             vlim = []
             for subject in self.iter(group=group):
                 ds = self.load_evoked(baseline=baseline)
-                y = ds.info['primary_data']
+                y = guess_y(ds)
                 title = f"{subject} {epoch} {model_name}"
                 p = plot.TopoButterfly(y, model, ds=ds, title=title, run=False)
                 plots.append(p)
@@ -5643,7 +5646,7 @@ class MneExperiment(FileTree):
                 gui.run()
         else:
             ds = self.load_evoked(group, baseline=baseline)
-            y = ds.info['primary_data']
+            y = guess_y(ds)
             title = f"{group} {epoch} {model_name}"
             return plot.TopoButterfly(y, model, ds=ds, title=title, run=run)
 

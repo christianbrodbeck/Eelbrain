@@ -2,7 +2,7 @@
 import os
 from wx.tools.img2py import img2py
 
-python_file = "../eelbrain/_wxutils/icons.py"
+python_file = "../eelbrain/_wxgui/icons.py"
 
 # individual files
 files = {}  # name: file

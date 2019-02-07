@@ -73,6 +73,8 @@ def test_sample():
     res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=20, data='sensor', baseline=False, make=True)
     assert res.p.min() == pytest.approx(.143, abs=.001)
     assert res.difference.max() == pytest.approx(4.47e-13, 1e-15)
+    # plot
+    e.plot_evoked(1, epoch='target', model='')
 
     # e._report_subject_info() broke with non-alphabetic subject order
     subjects = e.get_field_values('subject')
@@ -88,6 +90,14 @@ def test_sample():
             'v1': {'base': 'visual', 'vars': {'shift': 'Var([0.0], repeat=len(side))'}},
             'v2': {'base': 'visual', 'vars': {'shift': 'Var([0.1], repeat=len(side))'}},
             'vc': {'sub_epochs': ('v1', 'v2'), 'post_baseline_trigger_shift': 'shift', 'post_baseline_trigger_shift_max': 0.1, 'post_baseline_trigger_shift_min': 0.0},
+        }
+        groups = {
+            'group0': Group(['R0000']),
+            'group1': SubGroup('all', ['R0000']),
+        }
+        variables = {
+            'group': GroupVar(['group0', 'group1']),
+            **SampleExperiment.variables,
         }
     e = Experiment(root)
     events = e.load_selected_events(epoch='vc')
@@ -148,7 +158,12 @@ def test_sample():
 
     # ICA
     # ---
-    e = SampleExperiment(root)
+    class Experiment(SampleExperiment):
+        raw = {
+            'apply-ica': RawApplyICA('tsss', 'ica'),
+            **SampleExperiment.raw,
+        }
+    e = Experiment(root)
     ica_path = e.make_ica(raw='ica')
     e.set(raw='ica1-40', model='')
     e.make_epoch_selection(auto=2e-12, overwrite=True)
@@ -158,6 +173,10 @@ def test_sample():
     ica.save(ica_path)
     ds2 = e.load_evoked(raw='ica1-40')
     assert not np.allclose(ds1['meg'].x, ds2['meg'].x, atol=1e-20), "ICA change ignored"
+    # apply-ICA
+    ds1 = e.load_evoked(raw='ica', rej='')
+    ds2 = e.load_evoked(raw='apply-ica', rej='')
+    assert_dataobj_equal(ds2, ds1)
 
     # rename subject
     # --------------
@@ -191,7 +210,7 @@ def test_sample():
 
 
 @requires_mne_sample_data
-def test_samples_sesssions():
+def test_sample_sessions():
     set_log_level('warning', 'mne')
     SampleExperiment = import_attr(sample_path / 'sample_experiment_sessions.py', 'SampleExperiment')
     tempdir = TempDir()

@@ -2,8 +2,8 @@
 
 import wx
 
-from .._wxutils import Icon
 from .frame import EelbrainFrame
+from .utils import Icon
 
 
 class AboutFrame(EelbrainFrame):

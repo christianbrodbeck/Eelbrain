@@ -1,8 +1,9 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Pre-processing operations based on NDVars"""
 from collections import Sequence
+from copy import deepcopy
 import fnmatch
-from os import mkdir, remove
+from os import makedirs, remove
 from os.path import basename, dirname, exists, getmtime, join, splitext
 
 import mne
@@ -13,7 +14,8 @@ from .._data_obj import NDVar
 from .._exceptions import DefinitionError
 from .._io.fiff import KIT_NEIGHBORS
 from .._ndvar import filter_data
-from .._utils import ask
+from .._text import enumeration
+from .._utils import ask, user_activity
 from ..mne_fixes import CaptureLog
 from .definitions import compound, typed_arg
 from .exceptions import FileMissing
@@ -30,14 +32,19 @@ def _visit(recording: str) -> str:
 
 class RawPipe:
 
+    def _can_link(self, pipes):
+        raise NotImplementedError
+
     def _link(self, name, pipes, root, raw_dir, cache_dir, log):
         raise NotImplementedError
 
     def _link_base(self, name, path, root, log):
-        self.name = name
-        self.path = path
-        self.root = root
-        self.log = log
+        out = deepcopy(self)
+        out.name = name
+        out.path = path
+        out.root = root
+        out.log = log
+        return out
 
     def as_dict(self):
         return {'type': self.__class__.__name__, 'name': self.name}
@@ -130,6 +137,9 @@ class RawSource(RawPipe):
         else:
             self._read_raw_kwargs = kwargs
 
+    def _can_link(self, pipes):
+        return True
+
     def _link(self, name, pipes, root, raw_dir, cache_dir, log):
         if name != 'raw':
             raise NotImplementedError("RawSource with name {name!r}: the raw source must be called 'raw'")
@@ -138,8 +148,9 @@ class RawSource(RawPipe):
             head = path[:-8]
         else:
             head = splitext(path)[0]
-        self.bads_path = head + '-bad_channels.txt'
-        RawPipe._link_base(self, name, path, root, log)
+        out = RawPipe._link_base(self, name, path, root, log)
+        out.bads_path = head + '-bad_channels.txt'
+        return out
 
     def as_dict(self):
         out = RawPipe.as_dict(self)
@@ -258,12 +269,16 @@ class CachedRawPipe(RawPipe):
         self._source_name = source
         self._cache = cache
 
+    def _can_link(self, pipes):
+        return self._source_name in pipes
+
     def _link(self, name, pipes, root, raw_dir, cache_path, log):
         path = cache_path.format(root='{root}', raw=name, subject='{subject}', recording='{recording}')
         if self._source_name not in pipes:
             raise DefinitionError(f"{self.__class__.__name__} {name!r} source {self._source_name!r} does not exist")
-        self.source = pipes[self._source_name]
-        RawPipe._link_base(self, name, path, root, log)
+        out = RawPipe._link_base(self, name, path, root, log)
+        out.source = pipes[self._source_name]
+        return out
 
     def as_dict(self):
         out = RawPipe.as_dict(self)
@@ -276,10 +291,8 @@ class CachedRawPipe(RawPipe):
         if (not exists(path) or getmtime(path) <
                 self.mtime(subject, recording, self._bad_chs_affect_cache)):
             from .. import __version__
-            # make sure directory exists
-            dir_path = dirname(path)
-            if not exists(dir_path):
-                mkdir(dir_path)
+            # make sure the target directory exists
+            makedirs(dirname(path), exist_ok=True)
             # generate new raw
             with CaptureLog(path[:-3] + 'log') as logger:
                 logger.info(f"eelbrain {__version__}")
@@ -468,8 +481,9 @@ class RawICA(CachedRawPipe):
         self.kwargs = {'method': method, 'random_state': random_state, **kwargs}
 
     def _link(self, name, pipes, root, raw_dir, cache_path, log):
-        CachedRawPipe._link(self, name, pipes, root, raw_dir, cache_path, log)
-        self.ica_path = join(raw_dir, f'{{subject_visit}} {name}-ica.fif')
+        out = CachedRawPipe._link(self, name, pipes, root, raw_dir, cache_path, log)
+        out.ica_path = join(raw_dir, f'{{subject_visit}} {name}-ica.fif')
+        return out
 
     def as_dict(self):
         out = CachedRawPipe.as_dict(self)
@@ -485,7 +499,8 @@ class RawICA(CachedRawPipe):
             bad_chs.update(self.source.load_bad_channels(subject, recording))
         return sorted(bad_chs)
 
-    def load_ica(self, subject, visit):
+    def load_ica(self, subject, recording):
+        visit = _visit(recording)
         path = self._ica_path(subject, visit)
         if not exists(path):
             raise RuntimeError(f"ICA file {basename(path)} does not exist for raw={self.name!r}. Run e.make_ica_selection() to create it.")
@@ -518,15 +533,15 @@ class RawICA(CachedRawPipe):
         kwargs = self.kwargs if 'max_iter' in self.kwargs else {'max_iter': 256, **self.kwargs}
         ica = mne.preprocessing.ICA(**kwargs)
         # reject presets from meeg-preprocessing
-        ica.fit(raw, reject={'mag': 5e-12, 'grad': 5000e-13, 'eeg': 300e-6})
+        with user_activity:
+            ica.fit(raw, reject={'mag': 5e-12, 'grad': 5000e-13, 'eeg': 300e-6})
         ica.save(path)
         return path
 
     def _make(self, subject, recording):
         raw = self.source.load(subject, recording, preload=True)
         raw.info['bads'] = self.load_bad_channels(subject, recording)
-        visit = _visit(recording)
-        ica = self.load_ica(subject, visit)
+        ica = self.load_ica(subject, recording)
         if not self._check_ica_channels(ica, raw):
             raise RuntimeError(f"Raw {self.name}, ICA for {subject} outdated due to change in bad channels. Reset bad channels or re-run .make_ica().")
         self.log.debug("Raw %s: applying ICA for %s/%s...", self.name, subject, recording)
@@ -544,6 +559,59 @@ class RawICA(CachedRawPipe):
         if recording:
             visit = _visit(recording)
         return self.ica_path.format(root=self.root, subject=subject, subject_visit=compound((subject, visit)))
+
+
+class RawApplyICA(CachedRawPipe):
+    """Apply ICA estimated in a :class:`RawICA` pipe
+
+    Parameters
+    ----------
+    source : str
+        Name of the raw pipe to use for input data.
+    ica : str
+        Name of the :class:`RawICA` pipe from which to load the ICA components.
+
+    Notes
+    -----
+    This pipe inherits bad channels form the ICA.
+    """
+
+    def __init__(self, source, ica, cache=False):
+        CachedRawPipe.__init__(self, source, cache)
+        self._ica_source = ica
+
+    def _can_link(self, pipes):
+        return CachedRawPipe._can_link(self, pipes) and self._ica_source in pipes
+
+    def _link(self, name, pipes, root, raw_dir, cache_path, log):
+        out = CachedRawPipe._link(self, name, pipes, root, raw_dir, cache_path, log)
+        out.ica_source = pipes[self._ica_source]
+        return out
+
+    def as_dict(self):
+        out = CachedRawPipe.as_dict(self)
+        out['ica_source'] = self._ica_source
+        return out
+
+    def load_bad_channels(self, subject, recording):
+        return self.ica_source.load_bad_channels(subject, recording)
+
+    def _make(self, subject, recording):
+        raw = self.source.load(subject, recording, preload=True)
+        raw.info['bads'] = self.load_bad_channels(subject, recording)
+        ica = self.ica_source.load_ica(subject, recording)
+        if not self.ica_source._check_ica_channels(ica, raw):
+            raise RuntimeError(f"Raw {self.name}, ICA for {subject} outdated due to change in bad channels. Reset bad channels or re-run .make_ica().")
+        self.log.debug("Raw %s: applying ICA for %s/%s...", self.name, subject, recording)
+        ica.apply(raw)
+        return raw
+
+    def mtime(self, subject, recording, bad_chs=True):
+        mtime = CachedRawPipe.mtime(self, subject, recording, bad_chs)
+        if mtime:
+            ica_mtime = self.ica_source.mtime(subject, recording, bad_chs)
+            if ica_mtime:
+                return max(mtime, ica_mtime)
 
 
 class RawMaxwell(CachedRawPipe):
@@ -573,7 +641,8 @@ class RawMaxwell(CachedRawPipe):
     def _make(self, subject, recording):
         raw = self.source.load(subject, recording)
         self.log.info("Raw %s: computing Maxwell filter for %s/%s", self.name, subject, recording)
-        return mne.preprocessing.maxwell_filter(raw, **self.kwargs)
+        with user_activity:
+            return mne.preprocessing.maxwell_filter(raw, **self.kwargs)
 
 
 class RawReReference(CachedRawPipe):
@@ -639,26 +708,20 @@ def assemble_pipeline(raw_dict, raw_dir, cache_path, root, sessions, log):
     elif n_source > 1:
         raise NotImplementedError("More than one RawSource pipes")
     # link sources
-    for key, pipe in raw.items():
-        pipe._link(key, raw, root, raw_dir, cache_path, log)
-        if isinstance(pipe, RawICA):
-            missing = set(pipe.session).difference(sessions)
-            if missing:
-                raise DefinitionError(f"RawICA {key!r} lists one or more non-exising sessions: {', '.join(missing)}")
-    # check tree
-    is_ok = ['raw']
-    for key, pipe in raw.items():
-        tested = []
-        name = key
-        while True:
-            if name in is_ok:
-                is_ok.append(key)
-                break
-            elif name in tested:
-                raise DefinitionError(f"Unable to resolve source for {name!r} preprocessing pipeline, circular dependency?")
-            tested.append(name)
-            name = raw[name]._source_name
-    return raw
+    linked_raw = {}
+    while raw:
+        n = len(raw)
+        for key in list(raw):
+            if raw[key]._can_link(linked_raw):
+                pipe = raw.pop(key)._link(key, linked_raw, root, raw_dir, cache_path, log)
+                if isinstance(pipe, RawICA):
+                    missing = set(pipe.session).difference(sessions)
+                    if missing:
+                        raise DefinitionError(f"RawICA {key!r} lists one or more non-exising sessions: {', '.join(missing)}")
+                linked_raw[key] = pipe
+        if len(raw) == n:
+            raise DefinitionError(f"Unable to resolve source for raw {enumeration(raw)}, circular dependency?")
+    return linked_raw
 
 
 ###############################################################################
@@ -687,6 +750,7 @@ def compare_pipelines(old, new, log):
         Same as ``bad_raw`` but only for RawICA pipes (for which ICA files
         might have to be removed).
     """
+    # status:  good, changed, new, removed, secondary
     out = {k: 'new' for k in new if k not in old}
     out.update({k: 'removed' for k in old if k not in new})
 
@@ -707,16 +771,19 @@ def compare_pipelines(old, new, log):
     while to_check:
         n = len(to_check)
         for key in tuple(to_check):
-            parent = new[key]['source']
-            if parent in out:
-                out[key] = out[parent]
-                to_check.remove(key)
+            parents = [new[key][k] for k in ('source', 'ica_source') if k in new[key]]
+            if any(p not in out for p in parents):
+                continue
+            elif all(out[p] == 'good' for p in parents):
+                out[key] = 'good'
+            else:
+                out[key] = 'secondary'
+            to_check.remove(key)
         if len(to_check) == n:
             raise RuntimeError("Queue not decreasing")
 
     bad_raw = {k: v for k, v in out.items() if v != 'good'}
-    bad_ica = {k: v for k, v in bad_raw.items() if
-               new.get(k, old.get(k))['type'] == 'RawICA'}
+    bad_ica = {k: v for k, v in bad_raw.items() if new.get(k, old.get(k))['type'] == 'RawICA'}
     return bad_raw, bad_ica
 
 

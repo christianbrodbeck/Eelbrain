@@ -912,7 +912,7 @@ def correlations(y, x, cat=None, sub=None, ds=None, asds=False):
     else:
         cat = ascategorial(cat, sub, ds)
         cat_cells = cat.cells
-        n_cat = len(cat.cells)
+        n_cat = len(cat_cells)
 
     # correlation Dataset, nested:
     # x -> cat
@@ -927,7 +927,7 @@ def correlations(y, x, cat=None, sub=None, ds=None, asds=False):
                 ds[name] = Factor([cell[i] for cell in cat.cells], tile=len(x))
         elif isinstance(cat, Factor):
             cat_names = (dataobj_repr(cat),)
-            ds[dataobj_repr(cat)] = Factor(cat.cells)
+            ds[dataobj_repr(cat)] = Factor(cat.cells, tile=len(x))
         else:
             raise TypeError(repr(cat))
     else:

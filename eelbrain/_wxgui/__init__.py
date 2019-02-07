@@ -13,5 +13,6 @@ if _config.SUPPRESS_WARNINGS:
     filterwarnings('ignore', 'invalid escape sequence', DeprecationWarning)  # tvtk
     wx.Log.EnableLogging(False)
 
+from .utils import Icon, show_text_dialog
 from .app import needs_jumpstart, get_app, run
 from . import history, select_epochs, select_components

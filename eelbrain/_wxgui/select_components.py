@@ -22,7 +22,6 @@ from wx.lib.scrolledpanel import ScrolledPanel
 
 from .. import load, plot, fmtxt
 from .._data_obj import Factor, NDVar, asndvar, Categorial, Scalar
-from .._wxutils import Icon, ID, REValidator
 from .._utils.parse import POS_FLOAT_PATTERN
 from .._utils.system import IS_OSX
 from ..plot._base import AxisData, LayerData, PlotType
@@ -31,6 +30,8 @@ from .frame import EelbrainDialog
 from .history import Action, FileDocument, FileModel, FileFrame, FileFrameChild
 from .mpl_canvas import FigureCanvasPanel
 from .text import HTMLFrame
+from .utils import Icon, REValidator
+from . import ID
 
 
 COLOR = {True: (.5, 1, .5), False: (1, .3, .3)}
@@ -434,7 +435,10 @@ class Frame(FileFrame):
         self.PlotEpochButterfly(-1)
 
     def OnPointerEntersAxes(self, event):
-        sb = self.GetStatusBar()
+        try:
+            sb = self.GetStatusBar()
+        except RuntimeError:
+            return  # can be called after the window closes (Windows)
         if event.inaxes:
             sb.SetStatusText("#%i of %i ICA Components" %
                              (event.inaxes.i, len(self.doc.components)))
@@ -558,6 +562,9 @@ class Frame(FileFrame):
         original = asndvar(epoch)
         clean = asndvar(self.doc.apply(epoch))
         if self.butterfly_baseline == ID.BASELINE_CUSTOM:
+            if original.time.tmin >= 0:
+                wx.MessageBox(f"The data displayed does not have a baseline period (tmin={original.time.tmin}). Change the baseline through the Tools menu.", "No Baseline Period", style=wx.ICON_ERROR)
+                return
             original -= original.mean(time=(None, 0))
             clean -= clean.mean(time=(None, 0))
         elif self.butterfly_baseline == ID.BASELINE_GLOABL_MEAN:
@@ -868,12 +875,16 @@ class SourceFrame(FileFrameChild):
         while True:
             if dlg.ShowModal() != wx.ID_OK:
                 break
+            error = None
             try:
                 value = float(dlg.GetValue())
+                if value <= 0:
+                    error = f"{value}: must be > 0"
             except Exception as exception:
-                msg = wx.MessageDialog(
-                    self, str(exception), "Invalid Entry",
-                    wx.OK | wx.ICON_ERROR)
+                error = str(exception)
+
+            if error:
+                msg = wx.MessageDialog(self, error, "Invalid Entry", wx.OK | wx.ICON_ERROR)
                 msg.ShowModal()
                 msg.Destroy()
             else:

@@ -288,8 +288,8 @@ def rand_rotation_matrices(n, seed=0):
 
     Returns
     -------
-    ndarray
-        sampled rotation matrices
+    rotation : array (n, 3, 3)
+        Sampled rotation matrices.
     """
     np.random.seed(seed)
     phi = np.arccos(np.random.uniform(-1, 1, n))

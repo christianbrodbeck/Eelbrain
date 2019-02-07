@@ -65,9 +65,10 @@ class SubGroup(GroupBase):
 
 
 def assemble_groups(groups: dict, subjects: Set[str]) -> dict:
+    if 'all' in groups:  # MneExperiment needs access to all subjects
+        raise DefinitionError("The group name 'all' is reserved and can't be used for a user-defined group")
     all_groups = {k: Group.coerce(v) for k, v in groups.items()}
-    if 'all' not in all_groups:
-        all_groups['all'] = Group(subjects)
+    all_groups['all'] = Group(subjects)
     base_groups = {k: g for k, g in all_groups.items() if isinstance(g, Group)}
     sub_groups = {k: g for k, g in all_groups.items() if isinstance(g, SubGroup)}
     assert len(base_groups) + len(sub_groups) == len(all_groups)

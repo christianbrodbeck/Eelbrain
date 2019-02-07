@@ -11,6 +11,7 @@ source:
   fn: eelbrain-{{ version }}.tar.gz
   url: https://pypi.io/packages/source/e/eelbrain/eelbrain-{{ version }}.tar.gz
   sha256: {{ sha256 }}
+#  path: ../../
 
 build:
   number: 0
@@ -25,7 +26,7 @@ requirements:
     - pywin32-ctypes  # [win]
     - setuptools >=17
     - numpy 1.11.*
-    - openblas 0.2.20  # [osx]
+    - openblas >=0.2.20  # [osx]
 
   run:
     - python  {{ python }}
@@ -38,13 +39,15 @@ requirements:
     - nibabel >=2.0, !=2.3.0
     - olefile  # [linux]
     - {{ pin_compatible('numpy') }}
-    - openblas 0.2.20  # [osx]
+    - openblas >=0.2.20  # [osx]
     - pillow
     - pysurfer >=0.8
     - nilearn
     - scipy >=0.17
     - tqdm >=4.8
     - wxpython >=4.0.3
+    - mayavi >=4.6.2
+    - vtk >=8.1.1
 
 test:
   # Python imports
@@ -62,6 +65,5 @@ about:
   license_family: BSD
   license_file: LICENSE.txt
 
-# See
-# http://docs.continuum.io/conda/build.html for
-# more information about meta.yaml
+# See for more information about meta.yaml:
+# https://veranostech.github.io/docs-korean-conda-docs/docs/build/html/user-guide/tasks/build-packages/define-metadata.html
