@@ -158,7 +158,12 @@ def test_sample():
 
     # ICA
     # ---
-    e = SampleExperiment(root)
+    class Experiment(SampleExperiment):
+        raw = {
+            'apply-ica': RawApplyICA('tsss', 'ica'),
+            **SampleExperiment.raw,
+        }
+    e = Experiment(root)
     ica_path = e.make_ica(raw='ica')
     e.set(raw='ica1-40', model='')
     e.make_epoch_selection(auto=2e-12, overwrite=True)
@@ -168,6 +173,10 @@ def test_sample():
     ica.save(ica_path)
     ds2 = e.load_evoked(raw='ica1-40')
     assert not np.allclose(ds1['meg'].x, ds2['meg'].x, atol=1e-20), "ICA change ignored"
+    # apply-ICA
+    ds1 = e.load_evoked(raw='ica', rej='')
+    ds2 = e.load_evoked(raw='apply-ica', rej='')
+    assert_dataobj_equal(ds2, ds1)
 
     # rename subject
     # --------------

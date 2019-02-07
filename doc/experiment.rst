@@ -342,6 +342,7 @@ Define a pre-processing pipeline as a series of processing steps:
 
    RawFilter
    RawICA
+   RawApplyICA
    RawMaxwell
    RawSource
    RawReReference

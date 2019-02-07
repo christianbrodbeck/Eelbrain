@@ -14,6 +14,10 @@ New in 0.30
     :class:`testnd.VectorDifferenceIndependent`
   - Plotting with :class:`plot.GlassBrain`
 
+* :class:`MneExperiment`:
+
+  - :class:`RawApplyICA` preprocessing pipe to apply ICA estimated in a different pipe.
+
 
 New in 0.29
 -----------

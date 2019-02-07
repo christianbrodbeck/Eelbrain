@@ -499,7 +499,8 @@ class RawICA(CachedRawPipe):
             bad_chs.update(self.source.load_bad_channels(subject, recording))
         return sorted(bad_chs)
 
-    def load_ica(self, subject, visit):
+    def load_ica(self, subject, recording):
+        visit = _visit(recording)
         path = self._ica_path(subject, visit)
         if not exists(path):
             raise RuntimeError(f"ICA file {basename(path)} does not exist for raw={self.name!r}. Run e.make_ica_selection() to create it.")
@@ -540,8 +541,7 @@ class RawICA(CachedRawPipe):
     def _make(self, subject, recording):
         raw = self.source.load(subject, recording, preload=True)
         raw.info['bads'] = self.load_bad_channels(subject, recording)
-        visit = _visit(recording)
-        ica = self.load_ica(subject, visit)
+        ica = self.load_ica(subject, recording)
         if not self._check_ica_channels(ica, raw):
             raise RuntimeError(f"Raw {self.name}, ICA for {subject} outdated due to change in bad channels. Reset bad channels or re-run .make_ica().")
         self.log.debug("Raw %s: applying ICA for %s/%s...", self.name, subject, recording)
@@ -559,6 +559,59 @@ class RawICA(CachedRawPipe):
         if recording:
             visit = _visit(recording)
         return self.ica_path.format(root=self.root, subject=subject, subject_visit=compound((subject, visit)))
+
+
+class RawApplyICA(CachedRawPipe):
+    """Apply ICA estimated in a :class:`RawICA` pipe
+
+    Parameters
+    ----------
+    source : str
+        Name of the raw pipe to use for input data.
+    ica : str
+        Name of the :class:`RawICA` pipe from which to load the ICA components.
+
+    Notes
+    -----
+    This pipe inherits bad channels form the ICA.
+    """
+
+    def __init__(self, source, ica, cache=False):
+        CachedRawPipe.__init__(self, source, cache)
+        self._ica_source = ica
+
+    def _can_link(self, pipes):
+        return CachedRawPipe._can_link(self, pipes) and self._ica_source in pipes
+
+    def _link(self, name, pipes, root, raw_dir, cache_path, log):
+        out = CachedRawPipe._link(self, name, pipes, root, raw_dir, cache_path, log)
+        out.ica_source = pipes[self._ica_source]
+        return out
+
+    def as_dict(self):
+        out = CachedRawPipe.as_dict(self)
+        out['ica_source'] = self._ica_source
+        return out
+
+    def load_bad_channels(self, subject, recording):
+        return self.ica_source.load_bad_channels(subject, recording)
+
+    def _make(self, subject, recording):
+        raw = self.source.load(subject, recording, preload=True)
+        raw.info['bads'] = self.load_bad_channels(subject, recording)
+        ica = self.ica_source.load_ica(subject, recording)
+        if not self.ica_source._check_ica_channels(ica, raw):
+            raise RuntimeError(f"Raw {self.name}, ICA for {subject} outdated due to change in bad channels. Reset bad channels or re-run .make_ica().")
+        self.log.debug("Raw %s: applying ICA for %s/%s...", self.name, subject, recording)
+        ica.apply(raw)
+        return raw
+
+    def mtime(self, subject, recording, bad_chs=True):
+        mtime = CachedRawPipe.mtime(self, subject, recording, bad_chs)
+        if mtime:
+            ica_mtime = self.ica_source.mtime(subject, recording, bad_chs)
+            if ica_mtime:
+                return max(mtime, ica_mtime)
 
 
 class RawMaxwell(CachedRawPipe):
@@ -697,6 +750,7 @@ def compare_pipelines(old, new, log):
         Same as ``bad_raw`` but only for RawICA pipes (for which ICA files
         might have to be removed).
     """
+    # status:  good, changed, new, removed, secondary
     out = {k: 'new' for k in new if k not in old}
     out.update({k: 'removed' for k in old if k not in new})
 
@@ -717,16 +771,19 @@ def compare_pipelines(old, new, log):
     while to_check:
         n = len(to_check)
         for key in tuple(to_check):
-            parent = new[key]['source']
-            if parent in out:
-                out[key] = out[parent]
-                to_check.remove(key)
+            parents = [new[key][k] for k in ('source', 'ica_source') if k in new[key]]
+            if any(p not in out for p in parents):
+                continue
+            elif all(out[p] == 'good' for p in parents):
+                out[key] = 'good'
+            else:
+                out[key] = 'secondary'
+            to_check.remove(key)
         if len(to_check) == n:
             raise RuntimeError("Queue not decreasing")
 
     bad_raw = {k: v for k, v in out.items() if v != 'good'}
-    bad_ica = {k: v for k, v in bad_raw.items() if
-               new.get(k, old.get(k))['type'] == 'RawICA'}
+    bad_ica = {k: v for k, v in bad_raw.items() if new.get(k, old.get(k))['type'] == 'RawICA'}
     return bad_raw, bad_ica
 
 
