@@ -966,7 +966,4 @@ class Brain(TimeSlicer, surfer.Brain):
 
 
 if hasattr(surfer.Brain, 'add_label'):
-    try:
-        Brain.add_label.__doc__ = surfer.Brain.add_label.__doc__  # py3
-    except AttributeError:
-        Brain.add_label.__func__.__doc__ = surfer.Brain.add_label.__doc__
+    Brain.add_label.__doc__ = surfer.Brain.add_label.__doc__  # py3
