@@ -8895,24 +8895,21 @@ class SourceSpaceBase(Dimension):
         return np.vstack(normals)
 
     def _array_index(self, arg):
-        if isinstance(arg, SourceSpace):
-            sv = self.vertices
-            ov = arg.vertices
-            if all(np.array_equal(s, o) for s, o in zip(sv, ov)):
-                return FULL_SLICE
-            elif any(any(np.setdiff1d(o, s)) for o, s in zip(ov, sv)):
-                raise IndexError("Index contains unknown sources")
-            else:
-                return np.hstack([np.in1d(s, o, True) for s, o in zip(sv, ov)])
-        elif isinstance(arg, Integral) or (isinstance(arg, np.ndarray) and
-                                           arg.dtype.kind == 'i'):
+        if isinstance(arg, Integral) or (isinstance(arg, np.ndarray) and arg.dtype.kind in 'ib'):
             return arg
-        elif isinstance(arg, Sequence) and all(isinstance(label, str) for
-                                               label in arg):
-            if self.parc is not None and all(a in self.parc.cells for a in arg):
-                return self.parc.isin(arg)
+        elif isinstance(arg, Sequence):
+            if all(isinstance(v, str) for v in arg):
+                if self.parc is not None and all(a in self.parc for a in arg):
+                    return self.parc.isin(arg)
+                else:
+                    try:
+                        return [self._array_index_for_vertex(v) for v in arg]
+                    except NotImplementedError:
+                        raise IndexError(f"{arg!r}")
+            elif all(isinstance(v, INT_TYPES) for v in arg):
+                return arg
             else:
-                return [self._array_index(a) for a in arg]
+                raise IndexError(f"{arg!r}")
         else:
             return Dimension._array_index(self, arg)
 
@@ -8944,6 +8941,9 @@ class SourceSpaceBase(Dimension):
         stc_vertices = self.vertices[label.hemi == 'rh']
         idx = np.in1d(stc_vertices, label.vertices, True)
         return idx
+
+    def _array_index_for_vertex(self, vertex_desc):
+        raise NotImplementedError
 
     def _array_index_to(self, other):
         "Int index to access data from self in an order consistent with other"
@@ -9201,23 +9201,36 @@ class SourceSpace(SourceSpaceBase):
                     return slice(self.lh_n, None)
                 else:
                     return slice(0, 0)
+            elif self.parc is not None and arg in self.parc:
+                return self.parc == arg
             else:
-                m = self._vertex_re.match(arg)
-                if m is None:
-                    return self._array_index_label(arg)
-                else:
-                    hemi, vertex = m.groups()
-                    vertex = int(vertex)
-                    vertices = self.vertices[hemi == 'R']
-                    i = int(np.searchsorted(vertices, vertex))
-                    if vertices[i] == vertex:
-                        if hemi == 'R':
-                            return i + self.lh_n
-                        else:
-                            return i
-                    else:
-                        raise IndexError(f"SourceSpace does not contain vertex {arg!r}")
+                return self._array_index_for_vertex(arg)
+        elif isinstance(arg, SourceSpace):
+            sv = self.vertices
+            ov = arg.vertices
+            if all(np.array_equal(s, o) for s, o in zip(sv, ov)):
+                return FULL_SLICE
+            elif any(any(np.setdiff1d(o, s)) for o, s in zip(ov, sv)):
+                raise IndexError("Index contains unknown sources")
+            else:
+                return np.hstack([np.in1d(s, o, True) for s, o in zip(sv, ov)])
         return SourceSpaceBase._array_index(self, arg)
+
+    def _array_index_for_vertex(self, vertex_desc):
+        m = self._vertex_re.match(vertex_desc)
+        if m is None:
+            raise IndexError(f"{vertex_desc!r}: neither a label nor a valid vertex description")
+        hemi, vertex = m.groups()
+        vertex = int(vertex)
+        vertices = self.vertices[hemi == 'R']
+        i = int(np.searchsorted(vertices, vertex))
+        if vertices[i] == vertex:
+            if hemi == 'R':
+                return i + self.lh_n
+            else:
+                return i
+        else:
+            raise IndexError(f"{vertex_desc!r}: SourceSpace does not contain this vertex")
 
     def _dim_index(self, index):
         if np.isscalar(index):
@@ -9394,10 +9407,17 @@ class VolumeSourceSpace(SourceSpaceBase):
         if isinstance(arg, str):
             if arg in ('lh', 'rh'):
                 return self.hemi == arg
-            m = re.match('(\d+)$', arg)
-            if m:
-                return int(np.searchsorted(self.vertices[0], int(m.group(1))))
+            elif self.parc is not None and arg in self.parc:
+                return self.parc == arg
+            else:
+                return self._array_index_for_vertex(arg)
         return SourceSpaceBase._array_index(self, arg)
+
+    def _array_index_for_vertex(self, vertex_desc):
+        m = re.match(r'(\d+)$', vertex_desc)
+        if m is None:
+            raise IndexError(f"{vertex_desc!r}: neither a label nor a valid vertex description")
+        return int(np.searchsorted(self.vertices[0], int(m.group(1))))
 
     def _dim_index(self, index):
         if np.isscalar(index):

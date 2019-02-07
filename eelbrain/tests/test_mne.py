@@ -310,3 +310,16 @@ def test_vec_source():
     res = testnd.Vector('src', ds=ds, samples=2)
     clusters = res.find_clusters()
     assert_array_equal(clusters['n_sources'], [1, 719, 1, 11, 4])
+    # parc
+    v = ds[0, 'src']
+    v = set_parc(v, Factor('abcdefg', repeat=227))
+    v1 = v.sub(source='a')
+    assert len(v1.source) == 227
+    v2 = v.sub(source=('b', 'c'))
+    assert len(v2.source) == 454
+    assert 'b' in v2.source.parc
+    assert 'd' not in v2.source.parc
+    with pytest.raises(IndexError):
+        v.sub(source='ab')
+    with pytest.raises(IndexError):
+        v.sub(source=['a', 'bc'])
