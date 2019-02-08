@@ -2620,7 +2620,7 @@ class TimeController:
             plot._set_time(self.current_time, self.fixate)
             self._plots.append(weakref.ref(plot))
             plot._time_controller = self
-        else:
+        elif plot._time_controller is not self:
             self.merge(plot._time_controller)
 
     def iter_plots(self):
@@ -2687,8 +2687,7 @@ class TimeSlicer:
         if self._time_dim is None:
             raise NotImplementedError("Slice plot for dimension other than time")
         elif not isinstance(other, TimeSlicer):
-            raise TypeError("%s plot does not support linked time axes" %
-                            other.__class__.__name__)
+            raise TypeError(f"{other.__class__.__name__} plot does not support linked time axes")
         elif other._time_dim is None:
             raise NotImplementedError("Slice plot for dimension other than time")
         elif other._time_controller:

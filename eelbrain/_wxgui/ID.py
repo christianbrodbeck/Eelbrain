@@ -49,6 +49,8 @@ INSERT_Path_file = wx.NewIdRef()
 INSERT_Path_dir = wx.NewIdRef()
 INSERT_Path_new = wx.NewIdRef()
 
+LINK_TIME_AXES = wx.NewIdRef()
+
 OPEN = wx.NewIdRef()
 OPEN_HISTORY = wx.NewIdRef()
 OPEN_HISTORY_CURRENT = wx.NewIdRef()
