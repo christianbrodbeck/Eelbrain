@@ -533,6 +533,8 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
             raise ValueError('No data')
         else:
             hemi = 'rh'
+    elif source is None:
+        pass
     elif (hemi == 'lh' and source.rh_n) or (hemi == 'rh' and source.lh_n):
         if ndvar is None:
             source = source[source._array_index(hemi)]
