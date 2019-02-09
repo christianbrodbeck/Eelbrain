@@ -372,6 +372,11 @@ class Brain(TimeSlicer, surfer.Brain):
             time_dim = ndvar.get_dim(data_dims[1])
             times = np.arange(len(time_dim))
             time_label = None
+
+        # remove existing data before modifying attributes
+        if remove_existing:
+            self.remove_data()
+
         # make sure time axis is compatible with existing data
         if time_dim is not None:
             if self._time_dim is None:
@@ -402,10 +407,6 @@ class Brain(TimeSlicer, surfer.Brain):
         alpha = 1
         if smoothing_steps is None and source.kind == 'ico':
             smoothing_steps = source.grade + 1
-
-        # remove existing data before modifying attributes
-        if remove_existing:
-            self.remove_data()
 
         # determine which hemi we're adding data to
         if self._hemi in ('lh', 'rh'):
