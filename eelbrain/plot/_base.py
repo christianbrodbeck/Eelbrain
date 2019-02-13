@@ -2255,14 +2255,12 @@ class VariableAspectLayout(BaseLayout):
 
         # convert to figure coords
         height = axh / h
-        lefts_ = tuple(l / w for l in lefts)
-        widths_ = tuple(w_ / w for w_ in widths)
-        bottoms_ = (b / h for b in bottoms)
+        lefts_ = [l / w for l in lefts]
+        widths_ = [w_ / w for w_ in widths]
+        bottoms_ = [b / h for b in bottoms]
 
         # rectangles:  (left, bottom, width, height)
-        rects = (((l, bottom, w, height) for l, w in zip(lefts_, widths_)) for
-                 bottom in bottoms_)
-        self._ax_rects = rects
+        self._ax_rects = [((l, bottom, w, height) for l, w in zip(lefts_, widths_)) for bottom in bottoms_]
 
     def make_axes(self, figure):
         axes = []
