@@ -9,6 +9,7 @@ from time import time, sleep
 from warnings import warn
 
 from matplotlib.colors import ListedColormap
+from matplotlib.image import imsave
 from mne.io.constants import FIFF
 import numpy as np
 
@@ -854,6 +855,36 @@ class Brain(TimeSlicer, surfer.Brain):
         else:
             for label in labels:
                 del self.__labels[label]
+
+    def save_image(self, filename, mode='rgb', antialiased=False):
+        """Save view from all panels to disk
+
+        Parameters
+        ----------
+        filename: string
+            Path to new image file.
+        mode : string
+            Either 'rgb' (default) to render solid background, or 'rgba' to
+            include alpha channel for transparent background.
+        antialiased : bool
+            Antialias the image (see :func:`mayavi.mlab.screenshot`
+            for details; default False).
+
+            .. warning::
+               Antialiasing can interfere with ``rgba`` mode, leading to opaque
+               background.
+
+        Notes
+        -----
+        Due to limitations in TraitsUI, if multiple views or hemi='split'
+        is used, there is no guarantee painting of the windows will
+        complete before control is returned to the command line. Thus
+        we strongly recommend using only one figure window (which uses
+        a Mayavi figure to plot instead of TraitsUI) if you intend to
+        script plotting commands.
+        """
+        im = self.screenshot(mode, antialiased)
+        imsave(filename, im)
 
     def set_parallel_view(self, forward=None, up=None, scale=None):
         """Set view to parallel projection
