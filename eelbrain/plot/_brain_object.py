@@ -805,6 +805,11 @@ class Brain(TimeSlicer, surfer.Brain):
             meta = self._png_repr_meta
         return Image.from_array(im, name, format, alt, **meta)
 
+    def _im_array(self):
+        im = self.screenshot('rgba', True)
+        im *= 255
+        return im.astype(np.int8)
+
     def plot_colorbar(self, label=True, label_position=None, label_rotation=None,
                       clipmin=None, clipmax=None, orientation='horizontal',
                       width=None, ticks=None, layer=None, *args, **kwargs):

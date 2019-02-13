@@ -3054,6 +3054,10 @@ class TimeSlicer:
                 return self._time_dim.tmax
         return t
 
+    def _im_array(self):
+        # for movies
+        raise NotImplementedError
+
 
 class TimeSlicerEF(TimeSlicer):
     # TimeSlicer for Eelfigure
@@ -3131,10 +3135,13 @@ class TimeSlicerEF(TimeSlicer):
         ims = []
         for t in self._time_dim:
             self._set_time(t, True)
-            # private attr usage is official: https://matplotlib.org/gallery/misc/agg_buffer_to_array.html
-            im = np.array(self.figure.canvas.renderer._renderer)
+            im = self._im_array()
             ims.append(im)
         imageio.mimwrite(filename, ims, **kwargs)
+
+    def _im_array(self):
+        # private attr usage is official: https://matplotlib.org/gallery/misc/agg_buffer_to_array.html
+        return np.array(self.figure.canvas.renderer._renderer)
 
 
 class TopoMapKey:
