@@ -79,6 +79,9 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
     xlim : scalar | (scalar, scalar)
         Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
         scalar (default is the full x-axis in the data).
+    clip : bool
+        Clip lines outside of axes (the default depends on whether ``frame`` is
+        closed or open).
     color : matplotlib color
         Color if just a single category of data is plotted.
     colors : str | list | dict
@@ -123,7 +126,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
                  main=np.mean, error='sem', pool_error=None, legend='upper right',
                  axtitle=True, xlabel=True, ylabel=True, xticklabels=-1,
                  invy=False, bottom=None, top=None, hline=None, xdim='time',
-                 xlim=None, color='b', colors=None, error_alpha=0.3,
+                 xlim=None, clip=None, color='b', colors=None, error_alpha=0.3,
                  clusters=None, pmax=0.05, ptrend=0.1, *args, **kwargs):
         # coerce input variables
         sub = assub(sub, ds)
@@ -175,7 +178,8 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
 
         layout = Layout(nax, 2, 4, *args, autoscale='y', **kwargs)
         EelFigure.__init__(self, frame_title(y, x, xax), layout)
-        clip = layout.frame
+        if clip is None:
+            clip = layout.frame is True
 
         # create plots
         self._plots = []

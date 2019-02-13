@@ -330,8 +330,7 @@ class _ax_butterfly:
     layers : list of LayerData
         Data layers to plot.
     """
-    def __init__(self, ax, layers, xdim, linedim, sensors, color, linewidth,
-                 vlims, clip=True):
+    def __init__(self, ax, layers, xdim, linedim, sensors, color, linewidth, vlims, clip=True):
         self.ax = ax
         self.data = [l.y for l in layers]
         self.layers = []
@@ -406,7 +405,8 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
         Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
         scalar (default is the full x-axis in the data).
     clip : bool
-        Clip lines outside of axes (default ``True``).
+        Clip lines outside of axes (the default depends on whether ``frame`` is
+        closed or open).
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
@@ -439,7 +439,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
                  xlabel=True, ylabel=True, xticklabels=-1, color=None,
                  linewidth=None,
                  ds=None, sub=None, x='time', vmax=None, vmin=None, xlim=None,
-                 clip=True, *args, **kwargs):
+                 clip=None, *args, **kwargs):
         data = PlotData.from_args(y, (x, None), xax, ds, sub)
         xdim, linedim = data.dims
         layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
@@ -447,6 +447,9 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
         self._set_axtitle(axtitle, data)
         self._configure_xaxis_dim(data.y0.get_dim(xdim), xlabel, xticklabels)
         self._configure_yaxis(data.y0, ylabel)
+
+        if clip is None:
+            clip = layout.frame is True
 
         self.plots = []
         self._vlims = _base.find_fig_vlims(data.data, vmax, vmin)
