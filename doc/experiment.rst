@@ -332,7 +332,7 @@ Pre-processing (raw)
 
 .. py:attribute:: MneExperiment.raw
 
-Define a pre-processing pipeline as a series of processing steps:
+Define a pre-processing pipeline as a series of linked processing steps:
 
 .. currentmodule:: eelbrain.pipeline
 
@@ -348,14 +348,17 @@ Define a pre-processing pipeline as a series of processing steps:
    RawReReference
 
 
-- Each preprocessing step is defined with its input as first argument.
-- If using FIFF files, no ``RawSource`` pipe is neded, and the raw data can be
-  accessed as ``"raw"`` input.
-- :mod:`mne` has changed default values for filtering in the past. In order to
-  keep consistent settings across different versions it is advantageous to fully
-  define filter parameters when starting a new experiment.
+By default the raw data can be accessed in a pipe named ``"raw"`` (raw data
+input can be customized by adding a :class:`RawSource` pipe).
+Each subsequent preprocessing step is defined with its input as first argument
+(``source``).
 
-For example, to use TSSS and a band-pass, and optionally ICA::
+:mod:`mne` has changed default values for filtering in the past. In order to
+keep consistent settings across different versions it is advantageous to fully
+define filter parameters when starting a new experiment.
+
+For example, the following definition sets up a pipeline using TSSS and
+band-pass filtering, and optionally ICA::
 
     # as of mne 0.17
     FILTER_KWARGS = {
@@ -378,6 +381,9 @@ For example, to use TSSS and a band-pass, and optionally ICA::
             'ica': RawICA('tsss', 'session', 'extended-infomax', n_components=0.99),
             'ica1-40': RawFilter('ica', 1, 40, **FILTER_KWARGS),
         }
+        
+To use the ``raw --> TSSS --> 1-40 Hz band-pass`` pipeline, use ``e.set(raw="1-40")``. 
+To use ``raw --> TSSS --> ICA --> 1-40 Hz band-pass``, select ``e.set(raw="ica1-40")``.
 
 
 Event variables

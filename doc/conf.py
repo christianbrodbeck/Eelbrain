@@ -13,7 +13,7 @@
 #
 
 from datetime import datetime
-import eelbrain
+import eelbrain.plot._brain_object  # make sure that Brain is available
 
 
 # If extensions (or modules to document with autodoc) are in another directory,

@@ -16,7 +16,6 @@ import numpy as np
 from .._colorspaces import to_rgb, to_rgba
 from .._data_obj import NDVar, SourceSpace, asndvar
 from .._text import ms
-from .._wxgui import wx
 from ..fmtxt import Image
 from ..mne_fixes import reset_logger
 from ._base import (CONFIG, TimeSlicer, do_autorun, find_axis_params_data,
@@ -159,7 +158,7 @@ class Brain(TimeSlicer, surfer.Brain):
                  foreground="black", subjects_dir=None, views='lat',
                  offset=True, show_toolbar=False, offscreen=False,
                  interaction='trackball', w=None, h=None, axw=None, axh=None,
-                 name=None, pos=wx.DefaultPosition, show=True, run=None):
+                 name=None, pos=None, show=True, run=None):
         from ._wx_brain import BrainFrame
 
         self.__data = []
@@ -210,8 +209,7 @@ class Brain(TimeSlicer, surfer.Brain):
         elif not isinstance(title, str):
             raise TypeError("title=%r (str required)" % (title,))
 
-        self._frame = BrainFrame(None, self, title, w, h, n_rows, n_columns,
-                                 surf, pos)
+        self._frame = BrainFrame(None, self, title, w, h, n_rows, n_columns, surf, pos)
 
         if foreground is None:
             foreground = 'black'
@@ -659,6 +657,8 @@ class Brain(TimeSlicer, surfer.Brain):
 
     def copy_screenshot(self):
         "Copy the currently shown image to the clipboard"
+        from .._wxgui import wx
+
         tempdir = mkdtemp()
         tempfile = os.path.join(tempdir, "brain.png")
         self.save_image(tempfile, 'rgba', True)
