@@ -2,17 +2,6 @@
 from eelbrain.pipeline import *
 
 
-# as of mne 0.17
-FILTER_KWARGS = {
-    'filter_length': 'auto',
-    'l_trans_bandwidth': 'auto',
-    'h_trans_bandwidth': 'auto',
-    'phase': 'zero',
-    'fir_window': 'hamming',
-    'fir_design': 'firwin',
-}
-
-
 class Mouse(MneExperiment):
 
     # Name of the experimental session(s), used to locate *-raw.fif files
@@ -24,7 +13,7 @@ class Mouse(MneExperiment):
         # Maxwell filter as first step (taking input from raw data, 'raw')
         'tsss': RawMaxwell('raw', st_duration=10., ignore_ref=True, st_correlation=0.9, st_only=True),
         # Band-pass filter data between 1 and 40 Hz (taking Maxwell-filtered data as input, 'tsss)
-        '1-40': RawFilter('tsss', 1, 40, **FILTER_KWARGS),
+        '1-40': RawFilter('tsss', 1, 40),
         # Perform ICA on filtered data
         'ica': RawICA('1-40', 'CAT', n_components=0.99),
     }
