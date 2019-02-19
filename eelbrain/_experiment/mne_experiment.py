@@ -99,14 +99,14 @@ LOG_FILE_OLD = join('{root}', '.eelbrain.log')
 # Allowable parameters
 COV_PARAMS = {'epoch', 'session', 'method', 'reg', 'keep_sample_mean', 'reg_eval_win_pad'}
 
-SRC_RE = re.compile('^(ico|vol)-(\d+)(?:-(brainstem))?$')
-inv_re = re.compile("^"
-                    "(free|fixed|loose\.\d+|vec)-"  # orientation constraint
-                    "(\d*\.?\d+)-"  # SNR
-                    "(MNE|dSPM|sLORETA)"  # method
-                    "(?:-((?:0\.)?\d+))?"  # depth weighting
-                    "(?:-(pick_normal))?"
-                    "$")  # pick normal
+SRC_RE = re.compile(r'^(ico|vol)-(\d+)(?:-(brainstem))?$')
+inv_re = re.compile(r"^"
+                    r"(free|fixed|loose\.\d+|vec)-"  # orientation constraint
+                    r"(\d*\.?\d+)-"  # SNR
+                    r"(MNE|dSPM|sLORETA)"  # method
+                    r"(?:-((?:0\.)?\d+))?"  # depth weighting
+                    r"(?:-(pick_normal))?"
+                    r"$")  # pick normal
 
 # Eelbrain 0.24 raw/preprocessing pipeline
 LEGACY_RAW = {
@@ -836,7 +836,7 @@ class MneExperiment(FileTree):
                     elif head_shape is None:
                         head_shape = dig
                     elif not hsp_equal(dig, head_shape):
-                        raise FileDeficient(f"Raw file {recording} for {subject} has head shape that is different from other {enumeration(marker_ids)}; consider defining different visits.")
+                        raise FileDeficient(f"Raw file {recording} for {subject} has head shape that is different from {enumeration(marker_ids)}; consider defining different visits.")
 
                     # find if marker pos already exists
                     for i, dig_i in enumerate(markers):
