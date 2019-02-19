@@ -288,26 +288,28 @@ class CachedRawPipe(RawPipe):
     def cache(self, subject, recording):
         "Make sure the cache is up to date"
         path = self.path.format(root=self.root, subject=subject, recording=recording)
-        if (not exists(path) or getmtime(path) <
-                self.mtime(subject, recording, self._bad_chs_affect_cache)):
-            from .. import __version__
-            # make sure the target directory exists
-            makedirs(dirname(path), exist_ok=True)
-            # generate new raw
-            with CaptureLog(path[:-3] + 'log') as logger:
-                logger.info(f"eelbrain {__version__}")
-                logger.info(f"mne {mne.__version__}")
-                logger.info(repr(self.as_dict()))
-                raw = self._make(subject, recording)
-            # save
-            try:
-                raw.save(path, overwrite=True)
-            except:
-                # clean up potentially corrupted file
-                if exists(path):
-                    remove(path)
-                raise
-            return raw
+        if exists(path):
+            mtime = self.mtime(subject, recording, self._bad_chs_affect_cache)
+            if mtime and getmtime(path) >= mtime:
+                return
+        from .. import __version__
+        # make sure the target directory exists
+        makedirs(dirname(path), exist_ok=True)
+        # generate new raw
+        with CaptureLog(path[:-3] + 'log') as logger:
+            logger.info(f"eelbrain {__version__}")
+            logger.info(f"mne {mne.__version__}")
+            logger.info(repr(self.as_dict()))
+            raw = self._make(subject, recording)
+        # save
+        try:
+            raw.save(path, overwrite=True)
+        except:
+            # clean up potentially corrupted file
+            if exists(path):
+                remove(path)
+            raise
+        return raw
 
     def get_connectivity(self, data):
         return self.source.get_connectivity(data)
