@@ -174,8 +174,10 @@ def test_sample():
     ds2 = e.load_evoked(raw='ica1-40')
     assert not np.allclose(ds1['meg'].x, ds2['meg'].x, atol=1e-20), "ICA change ignored"
     # apply-ICA
-    ds1 = e.load_evoked(raw='ica', rej='')
-    ds2 = e.load_evoked(raw='apply-ica', rej='')
+    with catch_warnings():
+        filterwarnings('ignore', "The measurement information indicates a low-pass frequency", RuntimeWarning)
+        ds1 = e.load_evoked(raw='ica', rej='')
+        ds2 = e.load_evoked(raw='apply-ica', rej='')
     assert_dataobj_equal(ds2, ds1)
 
     # rename subject
