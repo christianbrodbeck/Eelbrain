@@ -25,8 +25,7 @@ import numpy as np
 
 import mne
 from mne.baseline import rescale
-from mne.minimum_norm import (
-    make_inverse_operator, apply_inverse, apply_inverse_epochs)
+from mne.minimum_norm import make_inverse_operator, apply_inverse, apply_inverse_epochs
 from tqdm import tqdm
 
 from .. import _report
@@ -1562,146 +1561,6 @@ class MneExperiment(FileTree):
         criteria = self._cluster_criteria[self.get('select_clusters')]
         return {'min' + dim: criteria[dim] for dim in data.dims if dim in criteria}
 
-    def _add_evoked_stc(self, ds, ind_stc=False, ind_ndvar=False, morph_stc=False,
-                        morph_ndvar=False, baseline=None, keep_evoked=False,
-                        mask=False):
-        """
-        Add source estimates to a dataset with evoked data.
-
-        Parameters
-        ----------
-        ds : Dataset
-            The Dataset containing the Evoked objects.
-        ind_stc : bool
-            Add source estimates on individual brains as list of
-            :class:`mne.SourceEstimate`.
-        ind_ndvar : bool
-            Add source estimates on individual brain as :class:`NDVar` (only
-            possible for datasets containing data of a single subject).
-        morph_stc : bool
-            Add source estimates morphed to the common brain as list of
-            :class:`mne.SourceEstimate`.
-        morph_ndvar : bool
-            Add source estimates morphed to the common brain as :class:`NDVar`.
-        baseline : bool | tuple
-            Apply baseline correction (in source space) using this period. True
-            to use the epoch's baseline specification. The default is to not
-            apply baseline correction (None).
-        keep_evoked : bool
-            Keep the sensor space data in the Dataset that is returned (default
-            False).
-        mask : bool | str
-            Discard data that is labelled 'unknown' by the parcellation (only
-            applies to NDVars, default False).
-
-        Notes
-        -----
-        Assumes that all Evoked of the same subject share the same inverse
-        operator.
-        """
-        if not any((ind_stc, ind_ndvar, morph_stc, morph_ndvar)):
-            raise ValueError("Nothing to load, set at least one of (ind_stc, "
-                             "ind_ndvar, morph_stc, morph_ndvar) to True")
-
-        if isinstance(baseline, str):
-            raise NotImplementedError("Baseline form different epoch")
-        elif baseline is True:
-            baseline = self._epochs[self.get('epoch')].baseline
-
-        # find from subjects
-        common_brain = self.get('common_brain')
-        meg_subjects = ds.eval('subject.cells')
-        n_subjects = len(meg_subjects)
-        if ind_ndvar and n_subjects > 1:
-            err = ("Can't use ind_ndvar with data from more than one "
-                   "subjects; an NDVar can only be created from stcs that are "
-                   "estimated on the same brain. Use morph_ndvar=True "
-                   "instead.")
-            raise ValueError(err)
-        from_subjects = {}  # from-subject for the purpose of morphing
-        for subject in meg_subjects:
-            if is_fake_mri(self.get('mri-dir', subject=subject)):
-                subject_from = common_brain
-            else:
-                subject_from = self.get('mrisubject', subject=subject)
-            from_subjects[subject] = subject_from
-
-        collect_morphed_stcs = (morph_stc or morph_ndvar)
-        collect_ind_stcs = ind_stc or ind_ndvar
-
-        # make sure annot files are available (needed only for NDVar)
-        all_are_common_brain = all(v == common_brain for v in from_subjects.values())
-        if (ind_ndvar and all_are_common_brain) or morph_ndvar:
-            self.make_annot(mrisubject=common_brain)
-        if ind_ndvar and not all_are_common_brain:
-            self.make_annot(mrisubject=from_subjects[meg_subjects[0]])
-
-        # convert evoked objects
-        stcs = []
-        mstcs = []
-        invs = {}
-        mm_cache = CacheDict(self.load_morph_matrix, 'mrisubject')
-        for subject, evoked in zip(ds['subject'], ds['evoked']):
-            subject_from = from_subjects[subject]
-
-            # get inv
-            if subject in invs:
-                inv = invs[subject]
-            else:
-                inv = invs[subject] = self.load_inv(evoked, subject=subject)
-
-            # apply inv
-            stc = apply_inverse(evoked, inv, **self._params['apply_inv_kw'])
-
-            # baseline correction
-            if baseline:
-                rescale(stc._data, stc.times, baseline, 'mean', copy=False)
-
-            if collect_ind_stcs:
-                stcs.append(stc)
-
-            if collect_morphed_stcs:
-                if subject_from == common_brain:
-                    if ind_stc:
-                        stc = stc.copy()
-                    stc.subject = common_brain
-                else:
-                    mm, v_to = mm_cache[subject_from]
-                    stc = mne.morph_data_precomputed(subject_from, common_brain,
-                                                     stc, v_to, mm)
-                mstcs.append(stc)
-
-        # add to Dataset
-        src = self.get('src')
-        parc = mask if isinstance(mask, str) else self.get('parc') or None
-        mri_sdir = self.get('mri-sdir')
-        # for name, key in izip(do, keys):
-        if ind_stc:
-            ds['stc'] = stcs
-        if ind_ndvar:
-            subject = from_subjects[meg_subjects[0]]
-            ds['src'] = load.fiff.stc_ndvar(stcs, subject, src, mri_sdir,
-                                            self._params['apply_inv_kw']['method'],
-                                            self._params['make_inv_kw'].get('fixed', False),
-                                            parc=parc,
-                                            connectivity=self.get('connectivity'))
-            if mask:
-                _mask_ndvar(ds, 'src')
-        if morph_stc or morph_ndvar:
-            if morph_stc:
-                ds['stcm'] = mstcs
-            if morph_ndvar:
-                ds['srcm'] = load.fiff.stc_ndvar(mstcs, common_brain, src, mri_sdir,
-                                                 self._params['apply_inv_kw']['method'],
-                                                 self._params['make_inv_kw'].get('fixed', False),
-                                                 parc=parc,
-                                                 connectivity=self.get('connectivity'))
-                if mask:
-                    _mask_ndvar(ds, 'srcm')
-
-        if not keep_evoked:
-            del ds['evoked']
-
     def _add_vars(self, ds, vardef):
         """Add vars to the dataset
 
@@ -2350,9 +2209,9 @@ class MneExperiment(FileTree):
         return ds
 
     def load_epochs_stc(self, subject=1, baseline=True,
-                        src_baseline=False, ndvar=True, cat=None,
+                        src_baseline=False, cat=None,
                         keep_epochs=False, morph=False, mask=False,
-                        data_raw=False, vardef=None, decim=None, **state):
+                        data_raw=False, vardef=None, decim=None, ndvar=True, **state):
         """Load a Dataset with stcs for single epochs
 
         Parameters
@@ -2371,9 +2230,6 @@ class MneExperiment(FileTree):
             Apply baseline correction using this period in source space.
             True to use the epoch's baseline specification. The default is to
             not apply baseline correction.
-        ndvar : bool
-            Add the source estimates as NDVar named "src" instead of a list of
-            SourceEstimate objects named "stc" (default True).
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
         keep_epochs : bool | 'ndvar' | 'both'
@@ -2392,8 +2248,11 @@ class MneExperiment(FileTree):
             analysis).
         vardef : str
             Name of a 2-stage test defining additional variables.
-        decim : None | int
-            Set to an int in order to override the epoch decim factor.
+        decim : int
+            Override the epoch decim factor.
+        ndvar : bool
+            Add the source estimates as :class:`NDVar` named "src" instead of a list of
+            :class:`mne.SourceEstimate` objects named "stc" (default True).
         ...
             State parameters.
 
@@ -2735,8 +2594,7 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_evoked_stf(self, subject=1, baseline=True, mask=True,
-                        morph=False, keep_stc=False, **state):
+    def load_evoked_stf(self, subject=1, baseline=True, mask=True, morph=False, keep_stc=False, **state):
         """Load frequency space evoked data
 
         Parameters
@@ -2762,9 +2620,7 @@ class MneExperiment(FileTree):
         if 'sns_baseline' in state:
             baseline = state.pop('sns_baseline')
             warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
-        ds = self.load_evoked_stc(subject, baseline, morph_ndvar=morph,
-                                  ind_ndvar=not morph, mask=mask,
-                                  data_raw='raw', **state)
+        ds = self.load_evoked_stc(subject, baseline, morph=morph, mask=mask, data_raw='raw', **state)
         name = 'srcm' if morph else 'src'
 
         # apply morlet transformation
@@ -2779,11 +2635,10 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_evoked_stc(self, subject=1, baseline=True,
-                        src_baseline=False, sns_ndvar=False, ind_stc=False,
-                        ind_ndvar=False, morph_stc=False, morph_ndvar=False,
-                        cat=None, keep_evoked=False, mask=False, data_raw=False,
-                        vardef=None, **state):
+    def load_evoked_stc(self, subject=1, baseline=True, src_baseline=False,
+                        cat=None, keep_evoked=False, morph=False, mask=False,
+                        data_raw=False, vardef=None, decim=None, ndvar=True,
+                        **state):
         """Load evoked source estimates.
 
         Parameters
@@ -2799,21 +2654,13 @@ class MneExperiment(FileTree):
             Apply baseline correction using this period in source space.
             True to use the epoch's baseline specification. The default is to
             not apply baseline correction.
-        ind_stc : bool
-            Add source estimates on individual brains as list of
-            :class:`mne.SourceEstimate`.
-        ind_ndvar : bool
-            Add source estimates on individual brains as :class:`NDVar`.
-        morph_stc : bool
-            Add source estimates morphed to the common brain as list of
-            :class:`mne.SourceEstimate`.
-        morph_ndvar : bool
-            Add source estimates morphed to the common brain as :class:`NDVar`.
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
         keep_evoked : bool
             Keep the sensor space data in the Dataset that is returned (default
             False).
+        morph : bool
+            Morph the source estimates to the common_brain (default False).
         mask : bool | str
             Discard data that is labelled 'unknown' by the parcellation (only
             applies to NDVars, default False). Can be set to a parcellation
@@ -2825,6 +2672,11 @@ class MneExperiment(FileTree):
             analysis).
         vardef : str
             Name of a 2-stage test defining additional variables.
+        decim : int
+            Override the epoch decim factor.
+        ndvar : bool
+            Add the source estimates as NDVar named "src" instead of a list of
+            :class:`mne.SourceEstimate` objects named "stc" (default True).
         ...
             State parameters.
         """
@@ -2832,18 +2684,88 @@ class MneExperiment(FileTree):
             baseline = state.pop('sns_baseline')
             warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
 
-        if not any((ind_stc, ind_ndvar, morph_stc, morph_ndvar)):
-            raise ValueError("Nothing to load, set at least one of (ind_stc, ind_ndvar, morph_stc, morph_ndvar) to True")
-
         if state:
             self.set(**state)
 
-        if not baseline and src_baseline and self._epochs[self.get('epoch')].post_baseline_trigger_shift:
-            raise NotImplementedError("post_baseline_trigger_shift is not implemented for baseline correction in source space")
+        # check baseline
+        epoch = self._epochs[self.get('epoch')]
+        if src_baseline and epoch.post_baseline_trigger_shift:
+            raise NotImplementedError(f"src_baseline={src_baseline!r}: post_baseline_trigger_shift is not implemented for baseline correction in source space")
+        elif src_baseline is True:
+            src_baseline = epoch.baseline
 
-        ds = self.load_evoked(subject, baseline, sns_ndvar, cat, None, data_raw, vardef)
-        self._add_evoked_stc(ds, ind_stc, ind_ndvar, morph_stc, morph_ndvar,
-                             src_baseline, keep_evoked, mask)
+        # load sensor data
+        sns_ndvar = keep_evoked and ndvar
+        ds = self.load_evoked(subject, baseline, sns_ndvar, cat, decim, data_raw, vardef)
+
+        # from-subject for the purpose of morphing
+        common_brain = self.get('common_brain')
+        meg_subjects = ds['subject'].cells
+        from_subjects = {}
+        for subject in meg_subjects:
+            if is_fake_mri(self.get('mri-dir', subject=subject)):
+                subject_from = common_brain
+            else:
+                subject_from = self.get('mrisubject', subject=subject)
+            from_subjects[subject] = subject_from
+
+        # make sure annot files are available (needed only for NDVar)
+        if ndvar:
+            if morph:
+                self.make_annot(mrisubject=common_brain)
+            elif len(meg_subjects) > 1:
+                raise ValueError(f"ndvar=True, morph=False with multiple subjects: Can't create ndvars with data from different brains")
+            else:
+                self.make_annot(mrisubject=from_subjects[meg_subjects[0]])
+
+        # convert evoked objects
+        stcs = []
+        invs = {}
+        mm_cache = CacheDict(self.load_morph_matrix, 'mrisubject')
+        for subject, evoked in ds.zip('subject', 'evoked'):
+            subject_from = from_subjects[subject]
+
+            # get inv
+            if subject in invs:
+                inv = invs[subject]
+            else:
+                inv = invs[subject] = self.load_inv(evoked, subject=subject)
+
+            # apply inv
+            stc = apply_inverse(evoked, inv, **self._params['apply_inv_kw'])
+
+            # baseline correction
+            if src_baseline:
+                rescale(stc._data, stc.times, src_baseline, 'mean', copy=False)
+
+            if morph:
+                if subject_from == common_brain:
+                    stc.subject = common_brain
+                else:
+                    mm, v_to = mm_cache[subject_from]
+                    stc = mne.morph_data_precomputed(subject_from, common_brain, stc, v_to, mm)
+            stcs.append(stc)
+
+        # add to Dataset
+        src = self.get('src')
+        parc = mask if isinstance(mask, str) else self.get('parc') or None
+        mri_sdir = self.get('mri-sdir')
+        if ndvar:
+            if morph:
+                key, subject = 'srcm', common_brain
+            else:
+                key, subject = 'src', meg_subjects[0]
+            method = self._params['apply_inv_kw']['method']
+            fixed = self._params['make_inv_kw'].get('fixed', False)
+            ds[key] = load.fiff.stc_ndvar(stcs, subject, src, mri_sdir, method, fixed, parc=parc, connectivity=self.get('connectivity'))
+            if mask:
+                _mask_ndvar(ds, key)
+        else:
+            key = 'stcm' if morph else 'stc'
+            ds[key] = stcs
+
+        if not keep_evoked:
+            del ds['evoked']
 
         return ds
 
@@ -3487,7 +3409,7 @@ class MneExperiment(FileTree):
                 if test_obj.model is None:
                     ds = self.load_epochs_stc(subject, baseline, src_baseline, morph=True, mask=mask, vardef=test_obj.vars)
                 else:
-                    ds = self.load_evoked_stc(subject, baseline, src_baseline, morph_ndvar=True, mask=mask, vardef=test_obj.vars)
+                    ds = self.load_evoked_stc(subject, baseline, src_baseline, morph=True, mask=mask, vardef=test_obj.vars)
 
                 if do_test:
                     lms.append(test_obj.make_stage_1(data.y_name, ds, subject))
@@ -3504,7 +3426,7 @@ class MneExperiment(FileTree):
             if data.sensor:
                 res_data = self.load_evoked(True, baseline, True, test_obj._within_cat, data=data, vardef=test_obj.vars)
             elif data.source:
-                res_data = self.load_evoked_stc(True, baseline, src_baseline, morph_ndvar=True, cat=test_obj._within_cat, mask=mask, vardef=test_obj.vars)
+                res_data = self.load_evoked_stc(True, baseline, src_baseline, morph=True, cat=test_obj._within_cat, mask=mask, vardef=test_obj.vars)
             else:
                 raise ValueError(f"data={data.string!r}")
 
@@ -3529,8 +3451,7 @@ class MneExperiment(FileTree):
         n_subjects = len(subjects)
         for _ in tqdm(self, "Loading data", n_subjects, unit='subject',
                       disable=CONFIG['tqdm']):
-            ds = self.load_evoked_stc(None, baseline, src_baseline,
-                                      ind_ndvar=True, vardef=test_obj.vars)
+            ds = self.load_evoked_stc(None, baseline, src_baseline, vardef=test_obj.vars)
             src = ds.pop('src')
             n_trials_dss.append(ds.copy())
             for label in src.source.parc.cells:
@@ -4226,10 +4147,10 @@ class MneExperiment(FileTree):
 
         plot._brain.assert_can_save_movies()
         if group is None:
-            ds = self.load_evoked_stc(subject, baseline, src_baseline, ind_ndvar=True)
+            ds = self.load_evoked_stc(subject, baseline, src_baseline)
             y = ds['src']
         else:
-            ds = self.load_evoked_stc(group, baseline, src_baseline, morph_ndvar=True)
+            ds = self.load_evoked_stc(group, baseline, src_baseline, morph=True)
             y = ds['srcm']
 
         brain = plot.brain.dspm(y, fmin, fmin * 3, colorbar=False, **brain_kwargs)
@@ -4357,8 +4278,7 @@ class MneExperiment(FileTree):
                 ds = self.load_epochs_stc(subject, baseline, src_baseline, cat=cat)
                 y = 'src'
             else:
-                ds = self.load_evoked_stc(group, baseline, src_baseline,
-                                          morph_ndvar=True, cat=cat)
+                ds = self.load_evoked_stc(group, baseline, src_baseline, morph=True, cat=cat)
                 y = 'srcm'
 
             # find/apply cluster criteria
@@ -4434,7 +4354,7 @@ class MneExperiment(FileTree):
         >>>     experiment.make_mrat_stcs()
         ...
         """
-        ds = self.load_evoked_stc(morph_stc=True, **kwargs)
+        ds = self.load_evoked_stc(morph=True, ndvar=False, **kwargs)
 
         # save condition info
         info_file = self.get('mrat_info-file', mkdir=True)

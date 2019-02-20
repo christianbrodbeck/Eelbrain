@@ -17,6 +17,7 @@ New in 0.30
 * :class:`MneExperiment`:
 
   - :class:`RawApplyICA` preprocessing pipe to apply ICA estimated in a different pipe.
+  - :meth:`MneExperiment.load_evoked_stc` API more closely matches :meth:`MneExperiment.load_epochs_stc`
 
 
 New in 0.29
