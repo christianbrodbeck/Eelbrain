@@ -2047,11 +2047,9 @@ class MneExperiment(FileTree):
         pad : scalar
             Pad the epochs with this much time (in seconds; e.g. for spectral
             analysis).
-        data_raw : bool | str
-            Keep the mne.io.Raw instance in ds.info['raw'] (default False).
-            Can be specified as raw name (str) to include a different raw object
-            than the one from which events are loaded (used for frequency
-            analysis).
+        data_raw : bool
+            Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
+            (default False).
         vardef : str
             Name of a 2-stage test defining additional variables.
         data : str
@@ -2116,9 +2114,7 @@ class MneExperiment(FileTree):
             add_bads_to_info = False
 
         with self._temporary_state:
-            ds = self.load_selected_events(add_bads=add_bads, reject=reject,
-                                           data_raw=data_raw or True,
-                                           vardef=vardef, cat=cat)
+            ds = self.load_selected_events(add_bads=add_bads, reject=reject, data_raw=True, vardef=vardef, cat=cat)
             if ds.n_cases == 0:
                 err = f"No events left for epoch={epoch.name!r}, subject={subject!r}"
                 if cat:
@@ -2203,7 +2199,7 @@ class MneExperiment(FileTree):
             if ndvar != 'both':
                 del ds['epochs']
 
-        if data_raw is False:
+        if not data_raw:
             del ds.info['raw']
 
         return ds
@@ -2241,11 +2237,9 @@ class MneExperiment(FileTree):
         mask : bool | str
             Discard data that is labelled 'unknown' by the parcellation (only
             applies to NDVars, default False).
-        data_raw : bool | str
-            Keep the mne.io.Raw instance in ds.info['raw'] (default False).
-            Can be specified as raw name (str) to include a different raw object
-            than the one from which events are loaded (used for frequency
-            analysis).
+        data_raw : bool
+            Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
+            (default False).
         vardef : str
             Name of a 2-stage test defining additional variables.
         decim : int
@@ -2269,8 +2263,8 @@ class MneExperiment(FileTree):
             raise NotImplementedError("src_baseline with post_baseline_trigger_shift")
         subject, group = self._process_subject_arg(subject, state)
         if group is not None:
-            if data_raw is not False:
-                raise ValueError(f"data_raw={data_raw!r} with group: Can not keep data_raw when combining data from multiple subjects.")
+            if data_raw:
+                raise ValueError(f"data_raw={data_raw!r} with group: Can not combine raw data from multiple subjects.")
             elif keep_epochs:
                 raise ValueError(f"keep_epochs={keep_epochs!r} with group: Can not combine Epochs objects for different subjects. Set keep_epochs=False (default).")
             elif not morph:
@@ -2366,11 +2360,9 @@ class MneExperiment(FileTree):
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from the bad channels file. Alternatively,
             a list of bad channels can be specified.
-        data_raw : bool | str
-            Keep the mne.io.Raw instance in ds.info['raw'] (default True).
-            Can be specified as raw name (str) to include a different raw object
-            than the one from which events are loaded (used for frequency
-            analysis).
+        data_raw : bool
+            Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
+            (default False).
         ...
             State parameters.
         """
@@ -2406,18 +2398,8 @@ class MneExperiment(FileTree):
                 ds.info['edf'] = edf
 
             save.pickle(ds, evt_file)
-        elif data_raw is True:
-            raw = self.load_raw(add_bads)
-
-        # if data should come from different raw settings than events
-        if isinstance(data_raw, str):
-            with self._temporary_state:
-                raw = self.load_raw(add_bads, raw=data_raw)
-        elif not isinstance(data_raw, bool):
-            raise TypeError(f"data_raw={data_raw!r}; needs to be str or bool")
-
-        if data_raw is not False:
-            ds.info['raw'] = raw
+        elif data_raw:
+            ds.info['raw'] = self.load_raw(add_bads)
 
         if len(self._visits) > 1:
             ds.info['visit'] = self.get('visit')
@@ -2457,11 +2439,9 @@ class MneExperiment(FileTree):
         decim : int
             Data decimation factor (the default is the factor specified in the
             epoch definition).
-        data_raw : bool | str
-            Keep the mne.io.Raw instance in ds.info['raw'] (default False).
-            Can be specified as raw name (str) to include a different raw object
-            than the one from which events are loaded (used for frequency
-            analysis).
+        data_raw : bool
+            Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
+            (default False).
         vardef : str
             Name of a 2-stage test defining additional variables.
         data : str
@@ -2552,8 +2532,7 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_epochs_stf(self, subject=1, baseline=True, mask=True,
-                        morph=False, keep_stc=False, **state):
+    def load_epochs_stf(self, subject=1, baseline=True, mask=True, morph=False, keep_stc=False, **state):
         """Load frequency space single trial data
 
         Parameters
@@ -2579,7 +2558,7 @@ class MneExperiment(FileTree):
         if 'sns_baseline' in state:
             baseline = state.pop('sns_baseline')
             warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
-        ds = self.load_epochs_stc(subject, baseline, ndvar=True, morph=morph, mask=mask, data_raw='raw', **state)
+        ds = self.load_epochs_stc(subject, baseline, ndvar=True, morph=morph, mask=mask, **state)
         name = 'srcm' if morph else 'src'
 
         # apply morlet transformation
@@ -2620,7 +2599,7 @@ class MneExperiment(FileTree):
         if 'sns_baseline' in state:
             baseline = state.pop('sns_baseline')
             warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
-        ds = self.load_evoked_stc(subject, baseline, morph=morph, mask=mask, data_raw='raw', **state)
+        ds = self.load_evoked_stc(subject, baseline, morph=morph, mask=mask, **state)
         name = 'srcm' if morph else 'src'
 
         # apply morlet transformation
@@ -2665,11 +2644,9 @@ class MneExperiment(FileTree):
             Discard data that is labelled 'unknown' by the parcellation (only
             applies to NDVars, default False). Can be set to a parcellation
             name or ``True`` to use the current parcellation.
-        data_raw : bool | str
-            Keep the mne.io.Raw instance in ds.info['raw'] (default False).
-            Can be specified as raw name (str) to include a different raw object
-            than the one from which events are loaded (used for frequency
-            analysis).
+        data_raw : bool
+            Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
+            (default False).
         vardef : str
             Name of a 2-stage test defining additional variables.
         decim : int
@@ -3051,11 +3028,9 @@ class MneExperiment(FileTree):
             a list of bad channels can be specified.
         index : bool | str
             Index the Dataset before rejection (provide index name as str).
-        data_raw : bool | str
-            Keep the mne.io.Raw instance in ds.info['raw'] (default False).
-            Can be specified as raw name (str) to include a different raw object
-            than the one from which events are loaded (used for frequency
-            analysis).
+        data_raw : bool
+            Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
+            (default False).
         vardef : str
             Name of a 2-stage test defining additional variables.
         cat : sequence of cell-names
@@ -3080,7 +3055,7 @@ class MneExperiment(FileTree):
         # case of loading events for a group
         subject, group = self._process_subject_arg(subject, kwargs)
         if group is not None:
-            if data_raw is not False:
+            if data_raw:
                 raise ValueError(f"data_var={data_raw!r}: can't keep raw when combining subjects")
             dss = [self.load_selected_events(reject=reject, add_bads=add_bads, index=index, vardef=vardef) for _ in self.iter(group=group)]
             ds = combine(dss)
@@ -3112,7 +3087,7 @@ class MneExperiment(FileTree):
                     for sub_epoch in epoch.sub_epochs:
                         if self._epochs[sub_epoch].session != session:
                             continue
-                        ds = self.load_selected_events(subject, reject, add_bads, index, data_raw or True, epoch=sub_epoch)
+                        ds = self.load_selected_events(subject, reject, add_bads, index, True, epoch=sub_epoch)
                         ds[:, 'epoch'] = sub_epoch
                         session_dss.append(ds)
                     ds = combine(session_dss)
@@ -3128,7 +3103,7 @@ class MneExperiment(FileTree):
 
             # combine bad channels
             ds = combine(dss)
-            if data_raw is not False:
+            if data_raw:
                 ds.info['raw'] = raw
             ds.info[BAD_CHANNELS] = bad_channels
         elif isinstance(epoch, SecondaryEpoch):
@@ -3893,7 +3868,7 @@ class MneExperiment(FileTree):
                 default_decim = decim == raw.info['sfreq'] / epoch.samplingrate
         else:
             default_decim = True
-        use_cache = default_decim and (isinstance(data_raw, int) or data_raw == self.get('raw'))
+        use_cache = default_decim
         model = self.get('model')
         equal_count = self.get('equalize_evoked_count') == 'eq'
         if use_cache and exists(dst) and cache_valid(getmtime(dst), self._evoked_mtime()):
