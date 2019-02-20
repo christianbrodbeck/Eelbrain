@@ -310,6 +310,9 @@ def test_vec_source():
     res = testnd.Vector('src', ds=ds, samples=2)
     clusters = res.find_clusters()
     assert_array_equal(clusters['n_sources'], [1, 719, 1, 11, 4])
+    # NDVar
+    v = ds['src']
+    assert v.sub(source='lh', time=0).shape == (72, 712, 3)
     # parc
     v = ds[0, 'src']
     v = set_parc(v, Factor('abcdefg', repeat=227))

@@ -92,6 +92,7 @@ preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __
 SRC_RE = re.compile('^(ico|vol)-(\d+)(?:-(\w+))?$')
 UNNAMED = '<?>'
 LIST_INDEX_TYPES = (*INT_TYPES, slice)
+EXPAND_INDEX_TYPES = (*INT_TYPES, np.ndarray)
 _pickled_ds_wildcard = ("Pickled Dataset (*.pickled)", '*.pickled')
 _tex_wildcard = ("TeX (*.tex)", '*.tex')
 _tsv_wildcard = ("Plain Text Tab Separated Values (*.txt)", '*.txt')
@@ -4611,7 +4612,7 @@ class NDVar:
             dims.insert(0, Case)
 
         # adjust index dimension
-        if sum(isinstance(idx, np.ndarray) for idx in index) > 1:
+        if sum(isinstance(idx, EXPAND_INDEX_TYPES) for idx in index) > 1:
             ndim_increment = 0
             for i in range(n_axes - 1, -1, -1):
                 idx = index[i]
