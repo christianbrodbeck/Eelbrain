@@ -22,6 +22,7 @@ from .._utils import ui
 
 _mat_wildcard = ('Matlab data file (*.mat)', '*.mat')
 
+
 def dat_file(path):
     """Load an besa source estimate from a dat file
 
@@ -37,7 +38,7 @@ def dat_file(path):
         src.info dict.
     """
     info = {}
-    pattern = re.compile("(.+):\s*(.+)")
+    pattern = re.compile(r"(.+):\s*(.+)")
     with open(path) as fid:
         in_header = True
         while in_header:
