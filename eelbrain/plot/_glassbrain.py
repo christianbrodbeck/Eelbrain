@@ -203,10 +203,6 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         if ndvar:
             if ndvar.has_case:
                 ndvar = ndvar.mean('case')
-
-            if mni305 is None:
-                mni305 = ndvar.source.subject == 'fsaverage'
-
             src = source.get_source_space()
             img = _stc_to_volume(ndvar, src, dest, mri_resolution, mni305)
             if time is not None:
@@ -223,11 +219,9 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                 else:
                     dir_imgs = []
                     for direction in ndvar.space._directions:
-                        dir_img = _stc_to_volume(ndvar.sub(space=direction), src,
-                                                 dest, mri_resolution, mni305)
+                        dir_img = _stc_to_volume(ndvar.sub(space=direction), src, dest, mri_resolution, mni305)
                         if ndvar.has_dim('time'):
-                            dir_imgs.append([index_img(dir_img, i)
-                                             for i in range(len(ndvar.time))])
+                            dir_imgs.append([index_img(dir_img, i) for i in range(len(ndvar.time))])
                         else:
                             dir_imgs.append([dir_img])
                     if plot_abs:
@@ -699,12 +693,16 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
         for k, v in enumerate(vol):
             mri_vol[k] = (interpolator * v.ravel()).reshape(mri_shape3d)
         vol = mri_vol
-        affine = src[0]['vox_mri_t']['trans'].copy()
+        affine = src[0]['vox_mri_t']['trans']
     else:
-        affine = src[0]['src_mri_t']['trans'].copy()
+        affine = src[0]['src_mri_t']['trans']
 
     if dest == 'mri':
         affine = np.dot(src[0]['mri_ras_t']['trans'], affine)
+    elif dest == 'surf':
+        affine = affine.astype(float)
+    else:
+        raise ValueError(f"dest={dest!r}")
 
     affine[:3] *= 1e3
     if mni305:
