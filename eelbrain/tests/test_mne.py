@@ -306,3 +306,6 @@ def test_vec_source():
     stc = ds[0, 'stc']
     stc2 = load.fiff.stc_ndvar([stc, stc], ds.info['subject'], 'vol-10', ds.info['subjects_dir'])
     assert_dataobj_equal(stc2[1], ds[0, 'src'], name=False)
+    # NDVar
+    v = ds['src']
+    assert v.sub(source='lh', time=0).shape == (72, 712, 3)
