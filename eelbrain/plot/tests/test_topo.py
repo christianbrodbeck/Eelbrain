@@ -55,6 +55,7 @@ def test_plot_topo_butterfly():
     p = plot.TopoButterfly('utsnd', ds=ds, vmax=0.2, w=6)
     p.close()
     p = plot.TopoButterfly('utsnd', 'A%B', ds=ds, w=6)
+    assert (*p.figure.get_size_inches(),) == (6, 12)
     p.close()
     p = plot.TopoButterfly('utsnd', mark=[1, 2], ds=ds)
     p.close()

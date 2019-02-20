@@ -378,10 +378,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         self._topomap_data = data.for_plot(PlotType.IMAGE)
 
         # create figure
-        layout = VariableAspectLayout(
-            data.n_plots, 3, 10, (None, 1), None, (frame, False),
-            self._set_axtitle(axtitle, data, data.n_plots), *args, **kwargs
-        )
+        layout = VariableAspectLayout(data.n_plots, 3, 10, (None, 1), None, (frame, False), self._set_axtitle(axtitle, data, data.n_plots), *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
 
         self.bfly_axes = self._axes[0::2]

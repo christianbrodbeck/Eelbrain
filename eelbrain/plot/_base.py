@@ -924,6 +924,13 @@ class PlotData:
         self._plot_names = plot_names
         self.plot_type = plot_type
 
+    def __repr__(self):
+        desc = [f'{self.n_plots} plots']
+        if not all(self.plot_used):
+            desc.append(f'{len(self.plot_used) - self.n_plots} empty')
+        desc.append(' x '.join(self.dims))
+        return f"<PlotData {self.frame_title!r}: {', '.join(desc)}>"
+
     def _cannot_skip_axes(self, parent):
         if not all(self.plot_used):
             raise NotImplementedError(f"y can not contain None for {parent.__class__.__name__} plot")
@@ -2128,8 +2135,7 @@ class Layout(BaseLayout):
         axes = []
         kwargs = {}
         for i in self.axes:
-            ax = figure.add_subplot(self.nrow, self.ncol, i + 1,
-                                    autoscale_on=self.autoscale, **kwargs)
+            ax = figure.add_subplot(self.nrow, self.ncol, i + 1, autoscale_on=self.autoscale, **kwargs)
             axes.append(ax)
             if self.share_axes:
                 kwargs.update(sharex=ax, sharey=ax)
@@ -2260,7 +2266,7 @@ class VariableAspectLayout(BaseLayout):
         bottoms_ = [b / h for b in bottoms]
 
         # rectangles:  (left, bottom, width, height)
-        self._ax_rects = [((l, bottom, w, height) for l, w in zip(lefts_, widths_)) for bottom in bottoms_]
+        self._ax_rects = [[(l, bottom, w, height) for l, w in zip(lefts_, widths_)] for bottom in bottoms_]
 
     def make_axes(self, figure):
         axes = []
