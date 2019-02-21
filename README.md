@@ -19,7 +19,7 @@ Main documentation at: http://eelbrain.readthedocs.io
 
 ## Conda-forge
 
-[![Conda Recipe](https://img.shields.io/badge/recipe-eelbrain-green.svg)](https://anaconda.org/conda-forge/eelbrain)
+[![Conda Recipe](https://img.shields.io/badge/recipe-eelbrain-green.svg)](https://github.com/conda-forge/eelbrain-feedstock)
 [![Linux](https://img.shields.io/circleci/project/github/conda-forge/eelbrain-feedstock/master.svg?label=Linux)](https://circleci.com/gh/conda-forge/eelbrain-feedstock)
 [![OSX](https://img.shields.io/travis/conda-forge/eelbrain-feedstock/master.svg?label=macOS)](https://travis-ci.org/conda-forge/eelbrain-feedstock)
 [![Windows](https://img.shields.io/appveyor/ci/conda-forge/eelbrain-feedstock/master.svg?label=Windows)](https://ci.appveyor.com/project/conda-forge/eelbrain-feedstock/branch/master)
