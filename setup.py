@@ -27,6 +27,13 @@ from setuptools import setup, find_packages
 
 import numpy as np
 
+# Distributing Cython modules
+# https://cython.readthedocs.io/en/stable/src/userguide/source_files_and_compilation.html#distributing-cython-modules
+try:
+    from Cython.Build import cythonize
+except ImportError:
+    cythonize = False
+
 
 DESC = """
 GitHub: https://github.com/christianbrodbeck/Eelbrain
@@ -35,19 +42,15 @@ GitHub: https://github.com/christianbrodbeck/Eelbrain
 # version must be in X.X.X format, e.g., "0.0.3dev"
 with open('eelbrain/__init__.py') as fid:
     text = fid.read()
-match = re.search("__version__ = '([.\w]+)'", text)
+match = re.search(r"__version__ = '([.\w]+)'", text)
 if match is None:
     raise ValueError("No valid version string found in:\n\n" + text)
 version = match.group(1)
 LooseVersion(version)  # check that it's a valid version
 
-# Use cython only if *.pyx files are present (i.e., not in sdist)
+# Cython extensions
 ext_paths = ('eelbrain/*%s', 'eelbrain/_trf/*%s', 'eelbrain/_stats/*%s')
-if glob(ext_paths[0] % '.pyx'):
-    from Cython.Build import cythonize
-
-    ext_modules = cythonize([path % '.pyx' for path in ext_paths])
-else:
+if cythonize is False:
     actual_paths = []
     for path in ext_paths:
         actual_paths.extend(glob(path % '.c'))
@@ -55,8 +58,9 @@ else:
         Extension(path.replace(pathsep, '.')[:-2], [path])
         for path in actual_paths
     ]
+else:
+    ext_modules = cythonize([path % '.pyx' for path in ext_paths])
 
-# basic setup arguments
 setup(
     name='eelbrain',
     version=version,
