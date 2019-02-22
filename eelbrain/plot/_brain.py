@@ -10,7 +10,7 @@ import numpy as np
 
 from .._data_obj import NDVar, SourceSpace, UTS
 from .._utils import deprecated
-from ..fmtxt import Image, im_table
+from ..fmtxt import im_table
 from .._text import ms
 from ._base import EelFigure, ImLayout, ColorBarMixin, brain_data, butterfly_data
 from ._color_luts import dspm_lut
@@ -656,8 +656,7 @@ class ImageTable(ColorBarMixin, EelFigure):
             Matplotlib text parameters.
         """
         if len(titles) > self._n_rows:
-            raise ValueError("%i titles for %i rows: titles=%r" %
-                             (len(titles), self._n_rows))
+            raise ValueError(f"titles={titles}: {len(titles)} titles for {self._n_rows} rows")
         y_top = self._layout.margins['top'] - y
         y_offset = self._layout.margins['hspace'] + self._layout.axh
         x_ = x / self._layout.w

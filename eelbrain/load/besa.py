@@ -65,7 +65,7 @@ def dat_file(path):
         n_times = int(info['Time samples'])
         data = np.fromfile(fid, 'float64', sep=" ")
         data = data.reshape((n_locs, n_times + 3))
-        locs = data[:, :3]
+        # locs = data[:, :3]
         data = data[:, 3:]
         source = Scalar("source", np.arange(n_locs))
         src = NDVar(data, (source, time), info, 'src')

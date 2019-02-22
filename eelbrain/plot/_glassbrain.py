@@ -42,7 +42,7 @@ from nilearn.image.resampling import get_bounds
 
 import numpy as np
 
-from .._data_obj import NDVar, VolumeSourceSpace
+from .._data_obj import VolumeSourceSpace
 from .._utils.numpy_utils import newaxis
 from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, brain_data, butterfly_data
 from ._utsnd import Butterfly

@@ -155,7 +155,11 @@ def intervals(seq):
     (3, 45)
     """
     iterator = iter(seq)
-    last = next(iterator)
+    try:
+        last = next(iterator)
+    except StopIteration:
+        return
+
     for item in iterator:
         yield last, item
         last = item
