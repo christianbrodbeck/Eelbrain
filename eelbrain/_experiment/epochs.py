@@ -50,7 +50,7 @@ def assemble_epochs(epoch_def, epoch_default):
             if secondary_epochs[key]._can_link(epochs):
                 epochs[key] = secondary_epochs.pop(key)._link(key, epochs)
         if len(secondary_epochs) == n:
-            DefinitionError(f"Can't resolve epoch dependencies for {enumeration(secondary_epochs)}")
+            raise DefinitionError(f"Can't resolve epoch dependencies for {enumeration(secondary_epochs)}")
     return epochs
 
 

@@ -76,4 +76,4 @@ for name, image_file in files.iteritems():
     img2py(image_file, python_file, append=True,
            imgName=name, icon=False, **kwargs)
 
-print "Done"
+print("Done")

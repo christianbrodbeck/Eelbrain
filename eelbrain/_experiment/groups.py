@@ -1,4 +1,4 @@
-from typing import Collection, List, Set
+from typing import Collection, Set
 
 from .definitions import Definition, DefinitionError
 

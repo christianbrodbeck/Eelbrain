@@ -1,6 +1,6 @@
 from collections import Iterator
 from functools import reduce
-from math import ceil, floor
+from math import floor
 from operator import mul
 
 import numpy as np

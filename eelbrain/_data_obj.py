@@ -55,7 +55,6 @@ import mne
 from mne.source_space import label_src_vertno_sel
 from nibabel.freesurfer import read_annot
 import numpy as np
-from numpy import newaxis
 import scipy.signal
 import scipy.stats
 from scipy.linalg import inv, norm
@@ -71,7 +70,7 @@ from ._utils import (
 from ._utils.numpy_utils import (
     INT_TYPES, FULL_SLICE, FULL_AXIS_SLICE,
     apply_numpy_index, digitize_index, digitize_slice_endpoint,
-    index_length, index_to_int_array, take_slice, slice_to_arange)
+    index_length, index_to_int_array, newaxis, take_slice, slice_to_arange)
 from .mne_fixes import MNE_EPOCHS, MNE_EVOKED, MNE_RAW, MNE_LABEL
 from functools import reduce
 
@@ -887,7 +886,7 @@ def align1(d, to, by='index', out='data'):
     elif out == 'index':
         return align_idx
     else:
-        ValueError(f"out={out!r}")
+        raise ValueError(f"out={out!r}")
 
 
 def choose(choice, sources, name=None):
@@ -2150,7 +2149,7 @@ class Factor(_Effect):
         self._n_cases = len(self.x)
 
     def __setstate__(self, state):
-        self.x = x = state['x']
+        self.x = state['x']
         self.name = state['name']
         self.random = state['random']
         if 'ordered_labels' in state:
@@ -3553,13 +3552,11 @@ class NDVar:
         if out is not None:
             if out is not self:
                 assert out.dims == self.dims
-            x = self.x.clip(min, max, out.x)
+            self.x.clip(min, max, out.x)
+            return out
         else:
             x = self.x.clip(min, max)
-        if out is None:
             return NDVar(x, self.dims, self.info, name or self.name)
-        else:
-            return out
 
     def copy(self, name=None):
         """A deep copy of the NDVar's data
@@ -4844,9 +4841,6 @@ class Datalist(list):
         else:
             raise NotImplementedError("Datalist indexing with %s" % type(key))
 
-    def __getslice__(self, i, j):
-        return Datalist(list.__getslice__(self, i, j), fmt=self._fmt)
-
     def __add__(self, other):
         return Datalist(super(Datalist, self).__add__(other), fmt=self._fmt)
 
@@ -4942,17 +4936,16 @@ def as_legal_dataset_key(key):
             raise RuntimeError("Could not convert %r to legal dataset key")
 
 
-def cases_arg(cases, n_cases):
+def cases_arg(cases, n_cases) -> Iterator:
     "Coerce cases argument to iterator"
     if isinstance(cases, Integral):
         if cases < 1:
             cases = n_cases + cases
             if cases < 0:
-                raise ValueError("Can't get table for fewer than 0 cases")
+                raise ValueError(f"cases={cases}: Can't get table for fewer than 0 cases")
         else:
             cases = min(cases, n_cases)
-        if cases is not None:
-            return range(cases)
+        return range(cases)
     else:
         return cases
 

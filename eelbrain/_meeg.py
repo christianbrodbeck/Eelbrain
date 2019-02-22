@@ -3,10 +3,9 @@ from collections import defaultdict
 
 import numpy as np
 
-from ._data_obj import Datalist, Dataset, Var
+from ._data_obj import Datalist, Dataset
 from ._ndvar import neighbor_correlation
 from ._info import BAD_CHANNELS
-from ._names import INTERPOLATE_CHANNELS
 
 
 def _out(out, epochs):
@@ -48,29 +47,6 @@ def find_noisy_channels(epochs, mincorr=0.35):
     names = epochs.sensor.names
     out_e = Datalist([list(names[neighbor_correlation(ep) < mincorr]) for ep in epochs])
     return out_e
-
-
-def find_bad_channels(epochs, flat, flat_average, mincorr):
-    "Find flat and noisy channels"
-    interpolate = find_noisy_channels(epochs, mincorr)
-    interpolate = find_flat_epochs(epochs, flat, interpolate)
-    bad_channels = find_flat_evoked(epochs, flat_average)
-    return bad_channels, interpolate
-
-
-def make_rej(ds):
-    epochs = ds['meg']
-
-    # find rejections
-    bad_channels, interpolate = find_bad_channels(epochs)
-
-    # construct dataset
-    out = ds[('trigger',)]
-    out['accept'] = Var(np.array(tuple(map(len, interpolate))) <= 5)
-    out[:, 'tag'] = ''
-    out[INTERPOLATE_CHANNELS] = interpolate
-    out.info[BAD_CHANNELS] = bad_channels
-    return out
 
 
 def channel_listlist_to_dict(listlist):

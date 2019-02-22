@@ -85,14 +85,10 @@ def sensor_time_cluster(section, cluster, y, model, ds, colors, match='subject')
     tstop_ms = ms(cluster['tstop'])
 
     # section/title
-    title = ("{tstart}-{tstop} p={p}{mark} {effect}"
-             .format(tstart=tstart_ms, tstop=tstop_ms,
-                     p='%.3f' % cluster['p'],
-                     effect=cluster.get('effect', ''),
-                     location=cluster.get('location', ''),
-                     mark=cluster['sig']).strip())
-    while '  ' in title:
-        title = title.replace('  ', ' ')
+    p_str = fmtxt.peq(cluster['p'], stars=True)
+    title = f"{tstart_ms}-{tstop_ms} {p_str}"
+    if 'effect' in cluster:
+        title += f" {cluster['effect']}"
     section = section.add_section(title)
 
     # description

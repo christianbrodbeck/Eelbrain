@@ -70,9 +70,8 @@ from .groups import assemble_groups
 from .parc import (
     assemble_parcs,
     FS_PARC, FSA_PARC, SEEDED_PARC_RE,
-    Parcellation, CombinationParc, EelbrainParc,
-    FreeSurferParc, FSAverageParc, SeededParc,
-    IndividualSeededParc, LabelParc, parc_from_dict
+    CombinationParc, EelbrainParc, FreeSurferParc, FSAverageParc, SeededParc,
+    IndividualSeededParc, LabelParc
 )
 from .preprocessing import (
     assemble_pipeline, RawSource, RawFilter, RawICA,
@@ -1320,7 +1319,6 @@ class MneExperiment(FileTree):
                 os.mkdir(cache_dir)
             elif self.auto_delete_cache == 'disable':
                 log.warning("Ignoring cache-dir without history")
-                pass
             elif self.auto_delete_cache == 'debug':
                 command = ask("Cache directory without history",
                               (('validate', 'write a history file treating cache as valid'),
@@ -1975,8 +1973,7 @@ class MneExperiment(FileTree):
             start = values.index(start)
         if stop is not None:
             stop = values.index(stop) + 1
-        idx = slice(start, stop)
-        values = values[idx]
+        values = values[start:stop]
 
         with self._temporary_state:
             for value in values:
@@ -2880,7 +2877,7 @@ class MneExperiment(FileTree):
             Forward operator.
         """
         if mask and not ndvar:
-            raise NotImplemented("mask is only implemented for ndvar=True")
+            raise NotImplementedError("mask is only implemented for ndvar=True")
         elif isinstance(mask, str):
             state['parc'] = mask
             mask = True
@@ -2939,7 +2936,7 @@ class MneExperiment(FileTree):
         if kwargs:
             self.set(**kwargs)
         if mask and not ndvar:
-            raise NotImplemented("mask is only implemented for ndvar=True")
+            raise NotImplementedError("mask is only implemented for ndvar=True")
         elif isinstance(mask, str):
             self.set(parc=mask)
             mask = True
@@ -5656,13 +5653,14 @@ class MneExperiment(FileTree):
             title = f"{group} {epoch} {model_name}"
             return plot.TopoButterfly(y, model, ds=ds, title=title, run=run)
 
-    def plot_label(self, label, surf='inflated', w=600, clear=False):
+    def plot_label(self, label, surf=None, views=None, w=600):
         """Plot a label"""
         if isinstance(label, str):
             label = self.load_label(label)
         title = label.name
-
-        brain = self.plot_brain(surf, title, 'split', ['lat', 'med'], w, clear)
+        hemi = 'split' if isinstance(label, mne.BiHemiLabel) else label.hemi
+        kwargs = self._surfer_plot_kwargs(surf, views, hemi=hemi)
+        brain = self.plot_brain(title=title, w=w, **kwargs)
         brain.add_label(label, alpha=0.75)
         return brain
 

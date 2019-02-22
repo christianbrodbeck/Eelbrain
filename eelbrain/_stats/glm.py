@@ -18,7 +18,7 @@ import scipy.stats
 from .. import fmtxt
 from .._utils import LazyProperty
 from .._data_obj import (
-    Model, Var, asmodel, assub, asvar, assert_has_no_empty_cells, find_factors,
+    Model, asmodel, assub, asvar, assert_has_no_empty_cells, find_factors,
     hasrandom, is_higher_order_effect, isbalanced, iscategorial, isnestedin)
 from .opt import anova_fmaps, anova_full_fmaps, lm_res_ss, ss
 from .stats import ftest_p
@@ -231,7 +231,7 @@ class LM:
             if e_ms_name or empty:
                 table.cell(e.name)
                 table.cell(SSs[e])
-                table.cell(e.df, fmt='%i')
+                table.cell(e.df)
                 table.cell(MS)
                 if ems:
                     table.cell(e_ms_name)
@@ -245,7 +245,7 @@ class LM:
         if self.df_res > 0:
             table.cell("Residuals")
             table.cell(self.SS_res)
-            table.cell(self.df_res, fmt='%i')
+            table.cell(self.df_res)
             table.cell(self.MS_res)
 
         return table
@@ -270,9 +270,9 @@ class LM:
         table = fmtxt.Table('l' * 4)
         df = self.x.df_error
         table.cell()
-        table.cell('\\beta', mat=True)
-        table.cell('T_{%i}' % df, mat=True)
-        table.cell('p', mat=True)
+        table.cell(fmtxt.symbol('\\beta'))
+        table.cell(fmtxt.symbol('T', df))
+        table.cell(fmtxt.symbol('p'))
         table.midrule()
         # body
         q = 1

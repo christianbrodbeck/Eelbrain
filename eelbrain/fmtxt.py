@@ -50,7 +50,6 @@ The module also provides functions that work with fmtxt objects:
 import base64
 import datetime
 from html.parser import HTMLParser
-from importlib import import_module
 from itertools import repeat
 from math import ceil
 import os

@@ -572,7 +572,7 @@ def find_data_dims(ndvar, dims, extra_dim=None):
 
         if extra_dim:
             dimnames.remove(extra_dim)
-        return agg, tuple(dimnames)
+    return agg, tuple(dimnames)
 
 
 def butterfly_data(
@@ -965,8 +965,6 @@ class PlotData:
             ys = (asndvar(ys, sub, ds),)
         elif not isinstance(ys, (tuple, list, Iterator)):
             ys = (ys,)
-        else:
-            ys = ys
 
         ax_names = None
         if xax is None:
