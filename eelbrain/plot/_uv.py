@@ -976,11 +976,11 @@ class Correlation(EelFigure, LegendMixin):
     def __init__(self, y, x, cat=None, sub=None, ds=None,
                  c=['b', 'r', 'k', 'c', 'm', 'y', 'g'], legend='upper right',
                  xlabel=True, ylabel=True, *args, **kwargs):
-        sub = assub(sub, ds)
-        y = asvar(y, sub, ds)
-        x = asvar(x, sub, ds)
+        sub, n = assub(sub, ds, return_n=True)
+        y, n = asvar(y, sub, ds, n, return_n=True)
+        x = asvar(x, sub, ds, n)
         if cat is not None:
-            cat = ascategorial(cat, sub, ds)
+            cat = ascategorial(cat, sub, ds, n)
 
         # figure
         layout = Layout(1, 1, 5, *args, autoscale=True, **kwargs)
@@ -1045,11 +1045,11 @@ class Regression(EelFigure, LegendMixin):
                  xlabel=True, ylabel=True, alpha=.2, legend='upper right',
                  c=['#009CFF', '#FF7D26', '#54AF3A', '#FE58C6', '#20F2C3'],
                  *args, **kwargs):
-        sub = assub(sub, ds)
-        y = asvar(y, sub, ds)
-        x = asvar(x, sub, ds)
+        sub, n = assub(sub, ds, return_n=True)
+        y, n = asvar(y, sub, ds, n, return_n=True)
+        x = asvar(x, sub, ds, n)
         if cat is not None:
-            cat = ascategorial(cat, sub, ds)
+            cat = ascategorial(cat, sub, ds, n)
         if match is not None:
             raise NotImplementedError("match kwarg")
 

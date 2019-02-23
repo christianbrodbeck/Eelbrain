@@ -422,7 +422,18 @@ def asarray(x, kind=None, ds=None):
     return x
 
 
-def ascategorial(x, sub=None, ds=None, n=None):
+def _apply_sub(x, sub, n, return_n):
+    if n is None:
+        if return_n:
+            n = len(x)
+    elif len(x) != n:
+        raise ValueError("Arguments have different length")
+    if sub is not None:
+        x = x[sub]
+    return (x, n) if return_n else x
+
+
+def ascategorial(x, sub=None, ds=None, n=None, return_n=False):
     if isinstance(x, str):
         if ds is None:
             raise TypeError(f"{x!r}: Parameter was specified as string, but no Dataset was specified")
@@ -436,16 +447,10 @@ def ascategorial(x, sub=None, ds=None, n=None):
     else:
         x = asfactor(x)
 
-    if sub is not None:
-        x = x[sub]
-
-    if n is not None and len(x) != n:
-        raise ValueError("Arguments have different length")
-
-    return x
+    return _apply_sub(x, sub, n, return_n)
 
 
-def asdataobject(x, sub=None, ds=None, n=None):
+def asdataobject(x, sub=None, ds=None, n=None, return_n=False):
     "Convert to any data object or numpy array."
     if isinstance(x, str):
         if ds is None:
@@ -461,16 +466,10 @@ def asdataobject(x, sub=None, ds=None, n=None):
     else:
         x = Datalist(x)
 
-    if sub is not None:
-        x = x[sub]
-
-    if n is not None and len(x) != n:
-        raise ValueError("Arguments have different length")
-
-    return x
+    return _apply_sub(x, sub, n, return_n)
 
 
-def asepochs(x, sub=None, ds=None, n=None):
+def asepochs(x, sub=None, ds=None, n=None, return_n=False):
     "Convert to mne Epochs object"
     if isinstance(x, str):
         if ds is None:
@@ -484,16 +483,10 @@ def asepochs(x, sub=None, ds=None, n=None):
     else:
         raise TypeError("Need mne Epochs object, got %s" % repr(x))
 
-    if sub is not None:
-        x = x[sub]
-
-    if n is not None and len(x) != n:
-        raise ValueError("Arguments have different length")
-
-    return x
+    return _apply_sub(x, sub, n, return_n)
 
 
-def asfactor(x, sub=None, ds=None, n=None):
+def asfactor(x, sub=None, ds=None, n=None, return_n=False):
     if isinstance(x, str):
         if ds is None:
             raise TypeError(f"{x!r}: Factor was specified as string, but no Dataset was specified")
@@ -506,13 +499,7 @@ def asfactor(x, sub=None, ds=None, n=None):
     else:
         x = Factor(x)
 
-    if sub is not None:
-        x = x[sub]
-
-    if n is not None and len(x) != n:
-        raise ValueError("Arguments have different length")
-
-    return x
+    return _apply_sub(x, sub, n, return_n)
 
 
 def asindex(x):
@@ -524,7 +511,7 @@ def asindex(x):
         return x
 
 
-def asmodel(x, sub=None, ds=None, n=None):
+def asmodel(x, sub=None, ds=None, n=None, return_n=False):
     if isinstance(x, str):
         if ds is None:
             raise TypeError("Model was specified as string, but no Dataset was "
@@ -545,16 +532,10 @@ def asmodel(x, sub=None, ds=None, n=None):
     else:
         x = Model(x)
 
-    if sub is not None:
-        x = x[sub]
-
-    if n is not None and len(x) != n:
-        raise ValueError("Arguments have different length")
-
-    return x
+    return _apply_sub(x, sub, n, return_n)
 
 
-def asndvar(x, sub=None, ds=None, n=None, dtype=None):
+def asndvar(x, sub=None, ds=None, n=None, dtype=None, return_n=False):
     if isinstance(x, str):
         if ds is None:
             raise TypeError("Ndvar was specified as string, but no Dataset was specified")
@@ -583,19 +564,13 @@ def asndvar(x, sub=None, ds=None, n=None, dtype=None):
     else:
         raise TypeError("NDVar required, got %s" % repr(x))
 
-    if sub is not None:
-        x = x[sub]
-
-    if n is not None and len(x) != n:
-        raise ValueError("Arguments have different length")
-
+    x, n = _apply_sub(x, sub, n, return_n=True)
     if dtype is not None and x.x.dtype != dtype:
         x = x.astype(dtype)
+    return (x, n) if return_n else x
 
-    return x
 
-
-def asnumeric(x, sub=None, ds=None, n=None):
+def asnumeric(x, sub=None, ds=None, n=None, return_n=False):
     "Var, NDVar"
     if isinstance(x, str):
         if ds is None:
@@ -606,19 +581,13 @@ def asnumeric(x, sub=None, ds=None, n=None):
     if not isnumeric(x):
         raise TypeError("Numeric argument required (Var or NDVar), got %s" % repr(x))
 
-    if sub is not None:
-        x = x[sub]
-
-    if n is not None and len(x) != n:
-        raise ValueError("Arguments have different length")
-
-    return x
+    return _apply_sub(x, sub, n, return_n)
 
 
-def assub(sub, ds=None):
+def assub(sub, ds=None, return_n=False):
     "Interpret the sub argument."
     if sub is None:
-        return None
+        return (None, None) if return_n else None
     elif isinstance(sub, str):
         if ds is None:
             raise TypeError("the sub parameter was specified as string, but no "
@@ -626,13 +595,18 @@ def assub(sub, ds=None):
         sub = ds.eval(sub)
 
     if isinstance(sub, Var):
-        return sub.x
+        sub = sub.x
     elif not isinstance(sub, np.ndarray):
-        raise TypeError("sub parameters needs to be Var or array, got %r" % (sub,))
-    return sub
+        raise TypeError(f"sub={sub}: needs to be Var or array")
+
+    if return_n:
+        n = len(sub) if sub.dtype.kind == 'b' else None
+        return sub, n
+    else:
+        return sub
 
 
-def asuv(x, sub=None, ds=None, n=None, interaction=False):
+def asuv(x, sub=None, ds=None, n=None, return_n=False, interaction=False):
     "Coerce to Var or Factor"
     if isinstance(x, str):
         if ds is None:
@@ -647,16 +621,10 @@ def asuv(x, sub=None, ds=None, n=None, interaction=False):
     else:
         x = Var(x)
 
-    if sub is not None:
-        x = x[sub]
-
-    if n is not None and len(x) != n:
-        raise ValueError("Arguments have different length")
-
-    return x
+    return _apply_sub(x, sub, n, return_n)
 
 
-def asvar(x, sub=None, ds=None, n=None):
+def asvar(x, sub=None, ds=None, n=None, return_n=False):
     "Coerce to Var"
     if isinstance(x, str):
         if ds is None:
@@ -667,13 +635,7 @@ def asvar(x, sub=None, ds=None, n=None):
     if not isinstance(x, Var):
         x = Var(x)
 
-    if sub is not None:
-        x = x[sub]
-
-    if n is not None and len(x) != n:
-        raise ValueError("Arguments have different length")
-
-    return x
+    return _apply_sub(x, sub, n, return_n)
 
 
 def index_ndim(index):

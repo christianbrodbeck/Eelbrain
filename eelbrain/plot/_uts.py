@@ -129,14 +129,14 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
                  xlim=None, clip=None, color='b', colors=None, error_alpha=0.3,
                  clusters=None, pmax=0.05, ptrend=0.1, *args, **kwargs):
         # coerce input variables
-        sub = assub(sub, ds)
-        y = asndvar(y, sub, ds)
+        sub, n = assub(sub, ds, return_n=True)
+        y, n = asndvar(y, sub, ds, n, return_n=True)
         if x is not None:
-            x = ascategorial(x, sub, ds)
+            x = ascategorial(x, sub, ds, n)
         if xax is not None:
-            xax = ascategorial(xax, sub, ds)
+            xax = ascategorial(xax, sub, ds, n)
         if match is not None:
-            match = ascategorial(match, sub, ds)
+            match = ascategorial(match, sub, ds, n)
 
         if error and error != 'all' and \
                 (pool_error or (pool_error is None and match is not None)):
