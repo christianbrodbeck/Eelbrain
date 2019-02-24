@@ -1449,6 +1449,28 @@ class Var:
     def _coefficient_names(self, method):
         return longname(self),
 
+    def _summary(self, width=80):
+        is_nan = np.isnan(self.x)
+        n_nan = np.sum(is_nan)
+        nan_str = f'NaN:{n_nan}' if n_nan else ''
+        x = self.x[~is_nan] if n_nan else self.x
+        unique = np.unique(x)
+        if len(unique) <= 10:
+            items = [f'{v:g}:{np.sum(self.x == v)}' for v in unique]
+            if nan_str:
+                items.append(nan_str)
+            out = ''
+            for item in items:
+                if len(out) + len(item) >= width - 2:
+                    break
+                out += f', {item}'
+            else:
+                return out
+        out = f'{x.min():g} - {x.max():g}'
+        if nan_str:
+            out += f', {nan_str}'
+        return out
+
     def abs(self, name=None):
         "Return a Var with the absolute value."
         info = {**self.info, 'longname': f"abs({longname(self)})"}
@@ -2332,6 +2354,18 @@ class Factor(_Effect):
         else:
             return ns
 
+    def _summary(self, width=80):
+        items = [f'{label}:{np.sum(self.x == code)}' for code, label in self._labels.items()]
+        if sum(map(len, items)) + 2 * len(items) - 2 <= width:
+            return ', '.join(items)
+        n_cells = f'... ({len(items)} cells)'
+        n = len(n_cells)
+        for i, item in enumerate(items):
+            if n + len(item) > width:
+                break
+            n += len(item) + 2
+        return f"{', '.join(items[:i])}{n_cells}"
+
     def aggregate(self, x, name=True):
         """
         Summarize the Factor by collapsing within cells in `x`.
@@ -3163,8 +3197,20 @@ class NDVar:
     def __repr__(self):
         return '<NDVar%(name)s: %(dims)s>' % {
             'name': '' if self.name is None else ' %r' % self.name,
-            'dims': ', '.join('%i %s' % (len(dim), dim.name) for dim in
-                              self.dims)}
+            'dims': ', '.join(f'{len(dim)} {dim.name}' for dim in self.dims)}
+
+    def _summary(self, width=80):
+        items = [f'{len(dim)} {dim.name}' for dim in self.dims[1:]]
+        n = 0
+        for i, item in enumerate(items):
+            n += len(item)
+            if n > width - 3:
+                return ', '.join(items[:i]) + '...'
+        out = ', '.join(items)
+        range_desc = f'; {np.nanmin(self.x):g} - {np.nanmax(self.x):g}'
+        if len(out) + len(range_desc) <= width:
+            out += range_desc
+        return out
 
     def abs(self, name=None):
         """Compute the absolute values
@@ -4807,6 +4853,18 @@ class Datalist(list):
         else:
             raise RuntimeError("Datalist._fmt=%s" % repr(self._fmt))
 
+    def _summary(self, width=80):
+        types = sorted({type(v) for v in self})
+        if len(types) == 1:
+            return f'{types[0].__name__}'
+        items = [f'{t.__name__}:{sum(isinstance(v, t) for v in self)}' for t in types]
+        n = 0
+        for i, item in enumerate(items):
+            if n + len(item) > width:
+                return ', '.join(items[:i]) + '...'
+            n += len(item) + 2
+        return ', '.join(items)
+
     def __eq__(self, other):
         if len(self) != len(other):
             raise ValueError("Unequal length")
@@ -6065,6 +6123,38 @@ class Dataset(OrderedDict):
             items = ((k, OrderedDict.__getitem__(self, k)[index]) for k in keys)
 
         return Dataset(items, name or self.name, self._caption, self.info)
+
+    def summary(self, width=None):
+        """A summary of the Dataset's contents
+
+        Parameters
+        ----------
+        width : int
+            Width in characters (default depends on current terminal size).
+        """
+        if width is None:
+            try:
+                width = os.get_terminal_size().columns
+            except OSError:
+                width = 100
+        width -= max(map(len, self))
+        width -= max(len(v.__class__.__name__) for v in self.values())
+        width -= 6
+        out = fmtxt.Table('lll')
+        out.cells('Key', 'Type', 'Values')
+        out.midrule()
+        for k, v in self.items():
+            out.cell(k)
+            out.cell(v.__class__.__name__)
+            if hasattr(v, '_summary'):
+                summary = v._summary(width)
+            else:
+                summary = ''
+            out.cell(summary)
+        out.rules
+        name = 'Dataset' if self.name is None else self.name
+        out.caption(f"{name}: {self.n_cases} cases")
+        return out
 
     def tail(self, n=10):
         "Table with the last n cases in the Dataset"
