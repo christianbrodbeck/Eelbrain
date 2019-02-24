@@ -34,7 +34,7 @@ These are elementary effects in a Model, and identified by :func:`is_effect`
 
 
 """
-from collections import Iterator, OrderedDict, Sequence
+from collections import Iterable, Iterator, OrderedDict, Sequence
 from copy import deepcopy
 from functools import partial
 from itertools import chain, product, zip_longest
@@ -4942,7 +4942,7 @@ def as_legal_dataset_key(key):
             raise RuntimeError("Could not convert %r to legal dataset key")
 
 
-def cases_arg(cases, n_cases) -> Iterator:
+def cases_arg(cases, n_cases) -> Iterable:
     "Coerce cases argument to iterator"
     if isinstance(cases, Integral):
         if cases < 1:
@@ -4952,8 +4952,10 @@ def cases_arg(cases, n_cases) -> Iterator:
         else:
             cases = min(cases, n_cases)
         return range(cases)
-    else:
+    elif isinstance(cases, Iterable):
         return cases
+    else:
+        raise TypeError(f"cases={cases}")
 
 
 class Dataset(OrderedDict):
@@ -6721,7 +6723,7 @@ class Model:
         table : FMText Table
             The full model as a table.
         """
-        cases = cases_arg(cases, self.df_total)
+        itre_cases = cases_arg(cases, self.df_total)
         p = self._parametrize(method)
         table = fmtxt.Table('l' * len(p.column_names))
 
@@ -6737,7 +6739,7 @@ class Model:
         table.midrule()
 
         # data
-        for case in cases:
+        for case in itre_cases:
             for i in p.x[case]:
                 table.cell('%g' % i)
 

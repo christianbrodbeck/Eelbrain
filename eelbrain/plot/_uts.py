@@ -545,10 +545,10 @@ class _ax_uts:
             self.legend_handles[longname(l)] = p.plot_handle
             contours = l.info.get('contours', None)
             if contours:
-                for v, color in contours.items():
+                for v, c in contours.items():
                     if v in contours:
                         continue
-                    contours[v] = ax.axhline(v, color=color)
+                    contours[v] = ax.axhline(v, color=c)
 
         self.ax = ax
         self.set_ylim(vmin, vmax)

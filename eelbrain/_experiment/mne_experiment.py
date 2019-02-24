@@ -1480,7 +1480,7 @@ class MneExperiment(FileTree):
                     out = self._annot_file_mtime(self.get('common_brain'))
                 elif data.parc_level == 'individual':
                     out = 0
-                    for subject in self:
+                    for _ in self:
                         mtime = self._annot_file_mtime()
                         if mtime is None:
                             return
