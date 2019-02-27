@@ -6175,7 +6175,7 @@ class MneExperiment(FileTree):
         else:
             print(ds)
 
-    def show_rej_info(self, flagp=None, asds=False, **state):
+    def show_rej_info(self, flagp=None, asds=False, bads=False, **state):
         """Information about artifact rejection
 
         Parameters
@@ -6185,6 +6185,8 @@ class MneExperiment(FileTree):
             number.
         asds : bool
             Return a Dataset with the information (default is to print it).
+        bads : bool
+            Display bad channel names (not just number of bad channels).
 
         Notes
         -----
@@ -6214,22 +6216,38 @@ class MneExperiment(FileTree):
                 ds = self.load_selected_events(reject='keep')
             except FileMissing:
                 ds = self.load_selected_events(reject=False)
-                bad_chs.append(str(len(bads_raw)))
+                bad_chs.append((bads_raw, ()))
                 if has_epoch_rejection:
                     n_good.append(float('nan'))
                 if has_interp:
                     n_interp.append(float('nan'))
             else:
                 bads_rej = set(ds.info[BAD_CHANNELS]).difference(bads_raw)
-                bad_chs.append("%i + %i" % (len(bads_raw), len(bads_rej)))
+                bad_chs.append((bads_raw, bads_rej))
                 if has_epoch_rejection:
                     n_good.append(ds['accept'].sum())
                 if has_interp:
                     n_interp.append(np.mean([len(chi) for chi in ds[INTERPOLATE_CHANNELS]]))
             n_events.append(ds.n_cases)
         has_interp = has_interp and any(n_interp)
+        caption = f"Rejection info for raw={raw_name}, epoch={epoch_name}, rej={rej_name}. Percent is rounded to one decimal."
 
-        caption = f"Rejection info for raw={raw_name}, epoch={epoch_name}, rej={rej_name}. Percent is rounded to one decimal. Bad channels: defined in bad_channels file and in rej-file."
+        # format bad channels
+        if bads:
+            func = ', '.join
+        else:
+            func = len
+        bad_chs = [(func(bads_raw), func(bads_rej)) for bads_raw, bads_rej in bad_chs]
+
+        if any(bads_rej for bads_raw, bads_rej in bad_chs):
+            caption += " Bad channels: defined in bad_channels file and in rej-file."
+            bad_chs = [f'{bads_raw} + {bads_rej}' for bads_raw, bads_rej in bad_chs]
+        else:
+            bad_chs = [f'{bads_raw}' for bads_raw, bads_rej in bad_chs]
+
+        if bads:
+            bad_chs = [s.replace('MEG ', '') for s in bad_chs]
+
         if has_interp:
             caption += " ch_interp: average number of channels interpolated per epoch, rounded to one decimal."
         out = Dataset(caption=caption)
