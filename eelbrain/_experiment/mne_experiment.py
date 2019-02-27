@@ -2912,6 +2912,43 @@ class MneExperiment(FileTree):
                                       vertices_to, None, subjects_dir)
         return mm, vertices_to
 
+    def load_neighbor_correlation(self, subject=1, epoch=None, **state):
+        """Load sensor neighbor correlation
+
+        Parameters
+        ----------
+        subject : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject (default); ``-1`` for the current group.
+        epoch : str
+            Epoch to use for computing neighbor-correlation (by default, the
+            whole session is used).
+
+        Returns
+        -------
+        nc : NDVar | Dataset
+            Sensor neighbor-correlation as :class:`NDVar` for a single subject
+            or as :class:`Dataset` for multiple subjects.
+        """
+        subject, group = self._process_subject_arg(subject, state)
+        if group is not None:
+            if state:
+                self.set(**state)
+            lines = [(subject, self.load_neighbor_correlation(1, epoch)) for subject in self]
+            return Dataset.from_caselist(['subject', 'nc'], lines)
+        if epoch:
+            if epoch is True:
+                epoch = self.get('epoch')
+            epoch_params = self._epochs[epoch]
+            if len(epoch_params.sessions) != 1:
+                raise ValueError(f"epoch={epoch!r}: epoch has multiple session")
+            ds = self.load_epochs(epoch=epoch, reject=False, decim=1, **state)
+            data = concatenate(ds['meg'])
+        else:
+            data = self.load_raw(ndvar=True, **state)
+        return neighbor_correlation(data)
+
     def load_raw(self, add_bads=True, preload=False, ndvar=False, decim=1, **kwargs):
         """
         Load a raw file as mne Raw object.
@@ -3670,15 +3707,7 @@ class MneExperiment(FileTree):
         method with multiple subjects, it is important to set ``raw`` to the
         same value.
         """
-        if epoch:
-            epoch_params = self._epochs[epoch]
-            if len(epoch_params.sessions) != 1:
-                raise ValueError(f"epoch={epoch!r}: epoch has multiple session")
-            ds = self.load_epochs(epoch=epoch, reject=False, decim=1, **state)
-            data = concatenate(ds['meg'])
-        else:
-            data = self.load_raw(ndvar=True, **state)
-        nc = neighbor_correlation(data)
+        nc = self.load_neighbor_correlation(1, epoch, **state)
         bad_chs = nc.sensor.names[nc < r]
         if bad_chs:
             self.make_bad_channels(bad_chs)
