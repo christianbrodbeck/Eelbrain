@@ -5258,6 +5258,7 @@ class MneExperiment(FileTree):
             if exists(dst):
                 if getmtime(dst) >= getmtime(orig):
                     return
+                os.remove(dst)
 
             src = self.get('src')
             self._log.info(f"Scaling {src} source space for {subject}...")
