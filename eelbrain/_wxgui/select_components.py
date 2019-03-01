@@ -737,6 +737,15 @@ class SourceFrame(FileFrameChild):
         self.ax_tc = ax
         self.canvas.draw()
 
+    def _event_i_comp(self, event):
+        if event.inaxes:
+            if event.inaxes.i_comp is None:
+                i_comp = int(self.i_first + self.n_comp - ceil(event.ydata / self.y_scale + 0.5))
+                if i_comp < self.n_comp_in_ica:
+                    return i_comp
+            else:
+                return event.inaxes.i_comp
+
     def CanBackward(self):
         return self.i_first_epoch > 0
 
@@ -779,13 +788,8 @@ class SourceFrame(FileFrameChild):
 
     def OnCanvasClick(self, event):
         "Called by mouse clicks"
-        if event.inaxes:
-            if event.inaxes.i_comp is None:
-                i_comp = int(self.i_first + self.n_comp - ceil(event.ydata / self.y_scale + 0.5))
-                if i_comp >= self.n_comp_in_ica:
-                    return
-            else:
-                i_comp = event.inaxes.i_comp
+        i_comp = self._event_i_comp(event)
+        if i_comp is not None:
             self.model.toggle(i_comp)
 
     def OnCanvasKey(self, event):
@@ -809,8 +813,7 @@ class SourceFrame(FileFrameChild):
             if event.inaxes is None:
                 i_epoch = -1
             elif event.inaxes.i_comp is None:
-                i_epoch = (self.i_first_epoch +
-                           int(event.xdata // len(self.doc.sources.time)))
+                i_epoch = self.i_first_epoch + int(event.xdata // len(self.doc.sources.time))
                 if i_epoch >= len(self.doc.epochs):
                     i_epoch = -1
             else:
@@ -818,14 +821,16 @@ class SourceFrame(FileFrameChild):
             self.parent.PlotEpochButterfly(i_epoch)
         elif not event.inaxes:
             return
+        # component-specific plots
+        i_comp = self._event_i_comp(event)
+        if i_comp is None:  # source time course axes
+            return
         elif event.key in 'tT':
-            if event.inaxes.i_comp is None:  # source time course axes
-                return
-            self.parent.PlotCompTopomap(event.inaxes.i_comp)
+            self.parent.PlotCompTopomap(i_comp)
         elif event.key == 'a':
-            self.parent.PlotCompSourceArray(event.inaxes.i_comp)
+            self.parent.PlotCompSourceArray(i_comp)
         elif event.key == 'f':
-            self.parent.PlotCompFFT(event.inaxes.i_comp)
+            self.parent.PlotCompFFT(i_comp)
 
     def OnClose(self, event):
         if super(SourceFrame, self).OnClose(event):
