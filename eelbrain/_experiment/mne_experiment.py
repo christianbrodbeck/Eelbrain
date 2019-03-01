@@ -6117,9 +6117,9 @@ class MneExperiment(FileTree):
         """
         return FileTree.show_file_status(self, temp, row, col, *args, **kwargs)
 
-    def show_raw_info(self):
+    def show_raw_info(self, **state):
         "Display the selected pipeline for raw processing"
-        raw = self.get('raw')
+        raw = self.get('raw', **state)
         pipe = source_pipe = self._raw[raw]
         pipeline = [pipe]
         while source_pipe.name != 'raw':
