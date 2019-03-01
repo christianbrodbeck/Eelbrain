@@ -1324,7 +1324,7 @@ class EelFigure:
     def __repr__(self):
         return f'<{self._frame.GetTitle()}>'
 
-    def _set_axtitle(self, axtitle, data=None, axes=None, names=None):
+    def _set_axtitle(self, axtitle, data=None, axes=None, names=None, **kwargs):
         """Set axes titles automatically
 
         Parameters
@@ -1339,6 +1339,8 @@ class EelFigure:
             or a tuple of titles.
         names : sequence of str
             Instead of using ``epochs`` name attributes, use these names.
+        ...
+            Matplotlib ``Axes.set_title()`` parameters.
         """
         if axtitle is False or axtitle is None:
             return
@@ -1373,7 +1375,7 @@ class EelFigure:
             return axtitle
 
         for title, ax in zip(axtitle, axes):
-            ax.set_title(title)
+            ax.set_title(title, **kwargs)
 
     def _show(self, crosshair_axes=None):
         if self._layout.tight:

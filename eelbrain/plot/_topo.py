@@ -115,7 +115,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
 
         layout = ImLayout(data.plot_used, 1, 5, margins, {}, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
-        self._set_axtitle(axtitle, data)
+        self._set_axtitle(axtitle, data, verticalalignment='top', pad=-1)
 
         # plots
         axes_data = data.for_plot(PlotType.IMAGE)
