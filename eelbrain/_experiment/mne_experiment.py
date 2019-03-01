@@ -2398,6 +2398,8 @@ class MneExperiment(FileTree):
                 ds.info['edf'] = edf
 
             save.pickle(ds, evt_file)
+            if data_raw:
+                ds.info['raw'] = raw
         elif data_raw:
             ds.info['raw'] = self.load_raw(add_bads)
 
@@ -3159,8 +3161,7 @@ class MneExperiment(FileTree):
             rej_params = self._artifact_rejection[self.get('rej')]
             # load files
             with self._temporary_state:
-                ds = self.load_events(add_bads=add_bads, data_raw=data_raw,
-                                      session=epoch.session)
+                ds = self.load_events(add_bads=add_bads, data_raw=data_raw, session=epoch.session)
                 if reject and rej_params['kind'] is not None:
                     rej_file = self.get('rej-file')
                     if exists(rej_file):
