@@ -11,7 +11,7 @@ import tempfile
 
 import numpy as np
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
-from matplotlib.backend_bases import FigureCanvasBase
+from matplotlib.backend_bases import FigureCanvasBase, MouseEvent
 from matplotlib.backends import backend_wx
 from matplotlib.figure import Figure
 import wx
@@ -21,13 +21,6 @@ from .frame import EelbrainFrame, EelbrainDialog
 from .help import show_help_txt
 from .utils import FloatValidator, Icon
 from . import ID
-
-
-class DummyMouseEvent:
-    "Emulate Matplotlib MouseEvent"
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
 
 
 class FigureCanvasPanel(FigureCanvasWxAgg):
@@ -110,16 +103,15 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
     def CopyAsPNG(self):
         self.Copy_to_Clipboard()
 
-    def MatplotlibEvent(self, event):
-        "Create dummy event to check in_axes"
-        return DummyMouseEvent(event.GetX(), self.figure.bbox.height - event.GetY())
+    def _to_matplotlib_event(self, event, name='wx-event', button=None, key=None):
+        """Convert wxPython event to Matplotlib event
 
-    def MatplotlibEventAxes(self, event):
-        "Find axes under a wxPython mouse event"
-        mpl_event = self.MatplotlibEvent(event)
-        for ax in self.figure.axes:
-            if ax.in_axes(mpl_event):
-                return ax
+        - Sets axes and position but ignores source
+        - cf. matplotlib.backends.backend_wx._FigureCanvasWxBase
+        """
+        x = event.GetX()
+        y = self.figure.bbox.height - event.GetY()
+        return MouseEvent(name, self.figure.canvas, x, y, button, key, guiEvent=event)
 
     def redraw(self, axes=set(), artists=()):
         # FIXME:  redraw artist instead of whole axes

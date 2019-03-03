@@ -254,6 +254,7 @@ class Frame(FileFrame):
         self.canvas.mpl_connect('key_release_event', self.OnCanvasKey)
         # re-Bind right click
         self.canvas.Unbind(wx.EVT_RIGHT_DOWN)
+        self.canvas.Unbind(wx.EVT_RIGHT_UP)
         self.canvas.Bind(wx.EVT_RIGHT_DOWN, self.OnRightDown)
 
         # Finalize
@@ -468,13 +469,8 @@ class Frame(FileFrame):
 
         InfoFrame(self, "Component %i Epoch SS" % i_comp, doc.get_html())
 
-    def OnRightDown(self, event):
-        ax = self.canvas.MatplotlibEventAxes(event)
-        if not ax:
-            return
-
-        # costruct menu
-        menu = ContextMenu(ax.i)
+    def _component_context_menu(self, i_comp):
+        menu = ContextMenu(i_comp)
         item = menu.Append(wx.ID_ANY, "Rank Epochs")
         self.Bind(wx.EVT_MENU, self.OnRankEpochs, item)
         menu.AppendSeparator()
@@ -482,8 +478,13 @@ class Frame(FileFrame):
         self.Bind(wx.EVT_MENU, self.OnPlotCompTopomap, item)
         item = menu.Append(wx.ID_ANY, "Plot Source Array")
         self.Bind(wx.EVT_MENU, self.OnPlotCompSourceArray, item)
+        return menu
 
-        # show menu
+    def OnRightDown(self, event):
+        mpl_event = self.canvas._to_matplotlib_event(event)
+        if not mpl_event.inaxes:
+            return
+        menu = self._component_context_menu(mpl_event.inaxes.i)
         pos = self.panel.CalcScrolledPosition(event.Position)
         self.PopupMenu(menu, pos)
         menu.Destroy()
@@ -613,7 +614,7 @@ class SourceFrame(FileFrameChild):
     _title = 'ICA Source Time Course'
     _wildcard = "ICA fiff file (*-ica.fif)|*.fif"
 
-    def __init__(self, parent, i_first):
+    def __init__(self, parent: Frame, i_first: int):
         FileFrame.__init__(self, parent, None, None, parent.model)
 
         # prepare canvas
@@ -651,8 +652,12 @@ class SourceFrame(FileFrameChild):
         self.Bind(wx.EVT_TOOL, self.OnDown, id=wx.ID_DOWN)
         self.Bind(wx.EVT_TOOL, self.OnBackward, id=wx.ID_BACKWARD)
         self.Bind(wx.EVT_TOOL, self.OnForward, id=wx.ID_FORWARD)
-        self.canvas.mpl_connect('button_press_event', self.OnCanvasClick)
         self.canvas.mpl_connect('key_release_event', self.OnCanvasKey)
+        # re-Bind mouse click
+        self.canvas.Unbind(wx.EVT_LEFT_DOWN)
+        self.canvas.Bind(wx.EVT_LEFT_DOWN, self.OnLeftDown)
+        self.canvas.Unbind(wx.EVT_RIGHT_DOWN)
+        self.canvas.Bind(wx.EVT_RIGHT_DOWN, self.OnRightDown)
 
         self._plot()
         self.UpdateTitle()
@@ -786,12 +791,6 @@ class SourceFrame(FileFrameChild):
         "Turn the page backward"
         self.SetFirstEpoch(self.i_first_epoch - self.n_epochs)
 
-    def OnCanvasClick(self, event):
-        "Called by mouse clicks"
-        i_comp = self._event_i_comp(event)
-        if i_comp is not None:
-            self.model.toggle(i_comp)
-
     def OnCanvasKey(self, event):
         if event.key is None:
             return
@@ -847,6 +846,23 @@ class SourceFrame(FileFrameChild):
     def OnForward(self, event):
         "Turn the page forward"
         self.SetFirstEpoch(self.i_first_epoch + self.n_epochs)
+
+    def OnLeftDown(self, event):
+        "Called by mouse clicks"
+        mpl_event = self.canvas._to_matplotlib_event(event)
+        i_comp = self._event_i_comp(mpl_event)
+        if i_comp is None:
+            return
+        self.model.toggle(i_comp)
+
+    def OnRightDown(self, event):
+        mpl_event = self.canvas._to_matplotlib_event(event)
+        i_comp = self._event_i_comp(mpl_event)
+        if i_comp is None:
+            return
+        menu = self.parent._component_context_menu(i_comp)
+        self.PopupMenu(menu, event.Position)
+        menu.Destroy()
 
     def OnSetLayout(self, event):
         caption = "Set ICA Source Layout"
