@@ -1053,7 +1053,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
                 out[key] = combine([ds[key] for ds in items])
         return out
     elif stype is Var:
-        x = np.hstack(i.x for i in items)
+        x = np.hstack([i.x for i in items])
         return Var(x, name, info=_info.merge_info(items))
     elif stype is Factor:
         random = set(f.random for f in items)
@@ -1062,7 +1062,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
         random = random.pop()
         labels = first_item._labels
         if all(f._labels == labels for f in items[1:]):
-            x = np.hstack(f.x for f in items)
+            x = np.hstack([f.x for f in items])
             return Factor(x, name, random, labels=labels)
         else:
             x = sum((i.as_labels() for i in items), [])
@@ -6292,20 +6292,20 @@ class Interaction(_Effect):
     # numeric ---
     def __eq__(self, other):
         if isinstance(other, Interaction) and len(other.base) == len(self.base):
-            x = np.vstack((b == bo for b, bo in zip(self.base, other.base)))
+            x = np.vstack([b == bo for b, bo in zip(self.base, other.base)])
             return np.all(x, 0)
         elif isinstance(other, tuple) and len(other) == len(self.base):
-            x = np.vstack(factor == level for factor, level in zip(self.base, other))
+            x = np.vstack([factor == level for factor, level in zip(self.base, other)])
             return np.all(x, 0)
         else:
             return np.zeros(len(self), bool)
 
     def __ne__(self, other):
         if isinstance(other, Interaction) and len(other.base) == len(self.base):
-            x = np.vstack((b != bo for b, bo in zip(self.base, other.base)))
+            x = np.vstack([b != bo for b, bo in zip(self.base, other.base)])
             return np.any(x, 0)
         elif isinstance(other, tuple) and len(other) == len(self.base):
-            x = np.vstack(factor != level for factor, level in zip(self.base, other))
+            x = np.vstack([factor != level for factor, level in zip(self.base, other)])
             return np.any(x, 0)
         return np.ones(len(self), bool)
 
@@ -8863,13 +8863,13 @@ class SourceSpaceBase(Dimension):
     @LazyProperty
     def coordinates(self):
         sss = self.get_source_space()
-        coords = (ss['rr'][v] for ss, v in zip(sss, self.vertices))
+        coords = [ss['rr'][v] for ss, v in zip(sss, self.vertices)]
         return np.vstack(coords)
 
     @LazyProperty
     def normals(self):
         sss = self.get_source_space()
-        normals = (ss['nn'][v] for ss, v in zip(sss, self.vertices))
+        normals = [ss['nn'][v] for ss, v in zip(sss, self.vertices)]
         return np.vstack(normals)
 
     def _array_index(self, arg):
@@ -8928,7 +8928,7 @@ class SourceSpaceBase(Dimension):
         self._assert_same_base(other)
         if any(np.any(np.setdiff1d(o, s, True)) for s, o in zip(self.vertices, other.vertices)):
             raise IndexError(f"{other}: contains sources not in {self}")
-        bool_index = np.hstack(np.in1d(s, o) for s, o in zip(self.vertices, other.vertices))
+        bool_index = np.hstack([np.in1d(s, o) for s, o in zip(self.vertices, other.vertices)])
         return np.flatnonzero(bool_index)
 
     def get_source_space(self, subjects_dir=None):
@@ -8983,7 +8983,7 @@ class SourceSpaceBase(Dimension):
             equal)
         """
         self._assert_same_base(other)
-        index = np.hstack(np.in1d(s, o) for s, o in zip(self.vertices, other.vertices))
+        index = np.hstack([np.in1d(s, o) for s, o in zip(self.vertices, other.vertices)])
         return self[index]
 
     @property
