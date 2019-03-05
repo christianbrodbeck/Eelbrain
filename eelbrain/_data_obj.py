@@ -1418,7 +1418,8 @@ class Var:
         x = self.x[~is_nan] if n_nan else self.x
         unique = np.unique(x)
         if len(unique) <= 10:
-            items = [f'{v:g}:{np.sum(self.x == v)}' for v in unique]
+            ns = [(v, np.sum(self.x == v)) for v in unique]
+            items = [f'{v:g}:{n}' if n > 1 else f'{v:g}' for v, n in ns]
             if nan_str:
                 items.append(nan_str)
             out = ''
@@ -2317,7 +2318,8 @@ class Factor(_Effect):
             return ns
 
     def _summary(self, width=80):
-        items = [f'{label}:{np.sum(self.x == code)}' for code, label in self._labels.items()]
+        ns = [(label, np.sum(self.x == code)) for code, label in self._labels.items()]
+        items = [f'{label}:{n}' if n > 1 else label for label, n in ns]
         if sum(map(len, items)) + 2 * len(items) - 2 <= width:
             return ', '.join(items)
         n_cells = f'... ({len(items)} cells)'
