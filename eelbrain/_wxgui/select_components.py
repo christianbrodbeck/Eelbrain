@@ -415,7 +415,8 @@ class Frame(FileFrame):
                 self.doc.epoch_labels[e], LINK % (c, e)) for e in epochs)))
             doc.append(fmtxt.linebreak)
 
-        InfoFrame(self, "Rare Events", doc.get_html())
+        style = wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP
+        InfoFrame(self, "Rare Events", doc.get_html(), size=(500, 700), style=style)
 
     def OnPanelResize(self, event):
         w, h = event.GetSize()
@@ -464,7 +465,8 @@ class Frame(FileFrame):
             lst.add_item(link + f': {ss[i]:.1f}')
         doc = fmtxt.Section(f"#{i_comp} Ranked Epochs", lst)
 
-        InfoFrame(self, f"Component {i_comp} Epoch SS", doc.get_html())
+        style = wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP
+        InfoFrame(self, f"Component {i_comp} Epoch SS", doc.get_html(), size=(200, 700), style=style)
 
     def _component_context_menu(self, i_comp):
         menu = ContextMenu(i_comp)
