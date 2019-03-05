@@ -455,18 +455,15 @@ class Frame(FileFrame):
 
         # sort
         sort = np.argsort(ss)[::-1]
-        ss = ss[sort]
 
         # doc
-        lst = fmtxt.List("Epochs SS loading in descending order for component "
-                         "%i:" % i_comp)
-        for i, ss_epoch in enumerate(ss):
-            lst.add_item(
-                fmtxt.Link(self.doc.epoch_labels[i], LINK % (i_comp, i)) +
-                ': %.1f' % ss_epoch)
-        doc = fmtxt.Section("# %i Ranked Epochs" % i_comp, lst)
+        lst = fmtxt.List(f"Epochs SS loading in descending order for component {i_comp}")
+        for i in sort:
+            link = fmtxt.Link(self.doc.epoch_labels[i], LINK % (i_comp, i))
+            lst.add_item(link + f': {ss[i]:.1f}')
+        doc = fmtxt.Section(f"#{i_comp} Ranked Epochs", lst)
 
-        InfoFrame(self, "Component %i Epoch SS" % i_comp, doc.get_html())
+        InfoFrame(self, f"Component {i_comp} Epoch SS", doc.get_html())
 
     def OnRightDown(self, event):
         ax = self.canvas.MatplotlibEventAxes(event)
