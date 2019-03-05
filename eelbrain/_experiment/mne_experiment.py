@@ -5593,8 +5593,24 @@ class MneExperiment(FileTree):
         brain.add_label(label, alpha=0.75)
         return brain
 
-    def plot_raw(self, decim=10, xlim=5, add_bads=True, **state):
-        """Plot raw sensor data"""
+    def plot_raw(self, decim=10, xlim=5, add_bads=True, subtract_mean=False, **state):
+        """Plot raw sensor data
+
+        Parameters
+        ----------
+        decim : int
+            Decimate data for faster plotting (default 10).
+        xlim : scalar
+            Number of seconds to display (default 5 s).
+        add_bads : bool | list
+            Add bad channel information to the bad channels text file (default
+            True).
+        subtract_mean : bool
+            Subtract the mean from each channel (useful when plotting raw data
+            recorded with DC offset).
+        ...
+            State parameters.
+        """
         raw = self.load_raw(add_bads, ndvar=True, decim=decim, **state)
         name = self.format("{subject} {recording} {raw}")
         if raw.info['meas'] == 'V':
@@ -5603,6 +5619,8 @@ class MneExperiment(FileTree):
             vmax = 2e-12
         else:
             vmax = None
+        if subtract_mean:
+            raw -= raw.mean('time')
         return plot.TopoButterfly(raw, w=0, h=3, xlim=xlim, vmax=vmax, name=name)
 
     def run_mne_analyze(self, modal=False):
