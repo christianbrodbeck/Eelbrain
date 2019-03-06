@@ -8430,14 +8430,12 @@ class Sensor(Dimension):
 
         if missing == 'raise':
             if missing_chs:
-                msg = ("The following channels are not in the raw data: "
-                       "%s" % ', '.join(sorted(missing_chs)))
-                raise ValueError(msg)
+                raise ValueError(f"The following channels are not in the raw data: {', '.join(sorted(missing_chs))}")
             return sorted(valid_chs)
         elif missing == 'return':
             return sorted(valid_chs), missing_chs
         else:
-            raise ValueError("missing=%s" % repr(missing))
+            raise ValueError(f"missing={missing!r}")
 
     def intersect(self, dim, check_dims=True):
         """Create a Sensor dimension that is the intersection with dim
