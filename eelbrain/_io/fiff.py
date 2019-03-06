@@ -21,7 +21,7 @@ from .._info import BAD_CHANNELS
 from .._utils import ui
 from .._data_obj import (Var, NDVar, Dataset, Case, Sensor, Space, SourceSpace,
                          VolumeSourceSpace, UTS, _matrix_graph)
-from ..mne_fixes import MNE_EVOKED, MNE_RAW
+from ..mne_fixes import MNE_EVOKED, MNE_RAW, MNE_VOLUME_STC
 
 
 KIT_NEIGHBORS = {
@@ -1125,7 +1125,8 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
     Parameters
     ----------
     stc : SourceEstimate | list of SourceEstimates | str
-        The source estimate object(s) or a path to an stc file.
+        The source estimate object(s) or a path to an stc file. Volum and vector
+        source estimates are supported.
     subject : str
         MRI subject (used for loading MRI in PySurfer plotting)
     src : str
@@ -1176,12 +1177,14 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
 
     # Construct NDVar Dimensions
     time = UTS(stc.tmin, stc.tstep, stc.times.size)
-    if isinstance(stc, mne.VolSourceEstimate):
+    if isinstance(stc, MNE_VOLUME_STC):
         ss = VolumeSourceSpace([stc.vertices], subject, src, subjects_dir, None, filename=sss_filename)
         is_vector = stc.data.ndim == 3
-    else:
+    elif isinstance(stc, (mne.SourceEstimate, mne.VectorSourceEstimate)):
         ss = SourceSpace(stc.vertices, subject, src, subjects_dir, parc, filename=sss_filename)
         is_vector = isinstance(stc, mne.VectorSourceEstimate)
+    else:
+        raise TypeError(f"stc={stc!r}")
     # Apply connectivity modification
     if isinstance(connectivity, str):
         if connectivity == 'link-midline':
