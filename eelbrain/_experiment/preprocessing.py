@@ -228,6 +228,8 @@ class RawSource(RawPipe):
             new_bads = sorted(set(old_bads).union(new_bads))
         # print change
         print(f"{old_bads} -> {new_bads}")
+        if new_bads == old_bads:
+            return
         # write new bad channels
         text = '\n'.join(new_bads)
         with open(path, 'w') as fid:
@@ -333,7 +335,7 @@ class CachedRawPipe(RawPipe):
         self.source.make_bad_channels_auto(*args, **kwargs)
 
     def mtime(self, subject, session, bad_chs=True):
-        return self.source.mtime(subject, session, bad_chs)
+        return self.source.mtime(subject, session, bad_chs or self._bad_chs_affect_cache)
 
 
 class RawFilter(CachedRawPipe):
@@ -511,9 +513,20 @@ class RawICA(CachedRawPipe):
         raw.info['bads'] = bad_channels
         if exists(path):
             ica = mne.preprocessing.read_ica(path)
-            if self._check_ica_channels(ica, raw):
-                return path
-            self.log.info("Raw %s: ICA outdated due to change in bad channels for %s", self.name, subject)
+            if not self._check_ica_channels(ica, raw):
+                self.log.info("Raw %s: ICA outdated due to change in bad channels for %s", self.name, subject)
+            else:
+                mtimes = [self.source.mtime(subject, session, self._bad_chs_affect_cache) for session in self.session]
+                if all(mtimes) and getmtime(path) > max(mtimes):
+                    return path
+                # ICA file is newer than raw
+                command = ask(f"The input for the ICA of {subject} seems to have changed since the ICA was generated.", [('delete', 'delete and recompute the ICA'), ('ignore', 'Keep using the old ICA')], help="This message indicates that the modification date of the raw input data or of the bad channels file is more recent than that of the ICA file. If the data actually changed, ICA components might not be valid anymore and should be recomputed. If the change is spurious (e.g., the raw file was modified in a way that does not affect the ICA) load and resave the ICA file to stop seeing this message.")
+                if command == 'ignore':
+                    return path
+                elif command == 'delete':
+                    remove(path)
+                else:
+                    raise RuntimeError(f"command={command!r}")
 
         for session in self.session[1:]:
             raw_ = self.source.load(subject, session, False)
@@ -539,7 +552,7 @@ class RawICA(CachedRawPipe):
         return raw
 
     def mtime(self, subject, session, bad_chs=True):
-        mtime = CachedRawPipe.mtime(self, subject, session, bad_chs)
+        mtime = CachedRawPipe.mtime(self, subject, session, bad_chs or self._bad_chs_affect_cache)
         if mtime:
             path = self.ica_path.format(root=self.root, subject=subject)
             if exists(path):
