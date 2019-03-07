@@ -998,17 +998,14 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
         x = e0.data[picks]
         if case_out:
             x = x[None, :]
-        first, last, sfreq = e0.first, e0.last, round(e0.info['sfreq'], 2)
+        first, last, sfreq = e0.first, e0.last, e0.info['sfreq']
     else:
         # timing:  round sfreq because precision is lost by FIFF format
-        timing_set = {(e.first, e.last, round(e.info['sfreq'], 2)) for e in
-                      evoked}
+        timing_set = {(e.first, e.last, e.info['sfreq']) for e in evoked}
         if len(timing_set) == 1:
             first, last, sfreq = timing_set.pop()
         else:
-            raise ValueError("Evoked objects have different timing "
-                             "information (first, last, sfreq): " +
-                             ', '.join(map(str, timing_set)))
+            raise ValueError(f"Evoked objects have different timing information (first, last, sfreq): {', '.join(map(str, timing_set))}")
 
         # find excluded channels
         ch_sets = [set(e.info['ch_names']) for e in evoked]
