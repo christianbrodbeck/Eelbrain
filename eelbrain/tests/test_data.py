@@ -505,12 +505,11 @@ def test_dataset_sorting():
 
     # ascending, Var, copy
     dsa = ds_shuffled.sorted('v')
-    assert_dataset_equal(dsa, ds, "Copy sorted by Var, ascending")
+    assert_dataset_equal(dsa, ds)
 
     # descending, Factor, in-place
     ds_shuffled.sort('f', descending=True)
-    assert_dataset_equal(ds_shuffled, ds[::-1], "In-place sorted by Factor, "
-                         "descending")
+    assert_dataset_equal(ds_shuffled, ds[::-1])
 
 
 def test_dim_categorial():

@@ -77,10 +77,12 @@ class Epoch(EpochBase):
                  vars=None, trigger_shift=0., post_baseline_trigger_shift=None,
                  post_baseline_trigger_shift_min=None,
                  post_baseline_trigger_shift_max=None):
-        if (post_baseline_trigger_shift is not None and
-                (post_baseline_trigger_shift_min is None or
-                 post_baseline_trigger_shift_max is None)):
-            raise ValueError(f"{self.__class__.__name__} contains post_baseline_trigger_shift but is missing post_baseline_trigger_shift_min and/or post_baseline_trigger_shift_max")
+        if post_baseline_trigger_shift is not None:
+            if post_baseline_trigger_shift_min is None or post_baseline_trigger_shift_max is None:
+                raise DefinitionError(f"post_baseline_trigger_shift={post_baseline_trigger_shift} but missing post_baseline_trigger_shift_min and/or post_baseline_trigger_shift_max")
+            cut_time = post_baseline_trigger_shift_max - post_baseline_trigger_shift_min
+            if cut_time >= tmax - tmin:
+                raise DefinitionError("No data remaining after trigger shift")
 
         if decim is not None:
             if decim < 1:

@@ -12,7 +12,6 @@ import shutil
 import tempfile
 
 from nose.plugins.skip import SkipTest
-from nose.tools import assert_equal, eq_
 import numpy as np
 from numpy.testing import assert_array_equal
 
@@ -29,7 +28,7 @@ class TempDir(str):
         shutil.rmtree(self, ignore_errors=True)
 
 
-def assert_dataset_equal(ds1, ds2, msg="Datasets unequal", decimal=None):
+def assert_dataset_equal(ds1, ds2, decimal=None):
     """
     Raise an assertion if two Datasets are not equal up to desired precision.
 
@@ -37,50 +36,39 @@ def assert_dataset_equal(ds1, ds2, msg="Datasets unequal", decimal=None):
     ----------
     ds1, ds2 : Dataset
         Datasets to compare.
-    msg : str
-        Prefix of the error message to be printed in case of failure.
     decimal : None | int
         Desired precision (default is exact match).
     """
-    assert_equal(ds1.keys(), ds2.keys(), "%s: different keys (%s vs %s)" %
-                 (msg, ds1.keys(), ds2.keys()))
+    assert ds1.keys() == ds2.keys()
     for k in ds1.keys():
-        assert_dataobj_equal(ds1[k], ds2[k], msg=msg, decimal=decimal)
-    assert_equal(ds1.info.keys(), ds2.info.keys(), "%s: keys in info" % msg)
+        assert_dataobj_equal(ds1[k], ds2[k], decimal=decimal)
+    assert ds1.info.keys() == ds2.info.keys()
 
 
-def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None,
-                         name=True):
+def assert_dataobj_equal(d1, d2, decimal=None, name=True):
     """Assert that two data-objects are equal up to desired precision.
 
     Parameters
     ----------
     d1, d2 : data-objects
         Data-objects to compare.
-    msg : str
-        Prefix of the error message to be printed in case of failure.
     decimal : None | int
         Desired precision (default is exact match).
     name : bool
         Assert that ``d1.name == d2.name``.
     """
     if not isdatacontainer(d1):
-        raise TypeError("d1 is not a data-object but %s" % repr(d1))
+        raise TypeError(f"d1 is not a data-object but {d1!r}")
     elif not isdatacontainer(d2):
-        raise TypeError("d2 is not a data-object but %s" % repr(d2))
+        raise TypeError(f"d2 is not a data-object but {d2!r}")
     else:
-        eq_(type(d1), type(d2))
-    msg += ":"
+        assert type(d1) == type(d2)
     if name:
         assert d1.name == d2.name
-    msg += ' Two %ss named %r have' % (d1.__class__.__name__, d1.name)
-    len1 = len(d1)
-    len2 = len(d2)
-    assert_equal(len1, len2, "%s unequal length: %i/%i" % (msg, len1, len2))
+    assert len(d1) == len(d2)
     if isuv(d1):
         if isinstance(d1, Var):
-            is_equal = np.allclose(d1.x, d2.x, equal_nan=True, rtol=0,
-                                   atol=10**-decimal if decimal else 0)
+            is_equal = np.allclose(d1.x, d2.x, equal_nan=True, rtol=0, atol=10**-decimal if decimal else 0)
         else:
             is_equal = d1 == d2
         if not np.all(is_equal):
@@ -90,12 +78,9 @@ def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None,
             ds['unequal'] = Factor(is_equal, labels={True: '', False: 'x'})
             if isinstance(d1, Var):
                 ds['difference'] = d1 - d2
-            raise AssertionError(f'{msg} unequal values:\n\n{ds}')
+            raise AssertionError(f'Two {d1.__class__.__name__}s named {d1.name!r} have unequal values:\n\n{ds}')
     elif isinstance(d1, NDVar):
-        if d1.shape != d2.shape:
-            raise AssertionError(
-                f"NDVars have different shape:\n  {d1.name}: {d1.shape}\n"
-                f"  {d2.name}: {d2.shape}")
+        assert d1.dims == d2.dims
         if decimal:
             is_different = np.max(np.abs(d1.x - d2.x)) >= 10**-decimal
         else:
@@ -105,36 +90,24 @@ def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None,
             n = reduce(mul, d1.x.shape)
             n_different = (d1.x != d2.x).sum()
             mean_diff = np.abs(d1.x - d2.x).sum() / n_different
-            raise AssertionError("%s unequal values. Difference in %i of %i "
-                                 "values, average difference=%s." %
-                                 (msg, n_different, n, mean_diff))
+            raise AssertionError(f"NDVars names {d1.name!r} have unequal values. Difference in {n_different} of {n} values, average difference={mean_diff}.")
     elif isdatalist(d1):
-        for i in range(len(d1)):
-            assert_equal(d1[i], d2[i], "%s unequal values" % msg)
+        assert all(item1 == item2 for item1, item2 in zip(d1, d2))
 
 
-def assert_source_space_equal(src1, src2, msg="SourceSpace Dimension objects "
-                              "unequal"):
+def assert_source_space_equal(src1, src2):
     """Assert that two SourceSpace objects are identical
 
     Parameters
     ----------
     src1, src2 : SourceSpace objects
         SourceSpace objects to compare.
-    msg : str
-        Prefix of the error message to be printed in case of failure.
     """
-    msg = "%s:" % msg
-    assert_array_equal(src1.vertices[0], src2.vertices[0], "%s unequal lh vertices "
-                       "(%r vs %r)" % (msg, src1.vertices[0], src2.vertices[0]))
-    assert_array_equal(src1.vertices[1], src2.vertices[1], "%s unequal rh vertices "
-                       "(%r vs %r)" % (msg, src1.vertices[1], src2.vertices[1]))
-    assert_equal(src1.subject, src2.subject, "%s unequal subject (%r vs %r"
-                 ")" % (msg, src1.subject, src2.subject))
-    assert_equal(src1.src, src2.src, "%s unequal names (%r vs %r"
-                 ")" % (msg, src1.src, src2.src))
-    assert_equal(src1.subjects_dir, src2.subjects_dir, "%s unequal names (%r "
-                 "vs %r)" % (msg, src1.subjects_dir, src2.subjects_dir))
+    assert_array_equal(src1.vertices[0], src2.vertices[0])
+    assert_array_equal(src1.vertices[1], src2.vertices[1])
+    assert src1.subject == src2.subject
+    assert src1.src == src2.src
+    assert src1.subjects_dir == src2.subjects_dir
 
 
 class GUITestContext(ContextDecorator):
