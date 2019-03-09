@@ -2619,9 +2619,10 @@ class TimeController:
         self.current_time = t
         self.fixate = fixate
 
-    def add_plot(self, plot):
+    def add_plot(self, plot: 'TimeSlicer'):
         if plot._time_controller is None:
-            plot._set_time(self.current_time, self.fixate)
+            t = plot._validate_time(self.current_time)
+            plot._set_time(t, self.fixate)
             self._plots.append(weakref.ref(plot))
             plot._time_controller = self
         elif plot._time_controller is not self:
