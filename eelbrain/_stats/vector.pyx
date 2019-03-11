@@ -35,7 +35,7 @@ ctypedef cnp.int8_t INT8
 ctypedef cnp.int64_t INT64
 ctypedef cnp.float64_t FLOAT64
 
-cdef double TOL = 1e-8
+cdef double TOL = 1e-15
 
 cdef extern from "dsyevh3.c":
     int dsyevh3(double A[3][3], double Q[3][3], double w[3])
@@ -162,7 +162,8 @@ def t2_stat(cnp.ndarray[FLOAT64, ndim=3] y,
             if eig[v] > TOL:
                 norm += temp ** 2 / eig[v]
             else:
-                norm += temp ** 2 / TOL
+                norm += 0
+                # norm += temp ** 2 / TOL
         out[i] = norm ** 0.5
     return out
 
@@ -215,6 +216,7 @@ def t2_stat_rotated(cnp.ndarray[FLOAT64, ndim=3] y,
             if eig[v] > TOL:
                 norm += temp ** 2 / eig[v]
             else:
-                norm += temp ** 2 / TOL
+                norm += 0
+                # norm += temp ** 2 / TOL
         out[i] = norm ** 0.5
     return out
