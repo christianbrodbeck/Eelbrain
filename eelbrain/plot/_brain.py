@@ -1387,22 +1387,11 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, surf='inflated',
     # butterfly-plot
     p = Butterfly(bfly_data, vmin=vmin, vmax=vmax, xlim=xlim, h=h, w=w, ncol=1, name=name, color='black', ylabel=hemis, axtitle=False)
 
-    # position the brain window next to the butterfly-plot
-    brain_h = h * p._layout.dpi
-    if isinstance(p._frame, CanvasFrame):
-        px, py = p._frame.GetPosition()
-        pw, _ = p._frame.GetSize()
-        display_w, _ = wx.DisplaySize()
-        brain_w = int(brain_h * len(hemis) * BRAIN_W / BRAIN_H)
-        brain_x = min(px + pw, display_w - brain_w)
-        pos = (brain_x, py)
-    else:
-        pos = wx.DefaultPosition
-
     # Brain plot
-    p_brain = brain(brain_data, cmap, vmin, vmax, surf, views, hemi, mask=mask,
-                    smoothing_steps=smoothing_steps, axh=brain_h, name=name,
-                    pos=pos)
+    brain_h = h * p._layout.dpi
+    p_brain = brain(brain_data, cmap, vmin, vmax, surf, views, hemi, mask=mask, smoothing_steps=smoothing_steps, axh=brain_h, name=name)
+
+    p._auto_position(p_brain)
     p.link_time_axis(p_brain)
 
     return p, p_brain

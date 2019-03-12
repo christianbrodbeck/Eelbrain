@@ -48,10 +48,6 @@ from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, brain_data, b
 from ._utsnd import Butterfly
 
 
-# keep track of open plots to optimally position new plots on screen
-OPEN_BUTTERFLY_PLOTS = []
-
-
 # Copied from nilearn.plotting.img_plotting
 def _crop_colorbar( cbar, cbar_vmin, cbar_vmax ):
     """crop a colorbar to show from cbar_vmin to cbar_vmax.(symmetric_cbar=False)"""
@@ -546,8 +542,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         glassbrain : GlassBrain
             GlassBrain plot.
         """
-        from .._wxgui import wx, get_app, needs_jumpstart
-        from .._wxgui.mpl_canvas import CanvasFrame
+        from .._wxgui import get_app, needs_jumpstart
         jumpstart = needs_jumpstart()
 
         hemis, bfly_data, brain_data = butterfly_data(y, None, return_vector_data=draw_arrows)
@@ -557,36 +552,6 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
 
         p = Butterfly(bfly_data, vmin=vmin, vmax=vmax, xlim=xlim, h=h, w=w, ncol=1, name=name, color='black', ylabel=hemis, axtitle=False)
 
-        # position the butterfly plot under the previous one
-        if isinstance(p._frame, CanvasFrame):
-            px, py = wx.ClientDisplayRect()[:2]
-            _, ph = p._frame.GetSize()
-            old_ys = []
-            if OPEN_BUTTERFLY_PLOTS:
-                for old_p in list(OPEN_BUTTERFLY_PLOTS):
-                    if old_p._frame is None:
-                        OPEN_BUTTERFLY_PLOTS.remove(old_p)
-                    else:
-                        old_x, old_y = old_p._frame.GetPosition()
-                        if old_x < px + 10:
-                            _, old_h = old_p._frame.GetSize()
-                            old_ys.append((old_y, old_y + old_h))
-                if old_ys:
-                    old_ys.sort()
-                    # find vertical space without overlap
-                    for y_start, y_stop in old_ys:
-                        overlap = max(0, min(py + ph, y_stop) - max(py, y_start))
-                        # print(f"overlap: [{y_start}, {y_stop}], [{py}, {py + ph}] -> {overlap}")
-                        if overlap:
-                            py = y_stop
-                        else:
-                            break
-                    display_w, display_h = wx.DisplaySize()
-                    py = min(y_stop, display_h - ph)
-
-            p._frame.SetPosition((px, py))
-            OPEN_BUTTERFLY_PLOTS.append(p)
-
         # Give wxPython a chance to initialize the menu before pyplot
         if jumpstart:
             get_app().jumpstart()
@@ -594,15 +559,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         # GlassBrain plot
         p_glassbrain = GlassBrain(brain_data, cmap, vmin, vmax, dest, mri_resolution, mni305, black_bg, display_mode, threshold, colorbar, True, True, alpha, plot_abs, draw_arrows, symmetric_cbar, interpolation, h=h, name=name, **kwargs)
 
-        # position the brain window next to the butterfly-plot
-        if isinstance(p._frame, CanvasFrame):
-            px, py = p._frame.GetPosition()
-            pw, _ = p._frame.GetSize()
-            display_w, _ = wx.DisplaySize()
-            brain_w, _ = p_glassbrain._frame.GetSize()
-            brain_x = min(px + pw, display_w - brain_w)
-            p_glassbrain._frame.SetPosition((brain_x, py))
-
+        p._auto_position(p_glassbrain)
         p.link_time_axis(p_glassbrain)
 
         return p, p_glassbrain

@@ -103,9 +103,6 @@ POINT = 0.013888888888898
 # defaults
 defaults = {'maxw': 16, 'maxh': 10}
 
-# store figures (they need to be preserved)
-figures = []
-
 
 class PlotType(Enum):
     GENERAL = auto()

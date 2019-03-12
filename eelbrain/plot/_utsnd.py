@@ -434,6 +434,8 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
     """
     _cmaps = None  # for TopoMapKey mixin
     _contours = None
+    # keep track of open butterfly combo plots to optimally position new plots on screen
+    _OPEN_PLOTS = []
 
     def __init__(self, y, xax=None, sensors=None, axtitle=True,
                  xlabel=True, ylabel=True, xticklabels=-1, color=None,
@@ -467,6 +469,44 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
         LegendMixin.__init__(self, 'invisible', legend_handles)
         TimeSlicerEF.__init__(self, xdim, data.time_dim)
         self._show()
+
+    def _auto_position(self, p2=None):
+        """Position Butterfly plot and corresponding time-slice plot"""
+        from .._wxgui import wx
+        from .._wxgui.mpl_canvas import CanvasFrame
+
+        if not isinstance(self._frame, CanvasFrame):
+            return
+        px, py = wx.ClientDisplayRect()[:2]
+        display_w, display_h = wx.DisplaySize()
+        pw, ph = self._frame.GetSize()
+        old_ys = []
+        self.__class__._OPEN_PLOTS = [p for p in self._OPEN_PLOTS if p._frame is not None]
+        if self._OPEN_PLOTS:
+            for p in self._OPEN_PLOTS:
+                old_x, old_y = p._frame.GetPosition()
+                if old_x < px + 10:
+                    _, old_h = p._frame.GetSize()
+                    old_ys.append((old_y, old_y + old_h))
+            if old_ys:
+                old_ys.sort()
+                # find vertical space without overlap
+                for y_start, y_stop in old_ys:
+                    overlap = max(0, min(py + ph, y_stop) - max(py, y_start))
+                    # print(f"overlap: [{y_start}, {y_stop}], [{py}, {py + ph}] -> {overlap}")
+                    if overlap:
+                        py = y_stop
+                    else:
+                        break
+                py = min(y_stop, display_h - ph)
+
+        self._frame.SetPosition((px, py))
+        self._OPEN_PLOTS.append(self)
+
+        if p2:  # secondary plot
+            p2w, _ = p2._frame.GetSize()
+            p2x = min(px + pw, display_w - p2w)
+            p2._frame.SetPosition((p2x, py))
 
     def _fill_toolbar(self, tb):
         LegendMixin._fill_toolbar(self, tb)
