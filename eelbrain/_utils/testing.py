@@ -78,8 +78,7 @@ def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None,
     assert_equal(len1, len2, "%s unequal length: %i/%i" % (msg, len1, len2))
     if isuv(d1):
         if isinstance(d1, Var):
-            is_equal = np.allclose(d1.x, d2.x, equal_nan=True, rtol=0,
-                                   atol=10**-decimal if decimal else 0)
+            is_equal = np.isclose(d1.x, d2.x, equal_nan=True, rtol=0, atol=10**-decimal if decimal else 0)
         else:
             is_equal = d1 == d2
         if not np.all(is_equal):

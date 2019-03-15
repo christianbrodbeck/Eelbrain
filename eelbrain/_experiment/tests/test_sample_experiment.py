@@ -82,6 +82,25 @@ def test_sample():
     ds['n'] = Var(range(3))
     s_table = e._report_subject_info(ds, '')
 
+    # post_baseline_trigger_shift
+    # use multiple of tstep to shift by even number of samples
+    tstep = 0.008324800548266162
+    shift = -7 * tstep
+    class Experiment(SampleExperiment):
+        epochs = {
+            **SampleExperiment.epochs,
+            'visual-s': SecondaryEpoch('target', "modality == 'visual'", post_baseline_trigger_shift='shift', post_baseline_trigger_shift_max=0, post_baseline_trigger_shift_min=shift),
+        }
+        variables = {
+            **SampleExperiment.variables,
+            'shift': LabelVar('side', {'left': 0, 'right': shift}),
+            'shift_t': LabelVar('trigger', {(1, 3): 0, (2, 4): shift})
+        }
+    e = Experiment(root)
+    # test shift in events
+    ds = e.load_events()
+    assert_dataobj_equal(ds['shift_t'], ds['shift'], name=False)
+
     # test multiple epochs with same time stamp
     class Experiment(SampleExperiment):
         epochs = {
