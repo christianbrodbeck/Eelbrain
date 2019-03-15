@@ -96,8 +96,12 @@ def test_sample():
         variables = {
             **SampleExperiment.variables,
             'shift': LabelVar('side', {'left': 0, 'right': shift}),
+            'shift_t': LabelVar('trigger', {(1, 3): 0, (2, 4): shift})
         }
     e = Experiment(root)
+    # test shift in events
+    ds = e.load_events()
+    assert_dataobj_equal(ds['shift_t'], ds['shift'], name=False)
     # compare against epochs (baseline correction on epoch level rather than evoked for smaller numerical error)
     ep = e.load_epochs(baseline=True, epoch='visual', rej='').aggregate('side')
     evs = e.load_evoked(baseline=True, epoch='visual-s', rej='', model='side')

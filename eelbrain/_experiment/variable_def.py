@@ -128,11 +128,11 @@ class LabelVar(VarDef):
                 other.labels == self.labels and other.default == self.default)
 
     def apply(self, ds, e):
+        source = ds.eval(self.source)
         if self.is_factor:
-            return Factor(ds.eval(self.source), labels=self.labels, default=self.default)
+            return Factor(source, labels=self.labels, default=self.default)
         else:
-            v = asfactor(self.source, ds=ds).as_var(self.codes, self.default)
-            return as_vardef_var(v)
+            return Var.from_dict(source, self.labels, default=self.default)
 
     def input_vars(self):
         return find_variables(self.source)
