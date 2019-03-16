@@ -322,7 +322,7 @@ class SensorMapMixin:
         self.__LabelChoice.SetSelection(sel)
 
     def _fill_toolbar(self, tb):
-        import wx
+        from .._wxgui import wx
 
         # sensor labels
         lbl = wx.StaticText(tb, -1, "Labels:")
@@ -345,7 +345,8 @@ class SensorMapMixin:
         tb.AddControl(btn)
 
     def __OnMarkSensor(self, event):
-        import wx
+        from .._wxgui import wx
+
         msg = "Channels to mark, separated by comma"
         dlg = wx.TextEntryDialog(self._frame, msg, "Mark Sensor")
         if dlg.ShowModal() != wx.ID_OK:
@@ -535,7 +536,7 @@ class SensorMaps(EelFigure):
         self._show()
 
     def _fill_toolbar(self, tb):
-        import wx
+        from .._wxgui import wx
 
         tb.AddSeparator()
 

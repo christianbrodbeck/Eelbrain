@@ -10,7 +10,7 @@ class TextFrame(EelbrainFrame):
     def __init__(self, parent, title, text, *args, **kwargs):
         super(TextFrame, self).__init__(parent, title=title, *args, **kwargs)
         self.text = wx.TextCtrl(self, wx.ID_ANY, text,
-                                style=wx.TE_MULTILINE|wx.TE_READONLY)
+                                style=wx.TE_MULTILINE | wx.TE_READONLY)
         self.Show()
 
 
@@ -18,7 +18,6 @@ class HTMLWindow(wx.html.HtmlWindow):
 
     def OnLinkClicked(self, link):
         url = link.GetHref()
-        cell = link.GetHtmlCell()
         self.Parent.OpenURL(url)
 
 

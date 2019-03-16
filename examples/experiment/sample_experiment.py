@@ -14,6 +14,7 @@ Then you can use::
     >>> e = SampleExperiment("~/Data/SampleExperiment")
 
 """
+from eelbrain.pipeline import *
 from eelbrain import MneExperiment
 
 
@@ -47,54 +48,32 @@ class SampleExperiment(MneExperiment):
     }
 
     raw = {
-        'tsss':    {
-            'type':   'maxwell_filter',
-            'source': 'raw',
-            'kwargs': {'st_duration':    10.,
-                       'ignore_ref':     True,
-                       'st_correlation': .9,
-                       'st_only':        True}},
-        '1-40': {
-            'type':   'filter',
-            'source': 'tsss',
-            'args':   (1, 40),
-            'kwargs': FILTER_KWARGS},
-        'ica':     {
-            'type':    'ica',
-            'source':  'tsss',
-            'session': 'sample',
-            'kwargs':  {'n_components': 0.95,
-                        'random_state': 0,
-                        'method':       'fastica'}},
-        'ica1-40': {
-            'type':   'filter',
-            'source': 'ica',
-            'args':   (1, 40),
-            'kwargs': FILTER_KWARGS},
+        'tsss': RawMaxwell('raw', st_duration=10., ignore_ref=True, st_correlation=.9, st_only=True),
+        '1-40': RawFilter('tsss', 1, 40, **FILTER_KWARGS),
+        'ica': RawICA('tsss', 'sample', method='fastica', n_components=0.95),
+        'ica1-40': RawFilter('ica', 1, 40, **FILTER_KWARGS),
     }
 
     epochs = {
         # all target stimuli:
-        'target': {'sel': "event == 'target'", 'tmax': 0.3},
+        'target': PrimaryEpoch('sample', "event == 'target'", tmax=0.3, decim=5),
         # only auditory stimulation
-        'auditory': {'base': 'target', 'sel': "modality == 'auditory'"},
+        'auditory': SecondaryEpoch('target', "modality == 'auditory'"),
         # only visual stimulation
-        'visual': {'base': 'target', 'sel': "modality == 'visual'"},
+        'visual': SecondaryEpoch('target', "modality == 'visual'"),
         # recombine auditory and visual
-        'av': {'sub_epochs': ('auditory', 'visual')},
+        'av': SuperEpoch(('auditory', 'visual')),
     }
 
     tests = {
         # T-test to compare left-sided vs right-sided stimulation
-        'left=right': {'kind': 'ttest_rel', 'model': 'side',
-                       'c1': 'left', 'c0': 'right'},
+        'left=right': TTestRel('side', 'left', 'right'),
         # One-tailed test for auditory > visual stimulation
-        'a>v': {'kind': 'ttest_rel', 'model': 'modality',
-                'c1': 'auditory', 'c0': 'visual', 'tail': 1},
+        'a>v': TTestRel('modality', 'auditory', 'visual', tail=1),
         # Two-stage
-        'twostage': {'kind': 'two-stage',
-                     'model': 'side % modality',
-                     'stage 1': 'side_left + modality_a',
-                     'vars': {'side_left': "side == 'left'",
-                              'modality_a': "modality == 'auditory'"}}
+        'twostage': TwoStageTest(
+            stage_1='side_left + modality_a',
+            model='side % modality',
+            vars={'side_left': "side == 'left'",
+                  'modality_a': "modality == 'auditory'"}),
     }

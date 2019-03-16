@@ -115,7 +115,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
 
         layout = ImLayout(data.plot_used, 1, 5, margins, {}, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
-        self._set_axtitle(axtitle, data)
+        self._set_axtitle(axtitle, data, verticalalignment='top', pad=-1)
 
         # plots
         axes_data = data.for_plot(PlotType.IMAGE)
@@ -378,10 +378,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         self._topomap_data = data.for_plot(PlotType.IMAGE)
 
         # create figure
-        layout = VariableAspectLayout(
-            data.n_plots, 3, 10, (None, 1), None, (frame, False),
-            self._set_axtitle(axtitle, data, data.n_plots), *args, **kwargs
-        )
+        layout = VariableAspectLayout(data.n_plots, 3, 10, (None, 1), None, (frame, False), self._set_axtitle(axtitle, data, data.n_plots), *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
 
         self.bfly_axes = self._axes[0::2]
@@ -422,7 +419,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         # setup callback
         XAxisMixin._init_with_data(self, data.data, xdim, xlim, self.bfly_axes)
         YLimMixin.__init__(self, self.bfly_plots + self.topo_plots)
-        TimeSlicerEF.__init__(self, xdim, data.data, self.bfly_axes, False)
+        TimeSlicerEF.__init__(self, xdim, data.time_dim, self.bfly_axes, False)
         TopoMapKey.__init__(self, self._topo_data)
         self._realtime_topo = True
         self._t_label = None  # time label under lowest topo-map
@@ -448,13 +445,13 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
 
     def _topo_data(self, event):
         ax = event.inaxes
+        p = self.bfly_plots[ax.id // 2]
         if ax in self.bfly_axes:
-            p = self.bfly_plots[ax.id // 2]
             t = event.xdata
             seg = [l.sub(time=t) for l in p.data]
         elif ax in self.topo_axes:
-            seg = self.topo_plots[ax.id // 2].data
             t = self._current_time
+            seg = [p.data[ax.id // 2].sub(time=t)]
         else:
             return
 
@@ -640,7 +637,7 @@ class _ax_topomap(_ax_im_array):
             head_pos: Union[float, Tuple[float, float]] = 0.,  # y if centered on x, or (x, y)
             head_linewidth: float = None):
         self.ax = ax
-        self.data = layers
+        self.data = layers  # will not update from .set_data()
         self.proj = proj
         sensor_dim = layers.y0.sensor
 
@@ -965,7 +962,7 @@ class TopoArray(ColorMapMixin, EelFigure):
             p.set_cmap(cmap, meas)
         self.draw()
 
-    def set_topo_t_single(self, topo_id, t, parent_im_id='auto'):
+    def set_topo_t_single(self, topo_id, t):
         """
         Set the time for a single topomap.
 
@@ -975,13 +972,7 @@ class TopoArray(ColorMapMixin, EelFigure):
             Index of the topomap (numbered throughout the figure).
         t : scalar or ``None``
             time point; ``None`` clears the topomap
-        parent_im_id : 'auto' | int
-            Index of the array plot from which to draw the topo plot. For
-            'auto', the array plot above the topomap is used.
         """
-        # get parent ax
-        if parent_im_id == 'auto':
-            parent_im_id = int(topo_id / self._ntopo)
         # get window ax
         w = self._topo_windows[topo_id]
         w.clear()
@@ -1009,7 +1000,7 @@ class TopoArray(ColorMapMixin, EelFigure):
         """
         for i in range(len(self._array_plots)):
             _topo = self._ntopo * i + topo_id
-            self.set_topo_t_single(_topo, t, parent_im_id=i)
+            self.set_topo_t_single(_topo, t)
 
     def set_topo_ts(self, *t_list):
         """Set the time points displayed in topo-maps across all array-plots"""

@@ -38,8 +38,7 @@ section.add_figure("Number of trials in each condition", freq_table)
 
 
 '''
-perform t-test for side of stimulation (only do 100 permutations here to save
-time. For a serious test set samples=10000).
+perform t-test for side of stimulation (for a more reliable test set samples=10000).
 '''
 res = e.testnd.ttest_ind('src', 'side', 'L', 'R', ds=ds,
                          samples=n_samples,  # number of permutations

@@ -34,7 +34,7 @@ These are elementary effects in a Model, and identified by :func:`is_effect`
 
 
 """
-from collections import Iterator, OrderedDict, Sequence
+from collections import Iterable, Iterator, OrderedDict, Sequence
 from copy import deepcopy
 from functools import partial
 from itertools import chain, product, zip_longest
@@ -53,9 +53,8 @@ from matplotlib.ticker import (
     FixedLocator, FormatStrFormatter, FuncFormatter, IndexFormatter)
 import mne
 from mne.source_space import label_src_vertno_sel
-from nibabel.freesurfer import read_annot
+from nibabel.freesurfer import read_annot, read_geometry
 import numpy as np
-from numpy import newaxis
 import scipy.signal
 import scipy.stats
 from scipy.linalg import inv, norm
@@ -71,7 +70,7 @@ from ._utils import (
 from ._utils.numpy_utils import (
     INT_TYPES, FULL_SLICE, FULL_AXIS_SLICE,
     apply_numpy_index, digitize_index, digitize_slice_endpoint,
-    index_length, index_to_int_array, take_slice, slice_to_arange)
+    index_length, index_to_int_array, newaxis, take_slice, slice_to_arange)
 from .mne_fixes import MNE_EPOCHS, MNE_EVOKED, MNE_RAW, MNE_LABEL
 from functools import reduce
 
@@ -92,6 +91,7 @@ preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __
 SRC_RE = re.compile('^(ico|vol)-(\d+)(?:-(\w+))?$')
 UNNAMED = '<?>'
 LIST_INDEX_TYPES = (*INT_TYPES, slice)
+EXPAND_INDEX_TYPES = (*INT_TYPES, np.ndarray)
 _pickled_ds_wildcard = ("Pickled Dataset (*.pickled)", '*.pickled')
 _tex_wildcard = ("TeX (*.tex)", '*.tex')
 _tsv_wildcard = ("Plain Text Tab Separated Values (*.txt)", '*.txt')
@@ -422,7 +422,18 @@ def asarray(x, kind=None, ds=None):
     return x
 
 
-def ascategorial(x, sub=None, ds=None, n=None):
+def _apply_sub(x, sub, n, return_n):
+    if n is None:
+        if return_n:
+            n = len(x)
+    elif len(x) != n:
+        raise ValueError("Arguments have different length")
+    if sub is not None:
+        x = x[sub]
+    return (x, n) if return_n else x
+
+
+def ascategorial(x, sub=None, ds=None, n=None, return_n=False):
     if isinstance(x, str):
         if ds is None:
             raise TypeError(f"{x!r}: Parameter was specified as string, but no Dataset was specified")
@@ -436,16 +447,10 @@ def ascategorial(x, sub=None, ds=None, n=None):
     else:
         x = asfactor(x)
 
-    if sub is not None:
-        x = x[sub]
-
-    if n is not None and len(x) != n:
-        raise ValueError("Arguments have different length")
-
-    return x
+    return _apply_sub(x, sub, n, return_n)
 
 
-def asdataobject(x, sub=None, ds=None, n=None):
+def asdataobject(x, sub=None, ds=None, n=None, return_n=False):
     "Convert to any data object or numpy array."
     if isinstance(x, str):
         if ds is None:
@@ -461,16 +466,10 @@ def asdataobject(x, sub=None, ds=None, n=None):
     else:
         x = Datalist(x)
 
-    if sub is not None:
-        x = x[sub]
-
-    if n is not None and len(x) != n:
-        raise ValueError("Arguments have different length")
-
-    return x
+    return _apply_sub(x, sub, n, return_n)
 
 
-def asepochs(x, sub=None, ds=None, n=None):
+def asepochs(x, sub=None, ds=None, n=None, return_n=False):
     "Convert to mne Epochs object"
     if isinstance(x, str):
         if ds is None:
@@ -484,16 +483,10 @@ def asepochs(x, sub=None, ds=None, n=None):
     else:
         raise TypeError("Need mne Epochs object, got %s" % repr(x))
 
-    if sub is not None:
-        x = x[sub]
-
-    if n is not None and len(x) != n:
-        raise ValueError("Arguments have different length")
-
-    return x
+    return _apply_sub(x, sub, n, return_n)
 
 
-def asfactor(x, sub=None, ds=None, n=None):
+def asfactor(x, sub=None, ds=None, n=None, return_n=False):
     if isinstance(x, str):
         if ds is None:
             raise TypeError(f"{x!r}: Factor was specified as string, but no Dataset was specified")
@@ -506,16 +499,19 @@ def asfactor(x, sub=None, ds=None, n=None):
     else:
         x = Factor(x)
 
-    if sub is not None:
-        x = x[sub]
-
-    if n is not None and len(x) != n:
-        raise ValueError("Arguments have different length")
-
-    return x
+    return _apply_sub(x, sub, n, return_n)
 
 
-def asmodel(x, sub=None, ds=None, n=None):
+def asindex(x):
+    if isinstance(x, Factor):
+        return x != ''
+    elif isinstance(x, Var):
+        return x.x
+    else:
+        return x
+
+
+def asmodel(x, sub=None, ds=None, n=None, return_n=False):
     if isinstance(x, str):
         if ds is None:
             raise TypeError("Model was specified as string, but no Dataset was "
@@ -536,16 +532,10 @@ def asmodel(x, sub=None, ds=None, n=None):
     else:
         x = Model(x)
 
-    if sub is not None:
-        x = x[sub]
-
-    if n is not None and len(x) != n:
-        raise ValueError("Arguments have different length")
-
-    return x
+    return _apply_sub(x, sub, n, return_n)
 
 
-def asndvar(x, sub=None, ds=None, n=None, dtype=None):
+def asndvar(x, sub=None, ds=None, n=None, dtype=None, return_n=False):
     if isinstance(x, str):
         if ds is None:
             raise TypeError("Ndvar was specified as string, but no Dataset was specified")
@@ -574,19 +564,13 @@ def asndvar(x, sub=None, ds=None, n=None, dtype=None):
     else:
         raise TypeError("NDVar required, got %s" % repr(x))
 
-    if sub is not None:
-        x = x[sub]
-
-    if n is not None and len(x) != n:
-        raise ValueError("Arguments have different length")
-
+    x, n = _apply_sub(x, sub, n, return_n=True)
     if dtype is not None and x.x.dtype != dtype:
         x = x.astype(dtype)
+    return (x, n) if return_n else x
 
-    return x
 
-
-def asnumeric(x, sub=None, ds=None, n=None):
+def asnumeric(x, sub=None, ds=None, n=None, return_n=False):
     "Var, NDVar"
     if isinstance(x, str):
         if ds is None:
@@ -597,19 +581,13 @@ def asnumeric(x, sub=None, ds=None, n=None):
     if not isnumeric(x):
         raise TypeError("Numeric argument required (Var or NDVar), got %s" % repr(x))
 
-    if sub is not None:
-        x = x[sub]
-
-    if n is not None and len(x) != n:
-        raise ValueError("Arguments have different length")
-
-    return x
+    return _apply_sub(x, sub, n, return_n)
 
 
-def assub(sub, ds=None):
+def assub(sub, ds=None, return_n=False):
     "Interpret the sub argument."
     if sub is None:
-        return None
+        return (None, None) if return_n else None
     elif isinstance(sub, str):
         if ds is None:
             raise TypeError("the sub parameter was specified as string, but no "
@@ -617,13 +595,18 @@ def assub(sub, ds=None):
         sub = ds.eval(sub)
 
     if isinstance(sub, Var):
-        return sub.x
+        sub = sub.x
     elif not isinstance(sub, np.ndarray):
-        raise TypeError("sub parameters needs to be Var or array, got %r" % (sub,))
-    return sub
+        raise TypeError(f"sub={sub}: needs to be Var or array")
+
+    if return_n:
+        n = len(sub) if sub.dtype.kind == 'b' else None
+        return sub, n
+    else:
+        return sub
 
 
-def asuv(x, sub=None, ds=None, n=None, interaction=False):
+def asuv(x, sub=None, ds=None, n=None, return_n=False, interaction=False):
     "Coerce to Var or Factor"
     if isinstance(x, str):
         if ds is None:
@@ -638,16 +621,10 @@ def asuv(x, sub=None, ds=None, n=None, interaction=False):
     else:
         x = Var(x)
 
-    if sub is not None:
-        x = x[sub]
-
-    if n is not None and len(x) != n:
-        raise ValueError("Arguments have different length")
-
-    return x
+    return _apply_sub(x, sub, n, return_n)
 
 
-def asvar(x, sub=None, ds=None, n=None):
+def asvar(x, sub=None, ds=None, n=None, return_n=False):
     "Coerce to Var"
     if isinstance(x, str):
         if ds is None:
@@ -658,13 +635,7 @@ def asvar(x, sub=None, ds=None, n=None):
     if not isinstance(x, Var):
         x = Var(x)
 
-    if sub is not None:
-        x = x[sub]
-
-    if n is not None and len(x) != n:
-        raise ValueError("Arguments have different length")
-
-    return x
+    return _apply_sub(x, sub, n, return_n)
 
 
 def index_ndim(index):
@@ -877,7 +848,7 @@ def align1(d, to, by='index', out='data'):
     elif out == 'index':
         return align_idx
     else:
-        ValueError(f"out={out!r}")
+        raise ValueError(f"out={out!r}")
 
 
 def choose(choice, sources, name=None):
@@ -1044,7 +1015,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
                 out[key] = combine([ds[key] for ds in items])
         return out
     elif stype is Var:
-        x = np.hstack(i.x for i in items)
+        x = np.hstack([i.x for i in items])
         return Var(x, name, info=_info.merge_info(items))
     elif stype is Factor:
         random = set(f.random for f in items)
@@ -1053,7 +1024,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
         random = random.pop()
         labels = first_item._labels
         if all(f._labels == labels for f in items[1:]):
-            x = np.hstack(f.x for f in items)
+            x = np.hstack([f.x for f in items])
             return Factor(x, name, random, labels=labels)
         else:
             x = sum((i.as_labels() for i in items), [])
@@ -1254,10 +1225,7 @@ class Var:
         return self._n_cases
 
     def __getitem__(self, index):
-        if isinstance(index, Factor):
-            raise TypeError("Factor can't be used as index")
-        elif isinstance(index, Var):
-            index = index.x
+        index = asindex(index)
         x = self.x[index]
         if isinstance(x, np.ndarray):
             return Var(x, self.name, info=self.info.copy())
@@ -1442,6 +1410,29 @@ class Var:
 
     def _coefficient_names(self, method):
         return longname(self),
+
+    def _summary(self, width=80):
+        is_nan = np.isnan(self.x)
+        n_nan = np.sum(is_nan)
+        nan_str = f'NaN:{n_nan}' if n_nan else ''
+        x = self.x[~is_nan] if n_nan else self.x
+        unique = np.unique(x)
+        if len(unique) <= 10:
+            ns = [(v, np.sum(self.x == v)) for v in unique]
+            items = [f'{v:g}:{n}' if n > 1 else f'{v:g}' for v, n in ns]
+            if nan_str:
+                items.append(nan_str)
+            out = ''
+            for item in items:
+                if len(out) + len(item) >= width - 2:
+                    break
+                out += f', {item}'
+            else:
+                return out
+        out = f'{x.min():g} - {x.max():g}'
+        if nan_str:
+            out += f', {nan_str}'
+        return out
 
     def abs(self, name=None):
         "Return a Var with the absolute value."
@@ -2143,7 +2134,7 @@ class Factor(_Effect):
         self._n_cases = len(self.x)
 
     def __setstate__(self, state):
-        self.x = x = state['x']
+        self.x = state['x']
         self.name = state['name']
         self.random = state['random']
         if 'ordered_labels' in state:
@@ -2199,9 +2190,7 @@ class Factor(_Effect):
         return self._n_cases
 
     def __getitem__(self, index):
-        if isinstance(index, Var):
-            index = index.x
-
+        index = asindex(index)
         x = self.x[index]
         if isinstance(x, np.ndarray):
             return Factor(x, self.name, self.random, labels=self._labels)
@@ -2327,6 +2316,19 @@ class Factor(_Effect):
             return n_set.pop()
         else:
             return ns
+
+    def _summary(self, width=80):
+        ns = [(label, np.sum(self.x == code)) for code, label in self._labels.items()]
+        items = [f'{label}:{n}' if n > 1 else label for label, n in ns]
+        if sum(map(len, items)) + 2 * len(items) - 2 <= width:
+            return ', '.join(items)
+        n_cells = f'... ({len(items)} cells)'
+        n = len(n_cells)
+        for i, item in enumerate(items):
+            if n + len(item) > width:
+                break
+            n += len(item) + 2
+        return f"{', '.join(items[:i])}{n_cells}"
 
     def aggregate(self, x, name=True):
         """
@@ -3159,8 +3161,20 @@ class NDVar:
     def __repr__(self):
         return '<NDVar%(name)s: %(dims)s>' % {
             'name': '' if self.name is None else ' %r' % self.name,
-            'dims': ', '.join('%i %s' % (len(dim), dim.name) for dim in
-                              self.dims)}
+            'dims': ', '.join(f'{len(dim)} {dim.name}' for dim in self.dims)}
+
+    def _summary(self, width=80):
+        items = [f'{len(dim)} {dim.name}' for dim in self.dims[1:]]
+        n = 0
+        for i, item in enumerate(items):
+            n += len(item)
+            if n > width - 3:
+                return ', '.join(items[:i]) + '...'
+        out = ', '.join(items)
+        range_desc = f'; {np.nanmin(self.x):g} - {np.nanmax(self.x):g}'
+        if len(out) + len(range_desc) <= width:
+            out += range_desc
+        return out
 
     def abs(self, name=None):
         """Compute the absolute values
@@ -3548,13 +3562,11 @@ class NDVar:
         if out is not None:
             if out is not self:
                 assert out.dims == self.dims
-            x = self.x.clip(min, max, out.x)
+            self.x.clip(min, max, out.x)
+            return out
         else:
             x = self.x.clip(min, max)
-        if out is None:
             return NDVar(x, self.dims, self.info, name or self.name)
-        else:
-            return out
 
     def copy(self, name=None):
         """A deep copy of the NDVar's data
@@ -3835,31 +3847,39 @@ class NDVar:
         "Return the Dimension object named ``name``"
         return self.dims[self.get_axis(name)]
 
-    def get_dimnames(self, names=None, last=None):
+    def get_dimnames(self, names=None, first=None, last=None):
         """Fill in a partially specified tuple of Dimension names
 
         Parameters
         ----------
         names : sequence of {str | None}
             Dimension names. Names specified as ``None`` are inferred.
+        first : str | sequence of str
+            Instead of ``names``, specify a constraint on the initial
+            dimension(s) only.
         last : str | sequence of str
-            Instead of ptoviding ``names``, specify a constraint on the last
-            dimension only.
+            Instead of ``names``, specify a constraint on the last
+            dimension(s) only.
 
         Returns
         -------
         inferred_names : tuple of str
             Dimension names in the same order as in ``names``.
         """
-        if last is not None:
+        if first is not None or last is not None:
             if names is not None:
-                raise TypeError("Can only specify names or last, not both")
-            tail = (last,) if isinstance(last, str) else last
+                raise TypeError("Can only specify names or first/last, not both")
+            head = () if first is None else (first,) if isinstance(first, str) else first
+            tail = () if last is None else (last,) if isinstance(last, str) else last
             dims = list(self.dimnames)
+            for dim in chain(head, tail):
+                try:
+                    dims.remove(dim)
+                except ValueError:
+                    raise ValueError(f"NDVar has no {dim} dimension")
+            for dim in reversed(head):
+                dims.insert(0, dim)
             for dim in tail:
-                if dim not in dims:
-                    raise ValueError("last=%r: NDVar has no %r dimension" % (last, dim))
-                dims.remove(dim)
                 dims.append(dim)
             return tuple(dims)
 
@@ -3878,7 +3898,7 @@ class NDVar:
         else:
             return tuple(names)
 
-    def get_dims(self, names):
+    def get_dims(self, names=None, first=None, last=None):
         """Return a tuple with the requested Dimension objects
 
         Parameters
@@ -3886,14 +3906,20 @@ class NDVar:
         names : sequence of {str | None}
             Names of the dimension objects. If ``None`` is inserted in place of
             names, these dimensions are inferred.
+        first : str | sequence of str
+            Instead of ``names``, specify a constraint on the initial
+            dimension(s) only.
+        last : str | sequence of str
+            Instead of ``names``, specify a constraint on the last
+            dimension(s) only.
 
         Returns
         -------
         dims : tuple of Dimension
             Dimension objects in the same order as in ``names``.
         """
-        if None in names:
-            names = self.get_dimnames(names)
+        if first or last or names is None or None in names:
+            names = self.get_dimnames(names, first, last)
         return tuple(self.get_dim(name) for name in names)
 
     def has_dim(self, name):
@@ -3983,6 +4009,12 @@ class NDVar:
         x_mask = self._ialign(mask)
         if x_mask.dtype.kind != 'b':
             x_mask = x_mask.astype(bool)
+        if x_mask.shape != self.x.shape:
+            for ax, (n_mask, n_self) in enumerate(zip(x_mask.shape, self.x.shape)):
+                if n_mask != n_self:
+                    if n_mask != 1:
+                        raise ValueError("Unable to broadcast mask to NDVar")
+                    x_mask = np.repeat(x_mask, n_self, ax)
         x = np.ma.MaskedArray(self.x, x_mask)
         return NDVar(x, self.dims, self.info, name or self.name)
 
@@ -4601,7 +4633,7 @@ class NDVar:
             dims.insert(0, Case)
 
         # adjust index dimension
-        if sum(isinstance(idx, np.ndarray) for idx in index) > 1:
+        if sum(isinstance(idx, EXPAND_INDEX_TYPES) for idx in index) > 1:
             ndim_increment = 0
             for i in range(n_axes - 1, -1, -1):
                 idx = index[i]
@@ -4799,6 +4831,18 @@ class Datalist(list):
         else:
             raise RuntimeError("Datalist._fmt=%s" % repr(self._fmt))
 
+    def _summary(self, width=80):
+        types = sorted({type(v) for v in self})
+        if len(types) == 1:
+            return f'{types[0].__name__}'
+        items = [f'{t.__name__}:{sum(isinstance(v, t) for v in self)}' for t in types]
+        n = 0
+        for i, item in enumerate(items):
+            if n + len(item) > width:
+                return ', '.join(items[:i]) + '...'
+            n += len(item) + 2
+        return ', '.join(items)
+
     def __eq__(self, other):
         if len(self) != len(other):
             raise ValueError("Unequal length")
@@ -4815,6 +4859,7 @@ class Datalist(list):
         elif isinstance(index, slice):
             return Datalist(list.__getitem__(self, index), fmt=self._fmt)
         else:
+            index = asindex(index)
             return Datalist(apply_numpy_index(self, index), fmt=self._fmt)
 
     def __setitem__(self, key, value):
@@ -4837,9 +4882,6 @@ class Datalist(list):
                     list.__setitem__(self, k, value)
         else:
             raise NotImplementedError("Datalist indexing with %s" % type(key))
-
-    def __getslice__(self, i, j):
-        return Datalist(list.__getslice__(self, i, j), fmt=self._fmt)
 
     def __add__(self, other):
         return Datalist(super(Datalist, self).__add__(other), fmt=self._fmt)
@@ -4936,19 +4978,20 @@ def as_legal_dataset_key(key):
             raise RuntimeError("Could not convert %r to legal dataset key")
 
 
-def cases_arg(cases, n_cases):
+def cases_arg(cases, n_cases) -> Iterable:
     "Coerce cases argument to iterator"
     if isinstance(cases, Integral):
         if cases < 1:
             cases = n_cases + cases
             if cases < 0:
-                raise ValueError("Can't get table for fewer than 0 cases")
+                raise ValueError(f"cases={cases}: Can't get table for fewer than 0 cases")
         else:
             cases = min(cases, n_cases)
-        if cases is not None:
-            return range(cases)
-    else:
+        return range(cases)
+    elif isinstance(cases, Iterable):
         return cases
+    else:
+        raise TypeError(f"cases={cases}")
 
 
 class Dataset(OrderedDict):
@@ -6050,6 +6093,7 @@ class Dataset(OrderedDict):
         else:
             if isinstance(index, str):
                 index = self.eval(index)
+            index = asindex(index)
             if keys is None:
                 keys = self.keys()
             elif isinstance(keys, str):
@@ -6057,6 +6101,38 @@ class Dataset(OrderedDict):
             items = ((k, OrderedDict.__getitem__(self, k)[index]) for k in keys)
 
         return Dataset(items, name or self.name, self._caption, self.info)
+
+    def summary(self, width=None):
+        """A summary of the Dataset's contents
+
+        Parameters
+        ----------
+        width : int
+            Width in characters (default depends on current terminal size).
+        """
+        if width is None:
+            try:
+                width = os.get_terminal_size().columns
+            except OSError:
+                width = 100
+        width -= max(map(len, self))
+        width -= max(len(v.__class__.__name__) for v in self.values())
+        width -= 6
+        out = fmtxt.Table('lll')
+        out.cells('Key', 'Type', 'Values')
+        out.midrule()
+        for k, v in self.items():
+            out.cell(k)
+            out.cell(v.__class__.__name__)
+            if hasattr(v, '_summary'):
+                summary = v._summary(width)
+            else:
+                summary = ''
+            out.cell(summary)
+        out.rules
+        name = 'Dataset' if self.name is None else self.name
+        out.caption(f"{name}: {self.n_cases} cases")
+        return out
 
     def tail(self, n=10):
         "Table with the last n cases in the Dataset"
@@ -6292,20 +6368,20 @@ class Interaction(_Effect):
     # numeric ---
     def __eq__(self, other):
         if isinstance(other, Interaction) and len(other.base) == len(self.base):
-            x = np.vstack((b == bo for b, bo in zip(self.base, other.base)))
+            x = np.vstack([b == bo for b, bo in zip(self.base, other.base)])
             return np.all(x, 0)
         elif isinstance(other, tuple) and len(other) == len(self.base):
-            x = np.vstack(factor == level for factor, level in zip(self.base, other))
+            x = np.vstack([factor == level for factor, level in zip(self.base, other)])
             return np.all(x, 0)
         else:
             return np.zeros(len(self), bool)
 
     def __ne__(self, other):
         if isinstance(other, Interaction) and len(other.base) == len(self.base):
-            x = np.vstack((b != bo for b, bo in zip(self.base, other.base)))
+            x = np.vstack([b != bo for b, bo in zip(self.base, other.base)])
             return np.any(x, 0)
         elif isinstance(other, tuple) and len(other) == len(self.base):
-            x = np.vstack(factor != level for factor, level in zip(self.base, other))
+            x = np.vstack([factor != level for factor, level in zip(self.base, other)])
             return np.any(x, 0)
         return np.ones(len(self), bool)
 
@@ -6715,7 +6791,7 @@ class Model:
         table : FMText Table
             The full model as a table.
         """
-        cases = cases_arg(cases, self.df_total)
+        itre_cases = cases_arg(cases, self.df_total)
         p = self._parametrize(method)
         table = fmtxt.Table('l' * len(p.column_names))
 
@@ -6731,7 +6807,7 @@ class Model:
         table.midrule()
 
         # data
-        for case in cases:
+        for case in itre_cases:
             for i in p.x[case]:
                 table.cell('%g' % i)
 
@@ -7151,6 +7227,14 @@ class Dimension:
     def _array_index_to(self, other):
         "Int index to access data from self in an order consistent with other"
         raise NotImplementedError(f"Internal alignment for {self.__class__}")
+
+    def _is_superset_of(self, dim):
+        "Test whether self is a superset of dim"
+        raise NotImplementedError
+
+    def index_into_dim(self, dim):
+        "Index into a subset dimension"
+        raise NotImplementedError
 
     def _dimname(self):
         if self.name.lower() == self.__class__.__name__.lower():
@@ -8346,14 +8430,12 @@ class Sensor(Dimension):
 
         if missing == 'raise':
             if missing_chs:
-                msg = ("The following channels are not in the raw data: "
-                       "%s" % ', '.join(sorted(missing_chs)))
-                raise ValueError(msg)
+                raise ValueError(f"The following channels are not in the raw data: {', '.join(sorted(missing_chs))}")
             return sorted(valid_chs)
         elif missing == 'return':
             return sorted(valid_chs), missing_chs
         else:
-            raise ValueError("missing=%s" % repr(missing))
+            raise ValueError(f"missing={missing!r}")
 
     def intersect(self, dim, check_dims=True):
         """Create a Sensor dimension that is the intersection with dim
@@ -8865,34 +8947,31 @@ class SourceSpaceBase(Dimension):
     @LazyProperty
     def coordinates(self):
         sss = self.get_source_space()
-        coords = (ss['rr'][v] for ss, v in zip(sss, self.vertices))
+        coords = [ss['rr'][v] for ss, v in zip(sss, self.vertices)]
         return np.vstack(coords)
 
     @LazyProperty
     def normals(self):
         sss = self.get_source_space()
-        normals = (ss['nn'][v] for ss, v in zip(sss, self.vertices))
+        normals = [ss['nn'][v] for ss, v in zip(sss, self.vertices)]
         return np.vstack(normals)
 
     def _array_index(self, arg):
-        if isinstance(arg, SourceSpace):
-            sv = self.vertices
-            ov = arg.vertices
-            if all(np.array_equal(s, o) for s, o in zip(sv, ov)):
-                return FULL_SLICE
-            elif any(any(np.setdiff1d(o, s)) for o, s in zip(ov, sv)):
-                raise IndexError("Index contains unknown sources")
-            else:
-                return np.hstack([np.in1d(s, o, True) for s, o in zip(sv, ov)])
-        elif isinstance(arg, Integral) or (isinstance(arg, np.ndarray) and
-                                           arg.dtype.kind == 'i'):
+        if isinstance(arg, Integral) or (isinstance(arg, np.ndarray) and arg.dtype.kind in 'ib'):
             return arg
-        elif isinstance(arg, Sequence) and all(isinstance(label, str) for
-                                               label in arg):
-            if self.parc is not None and all(a in self.parc.cells for a in arg):
-                return self.parc.isin(arg)
+        elif isinstance(arg, Sequence):
+            if all(isinstance(v, str) for v in arg):
+                if self.parc is not None and all(a in self.parc for a in arg):
+                    return self.parc.isin(arg)
+                else:
+                    try:
+                        return [self._array_index_for_vertex(v) for v in arg]
+                    except NotImplementedError:
+                        raise IndexError(f"{arg!r}")
+            elif all(isinstance(v, INT_TYPES) for v in arg):
+                return arg
             else:
-                return [self._array_index(a) for a in arg]
+                raise IndexError(f"{arg!r}")
         else:
             return Dimension._array_index(self, arg)
 
@@ -8925,12 +9004,15 @@ class SourceSpaceBase(Dimension):
         idx = np.in1d(stc_vertices, label.vertices, True)
         return idx
 
+    def _array_index_for_vertex(self, vertex_desc):
+        raise NotImplementedError
+
     def _array_index_to(self, other):
         "Int index to access data from self in an order consistent with other"
         self._assert_same_base(other)
         if any(np.any(np.setdiff1d(o, s, True)) for s, o in zip(self.vertices, other.vertices)):
             raise IndexError(f"{other}: contains sources not in {self}")
-        bool_index = np.hstack(np.in1d(s, o) for s, o in zip(self.vertices, other.vertices))
+        bool_index = np.hstack([np.in1d(s, o) for s, o in zip(self.vertices, other.vertices)])
         return np.flatnonzero(bool_index)
 
     def get_source_space(self, subjects_dir=None):
@@ -8968,6 +9050,16 @@ class SourceSpaceBase(Dimension):
             name = label.name
         return NDVar(idx, (self,), {}, name)
 
+    def _is_superset_of(self, dim):
+        self._assert_same_base(dim)
+        return all(np.all(np.in1d(d, s)) for s, d in zip(self.vertices, dim.vertices))
+
+    def index_into_dim(self, dim):
+        if not self._is_superset_of(dim):
+            raise ValueError(f"{dim}: Index source space has unknown vertices")
+        index = np.hstack([np.in1d(s, d) for s, d in zip(self.vertices, dim.vertices)])
+        return NDVar(index, (self,))
+
     def intersect(self, other, check_dims=True):
         """Create a Source dimension that is the intersection with dim
 
@@ -8985,7 +9077,7 @@ class SourceSpaceBase(Dimension):
             equal)
         """
         self._assert_same_base(other)
-        index = np.hstack(np.in1d(s, o) for s, o in zip(self.vertices, other.vertices))
+        index = np.hstack([np.in1d(s, o) for s, o in zip(self.vertices, other.vertices)])
         return self[index]
 
     @property
@@ -9171,23 +9263,36 @@ class SourceSpace(SourceSpaceBase):
                     return slice(self.lh_n, None)
                 else:
                     return slice(0, 0)
+            elif self.parc is not None and arg in self.parc:
+                return self.parc == arg
             else:
-                m = self._vertex_re.match(arg)
-                if m is None:
-                    return self._array_index_label(arg)
-                else:
-                    hemi, vertex = m.groups()
-                    vertex = int(vertex)
-                    vertices = self.vertices[hemi == 'R']
-                    i = int(np.searchsorted(vertices, vertex))
-                    if vertices[i] == vertex:
-                        if hemi == 'R':
-                            return i + self.lh_n
-                        else:
-                            return i
-                    else:
-                        raise IndexError(f"SourceSpace does not contain vertex {arg!r}")
+                return self._array_index_for_vertex(arg)
+        elif isinstance(arg, SourceSpace):
+            sv = self.vertices
+            ov = arg.vertices
+            if all(np.array_equal(s, o) for s, o in zip(sv, ov)):
+                return FULL_SLICE
+            elif any(any(np.setdiff1d(o, s)) for o, s in zip(ov, sv)):
+                raise IndexError("Index contains unknown sources")
+            else:
+                return np.hstack([np.in1d(s, o, True) for s, o in zip(sv, ov)])
         return SourceSpaceBase._array_index(self, arg)
+
+    def _array_index_for_vertex(self, vertex_desc):
+        m = self._vertex_re.match(vertex_desc)
+        if m is None:
+            raise IndexError(f"{vertex_desc!r}: neither a label nor a valid vertex description")
+        hemi, vertex = m.groups()
+        vertex = int(vertex)
+        vertices = self.vertices[hemi == 'R']
+        i = int(np.searchsorted(vertices, vertex))
+        if vertices[i] == vertex:
+            if hemi == 'R':
+                return i + self.lh_n
+            else:
+                return i
+        else:
+            raise IndexError(f"{vertex_desc!r}: SourceSpace does not contain this vertex")
 
     def _dim_index(self, index):
         if np.isscalar(index):
@@ -9241,6 +9346,10 @@ class SourceSpace(SourceSpaceBase):
                              self.parc.name, name=self.name)
         return NDVar(np.concatenate(data), (source,))
 
+    def _read_surf(self, hemi, surf='orig'):
+        path = Path(f'{self.subjects_dir}/{self.subject}/surf/{hemi}.{surf}')
+        return read_geometry(path)
+
     def surface_coordinates(self, surf='white'):
         """Load surface coordinates for any FreeSurfer surface
 
@@ -9258,8 +9367,7 @@ class SourceSpace(SourceSpaceBase):
         for hemi, vertices in zip(('lh', 'rh'), self.vertices):
             if len(vertices) == 0:
                 continue
-            path = Path(f'{self.subjects_dir}/{self.subject}/surf/{hemi}.{surf}')
-            coords, tris = mne.read_surface(str(path))
+            coords, _ = self._read_surf(hemi, surf)
             out.append(coords[vertices])
 
         if len(out) == 1:
@@ -9364,10 +9472,17 @@ class VolumeSourceSpace(SourceSpaceBase):
         if isinstance(arg, str):
             if arg in ('lh', 'rh'):
                 return self.hemi == arg
-            m = re.match('(\d+)$', arg)
-            if m:
-                return int(np.searchsorted(self.vertices[0], int(m.group(1))))
+            elif self.parc is not None and arg in self.parc:
+                return self.parc == arg
+            else:
+                return self._array_index_for_vertex(arg)
         return SourceSpaceBase._array_index(self, arg)
+
+    def _array_index_for_vertex(self, vertex_desc):
+        m = re.match(r'(\d+)$', vertex_desc)
+        if m is None:
+            raise IndexError(f"{vertex_desc!r}: neither a label nor a valid vertex description")
+        return int(np.searchsorted(self.vertices[0], int(m.group(1))))
 
     def _dim_index(self, index):
         if np.isscalar(index):

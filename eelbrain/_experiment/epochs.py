@@ -1,7 +1,9 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from collections import OrderedDict
+from copy import deepcopy
 
 from .._exceptions import DefinitionError
+from .._text import enumeration
 from .definitions import Definition, typed_arg
 
 
@@ -29,8 +31,7 @@ def assemble_epochs(epoch_def, epoch_default):
 
         epoch_type = type(epoch)
         if epoch_type is PrimaryEpoch:
-            epoch._link(name, epochs)
-            epochs[name] = epoch
+            epochs[name] = epoch._link(name, epochs)
         elif epoch_type is SecondaryEpoch:
             secondary_epochs[name] = epoch
         elif epoch_type is SuperEpoch:
@@ -43,26 +44,22 @@ def assemble_epochs(epoch_def, epoch_default):
     secondary_epochs.update(super_epochs)
     secondary_epochs.update(collections)
     # integrate secondary epochs (epochs with base parameter)
-    name = None
     while secondary_epochs:
-        if name is not None:
-            del secondary_epochs[name]
-        for name in secondary_epochs:
-            epoch = secondary_epochs[name]
-            if epoch._can_link(epochs):
-                epoch._link(name, epochs)
-                epochs[name] = epoch
-                break
-        else:
-            DefinitionError(f"Can't resolve epoch dependencies for {', '.join(secondary_epochs)}")
-
+        n = len(secondary_epochs)
+        for key in list(secondary_epochs):
+            if secondary_epochs[key]._can_link(epochs):
+                epochs[key] = secondary_epochs.pop(key)._link(key, epochs)
+        if len(secondary_epochs) == n:
+            raise DefinitionError(f"Can't resolve epoch dependencies for {enumeration(secondary_epochs)}")
     return epochs
 
 
 class EpochBase(Definition):
 
     def _link(self, name, epochs):
-        self.name = name
+        out = deepcopy(self)
+        out.name = name
+        return out
 
 
 class Epoch(EpochBase):
@@ -80,10 +77,12 @@ class Epoch(EpochBase):
                  vars=None, trigger_shift=0., post_baseline_trigger_shift=None,
                  post_baseline_trigger_shift_min=None,
                  post_baseline_trigger_shift_max=None):
-        if (post_baseline_trigger_shift is not None and
-                (post_baseline_trigger_shift_min is None or
-                 post_baseline_trigger_shift_max is None)):
-            raise ValueError(f"{self.__class__.__name__} contains post_baseline_trigger_shift but is missing post_baseline_trigger_shift_min and/or post_baseline_trigger_shift_max")
+        if post_baseline_trigger_shift is not None:
+            if post_baseline_trigger_shift_min is None or post_baseline_trigger_shift_max is None:
+                raise DefinitionError(f"post_baseline_trigger_shift={post_baseline_trigger_shift} but missing post_baseline_trigger_shift_min and/or post_baseline_trigger_shift_max")
+            cut_time = post_baseline_trigger_shift_max - post_baseline_trigger_shift_min
+            if cut_time >= tmax - tmin:
+                raise DefinitionError("No data remaining after trigger shift")
 
         if decim is not None:
             if decim < 1:
@@ -196,8 +195,9 @@ class PrimaryEpoch(Epoch):
         self.sessions = (session,)
 
     def _link(self, name, epochs):
-        Epoch._link(self, name, epochs)
-        self.rej_file_epochs = (name,)
+        out = Epoch._link(self, name, epochs)
+        out.rej_file_epochs = (name,)
+        return out
 
 
 class SecondaryEpoch(Epoch):
@@ -240,11 +240,12 @@ class SecondaryEpoch(Epoch):
         for param in self.INHERITED_PARAMS:
             if param not in kwargs:
                 kwargs[param] = getattr(base, param)
-        Epoch.__init__(self, **kwargs)
-        Epoch._link(self, name, epochs)
-        self.rej_file_epochs = base.rej_file_epochs
-        self.session = base.session
-        self.sessions = base.sessions
+        out = Epoch._link(self, name, epochs)
+        Epoch.__init__(out, **kwargs)
+        out.rej_file_epochs = base.rej_file_epochs
+        out.session = base.session
+        out.sessions = base.sessions
+        return out
 
 
 class SuperEpoch(Epoch):
@@ -290,15 +291,16 @@ class SuperEpoch(Epoch):
                 param_repr = ', '.join(repr(v) for v in values)
                 raise DefinitionError(f"Epoch {name}: All sub_epochs must have the same setting for {param}, got {param_repr}")
             kwargs[param] = values.pop()
-        Epoch.__init__(self, **kwargs)
-        Epoch._link(self, name, epochs)
+        out = Epoch._link(self, name, epochs)
+        Epoch.__init__(out, **kwargs)
         # sessions, with preserved order
-        self.sessions = []
-        self.rej_file_epochs = []
+        out.sessions = []
+        out.rej_file_epochs = []
         for e in sub_epochs:
-            if e.session not in self.sessions:
-                self.sessions.append(e.session)
-            self.rej_file_epochs.extend(e.rej_file_epochs)
+            if e.session not in out.sessions:
+                out.sessions.append(e.session)
+            out.rej_file_epochs.extend(e.rej_file_epochs)
+        return out
 
 
 class EpochCollection(EpochBase):
@@ -330,22 +332,23 @@ class EpochCollection(EpochBase):
         return all(name in epochs for name in self.collect)
 
     def _link(self, name, epochs):
-        EpochBase._link(self, name, epochs)
         sub_epochs = [epochs[e] for e in self.collect]
+        out = EpochBase._link(self, name, epochs)
         # make sure basic attributes match
         for param in SuperEpoch.INHERITED_PARAMS:
             values = {getattr(e, param) for e in sub_epochs}
             if len(values) > 1:
                 param_repr = ', '.join(repr(v) for v in values)
                 raise DefinitionError(f"Epoch {name}: All sub-epochs must have the same setting for {param}, got {param_repr}")
-            setattr(self, param, values.pop())
+            setattr(out, param, values.pop())
         # sessions, with preserved order
-        self.sessions = []
-        self.rej_file_epochs = []
+        out.sessions = []
+        out.rej_file_epochs = []
         for e in sub_epochs:
-            if e.session not in self.sessions:
-                self.sessions.append(e.session)
-            self.rej_file_epochs.extend(e.rej_file_epochs)
+            if e.session not in out.sessions:
+                out.sessions.append(e.session)
+            out.rej_file_epochs.extend(e.rej_file_epochs)
+        return out
 
 
 def decim_param(epoch: Epoch, decim: int, info: dict):

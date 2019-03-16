@@ -1,11 +1,10 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from nose.tools import eq_, ok_, assert_is_instance, assert_raises
 import numpy as np
 from numpy.testing import assert_array_equal
+import pytest
 
-from eelbrain._utils.testing import assert_dataobj_equal
-from eelbrain import (
-    Categorial, Factor, NDVar, Scalar, UTS, Var, datasets, table, combine)
+from eelbrain.testing import assert_dataobj_equal
+from eelbrain import Categorial, Factor, NDVar, Scalar, UTS, Var, datasets, table, combine
 
 
 def test_cast_to_ndvar():
@@ -21,40 +20,43 @@ def test_cast_to_ndvar():
 
     # categorial
     ds = table.cast_to_ndvar('fltvar', 'A', 'B%rm', ds=long_ds, name='new')
-    eq_(ds.n_cases, long_ds.n_cases / 2)
-    eq_(ds['new'].A, Categorial('A', ('a1', 'a2')))
+    assert ds.n_cases == long_ds.n_cases / 2
+    assert ds['new'].A == Categorial('A', ('a1', 'a2'))
 
     # scalar
-    ds2 = table.cast_to_ndvar('fltvar', 'scalar', 'B%rm', ds=long_ds,
-                              dim='newdim', name='new')
-    eq_(ds2.n_cases, long_ds.n_cases / 2)
-    eq_(ds2['new'].newdim, Scalar('newdim', [False, True]))
-
+    ds2 = table.cast_to_ndvar('fltvar', 'scalar', 'B%rm', ds=long_ds, dim='newdim', name='new')
+    assert ds2.n_cases == long_ds.n_cases / 2
+    assert ds2['new'].newdim == Scalar('newdim', [False, True])
     assert_array_equal(ds['new'].x, ds2['new'].x)
 
     # time
-    ds = table.cast_to_ndvar('fltvar', 'time', 'rm', ds=long_ds, dim='uts',
-                             name='y')
-    eq_(ds.n_cases, long_ds.n_cases / 4)
-    eq_(ds['y'].time, UTS(0, 0.1, 4))
+    ds = table.cast_to_ndvar('fltvar', 'time', 'rm', ds=long_ds, dim='uts', name='y')
+    assert ds.n_cases == long_ds.n_cases / 4
+    assert ds['y'].time == UTS(0, 0.1, 4)
 
 
 def test_difference():
     "Test table.difference"
     ds = datasets.get_uv()
-    print(table.difference('fltvar', 'A', 'a1', 'a2', 'rm', ds=ds))
-    print(table.difference('fltvar', 'A', 'a1', 'a2', 'rm', by='B', ds=ds))
-    print(table.difference('fltvar', 'A%B', ('a1', 'b1'), ('a2', 'b2'), 'rm',
-                           ds=ds))
+    dds = table.difference('fltvar', 'A', 'a1', 'a2', 'rm', ds=ds)
+    assert repr(dds) == "<Dataset n_cases=20 {'rm':F, 'fltvar':V}>"
+    dds = table.difference('fltvar', 'A', 'a1', 'a2', 'rm', by='B', ds=ds)
+    assert repr(dds) == "<Dataset n_cases=40 {'rm':F, 'fltvar':V, 'B':F}>"
+    # difference of the difference
+    ddds = table.difference('fltvar', 'B', 'b1', 'b2', 'rm', ds=dds)
+    assert repr(ddds) == "<Dataset n_cases=20 {'rm':F, 'fltvar':V}>"
+    dds = table.difference('fltvar', 'A%B', ('a1', 'b1'), ('a2', 'b2'), 'rm', ds=ds)
+    assert repr(dds) == "<Dataset n_cases=20 {'rm':F, 'fltvar':V}>"
 
     # create bigger dataset
+    ds2 = ds.copy()
     ds['C', :] = 'c1'
-    ds2 = datasets.get_uv()
     ds2['C', :] = 'c2'
     ds = combine((ds, ds2))
-    print(table.difference('fltvar', 'A', 'a1', 'a2', 'rm', 'B%C', ds=ds))
-    print(table.difference('fltvar', 'A%B', ('a1', 'b1'), ('a2', 'b2'), 'rm',
-                           'C', ds=ds))
+    dds = table.difference('fltvar', 'A', 'a1', 'a2', 'rm', by='B%C', ds=ds)
+    assert repr(dds) == "<Dataset n_cases=80 {'rm':F, 'fltvar':V, 'B':F, 'C':F}>"
+    dds = table.difference('fltvar', 'A%B', ('a1', 'b1'), ('a2', 'b2'), 'rm', by='C', ds=ds)
+    assert repr(dds) == "<Dataset n_cases=40 {'rm':F, 'fltvar':V, 'C':F}>"
 
 
 def test_frequencies():
@@ -62,7 +64,7 @@ def test_frequencies():
     ds = datasets.get_uts()
     freq = table.frequencies('YCat', 'A', ds=ds)
     assert_array_equal(freq['A'], ['a0', 'a1'])
-    ok_(all(c in freq for c in ds['YCat'].cells))
+    assert all(c in freq for c in ds['YCat'].cells)
     print(freq)
     freq = table.frequencies('YCat', 'A % B', ds=ds)
     assert_array_equal(freq['A'], ['a0', 'a0', 'a1', 'a1'])
@@ -78,8 +80,8 @@ def test_melt_ndvar():
     ds = ds.sub("A == 'a1'")
 
     lds = table.melt_ndvar('uts', ds=ds)
-    ok_('time' in lds)
-    assert_is_instance(lds['time'], Var)
+    assert 'time' in lds
+    assert isinstance(lds['time'], Var)
     assert_array_equal(np.unique(lds['time'].x), ds['uts'].time)
 
     # no ds
@@ -88,16 +90,17 @@ def test_melt_ndvar():
 
     # sensor
     lds = table.melt_ndvar("utsnd.summary(time=(0.1, 0.2))", ds=ds, varname='summary')
-    eq_(set(lds['sensor'].cells), set(ds['utsnd'].sensor.names))
+    assert set(lds['sensor'].cells) == set(ds['utsnd'].sensor.names)
 
     # NDVar out
     lds = table.melt_ndvar("utsnd", 'sensor', ds=ds)
-    ok_('utsnd' in lds)
-    assert_is_instance(lds['utsnd'], NDVar)
+    assert 'utsnd' in lds
+    assert isinstance(lds['utsnd'], NDVar)
     assert_dataobj_equal(lds[:ds.n_cases, 'utsnd'], ds.eval("utsnd.sub(sensor='0')"))
 
     # more than one dimensions
-    assert_raises(ValueError, table.melt_ndvar, 'utsnd', ds=ds)
+    with pytest.raises(ValueError):
+        table.melt_ndvar('utsnd', ds=ds)
 
 
 def test_repmeas():

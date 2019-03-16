@@ -1,9 +1,5 @@
-'''
-Created on Feb 26, 2012
-
-@author: christian
-'''
-
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+"""Eelbrain-specific wx IDs"""
 import wx
 
 APYDOC_NEW = wx.NewIdRef()
@@ -52,6 +48,8 @@ INSERT_Color = wx.NewIdRef()
 INSERT_Path_file = wx.NewIdRef()
 INSERT_Path_dir = wx.NewIdRef()
 INSERT_Path_new = wx.NewIdRef()
+
+LINK_TIME_AXES = wx.NewIdRef()
 
 OPEN = wx.NewIdRef()
 OPEN_HISTORY = wx.NewIdRef()

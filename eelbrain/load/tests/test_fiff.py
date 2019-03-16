@@ -12,7 +12,7 @@ from mne import pick_types
 from eelbrain import load
 
 from ...tests.test_data import assert_dataobj_equal
-from eelbrain._utils.testing import (requires_module, requires_mne_sample_data,
+from eelbrain.testing import (requires_module, requires_mne_sample_data,
                                      file_path)
 
 

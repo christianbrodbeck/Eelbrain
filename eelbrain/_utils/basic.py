@@ -21,6 +21,24 @@ def as_sequence(items, item_type=str):
 
 
 def ask(message, options, allow_empty=False, help=None):
+    """Ask user for input
+
+    Parameters
+    ----------
+    message : str
+        Message.
+    options : list of tuple of str
+        List of ``(command, description)`` tuples.
+    allow_empty : bool
+        Allow empty string as command.
+    help : str
+        If provided, add a "help" option that prints ``help``.
+
+    Returns
+    -------
+    command : str
+        The user command.
+    """
     option_keys = [s[0] for s in options]
     print(message)
     print('---')
@@ -155,7 +173,11 @@ def intervals(seq):
     (3, 45)
     """
     iterator = iter(seq)
-    last = next(iterator)
+    try:
+        last = next(iterator)
+    except StopIteration:
+        return
+
     for item in iterator:
         yield last, item
         last = item

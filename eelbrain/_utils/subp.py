@@ -261,9 +261,7 @@ def setup_mri(subject, subjects_dir=None, ico=4, block=False, redo=False):
         _run(cmd)
 
     # mne_watershed_bem
-    tgt = os.path.join(bemdir, 'watershed', '%s_outer_skin_surface' % (subject))
-    cmd = [get_bin('mne', 'mne_watershed_bem'),
-           '--subject', subject]
+    cmd = [get_bin('mne', 'mne_watershed_bem'), '--subject', subject]
     if redo:
         cmd.append('--overwrite')
     _run(cmd)

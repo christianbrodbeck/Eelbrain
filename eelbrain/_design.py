@@ -424,9 +424,7 @@ def export_mat(dataset, values=None, destination=None):
     # Make sure we have a valid destination
     if destination is None:
         print_path = True
-        destination = ui.ask_saveas("Mat destination",
-                                    "Where do you want to save the mat file?",
-                                    ext=[("Matlab File", '*.mat')])
+        destination = ui.ask_saveas("Mat destination", "Where do you want to save the mat file?", [("Matlab File", '*.mat')])
         if not destination:
             print("aborted")
             return

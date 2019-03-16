@@ -1,7 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from numpy.testing import assert_array_equal
 from eelbrain import datasets, load
-from eelbrain._utils.testing import assert_dataobj_equal, file_path
+from eelbrain.testing import assert_dataobj_equal, file_path
 
 
 def test_feather_io():

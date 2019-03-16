@@ -14,7 +14,7 @@ from mne.utils import get_subjects_dir
 from nibabel.freesurfer import read_annot
 
 from ._data_obj import NDVar, SourceSpace, VolumeSourceSpace
-from ._ndvar import set_parc
+from ._utils.numpy_utils import index
 
 
 ICO_N_VERTICES = (12, 42, 162, 642, 2562, 10242, 40962)
@@ -33,7 +33,15 @@ def find_source_subject(subject, subjects_dir):
         return cfg['subject_from']
 
 
-def complete_source_space(ndvar, fill=0.):
+def switch_hemi_tag(name):
+    if name.endswith('-rh'):
+        return f'{name[:-3]}-lh'
+    elif name.endswith('-lh'):
+        return f'{name[:-3]}-rh'
+    return name
+
+
+def complete_source_space(ndvar, fill=0., mask=None):
     """Fill in missing vertices on an NDVar with a partial source space
 
     Parameters
@@ -42,29 +50,43 @@ def complete_source_space(ndvar, fill=0.):
         NDVar with SourceSpace dimension that is missing some vertices.
     fill : scalar
         Value to fill in for missing vertices.
+    mask : bool
+        Mask vertices that are missing in ``ndvar``. By default, vertices are
+        masked only if ``ndvar`` already has a mask.
 
     Returns
     -------
     completed_ndvar : NDVar
         Copy of ``ndvar`` with its SourceSpace dimension completed.
     """
+    if not mask is None or isinstance(mask, bool):
+        raise TypeError(f"mask={mask}")
     source = ndvar.get_dim('source')
     axis = ndvar.get_axis('source')
-    lh_vertices, rh_vertices = source_space_vertices(source.kind, source.grade,
-                                                     source.subject,
-                                                     source.subjects_dir)
+    is_masked = isinstance(ndvar.x, np.ma.masked_array)
+    # determine source and target vertices
+    vertices = source_space_vertices(source.kind, source.grade, source.subject, source.subjects_dir)
+    vertex_indices = [np.in1d(v, src_v, True) for v, src_v in zip(vertices, source.vertices)]
+    index = (slice(None,),) * axis + (np.concatenate(vertex_indices),)
+    # generate target array
     shape = list(ndvar.shape)
-    shape[axis] = len(lh_vertices) + len(rh_vertices)
+    shape[axis] = sum(map(len, vertices))
     x = np.empty(shape, ndvar.x.dtype)
     x.fill(fill)
-    lh_index = np.in1d(lh_vertices, source.lh_vertices, True)
-    rh_index = np.in1d(rh_vertices, source.rh_vertices, True)
-    index = (slice(None,),) * axis + (np.concatenate((lh_index, rh_index)),)
-    x[index] = ndvar.x
-    dims = list(ndvar.dims)
+    x[index] = ndvar.x.data if is_masked else ndvar.x
+    if is_masked or mask:
+        x_mask = np.empty(shape, bool)
+        x_mask.fill(True if mask is None else mask)
+        x_mask[index] = ndvar.x.mask if is_masked else False
+        x = np.ma.masked_array(x, x_mask)
+    # set up target Dimension
     parc = None if source.parc is None else source.parc.name
-    dims[axis] = SourceSpace((lh_vertices, rh_vertices), source.subject,
-                             source.src, source.subjects_dir, parc)
+    if isinstance(source, SourceSpace):
+        source_out = SourceSpace(vertices, source.subject, source.src, source.subjects_dir, parc)
+    else:
+        source_out = VolumeSourceSpace(vertices, source.subject, source.src, source.subjects_dir, parc)
+    dims = list(ndvar.dims)
+    dims[axis] = source_out
     return NDVar(x, dims, ndvar.info.copy(), ndvar.name)
 
 
@@ -73,14 +95,14 @@ def source_space_vertices(kind, grade, subject, subjects_dir):
     if kind == 'ico' and subject in ICO_SLICE_SUBJECTS:
         n = ICO_N_VERTICES[grade]
         return np.arange(n), np.arange(n)
-    path = Path(subjects_dir) / subject / 'bem' / f'{subject}-ico-{grade}-src.fif'
+    path = Path(subjects_dir) / subject / 'bem' / f'{subject}-{kind}-{grade}-src.fif'
     if path.exists():
         src_to = mne.read_source_spaces(str(path))
-        return src_to[0]['vertno'], src_to[1]['vertno']
-    elif kind != 'ico':
-        raise NotImplementedError("Can't infer vertices for non-ico source space")
-    else:
+        return [ss['vertno'] for ss in src_to]
+    elif kind == 'ico':
         return mne.grade_to_vertices(subject, grade, subjects_dir)
+    else:
+        raise NotImplementedError(f"Can't infer vertices for {kind}-{grade} source space")
 
 
 def _vertices_equal(v1, v0):
@@ -343,7 +365,7 @@ def labels_from_mni_coords(seeds, extent=30., subject='fsaverage',
     return labels
 
 
-def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
+def morph_source_space(ndvar, subject_to=None, vertices_to=None, morph_mat=None,
                        copy=False, parc=True, xhemi=False, mask=None):
     """Morph source estimate to a different MRI subject
 
@@ -352,7 +374,8 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     ndvar : NDVar
         NDVar with SourceSpace dimension.
     subject_to : str
-        Name of the subject on which to morph.
+        Name of the subject on which to morph (by default this is the same as
+        the current subject for ``xhemi`` morphing).
     vertices_to : None | list of array of int | 'lh' | 'rh'
         The vertices on the destination subject's brain. If ndvar contains a
         whole source space, vertices_to can be automatically loaded, although
@@ -398,7 +421,10 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     source = ndvar.get_dim('source')
     subjects_dir = source.subjects_dir
     subject_from = source.subject
-    assert_subject_exists(subject_to, subjects_dir)
+    if subject_to is None:
+        subject_to = subject_from
+    else:
+        assert_subject_exists(subject_to, subjects_dir)
     # catch cases that don't require morphing
     if not xhemi:
         subject_is_same = subject_from == subject_to
@@ -470,7 +496,10 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     source_to = SourceSpace(vertices_to, subject_to, source.src, subjects_dir, parc_to)
     if mask is True:
         if parc is True:
-            index = source_to.parc.isin(source.parc.cells)
+            keep_labels = source.parc.cells
+            if xhemi:
+                keep_labels = [switch_hemi_tag(label) for label in keep_labels]
+            index = source_to.parc.isin(keep_labels)
         else:
             index = source_to.parc.isnotin(('unknown-lh', 'unknown-rh'))
         source_to = source_to[index]
@@ -678,6 +707,10 @@ def xhemi(ndvar, mask=None, hemi='lh', parc=True):
     rh : NDVar
         Data from the right hemisphere on ``hemi`` of ``fsaverage_sym``.
 
+    Notes
+    -----
+    Only symmetric volume source spaces are currently supported.
+
     References
     ----------
     .. [1] Greve D. N., Van der Haegen L., Cai Q., Stufflebeam S., Sabuncu M.
@@ -685,26 +718,44 @@ def xhemi(ndvar, mask=None, hemi='lh', parc=True):
            A Surface-based Analysis of Language Lateralization and Cortical
            Asymmetry. Journal of Cognitive Neuroscience 25(9), 1477-1492, 2013.
     """
+    source = ndvar.get_dim('source')
     other_hemi = 'rh' if hemi == 'lh' else 'lh'
 
-    if ndvar.source.subject == 'fsaverage_sym':
-        ndvar_sym = ndvar
+    if isinstance(source, VolumeSourceSpace):
+        ax = ndvar.get_axis('source')
+        # extract hemi
+        is_in_hemi = source.hemi == hemi
+        source_out = source[is_in_hemi]
+        # map other_hemi into hemi
+        is_in_other = source.hemi == other_hemi
+        coord_map = {tuple(source.coordinates[i]): i for i in np.flatnonzero(is_in_other)}
+        other_source = [coord_map[-x, y, z] for x, y, z in source_out.coordinates]
+        # combine data
+        x_hemi = ndvar.x[index(is_in_hemi, at=ax)]
+        x_other = ndvar.x[index(other_source, at=ax)]
+        dims = list(ndvar.dims)
+        dims[ax] = source_out
+        out_same = NDVar(x_hemi, dims, ndvar.info, ndvar.name)
+        out_other = NDVar(x_other, dims, ndvar.info, ndvar.name)
     else:
-        ndvar_sym = morph_source_space(ndvar, 'fsaverage_sym', parc=parc, mask=mask)
+        if source.subject == 'fsaverage_sym':
+            ndvar_sym = ndvar
+        else:
+            ndvar_sym = morph_source_space(ndvar, 'fsaverage_sym', parc=parc, mask=mask)
 
-    vert_lh, vert_rh = ndvar_sym.source.vertices
-    vert_from = [[], vert_rh] if hemi == 'lh' else [vert_lh, []]
-    vert_to = [vert_lh, []] if hemi == 'lh' else [[], vert_rh]
-    with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', r'\d+/\d+ vertices not included in smoothing', module='mne')
-        morph_mat = mne.compute_morph_matrix(
-            'fsaverage_sym', 'fsaverage_sym', vert_from, vert_to,
-            subjects_dir=ndvar.source.subjects_dir, xhemi=True)
+        vert_lh, vert_rh = ndvar_sym.source.vertices
+        vert_from = [[], vert_rh] if hemi == 'lh' else [vert_lh, []]
+        vert_to = [vert_lh, []] if hemi == 'lh' else [[], vert_rh]
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', r'\d+/\d+ vertices not included in smoothing', module='mne')
+            morph_mat = mne.compute_morph_matrix(
+                'fsaverage_sym', 'fsaverage_sym', vert_from, vert_to,
+                subjects_dir=ndvar.source.subjects_dir, xhemi=True)
 
-    out_same = ndvar_sym.sub(source=hemi)
-    out_other = morph_source_space(
-        ndvar_sym.sub(source=other_hemi), 'fsaverage_sym',
-        out_same.source.vertices, morph_mat, parc=parc, xhemi=True, mask=mask)
+        out_same = ndvar_sym.sub(source=hemi)
+        out_other = morph_source_space(
+            ndvar_sym.sub(source=other_hemi), 'fsaverage_sym',
+            out_same.source.vertices, morph_mat, parc=parc, xhemi=True, mask=mask)
 
     if hemi == 'lh':
         return out_same, out_other

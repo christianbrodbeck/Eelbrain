@@ -8,7 +8,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from eelbrain import Dataset, datasets, load
-from eelbrain._utils.testing import file_path
+from eelbrain.testing import file_path
 
 from ...tests.test_data import assert_dataobj_equal, assert_dataset_equal
 
@@ -38,8 +38,8 @@ def test_tsv_io():
         ds1 = load.tsv(dst)
         ds2 = load.tsv(dst, skiprows=1, names=names)
 
-        assert_dataset_equal(ds1, ds, "TSV write/read test failed", 10)
-        assert_dataset_equal(ds2, ds, "TSV write/read test failed", 10)
+        assert_dataset_equal(ds1, ds, decimal=10)
+        assert_dataset_equal(ds2, ds, decimal=10)
 
         # guess data types with missing
         intvar2 = ds['intvar'].as_factor()

@@ -1,3 +1,4 @@
+from copy import deepcopy
 import re
 
 from .definitions import DefinitionError, Definition
@@ -20,7 +21,9 @@ class Parcellation(Definition):
         self.views = views
 
     def _link(self, name):
-        self.name = name
+        out = deepcopy(self)
+        out.name = name
+        return out
 
 
 class CombinationParc(Parcellation):
@@ -245,3 +248,20 @@ PARC_CLASSES = {
     SEEDED_PARC:            SeededParc,
     INDIVIDUAL_SEEDED_PARC: IndividualSeededParc,
 }
+
+
+def assemble_parcs(items):
+    parcs = {}
+    for name, obj in items:
+        if isinstance(obj, Parcellation):
+            parc = obj
+        elif obj == FS_PARC:
+            parc = FreeSurferParc(('lateral', 'medial'))
+        elif obj == FSA_PARC:
+            parc = FSAverageParc(('lateral', 'medial'))
+        elif isinstance(obj, dict):
+            parc = parc_from_dict(name, obj)
+        else:
+            raise DefinitionError(f"parcellation {name!r}: {obj!r}")
+        parcs[name] = parc._link(name)
+    return parcs

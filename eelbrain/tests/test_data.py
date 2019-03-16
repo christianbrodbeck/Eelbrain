@@ -31,7 +31,7 @@ from eelbrain._data_obj import (
 from eelbrain._exceptions import DimensionMismatchError
 from eelbrain._stats.stats import rms
 from eelbrain._utils.numpy_utils import newaxis
-from eelbrain._utils.testing import (
+from eelbrain.testing import (
     assert_dataobj_equal, assert_dataset_equal, assert_source_space_equal,
     requires_mne_sample_data, skip_on_windows)
 
@@ -474,20 +474,21 @@ def test_dataset_repr():
     "Test Dataset string representation methods"
     ds = datasets.get_uts()
 
-    print(ds)
-    print(repr(ds))
-
+    assert repr(ds) == "<Dataset n_cases=60 {'A':F, 'B':F, 'rm':F, 'ind':F, 'Y':V, 'YBin':F, 'YCat':F, 'uts':Vnd}>"
     assert str(ds.head()) == str(ds[:10])
     assert str(ds.tail()) == str(ds[-10:])
-
-    print(ds['A'])
-    print(repr(ds['A']))
-
-    print(ds['Y'])
-    print(repr(ds['Y']))
-
-    print(ds['uts'])
-    print(repr(ds['uts']))
+    assert str(ds.summary(50)) == """Key    Type     Values                           
+-------------------------------------------------
+A      Factor   a0:30, a1:30                     
+B      Factor   b0:30, b1:30                     
+rm     Factor   R00:4, R01:4, R02:4... (15 cells)
+ind    Factor   R00, R01, R02, R03... (60 cells) 
+Y      Var      -3.53027 - 3.04498               
+YBin   Factor   c1:34, c2:26                     
+YCat   Factor   c1:17, c2:24, c3:19              
+uts    NDVar    100 time; -2.67343 - 4.56283     
+-------------------------------------------------
+Dataset: 60 cases"""
 
 
 def test_dataset_sorting():
@@ -504,12 +505,11 @@ def test_dataset_sorting():
 
     # ascending, Var, copy
     dsa = ds_shuffled.sorted('v')
-    assert_dataset_equal(dsa, ds, "Copy sorted by Var, ascending")
+    assert_dataset_equal(dsa, ds)
 
     # descending, Factor, in-place
     ds_shuffled.sort('f', descending=True)
-    assert_dataset_equal(ds_shuffled, ds[::-1], "In-place sorted by Factor, "
-                         "descending")
+    assert_dataset_equal(ds_shuffled, ds[::-1])
 
 
 def test_dim_categorial():

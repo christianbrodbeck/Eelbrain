@@ -1,10 +1,5 @@
-from pathlib import Path
-
 from eelbrain.pipeline import *
-
-
-def path(string):
-    return str(Path(string))
+from eelbrain.testing import path
 
 
 class Experiment(MneExperiment):

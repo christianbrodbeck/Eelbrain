@@ -87,7 +87,7 @@ from .._data_obj import (
     ascategorial, asndvar, assub, isnumeric, isdataobject, cellname,
 )
 from .._stats import testnd
-from .._utils import IS_WINDOWS, LazyProperty, intervals, natsorted, ui
+from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
 from .._utils.subp import command_exists
 from ..fmtxt import Image
 from ..mne_fixes import MNE_EPOCHS
@@ -102,9 +102,6 @@ POINT = 0.013888888888898
 
 # defaults
 defaults = {'maxw': 16, 'maxh': 10}
-
-# store figures (they need to be preserved)
-figures = []
 
 
 class PlotType(Enum):
@@ -572,7 +569,17 @@ def find_data_dims(ndvar, dims, extra_dim=None):
 
         if extra_dim:
             dimnames.remove(extra_dim)
-        return agg, tuple(dimnames)
+    return agg, tuple(dimnames)
+
+
+def brain_data(
+        data: Union[NDVar, testnd.NDTest],
+):
+    # for GlassBrain and surfer brain
+    if isinstance(data, testnd.NDDifferenceTest):
+        return data.masked_difference()
+    else:
+        return asndvar(data)
 
 
 def butterfly_data(
@@ -874,7 +881,7 @@ class PlotData:
     ----------
     plot_used : list of bool
         List indicating which plot slots are used (as opposed to empty).
-    plot_data : list of list of LayerData
+    plot_data : list of AxisData
         The processed data to plot.
     data : list of list of NDVar
         The processed data to plot (for backwards compatibility).
@@ -892,7 +899,7 @@ class PlotData:
     """
     def __init__(
             self,
-            axes: List[Union[None, AxisData]],
+            axes: List[AxisData],
             dims: Sequence[str],
             title: str = "unnamed data",
             plot_names: List[str] = None,
@@ -913,6 +920,13 @@ class PlotData:
             assert len(plot_names) == self.n_plots
         self._plot_names = plot_names
         self.plot_type = plot_type
+
+    def __repr__(self):
+        desc = [f'{self.n_plots} plots']
+        if not all(self.plot_used):
+            desc.append(f'{len(self.plot_used) - self.n_plots} empty')
+        desc.append(' x '.join(self.dims))
+        return f"<PlotData {self.frame_title!r}: {', '.join(desc)}>"
 
     def _cannot_skip_axes(self, parent):
         if not all(self.plot_used):
@@ -953,6 +967,10 @@ class PlotData:
         """
         if isinstance(y, cls):
             return y
+        elif isinstance(y, AxisData):
+            for layer in y.layers:
+                dims = find_data_dims(layer.y, dims)
+            return PlotData([y], dims)
         sub = assub(sub, ds)
         ys = y._default_plot_obj() if hasattr(y, '_default_plot_obj') else y
 
@@ -961,8 +979,6 @@ class PlotData:
             ys = (asndvar(ys, sub, ds),)
         elif not isinstance(ys, (tuple, list, Iterator)):
             ys = (ys,)
-        else:
-            ys = ys
 
         ax_names = None
         if xax is None:
@@ -1066,6 +1082,13 @@ class PlotData:
     def data(self):
         "For backwards compatibility with nested list of NDVar"
         return [[l.y for l in self.axis_for_plot(i, PlotType.LEGACY)] for i in range(self.n_plots)]
+
+    @LazyProperty
+    def time_dim(self):
+        "UTS dimension to expose for time slicer"
+        time_dims = [l.y.get_dim('time') for ax in self.plot_data for l in ax.layers if l.y.has_dim('time')]
+        if time_dims:
+            return reduce(UTS._union, time_dims)
 
     def for_plot(self, plot_type: PlotType) -> 'PlotData':
         if self.plot_type == plot_type:
@@ -1298,7 +1321,7 @@ class EelFigure:
     def __repr__(self):
         return f'<{self._frame.GetTitle()}>'
 
-    def _set_axtitle(self, axtitle, data=None, axes=None, names=None):
+    def _set_axtitle(self, axtitle, data=None, axes=None, names=None, **kwargs):
         """Set axes titles automatically
 
         Parameters
@@ -1313,6 +1336,8 @@ class EelFigure:
             or a tuple of titles.
         names : sequence of str
             Instead of using ``epochs`` name attributes, use these names.
+        ...
+            Matplotlib ``Axes.set_title()`` parameters.
         """
         if axtitle is False or axtitle is None:
             return
@@ -1347,7 +1372,7 @@ class EelFigure:
             return axtitle
 
         for title, ax in zip(axtitle, axes):
-            ax.set_title(title)
+            ax.set_title(title, **kwargs)
 
     def _show(self, crosshair_axes=None):
         if self._layout.tight:
@@ -1594,6 +1619,8 @@ class EelFigure:
 
     def draw(self):
         "(Re-)draw the figure (after making manual changes)."
+        if self._frame is None:
+            return
         t0 = time.time()
         self._frame.canvas.draw()
         self._last_draw_time = time.time() - t0
@@ -1830,8 +1857,7 @@ def resolve_plot_rect(w, h, dpi):
     w_applies = w is not None and w <= 0
     h_applies = h is not None and h <= 0
     if w_applies or h_applies:
-        from .._wxgui import get_app
-        import wx
+        from .._wxgui import wx, get_app
 
         get_app()
         effective_dpi = dpi or mpl.rcParams['figure.dpi']
@@ -2106,8 +2132,7 @@ class Layout(BaseLayout):
         axes = []
         kwargs = {}
         for i in self.axes:
-            ax = figure.add_subplot(self.nrow, self.ncol, i + 1,
-                                    autoscale_on=self.autoscale, **kwargs)
+            ax = figure.add_subplot(self.nrow, self.ncol, i + 1, autoscale_on=self.autoscale, **kwargs)
             axes.append(ax)
             if self.share_axes:
                 kwargs.update(sharex=ax, sharey=ax)
@@ -2233,14 +2258,12 @@ class VariableAspectLayout(BaseLayout):
 
         # convert to figure coords
         height = axh / h
-        lefts_ = tuple(l / w for l in lefts)
-        widths_ = tuple(w_ / w for w_ in widths)
-        bottoms_ = (b / h for b in bottoms)
+        lefts_ = [l / w for l in lefts]
+        widths_ = [w_ / w for w_ in widths]
+        bottoms_ = [b / h for b in bottoms]
 
         # rectangles:  (left, bottom, width, height)
-        rects = (((l, bottom, w, height) for l, w in zip(lefts_, widths_)) for
-                 bottom in bottoms_)
-        self._ax_rects = rects
+        self._ax_rects = [[(l, bottom, w, height) for l, w in zip(lefts_, widths_)] for bottom in bottoms_]
 
     def make_axes(self, figure):
         axes = []
@@ -2279,8 +2302,7 @@ class ColorBarMixin:
             _, self.__label = find_axis_params_data(data, True)
 
     def _fill_toolbar(self, tb):
-        import wx
-        from .._wxutils import ID, Icon
+        from .._wxgui import wx, ID, Icon
 
         tb.AddTool(ID.PLOT_COLORBAR, "Plot Colorbar", Icon("plot/colorbar"))
         tb.Bind(wx.EVT_TOOL, self.__OnPlotColorBar, id=ID.PLOT_COLORBAR)
@@ -2446,7 +2468,7 @@ class LegendMixin:
             self.plot_legend(legend)
 
     def _fill_toolbar(self, tb):
-        import wx
+        from .._wxgui import wx
 
         choices = [name.title() for name in self.__choices]
         self.__ctrl = wx.Choice(tb, choices=choices, name='Legend')
@@ -2594,12 +2616,13 @@ class TimeController:
         self.current_time = t
         self.fixate = fixate
 
-    def add_plot(self, plot):
+    def add_plot(self, plot: 'TimeSlicer'):
         if plot._time_controller is None:
-            plot._set_time(self.current_time, self.fixate)
+            t = plot._validate_time(self.current_time)
+            plot._set_time(t, self.fixate)
             self._plots.append(weakref.ref(plot))
             plot._time_controller = self
-        else:
+        elif plot._time_controller is not self:
             self.merge(plot._time_controller)
 
     def iter_plots(self):
@@ -2642,9 +2665,9 @@ class TimeSlicer:
     _current_time = None
     _display_time_in_frame_title = False
 
-    def __init__(self, ndvars=None, time_fixed=False):
-        if ndvars is not None:
-            self._set_time_dim_from_ndvars(ndvars)
+    def __init__(self, time_dim=None, time_fixed=False):
+        if time_dim is not None:
+            self._set_time_dim(time_dim)
         self._time_controller = None
         self._time_fixed = time_fixed
 
@@ -2661,19 +2684,12 @@ class TimeSlicer:
         elif isinstance(time_dim, Case):
             self._current_time = 0
 
-    def _set_time_dim_from_ndvars(self, ndvars):
-        time_ndvars = tuple(v for v in ndvars if v.has_dim('time'))
-        if time_ndvars:
-            time_dim = reduce(UTS._union, (v.time for v in time_ndvars))
-            self._set_time_dim(time_dim)
-
     def link_time_axis(self, other):
         """Link the time axis of this figure with another figure"""
         if self._time_dim is None:
             raise NotImplementedError("Slice plot for dimension other than time")
         elif not isinstance(other, TimeSlicer):
-            raise TypeError("%s plot does not support linked time axes" %
-                            other.__class__.__name__)
+            raise TypeError(f"{other.__class__.__name__} plot does not support linked time axes")
         elif other._time_dim is None:
             raise NotImplementedError("Slice plot for dimension other than time")
         elif other._time_controller:
@@ -2716,7 +2732,7 @@ class TimeSlicer:
 
     def _update_time_wrapper(self, t, fixate):
         "Called by the TimeController"
-        if t == self._current_time and fixate == self._time_fixed:
+        if (t == self._current_time and fixate == self._time_fixed) or self._frame is None:
             return
         self._update_time(t, fixate)
         self._current_time = t
@@ -2740,12 +2756,11 @@ class TimeSlicerEF(TimeSlicer):
     # TimeSlicer for Eelfigure
     _can_set_time = True
 
-    def __init__(self, x_dimname, epochs, axes=None, redraw=True):
+    def __init__(self, x_dimname, x_dim, axes=None, redraw=True):
         if x_dimname != 'time':
             TimeSlicer.__init__(self, time_fixed=True)
             return
-        ndvars = [e for layer in epochs for e in layer] if epochs else None
-        TimeSlicer.__init__(self, ndvars)
+        TimeSlicer.__init__(self, x_dim)
         self.__axes = self._axes if axes is None else axes
         self.__time_lines = []
         self.__redraw = redraw
@@ -2780,7 +2795,7 @@ class TimeSlicerEF(TimeSlicer):
             while self.__time_lines:
                 self.__time_lines.pop().remove()
 
-        if self.__redraw and redraw:
+        if self.__redraw and redraw and self._frame is not None:
             self.canvas.redraw(self.__axes)
 
     def save_movie(self, filename=None, time_dilation=4., **kwargs):

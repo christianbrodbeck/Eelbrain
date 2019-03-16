@@ -2,7 +2,7 @@
 import os
 from wx.tools.img2py import img2py
 
-python_file = "../eelbrain/_wxutils/icons.py"
+python_file = "../eelbrain/_wxgui/icons.py"
 
 # individual files
 files = {}  # name: file
@@ -76,4 +76,4 @@ for name, image_file in files.iteritems():
     img2py(image_file, python_file, append=True,
            imgName=name, icon=False, **kwargs)
 
-print "Done"
+print("Done")

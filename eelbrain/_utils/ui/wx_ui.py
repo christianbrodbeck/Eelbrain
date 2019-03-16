@@ -1,6 +1,5 @@
 """WxPython-based implementation of the Eelbrain ui functions."""
-import wx
-from ..._wxgui import get_app
+from ..._wxgui import wx, get_app
 
 
 def ask_saveas(title, message, filetypes, defaultDir, defaultFile):

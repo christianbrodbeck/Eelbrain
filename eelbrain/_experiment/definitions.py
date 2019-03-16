@@ -34,6 +34,19 @@ def check_names(keys, attribute, allow_empty: bool):
         raise DefinitionError(f"Invalid {plural('name', len(invalid))} for {attribute}: {enumeration(invalid)}")
 
 
+def compound(items):
+    out = ''
+    for item in items:
+        if item == '*':
+            if not out.endswith('*'):
+                out += '*'
+        elif item:
+            if out and not out.endswith('*'):
+                out += ' '
+            out += item
+    return out
+
+
 def dict_change(old, new):
     "Readable representation of dict change"
     lines = []
@@ -134,36 +147,5 @@ def find_dependent_epochs(epoch, epochs):
     return out[1:]
 
 
-def find_test_vars(params):
-    "Find variables used in a test definition"
-    if 'model' in params and params['model'] is not None:
-        vs = find_variables(params['model'])
-    else:
-        vs = set()
-
-    if params['kind'] == 'two-stage':
-        vs.update(find_variables(params['stage_1']))
-
-    vardef = params.get('vars', None)
-    if vardef is not None:
-        if isinstance(vardef, dict):
-            vardef = vardef.items()
-        elif isinstance(vardef, tuple):
-            vardef = (map(str.strip, v.split('=', 1)) for v in vardef)
-        else:
-            raise TypeError("vardef=%r" % (vardef,))
-
-        for name, definition in vardef:
-            if name in vs:
-                vs.remove(name)
-                if isinstance(definition, tuple):
-                    definition = definition[0]
-                vs.update(find_variables(definition))
-    return vs
-
-
 def typed_arg(arg, type_):
     return None if arg is None else type_(arg)
-
-
-find_test_vars.__test__ = False

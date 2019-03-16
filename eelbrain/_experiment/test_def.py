@@ -1,12 +1,13 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from inspect import getargspec
+from inspect import getfullargspec
 import re
 
 from .. import testnd
 from .._exceptions import DefinitionError
 from .._io.fiff import find_mne_channel_types
+from .._utils.parse import find_variables
 from .definitions import Definition
-from .variable_def import GroupVar
+from .variable_def import Variables, GroupVar
 
 
 __test__ = False
@@ -53,7 +54,10 @@ class Test(Definition):
     def __init__(self, desc, model, vars=None):
         self.desc = desc
         self.model = model
-        self.vars = vars
+        try:
+            self.vars = Variables(vars)
+        except Exception as error:
+            raise DefinitionError(f"vars={vars} ({error})")
 
         if model is None:  # no averaging
             self._between = None
@@ -124,7 +128,7 @@ class TTest(EvokedTest):
 
 
 class TTestInd(TTest):
-    """Independent measures t-test
+    """Independent measures t-test (comparing groups of subjects)
 
     Parameters
     ----------
@@ -141,10 +145,11 @@ class TTestInd(TTest):
 
     Examples
     --------
-    Sample test definitions::
+    Sample test definitions, assuming that the experiment has two groups called
+    ``'younger'`` and ``'older'``::
 
         tests = {
-            'group_difference': TTestInd('group', 'group_1', 'group_2'),
+            'old=young': TTestInd('group', 'older', 'younger', vars={'group': GroupVar(['younger', 'older'])}),
         }
     """
     kind = 'ttest_ind'
@@ -278,7 +283,7 @@ class ANOVA(EvokedTest):
         x = ''.join(x.split())
         if model is None:
             items = sorted(i.strip() for i in x.split('*'))
-            within_items = (i for i in items if not re.match(r'^subject(\(\w+\))$', i))
+            within_items = (i for i in items if not re.match(r'^subject(\(\w+\))?$', i))
             model = '%'.join(within_items)
         EvokedTest.__init__(self, x, model, vars=vars)
         if self._between is not None:
@@ -480,8 +485,27 @@ class ROITestResult:
         self.res = res
 
     def __getstate__(self):
-        return {attr: getattr(self, attr) for attr in
-                getargspec(self.__init__).args[1:]}
+        return {attr: getattr(self, attr) for attr in getfullargspec(self.__init__).args[1:]}
 
     def __setstate__(self, state):
         self.__init__(**state)
+
+
+def find_test_vars(params):
+    "Find variables used in a test definition"
+    if 'model' in params and params['model'] is not None:
+        vs = find_variables(params['model'])
+    else:
+        vs = set()
+
+    if params['kind'] == 'two-stage':
+        vs.update(find_variables(params['stage_1']))
+
+    for name, variable in params['vars'].vars.items():
+        if name in vs:
+            vs.remove(name)
+            vs.update(variable.input_vars())
+    return vs
+
+
+find_test_vars.__test__ = False

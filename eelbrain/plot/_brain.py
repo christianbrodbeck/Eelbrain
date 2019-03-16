@@ -3,18 +3,17 @@
 from functools import partial
 from itertools import product
 from numbers import Number
-from warnings import warn
 
 import mne
 from nibabel.freesurfer import read_annot
 import numpy as np
 
-from .._data_obj import asndvar, NDVar, SourceSpace, UTS
+from .._data_obj import NDVar, SourceSpace, UTS
 from .._utils import deprecated
-from ..fmtxt import Image, im_table
+from ..fmtxt import im_table
 from .._text import ms
-from ._base import EelFigure, ImLayout, ColorBarMixin, butterfly_data
-from ._color_luts import p_lut, dspm_lut
+from ._base import EelFigure, ImLayout, ColorBarMixin, brain_data, butterfly_data
+from ._color_luts import dspm_lut
 from ._colors import ColorList
 
 
@@ -513,7 +512,7 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
         if hemi is None:
             hemi = 'split'
     else:
-        ndvar = asndvar(src)
+        ndvar = brain_data(src)
         if ndvar.has_case:
             ndvar = ndvar.summary()
         source = get_source_dim(ndvar)
@@ -534,6 +533,8 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
             raise ValueError('No data')
         else:
             hemi = 'rh'
+    elif source is None:
+        pass
     elif (hemi == 'lh' and source.rh_n) or (hemi == 'rh' and source.lh_n):
         if ndvar is None:
             source = source[source._array_index(hemi)]
@@ -547,7 +548,8 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
     brain = Brain(subject, hemi, surf, title, cortex,
                   views=views, w=w, h=h, axw=axw, axh=axh,
                   foreground=foreground, background=background,
-                  subjects_dir=subjects_dir, name=name, pos=pos)
+                  subjects_dir=subjects_dir, name=name, pos=pos,
+                  source_space=source)
 
     if ndvar is not None:
         if ndvar.x.dtype.kind in 'ui':
@@ -655,8 +657,7 @@ class ImageTable(ColorBarMixin, EelFigure):
             Matplotlib text parameters.
         """
         if len(titles) > self._n_rows:
-            raise ValueError("%i titles for %i rows: titles=%r" %
-                             (len(titles), self._n_rows))
+            raise ValueError(f"titles={titles}: {len(titles)} titles for {self._n_rows} rows")
         y_top = self._layout.margins['top'] - y
         y_offset = self._layout.margins['hspace'] + self._layout.axh
         x_ = x / self._layout.w
@@ -1373,7 +1374,7 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, surf='inflated',
     brain : Brain
         Brain plot.
     """
-    import wx
+    from .._wxgui import wx
     from .._wxgui.mpl_canvas import CanvasFrame
     from ._brain_object import BRAIN_H, BRAIN_W
     from ._utsnd import Butterfly
@@ -1386,22 +1387,11 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, surf='inflated',
     # butterfly-plot
     p = Butterfly(bfly_data, vmin=vmin, vmax=vmax, xlim=xlim, h=h, w=w, ncol=1, name=name, color='black', ylabel=hemis, axtitle=False)
 
-    # position the brain window next to the butterfly-plot
-    brain_h = h * p._layout.dpi
-    if isinstance(p._frame, CanvasFrame):
-        px, py = p._frame.GetPosition()
-        pw, _ = p._frame.GetSize()
-        display_w, _ = wx.DisplaySize()
-        brain_w = int(brain_h * len(hemis) * BRAIN_W / BRAIN_H)
-        brain_x = min(px + pw, display_w - brain_w)
-        pos = (brain_x, py)
-    else:
-        pos = wx.DefaultPosition
-
     # Brain plot
-    p_brain = brain(brain_data, cmap, vmin, vmax, surf, views, hemi, mask=mask,
-                    smoothing_steps=smoothing_steps, axh=brain_h, name=name,
-                    pos=pos)
+    brain_h = h * p._layout.dpi
+    p_brain = brain(brain_data, cmap, vmin, vmax, surf, views, hemi, mask=mask, smoothing_steps=smoothing_steps, axh=brain_h, name=name)
+
+    p._auto_position(p_brain)
     p.link_time_axis(p_brain)
 
     return p, p_brain

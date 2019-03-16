@@ -13,4 +13,4 @@ p = m._parametrize()
 fmap = np.empty((3, n_tests))
 e_ms = eelbrain._stats.glm._hopkins_ems_array(m)
 
-print "timeit -n1000 opt.anova_full_fmaps(y, p.x, p.projector, fmap, m._effect_to_beta, e_ms)"
+print("timeit -n1000 opt.anova_full_fmaps(y, p.x, p.projector, fmap, m._effect_to_beta, e_ms)")

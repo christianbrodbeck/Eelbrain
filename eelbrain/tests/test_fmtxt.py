@@ -7,7 +7,7 @@ import tempfile
 import numpy as np
 
 from eelbrain import fmtxt
-from eelbrain._utils.testing import TempDir
+from eelbrain.testing import TempDir
 from eelbrain.fmtxt import html, tex, read_meta
 from eelbrain import datasets, plot
 

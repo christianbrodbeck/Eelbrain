@@ -39,6 +39,30 @@ def difference(y, x, c1, c0, match, by=None, sub=None, ds=None):
     -------
     diff : Dataset
         Dataset with the difference between ``c1`` and ``c0`` on ``y``.
+
+    Examples
+    --------
+    ERP difference wave: assuming a dataset ``ds`` with EEG data
+    (``ds['eeg']``), a variable named ``'condition'`` with levels ``'expected'``
+    and ``'unexpected'``, and multiple subjects, the following will generate the
+    ``unexpected - expected`` difference waves::
+
+        >>> diff = table.difference('eeg', 'condition', 'unexpected', 'expected',
+        ... 'subject', ds=ds)
+
+    If ``ds`` also contains a different factor crossed with ``condition``,
+    called ``'word'`` with levels ``'verb'`` abd ``'adjective'``, then separate
+    difference waves for verbs and adjectives can be computed with::
+
+        >>> diff = table.difference('eeg', 'condition', 'unexpected', 'expected',
+        ... 'subject', by='word', ds=ds)
+
+    Given the latter, the difference of the difference waves could be computed
+    with::
+
+        >>> diffdiff = table.difference('eeg', 'word', 'verb', 'adjective',
+        ... 'subject', ds=diff)
+
     """
     sub = assub(sub, ds)
     x = ascategorial(x, sub, ds)

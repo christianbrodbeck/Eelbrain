@@ -37,13 +37,14 @@ DAMAGE.
 """
 import warnings
 
+import nibabel
 from nilearn.image.resampling import get_bounds
 
 import numpy as np
 
-from .._data_obj import NDVar, VolumeSourceSpace, asndvar
+from .._data_obj import VolumeSourceSpace
 from .._utils.numpy_utils import newaxis
-from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, butterfly_data
+from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, brain_data, butterfly_data
 from ._utsnd import Butterfly
 
 
@@ -180,18 +181,15 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         elif vmin is not None and np.isnan(vmin):
             raise ValueError(f"vmin={vmin!r} (Tip: Use np.nanmin() instead of np.min())")
 
-        if cmap is None:
-            cmap = cm.cold_hot if black_bg else cm.cold_white_hot
-        self.cmap = cmap
-
         if isinstance(ndvar, VolumeSourceSpace):
             source = ndvar
-            ndvar = None
+            ndvar = time = None
         else:
-            ndvar = asndvar(ndvar)
+            ndvar = brain_data(ndvar)
             source = ndvar.get_dim('source')
             if not isinstance(source, VolumeSourceSpace):
                 raise ValueError(f"ndvar={ndvar!r}:  need volume source space data")
+            time = ndvar.get_dim('time') if ndvar.has_dim('time') else None
             if isinstance(ndvar.x, np.ma.MaskedArray) and np.all(ndvar.x.mask):
                 ndvar = None
 
@@ -201,20 +199,15 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         if ndvar:
             if ndvar.has_case:
                 ndvar = ndvar.mean('case')
-
-            if mni305 is None:
-                mni305 = ndvar.source.subject == 'fsaverage'
-
             src = source.get_source_space()
             img = _stc_to_volume(ndvar, src, dest, mri_resolution, mni305)
-            if ndvar.has_dim('time'):
-                time = ndvar.get_dim('time')
+            if time is not None:
                 t0 = time[0]
                 imgs = [index_img(img, i) for i in range(len(time))]
                 img0 = imgs[0]
             else:
                 img0 = img
-                imgs = time = t0 = None
+                imgs = t0 = None
             if draw_arrows:
                 if not ndvar.has_dim('space'):
                     draw_arrows = False
@@ -222,11 +215,9 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                 else:
                     dir_imgs = []
                     for direction in ndvar.space._directions:
-                        dir_img = _stc_to_volume(ndvar.sub(space=direction), src,
-                                                 dest, mri_resolution, mni305)
+                        dir_img = _stc_to_volume(ndvar.sub(space=direction), src, dest, mri_resolution, mni305)
                         if ndvar.has_dim('time'):
-                            dir_imgs.append([index_img(dir_img, i)
-                                             for i in range(len(ndvar.time))])
+                            dir_imgs.append([index_img(dir_img, i) for i in range(len(ndvar.time))])
                         else:
                             dir_imgs.append([dir_img])
                     if plot_abs:
@@ -239,7 +230,20 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                 data = ndvar.norm('space').x
             else:
                 data = ndvar.x
-            if plot_abs:
+
+            if cmap is None:
+                if data.dtype.kind == 'b':
+                    cmap = 'copper' if black_bg else 'Oranges'
+                else:
+                    cmap = cm.cold_hot if black_bg else cm.cold_white_hot
+
+            if data.dtype.kind == 'b':
+                if vmax is None:
+                    vmax = 1
+                if vmin is None:
+                    vmin = 0
+                cbar_vmin = cbar_vmax = None
+            elif plot_abs:
                 cbar_vmin, cbar_vmax, vmin, vmax = _get_colorbar_and_data_ranges(
                     data, vmax, symmetric_cbar, kwargs, 0)
             else:
@@ -257,7 +261,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                     raise ValueError(f"Cannot use threshold={threshold} with masked data")
 
         else:
-            cbar_vmin = cbar_vmax = imgs = img0 = dir_imgs = time = t0 = threshold = None
+            cbar_vmin = cbar_vmax = imgs = img0 = dir_imgs = t0 = threshold = None
 
         self.time = time
         self._ndvar = ndvar
@@ -266,13 +270,12 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
 
         # layout
         if display_mode is None:
-            display_mode = ''
-            if 'lh' in source.hemi:
-                display_mode += 'l'
-            display_mode += 'y'
-            if 'rh' in source.hemi:
-                display_mode += 'r'
-            display_mode += 'z'
+            has_lh = 'lh' in source.hemi
+            has_rh = 'rh' in source.hemi
+            if has_rh != has_lh:
+                display_mode = 'xz'
+            else:
+                display_mode = 'lyr'
         n_plots = 3 if display_mode == 'ortho' else len(display_mode)
         layout = Layout(n_plots, 0.85, 2.6, tight=False, ncol=n_plots, **kwargs)
         # frame title
@@ -298,7 +301,6 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         self.interpolation = interpolation
         self.cmap = cmap
         self.colorbar = colorbar
-        self.cmap = cmap
         self.vmin = vmin
         self.vmax = vmax
         self._arrows = draw_arrows
@@ -322,9 +324,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             cbar = display._cbar
             _crop_colorbar(cbar, cbar_vmin, cbar_vmax)
 
-        ndvars = [[ndvar]] if ndvar else None
-        TimeSlicerEF.__init__(self, 'time', ndvars)
-
+        TimeSlicerEF.__init__(self, 'time', time)
         self._show()
 
     def _fill_toolbar(self, tb):
@@ -424,6 +424,8 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             ax.texts[-1].set_text('time = %s ms' % round(t * 1e3))
 
     def _update_time(self, t, fixate):
+        if self._ndvar is None:
+            return
         index = self.time._array_index(t)
         self._remove_overlay()
         self.display.add_overlay(
@@ -540,9 +542,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         glassbrain : GlassBrain
             GlassBrain plot.
         """
-        import wx
         from .._wxgui import get_app, needs_jumpstart
-        from .._wxgui.mpl_canvas import CanvasFrame
         jumpstart = needs_jumpstart()
 
         hemis, bfly_data, brain_data = butterfly_data(y, None, return_vector_data=draw_arrows)
@@ -557,19 +557,9 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             get_app().jumpstart()
 
         # GlassBrain plot
-        p_glassbrain = GlassBrain(brain_data, cmap, vmin, vmax, dest, mri_resolution, mni305,
-                                  black_bg, display_mode, threshold, colorbar, True, True, alpha,
-                                  plot_abs, draw_arrows, symmetric_cbar, interpolation, h=h, name=name, **kwargs)
+        p_glassbrain = GlassBrain(brain_data, cmap, vmin, vmax, dest, mri_resolution, mni305, black_bg, display_mode, threshold, colorbar, True, True, alpha, plot_abs, draw_arrows, symmetric_cbar, interpolation, h=h, name=name, **kwargs)
 
-        # position the brain window next to the butterfly-plot
-        if isinstance(p._frame, CanvasFrame):
-            px, py = p._frame.GetPosition()
-            pw, _ = p._frame.GetSize()
-            display_w, _ = wx.DisplaySize()
-            brain_w, _ = p_glassbrain._frame.GetSize()
-            brain_x = min(px + pw, display_w - brain_w)
-            p_glassbrain._frame.SetPosition((brain_x, py))
-
+        p._auto_position(p_glassbrain)
         p.link_time_axis(p_glassbrain)
 
         return p, p_glassbrain
@@ -623,25 +613,32 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
     src_type = src[0]['type']
     if src_type != 'vol':
         raise ValueError(f"You need a volume source space. Got type: {src_type}")
+    if len(src) != 1:
+        raise NotImplementedError("Multiple source spaces")
 
     if ndvar.has_dim('space'):
         ndvar = ndvar.norm('space')
-
+    source = ndvar.get_dim('source')
     if ndvar.has_dim('time'):
-        data = ndvar.get_data(('source', 'time'), 0)
+        data = ndvar.get_data(('source', 'time'), mask=0)
     else:
-        data = ndvar.get_data(('source', newaxis), 0)
+        data = ndvar.get_data(('source', newaxis), mask=0)
 
     # check for infinite values and make them zero
-    non_finite_mask = np.logical_not(np.isfinite(ndvar.x))
+    non_finite_mask = np.logical_not(np.isfinite(data))
     if non_finite_mask.sum() > 0:  # any non_finite_mask values?
-        ndvar.x[non_finite_mask] = 0
+        data[non_finite_mask] = 0
 
+    # project data to 4d array
     n_times = data.shape[1]
-    shape = src[0]['shape']
-    shape3d = (shape[2], shape[1], shape[0])
-    shape = (n_times, shape[2], shape[1], shape[0])
-    vol = np.zeros(shape)
+    shape3d = src[0]['shape'][::-1]
+    shape4d = (*shape3d, n_times)
+    vol = np.zeros(shape4d)
+    mask = src[0]['inuse'].astype(np.bool)
+    if data.shape[0] < mask.sum():
+        mask[mask] = np.in1d(src[0]['vertno'], source.vertices[0], assume_unique=True)
+    vol[mask.reshape(shape3d)] = data
+    vol = np.moveaxis(vol, 3, 0)  # time on first axis
 
     if mri_resolution:
         mri_shape3d = (src[0]['mri_height'], src[0]['mri_depth'],
@@ -650,47 +647,33 @@ def _stc_to_volume(ndvar, src, dest='mri', mri_resolution=False, mni305=False):
                      src[0]['mri_width'])
         mri_vol = np.zeros(mri_shape)
         interpolator = src[0]['interpolator']
-
-    n_vertices_seen = 0
-    for this_src in src:  # loop over source instants, which is basically one element only!
-        assert tuple(this_src['shape']) == tuple(src[0]['shape'])
-        mask3d = this_src['inuse'].reshape(shape3d).astype(np.bool)
-        n_vertices = np.sum(mask3d)
-
-        for k, v in enumerate(vol):  # loop over time instants
-            stc_slice = slice(n_vertices_seen, n_vertices_seen + n_vertices)
-            v[mask3d] = data[stc_slice, k]
-
-        n_vertices_seen += n_vertices
-
-    if mri_resolution:
         for k, v in enumerate(vol):
             mri_vol[k] = (interpolator * v.ravel()).reshape(mri_shape3d)
         vol = mri_vol
-
-    vol = vol.T
-
-    if mri_resolution:
-        affine = src[0]['vox_mri_t']['trans'].copy()
+        affine = src[0]['vox_mri_t']['trans']
     else:
-        affine = src[0]['src_mri_t']['trans'].copy()
+        affine = src[0]['src_mri_t']['trans']
+
     if dest == 'mri':
         affine = np.dot(src[0]['mri_ras_t']['trans'], affine)
+    elif dest == 'surf':
+        affine = affine.astype(float)
+    else:
+        raise ValueError(f"dest={dest!r}")
 
     affine[:3] *= 1e3
     if mni305:
         affine = _to_MNI152(affine)
 
     # write the image in nifty format
-    import nibabel as nib
-    header = nib.nifti1.Nifti1Header()
+    header = nibabel.nifti1.Nifti1Header()
     header.set_xyzt_units('mm', 'msec')
     if ndvar.has_dim('time'):
         header['pixdim'][4] = 1e3 * ndvar.time.tstep
     else:
         header['pixdim'][4] = None
     with warnings.catch_warnings(record=True):  # nibabel<->numpy warning
-        img = nib.Nifti1Image(vol, affine, header=header)
+        img = nibabel.Nifti1Image(vol.T, affine, header=header)
     return img
 
 

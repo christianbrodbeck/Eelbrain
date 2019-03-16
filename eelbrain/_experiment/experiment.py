@@ -15,7 +15,7 @@ from tqdm import tqdm
 from .. import fmtxt
 from .._utils import as_sequence, LazyProperty, ask, deprecated
 from .._utils.com import Notifier, NotNotifier
-from .definitions import check_names
+from .definitions import check_names, compound
 
 
 def _etree_expand(node, state):
@@ -122,15 +122,11 @@ class TreeModel:
     """
     owner = None  # email address as string (for notification)
     _auto_debug = False  # in notification block
-
-    _fmt_pattern = re.compile('\{([\w-]+)\}')
-
+    _fmt_pattern = re.compile(r'\{([\w-]+)\}')
     # a dictionary of static templates (i.e., templates that do not have any hooks)
     _templates = {}
     defaults = {}
-
     _repr_args = ()
-    _repr_kwargs = ()
 
     def __init__(self, **state):
         # scaffold for state
@@ -138,8 +134,9 @@ class TreeModel:
         self._field_values = LayeredDict()
         self._params = LayeredDict()
         self._terminal_fields = []
-        self._user_fields = []  # terminal fields that are relevant for user
         self._secondary_cache = defaultdict(tuple)  # secondary cache-files
+        self._repr_kwargs = []
+        self._repr_kwargs_optional = []
 
         # scaffold for hooks
         self._compound_members = {}
@@ -160,9 +157,7 @@ class TreeModel:
             elif isinstance(v, tuple):
                 self._register_field(k, v, v[0], allow_empty=True)
             else:
-                err = ("Invalid templates field value: %r. Need None, tuple "
-                       "or string" % v)
-                raise TypeError(err)
+                raise TypeError(f"Invalid templates field value: {v!r}. Need None, tuple or string")
 
         if self.owner:
             task = self.__class__.__name__
@@ -172,25 +167,17 @@ class TreeModel:
             self.notification = NotNotifier()
 
     def __repr__(self):
-        args = [repr(self._fields[arg]) for arg in self._repr_args]
-        kwargs = [(arg, repr(self._fields[arg])) for arg in self._repr_kwargs]
+        args = [self._fields[arg] for arg in self._repr_args]
 
+        kwargs = [(arg, self._fields[arg]) for arg in self._repr_kwargs]
         no_initial_state = len(self._fields._states) == 0
-        for k in sorted(self._fields):
-            if k in self._repr_args or k in self._repr_kwargs:
-                continue
-            elif k in self._compound_members:
-                continue
-            elif '{' in self._fields[k]:
-                continue
-
+        for k in self._repr_kwargs_optional:
             v = self._fields[k]
             if no_initial_state or v != self._fields.get_stored(k, level=0):
-                kwargs.append((k, repr(v)))
+                kwargs.append((k, v))
 
-        args.extend('='.join(pair) for pair in kwargs)
-        args = ', '.join(args)
-        return "%s(%s)" % (self.__class__.__name__, args)
+        args.extend(f'{k}={v}' for k, v in kwargs)
+        return f"{self.__class__.__name__}({', '.join(args)})"
 
     def _bind_eval(self, key, handler):
         self._eval_handlers[key].append(handler)
@@ -277,8 +264,8 @@ class TreeModel:
 
     def _register_field(self, key, values=None, default=None, set_handler=None,
                         eval_handler=None, post_set_handler=None,
-                        depends_on=None, slave_handler=None, internal=False,
-                        allow_empty=False):
+                        depends_on=None, slave_handler=None,
+                        allow_empty=False, repr=None):
         """Register an iterable field
 
         Parameters
@@ -303,11 +290,12 @@ class TreeModel:
             Slave fields: Fields in depends_on trigger change in ``key``.
         slave_handler : func
             Slave fields: Function that determines the new value of ``key``.
-        internal : bool
-            The field is set by methods as needed but should not be exposed to
-            the user.
         allow_empty : bool
             Allow empty string in ``values``.
+        repr : bool
+            By default, fields are shown in ``repr`` if they are different from
+            the value at initialization. Set to ``True`` to always show them
+            (as long as there are at least 2 ``values``).
         """
         if key in self._fields:
             raise KeyError("Field already exists: %r" % key)
@@ -334,18 +322,24 @@ class TreeModel:
             values = tuple(values)
             check_names(values, key, allow_empty)
             if default is None:
-                if len(values):
-                    default = values[0]
-                else:
-                    raise RuntimeError(f"Values for {key!r} empty, can`t set default")
+                default = values[0]
             elif default not in values:
                 raise ValueError(f"Default {default!r} for {key!r} not in values {values}")
-
             self._field_values[key] = values
 
+        # repr
+        if key in self._repr_args:
+            pass
+        elif repr is True:
+            if values and len(values) > 1:
+                self._repr_kwargs.append(key)
+        elif repr is None:
+            if values and len(values) > 1:
+                self._repr_kwargs_optional.append(key)
+        elif repr is not False:
+            raise TypeError(f"repr={repr!r}")
+
         self._terminal_fields.append(key)
-        if depends_on is None and not internal:
-            self._user_fields.append(key)
         self._fields[key] = ''
         if default is not None:
             self.set(**{key: default})
@@ -784,7 +778,7 @@ class TreeModel:
         table.midrule()
 
         if temp is None:
-            keys = self._user_fields
+            keys = chain(self._repr_kwargs, self._repr_kwargs_optional)
         else:
             keys = self.find_keys(temp)
 
@@ -855,17 +849,8 @@ class TreeModel:
         return _TempStateController(self)
 
     def _update_compound(self, key):
-        compound = ''
-        for item_key in self._compound_members[key]:
-            value = self.get(item_key)
-            if value == '*':
-                if not compound.endswith('*'):
-                    compound += '*'
-            elif value:
-                if compound and not compound.endswith('*'):
-                    compound += ' '
-                compound += value
-        self.set(**{key: compound}, expand_compounds=False)
+        items = [self.get(k) for k in self._compound_members[key]]
+        self.set(**{key: compound(items)}, expand_compounds=False)
 
     def _update_compounds(self, key, _):
         for compound in self._compounds[key]:
@@ -1029,8 +1014,11 @@ class FileTree(TreeModel):
     def _glob_pattern(self, temp, inclusive=False, **state):
         if inclusive:
             for key in self._terminal_fields:
-                if key not in state and key != 'root':
-                    state[key] = '*'
+                if key in state or key == 'root':
+                    continue
+                elif key in self._field_values and len(self._field_values[key]) == 1:
+                    continue
+                state[key] = '*'
         with self._temporary_state:
             pattern = self.get(temp, allow_asterisk=True, **state)
         return pattern

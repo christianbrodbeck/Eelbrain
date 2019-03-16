@@ -4,12 +4,15 @@ from pathlib import Path
 from os.path import join, exists
 import pytest
 import shutil
+from warnings import catch_warnings, filterwarnings
 
 import numpy as np
+from numpy.testing import assert_almost_equal
 
 from eelbrain import *
+from eelbrain.pipeline import *
 from eelbrain._exceptions import DefinitionError
-from eelbrain._utils.testing import (
+from eelbrain.testing import (
     TempDir, assert_dataobj_equal, import_attr, requires_mne_sample_data,
 )
 
@@ -71,6 +74,8 @@ def test_sample():
     res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=20, data='sensor', baseline=False, make=True)
     assert res.p.min() == pytest.approx(.143, abs=.001)
     assert res.difference.max() == pytest.approx(4.47e-13, 1e-15)
+    # plot
+    e.plot_evoked(1, epoch='target', model='')
 
     # e._report_subject_info() broke with non-alphabetic subject order
     subjects = e.get_field_values('subject')
@@ -79,7 +84,33 @@ def test_sample():
     ds['n'] = Var(range(3))
     s_table = e._report_subject_info(ds, '')
 
-    # test multiple epochs with same time stamp
+    # post_baseline_trigger_shift
+    # use multiple of tstep to shift by even number of samples
+    tstep = 0.008324800548266162
+    shift = -7 * tstep
+    class Experiment(SampleExperiment):
+        epochs = {
+            **SampleExperiment.epochs,
+            'visual-s': SecondaryEpoch('target', "modality == 'visual'", post_baseline_trigger_shift='shift', post_baseline_trigger_shift_max=0, post_baseline_trigger_shift_min=shift),
+        }
+        variables = {
+            **SampleExperiment.variables,
+            'shift': LabelVar('side', {'left': 0, 'right': shift}),
+            'shift_t': LabelVar('trigger', {(1, 3): 0, (2, 4): shift})
+        }
+    e = Experiment(root)
+    # test shift in events
+    ds = e.load_events()
+    assert_dataobj_equal(ds['shift_t'], ds['shift'], name=False)
+    # compare against epochs (baseline correction on epoch level rather than evoked for smaller numerical error)
+    ep = e.load_epochs(baseline=True, epoch='visual', rej='').aggregate('side')
+    evs = e.load_evoked(baseline=True, epoch='visual-s', rej='', model='side')
+    tstart = ep['meg'].time.tmin - shift
+    assert_dataobj_equal(evs[0, 'meg'], ep[0, 'meg'].sub(time=(tstart, None)), decimal=20)
+    tstop = ep['meg'].time.tstop + shift
+    assert_almost_equal(evs[1, 'meg'].x, ep[1, 'meg'].sub(time=(None, tstop)).x, decimal=20)
+
+    # post_baseline_trigger_shift & multiple epochs with same time stamp
     class Experiment(SampleExperiment):
         epochs = {
             **SampleExperiment.epochs,
@@ -87,12 +118,20 @@ def test_sample():
             'v2': {'base': 'visual', 'vars': {'shift': 'Var([0.1], repeat=len(side))'}},
             'vc': {'sub_epochs': ('v1', 'v2'), 'post_baseline_trigger_shift': 'shift', 'post_baseline_trigger_shift_max': 0.1, 'post_baseline_trigger_shift_min': 0.0},
         }
+        groups = {
+            'group0': Group(['R0000']),
+            'group1': SubGroup('all', ['R0000']),
+        }
+        variables = {
+            'group': GroupVar(['group0', 'group1']),
+            **SampleExperiment.variables,
+        }
     e = Experiment(root)
     events = e.load_selected_events(epoch='vc')
     ds = e.load_epochs(baseline=True, epoch='vc')
     v1 = ds.sub("epoch=='v1'", 'meg').sub(time=(0, 0.199))
     v2 = ds.sub("epoch=='v2'", 'meg').sub(time=(-0.1, 0.099))
-    assert_dataobj_equal(v1, v2, decimal=20)
+    assert_almost_equal(v1.x, v2.x, decimal=20)
 
     # duplicate subject
     class BadExperiment(SampleExperiment):
@@ -120,18 +159,11 @@ def test_sample():
             'modality': {(1, 2): 'auditory', (3, 4): 'visual'}
         }
         tests = {
-            'twostage': {
-                'kind': 'two-stage',
-                'stage 1': 'side_left + modality_a',
-                'vars': {
-                    'side_left': "side == 'left'",
-                    'modality_a': "modality == 'auditory'",
-                }
-            },
-            'novars': {
-                'kind': 'two-stage',
-                'stage 1': 'side + modality'
-            },
+            'twostage': TwoStageTest(
+                'side_left + modality_a',
+                {'side_left': "side == 'left'",
+                 'modality_a': "modality == 'auditory'"}),
+            'novars': TwoStageTest('side + modality'),
         }
     e = Changed(root)
 
@@ -153,7 +185,12 @@ def test_sample():
 
     # ICA
     # ---
-    e = SampleExperiment(root)
+    class Experiment(SampleExperiment):
+        raw = {
+            'apply-ica': RawApplyICA('tsss', 'ica'),
+            **SampleExperiment.raw,
+        }
+    e = Experiment(root)
     ica_path = e.make_ica(raw='ica')
     e.set(raw='ica1-40', model='')
     e.make_epoch_selection(auto=2e-12, overwrite=True)
@@ -163,6 +200,12 @@ def test_sample():
     ica.save(ica_path)
     ds2 = e.load_evoked(raw='ica1-40')
     assert not np.allclose(ds1['meg'].x, ds2['meg'].x, atol=1e-20), "ICA change ignored"
+    # apply-ICA
+    with catch_warnings():
+        filterwarnings('ignore', "The measurement information indicates a low-pass frequency", RuntimeWarning)
+        ds1 = e.load_evoked(raw='ica', rej='')
+        ds2 = e.load_evoked(raw='apply-ica', rej='')
+    assert_dataobj_equal(ds2, ds1)
 
     # rename subject
     # --------------
@@ -196,14 +239,21 @@ def test_sample():
 
 
 @requires_mne_sample_data
-def test_samples_sesssions():
+def test_sample_sessions():
     set_log_level('warning', 'mne')
     SampleExperiment = import_attr(sample_path / 'sample_experiment_sessions.py', 'SampleExperiment')
     tempdir = TempDir()
     datasets.setup_samples_experiment(tempdir, 2, 1, 2)
 
+    class Experiment(SampleExperiment):
+
+        raw = {
+            'ica': RawICA('raw', ('sample1', 'sample2'), 'fastica', max_iter=1),
+            **SampleExperiment.raw,
+        }
+
     root = join(tempdir, 'SampleExperiment')
-    e = SampleExperiment(root)
+    e = Experiment(root)
     # bad channels
     e.make_bad_channels('0111')
     assert e.load_bad_channels() == ['MEG 0111']
@@ -237,3 +287,9 @@ def test_samples_sesssions():
     e.set(session='sample1')
     e.make_epoch_selection(auto=2e-12)
     assert exists(rej_path)
+
+    # ica
+    e.set('R0000', raw='ica')
+    with catch_warnings():
+        filterwarnings('ignore', "FastICA did not converge", UserWarning)
+        assert e.make_ica() == join(root, 'meg', 'R0000', 'R0000 ica-ica.fif')

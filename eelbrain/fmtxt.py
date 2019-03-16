@@ -50,7 +50,6 @@ The module also provides functions that work with fmtxt objects:
 import base64
 import datetime
 from html.parser import HTMLParser
-from importlib import import_module
 from itertools import repeat
 from math import ceil
 import os
@@ -1553,10 +1552,13 @@ class Table(FMTextElement):
         if self._title is not None:
             out = ['', self._title.get_str(env), ''] + out
 
-        if isinstance(self._caption, str):
-            out.append(self._caption)
-        elif self._caption:
-            out.append(str(self._caption))
+        if self._caption:
+            if self.rules:
+                out.append(midrule)
+            if isinstance(self._caption, str):
+                out.append(self._caption)
+            elif self._caption:
+                out.append(str(self._caption))
 
         return linesep.join(out)
 

@@ -5,8 +5,7 @@ import re
 import wx
 from wx.lib.dialogs import ScrolledMessageDialog
 
-from . import icons
-
+from eelbrain._wxgui import icons
 
 # store icons once loaded for repeated access
 _cache = {}
@@ -57,7 +56,7 @@ class FloatValidator(wx.Validator):
         value = ctrl.GetValue()
         try:
             self.value = float(value)
-        except TypeError:
+        except ValueError:
             msg = wx.MessageDialog(self.parent, f"Can not convert {value!r} to float", "Invalid Entry", wx.OK | wx.ICON_ERROR)
             msg.ShowModal()
             msg.Destroy()

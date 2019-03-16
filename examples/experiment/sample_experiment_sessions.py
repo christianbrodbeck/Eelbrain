@@ -39,7 +39,7 @@ class SampleExperiment(MneExperiment):
     }
 
     epochs = {
-        'target1': {'session': 'sample1', 'sel': "event == 'target'"},
-        'target2': {'session': 'sample2', 'sel': "event == 'target'"},
-        'super': {'sub_epochs': ('target1', 'target2')},
+        'target1': PrimaryEpoch('sample1', "event == 'target'", decim=5),
+        'target2': PrimaryEpoch('sample2', "event == 'target'", decim=5),
+        'super': SuperEpoch(('target1', 'target2')),
     }

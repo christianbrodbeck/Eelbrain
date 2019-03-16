@@ -22,6 +22,7 @@ from .._utils import ui
 
 _mat_wildcard = ('Matlab data file (*.mat)', '*.mat')
 
+
 def dat_file(path):
     """Load an besa source estimate from a dat file
 
@@ -37,7 +38,7 @@ def dat_file(path):
         src.info dict.
     """
     info = {}
-    pattern = re.compile("(.+):\s*(.+)")
+    pattern = re.compile(r"(.+):\s*(.+)")
     with open(path) as fid:
         in_header = True
         while in_header:
@@ -64,7 +65,7 @@ def dat_file(path):
         n_times = int(info['Time samples'])
         data = np.fromfile(fid, 'float64', sep=" ")
         data = data.reshape((n_locs, n_times + 3))
-        locs = data[:, :3]
+        # locs = data[:, :3]
         data = data[:, 3:]
         source = Scalar("source", np.arange(n_locs))
         src = NDVar(data, (source, time), info, 'src')

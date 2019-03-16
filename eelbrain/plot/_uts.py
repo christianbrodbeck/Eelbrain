@@ -79,6 +79,9 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
     xlim : scalar | (scalar, scalar)
         Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
         scalar (default is the full x-axis in the data).
+    clip : bool
+        Clip lines outside of axes (the default depends on whether ``frame`` is
+        closed or open).
     color : matplotlib color
         Color if just a single category of data is plotted.
     colors : str | list | dict
@@ -123,17 +126,17 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
                  main=np.mean, error='sem', pool_error=None, legend='upper right',
                  axtitle=True, xlabel=True, ylabel=True, xticklabels=-1,
                  invy=False, bottom=None, top=None, hline=None, xdim='time',
-                 xlim=None, color='b', colors=None, error_alpha=0.3,
+                 xlim=None, clip=None, color='b', colors=None, error_alpha=0.3,
                  clusters=None, pmax=0.05, ptrend=0.1, *args, **kwargs):
         # coerce input variables
-        sub = assub(sub, ds)
-        y = asndvar(y, sub, ds)
+        sub, n = assub(sub, ds, return_n=True)
+        y, n = asndvar(y, sub, ds, n, return_n=True)
         if x is not None:
-            x = ascategorial(x, sub, ds)
+            x = ascategorial(x, sub, ds, n)
         if xax is not None:
-            xax = ascategorial(xax, sub, ds)
+            xax = ascategorial(xax, sub, ds, n)
         if match is not None:
-            match = ascategorial(match, sub, ds)
+            match = ascategorial(match, sub, ds, n)
 
         if error and error != 'all' and \
                 (pool_error or (pool_error is None and match is not None)):
@@ -175,7 +178,8 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
 
         layout = Layout(nax, 2, 4, *args, autoscale='y', **kwargs)
         EelFigure.__init__(self, frame_title(y, x, xax), layout)
-        clip = layout.frame
+        if clip is None:
+            clip = layout.frame is True
 
         # create plots
         self._plots = []
@@ -213,7 +217,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         self._show()
 
     def _fill_toolbar(self, tb):
-        import wx
+        from .._wxgui import wx
 
         btn = self._cluster_btn = wx.Button(tb, wx.ID_ABOUT, "Clusters")
         btn.Enable(False)
@@ -223,7 +227,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         LegendMixin._fill_toolbar(self, tb)
 
     def _OnShowClusterInfo(self, event):
-        from .._wxutils import show_text_dialog
+        from .._wxgui import show_text_dialog
 
         if len(self._plots) == 1:
             clusters = self._plots[0].cluster_plt.clusters
@@ -379,7 +383,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         XAxisMixin._init_with_data(self, data.data, xdim, xlim)
         YLimMixin.__init__(self, self.plots)
         LegendMixin.__init__(self, legend, legend_handles)
-        TimeSlicerEF.__init__(self, xdim, data.data)
+        TimeSlicerEF.__init__(self, xdim, data.time_dim)
         self._show()
 
     def _fill_toolbar(self, tb):
@@ -510,14 +514,15 @@ class UTSClusters(EelFigure):
         self._show()
 
     def _fill_toolbar(self, tb):
-        import wx
+        from .._wxgui import wx
 
         btn = wx.Button(tb, wx.ID_ABOUT, "Clusters")
         tb.AddControl(btn)
         btn.Bind(wx.EVT_BUTTON, self._OnShowClusterInfo)
 
     def _OnShowClusterInfo(self, event):
-        from .._wxutils import show_text_dialog
+        from .._wxgui import show_text_dialog
+
         info = str(self.clusters)
         show_text_dialog(self._frame, info, "Clusters")
 
@@ -540,10 +545,10 @@ class _ax_uts:
             self.legend_handles[longname(l)] = p.plot_handle
             contours = l.info.get('contours', None)
             if contours:
-                for v, color in contours.items():
+                for v, c in contours.items():
                     if v in contours:
                         continue
-                    contours[v] = ax.axhline(v, color=color)
+                    contours[v] = ax.axhline(v, color=c)
 
         self.ax = ax
         self.set_ylim(vmin, vmax)

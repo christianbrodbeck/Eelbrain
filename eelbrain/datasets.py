@@ -468,7 +468,7 @@ def get_uv(seed=0, nrm=False, vector=False):
     return ds
 
 
-def setup_samples_experiment(dst, n_subjects=3, n_segments=4, n_sessions=1, name='SampleExperiment'):
+def setup_samples_experiment(dst, n_subjects=3, n_segments=4, n_sessions=1, n_visits=1, name='SampleExperiment'):
     """Setup up file structure for the SampleExperiment class
 
     Parameters
@@ -482,6 +482,8 @@ def setup_samples_experiment(dst, n_subjects=3, n_segments=4, n_sessions=1, name
         Number of data segments to include in each file.
     n_sessions : int
         Number of sessions.
+    n_visits : int
+        Number of visits.
     name : str
         Name for the directory for the new experiment (default
         ``'SampleExperiment'``).
@@ -491,6 +493,10 @@ def setup_samples_experiment(dst, n_subjects=3, n_segments=4, n_sessions=1, name
     raw = mne.io.read_raw_fif(raw_path)
     raw.info['bads'] = []
     sfreq = raw.info['sfreq']
+
+    if n_sessions > 1 and n_visits > 1:
+        raise NotImplementedError
+    n_recordings = n_subjects * max(n_sessions, n_visits)
 
     # find segmentation points
     events = mne.find_events(raw)
@@ -504,7 +510,7 @@ def setup_samples_experiment(dst, n_subjects=3, n_segments=4, n_sessions=1, name
         if n == n_segments:
             t = sample / sfreq
             segs.append((t_start, t))
-            if len(segs) == n_subjects * n_sessions:
+            if len(segs) == n_recordings:
                 break
             t_start = t
             n = 0
@@ -519,10 +525,12 @@ def setup_samples_experiment(dst, n_subjects=3, n_segments=4, n_sessions=1, name
     os.mkdir(root)
     os.mkdir(meg_sdir)
 
-    if n_sessions == 1:
-        sessions = ['sample']
-    else:
+    if n_visits > 1:
+        sessions = ['sample', *(f'sample {i}' for i in range(1, n_visits))]
+    elif n_sessions > 1:
         sessions = ['sample%i' % (i + 1) for i in range(n_sessions)]
+    else:
+        sessions = ['sample']
 
     for s_id in range(n_subjects):
         subject = 'R%04i' % s_id

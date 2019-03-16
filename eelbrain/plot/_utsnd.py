@@ -253,7 +253,7 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
         self._configure_xaxis_dim(data.data[0][0].get_dim(xdim), xlabel, xticklabels)
         self._configure_yaxis_dim(data.data, ydim, ylabel, scalar=False)
         XAxisMixin._init_with_data(self, data.data, xdim, xlim, im=True)
-        TimeSlicerEF.__init__(self, xdim, data.data)
+        TimeSlicerEF.__init__(self, xdim, data.time_dim)
         self._show()
 
     def _fill_toolbar(self, tb):
@@ -330,8 +330,7 @@ class _ax_butterfly:
     layers : list of LayerData
         Data layers to plot.
     """
-    def __init__(self, ax, layers, xdim, linedim, sensors, color, linewidth,
-                 vlims, clip=True):
+    def __init__(self, ax, layers, xdim, linedim, sensors, color, linewidth, vlims, clip=True):
         self.ax = ax
         self.data = [l.y for l in layers]
         self.layers = []
@@ -406,7 +405,8 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
         Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
         scalar (default is the full x-axis in the data).
     clip : bool
-        Clip lines outside of axes (default ``True``).
+        Clip lines outside of axes (the default depends on whether ``frame`` is
+        closed or open).
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
@@ -434,12 +434,14 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
     """
     _cmaps = None  # for TopoMapKey mixin
     _contours = None
+    # keep track of open butterfly combo plots to optimally position new plots on screen
+    _OPEN_PLOTS = []
 
     def __init__(self, y, xax=None, sensors=None, axtitle=True,
                  xlabel=True, ylabel=True, xticklabels=-1, color=None,
                  linewidth=None,
                  ds=None, sub=None, x='time', vmax=None, vmin=None, xlim=None,
-                 clip=True, *args, **kwargs):
+                 clip=None, *args, **kwargs):
         data = PlotData.from_args(y, (x, None), xax, ds, sub)
         xdim, linedim = data.dims
         layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
@@ -447,6 +449,9 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
         self._set_axtitle(axtitle, data)
         self._configure_xaxis_dim(data.y0.get_dim(xdim), xlabel, xticklabels)
         self._configure_yaxis(data.y0, ylabel)
+
+        if clip is None:
+            clip = layout.frame is True
 
         self.plots = []
         self._vlims = _base.find_fig_vlims(data.data, vmax, vmin)
@@ -462,8 +467,46 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
         if linedim == 'sensor':
             TopoMapKey.__init__(self, self._topo_data)
         LegendMixin.__init__(self, 'invisible', legend_handles)
-        TimeSlicerEF.__init__(self, xdim, data.data)
+        TimeSlicerEF.__init__(self, xdim, data.time_dim)
         self._show()
+
+    def _auto_position(self, p2=None):
+        """Position Butterfly plot and corresponding time-slice plot"""
+        from .._wxgui import wx
+        from .._wxgui.mpl_canvas import CanvasFrame
+
+        if not isinstance(self._frame, CanvasFrame):
+            return
+        px, py = wx.ClientDisplayRect()[:2]
+        display_w, display_h = wx.DisplaySize()
+        pw, ph = self._frame.GetSize()
+        old_ys = []
+        self.__class__._OPEN_PLOTS = [p for p in self._OPEN_PLOTS if p._frame is not None]
+        if self._OPEN_PLOTS:
+            for p in self._OPEN_PLOTS:
+                old_x, old_y = p._frame.GetPosition()
+                if old_x < px + 10:
+                    _, old_h = p._frame.GetSize()
+                    old_ys.append((old_y, old_y + old_h))
+            if old_ys:
+                old_ys.sort()
+                # find vertical space without overlap
+                for y_start, y_stop in old_ys:
+                    overlap = max(0, min(py + ph, y_stop) - max(py, y_start))
+                    # print(f"overlap: [{y_start}, {y_stop}], [{py}, {py + ph}] -> {overlap}")
+                    if overlap:
+                        py = y_stop
+                    else:
+                        break
+                py = min(y_stop, display_h - ph)
+
+        self._frame.SetPosition((px, py))
+        self._OPEN_PLOTS.append(self)
+
+        if p2:  # secondary plot
+            p2w, _ = p2._frame.GetSize()
+            p2x = min(px + pw, display_w - p2w)
+            p2._frame.SetPosition((p2x, py))
 
     def _fill_toolbar(self, tb):
         LegendMixin._fill_toolbar(self, tb)

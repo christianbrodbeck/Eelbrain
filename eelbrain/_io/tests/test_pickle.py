@@ -1,6 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from eelbrain import datasets, load
-from eelbrain._utils.testing import assert_dataobj_equal, file_path
+from eelbrain.testing import assert_dataobj_equal, file_path
 
 
 def test_pickle():

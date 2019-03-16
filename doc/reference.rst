@@ -448,8 +448,8 @@ More specific control over the plots can be achieved through the
    plot.brain.p_map
    plot.brain.annot
    plot.brain.annot_legend
-   plot.brain.SequencePlotter
    ~plot._brain_object.Brain
+   plot.brain.SequencePlotter
    plot.GlassBrain
    plot.GlassBrain.butterfly
 

@@ -22,7 +22,6 @@ from wx.lib.scrolledpanel import ScrolledPanel
 
 from .. import load, plot, fmtxt
 from .._data_obj import Factor, NDVar, asndvar, Categorial, Scalar
-from .._wxutils import Icon, ID, REValidator
 from .._utils.parse import POS_FLOAT_PATTERN
 from .._utils.system import IS_OSX
 from ..plot._base import AxisData, LayerData, PlotType
@@ -31,6 +30,8 @@ from .frame import EelbrainDialog
 from .history import Action, FileDocument, FileModel, FileFrame, FileFrameChild
 from .mpl_canvas import FigureCanvasPanel
 from .text import HTMLFrame
+from .utils import Icon, REValidator
+from . import ID
 
 
 COLOR = {True: (.5, 1, .5), False: (1, .3, .3)}
@@ -253,6 +254,7 @@ class Frame(FileFrame):
         self.canvas.mpl_connect('key_release_event', self.OnCanvasKey)
         # re-Bind right click
         self.canvas.Unbind(wx.EVT_RIGHT_DOWN)
+        self.canvas.Unbind(wx.EVT_RIGHT_UP)
         self.canvas.Bind(wx.EVT_RIGHT_DOWN, self.OnRightDown)
 
         # Finalize
@@ -413,7 +415,8 @@ class Frame(FileFrame):
                 self.doc.epoch_labels[e], LINK % (c, e)) for e in epochs)))
             doc.append(fmtxt.linebreak)
 
-        InfoFrame(self, "Rare Events", doc.get_html())
+        style = wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP
+        InfoFrame(self, "Rare Events", doc.get_html(), size=(500, 700), style=style)
 
     def OnPanelResize(self, event):
         w, h = event.GetSize()
@@ -434,7 +437,10 @@ class Frame(FileFrame):
         self.PlotEpochButterfly(-1)
 
     def OnPointerEntersAxes(self, event):
-        sb = self.GetStatusBar()
+        try:
+            sb = self.GetStatusBar()
+        except RuntimeError:
+            return  # can be called after the window closes (Windows)
         if event.inaxes:
             sb.SetStatusText("#%i of %i ICA Components" %
                              (event.inaxes.i, len(self.doc.components)))
@@ -451,26 +457,19 @@ class Frame(FileFrame):
 
         # sort
         sort = np.argsort(ss)[::-1]
-        ss = ss[sort]
 
         # doc
-        lst = fmtxt.List("Epochs SS loading in descending order for component "
-                         "%i:" % i_comp)
-        for i, ss_epoch in enumerate(ss):
-            lst.add_item(
-                fmtxt.Link(self.doc.epoch_labels[i], LINK % (i_comp, i)) +
-                ': %.1f' % ss_epoch)
-        doc = fmtxt.Section("# %i Ranked Epochs" % i_comp, lst)
+        lst = fmtxt.List(f"Epochs SS loading in descending order for component {i_comp}")
+        for i in sort:
+            link = fmtxt.Link(self.doc.epoch_labels[i], LINK % (i_comp, i))
+            lst.add_item(link + f': {ss[i]:.1f}')
+        doc = fmtxt.Section(f"#{i_comp} Ranked Epochs", lst)
 
-        InfoFrame(self, "Component %i Epoch SS" % i_comp, doc.get_html())
+        style = wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP
+        InfoFrame(self, f"Component {i_comp} Epoch SS", doc.get_html(), size=(200, 700), style=style)
 
-    def OnRightDown(self, event):
-        ax = self.canvas.MatplotlibEventAxes(event)
-        if not ax:
-            return
-
-        # costruct menu
-        menu = ContextMenu(ax.i)
+    def _component_context_menu(self, i_comp):
+        menu = ContextMenu(i_comp)
         item = menu.Append(wx.ID_ANY, "Rank Epochs")
         self.Bind(wx.EVT_MENU, self.OnRankEpochs, item)
         menu.AppendSeparator()
@@ -478,8 +477,13 @@ class Frame(FileFrame):
         self.Bind(wx.EVT_MENU, self.OnPlotCompTopomap, item)
         item = menu.Append(wx.ID_ANY, "Plot Source Array")
         self.Bind(wx.EVT_MENU, self.OnPlotCompSourceArray, item)
+        return menu
 
-        # show menu
+    def OnRightDown(self, event):
+        mpl_event = self.canvas._to_matplotlib_event(event)
+        if not mpl_event.inaxes:
+            return
+        menu = self._component_context_menu(mpl_event.inaxes.i)
         pos = self.panel.CalcScrolledPosition(event.Position)
         self.PopupMenu(menu, pos)
         menu.Destroy()
@@ -558,6 +562,9 @@ class Frame(FileFrame):
         original = asndvar(epoch)
         clean = asndvar(self.doc.apply(epoch))
         if self.butterfly_baseline == ID.BASELINE_CUSTOM:
+            if original.time.tmin >= 0:
+                wx.MessageBox(f"The data displayed does not have a baseline period (tmin={original.time.tmin}). Change the baseline through the Tools menu.", "No Baseline Period", style=wx.ICON_ERROR)
+                return
             original -= original.mean(time=(None, 0))
             clean -= clean.mean(time=(None, 0))
         elif self.butterfly_baseline == ID.BASELINE_GLOABL_MEAN:
@@ -606,7 +613,7 @@ class SourceFrame(FileFrameChild):
     _title = 'ICA Source Time Course'
     _wildcard = "ICA fiff file (*-ica.fif)|*.fif"
 
-    def __init__(self, parent, i_first):
+    def __init__(self, parent: Frame, i_first: int):
         FileFrame.__init__(self, parent, None, None, parent.model)
 
         # prepare canvas
@@ -644,8 +651,12 @@ class SourceFrame(FileFrameChild):
         self.Bind(wx.EVT_TOOL, self.OnDown, id=wx.ID_DOWN)
         self.Bind(wx.EVT_TOOL, self.OnBackward, id=wx.ID_BACKWARD)
         self.Bind(wx.EVT_TOOL, self.OnForward, id=wx.ID_FORWARD)
-        self.canvas.mpl_connect('button_press_event', self.OnCanvasClick)
         self.canvas.mpl_connect('key_release_event', self.OnCanvasKey)
+        # re-Bind mouse click
+        self.canvas.Unbind(wx.EVT_LEFT_DOWN)
+        self.canvas.Bind(wx.EVT_LEFT_DOWN, self.OnLeftDown)
+        self.canvas.Unbind(wx.EVT_RIGHT_DOWN)
+        self.canvas.Bind(wx.EVT_RIGHT_DOWN, self.OnRightDown)
 
         self._plot()
         self.UpdateTitle()
@@ -730,6 +741,15 @@ class SourceFrame(FileFrameChild):
         self.ax_tc = ax
         self.canvas.draw()
 
+    def _event_i_comp(self, event):
+        if event.inaxes:
+            if event.inaxes.i_comp is None:
+                i_comp = int(self.i_first + self.n_comp - ceil(event.ydata / self.y_scale + 0.5))
+                if i_comp < self.n_comp_in_ica:
+                    return i_comp
+            else:
+                return event.inaxes.i_comp
+
     def CanBackward(self):
         return self.i_first_epoch > 0
 
@@ -770,17 +790,6 @@ class SourceFrame(FileFrameChild):
         "Turn the page backward"
         self.SetFirstEpoch(self.i_first_epoch - self.n_epochs)
 
-    def OnCanvasClick(self, event):
-        "Called by mouse clicks"
-        if event.inaxes:
-            if event.inaxes.i_comp is None:
-                i_comp = int(self.i_first + self.n_comp - ceil(event.ydata / self.y_scale + 0.5))
-                if i_comp >= self.n_comp_in_ica:
-                    return
-            else:
-                i_comp = event.inaxes.i_comp
-            self.model.toggle(i_comp)
-
     def OnCanvasKey(self, event):
         if event.key is None:
             return
@@ -802,8 +811,7 @@ class SourceFrame(FileFrameChild):
             if event.inaxes is None:
                 i_epoch = -1
             elif event.inaxes.i_comp is None:
-                i_epoch = (self.i_first_epoch +
-                           int(event.xdata // len(self.doc.sources.time)))
+                i_epoch = self.i_first_epoch + int(event.xdata // len(self.doc.sources.time))
                 if i_epoch >= len(self.doc.epochs):
                     i_epoch = -1
             else:
@@ -811,14 +819,16 @@ class SourceFrame(FileFrameChild):
             self.parent.PlotEpochButterfly(i_epoch)
         elif not event.inaxes:
             return
+        # component-specific plots
+        i_comp = self._event_i_comp(event)
+        if i_comp is None:  # source time course axes
+            return
         elif event.key in 'tT':
-            if event.inaxes.i_comp is None:  # source time course axes
-                return
-            self.parent.PlotCompTopomap(event.inaxes.i_comp)
+            self.parent.PlotCompTopomap(i_comp)
         elif event.key == 'a':
-            self.parent.PlotCompSourceArray(event.inaxes.i_comp)
+            self.parent.PlotCompSourceArray(i_comp)
         elif event.key == 'f':
-            self.parent.PlotCompFFT(event.inaxes.i_comp)
+            self.parent.PlotCompFFT(i_comp)
 
     def OnClose(self, event):
         if super(SourceFrame, self).OnClose(event):
@@ -835,6 +845,23 @@ class SourceFrame(FileFrameChild):
     def OnForward(self, event):
         "Turn the page forward"
         self.SetFirstEpoch(self.i_first_epoch + self.n_epochs)
+
+    def OnLeftDown(self, event):
+        "Called by mouse clicks"
+        mpl_event = self.canvas._to_matplotlib_event(event)
+        i_comp = self._event_i_comp(mpl_event)
+        if i_comp is None:
+            return
+        self.model.toggle(i_comp)
+
+    def OnRightDown(self, event):
+        mpl_event = self.canvas._to_matplotlib_event(event)
+        i_comp = self._event_i_comp(mpl_event)
+        if i_comp is None:
+            return
+        menu = self.parent._component_context_menu(i_comp)
+        self.PopupMenu(menu, event.Position)
+        menu.Destroy()
 
     def OnSetLayout(self, event):
         caption = "Set ICA Source Layout"
@@ -868,12 +895,16 @@ class SourceFrame(FileFrameChild):
         while True:
             if dlg.ShowModal() != wx.ID_OK:
                 break
+            error = None
             try:
                 value = float(dlg.GetValue())
+                if value <= 0:
+                    error = f"{value}: must be > 0"
             except Exception as exception:
-                msg = wx.MessageDialog(
-                    self, str(exception), "Invalid Entry",
-                    wx.OK | wx.ICON_ERROR)
+                error = str(exception)
+
+            if error:
+                msg = wx.MessageDialog(self, error, "Invalid Entry", wx.OK | wx.ICON_ERROR)
                 msg.ShowModal()
                 msg.Destroy()
             else:

@@ -1,9 +1,11 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from os.path import join
+from warnings import catch_warnings, filterwarnings
 
 import mne
 from eelbrain import gui, load
-from eelbrain._utils.testing import gui_test, TempDir
+from eelbrain.testing import gui_test, TempDir
+from eelbrain._wxgui import ID
 
 
 @gui_test
@@ -17,8 +19,10 @@ def test_select_components():
     raw = mne.io.Raw(raw_path, preload=True).pick_types('mag', stim=True)
     ds = load.fiff.events(raw)
     ds['epochs'] = load.fiff.mne_epochs(ds, tmax=0.1)
-    ica = mne.preprocessing.ICA(0.95, fit_params={'tol': 0.001})
-    ica.fit(raw)
+    ica = mne.preprocessing.ICA(0.95, max_iter=1)
+    with catch_warnings():
+        filterwarnings('ignore', 'FastICA did not converge')
+        ica.fit(raw)
     ica.save(PATH)
 
     frame = gui.select_components(PATH, ds)
@@ -31,5 +35,10 @@ def test_select_components():
     frame.OnSave(None)
     ica = mne.preprocessing.read_ica(PATH)
     assert ica.exclude == []
+
+    # plotting
+    for i in [ID.BASELINE_NONE, ID.BASELINE_GLOABL_MEAN, ID.BASELINE_CUSTOM]:
+        frame.butterfly_baseline = i
+        frame.OnPlotGrandAverage(None)
 
     frame.Close()
