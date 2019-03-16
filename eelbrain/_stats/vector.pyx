@@ -35,6 +35,7 @@ ctypedef cnp.int8_t INT8
 ctypedef cnp.int64_t INT64
 ctypedef cnp.float64_t FLOAT64
 
+
 cdef double r_TOL = 2.220446049250313e-16
 
 cdef extern from "dsyevh3.c":
