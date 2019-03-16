@@ -19,11 +19,12 @@ from ez_setup import use_setuptools
 use_setuptools('17')
 
 from distutils.version import LooseVersion
-from distutils.extension import Extension
 from glob import glob
 from os.path import pathsep
 import re
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
+# To circumvent "error: each element of 'ext_modules' option must be an Extension instance or 2-tuple"
+# import Extension from setuptools instead of distutils.extension.
 
 import numpy as np
 
@@ -64,6 +65,7 @@ else:
                              extra_compile_args=['-std=c99'],
                              ) for path in ext_paths]
     ext_modules = cythonize(ext_modules)
+    print(ext_modules)
 
 setup(
     name='eelbrain',
