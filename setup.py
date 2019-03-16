@@ -59,7 +59,11 @@ if cythonize is False:
         for path in actual_paths
     ]
 else:
-    ext_modules = cythonize([path % '.pyx' for path in ext_paths])
+    ext_modules = [Extension(path,
+                             [path % '.pyx'],
+                             extra_compile_args=['-std=c99'],
+                             ) for path in ext_paths]
+    ext_modules = cythonize(ext_modules)
 
 setup(
     name='eelbrain',
