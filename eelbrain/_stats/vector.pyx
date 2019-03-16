@@ -35,7 +35,7 @@ ctypedef cnp.int8_t INT8
 ctypedef cnp.int64_t INT64
 ctypedef cnp.float64_t FLOAT64
 
-cdef double TOL = 1e-15
+cdef double r_TOL = 2.220446049250313e-16
 
 cdef extern from "dsyevh3.c":
     int dsyevh3(double A[3][3], double Q[3][3], double w[3])
@@ -122,7 +122,7 @@ def mean_norm_rotated(cnp.ndarray[FLOAT64, ndim=3] y,
 def t2_stat(cnp.ndarray[FLOAT64, ndim=3] y,
             cnp.ndarray[FLOAT64, ndim=1] out):
     cdef unsigned long i, v, u, case
-    cdef double norm, temp
+    cdef double norm, temp, max_eig, TOL
 
     cdef double mean[3]
     cdef double sigma[3][3]
@@ -154,6 +154,8 @@ def t2_stat(cnp.ndarray[FLOAT64, ndim=3] y,
                 sigma[u][v] -= mean[u] * mean[v] / n_cases
 
         dsyevh3(sigma, vec, eig)
+        max_eig = max(eig, 3)
+        TOL = r_TOL * max_eig
 
         for v in range(n_dims):
             temp = 0
@@ -162,8 +164,8 @@ def t2_stat(cnp.ndarray[FLOAT64, ndim=3] y,
             if eig[v] > TOL:
                 norm += temp ** 2 / eig[v]
             else:
-                norm += 0
-                # norm += temp ** 2 / TOL
+                # norm += 0
+                norm += temp ** 2 / TOL
         out[i] = norm ** 0.5
     return out
 
@@ -173,7 +175,7 @@ def t2_stat_rotated(cnp.ndarray[FLOAT64, ndim=3] y,
                     cnp.ndarray[FLOAT64, ndim=3] rotation,
                     cnp.ndarray[FLOAT64, ndim=1] out):
     cdef unsigned long i, v, u, case, vi
-    cdef double norm, temp
+    cdef double norm, temp, TOL, max_eig
 
     cdef double mean[3], tempv[3]
     cdef double sigma[3][3]
@@ -208,6 +210,8 @@ def t2_stat_rotated(cnp.ndarray[FLOAT64, ndim=3] y,
                 sigma[v][u] -= mean[u] * mean[v] / n_cases
 
         dsyevh3(sigma, vec, eig)
+        max_eig = max(eig, 3)
+        TOL = r_TOL * max_eig
 
         for v in range(n_dims):
             temp = 0
@@ -216,7 +220,16 @@ def t2_stat_rotated(cnp.ndarray[FLOAT64, ndim=3] y,
             if eig[v] > TOL:
                 norm += temp ** 2 / eig[v]
             else:
-                norm += 0
-                # norm += temp ** 2 / TOL
+                # norm += 0
+                norm += temp ** 2 / TOL
         out[i] = norm ** 0.5
     return out
+
+
+cdef max(double* x, int n):
+    cdef int i
+    cdef double max_elem = x[0]
+    for i in range(1, n):
+        if x[i] > max_elem:
+            max_elem = x[i]
+    return max_elem
