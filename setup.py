@@ -50,22 +50,29 @@ version = match.group(1)
 LooseVersion(version)  # check that it's a valid version
 
 # Cython extensions
-ext_paths = ('eelbrain/*%s', 'eelbrain/_trf/*%s', 'eelbrain/_stats/*%s')
+ext_c_paths = ('eelbrain/*%s', 'eelbrain/_trf/*%s', 'eelbrain/_stats/*%s')  # C
+ext_cpp_paths = ('eelbrain/_stats/*%s',)                                    # C++
 if cythonize is False:
-    actual_paths = []
-    for path in ext_paths:
-        actual_paths.extend(glob(path % '.c'))
-    ext_modules = [
-        Extension(path.replace(pathsep, '.')[:-2], [path])
-        for path in actual_paths
-    ]
+    actual_paths = []                                                               # C
+    for path in ext_c_paths:                                                        # C
+        actual_paths.extend(glob(path % '.c'))                                      # C
+    ext_modules = [                                                                 # C
+        Extension(path.replace(pathsep, '.')[:-2], [path])                          # C
+        for path in actual_paths                                                    # C
+    ]                                                                               # C
+    actual_paths = []                                                               # C++
+    for path in ext_cpp_paths:                                                      # C++
+        actual_paths.extend(glob(path % '.cpp'))                                    # C++
+        ext_modules.extend([Extension(path.replace(pathsep, '.')[:-2], [path],      # C++
+                                     include_dirs = ['eelbrain/_stats/dsyevh3C']    # C++
+                            ) for path in actual_paths])                            # C++
 else:
-    ext_modules = [Extension(path,
-                             [path % '.pyx'],
-                             # extra_compile_args=['-std=c99'],
-                             ) for path in ext_paths]
+    ext_modules = [Extension(path, [path % '.pyx'],                         # C
+                             ) for path in ext_c_paths]                     # C
+    ext_modules.extend(Extension(path, [path % '.pyx'],                     # C++
+                                 include_dirs=['eelbrain/_stats/dsyevh3C'], # C++
+                                 ) for path in ext_cpp_paths)               # C++
     ext_modules = cythonize(ext_modules)
-    print(ext_modules)
 
 setup(
     name='eelbrain',
