@@ -1,4 +1,5 @@
 # cython: boundscheck=False, wraparound=False
+# distutils: language = c++
 # distutils: include_dirs = eelbrain/_stats/dsyevh3C/
 """
 optimized statistics functions
