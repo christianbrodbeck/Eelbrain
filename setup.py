@@ -62,7 +62,7 @@ if cythonize is False:
 else:
     ext_modules = [Extension(path,
                              [path % '.pyx'],
-                             extra_compile_args=['-std=c99'],
+                             # extra_compile_args=['-std=c99'],
                              ) for path in ext_paths]
     ext_modules = cythonize(ext_modules)
     print(ext_modules)
