@@ -3,7 +3,7 @@ from pickle import dump, HIGHEST_PROTOCOL, Unpickler
 from itertools import chain
 import os
 
-from .._data_obj import NDVar, SourceSpace
+from .._data_obj import NDVar, SourceSpaceBase
 from .._utils import ui
 
 
@@ -137,7 +137,7 @@ def update_subjects_dir(obj, subjects_dir, depth=0):
     """
     if isinstance(obj, NDVar):
         for dim in obj.dims:
-            if isinstance(dim, SourceSpace):
+            if isinstance(dim, SourceSpaceBase):
                 if dim.subjects_dir == subjects_dir:
                     break
                 dim.subjects_dir = subjects_dir
