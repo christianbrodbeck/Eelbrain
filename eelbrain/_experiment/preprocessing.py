@@ -467,10 +467,20 @@ class RawICA(CachedRawPipe):
 
     Notes
     -----
-    Use :meth:`MneExperiment.make_ica_selection` for each subject to select ICA
-    components that should be removed.
+    This preprocessing step estimates one set of ICA components per subject,
+    using the data specified in the ``session`` parameter. The selected
+    components are then removed from all data sessions during this preprocessing
+    step, regardless of whether they were used to estimate the components or
+    not.
 
-    This pipe merges bad channels from all sessions.
+    Use :meth:`~eelbrain.MneExperiment.make_ica_selection` for each subject to
+    select ICA components that should be removed. The arguments to that function
+    determine what data is used to visualize the component time courses.
+    For example, to determine which components load strongly on empty room data,
+    use ``e.make_ica_selection(session='emptyroom')`` (assuming an
+    ``'emptyroom'`` session is present).
+
+    This step merges bad channels from all sessions.
     """
 
     def __init__(self, source, session, method='extended-infomax', random_state=0, cache=False, **kwargs):
