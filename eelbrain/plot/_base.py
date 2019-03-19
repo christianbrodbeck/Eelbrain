@@ -61,6 +61,7 @@ functions executed are:
 import __main__
 
 from collections import Iterable, Iterator
+from copy import copy
 from enum import Enum, auto
 from itertools import chain
 from logging import getLogger
@@ -92,7 +93,7 @@ from .._utils.subp import command_exists
 from ..fmtxt import Image
 from ..mne_fixes import MNE_EPOCHS
 from .._ndvar import erode, resample
-from .._text import ms
+from .._text import enumeration, ms
 from ._utils import adjust_hsv
 from functools import reduce
 
@@ -2431,21 +2432,24 @@ class LegendMixin:
                  'center')
     __args = (False, 'fig', 'draggable', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 
-    def __init__(self, legend, legend_handles):
+    def __init__(self, loc, handles, labels=None):
         """Legend toolbar menu mixin
 
         Parameters
         ----------
-        legend : str | int | 'fig' | None
+        loc : str | int | 'fig' | None
             Matplotlib figure legend location argument or 'fig' to plot the
             legend in a separate figure.
-        legend_hamdles : dict
+        handles : dict
             {cell: handle} dictionary.
+        labels : dict
+            Dictionary with labels for cells.
         """
-        self.__handles = legend_handles
+        self.__handles = handles
         self.legend = None
+        self.__labels = copy(labels)
         if self.__handles:
-            self.plot_legend(legend)
+            self.plot_legend(loc, labels)
 
     def _fill_toolbar(self, tb):
         from .._wxgui import wx
@@ -2513,8 +2517,7 @@ class LegendMixin:
             choice = 0
             arg = False
         elif loc not in self.__args:
-            raise ValueError("Invalid legend location: %r; use one of: %s" %
-                             (loc, ', '.join(map(repr, self.__choices))))
+            raise ValueError(f"Invalid legend location: {loc!r}; use one of: {enumeration(map(repr, self.__choices), 'or')}")
         else:
             choice = self.__args.index(loc)
             arg = loc
@@ -2539,12 +2542,19 @@ class LegendMixin:
     def __plot(self, loc, labels=None, *args, **kwargs):
         if loc and self.__handles:
             if labels is None:
-                labels = [cellname(cell) for cell in self.__handles]
-            elif isinstance(labels, dict):
-                labels = [labels[cell] for cell in self.__handles]
+                labels = self.__labels
             else:
-                raise TypeError("labels=%r; needs to be dict" % (labels,))
-            handles = [self.__handles[cell] for cell in self.__handles]
+                self.__labels = copy(labels)
+
+            if labels is None:
+                cells = list(self.__handles)
+                labels = [cellname(cell) for cell in cells]
+            elif isinstance(labels, dict):
+                cells = list(labels.keys())
+                labels = list(labels.values())
+            else:
+                raise TypeError(f"labels={labels!r}; needs to be dict")
+            handles = [self.__handles[cell] for cell in cells]
             if loc == 'fig':
                 return Legend(handles, labels, *args, **kwargs)
             else:
