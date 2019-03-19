@@ -708,6 +708,9 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
     legend : str | int | 'fig' | None
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
+    labels : dict
+        Alternative labels for legend as ``{cell: label}`` dictionary (preserves
+        order).
     colors : str | list | dict
         Colors for the categories.
         **str**: A colormap name; cells are mapped onto the colormap in
@@ -731,6 +734,7 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
                  bottom=None, top=None,
                  # labelling
                  ylabel=True, xlabel=True, timelabels=None, legend='upper right',
+                 labels=None,
                  colors=None, hatch=False, markers=True, *args, **kwargs):
         if 'spread' in kwargs:  # deprecated 0.27
             raise ValueError("The `spread` argument has been removed from "
@@ -784,7 +788,7 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
                             timelabels, x_jitter, bottom, top)
 
         YLimMixin.__init__(self, (plot,))
-        LegendMixin.__init__(self, legend, plot.legend_handles)
+        LegendMixin.__init__(self, legend, plot.legend_handles, labels)
         self._show()
 
     def _fill_toolbar(self, tb):
@@ -965,6 +969,9 @@ class Correlation(EelFigure, LegendMixin):
     legend : str | int | 'fig' | None
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
+    labels : dict
+        Alternative labels for legend as ``{cell: label}`` dictionary (preserves
+        order).
     xlabel, ylabel : str
         Label for the x- and y-axis (default based on data).
     tight : bool
@@ -975,7 +982,7 @@ class Correlation(EelFigure, LegendMixin):
     """
     def __init__(self, y, x, cat=None, sub=None, ds=None,
                  c=['b', 'r', 'k', 'c', 'm', 'y', 'g'], legend='upper right',
-                 xlabel=True, ylabel=True, *args, **kwargs):
+                 labels=None, xlabel=True, ylabel=True, *args, **kwargs):
         sub, n = assub(sub, ds, return_n=True)
         y, n = asvar(y, sub, ds, n, return_n=True)
         x = asvar(x, sub, ds, n)
@@ -1000,7 +1007,7 @@ class Correlation(EelFigure, LegendMixin):
                 h = ax.scatter(x[idx].x, y[idx].x, c=color, label=label, alpha=.5)
                 legend_handles[label] = h
 
-        LegendMixin.__init__(self, legend, legend_handles)
+        LegendMixin.__init__(self, legend, legend_handles, labels)
         self._show()
 
     def _fill_toolbar(self, tb):
@@ -1033,6 +1040,9 @@ class Regression(EelFigure, LegendMixin):
     legend : str | int | 'fig' | None
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
+    labels : dict
+        Alternative labels for legend as ``{cell: label}`` dictionary (preserves
+        order).
     c : color | sequence of colors
         Colors.
     tight : bool
@@ -1042,7 +1052,7 @@ class Regression(EelFigure, LegendMixin):
         Also accepts :ref:`general-layout-parameters`.
     """
     def __init__(self, y, x, cat=None, match=None, sub=None, ds=None,
-                 xlabel=True, ylabel=True, alpha=.2, legend='upper right',
+                 xlabel=True, ylabel=True, alpha=.2, legend='upper right', labels=None,
                  c=['#009CFF', '#FF7D26', '#54AF3A', '#FE58C6', '#20F2C3'],
                  *args, **kwargs):
         sub, n = assub(sub, ds, return_n=True)
@@ -1088,7 +1098,7 @@ class Regression(EelFigure, LegendMixin):
                 reg_x, reg_y = _reg_line(y_i, x_i)
                 ax.plot(reg_x, reg_y, c=color, label=cellname(cell))
 
-        LegendMixin.__init__(self, legend, legend_handles)
+        LegendMixin.__init__(self, legend, legend_handles, labels)
         self._show()
 
     def _fill_toolbar(self, tb):

@@ -53,6 +53,9 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
     legend : str | int | 'fig' | None
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
+    labels : dict
+        Alternative labels for legend as ``{cell: label}`` dictionary (preserves
+        order).
     axtitle : bool | sequence of str
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.
@@ -123,7 +126,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
      - ``c``: y-axis zoom out (increase y-axis range)
     """
     def __init__(self, y, x=None, xax=None, match=None, sub=None, ds=None,
-                 main=np.mean, error='sem', pool_error=None, legend='upper right',
+                 main=np.mean, error='sem', pool_error=None, legend='upper right', labels=None,
                  axtitle=True, xlabel=True, ylabel=True, xticklabels=-1,
                  invy=False, bottom=None, top=None, hline=None, xdim='time',
                  xlim=None, clip=None, color='b', colors=None, error_alpha=0.3,
@@ -212,7 +215,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         self._configure_xaxis_dim(ct.y.get_dim(xdim), xlabel, xticklabels)
         XAxisMixin._init_with_data(self, ((y,),), xdim, xlim)
         YLimMixin.__init__(self, self._plots)
-        LegendMixin.__init__(self, legend, legend_handles)
+        LegendMixin.__init__(self, legend, legend_handles, labels)
         self._update_ui_cluster_button()
         self._show()
 
@@ -327,6 +330,9 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     legend : str | int | 'fig' | None
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
+    labels : dict
+        Alternative labels for legend as ``{cell: label}`` dictionary (preserves
+        order).
     xlim : scalar | (scalar, scalar)
         Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
         scalar (default is the full x-axis in the data).
@@ -352,7 +358,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     """
     def __init__(self, y, xax=None, axtitle=True, ds=None, sub=None,
                  xlabel=True, ylabel=True, xticklabels=-1, bottom=None,
-                 top=None, legend='upper right', xlim=None, color=None, *args,
+                 top=None, legend='upper right', labels=None, xlim=None, color=None, *args,
                  **kwargs):
         data = PlotData.from_args(y, (None,), xax, ds, sub)
         xdim = data.dims[0]
@@ -382,7 +388,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         self.epochs = data.data
         XAxisMixin._init_with_data(self, data.data, xdim, xlim)
         YLimMixin.__init__(self, self.plots)
-        LegendMixin.__init__(self, legend, legend_handles)
+        LegendMixin.__init__(self, legend, legend_handles, labels)
         TimeSlicerEF.__init__(self, xdim, data.time_dim)
         self._show()
 
