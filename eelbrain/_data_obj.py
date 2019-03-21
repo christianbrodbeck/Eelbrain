@@ -53,6 +53,7 @@ from matplotlib.ticker import (
     FixedLocator, FormatStrFormatter, FuncFormatter, IndexFormatter)
 import mne
 from mne.source_space import label_src_vertno_sel
+import nibabel
 from nibabel.freesurfer import read_annot, read_geometry
 import numpy as np
 import scipy.signal
@@ -8676,9 +8677,10 @@ def _mne_tri_soure_space_graph(source_space, vertices_list):
 
 class SourceSpaceBase(Dimension):
     kind = None
+    _default_parc = 'aparc'
     _default_connectivity = 'custom'
     _ANNOT_PATH = os.path.join('{subjects_dir}', '{subject}', 'label', '{hemi}.{parc}.annot')
-    _vertex_re = re.compile('([RL])(\d+)')
+    _vertex_re = re.compile(r'([RL])(\d+)')
 
     def __init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name, filename):
         self.vertices = vertices
@@ -8701,10 +8703,8 @@ class SourceSpaceBase(Dimension):
         else:
             raise TypeError(f"parc={parc!r}: needs to be Factor or string")
 
-    def _read_parc(self, parc):
-        raise NotImplementedError(
-            f"parc={parc!r}: can't set parcellation from annotation files for "
-            f"{self.__class__.__name__}. Consider using a Factor instead.")
+    def _read_parc(self, parc: str) -> Factor:
+        raise NotImplementedError(f"parc={parc!r}: can't set parcellation from annotation files for {self.__class__.__name__}. Consider using a Factor instead.")
 
     def _init_secondary(self):
         self._n_vert = sum(len(v) for v in self.vertices)
@@ -8720,8 +8720,8 @@ class SourceSpaceBase(Dimension):
     @classmethod
     def from_file(cls, subjects_dir, subject, src, parc=None):
         """SourceSpace dimension from MNE source space file"""
-        if parc is None and cls is SourceSpace:
-            parc = 'aparc'
+        if parc is None:
+            parc = cls._default_parc
         filename = Path(subjects_dir) / subject / 'bem' / f'{subject}-{src}-src.fif'
         source_spaces = mne.read_source_spaces(str(filename))
         return cls.from_mne_source_spaces(source_spaces, src, subjects_dir, parc)
@@ -9153,7 +9153,7 @@ class SourceSpace(SourceSpaceBase):
         self.lh_n = len(self.lh_vertices)
         self.rh_n = len(self.rh_vertices)
 
-    def _read_parc(self, parc):
+    def _read_parc(self, parc: str) -> Factor:
         fname = self._ANNOT_PATH.format(
             subjects_dir=self.subjects_dir, subject=self.subject,
             hemi='%s', parc=parc)
@@ -9413,14 +9413,29 @@ class VolumeSourceSpace(SourceSpaceBase):
     SourceSpace : surface-based source space
     """
     kind = 'vol'
+    _default_parc = 'aseg'
 
     def __init__(self, vertices, subject=None, src=None, subjects_dir=None,
                  parc=None, connectivity='custom', name='source', filename='{subject}-{src}-src.fif'):
-        if isinstance(parc, str):
-            raise NotImplementedError(f"parc={parc!r}: specify parcellation as Factor")
         if isinstance(vertices, np.ndarray):
             vertices = [vertices]
         SourceSpaceBase.__init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name, filename)
+
+    def _read_parc(self, parc: str) -> Factor:
+        path = Path(self.subjects_dir) / self.subject / 'mri' / f'{parc}.mgz'
+        if not path.exists():
+            raise ValueError(f"parc={parc!r}: parcellation does not exist at {path}")
+        mgz = nibabel.load(str(path))
+        voxel_to_mri = mgz.affine.copy()
+        voxel_to_mri[:3] /= 1000
+        mri_to_voxel = inv(voxel_to_mri)
+        voxel_coords = mne.transforms.apply_trans(mri_to_voxel, self.coordinates)
+        voxel_coords = np.round(voxel_coords).astype(int)
+        x, y, z = voxel_coords.T
+        data = mgz.get_data()
+        x = data[x, y, z]
+        labels = {item[0]: item[1] for item in mne.source_space._get_lut()}
+        return Factor(x, labels=labels, name=parc)
 
     def _init_secondary(self):
         SourceSpaceBase._init_secondary(self)
