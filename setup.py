@@ -19,12 +19,8 @@ from ez_setup import use_setuptools
 use_setuptools('17')
 
 from distutils.version import LooseVersion
-from glob import glob
-from os.path import pathsep
 import re
 from setuptools import setup, find_packages, Extension
-# To circumvent "error: each element of 'ext_modules' option must be an Extension instance or 2-tuple"
-# import Extension from setuptools instead of distutils.extension.
 
 import numpy as np
 
@@ -50,29 +46,18 @@ version = match.group(1)
 LooseVersion(version)  # check that it's a valid version
 
 # Cython extensions
-ext_c_paths = ('eelbrain/*%s', 'eelbrain/_trf/*%s', 'eelbrain/_stats/*%s')  # C
-ext_cpp_paths = ('eelbrain/_stats/*%s',)                                    # C++
-if cythonize is False:
-    actual_paths = []                                                               # C
-    for path in ext_c_paths:                                                        # C
-        actual_paths.extend(glob(path % '.c'))                                      # C
-    ext_modules = [                                                                 # C
-        Extension(path.replace(pathsep, '.')[:-2], [path])                          # C
-        for path in actual_paths                                                    # C
-    ]                                                                               # C
-    actual_paths = []                                                               # C++
-    for path in ext_cpp_paths:                                                      # C++
-        actual_paths.extend(glob(path % '.cpp'))                                    # C++
-        ext_modules.extend([Extension(path.replace(pathsep, '.')[:-2], [path],      # C++
-                                     include_dirs = ['dsyevh3C']    # C++
-                            ) for path in actual_paths])                            # C++
-else:
-    ext_modules = [Extension(path, [path % '.pyx'],                         # C
-                             ) for path in ext_c_paths]                     # C
-    ext_modules.extend(Extension(path, [path % '.pyx'],                     # C++
-                                 include_dirs=['dsyevh3C'], # C++
-                                 ) for path in ext_cpp_paths)               # C++
-    ext_modules = cythonize(ext_modules)
+ext = '.pyx' if cythonize else '.c'
+ext_cpp = '.pyx' if cythonize else '.cpp'
+extensions = [
+    Extension('eelbrain._data_opt', [f'eelbrain/_data_opt{ext}']),
+    Extension('eelbrain._trf._boosting_opt', [f'eelbrain/_trf/_boosting_opt{ext}']),
+    Extension('eelbrain._stats.connectivity_opt', [f'eelbrain/_stats/connectivity_opt{ext}']),
+    Extension('eelbrain._stats.opt', [f'eelbrain/_stats/opt{ext}']),
+    Extension('eelbrain._stats.error_functions', [f'eelbrain/_stats/error_functions{ext}']),
+    Extension('eelbrain._stats.vector', [f'eelbrain/_stats/vector{ext_cpp}'], include_dirs=['dsyevh3C']),
+]
+if cythonize:
+    extensions = cythonize(extensions)
 
 setup(
     name='eelbrain',
@@ -108,6 +93,6 @@ setup(
     },
     include_dirs=[np.get_include()],
     packages=find_packages(),
-    ext_modules=ext_modules,
+    ext_modules=extensions,
     scripts=['bin/eelbrain'],
 )
