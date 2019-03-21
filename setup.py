@@ -64,13 +64,13 @@ if cythonize is False:
     for path in ext_cpp_paths:                                                      # C++
         actual_paths.extend(glob(path % '.cpp'))                                    # C++
         ext_modules.extend([Extension(path.replace(pathsep, '.')[:-2], [path],      # C++
-                                     include_dirs = ['eelbrain/_stats/dsyevh3C']    # C++
+                                     include_dirs = ['dsyevh3C']    # C++
                             ) for path in actual_paths])                            # C++
 else:
     ext_modules = [Extension(path, [path % '.pyx'],                         # C
                              ) for path in ext_c_paths]                     # C
     ext_modules.extend(Extension(path, [path % '.pyx'],                     # C++
-                                 include_dirs=['eelbrain/_stats/dsyevh3C'], # C++
+                                 include_dirs=['dsyevh3C'], # C++
                                  ) for path in ext_cpp_paths)               # C++
     ext_modules = cythonize(ext_modules)
 
