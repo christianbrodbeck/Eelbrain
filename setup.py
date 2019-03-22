@@ -19,11 +19,8 @@ from ez_setup import use_setuptools
 use_setuptools('17')
 
 from distutils.version import LooseVersion
-from distutils.extension import Extension
-from glob import glob
-from os.path import pathsep
 import re
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
 
 import numpy as np
 
@@ -49,17 +46,18 @@ version = match.group(1)
 LooseVersion(version)  # check that it's a valid version
 
 # Cython extensions
-ext_paths = ('eelbrain/*%s', 'eelbrain/_trf/*%s', 'eelbrain/_stats/*%s')
-if cythonize is False:
-    actual_paths = []
-    for path in ext_paths:
-        actual_paths.extend(glob(path % '.c'))
-    ext_modules = [
-        Extension(path.replace(pathsep, '.')[:-2], [path])
-        for path in actual_paths
-    ]
-else:
-    ext_modules = cythonize([path % '.pyx' for path in ext_paths])
+ext = '.pyx' if cythonize else '.c'
+ext_cpp = '.pyx' if cythonize else '.cpp'
+extensions = [
+    Extension('eelbrain._data_opt', [f'eelbrain/_data_opt{ext}']),
+    Extension('eelbrain._trf._boosting_opt', [f'eelbrain/_trf/_boosting_opt{ext}']),
+    Extension('eelbrain._stats.connectivity_opt', [f'eelbrain/_stats/connectivity_opt{ext}']),
+    Extension('eelbrain._stats.opt', [f'eelbrain/_stats/opt{ext}']),
+    Extension('eelbrain._stats.error_functions', [f'eelbrain/_stats/error_functions{ext}']),
+    Extension('eelbrain._stats.vector', [f'eelbrain/_stats/vector{ext_cpp}'], include_dirs=['dsyevh3C']),
+]
+if cythonize:
+    extensions = cythonize(extensions)
 
 setup(
     name='eelbrain',
@@ -95,6 +93,6 @@ setup(
     },
     include_dirs=[np.get_include()],
     packages=find_packages(),
-    ext_modules=ext_modules,
+    ext_modules=extensions,
     scripts=['bin/eelbrain'],
 )
