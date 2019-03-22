@@ -20,6 +20,7 @@ from pathlib import Path
 import re
 import shutil
 import time
+from typing import Union
 import warnings
 
 import numpy as np
@@ -1552,7 +1553,7 @@ class MneExperiment(FileTree):
         criteria = self._cluster_criteria[self.get('select_clusters')]
         return {'min' + dim: criteria[dim] for dim in data.dims if dim in criteria}
 
-    def _add_vars(self, ds, vardef):
+    def _add_vars(self, ds, vardef: Union[None, str, Variables], groupvars=False):
         """Add vars to the dataset
 
         Parameters
@@ -1561,8 +1562,16 @@ class MneExperiment(FileTree):
             Event dataset.
         vardef : dict | tuple
             Variable definition.
+        groupvars : bool
+            Apply GroupVars in ``self.variables`` (when adding variables to a
+            dataset that does not originate from events, such as TRFs).
         """
-        if isinstance(vardef, str):
+        if groupvars:
+            self._variables.apply(ds, self, group_only=True)
+
+        if vardef is None:
+            return
+        elif isinstance(vardef, str):
             try:
                 vardef = self._tests[vardef].vars
             except KeyError:
@@ -2046,7 +2055,7 @@ class MneExperiment(FileTree):
             Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
             (default False).
         vardef : str
-            Name of a 2-stage test defining additional variables.
+            Name of a test defining additional variables.
         data : str
             Data to load; 'sensor' to load all sensor data (default);
             'sensor.rms' to return RMS over sensors. Only applies to NDVar
@@ -2239,7 +2248,7 @@ class MneExperiment(FileTree):
             Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
             (default False).
         vardef : str
-            Name of a 2-stage test defining additional variables.
+            Name of a test defining additional variables.
         decim : int
             Override the epoch decim factor.
         ndvar : bool
@@ -2460,7 +2469,7 @@ class MneExperiment(FileTree):
             Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
             (default False).
         vardef : str
-            Name of a 2-stage test defining additional variables.
+            Name of a test defining additional variables.
         data : str
             Data to load; 'sensor' to load all sensor data (default);
             'sensor.rms' to return RMS over sensors. Only applies to NDVar
@@ -2673,7 +2682,7 @@ class MneExperiment(FileTree):
             Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
             (default False).
         vardef : str
-            Name of a 2-stage test defining additional variables.
+            Name of a test defining additional variables.
         decim : int
             Override the epoch decim factor.
         ndvar : bool
@@ -3124,7 +3133,7 @@ class MneExperiment(FileTree):
             Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
             (default False).
         vardef : str
-            Name of a 2-stage test defining additional variables.
+            Name of a test defining additional variables.
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
         ...
