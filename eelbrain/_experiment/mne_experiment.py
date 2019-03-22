@@ -1455,9 +1455,6 @@ class MneExperiment(FileTree):
             Filename.
         data : TestDims
             Data type.
-        cached_test : bool
-            Whether a corresponding test is being cached and needs to be
-            checked (e.g. for reports that are based on a cached test).
         single_subject : bool
             Whether the corresponding test is performed for a single subject
             (as opposed to the current group).
@@ -3312,10 +3309,12 @@ class MneExperiment(FileTree):
             p values (default 10'000).
         data : str
             Data to test, for example:
-            ``sensor`` spatio-temporal test in sensor space.
-            ``source`` spatio-temporal test in source space.
-            ``source.mean`` ROI mean time course.
-            ``sensor.rms`` RMS across sensors.
+
+            - ``'sensor'`` spatio-temporal test in sensor space.
+            - ``'source'`` spatio-temporal test in source space.
+            - ``'source.mean'`` ROI mean time course.
+            - ``'sensor.rms'`` RMS across sensors.
+
         baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).

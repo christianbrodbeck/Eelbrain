@@ -272,17 +272,19 @@ class NDTest:
             return self.find_clusters(None, True)
 
     def find_clusters(self, pmin=None, maps=False, **sub):
-        """Find significant regions as clusters
+        """Find significant regions or clusters
 
         Parameters
         ----------
         pmin : None | scalar, 1 >= p  >= 0
-            Threshold p-value for clusters (for thresholded cluster tests the
-            default is 1, for others 0.05).
+            Threshold p-value. For threshold-based tests, all clusters with a
+            p-value smaller than ``pmin`` are included (default 1);
+            for other tests, find contiguous regions with ``p ≤ pmin`` (default
+            0.05).
         maps : bool
             Include in the output a map of every cluster (can be memory
             intensive if there are large statistical maps and/or many
-            clusters; default False).
+            clusters; default ``False``).
 
         Returns
         -------
@@ -602,7 +604,9 @@ class corr(NDTest):
     Attributes
     ----------
     clusters : None | Dataset
-        When performing a cluster permutation test, a Dataset of all clusters.
+        For cluster-based tests, a table of all clusters. Otherwise a table of
+        all significant regions (or ``None`` if permutations were omitted).
+        See also the :meth:`.find_clusters` method.
     p : NDVar | None
         Map of p-values corrected for multiple comparison (or None if no
         correction was performed).
@@ -818,7 +822,9 @@ class ttest_1samp(NDDifferenceTest):
     Attributes
     ----------
     clusters : None | Dataset
-        When performing a cluster permutation test, a Dataset of all clusters.
+        For cluster-based tests, a table of all clusters. Otherwise a table of
+        all significant regions (or ``None`` if permutations were omitted).
+        See also the :meth:`.find_clusters` method.
     difference : NDVar
         The difference value entering the test (``y`` if popmean is 0).
     n : int
@@ -836,7 +842,7 @@ class ttest_1samp(NDDifferenceTest):
 
     Notes
     -----
-    Cases with zero variance are set to t=0.
+    Data points with zero variance are set to t=0.
     """
     _state_specific = ('popmean', 'tail', 'n', 'df', 't', 'difference')
     _statistic = 't'
@@ -1029,7 +1035,9 @@ class ttest_ind(NDDifferenceTest):
     c0_mean : NDVar
         Mean in the c0 condition.
     clusters : None | Dataset
-        When performing a cluster permutation test, a Dataset of all clusters.
+        For cluster-based tests, a table of all clusters. Otherwise a table of
+        all significant regions (or ``None`` if permutations were omitted).
+        See also the :meth:`.find_clusters` method.
     difference : NDVar
         Difference between the mean in condition c1 and condition c0.
     p : NDVar | None
@@ -1275,7 +1283,9 @@ class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
     c0_mean : NDVar
         Mean in the c0 condition.
     clusters : None | Dataset
-        When performing a cluster permutation test, a Dataset of all clusters.
+        For cluster-based tests, a table of all clusters. Otherwise a table of
+        all significant regions (or ``None`` if permutations were omitted).
+        See also the :meth:`.find_clusters` method.
     difference : NDVar
         Difference between the mean in condition c1 and condition c0.
     p : NDVar | None
@@ -1545,17 +1555,19 @@ class MultiEffectNDTest(NDTest):
         return self._cdist[i].masked_parameter_map(pmin, **sub)
 
     def find_clusters(self, pmin=None, maps=False, effect=None, **sub):
-        """Find significant regions in a TFCE distribution
+        """Find significant regions or clusters
 
         Parameters
         ----------
         pmin : None | scalar, 1 >= p  >= 0
-            Threshold p-value for clusters (for thresholded cluster tests the
-            default is 1, for others 0.05).
+            Threshold p-value. For threshold-based tests, all clusters with a
+            p-value smaller than ``pmin`` are included (default 1);
+            for other tests, find contiguous regions with ``p ≤ pmin`` (default
+            0.05).
         maps : bool
             Include in the output a map of every cluster (can be memory
             intensive if there are large statistical maps and/or many
-            clusters; default False).
+            clusters; default ``False``).
         effect : int | str
             Index or name of the effect from which to find clusters (default is
             all effects).
@@ -1651,7 +1663,9 @@ class anova(MultiEffectNDTest):
     effects : tuple of str
         Names of the tested effects, in the same order as in other attributes.
     clusters : None | Dataset
-        When performing a cluster permutation test, a Dataset of all clusters.
+        For cluster-based tests, a table of all clusters. Otherwise a table of
+        all significant regions (or ``None`` if permutations were omitted).
+        See also the :meth:`.find_clusters` method.
     f : list of NDVar
         Maps of F values.
     p : list of NDVar | None
@@ -2018,7 +2032,9 @@ class VectorDifferenceIndependent(Vector):
     c0_mean : NDVar
         Mean in the c0 condition.
     clusters : None | Dataset
-        When performing a cluster permutation test, a Dataset of all clusters.
+        For cluster-based tests, a table of all clusters. Otherwise a table of
+        all significant regions (or ``None`` if permutations were omitted).
+        See also the :meth:`.find_clusters` method.
     difference : NDVar
         Difference between the mean in condition c1 and condition c0.
     p : NDVar | None
@@ -2164,7 +2180,9 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
     c0_mean : NDVar
         Mean in the c0 condition.
     clusters : None | Dataset
-        When performing a cluster permutation test, a Dataset of all clusters.
+        For cluster-based tests, a table of all clusters. Otherwise a table of
+        all significant regions (or ``None`` if permutations were omitted).
+        See also the :meth:`.find_clusters` method.
     difference : NDVar
         Difference between the mean in condition c1 and condition c0.
     p : NDVar | None
