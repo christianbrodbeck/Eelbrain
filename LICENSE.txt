@@ -1,3 +1,6 @@
+Eelbrain
+--------
+
 Copyright 2017 Christian Brodbeck
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,7 +17,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 3rd party code
 --------------
 
-The testnd module contains code ('eelbrain/_stats/dsyevh3C') from 'Efficient numerical diagonalization of hermitian 3x3 matrices' governed by ( GNU LESSER GENERAL PUBLIC LICENSE Version 2.1).
+The code distributed with Eelbrain in the 'dsyevh3C' folder, 'Efficient numerical diagonalization of hermitian 3x3 matrices' is governed by the GNU LESSER GENERAL PUBLIC LICENSE Version 2.1.
 
 Copyright (C) 2008 Joachim Kopp
 All rights reserved.

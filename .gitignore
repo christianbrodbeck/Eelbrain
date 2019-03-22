@@ -1,4 +1,3 @@
-
 .DS_Store
 .idea
 *.mo
@@ -20,23 +19,21 @@ doc/source/generated
 .hg
 .bzr
 .svn
+*.c
+*.cpp
+!dsyevh3C/*.c
+*.pyd
 *.so
 *.pyc
 *.pyo
 *.tmp*
 profile/*.profile
 profile/*.pickled
-
 *cfg.pickled
 
-
-.coverage
-coverage/
 doc/_build
 doc/generated
-distribute-*
-scripts/eelbrain_alias.py
-*.c
+.coverage
+coverage/
 *.fif
-*.pyd
 .pytest_cache/
