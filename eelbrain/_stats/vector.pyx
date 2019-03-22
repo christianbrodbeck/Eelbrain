@@ -1,3 +1,4 @@
+# Author: Proloy Das <proloy@umd.edu>
 # cython: boundscheck=False, wraparound=False
 # distutils: language = c++
 # setuptools: include_dirs = dsyevh3C/
