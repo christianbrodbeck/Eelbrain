@@ -321,21 +321,18 @@ class Frame(FileFrame):
 
     def MakeToolsMenu(self, menu):
         app = wx.GetApp()
-        item = menu.Append(wx.ID_ANY, "Source Viewer",
-                           "Open a source time course viewer window")
+        item = menu.Append(wx.ID_ANY, "Source Viewer", "Open a source time course viewer window")
         app.Bind(wx.EVT_MENU, self.OnShowSources, item)
-        item = menu.Append(wx.ID_ANY, "Find Rare Events",
-                           "Find components with major loading on a small "
-                           "number of epochs")
+        item = menu.Append(wx.ID_ANY, "Find Rare Events", "Find components with major loading on a small number of epochs")
         app.Bind(wx.EVT_MENU, self.OnFindRareEvents, item)
+        item = menu.Append(wx.ID_ANY, "Find Noisy Epochs", "Find epochs with strong signal")
+        app.Bind(wx.EVT_MENU, self.OnFindNoisyEpochs, item)
         menu.AppendSeparator()
 
         # plotting
-        item = menu.Append(wx.ID_ANY, "Butterfly Plot Grand Average",
-                           "Plot the grand average of all epochs")
+        item = menu.Append(wx.ID_ANY, "Butterfly Plot Grand Average", "Plot the grand average of all epochs")
         app.Bind(wx.EVT_MENU, self.OnPlotGrandAverage, item)
-        item = menu.Append(wx.ID_ANY, "Butterfly Plot by Category",
-                           "Separate butterfly plots for different model cells")
+        item = menu.Append(wx.ID_ANY, "Butterfly Plot by Category", "Separate butterfly plots for different model cells")
         app.Bind(wx.EVT_MENU, self.OnPlotButterfly, item)
         # Baseline submenu
         blmenu = wx.Menu()
@@ -370,6 +367,41 @@ class Frame(FileFrame):
         elif event.key == 'B':
             self.PlotConditionAverages(self)
 
+    def OnFindNoisyEpochs(self, event):
+        dlg = FindNoisyEpochsDialog(self)
+        rcode = dlg.ShowModal()
+        dlg.Destroy()
+        if rcode != wx.ID_OK:
+            return
+        threshold = float(dlg.threshold.GetValue())
+        apply_rejection = dlg.apply_rejection.GetValue()
+        dlg.StoreConfig()
+
+        # compute and rank
+        if apply_rejection:
+            epochs = asndvar(self.doc.apply(self.doc.epochs))
+        else:
+            epochs = self.doc.epochs_ndvar
+        y = epochs.extrema(('time', 'sensor')).abs().x
+
+        # collect output
+        res = [(i, v) for i, v in enumerate(y) if v >= threshold]  # epoch, value
+        if len(res) == 0:
+            wx.MessageBox(f"No epochs with signals exceeding {threshold} were found.", "No Noisy Epochs Found", style=wx.ICON_INFORMATION)
+            return
+
+        # format output
+        doc = fmtxt.Section("Noisy epochs")
+        doc.add_paragraph(f"Epochs with signal exceeding {threshold}:")
+        doc.append(fmtxt.linebreak)
+        for i, value in res:
+            doc.append(fmtxt.Link(self.doc.epoch_labels[i], LINK % (0, i)))
+            doc.append(f": {value:g}")
+            doc.append(fmtxt.linebreak)
+
+        style = wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP
+        InfoFrame(self, "Noisy Epochs", doc.get_html(), size=(500, 700), style=style)
+
     def OnFindRareEvents(self, event):
         dlg = FindRareEventsDialog(self)
         rcode = dlg.ShowModal()
@@ -379,7 +411,7 @@ class Frame(FileFrame):
         threshold = float(dlg.threshold.GetValue())
         dlg.StoreConfig()
 
-        # compute and rank SASICA FTc
+        # compute and rank
         y = self.doc.sources.max('time') - self.doc.sources.min('time')
         z = (y - y.mean('case')) / y.std('case')
         z_max = z.max('case').x
@@ -991,24 +1023,74 @@ class SourceFrame(FileFrameChild):
         self.canvas.draw()
 
 
+class FindNoisyEpochsDialog(EelbrainDialog):
+    _default_threshold = 1.5e-12
+
+    def __init__(self, parent, *args, **kwargs):
+        super(FindNoisyEpochsDialog, self).__init__(parent, wx.ID_ANY, "Find Bad Epochs", *args, **kwargs)
+        config = parent.config
+        threshold = config.ReadFloat("FindNoisyEpochsDialog/threshold", self._default_threshold)
+        apply_rejection = config.ReadBool("FindNoisyEpochsDialog/apply_rejection", True)
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+
+        # Threshold
+        sizer.Add(wx.StaticText(self, label="Threshold for bad epochs [T]:"))
+        validator = REValidator(POS_FLOAT_PATTERN, "Invalid entry: {value}. Please specify a number > 0.", False)
+        self.threshold = ctrl = wx.TextCtrl(self, value=str(threshold), validator=validator)
+        ctrl.SetHelpText("Find epochs in which the signal exceeds this value at any sensor")
+        ctrl.SelectAll()
+        sizer.Add(ctrl)
+
+        # Apply rejection before finding noisy epochs
+        self.apply_rejection = ctrl = wx.CheckBox(self, label="Apply ICA rejection")
+        ctrl.SetValue(apply_rejection)
+        sizer.Add(ctrl)
+
+        # default button
+        btn = wx.Button(self, wx.ID_DEFAULT, "Default Settings")
+        sizer.Add(btn, border=2)
+        btn.Bind(wx.EVT_BUTTON, self.OnSetDefault)
+
+        # buttons
+        button_sizer = wx.StdDialogButtonSizer()
+        # ok
+        btn = wx.Button(self, wx.ID_OK)
+        btn.SetDefault()
+        button_sizer.AddButton(btn)
+        # cancel
+        btn = wx.Button(self, wx.ID_CANCEL)
+        button_sizer.AddButton(btn)
+        # finalize
+        button_sizer.Realize()
+        sizer.Add(button_sizer)
+
+        self.SetSizer(sizer)
+        sizer.Fit(self)
+
+    def OnSetDefault(self, event):
+        self.threshold.SetValue(f'{self._default_threshold}')
+
+    def StoreConfig(self):
+        config = self.Parent.config
+        config.WriteFloat("FindNoisyEpochsDialog/threshold", float(self.threshold.GetValue()))
+        config.WriteBool("FindNoisyEpochsDialog/apply_rejection", self.apply_rejection.GetValue())
+        config.Flush()
+
+
 class FindRareEventsDialog(EelbrainDialog):
     def __init__(self, parent, *args, **kwargs):
-        super(FindRareEventsDialog, self).__init__(parent, wx.ID_ANY,
-                                                   "Find Rare Events", *args,
-                                                   **kwargs)
+        super(FindRareEventsDialog, self).__init__(parent, wx.ID_ANY, "Find Rare Events", *args, **kwargs)
         config = parent.config
         threshold = config.ReadFloat("FindRareEvents/threshold", 2.)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         # Threshold
-        sizer.Add(wx.StaticText(self, label="Threshold for rare epochs\n"
-                                            "(z-scored peak-to-peak value):"))
-        validator = REValidator(POS_FLOAT_PATTERN, "Invalid entry: {value}. Please "
-                                "specify a number > 0.", False)
+        sizer.Add(wx.StaticText(self, label="Threshold for rare epochs\n(z-scored peak-to-peak value):"))
+        validator = REValidator(POS_FLOAT_PATTERN, "Invalid entry: {value}. Please specify a number > 0.", False)
         ctrl = wx.TextCtrl(self, value=str(threshold), validator=validator)
-        ctrl.SetHelpText("Epochs whose z-scored peak-to-peak value exceeds "
-                         "this value are considered rare")
+        ctrl.SetHelpText("Epochs whose z-scored peak-to-peak value exceeds  this value are considered rare")
         ctrl.SelectAll()
         sizer.Add(ctrl)
         self.threshold = ctrl
@@ -1039,8 +1121,7 @@ class FindRareEventsDialog(EelbrainDialog):
 
     def StoreConfig(self):
         config = self.Parent.config
-        config.WriteFloat("FindRareEvents/threshold",
-                          float(self.threshold.GetValue()))
+        config.WriteFloat("FindRareEvents/threshold", float(self.threshold.GetValue()))
         config.Flush()
 
 
