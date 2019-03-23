@@ -604,6 +604,7 @@ data (gradiometer only) with MNE:
 
    ~pipeline.MneExperiment
    ~_experiment.ROITestResult
+   ~_experiment.ROI2StageResult
 
 .. seealso::
     For the guide on working with the MneExperiment class see
