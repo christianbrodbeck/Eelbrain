@@ -1,7 +1,9 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from collections import defaultdict, OrderedDict
+from functools import reduce
 from glob import glob
 from itertools import chain, product
+import operator
 import os
 import re
 import shutil
@@ -13,6 +15,7 @@ import numpy as np
 from tqdm import tqdm
 
 from .. import fmtxt
+from .._config import CONFIG
 from .._utils import as_sequence, LazyProperty, ask, deprecated
 from .._utils.com import Notifier, NotNotifier
 from .definitions import check_names, compound
@@ -493,7 +496,7 @@ class TreeModel:
 
         return values
 
-    def iter(self, fields, exclude=None, values=None, **constants):
+    def iter(self, fields, exclude=None, values=None, progress_bar=None, **constants):
         """
         Cycle the experiment's state through all values on the given fields
 
@@ -507,7 +510,9 @@ class TreeModel:
             Fields with custom values to iterate over (instead of the
             corresponding field values) with {name: (sequence of values)}
             entries.
-        *others* :
+        progress_bar : str
+            Message to show in the progress bar.
+        ...
             Fields with constant values throughout the iteration.
         """
         if isinstance(fields, str):
@@ -540,26 +545,22 @@ class TreeModel:
         # set constants (before .get_field_values() call)
         self.set(**constants)
 
-        # gather possible values to iterate over
-        field_values = {}
-        for field in iter_fields:
-            if field in values:
-                field_values[field] = as_sequence(values[field])
-            else:
-                exclude_ = exclude.get(field, None)
-                field_values[field] = self.get_field_values(field, exclude_)
-
-        # pick out the fields to iterate, but drop excluded cases:
+        # gather values to iterate over
         v_lists = []
         for field in iter_fields:
-            v_lists.append(field_values[field])
+            if field in values:
+                v_lists.append(as_sequence(values[field]))
+            else:
+                exclude_ = exclude.get(field, None)
+                v_lists.append(self.get_field_values(field, exclude_))
 
         if len(v_lists):
+            n = reduce(operator.mul, map(len, v_lists))
             with self._temporary_state:
-                for v_list in product(*v_lists):
+                disable = progress_bar is None or CONFIG['tqdm']
+                for v_list in tqdm(product(*v_lists), progress_bar, n, disable=disable):
                     self._restore_state(discard_tip=False)
                     self.set(**dict(zip(iter_fields, v_list)))
-
                     if yield_str:
                         yield self.get(fields[0])
                     else:

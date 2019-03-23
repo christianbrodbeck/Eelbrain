@@ -26,7 +26,6 @@ import numpy as np
 import mne
 from mne.baseline import rescale
 from mne.minimum_norm import make_inverse_operator, apply_inverse, apply_inverse_epochs
-from tqdm import tqdm
 
 from .. import _report
 from .. import fmtxt
@@ -36,7 +35,6 @@ from .. import plot
 from .. import save
 from .. import table
 from .. import testnd
-from .._config import CONFIG
 from .._data_obj import (
     Datalist, Dataset, Factor, Var, SourceSpace, VolumeSourceSpace,
     align1, all_equal, assert_is_legal_dataset_key, combine)
@@ -1768,8 +1766,7 @@ class MneExperiment(FileTree):
         else:
             return FileTree.get_field_values(self, field, exclude)
 
-    def iter(self, fields='subject', exclude=None, values={}, group=None,
-             **kwargs):
+    def iter(self, fields='subject', exclude=None, values=None, group=None, progress_bar=None, **kwargs):
         """
         Cycle the experiment's state through all values on the given fields
 
@@ -1787,12 +1784,14 @@ class MneExperiment(FileTree):
             If iterating over subjects, use this group ('all' for all except
             excluded subjects, 'all!' for all including excluded subjects, or
             a name defined in experiment.groups).
+        progress_bar : str
+            Message to show in the progress bar.
         ...
             Fields with constant values throughout the iteration.
         """
         if group is not None:
             kwargs['group'] = group
-        return FileTree.iter(self, fields, exclude, values, **kwargs)
+        return FileTree.iter(self, fields, exclude, values, progress_bar, **kwargs)
 
     def iter_range(self, start=None, stop=None, field='subject'):
         """Iterate through a range on a field with ordered values.
@@ -3420,9 +3419,7 @@ class MneExperiment(FileTree):
             # stage 1
             lms = []
             dss = []
-            for subject in tqdm(self, "Loading stage 1 models",
-                                len(self.get_field_values('subject')),
-                                disable=CONFIG['tqdm']):
+            for subject in self.iter(progress_bar="Loading stage 1 models"):
                 if test_obj.model is None:
                     ds = self.load_epochs_stc(subject, baseline, src_baseline, morph=True, mask=mask, vardef=test_obj.vars)
                 else:
@@ -3465,9 +3462,7 @@ class MneExperiment(FileTree):
         dss = defaultdict(list)
         n_trials_dss = []
         subjects = self.get_field_values('subject')
-        n_subjects = len(subjects)
-        for _ in tqdm(self, "Loading data", n_subjects, unit='subject',
-                      disable=CONFIG['tqdm']):
+        for _ in self.iter(progress_bar="Loading data"):
             ds = self.load_evoked_stc(None, baseline, src_baseline, vardef=test_obj.vars)
             src = ds.pop('src')
             n_trials_dss.append(ds.copy())
