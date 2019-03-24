@@ -4,7 +4,7 @@ import pytest
 pytest.register_assert_rewrite('eelbrain.testing._testing')
 
 from ._testing import (
-    gui_test,
+    gui_test, slow_test,
     requires_mne_sample_data, requires_pyarrow, requires_r_ez,
     skip_on_windows,
     TempDir, working_directory,
