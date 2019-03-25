@@ -7519,8 +7519,13 @@ class Space(Dimension):
                 self._axis_label(label))
 
     def _array_index(self, arg):
-        if isinstance(arg, str) and len(arg) == 1:
-            return self._directions.index(arg)
+        if isinstance(arg, str):
+            if len(arg) == 1:
+                return self._directions.index(arg)
+            else:
+                return [self._directions.index(s) for s in arg]
+        elif isinstance(arg, list):
+            return [self._directions.index(s) for s in arg]
         elif isinstance(arg, tuple):
             return slice(*map(self._array_index, arg)) if arg else FULL_SLICE
         elif isinstance(arg, slice):
@@ -7529,7 +7534,7 @@ class Space(Dimension):
                 None if arg.stop is None else self._array_index(arg.stop),
                 arg.step)
         else:
-            return [self._directions.index(s) for s in arg]
+            raise TypeError(f"{arg} is an invalid index for {self.__class__.__name__}")
 
     def _dim_index(self, arg):
         if isinstance(arg, Integral):

@@ -588,16 +588,16 @@ def test_dim_uts():
     # make sure indexing rounds correctly for floats
     for i, s in enumerate(np.arange(0, 1.4, 0.05)):
         idx = uts._array_index((-0.1 + s, s))
-        eq_(idx.start, 10 * i)
-        eq_(idx.stop, 20 + 10 * i)
+        assert idx.start == 10 * i
+        assert idx.stop == 20 + 10 * i
 
     # intersection
     uts1 = UTS(-0.1, 0.01, 50)
     uts2 = UTS(0, 0.01, 20)
     intersection = uts1.intersect(uts2)
-    eq_(intersection, uts2)
+    assert intersection == uts2
     idx = uts1._array_index((0, 0.2))
-    eq_(uts1[idx], uts2)
+    assert uts1[idx] == uts2
 
 
 def test_effect():
