@@ -98,6 +98,8 @@ class Epoch(EpochBase):
         if baseline is None:
             if tmin >= 0:
                 baseline = False
+            elif tmax < 0:
+                baseline = (None, None)
             else:
                 baseline = (None, 0)
         elif baseline is False:
@@ -154,7 +156,8 @@ class PrimaryEpoch(Epoch):
         Alternative to ``samplingrate``. Decimate the data by this factor
         (i.e., only keep every ``decim``'th sample).
     baseline : tuple
-        The baseline of the epoch (default ``(None, 0)``).
+        The baseline of the epoch (default ``(None, 0)``; if ``tmin > 0``: no
+        baseline; if ``tmax < 0``: the whole interval).
     n_cases : int
         Expected number of epochs. If n_cases is defined, a RuntimeError error
         will be raised whenever the actual number of matching events is different.
