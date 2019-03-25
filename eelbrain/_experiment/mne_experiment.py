@@ -94,12 +94,12 @@ LOG_FILE_OLD = join('{root}', '.eelbrain.log')
 
 # Allowable parameters
 COV_PARAMS = {'epoch', 'session', 'method', 'reg', 'keep_sample_mean', 'reg_eval_win_pad'}
-
+INV_METHODS = ('MNE', 'dSPM', 'sLORETA', 'eLORETA')
 SRC_RE = re.compile(r'^(ico|vol)-(\d+)(?:-(brainstem))?$')
 inv_re = re.compile(r"^"
                     r"(free|fixed|loose\.\d+|vec)-"  # orientation constraint
                     r"(\d*\.?\d+)-"  # SNR
-                    r"(MNE|dSPM|sLORETA)"  # method
+                    rf"({'|'.join(INV_METHODS)})"  # method
                     r"(?:-((?:0\.)?\d+))?"  # depth weighting
                     r"(?:-(pick_normal))?"
                     r"$")  # pick normal
@@ -5652,7 +5652,7 @@ class MneExperiment(FileTree):
             loose constraint).
         snr : scalar
             SNR estimate for regularization (default 3).
-        method : 'MNE' | 'dSPM' | 'sLORETA'
+        method : 'MNE' | 'dSPM' | 'sLORETA' | 'eLORETA'
             Inverse method.
         depth : None | float [0, 1]
             Depth weighting (default ``None`` to use mne default 0.8; ``0`` to
@@ -5677,7 +5677,7 @@ class MneExperiment(FileTree):
         if snr <= 0:
             raise ValueError("snr=%r" % (snr,))
 
-        if method not in ('MNE', 'dSPM', 'sLORETA'):
+        if method not in INV_METHODS:
             raise ValueError("method=%r" % (method,))
 
         items = [ori, '%g' % snr, method]
@@ -5717,7 +5717,7 @@ class MneExperiment(FileTree):
         if snr <= 0:
             raise ValueError('inv=%r (snr=%r)' % (inv, snr))
 
-        if method not in ('MNE', 'dSPM', 'sLORETA'):
+        if method not in INV_METHODS:
             raise ValueError("inv=%r (method=%r)" % (inv, method))
 
         if depth is not None:
