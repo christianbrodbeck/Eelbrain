@@ -137,7 +137,7 @@ def t2_stat(cnp.ndarray[FLOAT64, ndim=3] y,
                 sigma[u][v] -= mean[u] * mean[v] / n_cases
         # check non-zero variance
         for v in range(n_dims):
-            if sigma[v][0] != 0:
+            if sigma[v][v] != 0:
                 break
         else:
             out[i] = 0
@@ -151,11 +151,11 @@ def t2_stat(cnp.ndarray[FLOAT64, ndim=3] y,
             temp = 0
             for u in range(n_dims):
                 temp += vec[u][v] * mean[u]
-            if eig[v] > TOL:
-                norm += temp ** 2 / eig[v]
-            else:
-                # norm += 0
-                norm += temp ** 2 / TOL
+            if temp != 0.0:     # Avoid divide by zero
+                if eig[v] > TOL:
+                    norm += temp ** 2 / eig[v]
+                else:
+                    norm += temp ** 2 / TOL
         out[i] = norm ** 0.5
     return out
 
@@ -199,7 +199,7 @@ def t2_stat_rotated(cnp.ndarray[FLOAT64, ndim=3] y,
                 sigma[v][u] -= mean[u] * mean[v] / n_cases
         # check non-zero variance
         for v in range(n_dims):
-            if sigma[v][0] != 0:
+            if sigma[v][v] != 0:
                 break
         else:
             out[i] = 0
@@ -213,11 +213,11 @@ def t2_stat_rotated(cnp.ndarray[FLOAT64, ndim=3] y,
             temp = 0
             for u in range(n_dims):
                 temp += vec[u][v] * mean[u]
-            if eig[v] > TOL:
-                norm += temp ** 2 / eig[v]
-            else:
-                # norm += 0
-                norm += temp ** 2 / TOL
+            if temp != 0.0:  # Avoid divide by zero
+                if eig[v] > TOL:
+                    norm += temp ** 2 / eig[v]
+                else:
+                    norm += temp ** 2 / TOL
         out[i] = norm ** 0.5
     return out
 
