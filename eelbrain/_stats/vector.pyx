@@ -137,11 +137,11 @@ def t2_stat(cnp.ndarray[FLOAT64, ndim=3] y,
                 sigma[u][v] -= mean[u] * mean[v] / n_cases
         # check non-zero variance
         for v in range(n_dims):
-            if sigma[v][0] != 0:
+            if sigma[v][v] != 0.0:
                 break
-        else:
-            out[i] = 0
-            continue
+            else:
+                out[i] = 0.0
+                continue
 
         dsyevh3(sigma, vec, eig)
         max_eig = max(eig, 3)
@@ -200,11 +200,11 @@ def t2_stat_rotated(cnp.ndarray[FLOAT64, ndim=3] y,
                 sigma[v][u] -= mean[u] * mean[v] / n_cases
         # check non-zero variance
         for v in range(n_dims):
-            if sigma[v][0] != 0:
+            if sigma[v][v] != 0.0:
                 break
-        else:
-            out[i] = 0
-            continue
+            else:
+                out[i] = 0.0
+                continue
 
         dsyevh3(sigma, vec, eig)
         max_eig = max(eig, 3)
