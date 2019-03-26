@@ -54,58 +54,41 @@ Now this Dataset can be used for statistical analysis, for example ANOVA::
 
 .. _recipe-regression:
 
-^^^^^^^^^^^^^^^^^
-Regression Design
-^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2-stage single trial analysis
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The influence of a continuous predictor on single trial level can be tested by
 first calculating regression coefficients for each subject, and then performing
 a one sample t-test across subjects to test the null hypothesis that between
 subjects, the regression coefficient does not differ significantly from 0.
 
-Assuming that ``ds_subject`` is a :class:`Dataset` containing single trial data
-for one subject, with ``data`` the dependent variable and a predictor (called
-``predictor``)::
+In a pattern similar to the one above, a mass-univariate linear model
+(:class:`testnd.LM`) is fit to the single trial data for each subject (stage 1),
+and these models are then combined to search for consistent patterns in their
+coefficients at the group level (:class:`testnd.LMGroup`, stage 2).
 
-    >>> ds_subject
-    <Dataset 'example' n_cases=145 {'predictor':V, 'data':Vnd}>
-    >>> ds_subject['data']
-    <NDVar 'data': 145 (case) X 5120 (source) X 76 (time)>
-    >>> print ds_subject
-    predictor
-    ---------
-    1.9085
-    0.30836
-    -0.58802
-    0.29686
+This example uses the :meth:`MneExperiment.load_epochs_stc` method to load
+single trial data for each subject, but this method can be replaced by any
+other method of loading single trial data. The :class:`Dataset` ``ds`` used in
+the example contains single trial source estimates in an :class:`NDVar` called
+``"src"``, and (for the sake of the example) predictor variables called
+``"entropy"`` and ``"surprisal"``::
+
+    >>> lms = []
+    >>> for subject in experiment:
+    ...     ds = experiment.load_epochs_stc(subject, parc='rois', mask=True)
+    ...     ds['roi_time_course'] = ds['src'].mean(source='roi_1')
+    ...     lm = testnd.LM('roi_time_course', 'entropy + surprisal', ds, subject=subject)
+    ...     lms.append(lm)
     ...
+    >>> lm_group = testnd.LMGroup(lms)
 
-The regression coefficient can be calculated the following way::
+Now you can perform a one-sample t-test on regression coefficients::
 
-    >>> beta = ds_subject.eval("data.ols(predictor)")
-    >>> beta
-    <NDVar 'ols': 1 (case) X 5120 (source) X 76 (time)>
+    >>> res = lm_group.column_ttest('entropy', tfce=True, samples=10000)
 
-Thus, in order to collect beta values for each subject, you would loop through
-subjects. We will call the NDVar with beta values 'beta'::
-
-    >>> subjects = []
-    >>> betas = []
-    >>> for subject in ['R0001', 'R0002', 'R0003']:
-    ...     ds_subject = my_load_ds_for_subject_function(subject)
-    ...     beta = ds_subject.eval("data.ols(predictor, 'beta')")
-    ...     subjects.append(subject)
-    ...     betas.append(beta)
-    ...
-    >>> ds = Dataset()
-    >>> ds['subject'] = Factor(subjects, random=True)
-    >>> ds['beta'] = combine(betas)
-
-Now you can perform a one-sample t-test::
-
-    >>> res = testnd.ttest_1samp('beta', ...)
-
-And analyze the results as for other :mod:`testnd` tests.
+And analyze the results as for other :class:`testnd.ttest_1samp` tests.
 
 
 ^^^^^^^^^^^^^^^^^^^^^

@@ -3404,6 +3404,12 @@ class MneExperiment(FileTree):
             not apply baseline correction.
         return_data : bool
             Return the data along with the test result (see below).
+
+            .. Warning::
+                Single trial data (i.e., two-stage tests) take up a lot of
+                memory and it might not be possible to load all data at once.
+                Instead, loop through subjects and collect summary statistics.
+
         make : bool
             If the target file does not exist, create it (could take a long
             time depending on the test; if False, raise an IOError).

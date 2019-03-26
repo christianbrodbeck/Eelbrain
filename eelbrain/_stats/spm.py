@@ -157,7 +157,7 @@ class LMGroup:
         subjects = [lm.subject for lm in lms]
         str_names = tuple(filter(None, subjects))
         if len(set(str_names)) < len(str_names):
-            raise ValueError("Duplicate subject names in %s" % str_names)
+            raise ValueError(f"Duplicate subject names: {', '.join(map(repr, str_names))}")
         new_name = 'S000'
         for i in range(len(subjects)):
             if not subjects[i]:
