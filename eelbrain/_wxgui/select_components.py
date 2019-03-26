@@ -174,7 +174,207 @@ class ContextMenu(wx.Menu):
         self.i = i
 
 
-class Frame(FileFrame):
+class SharedToolsMenu:
+    # set by FileFrame:
+    doc = None
+    config = None
+    # MakeToolsMenu() might be called before __init__
+    butterfly_baseline = ID.BASELINE_NONE
+    last_model = ""
+
+    def AddToolbarButtons(self, tb):
+        button = wx.Button(tb, label="Rare Events")
+        button.Bind(wx.EVT_BUTTON, self.OnFindRareEvents)
+        tb.AddControl(button)
+        button = wx.Button(tb, label="Noisy Epochs")
+        button.Bind(wx.EVT_BUTTON, self.OnFindNoisyEpochs)
+        tb.AddControl(button)
+
+    def MakeToolsMenu(self, menu):
+        app = wx.GetApp()
+
+        # find events
+        item = menu.Append(wx.ID_ANY, "Find Rare Events", "Find components with major loading on a small number of epochs")
+        app.Bind(wx.EVT_MENU, self.OnFindRareEvents, item)
+        item = menu.Append(wx.ID_ANY, "Find Noisy Epochs", "Find epochs with strong signal")
+        app.Bind(wx.EVT_MENU, self.OnFindNoisyEpochs, item)
+        menu.AppendSeparator()
+
+        # plotting
+        item = menu.Append(wx.ID_ANY, "Butterfly Plot Grand Average", "Plot the grand average of all epochs")
+        app.Bind(wx.EVT_MENU, self.OnPlotGrandAverage, item)
+        item = menu.Append(wx.ID_ANY, "Butterfly Plot by Category", "Separate butterfly plots for different model cells")
+        app.Bind(wx.EVT_MENU, self.OnPlotButterfly, item)
+        # Baseline submenu
+        blmenu = wx.Menu()
+        blmenu.AppendRadioItem(ID.BASELINE_CUSTOM, "Baseline Period")
+        blmenu.AppendRadioItem(ID.BASELINE_GLOABL_MEAN, "Global Mean")
+        blmenu.AppendRadioItem(ID.BASELINE_NONE, "No Baseline Correction")
+        blmenu.Check(self.butterfly_baseline, True)
+        blmenu.Bind(wx.EVT_MENU, self.OnSetButterflyBaseline, id=ID.BASELINE_CUSTOM)
+        blmenu.Bind(wx.EVT_MENU, self.OnSetButterflyBaseline, id=ID.BASELINE_GLOABL_MEAN)
+        blmenu.Bind(wx.EVT_MENU, self.OnSetButterflyBaseline, id=ID.BASELINE_NONE)
+        menu.AppendSubMenu(blmenu, "Baseline")
+
+    def OnFindNoisyEpochs(self, event):
+        dlg = FindNoisyEpochsDialog(self)
+        rcode = dlg.ShowModal()
+        dlg.Destroy()
+        if rcode != wx.ID_OK:
+            return
+        threshold = float(dlg.threshold.GetValue())
+        apply_rejection = dlg.apply_rejection.GetValue()
+        dlg.StoreConfig()
+
+        # compute and rank
+        if apply_rejection:
+            epochs = asndvar(self.doc.apply(self.doc.epochs))
+        else:
+            epochs = self.doc.epochs_ndvar
+        y = epochs.extrema(('time', 'sensor')).abs().x
+
+        # collect output
+        res = [(i, v) for i, v in enumerate(y) if v >= threshold]  # epoch, value
+        if len(res) == 0:
+            wx.MessageBox(f"No epochs with signals exceeding {threshold} were found.", "No Noisy Epochs Found", style=wx.ICON_INFORMATION)
+            return
+
+        # format output
+        doc = fmtxt.Section("Noisy epochs")
+        doc.add_paragraph(f"Epochs with signal exceeding {threshold}:")
+        doc.append(fmtxt.linebreak)
+        for i, value in res:
+            doc.append(fmtxt.Link(self.doc.epoch_labels[i], LINK % (0, i)))
+            doc.append(f": {value:g}")
+            doc.append(fmtxt.linebreak)
+
+        style = wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP
+        InfoFrame(self, "Noisy Epochs", doc.get_html(), size=(500, 700), style=style)
+
+    def OnFindRareEvents(self, event):
+        dlg = FindRareEventsDialog(self)
+        rcode = dlg.ShowModal()
+        dlg.Destroy()
+        if rcode != wx.ID_OK:
+            return
+        threshold = float(dlg.threshold.GetValue())
+        dlg.StoreConfig()
+
+        # compute and rank
+        y = self.doc.sources.max('time') - self.doc.sources.min('time')
+        z = (y - y.mean('case')) / y.std('case')
+        z_max = z.max('case').x
+        components_ranked = np.argsort(z_max)[::-1]
+
+        # collect output
+        res = []
+        for c in components_ranked:
+            if z_max[c] < threshold:
+                break
+            z_epochs = z.x[:, c]
+            idx = np.flatnonzero(z_epochs >= threshold)
+            rank = np.argsort(z_epochs[idx])[::-1]
+            res.append((c, z_max[c], idx[rank]))
+
+        if len(res) == 0:
+            wx.MessageBox("No rare events were found.", "No Rare Events Found", style=wx.ICON_INFORMATION)
+            return
+
+        # format output
+        doc = fmtxt.Section("Rare Events")
+        doc.add_paragraph(f"Components that disproportionally affect a small number of epochs (z-scored peak-to-peak > {threshold:g}). Epochs are ranked by peak-to-peak.")
+        doc.append(fmtxt.linebreak)
+        hash_char = {True: fmtxt.FMTextElement('# ', 'font', {'color': 'green'}),
+                     False: fmtxt.FMTextElement('# ', 'font', {'color': 'red'})}
+        for c, ft, epochs in res:
+            doc.append(hash_char[self.doc.accept[c]])
+            doc.append(f"{c} ({ft:.1f}):  ")
+            doc.append(fmtxt.delim_list((fmtxt.Link(self.doc.epoch_labels[e], LINK % (c, e)) for e in epochs)))
+            doc.append(fmtxt.linebreak)
+
+        style = wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP
+        InfoFrame(self, "Rare Events", doc.get_html(), size=(500, 700), style=style)
+
+    def OnPlotButterfly(self, event):
+        self.PlotConditionAverages(self)
+
+    def OnPlotGrandAverage(self, event):
+        self.PlotEpochButterfly(-1)
+
+    def OnSetButterflyBaseline(self, event):
+        self.butterfly_baseline = event.GetId()
+
+    def PlotConditionAverages(self, parent):
+        "Prompt for model and plot condition averages"
+        factors = [n for n, v in self.doc.ds.items() if
+                   isinstance(v, Factor)]
+        if len(factors) == 0:
+            wx.MessageBox("The dataset that describes the epochs does not "
+                          "contain any Factors that could be used to plot the "
+                          "data by condition.", "No Factors in Dataset",
+                          style=wx.ICON_ERROR)
+            return
+        elif len(factors) == 1:
+            default = factors[0]
+        else:
+            default = self.last_model or factors[0]
+        msg = "Specify the model (available factors: %s)" % ', '.join(factors)
+
+        plot_model = None
+        dlg = wx.TextEntryDialog(parent, msg, "Plot by Condition", default)
+        while plot_model is None:
+            if dlg.ShowModal() == wx.ID_OK:
+                value = dlg.GetValue()
+                use = [s.strip() for s in value.replace(':', '%').split('%')]
+                invalid = [f for f in use if f not in factors]
+                if invalid:
+                    wx.MessageBox("The following are not valid factor names: %s"
+                                  % (', '.join(invalid)), "Invalid Entry",
+                                  wx.ICON_ERROR)
+                else:
+                    plot_model = '%'.join(use)
+            else:
+                dlg.Destroy()
+                return
+        dlg.Destroy()
+        self.last_model = value
+
+        ds = self.doc.ds.aggregate(plot_model, drop_bad=True)
+        titles = [' '.join(ds[i, f] for f in use) + ' (n=%i)' % ds[i, 'n'] for
+                  i in range(ds.n_cases)]
+        self._PlotButterfly(ds['epochs'], titles)
+
+    def PlotEpochButterfly(self, i_epoch):
+        if i_epoch == -1:
+            self._PlotButterfly(self.doc.epochs.average(), "Epochs Average")
+        else:
+            name = f"Epoch {self.doc.epoch_labels[i_epoch]}"
+            self._PlotButterfly(self.doc.epochs[i_epoch], name)
+
+    def _PlotButterfly(self, epoch, title):
+        original = asndvar(epoch)
+        clean = asndvar(self.doc.apply(epoch))
+        if self.butterfly_baseline == ID.BASELINE_CUSTOM:
+            if original.time.tmin >= 0:
+                wx.MessageBox(f"The data displayed does not have a baseline period (tmin={original.time.tmin}). Change the baseline through the Tools menu.", "No Baseline Period", style=wx.ICON_ERROR)
+                return
+            original -= original.mean(time=(None, 0))
+            clean -= clean.mean(time=(None, 0))
+        elif self.butterfly_baseline == ID.BASELINE_GLOABL_MEAN:
+            original -= self.doc.global_mean
+            clean -= self.doc.global_mean
+
+        if original.has_case:
+            if isinstance(title, str):
+                title = repeat(title, len(original))
+            vmax = 1.1 * max(abs(original.min()), original.max())
+            for data, title_ in zip(zip(original, clean), title):
+                plot.TopoButterfly(data, vmax=vmax, title=title_, axtitle=("Original", "Cleaned"))
+        else:
+            plot.TopoButterfly([original, clean], title=title, axtitle=("Original", "Cleaned"))
+
+
+class Frame(SharedToolsMenu, FileFrame):
     """GIU for selecting ICA sensor-space components
 
     Component Selection
@@ -202,11 +402,9 @@ class Frame(FileFrame):
     _wildcard = "ICA fiff file (*-ica.fif)|*.fif"
 
     def __init__(self, parent, pos, size, model):
-        self.last_model = ""
+        FileFrame.__init__(self, parent, pos, size, model)
+        SharedToolsMenu.__init__(self)
         self.source_frame = None
-        self.butterfly_baseline = ID.BASELINE_NONE
-
-        super(Frame, self).__init__(parent, pos, size, model)
 
         # setup layout
         self.ax_size = 200
@@ -235,9 +433,7 @@ class Frame(FileFrame):
         button = wx.Button(tb, ID.SHOW_SOURCES, "Sources")
         button.Bind(wx.EVT_BUTTON, self.OnShowSources)
         tb.AddControl(button)
-        button = wx.Button(tb, ID.FIND_RARE_EVENTS, "Rare Events")
-        button.Bind(wx.EVT_BUTTON, self.OnFindRareEvents)
-        tb.AddControl(button)
+        SharedToolsMenu.AddToolbarButtons(self, tb)
         # tail
         tb.AddStretchableSpace()
         self.InitToolbarTail(tb)
@@ -321,29 +517,12 @@ class Frame(FileFrame):
 
     def MakeToolsMenu(self, menu):
         app = wx.GetApp()
+        # show sources
         item = menu.Append(wx.ID_ANY, "Source Viewer", "Open a source time course viewer window")
         app.Bind(wx.EVT_MENU, self.OnShowSources, item)
-        item = menu.Append(wx.ID_ANY, "Find Rare Events", "Find components with major loading on a small number of epochs")
-        app.Bind(wx.EVT_MENU, self.OnFindRareEvents, item)
-        item = menu.Append(wx.ID_ANY, "Find Noisy Epochs", "Find epochs with strong signal")
-        app.Bind(wx.EVT_MENU, self.OnFindNoisyEpochs, item)
+        # shared menu
         menu.AppendSeparator()
-
-        # plotting
-        item = menu.Append(wx.ID_ANY, "Butterfly Plot Grand Average", "Plot the grand average of all epochs")
-        app.Bind(wx.EVT_MENU, self.OnPlotGrandAverage, item)
-        item = menu.Append(wx.ID_ANY, "Butterfly Plot by Category", "Separate butterfly plots for different model cells")
-        app.Bind(wx.EVT_MENU, self.OnPlotButterfly, item)
-        # Baseline submenu
-        blmenu = wx.Menu()
-        blmenu.AppendRadioItem(ID.BASELINE_CUSTOM, "Baseline Period")
-        blmenu.AppendRadioItem(ID.BASELINE_GLOABL_MEAN, "Global Mean")
-        blmenu.AppendRadioItem(ID.BASELINE_NONE, "No Baseline Correction")
-        blmenu.Check(self.butterfly_baseline, True)
-        blmenu.Bind(wx.EVT_MENU, self.OnSetButterflyBaseline, id=ID.BASELINE_CUSTOM)
-        blmenu.Bind(wx.EVT_MENU, self.OnSetButterflyBaseline, id=ID.BASELINE_GLOABL_MEAN)
-        blmenu.Bind(wx.EVT_MENU, self.OnSetButterflyBaseline, id=ID.BASELINE_NONE)
-        menu.AppendSubMenu(blmenu, "Baseline")
+        SharedToolsMenu.MakeToolsMenu(self, menu)
 
     def OnCanvasClick(self, event):
         "Called by mouse clicks"
@@ -367,106 +546,17 @@ class Frame(FileFrame):
         elif event.key == 'B':
             self.PlotConditionAverages(self)
 
-    def OnFindNoisyEpochs(self, event):
-        dlg = FindNoisyEpochsDialog(self)
-        rcode = dlg.ShowModal()
-        dlg.Destroy()
-        if rcode != wx.ID_OK:
-            return
-        threshold = float(dlg.threshold.GetValue())
-        apply_rejection = dlg.apply_rejection.GetValue()
-        dlg.StoreConfig()
-
-        # compute and rank
-        if apply_rejection:
-            epochs = asndvar(self.doc.apply(self.doc.epochs))
-        else:
-            epochs = self.doc.epochs_ndvar
-        y = epochs.extrema(('time', 'sensor')).abs().x
-
-        # collect output
-        res = [(i, v) for i, v in enumerate(y) if v >= threshold]  # epoch, value
-        if len(res) == 0:
-            wx.MessageBox(f"No epochs with signals exceeding {threshold} were found.", "No Noisy Epochs Found", style=wx.ICON_INFORMATION)
-            return
-
-        # format output
-        doc = fmtxt.Section("Noisy epochs")
-        doc.add_paragraph(f"Epochs with signal exceeding {threshold}:")
-        doc.append(fmtxt.linebreak)
-        for i, value in res:
-            doc.append(fmtxt.Link(self.doc.epoch_labels[i], LINK % (0, i)))
-            doc.append(f": {value:g}")
-            doc.append(fmtxt.linebreak)
-
-        style = wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP
-        InfoFrame(self, "Noisy Epochs", doc.get_html(), size=(500, 700), style=style)
-
-    def OnFindRareEvents(self, event):
-        dlg = FindRareEventsDialog(self)
-        rcode = dlg.ShowModal()
-        dlg.Destroy()
-        if rcode != wx.ID_OK:
-            return
-        threshold = float(dlg.threshold.GetValue())
-        dlg.StoreConfig()
-
-        # compute and rank
-        y = self.doc.sources.max('time') - self.doc.sources.min('time')
-        z = (y - y.mean('case')) / y.std('case')
-        z_max = z.max('case').x
-        components_ranked = np.argsort(z_max)[::-1]
-
-        # collect output
-        res = []
-        for c in components_ranked:
-            if z_max[c] < threshold:
-                break
-            z_epochs = z.x[:, c]
-            idx = np.flatnonzero(z_epochs >= threshold)
-            rank = np.argsort(z_epochs[idx])[::-1]
-            res.append((c, z_max[c], idx[rank]))
-
-        if len(res) == 0:
-            wx.MessageBox("No rare events were found.", "No Rare Events Found",
-                          style=wx.ICON_INFORMATION)
-            return
-
-        # format output
-        doc = fmtxt.Section("Rare Events")
-        doc.add_paragraph("Components that disproportionally affect a small "
-                          "number of epochs (z-scored peak-to-peak > %g). "
-                          "Epochs are ranked by peak-to-peak." % threshold)
-        doc.append(fmtxt.linebreak)
-        hash_char = {True: fmtxt.FMTextElement('# ', 'font', {'color': 'green'}),
-                     False: fmtxt.FMTextElement('# ', 'font', {'color': 'red'})}
-        for c, ft, epochs in res:
-            doc.append(hash_char[self.doc.accept[c]])
-            doc.append("%i (%.1f):  " % (c, ft))
-            doc.append(fmtxt.delim_list((fmtxt.Link(
-                self.doc.epoch_labels[e], LINK % (c, e)) for e in epochs)))
-            doc.append(fmtxt.linebreak)
-
-        style = wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP
-        InfoFrame(self, "Rare Events", doc.get_html(), size=(500, 700), style=style)
-
     def OnPanelResize(self, event):
         w, h = event.GetSize()
         n_h = w // self.ax_size
         if n_h >= 2 and n_h != self.n_h:
             self.plot()
 
-    def OnPlotButterfly(self, event):
-        self.PlotConditionAverages(self)
-
     def OnPlotCompSourceArray(self, event):
         self.PlotCompSourceArray(event.EventObject.i)
 
     def OnPlotCompTopomap(self, event):
         self.PlotCompTopomap(event.EventObject.i)
-
-    def OnPlotGrandAverage(self, event):
-        self.PlotEpochButterfly(-1)
 
     def OnPointerEntersAxes(self, event):
         try:
@@ -520,9 +610,6 @@ class Frame(FileFrame):
         self.PopupMenu(menu, pos)
         menu.Destroy()
 
-    def OnSetButterflyBaseline(self, event):
-        self.butterfly_baseline = event.GetId()
-
     def OnShowSources(self, event):
         self.ShowSources(0)
 
@@ -543,75 +630,6 @@ class Frame(FileFrame):
     def PlotCompTopomap(self, i_comp):
         plot.Topomap(self.doc.components[i_comp], sensorlabels='name', axw=9, title=f'# {i_comp}')
 
-    def PlotConditionAverages(self, parent):
-        "Prompt for model and plot condition averages"
-        factors = [n for n, v in self.doc.ds.items() if
-                   isinstance(v, Factor)]
-        if len(factors) == 0:
-            wx.MessageBox("The dataset that describes the epochs does not "
-                          "contain any Factors that could be used to plot the "
-                          "data by condition.", "No Factors in Dataset",
-                          style=wx.ICON_ERROR)
-            return
-        elif len(factors) == 1:
-            default = factors[0]
-        else:
-            default = self.last_model or factors[0]
-        msg = "Specify the model (available factors: %s)" % ', '.join(factors)
-
-        plot_model = None
-        dlg = wx.TextEntryDialog(parent, msg, "Plot by Condition", default)
-        while plot_model is None:
-            if dlg.ShowModal() == wx.ID_OK:
-                value = dlg.GetValue()
-                use = [s.strip() for s in value.replace(':', '%').split('%')]
-                invalid = [f for f in use if f not in factors]
-                if invalid:
-                    wx.MessageBox("The following are not valid factor names: %s"
-                                  % (', '.join(invalid)), "Invalid Entry",
-                                  wx.ICON_ERROR)
-                else:
-                    plot_model = '%'.join(use)
-            else:
-                dlg.Destroy()
-                return
-        dlg.Destroy()
-        self.last_model = value
-
-        ds = self.doc.ds.aggregate(plot_model, drop_bad=True)
-        titles = [' '.join(ds[i, f] for f in use) + ' (n=%i)' % ds[i, 'n'] for
-                  i in range(ds.n_cases)]
-        self._PlotButterfly(ds['epochs'], titles)
-
-    def PlotEpochButterfly(self, i_epoch):
-        if i_epoch == -1:
-            self._PlotButterfly(self.doc.epochs.average(), "Epochs Average")
-        else:
-            name = f"Epoch {self.doc.epoch_labels[i_epoch]}"
-            self._PlotButterfly(self.doc.epochs[i_epoch], name)
-
-    def _PlotButterfly(self, epoch, title):
-        original = asndvar(epoch)
-        clean = asndvar(self.doc.apply(epoch))
-        if self.butterfly_baseline == ID.BASELINE_CUSTOM:
-            if original.time.tmin >= 0:
-                wx.MessageBox(f"The data displayed does not have a baseline period (tmin={original.time.tmin}). Change the baseline through the Tools menu.", "No Baseline Period", style=wx.ICON_ERROR)
-                return
-            original -= original.mean(time=(None, 0))
-            clean -= clean.mean(time=(None, 0))
-        elif self.butterfly_baseline == ID.BASELINE_GLOABL_MEAN:
-            original -= self.doc.global_mean
-            clean -= self.doc.global_mean
-
-        if original.has_case:
-            if isinstance(title, str):
-                title = repeat(title, len(original))
-            vmax = 1.1 * max(abs(original.min()), original.max())
-            for data, title_ in zip(zip(original, clean), title):
-                plot.TopoButterfly(data, vmax=vmax, title=title_, axtitle=("Original", "Cleaned"))
-        else:
-            plot.TopoButterfly([original, clean], title=title, axtitle=("Original", "Cleaned"))
-
     def ShowSources(self, i_first):
         if self.source_frame:
             self.source_frame.Raise()
@@ -619,7 +637,7 @@ class Frame(FileFrame):
             self.source_frame = SourceFrame(self, i_first)
 
 
-class SourceFrame(FileFrameChild):
+class SourceFrame(SharedToolsMenu, FileFrameChild):
     """Component source time course display for selecting ICA components.
 
     * Click on components topographies to select/deselect them.
@@ -646,7 +664,8 @@ class SourceFrame(FileFrameChild):
     _wildcard = "ICA fiff file (*-ica.fif)|*.fif"
 
     def __init__(self, parent: Frame, i_first: int):
-        FileFrame.__init__(self, parent, None, None, parent.model)
+        FileFrameChild.__init__(self, parent, None, None, parent.model)
+        SharedToolsMenu.__init__(self)
 
         # prepare canvas
         self.canvas = FigureCanvasPanel(self)
@@ -673,6 +692,8 @@ class SourceFrame(FileFrameChild):
         self.down_button = tb.AddTool(wx.ID_DOWN, "Down", Icon("tango/actions/go-down"))
         self.back_button = tb.AddTool(wx.ID_BACKWARD, "Back", Icon("tango/actions/go-previous"))
         self.next_button = tb.AddTool(wx.ID_FORWARD, "Next", Icon("tango/actions/go-next"))
+        tb.AddSeparator()
+        SharedToolsMenu.AddToolbarButtons(self, tb)
         tb.AddStretchableSpace()
         self.InitToolbarTail(tb)
         tb.Realize()
@@ -817,6 +838,7 @@ class SourceFrame(FileFrameChild):
     def GoToComponentEpoch(self, component, epoch):
         self.SetFirstComponent(component // self.n_comp * self.n_comp)
         self.SetFirstEpoch(epoch // self.n_epochs * self.n_epochs)
+        self.Raise()
 
     def OnBackward(self, event):
         "Turn the page backward"
@@ -848,7 +870,7 @@ class SourceFrame(FileFrameChild):
                     i_epoch = -1
             else:
                 i_epoch = -1
-            self.parent.PlotEpochButterfly(i_epoch)
+            self.PlotEpochButterfly(i_epoch)
         elif not event.inaxes:
             return
         # component-specific plots
