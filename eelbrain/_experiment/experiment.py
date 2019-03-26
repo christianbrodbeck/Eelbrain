@@ -641,11 +641,12 @@ class TreeModel:
         Parameters
         ----------
         match : bool
-            For fields with stored values, only allow valid values.
+            For fields with pre-defined values, only allow valid values (default
+            ``True``).
         allow_asterisk : bool
-            If a value contains '*', set the value without the normal value
-            evaluation and checking mechanism.
-        kwargs :
+            If a value contains ``'*'``, set the value without the normal value
+            evaluation and checking mechanisms (default ``False``).
+        ... :
             Fields and values to set. Invalid fields raise a KeyError. Unless
             match == False, Invalid values raise a ValueError.
         """

@@ -5624,7 +5624,7 @@ class MneExperiment(FileTree):
         subp.run_mne_browse_raw(self.get('raw-dir'), self.get('mrisubject'),
                                 self.get('mri-sdir'), modal)
 
-    def set(self, subject=None, **state):
+    def set(self, subject=None, match=True, allow_asterisk=False, **state):
         """
         Set variable values.
 
@@ -5633,12 +5633,22 @@ class MneExperiment(FileTree):
         subject : str
             Set the `subject` value. The corresponding `mrisubject` is
             automatically set to the corresponding mri subject.
+        match : bool
+            For fields with pre-defined values, only allow valid values (default
+            ``True``).
+        allow_asterisk : bool
+            If a value contains ``'*'``, set the value without the normal value
+            evaluation and checking mechanisms (default ``False``).
         ...
             State parameters.
         """
         if subject is not None:
-            state['subject'] = subject
-        FileTree.set(self, **state)
+            if 'group' not in state:
+                state['subject'] = subject
+                subject = None
+        FileTree.set(self, match, allow_asterisk, **state)
+        if subject is not None:
+            FileTree.set(self, match, allow_asterisk, subject=subject)
 
     def _post_set_group(self, _, group):
         if group == '*' or group not in self._groups:
