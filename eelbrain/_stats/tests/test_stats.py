@@ -8,7 +8,7 @@ import scipy.stats
 
 from eelbrain import datasets
 from eelbrain._stats import stats
-from eelbrain._stats.permutation import permute_order
+from eelbrain._stats.permutation import permute_order, rand_rotation_matrices
 
 
 def test_corr():
@@ -139,3 +139,10 @@ def test_t_ind():
         y_perm[perm] = y
         t_sp, _ = scipy.stats.ttest_ind(y_perm[:n], y_perm[n:])
         assert_allclose(t, t_sp)
+
+
+def test_vector():
+    rotation = rand_rotation_matrices(4)
+    zeros = np.zeros((4, 3))
+    assert stats.t2_1samp(zeros) == 0
+    assert stats.t2_1samp(zeros, rotation) == 0

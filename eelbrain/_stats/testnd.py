@@ -21,6 +21,7 @@ n_samples : None | int
     number of permutations that constitute the complete set.
 '''
 from datetime import datetime, timedelta
+from functools import reduce, partial
 from itertools import chain, repeat
 from math import ceil
 from multiprocessing import Process, Event, SimpleQueue
@@ -60,7 +61,6 @@ from .permutation import (
     rand_rotation_matrices)
 from .t_contrast import TContrastRel
 from .test import star, star_factor
-from functools import reduce, partial
 
 
 __test__ = False

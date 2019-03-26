@@ -314,7 +314,7 @@ def test_vec_source():
     # test
     res = testnd.Vector('src', ds=ds, samples=2)
     clusters = res.find_clusters()
-    assert_array_equal(clusters['n_sources'], [1, 719, 1, 11, 4])
+    assert_array_equal(clusters['n_sources'], [799, 1, 7, 1, 2, 1])
     # NDVar
     v = ds['src']
     assert v.sub(source='lh', time=0).shape == (72, 712, 3)

@@ -114,7 +114,6 @@ def t2_stat(cnp.ndarray[FLOAT64, ndim=3] y,
     cdef double eig[3]
     cdef double vec[3][3]
 
-
     cdef unsigned long n_cases = y.shape[0]
     cdef unsigned long n_dims = y.shape[1]
     cdef unsigned long n_tests = y.shape[2]
@@ -136,6 +135,13 @@ def t2_stat(cnp.ndarray[FLOAT64, ndim=3] y,
         for v in range(n_dims):
             for u in range(n_dims):
                 sigma[u][v] -= mean[u] * mean[v] / n_cases
+        # check non-zero variance
+        for v in range(n_dims):
+            if sigma[v][0] != 0:
+                break
+        else:
+            out[i] = 0
+            continue
 
         dsyevh3(sigma, vec, eig)
         max_eig = max(eig, 3)
@@ -167,7 +173,6 @@ def t2_stat_rotated(cnp.ndarray[FLOAT64, ndim=3] y,
     cdef double eig[3]
     cdef double vec[3][3]
 
-
     cdef unsigned long n_cases = y.shape[0]
     cdef unsigned long n_dims = y.shape[1]
     cdef unsigned long n_tests = y.shape[2]
@@ -192,6 +197,13 @@ def t2_stat_rotated(cnp.ndarray[FLOAT64, ndim=3] y,
         for u in range(n_dims):
             for v in range(u + 1):      # Only upper triangular part need to be meaningful (See dsyevh.c)
                 sigma[v][u] -= mean[u] * mean[v] / n_cases
+        # check non-zero variance
+        for v in range(n_dims):
+            if sigma[v][0] != 0:
+                break
+        else:
+            out[i] = 0
+            continue
 
         dsyevh3(sigma, vec, eig)
         max_eig = max(eig, 3)
