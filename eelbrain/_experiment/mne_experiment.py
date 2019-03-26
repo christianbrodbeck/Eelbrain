@@ -3930,7 +3930,7 @@ class MneExperiment(FileTree):
         mne.write_forward_solution(dst, fwd, True)
         return dst
 
-    def make_ica_selection(self, epoch=None, decim=None, **state):
+    def make_ica_selection(self, epoch=None, decim=None, session=None, **state):
         """Select ICA components to remove through a GUI
 
         Parameters
@@ -3942,6 +3942,10 @@ class MneExperiment(FileTree):
             Downsample data for visualization (to improve GUI performance;
             for raw data, the default is ~100 Hz, for epochs the default is the
             epoch setting).
+        session : str | list of str
+            One or more sessions for which to plot the raw data (this parameter
+            can not be used together with ``epoch``; default is the session in
+            the current state).
         ...
             State parameters.
 
@@ -3964,11 +3968,15 @@ class MneExperiment(FileTree):
         with self._temporary_state, warnings.catch_warnings():
             warnings.filterwarnings('ignore', 'The measurement information indicates a low-pass', RuntimeWarning)
             if epoch is None:
-                raw = self.load_raw(raw=pipe.source.name, add_bads=bads)
+                if session is None:
+                    session = self.get('session')
+                raw = pipe.load_concatenated_source_raw(subject, session, self.get('visit'))
                 events = mne.make_fixed_length_events(raw)
                 ds = Dataset()
                 decim = int(raw.info['sfreq'] // 100) if decim is None else decim
                 ds['epochs'] = mne.Epochs(raw, events, 1, 0, 1, baseline=None, proj=False, decim=decim, preload=True)
+            elif session is not None:
+                raise TypeError(f"session={session!r} with epoch={epoch!r}")
             else:
                 ds = self.load_epochs(ndvar=False, epoch=epoch, reject=False, raw=pipe.source.name, decim=decim, add_bads=bads)
         info = ds['epochs'].info

@@ -15,7 +15,7 @@ from .._exceptions import DefinitionError
 from .._io.fiff import KIT_NEIGHBORS
 from .._ndvar import filter_data
 from .._text import enumeration
-from .._utils import ask, user_activity
+from .._utils import as_sequence, ask, user_activity
 from ..mne_fixes import CaptureLog
 from .definitions import compound, typed_arg
 from .exceptions import FileMissing
@@ -524,6 +524,18 @@ class RawICA(CachedRawPipe):
     def _check_ica_channels(ica, raw):
         picks = mne.pick_types(raw.info, eeg=True, ref_meg=False)
         return ica.ch_names == [raw.ch_names[i] for i in picks]
+
+    def load_concatenated_source_raw(self, subject, session, visit):
+        sessions = as_sequence(session)
+        recordings = [compound((session, visit)) for session in sessions]
+        bad_channels = self.load_bad_channels(subject, recordings[0])
+        raw = self.source.load(subject, recordings[0], False)
+        raw.info['bads'] = bad_channels
+        for recording in recordings[1:]:
+            raw_ = self.source.load(subject, recording, False)
+            raw_.info['bads'] = bad_channels
+            raw.append(raw_)
+        return raw
 
     def make_ica(self, subject, visit):
         path = self._ica_path(subject, visit)
