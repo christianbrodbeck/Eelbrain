@@ -145,11 +145,12 @@ def t2_stat(cnp.ndarray[FLOAT64, ndim=3] y,
             temp = 0
             for u in range(n_dims):
                 temp += vec[u][v] * mean[u]
-            if eig[v] > TOL:
-                norm += temp ** 2 / eig[v]
-            else:
-                # norm += 0
-                norm += temp ** 2 / TOL
+            if temp != 0.0:     # Avoid divide by zero
+                if eig[v] > TOL:
+                    norm += temp ** 2 / eig[v]
+                else:
+                    # norm += 0
+                    norm += temp ** 2 / TOL
         out[i] = norm ** 0.5
     return out
 
@@ -201,11 +202,12 @@ def t2_stat_rotated(cnp.ndarray[FLOAT64, ndim=3] y,
             temp = 0
             for u in range(n_dims):
                 temp += vec[u][v] * mean[u]
-            if eig[v] > TOL:
-                norm += temp ** 2 / eig[v]
-            else:
-                # norm += 0
-                norm += temp ** 2 / TOL
+            if temp != 0.0:  # Avoid divide by zero
+                if eig[v] > TOL:
+                    norm += temp ** 2 / eig[v]
+                else:
+                    # norm += 0
+                    norm += temp ** 2 / TOL
         out[i] = norm ** 0.5
     return out
 
