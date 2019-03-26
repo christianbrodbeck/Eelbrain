@@ -36,7 +36,6 @@ from . import ID
 
 COLOR = {True: (.5, 1, .5), False: (1, .3, .3)}
 LINE_COLOR = {True: 'k', False: (1, 0, 0)}
-LINK = 'component:%i epoch:%s'
 TOPO_ARGS = {
     'interpolation': 'linear',  # interpolation that does not assume continuity
     'clip': 'even',
@@ -244,12 +243,10 @@ class SharedToolsMenu:
         doc.add_paragraph(f"Epochs with signal exceeding {threshold}:")
         doc.append(fmtxt.linebreak)
         for i, value in res:
-            doc.append(fmtxt.Link(self.doc.epoch_labels[i], LINK % (0, i)))
+            doc.append(fmtxt.Link(self.doc.epoch_labels[i], f'epoch:{i}'))
             doc.append(f": {value:g}")
             doc.append(fmtxt.linebreak)
-
-        style = wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP
-        InfoFrame(self, "Noisy Epochs", doc.get_html(), size=(500, 700), style=style)
+        InfoFrame(self, "Noisy Epochs", doc, 300, 900)
 
     def OnFindRareEvents(self, event):
         dlg = FindRareEventsDialog(self)
@@ -289,11 +286,9 @@ class SharedToolsMenu:
         for c, ft, epochs in res:
             doc.append(hash_char[self.doc.accept[c]])
             doc.append(f"{c} ({ft:.1f}):  ")
-            doc.append(fmtxt.delim_list((fmtxt.Link(self.doc.epoch_labels[e], LINK % (c, e)) for e in epochs)))
+            doc.append(fmtxt.delim_list((fmtxt.Link(self.doc.epoch_labels[e], f'component:{c} epoch:{e}') for e in epochs)))
             doc.append(fmtxt.linebreak)
-
-        style = wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP
-        InfoFrame(self, "Rare Events", doc.get_html(), size=(500, 700), style=style)
+        InfoFrame(self, "Rare Events", doc, 500, 900)
 
     def OnPlotButterfly(self, event):
         self.PlotConditionAverages(self)
@@ -583,12 +578,10 @@ class Frame(SharedToolsMenu, FileFrame):
         # doc
         lst = fmtxt.List(f"Epochs SS loading in descending order for component {i_comp}")
         for i in sort:
-            link = fmtxt.Link(self.doc.epoch_labels[i], LINK % (i_comp, i))
+            link = fmtxt.Link(self.doc.epoch_labels[i], f'component:{i_comp} epoch:{i}')
             lst.add_item(link + f': {ss[i]:.1f}')
         doc = fmtxt.Section(f"#{i_comp} Ranked Epochs", lst)
-
-        style = wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP
-        InfoFrame(self, f"Component {i_comp} Epoch SS", doc.get_html(), size=(200, 700), style=style)
+        InfoFrame(self, f"Component {i_comp} Epoch SS", doc, 200, 900)
 
     def _component_context_menu(self, i_comp):
         menu = ContextMenu(i_comp)
@@ -684,6 +677,8 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
         self.i_first_epoch = 0
         self.n_epochs_in_data = len(self.doc.sources)
         self.y_scale = self.config.ReadFloat('y_scale', 10)  # scale factor for y axis
+        self._marked_epoch_i = None
+        self._marked_epoch_h = None
 
         # Toolbar
         tb = self.InitToolbar(can_open=False)
@@ -836,8 +831,11 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
             self.canvas.draw()
 
     def GoToComponentEpoch(self, component, epoch):
-        self.SetFirstComponent(component // self.n_comp * self.n_comp)
-        self.SetFirstEpoch(epoch // self.n_epochs * self.n_epochs)
+        if component is not None:
+            self.SetFirstComponent(component // self.n_comp * self.n_comp)
+        if epoch is not None:
+            self._marked_epoch_i = epoch
+            self.SetFirstEpoch(epoch // self.n_epochs * self.n_epochs)
         self.Raise()
 
     def OnBackward(self, event):
@@ -1022,6 +1020,22 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
 
     def SetFirstEpoch(self, i_first_epoch):
         self.i_first_epoch = i_first_epoch
+        bottom = -0.5 * self.y_scale
+        top = (self.n_comp - 0.5) * self.y_scale
+
+        # marked epoch
+        if self._marked_epoch_h is not None:
+            self._marked_epoch_h.remove()
+            self._marked_epoch_h = None
+        if self._marked_epoch_i is not None:
+            i = self._marked_epoch_i - i_first_epoch
+            if 0 <= i < self.n_epochs:
+                elen = len(self.doc.sources.time)
+                height = self.n_comp * self.y_scale
+                self._marked_epoch_h = Rectangle((i * elen, bottom), elen, height, edgecolor='yellow', facecolor='yellow')
+                self.ax_tc.add_patch(self._marked_epoch_h)
+
+        # update data
         y, tick_labels = self._get_source_data()
         if i_first_epoch + self.n_epochs > self.n_epochs_in_data:
             elen = len(self.doc.sources.time)
@@ -1041,7 +1055,7 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
         for line, data in zip(self.lines, y):
             line.set_ydata(data)
         self.ax_tc.set_xticklabels(tick_labels)
-        self.ax_tc.set_ylim((-0.5 * self.y_scale, (self.n_comp - 0.5) * self.y_scale))
+        self.ax_tc.set_ylim((bottom, top))
         self.canvas.draw()
 
 
@@ -1149,10 +1163,28 @@ class FindRareEventsDialog(EelbrainDialog):
 
 class InfoFrame(HTMLFrame):
 
+    def __init__(self, parent, title, doc, w, h):
+        pos, size = self.find_pos(w, h)
+        style = wx.MINIMIZE_BOX | wx.MAXIMIZE_BOX | wx.RESIZE_BORDER | wx.CAPTION | wx.CLOSE_BOX | wx.FRAME_FLOAT_ON_PARENT | wx.FRAME_TOOL_WINDOW
+        HTMLFrame.__init__(self, parent, title, doc.get_html(), pos=pos, size=size, style=style)
+
+    @staticmethod
+    def find_pos(w, h):
+        display_w, display_h = wx.DisplaySize()
+        h = min(h, display_h - 44)
+        pos = (display_w - w, int(round((display_h - h) / 2)))
+        return pos, (w, h)
+
     def OpenURL(self, url):
-        m = re.match(r'^component:(\d+) epoch:(\d+)$', url)
-        if m:
-            comp, epoch = m.groups()
-            self.Parent.GoToComponentEpoch(int(comp), int(epoch))
-        else:
-            raise ValueError("Invalid link URL: %r" % url)
+        component = epoch = None
+        for part in url.split():
+            m = re.match(r'^epoch:(\d+)$', part)
+            if m:
+                epoch = int(m.group(1))
+                continue
+            m = re.match(r'^component:(\d+)$', part)
+            if m:
+                component = int(m.group(1))
+                continue
+            raise ValueError(f"url={url!r}")
+        self.Parent.GoToComponentEpoch(component, epoch)
