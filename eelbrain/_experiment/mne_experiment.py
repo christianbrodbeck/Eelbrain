@@ -6135,22 +6135,19 @@ class MneExperiment(FileTree):
 
         # pipe-specific
         if isinstance(pipe, RawICA):
-            subjects = []
-            statuses = []
-            for s in self:
-                subjects.append(s)
+            table = fmtxt.Table('lrr')
+            table.cells('Subject', 'n components', 'reject')
+            table.midrule()
+            for subject in self:
+                table.cell(subject)
                 filename = self.get('ica-file')
                 if exists(filename):
                     ica = self.load_ica()
-                    status = f"{len(ica.exclude)} components rejected"
+                    table.cells(ica.n_components_, len(ica.exclude))
                 else:
-                    status = "No ICA-file"
-                statuses.append(status)
-            ds = Dataset()
-            ds['subject'] = Factor(subjects)
-            ds['status'] = Factor(statuses)
+                    table.cells("No ICA-file", '')
             print()
-            print(ds)
+            print(table)
 
     def show_reg_params(self, asds=False, **kwargs):
         """Show the covariance matrix regularization parameters
