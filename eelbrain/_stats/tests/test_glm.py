@@ -98,7 +98,16 @@ def test_anova():
 
     # fixed effects
     aov = test.ANOVA('fltvar', 'A*B', ds=ds)
-    print(aov)
+    assert f'\n{aov}\n' == """
+                SS   df      MS          F        p
+---------------------------------------------------
+A            28.69    1   28.69   25.69***   < .001
+B             0.04    1    0.04    0.03        .855
+A x B         1.16    1    1.16    1.04        .310
+Residuals    84.85   76    1.12                    
+---------------------------------------------------
+Total       114.74   79
+"""
     fs = run_on_lm_fitter('fltvar', 'A*B', ds)
     fnds = run_as_ndanova('fltvar', 'A*B', ds)
     r_res = r("Anova(lm(fltvar ~ A * B, ds, type=2))")
@@ -106,7 +115,15 @@ def test_anova():
 
     # random effect
     aov = test.ANOVA('fltvar', 'A*B*rm', ds=ds)
-    print(aov)
+    assert f'\n{aov}\n' == """
+            SS   df      MS   MS(denom)   df(denom)          F        p
+-----------------------------------------------------------------------
+A        28.69    1   28.69        1.21          19   23.67***   < .001
+B         0.04    1    0.04        1.15          19    0.03        .859
+A x B     1.16    1    1.16        1.01          19    1.15        .297
+-----------------------------------------------------------------------
+Total   114.74   79
+"""
     fs = run_on_lm_fitter('fltvar', 'A*B*rm', ds)
     fnds = run_as_ndanova('fltvar', 'A*B*rm', ds)
     r('test.aov <- aov(fltvar ~ A * B + Error(rm / (A * B)), ds)')

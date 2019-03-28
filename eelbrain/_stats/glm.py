@@ -843,9 +843,8 @@ class ANOVA:
             self._is_mixed = False
         else:
             comparisons = IncrementalComparisons(x)
-            self._log.append("%s effects model" %
-                             ('Mixed' if comparisons.mixed else 'Fixed'))
             is_mixed = self._is_mixed = comparisons.mixed
+            self._log.append(f"{'FM'[is_mixed]}ixed effects model")
 
             # fit the models
             lms = {idx: LM(y, model) if model.df_error > 0 else None for
@@ -898,13 +897,11 @@ class ANOVA:
             Anova table.
         """
         # table head
-        table = fmtxt.Table('l' + 'r' * (5 + 2 * self._is_mixed), title=title,
-                            caption=caption)
-        table.cell()
-        table.cells("SS", "df", "MS")
+        table = fmtxt.Table('l' + 'r' * (5 + 2 * self._is_mixed), title=title, caption=caption)
+        table.cells('', 'SS', 'df', 'MS')
         if self._is_mixed:
             table.cells(fmtxt.symbol('MS', 'denom'), fmtxt.symbol('df', 'denom'))
-        table.cells("F", "p")
+        table.cells('F', 'p')
         table.midrule()
 
         # table body
