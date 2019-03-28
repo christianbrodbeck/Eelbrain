@@ -16,6 +16,7 @@ from itertools import chain, product
 import logging
 import os
 from os.path import basename, exists, getmtime, isdir, join, relpath
+from pathlib import Path
 import re
 import shutil
 import time
@@ -4677,6 +4678,7 @@ class MneExperiment(FileTree):
         # start report
         title = self.format('{recording} {test_desc}')
         report = Report(title)
+        report.add_paragraph(self._report_methods_brief(dst))
 
         if isinstance(self._tests[test], TwoStageTest):
             self._two_stage_report(report, data, test, baseline, src_baseline, pmin, samples, tstart, tstop, parc, mask, include)
@@ -4990,6 +4992,12 @@ class MneExperiment(FileTree):
         self._report_test_info(info_section, ds, test, res, data)
         report.sign(('eelbrain', 'mne', 'scipy', 'numpy'))
         report.save_html(dst)
+
+    @staticmethod
+    def _report_methods_brief(path):
+        path = Path(path)
+        items = [*path.parts[:-1], path.stem]
+        return List('Methods brief', items[-3:])
 
     def _report_subject_info(self, ds, model):
         """Table with subject information
