@@ -538,6 +538,35 @@ information in open windows is saved.
 
 
 ^^^^^^^^^^^^^^
+Formatted text
+^^^^^^^^^^^^^^
+
+The :mod:`fmtxt` submodule provides tools for exporting results. Most eelbrain
+functions and methods that print tables in fact return :mod:`fmtxt` objects,
+which can be exported in different formats, for example::
+
+    >>> ds = datasets.get_uv()
+    >>> type(ds.head())
+    eelbrain.fmtxt.Table
+
+This means that the result can be exported as formatted text, for example::
+
+    >>> fmtxt.save_pdf(ds.head())
+
+Available export methods:
+
+.. autosummary::
+   :toctree: generated
+
+   fmtxt.copy_pdf
+   fmtxt.copy_tex
+   fmtxt.save_html
+   fmtxt.save_pdf
+   fmtxt.save_rtf
+   fmtxt.save_tex
+
+
+^^^^^^^^^^^^^^
 MNE-Experiment
 ^^^^^^^^^^^^^^
 

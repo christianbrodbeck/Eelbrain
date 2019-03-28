@@ -571,7 +571,7 @@ class SensorMaps(EelFigure):
             self._drag_x = event.xdata
             self._drag_y = event.ydata
 
-            self.canvas.store_canvas()
+            self._frame .store_canvas()
             x = np.ones(5) * event.xdata
             y = np.ones(5) * event.ydata
             self._drag_rect = ax.plot(x, y, '-k')[0]

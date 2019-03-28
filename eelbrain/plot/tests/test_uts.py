@@ -1,8 +1,4 @@
-'''
-Created on Dec 2, 2012
-
-@author: christian
-'''
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from eelbrain import datasets, plot, testnd, Factor, concatenate, set_tmin
 from eelbrain._wxgui.testing import hide_plots
 

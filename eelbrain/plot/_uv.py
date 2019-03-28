@@ -245,7 +245,7 @@ class _SimpleFigure(EelFigure):
             self._ax.set_xlabel(xlabel)
 
     def _show(self):
-        if not self._layout.w_fixed:
+        if self._has_frame and not self._layout.w_fixed:
             # make sure x axis labels don't overlap
             self.draw()
             labels = self._ax.get_xticklabels()

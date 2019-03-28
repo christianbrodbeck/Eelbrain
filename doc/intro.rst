@@ -264,8 +264,7 @@ Example
 =======
 
 Below is a simple example using data objects (for more, see the
-`statistics examples 
-<https://github.com/christianbrodbeck/Eelbrain/tree/master/examples>`_)::
+:ref:`examples`)::
 
     >>> from eelbrain import *
     >>> import numpy as np

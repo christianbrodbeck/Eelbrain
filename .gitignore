@@ -37,3 +37,4 @@ doc/generated
 coverage/
 *.fif
 .pytest_cache/
+doc/auto_examples

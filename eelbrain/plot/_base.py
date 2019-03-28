@@ -1140,7 +1140,7 @@ def aggregate(y, agg):
     return y if agg is None else y.mean(agg)
 
 
-class mpl_figure:
+class MatplotlibFrame:
     "Cf. _wxgui.mpl_canvas"
     def __init__(self, **fig_kwargs):
         "Create self.figure and self.canvas attributes and return the figure"
@@ -1149,6 +1149,7 @@ class mpl_figure:
         self._plt = pyplot
         self.figure = pyplot.figure(**fig_kwargs)
         self.canvas = self.figure.canvas
+        self._background = None
 
     def Close(self):
         self._plt.close(self.figure)
@@ -1270,18 +1271,20 @@ class EelFigure:
         """
         name = self.__class__.__name__
         desc = layout.name or data_desc
-        frame_title = f'{name}: {desc}' if desc else name
 
         # find the right frame
         if CONFIG['eelbrain']:
             from .._wxgui import get_app
             from .._wxgui.mpl_canvas import CanvasFrame
             get_app()
-            frame_ = CanvasFrame(title=frame_title, eelfigure=self, **layout.fig_kwa())
+            title = f'{name}: {desc}' if desc else name
+            frame = CanvasFrame(title=title, eelfigure=self, **layout.fig_kwa())
+            self._has_frame = True
         else:
-            frame_ = mpl_figure(**layout.fig_kwa())
+            frame = MatplotlibFrame(**layout.fig_kwa())
+            self._has_frame = False
 
-        figure = frame_.figure
+        figure = frame.figure
         if layout.title:
             self._figtitle = figure.suptitle(layout.title)
         else:
@@ -1294,10 +1297,10 @@ class EelFigure:
             axes = []
 
         # store attributes
-        self._frame = frame_
+        self._frame = frame
         self.figure = figure
         self._axes = axes
-        self.canvas = frame_.canvas
+        self.canvas = frame.canvas
         self._layout = layout
         self._last_draw_time = 1.
         self.__callback_key_press = {}
@@ -1399,8 +1402,8 @@ class EelFigure:
                 from .._wxgui import run
                 run()
 
-        if not self.canvas._background:
-            self.canvas.store_canvas()
+        if self._has_frame and not self.canvas._background:
+            self._frame.store_canvas()
 
     def _tight(self):
         "Default implementation based on matplotlib"
@@ -2451,6 +2454,7 @@ class LegendMixin:
                  'center left', 'center right', 'lower center', 'upper center',
                  'center')
     __args = (False, 'fig', 'draggable', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+    _has_frame = None
 
     def __init__(self, loc, handles, labels=None):
         """Legend toolbar menu mixin
@@ -2542,7 +2546,8 @@ class LegendMixin:
             choice = self.__args.index(loc)
             arg = loc
 
-        self.__ctrl.SetSelection(choice)
+        if self._has_frame:
+            self.__ctrl.SetSelection(choice)
 
         if arg is not False:
             return self.__plot(loc, labels, *args, **kwargs)

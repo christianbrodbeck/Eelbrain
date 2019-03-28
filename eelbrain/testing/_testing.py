@@ -1,6 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 "Utilities for testing"
-from contextlib import ContextDecorator
+from contextlib import ContextDecorator, contextmanager
 from distutils.version import LooseVersion
 from functools import reduce, wraps
 from importlib import import_module
@@ -134,6 +134,17 @@ class GUITestContext(ContextDecorator):
 
 
 gui_test = GUITestContext()
+
+
+@contextmanager
+def working_directory(wd):
+    "Context for temporarily changing the working directory"
+    cwd = os.getcwd()
+    os.chdir(wd)
+    try:
+        yield
+    finally:
+        os.chdir(cwd)
 
 
 def import_attr(path, attr):

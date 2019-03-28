@@ -44,6 +44,7 @@ Manual
    :maxdepth: 2
 
    reference
+   auto_examples/index
    recipes
    experiment
 
@@ -53,7 +54,6 @@ Manual
    - `Mailing list <https://groups.google.com/forum/#!forum/eelbrain>`_ for announcements
    - Source code on `GitHub <http://github.com/christianbrodbeck/Eelbrain>`_
    - Eelbrain on the `Python Package Index <https://pypi.python.org/pypi/eelbrain>`_
-   - `Example scripts <https://github.com/christianbrodbeck/Eelbrain/tree/master/examples>`_
 
 
 Indices and tables
