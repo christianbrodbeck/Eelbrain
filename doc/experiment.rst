@@ -637,13 +637,7 @@ To set the inverse solution use :meth:`MneExperiment.set_inv`.
 ---------------------------------
 
 The parcellation determines how the brain surface is divided into regions.
-Parcellation are mainly used in tests and report generation:
-
- - ``parc`` or ``mask`` arguments for :meth:`MneExperiment.make_report`
- - ``parc`` argument to :meth:`MneExperiment.make_report_roi`
-
-When source estimates are loaded, the parcellation can also be used to index
-regions in the source estiomates. Predefined parcellations:
+There are a number of built-in parcellations:
 
 Freesurfer Parcellations
     ``aparc.a2005s``, ``aparc.a2009s``, ``aparc``, ``aparc.DKTatlas``,
@@ -659,6 +653,24 @@ Freesurfer Parcellations
     One large region encompassing occipital and temporal lobe in each
     hemisphere.
 
+Additional parcellation can be defined in the :attr:`MneExperiment.parc`
+attribute. Parcellations are used in different contexts:
+
+ - When loading source space data, the current ``parc`` state determines the
+   parcellation of the souce space (change the state parameter with
+   ``e.set(parc='aparc')``).
+ - When loading tests, setting the ``parc`` parameter treats each label as a
+   separate ROI. For spatial cluster-based tests that means that no clusters can
+   cross the boundary between two labels. On the other hand, using the ``mask``
+   parameter treats all named labels as connected surface, but discards any
+   sources labeled as ``"unknown"``. For example, loading a test with
+   ``mask='lobes'`` will perform a whole-brain test on the cortex, while
+   discarding subcortical sources.
+
+Parcellations are set with their name, with the expception of
+:class:`SeededParc`: for those, the name is followed by the radious in mm, for
+example, to use seeds defined in a parcellation named ``'myparc'`` with a radius
+of 25 mm around the seed, use ``e.set(parc='myparc-25')``.
 
 .. _analysis-params-connectivity:
 
