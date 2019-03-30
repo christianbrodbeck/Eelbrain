@@ -538,8 +538,10 @@ information in open windows is saved.
 
 
 ^^^^^^^^^^^^^^
-Formatted text
+Formatted Text
 ^^^^^^^^^^^^^^
+
+.. py:module:: fmtxt
 
 The :mod:`fmtxt` submodule provides tools for exporting results. Most eelbrain
 functions and methods that print tables in fact return :mod:`fmtxt` objects,

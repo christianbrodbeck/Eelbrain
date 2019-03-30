@@ -182,17 +182,6 @@ _html_doc_template = """<!DOCTYPE html>
 </html>
 """
 
-# to keep track of recent tex out and allow copying
-_recent_texout = []
-
-
-def _add_to_recent(tex_obj):
-    keep_recent = preferences['keep_recent']
-    if keep_recent:
-        if len(_recent_texout) >= keep_recent - 1:
-            _recent_texout.pop(0)
-        _recent_texout.append(tex_obj)
-
 
 def get_pdf(tex_obj):
     "Generate PDF from an FMText object (using :mod:`tex`)"
@@ -331,20 +320,16 @@ def _save_txt(text, path=None):
             fid.write(text)
 
 
-def copy_pdf(tex_obj=-1):
+def copy_pdf(fmtext):
     """Copy an FMText object to the clipboard as PDF.
 
     Parameters
     ----------
-    tex_obj : FMText | int
-        Either an FMText object that can be rendered, or an ``int`` to retrieve
-        an FMText item from a list of recently displayed FMText objects.
+    fmtext : FMText
+        Object to copy.
     """
-    if isinstance(tex_obj, int):
-        tex_obj = _recent_texout[tex_obj]
-
     # save pdf to temp file
-    pdf = get_pdf(tex_obj)
+    pdf = get_pdf(fmtext)
     fd, path = tempfile.mkstemp('.pdf')
     os.write(fd, pdf)
     os.close(fd)
@@ -1518,9 +1503,6 @@ class Table(FMTextElement):
         linesep : str
             Line separation string
         """
-        # append to recent tex out
-        _add_to_recent(self)
-
         if len(self.rows) == 0:
             return ''
 

@@ -1,6 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """
-Dataset Basics
+Dataset basics
 ==============
 """
 from eelbrain import *

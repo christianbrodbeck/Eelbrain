@@ -30,8 +30,8 @@ print(ds2.head())
 # Align the datasets
 # ------------------
 #
-# Use the ``"index"`` variable added above to identify cases, and align the two
-# datasets using this vairble
+# Use the ``"index"`` variable added above to identify cases and align the two
+# datasets
 
 ds1_aligned, ds2_aligned = align(ds1, ds2, 'index')
 

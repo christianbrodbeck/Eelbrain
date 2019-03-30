@@ -1,15 +1,16 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """
-Uses https://github.com/maenu/scholar.py
+Reuires https://github.com/maenu/scholar.py
 """
 from pathlib import Path
+from string import ascii_lowercase
 import re
 
 from pybtex.database import parse_bytes, parse_file
 from scholar import ScholarQuerier, ScholarSettings, SearchScholarQuery
 
 
-DST = Path(__file__).parent.parent / 'publications.bib'
+DST = Path(__file__).absolute().parents[1] / 'publications.bib'
 IGNORE = """
 vo2014cytotoxicity
 takeilnatriureticpeptideisolatedfromeelbrain
@@ -56,7 +57,14 @@ while True:
                 url = article.attrs['url'][0]
                 if url:
                     entry.fields['url'] = url
-            bib.add_entry(entry.key, entry)
+
+            key = entry.key
+            for c in ascii_lowercase:
+                if key in bib.entries:
+                    key = f'{entry.key}_{c}'
+                else:
+                    break
+            bib.add_entry(key, entry)
     # next page
     start += 10
     query.set_start(start)

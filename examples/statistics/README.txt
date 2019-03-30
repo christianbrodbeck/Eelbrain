@@ -1,3 +1,3 @@
 ^^^^^^^^^^^^^^^^^^^^^
-Univariate statistics
+Univariate Statistics
 ^^^^^^^^^^^^^^^^^^^^^
