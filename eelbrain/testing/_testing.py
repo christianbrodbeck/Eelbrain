@@ -157,22 +157,17 @@ def requires_mne_sample_data(function):
     return decorator
 
 
-def requires_module(name, version):
-    mod = import_module(name)
-
-    def wrapper(function):
-        if LooseVersion(mod.__version__) >= LooseVersion(version):
-            @wraps(function)
-            def decorator(*args, **kwargs):
-                return function(*args, **kwargs)
+def requires_pyarrow(function):
+    "Sometimes broken under env-dev on Unix"
+    @wraps(function)
+    def decorator(*args, **kwargs):
+        try:
+            import pyarrow
+        except ImportError:
+            raise SkipTest(f'Skipped {function.__name__} because of pyarrow import error')
         else:
-            @wraps(function)
-            def decorator(*args, **kwargs):
-                raise SkipTest('Skipped %s, requires %s %s, found mne %s' %
-                               (function.__name__, name, version,
-                                mod.__version__))
-        return decorator
-    return wrapper
+            return function(*args, **kwargs)
+    return decorator
 
 
 def requires_r_ez(function):
@@ -188,7 +183,7 @@ def requires_r_ez(function):
     else:
         @wraps(function)
         def decorator(*args, **kwargs):
-            raise SkipTest('Skipped %s, requires r-ez' % function.__name__)
+            raise SkipTest(f'Skipped {function.__name__}, requires r-ez')
     return decorator
 
 
@@ -196,7 +191,7 @@ def skip_on_windows(function):
     @wraps(function)
     def decorator(*args, **kwargs):
         if os.name == 'nt':
-            raise SkipTest('Skipped %s on Windows' % function.__name__)
+            raise SkipTest(f'Skipped {function.__name__} on Windows')
         else:
             return function(*args, **kwargs)
     return decorator
@@ -204,13 +199,11 @@ def skip_on_windows(function):
 
 def file_path(name):
     "Path to test data file in the test_data directory"
-    path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', '..',
-                                         'test_data', name))
-    if os.path.exists(path):
+    path = Path(__file__).parents[2] / 'test_data' / name
+    if path.exists():
         return path
     else:
-        raise IOError("Testing file does not exist. Test can only be executed "
-                      "from source repository.")
+        raise IOError("Testing file does not exist. Test can only be executed from source repository.")
 
 
 def path(string):

@@ -12,7 +12,7 @@ dependencies:
 - libblas
 - libcblas
 - numpy
-- scipy >= 0.17, != 1.0.0  # 1.0 has bug: UnboundLocalError: local variable 'iprint' referenced before assignment
+- scipy >= 1.1
 - matplotlib >= 2.1
 - pyarrow
 - pillow
