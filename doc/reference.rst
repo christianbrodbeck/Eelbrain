@@ -543,6 +543,7 @@ Formatted Text
 ^^^^^^^^^^^^^^
 
 .. py:module:: fmtxt
+.. py:currentmodule:: eelbrain
 
 The :mod:`fmtxt` submodule provides tools for exporting results. Most eelbrain
 functions and methods that print tables in fact return :mod:`fmtxt` objects,

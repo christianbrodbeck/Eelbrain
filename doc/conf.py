@@ -63,6 +63,7 @@ sphinx_gallery_conf = {
     'min_reported_time': 4,
     'download_all_examples': False,
     'reset_modules': ('matplotlib', use_pyplot),
+    'reference_url': {'eelbrain': None},
     'first_notebook_cell': (
         "from eelbrain import configure\n"
         "configure(frame=False)\n"  # avoid wxPython dependency
