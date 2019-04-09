@@ -5155,6 +5155,8 @@ class Dataset(OrderedDict):
             return self.get_case(index)
         elif not np.iterable(index):
             raise KeyError("Invalid index for Dataset: %r" % index)
+        elif len(index) == 0:
+            return self.sub(index)
         elif all(isinstance(item, str) for item in index):
             return self.sub(keys=index)
         elif isinstance(index, tuple):
