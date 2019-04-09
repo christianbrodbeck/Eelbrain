@@ -430,6 +430,9 @@ def test_dataset_indexing():
     assert_dataset_equal(ds[('A', 'B'), :10], ds2[:10])
     assert_dataset_equal(ds[:10, ('A', 'B')], ds2[:10])
 
+    # empty index
+    assert_dataobj_equal(ds2[[]], Dataset([Factor([], 'A'), Factor([], 'B')]))
+
     # assigning value
     ds[2, 'A'] = 'hello'
     eq_(ds[2, 'A'], 'hello')
