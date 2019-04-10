@@ -2383,8 +2383,6 @@ class MneExperiment(FileTree):
             del ds.info['raw']
             ds.info['sfreq'] = raw.info['sfreq']
             ds.info['raw-mtime'] = raw_mtime
-            ds.info['subject'] = subject
-            ds.info['session'] = self.get('session')
 
             # add edf
             if self.has_edf[subject]:
@@ -2398,6 +2396,8 @@ class MneExperiment(FileTree):
         elif data_raw:
             ds.info['raw'] = self.load_raw(add_bads)
 
+        ds.info['subject'] = subject
+        ds.info['session'] = self.get('session')
         if len(self._visits) > 1:
             ds.info['visit'] = self.get('visit')
 
