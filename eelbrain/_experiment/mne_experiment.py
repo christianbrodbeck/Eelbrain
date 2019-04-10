@@ -2545,8 +2545,6 @@ class MneExperiment(FileTree):
             del ds.info['raw']
             ds.info['sfreq'] = raw.info['sfreq']
             ds.info['raw-mtime'] = raw_mtime
-            ds.info['session'] = self.get('session')
-            ds.info['subject'] = subject
 
             # add edf
             if self.has_edf[subject]:
@@ -2557,6 +2555,8 @@ class MneExperiment(FileTree):
             save.pickle(ds, evt_file)
         elif data_raw is True:
             raw = self.load_raw(add_bads)
+        ds.info['subject'] = subject
+        ds.info['session'] = self.get('session')
 
         # if data should come from different raw settings than events
         if isinstance(data_raw, str):
