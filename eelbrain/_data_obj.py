@@ -3204,7 +3204,7 @@ class NDVar:
             An boolean NDVar with the same dimensions as the data can be used
             to find nonzero values in specific elements (if the NDVar has cases
             on a per case basis).
-        *regions*
+        **regions
             Regions over which to aggregate as keywords. 
             For example, to check whether all values between time=0.1 and 
             time=0.2 are non-zero, use ``ndvar.all(time=(0.1, 0.2))``.
@@ -3255,7 +3255,7 @@ class NDVar:
             An boolean NDVar with the same dimensions as the data can be used
             to find nonzero values in specific elements (if the NDVar has cases
             on a per case basis).
-        *regions*
+        **regions
             Regions over which to aggregate. For example, to check for nonzero
             values between time=0.1 and time=0.2, use
             ``ndvar.any(time=(0.1, 0.2))``.
@@ -3725,9 +3725,9 @@ class NDVar:
             An boolean NDVar with the same dimensions as the data can be used
             to compute the extrema in specific elements (if the data has a case
             dimension, the extrema are computed for each case).
-        *regions*
-            Regions over which to aggregate. For example, to get the maximum
-            between time=0.1 and time=0.2, use ``ndvar.max(time=(0.1, 0.2))``.
+        **regions
+            Regions over which to aggregate. For example, to get the extrema
+            between 0.1 and 0.2 s, use ``ndvar.extrema(time=(0.1, 0.2))``.
         name : str
             Name of the output NDVar (default is the current name).
 
@@ -4036,7 +4036,7 @@ class NDVar:
             An boolean NDVar with the same dimensions as the data can be used
             to compute the maximum in specific elements (if the data has a case
             dimension, the maximum is computed for each case).
-        *regions*
+        **regions
             Regions over which to aggregate. For example, to get the maximum
             between time=0.1 and time=0.2, use ``ndvar.max(time=(0.1, 0.2))``.
         name : str
@@ -4063,7 +4063,7 @@ class NDVar:
             A boolean NDVar with the same dimensions as the data can be used
             to compute the mean in specific elements (if the data has a case
             dimension, the mean is computed for each case).
-        *regions*
+        **regions
             Regions over which to aggregate. For example, to get the mean
             between time=0.1 and time=0.2, use ``ndvar.mean(time=(0.1, 0.2))``.
         name : str
@@ -4090,7 +4090,7 @@ class NDVar:
             A boolean NDVar with the same dimensions as the data can be used
             to compute the minimum in specific elements (if the data has a case
             dimension, the minimum is computed for each case).
-        *regions*
+        **regions
             Regions over which to aggregate. For example, to get the minimum
             between time=0.1 and time=0.2, use ``ndvar.min(time=(0.1, 0.2))``.
         name : str
@@ -4314,7 +4314,7 @@ class NDVar:
             An boolean NDVar with the same dimensions as the data can be used
             to compute the RMS in specific elements (if the data has a case
             dimension, the RMS is computed for each case).
-        *regions*
+        **regions
             Regions over which to aggregate. For example, to get the RMS
             between time=0.1 and time=0.2, use ``ndvar.rms(time=(0.1, 0.2))``.
         name : str
@@ -4449,7 +4449,7 @@ class NDVar:
             to compute the standard deviation in specific elements (if the data
             has a case dimension, the standard deviation is computed for each
             case).
-        *regions*
+        **regions
             Regions over which to aggregate. For example, to get the STD
             between time=0.1 and time=0.2, use ``ndvar.std(time=(0.1, 0.2))``.
         name : str
@@ -4667,7 +4667,7 @@ class NDVar:
             An boolean NDVar with the same dimensions as the data can be used
             to compute the sum in specific elements (if the data has a case
             dimension, the sum is computed for each case).
-        *regions*
+        **regions
             Regions over which to aggregate. For example, to get the sum
             between time=0.1 and time=0.2, use ``ndvar.sum(time=(0.1, 0.2))``.
         name : str
