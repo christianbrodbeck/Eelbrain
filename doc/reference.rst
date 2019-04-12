@@ -318,6 +318,7 @@ Plot uniform time-series:
 .. autosummary::
    :toctree: generated
 
+   plot.LineStack
    plot.UTS
    plot.UTSClusters
    plot.UTSStat
