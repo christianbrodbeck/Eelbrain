@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 from warnings import filterwarnings
 
+import mne
 import eelbrain.plot._brain_object  # make sure that Brain is available
 import eelbrain
 
@@ -70,6 +71,9 @@ sphinx_gallery_conf = {
         "%matplotlib inline\n"  # sphinx-gallery default
     )
 }
+
+# download datasets (to avoid progress bar output in example gallery)
+root = mne.datasets.mtrf.data_path()
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['templates']

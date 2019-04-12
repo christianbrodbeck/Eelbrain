@@ -1292,6 +1292,7 @@ class EelFigure:
     _can_set_vlim = False
     _can_set_ylim = False
     _can_set_xlim = False
+    _has_frame = False
 
     def __init__(self, data_desc, layout):
         """Parent class for Eelbrain figures.
@@ -1316,7 +1317,6 @@ class EelFigure:
             self._has_frame = True
         else:
             frame = MatplotlibFrame(**layout.fig_kwa())
-            self._has_frame = False
 
         figure = frame.figure
         if layout.title:

@@ -8183,6 +8183,20 @@ class Sensor(Dimension):
                 names.append(name)
         return cls(locs, names, **kwargs)
 
+    @classmethod
+    def from_montage(cls, montage):
+        """Create Sensor dimension from :mod:`mne` :class:`~mne.channels.Montage`
+
+        Parameters
+        ----------
+        montage : str | mne.Montage
+            Montage, or name to load a standard montage (see
+            :func:`mne.channels.read_montage`).
+        """
+        if isinstance(montage, str):
+            montage = mne.channels.read_montage(montage)
+        return cls(montage.pos, montage.ch_names, montage.kind)
+
     def _interpret_proj(self, proj):
         if proj == 'default':
             return self.default_proj2d
