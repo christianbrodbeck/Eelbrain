@@ -8384,37 +8384,35 @@ class Sensor(Dimension):
         else:
             return None
 
-    def index(self, exclude=None, names=False):
+    def index(self, include=None, exclude=None):
         """Construct an index for specified sensors
 
         Parameters
         ----------
-        exclude : None | list of str, int
+        include : list of str, int
             Sensors to exclude (by name or index).
-        names : bool
-            Return channel names instead of index array (default False).
+        exclude : list of str, int
+            Sensors to exclude (by name or index).
 
         Returns
         -------
-        index : array of int  (if ``names==False``)
-            Numpy index indexing good channels.
-        names : Datalist of str  (if ``names==True``)
-            List of channel names.
+        index : NDVar
+            Boolean :class:`NDVar` indexing selected channels.
         """
-        if exclude is None:
-            return FULL_SLICE
-
-        index = np.ones(len(self), dtype=bool)
-        for ch in exclude:
-            try:
-                index[self.channel_idx[ch]] = False
-            except KeyError:
-                raise ValueError("Invalid channel name: %s" % repr(ch))
-
-        if names:
-            return self.names[index]
+        if include is None == exclude is None:
+            raise TypeError(f"inclide={include!r}, exclude={exclude!r}: Need to specify exactly one of include, exclude")
+        elif include is not None:
+            if isinstance(include, str):
+                include = [include]
+            index = np.zeros(len(self), dtype=bool)
+            for ch in include:
+                try:
+                    index[self.channel_idx[ch]] = True
+                except KeyError:
+                    raise ValueError(f"Invalid channel name: {ch!r}")
+            return NDVar(index, (self,))
         else:
-            return index
+            return ~self.index(exclude)
 
     def _normalize_sensor_names(self, names, missing='raise'):
         "Process a user-input list of sensor names"
