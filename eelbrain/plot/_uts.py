@@ -365,10 +365,8 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data)
-
-        e0 = data.data[0][0]
-        self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
-        self._configure_yaxis(e0, ylabel)
+        self._configure_xaxis_dim(data.y0.get_dim(xdim), xlabel, xticklabels)
+        self._configure_yaxis(data, ylabel)
 
         self.plots = []
         legend_handles = {}
@@ -513,9 +511,8 @@ class UTSClusters(EelFigure):
             cax = _ax_uts_clusters(ax, stat, cs, colors[i], pmax, ptrend, xdim)
             self._caxes.append(cax)
 
-        e0 = data.data[0][0]
-        self._configure_yaxis(e0, True)
-        self._configure_xaxis_dim(e0.get_dim(xdim), True, xticklabels)
+        self._configure_yaxis(data, True)
+        self._configure_xaxis_dim(data.y0.get_dim(xdim), True, xticklabels)
         self.clusters = clusters_
         self._show()
 

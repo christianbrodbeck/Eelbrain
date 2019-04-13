@@ -177,7 +177,7 @@ def find_axis_params_data(v, label):
 
     Parameters
     ----------
-    v : NDVar | Var | str | scalar
+    v : PlotData | NDVar | Var | str | scalar
         Unit or scale of the axis. See ``unit_format`` dict above for options.
     label : bool | str
         If ``label is True``, try to infer a label from ``v``.
@@ -190,14 +190,23 @@ def find_axis_params_data(v, label):
         Axis label.
     """
     if isinstance(v, str):
+        meas = None
         unit = v
         scale = UNIT_FORMAT.get(v, 1)
     elif isinstance(v, float):
+        meas = None
         scale = v
         unit = None
-    elif isnumeric(v):
-        meas = v.info.get('meas')
-        data_unit = v.info.get('unit')
+    else:
+        if isnumeric(v):
+            meas = v.info.get('meas')
+            data_unit = v.info.get('unit')
+        elif isinstance(v, PlotData):
+            meas = v.meas
+            data_unit = v.unit
+        else:
+            raise TypeError("unit=%s" % repr(v))
+
         if data_unit in DISPLAY_UNIT:
             unit = DISPLAY_UNIT[data_unit]
             scale = UNIT_FORMAT[unit]
@@ -206,18 +215,18 @@ def find_axis_params_data(v, label):
         else:
             scale = 1
             unit = data_unit
-    else:
-        raise TypeError("unit=%s" % repr(v))
 
     if label is True:
         if meas and unit and meas != unit:
-            label = '%s [%s]' % (meas, unit)
+            label = f'{meas} [{unit}]'
         elif meas:
             label = meas
         elif unit:
             label = unit
-        else:
-            label = getattr(v, 'name', None)
+        elif isinstance(v, PlotData):
+            label = v.default_y_label
+        elif isnumeric(v):
+            label = v.name
 
     # ScalarFormatter: disabled because it always used e notation in status bar
     # (needs separate instance because it adapts to data)
@@ -1079,6 +1088,31 @@ class PlotData:
                 return layer.y
         raise IndexError("No data")
 
+    @property
+    def default_y_label(self):
+        "Y-label in case meas and unit are uninformative"
+        names = {l.y.name for ax in self.plot_data for l in ax}
+        names.discard(None)
+        if len(names) == 1:
+            return names.pop()
+        return None
+
+    @property
+    def meas(self):
+        meass = {l.y.info.get('meas') for ax in self.plot_data for l in ax}
+        meass.discard(None)
+        if len(meass) == 1:
+            return meass.pop()
+        return None
+
+    @property
+    def unit(self):
+        units = {l.y.info.get('unit') for ax in self.plot_data for l in ax}
+        units.discard(None)
+        if len(units) == 1:
+            return units.pop()
+        return None
+
     @LazyProperty
     def data(self):
         "For backwards compatibility with nested list of NDVar"
@@ -1608,10 +1642,10 @@ class EelFigure:
                     if label:
                         self.set_ylabel(label, ax)
 
-    def _configure_yaxis(self, v, label, axes=None):
+    def _configure_yaxis(self, data, label, axes=None):
         if axes is None:
             axes = self._axes
-        formatter, label = find_axis_params_data(v, label)
+        formatter, label = find_axis_params_data(data, label)
         for ax in axes:
             ax.yaxis.set_major_formatter(formatter)
 
