@@ -353,6 +353,8 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     selective_stopping = int(selective_stopping)
     if selective_stopping < 0:
         raise ValueError(f"selective_stopping={selective_stopping}")
+    elif not isinstance(debug, bool):
+        raise TypeError(f"debug={debug!r}")
 
     data = RevCorrData(y, x, error, scale_data, ds)
     data.apply_basis(basis, basis_window)
