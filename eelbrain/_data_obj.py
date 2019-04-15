@@ -3874,8 +3874,7 @@ class NDVar:
             if len(names) != len(self.dims):
                 raise ValueError(f"{names}: ambiguous (more than one unspecified dimension)")
             none_dims = [n for n in self.dimnames if n not in names]
-            return tuple(n if n is not None else none_dims.pop(0) for
-                         n in names)
+            return tuple(n if n is not None else none_dims.pop(0) for n in names)
         else:
             return tuple(names)
 
@@ -6226,9 +6225,8 @@ class Dataset(OrderedDict):
         being updated (the expected behavior of .update()).
         """
         if isinstance(ds, Dataset):
-            if ds.n_cases != self.n_cases:
-                raise ValueError("Trying to update dataset with %i cases from "
-                                 "dataset with %i cases" % (self.n_cases, ds.n_cases))
+            if self.n_cases is not None and ds.n_cases != self.n_cases:
+                raise ValueError(f"Trying to update dataset with {self.n_cases} cases from dataset with {ds.n_cases} cases")
 
         if not replace:
             unequal = {}
