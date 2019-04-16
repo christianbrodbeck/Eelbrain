@@ -29,10 +29,11 @@ def assert_res_equal(res1, res):
 @pytest.mark.parametrize('n_workers', [0, True])
 def test_boosting(n_workers):
     "Test boosting NDVars"
-    ds = datasets._get_continuous()
+    ds = datasets._get_continuous(ynd=True)
     configure(n_workers=n_workers)
 
     y = ds['y']
+    ynd = ds['ynd']
     x1 = ds['x1']
     x2 = ds['x2']
     y_mean = y.mean()
@@ -80,6 +81,23 @@ def test_boosting(n_workers):
     assert res.r == approx(0.967, abs=0.001)
     res = boosting(y, [x1, x2], 0, 1, selective_stopping=2)
     assert res.r == approx(0.992, abs=0.001)
+
+    # prefit
+    res_full = boosting(y, [x1, x2], 0, 1)
+    prefit = boosting(y, x1, 0, 1)
+    res = boosting(y, [x1, x2], 0, 1, prefit=prefit)
+    assert correlation_coefficient(res.h, res_full.h[1]) == approx(0.984, 1e-3)
+    prefit = boosting(y, x2, 0, 1)
+    res = boosting(y, [x1, x2], 0, 1, prefit=prefit)
+    assert correlation_coefficient(res.h, res_full.h[0]) == approx(0.995, 1e-3)
+    # ynd
+    res_full = boosting(ynd, [x1, x2], 0, 1)
+    prefit = boosting(ynd, x1, 0, 1)
+    res = boosting(ynd, [x1, x2], 0, 1, prefit=prefit)
+    assert correlation_coefficient(res.h, res_full.h[1]) == approx(0.978, 1e-3)
+    prefit = boosting(ynd, x2, 0, 1)
+    res = boosting(ynd, [x1, x2], 0, 1, prefit=prefit)
+    assert correlation_coefficient(res.h, res_full.h[0]) == approx(0.997, 1e-3)
 
 
 def test_boosting_epochs():

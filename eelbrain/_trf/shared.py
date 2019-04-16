@@ -226,7 +226,7 @@ class RevCorrData:
         self.y_scale = y_scale
         self.y_name = y.name
         self.y_info = _info.copy(y.info)
-        self.ydims = ydims
+        self.ydims = ydims  # without case and time
         self.yshape = tuple(map(len, ydims))
         self.full_y_dims = y.get_dims(y_dimnames)
         self.vector_dim = vector_dim  # vector dimension name
@@ -271,15 +271,18 @@ class RevCorrData:
         if index:
             hs = [h.sub(**index) for h in hs]
         # check predictor dims
+        y_dimnames = [dim.name for dim in self.ydims]
         meta = {name: (dim, index) for name, dim, index in self._x_meta}
         for h in hs:
             if h.name not in meta:
-                raise ValueError(f"prefit: {h.name} not in x")
+                raise ValueError(f"prefit: {h.name!r} not in x")
             dim, index = meta[h.name]
-            if (h.ndim == 1 and dim is not None) or (h.ndim == 2 and h.get_dims((None, 'time'))[0] != dim):
-                raise ValueError(f"prefit: {dim.name} dimension mismatch")
+            need_dimnames = (*y_dimnames, 'time') if dim is None else (*y_dimnames, dim.name, 'time')
+            if h.dimnames != need_dimnames:
+                raise ValueError(f"prefit: {h.name!r} dimension mismatch, has {h.dimnames}, needs {need_dimnames}")
+            if dim is not None and h.dims[-2] != dim:
+                raise ValueError(f"prefit: {h.name!r} {dim.name} dimension mismatch")
         # generate flat h
-        y_dimnames = [dim.name for dim in self.ydims]
         h_n_times = len(h0.get_dim('time'))
         h_flat = []
         h_index = []
