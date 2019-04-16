@@ -903,14 +903,6 @@ class MneExperiment(FileTree):
 
             # Backwards compatibility
             # =======================
-            if cache_state_v < 12:
-                for test, params in cache_state['tests'].items():
-                    try:
-                        params['vars'] = Variables(params['vars'])
-                    except Exception as error:
-                        log.warning("  Test %s: Defective vardef %r", test, params['vars'])
-                        params['vars'] = None
-
             # epochs
             if cache_state_v >= 11:
                 epoch_state_v = epoch_state
@@ -961,9 +953,15 @@ class MneExperiment(FileTree):
                 for name, params in cache_tests.items():
                     if name in tests_state:
                         params['kind'] = tests_state[name]['kind']
-            if cache_state_v < 9:  # 'vars' entry added to all
-                for params in cache_tests.values():
-                    if 'vars' not in params:
+            if cache_state_v < 12:  # 'vars' entry added to all
+                for test, params in cache_tests.items():
+                    if 'vars' in params:
+                        try:
+                            params['vars'] = Variables(params['vars'])
+                        except Exception as error:
+                            log.warning("  Test %s: Defective vardef %r", test, params['vars'])
+                            params['vars'] = None
+                    else:
                         params['vars'] = None
 
             # Find modified definitions
