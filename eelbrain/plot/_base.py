@@ -1323,7 +1323,8 @@ class EelFigure:
             from .._wxgui import wx, get_app
             from .._wxgui.mpl_canvas import CanvasFrame
             get_app()
-            frame = CanvasFrame(title=self._title, eelfigure=self, **layout.fig_kwa())
+            pos = wx.DefaultPosition if layout.pos is None else layout.pos
+            frame = CanvasFrame(title=self._title, eelfigure=self, pos=pos, **layout.fig_kwa())
             self._has_frame = True
         else:
             frame = MatplotlibFrame(**layout.fig_kwa())
@@ -1858,7 +1859,7 @@ class EelFigure:
 
 
 class BaseLayout:
-    def __init__(self, h, w, dpi, tight, show, run, autoscale, title, name):
+    def __init__(self, h, w, dpi, tight, show, run, title, autoscale=False, name=None, right_of=None, below=None):
         self.h = h
         self.w = w
         self.dpi = dpi or mpl.rcParams['figure.dpi']
@@ -1868,6 +1869,18 @@ class BaseLayout:
         self.autoscale = autoscale
         self.title = title
         self.name = name or title
+
+        right_of_rect = right_of._frame.GetRect() if right_of else None
+        below_rect = below._frame.GetRect() if below else None
+        if right_of_rect:
+            if below_rect:
+                self.pos = (below_rect.GetBottom(), right_of_rect.GetRight())
+            else:
+                self.pos = right_of_rect.GetTopRight()
+        elif below_rect:
+            self.pos = below_rect.GetBottomLeft()
+        else:
+            self.pos = None
 
     def fig_kwa(self):
         out = {'figsize': (self.w, self.h), 'dpi': self.dpi}
@@ -1964,8 +1977,7 @@ class Layout(BaseLayout):
     def __init__(self, nax, ax_aspect, axh_default, tight=True, title=None,
                  h=None, w=None, axh=None, axw=None, nrow=None, ncol=None,
                  dpi=None, margins=None, show=True, run=None,
-                 frame=True, yaxis=True, share_axes=False, autoscale=False,
-                 name=None):
+                 frame=True, yaxis=True, share_axes=False, **kwargs):
         """Create a grid of axes based on variable parameters.
 
         Parameters
@@ -2152,8 +2164,7 @@ class Layout(BaseLayout):
             wspace = 0 if ncol is None else margins['wspace'] * (ncol - 1)
             w += margins['left'] + wspace + margins['right']
 
-        BaseLayout.__init__(self, h, w, dpi, tight, show, run, autoscale,
-                            title, name)
+        BaseLayout.__init__(self, h, w, dpi, tight, show, run, title, **kwargs)
         self.nax = nax
         self.axes = axes
         self.axh = axh
@@ -2253,8 +2264,7 @@ class VariableAspectLayout(BaseLayout):
     def __init__(self, nrow, axh_default, w_default, aspect=(None, 1),
                  ax_kwargs=None, ax_frames=None, row_titles=None,
                  title=None, h=None, w=None, axh=None,
-                 dpi=None, show=True, run=None, frame=True, yaxis=True,
-                 autoscale=False, name=None):
+                 dpi=None, show=True, run=None, frame=True, yaxis=True, **kwargs):
         w, h = resolve_plot_rect(w, h, dpi)
         self.w_fixed = w
 
@@ -2276,8 +2286,7 @@ class VariableAspectLayout(BaseLayout):
         if ax_frames is None:
             ax_frames = [True] * len(aspect)
 
-        BaseLayout.__init__(self, h, w, dpi, False, show, run, autoscale,
-                            title, name)
+        BaseLayout.__init__(self, h, w, dpi, False, show, run, title, **kwargs)
         self.nax = nrow * len(aspect)
         self.axh = axh
         self.nrow = nrow

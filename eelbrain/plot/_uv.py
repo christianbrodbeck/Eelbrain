@@ -575,7 +575,7 @@ class BarplotHorizontal(XAxisMixin, _SimpleFigure):
         self._set_ax_label_categorial(xlabel, ct.x, yaxis=True)
         self._configure_axis(ct.y, ylabel)
 
-        p = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors,bottom, top, origin, pos, width, c, edgec, ec, test, par, trend, corr, test_markers, xticks, xtick_delim, horizontal=True)
+        p = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors, bottom, top, origin, pos, width, c, edgec, ec, test, par, trend, corr, test_markers, xticks, xtick_delim, horizontal=True)
         p.ax.set_ylim(p.left, p.right)
         if p.top > p.origin > p.bottom:
             p.ax.axvline(p.origin, color='k')
