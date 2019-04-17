@@ -370,7 +370,7 @@ def test_corr():
     utsnd.x[:, 3:5, 50:65] += Y.x[:, None, None]
 
     res = testnd.corr('utsnd', 'Y', ds=ds)
-    repr(res)
+    assert repr(res) == "<corr 'utsnd', 'Y'>"
     for s, t in product('01234', (0.1, 0.2, 0.35)):
         target = test.Correlation(utsnd.sub(sensor=s, time=t), Y).r
         assert res.r.sub(sensor=s, time=t) == pytest.approx(target)

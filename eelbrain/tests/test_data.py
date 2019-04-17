@@ -788,13 +788,13 @@ def test_longname():
     v = Var([1], 'v')
 
     # simple operations, also tested in test_var()
-    eq_(longname(v.abs()), 'abs(v)')
-    eq_(longname(u * v), "u * v")
-    eq_(longname(u * v.abs()), "u * abs(v)")
+    assert longname(v.abs()) == 'abs(v)'
+    assert longname(u * v) == "u * v"
+    assert longname(u * v.abs()) == "u * abs(v)"
 
     # Dataset assigning
     ds['abs_v'] = v.abs()
-    eq_(longname(ds['abs_v']), 'abs_v')
+    assert longname(ds['abs_v']) == 'abs(v)'
 
 
 def test_model():
@@ -807,7 +807,7 @@ def test_model():
 
     # model repr
     m = a * b + v
-    eq_(repr(m), "a + b + a % b + v")
+    assert repr(m) == "a + b + a % b + v"
     lines = ("intercept   a   b   a x b   v",
              "-----------------------------",
              "1           1   1   1       1",
@@ -816,16 +816,16 @@ def test_model():
              "1           0   0   0       4",
              "1           0   1   0       5",
              "1           0   0   0       6")
-    eq_(str(m), '\n'.join(lines))
-    eq_(str(m.head(2)), '\n'.join(lines[:4]))
-    eq_(str(m.tail(2)), '\n'.join(lines[:2] + lines[-2:]))
+    assert str(m) == '\n'.join(lines)
+    assert str(m.head(2)) == '\n'.join(lines[:4])
+    assert str(m.tail(2)) == '\n'.join(lines[:2] + lines[-2:])
     str(m.info())
 
     # model without explicit names
     x1 = Factor('ab', repeat=2)
     x2 = Factor('ab', tile=2)
     m = x1 * x2
-    eq_(repr(m), "<?> + <?> + <?> % <?>")
+    assert repr(m) == "<?> + <?> + <?> % <?>"
 
     # catch explicit intercept
     intercept = Factor('i', repeat=4, name='intercept')
@@ -833,14 +833,14 @@ def test_model():
         _ = a * intercept
 
     # different var/factor combinations
-    eq_(a * b, a + b + a % b)
-    eq_(a * v, a + v + a % v)
-    eq_(a * (v + w), a + v + w + a % v + a % w)
+    assert a * b == a + b + a % b
+    assert a * v == a + v + a % v
+    assert a * (v + w) == a + v + w + a % v + a % w
 
     # parametrization
     m = v + w + v * w
     p = m._parametrize('dummy')
-    eq_(p.column_names, ['intercept', 'v', 'w', 'v * w'])
+    assert p.column_names == ['intercept', 'v', 'w', 'v * w']
     assert_array_equal(p.x[:, p.terms['intercept']], 1)
     assert_array_equal(p.x[:, p.terms['v']], v.x[:, None])
     assert_array_equal(p.x[:, p.terms['w']], w.x[:, None])
@@ -894,7 +894,7 @@ def test_ndvar():
 
     # slicing with different index kinds
     tgt = x.x[s_case, 2:4, 30:40]
-    eq_(tgt.shape, (3, 2, 10))
+    assert tgt.shape == (3, 2, 10)
     # single
     assert_equal(x.sub(case=s_case, sensor=s_sensor, time=s_time), tgt)
     assert_equal(x.sub(case=a_case, sensor=a_sensor, time=a_time), tgt)
@@ -941,7 +941,7 @@ def test_ndvar():
     # univariate result
     assert_dataobj_equal(x.sub(sensor='2', time=0.1),
                          Var(x.x[:, 2, 30], x.name))
-    eq_(x.sub(case=0, sensor='2', time=0.1), x.x[0, 2, 30])
+    assert x.sub(case=0, sensor='2', time=0.1) == x.x[0, 2, 30]
 
     # baseline correction
     x_bl = x - x.summary(time=(None, 0))
@@ -1634,17 +1634,17 @@ def test_var():
 
     # methods
     w = v.abs()
-    eq_(w.info, {'a': 1, 'longname': 'abs(v)'})
+    assert w.info == {'a': 1, 'longname': 'abs(v)'}
     assert_array_equal(w, np.abs(v.x))
     # log
     x = w.log()
-    eq_(x.info, {'a': 1, 'longname': 'log(abs(v))'})
+    assert x.info == {'a': 1, 'longname': 'log(abs(v))'}
     assert_array_equal(x, np.log(w.x))
     x = w.log(10)
-    eq_(x.info, {'a': 1, 'longname': 'log10(abs(v))'})
+    assert x.info == {'a': 1, 'longname': 'log10(abs(v))'}
     assert_array_equal(x, np.log10(w.x))
     x = w.log(42)
-    eq_(x.info, {'a': 1, 'longname': 'log42(abs(v))'})
+    assert x.info == {'a': 1, 'longname': 'log42(abs(v))'}
     assert_array_equal(x, np.log(w.x) / log(42))
 
     # assignment

@@ -141,10 +141,10 @@ def cellname(cell, delim=' '):
 
 
 def longname(x):
-    if getattr(x, 'name', None) is not None:
-        return x.name
-    elif isnumeric(x) and 'longname' in x.info:
+    if isnumeric(x) and 'longname' in x.info:
         return x.info['longname']
+    elif getattr(x, 'name', None) is not None:
+        return x.name
     elif np.isscalar(x):
         return repr(x)
     return '<unnamed>'
@@ -1241,9 +1241,8 @@ class Var:
 
     # numeric ---
     def __neg__(self):
-        x = -self.x
         info = {**self.info, 'longname': f"-{longname(self)}"}
-        return Var(x, info=info)
+        return Var(-self.x, self.name, info=info)
 
     def __pos__(self):
         return self
@@ -1251,124 +1250,103 @@ class Var:
     def __abs__(self):
         return self.abs()
 
+    def _arg_x(self, other):
+        if isnumeric(other):
+            return other.x
+        else:
+            return other
+
     def __add__(self, other):
         if isdataobject(other):
             # ??? should Var + Var return sum or Model?
             return Model((self, other))
-        x = self.x + other
+        x = self.x + self._arg_x(other)
         info = {**self.info, 'longname': f"{longname(self)} + {longname(other)}"}
-        return Var(x, info=info)
+        return Var(x, self.name, info=info)
 
     def __iadd__(self, other):
-        self.x += other.x if isinstance(other, Var) else other
+        self.x += self._arg_x(other)
         return self
 
     def __radd__(self, other):
-        if np.isscalar(other):
-            x = other + self.x
-        elif len(other) != len(self):
-            raise ValueError(f"Objects have different length ({len(other)} vs {len(self)})")
-        else:
-            x = other + self.x
+        x = self._arg_x(other) + self.x
         info = {**self.info, 'longname': f"{longname(other)} + {longname(self)}"}
-        return Var(x, info=info)
+        return Var(x, self.name, info=info)
 
     def __sub__(self, other):
         "subtract: values are assumed to be ordered. Otherwise use .sub method."
-        if np.isscalar(other):
-            x = self.x - other
-        elif len(other) != len(self):
-            raise ValueError(f"Objects have different length ({len(self)} vs {len(other)})")
-        else:
-            x = self.x - other.x
+        x = self.x - self._arg_x(other)
         info = {**self.info, 'longname': f"{longname(self)} - {longname(other)}"}
-        return Var(x, info=info)
+        return Var(x, self.name, info=info)
 
     def __isub__(self, other):
-        self.x -= other.x if isinstance(other, Var) else other
+        self.x -= self._arg_x(other)
         return self
 
     def __rsub__(self, other):
-        if np.isscalar(other):
-            x = other - self.x
-        elif len(other) != len(self):
-            raise ValueError(f"Objects have different length ({len(other)} vs {len(self)})")
-        else:
-            x = other - self.x
+        x = self._arg_x(other) - self.x
         info = {**self.info, 'longname': f"{longname(other)} - {longname(self)}"}
-        return Var(x, info=info)
+        return Var(x, self.name, info=info)
 
     def __mul__(self, other):
         if isinstance(other, Model):
             return Model((self,)) * other
         elif iscategorial(other):
             return Model((self, other, self % other))
-        elif isinstance(other, Var):
-            x = self.x * other.x
-        else:
-            x = self.x * other
+        x = self.x * self._arg_x(other)
         info = {**self.info, 'longname': f"{longname(self)} * {longname(other)}"}
-        return Var(x, info=info)
+        return Var(x, self.name, info=info)
 
     def __imul__(self, other):
-        self.x *= other.x if isinstance(other, Var) else other
+        self.x *= self._arg_x(other)
         return self
 
     def __rmul__(self, other):
-        if np.isscalar(other):
-            x = other * self.x
-        elif len(other) != len(self):
-            raise ValueError(f"Objects have different length ({len(other)} vs {len(self)})")
-        else:
-            x = other * self.x
+        x = self._arg_x(other) * self.x
         info = {**self.info, 'longname': f"{longname(other)} * {longname(self)}"}
-        return Var(x, info=info)
+        return Var(x, self.name, info=info)
 
     def __floordiv__(self, other):
-        if isinstance(other, Var):
-            x = self.x // other.x
-        else:
-            x = self.x // other
+        x = self.x // self._arg_x(other)
         info = {**self.info, 'longname': f"{longname(self)} // {longname(other)}"}
-        return Var(x, info=info)
+        return Var(x, self.name, info=info)
 
     def __ifloordiv__(self, other):
-        self.x //= other.x if isinstance(other, Var) else other
+        self.x //= self._arg_x(other)
         return self
 
     def __mod__(self, other):
         if isinstance(other, Model):
             return Model(self) % other
         elif isinstance(other, Var):
-            x = self.x % other.x
+            pass
         elif isdataobject(other):
             return Interaction((self, other))
-        else:
-            x = self.x % other
+        x = self.x % self._arg_x(other)
         info = {**self.info, 'longname': f"{longname(self)} % {longname(other)}"}
-        return Var(x, info=info)
+        return Var(x, self.name, info=info)
 
     def __imod__(self, other):
-        self.x %= other.x if isinstance(other, Var) else other
+        self.x %= self._arg_x(other)
         return self
 
     def __lt__(self, y):
-        return self.x < y
+        return self.x < self._arg_x(y)
 
     def __le__(self, y):
-        return self.x <= y
+        return self.x <= self._arg_x(y)
 
     def __eq__(self, y):
-        return self.x == y
+        return self.x == self._arg_x(y)
 
     def __ne__(self, y):
-        return self.x != y
+        return self.x != self._arg_x(y)
 
     def __gt__(self, y):
-        return self.x > y
+        return self.x > self._arg_x(y)
 
     def __ge__(self, y):
-        return self.x >= y
+        return self.x >= self._arg_x(y)
 
     def __truediv__(self, other):
         return self.__div__(other)
@@ -1378,7 +1356,7 @@ class Var:
 
     def __div__(self, other):
         if isinstance(other, Var):
-            x = self.x / other.x
+            pass
         elif iscategorial(other):  # separate slope for each level (for ANCOVA)
             dummy_factor = other.as_dummy_complete
             codes = dummy_factor * self.as_effects
@@ -1387,24 +1365,19 @@ class Var:
             codes -= dummy_factor * means
             # create effect
             name = '%s per %s' % (self.name, other.name)
-            return NonbasicEffect(codes, [self, other], name,
-                                  beta_labels=other.dummy_complete_labels)
-        else:
-            x = self.x / other
+            return NonbasicEffect(codes, [self, other], name, beta_labels=other.dummy_complete_labels)
+        x = self.x / self._arg_x(other)
         info = {**self.info, 'longname': f"{longname(self)} / {longname(other)}"}
-        return Var(x, info=info)
+        return Var(x, self.name, info=info)
 
     def __idiv__(self, other):
-        self.x /= other.x if isinstance(other, Var) else other
+        self.x /= self._arg_x(other)
         return self
 
     def __pow__(self, other):
-        if isinstance(other, Var):
-            x = self.x ** other.x
-        else:
-            x = self.x ** other
+        x = self.x ** self._arg_x(other)
         info = {**self.info, 'longname': f"{longname(self)} ** {longname(other)}"}
-        return Var(x, info=info)
+        return Var(x, self.name, info=info)
 
     def __round__(self, n=0):
         return Var(np.round(self.x, n), self.name)
@@ -1437,6 +1410,8 @@ class Var:
 
     def abs(self, name=None):
         "Return a Var with the absolute value."
+        if name is None:
+            name = self.name
         info = {**self.info, 'longname': f"abs({longname(self)})"}
         return Var(np.abs(self.x), name, info=info)
 
@@ -1484,7 +1459,7 @@ class Var:
         "For effect coding"
         return self.x[:, None] - self.x.mean()
 
-    def as_factor(self, labels='%r', name=True, random=False):
+    def as_factor(self, labels='%r', name=None, random=False):
         """Convert the Var into a Factor
 
         Parameters
@@ -1496,9 +1471,8 @@ class Var:
             providing multiple keys in a tuple. A special key 'default' can be
             used to assign values that are not otherwise specified in the
             dictionary (by default this is the empty string ``''``).
-        name : None | True | str
-            Name of the output Factor, ``True`` to keep the current name
-            (default ``True``).
+        name : str
+            Name of the output Factor (default is the current name).
         random : bool
             Whether the Factor is a random Factor (default ``False``).
 
@@ -1533,15 +1507,15 @@ class Var:
             for value in np.unique(self.x):
                 labels_[value] = labels % value
 
-        if name is True:
+        if name is None or name is True:
             name = self.name
 
         return Factor(self.x, name, random, labels=labels_)
 
-    def copy(self, name=True):
+    def copy(self, name=None):
         "Return a deep copy"
         x = self.x.copy()
-        if name is True:
+        if name is None or name is True:
             name = self.name
         return Var(x, name, info=deepcopy(self.info))
 
@@ -1564,9 +1538,9 @@ class Var:
         for v in np.unique(self.x):
             np.equal(self.x, v, index)
             x[index] = np.arange(index.sum())
-        return Var(x)
+        return Var(x, self.name)
 
-    def aggregate(self, x, func=np.mean, name=True):
+    def aggregate(self, x, func=np.mean, name=None):
         """Summarize cases within cells of x
 
         Parameters
@@ -1576,9 +1550,8 @@ class Var:
         func : callable
             Function that converts arrays into scalars, used to summarize data
             within each cell of x.
-        name : None | True | str
-            Name of the output Var, ``True`` to keep the current name (default
-            ``True``).
+        name : str
+            Name of the output (default is the current name).
 
         Returns
         -------
@@ -1595,7 +1568,7 @@ class Var:
             if len(x_cell) > 0:
                 x_out.append(func(x_cell))
 
-        if name is True:
+        if name is None or name is True:
             name = self.name
 
         return Var(x_out, name, info=self.info.copy())
@@ -1660,7 +1633,7 @@ class Var:
             Sequence to be mapped to the new Var.
         values : dict
             Mapping from values in base to values in the new Var.
-        name : None | str
+        name : str
             Name for the new Var.
         default : scalar
             Default value to supply for entries in ``base`` that are not in
@@ -1687,6 +1660,10 @@ class Var:
         func : callable
             A function that when applied to each element in ``base`` returns
             the desired value for the resulting Var.
+        name : str
+            Name for the new Var.
+        info : dict
+            Info for the new Var.
         """
         if isinstance(base, (Var, NDVar)):
             base = base.x
@@ -1741,6 +1718,8 @@ class Var:
         else:
             x = np.log(self.x)
             x /= log(base)
+        if name is None:
+            name = self.name
         info = self.info.copy()
         if base is None:
             info['longname'] = f'log({longname(self)})'
@@ -1760,7 +1739,7 @@ class Var:
         "The smallest value"
         return self.x.min()
 
-    def repeat(self, repeats, name=True):
+    def repeat(self, repeats, name=None):
         """
         Repeat each element ``repeats`` times
 
@@ -1769,11 +1748,10 @@ class Var:
         repeats : int | array of int
             Number of repeats, either a constant or a different number for each
             element.
-        name : None | True | str
-            Name of the output Var, ``True`` to keep the current name (default
-            ``True``).
+        name : str
+            Name of the output Var (default is current name).
         """
-        if name is True:
+        if name is None or name is True:
             name = self.name
         return Var(self.x.repeat(repeats), name, info=self.info.copy())
 
@@ -1786,7 +1764,7 @@ class Var:
         n : int
             number of categories
         name : str
-            Name of the output Factor.
+            Name of the output Var (default is current name).
 
         Examples
         --------
@@ -1809,6 +1787,8 @@ class Var:
         x = np.zeros(len(y), dtype=int)
         for v in values:
             x += y > v
+        if name is None:
+            name = self.name
         return Factor(x, name)
 
     def std(self):
@@ -1864,7 +1844,7 @@ class _Effect:
             specified, old values missing from ``labels`` will raise a
             ``KeyError``.
         name : str
-            Name of the output Var (default is the old object's name).
+            Name of the output Var (default is current name).
         """
         if default is None:
             x = [labels[v] for v in self]
@@ -2331,7 +2311,7 @@ class Factor(_Effect):
             n += len(item) + 2
         return f"{', '.join(items[:i])}{n_cells}"
 
-    def aggregate(self, x, name=True):
+    def aggregate(self, x, name=None):
         """
         Summarize the Factor by collapsing within cells in `x`.
 
@@ -2341,9 +2321,8 @@ class Factor(_Effect):
         ----------
         x : categorial
             A categorial model defining cells to collapse.
-        name : None | True | str
-            Name of the output Factor, ``True`` to keep the current name
-            (default ``True``).
+        name : str
+            Name of the output Factor (default is current name).
 
         Returns
         -------
@@ -2371,14 +2350,14 @@ class Factor(_Effect):
                 else:
                     x_out.append(x_i[0])
 
-        if name is True:
+        if name is None or name is True:
             name = self.name
 
         return Factor(x_out, name, self.random, labels=self._labels)
 
-    def copy(self, name=True, repeat=1, tile=1):
+    def copy(self, name=None, repeat=1, tile=1):
         "A deep copy"
-        if name is True:
+        if name is None or name is True:
             name = self.name
         return Factor(self.x, name, self.random, repeat, tile, self._labels)
 
@@ -2559,7 +2538,7 @@ class Factor(_Effect):
         Parameters
         ----------
         name : str
-            Name of the output Var (default ``None``).
+            Name of the output Factor (default is current name).
 
         Examples
         --------
@@ -2572,12 +2551,14 @@ class Factor(_Effect):
         for i, code in enumerate(self.x):
             x[i] = label_lengths[code]
 
-        if name:
-            longname = name
-        elif self.name:
-            longname = self.name + '.label_length()'
+        if name is None:
+            name = self.name
+            if self.name:
+                longname = self.name + '.label_length()'
+            else:
+                longname = 'label_length'
         else:
-            longname = 'label_length'
+            longname = name
 
         return Var(x, name, info={"longname": longname})
 
@@ -2696,7 +2677,7 @@ class Factor(_Effect):
             table.cell(np.sum(self.x == code))
         return table
 
-    def repeat(self, repeats, name=True):
+    def repeat(self, repeats, name=None):
         """Repeat each element ``repeats`` times
 
         Parameters
@@ -2704,26 +2685,24 @@ class Factor(_Effect):
         repeats : int | array of int
             Number of repeats, either a constant or a different number for each
             element.
-        name : None | True | str
-            Name of the output Var, ``True`` to keep the current name (default
-            ``True``).
+        name : str
+            Name of the output Factor (default is current name).
         """
-        if name is True:
+        if name is None or name is True:
             name = self.name
         return Factor(self.x, name, self.random, repeats, labels=self._labels)
 
-    def tile(self, repeats, name=True):
+    def tile(self, repeats, name=None):
         """Construct a Factor by repeating ``self`` ``repeats`` times
 
         Parameters
         ----------
         repeats : int
             Number of repeats.
-        name : None | True | str
-            Name of the output Var, ``True`` to keep the current name (default
-            ``True``).
+        name : str
+            Name of the output Factor (default is current name).
         """
-        if name is True:
+        if name is None or name is True:
             name = self.name
         return Factor(self.x, name, self.random, tile=repeats, labels=self._labels)
 
