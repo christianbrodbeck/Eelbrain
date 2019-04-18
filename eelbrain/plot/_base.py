@@ -2617,21 +2617,20 @@ class LegendMixin:
             if loc == 'fig':
                 return Legend(handles, labels, *args, **kwargs)
             else:
-                # take care of old legend; remove() not implemented as of mpl 1.3
+                # take care of old legend
                 if self.legend is not None and loc == 'draggable':
-                    self.legend.draggable(True)
+                    self.legend.set_draggable(True)
                 elif self.legend is not None:
-                    self.legend.set_visible(False)
-                    self.legend.draggable(False)
+                    self.legend.remove()
                 elif loc == 'draggable':
                     self.legend = self.figure.legend(handles, labels, loc=1)
-                    self.legend.draggable(True)
+                    self.legend.set_draggable(True)
 
                 if loc != 'draggable':
                     self.legend = self.figure.legend(handles, labels, loc=loc)
                 self.draw()
         elif self.legend is not None:
-            self.legend.set_visible(False)
+            self.legend.remove()
             self.legend = None
             self.draw()
         elif not self.__handles:
