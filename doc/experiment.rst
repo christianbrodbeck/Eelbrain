@@ -216,17 +216,38 @@ To reject trials based on a pre-determined threshold, a loop can be used::
 Analysis
 --------
 
-Finally, define :attr:`MneExperiment.tests` and create a ``make-reports.py``
-script so that all reports can be updated by running a single script
-(see :ref:`MneExperiment-example`).
+With preprocessing completed, there are different options for analyzing the
+data.
+
+The most flexible option is loading data from the desired processing stage using
+one of the many ``.load_...`` methods of the :class:`MneExperiment`. For
+example, load a :class:`Dataset` with source-localized condition averages using
+:meth:`MneExperiment.load_evoked_stc`, then test a hypothesis using one of the
+mass-univariate test from the :mod:`testnd` module. To make this kind of
+analysis replicable, it is probably useful to write the complete analysis as a
+separate script that imports the experiment (see the `example experiment folder
+<https://github.com/christianbrodbeck/Eelbrain/tree/master/examples/mouse>`_).
+
+Many statistical comparisons can also be specified in the
+:attr:`MneExperiment.tests` attribute, and then loaded directly using the
+:meth:`MneExperiment.load_test` method. This has the advantage that the tests
+will be cached automatically and, once computed, can be loaded very quickly.
+However, these definitions are not quite as flexible as writing a custom script.
+
+Finally, for tests defined in :attr:`MneExperiment.tests`, the
+:class:`MneExperiment` can generate HTML report files. These are generated with
+the :meth:`MneExperiment.make_report` and :meth:`MneExperiment.make_report_rois`
+methods.
 
 .. Warning::
     If source files are changed (raw files, epoch rejection or bad channel
-    files, ...) reports are not updated unless the corresponding
+    files, ...) reports are not updated automatically unless the corresponding
     :meth:`MneExperiment.make_report` function is called again. For this reason
-    it is useful to have a script that calls :meth:`MneExperiment.make_report`
-    for all desired reports. Running the script ensures that all reports are
-    up-to-date, and will only take seconds if nothing has to be recomputed.
+    it is useful to have a script to generate all desired reports. Running the
+    script ensures that all reports are up-to-date, and will only take seconds
+    if nothing has to be recomputed (for an example see ``make-reports.py`` in
+    the `example experiment folder
+    <https://github.com/christianbrodbeck/Eelbrain/tree/master/examples/mouse>`_).
 
 
 .. _MneExperiment-example:
@@ -239,12 +260,6 @@ The following is a complete example for an experiment class definition file
 ``examples/mouse/mouse.py``):
 
 .. literalinclude:: ../examples/mouse/mouse.py
-
-
-Given the ``Mouse`` class definition above, the following is a
-script that would compute/update analysis reports:
-
-.. literalinclude:: ../examples/mouse/make_reports.py
 
 
 Experiment Definition
