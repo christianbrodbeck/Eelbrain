@@ -2028,9 +2028,11 @@ class MneExperiment(FileTree):
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from the bad channels file. Alternatively,
             a list of bad channels can be specified.
-        reject : bool
-            Whether to apply epoch rejection or not. The kind of rejection
-            employed depends on the ``rej`` setting.
+        reject : bool | 'keep'
+            Reject bad trials. If ``True`` (default), bad trials are removed
+            from the Dataset. Set to ``False`` to ignore the trial rejection.
+            Set ``reject='keep'`` to load the rejection (added it to the events
+            as ``'accept'`` variable), but keep bad trails.
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
         decim : int
@@ -2196,10 +2198,7 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_epochs_stc(self, subjects=None, baseline=True,
-                        src_baseline=False, cat=None,
-                        keep_epochs=False, morph=False, mask=False,
-                        data_raw=False, vardef=None, decim=None, ndvar=True, **state):
+    def load_epochs_stc(self, subjects=None, baseline=True, src_baseline=False, cat=None, keep_epochs=False, morph=False, mask=False, data_raw=False, vardef=None, decim=None, ndvar=True, reject=True, **state):
         """Load a Dataset with stcs for single epochs
 
         Parameters
@@ -2240,6 +2239,11 @@ class MneExperiment(FileTree):
         ndvar : bool
             Add the source estimates as :class:`NDVar` named "src" instead of a list of
             :class:`mne.SourceEstimate` objects named "stc" (default True).
+        reject : bool | 'keep'
+            Reject bad trials. If ``True`` (default), bad trials are removed
+            from the Dataset. Set to ``False`` to ignore the trial rejection.
+            Set ``reject='keep'`` to load the rejection (added it to the events
+            as ``'accept'`` variable), but keep bad trails.
         ...
             State parameters.
 
@@ -2264,7 +2268,7 @@ class MneExperiment(FileTree):
                 raise ValueError(f"morph={morph!r} with group: Source estimates can only be combined after morphing data to common brain model. Set morph=True.")
             dss = []
             for _ in self.iter(group=group):
-                ds = self.load_epochs_stc(None, baseline, src_baseline, ndvar, cat, keep_epochs, morph, mask, False, vardef, decim)
+                ds = self.load_epochs_stc(None, baseline, src_baseline, cat, keep_epochs, morph, mask, False, vardef, decim, ndvar, reject)
                 dss.append(ds)
             return combine(dss)
 
@@ -2283,7 +2287,7 @@ class MneExperiment(FileTree):
         else:
             raise ValueError(f'keep_epochs={keep_epochs!r}')
 
-        ds = self.load_epochs(subject, baseline, sns_ndvar, cat=cat, decim=decim, data_raw=data_raw, vardef=vardef)
+        ds = self.load_epochs(subject, baseline, sns_ndvar, reject=reject, cat=cat, decim=decim, data_raw=data_raw, vardef=vardef)
 
         # load inv
         if src_baseline is True:
@@ -3057,9 +3061,10 @@ class MneExperiment(FileTree):
             subject; ``-1`` for the current group. Default is current subject
             (or group if ``group`` is specified).
         reject : bool | 'keep'
-            Reject bad trials. For True, bad trials are removed from the
-            Dataset. For 'keep', the 'accept' variable is added to the Dataset
-            and bad trials are kept.
+            Reject bad trials. If ``True`` (default), bad trials are removed
+            from the Dataset. Set to ``False`` to ignore the trial rejection.
+            Set ``reject='keep'`` to load the rejection (added it to the events
+            as ``'accept'`` variable), but keep bad trails.
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from the bad channels file. Alternatively,
