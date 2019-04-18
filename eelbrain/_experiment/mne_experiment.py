@@ -2979,11 +2979,18 @@ class MneExperiment(FileTree):
         bad channels in the bad channels file.
         """
         pipe = self._raw[self.get('raw', **kwargs)]
-        raw = pipe.load(self.get('subject'), self.get('recording'), add_bads,
-                        preload if decim == 1 else True)
         if decim > 1:
+            preload = True
+        raw = pipe.load(self.get('subject'), self.get('recording'), add_bads, preload)
+        if decim > 1:
+            if ndvar:
+                # avoid warning for downsampling event channel
+                stim_picks = np.empty(0)
+                events = np.empty((0, 3))
+            else:
+                stim_picks = events = None
             sfreq = int(round(raw.info['sfreq'] / decim))
-            raw.resample(sfreq)
+            raw.resample(sfreq, stim_picks=stim_picks, events=events)
 
         if ndvar:
             data = TestDims('sensor')
