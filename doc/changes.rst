@@ -10,8 +10,7 @@ New in 0.30
 
   - :class:`Space` dimension to represent physical space
   - :class:`VolumeSourceSpace` to represent volume source spaces
-  - Statistical tests: :class:`testnd.Vector`, :class:`testnd.VectorDifferenceRelated`,
-    :class:`testnd.VectorDifferenceIndependent`
+  - Statistical tests: :class:`testnd.Vector`, :class:`testnd.VectorDifferenceRelated`
   - Plotting with :class:`plot.GlassBrain`
 
 * :meth:`Dataset.summary` method

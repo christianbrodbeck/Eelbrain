@@ -220,7 +220,6 @@ Mass-Univariate Statistics
    testnd.corr
    testnd.Vector
    testnd.VectorDifferenceRelated
-   testnd.VectorDifferenceIndependent
 
 By default the tests in this module produce maps of statistical parameters
 along with maps of p-values uncorrected for multiple comparison. Using different

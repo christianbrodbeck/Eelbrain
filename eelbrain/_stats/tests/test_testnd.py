@@ -11,7 +11,7 @@ from numpy.testing import assert_array_equal, assert_allclose
 import eelbrain
 from eelbrain import Dataset, NDVar, Categorial, Scalar, UTS, Sensor, configure, datasets, test, testnd, set_log_level, cwt_morlet
 from eelbrain._exceptions import WrongDimension, ZeroVariance
-from eelbrain._stats.testnd import Connectivity, NDPermutationDistribution, label_clusters, _MergedTemporalClusterDist, find_peaks
+from eelbrain._stats.testnd import Connectivity, NDPermutationDistribution, label_clusters, _MergedTemporalClusterDist, find_peaks, VectorDifferenceIndependent
 from eelbrain._utils.system import IS_WINDOWS
 from eelbrain.fmtxt import asfmtext
 from eelbrain.testing import assert_dataobj_equal, assert_dataset_equal, requires_mne_sample_data
@@ -649,9 +649,9 @@ def test_vector():
     assert res.p == 1.0
 
     # single vector with norm stat
-    res_t = testnd.Vector('v[:40]', ds=ds, samples=10, use_t2_stat=False)
+    res_t = testnd.Vector('v[:40]', ds=ds, samples=10, norm=True)
     assert res_t.p == 0.0
-    res_t = testnd.Vector('v[40:]', ds=ds, samples=10, use_t2_stat=False)
+    res_t = testnd.Vector('v[40:]', ds=ds, samples=10, norm=True)
     assert res_t.p == 1.0
 
     # non-space tests should raise error
@@ -682,7 +682,7 @@ def test_vector():
     assert_dataobj_equal(resd.p, res.p, name=False)
     assert_dataobj_equal(resd.t2, res.t2, name=False)
     # diff independent
-    res = testnd.VectorDifferenceIndependent(v1, v2, samples=10)
+    res = VectorDifferenceIndependent(v1, v2, samples=10, norm=True)
     assert_dataobj_equal(res.difference, v1.mean('case') - v2.mean('case'), name=False)
     assert res.p.max() == 1
     assert res.p.min() == 0
@@ -701,16 +701,16 @@ def test_vector():
     assert difference.x.mask.sum() == 294
 
     # vector in time with norm stat
-    res = testnd.Vector(vd, samples=10, use_t2_stat=False)
+    res = testnd.Vector(vd, samples=10, norm=True)
     assert res.p.min() == 0
     difference = res.masked_difference()
     assert difference.x.mask.sum() == 297
-    resd = testnd.VectorDifferenceRelated(v1, v2, samples=10, use_t2_stat=False)
+    resd = testnd.VectorDifferenceRelated(v1, v2, samples=10, norm=True)
     assert_dataobj_equal(resd.p, res.p, name=False)
     assert_dataobj_equal(resd.difference, res.difference, name=False)
 
     v_small = v2 / 100
-    res = testnd.Vector(v_small, tfce=True, samples=10, use_t2_stat=False)
+    res = testnd.Vector(v_small, tfce=True, samples=10, norm=True)
     assert 'WARNING' in repr(res)
     res = testnd.Vector(v_small, tfce=0.1, samples=10)
     assert res.p.min() == 0.0
