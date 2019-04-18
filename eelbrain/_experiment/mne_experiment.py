@@ -2063,7 +2063,12 @@ class MneExperiment(FileTree):
             Interpolate channels marked as bad for the whole recording (useful
             when comparing topographies across subjects; default False).
         ...
-            State parameters.
+            Applicable :ref:`state-parameters`:
+
+             - :ref:`state-raw`: preprocessing pipeline
+             - :ref:`state-epoch`: which events to use and time window
+             - :ref:`state-rej`: which trials to use
+
         """
         data = TestDims.coerce(data)
         if not data.sensor:
@@ -2245,7 +2250,14 @@ class MneExperiment(FileTree):
             Set ``reject='keep'`` to load the rejection (added it to the events
             as ``'accept'`` variable), but keep bad trails.
         ...
-            State parameters.
+            Applicable :ref:`state-parameters`:
+
+             - :ref:`state-raw`: preprocessing pipeline
+             - :ref:`state-epoch`: which events to use and time window
+             - :ref:`state-rej`: which trials to use
+             - :ref:`state-cov`: covariance matrix for inverse solution
+             - :ref:`state-src`: source space
+             - :ref:`state-inv`: inverse solution
 
         Returns
         -------
@@ -2361,7 +2373,11 @@ class MneExperiment(FileTree):
             Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
             (default False).
         ...
-            State parameters.
+            Applicable :ref:`state-parameters`:
+
+             - :ref:`state-raw`: preprocessing pipeline
+             - :ref:`state-epoch`: which events to use and time window
+
         """
         evt_file = self.get('event-file', mkdir=True, subject=subject, **kwargs)
         subject = self.get('subject')
@@ -2448,10 +2464,15 @@ class MneExperiment(FileTree):
             Data to load; 'sensor' to load all sensor data (default);
             'sensor.rms' to return RMS over sensors. Only applies to NDVar
             output.
-        model : str (state)
-            Model according to which epochs are grouped into evoked responses.
         ...
-            State parameters.
+            Applicable :ref:`state-parameters`:
+
+             - :ref:`state-raw`: preprocessing pipeline
+             - :ref:`state-epoch`: which events to use and time window
+             - :ref:`state-rej`: which trials to use
+             - :ref:`state-model`: how to group trials into conditions
+             - :ref:`state-equalize_evoked_count`: control number of trials per cell
+
         """
         subject, group = self._process_subject_arg(subjects, kwargs)
         epoch = self._epochs[self.get('epoch')]
@@ -2658,7 +2679,17 @@ class MneExperiment(FileTree):
             Add the source estimates as NDVar named "src" instead of a list of
             :class:`mne.SourceEstimate` objects named "stc" (default True).
         ...
-            State parameters.
+            Applicable :ref:`state-parameters`:
+
+             - :ref:`state-raw`: preprocessing pipeline
+             - :ref:`state-epoch`: which events to use and time window
+             - :ref:`state-rej`: which trials to use
+             - :ref:`state-model`: how to group trials into conditions
+             - :ref:`state-equalize_evoked_count`: control number of trials per cell
+             - :ref:`state-cov`: covariance matrix for inverse solution
+             - :ref:`state-src`: source space
+             - :ref:`state-inv`: inverse solution
+
         """
         if 'sns_baseline' in state:
             baseline = state.pop('sns_baseline')
@@ -2810,7 +2841,7 @@ class MneExperiment(FileTree):
         path = self.make_ica(**state)
         return mne.preprocessing.read_ica(path)
 
-    def load_inv(self, fiff=None, ndvar=False, mask=None, **kwargs):
+    def load_inv(self, fiff=None, ndvar=False, mask=None, **state):
         """Load the inverse operator
 
         Parameters
@@ -2827,10 +2858,17 @@ class MneExperiment(FileTree):
             Remove source labelled "unknown". Can be parcellation name or True,
             in which case the current parcellation is used.
         ...
-            State parameters.
+            Applicable :ref:`state-parameters`:
+
+             - :ref:`state-raw`: preprocessing pipeline
+             - :ref:`state-rej`: which trials to use
+             - :ref:`state-cov`: covariance matrix for inverse solution
+             - :ref:`state-src`: source space
+             - :ref:`state-inv`: inverse solution
+
         """
-        if kwargs:
-            self.set(**kwargs)
+        if state:
+            self.set(**state)
         if mask and not ndvar:
             raise NotImplementedError("mask is only implemented for ndvar=True")
         elif isinstance(mask, str):
@@ -2971,7 +3009,10 @@ class MneExperiment(FileTree):
             Decimate data (default 1, i.e. no decimation; value other than 1
             implies ``preload=True``)
         ...
-            State parameters.
+            Applicable :ref:`state-parameters`:
+
+             - :ref:`state-session`: from which session to load raw data
+             - :ref:`state-raw`: preprocessing pipeline
 
         Notes
         -----
@@ -3301,12 +3342,12 @@ class MneExperiment(FileTree):
         test : None | str
             Test for which to create a report (entry in MneExperiment.tests;
             None to use the test that was specified most recently).
-        tstart : None | scalar
-            Beginning of the time window for finding clusters (default is from
-            the beginning of the epoch).
-        tstop : None | scalar
-            End of the time window for finding clusters (default is to the end
-            of the epoch).
+        tstart : scalar
+            Beginning of the time window for the test in seconds
+            (default is the beginning of the epoch).
+        tstop : scalar
+            End of the time window for the test in seconds
+            (default is the end of the epoch).
         pmin : float | 'tfce' | None
             Kind of test.
         parc : None | str
@@ -4588,12 +4629,12 @@ class MneExperiment(FileTree):
         pmin : None | scalar, 1 > pmin > 0 | 'tfce'
             Equivalent p-value for cluster threshold, or 'tfce' for
             threshold-free cluster enhancement.
-        tstart : None | scalar
-            Beginning of the time window for finding clusters (default is from
-            the beginning of the epoch).
-        tstop : None | scalar
-            End of the time window for finding clusters (default is to the end
-            of the epoch).
+        tstart : scalar
+            Beginning of the time window for the test in seconds
+            (default is the beginning of the epoch).
+        tstop : scalar
+            End of the time window for the test in seconds
+            (default is the end of the epoch).
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
             temporal clusters (default 10,000).
@@ -4717,12 +4758,12 @@ class MneExperiment(FileTree):
         pmin : None | scalar, 1 > pmin > 0 | 'tfce'
             Equivalent p-value for cluster threshold, or 'tfce' for
             threshold-free cluster enhancement.
-        tstart : None | scalar
-            Beginning of the time window for finding clusters (default is from
-            the beginning of the epoch).
-        tstop : None | scalar
-            End of the time window for finding clusters (default is to the end
-            of the epoch).
+        tstart : scalar
+            Beginning of the time window for the test in seconds
+            (default is the beginning of the epoch).
+        tstop : scalar
+            End of the time window for the test in seconds
+            (default is the end of the epoch).
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
             temporal clusters (default 1000).
@@ -4824,12 +4865,12 @@ class MneExperiment(FileTree):
         pmin : None | scalar, 1 > pmin > 0 | 'tfce'
             Equivalent p-value for cluster threshold, or 'tfce' for
             threshold-free cluster enhancement.
-        tstart : None | scalar
-            Beginning of the time window for finding clusters (default is from
-            the beginning of the epoch).
-        tstop : None | scalar
-            End of the time window for finding clusters (default is to the end
-            of the epoch).
+        tstart : scalar
+            Beginning of the time window for the test in seconds
+            (default is the beginning of the epoch).
+        tstop : scalar
+            End of the time window for the test in seconds
+            (default is the end of the epoch).
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
             temporal clusters (default 1000).
@@ -4889,12 +4930,12 @@ class MneExperiment(FileTree):
         pmin : None | scalar, 1 > pmin > 0 | 'tfce'
             Equivalent p-value for cluster threshold, or 'tfce' for
             threshold-free cluster enhancement.
-        tstart : None | scalar
-            Beginning of the time window for finding clusters (default is from
-            the beginning of the epoch).
-        tstop : None | scalar
-            End of the time window for finding clusters (default is to the end
-            of the epoch).
+        tstart : scalar
+            Beginning of the time window for the test in seconds
+            (default is the beginning of the epoch).
+        tstop : scalar
+            End of the time window for the test in seconds
+            (default is the end of the epoch).
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
             temporal clusters (default 1000).

@@ -200,7 +200,7 @@ New in 0.24
   space with ``mne_experiment.rm('bem-sol-file', subject='*')``.
 * New :meth:`MneExperiment.make_report_coreg` method.
 * New :class:`MneExperiment`: analysis parameter
-  :ref:`analysis-params-connectivity`
+  :ref:`state-connectivity`
 * :class:`plot.TopoButterfly`: press ``Shift-T`` for a large topo-map with
   sensor names.
 
@@ -258,7 +258,7 @@ New in 0.20
 
 * :class:`MneExperiment`: new analysis parameter ``select_clusters='all'`` to
   keep all clusters in cluster tests (see
-  :ref:`analysis-params-select_clusters`).
+  :ref:`state-select_clusters`).
 * Use :func:`testnd.configure` to limit the number of CPUs that are used in
   permutation cluster tests.
 

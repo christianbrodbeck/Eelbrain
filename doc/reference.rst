@@ -579,7 +579,7 @@ data (gradiometer only) with MNE:
 .. autosummary::
    :toctree: generated
 
-   MneExperiment
+   ~pipeline.MneExperiment
    ~_experiment.ROITestResult
 
 .. seealso::
