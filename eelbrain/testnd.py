@@ -7,8 +7,3 @@ from ._stats.testnd import (
     Vector, VectorDifferenceRelated,
 )
 from ._stats.spm import LM, LMGroup
-
-
-def configure(*args, **kwargs):
-    raise RuntimeError("This function has been removed. Please use "
-                       "eelbrain.configure() instead")

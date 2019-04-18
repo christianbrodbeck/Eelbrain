@@ -96,7 +96,10 @@ class RawSource(RawPipe):
     Parameters
     ----------
     filename : str
-        Pattern for filename (default ``'{subject}_{recording}-raw.fif'``).
+        Pattern for filenames. The pattern should contain the fields
+        ``{subject}`` and ``{recording}`` (which internally is expanded to
+        ``session`` and, if applicable, ``visit``;
+        default ``'{subject}_{recording}-raw.fif'``).
     reader : callable
         Function for reading data (default is :func:`mne.io.read_raw_fif`).
     sysname : str
@@ -610,7 +613,22 @@ class RawApplyICA(CachedRawPipe):
 
     Notes
     -----
-    This pipe inherits bad channels form the ICA.
+    This pipe inherits bad channels from the ICA.
+
+    Examples
+    --------
+    Estimate ICA components with 1-40 Hz band-pass filter and apply the ICA
+    to data that is high pass filtered at 0.1 Hz::
+
+        class Experiment(MneExperiment):
+
+            raw = {
+                '1-40': RawFilter('raw', 1, 40),
+                'ica': RawICA('1-40', 'session', 'extended-infomax', n_components=0.99),
+                '0.1-40': RawFilter('raw', 0.1, 40),
+                '0.1-40-ica': RawApplyICA('0.1-40', 'ica'),
+            }
+
     """
 
     def __init__(self, source, ica, cache=False):

@@ -256,7 +256,7 @@ class SuperEpoch(Epoch):
 
     Parameters
     ----------
-    sub_epochs : tuple of str
+    sub_epochs : sequence of str
         Tuple of epoch names. These epochs are combined to form the super-epoch.
         Epochs are merged at the level of events, so the base epochs can not
         contain post-baseline trigger shifts which are applied after loading

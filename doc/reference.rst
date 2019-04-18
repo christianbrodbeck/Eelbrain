@@ -420,7 +420,11 @@ run : bool
     Run the Eelbrain GUI app (default is True for interactive plotting and
     False in scripts).
 
-The behavior can also be changed globally using :func:`configure`:
+The behavior can also be changed globally using :func:`configure`.
+
+By default, Eelbrain plots open in windows with enhance GUI features such as
+copying a figure to the OS clip-board. To plot figures in bare matplotlib
+windows, :func:`configure` Eelbrain with ``eelbrain.configure(frame=False)``.
 
 
 ^^^^^^^^^^^^^^^

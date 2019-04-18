@@ -7297,11 +7297,6 @@ class Dimension:
         -------
         connectivity : array of int, (n_pairs, 2)
             array of sorted ``[src, dst]`` pairs, with all ``src < dst``.
-
-        See Also
-        --------
-        .set_connectivity() : define the connectivity
-        .neighbors() : Neighboring sensors for each sensor in a dictionary.
         """
         if self._connectivity is None:
             self._connectivity = self._generate_connectivity()
