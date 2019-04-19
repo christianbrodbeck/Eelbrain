@@ -1396,13 +1396,14 @@ class Var:
             items = [f'{v:g}:{n}' if n > 1 else f'{v:g}' for v, n in ns]
             if nan_str:
                 items.append(nan_str)
-            out = ''
-            for item in items:
-                if len(out) + len(item) >= width - 2:
+            # check whether all items fit
+            n = -2
+            for i, item in enumerate(items):
+                n += 2 + len(item)
+                if n >= width:
                     break
-                out += f', {item}'
             else:
-                return out
+                return ', '.join(items)
         out = f'{x.min():g} - {x.max():g}'
         if nan_str:
             out += f', {nan_str}'
