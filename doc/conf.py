@@ -144,6 +144,7 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3.6', None),
     'imageio': ('https://imageio.readthedocs.io/en/stable/', None),
     'mne': ('http://martinos.org/mne/stable', None),
+    'surfer': ('https://pysurfer.github.io', None),
     'matplotlib': ('https://matplotlib.org', None),
     'nilearn': ('https://nilearn.github.io', None),
     'numpy': ('https://docs.scipy.org/doc/numpy', None),
