@@ -8,7 +8,7 @@ from .._data_obj import Dataset, Factor
 from .fiff import stc_ndvar
 
 
-class DatasetSTCLoader(object):
+class DatasetSTCLoader():
     """
     Load source estimates on disk into Dataset for use in statistical tests
 
@@ -26,7 +26,7 @@ class DatasetSTCLoader(object):
     factors : tuple of str
         Names of experimental factors
     levels : tuple of tuple of str
-        Names of levels of each factor in `factors`
+        Names of levels of each factor in ``factors``
     """
     def __init__(self, data_dir, **stc_kwargs):
         if not os.path.exists(data_dir):
@@ -90,10 +90,11 @@ class DatasetSTCLoader(object):
 
     def make_dataset(self, load_stcs=True):
         """
-        Create a Dataset with one case per condition per subject, and source
-        estimates loaded as an NDVar.
+        Load stcs into a Dataset with columns for subject and experimental factors
 
-        Any `stc_kwargs` from __init__ are passed to `eelbrain.load.fiff.stc_ndvar()`.
+        Dataset contains one case per condition per subject, and source estimates
+        loaded as an NDVar. Any ``stc_kwargs`` from ``__init__`` are passed to
+        ``eelbrain.load.fiff.stc_ndvar()``.
 
         Parameters
         ----------
@@ -105,7 +106,7 @@ class DatasetSTCLoader(object):
         -------
         ds : eelbrain.Dataset
             Dataset with columns 'subject' (random factor), 'src' (NDVar of stc data),
-            and one Factor for each item in `self.factors`.
+            and one Factor for each item in ``self.factors``.
         """
         rows = itertools.product(self.subjects, *self.levels)
         columns = map(Factor, zip(*rows))
