@@ -4329,8 +4329,7 @@ class NDVar:
         """
         return NDVar(np.sign(self.x), self.dims, self.info, name or self.name)
 
-    def smooth(self, dim, window_size, window='hamming', mode='center',
-               name=None):
+    def smooth(self, dim, window_size=None, window='hamming', mode='center', window_samples=None, name=None):
         """Smooth data by convolving it with a window
 
         Parameters
@@ -4355,6 +4354,11 @@ class NDVar:
               the window.
             - ``right``: sample in the output corresponds to the right edge of
               the window.
+
+        window_samples : scalar
+            Size of the window in samples (this parameter is used to specify
+            window size in array elemnts rather than in units of the dimension;
+            it is mutually exclusive with ``window_size``).
         name : str
             Name for the smoothed NDVar.
 
@@ -4370,32 +4374,36 @@ class NDVar:
 
         >>> std = fwhm / (2 * (sqrt(2 * log(2))))
         """
+        if (window_size is None) == (window_samples is None):
+            desc = "" if window_size is None else f"window_size={window_size!r}, window_samples={window_samples!r}: "
+            raise TypeError(f"{desc}Must specify either window_size or window_samples")
         axis = self.get_axis(dim)
         dim_object = self.get_dim(dim)
         dims = self.dims
         if window == 'gaussian':
             if mode != 'center':
-                raise ValueError("For gaussian smoothing, mode must be "
-                                 "'center'; got mode=%r" % (mode,))
+                raise ValueError(f"mode={mode!r}; for gaussian smoothing, mode must be 'center'")
             elif dim_object._connectivity_type == 'custom':
+                if window_samples is not None:
+                    raise ValueError(f"window_samples for dimension with connectivity not based on adjacency")
                 m = gaussian_smoother(dim_object._distances(), window_size)
             else:
-                raise NotImplementedError("Gaussian smoothing for %s "
-                                          "dimension" % (dim_object.name,))
+                raise NotImplementedError(f"Gaussian smoothing for {dim_object.__class__.__name__} dimension")
             x = np.tensordot(m, self.x, (1, axis))
             if axis:
                 x = x.swapaxes(0, axis)
         elif dim_object._connectivity_type == 'custom':
             raise ValueError(f"window={window}; for {dim_object.__class__.__name__} dimension (must be 'gaussian')")
         else:
-            if dim == 'time':
+            if window_samples:
+                n = window_samples
+            elif dim == 'time':
                 n = int(round(window_size / dim_object.tstep))
+                if not n:
+                    raise ValueError(f"window_size={window_size}: Window too small for sampling rate")
             else:
                 raise NotImplementedError("dim=%r" % (dim,))
             window = scipy.signal.get_window(window, n, False)
-            if not window.size:
-                raise ValueError("window_size=%r: window too small for the "
-                                 "NDVar's sampling rate" % (window_size,))
             window /= window.sum()
             window.shape = (1,) * axis + (n,) + (1,) * (self.ndim - axis - 1)
             if mode == 'center':

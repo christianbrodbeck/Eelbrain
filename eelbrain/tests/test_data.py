@@ -1324,6 +1324,11 @@ def test_ndvar_timeseries_methods():
 
     # smoothing
     ma = x.smooth('time', 0.2, 'blackman')
+    assert_dataobj_equal(x.smooth('time', window='blackman', window_samples=20), ma)
+    with pytest.raises(TypeError):
+        x.smooth('time')
+    with pytest.raises(TypeError):
+        x.smooth('time', 0.2, 'blackman', window_samples=20)
     mas = xs.smooth('time', 0.2, 'blackman')
     assert_allclose(ma.x, mas.x.swapaxes(1, 2), 1e-10)
     ma_mean = x.mean('case').smooth('time', 0.2, 'blackman')
