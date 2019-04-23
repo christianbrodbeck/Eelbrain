@@ -242,7 +242,7 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
         self.plots = []
         ColorMapMixin.__init__(self, data.data, cmap, vmax, vmin, None, self.plots)
 
-        layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
+        layout = Layout(data.plot_used, 1.5, 3, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data)
 
