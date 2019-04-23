@@ -1,7 +1,6 @@
 import os
 import itertools
-from nose.tools import assert_in, assert_raises, assert_true, \
-    assert_equal
+import pytest
 from eelbrain.testing import TempDir
 
 from ..mrat import DatasetSTCLoader
@@ -33,16 +32,17 @@ def test_loader():
     loader = DatasetSTCLoader(tmp)
     levels = loader.levels
     # check detected level names
-    assert_in("level-a", levels[0])
-    assert_in("level-b", levels[0])
-    assert_in("noun", levels[1])
-    assert_in("verb", levels[1])
-    assert_in("R0000", loader.subjects)
-    assert_raises(ValueError, loader.set_factor_names, ["only-one-factor"])
+    assert "level-a" in levels[0]
+    assert "level-b" in levels[0]
+    assert "noun" in levels[1]
+    assert "verb" in levels[1]
+    assert "R0000" in loader.subjects
+    with pytest.raises(ValueError):
+        loader.set_factor_names(["only-one-factor"])
     loader.set_factor_names(["factor1", "factor2"])
-    assert_equal(loader.design_shape, "2 x 2")
+    assert loader.design_shape == "2 x 2"
     ds = loader.make_dataset(load_stcs=False)
-    assert_in("factor1", ds)
-    assert_in("factor2", ds)
-    assert_in("subject", ds)
-    assert_true(ds["subject"].random)
+    assert "factor1" in ds
+    assert "factor2" in ds
+    assert "subject" in ds
+    assert ds["subject"].random
