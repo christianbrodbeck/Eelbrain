@@ -46,7 +46,7 @@ def pickle(obj, dest=None, protocol=HIGHEST_PROTOCOL):
         be opened in Python 2, use ``protocol<=2``.
     """
     if dest is None:
-        filetypes = [("Pickled Python Objects (*.pickled)", '*.pickled')]
+        filetypes = [("Pickled Python Objects (*.pickle)", '*.pickle')]
         dest = ui.ask_saveas("Pickle Destination", "", filetypes)
         if dest is False:
             raise RuntimeError("User canceled")
@@ -55,7 +55,7 @@ def pickle(obj, dest=None, protocol=HIGHEST_PROTOCOL):
     else:
         dest = os.path.expanduser(dest)
         if not os.path.splitext(dest)[1]:
-            dest += '.pickled'
+            dest += '.pickle'
 
     try:
         with open(dest, 'wb') as fid:
@@ -92,7 +92,7 @@ def unpickle(file_path=None):
     :func:`~eelbrain.save.pickle` with ``protocol=2``.
     """
     if file_path is None:
-        filetypes = [("Pickles (*.pickled)", '*.pickled'), ("All files", '*')]
+        filetypes = [("Pickles (*.pickle|*.pickled)", '*.pickle?'), ("All files", '*')]
         file_path = ui.ask_file("Select File to Unpickle", "Select a pickled "
                                 "file to unpickle", filetypes)
         if file_path is False:
@@ -102,9 +102,11 @@ def unpickle(file_path=None):
     else:
         file_path = os.path.expanduser(file_path)
         if not os.path.exists(file_path):
-            new_path = os.extsep.join((file_path, 'pickled'))
-            if os.path.exists(new_path):
-                file_path = new_path
+            for ext in ('pickle', 'pickled'):
+                new_path = os.extsep.join((file_path, ext))
+                if os.path.exists(new_path):
+                    file_path = new_path
+                    break
 
     with open(file_path, 'rb') as fid:
         unpickler = EelUnpickler(fid, encoding='latin1')
