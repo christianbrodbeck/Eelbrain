@@ -8958,18 +8958,26 @@ class SourceSpaceBase(Dimension):
         normals = [ss['nn'][v] for ss, v in zip(sss, self.vertices)]
         return np.vstack(normals)
 
-    def _array_index(self, arg):
-        if isinstance(arg, Integral) or (isinstance(arg, np.ndarray) and arg.dtype.kind in 'ib'):
+    def _array_index(self, arg, allow_vertex=True):
+        if isinstance(arg, str):
+            if self.parc is not None and arg in self.parc:
+                return self.parc == arg
+            elif allow_vertex:
+                return self._array_index_for_vertex(arg)
+            elif self.parc is None:
+                raise IndexError(f"{arg!r}: {self.__class__.__name__} has no parcellation")
+            else:
+                raise IndexError(f"{arg!r}: {self.__class__.__name__} has no such label")
+        elif isinstance(arg, Integral) or (isinstance(arg, np.ndarray) and arg.dtype.kind in 'ib'):
             return arg
         elif isinstance(arg, Sequence):
             if all(isinstance(v, str) for v in arg):
                 if self.parc is not None and all(a in self.parc for a in arg):
                     return self.parc.isin(arg)
+                elif allow_vertex:
+                    return [self._array_index_for_vertex(v) for v in arg]
                 else:
-                    try:
-                        return [self._array_index_for_vertex(v) for v in arg]
-                    except NotImplementedError:
-                        raise IndexError(f"{arg!r}")
+                    raise IndexError(f"{arg!r}")
             elif all(isinstance(v, INT_TYPES) for v in arg):
                 return arg
             else:
@@ -8977,37 +8985,8 @@ class SourceSpaceBase(Dimension):
         else:
             return Dimension._array_index(self, arg)
 
-    def _array_index_label(self, label):
-        if isinstance(label, str):
-            if self.parc is None:
-                raise IndexError(f"{label!r}: {self.__class__.__name__} has no parcellation")
-            elif label not in self.parc:
-                raise IndexError(f"{label!r}: {self.__class__.__name__} has no such label")
-            idx = self.parc == label
-        elif label.hemi == 'both':
-            lh_idx = self._array_index_hemilabel(label.lh)
-            rh_idx = self._array_index_hemilabel(label.rh)
-            idx = np.hstack((lh_idx, rh_idx))
-        else:
-            idx = np.zeros(len(self), dtype=np.bool8)
-            idx_part = self._array_index_hemilabel(label)
-            if label.hemi == 'lh':
-                idx[:self.lh_n] = idx_part
-            elif label.hemi == 'rh':
-                idx[self.lh_n:] = idx_part
-            else:
-                err = "Unknown value for label.hemi: %s" % repr(label.hemi)
-                raise ValueError(err)
-
-        return idx
-
-    def _array_index_hemilabel(self, label):
-        stc_vertices = self.vertices[label.hemi == 'rh']
-        idx = np.in1d(stc_vertices, label.vertices, True)
-        return idx
-
     def _array_index_for_vertex(self, vertex_desc):
-        raise NotImplementedError
+        raise NotImplementedError(f"Index for {vertex_desc!r}")
 
     def _array_index_to(self, other):
         "Int index to access data from self in an order consistent with other"
@@ -9035,21 +9014,23 @@ class SourceSpaceBase(Dimension):
 
         Parameters
         ----------
-        label : str | Label | BiHemiLabel
-            The name of a region in the current parcellation, or a Label object
-            (as created for example by mne.read_label). If the label does not
-            match any sources in the SourceEstimate, a ValueError is raised.
+        label : str | sequance of str
+            One or several names of regions in the current parcellation.
 
         Returns
         -------
         index : NDVar of bool
             Index into the source space dim that corresponds to the label.
         """
-        idx = self._array_index_label(label)
+        idx = self._array_index(label, allow_vertex=False)
         if isinstance(label, str):
             name = label
-        else:
+        elif isinstance(label, Sequence):
+            name = '+'.join(label)
+        elif isinstance(label, MNE_LABEL):
             name = label.name
+        else:
+            raise TypeError(f"{label!r}")
         return NDVar(idx, (self,), {}, name)
 
     def _is_superset_of(self, dim):
@@ -9254,9 +9235,21 @@ class SourceSpace(SourceSpaceBase):
         src = self.get_source_space()
         return _mne_tri_soure_space_graph(src, self.vertices)
 
-    def _array_index(self, arg):
-        if isinstance(arg, MNE_LABEL):
-            return self._array_index_label(arg)
+    def _array_index(self, arg, allow_vertex=True):
+        if isinstance(arg, mne.BiHemiLabel):
+            lh_idx = self._array_index_hemilabel(arg.lh)
+            rh_idx = self._array_index_hemilabel(arg.rh)
+            return np.hstack((lh_idx, rh_idx))
+        elif isinstance(arg, mne.Label):
+            idx = np.zeros(len(self), dtype=np.bool8)
+            idx_part = self._array_index_hemilabel(arg)
+            if arg.hemi == 'lh':
+                idx[:self.lh_n] = idx_part
+            elif arg.hemi == 'rh':
+                idx[self.lh_n:] = idx_part
+            else:
+                raise ValueError(f"{arg!r} with unknown value for label.hemi: {arg.hemi!r}")
+            return idx
         elif isinstance(arg, str):
             if arg == 'lh':
                 return slice(self.lh_n)
@@ -9265,11 +9258,7 @@ class SourceSpace(SourceSpaceBase):
                     return slice(self.lh_n, None)
                 else:
                     return slice(0, 0)
-            elif self.parc is not None and arg in self.parc:
-                return self.parc == arg
-            else:
-                return self._array_index_for_vertex(arg)
-        elif isinstance(arg, SourceSpace):
+        elif isinstance(arg, self.__class__):
             sv = self.vertices
             ov = arg.vertices
             if all(np.array_equal(s, o) for s, o in zip(sv, ov)):
@@ -9278,7 +9267,7 @@ class SourceSpace(SourceSpaceBase):
                 raise IndexError("Index contains unknown sources")
             else:
                 return np.hstack([np.in1d(s, o, True) for s, o in zip(sv, ov)])
-        return SourceSpaceBase._array_index(self, arg)
+        return SourceSpaceBase._array_index(self, arg, allow_vertex)
 
     def _array_index_for_vertex(self, vertex_desc):
         m = self._vertex_re.match(vertex_desc)
@@ -9295,6 +9284,11 @@ class SourceSpace(SourceSpaceBase):
                 return i
         else:
             raise IndexError(f"{vertex_desc!r}: SourceSpace does not contain this vertex")
+
+    def _array_index_hemilabel(self, label: mne.Label):
+        stc_vertices = self.vertices[label.hemi == 'rh']
+        idx = np.in1d(stc_vertices, label.vertices, True)
+        return idx
 
     def _dim_index(self, index):
         if np.isscalar(index):
@@ -9351,6 +9345,23 @@ class SourceSpace(SourceSpaceBase):
     def _read_surf(self, hemi, surf='orig'):
         path = Path(f'{self.subjects_dir}/{self.subject}/surf/{hemi}.{surf}')
         return read_geometry(path)
+
+    def index_for_label(self, label):
+        """Return the index for a label
+
+        Parameters
+        ----------
+        label : str | sequance of str | Label | BiHemiLabel
+            The name of a region in the current parcellation, or an :mod:`mne`
+            :class:`~mne.label.Label` object. If the label does not
+            match any sources in the SourceEstimate, a ValueError is raised.
+
+        Returns
+        -------
+        index : NDVar of bool
+            Index into the source space dim that corresponds to the label.
+        """
+        return SourceSpaceBase.index_for_label(self, label)
 
     def surface_coordinates(self, surf='white'):
         """Load surface coordinates for any FreeSurfer surface
@@ -9485,15 +9496,11 @@ class VolumeSourceSpace(SourceSpaceBase):
         coords = sss[0]['rr'][self.vertices[0]]
         return squareform(pdist(coords))
 
-    def _array_index(self, arg):
+    def _array_index(self, arg, allow_vertex=True):
         if isinstance(arg, str):
             if arg in ('lh', 'rh'):
                 return self.hemi == arg
-            elif self.parc is not None and arg in self.parc:
-                return self.parc == arg
-            else:
-                return self._array_index_for_vertex(arg)
-        return SourceSpaceBase._array_index(self, arg)
+        return SourceSpaceBase._array_index(self, arg, allow_vertex)
 
     def _array_index_for_vertex(self, vertex_desc):
         m = re.match(r'(\d+)$', vertex_desc)
