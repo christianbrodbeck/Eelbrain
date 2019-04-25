@@ -1336,7 +1336,11 @@ class EelFigure:
         self._axes = axes
         self.canvas = frame.canvas
         self._layout = layout
+<<<<<<< Updated upstream
         self._last_draw_time = 1.
+=======
+        self.__callback_chars = {}
+>>>>>>> Stashed changes
         self.__callback_key_press = {}
         self.__callback_key_release = {}
 
@@ -1353,8 +1357,12 @@ class EelFigure:
         self.canvas.mpl_connect('motion_notify_event', self._on_motion)
         self.canvas.mpl_connect('axes_leave_event', self._on_leave_axes)
         self.canvas.mpl_connect('resize_event', self._on_resize)
-        self.canvas.mpl_connect('key_press_event', self._on_key_press)
-        self.canvas.mpl_connect('key_release_event', self._on_key_release)
+        if backend['eelbrain']:
+            import wx
+            self._frame.Bind(wx.EVT_CHAR, self._on_key_wx)
+        else:
+            self.canvas.mpl_connect('key_press_event', self._on_key_mpl)
+
 
     def __repr__(self):
         return f'<{self._frame.GetTitle()}>'
@@ -1453,15 +1461,15 @@ class EelFigure:
             t_bottom = bbox[0, 1]
             self.figure.subplots_adjust(top=1 - 2 * (1 - t_bottom))
 
-    def _on_key_press(self, event):
-        if event.key in self.__callback_key_press:
-            self.__callback_key_press[event.key](event)
-            event.guiEvent.Skip(False)  # Matplotlib Skip()s all events
+    def _on_key_wx(self, event):
+        ch = chr(event.GetKeyCode())
+        if ch in self.__callback_chars:
+            self.__callback_chars[ch](ch)
 
-    def _on_key_release(self, event):
-        if event.key in self.__callback_key_release:
-            self.__callback_key_release[event.key](event)
-            event.guiEvent.Skip(False)
+    def _on_key_mpl(self, event):
+        if event.key in self.__callback_chars:
+            self.__callback_chars[event.key](event.key)
+            event.guiEvent.Skip(False)  # Matplotlib Skip()s all events
 
     def _on_leave_axes(self, event):
         "Update the status bar when the cursor leaves axes"
@@ -1514,17 +1522,10 @@ class EelFigure:
         if self._layout.tight:
             self._tight()
 
-    def _register_key(self, key, press=None, release=None):
-        if press:
-            if key in self.__callback_key_press:
-                raise RuntimeError("Attempting to assign key press %r twice" %
-                                   key)
-            self.__callback_key_press[key] = press
-        if release:
-            if key in self.__callback_key_release:
-                raise RuntimeError("Attempting to assign key release %r twice" %
-                                   key)
-            self.__callback_key_release[key] = release
+    def _register_key(self, key, callback):
+        if key in self.__callback_chars:
+            raise RuntimeError("Attempting to assign key %r twice" % key)
+        self.__callback_chars[key] = callback
 
     def _remove_crosshairs(self, draw=False):
         if self._crosshair_lines is not None:
@@ -2888,7 +2889,7 @@ class TopoMapKey:
         self._register_key('t', self.__on_topo)
         self._register_key('T', self.__on_topo)
 
-    def __on_topo(self, event):
+    def __on_topo(self, key):
         topo_data = self.__topo_data(event)
         if topo_data is None:
             return
@@ -2896,7 +2897,7 @@ class TopoMapKey:
         from ._topo import Topomap
 
         data, title, proj = topo_data
-        if event.key == 't':
+        if key == 't':
             Topomap(data, proj=proj, cmap=self._cmaps, vmax=self._vlims,
                     contours=self._contours, title=title)
         else:
