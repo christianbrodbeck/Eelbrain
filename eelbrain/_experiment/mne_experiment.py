@@ -58,7 +58,7 @@ from ..fmtxt import List, Report, Image, read_meta
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
 from .._text import enumeration, plural
-from .._utils import IS_WINDOWS, ask, subp, keydefaultdict, log_level, ScreenHandler, deprecated
+from .._utils import IS_WINDOWS, ask, subp, keydefaultdict, log_level, ScreenHandler
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .definitions import find_dependent_epochs, find_epochs_vars, log_dict_change, log_list_change
 from .epochs import PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, assemble_epochs, decim_param
@@ -4584,10 +4584,6 @@ class MneExperiment(FileTree):
 
         gui.select_epochs(ds, y_name, path=path, vlim=vlim, mark=eog_sns)
 
-    @deprecated('0.30', make_epoch_selection)
-    def make_rej(self, decim=None, auto=None, overwrite=False, **state):
-        pass
-
     def _need_not_recompute_report(self, dst, samples, data, redo):
         "Check (and log) whether the report needs to be redone"
         desc = self._get_rel('report-file', 'res-dir')
@@ -4658,10 +4654,6 @@ class MneExperiment(FileTree):
         --------
         load_test : load corresponding data and tests
         """
-        if 'sns_baseline' in state:
-            baseline = state.pop('sns_baseline')
-            warnings.warn("The sns_baseline parameter is deprecated and will be remove in version 0.30, use baseline instead", DeprecationWarning)
-
         if samples < 1:
             raise ValueError("samples needs to be > 0")
         elif include <= 0 or include > 1:

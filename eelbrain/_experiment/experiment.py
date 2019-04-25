@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 from .. import fmtxt
 from .._config import CONFIG
-from .._utils import as_sequence, LazyProperty, ask, deprecated
+from .._utils import as_sequence, LazyProperty, ask
 from .._utils.com import Notifier, NotNotifier
 from .definitions import check_names, compound
 
@@ -1271,83 +1271,6 @@ class FileTree(TreeModel):
         "Reveal the file corresponding to the ``temp`` template in the Finder."
         fname = self.get(temp, **kwargs)
         subprocess.call(["open", "-R", fname])
-
-    @deprecated('0.30', 'use .copy() or .move() instead')
-    def push(self, dst_root, names, overwrite=False, exclude=False, **kwargs):
-        """Copy files to another experiment root folder.
-
-        Before copying any files the user is asked for confirmation.
-
-        Parameters
-        ----------
-        dst_root : str
-            Path to the root to which the files should be copied.
-        names : str | sequence of str
-            Name(s) of the template(s) of the files that should be copied.
-        overwrite : bool
-            Overwrite target files if they already exist.
-        others :
-            Update experiment state.
-
-        See Also
-        --------
-        move : Move files to a different root folder.
-
-        Notes
-        -----
-        Use ``e.show_tree()`` to find out which element(s) to copy.
-        """
-        if isinstance(names, str):
-            names = [names]
-
-        # find files
-        files = []
-        for name in names:
-            for src in self.iter_temp(name, exclude=exclude, **kwargs):
-                if '*' in src:
-                    raise NotImplementedError("Can't fnmatch here yet")
-
-                if os.path.exists(src):
-                    dst = self.get(name, root=dst_root)
-                    if src == dst:
-                        raise ValueError("Source == destination (%r)" % src)
-
-                    if os.path.exists(dst):
-                        flag = 'o' if overwrite else 'e'
-                    else:
-                        flag = ' '
-                else:
-                    dst = None
-                    flag = 'm'
-                files.append((src, dst, flag))
-
-        # prompt for confirmation
-        root = self.get('root')
-        n_root = len(root)
-        for src, dst, flag in files:
-            if src.startswith(root):
-                src = src[n_root:]
-            print(' '.join((flag, src[-78:])))
-        print("Flags: o=overwrite, e=skip, it exists, m=skip, source is "
-              "missing")
-        if input("Proceed? (confirm with 'yes'): ") != 'yes':
-            return
-
-        # copy the files
-        for src, dst, flag in files:
-            if flag in ('e', 'm'):
-                continue
-
-            dirpath = os.path.dirname(dst)
-            if not os.path.exists(dirpath):
-                os.makedirs(dirpath)
-
-            if os.path.isdir(src):
-                if flag == 'o':
-                    shutil.rmtree(dst)
-                shutil.copytree(src, dst)
-            else:
-                shutil.copy(src, dst)
 
     def rename(self, old, new, exclude=False):
         """Rename all files corresponding to a pattern (or template)
