@@ -1031,38 +1031,41 @@ class FileTree(TreeModel):
                 raise TypeError("Need to specify at least one of root and dst_root")
             dst_root = self.get('root')
         src_filenames = self.glob(temp, inclusive, **state)
-        root = self.get('root')
-        errors = [filename for filename in src_filenames if not
-                  filename.startswith(root)]
-        if errors:
-            raise ValueError(
-                f"{len(errors)} files are not located in the root directory "
-                f"({errors[0]}, ...)")
-        rel_filenames = [os.path.relpath(filename, root) for filename in
-                         src_filenames]
-        dst_filenames = [os.path.join(dst_root, filename) for filename in
-                         rel_filenames]
-        if not overwrite:
-            exist = tuple(filter(os.path.exists, dst_filenames))
-            if exist:
-                raise ValueError(
-                    f"{len(exist)} of {len(src_filenames)} files already exist "
-                    f"({dst_filenames[0]}, ...)")
-
         n = len(src_filenames)
-        if not n:
+        if n == 0:
             print("No files matching pattern.")
-            return 0, None, None
+            return None, None
+
+        root = self.get('root')
+        errors = [filename for filename in src_filenames if not filename.startswith(root)]
+        if errors:
+            raise ValueError(f"{len(errors)} files are not located in the root directory ({errors[0]}, ...)")
+        rel_filenames = {src: os.path.relpath(src, root) for src in src_filenames}
+        dst_filenames = {src: os.path.join(dst_root, filename) for src, filename in rel_filenames.items()}
+        if overwrite is not True:
+            exist = [src for src, dst in dst_filenames.items() if os.path.exists(dst)]
+            if exist:
+                if overwrite is None:
+                    raise ValueError(f"{len(exist)} of {n} files already exist")
+                elif overwrite is False:
+                    if len(exist) == n:
+                        print(f"All {n} files already exist.")
+                        return None, None
+                    n -= len(exist)
+                    for src in exist:
+                        src_filenames.remove(src)
+                else:
+                    raise TypeError(f"overwrite={overwrite!r}")
+
         if not confirm:
             print(f"{action} {self.get('root')} -> {dst_root}:")
-            for filename in rel_filenames:
-                print("  " + filename)
+            for src in src_filenames:
+                print("  " + rel_filenames[src])
             if input(f"{action} {n} files? (confirm with 'yes'): ") != 'yes':
-                return 0, None, None
-        return n, src_filenames, dst_filenames
+                return None, None
+        return src_filenames, [dst_filenames[src] for src in src_filenames]
 
-    def copy(self, temp, dst_root=None, inclusive=False, confirm=False,
-             overwrite=False, **state):
+    def copy(self, temp, dst_root=None, inclusive=False, confirm=False, overwrite=None, **state):
         """Copy files to a different root folder
 
         Parameters
@@ -1078,7 +1081,8 @@ class FileTree(TreeModel):
         confirm : bool
             Skip asking for confirmation before copying the files.
         overwrite : bool
-            Overwrite target files if they already exist.
+            ``True`` to overwrite target files if they already exist. ``False``
+            to quietly keep exising files.
 
         See Also
         --------
@@ -1090,11 +1094,10 @@ class FileTree(TreeModel):
         -----
         State parameters can include an asterisk ('*') to match multiple files.
         """
-        n, src_filenames, dst_filenames = self._find_files_with_target(
-            'Copy', temp, dst_root, inclusive, overwrite, confirm, state)
-        if not n:
+        src_filenames, dst_filenames = self._find_files_with_target('Copy', temp, dst_root, inclusive, overwrite, confirm, state)
+        if not src_filenames:
             return
-        for src, dst in tqdm(zip(src_filenames, dst_filenames), "Copying", n):
+        for src, dst in tqdm(zip(src_filenames, dst_filenames), "Copying", len(src_filenames)):
             dirname = os.path.dirname(dst)
             if not os.path.exists(dirname):
                 os.makedirs(dirname)
@@ -1104,8 +1107,7 @@ class FileTree(TreeModel):
             else:
                 shutil.copy(src, dst)
 
-    def move(self, temp, dst_root=None, inclusive=False, confirm=False,
-             overwrite=False, **state):
+    def move(self, temp, dst_root=None, inclusive=False, confirm=False, overwrite=None, **state):
         """Move files to a different root folder
 
         Parameters
@@ -1133,11 +1135,12 @@ class FileTree(TreeModel):
         -----
         State parameters can include an asterisk ('*') to match multiple files.
         """
-        n, src_filenames, dst_filenames = self._find_files_with_target(
-            'Move', temp, dst_root, inclusive, overwrite, confirm, state)
-        if not n:
+        if overwrite is False:
+            raise ValueError(f"overwrite={overwrite!r}")
+        src_filenames, dst_filenames = self._find_files_with_target('Move', temp, dst_root, inclusive, overwrite, confirm, state)
+        if not src_filenames:
             return
-        for src, dst in tqdm(zip(src_filenames, dst_filenames), "Moving", n):
+        for src, dst in tqdm(zip(src_filenames, dst_filenames), "Moving", len(src_filenames)):
             dirname = os.path.dirname(dst)
             if not os.path.exists(dirname):
                 os.makedirs(dirname)
