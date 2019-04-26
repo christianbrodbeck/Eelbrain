@@ -769,7 +769,7 @@ class NDDifferenceTest(NDTest):
             mask = self.p > p
         return self._cdist.uncrop(mask, self.difference, True)
 
-    def masked_difference(self, p=0.05):
+    def masked_difference(self, p=0.05, name=None):
         """Difference map masked by significance
 
         Parameters
@@ -778,9 +778,11 @@ class NDDifferenceTest(NDTest):
             Threshold p-value for masking (default 0.05). For threshold-based
             cluster tests, ``pmin=1`` includes all clusters regardless of their
             p-value.
+        name : str
+            Name of the output NDVar.
         """
         mask = self._get_mask(p)
-        return self.difference.mask(mask)
+        return self.difference.mask(mask, name=name)
 
 
 class NDMaskedC1Mixin:
