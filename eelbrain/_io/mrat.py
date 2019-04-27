@@ -8,7 +8,7 @@ from .._data_obj import Dataset, Factor
 from .fiff import stc_ndvar
 
 
-class DatasetSTCLoader():
+class DatasetSTCLoader:
     """
     Load source estimates on disk into Dataset for use in statistical tests
 
@@ -28,11 +28,10 @@ class DatasetSTCLoader():
     levels : tuple of tuple of str
         Names of levels of each factor in ``factors``
     """
-    def __init__(self, data_dir, **stc_kwargs):
+    def __init__(self, data_dir):
         if not os.path.exists(data_dir):
             raise ValueError("Directory '%s' not found." % data_dir)
         self.data_dir = data_dir
-        self._stc_kwargs = stc_kwargs
         self.subjects = None
         self.levels = None
         self.factors = None
@@ -88,12 +87,12 @@ class DatasetSTCLoader():
             return None
         return " x ".join(map(str, self._level_lens))
 
-    def make_dataset(self, load_stcs=True):
+    def make_dataset(self, load_stcs=True, **stc_kwargs):
         """
         Load stcs into a Dataset with columns for subject and experimental factors
 
         Dataset contains one case per condition per subject, and source estimates
-        loaded as an NDVar. Any ``stc_kwargs`` from ``__init__`` are passed to
+        loaded as an NDVar. Any additional keyword arguments are passed to
         ``eelbrain.load.fiff.stc_ndvar()``.
 
         Parameters
@@ -123,5 +122,5 @@ class DatasetSTCLoader():
             stc_fnames.append(fnames[0])
         if load_stcs:
             stcs = list(map(read_source_estimate, stc_fnames))
-            ds["src"] = stc_ndvar(stcs, **self._stc_kwargs)
+            ds["src"] = stc_ndvar(stcs, **stc_kwargs)
         return ds
