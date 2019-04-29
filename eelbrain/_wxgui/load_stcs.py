@@ -29,6 +29,8 @@ class STCLoaderFrame(EelbrainFrame):
         self.Raise()
 
     def InitUI(self):
+        self.SetMinSize((500, -1))
+        self.status = self.CreateStatusBar(1)
         self.sizer = wx.BoxSizer(wx.VERTICAL) # top-level sizer
         data_title = TitleSizer(self, "MEG/MRI Information")
         self.sizer.Add(data_title, **self.add_params)
@@ -62,8 +64,13 @@ class STCLoaderFrame(EelbrainFrame):
 
     def OnDirChange(self, dir_picker_evt):
         """Create dataset loader and display level/factor names"""
+        self.factor_sizer.Clear(True)
         path = dir_picker_evt.GetPath()
-        self.loader = DatasetSTCLoader(path)
+        try:
+            self.loader = DatasetSTCLoader(path)
+        except:
+            self.status.SetStatusText("Error loading data from that directory.")
+            return
         self.DisplayLevels(self.loader.levels)
         self.submit.Enable()
 
@@ -71,7 +78,6 @@ class STCLoaderFrame(EelbrainFrame):
         """Show level names and factor name input for each factor"""
         self.design_title.ctl.Show()
         self.factor_name_ctrls = []
-        self.factor_sizer.Clear(True)
         for i, lvls in enumerate(levels):
             panel = FactorPanel(self, lvls, i)
             # self.factor_sizer.Add(panel, 0, wx.EXPAND | wx.RIGHT, 30)
