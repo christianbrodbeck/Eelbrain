@@ -37,7 +37,7 @@ These are elementary effects in a Model, and identified by :func:`is_effect`
 from collections import Iterable, Iterator, OrderedDict, Sequence
 from copy import deepcopy
 from functools import partial
-from itertools import chain, product, zip_longest
+from itertools import chain, product, repeat, zip_longest
 from keyword import iskeyword
 from math import ceil, log
 from numbers import Integral, Number
@@ -2776,7 +2776,7 @@ class NDVar:
     """
     def __init__(self, x, dims, info={}, name=None):
         # check data shape
-        if (isinstance(dims, Dimension) or dims is Case or isinstance(dims, str)):
+        if isinstance(dims, Dimension) or dims is Case or isinstance(dims, str):
             dims_ = [dims]
         else:
             dims_ = list(dims)
@@ -2911,11 +2911,8 @@ class NDVar:
                     i_add += 1
 
             # find data axes
-            self_axes = self.dimnames
-            if i_add:
-                self_axes += (None,) * i_add
-            other_axes = tuple(name if name in other.dimnames else None
-                               for name in dimnames)
+            self_axes = [*self.dimnames, *repeat(None, i_add)]
+            other_axes = [name if name in other.dimnames else None for name in dimnames]
 
             # find dims
             dims = []
@@ -3387,35 +3384,26 @@ class NDVar:
                 dim_axis = self.get_axis(dim.name)
                 index = FULL_AXIS_SLICE * dim_axis + (axis.x,)
                 x = func(self.x[index], dim_axis)
-                dims = tuple(self.dims[i] for i in range(self.ndim) if i != dim_axis)
+                dims = [self.dims[i] for i in range(self.ndim) if i != dim_axis]
             else:
-                # if the index does not contain all dimensions, numpy indexing
-                # is weird
-                if self.ndim - self.has_case != axis.ndim - axis.has_case:
-                    raise NotImplementedError(
-                        "If the index is not one dimensional, it needs to have "
-                        "the same dimensions as the data.")
                 dims, self_x, index = self._align(axis)
-                if self.has_case:
-                    if axis.has_case:
-                        x = np.array([func(x_[i]) for x_, i in zip(self_x, index)])
-                    else:
-                        index = index[0]
-                        x = np.array([func(x_[index]) for x_ in self_x])
-                    return Var(x, name, info=_info.for_data(x, self.info))
-                elif axis.has_case:
-                    raise IndexError("Index with case dimension can not be "
-                                     "applied to data without case dimension")
-                else:
-                    return func(self_x[index])
+                # move indexed dimensions to the back so they can be flattened
+                src = [ax for ax, n in enumerate(index.shape) if n != 1]
+                n_flatten = len(src)
+                dst = list(range(-n_flatten, 0))
+                x_t = np.moveaxis(self_x, src, dst)
+                x_flat = x_t.reshape((*x_t.shape[:-n_flatten], -1))
+                index_flat = index.ravel()
+                x = func(x_flat[..., index_flat], -1)
+                dims = [dim for i, dim in enumerate(dims) if i not in src]
         elif isinstance(axis, str):
             axis = self._dim_2_ax[axis]
             x = func(self.x, axis=axis)
-            dims = tuple(self.dims[i] for i in range(self.ndim) if i != axis)
+            dims = [self.dims[i] for i in range(self.ndim) if i != axis]
         else:
             axes = tuple(self._dim_2_ax[dim_name] for dim_name in axis)
             x = func(self.x, axes)
-            dims = tuple(self.dims[i] for i in range(self.ndim) if i not in axes)
+            dims = [self.dims[i] for i in range(self.ndim) if i not in axes]
 
         return self._package_aggregated_output(x, dims, _info.for_data(x, self.info), name)
 
