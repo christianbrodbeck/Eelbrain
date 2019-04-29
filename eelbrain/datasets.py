@@ -209,7 +209,7 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     src : False | 'ico' | 'vol'
         Add source space data as NDVar as ``ds['src']`` (default ``False``).
     sub : str | list | None
-        Expresion for subset of events to load. For a very small dataset use e.g.
+        Expression for subset of events to load. For a very small dataset use e.g.
         ``[0,1]``.
     ori : 'free' | 'fixed' | 'vector'
         Orientation of sources.
