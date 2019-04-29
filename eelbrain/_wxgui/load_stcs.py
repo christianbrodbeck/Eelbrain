@@ -16,6 +16,9 @@ TEST_MODE = False
 
 
 class STCLoaderFrame(EelbrainFrame):
+
+    add_params = dict(proportion=0, flag=wx.EXPAND | wx.ALL, border=10)
+
     def __init__(self, parent):
         super().__init__(parent, wx.ID_ANY, "Find and Load STCs")
         self.loader = None
@@ -26,27 +29,25 @@ class STCLoaderFrame(EelbrainFrame):
         self.Raise()
 
     def InitUI(self):
-        dir_label = wx.StaticText(self, label="Data directory")
-        dir_ctl = wx.DirPickerCtrl(self)
-        if dir_ctl.HasTextCtrl():
-            dir_ctl.SetTextCtrlProportion(5)
-            dir_ctl.SetPickerCtrlProportion(1)
-        self.dir_ctl = dir_ctl
+        self.sizer = wx.BoxSizer(wx.VERTICAL) # top-level sizer
+        data_title = TitleSizer(self, "MEG/MRI Information")
+        self.sizer.Add(data_title, **self.add_params)
+        dir_label = wx.StaticText(self, label=".stc Data Directory")
+        self.dir_ctl = wx.DirPickerCtrl(self)
+        if self.dir_ctl.HasTextCtrl():
+            self.dir_ctl.SetTextCtrlProportion(5)
+            self.dir_ctl.SetPickerCtrlProportion(1)
         vsizer = wx.BoxSizer(wx.VERTICAL)
         vsizer.Add(dir_label, 0, wx.BOTTOM, 2)
-        vsizer.Add(dir_ctl, 0, wx.EXPAND)
-        self.sizer = wx.BoxSizer(wx.VERTICAL)
-        self.sizer.Add(vsizer, 0, wx.EXPAND | wx.ALL, 10)
-        self.sizer.Add(self._create_mri_form(), 0,  wx.EXPAND | wx.ALL, 10)
+        vsizer.Add(self.dir_ctl, 0, wx.EXPAND)
+        self.sizer.Add(vsizer, **self.add_params)
+        self.mri_panel = MRIPanel(self)
+        self.sizer.Add(self.mri_panel, **self.add_params)
+        self.design_title = TitleSizer(self, "Experiment Design")
+        self.sizer.Add(self.design_title, **self.add_params)
+        self.design_title.ctl.Hide()
         self.factor_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        design_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.design_title = wx.StaticText(self, label="Experiment Structure")
-        font = wx.Font(18, wx.DEFAULT, wx.NORMAL, wx.BOLD)
-        self.design_title.SetFont(font)
-        design_sizer.Add(self.design_title)
-        self.sizer.Add(design_sizer, 0, wx.EXPAND | wx.ALL, 10)
-        self.design_title.Hide()
-        self.sizer.Add(self.factor_sizer, 0, wx.EXPAND | wx.ALL, 10)
+        self.sizer.Add(self.factor_sizer, **self.add_params)
         bottom_sizer = wx.BoxSizer(wx.HORIZONTAL)
         self.submit = wx.Button(self, wx.ID_ANY, "Load Data")
         self.submit.Disable()
@@ -56,10 +57,65 @@ class STCLoaderFrame(EelbrainFrame):
         self.SetSizer(self.sizer)
         self.sizer.Fit(self)
 
-        self.Bind(wx.EVT_DIRPICKER_CHANGED, self.OnDirChange, dir_ctl)
+        self.Bind(wx.EVT_DIRPICKER_CHANGED, self.OnDirChange, self.dir_ctl)
         self.Bind(wx.EVT_BUTTON, self.OnSubmit, self.submit)
 
-    def _create_mri_form(self):
+    def OnDirChange(self, dir_picker_evt):
+        """Create dataset loader and display level/factor names"""
+        path = dir_picker_evt.GetPath()
+        self.loader = DatasetSTCLoader(path)
+        self.DisplayLevels(self.loader.levels)
+        self.submit.Enable()
+
+    def DisplayLevels(self, levels):
+        """Show level names and factor name input for each factor"""
+        self.design_title.ctl.Show()
+        self.factor_name_ctrls = []
+        self.factor_sizer.Clear(True)
+        for i, lvls in enumerate(levels):
+            panel = FactorPanel(self, lvls, i)
+            # self.factor_sizer.Add(panel, 0, wx.EXPAND | wx.RIGHT, 30)
+            self.factor_sizer.Add(panel, 0, wx.EXPAND | wx.RIGHT, 30)
+            self.factor_name_ctrls.append(panel.factor_ctl)
+        self.factor_sizer.Layout()
+        self.sizer.Layout()
+        self.sizer.Fit(self)
+
+    def _get_factor_names(self):
+        return [c.GetValue() for c in self.factor_name_ctrls]
+
+    def _get_stc_kwargs(self):
+        kw = dict()
+        kw["subjects_dir"] = self.mri_panel.mri_dir.GetPath()
+        kw["subject"] = self.mri_panel.mri_subj.GetValue()
+        kw["src"] = self.mri_panel.mri_src.GetValue()
+        return kw
+
+    def OnSubmit(self, evt):
+        names = self._get_factor_names()
+        self.loader.set_factor_names(names)
+        stc_kw = self._get_stc_kwargs()
+        _ = self.loader.make_dataset(**stc_kw)
+        # Launch Stats GUI, passing ds to constructor
+
+
+class FactorPanel(wx.Panel):
+    def __init__(self, parent, levels, idx):
+        super().__init__(parent)
+        self.factor_ctl = wx.TextCtrl(self, value="factor_%d" % idx)
+        level_names = ["- " + i for i in levels]
+        level_ctl = wx.StaticText(self)
+        level_ctl.SetLabel("\n".join(level_names))
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.factor_ctl)
+        sizer.Add(level_ctl, 0, wx.EXPAND | wx.TOP, 10)
+        sizer.Layout()
+        self.SetSizer(sizer)
+
+
+class MRIPanel(wx.Panel):
+    def __init__(self, parent):
+        super().__init__(parent)
         sizer = wx.StaticBoxSizer(wx.VERTICAL, self, "")
         # check for subjects dir in environment
         sdir = os.environ.get("SUBJECTS_DIR")
@@ -75,14 +131,12 @@ class STCLoaderFrame(EelbrainFrame):
         # dropdown to choose source space sampling, default ico-4
         srcs = ["ico-%d" % i for i in range(2, 7)] + ["oct-%d" % i for i in range(2, 7)] + ["all"]
         src_ctl = wx.ComboBox(self, choices=srcs, value="ico-4")
-        # attach controls to frame for use in loader
+        # attach controls to panel for use in loader
         self.mri_dir = dir_ctl
         self.mri_subj = subj_ctl
         self.mri_src = src_ctl
-        ms = wx.BoxSizer(wx.VERTICAL)
-        ms.Add(wx.StaticText(self, label="MRI Directory"), 0, wx.BOTTOM, 2)
-        ms.Add(dir_ctl, 0, wx.EXPAND)
-        sizer.Add(ms, 0, wx.BOTTOM, 5)
+        sizer.Add(wx.StaticText(self, label="MRI Directory"), 0, wx.BOTTOM, 2)
+        sizer.Add(dir_ctl, 0, wx.EXPAND | wx.BOTTOM, 5)
         hs = wx.BoxSizer(wx.HORIZONTAL)
         for label, ctl in zip(("Subject", "Source Space"),
                               (subj_ctl, src_ctl)):
@@ -90,53 +144,15 @@ class STCLoaderFrame(EelbrainFrame):
             vs.Add(wx.StaticText(self, label=label), 0)
             vs.Add(ctl, 0)
             hs.Add(vs, 0, wx.RIGHT, 15)
-        sizer.Add(hs)
+        sizer.Add(hs, 0, wx.BOTTOM, 5)
         sizer.Layout()
-        return sizer
+        self.SetSizer(sizer)
 
-    def OnDirChange(self, dir_picker_evt):
-        """Create dataset loader and display level/factor names"""
-        path = dir_picker_evt.GetPath()
-        self.loader = DatasetSTCLoader(path)
-        self.DisplayLevels(self.loader.levels)
-        self.submit.Enable()
 
-    def DisplayLevels(self, levels):
-        """Show level names and factor name input for each factor"""
-        self.design_title.Show()
-        self.factor_name_ctrls = []
-        self.factor_sizer.Clear(True)
-        for i, lvls in enumerate(levels):
-            sizer = self._create_factor_sizer(lvls, i)
-            self.factor_sizer.Add(sizer, 0, wx.EXPAND | wx.RIGHT, 30)
-        self.factor_sizer.Layout()
-        self.sizer.Layout()
-        self.sizer.Fit(self)
-
-    def _create_factor_sizer(self, level_names, idx):
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        fctl = wx.TextCtrl(self, value="factor_%d" % idx, style=wx.TE_CENTER)
-        self.factor_name_ctrls.append(fctl)
-        ctl = wx.StaticText(self)
-        level_names = ["- " + i for i in level_names]
-        ctl.SetLabel("\n".join(level_names))
-        sizer.Add(fctl)
-        sizer.Add(ctl, 1, wx.EXPAND | wx.TOP, 10)
-        return sizer
-
-    def _get_factor_names(self):
-        return [c.GetValue() for c in self.factor_name_ctrls]
-
-    def _get_stc_kwargs(self):
-        kw = dict()
-        kw["subjects_dir"] = self.mri_dir.GetPath()
-        kw["subject"] = self.mri_subj.GetValue()
-        kw["src"] = self.mri_src.GetValue()
-        return kw
-
-    def OnSubmit(self, evt):
-        names = self._get_factor_names()
-        self.loader.set_factor_names(names)
-        stc_kw = self._get_stc_kwargs()
-        ds = self.loader.make_dataset(**stc_kw)
-        # Launch Stats GUI, passing ds to constructor
+class TitleSizer(wx.BoxSizer):
+    def __init__(self, parent, title):
+        super().__init__(wx.HORIZONTAL)
+        self.ctl = wx.StaticText(parent, label=title)
+        font = wx.Font(14, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+        self.ctl.SetFont(font)
+        self.Add(self.ctl)
