@@ -53,6 +53,9 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
     legend : str | int | 'fig' | None
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
+    labels : dict
+        Alternative labels for legend as ``{cell: label}`` dictionary (preserves
+        order).
     axtitle : bool | sequence of str
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.
@@ -79,6 +82,9 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
     xlim : scalar | (scalar, scalar)
         Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
         scalar (default is the full x-axis in the data).
+    clip : bool
+        Clip lines outside of axes (the default depends on whether ``frame`` is
+        closed or open).
     color : matplotlib color
         Color if just a single category of data is plotted.
     colors : str | list | dict
@@ -120,20 +126,20 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
      - ``c``: y-axis zoom out (increase y-axis range)
     """
     def __init__(self, y, x=None, xax=None, match=None, sub=None, ds=None,
-                 main=np.mean, error='sem', pool_error=None, legend='upper right',
+                 main=np.mean, error='sem', pool_error=None, legend='upper right', labels=None,
                  axtitle=True, xlabel=True, ylabel=True, xticklabels=-1,
                  invy=False, bottom=None, top=None, hline=None, xdim='time',
-                 xlim=None, color='b', colors=None, error_alpha=0.3,
+                 xlim=None, clip=None, color='b', colors=None, error_alpha=0.3,
                  clusters=None, pmax=0.05, ptrend=0.1, *args, **kwargs):
         # coerce input variables
-        sub = assub(sub, ds)
-        y = asndvar(y, sub, ds)
+        sub, n = assub(sub, ds, return_n=True)
+        y, n = asndvar(y, sub, ds, n, return_n=True)
         if x is not None:
-            x = ascategorial(x, sub, ds)
+            x = ascategorial(x, sub, ds, n)
         if xax is not None:
-            xax = ascategorial(xax, sub, ds)
+            xax = ascategorial(xax, sub, ds, n)
         if match is not None:
-            match = ascategorial(match, sub, ds)
+            match = ascategorial(match, sub, ds, n)
 
         if error and error != 'all' and \
                 (pool_error or (pool_error is None and match is not None)):
@@ -175,7 +181,8 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
 
         layout = Layout(nax, 2, 4, *args, autoscale='y', **kwargs)
         EelFigure.__init__(self, frame_title(y, x, xax), layout)
-        clip = layout.frame
+        if clip is None:
+            clip = layout.frame is True
 
         # create plots
         self._plots = []
@@ -208,7 +215,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         self._configure_xaxis_dim(ct.y.get_dim(xdim), xlabel, xticklabels)
         XAxisMixin._init_with_data(self, ((y,),), xdim, xlim)
         YLimMixin.__init__(self, self._plots)
-        LegendMixin.__init__(self, legend, legend_handles)
+        LegendMixin.__init__(self, legend, legend_handles, labels)
         self._update_ui_cluster_button()
         self._show()
 
@@ -323,6 +330,9 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     legend : str | int | 'fig' | None
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
+    labels : dict
+        Alternative labels for legend as ``{cell: label}`` dictionary (preserves
+        order).
     xlim : scalar | (scalar, scalar)
         Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
         scalar (default is the full x-axis in the data).
@@ -348,17 +358,15 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     """
     def __init__(self, y, xax=None, axtitle=True, ds=None, sub=None,
                  xlabel=True, ylabel=True, xticklabels=-1, bottom=None,
-                 top=None, legend='upper right', xlim=None, color=None, *args,
+                 top=None, legend='upper right', labels=None, xlim=None, color=None, *args,
                  **kwargs):
         data = PlotData.from_args(y, (None,), xax, ds, sub)
         xdim = data.dims[0]
         layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data)
-
-        e0 = data.data[0][0]
-        self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
-        self._configure_yaxis(e0, ylabel)
+        self._configure_xaxis_dim(data.y0.get_dim(xdim), xlabel, xticklabels)
+        self._configure_yaxis(data, ylabel)
 
         self.plots = []
         legend_handles = {}
@@ -378,7 +386,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         self.epochs = data.data
         XAxisMixin._init_with_data(self, data.data, xdim, xlim)
         YLimMixin.__init__(self, self.plots)
-        LegendMixin.__init__(self, legend, legend_handles)
+        LegendMixin.__init__(self, legend, legend_handles, labels)
         TimeSlicerEF.__init__(self, xdim, data.time_dim)
         self._show()
 
@@ -503,9 +511,8 @@ class UTSClusters(EelFigure):
             cax = _ax_uts_clusters(ax, stat, cs, colors[i], pmax, ptrend, xdim)
             self._caxes.append(cax)
 
-        e0 = data.data[0][0]
-        self._configure_yaxis(e0, True)
-        self._configure_xaxis_dim(e0.get_dim(xdim), True, xticklabels)
+        self._configure_yaxis(data, True)
+        self._configure_xaxis_dim(data.y0.get_dim(xdim), True, xticklabels)
         self.clusters = clusters_
         self._show()
 
@@ -541,10 +548,10 @@ class _ax_uts:
             self.legend_handles[longname(l)] = p.plot_handle
             contours = l.info.get('contours', None)
             if contours:
-                for v, color in contours.items():
+                for v, c in contours.items():
                     if v in contours:
                         continue
-                    contours[v] = ax.axhline(v, color=color)
+                    contours[v] = ax.axhline(v, color=c)
 
         self.ax = ax
         self.set_ylim(vmin, vmax)

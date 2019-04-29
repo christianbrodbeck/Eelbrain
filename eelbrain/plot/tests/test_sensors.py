@@ -1,8 +1,4 @@
-'''
-Created on Jul 11, 2013
-
-@author: christian
-'''
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import numpy as np
 from numpy.testing import assert_array_equal
 

@@ -61,6 +61,7 @@ functions executed are:
 import __main__
 
 from collections import Iterable, Iterator
+from copy import copy
 from enum import Enum, auto
 from itertools import chain
 from logging import getLogger
@@ -92,7 +93,7 @@ from .._utils.subp import command_exists
 from ..fmtxt import Image
 from ..mne_fixes import MNE_EPOCHS
 from .._ndvar import erode, resample
-from .._text import ms
+from .._text import enumeration, ms
 from ._utils import adjust_hsv
 from functools import reduce
 
@@ -102,9 +103,6 @@ POINT = 0.013888888888898
 
 # defaults
 defaults = {'maxw': 16, 'maxh': 10}
-
-# store figures (they need to be preserved)
-figures = []
 
 
 class PlotType(Enum):
@@ -179,7 +177,7 @@ def find_axis_params_data(v, label):
 
     Parameters
     ----------
-    v : NDVar | Var | str | scalar
+    v : PlotData | NDVar | Var | str | scalar
         Unit or scale of the axis. See ``unit_format`` dict above for options.
     label : bool | str
         If ``label is True``, try to infer a label from ``v``.
@@ -192,14 +190,23 @@ def find_axis_params_data(v, label):
         Axis label.
     """
     if isinstance(v, str):
+        meas = None
         unit = v
         scale = UNIT_FORMAT.get(v, 1)
     elif isinstance(v, float):
+        meas = None
         scale = v
         unit = None
-    elif isnumeric(v):
-        meas = v.info.get('meas')
-        data_unit = v.info.get('unit')
+    else:
+        if isnumeric(v):
+            meas = v.info.get('meas')
+            data_unit = v.info.get('unit')
+        elif isinstance(v, PlotData):
+            meas = v.meas
+            data_unit = v.unit
+        else:
+            raise TypeError("unit=%s" % repr(v))
+
         if data_unit in DISPLAY_UNIT:
             unit = DISPLAY_UNIT[data_unit]
             scale = UNIT_FORMAT[unit]
@@ -208,18 +215,18 @@ def find_axis_params_data(v, label):
         else:
             scale = 1
             unit = data_unit
-    else:
-        raise TypeError("unit=%s" % repr(v))
 
     if label is True:
         if meas and unit and meas != unit:
-            label = '%s [%s]' % (meas, unit)
+            label = f'{meas} [{unit}]'
         elif meas:
             label = meas
         elif unit:
             label = unit
-        else:
-            label = getattr(v, 'name', None)
+        elif isinstance(v, PlotData):
+            label = v.default_y_label
+        elif isnumeric(v):
+            label = v.name
 
     # ScalarFormatter: disabled because it always used e notation in status bar
     # (needs separate instance because it adapts to data)
@@ -572,7 +579,7 @@ def find_data_dims(ndvar, dims, extra_dim=None):
 
         if extra_dim:
             dimnames.remove(extra_dim)
-        return agg, tuple(dimnames)
+    return agg, tuple(dimnames)
 
 
 def brain_data(
@@ -815,7 +822,7 @@ class LayerData:
         elif plot_type == PlotType.IMAGE:
             x = NDVar(self.y.x.data, self.y.dims, self.y.info, self.y.name)
             yield LayerData(x, PlotType.IMAGE)
-            x = NDVar(1. - self.y.x.mask, self.y.dims, name=self.y.name)
+            x = NDVar(1. - self.y.x.mask, self.y.dims, {'meas': 'mask'}, self.y.name)
             yield LayerData(x, PlotType.CONTOUR, {'levels': [0.5], 'colors': ['black']}, bin_func=np.max)
         else:
             raise RuntimeError(f"plot_type={plot_type!r}")
@@ -924,6 +931,13 @@ class PlotData:
         self._plot_names = plot_names
         self.plot_type = plot_type
 
+    def __repr__(self):
+        desc = [f'{self.n_plots} plots']
+        if not all(self.plot_used):
+            desc.append(f'{len(self.plot_used) - self.n_plots} empty')
+        desc.append(' x '.join(self.dims))
+        return f"<PlotData {self.frame_title!r}: {', '.join(desc)}>"
+
     def _cannot_skip_axes(self, parent):
         if not all(self.plot_used):
             raise NotImplementedError(f"y can not contain None for {parent.__class__.__name__} plot")
@@ -975,8 +989,6 @@ class PlotData:
             ys = (asndvar(ys, sub, ds),)
         elif not isinstance(ys, (tuple, list, Iterator)):
             ys = (ys,)
-        else:
-            ys = ys
 
         ax_names = None
         if xax is None:
@@ -1076,6 +1088,31 @@ class PlotData:
                 return layer.y
         raise IndexError("No data")
 
+    @property
+    def default_y_label(self):
+        "Y-label in case meas and unit are uninformative"
+        names = {l.y.name for ax in self.plot_data for l in ax}
+        names.discard(None)
+        if len(names) == 1:
+            return names.pop()
+        return None
+
+    @property
+    def meas(self):
+        meass = {l.y.info.get('meas') for ax in self.plot_data for l in ax}
+        meass.discard(None)
+        if len(meass) == 1:
+            return meass.pop()
+        return None
+
+    @property
+    def unit(self):
+        units = {l.y.info.get('unit') for ax in self.plot_data for l in ax}
+        units.discard(None)
+        if len(units) == 1:
+            return units.pop()
+        return None
+
     @LazyProperty
     def data(self):
         "For backwards compatibility with nested list of NDVar"
@@ -1137,7 +1174,7 @@ def aggregate(y, agg):
     return y if agg is None else y.mean(agg)
 
 
-class mpl_figure:
+class MatplotlibFrame:
     "Cf. _wxgui.mpl_canvas"
     def __init__(self, **fig_kwargs):
         "Create self.figure and self.canvas attributes and return the figure"
@@ -1146,6 +1183,7 @@ class mpl_figure:
         self._plt = pyplot
         self.figure = pyplot.figure(**fig_kwargs)
         self.canvas = self.figure.canvas
+        self._background = None
 
     def Close(self):
         self._plt.close(self.figure)
@@ -1254,6 +1292,7 @@ class EelFigure:
     _can_set_vlim = False
     _can_set_ylim = False
     _can_set_xlim = False
+    _has_frame = False
 
     def __init__(self, data_desc, layout):
         """Parent class for Eelbrain figures.
@@ -1267,18 +1306,19 @@ class EelFigure:
         """
         name = self.__class__.__name__
         desc = layout.name or data_desc
-        frame_title = f'{name}: {desc}' if desc else name
 
         # find the right frame
         if CONFIG['eelbrain']:
             from .._wxgui import get_app
             from .._wxgui.mpl_canvas import CanvasFrame
             get_app()
-            frame_ = CanvasFrame(title=frame_title, eelfigure=self, **layout.fig_kwa())
+            title = f'{name}: {desc}' if desc else name
+            frame = CanvasFrame(title=title, eelfigure=self, **layout.fig_kwa())
+            self._has_frame = True
         else:
-            frame_ = mpl_figure(**layout.fig_kwa())
+            frame = MatplotlibFrame(**layout.fig_kwa())
 
-        figure = frame_.figure
+        figure = frame.figure
         if layout.title:
             self._figtitle = figure.suptitle(layout.title)
         else:
@@ -1291,10 +1331,10 @@ class EelFigure:
             axes = []
 
         # store attributes
-        self._frame = frame_
+        self._frame = frame
         self.figure = figure
         self._axes = axes
-        self.canvas = frame_.canvas
+        self.canvas = frame.canvas
         self._layout = layout
         self._last_draw_time = 1.
         self.__callback_key_press = {}
@@ -1319,7 +1359,7 @@ class EelFigure:
     def __repr__(self):
         return f'<{self._frame.GetTitle()}>'
 
-    def _set_axtitle(self, axtitle, data=None, axes=None, names=None):
+    def _set_axtitle(self, axtitle, data=None, axes=None, names=None, **kwargs):
         """Set axes titles automatically
 
         Parameters
@@ -1334,6 +1374,8 @@ class EelFigure:
             or a tuple of titles.
         names : sequence of str
             Instead of using ``epochs`` name attributes, use these names.
+        ...
+            Matplotlib ``Axes.set_title()`` parameters.
         """
         if axtitle is False or axtitle is None:
             return
@@ -1368,7 +1410,7 @@ class EelFigure:
             return axtitle
 
         for title, ax in zip(axtitle, axes):
-            ax.set_title(title)
+            ax.set_title(title, **kwargs)
 
     def _show(self, crosshair_axes=None):
         if self._layout.tight:
@@ -1394,8 +1436,8 @@ class EelFigure:
                 from .._wxgui import run
                 run()
 
-        if not self.canvas._background:
-            self.canvas.store_canvas()
+        if self._has_frame and not self.canvas._background:
+            self._frame.store_canvas()
 
     def _tight(self):
         "Default implementation based on matplotlib"
@@ -1600,10 +1642,10 @@ class EelFigure:
                     if label:
                         self.set_ylabel(label, ax)
 
-    def _configure_yaxis(self, v, label, axes=None):
+    def _configure_yaxis(self, data, label, axes=None):
         if axes is None:
             axes = self._axes
-        formatter, label = find_axis_params_data(v, label)
+        formatter, label = find_axis_params_data(data, label)
         for ax in axes:
             ax.yaxis.set_major_formatter(formatter)
 
@@ -2128,8 +2170,7 @@ class Layout(BaseLayout):
         axes = []
         kwargs = {}
         for i in self.axes:
-            ax = figure.add_subplot(self.nrow, self.ncol, i + 1,
-                                    autoscale_on=self.autoscale, **kwargs)
+            ax = figure.add_subplot(self.nrow, self.ncol, i + 1, autoscale_on=self.autoscale, **kwargs)
             axes.append(ax)
             if self.share_axes:
                 kwargs.update(sharex=ax, sharey=ax)
@@ -2255,14 +2296,12 @@ class VariableAspectLayout(BaseLayout):
 
         # convert to figure coords
         height = axh / h
-        lefts_ = tuple(l / w for l in lefts)
-        widths_ = tuple(w_ / w for w_ in widths)
-        bottoms_ = (b / h for b in bottoms)
+        lefts_ = [l / w for l in lefts]
+        widths_ = [w_ / w for w_ in widths]
+        bottoms_ = [b / h for b in bottoms]
 
         # rectangles:  (left, bottom, width, height)
-        rects = (((l, bottom, w, height) for l, w in zip(lefts_, widths_)) for
-                 bottom in bottoms_)
-        self._ax_rects = rects
+        self._ax_rects = [[(l, bottom, w, height) for l, w in zip(lefts_, widths_)] for bottom in bottoms_]
 
     def make_axes(self, figure):
         axes = []
@@ -2449,22 +2488,26 @@ class LegendMixin:
                  'center left', 'center right', 'lower center', 'upper center',
                  'center')
     __args = (False, 'fig', 'draggable', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+    _has_frame = None
 
-    def __init__(self, legend, legend_handles):
+    def __init__(self, loc, handles, labels=None):
         """Legend toolbar menu mixin
 
         Parameters
         ----------
-        legend : str | int | 'fig' | None
+        loc : str | int | 'fig' | None
             Matplotlib figure legend location argument or 'fig' to plot the
             legend in a separate figure.
-        legend_hamdles : dict
+        handles : dict
             {cell: handle} dictionary.
+        labels : dict
+            Dictionary with labels for cells.
         """
-        self.__handles = legend_handles
+        self.__handles = handles
         self.legend = None
+        self.__labels = copy(labels)
         if self.__handles:
-            self.plot_legend(legend)
+            self.plot_legend(loc, labels)
 
     def _fill_toolbar(self, tb):
         from .._wxgui import wx
@@ -2532,13 +2575,13 @@ class LegendMixin:
             choice = 0
             arg = False
         elif loc not in self.__args:
-            raise ValueError("Invalid legend location: %r; use one of: %s" %
-                             (loc, ', '.join(map(repr, self.__choices))))
+            raise ValueError(f"Invalid legend location: {loc!r}; use one of: {enumeration(map(repr, self.__choices), 'or')}")
         else:
             choice = self.__args.index(loc)
             arg = loc
 
-        self.__ctrl.SetSelection(choice)
+        if self._has_frame:
+            self.__ctrl.SetSelection(choice)
 
         if arg is not False:
             return self.__plot(loc, labels, *args, **kwargs)
@@ -2558,30 +2601,36 @@ class LegendMixin:
     def __plot(self, loc, labels=None, *args, **kwargs):
         if loc and self.__handles:
             if labels is None:
-                labels = [cellname(cell) for cell in self.__handles]
-            elif isinstance(labels, dict):
-                labels = [labels[cell] for cell in self.__handles]
+                labels = self.__labels
             else:
-                raise TypeError("labels=%r; needs to be dict" % (labels,))
-            handles = [self.__handles[cell] for cell in self.__handles]
+                self.__labels = copy(labels)
+
+            if labels is None:
+                cells = list(self.__handles)
+                labels = [cellname(cell) for cell in cells]
+            elif isinstance(labels, dict):
+                cells = list(labels.keys())
+                labels = list(labels.values())
+            else:
+                raise TypeError(f"labels={labels!r}; needs to be dict")
+            handles = [self.__handles[cell] for cell in cells]
             if loc == 'fig':
                 return Legend(handles, labels, *args, **kwargs)
             else:
-                # take care of old legend; remove() not implemented as of mpl 1.3
+                # take care of old legend
                 if self.legend is not None and loc == 'draggable':
-                    self.legend.draggable(True)
+                    self.legend.set_draggable(True)
                 elif self.legend is not None:
-                    self.legend.set_visible(False)
-                    self.legend.draggable(False)
+                    self.legend.remove()
                 elif loc == 'draggable':
                     self.legend = self.figure.legend(handles, labels, loc=1)
-                    self.legend.draggable(True)
+                    self.legend.set_draggable(True)
 
                 if loc != 'draggable':
                     self.legend = self.figure.legend(handles, labels, loc=loc)
                 self.draw()
         elif self.legend is not None:
-            self.legend.set_visible(False)
+            self.legend.remove()
             self.legend = None
             self.draw()
         elif not self.__handles:
@@ -2615,12 +2664,13 @@ class TimeController:
         self.current_time = t
         self.fixate = fixate
 
-    def add_plot(self, plot):
+    def add_plot(self, plot: 'TimeSlicer'):
         if plot._time_controller is None:
-            plot._set_time(self.current_time, self.fixate)
+            t = plot._validate_time(self.current_time)
+            plot._set_time(t, self.fixate)
             self._plots.append(weakref.ref(plot))
             plot._time_controller = self
-        else:
+        elif plot._time_controller is not self:
             self.merge(plot._time_controller)
 
     def iter_plots(self):
@@ -2687,8 +2737,7 @@ class TimeSlicer:
         if self._time_dim is None:
             raise NotImplementedError("Slice plot for dimension other than time")
         elif not isinstance(other, TimeSlicer):
-            raise TypeError("%s plot does not support linked time axes" %
-                            other.__class__.__name__)
+            raise TypeError(f"{other.__class__.__name__} plot does not support linked time axes")
         elif other._time_dim is None:
             raise NotImplementedError("Slice plot for dimension other than time")
         elif other._time_controller:

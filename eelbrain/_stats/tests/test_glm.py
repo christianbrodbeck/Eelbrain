@@ -1,13 +1,13 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from itertools import repeat
+from pathlib import Path
 
-from nose.tools import (eq_, assert_almost_equal, assert_is_instance,
-    assert_raises, nottest)
 import numpy as np
 from numpy import newaxis
 from numpy.testing import assert_allclose
+import pytest
 
-from eelbrain import datasets, test, testnd, Dataset, NDVar
+from eelbrain import datasets, load, test, testnd, Dataset, Factor, NDVar, Var
 from eelbrain._data_obj import UTS
 from eelbrain._exceptions import IncompleteModel
 from eelbrain._stats import glm
@@ -16,7 +16,6 @@ from eelbrain._utils.r_bridge import r, r_require, r_warning_filter
 from eelbrain.testing import requires_r_ez
 
 
-@nottest
 def assert_f_test_equal(f_test, r_res, r_row, f_lmf, f_nd, r_kind='aov'):
     if r_kind in ('aov', 'rmaov'):
         r_res = {'df': r_res[0][r_row], 'SS': r_res[1][r_row],
@@ -30,18 +29,17 @@ def assert_f_test_equal(f_test, r_res, r_row, f_lmf, f_nd, r_kind='aov'):
     else:
         raise ValueError("invalid r_kind=%r" % r_kind)
 
-    eq_(f_test.df, r_res['df'])
+    assert f_test.df == r_res['df']
     if 'SS' is r_res:
-        assert_almost_equal(f_test.SS, r_res['SS'])
+        assert f_test.SS == pytest.approx(r_res['SS'])
     if 'MS' in r_res:
-        assert_almost_equal(f_test.MS, r_res['MS'])
-    assert_almost_equal(f_test.F, r_res['F'])
-    assert_almost_equal(f_test.p, r_res['p'])
-    assert_almost_equal(f_lmf, r_res['F'])  # lm-fitter comparison"
-    assert_almost_equal(f_nd, r_res['F'])  # nd-anova comparison"
+        assert f_test.MS == pytest.approx(r_res['MS'])
+    assert f_test.F == pytest.approx(r_res['F'])
+    assert f_test.p == pytest.approx(r_res['p'])
+    assert f_lmf == pytest.approx(r_res['F'])  # lm-fitter comparison"
+    assert f_nd == pytest.approx(r_res['F'])  # nd-anova comparison"
 
 
-@nottest
 def assert_f_tests_equal(f_tests, r_res, fs, fnds, r_kind='aov'):
     if r_kind == 'ez':
         r_results = []
@@ -85,7 +83,7 @@ def run_as_ndanova(y, x, ds):
     f1 = [fmap.x[0] for fmap in res.f]
     f2 = [fmap.x[1] for fmap in res.f]
     for f1_, f2_ in zip(f1, f2):
-        eq_(f1_, f2_)
+        assert f1_ == f2_
     return f1
 
 
@@ -98,7 +96,16 @@ def test_anova():
 
     # fixed effects
     aov = test.ANOVA('fltvar', 'A*B', ds=ds)
-    print(aov)
+    assert f'\n{aov}\n' == """
+                SS   df      MS          F        p
+---------------------------------------------------
+A            28.69    1   28.69   25.69***   < .001
+B             0.04    1    0.04    0.03        .855
+A x B         1.16    1    1.16    1.04        .310
+Residuals    84.85   76    1.12                    
+---------------------------------------------------
+Total       114.74   79
+"""
     fs = run_on_lm_fitter('fltvar', 'A*B', ds)
     fnds = run_as_ndanova('fltvar', 'A*B', ds)
     r_res = r("Anova(lm(fltvar ~ A * B, ds, type=2))")
@@ -106,7 +113,15 @@ def test_anova():
 
     # random effect
     aov = test.ANOVA('fltvar', 'A*B*rm', ds=ds)
-    print(aov)
+    assert f'\n{aov}\n' == """
+            SS   df      MS   MS(denom)   df(denom)          F        p
+-----------------------------------------------------------------------
+A        28.69    1   28.69        1.21          19   23.67***   < .001
+B         0.04    1    0.04        1.15          19    0.03        .859
+A x B     1.16    1    1.16        1.01          19    1.15        .297
+-----------------------------------------------------------------------
+Total   114.74   79
+"""
     fs = run_on_lm_fitter('fltvar', 'A*B*rm', ds)
     fnds = run_as_ndanova('fltvar', 'A*B*rm', ds)
     r('test.aov <- aov(fltvar ~ A * B + Error(rm / (A * B)), ds)')
@@ -126,7 +141,7 @@ def test_anova_eq():
     # nested random effect
     aov_explicit = test.ANOVA('fltvar', 'A + B + A%B + nrm(B) + A%nrm(B)', ds=ds)
     aov = test.ANOVA('fltvar', 'A * B * nrm(B)', ds=ds)
-    eq_(str(aov_explicit), str(aov))
+    assert str(aov_explicit) == str(aov)
     print(aov)
     fs = run_on_lm_fitter('fltvar', 'A * B * nrm(B)', ds)
     fnds = run_as_ndanova('fltvar', 'A * B * nrm(B)', ds)
@@ -136,10 +151,11 @@ def test_anova_eq():
     # sub parameter
     r1 = test.ANOVA('fltvar', 'B * rm', ds=ds.sub('A == "a1"'))
     r2 = test.ANOVA('fltvar', 'B * rm', sub='A == "a1"', ds=ds)
-    eq_(str(r2), str(r1))
+    assert str(r2) == str(r1)
 
     # not fully specified model with random effects
-    assert_raises(IncompleteModel, test.anova, 'fltvar', 'A*rm', ds=ds)
+    with pytest.raises(IncompleteModel):
+        test.anova('fltvar', 'A*rm', ds=ds)
 
     # unequal group size, 1-way
     sds = ds.sub("A == 'a1'").sub("nrm.isnotin(('s037', 's038', 's039'))")
@@ -165,23 +181,28 @@ def test_anova_eq():
 
     # empty cells
     dss = ds.sub("A%B != ('a2', 'b2')")
-    assert_raises(NotImplementedError, test.anova, 'fltvar', 'A*B', ds=dss)
-    assert_raises(NotImplementedError, run_on_lm_fitter, 'fltvar', 'A*B', ds=dss)
+    with pytest.raises(NotImplementedError):
+        test.anova('fltvar', 'A*B', ds=dss)
+    with pytest.raises(NotImplementedError):
+        run_on_lm_fitter('fltvar', 'A*B', ds=dss)
     dss = ds.sub("A%B != ('a1', 'b1')")
-    assert_raises(NotImplementedError, test.anova, 'fltvar', 'A*B', ds=dss)
-    assert_raises(NotImplementedError, run_on_lm_fitter, 'fltvar', 'A*B', ds=dss)
+    with pytest.raises(NotImplementedError):
+        test.anova('fltvar', 'A*B', ds=dss)
+    with pytest.raises(NotImplementedError):
+        run_on_lm_fitter('fltvar', 'A*B', ds=dss)
 
 
 def test_ndanova():
     ds = datasets.get_uts(nrm=True)
     ds['An'] = ds['A'].as_var({'a0': 0, 'a1': 1})
 
-    assert_raises(NotImplementedError, testnd.anova, 'uts', 'An*B*rm', ds=ds)
+    with pytest.raises(NotImplementedError):
+        testnd.anova('uts', 'An*B*rm', ds=ds)
 
     # nested random effect
     res = testnd.anova('uts', 'A + A%B + B * nrm(A)', ds=ds, match='nrm',
                        samples=100, pmin=0.05)
-    eq_(len(res.find_clusters(0.05)), 8)
+    assert len(res.find_clusters(0.05)) == 8
 
 
 def test_anova_perm():
@@ -224,6 +245,144 @@ def test_anova_perm():
         y_perm[perm] = y
         aov.map(y_perm)
         assert_allclose(r2, r1, 1e-6, 1e-6)
+
+
+@pytest.mark.skip('Rounding error on different platforms')
+def test_anova_crawley():
+    y = Var([2, 3, 3, 4, 3, 4, 5, 6,
+             1, 2, 1, 2, 1, 1, 2, 2,
+             2, 2, 2, 2, 1, 1, 2, 3], name="Growth Rate")
+    genot = Factor(range(6), repeat=4, name="Genotype")
+    hrs = Var([8, 12, 16, 24], tile=6, name="Hours")
+    aov = test.anova(y, hrs * genot)
+    assert f'\n{aov}\n' == """
+                      SS   df     MS          F        p
+--------------------------------------------------------
+Hours               7.06    1   7.06   54.90***   < .001
+Genotype           27.88    5   5.58   43.36***   < .001
+Hours x Genotype    3.15    5   0.63    4.90*       .011
+Residuals           1.54   12   0.13                    
+--------------------------------------------------------
+Total              39.62   23
+"""
+
+
+def test_anova_fox():
+    data_path = Path(__file__).parents[3] / 'examples' / 'statistics' / 'Fox_Prestige_data.txt'
+    ds = load.txt.tsv(data_path, delimiter=None)
+    ds = ds.sub("type != 'NA'")
+    aov = test.anova('prestige', '(income + education) * type', ds=ds)
+    assert f'\n{aov}\n' == """
+                         SS   df        MS          F        p
+--------------------------------------------------------------
+income              1131.90    1   1131.90   28.35***   < .001
+education           1067.98    1   1067.98   26.75***   < .001
+type                 591.16    2    295.58    7.40**      .001
+income x type        951.77    2    475.89   11.92***   < .001
+education x type     238.40    2    119.20    2.99        .056
+Residuals           3552.86   89     39.92                    
+--------------------------------------------------------------
+Total              28346.88   97
+"""
+
+
+def test_anova_rutherford():
+    # ANOVA 1
+    y = Var([7, 3, 6, 6, 5, 8, 6, 7,
+             7, 11, 9, 11, 10, 10, 11, 11,
+             8, 14, 10, 11, 12, 10, 11, 12],
+            name='y')
+    a = Factor('abc', repeat=8, name='A')
+    subject = Factor(list(range(24)), name='subject', random=True)
+    aov = test.anova(y, a + subject(a))
+    assert f'\n{aov}\n' == """
+            SS   df      MS   MS(denom)   df(denom)          F        p
+-----------------------------------------------------------------------
+A       112.00    2   56.00        2.48          21   22.62***   < .001
+-----------------------------------------------------------------------
+Total   164.00   23
+"""
+    aov = test.anova(y, a)
+    assert f'\n{aov}\n' == """
+                SS   df      MS          F        p
+---------------------------------------------------
+A           112.00    2   56.00   22.62***   < .001
+Residuals    52.00   21    2.48                    
+---------------------------------------------------
+Total       164.00   23
+"""
+    subject = Factor(range(8), tile=3, name='subject', random=True)
+    aov = test.anova(y, a * subject)
+    assert f'\n{aov}\n' == """
+            SS   df      MS   MS(denom)   df(denom)          F        p
+-----------------------------------------------------------------------
+A       112.00    2   56.00        2.71          14   20.63***   < .001
+-----------------------------------------------------------------------
+Total   164.00   23
+"""
+
+    # ANCOVA
+    y = Var([16, 7, 11, 9, 10, 11, 8, 8,
+             16, 10, 13, 10, 10, 14, 11, 12,
+             24, 29, 10, 22, 25, 28, 22, 24])
+    cov = Var([9, 5, 6, 4, 6, 8, 3, 5,
+               8, 5, 6, 5, 3, 6, 4, 6,
+               5, 8, 3, 4, 6, 9, 4, 5], name='cov')
+    a = Factor([1, 2, 3], repeat=8, name='A')
+    aov = test.anova(y, a + cov)
+    assert f'\n{aov}\n' == """
+                 SS   df       MS          F        p
+-----------------------------------------------------
+A            807.82    2   403.91   62.88***   < .001
+cov          199.54    1   199.54   31.07***   < .001
+Residuals    128.46   20     6.42                    
+-----------------------------------------------------
+Total       1112.00   23
+"""
+    aov = test.anova(y, cov * a)
+    assert f'\n{aov}\n' == """
+                 SS   df       MS          F        p
+-----------------------------------------------------
+cov          199.54    1   199.54   32.93***   < .001
+A            807.82    2   403.91   66.66***   < .001
+cov x A       19.39    2     9.70    1.60        .229
+Residuals    109.07   18     6.06                    
+-----------------------------------------------------
+Total       1112.00   23
+"""
+    
+    # ANOVA 2
+    y = Var([7, 3, 6, 6, 5, 8, 6, 7,
+             7, 11, 9, 11, 10, 10, 11, 11,
+             8, 14, 10, 11, 12, 10, 11, 12,
+             16, 7, 11, 9, 10, 11, 8, 8,
+             16, 10, 13, 10, 10, 14, 11, 12,
+             24, 29, 10, 22, 25, 28, 22, 24])
+    a = Factor([1, 0], repeat=3 * 8, name='A')
+    b = Factor(list(range(3)), tile=2, repeat=8, name='B')
+    # Independent Measures:
+    subject = Factor(list(range(8 * 6)), name='subject', random=True)
+    aov = test.anova(y, a * b + subject(a % b))
+    assert f'\n{aov}\n' == """
+             SS   df       MS   MS(denom)   df(denom)          F        p
+-------------------------------------------------------------------------
+A        432.00    1   432.00        9.05          42   47.75***   < .001
+B        672.00    2   336.00        9.05          42   37.14***   < .001
+A x B    224.00    2   112.00        9.05          42   12.38***   < .001
+-------------------------------------------------------------------------
+Total   1708.00   47
+"""
+    subject = Factor(list(range(8)), tile=6, name='subject', random=True)
+    aov = test.anova(y, a * b * subject)
+    assert f'\n{aov}\n' == """
+             SS   df       MS   MS(denom)   df(denom)          F        p
+-------------------------------------------------------------------------
+A        432.00    1   432.00       10.76           7   40.14***   < .001
+B        672.00    2   336.00       11.50          14   29.22***   < .001
+A x B    224.00    2   112.00        6.55          14   17.11***   < .001
+-------------------------------------------------------------------------
+Total   1708.00   47
+"""
 
 
 def test_anova_r_adler():
@@ -317,7 +476,7 @@ def test_lmfitter():
 
     x_full = ds.eval("A * B + ind(A%B)")
     lm_full = glm._nd_anova(x_full)
-    assert_is_instance(lm_full, glm._BalancedMixedNDANOVA)
+    assert isinstance(lm_full, glm._BalancedMixedNDANOVA)
     f_maps_full = lm_full.map(y)
     p_maps_full = lm_full.p_maps(f_maps)
 
@@ -334,5 +493,5 @@ def test_lmfitter():
 
     aov = test.ANOVA(y[:, 0], x)
     for f_test, f_map, p_map in zip(aov.f_tests, f_maps, p_maps):
-        assert_almost_equal(f_map[0], f_test.F)
-        assert_almost_equal(p_map[0], f_test.p)
+        assert f_map[0] == pytest.approx(f_test.F)
+        assert p_map[0] == pytest.approx(f_test.p)

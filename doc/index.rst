@@ -9,11 +9,11 @@ Eelbrain
 .. image:: https://zenodo.org/badge/3651023.svg
    :target: https://zenodo.org/badge/latestdoi/3651023
 
-.. image:: https://anaconda.org/christianbrodbeck/eelbrain/badges/installer/conda.svg
+.. image:: https://img.shields.io/conda/vn/conda-forge/eelbrain.svg
    :target: https://github.com/christianbrodbeck/Eelbrain/wiki/Installing
 
-.. image:: https://anaconda.org/christianbrodbeck/eelbrain/badges/platforms.svg
-   :target: https://anaconda.org/christianbrodbeck/eelbrain
+.. image:: https://img.shields.io/conda/pn/conda-forge/eelbrain.svg
+   :target: https://anaconda.org/conda-forge/eelbrain
 
 Eelbrain is an open-source `Python <https://www.python.org>`_ package for
 accessible statistical analysis of MEG and EEG data.
@@ -24,7 +24,7 @@ at the `Computational sensorimotor systems lab
 at University of Maryland, College Park.
 
 If you use Eelbrain in work that is published, please acknowledge it by citing
-it with the appropriate DOI for the version you used.
+it with the appropriate version and DOI.
 
 
 Manual
@@ -44,6 +44,7 @@ Manual
    :maxdepth: 2
 
    reference
+   auto_examples/index
    recipes
    experiment
 
@@ -53,7 +54,6 @@ Manual
    - `Mailing list <https://groups.google.com/forum/#!forum/eelbrain>`_ for announcements
    - Source code on `GitHub <http://github.com/christianbrodbeck/Eelbrain>`_
    - Eelbrain on the `Python Package Index <https://pypi.python.org/pypi/eelbrain>`_
-   - `Example scripts <https://github.com/christianbrodbeck/Eelbrain/tree/master/examples>`_
 
 
 Indices and tables

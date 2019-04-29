@@ -84,14 +84,14 @@ class Celltable:
     def __init__(self, y, x=None, match=None, sub=None, cat=None, ds=None,
                  coercion=asdataobject, dtype=None):
         self.sub = sub
-        sub = assub(sub, ds)
+        sub, n_cases = assub(sub, ds, return_n=True)
 
         if x is None:
             if cat is not None:
                 raise TypeError(f"cat={cat!r}: cat is only a valid argument if x is provided")
-            y = coercion(y, sub, ds)
+            y, n_cases = coercion(y, sub, ds, n_cases, return_n=True)
         else:
-            x = ascategorial(x, sub, ds)
+            x, n_cases = ascategorial(x, sub, ds, n_cases, return_n=True)
             if cat is not None:
                 # reconstruct cat if some cells are provided as None
                 is_none = [c is None for c in cat]
@@ -123,10 +123,10 @@ class Celltable:
                     if sub.dtype.kind == 'b':
                         sub = np.flatnonzero(sub)
                     sub = sub[sort_idx]
-            y = coercion(y, sub, ds, len(x))
+            y = coercion(y, sub, ds, n_cases)
 
         if match is not None:
-            match = ascategorial(match, sub, ds, len(y))
+            match = ascategorial(match, sub, ds, n_cases)
             cell_model = match if x is None else x % match
             sort_idx = None
             if len(cell_model) > len(cell_model.cells):

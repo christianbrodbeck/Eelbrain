@@ -21,7 +21,7 @@ from .._info import BAD_CHANNELS
 from .._utils import ui
 from .._data_obj import (Var, NDVar, Dataset, Case, Sensor, Space, SourceSpace,
                          VolumeSourceSpace, UTS, _matrix_graph)
-from ..mne_fixes import MNE_EVOKED, MNE_RAW
+from ..mne_fixes import MNE_EVOKED, MNE_RAW, MNE_VOLUME_STC
 
 
 KIT_NEIGHBORS = {
@@ -998,17 +998,14 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
         x = e0.data[picks]
         if case_out:
             x = x[None, :]
-        first, last, sfreq = e0.first, e0.last, round(e0.info['sfreq'], 2)
+        first, last, sfreq = e0.first, e0.last, e0.info['sfreq']
     else:
         # timing:  round sfreq because precision is lost by FIFF format
-        timing_set = {(e.first, e.last, round(e.info['sfreq'], 2)) for e in
-                      evoked}
+        timing_set = {(e.first, e.last, e.info['sfreq']) for e in evoked}
         if len(timing_set) == 1:
             first, last, sfreq = timing_set.pop()
         else:
-            raise ValueError("Evoked objects have different timing "
-                             "information (first, last, sfreq): " +
-                             ', '.join(map(str, timing_set)))
+            raise ValueError(f"Evoked objects have different timing information (first, last, sfreq): {', '.join(map(str, timing_set))}")
 
         # find excluded channels
         ch_sets = [set(e.info['ch_names']) for e in evoked]
@@ -1125,7 +1122,8 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
     Parameters
     ----------
     stc : SourceEstimate | list of SourceEstimates | str
-        The source estimate object(s) or a path to an stc file.
+        The source estimate object(s) or a path to an stc file. Volum and vector
+        source estimates are supported.
     subject : str
         MRI subject (used for loading MRI in PySurfer plotting)
     src : str
@@ -1133,7 +1131,7 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
     subjects_dir : None | str
         The path to the subjects_dir (needed to locate the source space
         file).
-    method : 'MNE' | 'dSPM' | 'sLORETA'
+    method : 'MNE' | 'dSPM' | 'sLORETA' | 'eLORETA'
         Source estimation method (optional, used for generating info).
     fixed : bool
         Source estimation orientation constraint (optional, used for generating
@@ -1176,20 +1174,22 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
 
     # Construct NDVar Dimensions
     time = UTS(stc.tmin, stc.tstep, stc.times.size)
-    if isinstance(stc, mne.VolSourceEstimate):
+    if isinstance(stc, MNE_VOLUME_STC):
         ss = VolumeSourceSpace([stc.vertices], subject, src, subjects_dir, None, filename=sss_filename)
         is_vector = stc.data.ndim == 3
-    else:
+    elif isinstance(stc, (mne.SourceEstimate, mne.VectorSourceEstimate)):
         ss = SourceSpace(stc.vertices, subject, src, subjects_dir, parc, filename=sss_filename)
         is_vector = isinstance(stc, mne.VectorSourceEstimate)
+    else:
+        raise TypeError(f"stc={stc!r}")
     # Apply connectivity modification
     if isinstance(connectivity, str):
         if connectivity == 'link-midline':
             ss._link_midline()
         elif connectivity != '':
-            raise ValueError("connectivity=%s" % repr(connectivity))
+            raise ValueError(f"connectivity={connectivity!r}")
     elif connectivity is not None:
-        raise TypeError("connectivity=%s" % repr(connectivity))
+        raise TypeError(f"connectivity={connectivity!r}")
     # assemble dims
     dims = [ss, time]
     if is_vector:
@@ -1201,20 +1201,16 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
     info = {}
     if fixed is False:
         info['meas'] = 'Activation'
-        if method == 'MNE' or method == 'dSPM' or method == 'sLORETA':
+        if method:
             info['unit'] = method
-        elif method is not None:
-            raise ValueError("method=%s" % repr(method))
     elif fixed is True:
         info['meas'] = 'Current Estimate'
         if method == 'MNE':
             info['unit'] = 'A'
-        elif method == 'dSPM' or method == 'sLORETA':
-            info['unit'] = '%s(A)' % method
-        elif method is not None:
-            raise ValueError("method=%s" % repr(method))
+        elif method:
+            info['unit'] = method
     elif fixed is not None:
-        raise ValueError("fixed=%s" % repr(fixed))
+        raise ValueError(f"fixed={fixed!r}")
 
     return NDVar(x, dims, info, name)
 

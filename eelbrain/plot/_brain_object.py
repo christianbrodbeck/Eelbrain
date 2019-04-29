@@ -2,6 +2,7 @@
 """PySurfer Brain subclass to embed in Eelbrain"""
 from collections import OrderedDict
 from distutils.version import LooseVersion
+from functools import partial
 import os
 import sys
 from tempfile import mkdtemp
@@ -9,13 +10,14 @@ from time import time, sleep
 from warnings import warn
 
 from matplotlib.colors import ListedColormap
+from matplotlib.image import imsave
 from mne.io.constants import FIFF
 import numpy as np
 
 from .._colorspaces import to_rgb, to_rgba
 from .._data_obj import NDVar, SourceSpace, asndvar
 from .._text import ms
-from .._wxgui import wx
+from .._utils import LazyProperty
 from ..fmtxt import Image
 from ..mne_fixes import reset_logger
 from ._base import (CONFIG, TimeSlicer, do_autorun, find_axis_params_data,
@@ -158,13 +160,14 @@ class Brain(TimeSlicer, surfer.Brain):
                  foreground="black", subjects_dir=None, views='lat',
                  offset=True, show_toolbar=False, offscreen=False,
                  interaction='trackball', w=None, h=None, axw=None, axh=None,
-                 name=None, pos=wx.DefaultPosition, show=True, run=None):
+                 name=None, pos=None, source_space=None, show=True, run=None):
         from ._wx_brain import BrainFrame
 
         self.__data = []
         self.__annot = None
         self.__labels = OrderedDict()  # {name: color}
         self.__time_index = 0
+        self.__source_space = source_space
 
         if isinstance(views, str):
             views = [views]
@@ -209,8 +212,7 @@ class Brain(TimeSlicer, surfer.Brain):
         elif not isinstance(title, str):
             raise TypeError("title=%r (str required)" % (title,))
 
-        self._frame = BrainFrame(None, self, title, w, h, n_rows, n_columns,
-                                 surf, pos)
+        self._frame = BrainFrame(None, self, title, w, h, n_rows, n_columns, surf, pos)
 
         if foreground is None:
             foreground = 'black'
@@ -372,6 +374,11 @@ class Brain(TimeSlicer, surfer.Brain):
             time_dim = ndvar.get_dim(data_dims[1])
             times = np.arange(len(time_dim))
             time_label = None
+
+        # remove existing data before modifying attributes
+        if remove_existing:
+            self.remove_data()
+
         # make sure time axis is compatible with existing data
         if time_dim is not None:
             if self._time_dim is None:
@@ -402,10 +409,6 @@ class Brain(TimeSlicer, surfer.Brain):
         alpha = 1
         if smoothing_steps is None and source.kind == 'ico':
             smoothing_steps = source.grade + 1
-
-        # remove existing data before modifying attributes
-        if remove_existing:
-            self.remove_data()
 
         # determine which hemi we're adding data to
         if self._hemi in ('lh', 'rh'):
@@ -657,6 +660,8 @@ class Brain(TimeSlicer, surfer.Brain):
 
     def copy_screenshot(self):
         "Copy the currently shown image to the clipboard"
+        from .._wxgui import wx
+
         tempdir = mkdtemp()
         tempfile = os.path.join(tempdir, "brain.png")
         self.save_image(tempfile, 'rgba', True)
@@ -686,6 +691,66 @@ class Brain(TimeSlicer, surfer.Brain):
 
     def _has_labels(self):
         return bool(self.__labels)
+
+    def _enable_selecting_vertex(self, color='red'):
+        """Find source space vertex numbers by clicking on the brain
+
+        After enabling this functionality, each right-click on the brain will
+        cause the vertex number of the closest source space vertex to be printed
+        in the terminal.
+
+        Parameters
+        ----------
+        color : mayavi color
+            Color for the vertex marker.
+
+        Example
+        -------
+        Load a source space and plot it to be able to select vertices::
+
+            ss = SourceSpace.from_file('directory/mri_subjects', 'fsaverage', 'ico-4')
+            brain = plot.brain.brain(ss)
+            brain._enable_selecting_vertex()
+
+        """
+        if self.__source_space is None:
+            raise RuntimeError("Can't enable vertex selection for brian without source space")
+        for brain in self.brains:
+            func = partial(self._select_nearest_source, hemi=brain.hemi, color=color)
+            brain._f.on_mouse_pick(func, button="Right")
+            
+    @LazyProperty
+    def _tris_lh(self):
+        return self.__source_space._read_surf('lh')[1]
+
+    @LazyProperty
+    def _tris_rh(self):
+        return self.__source_space._read_surf('rh')[1]
+
+    def _select_nearest_source(self, vertex, hemi, color='red'):
+        if not isinstance(vertex, int):
+            vertex = vertex.point_id
+
+        ss_vertices = self.__source_space.vertices[hemi == 'rh']
+        if vertex not in ss_vertices:
+            tris = self._tris_lh if hemi == 'lh' else self._tris_rh
+            selected = np.any(tris == vertex, 1)
+            for i in range(7):
+                selected_v = np.unique(tris[selected])
+                index = np.in1d(ss_vertices, selected_v)
+                if index.any():
+                    vertex = ss_vertices[index][0]
+                    break
+                for v in selected_v:
+                    selected |= np.any(tris == v, 1)
+            else:
+                print("No vertex found in 7 iterations")
+
+        if 'selection' in self.foci_dict:
+            self.foci_dict.pop('selection')[0].remove()
+        self.add_foci([vertex], True, hemi=hemi, scale_factor=0.5, name='selection', color=color)
+        tag = 'L' if hemi == 'lh' else 'R'
+        print(f'{tag}{vertex}')
 
     def image(self, name=None, format='png', alt=None):
         """Create an FMText Image from a screenshot
@@ -854,6 +919,36 @@ class Brain(TimeSlicer, surfer.Brain):
             for label in labels:
                 del self.__labels[label]
 
+    def save_image(self, filename, mode='rgb', antialiased=False):
+        """Save view from all panels to disk
+
+        Parameters
+        ----------
+        filename: string
+            Path to new image file.
+        mode : string
+            Either 'rgb' (default) to render solid background, or 'rgba' to
+            include alpha channel for transparent background.
+        antialiased : bool
+            Antialias the image (see :func:`mayavi.mlab.screenshot`
+            for details; default False).
+
+            .. warning::
+               Antialiasing can interfere with ``rgba`` mode, leading to opaque
+               background.
+
+        Notes
+        -----
+        Due to limitations in TraitsUI, if multiple views or hemi='split'
+        is used, there is no guarantee painting of the windows will
+        complete before control is returned to the command line. Thus
+        we strongly recommend using only one figure window (which uses
+        a Mayavi figure to plot instead of TraitsUI) if you intend to
+        script plotting commands.
+        """
+        im = self.screenshot(mode, antialiased)
+        imsave(filename, im)
+
     def set_parallel_view(self, forward=None, up=None, scale=None):
         """Set view to parallel projection
 
@@ -966,7 +1061,4 @@ class Brain(TimeSlicer, surfer.Brain):
 
 
 if hasattr(surfer.Brain, 'add_label'):
-    try:
-        Brain.add_label.__doc__ = surfer.Brain.add_label.__doc__  # py3
-    except AttributeError:
-        Brain.add_label.__func__.__doc__ = surfer.Brain.add_label.__doc__
+    Brain.add_label.__doc__ = surfer.Brain.add_label.__doc__  # py3

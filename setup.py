@@ -19,13 +19,17 @@ from ez_setup import use_setuptools
 use_setuptools('17')
 
 from distutils.version import LooseVersion
-from distutils.extension import Extension
-from glob import glob
-from os.path import pathsep
 import re
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
 
 import numpy as np
+
+# Distributing Cython modules
+# https://cython.readthedocs.io/en/stable/src/userguide/source_files_and_compilation.html#distributing-cython-modules
+try:
+    from Cython.Build import cythonize
+except ImportError:
+    cythonize = False
 
 
 DESC = """
@@ -35,28 +39,26 @@ GitHub: https://github.com/christianbrodbeck/Eelbrain
 # version must be in X.X.X format, e.g., "0.0.3dev"
 with open('eelbrain/__init__.py') as fid:
     text = fid.read()
-match = re.search("__version__ = '([.\w]+)'", text)
+match = re.search(r"__version__ = '([.\w]+)'", text)
 if match is None:
     raise ValueError("No valid version string found in:\n\n" + text)
 version = match.group(1)
 LooseVersion(version)  # check that it's a valid version
 
-# Use cython only if *.pyx files are present (i.e., not in sdist)
-ext_paths = ('eelbrain/*%s', 'eelbrain/_trf/*%s', 'eelbrain/_stats/*%s')
-if glob(ext_paths[0] % '.pyx'):
-    from Cython.Build import cythonize
+# Cython extensions
+ext = '.pyx' if cythonize else '.c'
+ext_cpp = '.pyx' if cythonize else '.cpp'
+extensions = [
+    Extension('eelbrain._data_opt', [f'eelbrain/_data_opt{ext}']),
+    Extension('eelbrain._trf._boosting_opt', [f'eelbrain/_trf/_boosting_opt{ext}']),
+    Extension('eelbrain._stats.connectivity_opt', [f'eelbrain/_stats/connectivity_opt{ext}']),
+    Extension('eelbrain._stats.opt', [f'eelbrain/_stats/opt{ext}']),
+    Extension('eelbrain._stats.error_functions', [f'eelbrain/_stats/error_functions{ext}']),
+    Extension('eelbrain._stats.vector', [f'eelbrain/_stats/vector{ext_cpp}'], include_dirs=['dsyevh3C']),
+]
+if cythonize:
+    extensions = cythonize(extensions)
 
-    ext_modules = cythonize([path % '.pyx' for path in ext_paths])
-else:
-    actual_paths = []
-    for path in ext_paths:
-        actual_paths.extend(glob(path % '.c'))
-    ext_modules = [
-        Extension(path.replace(pathsep, '.')[:-2], [path])
-        for path in actual_paths
-    ]
-
-# basic setup arguments
 setup(
     name='eelbrain',
     version=version,
@@ -91,6 +93,6 @@ setup(
     },
     include_dirs=[np.get_include()],
     packages=find_packages(),
-    ext_modules=ext_modules,
+    ext_modules=extensions,
     scripts=['bin/eelbrain'],
 )

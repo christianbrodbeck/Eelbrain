@@ -5,6 +5,7 @@ import pytest
 import wx
 
 from eelbrain import datasets, plot, testnd
+from eelbrain._utils import IS_WINDOWS
 from eelbrain.testing import requires_mne_sample_data
 from eelbrain._wxgui.testing import hide_plots
 
@@ -55,6 +56,8 @@ def test_plot_topo_butterfly():
     p = plot.TopoButterfly('utsnd', ds=ds, vmax=0.2, w=6)
     p.close()
     p = plot.TopoButterfly('utsnd', 'A%B', ds=ds, w=6)
+    if not IS_WINDOWS:
+        assert (*p.figure.get_size_inches(),) == (6, 12)
     p.close()
     p = plot.TopoButterfly('utsnd', mark=[1, 2], ds=ds)
     p.close()

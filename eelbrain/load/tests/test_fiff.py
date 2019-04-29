@@ -12,12 +12,10 @@ from mne import pick_types
 from eelbrain import load
 
 from ...tests.test_data import assert_dataobj_equal
-from eelbrain.testing import (requires_module, requires_mne_sample_data,
-                                     file_path)
+from eelbrain.testing import requires_mne_sample_data, file_path
 
 
-FILTER_WARNING = ('The measurement information indicates a low-pass frequency '
-                  'of 40 Hz.')
+FILTER_WARNING = 'The measurement information indicates a low-pass frequency of 40 Hz.'
 
 
 @requires_mne_sample_data
@@ -58,7 +56,6 @@ def test_load_fiff_mne():
                               mne_reconstruct.data)
 
 
-@requires_module('mne', '0.13')
 def test_load_fiff_sensor():
     umd_sqd_path = file_path('test_umd-raw.sqd')
     raw = mne.io.read_raw_kit(umd_sqd_path)

@@ -121,15 +121,12 @@ class App(wx.App):
 
         # View Menu
         m = view_menu = wx.Menu()
-        m.Append(ID.SET_VLIM, "Set Axis Limits... \tCtrl+l", "Change the "
-                 "current figure's axis limits")
-        m.Append(ID.SET_MARKED_CHANNELS, "Mark Channels...", "Mark specific "
-                 "channels in plots")
-        m.Append(ID.DRAW_CROSSHAIRS, "Draw &Crosshairs",
-                 "Draw crosshairs under the cursor", kind=wx.ITEM_CHECK)
+        m.Append(ID.SET_VLIM, "Set Axis Limits... \tCtrl+l", "Change the current figure's axis limits")
+        m.Append(ID.LINK_TIME_AXES, "Link Time Axes", "Synchronize the time displayed on figures")
+        m.Append(ID.SET_MARKED_CHANNELS, "Mark Channels...", "Mark specific channels in plots")
+        m.Append(ID.DRAW_CROSSHAIRS, "Draw &Crosshairs", "Draw crosshairs under the cursor", kind=wx.ITEM_CHECK)
         m.AppendSeparator()
-        m.Append(ID.SET_LAYOUT, "&Set Layout... \tCtrl+Shift+l", "Change the "
-                 "page layout")
+        m.Append(ID.SET_LAYOUT, "&Set Layout... \tCtrl+Shift+l", "Change the page layout")
         menu_bar.Append(view_menu, "View")
 
         # Go Menu
@@ -182,6 +179,7 @@ class App(wx.App):
         t.Bind(wx.EVT_MENU, t.OnSetMarkedChannels, id=ID.SET_MARKED_CHANNELS)
         t.Bind(wx.EVT_MENU, t.OnSetVLim, id=ID.SET_VLIM)
         t.Bind(wx.EVT_MENU, t.OnSetTime, id=ID.TIME)
+        t.Bind(wx.EVT_MENU, self.OnLinkTimeAxes, id=ID.LINK_TIME_AXES)
         t.Bind(wx.EVT_MENU, t.OnUndo, id=ID.UNDO)
         t.Bind(wx.EVT_MENU, t.OnWindowIconize, id=ID.WINDOW_MINIMIZE)
         t.Bind(wx.EVT_MENU, self.OnWindowTile, id=ID.WINDOW_TILE)
@@ -204,6 +202,7 @@ class App(wx.App):
         t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUISetLayout, id=ID.SET_LAYOUT)
         t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUISetMarkedChannels, id=ID.SET_MARKED_CHANNELS)
         t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUISetVLim, id=ID.SET_VLIM)
+        t.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUILinkTimeAxes, id=ID.LINK_TIME_AXES)
         t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUISetTime, id=ID.TIME)
         t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUITools, id=ID.TOOLS)
         t.Bind(wx.EVT_UPDATE_UI, t.OnUpdateUIUndo, id=ID.UNDO)
@@ -429,16 +428,27 @@ class App(wx.App):
         frame = self._get_active_frame()
         frame.OnDrawCrosshairs(event)
 
+    def OnLinkTimeAxes(self, event):
+        figures = []
+        for window in wx.GetTopLevelWindows():
+            eelfigure = getattr(window, '_eelfigure', None)
+            if eelfigure and hasattr(eelfigure, 'link_time_axis'):
+                figures.append(eelfigure)
+        if len(figures) >= 2:
+            f0 = figures[0]
+            for figure in figures[1:]:
+                f0.link_time_axis(figure)
+
     def OnMenuOpened(self, event):
         "Update window names in the window menu"
         menu = event.GetMenu()
         if menu.GetTitle() == 'Window':
             # clear old entries
-            while self.window_menu_window_items:
-                item = self.window_menu_window_items.pop()
+            for item in self.window_menu_window_items:
                 menu.Remove(item)
                 self.Unbind(wx.EVT_MENU, id=item.GetId())
             # add new entries
+            self.window_menu_window_items = []
             for window in wx.GetTopLevelWindows():
                 id_ = window.GetId()
                 label = window.GetTitle()
@@ -569,6 +579,17 @@ class App(wx.App):
                 event.Enable(False)
                 return
         event.Enable(func())
+
+    def OnUpdateUILinkTimeAxes(self, event):
+        n = 0
+        for window in wx.GetTopLevelWindows():
+            eelfigure = getattr(window, '_eelfigure', None)
+            if eelfigure:
+                n += hasattr(eelfigure, 'link_time_axis')
+                if n >= 2:
+                    event.Enable(True)
+                    return
+        event.Enable(False)
 
     def OnUpdateUIOpen(self, event):
         frame = self._get_active_frame()

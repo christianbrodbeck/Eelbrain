@@ -32,7 +32,6 @@ EXEC_FILE = wx.NewIdRef()
 EXEC_SELECTION = wx.NewIdRef()
 
 FIG_TITLE = wx.NewIdRef()
-FIND_RARE_EVENTS = wx.NewIdRef()
 FOCUS_SHELL = wx.NewIdRef()
 
 GRAND_AVERAGE = wx.NewIdRef()
@@ -48,6 +47,8 @@ INSERT_Color = wx.NewIdRef()
 INSERT_Path_file = wx.NewIdRef()
 INSERT_Path_dir = wx.NewIdRef()
 INSERT_Path_new = wx.NewIdRef()
+
+LINK_TIME_AXES = wx.NewIdRef()
 
 OPEN = wx.NewIdRef()
 OPEN_HISTORY = wx.NewIdRef()

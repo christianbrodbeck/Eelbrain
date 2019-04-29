@@ -50,7 +50,6 @@ The module also provides functions that work with fmtxt objects:
 import base64
 import datetime
 from html.parser import HTMLParser
-from importlib import import_module
 from itertools import repeat
 from math import ceil
 import os
@@ -183,17 +182,6 @@ _html_doc_template = """<!DOCTYPE html>
 </html>
 """
 
-# to keep track of recent tex out and allow copying
-_recent_texout = []
-
-
-def _add_to_recent(tex_obj):
-    keep_recent = preferences['keep_recent']
-    if keep_recent:
-        if len(_recent_texout) >= keep_recent - 1:
-            _recent_texout.pop(0)
-        _recent_texout.append(tex_obj)
-
 
 def get_pdf(tex_obj):
     "Generate PDF from an FMText object (using :mod:`tex`)"
@@ -219,7 +207,7 @@ def rtf_document(fmtext):
     return "{\\rtf1\\ansi\\deff0\n\n%s\n}" % fmtext.get_rtf()
 
 
-def save_html(fmtxt, path=None, embed_images=True, meta=None):
+def save_html(fmtext, path=None, embed_images=True, meta=None):
     """Save an FMText object in HTML format
 
     Parameters
@@ -259,15 +247,24 @@ def save_html(fmtxt, path=None, embed_images=True, meta=None):
         os.mkdir(resource_dir)
         resource_dir = os.path.relpath(resource_dir, root)
 
-    buf = make_html_doc(fmtxt, root, resource_dir, meta=meta)
+    buf = make_html_doc(fmtext, root, resource_dir, meta=meta)
     buf_enc = buf.encode('ascii', 'xmlcharrefreplace')
     with open(file_path, 'wb') as fid:
         fid.write(buf_enc)
 
 
-def save_pdf(tex_obj, path=None):
-    "Save an fmtxt object as a pdf"
-    pdf = get_pdf(tex_obj)
+def save_pdf(fmtext, path=None):
+    """Save an FMText object as a pdf (requires LaTeX installation)
+
+    Parameters
+    ----------
+    fmtext : FMText
+        Object to save.
+    path : str (optional)
+        Destination filename. If unspecified, a file dialog will open to ask
+        for a destination.
+    """
+    pdf = get_pdf(fmtext)
     if path is None:
         msg = "Save as PDF"
         path = ui.ask_saveas(msg, msg, [('PDF (*.pdf)', '*.pdf')])
@@ -295,9 +292,18 @@ def save_rtf(fmtext, path=None):
             fid.write(text)
 
 
-def save_tex(tex_obj, path=None):
-    "Save an FMText object as a PDF"
-    txt = tex(tex_obj)
+def save_tex(fmtext, path=None):
+    """Save an FMText object as TeX code
+
+    Parameters
+    ----------
+    fmtext : FMText
+        Object to save.
+    path : str (optional)
+        Destination filename. If unspecified, a file dialog will open to ask
+        for a destination.
+    """
+    txt = tex(fmtext)
     if path is None:
         path = ui.ask_saveas("Save tex", filetypes=[('tex', 'tex source code')])
     if path:
@@ -314,20 +320,16 @@ def _save_txt(text, path=None):
             fid.write(text)
 
 
-def copy_pdf(tex_obj=-1):
-    """Copt an fmtxt object to the clipboard as PDF.
+def copy_pdf(fmtext):
+    """Copy an FMText object to the clipboard as PDF.
 
     Parameters
     ----------
-    tex_obj : FMText | int
-        Either an FMText object that can be rendered, or an ``int`` to retrieve
-        an FMText item from a list of recently displayed FMText objects.
+    fmtext : FMText
+        Object to copy.
     """
-    if isinstance(tex_obj, int):
-        tex_obj = _recent_texout[tex_obj]
-
     # save pdf to temp file
-    pdf = get_pdf(tex_obj)
+    pdf = get_pdf(fmtext)
     fd, path = tempfile.mkstemp('.pdf')
     os.write(fd, pdf)
     os.close(fd)
@@ -336,9 +338,9 @@ def copy_pdf(tex_obj=-1):
     ui.copy_file(path)
 
 
-def copy_tex(tex_obj):
-    "Copy an fmtxt object to the clipboard as tex code"
-    txt = tex(tex_obj)
+def copy_tex(fmtext):
+    "Copy an FMText object to the clipboard as tex code"
+    txt = tex(fmtext)
     ui.copy_text(txt)
 
 
@@ -1501,9 +1503,6 @@ class Table(FMTextElement):
         linesep : str
             Line separation string
         """
-        # append to recent tex out
-        _add_to_recent(self)
-
         if len(self.rows) == 0:
             return ''
 
@@ -1553,10 +1552,13 @@ class Table(FMTextElement):
         if self._title is not None:
             out = ['', self._title.get_str(env), ''] + out
 
-        if isinstance(self._caption, str):
-            out.append(self._caption)
-        elif self._caption:
-            out.append(str(self._caption))
+        if self._caption:
+            if self.rules:
+                out.append(midrule)
+            if isinstance(self._caption, str):
+                out.append(self._caption)
+            elif self._caption:
+                out.append(str(self._caption))
 
         return linesep.join(out)
 

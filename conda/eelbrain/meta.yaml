@@ -26,7 +26,8 @@ requirements:
     - pywin32-ctypes  # [win]
     - setuptools >=17
     - numpy 1.11.*
-    - openblas >=0.2.20  # [osx]
+    - libblas
+    - libcblas
 
   run:
     - python  {{ python }}
@@ -34,12 +35,13 @@ requirements:
     - colormath >=2.1
     - ipython
     - keyring >=5
-    - matplotlib >=2.1
+    - matplotlib >=3
     - mne >=0.17
     - nibabel >=2.0, !=2.3.0
     - olefile  # [linux]
     - {{ pin_compatible('numpy') }}
-    - openblas >=0.2.20  # [osx]
+    - libblas
+    - libcblas
     - pillow
     - pysurfer >=0.8
     - nilearn

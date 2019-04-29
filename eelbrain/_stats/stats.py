@@ -289,28 +289,39 @@ def t_1samp(y, out=None):
     return out
 
 
-def t2_1samp(y, out=None):
-    "T**2-value for 1-sample T**2-test"
-    if y.ndim == 1:
-        raise ValueError('T**2 statistic needs vector valued samples.'
-                         'i.e. try t_1samp().')
-    n_cases = len(y)
-    n_dim = len(y[0])
+def t2_1samp(y, rotation=None, out=None):
+    """T**2-value for 1-sample T**2-test
+
+    Parameters
+    ----------
+    y : ndarray
+        Vector field, shape ``(n_case, n_dims [, ...])``.
+    rotation : ndarray
+        Rotation matrix (for permutation).
+    out : ndarray
+        Container for result. Needs shape ``...``.
+    """
+    if y.ndim <= 1:
+        raise ValueError(f'y with shape {y.shape}: T**2 statistic needs vector valued samples.')
+    n_cases = y.shape[0]
+    n_dims = y.shape[1]
     if out is None:
-        if y.ndim == 2:
-            out = np.empty(None)
-            y = y[:, np.newaxis]
-        else:
-            out = np.empty(y.shape[2:])
+        out = np.empty(y.shape[2:])
+    else:
+        assert out.shape == y.shape[2:]
 
     if out.ndim == 1:
         y_flat = y
         out_flat = out
     else:
-        y_flat = y.reshape((n_cases, n_dim, -1))
+        y_flat = y.reshape((n_cases, n_dims, -1))
         out_flat = out.ravel()
 
-    vector.t2_stat(y_flat, out_flat)
+    if rotation is None:
+        vector.t2_stat(y_flat, out_flat)
+    else:
+        assert rotation.shape == (n_cases, 3, 3)
+        vector.t2_stat_rotated(y_flat, rotation, out_flat)
     return out
 
 

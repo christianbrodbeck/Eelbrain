@@ -56,7 +56,7 @@ class FloatValidator(wx.Validator):
         value = ctrl.GetValue()
         try:
             self.value = float(value)
-        except TypeError:
+        except ValueError:
             msg = wx.MessageDialog(self.parent, f"Can not convert {value!r} to float", "Invalid Entry", wx.OK | wx.ICON_ERROR)
             msg.ShowModal()
             msg.Destroy()

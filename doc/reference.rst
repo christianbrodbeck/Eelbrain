@@ -220,7 +220,6 @@ Mass-Univariate Statistics
    testnd.corr
    testnd.Vector
    testnd.VectorDifferenceRelated
-   testnd.VectorDifferenceIndependent
 
 By default the tests in this module produce maps of statistical parameters
 along with maps of p-values uncorrected for multiple comparison. Using different
@@ -318,6 +317,7 @@ Plot uniform time-series:
 .. autosummary::
    :toctree: generated
 
+   plot.LineStack
    plot.UTS
    plot.UTSClusters
    plot.UTSStat
@@ -420,7 +420,11 @@ run : bool
     Run the Eelbrain GUI app (default is True for interactive plotting and
     False in scripts).
 
-The behavior can also be changed globally using :func:`configure`:
+The behavior can also be changed globally using :func:`configure`.
+
+By default, Eelbrain plots open in windows with enhance GUI features such as
+copying a figure to the OS clip-board. To plot figures in bare matplotlib
+windows, :func:`configure` Eelbrain with ``eelbrain.configure(frame=False)``.
 
 
 ^^^^^^^^^^^^^^^
@@ -448,8 +452,8 @@ More specific control over the plots can be achieved through the
    plot.brain.p_map
    plot.brain.annot
    plot.brain.annot_legend
-   plot.brain.SequencePlotter
    ~plot._brain_object.Brain
+   plot.brain.SequencePlotter
    plot.GlassBrain
    plot.GlassBrain.butterfly
 
@@ -538,6 +542,38 @@ information in open windows is saved.
 
 
 ^^^^^^^^^^^^^^
+Formatted Text
+^^^^^^^^^^^^^^
+
+.. py:module:: fmtxt
+.. py:currentmodule:: eelbrain
+
+The :mod:`fmtxt` submodule provides tools for exporting results. Most eelbrain
+functions and methods that print tables in fact return :mod:`fmtxt` objects,
+which can be exported in different formats, for example::
+
+    >>> ds = datasets.get_uv()
+    >>> type(ds.head())
+    eelbrain.fmtxt.Table
+
+This means that the result can be exported as formatted text, for example::
+
+    >>> fmtxt.save_pdf(ds.head())
+
+Available export methods:
+
+.. autosummary::
+   :toctree: generated
+
+   fmtxt.copy_pdf
+   fmtxt.copy_tex
+   fmtxt.save_html
+   fmtxt.save_pdf
+   fmtxt.save_rtf
+   fmtxt.save_tex
+
+
+^^^^^^^^^^^^^^
 MNE-Experiment
 ^^^^^^^^^^^^^^
 
@@ -547,7 +583,7 @@ data (gradiometer only) with MNE:
 .. autosummary::
    :toctree: generated
 
-   MneExperiment
+   ~pipeline.MneExperiment
    ~_experiment.ROITestResult
 
 .. seealso::

@@ -48,8 +48,12 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
     legend : str | int | 'fig' | None
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
+    labels : dict
+        Alternative labels for legend as ``{cell: label}`` dictionary (preserves
+        order).
     clip : bool
-        Clip lines outside of axes (default ``True``).
+        Clip lines outside of axes (the default depends on whether ``frame`` is
+        closed or open).
     ...
         Also accepts :ref:`general-layout-parameters`.
 
@@ -66,7 +70,7 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
     def __init__(self, y, x=None, sub=None, ds=None, offset='y.max() - y.min()',
                  ylim=None, xlim=None, xlabel=True, xticklabels=True,
                  ylabel=True, order=None, colors=None, ylabels=True, xdim=None,
-                 legend=None, clip=True, *args, **kwargs):
+                 legend=None, labels=None, clip=None, *args, **kwargs):
         sub = assub(sub, ds)
         if isinstance(y, (tuple, list)):
             if x is not None:
@@ -153,6 +157,9 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
         EelFigure.__init__(self, frame_title(y, x), layout)
         ax = self._axes[0]
 
+        if clip is None:
+            clip = layout.frame is True
+
         handles = [ax.plot(x_, y_ + offset_, color=color, clip_on=clip)[0] for
                    x_, y_, offset_, color in
                    zip(xdata, ydata, offsets, color_iter)]
@@ -176,5 +183,5 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
         if ylabel:
             ax.set_ylabel(ylabel)
         XAxisMixin._init_with_data(self, epochs, xdim, xlim)
-        LegendMixin.__init__(self, legend, dict(zip(cell_labels, handles)))
+        LegendMixin.__init__(self, legend, dict(zip(cell_labels, handles)), labels)
         self._show()

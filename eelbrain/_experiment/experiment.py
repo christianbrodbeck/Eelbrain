@@ -1,7 +1,9 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from collections import defaultdict, OrderedDict
+from functools import reduce
 from glob import glob
 from itertools import chain, product
+import operator
 import os
 import re
 import shutil
@@ -13,7 +15,8 @@ import numpy as np
 from tqdm import tqdm
 
 from .. import fmtxt
-from .._utils import as_sequence, LazyProperty, ask, deprecated
+from .._config import CONFIG
+from .._utils import as_sequence, LazyProperty, ask
 from .._utils.com import Notifier, NotNotifier
 from .definitions import check_names, compound
 
@@ -493,7 +496,7 @@ class TreeModel:
 
         return values
 
-    def iter(self, fields, exclude=None, values=None, **constants):
+    def iter(self, fields, exclude=None, values=None, progress_bar=None, **constants):
         """
         Cycle the experiment's state through all values on the given fields
 
@@ -507,7 +510,9 @@ class TreeModel:
             Fields with custom values to iterate over (instead of the
             corresponding field values) with {name: (sequence of values)}
             entries.
-        *others* :
+        progress_bar : str
+            Message to show in the progress bar.
+        ...
             Fields with constant values throughout the iteration.
         """
         if isinstance(fields, str):
@@ -540,26 +545,22 @@ class TreeModel:
         # set constants (before .get_field_values() call)
         self.set(**constants)
 
-        # gather possible values to iterate over
-        field_values = {}
-        for field in iter_fields:
-            if field in values:
-                field_values[field] = as_sequence(values[field])
-            else:
-                exclude_ = exclude.get(field, None)
-                field_values[field] = self.get_field_values(field, exclude_)
-
-        # pick out the fields to iterate, but drop excluded cases:
+        # gather values to iterate over
         v_lists = []
         for field in iter_fields:
-            v_lists.append(field_values[field])
+            if field in values:
+                v_lists.append(as_sequence(values[field]))
+            else:
+                exclude_ = exclude.get(field, None)
+                v_lists.append(self.get_field_values(field, exclude_))
 
         if len(v_lists):
+            n = reduce(operator.mul, map(len, v_lists))
             with self._temporary_state:
-                for v_list in product(*v_lists):
+                disable = progress_bar is None or CONFIG['tqdm']
+                for v_list in tqdm(product(*v_lists), progress_bar, n, disable=disable):
                     self._restore_state(discard_tip=False)
                     self.set(**dict(zip(iter_fields, v_list)))
-
                     if yield_str:
                         yield self.get(fields[0])
                     else:
@@ -640,11 +641,12 @@ class TreeModel:
         Parameters
         ----------
         match : bool
-            For fields with stored values, only allow valid values.
+            For fields with pre-defined values, only allow valid values (default
+            ``True``).
         allow_asterisk : bool
-            If a value contains '*', set the value without the normal value
-            evaluation and checking mechanism.
-        kwargs :
+            If a value contains ``'*'``, set the value without the normal value
+            evaluation and checking mechanisms (default ``False``).
+        ... :
             Fields and values to set. Invalid fields raise a KeyError. Unless
             match == False, Invalid values raise a ValueError.
         """
@@ -1269,83 +1271,6 @@ class FileTree(TreeModel):
         "Reveal the file corresponding to the ``temp`` template in the Finder."
         fname = self.get(temp, **kwargs)
         subprocess.call(["open", "-R", fname])
-
-    @deprecated('0.30', 'use .copy() or .move() instead')
-    def push(self, dst_root, names, overwrite=False, exclude=False, **kwargs):
-        """Copy files to another experiment root folder.
-
-        Before copying any files the user is asked for confirmation.
-
-        Parameters
-        ----------
-        dst_root : str
-            Path to the root to which the files should be copied.
-        names : str | sequence of str
-            Name(s) of the template(s) of the files that should be copied.
-        overwrite : bool
-            Overwrite target files if they already exist.
-        others :
-            Update experiment state.
-
-        See Also
-        --------
-        move : Move files to a different root folder.
-
-        Notes
-        -----
-        Use ``e.show_tree()`` to find out which element(s) to copy.
-        """
-        if isinstance(names, str):
-            names = [names]
-
-        # find files
-        files = []
-        for name in names:
-            for src in self.iter_temp(name, exclude=exclude, **kwargs):
-                if '*' in src:
-                    raise NotImplementedError("Can't fnmatch here yet")
-
-                if os.path.exists(src):
-                    dst = self.get(name, root=dst_root)
-                    if src == dst:
-                        raise ValueError("Source == destination (%r)" % src)
-
-                    if os.path.exists(dst):
-                        flag = 'o' if overwrite else 'e'
-                    else:
-                        flag = ' '
-                else:
-                    dst = None
-                    flag = 'm'
-                files.append((src, dst, flag))
-
-        # prompt for confirmation
-        root = self.get('root')
-        n_root = len(root)
-        for src, dst, flag in files:
-            if src.startswith(root):
-                src = src[n_root:]
-            print(' '.join((flag, src[-78:])))
-        print("Flags: o=overwrite, e=skip, it exists, m=skip, source is "
-              "missing")
-        if input("Proceed? (confirm with 'yes'): ") != 'yes':
-            return
-
-        # copy the files
-        for src, dst, flag in files:
-            if flag in ('e', 'm'):
-                continue
-
-            dirpath = os.path.dirname(dst)
-            if not os.path.exists(dirpath):
-                os.makedirs(dirpath)
-
-            if os.path.isdir(src):
-                if flag == 'o':
-                    shutil.rmtree(dst)
-                shutil.copytree(src, dst)
-            else:
-                shutil.copy(src, dst)
 
     def rename(self, old, new, exclude=False):
         """Rename all files corresponding to a pattern (or template)

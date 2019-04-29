@@ -10,11 +10,19 @@
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
-#
 
 from datetime import datetime
+import os
+from pathlib import Path
+from warnings import filterwarnings
+
+import mne
+import eelbrain.plot._brain_object  # make sure that Brain is available
 import eelbrain
 
+
+# docutils 0.14
+filterwarnings('ignore', category=DeprecationWarning)
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -36,11 +44,36 @@ extensions = [
     'sphinx.ext.intersphinx',  # http://sphinx.pocoo.org/ext/intersphinx.html
     'numpydoc',  # https://github.com/numpy/numpy/tree/master/doc/sphinxext
     'sphinxcontrib.bibtex',  # https://sphinxcontrib-bibtex.readthedocs.io
+    'sphinx_gallery.gen_gallery',  # https://sphinx-gallery.github.io
 ]
 # enable to  have all methods documented on the same page as a class:
 # autodoc_default_flags=['inherited-members']
 autosummary_generate = True
 numpydoc_show_class_members = False
+
+
+def use_pyplot(gallery_conf, fname):
+    eelbrain.configure(frame=False)
+
+
+sphinx_gallery_conf = {
+    'examples_dirs': '../examples',   # path to example scripts
+    'gallery_dirs': 'auto_examples',  # path where to save gallery generated examples
+    'filename_pattern': rf'{os.sep}\w',
+    'default_thumb_file': Path(__file__).parent / 'images' / 'eelbrain.png',
+    'min_reported_time': 4,
+    'download_all_examples': False,
+    'reset_modules': ('matplotlib', use_pyplot),
+    'reference_url': {'eelbrain': None},
+    'first_notebook_cell': (
+        "from eelbrain import configure\n"
+        "configure(frame=False)\n"  # avoid wxPython dependency
+        "%matplotlib inline\n"  # sphinx-gallery default
+    )
+}
+
+# download datasets (to avoid progress bar output in example gallery)
+root = mne.datasets.mtrf.data_path()
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['templates']
@@ -111,6 +144,7 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3.6', None),
     'imageio': ('https://imageio.readthedocs.io/en/stable/', None),
     'mne': ('http://martinos.org/mne/stable', None),
+    'surfer': ('https://pysurfer.github.io', None),
     'matplotlib': ('https://matplotlib.org', None),
     'nilearn': ('https://nilearn.github.io', None),
     'numpy': ('https://docs.scipy.org/doc/numpy', None),

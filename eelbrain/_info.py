@@ -38,6 +38,7 @@ cmap ticks
     Non-standard cmap-ticks; used by plot.brain.p_map to transmit proper tick
     labels for remapped p-values
 """
+import mne
 import numpy as np
 
 
@@ -223,6 +224,8 @@ def _values_equal(a, b):
             return all(_values_equal(a[k], b[k]) for k in a)
         else:
             return False
+    elif isinstance(a, mne.io.BaseRaw):
+        return isinstance(b, a.__class__) and _values_equal(a.info, b.info)
     else:
         return a == b
 

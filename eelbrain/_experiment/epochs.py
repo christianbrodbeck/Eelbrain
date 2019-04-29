@@ -50,7 +50,7 @@ def assemble_epochs(epoch_def, epoch_default):
             if secondary_epochs[key]._can_link(epochs):
                 epochs[key] = secondary_epochs.pop(key)._link(key, epochs)
         if len(secondary_epochs) == n:
-            DefinitionError(f"Can't resolve epoch dependencies for {enumeration(secondary_epochs)}")
+            raise DefinitionError(f"Can't resolve epoch dependencies for {enumeration(secondary_epochs)}")
     return epochs
 
 
@@ -77,10 +77,12 @@ class Epoch(EpochBase):
                  vars=None, trigger_shift=0., post_baseline_trigger_shift=None,
                  post_baseline_trigger_shift_min=None,
                  post_baseline_trigger_shift_max=None):
-        if (post_baseline_trigger_shift is not None and
-                (post_baseline_trigger_shift_min is None or
-                 post_baseline_trigger_shift_max is None)):
-            raise ValueError(f"{self.__class__.__name__} contains post_baseline_trigger_shift but is missing post_baseline_trigger_shift_min and/or post_baseline_trigger_shift_max")
+        if post_baseline_trigger_shift is not None:
+            if post_baseline_trigger_shift_min is None or post_baseline_trigger_shift_max is None:
+                raise DefinitionError(f"post_baseline_trigger_shift={post_baseline_trigger_shift} but missing post_baseline_trigger_shift_min and/or post_baseline_trigger_shift_max")
+            cut_time = post_baseline_trigger_shift_max - post_baseline_trigger_shift_min
+            if cut_time >= tmax - tmin:
+                raise DefinitionError("No data remaining after trigger shift")
 
         if decim is not None:
             if decim < 1:
@@ -96,6 +98,8 @@ class Epoch(EpochBase):
         if baseline is None:
             if tmin >= 0:
                 baseline = False
+            elif tmax < 0:
+                baseline = (None, None)
             else:
                 baseline = (None, 0)
         elif baseline is False:
@@ -152,7 +156,8 @@ class PrimaryEpoch(Epoch):
         Alternative to ``samplingrate``. Decimate the data by this factor
         (i.e., only keep every ``decim``'th sample).
     baseline : tuple
-        The baseline of the epoch (default ``(None, 0)``).
+        The baseline of the epoch (default ``(None, 0)``; if ``tmin > 0``: no
+        baseline; if ``tmax < 0``: the whole interval).
     n_cases : int
         Expected number of epochs. If n_cases is defined, a RuntimeError error
         will be raised whenever the actual number of matching events is different.
@@ -251,7 +256,7 @@ class SuperEpoch(Epoch):
 
     Parameters
     ----------
-    sub_epochs : tuple of str
+    sub_epochs : sequence of str
         Tuple of epoch names. These epochs are combined to form the super-epoch.
         Epochs are merged at the level of events, so the base epochs can not
         contain post-baseline trigger shifts which are applied after loading

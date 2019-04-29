@@ -7,6 +7,7 @@ import shutil
 from warnings import catch_warnings, filterwarnings
 
 import numpy as np
+from numpy.testing import assert_almost_equal, assert_array_equal
 
 from eelbrain import *
 from eelbrain.pipeline import *
@@ -83,7 +84,33 @@ def test_sample():
     ds['n'] = Var(range(3))
     s_table = e._report_subject_info(ds, '')
 
-    # test multiple epochs with same time stamp
+    # post_baseline_trigger_shift
+    # use multiple of tstep to shift by even number of samples
+    tstep = 0.008324800548266162
+    shift = -7 * tstep
+    class Experiment(SampleExperiment):
+        epochs = {
+            **SampleExperiment.epochs,
+            'visual-s': SecondaryEpoch('target', "modality == 'visual'", post_baseline_trigger_shift='shift', post_baseline_trigger_shift_max=0, post_baseline_trigger_shift_min=shift),
+        }
+        variables = {
+            **SampleExperiment.variables,
+            'shift': LabelVar('side', {'left': 0, 'right': shift}),
+            'shift_t': LabelVar('trigger', {(1, 3): 0, (2, 4): shift})
+        }
+    e = Experiment(root)
+    # test shift in events
+    ds = e.load_events()
+    assert_dataobj_equal(ds['shift_t'], ds['shift'], name=False)
+    # compare against epochs (baseline correction on epoch level rather than evoked for smaller numerical error)
+    ep = e.load_epochs(baseline=True, epoch='visual', rej='').aggregate('side')
+    evs = e.load_evoked(baseline=True, epoch='visual-s', rej='', model='side')
+    tstart = ep['meg'].time.tmin - shift
+    assert_dataobj_equal(evs[0, 'meg'], ep[0, 'meg'].sub(time=(tstart, None)), decimal=20)
+    tstop = ep['meg'].time.tstop + shift
+    assert_almost_equal(evs[1, 'meg'].x, ep[1, 'meg'].sub(time=(None, tstop)).x, decimal=20)
+
+    # post_baseline_trigger_shift & multiple epochs with same time stamp
     class Experiment(SampleExperiment):
         epochs = {
             **SampleExperiment.epochs,
@@ -104,7 +131,7 @@ def test_sample():
     ds = e.load_epochs(baseline=True, epoch='vc')
     v1 = ds.sub("epoch=='v1'", 'meg').sub(time=(0, 0.199))
     v2 = ds.sub("epoch=='v2'", 'meg').sub(time=(-0.1, 0.099))
-    assert_dataobj_equal(v1, v2, decimal=20)
+    assert_almost_equal(v1.x, v2.x, decimal=20)
 
     # duplicate subject
     class BadExperiment(SampleExperiment):
@@ -174,8 +201,10 @@ def test_sample():
     ds2 = e.load_evoked(raw='ica1-40')
     assert not np.allclose(ds1['meg'].x, ds2['meg'].x, atol=1e-20), "ICA change ignored"
     # apply-ICA
-    ds1 = e.load_evoked(raw='ica', rej='')
-    ds2 = e.load_evoked(raw='apply-ica', rej='')
+    with catch_warnings():
+        filterwarnings('ignore', "The measurement information indicates a low-pass frequency", RuntimeWarning)
+        ds1 = e.load_evoked(raw='ica', rej='')
+        ds2 = e.load_evoked(raw='apply-ica', rej='')
     assert_dataobj_equal(ds2, ds1)
 
     # rename subject
@@ -207,6 +236,19 @@ def test_sample():
     assert e.get('raw') == '1-40'
     with pytest.raises(IOError):
         e.load_test('a>v', 0.05, 0.2, 0.05, samples=20, data='sensor', baseline=False)
+
+    # label_events
+    # ------------
+    class Experiment(SampleExperiment):
+        def label_events(self, ds):
+            SampleExperiment.label_events(self, ds)
+            ds = ds.sub("event == 'smiley'")
+            ds['new_var'] = Var([i + 1 for i in ds['i_start']])
+            return ds
+
+    e = Experiment(root)
+    events = e.load_events()
+    assert_array_equal(events['new_var'], [67402, 75306])
 
 
 @requires_mne_sample_data

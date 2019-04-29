@@ -2,13 +2,16 @@
 from collections import defaultdict
 from distutils.version import LooseVersion
 import os.path as op
+import warnings
 
 import numpy as np
 
 from mne.surface import read_surface
 from mne.utils import get_subjects_dir, logger, verbose
 from mne.label import _get_annot_fname, _n_colors, _write_annot
-import nibabel
+with warnings.catch_warnings():
+    warnings.filterwarnings('ignore', category=DeprecationWarning)
+    import nibabel
 
 if LooseVersion(nibabel.__version__) == LooseVersion('2.3.0'):
     raise ImportError(
