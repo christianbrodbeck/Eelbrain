@@ -106,9 +106,13 @@ class STCLoaderFrame(EelbrainFrame):
 
 
 class FactorPanel(wx.Panel):
-    def __init__(self, parent, levels, idx):
+    def __init__(self, parent, levels, idx, editable=True):
         super().__init__(parent)
-        self.factor_ctl = wx.TextCtrl(self, value="factor_%d" % idx)
+        if editable:
+            self.factor_ctl = wx.TextCtrl(self, value="factor_%d" % idx)
+        else:
+            self.factor_ctl = wx.StaticText(self, label="factor_%d" % idx)
+            self.factor_ctl.SetFont(wx.Font.Bold(self.factor_ctl.GetFont()))
         level_names = ["- " + i for i in levels]
         level_ctl = wx.StaticText(self)
         level_ctl.SetLabel("\n".join(level_names))
