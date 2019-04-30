@@ -3,7 +3,7 @@ import itertools
 import pytest
 from eelbrain.testing import TempDir
 
-from ..mrat import DatasetSTCLoader
+from ..stc_dataset import DatasetSTCLoader
 
 
 def _create_fake_files(tmpdir):

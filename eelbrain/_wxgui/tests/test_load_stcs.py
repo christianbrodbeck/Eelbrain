@@ -1,7 +1,7 @@
 import wx
 from eelbrain import gui, load
 from eelbrain.testing import gui_test, TempDir
-from eelbrain._io.tests.test_mrat import _create_fake_files
+from eelbrain._io.tests.test_stc_dataset import _create_fake_files
 
 
 @gui_test

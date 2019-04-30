@@ -9,7 +9,7 @@ import os
 import wx
 
 from .frame import EelbrainFrame
-from .._io.mrat import DatasetSTCLoader
+from .._io.stc_dataset import DatasetSTCLoader
 
 
 TEST_MODE = False
