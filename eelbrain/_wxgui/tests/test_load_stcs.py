@@ -17,6 +17,7 @@ def test_load_stcs():
     assert frame.loader is not None
     assert len(frame.factor_name_ctrls) == 2
     assert "verb" in frame.loader.levels[1]
+    frame.Close()
 
 
 @gui_test
@@ -28,3 +29,4 @@ def test_failed_load():
     evt.SetPath(tmp)
     frame.OnDirChange(evt)
     assert "No .stc" in frame.status.GetStatusText()
+    frame.Close()
