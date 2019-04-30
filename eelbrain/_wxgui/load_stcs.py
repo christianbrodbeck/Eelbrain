@@ -68,8 +68,8 @@ class STCLoaderFrame(EelbrainFrame):
         path = dir_picker_evt.GetPath()
         try:
             self.loader = DatasetSTCLoader(path)
-        except:
-            self.status.SetStatusText("Error loading data from that directory.")
+        except ValueError as err:
+            self.status.SetStatusText(str(err))
             return
         self.DisplayLevels(self.loader.levels)
         self.submit.Enable()
