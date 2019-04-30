@@ -51,6 +51,8 @@ class DatasetSTCLoader:
 
     def _find_level_names(self):
         stcs = self._all_stc_filenames()
+        if not stcs:
+            raise ValueError("No .stc files in sub-directories")
         # condition names should be lowest level folder
         cond_dirs = list(set(s.split(os.sep)[-2] for s in stcs))
         # set number of factors based on first full condition name
