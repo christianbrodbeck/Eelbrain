@@ -40,6 +40,10 @@ class DatasetSTCLoader:
         self._find_subjects()
         self._find_level_names()
 
+    def __repr__(self):
+        tmp = "<DatasetSTCLoader: {} subjects | {} design>"
+        return tmp.format(len(self.subjects), self.design_shape)
+
     def _all_stc_filenames(self):
         return glob.glob(os.path.join(self.data_dir, "*", "*.stc"))
 
@@ -85,9 +89,12 @@ class DatasetSTCLoader:
     @property
     def design_shape(self):
         """Shape of experiment design, e.g. '2 x 3'"""
-        if self.levels is None or self.factors is None:
+        if self.levels is None:
             return None
-        return " x ".join(map(str, self._level_lens))
+        des = " x ".join(map(str, self._level_lens))
+        if len(des) == 1:
+            des = "1 x {}".format(des)
+        return des
 
     def make_dataset(self, load_stcs=True, subject="fsaverage",
                      src="ico-4", **stc_kwargs):
