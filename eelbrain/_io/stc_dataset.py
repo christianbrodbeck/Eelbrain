@@ -89,19 +89,26 @@ class DatasetSTCLoader:
             return None
         return " x ".join(map(str, self._level_lens))
 
-    def make_dataset(self, load_stcs=True, **stc_kwargs):
+    def make_dataset(self, load_stcs=True, subject="fsaverage",
+                     src="ico-4", **stc_kwargs):
         """
         Load stcs into a Dataset with columns for subject and experimental factors
 
         Dataset contains one case per condition per subject, and source estimates
         loaded as an NDVar. Any additional keyword arguments are passed to
-        ``eelbrain.load.fiff.stc_ndvar()``.
+        ``eelbrain.load.fiff.stc_ndvar()``. If SUBJECTS_DIR is not set int your
+        environment, it should be provided here.
 
         Parameters
         ----------
         load_stcs : bool
             Whether to include stc data in dataset. Only False when testing
             on unreadable stc files.
+        subject : str
+            Subject ID of brain to which the source estimates belong;
+            default: 'fsaverage'
+        src : str
+            Source space surface decimation; default 'ico-4'
 
         Returns
         -------
@@ -124,5 +131,5 @@ class DatasetSTCLoader:
             stc_fnames.append(fnames[0])
         if load_stcs:
             stcs = list(map(read_source_estimate, stc_fnames))
-            ds["src"] = stc_ndvar(stcs, **stc_kwargs)
+            ds["src"] = stc_ndvar(stcs, subject=subject, src=src, **stc_kwargs)
         return ds
