@@ -140,3 +140,28 @@ class DatasetSTCLoader:
             stcs = list(map(read_source_estimate, stc_fnames))
             ds["src"] = stc_ndvar(stcs, subject=subject, src=src, **stc_kwargs)
         return ds
+
+
+def stc_dataset(path):
+    """Returns a :class:`DatasetSTCLoader` object for given directory
+
+    The loader will already have done level detection based on .stc
+    filenames. The user must explicity set the factor names with
+    :meth:`DatasetSTCLoader.set_factor_names`. The dataset may then be
+    loaded via :meth:`DatasetSTCLoader.make_dataset`.
+
+    >>> loader = stc_dataset("path/to/exported/stcs")
+    >>> loader.set_factor_names(["factor1", "factor2"])
+    >>> ds = loader.make_dataset(subjects_dir="mri/")
+
+    Parameters
+    ----------
+    path : str
+        Data directory passed to :class:`DatasetSTCLoader` constructor
+
+    Returns
+    -------
+    loader : :class:`DatasetSTCLoader`
+        Loader object with levels detected
+    """
+    return DatasetSTCLoader(path)

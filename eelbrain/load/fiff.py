@@ -94,3 +94,5 @@ from .._io.fiff import (
     forward_operator, inverse_operator, mne_epochs, mne_raw, raw_ndvar,
     sensor_dim, stc_ndvar
 )
+
+from .._io.stc_dataset import stc_dataset
