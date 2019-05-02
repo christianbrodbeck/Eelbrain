@@ -344,13 +344,14 @@ class EpochCollection(EpochBase):
                 param_repr = ', '.join(repr(v) for v in values)
                 raise DefinitionError(f"Epoch {name}: All sub-epochs must have the same setting for {param}, got {param_repr}")
             setattr(out, param, values.pop())
-        # sessions, with preserved order
-        out.sessions = []
-        out.rej_file_epochs = []
+        # dependencies
+        sessions = set()
+        rej_file_epochs = set()
         for e in sub_epochs:
-            if e.session not in out.sessions:
-                out.sessions.append(e.session)
-            out.rej_file_epochs.extend(e.rej_file_epochs)
+            sessions.update(e.sessions)
+            rej_file_epochs.update(e.rej_file_epochs)
+        out.sessions = sorted(sessions)
+        out.rej_file_epochs = sorted(rej_file_epochs)
         return out
 
 
