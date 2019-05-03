@@ -47,7 +47,7 @@ def test_anova():
     # threshold-free
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=10)
     assert res.match == 'rm'
-    assert repr(res) ==  "<anova 'utsnd', 'A*B*rm', match='rm', samples=10, 'A': p < .001, 'B': p < .001, 'A x B': p < .001>"
+    assert repr(res) == "<anova 'utsnd', 'A*B*rm', match='rm', samples=10, 'A': p < .001, 'B': p < .001, 'A x B': p < .001>"
     assert 'A clusters' in res.clusters.info
     assert 'B clusters' in res.clusters.info
     assert 'A x B clusters' in res.clusters.info
@@ -369,12 +369,12 @@ def test_corr():
     utsnd = ds['utsnd']
     utsnd.x[:, 3:5, 50:65] += Y.x[:, None, None]
 
-    res = testnd.corr('utsnd', 'Y', ds=ds)
-    assert repr(res) == "<corr 'utsnd', 'Y'>"
+    res = testnd.corr('utsnd', 'Y', ds=ds, samples=0)
+    assert repr(res) == "<corr 'utsnd', 'Y', samples=0>"
     for s, t in product('01234', (0.1, 0.2, 0.35)):
         target = test.Correlation(utsnd.sub(sensor=s, time=t), Y).r
         assert res.r.sub(sensor=s, time=t) == pytest.approx(target)
-    res = testnd.corr('utsnd', 'Y', 'rm', ds=ds)
+    res = testnd.corr('utsnd', 'Y', 'rm', ds=ds, samples=0)
     repr(res)
     res = testnd.corr('utsnd', 'Y', ds=ds, samples=10, pmin=0.05)
     repr(res)
@@ -411,18 +411,17 @@ def test_t_contrast():
     assert_dataobj_equal(res.p, res_.p)
 
     # contrast with "*"
-    res = testnd.t_contrast_rel('uts', 'A%B', 'min(a1|b0>a0|b0, a1|b1>a0|b1)',
-                                'rm', ds=ds, tail=1)
+    res = testnd.t_contrast_rel('uts', 'A%B', 'min(a1|b0>a0|b0, a1|b1>a0|b1)', 'rm', ds=ds, tail=1, samples=0)
 
     # zero variance
     ds['uts'].x[:, 10] = 0.
     with pytest.raises(ZeroVariance):
-        testnd.t_contrast_rel('uts', 'A%B', 'min(a1|b0>a0|b0, a1|b1>a0|b1)', 'rm', tail=1, ds=ds)
+        testnd.t_contrast_rel('uts', 'A%B', 'min(a1|b0>a0|b0, a1|b1>a0|b1)', 'rm', tail=1, ds=ds, samples=0)
 
 
 def test_labeling():
     "Test cluster labeling"
-    shape = flat_shape = (4, 20)
+    shape = (4, 20)
     pmap = np.empty(shape, np.float_)
     edges = np.array([(0, 1), (0, 3), (1, 2), (2, 3)], np.uint32)
     conn = Connectivity((
@@ -454,13 +453,13 @@ def test_ttest_1samp():
     ds = datasets.get_uts(True)
 
     # no clusters
-    res0 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds)
+    res0 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds, samples=0)
     assert res0.p_uncorrected.min() < 0.05
-    assert repr(res0) == "<ttest_1samp 'uts', sub=\"A == 'a0'\">"
+    assert repr(res0) == "<ttest_1samp 'uts', sub=\"A == 'a0'\", samples=0>"
 
     # sub as array
-    res1 = testnd.ttest_1samp('uts', sub=ds.eval("A == 'a0'"), ds=ds)
-    assert repr(res1) == "<ttest_1samp 'uts', sub=<array>>"
+    res1 = testnd.ttest_1samp('uts', sub=ds.eval("A == 'a0'"), ds=ds, samples=0)
+    assert repr(res1) == "<ttest_1samp 'uts', sub=<array>, samples=0>"
 
     # clusters without resampling
     res1 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds, samples=0, pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
@@ -512,13 +511,13 @@ def test_ttest_1samp():
     # zero variance
     ds['utsnd'].x[:, 1, 10] = 0.
     ds['utsnd'].x[:, 2, 10] = 0.1
-    res = testnd.ttest_1samp('utsnd', ds=ds)
+    res = testnd.ttest_1samp('utsnd', ds=ds, samples=0)
     assert res.t.x[1, 10] == 0.
     assert res.t.x[2, 10] > 1e10
 
     # argument length
     with pytest.raises(ValueError):
-        testnd.ttest_1samp('utsnd', sub="A[:-1] == 'a0'", ds=ds)
+        testnd.ttest_1samp('utsnd', sub="A[:-1] == 'a0'", ds=ds, samples=0)
 
 
 def test_ttest_ind():
@@ -526,17 +525,17 @@ def test_ttest_ind():
     ds = datasets.get_uts(True)
 
     # basic
-    res = testnd.ttest_ind('uts', 'A', 'a1', 'a0', ds=ds)
-    assert repr(res) == "<ttest_ind 'uts', 'A', 'a1' (n=30), 'a0' (n=30)>"
+    res = testnd.ttest_ind('uts', 'A', 'a1', 'a0', ds=ds, samples=0)
+    assert repr(res) == "<ttest_ind 'uts', 'A', 'a1' (n=30), 'a0' (n=30), samples=0>"
     assert res.p_uncorrected.min() < 0.05
     # persistence
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res_ = pickle.loads(string)
-    assert repr(res_) == "<ttest_ind 'uts', 'A', 'a1' (n=30), 'a0' (n=30)>"
+    assert repr(res_) == "<ttest_ind 'uts', 'A', 'a1' (n=30), 'a0' (n=30), samples=0>"
     assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
     # alternate argspec
-    res_ = testnd.ttest_ind("uts[A == 'a1']", "uts[A == 'a0']", ds=ds)
-    assert repr(res_) == "<ttest_ind 'uts' (n=30), 'uts' (n=30)>"
+    res_ = testnd.ttest_ind("uts[A == 'a1']", "uts[A == 'a0']", ds=ds, samples=0)
+    assert repr(res_) == "<ttest_ind 'uts' (n=30), 'uts' (n=30), samples=0>"
     assert_dataobj_equal(res_.t, res.t)
 
     # cluster
@@ -553,12 +552,12 @@ def test_ttest_ind():
 
     # zero variance
     ds['utsnd'].x[:, 1, 10] = 0.
-    res_zv = testnd.ttest_ind('utsnd', 'A', 'a1', 'a0', ds=ds)
+    res_zv = testnd.ttest_ind('utsnd', 'A', 'a1', 'a0', ds=ds, samples=0)
     assert_array_equal(res_zv.t.x[0], res.t.x[0])
     assert res_zv.t.x[1, 10] == 0.
     # argument mismatch
     with pytest.raises(ValueError):
-        testnd.ttest_ind(ds['utsnd'], ds[:-1, 'A'])
+        testnd.ttest_ind(ds['utsnd'], ds[:-1, 'A'], samples=0)
 
 
 def test_ttest_rel():
@@ -593,7 +592,7 @@ def test_ttest_rel():
     assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
 
     # collapsing cells
-    res2 = testnd.ttest_rel('uts', 'A', 'a1', 'a0', 'rm', ds=ds)
+    res2 = testnd.ttest_rel('uts', 'A', 'a1', 'a0', 'rm', ds=ds, samples=0)
     assert res2.p_uncorrected.min() < 0.05
     assert res2.n == res.n
 

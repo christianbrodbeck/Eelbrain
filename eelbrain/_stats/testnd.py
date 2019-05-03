@@ -150,9 +150,11 @@ class NDTest:
                 sub_repr = '<array>'
             else:
                 sub_repr = repr(self.sub)
-            args.append('sub=%s' % sub_repr)
+            args.append(f'sub={sub_repr}')
         if self._cdist:
             args += self._repr_cdist()
+        else:
+            args.append('samples=0')
 
         return f"<{self.__class__.__name__} {', '.join(args)}>"
 
@@ -422,7 +424,7 @@ class t_contrast_rel(NDTest):
         1: upper tail (one-tailed);
         -1: lower tail (one-tailed).
     samples : int
-        Number of samples for permutation test (default 0).
+        Number of samples for permutation test (default 10,000).
     pmin : None | scalar (0 < pmin < 1)
         Threshold for forming clusters:  use a t-value equivalent to an
         uncorrected p-value for a related samples t-test (with df =
@@ -486,7 +488,7 @@ class t_contrast_rel(NDTest):
 
     @user_activity
     def __init__(self, y, x, contrast, match=None, sub=None, ds=None, tail=0,
-                 samples=0, pmin=None, tmin=None, tfce=False, tstart=None,
+                 samples=10000, pmin=None, tmin=None, tfce=False, tstart=None,
                  tstop=None, parc=None, force_permutation=False, **criteria):
         if match is None:
             raise TypeError("The `match` parameter needs to be specified for repeated measures test t_contrast_rel")
@@ -573,7 +575,7 @@ class corr(NDTest):
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     samples : int
-        Number of samples for permutation test (default 0).
+        Number of samples for permutation test (default 10,000).
     pmin : None | scalar (0 < pmin < 1)
         Threshold for forming clusters:  use an r-value equivalent to an
         uncorrected p-value.
@@ -620,7 +622,7 @@ class corr(NDTest):
     _statistic = 'r'
 
     @user_activity
-    def __init__(self, y, x, norm=None, sub=None, ds=None, samples=0,
+    def __init__(self, y, x, norm=None, sub=None, ds=None, samples=10000,
                  pmin=None, rmin=None, tfce=False, tstart=None, tstop=None,
                  match=None, parc=None, **criteria):
         sub = assub(sub, ds)
@@ -791,7 +793,7 @@ class ttest_1samp(NDDifferenceTest):
         1: upper tail (one-tailed);
         -1: lower tail (one-tailed).
     samples : int
-        Number of samples for permutation test (default 0).
+        Number of samples for permutation test (default 10,000).
     pmin : None | scalar (0 < pmin < 1)
         Threshold for forming clusters:  use a t-value equivalent to an
         uncorrected p-value.
@@ -846,7 +848,7 @@ class ttest_1samp(NDDifferenceTest):
 
     @user_activity
     def __init__(self, y, popmean=0, match=None, sub=None, ds=None, tail=0,
-                 samples=0, pmin=None, tmin=None, tfce=False, tstart=None,
+                 samples=10000, pmin=None, tmin=None, tfce=False, tstart=None,
                  tstop=None, parc=None, force_permutation=False, **criteria):
         ct = Celltable(y, match=match, sub=sub, ds=ds, coercion=asndvar, dtype=np.float64)
         check_for_vector_dim(ct.y)
@@ -999,7 +1001,7 @@ class ttest_ind(NDDifferenceTest):
         1: upper tail (one-tailed);
         -1: lower tail (one-tailed).
     samples : int
-        Number of samples for permutation test (default 0).
+        Number of samples for permutation test (default 10,000).
     pmin : None | scalar (0 < pmin < 1)
         Threshold p value for forming clusters. None for threshold-free
         cluster enhancement.
@@ -1066,7 +1068,7 @@ class ttest_ind(NDDifferenceTest):
             sub: IndexArg = None,
             ds: Dataset = None,
             tail: int = 0,
-            samples: int = 0,
+            samples: int = 10000,
             pmin: float = None,
             tmin: float = None,
             tfce: Union[float, bool] = False,
@@ -1185,6 +1187,8 @@ class ttest_ind(NDDifferenceTest):
 def _related_measures_args(y, x, c1, c0, match, ds, sub):
     "Interpret parameters for related measures tests (2 different argspecs)"
     if isinstance(x, str):
+        if ds is None:
+            raise TypeError(f"x={x!r} specified as str without specifying ds")
         x = ds.eval(x)
 
     if isinstance(x, NDVar):
@@ -1246,7 +1250,7 @@ class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
         1: upper tail (one-tailed);
         -1: lower tail (one-tailed).
     samples : int
-        Number of samples for permutation test (default 0).
+        Number of samples for permutation test (default 10,000).
     pmin : None | scalar (0 < pmin < 1)
         Threshold for forming clusters:  use a t-value equivalent to an
         uncorrected p-value.
@@ -1308,7 +1312,7 @@ class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
 
     @user_activity
     def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
-                 tail=0, samples=0, pmin=None, tmin=None, tfce=False,
+                 tail=0, samples=10000, pmin=None, tmin=None, tfce=False,
                  tstart=None, tstop=None, parc=None, force_permutation=False, **criteria):
         y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
         check_for_vector_dim(y1)
@@ -1620,7 +1624,7 @@ class anova(MultiEffectNDTest):
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     samples : int
-        Number of samples for permutation test (default 0).
+        Number of samples for permutation test (default 10,000).
     pmin : None | scalar (0 < pmin < 1)
         Threshold for forming clusters:  use an f-value equivalent to an
         uncorrected p-value.
@@ -1681,7 +1685,7 @@ class anova(MultiEffectNDTest):
     _statistic_tail = 1
 
     @user_activity
-    def __init__(self, y, x, sub=None, ds=None, samples=0, pmin=None,
+    def __init__(self, y, x, sub=None, ds=None, samples=10000, pmin=None,
                  fmin=None, tfce=False, tstart=None, tstop=None, match=None,
                  parc=None, force_permutation=False, **criteria):
         x_arg = x

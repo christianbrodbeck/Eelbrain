@@ -3,6 +3,12 @@ Changes
 
 .. currentmodule:: eelbrain
 
+New in 0.31
+-----------
+
+* :mod:`testnd` API:  For permutation tests, the ``samples`` parameter now defaults to 10,000 (previously 0)
+
+
 New in 0.30
 -----------
 
