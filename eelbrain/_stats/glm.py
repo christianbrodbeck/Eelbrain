@@ -18,7 +18,8 @@ import scipy.stats
 from .. import fmtxt
 from .._utils import LazyProperty
 from .._data_obj import (
-    Model, asmodel, assub, asvar, assert_has_no_empty_cells, find_factors,
+    ModelArg, IndexArg, VarArg,
+    Dataset, Model, asmodel, assub, asvar, assert_has_no_empty_cells, find_factors,
     hasrandom, is_higher_order_effect, isbalanced, iscategorial, isnestedin)
 from .opt import anova_fmaps, anova_full_fmaps, lm_res_ss, ss
 from .stats import ftest_p
@@ -809,7 +810,13 @@ class ANOVA:
     For information about model specification, see the :func:`anova`
     documentation.
     """
-    def __init__(self, y, x, sub=None, ds=None):
+    def __init__(
+            self,
+            y: VarArg,
+            x: ModelArg,
+            sub: IndexArg = None,
+            ds: Dataset = None,
+    ):
         # prepare kwargs
         sub = assub(sub, ds)
         y = asvar(y, sub, ds)

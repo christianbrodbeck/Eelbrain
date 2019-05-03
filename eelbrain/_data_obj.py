@@ -9913,6 +9913,10 @@ def intersect_dims(dims1, dims2, check_dims=True):
 EVAL_CONTEXT.update(Var=Var, Factor=Factor, extrema=extrema)
 
 NDVarArg = typing.Union[NDVar, str]
+VarArg = typing.Union[Var, str]
+NumericArg = typing.Union[Var, NDVar, str]
 CategorialArg = typing.Union[Factor, Interaction, NestedEffect, str]
 FactorArg = typing.Union[Factor, str]
+CellArg = typing.Union[str, typing.Tuple[str, ...]]
 IndexArg = typing.Union[Var, np.ndarray, str]
+ModelArg = typing.Union[Model, Interaction, Categorial, Var, str]

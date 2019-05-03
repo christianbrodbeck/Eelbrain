@@ -44,7 +44,7 @@ from ..fmtxt import FMText
 from .._celltable import Celltable
 from .._config import CONFIG
 from .._data_obj import (
-    NDVarArg, CategorialArg, IndexArg,
+    CategorialArg, CellArg, IndexArg, ModelArg, NDVarArg, VarArg,
     Dataset, Var, Factor, Interaction, NestedEffect,
     NDVar, Categorial, UTS,
     ascategorial, asmodel, asndvar, asvar, assub,
@@ -413,7 +413,7 @@ class t_contrast_rel(NDTest):
         Contrast specification: see Notes.
     match : Factor
         Match cases for a repeated measures test.
-    sub : None | index-array
+    sub : index
         Perform the test with a subset of the data.
     ds : None | Dataset
         If a Dataset is specified, all data-objects can be specified as
@@ -487,9 +487,24 @@ class t_contrast_rel(NDTest):
     _statistic = 't'
 
     @user_activity
-    def __init__(self, y, x, contrast, match=None, sub=None, ds=None, tail=0,
-                 samples=10000, pmin=None, tmin=None, tfce=False, tstart=None,
-                 tstop=None, parc=None, force_permutation=False, **criteria):
+    def __init__(
+            self,
+            y: NDVarArg,
+            x: CategorialArg,
+            contrast: str,
+            match: CategorialArg = None,
+            sub: CategorialArg = None,
+            ds: Dataset = None,
+            tail: int = 0,
+            samples: int = 10000,
+            pmin: float = None,
+            tmin: float = None,
+            tfce: Union[float, bool] = False,
+            tstart: float = None,
+            tstop: float = None,
+            parc: str = None,
+            force_permutation: bool = False,
+            **criteria):
         if match is None:
             raise TypeError("The `match` parameter needs to be specified for repeated measures test t_contrast_rel")
         ct = Celltable(y, x, match, sub, ds=ds, coercion=asndvar, dtype=np.float64)
@@ -569,7 +584,7 @@ class corr(NDTest):
         The continuous predictor variable.
     norm : None | categorial
         Categories in which to normalize (z-score) x.
-    sub : None | index-array
+    sub : index
         Perform the test with a subset of the data.
     ds : None | Dataset
         If a Dataset is specified, all data-objects can be specified as
@@ -622,9 +637,22 @@ class corr(NDTest):
     _statistic = 'r'
 
     @user_activity
-    def __init__(self, y, x, norm=None, sub=None, ds=None, samples=10000,
-                 pmin=None, rmin=None, tfce=False, tstart=None, tstop=None,
-                 match=None, parc=None, **criteria):
+    def __init__(
+            self,
+            y: NDVarArg,
+            x: VarArg,
+            norm: CategorialArg = None,
+            sub: IndexArg = None,
+            ds: Dataset = None,
+            samples: int = 10000,
+            pmin: float = None,
+            rmin: float = None,
+            tfce: Union[float, bool] = False,
+            tstart: float = None,
+            tstop: float = None,
+            match: CategorialArg = None,
+            parc: str = None,
+            **criteria):
         sub = assub(sub, ds)
         y = asndvar(y, sub=sub, ds=ds, dtype=np.float64)
         check_for_vector_dim(y)
@@ -782,7 +810,7 @@ class ttest_1samp(NDDifferenceTest):
         Value to compare y against (default is 0).
     match : None | categorial
         Combine data for these categories before testing.
-    sub : None | index-array
+    sub : index
         Perform test with a subset of the data.
     ds : None | Dataset
         If a Dataset is specified, all data-objects can be specified as
@@ -847,9 +875,23 @@ class ttest_1samp(NDDifferenceTest):
     _statistic = 't'
 
     @user_activity
-    def __init__(self, y, popmean=0, match=None, sub=None, ds=None, tail=0,
-                 samples=10000, pmin=None, tmin=None, tfce=False, tstart=None,
-                 tstop=None, parc=None, force_permutation=False, **criteria):
+    def __init__(
+            self,
+            y: NDVarArg,
+            popmean: float = 0,
+            match: CategorialArg = None,
+            sub: IndexArg = None,
+            ds: Dataset = None,
+            tail: int = 0,
+            samples: int = 10000,
+            pmin: float = None,
+            tmin: float = None,
+            tfce: Union[float, bool] = False,
+            tstart: float = None,
+            tstop: float = None,
+            parc: str = None,
+            force_permutation: bool = False,
+            **criteria):
         ct = Celltable(y, match=match, sub=sub, ds=ds, coercion=asndvar, dtype=np.float64)
         check_for_vector_dim(ct.y)
 
@@ -990,7 +1032,7 @@ class ttest_ind(NDDifferenceTest):
         Control condition (cell of ``x``).
     match : categorial
         Combine cases with the same cell on ``x % match``.
-    sub : None | index-array
+    sub : index
         Perform the test with a subset of the data.
     ds : None | Dataset
         If a Dataset is specified, all data-objects can be specified as
@@ -1061,10 +1103,10 @@ class ttest_ind(NDDifferenceTest):
     def __init__(
             self,
             y: NDVarArg,
-            x: CategorialArg,
-            c1: str = None,
-            c0: str = None,
-            match: CategorialArg=None,
+            x: Union[CategorialArg, NDVarArg],
+            c1: CellArg = None,
+            c0: CellArg = None,
+            match: CategorialArg = None,
             sub: IndexArg = None,
             ds: Dataset = None,
             tail: int = 0,
@@ -1239,7 +1281,7 @@ class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
     match : categorial
         Units within which measurements are related (e.g. 'subject' in a
         within-subject comparison).
-    sub : None | index-array
+    sub : index
         Perform the test with a subset of the data.
     ds : None | Dataset
         If a Dataset is specified, all data-objects can be specified as
@@ -1311,9 +1353,25 @@ class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
     _statistic = 't'
 
     @user_activity
-    def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
-                 tail=0, samples=10000, pmin=None, tmin=None, tfce=False,
-                 tstart=None, tstop=None, parc=None, force_permutation=False, **criteria):
+    def __init__(
+            self,
+            y: NDVarArg,
+            x: Union[CategorialArg, NDVarArg],
+            c1: CellArg = None,
+            c0: CellArg = None,
+            match: CategorialArg = None,
+            sub: IndexArg = None,
+            ds: Dataset = None,
+            tail: int = 0,
+            samples: int = 10000,
+            pmin: float = None,
+            tmin: float = None,
+            tfce: Union[float, bool] = False,
+            tstart: float = None,
+            tstop: float = None,
+            parc: str = None,
+            force_permutation: bool = False,
+            **criteria):
         y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
         check_for_vector_dim(y1)
 
@@ -1615,10 +1673,10 @@ class anova(MultiEffectNDTest):
     Parameters
     ----------
     y : NDVar
-        Measurements (dependent variable)
-    x : categorial
-        Model
-    sub : None | index-array
+        Dependent variable.
+    x : Model
+        Independent variables.
+    sub : index
         Perform the test with a subset of the data.
     ds : None | Dataset
         If a Dataset is specified, all data-objects can be specified as
@@ -1685,9 +1743,22 @@ class anova(MultiEffectNDTest):
     _statistic_tail = 1
 
     @user_activity
-    def __init__(self, y, x, sub=None, ds=None, samples=10000, pmin=None,
-                 fmin=None, tfce=False, tstart=None, tstop=None, match=None,
-                 parc=None, force_permutation=False, **criteria):
+    def __init__(
+            self,
+            y: NDVarArg,
+            x: ModelArg,
+            sub: IndexArg = None,
+            ds: Dataset = None,
+            samples: int = 10000,
+            pmin: float = None,
+            fmin: float = None,
+            tfce: Union[float, bool] = False,
+            tstart: float = None,
+            tstop: float = None,
+            match: Union[CategorialArg, bool] = None,
+            parc: str = None,
+            force_permutation: bool = False,
+            **criteria):
         x_arg = x
         sub_arg = sub
         sub = assub(sub, ds)
@@ -1844,7 +1915,7 @@ class Vector(NDDifferenceTest):
         Dependent variable (needs to include one vector dimension).
     match : None | categorial
         Combine data for these categories before testing.
-    sub : None | index-array
+    sub : index
         Perform test with a subset of the data.
     ds : None | Dataset
         If a Dataset is specified, all data-objects can be specified as
@@ -1908,10 +1979,21 @@ class Vector(NDDifferenceTest):
     _state_specific = ('difference', 'n', '_v_dim', 't2')
 
     @user_activity
-    def __init__(self, y, match=None, sub=None, ds=None,
-                 samples=10000, tmin=None, tfce=False, tstart=None,
-                 tstop=None, parc=None, force_permutation=False, norm=False,
-                 **criteria):
+    def __init__(
+            self,
+            y: NDVarArg,
+            match: CategorialArg = None,
+            sub: IndexArg = None,
+            ds: Dataset = None,
+            samples: int = 10000,
+            tmin: float = None,
+            tfce: Union[float, bool] = False,
+            tstart: float = None,
+            tstop: float = None,
+            parc: str = None,
+            force_permutation: bool = False,
+            norm: bool = False,
+            **criteria):
         use_norm = bool(norm)
         ct = Celltable(y, match=match, sub=sub, ds=ds, coercion=asndvar, dtype=np.float64)
 
@@ -2009,7 +2091,7 @@ class VectorDifferenceIndependent(Vector):
         Control condition (cell of ``x``).
     match : categorial
         Combine cases with the same cell on ``x % match``.
-    sub : None | index-array
+    sub : index
         Perform the test with a subset of the data.
     ds : None | Dataset
         If a Dataset is specified, all data-objects can be specified as
@@ -2071,9 +2153,24 @@ class VectorDifferenceIndependent(Vector):
     _statistic = 'norm'
 
     @user_activity
-    def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
-                 samples=10000, tmin=None, tfce=False, tstart=None,
-                 tstop=None, parc=None, force_permutation=False, norm=False, **criteria):
+    def __init__(
+            self,
+            y: NDVarArg,
+            x: Union[CategorialArg, NDVarArg],
+            c1: str = None,
+            c0: str = None,
+            match: CategorialArg = None,
+            sub: IndexArg = None,
+            ds: Dataset = None,
+            samples: int = 10000,
+            tmin: float = None,
+            tfce: bool = False,
+            tstart: float = None,
+            tstop: float = None,
+            parc: str = None,
+            force_permutation: bool = False,
+            norm: bool = False,
+            **criteria):
         use_norm = bool(norm)
         y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, ds, sub)
         self.n1 = len(y1)
@@ -2156,7 +2253,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
     match : categorial
         Units within which measurements are related (e.g. 'subject' in a
         within-subject comparison).
-    sub : None | index-array
+    sub : index
         Perform the test with a subset of the data.
     ds : None | Dataset
         If a Dataset is specified, all data-objects can be specified as
@@ -2217,9 +2314,24 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
     _state_specific = ('difference', 'c1_mean', 'c0_mean' 'n', '_v_dim', 't2')
 
     @user_activity
-    def __init__(self, y, x, c1=None, c0=None, match=None, sub=None, ds=None,
-                 samples=10000, tmin=None, tfce=False, tstart=None, tstop=None,
-                 parc=None, force_permutation=False, norm=False, **criteria):
+    def __init__(
+            self,
+            y: NDVarArg,
+            x: Union[CategorialArg, NDVarArg],
+            c1: str = None,
+            c0: str = None,
+            match: CategorialArg = None,
+            sub: IndexArg = None,
+            ds: Dataset = None,
+            samples: int = 10000,
+            tmin: float = None,
+            tfce: bool = False,
+            tstart: float = None,
+            tstop: float = None,
+            parc: str = None,
+            force_permutation: bool = False,
+            norm: bool = False,
+            **criteria):
         use_norm = bool(norm)
         y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
         difference = y1 - y0
