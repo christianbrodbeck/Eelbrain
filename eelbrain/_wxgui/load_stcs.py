@@ -68,6 +68,7 @@ class STCLoaderFrame(EelbrainFrame):
         path = dir_picker_evt.GetPath()
         try:
             self.loader = DatasetSTCLoader(path)
+            self.status.SetStatusText("")
         except ValueError as err:
             self.status.SetStatusText(str(err))
             return
