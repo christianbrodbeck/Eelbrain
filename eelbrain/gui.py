@@ -169,6 +169,7 @@ def select_epochs(
     else:
         run()
 
+
 def load_stcs():
     """GUI for detecting and loading source estimates
 
@@ -176,7 +177,7 @@ def load_stcs():
     -----
     This GUI prompts the user for the directory containing the
     source estimates, then automatically detects the experimental
-    design, and loads the data into an ``eelbrain.Dataset``.
+    design, and loads the data into a :class:`Dataset`.
     """
     from ._wxgui.app import get_app
     from ._wxgui.load_stcs import STCLoaderFrame, TEST_MODE

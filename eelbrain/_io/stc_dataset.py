@@ -103,7 +103,7 @@ class DatasetSTCLoader:
 
         Dataset contains one case per condition per subject, and source estimates
         loaded as an NDVar. Any additional keyword arguments are passed to
-        ``eelbrain.load.fiff.stc_ndvar()``. If SUBJECTS_DIR is not set int your
+        :meth:`eelbrain.load.fiff.stc_ndvar`. If ``SUBJECTS_DIR`` is not set in your
         environment, it should be provided here.
 
         Parameters
