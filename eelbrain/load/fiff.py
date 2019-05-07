@@ -15,6 +15,7 @@
    stc_ndvar
    forward_operator
    inverse_operator
+   DatasetSTCLoader
 
 
 .. currentmodule:: eelbrain
@@ -88,6 +89,22 @@ If events are stored separately form the raw files, they can be loaded in
 
     >>> ds = load.fiff.events(raw_file_path, events=events_file_path)
 
+
+Loading source estimates into a Dataset
+---------------------------------------
+
+Previously exported stc files can be loaded into a :class:Dataset with the
+:class:`DatasetSTCLoader` class. The stcs must reside in subdirectories named
+by condition. Supply the path to the data, and the constructor will detect
+the factors' levels from the names of the condition directories.
+Call :meth:`DatasetSTCLoader.set_factor_names` to indicate the names of
+the experimental conditions, and finally load the data with
+:meth:`DatasetSTCLoader.make_dataset`.
+
+    >>> loader = stc_dataset("path/to/exported/stcs")
+    >>> loader.set_factor_names(["factor1", "factor2"])
+    >>> ds = loader.make_dataset(subjects_dir="mri/")
+
 """
 from .._io.fiff import (
     add_epochs, add_mne_epochs, epochs, epochs_ndvar, events, evoked_ndvar,
@@ -95,4 +112,4 @@ from .._io.fiff import (
     sensor_dim, stc_ndvar
 )
 
-from .._io.stc_dataset import stc_dataset
+from .._io.stc_dataset import DatasetSTCLoader
