@@ -93,15 +93,15 @@ If events are stored separately form the raw files, they can be loaded in
 Loading source estimates into a Dataset
 ---------------------------------------
 
-Previously exported stc files can be loaded into a :class:Dataset with the
-:class:`DatasetSTCLoader` class. The stcs must reside in subdirectories named
-by condition. Supply the path to the data, and the constructor will detect
-the factors' levels from the names of the condition directories.
-Call :meth:`DatasetSTCLoader.set_factor_names` to indicate the names of
-the experimental conditions, and finally load the data with
-:meth:`DatasetSTCLoader.make_dataset`.
+Previously exported stc files can be loaded into a :class:`Dataset` with the
+:class:`~load.fiff.DatasetSTCLoader` class. The stcs must reside in
+subdirectories named by condition. Supply the path to the data, and the
+constructor will detect the factors' levels from the names of the condition
+directories. Call :meth:`~load.fiff.DatasetSTCLoader.set_factor_names` to
+indicate the names of the experimental conditions, and finally load the data
+with :meth:`~load.fiff.DatasetSTCLoader.make_dataset`.
 
-    >>> loader = stc_dataset("path/to/exported/stcs")
+    >>> loader = load.fiff.DatasetSTCLoader("path/to/exported/stcs")
     >>> loader.set_factor_names(["factor1", "factor2"])
     >>> ds = loader.make_dataset(subjects_dir="mri/")
 
