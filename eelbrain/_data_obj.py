@@ -66,6 +66,7 @@ from scipy.spatial.distance import cdist, pdist, squareform
 from . import fmtxt, _info
 from ._exceptions import DimensionMismatchError, IncompleteModel
 from ._data_opt import gaussian_smoother
+from ._text import enumeration
 from ._utils import (
     intervals, ui, LazyProperty, n_decimals, natsorted)
 from ._utils.numpy_utils import (
@@ -345,8 +346,7 @@ def assert_has_no_empty_cells(x):
             return
         empty = empty_cells(x)
         if empty:
-            raise NotImplementedError("%s contains empty cells: %s" %
-                                      (dataobj_repr(x), ', '.join(empty)))
+            raise NotImplementedError(f"{dataobj_repr(x)} contains empty cells: {enumeration(empty)}")
     elif isinstance(x, Model):
         empty = []
         for e in x.effects:
@@ -356,10 +356,9 @@ def assert_has_no_empty_cells(x):
                     empty.append((dataobj_repr(e), ', '.join(empty_in_e)))
         if empty:
             items = ['%s (%s)' % pair for pair in empty]
-            raise NotImplementedError("%s contains empty cells in %s" %
-                                      (dataobj_repr(x), ' and '.join(items)))
+            raise NotImplementedError(f"{dataobj_repr(x)} contains empty cells in {enumeration(items)}")
     else:
-        raise TypeError("Need categorial (got %s)" % repr(x))
+        raise TypeError(f"Need categorial, got {x!r}")
 
 
 def hasrandom(x):
@@ -379,8 +378,7 @@ def as_case_identifier(x, ds=None):
     "Coerce input to a variable that can identify each of its cases"
     if isinstance(x, str):
         if ds is None:
-            raise TypeError("Parameter was specified as string, but no Dataset "
-                            "was specified")
+            raise TypeError(f"{x!r}: Parameter was specified as string, but no Dataset was specified")
         x = ds.eval(x)
 
     if isinstance(x, Var):
@@ -390,12 +388,10 @@ def as_case_identifier(x, ds=None):
     elif isinstance(x, Interaction):
         n = len(set(x))
     else:
-        raise TypeError("Need a Var, Factor or Interaction to identify cases, "
-                        "got %s" % repr(x))
+        raise TypeError(f"Need a Var, Factor or Interaction to identify cases, got {x!r}")
 
     if n < len(x):
-        raise ValueError("%s can not serve as a case identifier because it has "
-                         "at least one non-unique value" % x.name.capitalize())
+        raise ValueError(f"Variable can not serve as a case identifier because it has at least one non-unique value: {x!r}")
 
     return x
 
@@ -404,8 +400,7 @@ def asarray(x, kind=None, ds=None):
     "Coerce input to array"
     if isinstance(x, str):
         if ds is None:
-            raise TypeError("Parameter was specified as string, but no Dataset "
-                            "was specified")
+            raise TypeError(f"{x!r} Array parameter was specified as string, but no Dataset was specified")
         x = ds.eval(x)
 
     if isinstance(x, Var):
@@ -418,8 +413,7 @@ def asarray(x, kind=None, ds=None):
         if 'i' in kind and x.dtype.kind == 'b':
             x = x.astype(int)
         else:
-            raise TypeError("Expected array of kind %r, got %r (%s)"
-                            % (kind, x.dtype.kind, x.dtype))
+            raise TypeError(f"Expected array of kind {kind!r}, got {x.dtype.kind!r} ({x.dtype})")
     return x
 
 
@@ -455,9 +449,7 @@ def asdataobject(x, sub=None, ds=None, n=None, return_n=False):
     "Convert to any data object or numpy array."
     if isinstance(x, str):
         if ds is None:
-            err = ("Data object was specified as string, but no Dataset was "
-                   "specified")
-            raise TypeError(err)
+            raise TypeError(f"{x!r}: Data object was specified as string, but no Dataset was specified")
         x = ds.eval(x)
 
     if isdataobject(x):
@@ -474,15 +466,13 @@ def asepochs(x, sub=None, ds=None, n=None, return_n=False):
     "Convert to mne Epochs object"
     if isinstance(x, str):
         if ds is None:
-            err = ("Epochs object was specified as string, but no Dataset was "
-                   "specified")
-            raise TypeError(err)
+            raise TypeError(f"{x!r}: Epochs object was specified as string, but no Dataset was specified")
         x = ds.eval(x)
 
     if isinstance(x, MNE_EPOCHS):
         pass
     else:
-        raise TypeError("Need mne Epochs object, got %s" % repr(x))
+        raise TypeError(f"Need mne Epochs object, got {x!r}")
 
     return _apply_sub(x, sub, n, return_n)
 
@@ -515,14 +505,13 @@ def asindex(x):
 def asmodel(x, sub=None, ds=None, n=None, return_n=False):
     if isinstance(x, str):
         if ds is None:
-            raise TypeError("Model was specified as string, but no Dataset was "
-                            "specified")
+            raise TypeError(f"{x!r}: Model was specified as string, but no Dataset was specified")
         elif sub is not None:
             # need to sub dataset before building model to get right number of
             # df
-            names = set(re.findall('\w+', x))
+            names = set(re.findall(r'\w+', x))
             if isinstance(sub, str):
-                names.update(re.findall('\w+', sub))
+                names.update(re.findall(r'\w+', sub))
             names.intersection_update(ds)
             ds = ds[names].sub(sub)
             sub = None
@@ -539,7 +528,7 @@ def asmodel(x, sub=None, ds=None, n=None, return_n=False):
 def asndvar(x, sub=None, ds=None, n=None, dtype=None, return_n=False):
     if isinstance(x, str):
         if ds is None:
-            raise TypeError("Ndvar was specified as string, but no Dataset was specified")
+            raise TypeError(f"{x!r}: Ndvar was specified as string, but no Dataset was specified")
         x = ds.eval(x)
 
     # convert MNE objects
@@ -563,7 +552,7 @@ def asndvar(x, sub=None, ds=None, n=None, dtype=None, return_n=False):
     elif hasattr(x, '_default_plot_obj'):
         x = x._default_plot_obj()
     else:
-        raise TypeError("NDVar required, got %s" % repr(x))
+        raise TypeError(f"NDVar required, got {x!r}")
 
     x, n = _apply_sub(x, sub, n, return_n=True)
     if dtype is not None and x.x.dtype != dtype:
@@ -575,12 +564,11 @@ def asnumeric(x, sub=None, ds=None, n=None, return_n=False):
     "Var, NDVar"
     if isinstance(x, str):
         if ds is None:
-            raise TypeError("Numeric argument was specified as string, but no "
-                            "Dataset was specified")
+            raise TypeError(f"{x!r}: Numeric argument was specified as string, but no Dataset was specified")
         x = ds.eval(x)
 
     if not isnumeric(x):
-        raise TypeError("Numeric argument required (Var or NDVar), got %s" % repr(x))
+        raise TypeError(f"Numeric argument required (Var or NDVar), got {x!r}")
 
     return _apply_sub(x, sub, n, return_n)
 
@@ -591,14 +579,13 @@ def assub(sub, ds=None, return_n=False):
         return (None, None) if return_n else None
     elif isinstance(sub, str):
         if ds is None:
-            raise TypeError("the sub parameter was specified as string, but no "
-                            "Dataset was specified")
+            raise TypeError(f"sub={sub!r}: parameter was specified as string, but no Dataset was specified")
         sub = ds.eval(sub)
 
     if isinstance(sub, Var):
         sub = sub.x
     elif not isinstance(sub, np.ndarray):
-        raise TypeError(f"sub={sub}: needs to be Var or array")
+        raise TypeError(f"sub={sub!r}: needs to be Var or array")
 
     if return_n:
         n = len(sub) if sub.dtype.kind == 'b' else None
@@ -611,8 +598,7 @@ def asuv(x, sub=None, ds=None, n=None, return_n=False, interaction=False):
     "Coerce to Var or Factor"
     if isinstance(x, str):
         if ds is None:
-            raise TypeError("Parameter was specified as string, but no Dataset "
-                            "was specified")
+            raise TypeError(f"{x!r}: Parameter was specified as string, but no Dataset was specified")
         x = ds.eval(x)
 
     if isuv(x, interaction):
@@ -629,8 +615,7 @@ def asvar(x, sub=None, ds=None, n=None, return_n=False):
     "Coerce to Var"
     if isinstance(x, str):
         if ds is None:
-            raise TypeError("Var was specified as string, but no Dataset was "
-                            "specified")
+            raise TypeError(f"{x!r}: Var was specified as string, but no Dataset was specified")
         x = ds.eval(x)
 
     if not isinstance(x, Var):
@@ -660,7 +645,7 @@ def index_ndim(index):
     elif np.iterable(index):
         return 1
     else:
-        raise TypeError("unknown index type: %s" % repr(index))
+        raise TypeError(f"{index!r}: unknown index type")
 
 
 def _empty_like(obj, n=None, name=None):
@@ -677,8 +662,7 @@ def _empty_like(obj, n=None, name=None):
     elif isdatalist(obj):
         return Datalist([None] * n, name, obj._fmt)
     else:
-        err = "Type not supported: %s" % type(obj)
-        raise TypeError(err)
+        raise TypeError(f"{type(obj)}: Type not supported")
 
 
 def all_equal(a, b, nan_equal=False):
@@ -702,10 +686,9 @@ def all_equal(a, b, nan_equal=False):
         True if all entries in
     """
     if a.__class__ is not b.__class__:
-        raise TypeError("Comparing %s with %s" % (a.__class__, b.__class__))
+        raise TypeError(f"Comparing {a.__class__} with {b.__class__}")
     elif len(a) != len(b):
-        raise ValueError("a and b have different lengths (%i vs %i)" %
-                         (len(a), len(b)))
+        raise ValueError(f"a and b have different lengths ({len(a)} vs {len(b)})")
     elif isinstance(a, Factor):
         if a._codes == b._codes:
             return np.array_equal(a.x, b.x)
@@ -722,7 +705,7 @@ def all_equal(a, b, nan_equal=False):
             buf |= mask
             return buf.all()
     else:
-        raise TypeError("Comparison for %s is not implemented" % a.__class__)
+        raise TypeError(f"Comparison for {a.__class__} is not implemented")
 
 
 # --- sorting ---
@@ -6217,18 +6200,16 @@ class Dataset(OrderedDict):
                 raise ValueError(f"Trying to update dataset with {self.n_cases} cases from dataset with {ds.n_cases} cases")
 
         if not replace:
-            unequal = {}
+            unequal = []
             for key in set(self).intersection(ds):
                 own = self[key]
                 other = ds[key]
                 if len(own) != len(other):
-                    unequal[key] = 'unequal length'
+                    unequal.append((key, 'unequal length'))
                 elif not np.all(own == other):
-                    unequal[key] = "unequal values"
+                    unequal.append((key, 'unequal values'))
             if unequal:
-                raise ValueError(
-                    "The following variables are present twice but are not "
-                    "equal: %s" % ', '.join('%r (%s)' % item for item in unequal.items()))
+                raise ValueError(f"Inconsistent variables present: {enumeration(f'{name} ({msg})' for name, msg in unequal)}")
 
         super(Dataset, self).update(ds)
 
