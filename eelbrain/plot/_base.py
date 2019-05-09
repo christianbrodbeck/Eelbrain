@@ -1306,14 +1306,14 @@ class EelFigure:
         """
         name = self.__class__.__name__
         desc = layout.name or data_desc
+        self._title = f'{name}: {desc}' if desc else name
 
         # find the right frame
         if CONFIG['eelbrain']:
             from .._wxgui import get_app
             from .._wxgui.mpl_canvas import CanvasFrame
             get_app()
-            title = f'{name}: {desc}' if desc else name
-            frame = CanvasFrame(title=title, eelfigure=self, **layout.fig_kwa())
+            frame = CanvasFrame(title=self._title, eelfigure=self, **layout.fig_kwa())
             self._has_frame = True
         else:
             frame = MatplotlibFrame(**layout.fig_kwa())
@@ -1357,7 +1357,8 @@ class EelFigure:
         self.canvas.mpl_connect('key_release_event', self._on_key_release)
 
     def __repr__(self):
-        return f'<{self._frame.GetTitle()}>'
+        title = self._frame.GetTitle() if self._has_frame else self._title
+        return f'<{title}>'
 
     def _set_axtitle(self, axtitle, data=None, axes=None, names=None, **kwargs):
         """Set axes titles automatically
