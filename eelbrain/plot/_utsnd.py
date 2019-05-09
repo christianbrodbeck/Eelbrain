@@ -233,7 +233,7 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
      - ``d``: zoom out (increase x axis range)
     """
     def __init__(self, y, xax=None, xlabel=True, ylabel=True,
-                 xticklabels=-1, ds=None, sub=None, x='time', vmax=None,
+                 xticklabels='bottom', ds=None, sub=None, x='time', vmax=None,
                  vmin=None, cmap=None, axtitle=True, interpolation=None,
                  xlim=None, *args, **kwargs):
         data = PlotData.from_args(y, (x, None), xax, ds, sub).for_plot(PlotType.IMAGE)
@@ -437,7 +437,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
     _OPEN_PLOTS = []
 
     def __init__(self, y, xax=None, sensors=None, axtitle=True,
-                 xlabel=True, ylabel=True, xticklabels=-1, color=None,
+                 xlabel=True, ylabel=True, xticklabels='bottom', color=None,
                  linewidth=None,
                  ds=None, sub=None, x='time', vmax=None, vmin=None, xlim=None,
                  clip=None, *args, **kwargs):

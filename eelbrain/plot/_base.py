@@ -62,7 +62,7 @@ import __main__
 from collections import Iterable, Iterator
 from copy import copy
 from enum import Enum, auto
-from itertools import chain
+from itertools import chain, repeat
 from logging import getLogger
 import math
 import os
@@ -1568,8 +1568,7 @@ class EelFigure:
         else:
             return (self._axes[i] for i in axes)
 
-    def _configure_xaxis_dim(self, dim, label, xticklabels, axes=None,
-                             scalar=True):
+    def _configure_xaxis_dim(self, dim, label, xticklabels, axes=None, scalar=True):
         """Configure the x-axis based on a dimension
 
         Parameters
@@ -1587,11 +1586,21 @@ class EelFigure:
         """
         if axes is None:
             axes = self._axes
+            ncol = self._layout.ncol
+        else:
+            ncol = None
         formatter, locator, label = dim._axis_format(scalar, label)
 
         n_axes = len(axes)
         if isinstance(xticklabels, bool):
             add_tick_labels = [xticklabels] * n_axes
+        elif isinstance(xticklabels, str):
+            if xticklabels == 'bottom':
+                if ncol is None:
+                    raise NotImplementedError(f"xticklabels={xticklabels!r} for {self.__class__.__name__}")
+                add_tick_labels = chain(repeat(False, n_axes - ncol), repeat(True, ncol))
+            else:
+                raise ValueError(f"xticklabels={xticklabels!r}")
         else:
             if isinstance(xticklabels, int):
                 tick_label_i = (xticklabels,)

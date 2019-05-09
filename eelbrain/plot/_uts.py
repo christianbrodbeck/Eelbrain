@@ -121,7 +121,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
     """
     def __init__(self, y, x=None, xax=None, match=None, sub=None, ds=None,
                  main=np.mean, error='sem', pool_error=None, legend='upper right', labels=None,
-                 axtitle=True, xlabel=True, ylabel=True, xticklabels=-1,
+                 axtitle=True, xlabel=True, ylabel=True, xticklabels='bottom',
                  invy=False, bottom=None, top=None, hline=None, xdim='time',
                  xlim=None, clip=None, color='b', colors=None, error_alpha=0.3,
                  clusters=None, pmax=0.05, ptrend=0.1, *args, **kwargs):
@@ -351,7 +351,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
      - ``c``: y-axis zoom out (increase y-axis range)
     """
     def __init__(self, y, xax=None, axtitle=True, ds=None, sub=None,
-                 xlabel=True, ylabel=True, xticklabels=-1, bottom=None,
+                 xlabel=True, ylabel=True, xticklabels='bottom', bottom=None,
                  top=None, legend='upper right', labels=None, xlim=None, color=None, *args,
                  **kwargs):
         data = PlotData.from_args(y, (None,), xax, ds, sub)
@@ -473,7 +473,7 @@ class UTSClusters(EelFigure):
         Also accepts :ref:`general-layout-parameters`.
     """
     def __init__(self, res, pmax=0.05, ptrend=0.1, axtitle=True, cm=None,
-                 overlay=False, xticklabels=-1, *args, **kwargs):
+                 overlay=False, xticklabels='bottom', *args, **kwargs):
         clusters_ = res.clusters
 
         data = PlotData.from_args(res, (None,))
