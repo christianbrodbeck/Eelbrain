@@ -65,11 +65,6 @@ sphinx_gallery_conf = {
     'download_all_examples': False,
     'reset_modules': ('matplotlib', use_pyplot),
     'reference_url': {'eelbrain': None},
-    'first_notebook_cell': (
-        "from eelbrain import configure\n"
-        "configure(frame=False)\n"  # avoid wxPython dependency
-        "%matplotlib inline\n"  # sphinx-gallery default
-    )
 }
 
 # download datasets (to avoid progress bar output in example gallery)

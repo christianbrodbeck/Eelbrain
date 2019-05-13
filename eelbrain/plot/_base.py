@@ -69,6 +69,7 @@ import math
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from typing import List, Sequence, Union
@@ -1292,6 +1293,7 @@ class EelFigure:
     _can_set_vlim = False
     _can_set_ylim = False
     _can_set_xlim = False
+    _use_frame = None
     _has_frame = False
 
     def __init__(self, data_desc, layout):
@@ -1308,8 +1310,15 @@ class EelFigure:
         desc = layout.name or data_desc
         self._title = f'{name}: {desc}' if desc else name
 
-        # find the right frame
-        if CONFIG['eelbrain']:
+        # Only the first time: respect previously set matplotlib backend
+        if EelFigure._use_frame is None:
+            if 'matplotlib.pyplot' in sys.modules:  # matplotlib backend has been set
+                EelFigure._use_frame = not mpl.get_backend().endswith('inline')
+            else:  # matplotlib backend has not been set
+                EelFigure._use_frame = True
+
+        # Use Eelbrain frame or pyplot
+        if EelFigure._use_frame and CONFIG['eelbrain']:
             from .._wxgui import get_app
             from .._wxgui.mpl_canvas import CanvasFrame
             get_app()
@@ -1433,7 +1442,7 @@ class EelFigure:
 
         if CONFIG['show'] and self._layout.show:
             self._frame.Show()
-            if CONFIG['eelbrain'] and do_autorun(self._layout.run):
+            if self._has_frame and do_autorun(self._layout.run):
                 from .._wxgui import run
                 run()
 
