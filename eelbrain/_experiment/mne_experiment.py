@@ -2724,7 +2724,7 @@ class MneExperiment(FileTree):
             elif len(meg_subjects) > 1:
                 raise ValueError(f"ndvar=True, morph=False with multiple subjects: Can't create ndvars with data from different brains")
             else:
-                self.make_annot(mrisubject=from_subjects[meg_subjects[0]])
+                self.make_annot(subject=meg_subjects[0])
 
         # convert evoked objects
         stcs = []
