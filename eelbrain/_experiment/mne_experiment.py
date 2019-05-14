@@ -2274,9 +2274,6 @@ class MneExperiment(FileTree):
         epochs_dataset : Dataset
             Dataset containing single trial data (epochs).
         """
-        if 'sns_baseline' in state:
-            baseline = state.pop('sns_baseline')
-            warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
         epoch = self._epochs[self.get('epoch')]
         if not baseline and src_baseline and epoch.post_baseline_trigger_shift:
             raise NotImplementedError("src_baseline with post_baseline_trigger_shift")
@@ -2587,9 +2584,6 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        if 'sns_baseline' in state:
-            baseline = state.pop('sns_baseline')
-            warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
         ds = self.load_epochs_stc(subjects, baseline, ndvar=True, morph=morph, mask=mask, **state)
         name = 'srcm' if morph else 'src'
 
@@ -2629,9 +2623,6 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        if 'sns_baseline' in state:
-            baseline = state.pop('sns_baseline')
-            warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
         ds = self.load_evoked_stc(subjects, baseline, morph=morph, mask=mask, **state)
         name = 'srcm' if morph else 'src'
 
@@ -2701,10 +2692,6 @@ class MneExperiment(FileTree):
              - :ref:`state-inv`: inverse solution
 
         """
-        if 'sns_baseline' in state:
-            baseline = state.pop('sns_baseline')
-            warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
-
         if state:
             self.set(**state)
 
@@ -3399,10 +3386,6 @@ class MneExperiment(FileTree):
             Test result for the specified test (when performing tests in ROIs,
             an :class:`~_experiment.ROITestResult` object is returned).
         """
-        if 'sns_baseline' in state:
-            baseline = state.pop('sns_baseline')
-            warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
-
         self.set(test=test, **state)
         data = TestDims.coerce(data, morph=True)
         self._set_analysis_options(data, baseline, src_baseline, pmin, tstart, tstop, parc, mask)
@@ -4163,10 +4146,6 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        if 'sns_baseline' in state:
-            baseline = state.pop('sns_baseline')
-            warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
-
         state['model'] = ''
         subject, group = self._process_subject_arg(subjects, state)
         data = TestDims("source", morph=bool(group))
@@ -4259,10 +4238,6 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        if 'sns_baseline' in state:
-            baseline = state.pop('sns_baseline')
-            warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
-
         if p == 0.1:
             pmid = 0.05
             pmin = 0.01
@@ -4786,10 +4761,6 @@ class MneExperiment(FileTree):
         --------
         load_test : load corresponding data and tests (use ``data="source.mean"``)
         """
-        if 'sns_baseline' in state:
-            baseline = state.pop('sns_baseline')
-            warnings.warn("The sns_baseline parameter is deprecated, use baseline instead", DeprecationWarning)
-
         test_obj = self._tests[test]
         if samples < 1:
             raise ValueError("Need samples > 0 to run permutation test.")
