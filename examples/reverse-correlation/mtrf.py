@@ -1,4 +1,3 @@
-# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """
 EEG Speech Envelope TRF
 =======================
@@ -7,8 +6,8 @@ boosting algorithm for estimating temporal response functions (TRFs) to the
 acoustic envelope.
 
 """
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 # sphinx_gallery_thumbnail_number = 4
-
 import os
 
 from scipy.io import loadmat
