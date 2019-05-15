@@ -2,18 +2,25 @@
 
 .. _experiment-class-guide:
 
-********************************
-The :class:`MneExperiment` Class
-********************************
-
-MneExperiment is a base class for managing data analysis for an MEG
-experiment with MNE.
+***********************************
+The :class:`MneExperiment` Pipeline
+***********************************
 
 .. seealso::
-    :class:`MneExperiment` class reference for details on all available methods
+     - :class:`MneExperiment` class reference for details on all available methods
+     - `Pipeline wiki page <https://github.com/christianbrodbeck/Eelbrain/wiki/MNE-Pipeline>`_
+       for additional information
 
 .. contents:: Contents
    :local:
+
+
+Introduction
+============
+
+The :class:`MneExperiment` class is a template for an MEG/EEG analysis pipeline.
+The pipeline is adapted to a specific experiment by creating a subclass, and
+specifying properties of the experiment as attributes.
 
 
 Step by step
@@ -163,6 +170,12 @@ The neighbor correlation can also be quantified, using::
 
 A simple way to cycle through subjects when performing a given pre-processing
 step is :meth:`MneExperiment.next`.
+If a general threshold is adequate, the selection of bad channels based on
+neighbor-correlation can be automated using the
+:meth:`MneExperiment.make_bad_channels_neighbor_correlation method::
+
+    >>> for subject in e:
+    ...     e.make_bad_channels_neighbor_correlation()
 
 
 ICA
