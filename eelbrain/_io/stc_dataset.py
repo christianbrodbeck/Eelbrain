@@ -37,7 +37,7 @@ class DatasetSTCLoader:
 
     Examples
     --------
-    >>> loader = stc_dataset("path/to/exported/stcs")
+    >>> loader = DatasetSTCLoader("path/to/exported/stcs")
     >>> loader.set_factor_names(["factor1", "factor2"])
     >>> ds = loader.make_dataset(subjects_dir="mri/")
     """
