@@ -8,6 +8,7 @@ instance.
 import os
 import wx
 
+from . import get_app
 from .frame import EelbrainFrame
 from .._io.stc_dataset import DatasetSTCLoader
 
@@ -51,16 +52,20 @@ class STCLoaderFrame(EelbrainFrame):
         self.factor_sizer = wx.BoxSizer(wx.HORIZONTAL)
         self.sizer.Add(self.factor_sizer, **self.add_params)
         bottom_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.submit = wx.Button(self, wx.ID_ANY, "Load Data")
-        self.submit.Disable()
-        bottom_sizer.Add(self.submit, 0, wx.ALIGN_RIGHT)
+        self.attach_ds = wx.Button(self, wx.ID_ANY, "Return Dataset")
+        self.launch_stats = wx.Button(self, wx.ID_ANY, "Launch Stats GUI")
+        self.attach_ds.Disable()
+        self.launch_stats.Disable()
+        bottom_sizer.Add(self.attach_ds, 0, wx.ALIGN_RIGHT)
+        bottom_sizer.Add(self.launch_stats, 0, wx.ALIGN_RIGHT)
         self.sizer.Add(bottom_sizer, 0, wx.ALIGN_RIGHT | wx.ALL, 10)
         self.sizer.Layout()
         self.SetSizer(self.sizer)
         self.sizer.Fit(self)
 
         self.Bind(wx.EVT_DIRPICKER_CHANGED, self.OnDirChange, self.dir_ctl)
-        self.Bind(wx.EVT_BUTTON, self.OnSubmit, self.submit)
+        self.Bind(wx.EVT_BUTTON, self.OnAttachDataset, self.attach_ds)
+        self.Bind(wx.EVT_BUTTON, self.OnLaunchStats, self.launch_stats)
 
     def OnDirChange(self, dir_picker_evt):
         """Create dataset loader and display level/factor names"""
@@ -73,7 +78,8 @@ class STCLoaderFrame(EelbrainFrame):
             self.status.SetStatusText(str(err))
             return
         self.DisplayLevels(self.loader.levels)
-        self.submit.Enable()
+        self.attach_ds.Enable()
+        self.launch_stats.Enable()
 
     def DisplayLevels(self, levels):
         """Show level names and factor name input for each factor"""
@@ -98,12 +104,19 @@ class STCLoaderFrame(EelbrainFrame):
         kw["src"] = self.mri_panel.mri_src.GetValue()
         return kw
 
-    def OnSubmit(self, evt):
+    def _get_dataset(self):
         names = self._get_factor_names()
         self.loader.set_factor_names(names)
         stc_kw = self._get_stc_kwargs()
-        _ = self.loader.make_dataset(**stc_kw)
-        # Launch Stats GUI, passing ds to constructor
+        return self.loader.make_dataset(**stc_kw)
+
+    def OnAttachDataset(self, evt):
+        ds = self._get_dataset()
+        get_app().Attach(ds, "Dataset from STCs", "ds", self)
+        self.Close()
+
+    def OnLaunchStats(self, evt):
+        raise NotImplementedError()
 
 
 class FactorPanel(wx.Panel):
