@@ -499,6 +499,7 @@ Tools with a graphical user interface (GUI):
 
     gui.select_components
     gui.select_epochs
+    gui.load_stcs
 
 
 .. _gui:
