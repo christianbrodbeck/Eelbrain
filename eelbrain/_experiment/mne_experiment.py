@@ -2387,9 +2387,7 @@ class MneExperiment(FileTree):
         raw_mtime = self._raw_mtime(bad_chs=False)
         if exists(evt_file):
             ds = load.unpickle(evt_file)
-            if 'subject' not in ds.info:  # Eelbrain < 0.28
-                ds = None
-            elif ds.info['raw-mtime'] != raw_mtime:
+            if ds.info['raw-mtime'] != raw_mtime:
                 ds = None
         else:
             ds = None
