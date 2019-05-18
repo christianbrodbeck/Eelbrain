@@ -356,12 +356,18 @@ class RawFilter(CachedRawPipe):
     ----------
     source : str
         Name of the raw pipe to use for input data.
+    l_freq : scalar | None
+        Low cut-off frequency in Hz.
+    h_freq : scalar | None
+        High cut-off frequency in Hz.
+    cache : bool
+        Cache the resulting raw files (default False).
     ...
         :meth:`mne.io.Raw.filter` parameters.
     """
 
-    def __init__(self, source, l_freq=None, h_freq=None, **kwargs):
-        CachedRawPipe.__init__(self, source)
+    def __init__(self, source, l_freq=None, h_freq=None, cache=True, **kwargs):
+        CachedRawPipe.__init__(self, source, cache)
         self.args = (l_freq, h_freq)
         self.kwargs = kwargs
         # mne backwards compatibility (fir_design default change 0.15 -> 0.16)
