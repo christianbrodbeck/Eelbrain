@@ -41,6 +41,10 @@ class DatasetSTCLoader:
     >>> loader = DatasetSTCLoader("path/to/exported/stcs")
     >>> loader.set_factor_names(["factor1", "factor2"])
     >>> ds = loader.make_dataset(subjects_dir="mri/")
+
+    See Also
+    --------
+    eelbrain.gui.load_stcs : a GUI to load source estimates into a Dataset
     """
     def __init__(self, data_dir):
         if not os.path.exists(data_dir):
