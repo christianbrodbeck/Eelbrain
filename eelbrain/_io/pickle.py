@@ -1,4 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from pathlib import Path
 from pickle import dump, HIGHEST_PROTOCOL, Unpickler
 from itertools import chain
 import os
@@ -30,17 +31,17 @@ class EelUnpickler(Unpickler):
         return Unpickler.find_class(self, module, name)
 
 
-def pickle(obj, dest=None, protocol=HIGHEST_PROTOCOL):
+def pickle(obj, dest: Path = None, protocol: int = HIGHEST_PROTOCOL):
     """Pickle a Python object.
 
     Parameters
     ----------
     obj : object
         Python object to save.
-    dest : None | str
-        Path to destination where to save the  file. If no destination is
+    dest : Path
+        Path to destination where to save the file. If no destination is
         provided, a file dialog is shown. If a destination without extension is
-        provided, '.pickled' is appended.
+        provided, ``.pickle`` is appended.
     protocol : int
         Pickle protocol (default is ``HIGHEST_PROTOCOL``). For pickles that can
         be opened in Python 2, use ``protocol<=2``.
@@ -51,11 +52,11 @@ def pickle(obj, dest=None, protocol=HIGHEST_PROTOCOL):
         if dest is False:
             raise RuntimeError("User canceled")
         else:
-            print('dest=%r' % dest)
+            print(f'dest={dest!r}')
     else:
-        dest = os.path.expanduser(dest)
-        if not os.path.splitext(dest)[1]:
-            dest += '.pickle'
+        dest = Path(dest).expanduser()
+        if not dest.suffix:
+            dest = dest.with_suffix('.pickle')
 
     try:
         with open(dest, 'wb') as fid:
@@ -64,26 +65,23 @@ def pickle(obj, dest=None, protocol=HIGHEST_PROTOCOL):
         if exception.args[0] == 'error return without exception set':
             if os.path.exists(dest):
                 os.remove(dest)
-            raise IOError("An error occurred while pickling. This could be "
-                          "due to an attempt to pickle an array (or NDVar) "
-                          "that is too big. Try saving several smaller arrays.")
+            raise IOError("An error occurred while pickling. This could be due to an attempt to pickle an array (or NDVar) that is too big. Try saving several smaller arrays.")
         else:
             raise
 
 
-def unpickle(file_path=None):
+def unpickle(path: Path = None):
     """Load pickled Python objects from a file.
 
-    Almost like ``pickle.load(open(file_path))``, but also loads object saved
+    Almost like ``pickle.load(open(path))``, but also loads object saved
     with older versions of Eelbrain, and allows using a system file dialog to
     select a file.
 
     Parameters
     ----------
-    file_path : None | str
-        Path to a pickled file. If ``None`` (default), a system file dialog
-        will be shown. If the user cancels the file dialog, a RuntimeError is
-        raised.
+    path : Path
+        Path to a pickled file. If omitted, a system file dialog is shown.
+        If the user cancels the file dialog, a RuntimeError is raised.
 
     Notes
     -----
@@ -91,24 +89,23 @@ def unpickle(file_path=None):
     was saved with Python 3; in order to make pickles backwards-compatible, use
     :func:`~eelbrain.save.pickle` with ``protocol=2``.
     """
-    if file_path is None:
+    if path is None:
         filetypes = [("Pickles (*.pickle|*.pickled)", '*.pickle?'), ("All files", '*')]
-        file_path = ui.ask_file("Select File to Unpickle", "Select a pickled "
-                                "file to unpickle", filetypes)
-        if file_path is False:
+        path = ui.ask_file("Select File to Unpickle", "Select a file to unpickle", filetypes)
+        if path is False:
             raise RuntimeError("User canceled")
         else:
-            print("unpick %r" % (file_path,))
+            print(f"unpickle {path}")
     else:
-        file_path = os.path.expanduser(file_path)
-        if not os.path.exists(file_path):
-            for ext in ('pickle', 'pickled'):
-                new_path = os.extsep.join((file_path, ext))
-                if os.path.exists(new_path):
-                    file_path = new_path
+        path = Path(path).expanduser()
+        if not path.exists():
+            for ext in ('.pickle', '.pickled'):
+                new_path = path.with_suffix(ext)
+                if new_path.exists():
+                    path = new_path
                     break
 
-    with open(file_path, 'rb') as fid:
+    with open(path, 'rb') as fid:
         unpickler = EelUnpickler(fid, encoding='latin1')
         return unpickler.load()
 
