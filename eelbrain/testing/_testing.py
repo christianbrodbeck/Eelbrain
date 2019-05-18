@@ -115,7 +115,7 @@ class GUITestContext(ContextDecorator):
         eelbrain._wxgui.select_epochs,
         eelbrain._wxgui.select_components,
         eelbrain._wxgui.history,
-        eelbrain._wxgui.load_stcs
+        eelbrain._wxgui.load_stcs,
     )
 
     def __init__(self):

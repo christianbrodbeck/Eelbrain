@@ -2,6 +2,7 @@ import os
 import re
 import glob
 import itertools
+
 from mne import read_source_estimate
 
 from .._data_obj import Dataset, Factor
