@@ -170,16 +170,14 @@ class TreeModel:
             self.notification = NotNotifier()
 
     def __repr__(self):
-        args = [self._fields[arg] for arg in self._repr_args]
-
+        args = [f'{self._fields[arg]!r}' for arg in self._repr_args]
         kwargs = [(arg, self._fields[arg]) for arg in self._repr_kwargs]
         no_initial_state = len(self._fields._states) == 0
         for k in self._repr_kwargs_optional:
             v = self._fields[k]
             if no_initial_state or v != self._fields.get_stored(k, level=0):
                 kwargs.append((k, v))
-
-        args.extend(f'{k}={v}' for k, v in kwargs)
+        args.extend(f'{k}={v!r}' for k, v in kwargs)
         return f"{self.__class__.__name__}({', '.join(args)})"
 
     def _bind_eval(self, key, handler):
