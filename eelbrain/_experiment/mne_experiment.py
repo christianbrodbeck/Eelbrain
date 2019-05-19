@@ -1401,15 +1401,19 @@ class MneExperiment(FileTree):
             if inv_mtime:
                 return max(evoked_mtime, inv_mtime)
 
-    def _fwd_mtime(self):
+    def _fwd_mtime(self, subject=None, recording=None, fwd_recording=None):
         "The last time at which input files affecting fwd-file changed"
         trans = self.get('trans-file')
         if exists(trans):
             src = self.get('src-file')
             if exists(src):
-                trans_mtime = getmtime(trans)
-                src_mtime = getmtime(src)
-                return max(self._raw_mtime('raw', bad_chs=False), trans_mtime, src_mtime)
+                if fwd_recording is None:
+                    fwd_recording = self._get_fwd_recording(subject, recording)
+                raw_mtime = self._raw_mtime('raw', False, subject, fwd_recording)
+                if raw_mtime:
+                    trans_mtime = getmtime(trans)
+                    src_mtime = getmtime(src)
+                    return max(raw_mtime, trans_mtime, src_mtime)
 
     def _inv_mtime(self):
         fwd_mtime = self._fwd_mtime()
@@ -1418,13 +1422,17 @@ class MneExperiment(FileTree):
             if cov_mtime:
                 return max(cov_mtime, fwd_mtime)
 
-    def _raw_mtime(self, raw=None, bad_chs=True):
+    def _raw_mtime(self, raw=None, bad_chs=True, subject=None, recording=None):
         if raw is None:
             raw = self.get('raw')
         elif raw not in self._raw:
-            raise RuntimeError("raw-mtime with raw=%s" % repr(raw))
+            raise RuntimeError(f"raw-mtime with raw={raw!r}")
         pipe = self._raw[raw]
-        return pipe.mtime(self.get('subject'), self.get('recording'), bad_chs)
+        if subject is None:
+            subject = self.get('subject')
+        if recording is None:
+            recording = self.get('recording')
+        return pipe.mtime(subject, recording, bad_chs)
 
     def _rej_mtime(self, epoch):
         """rej-file mtime for secondary epoch definition
@@ -1764,6 +1772,16 @@ class MneExperiment(FileTree):
             return mrisubjects
         else:
             return FileTree.get_field_values(self, field, exclude)
+
+    def _get_fwd_recording(self, subject: str = None, recording: str = None) -> str:
+        if subject is None:
+            subject = self.get('subject')
+        if recording is None:
+            recording = self.get('recording')
+        try:
+            return self._dig_sessions[subject][recording]
+        except KeyError:
+            raise FileMissing(f"Raw data missing for {subject}, session {recording}")
 
     def iter(self, fields='subject', exclude=None, values=None, group=None, progress_bar=None, **kwargs):
         """
@@ -2384,7 +2402,7 @@ class MneExperiment(FileTree):
         subject = self.get('subject')
 
         # search for and check cached version
-        raw_mtime = self._raw_mtime(bad_chs=False)
+        raw_mtime = self._raw_mtime(bad_chs=False, subject=subject)
         if exists(evt_file):
             ds = load.unpickle(evt_file)
             if ds.info['raw-mtime'] != raw_mtime:
@@ -3948,22 +3966,18 @@ class MneExperiment(FileTree):
     def make_fwd(self):
         """Make the forward model"""
         subject = self.get('subject')
-        recording = self.get('recording')
+        fwd_recording = self._get_fwd_recording(subject)
         with self._temporary_state:
-            try:
-                fwd_session = self._dig_sessions[subject][recording]
-            except KeyError:
-                raise FileMissing(f"Raw data missing for {subject}, session {recording}")
-            dst = self.get('fwd-file', recording=fwd_session)
+            dst = self.get('fwd-file', recording=fwd_recording)
             if exists(dst):
-                if cache_valid(getmtime(dst), self._fwd_mtime()):
+                if cache_valid(getmtime(dst), self._fwd_mtime(subject, fwd_recording=fwd_recording)):
                     return dst
             # get trans for correct visit for fwd_session
             trans = self.get('trans-file')
 
         src = self.get('src-file', make=True)
         pipe = self._raw[self.get('raw')]
-        raw = pipe.load(subject, fwd_session)
+        raw = pipe.load(subject, fwd_recording)
         bem = self._load_bem()
         src = mne.read_source_spaces(src)
 
@@ -3972,11 +3986,7 @@ class MneExperiment(FileTree):
         fwd = mne.make_forward_solution(raw.info, trans, src, bemsol, ignore_ref=True)
         for s, s0 in zip(fwd['src'], src):
             if s['nuse'] != s0['nuse']:
-                raise RuntimeError(
-                    f"The forward solution {basename(dst)} contains fewer "
-                    f"sources than the source space. This could be due to a "
-                    f"corrupted bem file with source outside the inner skull "
-                    f"surface.")
+                raise RuntimeError(f"The forward solution {basename(dst)} contains fewer sources than the source space. This could be due to a corrupted bem file with sources outside of the inner skull surface.")
         mne.write_forward_solution(dst, fwd, True)
         return dst
 
