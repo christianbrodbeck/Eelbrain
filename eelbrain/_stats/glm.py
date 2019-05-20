@@ -896,12 +896,19 @@ class ANOVA:
         print('\n'.join(out))
 
     def table(self, title=None, caption=None):
-        """Create an ANOVA table
+        """ANOVA table
+
+        Parameters
+        ----------
+        title : text
+            Title for the table.
+        caption : text
+            Caption for the table.
 
         Returns
         -------
-        anova_table : eelbrain.fmtxt.Table
-            Anova table.
+        table : eelbrain.fmtxt.Table
+            ANOVA table.
         """
         # table head
         table = fmtxt.Table('l' + 'r' * (5 + 2 * self._is_mixed), title=title, caption=caption)

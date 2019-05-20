@@ -1888,9 +1888,22 @@ class anova(MultiEffectNDTest):
         else:
             return self._statistic_map
 
-    def table(self):
-        """Table with effects and smallest p-value"""
-        table = fmtxt.Table('rlr' + ('' if self.p is None else 'rl'))
+    def table(self, title=None, caption=None):
+        """Table listing all effects and corresponding smallest p-values
+
+        Parameters
+        ----------
+        title : text
+            Title for the table.
+        caption : text
+            Caption for the table.
+
+        Returns
+        -------
+        table : eelbrain.fmtxt.Table
+            ANOVA table.
+        """
+        table = fmtxt.Table('rlr' + ('' if self.p is None else 'rl'), title=title, caption=caption)
         table.cells('#', 'Effect', 'f_max')
         if self.p is not None:
             table.cells('p', 'sig')
