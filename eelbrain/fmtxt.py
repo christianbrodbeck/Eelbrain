@@ -1679,7 +1679,7 @@ class Table(FMTextElement):
 class Image(FMTextElement, BytesIO):
     "Represent an image file"
 
-    def __init__(self, name=None, format='png', alt=None, buf=b''):
+    def __init__(self, name=None, format='png', alt=None, buf=b'', height=None, width=None):
         """Represent an image file
 
         Parameters
@@ -1693,16 +1693,21 @@ class Image(FMTextElement, BytesIO):
             (HTML `alt` tag, default is ``name``).
         buf : bytes
             Image buffer (optional).
+        height : int
+            Target height of the image; currently only used for iPython display.
+        width : int
+            Target width of the image; currently only used for iPython display.
         """
         BytesIO.__init__(self, buf)
-
         self.name = name or 'image'
         self.format = format
         self._alt = alt or self.name
         self._filename = os.extsep.join((self.name, format))
+        self.height = height
+        self.width = width
 
     @classmethod
-    def from_array(cls, array, name='array', format='png', alt=None):
+    def from_array(cls, array, name='array', format='png', alt=None, height=None, width=None):
         """Create an Image object from an array.
 
         Parameters
@@ -1716,8 +1721,12 @@ class Image(FMTextElement, BytesIO):
         alt : None | str
             Alternate text, placeholder in case the image can not be found
             (HTML `alt` tag).
+        height : int
+            Target height of the image; currently only used for iPython display.
+        width : int
+            Target width of the image; currently only used for iPython display.
         """
-        im = cls(name, format, alt)
+        im = cls(name, format, alt, height=height, width=width)
         imsave(im, np.asarray(array), format=format)
         return im
 
@@ -1755,6 +1764,13 @@ class Image(FMTextElement, BytesIO):
         if len(v) > 0:
             out.append('buf=%s...' % repr(v[:50]))
         return out
+
+    def _repr_png_(self):  # iPython display method
+        if self.height and self.width:
+            meta = {'height': self.height, 'width': self.width}
+        else:
+            meta = {}
+        return base64.b64encode(self.getvalue()).decode(), meta
 
     def get_html(self, env={}):
         resource_dir = env.get('resource_dir', None)

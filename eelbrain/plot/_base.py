@@ -172,6 +172,15 @@ def reset_rc():
     mpl.rcParams.update(INITIAL_RC)
 
 
+def use_inline_backend():
+    "Check whether matplotlib is using an inline backend, e.g. for notebooks"
+    # mpl.get_backend() sets backend and imports pyplot; avoid that unless
+    # pyplot has already been imported
+    if 'matplotlib.pyplot' in sys.modules:
+        backend = mpl.get_backend()
+        return backend.endswith('inline') or backend == 'nbAgg'
+
+
 def find_axis_params_data(v, label):
     """Find matching number formatter and label for display unit != data unit
 
@@ -1292,7 +1301,6 @@ class EelFigure:
     _can_set_vlim = False
     _can_set_ylim = False
     _can_set_xlim = False
-    _use_frame = None
     _has_frame = False
 
     def __init__(self, data_desc, layout):
@@ -1309,16 +1317,9 @@ class EelFigure:
         desc = layout.name or data_desc
         self._title = f'{name}: {desc}' if desc else name
 
-        # Only the first time: respect previously set matplotlib backend
-        if EelFigure._use_frame is None:
-            if 'matplotlib.pyplot' in sys.modules:  # matplotlib backend has been set
-                EelFigure._use_frame = not mpl.get_backend().endswith('inline')
-            else:  # matplotlib backend has not been set
-                EelFigure._use_frame = True
-
         # Use Eelbrain frame or pyplot
-        if EelFigure._use_frame and CONFIG['eelbrain']:
-            from .._wxgui import get_app
+        if CONFIG['eelbrain'] and not use_inline_backend():
+            from .._wxgui import wx, get_app
             from .._wxgui.mpl_canvas import CanvasFrame
             get_app()
             frame = CanvasFrame(title=self._title, eelfigure=self, **layout.fig_kwa())
@@ -2789,12 +2790,12 @@ class TimeSlicer:
 
     def _update_time_wrapper(self, t, fixate):
         "Called by the TimeController"
-        if (t == self._current_time and fixate == self._time_fixed) or self._frame is None:
+        if t == self._current_time and fixate == self._time_fixed:
             return
         self._update_time(t, fixate)
         self._current_time = t
         self._time_fixed = fixate
-        if self._display_time_in_frame_title:
+        if self._display_time_in_frame_title and self._frame:
             self._frame.SetTitleSuffix(f' [{ms(t)} ms]')
 
     def _update_time(self, t, fixate):

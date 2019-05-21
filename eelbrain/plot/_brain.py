@@ -11,7 +11,7 @@ from .._data_obj import NDVar, SourceSpace, UTS
 from .._utils import deprecated
 from ..fmtxt import im_table
 from .._text import ms
-from ._base import EelFigure, ImLayout, ColorBarMixin, brain_data, butterfly_data
+from ._base import EelFigure, ImLayout, ColorBarMixin, brain_data, butterfly_data, use_inline_backend
 from ._color_luts import dspm_lut
 from ._colors import ColorList
 
@@ -490,8 +490,9 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
     brain : Brain
         Brain instance containing the plot.
     """
-    from .._wxgui import get_app
-    get_app(jumpstart=True)
+    if not use_inline_backend():
+        from .._wxgui import get_app
+        get_app(jumpstart=True)
     from ._brain_object import Brain, get_source_dim
 
     if isinstance(src, SourceSpace):

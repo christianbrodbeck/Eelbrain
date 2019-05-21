@@ -19,8 +19,7 @@ from .._text import ms
 from .._utils import LazyProperty
 from ..fmtxt import Image
 from ..mne_fixes import reset_logger
-from ._base import (CONFIG, TimeSlicer, do_autorun, find_axis_params_data,
-                    find_fig_cmaps, find_fig_vlims, fix_vlim_for_cmap)
+from ._base import CONFIG, TimeSlicer, do_autorun, find_axis_params_data, find_fig_cmaps, find_fig_vlims, fix_vlim_for_cmap, use_inline_backend
 from ._color_luts import p_lut
 from ._colors import ColorBar, ColorList, colors_for_oneway
 
@@ -30,9 +29,13 @@ from ._colors import ColorBar, ColorList, colors_for_oneway
 # - Readthedocs does not support mayavi import, so we can't use surfer
 # - if this is the first surfer import, lower screen logging level
 first_import = 'surfer' not in sys.modules
+INLINE_DISPLAY = False
 try:
     from traits.trait_base import ETSConfig
-    ETSConfig.toolkit = 'wx'
+    if use_inline_backend() or not CONFIG['eelbrain']:
+        INLINE_DISPLAY = True
+    else:
+        ETSConfig.toolkit = 'wx'
     import surfer
 except ImportError as exception:
     from . import _mock_surfer as surfer
@@ -211,35 +214,47 @@ class Brain(TimeSlicer, surfer.Brain):
         elif not isinstance(title, str):
             raise TypeError("title=%r (str required)" % (title,))
 
-        self._frame = BrainFrame(None, self, title, w, h, n_rows, n_columns, surf, pos)
-
         if foreground is None:
             foreground = 'black'
         if background is None:
             background = 'white'
 
-        surfer.Brain.__init__(self, subject, hemi, surf, '', cortex, alpha,
-                              800, background, foreground, self._frame.figure,
-                              subjects_dir, views, offset, show_toolbar,
-                              offscreen, interaction)
+        if INLINE_DISPLAY:
+            self._frame = figure = None
+            self._png_repr_meta = {'height': h, 'width': w}
+        else:
+            self._frame = BrainFrame(None, self, title, w, h, n_rows, n_columns, surf, pos)
+            figure = self._frame.figure
+            self._png_repr_meta = None
+
+        if subjects_dir is not None:
+            subjects_dir = os.path.expanduser(subjects_dir)
+        surfer.Brain.__init__(self, subject, hemi, surf, '', cortex, alpha, (w, h), background, foreground, figure, subjects_dir, views, offset, show_toolbar, offscreen, interaction)
         TimeSlicer.__init__(self)
 
-        if CONFIG['show'] and show:
+        if self._frame and CONFIG['show'] and show:
             self._frame.Show()
             if CONFIG['eelbrain'] and do_autorun(run):
                 from .._wxgui import run as run_gui  # lazy import for docs
                 run_gui()
 
     def __repr__(self):
-        args = [self.subject_id]
+        args = [self.subject_id, self._hemi, self.surf]
         if self.n_times:
-            args.append("%i time points %i-%i ms" %
-                        (self.n_times, ms(self._time_dim.tmin),
-                         ms(self._time_dim.tstop)))
-        return "<plot.brain.Brain: %s>" % ', '.join(args)
+            args.append(f"{self.n_times} time points {ms(self._time_dim.tmin)}-{ms(self._time_dim.tstop)} ms")
+        return f"<plot.brain.Brain: {', '.join(args)}>"
 
     def _asfmtext(self):
         return self.image()
+
+    # pysurfer 0.10
+    def _ipython_display_(self):
+        """Called by Jupyter notebook to display a brain."""
+        if use_inline_backend():
+            import IPython.display
+            IPython.display.display(self.image())
+        else:
+            print(repr(self))
 
     def _check_source_space(self, source):
         "Make sure SourceSpace is compatible"
@@ -648,7 +663,10 @@ class Brain(TimeSlicer, surfer.Brain):
 
     def close(self):
         "Close the figure window"
-        self._frame.Close()
+        if self._frame:
+            self._frame.Close()
+        else:
+            self._surfer_close()
 
     @property
     def closed(self):
@@ -773,7 +791,12 @@ class Brain(TimeSlicer, surfer.Brain):
             else:
                 name = 'brain'
         im = self.screenshot('rgba', True)
-        return Image.from_array(im, name, format, alt)
+        if self._png_repr_meta is None:
+            w, h = self._frame.GetClientSize()
+            meta = {'height': h, 'width': w}
+        else:
+            meta = self._png_repr_meta
+        return Image.from_array(im, name, format, alt, **meta)
 
     def plot_colorbar(self, label=True, label_position=None, label_rotation=None,
                       clipmin=None, clipmax=None, orientation='horizontal',
@@ -961,20 +984,20 @@ class Brain(TimeSlicer, surfer.Brain):
             Mayavi parallel_scale parameter. Default is 95 for the inflated
             surface, 75 otherwise. Smaller numbers correspond to zooming in.
         """
+        from mayavi import mlab
+        from traits.trait_base import ETSConfig
+
         if scale is True:
             surf = self.geo['rh' if self._hemi == 'rh' else 'lh'].surf
             if surf == 'inflated':
-                scale = 95
+                scale = 95 if ETSConfig.toolkit == 'wx' else 115
             else:
-                scale = 75  # was 65 for WX backend
-
-        from mayavi import mlab
+                scale = 75
 
         for figs in self._figures:
             for fig in figs:
                 if forward is not None or up is not None:
-                    mlab.view(focalpoint=(0, forward or 0, up or 0),
-                              figure=fig)
+                    mlab.view(focalpoint=(0, forward or 0, up or 0), figure=fig)
                 if scale is not None:
                     fig.scene.camera.parallel_scale = scale
                 fig.scene.camera.parallel_projection = True
@@ -988,7 +1011,7 @@ class Brain(TimeSlicer, surfer.Brain):
         from ._wx_brain import SURFACES
 
         self._set_surf(surf)
-        if surf in SURFACES:
+        if self._frame and surf in SURFACES:
             self._frame._surf_selector.SetSelection(SURFACES.index(surf))
 
     def _set_surf(self, surf):
