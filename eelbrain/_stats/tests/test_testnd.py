@@ -281,8 +281,8 @@ def test_clusterdist():
     time = UTS(-0.1, 0.1, 4)
     scalar = Scalar('scalar', range(10), 'unit')
     dims = ('case', time, sensor, scalar)
-    np.random.seed(0)
-    y = NDVar(np.random.normal(0, 1, (10, 4, 4, 10)), dims)
+    rng = np.random.RandomState(0)
+    y = NDVar(rng.normal(0, 1, (10, 4, 4, 10)), dims)
     cdist = NDPermutationDistribution(y, 3, None)
     cdist.add_original(y.x[0])
     cdist.finalize()
@@ -326,7 +326,7 @@ def test_clusterdist():
 
     # parc with TFCE on unconnected dimension
     configure(False)
-    x = np.random.normal(0, 1, (10, 5, 2, 4))
+    x = rng.normal(0, 1, (10, 5, 2, 4))
     time = UTS(-0.1, 0.1, 5)
     categorial = Categorial('categorial', ('a', 'b'))
     y = NDVar(x, ('case', time, categorial, sensor))

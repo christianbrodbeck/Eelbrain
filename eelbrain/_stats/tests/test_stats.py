@@ -142,7 +142,7 @@ def test_t_ind():
 
 
 def test_vector():
-    rotation = rand_rotation_matrices(4)
+    rotation = rand_rotation_matrices(4, 0)
     zeros = np.zeros((4, 3))
     assert stats.t2_1samp(zeros) == 0
     assert stats.t2_1samp(zeros, rotation) == 0
