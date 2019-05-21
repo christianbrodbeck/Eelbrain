@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Author: Proloy Das <proloy@umd.edu>
 """2d projections of an ROI/mask image visualization via nilearn.plotting.glassbrain
 

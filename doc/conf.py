@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 # Eelbrain documentation build configuration file, created by
 # sphinx-quickstart on Tue Mar 29 23:16:11 2011.
 #

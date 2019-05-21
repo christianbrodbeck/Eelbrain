@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tools for importing data through mne.
 
 .. autosummary::

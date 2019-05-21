@@ -44,7 +44,6 @@ dependencies:
 - pydocstyle
 # testing
 - flake8
-- nose
 - pytest
 - pytest-cov
 - pytest-faulthandler
