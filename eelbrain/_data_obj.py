@@ -1675,6 +1675,10 @@ class Var:
             values = tuple(values)
         return np.in1d(self.x, values)
 
+    def isnan(self):
+        "Return boolean :class:`Var` indicating location of ``NaN`` values"
+        return Var(np.isnan(self.x), self.name, info={**self.info, 'longname': f'{longname(self)}.isnan()'})
+
     def isnot(self, *values):
         "Boolean index, True where the Var is not equal to one of the values"
         return np.in1d(self.x, values, invert=True)
