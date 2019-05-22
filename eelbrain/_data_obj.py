@@ -9169,9 +9169,9 @@ class SourceSpace(SourceSpaceBase):
         bool_index = np.bincount(int_index, minlength=self._n_vert).astype(bool)
 
         # vertices
-        boundaries = np.cumsum(tuple(chain((0,), (len(v) for v in self.vertices))))
-        vertices = [v[bool_index[boundaries[i]:boundaries[i + 1]]]
-                    for i, v in enumerate(self.vertices)]
+        boundaries = np.cumsum(list(chain((0,), (len(v) for v in self.vertices))))
+        vertices = [v[bool_index[start: stop]] if stop > start else np.empty(0, int)
+                    for v, (start, stop) in zip(self.vertices, intervals(boundaries))]
 
         # parc
         parc = None if self.parc is None else self.parc[index]
