@@ -56,6 +56,7 @@ from mne.source_space import label_src_vertno_sel
 import nibabel
 from nibabel.freesurfer import read_annot, read_geometry
 import numpy as np
+import scipy.interpolate
 import scipy.signal
 import scipy.stats
 from scipy.linalg import inv, norm
@@ -7744,7 +7745,6 @@ class Scalar(Dimension):
             step: int = None,  # -> step in dim space
             nbins: int = None,  # -> equally divide in array space
     ) -> (list, 'Scalar'):
-
         islice = self._array_index_for_slice(start, stop, step)
         istart = 0 if islice.start is None else islice.start
         istop = None if islice.stop is None else islice.stop
@@ -7758,6 +7758,7 @@ class Scalar(Dimension):
                 raise ValueError(f"nbins={nbins!r}: length {n_source_steps} {self.name} can not be divided equally")
             istep = int(n_source_steps / nbins)
             edges = list(self.values[istart:istop:istep])
+            edges.append(stop)
             # values for new Dimension
             if istep % 2:
                 loc = np.arange(istart + istep / 2, istop, istep)
@@ -7766,20 +7767,21 @@ class Scalar(Dimension):
                 out_values = self.values[istart + istep // 2: istop: istep]
         else:
             if stop is None:
-                n_bins_fraction = (self[-1] - start) / step
-                n_bins = int(ceil(n_bins_fraction))
-                # if the last value would fall into a new bin
-                if n_bins == n_bins_fraction:
-                    n_bins += 1
+                latest_stop = self.values[-1] + step
+                edges = np.arange(start, latest_stop, step)
             else:
-                n_bins = int(ceil((stop - start) / step))
+                edges = np.arange(start, stop + step / 10, step)
+                if edges[-1] != stop:
+                    raise ValueError(f"start={start}, stop={stop}, step={step}: stop not at bin edge")
+            interp = scipy.interpolate.interp1d(self.values, np.arange(len(self.values)), 'cubic', fill_value='extrapolate')
+            edges_i = interp(edges)
+            if stop is None and round(edges_i[-1]) != len(self.values):
+                raise ValueError(f"start={start}, step={step}: dimension end point not at bin edge")
+            edges = list(edges)
 
             # new dimensions
-            dim_start = start + step / 2
-            dim_stop = dim_start + n_bins * step
-            out_values = np.arange(dim_start, dim_stop, step)
-            edges = [start + n * step for n in range(n_bins)]
-        edges.append(stop)
+            values_i = [(a + b) / 2 for a, b in intervals(edges_i)]
+            out_values = np.interp(values_i, edges_i, edges)
         out_dim = Scalar(self.name, out_values, self.unit, self.tick_format)
         return edges, out_dim
 

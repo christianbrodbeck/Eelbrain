@@ -573,11 +573,16 @@ def test_dim_scalar():
 
     # binning
     edges, dim = d._bin(step=20)
-    assert edges == [20, 40, 60, None]
-    edges, dim = d._bin(start=30, step=20)
-    assert edges == [30, 50, 70, None]
-    edges, dim = d._bin(stop=70, step=20)
-    assert edges == [20, 40, 60, 70]
+    assert edges == [20, 40, 60, 80]
+    assert dim == Scalar('scalar', [30, 50, 70])
+    edges, dim = d._bin(start=30, stop=70, step=20)
+    assert edges == [30, 50, 70]
+    assert dim == Scalar('scalar', [40, 60])
+    # range not divisible by step
+    with pytest.raises(ValueError):
+        d._bin(start=30, step=20)
+    with pytest.raises(ValueError):
+        d._bin(stop=70, step=20)
     # nbins
     edges, dim = d._bin(nbins=3)
     assert edges == [20, 40, 60, None]
