@@ -577,8 +577,16 @@ def test_dim_scalar():
     assert edges == [30, 50, 70, None]
     edges, dim = d._bin(stop=70, step=20)
     assert edges == [20, 40, 60, 70]
+    # nbins
     edges, dim = d._bin(nbins=3)
     assert edges == [20, 40, 60, None]
+    assert dim == Scalar('scalar', [30, 50, 70])
+    edges, dim = d._bin(nbins=2)
+    assert edges == [20, 50, None]
+    assert dim == Scalar('scalar', [35, 65])
+    # uneven bin size
+    with pytest.raises(ValueError):
+        d._bin(nbins=4)
     # approximate start/stop
     edges, dim = d._bin(25, 65, nbins=2)
     assert edges == [30, 50, 70]

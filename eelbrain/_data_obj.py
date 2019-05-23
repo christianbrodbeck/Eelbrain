@@ -7751,7 +7751,7 @@ class Scalar(Dimension):
         islice = self._array_index_for_slice(start, stop, step)
         istart = 0 if islice.start is None else islice.start
         istop = None if islice.stop is None else islice.stop
-        start = self.values[0] if istart is None else self.values[istart]
+        start = self.values[istart]
         stop = None if istop is None else self.values[istop]
         if nbins is not None:
             if istop is None:
@@ -7763,7 +7763,7 @@ class Scalar(Dimension):
             edges = list(self.values[istart:istop:istep])
             # values for new Dimension
             if istep % 2:
-                loc = np.arange(istart + istep / 2, istep, istop)
+                loc = np.arange(istart + istep / 2, istop, istep)
                 out_values = np.interp(loc, np.arange(len(self.values)), self.values)
             else:
                 out_values = self.values[istart + istep // 2: istop: istep]
