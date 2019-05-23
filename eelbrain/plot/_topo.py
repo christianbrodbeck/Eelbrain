@@ -447,13 +447,11 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         p = self.bfly_plots[ax.id // 2]
         if ax in self.bfly_axes:
             t = event.xdata
-            seg = [l.sub(time=t) for l in p.data]
         elif ax in self.topo_axes:
             t = self._current_time
-            seg = [p.data[ax.id // 2].sub(time=t)]
         else:
             return
-
+        seg = [l.sub(time=t) for l in p.data]
         return seg, "%i ms" % round(t * 1e3), self._topo_kwargs['proj']
 
     def _on_leave_axes_status_text(self, event):
