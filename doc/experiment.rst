@@ -182,16 +182,16 @@ ICA
 ---
 
 If preprocessing includes ICA, select which ICA components should be removed.
-The experiment ``raw`` state needs to be set to the ICA stage of the pipeline::
+To open the ICA selection GUI, The experiment ``raw`` state needs to be set to
+the ICA stage of the pipeline::
 
     >>> e.set(raw='ica')
-    >>> e.make_ica_selection(epoch='epoch', decim=10)
+    >>> e.make_ica_selection()
 
-Set ``epoch`` to the epoch whose data you want to display in the GUI (see
-:meth:`MneExperiment.make_ica_selection` for more information, in particular on
-how to precompute ICA decomposition for all subjects).
+See :meth:`MneExperiment.make_ica_selection` for more information on display
+options and on how to precompute ICA decomposition for all subjects.
 
-In order to select ICA components for multiple subject, a simple way to cycle
+When selecting ICA components for multiple subject, a simple way to cycle
 through subjects is :meth:`MneExperiment.next`, like::
 
     >>> e.make_ica_selection(epoch='epoch', decim=10)
