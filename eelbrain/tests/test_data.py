@@ -563,6 +563,7 @@ def test_dim_categorial():
 def test_dim_scalar():
     "Test Scalar Dimension"
     d = Scalar('scalar', [20, 30, 40, 50, 60, 70])
+    assert repr(d) == "Scalar('scalar', [20, ..., 70] (6))"
 
     assert d._array_index(20) == 0
     assert d._array_index(30) == 1

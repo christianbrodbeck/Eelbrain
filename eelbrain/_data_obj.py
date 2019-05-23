@@ -160,16 +160,6 @@ def nice_label(x, labels={}):
         return longname(x)
 
 
-def array_repr(a):
-    "Concise array repr where class does not matter"
-    if a.ndim == 0:
-        return str(a)
-    elif a.ndim == 1:
-        return '[%s]' % ', '.join(map(str, a))
-    else:
-        raise RuntimeError("Array with ndim > 1")
-
-
 def dataobj_repr(obj):
     """Describe data-objects as parts of __repr__"""
     if obj is None:
@@ -7700,12 +7690,19 @@ class Scalar(Dimension):
         self.tick_format = state.get('tick_format')
 
     def __repr__(self):
-        args = [repr(self.name), array_repr(self.values)]
+        if len(self.values) == 1:
+            v_repr = f"[{self.values[0]:g}]"
+        elif len(self.values) <= 4:
+            values = [f'{v:g}' for v in self.values]
+            v_repr = f"[{', '.join(values)}]"
+        else:
+            v_repr = f"[{self.values[0]:g}, ..., {self.values[-1]:g}] ({len(self)})"
+        args = [repr(self.name), v_repr]
         if self.unit is not None or self.tick_format is not None:
             args.append(repr(self.unit))
         if self.tick_format is not None:
             args.append(repr(self.tick_format))
-        return "%s(%s)" % (self.__class__.__name__, ', '.join(args))
+        return f"{self.__class__.__name__}({', '.join(args)})"
 
     def __len__(self):
         return len(self.values)
