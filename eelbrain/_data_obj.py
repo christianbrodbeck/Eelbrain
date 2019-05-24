@@ -3938,7 +3938,7 @@ class NDVar:
             x /= log(base)
         return NDVar(x, self.dims, self.info, name or self.name)
 
-    def mask(self, mask, name=None):
+    def mask(self, mask, name=None, missing=None):
         """Create a masked version of this NDVar (see :class:`numpy.ma.MaskedArray`)
 
         Parameters
@@ -3947,6 +3947,9 @@ class NDVar:
             Mask, with equal dimensions (``True`` values will be masked).
         name : str
             Name of the output NDVar (default is the current name).
+        missing : bool
+            Whether to mask values missing in ``mask``; the default is to
+            raise a ``TypeError`` if ``mask`` is missing values.
 
         See Also
         --------
@@ -3957,10 +3960,22 @@ class NDVar:
             x_mask = x_mask.astype(bool)
         if x_mask.shape != self.x.shape:
             for ax, (n_mask, n_self) in enumerate(zip(x_mask.shape, self.x.shape)):
-                if n_mask != n_self:
-                    if n_mask != 1:
-                        raise ValueError("Unable to broadcast mask to NDVar")
+                if n_mask == n_self:
+                    continue
+                elif n_mask == 1:
                     x_mask = np.repeat(x_mask, n_self, ax)
+                elif missing is None:
+                    raise TypeError("Unable to broadcast mask to NDVar; use missing parameter to fill in missing values")
+                else:
+                    dim = self.dims[ax]
+                    mask_dim = mask.get_dim(dim.name)
+                    new_shape = list(x_mask.shape)
+                    new_shape[ax] = n_self
+                    x_new = np.empty(new_shape, bool)
+                    x_new.fill(missing)
+                    old_index = dim._array_index(mask_dim),
+                    x_new[FULL_AXIS_SLICE * ax + old_index] = x_mask
+                    x_mask = x_new
         x = np.ma.MaskedArray(self.x, x_mask)
         return NDVar(x, self.dims, self.info, name or self.name)
 
