@@ -184,7 +184,7 @@ def test_resample():
 
 def test_smoothing():
     x = get_ndvar(2)
-    xt = NDVar(x.x.swapaxes(1, 2), [x.dims[i] for i in [0, 2, 1]], x.info.copy(), x.name)
+    xt = NDVar(x.x.swapaxes(1, 2), [x.dims[i] for i in [0, 2, 1]], x.name, x.info)
 
     # smoothing across time
     ma = x.smooth('time', 0.2, 'blackman')

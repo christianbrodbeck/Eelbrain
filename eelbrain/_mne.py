@@ -87,7 +87,7 @@ def complete_source_space(ndvar, fill=0., mask=None):
         source_out = VolumeSourceSpace(vertices, source.subject, source.src, source.subjects_dir, parc)
     dims = list(ndvar.dims)
     dims[axis] = source_out
-    return NDVar(x, dims, ndvar.info.copy(), ndvar.name)
+    return NDVar(x, dims, ndvar.name, ndvar.info)
 
 
 def source_space_vertices(kind, grade, subject, subjects_dir):
@@ -476,7 +476,7 @@ def morph_source_space(ndvar, subject_to=None, vertices_to=None, morph_mat=None,
                 source_to = source
 
             dims = (*ndvar.dims[:axis], source_to, *ndvar.dims[axis + 1:])
-            return NDVar(x, dims, ndvar.info, ndvar.name)
+            return NDVar(x, dims, ndvar.name, ndvar.info)
 
     has_lh_out = bool(source.rh_n if xhemi else source.lh_n)
     has_rh_out = bool(source.lh_n if xhemi else source.rh_n)
@@ -567,7 +567,7 @@ def morph_source_space(ndvar, subject_to=None, vertices_to=None, morph_mat=None,
 
     # package output NDVar
     dims = (*ndvar.dims[:axis], source_to, *ndvar.dims[axis + 1:])
-    return NDVar(x_m, dims, ndvar.info, ndvar.name)
+    return NDVar(x_m, dims, ndvar.name, ndvar.info)
 
 
 # label operations ---
@@ -768,8 +768,8 @@ def xhemi(ndvar, mask=None, hemi='lh', parc=True):
         x_other = ndvar.x[index(other_source, at=ax)]
         dims = list(ndvar.dims)
         dims[ax] = source_out
-        out_same = NDVar(x_hemi, dims, ndvar.info, ndvar.name)
-        out_other = NDVar(x_other, dims, ndvar.info, ndvar.name)
+        out_same = NDVar(x_hemi, dims, ndvar.name, ndvar.info)
+        out_other = NDVar(x_other, dims, ndvar.name, ndvar.info)
     else:
         if source.subject == 'fsaverage_sym':
             ndvar_sym = ndvar

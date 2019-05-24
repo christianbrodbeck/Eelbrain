@@ -33,6 +33,59 @@ These are elementary effects in a Model, and identified by :func:`is_effect`
  - NonBasicEffect
 
 
+Names
+-----
+
+Data-object names seem to have conflicting roles depending on how they are used.
+Potentially, data-object names could fulfill the following functions::
+
+1) Informative labels for plotting and in test results:
+
+  - ``log(5 * x)`` should show up as this, not ``x``
+  - Test results need names like ``a - b``
+  
+2) Keep track of data source
+
+  - For example labeling a predictor; after normalizing I don't want the 
+    predictor to be called ``sgram * (srcm / sgram)``
+
+3) Provide term names for models
+
+  - For example, ``m = v + w + v * w`` should not error due to duplicate name
+
+3) Names should be easy to update
+
+  - When assigning to dataset
+  - With ``name`` argument in methods
+
+1 and 2 stand in direct conflict over whether operations should update the name.
+
+Current implementation: the ``.name`` attribute is always inherited (2) and
+``info['longname']`` reflects history (1, 3).
+
+Examples of potentially desirable API:
+
+```
+ds['std'] = ds['sgram'].std('frequency', name='Standard deviation')
+plot.UTSStat('std', ds=ds)
+```
+
+Possible implementation: when ``name`` is explicitly set, ``info['longname']``
+is added. Should it survive only one dataset assignment? Would need another
+variable like ``autoname``: 0 -> keep but augment; 1 -> replace
+
+```
+ds['y'] = Var(y, name='Cluster value')
+plot.Correlation('y', ..., ds=ds)  # -> 'Cluster value'
+plot.Correlation('y.log()', ..., ds=ds)  # -> 'log(Cluster value)'
+
+# This situation is ambiguous / could go either way
+ds['ydiv'] = 1 / ds['y']
+plot.Correlation('ydiv', ..., ds=ds)  # -> '1 / Cluster value'
+# This is probably more conservative:
+ds['Realname'] = 1 / ds['y']
+plot.Correlation('Realname', ..., ds=ds)  # -> 'Realname'
+```
 """
 from collections import Iterable, Iterator, OrderedDict, Sequence
 from copy import deepcopy
@@ -143,14 +196,75 @@ def cellname(cell, delim=' '):
         return str(cell)
 
 
-def longname(x):
+def longname(x, none=False):
     if isnumeric(x) and 'longname' in x.info:
         return x.info['longname']
-    elif getattr(x, 'name', None) is not None:
-        return x.name
+    elif hasattr(x, 'name'):
+        if x.name is not None:
+            return x.name
     elif np.isscalar(x):
-        return repr(x)
-    return '<unnamed>'
+        return f'{x:g}'
+    elif not none:
+        raise TypeError(f"{x!r}")
+    return None if none else '<unnamed>'
+
+
+def get_name(x):
+    if hasattr(x, 'name'):
+        return x.name
+    elif isinstance(x, np.ndarray):
+        return None
+    else:
+        return f'{x:g}'
+
+
+def op_name(
+        obj: object,  # Var, NDVar, scalar
+        operand: str = None,
+        other: object = None,  # Var, NDVar, scalar; None for unary operations
+        info: dict = None,
+        name: str = None,  # name parameter, if specified
+):
+    """name, info for Var/NDVar operation
+
+    Notes
+    -----
+    See module level documentation on names.
+    """
+    if info is None:
+        if hasattr(obj, 'info'):
+            info = obj.info
+        else:
+            info = {}
+
+    if name is not None:
+        out_name = out_longname = name
+    else:
+        out_name = get_name(obj)
+        if operand is None:
+            out_longname = info.get('longname')
+        else:
+            out_longname = longname(obj, True)
+            if out_longname is not None:
+                if operand.endswith('('):
+                    out_longname = f"{out_longname})"
+                elif ' ' in out_longname:
+                    out_longname = f"({out_longname})"
+
+                if other is None:  # unary operation
+                    out_longname = f"{operand}{out_longname}"
+                else:
+                    other_longname = longname(other, True)
+                    if other_longname is None:
+                        out_longname = None
+                    else:
+                        if ' ' in other_longname:
+                            other_longname = f"({other_longname})"
+                        out_longname = f"{out_longname} {operand} {other_longname}"
+
+    if out_longname is not None:
+        info = {**info, 'longname': out_longname}
+    return out_name, info
 
 
 def nice_label(x, labels={}):
@@ -169,7 +283,7 @@ def dataobj_repr(obj, value=False):
             return obj.name
     elif value and not isinstance(obj, np.ndarray):
         return obj
-    return '<%s>' % obj.__class__.__name__
+    return f'<{obj.__class__.__name__}>'
 
 
 def rank(x, tol=1e-8):
@@ -645,10 +759,10 @@ def _empty_like(obj, n=None, name=None):
     if isinstance(obj, Factor):
         return Factor([''], repeat=n, name=name)
     elif isinstance(obj, Var):
-        return Var(np.empty(n) * np.NaN, name=name)
+        return Var(np.empty(n) * np.NaN, name)
     elif isinstance(obj, NDVar):
         shape = (n,) + obj.shape[1:]
-        return NDVar(np.empty(shape) * np.NaN, dims=obj.dims, name=name)
+        return NDVar(np.empty(shape) * np.NaN, obj.dims, name)
     elif isdatalist(obj):
         return Datalist([None] * n, name, obj._fmt)
     else:
@@ -942,7 +1056,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise', dim_intersect
     # find type
     first_item = items[0]
     if isinstance(first_item, Number):
-        return Var(items, name=name)
+        return Var(items, name)
     elif isinstance(first_item, str):
         return Factor(items)
     stype = type(first_item)
@@ -990,7 +1104,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise', dim_intersect
         return out
     elif stype is Var:
         x = np.hstack([i.x for i in items])
-        return Var(x, name, info=_info.merge_info(items))
+        return Var(x, name, _info.merge_info(items))
     elif stype is Factor:
         random = set(f.random for f in items)
         if len(random) > 1:
@@ -1135,9 +1249,7 @@ class Var:
             if sum(i > 1 for i in x.shape) <= 1:
                 x = np.ravel(x)
             else:
-                raise ValueError(
-                    f"x with shape {x.shape}; x needs to be one-dimensional. "
-                    f"Use NDVar class for data with more than one dimension.")
+                raise ValueError(f"x with shape {x.shape}; x needs to be one-dimensional. Use NDVar class for data with more than one dimension.")
 
         if not (isinstance(repeat, Integral) and repeat == 1):
             x = np.repeat(x, repeat)
@@ -1164,7 +1276,7 @@ class Var:
         self.random = False
 
     def __getstate__(self):
-        return (self.x, self.name, self.info)
+        return self.x, self.name, self.info
 
     def __repr__(self, full=False):
         n_cases = preferences['var_repr_n_cases']
@@ -1208,7 +1320,7 @@ class Var:
         index = asindex(index)
         x = self.x[index]
         if isinstance(x, np.ndarray):
-            return Var(x, self.name, info=self.info.copy())
+            return Var(x, self.name, self.info)
         else:
             return x
 
@@ -1223,8 +1335,7 @@ class Var:
         raise TypeError("The truth value of a Var is ambiguous. Use v.any() or v.all()")
 
     def __neg__(self):
-        info = {**self.info, 'longname': f"-{longname(self)}"}
-        return Var(-self.x, self.name, info=info)
+        return Var(-self.x, *op_name(self, '-'))
 
     def __pos__(self):
         return self
@@ -1242,12 +1353,12 @@ class Var:
         if ismodelobject(other):
             # ??? should Var + Var return sum or Model?
             return Model((self, other))
-        info = {**self.info, 'longname': f"{longname(self)} + {longname(other)}"}
+        args = op_name(self, '+', other)
         if isinstance(other, NDVar):
             dims, x_other, x_self = other._align(self)
-            return NDVar(x_self + x_other, dims, info, self.name)
+            return NDVar(x_self + x_other, dims, *args)
         x = self.x + self._arg_x(other)
-        return Var(x, self.name, info=info)
+        return Var(x, *args)
 
     def __iadd__(self, other):
         self.x += self._arg_x(other)
@@ -1255,17 +1366,16 @@ class Var:
 
     def __radd__(self, other):
         x = self._arg_x(other) + self.x
-        info = {**self.info, 'longname': f"{longname(other)} + {longname(self)}"}
-        return Var(x, self.name, info=info)
+        return Var(x, *op_name(other, '+', self))
 
     def __sub__(self, other):
         "subtract: values are assumed to be ordered. Otherwise use .sub method."
-        info = {**self.info, 'longname': f"{longname(self)} - {longname(other)}"}
+        args = op_name(self, '-', other)
         if isinstance(other, NDVar):
             dims, x_other, x_self = other._align(self)
-            return NDVar(x_self - x_other, dims, info, self.name)
+            return NDVar(x_self - x_other, dims, *args)
         x = self.x - self._arg_x(other)
-        return Var(x, self.name, info=info)
+        return Var(x, *args)
 
     def __isub__(self, other):
         self.x -= self._arg_x(other)
@@ -1273,20 +1383,19 @@ class Var:
 
     def __rsub__(self, other):
         x = self._arg_x(other) - self.x
-        info = {**self.info, 'longname': f"{longname(other)} - {longname(self)}"}
-        return Var(x, self.name, info=info)
+        return Var(x, *op_name(other, '-', self))
 
     def __mul__(self, other):
         if isinstance(other, Model):
             return Model((self,)) * other
         elif iscategorial(other):
             return Model((self, other, self % other))
-        info = {**self.info, 'longname': f"{longname(self)} * {longname(other)}"}
+        args = op_name(self, '*', other)
         if isinstance(other, NDVar):
             dims, x_other, x_self = other._align(self)
-            return NDVar(x_self * x_other, dims, info, self.name)
+            return NDVar(x_self * x_other, dims, *args)
         x = self.x * self._arg_x(other)
-        return Var(x, self.name, info=info)
+        return Var(x, *args)
 
     def __imul__(self, other):
         self.x *= self._arg_x(other)
@@ -1294,16 +1403,15 @@ class Var:
 
     def __rmul__(self, other):
         x = self._arg_x(other) * self.x
-        info = {**self.info, 'longname': f"{longname(other)} * {longname(self)}"}
-        return Var(x, self.name, info=info)
+        return Var(x, *op_name(other, '*', self))
 
     def __floordiv__(self, other):
-        info = {**self.info, 'longname': f"{longname(self)} // {longname(other)}"}
+        args = op_name(self, '//', other)
         if isinstance(other, NDVar):
             dims, x_other, x_self = other._align(self)
-            return NDVar(x_self // x_other, dims, info, self.name)
+            return NDVar(x_self // x_other, dims, *args)
         x = self.x // self._arg_x(other)
-        return Var(x, self.name, info=info)
+        return Var(x, *args)
 
     def __ifloordiv__(self, other):
         self.x //= self._arg_x(other)
@@ -1316,12 +1424,12 @@ class Var:
             pass
         elif ismodelobject(other):
             return Interaction((self, other))
-        info = {**self.info, 'longname': f"{longname(self)} % {longname(other)}"}
+        args = op_name(self, '%', other)
         if isinstance(other, NDVar):
             dims, x_other, x_self = other._align(self)
-            return NDVar(x_self % x_other, dims, info, self.name)
+            return NDVar(x_self % x_other, dims, *args)
         x = self.x % self._arg_x(other)
-        return Var(x, self.name, info=info)
+        return Var(x, *args)
 
     def __imod__(self, other):
         self.x %= self._arg_x(other)
@@ -1363,27 +1471,27 @@ class Var:
             # create effect
             name = '%s per %s' % (self.name, other.name)
             return NonbasicEffect(codes, [self, other], name, beta_labels=other.dummy_complete_labels)
-        info = {**self.info, 'longname': f"{longname(self)} / {longname(other)}"}
+        args = op_name(self, '/', other)
         if isinstance(other, NDVar):
             dims, x_other, x_self = other._align(self)
-            return NDVar(x_self / x_other, dims, info, self.name)
+            return NDVar(x_self / x_other, dims, *args)
         x = self.x / self._arg_x(other)
-        return Var(x, self.name, info=info)
+        return Var(x, *args)
 
     def __idiv__(self, other):
         self.x /= self._arg_x(other)
         return self
 
     def __pow__(self, other):
-        info = {**self.info, 'longname': f"{longname(self)} ** {longname(other)}"}
+        args = op_name(self, '**', other)
         if isinstance(other, NDVar):
             dims, x_other, x_self = other._align(self)
-            return NDVar(x_self ** x_other, dims, info, self.name)
+            return NDVar(x_self ** x_other, dims, *args)
         x = self.x ** self._arg_x(other)
-        return Var(x, self.name, info=info)
+        return Var(x, *args)
 
     def __round__(self, n=0):
-        return Var(np.round(self.x, n), self.name)
+        return Var(np.round(self.x, n), self.name, self.info)
 
     def _coefficient_names(self, method):
         return longname(self),
@@ -1414,10 +1522,7 @@ class Var:
 
     def abs(self, name=None):
         "Return a Var with the absolute value."
-        if name is None:
-            name = self.name
-        info = {**self.info, 'longname': f"abs({longname(self)})"}
-        return Var(np.abs(self.x), name, info=info)
+        return Var(np.abs(self.x), *op_name(self, 'abs(', name=name))
 
     def argmax(self):
         """:func:`numpy.argmax`"""
@@ -1451,7 +1556,7 @@ class Var:
         dtype : numpy dtype
             Numpy data-type specification (see :meth:`numpy.ndarray.astype`).
         """
-        return Var(self.x.astype(dtype), self.name, info=self.info.copy())
+        return Var(self.x.astype(dtype), self.name, self.info)
 
     @property
     def as_dummy(self):
@@ -1496,7 +1601,7 @@ class Var:
         if isinstance(labels, dict):
             # flatten
             for key, v in labels.items():
-                if (isinstance(key, Sequence) and not isinstance(key, str)):
+                if isinstance(key, Sequence) and not isinstance(key, str):
                     for k in key:
                         labels_[k] = v
                 else:
@@ -1518,10 +1623,7 @@ class Var:
 
     def copy(self, name=None):
         "Return a deep copy"
-        x = self.x.copy()
-        if name is None or name is True:
-            name = self.name
-        return Var(x, name, info=deepcopy(self.info))
+        return Var(self.x.copy(), *op_name(self, name=name))
 
     def count(self):
         """Count the number of occurrence of each value
@@ -1563,8 +1665,7 @@ class Var:
             A Var instance with a single value for each cell in x.
         """
         if len(x) != len(self):
-            err = "Length mismatch: %i (Var) != %i (x)" % (len(self), len(x))
-            raise ValueError(err)
+            raise ValueError(f"Length mismatch: {len(self)} (Var) != {len(x)} (x)")
 
         x_out = []
         for cell in x.cells:
@@ -1572,16 +1673,13 @@ class Var:
             if len(x_cell) > 0:
                 x_out.append(func(x_cell))
 
-        if name is None or name is True:
-            name = self.name
-
-        return Var(x_out, name, info=self.info.copy())
+        return Var(x_out, *op_name(self, name=name))
 
     @property
     def beta_labels(self):
         return [self.name]
 
-    def diff(self, to_end=None, to_begin=None):
+    def diff(self, to_end=None, to_begin=None, name=None):
         """The differences between consecutive values
 
         Parameters
@@ -1590,15 +1688,18 @@ class Var:
             Append ``to_end`` at the end.
         to_begin : scalar (optional)
             Add ``to_begin`` at the beginning.
+        name : str
+            Name of the output (default is the current name).
 
         Returns
         -------
         diff : Var
             Difference.
         """
+        args = op_name(self, 'diff(', name=name)
         if len(self) == 0:
-            return Var(np.empty(0), info=self.info.copy())
-        return Var(np.ediff1d(self.x, to_end, to_begin), info=self.info.copy())
+            return Var(np.empty(0), *args)
+        return Var(np.ediff1d(self.x, to_end, to_begin), *args)
 
     # def difference(self, x, v1, v2, match):
     #     """
@@ -1703,7 +1804,7 @@ class Var:
 
     def isnan(self):
         "Return boolean :class:`Var` indicating location of ``NaN`` values"
-        return Var(np.isnan(self.x), self.name, info={**self.info, 'longname': f'{longname(self)}.isnan()'})
+        return Var(np.isnan(self.x), *op_name(self, 'isnan('))
 
     def isnot(self, *values):
         "Boolean index, True where the Var is not equal to one of the values"
@@ -1732,14 +1833,12 @@ class Var:
         else:
             x = np.log(self.x)
             x /= log(base)
-        if name is None:
-            name = self.name
-        info = self.info.copy()
+
         if base is None:
-            info['longname'] = f'log({longname(self)})'
+            op = 'log('
         else:
-            info['longname'] = f'log{base}({longname(self)})'
-        return Var(x, name, info=info)
+            op = f'log{base:g}('
+        return Var(x, *op_name(self, op, name=name))
 
     def max(self):
         "The highest value"
@@ -1765,9 +1864,7 @@ class Var:
         name : str
             Name of the output Var (default is current name).
         """
-        if name is None or name is True:
-            name = self.name
-        return Var(self.x.repeat(repeats), name, info=self.info.copy())
+        return Var(self.x.repeat(repeats), *op_name(self, name=name))
 
     def split(self, n=2, name=None):
         """
@@ -2587,7 +2684,7 @@ class Factor(_Effect):
         else:
             longname = name
 
-        return Var(x, name, info={"longname": longname})
+        return Var(x, name, {"longname": longname})
 
     @property
     def n_cells(self):
@@ -2879,7 +2976,7 @@ class NDVar:
         raise TypeError("The truth value of an NDVar is ambiguous. Use v.any() or v.all()")
 
     def __neg__(self):
-        return NDVar(-self.x, self.dims, self.info, self.name)
+        return NDVar(-self.x, self.dims, *op_name(self, '-'))
 
     def __pos__(self):
         return self
@@ -2888,31 +2985,25 @@ class NDVar:
         return self.abs()
 
     def __invert__(self):
-        return NDVar(~self.x, self.dims, self.info, self.name)
+        return NDVar(~self.x, self.dims, *op_name(self, '~'))
 
     def __lt__(self, other):
-        return NDVar(self.x < self._ialign(other),
-                     self.dims, _info.for_boolean(self.info), self.name)
+        return NDVar(self.x < self._ialign(other), self.dims, *op_name(self, '<', other, _info.for_boolean(self.info)))
 
     def __le__(self, other):
-        return NDVar(self.x <= self._ialign(other),
-                     self.dims, _info.for_boolean(self.info), self.name)
+        return NDVar(self.x <= self._ialign(other), self.dims, *op_name(self, '<=', other, _info.for_boolean(self.info)))
 
     def __eq__(self, other):
-        return NDVar(self.x == self._ialign(other),
-                     self.dims, _info.for_boolean(self.info), self.name)
+        return NDVar(self.x == self._ialign(other), self.dims, *op_name(self, '==', other, _info.for_boolean(self.info)))
 
     def __ne__(self, other):
-        return NDVar(self.x != self._ialign(other),
-                     self.dims, _info.for_boolean(self.info), self.name)
+        return NDVar(self.x != self._ialign(other), self.dims, *op_name(self, '!=', other, _info.for_boolean(self.info)))
 
     def __gt__(self, other):
-        return NDVar(self.x > self._ialign(other),
-                     self.dims, _info.for_boolean(self.info), self.name)
+        return NDVar(self.x > self._ialign(other), self.dims, *op_name(self, '>', other, _info.for_boolean(self.info)))
 
     def __ge__(self, other):
-        return NDVar(self.x >= self._ialign(other),
-                     self.dims, _info.for_boolean(self.info), self.name)
+        return NDVar(self.x >= self._ialign(other), self.dims, *op_name(self, '>=', other, _info.for_boolean(self.info)))
 
     def _align(self, other):
         """Align data from 2 NDVars.
@@ -3027,7 +3118,7 @@ class NDVar:
 
     def __add__(self, other):
         dims, x_self, x_other = self._align(other)
-        return NDVar(x_self + x_other, dims, self.info, self.name)
+        return NDVar(x_self + x_other, dims, *op_name(self, '+', other))
 
     def __iadd__(self, other):
         if self.x.dtype.kind == 'b':
@@ -3036,11 +3127,11 @@ class NDVar:
         return self
 
     def __radd__(self, other):
-        return NDVar(other + self.x, self.dims, self.info, self.name)
+        return NDVar(other + self.x, self.dims, *op_name(other, '+', self))
 
     def __div__(self, other):
         dims, x_self, x_other = self._align(other)
-        return NDVar(x_self / x_other, dims, self.info, self.name)
+        return NDVar(x_self / x_other, dims, *op_name(self, '/', other))
 
     def __idiv__(self, other):
         if self.x.dtype.kind == 'b':
@@ -3049,7 +3140,7 @@ class NDVar:
         return self
 
     def __rdiv__(self, other):
-        return NDVar(other / self.x, self.dims, self.info, self.name)
+        return NDVar(other / self.x, self.dims, *op_name(other, '/', self))
 
     def __truediv__(self, other):
         return self.__div__(other)
@@ -3062,7 +3153,7 @@ class NDVar:
 
     def __floordiv__(self, other):
         dims, x_self, x_other = self._align(other)
-        return NDVar(x_self // x_other, dims, self.info, self.name)
+        return NDVar(x_self // x_other, dims, *op_name(self, '//', other))
 
     def __ifloordiv__(self, other):
         if self.x.dtype.kind == 'b':
@@ -3071,11 +3162,11 @@ class NDVar:
         return self
 
     def __rfloordiv__(self, other):
-        return NDVar(other // self.x, self.dims, self.info, self.name)
+        return NDVar(other // self.x, self.dims, *op_name(other, '//', self))
 
     def __mod__(self, other):
         dims, x_self, x_other = self._align(other)
-        return NDVar(x_self % x_other, dims, self.info, self.name)
+        return NDVar(x_self % x_other, dims, *op_name(self, '%', other))
 
     def __imod__(self, other):
         if self.x.dtype.kind == 'b':
@@ -3084,11 +3175,11 @@ class NDVar:
         return self
 
     def __rmod__(self, other):
-        return NDVar(other % self.x, self.dims, self.info, self.name)
+        return NDVar(other % self.x, self.dims, *op_name(other, '//', self))
 
     def __mul__(self, other):
         dims, x_self, x_other = self._align(other)
-        return NDVar(x_self * x_other, dims, self.info, self.name)
+        return NDVar(x_self * x_other, dims, *op_name(self, '*', other))
 
     def __imul__(self, other):
         if self.x.dtype.kind == 'b':
@@ -3097,11 +3188,11 @@ class NDVar:
         return self
 
     def __rmul__(self, other):
-        return NDVar(other * self.x, self.dims, self.info, self.name)
+        return NDVar(other * self.x, self.dims, *op_name(other, '*', self))
 
     def __pow__(self, other):
         dims, x_self, x_other = self._align(other)
-        return NDVar(np.power(x_self, x_other), dims, self.info, self.name)
+        return NDVar(np.power(x_self, x_other), dims, *op_name(self, '**', other))
 
     def __ipow__(self, other):
         if self.x.dtype.kind == 'b':
@@ -3110,14 +3201,14 @@ class NDVar:
         return self
 
     def __rpow__(self, other):
-        return NDVar(other ** self.x, self.dims, self.info, self.name)
+        return NDVar(other ** self.x, self.dims, *op_name(other, '**', self))
 
     def __round__(self, n=0):
-        return NDVar(np.round(self.x, n), self.dims, self.info, self.name)
+        return NDVar(np.round(self.x, n), self.dims, self.name, self.info)
 
     def __sub__(self, other):
         dims, x_self, x_other = self._align(other)
-        return NDVar(x_self - x_other, dims, self.info, self.name)
+        return NDVar(x_self - x_other, dims, *op_name(self, '-', other))
 
     def __isub__(self, other):
         if self.x.dtype.kind == 'b':
@@ -3126,40 +3217,40 @@ class NDVar:
         return self
 
     def __rsub__(self, other):
-        return NDVar(other - self.x, self.dims, self.info, self.name)
+        return NDVar(other - self.x, self.dims, *op_name(other, '-', self))
 
     def __and__(self, other):
         dims, x_self, x_other = self._align(other)
-        return NDVar(x_self & x_other, dims, self.info, self.name)
+        return NDVar(x_self & x_other, dims, *op_name(self, '&', other))
 
     def __iand__(self, other):
         self.x &= self._ialign(other)
         return self
 
     def __rand__(self, other):
-        return NDVar(other & self.x, self.dims, self.info, self.name)
+        return NDVar(other & self.x, self.dims, *op_name(other, '&', self))
 
     def __xor__(self, other):
         dims, x_self, x_other = self._align(other)
-        return NDVar(x_self ^ x_other, dims, self.info, self.name)
+        return NDVar(x_self ^ x_other, dims, *op_name(self, '^', other))
 
     def __ixor__(self, other):
         self.x ^= self._ialign(other)
         return self
 
     def __rxor__(self, other):
-        return NDVar(other ^ self.x, self.dims, self.info, self.name)
+        return NDVar(other ^ self.x, self.dims, *op_name(other, '^', self))
 
     def __or__(self, other):
         dims, x_self, x_other = self._align(other)
-        return NDVar(x_self | x_other, dims, self.info, self.name)
+        return NDVar(x_self | x_other, dims, *op_name(self, '|', other))
 
     def __ior__(self, other):
         self.x |= self._ialign(other)
         return self
 
     def __ror__(self, other):
-        return NDVar(other | self.x, self.dims, self.info, self.name)
+        return NDVar(other | self.x, self.dims, *op_name(other, '|', self))
 
     # container ---
     def _dim_index_unravel(self, index):
@@ -3228,7 +3319,7 @@ class NDVar:
         abs : NDVar
             NDVar with same dimensions and absolute values.
         """
-        return NDVar(np.abs(self.x), self.dims, self.info, name or self.name)
+        return NDVar(np.abs(self.x), self.dims, *op_name(self, 'abs(', name=name))
 
     def all(self, dims=(), **regions):
         """Whether all values are nonzero over given dimensions
@@ -3415,10 +3506,10 @@ class NDVar:
         if 'summary_info' in info:
             info = info.copy()
             info.update(info.pop('summary_info'))
-        return NDVar(np.array(x_out), (Case(len(x_out)),) + self.dims[1:], info, name or self.name)
+        return NDVar(np.array(x_out), (Case(len(x_out)),) + self.dims[1:], name or self.name, info)
 
     def _aggregate_over_dims(self, axis, regions, func):
-        name = regions.pop('name', self.name)
+        name = regions.pop('name', None)
         if regions:
             data = self.sub(**regions)
             additional_axis = [dim for dim in regions if data.has_dim(dim)]
@@ -3437,9 +3528,7 @@ class NDVar:
             if axis.ndim == 1:
                 dim = axis.dims[0]
                 if self.get_dim(dim.name) != dim:
-                    raise DimensionMismatchError("Index dimension %s does not "
-                                                 "match data dimension" %
-                                                 dim.name)
+                    raise DimensionMismatchError(f"Index dimension {dim.name} does not match data dimension")
                 dim_axis = self.get_axis(dim.name)
                 index = FULL_AXIS_SLICE * dim_axis + (axis.x,)
                 x = func(self.x[index], dim_axis)
@@ -3476,7 +3565,7 @@ class NDVar:
         dtype : numpy dtype
             Numpy data-type specification (see :meth:`numpy.ndarray.astype`).
         """
-        return NDVar(self.x.astype(dtype), self.dims, self.info, self.name)
+        return NDVar(self.x.astype(dtype), self.dims, self.name, self.info)
 
     def bin(self, step=None, start=None, stop=None, func=None, dim=None,
             name=None, nbins=None, label='center'):
@@ -3575,7 +3664,7 @@ class NDVar:
         dims = list(self.dims)
         dims[axis] = out_dim
         info = {**self.info, 'bins': tuple(bins)}
-        return NDVar(x, dims, info, name or self.name)
+        return NDVar(x, dims, name or self.name, info)
 
     def clip(self, min=None, max=None, name=None, out=None):
         """Clip data (see :func:`numpy.clip`)
@@ -3602,7 +3691,7 @@ class NDVar:
             return out
         else:
             x = self.x.clip(min, max)
-            return NDVar(x, self.dims, self.info, name or self.name)
+            return NDVar(x, self.dims, name or self.name, self.info)
 
     def copy(self, name=None):
         """A deep copy of the NDVar's data
@@ -3621,7 +3710,7 @@ class NDVar:
         -----
         The info dictionary is still a shallow copy.
         """
-        return NDVar(self.x.copy(), self.dims, self.info, name or self.name)
+        return NDVar(self.x.copy(), self.dims, name or self.name, self.info)
 
     def diff(self, dim=None, n=1, pad=True, name=None):
         """Discrete difference
@@ -3659,7 +3748,7 @@ class NDVar:
         else:
             raise NotImplementedError("pad != 1")
 
-        return NDVar(x, self.dims, self.info, name or self.name)
+        return NDVar(x, self.dims, name or self.name, self.info)
 
     def dot(self, ndvar, dim=None, name=None):
         """Dot product
@@ -3752,7 +3841,7 @@ class NDVar:
         uneven.
         """
         x = np.abs(scipy.signal.hilbert(self.x, axis=self.get_axis(dim)))
-        return NDVar(x, self.dims, self.info, name or self.name)
+        return NDVar(x, self.dims, name or self.name, self.info)
 
     def extrema(self, dims=(), **regions):
         """Extrema (value farthest away from 0) over given dimensions
@@ -3838,8 +3927,7 @@ class NDVar:
         if self.has_dim(name):
             return self._dim_2_ax[name]
         else:
-            raise DimensionMismatchError("%r has no dimension named %r" %
-                                         (self, name))
+            raise DimensionMismatchError(f"{self} has no dimension named {name!r}")
 
     def get_data(self, dims, mask=None):
         """Retrieve the NDVar's data with a specific axes order.
@@ -4034,7 +4122,12 @@ class NDVar:
         else:
             x = np.log(self.x)
             x /= log(base)
-        return NDVar(x, self.dims, self.info, name or self.name)
+
+        if base is None:
+            op = 'log('
+        else:
+            op = f'log{base:g}('
+        return NDVar(x, self.dims, *op_name(self, op, name=name))
 
     def mask(self, mask, name=None, missing=None):
         """Create a masked version of this NDVar (see :class:`numpy.ma.MaskedArray`)
@@ -4088,12 +4181,12 @@ class NDVar:
                     x_new[FULL_AXIS_SLICE * ax + old_index] = x_mask
                     x_mask = x_new
         x = np.ma.MaskedArray(self.x, x_mask)
-        return NDVar(x, self.dims, self.info, name or self.name)
+        return NDVar(x, self.dims, name or self.name, self.info)
 
     def unmask(self, name=None):
         """Remove mask from a masked ``NDVar``"""
         x = self.x.data if isinstance(self.x, np.ma.masked_array) else self.x
-        return NDVar(x, self.dims, self.info, name or self.name)
+        return NDVar(x, self.dims, name or self.name, self.info)
 
     def max(self, dims=(), **regions):
         """Compute the maximum over given dimensions
@@ -4212,7 +4305,7 @@ class NDVar:
             mask = all_masked
             x = np.ma.masked_array(x, mask)
         dims = self.dims[:axis] + self.dims[axis + 1:]
-        return NDVar(x, dims, self.info, name or self.name)
+        return NDVar(x, dims, name or self.name, self.info)
 
     def ols(self, x, name=None):
         """Sample-wise ordinary least squares regressions
@@ -4259,18 +4352,15 @@ class NDVar:
             betas = stats.betas(y, Var(values, x))[1]
             out_dims = self.get_dims(dimnames[1:])
         elif not self.has_case:
-            raise DimensionMismatchError(
-                "Can only apply regression to NDVar with case dimension")
+            raise DimensionMismatchError("Can only apply regression to NDVar with case dimension")
         else:
             x = asmodel(x)
             if len(x) != len(self):
-                raise DimensionMismatchError(
-                    "Predictors do not have same number of cases (%i) as the "
-                    "dependent variable (%i)" % (len(x), len(self)))
+                raise DimensionMismatchError(f"Predictors do not have same number of cases ({len(x)}) as the dependent variable ({len(self)})")
 
             betas = stats.betas(self.x, x)[1:]  # drop intercept
             out_dims = (Case,) + self.dims[1:]
-        return self._package_aggregated_output(betas, out_dims, info, name or self.name)
+        return self._package_aggregated_output(betas, out_dims, name, info)
 
     def ols_t(self, x, name=None):
         """
@@ -4311,17 +4401,17 @@ class NDVar:
                 "dependent variable (%i)" % (len(x), len(self)))
 
         t = stats.lm_t(self.x, x._parametrize())[1:]  # drop intercept
-        return NDVar(t, ('case',) + self.dims[1:], self.info, name or self.name)
+        return NDVar(t, ('case',) + self.dims[1:], name or self.name, self.info)
 
-    @staticmethod
-    def _package_aggregated_output(x, dims, info, name):
+    def _package_aggregated_output(self, x, dims, name, info=None):
+        args = op_name(self, info=info, name=name)
         ndims = len(dims)
         if ndims == 0:
             return x
         elif ndims == 1 and isinstance(dims[0], Case):
-            return Var(x, name, info=info)
+            return Var(x, *args)
         else:
-            return NDVar(x, dims, info, name)
+            return NDVar(x, dims, *args)
 
     def repeat(self, repeats, name=None):
         """Repeat slices of the NDVar along the case dimension
@@ -4340,7 +4430,7 @@ class NDVar:
         else:
             x = self.x[newaxis].repeat(repeats, axis=0)
             dims = (Case(repeats),) + self.dims
-        return NDVar(x, dims, self.info, name or self.name)
+        return NDVar(x, dims, name or self.name, self.info)
 
     def residuals(self, x, name=None):
         """
@@ -4371,7 +4461,7 @@ class NDVar:
 
         from ._stats import stats
         res = stats.residuals(self.x, x)
-        return NDVar(res, self.dims, self.info, name or self.name)
+        return NDVar(res, self.dims, name or self.name, self.info)
 
     def rms(self, axis=(), **regions):
         """Compute the root mean square over given dimensions
@@ -4418,7 +4508,7 @@ class NDVar:
         -----
         Like :func:`numpy.sign`.
         """
-        return NDVar(np.sign(self.x), self.dims, self.info, name or self.name)
+        return NDVar(np.sign(self.x), self.dims, name or self.name, self.info)
 
     def smooth(self, dim, window_size=None, window='hamming', mode='center', window_samples=None, fix_edges=False, name=None):
         """Smooth data by convolving it with a window
@@ -4542,7 +4632,7 @@ class NDVar:
                     dims[axis] = UTS(tmin, dim_object.tstep, dim_object.nsamples + n -1)
                 else:
                     raise ValueError("mode=%r" % (mode,))
-        return NDVar(x, dims, self.info, name or self.name)
+        return NDVar(x, dims, name or self.name, self.info)
 
     def std(self, dims=(), **regions):
         """Compute the standard deviation over given dimensions
@@ -4685,7 +4775,7 @@ class NDVar:
         (``x.sub(time=0.1, name="new_name")``). The default is the name of the
         current NDVar.
         """
-        var_name = kwargs.pop('name', self.name)
+        name = kwargs.pop('name', None)
         dims = list(self.dims)
         n_axes = len(dims)
         index = [FULL_SLICE] * n_axes
@@ -4719,7 +4809,7 @@ class NDVar:
             if index_args[dimax] is None:
                 index_args[dimax] = arg
             else:
-                raise RuntimeError("Index for %s dimension specified twice." % dimname)
+                raise IndexError(f"Index for {dimname} dimension specified twice.")
 
         # process indexes
         for dimax, idx in enumerate(index_args):
@@ -4760,8 +4850,8 @@ class NDVar:
         x = self.x[tuple(index)]
         if add_axis:
             x = np.expand_dims(x, 0)
-        dims = tuple(dim for dim in dims if dim is not None)
-        return self._package_aggregated_output(x, dims, self.info, var_name)
+        dims = [dim for dim in dims if dim is not None]
+        return self._package_aggregated_output(x, dims, name)
 
     def sum(self, dims=(), **regions):
         """Compute the sum over given dimensions
@@ -4815,7 +4905,7 @@ class NDVar:
             idx = self.x <= v
         else:
             raise ValueError("Invalid value tail=%r; need -1, 0 or 1" % (tail,))
-        return NDVar(np.where(idx, self.x, 0), self.dims, self.info, name or self.name)
+        return NDVar(np.where(idx, self.x, 0), self.dims, name or self.name, self.info)
 
     def var(self, dims=(), ddof=0, **regions):
         """Compute the variance over given dimensions
@@ -4844,16 +4934,14 @@ class NDVar:
             case dimension remains, and a float if the function collapses over
             all data.
         """
-        return self._aggregate_over_dims(dims, regions,
-                                         partial(np.var, ddof=ddof))
+        return self._aggregate_over_dims(dims, regions, partial(np.var, ddof=ddof))
 
     def nonzero(self):
         """Return indices where the NDVar is non-zero 
         
         Like :func:`numpy.nonzero`.
         """
-        return tuple(dim._dim_index(index) for dim, index in
-                     zip(self.dims, self.x.nonzero()))
+        return tuple(dim._dim_index(index) for dim, index in zip(self.dims, self.x.nonzero()))
 
 
 def extrema(x, axis=None):
@@ -7235,7 +7323,7 @@ class Dimension:
         raise TypeError(f"{self.__class__.__name__} dimension has no scalar representation")
 
     def _as_uv(self):
-        return Var(self._axis_data(), name=self.name)
+        return Var(self._axis_data(), self.name)
 
     def _axis_data(self):
         "x for plot command"

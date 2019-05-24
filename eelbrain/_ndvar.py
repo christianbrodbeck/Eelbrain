@@ -19,7 +19,7 @@ from scipy import linalg, ndimage, signal, stats
 from . import _info, mne_fixes
 from ._data_obj import (
     NDVar, Case, Categorial, Dimension, Scalar, SourceSpace, UTS,
-    asndvar, combine)
+    asndvar, combine, op_name)
 from ._exceptions import DimensionMismatchError
 from ._info import merge_info
 from ._stats.connectivity import Connectivity
@@ -170,7 +170,7 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None, ravel=None):
     return NDVar(x, dims, name or ndvar.name, info)
 
 
-def convolve(h, x, ds=None):
+def convolve(h, x, ds=None, name=None):
     """Convolve ``h`` and ``x`` along the time dimension
 
     Parameters
@@ -181,6 +181,8 @@ def convolve(h, x, ds=None):
         Data to convolve, corresponding to ``h``.
     ds : Dataset
         If provided, elements of ``x`` can be specified as :class:`str`.
+    name : str
+        Name for output variable.
 
     Returns
     -------
@@ -245,7 +247,7 @@ def convolve(h, x, ds=None):
                 out_flat[ix, ih, out_index] += signal.convolve(h_, x_)[conv_index]
 
     dims = x.get_dims(a.x_only) + h.get_dims(a.y_only) + (x_time,)
-    return NDVar(out, dims, x.info.copy(), x.name)
+    return NDVar(out, dims, *op_name(x, name=name))
 
 
 def correlation_coefficient(x, y, dim=None, name=None):
@@ -314,7 +316,7 @@ def correlation_coefficient(x, y, dim=None, name=None):
     return NDVar(out, dims, name or x.name, x.info)
 
 
-def cross_correlation(in1, in2, name="{in1} * {in2}"):
+def cross_correlation(in1, in2, name=None):
     """Cross-correlation between two NDVars along the time axis
     
     Parameters
@@ -338,8 +340,7 @@ def cross_correlation(in1, in2, name="{in1} * {in2}"):
     in2_time = in2.get_dim('time')
     tstep = in1_time.tstep
     if in2_time.tstep != tstep:
-        raise ValueError("in1 and in2 need to have the same tstep, got %s and "
-                         "%s" % (tstep, in2_time.tstep))
+        raise ValueError(f"in1 and in2 need to have the same tstep, got {tstep} and {in2_time.tstep}")
     nsamples = in1_time.nsamples + in2_time.nsamples - 1
     in1_i0 = -(in1_time.tmin / tstep)
     in2_i0 = -(in2_time.tmin / tstep)
@@ -348,8 +349,7 @@ def cross_correlation(in1, in2, name="{in1} * {in2}"):
     tmin = -out_i0 * tstep
     time = UTS(tmin, tstep, nsamples)
     x_corr = signal.correlate(x1, x2)
-    return NDVar(x_corr, (time,), merge_info((in1, in2)),
-                 name.format(in1=in1.name, in2=in2.name))
+    return NDVar(x_corr, (time,), *op_name(in1, '*', in2, merge_info((in1, in2)), name))
 
 
 def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,

@@ -98,6 +98,6 @@ def test_plot_array():
     # results
     res = testnd.ttest_ind('utsnd', 'A', ds=ds, pmin=0.05, tstart=0.1, tstop=0.3, samples=2)
     p = plot.TopoArray(res)
-    assert repr(p) == "<TopoArray: a0, a1, difference>"
+    assert repr(p) == "<TopoArray: a0, a1, a0 - a1>"
     p.set_topo_t(0, 0.)
     p.close()

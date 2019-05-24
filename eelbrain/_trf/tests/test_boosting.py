@@ -54,7 +54,9 @@ def test_boosting(n_workers):
     assert res.y_scale == y.std()
     assert res.x_mean == x1.mean()
     assert res.x_scale == x1.std()
+    assert res.h.name == 'x1'
     assert res.h.info['unit'] == 'normalized'
+    assert res.h_scaled.name == 'x1'
     assert res.h_scaled.info['unit'] == 'V'
     # inplace
     res_ip = boosting(y.copy(), x1.copy(), 0, 1, 'inplace')

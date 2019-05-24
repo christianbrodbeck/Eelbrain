@@ -193,7 +193,7 @@ def tsv(
         if type_ == 'f':
             dob = _data.Factor(values, labels={None: ''}, name=name)
         else:
-            dob = _data.Var(values, name=name)
+            dob = _data.Var(values, name)
         ds.add(dob)
 
     return ds
@@ -225,7 +225,7 @@ def var(path=None, name=None):
     else:
         x = np.loadtxt(path)
 
-    return _data.Var(x, name=name)
+    return _data.Var(x, name)
 
 
 def eeg_montage(path=None, kind='Polhemus digitized montage'):

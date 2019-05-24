@@ -42,13 +42,13 @@ def _get_continuous(n_samples=100, ynd=False, seed=0):
     h_time = UTS(0, 0.1, 10)
     xdim = Scalar('xdim', [0, 1])
 
-    x1 = NDVar(random.normal(0, 1, (n_samples,)), (time,), name='x1')
-    h1 = NDVar(np.array([0, 0, 1, 3, 0, 0, 0, 0, 2, 3]), (h_time,), name='h1')
+    x1 = NDVar(random.normal(0, 1, (n_samples,)), (time,), 'x1')
+    h1 = NDVar(np.array([0, 0, 1, 3, 0, 0, 0, 0, 2, 3]), (h_time,), 'h1')
 
-    x2 = NDVar(random.normal(0, 1, (2, n_samples,)), (xdim, time), name='x2')
+    x2 = NDVar(random.normal(0, 1, (2, n_samples,)), (xdim, time), 'x2')
     h2 = NDVar(np.array([[0, 0, 0, 0, 0, 0, -1, -3, 0, 0],
                          [0, 0, 2, 2, 0, 0, 0, 0, 0, 0]]),
-               (xdim, h_time), name='h2')
+               (xdim, h_time), 'h2')
 
     y = convolve(h1, x1)
     y += convolve(h2, x2)
@@ -339,7 +339,7 @@ def get_ndvar(case=0, time=100, frequency=8, name='ndvar'):
         dims.append(Scalar('frequency', np.logspace(2, 3.5, frequency)))
     shape = [len(dim) for dim in dims]
     x = np.random.normal(0, 1, shape)
-    return NDVar(x, dims, name=name)
+    return NDVar(x, dims, name)
 
 
 def get_uts(utsnd=False, seed=0, nrm=False, vector3d=False):
@@ -387,7 +387,7 @@ def get_uts(utsnd=False, seed=0, nrm=False, vector3d=False):
     y += rm_var[:, None]
     y[:15, 20:60] += np.hanning(40) * 1  # interaction
     y[:30, 50:80] += np.hanning(30) * 1  # main effect
-    ds['uts'] = NDVar(y, dims=('case', time))
+    ds['uts'] = NDVar(y, ('case', time))
 
     # add sensor NDVar
     if utsnd:
@@ -420,7 +420,7 @@ def get_uts(utsnd=False, seed=0, nrm=False, vector3d=False):
             y[i, 4, 25:75] += 0.5 * win * x[shift: 50 + shift]
 
         dims = ('case', sensor, time)
-        ds['utsnd'] = NDVar(y, dims, _info.for_eeg())
+        ds['utsnd'] = NDVar(y, dims, info=_info.for_eeg())
 
     # nested random effect
     if nrm:

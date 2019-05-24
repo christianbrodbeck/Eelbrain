@@ -917,7 +917,15 @@ def test_ndvar():
     with pytest.raises(TypeError):
         bool(x)
 
+    # names
+    x = ds[0, 'uts']
+    assert repr(x) == "<NDVar 'uts': 100 time>"
+    assert repr(x * 2) == "<NDVar 'uts': 100 time>"
+    assert repr(x * 2 + 5) == "<NDVar 'uts': 100 time>"
+    assert repr(-x * 2 + 5) == "<NDVar 'uts': 100 time>"
+
     # meaningful slicing
+    x = ds['utsnd']
     with pytest.raises(KeyError):
         x.sub(sensor='5')
     assert_equal(x.sub(sensor='4'), x.x[:, 4])
@@ -1644,7 +1652,7 @@ def test_var():
     assert_array_equal(y, x.repeat(x))
     y = Var.from_dict(base, {'a': 5, 'e': 8}, default=0)
     assert_array_equal(y.x, [5, 5, 0, 0, 0, 0, 8])
-    with pytest.raises(TypeError):
+    with pytest.raises(RuntimeError):
         Var(x, info=1)
     # invalid dtypes
     with pytest.raises(TypeError):
@@ -1654,12 +1662,13 @@ def test_var():
 
     # basic operations
     info = {'a': 1}
-    v = Var([1., 2., 3., -4.], 'v', info=info)
+    v = Var([1., 2., 3., -4.], 'v', info)
+    assert_dataobj_equal(-v, Var([-1, -2, -3, 4], 'v', info))
     with pytest.raises(TypeError):
         bool(v)
     # binary operations
     c = 2
-    v2 = Var([2., 2., 3., 3.], 'w', info=info)
+    v2 = Var([2., 2., 3., 3.], 'w', info)
     assert v.info == info
     for op, iop, desc in OPERATORS:
         target = op(v.x, c)
@@ -1670,11 +1679,13 @@ def test_var():
             w.x = iop(w.x, c)
         else:
             w = op(v, c)
-            assert w.info == {'a': 1, 'longname': 'v %s %s' % (desc, c)}
+            assert w.name == 'v'
+            assert w.info == {**info, 'longname': f'v {desc} {c:g}'}
             assert_array_equal(w, target)
             # with Var
             w = op(v, v2)
-            assert w.info == {'a': 1, 'longname': 'v %s w' % desc}
+            assert w.name == 'v'
+            assert w.info == {**info, 'longname': f'v {desc} w'}
             assert_array_equal(w, vtarget)
         # i-op
         w = v.copy()
@@ -1686,19 +1697,12 @@ def test_var():
         assert_array_equal(w, vtarget)
 
     # methods
-    w = v.abs()
-    assert w.info == {'a': 1, 'longname': 'abs(v)'}
-    assert_array_equal(w, np.abs(v.x))
+    w = abs(v)
+    assert_dataobj_equal(w, Var(np.abs(w.x), 'v', {**info, 'longname': f'abs(v)'}))
     # log
-    x = w.log()
-    assert x.info == {'a': 1, 'longname': 'log(abs(v))'}
-    assert_array_equal(x, np.log(w.x))
-    x = w.log(10)
-    assert x.info == {'a': 1, 'longname': 'log10(abs(v))'}
-    assert_array_equal(x, np.log10(w.x))
-    x = w.log(42)
-    assert x.info == {'a': 1, 'longname': 'log42(abs(v))'}
-    assert_array_equal(x, np.log(w.x) / log(42))
+    assert_dataobj_equal(w.log(), Var(np.log(w.x), 'v', {**info, 'longname': f'log(abs(v))'}))
+    assert_dataobj_equal(w.log(10), Var(np.log10(w.x), 'v', {**info, 'longname': f'log10(abs(v))'}))
+    assert_dataobj_equal(w.log(42), Var(np.log(w.x) / log(42), 'v', {**info, 'longname': f'log42(abs(v))'}))
 
     # assignment
     tgt1 = np.arange(10)

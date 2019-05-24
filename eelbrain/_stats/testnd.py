@@ -664,6 +664,7 @@ class corr(NDTest):
         if match is not None:
             match = ascategorial(match, sub, ds)
 
+        self.x = x.name
         name = "%s corr %s" % (y.name, x.name)
 
         # Normalize by z-scoring the data for each subject
@@ -712,7 +713,6 @@ class corr(NDTest):
 
         # store attributes
         NDTest.__init__(self, y, match, sub, samples, tfce, pmin, cdist, tstart, tstop)
-        self.x = x.name
         self.norm = None if norm is None else norm.name
         self.rmin = rmin
         self.n = n
@@ -1145,7 +1145,6 @@ class ttest_ind(NDDifferenceTest):
         diff = self.c1_mean - self.c0_mean
         if np.any(diff.x < 0):
             diff.info['cmap'] = 'xpolar'
-        diff.name = 'difference'
         self.difference = diff
 
         # uncorrected p
