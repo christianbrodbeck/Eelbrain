@@ -86,6 +86,13 @@ def test_list():
     assert html(list_) == 'Head\n<ul>\n<li>child</li>\n<li>unicode:\n<ul>\n<li>delta: ∂</li>\n</ul></li>\n</ul>'
 
 
+def test_p():
+    assert str(fmtxt.p(.02)) == '.020'
+    assert str(fmtxt.p(.2, stars=True)) == '.200   '
+    assert str(fmtxt.p(.0119, stars=True)) == '.012*  '
+    assert str(fmtxt.p(.0001, stars=True)) == '< .001***'
+
+
 def test_report():
     "Test fmtxt.Report class"
     tempdir = tempfile.mkdtemp()

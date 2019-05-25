@@ -2217,11 +2217,12 @@ def p(p, stars=None, of=3, tag='math'):
     ----------
     p : scalar
         P-value.
-    stars : None | str
-        Stars decorating the p-value (e.g., "**")
+    stars : str | True
+        Stars decorating the p-value (e.g., "**"); ``True`` to use
+        conventional thresholds (default is no stars).
     of : int
         Max numbers of star characters possible (to add empty space for
-        alignment).
+        alignment; ignored when ``stars`` is not specified).
 
     Returns
     -------
@@ -2230,8 +2231,11 @@ def p(p, stars=None, of=3, tag='math'):
     """
     if stars is None:
         return P(p)
+    elif stars is True:
+        stars_obj = Stars.from_p(p, of)
     else:
-        return FMText([P(p), Stars(stars, of=of)], tag)
+        stars_obj = Stars(stars, of)
+    return FMText([P(p), stars_obj], tag)
 
 
 def stat(x, fmt="%.2f", stars=None, of=3, tag='math', drop0=False):
@@ -2253,6 +2257,26 @@ def eq(name, result, subscript=None, fmt='%.2f', stars=None, of=3, drop0=False):
 
 
 def peq(p, subscript=None, stars=None, of=3):
+    """:class:`FMText` representation of a p-value equation
+
+    Parameters
+    ----------
+    p : scalar
+        P-value.
+    subscript : Text
+        Subscript for ``p``.
+    stars : str | True
+        Stars decorating the p-value (e.g., "**"); ``True`` to use
+        conventional thresholds (default is no stars).
+    of : int
+        Max numbers of star characters possible (to add empty space for
+        alignment; ignored when ``stars`` is not specified).
+
+    Returns
+    -------
+    text : FMText
+        FMText with ``p = ...`` equation.
+    """
     symbol_ = symbol('p', subscript, None)
 
     if p < .001:
@@ -2262,12 +2286,11 @@ def peq(p, subscript=None, stars=None, of=3):
 
     if stars is None:
         return FMText([symbol_, eq_, P(p)], 'math')
+    elif stars is True:
+        stars_obj = Stars.from_p(p, of)
     else:
-        if stars is True:
-            stars_obj = Stars.from_p(p, of)
-        else:
-            stars_obj = Stars(stars, of)
-        return FMText([symbol_, eq_, P(p), stars_obj], 'math')
+        stars_obj = Stars(stars, of)
+    return FMText([symbol_, eq_, P(p), stars_obj], 'math')
 
 
 def delim_list(items, delimiter=', '):
