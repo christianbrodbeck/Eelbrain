@@ -61,7 +61,7 @@ from .._stats.testnd import _MergedTemporalClusterDist
 from .._text import enumeration, plural
 from .._utils import IS_WINDOWS, ask, subp, keydefaultdict, log_level, ScreenHandler
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
-from .definitions import find_dependent_epochs, find_epochs_vars, log_dict_change, log_list_change
+from .definitions import FieldCode, find_dependent_epochs, find_epochs_vars, log_dict_change, log_list_change
 from .epochs import PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, assemble_epochs, decim_param
 from .exceptions import FileDeficient, FileMissing
 from .experiment import FileTree
@@ -5096,8 +5096,7 @@ class MneExperiment(FileTree):
             raise NotImplementedError("Only two-stage tests")
 
         with self._temporary_state:
-            self._set_analysis_options('source', baseline, src_baseline, pmin,
-                                       None, None, mask=mask)
+            self._set_analysis_options('source', baseline, src_baseline, pmin, None, None, mask=mask)
             dst = self.get('subject-spm-report', mkdir=True)
             lm = self._load_spm(baseline, src_baseline)
 
@@ -5808,11 +5807,11 @@ class MneExperiment(FileTree):
         return '-'.join(items)
 
     @staticmethod
-    def _inv_params(inv):
+    def _parse_inv(inv):
         "(ori, snr, method, depth, pick_normal)"
         m = inv_re.match(inv)
         if m is None:
-            raise ValueError(f"Invalid inverse specification: inv={inv!r}")
+            raise ValueError(f"inv={inv!r}: invalid inverse specification")
 
         ori, snr, method, depth, pick_normal = m.groups()
         if ori.startswith('loose'):
@@ -5838,7 +5837,7 @@ class MneExperiment(FileTree):
 
     @classmethod
     def _eval_inv(cls, inv):
-        cls._inv_params(inv)
+        cls._parse_inv(inv)
         return inv
 
     def _post_set_inv(self, _, inv):
@@ -5847,7 +5846,7 @@ class MneExperiment(FileTree):
             self._params['apply_inv_kw'] = None
             return
 
-        ori, snr, method, depth, pick_normal = self._inv_params(inv)
+        ori, snr, method, depth, pick_normal = self._parse_inv(inv)
 
         if ori == 'fixed':
             make_kw = {'fixed': True}
@@ -5971,9 +5970,7 @@ class MneExperiment(FileTree):
             if test_obj.model is not None:
                 self.set(model=test_obj._within_model)
 
-    def _set_analysis_options(self, data, baseline, src_baseline, pmin,
-                              tstart, tstop, parc=None, mask=None, decim=None,
-                              test_options=(), folder_options=()):
+    def _set_analysis_options(self, data, baseline, src_baseline, pmin, tstart, tstop, parc=None, mask=None, decim=None, test_options=(), folder_options=()):
         """Set templates for paths with test parameters
 
         analysis:  preprocessing up to source estimate epochs (not parcellation)
@@ -5994,7 +5991,7 @@ class MneExperiment(FileTree):
         decim : int
             Decimation factor (default is None, i.e. based on epochs).
         test_options : sequence of str
-            Additional, test-specific tags.
+            Additional, test-specific tags (for use by TRFExperiment only).
         """
         data = TestDims.coerce(data)
         # data kind (sensor or source space)
@@ -6040,9 +6037,9 @@ class MneExperiment(FileTree):
             kwargs['parc'] = parc
             kwargs['test_dims'] = '%s.%s' % (parc, data.source)
             if data.source == 'mean':
-                folder = '%s ROIs' % parc
+                folder = f'{parc} ROIs'
             else:
-                folder = '%s %s' % (parc, data.source)
+                folder = f'{parc} {data.source}'
         elif parc:
             raise ValueError(f"Sensor analysis (data={data.string!r}) can't have parc")
         elif data.sensor:
@@ -6106,6 +6103,29 @@ class MneExperiment(FileTree):
         items.extend(test_options)
 
         self.set(test_options=' '.join(items), analysis=analysis, folder=folder, **kwargs)
+
+    @staticmethod
+    def _parse_test_options(test_options: FieldCode):
+        code = FieldCode.coerce(test_options)
+        out = {}
+        # baseline
+        if 'bl' in code.lookahead_1:
+            out['baseline'] = code.next()
+            if 'srcbl' in code.lookahead_1:
+                out['baseline'] = (out['baseline'], code.next())
+        # connectivity
+        if code.lookahead_1 == 'link-midline':
+            out['connectivity'] = code.next()
+        # pmin
+        if code.lookahead_1 == 'tfce' or code.lookahead_1.startswith('0.'):
+            out['pmin'] = code.next()
+        # time-window
+        if '-' in code.lookahead_1:
+            out['time_window'] = code.next()
+        # decim
+        if code.lookahead_1.isdigit():
+            out['decim'] = code.next()
+        return out
 
     def show_bad_channels(self, sessions=None, **state):
         """List bad channels

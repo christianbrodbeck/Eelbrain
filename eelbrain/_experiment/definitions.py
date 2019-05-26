@@ -4,6 +4,84 @@ from .._text import enumeration, plural
 from .._utils.parse import find_variables
 
 
+class CodeBase:
+    _sep = ' '
+
+    def __init__(
+            self,
+            string: str,
+            code_string: str = None,
+    ):
+        self.string = string
+        if code_string is None:
+            code_string = string
+        self._items = code_string.split(self._sep)
+        self._i = -1
+        self.lookahead_1 = self.lookahead()
+
+    @classmethod
+    def coerce(cls, obj):
+        if isinstance(obj, cls):
+            return obj
+        else:
+            return cls(obj)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.string!r})"
+
+    def next(self, lookahead=0):
+        self._i += 1
+        self.lookahead_1 = self.lookahead()
+        return self.lookahead(lookahead)
+
+    def __getitem__(self, item):
+        return self._items[item]
+
+    def __iter__(self):
+        i_max = len(self._items) - 1
+        while self._i < i_max:
+            self._i += 1
+            yield self._items[self._i]
+
+    def assert_done(self):
+        if self._i < len(self._items) - 1:
+            raise self.error("Code not processed completely")
+
+    def error(self, message=None, i=None):
+        if i is None:
+            i = self._i
+        elif not isinstance(i, int):
+            raise RuntimeError(f"i={i!r} for Code.error()")
+
+        n = len(self._items)
+        if i < 0:
+            code = self.string
+        elif i >= n:
+            code = f"{self._sep.join(self._items)} >unexpected end<"
+        else:
+            code = ''
+            if i:
+                code += self._sep.join(self._items[:i]) + ' '
+            code += f"> {self._items[i]} <"
+            if i == n - 1:
+                code += ' ' + self._sep.join(self._items[i + 1:])
+
+        message = code + ': ' + message if message else code
+        return ValueError(message)
+
+    def lookahead(self, offset=1):
+        "Retrieve item without advancing iterator"
+        i = self._i + offset
+        if 0 <= i < len(self._items):
+            return self._items[i]
+        else:
+            return ''
+
+
+class FieldCode(CodeBase):
+    pass
+
+
 class Definition:
     DICT_ATTRS = None
 
