@@ -276,8 +276,16 @@ class Boxplot(YLimMixin, _SimpleFigure):
     cells : None | sequence of cells of x
         Cells to plot (optional). All entries have to be cells of ``x``). Can be
         used to change the order of the bars or plot only certain cells.
-    datalabels : scalar
-        Threshold for labeling outliers (in standard-deviation).
+    notch : bool
+        Whether to produce a notched box plots (default ``False``; see
+        :meth:`matplotlib.axes.Axes.boxplot`).
+    sym : str
+        Symbol for flier points (outliers; default ``'b+'``l see
+        :meth:`matplotlib.axes.Axes.boxplot`).
+    whis : scalar | sequence of scalar | str
+        Determines the reach of the whiskers, beyond which data points are
+        plotted as outliers (default 1.5; see
+        :meth:`matplotlib.axes.Axes.boxplot`).
     bottom : scalar
         Lowest possible value on the y axis (default is 0 or slightly
         below the lowest value).
@@ -317,6 +325,9 @@ class Boxplot(YLimMixin, _SimpleFigure):
     ds : None | Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
+    label_fliers : bool
+        Add labels to flier points (outliers); requires ``match`` to be
+        specified.
     frame : bool
         Draw a frame containing the figure from the top and the right
         (default ``True``).
@@ -326,25 +337,24 @@ class Boxplot(YLimMixin, _SimpleFigure):
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    def __init__(self, y, x=None, match=None, sub=None, cells=None, datalabels=None,
+    def __init__(self, y, x=None, match=None, sub=None, cells=None,
+                 notch=None, sym=None, whis=None,
                  bottom=None, top=None, ylabel=True, xlabel=True,
                  xticks=True, xtick_delim='\n',
                  test=True, par=True, trend="'", test_markers=True, corr='Hochberg',
-                 hatch=False, colors=False, ds=None, *args,
-                 **kwargs):
+                 hatch=False, colors=False, ds=None, label_fliers=False,
+                 *args, **kwargs):
         # get data
         ct = Celltable(y, x, match, sub, cells, ds, asvar)
+        if label_fliers and ct.match is None:
+            raise TypeError(f"label_fliers={label_fliers!r} without specifying the match parameter: match is needed to determine labels")
         if ct.x is None and test is True:
             test = 0.
 
         # kwargs
-        if hatch is True:
-            hatch = defaults['hatch']
-
-        if hatch and len(hatch) < ct.n_cells:
-            raise ValueError(
-                "hatch needs at least as many values as there are cells (%i) "
-                "got %r" % (ct.n_cells, hatch))
+        hatch_ = defaults['hatch'] if hatch is True else hatch
+        if hatch_ and len(hatch_) < ct.n_cells:
+            raise ValueError(f"hatch={hatch_!r}: need at least as many values as there are cells ({ct.n_cells})")
 
         if colors is True:
             if defaults['mono']:
@@ -355,17 +365,13 @@ class Boxplot(YLimMixin, _SimpleFigure):
             colors = [colors[cell] for cell in ct.cells]
 
         if colors and len(colors) < ct.n_cells:
-            raise ValueError(
-                "colors needs at least as many values as there are cells (%i) "
-                "got %r" % (ct.n_cells, colors))
+            raise ValueError(f"colors={colors!r}: need at least as many values as there are cells ({ct.n_cells})")
 
         _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), *args, **kwargs)
         self._set_xlabel_categorial(xlabel, ct.x)
         self._configure_yaxis(ct.y, ylabel)
 
-        p = _plt_boxplot(self._ax, ct, colors, hatch, bottom, top, xticks,
-                         xtick_delim, test, par, corr, trend, test_markers,
-                         datalabels)
+        self._plot = p = _plt_boxplot(self._ax, ct, notch, sym, whis, colors, hatch, bottom, top, xticks, xtick_delim, test, par, corr, trend, test_markers, label_fliers)
         p.set_ylim(p.bottom, p.top)
         p.ax.set_xlim(p.left, p.right)
         if p.top > 0 > p.bottom:
@@ -504,8 +510,7 @@ class _plt_uv_base:
 class _plt_boxplot(_plt_uv_base):
     """Boxplot"""
 
-    def __init__(self, ax, ct, colors, hatch, bottom, top, xticks, xtick_delim,
-                 test, par, corr, trend, test_markers, datalabels):
+    def __init__(self, ax, ct, notch, sym, whis, colors, hatch, bottom, top, xticks, xtick_delim, test, par, corr, trend, test_markers, label_fliers):
         # determine ax lim
         if bottom is None:
             if np.min(ct.y.x) >= 0:
@@ -519,7 +524,7 @@ class _plt_boxplot(_plt_uv_base):
         # boxplot
         k = len(ct.cells)
         all_data = ct.get_data()
-        bp = ax.boxplot(all_data, positions=np.arange(k))
+        self.boxplot = bp = ax.boxplot(all_data, notch, sym, whis=whis, positions=np.arange(k))
 
         # Now fill the boxes with desired colors
         if hatch or colors:
@@ -560,13 +565,18 @@ class _plt_boxplot(_plt_uv_base):
             top = y_top
 
         # data labels
-        if datalabels:
-            for i, cell in enumerate(ct.cells):
-                d = ct.data[cell]
-                indexes = np.where(np.abs(d) / d.std() >= datalabels)[0]
-                for index in indexes:
-                    label = ct.matchlabels[cell][index]
-                    ax.annotate(label, (i + 1, d[index]))
+        if label_fliers:
+            for cell, fliers in zip(ct.cells, bp['fliers']):
+                xs, ys = fliers.get_data()
+                if len(xs) == 0:
+                    continue
+                x = xs[0] + 0.25
+                data = ct.data[cell]
+                match = ct.match[ct.data_indexes[cell]]
+                for y in set(ys):
+                    indices = data.index(y)
+                    label = ', '.join(cellname(match[i]) for i in indices)
+                    ax.annotate(label, (x, y), va='center')
 
         # set ax limits
         self.left = -.5

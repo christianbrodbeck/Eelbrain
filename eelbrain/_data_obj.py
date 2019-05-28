@@ -1653,7 +1653,13 @@ class Var:
         return cls(x, name, info=info)
 
     def index(self, value):
-        "``v.index(value)`` returns an array of indices where v equals value"
+        """``v.index(value)`` returns an array of indices where v equals value
+
+        Returns
+        -------
+        index : array of int
+            Array of positive :class:`int` indices.
+        """
         return np.flatnonzero(self == value)
 
     def isany(self, *values):

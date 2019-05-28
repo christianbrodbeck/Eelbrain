@@ -38,6 +38,7 @@ def test_boxplot():
     plot.Boxplot('fltvar', ds=ds, test=False)
     plot.Boxplot('fltvar', ds=ds)
     plot.Boxplot('fltvar', match='rm', ds=ds)
+    plot.Boxplot('fltvar', 'A%B', match='rm', ds=ds, label_fliers=True)
 
     # cells
     plot.Boxplot('fltvar', 'A%B', cells=(('a2', 'b2'), ('a1', 'b1')), ds=ds)
