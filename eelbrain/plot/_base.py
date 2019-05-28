@@ -1999,15 +1999,29 @@ class EelFigure(MatplotlibFigure):
             Which axes to mark (default is all axes).
         ...
             :meth:`matplotlib.axes.Axes.axhline` parameters.
-
-
-        Notes
-        -----
-        See Matplotlib's :meth:`matplotlib.axes.Axes.axhline` for more
-        arguments.
         """
         for ax in self._get_axes(axes):
             ax.axhline(y, *args, **kwargs)
+        self.draw()
+
+    def hlines(self, y, xmin, xmax, axes=None, **kwargs):
+        """Draw one or more horizontal lines
+
+        Parameters
+        ----------
+        y : scalar | sequence of scalar
+            One or several levels at which to draw the line.
+        xmin : scalar | sequence of scalar
+            Start on the x-axis.
+        xmax : scalar | sequence of scalar
+            Stop on the x-axis.
+        axes : int | list of int
+            Which axes to mark (default is all axes).
+        ...
+            :meth:`matplotlib.axes.Axes.hlines` parameters.
+        """
+        for ax in self._get_axes(axes):
+            ax.hlines(y, xmin, xmax, **kwargs)
         self.draw()
 
     def add_hspan(self, bottom, top, axes=None, *args, **kwargs):
