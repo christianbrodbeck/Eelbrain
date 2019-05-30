@@ -61,3 +61,32 @@ def test_plot_brain():
     stcm = stc.mask(stc < 11)
     p = plot.brain.brain(stcm, mask=False)
     p.close()
+
+
+@hide_plots
+def test_sequence_plotter():
+    if sys.platform.startswith('win'):
+        pytest.xfail("Hangs on Appveyor")
+    stc = datasets.get_mne_stc(True)
+    stc_mask = stc > 5
+
+    # time dimension
+    y = stc.sub(time=(0.000, 0.200)).bin(0.050)
+    y_mask = stc_mask.sub(time=(0.000, 0.200)).bin(0.050, func='max')
+    sp = plot.brain.SequencePlotter()
+    sp.set_brain_args(surf='white', mask=False)  # the source space required for mask is not in the test dataset
+    sp.add_ndvar(y, vmax=10)
+    sp.add_ndvar(y_mask)
+    p = sp.plot_table(view='lateral')
+    # test internals
+    assert sp._get_frame_labels(True) == ['25 ms', '75 ms', '125 ms', '175 ms']
+
+    # separate NDVars
+    sp = plot.brain.SequencePlotter()
+    sp.set_brain_args(mask=False)
+    sp.add_ndvar(stc.mean(time=(0.150, 0.250)), label='normal')
+    sp.add_ndvar(stc.mean(time=(0.150, 0.250)), cmap='jet', label='jet')
+    sp.add_ndvar(stc_mask.max(time=(0.150, 0.250)), label='mask')
+    p = sp.plot_table(view='lateral', orientation='vertical')
+    # test internals
+    assert sp._get_frame_labels(True) == ['normal', 'jet', 'mask']

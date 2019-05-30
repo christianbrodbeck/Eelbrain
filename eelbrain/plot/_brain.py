@@ -1,7 +1,10 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from enum import Enum
 from functools import partial
 from itertools import product
 from numbers import Number
+from typing import Sequence
+from warnings import warn
 
 import mne
 from nibabel.freesurfer import read_annot
@@ -10,7 +13,7 @@ import numpy as np
 from .._data_obj import NDVar, SourceSpace, UTS
 from .._utils import deprecated
 from ..fmtxt import im_table
-from .._text import ms
+from .._text import ms, ms_window
 from ._base import EelFigure, ImLayout, ColorBarMixin, brain_data, butterfly_data, use_inline_backend
 from ._color_luts import dspm_lut
 from ._colors import ColorList
@@ -624,17 +627,10 @@ class ImageTable(ColorBarMixin, EelFigure):
         self._res_w = int(round(layout.axw * layout.dpi))
         self._res_h = int(round(layout.axh * layout.dpi))
 
-    def _add_ims(self, ims, column_header, cmap_params, cmap_data):
+    def _add_ims(self, ims, cmap_params, cmap_data):
         for row, column in product(range(self._n_rows), range(self._n_columns)):
             ax = self._axes[row * self._n_columns + column]
             ax.imshow(ims[row][column])
-
-        # column header (time labels)
-        if column_header:
-            y = 0.25 / self._layout.h
-            for i, label in enumerate(column_header):
-                x = (0.5 + i) / self._layout.ncol
-                self.figure.text(x, y, label, va='center', ha='center')
 
         ColorBarMixin.__init__(self, lambda: cmap_params, cmap_data)
         self._show()
@@ -642,7 +638,34 @@ class ImageTable(ColorBarMixin, EelFigure):
     def _fill_toolbar(self, tb):
         ColorBarMixin._fill_toolbar(self, tb)
 
-    def add_row_titles(self, titles, x=0.1, y=0, **kwargs):
+    def add_column_titles(self, titles, x=None, y=0.25, va='center', ha='center', **kwargs):
+        """Add a title for each column of images
+
+        Parameters
+        ----------
+        titles : sequence of str
+            Titles, from top to bottom.
+        x : scalar
+            Horizontal distance from left of the axes (default is to center
+            over the axes).
+        y : scalar
+            Vertical distance from the top of the figure.
+        ...
+            Matplotlib text parameters.
+        """
+        if len(titles) > self._n_columns:
+            raise ValueError(f"titles={titles}: {len(titles)} titles for {self._n_columns} columns")
+        if x is None:
+            x = self._layout.axw / 2
+        x_left = self._layout.margins['left'] + x
+        x_offset = self._layout.margins['wspace'] + self._layout.axw
+        y_ = 1 - y / self._layout.h
+        for i, label in enumerate(titles):
+            x_ = (x_left + i * x_offset) / self._layout.w
+            self.figure.text(x_, y_, label, va=va, ha=ha, **kwargs)
+        self.draw()
+
+    def add_row_titles(self, titles, x=0.1, y=None, va='center', ha='center', **kwargs):
         """Add a title for each row of images
 
         Parameters
@@ -652,18 +675,21 @@ class ImageTable(ColorBarMixin, EelFigure):
         x : scalar
             Horizontal distance from left of the figure.
         y : scalar
-            Vertical distance from the top of the axes.
+            Vertical distance from the bottom of the axes (default is the
+            center of the axes).
         ...
             Matplotlib text parameters.
         """
         if len(titles) > self._n_rows:
             raise ValueError(f"titles={titles}: {len(titles)} titles for {self._n_rows} rows")
-        y_top = self._layout.margins['top'] - y
+        if y is None:
+            y = self._layout.axh / 2
+        y_top = self._layout.margins['top'] + self._layout.axh - y
         y_offset = self._layout.margins['hspace'] + self._layout.axh
         x_ = x / self._layout.w
         for i, label in enumerate(titles):
             y_ = 1 - (y_top + i * y_offset) / self._layout.h
-            self.figure.text(x_, y_, label, **kwargs)
+            self.figure.text(x_, y_, label, va=va, ha=ha, **kwargs)
         self.draw()
 
 
@@ -1012,6 +1038,45 @@ def _bin_table_ims(data, hemi, views, brain_func):
     return ims, header, cmap_params
 
 
+class SPLayer(Enum):
+    ITEM = 1
+    SEQUENCE = 2
+    OVERLAY = 3
+
+
+class SequencePlotterLayer:
+
+    def __init__(
+            self,
+            kind: SPLayer,
+            ndvar: NDVar,
+            args: tuple,
+            kwargs: dict,
+            label: Sequence[str] = None,
+            index: int = None,  # when adding multiple items, index of the item
+    ):
+        if label is not None:
+            if kind == SPLayer.SEQUENCE:
+                if not isinstance(label, (tuple, list)):
+                    raise TypeError(f"label={label!r}; list or tuple of str expected")
+            else:
+                if not isinstance(label, str):
+                    raise TypeError(f"label={label!r}; str expected")
+        if kind == SPLayer.ITEM:
+            assert isinstance(index, int)
+        else:
+            assert index is None
+        self.kind = kind
+        self.ndvar = ndvar
+        self.args = args
+        self.kwargs = kwargs
+        self.label = label
+        self.index = index
+
+    def plot(self, brain):
+        brain.add_ndvar(self.ndvar, *self.args, time_label='', **self.kwargs)
+
+
 class SequencePlotter:
     """Grid of anatomical images in one figure
 
@@ -1025,6 +1090,17 @@ class SequencePlotter:
     >>> sp.add_ndvar(ndvar_binned)
     >>> p = sp.plot_table(view='lateral')
     >>> p.save('Figure.pdf')
+
+    Plotting a test result:
+
+    >>> res = testnd.ttest_rel('srcm', 'condition')
+    >>> vmax = 3  # explicitly set vmax to make sure that the color-maps agree
+    >>> sp = plot.brain.SequancePlotter()
+    >>> sp.set_brain_args(surf='inflated')
+    >>> sp.add_ndvar(res.c1_mean, vmax=vmax, label='a')
+    >>> sp.add_ndvar(res.c0_mean, vmax=vmax, label = 'b')
+    >>> sp.add_ndvar(res.masked_difference(), vmax=vmax, label='a - b')
+    >>> p = sp.plot_table(view='lateral', orientation='vertical')
     """
     max_n_bins = 25
 
@@ -1032,10 +1108,24 @@ class SequencePlotter:
         self._data = []
         self._source = None
         self._frame_dim = None
-        self._bins = None
+        self._bin_kind = None
         self._frame_order = None
-        self._frame_labels = None
         self._brain_args = {}
+        self._parallel_view = {}
+
+    def _assert_has_frame_dim(self):
+        if self._frame_dim is None:
+            raise RuntimeError("Need to set at least one NDVar first")
+        elif self._frame_dim is False:
+            raise RuntimeError("Only applies to SequencePlotters with 2d NDVars")
+
+    def _n_items(self):
+        if self._bin_kind == SPLayer.SEQUENCE:
+            raise RuntimeError("Trying to retrieve number of items for dimension-based plot")
+        indices = [l.index for l in self._data if l.index is not None]
+        if indices:
+            return max(indices) + 1
+        return 0
 
     def set_brain_args(self, surf='inflated', foreground=None, background=None,
                        parallel=True, cortex='classic', mask=True):
@@ -1047,7 +1137,16 @@ class SequencePlotter:
             'surf': surf, 'foreground': foreground, 'background': background,
             'parallel': parallel, 'cortex': cortex, 'mask': mask}
 
-    def add_ndvar(self, ndvar, *args, **kwargs):
+    def set_parallel_view(self, forward=None, up=None, scale=None):
+        """Set view for all plots (cf. :meth:`~plot._brain_obj.Brain.set_parallel_view`"""
+        if forward is not None:
+            self._parallel_view['forward'] = forward
+        if up is not None:
+            self._parallel_view['up'] = up
+        if scale is not None:
+            self._parallel_view['scale'] = scale
+
+    def add_ndvar(self, ndvar, *args, static=None, index=None, label=None, **kwargs):
         """Add a data layer to the brain plot
 
         Multiple data layers can be added sequentially, but each additional
@@ -1061,72 +1160,70 @@ class SequencePlotter:
             additional ``time`` or ``case`` dimension for dynamic layers.
         ...
             :meth:`~plot._brain_object.Brain.add_ndvar` parameters.
+        static : bool
+            When supplying a one dimensional ``ndvar``, whether to consider it
+            as a static layer (an overlay appearing on all plots) or as one of
+            several plots (default).
+        index : int
+            When adding separate rows/columns, explicitly specify the row/column
+            index (the default is to add at the end).
+        label : str | sequence of str
+            Label when adding multiple separate NDVars. Labels for bins when
+            adding ``ndvar`` with multiple bins.
         """
         source = ndvar.get_dim('source')
         if self._source is None:
             self._source = source
         elif source.subject != self._source.subject:
-            raise ValueError("NDVar has different subject (%s) than previously "
-                             "added data (%s)" %
-                             (source.subject, self._source.subject))
+            raise ValueError(f"NDVar has different subject ({source.subject}) than previously added data ({self._source.subject})")
         elif source.subjects_dir != self._source.subjects_dir:
-            raise ValueError("NDVar has different subjects_dir (%s) than "
-                             "previously added data (%s)" %
-                             (source.subjects_dir, self._source.subjects_dir))
+            raise ValueError(f"NDVar has different subjects_dir ({source.subjects_dir}) than previously added data ({self._source.subjects_dir})")
 
+        # find row/column dimension
         if ndvar.ndim == 1:
             frame_dim = None
         elif ndvar.ndim == 2:
             dim_name = ndvar.get_dimnames((None, 'source'))[0]
             frame_dim = ndvar.get_dim(dim_name)
         else:
-            raise ValueError("Need NDVar with 1 or 2 dimensions, for %r" % (ndvar,))
+            raise ValueError(f"{ndvar!r}: Need NDVar with 1 or 2 dimensions")
 
-        if frame_dim is not None:
+        if frame_dim is None:
+            # apply defaults
+            if static is None:
+                static = True if self._frame_dim else False  # None: unset or use multiple NDVars
+            if index is None:
+                index = self._n_items()
+            # extract
+            if static:
+                kind = SPLayer.OVERLAY
+            elif self._frame_dim:
+                raise ValueError(f"static={static!r} when adding to plot with dimension {self._frame_dim}")
+            else:
+                kind = SPLayer.ITEM
+                self._bin_kind = SPLayer.ITEM
+            layer = SequencePlotterLayer(kind, ndvar, args, kwargs, label, index)
+        elif self._bin_kind == SPLayer.ITEM:
+            raise ValueError(f"Can't add 2d NDVar to SequencePlotter with multiple NDVars")
+        elif index is not None:
+            raise TypeError(f"index={index!r}")
+        elif static:
+            raise ValueError(f"static={static!r} for multi-dimensional NDVar")
+        else:
+            self._bin_kind = SPLayer.SEQUENCE
             if self._frame_dim is None:
                 if len(frame_dim) > self.max_n_bins:
-                    raise ValueError(
-                        "Trying to plot %s with %i bins. If this is intentional, "
-                        "set SequencePlotter.max_n_bins to a larger value." %
-                        (frame_dim, len(frame_dim)))
+                    raise ValueError(f"Trying to plot {frame_dim} with {len(frame_dim)} bins. If this is intentional, set SequencePlotter.max_n_bins to a larger value.")
                 self._frame_dim = frame_dim
             elif frame_dim != self._frame_dim:
-                raise ValueError("New axis %s is incompatible with previously "
-                                 "set axis %s" % (frame_dim, self._frame_dim))
+                raise ValueError(f"New axis {frame_dim} is incompatible with previously set axis {self._frame_dim}")
 
-            if self._bins is None and 'bins' in ndvar.info:
-                self._bins = ndvar.info['bins']
+            if label is None and 'bins' in ndvar.info:
+                label = ndvar.info['bins']
 
-        self._data.append(('data', ndvar, args, kwargs))
+            layer = SequencePlotterLayer(SPLayer.SEQUENCE, ndvar, args, kwargs, label)
 
-    def set_frame_labels(self, labels):
-        """Set a label for each frame
-
-        Parameters
-        ----------
-        labels : list of { str | float | (float, float) }
-            One label for each frame. If the frame order has been set, labels
-            should correspond to frame-order. Floats will be converted to time
-            in ms.
-        """
-        if self._frame_dim is None:
-            raise RuntimeError("Need to set at least one NDVar first")
-        n_frames = len(self._frame_dim) if self._frame_order is None else len(self._frame_order)
-        if len(labels) != n_frames:
-            raise ValueError(
-                "labels=%r; the number of labels does not match the number of "
-                "frames (%i)" % (labels, n_frames))
-
-        # store labels in frame_dim order
-        if self._frame_order is None:
-            ordered_labels = labels
-        else:
-            ordered_labels = [None] * len(self._frame_dim)
-            indices = self._frame_dim._array_index(self._frame_order)
-            for i, label in zip(indices, labels):
-                ordered_labels[i] = label
-
-        self._frame_labels = ordered_labels
+        self._data.append(layer)
 
     def set_frame_order(self, order):
         """Set the order in which frames are plotted
@@ -1136,41 +1233,47 @@ class SequencePlotter:
         order : list
             Sequence of frame dimension indices.
         """
-        if self._frame_dim is None:
-            raise RuntimeError("Need to set at least one NDVar first")
+        self._assert_has_frame_dim()
         missing = [x for x in order if x not in self._frame_dim]
         if missing:
-            raise ValueError("order=%r; the following elements are not part of "
-                             "the frame dimension: %s" % (order, ', '.join(missing)))
+            raise ValueError(f"order={order!r}; the following elements are not part of the frame dimension: {', '.join(missing)}")
         self._frame_order = order
 
-    def _get_frame_labels(self):
-        is_time = isinstance(self._frame_dim, UTS)
-        source = self._frame_labels or self._bins or self._frame_dim
-        labels = []
-        if self._frame_order is None:
-            index = range(len(self._frame_dim))
-        else:
-            index = self._frame_dim._array_index(self._frame_order)
-
-        for i in index:
-            item = source[i]
-            if isinstance(item, str):
-                labels.append(item)
-            elif is_time:
-                if isinstance(item, Number):
-                    labels.append('%i ms' % ms(item))
-                elif len(item) == 2:
-                    t0, t1 = item
-                    labels.append('%i - %i ms' % (ms(t0), ms(t1)))
-                else:
-                    labels.apend(str(item))
+    def _get_frame_labels(self, labels):
+        if labels is None:
+            return
+        elif labels is True:
+            if self._bin_kind == SPLayer.ITEM:
+                labels = []
+                for i in range(self._n_items()):
+                    layers = [l for l in self._data if l.index == i]
+                    items = [l.label for l in layers if l.label is not None]
+                    if len(items) == 0:
+                        label = ''
+                    else:
+                        label = items[0]
+                    labels.append(label)
             else:
-                labels.append(str(item))
-        return labels
+                if self._frame_order is None:
+                    labels = list(self._frame_dim)
+                else:
+                    index = self._frame_dim._array_index(self._frame_order)
+                    labels = [self._frame_dim[i] for i in index]
 
-    def plot_table(self, hemi=None, view=('lateral', 'medial'),
-                   orientation='horizontal', column_header=True, *args, **kwargs):
+        # float -> ms
+        out = []
+        for label in labels:
+            if isinstance(label, str):
+                out.append(label)
+            elif isinstance(label, Number):
+                out.append(f'{ms(label)} ms')
+            elif len(label) == 2:
+                out.append(f'{ms_window(*label)} ms')
+            else:
+                out.append(str(label))
+        return out
+
+    def plot_table(self, hemi=None, view=('lateral', 'medial'), orientation='horizontal', labels=True, *args, column_header=None, **kwargs):
         """Create a figure with the images
 
         Parameters
@@ -1183,22 +1286,39 @@ class SequencePlotter:
             e.g., ``('lateral', 0, 10, 70)``.
         orientation : 'vertical' | 'horizontal'
             Direction of the time/case axis.
-        column_header : bool | list of str
-            Headers for columns of images (default is inferred from the data).
+        labels : bool | list of str
+            Headers for columns/rows of images (default is inferred from the data).
         ...
             Layout parameters for the figure.
 
         Returns
         -------
-        fig : EelFigure
+        fig : plot.ImageTable
             Figure created by the plot.
+
+        Notes
+        -----
+        Use the ``margins`` parameter to contrl image spacing. For example (all
+        numbers in inches)::
+
+        margins = {
+            'left': 0.1,    # left mergin
+            'right': 0.1,   # right margin
+            'top': 0.5,     # margin at the top, include space for title
+            'bottom': 0.1,  # bottom
+            'hspace': 0.1,  # height of the space between images
+            'wspace': 0.1,  # width of the space between images
+        }
         """
+        if column_header is not None:
+            labels = column_header
+            warn(f"column_header={column_header!r}: this parameter is deprecated and will be removed after Eelbrain 0.31; use the labels parameter instead ")
         if not self._data:
             raise RuntimeError("No data")
         # determine hemisphere(s) to plot
         if hemi is None:
             hemis = []
-            sss = [data[1].source for data in self._data]
+            sss = [data.ndvar.source for data in self._data]
             if any(ss.lh_n for ss in sss):
                 hemis.append('lh')
             if any(ss.rh_n for ss in sss):
@@ -1209,7 +1329,7 @@ class SequencePlotter:
         elif hemi in ('lh', 'rh'):
             hemis = (hemi,)
         else:
-            raise ValueError("hemi=%r" % (hemi,))
+            raise ValueError(f"hemi={hemi!r}")
         # views
         if isinstance(view, str):
             views = (view,)
@@ -1222,7 +1342,9 @@ class SequencePlotter:
         if self._frame_order:
             bins = self._frame_dim._array_index(self._frame_order)
         elif self._frame_dim:
-            bins = tuple(range(len(self._frame_dim)))
+            bins = list(range(len(self._frame_dim)))
+        elif self._bin_kind == SPLayer.ITEM:
+            bins = list(range(self._n_items()))
         else:
             bins = [None]
         n_bins = len(bins)
@@ -1235,7 +1357,7 @@ class SequencePlotter:
             n_rows = n_bins
             transpose = True
         else:
-            raise ValueError("orientation=%r" % (orientation,))
+            raise ValueError(f"orientation={orientation!r}")
 
         figure = ImageTable(n_rows, n_columns, *args, **kwargs)
 
@@ -1246,44 +1368,57 @@ class SequencePlotter:
             hemi_rows = [[] for _ in views]
 
             # plot brain
-            b = brain(self._source, hemi=hemi, views='lateral', w=figure._res_w,
-                      h=figure._res_h, time_label='', **self._brain_args)
-            # add data layers
-            for layer, ndvar, args, kwargs in self._data:
-                if layer == 'data':
-                    b.add_ndvar(ndvar, *args, time_label='', **kwargs)
-                else:
-                    raise RuntimeError("%r data layer" % (layer,))
-            b.set_parallel_view(scale=True)
+            b = brain(self._source, hemi=hemi, views='lateral', w=figure._res_w, h=figure._res_h, time_label='', **self._brain_args)
 
-            # capture images
-            for i in bins:
-                if i is not None:
-                    b.set_data_time_index(i)
-                for row, view in zip(hemi_rows, views):
-                    if isinstance(view, str):
-                        b.show_view(view)
-                    else:
-                        b.show_view(view[0])
-                        b.set_parallel_view(*view[1:])
-                    row.append(b.screenshot_single('rgba', True))
-            im_rows += hemi_rows
+            if self._bin_kind == SPLayer.SEQUENCE:
+                for l in self._data:
+                    l.plot(b)
+                    if cmap_params is None and l.kind == SPLayer.SEQUENCE:
+                        cmap_params = b._get_cmap_params()
+                        cmap_data = l.ndvar
 
-            if cmap_params is None:
-                cmap_params = b._get_cmap_params()
-                cmap_data = ndvar
-            b.close()
-
-        if column_header is True:
-            if orientation == 'horizontal':
-                column_header = self._get_frame_labels()
+                # capture images
+                for i in bins:
+                    if i is not None:
+                        b.set_data_time_index(i)
+                        self._capture(b, hemi_rows, views)
+            elif self._bin_kind == SPLayer.ITEM:
+                for i in bins:
+                    for l in self._data:
+                        if l.kind == SPLayer.OVERLAY or l.index == i:
+                            l.plot(b)
+                            if cmap_params is None and l.kind == SPLayer.ITEM:
+                                cmap_params = b._get_cmap_params()
+                                cmap_data = l.ndvar
+                    self._capture(b, hemi_rows, views)
+                    b.remove_data()
             else:
-                column_header = False
+                raise NotImplementedError(f"{self._bin_kind}")
+            im_rows += hemi_rows
+            b.close()
 
         if transpose:
             im_rows = tuple(zip(*im_rows))
-        figure._add_ims(im_rows, column_header, cmap_params, cmap_data)
+        figure._add_ims(im_rows, cmap_params, cmap_data)
+
+        labels = self._get_frame_labels(labels)
+        if labels:
+            if orientation == 'horizontal':
+                figure.add_column_titles(labels)
+            else:
+                figure.add_row_titles(labels, rotation='vertical')
         return figure
+
+    def _capture(self, b, hemi_rows, views):
+        for row, view in zip(hemi_rows, views):
+            if isinstance(view, str):
+                b.show_view(view)
+                if self._parallel_view:
+                    b.set_parallel_view(**self._parallel_view)
+            else:
+                b.show_view(view[0])
+                b.set_parallel_view(*view[1:])
+            row.append(b.screenshot_single('rgba', True))
 
 
 def connectivity(source):
