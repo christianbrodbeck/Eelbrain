@@ -553,6 +553,7 @@ class _plt_boxplot(_plt_uv_base):
             ax.axhline(test, color='black')
             y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit, test, corr, trend, x0=1)
         else:
+            ax.autoscale()
             y_top = None
 
         if top is None:
