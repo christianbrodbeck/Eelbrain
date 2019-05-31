@@ -68,7 +68,9 @@ class DatasetSTCLoader:
     def _find_subjects(self):
         pattern = re.compile(r"[AR]\d{4}")
         stcs = self._all_stc_filenames()
-        subjects = set(pattern.search(s).group() for s in stcs)
+        matches = (pattern.search(s) for s in stcs)
+        matches = filter(lambda x: x is not None, matches)
+        subjects = set(m.group() for m in matches)
         self.subjects = tuple(subjects)
 
     def _find_level_names(self):
@@ -149,7 +151,7 @@ class DatasetSTCLoader:
         stc_fnames = []
         for c in ds.itercases():
             folder = "_".join(c[i] for i in self.factors)
-            exp = "{}/{}/{}*-lh.stc".format(
+            exp = "{}/{}/*{}*-lh.stc".format(
                 self.data_dir, folder, c["subject"])
             fnames = glob.glob(exp)
             assert len(fnames) == 1
