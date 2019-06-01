@@ -20,13 +20,19 @@ class StatsFrame(EelbrainFrame):
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         panel = InfoPanel(self, self.loader, self.ds)
         self.sizer.Add(panel)
-        test_model = TestModelInfo(self, self.loader)
-        self.sizer.Add(test_model, **self.add_params)
-        test_params = TestParams(self)
-        self.sizer.Add(test_params, **self.add_params)
+        self.test_model = TestModelInfo(self, self.loader)
+        self.sizer.Add(self.test_model, **self.add_params)
+        self.test_params = TestParams(self)
+        self.sizer.Add(self.test_params, **self.add_params)
         self.SetSizer(self.sizer)
         self.sizer.Layout()
         self.sizer.Fit(self)
+
+    def get_test_kwargs(self, evt):
+        kwargs = dict()
+        kwargs.update(self.test_model.get_test_kwargs())
+        kwargs.update(self.test_params.get_test_kwargs())
+        print(kwargs)
 
 
 class SubjectsSelector(wx.CheckListBox):
@@ -100,6 +106,15 @@ class TestParams(wx.Panel):
         self.SetSizer(self.sizer)
         self.Bind(wx.EVT_RADIOBOX, self.sig.OnTypeChange, self.sig.choice)
 
+    def get_test_kwargs(self):
+        kwargs = dict()
+        kwargs["tstart"] = self.tstart.GetValue()
+        kwargs["tstop"] = self.tstop.GetValue()
+        kwargs["samples"] = self.samples.GetValue()
+        kwargs["tfce"] = self.sig.is_tfce()
+        kwargs["pmin"] = self.sig.get_pmin()
+        return kwargs
+
 
 class TextEntryWithLabel(wx.BoxSizer):
     label_add_params = {
@@ -114,7 +129,7 @@ class TextEntryWithLabel(wx.BoxSizer):
         self.Add(label, **self.label_add_params[orientation])
         self.Add(self.field)
 
-    def get_value(self):
+    def GetValue(self):
         return self.field.GetValue()
 
 
@@ -171,6 +186,13 @@ class TestModelInfo(wx.Panel):
             self.sizer.Hide(self.anova_def, recursive=True)
         self.sizer.Layout()
 
+    def get_test_kwargs(self):
+        test_type = self.test_type.GetStringSelection()
+        if test_type == "ANOVA":
+            return self.anova_def.get_test_kwargs()
+        elif test_type == "t-test":
+            return self.ttest_def.get_test_kwargs()
+
 
 class ANOVAModel(wx.BoxSizer):
     def __init__(self, parent, factors=[], **kwargs):
@@ -180,8 +202,10 @@ class ANOVAModel(wx.BoxSizer):
         self.Add(self.model)
         self.Layout()
 
-    def get_model(self):
-        return " * ".join(self.model.GetCheckedStrings())
+    def get_test_kwargs(self):
+        kwargs = dict()
+        kwargs["x"] = " * ".join(self.model.GetCheckedStrings())
+        return kwargs
 
 
 class TTestModel(wx.BoxSizer):
@@ -217,3 +241,10 @@ class TTestModel(wx.BoxSizer):
         for cb in (self.level1, self.level2):
             cb.Clear()
             cb.AppendItems(levels)
+
+    def get_test_kwargs(self):
+        kwargs = dict()
+        kwargs["x"] = self.factor.GetStringSelection()
+        kwargs["c0"] = self.level1.GetValue()
+        kwargs["c1"] = self.level2.GetValue()
+        return kwargs
