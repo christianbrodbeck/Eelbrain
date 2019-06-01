@@ -116,7 +116,10 @@ class STCLoaderFrame(EelbrainFrame):
         self.Close()
 
     def OnLaunchStats(self, evt):
-        raise NotImplementedError()
+        from .stats import StatsFrame
+        ds = self._get_dataset()
+        StatsFrame(None, self.loader, ds)
+        self.Close()
 
 
 class FactorPanel(wx.Panel):
