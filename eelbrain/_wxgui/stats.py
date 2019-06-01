@@ -20,6 +20,8 @@ class StatsFrame(EelbrainFrame):
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         panel = InfoPanel(self, self.loader, self.ds)
         self.sizer.Add(panel)
+        self.spatiotemp = SpatiotemporalSettings(self)
+        self.sizer.Add(self.spatiotemp, **self.add_params)
         self.test_model = TestModelInfo(self, self.loader)
         self.sizer.Add(self.test_model, **self.add_params)
         self.test_params = TestParams(self)
@@ -248,3 +250,16 @@ class TTestModel(wx.BoxSizer):
         kwargs["c0"] = self.level1.GetValue()
         kwargs["c1"] = self.level2.GetValue()
         return kwargs
+
+
+class SpatiotemporalSettings(wx.BoxSizer):
+    def __init__(self, parent):
+        super().__init__(wx.VERTICAL)
+        title = TitleSizer(parent, "Permutation Test Type")
+        self.choice = wx.RadioBox(parent, choices=["Temporal", "Spatiotemporal"])
+        self.Add(title, 0, wx.BOTTOM, 5)
+        self.Add(self.choice)
+
+    def is_temporal(self):
+        return self.choice.GetStringSelection() == "Temporal"
+
