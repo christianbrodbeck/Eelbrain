@@ -52,6 +52,7 @@ from html.parser import HTMLParser
 from itertools import repeat
 from math import ceil
 import os
+from pathlib import Path
 import pickle
 import re
 import shutil
@@ -227,29 +228,23 @@ def save_html(fmtext, path=None, embed_images=True, meta=None):
         path = ui.ask_saveas(msg, msg, [('HTML (*.html)', '*.html')])
         if not path:
             return
-    path = os.path.abspath(path)
+    html_path = Path(path).resolve()
+    root = html_path.parent
 
-    extension = '.html'
-    if path.endswith(extension):
-        resource_dir = path[:-len(extension)]
-        file_path = path
-    else:
-        resource_dir = path
-        file_path = path + extension
-    root = os.path.dirname(file_path)
+    if html_path.suffix != '.html':
+        html_path = html_path.with_suffix('.html')
 
     if embed_images:
-        resource_dir = None
+        resource_dirname = None
     else:
-        if os.path.exists(resource_dir):
+        resource_dirname = html_path.stem
+        resource_dir = html_path.with_name(html_path.stem)
+        if resource_dir.exists():
             shutil.rmtree(resource_dir)
-        os.mkdir(resource_dir)
-        resource_dir = os.path.relpath(resource_dir, root)
 
-    buf = make_html_doc(fmtext, root, resource_dir, meta=meta)
+    buf = make_html_doc(fmtext, root, resource_dirname, meta=meta)
     buf_enc = buf.encode('ascii', 'xmlcharrefreplace')
-    with open(file_path, 'wb') as fid:
-        fid.write(buf_enc)
+    html_path.write_bytes(buf_enc)
 
 
 def save_pdf(fmtext, path=None):
@@ -370,7 +365,7 @@ def make_html_doc(body, root, resource_dir=None, title=None, meta=None):
     root : str
         Path to the directory in which the HTML file is going to be located.
     resource_dir : None | str
-        Path to the directory containing resources like images, relative to
+        Name for the directory containing resources like images, relative to
         root. If None, images are embedded.
     title : None | FMText
         Document title. The default is to try to infer the title from the body
@@ -1771,18 +1766,16 @@ class Image(FMTextElement, BytesIO):
             data = base64.b64encode(buf).decode().replace('\n', '')
             src = f'data:image/{self.format};base64,{data}'
         else:
-            dirpath = os.path.join(env['root'], resource_dir)
-            abspath = os.path.join(dirpath, self._filename)
-            if os.path.exists(abspath):
+            root = env['root']
+            dst = root / resource_dir / self._filename
+            if dst.exists():
                 i = 0
                 name, ext = os.path.splitext(self._filename)
-                while os.path.exists(abspath):
+                while dst.exists():
                     i += 1
-                    filename = name + ' %i' % i + ext
-                    abspath = os.path.join(dirpath, filename)
-
-            self.save_image(abspath)
-            src = os.path.relpath(abspath, env['root'])
+                    dst = root / resource_dir / f'{name}-{i}{ext}'
+            self.save_image(dst)
+            src = dst.relative_to(root)
         alt = html(self._alt)
         return f'<img src="{src}" alt="{alt}">'
 
@@ -2155,9 +2148,6 @@ class Report(Section):
         meta : dict
             Meta-information for document head.
         """
-        if path.endswith('.html'):
-            path = path[:-5]
-
         save_html(self, path, embed_images, meta)
 
     def show(self):
