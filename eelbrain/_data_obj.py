@@ -6212,7 +6212,9 @@ class Dataset(OrderedDict):
         being updated (the expected behavior of .update()).
         """
         if isinstance(ds, Dataset):
-            if self.n_cases is not None and ds.n_cases != self.n_cases:
+            if ds.n_cases is None or self.n_cases is None:
+                pass
+            elif ds.n_cases != self.n_cases:
                 raise ValueError(f"Trying to update dataset with {self.n_cases} cases from dataset with {ds.n_cases} cases")
 
         if not replace:

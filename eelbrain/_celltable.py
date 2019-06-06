@@ -4,8 +4,9 @@ from itertools import combinations
 import numpy as np
 
 from ._data_obj import (
-    NDVar, Case,
-    ascategorial, asdataobject, assub, cellname, dataobj_repr,
+    NDVar, Case, Dataset,
+    ascategorial, asdataobject, assub,
+    cellname, dataobj_repr,
 )
 from ._stats.stats import variability
 from ._utils.numpy_utils import FULL_SLICE
@@ -223,6 +224,24 @@ class Celltable:
 
     def __len__(self):
         return self.n_cells
+
+    def _align_ds(self, ds, rm=False, skip=(), filter=None):
+        """Align a Dataset to the celltable"""
+        out = Dataset()
+        reference_cell = self.cells[0]
+        for k, v in ds.items():
+            if k in skip:
+                continue
+            elif filter and not filter(v):
+                continue
+            try:
+                values = self._align(v, rm)
+            except ValueError:  # aggregating failed
+                continue
+            reference_v = values.pop(reference_cell)
+            if all(np.all(vi == reference_v) for vi in values.values()):
+                out[k] = reference_v
+        return out
 
     def _align(self, y, rm=False):
         """Align an additional variable to the celltable

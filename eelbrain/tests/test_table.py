@@ -38,15 +38,20 @@ def test_cast_to_ndvar():
 def test_difference():
     "Test table.difference"
     ds = datasets.get_uv()
+    # add a variables that should stay in the dataset
+    labels = {c: c[-1] for c in ds['rm'].cells}
+    ds['rmf'] = Factor(ds['rm'], labels=labels)
+
     dds = table.difference('fltvar', 'A', 'a1', 'a2', 'rm', ds=ds)
-    assert repr(dds) == "<Dataset n_cases=20 {'rm':F, 'fltvar':V}>"
+    assert repr(dds) == "<Dataset n_cases=20 {'rm':F, 'fltvar':V, 'rmf':F}>"
+    assert_array_equal(dds['rmf'], Factor(dds['rm'], labels=labels))
     dds = table.difference('fltvar', 'A', 'a1', 'a2', 'rm', by='B', ds=ds)
-    assert repr(dds) == "<Dataset n_cases=40 {'rm':F, 'fltvar':V, 'B':F}>"
+    assert repr(dds) == "<Dataset n_cases=40 {'rm':F, 'fltvar':V, 'B':F, 'rmf':F}>"
     # difference of the difference
     ddds = table.difference('fltvar', 'B', 'b1', 'b2', 'rm', ds=dds)
-    assert repr(ddds) == "<Dataset n_cases=20 {'rm':F, 'fltvar':V}>"
+    assert repr(ddds) == "<Dataset n_cases=20 {'rm':F, 'fltvar':V, 'rmf':F}>"
     dds = table.difference('fltvar', 'A%B', ('a1', 'b1'), ('a2', 'b2'), 'rm', ds=ds)
-    assert repr(dds) == "<Dataset n_cases=20 {'rm':F, 'fltvar':V}>"
+    assert repr(dds) == "<Dataset n_cases=20 {'rm':F, 'fltvar':V, 'rmf':F}>"
 
     # create bigger dataset
     ds2 = ds.copy()
@@ -54,9 +59,9 @@ def test_difference():
     ds2['C', :] = 'c2'
     ds = combine((ds, ds2))
     dds = table.difference('fltvar', 'A', 'a1', 'a2', 'rm', by='B%C', ds=ds)
-    assert repr(dds) == "<Dataset n_cases=80 {'rm':F, 'fltvar':V, 'B':F, 'C':F}>"
+    assert repr(dds) == "<Dataset n_cases=80 {'rm':F, 'fltvar':V, 'B':F, 'C':F, 'rmf':F}>"
     dds = table.difference('fltvar', 'A%B', ('a1', 'b1'), ('a2', 'b2'), 'rm', by='C', ds=ds)
-    assert repr(dds) == "<Dataset n_cases=40 {'rm':F, 'fltvar':V, 'C':F}>"
+    assert repr(dds) == "<Dataset n_cases=40 {'rm':F, 'fltvar':V, 'C':F, 'rmf':F}>"
 
 
 def test_frequencies():

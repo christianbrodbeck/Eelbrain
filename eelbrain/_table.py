@@ -20,15 +20,16 @@ def difference(y, x, c1, c0, match, by=None, sub=None, ds=None):
     y : Var | NDVar
         Dependent variable.
     x : categorial
-        Model for subtraction.
+        Model for subtraction, providing categories to compute ``c1 - c0``.
     c1 : str | tuple
         Name of the cell in ``x`` that forms the minuend.
     c0 : str | tuple
         Name of the cell in ``x`` that is to be subtracted from ``c1``.
     match : categorial
-        Units over which measurements were repeated.
+        Units over which measurements were repeated. ``c1 - c0`` will be
+        calculated separately for each level of ``match`` (e.g. ``"subject"``).
     by : None | categorial
-        Grouping variable to define cells for which to calculate differences.
+        Calculate ``c1 - c0`` separately for each level in this variables.
     sub : None | index
         Only include a subset of the data.
     ds : None | Dataset
@@ -69,11 +70,14 @@ def difference(y, x, c1, c0, match, by=None, sub=None, ds=None):
     out = Dataset()
     if by is None:
         ct = Celltable(y, x, match, sub, ds=ds)
-        out.add(ct.groups[c1])
         if not ct.all_within:
             raise ValueError("Design is not fully balanced")
+        out.add(ct.groups[c1])
         yname = y if isinstance(y, str) else ct.y.name
         out[yname] = ct.data[c1] - ct.data[c0]
+        # Transfer other variables in ds that are compatible with the rm-structure
+        if ds is not None:
+            out.update(ct._align_ds(ds, True, out.keys(), isuv))
     else:
         by = ascategorial(by, sub, ds)
         ct = Celltable(y, x % by, match, sub, ds=ds)
@@ -81,11 +85,12 @@ def difference(y, x, c1, c0, match, by=None, sub=None, ds=None):
             raise ValueError("Design is not fully balanced")
 
         yname = y if isinstance(y, str) else ct.y.name
-        dss = []
         if isinstance(c1, str):
             c1 = (c1,)
         if isinstance(c0, str):
             c0 = (c0,)
+        dss = []
+        ds_keep = None
         for cell in by.cells:
             if isinstance(cell, str):
                 cell = (cell,)
@@ -97,6 +102,14 @@ def difference(y, x, c1, c0, match, by=None, sub=None, ds=None):
             else:
                 for b, c in zip(by.base, cell):
                     cell_ds[b.name, :] = c
+            # Transfer other variables in ds that are compatible with the rm-structure
+            if ds_keep is None:
+                if ds is None:
+                    ds_keep = False
+                else:
+                    ds_keep = ct._align_ds(ds, True, cell_ds.keys(), isuv)
+            if ds_keep:
+                cell_ds.update(ds_keep)
             dss.append(cell_ds)
         out = combine(dss)
 
@@ -660,18 +673,6 @@ def repmeas(y, x, match, sub=None, ds=None):
 
     # Transfer other variables in ds that are compatible with the rm-structure
     if ds is not None:
-        reference_cell = ct.cells[0]
-        for k, v in ds.items():
-            if k in out:
-                continue
-            elif not isuv(v):
-                continue
-            try:
-                values = ct._align(v, True)
-            except ValueError:  # aggregating failed
-                continue
-            reference_v = values.pop(reference_cell)
-            if all(np.all(vi == reference_v) for vi in values.values()):
-                out[k] = reference_v
+        out.update(ct._align_ds(ds, True, out.keys(), isuv))
 
     return out
