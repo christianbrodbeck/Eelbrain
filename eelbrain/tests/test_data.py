@@ -662,11 +662,19 @@ def test_factor():
     f = Factor(a, labels={2: 'a', 1: 'b', 0: 'c'})
     assert f.cells == ('a', 'b', 'c')
     assert f[:2].cells == ('b', 'c')
+    # not alphabetical
     f = Factor(a, labels={0: 'c', 1: 'b', 2: 'a'})
     assert f.cells == ('c', 'b', 'a')
     assert f[:2].cells == ('c', 'b')
     f[f == 'b'] = 'c'
     assert f.cells == ('c', 'a')
+    # initialize from factor
+    f = Factor(a, labels={0: 'c', 1: 'b', 2: 'a'})
+    f2 = Factor(f, labels={'c': 'c', 'b': 'c', 'a': 'a'})
+    assert f2.cells == ('c', 'a')
+    # superfluous label
+    f2 = Factor(f, labels={'c': 'a', 'x': 'c', 'b': 'b', 'a': 'c'})
+    assert f2.cells == ('a', 'b', 'c')
     # sort
     f = Factor(a, labels={0: 'c', 1: 'b', 2: 'a'})
     f.sort_cells(('a', 'c', 'b'))
@@ -720,7 +728,7 @@ def test_factor_relabel():
     f.update_labels({'d': 'c'})
     assert_array_equal(f, Factor('cccbbbccc'))
     with pytest.raises(KeyError):
-        f.update_labels({'a':'c'})
+        f.update_labels({'a': 'c'})
 
 
 def test_interaction():

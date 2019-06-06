@@ -2057,7 +2057,7 @@ class Factor(_Effect):
         labels = {} if labels is None else dict(labels)
 
         if isinstance(x, Factor):
-            labels = {x._codes.get(s): d for s, d in labels.items()}
+            labels = {x._codes[s]: d for s, d in labels.items() if s in x._codes}
             labels.update({code: label for code, label in x._labels.items() if code not in labels})
             x = x.x
 
