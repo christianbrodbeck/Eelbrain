@@ -132,6 +132,8 @@ See also :class:`NDVar` methods.
    cwt_morlet
    dss
    filter_data
+   find_intervals
+   find_peaks
    frequency_response
    label_operator
    labels_from_clusters

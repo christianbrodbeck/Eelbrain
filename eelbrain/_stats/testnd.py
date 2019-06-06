@@ -1346,6 +1346,7 @@ class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
 
     Notes
     -----
+    Also known as dependent t-test, paired t-test or repeated measures t-test.
     In the permutation cluster test, permutations are done within the
     categories of ``match``.
     Cases with zero variance are set to t=0.

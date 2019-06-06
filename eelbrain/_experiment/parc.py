@@ -32,7 +32,8 @@ class CombinationParc(Parcellation):
     Parameters
     ----------
     base : str
-        The name of the parcellation that provides the input labels.
+        The name of the parcellation that provides the input labels. A common
+        ``base`` is the ``'aparc'`` parcellation [1]_.
     labels : dict  {str: str}
         New labels to create in ``{name: expression}`` format. All label names
         should be composed of alphanumeric characters (plus underline) and should
@@ -51,10 +52,10 @@ class CombinationParc(Parcellation):
             'lobes-ot': CombinationParc('lobes', {'occipitotemporal': "occipital + temporal"}),
         }
 
-    An example using a split label. In ``split(superiorfrontal, 3)[2]``, ``3`` indicates a split into
-    three parts, and the index ``[2]`` picks the last one. Label are split along their longest axis,
-    and ordered posterior to anterior, so ``[2]`` picks the most anterior part of
-    ``superiorfrontal``::
+    An example using a split label. In ``split(superiorfrontal, 3)[2]``, ``3``
+    indicates a split into three parts, and the index ``[2]`` picks the last
+    one. Label are split along their longest axis, and ordered posterior to
+    anterior, so ``[2]`` picks the most anterior part of ``superiorfrontal``::
 
         parcs = {
             'medial': CombinationParc('aparc', {
@@ -63,6 +64,15 @@ class CombinationParc(Parcellation):
                                  ' + split(superiorfrontal, 3)[2]',
                 }, views='medial'),
         }
+
+    References
+    ----------
+    .. [1] Desikan, R. S., Ségonne, F., Fischl, B., Quinn, B. T., Dickerson, B.
+           C., Blacker, D., … Killiany, R. J. (2006). An automated labeling system
+           for subdividing the human cerebral cortex on MRI scans into gyral based
+           regions of interest. NeuroImage, 31(3), 968–980.
+           `10.1016/j.neuroimage.2006.01.021
+           <https://surfer.nmr.mgh.harvard.edu/ftp/articles/desikan06-parcellation.pdf>`_
     """
     DICT_ATTRS = ('kind', 'base', 'labels')
     kind = COMBINATION_PARC

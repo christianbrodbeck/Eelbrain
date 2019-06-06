@@ -1087,6 +1087,7 @@ class FileTree(TreeModel):
         glob : Find all files matching a template.
         move : Move files.
         rm : Delete files.
+        make_copy : Copy a file by substituting a field
 
         Notes
         -----

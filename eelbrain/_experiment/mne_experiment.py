@@ -569,7 +569,7 @@ class MneExperiment(FileTree):
         self._epochs = assemble_epochs(self.epochs, epoch_default)
 
         ########################################################################
-        # store epoch rejection settings
+        # epoch rejection
         artifact_rejection = {}
         for name, params in chain(self._artifact_rejection.items(), self.artifact_rejection.items()):
             if params['kind'] in ('manual', 'make', None):
@@ -581,8 +581,7 @@ class MneExperiment(FileTree):
         self._artifact_rejection = artifact_rejection
 
         ########################################################################
-        # Cov
-        #####
+        # noise covariance
         for k, params in self._covs.items():
             params = set(params)
             n_datasource = ('epoch' in params) + ('session' in params)
@@ -3815,7 +3814,7 @@ class MneExperiment(FileTree):
         save.besa_evt(ds, tstart=epoch.tmin, tstop=epoch.tmax, dest=evt_dest)
 
     def make_copy(self, temp, field, src, dst, redo=False):
-        """Make a copy of a file
+        """Make a copy of a file to a new path by substituting one field value
 
         Parameters
         ----------
@@ -3829,6 +3828,10 @@ class MneExperiment(FileTree):
             Value for field on the destination filename.
         redo : bool
             If the target file already exists, overwrite it.
+
+        See Also
+        --------
+        copy : Copy muliple files to a different root directory
         """
         dst_path = self.get(temp, mkdir=True, **{field: dst})
         if not redo and exists(dst_path):
@@ -5705,19 +5708,67 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        ori : 'free' | 'fixed' | 'vec' | float ]0, 1]
-            Orientation constraint (default 'free'; use a float to specify a
-            loose constraint).
+        ori : 'free' | 'fixed' | 'vec' | float (0, 1)
+            Orientation constraint (default ``'free'``; use a ``float`` to
+            specify a loose orientation constraint).
+
+            At each source point, ...
+
+            - ``free``: ... estimate a current dipole with arbitrary direction.
+              For further analysis, only the magnitude of the current is
+              retained, while the direction is ignored. This is good for
+              detecting changes in neural current strength when current
+              direction is variable (for example, due to anatomical differences
+              between subjects).
+            - ``fixed``: ... estimate current flow orthogonal to the cortical
+              surface. The sign of the estimates indicates current direction
+              relative to the surface (positive for current out of the brain).
+            - ``vec``: ... estimate a current vector with arbitrary direction,
+              and return this current as 3 dimensional vector.
+            - loose (``float``): ... estimate a current dipole with arbitrary
+              direction. Then, multiple the two components parallel to the
+              surface with this number, and retain the magnitude.
+
         snr : scalar
-            SNR estimate for regularization (default 3).
+            SNR estimate used for regularization (default 3; the general
+            recommendation is 3 for averaged responses, and 1 for raw or single
+            trial data).
         method : 'MNE' | 'dSPM' | 'sLORETA' | 'eLORETA'
-            Inverse method.
+            Noise normalization method. ``MNE`` uses unnormalized current
+            estimates. ``dSPM`` [1]_ (default) ``sLORETA`` [2]_ and eLORETA [3]_
+            normalize each the estimate at each source with an estimate of the
+            noise at that source (default ``'dSPM'``).
         depth : None | float [0, 1]
-            Depth weighting (default ``None`` to use mne default 0.8; ``0`` to
+            Depth weighting [4]_ (default ``None`` to use mne default 0.8; ``0`` to
             disable depth weighting).
         pick_normal : bool
-            Pick the normal component of the estimated current vector (default
-            False).
+            Estimate a free orientation current vector, then pick the component
+            orthogonal to the cortical surface and discard the parallel
+            components.
+
+        References
+        ----------
+        .. [1] Dale A, Liu A, Fischl B, Buckner R. (2000)
+               Dynamic statistical parametric mapping: combining fMRI and MEG
+               for high-resolution imaging of cortical activity.
+               Neuron, 26:55-67.
+               `10.1016/S0896-6273(00)81138-1
+               <https://doi.org/10.1016/S0896-6273(00)81138-1>`_
+        .. [2] Pascual-Marqui RD (2002),
+               Standardized low resolution brain electromagnetic tomography
+               (sLORETA): technical details.
+               Methods Find. Exp. Clin. Pharmacology, 24(D):5-12.
+        .. [3] Pascual-Marqui RD (2007).
+               Discrete, 3D distributed, linear imaging methods of electric
+               neuronal activity. Part 1: exact, zero error localization.
+               `arXiv:0710.3341 <https://arxiv.org/abs/0710.3341>`_
+        .. [4] Lin F, Witzel T, Ahlfors S P, Stufflebeam S M, Belliveau J W,
+               Hämäläinen M S. (2006) Assessing and improving the spatial accuracy
+               in MEG source localization by depth-weighted minimum-norm estimates.
+               NeuroImage, 31(1):160–171.
+               `10.1016/j.neuroimage.2005.11.054
+               <https://doi.org/10.1016/j.neuroimage.2005.11.054>`_
+
         """
         self.set(inv=self._inv_str(ori, snr, method, depth, pick_normal))
 
@@ -5726,30 +5777,30 @@ class MneExperiment(FileTree):
         "Construct inv str from settings"
         if isinstance(ori, str):
             if ori not in ('free', 'fixed', 'vec'):
-                raise ValueError('ori=%r' % (ori,))
-        elif not 0 <= ori <= 1:
-            raise ValueError("ori=%r; must be in range [0, 1]" % (ori,))
+                raise ValueError(f'ori={ori!r}')
+        elif not 0 < ori < 1:
+            raise ValueError(f"ori={ori!r}; must be in range (0, 1)")
         else:
-            ori = 'loose%s' % str(ori)[1:]
+            ori = f'loose{str(ori)[1:]}'
 
         if snr <= 0:
-            raise ValueError("snr=%r" % (snr,))
+            raise ValueError(f"snr={snr!r}")
 
         if method not in INV_METHODS:
-            raise ValueError("method=%r" % (method,))
+            raise ValueError(f"method={method!r}")
 
-        items = [ori, '%g' % snr, method]
+        items = [ori, f'{snr:g}', method]
 
         if depth is None:
             pass
-        elif depth < 0 or depth > 1:
-            raise ValueError("depth=%r; must be in range [0, 1]" % (depth,))
+        elif not 0 <= depth <= 1:
+            raise ValueError(f"depth={depth!r}; must be in range [0, 1]")
         else:
-            items.append('%g' % depth)
+            items.append(f'{depth:g}')
 
         if pick_normal:
-            if ori == 'vec':
-                raise ValueError("ori='vec' and pick_normal=True are incompatible")
+            if ori in ('vec', 'fixed'):
+                raise ValueError(f"ori={ori!r} and pick_normal=True are incompatible")
             items.append('pick_normal')
 
         return '-'.join(items)
@@ -5759,30 +5810,27 @@ class MneExperiment(FileTree):
         "(ori, snr, method, depth, pick_normal)"
         m = inv_re.match(inv)
         if m is None:
-            raise ValueError("Invalid inverse specification: inv=%r" % inv)
+            raise ValueError(f"Invalid inverse specification: inv={inv!r}")
 
         ori, snr, method, depth, pick_normal = m.groups()
         if ori.startswith('loose'):
             ori = float(ori[5:])
-            if not 0 <= ori <= 1:
-                raise ValueError('inv=%r (first value of inv (loose '
-                                 'parameter) needs to be in [0, 1]' % (inv,))
-        elif ori == 'vec' and pick_normal:
-            raise ValueError("inv=%r (vector source estimates and pick_normal"
-                             "are mutually exclusive)")
+            if not 0 < ori < 1:
+                raise ValueError(f"inv={inv!r}: loose parameter needs to be in range (0, 1)")
+        elif pick_normal and ori in ('vec', 'fixed'):
+            raise ValueError(f"inv={inv!r}: {ori} incompatible with pick_normal")
 
         snr = float(snr)
         if snr <= 0:
-            raise ValueError('inv=%r (snr=%r)' % (inv, snr))
+            raise ValueError(f"inv={inv!r}: snr={snr!r}")
 
         if method not in INV_METHODS:
-            raise ValueError("inv=%r (method=%r)" % (inv, method))
+            raise ValueError(f"inv={inv!r}: method={method!r}")
 
         if depth is not None:
             depth = float(depth)
             if not 0 <= depth <= 1:
-                raise ValueError("inv=%r (depth=%r, needs to be in range "
-                                 "[0, 1])" % (inv, depth))
+                raise ValueError(f"inv={inv!r}: depth={depth!r}, needs to be in range [0, 1]")
 
         return ori, snr, method, depth, bool(pick_normal)
 
