@@ -626,6 +626,7 @@ Datasets for experimenting and testing:
     datasets.get_mne_sample
     datasets.get_uts
     datasets.get_uv
+    datasets.simulate_erp
 
 
 ^^^^^^^^^^^^^

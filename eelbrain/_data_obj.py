@@ -2340,9 +2340,7 @@ class Factor(_Effect):
             A copy of self with only one value for each cell in x
         """
         if len(x) != len(self):
-            raise ValueError(
-                f"x={dataobj_repr(x)} of length {len(x)} for Factor "
-                f"{dataobj_repr(self)} of length {len(self)}")
+            raise ValueError(f"x={dataobj_repr(x)} of length {len(x)} for Factor {dataobj_repr(self)} of length {len(self)}")
 
         x_out = []
         for cell in x.cells:
@@ -2351,12 +2349,7 @@ class Factor(_Effect):
                 x_i = np.unique(self.x[idx])
                 if len(x_i) > 1:
                     labels = tuple(self._labels[code] for code in x_i)
-                    raise ValueError(
-                        f"Can not determine aggregated value for Factor "
-                        f"{dataobj_repr(self)} in cell {cell!r} because the "
-                        f"cell contains multiple values {labels}. Set "
-                        f"drop_bad=True in order to ignore this inconsistency "
-                        f"and drop the Factor.")
+                    raise ValueError(f"Can not determine aggregated value for Factor {dataobj_repr(self)} in cell {cell!r} because the cell contains multiple values {labels}. Set drop_bad=True in order to ignore this inconsistency and drop the Factor.")
                 else:
                     x_out.append(x_i[0])
 

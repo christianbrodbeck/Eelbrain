@@ -564,10 +564,9 @@ class _plt_topomap(_plt_im):
             try:
                 weights = linalg.solve(g, v.ravel())
             except ValueError:
-                raise NotImplementedError(
-                    "Error determining sensor map projection, possibly due to "
-                    "more than one sensor in a single location; try using a "
-                    "different projection.")
+                if np.isnan(v).any():
+                    raise NotImplementedError("Can't interpolate sensor data with NaN")
+                raise NotImplementedError("Error determining sensor map projection, possibly due to more than one sensor in a single location; try using a different projection.")
 
             m, n = xi.shape
             out = np.empty_like(xi)
