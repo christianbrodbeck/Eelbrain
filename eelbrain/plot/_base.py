@@ -1619,15 +1619,20 @@ class EelFigure:
         if label:
             self.set_xlabel(label)
 
-    def _configure_xaxis(self, v, label, axes=None):
+    def _configure_axis(self, data, label, axes=None, y=False):
         if axes is None:
             axes = self._axes
-        formatter, label = find_axis_params_data(v, label)
+        formatter, label = find_axis_params_data(data, label)
         for ax in axes:
-            ax.xaxis.set_major_formatter(formatter)
+            axis = ax.yaxis if y else ax.xaxis
+            axis.set_major_formatter(formatter)
 
-        if label:
-            self.set_xlabel(label)
+        set_label = self.set_ylabel if y else self.set_xlabel
+        if isinstance(label, str):
+            set_label(label)
+        elif isinstance(label, Iterable):
+            for i, l in enumerate(label):
+                set_label(l, i)
 
     def _configure_yaxis_dim(self, epochs, dim, label, axes=None, scalar=True):
         "Configure the y-axis based on a dimension (see ._configure_xaxis_dim)"
@@ -1651,19 +1656,6 @@ class EelFigure:
                 for ax, label in zip(axes, labels):
                     if label:
                         self.set_ylabel(label, ax)
-
-    def _configure_yaxis(self, data, label, axes=None):
-        if axes is None:
-            axes = self._axes
-        formatter, label = find_axis_params_data(data, label)
-        for ax in axes:
-            ax.yaxis.set_major_formatter(formatter)
-
-        if isinstance(label, str):
-            self.set_ylabel(label)
-        elif isinstance(label, Iterable):
-            for i, l in enumerate(label):
-                self.set_ylabel(l, i)
 
     def draw(self):
         "(Re-)draw the figure (after making manual changes)."

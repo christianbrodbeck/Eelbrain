@@ -8,6 +8,7 @@ New in 0.31
 
 * :mod:`testnd` API:  For permutation tests, the ``samples`` parameter now defaults to 10,000 (previously 0)
 * :mod:`plot` API:  Additional arguments for :class:`plot.Boxplot` to control plotting of outliers (``whis`` and ``label_fliers``).
+* Horizontal bar-plot: :class:`plot.BarplotHorizontal`
 
 
 New in 0.30

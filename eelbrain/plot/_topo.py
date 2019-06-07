@@ -412,7 +412,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
 
         # decorate axes
         self._configure_xaxis_dim(data.time_dim, xlabel, xticklabels, self.bfly_axes)
-        self._configure_yaxis(data, ylabel, self.bfly_axes)
+        self._configure_axis(data, ylabel, self.bfly_axes, y=True)
 
         # setup callback
         XAxisMixin._init_with_data(self, data.data, xdim, xlim, self.bfly_axes)

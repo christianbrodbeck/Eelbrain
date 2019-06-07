@@ -1,6 +1,26 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+import pytest
 from eelbrain import Factor, datasets, plot
 from eelbrain._wxgui.testing import hide_plots
+
+
+@hide_plots
+@pytest.mark.parametrize('Barplot', [plot.Barplot, plot.BarplotHorizontal])
+def test_barplots(Barplot):
+    "Test plot.Barplot"
+    ds = datasets.get_uv()
+
+    # one category
+    Barplot('fltvar', ds=ds, test=False)
+    Barplot('fltvar', 'A', ds=ds, test=False)
+    Barplot('fltvar', 'A%B', ds=ds, test=False)
+    Barplot('fltvar', match='rm', ds=ds, test=False)
+    Barplot('fltvar', 'A', match='rm', ds=ds, test=False)
+    Barplot('fltvar', 'A%B', match='rm', ds=ds, test=False)
+
+    # cells
+    Barplot('fltvar', 'A%B', cells=(('a2', 'b2'), ('a1', 'b1')), ds=ds, test=False)
+    Barplot('fltvar', 'A%B', match='rm', cells=(('a2', 'b2'), ('a1', 'b1')), ds=ds, test=False)
 
 
 @hide_plots
@@ -9,13 +29,13 @@ def test_barplot():
     ds = datasets.get_uv()
 
     # one category
-    plot.Barplot('fltvar', ds=ds, test=False)
     plot.Barplot('fltvar', ds=ds)
     plot.Barplot('fltvar', match='rm', ds=ds)
 
     # multiple categories
     plot.Barplot('fltvar', 'A%B', match='rm', ds=ds)
     plot.Barplot('fltvar', 'A%B', match='rm', ds=ds, pool_error=False)
+    # test against 0
     plot.Barplot('fltvar', 'A%B', match='rm', test=0, ds=ds)
 
     # cells
@@ -52,7 +72,7 @@ def test_boxplot():
 
     # long labels
     ds['A'].update_labels({'a1': 'a very long label', 'a2': 'another very long label'})
-    p = plot.Barplot('fltvar', 'A%B', ds=ds)
+    p = plot.Boxplot('fltvar', 'A%B', ds=ds)
     labels = p._ax.get_xticklabels()
     bbs = [l.get_window_extent() for l in labels]
     for i in range(len(bbs) - 1):

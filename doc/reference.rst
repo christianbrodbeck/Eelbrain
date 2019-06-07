@@ -291,6 +291,7 @@ Plot univariate data (:class:`Var` objects):
    :toctree: generated
 
    plot.Barplot
+   plot.BarplotHorizontal
    plot.Boxplot
    plot.PairwiseLegend
    plot.Correlation

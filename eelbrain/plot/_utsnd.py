@@ -447,7 +447,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data)
         self._configure_xaxis_dim(data.y0.get_dim(xdim), xlabel, xticklabels)
-        self._configure_yaxis(data.y0, ylabel)
+        self._configure_axis(data.y0, ylabel, y=True)
 
         if clip is None:
             clip = layout.frame is True
