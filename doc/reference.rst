@@ -388,20 +388,30 @@ Most plots that also share certain layout keyword arguments. By default, all
 those parameters are determined automatically, but individual values can be
 specified manually by supplying them as keyword arguments.
 
-h, w : scalar
+``h``, ``w`` : scalar
    Height and width of the figure. Use a number ≤ 0 to defined the size relative
    to the screen (e.g., ``w=0`` to use the full screen width).
-axh, axw : scalar
+``axh``, ``axw`` : scalar
    Height and width of the axes.
-nrow, ncol : None | int
+``nrow``, ``ncol`` : ``None`` | ``int``
    Limit number of rows/columns. If neither is specified, a square layout
    is produced
-ax_aspect : scalar
+``ax_aspect`` : scalar
    Width / height aspect of the axes.
-name : str
+``frame`` : :class:`bool` | :class:`str`
+    How to frame the axes of the plot. Options:
+
+    - ``True`` (default): normal matplotlib frame, spines around axes
+    - ``False``: omit top and right spines
+    - ``'t'``: draw spines at x=0 and y=0, common for ERPs
+    - ``'none'``: no spines at all
+
+``name`` : :class:`str`
    Window title (not displayed on the figure itself).
-title : str
+``title`` : :class:`str`
    Figure title (displayed on the figure).
+``tight`` : :class:`bool`
+    Use matplotlib's ``tight_layout`` to resize all axes to fill the figure.
 
 Plots that do take those parameters can be identified by the ``**layout`` in
 their function signature.

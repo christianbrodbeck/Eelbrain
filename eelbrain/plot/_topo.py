@@ -323,8 +323,6 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
     axtitle : bool | sequence of str
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.
-    frame : 't'
-        Use T-frame for the Butterfly plots (default is rectangular frame).
     xlim : scalar | (scalar, scalar)
         Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
         scalar (default is the full x-axis in the data).

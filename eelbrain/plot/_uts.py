@@ -108,11 +108,6 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         (default True)
     title : str | None
         Figure title.
-    frame : bool | 't'
-        How to frame the plots.
-        ``True`` (default): normal matplotlib frame;
-        ``False``: omit top and right lines;
-        ``'t'``: draw spines at x=0 and y=0, common for ERPs.
     ...
         Also accepts :ref:`general-layout-parameters`.
 

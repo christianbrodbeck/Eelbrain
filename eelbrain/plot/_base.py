@@ -76,6 +76,7 @@ from typing import Iterator as IteratorType
 import weakref
 
 import matplotlib as mpl
+import matplotlib.axes
 from matplotlib.figure import SubplotParams
 from matplotlib.ticker import FuncFormatter
 import numpy as np
@@ -1869,7 +1870,11 @@ class BaseLayout:
         raise NotImplementedError
 
     @staticmethod
-    def _format_axes(ax, frame, yaxis):
+    def _format_axes(
+            ax: mpl.axes.Axes,
+            frame: Union[bool, str],
+            yaxis: bool,
+    ):
         if frame == 't':
             ax.tick_params(direction='inout', bottom=False, top=True,
                            left=False, right=True, labelbottom=True,

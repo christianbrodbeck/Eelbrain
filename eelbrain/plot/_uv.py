@@ -333,12 +333,6 @@ class Boxplot(YLimMixin, _SimpleFigure):
     label_fliers : bool
         Add labels to flier points (outliers); requires ``match`` to be
         specified.
-    frame : bool
-        Draw a frame containing the figure from the top and the right
-        (default ``True``).
-    tight : bool
-        Use matplotlib's tight_layout to resize all axes to fill the figure
-        (default True).
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
@@ -456,12 +450,6 @@ class Barplot(YLimMixin, _SimpleFigure):
     ds : None | Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
-    frame : bool
-        Draw a frame containing the figure from the top and the right
-        (default ``True``).
-    tight : bool
-        Use matplotlib's tight_layout to resize all axes to fill the figure
-        (default True).
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
@@ -559,12 +547,6 @@ class BarplotHorizontal(XAxisMixin, _SimpleFigure):
     ds : None | Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
-    frame : bool
-        Draw a frame containing the figure from the top and the right
-        (default ``True``).
-    tight : bool
-        Use matplotlib's tight_layout to resize all axes to fill the figure
-        (default True).
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
@@ -854,12 +836,6 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
         **dict**: A dictionary mapping each cell to a color.
         Colors are specified as `matplotlib compatible color arguments
         <http://matplotlib.org/api/colors_api.html>`_.
-    frame : bool
-        Draw a frame containing the figure from the top and the right
-        (default ``True``).
-    tight : bool
-        Use matplotlib's tight_layout to resize all axes to fill the figure
-        (default True).
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
