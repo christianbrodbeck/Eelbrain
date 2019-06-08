@@ -442,7 +442,11 @@ class Barplot(YLimMixin, _SimpleFigure):
     top : scalar
         Upper end of the y axis (default is determined from the data).
     origin : scalar
-        Origin of the bars on the y-axis (the default is ``max(bottom, 0)``)
+        Origin of the bars on the y-axis (the default is ``max(bottom, 0)``).
+    pos : sequence of scalar
+        Position of the bars on the x-axis (default is ``range(n_cells)``).
+    width : scalar or sequence of scalar
+        Width of the bars (deault 0.5).
     c : matplotlib color
         Bar color (ignored if colors is specified).
     edgec : matplotlib color
@@ -457,7 +461,7 @@ class Barplot(YLimMixin, _SimpleFigure):
                  corr='Hochberg', trend="'", test_markers=True, ylabel=True,
                  error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
                  xtick_delim='\n', hatch=False, colors=False, bottom=0, top=None,
-                 origin=None, c='#0099FF', edgec=None, ds=None, *args, **kwargs):
+                 origin=None, pos=None, width=0.5, c='#0099FF', edgec=None, ds=None, *args, **kwargs):
         ct = Celltable(y, x, match, sub, cells, ds, asvar)
 
         if pool_error is None:
@@ -467,7 +471,7 @@ class Barplot(YLimMixin, _SimpleFigure):
         self._set_ax_label_categorial(xlabel, ct.x)
         self._configure_axis(ct.y, ylabel, y=True)
 
-        p = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors, bottom, top, origin, None, .5, c, edgec, ec, test, par, trend, corr, test_markers, xticks, xtick_delim)
+        p = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors, bottom, top, origin, pos, width, c, edgec, ec, test, par, trend, corr, test_markers, xticks, xtick_delim)
         p.set_ylim(p.bottom, p.top)
         p.ax.set_xlim(p.left, p.right)
         if p.top > p.origin > p.bottom:
@@ -539,7 +543,11 @@ class BarplotHorizontal(XAxisMixin, _SimpleFigure):
     right : scalar
         Right end of the data axis (default is determined from the data).
     origin : scalar
-        Origin of the bars on the data axis (the default is ``0``)
+        Origin of the bars on the data axis (the default is ``0``).
+    pos : sequence of scalar
+        Position of the bars on the x-axis (default is ``range(n_cells)``).
+    width : scalar or sequence of scalar
+        Width of the bars (deault 0.5).
     c : matplotlib color
         Bar color (ignored if colors is specified).
     edgec : matplotlib color
@@ -554,7 +562,7 @@ class BarplotHorizontal(XAxisMixin, _SimpleFigure):
                  corr='Hochberg', trend="'", test_markers=True, ylabel=True,
                  error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
                  xtick_delim='\n', hatch=False, colors=False, bottom=0, top=None,
-                 origin=None, c='#0099FF', edgec=None, ds=None, *args, **kwargs):
+                 origin=None, pos=None, width=0.5, c='#0099FF', edgec=None, ds=None, *args, **kwargs):
         if test is not False:
             raise NotImplemented("Horizontal barplot with pairwise significance")
 
@@ -567,7 +575,7 @@ class BarplotHorizontal(XAxisMixin, _SimpleFigure):
         self._set_ax_label_categorial(xlabel, ct.x, yaxis=True)
         self._configure_axis(ct.y, ylabel)
 
-        p = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors,bottom, top, origin, None, .5, c, edgec, ec, test, par, trend, corr, test_markers, xticks, xtick_delim, horizontal=True)
+        p = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors,bottom, top, origin, pos, width, c, edgec, ec, test, par, trend, corr, test_markers, xticks, xtick_delim, horizontal=True)
         p.ax.set_ylim(p.left, p.right)
         if p.top > p.origin > p.bottom:
             p.ax.axvline(p.origin, color='k')
