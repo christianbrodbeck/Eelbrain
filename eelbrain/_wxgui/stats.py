@@ -1,7 +1,9 @@
 import wx
+from mne import read_labels_from_annot
 
 from .frame import EelbrainFrame
 from .load_stcs import FactorPanel, TitleSizer
+from .. import testnd, set_parc
 
 
 class StatsFrame(EelbrainFrame):
@@ -26,15 +28,40 @@ class StatsFrame(EelbrainFrame):
         self.sizer.Add(self.test_model, **self.add_params)
         self.test_params = TestParams(self)
         self.sizer.Add(self.test_params, **self.add_params)
+        self.roi = RegionOfInterest(self, self.ds["src"])
+        self.sizer.Add(self.roi, **self.add_params)
+        self.submit = wx.Button(self, label="Go")
+        self.sizer.Add(self.submit)
+        self.Bind(wx.EVT_BUTTON, self.run_test, self.submit)
         self.SetSizer(self.sizer)
         self.sizer.Layout()
         self.sizer.Fit(self)
 
-    def get_test_kwargs(self, evt):
+    def get_test_kwargs(self):
         kwargs = dict()
         kwargs.update(self.test_model.get_test_kwargs())
         kwargs.update(self.test_params.get_test_kwargs())
-        print(kwargs)
+        return kwargs
+
+    def get_data_for_test(self):
+        info = self.roi.get_roi_info()
+        src = self.ds["src"]
+        src = set_parc(src, info["atlas"])
+        if self.spatiotemp.is_temporal():
+            return src.summary(source=info["label"])
+        else:
+            return src.sub(source=info["label"])
+
+    def run_test(self, evt):
+        test_type = self.test_model.get_test_type()
+        if test_type == "ANOVA":
+            test_func = testnd.anova
+        elif test_type == "t-test":
+            test_func = testnd.ttest_rel
+        data = self.get_data_for_test()
+        kwargs = self.get_test_kwargs()
+        res = test_func(data, ds=self.ds, match="subject", **kwargs)
+        print(res)
 
 
 class SubjectsSelector(wx.CheckListBox):
@@ -110,11 +137,11 @@ class TestParams(wx.Panel):
 
     def get_test_kwargs(self):
         kwargs = dict()
-        kwargs["tstart"] = self.tstart.GetValue()
-        kwargs["tstop"] = self.tstop.GetValue()
-        kwargs["samples"] = self.samples.GetValue()
+        kwargs["tstart"] = float(self.tstart.GetValue())
+        kwargs["tstop"] = float(self.tstop.GetValue())
+        kwargs["samples"] = int(self.samples.GetValue())
         kwargs["tfce"] = self.sig.is_tfce()
-        kwargs["pmin"] = self.sig.get_pmin()
+        kwargs["pmin"] = float(self.sig.get_pmin())
         return kwargs
 
 
@@ -179,7 +206,7 @@ class TestModelInfo(wx.Panel):
         self.Bind(wx.EVT_RADIOBOX, self.OnTestTypeChange, self.test_type)
 
     def OnTestTypeChange(self, evt):
-        test_type = self.test_type.GetStringSelection()
+        test_type = self.get_test_type()
         if test_type == "ANOVA":
             self.sizer.Show(self.anova_def, recursive=True)
             self.sizer.Hide(self.ttest_def, recursive=True)
@@ -188,8 +215,11 @@ class TestModelInfo(wx.Panel):
             self.sizer.Hide(self.anova_def, recursive=True)
         self.sizer.Layout()
 
+    def get_test_type(self):
+        return self.test_type.GetStringSelection()
+
     def get_test_kwargs(self):
-        test_type = self.test_type.GetStringSelection()
+        test_type = self.get_test_type()
         if test_type == "ANOVA":
             return self.anova_def.get_test_kwargs()
         elif test_type == "t-test":
@@ -263,3 +293,44 @@ class SpatiotemporalSettings(wx.BoxSizer):
     def is_temporal(self):
         return self.choice.GetStringSelection() == "Temporal"
 
+
+class RegionOfInterest(wx.Panel):
+
+    ATLASES = {
+        "Brodmann": "PALS_B12_Brodmann",
+        "Desikan-Killiany": "aparc",
+        "Lobes": "PALS_B12_Lobes"
+    }
+
+    def __init__(self, parent, src_ndvar):
+        super().__init__(parent)
+        self.subject = src_ndvar.source.subject
+        self.subjects_dir = src_ndvar.source.subjects_dir
+        self.InitUI()
+
+    def InitUI(self):
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self.atlas = wx.RadioBox(self, choices=list(self.ATLASES.keys()),
+                                 majorDimension=1)
+        self.sizer.Add(self.atlas)
+        self.regions = wx.ComboBox(self, choices=[])
+        self.sizer.Add(self.regions)
+        self.sizer.Layout()
+        self.SetSizer(self.sizer)
+        self.Bind(wx.EVT_RADIOBOX, self.OnAtlasChange, self.atlas)
+        self.OnAtlasChange(None)
+
+    def OnAtlasChange(self, evt):
+        atlas = self.ATLASES[self.atlas.GetStringSelection()]
+        labels = read_labels_from_annot(self.subject, atlas,
+                                        subjects_dir=self.subjects_dir)
+        label_names = [lbl.name for lbl in labels]
+        label_names = list(filter(lambda x: "?" not in x, label_names))
+        self.regions.Clear()
+        self.regions.AppendItems(label_names)
+
+    def get_roi_info(self):
+        info = dict()
+        info["atlas"] = self.ATLASES[self.atlas.GetStringSelection()]
+        info["label"] = self.regions.GetStringSelection()
+        return info
