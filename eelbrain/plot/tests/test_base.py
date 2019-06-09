@@ -38,6 +38,10 @@ def test_layout():
     assert layout.margins == dict(right=10 - 1 - 5, **margins)
     assert layout.axh == 2.5
     assert layout.h == 5 + 2 * layout.axh
+    assert layout.tight is False
+
+    layout = Layout(2, 2, 2, margins=True, axw=5, w=10, ncol=1)
+    assert layout.tight is False
 
 
 def test_im_layout():
