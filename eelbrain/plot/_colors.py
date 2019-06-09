@@ -242,7 +242,7 @@ class ColorGrid(EelFigure):
         Colors for cells.
     size : scalar
         Size (width and height) of the color squares (the default is to
-        scale them to fit the figure).
+        scale them to fit the font size).
     column_label_position : 'top' | 'bottom'
         Where to place the column labels (default is 'top').
     row_first : bool
@@ -405,26 +405,34 @@ class ColorList(EelFigure):
         Condition labels that are used instead of the keys in ``colors``. This
         is useful if ``colors`` uses abbreviated labels, but the color legend
         should contain more intelligible labels.
+    size : scalar
+        Size (width and height) of the color squares (the default is to
+        scale them to fit the font size).
     h : 'auto' | scalar
         Height of the figure in inches. If 'auto' (default), the height is
-        automatically increased to fit all labels.
+        chosen to fit all labels.
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    def __init__(self, colors, cells=None, labels=None, h='auto', *args,
-                 **kwargs):
+    def __init__(self, colors, cells=None, labels=None, size=None, h='auto', *args, **kwargs):
         if cells is None:
             cells = tuple(colors.keys())
         elif isinstance(cells, Iterator):
             cells = tuple(cells)
 
         if h == 'auto':
-            h = len(cells) * mpl.rcParams['font.size'] * POINT_SIZE * LEGEND_SIZE
+            if size is None:
+                size = mpl.rcParams['font.size'] * LEGEND_SIZE * POINT_SIZE
+            h = len(cells) * size
+        elif size is None:  # size = h / len(cells)
+            pass
+        else:
+            raise NotImplementedError("specifying size and h parameters together")
 
         if labels is None:
             labels = {cell: cellname(cell) for cell in cells}
         elif not isinstance(labels, dict):
-            raise TypeError("labels=%s" % repr(labels))
+            raise TypeError(f"labels={labels!r}")
 
         layout = Layout(0, 1.5, 2, False, False, h, *args, **kwargs)
         EelFigure.__init__(self, None, layout)
@@ -437,8 +445,7 @@ class ColorList(EelFigure):
         for i, cell in enumerate(cells):
             bottom = n - i - 1
             y = bottom + 0.5
-            patch = mpl.patches.Rectangle((0, bottom), 1, 1, fc=colors[cell],
-                                          ec='none', zorder=1)
+            patch = mpl.patches.Rectangle((0, bottom), 1, 1, fc=colors[cell], ec='none', zorder=1)
             ax.add_patch(patch)
             h = ax.text(1.1, y, labels.get(cell, cell), va='center', ha='left', zorder=2)
             self._labels.append(h)
@@ -446,24 +453,27 @@ class ColorList(EelFigure):
         ax.set_ylim(0, n)
         ax.set_xlim(0, n * self._layout.w / self._layout.h)
 
-        # resize figure to match legend
-        if not self._layout.w_fixed:
-            self.draw()
-            # all calculation in pixels
-            fig_bb = self.figure.get_window_extent()
-            x_max = max(h.get_window_extent().x1 for h in self._labels)
-            w0, h0 = self._frame.GetSize()
-            new_w = w0 + (x_max - fig_bb.x1) + 5
-            self._frame.SetSize((new_w, h0))
-            # adjust x-limits
-            # self.draw()
-            ax_bb = ax.get_window_extent()
-            ax.set_xlim(0, n * ax_bb.width / ax_bb.height)
-
+        self._draw_hooks.append(self.__update_frame)
         self._ax = ax
         self._show()
-        if IS_WINDOWS:
+        if IS_WINDOWS and self._has_frame:
             self._frame.Fit()
+
+    def __update_frame(self):
+        if self._layout.w_fixed or not self._has_frame:
+            return
+
+        # resize figure to match legend
+        # (all calculation in pixels)
+        fig_bb = self.figure.get_window_extent()
+        x_max = max(h.get_window_extent().x1 for h in self._labels)
+        w0, h0 = self._frame.GetSize()
+        new_w = w0 + (x_max - fig_bb.x1) + 5
+        self._frame.SetSize((new_w, h0))
+        # adjust x-limits
+        n = len(self._labels)
+        ax_bb = self._ax.get_window_extent()
+        self._ax.set_xlim(0, n * ax_bb.width / ax_bb.height)
 
 
 class ColorBar(EelFigure):
