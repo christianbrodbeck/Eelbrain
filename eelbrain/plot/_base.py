@@ -2023,6 +2023,7 @@ class Layout(BaseLayout):
 
         if margins is True:
             use_margins = True
+            tight = False
             margins = self._default_margins.copy()
         elif margins is not None:
             use_margins = True
@@ -2030,8 +2031,8 @@ class Layout(BaseLayout):
             margins = dict(margins)
             invalid = set(margins).difference(self._default_margins)
             if invalid:
-                raise ValueError("Invalid entries in margins (unknown keys): "
-                                 "%s" % ', '.join(map(repr, invalid)))
+                keys = ', '.join(map(repr, invalid))
+                raise ValueError(f"margins={margins!r}: Unknown keys {keys}")
         else:
             margins = {k: 0 for k in self._default_margins}
             use_margins = False
