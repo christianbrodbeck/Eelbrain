@@ -1,7 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Plot univariate data (:class:`~eelbrain.Var` objects)."""
-from collections import Sequence
-
+from itertools import chain
 import logging
 from typing import Sequence
 
@@ -14,7 +13,7 @@ import matplotlib as mpl
 from .._celltable import Celltable
 from .._data_obj import asvar, ascategorial, assub, cellname
 from .._stats import test, stats
-from ._base import EelFigure, Layout, LegendMixin, XAxisMixin, YLimMixin, frame_title
+from ._base import EelFigure, Layout, LegendMixin, CategorialAxisMixin, XAxisMixin, YLimMixin, frame_title
 from ._colors import find_cell_colors
 
 
@@ -226,46 +225,14 @@ class _SimpleFigure(EelFigure):
     def __init__(self, data_desc, *args, **kwargs):
         layout = Layout(1, 1, 5, *args, **kwargs)
         EelFigure.__init__(self, data_desc, layout)
-        self._ax = ax = self._axes[0]
-
-        # remove x-axis ticks
-        xax = ax.get_xaxis()
-        xax.set_ticks_position('none')
+        self._ax = self._axes[0]
 
         # collector for handles for figure legend
         self._handles = []
         self._legend = None
 
-    def _set_ax_label_categorial(self, label, model, yaxis=False):
-        if label is True:
-            if model and model.name:
-                label = model.name.replace('_', ' ')
-            else:
-                label = False
 
-        if label:
-            if yaxis:
-                self._ax.set_ylabel(label)
-            else:
-                self._ax.set_xlabel(label)
-
-    def _show(self):
-        if self._has_frame and not self._layout.w_fixed:
-            # make sure x axis labels don't overlap
-            self.draw()
-            labels = self._ax.get_xticklabels()
-            n = len(labels)
-            if len(labels) > 1:
-                bbs = [l.get_window_extent(self.figure.canvas.renderer) for l in labels]
-                overlap = max(bbs[i].x1 - bbs[i + 1].x0 for i in range(n - 1))
-                extend = n * (overlap + 10)
-                w, h = self._frame.GetSize()
-                w += int(extend)
-                self._frame.SetSize((w, h))
-        EelFigure._show(self)
-
-
-class Boxplot(YLimMixin, _SimpleFigure):
+class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
     r"""Boxplot for a continuous variable
 
     Parameters
@@ -367,20 +334,18 @@ class Boxplot(YLimMixin, _SimpleFigure):
             raise ValueError(f"colors={colors!r}: need at least as many values as there are cells ({ct.n_cells})")
 
         _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), *args, **kwargs)
-        self._set_ax_label_categorial(xlabel, ct.x)
         self._configure_axis(ct.y, ylabel, y=True)
 
-        self._plot = p = _plt_boxplot(self._ax, ct, notch, sym, whis, colors, hatch, bottom, top, xticks, xtick_delim, test, par, corr, trend, test_markers, label_fliers)
+        self._plot = p = _plt_boxplot(self._ax, ct, notch, sym, whis, colors, hatch, bottom, top, test, par, corr, trend, test_markers, label_fliers)
         p.set_ylim(p.bottom, p.top)
         p.ax.set_xlim(p.left, p.right)
-        if p.top > 0 > p.bottom:
-            p.ax.axhline(0, color='k')
 
+        CategorialAxisMixin.__init__(self, self._ax, 'x', self._layout, xlabel, ct.x, xticks, xtick_delim, p.pos, ct.cells)
         YLimMixin.__init__(self, (p,))
         self._show()
 
 
-class Barplot(YLimMixin, _SimpleFigure):
+class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
     r"""Barplot for a continuous variable
 
     Parameters
@@ -468,21 +433,22 @@ class Barplot(YLimMixin, _SimpleFigure):
             pool_error = ct.all_within
 
         _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), *args, **kwargs)
-        self._set_ax_label_categorial(xlabel, ct.x)
         self._configure_axis(ct.y, ylabel, y=True)
 
-        p = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors, bottom, top, origin, pos, width, c, edgec, ec, test, par, trend, corr, test_markers, xticks, xtick_delim)
+        p = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors, bottom, top, origin, pos, width, c, edgec, ec, test, par, trend, corr, test_markers)
         p.set_ylim(p.bottom, p.top)
         p.ax.set_xlim(p.left, p.right)
-        if p.top > p.origin > p.bottom:
-            p.ax.axhline(p.origin, color='k')
 
+        CategorialAxisMixin.__init__(self, self._ax, 'x', self._layout, xlabel, ct.x, xticks, xtick_delim, p.pos, ct.cells, p.origin)
         YLimMixin.__init__(self, (p,))
         self._show()
 
 
-class BarplotHorizontal(XAxisMixin, _SimpleFigure):
-    r"""Barplot for a continuous variable
+class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
+    r"""Horizontal barplot for a continuous variable
+
+    For consistency with :class:`plot.Barplot`, ``y`` refers to the horizontal
+    axis and ``x`` refers to the vertical (categorial) axis.
 
     Parameters
     ----------
@@ -530,8 +496,7 @@ class BarplotHorizontal(XAxisMixin, _SimpleFigure):
         X-axis tick labels describing the categories. None to plot no labels
         (Default uses cell names from ``x``).
     xtick_delim : str
-        Delimiter for x axis category descriptors (default is ``'\n'``,
-        i.e. the level on each Factor of ``x`` on a separate line).
+        Delimiter for x axis category descriptors (default ``' '``).
     hatch : bool | str
         Matplotlib Hatch pattern to fill boxes (True to use the module
         default; default is False).
@@ -561,7 +526,7 @@ class BarplotHorizontal(XAxisMixin, _SimpleFigure):
     def __init__(self, y, x=None, match=None, sub=None, cells=None, test=False, par=True,
                  corr='Hochberg', trend="'", test_markers=True, ylabel=True,
                  error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
-                 xtick_delim='\n', hatch=False, colors=False, bottom=0, top=None,
+                 xtick_delim=' ', hatch=False, colors=False, bottom=0, top=None,
                  origin=None, pos=None, width=0.5, c='#0099FF', edgec=None, ds=None, *args, **kwargs):
         if test is not False:
             raise NotImplemented("Horizontal barplot with pairwise significance")
@@ -572,31 +537,20 @@ class BarplotHorizontal(XAxisMixin, _SimpleFigure):
             pool_error = ct.all_within
 
         _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), *args, **kwargs)
-        self._set_ax_label_categorial(xlabel, ct.x, yaxis=True)
+
+        p = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors, bottom, top, origin, pos, width, c, edgec, ec, test, par, trend, corr, test_markers, horizontal=True)
+        p.ax.set_ylim(p.left, p.right)
         self._configure_axis(ct.y, ylabel)
 
-        p = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors, bottom, top, origin, pos, width, c, edgec, ec, test, par, trend, corr, test_markers, xticks, xtick_delim, horizontal=True)
-        p.ax.set_ylim(p.left, p.right)
-        if p.top > p.origin > p.bottom:
-            p.ax.axvline(p.origin, color='k')
         XAxisMixin.__init__(self, p.bottom, p.top, axes=[p.ax])
+        CategorialAxisMixin.__init__(self, self._ax, 'y', self._layout, xlabel, ct.x, xticks, xtick_delim, p.pos, ct.cells, p.origin)
         self._show()
 
 
 class _plt_uv_base:
     """Base for barplot and boxplot -- x is categorial, y is scalar"""
 
-    def __init__(self, ax, ct, xticks, xtick_delim, horizontal=False):
-        # figure decoration
-        axis = ax.yaxis if horizontal else ax.xaxis
-        if xticks:
-            if xticks is True:
-                xticks = ct.cellnames(xtick_delim)
-            axis.set_ticklabels(xticks)
-            axis.set_ticks(np.arange(len(ct.cells)))
-        elif xticks is False:
-            axis.set_ticks(())
-
+    def __init__(self, ax, horizontal=False):
         self.horizontal = horizontal
         self.vmin, self.vmax = ax.get_ylim()
         self.ax = ax
@@ -613,7 +567,7 @@ class _plt_uv_base:
 class _plt_boxplot(_plt_uv_base):
     """Boxplot"""
 
-    def __init__(self, ax, ct, notch, sym, whis, colors, hatch, bottom, top, xticks, xtick_delim, test, par, corr, trend, test_markers, label_fliers):
+    def __init__(self, ax, ct, notch, sym, whis, colors, hatch, bottom, top, test, par, corr, trend, test_markers, label_fliers):
         # determine ax lim
         if bottom is None:
             if np.min(ct.y.x) >= 0:
@@ -627,7 +581,8 @@ class _plt_boxplot(_plt_uv_base):
         # boxplot
         k = len(ct.cells)
         all_data = ct.get_data()
-        self.boxplot = bp = ax.boxplot(all_data, notch, sym, whis=whis, positions=np.arange(k))
+        self.pos = np.arange(k)
+        self.boxplot = bp = ax.boxplot(all_data, notch, sym, whis=whis, positions=self.pos)
 
         # Now fill the boxes with desired colors
         if hatch or colors:
@@ -686,7 +641,7 @@ class _plt_boxplot(_plt_uv_base):
         self.right = k - .5
         self.bottom = bottom
         self.top = ax.get_ylim()[1] if top is None else top
-        _plt_uv_base.__init__(self, ax, ct, xticks, xtick_delim)
+        _plt_uv_base.__init__(self, ax)
 
 
 class _plt_barplot(_plt_uv_base):
@@ -712,8 +667,6 @@ class _plt_barplot(_plt_uv_base):
             trend="'",
             corr='Hochberg',
             test_markers=True,
-            xticks=None,
-            xtick_delim=None,
             horizontal: bool = False,
     ):
         # kwargs
@@ -731,7 +684,11 @@ class _plt_barplot(_plt_uv_base):
         # data means
         k = len(ct.cells)
         if pos is None:
-            pos = list(range(k))
+            pos = np.arange(k)
+        else:
+            pos = np.asarray(pos)
+        if horizontal:
+            pos = -pos
         height = np.array(ct.get_statistic(np.mean))
 
         # origin
@@ -757,6 +714,10 @@ class _plt_barplot(_plt_uv_base):
         else:
             bars = ax.bar(pos, height - origin, width, origin, color=c, edgecolor=edgec, ecolor=ec, yerr=error_bars)
 
+        # prevent bars from clipping
+        for artist in chain(bars.patches, *bars.errorbar.lines[1:]):
+            artist.set_clip_on(False)
+
         # hatch
         if hatch:
             for bar, h in zip(bars, hatch):
@@ -770,8 +731,7 @@ class _plt_barplot(_plt_uv_base):
             test = 0.
         y_unit = (plot_max - y_bottom) / 15
         if test is True:
-            y_top = _mark_plot_pairwise(ax, ct, par, plot_max, y_unit, corr, trend,
-                                        test_markers, top=top)
+            y_top = _mark_plot_pairwise(ax, ct, par, plot_max, y_unit, corr, trend, test_markers, top=top)
         elif (test is False) or (test is None):
             y_top = plot_max + y_unit
         else:
@@ -783,7 +743,8 @@ class _plt_barplot(_plt_uv_base):
         self.origin = origin
         self.bottom = y_bottom
         self.top = y_top if top is None else top
-        _plt_uv_base.__init__(self, ax, ct, xticks, xtick_delim, horizontal)
+        self.pos = pos
+        _plt_uv_base.__init__(self, ax, horizontal)
 
 
 class Timeplot(LegendMixin, YLimMixin, EelFigure):

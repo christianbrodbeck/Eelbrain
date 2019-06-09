@@ -2931,6 +2931,61 @@ class TopoMapKey:
                     sensorlabels='name')
 
 
+class CategorialAxisMixin:
+
+    def __init__(self, ax, axis, layout, label, model, ticks, tick_delim, tick_pos, cells, origin=None):
+        self.__axis = axis
+        if axis == 'x':
+            self.__axis_obj = ax.xaxis
+            if layout.frame is not True:
+                ax.spines['bottom'].set_visible(False)
+            if origin is not None:
+                ax.axhline(origin, color='k', linewidth=mpl.rcParams['axes.linewidth'], clip_on=False)
+        elif axis == 'y':
+            self.__axis_obj = ax.yaxis
+            if layout.frame is not True:
+                ax.spines['left'].set_visible(False)
+            if origin is not None:
+                ax.axvline(origin, color='k', linewidth=mpl.rcParams['axes.linewidth'], clip_on=False)
+        else:
+            raise ValueError(f"axis={axis!r}")
+
+        # axis label
+        if label is True:
+            if model and model.name:
+                label = model.name.replace('_', ' ')
+            else:
+                label = False
+        if label:
+            self.__axis_obj.set_label_text(label)
+
+        # ticks
+        self.__axis_obj.set_ticks_position('none')
+        if ticks:
+            if ticks is True:
+                ticks = [cellname(cell, tick_delim) for cell in cells]
+            self.__axis_obj.set_ticks(tick_pos)
+            self.__axis_obj.set_ticklabels(ticks)
+        elif ticks is False:
+            self.__axis_obj.set_ticks(())
+
+        if axis == 'x' and self._has_frame and not self._layout.w_fixed:
+            self._draw_hooks.append(self.__separate_categorial_labels)
+
+    def __separate_categorial_labels(self):
+        # make sure x axis labels don't overlap
+        labels = self.__axis_obj.get_ticklabels()
+        n = len(labels)
+        if n > 1:
+            bbs = [l.get_window_extent(self.figure.canvas.renderer) for l in labels]
+            overlap = max(bbs[i].x1 - bbs[i + 1].x0 for i in range(n - 1))
+            extend = n * (overlap + 10)
+            w, h = self._frame.GetSize()
+            w += int(extend)
+            self._frame.SetSize((w, h))
+            return True
+
+
 class XAxisMixin:
     """Manage x-axis
 
