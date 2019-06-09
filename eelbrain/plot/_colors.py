@@ -1,7 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Color tools for plotting."""
 from collections import Iterator
-from itertools import product
+from itertools import product, chain
 import operator
 
 import numpy as np
@@ -255,6 +255,13 @@ class ColorGrid(EelFigure):
         Shape for color samples (default 'box').
     ...
         Also accepts :ref:`general-layout-parameters`.
+
+    Attributes
+    ----------
+    column_labels : list of :class:`matplotlib.text.Text`
+        Column labels.
+    row_labels : list of :class:`matplotlib.text.Text`
+        Row labels.
     """
     def __init__(self, row_cells, column_cells, colors, size=None,
                  column_label_position='top', row_first=None, labels=None,
@@ -312,7 +319,7 @@ class ColorGrid(EelFigure):
 
         # column labels
         tilt_labels = any(len(label) > 1 for label in column_labels)
-        self._labels = []
+        self.column_labels = []
         if column_label_position == 'top':
             y = n_rows + 0.1
             va = 'bottom'
@@ -326,20 +333,18 @@ class ColorGrid(EelFigure):
             ymax = n_rows
             ymin = n_rows - self._layout.h / size
         else:
-            msg = "column_label_position=%s" % repr(column_label_position)
-            raise ValueError(msg)
+            raise ValueError(f"column_label_position={column_label_position!r}")
 
         for col, label in enumerate(column_labels):
-            h = ax.text(col + 0.5, y, label, va=va,
-                        ha='left' if tilt_labels else 'center',
-                        rotation=rotation)
-            self._labels.append(h)
+            h = ax.text(col + 0.5, y, label, va=va, ha='left' if tilt_labels else 'center', rotation=rotation)
+            self.column_labels.append(h)
 
         # row labels
         x = n_cols + 0.1
+        self.row_labels = []
         for row, label in enumerate(row_labels):
             h = ax.text(x, row + 0.5, label, va='center', ha='left')
-            self._labels.append(h)
+            self.row_labels.append(h)
 
         if size is not None:
             self._ax.set_xlim(0, self._layout.w / size)
@@ -358,7 +363,7 @@ class ColorGrid(EelFigure):
         # find label bounding box
         xmax = 0
         ymax = 0
-        for h in self._labels:
+        for h in chain(self.column_labels, self.row_labels):
             bbox = h.get_window_extent()
             if bbox.xmax > xmax:
                 xmax = bbox.xmax
@@ -413,6 +418,11 @@ class ColorList(EelFigure):
         chosen to fit all labels.
     ...
         Also accepts :ref:`general-layout-parameters`.
+
+    Attributes
+    ----------
+    labels : list of :class:`matplotlib.text.Text`
+        Color labels.
     """
     def __init__(self, colors, cells=None, labels=None, size=None, h='auto', *args, **kwargs):
         if cells is None:
@@ -441,14 +451,14 @@ class ColorList(EelFigure):
         ax.set_axis_off()
 
         n = len(cells)
-        self._labels = []
+        self.labels = []
         for i, cell in enumerate(cells):
             bottom = n - i - 1
             y = bottom + 0.5
             patch = mpl.patches.Rectangle((0, bottom), 1, 1, fc=colors[cell], ec='none', zorder=1)
             ax.add_patch(patch)
             h = ax.text(1.1, y, labels.get(cell, cell), va='center', ha='left', zorder=2)
-            self._labels.append(h)
+            self.labels.append(h)
 
         ax.set_ylim(0, n)
         ax.set_xlim(0, n * self._layout.w / self._layout.h)
@@ -466,12 +476,12 @@ class ColorList(EelFigure):
         # resize figure to match legend
         # (all calculation in pixels)
         fig_bb = self.figure.get_window_extent()
-        x_max = max(h.get_window_extent().x1 for h in self._labels)
+        x_max = max(h.get_window_extent().x1 for h in self.labels)
         w0, h0 = self._frame.GetSize()
         new_w = w0 + (x_max - fig_bb.x1) + 5
         self._frame.SetSize((new_w, h0))
         # adjust x-limits
-        n = len(self._labels)
+        n = len(self.labels)
         ax_bb = self._ax.get_window_extent()
         self._ax.set_xlim(0, n * ax_bb.width / ax_bb.height)
 
