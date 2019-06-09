@@ -1639,15 +1639,15 @@ class MultiEffectNDTest(NDTest):
         self._assert_has_cdist()
         if effect is not None:
             i = self._effect_index(effect)
-            return self._cdist[i].clusters(pmin, maps, **sub)
-        dss = []
-        info = {}
-        for cdist in self._cdist:
+            cdist = self._cdist[i]
             ds = cdist.clusters(pmin, maps, **sub)
             ds[:, 'effect'] = cdist.name
+            return ds
+        dss = [self.find_clusters(pmin, maps, i, **sub) for i in range(len(self.effects))]
+        info = {}
+        for ds, cdist in zip(dss, self._cdist):
             if 'clusters' in ds.info:
-                info['%s clusters' % cdist.name] = ds.info.pop('clusters')
-            dss.append(ds)
+                info[f'{cdist.name} clusters'] = ds.info.pop('clusters')
         out = combine(dss)
         out.info.update(info)
         return out
