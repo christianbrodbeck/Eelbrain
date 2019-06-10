@@ -3850,6 +3850,7 @@ class MneExperiment(FileTree):
             if mtime and getmtime(dest) > mtime:
                 return
 
+        self._log.debug("Make cov-file %s", dest)
         params = self._covs[self.get('cov')]
         method = params.get('method', 'empirical')
         keep_sample_mean = params.get('keep_sample_mean', True)
@@ -3938,6 +3939,7 @@ class MneExperiment(FileTree):
             ds['evoked'] = mne.read_evokeds(dst, proj=False)
             return ds
 
+        self._log.debug("Make evoked %s", dst)
         # load the epochs (post baseline-correction trigger shift requires
         # baseline corrected evoked
         if epoch.post_baseline_trigger_shift:
