@@ -24,7 +24,7 @@ from typing import Union
 import warnings
 
 import numpy as np
-
+from tqdm import tqdm
 import mne
 from mne.baseline import rescale
 from mne.minimum_norm import make_inverse_operator, apply_inverse, apply_inverse_epochs
@@ -2111,17 +2111,18 @@ class MneExperiment(FileTree):
                 if ndvar != 'both':
                     raise ValueError("ndvar=%s" % repr(ndvar))
         subject, group = self._process_subject_arg(subjects, kwargs)
+        epoch_name = self.get('epoch')
 
         if group is not None:
             dss = []
-            for _ in self.iter(group=group):
+            for _ in self.iter(group=group, progress=f"Load {epoch_name}"):
                 ds = self.load_epochs(None, baseline, ndvar, add_bads, reject, cat, decim, pad, data_raw, vardef, data, True, tmin, tmax, tstop, interpolate_bads)
                 dss.append(ds)
 
             return combine(dss)
 
         # single subject
-        epoch = self._epochs[self.get('epoch')]
+        epoch = self._epochs[epoch_name]
         if isinstance(epoch, EpochCollection):
             dss = []
             with self._temporary_state:
@@ -2292,7 +2293,8 @@ class MneExperiment(FileTree):
         epochs_dataset : Dataset
             Dataset containing single trial data (epochs).
         """
-        epoch = self._epochs[self.get('epoch')]
+        epoch_name = self.get('epoch')
+        epoch = self._epochs[epoch_name]
         if not baseline and src_baseline and epoch.post_baseline_trigger_shift:
             raise NotImplementedError("src_baseline with post_baseline_trigger_shift")
         subject, group = self._process_subject_arg(subjects, state)
@@ -2304,7 +2306,7 @@ class MneExperiment(FileTree):
             elif not morph:
                 raise ValueError(f"morph={morph!r} with group: Source estimates can only be combined after morphing data to common brain model. Set morph=True.")
             dss = []
-            for _ in self.iter(group=group):
+            for _ in self.iter(group=group, progress_bar=f"Load {epoch_name} STC"):
                 ds = self.load_epochs_stc(None, baseline, src_baseline, cat, keep_epochs, morph, mask, False, vardef, decim, ndvar, reject)
                 dss.append(ds)
             return combine(dss)
@@ -2498,7 +2500,8 @@ class MneExperiment(FileTree):
 
         """
         subject, group = self._process_subject_arg(subjects, kwargs)
-        epoch = self._epochs[self.get('epoch')]
+        epoch_name = self.get('epoch')
+        epoch = self._epochs[epoch_name]
         data = TestDims.coerce(data)
         if not data.sensor:
             raise ValueError(f"data={data.string!r}; load_evoked is for loading sensor data")
@@ -2506,13 +2509,15 @@ class MneExperiment(FileTree):
             raise ValueError(f"data={data.string!r} with ndvar=False")
         if baseline is True:
             baseline = epoch.baseline
+        model = self.get('model')
 
         if group is not None:
             # when aggregating across sensors, do it before combining subjects
             # to avoid losing sensors that are not shared
             individual_ndvar = isinstance(data.sensor, str)
+            desc = f'by {model}' if model else 'average'
             dss = [self.load_evoked(None, baseline, individual_ndvar, cat, decim, data_raw, vardef, data)
-                   for _ in self.iter(group=group)]
+                   for _ in self.iter(group=group, progress_bar=f"Load {epoch_name} {desc}")]
             if individual_ndvar:
                 ndvar = False
             elif ndvar:
@@ -2542,7 +2547,6 @@ class MneExperiment(FileTree):
             ds = self._make_evoked(decim, data_raw)
 
             if cat:
-                model = self.get('model')
                 if not model:
                     raise TypeError(f"cat={cat!r}: Can't set cat when model is ''")
                 model = ds.eval(model)
@@ -2746,7 +2750,7 @@ class MneExperiment(FileTree):
         stcs = []
         invs = {}
         mm_cache = CacheDict(self.load_morph_matrix, 'mrisubject')
-        for subject, evoked in ds.zip('subject', 'evoked'):
+        for subject, evoked in tqdm(ds.zip('subject', 'evoked'), "Localize", ds.n_cases):
             subject_from = from_subjects[subject]
 
             # get inv
