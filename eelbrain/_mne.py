@@ -407,6 +407,10 @@ def morph_source_space(ndvar, subject_to=None, vertices_to=None, morph_mat=None,
     morphed_ndvar : NDVar
         NDVar morphed to the destination subject.
 
+    See Also
+    --------
+    xhemi: morph data from both hemisphere to one for comparing hemispheres
+
     Notes
     -----
     This function is used to make sure a number of different NDVars are defined
@@ -416,6 +420,31 @@ def morph_source_space(ndvar, subject_to=None, vertices_to=None, morph_mat=None,
     not safe to assume that ``morphed_ndvar`` can be modified in place without
     altering ``ndvar``. To make sure the date of the output is independent from
     the data of the input, set the argument ``copy=True``.
+
+    Examples
+    --------
+    Generate a symmetric ROI based on a test result (``res``)::
+
+        # Generate a mask based on significance
+        mask = res.p.min('time') <= 0.05
+        # store the vertices for which we want the end result
+        fsa_vertices = mask.source.vertices
+        # morphing is easier with a complete source space
+        mask = complete_source_space(mask)
+        # Use a parcellation that is available for the ``fsaverage_sym`` brain
+        mask = set_parc(mask, 'aparc')
+        # morph both hemispheres to the left hemisphere
+        mask_from_lh, mask_from_rh = xhemi(mask)
+        # take the union; morphing interpolates, so re-cast values to booleans
+        mask_lh = (mask_from_lh > 0) | (mask_from_rh > 0)
+        # morph the new ROI to the right hemisphere
+        mask_rh = morph_source_space(mask_lh, vertices_to=[[], mask_lh.source.vertices[0]], xhemi=True)
+        # cast back to boolean
+        mask_rh = mask_rh > 0
+        # combine the two hemispheres
+        mask_sym = concatenate([mask_lh, mask_rh], 'source')
+        # morph the result back to the source brain (fsaverage)
+        mask = morph_source_space(mask_sym, 'fsaverage', fsa_vertices)
     """
     axis = ndvar.get_axis('source')
     source = ndvar.get_dim('source')
@@ -706,6 +735,10 @@ def xhemi(ndvar, mask=None, hemi='lh', parc=True):
         Data from the left hemisphere on ``hemi`` of ``fsaverage_sym``.
     rh : NDVar
         Data from the right hemisphere on ``hemi`` of ``fsaverage_sym``.
+
+    See Also
+    --------
+    morph_source_space: lower level function for morphing
 
     Notes
     -----
