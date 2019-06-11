@@ -2,14 +2,15 @@
 """Color tools for plotting."""
 from collections import Iterator
 from itertools import product, chain
+from math import ceil
 import operator
 
 import numpy as np
 import matplotlib as mpl
-from matplotlib.colors import LinearSegmentedColormap, Normalize, to_rgb
+from matplotlib.colors import LinearSegmentedColormap, ListedColormap, Normalize, to_rgb, to_rgba
 from matplotlib.colorbar import ColorbarBase
 
-from .._colorspaces import oneway_colors, twoway_colors, SymmetricNormalize
+from .._colorspaces import oneway_colors, twoway_colors, SymmetricNormalize, symmetric_cmaps
 from .._data_obj import Factor, Interaction, cellname
 from .._utils import IS_WINDOWS
 from ._base import EelFigure, Layout, find_axis_params_data, fix_vlim_for_cmap
@@ -227,6 +228,56 @@ def single_hue_colormap(hue):
     start = color + (0.,)
     stop = color + (1.,)
     return LinearSegmentedColormap.from_list(name, (start, stop))
+
+
+def soft_threshold_colormap(cmap, threshold, vmax, subthreshold=None, symmetric=None):
+    """Soft-threshold a colormap to make small values transparent
+
+    Parameters
+    ----------
+    cmap : str
+        Base colormap.
+    threshold : scalar
+        Value at which to threshold the colormap (i.e., the value at which to
+        start the colormap).
+    vmax : scalar
+        Intended largest value of the colormap (used to infer the location of
+        the ``threshold``).
+    subthreshold : matplotlib color
+        Color of sub-threshold values (the default is the end or middle of
+        the colormap, depending on whether it is symmetric).
+    symmetric : bool
+        Whether the ``cmap`` is symmetric (ranging from ``-vmax`` to ``vmax``)
+        or not (ranging from ``0`` to ``vmax``). The default is ``True`` for
+        known symmetric colormaps and ``False`` otherwise.
+
+    Returns
+    -------
+    thresholded_cmap : matplotlib ListedColormap
+        Soft-thresholded colormap.
+    """
+    assert vmax > threshold >= 0
+    cmap = mpl.cm.get_cmap(cmap)
+    if symmetric is None:
+        symmetric = cmap.name in symmetric_cmaps
+
+    colors = cmap(np.linspace(0., 1., cmap.N))
+    if subthreshold is None:
+        subthreshold_color = cmap(0.5) if symmetric else cmap(0)
+    else:
+        subthreshold_color = to_rgba(subthreshold)
+
+    n = int(round(vmax / ((vmax - threshold) / cmap.N)))
+    out_colors = np.empty((n, 4))
+    if symmetric:
+        i_threshold = int(ceil(cmap.N / 2))
+        out_colors[:i_threshold] = colors[:i_threshold]
+        out_colors[i_threshold:-i_threshold] = subthreshold_color
+        out_colors[-i_threshold:] = colors[-i_threshold:]
+    else:
+        out_colors[:-cmap.N] = subthreshold_color
+        out_colors[-cmap.N:] = colors
+    return ListedColormap(out_colors, cmap.name)
 
 
 class ColorGrid(EelFigure):

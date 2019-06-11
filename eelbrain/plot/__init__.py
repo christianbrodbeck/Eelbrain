@@ -5,7 +5,7 @@ from ._base import reset_rc
 from ._colors import (
     ColorBar, ColorGrid, ColorList,
     colors_for_categorial, colors_for_oneway, colors_for_twoway,
-    single_hue_colormap,
+    single_hue_colormap, soft_threshold_colormap,
 )
 from ._figure import Figure
 from ._glassbrain import GlassBrain
