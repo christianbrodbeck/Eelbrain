@@ -769,7 +769,7 @@ class Brain(TimeSlicer, surfer.Brain):
         tag = 'L' if hemi == 'lh' else 'R'
         print(f'{tag}{vertex}')
 
-    def image(self, name=None, format='png', alt=None):
+    def image(self, name=None, format='png', alt=None, mode='rgba'):
         """Create an FMText Image from a screenshot
 
         Parameters
@@ -782,6 +782,9 @@ class Brain(TimeSlicer, surfer.Brain):
         alt : None | str
             Alternate text, placeholder in case the image can not be found
             (HTML `alt` tag).
+        mode : ``'rgb'`` | ``'rgba'``
+            ``'rgb'`` to render solid background, or ``'rgba'`` to
+            include alpha channel for a transparent background (default).
         """
         if name is None:
             for data in self.__data:
@@ -790,7 +793,7 @@ class Brain(TimeSlicer, surfer.Brain):
                     break
             else:
                 name = 'brain'
-        im = self.screenshot('rgba', True)
+        im = self.screenshot(mode, True)
         if self._png_repr_meta is None:
             w, h = self._frame.GetClientSize()
             meta = {'height': h, 'width': w}
@@ -948,9 +951,9 @@ class Brain(TimeSlicer, surfer.Brain):
         ----------
         filename: string
             Path to new image file.
-        mode : string
-            Either 'rgb' (default) to render solid background, or 'rgba' to
-            include alpha channel for transparent background.
+        mode : ``'rgb'`` | ``'rgba'``
+            ``'rgb'`` to render solid background (default), or ``'rgba'`` to
+            include alpha channel for a transparent background.
         antialiased : bool
             Antialias the image (see :func:`mayavi.mlab.screenshot`
             for details; default False).
