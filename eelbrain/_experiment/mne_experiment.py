@@ -2712,8 +2712,9 @@ class MneExperiment(FileTree):
              - :ref:`state-inv`: inverse solution
 
         """
-        if state:
-            self.set(**state)
+        # load sensor data (needs state in case it has 'group' entry)
+        sns_ndvar = keep_evoked and ndvar
+        ds = self.load_evoked(subjects, baseline, sns_ndvar, cat, decim, data_raw, vardef, **state)
 
         # check baseline
         epoch = self._epochs[self.get('epoch')]
@@ -2721,10 +2722,6 @@ class MneExperiment(FileTree):
             raise NotImplementedError(f"src_baseline={src_baseline!r}: post_baseline_trigger_shift is not implemented for baseline correction in source space")
         elif src_baseline is True:
             src_baseline = epoch.baseline
-
-        # load sensor data
-        sns_ndvar = keep_evoked and ndvar
-        ds = self.load_evoked(subjects, baseline, sns_ndvar, cat, decim, data_raw, vardef)
 
         # from-subject for the purpose of morphing
         common_brain = self.get('common_brain')
