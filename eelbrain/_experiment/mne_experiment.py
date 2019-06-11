@@ -6382,8 +6382,7 @@ class MneExperiment(FileTree):
         else:
             print(out)
 
-    def show_subjects(self, mri=True, mrisubject=False, caption=True,
-                      asds=False, **state):
+    def show_subjects(self, mri=True, mrisubject=False, caption=True, asds=False, **state):
         """Create a Dataset with subject information
 
         Parameters
@@ -6401,6 +6400,9 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
+        if isinstance(mri, str):
+            state['mri'] = mri
+            mri = True
         if state:
             self.set(**state)
 
