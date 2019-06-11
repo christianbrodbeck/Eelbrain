@@ -275,6 +275,7 @@ class App(wx.App):
 
     def _bash_ui_finalize(self, result):
         if self._bash_ui_from_mainloop:
+            self.Yield()
             return result
         else:
             self._result = result
@@ -396,11 +397,10 @@ class App(wx.App):
             self._ipython.user_global_ns[name] = obj
 
     def OnAbout(self, event):
-        if self.about_frame is None or not hasattr(self.about_frame, 'Raise'):
+        if not self.about_frame:
             self.about_frame = AboutFrame(None)
-            self.about_frame.Show()
-        else:
-            self.about_frame.Raise()
+        self.about_frame.Show()
+        self.about_frame.Raise()
 
     def OnClear(self, event):
         frame = self._get_active_frame()
