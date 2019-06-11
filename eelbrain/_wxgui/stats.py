@@ -33,6 +33,8 @@ class StatsFrame(EelbrainFrame):
         self.submit = wx.Button(self, label="Go")
         self.sizer.Add(self.submit)
         self.Bind(wx.EVT_BUTTON, self.run_test, self.submit)
+        self.Bind(wx.EVT_RADIOBOX, self.test_params.toggle_minsource,
+                  self.spatiotemp.choice)
         self.SetSizer(self.sizer)
         self.sizer.Layout()
         self.sizer.Fit(self)
@@ -123,26 +125,39 @@ class TestParams(wx.Panel):
     def InitUI(self):
         self.sizer = wx.GridBagSizer(hgap=10, vgap=10)
         title = TitleSizer(self, "Test Parameters")
-        self.tstart = TextEntryWithLabel(self, wx.VERTICAL, "Start Time")
-        self.tstop = TextEntryWithLabel(self, wx.VERTICAL, "Stop Time")
+        self.tstart = TextEntryWithLabel(self, wx.VERTICAL, "Start Time (s)")
+        self.tstop = TextEntryWithLabel(self, wx.VERTICAL, "Stop Time (s)")
         self.samples = TextEntryWithLabel(self, wx.VERTICAL, "Permutations", "10000")
+        self.mintime = TextEntryWithLabel(self, wx.VERTICAL, "Min. Cluster Time (s)", "0.02")
+        self.minsource = TextEntryWithLabel(self, wx.VERTICAL, "Min. Cluster Sources", "25")
         self.sig = SignificanceType(self)
         self.sizer.Add(title, pos=(0, 0), span=(1, 3))
         self.sizer.Add(self.tstart, pos=(1, 0), span=(1, 2))
         self.sizer.Add(self.tstop, pos=(1, 2), span=(1, 2))
         self.sizer.Add(self.samples, pos=(1, 4), span=(1, 2))
-        self.sizer.Add(self.sig, pos=(2, 0), span=(1, 6))
+        self.sizer.Add(self.mintime, pos=(2, 0), span=(1, 2))
+        self.sizer.Add(self.minsource, pos=(2, 2), span=(1, 2))
+        self.sizer.Add(self.sig, pos=(3, 0), span=(1, 6))
         self.SetSizer(self.sizer)
         self.Bind(wx.EVT_RADIOBOX, self.sig.OnTypeChange, self.sig.choice)
+        # hide minsource at first, because 'temporal' is default choice
+        # in SpatiotemporalSettings
+        self.toggle_minsource()
 
     def get_test_kwargs(self):
         kwargs = dict()
         kwargs["tstart"] = float(self.tstart.GetValue())
         kwargs["tstop"] = float(self.tstop.GetValue())
         kwargs["samples"] = int(self.samples.GetValue())
+        kwargs["mintime"] = float(self.mintime.GetValue())
+        kwargs["minsource"] = int(self.minsource.GetValue())
         kwargs["tfce"] = self.sig.is_tfce()
         kwargs["pmin"] = float(self.sig.get_pmin())
         return kwargs
+
+    def toggle_minsource(self, evt=None):
+        self.minsource.Toggle()
+        self.sizer.Layout()
 
 
 class TextEntryWithLabel(wx.BoxSizer):
@@ -153,13 +168,23 @@ class TextEntryWithLabel(wx.BoxSizer):
 
     def __init__(self, parent, orientation=wx.HORIZONTAL, label="", value=""):
         super().__init__(orientation)
-        label = wx.StaticText(parent, label=label)
+        self.label = wx.StaticText(parent, label=label)
         self.field = wx.TextCtrl(parent, value=value)
-        self.Add(label, **self.label_add_params[orientation])
+        self.Add(self.label, **self.label_add_params[orientation])
         self.Add(self.field)
 
     def GetValue(self):
         return self.field.GetValue()
+
+    def Toggle(self):
+        if self.field.IsShown():
+            self.field.Hide()
+        else:
+            self.field.Show()
+        if self.label.IsShown():
+            self.label.Hide()
+        else:
+            self.label.Show()
 
 
 class SignificanceType(wx.BoxSizer):
