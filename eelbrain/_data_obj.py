@@ -3133,8 +3133,10 @@ class NDVar:
             if n > width - 3:
                 return ', '.join(items[:i]) + '...'
         out = ', '.join(items)
-        range_desc = f'; {np.nanmin(self.x):g} - {np.nanmax(self.x):g}'
-        if len(out) + len(range_desc) <= width:
+        range_desc = f'{np.nanmin(self.x):g} - {np.nanmax(self.x):g}'
+        if len(out) + 2 + len(range_desc) <= width:
+            if out:
+                out += '; '
             out += range_desc
         return out
 
