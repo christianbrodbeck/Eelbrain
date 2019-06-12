@@ -37,14 +37,31 @@ DAMAGE.
 import warnings
 
 import nibabel
-from nilearn.image.resampling import get_bounds
-
 import numpy as np
 
 from .._data_obj import VolumeSourceSpace
 from .._utils.numpy_utils import newaxis
 from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, brain_data, butterfly_data
 from ._utsnd import Butterfly
+
+
+# Copied from nilearn.image.resampling to avoid sklearn import with forced warnings
+def get_bounds(shape, affine):
+    adim, bdim, cdim = shape
+    adim -= 1
+    bdim -= 1
+    cdim -= 1
+    # form a collection of vectors for each 8 corners of the box
+    box = np.array([[0.,   0,    0,    1],
+                    [adim, 0,    0,    1],
+                    [0,    bdim, 0,    1],
+                    [0,    0,    cdim, 1],
+                    [adim, bdim, 0,    1],
+                    [adim, 0,    cdim, 1],
+                    [0,    bdim, cdim, 1],
+                    [adim, bdim, cdim, 1]]).T
+    box = np.dot(affine, box)[:3]
+    return list(zip(box.min(axis=-1), box.max(axis=-1)))
 
 
 # Copied from nilearn.plotting.img_plotting
