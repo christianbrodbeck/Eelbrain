@@ -4,7 +4,6 @@ import os
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 import mne
-from mne.tests.test_label import assert_labels_equal
 from nibabel.freesurfer import read_annot
 import pytest
 
@@ -21,13 +20,21 @@ data_dir = mne.datasets.testing.data_path()
 subjects_dir = os.path.join(data_dir, 'subjects')
 
 
-def assert_label_equal(l1, l2):
-    if isinstance(l1, mne.BiHemiLabel):
-        assert isinstance(l2, mne.BiHemiLabel)
-        assert_labels_equal(l1.lh, l2.lh)
-        assert_labels_equal(l1.rh, l2.rh)
+def assert_label_equal(l0, l1, comment=True, color=True):
+    if isinstance(l0, mne.BiHemiLabel):
+        assert isinstance(l1, mne.BiHemiLabel)
+        assert_label_equal(l0.lh, l1.lh, comment, color)
+        assert_label_equal(l0.rh, l1.rh, comment, color)
     else:
-        assert_labels_equal(l1, l2)
+        if comment:
+            assert l0.comment == l1.comment
+        if color:
+            assert l0.color == l1.color
+        assert l0.hemi == l1.hemi
+        assert l0.subject == l1.subject
+        assert_array_equal(l0.vertices, l1.vertices)
+        assert_allclose(l0.pos, l1.pos)
+        assert_allclose(l0.values, l1.values)
 
 
 @requires_mne_sample_data
@@ -169,8 +176,8 @@ def test_combination_label():
     rh = labels['superiortemporal-rh'] + labels['middletemporal-rh'] + labels['inferiortemporal-rh']
     rh.name = 'temporal-rh'
     assert len(l) == 2
-    assert_labels_equal(l[0], lh)
-    assert_labels_equal(l[1], rh)
+    assert_label_equal(l[0], lh)
+    assert_label_equal(l[1], rh)
 
     # only rh
     l = combination_label('temporal-rh', "superiortemporal + middletemporal + inferiortemporal",
@@ -184,7 +191,7 @@ def test_combination_label():
                                           "split(inferiortemporal, 2)[0] +"
                                           "split(inferiortemporal, 2)[1]",
                            labels, subjects_dir)
-    assert_labels_equal(l2[0], l[0], comment=False, color=False)
+    assert_label_equal(l2[0], l[0], comment=False, color=False)
 
     # names with .
     labels = {l.name: l for l in
