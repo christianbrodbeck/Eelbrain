@@ -555,9 +555,9 @@ def test_dim_categorial():
     dim_i = dim.intersect(dim2)
     assert dim_i == Categorial(name, ['b', 'c'])
 
-    # unicode
-    dimu = Categorial(name, ['c', 'b', 'e'])
-    assert dimu == dim2
+    # connectivity
+    dim = Categorial(name, ['c', 'b', 'e'], [('b', 'c'), ('b', 'e')])
+    assert_array_equal(dim.connectivity(), [[0, 1], [1, 2]])
 
 
 def test_dim_scalar():
