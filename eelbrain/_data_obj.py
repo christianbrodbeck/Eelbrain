@@ -6984,6 +6984,24 @@ def _subgraph_edges(connectivity, int_index):
         return np.empty((0, 2), dtype=np.uint32)
 
 
+def connectivity_from_name_pairs(neighbors, items, allow_missing=False):
+    pairs = set()
+    for src, dst in neighbors:
+        if src not in items or dst not in items:
+            if allow_missing:
+                continue
+            else:
+                item = src if src not in items else dst
+                raise ValueError(f"Connectivity contains unknown item {item!r}")
+        a = items.index(src)
+        b = items.index(dst)
+        if a < b:
+            pairs.add((a, b))
+        else:
+            pairs.add((b, a))
+    return np.array(sorted(pairs), np.uint32)
+
+
 class Dimension:
     """Base class for dimensions.
     
@@ -7017,25 +7035,7 @@ class Dimension:
         if isinstance(connectivity, str):
             self._connectivity = None
         else:
-            if not (isinstance(connectivity, np.ndarray) and connectivity.dtype == np.uint32):
-                connectivity = np.asarray(connectivity)
-                if connectivity.dtype.kind != 'i':
-                    raise TypeError(f"connectivity array needs to be integer type, got {connectivity.dtype}")
-                elif connectivity.shape != (len(connectivity), 2):
-                    raise ValueError(f"connectivity requires shape (n_edges, 2), got array with shape {connectivity.shape}")
-                elif connectivity.min() < 0:
-                    raise ValueError("connectivity can not have negative values")
-                elif connectivity.max() >= len(self):
-                    raise ValueError("connectivity has value larger than number of elements in dimension")
-                elif np.any(connectivity[:, 0] >= connectivity[:, 1]):
-                    raise ValueError("All edges [i, j] must have i < j")
-                elif np.any(np.diff(connectivity, axis=0) > 0):
-                    edges = list(map(tuple, connectivity))
-                    edges.sort()
-                    connectivity = np.array(edges, np.uint32)
-                else:
-                    connectivity = connectivity.astype(np.uint32)
-            self._connectivity = connectivity
+            self._connectivity = self._coerce_connectivity(connectivity)
             connectivity = 'custom'
 
         if not isinstance(connectivity, str):
@@ -7043,6 +7043,30 @@ class Dimension:
         elif connectivity not in self._CONNECTIVITY_TYPES:
             raise ValueError("connectivity=%r" % (connectivity,))
         self._connectivity_type = connectivity
+
+    def _coerce_connectivity(self, connectivity):
+        if isinstance(connectivity, np.ndarray) and connectivity.dtype == np.uint32:
+            # assume that connectivity is inherited, skip checks
+            return connectivity
+
+        connectivity = np.asarray(connectivity)
+        if connectivity.dtype.kind != 'i':
+            raise TypeError(f"connectivity array needs to be integer type, got {connectivity.dtype}")
+        elif connectivity.shape != (len(connectivity), 2):
+            raise ValueError(f"connectivity requires shape (n_edges, 2), got array with shape {connectivity.shape}")
+        elif connectivity.min() < 0:
+            raise ValueError("connectivity can not have negative values")
+        elif connectivity.max() >= len(self):
+            raise ValueError("connectivity has value larger than number of elements in dimension")
+        elif np.any(connectivity[:, 0] >= connectivity[:, 1]):
+            raise ValueError("All edges [i, j] must have i < j")
+        elif np.any(np.diff(connectivity, axis=0) > 0):
+            edges = list(map(tuple, connectivity))
+            edges.sort()
+            connectivity = np.array(edges, np.uint32)
+        else:
+            connectivity = connectivity.astype(np.uint32)
+        return connectivity
 
     def __getstate__(self):
         return {'name': self.name, 'connectivity': self._connectivity,
@@ -7567,14 +7591,19 @@ class Categorial(Dimension):
         Dimension name.
     values : sequence of str
         Names of the entries.
-    connectivity : 'grid' | 'none' | array of int, (n_edges, 2)
-        Connectivity between elements. Set to ``"none"`` for no connections or 
-        ``"grid"`` to use adjacency in the sequence of elements as connection. 
-        Set to :class:`numpy.ndarray` to specify custom connectivity. The array
-        should be of shape (n_edges, 2), and each row should specify one 
-        connection [i, j] with i < j, with rows sorted in ascending order. If
-        the array's dtype is uint32, property checks are disabled to improve 
-        efficiency.
+    connectivity : str | list of (str, str) | array of int, (n_edges, 2)
+        Connectivity between elements. Can be specified as:
+
+        - ``"none"`` for no connections
+        - ``"grid"`` to use adjacency in ``values``
+        - list of connections based on items in ``values`` (e.g.,
+          ``values=['v1', 'v2', 'v3'],
+          connectivity=[('v1', 'v3'), ('v2', 'v3'), ...]``)
+        - :class:`numpy.ndarray` of int, shape (n_edges, 2), to specify
+          connections in terms of indices. Each row should specify one
+          connection ``[i, j]`` with ``i < j``. If the array's dtype is
+          ``uint32``, property checks are disabled to improve efficiency.
+
     """
     def __init__(self, name, values, connectivity='none'):
         self.values = tuple(values)
@@ -7584,6 +7613,12 @@ class Categorial(Dimension):
             raise ValueError("All Categorial values must be strings; got %r." %
                              (self.values,))
         Dimension.__init__(self, name, connectivity)
+
+    def _coerce_connectivity(self, connectivity):
+        if isinstance(connectivity[0][0], str):
+            return connectivity_from_name_pairs(connectivity, self.values)
+        else:
+            return Dimension._coerce_connectivity(self, connectivity)
 
     def __getstate__(self):
         out = Dimension.__getstate__(self)
@@ -7934,12 +7969,12 @@ class Sensor(Dimension):
         Connectivity between elements. Can be specified as:
 
         - ``"none"`` for no connections
+        - ``"grid"`` to use adjacency in the sensor names
         - list of connections (e.g., ``[('OZ', 'O1'), ('OZ', 'O2'), ...]``)
         - :class:`numpy.ndarray` of int, shape (n_edges, 2), to specify
           connections in terms of indices. Each row should specify one
-          connection [i, j] with i < j. If the array's dtype is uint32,
-          property checks are disabled to improve efficiency.
-        - ``"grid"`` to use adjacency in the sensor names
+          connection ``[i, j]`` with ``i < j``. If the array's dtype is
+          ``uint32``, property checks are disabled to improve efficiency.
 
     Attributes
     ----------
@@ -7992,11 +8027,14 @@ class Sensor(Dimension):
             raise ValueError("Length mismatch: got %i locs but %i names" %
                              (n, len(names)))
         self.names = Datalist(names)
-        # allow connectivity as sensor pairs
-        if not isinstance(connectivity, str) and isinstance(connectivity[0][0], str):
-            connectivity = self._connectivity_from_name_pairs(connectivity)
         Dimension.__init__(self, 'sensor', connectivity)
         self._init_secondary()
+
+    def _coerce_connectivity(self, connectivity):
+        if isinstance(connectivity[0][0], str):
+            return connectivity_from_name_pairs(connectivity, self.names, allow_missing=True)
+        else:
+            return Dimension._coerce_connectivity(self, connectivity)
 
     def _init_secondary(self):
         self.x = self.locs[:, 0]
@@ -8013,19 +8051,6 @@ class Sensor(Dimension):
 
         # cache for transformed locations
         self._transformed = {}
-
-    def _connectivity_from_name_pairs(self, neighbors):
-        pairs = set()
-        for src, dst in neighbors:
-            if src not in self.names or dst not in self.names:
-                continue
-            a = self.names.index(src)
-            b = self.names.index(dst)
-            if a < b:
-                pairs.add((a, b))
-            else:
-                pairs.add((b, a))
-        return np.array(sorted(pairs), np.uint32)
 
     def __getstate__(self):
         out = Dimension.__getstate__(self)
