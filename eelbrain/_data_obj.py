@@ -7313,8 +7313,8 @@ class Dimension:
             return [self._dim_index(i) for i in index_to_int_array(arg, len(self))]
 
     def _distances(self):
-        "Distance matrix for dimension elements"
-        raise NotImplementedError("Distances for %s" % self.__class__.__name__)
+        "Distance matrix for dimension elements (square form)"
+        raise NotImplementedError(f"Distances for {self.__class__.__name__}")
 
     def intersect(self, dim, check_dims=True):
         """Create a Dimension that is the intersection with dim
@@ -8187,9 +8187,11 @@ class Sensor(Dimension):
         else:
             return Dimension._dim_index(self, index)
 
+    def _distances(self):
+        return squareform(pdist(self.locs))
+
     def _generate_connectivity(self):
-        raise RuntimeError("Sensor connectivity is not defined. Use "
-                           "Sensor.set_connectivity().")
+        raise RuntimeError("Sensor connectivity is not defined. Use Sensor.set_connectivity().")
 
     @classmethod
     def from_xyz(cls, path=None, **kwargs):
