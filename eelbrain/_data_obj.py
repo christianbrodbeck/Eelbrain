@@ -4428,17 +4428,18 @@ class NDVar:
         if window == 'gaussian':
             if mode != 'center':
                 raise ValueError(f"mode={mode!r}; for gaussian smoothing, mode must be 'center'")
-            elif dim_object._connectivity_type == 'custom':
-                if window_samples is not None:
-                    raise ValueError(f"window_samples for dimension with connectivity not based on adjacency")
-                m = gaussian_smoother(dim_object._distances(), window_size)
+            elif window_samples is not None:
+                if dim_object._connectivity_type == 'custom':
+                    raise ValueError(f"window_samples={window_samples!r} for dimension with connectivity not based on adjacency")
+                raise NotImplementedError(f"Gaussian smoothing for window_samples")
             else:
-                raise NotImplementedError(f"Gaussian smoothing for {dim_object.__class__.__name__} dimension")
+                dist = dim_object._distances()
+            m = gaussian_smoother(dist, window_size)
             x = np.tensordot(m, self.x, (1, axis))
             if axis:
                 x = x.swapaxes(0, axis)
         elif dim_object._connectivity_type == 'custom':
-            raise ValueError(f"window={window}; for {dim_object.__class__.__name__} dimension (must be 'gaussian')")
+            raise ValueError(f"window={window!r} for {dim_object.__class__.__name__} dimension (must be 'gaussian')")
         else:
             if window_samples:
                 n = window_samples
@@ -4447,7 +4448,7 @@ class NDVar:
                 if not n:
                     raise ValueError(f"window_size={window_size}: Window too small for sampling rate")
             else:
-                raise NotImplementedError("dim=%r" % (dim,))
+                raise NotImplementedError(f"window={window!r} for {dim_object.__class__.__name__} dimension")
             window = scipy.signal.get_window(window, n, False)
             window /= window.sum()
             window.shape = (1,) * axis + (n,) + (1,) * (self.ndim - axis - 1)
