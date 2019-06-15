@@ -20,8 +20,8 @@ class StatsFrame(EelbrainFrame):
 
     def InitUI(self):
         self.sizer = wx.BoxSizer(wx.VERTICAL)
-        panel = InfoPanel(self, self.loader, self.ds)
-        self.sizer.Add(panel)
+        self.info_panel = InfoPanel(self, self.loader, self.ds)
+        self.sizer.Add(self.info_panel)
         self.spatiotemp = SpatiotemporalSettings(self)
         self.sizer.Add(self.spatiotemp, **self.add_params)
         self.test_model = TestModelInfo(self, self.loader)
@@ -47,12 +47,15 @@ class StatsFrame(EelbrainFrame):
 
     def get_data_for_test(self):
         info = self.roi.get_roi_info()
-        src = self.ds["src"]
+        subjects = self.info_panel.subj_sel.get_selected_subjects()
+        ds = self.ds.sub("subject.isin(subjects)")
+        src = ds["src"]
         src = set_parc(src, info["atlas"])
         if self.spatiotemp.is_temporal():
-            return src.summary(source=info["label"])
+            data = src.summary(source=info["label"])
         else:
-            return src.sub(source=info["label"])
+            data = src.sub(source=info["label"])
+        return ds, data
 
     def run_test(self, evt):
         test_type = self.test_model.get_test_type()
@@ -60,9 +63,9 @@ class StatsFrame(EelbrainFrame):
             test_func = testnd.anova
         elif test_type == "t-test":
             test_func = testnd.ttest_rel
-        data = self.get_data_for_test()
+        ds, data = self.get_data_for_test()
         kwargs = self.get_test_kwargs()
-        res = test_func(data, ds=self.ds, match="subject", **kwargs)
+        res = test_func(data, ds=ds, match="subject", **kwargs)
         print(res)
 
 
