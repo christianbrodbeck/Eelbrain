@@ -259,6 +259,10 @@ def iseffect(x):
     return isinstance(x, (Var, _Effect, NonbasicEffect))
 
 
+def ismodelobject(x):
+    return isinstance(x, (Model, Var, _Effect, NonbasicEffect))
+
+
 def isnestedin(item, item2):
     "Determine whether ``item`` is nested in ``item2``"
     if isinstance(item, NestedEffect):
@@ -1231,11 +1235,14 @@ class Var:
             return other
 
     def __add__(self, other):
-        if isdataobject(other):
+        if ismodelobject(other):
             # ??? should Var + Var return sum or Model?
             return Model((self, other))
-        x = self.x + self._arg_x(other)
         info = {**self.info, 'longname': f"{longname(self)} + {longname(other)}"}
+        if isinstance(other, NDVar):
+            dims, x_other, x_self = other._align(self)
+            return NDVar(x_self + x_other, dims, info, self.name)
+        x = self.x + self._arg_x(other)
         return Var(x, self.name, info=info)
 
     def __iadd__(self, other):
@@ -1249,8 +1256,11 @@ class Var:
 
     def __sub__(self, other):
         "subtract: values are assumed to be ordered. Otherwise use .sub method."
-        x = self.x - self._arg_x(other)
         info = {**self.info, 'longname': f"{longname(self)} - {longname(other)}"}
+        if isinstance(other, NDVar):
+            dims, x_other, x_self = other._align(self)
+            return NDVar(x_self - x_other, dims, info, self.name)
+        x = self.x - self._arg_x(other)
         return Var(x, self.name, info=info)
 
     def __isub__(self, other):
@@ -1267,8 +1277,11 @@ class Var:
             return Model((self,)) * other
         elif iscategorial(other):
             return Model((self, other, self % other))
-        x = self.x * self._arg_x(other)
         info = {**self.info, 'longname': f"{longname(self)} * {longname(other)}"}
+        if isinstance(other, NDVar):
+            dims, x_other, x_self = other._align(self)
+            return NDVar(x_self * x_other, dims, info, self.name)
+        x = self.x * self._arg_x(other)
         return Var(x, self.name, info=info)
 
     def __imul__(self, other):
@@ -1281,8 +1294,11 @@ class Var:
         return Var(x, self.name, info=info)
 
     def __floordiv__(self, other):
-        x = self.x // self._arg_x(other)
         info = {**self.info, 'longname': f"{longname(self)} // {longname(other)}"}
+        if isinstance(other, NDVar):
+            dims, x_other, x_self = other._align(self)
+            return NDVar(x_self // x_other, dims, info, self.name)
+        x = self.x // self._arg_x(other)
         return Var(x, self.name, info=info)
 
     def __ifloordiv__(self, other):
@@ -1294,10 +1310,13 @@ class Var:
             return Model(self) % other
         elif isinstance(other, Var):
             pass
-        elif isdataobject(other):
+        elif ismodelobject(other):
             return Interaction((self, other))
-        x = self.x % self._arg_x(other)
         info = {**self.info, 'longname': f"{longname(self)} % {longname(other)}"}
+        if isinstance(other, NDVar):
+            dims, x_other, x_self = other._align(self)
+            return NDVar(x_self % x_other, dims, info, self.name)
+        x = self.x % self._arg_x(other)
         return Var(x, self.name, info=info)
 
     def __imod__(self, other):
@@ -1340,8 +1359,11 @@ class Var:
             # create effect
             name = '%s per %s' % (self.name, other.name)
             return NonbasicEffect(codes, [self, other], name, beta_labels=other.dummy_complete_labels)
-        x = self.x / self._arg_x(other)
         info = {**self.info, 'longname': f"{longname(self)} / {longname(other)}"}
+        if isinstance(other, NDVar):
+            dims, x_other, x_self = other._align(self)
+            return NDVar(x_self / x_other, dims, info, self.name)
+        x = self.x / self._arg_x(other)
         return Var(x, self.name, info=info)
 
     def __idiv__(self, other):
@@ -1349,8 +1371,11 @@ class Var:
         return self
 
     def __pow__(self, other):
-        x = self.x ** self._arg_x(other)
         info = {**self.info, 'longname': f"{longname(self)} ** {longname(other)}"}
+        if isinstance(other, NDVar):
+            dims, x_other, x_self = other._align(self)
+            return NDVar(x_self ** x_other, dims, info, self.name)
+        x = self.x ** self._arg_x(other)
         return Var(x, self.name, info=info)
 
     def __round__(self, n=0):
@@ -2885,7 +2910,13 @@ class NDVar:
         ``c`` will be [0 300] ms.
         """
         if isinstance(other, Var):
-            return self.dims, self.x, self._ialign(other)
+            if self.has_case:
+                return self.dims, self.x, self._ialign(other)
+            else:
+                dims = (Case, *self.dims)
+                x_self = self.x[np.newaxis]
+                x_other = other.x.reshape([-1, *repeat(1, self.ndim)])
+                return dims, x_self, x_other
         elif isinstance(other, NDVar):
             dimnames = list(self.dimnames)
             i_add = 0
@@ -3010,6 +3041,32 @@ class NDVar:
 
     def __rtruediv__(self, other):
         return self.__rdiv__(other)
+
+    def __floordiv__(self, other):
+        dims, x_self, x_other = self._align(other)
+        return NDVar(x_self // x_other, dims, self.info, self.name)
+
+    def __ifloordiv__(self, other):
+        if self.x.dtype.kind == 'b':
+            return self.__floordiv__(other)
+        self.x //= self._ialign(other)
+        return self
+
+    def __rfloordiv__(self, other):
+        return NDVar(other // self.x, self.dims, self.info, self.name)
+
+    def __mod__(self, other):
+        dims, x_self, x_other = self._align(other)
+        return NDVar(x_self % x_other, dims, self.info, self.name)
+
+    def __imod__(self, other):
+        if self.x.dtype.kind == 'b':
+            return self.__mod__(other)
+        self.x %= self._ialign(other)
+        return self
+
+    def __rmod__(self, other):
+        return NDVar(other % self.x, self.dims, self.info, self.name)
 
     def __mul__(self, other):
         dims, x_self, x_other = self._align(other)

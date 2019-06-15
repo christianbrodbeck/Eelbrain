@@ -3,7 +3,7 @@ from copy import deepcopy
 from itertools import chain, product
 from math import log
 from operator import (
-    add, iadd, sub, isub, mul, imul, truediv, itruediv, floordiv, ifloordiv, mod, imod)
+    add, iadd, sub, isub, mul, imul, pow, ipow, truediv, itruediv, floordiv, ifloordiv, mod, imod)
 import os
 import pickle
 import shutil
@@ -38,6 +38,8 @@ from eelbrain.testing import (
 OPERATORS = ((add, iadd, '+'),
              (sub, isub, '-'),
              (mul, imul, '*'),
+             (mul, imul, '*'),
+             (pow, ipow, '**'),
              (truediv, itruediv, '/'),
              (floordiv, ifloordiv, '//'),
              (mod, imod, '%'))
@@ -1203,12 +1205,27 @@ def test_ndvar_indexing():
 
     # argmax
     x.x[10, 10] = 20
-    assert x.argmax()== ('L10', 0.1)
+    assert x.argmax() == ('L10', 0.1)
     assert x[('L10', 0.1)] == 20
     assert x.sub(source='L10').argmax() == 0.1
     assert x.sub(time=0.1).argmax() == 'L10'
 
-    # set
+    # broadcasting
+    u = ds[0, 'uts']
+    dim = Categorial('test_dim', ['a', 'b'])
+    v = NDVar([5, 1], dim)
+    for op, _, desc in OPERATORS:
+        y = op(v, u)
+        assert_array_equal(y['a'], op(5, u.x))
+        assert_array_equal(y['b'], op(1, u.x))
+    # with Case from Var
+    case = Var([4, 1])
+    for op, iop, desc in OPERATORS:
+        y = op(case, u)
+        assert_array_equal(y[0], op(4, u.x))
+        assert_array_equal(y[1], op(1, u.x))
+
+    # set NDVar elements
     x = ds['uts'].copy()
     x[:3, :.0] = 0
     assert_array_equal(x.x[:3, :20], 0.)
@@ -1245,7 +1262,7 @@ def test_ndvar_indexing():
     # mask that is smaller than array
     mask = mask_ndvar.sub(time=(0.100, None))
     with pytest.raises(TypeError):
-        y_masked = y.mask(mask)
+        y.mask(mask)
     y_masked = y.mask(mask, missing=True)
     assert_array_equal(y_masked.x.mask[:, :, 70:], True)
     assert_array_equal(y_masked.x.mask[:, :, 30:70], False)
