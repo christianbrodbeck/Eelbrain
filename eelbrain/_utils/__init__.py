@@ -4,4 +4,4 @@ from .basic import (
     LazyProperty, keydefaultdict, n_decimals, natsorted,
     log_level, set_log_level, ScreenHandler,
 )
-from .system import IS_OSX, IS_WINDOWS, user_activity
+from .system import IS_OSX, IS_WINDOWS, user_activity, restore_main_spec

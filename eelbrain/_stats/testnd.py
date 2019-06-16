@@ -50,7 +50,7 @@ from .._data_obj import (
     ascategorial, asmodel, asndvar, asvar, assub,
     cellname, combine, dataobj_repr)
 from .._exceptions import OldVersionError, WrongDimension, ZeroVariance
-from .._utils import LazyProperty, user_activity
+from .._utils import LazyProperty, user_activity, restore_main_spec
 from .._utils.numpy_utils import FULL_AXIS_SLICE
 from . import opt, stats, vector
 from .connectivity import Connectivity, find_peaks
@@ -3614,6 +3614,8 @@ def setup_workers(test_func, dist, func_args):
     dist_queue = SimpleQueue()
     kill_beacon = Event()
 
+    restore_main_spec()
+
     # permutation workers
     y, y_flat_shape, stat_map_shape = dist.data_for_permutation()
     args = (permutation_queue, dist_queue, y, y_flat_shape, stat_map_shape,
@@ -3690,6 +3692,8 @@ def setup_workers_me(test_func, dists, thresholds):
     permutation_queue = SimpleQueue()
     dist_queue = SimpleQueue()
     kill_beacon = Event()
+
+    restore_main_spec()
 
     # permutation workers
     dist = dists[0]

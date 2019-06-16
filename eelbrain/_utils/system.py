@@ -31,3 +31,11 @@ class ActivityContext(ContextDecorator):
 
 
 user_activity = ActivityContext(c.NSActivityUserInitiated, 'Eelbrain user activity')
+
+
+def restore_main_spec():
+    """On windows, running a multiprocessing job seems to sometimes remove this attribute"""
+    if IS_WINDOWS:
+        main_module = sys.modules['__main__']
+        if not hasattr(main_module, '__spec__'):
+            main_module.__spec__ = None
