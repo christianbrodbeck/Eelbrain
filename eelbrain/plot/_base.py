@@ -837,9 +837,9 @@ class LayerData:
             for y, args in ((self.y, args_main), (y_masked, args_masked)):
                 yield LayerData(y, plot_type, args)
         elif plot_type == PlotType.IMAGE:
-            x = NDVar(self.y.x.data, self.y.dims, self.y.info, self.y.name)
+            x = NDVar(self.y.x.data, self.y.dims, self.y.name, self.y.info)
             yield LayerData(x, PlotType.IMAGE)
-            x = NDVar(1. - self.y.x.mask, self.y.dims, {'meas': 'mask'}, self.y.name)
+            x = NDVar(1. - self.y.x.mask, self.y.dims, self.y.name, {'meas': 'mask'})
             yield LayerData(x, PlotType.CONTOUR, {'levels': [0.5], 'colors': ['black']}, bin_func=np.max)
         else:
             raise RuntimeError(f"plot_type={plot_type!r}")

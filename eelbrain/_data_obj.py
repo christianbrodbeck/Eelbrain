@@ -1034,7 +1034,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise', dim_intersect
         else:
             x = np.array([v.x for v in sub_items])
         dims = ('case',) + dims
-        return NDVar(x, dims, _info.merge_info(sub_items), name)
+        return NDVar(x, dims, name, _info.merge_info(sub_items))
     elif stype is Datalist:
         return Datalist(sum(items, []), name, items[0]._fmt)
     else:
@@ -1094,13 +1094,13 @@ class Var:
         are flattened as long as only 1 dimension is longer than 1.
     name : str | None
         Name of the variable
+    info : dict
+        Info dictionary. The "longname" entry is used for display purposes.
     repeat : int | array of int
         repeat each element in ``x``, either a constant or a different number
         for each element.
     tile : int
         Repeat ``x`` as a whole ``tile`` many times.
-    info : dict
-        Info dictionary. The "longname" entry is used for display purposes.
 
     Attributes
     ----------
@@ -1119,9 +1119,11 @@ class Var:
     """
     ndim = 1
 
-    def __init__(self, x, name=None, repeat=1, tile=1, info=None):
+    def __init__(self, x, name=None, info=None, repeat=1, tile=1):
         if isinstance(x, str):
             raise TypeError("Var can't be initialized with a string")
+        if isinstance(info, int):
+            raise RuntimeError("Var argument order has changed; please update your code")
 
         if isinstance(x, Iterator):
             x = list(x)
@@ -2742,11 +2744,11 @@ class NDVar:
     dims : Sequence of Dimension
         The dimensions characterizing the axes of the data. If present, ``Case``
         should always occupy the first position.
+    name : str
+        Name for the NDVar.
     info : dict
         A dictionary with data properties (can contain arbitrary
         information that will be accessible in the info attribute).
-    name : str
-        Name for the NDVar.
 
 
     Notes
@@ -2798,7 +2800,11 @@ class NDVar:
     >>> ndvar -= ndvar.mean(time=(None, 0))
 
     """
-    def __init__(self, x, dims, info={}, name=None):
+    def __init__(self, x, dims, name=None, info=None):
+        if isinstance(name, dict):  # backwards compatibility
+            warn("NDVar argument order has changed; please update your code", DeprecationWarning)
+            name, info = info, name
+
         # check data shape
         if isinstance(dims, Dimension) or dims is Case or isinstance(dims, str):
             dims_ = [dims]
@@ -2807,34 +2813,25 @@ class NDVar:
 
         x = np.asanyarray(x)
         if len(dims_) != x.ndim:
-            raise DimensionMismatchError(
-                "Unequal number of dimensions (data: %i, dims: %i)" %
-                (x.ndim, len(dims_)))
+            raise DimensionMismatchError(f"Unequal number of dimensions (data: {x.ndim}, dims: {len(dims_)})")
 
         first_dim = dims_[0]
         if first_dim is Case or (isinstance(first_dim, str) and first_dim == 'case'):
             dims_[0] = Case(len(x))
 
         if not all(isinstance(dim, Dimension) for dim in dims_):
-            raise TypeError(
-                "Invalid dimension in dims=%r. All dimensions need to be "
-                "Dimension subclass objects, with the exception of the "
-                "first dimension which can also be 'case'" % (dims,))
+            raise TypeError(f"dims={dims}: All dimensions must be Dimension subclass objects")
         elif any(isinstance(dim, Case) for dim in dims_[1:]):
-            raise TypeError(
-                "Invalid dimension in dims=%r. Only the first dimension can be "
-                "Case." % (dims,))
+            raise TypeError(f"dim={dims}: Only the first dimension can be Case")
 
         # check dimensions
         for dim, n in zip(dims_, x.shape):
             if len(dim) != n:
-                raise DimensionMismatchError(
-                    "Dimension %r length mismatch: %i in data, %i in dimension "
-                    "%r" % (dim.name, n, len(dim), dim.name))
+                raise DimensionMismatchError(f"Dimension {dim.name!r} length mismatch: {n} in data, {len(dim)} in dimension")
 
         self.x = x
         self.dims = tuple(dims_)
-        self.info = dict(info)
+        self.info = {} if info is None else dict(info)
         self.name = name
         self._init_secondary()
 
@@ -2848,8 +2845,7 @@ class NDVar:
         # Dimension attributes
         for dim in self._truedims:
             if hasattr(self, dim.name):
-                raise ValueError("Invalid dimension name: %r (name is reserved "
-                                 "for an NDVar attribute)" % dim.name)
+                raise ValueError(f"Invalid dimension name: {dim.name!r} (name is reserved for an NDVar attribute)")
             else:
                 setattr(self, dim.name, dim)
 
@@ -3470,7 +3466,7 @@ class NDVar:
             x = func(self.x, axes)
             dims = [self.dims[i] for i in range(self.ndim) if i not in axes]
 
-        return self._package_aggregated_output(x, dims, _info.for_data(x, self.info), name)
+        return self._package_aggregated_output(x, dims, name, _info.for_data(x, self.info))
 
     def astype(self, dtype):
         """Copy of the NDVar with data cast to the specified type
@@ -4017,7 +4013,7 @@ class NDVar:
             cmap = cmap.swapaxes(0, nad_ax)
 
         info = {**self.info, 'cids': cids}
-        return NDVar(cmap, self.dims, info, name or self.name)
+        return NDVar(cmap, self.dims, name or self.name, info)
 
     def log(self, base=None, name=None):
         """Element-wise log
@@ -4662,7 +4658,7 @@ class NDVar:
             if 'summary_info' in info:
                 info = info.copy()
                 info.update(info.pop('summary_info'))
-            return self._package_aggregated_output(x, dims, info, name)
+            return self._package_aggregated_output(x, dims, name, info)
 
     def sub(self, *args, **kwargs):
         """Retrieve a slice through the NDVar.
@@ -9125,7 +9121,7 @@ class SourceSpaceBase(Dimension):
         x = mindist < extent
         dims = (self,)
         info = {'seeds': seeds, 'extent': extent}
-        return NDVar(x, dims, info, name)
+        return NDVar(x, dims, name, info)
 
     @LazyProperty
     def coordinates(self):
@@ -9212,7 +9208,7 @@ class SourceSpaceBase(Dimension):
             name = label.name
         else:
             raise TypeError(f"{label!r}")
-        return NDVar(idx, (self,), {}, name)
+        return NDVar(idx, (self,), name)
 
     def _is_superset_of(self, dim):
         self._assert_same_base(dim)

@@ -541,7 +541,7 @@ class t_contrast_rel(NDTest):
 
         # NDVar map of t-values
         info = _info.for_stat_map('t', threshold, tail=tail, old=ct.y.info)
-        t = NDVar(tmap, ct.y.dims[1:], info, 't')
+        t = NDVar(tmap, ct.y.dims[1:], 't', info)
 
         # store attributes
         NDTest.__init__(self, ct.y, ct.match, sub, samples, tfce, pmin, cdist,
@@ -708,11 +708,10 @@ class corr(NDTest):
 
         # compile results
         info = _info.for_stat_map('r', threshold)
-        r = NDVar(rmap, y.dims[1:], info, name)
+        r = NDVar(rmap, y.dims[1:], name, info)
 
         # store attributes
-        NDTest.__init__(self, y, match, sub, samples, tfce, pmin, cdist,
-                        tstart, tstop)
+        NDTest.__init__(self, y, match, sub, samples, tfce, pmin, cdist, tstart, tstop)
         self.x = x.name
         self.norm = None if norm is None else norm.name
         self.rmin = rmin
@@ -730,7 +729,7 @@ class corr(NDTest):
         # uncorrected probability
         pmap = stats.rtest_p(r.x, self.df)
         info = _info.for_p_map()
-        p_uncorrected = NDVar(pmap, r.dims, info, 'p_uncorrected')
+        p_uncorrected = NDVar(pmap, r.dims, 'p_uncorrected', info)
         self.p_uncorrected = p_uncorrected
         self.r_p = [[r, self.p]] if self.samples else None
 
@@ -937,7 +936,7 @@ class ttest_1samp(NDDifferenceTest):
 
         # NDVar map of t-values
         info = _info.for_stat_map('t', threshold, tail=tail, old=ct.y.info)
-        t = NDVar(tmap, ct.y.dims[1:], info, 't')
+        t = NDVar(tmap, ct.y.dims[1:], 't', info)
 
         # store attributes
         NDDifferenceTest.__init__(self, ct.y, ct.match, sub, samples, tfce, pmin, cdist, tstart, tstop)
@@ -961,7 +960,7 @@ class ttest_1samp(NDDifferenceTest):
         t = self.t
         pmap = stats.ttest_p(t.x, self.df, self.tail)
         info = _info.for_p_map(t.info)
-        p_uncorr = NDVar(pmap, t.dims, info, 'p')
+        p_uncorr = NDVar(pmap, t.dims, 'p', info)
         self.p_uncorrected = p_uncorr
 
     def _name(self):
@@ -1133,7 +1132,7 @@ class ttest_ind(NDDifferenceTest):
         self.df = df
         self.tail = tail
         info = _info.for_stat_map('t', threshold, tail=tail, old=y.info)
-        self.t = NDVar(tmap, y.dims[1:], info, 't')
+        self.t = NDVar(tmap, y.dims[1:], 't', info)
         self.tmin = tmin
         self.c1_mean = y1.mean('case', name=cellname(c1_name))
         self.c0_mean = y0.mean('case', name=cellname(c0_name))
@@ -1152,7 +1151,7 @@ class ttest_ind(NDDifferenceTest):
         # uncorrected p
         pmap = stats.ttest_p(self.t.x, self.df, self.tail)
         info = _info.for_p_map(self.t.info)
-        p_uncorr = NDVar(pmap, self.t.dims, info, 'p')
+        p_uncorr = NDVar(pmap, self.t.dims, 'p', info)
         self.p_uncorrected = p_uncorr
 
         # composites
@@ -1339,7 +1338,7 @@ class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
 
         # NDVar map of t-values
         info = _info.for_stat_map('t', threshold, tail=tail, old=y1.info)
-        t = NDVar(tmap, y1.dims[1:], info, 't')
+        t = NDVar(tmap, y1.dims[1:], 't', info)
 
         # store attributes
         NDDifferenceTest.__init__(self, y1, match, sub, samples, tfce, pmin, cdist, tstart, tstop)
@@ -1374,7 +1373,7 @@ class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
         # uncorrected p
         pmap = stats.ttest_p(t.x, self.df, self.tail)
         info = _info.for_p_map()
-        self.p_uncorrected = NDVar(pmap, t.dims, info, 'p')
+        self.p_uncorrected = NDVar(pmap, t.dims, 'p', info)
 
         # composites
         if self.samples:
@@ -1752,7 +1751,7 @@ class anova(MultiEffectNDTest):
         f = []
         for e, fmap, df_den, f_threshold in zip(effects, fmaps, dfs_denom, thresholds):
             info = _info.for_stat_map('f', f_threshold, tail=1, old=y.info)
-            f.append(NDVar(fmap, dims, info, e.name))
+            f.append(NDVar(fmap, dims, e.name, info))
 
         # store attributes
         MultiEffectNDTest.__init__(self, y, match, sub_arg, samples, tfce, pmin,
@@ -1786,7 +1785,7 @@ class anova(MultiEffectNDTest):
                 # create f-map with cluster threshold
                 f0 = stats.ftest_f(pmin, e.df, df_den)
                 info = _info.for_stat_map('f', f0)
-                f_ = NDVar(fmap.x, fmap.dims, info, e.name)
+                f_ = NDVar(fmap.x, fmap.dims, e.name, info)
                 # add overlay with cluster
                 if cdist.probability_map is not None:
                     f_and_clusters.append([f_, cdist.probability_map])
@@ -1799,7 +1798,7 @@ class anova(MultiEffectNDTest):
         for e, f, df_den in zip(self._effects, self.f, self._dfs_denom):
             info = _info.for_p_map()
             pmap = stats.ftest_p(f.x, e.df, df_den)
-            p_ = NDVar(pmap, f.dims, info, e.name)
+            p_ = NDVar(pmap, f.dims, e.name, info)
             p_uncorr.append(p_)
         self.p_uncorrected = p_uncorr
 
@@ -1956,7 +1955,7 @@ class Vector(NDDifferenceTest):
             if v_mean.ndim == 1:
                 self.t2 = t2_map
             else:
-                self.t2 = NDVar(t2_map, v_mean_norm.dims, _info.for_stat_map('t2'), 't2')
+                self.t2 = NDVar(t2_map, v_mean_norm.dims, 't2', _info.for_stat_map('t2'))
         else:
             cdist.add_original(v_mean_norm.x if v_mean.ndim > 1 else v_mean_norm)
             self.t2 = None
@@ -2296,7 +2295,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
             if v_mean.ndim == 1:
                 self.t2 = t2_map
             else:
-                self.t2 = NDVar(t2_map, v_mean_norm.dims, _info.for_stat_map('t2'), 't2')
+                self.t2 = NDVar(t2_map, v_mean_norm.dims, 't2', _info.for_stat_map('t2'))
         else:
             cdist.add_original(v_mean_norm.x if v_mean.ndim > 1 else v_mean_norm)
             self.t2 = None
@@ -2902,7 +2901,7 @@ class NDPermutationDistribution:
         x = np.empty(shape, ndvar.x.dtype)
         x.fill(default)
         x[FULL_AXIS_SLICE * t_ax + (t_slice,)] = ndvar.x
-        return NDVar(x, dims, ndvar.info, ndvar.name)
+        return NDVar(x, dims, ndvar.name, ndvar.info)
 
     def add_original(self, stat_map):
         """Add the original statistical parameter map.
@@ -3114,9 +3113,7 @@ class NDPermutationDistribution:
             return x
         if not external_shape and self._nad_ax:
             x = x.swapaxes(0, self._nad_ax)
-        if info is None:
-            info = {}
-        return NDVar(x, self.dims, info, self.name)
+        return NDVar(x, self.dims, self.name, info)
 
     def finalize(self):
         "Package results and delete temporary data"
@@ -3359,7 +3356,7 @@ class NDPermutationDistribution:
                 c_map = c_map.swapaxes(0, self._nad_ax)
 
             # Dataset with cluster info
-            cluster_map = NDVar(c_map, p_map.dims, {}, "clusters")
+            cluster_map = NDVar(c_map, p_map.dims, "clusters")
             ds = self._cluster_properties(cluster_map, cids)
             ds.info['clusters'] = cluster_map
             min_pos = ndimage.minimum_position(p_map.x, c_map, cids)
@@ -3386,7 +3383,7 @@ class NDPermutationDistribution:
                 param_contours[-threshold] = (0.7, 0, 0.7)
             info = _info.for_stat_map(self.meas, contours=param_contours)
             info['summary_func'] = np.sum
-            ds['cluster'] = NDVar(c_maps, dims, info)
+            ds['cluster'] = NDVar(c_maps, dims, info=info)
         else:
             ds.info['clusters'] = self.cluster_map
 
@@ -3494,7 +3491,7 @@ class NDPermutationDistribution:
                 cpmap /= self.samples
 
         if dims:
-            return NDVar(cpmap, dims, _info.for_cluster_pmap(), self.name)
+            return NDVar(cpmap, dims, self.name, _info.for_cluster_pmap())
         else:
             return cpmap
 

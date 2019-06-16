@@ -167,7 +167,7 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None, ravel=None):
                 "concatenate() is not implemented for concatenating along %s "
                 "dimensions" % (dim_obj.__class__.__name__,))
         dims = ndvar.dims[:axis] + (out_dim,) + ndvar.dims[axis + 1:]
-    return NDVar(x, dims, info, name or ndvar.name)
+    return NDVar(x, dims, name or ndvar.name, info)
 
 
 def convolve(h, x, ds=None):
@@ -311,7 +311,7 @@ def correlation_coefficient(x, y, dim=None, name=None):
     if np.any(isnan):
         np.place(out, isnan, 0)
     dims = x.get_dims(shared_dims + x_only) + y.get_dims(y_only)
-    return NDVar(out, dims, x.info.copy(), name or x.name)
+    return NDVar(out, dims, name or x.name, x.info)
 
 
 def cross_correlation(in1, in2, name="{in1} * {in2}"):
@@ -414,7 +414,7 @@ def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
     if magnitude_out:
         x **= 0.5
     info = _info.default_info('A', y.info)
-    return NDVar(x, out_dims, info, y.name)
+    return NDVar(x, out_dims, y.name, info)
 
 
 def dss(ndvar):
@@ -458,8 +458,8 @@ def dss(ndvar):
 
     n_comp = len(dss_mat)
     dss_dim = Scalar('dss', np.arange(n_comp))
-    to_dss = NDVar(dss_mat, (dss_dim, data_dim), {}, 'to dss')
-    from_dss = NDVar(linalg.inv(dss_mat), (data_dim, dss_dim), {}, 'from dss')
+    to_dss = NDVar(dss_mat, (dss_dim, data_dim), 'to dss')
+    from_dss = NDVar(linalg.inv(dss_mat), (data_dim, dss_dim), 'from dss')
     return to_dss, from_dss
 
 
@@ -469,7 +469,7 @@ def erode(ndvar, dim):
     index = tuple(slice(None) if i == ax else 1 for i in range(ndvar.ndim))
     struct[index] = True
     x = ndimage.binary_erosion(ndvar.x, struct)
-    return NDVar(x, ndvar.dims, ndvar.info.copy(), ndvar.name)
+    return NDVar(x, ndvar.dims, ndvar.name, ndvar.info)
 
 
 def filter_data(ndvar, l_freq, h_freq, filter_length='auto',
@@ -499,7 +499,7 @@ def filter_data(ndvar, l_freq, h_freq, filter_length='auto',
 
     if axis is not None:
         x = x.swapaxes(axis, -1)
-    return NDVar(x, ndvar.dims, ndvar.info.copy(), ndvar.name)
+    return NDVar(x, ndvar.dims, ndvar.name, ndvar.info)
 
 
 def find_intervals(ndvar, interpolate=False):
@@ -578,7 +578,7 @@ def find_peaks(ndvar):
     peak_map = _find_peaks(x, connectivity)
     if custom_ax:
         peak_map = peak_map.swapaxes(custom_ax, 0)
-    return NDVar(peak_map, ndvar.dims, {}, ndvar.name)
+    return NDVar(peak_map, ndvar.dims, ndvar.name)
 
 
 def frequency_response(b, frequencies=None):
@@ -618,7 +618,7 @@ def frequency_response(b, frequencies=None):
     frequency = Scalar('frequency', freqs_hz, 'Hz')
     fresps = np.array(fresps).reshape(orig_shape + (-1,))
     dims = b.get_dims(dimnames[:-1]) + (frequency,)
-    return NDVar(fresps, dims, b.info.copy(), b.name)
+    return NDVar(fresps, dims, b.name, b.info)
 
 
 def label_operator(labels, operation='mean', exclude=None, weights=None,
@@ -684,7 +684,7 @@ def label_operator(labels, operation='mean', exclude=None, weights=None,
             xs *= weights
         if operation == 'mean':
             xs /= l1(xs, np.array(((0, len(xs)),), np.int64))
-    return NDVar(x, (label_dim, dim), {}, labels.name)
+    return NDVar(x, (label_dim, dim), labels.name)
 
 
 def neighbor_correlation(x, dim='sensor', obs='time', name=None):
@@ -728,7 +728,7 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
     for i in range(len(dim_obj)):
         y[i] = np.mean(cc[i, neighbors[i]])
     info = _info.for_stat_map('r', old=x.info)
-    return NDVar(y, (dim_obj,), info, name or x.name)
+    return NDVar(y, (dim_obj,), name or x.name, info)
 
 
 def psd_welch(ndvar, fmin=0, fmax=np.inf, n_fft=256, n_overlap=0, n_per_seg=None):
@@ -771,7 +771,7 @@ def psd_welch(ndvar, fmin=0, fmax=np.inf, n_fft=256, n_overlap=0, n_per_seg=None
         data, sfreq, fmin, fmax, n_fft=n_fft, n_overlap=n_overlap,
         n_per_seg=n_per_seg)
     dims.append(Scalar("frequency", freqs, 'Hz'))
-    return NDVar(psds, dims, ndvar.info.copy(), ndvar.name)
+    return NDVar(psds, dims, ndvar.name, ndvar.info)
 
 
 def rename_dim(ndvar, old_name, new_name):
@@ -804,7 +804,7 @@ def rename_dim(ndvar, old_name, new_name):
     dims = list(ndvar.dims)
     new_dim.name = new_name
     dims[axis] = new_dim
-    return NDVar(ndvar.x, dims, ndvar.info.copy(), ndvar.name)
+    return NDVar(ndvar.x, dims, ndvar.name, ndvar.info)
 
 
 def resample(ndvar, sfreq, npad='auto', window=None, pad='edge', name=None):
@@ -866,7 +866,7 @@ def resample(ndvar, sfreq, npad='auto', window=None, pad='edge', name=None):
             x = np.ma.masked_array(x, mask > 0.5)
     time_dim = UTS(ndvar.time.tmin, new_tstep, new_num)
     dims = (*ndvar.dims[:axis], time_dim, *ndvar.dims[axis + 1:])
-    return NDVar(x, dims, ndvar.info, name)
+    return NDVar(x, dims, name, ndvar.info)
 
 
 class Filter:
@@ -895,7 +895,7 @@ class Filter:
         if not np.all(np.abs(np.roots(a)) < 1):
             raise ValueError("Filter unstable")
         x = signal.lfilter(b, a, ndvar.x, ndvar.get_axis('time'))
-        out = NDVar(x, ndvar.dims, ndvar.info.copy(), ndvar.name)
+        out = NDVar(x, ndvar.dims, ndvar.name, ndvar.info)
         if self.sfreq:
             return resample(out, self.sfreq)
         else:
@@ -907,7 +907,7 @@ class Filter:
         if not np.all(np.abs(np.roots(a)) < 1):
             raise ValueError("Filter unstable")
         x = signal.filtfilt(b, a, ndvar.x, ndvar.get_axis('time'))
-        out = NDVar(x, ndvar.dims, ndvar.info.copy(), ndvar.name)
+        out = NDVar(x, ndvar.dims, ndvar.name, ndvar.info)
         if self.sfreq:
             return resample(out, self.sfreq)
         else:
@@ -1024,7 +1024,7 @@ def set_parc(ndvar, parc, dim='source'):
     old = ndvar.dims[axis]
     new = old._copy(parc=parc)
     dims = (*ndvar.dims[:axis], new, *ndvar.dims[axis + 1:])
-    return NDVar(ndvar.x, dims, ndvar.info, ndvar.name)
+    return NDVar(ndvar.x, dims, ndvar.name, ndvar.info)
 
 
 def set_tmin(ndvar, tmin=0.):
@@ -1044,4 +1044,4 @@ def set_tmin(ndvar, tmin=0.):
     old = ndvar.dims[axis]
     dims = list(ndvar.dims)
     dims[axis] = UTS(tmin, old.tstep, old.nsamples)
-    return NDVar(ndvar.x, dims, ndvar.info.copy(), ndvar.name)
+    return NDVar(ndvar.x, dims, ndvar.name, ndvar.info)

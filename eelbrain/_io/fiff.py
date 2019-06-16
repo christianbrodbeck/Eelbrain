@@ -839,7 +839,7 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
         if decim != 1:
             x = x[:, ::decim]
         time = UTS(0, float(decim) / raw.info['sfreq'], x.shape[1])
-        out.append(NDVar(x, (dim, time), info, name))
+        out.append(NDVar(x, (dim, time), name, info))
 
     if scalar:
         return out[0]
@@ -1026,7 +1026,7 @@ def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
         dims = ('case', sensor, time)
     else:
         dims = (sensor, time)
-    return NDVar(x, dims, info=info, name=name)
+    return NDVar(x, dims, name, info)
 
 
 def forward_operator(fwd, src, subjects_dir=None, parc='aparc', name=None):
@@ -1071,7 +1071,7 @@ def forward_operator(fwd, src, subjects_dir=None, parc='aparc', name=None):
         source = SourceSpace.from_mne_source_spaces(fwd['src'], src, subjects_dir, parc)
         x = fwd['sol']['data']
         dims = (sensor, source)
-    return NDVar(x, dims, {}, name)
+    return NDVar(x, dims, name)
 
 
 def inverse_operator(inv, src, subjects_dir=None, parc='aparc', name=None):
@@ -1211,7 +1211,7 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
     elif fixed is not None:
         raise ValueError(f"fixed={fixed!r}")
 
-    return NDVar(x, dims, info, name)
+    return NDVar(x, dims, name, info)
 
 
 def _trim_ds(ds, epochs):
