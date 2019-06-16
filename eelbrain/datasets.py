@@ -346,7 +346,9 @@ def get_uts(utsnd=False, seed=0, nrm=False, vector3d=False):
     seed : None | int
         If not None, call ``numpy.random.seed(seed)`` to ensure replicability.
     nrm : bool
-        Create nested random effect Factor "nrm".
+        Add a nested random effect Factor "nrm" (nested in ``A``).
+    vector3d : bool
+        Add a space x time vector time series as ``v3d``.
 
     Returns
     -------
@@ -416,7 +418,7 @@ def get_uts(utsnd=False, seed=0, nrm=False, vector3d=False):
 
     # nested random effect
     if nrm:
-        ds['nrm'] = Factor([a + '%02i' % i for a in 'AB' for _ in range(2) for
+        ds['nrm'] = Factor([f'{a}{i:02}' for a in 'AB' for _ in range(2) for
                             i in range(15)], random=True)
 
     if vector3d:
