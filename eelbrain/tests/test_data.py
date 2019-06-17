@@ -953,6 +953,19 @@ def test_ndvar():
     y = ds['uts'].mean('case').norm('time')
     assert isinstance(y, float)
 
+    # dot
+    m = NDVar([1, 0, -1, 0, 0], x.sensor)
+    # -> time
+    y = m.dot(x[0])
+    assert_array_equal(y.x, x.x[0, 0] - x.x[0, 2])
+    # -> case x time
+    y_all = m.dot(x)
+    assert len(y_all) == len(x)
+    assert_dataobj_equal(y_all[0], y)
+    # -> scalar
+    y = m.dot(x[0, :, 0.200])
+    assert y == x.x[0, 0, 40] - x.x[0, 2, 40]
+
     # Var
     v_case = Var(b_case)
     assert_equal(x.sub(case=v_case, sensor=b_sensor, time=a_time), tgt)
