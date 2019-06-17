@@ -7,8 +7,9 @@ New in 0.31
 -----------
 
 * :mod:`testnd` API:  For permutation tests, the ``samples`` parameter now defaults to 10,000 (previously 0)
-* :mod:`plot` API:  Additional arguments for :class:`plot.Boxplot` to control plotting of outliers (``whis`` and ``label_fliers``).
+* :mod:`plot` API:  Additional arguments for :class:`plot.Boxplot` to control plotting of outliers (``whis`` and ``label_fliers``)
 * Horizontal bar-plot: :class:`plot.BarplotHorizontal`
+* Non-parametric univariate tests :class:`test.MannWhitneyU` and :class:`test.WilcoxonSignedRank`
 
 
 New in 0.30
@@ -30,7 +31,6 @@ New in 0.30
   - :class:`RawApplyICA` preprocessing pipe to apply ICA estimated in a different branch of the pipeline.
   - :meth:`MneExperiment.load_evoked_stc` API more closely matches :meth:`MneExperiment.load_epochs_stc`
   - :meth:`MneExperiment.load_neighbor_correlation`
-
 
 
 New in 0.29

@@ -1,6 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Statistical tests for univariate variables"""
 import itertools
+from typing import Union
 
 import numpy as np
 import scipy.stats
@@ -10,7 +11,8 @@ from .._celltable import Celltable
 from .._data_obj import (
     CategorialArg, CellArg, IndexArg, VarArg, NumericArg,
     Dataset, Factor, Interaction, Var, NDVar,
-    ascategorial, asfactor, asnumeric, assub, asvar,
+    ascategorial, asfactor, asnumeric, assub, asvar, asndvar,
+    combine,
     cellname, dataobj_repr, nice_label,
 )
 from .permutation import resample
@@ -311,6 +313,82 @@ def star_factor(p, levels={.1: '`', .05: '*', .01: '**', .001: '***'}):
     return Factor(np.sum(p < level_values, 0), labels=star_labels)
 
 
+def _independent_measures_args(y, x, c1, c0, match, ds, sub, nd_data=False):
+    "Interpret parameters for independent measures tests (2 different argspecs)"
+    if isinstance(x, str):
+        x = ds.eval(x)
+
+    if nd_data:
+        two_y = isinstance(x, NDVar)
+        coerce = asndvar
+    else:
+        two_y = isinstance(x, Var) and match is None
+        coerce = asvar
+
+    if two_y:
+        assert c1 is None
+        assert c0 is None
+        assert match is None
+        y1 = coerce(y, sub, ds)
+        y0 = coerce(x, sub, ds)
+        y = combine((y1, y0))
+        c1_name = y1.name
+        c0_name = y0.name
+        x_name = y0.name
+    else:
+        ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=coerce, dtype=np.float64)
+        c1, c0 = ct.cat
+        c1_name = c1
+        c0_name = c0
+        x_name = ct.x.name
+        match = ct.match
+        y = ct.y
+        y1 = ct.data[c1]
+        y0 = ct.data[c0]
+    return y, y1, y0, c1, c0, match, x_name, c1_name, c0_name
+
+
+def _related_measures_args(y, x, c1, c0, match, ds, sub, nd_data=False):
+    "Interpret parameters for related measures tests (2 different argspecs)"
+    if isinstance(x, str):
+        if ds is None:
+            raise TypeError(f"x={x!r} specified as str without specifying ds")
+        x = ds.eval(x)
+
+    if nd_data:
+        two_y = isinstance(x, NDVar)
+        coerce = asndvar
+    else:
+        two_y = isinstance(x, Var) and match is None
+        coerce = asvar
+
+    if two_y:
+        assert c1 is None
+        assert c0 is None
+        assert match is None
+        y1 = coerce(y, sub, ds)
+        n = len(y1)
+        y0 = coerce(x, sub, ds, n)
+        c1_name = y1.name
+        c0_name = y0.name
+        x_name = y0.name
+    elif match is None:
+        raise TypeError("The `match` argument needs to be specified for related measures tests")
+    else:
+        ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=coerce, dtype=np.float64)
+        c1, c0 = ct.cat
+        c1_name = c1
+        c0_name = c0
+        if not ct.all_within:
+            raise ValueError(f"conditions {c1!r} and {c0!r} do not have the same values on {dataobj_repr(ct.match)}")
+        n = len(ct.y) // 2
+        y1 = ct.y[:n]
+        y0 = ct.y[n:]
+        x_name = ct.x.name
+        match = ct.match
+    return y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name
+
+
 def ttest(y, x=None, against=0, match=None, sub=None, corr='Hochberg',
           title='{desc}', ds=None):
     """T-tests for one or more samples
@@ -565,25 +643,122 @@ class TTestInd(TTest):
             ds: Dataset = None,
             tail: int = 0,
     ):
-        ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asvar)
-        c1, c0 = ct.cat
+        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, ds, sub)
 
-        n = len(ct.y)
-        if n <= 2:
-            raise ValueError("Not enough observations for t-test (n=%i)" % n)
-
-        self._y = dataobj_repr(ct.y)
-        self._x = dataobj_repr(ct.x)
-        groups = ct.x == c1
+        n1 = len(y1)
+        n = len(y)
+        df = n - 2
+        groups = np.arange(n) < n1
         groups.dtype = np.int8
-        t = stats.t_ind(ct.y.x[:, None], groups)[0]
-        TTest.__init__(self, t, n - 2, tail)
-        self._c1 = c1
-        self._c0 = c0
+        t = stats.t_ind(y.x[:, None], groups)[0]
+
+        self._y = dataobj_repr(y)
+        self._x = x_name
+        TTest.__init__(self, t, df, tail)
+        self._c1 = c1_name
+        self._c0 = c0_name
+        self._two_y = c1 is None
 
     def __repr__(self):
         cmp = '=><'[self.tail]
-        return f"<TTestInd: {self._y} ~ {self._x}, {self._c1} {cmp} {self._c0}; {self._asfmtext()}>"
+        if self._two_y:
+            desc = f"{self._c1} {cmp} {self._c0}"
+        else:
+            desc = f"{self._y} ~ {self._x}, {self._c1} {cmp} {self._c0}"
+        return f"<TTestInd: {desc}; {self._asfmtext()}>"
+
+
+class MannWhitneyU:
+    """Mann-Whitney U-test (non-parametric independent measures test)
+
+    Parameters
+    ----------
+    y : Var
+        Dependent variable. Alternatively, the first of two variables that are
+        compared.
+    x : categorial
+        Model containing the cells which should be compared. Alternatively, the
+        second of two varaibles that are compared.
+    c1 : str | tuple | None
+        Test condition (cell of ``x``). ``c1`` and ``c0`` can be omitted if
+        ``x`` only contains two cells, in which case cells will be used in
+        alphabetical order.
+    c0 : str | tuple | None
+        Control condition (cell of ``x``).
+    match : categorial
+        Units within which measurements are related (e.g. 'subject' in a
+        within-subject comparison). If match is unspecified, it is assumed that
+        ``y`` and ``x`` are two measurements with matched cases.
+    sub : None | index-array
+        Perform the test with a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables.
+    tail : 0 | 1 | -1
+        Which tail of the t-distribution to consider:
+        0: both (two-tailed, default);
+        1: upper tail (one-tailed);
+        -1: lower tail (one-tailed).
+    continuity : bool
+        Continuity correction (default ``True``).
+
+    Attributes
+    ----------
+    u : float
+        Mann-Whitney U statistic.
+    p : float
+        P-value.
+    tail : 0 | 1 | -1
+        Tailedness of the p value.
+
+    See Also
+    --------
+    TTestRel : parametric alternative
+
+    Notes
+    -----
+    Based on :func:`scipy.stats.mannwhitneyu`.
+    """
+    def __init__(
+            self,
+            y: VarArg,
+            x: Union[CategorialArg, VarArg],
+            c1: CellArg = None,
+            c0: CellArg = None,
+            match: CategorialArg = None,
+            sub: IndexArg = None,
+            ds: Dataset = None,
+            tail: int = 0,
+            continuity: bool = True,
+    ):
+        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, ds, sub)
+        if tail == 0:
+            alternative = 'two-sided'
+        elif tail == 1:
+            alternative = 'greater'
+        elif tail == -1:
+            alternative = 'less'
+        else:
+            raise ValueError(f"tail={tail!r}")
+        self.u, self.p = scipy.stats.mannwhitneyu(y1.x, y0.x, continuity, alternative)
+        self._y = dataobj_repr(y1)
+        self._x = x_name
+        self._c1 = c1
+        self._c0 = c0
+        self.tail = tail
+        self.continuity = continuity
+        self._two_y = c1 is None
+
+    def __repr__(self):
+        cmp = '=><'[self.tail]
+        if self._two_y:
+            desc = f"{self._c1} {cmp} {self._c0}"
+        else:
+            desc = f"{self._y} ~ {self._x}, {self._c1} {cmp} {self._c0}"
+        return f"<MannWhitneyU: {desc}; {self._asfmtext()}>"
+
+    def _asfmtext(self):
+        return fmtxt.FMText([fmtxt.eq('U', self.u), ', ', fmtxt.peq(self.p)])
 
 
 class TTestRel(TTest):
@@ -634,11 +809,15 @@ class TTestRel(TTest):
         Mean of condition ``c1``.
     c0_mean : float
         Mean of condition ``c0``.
+
+    See Also
+    --------
+    WilcoxonSignedRank : non-parametric alternative
     """
     def __init__(
             self,
             y: VarArg,
-            x: CategorialArg,
+            x: Union[CategorialArg, VarArg],
             c1: CellArg = None,
             c0: CellArg = None,
             match: CategorialArg = None,
@@ -646,44 +825,133 @@ class TTestRel(TTest):
             ds: Dataset = None,
             tail: int = 0,
     ):
-        if match is None:
-            assert c1 is None and c0 is None
-            y1 = asvar(y, sub, ds)
-            n = len(y1)
-            y0 = asvar(x, sub, ds, n)
-            self._y = dataobj_repr(y1)
-            self._x = dataobj_repr(y0)
-        else:
-            ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asvar)
-            c1, c0 = ct.cat
-            if not ct.all_within:
-                raise ValueError("conditions %r and %r do not have the same values "
-                                 "on %s" % (c1, c0, dataobj_repr(ct.match)))
-
-            n = len(ct.y) // 2
-            self._y = dataobj_repr(ct.y)
-            self._x = dataobj_repr(ct.x)
-            y1 = ct.y[:n]
-            y0 = ct.y[n:]
+        y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
         if n <= 2:
             raise ValueError("Not enough observations for t-test (n=%i)" % n)
-
+        self._y = dataobj_repr(y1)
+        self._x = x_name
+        self._c1 = c1
+        self._c0 = c0
         self.c1_mean = y1.mean()
         self.c0_mean = y0.mean()
         self.difference = y1 - y0
         t = stats.t_1samp(self.difference.x[:, None])[0]
         TTest.__init__(self, t, n - 1, tail)
-        self._match = None if match is None else dataobj_repr(match)
-        self._c1 = c1
-        self._c0 = c0
+        self._match = dataobj_repr(match) if match else match
 
     def __repr__(self):
         cmp = '=><'[self.tail]
         if self._match is None:
-            out = f"<TTestRel: {self._c1} {cmp} {self._c0}"
+            desc = f"{self._c1} {cmp} {self._c0}"
         else:
-            out = f"<TTestRel: {self._y} ~ {self._x}, {self._c1} {cmp} {self._c0}"
-        return out + f"; {self._asfmtext()}>"
+            desc = f"{self._y} ~ {self._x}, {self._c1} {cmp} {self._c0}"
+        return f"<TTestRel: {desc}; {self._asfmtext()}>"
+
+
+class WilcoxonSignedRank:
+    """Wilcoxon signed-rank test (non-parametric related measures test)
+
+    Parameters
+    ----------
+    y : Var
+        Dependent variable. Alternatively, the first of two variables that are
+        compared.
+    x : categorial
+        Model containing the cells which should be compared. Alternatively, the
+        second of two varaibles that are compared.
+    c1 : str | tuple | None
+        Test condition (cell of ``x``). ``c1`` and ``c0`` can be omitted if
+        ``x`` only contains two cells, in which case cells will be used in
+        alphabetical order.
+    c0 : str | tuple | None
+        Control condition (cell of ``x``).
+    match : categorial
+        Units within which measurements are related (e.g. 'subject' in a
+        within-subject comparison). If match is unspecified, it is assumed that
+        ``y`` and ``x`` are two measurements with matched cases.
+    sub : None | index-array
+        Perform the test with a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables.
+    tail : 0 | 1 | -1
+        Which tail of the t-distribution to consider:
+        0: both (two-tailed, default);
+        1: upper tail (one-tailed);
+        -1: lower tail (one-tailed).
+    zero_method : str
+        How to handle zero differences (see :func:`scipy.stats.wilcoxon`).
+    correction : bool
+        Continuity correction (default ``False``).
+
+    Attributes
+    ----------
+    w : float
+        Rank sum statistic.
+    p : float
+        P-value.
+    tail : 0 | 1 | -1
+        Tailedness of the p value.
+    difference : Var
+        Difference values.
+    c1_mean : float
+        Mean of condition ``c1``.
+    c0_mean : float
+        Mean of condition ``c0``.
+
+    See Also
+    --------
+    TTestRel : parametric alternative
+
+    Notes
+    -----
+    Based on :func:`scipy.stats.wilcoxon`.
+    """
+    def __init__(
+            self,
+            y: VarArg,
+            x: Union[CategorialArg, VarArg],
+            c1: CellArg = None,
+            c0: CellArg = None,
+            match: CategorialArg = None,
+            sub: IndexArg = None,
+            ds: Dataset = None,
+            tail: int = 0,
+            zero_method: str = 'wilcox',
+            correction: bool = False,
+    ):
+        y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
+        if tail == 0:
+            alternative = 'two-sided'
+        elif tail == 1:
+            alternative = 'greater'
+        elif tail == -1:
+            alternative = 'less'
+        else:
+            raise ValueError(f"tail={tail!r}")
+        self.w, self.p = scipy.stats.wilcoxon(y1.x, y0.x, zero_method, correction, alternative)
+        self._y = dataobj_repr(y1)
+        self._x = x_name
+        self._c1 = c1
+        self._c0 = c0
+        self.c1_mean = y1.mean()
+        self.c0_mean = y0.mean()
+        self.difference = y1 - y0
+        self._match = dataobj_repr(match) if match else match
+        self.tail = tail
+        self.zero_method = zero_method
+        self.correction = correction
+
+    def __repr__(self):
+        cmp = '=><'[self.tail]
+        if self._match is None:
+            desc = f"{self._c1} {cmp} {self._c0}"
+        else:
+            desc = f"{self._y} ~ {self._x}, {self._c1} {cmp} {self._c0}"
+        return f"<WilcoxonSignedRank: {desc}; {self._asfmtext()}>"
+
+    def _asfmtext(self):
+        return fmtxt.FMText([fmtxt.eq('W', self.w), ', ', fmtxt.peq(self.p)])
 
 
 def pairwise(y, x, match=None, sub=None, ds=None,  # data in

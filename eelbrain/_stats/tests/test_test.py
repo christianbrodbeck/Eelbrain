@@ -50,6 +50,23 @@ def test_correlations():
     assert res.r == pytest.approx(0.315, abs=1e-3)
 
 
+def test_mann_whitney():
+    ds = datasets.get_uv()
+
+    ds_agg = ds.aggregate('A % rm', drop_bad=True)
+    n = ds_agg.n_cases // 2
+    a, b = ds_agg[:n, 'fltvar'], ds_agg[n:, 'fltvar']
+    u, p = scipy.stats.mannwhitneyu(a.x, b.x, alternative='two-sided')
+
+    res = test.MannWhitneyU('fltvar', 'A', 'a1', 'a2', 'rm', ds=ds)
+    assert res.u == u
+    assert res.p == p
+
+    res = test.MannWhitneyU(a, b)
+    assert res.u == u
+    assert res.p == p
+
+
 def test_star():
     "Test the star function"
     assert_array_equal(_test.star([0.1, 0.04, 0.01], int), [0, 1, 2])
@@ -134,3 +151,15 @@ def test_ttest():
     print(res_alt)
     assert res_alt.t == res.t
     assert res_alt.p == res.p
+
+
+def test_wilcoxon():
+    ds = datasets.get_uv()
+
+    ds_agg = ds.aggregate('A % rm', drop_bad=True)
+    n = ds_agg.n_cases // 2
+    w, p = scipy.stats.wilcoxon(ds_agg[:n, 'fltvar'].x, ds_agg[n:, 'fltvar'].x, alternative='two-sided')
+
+    res = test.WilcoxonSignedRank('fltvar', 'A', 'a1', 'a2', 'rm', ds=ds)
+    assert res.w == w
+    assert res.p == p

@@ -60,7 +60,7 @@ from .permutation import (
     _resample_params, permute_order, permute_sign_flip, random_seeds,
     rand_rotation_matrices)
 from .t_contrast import TContrastRel
-from .test import star, star_factor
+from .test import star, star_factor, _independent_measures_args, _related_measures_args
 
 
 __test__ = False
@@ -102,7 +102,7 @@ class NDTest:
         return self._state_common + self._state_specific
 
     def __init__(self, y, match, sub, samples, tfce, pmin, cdist, tstart, tstop):
-        self.y = y.name
+        self.y = dataobj_repr(y)
         self.match = dataobj_repr(match) if match else match
         self.sub = sub
         self.samples = samples
@@ -987,34 +987,6 @@ class ttest_1samp(NDDifferenceTest):
             return self.difference
 
 
-def _independent_measures_args(y, x, c1, c0, match, ds, sub):
-    "Interpret parameters for independent measures tests (2 different argspecs)"
-    if isinstance(x, str):
-        x = ds.eval(x)
-
-    if isinstance(x, NDVar):
-        assert c1 is None
-        assert c0 is None
-        assert match is None
-        y1 = asndvar(y, sub, ds)
-        y0 = asndvar(x, sub, ds)
-        y = combine((y1, y0))
-        c1_name = y1.name
-        c0_name = y0.name
-        x_name = y0.name
-    else:
-        ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar, dtype=np.float64)
-        c1, c0 = ct.cat
-        c1_name = c1
-        c0_name = c0
-        x_name = ct.x.name
-        match = ct.match
-        y = ct.y
-        y1 = ct.data[c1]
-        y0 = ct.data[c0]
-    return y, y1, y0, c1, c0, match, x_name, c1_name, c0_name
-
-
 class ttest_ind(NDDifferenceTest):
     """Mass-univariate independent samples t-test
 
@@ -1121,7 +1093,7 @@ class ttest_ind(NDDifferenceTest):
             parc: str = None,
             force_permutation: bool = False,
             **criteria):
-        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, ds, sub)
+        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, ds, sub, True)
         check_for_vector_dim(y)
 
         n1 = len(y1)
@@ -1191,17 +1163,11 @@ class ttest_ind(NDDifferenceTest):
         self.all = [self.c1_mean, self.c0_mean, diff_p]
 
     def _name(self):
-        if self.tail == 0:
-            comp = "%s == %s" % (self.c1, self.c0)
-        elif self.tail > 0:
-            comp = "%s > %s" % (self.c1, self.c0)
-        else:
-            comp = "%s < %s" % (self.c1, self.c0)
-
+        cmp = '=><'[self.tail]
+        desc = f"{self.c1} {cmp} {self.c0}"
         if self.y:
-            return "Independent-Samples T-Test:  %s ~ %s" % (self.y, comp)
-        else:
-            return "Independent-Samples T-Test:  %s" % comp
+            desc = f"{self.y} ~ {desc}"
+        return f"Independent-Samples T-Test:  {desc}"
 
     def _plot_model(self):
         return self.x
@@ -1226,41 +1192,6 @@ class ttest_ind(NDDifferenceTest):
         else:
             diff = self.difference
         return [self.c1_mean, self.c0_mean, diff]
-
-
-def _related_measures_args(y, x, c1, c0, match, ds, sub):
-    "Interpret parameters for related measures tests (2 different argspecs)"
-    if isinstance(x, str):
-        if ds is None:
-            raise TypeError(f"x={x!r} specified as str without specifying ds")
-        x = ds.eval(x)
-
-    if isinstance(x, NDVar):
-        assert c1 is None
-        assert c0 is None
-        assert match is None
-        y1 = asndvar(y, sub, ds)
-        n = len(y1)
-        y0 = asndvar(x, sub, ds, n)
-        c1_name = y1.name
-        c0_name = y0.name
-        x_name = y0.name
-    elif match is None:
-        raise TypeError("The `match` argument needs to be specified for related measures tests")
-    else:
-        ct = Celltable(y, x, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar,
-                       dtype=np.float64)
-        c1, c0 = ct.cat
-        c1_name = c1
-        c0_name = c0
-        if not ct.all_within:
-            raise ValueError(f"conditions {c1!r} and {c0!r} do not have the same values on {dataobj_repr(ct.match)}")
-        n = len(ct.y) // 2
-        y1 = ct.y[:n]
-        y0 = ct.y[n:]
-        x_name = ct.x.name
-        match = ct.match
-    return y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name
 
 
 class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
@@ -1375,7 +1306,7 @@ class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
             parc: str = None,
             force_permutation: bool = False,
             **criteria):
-        y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
+        y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub, True)
         check_for_vector_dim(y1)
 
         if n <= 2:
@@ -2188,7 +2119,7 @@ class VectorDifferenceIndependent(Vector):
             norm: bool = False,
             **criteria):
         use_norm = bool(norm)
-        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, ds, sub)
+        y, y1, y0, c1, c0, match, x_name, c1_name, c0_name = _independent_measures_args(y, x, c1, c0, match, ds, sub, True)
         self.n1 = len(y1)
         self.n0 = len(y0)
         self.n = len(y)
@@ -2349,7 +2280,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
             norm: bool = False,
             **criteria):
         use_norm = bool(norm)
-        y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
+        y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub, True)
         difference = y1 - y0
         difference.name = 'difference'
 

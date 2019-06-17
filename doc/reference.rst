@@ -201,6 +201,8 @@ Univariate statistical tests:
    test.ttest
    test.correlations
    test.pairwise_correlations
+   test.MannWhitneyU
+   test.WilcoxonSignedRank
    test.lilliefors
 
 
