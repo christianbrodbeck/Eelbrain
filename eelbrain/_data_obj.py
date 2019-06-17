@@ -3671,15 +3671,15 @@ class NDVar:
             x2_index = None if dim_x2 == out_dim else dim_x2._array_index_to(out_dim)
 
         v1_dimnames = self.get_dimnames((None,) * (self.ndim - 1) + (dim,))
-        dims = tuple(self.get_dim(d) for d in v1_dimnames[:-1])
+        dims = [self.get_dim(d) for d in v1_dimnames[:-1]]
 
         v2_dimnames = (dim,)
         if ndvar.has_case:
             v2_dimnames = ('case',) + v2_dimnames
-            dims = ('case',) + dims
+            dims.insert(0, Case)
         v2_dimnames += (None,) * (ndvar.ndim - ndvar.has_case - 1)
         v2_dimnames = ndvar.get_dimnames(v2_dimnames)
-        dims += tuple(ndvar.get_dim(d) for d in v2_dimnames[1 + ndvar.has_case:])
+        dims.extend(ndvar.get_dim(d) for d in v2_dimnames[1 + ndvar.has_case:])
 
         x1 = self.get_data(v1_dimnames)
         if x1_index is not None:
@@ -3692,7 +3692,16 @@ class NDVar:
             x = np.array([np.tensordot(x1, x2_, 1) for x2_ in x2])
         else:
             x = np.tensordot(x1, x2, 1)
-        return NDVar(x, dims, {}, name or ndvar.name)
+            if not dims:
+                return x
+
+        if name is None:
+            name = ndvar.name
+
+        if len(dims) == 1 and dims[0] is Case:
+            return Var(x, name)
+        else:
+            return NDVar(x, dims, {}, name)
 
     def envelope(self, dim='time', name=None):
         """Compute the Hilbert envelope of a signal
