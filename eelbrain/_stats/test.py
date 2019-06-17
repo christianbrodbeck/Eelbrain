@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Statistical tests for univariate variables"""
+from functools import partial
 import itertools
 from typing import Union
 
@@ -1070,22 +1071,20 @@ def _pairwise(data, within=True, parametric=True, corr='Hochberg',
     if k < 3:  # need no correction for single test
         corr = None
     if parametric:
-        test_name = "t-Tests ({0} samples)"
-        statistic = "t"
         if within:
             test_func = scipy.stats.ttest_rel
-            test_name = test_name.format('paired')
+            test_name = "T-Tests (paired samples)"
         else:
             test_func = scipy.stats.ttest_ind
-            test_name = test_name.format('independent')
+            test_name = "T-Tests (independent samples)"
+        statistic = "t"
     elif within:
+        test_func = partial(scipy.stats.wilcoxon, alternative='two-sided')
         test_name = "Wilcoxon Signed-Rank Test"
-        test_func = scipy.stats.wilcoxon
         statistic = "z"
     else:
+        test_func = partial(scipy.stats.mannwhitneyu, alternative='two-sided')
         test_name = "Mann-Whitney U Test"
-        raise NotImplementedError("mannwhitneyu returns one-sided p")
-        test_func = scipy.stats.mannwhitneyu
         statistic = "u"
 
     # perform test
