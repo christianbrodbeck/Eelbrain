@@ -1436,14 +1436,11 @@ def test_nested_effects():
 
     # interaction
     i = ds.eval("A % nrm(B)")
-    expected_cells = tuple((case['A'], case['nrm']) for case in ds.itercases())
-    assert i.cells == expected_cells
+    assert i.cells == tuple(product(*(ds[f].cells for f in ['A', 'nrm'])))
+    i = ds.eval("nrm(B) % A")
+    assert i.cells == tuple(product(*(ds[f].cells for f in ['nrm', 'A'])))
 
     assert_has_no_empty_cells(ds.eval('A * B + nrm(B) + A % nrm(B)'))
-
-    i = ds.eval("nrm(B) % A")
-    expected_cells = sorted((case['nrm'], case['A']) for case in ds.itercases())
-    assert i.cells == tuple(expected_cells)
 
 
 @skip_on_windows  # uses R

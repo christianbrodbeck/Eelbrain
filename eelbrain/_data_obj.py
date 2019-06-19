@@ -328,10 +328,6 @@ def is_higher_order_effect(e1, e0):
     return all(f in f1s for f in find_factors(e0))
 
 
-def empty_cells(x):
-    return [cell for cell in x.cells if not np.any(x == cell)]
-
-
 def assert_has_no_empty_cells(x):
     """Raise a ValueError iff a categorial has one or more empty cells"""
     if isinstance(x, Factor):
@@ -339,16 +335,14 @@ def assert_has_no_empty_cells(x):
     elif isinstance(x, Interaction):
         if not x.is_categorial:
             return
-        empty = empty_cells(x)
-        if empty:
-            raise NotImplementedError(f"{dataobj_repr(x)} contains empty cells: {enumeration(empty)}")
+        if x._empty_cells:
+            raise NotImplementedError(f"{dataobj_repr(x)} contains empty cells: {enumeration(x._empty_cells)}")
     elif isinstance(x, Model):
         empty = []
         for e in x.effects:
             if isinstance(e, Interaction) and e.is_categorial:
-                empty_in_e = empty_cells(e)
-                if empty_in_e:
-                    empty.append((dataobj_repr(e), ', '.join(empty_in_e)))
+                if e._empty_cells:
+                    empty.append((dataobj_repr(e), ', '.join(e._empty_cells)))
         if empty:
             items = ['%s (%s)' % pair for pair in empty]
             raise NotImplementedError(f"{dataobj_repr(x)} contains empty cells in {enumeration(items)}")
@@ -6361,11 +6355,9 @@ class Interaction(_Effect):
         self.name = ' x '.join(self.base_names)
         self.random = False
         self.df = reduce(operator.mul, [f.df for f in self.base])
-        # cells
-        factors = EffectList(e for e in self.base if
-                             isinstance(e, (Factor, NestedEffect)))
-        self.cells = tuple(product(*(f.cells for f in factors)))
-        self.cell_header = tuple(f.name for f in factors)
+        # For cells: find raw Factors
+        self._factors = EffectList(e if isinstance(e, Factor) else e.effect for e in self.base if isinstance(e, (Factor, NestedEffect)))
+        self.cell_header = tuple(f.name for f in self._factors)
         # TODO: beta-labels
         self.beta_labels = ['?'] * self.df
 
@@ -6378,6 +6370,23 @@ class Interaction(_Effect):
             return ' % '.join(names)
         else:
             return "Interaction({n})".format(n=', '.join(names))
+
+    @LazyProperty
+    def _value_set(self):
+        return set(self)
+
+    @LazyProperty
+    def cells(self):
+        return tuple(cell for cell in self._all_cells if cell in self._value_set)
+
+    @LazyProperty
+    def _all_cells(self):
+        return [*product(*(f.cells for f in self._factors))]
+
+    @LazyProperty
+    def _empty_cells(self):
+        if len(self._all_cells) != len(self.cells):
+            return [cell for cell in self._all_cells if cell not in self._value_set]
 
     # container ---
     def __len__(self):
@@ -6491,10 +6500,6 @@ class Interaction(_Effect):
         is_v = [self == cell for cell in cells]
         return np.any(is_v, 0)
 
-    @LazyProperty
-    def _value_set(self):
-        return set(self)
-
 
 def box_cox_transform(x, p, name=None):
     """The Box-Cox transform of x as :class:`Var`
@@ -6525,10 +6530,9 @@ class NestedEffect(_Effect):
 
     def __init__(self, effect, nestedin):
         if not isinstance(nestedin, (Factor, Interaction)):
-            raise TypeError("Nested in %r; Effects can only be nested in Factor "
-                            "or Interaction" % (dataobj_repr(nestedin),))
+            raise TypeError(f"Nested in {dataobj_repr(nestedin)}: Effects can only be nested in Factor or Interaction")
         elif not iscategorial(nestedin):
-            raise ValueError("Effects can only be nested in categorial base")
+            raise ValueError(f"Nested in {dataobj_repr(nestedin)}: Effects can only be nested in categorial base")
 
         self.effect = effect
         self.nestedin = nestedin
@@ -6539,13 +6543,11 @@ class NestedEffect(_Effect):
         if isinstance(self.effect, Factor):
             e_name = self.effect.name
         else:
-            e_name = '(%s)' % self.effect
-        self.name = "%s(%s)" % (e_name, nestedin.name)
+            e_name = f'({self.effect})'
+        self.name = f"{e_name}({nestedin.name})"
 
         if len(nestedin) != self._n_cases:
-            err = ("Unequal lengths: effect %r len=%i, nestedin %r len=%i" %
-                   (e_name, len(effect), nestedin.name, len(nestedin)))
-            raise ValueError(err)
+            raise ValueError(f"Unequal lengths: effect {e_name!r} len={len(effect)}, nested in {nestedin.name!r} len={len(nestedin)}")
 
     def __repr__(self):
         return self.name
