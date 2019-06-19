@@ -8092,7 +8092,7 @@ class Sensor(Dimension):
         self._init_secondary()
 
     def _coerce_connectivity(self, connectivity):
-        if isinstance(connectivity[0][0], str):
+        if len(connectivity) and isinstance(connectivity[0][0], str):
             return connectivity_from_name_pairs(connectivity, self.names, allow_missing=True)
         else:
             return Dimension._coerce_connectivity(self, connectivity)
@@ -8266,8 +8266,17 @@ class Sensor(Dimension):
             :func:`mne.channels.read_montage`).
         """
         if isinstance(montage, str):
-            montage = mne.channels.read_montage(montage)
-        return cls(montage.pos, montage.ch_names, montage.kind)
+            obj = mne.channels.read_montage(montage)
+            try:
+                cm, names = mne.channels.read_ch_connectivity(montage)
+                connectivity = _matrix_graph(cm)
+            except ValueError:
+                connectivity = 'none'
+        else:
+            obj = montage
+            connectivity = 'none'
+
+        return cls(obj.pos, obj.ch_names, obj.kind, connectivity=connectivity)
 
     def _interpret_proj(self, proj):
         if proj == 'default':
