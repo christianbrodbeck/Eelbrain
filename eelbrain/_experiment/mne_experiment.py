@@ -1051,8 +1051,7 @@ class MneExperiment(FileTree):
                     # FSA_PARC:  for other mrisubjects, the parcellation
                     # should automatically update if the user changes the
                     # fsaverage file.
-                    if not isinstance(self._parcs[parc],
-                                      (FreeSurferParc, FSAverageParc)):
+                    if not isinstance(self._parcs[parc], (FreeSurferParc, FSAverageParc)):
                         invalid_cache['parcs'].add(parc)
                         log_dict_change(log, "Parc", parc, params, parcs_state[parc])
 
@@ -1064,16 +1063,6 @@ class MneExperiment(FileTree):
                         log_dict_change(log, "Test", test, params, tests_state[test])
                     else:
                         log.warning("  Test %s removed", test)
-
-            # create message here, before secondary invalidations are added
-            msg = []
-            if cache_state_v < 2:
-                msg.append("Check for invalid ANOVA tests (cache version %i)." %
-                           cache_state_v)
-            if invalid_cache:
-                msg.append("Experiment definition changed:")
-                for kind, values in invalid_cache.items():
-                    msg.append("  %s: %s" % (kind, ', '.join(map(str, values))))
 
             # Secondary  invalidations
             # ========================
