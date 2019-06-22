@@ -682,6 +682,10 @@ class RawMaxwell(CachedRawPipe):
     ----------
     source : str
         Name of the raw pipe to use for input data.
+    bad_condition : str
+        How to deal with ill-conditioned SSS matrices; by default, an error is
+        raised, which might prevent the process to complete for some subjects.
+        Set to ``'warning'`` to proceed anyways.
     session : str | sequence of str
         Session(s) to use for estimating ICA components.
     ...
@@ -690,9 +694,10 @@ class RawMaxwell(CachedRawPipe):
 
     _bad_chs_affect_cache = True
 
-    def __init__(self, source, **kwargs):
+    def __init__(self, source, bad_condition='error', **kwargs):
         CachedRawPipe.__init__(self, source)
         self.kwargs = kwargs
+        self.bad_condition = bad_condition
 
     def as_dict(self):
         out = CachedRawPipe.as_dict(self)
@@ -701,9 +706,9 @@ class RawMaxwell(CachedRawPipe):
 
     def _make(self, subject, recording):
         raw = self.source.load(subject, recording)
-        self.log.info("Raw %s: computing Maxwell filter for %s/%s", self.name, subject, recording)
+        self.log.info(f"Raw %s: computing Maxwell filter for %s/%s", self.name, subject, recording)
         with user_activity:
-            return mne.preprocessing.maxwell_filter(raw, **self.kwargs)
+            return mne.preprocessing.maxwell_filter(raw, bad_condition=self.bad_condition, **self.kwargs)
 
 
 class RawReReference(CachedRawPipe):
