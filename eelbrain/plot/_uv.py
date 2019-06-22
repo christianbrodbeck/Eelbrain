@@ -581,8 +581,9 @@ class _plt_boxplot(_plt_uv_base):
         # boxplot
         k = len(ct.cells)
         all_data = ct.get_data()
+        box_data = [y.x for y in all_data]
         self.pos = np.arange(k)
-        self.boxplot = bp = ax.boxplot(all_data, notch, sym, whis=whis, positions=self.pos)
+        self.boxplot = bp = ax.boxplot(box_data, notch, sym, whis=whis, positions=self.pos)
 
         # Now fill the boxes with desired colors
         if hatch or colors:

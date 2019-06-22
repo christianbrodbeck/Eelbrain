@@ -51,7 +51,7 @@ def test_barplot():
 @hide_plots
 def test_boxplot():
     "Test plot.Boxplot"
-    ds = datasets.get_uv()
+    ds = datasets.get_uv(nrm=True)
     plot.Boxplot('fltvar', 'A%B', match='rm', ds=ds)
 
     # one category
@@ -77,6 +77,10 @@ def test_boxplot():
     bbs = [l.get_window_extent() for l in labels]
     for i in range(len(bbs) - 1):
         assert bbs[i].x1 < bbs[i + 1].x0
+
+    # nested rm
+    plot.Boxplot('fltvar', 'A%B', match='nrm', ds=ds)
+    plot.Boxplot('fltvar', 'A%B', match='nrm', ds=ds, sub="nrm != 's001'")
 
 
 @hide_plots
