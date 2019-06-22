@@ -9,6 +9,7 @@ dependencies:
 - python >= 3.6
 - pip
 - twine
+- blas=*=mkl  # openblas produces incorrect results for ICA in iMac Pro
 - libblas
 - libcblas
 - numpy
