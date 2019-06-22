@@ -173,7 +173,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         else:
             colors = find_cell_colors(color_x, colors)
 
-        layout = Layout(nax, 2, 4, *args, autoscale='y', **kwargs)
+        layout = Layout(nax, 2, 4, *args, **kwargs)
         EelFigure.__init__(self, frame_title(y, x, xax), layout)
         if clip is None:
             clip = layout.frame is True
@@ -182,14 +182,14 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         self._plots = []
         legend_handles = {}
         if xax is None:
-            p = _ax_uts_stat(self._axes[0], ct, colors, main, error, dev_data,
-                             xdim, invy, bottom, top, hline, clusters,
-                             pmax, ptrend, clip, error_alpha)
+            p = _ax_uts_stat(self._axes[0], ct, colors, main, error, dev_data, xdim, hline, clusters, pmax, ptrend, clip, error_alpha)
             self._plots.append(p)
             legend_handles.update(p.legend_handles)
             if len(ct) < 2:
                 legend = False
+            ymin, ymax = p.vmin, p.vmax
         else:
+            ymax = ymin = None
             for i, ax, cell in zip(range(nax), self._axes, ct.cells):
                 if x is not None:
                     X_ = Xct.data[cell]
@@ -198,12 +198,22 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
                     match = matchct.data[cell]
 
                 ct_ = Celltable(ct.data[cell], X_, match=match, coercion=asndvar)
-                p = _ax_uts_stat(ax, ct_, colors, main, error, dev_data,
-                                 xdim, invy, bottom, top, hline, clusters,
-                                 pmax, ptrend, clip, error_alpha)
+                p = _ax_uts_stat(ax, ct_, colors, main, error, dev_data, xdim, hline, clusters, pmax, ptrend, clip, error_alpha)
                 self._plots.append(p)
                 legend_handles.update(p.legend_handles)
-            self._set_axtitle(axtitle, names=map(cellname, ct.cells))
+                self._set_axtitle(axtitle, names=map(cellname, ct.cells))
+                ymin = p.vmin if ymin is None else min(ymin, p.vmin)
+                ymax = p.vmax if ymax is None else max(ymax, p.vmax)
+
+        # axes limits
+        if top is not None:
+            ymax = top
+        if bottom is not None:
+            ymin = bottom
+        if invy:
+            ymin, ymax = ymax, ymin
+        for p in self._plots:
+            p.set_ylim(ymin, ymax)
 
         self._configure_axis(ct.y, ylabel, y=True)
         self._configure_xaxis_dim(ct.y.get_dim(xdim), xlabel, xticklabels)
@@ -390,9 +400,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
 
 class _ax_uts_stat:
 
-    def __init__(self, ax, ct, colors, main, error, dev_data, xdim,
-                 invy, bottom, top, hline, clusters, pmax, ptrend, clip,
-                 error_alpha):
+    def __init__(self, ax, ct, colors, main, error, dev_data, xdim, hline, clusters, pmax, ptrend, clip, error_alpha):
         # stat plots
         self.ax = ax
         self.stat_plots = []
@@ -425,14 +433,9 @@ class _ax_uts_stat:
         self.cluster_plt = _plt_uts_clusters(ax, clusters, pmax, ptrend)
 
         # format y axis
-        if invy:
-            y0, y1 = ax.get_ylim()
-            if bottom is None:
-                bottom = y1
-
-            if top is None:
-                top = y0
-        self.set_ylim(bottom, top)
+        ax.autoscale(True, 'y')
+        ax.autoscale(False)
+        self.vmin, self.vmax = self.ax.get_ylim()
 
     @property
     def title(self):
