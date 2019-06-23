@@ -1258,7 +1258,7 @@ class MneExperiment(FileTree):
         for raw in invalid_cache['raw']:
             rm['cached-raw-file'].add({'raw': raw})
             rm['evoked-file'].add({'raw': raw})
-            analysis = {'analysis': f'* {raw} *'}
+            analysis = {'analysis': f'{raw} *'}
             rm['test-file'].add(analysis)
             rm['report-file'].add(analysis)
             rm['group-mov-file'].add(analysis)
