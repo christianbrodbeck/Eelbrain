@@ -9,6 +9,7 @@ e = MneExperiment('.', find_subjects=False)
 
 """
 from collections import defaultdict, Sequence
+from copy import deepcopy
 from datetime import datetime
 from glob import glob
 import inspect
@@ -509,7 +510,7 @@ class MneExperiment(FileTree):
 
         ########################################################################
         # sessions
-        if self.sessions is None:
+        if not self.sessions:
             raise TypeError("The MneExperiment.sessions parameter needs to be specified. The session name is contained in your raw data files. For example if your file is named `R0026_mysession-raw.fif` your session name is 'mysession' and you should set MneExperiment.sessions to 'mysession'.")
         elif isinstance(self.sessions, str):
             self._sessions = (self.sessions,)
@@ -884,316 +885,40 @@ class MneExperiment(FileTree):
 
         # Check the cache, delete invalid files
         # =====================================
+        save_state = new_state = {
+            'version': CACHE_STATE_VERSION,
+            'raw': {k: v.as_dict() for k, v in self._raw.items()},
+            'groups': self._groups,
+            'epochs': {k: v.as_dict() for k, v in self._epochs.items()},
+            'tests': {k: v.as_dict() for k, v in self._tests.items()},
+            'parcs': {k: v.as_dict() for k, v in self._parcs.items()},
+            'events': events,
+        }
         cache_state_path = join(cache_dir, 'cache-state.pickle')
-        raw_state = {k: v.as_dict() for k, v in self._raw.items()}
-        epoch_state = {k: v.as_dict() for k, v in self._epochs.items()}
-        parcs_state = {k: v.as_dict() for k, v in self._parcs.items()}
-        tests_state = {k: v.as_dict() for k, v in self._tests.items()}
         if exists(cache_state_path):
             # check time stamp
+            # ================
             state_mtime = getmtime(cache_state_path)
             now = time.time() + IS_WINDOWS  # Windows seems to have rounding issue
             if state_mtime > now:
                 raise RuntimeError(f"The cache's time stamp is in the future ({time.ctime(state_mtime)}). If the system time ({time.ctime(now)}) is wrong, adjust the system clock; if not, delete the eelbrain-cache folder.")
             cache_state = load.unpickle(cache_state_path)
-            cache_state_v = cache_state.get('version', 0)
+            cache_state_v = cache_state.setdefault('version', 0)
             if cache_state_v < CACHE_STATE_VERSION:
                 log.debug("Updating cache-state %i -> %i", cache_state_v, CACHE_STATE_VERSION)
+                save_state = deepcopy(save_state)
+                self._state_backwards_compat(cache_state_v, new_state, cache_state)
             elif cache_state_v > CACHE_STATE_VERSION:
                 raise RuntimeError(f"The cache is from a newer version of Eelbrain than you are currently using. Either upgrade Eelbrain or delete the cache folder.")
 
-            # Backwards compatibility
-            # =======================
-            # epochs
-            if cache_state_v >= 11:
-                epoch_state_v = epoch_state
-            elif cache_state_v >= 3:
-                # remove samplingrate parameter
-                epoch_state_v = {k: {ki: vi for ki, vi in v.items() if ki != 'samplingrate'} for k, v in epoch_state.items()}
-            else:
-                # Epochs represented as dict up to Eelbrain 0.24
-                epoch_state_v = {k: v.as_dict_24() for k, v in self._epochs.items()}
-                for e in cache_state['epochs'].values():
-                    e.pop('base', None)
-                    if 'sel_epoch' in e:
-                        e.pop('n_cases', None)
-
-            # events did not include session
-            if cache_state_v < 4:
-                if not events:
-                    raise DefinitionError("No raw files or events found. Did you set the MneExperiment.session parameter correctly?")
-                session = self._sessions[0]
-                cache_events = {(subject, session): v for subject, v in
-                                cache_state['events'].items()}
-            else:
-                cache_events = cache_state['events']
-
-            # raw pipeline
-            if cache_state_v < 5:
-                legacy_raw = assemble_pipeline(LEGACY_RAW, '', '', '', '', self._sessions, log)
-                cache_raw = {k: v.as_dict() for k, v in legacy_raw.items()}
-            else:
-                cache_raw = cache_state['raw']
-
-            # parcellations represented as dicts
-            cache_parcs = cache_state['parcs']
-            if cache_state_v < 6:
-                for params in cache_parcs.values():
-                    for key in ('morph_from_fsaverage', 'make'):
-                        if key in params:
-                            del params[key]
-
-            # tests represented as dicts
-            cache_tests = cache_state['tests']
-            if cache_state_v < 7:
-                for params in cache_tests.values():
-                    if 'desc' in params:
-                        del params['desc']
-                cache_tests = {k: v.as_dict() for k, v in assemble_tests(cache_tests).items()}
-            elif cache_state_v == 7:  # 'kind' key missing
-                for name, params in cache_tests.items():
-                    if name in tests_state:
-                        params['kind'] = tests_state[name]['kind']
-            if cache_state_v < 12:  # 'vars' entry added to all
-                for test, params in cache_tests.items():
-                    if 'vars' in params:
-                        try:
-                            params['vars'] = Variables(params['vars'])
-                        except Exception as error:
-                            log.warning("  Test %s: Defective vardef %r", test, params['vars'])
-                            params['vars'] = None
-                    else:
-                        params['vars'] = None
-
             # Find modified definitions
             # =========================
-            invalid_cache = defaultdict(set)
-            # events (subject, recording):  overall change in events
-            # variables:  event change restricted to certain variables
-            # raw: preprocessing definition changed
-            # groups:  change in group members
-            # epochs:  change in epoch parameters
-            # parcs: parc def change
-            # tests: test def change
-
-            # check events
-            # 'events' -> number or timing of triggers (includes trigger_shift)
-            # 'variables' -> only variable change
-            for key, old_events in cache_events.items():
-                new_events = events.get(key)
-                if new_events is None:
-                    invalid_cache['events'].add(key)
-                    log.warning("  raw file removed: %s", '/'.join(key))
-                elif new_events.n_cases != old_events.n_cases:
-                    invalid_cache['events'].add(key)
-                    log.warning("  event length: %s %i->%i", '/'.join(key), old_events.n_cases, new_events.n_cases)
-                elif not np.all(new_events['i_start'] == old_events['i_start']):
-                    invalid_cache['events'].add(key)
-                    log.warning("  trigger times changed: %s", '/'.join(key))
-                else:
-                    for var in old_events:
-                        if var == 'i_start':
-                            continue
-                        elif var not in new_events:
-                            invalid_cache['variables'].add(var)
-                            log.warning("  var removed: %s (%s)", var, '/'.join(key))
-                            continue
-                        old = old_events[var]
-                        new = new_events[var]
-                        if old.name != new.name:
-                            invalid_cache['variables'].add(var)
-                            log.warning("  var name changed: %s (%s) %s->%s", var, '/'.join(key), old.name, new.name)
-                        elif new.__class__ is not old.__class__:
-                            invalid_cache['variables'].add(var)
-                            log.warning("  var type changed: %s (%s) %s->%s", var, '/'.join(key), old.__class__, new.__class)
-                        elif not all_equal(old, new, True):
-                            invalid_cache['variables'].add(var)
-                            log.warning("  var changed: %s (%s) %i values", var, '/'.join(key), np.sum(new != old))
-
-            # groups
-            for group, members in cache_state['groups'].items():
-                if group not in self._groups:
-                    invalid_cache['groups'].add(group)
-                    log.warning("  Group removed: %s", group)
-                elif members != self._groups[group]:
-                    invalid_cache['groups'].add(group)
-                    log_list_change(log, "Group", group, members, self._groups[group])
-
-            # raw
-            changed, changed_ica = compare_pipelines(cache_raw, raw_state, log)
-            if changed:
-                invalid_cache['raw'].update(changed)
-            for raw, status in changed_ica.items():
-                filenames = self.glob('ica-file', raw=raw, subject='*', visit='*', match=False)
-                if filenames:
-                    rel_paths = '\n'.join(relpath(path, root) for path in filenames)
-                    print(f"Outdated ICA files:\n{rel_paths}")
-                    ask_to_delete_ica_files(raw, status, filenames)
-
-            # epochs
-            for epoch, old_params in cache_state['epochs'].items():
-                new_params = epoch_state_v.get(epoch, None)
-                if old_params != new_params:
-                    invalid_cache['epochs'].add(epoch)
-                    if new_params is None:
-                        log.warning("  Epoch removed: %s", epoch)
-                    else:
-                        log_dict_change(log, 'Epoch', epoch, old_params, new_params)
-
-            # parcs
-            for parc, params in cache_parcs.items():
-                if parc not in parcs_state:
-                    invalid_cache['parcs'].add(parc)
-                    log.warning("  Parc %s removed", parc)
-                elif params != parcs_state[parc]:
-                    # FS_PARC:  Parcellations that are provided by the user
-                    # should not be automatically removed.
-                    # FSA_PARC:  for other mrisubjects, the parcellation
-                    # should automatically update if the user changes the
-                    # fsaverage file.
-                    if not isinstance(self._parcs[parc], (FreeSurferParc, FSAverageParc)):
-                        invalid_cache['parcs'].add(parc)
-                        log_dict_change(log, "Parc", parc, params, parcs_state[parc])
-
-            # tests
-            for test, params in cache_tests.items():
-                if test not in tests_state or params != tests_state[test]:
-                    invalid_cache['tests'].add(test)
-                    if test in tests_state:
-                        log_dict_change(log, "Test", test, params, tests_state[test])
-                    else:
-                        log.warning("  Test %s removed", test)
-
-            # Secondary  invalidations
-            # ========================
-            # changed events -> group result involving those subjects is also bad
-            if 'events' in invalid_cache:
-                subjects = {subject for subject, _ in invalid_cache['events']}
-                for group, members in cache_state['groups'].items():
-                    if subjects.intersection(members):
-                        invalid_cache['groups'].add(group)
-
-            # tests/epochs based on variables
-            if 'variables' in invalid_cache:
-                bad_vars = invalid_cache['variables']
-                # tests using bad variable
-                for test in cache_tests:
-                    if test in invalid_cache['tests']:
-                        continue
-                    params = tests_state[test]
-                    bad = bad_vars.intersection(find_test_vars(params))
-                    if bad:
-                        invalid_cache['tests'].add(test)
-                        log.debug("  Test %s depends on changed variables %s", test, ', '.join(bad))
-                # epochs using bad variable
-                epochs_vars = find_epochs_vars(cache_state['epochs'])
-                for epoch, evars in epochs_vars.items():
-                    bad = bad_vars.intersection(evars)
-                    if bad:
-                        invalid_cache['epochs'].add(epoch)
-                        log.debug("  Epoch %s depends on changed variables %s", epoch, ', '.join(bad))
-
-            # secondary epochs
-            if 'epochs' in invalid_cache:
-                for e in tuple(invalid_cache['epochs']):
-                    invalid_cache['epochs'].update(find_dependent_epochs(e, cache_state['epochs']))
+            invalid_cache = self._check_cache(new_state, cache_state, root)
 
             # Collect invalid files
             # =====================
             if invalid_cache or cache_state_v < 2:
-                rm = defaultdict(DictSet)
-
-                # version
-                if cache_state_v < 2:
-                    bad_parcs = []
-                    for parc, params in self._parcs.items():
-                        if params['kind'] == 'seeded':
-                            bad_parcs.append(parc + '-?')
-                            bad_parcs.append(parc + '-??')
-                            bad_parcs.append(parc + '-???')
-                        else:
-                            bad_parcs.append(parc)
-                    bad_tests = []
-                    for test, params in tests_state.items():
-                        if params['kind'] == 'anova' and params['x'].count('*') > 1:
-                            bad_tests.append(test)
-                    if bad_tests and bad_parcs:
-                        log.warning("  Invalid ANOVA tests: %s for %s", bad_tests, bad_parcs)
-                    for test, parc in product(bad_tests, bad_parcs):
-                        rm['test-file'].add({'test': test, 'test_dims': parc})
-                        rm['report-file'].add({'test': test, 'folder': parc})
-
-                # evoked files are based on old events
-                for subject, recording in invalid_cache['events']:
-                    for epoch, params in self._epochs.items():
-                        if recording not in params.sessions:
-                            continue
-                        rm['evoked-file'].add({'subject': subject, 'epoch': epoch})
-
-                # variables
-                for var in invalid_cache['variables']:
-                    rm['evoked-file'].add({'model': '*%s*' % var})
-
-                # groups
-                for group in invalid_cache['groups']:
-                    rm['test-file'].add({'group': group})
-                    rm['group-mov-file'].add({'group': group})
-                    rm['report-file'].add({'group': group})
-
-                # raw
-                for raw in invalid_cache['raw']:
-                    rm['cached-raw-file'].add({'raw': raw})
-                    rm['evoked-file'].add({'raw': raw})
-                    analysis = {'analysis': '* %s *' % raw}
-                    rm['test-file'].add(analysis)
-                    rm['report-file'].add(analysis)
-                    rm['group-mov-file'].add(analysis)
-                    rm['subject-mov-file'].add(analysis)
-
-                # epochs
-                for epoch in invalid_cache['epochs']:
-                    rm['evoked-file'].add({'epoch': epoch})
-                    for cov, cov_params in self._covs.items():
-                        if cov_params.get('epoch') != epoch:
-                            continue
-                        analysis = '* %s *' % cov
-                        rm['test-file'].add({'analysis': analysis})
-                        rm['report-file'].add({'analysis': analysis})
-                        rm['group-mov-file'].add({'analysis': analysis})
-                        rm['subject-mov-file'].add({'analysis': analysis})
-                    rm['test-file'].add({'epoch': epoch})
-                    rm['report-file'].add({'epoch': epoch})
-                    rm['group-mov-file'].add({'epoch': epoch})
-                    rm['subject-mov-file'].add({'epoch': epoch})
-
-                # parcs
-                bad_parcs = []
-                for parc in invalid_cache['parcs']:
-                    if cache_state['parcs'][parc]['kind'].endswith('seeded'):
-                        bad_parcs.append(parc + '-?')
-                        bad_parcs.append(parc + '-??')
-                        bad_parcs.append(parc + '-???')
-                    else:
-                        bad_parcs.append(parc)
-                for parc in bad_parcs:
-                    rm['annot-file'].add({'parc': parc})
-                    rm['test-file'].add({'test_dims': parc})
-                    rm['test-file'].add({'test_dims': parc + '.*'})
-                    rm['report-file'].add({'folder': parc})
-                    rm['report-file'].add({'folder': '%s *' % parc})
-                    rm['report-file'].add({'folder': '%s *' % parc.capitalize()})  # pre 0.26
-                    rm['res-file'].add({'analysis': 'Source Annot',
-                                        'resname': parc + ' * *', 'ext': 'p*'})
-
-                # tests
-                for test in invalid_cache['tests']:
-                    rm['test-file'].add({'test': test})
-                    rm['report-file'].add({'test': test})
-
-                # secondary cache files
-                for temp in tuple(rm):
-                    for stemp in self._secondary_cache[temp]:
-                        rm[stemp].update(rm[temp])
+                rm = self._collect_invalid_files(invalid_cache, new_state, cache_state)
 
                 # find actual files to delete
                 log.debug("Outdated cache files:")
@@ -1309,14 +1034,283 @@ class MneExperiment(FileTree):
         elif not exists(cache_dir):
             os.mkdir(cache_dir)
 
-        new_state = {'version': CACHE_STATE_VERSION,
-                     'raw': raw_state,
-                     'groups': self._groups,
-                     'epochs': epoch_state,
-                     'tests': tests_state,
-                     'parcs': parcs_state,
-                     'events': events}
-        save.pickle(new_state, cache_state_path)
+        save.pickle(save_state, cache_state_path)
+
+    def _state_backwards_compat(self, cache_state_v, new_state, cache_state):
+        "Update state dicts for backwards-compatible comparison"
+        # epochs
+        if cache_state_v < 3:
+            # Epochs represented as dict up to Eelbrain 0.24
+            new_state['epochs'] = {k: v.as_dict_24() for k, v in self._epochs.items()}
+            for e in cache_state['epochs'].values():
+                e.pop('base', None)
+                if 'sel_epoch' in e:
+                    e.pop('n_cases', None)
+        elif cache_state_v < 11:
+            # remove samplingrate parameter
+            new_state['epochs'] = {k: {ki: vi for ki, vi in v.items() if ki != 'samplingrate'} for k, v in new_state['epochs'].items()}
+
+        # events did not include session
+        if cache_state_v < 4:
+            session = self._sessions[0]
+            cache_state['events'] = {(subject, session): v for subject, v in cache_state['events'].items()}
+
+        # raw pipeline
+        if cache_state_v < 5:
+            legacy_raw = assemble_pipeline(LEGACY_RAW, '', '', '', '', self._sessions, self._log)
+            cache_state['raw'] = {k: v.as_dict() for k, v in legacy_raw.items()}
+
+        # parcellations represented as dicts
+        if cache_state_v < 6:
+            for params in cache_state['parcs'].values():
+                for key in ('morph_from_fsaverage', 'make'):
+                    if key in params:
+                        del params[key]
+
+        # tests represented as dicts
+        if cache_state_v < 7:
+            for params in cache_state['tests'].values():
+                if 'desc' in params:
+                    del params['desc']
+            cache_state['tests'] = {k: v.as_dict() for k, v in assemble_tests(cache_state['tests']).items()}
+        elif cache_state_v == 7:  # 'kind' key missing
+            for name, params in cache_state['tests'].items():
+                if name in new_state['tests']:
+                    params['kind'] = new_state['tests'][name]['kind']
+        if cache_state_v < 12:  # 'vars' entry added to all
+            for test, params in cache_state['tests'].items():
+                if 'vars' in params:
+                    try:
+                        params['vars'] = Variables(params['vars'])
+                    except Exception as error:
+                        self._log.warning("  Test %s: Defective vardef %r", test, params['vars'])
+                        params['vars'] = None
+                else:
+                    params['vars'] = None
+
+    def _check_cache(self, new_state, cache_state, root):
+        invalid_cache = defaultdict(set)
+        # events (subject, recording):  overall change in events
+        # variables:  event change restricted to certain variables
+        # raw: preprocessing definition changed
+        # groups:  change in group members
+        # epochs:  change in epoch parameters
+        # parcs: parc def change
+        # tests: test def change
+
+        # check events
+        # 'events' -> number or timing of triggers (includes trigger_shift)
+        # 'variables' -> only variable change
+        for key, old_events in cache_state['events'].items():
+            new_events = new_state['events'].get(key)
+            if new_events is None:
+                invalid_cache['events'].add(key)
+                self._log.warning("  raw file removed: %s", '/'.join(key))
+            elif new_events.n_cases != old_events.n_cases:
+                invalid_cache['events'].add(key)
+                self._log.warning("  event length: %s %i->%i", '/'.join(key), old_events.n_cases, new_events.n_cases)
+            elif not np.all(new_events['i_start'] == old_events['i_start']):
+                invalid_cache['events'].add(key)
+                self._log.warning("  trigger times changed: %s", '/'.join(key))
+            else:
+                for var in old_events:
+                    if var == 'i_start':
+                        continue
+                    elif var not in new_events:
+                        invalid_cache['variables'].add(var)
+                        self._log.warning("  var removed: %s (%s)", var, '/'.join(key))
+                        continue
+                    old = old_events[var]
+                    new = new_events[var]
+                    if old.name != new.name:
+                        invalid_cache['variables'].add(var)
+                        self._log.warning("  var name changed: %s (%s) %s->%s", var, '/'.join(key), old.name, new.name)
+                    elif new.__class__ is not old.__class__:
+                        invalid_cache['variables'].add(var)
+                        self._log.warning("  var type changed: %s (%s) %s->%s", var, '/'.join(key), old.__class__, new.__class)
+                    elif not all_equal(old, new, True):
+                        invalid_cache['variables'].add(var)
+                        self._log.warning("  var changed: %s (%s) %i values", var, '/'.join(key), np.sum(new != old))
+
+        # groups
+        for group, members in cache_state['groups'].items():
+            if group not in self._groups:
+                invalid_cache['groups'].add(group)
+                self._log.warning("  Group removed: %s", group)
+            elif members != self._groups[group]:
+                invalid_cache['groups'].add(group)
+                log_list_change(self._log, "Group", group, members, self._groups[group])
+
+        # raw
+        changed, changed_ica = compare_pipelines(cache_state['raw'], new_state['raw'], self._log)
+        if changed:
+            invalid_cache['raw'].update(changed)
+        for raw, status in changed_ica.items():
+            filenames = self.glob('ica-file', raw=raw, subject='*', visit='*', match=False)
+            if filenames:
+                rel_paths = '\n'.join(relpath(path, root) for path in filenames)
+                print(f"Outdated ICA files:\n{rel_paths}")
+                ask_to_delete_ica_files(raw, status, filenames)
+
+        # epochs
+        for epoch, old_params in cache_state['epochs'].items():
+            new_params = new_state['epochs'].get(epoch, None)
+            if old_params != new_params:
+                invalid_cache['epochs'].add(epoch)
+                log_dict_change(self._log, 'Epoch', epoch, old_params, new_params)
+
+        # parcs
+        for parc, old_params in cache_state['parcs'].items():
+            new_params = new_state['parcs'].get(parc, None)
+            if old_params != new_params and (new_params is None or not isinstance(self._parcs[parc], (FreeSurferParc, FSAverageParc))):
+                # FreeSurferParc:  Parcellations that are provided by the user
+                # should not be automatically removed.
+                # FSAverageParc:  for other mrisubjects, the parcellation
+                # should automatically update if the user changes the
+                # fsaverage file.
+                invalid_cache['parcs'].add(parc)
+                log_dict_change(self._log, "Parc", parc, old_params, new_params)
+
+        # tests
+        for test, old_params in cache_state['tests'].items():
+            new_params = new_state['tests'].get(test, None)
+            if old_params != new_params:
+                invalid_cache['tests'].add(test)
+                log_dict_change(self._log, "Test", test, old_params, new_params)
+
+        # Secondary  invalidations
+        # ========================
+        # changed events -> group result involving those subjects is also bad
+        if 'events' in invalid_cache:
+            subjects = {subject for subject, _ in invalid_cache['events']}
+            for group, members in cache_state['groups'].items():
+                if subjects.intersection(members):
+                    invalid_cache['groups'].add(group)
+
+        # tests/epochs based on variables
+        if 'variables' in invalid_cache:
+            bad_vars = invalid_cache['variables']
+            # tests using bad variable
+            for test in cache_state['tests']:
+                if test in invalid_cache['tests']:
+                    continue
+                params = new_state['tests'][test]
+                bad = bad_vars.intersection(find_test_vars(params))
+                if bad:
+                    invalid_cache['tests'].add(test)
+                    self._log.debug("  Test %s depends on changed variables %s", test, ', '.join(bad))
+            # epochs using bad variable
+            epochs_vars = find_epochs_vars(cache_state['epochs'])
+            for epoch, evars in epochs_vars.items():
+                bad = bad_vars.intersection(evars)
+                if bad:
+                    invalid_cache['epochs'].add(epoch)
+                    self._log.debug("  Epoch %s depends on changed variables %s", epoch, ', '.join(bad))
+
+        # secondary epochs
+        if 'epochs' in invalid_cache:
+            for e in tuple(invalid_cache['epochs']):
+                invalid_cache['epochs'].update(find_dependent_epochs(e, cache_state['epochs']))
+
+        return invalid_cache
+
+    def _collect_invalid_files(self, invalid_cache, new_state, cache_state):
+        rm = defaultdict(DictSet)
+
+        # version
+        if cache_state['version'] < 2:
+            bad_parcs = []
+            for parc, params in self._parcs.items():
+                if params['kind'] == 'seeded':
+                    bad_parcs.append(parc + '-?')
+                    bad_parcs.append(parc + '-??')
+                    bad_parcs.append(parc + '-???')
+                else:
+                    bad_parcs.append(parc)
+            bad_tests = []
+            for test, params in new_state['tests'].items():
+                if params['kind'] == 'anova' and params['x'].count('*') > 1:
+                    bad_tests.append(test)
+            if bad_tests and bad_parcs:
+                self._log.warning("  Invalid ANOVA tests: %s for %s", bad_tests, bad_parcs)
+            for test, parc in product(bad_tests, bad_parcs):
+                rm['test-file'].add({'test': test, 'test_dims': parc})
+                rm['report-file'].add({'test': test, 'folder': parc})
+
+        # evoked files are based on old events
+        for subject, recording in invalid_cache['events']:
+            for epoch, params in self._epochs.items():
+                if recording not in params.sessions:
+                    continue
+                rm['evoked-file'].add({'subject': subject, 'epoch': epoch})
+
+        # variables
+        for var in invalid_cache['variables']:
+            rm['evoked-file'].add({'model': f'*{var}*'})
+
+        # groups
+        for group in invalid_cache['groups']:
+            rm['test-file'].add({'group': group})
+            rm['group-mov-file'].add({'group': group})
+            rm['report-file'].add({'group': group})
+
+        # raw
+        for raw in invalid_cache['raw']:
+            rm['cached-raw-file'].add({'raw': raw})
+            rm['evoked-file'].add({'raw': raw})
+            analysis = {'analysis': f'* {raw} *'}
+            rm['test-file'].add(analysis)
+            rm['report-file'].add(analysis)
+            rm['group-mov-file'].add(analysis)
+            rm['subject-mov-file'].add(analysis)
+
+        # epochs
+        for epoch in invalid_cache['epochs']:
+            rm['evoked-file'].add({'epoch': epoch})
+            for cov, cov_params in self._covs.items():
+                if cov_params.get('epoch') != epoch:
+                    continue
+                analysis = f'* {cov} *'
+                rm['test-file'].add({'analysis': analysis})
+                rm['report-file'].add({'analysis': analysis})
+                rm['group-mov-file'].add({'analysis': analysis})
+                rm['subject-mov-file'].add({'analysis': analysis})
+            rm['test-file'].add({'epoch': epoch})
+            rm['report-file'].add({'epoch': epoch})
+            rm['group-mov-file'].add({'epoch': epoch})
+            rm['subject-mov-file'].add({'epoch': epoch})
+
+        # parcs
+        bad_parcs = []
+        for parc in invalid_cache['parcs']:
+            if cache_state['parcs'][parc]['kind'].endswith('seeded'):
+                bad_parcs.append(parc + '-?')
+                bad_parcs.append(parc + '-??')
+                bad_parcs.append(parc + '-???')
+            else:
+                bad_parcs.append(parc)
+        for parc in bad_parcs:
+            rm['annot-file'].add({'parc': parc})
+            rm['test-file'].add({'test_dims': parc})
+            rm['test-file'].add({'test_dims': f'{parc}.*'})
+            rm['report-file'].add({'folder': parc})
+            rm['report-file'].add({'folder': f'{parc} *'})
+            rm['report-file'].add({'folder': f'{parc.capitalize()} *'})  # pre 0.26
+            rm['res-file'].add({'analysis': 'Source Annot',
+                                'resname':  f'{parc} * *',
+                                'ext': 'p*'})
+
+        # tests
+        for test in invalid_cache['tests']:
+            rm['test-file'].add({'test': test})
+            rm['report-file'].add({'test': test})
+
+        # secondary cache files
+        for temp in tuple(rm):
+            for stemp in self._secondary_cache[temp]:
+                rm[stemp].update(rm[temp])
+
+        return rm
 
     def _subclass_init(self):
         "Allow subclass to register experimental features"

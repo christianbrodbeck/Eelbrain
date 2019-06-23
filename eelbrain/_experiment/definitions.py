@@ -141,9 +141,12 @@ def dict_change(old, new):
 
 
 def log_dict_change(log, kind, name, old, new):
-    log.warning("  %s %s changed:", kind, name)
-    for line in dict_change(old, new):
-        log.warning("    %s", line)
+    if new is None:
+        log.warning("  %s %s removed", kind, name)
+    else:
+        log.warning("  %s %s changed:", kind, name)
+        for line in dict_change(old, new):
+            log.warning("    %s", line)
 
 
 def log_list_change(log, kind, name, old, new):
