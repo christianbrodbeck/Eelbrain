@@ -1162,14 +1162,25 @@ class MneExperiment(FileTree):
         # parcs
         for parc, old_params in cache_state['parcs'].items():
             new_params = new_state['parcs'].get(parc, None)
-            if old_params != new_params and (new_params is None or not isinstance(self._parcs[parc], (FreeSurferParc, FSAverageParc))):
+            if old_params == new_params:
+                continue
+            elif new_params is None:
+                # Don't automatically remove because they could be user-created
+                continue
+            new_parc = self._parcs[parc]
+            if isinstance(new_parc, (FreeSurferParc, FSAverageParc)):
                 # FreeSurferParc:  Parcellations that are provided by the user
                 # should not be automatically removed.
                 # FSAverageParc:  for other mrisubjects, the parcellation
                 # should automatically update if the user changes the
                 # fsaverage file.
-                invalid_cache['parcs'].add(parc)
-                log_dict_change(self._log, "Parc", parc, old_params, new_params)
+                continue
+            log_dict_change(self._log, "Parc", parc, old_params, new_params)
+            invalid_cache['parcs'].add(parc)
+            if any(p['kind'].endswith('seeded') for p in (new_params, old_params)):
+                invalid_cache['parcs'].add(f'{parc}-?')
+                invalid_cache['parcs'].add(f'{parc}-??')
+                invalid_cache['parcs'].add(f'{parc}-???')
 
         # tests
         for test, old_params in cache_state['tests'].items():
@@ -1211,6 +1222,11 @@ class MneExperiment(FileTree):
         if 'epochs' in invalid_cache:
             for e in tuple(invalid_cache['epochs']):
                 invalid_cache['epochs'].update(find_dependent_epochs(e, cache_state['epochs']))
+
+            # epochs -> cov
+            for cov, cov_params in self._covs.items():
+                if cov_params.get('epoch') in invalid_cache['epochs']:
+                    invalid_cache['cov'].add(cov)
 
         return invalid_cache
 
@@ -1267,29 +1283,21 @@ class MneExperiment(FileTree):
         # epochs
         for epoch in invalid_cache['epochs']:
             rm['evoked-file'].add({'epoch': epoch})
-            for cov, cov_params in self._covs.items():
-                if cov_params.get('epoch') != epoch:
-                    continue
-                analysis = f'* {cov} *'
-                rm['test-file'].add({'analysis': analysis})
-                rm['report-file'].add({'analysis': analysis})
-                rm['group-mov-file'].add({'analysis': analysis})
-                rm['subject-mov-file'].add({'analysis': analysis})
             rm['test-file'].add({'epoch': epoch})
             rm['report-file'].add({'epoch': epoch})
             rm['group-mov-file'].add({'epoch': epoch})
             rm['subject-mov-file'].add({'epoch': epoch})
 
+        # cov
+        for cov in invalid_cache['cov']:
+            analysis = f'* {cov} *'
+            rm['test-file'].add({'analysis': analysis})
+            rm['report-file'].add({'analysis': analysis})
+            rm['group-mov-file'].add({'analysis': analysis})
+            rm['subject-mov-file'].add({'analysis': analysis})
+
         # parcs
-        bad_parcs = []
-        for parc in invalid_cache['parcs']:
-            if cache_state['parcs'][parc]['kind'].endswith('seeded'):
-                bad_parcs.append(parc + '-?')
-                bad_parcs.append(parc + '-??')
-                bad_parcs.append(parc + '-???')
-            else:
-                bad_parcs.append(parc)
-        for parc in bad_parcs:
+        for parc in invalid_cache['parc']:
             rm['annot-file'].add({'parc': parc})
             rm['test-file'].add({'test_dims': parc})
             rm['test-file'].add({'test_dims': f'{parc}.*'})
