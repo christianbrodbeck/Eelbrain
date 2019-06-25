@@ -10,6 +10,7 @@ import numpy as np
 from scipy import interpolate, linalg
 from scipy.spatial import ConvexHull
 
+from .._text import ms
 from ._base import (
     PlotType, EelFigure, PlotData, AxisData, LayerData,
     Layout, ImLayout, VariableAspectLayout,
@@ -450,7 +451,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         else:
             return
         seg = [l.sub(time=t) for l in p.data]
-        return seg, "%i ms" % round(t * 1e3), self._topo_kwargs['proj']
+        return seg, f"{ms(t)} ms", self._topo_kwargs['proj']
 
     def _on_leave_axes_status_text(self, event):
         return "Topomap: t = %.3f" % self._current_time
@@ -679,6 +680,7 @@ class _TopoWindow:
         self.t_line = None
         self.pointer = None
         self.plot = None
+        self.t = None
 
     def update(self, t):
         if t is not None:
@@ -686,7 +688,7 @@ class _TopoWindow:
                 self.t_line.remove()
             self.t_line = self.parent.ax.axvline(t, c='r')
 
-            t_str = "%i ms" % round(t * 1e3)
+            t_str = f"{ms(t)} ms"
             if self.pointer:
                 self.pointer.axes = self.parent.ax
                 self.pointer.xy = (t, 1)
@@ -718,11 +720,13 @@ class _TopoWindow:
             else:
                 layers = self.parent.data.sub_time(t, data_only=True)
                 self.plot.set_data(layers)
+            self.t = t
 
     def clear(self):
         self.ax.cla()
         self.ax.set_axis_off()
         self.plot = None
+        self.t = None
         if self.t_line:
             self.t_line.remove()
             self.t_line = None
@@ -743,7 +747,7 @@ class _TopoWindow:
             self.plot.set_vlim(v, vmax, meas)
 
 
-class TopoArray(ColorMapMixin, EelFigure):
+class TopoArray(ColorMapMixin, TopoMapKey, EelFigure):
     """Channel by sample plots with topomaps for individual time points
 
     Parameters
@@ -842,6 +846,7 @@ class TopoArray(ColorMapMixin, EelFigure):
         EelFigure.__init__(self, data.frame_title, layout)
         all_plots = []
         ColorMapMixin.__init__(self, data.data, cmap, vmax, vmin, contours, all_plots)
+        TopoMapKey.__init__(self, self._topo_data)
 
         # fig coordinates
         x_frame_l = .6 / self._layout.axw / data.n_plots
@@ -857,6 +862,7 @@ class TopoArray(ColorMapMixin, EelFigure):
         self._data = data
         self._ntopo = ntopo
         self._default_xlabel_ax = -1 - ntopo
+        self._proj = proj
 
         # im_array plots
         self._array_axes = []
@@ -915,6 +921,19 @@ class TopoArray(ColorMapMixin, EelFigure):
 
     def _fill_toolbar(self, tb):
         ColorMapMixin._fill_toolbar(self, tb)
+
+    def _topo_data(self, event):
+        ax = event.inaxes
+        if ax in self._array_axes:
+            t = event.xdata
+            data = self._array_plots[ax.ID].data.sub_time(t)
+        else:
+            topo_window = self._topo_windows[ax.ID]
+            t = topo_window.t
+            if t is None:
+                return
+            data = topo_window.plot.data
+        return data, f"{ms} ms", self._proj
 
     def add_contour(self, meas, level, color='k'):
         """Add a contour line
