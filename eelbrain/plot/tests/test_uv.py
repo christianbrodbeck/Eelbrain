@@ -28,9 +28,15 @@ def test_barplot():
     "Test plot.Barplot"
     ds = datasets.get_uv()
 
-    # one category
+    # average
     plot.Barplot('fltvar', ds=ds)
     plot.Barplot('fltvar', match='rm', ds=ds)
+
+    # one category
+    p = plot.Barplot('fltvar + 2', 'A', ds=ds)
+    assert p.get_ylim()[0] == 0
+    p = plot.Barplot('fltvar - 2', 'A', 'rm', ds=ds)
+    assert p.get_ylim()[1] == 0
 
     # multiple categories
     plot.Barplot('fltvar', 'A%B', match='rm', ds=ds)

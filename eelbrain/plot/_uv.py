@@ -403,11 +403,12 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         Matplotlib colors to use for boxes (True to use the module default;
         default is False, i.e. no colors).
     bottom : scalar
-        Lower end of the y axis (default is 0).
+        Lower end of the y axis (default is determined from the data).
     top : scalar
         Upper end of the y axis (default is determined from the data).
     origin : scalar
-        Origin of the bars on the y-axis (the default is ``max(bottom, 0)``).
+        Origin of the bars on the y-axis (the default is ``0``, or the visible
+        point closest to it).
     pos : sequence of scalar
         Position of the bars on the x-axis (default is ``range(n_cells)``).
     width : scalar or sequence of scalar
@@ -425,7 +426,7 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
     def __init__(self, y, x=None, match=None, sub=None, cells=None, test=True, par=True,
                  corr='Hochberg', trend="'", test_markers=True, ylabel=True,
                  error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
-                 xtick_delim='\n', hatch=False, colors=False, bottom=0, top=None,
+                 xtick_delim='\n', hatch=False, colors=False, bottom=None, top=None,
                  origin=None, pos=None, width=0.5, c='#0099FF', edgec=None, ds=None, *args, **kwargs):
         ct = Celltable(y, x, match, sub, cells, ds, asvar)
 
@@ -655,9 +656,9 @@ class _plt_barplot(_plt_uv_base):
             pool_error: bool,  # for the variability estimate
             hatch,
             colors,
-            bottom,
-            top = None,
-            origin = None,
+            bottom: float = None,
+            top: float = None,
+            origin: float = None,
             pos: Sequence[float] = None,  # position of the bars
             width: float = .5,  # width of the pbars
             c='#0099FF',
@@ -694,7 +695,12 @@ class _plt_barplot(_plt_uv_base):
 
         # origin
         if origin is None:
-            origin = max(0, bottom)
+            if bottom and bottom > 0:
+                origin = bottom
+            elif top and top < 0:
+                origin = top
+            else:
+                origin = 0
 
         # error bars
         if ct.x is None:
@@ -707,7 +713,10 @@ class _plt_barplot(_plt_uv_base):
         plot_max = np.max(height + error_bars)
         plot_min = np.min(height - error_bars)
         plot_span = plot_max - plot_min
-        y_bottom = min(bottom, plot_min - plot_span * .05)
+        if bottom is None:
+            y_bottom = min(plot_min - plot_span * .05, origin)
+        else:
+            y_bottom = bottom
 
         # main BARPLOT
         if horizontal:
@@ -739,11 +748,16 @@ class _plt_barplot(_plt_uv_base):
             ax.axhline(test, color='black')
             y_top = _mark_plot_1sample(ax, ct, par, plot_max, y_unit, test, corr, trend)
 
+        if top is None:
+            y_top = max(y_top, origin)
+        else:
+            y_top = top
+
         self.left = min(pos) - width
         self.right = max(pos) + width
         self.origin = origin
         self.bottom = y_bottom
-        self.top = y_top if top is None else top
+        self.top = y_top
         self.pos = pos
         _plt_uv_base.__init__(self, ax, horizontal)
 

@@ -10,15 +10,16 @@ def test_result_report():
     "Test result_report function for different Results"
     ds = datasets.get_uts(True)
     sds = ds.sub("B == 'b0'")
+    ys = [
+        'uts',  # time
+        "utsnd.summary(time=(0.25, 0.35))",  # sensor
+        'utsnd',  # sensor x time
+    ]
 
-    for y in ('uts',  # time
-              "utsnd.summary(time=(0.25, 0.35))",  # sensor
-              'utsnd',  # sensor x time
-              ):
-        dims = tuple(dim.name for dim in ds.eval(y).dims[1:])
-        logging.info("y=%s %s", y, dims)
+    for y in ys:
+        y_obj = sds.eval(y)
         kwargs = dict(pmin=0.1, samples=100)
-        if 'time' in dims:
+        if y_obj.has_dim('time'):
             kwargs['tstart'] = 0.2
             kwargs['tstop'] = 0.4
 
