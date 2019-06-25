@@ -323,6 +323,7 @@ class MneExperiment(FileTree):
     .. seealso::
         Guide on using :ref:`experiment-class-guide`.
     """
+    _safe_delete = 'cache-dir'
     path_version = 2
     screen_log_level = logging.INFO
     auto_delete_results = False

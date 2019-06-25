@@ -16,6 +16,7 @@ from tqdm import tqdm
 
 from .. import fmtxt
 from .._config import CONFIG
+from .._text import enumeration, n_of
 from .._utils import as_sequence, LazyProperty, ask
 from .._utils.com import Notifier, NotNotifier
 from .definitions import check_names, compound
@@ -860,6 +861,7 @@ class TreeModel:
 class FileTree(TreeModel):
     """:class:`TreeModel` subclass for a file system hierarchy"""
     _repr_args = ('root',)
+    _safe_delete = 'root'  # directory from which to rm without warning
 
     def __init__(self, **state):
         TreeModel.__init__(self, **state)
@@ -1422,33 +1424,31 @@ class FileTree(TreeModel):
         for stemp in self._secondary_cache[temp]:
             secondary_files.extend(self.glob(stemp, inclusive, **constants))
 
+        options = {'yes': 'delete files', 'no': "don't delete files (default)"}
         if files or secondary_files:
             print("root: %s\n" % self.get('root'))
             print('\n'.join(self._remove_root(files)))
-            is_dir = tuple(map(os.path.isdir, files))
+            is_dir = [os.path.isdir(path) for path in files]
+            # Confirm deletion
             if not confirm:
                 n_dirs = sum(is_dir)
                 n_files = len(files) - n_dirs
-                if n_files and n_dirs:
-                    info = "Delete %i files and %i directories" % (n_files, n_dirs)
-                elif n_files:
-                    info = "Delete %i files" % n_files
-                elif n_dirs:
-                    info = "Delete %i directories" % n_dirs
-                else:
-                    info = ''
-
+                desc = []
+                if n_dirs:
+                    desc.append(n_of(n_dirs, 'directory'))
+                if n_files:
+                    desc.append(n_of(n_files, 'file'))
                 if secondary_files:
-                    sinfo = '%i secondary files' % len(secondary_files)
-                    if info:
-                        info += ' (%s)' % sinfo
-                    else:
-                        info = "Delete %s" % sinfo
-                info += '?'
+                    desc.append(n_of(len(secondary_files), 'secondary file'))
+                info = f"Delete {enumeration(desc)}?"
 
-                if ask(info, (('yes', 'delete files'),
-                              ('no', "don't delete files (default)")),
-                       allow_empty=True) != 'yes':
+                # Confirm if deleting files not in managed space
+                safe_root = self.get(self._safe_delete)
+                n_unsafe = len(files) - sum(path.startswith(safe_root) for path in files)
+                if n_unsafe:
+                    info += f"\n!\n! {enumeration(n_unsafe, 'item')} outside of {self._safe_delete}\n!"
+
+                if ask(info, options, allow_empty=True) != 'yes':
                     print('aborting...')
                     return
 

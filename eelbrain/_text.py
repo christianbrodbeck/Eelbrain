@@ -1,15 +1,16 @@
 """Text generation helpers"""
+from typing import List
 
 
-def enumeration(items, link='and'):
+def enumeration(items: List[str], link: str = 'and'):
     "['a', 'b', 'c'] -> 'a, b and c'"
-    items = tuple(map(str, items))
+    items = list(map(str, items))
     if len(items) >= 2:
-        return (' %s ' % link).join((', '.join(items[:-1]), items[-1]))
+        return f"{', '.join(items[:-1])} {link} {items[-1]}"
     elif len(items) == 1:
         return items[0]
     else:
-        raise ValueError("items=%s" % repr(items))
+        raise ValueError(f"items={items!r}")
 
 
 def ms(t_s):
@@ -34,8 +35,8 @@ def named_list(items, name='item'):
 def n_of(n, of, plural_for_0=False):
     "n_of(3, 'epoch') -> '3 epochs'"
     if n == 0:
-        return "no " + plural(of, not plural_for_0)
-    return str(n) + ' ' + plural(of, n)
+        return f"no {plural(of, not plural_for_0)}"
+    return f"{n} {plural(of, n)}"
 
 
 PLURALS = {

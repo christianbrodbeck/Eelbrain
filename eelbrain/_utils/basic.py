@@ -20,15 +20,15 @@ def as_sequence(items, item_type=str):
     return items
 
 
-def ask(message, options, allow_empty=False, help=None):
+def ask(message, options, allow_empty=False, help=None) -> str:
     """Ask user for input
 
     Parameters
     ----------
     message : str
         Message.
-    options : list of tuple of str
-        List of ``(command, description)`` tuples.
+    options : dict
+        ``{command: description}`` mapping.
     allow_empty : bool
         Allow empty string as command.
     help : str
@@ -39,23 +39,22 @@ def ask(message, options, allow_empty=False, help=None):
     command : str
         The user command.
     """
-    option_keys = [s[0] for s in options]
+    options = dict(options)
+    if help is not None:
+        assert 'help' not in options
+        options['help'] = 'display help'
     print(message)
     print('---')
-    print('\n'.join('%s:  %s' % item for item in options))
-    if help is not None:
-        assert 'help' not in option_keys
-        print('help:  display help')
-        option_keys.append('help')
+    print('\n'.join(f'{k}:  {v}' for k, v in options.items()))
     while True:
         command = input(" > ")
-        if command in option_keys or (allow_empty and not command):
+        if command in options or (allow_empty and not command):
             if help is not None and command == 'help':
                 print(help)
             else:
                 return command
         else:
-            print("Invalid entry - type one of (%s)" % ', '.join(option_keys))
+            print(f"Invalid entry - type one of ({', '.join(options)})")
 
 
 def deprecated(version, replacement):
