@@ -98,7 +98,7 @@ LOG_FILE_OLD = join('{root}', '.eelbrain.log')
 # Allowable parameters
 COV_PARAMS = {'epoch', 'session', 'method', 'reg', 'keep_sample_mean', 'reg_eval_win_pad'}
 INV_METHODS = ('MNE', 'dSPM', 'sLORETA', 'eLORETA')
-SRC_RE = re.compile(r'^(ico|vol)-(\d+)(?:-(brainstem))?$')
+SRC_RE = re.compile(r'^(ico|vol)-(\d+)(?:-(cortex|brainstem))?$')
 inv_re = re.compile(r"^"
                     r"(free|fixed|loose\.\d+|vec)-"  # orientation constraint
                     r"(\d*\.?\d+)-"  # SNR
@@ -5208,18 +5208,24 @@ class MneExperiment(FileTree):
                 if subject == 'fsaverage':
                     bem = self.get('bem-file')
                 else:
-                    raise NotImplementedError(
-                        "Volume source space for subject other than fsaverage")
+                    raise NotImplementedError("Volume source space for subject other than fsaverage")
                 if special == 'brainstem':
                     name = 'brainstem'
                     voi = ['Brain-Stem', '3rd-Ventricle']
                     voi_lat = ('Thalamus-Proper', 'VentralDC')
                     remove_midline = False
-                else:
+                elif special == 'cortex':
+                    name = 'cortex'
+                    voi = []
+                    voi_lat = ('Cerebral-Cortex',)
+                    remove_midline = True
+                elif special == '':
                     name = 'cortex'
                     voi = []
                     voi_lat = ('Cerebral-Cortex', 'Cerebral-White-Matter')
                     remove_midline = True
+                else:
+                    raise RuntimeError(f'src={src!r}')
                 voi.extend('%s-%s' % fmt for fmt in product(('Left', 'Right'), voi_lat))
                 sss = mne.setup_volume_source_space(
                     subject, pos=float(param), bem=bem,
@@ -5230,9 +5236,7 @@ class MneExperiment(FileTree):
             else:
                 assert not special
                 spacing = kind + param
-                sss = mne.setup_source_space(
-                    subject, spacing=spacing, add_dist=True,
-                    subjects_dir=self.get('mri-sdir'))
+                sss = mne.setup_source_space(subject, spacing=spacing, add_dist=True, subjects_dir=self.get('mri-sdir'))
             mne.write_source_spaces(dst, sss)
 
     def _test_kwargs(self, samples, pmin, tstart, tstop, data, parc_dim):
