@@ -8042,7 +8042,7 @@ class Sensor(Dimension):
         self._init_secondary()
 
     def _coerce_connectivity(self, connectivity):
-        if isinstance(connectivity[0][0], str):
+        if len(connectivity) and isinstance(connectivity[0][0], str):
             return connectivity_from_name_pairs(connectivity, self.names, allow_missing=True)
         else:
             return Dimension._coerce_connectivity(self, connectivity)
