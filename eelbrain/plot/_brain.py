@@ -1273,7 +1273,7 @@ class SequencePlotter:
                 out.append(str(label))
         return out
 
-    def plot_table(self, hemi=None, view=('lateral', 'medial'), orientation='horizontal', labels=True, *args, column_header=None, **kwargs):
+    def plot_table(self, hemi=None, view=('lateral', 'medial'), orientation='horizontal', labels=True, mode='rgb', antialiased=False, column_header=None, **kwargs):
         """Create a figure with the images
 
         Parameters
@@ -1288,6 +1288,11 @@ class SequencePlotter:
             Direction of the time/case axis.
         labels : bool | list of str
             Headers for columns/rows of images (default is inferred from the data).
+        mode : 'rgb' | 'rgba'
+            Image mode (default ```'rgb'``, set to ``'rgba'`` to include alpha
+            channel).
+        antialiased : bool
+            Apply antialiasing to the images (default ``False``).
         ...
             Layout parameters for the figure.
 
@@ -1359,7 +1364,7 @@ class SequencePlotter:
         else:
             raise ValueError(f"orientation={orientation!r}")
 
-        figure = ImageTable(n_rows, n_columns, *args, **kwargs)
+        figure = ImageTable(n_rows, n_columns, **kwargs)
 
         im_rows = []
         cmap_params = None
@@ -1381,7 +1386,7 @@ class SequencePlotter:
                 for i in bins:
                     if i is not None:
                         b.set_data_time_index(i)
-                        self._capture(b, hemi_rows, views)
+                        self._capture(b, hemi_rows, views, mode, antialiased)
             elif self._bin_kind == SPLayer.ITEM:
                 for i in bins:
                     for l in self._data:
@@ -1390,7 +1395,7 @@ class SequencePlotter:
                             if cmap_params is None and l.kind == SPLayer.ITEM:
                                 cmap_params = b._get_cmap_params()
                                 cmap_data = l.ndvar
-                    self._capture(b, hemi_rows, views)
+                    self._capture(b, hemi_rows, views, mode, antialiased)
                     b.remove_data()
             else:
                 raise NotImplementedError(f"{self._bin_kind}")
@@ -1409,7 +1414,7 @@ class SequencePlotter:
                 figure.add_row_titles(labels, rotation='vertical')
         return figure
 
-    def _capture(self, b, hemi_rows, views):
+    def _capture(self, b, hemi_rows, views, mode, antialiased):
         for row, view in zip(hemi_rows, views):
             if isinstance(view, str):
                 b.show_view(view)
@@ -1418,7 +1423,7 @@ class SequencePlotter:
             else:
                 b.show_view(view[0])
                 b.set_parallel_view(*view[1:])
-            row.append(b.screenshot_single('rgba', True))
+            row.append(b.screenshot_single(mode, antialiased))
 
 
 def connectivity(source):
