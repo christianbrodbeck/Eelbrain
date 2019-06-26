@@ -244,9 +244,10 @@ def melt(name, cells, cell_var_name, ds, labels=None):
         Name of the variable to contain the cell identifier.
     ds : Dataset
         Input Dataset.
-    labels : dict
-        Labels mapping from names in ``cells`` to labels assigned in the new
-        :class:`Factor` describing the cells.
+    labels : dict | sequence of str
+        Labels for the keys in ``cells``. Can be specified either as a
+        ``{key: label}`` dictionary or as a list of :class:`str` corresponding
+        to ``cells``.
 
     Examples
     --------
@@ -291,9 +292,6 @@ def melt(name, cells, cell_var_name, ds, labels=None):
         c    6   y2
 
     """
-    if labels is None:
-        labels = {}
-
     # find source cells
     if isinstance(cells, str):
         cell_expression = cells
@@ -307,23 +305,24 @@ def melt(name, cells, cell_var_name, ds, labels=None):
                     cells.append(key)
                     cell_values.append(int(m.group(1)))
         else:
-            raise ValueError("If cells is a string, it needs to contain '%i' "
-                             "as a place-holder for an integer that "
-                             "identifies columns")
+            raise ValueError(f"cells={cells!r}; If specified as string, it needs to contain '%i' as a place-holder for an integer that identifies columns")
     else:
         cell_values = cells
 
+    if labels is None:
+        cell_labels = cell_values
+    elif isinstance(labels, dict):
+        cell_labels = [labels[v] for v in cell_values]
+    elif len(labels) != len(cells):
+        raise ValueError(f"labels={labels!r}: needs as many entries as there are cells ({len(cells)})")
+    else:
+        cell_labels = labels
+
     # melt the Dataset
-    dss = []
-    for cell, cell_value in zip(cells, cell_values):
-        cell_ds = ds.copy()
-        cell_ds.rename(cell, name)
-        for src in cells:
-            if src != cell:
-                del cell_ds[src]
-        cell_ds[cell_var_name, :] = labels.get(cell_value, cell_value)
-        dss.append(cell_ds)
-    out = combine(dss)
+    keep = tuple(k for k, v in ds.items() if isuv(v))
+    out = ds[keep].tile(len(cells))
+    out[name] = combine(ds[cell] for cell in cells)
+    out[cell_var_name] = Factor(cell_labels, repeat=ds.n_cases)
     return out
 
 
