@@ -429,10 +429,13 @@ class App(wx.App):
         frame.OnDrawCrosshairs(event)
 
     def OnLinkTimeAxes(self, event):
+        from ..plot._base import TimeSlicer
+        from .._data_obj import UTS
+
         figures = []
         for window in wx.GetTopLevelWindows():
             eelfigure = getattr(window, '_eelfigure', None)
-            if eelfigure and hasattr(eelfigure, 'link_time_axis'):
+            if eelfigure and isinstance(eelfigure, TimeSlicer) and isinstance(eelfigure._time_dim, UTS):
                 figures.append(eelfigure)
         if len(figures) >= 2:
             f0 = figures[0]
