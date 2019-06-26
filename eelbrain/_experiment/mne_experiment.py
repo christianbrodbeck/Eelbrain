@@ -237,6 +237,8 @@ temp = {
     'cov-base': join('{cov-dir}', '{subject_visit}', '{sns_kind} {cov}-{rej}'),
     'cov-file': '{cov-base}-cov.fif',
     'cov-info-file': '{cov-base}-info.txt',
+    # inverse solution
+    'inv-file': join('{raw-cache-dir}', 'inv', '{mrisubject} {src} {recording} {sns_kind} {cov} {rej} {inv-cache}-inv.fif'),
     # evoked
     'evoked-dir': join('{cache-dir}', 'evoked'),
     'evoked-file': join('{evoked-dir}', '{subject}', '{sns_kind} {epoch_visit} {model} {evoked_kind}-ave.fif'),
@@ -333,6 +335,9 @@ class MneExperiment(FileTree):
     #   False: raise an error
     #   'disable': ignore it
     #   'debug': prompt with debug options
+    cache_inv = True  # Whether to cache inverse solution
+    # moderate speed gain for loading source estimates (34 subjects: 20 vs 70 s)
+    # hard drive space ~ 100 mb/file
 
     # tuple (if the experiment has multiple sessions)
     sessions = None
@@ -666,6 +671,7 @@ class MneExperiment(FileTree):
         # slave fields
         self._register_field('mrisubject', depends_on=('mri', 'subject'), slave_handler=self._update_mrisubject, repr=False)
         self._register_field('src-name', depends_on=('src',), slave_handler=self._update_src_name, repr=False)
+        self._register_field('inv-cache', depends_on='inv', slave_handler=self._update_inv_cache, repr=False)
 
         # fields used internally
         self._register_field('analysis', repr=False)
@@ -1293,6 +1299,7 @@ class MneExperiment(FileTree):
         # cov
         for cov in invalid_cache['cov']:
             rm['cov-file'].add({'cov': cov})
+            rm['inv-file'].add({'cov': cov})
             analysis = f'* {cov} *'
             rm['test-file'].add({'analysis': analysis})
             rm['report-file'].add({'analysis': analysis})
@@ -1315,6 +1322,9 @@ class MneExperiment(FileTree):
         for test in invalid_cache['tests']:
             rm['test-file'].add({'test': test})
             rm['report-file'].add({'test': test})
+
+        if not self.cache_inv:
+            rm['inv-file'].add({})
 
         # secondary cache files
         for temp in tuple(rm):
@@ -1409,8 +1419,8 @@ class MneExperiment(FileTree):
                     src_mtime = getmtime(src)
                     return max(raw_mtime, trans_mtime, src_mtime)
 
-    def _inv_mtime(self):
-        fwd_mtime = self._fwd_mtime()
+    def _inv_mtime(self, fwd_recording=None):
+        fwd_mtime = self._fwd_mtime(fwd_recording=fwd_recording)
         if fwd_mtime:
             cov_mtime = self._cov_mtime()
             if cov_mtime:
@@ -2874,29 +2884,40 @@ class MneExperiment(FileTree):
              - :ref:`state-inv`: inverse solution
 
         """
-        if state:
-            self.set(**state)
         if mask and not ndvar:
             raise NotImplementedError("mask is only implemented for ndvar=True")
         elif isinstance(mask, str):
-            self.set(parc=mask)
+            state['parc'] = mask
             mask = True
 
-        src = self.get('src')
-        if src[:3] == 'vol':
-            inv = self.get('inv')
-            if not (inv.startswith('vec') or inv.startswith('free')):
-                raise ValueError(f'inv={inv!r} with src={src!r}: volume source space requires free or vector inverse')
+        if state:
+            self.set(**state)
 
-        if fiff is None:
-            fiff = self.load_raw()
+        inv = dst = None
+        if self.cache_inv:
+            subject = self.get('subject')
+            fwd_recording = self._get_fwd_recording(subject)
+            with self._temporary_state:
+                dst = self.get('inv-file', mkdir=True, recording=fwd_recording)
+            if exists(dst) and cache_valid(getmtime(dst), self._inv_mtime(fwd_recording)):
+                inv = mne.minimum_norm.read_inverse_operator(dst)
 
-        inv = make_inverse_operator(fiff.info, self.load_fwd(), self.load_cov(),
-                                    use_cps=True, **self._params['make_inv_kw'])
+        if inv is None:
+            src = self.get('src')
+            if src[:3] == 'vol':
+                inv = self.get('inv')
+                if not (inv.startswith('vec') or inv.startswith('free')):
+                    raise ValueError(f'inv={inv!r} with src={src!r}: volume source space requires free or vector inverse')
+
+            if fiff is None:
+                fiff = self.load_raw()
+
+            inv = make_inverse_operator(fiff.info, self.load_fwd(), self.load_cov(), use_cps=True, **self._params['make_inv_kw'])
+            if dst:
+                mne.minimum_norm.write_inverse_operator(dst, inv)
 
         if ndvar:
-            inv = load.fiff.inverse_operator(
-                inv, self.get('src'), self.get('mri-sdir'), self.get('parc'))
+            inv = load.fiff.inverse_operator(inv, self.get('src'), self.get('mri-sdir'), self.get('parc'))
             if mask:
                 inv = inv.sub(source=~inv.source.parc.startswith('unknown'))
         return inv
@@ -5837,6 +5858,16 @@ class MneExperiment(FileTree):
     def _eval_inv(cls, inv):
         cls._parse_inv(inv)
         return inv
+
+    def _update_inv_cache(self, fields):
+        if fields['inv'] == '*':
+            return '*'
+        m = inv_re.match(fields['inv'])
+        ori, snr, method, depth, pick_normal = m.groups()
+        if depth:
+            return f'{ori}-{depth}'
+        else:
+            return ori
 
     def _post_set_inv(self, _, inv):
         if '*' in inv:
