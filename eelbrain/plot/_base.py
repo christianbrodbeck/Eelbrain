@@ -1870,17 +1870,35 @@ class BaseLayout:
         self.title = title
         self.name = name or title
 
-        right_of_rect = right_of._frame.GetRect() if right_of else None
-        below_rect = below._frame.GetRect() if below else None
-        if right_of_rect:
-            if below_rect:
-                self.pos = (below_rect.GetBottom(), right_of_rect.GetRight())
-            else:
-                self.pos = right_of_rect.GetTopRight()
-        elif below_rect:
-            self.pos = below_rect.GetBottomLeft()
-        else:
+        x = y = None
+        if isinstance(right_of, EelFigure):
+            rect = right_of._frame.GetRect()
+            x = rect.GetRight() + 1
+            if below is None:
+                y = rect.GetTop()
+        elif isinstance(right_of, int):
+            x = right_of
+        elif right_of is not None:
+            raise TypeError(f"right_of={right_of!r}")
+
+        if isinstance(below, EelFigure):
+            rect = below._frame.GetRect()
+            y = rect.GetBottom() + 1
+            if x is None:
+                x = rect.GetLeft()
+        elif isinstance(below, int):
+            y = below
+        elif below is not None:
+            raise TypeError(f"below={below!r}")
+
+        if x is None and y is None:
             self.pos = None
+        else:
+            if x is None:
+                x = -1
+            if y is None:
+                y = -1
+            self.pos = (x, y)
 
     def fig_kwa(self):
         out = {'figsize': (self.w, self.h), 'dpi': self.dpi}
