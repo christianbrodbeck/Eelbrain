@@ -1,4 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from itertools import chain
+
 from .._exceptions import DefinitionError
 from .._text import enumeration, plural
 from .._utils.parse import find_variables
@@ -51,23 +53,22 @@ class CodeBase:
         if i is None:
             i = self._i
         elif not isinstance(i, int):
-            raise RuntimeError(f"i={i!r} for Code.error()")
+            raise RuntimeError(f"i={i!r}")
 
-        n = len(self._items)
         if i < 0:
-            code = self.string
-        elif i >= n:
-            code = f"{self._sep.join(self._items)} >unexpected end<"
+            code_str = self.string
         else:
-            code = ''
-            if i:
-                code += self._sep.join(self._items[:i]) + ' '
-            code += f"> {self._items[i]} <"
-            if i == n - 1:
-                code += ' ' + self._sep.join(self._items[i + 1:])
-
-        message = code + ': ' + message if message else code
-        return ValueError(message)
+            n = len(self._items)
+            if i >= n:
+                code_str = f"{self._sep.join(self._items)} >unexpected end<"
+            else:
+                code_str = ''
+                if i:
+                    code_str += self._sep.join(chain(self._items[:i], [''])) + ' '
+                code_str += f"> {self._items[i]} <"
+                if i < n - 1:
+                    code_str += ' ' + self._sep.join(chain([''], self._items[i + 1:]))
+        return CodeError(code_str, message, i)
 
     def lookahead(self, offset=1):
         "Retrieve item without advancing iterator"
@@ -80,6 +81,16 @@ class CodeBase:
 
 class FieldCode(CodeBase):
     pass
+
+
+class CodeError(Exception):
+
+    def __init__(self, code: str, message: str = None):
+        if message:
+            error_str = f"{code}: {message}"
+        else:
+            error_str = code
+        Exception.__init__(self, error_str)
 
 
 class Definition:
