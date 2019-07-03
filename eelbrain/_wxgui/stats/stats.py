@@ -2,7 +2,7 @@ import wx
 from mne import read_labels_from_annot
 
 from ..frame import EelbrainFrame
-from ..load_stcs import FactorPanel, TitleSizer
+from .utils import FactorPanel, TitleSizer, TextEntryWithLabel
 from ... import testnd, set_parc
 
 
@@ -174,33 +174,6 @@ class TestParams(wx.Panel):
     def toggle_minsource(self, evt=None):
         self.minsource.Toggle()
         self.sizer.Layout()
-
-
-class TextEntryWithLabel(wx.BoxSizer):
-    label_add_params = {
-        wx.HORIZONTAL: dict(proportion=0, flag=wx.RIGHT, border=10),
-        wx.VERTICAL: dict(proportion=0, flag=wx.BOTTOM, border=2)
-    }
-
-    def __init__(self, parent, orientation=wx.HORIZONTAL, label="", value=""):
-        super().__init__(orientation)
-        self.label = wx.StaticText(parent, label=label)
-        self.field = wx.TextCtrl(parent, value=value)
-        self.Add(self.label, **self.label_add_params[orientation])
-        self.Add(self.field)
-
-    def GetValue(self):
-        return self.field.GetValue()
-
-    def Toggle(self):
-        if self.field.IsShown():
-            self.field.Hide()
-        else:
-            self.field.Show()
-        if self.label.IsShown():
-            self.label.Hide()
-        else:
-            self.label.Show()
 
 
 class SignificanceType(wx.BoxSizer):
