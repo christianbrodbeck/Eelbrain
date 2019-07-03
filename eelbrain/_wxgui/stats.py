@@ -14,6 +14,7 @@ class StatsFrame(EelbrainFrame):
         super().__init__(parent, id=wx.ID_ANY)
         self.loader = loader
         self.ds = ds
+        self.roi_info = None
         self.InitUI()
         self.Show()
         self.Raise()
@@ -28,13 +29,14 @@ class StatsFrame(EelbrainFrame):
         self.sizer.Add(self.test_model, **self.add_params)
         self.test_params = TestParams(self)
         self.sizer.Add(self.test_params, **self.add_params)
-        self.roi = RegionOfInterest(self, self.ds["src"])
-        self.sizer.Add(self.roi, **self.add_params)
+        self.roi_dialog = wx.Button(self, label="Select ROI")
+        self.sizer.Add(self.roi_dialog, **self.add_params)
         self.submit = wx.Button(self, label="Go")
         self.sizer.Add(self.submit)
         self.Bind(wx.EVT_BUTTON, self.run_test, self.submit)
         self.Bind(wx.EVT_RADIOBOX, self.test_params.toggle_minsource,
                   self.spatiotemp.choice)
+        self.Bind(wx.EVT_BUTTON, self.OnROIMenuClick, self.roi_dialog)
         self.SetSizer(self.sizer)
         self.sizer.Layout()
         self.sizer.Fit(self)
@@ -46,7 +48,9 @@ class StatsFrame(EelbrainFrame):
         return kwargs
 
     def get_data_for_test(self):
-        info = self.roi.get_roi_info()
+        info = self.roi_info
+        if info is None:
+            raise RuntimeError("No ROI information provided.")
         subjects = self.info_panel.subj_sel.get_selected_subjects()
         ds = self.ds.sub("subject.isin(subjects)")
         src = ds["src"]
@@ -58,6 +62,7 @@ class StatsFrame(EelbrainFrame):
         return ds, data
 
     def run_test(self, evt):
+        # TODO: handle multiple correction over regions
         test_type = self.test_model.get_test_type()
         if test_type == "ANOVA":
             test_func = testnd.anova
@@ -67,6 +72,14 @@ class StatsFrame(EelbrainFrame):
         kwargs = self.get_test_kwargs()
         res = test_func(data, ds=ds, match="subject", **kwargs)
         print(res)
+
+    def OnROIMenuClick(self, evt):
+        with RegionOfInterest(self, self.ds["src"]) as dlg:
+            if dlg.ShowModal() == wx.ID_OK:
+                self.roi_info = dlg.get_roi_info()
+            else:
+                pass
+            dlg.Destroy()
 
 
 class SubjectsSelector(wx.CheckListBox):
@@ -322,7 +335,7 @@ class SpatiotemporalSettings(wx.BoxSizer):
         return self.choice.GetStringSelection() == "Temporal"
 
 
-class RegionOfInterest(wx.Panel):
+class RegionOfInterest(wx.Dialog):
 
     ATLASES = {
         "Brodmann": "PALS_B12_Brodmann",
@@ -330,23 +343,50 @@ class RegionOfInterest(wx.Panel):
         "Lobes": "PALS_B12_Lobes"
     }
 
+    add_params = dict(flag=wx.ALL | wx.EXPAND, border=5)
+
     def __init__(self, parent, src_ndvar):
-        super().__init__(parent)
+        super().__init__(parent, wx.OK | wx.CANCEL)
         self.subject = src_ndvar.source.subject
         self.subjects_dir = src_ndvar.source.subjects_dir
         self.InitUI()
 
     def InitUI(self):
         self.sizer = wx.BoxSizer(wx.VERTICAL)
+        content_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.col1 = wx.BoxSizer(wx.VERTICAL)
         self.atlas = wx.RadioBox(self, choices=list(self.ATLASES.keys()),
                                  majorDimension=1)
-        self.sizer.Add(self.atlas)
-        self.regions = wx.ComboBox(self, choices=[])
-        self.sizer.Add(self.regions)
-        self.sizer.Layout()
+        atlas_title = TitleSizer(self, "Atlas")
+        self.col1.Add(atlas_title)
+        self.col1.Add(self.atlas)
+        self.regions = wx.CheckListBox(self, choices=[])
+        self.mult_corr = wx.CheckBox(self, label="Correct Across ROIs")
+        self.col1.Add(self.mult_corr, 0, wx.TOP, 20)
+        content_sizer.Add(self.col1, 1, **self.add_params)
+        content_sizer.Add(self.regions, 2, **self.add_params)
+        button_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        ok = wx.Button(self, id=wx.ID_OK, label="OK")
+        cancel = wx.Button(self, id=wx.ID_CANCEL, label="Cancel")
+        button_sizer.Add(ok)
+        button_sizer.Add(cancel)
+        self.sizer.Add(content_sizer, 0, wx.BOTTOM, 30)
+        self.sizer.Add(button_sizer, 0, wx.BOTTOM, 10)
         self.SetSizer(self.sizer)
+        self.sizer.Layout()
+        self.sizer.Fit(self)
         self.Bind(wx.EVT_RADIOBOX, self.OnAtlasChange, self.atlas)
+        self.Bind(wx.EVT_CHECKLISTBOX, self.OnRegionSelect, self.regions)
         self.OnAtlasChange(None)
+        self.OnRegionSelect(None)
+
+    def OnRegionSelect(self, evt):
+        regions = self.regions.GetCheckedStrings()
+        if len(regions) < 2:
+            self.mult_corr.SetValue(False)
+            self.mult_corr.Disable()
+        else:
+            self.mult_corr.Enable()
 
     def OnAtlasChange(self, evt):
         atlas = self.ATLASES[self.atlas.GetStringSelection()]
@@ -360,5 +400,6 @@ class RegionOfInterest(wx.Panel):
     def get_roi_info(self):
         info = dict()
         info["atlas"] = self.ATLASES[self.atlas.GetStringSelection()]
-        info["label"] = self.regions.GetStringSelection()
+        info["labels"] = self.regions.GetCheckedStrings()
+        info["corr"] = self.mult_corr.IsChecked()
         return info
