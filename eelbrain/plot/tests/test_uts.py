@@ -72,6 +72,15 @@ def test_uts():
     assert p.get_xlim() == (2, 4)
     p.close()
 
+    # color dict
+    colors = plot.colors_for_oneway(['a0', 'a1', 'a2'])
+    a0, a1, a2 = ds[:3, 'uts']
+    a0.name = 'a0'
+    a1.name = 'a1'
+    a2.name = 'a2'
+    p = plot.UTS([[a0, a1, a2]], colors=colors)
+    p.close()
+
     # multiple y with xax
     y1 = ds.eval("uts[(A == 'a1') & (B == 'b1')]")
     y1.name='y'

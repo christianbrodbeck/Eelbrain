@@ -362,7 +362,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     """
     def __init__(self, y, xax=None, axtitle=True, ds=None, sub=None,
                  xlabel=True, ylabel=True, xticklabels='bottom', bottom=None,
-                 top=None, legend='upper right', labels=None, xlim=None, color=None, *args,
+                 top=None, legend='upper right', labels=None, xlim=None, colors=None, *args,
                  **kwargs):
         data = PlotData.from_args(y, (None,), xax, ds, sub)
         xdim = data.dims[0]
@@ -377,13 +377,15 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
         vlims = _base.find_fig_vlims(data.data, top, bottom)
 
         n_colors = max(map(len, data.data))
-        if color is None:
-            colors = oneway_colors(n_colors)
+        if colors is None:
+            colors_ = oneway_colors(n_colors)
+        elif isinstance(colors, dict):
+            colors_ = colors
         else:
-            colors = (color,) * n_colors
+            colors_ = (colors,) * n_colors
 
         for ax, layers in zip(self._axes, data.data):
-            h = _ax_uts(ax, layers, xdim, vlims, colors)
+            h = _ax_uts(ax, layers, xdim, vlims, colors_)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
 
@@ -537,6 +539,8 @@ class _ax_uts:
 
     def __init__(self, ax, layers, xdim, vlims, colors):
         vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
+        if isinstance(colors, dict):
+            colors = [colors[l.name] for l in layers]
 
         self.legend_handles = {}
         for l, color in zip(layers, colors):
