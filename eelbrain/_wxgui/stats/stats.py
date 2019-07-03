@@ -1,9 +1,9 @@
 import wx
 from mne import read_labels_from_annot
 
-from .frame import EelbrainFrame
-from .load_stcs import FactorPanel, TitleSizer
-from .. import testnd, set_parc
+from ..frame import EelbrainFrame
+from ..load_stcs import FactorPanel, TitleSizer
+from ... import testnd, set_parc
 
 
 class StatsFrame(EelbrainFrame):
