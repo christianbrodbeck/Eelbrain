@@ -2303,17 +2303,34 @@ class Factor(_Effect):
             return ns
 
     def _summary(self, width=80):
+        if self.random:
+            info = ['random']
+            n_suffix = 9
+        else:
+            info = []
+            n_suffix = 0
         ns = [(label, np.sum(self.x == code)) for code, label in self._labels.items()]
         items = [f'{label}:{n}' if n > 1 else label for label, n in ns]
-        if sum(map(len, items)) + 2 * len(items) - 2 <= width:
-            return ', '.join(items)
-        n_cells = f'... ({len(items)} cells)'
-        n = len(n_cells)
-        for i, item in enumerate(items):
-            if n + len(item) > width:
-                break
-            n += len(item) + 2
-        return f"{', '.join(items[:i])}{n_cells}"
+        if sum(map(len, items)) + 2 * len(items) - 2 + n_suffix <= width:
+            exhaustive = True
+            suffix = ''
+        else:
+            exhaustive = False
+            suffix = '...'
+            info.insert(0, f'{len(items)} cells')
+
+        if info:
+            suffix = f"{suffix} ({', '.join(info)})"
+
+        if not exhaustive:
+            n = len(suffix)
+            for i, item in enumerate(items):
+                n += len(item)
+                if n > width:
+                    break
+                n += 2
+            items = items[:i]
+        return f"{', '.join(items)}{suffix}"
 
     def aggregate(self, x, name=None):
         """

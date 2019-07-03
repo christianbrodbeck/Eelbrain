@@ -481,24 +481,24 @@ def test_dataset_repr():
     assert repr(ds) == "<Dataset n_cases=60 {'A':F, 'B':F, 'rm':F, 'ind':F, 'Y':V, 'YBin':F, 'YCat':F, 'uts':Vnd}>"
     assert str(ds.head()) == str(ds[:10])
     assert str(ds.tail()) == str(ds[-10:])
-    assert str(ds.summary(50)) == """Key    Type     Values                           
--------------------------------------------------
-A      Factor   a0:30, a1:30                     
-B      Factor   b0:30, b1:30                     
-rm     Factor   R00:4, R01:4, R02:4... (15 cells)
-ind    Factor   R00, R01, R02, R03... (60 cells) 
-Y      Var      -3.53027 - 3.04498               
-YBin   Factor   c1:34, c2:26                     
-YCat   Factor   c1:17, c2:24, c3:19              
-uts    NDVar    100 time; -2.67343 - 4.56283     
--------------------------------------------------
+    assert str(ds.summary(50)) == """Key    Type     Values                            
+--------------------------------------------------
+A      Factor   a0:30, a1:30                      
+B      Factor   b0:30, b1:30                      
+rm     Factor   R00:4, R01:4... (15 cells, random)
+ind    Factor   R00, R01... (60 cells, random)    
+Y      Var      -3.53027 - 3.04498                
+YBin   Factor   c1:34, c2:26                      
+YCat   Factor   c1:17, c2:24, c3:19               
+uts    NDVar    100 time; -2.67343 - 4.56283      
+--------------------------------------------------
 Dataset: 60 cases"""
     assert str(ds[:5].summary()) == """Key    Type     Values                                     
 -----------------------------------------------------------
 A      Factor   a0:5                                       
 B      Factor   b0:5                                       
-rm     Factor   R00, R01, R02, R03, R04                    
-ind    Factor   R00, R01, R02, R03, R04                    
+rm     Factor   R00, R01, R02, R03, R04 (random)           
+ind    Factor   R00, R01, R02, R03, R04 (random)           
 Y      Var      0.77358, 1.01346, 1.89424, 2.09773, 2.55396
 YBin   Factor   c1:4, c2                                   
 YCat   Factor   c1:2, c2:2, c3                             
