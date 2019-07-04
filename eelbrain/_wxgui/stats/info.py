@@ -1,0 +1,55 @@
+import wx
+
+from .utils import TitleSizer, FactorPanel
+
+
+class SubjectsSelector(wx.CheckListBox):
+    def __init__(self, parent, subjects=[], **kwargs):
+        super().__init__(parent, choices=subjects, style=wx.LC_LIST, **kwargs)
+        self.subjects = subjects
+        self.SetCheckedItems(range(len(self.subjects)))
+
+    def get_selected_subjects(self):
+        return self.GetCheckedStrings()
+
+
+class InfoPanel(wx.Panel):
+
+    add_params = dict(proportion=0, flag=wx.EXPAND | wx.ALL, border=10)
+
+    def __init__(self, parent, loader=None, ds=None):
+        super().__init__(parent)
+        self.loader = loader
+        self.ds = ds
+        self.sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.subj_sel = SubjectsSelector(self, list(set(self.ds["subject"])))
+        col1 = wx.BoxSizer(wx.VERTICAL)
+        col1.Add(TitleSizer(self, "Subjects"), 0, wx.BOTTOM, 5)
+        col1.Add(self.subj_sel)
+        self.sizer.Add(col1, **self.add_params)
+        col2 = wx.BoxSizer(wx.VERTICAL)
+        col2.Add(TitleSizer(self, "Design"), 0, wx.BOTTOM, 5)
+        self.factor_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        for i, level_names in enumerate(self.loader.levels):
+            panel = FactorPanel(self, level_names, i, editable=False)
+            panel.factor_ctl.SetLabel(self.loader.factors[i])
+            panel.factor_ctl.SetFont(wx.Font.Bold(panel.factor_ctl.GetFont()))
+            self.factor_sizer.Add(panel, 0, wx.EXPAND | wx.RIGHT, 30)
+        col2.Add(self.factor_sizer)
+        self.sizer.Add(col2, **self.add_params)
+        col3 = wx.BoxSizer(wx.VERTICAL)
+        col3.Add(TitleSizer(self, "Data"), 0, wx.BOTTOM, 5)
+        src = self.ds["src"]
+        n_src = src.source.vertices[0].shape[0] + src.source.vertices[0].shape[0]
+        src_label = "{} sources".format(n_src)
+        col3.Add(wx.StaticText(self, label=src_label))
+        time_label = "{:0.2f} to {:0.2f} s, step={:0.3f} s".format(
+            src.time.times[0],
+            src.time.tstop, src.time.tstep
+        )
+        col3.Add(wx.StaticText(self, label=time_label))
+        self.sizer.Add(col3, **self.add_params)
+        self.sizer.Layout()
+        self.SetSizer(self.sizer)
+
+
