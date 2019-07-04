@@ -443,6 +443,8 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
 
     def _topo_data(self, event):
         ax = event.inaxes
+        if ax is None:
+            return
         p = self.bfly_plots[ax.id // 2]
         if ax in self.bfly_axes:
             t = event.xdata
