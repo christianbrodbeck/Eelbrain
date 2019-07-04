@@ -68,7 +68,7 @@ class CodeBase:
                 code_str += f"> {self._items[i]} <"
                 if i < n - 1:
                     code_str += ' ' + self._sep.join(chain([''], self._items[i + 1:]))
-        return CodeError(code_str, message, i)
+        return CodeError(code_str, message)
 
     def lookahead(self, offset=1):
         "Retrieve item without advancing iterator"
