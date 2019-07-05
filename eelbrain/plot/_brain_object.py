@@ -769,7 +769,7 @@ class Brain(TimeSlicer, surfer.Brain):
         tag = 'L' if hemi == 'lh' else 'R'
         print(f'{tag}{vertex}')
 
-    def image(self, name=None, format='png', alt=None, mode='rgba'):
+    def image(self, name=None, format='png', alt=None, mode='rgb'):
         """Create an FMText Image from a screenshot
 
         Parameters
