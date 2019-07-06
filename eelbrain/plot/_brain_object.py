@@ -9,7 +9,7 @@ from tempfile import mkdtemp
 from time import time, sleep
 from warnings import warn
 
-from matplotlib.colors import ListedColormap, to_rgb, to_rgba
+from matplotlib.colors import ListedColormap, Colormap, to_rgb, to_rgba
 from matplotlib.image import imsave
 from mne.io.constants import FIFF
 import numpy as np
@@ -402,7 +402,7 @@ class Brain(TimeSlicer, surfer.Brain):
 
         # find colormap parameters
         meas = ndvar.info.get('meas')
-        if cmap is None or isinstance(cmap, str):
+        if cmap is None or isinstance(cmap, (str, Colormap)):
             epochs = ((ndvar,),)
             cmaps = find_fig_cmaps(epochs, cmap, alpha=True)
             vlims = find_fig_vlims(epochs, vmax, vmin, cmaps)
