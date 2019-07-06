@@ -146,3 +146,28 @@ def test_frequency_response():
     assert_array_equal(fresp.x[0], fresp_array)
     assert_array_equal(fresp.x[1], fresp_array)
     assert_array_equal(fresp.frequency.values * hz_to_rad, freqs_array)
+
+
+def test_mask():
+    ds = datasets.get_uts(True)
+
+    x = NDVar([1, 2, 3], Case)
+    assert x.mean() == 2.0
+    y = x.mask([True, False, False])
+    assert y.mean() == 2.5
+
+    # multi-dimensional
+    y = ds[:2, 'utsnd'].copy()
+    mask_x = y.time.times >= 0.500
+    mask_ndvar = NDVar(mask_x, y.time)
+    y_masked = y.mask(mask_ndvar)
+    assert_array_equal(y_masked.x.mask[:, :, 70:], True)
+    assert_array_equal(y_masked.x.mask[:, :, :70], False)
+    # mask that is smaller than array
+    mask = mask_ndvar.sub(time=(0.100, None))
+    with pytest.raises(TypeError):
+        y.mask(mask)
+    y_masked = y.mask(mask, missing=True)
+    assert_array_equal(y_masked.x.mask[:, :, 70:], True)
+    assert_array_equal(y_masked.x.mask[:, :, 30:70], False)
+    assert_array_equal(y_masked.x.mask[:, :, :30], True)

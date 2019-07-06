@@ -1265,22 +1265,6 @@ def test_ndvar_indexing():
     with pytest.raises(ValueError):
         x[:, '1'] = x[6]
 
-    # masking
-    y = ds[:2, 'utsnd'].copy()
-    mask_x = y.time.times >= 0.500
-    mask_ndvar = NDVar(mask_x, y.time)
-    y_masked = y.mask(mask_ndvar)
-    assert_array_equal(y_masked.x.mask[:, :, 70:], True)
-    assert_array_equal(y_masked.x.mask[:, :, :70], False)
-    # mask that is smaller than array
-    mask = mask_ndvar.sub(time=(0.100, None))
-    with pytest.raises(TypeError):
-        y.mask(mask)
-    y_masked = y.mask(mask, missing=True)
-    assert_array_equal(y_masked.x.mask[:, :, 70:], True)
-    assert_array_equal(y_masked.x.mask[:, :, 30:70], False)
-    assert_array_equal(y_masked.x.mask[:, :, :30], True)
-
 
 def test_ndvar_summary_methods():
     "Test NDVar methods for summarizing data over axes"

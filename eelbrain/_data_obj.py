@@ -3009,7 +3009,11 @@ class NDVar:
                     i_other.append(None)
             return other.get_data(i_other)
         else:
-            raise TypeError(f"{other!r}; need NDVar, Var or scalar")
+            other = np.asarray(other)
+            if other.shape == self.shape:
+                return other
+            else:
+                raise ValueError(f"array of shape {other.shape}: For NDVar operations with arrays, shape needs to match the NDVar exactly")
 
     def __add__(self, other):
         dims, x_self, x_other = self._align(other)
@@ -4032,6 +4036,19 @@ class NDVar:
         See Also
         --------
         .unmask : remove mask
+
+        Examples
+        --------
+        In operations such as :meth:`NDVar.mean`, standard :mod:`numpy` behavior
+        applies, i.e., masked values are ignored::
+
+            >>> x = NDVar([1, 2, 3], Case)
+            >>> x.mean()
+            2.0
+            >>> y = x.mask([True, False, False])
+            >>> y.mean()
+            2.5
+
         """
         x_mask = self._ialign(mask)
         if x_mask.dtype.kind != 'b':
