@@ -277,7 +277,13 @@ def soft_threshold_colormap(cmap, threshold, vmax, subthreshold=None, symmetric=
     else:
         out_colors[:-cmap.N] = subthreshold_color
         out_colors[-cmap.N:] = colors
-    return ListedColormap(out_colors, cmap.name)
+    out = ListedColormap(out_colors, cmap.name)
+    out._eelbrain_meta = {
+        'symmetric': symmetric,
+        'vmin': -vmax if symmetric else 0,
+        'vmax': vmax,
+    }
+    return out
 
 
 class ColorGrid(EelFigure):

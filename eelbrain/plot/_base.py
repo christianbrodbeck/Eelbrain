@@ -77,6 +77,7 @@ import weakref
 
 import matplotlib as mpl
 import matplotlib.axes
+from matplotlib.colors import Colormap
 from matplotlib.figure import SubplotParams
 from matplotlib.ticker import FuncFormatter
 import numpy as np
@@ -516,6 +517,12 @@ def find_vlim_args(ndvar, vmin=None, vmax=None):
 
 def fix_vlim_for_cmap(vmin, vmax, cmap):
     "Fix the vmin value to yield an appropriate range for the cmap"
+    if isinstance(cmap, Colormap):
+        if hasattr(cmap, '_eelbrain_meta'):
+            return cmap._eelbrain_meta['vmin'], cmap._eelbrain_meta['vmax']
+        else:
+            cmap = cmap.name
+
     if cmap in symmetric_cmaps:
         if vmax is None and vmin is None:
             pass
