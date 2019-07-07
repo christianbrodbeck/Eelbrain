@@ -8,6 +8,7 @@ from eelbrain import (
     NDVar, Case, Scalar, UTS, datasets,
     concatenate, convolve, correlation_coefficient, cross_correlation,
     cwt_morlet, find_intervals, find_peaks, frequency_response, psd_welch,
+    resample,
 )
 from eelbrain.testing import assert_dataobj_equal
 
@@ -171,3 +172,11 @@ def test_mask():
     assert_array_equal(y_masked.x.mask[:, :, 70:], True)
     assert_array_equal(y_masked.x.mask[:, :, 30:70], False)
     assert_array_equal(y_masked.x.mask[:, :, :30], True)
+
+
+def test_resample():
+    x = NDVar([0.0, 1.0, 1.4, 1.0, 0.0], UTS(0, 0.1, 5)).mask([True, False, False, False, True])
+    y = resample(x, 20)
+    assert_array_equal(y.x.mask, [True, False, False, False, False, False, False, False, True, True])
+    y = resample(x, 20, npad=0)
+    assert_array_equal(y.x.mask, [True, False, False, False, False, False, False, False, True, True])
