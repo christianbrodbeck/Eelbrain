@@ -10,6 +10,7 @@ New in 0.31
 * :mod:`plot` API:  Additional arguments for :class:`plot.Boxplot` to control plotting of outliers (``whis`` and ``label_fliers``)
 * Horizontal bar-plot: :class:`plot.BarplotHorizontal`
 * Non-parametric univariate tests :class:`test.MannWhitneyU` and :class:`test.WilcoxonSignedRank`
+* API :meth:`Dataset.save_txt`: ``delim`` parameter renamed to ``delimiter``
 
 
 New in 0.30

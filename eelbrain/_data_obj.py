@@ -48,6 +48,7 @@ import os
 import re
 import string
 import typing
+from warnings import warn
 
 from matplotlib.ticker import (
     FixedLocator, FormatStrFormatter, FuncFormatter, IndexFormatter)
@@ -6048,7 +6049,7 @@ class Dataset(OrderedDict):
         table = self.as_table(fmt=fmt, header=header, midrule=midrule)
         table.save_tex(path)
 
-    def save_txt(self, path=None, fmt='%s', delim='\t', header=True):
+    def save_txt(self, path=None, fmt='%s', delimiter='\t', header=True, delim=None):
         """Save the Dataset as text file.
 
         Parameters
@@ -6058,11 +6059,14 @@ class Dataset(OrderedDict):
             ``path`` is missing an extension, ``'.txt'`` is appended.
         fmt : format string
             Formatting for scalar values.
-        delim : str
+        delimiter : str
             Column delimiter (default is tab).
         header : bool
             write the variables' names in the first line
         """
+        if delim is not None:
+            warn("the delim parameter to Dataset.save_txt() is deprecated and will be removed after Eelbrain 0.31; use delimiter instead", DeprecationWarning)
+            delimiter = delim
         if path is None:
             path = ui.ask_saveas(f"Save {self.name or 'Dataset'} as Text", "",
                                  [_tsv_wildcard], defaultFile=self.name)
@@ -6071,7 +6075,7 @@ class Dataset(OrderedDict):
             path = path.with_suffix('.txt')
 
         table = self.as_table(fmt=fmt, header=header)
-        table.save_tsv(path, fmt=fmt, delimiter=delim)
+        table.save_tsv(path, fmt=fmt, delimiter=delimiter)
 
     def save_pickled(self, path=None):
         """Pickle the Dataset.
