@@ -56,6 +56,13 @@ class StatsFrame(EelbrainFrame):
         subjects = self.info_panel.subj_sel.get_selected_subjects()
         idx = self.ds["subject"].isin(subjects)
         ds = self.ds.sub(idx)
+        test_type = self.test_model.get_test_type()
+        if test_type == "t-test":
+            model = self.test_model.get_test_kwargs()
+            sub_exp = "{}.isin(('{}', '{}'))".format(
+                model["x"], model["c0"], model["c1"]
+            )
+            ds = ds.sub(sub_exp)
         src = ds["src"]
         src = set_parc(src, info["atlas"])
         if self.spatiotemp.is_temporal():
