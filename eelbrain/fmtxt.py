@@ -47,6 +47,7 @@ The module also provides functions that work with fmtxt objects:
 
 """
 import base64
+import csv
 import datetime
 from html.parser import HTMLParser
 from itertools import repeat
@@ -58,7 +59,7 @@ import re
 import shutil
 import socket
 import sys
-from io import BytesIO
+from io import BytesIO, StringIO
 import tempfile
 import time
 from typing import Union, Iterable, List as ListType, Tuple
@@ -307,8 +308,7 @@ def save_tex(fmtext, path=None):
 
 def _save_txt(text, path=None):
     if path is None:
-        path = ui.ask_saveas("Save Text File",
-                             filetypes=[("Plain Text File (*.txt)", "*.txt")])
+        path = ui.ask_saveas("Save Text File", filetypes=[("Plain Text File (*.txt)", "*.txt")])
     if path:
         with open(path, 'w') as fid:
             fid.write(text)
@@ -1235,11 +1235,6 @@ class Row(list):
         out += r" \\"
         return out
 
-    def get_tsv(self, delimiter, fmt=None):
-        env = {'fmt': fmt}
-        txt = delimiter.join(cell.get_str(env) for cell in self)
-        return txt
-
 
 class Table(FMTextElement):
     r"""A table :class:`FMText` element
@@ -1594,13 +1589,15 @@ class Table(FMTextElement):
         fmt : str
             Format string for numerical entries (default ``'%.9g'``).
         """
-        table = []
+        buffer = StringIO(newline='')
+        writer = csv.writer(buffer, delimiter=delimiter)
+        env = {'fmt': fmt}
         for row in self.rows:
             if isinstance(row, str):
                 pass
             else:
-                table.append(row.get_tsv(delimiter, fmt=fmt))
-        return linesep.join(table)
+                writer.writerow([cell.get_str(env) for cell in row])
+        return buffer.getvalue()
 
     def save_docx(self, path=None):
         """Save table as *.docx (requires `python-docx <https://python-docx.readthedocs.io>`_)

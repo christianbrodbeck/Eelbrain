@@ -10,8 +10,11 @@ from eelbrain.testing import TempDir, assert_dataobj_equal, assert_dataset_equal
 
 def test_r_tsv_io():
     "Test reading output of write.table"
-    ds = load.tsv(file_path('r-write.table.txt'))
+    path = file_path('r-write.table.txt')
+    ds = load.tsv(path, types={'row': 'f'})
     assert_array_equal(ds['row'], ['1', '2'])
+    assert_array_equal(ds['participant'], [1, 1])
+    assert_array_equal(ds['condition'], ['3B', '3B'])
     assert_array_equal(ds['bin'], [0, 0])
 
 
@@ -19,8 +22,6 @@ def test_tsv_io():
     """Test tsv I/O"""
     tempdir = TempDir()
     names = ['A', 'B', 'rm', 'intvar', 'fltvar', 'fltvar2', 'index']
-
-    # get Dataset
     ds = datasets.get_uv()
     ds['fltvar'][5:10] = np.nan
     ds[:4, 'rm'] = ''
@@ -32,6 +33,11 @@ def test_tsv_io():
     assert_dataset_equal(ds1, ds, decimal=10)
     ds1 = load.tsv(dst, skiprows=1, names=names)
     assert_dataset_equal(ds1, ds, decimal=10)
+    # delimiter
+    for delimiter in [' ', ',']:
+        ds.save_txt(dst, delimiter=delimiter)
+        ds1 = load.tsv(dst, delimiter=delimiter)
+        assert_dataset_equal(ds1, ds, decimal=10)
 
     # guess data types with missing
     intvar2 = ds['intvar'].as_factor()
@@ -41,3 +47,17 @@ def test_tsv_io():
     ds_intvar1 = load.tsv(dst, empty='nan')
     assert_dataobj_equal(ds_intvar1['intvar', :10], ds['intvar', :10])
     assert_array_equal(ds_intvar1['intvar', 10:], np.nan)
+
+    # str with space
+    ds[:5, 'A'] = 'a 1'
+    ds.save_txt(dst)
+    ds1 = load.tsv(dst)
+    assert_dataset_equal(ds1, ds, decimal=10)
+    ds.save_txt(dst, delimiter=' ')
+    ds1 = load.tsv(dst, delimiter=' ')
+    assert_dataset_equal(ds1, ds, decimal=10)
+
+    # Fixed column width
+    path = file_path('fox-prestige')
+    ds = load.tsv(path, delimiter=' ', skipinitialspace=True)
+    assert ds[1] == {'id': 'GENERAL.MANAGERS', 'education': 12.26, 'income': 25879, 'women': 4.02, 'prestige': 69.1, 'census': 1130, 'type': 'prof'}

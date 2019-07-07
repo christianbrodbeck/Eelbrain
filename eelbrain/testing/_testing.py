@@ -191,7 +191,12 @@ def skip_on_windows(function):
 
 def file_path(name):
     "Path to test data file in the test_data directory"
-    path = Path(__file__).parents[2] / 'test_data' / name
+    root = Path(__file__).parents[2]
+    if name == 'fox-prestige':
+        path = root / 'examples' / 'statistics' / 'Fox_Prestige_data.txt'
+    else:
+        path = root / 'test_data' / name
+
     if path.exists():
         return path
     else:

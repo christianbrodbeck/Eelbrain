@@ -1,4 +1,4 @@
-'''
+"""
 Tools for loading data from text files.
 
 .. autosummary::
@@ -6,7 +6,8 @@ Tools for loading data from text files.
 
    tsv
    var
-'''
+"""
+import csv
 import os
 import re
 from typing import Sequence, Union
@@ -24,12 +25,13 @@ __all__ = ('tsv', 'var')
 def tsv(
         path: str = None,
         names: Union[Sequence[str], bool] = True,
-        types: str = None,
-        delimiter: Union[str, None] = '\t',
+        types: Union[str, dict] = None,
+        delimiter: str = '\t',
         skiprows: int = 0,
         start_tag: str = None,
         ignore_missing: bool = False,
         empty: str = None,
+        **fmtparams,
 ):
     r"""Load a :class:`Dataset` from a text file.
 
@@ -43,17 +45,19 @@ def tsv(
         * ``True`` (default): look for names on the first line of the file
         * ``['name1', ...]`` use these names
         * ``False``: use "v1", "v2", ...
-    types : str
-        Column data types (e.g. ``'ffvva'``; default all ``'a'``)
+    types : str | dict
+        Column data types::
 
          - 'a': determine automatically
          - 'f': Factor
          - 'v': Var
          - 'b': boolean Var
 
-    delimiter : None | str
-        Value delimiting cells in the input file (default: ``'\t'`` (tab);
-        ``None`` = any whitespace).
+        Specified either as string, with one type per columnc (e.g.
+        ``'ffvva'``) or as ``{column_name: data_type}`` dictionary (e.g.
+        ``{'participant': 'f'}``); unspecified columns default to ``'a'``.
+    delimiter : str
+        Value delimiting cells in the input file (default: tab, ``'\t'``).
     skiprows : int
         Skip so many rows at the beginning of the file (for tsv files with
         headers). Column names are expected to come after the skipped rows.
@@ -72,30 +76,28 @@ def tsv(
         for ``""``). For example, if a column in a file contains ``['5', '3',
         '']``, this is read by default as ``Factor(['5', '3', ''])``. With
         ``empty='nan'``, it is read as ``Var([5, 3, nan])``.
+    **fmtparams
+        Further formatting parameters for :func:`csv.reader`. For example, a
+        fixed-width column file can be loaded with ``skipinitialspace=True``
+        (as long as there are no empty cells).
     """
-    # backwards compatibility
-    if isinstance(types, (list, tuple)):
-        d = {0: 'a', 1: 'f', 2: 'v'}
-        types = ''.join(d[v] for v in types)
-
     if path is None:
         path = ui.ask_file("Load TSV", "Select tsv file to import as Dataset")
         if not path:
             return
 
-    with open(path) as fid:
-        lines = fid.readlines()
-        if len(lines) == 1:
-            # tsv file exported by excel had carriage return only
-            text = lines[0]
-            if text.count('\r') > 1:
-                lines = text.split('\r')
+    with open(path, newline='') as fid:
+        if delimiter is None:  # legacy option
+            delimiter = ' '
+            fmtparams['skipinitialspace'] = True
+        reader = csv.reader(fid, delimiter=delimiter, **fmtparams)
+        lines = list(reader)
 
     # find start position
     if start_tag:
         start = 0
         for i, line in enumerate(lines, 1):
-            if line.startswith(start_tag):
+            if line[0].startswith(start_tag):
                 start = i
         if start:
             lines = lines[start:]
@@ -104,20 +106,15 @@ def tsv(
 
     # read / create names
     if names is True:
-        head_line = lines.pop(0)
-        names = head_line.split(delimiter)
-        names = [n.strip().strip('"') for n in names]
+        names = lines.pop(0)
+    elif names:
+        names = list(names)
 
-    # separate lines into values
-    rows = [[v.strip() for v in line.split(delimiter)] for line in lines]
-
-    row_lens = set(len(row) for row in rows)
-    if len(row_lens) > 1 and not ignore_missing:
-        raise IOError(
-            "Not all rows have same number of entries. Set ignore_missing to "
-            "True in order to ignore this error.")
+    row_lens = set(len(row) for row in lines)
+    if not ignore_missing and len(row_lens) > 1:
+        raise IOError("Not all rows have same number of entries. Set ignore_missing to True in order to ignore this error.")
     n_cols = max(row_lens)
-    n_rows = len(rows)
+    n_rows = len(lines)
 
     if names:
         n_names = len(names)
@@ -128,33 +125,39 @@ def tsv(
                 name += '_'
             names.insert(0, name)
         elif n_names != n_cols:
-            raise IOError(
-                "The number of names in the header (%i) does not correspond to "
-                "the number of columns in the table (%i)" % (n_names, n_cols))
+            raise IOError(f"The number of names in the header ({n_names}) does not correspond to the number of columns in the table ({n_cols})")
     else:
-        names = ['v%i' % i for i in range(n_cols)]
+        names = [f'v{i}' for i in range(n_cols)]
 
+    # coerce types parameter
     if types is None:
-        types = ['a'] * n_cols
-    elif not isinstance(types, str):
-        raise TypeError(f'types={types!r}')
-    elif len(types) != n_cols:
-        raise ValueError(f'types={types!r}: {len(types)} values for file with {n_cols} columns')
-    elif set(types).difference('afvb'):
-        invalid = ', '.join(map(repr, set(types).difference('afvb')))
-        raise ValueError(f'types={types!r}: invalid values {invalid}')
+        types_ = ['a'] * n_cols
+    elif isinstance(types, dict):
+        types_ = [types.get(n, 'a') for n in names]
+    elif isinstance(types, str):
+        types_ = types
+    elif isinstance(types, (list, tuple)):
+        # backwards compatibility
+        types_ = ['afv'[v] for v in types]
     else:
-        types = list(types)
+        raise TypeError(f'types={types!r}')
+
+    # check types values
+    if len(types_) != n_cols:
+        raise ValueError(f'types={types!r}: {len(types)} values for file with {n_cols} columns')
+    elif set(types_).difference('afvb'):
+        invalid = ', '.join(map(repr, set(types_).difference('afvb')))
+        raise ValueError(f'types={types!r}: invalid values {invalid}')
 
     # find quotes (imply type 1)
-    quotes = "'\""
+    # quotes = "'\""
     data = np.empty((n_rows, n_cols), object)
-    for r, line in enumerate(rows):
+    for r, line in enumerate(lines):
         for c, v in enumerate(line):
-            for str_del in quotes:
-                if len(v) > 0 and v[0] == str_del:
-                    v = v.strip(str_del)
-                    types[c] = 'f'
+            # for str_del in quotes:
+            #     if len(v) > 0 and v[0] == str_del:
+            #         v = v.strip(str_del)
+            #         types_[c] = 'f'
             data[r, c] = v
 
     # convert values to data-objects
@@ -162,7 +165,7 @@ def tsv(
     ds = _data.Dataset(name=os.path.basename(path))
     np_vars = vars(np)
     bool_dict = {'True': True, 'False': False, None: False}
-    for name, values, type_ in zip(names, data.T, types):
+    for name, values, type_ in zip(names, data.T, types_):
         # infer type
         if type_ in 'fv':
             pass

@@ -13,7 +13,7 @@ from eelbrain._exceptions import IncompleteModel
 from eelbrain._stats import glm
 from eelbrain._stats.permutation import permute_order
 from eelbrain._utils.r_bridge import r, r_require, r_warning_filter
-from eelbrain.testing import requires_r_ez
+from eelbrain.testing import requires_r_ez, file_path
 
 
 def assert_f_test_equal(f_test, r_res, r_row, f_lmf, f_nd, r_kind='aov'):
@@ -200,8 +200,7 @@ def test_ndanova():
         testnd.anova('uts', 'An*B*rm', ds=ds)
 
     # nested random effect
-    res = testnd.anova('uts', 'A + A%B + B * nrm(A)', ds=ds, match='nrm',
-                       samples=100, pmin=0.05)
+    res = testnd.anova('uts', 'A + A%B + B * nrm(A)', ds=ds, match='nrm', samples=100, pmin=0.05)
     assert len(res.find_clusters(0.05)) == 8
 
 
@@ -268,8 +267,8 @@ Total              39.62   23
 
 
 def test_anova_fox():
-    data_path = Path(__file__).parents[3] / 'examples' / 'statistics' / 'Fox_Prestige_data.txt'
-    ds = load.txt.tsv(data_path, delimiter=None)
+    data_path = file_path('fox-prestige')
+    ds = load.txt.tsv(data_path, delimiter=' ', skipinitialspace=True)
     ds = ds.sub("type != 'NA'")
     aov = test.anova('prestige', '(income + education) * type', ds=ds)
     assert f'\n{aov}\n' == """

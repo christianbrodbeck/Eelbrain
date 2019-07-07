@@ -67,7 +67,7 @@ plot.Regression(y, cov)
 # Based on [3]_, p. 139.
 
 # Load data form a text file
-ds = load.txt.tsv('Fox_Prestige_data.txt', delimiter=None)
+ds = load.txt.tsv('Fox_Prestige_data.txt', delimiter=' ', skipinitialspace=True)
 print(ds.head())
 
 ###############################################################################
