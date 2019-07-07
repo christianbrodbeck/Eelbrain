@@ -12,7 +12,8 @@ from numpy.testing import assert_almost_equal, assert_array_equal
 from eelbrain import *
 from eelbrain.pipeline import *
 from eelbrain._exceptions import DefinitionError
-from eelbrain.testing import TempDir, assert_dataobj_equal, import_attr, requires_mne_sample_data, slow_test
+from eelbrain.testing import TempDir, assert_dataobj_equal, import_attr, requires_mne_sample_data
+from eelbrain.testing.pytest import slow_test
 
 
 sample_path = Path(__file__).parents[3] / 'examples/experiment'

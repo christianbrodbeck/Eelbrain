@@ -18,9 +18,6 @@ import eelbrain._wxgui
 from .._data_obj import Dataset, NDVar, Var, Factor, isdatalist, isdatacontainer, isuv
 
 
-slow_test = pytest.mark.skipif(not pytest.config.option.slow_tests, reason="Slow test skipped without --slowtests option")
-
-
 class TempDir(str):
     "After MNE-Python mne.utils"
     def __new__(cls):
