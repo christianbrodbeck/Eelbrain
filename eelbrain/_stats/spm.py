@@ -12,6 +12,7 @@ from .._data_obj import (
 from .._exceptions import DimensionMismatchError
 from . import opt
 from .stats import lm_betas_se_1d
+from .test import star
 from .testnd import ttest_1samp
 from functools import reduce
 
@@ -31,7 +32,7 @@ class LM:
         Model parametrization (default is dummy coding). Vars are centered for
         effect coding (but not for dummy coding).
     subject : str
-        Optional information used by RandomLM.
+        Optional information used by :class:`LMGroup`.
     sub : index
         Only use part of the data.
     """
@@ -308,6 +309,34 @@ class LMGroup:
             res = self.tests[effect]
             l.add_sublist(effect, [res.info_list()])
         return l
+
+    def table(self, title=None, caption=None):
+        """Table listing all terms and corresponding smallest p-values
+
+        Parameters
+        ----------
+        title : text
+            Title for the table.
+        caption : text
+            Caption for the table.
+
+        Returns
+        -------
+        table : eelbrain.fmtxt.Table
+            ANOVA table.
+        """
+        if not self.tests:
+            raise RuntimeError("Need to precompute tests with .compute_column_ttests()")
+        table = fmtxt.Table('lrrl', title=title, caption=caption)
+        table.cells('Term', 't_max', 'p', 'sig')
+        table.midrule()
+        for term, res in self.tests.items():
+            table.cell(term)
+            table.cell(fmtxt.stat(res.t.extrema()))
+            pmin = res.p.min()
+            table.cell(fmtxt.p(pmin))
+            table.cell(star(pmin))
+        return table
 
 
 # for backwards compatibility
