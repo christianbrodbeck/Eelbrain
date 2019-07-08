@@ -17,6 +17,7 @@ from .._text import ms, ms_window
 from ._base import EelFigure, ImLayout, ColorBarMixin, brain_data, butterfly_data, use_inline_backend
 from ._color_luts import dspm_lut
 from ._colors import ColorList
+from ._utsnd import Butterfly
 
 
 def assert_can_save_movies():
@@ -1514,11 +1515,6 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, surf='inflated',
     brain : Brain
         Brain plot.
     """
-    from .._wxgui import wx
-    from .._wxgui.mpl_canvas import CanvasFrame
-    from ._brain_object import BRAIN_H, BRAIN_W
-    from ._utsnd import Butterfly
-
     hemis, bfly_data, brain_data = butterfly_data(y, hemi)
 
     if name is None:
