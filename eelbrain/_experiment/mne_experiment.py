@@ -46,13 +46,8 @@ from .._info import BAD_CHANNELS
 from .._io.pickle import update_subjects_dir
 from .._names import INTERPOLATE_CHANNELS
 from .._meeg import new_rejection_ds
-from .._mne import (
-    dissolve_label, labels_from_mni_coords, rename_label, combination_label,
-    morph_source_space, shift_mne_epoch_trigger, find_source_subject,
-    label_from_annot,
-)
-from ..mne_fixes import (
-    write_labels_to_annot, _interpolate_bads_eeg, _interpolate_bads_meg)
+from .._mne import morph_source_space, shift_mne_epoch_trigger, find_source_subject, label_from_annot
+from ..mne_fixes import write_labels_to_annot, _interpolate_bads_eeg, _interpolate_bads_meg
 from ..mne_fixes._trans import hsp_equal, mrk_equal
 from ..mne_fixes._source_space import merge_volume_source_space, prune_volume_source_space
 from .._ndvar import concatenate, cwt_morlet, neighbor_correlation
@@ -3621,13 +3616,11 @@ class MneExperiment(FileTree):
             res_data = combine(res_data)
         return res_data, res
 
-    def make_annot(self, redo=False, **state):
+    def make_annot(self, **state):
         """Make sure the annot files for both hemispheres exist
 
         Parameters
         ----------
-        redo : bool
-            Even if the file exists, recreate it (default False).
         ...
             State parameters.
 
@@ -3654,12 +3647,11 @@ class MneExperiment(FileTree):
                 self.set(mrisubject=common_brain, match=False)
                 common_brain_mtime = self.make_annot()
                 self.set(mrisubject=mrisubject, match=False)
-                if not redo and cache_valid(mtime, common_brain_mtime):
+                if cache_valid(mtime, common_brain_mtime):
                     return mtime
                 elif is_fake:
                     for _ in self.iter('hemi'):
-                        self.make_copy('annot-file', 'mrisubject', common_brain,
-                                       mrisubject)
+                        self.make_copy('annot-file', 'mrisubject', common_brain, mrisubject)
                 else:
                     self.get('label-dir', make=True)
                     subjects_dir = self.get('mri-sdir')
@@ -3672,88 +3664,11 @@ class MneExperiment(FileTree):
                                     subjects_dir=subjects_dir)
                 return
 
-        if not redo and mtime:
+        if mtime:
             return mtime
-        elif not p.make:
-            if redo and mtime:
-                raise RuntimeError(
-                    f"The {parc} parcellation cannot be created automatically "
-                    f"for {mrisubject}. Please update the corresponding "
-                    f"*.annot files manually.")
-            else:
-                raise RuntimeError(
-                    f"The {parc} parcellation cannot be created automatically "
-                    f"and is missing for {mrisubject}. Please add the "
-                    f"corresponding *.annot files to the subject's label "
-                    f"directory.")
-
-        # make parcs:  common_brain | non-morphed
-        labels = self._make_annot(parc, p, mrisubject)
-        write_labels_to_annot(labels, mrisubject, parc, True,
-                              self.get('mri-sdir'))
-
-    def _make_annot(self, parc, p, subject):
-        """Return labels
-
-        Notes
-        -----
-        Only called to make custom annotation files for the common_brain
-        """
-        subjects_dir = self.get('mri-sdir')
-        if isinstance(p, CombinationParc):
-            with self._temporary_state:
-                base = {l.name: l for l in self.load_annot(parc=p.base)}
-            labels = []
-            for name, exp in p.labels.items():
-                labels += combination_label(name, exp, base, subjects_dir)
-        elif isinstance(p, SeededParc):
-            if p.mask:
-                with self._temporary_state:
-                    self.make_annot(parc=p.mask)
-            name, extent = SEEDED_PARC_RE.match(parc).groups()
-            labels = labels_from_mni_coords(
-                p.seeds_for_subject(subject), float(extent), subject, p.surface,
-                p.mask, subjects_dir, parc)
-        elif isinstance(p, EelbrainParc) and p.name == 'lobes':
-            if subject != 'fsaverage':
-                raise RuntimeError("lobes parcellation can only be created for "
-                                   "fsaverage, not for %s" % subject)
-
-            # load source annot
-            with self._temporary_state:
-                labels = self.load_annot(parc='PALS_B12_Lobes')
-
-            # sort labels
-            labels = [l for l in labels if l.name[:-3] != 'MEDIAL.WALL']
-
-            # rename good labels
-            rename_label(labels, 'LOBE.FRONTAL', 'frontal')
-            rename_label(labels, 'LOBE.OCCIPITAL', 'occipital')
-            rename_label(labels, 'LOBE.PARIETAL', 'parietal')
-            rename_label(labels, 'LOBE.TEMPORAL', 'temporal')
-
-            # reassign unwanted labels
-            targets = ('frontal', 'occipital', 'parietal', 'temporal')
-            dissolve_label(labels, 'LOBE.LIMBIC', targets, subjects_dir)
-            dissolve_label(labels, 'GYRUS', targets, subjects_dir, 'rh')
-            dissolve_label(labels, '???', targets, subjects_dir)
-            dissolve_label(labels, '????', targets, subjects_dir, 'rh')
-            dissolve_label(labels, '???????', targets, subjects_dir, 'rh')
-        elif isinstance(p, LabelParc):
-            labels = []
-            hemis = ('lh.', 'rh.')
-            path = join(subjects_dir, subject, 'label', '%s.label')
-            for label in p.labels:
-                if label.startswith(hemis):
-                    labels.append(mne.read_label(path % label))
-                else:
-                    labels.extend(mne.read_label(path % (hemi + label)) for hemi in hemis)
-        else:
-            raise NotImplementedError(
-                "At least one of the annot files for the custom parcellation "
-                "%r is missing for %r, and a make function is not "
-                "implemented." % (parc, subject))
-        return labels
+        self._log.info("Make parcellation %s for %s", parc, mrisubject)
+        labels = p._make(self, parc)
+        write_labels_to_annot(labels, mrisubject, parc, True, self.get('mri-sdir'))
 
     def make_bad_channels(self, bad_chs=(), redo=False, **kwargs):
         """Write the bad channel definition file for a raw file

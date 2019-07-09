@@ -1,6 +1,10 @@
 from copy import deepcopy
+import os
 import re
 
+import mne
+
+from .._mne import combination_label, labels_from_mni_coords, rename_label, dissolve_label
 from .definitions import DefinitionError, Definition
 
 
@@ -10,7 +14,6 @@ SEEDED_PARC_RE = re.compile(r'^(.+)-(\d+)$')
 class Parcellation(Definition):
     DICT_ATTRS = ('kind',)
     kind = None  # used when comparing dict representations
-    make = False
     morph_from_fsaverage = False
 
     def __init__(self, views=None):
@@ -20,6 +23,13 @@ class Parcellation(Definition):
         out = deepcopy(self)
         out.name = name
         return out
+
+    def _make(
+            self,
+            e,  # the MneExperiment instance
+            parc: str,  # the name (contains radius for seeded parcellations)
+    ) -> list:
+        raise RuntimeError(f"Trying to make {self.__class__.__name__}")
 
 
 class CombinationParc(Parcellation):
@@ -72,22 +82,59 @@ class CombinationParc(Parcellation):
     """
     DICT_ATTRS = ('kind', 'base', 'labels')
     kind = 'combination'
-    make = True
 
     def __init__(self, base, labels, views=None):
         Parcellation.__init__(self, views)
         self.base = base
         self.labels = labels
 
+    def _make(self, e, parc):
+        with e._temporary_state:
+            base = {l.name: l for l in e.load_annot(parc=self.base)}
+        subjects_dir = e.get('mri-sdir')
+        labels = []
+        for name, exp in self.labels.items():
+            labels += combination_label(name, exp, base, subjects_dir)
+        return labels
+
 
 class EelbrainParc(Parcellation):
     "Parcellation that has special make rule"
     kind = 'eelbrain_parc'
-    make = True
 
     def __init__(self, morph_from_fsaverage, views=None):
         Parcellation.__init__(self, views)
         self.morph_from_fsaverage = morph_from_fsaverage
+
+    def _make(self, e, parc):
+        assert parc == 'lobes'
+        subject = e.get('mrisubject')
+        subjects_dir = e.get('mri-sdir')
+        if subject != 'fsaverage':
+            raise RuntimeError(f"lobes parcellation can only be created for fsaverage, not for {subject}")
+
+        # load source annot
+        with e._temporary_state:
+            labels = e.load_annot(parc='PALS_B12_Lobes')
+
+        # sort labels
+        labels = [l for l in labels if l.name[:-3] != 'MEDIAL.WALL']
+
+        # rename good labels
+        rename_label(labels, 'LOBE.FRONTAL', 'frontal')
+        rename_label(labels, 'LOBE.OCCIPITAL', 'occipital')
+        rename_label(labels, 'LOBE.PARIETAL', 'parietal')
+        rename_label(labels, 'LOBE.TEMPORAL', 'temporal')
+
+        # reassign unwanted labels
+        targets = ('frontal', 'occipital', 'parietal', 'temporal')
+        dissolve_label(labels, 'LOBE.LIMBIC', targets, subjects_dir)
+        dissolve_label(labels, 'GYRUS', targets, subjects_dir, 'rh')
+        dissolve_label(labels, '???', targets, subjects_dir)
+        dissolve_label(labels, '????', targets, subjects_dir, 'rh')
+        dissolve_label(labels, '???????', targets, subjects_dir, 'rh')
+
+        return labels
 
 
 class FreeSurferParc(Parcellation):
@@ -109,6 +156,10 @@ class FreeSurferParc(Parcellation):
     """
     kind = 'subject_parc'
 
+    def _make(self, e, parc):
+        subject = e.get('mrisubject')
+        raise FileNotFoundError(f"At least one annot file for the parcellation {parc} is missing for {subject}")
+
 
 class FSAverageParc(Parcellation):
     """Fsaverage parcellation that is morphed to individual subjects
@@ -128,6 +179,11 @@ class FSAverageParc(Parcellation):
     kind = 'fsaverage_parc'
     morph_from_fsaverage = True
 
+    def _make(self, e, parc):
+        common_brain = e.get('common_brain')
+        assert e.get('mrisubject') == common_brain
+        raise FileNotFoundError(f"At least one annot file for the parcellation {parc} is missing for {common_brain}")
+
 
 class LabelParc(Parcellation):
     """Assemble parcellation from FreeSurfer labels
@@ -142,6 +198,17 @@ class LabelParc(Parcellation):
     def __init__(self, labels, views=None):
         Parcellation.__init__(self, views)
         self.labels = labels if isinstance(labels, tuple) else tuple(labels)
+
+    def _make(self, e, parc):
+        labels = []
+        hemis = ('lh.', 'rh.')
+        path = os.path.join(e.get('mri-dir'), 'label', '%s.label')
+        for label in self.labels:
+            if label.startswith(hemis):
+                labels.append(mne.read_label(path % label))
+            else:
+                labels.extend(mne.read_label(path % (hemi + label)) for hemi in hemis)
+        return labels
 
 
 class SeededParc(Parcellation):
@@ -194,6 +261,16 @@ class SeededParc(Parcellation):
 
     def seeds_for_subject(self, subject):
         return self.seeds
+
+    def _make(self, e, parc):
+        if self.mask:
+            with e._temporary_state:
+                e.make_annot(parc=self.mask)
+        subject = e.get('mrisubject')
+        subjects_dir = e.get('mri-sdir')
+        seeds = self.seeds_for_subject(subject)
+        name, extent = SEEDED_PARC_RE.match(parc).groups()
+        return labels_from_mni_coords(seeds, float(extent), subject, self.surface, self.mask, subjects_dir, parc)
 
 
 class IndividualSeededParc(SeededParc):
