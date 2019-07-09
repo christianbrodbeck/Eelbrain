@@ -772,11 +772,7 @@ class MneExperiment(FileTree):
             if input_state['version'] < 10:
                 input_state = None
             elif input_state['version'] > CACHE_STATE_VERSION:
-                raise RuntimeError(
-                    "You are trying to initialize an experiment with an older "
-                    "version of Eelbrain than that which wrote the cache. If "
-                    "you really need this, delete the eelbrain-cache folder "
-                    "and try again.")
+                raise RuntimeError("You are trying to initialize an experiment with an older version of Eelbrain than that which wrote the cache. If you really need this, delete the eelbrain-cache folder and try again.")
         else:
             input_state = None
 
@@ -957,12 +953,10 @@ class MneExperiment(FileTree):
                     msg.append("Delete %i outdated results?" % (n_result_files,))
                     command = ask(
                         '\n'.join(msg),
-                        options=(
-                            ('delete', 'delete invalid result files'),
-                            ('abort', 'raise an error')),
-                        help=CACHE_HELP.format(
-                            experiment=self.__class__.__name__,
-                            filetype='result'),
+                        options={
+                            'delete': 'delete invalid result files',
+                            'abort': 'raise an error'},
+                        help=CACHE_HELP.format(experiment=self.__class__.__name__, filetype='result'),
                     )
                     if command == 'abort':
                         raise RuntimeError("User aborted invalid result deletion")
@@ -978,17 +972,13 @@ class MneExperiment(FileTree):
                         if self.auto_delete_cache != 'debug':
                             raise ValueError(f"MneExperiment.auto_delete_cache={self.auto_delete_cache!r}")
                         command = ask(
-                            "Outdated cache files. Choose 'delete' to proceed. "
-                            "WARNING: only choose 'ignore' or 'revalidate' if "
-                            "you know what you are doing.",
-                            options=(
-                                ('delete', 'delete invalid files'),
-                                ('abort', 'raise an error'),
-                                ('ignore', 'proceed without doing anything'),
-                                ('revalidate', "don't delete any cache files but write a new cache-state file")),
-                            help=CACHE_HELP.format(
-                                experiment=self.__class__.__name__,
-                                filetype='cache and/or result'),
+                            "Outdated cache files. Choose 'delete' to proceed. WARNING: only choose 'ignore' or 'revalidate' if you know what you are doing.",
+                            options={
+                                'delete': 'delete invalid files',
+                                'abort': 'raise an error',
+                                'ignore': 'proceed without doing anything',
+                                'revalidate': "don't delete any cache files but write a new cache-state file"},
+                            help=CACHE_HELP.format(experiment=self.__class__.__name__, filetype='cache and/or result'),
                         )
                         if command == 'delete':
                             pass
@@ -1027,15 +1017,13 @@ class MneExperiment(FileTree):
             elif self.auto_delete_cache == 'disable':
                 log.warning("Ignoring cache-dir without history")
             elif self.auto_delete_cache == 'debug':
-                command = ask("Cache directory without history",
-                              (('validate', 'write a history file treating cache as valid'),
-                               ('abort', 'raise an error')))
+                command = ask("Cache directory without history", {'validate': 'write a history file treating cache as valid', 'abort': 'raise an error'})
                 if command == 'abort':
                     raise RuntimeError("User aborted")
                 elif command == 'validate':
                     log.warning("Validating cache-dir without history")
                 else:
-                    raise RuntimeError("command=%r" % (command,))
+                    raise RuntimeError(f"command={command}")
             else:
                 raise IOError("Cache directory without history, but auto_delete_cache is not True")
         elif not exists(cache_dir):
