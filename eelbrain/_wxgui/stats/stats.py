@@ -88,7 +88,7 @@ class StatsFrame(EelbrainFrame):
         print(res)
 
     def OnROIMenuClick(self, evt):
-        with RegionOfInterest(self, self.ds["src"]) as dlg:
+        with RegionOfInterest(self, self.ds["src"], self.roi_info) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
                 self.roi_info = dlg.get_roi_info()
             else:

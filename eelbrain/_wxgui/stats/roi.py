@@ -13,12 +13,13 @@ class RegionOfInterest(wx.Dialog):
 
     add_params = dict(flag=wx.ALL | wx.EXPAND, border=5)
 
-    def __init__(self, parent, src_ndvar):
+    def __init__(self, parent, src_ndvar, state=None):
         super().__init__(parent, wx.OK | wx.CANCEL)
         self.subject = src_ndvar.source.subject
         self.subjects_dir = src_ndvar.source.subjects_dir
         self.InitWidgets()
         self.InitUI()
+        self.SetState(state)
 
     def InitWidgets(self):
         self.atlas = wx.RadioBox(self, choices=list(self.ATLASES.keys()),
@@ -27,7 +28,8 @@ class RegionOfInterest(wx.Dialog):
         self.mult_corr = wx.CheckBox(self, label="Correct Across ROIs")
         self.ok = wx.Button(self, id=wx.ID_OK, label="OK")
         self.cancel = wx.Button(self, id=wx.ID_CANCEL, label="Cancel")
-
+        self.Bind(wx.EVT_RADIOBOX, self.OnAtlasChange, self.atlas)
+        self.Bind(wx.EVT_CHECKLISTBOX, self.OnRegionSelect, self.regions)
 
     def InitUI(self):
         self.sizer = wx.BoxSizer(wx.VERTICAL)
@@ -47,10 +49,17 @@ class RegionOfInterest(wx.Dialog):
         self.SetSizer(self.sizer)
         self.sizer.Layout()
         self.sizer.Fit(self)
-        self.Bind(wx.EVT_RADIOBOX, self.OnAtlasChange, self.atlas)
-        self.Bind(wx.EVT_CHECKLISTBOX, self.OnRegionSelect, self.regions)
         self.OnAtlasChange(None)
         self.OnRegionSelect(None)
+
+    def SetState(self, state=None):
+        if state:
+            atlas_inv = {v: k for k, v in self.ATLASES.items()}
+            self.atlas.SetStringSelection(atlas_inv[state["atlas"]])
+            self.OnAtlasChange(None)
+            self.regions.SetCheckedStrings(list(state["labels"]))
+            self.OnRegionSelect(None)
+            self.mult_corr.SetValue(state["corr"])
 
     def OnRegionSelect(self, evt):
         regions = self.regions.GetCheckedStrings()
