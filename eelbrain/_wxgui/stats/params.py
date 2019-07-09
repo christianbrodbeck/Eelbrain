@@ -6,18 +6,22 @@ from .utils import TitleSizer, TextEntryWithLabel
 class TestParams(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent)
+        self.InitWidgets()
         self.InitUI()
 
-    def InitUI(self):
-        self.sizer = wx.GridBagSizer(hgap=10, vgap=10)
-        title = TitleSizer(self, "Test Parameters")
+    def InitWidgets(self):
         self.tstart = TextEntryWithLabel(self, wx.VERTICAL, "Start Time (s)")
         self.tstop = TextEntryWithLabel(self, wx.VERTICAL, "Stop Time (s)")
         self.samples = TextEntryWithLabel(self, wx.VERTICAL, "Permutations", "10000")
         self.mintime = TextEntryWithLabel(self, wx.VERTICAL, "Min. Cluster Time (s)", "0.02")
         self.minsource = TextEntryWithLabel(self, wx.VERTICAL, "Min. Cluster Sources", "25")
         self.sig = SignificanceType(self)
-        self.sizer.Add(title, pos=(0, 0), span=(1, 2))
+        self.title = TitleSizer(self, "Test Parameters")
+        self.Bind(wx.EVT_RADIOBOX, self.sig.OnTypeChange, self.sig.choice)
+
+    def InitUI(self):
+        self.sizer = wx.GridBagSizer(hgap=10, vgap=10)
+        self.sizer.Add(self.title, pos=(0, 0), span=(1, 2))
         self.sizer.Add(self.tstart, pos=(1, 0), span=(1, 2))
         self.sizer.Add(self.tstop, pos=(1, 2), span=(1, 2))
         self.sizer.Add(self.samples, pos=(1, 4), span=(1, 2))
@@ -25,7 +29,6 @@ class TestParams(wx.Panel):
         self.sizer.Add(self.minsource, pos=(2, 2), span=(1, 2))
         self.sizer.Add(self.sig, pos=(3, 0), span=(1, 6))
         self.SetSizer(self.sizer)
-        self.Bind(wx.EVT_RADIOBOX, self.sig.OnTypeChange, self.sig.choice)
         # hide minsource at first, because 'temporal' is default choice
         # in SpatiotemporalSettings
         self.toggle_minsource()

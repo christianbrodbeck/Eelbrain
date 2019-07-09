@@ -22,32 +22,40 @@ class InfoPanel(wx.Panel):
         self.loader = loader
         self.ds = ds
         self.sizer = wx.BoxSizer(wx.HORIZONTAL)
+        # create menu to select subjects for analysis
         self.subj_sel = SubjectsSelector(self, list(set(self.ds["subject"])))
+        # three columns
         col1 = wx.BoxSizer(wx.VERTICAL)
+        col2 = wx.BoxSizer(wx.VERTICAL)
+        col3 = wx.BoxSizer(wx.VERTICAL)
+        # add subject menu and title to first column
         col1.Add(TitleSizer(self, "Subjects"), 0, wx.BOTTOM, 5)
         col1.Add(self.subj_sel)
-        self.sizer.Add(col1, **self.add_params)
-        col2 = wx.BoxSizer(wx.VERTICAL)
-        col2.Add(TitleSizer(self, "Design"), 0, wx.BOTTOM, 5)
+        # create sizer for experiment design (factors/levels)
         self.factor_sizer = wx.BoxSizer(wx.HORIZONTAL)
         for i, level_names in enumerate(self.loader.levels):
             panel = FactorPanel(self, level_names, i, editable=False)
             panel.factor_ctl.SetLabel(self.loader.factors[i])
             panel.factor_ctl.SetFont(wx.Font.Bold(panel.factor_ctl.GetFont()))
             self.factor_sizer.Add(panel, 0, wx.EXPAND | wx.RIGHT, 30)
+        # add design and title to second column
+        col2.Add(TitleSizer(self, "Design"), 0, wx.BOTTOM, 5)
         col2.Add(self.factor_sizer)
-        self.sizer.Add(col2, **self.add_params)
-        col3 = wx.BoxSizer(wx.VERTICAL)
-        col3.Add(TitleSizer(self, "Data"), 0, wx.BOTTOM, 5)
+        # derive brain data descriptions from source NDVar
         src = self.ds["src"]
         n_src = src.source.vertices[0].shape[0] + src.source.vertices[0].shape[0]
         src_label = "{} sources".format(n_src)
-        col3.Add(wx.StaticText(self, label=src_label))
         time_label = "{:0.2f} to {:0.2f} s, step={:0.3f} s".format(
             src.time.times[0],
             src.time.tstop, src.time.tstep
         )
+        # add brain data description and title to third column
+        col3.Add(TitleSizer(self, "Data"), 0, wx.BOTTOM, 5)
+        col3.Add(wx.StaticText(self, label=src_label))
         col3.Add(wx.StaticText(self, label=time_label))
+        # add columns to sizer
+        self.sizer.Add(col1, **self.add_params)
+        self.sizer.Add(col2, **self.add_params)
         self.sizer.Add(col3, **self.add_params)
         self.sizer.Layout()
         self.SetSizer(self.sizer)

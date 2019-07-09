@@ -5,6 +5,7 @@ from .roi import RegionOfInterest
 from .info import InfoPanel
 from .params import TestParams, SpatiotemporalSettings
 from .model import TestModelInfo
+from .stats_results import StatsResultsFrame
 from ... import testnd, set_parc
 
 
@@ -17,28 +18,28 @@ class StatsFrame(EelbrainFrame):
         self.loader = loader
         self.ds = ds
         self.roi_info = None
+        self.InitWidgets()
         self.InitUI()
         self.Show()
         self.Raise()
 
-    def InitUI(self):
-        self.sizer = wx.BoxSizer(wx.VERTICAL)
+    def InitWidgets(self):
         self.info_panel = InfoPanel(self, self.loader, self.ds)
-        self.sizer.Add(self.info_panel)
         self.spatiotemp = SpatiotemporalSettings(self)
-        self.sizer.Add(self.spatiotemp, **self.add_params)
         self.test_model = TestModelInfo(self, self.loader)
-        self.sizer.Add(self.test_model, **self.add_params)
         self.test_params = TestParams(self)
-        self.sizer.Add(self.test_params, **self.add_params)
         self.roi_dialog = wx.Button(self, label="Select ROI")
-        self.sizer.Add(self.roi_dialog, **self.add_params)
         self.submit = wx.Button(self, label="Run Test")
-        self.sizer.Add(self.submit, **self.add_params)
         self.Bind(wx.EVT_BUTTON, self.run_test, self.submit)
         self.Bind(wx.EVT_RADIOBOX, self.test_params.toggle_minsource,
                   self.spatiotemp.choice)
         self.Bind(wx.EVT_BUTTON, self.OnROIMenuClick, self.roi_dialog)
+
+    def InitUI(self):
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        for widget in (self.info_panel, self.spatiotemp, self.test_model,
+                       self.test_params, self.roi_dialog, self.submit):
+            self.sizer.Add(widget, **self.add_params)
         self.SetSizer(self.sizer)
         self.sizer.Layout()
         self.sizer.Fit(self)
@@ -83,6 +84,7 @@ class StatsFrame(EelbrainFrame):
         if self.spatiotemp.is_temporal():
             del kwargs["minsource"]
         res = test_func(data, ds=ds, match="subject", **kwargs)
+        res_frame = StatsResultsFrame(None, res, ds, data)
         print(res)
 
     def OnROIMenuClick(self, evt):

@@ -7,21 +7,26 @@ class TestModelInfo(wx.Panel):
     def __init__(self, parent, loader):
         super().__init__(parent)
         self.loader = loader
-        self.sizer = wx.BoxSizer(wx.VERTICAL)
-        self.sizer.Add(TitleSizer(self, "Test/Model Definition"), 0, wx.BOTTOM, 5)
-        row1 = wx.BoxSizer(wx.HORIZONTAL)
+        self.InitWidgets()
+        self.InitUI()
+
+    def InitWidgets(self):
         self.test_type = wx.RadioBox(self, choices=["ANOVA", "t-test"])
-        row1.Add(self.test_type)
-        self.sizer.Add(row1)
         self.anova_def = ANOVAModel(self, self.loader.factors)
         fld = {f: l for f, l in zip(self.loader.factors, self.loader.levels)}
         self.ttest_def = TTestModel(self, fld)
+        self.Bind(wx.EVT_RADIOBOX, self.OnTestTypeChange, self.test_type)
+
+    def InitUI(self):
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        row1 = wx.BoxSizer(wx.HORIZONTAL)
+        row1.Add(self.test_type)
+        self.sizer.Add(TitleSizer(self, "Test/Model Definition"), 0, wx.BOTTOM, 5)
+        self.sizer.Add(row1)
         self.sizer.Add(self.anova_def)
         self.sizer.Add(self.ttest_def)
         self.sizer.Hide(self.ttest_def, recursive=True)
         self.SetSizer(self.sizer)
-
-        self.Bind(wx.EVT_RADIOBOX, self.OnTestTypeChange, self.test_type)
 
     def OnTestTypeChange(self, evt):
         test_type = self.get_test_type()

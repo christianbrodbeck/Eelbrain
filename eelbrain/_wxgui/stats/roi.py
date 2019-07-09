@@ -17,27 +17,31 @@ class RegionOfInterest(wx.Dialog):
         super().__init__(parent, wx.OK | wx.CANCEL)
         self.subject = src_ndvar.source.subject
         self.subjects_dir = src_ndvar.source.subjects_dir
+        self.InitWidgets()
         self.InitUI()
+
+    def InitWidgets(self):
+        self.atlas = wx.RadioBox(self, choices=list(self.ATLASES.keys()),
+                                 majorDimension=1)
+        self.regions = wx.CheckListBox(self, choices=[])
+        self.mult_corr = wx.CheckBox(self, label="Correct Across ROIs")
+        self.ok = wx.Button(self, id=wx.ID_OK, label="OK")
+        self.cancel = wx.Button(self, id=wx.ID_CANCEL, label="Cancel")
+
 
     def InitUI(self):
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         content_sizer = wx.BoxSizer(wx.HORIZONTAL)
         self.col1 = wx.BoxSizer(wx.VERTICAL)
-        self.atlas = wx.RadioBox(self, choices=list(self.ATLASES.keys()),
-                                 majorDimension=1)
         atlas_title = TitleSizer(self, "Atlas")
         self.col1.Add(atlas_title)
         self.col1.Add(self.atlas)
-        self.regions = wx.CheckListBox(self, choices=[])
-        self.mult_corr = wx.CheckBox(self, label="Correct Across ROIs")
         self.col1.Add(self.mult_corr, 0, wx.TOP, 20)
         content_sizer.Add(self.col1, 1, **self.add_params)
         content_sizer.Add(self.regions, 2, **self.add_params)
         button_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        ok = wx.Button(self, id=wx.ID_OK, label="OK")
-        cancel = wx.Button(self, id=wx.ID_CANCEL, label="Cancel")
-        button_sizer.Add(ok)
-        button_sizer.Add(cancel)
+        button_sizer.Add(self.ok)
+        button_sizer.Add(self.cancel)
         self.sizer.Add(content_sizer, 0, wx.BOTTOM, 30)
         self.sizer.Add(button_sizer, 0, wx.BOTTOM, 10)
         self.SetSizer(self.sizer)
