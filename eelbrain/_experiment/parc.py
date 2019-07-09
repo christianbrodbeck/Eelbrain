@@ -5,7 +5,7 @@ import re
 import mne
 
 from .._mne import combination_label, labels_from_mni_coords, rename_label, dissolve_label
-from .definitions import DefinitionError, Definition
+from .definitions import DefinitionError, Definition, tuple_arg
 
 
 SEEDED_PARC_RE = re.compile(r'^(.+)-(\d+)$')
@@ -30,6 +30,65 @@ class Parcellation(Definition):
             parc: str,  # the name (contains radius for seeded parcellations)
     ) -> list:
         raise RuntimeError(f"Trying to make {self.__class__.__name__}")
+
+
+class SubParc(Parcellation):
+    """A subset of labels in another parcellation
+
+    Parameters
+    ----------
+    base : str
+        The name of the parcellation that provides the input labels. A common
+        ``base`` is the ``'aparc'`` parcellation [1]_.
+    labels : tuple of str
+        Labels to copy from ``base``. In order to include a label in both
+        hemispheres, omit the ``*-hemi`` tag. For example, with
+        ``base='aparc'``, ``labels=('transversetemporal',)`` would include the
+        transverse temporal gyrus in both hemisphere, whereas
+        ``labels=('transversetemporal-lh',)`` would include the transverse
+        temporal gyrus of only the left hemisphere.
+    views : sequence of str
+        Views shown in anatomical plots, e.g. ``("medial", "lateral")``.
+
+    Examples
+    --------
+    Lateral temporal lobe of both hemispheres::
+
+        parcs = {
+            'lateraltemporal': SubParc('aparc', (
+                'transversetemporal', 'superiortemporal', 'bankssts',
+                'middletemporal', 'inferiortemporal')),
+        }
+
+    References
+    ----------
+    .. [1] Desikan, R. S., Ségonne, F., Fischl, B., Quinn, B. T., Dickerson, B.
+           C., Blacker, D., … Killiany, R. J. (2006). An automated labeling system
+           for subdividing the human cerebral cortex on MRI scans into gyral based
+           regions of interest. NeuroImage, 31(3), 968–980.
+           `10.1016/j.neuroimage.2006.01.021
+           <https://surfer.nmr.mgh.harvard.edu/ftp/articles/desikan06-parcellation.pdf>`_
+    """
+    DICT_ATTRS = ('kind', 'base', 'labels')
+    kind = 'combination'
+
+    def __init__(self, base, labels, views=None):
+        Parcellation.__init__(self, views)
+        self.base = base
+        self.labels = tuple_arg(labels)
+
+    def _make(self, e, parc):
+        with e._temporary_state:
+            base = {l.name: l for l in e.load_annot(parc=self.base)}
+        hemis = ('-lh', '-rh')
+        labels = []
+        for label in self.labels:
+            if label.endswith(hemis):
+                labels.append(base[label])
+            else:
+                for hemi in hemis:
+                    labels.append(base[label + hemi])
+        return labels
 
 
 class CombinationParc(Parcellation):

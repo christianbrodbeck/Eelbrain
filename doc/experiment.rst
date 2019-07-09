@@ -552,6 +552,7 @@ defined, described below.
    :toctree: generated
    :template: class_nomethods.rst
 
+   SubParc
    CombinationParc
    SeededParc
    IndividualSeededParc

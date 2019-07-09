@@ -241,3 +241,17 @@ def find_dependent_epochs(epoch, epochs):
 
 def typed_arg(arg, type_):
     return None if arg is None else type_(arg)
+
+
+def tuple_arg(arg, item_type=str):
+    if isinstance(arg, item_type):
+        return arg,
+    elif isinstance(arg, list):
+        out = tuple(arg)
+    elif isinstance(arg, tuple):
+        out = arg
+    else:
+        raise TypeError(f"{arg}: tuple of {item_type.__name__} required")
+    if not all(isinstance(item, item_type) for item in out):
+        raise TypeError(f"{arg}: tuple of {item_type.__name__} required")
+    return out

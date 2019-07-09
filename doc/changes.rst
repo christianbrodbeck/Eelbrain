@@ -11,6 +11,10 @@ New in 0.31
 * Horizontal bar-plot: :class:`plot.BarplotHorizontal`
 * Non-parametric univariate tests :class:`test.MannWhitneyU` and :class:`test.WilcoxonSignedRank`
 * API :meth:`Dataset.save_txt`: ``delim`` parameter renamed to ``delimiter``
+* .. currentmodule:: eelbrain.pipeline
+  :class:`MneExperiment` pipeline:
+
+  - :class:`SubParc` for simplified subset parcellation
 
 
 New in 0.30
