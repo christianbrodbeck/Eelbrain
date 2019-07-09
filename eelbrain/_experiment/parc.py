@@ -4,16 +4,12 @@ import re
 from .definitions import DefinitionError, Definition
 
 
-COMBINATION_PARC = 'combination'
-FS_PARC = 'subject_parc'  # Parcellation that come with every MRI-subject
-FSA_PARC = 'fsaverage_parc'  # Parcellation that comes with fsaverage
-SEEDED_PARC = 'seeded'
-INDIVIDUAL_SEEDED_PARC = 'individual seeded'
 SEEDED_PARC_RE = re.compile(r'^(.+)-(\d+)$')
 
 
 class Parcellation(Definition):
     DICT_ATTRS = ('kind',)
+    kind = None  # used when comparing dict representations
     make = False
     morph_from_fsaverage = False
 
@@ -75,7 +71,7 @@ class CombinationParc(Parcellation):
            <https://surfer.nmr.mgh.harvard.edu/ftp/articles/desikan06-parcellation.pdf>`_
     """
     DICT_ATTRS = ('kind', 'base', 'labels')
-    kind = COMBINATION_PARC
+    kind = 'combination'
     make = True
 
     def __init__(self, base, labels, views=None):
@@ -111,7 +107,7 @@ class FreeSurferParc(Parcellation):
             'aparc': FreeSurferParc(),
             }
     """
-    kind = FS_PARC
+    kind = 'subject_parc'
 
 
 class FSAverageParc(Parcellation):
@@ -129,7 +125,7 @@ class FSAverageParc(Parcellation):
             'PALS_B12_Brodmann': FSAverageParc(),
             }
     """
-    kind = FSA_PARC
+    kind = 'fsaverage_parc'
     morph_from_fsaverage = True
 
 
@@ -187,7 +183,7 @@ class SeededParc(Parcellation):
          }
     """
     DICT_ATTRS = ('kind', 'seeds', 'surface', 'mask')
-    kind = SEEDED_PARC
+    kind = 'seeded'
     make = True
 
     def __init__(self, seeds, mask=None, surface='white', views=None):
@@ -223,7 +219,7 @@ class IndividualSeededParc(SeededParc):
                 mask='lobes'),
         }
     """
-    kind = INDIVIDUAL_SEEDED_PARC
+    kind = 'individual seeded'
     morph_from_fsaverage = False
 
     def __init__(self, seeds, mask=None, surface='white', views=None):
@@ -254,13 +250,7 @@ def parc_from_dict(name, params):
     return cls(**p)
 
 
-PARC_CLASSES = {
-    COMBINATION_PARC:       CombinationParc,
-    FS_PARC:                FreeSurferParc,
-    FSA_PARC:               FSAverageParc,
-    SEEDED_PARC:            SeededParc,
-    INDIVIDUAL_SEEDED_PARC: IndividualSeededParc,
-}
+PARC_CLASSES = {p.kind: p for p in (CombinationParc, FreeSurferParc, FSAverageParc, SeededParc, IndividualSeededParc)}
 
 
 def assemble_parcs(items):
@@ -268,12 +258,12 @@ def assemble_parcs(items):
     for name, obj in items:
         if isinstance(obj, Parcellation):
             parc = obj
-        elif obj == FS_PARC:
-            parc = FreeSurferParc(('lateral', 'medial'))
-        elif obj == FSA_PARC:
-            parc = FSAverageParc(('lateral', 'medial'))
         elif isinstance(obj, dict):
             parc = parc_from_dict(name, obj)
+        elif obj == FreeSurferParc.kind:
+            parc = FreeSurferParc(('lateral', 'medial'))
+        elif obj == FSAverageParc.kind:
+            parc = FSAverageParc(('lateral', 'medial'))
         else:
             raise DefinitionError(f"parcellation {name!r}: {obj!r}")
         parcs[name] = parc._link(name)

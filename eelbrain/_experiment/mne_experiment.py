@@ -67,12 +67,7 @@ from .epochs import PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, a
 from .exceptions import FileDeficient, FileMissing
 from .experiment import FileTree
 from .groups import assemble_groups
-from .parc import (
-    assemble_parcs,
-    FS_PARC, FSA_PARC, SEEDED_PARC_RE,
-    CombinationParc, EelbrainParc, FreeSurferParc, FSAverageParc, SeededParc,
-    IndividualSeededParc, LabelParc
-)
+from .parc import SEEDED_PARC_RE, CombinationParc, EelbrainParc, FreeSurferParc, FSAverageParc, SeededParc, IndividualSeededParc, LabelParc, assemble_parcs
 from .preprocessing import (
     assemble_pipeline, RawSource, RawFilter, RawICA,
     compare_pipelines, ask_to_delete_ica_files)
@@ -423,15 +418,15 @@ class MneExperiment(FileTree):
 
     # Parcellations
     __parcs = {
-        'aparc.a2005s': FS_PARC,
-        'aparc.a2009s': FS_PARC,
-        'aparc': FS_PARC,
-        'aparc.DKTatlas': FS_PARC,
+        'aparc.a2005s': FreeSurferParc(),
+        'aparc.a2009s': FreeSurferParc(),
+        'aparc': FreeSurferParc(),
+        'aparc.DKTatlas': FreeSurferParc(),
         'cortex': LabelParc(('cortex',), ('lateral', 'medial')),
-        'PALS_B12_Brodmann': FSA_PARC,
-        'PALS_B12_Lobes': FSA_PARC,
-        'PALS_B12_OrbitoFrontal': FSA_PARC,
-        'PALS_B12_Visuotopic': FSA_PARC,
+        'PALS_B12_Brodmann': FSAverageParc(),
+        'PALS_B12_Lobes': FSAverageParc(),
+        'PALS_B12_OrbitoFrontal': FSAverageParc(),
+        'PALS_B12_Visuotopic': FSAverageParc(),
         'lobes': EelbrainParc(True, ('lateral', 'medial')),
         'lobes-op': CombinationParc('lobes', {'occipitoparietal': "occipital + parietal"}, ('lateral', 'medial')),
         'lobes-ot': CombinationParc('lobes', {'occipitotemporal': "occipital + temporal"}, ('lateral', 'medial')),
