@@ -602,7 +602,9 @@ class Brain(TimeSlicer, surfer.Brain):
 
         Notes
         -----
-        To remove previously added labels, run Brain.remove_labels().
+        To remove previously added labels, run Brain.remove_labels(). This
+        method can only plot static labels; to plot a contour that varies over
+        time, use :meth:`Brain.add_ndvar` with the ``contours`` parameter.
         """
         source = self._check_source_space(ndvar)
         x = ndvar.get_data(source.name)
