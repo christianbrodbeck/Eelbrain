@@ -3470,7 +3470,7 @@ class NDVar:
         return NDVar(self.x.astype(dtype), self.dims, self.info, self.name)
 
     def bin(self, step=None, start=None, stop=None, func=None, dim=None,
-            name=None, nbins=None):
+            name=None, nbins=None, label='center'):
         """Bin the data along a given dimension (default ``'time'``)
 
         Parameters
@@ -3499,6 +3499,10 @@ class NDVar:
         nbins : int
             Instead of specifying ``step``, ``nbins`` can be specified to divide
             ``dim`` into an even number of bins.
+        label : 'start' | 'center'
+            How to assign labels to the new bins. For example, with
+            ``dim='time'``, the new time axis can assign to each bin either the
+            center or the start time of the bin on the original time axis.
 
         Returns
         -------
@@ -3515,6 +3519,8 @@ class NDVar:
                 raise ValueError(f"nbins={nbins}: needs to be >= 1")
         elif step is None and nbins is None:
             raise TypeError("need to specify one of step and nbins")
+        elif label not in ('start', 'center'):
+            raise ValueError(f"label={label!r}")
 
         if dim is None:
             if len(self.dims) == 1 + self.has_case:
@@ -3544,7 +3550,7 @@ class NDVar:
 
         axis = self.get_axis(dim)
         dim = self.get_dim(dim)
-        edges, out_dim = dim._bin(start, stop, step, nbins)
+        edges, out_dim = dim._bin(start, stop, step, nbins, label)
 
         out_shape = list(self.shape)
         out_shape[axis] = len(edges) - 1
@@ -7184,14 +7190,12 @@ class Dimension:
         """
         raise NotImplementedError
 
-    def _bin(self, start, stop, step, nbins):
+    def _bin(self, start, stop, step, nbins, label):
         "Divide Dimension into bins"
-        raise NotImplementedError(
-            "Binning for %s dimension" % self.__class__.__name__)
+        raise NotImplementedError(f"Binning for {self.__class__.__name__} dimension")
 
     def _as_scalar_array(self):
-        raise TypeError("%s dimension %r has no scalar representation" %
-                        (self.__class__.__name__, self.name))
+        raise TypeError(f"{self.__class__.__name__} dimension has no scalar representation")
 
     def _as_uv(self):
         return Var(self._axis_data(), name=self.name)
@@ -7903,6 +7907,7 @@ class Scalar(Dimension):
             stop: float = None,
             step: int = None,  # -> step in dim space
             nbins: int = None,  # -> equally divide in array space
+            label: str = 'center',
     ) -> (list, 'Scalar'):
         islice = self._array_index_for_slice(start, stop, step)
         istart = 0 if islice.start is None else islice.start
@@ -7919,7 +7924,9 @@ class Scalar(Dimension):
             edges = list(self.values[istart:istop:istep])
             edges.append(stop)
             # values for new Dimension
-            if istep % 2:
+            if label == 'start':
+                out_values = edges[:-1]
+            elif istep % 2:
                 loc = np.arange(istart + istep / 2, istop, istep)
                 out_values = np.interp(loc, np.arange(len(self.values)), self.values)
             else:
@@ -7939,8 +7946,11 @@ class Scalar(Dimension):
             edges = list(edges)
 
             # new dimensions
-            values_i = [(a + b) / 2 for a, b in intervals(edges_i)]
-            out_values = np.interp(values_i, edges_i, edges)
+            if label == 'start':
+                out_values = edges[:-1]
+            else:
+                values_i = [(a + b) / 2 for a, b in intervals(edges_i)]
+                out_values = np.interp(values_i, edges_i, edges)
         out_dim = Scalar(self.name, out_values, self.unit, self.tick_format)
         return edges, out_dim
 
@@ -9765,7 +9775,7 @@ class UTS(Dimension):
                                 '%i' % round(1e3 * self.times[int(round(x))]))
         return fmt, None, label
 
-    def _bin(self, start, stop, step, nbins):
+    def _bin(self, start, stop, step, nbins, label):
         if nbins is not None:
             raise NotImplementedError("nbins for UTS dimension")
 
@@ -9778,7 +9788,9 @@ class UTS(Dimension):
         n_bins = int(ceil(round((stop - start) / step, 2)))
         edges = [start + n * step for n in range(n_bins)]
         edges.append(stop)
-        out_dim = UTS(start + step / 2, step, n_bins)
+        # new dimension
+        tmin = start + step / 2 if label == 'center' else start
+        out_dim = UTS(tmin, step, n_bins)
         return edges, out_dim
 
     def __len__(self):
