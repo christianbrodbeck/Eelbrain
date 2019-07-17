@@ -6,6 +6,7 @@ from .info import InfoPanel
 from .params import TestParams, SpatiotemporalSettings
 from .model import TestModelInfo
 from .stats_results import StatsResultsFrame
+from .utils import ValidationException
 from ... import testnd, set_parc
 
 
@@ -73,6 +74,8 @@ class StatsFrame(EelbrainFrame):
         return ds, data
 
     def run_test(self, evt):
+        if not self.validate_all():
+            return
         # TODO: handle correction over multiple regions
         test_type = self.test_model.get_test_type()
         if test_type == "ANOVA":
@@ -94,3 +97,22 @@ class StatsFrame(EelbrainFrame):
             else:
                 pass
             dlg.Destroy()
+
+    def validate_all(self):
+        widgets = (self.info_panel, self.test_model, self.test_params)
+        errors = []
+        for widget in widgets:
+            try:
+                if isinstance(widget, TestParams):
+                    widget.validate(self.ds["src"].time)
+                else:
+                    widget.validate()
+            except ValidationException as e:
+                errors.append(str(e))
+        if self.roi_info is None or not self.roi_info["labels"]:
+            errors.append("No brain regions selected.")
+        if errors:
+            message = "\n\n".join(errors)
+            wx.MessageBox(message, "Invalid Test Parameters", wx.OK)
+            return False
+        return True

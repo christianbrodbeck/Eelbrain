@@ -1,6 +1,6 @@
 import wx
 
-from. utils import TitleSizer
+from. utils import TitleSizer, ValidationException
 
 
 class TestModelInfo(wx.Panel):
@@ -47,6 +47,16 @@ class TestModelInfo(wx.Panel):
             return self.anova_def.get_test_kwargs()
         elif test_type == "t-test":
             return self.ttest_def.get_test_kwargs()
+
+    def validate(self):
+        kwargs = self.get_test_kwargs()
+        test_type = self.get_test_type()
+        if test_type == "ANOVA":
+            if not kwargs["x"]:
+                raise ValidationException("Select at least one ANOVA factor.")
+        elif test_type == "t-test":
+            if not kwargs["c0"] and kwargs["c1"]:
+                raise ValidationException("Select both levels for the t-test.")
 
 
 class ANOVAModel(wx.BoxSizer):

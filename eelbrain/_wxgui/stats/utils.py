@@ -54,3 +54,7 @@ class FactorPanel(wx.Panel):
         sizer.Add(level_ctl, 0, wx.EXPAND | wx.TOP, 10)
         sizer.Layout()
         self.SetSizer(sizer)
+
+
+class ValidationException(Exception):
+    pass

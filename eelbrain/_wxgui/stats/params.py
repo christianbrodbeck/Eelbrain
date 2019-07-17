@@ -1,6 +1,7 @@
 import wx
 
-from .utils import TitleSizer, TextEntryWithLabel
+from .utils import TitleSizer, TextEntryWithLabel, \
+    ValidationException
 
 
 class TestParams(wx.Panel):
@@ -44,9 +45,43 @@ class TestParams(wx.Panel):
         kwargs["pmin"] = float(self.sig.get_pmin())
         return kwargs
 
+    def get_uncast_test_kwargs(self):
+        kwargs = dict()
+        kwargs["tstart"] = self.tstart.GetValue()
+        kwargs["tstop"] = self.tstop.GetValue()
+        kwargs["samples"] = self.samples.GetValue()
+        kwargs["mintime"] = self.mintime.GetValue()
+        kwargs["minsource"] = self.minsource.GetValue()
+        kwargs["pmin"] = self.sig.get_pmin()
+        return kwargs
+
     def toggle_minsource(self, evt=None):
         self.minsource.Toggle()
         self.sizer.Layout()
+
+    def validate(self, uts):
+        kwargs = self.get_uncast_test_kwargs()
+        fields = ("tstart", "tstop", "samples", "mintime", "minsource", "pmin")
+        types = (float, float, int, float, int, float)
+        check_bounds = (True, True, False, False, False, False)
+        for field, dtype, check in zip(fields, types, check_bounds):
+            try:
+                if field == "pmin" and kwargs[field] is None:
+                    continue
+                val = dtype(kwargs[field])
+            except ValueError:
+                msg = "Parameter {} ({}) could not be parsed as type {}."
+                raise ValidationException(msg.format(field, kwargs[field], dtype.__name__))
+            if check:  # check if value in timeseries bounds
+                if val not in uts:
+                    msg = "{} value must be within {:0.3f} and {:0.3f}."
+                    raise ValidationException(msg.format(field, uts.tmin, uts.tmax))
+        if float(kwargs["tstart"]) >= float(kwargs["tstop"]):
+            raise ValidationException("tstart must be less than tstop.")
+        if kwargs["pmin"] is not None:
+            pmin = float(kwargs["pmin"])
+            if not pmin >= 0.0 and not pmin <= 1.0:
+                raise ValidationException("pmin must be between 0 and 1.")
 
 
 class SignificanceType(wx.BoxSizer):
@@ -69,7 +104,7 @@ class SignificanceType(wx.BoxSizer):
     def get_pmin(self):
         if self.is_tfce():
             return None
-        return float(self.pval.GetValue())
+        return self.pval.GetValue()
 
 
 class SpatiotemporalSettings(wx.BoxSizer):

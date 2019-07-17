@@ -1,6 +1,6 @@
 import wx
 
-from .utils import TitleSizer, FactorPanel
+from .utils import TitleSizer, FactorPanel, ValidationException
 
 
 class SubjectsSelector(wx.CheckListBox):
@@ -60,4 +60,9 @@ class InfoPanel(wx.Panel):
         self.sizer.Layout()
         self.SetSizer(self.sizer)
 
+    def validate(self):
+        subjects = self.subj_sel.get_selected_subjects()
+        if len(subjects) == 0:
+            raise ValidationException("You must select subjects for analysis.")
+        return True
 
