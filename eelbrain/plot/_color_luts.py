@@ -56,7 +56,7 @@ def dspm_lut(fmin, fmid, fmax, n=256):
     return lut
 
 
-def p_lut(pmap, tmap, p0, p1, p0alpha, n=256):
+def p_lut(pmap, tmap=None, p0=0.05, p1=0.01, p0alpha=0.5, n=256):
     """Creat a color look up table (lut) for p-values
 
     Parameters

@@ -628,8 +628,7 @@ class Brain(TimeSlicer, surfer.Brain):
             self.labels_dict[rh.name][0].actor.property.lighting = lighting
         self.__labels[name] = color
 
-    def add_ndvar_p_map(self, p_map, param_map=None, p0=0.05, p1=0.01,
-                        p0alpha=0.5, *args, **kwargs):
+    def add_ndvar_p_map(self, p_map, param_map=None, p0=0.05, p1=0.01, p0alpha=0.5, *args, **kwargs):
         """Add a map of p-values as data-layer
 
         Parameters
@@ -660,8 +659,8 @@ class Brain(TimeSlicer, surfer.Brain):
             res = p_map
             p_map = res.p
             param_map = res._statistic_map
-        p_map, lut, vmax = p_lut(p_map, param_map, p0, p1, p0alpha)
-        self.add_ndvar(p_map, lut, -vmax, vmax, *args, **kwargs)
+        p_map, cmap, vmax = p_lut(p_map, param_map, p0, p1, p0alpha)
+        self.add_ndvar(p_map, cmap, -vmax, vmax, *args, **kwargs)
 
     def close(self):
         "Close the figure window"

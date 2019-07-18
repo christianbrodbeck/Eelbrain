@@ -10,12 +10,13 @@ import mne
 from nibabel.freesurfer import read_annot
 import numpy as np
 
-from .._data_obj import NDVar, SourceSpace, UTS
+from .._data_obj import NDVar, SourceSpace
+from .._stats.testnd import NDTest, NDDifferenceTest, MultiEffectNDTest
 from .._utils import deprecated
 from ..fmtxt import im_table
 from .._text import ms, ms_window
 from ._base import EelFigure, ImLayout, ColorBarMixin, brain_data, butterfly_data, use_inline_backend
-from ._color_luts import dspm_lut
+from ._color_luts import dspm_lut, p_lut
 from ._colors import ColorList
 from ._utsnd import Butterfly
 
@@ -1040,9 +1041,9 @@ def _bin_table_ims(data, hemi, views, brain_func):
 
 
 class SPLayer(Enum):
-    ITEM = 1
-    SEQUENCE = 2
-    OVERLAY = 3
+    ITEM = 1  # multiple separate NDVars
+    SEQUENCE = 2  # One NDVar with multiple images (e.g. time sequence)
+    OVERLAY = 3  # static overlay applying to all items/the whole sequence
 
 
 class SequencePlotterLayer:
@@ -1120,6 +1121,14 @@ class SequencePlotter:
         elif self._frame_dim is False:
             raise RuntimeError("Only applies to SequencePlotters with 2d NDVars")
 
+    def _check_source(self, source):
+        if self._source is None:
+            self._source = source
+        elif source.subject != self._source.subject:
+            raise ValueError(f"NDVar has different subject ({source.subject}) than previously added data ({self._source.subject})")
+        elif source.subjects_dir != self._source.subjects_dir:
+            raise ValueError(f"NDVar has different subjects_dir ({source.subjects_dir}) than previously added data ({self._source.subjects_dir})")
+
     def _n_items(self):
         if self._bin_kind == SPLayer.SEQUENCE:
             raise RuntimeError("Trying to retrieve number of items for dimension-based plot")
@@ -1172,13 +1181,7 @@ class SequencePlotter:
             Label when adding multiple separate NDVars. Labels for bins when
             adding ``ndvar`` with multiple bins.
         """
-        source = ndvar.get_dim('source')
-        if self._source is None:
-            self._source = source
-        elif source.subject != self._source.subject:
-            raise ValueError(f"NDVar has different subject ({source.subject}) than previously added data ({self._source.subject})")
-        elif source.subjects_dir != self._source.subjects_dir:
-            raise ValueError(f"NDVar has different subjects_dir ({source.subjects_dir}) than previously added data ({self._source.subjects_dir})")
+        self._check_source(ndvar.get_dim('source'))
 
         # find row/column dimension
         if ndvar.ndim == 1:
@@ -1225,6 +1228,22 @@ class SequencePlotter:
             layer = SequencePlotterLayer(SPLayer.SEQUENCE, ndvar, args, kwargs, label)
 
         self._data.append(layer)
+
+    def add_pmap(self, res: NDTest, label=None):
+        # interpret NDTest subtypes
+        if isinstance(res, MultiEffectNDTest):
+            iterator = zip(res.p, res._statistic_map, res.effects)
+        else:
+            if isinstance(res, NDDifferenceTest):
+                desc = res.difference.name
+            else:
+                desc = res._name()
+            iterator = [(res.p, res._statistic_map, desc)]
+        # add p-maps
+        for p_map, stat_map, desc in iterator:
+            ndvar, cmap, vmax = p_lut(p_map, stat_map)
+            layer_label = desc if label is None else label
+            self.add_ndvar(ndvar, cmap, -vmax, vmax, label=layer_label)
 
     def set_frame_order(self, order):
         """Set the order in which frames are plotted
