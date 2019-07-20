@@ -896,7 +896,7 @@ def shuffled_index(n, cells=None):
     return out
 
 
-def combine(items, name=None, check_dims=True, incomplete='raise'):
+def combine(items, name=None, check_dims=True, incomplete='raise', dim_intersection=False):
     """Combine a list of items of the same type into one item.
 
     Parameters
@@ -918,6 +918,10 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
         KeyError to be raised. With ``"drop"``, partially missing variables are
         dropped. With ``"fill in"``, they are retained and missing values are
         filled in with empty values (``""`` for factors, ``NaN`` for variables).
+    dim_intersection : bool
+        Only applies to combining :class:`NDVar`: normally, when :class:`NDVar`
+        have mismatching dimensions, a DimensionMismatchError is raised. With
+        ``dim_intersection``, the intersection is used instead.
 
     Notes
     -----
@@ -947,9 +951,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
     elif not isdatacontainer(first_item):
         return Datalist(items)
     elif any(type(item) is not stype for item in items[1:]):
-        raise TypeError("All items to be combined need to have the same type, "
-                        "got %s." %
-                        ', '.join(str(i) for i in {type(i) for i in items}))
+        raise TypeError(f"All items to be combined need to have the same type, got {enumeration({type(i) for i in items})}%s.")
 
     # find name
     if name is None:
@@ -972,21 +974,19 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
             for key in keys:
                 pieces = [ds[key] if key in ds else
                           _empty_like(sample[key], ds.n_cases) for ds in items]
-                out[key] = combine(pieces, check_dims=check_dims)
+                out[key] = combine(pieces, check_dims=check_dims, dim_intersection=dim_intersection)
         else:
             keys = set(first_item)
             if incomplete == 'raise':
                 if any(set(item) != keys for item in items[1:]):
-                    raise KeyError("Datasets have unequal keys. Use with "
-                                   "incomplete='drop' or incomplete='fill in' "
-                                   "to combine anyways.")
+                    raise KeyError("Datasets have unequal keys. Use with incomplete='drop' or incomplete='fill in' to combine anyways.")
                 out_keys = first_item
             else:
                 keys.intersection_update(*items[1:])
                 out_keys = (k for k in first_item if k in keys)
 
             for key in out_keys:
-                out[key] = combine([ds[key] for ds in items])
+                out[key] = combine([ds[key] for ds in items], check_dims=check_dims, dim_intersection=dim_intersection)
         return out
     elif stype is Var:
         x = np.hstack([i.x for i in items])
@@ -1009,13 +1009,17 @@ def combine(items, name=None, check_dims=True, incomplete='raise'):
             has_case = True
             all_dims = (item.dims[1:] for item in items)
         elif any(v_have_case):
-            raise DimensionMismatchError("Some items have a 'case' dimension, "
-                                         "others do not")
+            raise DimensionMismatchError("Some items have a 'case' dimension, others do not")
         else:
             has_case = False
             all_dims = (item.dims for item in items)
 
-        dims = reduce(lambda x, y: intersect_dims(x, y, check_dims), all_dims)
+        if dim_intersection:
+            dims = reduce(lambda x, y: intersect_dims(x, y, check_dims), all_dims)
+        else:
+            dims = next(all_dims)
+            if not all(dims_i == dims for dims_i in all_dims):
+                raise DimensionMismatchError("Some NDVars have mismatching dimensions. Set dim_intersection=True to discard elements not present in all.")
         idx = {d.name: d for d in dims}
         # reduce data to common dimension range
         sub_items = []

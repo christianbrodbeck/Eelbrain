@@ -10,6 +10,7 @@ New in 0.31
 * :mod:`plot` API:  Additional arguments for :class:`plot.Boxplot` to control plotting of outliers (``whis`` and ``label_fliers``)
 * Horizontal bar-plot: :class:`plot.BarplotHorizontal`
 * Non-parametric univariate tests :class:`test.MannWhitneyU` and :class:`test.WilcoxonSignedRank`
+* API :func:`combine`: combining :class:`NDVar` with unequal dimensions will now raise an error; to combine them by taking the intersection of valid elements (previous behavior), use ``dim_intersection=True``
 * API :meth:`Dataset.save_txt`: ``delim`` parameter renamed to ``delimiter``
 * .. currentmodule:: eelbrain.pipeline
   :class:`MneExperiment` pipeline:

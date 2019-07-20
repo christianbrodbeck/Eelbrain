@@ -1,8 +1,8 @@
 """Text generation helpers"""
-from typing import List
+from typing import Iterable
 
 
-def enumeration(items: List[str], link: str = 'and'):
+def enumeration(items: Iterable[object], link: str = 'and'):
     "['a', 'b', 'c'] -> 'a, b and c'"
     items = list(map(str, items))
     if len(items) >= 2:

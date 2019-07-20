@@ -56,9 +56,11 @@ def test_sample():
     for _ in e:
         e.make_epoch_selection(auto=2.5e-12)
         sds.append(e.load_evoked())
+    ds_ind = combine(sds, dim_intersection=True)
 
     ds = e.load_evoked('all')
-    assert_dataobj_equal(combine(sds), ds)
+    ds['meg'] = ds['meg'].sub(sensor=ds['meg'].sensor.index(exclude='MEG 0331'))  # load_evoked interpolates bad channel
+    assert_dataobj_equal(ds_ind, ds, decimal=19)  # make vs load evoked
 
     # sensor space tests
     megs = [e.load_evoked(cat='auditory')['meg'] for _ in e]

@@ -286,7 +286,9 @@ def test_combine():
     y2 = y.sub(sensor=['1', '2', '3', '4'])
     ds1 = Dataset((y1,), info={'a': np.arange(2), 'b': [np.arange(2)]})
     ds2 = Dataset((y2,), info={'a': np.arange(2), 'b': [np.arange(2)]})
-    dsc = combine((ds1, ds2))
+    with pytest.raises(DimensionMismatchError):
+        combine((ds1, ds2))
+    dsc = combine((ds1, ds2), dim_intersection=True)
     y = dsc['utsnd']
     assert list(y.sensor.names) == ['1', '2', '3']
     dims = ('case', 'sensor', 'time')
