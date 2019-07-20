@@ -2454,8 +2454,10 @@ class MneExperiment(FileTree):
             epoch's baseline specification. The default is to not apply baseline
             correction.
         ndvar : bool
-            Convert the mne Evoked objects to an NDVar (the name in the
-            Dataset is 'meg' or 'eeg').
+            Convert the :class:`mne.Evoked` objects to an :class:`NDVar` (the
+            name in the Dataset is ``'meg'`` or ``'eeg'``). With
+            ``ndvar=False``, the :class:`mne.Evoked` objects are added as
+            ``'evoked'``.
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
         decim : int
@@ -2515,15 +2517,17 @@ class MneExperiment(FileTree):
                             e.info['bads'] = []
             ds = combine(dss, incomplete='drop')
 
-            # check consistency in MNE objects' number of time points
-            lens = [len(e.times) for e in ds['evoked']]
-            ulens = set(lens)
-            if len(ulens) > 1:
-                err = ["Unequal time axis sampling (len):"]
-                alens = np.array(lens)
-                for l in ulens:
-                    err.append('%i: %r' % (l, ds['subject', alens == l].cells))
-                raise DimensionMismatchError('\n'.join(err))
+            if not ndvar and not individual_ndvar:
+                # check consistency in MNE objects' number of time points
+                lens = [len(e.times) for e in ds['evoked']]
+                ulens = set(lens)
+                if len(ulens) > 1:
+                    err = ["Unequal time axis sampling (len):"]
+                    alens = np.array(lens)
+                    for l in ulens:
+                        subjects = ', '.join(ds[alens == l, 'subject'].cells)
+                        err.append(f"{l}: {subjects}")
+                    raise DimensionMismatchError('\n'.join(err))
         else:  # single subject
             ds = self._make_evoked(decim, data_raw)
 
@@ -2547,17 +2551,16 @@ class MneExperiment(FileTree):
 
         # convert to NDVar
         if ndvar:
+            evoked = ds.pop('evoked')
             pipe = self._raw[self.get('raw')]
-            info = ds[0, 'evoked'].info
+            info = evoked[0].info
             for data_kind in data.data_to_ndvar(info):
                 sysname = pipe.get_sysname(info, subject, data_kind)
                 connectivity = pipe.get_connectivity(data_kind)
                 name = 'meg' if data_kind == 'mag' else data_kind
-                ds[name] = load.fiff.evoked_ndvar(ds['evoked'], data=data_kind, sysname=sysname, connectivity=connectivity)
+                ds[name] = load.fiff.evoked_ndvar(evoked, data=data_kind, sysname=sysname, connectivity=connectivity)
                 if data_kind != 'eog' and isinstance(data.sensor, str):
                     ds[name] = getattr(ds[name], data.sensor)('sensor')
-            # if ndvar != 'both':
-            #     del ds['evoked']
 
         return ds
 

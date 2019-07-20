@@ -45,10 +45,10 @@ def test_sample():
     
     # evoked cache invalidated by change in bads
     e.set('R0001', rej='', epoch='target')
-    ds = e.load_evoked()
+    ds = e.load_evoked(ndvar=False)
     assert ds[0, 'evoked'].info['bads'] == []
     e.make_bad_channels(['MEG 0331'])
-    ds = e.load_evoked()
+    ds = e.load_evoked(ndvar=False)
     assert ds[0, 'evoked'].info['bads'] == ['MEG 0331']
 
     e.set(rej='man', model='modality')
