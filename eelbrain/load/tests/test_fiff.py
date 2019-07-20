@@ -5,6 +5,7 @@ from warnings import catch_warnings, filterwarnings
 
 import mne
 from mne import pick_types
+import numpy as np
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 from eelbrain import load
@@ -71,11 +72,10 @@ def test_load_fiff_from_raw():
     # load events
     ds = load.fiff.events(raw_path)
     assert ds['i_start'].x.dtype.kind == 'i'
-
-    # test separate events
+    # compare with mne
     ds_evt = load.fiff.events(events=evt_path)
-    ds_evt.name = ds.name
-    assert_dataobj_equal(ds_evt, ds)
+    ds = ds[np.arange(ds.n_cases) != 289]  # mne is missing an event
+    assert_dataobj_equal(ds, ds_evt, name=False)
 
     # add epochs as ndvar
     ds = ds.sub('trigger == 32')

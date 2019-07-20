@@ -71,7 +71,7 @@ def test_sample():
     meg_mean = combine(meg.mean('sensor') for meg in megs).mean('case', name='auditory')
     assert_dataobj_equal(res.c1_mean, meg_mean, decimal=21)
     with pytest.raises(IOError):
-        res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=20, data='sensor', baseline=False)
+        e.load_test('a>v', 0.05, 0.2, 0.05, samples=20, data='sensor', baseline=False)
     res = e.load_test('a>v', 0.05, 0.2, 0.05, samples=20, data='sensor', baseline=False, make=True)
     assert res.p.min() == pytest.approx(.143, abs=.001)
     assert res.difference.max() == pytest.approx(4.47e-13, 1e-15)
@@ -312,7 +312,7 @@ def test_sample_sessions():
     ds = e.load_evoked('R0000', epoch='target2')
     e.set(session='sample1')
     ds2 = e.load_evoked('R0000')
-    assert_dataobj_equal(ds2, ds)
+    assert_dataobj_equal(ds2, ds, decimal=19)
 
     # super-epoch
     ds1 = e.load_epochs(epoch='target1')

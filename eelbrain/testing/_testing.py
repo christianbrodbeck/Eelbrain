@@ -56,16 +56,11 @@ def assert_dataobj_equal(d1, d2, decimal=None, name=True):
     name : bool
         Assert that ``d1.name == d2.name``.
     """
-    if not isdatacontainer(d1):
-        raise TypeError(f"d1 is not a data-object but {d1!r}")
-    elif not isdatacontainer(d2):
-        raise TypeError(f"d2 is not a data-object but {d2!r}")
-    else:
-        assert type(d1) == type(d2)
+    assert type(d1) == type(d2)
     if name:
         assert d1.name == d2.name
     assert len(d1) == len(d2)
-    if isuv(d1):
+    if isuv(d1, interaction=True):
         if isinstance(d1, Var):
             is_equal = np.isclose(d1.x, d2.x, equal_nan=True, rtol=0, atol=10**-decimal if decimal else 0)
         else:
@@ -87,11 +82,20 @@ def assert_dataobj_equal(d1, d2, decimal=None, name=True):
 
         if is_different:
             n = reduce(mul, d1.x.shape)
-            n_different = (d1.x != d2.x).sum()
-            mean_diff = np.abs(d1.x - d2.x).sum() / n_different
-            raise AssertionError(f"NDVars names {d1.name!r} have unequal values. Difference in {n_different} of {n} values, average difference={mean_diff}.")
+            difference = np.abs(d1.x - d2.x)
+            if decimal:
+                different = difference >= 10**-decimal
+            else:
+                different = d1.x != d2.x
+            n_different = different.sum()
+            mean_diff = difference[different].sum() / n_different
+            raise AssertionError(f"NDVars named {d1.name!r} have unequal values. Difference in {n_different} of {n} values, average difference={mean_diff}.")
     elif isdatalist(d1):
         assert all(item1 == item2 for item1, item2 in zip(d1, d2))
+    elif isinstance(d1, Dataset):
+        assert_dataset_equal(d1, d2, decimal)
+    else:
+        raise TypeError(f"{d1.__class__.__name__} is not a data-object type: {d1!r}")
 
 
 def assert_source_space_equal(src1, src2):
