@@ -73,8 +73,8 @@ from ._utils import (
     intervals, ui, LazyProperty, n_decimals, natsorted)
 from ._utils.numpy_utils import (
     INT_TYPES, FULL_SLICE, FULL_AXIS_SLICE,
-    apply_numpy_index, digitize_index, digitize_slice_endpoint,
-    index_length, index_to_int_array, newaxis, take_slice, slice_to_arange)
+    aindex, aslice, apply_numpy_index, digitize_index, digitize_slice_endpoint,
+    index_length, index_to_int_array, newaxis, slice_to_arange)
 from .mne_fixes import MNE_EPOCHS, MNE_EVOKED, MNE_RAW, MNE_LABEL
 from functools import reduce
 
@@ -4415,7 +4415,7 @@ class NDVar:
         """
         return NDVar(np.sign(self.x), self.dims, self.info, name or self.name)
 
-    def smooth(self, dim, window_size=None, window='hamming', mode='center', window_samples=None, name=None):
+    def smooth(self, dim, window_size=None, window='hamming', mode='center', window_samples=None, fix_edges=False, name=None):
         """Smooth data by convolving it with a window
 
         Parameters
@@ -4431,7 +4431,7 @@ class NDVar:
             'boxcar', 'triang', 'hamming' (default). For dimensions with
             irregular spacing, such as :class:`SourceSpace`, only ``gaussian``
             is implemented.
-        mode : 'left' | 'center' | 'right'
+        mode : 'left' | 'center' | 'right' | 'full'
             Alignment of the output to the input relative to the window:
 
             - ``left``: sample in the output corresponds to the left edge of
@@ -4440,18 +4440,26 @@ class NDVar:
               the window.
             - ``right``: sample in the output corresponds to the right edge of
               the window.
+            - ``full``: return the full convolution. This is only implemented
+              for smoothing time axis.
 
         window_samples : scalar
             Size of the window in samples (this parameter is used to specify
             window size in array elemnts rather than in units of the dimension;
             it is mutually exclusive with ``window_size``).
+        fix_edges : bool
+            Standard convolution smears values around the edges resulting in
+            some data loss. The ``fix_edges`` option renormalizes the smoothing
+            window when it overlaps an edge to make sure that
+            ``x.smooth('time').sum('time') == x.sum('time')``. Only implemented
+            for ``mode='center'``).
         name : str
             Name for the smoothed NDVar.
 
         Returns
         -------
         smoothed_ndvar : NDVar
-            NDVar with idential dimensions containing the smoothed data.
+            NDVar with identical dimensions containing the smoothed data.
 
         Notes
         -----
@@ -4469,6 +4477,8 @@ class NDVar:
         if window == 'gaussian':
             if mode != 'center':
                 raise ValueError(f"mode={mode!r}; for gaussian smoothing, mode must be 'center'")
+            elif fix_edges:
+                raise NotImplementedError("fix_edges=True with window='gaussian'")
             elif window_samples is not None:
                 if dim_object._connectivity_type == 'custom':
                     raise ValueError(f"window_samples={window_samples!r} for dimension with connectivity not based on adjacency")
@@ -4495,12 +4505,30 @@ class NDVar:
             window.shape = (1,) * axis + (n,) + (1,) * (self.ndim - axis - 1)
             if mode == 'center':
                 x = scipy.signal.convolve(self.x, window, 'same')
+                if fix_edges:
+                    # Each original voxel should be used exactly 1 time
+                    n0 = (n - 1) // 2  # how many input samples need to be fixed (left edge)
+                    w_center = (n - 1) // 2  # window sample which is aligned to x
+                    for i in range(n0):  # i = origin sample
+                        window_i = window[aslice(axis, start=w_center-i)]
+                        # renormalize window and subtract values of initial convolution
+                        window_i = (window_i / window_i.sum()) - window_i
+                        x[aslice(axis, stop=i+(n-w_center))] += window_i * self.x[aslice(axis, i, i+1)]
+                    n1 = n // 2  # samples to fix right edge
+                    nx = x.shape[axis]
+                    for i in range(n1):
+                        window_i = window[aslice(axis, stop=w_center+i+1)]
+                        window_i = (window_i / window_i.sum()) - window_i
+                        x[aslice(axis, start=nx-1-w_center-i)] += window_i * self.x[aslice(axis, nx-1-i, nx-i)]
+            elif fix_edges:
+                raise NotImplementedError(f"fix_edges=True with mode={mode!r}")
             else:
                 x = scipy.signal.convolve(self.x, window, 'full')
                 if mode == 'left':
-                    x = take_slice(x, axis, stop=self.shape[axis])
+                    x = x[aslice(axis, stop=self.shape[axis])]
+                    # x[aslice(axis, stop=n)] *= weights
                 elif mode == 'right':
-                    x = take_slice(x, axis, start=-self.shape[axis])
+                    x = x[aslice(axis, start=-self.shape[axis])]
                 elif mode == 'full':
                     if not isinstance(dim_object, UTS):
                         raise NotImplementedError(f"mode='full' for {dim_object.__class__.__name__} dimension")

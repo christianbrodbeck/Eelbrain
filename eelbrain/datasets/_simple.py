@@ -329,6 +329,19 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     return ds
 
 
+def get_ndvar(case=0, time=100, frequency=8, name='ndvar'):
+    dims = []
+    if case:
+        dims .append(Case(case))
+    if time:
+        dims.append(UTS(-0.1, 0.01, time))
+    if frequency:
+        dims.append(Scalar('frequency', np.logspace(2, 3.5, frequency)))
+    shape = [len(dim) for dim in dims]
+    x = np.random.normal(0, 1, shape)
+    return NDVar(x, dims, name=name)
+
+
 def get_uts(utsnd=False, seed=0, nrm=False, vector3d=False):
     """Create a sample Dataset with 60 cases and random data.
 

@@ -10,7 +10,7 @@ from eelbrain import (
     cwt_morlet, find_intervals, find_peaks, frequency_response, psd_welch,
     resample,
 )
-from eelbrain.testing import assert_dataobj_equal
+from eelbrain.testing import assert_dataobj_equal, get_ndvar
 
 
 def test_concatenate():
@@ -180,3 +180,43 @@ def test_resample():
     assert_array_equal(y.x.mask, [True, False, False, False, False, False, False, False, True, True])
     y = resample(x, 20, npad=0)
     assert_array_equal(y.x.mask, [True, False, False, False, False, False, False, False, True, True])
+
+
+def test_smoothing():
+    x = get_ndvar(2)
+    xt = NDVar(x.x.swapaxes(1, 2), [x.dims[i] for i in [0, 2, 1]], x.info.copy(), x.name)
+
+    # smoothing across time
+    ma = x.smooth('time', 0.2, 'blackman')
+    assert_dataobj_equal(x.smooth('time', window='blackman', window_samples=20), ma)
+    with pytest.raises(TypeError):
+        x.smooth('time')
+    with pytest.raises(TypeError):
+        x.smooth('time', 0.2, 'blackman', window_samples=20)
+    mas = xt.smooth('time', 0.2, 'blackman')
+    assert_allclose(ma.x, mas.x.swapaxes(1, 2), 1e-10)
+    ma_mean = x.mean('case').smooth('time', 0.2, 'blackman')
+    assert_allclose(ma.mean('case').x, ma_mean.x)
+    # against raw scipy.signal
+    window = signal.get_window('blackman', 20, False)
+    window /= window.sum()
+    window.shape = (1, 20, 1)
+    assert_array_equal(ma.x[:, 10:-10], signal.convolve(x.x, window, 'same')[:, 10:-10])
+    # mode parameter
+    full = signal.convolve(x.x, window, 'full')
+    ma = x.smooth('time', 0.2, 'blackman', mode='left')
+    assert_array_equal(ma.x[:], full[:, :100])
+    ma = x.smooth('time', 0.2, 'blackman', mode='right')
+    assert_array_equal(ma.x[:], full[:, 19:])
+
+    # fix_edges: smooth with constant sum
+    xs = x.smooth('frequency', window_samples=1, fix_edges=True)
+    assert_dataobj_equal(xs.sum('frequency'), x.sum('frequency'))
+    xs = x.smooth('frequency', window_samples=2, fix_edges=True)
+    assert_dataobj_equal(xs.sum('frequency'), x.sum('frequency'), 14)
+    xs = x.smooth('frequency', window_samples=3, fix_edges=True)
+    assert_dataobj_equal(xs.sum('frequency'), x.sum('frequency'), 14)
+    xs = x.smooth('frequency', window_samples=5, fix_edges=True)
+    assert_dataobj_equal(xs.sum('frequency'), x.sum('frequency'), 14)
+    xs = x.smooth('frequency', window_samples=4, fix_edges=True)
+    assert_dataobj_equal(xs.sum('frequency'), x.sum('frequency'), 14)

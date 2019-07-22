@@ -3,6 +3,7 @@ import pytest
 
 pytest.register_assert_rewrite('eelbrain.testing._testing')
 
+from ..datasets._simple import get_ndvar
 from ._testing import (
     gui_test,
     requires_mne_sample_data, requires_pyarrow, requires_r_ez,
