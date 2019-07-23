@@ -214,7 +214,9 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         if mni305 is None:
             mni305 = source.subject == 'fsaverage'
 
-        if ndvar:
+        if ndvar is None:
+            cbar_vmin = cbar_vmax = imgs = img0 = dir_imgs = t0 = threshold = None
+        else:
             if ndvar.has_case:
                 ndvar = ndvar.mean('case')
             src = source.get_source_space()
@@ -282,11 +284,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             # This issue is more prominent in Apple’s color management than Windows/ Linux counterpart.
             if symmetric_cbar and (threshold is None):
                 subthreshold = (0, 0, 0) if black_bg else (1.0, 1.0, 1.0)
-                cmap = soft_threshold_colormap(cmap, threshold = vmax / cmap.N, vmax=vmax,
-                                                  subthreshold=subthreshold, symmetric=True)
-
-        else:
-            cbar_vmin = cbar_vmax = imgs = img0 = dir_imgs = t0 = threshold = None
+                cmap = soft_threshold_colormap(cmap, threshold=vmax / cmap.N, vmax=vmax, subthreshold=subthreshold, symmetric=True)
 
         self.time = time
         self._ndvar = ndvar
@@ -308,7 +306,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             frame_title = layout.name
         elif isinstance(layout.title, str):
             frame_title = layout.title
-        elif ndvar and ndvar.name:
+        elif ndvar is not None and ndvar.name:
             frame_title = ndvar.name
         else:
             frame_title = source.subject

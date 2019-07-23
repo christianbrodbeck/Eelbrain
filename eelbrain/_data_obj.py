@@ -162,14 +162,14 @@ def nice_label(x, labels={}):
         return longname(x)
 
 
-def dataobj_repr(obj):
+def dataobj_repr(obj, value=False):
     """Describe data-objects as parts of __repr__"""
-    if obj is None:
-        return 'None'
-    elif isdataobject(obj) and obj.name is not None:
-        return obj.name
-    else:
-        return '<%s>' % obj.__class__.__name__
+    if isdataobject(obj):
+        if obj.name is not None:
+            return obj.name
+    elif value and not isinstance(obj, np.ndarray):
+        return obj
+    return '<%s>' % obj.__class__.__name__
 
 
 def rank(x, tol=1e-8):
@@ -1217,6 +1217,9 @@ class Var:
         return value in self.x
 
     # numeric ---
+    def __bool__(self):
+        raise TypeError("The truth value of a Var is ambiguous. Use v.any() or v.all()")
+
     def __neg__(self):
         info = {**self.info, 'longname': f"-{longname(self)}"}
         return Var(-self.x, self.name, info=info)
@@ -1828,6 +1831,9 @@ class Var:
 
 class _Effect:
     # numeric ---
+    def __bool__(self):
+        raise TypeError(f"The truth value of a {self.__class__.__name__} is ambiguous")
+
     def __add__(self, other):
         return Model(self) + other
 
@@ -2873,6 +2879,9 @@ class NDVar:
         return self.x.__array_interface__
 
     # numeric ---
+    def __bool__(self):
+        raise TypeError("The truth value of an NDVar is ambiguous. Use v.any() or v.all()")
+
     def __neg__(self):
         return NDVar(-self.x, self.dims, self.info, self.name)
 
@@ -3428,8 +3437,6 @@ class NDVar:
                 else:
                     axis = list(axis) + additional_axis
             return data._aggregate_over_dims(axis, {'name': name}, func)
-        elif not axis:
-            return func(self.x)
         elif isinstance(axis, NDVar):
             if axis.ndim == 1:
                 dim = axis.dims[0]
@@ -3456,6 +3463,8 @@ class NDVar:
             axis = self._dim_2_ax[axis]
             x = func(self.x, axis=axis)
             dims = [self.dims[i] for i in range(self.ndim) if i != axis]
+        elif not axis:
+            return func(self.x)
         else:
             axes = tuple(self._dim_2_ax[dim_name] for dim_name in axis)
             x = func(self.x, axes)
@@ -5794,7 +5803,7 @@ class Dataset(OrderedDict):
         if not drop_empty:
             raise NotImplementedError('drop_empty = False')
 
-        if x:
+        if x is not None:
             if equal_count:
                 self = self.equalize_counts(x)
             x = ascategorial(x, ds=self)

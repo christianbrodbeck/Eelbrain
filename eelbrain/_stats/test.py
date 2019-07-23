@@ -838,7 +838,7 @@ class TTestRel(TTest):
         self.difference = y1 - y0
         t = stats.t_1samp(self.difference.x[:, None])[0]
         TTest.__init__(self, t, n - 1, tail)
-        self._match = dataobj_repr(match) if match else match
+        self._match = dataobj_repr(match, True)
 
     def __repr__(self):
         cmp = '=><'[self.tail]
@@ -938,7 +938,7 @@ class WilcoxonSignedRank:
         self.c1_mean = y1.mean()
         self.c0_mean = y0.mean()
         self.difference = y1 - y0
-        self._match = dataobj_repr(match) if match else match
+        self._match = dataobj_repr(match, True)
         self.tail = tail
         self.zero_method = zero_method
         self.correction = correction

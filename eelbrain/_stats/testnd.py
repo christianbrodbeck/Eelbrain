@@ -103,7 +103,7 @@ class NDTest:
 
     def __init__(self, y, match, sub, samples, tfce, pmin, cdist, tstart, tstop):
         self.y = dataobj_repr(y)
-        self.match = dataobj_repr(match) if match else match
+        self.match = dataobj_repr(match, True)
         self.sub = sub
         self.samples = samples
         self.tfce = tfce
@@ -378,10 +378,10 @@ class NDTest:
         else:
             func = stat_map.min
 
-        if p_map:
-            mask = p_map <= .05 if p_map.min() <= .05 else None
-        else:
+        if p_map is None:
             mask = None
+        else:
+            mask = p_map <= .05 if p_map.min() <= .05 else None
 
         return func() if mask is None else func(mask)
 

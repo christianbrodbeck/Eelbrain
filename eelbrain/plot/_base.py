@@ -2977,7 +2977,7 @@ class CategorialAxisMixin:
 
         # axis label
         if label is True:
-            if model and model.name:
+            if model is not None and model.name:
                 label = model.name.replace('_', ' ')
             else:
                 label = False

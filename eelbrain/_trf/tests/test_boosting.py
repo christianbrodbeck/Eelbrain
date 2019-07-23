@@ -37,7 +37,7 @@ def test_boosting(n_workers):
     x1 = ds['x1']
     x2 = ds['x2']
     y_mean = y.mean()
-    x2_mean = x2.mean()
+    x2_mean = x2.mean('time')
 
     # test values from running function, not verified independently
     res = boosting(y, x1 * 2000, 0, 1, scale_data=False, mindelta=0.0025)
@@ -70,8 +70,8 @@ def test_boosting(n_workers):
     assert res.r == approx(0.553, abs=0.001)
     assert res.y_mean == y.mean()
     assert res.y_scale == (y - y_mean).abs().mean()
-    assert res.x_mean == x2_mean
-    assert res.x_scale == (x2 - x2_mean).abs().mean()
+    assert_array_equal(res.x_mean.x, x2_mean)
+    assert_array_equal(res.x_scale, (x2 - x2_mean).abs().mean('time'))
 
     # 2 predictors
     res = boosting(y, [x1, x2], 0, 1)

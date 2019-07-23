@@ -190,11 +190,11 @@ class Celltable:
             idx = x.index_opt(cell)
             self.data_indexes[cell] = idx
             self.data[cell] = y[idx]
-            if match:
+            if match is not None:
                 self.groups[cell] = match[idx]
 
         # determine which comparisons are within subject comparisons
-        if match:
+        if match is not None:
             self.within = {}
             for cell1, cell2 in combinations(x.cells, 2):
                 group1 = self.groups[cell1]

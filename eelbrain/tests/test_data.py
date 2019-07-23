@@ -715,6 +715,10 @@ def test_factor():
     assert_equal(f == Factor('aabxxx'), (True, True, True, False, False, False))
     assert_equal(f == Var(np.ones(6)), False)
 
+    # unary operations
+    with pytest.raises(TypeError):
+        bool(f)
+
     # Factor.as_var()
     assert_array_equal(f.as_var(dict(zip('abc', range(3)))), [0, 0, 1, 1, 2, 2])
     assert_array_equal(f.as_var({'a': 1}, 2), [1, 1, 2, 2, 2, 2])
@@ -909,6 +913,9 @@ def test_ndvar():
     "Test the NDVar class"
     ds = datasets.get_uts(utsnd=True)
     x = ds['utsnd']
+
+    with pytest.raises(TypeError):
+        bool(x)
 
     # meaningful slicing
     with pytest.raises(KeyError):
@@ -1648,6 +1655,9 @@ def test_var():
     # basic operations
     info = {'a': 1}
     v = Var([1., 2., 3., -4.], 'v', info=info)
+    with pytest.raises(TypeError):
+        bool(v)
+    # binary operations
     c = 2
     v2 = Var([2., 2., 3., 3.], 'w', info=info)
     assert v.info == info
