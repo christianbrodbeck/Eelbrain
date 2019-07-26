@@ -48,7 +48,7 @@ from .._data_obj import (
     Dataset, Var, Factor, Interaction, NestedEffect,
     NDVar, Categorial, UTS,
     ascategorial, asmodel, asndvar, asvar, assub,
-    cellname, combine, dataobj_repr)
+    cellname, combine, dataobj_repr, longname)
 from .._exceptions import OldVersionError, WrongDimension, ZeroVariance
 from .._utils import LazyProperty, user_activity, restore_main_spec
 from .._utils.numpy_utils import FULL_AXIS_SLICE
@@ -756,6 +756,14 @@ class NDDifferenceTest(NDTest):
 
     difference = None
 
+    @staticmethod
+    def _difference_name(diff):
+        long_name = longname(diff, True)
+        if longname is None or len(long_name) > 80:
+            return 'difference'
+        else:
+            return long_name
+
     def _get_mask(self, p=0.05):
         self._assert_has_cdist()
         if not 1 >= p > 0:
@@ -905,6 +913,7 @@ class ttest_1samp(NDDifferenceTest):
             diff = y - popmean
             if np.any(diff < 0):
                 diff.info['cmap'] = 'xpolar'
+            diff.name = self._difference_name(diff)
         else:
             diff = y
 
@@ -1145,6 +1154,7 @@ class ttest_ind(NDDifferenceTest):
         diff = self.c1_mean - self.c0_mean
         if np.any(diff.x < 0):
             diff.info['cmap'] = 'xpolar'
+        diff.name = self._difference_name(diff)
         self.difference = diff
 
         # uncorrected p
@@ -1366,7 +1376,7 @@ class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
         diff = self.c1_mean - self.c0_mean
         if np.any(diff.x < 0):
             diff.info['cmap'] = 'xpolar'
-        diff.name = 'difference'
+        diff.name = self._difference_name(diff)
         self.difference = diff
 
         # uncorrected p
@@ -2128,7 +2138,7 @@ class VectorDifferenceIndependent(Vector):
         self.c1_mean = y1.mean('case', name=cellname(c1_name))
         self.c0_mean = y0.mean('case', name=cellname(c0_name))
         self.difference = self.c1_mean - self.c0_mean
-        self.difference.name = 'difference'
+        self.difference.name = self._difference_name(self.difference)
         v_mean_norm = self.difference.norm(v_dim)
         if not use_norm:
             raise NotImplementedError("t2 statistic not implemented for VectorDifferenceIndependent")
