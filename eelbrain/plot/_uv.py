@@ -5,7 +5,8 @@ import logging
 from typing import Sequence
 
 import numpy as np
-import scipy.stats  # without this sp.stats is not available
+import scipy.linalg
+import scipy.stats
 import matplotlib.axes
 from matplotlib.artist import setp
 import matplotlib as mpl
@@ -1036,7 +1037,7 @@ class _ax_timeplot:
 
 def _reg_line(y, reg):
     coeff = np.hstack([np.ones((len(reg), 1)), reg[:, None]])
-    (a, b), residues, rank, s = np.linalg.lstsq(coeff, y)
+    (a, b), residues, rank, s = scipy.linalg.lstsq(coeff, y)
     regline_x = np.array([min(reg), max(reg)])
     regline_y = a + b * regline_x
     return regline_x, regline_y

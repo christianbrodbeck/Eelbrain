@@ -203,7 +203,10 @@ class Celltable:
                 group2 = self.groups[cell2]
                 if len(group2) == 0:
                     continue
-                within = np.all(group1 == group2)
+                elif len(group1) != len(group2):
+                    within = False
+                else:
+                    within = np.all(group1 == group2)
                 self.within[cell1, cell2] = within
                 self.within[cell2, cell1] = within
             self.any_within = any(self.within.values())
