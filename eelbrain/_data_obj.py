@@ -1664,15 +1664,12 @@ class Var:
         aggregated_var : Var
             A Var instance with a single value for each cell in x.
         """
+        if x is None:
+            x_out = [func(self.x)]
         if len(x) != len(self):
             raise ValueError(f"Length mismatch: {len(self)} (Var) != {len(x)} (x)")
-
-        x_out = []
-        for cell in x.cells:
-            x_cell = self.x[x == cell]
-            if len(x_cell) > 0:
-                x_out.append(func(x_cell))
-
+        else:
+            x_out = [func(self.x[x == cell]) for cell in x.cells]
         return Var(x_out, *op_name(self, name=name))
 
     @property
@@ -2460,23 +2457,27 @@ class Factor(_Effect):
         f : Factor
             A copy of self with only one value for each cell in x
         """
+        if x is None:
+            cells = [None]
+            indexes = [slice(None)]
         if len(x) != len(self):
             raise ValueError(f"x={dataobj_repr(x)} of length {len(x)} for Factor {dataobj_repr(self)} of length {len(self)}")
+        else:
+            cells = x.cells
+            indexes = [x == cell for cell in cells]
 
         x_out = []
-        for cell in x.cells:
-            idx = (x == cell)
-            if np.sum(idx):
-                x_i = np.unique(self.x[idx])
-                if len(x_i) > 1:
-                    labels = tuple(self._labels[code] for code in x_i)
-                    raise ValueError(f"Can not determine aggregated value for Factor {dataobj_repr(self)} in cell {cell!r} because the cell contains multiple values {labels}. Set drop_bad=True in order to ignore this inconsistency and drop the Factor.")
-                else:
-                    x_out.append(x_i[0])
+        for cell, index in zip(cells, indexes):
+            x_i = np.unique(self.x[index])
+            if len(x_i) > 1:
+                labels = tuple(self._labels[code] for code in x_i)
+                desc = '' if cell is None else f' in cell {cell!r}'
+                raise ValueError(f"Can not determine aggregated value for Factor {dataobj_repr(self)}{desc} because it contains multiple values {labels}. Set drop_bad=True in order to ignore this inconsistency and drop the Factor.")
+            else:
+                x_out.append(x_i[0])
 
         if name is None or name is True:
             name = self.name
-
         return Factor(x_out, name, self.random, labels=self._labels)
 
     def copy(self, name=None, repeat=1, tile=1):
@@ -3490,22 +3491,19 @@ class NDVar:
         """
         if not self.has_case:
             raise DimensionMismatchError("%r has no case dimension" % self)
-        if len(x) != len(self):
-            err = "Length mismatch: %i (Var) != %i (x)" % (len(self), len(x))
-            raise ValueError(err)
-
-        x_out = []
-        for cell in x.cells:
-            idx = (x == cell)
-            if np.sum(idx):
-                x_cell = self.x[idx]
-                x_out.append(func(x_cell, axis=0))
+        elif x is None:
+            x_out = func(self.x, axis=0)
+        elif len(x) != len(self):
+            raise ValueError(f"x={x}: length mismatch, len(self)={len(self)}, len(x)={len(x)}")
+        else:
+            x_out = [func(self.x[x == cell], axis=0) for cell in x.cells]
 
         # update info for summary
-        info = self.info
-        if 'summary_info' in info:
-            info = info.copy()
+        if 'summary_info' in self.info:
+            info = self.info.copy()
             info.update(info.pop('summary_info'))
+        else:
+            info = None
         return NDVar(np.array(x_out), (Case(len(x_out)),) + self.dims[1:], name or self.name, info)
 
     def _aggregate_over_dims(self, axis, regions, func):
@@ -5095,25 +5093,26 @@ class Datalist(list):
             How to merge entries.
             ``'mean'``: sum elements and dividie by cell length
         """
-        if len(x) != len(self):
+        if x is None:
+            cell_xs = [self]
+        elif len(x) != len(self):
             raise ValueError(f"x={dataobj_repr(x)}: Length mismatch, len(x)={len(x)}, len(self)={len(self)}")
+        else:
+            cell_xs = (self[x == cell] for cell in x.cells)
 
         x_out = []
-        for cell in x.cells:
-            x_cell = self[x == cell]
-            n = len(x_cell)
-            if n == 1:
-                x.append(x_cell)
-            elif n > 1:
-                if merge == 'mean':
-                    try:
-                        xc = reduce(operator.add, x_cell)
-                        xc /= n
-                    except TypeError:
-                        raise TypeError(f"{dataobj_repr(self)}: Objects in Datalist do not support averaging (if aggregating a Dataset, dry dropping this variable)")
-                else:
-                    raise ValueError(f"merge={merge!r}")
-                x_out.append(xc)
+        for x_cell in cell_xs:
+            if len(x_cell) == 1:
+                xc = x_cell
+            elif merge == 'mean':
+                try:
+                    xc = reduce(operator.add, x_cell)
+                    xc /= len(x_cell)
+                except TypeError:
+                    raise TypeError(f"{dataobj_repr(self)}: Objects in Datalist do not support averaging (if aggregating a Dataset, try dropping this variable)")
+            else:
+                raise ValueError(f"merge={merge!r}")
+            x_out.append(xc)
 
         return Datalist(x_out, fmt=self._fmt)
 
@@ -5887,17 +5886,22 @@ class Dataset(OrderedDict):
         if not drop_empty:
             raise NotImplementedError('drop_empty = False')
 
-        if x is not None:
+        if x is None:
+            pass
+        elif isinstance(x, str) and x == '':
+            x = None
+        else:
             if equal_count:
                 self = self.equalize_counts(x)
             x = ascategorial(x, ds=self)
-        else:
-            x = Factor('a' * self.n_cases)
 
         ds = Dataset(name=name.format(name=self.name), info=self.info)
 
         if count:
-            ds[count] = Var(filter(None, (np.sum(x == cell) for cell in x.cells)))
+            if x is None:
+                ds[count] = Var([self.n_cases])
+            else:
+                ds[count] = Var([np.sum(x == cell) for cell in x.cells])
 
         for k, v in self.items():
             if k in drop:
@@ -5906,12 +5910,10 @@ class Dataset(OrderedDict):
                 if hasattr(v, 'aggregate'):
                     ds[k] = v.aggregate(x)
                 elif isinstance(v, MNE_EPOCHS):
-                    evokeds = []
-                    for cell in x.cells:
-                        idx = (x == cell)
-                        if idx.sum():
-                            evokeds.append(v[idx].average())
-                    ds[k] = evokeds
+                    if x is None:
+                        ds[k] = [v.average()]
+                    else:
+                        ds[k] = [v[x == cell].average() for cell in x.cells]
                 else:
                     raise TypeError(f"{v}: unsupported type for Dataset.aggregate()")
             except:
