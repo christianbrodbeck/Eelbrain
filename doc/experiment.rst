@@ -397,8 +397,8 @@ input can be customized by adding a :class:`RawSource` pipe).
 Each subsequent preprocessing step is defined with its input as first argument
 (``source``).
 
-For example, the following definition sets up a pipeline using TSSS and
-band-pass filtering, and optionally ICA::
+For example, the following definition sets up a pipeline using TSSS, a band-pass
+filter and ICA::
 
     class Experiment(MneExperiment):
 
@@ -407,12 +407,11 @@ band-pass filtering, and optionally ICA::
         raw = {
             'tsss': RawMaxwell('raw', st_duration=10., ignore_ref=True, st_correlation=0.9, st_only=True),
             '1-40': RawFilter('tsss', 1, 40),
-            'ica': RawICA('tsss', 'session', 'extended-infomax', n_components=0.99),
-            'ica1-40': RawFilter('ica', 1, 40),
+            'ica': RawICA('1-40', 'session', 'extended-infomax', n_components=0.99),
         }
         
 To use the ``raw --> TSSS --> 1-40 Hz band-pass`` pipeline, use ``e.set(raw="1-40")``. 
-To use ``raw --> TSSS --> ICA --> 1-40 Hz band-pass``, select ``e.set(raw="ica1-40")``.
+To use ``raw --> TSSS --> 1-40 Hz band-pass --> ICA``, select ``e.set(raw="ica")``.
 
 
 Event variables
