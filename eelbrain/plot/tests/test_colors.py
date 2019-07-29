@@ -51,8 +51,9 @@ def test_plot_colorbar():
     p.close()
     p = plot.ColorBar('jet', -1, 1, label_position='top')
     p.close()
-    p = plot.ColorBar('jet', -1, 1, orientation='vertical',
-                      label_position='right')
+    p = plot.ColorBar('jet', -1, 1, orientation='vertical', label_position='right')
+    p.close()
+    p = plot.ColorBar('xpolar-a', -3, 3, clipmin=0, unit='t')
     p.close()
 
     norm = SymmetricNormalize(0.5, 1)
