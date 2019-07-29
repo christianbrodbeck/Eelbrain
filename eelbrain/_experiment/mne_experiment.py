@@ -5682,15 +5682,14 @@ class MneExperiment(FileTree):
         if subject != '*' and subject not in group_members and group_members:
             self.set(group_members[0])
 
-    def set_inv(self, ori='free', snr=3, method='dSPM', depth=None,
-                pick_normal=False):
+    def set_inv(self, ori='free', snr=3, method='dSPM', depth=None, pick_normal=False, **state):
         """Set the type of inverse solution used for source estimation
 
         Parameters
         ----------
-        ori : 'free' | 'fixed' | 'vec' | float (0, 1)
-            Orientation constraint (default ``'free'``; use a ``float`` to
-            specify a loose orientation constraint).
+        ori : 'free' | 'fixed' | 'vec' | float ]0, 1]
+            Orientation constraint (default ``'free'``; use a number between 0
+            and 1 to specify a loose constraint).
 
             At each source point, ...
 
@@ -5725,6 +5724,8 @@ class MneExperiment(FileTree):
             Estimate a free orientation current vector, then pick the component
             orthogonal to the cortical surface and discard the parallel
             components.
+        ...
+            State parameters.
 
         References
         ----------
@@ -5750,7 +5751,7 @@ class MneExperiment(FileTree):
                <https://doi.org/10.1016/j.neuroimage.2005.11.054>`_
 
         """
-        self.set(inv=self._inv_str(ori, snr, method, depth, pick_normal))
+        self.set(inv=self._inv_str(ori, snr, method, depth, pick_normal), **state)
 
     @staticmethod
     def _inv_str(ori, snr, method, depth, pick_normal):
@@ -5844,7 +5845,7 @@ class MneExperiment(FileTree):
         elif isinstance(ori, float):
             make_kw = {'loose': ori}
         else:
-            raise RuntimeError("ori=%r (in inv=%r)" % (ori, inv))
+            raise RuntimeError(f"inv={inv!r} (orientation={ori!r})")
 
         if depth is None:
             make_kw['depth'] = 0.8
