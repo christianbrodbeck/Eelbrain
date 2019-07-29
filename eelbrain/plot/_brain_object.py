@@ -326,7 +326,7 @@ class Brain(TimeSlicer, surfer.Brain):
 
     def add_ndvar(self, ndvar, cmap=None, vmin=None, vmax=None,
                   smoothing_steps=None, colorbar=False, time_label='ms',
-                  lighting=False, contours=None, remove_existing=False):
+                  lighting=False, contours=None, alpha=1, remove_existing=False):
         """Add data layer form an NDVar
 
         Parameters
@@ -359,6 +359,8 @@ class Brain(TimeSlicer, surfer.Brain):
         contours : bool | sequence of scalar
             Draw contour lines instead of a solid overlay. Set to a list of
             contour levels or ``True`` for automatic contours.
+        alpha : scalar
+            Alpha value for the data layer (0 = tranparent, 1 = opaque).
         remove_existing : bool
             Remove data layers that have been added previously (default False).
         """
@@ -420,7 +422,6 @@ class Brain(TimeSlicer, surfer.Brain):
             cmap = cmaps[meas]
 
         # general PySurfer data args
-        alpha = 1
         if smoothing_steps is None and source.kind == 'ico':
             smoothing_steps = source.grade + 1
 
@@ -452,16 +453,14 @@ class Brain(TimeSlicer, surfer.Brain):
             src_hemi = ndvar.sub(**{source.name: 'lh'})
             data = src_hemi.get_data(data_dims, 0)
             vertices = source.lh_vertices
-            self.add_data(data, vmin, vmax, None, cmap, alpha, vertices,
-                          smoothing_steps, times, time_label_, colorbar_, 'lh')
+            self.add_data(data, vmin, vmax, None, cmap, alpha, vertices, smoothing_steps, times, time_label_, colorbar_, 'lh')
             new_surfaces.extend(self.data_dict['lh']['surfaces'])
 
         if data_hemi != 'lh':
             src_hemi = ndvar.sub(**{source.name: 'rh'})
             data = src_hemi.get_data(data_dims, 0)
             vertices = source.rh_vertices
-            self.add_data(data, vmin, vmax, None, cmap, alpha, vertices,
-                          smoothing_steps, times, time_label, colorbar, 'rh')
+            self.add_data(data, vmin, vmax, None, cmap, alpha, vertices, smoothing_steps, times, time_label, colorbar, 'rh')
             new_surfaces.extend(self.data_dict['rh']['surfaces'])
 
         # update surfaces
