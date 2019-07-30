@@ -62,6 +62,11 @@ def test_im_layout():
     assert l.w == 6
     assert l.h == 3
     assert l.axw == l.axh == 3
+    # 2 x 2 layout
+    margins = {'left': 0.4, 'right': 0.1, 'top': 0.1, 'bottom': 0.4}
+    l = ImLayout(4, 4/3, 2, margins, {'bottom': 0.5}, nrow=2, ncol=2, w=4, h=4)
+    assert l.w == 4
+    assert l.axw == 1.75
 
 
 @hide_plots

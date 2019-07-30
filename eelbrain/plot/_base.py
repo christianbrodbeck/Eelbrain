@@ -1964,7 +1964,7 @@ def resolve_plot_rect(w, h, dpi):
 
 class LayoutDim:
     "Helper function to determine figure spacing"
-    _properties = ('total', 'first', 'space', 'last', 'ax')
+    _properties = ('total', 'first', 'last', 'ax', 'space')
     _equations = dict(
         ax='(total - first - last - (n_ax - 1) * space) / n_ax',
         total='first + n_ax * ax + (n_ax - 1) * space + last',
@@ -1976,10 +1976,8 @@ class LayoutDim:
     def __init__(self, n_ax, total, ax, first, space, last, ax_default, first_default, space_default, last_default):
         if space is None and n_ax == 1:
             space = 0.
-        values = {'total': total, 'first': first, 'space': space, 'last': last,
-                  'ax': ax, 'n_ax': n_ax}
-        defaults = {'first': first_default, 'space': space_default,
-                    'last': last_default, 'ax': ax_default}
+        values = {'total': total, 'first': first, 'space': space, 'last': last, 'ax': ax, 'n_ax': n_ax}
+        defaults = {'first': first_default, 'space': space_default, 'last': last_default, 'ax': ax_default}
         for i, p in enumerate(self._properties):
             if values[p] is None:
                 for p2 in self._properties[i + 1:]:
@@ -1996,8 +1994,7 @@ class LayoutDim:
 
 class Layout(BaseLayout):
     """Layout for figures with several axes of the same size"""
-    _default_margins = {'left': 0.4, 'bottom': 0.5, 'right': 0.05, 'top': 0.05,
-                        'wspace': 0.1, 'hspace': 0.1}
+    _default_margins = {'left': 0.4, 'bottom': 0.5, 'right': 0.05, 'top': 0.05, 'wspace': 0.1, 'hspace': 0.1}
 
     def __init__(self, nax, ax_aspect, axh_default, tight=True, title=None,
                  h=None, w=None, axh=None, axw=None, nrow=None, ncol=None,
@@ -2156,16 +2153,8 @@ class Layout(BaseLayout):
                 axh_default = axw / ax_aspect
             elif w:
                 axh_default = w / ncol / ax_aspect
-            h_dim = LayoutDim(
-                nrow, h, axh, margins.get('top'), margins.get('hspace'),
-                margins.get('bottom'), axh_default, self._default_margins['top'],
-                self._default_margins['hspace'], self._default_margins['bottom']
-            )
-            w_dim = LayoutDim(
-                ncol, w, axw, margins.get('left'), margins.get('wspace'),
-                margins.get('right'), h_dim.ax * ax_aspect, self._default_margins['left'],
-                self._default_margins['wspace'], self._default_margins['right']
-            )
+            h_dim = LayoutDim(nrow, h, axh, margins.get('top'), margins.get('hspace'), margins.get('bottom'), axh_default, self._default_margins['top'], self._default_margins['hspace'], self._default_margins['bottom'])
+            w_dim = LayoutDim(ncol, w, axw, margins.get('left'), margins.get('wspace'), margins.get('right'), h_dim.ax * ax_aspect, self._default_margins['left'], self._default_margins['wspace'], self._default_margins['right'])
             h = h_dim.total
             w = w_dim.total
             axh = h_dim.ax
@@ -2242,15 +2231,12 @@ class ImLayout(Layout):
     def __init__(self, nax, ax_aspect, axh_default, margins, default_margins,
                  title=None, *args, **kwargs):
         if margins is None:
-            margins = default_margins
+            margins = {**self._default_margins, **default_margins}
         elif isinstance(margins, dict):
-            for k in default_margins:
-                if k not in margins:
-                    margins[k] = default_margins[k]
+            margins = {**self._default_margins, **default_margins, **margins}
         else:
-            raise TypeError("margins=%r; needs to be a dict" % (margins,))
-        Layout.__init__(self, nax, ax_aspect, axh_default, False, title, *args,
-                        margins=margins, **kwargs)
+            raise TypeError(f"margins={margins!r}; needs to be a dict")
+        Layout.__init__(self, nax, ax_aspect, axh_default, False, title, *args, margins=margins, **kwargs)
 
     def make_axes(self, figure):
         axes = []
