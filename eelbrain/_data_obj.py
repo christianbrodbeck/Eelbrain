@@ -6068,14 +6068,13 @@ class Dataset(OrderedDict):
             warn("the delim parameter to Dataset.save_txt() is deprecated and will be removed after Eelbrain 0.31; use delimiter instead", DeprecationWarning)
             delimiter = delim
         if path is None:
-            path = ui.ask_saveas(f"Save {self.name or 'Dataset'} as Text", "",
-                                 [_tsv_wildcard], defaultFile=self.name)
+            path = ui.ask_saveas(f"Save {self.name or 'Dataset'} as Text", "", [_tsv_wildcard], defaultFile=self.name)
         path = Path(path)
         if not path.suffix:
             path = path.with_suffix('.txt')
 
         table = self.as_table(fmt=fmt, header=header)
-        table.save_tsv(path, fmt=fmt, delimiter=delimiter)
+        table.save_tsv(path, delimiter, fmt)
 
     def save_pickled(self, path=None):
         """Pickle the Dataset.

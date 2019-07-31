@@ -1580,7 +1580,7 @@ class Table(FMTextElement):
             items.append(r"\end{center}")
         return '\n'.join(items)
 
-    def get_tsv(self, delimiter='\t', linesep='\n', fmt='%.9g'):
+    def get_tsv(self, delimiter='\t', fmt='%.9g'):
         r"""
         Return the table as tab-separated values (TSV) string.
 
@@ -1588,13 +1588,11 @@ class Table(FMTextElement):
         ----------
         delimiter : str
             Delimiter between columns (default ``'\t'``).
-        linesep : str
-            Delimiter string between lines (default ``'\n'``).
         fmt : str
             Format string for numerical entries (default ``'%.9g'``).
         """
         buffer = StringIO(newline='')
-        writer = csv.writer(buffer, delimiter=delimiter)
+        writer = csv.writer(buffer, delimiter=delimiter, lineterminator='\n')
         env = {'fmt': fmt}
         for row in self.rows:
             if isinstance(row, str):
@@ -1640,7 +1638,7 @@ class Table(FMTextElement):
 
         document.save(path)
 
-    def save_tsv(self, path=None, delimiter='\t', linesep='\n', fmt='%.15g'):
+    def save_tsv(self, path=None, delimiter='\t', fmt='%.15g'):
         r"""
         Save the table as tab-separated values file.
 
@@ -1650,14 +1648,12 @@ class Table(FMTextElement):
             Destination file name.
         delimiter : str
             String that is placed between cells (default: ``'\t'``).
-        linesep : str
-            Delimiter string between lines (default ``'\n'``).
         fmt : str
             Format string for representing numerical cells.
             (see 'Python String Formatting Documentation
             <http://docs.python.org/library/stdtypes.html#string-formatting-operations>'_)
         """
-        _save_txt(self.get_tsv(delimiter, linesep, fmt), path)
+        _save_txt(self.get_tsv(delimiter, fmt), path)
 
     def save_txt(self, path=None, fmt='%.15g', delim='   ', linesep='\n'):
         r"""
