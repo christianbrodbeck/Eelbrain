@@ -83,7 +83,7 @@ from matplotlib.ticker import FuncFormatter
 import numpy as np
 import PIL
 
-from .._colorspaces import symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
+from .._colorspaces import LocatedListedColormap, symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
 from .._config import CONFIG
 from .._data_obj import (
     NDVar, Case, UTS,
@@ -518,10 +518,9 @@ def find_vlim_args(ndvar, vmin=None, vmax=None):
 def fix_vlim_for_cmap(vmin, vmax, cmap):
     "Fix the vmin value to yield an appropriate range for the cmap"
     if isinstance(cmap, Colormap):
-        if hasattr(cmap, '_eelbrain_meta'):
-            return cmap._eelbrain_meta['vmin'], cmap._eelbrain_meta['vmax']
-        else:
-            cmap = cmap.name
+        if isinstance(cmap, LocatedListedColormap):
+            return cmap.vmin, cmap.vmax
+        cmap = cmap.name
 
     if cmap in symmetric_cmaps:
         if vmax is None and vmin is None:

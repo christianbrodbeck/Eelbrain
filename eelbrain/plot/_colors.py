@@ -7,10 +7,10 @@ import operator
 
 import numpy as np
 import matplotlib as mpl
-from matplotlib.colors import LinearSegmentedColormap, ListedColormap, Normalize, to_rgb, to_rgba
+from matplotlib.colors import LinearSegmentedColormap, Colormap, Normalize, to_rgb, to_rgba
 from matplotlib.colorbar import ColorbarBase
 
-from .._colorspaces import oneway_colors, twoway_colors, SymmetricNormalize, symmetric_cmaps
+from .._colorspaces import LocatedListedColormap, oneway_colors, twoway_colors, SymmetricNormalize, symmetric_cmaps
 from .._data_obj import Factor, Interaction, cellname
 from .._utils import IS_WINDOWS
 from ._base import EelFigure, Layout, find_axis_params_data, fix_vlim_for_cmap
@@ -277,13 +277,8 @@ def soft_threshold_colormap(cmap, threshold, vmax, subthreshold=None, symmetric=
     else:
         out_colors[:-cmap.N] = subthreshold_color
         out_colors[-cmap.N:] = colors
-    out = ListedColormap(out_colors, cmap.name)
-    out._eelbrain_meta = {
-        'symmetric': symmetric,
-        'vmin': -vmax if symmetric else 0,
-        'vmax': vmax,
-    }
-    return out
+    vmin = -vmax if symmetric else 0
+    return LocatedListedColormap(out_colors, cmap.name, vmax=vmax, vmin=vmin)
 
 
 class ColorGrid(EelFigure):
@@ -590,7 +585,7 @@ class ColorBar(EelFigure):
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    def __init__(self, cmap, vmin, vmax=None, label=True, label_position=None,
+    def __init__(self, cmap, vmin=None, vmax=None, label=True, label_position=None,
                  label_rotation=None,
                  clipmin=None, clipmax=None, orientation='horizontal',
                  unit=None, contours=(), width=None, ticks=None, threshold=None,
@@ -603,6 +598,8 @@ class ColorBar(EelFigure):
             if cmap.max() > 1:
                 cmap = cmap / 255.
             cm = mpl.colors.ListedColormap(cmap, 'LUT')
+        elif isinstance(cmap, Colormap):
+            cm = cmap
         else:
             cm = mpl.cm.get_cmap(cmap)
 
@@ -626,7 +623,7 @@ class ColorBar(EelFigure):
         if isinstance(vmin, Normalize):
             norm = vmin
         else:
-            vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cm.name)
+            vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cm)
             norm = Normalize(vmin, vmax)
 
         # value ticks

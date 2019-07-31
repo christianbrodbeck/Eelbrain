@@ -11,9 +11,18 @@ if logger.level == 0:  # otherwise it was probably set by user (DEBUG=10)
 
 from colormath.color_objects import LCHabColor, sRGBColor
 from colormath.color_conversions import convert_color
+from matplotlib.colors import ListedColormap
 from matplotlib.cm import register_cmap
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 import numpy as np
+
+
+class LocatedListedColormap(ListedColormap):
+
+    def __init__(self, colors, name='from_list', N=None, vmin=None, vmax=None):
+        ListedColormap.__init__(self, colors, name, N)
+        self.vmin = vmin
+        self.vmax = vmax
 
 
 def lch_to_rgb(lightness, chroma, hue):

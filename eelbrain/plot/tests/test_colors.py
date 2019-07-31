@@ -61,6 +61,11 @@ def test_plot_colorbar():
     assert_array_equal(p._axes[0].get_xticks(), [0, 0.5, 1])
     p.close()
 
+    # soft-thresholded colormap
+    cmap = plot.soft_threshold_colormap('xpolar-a', 0.2, 2.0)
+    p = plot.ColorBar(cmap)
+    p.close()
+
 
 @hide_plots
 def test_plot_colors():
