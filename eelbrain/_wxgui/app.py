@@ -262,12 +262,14 @@ class App(wx.App):
 
     def _bash_ui(self, func, *args):
         "Launch a modal dialog based on terminal input"
+        # Create fake frame to prevent dialog from sticking
+        if not self.GetTopWindow():
+            self.SetTopWindow(wx.Frame(None))
+        # Run dialog
         self._bash_ui_from_mainloop = self.using_prompt_toolkit or self.IsMainLoopRunning()
         if self._bash_ui_from_mainloop:
             return func(*args)
         else:
-            if not self.GetTopWindow():
-                self.SetTopWindow(wx.Frame(None))
             wx.CallAfter(func, *args)
             print("Please switch to the Python Application to provide input.")
             self.MainLoop()
