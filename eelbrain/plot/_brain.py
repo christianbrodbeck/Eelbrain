@@ -619,7 +619,7 @@ class ImageTable(ColorBarMixin, EelFigure):
     #
 
     def __init__(self, n_rows, n_columns, title=None, margins=None, *args, **kwargs):
-        default_margins = {'bottom': 0.5}
+        default_margins = {}
         if title:
             default_margins['top'] = 0.5
         layout = ImLayout(n_rows * n_columns, 4/3, 2, margins, default_margins, title, *args, nrow=n_rows, ncol=n_columns, autoscale=True, **kwargs)
