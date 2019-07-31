@@ -42,6 +42,7 @@ import numpy as np
 from .._data_obj import VolumeSourceSpace
 from .._utils.numpy_utils import newaxis
 from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, brain_data, butterfly_data
+from ._colors import soft_threshold_colormap
 from ._utsnd import Butterfly
 
 
@@ -276,6 +277,13 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                 threshold = float(threshold)
                 if isinstance(ndvar.x, np.ma.MaskedArray):
                     raise ValueError(f"Cannot use threshold={threshold} with masked data")
+
+            # If ```threshold = None``` and using diverging colormaps, 0.5 may not corresponds to pure white/ black.
+            # This issue is more prominent in Apple’s color management than Windows/ Linux counterpart.
+            if symmetric_cbar and (threshold is None):
+                subthreshold = (0, 0, 0) if black_bg else (1.0, 1.0, 1.0)
+                cmap = soft_threshold_colormap(cmap, threshold = vmax / cmap.N, vmax=vmax,
+                                                  subthreshold=subthreshold, symmetric=True)
 
         else:
             cbar_vmin = cbar_vmax = imgs = img0 = dir_imgs = t0 = threshold = None
