@@ -46,6 +46,8 @@ def test_boosting(n_workers):
     assert res.y_mean is None
     assert res.h.info['unit'] == 'V'
     assert res.h_scaled.info['unit'] == 'V'
+    with pytest.raises(NotImplementedError):
+        res.proportion_explained
 
     res = boosting(y, x1, 0, 1)
     assert repr(res) == '<boosting y ~ x1, 0 - 1>'
@@ -58,6 +60,7 @@ def test_boosting(n_workers):
     assert res.h.info['unit'] == 'normalized'
     assert res.h_scaled.name == 'x1'
     assert res.h_scaled.info['unit'] == 'V'
+    assert res.proportion_explained == approx(0.506, abs=0.001)
     # inplace
     res_ip = boosting(y.copy(), x1.copy(), 0, 1, 'inplace')
     assert_res_equal(res_ip, res)
@@ -67,6 +70,7 @@ def test_boosting(n_workers):
 
     res = boosting(y, x2, 0, 1)
     assert res.r == approx(0.601, abs=0.001)
+    assert res.proportion_explained == approx(0.273, abs=0.001)
 
     res = boosting(y, x2, 0, 1, error='l1')
     assert res.r == approx(0.553, abs=0.001)
@@ -74,6 +78,7 @@ def test_boosting(n_workers):
     assert res.y_scale == (y - y_mean).abs().mean()
     assert_array_equal(res.x_mean.x, x2_mean)
     assert_array_equal(res.x_scale, (x2 - x2_mean).abs().mean('time'))
+    assert res.proportion_explained == approx(0.123, abs=0.001)
 
     # 2 predictors
     res = boosting(y, [x1, x2], 0, 1)

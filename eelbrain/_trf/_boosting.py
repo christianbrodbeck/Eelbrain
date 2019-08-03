@@ -33,13 +33,14 @@ from tqdm import tqdm
 
 from .._config import CONFIG
 from .._data_obj import NDVar
+from .._exceptions import OldVersionError
 from .._utils import LazyProperty, user_activity
 from ._boosting_opt import l1, l2, generate_options, update_error
 from .shared import RevCorrData
 
 
 # BoostingResult version
-VERSION = 10
+VERSION = 10  # file format (assigned in __getstate__, not __init__)
 
 # process messages
 JOB_TERMINATE = -1
@@ -77,12 +78,21 @@ class BoostingResult:
     error : str
         The error evaluation method used.
     residual : float | NDVar
-        The fit error, i.e. the result of the ``error`` error function on the
-        final fit.
+        The residual of the final result
+
+        - ``error='l1'``: the sum of the absolute differences between ``y`` and
+          ``h * x``.
+        - ``error='l2'``: the sum of the squared differences between ``y`` and
+          ``h * x``.
+
+        For vector ``y``, the error is defined based on the distance in space
+        for each data point.
     delta : scalar
         Kernel modification step used.
     mindelta : None | scalar
         Mindelta parameter used.
+    n_samples : int
+        Number of samples in the input data time axis.
     scale_data : bool
         Scale_data parameter used.
     y_mean : NDVar | scalar
@@ -105,12 +115,13 @@ class BoostingResult:
             h, r, isnan, spearmanr, residual, t_run,
             y_mean, y_scale, x_mean, x_scale, y_info={}, r_l1=None,
             # new parameters
-            selective_stopping=0,
+            selective_stopping=0, n_samples=None,
             **debug_attrs,
     ):
         # input parameters
         self.y = y
         self.x = x
+        self.n_samples = n_samples
         self.tstart = tstart
         self.tstop = tstop
         self.scale_data = scale_data
@@ -157,7 +168,7 @@ class BoostingResult:
             't_run': self.t_run, 'version': VERSION,
             'y_mean': self.y_mean, 'y_scale': self.y_scale,
             'x_mean': self.x_mean, 'x_scale': self.x_scale,
-            'y_info': self._y_info,
+            'y_info': self._y_info, 'n_samples': self.n_samples,
             **self._debug_attrs,
         }
 
@@ -231,6 +242,21 @@ class BoostingResult:
         else:
             return self.h[0].time
 
+    @LazyProperty
+    def _variability(self):
+        # variability in the data
+        if self.y_scale is None:
+            raise NotImplementedError("Not implemented for scale_data=False")
+        elif self.n_samples is None:
+            raise OldVersionError("This is an older result object which did not store some necessary information; refit the model to use this attribute")
+        else:
+            # Due to the normalization:
+            return self.n_samples
+
+    @LazyProperty
+    def proportion_explained(self):
+        return 1 - (self.residual / self._variability)
+
     def _set_parc(self, parc):
         """Change the parcellation of source-space result
          
@@ -261,7 +287,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
              error='l2', basis=0, basis_window='hamming',
              partitions=None, model=None, ds=None, selective_stopping=0,
              prefit=None, debug=False):
-    """Estimate a filter with boosting
+    """Estimate a linear filter with coordinate descent
 
     Parameters
     ----------
@@ -277,9 +303,9 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     scale_data : bool | 'inplace'
         Scale ``y`` and ``x`` before boosting: subtract the mean and divide by
         the standard deviation (when ``error='l2'``) or the mean absolute
-        value (when ``error='l1'``). With ``scale_data=True`` (default) the
-        original ``y`` and ``x`` are left untouched; use ``'inplace'`` to save
-        memory by scaling the original ``y`` and ``x``.
+        value (when ``error='l1'``). Use ``'inplace'`` to save memory by scaling
+        the original objects specified as ``y`` and ``x`` instead of making a 
+        copy.
     delta : scalar
         Step for changes in the kernel.
     mindelta : scalar
@@ -288,6 +314,14 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         i.e. ``delta`` is constant.
     error : 'l2' | 'l1'
         Error function to use (default is ``l2``).
+
+        - ``error='l1'``: the sum of the absolute differences between ``y`` and
+          ``h * x``.
+        - ``error='l2'``: the sum of the squared differences between ``y`` and
+          ``h * x``.
+
+        For vector ``y``, the error is defined based on the distance in space
+        for each data point.
     basis : float
         Use a basis of windows with this length for the kernel (by default,
         impulses are used).
@@ -328,8 +362,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     Returns
     -------
     result : BoostingResult
-        Object containing results from the boosting estimation (see
-        :class:`BoostingResult`).
+        Results (see :class:`BoostingResult`).
 
     Notes
     -----
@@ -495,7 +528,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         h, r, isnan, spearmanr, residual, t_run,
         y_mean, y_scale, x_mean, x_scale, data.y_info,
         # vector results
-        r_l1, selective_stopping,
+        r_l1, selective_stopping, data.y.shape[1],
         **debug_attrs)
 
 
