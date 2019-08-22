@@ -292,7 +292,7 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     elif src == 'vol':
         src_tag = 'vol-10'
     else:
-        raise ValueError("src = %r" % src)
+        raise ValueError(f"src={src!r}")
     epochs = ds['epochs']
 
     # get inverse operator

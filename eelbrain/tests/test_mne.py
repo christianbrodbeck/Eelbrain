@@ -238,6 +238,29 @@ def test_xhemi():
     assert lh.max() == pytest.approx(10.80, abs=1e-2)
     assert rh.max() == pytest.approx(7.91, abs=1e-2)
 
+    # volume source space
+    ds = datasets.get_mne_sample(src='vol', ori='vector', hpf=1)
+    y = ds[0, 'src']
+    with pytest.raises(NotImplementedError):
+        xhemi(y)
+    # make symmetric
+    coords = list(map(tuple, y.source.coordinates))
+    index = [r == 0 or (-r, a, s) in coords for r, a, s in coords]
+    y = y.sub(source=np.array(index))
+    # test xhemi
+    yl, yr = xhemi(y)
+    assert yl.source == yr.source
+    # test vector mirroring
+    r, a, s = coords[10]
+    assert r  # make sure it's not on midline
+    for i_orig, coords in enumerate(y.source.coordinates):
+        if tuple(coords) == (r, a, s):
+            break
+    for i_flipped, coords in enumerate(yr.source.coordinates):
+        if tuple(coords) == (-r, a, s):
+            break
+    assert_array_equal(yr.x[i_flipped], y.x[i_orig] * [[-1], [1], [1]])
+
 
 @requires_mne_sample_data  # source space distance computation times out
 def test_source_space():

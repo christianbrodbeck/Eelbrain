@@ -13,7 +13,7 @@ from mne.label import Label, BiHemiLabel
 from mne.utils import get_subjects_dir
 from nibabel.freesurfer import read_annot
 
-from ._data_obj import NDVar, SourceSpace, VolumeSourceSpace
+from ._data_obj import NDVar, Space, SourceSpace, VolumeSourceSpace
 from ._utils.numpy_utils import index
 
 
@@ -762,10 +762,21 @@ def xhemi(ndvar, mask=None, hemi='lh', parc=True):
         # map other_hemi into hemi
         is_in_other = source.hemi == other_hemi
         coord_map = {tuple(source.coordinates[i]): i for i in np.flatnonzero(is_in_other)}
-        other_source = [coord_map[-x, y, z] for x, y, z in source_out.coordinates]
-        # combine data
+        try:
+            other_source = [coord_map[-x, y, z] for x, y, z in source_out.coordinates]
+        except KeyError:
+            raise NotImplementedError("Only implemented for symmetric volume source spaces")
+        # extract hemi-data
         x_hemi = ndvar.x[index(is_in_hemi, at=ax)]
         x_other = ndvar.x[index(other_source, at=ax)]
+        # for vector data, the L/R component has to be mirrored
+        for space_ax, dim in enumerate(ndvar.dims):
+            if isinstance(dim, Space):
+                for direction in 'LR':
+                    if direction in dim:
+                        i = dim._array_index(direction)
+                        x_other[index(i, at=space_ax)] *= -1
+        # combine data
         dims = list(ndvar.dims)
         dims[ax] = source_out
         out_same = NDVar(x_hemi, dims, ndvar.name, ndvar.info)
