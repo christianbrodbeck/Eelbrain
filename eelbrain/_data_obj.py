@@ -5201,10 +5201,11 @@ class Dataset(OrderedDict):
 
     Parameters
     ----------
-    items : iterator
-        Items contained in the Dataset. Items can be either named
-        data-objects or ``(name, data_object)`` tuples. The Dataset stores
-        the input items themselves, without making a copy().
+    items : dict | list
+        Items in the Dataset (either specified as ``{key: data_object}``
+        dictionary, or as ``[data_object]`` list in which data-object names will
+        be used as keys).
+        The Dataset stores the input items directly, without making a copy.
     name : str
         Name for the Dataset.
     caption : str
@@ -5328,35 +5329,22 @@ class Dataset(OrderedDict):
     """
     _value_type_exceptions = (MNE_EPOCHS,)
 
-    @staticmethod
-    def _args(items=(), name=None, caption=None, info={}, n_cases=None):
-        return items, name, caption, info, n_cases
-
-    def __init__(self, *args, **kwargs):
+    def __init__(self, items=(), name=None, caption=None, info=None, n_cases=None):
         # backwards compatibility
-        if args and isinstance(args[0], tuple) and isinstance(args[0][0], str):
-            items, name, caption, info, n_cases = self._args(args, **kwargs)
-        else:
-            items, name, caption, info, n_cases = self._args(*args, **kwargs)
-
-        # unpack data-objects
-        args = []
-        for item in items:
-            if isdataobject(item):
-                if not item.name:
-                    raise ValueError("items need to be named in a Dataset; use "
-                                     "Dataset(('name', item), ...), or ds = "
-                                     "Dataset(); ds['name'] = item")
-                args.append((item.name, item))
-            else:
-                args.append(item)
+        if not isinstance(items, (list, tuple, dict)):
+            items = list(items)
+        if isinstance(items, (list, tuple)):
+            if all(isdataobject(item) for item in items):
+                if any(item.name is None for item in items):
+                    raise ValueError(f"{items!r}: items provided without keys need to be named")
+                items = {item.name: item for item in items}
 
         # set state
         self.n_cases = None if n_cases is None else int(n_cases)
         # uses __setitem__() which checks items and length:
-        super(Dataset, self).__init__(args)
+        super(Dataset, self).__init__(items)
         self.name = name
-        self.info = dict(info)
+        self.info = {} if info is None else dict(info)
         self._caption = caption
 
     def __setstate__(self, state):
@@ -5935,8 +5923,7 @@ class Dataset(OrderedDict):
         name : str
             Name for the new dataset (default is ``self.name``).
         """
-        return Dataset(self.items(), name or self.name, self._caption,
-                       self.info, self.n_cases)
+        return Dataset(self, name or self.name, self._caption, self.info, self.n_cases)
 
     def equalize_counts(self, x, n=None):
         """Create a copy of the Dataset with equal counts in each cell of x
@@ -6288,7 +6275,7 @@ class Dataset(OrderedDict):
             elif isinstance(keys, str):
                 return OrderedDict.__getitem__(self, keys)
             else:
-                items = ((k, OrderedDict.__getitem__(self, k)) for k in keys)
+                items = {k: OrderedDict.__getitem__(self, k) for k in keys}
         elif isinstance(index, Integral):
             if keys is None:
                 return self.get_case(index)
@@ -6304,7 +6291,7 @@ class Dataset(OrderedDict):
                 keys = self.keys()
             elif isinstance(keys, str):
                 return OrderedDict.__getitem__(self, keys)[index]
-            items = ((k, OrderedDict.__getitem__(self, k)[index]) for k in keys)
+            items = {k: OrderedDict.__getitem__(self, k)[index] for k in keys}
 
         return Dataset(items, name or self.name, self._caption, self.info)
 
@@ -6354,9 +6341,10 @@ class Dataset(OrderedDict):
         name : str
             Name for the new dataset (default is ``self.name``).
         """
-        return Dataset(
-            ((name, item.tile(repeats)) for name, item in self.items()),
-            name or self.name, self._caption, self.info, self.n_cases * repeats)
+        items = {name: item.tile(repeats) for name, item in self.items()}
+        if name is None:
+            name = self.name
+        return Dataset(items, name, self._caption, self.info, self.n_cases * repeats)
 
     def to_r(self, name=None):
         """Place the Dataset into R as dataframe using rpy2

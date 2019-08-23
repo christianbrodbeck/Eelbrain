@@ -372,6 +372,10 @@ def test_dataset():
     ds.add(Factor('aabb', name='g'))
     assert ds['g'].name == 'g'
 
+    # initialization
+    assert_dataobj_equal(Dataset([ds['f'], ds['g']]), ds)
+    assert_dataobj_equal(Dataset({'f': Factor('abab'), 'g': Factor('aabb')}), ds)
+
     # ds.update()
     ds = Dataset()
     ds.update({'f': Factor('abab')})

@@ -386,7 +386,7 @@ class Document(FileDocument):
                                   wx.CANCEL_DEFAULT | wx.ICON_WARNING)
             if cmd == wx.ID_OK:
                 n_missing = self.n_epochs - ds.n_cases
-                tail = Dataset(info = ds.info)
+                tail = Dataset(info=ds.info)
                 tail['trigger'] = Var(self.trigger[-n_missing:])
                 tail['accept'] = Var([True], repeat=n_missing)
                 tail['tag'] = Factor(['missing'], repeat=n_missing)
