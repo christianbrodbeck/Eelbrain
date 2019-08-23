@@ -5820,7 +5820,8 @@ class MneExperiment(FileTree):
         cls._parse_inv(inv)
         return inv
 
-    def _update_inv_cache(self, fields):
+    @staticmethod
+    def _update_inv_cache(fields):
         if fields['inv'] == '*':
             return '*'
         m = inv_re.match(fields['inv'])
