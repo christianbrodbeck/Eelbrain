@@ -87,7 +87,7 @@ ds['Realname'] = 1 / ds['y']
 plot.Correlation('Realname', ..., ds=ds)  # -> 'Realname'
 ```
 """
-from collections import Iterable, Iterator, OrderedDict, Sequence
+from collections import Iterable, Iterator, Sequence
 from copy import deepcopy
 from functools import partial
 from itertools import chain, product, repeat, zip_longest
@@ -1158,12 +1158,12 @@ def combine(items, name=None, check_dims=True, incomplete='raise', dim_intersect
 def find_factors(obj):
     "Return the list of all factors contained in obj"
     if isinstance(obj, EffectList):
-        f = OrderedDict((id(f), f) for e in obj for f in find_factors(e))
+        f = {id(f): f for e in obj for f in find_factors(e)}
         return EffectList(f.values())
     elif isuv(obj):
         return EffectList([obj])
     elif isinstance(obj, Model):
-        f = OrderedDict((id(f), f) for e in obj.effects for f in find_factors(e))
+        f = {id(f): f for e in obj.effects for f in find_factors(e)}
         return EffectList(f.values())
     elif isinstance(obj, NestedEffect):
         return find_factors(obj.effect)
@@ -5193,11 +5193,8 @@ def cases_arg(cases, n_cases) -> Iterable:
         raise TypeError(f"cases={cases}")
 
 
-class Dataset(OrderedDict):
-    """
-    Stores multiple variables pertaining to a common set of measurement cases
-
-    Superclass: :class:`collections.OrderedDict`
+class Dataset(dict):
+    """Store multiple variables pertaining to a common set of measurement cases
 
     Parameters
     ----------
@@ -5237,8 +5234,7 @@ class Dataset(OrderedDict):
     dictionary. Each variable corresponds to a column, and each index in the
     value list corresponds to a row, or case.
 
-    The Dataset class inherits most of its behavior from its superclass
-    :py:class:`collections.OrderedDict`.
+    The Dataset class inherits basic behavior from :py:class:`dict`.
     Dictionary keys are enforced to be :py:class:`str` objects and should
     correspond to the variable names.
     As for a dictionary, The Dataset's length (``len(ds)``) reflects the number
@@ -5329,23 +5325,32 @@ class Dataset(OrderedDict):
     """
     _value_type_exceptions = (MNE_EPOCHS,)
 
-    def __init__(self, items=(), name=None, caption=None, info=None, n_cases=None):
-        # backwards compatibility
-        if not isinstance(items, (list, tuple, dict)):
-            items = list(items)
-        if isinstance(items, (list, tuple)):
-            if all(isdataobject(item) for item in items):
-                if any(item.name is None for item in items):
-                    raise ValueError(f"{items!r}: items provided without keys need to be named")
-                items = {item.name: item for item in items}
+    @staticmethod
+    def _is_kv_pair(item):
+        return isinstance(item, (list, tuple)) and len(item) == 2 and isinstance(item[0], str)
 
-        # set state
+    def __init__(self, items=None, name=None, caption=None, info=None, n_cases=None):
+        dict.__init__(self)  # skips __setitem__()
         self.n_cases = None if n_cases is None else int(n_cases)
-        # uses __setitem__() which checks items and length:
-        super(Dataset, self).__init__(items)
         self.name = name
         self.info = {} if info is None else dict(info)
         self._caption = caption
+        # initial items
+        if items is None:
+            return
+        elif isinstance(items, dict):
+            items_ = items.items()
+        else:
+            if not isinstance(items, (list, tuple)):
+                items = list(items)
+            if all(map(self._is_kv_pair, items)):
+                items_ = items
+            else:
+                if any(getattr(item, 'name', None) is None for item in items):
+                    raise ValueError(f"{items!r}: when specified without keys, all items need to be named")
+                items_ = [(item.name, item) for item in items]
+        for key, value in items_:
+            self.__setitem__(key, value)
 
     def __setstate__(self, state):
         # for backwards compatibility
@@ -5359,13 +5364,12 @@ class Dataset(OrderedDict):
 
     def __delitem__(self, key):
         if isinstance(key, str):
-            super(Dataset, self).__delitem__(key)
+            dict.__delitem__(self, key)
         elif isinstance(key, tuple):
-            m = super(Dataset, self).__delitem__
             for k in key:
-                m(k)
+                dict.__delitem__(self, k)
         else:
-            raise KeyError("Invalid Dataset key: %s" % repr(key))
+            raise KeyError(key)
 
     def __getitem__(self, index):
         """
@@ -5473,7 +5477,7 @@ class Dataset(OrderedDict):
                 elif isinstance(item, Sequence):
                     item = Datalist(item, index)
                 else:
-                    raise TypeError(f"{item!r}: Unsupported type for Dataset; consider using an eelbrain data-object or a list")
+                    raise TypeError(f"{item!r}: Unsupported type for Dataset")
                 n = len(item)
 
             # make sure the item has the right length
@@ -5485,40 +5489,30 @@ class Dataset(OrderedDict):
             super(Dataset, self).__setitem__(index, item)
         elif isinstance(index, tuple):
             if len(index) != 2:
-                raise NotImplementedError(
-                    "Dataset indexes can have at most two components; direct "
-                    "access to NDVars is not implemented")
+                raise IndexError(f"{index}: Dataset indexes can have at most two components; direct access to NDVars is not implemented")
             idx, key = index
             if isinstance(idx, str):
                 key, idx = idx, key
             elif not isinstance(key, str):
-                raise TypeError(f"Dataset key {key!r}; needs to be str")
+                raise IndexError(f"{index}; index needs one str")
 
             if key in self:
                 self[key][idx] = item
-            elif isinstance(idx, slice):
-                if idx.start is None and idx.stop is None:
-                    if isdataobject(item):
-                        self[key] = item
-                    elif self.n_cases is None:
-                        raise TypeError("Can't assign slice of empty Dataset")
-                    elif isinstance(item, str):
-                        self[key] = Factor([item], repeat=self.n_cases)
-                    elif np.isscalar(item):
-                        self[key] = Var([item], repeat=self.n_cases)
-                    else:
-                        raise TypeError(
-                            f"{item!r} is not supported for slice-assignment of "
-                            f"a new variable. Use a str for a new Factor or a "
-                            f"scalar for a new Var.")
+            elif isinstance(idx, slice) and idx.start is None and idx.stop is None and idx.step is None:
+                if isdataobject(item):
+                    self[key] = item
+                elif self.n_cases is None:
+                    raise TypeError("Can't assign slice of empty Dataset")
+                elif isinstance(item, str):
+                    self[key] = Factor([item], repeat=self.n_cases)
+                elif np.isscalar(item):
+                    self[key] = Var([item], repeat=self.n_cases)
                 else:
-                    raise NotImplementedError(
-                        "When assigning a new item in a Dataset, all values "
-                        "need to be set (ds[:,'name'] = ...)")
+                    raise TypeError(f"{item!r} is not supported for slice-assignment of a new variable. Use a str for a new Factor or a scalar for a new Var.")
             else:
-                raise NotImplementedError("Advanced Dataset indexing")
+                raise IndexError("When assigning a new item in a Dataset, all values need to be set (ds[:,'name'] = ...)")
         else:
-            raise NotImplementedError("Advanced Dataset indexing")
+            raise IndexError(f"{index}: not a valid Dataset index")
 
     def __str__(self):
         if sum(isuv(i) or isdatalist(i) for i in self.values()) == 0:
@@ -6273,16 +6267,16 @@ class Dataset(OrderedDict):
             if keys is None:
                 return self.copy(name)
             elif isinstance(keys, str):
-                return OrderedDict.__getitem__(self, keys)
+                return dict.__getitem__(self, keys)
             else:
-                items = {k: OrderedDict.__getitem__(self, k) for k in keys}
+                items = {k: dict.__getitem__(self, k) for k in keys}
         elif isinstance(index, Integral):
             if keys is None:
                 return self.get_case(index)
             elif isinstance(keys, str):
-                return OrderedDict.__getitem__(self, keys)[index]
+                return dict.__getitem__(self, keys)[index]
             else:
-                return {k: OrderedDict.__getitem__(self, k)[index] for k in keys}
+                return {k: dict.__getitem__(self, k)[index] for k in keys}
         else:
             if isinstance(index, str):
                 index = self.eval(index)
@@ -6290,8 +6284,8 @@ class Dataset(OrderedDict):
             if keys is None:
                 keys = self.keys()
             elif isinstance(keys, str):
-                return OrderedDict.__getitem__(self, keys)[index]
-            items = {k: OrderedDict.__getitem__(self, k)[index] for k in keys}
+                return dict.__getitem__(self, keys)[index]
+            items = {k: dict.__getitem__(self, k)[index] for k in keys}
 
         return Dataset(items, name or self.name, self._caption, self.info)
 
@@ -6385,7 +6379,7 @@ class Dataset(OrderedDict):
             if name is None:
                 raise TypeError('Need a valid name for the R data frame')
 
-        items = OrderedDict()
+        items = {}
         for k, v in self.items():
             if isinstance(v, Var):
                 if v.x.dtype.kind == 'b':
@@ -6428,11 +6422,14 @@ class Dataset(OrderedDict):
         values are equal, the variable in ds is copied into the Dataset that is
         being updated (the expected behavior of .update()).
         """
-        if isinstance(ds, Dataset):
-            if ds.n_cases is None or self.n_cases is None:
-                pass
-            elif ds.n_cases != self.n_cases:
-                raise ValueError(f"Trying to update dataset with {self.n_cases} cases from dataset with {ds.n_cases} cases")
+        if not isinstance(ds, Dataset):
+            ds = Dataset(ds)
+            info = False
+
+        if ds.n_cases is None or self.n_cases is None:
+            pass
+        elif ds.n_cases != self.n_cases:
+            raise ValueError(f"Trying to update dataset with {self.n_cases} cases from dataset with {ds.n_cases} cases")
 
         if not replace:
             unequal = []
@@ -6446,9 +6443,10 @@ class Dataset(OrderedDict):
             if unequal:
                 raise ValueError(f"Inconsistent variables present: {enumeration(f'{name} ({msg})' for name, msg in unequal)}")
 
-        super(Dataset, self).update(ds)
+        for k, v in ds.items():
+            self[k] = v
 
-        if info and isinstance(ds, Dataset):
+        if info:
             self.info.update(ds.info)
 
     def zip(self, *variables):
@@ -8329,7 +8327,7 @@ class Sensor(Dimension):
         cluster_properties : None | Dataset
             A dataset with variables describing cluster properties.
         """
-        return Dataset(('n_sensors', Var(x.sum(1))))
+        return Dataset({'n_sensors': Var(x.sum(1))})
 
     def _array_index(self, arg):
         "Convert a dimension-semantic index to an array-like index"

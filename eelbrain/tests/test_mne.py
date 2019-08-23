@@ -113,8 +113,7 @@ def test_dataobjects():
     shift = np.array([0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                       0.0, 0.0, 0.0, 0.1, -0.1])
     epochs = datasets.get_mne_epochs()
-    ds = Dataset(('a', Factor('ab', repeat=8)),
-                 ('epochs', epochs))
+    ds = Dataset({'a': Factor('ab', repeat=8), 'epochs': epochs})
     ds['ets'] = shift_mne_epoch_trigger(epochs, shift, min(shift), max(shift))
 
     # ds operations
