@@ -446,27 +446,29 @@ def find_fig_vlims(plots, vmax=None, vmin=None, cmaps=None):
     vlims : dict
         Dictionary of im limits: {meas: (vmin, vmax)}.
     """
+    vlims = {}
     if isinstance(vmax, dict):
-        vlims = vmax
+        vlims.update(vmax)
         ndvars = [v for v in chain.from_iterable(plots) if v.info.get('meas') not in vlims]
     else:
         ndvars = [*chain.from_iterable(plots)]
 
-        vlims = {}
-        if vmax is None:
-            user_vlim = None
-        elif vmin is None:
+        if vmin is None and vmax is not None:
             if cmaps is None and any(v.min() < 0 for v in ndvars):
-                user_vlim = (-vmax, vmax)
+                vmin = -vmax
             else:
-                user_vlim = (0, vmax)
-        else:
-            user_vlim = (vmin, vmax)
+                vmin = 0
 
         # apply user specified vlim
-        if user_vlim is not None:
+        if vmin is not None or vmax is not None:
             meas = ndvars[0].info.get('meas')
-            vlims[meas] = user_vlim
+            if vmax is None:
+                meas_ndvars = [v for v in ndvars if v.info.get('meas') == meas]
+                for ndvar in meas_ndvars:
+                    _, vmax_ = find_vlim_args(ndvar)
+                    vmax = vmax_ if vmax is None else max(vmax, vmax_)
+
+            vlims[meas] = (vmin, vmax)
             ndvars = [v for v in ndvars if v.info.get('meas') != meas]
 
     # for other meas, fill in data limits
@@ -475,8 +477,8 @@ def find_fig_vlims(plots, vmax=None, vmin=None, cmaps=None):
         vmin, vmax = find_vlim_args(ndvar)
         if meas in vlims:
             vmin_, vmax_ = vlims[meas]
-            vmin = min(vmin, vmin_)
-            vmax = max(vmax, vmax_)
+            vmin = vmin if vmin_ is None else min(vmin, vmin_)
+            vmax = vmax if vmax_ is None else max(vmax, vmax_)
 
         if vmin == vmax:
             vmin -= 1
