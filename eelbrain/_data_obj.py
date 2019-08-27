@@ -8411,7 +8411,7 @@ class Sensor(Dimension):
         return cls(locs, names, **kwargs)
 
     @classmethod
-    def from_montage(cls, montage):
+    def from_montage(cls, montage, channels=None):
         """Create Sensor dimension from :mod:`mne` :class:`~mne.channels.Montage`
 
         Parameters
@@ -8419,6 +8419,8 @@ class Sensor(Dimension):
         montage : str | mne.Montage
             Montage, or name to load a standard montage (see
             :func:`mne.channels.read_montage`).
+        channels : list of str
+            Channel names in the desired order (optional).
         """
         if isinstance(montage, str):
             obj = mne.channels.read_montage(montage)
@@ -8431,7 +8433,17 @@ class Sensor(Dimension):
             obj = montage
             connectivity = 'none'
 
-        return cls(obj.pos, obj.ch_names, obj.kind, connectivity=connectivity)
+        locations = obj.pos
+        names = obj.ch_names
+
+        if channels is not None:
+            index = np.array([names.index(ch) for ch in channels])
+            locations = locations[index]
+            names = [names[i] for i in index]
+            if not isinstance(connectivity, str):
+                connectivity = _subgraph_edges(connectivity, index)
+
+        return cls(locations, names, obj.kind, connectivity=connectivity)
 
     def _interpret_proj(self, proj):
         if proj == 'default':
