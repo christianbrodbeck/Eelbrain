@@ -544,14 +544,22 @@ def ttest(y, x=None, against=0, match=None, sub=None, corr='Hochberg',
 
 class TTest:
 
-    def __init__(self, t, df, tail):
+    def __init__(self, difference, t, df, tail):
+        self._difference = difference
         self.t = t
         self.df = df
         self.p = stats.ttest_p(self.t, self.df, tail)
         self.tail = tail
 
-    def _asfmtext(self, rasterize: bool = None):
-        return fmtxt.FMText([fmtxt.eq('t', self.t, self.df), ', ', fmtxt.peq(self.p)])
+    def _asfmtext(
+            self,
+            rasterize: bool = None,
+            difference: bool = False,
+    ):
+        out = [fmtxt.eq('t', self.t, self.df), ', ', fmtxt.peq(self.p)]
+        if difference:
+            out = [fmtxt.eq('d', self._difference), ', '] + out
+        return fmtxt.FMText(out)
 
 
 class TTestOneSample(TTest):
@@ -611,11 +619,12 @@ class TTestOneSample(TTest):
         if popmean:
             v = v - popmean
         t = stats.t_1samp(v)[0]
-        TTest.__init__(self, t, n - 1, tail)
+        TTest.__init__(self, v.mean(), t, n - 1, tail)
 
     def __repr__(self):
         cmp = '=><'[self.tail]
         return f"<{self.__class__.__name__}: {self._y} {cmp} {self.popmean}; {self._asfmtext()}> "
+        return f"<TTest1Samp: {self._y} {cmp} {self.popmean}; {self._asfmtext(difference=True)}>"
 
 
 class TTestIndependent(TTest):
@@ -681,12 +690,13 @@ class TTestIndependent(TTest):
         n = len(y)
         df = n - 2
         groups = np.arange(n) < n1
+        d = y[groups].mean() - y[groups == False].mean()
         groups.dtype = np.int8
         t = stats.t_ind(y.x[:, None], groups)[0]
 
         self._y = dataobj_repr(y)
         self._x = x_name
-        TTest.__init__(self, t, df, tail)
+        TTest.__init__(self, d, t, df, tail)
         self._c1 = c1_name
         self._c0 = c0_name
         self._two_y = c1 is None
@@ -697,7 +707,7 @@ class TTestIndependent(TTest):
             desc = f"{self._c1} {cmp} {self._c0}"
         else:
             desc = f"{self._y} ~ {self._x}, {self._c1} {cmp} {self._c0}"
-        return f"<{self.__class__.__name__}: {desc}; {self._asfmtext()}>"
+        return f"<{self.__class__.__name__}: {desc}; {self._asfmtext(difference=True)}>"
 
 
 class MannWhitneyU:
@@ -881,7 +891,7 @@ class TTestRelated(TTest):
         self.c0_mean = y0.mean()
         self.difference = y1 - y0
         t = stats.t_1samp(self.difference.x[:, None])[0]
-        TTest.__init__(self, t, n - 1, tail)
+        TTest.__init__(self, self.difference.x.mean(), t, n - 1, tail)
         self._match = dataobj_repr(match, True)
 
     def __repr__(self):
@@ -890,7 +900,7 @@ class TTestRelated(TTest):
             desc = f"{self._c1} {cmp} {self._c0}"
         else:
             desc = f"{self._y} ~ {self._x}, {self._c1} {cmp} {self._c0}"
-        return f"<TTestRelated: {desc}; {self._asfmtext()}>"
+        return f"<{self.__class__.__name__}: {desc}; {self._asfmtext(difference=True)}>"
 
 
 class WilcoxonSignedRank:
