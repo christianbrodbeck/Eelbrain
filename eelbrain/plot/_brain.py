@@ -1047,6 +1047,11 @@ class SPLayer(Enum):
     OVERLAY = 3  # static overlay applying to all items/the whole sequence
 
 
+class SPPlotType(Enum):
+    DATA = 1
+    LABEL = 2
+
+
 class SequencePlotterLayer:
 
     def __init__(
@@ -1057,6 +1062,7 @@ class SequencePlotterLayer:
             kwargs: dict,
             label: Sequence[str] = None,
             index: int = None,  # when adding multiple items, index of the item
+            plot_type: SPPlotType = SPPlotType.DATA
     ):
         if label is not None:
             if kind == SPLayer.SEQUENCE:
@@ -1075,9 +1081,13 @@ class SequencePlotterLayer:
         self.kwargs = kwargs
         self.label = label
         self.index = index
+        self.plot_type = plot_type
 
     def plot(self, brain):
-        brain.add_ndvar(self.ndvar, *self.args, time_label='', **self.kwargs)
+        if self.plot_type == SPPlotType.DATA:
+            brain.add_ndvar(self.ndvar, *self.args, time_label='', **self.kwargs)
+        elif self.plot_type == SPPlotType.LABEL:
+            brain.add_ndvar_label(self.ndvar, *self.args, **self.kwargs)
 
 
 class SequencePlotter:
@@ -1136,6 +1146,7 @@ class SequencePlotter:
         indices = [l.index for l in self._data if l.index is not None]
         if indices:
             return max(indices) + 1
+        self._bin_kind = SPLayer.ITEM
         return 0
 
     def set_brain_args(self, surf='inflated', foreground=None, background=None,
@@ -1228,6 +1239,19 @@ class SequencePlotter:
 
             layer = SequencePlotterLayer(SPLayer.SEQUENCE, ndvar, args, kwargs, label)
 
+        self._data.append(layer)
+
+    def add_ndvar_label(self, ndvar, color=(1, 0, 0), borders=False, name=None, alpha=None, lighting=False, overlay=False, label=None):
+        "See :meth:`~plot._brain_object.Brain.add_ndvar_label`"
+        self._check_source(ndvar.get_dim('source'))
+        args = (color, borders, name, alpha, lighting)
+        if overlay:
+            index = None
+            kind = SPLayer.OVERLAY
+        else:
+            index = self._n_items()
+            kind = SPLayer.ITEM
+        layer = SequencePlotterLayer(kind, ndvar, args, {}, label, index, SPPlotType.LABEL)
         self._data.append(layer)
 
     def add_pmap(self, res: NDTest, label=None):
@@ -1413,7 +1437,7 @@ class SequencePlotter:
                     for l in self._data:
                         if l.kind == SPLayer.OVERLAY or l.index == i:
                             l.plot(b)
-                            if cmap_params is None and l.kind == SPLayer.ITEM:
+                            if cmap_params is None and l.plot_type == SPPlotType.DATA and l.kind == SPLayer.ITEM:
                                 cmap_params = b._get_cmap_params()
                                 cmap_data = l.ndvar
                     self._capture(b, hemi_rows, views, mode, antialiased)
