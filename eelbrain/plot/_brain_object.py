@@ -170,6 +170,7 @@ class Brain(TimeSlicer, surfer.Brain):
         self.__labels = OrderedDict()  # {name: color}
         self.__time_index = 0
         self.__source_space = source_space
+        self.hemi = hemi
 
         if isinstance(views, str):
             views = [views]

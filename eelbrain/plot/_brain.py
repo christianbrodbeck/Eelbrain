@@ -1050,6 +1050,7 @@ class SPLayer(Enum):
 class SPPlotType(Enum):
     DATA = 1
     LABEL = 2
+    FUNC = 3
 
 
 class SequencePlotterLayer:
@@ -1088,6 +1089,9 @@ class SequencePlotterLayer:
             brain.add_ndvar(self.ndvar, *self.args, time_label='', **self.kwargs)
         elif self.plot_type == SPPlotType.LABEL:
             brain.add_ndvar_label(self.ndvar, *self.args, **self.kwargs)
+        elif self.plot_type == SPPlotType.FUNC:
+            func = self.args[0]
+            func(brain)
 
 
 class SequencePlotter:
@@ -1167,6 +1171,18 @@ class SequencePlotter:
             self._parallel_view['up'] = up
         if scale is not None:
             self._parallel_view['scale'] = scale
+
+    def add_function(self, func, label=None, overlay=False):
+        """func(brain)"""
+        args = (func,)
+        if overlay:
+            index = None
+            kind = SPLayer.OVERLAY
+        else:
+            index = self._n_items()
+            kind = SPLayer.ITEM
+        layer = SequencePlotterLayer(kind, None, args, {}, label, index, SPPlotType.FUNC)
+        self._data.append(layer)
 
     def add_ndvar(self, ndvar, *args, static=None, index=None, label=None, **kwargs):
         """Add a data layer to the brain plot
@@ -1368,7 +1384,7 @@ class SequencePlotter:
         # determine hemisphere(s) to plot
         if hemi is None:
             hemis = []
-            sss = [data.ndvar.source for data in self._data]
+            sss = [data.ndvar.source for data in self._data if data.ndvar is not None]
             if any(ss.lh_n for ss in sss):
                 hemis.append('lh')
             if any(ss.rh_n for ss in sss):
