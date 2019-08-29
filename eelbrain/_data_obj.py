@@ -8083,13 +8083,24 @@ class Scalar(Dimension):
                 fmt = FormatStrFormatter(self.tick_format)
             else:
                 fmt = None
-        elif self.tick_format:
-            fmt = IndexFormatter([self.tick_format % v for v in self.values])
+            locator = None
         else:
-            fmt = IndexFormatter(self.values)
-        return (fmt,
-                None if scalar else FixedLocator(np.arange(len(self)), 10),
-                self._axis_label(label))
+            # categories (im-plot)
+            #  - for small number of values, label bins at their center
+            #  - for large number of values, make sure endpoints are included
+            if len(self.values) < 10:
+                values = self.values
+                locations = np.arange(len(self))
+            else:
+                locations = np.arange(-0.5, len(self), 0.5)
+                values = np.interp(locations, np.arange(len(self)), self.values)
+
+            if self.tick_format:
+                fmt = IndexFormatter([self.tick_format % v for v in values])
+            else:
+                fmt = IndexFormatter(list(values))
+            locator = FixedLocator(locations, 10)
+        return fmt, locator, self._axis_label(label)
 
     def _bin(
             self,
