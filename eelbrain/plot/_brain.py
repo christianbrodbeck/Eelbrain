@@ -1476,6 +1476,13 @@ class SequencePlotter:
         return figure
 
     def _capture(self, b, hemi_rows, views, mode, antialiased):
+        # Alternative saving image files
+        # import os
+        # import tempfile
+        # import PIL.Image
+        # from mayavi import mlab
+        # with tempfile.TemporaryDirectory() as tempdir:
+        # path = os.path.join(tempdir, 'brain.tiff')
         for row, view in zip(hemi_rows, views):
             if isinstance(view, str):
                 b.show_view(view)
@@ -1484,7 +1491,11 @@ class SequencePlotter:
             else:
                 b.show_view(view[0])
                 b.set_parallel_view(*view[1:])
-            row.append(b.screenshot_single(mode, antialiased))
+            # mlab.savefig(path, figure=b.brain_matrix[-1, -1]._f)
+            # image = PIL.Image.open(path)
+            # im = np.array(image)
+            im = b.screenshot_single(mode, antialiased)
+            row.append(im)
 
 
 def connectivity(source):
