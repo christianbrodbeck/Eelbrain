@@ -6316,7 +6316,6 @@ class Dataset(dict):
             else:
                 summary = ''
             out.cell(summary)
-        out.rules
         name = 'Dataset' if self.name is None else self.name
         out.caption(f"{name}: {self.n_cases} cases")
         return out
@@ -6486,18 +6485,16 @@ class Interaction(_Effect):
             elif isinstance(b, NestedEffect):
                 base_.append(b)
             else:
-                raise TypeError("Invalid type for Interaction: %r" % type(b))
+                raise TypeError(f"{b}: Invalid type for Interaction")
 
         if n_vars > 1:
             raise TypeError("No Interaction between two Var objects")
 
         if len(base_) < 2:
-            raise ValueError("Interaction needs a base of at least two Factors "
-                             "(got %s)" % repr(base))
-        N = len(base_[0])
-        if not all(len(f) == N for f in base_[1:]):
-            raise ValueError("Interactions only between effects with the same "
-                             "number of cases")
+            raise ValueError(f"{base}: Interaction needs a base of at least two Factors")
+        n = len(base_[0])
+        if not all(len(f) == n for f in base_[1:]):
+            raise ValueError(f"{base}: different number of cases")
         self.__setstate__({'base': base_, 'is_categorial': not bool(n_vars)})
 
     def __setstate__(self, state):
