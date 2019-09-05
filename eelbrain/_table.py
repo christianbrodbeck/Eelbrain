@@ -1,6 +1,7 @@
 """Create tables from data-objects"""
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import re
+from warnings import warn
 
 import numpy as np
 
@@ -12,7 +13,7 @@ from ._data_obj import (
     cellname, combine, isuv)
 
 
-def difference(y, x, c1, c0, match, by=None, sub=None, ds=None):
+def difference(y, x, c1, c0, match, sub=None, ds=None, by=None):
     """Subtract data in one cell from another
 
     Parameters
@@ -27,9 +28,8 @@ def difference(y, x, c1, c0, match, by=None, sub=None, ds=None):
         Name of the cell in ``x`` that is to be subtracted from ``c1``.
     match : categorial
         Units over which measurements were repeated. ``c1 - c0`` will be
-        calculated separately for each level of ``match`` (e.g. ``"subject"``).
-    by : None | categorial
-        Calculate ``c1 - c0`` separately for each level in this variables.
+        calculated separately for each level of ``match`` (e.g. ``"subject"``,
+        or ``"subject % condition"``).
     sub : None | index
         Only include a subset of the data.
     ds : None | Dataset
@@ -56,7 +56,7 @@ def difference(y, x, c1, c0, match, by=None, sub=None, ds=None):
     difference waves for verbs and adjectives can be computed with::
 
         >>> diff = table.difference('eeg', 'condition', 'unexpected', 'expected',
-        ... 'subject', by='word', ds=ds)
+        ... 'subject % word', ds=ds)
 
     Given the latter, the difference of the difference waves could be computed
     with::
@@ -72,13 +72,19 @@ def difference(y, x, c1, c0, match, by=None, sub=None, ds=None):
         ct = Celltable(y, x, match, sub, ds=ds)
         if not ct.all_within:
             raise ValueError("Design is not fully balanced")
-        out.add(ct.groups[c1])
+        groups = ct.groups[c1]
+        if isinstance(groups, Interaction):
+            for x in groups.base:
+                out.add(x)
+        else:
+            out.add(groups)
         yname = y if isinstance(y, str) else ct.y.name
         out[yname] = ct.data[c1] - ct.data[c0]
         # Transfer other variables in ds that are compatible with the rm-structure
         if ds is not None:
             out.update(ct._align_ds(ds, True, out.keys(), isuv))
     else:
+        warn("The by parameter is deprecated; use match instead", DeprecationWarning)
         by = ascategorial(by, sub, ds)
         ct = Celltable(y, x % by, match, sub, ds=ds)
         if not ct.all_within:

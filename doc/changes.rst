@@ -13,6 +13,8 @@ New in 0.31
   - :func:`combine`: combining :class:`NDVar` with unequal dimensions will now raise an error; to combine them by taking the intersection of valid elements (previous behavior), use ``dim_intersection=True``
   - :meth:`Dataset.save_txt`: ``delim`` parameter renamed to ``delimiter``
   - :mod:`testnd` API:  For permutation tests, the ``samples`` parameter now defaults to 10,000 (previously 0)
+  - :func:`table.difference`:  the ``by`` parameter is deprecated, use ``match``
+    instead
 
 * :mod:`plot`:  Additional arguments for :class:`plot.Boxplot` to control plotting of outliers (``whis`` and ``label_fliers``)
 * Horizontal bar-plot: :class:`plot.BarplotHorizontal`
