@@ -1957,35 +1957,25 @@ class MneExperiment(FileTree):
             paths = {s: join(bem_dir, s + '.surf') for s in surfs}
             missing = [s for s in surfs if not exists(paths[s])]
             if missing:
-                bem_dir = self.get('bem-dir')
-                temp = join(".*", "bem", "(.*)")
                 for surf in missing[:]:
                     path = paths[surf]
                     if os.path.islink(path):
                         # try to fix broken symlinks
-                        old_target = os.readlink(path)
-                        m = re.match(temp, old_target)
-                        if m:
-                            new_target = m.group(1)
-                            if exists(join(bem_dir, new_target)):
-                                self._log.info("Fixing broken symlink for %s "
-                                               "%s surface file", subject, surf)
-                                os.unlink(path)
-                                os.symlink(new_target, path)
-                                missing.remove(surf)
-                        #         continue
-                        # self._log.info("Deleting broken symlink " + path)
-                        # os.unlink(path)
+                        bem_dir = Path(self.get('bem-dir'))
+                        new_target = Path('watershed') / f'{subject}_{surf}_surface'
+                        if (bem_dir / new_target).exists():
+                            self._log.info("Fixing broken symlink for %s %s surface file", subject, surf)
+                            os.unlink(path)
+                            os.symlink(new_target, path)
+                            missing.remove(surf)
+                        else:
+                            self._log.error("%s missing for %s", new_target, subject)
                 if missing:
-                    self._log.info("%s %s missing for %s. Running "
-                                   "mne.make_watershed_bem()...",
-                                   enumeration(missing).capitalize(),
-                                   plural('surface', len(missing)), subject)
+                    self._log.info("%s %s missing for %s. Running mne.make_watershed_bem()...", enumeration(missing).capitalize(), plural('surface', len(missing)), subject)
                     # re-run watershed_bem
                     # mne-python expects the environment variable
                     os.environ['FREESURFER_HOME'] = subp.get_fs_home()
-                    mne.bem.make_watershed_bem(subject, self.get('mri-sdir'),
-                                               overwrite=True)
+                    mne.bem.make_watershed_bem(subject, self.get('mri-sdir'), overwrite=True)
 
             return mne.make_bem_model(subject, conductivity=(0.3,),
                                       subjects_dir=self.get('mri-sdir'))
