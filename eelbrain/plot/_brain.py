@@ -1136,8 +1136,21 @@ class SequencePlotter:
         elif self._frame_dim is False:
             raise RuntimeError("Only applies to SequencePlotters with 2d NDVars")
 
-    def _check_source(self, source):
-        if self._source is None:
+    def set_brain(self, source):
+        """Set the brain model on which to plot
+
+        This is usually handled automatically, and only needs to be invoked
+        directly for plots not otherwise involving an :class:`NDVar` with a
+        :class:`SourceSpace` dimension.
+
+        Parameters
+        ----------
+        source : SourceSpace
+            Brain model on which to plot.
+        """
+        if not isinstance(source, SourceSpace):
+            raise TypeError(f"{source!r}")
+        elif self._source is None:
             self._source = source
         elif source.subject != self._source.subject:
             raise ValueError(f"NDVar has different subject ({source.subject}) than previously added data ({self._source.subject})")
@@ -1209,7 +1222,7 @@ class SequencePlotter:
             Label when adding multiple separate NDVars. Labels for bins when
             adding ``ndvar`` with multiple bins.
         """
-        self._check_source(ndvar.get_dim('source'))
+        self.set_brain(ndvar.get_dim('source'))
 
         # find row/column dimension
         if ndvar.ndim == 1:
@@ -1259,7 +1272,7 @@ class SequencePlotter:
 
     def add_ndvar_label(self, ndvar, color=(1, 0, 0), borders=False, name=None, alpha=None, lighting=False, overlay=False, label=None):
         "See :meth:`~plot._brain_object.Brain.add_ndvar_label`"
-        self._check_source(ndvar.get_dim('source'))
+        self.set_brain(ndvar.get_dim('source'))
         args = (color, borders, name, alpha, lighting)
         if overlay:
             index = None
@@ -1376,6 +1389,8 @@ class SequencePlotter:
             'wspace': 0.1,  # width of the space between images
         }
         """
+        if self._source is None:
+            raise RuntimeError("No brain model specified for plotting; use .set_brain()")
         if column_header is not None:
             labels = column_header
             warn(f"column_header={column_header!r}: this parameter is deprecated and will be removed after Eelbrain 0.31; use the labels parameter instead ")
