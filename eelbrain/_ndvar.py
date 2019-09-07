@@ -222,7 +222,12 @@ def convolve(h, x, ds=None, name=None):
     a = Alignement(h, x, 'time')
     # check alignment
     shared_dims = x.get_dims(a.shared[:-1])
-    assert shared_dims == h.get_dims(a.shared[:-1])
+    if shared_dims != h.get_dims(a.shared[:-1]):
+        msg = "Incompatible dimensions"
+        for dim1, dim2 in zip(shared_dims, h.get_dims(a.shared[:-1])):
+            if dim1 != dim2:
+                msg += f"\nh: {dim1}\nx: {dim2}"
+        raise DimensionMismatchError(msg)
     # output shape
     x_only_shape = tuple(len(d) for d in x.get_dims(a.x_only))
     h_only_shape = tuple(len(d) for d in h.get_dims(a.y_only))
