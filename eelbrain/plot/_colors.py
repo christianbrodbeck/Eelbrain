@@ -33,7 +33,7 @@ class ColorGrid(EelFigure):
     size
         Size (width and height) of the color squares (the default is to
         scale them to fit the font size).
-    column_label_position : 'top' | 'bottom'
+    column_label_position : 'top' | 'bottom' | 'none'
         Where to place the column labels (default is 'top').
     row_first
         Whether the row cell precedes the column cell in color keys. By
@@ -76,18 +76,31 @@ class ColorGrid(EelFigure):
             else:
                 raise KeyError(f"Neither {(row_cell_0, col_cell_0)} nor {(col_cell_0, row_cell_0)} exist as a key in colors")
 
+        # reverse rows so we can plot upwards
+        row_cells = tuple(reversed(row_cells))
+        n_rows = len(row_cells)
+        n_cols = len(column_cells)
+
+        # prepare labels
+        if labels:
+            column_labels = [labels.get(c, c) for c in column_cells]
+            row_labels = [labels.get(c, c) for c in row_cells]
+        else:
+            column_labels = column_cells
+            row_labels = row_cells
+
+        chr_size = mpl.rcParams['font.size'] * POINT_SIZE
         if size is None:
-            size = mpl.rcParams['font.size'] * LEGEND_SIZE * POINT_SIZE
-        layout = Layout(0, 1, 3, tight=False, **kwargs)
+            size = chr_size * LEGEND_SIZE
+        axh_default = size * n_rows
+        if column_label_position != 'none':
+            axh_default += chr_size * max(len(l) for l in column_labels)
+        aspect = (size * (n_cols + 1) + chr_size * max(len(l) for l in row_labels)) / axh_default
+        layout = Layout(0, aspect, axh_default, tight=False, **kwargs)
         EelFigure.__init__(self, None, layout)
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
         ax.set_axis_off()
         self._ax = ax
-
-        # reverse rows so we can plot upwards
-        row_cells.reverse()
-        n_rows = len(row_cells)
-        n_cols = len(column_cells)
 
         # color patches
         for col in range(n_cols):
@@ -98,8 +111,7 @@ class ColorGrid(EelFigure):
                     cell = (column_cells[col], row_cells[row])
 
                 if shape == 'box':
-                    patch = mpl.patches.Rectangle((col, row), 1, 1, fc=colors[cell],
-                                                  ec='none')
+                    patch = mpl.patches.Rectangle((col, row), 1, 1, fc=colors[cell], ec='none')
                     ax.add_patch(patch)
                 elif shape == 'line':
                     y = row + 0.5
@@ -107,35 +119,31 @@ class ColorGrid(EelFigure):
                 else:
                     raise ValueError("shape=%r" % (shape,))
 
-        # prepare labels
-        if labels:
-            column_labels = [labels.get(c, c) for c in column_cells]
-            row_labels = [labels.get(c, c) for c in row_cells]
-        else:
-            column_labels = column_cells
-            row_labels = row_cells
-
         # column labels
-        tilt_labels = any(len(label) > 1 for label in column_labels)
         self.column_labels = []
-        if column_label_position == 'top':
-            y = n_rows + 0.1
-            va = 'bottom'
-            rotation = 40 if tilt_labels else 0
+        if column_label_position == 'none':
             ymin = 0
             ymax = self._layout.h / size
-        elif column_label_position == 'bottom':
-            y = -0.1
-            va = 'top'
-            rotation = -40 if tilt_labels else 0
-            ymax = n_rows
-            ymin = n_rows - self._layout.h / size
         else:
-            raise ValueError(f"column_label_position={column_label_position!r}")
+            tilt_labels = any(len(label) > 1 for label in column_labels)
+            if column_label_position == 'top':
+                y = n_rows + 0.1
+                va = 'bottom'
+                rotation = 40 if tilt_labels else 0
+                ymin = 0
+                ymax = self._layout.h / size
+            elif column_label_position == 'bottom':
+                y = -0.1
+                va = 'top'
+                rotation = -40 if tilt_labels else 0
+                ymax = n_rows
+                ymin = n_rows - self._layout.h / size
+            else:
+                raise ValueError(f"column_label_position={column_label_position!r}")
 
-        for col, label in enumerate(column_labels):
-            h = ax.text(col + 0.5, y, label, va=va, ha='left' if tilt_labels else 'center', rotation=rotation)
-            self.column_labels.append(h)
+            for col, label in enumerate(column_labels):
+                h = ax.text(col + 0.5, y, label, va=va, ha='left' if tilt_labels else 'center', rotation=rotation)
+                self.column_labels.append(h)
 
         # row labels
         x = n_cols + 0.1
