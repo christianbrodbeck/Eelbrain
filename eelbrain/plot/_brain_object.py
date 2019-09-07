@@ -710,12 +710,12 @@ class Brain(TimeSlicer, surfer.Brain):
     def _has_labels(self):
         return bool(self.__labels)
 
-    def _enable_selecting_vertex(self, color='red'):
-        """Find source space vertex numbers by clicking on the brain
+    def enable_vertex_selection(self, color='red'):
+        """Find source space vertice by right-clicking on the brain
 
         After enabling this functionality, each right-click on the brain will
-        cause the vertex number of the closest source space vertex to be printed
-        in the terminal.
+        mark the closest vertex and the vertex number will be printed in the
+        terminal.
 
         Parameters
         ----------
@@ -728,7 +728,7 @@ class Brain(TimeSlicer, surfer.Brain):
 
             ss = SourceSpace.from_file('directory/mri_subjects', 'fsaverage', 'ico-4')
             brain = plot.brain.brain(ss)
-            brain._enable_selecting_vertex()
+            brain.enable_vertex_selection()
 
         """
         if self.__source_space is None:
