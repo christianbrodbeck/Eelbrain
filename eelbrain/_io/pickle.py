@@ -107,7 +107,10 @@ def unpickle(path: Path = None):
 
     with open(path, 'rb') as fid:
         unpickler = EelUnpickler(fid, encoding='latin1')
-        return unpickler.load()
+        try:
+            return unpickler.load()
+        except EOFError:
+            raise EOFError(f"Corrupted file, writing may have been interrupted: {path}")
 
 
 def update_subjects_dir(obj, subjects_dir, depth=0):
