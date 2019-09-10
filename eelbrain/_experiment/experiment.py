@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 from .. import fmtxt
 from .._config import CONFIG
-from .._text import enumeration, n_of
+from .._text import enumeration, n_of, plural
 from .._utils import as_sequence, LazyProperty, ask
 from .._utils.com import Notifier, NotNotifier
 from .definitions import check_names, compound
@@ -1446,7 +1446,7 @@ class FileTree(TreeModel):
                 safe_root = self.get(self._safe_delete)
                 n_unsafe = len(files) - sum(path.startswith(safe_root) for path in files)
                 if n_unsafe:
-                    info += f"\n!\n! {enumeration(n_unsafe, 'item')} outside of {self._safe_delete}\n!"
+                    info += f"\n!\n! {plural('item', n_unsafe)} outside of {self._safe_delete}\n!"
 
                 if ask(info, options, allow_empty=True) != 'yes':
                     print('aborting...')
