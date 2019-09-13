@@ -1972,7 +1972,7 @@ class MneExperiment(FileTree):
             return mne.read_bem_surfaces(self.get('bem-file'))
         else:
             bem_dir = self.get('bem-dir')
-            surfs = ('inner_skull', 'outer_skull', 'outer_skin')
+            surfs = ('brain', 'inner_skull', 'outer_skull', 'outer_skin')
             paths = {s: join(bem_dir, s + '.surf') for s in surfs}
             missing = [s for s in surfs if not exists(paths[s])]
             if missing:
