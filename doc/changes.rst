@@ -19,6 +19,7 @@ New in 0.31
 * :mod:`plot`:  Additional arguments for :class:`plot.Boxplot` to control plotting of outliers (``whis`` and ``label_fliers``)
 * Horizontal bar-plot: :class:`plot.BarplotHorizontal`
 * Non-parametric univariate tests :class:`test.MannWhitneyU` and :class:`test.WilcoxonSignedRank`
+* :func:`plot.two_step_colormap`
 * .. currentmodule:: eelbrain.pipeline
   :class:`MneExperiment` pipeline:
 

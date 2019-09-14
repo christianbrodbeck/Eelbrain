@@ -1,6 +1,8 @@
 """Plotting for data-objects"""
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 
+from .._colorspaces import two_step_colormap
+
 from ._base import reset_rc
 from ._colors import (
     ColorBar, ColorGrid, ColorList,

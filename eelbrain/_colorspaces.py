@@ -13,16 +13,22 @@ from colormath.color_objects import LCHabColor, sRGBColor
 from colormath.color_conversions import convert_color
 from matplotlib.colors import ListedColormap
 from matplotlib.cm import register_cmap
-from matplotlib.colors import LinearSegmentedColormap, Normalize
+from matplotlib.colors import LinearSegmentedColormap, Normalize, to_rgb, to_rgba
 import numpy as np
 
 
-class LocatedListedColormap(ListedColormap):
+class LocatedColormap:
+    vmin = None
+    vmax = None
+    symmetric = False
 
-    def __init__(self, colors, name='from_list', N=None, vmin=None, vmax=None):
-        ListedColormap.__init__(self, colors, name, N)
-        self.vmin = vmin
-        self.vmax = vmax
+
+class LocatedListedColormap(ListedColormap, LocatedColormap):
+    pass
+
+
+class LocatedLinearSegmentedColormap(LinearSegmentedColormap, LocatedColormap):
+    pass
 
 
 def lch_to_rgb(lightness, chroma, hue):
@@ -30,6 +36,16 @@ def lch_to_rgb(lightness, chroma, hue):
     psych = LCHabColor(lightness, chroma, hue * 360)
     rgb = convert_color(psych, sRGBColor)
     return rgb.clamped_rgb_r, rgb.clamped_rgb_g, rgb.clamped_rgb_b
+
+
+def _to_rgb(arg, alpha=False):
+    if isinstance(arg, (float, int)):
+        arg = lch_to_rgb(50, 100, arg)
+
+    if alpha:
+        return to_rgba(arg)
+    else:
+        return to_rgb(arg)
 
 
 def make_seq_cmap(seq, val, name):
@@ -207,6 +223,90 @@ def twoway_colors(n1, n2, hue_start=0.2, hue_shift=0., hues=None):
     return colors
 
 
+def two_step_colormap(left_max, left, center='transparent', right=None, right_max=None, name='two-step'):
+    """Colormap using lightness to extend range
+
+    Parameters
+    ----------
+    left_max : matplotlib color
+        Left end of the colormap.
+    left : matplotlib color
+        Left middle of the colormap.
+    center : matplotlib color | 'transparent'
+        Color for the middle value; 'transparent to make the middle transparent
+        (default).
+    right : matplotlib color
+        Right middle of the colormap (if not specified, tyhe colormap ends at
+        the location specified by ``center``).
+    right_max : matplotlib color
+        Right end of the colormap.
+    name : str
+        Name for the colormap.
+
+    Examples
+    --------
+    Standard red/blue::
+
+        >>> cmap = plot.two_step_colormap('black', 'red', 'transparent', 'blue', 'black', name='red-blue')
+        >>> plot.ColorBar(cmap, 1)
+
+    Or somewhat more adventurous::
+
+        >>> cmap = plot.two_step_colormap('black', (1, 0, 0.3), 'transparent', (0.3, 0, 1), 'black', name='red-blue-2')
+    """
+    if center == 'transparent':
+        center_ = None
+        transparent_middle = True
+    else:
+        center_ = _to_rgb(center, False)
+        transparent_middle = False
+    left_max_ = _to_rgb(left_max, transparent_middle)
+    left_ = _to_rgb(left, transparent_middle)
+    is_symmetric = right is not None
+    if is_symmetric:
+        right_ = _to_rgb(right, transparent_middle)
+        right_max_ = _to_rgb(right_max, transparent_middle)
+    else:
+        right_ = right_max_ = None
+
+    kind = (is_symmetric, transparent_middle)
+    if kind == (False, False):
+        clist = (
+            (0.0, center_),
+            (0.5, left_),
+            (1.0, left_max_),
+        )
+    elif kind == (False, True):
+        clist = (
+            (0.0, (*left_[:3], 0)),
+            (0.5, left_),
+            (1.0, left_max_),
+        )
+    elif kind == (True, False):
+        clist = (
+            (0.0, left_max_),
+            (0.25, left_),
+            (0.5, center_),
+            (0.75, right_),
+            (1.0, right_max_),
+        )
+    elif kind == (True, True):
+        clist = (
+            (0.0, left_max_),
+            (0.25, left_),
+            (0.5, (*left_[:3], 0)),
+            (0.5, (*right_[:3], 0)),
+            (0.75, right_),
+            (1.0, right_max_),
+        )
+    else:
+        raise RuntimeError
+    cmap = LocatedLinearSegmentedColormap.from_list(name, clist)
+    cmap.set_bad('w', alpha=0.)
+    cmap.symmetric = is_symmetric
+    return cmap
+
+
 def make_cmaps():
     """Create some custom colormaps and register them with matplotlib"""
     # polar:  blue-white-red
@@ -287,8 +387,10 @@ symmetric_cmaps.extend(mpl_diverging)
 symmetric_cmaps.extend(f'{name}_r' for name in mpl_diverging)
 zerobased_cmaps = ('sig',)
 # corresponding cmaps with transparency (alpha channel)
-ALPHA_CMAPS = {'xpolar': 'xpolar-a',
-               'RdBu_r': 'xpolar-a'}
+ALPHA_CMAPS = {
+    'xpolar': 'xpolar-a',
+    'RdBu_r': 'xpolar-a',
+}
 
 
 class SymmetricNormalize(Normalize):

@@ -42,6 +42,15 @@ def test_generate_colors():
         plot.colors_for_categorial("A%B")
 
 
+def test_generate_colormaps():
+    cmap = plot.two_step_colormap('black', 'red', name='oneside')
+    assert not cmap.symmetric
+    cmap = plot.two_step_colormap('black', 'red', 'transparent', 'blue', 'black', name='red-blue')
+    assert cmap.symmetric
+    cmap = plot.two_step_colormap('black', (1, 0, 0.3), 'transparent', (0.3, 0, 1), 'black', name='red-blue-2')
+    assert cmap.symmetric
+
+
 @hide_plots
 def test_plot_colorbar():
     "Test plot.ColorBar()"

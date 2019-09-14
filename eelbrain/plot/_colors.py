@@ -40,20 +40,17 @@ def find_cell_colors(x, colors):
     if isinstance(colors, (list, tuple)):
         cells = x.cells
         if len(colors) < len(cells):
-            err = ("The `colors` argument %s does not supply enough "
-                   "colors (%i) for %i "
-                   "cells." % (str(colors), len(colors), len(cells)))
-            raise ValueError(err)
+            raise ValueError(f"colors={colors!r}: only {len(colors)} colors for {len(cells)} cells.")
         return dict(zip(cells, colors))
     elif isinstance(colors, dict):
         for cell in x.cells:
             if cell not in colors:
-                raise KeyError("%s not in colors" % repr(cell))
+                raise KeyError(f"{cell!r} not in colors")
         return colors
     elif colors is None:
         return colors_for_categorial(x, cmap=colors)
     else:
-        raise TypeError("Invalid type: colors=%s" % repr(colors))
+        raise TypeError(f"colors={colors!r}")
 
 
 def colors_for_categorial(x, hue_start=0.2, cmap=None):
@@ -277,8 +274,11 @@ def soft_threshold_colormap(cmap, threshold, vmax, subthreshold=None, symmetric=
     else:
         out_colors[:-cmap.N] = subthreshold_color
         out_colors[-cmap.N:] = colors
-    vmin = -vmax if symmetric else 0
-    return LocatedListedColormap(out_colors, cmap.name, vmax=vmax, vmin=vmin)
+    out = LocatedListedColormap(out_colors, cmap.name)
+    out.vmax = vmax
+    out.vmin = -vmax if symmetric else 0
+    out.symmetric = symmetric
+    return out
 
 
 class ColorGrid(EelFigure):
