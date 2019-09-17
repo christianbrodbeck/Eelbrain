@@ -258,6 +258,10 @@ class RevCorrData:
         hs = (res.h_source,) if isinstance(res.h_source, NDVar) else res.h_source
         n_y = self.y.shape[0]
         n_x = self.x.shape[0]
+        # check that names are unique
+        x_names = [name for name, *_ in self._x_meta]
+        if len(set(x_names)) != len(x_names):
+            raise ValueError(f"prefit={res}: prefit requires that all predictors have unique names; x has names {x_names}")
         # check that prefit matches y dims
         h0 = hs[0]
         index = {}
