@@ -559,7 +559,7 @@ class RawICA(CachedRawPipe):
             raw.append(raw_)
         return raw
 
-    def make_ica(self, subject, visit):
+    def make_ica(self, subject, visit, make=True):
         path = self._ica_path(subject, visit)
         recordings = [compound((session, visit)) for session in self.session]
         raw = self.source.load(subject, recordings[0], False)
@@ -574,13 +574,16 @@ class RawICA(CachedRawPipe):
                 if all(mtimes) and getmtime(path) > max(mtimes):
                     return path
                 # ICA file is newer than raw
-                command = ask(f"The input for the ICA of {subject} seems to have changed since the ICA was generated.", [('delete', 'delete and recompute the ICA'), ('ignore', 'Keep using the old ICA')], help="This message indicates that the modification date of the raw input data or of the bad channels file is more recent than that of the ICA file. If the data actually changed, ICA components might not be valid anymore and should be recomputed. If the change is spurious (e.g., the raw file was modified in a way that does not affect the ICA) load and resave the ICA file to stop seeing this message.")
+                command = ask(f"The input for the ICA of {subject} seems to have changed since the ICA was generated.", {'delete': 'delete and recompute the ICA', 'ignore': 'Keep using the old ICA'}, help="This message indicates that the modification date of the raw input data or of the bad channels file is more recent than that of the ICA file. If the data actually changed, ICA components might not be valid anymore and should be recomputed. If the change is spurious (e.g., the raw file was modified in a way that does not affect the ICA) load and resave the ICA file to stop seeing this message.")
                 if command == 'ignore':
                     return path
                 elif command == 'delete':
                     remove(path)
                 else:
                     raise RuntimeError(f"command={command!r}")
+
+        if not make:
+            raise FileMissing(path)
 
         for session in self.session[1:]:
             recording = compound((session, visit))

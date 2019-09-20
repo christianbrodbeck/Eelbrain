@@ -2926,17 +2926,23 @@ class MneExperiment(FileTree):
                 mne.convert_forward_solution(fwd, surf_ori, copy=False)
             return fwd
 
-    def load_ica(self, **state):
+    def load_ica(self, make=True, **state):
         """Load the mne-python ICA object
+
+        Parameters
+        ----------
+        make : bool
+            If the file does not exist, compute it (default). Set ``make=False``
+            to raise a FileMissing error.
+        ...
+            State parameters.
 
         Returns
         -------
         ica : mne.preprocessing.ICA
             ICA object for the current raw/rej setting.
-        ...
-            State parameters.
         """
-        path = self.make_ica(**state)
+        path = self.make_ica(make, **state)
         return mne.preprocessing.read_ica(path)
 
     def load_inv(self, fiff=None, ndvar=False, mask=None, **state):
@@ -4119,7 +4125,7 @@ class MneExperiment(FileTree):
         connectivity = pipe.get_connectivity(data_kind)
         gui.select_components(path, ds, sysname, connectivity)
 
-    def make_ica(self, **state):
+    def make_ica(self, make=True, **state):
         """Compute ICA decomposition for a :class:`pipeline.RawICA` preprocessing step
 
         If a corresponding file exists, a basic check is done as to whether the
@@ -4127,6 +4133,9 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
+        make : bool
+            If the file does not exist, compute it (default). Set ``make=False``
+            to raise a FileMissing error.
         ...
             State parameters.
 
@@ -4157,7 +4166,7 @@ class MneExperiment(FileTree):
                 return self.make_ica(raw=ica_raws[0])
             else:
                 raise RuntimeError("Experiment has no RawICA processing step")
-        return pipe.make_ica(self.get('subject'), self.get('visit'))
+        return pipe.make_ica(self.get('subject'), self.get('visit'), make)
 
     def make_link(self, temp, field, src, dst, redo=False):
         """Make a hard link
@@ -6336,11 +6345,10 @@ class MneExperiment(FileTree):
             table.midrule()
             for subject in self:
                 table.cell(subject)
-                filename = self.get('ica-file')
-                if exists(filename):
-                    ica = self.load_ica()
+                try:
+                    ica = self.load_ica(make=False)
                     table.cells(ica.n_components_, len(ica.exclude))
-                else:
+                except FileMissing:
                     table.cells("No ICA-file", '')
             print()
             print(table)
