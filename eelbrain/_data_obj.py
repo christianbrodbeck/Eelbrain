@@ -5718,7 +5718,7 @@ class Dataset(dict):
         return eval(expression, EVAL_CONTEXT, self)
 
     @classmethod
-    def from_caselist(cls, names, cases):
+    def from_caselist(cls, names, cases, name=None, caption=None, info=None):
         """Create a Dataset from a list of cases
 
         Parameters
@@ -5729,6 +5729,14 @@ class Dataset(dict):
             A sequence of cases, whereby each case is itself represented as a
             sequence of values (str or scalar). Variable type (Factor or Var)
             is inferred from whether values are str or not.
+        name : str
+            Name for the Dataset.
+        caption : str
+            Caption for the table.
+        info : dict
+            Info dictionary, can contain arbitrary entries and can be accessed
+            as ``.info`` attribute after initialization. The Dataset makes a
+            shallow copy.
         """
         if isinstance(names, Iterator):
             names = tuple(names)
@@ -5740,11 +5748,8 @@ class Dataset(dict):
         n_cases = n_cases.pop()
         if len(names) != n_cases:
             raise ValueError('names=%r: %i names but %i cases' % (names, len(names), n_cases))
-
-        ds = cls()
-        for i, name in enumerate(names):
-            ds[name] = combine(case[i] for case in cases)
-        return ds
+        items = {key: combine(case[i] for case in cases) for i, key in enumerate(names)}
+        return cls(items, name, caption, info)
 
     @classmethod
     def from_r(cls, name):
