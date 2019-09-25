@@ -24,17 +24,20 @@ from .._utils import ui
 from ..mne_fixes import MNE_EVOKED, MNE_RAW, MNE_VOLUME_STC
 
 
-KIT_NEIGHBORS = {
-    KIT.SYSTEM_NYU_2008: 'KIT-157',
-    KIT.SYSTEM_NYU_2009: 'KIT-157',
-    KIT.SYSTEM_NYU_2010: 'KIT-157',
-    KIT.SYSTEM_NYUAD_2011: 'KIT-208',
-    KIT.SYSTEM_NYUAD_2012: 'KIT-208',
-    KIT.SYSTEM_NYUAD_2014: 'KIT-208',
-    KIT.SYSTEM_UMD_2004: 'KIT-UMD-1',
-    KIT.SYSTEM_UMD_2014_07: 'KIT-UMD-2',
-    KIT.SYSTEM_UMD_2014_12: 'KIT-UMD-3',
-}
+try:  # mne >= 0.19
+    from mne.io.kit.constants import KIT_NEIGHBORS
+except ImportError:
+    KIT_NEIGHBORS = {
+        KIT.SYSTEM_NYU_2008: 'KIT-157',
+        KIT.SYSTEM_NYU_2009: 'KIT-157',
+        KIT.SYSTEM_NYU_2010: 'KIT-157',
+        KIT.SYSTEM_NYUAD_2011: 'KIT-208',
+        KIT.SYSTEM_NYUAD_2012: 'KIT-208',
+        KIT.SYSTEM_NYUAD_2014: 'KIT-208',
+        KIT.SYSTEM_UMD_2004: 'KIT-UMD-1',
+        KIT.SYSTEM_UMD_2014_07: 'KIT-UMD-2',
+        KIT.SYSTEM_UMD_2014_12: 'KIT-UMD-3',
+    }
 
 
 def mne_raw(path=None, proj=False, **kwargs):

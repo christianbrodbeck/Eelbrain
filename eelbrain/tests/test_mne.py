@@ -330,7 +330,7 @@ def test_source_ndvar():
 @requires_mne_sample_data
 def test_vec_source():
     "Test vector source space"
-    ds = datasets.get_mne_sample(0, 0.1, src='vol', sub="(modality=='A') & (side == 'L')", ori='vector', stc=True)
+    ds = datasets.get_mne_sample(0, 0.1, (0, 0), src='vol', sub="(modality=='A') & (side == 'L')", ori='vector', stc=True)
     # conversion: vector
     stc = ds[0, 'stc']
     stc2 = load.fiff.stc_ndvar([stc, stc], ds.info['subject'], 'vol-10', ds.info['subjects_dir'])
