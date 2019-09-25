@@ -352,14 +352,16 @@ class MneExperiment(FileTree):
     # =========
     # eog_sns: The sensors to plot separately in the rejection GUI. The default
     # is the two MEG sensors closest to the eyes.
-    _eog_sns = {None: (),
-                'KIT-157': ('MEG 143', 'MEG 151'),
-                'KIT-208': ('MEG 087', 'MEG 130'),
-                'KIT-UMD-1': ('MEG 042', 'MEG 025'),
-                'KIT-UMD-2': ('MEG 042', 'MEG 025'),
-                'KIT-UMD-3': ('MEG 042', 'MEG 025'),
-                'KIT-BRAINVISION': ('HEOGL', 'HEOGR', 'VEOGb'),
-                'neuromag306mag': ('MEG 0121', 'MEG 1411')}
+    _eog_sns = {
+        'KIT-157': ('MEG 143', 'MEG 151'),
+        'KIT-NYU-2019': ('MEG 014', 'MEG 146'),
+        'KIT-208': ('MEG 087', 'MEG 130'),
+        'KIT-UMD-1': ('MEG 042', 'MEG 025'),
+        'KIT-UMD-2': ('MEG 042', 'MEG 025'),
+        'KIT-UMD-3': ('MEG 042', 'MEG 025'),
+        'KIT-BRAINVISION': ('HEOGL', 'HEOGR', 'VEOGb'),
+        'neuromag306mag': ('MEG 0121', 'MEG 1411'),
+    }
     #
     # artifact_rejection dict:
     #
@@ -4504,7 +4506,6 @@ class MneExperiment(FileTree):
         has_meg = 'meg' in ds
         has_grad = 'grad' in ds
         has_eeg = 'eeg' in ds
-        has_eog = 'eog' in ds
         if sum((has_meg, has_grad, has_eeg)) > 1:
             raise NotImplementedError("Rejection GUI for multiple channel types")
         elif has_meg:
@@ -4517,11 +4518,6 @@ class MneExperiment(FileTree):
             vlim = 1.5e-4
         else:
             raise RuntimeError("No data found")
-
-        if has_eog:
-            eog_sns = []  # TODO:  use EOG
-        else:
-            eog_sns = self._eog_sns.get(ds[y_name].sensor.sysname)
 
         if auto is not None:
             # create rejection
@@ -4541,6 +4537,7 @@ class MneExperiment(FileTree):
             print(self.format(f"{n_rej} of {rej_ds.n_cases} epochs rejected with threshold {auto} for {{subject}}, epoch {{epoch}}"))
             return
 
+        eog_sns = self._eog_sns.get(ds[y_name].sensor.sysname, ())
         # don't mark eog sns if it is bad
         bad_channels = self.load_bad_channels()
         eog_sns = [c for c in eog_sns if c not in bad_channels]
