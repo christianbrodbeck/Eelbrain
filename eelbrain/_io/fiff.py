@@ -16,10 +16,11 @@ from mne.io.kit.constants import KIT
 from mne.minimum_norm import prepare_inverse_operator, apply_inverse_raw
 
 from .. import _info
-from .._info import BAD_CHANNELS
-from .._utils import ui
 from .._data_obj import (Var, NDVar, Dataset, Case, Sensor, Space, SourceSpace,
                          VolumeSourceSpace, UTS, _matrix_graph)
+from .._info import BAD_CHANNELS
+from .._text import n_of
+from .._utils import ui
 from ..mne_fixes import MNE_EVOKED, MNE_RAW, MNE_VOLUME_STC
 
 
@@ -34,13 +35,6 @@ KIT_NEIGHBORS = {
     KIT.SYSTEM_UMD_2014_07: 'KIT-UMD-2',
     KIT.SYSTEM_UMD_2014_12: 'KIT-UMD-3',
 }
-
-
-def _get_raw_filename(raw):
-    if 'filename' in raw.info:  # mne 0.13
-        return raw.info['filename']
-    else:  # mne 0.14
-        return raw.filenames[0]
 
 
 def mne_raw(path=None, proj=False, **kwargs):
@@ -91,7 +85,7 @@ def mne_raw(path=None, proj=False, **kwargs):
             proj = '{raw}*proj.fif'
 
         if '{raw}' in proj:
-            raw_file = _get_raw_filename(raw)
+            raw_file = raw.filenames[0]
             raw_root, _ = os.path.splitext(raw_file)
             raw_root = raw_root.rstrip('raw')
             proj = proj.format(raw=raw_root)
@@ -173,7 +167,7 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
         raw.info['bads'].extend(bads)
 
     if name is None and raw is not None:
-        raw_path = _get_raw_filename(raw)
+        raw_path = raw.filenames[0]
         if isinstance(raw_path, str):
             name = os.path.basename(raw_path)
         else:
@@ -383,7 +377,7 @@ def epochs(ds, tmin=-0.1, tmax=None, baseline=None, decim=1, mult=1, proj=False,
                          sensors=sensors, sysname=sysname)
 
     if len(epochs_) == 0:
-        raise RuntimeError("No events left in %r" % _get_raw_filename(raw))
+        raise RuntimeError(f"No events left in {raw.filenames[0]}")
     return ndvar
 
 
@@ -606,10 +600,7 @@ def mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, i_start='i_start',
     epochs = mne.Epochs(raw, events, None, tmin, tmax, baseline, picks,
                         preload=True, reject=reject, decim=decim, **kwargs)
     if reject is None and len(epochs) != len(events):
-        getLogger('eelbrain').warning(
-            "%s: MNE generated only %i Epochs for %i events. The raw file "
-            "might end before the end of the last epoch." %
-            (_get_raw_filename(raw), len(epochs), len(events)))
+        getLogger('eelbrain').warning("%s: MNE generated only %i Epochs for %i events. The raw file might end before the end of the last epoch.", raw.filenames[0], len(epochs), len(events))
 
     # recast to original events
     if epoch_index is not None:
@@ -626,9 +617,7 @@ def mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, i_start='i_start',
             elif ch_name not in epochs.info['bads']:
                 epochs.info['bads'].append(ch_name)
         if invalid:
-            suffix = 's' * bool(invalid)
-            raise ValueError("Invalid channel%s in ds.info[%r]: %s"
-                             % (suffix, BAD_CHANNELS, ', '.join(invalid)))
+            raise ValueError(f"{n_of(len(invalid), 'invalid channel')} in ds.info[{BAD_CHANNELS!r}]: {', '.join(invalid)}")
 
     return epochs
 
@@ -796,7 +785,7 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
     """
     if not isinstance(raw, MNE_RAW):
         raw = mne_raw(raw)
-    name = os.path.basename(_get_raw_filename(raw))
+    name = os.path.basename(raw.filenames[0])
     start_scalar = i_start is None or isinstance(i_start, int)
     stop_scalar = i_stop is None or isinstance(i_stop, int)
     if start_scalar or stop_scalar:
