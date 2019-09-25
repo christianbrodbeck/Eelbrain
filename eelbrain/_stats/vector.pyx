@@ -1,5 +1,5 @@
 # Author: Proloy Das <proloy@umd.edu>
-# cython: boundscheck=False, wraparound=False
+# cython: language_level=3, boundscheck=False, wraparound=False
 # distutils: language = c++
 # setuptools: include_dirs = dsyevh3C/
 """

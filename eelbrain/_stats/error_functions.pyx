@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-#cython: boundscheck=False, wraparound=False
+# cython: language_level=3, boundscheck=False, wraparound=False
 
 cimport cython
 import numpy as np
