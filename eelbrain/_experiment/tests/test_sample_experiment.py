@@ -13,7 +13,6 @@ from eelbrain import *
 from eelbrain.pipeline import *
 from eelbrain._exceptions import DefinitionError
 from eelbrain.testing import TempDir, assert_dataobj_equal, import_attr, requires_mne_sample_data
-from eelbrain.testing.pytest import slow_test
 
 
 sample_path = Path(__file__).parents[3] / 'examples/experiment'
@@ -253,7 +252,7 @@ def test_sample():
 
 
 @requires_mne_sample_data
-@slow_test
+@pytest.mark.slow
 def test_sample_source():
     set_log_level('warning', 'mne')
     SampleExperiment = import_attr(sample_path / 'sample_experiment.py', 'SampleExperiment')
