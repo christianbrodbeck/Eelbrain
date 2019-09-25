@@ -1,5 +1,6 @@
 """Some basic example datasets for testing."""
 from distutils.version import LooseVersion
+from itertools import product
 import os
 from pathlib import Path
 
@@ -9,8 +10,31 @@ import numpy as np
 
 from . import _info, load
 from ._data_obj import Dataset, Factor, Var, NDVar, Case, Scalar, Sensor, Space, UTS
-from ._design import permute
 from ._utils.numpy_utils import newaxis
+
+
+def permute(variables):
+    """Create a Dataset from permuting variables.
+
+    Parameters
+    ----------
+    variables : sequence
+        Sequence of (name, values) tuples. For examples:
+        ``(('A', ('a1', 'a2')), ('B', ('b1', 'b2')))``
+
+    Examples
+    --------
+    >>> print(permute((('A', ('a1', 'a2')),('B', ('b1', 'b2')))))
+    A    B
+    -------
+    a1   b1
+    a1   b2
+    a2   b1
+    a2   b2
+    """
+    names = (v[0] for v in variables)
+    cases = tuple(product(*(v[1] for v in variables)))
+    return Dataset.from_caselist(names, cases)
 
 
 def _apply_kernel(x, h, out=None):
