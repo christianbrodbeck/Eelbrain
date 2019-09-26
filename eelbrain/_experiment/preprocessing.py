@@ -1,6 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Pre-processing operations based on NDVars"""
-from collections import Sequence
+from collections.abc import Sequence
 from copy import deepcopy
 import fnmatch
 from os import makedirs, remove

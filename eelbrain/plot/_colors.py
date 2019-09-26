@@ -1,6 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Color tools for plotting."""
-from collections import Iterator
+from collections.abc import Iterator
 from itertools import product, chain
 from math import ceil
 import operator

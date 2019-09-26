@@ -87,7 +87,7 @@ ds['Realname'] = 1 / ds['y']
 plot.Correlation('Realname', ..., ds=ds)  # -> 'Realname'
 ```
 """
-from collections import Iterable, Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from copy import deepcopy
 from functools import partial
 from itertools import chain, product, repeat, zip_longest

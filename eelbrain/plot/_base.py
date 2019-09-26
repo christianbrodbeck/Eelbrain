@@ -59,7 +59,7 @@ functions executed are:
 """
 import __main__
 
-from collections import Iterable, Iterator
+from collections.abc import Iterable, Iterator
 from copy import copy
 from enum import Enum, auto
 from itertools import chain, repeat

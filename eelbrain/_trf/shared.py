@@ -1,4 +1,4 @@
-from collections import Iterator
+from collections.abc import Iterator
 from functools import reduce
 from math import floor
 from operator import mul

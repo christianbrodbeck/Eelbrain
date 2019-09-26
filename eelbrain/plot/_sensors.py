@@ -1,6 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Plot sensor maps."""
-from collections import Sequence
+from collections.abc import Sequence
 from math import sin, cos, asin
 import os
 

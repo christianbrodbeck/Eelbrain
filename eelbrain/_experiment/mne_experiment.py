@@ -8,7 +8,8 @@ MneExperiment.sessions = ('session',)
 e = MneExperiment('.', find_subjects=False)
 
 """
-from collections import defaultdict, Sequence
+from collections import defaultdict
+from collections.abc import Sequence
 from copy import deepcopy
 from datetime import datetime
 from glob import glob

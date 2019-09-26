@@ -1,6 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Plot topographic maps of sensor space data."""
-from collections import Sequence
+from collections.abc import Sequence
 from itertools import repeat
 from math import floor, sqrt
 from typing import Union, Tuple

@@ -1,6 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """I/O for MNE"""
-from collections import Iterable
+from collections.abc import Iterable
 import fnmatch
 from itertools import zip_longest
 from logging import getLogger
