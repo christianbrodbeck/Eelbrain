@@ -9,8 +9,6 @@ Hopkins, K. D. (1976). A Simplified Method for Determining Expected Mean
     Squares and Error Terms in the Analysis of Variance. Journal of
     Experimental Education, 45(2), 13--18.
 """
-from collections import OrderedDict
-
 import numpy as np
 from scipy.linalg import lstsq
 import scipy.stats
@@ -605,7 +603,7 @@ class IncrementalComparisons:
             raise ValueError("Model Overdetermined")
 
         self.x = x
-        self.comparisons = OrderedDict()  # {effect_i: (model1_id, model0_id)}
+        self.comparisons = {}  # {effect_i: (model1_id, model0_id)}
         self.models = {0: x}  # int -> Model
         relevant_models = set()
         model_idxs = {effect_id(x.effects): 0}  # effect tuple -> ind

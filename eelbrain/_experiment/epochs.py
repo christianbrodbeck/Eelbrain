@@ -1,5 +1,4 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from collections import OrderedDict
 from copy import deepcopy
 
 from .._exceptions import DefinitionError
@@ -9,7 +8,7 @@ from .definitions import Definition, typed_arg
 
 def assemble_epochs(epoch_def, epoch_default):
     epochs = {}
-    secondary_epochs = OrderedDict()
+    secondary_epochs = {}
     super_epochs = {}
     collections = {}
     for name, parameters in epoch_def.items():

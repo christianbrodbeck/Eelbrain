@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 from functools import reduce
 from glob import glob
 from itertools import chain, product
@@ -439,7 +439,8 @@ class TreeModel:
             else:
                 keys.extend(self.find_keys(key, root))
 
-        return list(OrderedDict.fromkeys(keys))
+        # remove duplicates
+        return list(dict.fromkeys(keys))
 
     def format(self, string, vmatch=True, **kwargs):
         """Format a string (i.e., replace any '{xxx}' fields with their values)

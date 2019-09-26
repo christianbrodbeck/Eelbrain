@@ -1,6 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """PySurfer Brain subclass to embed in Eelbrain"""
-from collections import OrderedDict
 from distutils.version import LooseVersion
 from functools import partial
 import os
@@ -139,7 +138,7 @@ class Brain(TimeSlicer, surfer.Brain):
         Width and height of the individual viewing panes.
     name : str
         Window title (alternative to ``title`` for consistency with other
-        Eelbrian figures).
+        Eelbrain figures).
     pos : tuple of int
         Position of the new window on the screen.
     show : bool
@@ -167,7 +166,7 @@ class Brain(TimeSlicer, surfer.Brain):
 
         self.__data = []
         self.__annot = None
-        self.__labels = OrderedDict()  # {name: color}
+        self.__labels = {}  # {name: color}
         self.__time_index = 0
         self.__source_space = source_space
         self.hemi = hemi
