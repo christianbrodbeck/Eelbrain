@@ -3071,10 +3071,15 @@ class NDVar:
                 x_self = x_self[tuple(crop_self)]
                 x_other = x_other[tuple(crop_other)]
             return dims, x_self, x_other
+        elif isinstance(other, np.ndarray):
+            if other.shape == self.x.shape:
+                return self.dims, self.x, other
+            else:
+                raise ValueError(f"Array has wrong shape {other.shape} for {self}")
         elif np.isscalar(other):
             return self.dims, self.x, other
         else:
-            raise TypeError("%r; need NDVar, Var or scalar")
+            raise TypeError(f"{other!r}; need NDVar, Var or scalar")
 
     def _ialign(self, other, index=None):
         """Align for self-modifying operations (+=, ...)
