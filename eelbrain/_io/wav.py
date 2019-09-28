@@ -11,7 +11,7 @@ from .._utils import ui
 FILETYPES = [("WAV files", "*.wav")]
 
 
-def load_wav(filename=None, name=None):
+def load_wav(filename=None, name=None, backend='wave'):
     """Load a wav file as NDVar
 
     Parameters
@@ -21,6 +21,9 @@ def load_wav(filename=None, name=None):
         shown to select one.
     name : str
         NDVar name (default is the file name).
+    backend : 'wave' | 'scipy'
+        Whether to read the file using the builtin :mod:`wave` module or through
+        :mod:`scipy.io.wavfile`.
 
     Returns
     -------
@@ -34,8 +37,6 @@ def load_wav(filename=None, name=None):
     -----
     Uses :mod:`scipy.io.wavfile`.
     """
-    from scipy.io import wavfile
-
     if filename is None:
         filename = ui.ask_file("Load WAV File", "Select WAV file to load as NDVar", FILETYPES)
         if not filename:
@@ -45,7 +46,23 @@ def load_wav(filename=None, name=None):
         if not ext:
             filename += '.wav'
 
-    srate, data = wavfile.read(filename)
+    if backend == 'wave':
+        import wave
+        with wave.open(filename, 'rb') as fp:
+            n_channels = fp.getnchannels()
+            n_frames = fp.getnframes()
+            n_bytes = fp.getsampwidth()
+            srate = fp.getframerate()
+            data = fp.readframes(n_frames)
+        data = np.frombuffer(data, f'<i{n_bytes}')
+        if n_channels > 1:
+            data = data.reshape((-1, n_channels))
+    elif backend == 'scipy':
+        from scipy.io import wavfile
+        srate, data = wavfile.read(filename)
+    else:
+        raise ValueError(f"backend={backend!r}")
+
     time = UTS(0, 1. / srate, data.shape[0])
     if name is None:
         name = os.path.basename(filename)
