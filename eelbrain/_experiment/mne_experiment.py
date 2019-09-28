@@ -6865,6 +6865,26 @@ class MneExperiment(FileTree):
         """
         return FileTree.show_file_status(self, temp, row, col, *args, **kwargs)
 
+    def show_neighbor_correlation(self, epoch=None, **state):
+        """List lowest channel neighbor correlations
+
+        Parameters
+        ----------
+        epoch : str
+            Epoch to use for computing neighbor-correlation (by default, the
+            whole session is used).
+        ...
+            State parameters.
+        """
+        if state:
+            self.set(**state)
+        lines = []
+        for subject in self:
+            nc = self.load_neighbor_correlation(None, epoch)
+            lines.append([subject, nc.min()])
+        ds = Dataset.from_caselist(['subject', 'nc_min'], lines)
+        print(ds)
+
     def show_raw_info(self, **state):
         "Display the selected pipeline for raw processing"
         raw = self.get('raw', **state)
