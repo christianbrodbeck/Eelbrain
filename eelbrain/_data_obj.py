@@ -3846,7 +3846,17 @@ class NDVar:
         This function can be very slow when the number of time samples is
         uneven.
         """
-        x = np.abs(scipy.signal.hilbert(self.x, axis=self.get_axis(dim)))
+        axis = self.get_axis(dim)
+        # hilbert more efficient for x^2 shape
+        n = self.shape[axis]
+        log_n = log(n, 2)
+        if log_n % 1:
+            use_n = int(round(2 ** ceil(log_n)))
+        else:
+            use_n = None
+        x = np.abs(scipy.signal.hilbert(self.x, use_n, axis=axis))
+        if use_n:
+            x = x[aslice(axis, stop=n)]
         return NDVar(x, self.dims, name or self.name, self.info)
 
     def extrema(self, dims=(), **regions):
