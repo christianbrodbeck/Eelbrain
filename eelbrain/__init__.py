@@ -33,7 +33,7 @@ from ._ndvar import (
     filter_data, find_intervals, find_peaks, frequency_response, label_operator,
     maximum, minimum,
     neighbor_correlation, psd_welch, rename_dim, resample, segment, set_parc,
-    set_tmin,
+    set_time, set_tmin,
 )
 from ._stats.testnd import NDTest, MultiEffectNDTest
 from ._trf import boosting, BoostingResult, epoch_impulse_predictor

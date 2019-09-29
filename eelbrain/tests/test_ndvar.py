@@ -8,7 +8,7 @@ from eelbrain import (
     NDVar, Case, Scalar, UTS, datasets,
     concatenate, convolve, correlation_coefficient, cross_correlation,
     cwt_morlet, find_intervals, find_peaks, frequency_response, psd_welch,
-    resample,
+    resample, set_time,
 )
 from eelbrain.testing import assert_dataobj_equal, get_ndvar
 
@@ -180,6 +180,18 @@ def test_resample():
     assert_array_equal(y.x.mask, [True, False, False, False, False, False, False, False, True, True])
     y = resample(x, 20, npad=0)
     assert_array_equal(y.x.mask, [True, False, False, False, False, False, False, False, True, True])
+
+
+def test_set_time():
+    for x in [get_ndvar(2, 100, 0), get_ndvar(2, 100, 8)]:
+        x_sub = x.sub(time=(0.000, None))
+        assert x_sub.time.tmin == 0.000
+        x_pad = set_time(x_sub, x)
+        assert x_pad.time.tmin == -0.100
+        assert x_pad.x.ravel()[0] == 0
+        x_pad = set_time(x_sub, x, mode='edge')
+        assert x_pad.time.tmin == -0.100
+        assert x_pad.x.ravel()[0] == x_sub.x.ravel()[0]
 
 
 def test_smoothing():

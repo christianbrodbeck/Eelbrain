@@ -8,10 +8,11 @@ operations that operate on more than one NDVar.
 from collections import defaultdict
 from copy import copy
 from functools import reduce
+from itertools import repeat
 from math import floor
-from numbers import Real
+from numbers import Number, Real
 import operator
-from typing import Sequence
+from typing import Any, Sequence, Union
 
 import mne
 import numpy as np
@@ -26,7 +27,7 @@ from ._info import merge_info
 from ._stats.connectivity import Connectivity
 from ._stats.connectivity import find_peaks as _find_peaks
 from ._trf._boosting_opt import l1
-from ._utils.numpy_utils import newaxis
+from ._utils.numpy_utils import aslice, newaxis
 
 
 class Alignement:
@@ -1056,7 +1057,7 @@ def set_parc(ndvar, parc, dim='source'):
 
 
 def set_tmin(ndvar, tmin=0.):
-    """Change the time axis of an :class:`NDVar`
+    """Shift the time axis of an :class:`NDVar` relative to its data
 
     Parameters
     ----------
@@ -1073,3 +1074,46 @@ def set_tmin(ndvar, tmin=0.):
     dims = list(ndvar.dims)
     dims[axis] = UTS(tmin, old.tstep, old.nsamples)
     return NDVar(ndvar.x, dims, ndvar.name, ndvar.info)
+
+
+def set_time(
+        ndvar: NDVar,
+        time: Union[NDVar, UTS],
+        mode: str = 'constant',
+        **kwargs,
+):
+    """Crop and/or pad an :class:`NDVar` to match the time axis ``time``
+
+    Parameters
+    ----------
+    ndvar : NDVar
+        Input :class:`NDVar`.
+    time : UTS | NDVar
+        New time axis, or :class:`NDVar` with time axis to match.
+    mode : str
+        How to pad ``ndvar``, see :func:`numpy.pad`.
+    **
+        See :func:`numpy.pad`.
+    """
+    if isinstance(time, NDVar):
+        time = time.get_dim('time')
+    axis = ndvar.get_axis('time')
+    ndvar_time = ndvar.get_dim('time')
+    if ndvar_time.tstep != time.tstep:
+        raise ValueError(f"time={time}: wrong samplingrate (ndvar tstep={ndvar_time.tstep})")
+    start_pad_float = (ndvar_time.tmin - time.tmin) / time.tstep
+    if 0.001 < start_pad_float % 1 < 0.999:
+        raise ValueError(f"time={time}: can't align to ndvar.time={ndvar_time}")
+    start_pad = int(round(start_pad_float))
+    end_pad = time.nsamples - (start_pad + ndvar_time.nsamples)
+    # construct index into ndvar
+    start = -start_pad if start_pad < 0 else None
+    stop = end_pad if end_pad < 0 else None
+    x = ndvar.x[aslice(axis, start, stop)]
+    if start_pad > 0 or end_pad > 0:
+        no_pad = (0, 0)
+        pad = (max(0, start_pad), max(0, end_pad))
+        pad_width = [*repeat(no_pad, axis), pad, *repeat(no_pad, ndvar.ndim-axis-1)]
+        x = np.pad(x, pad_width, mode, **kwargs)
+    dims = [*ndvar.dims[:axis], time, *ndvar.dims[axis+1:]]
+    return NDVar(x, dims, ndvar.name, ndvar.info)

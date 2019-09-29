@@ -146,6 +146,7 @@ functions. See also :class:`NDVar` methods.
    resample
    segment
    set_parc
+   set_time
    set_tmin
    xhemi
 
