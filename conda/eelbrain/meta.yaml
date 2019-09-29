@@ -40,16 +40,13 @@ requirements:
     - nibabel >=2.0, !=2.3.0
     - olefile  # [linux]
     - {{ pin_compatible('numpy') }}
-    - libblas
-    - libcblas
     - pillow
     - pysurfer >=0.8
     - nilearn
-    - scipy >=0.17
+    - scipy >=1.1
     - tqdm >=4.8
     - wxpython >=4.0.3
     - mayavi >=4.6.2
-    - vtk >=8.1.1
 
 test:
   # Python imports
@@ -66,6 +63,8 @@ about:
   license: BSD-3-Clause
   license_family: BSD
   license_file: LICENSE.txt
+  doc_url: http://eelbrain.readthedocs.io/
+  dev_url: https://github.com/christianbrodbeck/eelbrain
 
 # See for more information about meta.yaml:
 # https://veranostech.github.io/docs-korean-conda-docs/docs/build/html/user-guide/tasks/build-packages/define-metadata.html
