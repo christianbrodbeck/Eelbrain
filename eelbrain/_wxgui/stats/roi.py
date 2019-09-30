@@ -84,3 +84,11 @@ class RegionOfInterest(wx.Dialog):
         info["labels"] = self.regions.GetCheckedStrings()
         info["corr"] = self.mult_corr.IsChecked()
         return info
+
+    def get_roi_status_string(self):
+        info = self.get_roi_info()
+        status = "ATLAS: {}\n".format(self.atlas.GetStringSelection())
+        status += "LABELS: {}".format(",".join(info["labels"]))
+        if info["corr"]:
+            status += "\nCorrect Across ROIs"
+        return status

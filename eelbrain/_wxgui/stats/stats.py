@@ -30,6 +30,7 @@ class StatsFrame(EelbrainFrame):
         self.test_model = TestModelInfo(self, self.loader)
         self.test_params = TestParams(self)
         self.roi_dialog = wx.Button(self, label="Select ROI")
+        self.roi_status = wx.StaticText(self, label="No ROI Selected")
         self.submit = wx.Button(self, label="Run Test")
         self.Bind(wx.EVT_BUTTON, self.run_test, self.submit)
         self.Bind(wx.EVT_RADIOBOX, self.test_params.toggle_minsource,
@@ -39,7 +40,8 @@ class StatsFrame(EelbrainFrame):
     def InitUI(self):
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         for widget in (self.info_panel, self.spatiotemp, self.test_model,
-                       self.test_params, self.roi_dialog, self.submit):
+                       self.test_params, self.roi_dialog, self.roi_status,
+                       self.submit):
             self.sizer.Add(widget, **self.add_params)
         self.SetSizer(self.sizer)
         self.sizer.Layout()
@@ -94,6 +96,9 @@ class StatsFrame(EelbrainFrame):
         with RegionOfInterest(self, self.ds["src"], self.roi_info) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
                 self.roi_info = dlg.get_roi_info()
+                self.roi_status.SetLabel(dlg.get_roi_status_string())
+                self.sizer.Layout()
+                self.sizer.Fit(self)
             else:
                 pass
             dlg.Destroy()
