@@ -80,7 +80,7 @@ class TestParams(wx.Panel):
             raise ValidationException("tstart must be less than tstop.")
         if kwargs["pmin"] is not None:
             pmin = float(kwargs["pmin"])
-            if not pmin >= 0.0 and not pmin <= 1.0:
+            if not (0.0 <= pmin <= 1.0):
                 raise ValidationException("pmin must be between 0 and 1.")
 
 
