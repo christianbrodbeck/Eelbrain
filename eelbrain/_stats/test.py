@@ -311,7 +311,7 @@ def star_factor(p, levels={.1: '`', .05: '*', .01: '**', .001: '***'}):
     star_labels = {i: levels[v] for i, v in enumerate(sorted_levels, 1)}
     star_labels[0] = ''
     level_values = np.reshape(sorted_levels, (-1, 1))
-    return Factor(np.sum(p < level_values, 0), labels=star_labels)
+    return Factor(np.sum(p <= level_values, 0), labels=star_labels)
 
 
 def _independent_measures_args(y, x, c1, c0, match, ds, sub, nd_data=False):
