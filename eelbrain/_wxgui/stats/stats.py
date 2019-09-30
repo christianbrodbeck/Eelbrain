@@ -88,9 +88,12 @@ class StatsFrame(EelbrainFrame):
         kwargs = self.get_test_kwargs()
         if self.spatiotemp.is_temporal():
             del kwargs["minsource"]
-        res = test_func(data, ds=ds, match="subject", **kwargs)
-        res_frame = StatsResultsFrame(None, res, ds, data)
-        print(res)
+        try:
+            res = test_func(data, ds=ds, match="subject", **kwargs)
+        except Exception as e:
+            wx.MessageBox(str(e), "Test Failed")
+        else:
+            res_frame = StatsResultsFrame(None, res, ds, data)
 
     def OnROIMenuClick(self, evt):
         with RegionOfInterest(self, self.ds["src"], self.roi_info) as dlg:
