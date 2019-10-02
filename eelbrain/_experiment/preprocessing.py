@@ -740,28 +740,42 @@ class RawReReference(CachedRawPipe):
     reference : str | sequence of str
         New reference: ``'average'`` (default) or one or several electrode
         names.
+    add : str | list of str
+        Reconstruct reference channels with given names and set them to 0.
+    drop : list of str
+        Drop these channels after applying the reference.
 
     See Also
     --------
     MneExperiment.raw
     """
 
-    def __init__(self, source, reference='average'):
+    def __init__(self, source, reference='average', add=None, drop=None):
         CachedRawPipe.__init__(self, source, False)
         if not isinstance(reference, str):
             reference = list(reference)
             if not all(isinstance(ch, str) for ch in reference):
                 raise TypeError(f"reference={reference}: must be list of str")
         self.reference = reference
+        self.add = add
+        self.drop = drop
 
     def as_dict(self):
         out = CachedRawPipe.as_dict(self)
         out['reference'] = self.reference
+        if self.add is not None:
+            out['add'] = self.add
+        if self.drop:
+            out['drop'] = self.drop
         return out
 
     def _make(self, subject, recording):
         raw = self.source.load(subject, recording, preload=True)
+        if self.add:
+            raw = mne.add_reference_channels(raw, self.add, copy=False)
         raw.set_eeg_reference(self.reference)
+        if self.drop:
+            raw = raw.drop_channels(self.drop)
         return raw
 
 
