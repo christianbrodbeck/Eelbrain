@@ -113,7 +113,7 @@ def mne_raw(path=None, proj=False, **kwargs):
 
 
 def events(raw=None, merge=None, proj=False, name=None, bads=None,
-           stim_channel=None, events=None, **kwargs):
+           stim_channel=None, events=None, annotations=None, **kwargs):
     """
     Load events from a raw fiff file.
 
@@ -149,7 +149,10 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
         If events are stored in a fiff file separate from the Raw object, the
         path to the events file can be supplied here. The events in the Dataset
         will reflect the event sin the events file rather than the raw file.
-    others :
+    annotations : bool
+        Generate events from annotations instead of the stim channel (by
+        default, annotations are used when present).
+    **
         Keyword arguments for loading the raw file (see
         :func:`mne.io.read_raw_kit` or :func:`mne.io.read_raw_kit`).
 
@@ -177,14 +180,19 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
             name = None
 
     if events is None:
-        raw.load_data()
-        if merge is None:
-            evts = mne.find_stim_steps(raw, merge=-1, stim_channel=stim_channel)
-            if len(evts) == 0:
-                evts = mne.find_stim_steps(raw, merge=0, stim_channel=stim_channel)
+        if annotations is None:
+            annotations = len(raw.annotations) > 0
+        if annotations:
+            evts, _ = mne.events_from_annotations(raw, int)
         else:
-            evts = mne.find_stim_steps(raw, merge=merge, stim_channel=stim_channel)
-        evts = evts[np.flatnonzero(evts[:, 2])]
+            raw.load_data()
+            if merge is None:
+                evts = mne.find_stim_steps(raw, merge=-1, stim_channel=stim_channel)
+                if len(evts) == 0:
+                    evts = mne.find_stim_steps(raw, merge=0, stim_channel=stim_channel)
+            else:
+                evts = mne.find_stim_steps(raw, merge=merge, stim_channel=stim_channel)
+            evts = evts[np.flatnonzero(evts[:, 2])]
     else:
         evts = mne.read_events(events)
 
