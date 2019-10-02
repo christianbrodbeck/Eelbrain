@@ -332,8 +332,6 @@ class CachedRawPipe(RawPipe):
             raw = self.cache(subject, recording)
         else:
             raw = self._make(subject, recording)
-        if not isinstance(raw, mne.io.Raw):
-            raw = None  # only propagate fiff raw for appending
         return RawPipe.load(self, subject, recording, add_bads, preload, raw)
 
     def load_bad_channels(self, subject, recording):
