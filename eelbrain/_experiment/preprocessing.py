@@ -118,7 +118,8 @@ class RawSource(RawPipe):
           connections in terms of indices. Each row should specify one
           connection [i, j] with i < j. If the array's dtype is uint32,
           property checks are disabled to improve efficiency.
-        - ``"grid"`` to use adjacency in the sensor names
+        - ``'grid'`` to use adjacency in the sensor names
+        - ``'auto'`` to use :func:`mne.channels.find_ch_connectivity`
 
         If unspecified, it is inferred from ``sysname`` if possible.
     ...
@@ -214,8 +215,6 @@ class RawSource(RawPipe):
             for k, v in self.sysname.items():
                 if fnmatch.fnmatch(subject, k):
                     return v
-        elif self.connectivity is None:
-            raise RuntimeError(f"Unknown sensor configuration for {subject}, data={data!r}. Consider setting connectivity or sysname explicitly.")
 
     def load_bad_channels(self, subject, recording):
         path = self.bads_path.format(root=self.root, subject=subject, recording=recording)

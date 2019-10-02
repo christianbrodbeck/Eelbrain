@@ -691,25 +691,29 @@ def sensor_dim(info, picks=None, sysname=None, connectivity=None):
     if sysname == 'neuromag':
         ch_unit = {ch['unit'] for ch in chs}
         if len(ch_unit) > 1:
-            raise RuntimeError("More than one channel kind for "
-                               "sysname='neuromag': %s" % (tuple(ch_unit),))
+            raise RuntimeError(f"More than one channel kind for sysname='neuromag': {tuple(ch_unit)}")
         ch_unit = ch_unit.pop()
         if ch_unit == FIFF.FIFF_UNIT_T_M:
             sysname = 'neuromag306planar'
         elif ch_unit == FIFF.FIFF_UNIT_T:
             sysname = 'neuromag306mag'
         else:
-            raise ValueError("Unknown channel unit for sysname='neuromag': %r"
-                             % (ch_unit,))
+            raise ValueError(f"Unknown channel unit for sysname='neuromag': {ch_unit!r}")
 
-    if connectivity is not None:
-        pass
-    elif sysname is not None:
-        c_matrix, names = mne.channels.read_ch_connectivity(sysname)
+    if connectivity is None:
+        connectivity = sysname
 
-        # fix channel names
-        if sysname.startswith('neuromag'):
-            names = [n[:3] + ' ' + n[3:] for n in names]
+    if isinstance(connectivity, str):
+        if connectivity in ('grid', 'none'):
+            pass
+        elif connectivity == 'auto':
+            ch_type = _guess_ndvar_data_type(info)
+            c_matrix, names = mne.channels.find_ch_connectivity(info, ch_type)
+        else:
+            c_matrix, names = mne.channels.read_ch_connectivity(connectivity)
+            # fix channel names
+            if connectivity.startswith('neuromag'):
+                names = [n[:3] + ' ' + n[3:] for n in names]
 
         # fix channel order
         if names != ch_names:
