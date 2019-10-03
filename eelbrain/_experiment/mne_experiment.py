@@ -1868,10 +1868,26 @@ class MneExperiment(FileTree):
 
         Notes
         -----
-        Override this method in MneExperiment subclasses to add event labels.
+        Override this method in MneExperiment subclasses to add event labels
+        more flexibly than through the :attr:`variables` attribute.
         The session that the events are from can be determined with
         ``ds.info['session']``.
         Calling the original (super-class) method is not necessary.
+
+        Examples
+        --------
+        Add a label whenever trigger 2 follows trigger 1::
+
+            class Experiment(MneExperiment):
+
+                def label_events(self, ds):
+                    # assign 'no' to all events
+                    ds[:, 'new'] = 'no'
+                    # assign 'yes' to events where trigger 2 follows trigger 1
+                    for i in range(1, ds.n_cases):
+                        if ds[i, 'trigger'] == 2 and ds[i-1, 'trigger'] == 1:
+                            ds[i, 'new'] = 'yes'
+                    return ds
         """
         return ds
 
