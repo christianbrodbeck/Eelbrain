@@ -10,9 +10,10 @@ import mne
 from scipy import signal
 
 from .. import load
-from .._data_obj import NDVar
+from .._data_obj import NDVar, Sensor
 from .._exceptions import DefinitionError
 from .._io.fiff import KIT_NEIGHBORS
+from .._mne import MNE_VERSION, V0_19
 from .._ndvar import filter_data
 from .._text import enumeration
 from .._utils import as_sequence, ask, user_activity
@@ -137,10 +138,10 @@ class RawSource(RawPipe):
         self.reader = reader
         self.sysname = sysname
         self.rename_channels = typed_arg(rename_channels, dict)
-        self.montage = typed_arg(montage, str)
+        self.montage = montage
         self.connectivity = connectivity
         self._kwargs = kwargs
-        if reader is mne.io.read_raw_cnt:
+        if MNE_VERSION < V0_19 and reader is mne.io.read_raw_cnt:
             self._read_raw_kwargs = {'montage': None, **kwargs}
         else:
             self._read_raw_kwargs = kwargs
@@ -168,7 +169,10 @@ class RawSource(RawPipe):
         if self.rename_channels:
             out['rename_channels'] = self.rename_channels
         if self.montage:
-            out['montage'] = self.montage
+            if isinstance(self.montage, mne.channels.DigMontage):
+                out['montage'] = Sensor.from_montage(self.montage)
+            else:
+                out['montage'] = self.montage
         if self.connectivity is not None:
             out['connectivity'] = self.connectivity
         return out
