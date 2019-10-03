@@ -94,8 +94,10 @@ def test_plot_colors():
     "Test plotting color schemes"
     cells_1 = ('A', 'B')
     cells_2 = ('a', 'b', 'c')
-
     colors = plot.colors_for_oneway(cells_1)
+    colors2way = plot.colors_for_twoway(cells_1, cells_2)
+    labels = {k: f'Long label {k}' for k in cells_2}
+
     p = plot.ColorList(colors)
     assert p._figtitle is None
     w0, h0 = p.figure.get_size_inches()
@@ -107,6 +109,11 @@ def test_plot_colors():
     assert w > w0
     p.close()
 
-    colors = plot.colors_for_twoway(cells_1, cells_2)
-    p = plot.ColorList(colors)
+    p = plot.ColorList(colors2way)
+    p.close()
+    p = plot.ColorGrid(cells_1, cells_2, colors2way)
+    p.close()
+    p = plot.ColorGrid(cells_2, cells_1, colors2way)
+    p.close()
+    p = plot.ColorGrid(cells_1, cells_2, colors2way, labels=labels, w=1.2, h=1.5)
     p.close()

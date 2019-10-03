@@ -89,14 +89,16 @@ class ColorGrid(EelFigure):
             column_labels = column_cells
             row_labels = row_cells
 
+        # default size
         chr_size = mpl.rcParams['font.size'] * POINT_SIZE
         if size is None:
             size = chr_size * LEGEND_SIZE
-        axh_default = size * n_rows
+        w_default = size * (n_cols + 1) + chr_size * max(len(l) for l in row_labels)
+        h_default = size * n_rows
         if column_label_position != 'none':
-            axh_default += chr_size * max(len(l) for l in column_labels)
-        aspect = (size * (n_cols + 1) + chr_size * max(len(l) for l in row_labels)) / axh_default
-        layout = Layout(0, aspect, axh_default, tight=False, **kwargs)
+            h_default += chr_size * max(len(l) for l in column_labels)
+        aspect = w_default / h_default
+        layout = Layout(0, aspect, h_default, tight=False, **kwargs)
         EelFigure.__init__(self, None, layout)
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
         ax.set_axis_off()
@@ -141,8 +143,12 @@ class ColorGrid(EelFigure):
             else:
                 raise ValueError(f"column_label_position={column_label_position!r}")
 
+            ha = 'left' if tilt_labels else 'center'
+            x_offset = 0 if tilt_labels else 0.5
+            y_offset = tilt_labels * size * 1.5
             for col, label in enumerate(column_labels):
-                h = ax.text(col + 0.5, y, label, va=va, ha='left' if tilt_labels else 'center', rotation=rotation)
+                y_col = y + y_offset * (len(column_labels) - col - 1)
+                h = ax.text(col + x_offset, y_col, label, va=va, ha=ha, rotation=rotation)
                 self.column_labels.append(h)
 
         # row labels
