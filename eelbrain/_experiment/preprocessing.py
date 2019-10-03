@@ -882,7 +882,7 @@ def compare_pipelines(old, new, log):
             elif all(out[p] == 'good' for p in parents):
                 out[key] = 'good'
             else:
-                out[key] = 'secondary'
+                out[key] = 'changed'
             to_check.remove(key)
         if len(to_check) == n:
             raise RuntimeError("Queue not decreasing")
