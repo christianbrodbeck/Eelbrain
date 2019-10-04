@@ -111,10 +111,10 @@ import nibabel
 from nibabel.freesurfer import read_annot, read_geometry
 import numpy as np
 import scipy.interpolate
+import scipy.optimize
 import scipy.signal
 import scipy.stats
 from scipy.linalg import inv, norm
-from scipy.optimize import leastsq
 from scipy.spatial import ConvexHull
 from scipy.spatial.distance import cdist, pdist, squareform
 
@@ -8529,32 +8529,40 @@ class Sensor(Dimension):
         params : tuple
             Radius and center (r, cx, cy, cz).
         """
-        locs = self.locs
-
-        # error function
-        def err(params):
-            # params: [r, cx, cy, cz]
-            out = np.sum((locs - params[1:]) ** 2, 1)
-            out -= params[0] ** 2
-            return out
-
         # initial guess of sphere parameters (radius and center)
-        center_0 = np.mean(locs, 0)
-        r_0 = np.mean(np.sqrt(np.sum((locs - center_0) ** 2, axis=1)))
-        start_params = np.hstack((r_0, center_0))
-        # do fit
-        estimate, _ = leastsq(err, start_params)
-        return tuple(estimate)
+        center_0 = np.mean(self.locs, 0)
+        radius_0 = np.mean(np.sqrt(np.sum((self.locs - center_0) ** 2, axis=1)))
+        # error function
+        if len(self) >= 6:
+            def err(params):
+                # params: [cx, cy, cz, rx, ry, rz]
+                centered = self.locs - params[:3]  # -> c=0
+                centered /= params[3:]  # -> r=1
+                centered **= 2
+                length = np.sum(centered, 1)
+                length -= 1
+                return length
+            radius_0 = [radius_0, radius_0, radius_0]
+        else:
+            def err(params):
+                # params: [cx, cy, cz, r]
+                centered = self.locs - params[:3]  # -> c=0
+                centered **= 2
+                length = np.sum(centered, 1)
+                length -= params[3]
+                return length
+        start_params = np.hstack((center_0, radius_0))
+        estimate, _ = scipy.optimize.leastsq(err, start_params)
+        center = estimate[:3]
+        radius = estimate[3:] if len(estimate) == 6 else estimate[3]
+        return center, radius
 
     def _make_locs_2d(self, proj, extent, frame):
         if proj in ('cone', 'lower cone', 'z root'):
-            r, cx, cy, cz = self._sphere_fit
-
-            # center the sensor locations based on the sphere and scale to
-            # radius 1
-            sphere_center = np.array((cx, cy, cz))
-            locs3d = self.locs - sphere_center
-            locs3d /= r
+            # center the sensor locations based on the sphere and scale to radius 1
+            center, radius = self._sphere_fit
+            locs3d = self.locs - center
+            locs3d /= radius
 
             # implement projection
             locs2d = np.copy(locs3d[:, :2])
