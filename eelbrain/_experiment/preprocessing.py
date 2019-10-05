@@ -123,6 +123,10 @@ class RawSource(RawPipe):
         If unspecified, it is inferred from ``sysname`` if possible.
     ...
         Additional parameters for the ``reader`` function.
+
+    See Also
+    --------
+    MneExperiment.raw
     """
     _dig_sessions = None  # {subject: {for_recording: use_recording}}
 
@@ -364,6 +368,10 @@ class RawFilter(CachedRawPipe):
         Cache the resulting raw files (default False).
     ...
         :meth:`mne.io.Raw.filter` parameters.
+
+    See Also
+    --------
+    MneExperiment.raw
     """
 
     def __init__(self, source, l_freq=None, h_freq=None, cache=True, **kwargs):
@@ -473,6 +481,10 @@ class RawICA(CachedRawPipe):
         Cache the resulting raw files (default False).
     ...
         Additional parameters for :class:`mne.preprocessing.ICA`.
+
+    See Also
+    --------
+    MneExperiment.raw
 
     Notes
     -----
@@ -617,6 +629,10 @@ class RawApplyICA(CachedRawPipe):
     ica : str
         Name of the :class:`RawICA` pipe from which to load the ICA components.
 
+    See Also
+    --------
+    MneExperiment.raw
+
     Notes
     -----
     This pipe inherits bad channels from the ICA.
@@ -690,6 +706,10 @@ class RawMaxwell(CachedRawPipe):
         Session(s) to use for estimating ICA components.
     ...
         :func:`mne.preprocessing.maxwell_filter` parameters.
+
+    See Also
+    --------
+    MneExperiment.raw
     """
 
     _bad_chs_affect_cache = True
@@ -721,6 +741,10 @@ class RawReReference(CachedRawPipe):
     reference : str | sequence of str
         New reference: ``'average'`` (default) or one or several electrode
         names.
+
+    See Also
+    --------
+    MneExperiment.raw
     """
 
     def __init__(self, source, reference='average'):

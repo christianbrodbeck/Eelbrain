@@ -185,6 +185,20 @@ class PrimaryEpoch(Epoch):
         ``(source_name, {value: code})``-tuple.
         ``source_name`` can also be an interaction, in which case cells are joined
         with spaces (``"f1_cell f2_cell"``).
+
+    See Also
+    --------
+    MneExperiment.epochs
+
+    Examples
+    --------
+    Selecting events based on a categorial label::
+
+        PrimaryEpoch('session', "variable == 'label'")
+
+    Based on multiple categorial labels::
+
+        PrimaryEpoch('session', "variable.isin(['label1', 'label2'])")
     """
     DICT_ATTRS = Epoch.DICT_ATTRS + ('sel',)
 
@@ -218,7 +232,11 @@ class SecondaryEpoch(Epoch):
         exception of ``trigger_shift``, which is applied additively to the
         ``trigger_shift`` of the ``base`` epoch.
     ...
-        Override base-epoch parameters.
+        Override base-epoch parameters (see :class:`PrimaryEpoch`).
+
+    See Also
+    --------
+    MneExperiment.epochs
     """
     DICT_ATTRS = Epoch.DICT_ATTRS + ('sel_epoch', 'sel')
     INHERITED_PARAMS = ('tmin', 'tmax', 'decim', 'samplingrate', 'baseline',
@@ -261,7 +279,11 @@ class SuperEpoch(Epoch):
         contain post-baseline trigger shifts which are applied after loading
         data (however, the super-epoch can have a post-baseline trigger shift).
     ...
-        Override sub-epoch parameters.
+        Override sub-epoch parameters (see :class:`PrimaryEpoch`).
+
+    See Also
+    --------
+    MneExperiment.epochs
     """
     DICT_ATTRS = Epoch.DICT_ATTRS + ('sub_epochs',)
     INHERITED_PARAMS = ('tmin', 'tmax', 'decim', 'samplingrate', 'baseline')
@@ -316,6 +338,10 @@ class EpochCollection(EpochBase):
     ----------
     collect : Sequence of str
         Epochs to collect.
+
+    See Also
+    --------
+    MneExperiment.epochs
     """
     # IMPLEMENTATION ALTERNATIVE?
     # ---------------------------

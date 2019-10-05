@@ -100,6 +100,10 @@ class TTestOneSample(EvokedTest):
     tail : int
         Tailedness of the test. ``0`` for two-tailed (default), ``1`` for upper tail
         and ``-1`` for lower tail.
+
+    See Also
+    --------
+    MneExperiment.tests
     """
     kind = 'ttest_1samp'
     DICT_ATTRS = Test.DICT_ATTRS + ('tail',)
@@ -143,6 +147,10 @@ class TTestInd(TTest):
         Tailedness of the test. ``0`` for two-tailed (default), ``1`` for upper tail
         and ``-1`` for lower tail.
 
+    See Also
+    --------
+    MneExperiment.tests
+
     Examples
     --------
     Sample test definitions, assuming that the experiment has two groups called
@@ -185,6 +193,10 @@ class TTestRel(TTest):
         Tailedness of the test. ``0`` for two-tailed (default), ``1`` for upper tail
         and ``-1`` for lower tail.
 
+    See Also
+    --------
+    MneExperiment.tests
+
     Examples
     --------
     Sample test definitions::
@@ -226,6 +238,10 @@ class TContrastRel(EvokedTest):
         Tailedness of the test. ``0`` for two-tailed (default), ``1`` for upper tail
         and ``-1`` for lower tail.
 
+    See Also
+    --------
+    MneExperiment.tests
+
     Examples
     --------
     Sample test definitions::
@@ -265,6 +281,10 @@ class ANOVA(EvokedTest):
         experiment's events.
     vars : tuple | dict
         Variables to add dynamically.
+
+    See Also
+    --------
+    MneExperiment.tests
 
     Examples
     --------
@@ -318,6 +338,10 @@ class TwoStageTest(Test):
         This parameter can be supplied to perform stage 1 tests on condition
         averages. If ``model`` is not specified, the stage1 model is fit on single
         trial data.
+
+    See Also
+    --------
+    MneExperiment.tests
 
     Examples
     --------
