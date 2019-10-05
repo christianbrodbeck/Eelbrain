@@ -589,7 +589,12 @@ class RawICA(CachedRawPipe):
             raw.append(raw_)
 
         self.log.info("Raw %s: computing ICA decomposition for %s", self.name, subject)
-        kwargs = self.kwargs if 'max_iter' in self.kwargs else {'max_iter': 256, **self.kwargs}
+        kwargs = self.kwargs.copy()
+        kwargs.setdefault('max_iter', 256)
+        if MNE_VERSION > V0_19 and kwargs['method'] == 'extended-infomax':
+            kwargs['method'] = 'infomax'
+            kwargs['fit_params'] = {'extended': True}
+
         ica = mne.preprocessing.ICA(**kwargs)
         # reject presets from meeg-preprocessing
         with user_activity:
