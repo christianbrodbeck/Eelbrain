@@ -7,7 +7,7 @@ from string import ascii_lowercase
 import re
 
 from pybtex.database import parse_bytes, parse_file
-from scholar import ScholarQuerier, ScholarSettings, SearchScholarQuery
+from scholar.scholar import ScholarQuerier, ScholarSettings, SearchScholarQuery
 
 
 DST = Path(__file__).absolute().parents[1] / 'publications.bib'

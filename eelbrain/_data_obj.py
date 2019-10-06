@@ -850,8 +850,7 @@ def align(d1, d2, i1='index', i2=None, out='data'):
 
     Examples
     --------
-    See `examples/datasets/align.py <https://github.com/christianbrodbeck/
-    Eelbrain/blob/master/examples/datasets/align.py>`_.
+    See :ref:`exa-align` example.
     """
     if i2 is None and isinstance(i1, str):
         i2 = i1
@@ -4556,7 +4555,7 @@ class NDVar:
 
         window_samples : scalar
             Size of the window in samples (this parameter is used to specify
-            window size in array elemnts rather than in units of the dimension;
+            window size in array elements rather than in units of the dimension;
             it is mutually exclusive with ``window_size``).
         fix_edges : bool
             Standard convolution smears values around the edges resulting in

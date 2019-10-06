@@ -160,6 +160,7 @@ Reverse Correlation
 
    boosting
    BoostingResult
+   epoch_impulse_predictor
 
 
 ^^^^^^

@@ -6,7 +6,7 @@ from .._data_obj import NDVar, Case, UTS, asndvar, asarray
 
 
 def epoch_impulse_predictor(shape, value=1, latency=0, name=None, ds=None):
-    """Generate impulse predictor with one impulse for each of ``n`` epochs
+    """Time series with one impulse for each of ``n`` epochs
 
     Parameters
     ----------
@@ -27,16 +27,7 @@ def epoch_impulse_predictor(shape, value=1, latency=0, name=None, ds=None):
 
     Examples
     --------
-    Generate impulse predictors for categorial data::
-
-    >>> ds = datasets.get_uts()
-    >>> p1 = epoch_impulse_predictor('uts', 'A=="a1"', name='a1', ds=ds)
-    >>> p0 = epoch_impulse_predictor('uts', 'A=="a0"', name='a0', ds=ds)
-    >>> p1 = p1.smooth('time', .05, 'hamming')
-    >>> p0 = p0.smooth('time', .05, 'hamming')
-    >>> res = boosting('uts', [p1, p0], 0, 0.5, model='A', ds=ds)
-    >>> plot.UTS([[h.smooth('time', 0.05) for h in res.h]])
-
+    See :ref:`exa-impulse` example.
     """
     if isinstance(shape, str):
         shape = asndvar(shape, ds=ds)

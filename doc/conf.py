@@ -91,6 +91,7 @@ example_order = NameOrder({
     ],
     'reverse-correlation': [
         'mtrf.py',
+        'epoch_impulse.py',
     ],
 })
 
