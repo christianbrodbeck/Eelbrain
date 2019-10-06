@@ -18,7 +18,7 @@ from eelbrain import *
 
 ###############################################################################
 # Create a Sensor dimension from an actual montage
-sensor = Sensor.from_montage('biosemi32')
+sensor = Sensor.from_montage('standard_alphabetic')
 p = plot.SensorMap(sensor)
 
 ###############################################################################
@@ -67,7 +67,7 @@ noise = noise.smooth('sensor', 30, 'gaussian')
 signal += segment(noise, np.arange(.1, n_trials * .7, .7), -0.1, 0.6)
 
 # Apply the average mastoids reference
-signal -= signal.mean(sensor=['LPA', 'RPA'])
+signal -= signal.mean(sensor=['M1', 'M2'])
 
 # Store EEG data in a Dataset with trial information
 ds = Dataset()

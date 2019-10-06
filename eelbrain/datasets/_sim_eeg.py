@@ -49,7 +49,7 @@ def simulate_erp(n_trials=80, seed=0):
     Compare with kiloword::
 
         ys = datasets.simulate_erp()['eeg']
-        ys -= ys.mean(sensor=['LPA', 'RPA'])
+        ys -= ys.mean(sensor=['M1', 'M2'])
         import mne
         path = mne.datasets.kiloword.data_path()
         y = load.fiff.epochs_ndvar(path + '/kword_metadata-epo.fif')
@@ -58,7 +58,8 @@ def simulate_erp(n_trials=80, seed=0):
     """
     assert n_trials % 2 == 0
 
-    sensor = Sensor.from_montage('biosemi32')
+    sensor = Sensor.from_montage('standard_alphabetic')
+    sensor.set_connectivity(connect_dist=1.66)
     time = UTS(-0.100, 0.005, 140)
 
     # Generate random values for the independent variable (cloze probability)

@@ -28,7 +28,7 @@ for subject in range(10):
     # generate data for one subject
     ds = datasets.simulate_erp(seed=subject)
     # Re-reference EEG data
-    ds['eeg'] -= ds['eeg'].mean(sensor=['LPA', 'RPA'])
+    ds['eeg'] -= ds['eeg'].mean(sensor=['M1', 'M2'])
     # Fit stage 1 model
     lm = testnd.LM('eeg', 'cloze', ds)
     lms.append(lm)

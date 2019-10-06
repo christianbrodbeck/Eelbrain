@@ -8431,29 +8431,38 @@ class Sensor(Dimension):
 
     @classmethod
     def from_montage(cls, montage, channels=None):
-        """Create Sensor dimension from :mod:`mne` :class:`~mne.channels.Montage`
+        """From :class:`~mne.channels.DigMontage`
 
         Parameters
         ----------
-        montage : str | mne.Montage
+        montage : str | mne.channels.DigMontage
             Montage, or name to load a standard montage (see
-            :func:`mne.channels.read_montage`).
+            :func:`mne.channels.make_standard_montage`).
         channels : list of str
             Channel names in the desired order (optional).
         """
         if isinstance(montage, str):
-            obj = mne.channels.read_montage(montage)
+            sysname = montage
+            obj = mne.channels.make_standard_montage(montage)
             try:
                 cm, names = mne.channels.read_ch_connectivity(montage)
                 connectivity = _matrix_graph(cm)
             except ValueError:
                 connectivity = 'none'
         else:
+            sysname = None
             obj = montage
             connectivity = 'none'
 
-        locations = obj.pos
-        names = obj.ch_names
+        if isinstance(obj, mne.channels.DigMontage):
+            digs = [dig for dig in obj.dig if dig['kind'] == mne.io.constants.FIFF.FIFFV_POINT_EEG]
+            locations = np.vstack([dig['r'] for dig in digs])
+            names = obj.ch_names
+        elif hasattr(mne.channels, 'Montage') and isinstance(obj, mne.channels.Montage):  # Montage removed in 0.20
+            locations = obj.pos
+            names = obj.ch_names
+        else:
+            raise TypeError(f'montage={obj!r}')
 
         if channels is not None:
             index = np.array([names.index(ch) for ch in channels])
@@ -8462,7 +8471,7 @@ class Sensor(Dimension):
             if not isinstance(connectivity, str):
                 connectivity = _subgraph_edges(connectivity, index)
 
-        return cls(locations, names, obj.kind, connectivity=connectivity)
+        return cls(locations, names, sysname, connectivity=connectivity)
 
     def _interpret_proj(self, proj):
         if proj == 'default':
@@ -8832,39 +8841,6 @@ class Sensor(Dimension):
 
         self._connectivity = np.array(sorted(pairs), np.uint32)
         self._connectivity_type = 'custom'
-
-    def set_sensor_positions(self, pos, names=None):
-        """Set the sensor positions
-
-        Parameters
-        ----------
-        pos : array (n_locations, 3) | MNE Montage
-            Array with 3 columns describing sensor locations (x, y, and z), or
-            an MNE Montage object describing the sensor layout.
-        names : None | list of str
-            If locations is an array, names should specify a name
-            corresponding to each entry.
-        """
-        # MNE Montage
-        if hasattr(pos, 'pos') and hasattr(pos, 'ch_names'):
-            if names is not None:
-                raise TypeError("Can't specify names parameter with Montage")
-            names = pos.ch_names
-            pos = pos.pos
-        elif names is not None and len(names) != len(pos):
-            raise ValueError("Mismatch between number of locations (%i) and "
-                             "number of names (%i)" % (len(pos), len(names)))
-
-        if names is not None:
-            missing = [name for name in self.names if name not in names]
-            if missing:
-                raise ValueError("The following sensors are missing: %r" % missing)
-            index = np.array([names.index(name) for name in self.names])
-            pos = pos[index]
-        elif len(pos) != len(self.locs):
-            raise ValueError("If names are not specified pos must specify "
-                             "exactly one position per channel")
-        self.locs[:] = pos
 
     @property
     def values(self):

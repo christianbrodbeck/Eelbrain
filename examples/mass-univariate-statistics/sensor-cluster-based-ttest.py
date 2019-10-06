@@ -61,7 +61,7 @@ p = plot.SensorMap(ds['eeg'], connectivity=True)
 
 ###############################################################################
 # Re-reference EEG data
-ds['eeg'] -= ds['eeg'].mean(sensor=['LPA', 'RPA'])
+ds['eeg'] -= ds['eeg'].mean(sensor=['M1', 'M2'])
 
 ###############################################################################
 # Spatio-temporal cluster based test
@@ -90,7 +90,7 @@ print(res.find_clusters(0.05))
 ###############################################################################
 # Retrieve the cluster map using its ID and visualize the spatio-temporal
 # extent of the cluster:
-cluster = res.cluster(27)
+cluster = res.cluster(2)
 p = plot.TopoArray(cluster)
 p.set_topo_ts(.350, 0.400, 0.450)
 
