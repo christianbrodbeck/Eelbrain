@@ -7304,9 +7304,11 @@ class Dimension:
         raise NotImplementedError
 
     def __eq__(self, other):
-        if isinstance(other, str):
-            return False
-        return self.name == other.name
+        if isinstance(other, self.__class__) and other.name == self.name and other._connectivity_type == self._connectivity_type:
+            if self._connectivity_type == 'custom':
+                return np.array_equal(other._connectivity, self._connectivity)
+            return True
+        return False
 
     def __ne__(self, other):
         return not self == other
@@ -7628,7 +7630,7 @@ class Case(Dimension):
         return self.n
 
     def __eq__(self, other):
-        return isinstance(other, Case) and other.n == self.n
+        return Dimension.__eq__(self, other) and other.n == self.n
 
     def __getitem__(self, item):
         if isinstance(item, Integral):
@@ -7731,7 +7733,7 @@ class Space(Dimension):
         return len(self._directions)
 
     def __eq__(self, other):
-        return isinstance(other, Space) and other._directions == self._directions
+        return Dimension.__eq__(self, other) and other._directions == self._directions
 
     def __getitem__(self, item):
         if not all(i in self._directions for i in item):
@@ -8311,8 +8313,9 @@ class Sensor(Dimension):
         return len(self.locs)
 
     def __eq__(self, other):  # Based on equality of sensor names
-        return (Dimension.__eq__(self, other) and len(self) == len(other) and
-                all(n == no for n, no in zip(self.names, other.names)))
+        return (Dimension.__eq__(self, other) and
+                len(self) == len(other) and
+                np.all(other.names == self.names))
 
     def __getitem__(self, index):
         if np.isscalar(index):

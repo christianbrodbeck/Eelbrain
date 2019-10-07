@@ -1570,6 +1570,10 @@ def test_sensor():
     m = mne.channels.make_standard_montage('standard_1020')
     s = Sensor.from_montage(m)
     assert s.names[0] == 'Fp1'
+    # equality
+    s_copy = Sensor.from_montage(m)
+    assert s_copy == s
+    assert s_copy[:25] != s
 
 
 def test_shuffle():
