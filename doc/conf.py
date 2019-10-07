@@ -76,6 +76,7 @@ class NameOrder:
 example_order = NameOrder({
     'examples': [],
     'datasets': [
+        'intro.py',
         'basic.py',
         'align.py',
     ],

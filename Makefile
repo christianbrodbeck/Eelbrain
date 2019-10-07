@@ -8,7 +8,6 @@ clean-py:
 	find . -type f -name *.pyo -delete
 
 doc:
-	rm -rf doc/build doc/generated
 	pythonw setup.py build_sphinx
 
 style-check:
