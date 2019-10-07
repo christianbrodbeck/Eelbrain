@@ -108,6 +108,9 @@ sphinx_gallery_conf = {
     'download_all_examples': False,
     'reset_modules': ('matplotlib', use_pyplot),
     'reference_url': {'eelbrain': None},
+    # Add gallery references to API docs
+    'backreferences_dir': 'generated/backreferences',
+    'doc_module': ('eelbrain',),
 }
 
 # download datasets (to avoid progress bar output in example gallery)
