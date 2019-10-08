@@ -37,9 +37,11 @@ needs_sphinx = '1.4.3'
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
-    'sphinx.ext.autodoc', 'sphinx.ext.autosummary',  # default
-    'sphinx.ext.todo', 'sphinx.ext.imgmath',  # default
-    'sphinx.ext.intersphinx',  # http://sphinx.pocoo.org/ext/intersphinx.html
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.todo',
+    'sphinx.ext.imgmath',
+    'sphinx.ext.intersphinx',  # http://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html
     'numpydoc',  # https://github.com/numpy/numpy/tree/master/doc/sphinxext
     'sphinxcontrib.bibtex',  # https://sphinxcontrib-bibtex.readthedocs.io
     'sphinx_gallery.gen_gallery',  # https://sphinx-gallery.github.io
@@ -107,10 +109,11 @@ sphinx_gallery_conf = {
     'min_reported_time': 4,
     'download_all_examples': False,
     'reset_modules': ('matplotlib', use_pyplot),
-    'reference_url': {'eelbrain': None},
-    # Add gallery references to API docs
-    'backreferences_dir': 'generated/backreferences',
+    # API links
     'doc_module': ('eelbrain',),
+    'reference_url': {'eelbrain': None},
+    'backreferences_dir': 'generated/backreferences',
+    'inspect_global_variables': False,
 }
 
 # download datasets (to avoid progress bar output in example gallery)
