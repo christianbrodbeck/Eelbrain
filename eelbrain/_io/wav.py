@@ -16,7 +16,7 @@ def load_wav(filename=None, name=None, backend='wave'):
 
     Parameters
     ----------
-    filename : str
+    filename : path-like
         Filename of the wav file. If not filename is specified, a file dialog is
         shown to select one.
     name : str
@@ -48,7 +48,7 @@ def load_wav(filename=None, name=None, backend='wave'):
 
     if backend == 'wave':
         import wave
-        with wave.open(filename, 'rb') as fp:
+        with wave.open(str(filename), 'rb') as fp:
             n_channels = fp.getnchannels()
             n_frames = fp.getnframes()
             n_bytes = fp.getsampwidth()
@@ -84,7 +84,7 @@ def save_wav(ndvar, filename=None, toint=False):
     ndvar : NDVar (time,)
         Sound data. Values should either be floating point numbers between -1
         and +1, or 16 bit integers.
-    filename : str
+    filename : path-like
         Where to save. If unspecified a file dialog will ask for the location.
     toint : bool
         Convert floating point data to 16 bit integer (default False).

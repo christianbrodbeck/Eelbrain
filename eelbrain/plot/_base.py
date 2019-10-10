@@ -2915,7 +2915,7 @@ class TimeSlicerEF(TimeSlicer):
 
         Parameters
         ----------
-        filename : str
+        filename : path-like
             Filename for the movie (omit to use a GUI).
         time_dilation : float
             Factor by which to stretch time (default 4). Time dilation is
