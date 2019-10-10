@@ -3287,11 +3287,7 @@ class NDPermutationDistribution:
             if self.samples > 0 and self.kind != 'cluster':
                 pmin = 0.05
         elif self.samples == 0:
-            msg = ("Can not determine p values in distribution without "
-                   "permutations.")
-            if self.kind == 'cluster':
-                msg += " Find clusters with pmin=None."
-            raise RuntimeError(msg)
+            raise ValueError(f"pmin={pmin!r}: Can not determine p values in distribution without permutations")
 
         if sub:
             param_map = self.parameter_map.sub(**sub)
