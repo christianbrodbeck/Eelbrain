@@ -73,6 +73,9 @@ def assert_dataobj_equal(d1, d2, decimal=None, name=True):
             if isinstance(d1, Var):
                 ds['difference'] = d1 - d2
             raise AssertionError(f'Two {d1.__class__.__name__}s named {d1.name!r} have unequal values:\n\n{ds}')
+        if isinstance(d1, Factor):
+            if d1.random != d2.random:
+                raise AssertionError(f"{d1.name}: d1.random={d1.random}, d2.random={d2.random}")
     elif isinstance(d1, NDVar):
         assert d1.dims == d2.dims
         if decimal:

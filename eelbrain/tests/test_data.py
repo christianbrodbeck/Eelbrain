@@ -393,6 +393,16 @@ def test_dataset():
     with pytest.raises(TypeError):
         ds['b'] = {i: i for i in range(4)}
 
+    # from_caselist
+    target = Dataset({
+        'y': Var([1, 2]),
+        'x': Factor('ab'),
+        'z': Factor('uv', random=True),
+    })
+    cases = [[1, 'a', 'u'], [2, 'b', 'v']]
+    ds = Dataset.from_caselist(['y', 'x', 'z'], cases, random='z')
+    assert_dataobj_equal(ds, target)
+
 
 def test_dataset_combining():
     "Test Dataset combination methods"
@@ -1524,7 +1534,7 @@ def test_io_txt():
     try:
         dest = os.path.join(tempdir, 'test.txt')
         ds.save_txt(dest)
-        ds2 = load.tsv(dest)
+        ds2 = load.tsv(dest, random='rm')
     finally:
         shutil.rmtree(tempdir)
 

@@ -5732,7 +5732,7 @@ class Dataset(dict):
         return eval(expression, EVAL_CONTEXT, self)
 
     @classmethod
-    def from_caselist(cls, names, cases, name=None, caption=None, info=None):
+    def from_caselist(cls, names, cases, name=None, caption=None, info=None, random=None):
         """Create a Dataset from a list of cases
 
         Parameters
@@ -5751,11 +5751,19 @@ class Dataset(dict):
             Info dictionary, can contain arbitrary entries and can be accessed
             as ``.info`` attribute after initialization. The Dataset makes a
             shallow copy.
+        random : str | sequence of str
+            Names of the columns that should be assigned as random factor.
         """
         if isinstance(names, Iterator):
-            names = tuple(names)
+            names = list(names)
         if isinstance(cases, Iterator):
-            cases = tuple(cases)
+            cases = list(cases)
+        if isinstance(random, str):
+            random = [random]
+        elif isinstance(random, Iterator):
+            random  = list(random)
+        elif random is None:
+            random = []
         n_cases = set(map(len, cases))
         if len(n_cases) > 1:
             raise ValueError('not all cases have same length')
@@ -5763,6 +5771,12 @@ class Dataset(dict):
         if len(names) != n_cases:
             raise ValueError('names=%r: %i names but %i cases' % (names, len(names), n_cases))
         items = {key: combine(case[i] for case in cases) for i, key in enumerate(names)}
+        for key in random:
+            item = items[key]
+            if isinstance(item, Factor):
+                item.random = True
+            else:
+                raise ValueError(f"random={random}: {key!r} is not a Factor but {item}")
         return cls(items, name, caption, info)
 
     @classmethod

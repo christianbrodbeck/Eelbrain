@@ -31,6 +31,7 @@ def tsv(
         start_tag: str = None,
         ignore_missing: bool = False,
         empty: str = None,
+        random : Union[str, Sequence[str]] = None,
         **fmtparams,
 ):
     r"""Load a :class:`Dataset` from a text file.
@@ -76,6 +77,8 @@ def tsv(
         for ``""``). For example, if a column in a file contains ``['5', '3',
         '']``, this is read by default as ``Factor(['5', '3', ''])``. With
         ``empty='nan'``, it is read as ``Var([5, 3, nan])``.
+    random : str | sequence of str
+        Names of the columns that should be assigned as random factor.
     **fmtparams
         Further formatting parameters for :func:`csv.reader`. For example, a
         fixed-width column file can be loaded with ``skipinitialspace=True``
@@ -85,6 +88,13 @@ def tsv(
         path = ui.ask_file("Load TSV", "Select tsv file to import as Dataset")
         if not path:
             return
+
+    if isinstance(random, str):
+        random = [random]
+    elif random is None:
+        random = []
+    else:
+        random = list(random)
 
     with open(path, newline='') as fid:
         if delimiter is None:  # legacy option
@@ -128,6 +138,11 @@ def tsv(
             raise IOError(f"The number of names in the header ({n_names}) does not correspond to the number of columns in the table ({n_cols})")
     else:
         names = [f'v{i}' for i in range(n_cols)]
+
+    # check random
+    missing = [k for k in random if k not in names]
+    if missing:
+        raise ValueError(f"random={random} includes non-existent names: {', '.join(missing)}")
 
     # coerce types parameter
     if types is None:
@@ -191,7 +206,10 @@ def tsv(
 
         # create data-object
         if type_ == 'f':
-            dob = _data.Factor(values, labels={None: ''}, name=name)
+            f_random = name in random
+            dob = _data.Factor(values, labels={None: ''}, name=name, random=f_random)
+        elif name in random:
+            raise ValueError(f"random={random}: {name} is not categorial")
         else:
             dob = _data.Var(values, name)
         ds.add(dob)
