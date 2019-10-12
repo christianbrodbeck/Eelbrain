@@ -6397,10 +6397,9 @@ class MneExperiment(FileTree):
         bads : bool
             Display bad channel names (not just number of bad channels).
 
-        Notes
-        -----
-        To display the number of components rejected of an ICA raw pipe, use
-        :meth:`~MneExperiment.show_raw_info`.
+        See Also
+        --------
+        .show_raw_info : Display the number of ICA components rejected
         """
         # TODO: include ICA raw preprocessing pipes
         if state:
