@@ -12,7 +12,8 @@ def _topo(sensor, center, falloff=1):
     i = sensor.names.index(center)
     loc = sensor.locs[i]
     dists = scipy.spatial.distance.cdist([loc], sensor.locs)[0]
-    dists /= 85  # sphere diameter ~170
+    radius = sensor._sphere_fit[1].mean()
+    dists /= radius
     topo = 1.0 - dists
     # topo **= falloff
     return NDVar(topo, (sensor,))
