@@ -16,7 +16,11 @@ New in 0.31
   - :func:`table.difference`:  the ``by`` parameter is deprecated, use ``match``
     instead
 
-* New function :func:`set_time`
+* New functions:
+
+  - :func:`gaussian`
+  - :func:`set_time`
+
 * :mod:`plot`:  Additional arguments for :class:`plot.Boxplot` to control plotting of outliers (``whis`` and ``label_fliers``)
 * Horizontal bar-plot: :class:`plot.BarplotHorizontal`
 * Non-parametric univariate tests :class:`test.MannWhitneyU` and :class:`test.WilcoxonSignedRank`

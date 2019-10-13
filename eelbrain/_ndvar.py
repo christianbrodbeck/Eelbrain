@@ -628,6 +628,38 @@ def frequency_response(b, frequencies=None):
     return NDVar(fresps, dims, b.name, b.info)
 
 
+def gaussian(center: float, width: float, time: UTS):
+    """Gaussian window :class:`NDVar`
+
+    Parameters
+    ----------
+    center : scalar
+        Center of the window.
+    width : scalar
+        Standard deviation of the window.
+    time : UTS
+        Time dimension.
+
+    Returns
+    -------
+    gaussian : NDVar
+        Gaussian window on ``time``.
+    """
+    width_i = int(round(width / time.tstep))
+    n_times = len(time)
+    center_i = time._array_index(center)
+    if center_i > n_times // 2:
+        start = None
+        stop = n_times
+        window_width = 2 * center_i
+    else:
+        start = -n_times
+        stop = None
+        window_width = 2 * (n_times - center_i)
+    window_data = scipy.signal.windows.gaussian(window_width, width_i)[start: stop]
+    return NDVar(window_data, (time,))
+
+
 def label_operator(labels, operation='mean', exclude=None, weights=None,
                    dim_name='label', dim_values=None):
     """Convert labeled NDVar into a matrix operation to extract label values
