@@ -91,6 +91,7 @@ example_order = NameOrder({
         'sensor-two-stage.py',
     ],
     'reverse-correlation': [
+        'trf_intro.py',
         'mtrf.py',
         'epoch_impulse.py',
     ],

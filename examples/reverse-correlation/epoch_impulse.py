@@ -1,23 +1,39 @@
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """
 .. _exa-impulse:
 
-Impulse predictors
-==================
-Use impulses for reverse correlation with discrete events. Impulse predictors
-can be used like dummy codes in a regression model.
+Impulse predictors for epochs
+=============================
+:func:`epoch_impulse_predictor` generates predictor variables for reverse
+correlation in trial-based experiments with discrete events. The function
+generates one impulse per trial, and these impulsescan be of varaiable magnitude
+and have variable latency.
 
-The dataset simulates an N400 experiment.
+The example uses simulated data meant to vaguely resemble data from an N400
+experiment, but not intended as a physiologically realistic simulation.
 """
-# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-
+# sphinx_gallery_thumbnail_number = 2
 from eelbrain import *
 
 ds = datasets.simulate_erp()
 print(ds.summary())
 
 ###############################################################################
+# Discrete events
+# ---------------
+# Computing a TRF for an impulse at trial onset is very similar to averaging:
+
+any_trial = epoch_impulse_predictor('eeg', 1, ds=ds)
+fit = boosting('eeg', any_trial, -0.100, 0.600, basis=0.050, ds=ds, partitions=2, delta=0.05)
+average = ds['eeg'].mean('case')
+trf = fit.h.sub(time=(average.time.tmin, average.time.tstop))
+p = plot.TopoButterfly([trf, average], axtitle=['Impulse response', 'Average'])
+p.set_time(0.400)
+
+###############################################################################
 # Categorial coding
 # -----------------
+# Impulse predictors can be used like dummy codes in a regression model.
 # Use one impulse to code for occurrence of any word (``any_word``), and a
 # second impulse to code for unpredictable words only (``cloze``):
 
@@ -34,6 +50,6 @@ plot.UTS([any_word, low_cloze], '.case')
 # ``any_word`` reflects the response to predictable words, and ``low_cloze``
 # reflects how unpredictable words differ from predictable words:
 
-res = boosting('eeg', [any_word, low_cloze], 0, 0.5, basis=0.050, model='cloze_cat', ds=ds, partitions=2)
-p = plot.TopoButterfly(res.h)
+fit = boosting('eeg', [any_word, low_cloze], 0, 0.5, basis=0.050, model='cloze_cat', ds=ds, partitions=2, delta=0.05)
+p = plot.TopoButterfly(fit.h)
 p.set_time(0.400)

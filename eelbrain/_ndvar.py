@@ -656,7 +656,7 @@ def gaussian(center: float, width: float, time: UTS):
         start = -n_times
         stop = None
         window_width = 2 * (n_times - center_i)
-    window_data = scipy.signal.windows.gaussian(window_width, width_i)[start: stop]
+    window_data = signal.windows.gaussian(window_width, width_i)[start: stop]
     return NDVar(window_data, (time,))
 
 
