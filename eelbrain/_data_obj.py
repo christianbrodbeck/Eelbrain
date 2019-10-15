@@ -92,7 +92,7 @@ from copy import deepcopy
 from functools import partial
 from itertools import chain, product, repeat, zip_longest
 from keyword import iskeyword
-from math import ceil, log
+from math import ceil, floor, log
 from numbers import Integral, Number
 from pathlib import Path
 import pickle
@@ -4643,8 +4643,8 @@ class NDVar:
                     if not isinstance(dim_object, UTS):
                         raise NotImplementedError(f"mode='full' for {dim_object.__class__.__name__} dimension")
                     dims = list(dims)
-                    tmin = dim_object.tmin - dim_object.tstep * ((n - 1) / 2)
-                    dims[axis] = UTS(tmin, dim_object.tstep, dim_object.nsamples + n -1)
+                    tmin = dim_object.tmin - dim_object.tstep * floor((n - 1) / 2)
+                    dims[axis] = UTS(tmin, dim_object.tstep, dim_object.nsamples + n - 1)
                 else:
                     raise ValueError("mode=%r" % (mode,))
         return NDVar(x, dims, name or self.name, self.info)

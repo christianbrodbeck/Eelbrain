@@ -116,6 +116,16 @@ Sorting and Reordering
    shuffled_index
 
 
+^^^^^^^^^^^^^^^^^^
+NDVar Initializers
+^^^^^^^^^^^^^^^^^^
+
+.. autosummary::
+   :toctree: generated
+
+   gaussian
+
+
 ^^^^^^^^^^^^^^^^
 NDVar Operations
 ^^^^^^^^^^^^^^^^
@@ -321,6 +331,7 @@ Color tools for plotting:
    plot.colors_for_oneway
    plot.colors_for_twoway
    plot.soft_threshold_colormap
+   plot.two_step_colormap
    plot.ColorBar
    plot.ColorGrid
    plot.ColorList

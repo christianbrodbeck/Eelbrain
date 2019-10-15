@@ -15,6 +15,10 @@ New in 0.31
   - :mod:`testnd` API:  For permutation tests, the ``samples`` parameter now defaults to 10,000 (previously 0)
   - :func:`table.difference`:  the ``by`` parameter is deprecated, use ``match``
     instead
+  - :meth:`NDVar.smooth` with a window with an even number of samples, and
+    :attr:`BoostingResult.h` for :func:`boosting` with a basis with an even
+    number of samples: the time axis is now consistent with
+    :func:`scipy.signal.convolve` (was previously shifted by half a sample)
 
 * New functions:
 
@@ -33,6 +37,8 @@ New in 0.31
 
 New in 0.30
 -----------
+
+.. currentmodule:: eelbrain
 
 * Support for vector data (with many contributions from `Proloy Das`_):
 
