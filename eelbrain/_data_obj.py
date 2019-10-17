@@ -7342,6 +7342,29 @@ class Dimension:
         "Divide Dimension into bins"
         raise NotImplementedError(f"Binning for {self.__class__.__name__} dimension")
 
+    @classmethod
+    def _concatenate(cls, dims):
+        "Concatenate multiple dimension instances"
+        raise NotImplementedError(f"Can't concatenate along {cls.__name__} dimensions")
+
+    @staticmethod
+    def _concatenate_connectivity(dims: typing.List['Dimension']):
+        c_types = {dim._connectivity_type for dim in dims}
+        if len(c_types) > 1:
+            raise NotImplementedError(f"concatenating with differing connectivity")
+        c_type = c_types.pop()
+        if c_type == 'custom':
+            raise NotImplementedError(f"concatenating with custom connectivity")
+        return c_type
+
+    @staticmethod
+    def _concatenate_attr(dims: typing.List['Dimension'], attr: str):
+        attrs = {getattr(dim, attr) for dim in dims}
+        if len(attrs) > 1:
+            desc = ', '.join(map(repr, attrs))
+            raise DimensionMismatchError(f"different {attr}s: {desc}")
+        return attrs.pop()
+
     def _as_scalar_array(self):
         raise TypeError(f"{self.__class__.__name__} dimension has no scalar representation")
 
@@ -7685,6 +7708,10 @@ class Case(Dimension):
         else:
             raise TypeError(f"Index {arg} of type {type(arg)} for Case dimension")
 
+    @classmethod
+    def _concatenate(cls, dims):
+        return Case
+
     def _dim_index(self, arg):
         return arg
 
@@ -7910,6 +7937,14 @@ class Categorial(Dimension):
         else:
             return super(Categorial, self)._array_index(arg)
 
+    @classmethod
+    def _concatenate(cls, dims):
+        dims = list(dims)
+        name = cls._concatenate_attr(dims, 'name')
+        connectivity = cls._concatenate_connectivity(dims)
+        values = sum((dim.values for dim in dims), ())
+        return cls(name, values, connectivity)
+
     def _dim_index(self, index):
         if isinstance(index, Integral):
             return self.values[index]
@@ -8123,19 +8158,14 @@ class Scalar(Dimension):
         return ds
 
     @classmethod
-    def _concatenate(cls, scalars):
-        "Concatenate multiple Scalar instances"
-        scalars = tuple(scalars)
-        attrs = {}
-        for attr in ('name', 'unit', 'tick_format'):
-            values = {getattr(s, attr) for s in scalars}
-            if len(values) > 1:
-                raise DimensionMismatchError(
-                    "Trying to concatenate %s dimensions with different %ss: "
-                    "%s" % (cls.__name__, attr, values))
-            attrs[attr] = values.pop()
-        values = np.concatenate(tuple(s.values for s in scalars))
-        return cls(attrs['name'], values, attrs['unit'], attrs['tick_format'])
+    def _concatenate(cls, dims):
+        dims = list(dims)
+        name = cls._concatenate_attr(dims, 'name')
+        unit = cls._concatenate_attr(dims, 'unit')
+        tick_format = cls._concatenate_attr(dims, 'tick_format')
+        values = np.concatenate([s.values for s in dims])
+        connectivity = cls._concatenate_connectivity(dims)
+        return cls(name, values, unit, tick_format, connectivity)
 
     def _array_index(self, arg):
         if isinstance(arg, self.__class__):
@@ -9484,6 +9514,26 @@ class SourceSpace(SourceSpaceBase):
                 hemis.append('rh')
         ds['hemi'] = Factor(hemis)
         return ds
+
+    @classmethod
+    def _concatenate(cls, dims):
+        dims = list(dims)
+        if len(dims) != 2 or dims[0].rh_n != 0 or dims[1].lh_n != 0:
+            raise NotImplementedError("Can only concatenate SourceSpace with exactly two NDVars, one for lh and one for rh (in this order)")
+        lh, rh = dims
+        if lh.subject != rh.subject:
+            raise DimensionMismatchError(f"Different subject ({lh.subject}/{rh.subject})")
+        elif lh.src != rh.src:
+            raise DimensionMismatchError(f"Different source-spaces ({lh.src}/{rh.src})")
+        elif lh.subjects_dir != rh.subjects_dir:
+            raise DimensionMismatchError(f"Different subjects_dirs ({lh.subjects_dir}/{rh.subjects_dir})")
+        # parc
+        if lh.parc is None or rh.parc is None:
+            parc = None
+        else:
+            parc = combine((lh.parc, rh.parc))
+        name = cls._concatenate_attr(dims, 'name')
+        return SourceSpace([lh.lh_vertices, rh.rh_vertices], lh.subject, lh.src, lh.subjects_dir, parc, name=name)
 
     def _link_midline(self, maxdist=0.015):
         """Link sources in the left and right hemispheres

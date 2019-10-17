@@ -37,6 +37,11 @@ def test_concatenate():
     conc_data = conc.get_data(v1.dimnames)
     assert_array_equal(conc_data[:, :, 5:], v1.x)
 
+    # cat
+    x = get_ndvar(2, frequency=0, cat=4)
+    x_re = concatenate([x.sub(cat=(None, 'c')), x.sub(cat=('c', None))], 'cat')
+    assert_dataobj_equal(x_re, x)
+
 
 def test_convolve():
     # convolve is also tested in test_boosting.py

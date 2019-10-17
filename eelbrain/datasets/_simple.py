@@ -4,13 +4,14 @@ from itertools import product
 import os
 from pathlib import Path
 import shutil
+import string
 
 import mne
 from mne import minimum_norm as mn
 import numpy as np
 
 from .. import _info, load
-from .._data_obj import Dataset, Factor, Var, NDVar, Case, Scalar, Sensor, Space, UTS
+from .._data_obj import Dataset, Factor, Var, NDVar, Case, Categorial, Scalar, Sensor, Space, UTS
 from .._ndvar import concatenate, convolve
 
 
@@ -351,14 +352,16 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     return ds
 
 
-def get_ndvar(case=0, time=100, frequency=8, name='ndvar'):
+def get_ndvar(case=0, time=100, frequency=8, cat=0, name='ndvar'):
     dims = []
     if case:
-        dims .append(Case(case))
+        dims.append(Case(case))
     if time:
         dims.append(UTS(-0.1, 0.01, time))
     if frequency:
         dims.append(Scalar('frequency', np.logspace(2, 3.5, frequency)))
+    if cat:
+        dims.append(Categorial('cat', string.ascii_lowercase[:cat]))
     shape = [len(dim) for dim in dims]
     x = np.random.normal(0, 1, shape)
     return NDVar(x, dims, name)

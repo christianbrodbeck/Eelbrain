@@ -94,16 +94,15 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None, ravel=None):
         elif ndvars.has_case:
             ravel = 'case'
         else:
-            raise ValueError("ndvars=%r: more than one dimension that could be "
-                             "split for concatenation; use ravel parameter to specify " % (ndvars,))
-        ndvars = tuple(ndvars.sub(**{ravel: v}) for v in ndvars.get_dim(ravel))
+            raise ValueError(f"ndvars={ndvars!r}: parameters are ambiguous since more than one dimension could be raveled for concatenation; specify ravel parameter")
+        ndvars = [ndvars.sub(**{ravel: v}) for v in ndvars.get_dim(ravel)]
     elif ravel is not None:
-        raise TypeError('ravel=%r: ravel ony applies when ndvars is an NDVar')
+        raise TypeError(f'ravel={ravel!r}: parameter ony applies when ndvars is an NDVar')
 
     try:
         ndvar = ndvars[0]
     except TypeError:
-        ndvars = tuple(ndvars)
+        ndvars = list(ndvars)
         ndvar = ndvars[0]
 
     if info is None:
@@ -131,43 +130,10 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None, ravel=None):
                 if tmin == 'first':
                     tmin = ndvar.time.tmin
                 else:
-                    raise ValueError("tmin=%r" % (tmin,))
+                    raise ValueError(f"tmin={tmin!r}")
             out_dim = UTS(tmin, ndvar.time.tstep, x.shape[axis])
-        elif isinstance(dim_obj, Case):
-            out_dim = Case
-        elif isinstance(dim_obj, SourceSpace):
-            if (len(ndvars) != 2 or
-                        ndvars[0].source.rh_n != 0 or
-                        ndvars[1].source.lh_n != 0):
-                raise NotImplementedError(
-                    "Can only concatenate NDVars along source space with "
-                    "exactly two NDVars, one for lh and one for rh (in this "
-                    "order)")
-            lh = ndvars[0].source
-            rh = ndvars[1].source
-            if lh.subject != rh.subject:
-                raise ValueError("NDVars not from the same subject (%s/%s)" %
-                                 (lh.subject, rh.subject))
-            elif lh.src != rh.src:
-                raise ValueError("NDVars have different source-spaces (%s/%s)" %
-                                 (lh.src, rh.src))
-            elif lh.subjects_dir != rh.subjects_dir:
-                raise ValueError("NDVars have different subjects_dirs (%s/%s)" %
-                                 (lh.subjects_dir, rh.subjects_dir))
-            # parc
-            if lh.parc is None or rh.parc is None:
-                parc = None
-            else:
-                parc = combine((lh.parc, rh.parc))
-
-            out_dim = SourceSpace([lh.lh_vertices, rh.rh_vertices], lh.subject,
-                                  lh.src, lh.subjects_dir, parc)
-        elif isinstance(dim_obj, Scalar):
-            out_dim = Scalar._concatenate(v.get_dim(dim) for v in ndvars)
         else:
-            raise NotImplementedError(
-                "concatenate() is not implemented for concatenating along %s "
-                "dimensions" % (dim_obj.__class__.__name__,))
+            out_dim = dim_obj._concatenate(v.get_dim(dim) for v in ndvars)
         dims = ndvar.dims[:axis] + (out_dim,) + ndvar.dims[axis + 1:]
     return NDVar(x, dims, name or ndvar.name, info)
 
