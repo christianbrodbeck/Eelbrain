@@ -1,5 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """
+.. _exa-two-stage:
+
 Two-stage test
 ==============
 
@@ -52,6 +54,6 @@ p = plot.TopoButterfly(res, frame='t')
 p.set_time(0.120)
 
 ###############################################################################
-# The regression coefficients themselves can be retrieved as table:
+# The regression coefficients themselves can be retrieved as :class:`Dataset`:
 coeffs = stage2.coefficients_dataset()
 print(coeffs.summary())

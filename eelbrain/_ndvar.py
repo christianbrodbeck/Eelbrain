@@ -760,7 +760,7 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
 
 
 def powerlaw_noise(dims, exponent):
-    """Gaussian (1/f)**beta noise.
+    """Gaussian :math:`(1/f)^{exponent}` noise.
 
     Parameters
     ----------
@@ -768,16 +768,10 @@ def powerlaw_noise(dims, exponent):
         Shape of the noise.
     exponent : float
         The power-spectrum of the generated noise is proportional to
+        :math:`S(f) = (1 / f)^{exponent}`
 
-        .. math:: S(f) = (1 / f)^exponent
-
-        - flicker / pink noise: ``exponent=1``
+        - flicker/pink noise: ``exponent=1``
         - brown noise: ``exponent=2``
-
-        Furthermore, the autocorrelation decays proportional to lag**-gamma
-        with gamma = 1 - beta for 0 < beta < 1.
-        There may be finite-size issues for beta close to one.
-
 
     Notes
     -----

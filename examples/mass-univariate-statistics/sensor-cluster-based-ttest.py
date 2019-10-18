@@ -1,3 +1,4 @@
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """
 Cluster-based permutation t-test
 ================================
@@ -8,7 +9,6 @@ A cluster-based permutation test for a simple design (two conditions).
 The example uses simulated data meant to vaguely resemble data from an N400
 experiment, but not intended as a physiologically realistic simulation.
 """
-# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 # sphinx_gallery_thumbnail_number = 2
 from eelbrain import *
 

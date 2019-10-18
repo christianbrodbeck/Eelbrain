@@ -1,3 +1,4 @@
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """
 Generate :class:`NDVar` (with artificial data)
 ==============================================
@@ -9,7 +10,6 @@ Shows how to initialize an :class:`NDVar` with the structure of EEG data from
 analysis techniques and meant to vaguely resemble data from an N400 experiment,
 but it is not meant to be a physiologically realistic simulation.
 """
-# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 # sphinx_gallery_thumbnail_number = 2
 import numpy as np
 import scipy.spatial
@@ -56,7 +56,7 @@ p = plot.Histogram(cloze)
 signal = (1 - cloze) * n400_timecourse * n400_topo
 
 # Add noise
-noise = powerlaw_noise(signal, 2)
+noise = powerlaw_noise(signal, 1)
 noise = noise.smooth('sensor', 0.02, 'gaussian')
 signal += noise
 

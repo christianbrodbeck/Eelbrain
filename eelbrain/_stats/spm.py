@@ -36,6 +36,10 @@ class LM:
     See Also
     --------
     LMGroup
+
+    Examples
+    --------
+    See :ref:`exa-two-stage` example.
     """
     def __init__(self, y, model, ds=None, coding='dummy', subject=None, sub=None):
         sub = assub(sub, ds)
@@ -165,6 +169,10 @@ class LMGroup:
     See Also
     --------
     LM
+
+    Examples
+    --------
+    See :ref:`exa-two-stage` example.
     """
     def __init__(self, lms):
         # check lms

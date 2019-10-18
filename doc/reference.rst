@@ -124,6 +124,7 @@ NDVar Initializers
    :toctree: generated
 
    gaussian
+   powerlaw_noise
 
 
 ^^^^^^^^^^^^^^^^
