@@ -4598,7 +4598,7 @@ class NDVar:
             m = gaussian_smoother(dist, window_size)
             x = np.tensordot(m, self.x, (1, axis))
             if axis:
-                x = x.swapaxes(0, axis)
+                x = np.moveaxis(x, 0, axis)
         elif dim_object._connectivity_type == 'custom':
             raise ValueError(f"window={window!r} for {dim_object.__class__.__name__} dimension (must be 'gaussian')")
         else:

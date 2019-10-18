@@ -237,3 +237,9 @@ def test_smoothing():
     assert_dataobj_equal(xs.sum('frequency'), x.sum('frequency'), 14)
     xs = x.smooth('frequency', window_samples=4, fix_edges=True)
     assert_dataobj_equal(xs.sum('frequency'), x.sum('frequency'), 14)
+
+    # gaussian
+    x = get_ndvar(2, frequency=0, sensor=5)
+    x.smooth('sensor', 0.1, 'gaussian')
+    x = get_ndvar(2, sensor=5)
+    x.smooth('sensor', 0.1, 'gaussian')
