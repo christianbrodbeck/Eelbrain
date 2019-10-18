@@ -420,6 +420,21 @@ specified manually by supplying them as keyword arguments.
 ``nrow``, ``ncol`` : ``None`` | ``int``
    Limit number of rows/columns. If neither is specified, a square layout
    is produced
+``margins`` : ``dict``
+    Absolute subplot parameters (in inches). Implies ``tight=False``.
+    If ``margins`` is specified, ``axw`` and ``axh`` are interpreted
+    exclusive of the margins, i.e., ``axh=2, margins={'top': .5}`` for
+    a plot with one axes will result in a total height of 2.5. Example::
+
+        margins={
+            'top': 0.5,  # from top of figure to top axes
+            'bottom': 1,  # from bottom of figure to bottom axes
+            'hspace': 0.1,  # height of space between axes
+            'left': 0.5,  #  from left of figure to left-most axes
+            'right': 0.1,  # from right of figure to right-most axes
+            'wspace': 0.1,  # width of space between axes
+        }
+
 ``ax_aspect`` : scalar
    Width / height aspect of the axes.
 ``frame`` : :class:`bool` | :class:`str`
