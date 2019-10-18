@@ -5,7 +5,7 @@ import scipy.signal
 import scipy.spatial
 
 from .._data_obj import Dataset, Factor, Var, NDVar, Sensor, UTS
-from .._ndvar import filter_data, gaussian, segment
+from .._ndvar import filter_data, gaussian, powerlaw_noise, segment
 
 
 def _topo(sensor, center, falloff=1):
@@ -90,16 +90,11 @@ def simulate_erp(n_trials=80, seed=0):
     topo = -_topo(sensor, 'Fz')
     signal += amp * tc * topo
 
-    # Generate noise as continuous time series
-    flat_time = UTS(0, time.tstep, time.nsamples * n_trials)
-    noise_shape = (len(sensor), len(flat_time))
-    noise_x = rng.normal(0, 4, noise_shape)
-    noise = NDVar(noise_x, (sensor, flat_time))
-    noise = filter_data(noise, None, 10, h_trans_bandwidth=50)
-    noise = noise.smooth('sensor', 30, 'gaussian')
-
-    # segment noise into trials to add it to the signal
-    signal += segment(noise, np.arange(.1, n_trials * .7, .7), -0.1, 0.6)
+    # Add noise
+    noise = powerlaw_noise(signal, 2)
+    noise = noise.smooth('sensor', 0.02, 'gaussian')
+    noise *= 5
+    signal += noise
 
     # Store EEG data in a Dataset with trial information
     ds = Dataset()

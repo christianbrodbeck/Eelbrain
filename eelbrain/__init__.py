@@ -17,25 +17,10 @@ from . import mne_fixes
 
 from ._config import configure
 from ._celltable import Celltable
-from ._data_obj import (
-    Datalist, Dataset, Var, Factor, Interaction, Model,
-    NDVar, Case, Categorial, Scalar, Sensor, SourceSpace, VolumeSourceSpace,
-    UTS, Space,
-    choose, combine, align, align1, cellname, shuffled_index
-)
+from ._data_obj import Datalist, Dataset, Var, Factor, Interaction, Model, NDVar, Case, Categorial, Scalar, Sensor, SourceSpace, VolumeSourceSpace, UTS, Space, choose, combine, align, align1, cellname, shuffled_index
 from ._experiment import MneExperiment
-from ._mne import (
-    complete_source_space, labels_from_clusters, morph_source_space, xhemi,
-)
-from ._ndvar import (
-    Butterworth, concatenate, convolve, correlation_coefficient,
-    cross_correlation, cwt_morlet, dss,
-    filter_data, find_intervals, find_peaks, frequency_response, gaussian,
-    label_operator,
-    maximum, minimum,
-    neighbor_correlation, psd_welch, rename_dim, resample, segment, set_parc,
-    set_time, set_tmin,
-)
+from ._mne import complete_source_space, labels_from_clusters, morph_source_space, xhemi
+from ._ndvar import Butterworth, concatenate, convolve, correlation_coefficient, cross_correlation, cwt_morlet, dss, filter_data, find_intervals, find_peaks, frequency_response, gaussian, label_operator, maximum, minimum, neighbor_correlation, powerlaw_noise, psd_welch, rename_dim, resample, segment, set_parc, set_time, set_tmin
 from ._stats.testnd import NDTest, MultiEffectNDTest
 from ._trf import boosting, BoostingResult, epoch_impulse_predictor
 from ._utils import set_log_level

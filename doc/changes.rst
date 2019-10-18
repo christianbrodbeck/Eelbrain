@@ -23,6 +23,7 @@ New in 0.31
 * New functions:
 
   - :func:`gaussian`
+  - :func:`powerlaw_noise`
   - :func:`set_time`
 
 * :mod:`plot`:  Additional arguments for :class:`plot.Boxplot` to control plotting of outliers (``whis`` and ``label_fliers``)

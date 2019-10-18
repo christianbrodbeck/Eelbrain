@@ -23,6 +23,7 @@ from ._data_obj import (
     NDVar, Case, Categorial, Dimension, Scalar, SourceSpace, UTS,
     asndvar, combine, op_name)
 from ._exceptions import DimensionMismatchError
+from ._external.colorednoise import powerlaw_psd_gaussian
 from ._info import merge_info
 from ._stats.connectivity import Connectivity
 from ._stats.connectivity import find_peaks as _find_peaks
@@ -756,6 +757,50 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
         y[i] = np.mean(cc[i, neighbors[i]])
     info = _info.for_stat_map('r', old=x.info)
     return NDVar(y, (dim_obj,), name or x.name, info)
+
+
+def powerlaw_noise(dims, exponent):
+    """Gaussian (1/f)**beta noise.
+
+    Parameters
+    ----------
+    dims : list of Dimension | NDVar
+        Shape of the noise.
+    exponent : float
+        The power-spectrum of the generated noise is proportional to
+
+        .. math:: S(f) = (1 / f)^exponent
+
+        - flicker / pink noise: ``exponent=1``
+        - brown noise: ``exponent=2``
+
+        Furthermore, the autocorrelation decays proportional to lag**-gamma
+        with gamma = 1 - beta for 0 < beta < 1.
+        There may be finite-size issues for beta close to one.
+
+
+    Notes
+    -----
+    Based on `colorednoise <https://github.com/felixpatzelt/colorednoise>`_.
+    """
+    if isinstance(dims, NDVar):
+        dim_objs = dims.dims
+    elif isinstance(dims, Dimension):
+        dim_objs = [dims]
+    else:
+        dim_objs = dims
+    shape = [len(dim) for dim in dim_objs]
+    for time_ax, dim in enumerate(dim_objs):
+        if isinstance(dim, UTS):
+            break
+    else:
+        raise ValueError(f"dims={dims!r}: No time dimension")
+    if time_ax < len(shape) - 1:
+        shape.append(shape.pop(time_ax))
+    x = powerlaw_psd_gaussian(exponent, shape)
+    if time_ax < len(shape) - 1:
+        x = np.moveaxis(x, -1, time_ax)
+    return NDVar(x, dim_objs, name=f'(1/f)^{exponent}')
 
 
 def psd_welch(ndvar, fmin=0, fmax=np.inf, n_fft=256, n_overlap=0, n_per_seg=None):

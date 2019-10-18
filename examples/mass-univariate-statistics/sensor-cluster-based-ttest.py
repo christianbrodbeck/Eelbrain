@@ -85,12 +85,14 @@ p.set_time(0.400)
 
 ###############################################################################
 # Show a table with all significant clusters:
-print(res.find_clusters(0.05))
+clusters = res.find_clusters(0.05)
+print(clusters)
 
 ###############################################################################
 # Retrieve the cluster map using its ID and visualize the spatio-temporal
 # extent of the cluster:
-cluster = res.cluster(2)
+cluster_id = clusters[0, 'id']
+cluster = res.cluster(cluster_id)
 p = plot.TopoArray(cluster)
 p.set_topo_ts(.350, 0.400, 0.450)
 
@@ -104,16 +106,16 @@ p.set_topo_ts(.350, 0.400, 0.450)
 # If the test were an ANOVA, these values could also be used for pairwise
 # testing.
 mask = cluster != 0
-ds['c27mean'] = ds['eeg'].mean(mask)
-p = plot.Barplot('c27mean', 'cloze_cat', match='subject', ds=ds, test=False)
+ds['cluster_mean'] = ds['eeg'].mean(mask)
+p = plot.Barplot('cluster_mean', 'cloze_cat', match='subject', ds=ds, test=False)
 
 ###############################################################################
 # similarly, when using a mask that ony contains a sensor dimenstion (``roi``),
 # :meth:`NDVar.mean` collapses across sensor and returns a value for each time
 # point, i.e. the time course in sensors involved in the cluster:
 roi = mask.any('time')
-ds['c27_timecourse'] = ds['eeg'].mean(roi)
-p = plot.UTSStat('c27_timecourse', 'cloze_cat', match='subject', ds=ds)
+ds['cluster_timecourse'] = ds['eeg'].mean(roi)
+p = plot.UTSStat('cluster_timecourse', 'cloze_cat', match='subject', ds=ds)
 
 ###############################################################################
 # Temporal cluster based test
