@@ -5,10 +5,7 @@ from operator import mul
 import numpy as np
 
 from .. import _info, fmtxt
-from .._data_obj import (
-    Dataset, Factor, Var, NDVar,
-    asmodel, asndvar, assub,
-    combine, dataobj_repr)
+from .._data_obj import Dataset, Factor, Var, NDVar, Case, asmodel, asndvar, assub, combine, dataobj_repr
 from .._exceptions import DimensionMismatchError
 from . import opt
 from .stats import lm_betas_se_1d
@@ -35,12 +32,12 @@ class LM:
         Optional information used by :class:`LMGroup`.
     sub : index
         Only use part of the data.
+
+    See Also
+    --------
+    LMGroup
     """
-    def __init__(self, y, model, ds=None, coding='dummy', subject=None,
-                 sub=None):
-        if subject is not None and not isinstance(subject, str):
-            raise TypeError("subject needs to be None or string, got %s"
-                            % repr(subject))
+    def __init__(self, y, model, ds=None, coding='dummy', subject=None, sub=None):
         sub = assub(sub, ds)
         y = asndvar(y, sub, ds)
         n_cases = len(y)
@@ -51,11 +48,29 @@ class LM:
         y_flat = y.x.reshape((n_cases, -1))
         opt.lm_betas(y_flat, p.x, p.projector, coeffs_flat)
         se_flat = lm_betas_se_1d(y_flat, coeffs_flat, p)
-        self.__setstate__({
-            'coding': coding, 'coeffs': coeffs_flat, 'se': se_flat,
-            'model': model, 'p': p, 'dims': y.dims[1:], 'subject': subject,
-            'y': dataobj_repr(y),
-        })
+        # find variables to keep
+        variables = {}
+        if ds is not None:
+            for key, item in ds.items():
+                if isinstance(item, Factor):
+                    if sub is not None:
+                        item = item[sub]
+                    if len(item.cells) == 1:
+                        variables[key] = item.cells[0]
+        # subject
+        if subject is not None:
+            if not isinstance(subject, str):
+                raise TypeError(f"subject={subject!r}: needs to be string or None")
+            variables['subject'] = subject
+        self.coding = coding
+        self._coeffs_flat = coeffs_flat
+        self._se_flat = se_flat
+        self.model = model
+        self._p = p
+        self.dims = y.dims[1:]
+        self.subject_variables = variables
+        self._y = dataobj_repr(y)
+        self._init_secondary()
 
     def __setstate__(self, state):
         self.coding = state['coding']
@@ -63,24 +78,29 @@ class LM:
         self._se_flat = state['se']
         self.model = state['model']
         self.dims = state['dims']
-        self.subject = state['subject']
+        self._y = state.get('y')
+        if 'subject' in state:
+            self.subject_variables = {'subject': state['subject']}
+        else:
+            self.subject_variables = state['subject_variables']
         if 'p' in state:
             self._p = state['p']
         else:
             self._p = self.model._parametrize(self.coding)
-        # secondary attributes
+        self._init_secondary()
+
+    def _init_secondary(self):
+        self.subject = self.subject_variables.get('subject', None)
         self._shape = tuple(map(len, self.dims))
         self.column_names = self._p.column_names
         self.n_cases = self.model.df_total
-        self._y = state.get('y')
 
     def __getstate__(self):
-        return {'coding': self.coding, 'coeffs': self._coeffs_flat,
-                'se': self._se_flat, 'model': self.model, 'dims': self.dims,
-                'subject': self.subject, 'y': self._y}
+        return {'coding': self.coding, 'coeffs': self._coeffs_flat, 'se': self._se_flat, 'model': self.model, 'dims': self.dims, 'subject_variables': self.subject_variables, 'y': self._y}
 
     def __repr__(self):
-        return "<LM: %s ~ %s>" % (self._y or '<?>', self.model.name)
+        y = self._y or '<?>'
+        return f"<LM: {y} ~ {self.model.name}>"
 
     def _coefficient(self, term):
         """Regression coefficient for a given term"""
@@ -96,7 +116,7 @@ class LM:
                 raise NotImplementedError("Term has more than one column")
             return index.start
         else:
-            raise KeyError("Unknown term: %s" % repr(term))
+            raise KeyError(f"Unknown term: {term!r}")
 
     def coefficient(self, term):
         ":class:`NDVar` with regression coefficient for a given term"
@@ -139,6 +159,10 @@ class LMGroup:
         Tests computed with :meth:`compute_column_ttests`.
     samples : None | int
         Number of samples used to compute tests in :attr:`tests`.
+
+    See Also
+    --------
+    LM
     """
     def __init__(self, lms):
         # check lms
@@ -148,8 +172,7 @@ class LMGroup:
             if lm.dims != lm0.dims:
                 raise DimensionMismatchError("LMs have incompatible dimensions")
             elif lm._n_columns() != n_columns_by_term:
-                raise ValueError("Model for %s and %s don't match" %
-                                 (lm0.subject, lm.subject))
+                raise ValueError(f"Model for {lm0.subject} and {lm.subject} don't match")
             elif lm.coding != lm0.coding:
                 raise ValueError("Models have incompatible coding")
 
@@ -167,46 +190,66 @@ class LMGroup:
                     new_name = 'S%03i' % name_i
                 subjects[i] = new_name
 
-        self.__setstate__({'lms': lms, 'subjects': tuple(subjects)})
+        self._lms = lms
+        self._subjects = tuple(subjects)
+        self.tests = None
+        self._init_secondary()
 
     def __setstate__(self, state):
         self._lms = state['lms']
         self._subjects = state['subjects']
         self.tests = state.get('tests')
+        self._init_secondary()
+
+    def _init_secondary(self):
         lm = self._lms[0]
         self.dims = lm.dims
         self.coding = lm.coding
         self.column_names = lm.column_names
-
         if self.tests is None:
             self.samples = None
         else:
             self.samples = self.tests[self.column_names[0]].samples
+        # subject variables
+        self.subject_variables = Dataset()
+        self.subject_variables['subject'] = Factor(self._subjects, random=True)
+        keys = set().union(*(lm.subject_variables for lm in self._lms))
+        for key in keys:
+            values = [lm.subject_variables.get(key, '') for lm in self._lms]
+            self.subject_variables[key] = Factor(values)
 
     def __getstate__(self):
-        return {'lms': self._lms, 'tests': self.tests,
-                'subjects': self._subjects}
+        return {'lms': self._lms, 'tests': self.tests, 'subjects': self._subjects}
 
     def __repr__(self):
         lm = self._lms[0]
-        return "<LMGroup: %s ~ %s, n=%i>" % (
-            lm._y or '<?>', lm.model.name, len(self._lms))
+        y = lm._y or '<?>'
+        return f"<LMGroup: {y} ~ {lm.model.name}, n={len(self._lms)}>"
 
     def coefficients(self, term):
         "Coefficients for one term as :class:`NDVar`"
-        return NDVar(np.concatenate([lm._coefficient(term) for lm in self._lms]),
-                     ('case',) + self.dims, name=term)
+        x = np.concatenate([lm._coefficient(term) for lm in self._lms])
+        return NDVar(x, (Case,) + self.dims, name=term)
 
     def coefficients_dataset(self, terms):
-        """Coefficients in a :class:`Dataset`
+        """Regression coefficients in a :class:`Dataset`
+
+        Coefficients for different terms are stacked vertically and the ``term``
+        :class:`Factor` specifies which term the coefficients correspond to.
+
+        Parameters
+        ----------
+        terms : str | sequence of str
+            Terms for which to retrieve coefficients.
 
         Returns
         -------
         ds : Dataset
-            The Dataset has entries ``coeff``, ``subject`` and ``term``. If more
-            than one terms are specified, the coefficients for the different
-            terms are stacked vertically and the ``term`` :class:`Factor`
-            specifies which term the coefficients correspond to.
+            The Dataset has the following entries:
+
+             - ``coeff``: the coefficients in an :class:`NDVar`
+             - ``term``: a :class:`Factor` with the name of the term
+             - All subject-variables
         """
         if isinstance(terms, str):
             terms = (terms,)
@@ -215,8 +258,8 @@ class LMGroup:
             coeffs.append(self.coefficients(term))
         ds = Dataset()
         ds['coeff'] = combine(coeffs)
-        ds['subject'] = Factor(self._subjects, tile=len(terms), random=True)
         ds['term'] = Factor(terms, repeat=len(self._lms))
+        ds.update(self.subject_variables.tile(len(terms)))
         return ds
 
     def column_ttest(self, term, return_data=False, popmean=0, *args, **kwargs):
@@ -271,9 +314,10 @@ class LMGroup:
         coeff = self.coefficients(term)
         res = ttest_1samp(coeff, popmean, None, None, None, *args, **kwargs)
         if return_data:
-            return res, Dataset((('coeff', coeff),
-                                 ('subject', Factor(self._subjects, random=True)),
-                                 ('n', Var([lm.n_cases for lm in self._lms]))))
+            ds = Dataset({'coeff': coeff})
+            ds.update(self.subject_variables)
+            ds['n'] = Var([lm.n_cases for lm in self._lms])
+            return res, ds
         else:
             return res
 
@@ -287,10 +331,10 @@ class LMGroup:
                 if lm_subject == subject:
                     break
             else:
-                raise ValueError("subject=%r" % (subject,))
+                raise ValueError(f"subject={subject!r}")
 
         table = lm.model.as_table(lm.coding)
-        table.caption("Design matrix for %s" % subject)
+        table.caption(f"Design matrix for {subject}")
         return table
 
     def compute_column_ttests(self, *args, **kwargs):
