@@ -1,3 +1,4 @@
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """
 Two-stage test
 ==============
@@ -15,7 +16,6 @@ test hypotheses at the group level. A two-stage analysis involves:
 The example uses simulated data meant to vaguely resemble data from an N400
 experiment, but not intended as a physiologically realistic simulation.
 """
-# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 # sphinx_gallery_thumbnail_number = 1
 from eelbrain import *
 
@@ -50,3 +50,8 @@ p.set_time(0.400)
 res = stage2.column_ttest('intercept', pmin=0.05)
 p = plot.TopoButterfly(res, frame='t')
 p.set_time(0.120)
+
+###############################################################################
+# The regression coefficients themselves can be retrieved as table:
+coeffs = stage2.coefficients_dataset()
+print(coeffs.summary())

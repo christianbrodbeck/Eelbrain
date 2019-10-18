@@ -155,6 +155,8 @@ class LMGroup:
     ----------
     column_names : [str]
         Names of the linear model columns.
+    column_keys : [str]
+        Corresponding dataset keys (with invalid characters replaced).
     tests : None | {str: ttest_rel}
         Tests computed with :meth:`compute_column_ttests`.
     samples : None | int
@@ -217,6 +219,7 @@ class LMGroup:
         for key in keys:
             values = [lm.subject_variables.get(key, '') for lm in self._lms]
             self.subject_variables[key] = Factor(values)
+        self.column_keys = [Dataset.as_key(name) for name in self.column_names]
 
     def __getstate__(self):
         return {'lms': self._lms, 'tests': self.tests, 'subjects': self._subjects}
@@ -231,35 +234,49 @@ class LMGroup:
         x = np.concatenate([lm._coefficient(term) for lm in self._lms])
         return NDVar(x, (Case,) + self.dims, name=term)
 
-    def coefficients_dataset(self, terms):
+    def coefficients_dataset(self, terms=None, long=False):
         """Regression coefficients in a :class:`Dataset`
 
-        Coefficients for different terms are stacked vertically and the ``term``
+        By default, each regression coefficient is assigned as separate column.
+        With ``long=True``, a long form table is produced, in which the
+        coefficients for different terms are stacked vertically and the ``term``
         :class:`Factor` specifies which term the coefficients correspond to.
 
         Parameters
         ----------
         terms : str | sequence of str
-            Terms for which to retrieve coefficients.
+            Terms for which to retrieve coefficients (default is all terms).
+        long : bool
+            Produce a table in long form.
 
         Returns
         -------
         ds : Dataset
-            The Dataset has the following entries:
+            If the dataset is in the wide form (default), each model coefficient
+            is assigned as :class:`NDVar` with a key corresponding to the
+            ``.column_keys`` attribute.
+            If the dataset is in the long form (with ``long=True``), it has the
+            following entries:
 
              - ``coeff``: the coefficients in an :class:`NDVar`
              - ``term``: a :class:`Factor` with the name of the term
-             - All subject-variables
+
+            In addition, all available subject-variables are assigned.
         """
         if isinstance(terms, str):
             terms = (terms,)
-        coeffs = []
-        for term in terms:
-            coeffs.append(self.coefficients(term))
-        ds = Dataset()
-        ds['coeff'] = combine(coeffs)
-        ds['term'] = Factor(terms, repeat=len(self._lms))
-        ds.update(self.subject_variables.tile(len(terms)))
+        elif terms is None:
+            terms = self.column_names
+
+        if long:
+            ds = Dataset({
+                'coeff': combine([self.coefficients(term) for term in terms]),
+                'term': Factor(terms, repeat=len(self._lms)),
+                **self.subject_variables.tile(len(terms)),
+            })
+        else:
+            ds = Dataset({Dataset.as_key(name): self.coefficients(name) for name in terms})
+            ds.update(self.subject_variables)
         return ds
 
     def column_ttest(self, term, return_data=False, popmean=0, *args, **kwargs):

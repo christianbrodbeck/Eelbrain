@@ -55,6 +55,8 @@ def simulate_erp(n_trials=80, seed=0):
     ])
     rng.shuffle(cloze_x)
     cloze = Var(cloze_x)
+    # Word complexity (number of characters)
+    n_chars = Var(np.random.normal(4, 1.5, n_trials))
 
     # Generate topography
     n400_topo = -2.0 * _topo(sensor, 'Cz')
@@ -65,10 +67,9 @@ def simulate_erp(n_trials=80, seed=0):
 
     # add early responses:
     # 130 ms
-    amp = Var(rng.normal(1.5, 1, n_trials))
     tc = gaussian(0.130, 0.025, time)
     topo = _topo(sensor, 'O1') + _topo(sensor, 'O2') - 0.5 * _topo(sensor, 'Cz')
-    signal += amp * tc * topo
+    signal += n_chars * 0.5 * tc * topo
     # 195 ms
     amp = Var(rng.normal(0.8, 1, n_trials))
     tc = gaussian(0.195, 0.015, time)
@@ -101,5 +102,5 @@ def simulate_erp(n_trials=80, seed=0):
     ds['eeg'] = signal
     ds['cloze'] = Var(cloze_x)
     ds['cloze_cat'] = Factor(cloze_x > 0.5, labels={True: 'high', False: 'low'})
-
+    ds['n_chars'] = Var(n_chars)
     return ds
