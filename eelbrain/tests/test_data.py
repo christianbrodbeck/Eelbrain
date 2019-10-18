@@ -672,7 +672,7 @@ def test_factor():
     # initializing
     assert_array_equal(Factor('ab'), ['a', 'b'])
     assert_array_equal(Factor('ab', repeat=2), ['a', 'a', 'b', 'b'])
-    assert_array_equal(Factor('ab', repeat=np.array([2, 1])), ['a', 'a', 'b'])
+    assert_array_equal(Factor('ab', repeat=[2, 1]), ['a', 'a', 'b'])
     empty_factor = Factor([])
     assert len(empty_factor) == 0
     assert_dataobj_equal(Factor(np.empty(0)), empty_factor)
@@ -690,6 +690,10 @@ def test_factor():
     assert f.n_cells == 2
 
     # cell order
+    assert Factor('ab').cells == ('a', 'b')
+    # alphabetical if labels is unspecified
+    assert Factor('ba').cells == ('a', 'b')
+    # follow labels arg
     a = np.tile(np.arange(3), 3)
     f = Factor(a, labels={2: 'a', 1: 'b', 0: 'c'})
     assert f.cells == ('a', 'b', 'c')

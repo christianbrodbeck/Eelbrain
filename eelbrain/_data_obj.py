@@ -2121,9 +2121,11 @@ class Factor(_Effect):
     .name : None | str
         The Factor's name.
     .cells : tuple of str
-        Sorted names of all cells.
+        Ordered names of all cells. Order is determined by the order of the
+        ``labels`` argument. if ``labels`` is not specified, the order is
+        initially alphabetical.
     .random : bool
-        Whether the Factor is defined as random factor (for ANOVA).
+        Whether the factor represents a random or fixed effect (for ANOVA).
 
     Examples
     --------
@@ -2164,11 +2166,13 @@ class Factor(_Effect):
 
         # find mapping and ordered values
         labels = {} if labels is None else dict(labels)
-
         if isinstance(x, Factor):
+            # translate label keys to x codes
             labels = {x._codes[s]: d for s, d in labels.items() if s in x._codes}
+            # fill in missing keys from x
             labels.update({code: label for code, label in x._labels.items() if code not in labels})
             x = x.x
+        ordered_cells = list(labels.values())
 
         if isinstance(x, np.ndarray) and x.dtype.kind in 'ifb':
             assert x.ndim == 1
@@ -2209,8 +2213,11 @@ class Factor(_Effect):
             if highest_code >= 2**32:
                 raise RuntimeError("Too many categories in this Factor")
 
+        # sort previously unsorted labels alphabetically
+        unordered_cells = [v for v in labels.values() if v not in ordered_cells]
+        labels = chain(ordered_cells, sorted(unordered_cells))
         # redefine labels for new codes
-        labels = {codes[label]: label for label in labels.values() if label in codes}
+        labels = {codes[label]: label for label in labels if label in codes}
 
         if not (isinstance(repeat, int) and repeat == 1):
             x_ = x_.repeat(repeat)
@@ -2350,7 +2357,7 @@ class Factor(_Effect):
         return NestedEffect(self, other)
 
     @property
-    def as_dummy(self):  # x_dummy_coded
+    def as_dummy(self):
         codes = np.empty((self._n_cases, self.df))
         for i, cell in enumerate(self.cells[:-1]):
             codes[:, i] = (self == cell)
@@ -2366,7 +2373,7 @@ class Factor(_Effect):
         return out
 
     @property
-    def as_effects(self):  # x_deviation_coded
+    def as_effects(self):
         shape = (self._n_cases, self.df)
         codes = np.empty(shape)
         for i, cell in enumerate(self.cells[:-1]):
@@ -7072,7 +7079,6 @@ class Model:
         msg = []
         ne = len(self.effects)
         codes = [e.as_effects for e in self.effects]
-#        allok = True
         for i in range(ne):
             for j in range(i + 1, ne):
                 ok = True
@@ -7087,8 +7093,7 @@ class Model:
                             ok = False
 #                            allok = False
                 if v and (not ok):
-                    errtxt = "Not orthogonal: {0} and {1}"
-                    msg.append(errtxt.format(e1.name, e2.name))
+                    msg.append(f"Not orthogonal: {e1.name} and {e2.name}")
         return msg
 
     def _parametrize(self, method='effect'):
@@ -7098,10 +7103,7 @@ class Model:
     def _incomplete_error(self, caller):
         df_table = self.info()
         df_table[-1, 1] = 'Unexplained'
-        return IncompleteModel(
-            "%s requires a fully specified model, but the model has only "
-            "%i explained degrees of freedom for %i cases:\n%s" %
-            (caller, self.df, self.df_total, df_table))
+        return IncompleteModel(f"{caller} requires a fully specified model, but {self.name} only has {self.df} degrees of freedom for {self.df_total} cases:\n{df_table}")
 
     def repeat(self, n):
         "Repeat each row of the Model ``n`` times"
@@ -7113,7 +7115,7 @@ class Model:
 
 
 class Parametrization:
-    """Parametrization of a statistical model
+    """Parametrization of a model
 
     Parameters
     ----------
@@ -7154,7 +7156,7 @@ class Parametrization:
             elif method == 'dummy':
                 x[:, i:j] = e.as_dummy
             else:
-                raise ValueError("method=%s" % repr(method))
+                raise ValueError(f"method={method!r}")
             name = longname(e)
             if name in terms:
                 raise KeyError("Duplicate term name: %s" % repr(name))
