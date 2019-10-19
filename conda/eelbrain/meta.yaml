@@ -28,7 +28,6 @@ requirements:
     - numpy 1.11.*
     - libblas
     - libcblas
-
   run:
     - python  {{ python }}
     - python.app  # [osx]
@@ -40,10 +39,11 @@ requirements:
     - nibabel >=2.0, !=2.3.0
     - olefile  # [linux]
     - {{ pin_compatible('numpy') }}
+    - packaging
     - pillow
     - pysurfer >=0.8
     - nilearn
-    - scipy >=1.1
+    - scipy >=1.3
     - tqdm >=4.8
     - wxpython >=4.0.3
     - mayavi >=4.6.2
