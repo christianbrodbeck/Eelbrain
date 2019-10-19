@@ -76,6 +76,7 @@ class NameOrder:
 example_order = NameOrder({
     'examples': [],
     'datasets': [
+        'intro.py',
         'basic.py',
         'align.py',
     ],
@@ -90,7 +91,9 @@ example_order = NameOrder({
         'sensor-two-stage.py',
     ],
     'reverse-correlation': [
+        'trf_intro.py',
         'mtrf.py',
+        'epoch_impulse.py',
     ],
 })
 

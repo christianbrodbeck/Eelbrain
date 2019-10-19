@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from collections import defaultdict
+import difflib
 from functools import reduce
 from glob import glob
 from itertools import chain, product
@@ -697,13 +698,16 @@ class TreeModel:
                     except ValueError:
                         if match:
                             raise
-
                     if not isinstance(v, str):
-                        err = "Invalid conversion: %s=%r" % (k, v)
-                        raise RuntimeError(err)
+                        raise RuntimeError(f"Invalid conversion from handler {handler}: {k}={v!r}")
                     state[k] = v
             elif match and k in self._field_values and v not in self._field_values[k]:
-                raise ValueError(f"Variable {k!r} has no value {v!r}. In order to see valid values use e.show_fields(); In order to set a non-existent value, use e.set({k!s}={v!r}, match=False).")
+                matches = difflib.get_close_matches(v, self._field_values[k], 1)
+                if matches:
+                    alt = f"Did you mean {matches[0]!r}? "
+                else:
+                    alt = ''
+                raise ValueError(f"{k}={v!r}. {alt}To see all valid values use e.show_fields(); To set a non-existent value, use e.set({k}={v!r}, match=False).")
 
         self._fields.update(state)
 

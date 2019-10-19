@@ -39,4 +39,4 @@ coverage/
 .pytest_cache/
 doc/auto_examples
 *.ipynb
-examples/mass-univariate-statistics/.ipynb_checkpoints
+.ipynb_checkpoints

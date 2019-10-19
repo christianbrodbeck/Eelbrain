@@ -35,7 +35,6 @@ Manual
 
    installing
    getting_started
-   intro
    changes
    publications
    development

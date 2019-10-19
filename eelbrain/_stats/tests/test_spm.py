@@ -33,7 +33,7 @@ def test_random_lm():
     rlm = LMGroup(lms_dummy)
     assert repr(rlm) == '<LMGroup: uts ~ A + B + A x B + Y + A x Y + B x Y + A x B x Y, n=5>'
     # coefficients
-    ds = rlm.coefficients_dataset(('A', 'A x B'))
+    ds = rlm.coefficients_dataset(('A', 'A x B'), long=True)
     assert ds['term'].cells == ('A', 'A x B')
     # tests
     res = rlm.column_ttest('A x B', samples=100, pmin=0.05, mintime=0.025)

@@ -366,7 +366,7 @@ Defaults
 .. py:attribute:: MneExperiment.defaults
 
 The defaults dictionary can contain default settings for
-experiment analysis parameters (see :ref:`state-parameters`_), e.g.::
+experiment analysis parameters (see :ref:`state-parameters`), e.g.::
 
     defaults = {'epoch': 'my_epoch',
                 'cov': 'noreg',

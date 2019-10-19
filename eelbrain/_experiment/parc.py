@@ -50,6 +50,10 @@ class SubParc(Parcellation):
     views : sequence of str
         Views shown in anatomical plots, e.g. ``("medial", "lateral")``.
 
+    See Also
+    --------
+    MneExperiment.parcs
+
     Examples
     --------
     Lateral temporal lobe of both hemispheres::
@@ -107,6 +111,10 @@ class CombinationParc(Parcellation):
         ``{'occipitotemporal-lh': "occipital + temporal"}``).
     views : sequence of str
         Views shown in anatomical plots, e.g. ``("medial", "lateral")``.
+
+    See Also
+    --------
+    MneExperiment.parcs
 
     Examples
     --------
@@ -205,6 +213,10 @@ class FreeSurferParc(Parcellation):
     for individual MRIs the user is responsible for creating the respective
     annot-files.
 
+    See Also
+    --------
+    MneExperiment.parcs
+
     Examples
     --------
     Predefined parcellations::
@@ -226,6 +238,10 @@ class FSAverageParc(Parcellation):
     Parcs that are defined for the fsaverage brain and should be morphed
     to every other subject's brain. These parcellations are automatically
     morphed to individual subjects' MRIs.
+
+    See Also
+    --------
+    MneExperiment.parcs
 
     Examples
     --------
@@ -282,6 +298,10 @@ class SeededParc(Parcellation):
     analysis parameter as in ``e.set(parc="myparc-25")``, which specifies a
     radius of 25 mm.
 
+    See Also
+    --------
+    MneExperiment.parcs
+
     Parameters
     ----------
     seeds : dict
@@ -337,6 +357,10 @@ class IndividualSeededParc(SeededParc):
 
     Analogous to :class:`SeededParc`, except that seeds are
     provided for each subject.
+
+    See Also
+    --------
+    MneExperiment.parcs
 
     Examples
     --------

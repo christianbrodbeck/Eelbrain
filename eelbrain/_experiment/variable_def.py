@@ -54,6 +54,10 @@ class EvalVar(VarDef):
         Statement to evaluate.
     session : str
         Only apply the variable to events from this session.
+
+    See Also
+    --------
+    MneExperiment.variables
     """
     _pickle_args = ('session', 'code')
 
@@ -92,6 +96,10 @@ class LabelVar(VarDef):
         unlabeled input values.
     session : str
         Only apply the variable to events from this session.
+
+    See Also
+    --------
+    MneExperiment.variables
     """
     _pickle_args = ('session', 'source', 'codes', 'labels', 'is_factor', 'default')
 
@@ -150,6 +158,10 @@ class GroupVar(VarDef):
         assign a different label based on group membership.
     session : str
         Only apply the variable to events from this session.
+
+    See Also
+    --------
+    MneExperiment.variables
 
     Examples
     --------

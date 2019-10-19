@@ -37,6 +37,11 @@ def test_concatenate():
     conc_data = conc.get_data(v1.dimnames)
     assert_array_equal(conc_data[:, :, 5:], v1.x)
 
+    # cat
+    x = get_ndvar(2, frequency=0, cat=4)
+    x_re = concatenate([x.sub(cat=(None, 'c')), x.sub(cat=('c', None))], 'cat')
+    assert_dataobj_equal(x_re, x)
+
 
 def test_convolve():
     # convolve is also tested in test_boosting.py
@@ -232,3 +237,9 @@ def test_smoothing():
     assert_dataobj_equal(xs.sum('frequency'), x.sum('frequency'), 14)
     xs = x.smooth('frequency', window_samples=4, fix_edges=True)
     assert_dataobj_equal(xs.sum('frequency'), x.sum('frequency'), 14)
+
+    # gaussian
+    x = get_ndvar(2, frequency=0, sensor=5)
+    x.smooth('sensor', 0.1, 'gaussian')
+    x = get_ndvar(2, sensor=5)
+    x.smooth('sensor', 0.1, 'gaussian')

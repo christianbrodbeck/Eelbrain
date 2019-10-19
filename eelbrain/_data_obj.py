@@ -92,7 +92,7 @@ from copy import deepcopy
 from functools import partial
 from itertools import chain, product, repeat, zip_longest
 from keyword import iskeyword
-from math import ceil, log
+from math import ceil, floor, log
 from numbers import Integral, Number
 from pathlib import Path
 import pickle
@@ -111,10 +111,10 @@ import nibabel
 from nibabel.freesurfer import read_annot, read_geometry
 import numpy as np
 import scipy.interpolate
+import scipy.optimize
 import scipy.signal
 import scipy.stats
 from scipy.linalg import inv, norm
-from scipy.optimize import leastsq
 from scipy.spatial import ConvexHull
 from scipy.spatial.distance import cdist, pdist, squareform
 
@@ -850,8 +850,7 @@ def align(d1, d2, i1='index', i2=None, out='data'):
 
     Examples
     --------
-    See `examples/datasets/align.py <https://github.com/christianbrodbeck/
-    Eelbrain/blob/master/examples/datasets/align.py>`_.
+    See :ref:`exa-align` example.
     """
     if i2 is None and isinstance(i1, str):
         i2 = i1
@@ -2122,9 +2121,11 @@ class Factor(_Effect):
     .name : None | str
         The Factor's name.
     .cells : tuple of str
-        Sorted names of all cells.
+        Ordered names of all cells. Order is determined by the order of the
+        ``labels`` argument. if ``labels`` is not specified, the order is
+        initially alphabetical.
     .random : bool
-        Whether the Factor is defined as random factor (for ANOVA).
+        Whether the factor represents a random or fixed effect (for ANOVA).
 
     Examples
     --------
@@ -2165,11 +2166,13 @@ class Factor(_Effect):
 
         # find mapping and ordered values
         labels = {} if labels is None else dict(labels)
-
         if isinstance(x, Factor):
+            # translate label keys to x codes
             labels = {x._codes[s]: d for s, d in labels.items() if s in x._codes}
+            # fill in missing keys from x
             labels.update({code: label for code, label in x._labels.items() if code not in labels})
             x = x.x
+        ordered_cells = list(labels.values())
 
         if isinstance(x, np.ndarray) and x.dtype.kind in 'ifb':
             assert x.ndim == 1
@@ -2210,8 +2213,11 @@ class Factor(_Effect):
             if highest_code >= 2**32:
                 raise RuntimeError("Too many categories in this Factor")
 
+        # sort previously unsorted labels alphabetically
+        unordered_cells = [v for v in labels.values() if v not in ordered_cells]
+        labels = chain(ordered_cells, sorted(unordered_cells))
         # redefine labels for new codes
-        labels = {codes[label]: label for label in labels.values() if label in codes}
+        labels = {codes[label]: label for label in labels if label in codes}
 
         if not (isinstance(repeat, int) and repeat == 1):
             x_ = x_.repeat(repeat)
@@ -2351,7 +2357,7 @@ class Factor(_Effect):
         return NestedEffect(self, other)
 
     @property
-    def as_dummy(self):  # x_dummy_coded
+    def as_dummy(self):
         codes = np.empty((self._n_cases, self.df))
         for i, cell in enumerate(self.cells[:-1]):
             codes[:, i] = (self == cell)
@@ -2367,7 +2373,7 @@ class Factor(_Effect):
         return out
 
     @property
-    def as_effects(self):  # x_deviation_coded
+    def as_effects(self):
         shape = (self._n_cases, self.df)
         codes = np.empty(shape)
         for i, cell in enumerate(self.cells[:-1]):
@@ -4556,7 +4562,7 @@ class NDVar:
 
         window_samples : scalar
             Size of the window in samples (this parameter is used to specify
-            window size in array elemnts rather than in units of the dimension;
+            window size in array elements rather than in units of the dimension;
             it is mutually exclusive with ``window_size``).
         fix_edges : bool
             Standard convolution smears values around the edges resulting in
@@ -4599,7 +4605,7 @@ class NDVar:
             m = gaussian_smoother(dist, window_size)
             x = np.tensordot(m, self.x, (1, axis))
             if axis:
-                x = x.swapaxes(0, axis)
+                x = np.moveaxis(x, 0, axis)
         elif dim_object._connectivity_type == 'custom':
             raise ValueError(f"window={window!r} for {dim_object.__class__.__name__} dimension (must be 'gaussian')")
         else:
@@ -4644,8 +4650,8 @@ class NDVar:
                     if not isinstance(dim_object, UTS):
                         raise NotImplementedError(f"mode='full' for {dim_object.__class__.__name__} dimension")
                     dims = list(dims)
-                    tmin = dim_object.tmin - dim_object.tstep * ((n - 1) / 2)
-                    dims[axis] = UTS(tmin, dim_object.tstep, dim_object.nsamples + n -1)
+                    tmin = dim_object.tmin - dim_object.tstep * floor((n - 1) / 2)
+                    dims[axis] = UTS(tmin, dim_object.tstep, dim_object.nsamples + n - 1)
                 else:
                     raise ValueError("mode=%r" % (mode,))
         return NDVar(x, dims, name or self.name, self.info)
@@ -5733,7 +5739,7 @@ class Dataset(dict):
         return eval(expression, EVAL_CONTEXT, self)
 
     @classmethod
-    def from_caselist(cls, names, cases, name=None, caption=None, info=None):
+    def from_caselist(cls, names, cases, name=None, caption=None, info=None, random=None):
         """Create a Dataset from a list of cases
 
         Parameters
@@ -5752,11 +5758,19 @@ class Dataset(dict):
             Info dictionary, can contain arbitrary entries and can be accessed
             as ``.info`` attribute after initialization. The Dataset makes a
             shallow copy.
+        random : str | sequence of str
+            Names of the columns that should be assigned as random factor.
         """
         if isinstance(names, Iterator):
-            names = tuple(names)
+            names = list(names)
         if isinstance(cases, Iterator):
-            cases = tuple(cases)
+            cases = list(cases)
+        if isinstance(random, str):
+            random = [random]
+        elif isinstance(random, Iterator):
+            random  = list(random)
+        elif random is None:
+            random = []
         n_cases = set(map(len, cases))
         if len(n_cases) > 1:
             raise ValueError('not all cases have same length')
@@ -5764,6 +5778,12 @@ class Dataset(dict):
         if len(names) != n_cases:
             raise ValueError('names=%r: %i names but %i cases' % (names, len(names), n_cases))
         items = {key: combine(case[i] for case in cases) for i, key in enumerate(names)}
+        for key in random:
+            item = items[key]
+            if isinstance(item, Factor):
+                item.random = True
+            else:
+                raise ValueError(f"random={random}: {key!r} is not a Factor but {item}")
         return cls(items, name, caption, info)
 
     @classmethod
@@ -7059,7 +7079,6 @@ class Model:
         msg = []
         ne = len(self.effects)
         codes = [e.as_effects for e in self.effects]
-#        allok = True
         for i in range(ne):
             for j in range(i + 1, ne):
                 ok = True
@@ -7074,8 +7093,7 @@ class Model:
                             ok = False
 #                            allok = False
                 if v and (not ok):
-                    errtxt = "Not orthogonal: {0} and {1}"
-                    msg.append(errtxt.format(e1.name, e2.name))
+                    msg.append(f"Not orthogonal: {e1.name} and {e2.name}")
         return msg
 
     def _parametrize(self, method='effect'):
@@ -7085,10 +7103,7 @@ class Model:
     def _incomplete_error(self, caller):
         df_table = self.info()
         df_table[-1, 1] = 'Unexplained'
-        return IncompleteModel(
-            "%s requires a fully specified model, but the model has only "
-            "%i explained degrees of freedom for %i cases:\n%s" %
-            (caller, self.df, self.df_total, df_table))
+        return IncompleteModel(f"{caller} requires a fully specified model, but {self.name} only has {self.df} degrees of freedom for {self.df_total} cases:\n{df_table}")
 
     def repeat(self, n):
         "Repeat each row of the Model ``n`` times"
@@ -7100,7 +7115,7 @@ class Model:
 
 
 class Parametrization:
-    """Parametrization of a statistical model
+    """Parametrization of a model
 
     Parameters
     ----------
@@ -7141,7 +7156,7 @@ class Parametrization:
             elif method == 'dummy':
                 x[:, i:j] = e.as_dummy
             else:
-                raise ValueError("method=%s" % repr(method))
+                raise ValueError(f"method={method!r}")
             name = longname(e)
             if name in terms:
                 raise KeyError("Duplicate term name: %s" % repr(name))
@@ -7305,9 +7320,11 @@ class Dimension:
         raise NotImplementedError
 
     def __eq__(self, other):
-        if isinstance(other, str):
-            return False
-        return self.name == other.name
+        if isinstance(other, self.__class__) and other.name == self.name and other._connectivity_type == self._connectivity_type:
+            if self._connectivity_type == 'custom':
+                return np.array_equal(other._connectivity, self._connectivity)
+            return True
+        return False
 
     def __ne__(self, other):
         return not self == other
@@ -7326,6 +7343,29 @@ class Dimension:
     def _bin(self, start, stop, step, nbins, label):
         "Divide Dimension into bins"
         raise NotImplementedError(f"Binning for {self.__class__.__name__} dimension")
+
+    @classmethod
+    def _concatenate(cls, dims):
+        "Concatenate multiple dimension instances"
+        raise NotImplementedError(f"Can't concatenate along {cls.__name__} dimensions")
+
+    @staticmethod
+    def _concatenate_connectivity(dims: typing.List['Dimension']):
+        c_types = {dim._connectivity_type for dim in dims}
+        if len(c_types) > 1:
+            raise NotImplementedError(f"concatenating with differing connectivity")
+        c_type = c_types.pop()
+        if c_type == 'custom':
+            raise NotImplementedError(f"concatenating with custom connectivity")
+        return c_type
+
+    @staticmethod
+    def _concatenate_attr(dims: typing.List['Dimension'], attr: str):
+        attrs = {getattr(dim, attr) for dim in dims}
+        if len(attrs) > 1:
+            desc = ', '.join(map(repr, attrs))
+            raise DimensionMismatchError(f"different {attr}s: {desc}")
+        return attrs.pop()
 
     def _as_scalar_array(self):
         raise TypeError(f"{self.__class__.__name__} dimension has no scalar representation")
@@ -7629,7 +7669,7 @@ class Case(Dimension):
         return self.n
 
     def __eq__(self, other):
-        return isinstance(other, Case) and other.n == self.n
+        return Dimension.__eq__(self, other) and other.n == self.n
 
     def __getitem__(self, item):
         if isinstance(item, Integral):
@@ -7669,6 +7709,10 @@ class Case(Dimension):
             return slice(*arg) if arg else FULL_SLICE
         else:
             raise TypeError(f"Index {arg} of type {type(arg)} for Case dimension")
+
+    @classmethod
+    def _concatenate(cls, dims):
+        return Case
 
     def _dim_index(self, arg):
         return arg
@@ -7732,7 +7776,7 @@ class Space(Dimension):
         return len(self._directions)
 
     def __eq__(self, other):
-        return isinstance(other, Space) and other._directions == self._directions
+        return Dimension.__eq__(self, other) and other._directions == self._directions
 
     def __getitem__(self, item):
         if not all(i in self._directions for i in item):
@@ -7894,6 +7938,14 @@ class Categorial(Dimension):
             return [self._array_index(v) for v in arg.values]
         else:
             return super(Categorial, self)._array_index(arg)
+
+    @classmethod
+    def _concatenate(cls, dims):
+        dims = list(dims)
+        name = cls._concatenate_attr(dims, 'name')
+        connectivity = cls._concatenate_connectivity(dims)
+        values = sum((dim.values for dim in dims), ())
+        return cls(name, values, connectivity)
 
     def _dim_index(self, index):
         if isinstance(index, Integral):
@@ -8108,19 +8160,14 @@ class Scalar(Dimension):
         return ds
 
     @classmethod
-    def _concatenate(cls, scalars):
-        "Concatenate multiple Scalar instances"
-        scalars = tuple(scalars)
-        attrs = {}
-        for attr in ('name', 'unit', 'tick_format'):
-            values = {getattr(s, attr) for s in scalars}
-            if len(values) > 1:
-                raise DimensionMismatchError(
-                    "Trying to concatenate %s dimensions with different %ss: "
-                    "%s" % (cls.__name__, attr, values))
-            attrs[attr] = values.pop()
-        values = np.concatenate(tuple(s.values for s in scalars))
-        return cls(attrs['name'], values, attrs['unit'], attrs['tick_format'])
+    def _concatenate(cls, dims):
+        dims = list(dims)
+        name = cls._concatenate_attr(dims, 'name')
+        unit = cls._concatenate_attr(dims, 'unit')
+        tick_format = cls._concatenate_attr(dims, 'tick_format')
+        values = np.concatenate([s.values for s in dims])
+        connectivity = cls._concatenate_connectivity(dims)
+        return cls(name, values, unit, tick_format, connectivity)
 
     def _array_index(self, arg):
         if isinstance(arg, self.__class__):
@@ -8312,8 +8359,9 @@ class Sensor(Dimension):
         return len(self.locs)
 
     def __eq__(self, other):  # Based on equality of sensor names
-        return (Dimension.__eq__(self, other) and len(self) == len(other) and
-                all(n == no for n, no in zip(self.names, other.names)))
+        return (Dimension.__eq__(self, other) and
+                len(self) == len(other) and
+                np.all(other.names == self.names))
 
     def __getitem__(self, index):
         if np.isscalar(index):
@@ -8432,29 +8480,38 @@ class Sensor(Dimension):
 
     @classmethod
     def from_montage(cls, montage, channels=None):
-        """Create Sensor dimension from :mod:`mne` :class:`~mne.channels.Montage`
+        """From :class:`~mne.channels.DigMontage`
 
         Parameters
         ----------
-        montage : str | mne.Montage
+        montage : str | mne.channels.DigMontage
             Montage, or name to load a standard montage (see
-            :func:`mne.channels.read_montage`).
+            :func:`mne.channels.make_standard_montage`).
         channels : list of str
             Channel names in the desired order (optional).
         """
         if isinstance(montage, str):
-            obj = mne.channels.read_montage(montage)
+            sysname = montage
+            obj = mne.channels.make_standard_montage(montage)
             try:
                 cm, names = mne.channels.read_ch_connectivity(montage)
                 connectivity = _matrix_graph(cm)
             except ValueError:
                 connectivity = 'none'
         else:
+            sysname = None
             obj = montage
             connectivity = 'none'
 
-        locations = obj.pos
-        names = obj.ch_names
+        if isinstance(obj, mne.channels.DigMontage):
+            digs = [dig for dig in obj.dig if dig['kind'] == mne.io.constants.FIFF.FIFFV_POINT_EEG]
+            locations = np.vstack([dig['r'] for dig in digs])
+            names = obj.ch_names
+        elif hasattr(mne.channels, 'Montage') and isinstance(obj, mne.channels.Montage):  # Montage removed in 0.20
+            locations = obj.pos
+            names = obj.ch_names
+        else:
+            raise TypeError(f'montage={obj!r}')
 
         if channels is not None:
             index = np.array([names.index(ch) for ch in channels])
@@ -8463,7 +8520,7 @@ class Sensor(Dimension):
             if not isinstance(connectivity, str):
                 connectivity = _subgraph_edges(connectivity, index)
 
-        return cls(locations, names, obj.kind, connectivity=connectivity)
+        return cls(locations, names, sysname, connectivity=connectivity)
 
     def _interpret_proj(self, proj):
         if proj == 'default':
@@ -8529,32 +8586,40 @@ class Sensor(Dimension):
         params : tuple
             Radius and center (r, cx, cy, cz).
         """
-        locs = self.locs
-
-        # error function
-        def err(params):
-            # params: [r, cx, cy, cz]
-            out = np.sum((locs - params[1:]) ** 2, 1)
-            out -= params[0] ** 2
-            return out
-
         # initial guess of sphere parameters (radius and center)
-        center_0 = np.mean(locs, 0)
-        r_0 = np.mean(np.sqrt(np.sum((locs - center_0) ** 2, axis=1)))
-        start_params = np.hstack((r_0, center_0))
-        # do fit
-        estimate, _ = leastsq(err, start_params)
-        return tuple(estimate)
+        center_0 = np.mean(self.locs, 0)
+        radius_0 = np.mean(np.sqrt(np.sum((self.locs - center_0) ** 2, axis=1)))
+        # error function
+        if len(self) >= 6:
+            def err(params):
+                # params: [cx, cy, cz, rx, ry, rz]
+                centered = self.locs - params[:3]  # -> c=0
+                centered /= params[3:]  # -> r=1
+                centered **= 2
+                length = np.sum(centered, 1)
+                length -= 1
+                return length
+            radius_0 = [radius_0, radius_0, radius_0]
+        else:
+            def err(params):
+                # params: [cx, cy, cz, r]
+                centered = self.locs - params[:3]  # -> c=0
+                centered **= 2
+                length = np.sum(centered, 1)
+                length -= params[3]
+                return length
+        start_params = np.hstack((center_0, radius_0))
+        estimate, _ = scipy.optimize.leastsq(err, start_params)
+        center = estimate[:3]
+        radius = estimate[3:] if len(estimate) == 6 else estimate[3]
+        return center, radius
 
     def _make_locs_2d(self, proj, extent, frame):
         if proj in ('cone', 'lower cone', 'z root'):
-            r, cx, cy, cz = self._sphere_fit
-
-            # center the sensor locations based on the sphere and scale to
-            # radius 1
-            sphere_center = np.array((cx, cy, cz))
-            locs3d = self.locs - sphere_center
-            locs3d /= r
+            # center the sensor locations based on the sphere and scale to radius 1
+            center, radius = self._sphere_fit
+            locs3d = self.locs - center
+            locs3d /= radius
 
             # implement projection
             locs2d = np.copy(locs3d[:, :2])
@@ -8825,39 +8890,6 @@ class Sensor(Dimension):
 
         self._connectivity = np.array(sorted(pairs), np.uint32)
         self._connectivity_type = 'custom'
-
-    def set_sensor_positions(self, pos, names=None):
-        """Set the sensor positions
-
-        Parameters
-        ----------
-        pos : array (n_locations, 3) | MNE Montage
-            Array with 3 columns describing sensor locations (x, y, and z), or
-            an MNE Montage object describing the sensor layout.
-        names : None | list of str
-            If locations is an array, names should specify a name
-            corresponding to each entry.
-        """
-        # MNE Montage
-        if hasattr(pos, 'pos') and hasattr(pos, 'ch_names'):
-            if names is not None:
-                raise TypeError("Can't specify names parameter with Montage")
-            names = pos.ch_names
-            pos = pos.pos
-        elif names is not None and len(names) != len(pos):
-            raise ValueError("Mismatch between number of locations (%i) and "
-                             "number of names (%i)" % (len(pos), len(names)))
-
-        if names is not None:
-            missing = [name for name in self.names if name not in names]
-            if missing:
-                raise ValueError("The following sensors are missing: %r" % missing)
-            index = np.array([names.index(name) for name in self.names])
-            pos = pos[index]
-        elif len(pos) != len(self.locs):
-            raise ValueError("If names are not specified pos must specify "
-                             "exactly one position per channel")
-        self.locs[:] = pos
 
     @property
     def values(self):
@@ -9484,6 +9516,26 @@ class SourceSpace(SourceSpaceBase):
                 hemis.append('rh')
         ds['hemi'] = Factor(hemis)
         return ds
+
+    @classmethod
+    def _concatenate(cls, dims):
+        dims = list(dims)
+        if len(dims) != 2 or dims[0].rh_n != 0 or dims[1].lh_n != 0:
+            raise NotImplementedError("Can only concatenate SourceSpace with exactly two NDVars, one for lh and one for rh (in this order)")
+        lh, rh = dims
+        if lh.subject != rh.subject:
+            raise DimensionMismatchError(f"Different subject ({lh.subject}/{rh.subject})")
+        elif lh.src != rh.src:
+            raise DimensionMismatchError(f"Different source-spaces ({lh.src}/{rh.src})")
+        elif lh.subjects_dir != rh.subjects_dir:
+            raise DimensionMismatchError(f"Different subjects_dirs ({lh.subjects_dir}/{rh.subjects_dir})")
+        # parc
+        if lh.parc is None or rh.parc is None:
+            parc = None
+        else:
+            parc = combine((lh.parc, rh.parc))
+        name = cls._concatenate_attr(dims, 'name')
+        return SourceSpace([lh.lh_vertices, rh.rh_vertices], lh.subject, lh.src, lh.subjects_dir, parc, name=name)
 
     def _link_midline(self, maxdist=0.015):
         """Link sources in the left and right hemispheres

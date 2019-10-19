@@ -393,6 +393,16 @@ def test_dataset():
     with pytest.raises(TypeError):
         ds['b'] = {i: i for i in range(4)}
 
+    # from_caselist
+    target = Dataset({
+        'y': Var([1, 2]),
+        'x': Factor('ab'),
+        'z': Factor('uv', random=True),
+    })
+    cases = [[1, 'a', 'u'], [2, 'b', 'v']]
+    ds = Dataset.from_caselist(['y', 'x', 'z'], cases, random='z')
+    assert_dataobj_equal(ds, target)
+
 
 def test_dataset_combining():
     "Test Dataset combination methods"
@@ -662,7 +672,7 @@ def test_factor():
     # initializing
     assert_array_equal(Factor('ab'), ['a', 'b'])
     assert_array_equal(Factor('ab', repeat=2), ['a', 'a', 'b', 'b'])
-    assert_array_equal(Factor('ab', repeat=np.array([2, 1])), ['a', 'a', 'b'])
+    assert_array_equal(Factor('ab', repeat=[2, 1]), ['a', 'a', 'b'])
     empty_factor = Factor([])
     assert len(empty_factor) == 0
     assert_dataobj_equal(Factor(np.empty(0)), empty_factor)
@@ -680,6 +690,10 @@ def test_factor():
     assert f.n_cells == 2
 
     # cell order
+    assert Factor('ab').cells == ('a', 'b')
+    # alphabetical if labels is unspecified
+    assert Factor('ba').cells == ('a', 'b')
+    # follow labels arg
     a = np.tile(np.arange(3), 3)
     f = Factor(a, labels={2: 'a', 1: 'b', 0: 'c'})
     assert f.cells == ('a', 'b', 'c')
@@ -1524,7 +1538,7 @@ def test_io_txt():
     try:
         dest = os.path.join(tempdir, 'test.txt')
         ds.save_txt(dest)
-        ds2 = load.tsv(dest)
+        ds2 = load.tsv(dest, random='rm')
     finally:
         shutil.rmtree(tempdir)
 
@@ -1566,6 +1580,14 @@ def test_sensor():
     assert s1 != s2
     assert s1.intersect(s2) == sensor[[1]]
     assert sensor._dim_index(np.array([0, 1, 1], bool)) == ['2', '3']
+    # from MNE montage
+    m = mne.channels.make_standard_montage('standard_1020')
+    s = Sensor.from_montage(m)
+    assert s.names[0] == 'Fp1'
+    # equality
+    s_copy = Sensor.from_montage(m)
+    assert s_copy == s
+    assert s_copy[:25] != s
 
 
 def test_shuffle():

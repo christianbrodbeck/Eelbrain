@@ -3,4 +3,4 @@
 
 from .experiment import TreeModel, FileTree
 from .mne_experiment import MneExperiment
-from .test_def import ROITestResult
+from .test_def import ROITestResult, ROI2StageResult

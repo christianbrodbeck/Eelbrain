@@ -31,6 +31,7 @@ def tsv(
         start_tag: str = None,
         ignore_missing: bool = False,
         empty: str = None,
+        random : Union[str, Sequence[str]] = None,
         **fmtparams,
 ):
     r"""Load a :class:`Dataset` from a text file.
@@ -76,6 +77,8 @@ def tsv(
         for ``""``). For example, if a column in a file contains ``['5', '3',
         '']``, this is read by default as ``Factor(['5', '3', ''])``. With
         ``empty='nan'``, it is read as ``Var([5, 3, nan])``.
+    random : str | sequence of str
+        Names of the columns that should be assigned as random factor.
     **fmtparams
         Further formatting parameters for :func:`csv.reader`. For example, a
         fixed-width column file can be loaded with ``skipinitialspace=True``
@@ -85,6 +88,13 @@ def tsv(
         path = ui.ask_file("Load TSV", "Select tsv file to import as Dataset")
         if not path:
             return
+
+    if isinstance(random, str):
+        random = [random]
+    elif random is None:
+        random = []
+    else:
+        random = list(random)
 
     with open(path, newline='') as fid:
         if delimiter is None:  # legacy option
@@ -128,6 +138,11 @@ def tsv(
             raise IOError(f"The number of names in the header ({n_names}) does not correspond to the number of columns in the table ({n_cols})")
     else:
         names = [f'v{i}' for i in range(n_cols)]
+
+    # check random
+    missing = [k for k in random if k not in names]
+    if missing:
+        raise ValueError(f"random={random} includes non-existent names: {', '.join(missing)}")
 
     # coerce types parameter
     if types is None:
@@ -191,7 +206,10 @@ def tsv(
 
         # create data-object
         if type_ == 'f':
-            dob = _data.Factor(values, labels={None: ''}, name=name)
+            f_random = name in random
+            dob = _data.Factor(values, labels={None: ''}, name=name, random=f_random)
+        elif name in random:
+            raise ValueError(f"random={random}: {name} is not categorial")
         else:
             dob = _data.Var(values, name)
         ds.add(dob)
@@ -226,59 +244,3 @@ def var(path=None, name=None):
         x = np.loadtxt(path)
 
     return _data.Var(x, name)
-
-
-def eeg_montage(path=None, kind='Polhemus digitized montage'):
-    """Read Montage saved with the Montage App.
-
-    Reads the montage and transforms it to MNE space, ready for use with
-    :func:`mne.io.read_raw_brainvision`.
-
-    Parameters
-    ----------
-    path : str | None
-        Source file. If None, a system file dialog is opened.
-    kind : str
-        Name for the Montage.
-
-    Notes
-    -----
-    Requires MNE-Python 0.9 or later.
-    """
-    import mne
-    try:
-        from mne.channels.layout import Montage
-    except:
-        raise ImportError("Requires MNE-Python 0.9 or later.")
-
-    if path is None:
-        path = ui.ask_file("Load Montage File", "Select Montage File",
-                           [("Montage Text Files", "*.txt")])
-        if path is None:
-            return
-
-    ds = tsv(path, ['name', 'x', 'y', 'z'])
-    ds = ds.sub("name != ''")
-
-    names_lower = [name.lower() for name in ds['name']]
-    locs = np.hstack((ds['x'].x[:, None], ds['y'].x[:, None], ds['z'].x[:, None]))
-    locs /= 1000
-
-    # check that all needed points are present
-    missing = [name for name in ('nasion', 'lpa', 'rpa')
-               if name not in names_lower]
-    if missing:
-        raise ValueError("The points %s are missing, but are needed "
-                         "to transform the points to the MNE coordinate "
-                         "system. Either add the points, or read the "
-                         "montage with transform=False." % missing)
-
-    # transform to MNE (Neuromag) space
-    nasion = locs[names_lower.index('nasion')]
-    lpa = locs[names_lower.index('lpa')]
-    rpa = locs[names_lower.index('rpa')]
-    trans = mne.transforms.get_ras_to_neuromag_trans(nasion, lpa, rpa)
-    locs = mne.transforms.apply_trans(trans, locs)
-
-    return Montage(locs, ds['name'].as_labels(), kind, np.arange(len(locs)))
-

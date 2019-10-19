@@ -23,6 +23,7 @@ from ._data_obj import (
     NDVar, Case, Categorial, Dimension, Scalar, SourceSpace, UTS,
     asndvar, combine, op_name)
 from ._exceptions import DimensionMismatchError
+from ._external.colorednoise import powerlaw_psd_gaussian
 from ._info import merge_info
 from ._stats.connectivity import Connectivity
 from ._stats.connectivity import find_peaks as _find_peaks
@@ -94,16 +95,15 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None, ravel=None):
         elif ndvars.has_case:
             ravel = 'case'
         else:
-            raise ValueError("ndvars=%r: more than one dimension that could be "
-                             "split for concatenation; use ravel parameter to specify " % (ndvars,))
-        ndvars = tuple(ndvars.sub(**{ravel: v}) for v in ndvars.get_dim(ravel))
+            raise ValueError(f"ndvars={ndvars!r}: parameters are ambiguous since more than one dimension could be raveled for concatenation; specify ravel parameter")
+        ndvars = [ndvars.sub(**{ravel: v}) for v in ndvars.get_dim(ravel)]
     elif ravel is not None:
-        raise TypeError('ravel=%r: ravel ony applies when ndvars is an NDVar')
+        raise TypeError(f'ravel={ravel!r}: parameter ony applies when ndvars is an NDVar')
 
     try:
         ndvar = ndvars[0]
     except TypeError:
-        ndvars = tuple(ndvars)
+        ndvars = list(ndvars)
         ndvar = ndvars[0]
 
     if info is None:
@@ -131,43 +131,10 @@ def concatenate(ndvars, dim='time', name=None, tmin=0, info=None, ravel=None):
                 if tmin == 'first':
                     tmin = ndvar.time.tmin
                 else:
-                    raise ValueError("tmin=%r" % (tmin,))
+                    raise ValueError(f"tmin={tmin!r}")
             out_dim = UTS(tmin, ndvar.time.tstep, x.shape[axis])
-        elif isinstance(dim_obj, Case):
-            out_dim = Case
-        elif isinstance(dim_obj, SourceSpace):
-            if (len(ndvars) != 2 or
-                        ndvars[0].source.rh_n != 0 or
-                        ndvars[1].source.lh_n != 0):
-                raise NotImplementedError(
-                    "Can only concatenate NDVars along source space with "
-                    "exactly two NDVars, one for lh and one for rh (in this "
-                    "order)")
-            lh = ndvars[0].source
-            rh = ndvars[1].source
-            if lh.subject != rh.subject:
-                raise ValueError("NDVars not from the same subject (%s/%s)" %
-                                 (lh.subject, rh.subject))
-            elif lh.src != rh.src:
-                raise ValueError("NDVars have different source-spaces (%s/%s)" %
-                                 (lh.src, rh.src))
-            elif lh.subjects_dir != rh.subjects_dir:
-                raise ValueError("NDVars have different subjects_dirs (%s/%s)" %
-                                 (lh.subjects_dir, rh.subjects_dir))
-            # parc
-            if lh.parc is None or rh.parc is None:
-                parc = None
-            else:
-                parc = combine((lh.parc, rh.parc))
-
-            out_dim = SourceSpace([lh.lh_vertices, rh.rh_vertices], lh.subject,
-                                  lh.src, lh.subjects_dir, parc)
-        elif isinstance(dim_obj, Scalar):
-            out_dim = Scalar._concatenate(v.get_dim(dim) for v in ndvars)
         else:
-            raise NotImplementedError(
-                "concatenate() is not implemented for concatenating along %s "
-                "dimensions" % (dim_obj.__class__.__name__,))
+            out_dim = dim_obj._concatenate(v.get_dim(dim) for v in ndvars)
         dims = ndvar.dims[:axis] + (out_dim,) + ndvar.dims[axis + 1:]
     return NDVar(x, dims, name or ndvar.name, info)
 
@@ -628,6 +595,38 @@ def frequency_response(b, frequencies=None):
     return NDVar(fresps, dims, b.name, b.info)
 
 
+def gaussian(center: float, width: float, time: UTS):
+    """Gaussian window :class:`NDVar`
+
+    Parameters
+    ----------
+    center : scalar
+        Center of the window.
+    width : scalar
+        Standard deviation of the window.
+    time : UTS
+        Time dimension.
+
+    Returns
+    -------
+    gaussian : NDVar
+        Gaussian window on ``time``.
+    """
+    width_i = int(round(width / time.tstep))
+    n_times = len(time)
+    center_i = time._array_index(center)
+    if center_i > n_times // 2:
+        start = None
+        stop = n_times
+        window_width = 2 * center_i
+    else:
+        start = -n_times
+        stop = None
+        window_width = 2 * (n_times - center_i)
+    window_data = signal.windows.gaussian(window_width, width_i)[start: stop]
+    return NDVar(window_data, (time,))
+
+
 def label_operator(labels, operation='mean', exclude=None, weights=None,
                    dim_name='label', dim_values=None):
     """Convert labeled NDVar into a matrix operation to extract label values
@@ -758,6 +757,44 @@ def neighbor_correlation(x, dim='sensor', obs='time', name=None):
         y[i] = np.mean(cc[i, neighbors[i]])
     info = _info.for_stat_map('r', old=x.info)
     return NDVar(y, (dim_obj,), name or x.name, info)
+
+
+def powerlaw_noise(dims, exponent):
+    """Gaussian :math:`(1/f)^{exponent}` noise.
+
+    Parameters
+    ----------
+    dims : list of Dimension | NDVar
+        Shape of the noise.
+    exponent : float
+        The power-spectrum of the generated noise is proportional to
+        :math:`S(f) = (1 / f)^{exponent}`
+
+        - flicker/pink noise: ``exponent=1``
+        - brown noise: ``exponent=2``
+
+    Notes
+    -----
+    Based on `colorednoise <https://github.com/felixpatzelt/colorednoise>`_.
+    """
+    if isinstance(dims, NDVar):
+        dim_objs = dims.dims
+    elif isinstance(dims, Dimension):
+        dim_objs = [dims]
+    else:
+        dim_objs = dims
+    shape = [len(dim) for dim in dim_objs]
+    for time_ax, dim in enumerate(dim_objs):
+        if isinstance(dim, UTS):
+            break
+    else:
+        raise ValueError(f"dims={dims!r}: No time dimension")
+    if time_ax < len(shape) - 1:
+        shape.append(shape.pop(time_ax))
+    x = powerlaw_psd_gaussian(exponent, shape)
+    if time_ax < len(shape) - 1:
+        x = np.moveaxis(x, -1, time_ax)
+    return NDVar(x, dim_objs, name=f'(1/f)^{exponent}')
 
 
 def psd_welch(ndvar, fmin=0, fmax=np.inf, n_fft=256, n_overlap=0, n_per_seg=None):

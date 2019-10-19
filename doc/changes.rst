@@ -8,15 +8,20 @@ New in 0.31
 
 * API changes:
 
-  - :class:`Var` and :class:`NDVar` argument order changed to be consistent
-    with other data objects
+  - :class:`Var` and :class:`NDVar` argument order changed to be consistent with other data objects
   - :func:`combine`: combining :class:`NDVar` with unequal dimensions will now raise an error; to combine them by taking the intersection of valid elements (previous behavior), use ``dim_intersection=True``
   - :meth:`Dataset.save_txt`: ``delim`` parameter renamed to ``delimiter``
   - :mod:`testnd` API:  For permutation tests, the ``samples`` parameter now defaults to 10,000 (previously 0)
-  - :func:`table.difference`:  the ``by`` parameter is deprecated, use ``match``
-    instead
+  - :func:`table.difference`:  the ``by`` parameter is deprecated, use ``match`` instead
+  - :meth:`NDVar.smooth` with a window with an even number of samples, and :attr:`BoostingResult.h` for :func:`boosting` with a basis with an even number of samples: the time axis is now consistent with :func:`scipy.signal.convolve` (was previously shifted by half a sample)
+  - :meth:`testnd.LMGroup.coefficients_dataset` now returns a wide form table by default
 
-* New function :func:`set_time`
+* New functions:
+
+  - :func:`gaussian`
+  - :func:`powerlaw_noise`
+  - :func:`set_time`
+
 * :mod:`plot`:  Additional arguments for :class:`plot.Boxplot` to control plotting of outliers (``whis`` and ``label_fliers``)
 * Horizontal bar-plot: :class:`plot.BarplotHorizontal`
 * Non-parametric univariate tests :class:`test.MannWhitneyU` and :class:`test.WilcoxonSignedRank`
@@ -29,6 +34,8 @@ New in 0.31
 
 New in 0.30
 -----------
+
+.. currentmodule:: eelbrain
 
 * Support for vector data (with many contributions from `Proloy Das`_):
 

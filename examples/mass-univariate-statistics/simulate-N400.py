@@ -1,3 +1,4 @@
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """
 Generate :class:`NDVar` (with artificial data)
 ==============================================
@@ -9,7 +10,6 @@ Shows how to initialize an :class:`NDVar` with the structure of EEG data from
 analysis techniques and meant to vaguely resemble data from an N400 experiment,
 but it is not meant to be a physiologically realistic simulation.
 """
-# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 # sphinx_gallery_thumbnail_number = 2
 import numpy as np
 import scipy.spatial
@@ -18,7 +18,7 @@ from eelbrain import *
 
 ###############################################################################
 # Create a Sensor dimension from an actual montage
-sensor = Sensor.from_montage('biosemi32')
+sensor = Sensor.from_montage('standard_alphabetic')
 p = plot.SensorMap(sensor)
 
 ###############################################################################
@@ -55,19 +55,13 @@ p = plot.Histogram(cloze)
 # Put all the dimensions together to simulate the EEG signal
 signal = (1 - cloze) * n400_timecourse * n400_topo
 
-# Generate noise as continuous time series
-flat_time = UTS(0, time.tstep, time.nsamples * n_trials)
-noise_shape = (len(sensor), len(flat_time))
-noise_x = rng.normal(0, 4, noise_shape)
-noise = NDVar(noise_x, (sensor, flat_time))
-noise = filter_data(noise, None, 10, h_trans_bandwidth=50)
-noise = noise.smooth('sensor', 30, 'gaussian')
-
-# segment noise into trials to add it to the signal
-signal += segment(noise, np.arange(.1, n_trials * .7, .7), -0.1, 0.6)
+# Add noise
+noise = powerlaw_noise(signal, 1)
+noise = noise.smooth('sensor', 0.02, 'gaussian')
+signal += noise
 
 # Apply the average mastoids reference
-signal -= signal.mean(sensor=['LPA', 'RPA'])
+signal -= signal.mean(sensor=['M1', 'M2'])
 
 # Store EEG data in a Dataset with trial information
 ds = Dataset()

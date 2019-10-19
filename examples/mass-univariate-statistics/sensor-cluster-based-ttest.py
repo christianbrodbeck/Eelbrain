@@ -1,3 +1,4 @@
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """
 Cluster-based permutation t-test
 ================================
@@ -8,7 +9,6 @@ A cluster-based permutation test for a simple design (two conditions).
 The example uses simulated data meant to vaguely resemble data from an N400
 experiment, but not intended as a physiologically realistic simulation.
 """
-# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 # sphinx_gallery_thumbnail_number = 2
 from eelbrain import *
 
@@ -61,7 +61,7 @@ p = plot.SensorMap(ds['eeg'], connectivity=True)
 
 ###############################################################################
 # Re-reference EEG data
-ds['eeg'] -= ds['eeg'].mean(sensor=['LPA', 'RPA'])
+ds['eeg'] -= ds['eeg'].mean(sensor=['M1', 'M2'])
 
 ###############################################################################
 # Spatio-temporal cluster based test
@@ -85,12 +85,14 @@ p.set_time(0.400)
 
 ###############################################################################
 # Show a table with all significant clusters:
-print(res.find_clusters(0.05))
+clusters = res.find_clusters(0.05)
+print(clusters)
 
 ###############################################################################
 # Retrieve the cluster map using its ID and visualize the spatio-temporal
 # extent of the cluster:
-cluster = res.cluster(27)
+cluster_id = clusters[0, 'id']
+cluster = res.cluster(cluster_id)
 p = plot.TopoArray(cluster)
 p.set_topo_ts(.350, 0.400, 0.450)
 
@@ -104,16 +106,16 @@ p.set_topo_ts(.350, 0.400, 0.450)
 # If the test were an ANOVA, these values could also be used for pairwise
 # testing.
 mask = cluster != 0
-ds['c27mean'] = ds['eeg'].mean(mask)
-p = plot.Barplot('c27mean', 'cloze_cat', match='subject', ds=ds, test=False)
+ds['cluster_mean'] = ds['eeg'].mean(mask)
+p = plot.Barplot('cluster_mean', 'cloze_cat', match='subject', ds=ds, test=False)
 
 ###############################################################################
 # similarly, when using a mask that ony contains a sensor dimenstion (``roi``),
 # :meth:`NDVar.mean` collapses across sensor and returns a value for each time
 # point, i.e. the time course in sensors involved in the cluster:
 roi = mask.any('time')
-ds['c27_timecourse'] = ds['eeg'].mean(roi)
-p = plot.UTSStat('c27_timecourse', 'cloze_cat', match='subject', ds=ds)
+ds['cluster_timecourse'] = ds['eeg'].mean(roi)
+p = plot.UTSStat('cluster_timecourse', 'cloze_cat', match='subject', ds=ds)
 
 ###############################################################################
 # Temporal cluster based test

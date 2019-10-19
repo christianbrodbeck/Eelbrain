@@ -10,9 +10,10 @@ import mne
 from scipy import signal
 
 from .. import load
-from .._data_obj import NDVar
+from .._data_obj import NDVar, Sensor
 from .._exceptions import DefinitionError
 from .._io.fiff import KIT_NEIGHBORS
+from .._mne import MNE_VERSION, V0_19
 from .._ndvar import filter_data
 from .._text import enumeration
 from .._utils import as_sequence, ask, user_activity
@@ -118,11 +119,16 @@ class RawSource(RawPipe):
           connections in terms of indices. Each row should specify one
           connection [i, j] with i < j. If the array's dtype is uint32,
           property checks are disabled to improve efficiency.
-        - ``"grid"`` to use adjacency in the sensor names
+        - ``'grid'`` to use adjacency in the sensor names
+        - ``'auto'`` to use :func:`mne.channels.find_ch_connectivity`
 
         If unspecified, it is inferred from ``sysname`` if possible.
     ...
         Additional parameters for the ``reader`` function.
+
+    See Also
+    --------
+    MneExperiment.raw
     """
     _dig_sessions = None  # {subject: {for_recording: use_recording}}
 
@@ -132,10 +138,10 @@ class RawSource(RawPipe):
         self.reader = reader
         self.sysname = sysname
         self.rename_channels = typed_arg(rename_channels, dict)
-        self.montage = typed_arg(montage, str)
+        self.montage = montage
         self.connectivity = connectivity
         self._kwargs = kwargs
-        if reader is mne.io.read_raw_cnt:
+        if MNE_VERSION < V0_19 and reader is mne.io.read_raw_cnt:
             self._read_raw_kwargs = {'montage': None, **kwargs}
         else:
             self._read_raw_kwargs = kwargs
@@ -163,7 +169,10 @@ class RawSource(RawPipe):
         if self.rename_channels:
             out['rename_channels'] = self.rename_channels
         if self.montage:
-            out['montage'] = self.montage
+            if isinstance(self.montage, mne.channels.DigMontage):
+                out['montage'] = Sensor.from_montage(self.montage)
+            else:
+                out['montage'] = self.montage
         if self.connectivity is not None:
             out['connectivity'] = self.connectivity
         return out
@@ -175,7 +184,7 @@ class RawSource(RawPipe):
             raw.rename_channels(self.rename_channels)
         if self.montage:
             raw.set_montage(self.montage)
-        if raw.info['dig'] is None and self._dig_sessions is not None:
+        if raw.info['dig'] is None and self._dig_sessions is not None and self._dig_sessions[subject]:
             dig_session = self._dig_sessions[subject][recording]
             dig_raw = self._load(subject, dig_session, False)
             raw.info['dig'] = dig_raw.info['dig']
@@ -210,8 +219,6 @@ class RawSource(RawPipe):
             for k, v in self.sysname.items():
                 if fnmatch.fnmatch(subject, k):
                     return v
-        elif self.connectivity is None:
-            raise RuntimeError(f"Unknown sensor configuration for {subject}, data={data!r}. Consider setting connectivity or sysname explicitly.")
 
     def load_bad_channels(self, subject, recording):
         path = self.bads_path.format(root=self.root, subject=subject, recording=recording)
@@ -329,8 +336,6 @@ class CachedRawPipe(RawPipe):
             raw = self.cache(subject, recording)
         else:
             raw = self._make(subject, recording)
-        if not isinstance(raw, mne.io.Raw):
-            raw = None  # only propagate fiff raw for appending
         return RawPipe.load(self, subject, recording, add_bads, preload, raw)
 
     def load_bad_channels(self, subject, recording):
@@ -364,6 +369,10 @@ class RawFilter(CachedRawPipe):
         Cache the resulting raw files (default False).
     ...
         :meth:`mne.io.Raw.filter` parameters.
+
+    See Also
+    --------
+    MneExperiment.raw
     """
 
     def __init__(self, source, l_freq=None, h_freq=None, cache=True, **kwargs):
@@ -474,6 +483,10 @@ class RawICA(CachedRawPipe):
     ...
         Additional parameters for :class:`mne.preprocessing.ICA`.
 
+    See Also
+    --------
+    MneExperiment.raw
+
     Notes
     -----
     This preprocessing step estimates one set of ICA components per subject,
@@ -546,7 +559,7 @@ class RawICA(CachedRawPipe):
             raw.append(raw_)
         return raw
 
-    def make_ica(self, subject, visit):
+    def make_ica(self, subject, visit, make=True):
         path = self._ica_path(subject, visit)
         recordings = [compound((session, visit)) for session in self.session]
         raw = self.source.load(subject, recordings[0], False)
@@ -561,13 +574,16 @@ class RawICA(CachedRawPipe):
                 if all(mtimes) and getmtime(path) > max(mtimes):
                     return path
                 # ICA file is newer than raw
-                command = ask(f"The input for the ICA of {subject} seems to have changed since the ICA was generated.", [('delete', 'delete and recompute the ICA'), ('ignore', 'Keep using the old ICA')], help="This message indicates that the modification date of the raw input data or of the bad channels file is more recent than that of the ICA file. If the data actually changed, ICA components might not be valid anymore and should be recomputed. If the change is spurious (e.g., the raw file was modified in a way that does not affect the ICA) load and resave the ICA file to stop seeing this message.")
+                command = ask(f"The input for the ICA of {subject} seems to have changed since the ICA was generated.", {'delete': 'delete and recompute the ICA', 'ignore': 'Keep using the old ICA'}, help="This message indicates that the modification date of the raw input data or of the bad channels file is more recent than that of the ICA file. If the data actually changed, ICA components might not be valid anymore and should be recomputed. If the change is spurious (e.g., the raw file was modified in a way that does not affect the ICA) load and resave the ICA file to stop seeing this message.")
                 if command == 'ignore':
                     return path
                 elif command == 'delete':
                     remove(path)
                 else:
                     raise RuntimeError(f"command={command!r}")
+
+        if not make:
+            raise FileMissing(path)
 
         for session in self.session[1:]:
             recording = compound((session, visit))
@@ -576,7 +592,12 @@ class RawICA(CachedRawPipe):
             raw.append(raw_)
 
         self.log.info("Raw %s: computing ICA decomposition for %s", self.name, subject)
-        kwargs = self.kwargs if 'max_iter' in self.kwargs else {'max_iter': 256, **self.kwargs}
+        kwargs = self.kwargs.copy()
+        kwargs.setdefault('max_iter', 256)
+        if MNE_VERSION > V0_19 and kwargs['method'] == 'extended-infomax':
+            kwargs['method'] = 'infomax'
+            kwargs['fit_params'] = {'extended': True}
+
         ica = mne.preprocessing.ICA(**kwargs)
         # reject presets from meeg-preprocessing
         with user_activity:
@@ -616,6 +637,10 @@ class RawApplyICA(CachedRawPipe):
         Name of the raw pipe to use for input data.
     ica : str
         Name of the :class:`RawICA` pipe from which to load the ICA components.
+
+    See Also
+    --------
+    MneExperiment.raw
 
     Notes
     -----
@@ -690,6 +715,10 @@ class RawMaxwell(CachedRawPipe):
         Session(s) to use for estimating ICA components.
     ...
         :func:`mne.preprocessing.maxwell_filter` parameters.
+
+    See Also
+    --------
+    MneExperiment.raw
     """
 
     _bad_chs_affect_cache = True
@@ -721,24 +750,42 @@ class RawReReference(CachedRawPipe):
     reference : str | sequence of str
         New reference: ``'average'`` (default) or one or several electrode
         names.
+    add : str | list of str
+        Reconstruct reference channels with given names and set them to 0.
+    drop : list of str
+        Drop these channels after applying the reference.
+
+    See Also
+    --------
+    MneExperiment.raw
     """
 
-    def __init__(self, source, reference='average'):
+    def __init__(self, source, reference='average', add=None, drop=None):
         CachedRawPipe.__init__(self, source, False)
         if not isinstance(reference, str):
             reference = list(reference)
             if not all(isinstance(ch, str) for ch in reference):
                 raise TypeError(f"reference={reference}: must be list of str")
         self.reference = reference
+        self.add = add
+        self.drop = drop
 
     def as_dict(self):
         out = CachedRawPipe.as_dict(self)
         out['reference'] = self.reference
+        if self.add is not None:
+            out['add'] = self.add
+        if self.drop:
+            out['drop'] = self.drop
         return out
 
     def _make(self, subject, recording):
         raw = self.source.load(subject, recording, preload=True)
+        if self.add:
+            raw = mne.add_reference_channels(raw, self.add, copy=False)
         raw.set_eeg_reference(self.reference)
+        if self.drop:
+            raw = raw.drop_channels(self.drop)
         return raw
 
 
@@ -843,7 +890,7 @@ def compare_pipelines(old, new, log):
             elif all(out[p] == 'good' for p in parents):
                 out[key] = 'good'
             else:
-                out[key] = 'secondary'
+                out[key] = 'changed'
             to_check.remove(key)
         if len(to_check) == n:
             raise RuntimeError("Queue not decreasing")

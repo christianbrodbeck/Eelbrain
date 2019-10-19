@@ -29,14 +29,14 @@ def test_tsv_io():
     # save and load
     dst = Path(tempdir) / 'ds.txt'
     ds.save_txt(dst)
-    ds1 = load.tsv(dst)
+    ds1 = load.tsv(dst, random='rm')
     assert_dataset_equal(ds1, ds, decimal=10)
-    ds1 = load.tsv(dst, skiprows=1, names=names)
+    ds1 = load.tsv(dst, skiprows=1, names=names, random='rm')
     assert_dataset_equal(ds1, ds, decimal=10)
     # delimiter
     for delimiter in [' ', ',']:
         ds.save_txt(dst, delimiter=delimiter)
-        ds1 = load.tsv(dst, delimiter=delimiter)
+        ds1 = load.tsv(dst, delimiter=delimiter, random='rm')
         assert_dataset_equal(ds1, ds, decimal=10)
 
     # guess data types with missing
@@ -51,10 +51,10 @@ def test_tsv_io():
     # str with space
     ds[:5, 'A'] = 'a 1'
     ds.save_txt(dst)
-    ds1 = load.tsv(dst)
+    ds1 = load.tsv(dst, random='rm')
     assert_dataset_equal(ds1, ds, decimal=10)
     ds.save_txt(dst, delimiter=' ')
-    ds1 = load.tsv(dst, delimiter=' ')
+    ds1 = load.tsv(dst, delimiter=' ', random='rm')
     assert_dataset_equal(ds1, ds, decimal=10)
 
     # Fixed column width

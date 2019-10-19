@@ -113,7 +113,7 @@ def mne_raw(path=None, proj=False, **kwargs):
 
 
 def events(raw=None, merge=None, proj=False, name=None, bads=None,
-           stim_channel=None, events=None, **kwargs):
+           stim_channel=None, events=None, annotations=None, **kwargs):
     """
     Load events from a raw fiff file.
 
@@ -149,7 +149,10 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
         If events are stored in a fiff file separate from the Raw object, the
         path to the events file can be supplied here. The events in the Dataset
         will reflect the event sin the events file rather than the raw file.
-    others :
+    annotations : bool
+        Generate events from annotations instead of the stim channel (by
+        default, annotations are used when present).
+    **
         Keyword arguments for loading the raw file (see
         :func:`mne.io.read_raw_kit` or :func:`mne.io.read_raw_kit`).
 
@@ -177,14 +180,19 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
             name = None
 
     if events is None:
-        raw.load_data()
-        if merge is None:
-            evts = mne.find_stim_steps(raw, merge=-1, stim_channel=stim_channel)
-            if len(evts) == 0:
-                evts = mne.find_stim_steps(raw, merge=0, stim_channel=stim_channel)
+        if annotations is None:
+            annotations = len(raw.annotations) > 0
+        if annotations:
+            evts, _ = mne.events_from_annotations(raw, int)
         else:
-            evts = mne.find_stim_steps(raw, merge=merge, stim_channel=stim_channel)
-        evts = evts[np.flatnonzero(evts[:, 2])]
+            raw.load_data()
+            if merge is None:
+                evts = mne.find_stim_steps(raw, merge=-1, stim_channel=stim_channel)
+                if len(evts) == 0:
+                    evts = mne.find_stim_steps(raw, merge=0, stim_channel=stim_channel)
+            else:
+                evts = mne.find_stim_steps(raw, merge=merge, stim_channel=stim_channel)
+            evts = evts[np.flatnonzero(evts[:, 2])]
     else:
         evts = mne.read_events(events)
 
@@ -683,25 +691,29 @@ def sensor_dim(info, picks=None, sysname=None, connectivity=None):
     if sysname == 'neuromag':
         ch_unit = {ch['unit'] for ch in chs}
         if len(ch_unit) > 1:
-            raise RuntimeError("More than one channel kind for "
-                               "sysname='neuromag': %s" % (tuple(ch_unit),))
+            raise RuntimeError(f"More than one channel kind for sysname='neuromag': {tuple(ch_unit)}")
         ch_unit = ch_unit.pop()
         if ch_unit == FIFF.FIFF_UNIT_T_M:
             sysname = 'neuromag306planar'
         elif ch_unit == FIFF.FIFF_UNIT_T:
             sysname = 'neuromag306mag'
         else:
-            raise ValueError("Unknown channel unit for sysname='neuromag': %r"
-                             % (ch_unit,))
+            raise ValueError(f"Unknown channel unit for sysname='neuromag': {ch_unit!r}")
 
-    if connectivity is not None:
-        pass
-    elif sysname is not None:
-        c_matrix, names = mne.channels.read_ch_connectivity(sysname)
+    if connectivity is None:
+        connectivity = sysname
 
-        # fix channel names
-        if sysname.startswith('neuromag'):
-            names = [n[:3] + ' ' + n[3:] for n in names]
+    if isinstance(connectivity, str):
+        if connectivity in ('grid', 'none'):
+            pass
+        elif connectivity == 'auto':
+            ch_type = _guess_ndvar_data_type(info)
+            c_matrix, names = mne.channels.find_ch_connectivity(info, ch_type)
+        else:
+            c_matrix, names = mne.channels.read_ch_connectivity(connectivity)
+            # fix channel names
+            if connectivity.startswith('neuromag'):
+                names = [n[:3] + ' ' + n[3:] for n in names]
 
         # fix channel order
         if names != ch_names:

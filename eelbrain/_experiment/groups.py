@@ -15,6 +15,10 @@ class Group(GroupBase):
     ----------
     subjects : collection of str
         Group members.
+
+    See Also
+    --------
+    MneExperiment.groups
     """
     def __init__(self, subjects: Collection[str]):
         if isinstance(subjects, str):
@@ -52,6 +56,10 @@ class SubGroup(GroupBase):
         The name of the group to base the new group on (e.g., ``'all'``).
     exclude : collection of str
         Subjects to exclude (e.g., ``("R0026", "R0042", "R0066")``).
+
+    See Also
+    --------
+    MneExperiment.groups
     """
     def __init__(self, base: str, exclude: Collection[str]):
         self.base = base

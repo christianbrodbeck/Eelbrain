@@ -4,13 +4,14 @@ from itertools import product
 import os
 from pathlib import Path
 import shutil
+import string
 
 import mne
 from mne import minimum_norm as mn
 import numpy as np
 
 from .. import _info, load
-from .._data_obj import Dataset, Factor, Var, NDVar, Case, Scalar, Sensor, Space, UTS
+from .._data_obj import Dataset, Factor, Var, NDVar, Case, Categorial, Scalar, Sensor, Space, UTS
 from .._ndvar import concatenate, convolve
 
 
@@ -351,14 +352,18 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     return ds
 
 
-def get_ndvar(case=0, time=100, frequency=8, name='ndvar'):
+def get_ndvar(case=0, time=100, frequency=8, cat=0, sensor=0, name='ndvar'):
     dims = []
     if case:
-        dims .append(Case(case))
+        dims.append(Case(case))
     if time:
         dims.append(UTS(-0.1, 0.01, time))
     if frequency:
         dims.append(Scalar('frequency', np.logspace(2, 3.5, frequency)))
+    if cat:
+        dims.append(Categorial('cat', string.ascii_lowercase[:cat]))
+    if sensor:
+        dims.append(get_sensor(sensor))
     shape = [len(dim) for dim in dims]
     x = np.random.normal(0, 1, shape)
     return NDVar(x, dims, name)
@@ -413,14 +418,6 @@ def get_uts(utsnd=False, seed=0, nrm=False, vector3d=False):
 
     # add sensor NDVar
     if utsnd:
-        locs = np.array([[-1.0,  0.0, 0.0],
-                         [ 0.0,  1.0, 0.0],
-                         [ 1.0,  0.0, 0.0],
-                         [ 0.0, -1.0, 0.0],
-                         [ 0.0,  0.0, 1.0]])
-        sensor = Sensor(locs, sysname='test_sens')
-        sensor.set_connectivity(connect_dist=1.75)
-
         y = random.normal(0, 1, (60, 5, len(time)))
         y += rm_var[:, None, None]
         # add interaction
@@ -441,6 +438,7 @@ def get_uts(utsnd=False, seed=0, nrm=False, vector3d=False):
             y[i, 3, 25:75] += 1.5 * win * x[shift: 50 + shift]
             y[i, 4, 25:75] += 0.5 * win * x[shift: 50 + shift]
 
+        sensor = get_sensor(5)
         dims = ('case', sensor, time)
         ds['utsnd'] = NDVar(y, dims, info=_info.for_eeg())
 
@@ -492,6 +490,18 @@ def get_uv(seed=0, nrm=False, vector=False):
         x[:40] += [.3, .3, .3]
         ds['v'] = NDVar(x, (Case, Space('RAS')))
     return ds
+
+
+def get_sensor(n):
+    assert n == 5
+    locs = np.array([[-1.0, 0.0, 0.0],
+                     [0.0, 1.0, 0.0],
+                     [1.0, 0.0, 0.0],
+                     [0.0, -1.0, 0.0],
+                     [0.0, 0.0, 1.0]])
+    sensor = Sensor(locs, sysname='test_sens')
+    sensor.set_connectivity(connect_dist=1.75)
+    return sensor
 
 
 def setup_samples_experiment(dst, n_subjects=3, n_segments=4, n_sessions=1, n_visits=1, name='SampleExperiment', mris=False, mris_only=False):

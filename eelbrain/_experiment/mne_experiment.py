@@ -40,7 +40,7 @@ from .. import save
 from .. import table
 from .. import testnd
 from .._data_obj import (
-    Datalist, Dataset, Factor, Var, SourceSpace, VolumeSourceSpace,
+    Datalist, Dataset, Factor, Var, NDVar, SourceSpace, VolumeSourceSpace,
     align1, all_equal, assert_is_legal_dataset_key, combine)
 from .._exceptions import DefinitionError, DimensionMismatchError, OldVersionError
 from .._info import BAD_CHANNELS
@@ -1868,10 +1868,26 @@ class MneExperiment(FileTree):
 
         Notes
         -----
-        Override this method in MneExperiment subclasses to add event labels.
+        Override this method in MneExperiment subclasses to add event labels
+        more flexibly than through the :attr:`variables` attribute.
         The session that the events are from can be determined with
         ``ds.info['session']``.
         Calling the original (super-class) method is not necessary.
+
+        Examples
+        --------
+        Add a label whenever trigger 2 follows trigger 1::
+
+            class Experiment(MneExperiment):
+
+                def label_events(self, ds):
+                    # assign 'no' to all events
+                    ds[:, 'new'] = 'no'
+                    # assign 'yes' to events where trigger 2 follows trigger 1
+                    for i in range(1, ds.n_cases):
+                        if ds[i, 'trigger'] == 2 and ds[i-1, 'trigger'] == 1:
+                            ds[i, 'new'] = 'yes'
+                    return ds
         """
         return ds
 
@@ -1956,7 +1972,7 @@ class MneExperiment(FileTree):
             return mne.read_bem_surfaces(self.get('bem-file'))
         else:
             bem_dir = self.get('bem-dir')
-            surfs = ('inner_skull', 'outer_skull', 'outer_skin')
+            surfs = ('brain', 'inner_skull', 'outer_skull', 'outer_skin')
             paths = {s: join(bem_dir, s + '.surf') for s in surfs}
             missing = [s for s in surfs if not exists(paths[s])]
             if missing:
@@ -2008,7 +2024,7 @@ class MneExperiment(FileTree):
                     add_bads=True, reject=True, cat=None,
                     decim=None, pad=0, data_raw=False, vardef=None, data='sensor',
                     trigger_shift=True, tmin=None,
-                    tmax=None, tstop=None, interpolate_bads=False, **kwargs):
+                    tmax=None, tstop=None, interpolate_bads=False, **state):
         """
         Load a Dataset with epochs for a given epoch definition
 
@@ -2084,7 +2100,7 @@ class MneExperiment(FileTree):
             if isinstance(ndvar, str):
                 if ndvar != 'both':
                     raise ValueError("ndvar=%s" % repr(ndvar))
-        subject, group = self._process_subject_arg(subjects, kwargs)
+        subject, group = self._process_subject_arg(subjects, state)
         epoch_name = self.get('epoch')
 
         if group is not None:
@@ -2131,6 +2147,13 @@ class MneExperiment(FileTree):
         if baseline is True:
             baseline = epoch.baseline
         if pad:
+            if baseline:
+                b0, b1 = baseline
+                if b0 is None:
+                    b0 = tmin
+                if b1 is None:
+                    b1 = tmax
+                baseline = (b0, b1)
             tmin -= pad
             tmax += pad
         decim = decim_param(epoch, decim, ds.info['raw'].info)
@@ -2206,7 +2229,7 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_epochs_stc(self, subjects=None, baseline=True, src_baseline=False, cat=None, keep_epochs=False, morph=False, mask=False, data_raw=False, vardef=None, decim=None, ndvar=True, reject=True, **state):
+    def load_epochs_stc(self, subjects=None, baseline=True, src_baseline=False, cat=None, keep_epochs=False, morph=False, mask=False, data_raw=False, vardef=None, decim=None, pad=0, ndvar=True, reject=True, **state):
         """Load a Dataset with stcs for single epochs
 
         Parameters
@@ -2244,6 +2267,9 @@ class MneExperiment(FileTree):
             Name of a test defining additional variables.
         decim : int
             Override the epoch decim factor.
+        pad : scalar
+            Pad the epochs with this much time (in seconds; e.g. for spectral
+            analysis).
         ndvar : bool
             Add the source estimates as :class:`NDVar` named "src" instead of a list of
             :class:`mne.SourceEstimate` objects named "stc" (default True).
@@ -2281,7 +2307,7 @@ class MneExperiment(FileTree):
                 raise ValueError(f"morph={morph!r} with group: Source estimates can only be combined after morphing data to common brain model. Set morph=True.")
             dss = []
             for _ in self.iter(group=group, progress_bar=f"Load {epoch_name} STC"):
-                ds = self.load_epochs_stc(None, baseline, src_baseline, cat, keep_epochs, morph, mask, False, vardef, decim, ndvar, reject)
+                ds = self.load_epochs_stc(None, baseline, src_baseline, cat, keep_epochs, morph, mask, False, vardef, decim, pad, ndvar, reject)
                 dss.append(ds)
             return combine(dss)
 
@@ -2300,7 +2326,7 @@ class MneExperiment(FileTree):
         else:
             raise ValueError(f'keep_epochs={keep_epochs!r}')
 
-        ds = self.load_epochs(subject, baseline, sns_ndvar, reject=reject, cat=cat, decim=decim, data_raw=data_raw, vardef=vardef)
+        ds = self.load_epochs(subject, baseline, sns_ndvar, reject=reject, cat=cat, decim=decim, pad=pad, data_raw=data_raw, vardef=vardef)
 
         # load inv
         if src_baseline is True:
@@ -2773,6 +2799,85 @@ class MneExperiment(FileTree):
 
         return ds
 
+    def load_induced_stc(self, subjects=None, frequencies=None, n_cycles=None, pad=0.250, baseline=True, cat=None, morph=False, mask=False, vardef=None, decim=1, **state):
+        """Morlet wavelet induced power and phase in source space.
+
+        Parameters
+        ----------
+        subjects : str | 1 | -1
+            Subject(s) for which to load data. Can be a single subject
+            name or a group name such as ``'all'``. ``1`` to use the current
+            subject; ``-1`` for the current group. Default is current subject
+            (or group if ``group`` is specified).
+        frequencies : array of scalar
+            Frequencies for which to compute induced activity.
+        n_cycles : scalar | array of scalar
+            Number of cycles in each wavelet. Fixed number or one per frequency.
+        pad : scalar
+            Pad the epochs data to avoid edge effects in wavelet representation
+            (specified in seconds; default 0.250).
+        baseline : bool | tuple
+            Baseline for the epochs, ``True`` to use the epoch's baseline
+            specification (default).
+        cat : sequence of cell-names
+            Only load data for these cells (cells of model).
+        morph : bool
+            Morph the source estimates to the common_brain (default False).
+        mask : bool | str
+            Discard data that is labelled 'unknown' by the parcellation (default
+            False). Can be set to a parcellation name or ``True`` to use the
+            current parcellation.
+        vardef : str
+            Name of a test defining additional variables.
+        decim : int
+            Decimate time-frequency representation (cumulative with epoch
+            decimation factor).
+        ...
+            Applicable :ref:`state-parameters`:
+
+             - :ref:`state-raw`: preprocessing pipeline
+             - :ref:`state-epoch`: which events to use and time window
+             - :ref:`state-rej`: which trials to use
+             - :ref:`state-model`: how to group trials into conditions
+             - :ref:`state-equalize_evoked_count`: control number of trials per cell
+             - :ref:`state-cov`: covariance matrix for inverse solution
+             - :ref:`state-src`: source space
+             - :ref:`state-inv`: inverse solution
+        """
+        if isinstance(mask, str):
+            state['parc'] = mask
+        subject, group = self._process_subject_arg(subjects, state)
+        if frequencies is None:
+            frequencies = np.logspace(2, 5, 10, base=2)
+        elif not np.isscalar(frequencies):
+            frequencies = np.asarray(frequencies)
+
+        if n_cycles is None:
+            n_cycles = frequencies / 3
+        elif not np.isscalar(n_cycles):
+            n_cycles = np.asarray(n_cycles)
+
+        epoch_name = self.get('epoch')
+        epoch = self._epochs[epoch_name]
+        if group is not None:
+            dss = []
+            for _ in self.iter(group=group, progress_bar=f"Load induced {epoch_name}"):
+                ds = self.load_induced_stc(None, frequencies, n_cycles, pad, baseline, cat, morph, mask, vardef, decim)
+                dss.append(ds)
+            return combine(dss)
+
+        # 1 subject
+        ds = self.load_epochs_stc(1, baseline, False, cat, morph=morph, mask=mask, pad=pad, vardef=vardef)
+        # conditions
+        model = self.get('model') or None
+        stc = ds['srcm' if morph else 'src']
+        cwt = cwt_morlet(stc, frequencies, False, n_cycles, True, 'complex', decim)
+        if pad:
+            cwt = cwt.sub(time=(epoch.tmin, epoch.tmax + cwt.time.tstep / 10))
+        cwt.x = (cwt.x * cwt.x.conj()).real
+        ds['power'] = cwt
+        return ds.aggregate(model, drop_bad=True)
+
     def load_fwd(self, surf_ori=True, ndvar=False, mask=None, **state):
         """Load the forward solution
 
@@ -2821,17 +2926,23 @@ class MneExperiment(FileTree):
                 mne.convert_forward_solution(fwd, surf_ori, copy=False)
             return fwd
 
-    def load_ica(self, **state):
+    def load_ica(self, make=True, **state):
         """Load the mne-python ICA object
+
+        Parameters
+        ----------
+        make : bool
+            If the file does not exist, compute it (default). Set ``make=False``
+            to raise a FileMissing error.
+        ...
+            State parameters.
 
         Returns
         -------
         ica : mne.preprocessing.ICA
             ICA object for the current raw/rej setting.
-        ...
-            State parameters.
         """
-        path = self.make_ica(**state)
+        path = self.make_ica(make, **state)
         return mne.preprocessing.read_ica(path)
 
     def load_inv(self, fiff=None, ndvar=False, mask=None, **state):
@@ -2896,6 +3007,8 @@ class MneExperiment(FileTree):
             inv = load.fiff.inverse_operator(inv, self.get('src'), self.get('mri-sdir'), self.get('parc'))
             if mask:
                 inv = inv.sub(source=~inv.source.parc.startswith('unknown'))
+        elif mask:
+            raise NotImplementedError("Masking for inverse operator")
         return inv
 
     def load_label(self, label, **kwargs):
@@ -4012,7 +4125,7 @@ class MneExperiment(FileTree):
         connectivity = pipe.get_connectivity(data_kind)
         gui.select_components(path, ds, sysname, connectivity)
 
-    def make_ica(self, **state):
+    def make_ica(self, make=True, **state):
         """Compute ICA decomposition for a :class:`pipeline.RawICA` preprocessing step
 
         If a corresponding file exists, a basic check is done as to whether the
@@ -4020,6 +4133,9 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
+        make : bool
+            If the file does not exist, compute it (default). Set ``make=False``
+            to raise a FileMissing error.
         ...
             State parameters.
 
@@ -4050,7 +4166,7 @@ class MneExperiment(FileTree):
                 return self.make_ica(raw=ica_raws[0])
             else:
                 raise RuntimeError("Experiment has no RawICA processing step")
-        return pipe.make_ica(self.get('subject'), self.get('visit'))
+        return pipe.make_ica(self.get('subject'), self.get('visit'), make)
 
     def make_link(self, temp, field, src, dst, redo=False):
         """Make a hard link
@@ -4692,7 +4808,7 @@ class MneExperiment(FileTree):
         # add results to report
         for term in rlm.column_names:
             res = rlm.tests[term]
-            ds = rlm.coefficients_dataset(term)
+            ds = rlm.coefficients_dataset(term, long=True)
             report.append(
                 _report.source_time_results(
                     res, ds, None, include, surfer_kwargs, term, y='coeff'))
@@ -6229,11 +6345,10 @@ class MneExperiment(FileTree):
             table.midrule()
             for subject in self:
                 table.cell(subject)
-                filename = self.get('ica-file')
-                if exists(filename):
-                    ica = self.load_ica()
+                try:
+                    ica = self.load_ica(make=False)
                     table.cells(ica.n_components_, len(ica.exclude))
-                else:
+                except FileMissing:
                     table.cells("No ICA-file", '')
             print()
             print(table)
@@ -6282,10 +6397,9 @@ class MneExperiment(FileTree):
         bads : bool
             Display bad channel names (not just number of bad channels).
 
-        Notes
-        -----
-        To display the number of components rejected of an ICA raw pipe, use
-        :meth:`~MneExperiment.show_raw_info`.
+        See Also
+        --------
+        .show_raw_info : Display the number of ICA components rejected
         """
         # TODO: include ICA raw preprocessing pipes
         if state:

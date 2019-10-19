@@ -311,7 +311,7 @@ def star_factor(p, levels={.1: '`', .05: '*', .01: '**', .001: '***'}):
     star_labels = {i: levels[v] for i, v in enumerate(sorted_levels, 1)}
     star_labels[0] = ''
     level_values = np.reshape(sorted_levels, (-1, 1))
-    return Factor(np.sum(p < level_values, 0), labels=star_labels)
+    return Factor(np.sum(p <= level_values, 0), labels=star_labels)
 
 
 def _independent_measures_args(y, x, c1, c0, match, ds, sub, nd_data=False):
@@ -955,10 +955,18 @@ class WilcoxonSignedRank:
         return fmtxt.FMText([fmtxt.eq('W', self.w), ', ', fmtxt.peq(self.p)])
 
 
-def pairwise(y, x, match=None, sub=None, ds=None,  # data in
-             par=True, corr='Hochberg', trend=True,  # stats
-             title='{desc}', mirror=False,  # layout
-             ):
+def pairwise(
+        y: VarArg,
+        x: CategorialArg,
+        match: CategorialArg = None,
+        sub: IndexArg = None,
+        ds: Dataset = None,
+        par: bool = True,
+        corr: Union[None, str] = 'Hochberg',
+        trend: Union[bool, str] = True,
+        title: str = '{desc}',
+        mirror: bool = False,
+):
     """Pairwise comparison table
 
     Parameters
@@ -974,6 +982,17 @@ def pairwise(y, x, match=None, sub=None, ds=None,  # data in
     ds : Dataset
         If a Dataset is given, all data-objects can be specified as names of
         Dataset variables.
+    par : bool
+        Use parametric test for pairwise comparisons (use non-parametric
+        tests if False).
+    corr : None | 'hochberg' | 'bonferroni' | 'holm'
+        Method for multiple comparison correction.
+    trend : None | str
+        Marker for a trend in pairwise comparisons.
+    title : str
+        Title for the table.
+    mirror : bool
+        Redundant table including all row/column combinations.
 
     Returns
     -------

@@ -6,6 +6,13 @@ Getting Started
    :local:
 
 
+Documentation
+-------------
+For an introduction to Eelbrain, see :ref:`exa-intro` and the other
+:ref:`examples`.
+For details on each functionality see the API :ref:`reference`.
+
+
 MacOS: Framework Build
 ----------------------
 

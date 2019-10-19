@@ -1,4 +1,7 @@
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """
+.. _exa-two-stage:
+
 Two-stage test
 ==============
 
@@ -15,7 +18,6 @@ test hypotheses at the group level. A two-stage analysis involves:
 The example uses simulated data meant to vaguely resemble data from an N400
 experiment, but not intended as a physiologically realistic simulation.
 """
-# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 # sphinx_gallery_thumbnail_number = 1
 from eelbrain import *
 
@@ -28,7 +30,7 @@ for subject in range(10):
     # generate data for one subject
     ds = datasets.simulate_erp(seed=subject)
     # Re-reference EEG data
-    ds['eeg'] -= ds['eeg'].mean(sensor=['LPA', 'RPA'])
+    ds['eeg'] -= ds['eeg'].mean(sensor=['M1', 'M2'])
     # Fit stage 1 model
     lm = testnd.LM('eeg', 'cloze', ds)
     lms.append(lm)
@@ -41,12 +43,17 @@ stage2 = testnd.LMGroup(lms)
 # individual regression coefficients.
 res = stage2.column_ttest('cloze', pmin=0.05, tstart=0.100, tstop=0.600)
 print(res.find_clusters(0.05))
-p = plot.TopoButterfly(res)
+p = plot.TopoButterfly(res, frame='t')
 p.set_time(0.400)
 
 ###############################################################################
 # Since this is a regression model, it also contains an intercept coefficient
 # reflecting signal deflections shared in all trials.
 res = stage2.column_ttest('intercept', pmin=0.05)
-p = plot.TopoButterfly(res)
+p = plot.TopoButterfly(res, frame='t')
 p.set_time(0.120)
+
+###############################################################################
+# The regression coefficients themselves can be retrieved as :class:`Dataset`:
+coeffs = stage2.coefficients_dataset()
+print(coeffs.summary())
