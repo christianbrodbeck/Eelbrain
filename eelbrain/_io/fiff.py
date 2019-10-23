@@ -6,6 +6,7 @@ from itertools import zip_longest
 from logging import getLogger
 import os
 from pathlib import Path
+import re
 
 import numpy as np
 
@@ -181,7 +182,10 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
 
     if events is None:
         if annotations is None:
-            annotations = len(raw.annotations) > 0
+            regex = re.compile('(bad|edge)', re.IGNORECASE)
+            index = [not regex.match(desc) for desc in raw.annotations.description]
+            if any(index):
+                annotations = raw.annotations[index]
         if annotations:
             evts, _ = mne.events_from_annotations(raw, int)
         else:
