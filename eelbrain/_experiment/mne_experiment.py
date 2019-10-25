@@ -76,7 +76,7 @@ from .variable_def import Variables
 
 
 # current cache state version
-CACHE_STATE_VERSION = 12
+CACHE_STATE_VERSION = 13
 # History:
 #  10:  input_state: share forward-solutions between sessions
 #  11:  add samplingrate to epochs
@@ -4012,13 +4012,22 @@ class MneExperiment(FileTree):
             default_decim = True
         use_cache = default_decim
         model = self.get('model')
+        model_vars = model.split('%') if model else ()
         equal_count = self.get('equalize_evoked_count') == 'eq'
         if use_cache and exists(dst) and cache_valid(getmtime(dst), self._evoked_mtime()):
-            ds = self.load_selected_events(data_raw=data_raw)
-            ds = ds.aggregate(model, drop_bad=True, equal_count=equal_count,
-                              drop=('i_start', 't_edf', 'T', 'index', 'trigger'))
-            ds['evoked'] = mne.read_evokeds(dst, proj=False)
-            return ds
+            evoked = mne.read_evokeds(dst, proj=False)
+            if int(evoked[0].info['description'].split(' ')[1]) >= 13:
+                ds = self.load_selected_events(data_raw=data_raw)
+                ds = ds.aggregate(model, drop_bad=True, equal_count=equal_count, drop=('i_start', 't_edf', 'T', 'index', 'trigger'))
+                # check cells
+                if model_vars:
+                    cells = [' % '.join(cell) for cell in ds.zip(*model_vars)]
+                else:
+                    cells = ['No comment']
+                assert [e.comment for e in evoked] == cells
+                ds['evoked'] = evoked
+                return ds
+            self._log.debug("Evoked outdated (%s)", evoked[0].info['description'])
 
         self._log.debug("Make evoked %s", dst)
         # load the epochs (post baseline-correction trigger shift requires
@@ -4029,14 +4038,13 @@ class MneExperiment(FileTree):
             ds = self.load_epochs(ndvar=False, decim=decim, data_raw=data_raw, interpolate_bads='keep')
 
         # aggregate
-        ds_agg = ds.aggregate(model, drop_bad=True, equal_count=equal_count,
-                              drop=('i_start', 't_edf', 'T', 'index', 'trigger'),
-                              never_drop=('epochs',))
+        ds_agg = ds.aggregate(model, drop_bad=True, equal_count=equal_count, drop=('i_start', 't_edf', 'T', 'index', 'trigger'), never_drop=('epochs',))
         ds_agg.rename('epochs', 'evoked')
 
         # save
-        for e in ds_agg['evoked']:
+        for e, *cell in ds_agg.zip('evoked', *model_vars):
             e.info['description'] = f"Eelbrain {CACHE_STATE_VERSION}"
+            e.comment = ' % '.join(cell)
         if use_cache:
             mne.write_evokeds(dst, ds_agg['evoked'])
 
