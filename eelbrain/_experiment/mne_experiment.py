@@ -3295,19 +3295,20 @@ class MneExperiment(FileTree):
                     for sub_epoch in epoch.sub_epochs:
                         if self._epochs[sub_epoch].session != session:
                             continue
-                        ds = self.load_selected_events(subject, reject, add_bads, index, True, epoch=sub_epoch)
+                        ds = self.load_selected_events(subject, reject, add_bads, index, data_raw, epoch=sub_epoch)
                         ds[:, 'epoch'] = sub_epoch
                         session_dss.append(ds)
                     ds = combine(session_dss)
                     dss.append(ds)
                     # combine raw
-                    raw_ = session_dss[0].info['raw']
-                    raw_.info['bads'] = bad_channels
-                    if raw is None:
-                        raw = raw_
-                    else:
-                        ds['i_start'] += raw.last_samp + 1 - raw_.first_samp
-                        raw.append(raw_)
+                    if data_raw:
+                        raw_ = session_dss[0].info['raw']
+                        raw_.info['bads'] = bad_channels
+                        if raw is None:
+                            raw = raw_
+                        else:
+                            ds['i_start'] += raw.last_samp + 1 - raw_.first_samp
+                            raw.append(raw_)
 
             # combine bad channels
             ds = combine(dss)
