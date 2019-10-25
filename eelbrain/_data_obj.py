@@ -7322,6 +7322,8 @@ class Dimension:
     def __eq__(self, other):
         if isinstance(other, self.__class__) and other.name == self.name and other._connectivity_type == self._connectivity_type:
             if self._connectivity_type == 'custom':
+                if other._connectivity is None or self._connectivity is None:
+                    return True
                 return np.array_equal(other._connectivity, self._connectivity)
             return True
         return False
