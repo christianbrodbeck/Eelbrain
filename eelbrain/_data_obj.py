@@ -5325,24 +5325,8 @@ class Dataset(dict):
 
     Examples
     --------
-    Datasets can be initialize with data-objects, or with
-    ('name', data-object) tuples::
-
-        >>> ds = Dataset((var1, var2))
-        >>> ds = Dataset((('v1', var1), ('v2', var2)))
-
-    Alternatively, variables can be added after initialization::
-
-        >>> ds = Dataset(n_cases=3)
-        >>> ds['var', :] = 0
-        >>> ds['factor', :] = 'a'
-        >>> print(ds)
-        var    factor
-        -------------
-        0      a
-        0      a
-        0      a
-
+    - :ref:`exa-intro`: basic functionality
+    - :ref:`exa-dataset`: how to construct datasets
     """
     _value_type_exceptions = (MNE_EPOCHS,)
 
@@ -5760,6 +5744,10 @@ class Dataset(dict):
             shallow copy.
         random : str | sequence of str
             Names of the columns that should be assigned as random factor.
+
+        Examples
+        --------
+        See :ref:`exa-dataset`
         """
         if isinstance(names, Iterator):
             names = list(names)
@@ -5768,7 +5756,7 @@ class Dataset(dict):
         if isinstance(random, str):
             random = [random]
         elif isinstance(random, Iterator):
-            random  = list(random)
+            random = list(random)
         elif random is None:
             random = []
         n_cases = set(map(len, cases))

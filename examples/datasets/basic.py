@@ -1,4 +1,6 @@
 """
+.. _exa-dataset:
+
 Dataset basics
 ==============
 """
@@ -29,12 +31,14 @@ print(ds.head())
 print(ds.summary())
 
 ###############################################################################
-# A second way of constructing a dataset is case by case (i.e., row by row):
+# An alternative way of constructing a dataset is case by case (i.e., row by
+# row):
 
 rows = []
 for i in range(6):
+    subject = f'S{i}'
     y = np.random.normal(0, 1)
     a = 'abc'[i % 3]
-    rows.append([f'S{i}', y, a])
-ds = Dataset.from_caselist(['subject', 'y', 'a'], rows)
+    rows.append([subject, y, a])
+ds = Dataset.from_caselist(['subject', 'y', 'a'], rows, random='subject')
 print(ds)
