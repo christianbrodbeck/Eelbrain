@@ -2235,14 +2235,14 @@ class ImLayout(Layout):
                         'wspace': 0, 'hspace': 0}
 
     def __init__(self, nax, ax_aspect, axh_default, margins, default_margins,
-                 title=None, *args, **kwargs):
+                 title=None, tight=False, *args, **kwargs):
         if margins is None:
             margins = {**self._default_margins, **default_margins}
         elif isinstance(margins, dict):
             margins = {**self._default_margins, **default_margins, **margins}
         else:
             raise TypeError(f"margins={margins!r}; needs to be a dict")
-        Layout.__init__(self, nax, ax_aspect, axh_default, False, title, *args, margins=margins, **kwargs)
+        Layout.__init__(self, nax, ax_aspect, axh_default, tight, title, *args, margins=margins, **kwargs)
 
     def make_axes(self, figure):
         axes = []
