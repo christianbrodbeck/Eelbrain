@@ -67,8 +67,8 @@ def assert_dataobj_equal(d1, d2, decimal=None, name=True):
             is_equal = d1 == d2
         if not np.all(is_equal):
             ds = Dataset()
-            ds['value'] = d1
-            ds['target'] = d2
+            ds['value'] = d1.copy()
+            ds['target'] = d2.copy()
             ds['unequal'] = Factor(is_equal, labels={True: '', False: 'x'})
             if isinstance(d1, Var):
                 ds['difference'] = d1 - d2

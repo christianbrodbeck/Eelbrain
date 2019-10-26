@@ -318,6 +318,10 @@ def test_sample_sessions():
     ds2 = e.load_epochs(epoch='target2')
     ds_super = e.load_epochs(epoch='super')
     assert_dataobj_equal(ds_super['meg'], combine((ds1['meg'], ds2['meg'])))
+    # evoked
+    dse_super = e.load_evoked(epoch='super', model='modality%side')
+    target = ds_super.aggregate('modality%side', drop=('i_start', 't_edf', 'T', 'index', 'trigger', 'session', 'interpolate_channels', 'epoch'))
+    assert_dataobj_equal(dse_super, target)
 
     # conflicting session and epoch settings
     rej_path = join(root, 'meg', 'R0000', 'epoch selection', 'sample2_1-40_target2-man.pickled')

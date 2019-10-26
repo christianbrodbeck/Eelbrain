@@ -15,6 +15,7 @@ New in 0.31
   - :func:`table.difference`:  the ``by`` parameter is deprecated, use ``match`` instead
   - :meth:`NDVar.smooth` with a window with an even number of samples, and :attr:`BoostingResult.h` for :func:`boosting` with a basis with an even number of samples: the time axis is now consistent with :func:`scipy.signal.convolve` (was previously shifted by half a sample)
   - :meth:`testnd.LMGroup.coefficients_dataset` now returns a wide form table by default
+  - :meth:`plot.Topomap.mark_sensors`, :meth:`plot.TopomapBins.mark_sensors` and :meth:`plot.SensorMap.mark_sensors`: the second argument now specifies axis to mark
 
 * New functions:
 

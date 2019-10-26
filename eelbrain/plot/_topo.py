@@ -102,7 +102,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
                  sensorlabels=None, mark=None, mcolor=None,
                  # layout
                  axtitle=True, xlabel=None, margins=None,
-                 *args, **kwargs):
+                 **kwargs):
         data = PlotData.from_args(y, ('sensor',), xax, ds, sub)
         self.plots = []
         ColorMapMixin.__init__(self, data.data, cmap, vmax, vmin, contours, self.plots)
@@ -113,7 +113,12 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         elif len(proj) != data.n_plots:
             raise ValueError(f"proj={proj!r}: need as many proj as axes ({data.n_plots})")
 
-        layout = ImLayout(data.plot_used, 1, 2, margins, {}, *args, **kwargs)
+        if axtitle is False:
+            default_margins = {}
+        else:
+            default_margins = {'top': 0.25, 'hspace': 0.2}
+
+        layout = ImLayout(data.plot_used, 1, 2, margins, default_margins, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data, verticalalignment='top', pad=-1)
 

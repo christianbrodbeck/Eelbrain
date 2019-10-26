@@ -137,7 +137,6 @@ class TreeModel:
         # scaffold for state
         self._fields = LayeredDict()
         self._field_values = LayeredDict()
-        self._params = LayeredDict()
         self._terminal_fields = []
         self._secondary_cache = defaultdict(tuple)  # secondary cache-files
         self._repr_kwargs = []
@@ -604,7 +603,7 @@ class TreeModel:
 
     def _copy_state(self):
         """Copy of the state that can be used with ``._restore_state()``"""
-        return self._fields.copy(), self._field_values.copy(), self._params.copy()
+        return self._fields.copy(), self._field_values.copy()
 
     def _restore_state(self, state=-1, discard_tip=True):
         """Restore a previously stored state
@@ -625,7 +624,6 @@ class TreeModel:
             s1, s2, s3 = state
         self._fields.restore_state(s1, discard_tip)
         self._field_values.restore_state(s2, discard_tip)
-        self._params.restore_state(s3, discard_tip)
 
     def reset(self):
         """Reset all field values to the state at initialization
@@ -848,7 +846,6 @@ class TreeModel:
         """
         self._fields.store_state()
         self._field_values.store_state()
-        self._params.store_state()
 
     @LazyProperty
     def _temporary_state(self):
