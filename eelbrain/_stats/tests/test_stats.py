@@ -83,9 +83,9 @@ def test_variability():
     assert stats.variability(y, None, None, 'sem', False) == sem
     assert stats.variability(y, None, None, '2sem', False) == 2 * sem
     # within subject standard-error
-    target = scipy.stats.sem(stats.residuals(y[:, None], match), 0, len(match.cells))
-    assert stats.variability(y, None, match, 'sem', True) == target
-    assert stats.variability(y, None, match, 'sem', False) == target
+    target = scipy.stats.sem(stats.residuals(y[:, None], match), 0, len(match.cells))[0]
+    assert stats.variability(y, None, match, 'sem', True) == pytest.approx(target)
+    assert stats.variability(y, None, match, 'sem', False) == pytest.approx(target)
     # one data point per match cell
     n = match.df + 1
     with pytest.raises(ValueError):
