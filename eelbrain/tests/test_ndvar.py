@@ -93,10 +93,10 @@ def test_cross_correlation():
 def test_cwt():
     ds = datasets._get_continuous()
     # 1d
-    y = cwt_morlet(ds['x1'], [4, 6, 8])
+    y = cwt_morlet(ds['x1'], [2, 3, 4])
     assert y.ndim == 2
     # 2d
-    y = cwt_morlet(ds['x2'], [4, 6, 8])
+    y = cwt_morlet(ds['x2'], [2, 3, 4])
     assert y.ndim == 3
 
 
