@@ -5312,7 +5312,7 @@ class MneExperiment(FileTree):
                     voi = []
                     voi_lat = ('Cerebral-Cortex',)
                     remove_midline = True
-                elif special == '':
+                elif not special:
                     name = 'cortex'
                     voi = []
                     voi_lat = ('Cerebral-Cortex', 'Cerebral-White-Matter')
