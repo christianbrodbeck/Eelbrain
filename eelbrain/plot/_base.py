@@ -66,6 +66,7 @@ from itertools import chain, repeat
 from logging import getLogger
 import math
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -85,10 +86,7 @@ import PIL
 
 from .._colorspaces import LocatedColormap, symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
 from .._config import CONFIG
-from .._data_obj import (
-    NDVar, Case, UTS,
-    ascategorial, asndvar, assub, isnumeric, isdataobject, cellname,
-)
+from .._data_obj import Factor, NDVar, Case, UTS, ascategorial, asndvar, assub, isnumeric, isdataobject, cellname
 from .._stats import testnd
 from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
 from .._utils.subp import command_exists
@@ -1049,19 +1047,30 @@ class PlotData:
             layers = []
             if isinstance(xax, str) and xax.startswith('.'):
                 # y=[y1, y2], xax='.dim'
-                dimname = xax[1:]
-                xax_dim = None
+                dimname, attr = re.match(r'\.(\w+)(?:\.(\w+))?$', xax).groups()
+                xax_dim = indexes = None
                 for layer in ys:
                     dim = layer.get_dim(dimname)
                     if xax_dim is None:
                         xax_dim = dim
+                        if attr is None:
+                            indexes = dim
+                            dissolve_dim = dimname  # dissolved by indexing
+                            # axis labels
+                            unit = f' {xax_dim._axis_unit}' if xax_dim._axis_unit else ''
+                            ax_names = [f'{v}{unit}' for v in xax_dim]
+                        else:
+                            f = getattr(dim, attr)
+                            if not isinstance(f, Factor):
+                                raise ValueError(f'xax={xax!r}')
+                            indexes = [f == cell for cell in f.cells]
+                            dissolve_dim = None
+                            ax_names = f.cells
                     elif dim != xax_dim:
                         raise ValueError(f"y={y}, xax={xax!r}: dimension not equal on different y")
-                    agg, dims = find_data_dims(layer, dims, dimname)
-                    layers.append([aggregate(layer.sub(**{dimname: v}), agg) for v in dim])
+                    agg, dims = find_data_dims(layer, dims, dissolve_dim)
+                    layers.append([aggregate(layer.sub(**{dimname: i}), agg) for i in indexes])
                 x_name = xax
-                unit = f' {xax_dim._axis_unit}' if xax_dim._axis_unit else ''
-                ax_names = [f'{v}{unit}' for v in xax_dim]
             else:
                 # y=[y1, y2], xax=categorial
                 xax = ascategorial(xax, sub, ds)

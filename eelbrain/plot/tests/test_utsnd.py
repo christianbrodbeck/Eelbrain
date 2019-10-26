@@ -29,6 +29,11 @@ def test_plot_butterfly():
     ax.set_data(ds[1, 'utsnd'])
     fig.draw()
 
+    # source space
+    stc = datasets.get_mne_stc(True)
+    p = plot.Butterfly(stc, '.source.hemi')
+    p.close()
+
 
 @hide_plots
 def test_plot_array():

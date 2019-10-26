@@ -9443,6 +9443,10 @@ class SourceSpace(SourceSpaceBase):
         self.lh_n = len(self.lh_vertices)
         self.rh_n = len(self.rh_vertices)
 
+    @LazyProperty
+    def hemi(self):
+        return Factor(['lh', 'rh'], repeat=[self.lh_n, self.rh_n])
+
     def _read_parc(self, parc: str) -> Factor:
         fname = self._ANNOT_PATH.format(
             subjects_dir=self.subjects_dir, subject=self.subject,
