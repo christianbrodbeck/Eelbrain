@@ -46,15 +46,16 @@ version = match.group(1)
 LooseVersion(version)  # check that it's a valid version
 
 # Cython extensions
+args = {'define_macros': [("NPY_NO_DEPRECATED_API", "NPY_1_11_API_VERSION")]}
 ext = '.pyx' if cythonize else '.c'
 ext_cpp = '.pyx' if cythonize else '.cpp'
 extensions = [
-    Extension('eelbrain._data_opt', [f'eelbrain/_data_opt{ext}']),
-    Extension('eelbrain._trf._boosting_opt', [f'eelbrain/_trf/_boosting_opt{ext}']),
-    Extension('eelbrain._stats.connectivity_opt', [f'eelbrain/_stats/connectivity_opt{ext}']),
-    Extension('eelbrain._stats.opt', [f'eelbrain/_stats/opt{ext}']),
-    Extension('eelbrain._stats.error_functions', [f'eelbrain/_stats/error_functions{ext}']),
-    Extension('eelbrain._stats.vector', [f'eelbrain/_stats/vector{ext_cpp}'], include_dirs=['dsyevh3C']),
+    Extension('eelbrain._data_opt', [f'eelbrain/_data_opt{ext}'], **args),
+    Extension('eelbrain._trf._boosting_opt', [f'eelbrain/_trf/_boosting_opt{ext}'], **args),
+    Extension('eelbrain._stats.connectivity_opt', [f'eelbrain/_stats/connectivity_opt{ext}'], **args),
+    Extension('eelbrain._stats.opt', [f'eelbrain/_stats/opt{ext}'], **args),
+    Extension('eelbrain._stats.error_functions', [f'eelbrain/_stats/error_functions{ext}'], **args),
+    Extension('eelbrain._stats.vector', [f'eelbrain/_stats/vector{ext_cpp}'], include_dirs=['dsyevh3C'], **args),
 ]
 if cythonize:
     extensions = cythonize(extensions)

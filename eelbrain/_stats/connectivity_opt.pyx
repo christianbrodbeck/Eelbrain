@@ -6,16 +6,14 @@ import numpy as np
 cimport numpy as np
 
 
-ctypedef np.uint32_t UINT32
-ctypedef np.int64_t INT64
-ctypedef np.float64_t FLOAT64
-
-def merge_labels(np.ndarray[UINT32, ndim=2] cmap,
-                 long n_labels_in,
-                 np.ndarray[UINT32, ndim=2] edges,
-                 np.ndarray[INT64, ndim=1] edge_start,
-                 np.ndarray[INT64, ndim=1] edge_stop):
-    """Merge adjacent labels with non-standard connectivity
+def merge_labels(
+        np.npy_uint32[:,:] cmap,
+        long n_labels_in,
+        const np.npy_uint32[:,:] edges,
+        const np.npy_int64[:] edge_start,
+        const np.npy_int64[:] edge_stop,
+):
+    """Mrge adjacent labels with non-standard connectivity
 
     Parameters
     ----------
@@ -26,15 +24,18 @@ def merge_labels(np.ndarray[UINT32, ndim=2] cmap,
         Number of labels in cmap.
     edges : array of int (n_edges, 2)
         Edges of the connectivity graph.
+    edge_start : array, (n_nodes,)
+        Index from node into edges starting with that node.
+    edge_stop : array, (n_nodes,)
+        Index from node into edges starting with that node.
     """
-    n_labels_in += 1
-
     cdef unsigned int slice_i, i, dst_i, edge_i
     cdef unsigned int n_vert = cmap.shape[0]
     cdef unsigned int n_slices = cmap.shape[1]
     cdef unsigned int label, connected_label, src, dst
     cdef unsigned int relabel_src, relabel_dst
 
+    n_labels_in += 1
     cdef unsigned int* relabel = <unsigned int*> malloc(sizeof(unsigned int) * n_labels_in)
     for i in range(n_labels_in):
         relabel[i] = i
@@ -88,7 +89,7 @@ def merge_labels(np.ndarray[UINT32, ndim=2] cmap,
                     cmap[i, slice_i] = relabel_dst
 
     # find all label ids in cmap
-    cdef np.ndarray[UINT32, ndim=1] out = np.empty(n_labels_out, dtype=np.uint32)
+    out = np.empty(n_labels_out, dtype=np.uint32)
     dst_i = 0
     for i in range(1, n_labels_in):
         if i == relabel[i]:
@@ -99,13 +100,16 @@ def merge_labels(np.ndarray[UINT32, ndim=2] cmap,
     return out
 
 
-def tfce_increment(np.ndarray[UINT32, ndim=1] labels,
-                   np.ndarray[UINT32, ndim=1] label_image,
-                   np.ndarray[FLOAT64, ndim=1] image,
-                   double e, double h_factor):
-    cdef unsigned int i, cid
-    cdef unsigned int n = image.shape[0]
-    cdef unsigned int n_labels = labels.max() + 1
+def tfce_increment(
+        const np.npy_uint32[:] labels,
+        const np.npy_uint32[:] label_image,
+        np.npy_float64[:] image,
+        double e,
+        double h_factor,
+):
+    cdef size_t i, cid
+    cdef size_t n = image.shape[0]
+    cdef size_t n_labels = max(labels) + 1
 
     cdef double* area = <double*> malloc(sizeof(double) * n_labels)
 

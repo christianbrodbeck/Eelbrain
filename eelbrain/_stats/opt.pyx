@@ -5,19 +5,17 @@ cimport cython
 from cython.view cimport array as cvarray
 from libc.stdlib cimport malloc, free
 import numpy as np
-cimport numpy as cnp
-
-ctypedef cnp.int8_t INT8
-ctypedef cnp.int64_t INT64
-ctypedef cnp.float64_t FLOAT64
+cimport numpy as np
 
 
-def anova_full_fmaps(cnp.ndarray[FLOAT64, ndim=2] y,
-                     cnp.ndarray[FLOAT64, ndim=2] x,
-                     cnp.ndarray[FLOAT64, ndim=2] xsinv,
-                     cnp.ndarray[FLOAT64, ndim=2] f_map,
-                     cnp.ndarray[INT64, ndim=2] effects,
-                     cnp.ndarray[INT8, ndim=2] e_ms):
+def anova_full_fmaps(
+        const np.npy_float64[:,:] y,
+        const np.npy_float64[:,:] x,
+        const np.npy_float64[:,:] xsinv,
+        np.npy_float64[:,:] f_map,
+        const np.npy_int64[:,:] effects,
+        const np.npy_int8[:, :] e_ms,
+):
     """Compute f-maps for a balanced, fully specified ANOVA model
     
     Parameters
@@ -36,7 +34,7 @@ def anova_full_fmaps(cnp.ndarray[FLOAT64, ndim=2] y,
         Each row represents the expected MS of one effect.
     """
     cdef unsigned long i
-    cdef unsigned int df, i_beta, i_effect, i_effect_ms, i_start, i_stop, i_fmap, case
+    cdef size_t df, i_beta, i_effect, i_effect_ms, i_start, i_stop, i_fmap, case
     cdef double v, ss, ms_denom
 
     cdef unsigned long n_tests = y.shape[1]
@@ -83,11 +81,11 @@ def anova_full_fmaps(cnp.ndarray[FLOAT64, ndim=2] y,
     free(mss)
 
 
-def anova_fmaps(cnp.ndarray[FLOAT64, ndim=2] y,
-                cnp.ndarray[FLOAT64, ndim=2] x,
-                cnp.ndarray[FLOAT64, ndim=2] xsinv,
-                cnp.ndarray[FLOAT64, ndim=2] f_map,
-                cnp.ndarray[INT64, ndim=2] effects,
+def anova_fmaps(const np.npy_float64[:,:] y,
+                const np.npy_float64[:,:] x,
+                const np.npy_float64[:,:] xsinv,
+                np.npy_float64[:,:] f_map,
+                const np.npy_int64[:,:] effects,
                 int df_res):
     """Compute f-maps for a balanced ANOVA model with residuals
 
@@ -156,8 +154,10 @@ def anova_fmaps(cnp.ndarray[FLOAT64, ndim=2] y,
     free(betas)
 
 
-def sum_square(cnp.ndarray[FLOAT64, ndim=2] y,
-               cnp.ndarray[FLOAT64, ndim=1] out):
+def sum_square(
+        const np.npy_float64[:,:] y,
+        np.npy_float64[:] out,
+):
     """Compute the Sum Square of the data
 
     Parameters
@@ -182,8 +182,10 @@ def sum_square(cnp.ndarray[FLOAT64, ndim=2] y,
         out[i] = ss
 
 
-def ss(cnp.ndarray[FLOAT64, ndim=2] y,
-       cnp.ndarray[FLOAT64, ndim=1] out):
+def ss(
+        const np.npy_float64[:,:] y,
+        np.npy_float64[:] out,
+):
     """Compute sum squares in the data (after subtracting the intercept)
 
     Parameters
@@ -215,8 +217,10 @@ def ss(cnp.ndarray[FLOAT64, ndim=2] y,
         out[i] = ss_
 
 
-cdef int zero_variance(cnp.ndarray[FLOAT64, ndim=2] y,
-                            unsigned long i):
+cdef int zero_variance(
+        const np.npy_float64[:,:] y,
+        unsigned long i,
+):
     """Check whether a column of y has zero variance"""
     cdef unsigned int case
     cdef double ref_value = y[0, i]
@@ -227,10 +231,12 @@ cdef int zero_variance(cnp.ndarray[FLOAT64, ndim=2] y,
     return 1
 
 
-cdef void _lm_betas(cnp.ndarray[FLOAT64, ndim=2] y,
-                    unsigned long i,
-                    cnp.ndarray[FLOAT64, ndim=2] xsinv,
-                    double *betas):
+cdef void _lm_betas(
+        const np.npy_float64[:,:] y,
+        unsigned long i,
+        const np.npy_float64[:,:] xsinv,
+        double *betas,
+):
     """Fit a linear model
 
     Parameters
@@ -243,10 +249,6 @@ cdef void _lm_betas(cnp.ndarray[FLOAT64, ndim=2] y,
         xsinv for x.
     betas : array (n_betas,)
         Output container.
-    df_x : int
-        Degrees of freedom of the model (n_betas).
-    n_cases : int
-        Number of cases in y.
     """
     cdef unsigned int i_beta, case
     cdef double beta
@@ -262,11 +264,13 @@ cdef void _lm_betas(cnp.ndarray[FLOAT64, ndim=2] y,
         betas[i_beta] = beta
 
 
-cdef double _lm_res_ss(cnp.ndarray[FLOAT64, ndim=2] y,
-                       int i,
-                       cnp.ndarray[FLOAT64, ndim=2] x,
-                       int df_x,
-                       double *betas):
+cdef double _lm_res_ss(
+        const np.npy_float64[:,:] y,
+        int i,
+        const np.npy_float64[:,:] x,
+        int df_x,
+        double *betas,
+):
     """Residual sum squares
 
     Parameters
@@ -295,10 +299,12 @@ cdef double _lm_res_ss(cnp.ndarray[FLOAT64, ndim=2] y,
     return ss
 
 
-def lm_betas(cnp.ndarray[FLOAT64, ndim=2] y,
-             cnp.ndarray[FLOAT64, ndim=2] x,
-             cnp.ndarray[FLOAT64, ndim=2] xsinv,
-             cnp.ndarray[FLOAT64, ndim=2] out):
+def lm_betas(
+        const np.npy_float64[:,:] y,
+        const np.npy_float64[:,:] x,
+        const np.npy_float64[:,:] xsinv,
+        np.npy_float64[:,:] out,
+):
     """Fit a linear model
 
     Parameters
@@ -327,10 +333,12 @@ def lm_betas(cnp.ndarray[FLOAT64, ndim=2] y,
     free(betas)
 
 
-def lm_res(cnp.ndarray[FLOAT64, ndim=2] y,
-           cnp.ndarray[FLOAT64, ndim=2] x,
-           cnp.ndarray[FLOAT64, ndim=2] xsinv,
-           cnp.ndarray[FLOAT64, ndim=2] res):
+def lm_res(
+        const np.npy_float64[:,:] y,
+        const np.npy_float64[:,:] x,
+        const np.npy_float64[:,:] xsinv,
+        np.npy_float64[:,:] res,
+):
     """Fit a linear model and compute the residuals
 
     Parameters
@@ -366,10 +374,12 @@ def lm_res(cnp.ndarray[FLOAT64, ndim=2] y,
     free(betas)
 
 
-def lm_res_ss(cnp.ndarray[FLOAT64, ndim=2] y,
-              cnp.ndarray[FLOAT64, ndim=2] x,
-              cnp.ndarray[FLOAT64, ndim=2] xsinv,
-              cnp.ndarray[FLOAT64, ndim=1] ss):
+def lm_res_ss(
+        const np.npy_float64[:,:] y,
+        const np.npy_float64[:,:] x,
+        const np.npy_float64[:,:] xsinv,
+        np.npy_float64[:] ss,
+):
     """Fit a linear model and compute the residual sum squares
 
     Parameters
@@ -397,8 +407,10 @@ def lm_res_ss(cnp.ndarray[FLOAT64, ndim=2] y,
     free(betas)
 
 
-def t_1samp(cnp.ndarray[FLOAT64, ndim=2] y,
-            cnp.ndarray[FLOAT64, ndim=1] out):
+def t_1samp(
+        const np.npy_float64[:,:] y,
+        np.npy_float64[:] out,
+):
     """T-values for 1-sample t-test
 
     Parameters
@@ -435,9 +447,11 @@ def t_1samp(cnp.ndarray[FLOAT64, ndim=2] y,
             out[i] = 0
 
 
-def t_1samp_perm(cnp.ndarray[FLOAT64, ndim=2] y,
-                 cnp.ndarray[FLOAT64, ndim=1] out, 
-                 cnp.ndarray[INT8, ndim=1] sign):
+def t_1samp_perm(
+        const np.npy_float64[:,:] y,
+        np.npy_float64[:] out,
+        const np.npy_int8[:] sign,
+):
     """T-values for 1-sample t-test
 
     Parameters
@@ -446,6 +460,8 @@ def t_1samp_perm(cnp.ndarray[FLOAT64, ndim=2] y,
         Dependent Measurement.
     out : array (n_tests,)
         Container for output.
+    sign : array (n_cases,)
+        The randomly asigned sign for each case.
     """
     cdef unsigned long i, case
     cdef double mean, denom
@@ -478,9 +494,11 @@ def t_1samp_perm(cnp.ndarray[FLOAT64, ndim=2] y,
             out[i] = 0
 
 
-def t_ind(cnp.ndarray[FLOAT64, ndim=2] y,
-          cnp.ndarray[FLOAT64, ndim=1] out,
-          cnp.ndarray[INT8, ndim=1] group):
+def t_ind(
+        const np.npy_float64[:,:] y,
+        np.npy_float64[:] out,
+        const np.npy_int8[:] group,
+):
     "Indpendent-samples t-test, assuming equal variance"
     cdef unsigned long i, case
     cdef double mean0, mean1, var
@@ -527,7 +545,7 @@ def t_ind(cnp.ndarray[FLOAT64, ndim=2] y,
         out[i] = (mean1 - mean0) / (var * var_mult) ** 0.5
 
 
-def has_zero_variance(cnp.ndarray[FLOAT64, ndim=2] y):
+def has_zero_variance(const np.npy_float64[:,:] y):
     "True if any data-columns have zero variance"
     cdef double value
     cdef unsigned long case, i

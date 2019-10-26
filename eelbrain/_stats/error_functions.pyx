@@ -3,12 +3,10 @@
 
 cimport cython
 import numpy as np
-cimport numpy as cnp
-
-ctypedef cnp.float64_t FLOAT64
+cimport numpy as np
 
 
-def l1(cnp.ndarray[FLOAT64, ndim=1] x):
+def l1(const np.npy_float64[:] x):
     cdef:
         double out = 0.
         size_t i
@@ -19,7 +17,7 @@ def l1(cnp.ndarray[FLOAT64, ndim=1] x):
     return out
 
 
-def l2(cnp.ndarray[FLOAT64, ndim=1] x):
+def l2(const np.npy_float64[:] x):
     cdef:
         double out = 0.
         size_t i
@@ -30,9 +28,12 @@ def l2(cnp.ndarray[FLOAT64, ndim=1] x):
     return out
 
 
-def l1_for_delta(cnp.ndarray[FLOAT64, ndim=1] y,
-                 cnp.ndarray[FLOAT64, ndim=1] x,
-                 double delta, long shift):
+def l1_for_delta(
+        const np.npy_float64[:] y,
+        const np.npy_float64[:] x,
+        double delta,
+        long shift,
+):
     cdef:
         double out_pos = 0.
         double out_neg
@@ -51,9 +52,12 @@ def l1_for_delta(cnp.ndarray[FLOAT64, ndim=1] y,
     return out_pos, out_neg
 
 
-def l2_for_delta(cnp.ndarray[FLOAT64, ndim=1] y,
-                 cnp.ndarray[FLOAT64, ndim=1] x,
-                 double delta, long shift):
+def l2_for_delta(
+        const np.npy_float64[:] y,
+        const np.npy_float64[:] x,
+        double delta,
+        long shift,
+):
     cdef:
         double out_pos = 0.
         double out_neg
@@ -72,9 +76,12 @@ def l2_for_delta(cnp.ndarray[FLOAT64, ndim=1] y,
     return out_pos, out_neg
 
 
-def update_error(cnp.ndarray[FLOAT64, ndim=1] error,
-                 cnp.ndarray[FLOAT64, ndim=1] x,
-                 double delta, long shift):
+def update_error(
+        np.npy_float64[:] error,
+        const np.npy_float64[:] x,
+        double delta,
+        long shift,
+):
     cdef:
         size_t i
 
