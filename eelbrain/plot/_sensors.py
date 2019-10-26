@@ -372,13 +372,15 @@ class SensorMapMixin:
         color = ['k', 'w', 'b', 'g', 'r', 'c', 'm', 'y'][sel]
         self.set_label_color(color)
 
-    def mark_sensors(self, sensors, *args, **kwargs):
+    def mark_sensors(self, sensors, axis=None, s=20, c='yellow', marker='o', *args, **kwargs):
         """Mark given sensors on the plots
 
         Parameters
         ----------
         sensors : None | Sensor dimension index
             Sensors which should be marked (None to clear all markings).
+        axis : int | list of int
+            Which axes to mark (default is all).
         s : scalar | sequence of scalars
             Marker size(s) in points^2 (default 20).
         c : color | sequence of colors
@@ -388,8 +390,15 @@ class SensorMapMixin:
         ... :
             Matplotlib :func:`~matplotlib.axes.Axes.scatter` parameters.
         """
-        for p in self.__sensor_plots:
-            p.mark_sensors(sensors, *args, **kwargs)
+        if axis is None:
+            plots = self.__sensor_plots
+        elif isinstance(axis, int):
+            plots = [self.__sensor_plots[axis]]
+        else:
+            plots = [self.__sensor_plots[i] for i in axis]
+
+        for p in plots:
+            p.mark_sensors(sensors, s, c, marker, *args, **kwargs)
         self.draw()
 
     def separate_labels(self, pad=10):
