@@ -115,7 +115,18 @@ p = plot.Barplot('cluster_mean', 'cloze_cat', match='subject', ds=ds, test=False
 # point, i.e. the time course in sensors involved in the cluster:
 roi = mask.any('time')
 ds['cluster_timecourse'] = ds['eeg'].mean(roi)
-p = plot.UTSStat('cluster_timecourse', 'cloze_cat', match='subject', ds=ds)
+p = plot.UTSStat('cluster_timecourse', 'cloze_cat', match='subject', ds=ds, frame='t')
+p.set_clusters(clusters, y=0.25)
+
+###############################################################################
+# Now visualize the cluster topography, marking significant sensors:
+
+time_window = (clusters[0, 'tstart'], clusters[0, 'tstop'])
+c1_topo = res.c1_mean.mean(time=time_window)
+c0_topo = res.c0_mean.mean(time=time_window)
+diff_topo = res.difference.mean(time=time_window)
+p = plot.Topomap([c1_topo, c0_topo, diff_topo], axtitle=['Low cloze', 'High cloze', 'Low - high'], ncol=3)
+p.mark_sensors(roi, -1)
 
 ###############################################################################
 # Temporal cluster based test
@@ -133,5 +144,5 @@ res = testnd.ttest_rel(
 clusters = res.find_clusters(0.05)
 
 p = plot.UTSStat('eeg_cz', 'cloze_cat', match='subject', ds=ds, frame='t')
-p.set_clusters(clusters)
+p.set_clusters(clusters, y=0.25)
 print(clusters)
