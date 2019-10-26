@@ -81,13 +81,15 @@ def gen_triggers():
 def assert_inv_works(e, inv, args, make_kw, apply_kw):
     e.reset()
     e.set(inv=inv)
-    assert e._params['make_inv_kw'] == make_kw
-    assert e._params['apply_inv_kw'] == apply_kw
+    method, make_kw_, apply_kw_ = e._inv_params()
+    assert make_kw_ == make_kw
+    assert apply_kw_ == apply_kw
     e.reset()
     e.set_inv(*args)
     assert e.get('inv') == inv
-    assert e._params['make_inv_kw'] == make_kw
-    assert e._params['apply_inv_kw'] == apply_kw
+    method, make_kw_, apply_kw_ = e._inv_params()
+    assert make_kw_ == make_kw
+    assert apply_kw_ == apply_kw
 
 
 def test_mne_experiment_templates():

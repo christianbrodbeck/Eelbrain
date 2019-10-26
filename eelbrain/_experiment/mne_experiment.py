@@ -88,7 +88,7 @@ LOG_FILE_OLD = join('{root}', '.eelbrain.log')
 
 # Allowable parameters
 COV_PARAMS = {'epoch', 'session', 'method', 'reg', 'keep_sample_mean', 'reg_eval_win_pad'}
-INV_METHODS = ('MNE', 'dSPM', 'sLORETA', 'eLORETA')
+INV_METHODS = ('MNE', 'dSPM', 'sLORETA', 'eLORETA', 'champ')
 SRC_RE = re.compile(r'^(ico|vol)-(\d+)(?:-(cortex|brainstem))?$')
 inv_re = re.compile(r"^"
                     r"(free|fixed|loose\.\d+|vec)-"  # orientation constraint
@@ -652,7 +652,7 @@ class MneExperiment(FileTree):
         else:
             default_cov = None
         self._register_field('cov', sorted(self._covs), default_cov)
-        self._register_field('inv', default='free-3-dSPM', eval_handler=self._eval_inv, post_set_handler=self._post_set_inv)
+        self._register_field('inv', default='free-3-dSPM', eval_handler=self._eval_inv)
         self._register_field('model', eval_handler=self._eval_model)
         self._register_field('test', test_values, post_set_handler=self._post_set_test, allow_empty=self._empty_test, repr=False)
         self._register_field('parc', parc_values, 'aparc', eval_handler=self._eval_parc, allow_empty=True)
@@ -2349,14 +2349,12 @@ class MneExperiment(FileTree):
             label = label_from_annot(inv['src'], mrisubject, mri_sdir, parc)
         else:
             label = None
-        stc = apply_inverse_epochs(epochs, inv, label=label, **self._params['apply_inv_kw'])
+        method, make_kw, apply_kw = self._inv_params()
+        stc = apply_inverse_epochs(epochs, inv, label=label, **apply_kw)
 
         if ndvar:
             src = self.get('src')
-            src = load.fiff.stc_ndvar(
-                stc, mrisubject, src, mri_sdir, self._params['apply_inv_kw']['method'],
-                self._params['make_inv_kw'].get('fixed', False), parc=parc,
-                connectivity=self.get('connectivity'))
+            src = load.fiff.stc_ndvar(stc, mrisubject, src, mri_sdir, method, make_kw.get('fixed', False), parc=parc, connectivity=self.get('connectivity'))
             if src_baseline:
                 src -= src.summary(time=src_baseline)
 
@@ -2750,6 +2748,7 @@ class MneExperiment(FileTree):
                 self.make_annot(mrisubject=mri_subjects[meg_subjects[0]])
 
         # convert evoked objects
+        method, make_kw, apply_kw = self._inv_params()
         stcs = []
         invs = {}
         mm_cache = CacheDict(self.load_morph_matrix, 'mrisubject')
@@ -2761,7 +2760,7 @@ class MneExperiment(FileTree):
                 inv = invs[subject] = self.load_inv(evoked, subject=subject)
 
             # apply inv
-            stc = apply_inverse(evoked, inv, **self._params['apply_inv_kw'])
+            stc = apply_inverse(evoked, inv, **apply_kw)
 
             # baseline correction
             if src_baseline:
@@ -2784,8 +2783,7 @@ class MneExperiment(FileTree):
                 key, subject = 'src', mri_subjects[meg_subjects[0]]
             src = self.get('src')
             mri_sdir = self.get('mri-sdir')
-            method = self._params['apply_inv_kw']['method']
-            fixed = self._params['make_inv_kw'].get('fixed', False)
+            fixed = make_kw.get('fixed', False)
             parc = self.get('parc') or None
             ds[key] = load.fiff.stc_ndvar(stcs, subject, src, mri_sdir, method, fixed, parc=parc, connectivity=self.get('connectivity'))
             if mask:
@@ -2999,7 +2997,8 @@ class MneExperiment(FileTree):
             if fiff is None:
                 fiff = self.load_raw()
 
-            inv = make_inverse_operator(fiff.info, self.load_fwd(), self.load_cov(), use_cps=True, **self._params['make_inv_kw'])
+            method, make_kw, apply_kw = self._inv_params()
+            inv = make_inverse_operator(fiff.info, self.load_fwd(), self.load_cov(), use_cps=True, **make_kw)
             if dst:
                 mne.minimum_norm.write_inverse_operator(dst, inv)
 
@@ -5944,11 +5943,10 @@ class MneExperiment(FileTree):
         else:
             return ori
 
-    def _post_set_inv(self, _, inv):
+    def _inv_params(self):
+        inv = self.get('inv')
         if '*' in inv:
-            self._params['make_inv_kw'] = None
-            self._params['apply_inv_kw'] = None
-            return
+            raise ValueError(f'inv={inv!r} with wildcard')
 
         ori, snr, method, depth, pick_normal = self._parse_inv(inv)
 
@@ -5974,8 +5972,7 @@ class MneExperiment(FileTree):
         elif pick_normal:
             apply_kw['pick_ori'] = 'normal'
 
-        self._params['make_inv_kw'] = make_kw
-        self._params['apply_inv_kw'] = apply_kw
+        return method, make_kw, apply_kw
 
     def _eval_model(self, model):
         if model == '':
