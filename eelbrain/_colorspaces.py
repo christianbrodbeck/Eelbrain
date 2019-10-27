@@ -12,7 +12,7 @@ if logger.level == 0:  # otherwise it was probably set by user (DEBUG=10)
 from colormath.color_objects import LCHabColor, sRGBColor
 from colormath.color_conversions import convert_color
 from matplotlib.colors import ListedColormap
-from matplotlib.cm import register_cmap
+from matplotlib.cm import LUTSIZE, register_cmap, get_cmap
 from matplotlib.colors import LinearSegmentedColormap, Normalize, to_rgb, to_rgba
 import numpy as np
 
@@ -307,6 +307,21 @@ def two_step_colormap(left_max, left, center='transparent', right=None, right_ma
     return cmap
 
 
+def pigtailed_cmap(cmap, swap_order=('green', 'red', 'blue')):
+    # nilearn colormaps with neutral middle
+    orig = get_cmap(cmap)._segmentdata
+    f = ((LUTSIZE - 1) // 2) / LUTSIZE
+    cdict = {
+        'green': [(f * (1 - p), *c) for p, *c in reversed(orig[swap_order[0]])],
+        'blue': [(f * (1 - p), *c) for p, *c in reversed(orig[swap_order[1]])],
+        'red': [(f * (1 - p), *c) for p, *c in reversed(orig[swap_order[2]])],
+    }
+    start = 1 - f * 0.5
+    for color in ('red', 'green', 'blue'):
+        cdict[color].extend((start + f * p, *c) for p, *c in orig[color])
+    return cdict
+
+
 def make_cmaps():
     """Create some custom colormaps and register them with matplotlib"""
     # polar:  blue-white-red
@@ -375,6 +390,12 @@ def make_cmaps():
         ))
     cmap.set_over('k', alpha=0.)
     cmap.set_bad('b', alpha=0.)
+    register_cmap(cmap=cmap)
+
+    # Nilearn cmaps
+    cmap = LinearSegmentedColormap('cold_hot', pigtailed_cmap('hot'), LUTSIZE)
+    register_cmap(cmap=cmap)
+    cmap = LinearSegmentedColormap('cold_white_hot', pigtailed_cmap('hot_r'), LUTSIZE)
     register_cmap(cmap=cmap)
 
 

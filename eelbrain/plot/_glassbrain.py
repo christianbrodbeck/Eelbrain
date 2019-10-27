@@ -34,6 +34,7 @@ OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 
 """
+import os
 import warnings
 
 import nibabel
@@ -41,7 +42,7 @@ import numpy as np
 
 from .._data_obj import VolumeSourceSpace
 from .._utils.numpy_utils import newaxis
-from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, brain_data, butterfly_data
+from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, brain_data, butterfly_data, use_inline_backend
 from ._colors import soft_threshold_colormap
 from ._utsnd import Butterfly
 
@@ -184,14 +185,20 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                  alpha=0.7, plot_abs=False, draw_arrows=True, symmetric_cbar='auto',
                  interpolation='nearest', **kwargs):
         # Give wxPython a chance to initialize the menu before pyplot
-        from .._wxgui import get_app
-        get_app(jumpstart=True)
+        if not use_inline_backend():
+            from .._wxgui import get_app
+            get_app(jumpstart=True)
 
-        # Lazy import of matplotlib.pyplot
+        # nilearn imports  matplotlib.pyplot and messes with the backend unless
+        # DISPLAY is set
+        old_display = os.environ.get('DISPLAY')
+        if old_display is None:
+            os.environ['DISPLAY'] = 'duh'
         from nilearn.image import index_img
-        from nilearn.plotting import cm
         from nilearn.plotting.displays import get_projector
         from nilearn.plotting.img_plotting import _get_colorbar_and_data_ranges
+        if old_display is None:
+            del os.environ['DISPLAY']
 
         # check parameters
         if vmax is not None and np.isnan(vmax):
@@ -255,7 +262,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                 if data.dtype.kind == 'b':
                     cmap = 'copper' if black_bg else 'Oranges'
                 else:
-                    cmap = cm.cold_hot if black_bg else cm.cold_white_hot
+                    cmap = 'cold_hot' if black_bg else 'cold_white_hot'
 
             if data.dtype.kind == 'b':
                 if vmax is None:
@@ -279,12 +286,6 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                 threshold = float(threshold)
                 if isinstance(ndvar.x, np.ma.MaskedArray):
                     raise ValueError(f"Cannot use threshold={threshold} with masked data")
-
-            # If ```threshold = None``` and using diverging colormaps, 0.5 may not corresponds to pure white/ black.
-            # This issue is more prominent in Apple’s color management than Windows/ Linux counterpart.
-            if symmetric_cbar and (threshold is None):
-                subthreshold = (0, 0, 0) if black_bg else (1.0, 1.0, 1.0)
-                cmap = soft_threshold_colormap(cmap, threshold=vmax / cmap.N, vmax=vmax, subthreshold=subthreshold, symmetric=True)
 
         self.time = time
         self._ndvar = ndvar
@@ -561,8 +562,11 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         glassbrain : GlassBrain
             GlassBrain plot.
         """
-        from .._wxgui import get_app, needs_jumpstart
-        jumpstart = needs_jumpstart()
+        if use_inline_backend():
+            jumpstart = False
+        else:
+            from .._wxgui import needs_jumpstart
+            jumpstart = needs_jumpstart()
 
         hemis, bfly_data, brain_data = butterfly_data(y, None, return_vector_data=draw_arrows)
 
@@ -573,6 +577,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
 
         # Give wxPython a chance to initialize the menu before pyplot
         if jumpstart:
+            from .._wxgui import get_app
             get_app().jumpstart()
 
         # GlassBrain plot
