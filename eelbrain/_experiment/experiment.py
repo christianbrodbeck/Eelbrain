@@ -619,9 +619,9 @@ class TreeModel:
             later are discarded either way.
         """
         if isinstance(state, int):
-            s1 = s2 = s3 = state
+            s1 = s2 = state
         else:
-            s1, s2, s3 = state
+            s1, s2 = state
         self._fields.restore_state(s1, discard_tip)
         self._field_values.restore_state(s2, discard_tip)
 
