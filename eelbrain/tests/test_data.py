@@ -17,7 +17,6 @@ from numpy.testing import (
     assert_equal, assert_array_equal, assert_allclose,
     assert_array_almost_equal)
 import pytest
-from scipy import signal
 
 from eelbrain import (
     datasets, load, Var, Factor, NDVar, Datalist, Dataset, Celltable,
@@ -1506,6 +1505,23 @@ def test_ols():
         assert_array_almost_equal(res1.x[:, 1, i], res)
         t = r('coef(summary(lm1))')[5]
         assert t1.x[0, 1, i] == pytest.approx(t)
+
+
+def test_parametrization():
+    ds = Dataset({
+        'a': Factor('aabb'),
+        'b': Factor('abab'),
+        'u': Var([1, 2, 3, 4]),
+        'v': Var([0, 0, 1, 1]),
+    })
+    # categorial
+    model = ds.eval("a*b")
+    p = model._parametrize()
+    assert p.effect_names == ['intercept', 'a', 'b', 'a x b']
+    # numeric
+    model = ds.eval("u + v + u*v")
+    p = model._parametrize()
+    assert p.effect_names == ['intercept', 'u', 'v', 'u * v']
 
 
 def test_io_pickle():

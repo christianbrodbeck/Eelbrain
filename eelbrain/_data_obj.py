@@ -39,31 +39,38 @@ Names
 Data-object names seem to have conflicting roles depending on how they are used.
 Potentially, data-object names could fulfill the following functions::
 
-1) Informative labels for plotting and in test results:
+1) Names should be effortless to set and update
+
+  - Always updat when assigning to dataset
+  - With ``name`` argument in methods
+
+2) Keep track of data source
+
+  - For example labeling a predictor; after normalizing I don't want the
+    predictor to be called ``sgram * (srcm / sgram)``
+
+3) Informative labels for plotting and in test results:
 
   - ``log(5 * x)`` should show up as this, not ``x``
   - Test results need names like ``a - b``
-  
-2) Keep track of data source
 
-  - For example labeling a predictor; after normalizing I don't want the 
-    predictor to be called ``sgram * (srcm / sgram)``
-
-3) Provide term names for models
+4) Provide term names for models
 
   - For example, ``m = v + w + v * w`` should not error due to duplicate name
 
-3) Names should be easy to update
+Should operations like ``a + b`` update the name?
 
-  - When assigning to dataset
-  - With ``name`` argument in methods
+ - Requirement 2 is in direct conflict with 3 and 4.
+ - Internal operations (``a += b``) should not, because a could be in a dataset.
 
-1 and 2 stand in direct conflict over whether operations should update the name.
+Current implementation:
 
-Current implementation: the ``.name`` attribute is always inherited (2) and
-``info['longname']`` reflects history (1, 3).
+ - ``.name`` is always inherited
+ - ``.info['longname']`` reflects history
 
-Examples of potentially desirable API:
+
+
+Examples of other potentially desirable API:
 
 ```
 ds['std'] = ds['sgram'].std('frequency', name='Standard deviation')
