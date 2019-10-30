@@ -59,7 +59,7 @@ from .glm import _nd_anova
 from .permutation import (
     _resample_params, permute_order, permute_sign_flip, random_seeds,
     rand_rotation_matrices)
-from .t_contrast import TContrastRel
+from .t_contrast import TContrastSpec
 from .test import star, star_factor, _independent_measures_args, _related_measures_args
 
 
@@ -400,7 +400,7 @@ class NDTest:
         return None
 
 
-class t_contrast_rel(NDTest):
+class TContrastRelated(NDTest):
     """Mass-univariate contrast based on t-values
 
     Parameters
@@ -506,13 +506,13 @@ class t_contrast_rel(NDTest):
             force_permutation: bool = False,
             **criteria):
         if match is None:
-            raise TypeError("The `match` parameter needs to be specified for repeated measures test t_contrast_rel")
+            raise TypeError("The `match` parameter needs to be specified for TContrastRelated")
         ct = Celltable(y, x, match, sub, ds=ds, coercion=asndvar, dtype=np.float64)
         check_for_vector_dim(ct.y)
         check_variance(ct.y.x)
 
         # setup contrast
-        t_contrast = TContrastRel(contrast, ct.cells, ct.data_indexes)
+        t_contrast = TContrastSpec(contrast, ct.cells, ct.data_indexes)
 
         # original data
         tmap = t_contrast.map(ct.y.x)
@@ -573,7 +573,7 @@ class t_contrast_rel(NDTest):
         return args
 
 
-class corr(NDTest):
+class Correlation(NDTest):
     """Mass-univariate correlation
 
     Parameters
@@ -808,7 +808,7 @@ class NDMaskedC1Mixin:
         return self.c1_mean.mask(mask)
 
 
-class ttest_1samp(NDDifferenceTest):
+class TTestOneSample(NDDifferenceTest):
     """Mass-univariate one sample t-test
 
     Parameters
@@ -995,7 +995,7 @@ class ttest_1samp(NDDifferenceTest):
             return self.difference
 
 
-class ttest_ind(NDDifferenceTest):
+class TTestIndependent(NDDifferenceTest):
     """Mass-univariate independent samples t-test
 
     The test data can be specified in two forms:
@@ -1208,7 +1208,7 @@ class ttest_ind(NDDifferenceTest):
         return [self.c1_mean, self.c0_mean, diff]
 
 
-class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
+class TTestRelated(NDMaskedC1Mixin, NDDifferenceTest):
     """Mass-univariate related samples t-test
 
     The test data can be specified in two forms:
@@ -1622,7 +1622,7 @@ class MultiEffectNDTest(NDTest):
         return combine(dss)
 
 
-class anova(MultiEffectNDTest):
+class ANOVA(MultiEffectNDTest):
     """Mass-univariate ANOVA
 
     Parameters
@@ -1835,7 +1835,7 @@ class anova(MultiEffectNDTest):
                         (isinstance(e, NestedEffect) and isinstance(e.effect, Factor)))
 
     def _plot_sub(self):
-        return super(anova, self)._plot_sub()
+        return super(ANOVA, self)._plot_sub()
 
     def _default_plot_obj(self):
         if self.samples:
@@ -3853,3 +3853,9 @@ def distribution_worker_me(dist_arrays, dist_shape, in_queue, kill_beacon):
 
 # Backwards compatibility for pickling
 _ClusterDist = NDPermutationDistribution
+corr = Correlation
+ttest_1samp = TTestOneSample
+ttest_ind = TTestIndependent
+ttest_rel = TTestRelated
+t_contrast_rel = TContrastRelated
+anova = ANOVA

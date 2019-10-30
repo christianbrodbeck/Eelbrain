@@ -453,7 +453,7 @@ class UTSClusters(EelFigure):
 
     Parameters
     ----------
-    res : testnd.anova
+    res : testnd.ANOVA
         ANOVA with permutation cluster test result object.
     pmax : scalar
         Maximum p-value of clusters to plot as solid.

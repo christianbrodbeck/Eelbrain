@@ -234,12 +234,12 @@ Mass-Univariate Statistics
 .. autosummary::
    :toctree: generated
 
-   testnd.ttest_1samp
-   testnd.ttest_rel
-   testnd.ttest_ind
-   testnd.t_contrast_rel
-   testnd.anova
-   testnd.corr
+   testnd.TTestOneSample
+   testnd.TTestRelated
+   testnd.TTestIndependent
+   testnd.TContrastRelated
+   testnd.ANOVA
+   testnd.Correlation
    testnd.Vector
    testnd.VectorDifferenceRelated
 

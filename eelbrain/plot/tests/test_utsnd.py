@@ -84,17 +84,17 @@ def test_plot_results():
     ds = datasets.get_uts(True)
 
     # ANOVA
-    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=0, pmin=0.05)
+    res = testnd.ANOVA('utsnd', 'A*B*rm', ds=ds, samples=0, pmin=0.05)
     p = plot.Array(res)
     p.close()
-    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=2, pmin=0.05)
+    res = testnd.ANOVA('utsnd', 'A*B*rm', ds=ds, samples=2, pmin=0.05)
     p = plot.Array(res)
     p.close()
 
     # Correlation
-    res = testnd.corr('utsnd', 'Y', 'rm', ds=ds)
+    res = testnd.Correlation('utsnd', 'Y', 'rm', ds=ds)
     p = plot.Array(res)
     p.close()
-    res = testnd.corr('utsnd', 'Y', 'rm', ds=ds, samples=10, pmin=0.05)
+    res = testnd.Correlation('utsnd', 'Y', 'rm', ds=ds, samples=10, pmin=0.05)
     p = plot.Array(res)
     p.close()

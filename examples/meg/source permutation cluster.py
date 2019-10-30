@@ -40,12 +40,14 @@ section.add_figure("Number of trials in each condition", freq_table)
 '''
 perform t-test for side of stimulation (for a more reliable test set samples=10000).
 '''
-res = e.testnd.ttest_ind('src', 'side', 'L', 'R', ds=ds,
-                         samples=n_samples,  # number of permutations
-                         pmin=0.05,  # threshold for clusters (uncorrected p-value)
-                         tstart=0.05,  # start of the time window of interest
-                         mintime=0.02,  # minimum duration for clusters
-                         minsource=10)  # minimum number of sources for clusters
+res = e.testnd.TTestIndependent(
+    'src', 'side', 'L', 'R', ds=ds,
+    samples=n_samples,  # number of permutations
+    pmin=0.05,  # threshold for clusters (uncorrected p-value)
+    tstart=0.05,  # start of the time window of interest
+    mintime=0.02,  # minimum duration for clusters
+    minsource=10,  # minimum number of sources for clusters
+)
 
 # add results to the report
 section = report.add_section("Result")

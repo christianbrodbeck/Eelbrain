@@ -67,7 +67,7 @@ ds['eeg'] -= ds['eeg'].mean(sensor=['M1', 'M2'])
 # Spatio-temporal cluster based test
 # ----------------------------------
 # Compute a cluster-based permutation test for a related measures comparison.
-res = testnd.ttest_rel(
+res = testnd.TTestRelated(
     'eeg', 'cloze_cat', 'low', 'high', match='subject', ds=ds, 
     pmin=0.05,  # Use uncorrected p = 0.05 as threshold for forming clusters
     tstart=0.100,  # Find clusters in the time window from 100 ...
@@ -135,7 +135,7 @@ p.mark_sensors(roi, -1)
 # course can be extracted and submitted to a temporal cluster based test. For
 # example, the N400 is typically expected to be strong at sensor ``Cz``:
 ds['eeg_cz'] = ds['eeg'].sub(sensor='Cz')
-res = testnd.ttest_rel(
+res = testnd.TTestRelated(
     'eeg_cz', 'cloze_cat', 'low', 'high', match='subject', ds=ds,
     pmin=0.05,  # Use uncorrected p = 0.05 as threshold for forming clusters
     tstart=0.100,  # Find clusters in the time window from 100 ...

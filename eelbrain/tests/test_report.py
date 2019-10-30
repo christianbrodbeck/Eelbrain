@@ -25,22 +25,22 @@ def test_result_report():
 
         for match in (None, 'rm'):
             logging.info("    match=%s", match)
-            res = testnd.ttest_1samp(y, match=match, ds=sds, **kwargs)
+            res = testnd.TTestOneSample(y, match=match, ds=sds, **kwargs)
             rep = result_report(res, ds)
             html(rep)
 
-        res = testnd.ttest_ind(y, 'A', ds=sds, **kwargs)
+        res = testnd.TTestIndependent(y, 'A', ds=sds, **kwargs)
         rep = result_report(res, ds)
         html(rep)
 
-        res = testnd.ttest_rel(y, 'A',  ds=sds, match='rm', **kwargs)
+        res = testnd.TTestRelated(y, 'A', ds=sds, match='rm', **kwargs)
         rep = result_report(res, sds)
         html(rep)
 
-        res = testnd.anova(y, 'A * B', ds=ds, **kwargs)
+        res = testnd.ANOVA(y, 'A * B', ds=ds, **kwargs)
         rep = result_report(res, ds)
         html(rep)
 
-        res = testnd.anova(y, 'A * rm', ds=sds, match='rm', **kwargs)
+        res = testnd.ANOVA(y, 'A * rm', ds=sds, match='rm', **kwargs)
         rep = result_report(res, ds)
         html(rep)

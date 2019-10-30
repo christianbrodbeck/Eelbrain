@@ -6,7 +6,7 @@ import pytest
 from eelbrain import datasets, Celltable, testnd
 from eelbrain._stats import t_contrast
 from eelbrain._stats.stats import t_1samp
-from eelbrain._stats.t_contrast import TContrastRel
+from eelbrain._stats.t_contrast import TContrastSpec
 
 
 def test_t_contrast_parsing():
@@ -62,12 +62,12 @@ def test_t_contrasts():
 
     # simple t-test
     tgt = t_1samp(a1b0 - a0b0)
-    c = TContrastRel("a1|b0 > a0|b0", ct.cells, ct.data_indexes)
+    c = TContrastSpec("a1|b0 > a0|b0", ct.cells, ct.data_indexes)
     assert_equal(c.map(y), tgt)
     assert_equal(c(y, out, perm), tgt)
     out.fill(0)
     assert_equal(c(y, out, perm), tgt)
-    c = TContrastRel("(a1|b0 > a0|b0)", ct.cells, ct.data_indexes)
+    c = TContrastSpec("(a1|b0 > a0|b0)", ct.cells, ct.data_indexes)
     assert_equal(c.map(y), tgt)
     assert_equal(c(y, out, perm), tgt)
     out.fill(0)
@@ -75,7 +75,7 @@ def test_t_contrasts():
 
     # intersection
     tgt = np.min((t_1samp(a1b0 - a0b0), t_1samp(a1b1 - a0b1)), 0)
-    c = TContrastRel("min(a1|b0 > a0|b0, a1|b1 > a0|b1)", ct.cells, ct.data_indexes)
+    c = TContrastSpec("min(a1|b0 > a0|b0, a1|b1 > a0|b1)", ct.cells, ct.data_indexes)
     assert_equal(c.map(y), tgt)
     assert_equal(c(y, out, perm), tgt)
     out.fill(0)
@@ -83,7 +83,7 @@ def test_t_contrasts():
 
     # unary function
     tgt = np.abs(t_1samp(a1b0 - a0b0))
-    c = TContrastRel("abs(a1|b0 > a0|b0)", ct.cells, ct.data_indexes)
+    c = TContrastSpec("abs(a1|b0 > a0|b0)", ct.cells, ct.data_indexes)
     assert_equal(c.map(y), tgt)
     assert_equal(c(y, out, perm), tgt)
     out.fill(0)
@@ -91,12 +91,12 @@ def test_t_contrasts():
 
     # "VMod"
     tgt = t_1samp(a1b0 - a0b0) - np.abs(t_1samp(a1b1 - a0b1))
-    c = TContrastRel("(a1|b0 > a0|b0) - abs(a1|b1 > a0|b1)", ct.cells,
-                     ct.data_indexes)
+    c = TContrastSpec("(a1|b0 > a0|b0) - abs(a1|b1 > a0|b1)", ct.cells,
+                      ct.data_indexes)
     assert_equal(c.map(y), tgt)
 
-    c = TContrastRel("subtract(a1|b0 > a0|b0, abs(a1|b1 > a0|b1))", ct.cells,
-                     ct.data_indexes)
+    c = TContrastSpec("subtract(a1|b0 > a0|b0, abs(a1|b1 > a0|b1))", ct.cells,
+                      ct.data_indexes)
     assert_equal(c.map(y), tgt)
     assert_equal(c(y, out, perm), tgt)
     out.fill(0)
@@ -107,9 +107,9 @@ def test_t_contrast_testnd():
     ds = datasets.get_uts()
 
     # binary function
-    res = testnd.t_contrast_rel('uts', 'A', "a1>a0 - a0>a1", 'rm', ds=ds, tmin=4, samples=10)
+    res = testnd.TContrastRelated('uts', 'A', "a1>a0 - a0>a1", 'rm', ds=ds, tmin=4, samples=10)
     assert_equal(res.find_clusters()['p'], np.array([1, 1, 0.9, 0, 0.2, 1, 1, 0]))
-    res_t = testnd.ttest_rel('uts', 'A', 'a1', 'a0', match='rm', ds=ds, tmin=2, samples=10)
+    res_t = testnd.TTestRelated('uts', 'A', 'a1', 'a0', match='rm', ds=ds, tmin=2, samples=10)
     assert_array_equal(res.t.x, res_t.t.x * 2)
     assert_array_equal(res.clusters['tstart'], res_t.clusters['tstart'])
     assert_array_equal(res.clusters['tstop'], res_t.clusters['tstop'])

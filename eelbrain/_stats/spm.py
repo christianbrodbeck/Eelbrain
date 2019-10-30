@@ -10,7 +10,7 @@ from .._exceptions import DimensionMismatchError
 from . import opt
 from .stats import lm_betas_se_1d
 from .test import star
-from .testnd import ttest_1samp
+from .testnd import TTestOneSample
 from functools import reduce
 
 
@@ -161,7 +161,7 @@ class LMGroup:
         Names of the linear model columns.
     column_keys : [str]
         Corresponding dataset keys (with invalid characters replaced).
-    tests : None | {str: ttest_rel}
+    tests : None | {str: TTestRelated}
         Tests computed with :meth:`compute_column_ttests`.
     samples : None | int
         Number of samples used to compute tests in :attr:`tests`.
@@ -325,7 +325,7 @@ class LMGroup:
 
         Returns
         -------
-        result : ttest_1samp
+        result : TTestOneSample
             T-test result.
         data : Dataset (only with ``return_data=True``)
             Dataset with subjects' coefficients.
@@ -337,7 +337,7 @@ class LMGroup:
         in the population.
         """
         coeff = self.coefficients(term)
-        res = ttest_1samp(coeff, popmean, None, None, None, *args, **kwargs)
+        res = TTestOneSample(coeff, popmean, None, None, None, *args, **kwargs)
         if return_data:
             ds = Dataset({'coeff': coeff})
             ds.update(self.subject_variables)

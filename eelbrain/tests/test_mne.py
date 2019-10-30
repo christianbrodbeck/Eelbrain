@@ -50,8 +50,7 @@ def test_source_estimate():
     asndvar(dsa['epochs'][0])
 
     # source space clustering
-    res = testnd.ttest_ind('src', 'side', ds=ds, samples=0, pmin=0.05,
-                           tstart=0.05, mintime=0.02, minsource=10)
+    res = testnd.TTestIndependent('src', 'side', ds=ds, samples=0, pmin=0.05, tstart=0.05, mintime=0.02, minsource=10)
     assert res.clusters.n_cases == 52
 
     # test disconnecting parc
@@ -70,9 +69,7 @@ def test_source_estimate():
 
     # threshold-based test with parc
     srcl = src.sub(source='lh')
-    res = testnd.ttest_ind(srcl, 'side', ds=ds, samples=10, pmin=0.05,
-                           tstart=0.05, mintime=0.02, minsource=10,
-                           parc='source')
+    res = testnd.TTestIndependent(srcl, 'side', ds=ds, samples=10, pmin=0.05, tstart=0.05, mintime=0.02, minsource=10, parc='source')
     assert res._cdist.dist.shape[1] == len(srcl.source.parc.cells)
     label = 'superiortemporal-lh'
     c_all = res.find_clusters(maps=True)
@@ -88,7 +85,7 @@ def test_source_estimate():
         assert_dataobj_equal(case['cluster'], c_all[idx, 'cluster'].sub(source=label))
 
     # threshold-free test with parc
-    res = testnd.ttest_ind(srcl, 'side', ds=ds, samples=10, tstart=0.05, parc='source')
+    res = testnd.TTestIndependent(srcl, 'side', ds=ds, samples=10, tstart=0.05, parc='source')
     cl = res.find_clusters(0.05)
     assert cl.eval("p.min()") == res.p.min()
     mp = res.masked_parameter_map()

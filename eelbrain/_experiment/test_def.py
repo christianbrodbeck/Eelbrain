@@ -114,7 +114,7 @@ class TTestOneSample(EvokedTest):
         self.tail = tail
 
     def make(self, y, ds, force_permutation, kwargs):
-        return testnd.ttest_1samp(
+        return testnd.TTestOneSample(
             y, match='subject', ds=ds, tail=self.tail,
             force_permutation=force_permutation, **kwargs)
 
@@ -168,7 +168,7 @@ class TTestInd(TTest):
         TTest.__init__(self, model, c1, c0, tail, vars)
 
     def make(self, y, ds, force_permutation, kwargs):
-        return testnd.ttest_ind(
+        return testnd.TTestIndependent(
             y, self.model, self.c1, self.c0, 'subject', ds=ds, tail=self.tail,
             force_permutation=force_permutation, **kwargs)
 
@@ -217,13 +217,13 @@ class TTestRel(TTest):
         assert self._between is None
 
     def make(self, y, ds, force_permutation, kwargs):
-        return testnd.ttest_rel(
+        return testnd.TTestRelated(
             y, self.model, self.c1, self.c0, 'subject', ds=ds, tail=self.tail,
             force_permutation=force_permutation, **kwargs)
 
 
 class TContrastRel(EvokedTest):
-    """Contrasts of T-maps (see :class:`eelbrain.testnd.t_contrast_rel`)
+    """Contrasts of T-maps (see :class:`eelbrain.testnd.TContrastRelated`)
 
     Parameters
     ----------
@@ -233,7 +233,7 @@ class TContrastRel(EvokedTest):
         ``x`` and ``y`` are variables in the experiment's events.
     contrast : str
         Contrast specification using cells form the specified model (see
-        :class:`eelbrain.testnd.t_contrast_rel`)).
+        :class:`eelbrain.testnd.TContrastRelated`)).
     tail : int
         Tailedness of the test. ``0`` for two-tailed (default), ``1`` for upper tail
         and ``-1`` for lower tail.
@@ -247,7 +247,7 @@ class TContrastRel(EvokedTest):
     Sample test definitions::
 
         tests = {
-            'a_b_intersection': TContrastRel{'abc', 'min(a > c, b > c)', tail=1),
+            'a_b_intersection': TContrastRelated{'abc', 'min(a > c, b > c)', tail=1),
         }
 
     """
@@ -261,7 +261,7 @@ class TContrastRel(EvokedTest):
         self.tail = tail
 
     def make(self, y, ds, force_permutation, kwargs):
-        return testnd.t_contrast_rel(
+        return testnd.TContrastRelated(
             y, self.model, self.contrast, 'subject', ds=ds, tail=self.tail,
             force_permutation=force_permutation, **kwargs)
 
@@ -311,7 +311,7 @@ class ANOVA(EvokedTest):
         self.x = x
 
     def make(self, y, ds, force_permutation, kwargs):
-        return testnd.anova(y, self.x, ds=ds, force_permutation=force_permutation, **kwargs)
+        return testnd.ANOVA(y, self.x, ds=ds, force_permutation=force_permutation, **kwargs)
 
 
 class TwoStageTest(Test):

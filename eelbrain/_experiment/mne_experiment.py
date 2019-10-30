@@ -462,11 +462,7 @@ class MneExperiment(FileTree):
 
     # Tests
     # -----
-    # specify tests as (test_type, model, test_parameter) tuple. For example,
-    # ("anova", "condition", "condition*subject")
-    # ("t_contrast_rel", "ref%loc", "+min(ref|left>nref|*, ref|right>nref|*)")
-    # Make sure dictionary keys (test names) are appropriate for filenames.
-    # tests imply a model which is set automatically
+    # Tests imply a model which is set automatically
     tests = {}
     _empty_test = False  # for TRFExperiment
     _cluster_criteria = {
@@ -4431,11 +4427,11 @@ class MneExperiment(FileTree):
         # compute t-maps
         if c0:
             if group:
-                res = testnd.ttest_rel(y, model, c1, c0, match='subject', ds=ds, **state)
+                res = testnd.TTestRelated(y, model, c1, c0, match='subject', ds=ds, **state)
             else:
-                res = testnd.ttest_ind(y, model, c1, c0, ds=ds, **state)
+                res = testnd.TTestIndependent(y, model, c1, c0, ds=ds, **state)
         else:
-            res = testnd.ttest_1samp(y, ds=ds, **state)
+            res = testnd.TTestOneSample(y, ds=ds, **state)
 
         # select cluster-corrected t-map
         if state:

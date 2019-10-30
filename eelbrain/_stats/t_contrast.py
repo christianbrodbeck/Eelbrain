@@ -21,7 +21,7 @@ np_ufuncs = {'abs': np.abs,
              'negative': np.negative}
 
 
-class TContrastRel:
+class TContrastSpec:
     "Parse a contrast expression and expose methods to apply it"
 
     def __init__(self, contrast, cells, indexes):

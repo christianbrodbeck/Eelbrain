@@ -497,7 +497,7 @@ definitions are defined from the following:
    TTestRel
    TTestInd
    ANOVA
-   TContrastRel
+   TContrastRelated
    TwoStageTest
 
 

@@ -43,11 +43,11 @@ make = options.make
 if make:
     if make == 'mne':
         ds = datasets.get_mne_sample(-0.1, 0.2, src='ico', sub=None, rm=True)
-        statement = ("testnd.anova('src', 'side * modality * subject', "
+        statement = ("testnd.ANOVA('src', 'side * modality * subject', "
                      "match='subject', ds=ds, samples=2, tstart=0)")
     elif make == 'uts':
         ds = datasets.get_rand(True)
-        statement = ("testnd.anova('uts', 'A * B * rm', ds=ds, samples=100, "
+        statement = ("testnd.ANOVA('uts', 'A * B * rm', ds=ds, samples=100, "
                      "tfce=True, tstart=0, match='rm')")
     else:
         raise ValueError("-m %s" % make)

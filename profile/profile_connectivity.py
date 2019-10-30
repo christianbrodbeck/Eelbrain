@@ -15,7 +15,7 @@ eelbrain._stats.testnd.multiprocessing = False
 ds = datasets.get_mne_sample(-0.1, 0.2, src='ico', sub="modality == 'A'")
 
 code = '''
-res = testnd.ttest_ind('src', 'side', 'L', 'R', ds=ds, samples=5, pmin=0.5,
+res = testnd.TTestIndependent('src', 'side', 'L', 'R', ds=ds, samples=5, pmin=0.5,
                        tstart=0.05, mintime=0.02, minsource=10)
 '''
 

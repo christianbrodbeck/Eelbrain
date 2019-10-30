@@ -37,7 +37,7 @@ def assert_f_test_equal(f_test, r_res, r_row, f_lmf, f_nd, r_kind='aov'):
     assert f_test.F == pytest.approx(r_res['F'])
     assert f_test.p == pytest.approx(r_res['p'])
     assert f_lmf == pytest.approx(r_res['F'])  # lm-fitter comparison"
-    assert f_nd == pytest.approx(r_res['F'])  # nd-anova comparison"
+    assert f_nd == pytest.approx(r_res['F'])  # nd-ANOVA comparison"
 
 
 def assert_f_tests_equal(f_tests, r_res, fs, fnds, r_kind='aov'):
@@ -79,7 +79,7 @@ def run_as_ndanova(y, x, ds):
     yt = ds.eval(y).x[:, None]
     y2 = np.concatenate((yt, yt * 2), 1)
     ndvar = NDVar(y2, ('case', UTS(0, 0.1, 2)))
-    res = testnd.anova(ndvar, x, ds=ds)
+    res = testnd.ANOVA(ndvar, x, ds=ds)
     f1 = [fmap.x[0] for fmap in res.f]
     f2 = [fmap.x[1] for fmap in res.f]
     for f1_, f2_ in zip(f1, f2):
@@ -197,10 +197,10 @@ def test_ndanova():
     ds['An'] = ds['A'].as_var({'a0': 0, 'a1': 1})
 
     with pytest.raises(NotImplementedError):
-        testnd.anova('uts', 'An*B*rm', ds=ds)
+        testnd.ANOVA('uts', 'An*B*rm', ds=ds)
 
     # nested random effect
-    res = testnd.anova('uts', 'A + A%B + B * nrm(A)', ds=ds, match='nrm', samples=100, pmin=0.05)
+    res = testnd.ANOVA('uts', 'A + A%B + B * nrm(A)', ds=ds, match='nrm', samples=100, pmin=0.05)
     assert len(res.find_clusters(0.05)) == 8
 
 
@@ -211,7 +211,7 @@ def test_anova_perm():
     y_perm = np.empty_like(y)
     n_cases, n_tests = y.shape
 
-    # balanced anova
+    # balanced ANOVA
     aov = glm._BalancedFixedNDANOVA(ds.eval('A*B'))
     r1 = aov.preallocate(y.shape[1:])
     for perm in permute_order(n_cases, 2):
@@ -221,7 +221,7 @@ def test_anova_perm():
         aov.map(y_perm)
         assert_allclose(r2, r1, 1e-6, 1e-6)
 
-    # full repeated measures anova
+    # full repeated measures ANOVA
     aov = glm._BalancedMixedNDANOVA(ds.eval('A*B*rm'))
     r1 = aov.preallocate(y.shape[1:])
     for perm in permute_order(n_cases, 2):
@@ -231,7 +231,7 @@ def test_anova_perm():
         aov.map(y_perm)
         assert_allclose(r2, r1, 1e-6, 1e-6)
 
-    # incremental anova
+    # incremental ANOVA
     ds = ds[1:]
     y = ds['uts'].x
     y_perm = np.empty_like(y)

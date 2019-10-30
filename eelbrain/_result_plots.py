@@ -161,7 +161,7 @@ class ClusterPlotter:
         self.labels = labels
         self.h = h
         self._dst = PlotDestDir(dst, pix_fmt, vec_fmt)
-        self._is_anova = isinstance(self.res, testnd.anova)
+        self._is_anova = isinstance(self.res, testnd.ANOVA)
 
     def _ids(self, ids):
         if isinstance(ids, (float, int)):

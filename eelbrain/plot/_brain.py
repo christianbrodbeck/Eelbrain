@@ -1110,7 +1110,7 @@ class SequencePlotter:
 
     Plotting a test result:
 
-    >>> res = testnd.ttest_rel('srcm', 'condition')
+    >>> res = testnd.TTestRelated('srcm', 'condition')
     >>> vmax = 3  # explicitly set vmax to make sure that the color-maps agree
     >>> sp = plot.brain.SequancePlotter()
     >>> sp.set_brain_args(surf='inflated')

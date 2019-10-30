@@ -97,10 +97,10 @@ New in 0.28
 * Transition to `Python 3.6 <https://docs.python.org/3.6/>`_
 * API changes:
 
-  - :class:`testnd.anova`: The ``match`` parameter is now determined
+  - :class:`testnd.ANOVA`: The ``match`` parameter is now determined
     automatically and does not need to be specified anymore in most cases.
-  - :attr:`testnd.ttest_1samp.diff` renamed to
-    :attr:`testnd.ttest_1samp.difference`.
+  - :attr:`testnd.TTestOneSample.diff` renamed to
+    :attr:`testnd.TTestOneSample.difference`.
   - :class:`plot.Histogram`: following :mod:`matplotlib`, the ``normed``
     parameter was renamed to ``density``.
   - Previously capitalized argument and attribute names ``Y``, ``X`` and ``Xax``
@@ -241,7 +241,7 @@ New in 0.24
     with :mod:`mne` < 0.13, the :attr:`MneExperiment.meg_system` attribute needs
     to be set to ``"KIT-157"`` to distinguish it from data collected with the
     KIT UMD system.
-  - :meth:`~testnd.ttest_rel.masked_parameter_map` method of cluster-based test
+  - :meth:`~testnd.TTestRelated.masked_parameter_map` method of cluster-based test
     results: use of ``pmin=None`` is deprecated, use ``pmin=1`` instead.
 
 * New test: :class:`test.TTestRel`.
@@ -265,7 +265,7 @@ New in 0.23
 
 * API :func:`plot.colors_for_twoway` and :func:`plot.colors_for_categorial`:
   new color model, different options.
-* :class:`testnd.t_contrast_rel` contrasts can contain ``*`` to include the
+* :class:`testnd.TContrastRelated` contrasts can contain ``*`` to include the
   average of multiple cells.
 * New :class:`NDVar` methods:  :meth:`NDVar.envelope`, :meth:`NDVar.fft`.
 
@@ -332,8 +332,8 @@ New in 0.19
   <https://github.com/christianbrodbeck/Eelbrain/blob/r/0.19/examples/meg/topographic%20plotting.py>`_
   example.
 * API: :class:`plot.ColorList` has a new argument called `labels`.
-* API: :class:`testnd.anova` attribute :attr:`~testnd.anova.probability_maps`
-  renamed to :attr:`~testnd.anova.p` analogous to other :mod:`testnd` results.
+* API: :class:`testnd.ANOVA` attribute :attr:`~testnd.ANOVA.probability_maps`
+  renamed to :attr:`~testnd.ANOVA.p` analogous to other :mod:`testnd` results.
 * Rejection-GUI: The option to plot the data range only has been removed.
 
 
@@ -428,7 +428,7 @@ New in 0.14
   that unsaved documents are handled properly. In order to yield to the terminal
   without closing windows, use the *Go/Yield to Terminal* command
   (Command-Alt-Q).
-* :class:`testnd.t_contrast_rel`:  support for unary operation `abs`.
+* :class:`testnd.TContrastRelated`:  support for unary operation `abs`.
 
 
 New in 0.13

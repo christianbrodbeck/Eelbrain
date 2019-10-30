@@ -31,13 +31,13 @@ def test_uts_stat():
 
     # clusters
     sds = ds.sub("B == 'b0'")
-    res = testnd.ttest_rel('uts', 'A', 'a1', 'a0', match='rm', ds=sds, samples=0, pmin=0.05, mintime=0.02)
+    res = testnd.TTestRelated('uts', 'A', 'a1', 'a0', match='rm', ds=sds, samples=0, pmin=0.05, mintime=0.02)
     p = plot.UTSStat('uts', 'A', ds=ds)
     p.set_clusters(res.clusters)
     p.close()
     p = plot.UTSStat('uts', 'A', ds=ds, clusters=res.clusters)
     p.close()
-    res = testnd.ttest_rel('uts', 'A', 'a1', 'a0', match='rm', ds=sds, samples=100, pmin=0.05, mintime=0.02)
+    res = testnd.TTestRelated('uts', 'A', 'a1', 'a0', match='rm', ds=sds, samples=100, pmin=0.05, mintime=0.02)
     p = plot.UTSStat('uts', 'A', ds=ds, clusters=res.clusters)
     p.close()
     p = plot.UTSStat('uts', 'A', 'B', ds=ds, clusters=res.clusters)
@@ -103,13 +103,13 @@ def test_clusters():
     Y = ds['uts']
 
     # fixed effects model
-    res = testnd.anova(Y, A * B)
+    res = testnd.ANOVA(Y, A * B)
     p = plot.UTSClusters(res, title="Fixed Effects Model")
     p.close()
 
     # random effects model:
     subject = Factor(range(15), tile=4, random=True, name='subject')
-    res = testnd.anova(Y, A * B * subject, match=subject, samples=2)
+    res = testnd.ANOVA(Y, A * B * subject, match=subject, samples=2)
     p = plot.UTSClusters(res, title="Random Effects Model")
     p.close()
 
