@@ -3,7 +3,6 @@ from numpy.testing import assert_array_equal
 import pytest
 
 from eelbrain import datasets, plot
-from eelbrain._colorspaces import SymmetricNormalize
 from eelbrain._wxgui.testing import hide_plots
 
 
@@ -65,10 +64,9 @@ def test_plot_colorbar():
     p = plot.ColorBar('xpolar-a', -3, 3, clipmin=0, unit='t')
     p.close()
 
-    norm = SymmetricNormalize(0.5, 1)
-    p = plot.ColorBar('xpolar', norm, unit='ms', ticks=(-1, 0, 1))
-    assert_array_equal(p._axes[0].get_xticks(), [0, 0.5, 1])
-    p.close()
+    p = plot.ColorBar('xpolar-a', -3e-6, 3e-6, unit='µV')
+    assert [t.get_text() for t in p._colorbar.ax.get_xticklabels()] == ['-3', '-1.5', '0', '1.5', '3']
+    assert p._colorbar.ax.get_xlabel() == 'µV'
 
     # soft-thresholded colormap
     cmap = plot.soft_threshold_colormap('xpolar-a', 0.2, 2.0)

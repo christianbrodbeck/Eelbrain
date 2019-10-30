@@ -65,6 +65,7 @@ from enum import Enum, auto
 from itertools import chain, repeat
 from logging import getLogger
 import math
+from numbers import Number
 import os
 import re
 import shutil
@@ -181,13 +182,14 @@ def use_inline_backend():
         return backend.endswith('inline') or backend == 'nbAgg'
 
 
-def find_axis_params_data(v, label):
-    """Find matching number formatter and label for display unit != data unit
+class AxisScale:
+    """Find matching number formatter and label for display unit (!= data unit)
 
     Parameters
     ----------
     v : PlotData | NDVar | Var | str | scalar
-        Unit or scale of the axis. See ``unit_format`` dict above for options.
+        Display unit or scale of the axis, or daat to infer these. See
+        ``unit_format`` dict above for options.
     label : bool | str
         If ``label is True``, try to infer a label from ``v``.
 
@@ -198,49 +200,56 @@ def find_axis_params_data(v, label):
     label : str | None
         Axis label.
     """
-    if isinstance(v, str):
-        meas = None
-        unit = v
-        scale = UNIT_FORMAT.get(v, 1)
-    elif isinstance(v, float):
-        meas = None
-        scale = v
-        unit = None
-    else:
-        if isnumeric(v):
-            meas = v.info.get('meas')
-            data_unit = v.info.get('unit')
-        elif isinstance(v, PlotData):
-            meas = v.meas
-            data_unit = v.unit
+    def __init__(self, v, label=True):
+        if isinstance(v, str):
+            data_unit = None
+            meas = None
+            unit = v
+            scale = UNIT_FORMAT.get(v, 1)
+        elif isinstance(v, Number):
+            data_unit = None
+            meas = None
+            unit = None
+            scale = v
         else:
-            raise TypeError("unit=%s" % repr(v))
+            if isnumeric(v):
+                meas = v.info.get('meas')
+                data_unit = v.info.get('unit')
+            elif isinstance(v, PlotData):
+                meas = v.meas
+                data_unit = v.unit
+            else:
+                raise TypeError("unit=%s" % repr(v))
 
-        if data_unit in DISPLAY_UNIT:
-            unit = DISPLAY_UNIT[data_unit]
-            scale = UNIT_FORMAT[unit]
-            if data_unit in UNIT_FORMAT:
-                scale /= UNIT_FORMAT[data_unit]
-        else:
-            scale = 1
-            unit = data_unit
+            if data_unit in DISPLAY_UNIT:
+                unit = DISPLAY_UNIT[data_unit]
+                scale = UNIT_FORMAT[unit]
+                if data_unit in UNIT_FORMAT:
+                    scale /= UNIT_FORMAT[data_unit]
+            else:
+                scale = 1
+                unit = data_unit
+        self.data_unit = data_unit
+        self.display_unit = unit
+        # ScalarFormatter: disabled because it always used e notation in status bar
+        # (needs separate instance because it adapts to data)
+        # fmt = ScalarFormatter() if scale == 1 else scale_formatters[scale]
+        self.formatter = SCALE_FORMATTERS[scale]
 
-    if label is True:
-        if meas and unit and meas != unit:
-            label = f'{meas} [{unit}]'
-        elif meas:
-            label = meas
-        elif unit:
-            label = unit
-        elif isinstance(v, PlotData):
-            label = v.default_y_label
-        elif isnumeric(v):
-            label = v.name
-
-    # ScalarFormatter: disabled because it always used e notation in status bar
-    # (needs separate instance because it adapts to data)
-    # fmt = ScalarFormatter() if scale == 1 else scale_formatters[scale]
-    return SCALE_FORMATTERS[scale], label
+        if label is True:
+            if meas and unit and meas != unit:
+                label = f'{meas} [{unit}]'
+            elif meas:
+                label = meas
+            elif unit:
+                label = unit
+            elif isinstance(v, PlotData):
+                label = v.default_y_label
+            elif isnumeric(v):
+                label = v.name
+            else:
+                label = None
+        self.label = label
 
 
 def find_uts_hlines(ndvar):
@@ -1655,16 +1664,16 @@ class EelFigure:
     def _configure_axis(self, data, label, axes=None, y=False):
         if axes is None:
             axes = self._axes
-        formatter, label = find_axis_params_data(data, label)
+        scale = AxisScale(data, label)
         for ax in axes:
             axis = ax.yaxis if y else ax.xaxis
-            axis.set_major_formatter(formatter)
+            axis.set_major_formatter(scale.formatter)
 
         set_label = self.set_ylabel if y else self.set_xlabel
-        if isinstance(label, str):
-            set_label(label)
-        elif isinstance(label, Iterable):
-            for i, l in enumerate(label):
+        if isinstance(scale.label, str):
+            set_label(scale.label)
+        elif isinstance(scale.label, Iterable):
+            for i, l in enumerate(scale.label):
                 set_label(l, i)
 
     def _configure_yaxis_dim(self, epochs, dim, label, axes=None, scalar=True):
@@ -2385,11 +2394,9 @@ class ColorBarMixin:
     def __init__(self, param_func, data):
         self.__get_params = param_func
         if data is None:
-            self.__unit = None
-            self.__label = 'colormap'
+            self.__scale = AxisScale(1)
         else:
-            self.__unit = data.info.get('unit', None)
-            _, self.__label = find_axis_params_data(data, True)
+            self.__scale = AxisScale(data)
 
     def _fill_toolbar(self, tb):
         from .._wxgui import wx, ID, Icon
@@ -2428,12 +2435,8 @@ class ColorBarMixin:
             ColorBar plot object.
         """
         from . import ColorBar
-        if label is True:
-            label = self.__label
         cmap, vmin, vmax = self.__get_params()
-        return ColorBar(cmap, vmin, vmax, label, label_position, label_rotation,
-                        clipmin, clipmax, orientation, self.__unit, (), *args,
-                        **kwargs)
+        return ColorBar(cmap, vmin, vmax, label, label_position, label_rotation, clipmin, clipmax, orientation, self.__scale, (), *args, **kwargs)
 
 
 class ColorMapMixin(ColorBarMixin):
