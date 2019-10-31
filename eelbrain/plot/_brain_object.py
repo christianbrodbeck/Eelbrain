@@ -18,7 +18,7 @@ from .._text import ms
 from .._utils import LazyProperty
 from ..fmtxt import Image
 from ..mne_fixes import reset_logger
-from ._base import CONFIG, TimeSlicer, do_autorun, find_axis_params_data, find_fig_cmaps, find_fig_vlims, fix_vlim_for_cmap, use_inline_backend
+from ._base import CONFIG, TimeSlicer, AxisScale, do_autorun, find_fig_cmaps, find_fig_vlims, fix_vlim_for_cmap, use_inline_backend
 from ._color_luts import p_lut
 from ._colors import ColorBar, ColorList, colors_for_oneway
 
@@ -850,16 +850,11 @@ class Brain(TimeSlicer, surfer.Brain):
         for layer in layers:
             data = self.__data[layer]
             ndvar = data['data']
-            unit = ndvar.info.get('unit', None)
             if ticks is None:
                 ticks = ndvar.info.get('cmap ticks')
-            _, label = find_axis_params_data(ndvar, label)
+            scale = AxisScale(ndvar, label)
             colormap, vmin, vmax = self._get_cmap_params(layer, label)
-            out.append(ColorBar(
-                colormap, vmin, vmax, label, label_position, label_rotation,
-                clipmin, clipmax, orientation, unit, (), width, ticks, *args,
-                **kwargs))
-
+            out.append(ColorBar(colormap, vmin, vmax, label, label_position, label_rotation, clipmin, clipmax, orientation, scale, (), width, ticks, *args, **kwargs))
             # reset parames
             label = True
 

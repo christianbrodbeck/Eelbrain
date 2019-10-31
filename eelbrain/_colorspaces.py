@@ -12,7 +12,7 @@ if logger.level == 0:  # otherwise it was probably set by user (DEBUG=10)
 from colormath.color_objects import LCHabColor, sRGBColor
 from colormath.color_conversions import convert_color
 from matplotlib.colors import ListedColormap
-from matplotlib.cm import register_cmap
+from matplotlib.cm import LUTSIZE, register_cmap, get_cmap
 from matplotlib.colors import LinearSegmentedColormap, Normalize, to_rgb, to_rgba
 import numpy as np
 
@@ -307,6 +307,21 @@ def two_step_colormap(left_max, left, center='transparent', right=None, right_ma
     return cmap
 
 
+def pigtailed_cmap(cmap, swap_order=('green', 'red', 'blue')):
+    # nilearn colormaps with neutral middle
+    orig = get_cmap(cmap)._segmentdata
+    f = ((LUTSIZE - 1) // 2) / LUTSIZE
+    cdict = {
+        'green': [(f * (1 - p), *c) for p, *c in reversed(orig[swap_order[0]])],
+        'blue': [(f * (1 - p), *c) for p, *c in reversed(orig[swap_order[1]])],
+        'red': [(f * (1 - p), *c) for p, *c in reversed(orig[swap_order[2]])],
+    }
+    start = 1 - f * 0.5
+    for color in ('red', 'green', 'blue'):
+        cdict[color].extend((start + f * p, *c) for p, *c in orig[color])
+    return cdict
+
+
 def make_cmaps():
     """Create some custom colormaps and register them with matplotlib"""
     # polar:  blue-white-red
@@ -377,6 +392,12 @@ def make_cmaps():
     cmap.set_bad('b', alpha=0.)
     register_cmap(cmap=cmap)
 
+    # Nilearn cmaps
+    cmap = LinearSegmentedColormap('cold_hot', pigtailed_cmap('hot'), LUTSIZE)
+    register_cmap(cmap=cmap)
+    cmap = LinearSegmentedColormap('cold_white_hot', pigtailed_cmap('hot_r'), LUTSIZE)
+    register_cmap(cmap=cmap)
+
 
 make_cmaps()
 
@@ -391,79 +412,3 @@ ALPHA_CMAPS = {
     'xpolar': 'xpolar-a',
     'RdBu_r': 'xpolar-a',
 }
-
-
-class SymmetricNormalize(Normalize):
-    """Matplotlib Normalize subclass to add threshold"""
-
-    def __init__(self, threshold, vmax, clip=False):
-        assert threshold >= 0
-        if vmax is None:
-            vmin = None
-        else:
-            assert vmax > threshold
-            vmin = -vmax
-        self.threshold = threshold
-        Normalize.__init__(self, vmin, vmax, clip)
-
-    def __repr__(self):
-        args = list(map(repr, (self.threshold, self.vmax)))
-        if self.clip:
-            args.append("clip=%r" % (self.clip,))
-        return "SymmetricNormalize(%s)" % ', '.join(args)
-
-    def __call__(self, value, clip=None):
-        # cf. Normalize.__call__
-        if clip is None:
-            clip = self.clip
-
-        result, is_scalar = self.process_value(value)
-        vmax = self.vmax
-        vmin = self.vmin
-
-        self.autoscale_None(result)
-        # Convert at least to float, without losing precision.
-        if clip:
-            mask = np.ma.getmask(result)
-            result = np.ma.array(np.clip(result.filled(vmax), vmin, vmax),
-                                 mask=mask)
-        # ma division is very slow; we can take a shortcut
-        resdat = result.data
-
-        # subclass #
-        ############
-        # threshold
-        if self.threshold:
-            mask_lower = resdat <= -self.threshold
-            mask_upper = resdat >= self.threshold
-            mask_visible = mask_upper | mask_lower
-            mask_invisible = np.invert(mask_visible)
-            resdat[mask_lower] -= vmin
-            resdat[mask_upper] -= vmin + 2 * self.threshold
-            resdat[mask_visible] /= vmax - vmin - 2 * self.threshold
-            resdat[mask_invisible] = 0.5
-        else:
-            resdat -= vmin
-            resdat /= (vmax - vmin)
-        #############
-
-        result = np.ma.array(resdat, mask=result.mask, copy=False)
-        # Agg cannot handle float128.  We actually only need 32-bit of
-        # precision, but on Windows, `np.dtype(np.longdouble) == np.float64`,
-        # so casting to float32 would lose precision on float64s as well.
-        if result.dtype == np.longdouble:
-            result = result.astype(np.float64)
-        if is_scalar:
-            result = result[0]
-        return result
-
-    def autoscale(self, A):
-        a = np.asanyarray(A)
-        self.vmax = max(a.max(), -a.min())
-        self.vmin = -self.vmax
-
-    def autoscale_None(self, A):
-        pass
-
-    def scaled(self):
-        return self.vmax is not None

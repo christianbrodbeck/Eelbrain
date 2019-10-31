@@ -29,7 +29,7 @@ from .._ndvar import neighbor_correlation
 from .._utils.parse import FLOAT_PATTERN, POS_FLOAT_PATTERN, INT_PATTERN
 from .._utils.numpy_utils import FULL_SLICE, INT_TYPES
 from ..mne_fixes import MNE_EPOCHS
-from ..plot._base import AxisData, LayerData, PlotType, find_axis_params_data, find_fig_vlims, find_fig_cmaps
+from ..plot._base import AxisData, LayerData, PlotType, AxisScale, find_fig_vlims, find_fig_cmaps
 from ..plot._nuts import _plt_bin_nuts
 from ..plot._topo import _ax_topomap
 from ..plot._utsnd import _ax_bfly_epoch
@@ -1390,7 +1390,7 @@ class Frame(FileFrame):
 
         # formatters
         t_formatter, t_locator, t_label = self.doc.epochs.time._axis_format(True, True)
-        y_formatter, y_label = find_axis_params_data(self.doc.epochs, True)
+        y_scale = AxisScale(self.doc.epochs, True)
 
         # segment plots
         self._case_plots = []
@@ -1420,7 +1420,7 @@ class Frame(FileFrame):
             if t_locator is not None:
                 ax.xaxis.set_major_locator(t_locator)
             ax.xaxis.set_major_formatter(t_formatter)
-            ax.yaxis.set_major_formatter(y_formatter)
+            ax.yaxis.set_major_formatter(y_scale.formatter)
 
             # store objects
             ax.ax_idx = i
@@ -1441,7 +1441,7 @@ class Frame(FileFrame):
 
             # formatters
             ax.xaxis.set_major_formatter(t_formatter)
-            ax.yaxis.set_major_formatter(y_formatter)
+            ax.yaxis.set_major_formatter(y_scale.formatter)
 
         # topomap
         if self._plot_topo:

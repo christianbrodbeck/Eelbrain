@@ -5,7 +5,8 @@ import scipy.signal
 import scipy.spatial
 
 from .._data_obj import Dataset, Factor, Var, NDVar, Sensor, UTS
-from .._ndvar import filter_data, gaussian, powerlaw_noise, segment
+from .._ndvar import gaussian, powerlaw_noise
+from .. import _info
 
 
 def _topo(sensor, center, falloff=1):
@@ -56,7 +57,7 @@ def simulate_erp(n_trials=80, seed=0):
     rng.shuffle(cloze_x)
     cloze = Var(cloze_x)
     # Word complexity (number of characters)
-    n_chars = Var(np.random.normal(4, 1.5, n_trials))
+    n_chars = Var(rng.normal(4, 1.5, n_trials))
 
     # Generate topography
     n400_topo = -2.0 * _topo(sensor, 'Cz')
@@ -96,6 +97,10 @@ def simulate_erp(n_trials=80, seed=0):
     noise = noise.smooth('sensor', 0.02, 'gaussian')
     noise *= 5
     signal += noise
+
+    # Data scale
+    signal *= 1e-6
+    signal.info = _info.for_eeg()
 
     # Store EEG data in a Dataset with trial information
     ds = Dataset()

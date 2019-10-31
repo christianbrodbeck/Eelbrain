@@ -9,11 +9,12 @@ import numpy as np
 import matplotlib as mpl
 from matplotlib.colors import LinearSegmentedColormap, Colormap, Normalize, to_rgb, to_rgba
 from matplotlib.colorbar import ColorbarBase
+from matplotlib.ticker import FixedFormatter, MaxNLocator
 
-from .._colorspaces import LocatedListedColormap, oneway_colors, twoway_colors, SymmetricNormalize, symmetric_cmaps
+from .._colorspaces import LocatedListedColormap, oneway_colors, twoway_colors, symmetric_cmaps
 from .._data_obj import Factor, Interaction, cellname
 from .._utils import IS_WINDOWS
-from ._base import EelFigure, Layout, find_axis_params_data, fix_vlim_for_cmap
+from ._base import EelFigure, Layout, AxisScale, fix_vlim_for_cmap
 from functools import reduce
 
 
@@ -594,7 +595,7 @@ class ColorBar(EelFigure):
         # get Colormap
         if isinstance(cmap, np.ndarray):
             if threshold is not None:
-                raise NotImplementedError("threshold parameter with cmap=array")
+                raise NotImplementedError("threshold parameter with cmap=<array>")
             if cmap.max() > 1:
                 cmap = cmap / 255.
             cm = mpl.colors.ListedColormap(cmap, 'LUT')
@@ -626,17 +627,24 @@ class ColorBar(EelFigure):
             vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cm)
             norm = Normalize(vmin, vmax)
 
+        if isinstance(unit, AxisScale):
+            scale = unit
+        else:
+            scale = AxisScale(unit or 1, label)
+
         # value ticks
         if ticks is False:
             tick_locs = ()
-            tick_labels = None
+            formatter = scale.formatter
         elif isinstance(ticks, dict):
-            tick_dict = ticks
-            tick_locs = sorted(tick_dict)
-            tick_labels = [tick_dict[t] for t in ticks]
+            tick_locs = sorted(ticks)
+            formatter = FixedFormatter([ticks[t] for t in tick_locs])
         else:
-            tick_locs = ticks
-            tick_labels = None
+            if ticks is None:
+                tick_locs = MaxNLocator(4)
+            else:
+                tick_locs = ticks
+            formatter = scale.formatter
 
         if orientation == 'horizontal':
             axis = ax.xaxis
@@ -646,49 +654,28 @@ class ColorBar(EelFigure):
             contour_func = ax.axvline
 
         if label is True:
-            if unit:
-                label = unit
-            else:
-                label = cm.name
-        elif not label:
+            label = scale.label or cm.name
+        if not label:
             label = ''
 
         # show only part of the colorbar
         if clipmin is not None or clipmax is not None:
-            if isinstance(norm, SymmetricNormalize):
-                raise NotImplementedError("clipmin or clipmax with SymmetricNormalize")
             boundaries = norm.inverse(np.linspace(0, 1, cm.N + 1))
             if clipmin is None:
                 start = None
             else:
                 start = np.digitize(clipmin, boundaries, True)
+                # boundaries[start] = clipmin
             if clipmax is None:
                 stop = None
             else:
                 stop = np.digitize(clipmax, boundaries) + 1
+                # boundaries[stop-1] = clipmax
             boundaries = boundaries[start:stop]
         else:
             boundaries = None
 
-        colorbar = ColorbarBase(ax, cm, norm, boundaries=boundaries, orientation=orientation, ticklocation=ticklocation, ticks=tick_locs, label=label)
-
-        # fix tick location
-        if tick_locs is None:
-            tick_locs = colorbar.get_ticks()
-        elif isinstance(norm, SymmetricNormalize):
-            tick_norm = Normalize(norm.vmin, norm.vmax, norm.clip)
-            tick_locs = tick_norm(tick_locs)
-            axis.set_ticks(tick_locs)
-
-        # unit-based tick-labels
-        if unit and tick_labels is None:
-            formatter, label = find_axis_params_data(unit, label)
-            tick_labels = list(map(formatter, tick_locs))
-
-        if tick_labels is not None:
-            if clipmin is not None:
-                tick_labels = [l for l, t in zip(tick_labels, tick_locs) if t >= clipmin]
-            axis.set_ticklabels(tick_labels)
+        colorbar = ColorbarBase(ax, cm, norm, boundaries=boundaries, orientation=orientation, ticklocation=ticklocation, ticks=tick_locs, label=label, format=formatter)
 
         # label position/rotation
         if label_position is not None:

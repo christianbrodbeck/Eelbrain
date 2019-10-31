@@ -5,9 +5,7 @@ from itertools import cycle, repeat
 import numpy as np
 
 from .._data_obj import ascategorial, asndvar, assub
-from ._base import (
-    EelFigure, Layout, LegendMixin, XAxisMixin, find_axis_params_data,
-    frame_title)
+from ._base import EelFigure, Layout, LegendMixin, XAxisMixin, AxisScale, frame_title
 from functools import reduce
 
 
@@ -97,7 +95,7 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
             cells = cell_labels = tuple(y_.name for y_ in ys)
 
             if ylabel is True:
-                _, ylabel = find_axis_params_data(ys[0], ylabel)
+                ylabel = AxisScale(ys[0], ylabel).label
             epochs = (ys,)
         else:
             y = asndvar(y, sub, ds)
@@ -131,7 +129,7 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
                 cell_labels = tuple(cell_labels[i] for i in sort_index)
 
             if ylabel is True:
-                _, ylabel = find_axis_params_data(y, ylabel)
+                ylabel = AxisScale(y, ylabel).label
             epochs = ((y,),)
 
             ny = len(ydata)

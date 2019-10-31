@@ -594,7 +594,13 @@ class TTest1Sample(TTest):
 
 
 class TTestInd(TTest):
-    """Related-measures t-test
+    """Independent measures t-test
+
+    The test data can be specified in two forms:
+
+     - In long form, with ``y`` supplying the data, ``x`` specifying condition
+       for each case.
+     - With ``y`` and ``x`` supplying data for the two conditions.
 
     Parameters
     ----------
@@ -671,6 +677,12 @@ class TTestInd(TTest):
 
 class MannWhitneyU:
     """Mann-Whitney U-test (non-parametric independent measures test)
+
+    The test data can be specified in two forms:
+
+     - In long form, with ``y`` supplying the data, ``x`` specifying condition
+       for each case.
+     - With ``y`` and ``x`` supplying data for the two conditions.
 
     Parameters
     ----------
@@ -765,6 +777,13 @@ class MannWhitneyU:
 class TTestRel(TTest):
     """Related-measures t-test
 
+    The test data can be specified in two forms:
+
+     - In long form, with ``y`` supplying the data, ``x`` specifying condition
+       for each case and ``match`` determining which cases are related.
+     - In wide/repeated measures form, with ``y`` and ``x`` both supplying data
+       with matching case order.
+
     Parameters
     ----------
     y : Var
@@ -851,6 +870,13 @@ class TTestRel(TTest):
 
 class WilcoxonSignedRank:
     """Wilcoxon signed-rank test (non-parametric related measures test)
+
+    The test data can be specified in two forms:
+
+     - In long form, with ``y`` supplying the data, ``x`` specifying condition
+       for each case and ``match`` determining which cases are related.
+     - In wide/repeated measures form, with ``y`` and ``x`` both supplying data
+       with matching case order.
 
     Parameters
     ----------

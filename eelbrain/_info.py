@@ -55,7 +55,7 @@ MAIN_ARGS = ('meas', 'unit', 'cmap', 'vmin', 'vmax', 'contours')
 _unit_fmt = {
     1: "%s",
     1e-3: "m%s",
-    1e-6: r"$\mu$%s",
+    1e-6: "µ%s",
     1e-9: "n%s",
     1e-12: "p%s",
     1e-15: "f%s",

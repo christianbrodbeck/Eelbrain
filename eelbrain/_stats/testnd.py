@@ -998,6 +998,12 @@ class ttest_1samp(NDDifferenceTest):
 class ttest_ind(NDDifferenceTest):
     """Mass-univariate independent samples t-test
 
+    The test data can be specified in two forms:
+
+     - In long form, with ``y`` supplying the data, ``x`` specifying condition
+       for each case.
+     - With ``y`` and ``x`` supplying data for the two conditions.
+
     Parameters
     ----------
     y : NDVar
@@ -1204,6 +1210,13 @@ class ttest_ind(NDDifferenceTest):
 
 class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
     """Mass-univariate related samples t-test
+
+    The test data can be specified in two forms:
+
+     - In long form, with ``y`` supplying the data, ``x`` specifying condition
+       for each case and ``match`` determining which cases are related.
+     - In wide/repeated measures form, with ``y`` and ``x`` both supplying data
+       with matching case order.
 
     Parameters
     ----------

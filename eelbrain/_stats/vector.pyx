@@ -12,11 +12,7 @@ governed by GNU LESSER GENERAL PUBLIC LICENSE Version 2.1.
 cimport cython
 from libc.math cimport sin, cos
 import numpy as np
-cimport numpy as cnp
-
-ctypedef cnp.int8_t INT8
-ctypedef cnp.int64_t INT64
-ctypedef cnp.float64_t FLOAT64
+cimport numpy as np
 
 
 cdef double r_TOL = 2.220446049250313e-16
@@ -34,12 +30,14 @@ cdef extern from "dsyevc3.c":
     int dsyevc3(double A[3][3], double w[3])
 
 
-def rotation_matrices(cnp.ndarray[FLOAT64, ndim=1] phis,
-                      cnp.ndarray[FLOAT64, ndim=1] thetas,
-                      cnp.ndarray[FLOAT64, ndim=1] xis,
-                      cnp.ndarray[FLOAT64, ndim=3] out):
+def rotation_matrices(
+        const np.npy_float64[:] phis,
+        const np.npy_float64[:] thetas,
+        const np.npy_float64[:] xis,
+        np.npy_float64[:,:,:] out,
+    ):
     cdef unsigned long i, v, case
-    cdef FLOAT64 theta, phi, xi
+    cdef double theta, phi, xi
     cdef unsigned long n_cases = phis.shape[0]
     cdef double raxis_x, raxis_y, raxis_z
     cdef double tmp1, tmp2
@@ -80,9 +78,11 @@ def rotation_matrices(cnp.ndarray[FLOAT64, ndim=1] phis,
 
 
 @cython.cdivision(True)
-def mean_norm_rotated(cnp.ndarray[FLOAT64, ndim=3] y,
-                      cnp.ndarray[FLOAT64, ndim=3] rotation,
-                      cnp.ndarray[FLOAT64, ndim=1] out):
+def mean_norm_rotated(
+        const np.npy_float64[:,:,:] y,
+        const np.npy_float64[:,:,:] rotation,
+        np.npy_float64[:] out,
+):
     cdef unsigned long i, v, case, vi
     cdef double norm, mean
 
@@ -103,8 +103,10 @@ def mean_norm_rotated(cnp.ndarray[FLOAT64, ndim=3] y,
 
 
 @cython.cdivision(True)
-def t2_stat(cnp.ndarray[FLOAT64, ndim=3] y,
-            cnp.ndarray[FLOAT64, ndim=1] out):
+def t2_stat(
+        const np.npy_float64[:,:,:] y,
+        np.npy_float64[:] out,
+):
     cdef unsigned long i, v, u, case
     cdef double norm, temp, max_eig, TOL
 
@@ -161,9 +163,11 @@ def t2_stat(cnp.ndarray[FLOAT64, ndim=3] y,
 
 
 @cython.cdivision(True)
-def t2_stat_rotated(cnp.ndarray[FLOAT64, ndim=3] y,
-                    cnp.ndarray[FLOAT64, ndim=3] rotation,
-                    cnp.ndarray[FLOAT64, ndim=1] out):
+def t2_stat_rotated(
+        const np.npy_float64[:,:,:] y,
+        const np.npy_float64[:,:,:] rotation,
+        np.npy_float64[:] out,
+):
     cdef unsigned long i, v, u, case, vi
     cdef double norm, temp, TOL, max_eig
 
