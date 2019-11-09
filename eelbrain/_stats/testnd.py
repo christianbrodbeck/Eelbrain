@@ -2279,7 +2279,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
     --------
     Vector : One-sample vector test, notes on vector test implementation
     """
-    _state_specific = ('difference', 'c1_mean', 'c0_mean' 'n', '_v_dim', 't2')
+    _state_specific = ('x', 'c1', 'c0', 'difference', 'c1_mean', 'c0_mean' 'n', '_v_dim', 't2')
 
     @user_activity
     def __init__(
@@ -2334,6 +2334,9 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
         self.c0_mean = y0.mean('case', name=cellname(c0_name))
         self._v_dim = v_dim
         self.n = n
+        self.x = x_name
+        self.c0 = c0
+        self.c1 = c1
         self._expand_state()
 
     def _name(self):
@@ -2341,6 +2344,20 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
             return f"Vector test (related):  {self.y}"
         else:
             return "Vector test (related)"
+
+    def _repr_test_args(self):
+        args = [repr(self.y), repr(self.x)]
+        if self.c1 is not None:
+            args.extend((repr(self.c1), repr(self.c0), repr(self.match)))
+        args[-1] += " (n=%i)" % self.n
+        return args
+
+    def __setstate__(self, state):
+        if 'x' not in state:
+            state['x'] = None
+            state['c1'] = state['c1_mean'].name
+            state['c0'] = state['c0_mean'].name
+        Vector.__setstate__(self, state)
 
 
 def flatten(array, connectivity):
