@@ -43,15 +43,15 @@ def test_difference():
     ds['rmf'] = Factor(ds['rm'], labels=labels)
 
     dds = table.difference('fltvar', 'A', 'a1', 'a2', 'rm', ds=ds)
-    assert repr(dds) == "<Dataset n_cases=20 {'rm':F, 'fltvar':V, 'rmf':F}>"
+    assert repr(dds) == "<Dataset (20 cases) 'rm':F, 'fltvar':V, 'rmf':F>"
     assert_array_equal(dds['rmf'], Factor(dds['rm'], labels=labels))
     dds = table.difference('fltvar', 'A', 'a1', 'a2', 'rm % B', ds=ds)
-    assert repr(dds) == "<Dataset n_cases=40 {'rm':F, 'B':F, 'fltvar':V, 'rmf':F}>"
+    assert repr(dds) == "<Dataset (40 cases) 'rm':F, 'B':F, 'fltvar':V, 'rmf':F>"
     # difference of the difference
     ddds = table.difference('fltvar', 'B', 'b1', 'b2', 'rm', ds=dds)
-    assert repr(ddds) == "<Dataset n_cases=20 {'rm':F, 'fltvar':V, 'rmf':F}>"
+    assert repr(ddds) == "<Dataset (20 cases) 'rm':F, 'fltvar':V, 'rmf':F>"
     dds = table.difference('fltvar', 'A%B', ('a1', 'b1'), ('a2', 'b2'), 'rm', ds=ds)
-    assert repr(dds) == "<Dataset n_cases=20 {'rm':F, 'fltvar':V, 'rmf':F}>"
+    assert repr(dds) == "<Dataset (20 cases) 'rm':F, 'fltvar':V, 'rmf':F>"
 
     # create bigger dataset
     ds2 = ds.copy()
@@ -59,9 +59,9 @@ def test_difference():
     ds2['C', :] = 'c2'
     ds = combine((ds, ds2))
     dds = table.difference('fltvar', 'A', 'a1', 'a2', 'rm % B % C', ds=ds)
-    assert repr(dds) == "<Dataset n_cases=80 {'rm':F, 'B':F, 'C':F, 'fltvar':V, 'rmf':F}>"
+    assert repr(dds) == "<Dataset (80 cases) 'rm':F, 'B':F, 'C':F, 'fltvar':V, 'rmf':F>"
     dds = table.difference('fltvar', 'A%B', ('a1', 'b1'), ('a2', 'b2'), 'rm % C', ds=ds)
-    assert repr(dds) == "<Dataset n_cases=40 {'rm':F, 'C':F, 'fltvar':V, 'rmf':F}>"
+    assert repr(dds) == "<Dataset (40 cases) 'rm':F, 'C':F, 'fltvar':V, 'rmf':F>"
 
 
 def test_frequencies():

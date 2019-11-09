@@ -5472,6 +5472,9 @@ class Dataset(dict):
             raise NotImplementedError
         p.text(self.__repr__())
 
+    def _ipython_display_(self):
+        self._display_table()._ipython_display_()
+
     def __setitem__(self, index, item):
         if isinstance(index, str):
             assert_is_legal_dataset_key(index)
@@ -5526,18 +5529,25 @@ class Dataset(dict):
         else:
             raise IndexError(f"{index}: not a valid Dataset index")
 
+    def _display_table(self):
+        maxn = preferences['dataset_str_n_cases']
+        # caption
+        items = []
+        if self.n_cases > maxn:
+            items.append("... (use .as_table() method to see the whole Dataset)")
+        ndvars = [key for key, v in self.items() if isinstance(v, NDVar)]
+        if ndvars:
+            items.append(f"NDVars: {', '.join(ndvars)}")
+        if items:
+            caption = '; '.join(items)
+        else:
+            caption = None
+        return self.as_table(maxn, '%.5g', midrule=True, caption=caption, lfmt=True)
+
     def __str__(self):
         if sum(isuv(i) or isdatalist(i) for i in self.values()) == 0:
             return self.__repr__()
-
-        maxn = preferences['dataset_str_n_cases']
-        if self.n_cases > maxn:
-            caption = "... (use .as_table() method to see the whole Dataset)"
-        else:
-            caption = None
-        txt = self.as_table(maxn, '%.5g', midrule=True, caption=caption,
-                            lfmt=True)
-        return str(txt)
+        return str(self._display_table())
 
     def _check_n_cases(self, x, empty_ok=True):
         """Check that an input argument has the appropriate length.
