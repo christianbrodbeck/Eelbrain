@@ -736,7 +736,7 @@ class TreeModel:
         lines = []
         for key in self._field_values:
             values = list(self._field_values[key])
-            line = '%s:' % key
+            line = f'{key}:'
             head_len = len(line) + 1
             while values:
                 v = repr(values.pop(0))
@@ -821,8 +821,7 @@ class TreeModel:
             while new_fields:
                 k = new_fields.pop()
                 fields[k] = v = self._fields[k]
-                new_fields.update([f for f in self._fmt_pattern.findall(v) if
-                                   f not in fields])
+                new_fields.update([f for f in self._fmt_pattern.findall(v) if f not in fields])
 
         tree = {'.': self.get(root)}
         root_temp = '{%s}' % root
@@ -834,8 +833,7 @@ class TreeModel:
         name_len = max(len(n) for n, _ in nodes)
         path_len = max(len(p) for _, p in nodes)
         pad = ' ' * (80 - name_len - path_len)
-        print('\n'.join(n.ljust(name_len) + pad + p.ljust(path_len) for
-                        n, p in nodes))
+        print('\n'.join(n.ljust(name_len) + pad + p.ljust(path_len) for n, p in nodes))
 
     def _store_state(self):
         """Store the current state
@@ -882,9 +880,9 @@ class FileTree(TreeModel):
         causes problems for ``glob()``.
         """
         if key in self._cache_handlers:
-            raise RuntimeError("Cache handler for %r already defined." % key)
+            raise RuntimeError(f"Cache handler for {key!r} already defined")
         elif key in self._make_handlers:
-            raise RuntimeError("Make handler for %r already defined." % key)
+            raise RuntimeError(f"Already defined make handler for {key!r}")
         self._cache_handlers[key] = handler
 
     def _bind_make(self, key, handler):
@@ -894,9 +892,9 @@ class FileTree(TreeModel):
         the file does not exist.
         """
         if key in self._cache_handlers:
-            raise RuntimeError("Cache handler for %r already defined." % key)
+            raise RuntimeError(f"Already defined cache handler for {key!r}")
         elif key in self._make_handlers:
-            raise RuntimeError("Make handler for %r already defined." % key)
+            raise RuntimeError(f"Make handler for {key!r} already defined")
         self._make_handlers[key] = handler
 
     @staticmethod
@@ -953,10 +951,9 @@ class FileTree(TreeModel):
             if len(paths) == 1:
                 path = paths[0]
             elif len(paths) > 1:
-                err = "More than one files match %r: %r" % (path, paths)
-                raise IOError(err)
+                raise IOError(f"More than one files match {path!r}: {paths}")
             else:
-                raise IOError("No file found for %r" % path)
+                raise IOError(f"No file found for {path!r}")
 
         # create the directory
         if mkdir:
@@ -967,14 +964,11 @@ class FileTree(TreeModel):
             if not os.path.exists(dirname):
                 root = self.get('root')
                 if root == '':
-                    raise IOError("Prevented from creating directories because "
-                                  "root is not set. Use root='.' for a "
-                                  "relative root.")
+                    raise IOError("Prevented from creating directories because root is not set")
                 elif os.path.exists(root):
                     os.makedirs(dirname)
                 else:
-                    raise IOError("Prevented from creating directories because "
-                                  "Root does not exist: %r" % root)
+                    raise IOError(f"Prevented from creating directories because root does not exist: {root!r}")
 
         # make the file
         if make:
@@ -987,7 +981,7 @@ class FileTree(TreeModel):
                 elif temp.endswith('-dir'):
                     os.makedirs(path)
                 else:
-                    raise RuntimeError("No make handler for %r." % temp)
+                    raise RuntimeError(f"No make handler for {temp!r}")
 
         return path
 

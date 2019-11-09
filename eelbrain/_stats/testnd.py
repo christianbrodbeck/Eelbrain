@@ -1327,7 +1327,7 @@ class ttest_rel(NDMaskedC1Mixin, NDDifferenceTest):
             parc: str = None,
             force_permutation: bool = False,
             **criteria):
-        y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub, True)
+        y1, y0, c1, c0, match, n, x_name, c1_name, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub, True)
         check_for_vector_dim(y1)
 
         if n <= 2:
@@ -2301,7 +2301,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
             norm: bool = False,
             **criteria):
         use_norm = bool(norm)
-        y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub, True)
+        y1, y0, c1, c0, match, n, x_name, c1_name, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub, True)
         difference = y1 - y0
         difference.name = 'difference'
 

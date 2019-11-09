@@ -2914,7 +2914,13 @@ class NDVar:
     >>> ndvar -= ndvar.mean(time=(None, 0))
 
     """
-    def __init__(self, x, dims, name=None, info=None):
+    def __init__(
+            self,
+            x: np.ndarray,
+            dims: typing.Union['Dimension', typing.Sequence['Dimension']],
+            name: str = None,
+            info: dict = None,
+    ):
         if isinstance(name, dict):  # backwards compatibility
             warn("NDVar argument order has changed; please update your code", DeprecationWarning)
             name, info = info, name
@@ -5429,7 +5435,6 @@ class Dataset(dict):
             return self.sub(index)
 
     def __repr__(self):
-        class_name = self.__class__.__name__
         if self.n_cases is None:
             items = []
             if self.name:
@@ -5439,12 +5444,9 @@ class Dataset(dict):
                 if len(info) > 60:
                     info = '<...>'
                 items.append('info=%s' % info)
-            return '%s(%s)' % (class_name, ', '.join(items))
+            item_repr = ', '.join(items)
+            return f'{self.__class__.__name__}({item_repr})'
 
-        rep_tmp = "<%(class_name)s %(name)s%(N)s{%(items)s}>"
-        fmt = {'class_name': class_name}
-        fmt['name'] = '%r ' % self.name if self.name else ''
-        fmt['N'] = 'n_cases=%i ' % self.n_cases
         items = []
         for key in self:
             v = self[key]
@@ -5456,16 +5458,13 @@ class Dataset(dict):
                 lbl = 'Vnd'
             else:
                 lbl = type(v).__name__
-
+            item = f'{key!r}:{lbl}'
             if isdataobject(v) and v.name != key:
-                item = '%r:%s<%r>' % (key, lbl, v.name)
-            else:
-                item = '%r:%s' % (key, lbl)
-
+                item += f'<{v.name!r}>'
             items.append(item)
-
-        fmt['items'] = ', '.join(items)
-        return rep_tmp % fmt
+        name = '' if self.name is None else f' {self.name!r}'
+        item_repr = ', '.join(items)
+        return f"<{self.__class__.__name__}{name} ({self.n_cases} cases) {item_repr}>"
 
     def _repr_pretty_(self, p, cycle):
         if cycle:
@@ -9453,8 +9452,7 @@ class SourceSpace(SourceSpaceBase):
 
     def _init_secondary(self):
         SourceSpaceBase._init_secondary(self)
-        assert len(self.vertices) == 2, "ico-based SourceSpaces need " \
-                                        "exactly two vertices arrays"
+        assert len(self.vertices) == 2, "ico-based SourceSpaces need exactly two vertices arrays"
         self.lh_vertices = self.vertices[0]
         self.rh_vertices = self.vertices[1]
         self.lh_n = len(self.lh_vertices)
