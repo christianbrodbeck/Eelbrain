@@ -2470,11 +2470,11 @@ class MneExperiment(FileTree):
             Apply baseline correction using this period. True to use the
             epoch's baseline specification. The default is to not apply baseline
             correction.
-        ndvar : bool
+        ndvar : bool | 2
             Convert the :class:`mne.Evoked` objects to an :class:`NDVar` (the
             name in the Dataset is ``'meg'`` or ``'eeg'``). With
             ``ndvar=False``, the :class:`mne.Evoked` objects are added as
-            ``'evoked'``.
+            ``'evoked'``. ``2`` to add both.
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
         decim : int
@@ -2568,7 +2568,9 @@ class MneExperiment(FileTree):
 
         # convert to NDVar
         if ndvar:
-            evoked = ds.pop('evoked')
+            evoked = ds['evoked']
+            if ndvar == 1:
+                del ds['evoked']
             pipe = self._raw[self.get('raw')]
             info = evoked[0].info
             for data_kind in data.data_to_ndvar(info):
@@ -2716,7 +2718,7 @@ class MneExperiment(FileTree):
         if isinstance(mask, str):
             state['parc'] = mask
         # load sensor data (needs state in case it has 'group' entry)
-        sns_ndvar = keep_evoked and ndvar
+        sns_ndvar = 2 if keep_evoked + ndvar > 1 else 0
         ds = self.load_evoked(subjects, baseline, sns_ndvar, cat, decim, data_raw, vardef, **state)
 
         # check baseline
@@ -2792,7 +2794,7 @@ class MneExperiment(FileTree):
             key = 'stcm' if morph else 'stc'
             ds[key] = stcs
 
-        if not keep_evoked:
+        if ndvar == 1 or not keep_evoked:
             del ds['evoked']
 
         return ds
