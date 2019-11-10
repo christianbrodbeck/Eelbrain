@@ -5734,8 +5734,7 @@ class Dataset(dict):
 
         """
         if not isinstance(expression, str):
-            raise TypeError("Eval needs expression of type unicode or str. Got "
-                            "%s" % repr(expression))
+            raise TypeError(f"expression={expression!r}: needs str")
         return eval(expression, EVAL_CONTEXT, self)
 
     @classmethod

@@ -127,8 +127,8 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
           ``'yxz'``
 
         Possible values are: 'ortho', 'x', 'y', 'z', 'xz', 'yx', 'yz',
-        'l', 'r', 'lr', 'lzr', 'lyr', 'lzry', 'lyrz'. Default depends on
-        hemispheres in data.
+        'l', 'r', 'lr', 'lzr', 'lyr', 'lzry', 'lyrz'. The default depends on
+        the data: 'lyr' if both hemispheres are present, 'xz' if only one is.
     threshold : scalar | 'auto'
         If a number is given, values below the threshold (in absolute value) are
         plotted as transparent. If ``'auto'`` is given, the threshold is
