@@ -183,7 +183,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                  mri_resolution=False, mni305=None, black_bg=False, display_mode=None,
                  threshold=None, colorbar=False, draw_cross=True, annotate=True,
                  alpha=0.7, plot_abs=False, draw_arrows=True, symmetric_cbar='auto',
-                 interpolation='nearest', **kwargs):
+                 interpolation='nearest', show_time=False, **kwargs):
         # Give wxPython a chance to initialize the menu before pyplot
         if not use_inline_backend():
             from .._wxgui import get_app
@@ -222,19 +222,18 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             mni305 = source.subject == 'fsaverage'
 
         if ndvar is None:
-            cbar_vmin = cbar_vmax = imgs = img0 = dir_imgs = t0 = threshold = None
+            cbar_vmin = cbar_vmax = imgs = img0 = dir_imgs = threshold = None
         else:
             if ndvar.has_case:
                 ndvar = ndvar.mean('case')
             src = source.get_source_space()
             img = _stc_to_volume(ndvar, src, dest, mri_resolution, mni305)
             if time is not None:
-                t0 = time[0]
                 imgs = [index_img(img, i) for i in range(len(time))]
                 img0 = imgs[0]
             else:
                 img0 = img
-                imgs = t0 = None
+                imgs = None
             if draw_arrows:
                 if not ndvar.has_dim('space'):
                     draw_arrows = False
@@ -271,11 +270,9 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
                     vmin = 0
                 cbar_vmin = cbar_vmax = None
             elif plot_abs:
-                cbar_vmin, cbar_vmax, vmin, vmax = _get_colorbar_and_data_ranges(
-                    data, vmax, symmetric_cbar, kwargs, 0)
+                cbar_vmin, cbar_vmax, vmin, vmax = _get_colorbar_and_data_ranges(data, vmax, symmetric_cbar, (), 0)
             else:
-                cbar_vmin, cbar_vmax, vmin, vmax = _get_colorbar_and_data_ranges(
-                    data, vmax, symmetric_cbar, kwargs)
+                cbar_vmin, cbar_vmax, vmin, vmax = _get_colorbar_and_data_ranges(data, vmax, symmetric_cbar, ())
 
             # Deal with automatic settings of plot parameters
             if threshold == 'auto':
@@ -337,18 +334,16 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             display.annotate()
         if draw_cross:
             display.draw_cross()
-        if layout.title is True:
-            if t0 is None:
-                raise TypeError(f"title=True; only allowed when displaying data with multiple time points")
-            display.title("???")
-            self._update_title(t0)
-        elif layout.title:
-            display.title(layout.title)
         if hasattr(display, '_cbar'):
             cbar = display._cbar
             _crop_colorbar(cbar, cbar_vmin, cbar_vmax)
 
-        TimeSlicerEF.__init__(self, 'time', time)
+        if show_time:
+            color = 'w' if black_bg else 'k'
+            time_text = self.figure.text(0, 1, '', va='top', c=color, zorder=1000)
+        else:
+            time_text = None
+        TimeSlicerEF.__init__(self, 'time', time, display_text=time_text)
         self._show()
 
     def _fill_toolbar(self, tb):
@@ -440,13 +435,6 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         for q in self._quivers:
             q.remove()
 
-    # used by _update_time
-    def _update_title(self, t):
-        if self._layout.title is True:
-            first_axis = self.display._cut_displayed[0]
-            ax = self.display.axes[first_axis].ax
-            ax.texts[-1].set_text('time = %s ms' % round(t * 1e3))
-
     def _update_time(self, t, fixate):
         if self._ndvar is None:
             return
@@ -464,9 +452,7 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
             self._remove_arrows()
             self._add_arrows(index)
 
-        self._update_title(t)
-
-        self.draw()
+        self.canvas.redraw(self.figure.axes)
 
     def _colorbar_params(self):
         return self.cmap, self.vmin, self.vmax
