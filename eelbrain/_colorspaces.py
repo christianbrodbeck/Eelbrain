@@ -186,7 +186,7 @@ def oneway_colors(n, hue_start=0.2, light_range=0.5, light_cycle=None,
     return [lch_to_rgb(l, 100, h) for l, h in zip(lightness, hue)]
 
 
-def twoway_colors(n1, n2, hue_start=0.2, hue_shift=0., hues=None):
+def twoway_colors(n1, n2, hue_start=0.2, hue_shift=0., hues=None, lightness=None):
     """Create colors for two-way interaction
 
     Parameters
@@ -201,19 +201,30 @@ def twoway_colors(n1, n2, hue_start=0.2, hue_shift=0., hues=None):
     hues : list of scalar
         List of hue values corresponding to the levels of the first factor
         (overrides regular hue distribution).
+    lightness : scalar | list of scalar
+        If specified as scalar, colors will occupy the range
+        ``[lightness, 100-lightness]``. Can also be given as list with one
+        value corresponding to each element in the second factor.
     """
     if hues is None:
         hues = np.linspace(hue_start, hue_start + 1, n1, False) % 1.
     else:
         hues = np.asarray(hues)
         if np.any(hues > 1) or np.any(hues < 0):
-            raise ValueError("hue values out of range; need to be in [0, 1]")
+            raise ValueError(f"hues={hues}: values out of range, need to be in [0, 1]")
         elif len(hues) < n1:
-            raise ValueError("Need at least as many hues as levels in the "
-                             "first factor (got %i, need %i)" % (len(hues), n1))
+            raise ValueError(f"hues={hues}: need as many hues as levels in the first factor (got {len(hues)}, need {n1})")
     hue_shift *= (1. / 3. / n1)
-    lstart = 60. / n2
-    ls = np.linspace(lstart, 100 - lstart, n2)
+
+    if lightness is None:
+        lstart = 60. / n2
+        ls = np.linspace(lstart, 100 - lstart, n2)
+    elif isinstance(lightness, Real):
+        ls = np.linspace(lightness, 100 - lightness, n2)
+    else:
+        if len(lightness) != n2:
+            raise ValueError(f"lightness={lightness!r}: need {n2} values")
+        ls = lightness
 
     colors = []
     for hue in hues:

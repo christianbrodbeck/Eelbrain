@@ -130,8 +130,7 @@ def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None,
     return dict(zip(cells, colors))
 
 
-def colors_for_twoway(x1_cells, x2_cells, hue_start=0.2, hue_shift=0.,
-                      hues=None):
+def colors_for_twoway(x1_cells, x2_cells, hue_start=0.2, hue_shift=0., hues=None, lightness=None):
     """Define cell colors for a two-way design
 
     Parameters
@@ -148,6 +147,10 @@ def colors_for_twoway(x1_cells, x2_cells, hue_start=0.2, hue_shift=0.,
     hues : list of scalar
         List of hue values corresponding to the levels of the first factor
         (overrides regular hue distribution).
+    lightness : scalar | list of scalar
+        If specified as scalar, colors will occupy the range
+        ``[lightness, 100-lightness]``. Can also be given as list with one
+        value corresponding to each element in the second factor.
 
     Returns
     -------
@@ -160,7 +163,7 @@ def colors_for_twoway(x1_cells, x2_cells, hue_start=0.2, hue_shift=0.,
     if n1 < 2 or n2 < 2:
         raise ValueError("Need at least 2 cells on each factor")
 
-    clist = twoway_colors(n1, n2, hue_start, hue_shift, hues)
+    clist = twoway_colors(n1, n2, hue_start, hue_shift, hues, lightness)
     return dict(zip(product(x1_cells, x2_cells), clist))
 
 
