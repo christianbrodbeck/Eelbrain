@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Plot univariate data (:class:`~eelbrain.Var` objects)."""
+import inspect
 from itertools import chain
 import logging
 from typing import Sequence
@@ -18,26 +19,29 @@ from ._base import EelFigure, Layout, LegendMixin, CategorialAxisMixin, XAxisMix
 from ._colors import find_cell_colors
 
 
-defaults = dict(title_kwargs={'size': 14,
-                                'family': 'serif'},
+defaults = dict(
               mono=False,  # use monochrome instead of colors
               # defaults for color
               hatch=['', '', '//', '', '*', 'O', '.', '', '/', '//'],
               linestyle=['-', '-', '--', ':'],
               c={'pw': ['#00FF00', '#FFCC00', '#FF6600', '#FF3300'],
-#                   'colors': ['.3', '.7', '1.', '1.'],
-                   'colors': [(0.99609375, 0.12890625, 0.0),
-                              (0.99609375, 0.5859375, 0.0),
-                              (0.98046875, 0.99609375, 0.0),
-                              (0.19921875, 0.99609375, 0.0)],
-                   'markers': False,
-                   },
+                 'colors': [(0.99609375, 0.12890625, 0.0),
+                            (0.99609375, 0.5859375, 0.0),
+                            (0.98046875, 0.99609375, 0.0),
+                            (0.19921875, 0.99609375, 0.0)],
+                 'markers': False,
+                 },
               # defaults for monochrome
               cm={'pw': ['.6', '.4', '.2', '.0'],
-                    'colors': ['.3', '.7', '1.', '1.'],
-                    'markers': ['o', 'o', '^', 'o'],
-                    },
-                )  # set by __init__
+                  'colors': ['.3', '.7', '1.', '1.'],
+                  'markers': ['o', 'o', '^', 'o'],
+                  },
+                )
+
+# keys for sorting kwargs
+s = inspect.signature(mpl.axes.Axes.boxplot)
+BOXPLOT_KEYWORDS = list(s.parameters)[2:]
+del s
 
 
 def _mark_plot_pairwise(ax, ct, parametric, bottom, y_unit, corr, trend, markers,
@@ -249,16 +253,6 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
     cells : None | sequence of cells of x
         Cells to plot (optional). All entries have to be cells of ``x``). Can be
         used to change the order of the bars or plot only certain cells.
-    notch : bool
-        Whether to produce a notched box plots (default ``False``; see
-        :meth:`matplotlib.axes.Axes.boxplot`).
-    sym : str
-        Symbol for flier points (outliers; default ``'b+'``l see
-        :meth:`matplotlib.axes.Axes.boxplot`).
-    whis : scalar | sequence of scalar | str
-        Determines the reach of the whiskers, beyond which data points are
-        plotted as outliers (default 1.5; see
-        :meth:`matplotlib.axes.Axes.boxplot`).
     bottom : scalar
         Lowest possible value on the y axis (default is 0 or slightly
         below the lowest value).
@@ -302,15 +296,14 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         Add labels to flier points (outliers); requires ``match`` to be
         specified.
     ...
-        Also accepts :ref:`general-layout-parameters`.
+        Also accepts :ref:`general-layout-parameters` and
+        :meth:`~matplotlib.axes.Axes.boxplot` parameters.
     """
     def __init__(self, y, x=None, match=None, sub=None, cells=None,
-                 notch=None, sym=None, whis=None,
                  bottom=None, top=None, ylabel=True, xlabel=True,
                  xticks=True, xtick_delim='\n',
                  test=True, par=True, trend="'", test_markers=True, corr='Hochberg',
-                 hatch=False, colors=False, ds=None, label_fliers=False,
-                 *args, **kwargs):
+                 hatch=False, colors=False, ds=None, label_fliers=False, **kwargs):
         # get data
         ct = Celltable(y, x, match, sub, cells, ds, asvar)
         if label_fliers and ct.match is None:
@@ -319,6 +312,7 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
             test = 0.
 
         # kwargs
+        boxplot_args = {k: kwargs.pop(k) for k in BOXPLOT_KEYWORDS if k in kwargs}
         hatch_ = defaults['hatch'] if hatch is True else hatch
         if hatch_ and len(hatch_) < ct.n_cells:
             raise ValueError(f"hatch={hatch_!r}: need at least as many values as there are cells ({ct.n_cells})")
@@ -334,10 +328,10 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         if colors and len(colors) < ct.n_cells:
             raise ValueError(f"colors={colors!r}: need at least as many values as there are cells ({ct.n_cells})")
 
-        _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), *args, **kwargs)
+        _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), **kwargs)
         self._configure_axis(ct.y, ylabel, y=True)
 
-        self._plot = p = _plt_boxplot(self._ax, ct, notch, sym, whis, colors, hatch, bottom, top, test, par, corr, trend, test_markers, label_fliers)
+        self._plot = p = _plt_boxplot(self._ax, ct, colors, hatch, bottom, top, test, par, corr, trend, test_markers, label_fliers, boxplot_args)
         p.set_ylim(p.bottom, p.top)
         p.ax.set_xlim(p.left, p.right)
 
@@ -569,7 +563,7 @@ class _plt_uv_base:
 class _plt_boxplot(_plt_uv_base):
     """Boxplot"""
 
-    def __init__(self, ax, ct, notch, sym, whis, colors, hatch, bottom, top, test, par, corr, trend, test_markers, label_fliers):
+    def __init__(self, ax, ct, colors, hatch, bottom, top, test, par, corr, trend, test_markers, label_fliers, boxplot_args):
         # determine ax lim
         if bottom is None:
             if np.min(ct.y.x) >= 0:
@@ -584,8 +578,10 @@ class _plt_boxplot(_plt_uv_base):
         k = len(ct.cells)
         all_data = ct.get_data()
         box_data = [y.x for y in all_data]
-        self.pos = np.arange(k)
-        self.boxplot = bp = ax.boxplot(box_data, notch, sym, whis=whis, positions=self.pos)
+        if 'positions' not in boxplot_args:
+            boxplot_args['positions'] = np.arange(k)
+        self.pos = boxplot_args['positions']
+        self.boxplot = bp = ax.boxplot(box_data, **boxplot_args)
 
         # Now fill the boxes with desired colors
         if hatch or colors:
