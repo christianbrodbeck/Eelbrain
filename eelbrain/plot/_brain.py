@@ -1216,8 +1216,9 @@ class SequencePlotter:
             as a static layer (an overlay appearing on all plots) or as one of
             several plots (default).
         index : int
-            When adding separate rows/columns, explicitly specify the row/column
-            index (the default is to add at the end).
+            When adding separate frames (rows/columns), explicitly specify the
+            frame index (the default is to add a frame at the end; use -1 to
+            add an overlay to the most recent frame).
         label : str | sequence of str
             Label when adding multiple separate NDVars. Labels for bins when
             adding ``ndvar`` with multiple bins.
@@ -1239,6 +1240,8 @@ class SequencePlotter:
                 static = True if self._frame_dim else False  # None: unset or use multiple NDVars
             if index is None:
                 index = self._n_items()
+            elif index < 0:
+                index = self._n_items() + index
             # extract
             if static:
                 kind = SPLayer.OVERLAY
