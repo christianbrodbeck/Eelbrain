@@ -5528,11 +5528,10 @@ class Dataset(dict):
         else:
             raise IndexError(f"{index}: not a valid Dataset index")
 
-    def _display_table(self):
-        maxn = preferences['dataset_str_n_cases']
-        # caption
-        items = []
-        if self.n_cases > maxn:
+    def _display_table(self, cases=0):
+        items = []  # caption
+        if cases == 0 and self.n_cases > preferences['dataset_str_n_cases']:
+            cases = preferences['dataset_str_n_cases']
             items.append("... (use .as_table() method to see the whole Dataset)")
         ndvars = [key for key, v in self.items() if isinstance(v, NDVar)]
         if ndvars:
@@ -5541,7 +5540,7 @@ class Dataset(dict):
             caption = '; '.join(items)
         else:
             caption = None
-        return self.as_table(maxn, '%.5g', midrule=True, caption=caption, lfmt=True)
+        return self.as_table(cases, '%.5g', midrule=True, caption=caption, lfmt=True)
 
     def __str__(self):
         if sum(isuv(i) or isdatalist(i) for i in self.values()) == 0:
@@ -6008,7 +6007,7 @@ class Dataset(dict):
 
     def head(self, n=10):
         "Table with the first n cases in the Dataset"
-        return self.as_table(n, '%.5g', midrule=True, lfmt=True)
+        return self._display_table(n)
 
     def index(self, name='index', start=0):
         """Add an index to the Dataset (i.e., ``range(n_cases)``)
@@ -6365,7 +6364,7 @@ class Dataset(dict):
 
     def tail(self, n=10):
         "Table with the last n cases in the Dataset"
-        return self.as_table(range(-n, 0), '%.5g', midrule=True, lfmt=True)
+        return self._display_table(range(-n, 0))
 
     def tile(self, repeats, name=None):
         """Concatenate ``repeats`` copies of the dataset
