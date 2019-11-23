@@ -554,9 +554,6 @@ class _plt_topomap(_plt_im):
             v = v[self._visible_data]
             locs = locs[self._visible_data]
 
-        # axis parameter in numpy >= 0.13
-        # unique_locs = np.unique(locs, axis=0)
-
         if self._method is None:
             # interpolate data
             xi, yi = self._mgrid
@@ -574,7 +571,10 @@ class _plt_topomap(_plt_im):
             except ValueError:
                 if np.isnan(v).any():
                     raise NotImplementedError("Can't interpolate sensor data with NaN")
-                raise NotImplementedError("Error determining sensor map projection, possibly due to more than one sensor in a single location; try using a different projection.")
+                unique_locs = np.unique(locs, axis=0)
+                if len(unique_locs) < len(locs):
+                    raise NotImplementedError("Error determining sensor map projection due to more than one sensor in a single location; try using a different projection.")
+                raise
 
             m, n = xi.shape
             out = np.empty_like(xi)
