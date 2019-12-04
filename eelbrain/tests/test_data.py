@@ -375,6 +375,29 @@ def test_dataset():
     assert_dataobj_equal(Dataset([ds['f'], ds['g']]), ds)
     assert_dataobj_equal(Dataset({'f': Factor('abab'), 'g': Factor('aabb')}), ds)
 
+    # aggregate
+    ds = Dataset({
+        'x': Factor('abab'),
+        'y': Factor('aabb'),
+        'z': Factor('aaaa'),
+        'v': Var([1, 1, 2, 2]),
+    })
+    assert_dataset_equal(
+        ds.aggregate('x', drop_bad=True),
+        Dataset({
+            'x': Factor('ab'),
+            'z': Factor('aa'),
+            'v': Var([1.5, 1.5]),
+            'n': Var([2, 2]),
+        }))
+    assert_dataset_equal(
+        ds.aggregate('', drop_bad=True),
+        Dataset({
+            'z': Factor('a'),
+            'v': Var([1.5]),
+            'n': Var([4]),
+        }))
+
     # ds.update()
     ds = Dataset()
     ds.update({'f': Factor('abab')})

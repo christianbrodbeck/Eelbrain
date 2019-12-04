@@ -1672,7 +1672,7 @@ class Var:
         """
         if x is None:
             x_out = [func(self.x)]
-        if len(x) != len(self):
+        elif len(x) != len(self):
             raise ValueError(f"Length mismatch: {len(self)} (Var) != {len(x)} (x)")
         else:
             x_out = [func(self.x[x == cell]) for cell in x.cells]
@@ -2473,7 +2473,7 @@ class Factor(_Effect):
         if x is None:
             cells = [None]
             indexes = [slice(None)]
-        if len(x) != len(self):
+        elif len(x) != len(self):
             raise ValueError(f"x={dataobj_repr(x)} of length {len(x)} for Factor {dataobj_repr(self)} of length {len(self)}")
         else:
             cells = x.cells
