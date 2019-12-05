@@ -190,19 +190,14 @@ class Document(FileDocument):
         if trigger in ds:
             trigger = ds[trigger]
         else:
-            err = ("ds does not contain a variable named %r. The trigger "
-                   "parameters needs to point to a variable in ds containing "
-                   "trigger values." % trigger)
-            raise KeyError(err)
+            raise KeyError(f"ds does not contain a variable named {trigger!r}. The trigger parameters needs to point to a variable in ds containing trigger values.")
 
         if INTERPOLATE_CHANNELS in ds:
             interpolate = ds[INTERPOLATE_CHANNELS]
             if not allow_interpolation and any(interpolate):
-                raise ValueError("Dataset contains channel interpolation "
-                                 "information but interpolation is turned off")
+                raise ValueError("Dataset contains channel interpolation information but interpolation is turned off")
         else:
-            interpolate = Datalist([[]] * ds.n_cases, INTERPOLATE_CHANNELS,
-                                   'strlist')
+            interpolate = Datalist([[]] * ds.n_cases, INTERPOLATE_CHANNELS, 'strlist')
 
         if isinstance(blink, str):
             if ds is not None:
@@ -214,17 +209,13 @@ class Document(FileDocument):
                 _, blink = load.eyelink.artifact_epochs(ds, tmin, tmax,
                                                         esacc=False)
             else:
-                msg = ("No eye tracker data was found in ds.info['edf']. Use "
-                       "load.eyelink.add_edf(ds) to add an eye tracker file "
-                       "to a Dataset ds.")
-                wx.MessageBox(msg, "Eye Tracker Data Not Found")
+                wx.MessageBox("No eye tracker data was found in ds.info['edf']. Use load.eyelink.add_edf(ds) to add an eye tracker file to a Dataset ds.", "Eye Tracker Data Not Found")
                 blink = None
         elif blink is not None:
             raise TypeError("blink needs to be a string or None")
 
         if blink is not None:
-            raise NotImplementedError("Frame.SetPage() needs to be updated to "
-                                      "use blink information")
+            raise NotImplementedError("Frame.SetPage() needs to be updated to use blink information")
 
         # options
         self.allow_interpolation = allow_interpolation
@@ -357,33 +348,24 @@ class Document(FileDocument):
     def read_rej_file(self, path):
         "Read a file making sure it is compatible"
         _, ext = os.path.splitext(path)
-        if ext == '.pickled':
+        if ext.startswith('.pickle'):
             ds = load.unpickle(path)
         elif ext == '.txt':
             ds = load.tsv(path, delimiter='\t')
         else:
-            raise ValueError("Unknown file extension for rejections: %r" % ext)
+            raise ValueError(f"Unknown file extension for rejections: {path}")
 
         # check file
         if ds.n_cases > self.n_epochs:
             app = get_app()
-            cmd = app.message_box("The File contains more events than the data "
-                                  "(%i vs %i). Truncate the file?"
-                                  % (ds.n_cases, self.n_epochs),
-                                  "Truncate the file?", wx.OK | wx.CANCEL |
-                                  wx.CANCEL_DEFAULT | wx.ICON_WARNING)
+            cmd = app.message_box(f"The File contains more events than the data (file: {ds.n_cases}, data: {self.n_epochs}). Truncate the file?", "Truncate the file?", wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT | wx.ICON_WARNING)
             if cmd == wx.ID_OK:
                 ds = ds[:self.n_epochs]
             else:
                 raise RuntimeError("Unequal number of cases")
         elif ds.n_cases < self.n_epochs:
             app = get_app()
-            cmd = app.message_box("The rejection file contains fewer epochs "
-                                  "than the data (%i vs %i). Load anyways "
-                                  "(epochs missing from the file will be "
-                                  "accepted)?" % (ds.n_cases, self.n_epochs),
-                                  "Load partial file?", wx.OK | wx.CANCEL |
-                                  wx.CANCEL_DEFAULT | wx.ICON_WARNING)
+            cmd = app.message_box(f"The rejection file contains fewer epochs than the data (file: {ds.n_cases}, data: {self.n_epochs}). Load anyways (epochs missing from the file will be accepted)?", "Load partial file?", wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT | wx.ICON_WARNING)
             if cmd == wx.ID_OK:
                 n_missing = self.n_epochs - ds.n_cases
                 tail = Dataset(info=ds.info)
@@ -396,10 +378,7 @@ class Document(FileDocument):
 
         if not np.all(ds[self.trigger.name] == self.trigger):
             app = get_app()
-            cmd = app.message_box("The file contains different triggers from "
-                                  "the data. Ignore?",
-                                  "Ignore trigger mismatch?",
-                                  wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT)
+            cmd = app.message_box("The file contains different triggers from the data. Ignore mismatch and proceed?", "Ignore trigger mismatch?", wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT)
             if cmd == wx.ID_OK:
                 ds[self.trigger.name] = self.trigger
             else:
@@ -415,19 +394,12 @@ class Document(FileDocument):
             interpolate = ds[INTERPOLATE_CHANNELS]
             if not self.allow_interpolation and any(interpolate):
                 app = get_app()
-                cmd = app.message_box("The file contains channel interpolation "
-                                      "instructions, but interpolation is "
-                                      "disabled is the current session. Drop "
-                                      "interpolation instructions?",
-                                      "Clear Channel Interpolation "
-                                      "Instructions?",
-                                      wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT)
+                cmd = app.message_box("The file contains channel interpolation instructions, but interpolation is disabled is the current session. Drop interpolation instructions?", "Clear Channel Interpolation Instructions?", wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT)
                 if cmd == wx.ID_OK:
                     for l in interpolate:
                         del l[:]
                 else:
-                    raise RuntimeError("File with interpolation when "
-                                       "Interpolation is disabled")
+                    raise RuntimeError("File with interpolation when Interpolation is disabled")
         else:
             interpolate = Datalist([[]] * self.n_epochs, INTERPOLATE_CHANNELS,
                                    'strlist')
@@ -445,8 +417,7 @@ class Document(FileDocument):
 
         # create Dataset to save
         info = {BAD_CHANNELS: self.bad_channel_names}
-        ds = Dataset((self.trigger, self.accept, self.tag, self.interpolate),
-                     info=info)
+        ds = Dataset((self.trigger, self.accept, self.tag, self.interpolate), info=info)
 
         if ext == '.pickled':
             save.pickle(ds, self.path)

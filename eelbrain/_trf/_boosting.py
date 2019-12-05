@@ -70,7 +70,9 @@ class BoostingResult:
         Time dimension of the kernel.
     r : float | NDVar
         Correlation between the measured response and the response predicted
-        with ``h``. Type depends on the ``y`` parameter to :func:`boosting`.
+        with ``h``. Type depends on the ``y`` parameter to :func:`boosting`. For
+        vector data, measured and predicted responses are normalized, and ``r``
+        is computed as the average dot product over time.
     spearmanr : float | NDVar
         As ``r``, the Spearman rank correlation.
     t_run : float

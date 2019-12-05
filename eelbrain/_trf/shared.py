@@ -536,10 +536,10 @@ class RevCorrData:
 
     def vector_correlation(self, y, y_pred):
         "Correlation for vector data"
+        # shape (..., space, time)
         assert self._scale_data
         assert self.error in ('l1', 'l2')
         assert y.ndim == y_pred.ndim == 3
-        # import ipdb; ipdb.set_trace()
         y_pred_norm = norm(y_pred, axis=1)
         y_norm = norm(y, axis=1)
         # l2 correlation

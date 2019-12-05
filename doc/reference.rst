@@ -454,6 +454,8 @@ specified manually by supplying them as keyword arguments.
     Use matplotlib's ``tight_layout`` to resize all axes to fill the figure.
 ``right_of`` : eelbrain plot
    Position the new figure to the right of this figure.
+``below`` : eelbrain plot
+   Position the new figure below this figure.
 
 Plots that do take those parameters can be identified by the ``**layout`` in
 their function signature.

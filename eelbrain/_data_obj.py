@@ -3529,8 +3529,7 @@ class NDVar:
 
     def assert_dims(self, dims):
         if self.dimnames != dims:
-            err = "Dimensions of %r do not match %r" % (self, dims)
-            raise DimensionMismatchError(err)
+            raise DimensionMismatchError(f"Dimensions of {self!r} do not match {dims}")
 
     def aggregate(self, x, func=np.mean, name=None):
         """
@@ -3554,7 +3553,7 @@ class NDVar:
             NDVar with data aggregated over cells of ``x``.
         """
         if not self.has_case:
-            raise DimensionMismatchError("%r has no case dimension" % self)
+            raise DimensionMismatchError(f"{self!r} has no case dimension")
         elif x is None:
             x_out = func(self.x, axis=0)
         elif len(x) != len(self):

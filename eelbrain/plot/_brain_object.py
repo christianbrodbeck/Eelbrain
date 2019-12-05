@@ -40,7 +40,7 @@ try:
     import surfer
 except ImportError as exception:
     from . import _mock_surfer as surfer
-    warn("Error importing PySurfer: %s" % exception)
+    warn(f"Error importing PySurfer: {exception}")
 else:
     if first_import:
         reset_logger(surfer.utils.logger)
