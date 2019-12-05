@@ -9,28 +9,28 @@ New in 0.31
 * API changes:
 
   - :class:`Var` and :class:`NDVar` argument order changed to be consistent with other data objects
-  - :func:`combine`: combining :class:`NDVar` with unequal dimensions will now raise an error; to combine them by taking the intersection of valid elements (previous behavior), use ``dim_intersection=True``
+  - :func:`combine`: Combining :class:`NDVar` with unequal dimensions will now raise an error; to combine them by taking the intersection of valid elements (previous behavior), use ``dim_intersection=True``
   - :meth:`Dataset.save_txt`: ``delim`` parameter renamed to ``delimiter``
-  - :mod:`testnd` API:  For permutation tests, the ``samples`` parameter now defaults to 10,000 (previously 0)
-  - :func:`table.difference`:  the ``by`` parameter is deprecated, use ``match`` instead
+  - :mod:`testnd` API: For permutation tests, the ``samples`` parameter now defaults to 10,000 (previously 0)
+  - :func:`table.difference`: The ``by`` parameter is deprecated, use ``match`` instead
   - :meth:`NDVar.smooth` with a window with an even number of samples, and :attr:`BoostingResult.h` for :func:`boosting` with a basis with an even number of samples: the time axis is now consistent with :func:`scipy.signal.convolve` (was previously shifted by half a sample)
   - :meth:`testnd.LMGroup.coefficients_dataset` now returns a wide form table by default
-  - :meth:`plot.Topomap.mark_sensors`, :meth:`plot.TopomapBins.mark_sensors` and :meth:`plot.SensorMap.mark_sensors`: the second argument now specifies axis to mark
+  - :meth:`plot.Topomap.mark_sensors`, :meth:`plot.TopomapBins.mark_sensors` and :meth:`plot.SensorMap.mark_sensors`: The second argument now specifies axis to mark
 
 * New functions:
 
   - :func:`gaussian`
   - :func:`powerlaw_noise`
   - :func:`set_time`
+  - :func:`plot.two_step_colormap`
 
-* :mod:`plot`:  Additional arguments for :class:`plot.Boxplot` to control plotting of outliers (``whis`` and ``label_fliers``)
-* Horizontal bar-plot: :class:`plot.BarplotHorizontal`
+* :class:`plot.Boxplot`: Accepts additional arguments (``label_fliers`` and :meth:`~matplotlib.axes.Axes.boxplot` parameters)
+* :class:`plot.BarplotHorizontal`: Horizontal bar-plot
 * Non-parametric univariate tests :class:`test.MannWhitneyU` and :class:`test.WilcoxonSignedRank`
-* :func:`plot.two_step_colormap`
 * .. currentmodule:: eelbrain.pipeline
   :class:`MneExperiment` pipeline:
 
-  - :class:`SubParc` for simplified subset parcellation
+  - :class:`SubParc`: Simplified subset parcellation
 
 
 New in 0.30
