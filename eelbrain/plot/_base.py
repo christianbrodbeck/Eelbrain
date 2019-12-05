@@ -2768,11 +2768,12 @@ class TimeSlicer:
     _current_time = None
     _display_time_in_frame_title = False
 
-    def __init__(self, time_dim=None, time_fixed=False):
+    def __init__(self, time_dim=None, time_fixed=False, display_text=None):
         if time_dim is not None:
             self._set_time_dim(time_dim)
         self._time_controller = None
         self._time_fixed = time_fixed
+        self.__display_text = display_text
 
     def _init_controller(self):
         tc = TimeController(self._current_time, self._time_fixed)
@@ -2863,6 +2864,8 @@ class TimeSlicer:
         self._time_fixed = fixate
         if self._display_time_in_frame_title and self._frame:
             self._frame.SetTitleSuffix(f' [{ms(t)} ms]')
+        if self.__display_text is not None:
+            self.__display_text.set_text(f'{ms(t)} ms')
 
     def _update_time(self, t, fixate):
         raise NotImplementedError
@@ -2880,11 +2883,11 @@ class TimeSlicerEF(TimeSlicer):
     # TimeSlicer for Eelfigure
     _can_set_time = True
 
-    def __init__(self, x_dimname, x_dim, axes=None, redraw=True):
+    def __init__(self, x_dimname, x_dim, axes=None, redraw=True, display_text=None):
         if x_dimname != 'time':
-            TimeSlicer.__init__(self, time_fixed=True)
+            TimeSlicer.__init__(self, time_fixed=True, display_text=display_text)
             return
-        TimeSlicer.__init__(self, x_dim)
+        TimeSlicer.__init__(self, x_dim, display_text=display_text)
         self.__axes = self._axes if axes is None else axes
         self.__time_lines = []
         self.__redraw = redraw
@@ -2905,6 +2908,7 @@ class TimeSlicerEF(TimeSlicer):
         self._nudge_time(1 if event.key == '.' else -1)
 
     def _update_time(self, t, fixate):
+        # Implementation for a plot with time axes
         if fixate:
             redraw = True
             if self.__time_lines:

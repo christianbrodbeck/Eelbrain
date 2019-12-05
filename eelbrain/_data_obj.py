@@ -1672,7 +1672,7 @@ class Var:
         """
         if x is None:
             x_out = [func(self.x)]
-        if len(x) != len(self):
+        elif len(x) != len(self):
             raise ValueError(f"Length mismatch: {len(self)} (Var) != {len(x)} (x)")
         else:
             x_out = [func(self.x[x == cell]) for cell in x.cells]
@@ -2473,7 +2473,7 @@ class Factor(_Effect):
         if x is None:
             cells = [None]
             indexes = [slice(None)]
-        if len(x) != len(self):
+        elif len(x) != len(self):
             raise ValueError(f"x={dataobj_repr(x)} of length {len(x)} for Factor {dataobj_repr(self)} of length {len(self)}")
         else:
             cells = x.cells
@@ -2914,7 +2914,13 @@ class NDVar:
     >>> ndvar -= ndvar.mean(time=(None, 0))
 
     """
-    def __init__(self, x, dims, name=None, info=None):
+    def __init__(
+            self,
+            x: np.ndarray,
+            dims: typing.Union['Dimension', typing.Sequence['Dimension']],
+            name: str = None,
+            info: dict = None,
+    ):
         if isinstance(name, dict):  # backwards compatibility
             warn("NDVar argument order has changed; please update your code", DeprecationWarning)
             name, info = info, name
@@ -5429,7 +5435,6 @@ class Dataset(dict):
             return self.sub(index)
 
     def __repr__(self):
-        class_name = self.__class__.__name__
         if self.n_cases is None:
             items = []
             if self.name:
@@ -5439,12 +5444,9 @@ class Dataset(dict):
                 if len(info) > 60:
                     info = '<...>'
                 items.append('info=%s' % info)
-            return '%s(%s)' % (class_name, ', '.join(items))
+            item_repr = ', '.join(items)
+            return f'{self.__class__.__name__}({item_repr})'
 
-        rep_tmp = "<%(class_name)s %(name)s%(N)s{%(items)s}>"
-        fmt = {'class_name': class_name}
-        fmt['name'] = '%r ' % self.name if self.name else ''
-        fmt['N'] = 'n_cases=%i ' % self.n_cases
         items = []
         for key in self:
             v = self[key]
@@ -5456,21 +5458,21 @@ class Dataset(dict):
                 lbl = 'Vnd'
             else:
                 lbl = type(v).__name__
-
+            item = f'{key!r}:{lbl}'
             if isdataobject(v) and v.name != key:
-                item = '%r:%s<%r>' % (key, lbl, v.name)
-            else:
-                item = '%r:%s' % (key, lbl)
-
+                item += f'<{v.name!r}>'
             items.append(item)
-
-        fmt['items'] = ', '.join(items)
-        return rep_tmp % fmt
+        name = '' if self.name is None else f' {self.name!r}'
+        item_repr = ', '.join(items)
+        return f"<{self.__class__.__name__}{name} ({self.n_cases} cases) {item_repr}>"
 
     def _repr_pretty_(self, p, cycle):
         if cycle:
             raise NotImplementedError
         p.text(self.__repr__())
+
+    def _ipython_display_(self):
+        self._display_table()._ipython_display_()
 
     def __setitem__(self, index, item):
         if isinstance(index, str):
@@ -5526,18 +5528,24 @@ class Dataset(dict):
         else:
             raise IndexError(f"{index}: not a valid Dataset index")
 
+    def _display_table(self, cases=0):
+        items = []  # caption
+        if cases == 0 and self.n_cases > preferences['dataset_str_n_cases']:
+            cases = preferences['dataset_str_n_cases']
+            items.append("... (use .as_table() method to see the whole Dataset)")
+        ndvars = [key for key, v in self.items() if isinstance(v, NDVar)]
+        if ndvars:
+            items.append(f"NDVars: {', '.join(ndvars)}")
+        if items:
+            caption = '; '.join(items)
+        else:
+            caption = None
+        return self.as_table(cases, '%.5g', midrule=True, caption=caption, lfmt=True)
+
     def __str__(self):
         if sum(isuv(i) or isdatalist(i) for i in self.values()) == 0:
             return self.__repr__()
-
-        maxn = preferences['dataset_str_n_cases']
-        if self.n_cases > maxn:
-            caption = "... (use .as_table() method to see the whole Dataset)"
-        else:
-            caption = None
-        txt = self.as_table(maxn, '%.5g', midrule=True, caption=caption,
-                            lfmt=True)
-        return str(txt)
+        return str(self._display_table())
 
     def _check_n_cases(self, x, empty_ok=True):
         """Check that an input argument has the appropriate length.
@@ -5725,8 +5733,7 @@ class Dataset(dict):
 
         """
         if not isinstance(expression, str):
-            raise TypeError("Eval needs expression of type unicode or str. Got "
-                            "%s" % repr(expression))
+            raise TypeError(f"expression={expression!r}: needs str")
         return eval(expression, EVAL_CONTEXT, self)
 
     @classmethod
@@ -6000,7 +6007,7 @@ class Dataset(dict):
 
     def head(self, n=10):
         "Table with the first n cases in the Dataset"
-        return self.as_table(n, '%.5g', midrule=True, lfmt=True)
+        return self._display_table(n)
 
     def index(self, name='index', start=0):
         """Add an index to the Dataset (i.e., ``range(n_cases)``)
@@ -6357,7 +6364,7 @@ class Dataset(dict):
 
     def tail(self, n=10):
         "Table with the last n cases in the Dataset"
-        return self.as_table(range(-n, 0), '%.5g', midrule=True, lfmt=True)
+        return self._display_table(range(-n, 0))
 
     def tile(self, repeats, name=None):
         """Concatenate ``repeats`` copies of the dataset
@@ -8075,13 +8082,24 @@ class Scalar(Dimension):
                 fmt = FormatStrFormatter(self.tick_format)
             else:
                 fmt = None
-        elif self.tick_format:
-            fmt = IndexFormatter([self.tick_format % v for v in self.values])
+            locator = None
         else:
-            fmt = IndexFormatter(self.values)
-        return (fmt,
-                None if scalar else FixedLocator(np.arange(len(self)), 10),
-                self._axis_label(label))
+            # categories (im-plot)
+            #  - for small number of values, label bins at their center
+            #  - for large number of values, make sure endpoints are included
+            if len(self.values) < 10:
+                values = self.values
+                locations = np.arange(len(self))
+            else:
+                locations = np.arange(-0.5, len(self), 0.5)
+                values = np.interp(locations, np.arange(len(self)), self.values)
+
+            if self.tick_format:
+                fmt = IndexFormatter([self.tick_format % v for v in values])
+            else:
+                fmt = IndexFormatter(list(values))
+            locator = FixedLocator(locations, 10)
+        return fmt, locator, self._axis_label(label)
 
     def _bin(
             self,
@@ -9443,8 +9461,7 @@ class SourceSpace(SourceSpaceBase):
 
     def _init_secondary(self):
         SourceSpaceBase._init_secondary(self)
-        assert len(self.vertices) == 2, "ico-based SourceSpaces need " \
-                                        "exactly two vertices arrays"
+        assert len(self.vertices) == 2, "ico-based SourceSpaces need exactly two vertices arrays"
         self.lh_vertices = self.vertices[0]
         self.rh_vertices = self.vertices[1]
         self.lh_n = len(self.lh_vertices)

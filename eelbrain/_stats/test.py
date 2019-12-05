@@ -387,7 +387,7 @@ def _related_measures_args(y, x, c1, c0, match, ds, sub, nd_data=False):
         y0 = ct.y[n:]
         x_name = ct.x.name
         match = ct.match
-    return y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name
+    return y1, y0, c1, c0, match, n, x_name, c1_name, c0_name
 
 
 def ttest(y, x=None, against=0, match=None, sub=None, corr='Hochberg',
@@ -845,7 +845,7 @@ class TTestRel(TTest):
             ds: Dataset = None,
             tail: int = 0,
     ):
-        y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
+        y1, y0, c1, c0, match, n, x_name, c1_name, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
         if n <= 2:
             raise ValueError("Not enough observations for t-test (n=%i)" % n)
         self._y = dataobj_repr(y1)
@@ -947,7 +947,7 @@ class WilcoxonSignedRank:
             zero_method: str = 'wilcox',
             correction: bool = False,
     ):
-        y1, y0, c1, c0, match, n, x_name, c1, c1_name, c0, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
+        y1, y0, c1, c0, match, n, x_name, c1_name, c0_name = _related_measures_args(y, x, c1, c0, match, ds, sub)
         if tail == 0:
             alternative = 'two-sided'
         elif tail == 1:

@@ -59,6 +59,8 @@ def test_boxplot():
     "Test plot.Boxplot"
     ds = datasets.get_uv(nrm=True)
     plot.Boxplot('fltvar', 'A%B', match='rm', ds=ds)
+    # boxplot args
+    plot.Boxplot('fltvar', 'A%B', match='rm', ds=ds, showmeans=True)
 
     # one category
     plot.Boxplot('fltvar', ds=ds, test=False)

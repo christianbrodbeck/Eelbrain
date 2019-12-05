@@ -375,6 +375,29 @@ def test_dataset():
     assert_dataobj_equal(Dataset([ds['f'], ds['g']]), ds)
     assert_dataobj_equal(Dataset({'f': Factor('abab'), 'g': Factor('aabb')}), ds)
 
+    # aggregate
+    ds = Dataset({
+        'x': Factor('abab'),
+        'y': Factor('aabb'),
+        'z': Factor('aaaa'),
+        'v': Var([1, 1, 2, 2]),
+    })
+    assert_dataset_equal(
+        ds.aggregate('x', drop_bad=True),
+        Dataset({
+            'x': Factor('ab'),
+            'z': Factor('aa'),
+            'v': Var([1.5, 1.5]),
+            'n': Var([2, 2]),
+        }))
+    assert_dataset_equal(
+        ds.aggregate('', drop_bad=True),
+        Dataset({
+            'z': Factor('a'),
+            'v': Var([1.5]),
+            'n': Var([4]),
+        }))
+
     # ds.update()
     ds = Dataset()
     ds.update({'f': Factor('abab')})
@@ -493,9 +516,13 @@ def test_dataset_repr():
     "Test Dataset string representation methods"
     ds = datasets.get_uts()
 
-    assert repr(ds) == "<Dataset n_cases=60 {'A':F, 'B':F, 'rm':F, 'ind':F, 'Y':V, 'YBin':F, 'YCat':F, 'uts':Vnd}>"
-    assert str(ds.head()) == str(ds[:10])
-    assert str(ds.tail()) == str(ds[-10:])
+    assert repr(ds) == "<Dataset (60 cases) 'A':F, 'B':F, 'rm':F, 'ind':F, 'Y':V, 'YBin':F, 'YCat':F, 'uts':Vnd>"
+    assert str(ds[:2]) == """A    B    rm    ind   Y        YBin   YCat
+------------------------------------------
+a0   b0   R00   R00   2.0977   c1     c1  
+a0   b0   R01   R01   1.8942   c1     c1  
+------------------------------------------
+NDVars: uts"""
     assert str(ds.summary(50)) == """Key    Type     Values                            
 --------------------------------------------------
 A      Factor   a0:30, a1:30                      
@@ -520,6 +547,10 @@ YCat   Factor   c1:2, c2:2, c3
 uts    NDVar    100 time; -0.634835 - 4.56283              
 -----------------------------------------------------------
 Dataset: 5 cases"""
+    # .head() and .tail() without NDVars
+    del ds['uts']
+    assert str(ds.head()) == str(ds[:10])
+    assert str(ds.tail()) == str(ds[-10:])
 
 
 def test_dataset_sorting():
