@@ -206,19 +206,14 @@ class RawSource(RawPipe):
     def get_sysname(self, info, subject, data):
         if data == 'eog':
             return None
-        elif data == 'mag':
-            kit_system_id = info.get('kit_system_id')
-            if kit_system_id:
-                try:
-                    return KIT_NEIGHBORS[kit_system_id]
-                except KeyError:
-                    raise NotImplementedError(f"Unknown KIT system-ID: {kit_system_id}; please contact developers")
-        if isinstance(self.sysname, str):
+        elif isinstance(self.sysname, str):
             return self.sysname
         elif isinstance(self.sysname, dict):
             for k, v in self.sysname.items():
                 if fnmatch.fnmatch(subject, k):
                     return v
+        kit_system_id = info.get('kit_system_id')
+        return KIT_NEIGHBORS.get(kit_system_id)
 
     def load_bad_channels(self, subject, recording):
         path = self.bads_path.format(root=self.root, subject=subject, recording=recording)

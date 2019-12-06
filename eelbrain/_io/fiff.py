@@ -705,7 +705,7 @@ def sensor_dim(info, picks=None, sysname=None, connectivity=None):
             raise ValueError(f"Unknown channel unit for sysname='neuromag': {ch_unit!r}")
 
     if connectivity is None:
-        connectivity = sysname
+        connectivity = sysname  # or 'auto'
 
     if isinstance(connectivity, str):
         if connectivity in ('grid', 'none'):
