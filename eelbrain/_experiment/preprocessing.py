@@ -184,7 +184,7 @@ class RawSource(RawPipe):
             raw.rename_channels(self.rename_channels)
         if self.montage:
             raw.set_montage(self.montage)
-        if raw.info['dig'] is None and self._dig_sessions is not None and self._dig_sessions[subject]:
+        if not raw.info['dig'] and self._dig_sessions is not None and self._dig_sessions[subject]:
             dig_session = self._dig_sessions[subject][recording]
             dig_raw = self._load(subject, dig_session, False)
             raw.info['dig'] = dig_raw.info['dig']
