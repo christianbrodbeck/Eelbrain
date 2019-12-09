@@ -380,13 +380,19 @@ class EpochCollection(EpochBase):
         return out
 
 
-def decim_param(epoch: Epoch, decim: int, info: dict):
-    if decim:
+def decim_param(samplingrate: int, decim: int, epoch: Epoch, raw_samplingrate: float):
+    if samplingrate is not None:
+        if decim is not None:
+            raise TypeError(f"samplingrate={samplingrate}, decim={decim}: can only specify one at a time")
+    elif decim is not None:
         return decim
-    elif epoch.decim:
+    elif epoch.decim is not None:
         return epoch.decim
-    else:
-        decim_ratio = info['sfreq'] / epoch.samplingrate
+    elif epoch.samplingrate is not None:
+        samplingrate = epoch.samplingrate
+
+    if samplingrate is not None:
+        decim_ratio = raw_samplingrate / samplingrate
         if decim_ratio % 1:
-            raise ValueError(f"samplingrate={epoch.samplingrate} with data at {info['sfreq']} Hz: needs to be integer ratio")
+            raise ValueError(f"samplingrate={samplingrate} with data at {raw_samplingrate:g} Hz: needs to be integer ratio")
         return int(decim_ratio)

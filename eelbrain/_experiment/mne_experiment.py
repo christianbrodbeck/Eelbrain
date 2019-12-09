@@ -776,21 +776,22 @@ class MneExperiment(FileTree):
                 'fwd-sessions': {s: {} for s in subjects},
             }
 
-        # collect current events and mtime
+        # collect raw input info
         raw_mtimes = input_state['raw-mtimes']
         pipe = self._raw['raw']
+        self._raw_samplingrate = {}  # {(subject, recording): samplingrate}
         with self._temporary_state:
             for subject, visit, recording in self.iter(('subject', 'visit', 'recording'), group='all', raw='raw'):
                 key = subject, recording
-                mtime = pipe.mtime(subject, recording, bad_chs=False)
-                if mtime is None:
+                if not pipe.exists(subject, recording):
                     raw_missing.append(key)
                     continue
                 # events
-                events[key] = self.load_events(add_bads=False, data_raw=False)
-                if key not in raw_mtimes or mtime != raw_mtimes[key]:
+                events[key] = events_in = self.load_events(add_bads=False, data_raw=False)
+                self._raw_samplingrate[key] = events_in.info['sfreq']
+                if key not in raw_mtimes or events_in.info['raw-mtime'] != raw_mtimes[key]:
                     subjects_with_raw_changes.add((subject, visit))
-                    raw_mtimes[key] = mtime
+                    raw_mtimes[key] = events_in.info['raw-mtime']
             # log missing raw files
             if raw_missing:
                 log.debug("Raw files missing:")
@@ -2022,7 +2023,7 @@ class MneExperiment(FileTree):
 
     def load_epochs(self, subjects=None, baseline=False, ndvar=True,
                     add_bads=True, reject=True, cat=None,
-                    decim=None, pad=0, data_raw=False, vardef=None, data='sensor',
+                    samplingrate=None, decim=None, pad=0, data_raw=False, vardef=None, data='sensor',
                     trigger_shift=True, tmin=None,
                     tmax=None, tstop=None, interpolate_bads=False, **state):
         """
@@ -2053,9 +2054,11 @@ class MneExperiment(FileTree):
             as ``'accept'`` variable), but keep bad trails.
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
+        samplingrate : int
+            Samplingrate in Hz for the analysis (default is specified in epoch
+            definition).
         decim : int
-            Data decimation factor (the default is the factor specified in the
-            epoch definition).
+            Data decimation factor (alternative to ``samplingrate``).
         pad : scalar
             Pad the epochs with this much time (in seconds; e.g. for spectral
             analysis).
@@ -2106,7 +2109,7 @@ class MneExperiment(FileTree):
         if group is not None:
             dss = []
             for _ in self.iter(group=group, progress=f"Load {epoch_name}"):
-                ds = self.load_epochs(None, baseline, ndvar, add_bads, reject, cat, decim, pad, data_raw, vardef, data, True, tmin, tmax, tstop, interpolate_bads)
+                ds = self.load_epochs(None, baseline, ndvar, add_bads, reject, cat, samplingrate, decim, pad, data_raw, vardef, data, True, tmin, tmax, tstop, interpolate_bads)
                 dss.append(ds)
 
             return combine(dss)
@@ -2117,7 +2120,7 @@ class MneExperiment(FileTree):
             dss = []
             with self._temporary_state:
                 for sub_epoch in epoch.collect:
-                    ds = self.load_epochs(subject, baseline, ndvar, add_bads, reject, cat, decim, pad, data_raw, vardef, data, trigger_shift, tmin, tmax, tstop, interpolate_bads, epoch=sub_epoch)
+                    ds = self.load_epochs(subject, baseline, ndvar, add_bads, reject, cat, samplingrate, decim, pad, data_raw, vardef, data, trigger_shift, tmin, tmax, tstop, interpolate_bads, epoch=sub_epoch)
                     ds[:, 'epoch'] = sub_epoch
                     dss.append(ds)
             return combine(dss)
@@ -2156,7 +2159,7 @@ class MneExperiment(FileTree):
                 baseline = (b0, b1)
             tmin -= pad
             tmax += pad
-        decim = decim_param(epoch, decim, ds.info['raw'].info)
+        decim = decim_param(samplingrate, decim, epoch, ds.info['sfreq'])
 
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', 'The events passed to the Epochs constructor', RuntimeWarning)
@@ -2229,7 +2232,7 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_epochs_stc(self, subjects=None, baseline=True, src_baseline=False, cat=None, keep_epochs=False, morph=False, mask=False, data_raw=False, vardef=None, decim=None, pad=0, ndvar=True, reject=True, **state):
+    def load_epochs_stc(self, subjects=None, baseline=True, src_baseline=False, cat=None, keep_epochs=False, morph=False, mask=False, data_raw=False, vardef=None, samplingrate=None, decim=None, pad=0, ndvar=True, reject=True, **state):
         """Load a Dataset with stcs for single epochs
 
         Parameters
@@ -2265,8 +2268,11 @@ class MneExperiment(FileTree):
             (default False).
         vardef : str
             Name of a test defining additional variables.
+        samplingrate : int
+            Samplingrate in Hz for the analysis (default is specified in epoch
+            definition).
         decim : int
-            Override the epoch decim factor.
+            Data decimation factor (alternative to ``samplingrate``).
         pad : scalar
             Pad the epochs with this much time (in seconds; e.g. for spectral
             analysis).
@@ -2307,7 +2313,7 @@ class MneExperiment(FileTree):
                 raise ValueError(f"morph={morph!r} with group: Source estimates can only be combined after morphing data to common brain model. Set morph=True.")
             dss = []
             for _ in self.iter(group=group, progress_bar=f"Load {epoch_name} STC"):
-                ds = self.load_epochs_stc(None, baseline, src_baseline, cat, keep_epochs, morph, mask, False, vardef, decim, pad, ndvar, reject)
+                ds = self.load_epochs_stc(None, baseline, src_baseline, cat, keep_epochs, morph, mask, False, vardef, samplingrate, decim, pad, ndvar, reject)
                 dss.append(ds)
             return combine(dss)
 
@@ -2326,7 +2332,7 @@ class MneExperiment(FileTree):
         else:
             raise ValueError(f'keep_epochs={keep_epochs!r}')
 
-        ds = self.load_epochs(subject, baseline, sns_ndvar, reject=reject, cat=cat, decim=decim, pad=pad, data_raw=data_raw, vardef=vardef)
+        ds = self.load_epochs(subject, baseline, sns_ndvar, reject=reject, cat=cat, samplingrate=samplingrate, decim=decim, pad=pad, data_raw=data_raw, vardef=vardef)
 
         # load inv
         if src_baseline is True:
@@ -2454,7 +2460,7 @@ class MneExperiment(FileTree):
         return self._label_events(ds)
 
     def load_evoked(self, subjects=None, baseline=False, ndvar=True, cat=None,
-                    decim=None, data_raw=False, vardef=None, data='sensor',
+                    samplingrate=None, decim=None, data_raw=False, vardef=None, data='sensor',
                     **kwargs):
         """
         Load a Dataset with the evoked responses for each subject.
@@ -2477,9 +2483,11 @@ class MneExperiment(FileTree):
             ``'evoked'``. ``2`` to add both.
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
+        samplingrate : int
+            Samplingrate in Hz for the analysis (default is specified in epoch
+            definition).
         decim : int
-            Data decimation factor (the default is the factor specified in the
-            epoch definition).
+            Data decimation factor (alternative to ``samplingrate``).
         data_raw : bool
             Keep the :class:`mne.io.Raw` instance in ``ds.info['raw']``
             (default False).
@@ -2516,7 +2524,7 @@ class MneExperiment(FileTree):
             # to avoid losing sensors that are not shared
             individual_ndvar = isinstance(data.sensor, str)
             desc = f'by {model}' if model else 'average'
-            dss = [self.load_evoked(None, baseline, individual_ndvar, cat, decim, data_raw, vardef, data)
+            dss = [self.load_evoked(None, baseline, individual_ndvar, cat, samplingrate, decim, data_raw, vardef, data)
                    for _ in self.iter(group=group, progress_bar=f"Load {epoch_name} {desc}")]
             if individual_ndvar:
                 ndvar = False
@@ -2546,7 +2554,7 @@ class MneExperiment(FileTree):
                         err.append(f"{l}: {subjects}")
                     raise DimensionMismatchError('\n'.join(err))
         else:  # single subject
-            ds = self._make_evoked(decim, data_raw)
+            ds = self._make_evoked(samplingrate, decim, data_raw)
 
             if cat:
                 if not model:
@@ -2663,7 +2671,7 @@ class MneExperiment(FileTree):
 
     def load_evoked_stc(self, subjects=None, baseline=True, src_baseline=False,
                         cat=None, keep_evoked=False, morph=False, mask=False,
-                        data_raw=False, vardef=None, decim=None, ndvar=True,
+                        data_raw=False, vardef=None, samplingrate=None, decim=None, ndvar=True,
                         **state):
         """Load evoked source estimates.
 
@@ -2697,8 +2705,11 @@ class MneExperiment(FileTree):
             (default False).
         vardef : str
             Name of a test defining additional variables.
+        samplingrate : int
+            Samplingrate in Hz for the analysis (default is specified in epoch
+            definition).
         decim : int
-            Override the epoch decim factor.
+            Data decimation factor (alternative to ``samplingrate``).
         ndvar : bool
             Add the source estimates as NDVar named "src" instead of a list of
             :class:`mne.SourceEstimate` objects named "stc" (default True).
@@ -2719,7 +2730,7 @@ class MneExperiment(FileTree):
             state['parc'] = mask
         # load sensor data (needs state in case it has 'group' entry)
         sns_ndvar = 2 if keep_evoked + ndvar > 1 else 0
-        ds = self.load_evoked(subjects, baseline, sns_ndvar, cat, decim, data_raw, vardef, **state)
+        ds = self.load_evoked(subjects, baseline, sns_ndvar, cat, samplingrate, decim, data_raw, vardef, **state)
 
         # check baseline
         epoch = self._epochs[self.get('epoch')]
@@ -3992,24 +4003,23 @@ class MneExperiment(FileTree):
 
         cov.save(dest)
 
-    def _make_evoked(self, decim, data_raw):
-        """Make files with evoked sensor data.
-
-        Parameters
-        ----------
-        decim : int
-            Data decimation factor (the default is the factor specified in the
-            epoch definition).
-        """
+    def _make_evoked(self, samplingrate, decim, data_raw):
+        """Make files with evoked sensor data"""
         dst = self.get('evoked-file', mkdir=True)
         epoch = self._epochs[self.get('epoch')]
         # determine whether using default decimation
-        if decim:
+        if samplingrate:
+            if epoch.samplingrate:
+                default_decim = samplingrate == epoch.samplingrate
+            else:
+                raise NotImplementedError(f"load_evoked with samplingrate={samplingrate} for epoch with decim")
+        elif decim:
             if epoch.decim:
                 default_decim = decim == epoch.decim
             else:
-                raw = self.load_raw(False)
-                default_decim = decim == raw.info['sfreq'] / epoch.samplingrate
+                key = self.get('subject'), self.get('recording')
+                raw_samplingrate = self._raw_samplingrate[key]
+                default_decim = decim == raw_samplingrate / epoch.samplingrate
         else:
             default_decim = True
         use_cache = default_decim
@@ -4035,9 +4045,9 @@ class MneExperiment(FileTree):
         # load the epochs (post baseline-correction trigger shift requires
         # baseline corrected evoked
         if epoch.post_baseline_trigger_shift:
-            ds = self.load_epochs(ndvar=False, baseline=True, decim=decim, data_raw=data_raw, interpolate_bads='keep')
+            ds = self.load_epochs(ndvar=False, baseline=True, samplingrate=samplingrate, decim=decim, data_raw=data_raw, interpolate_bads='keep')
         else:
-            ds = self.load_epochs(ndvar=False, decim=decim, data_raw=data_raw, interpolate_bads='keep')
+            ds = self.load_epochs(ndvar=False, samplingrate=samplingrate, decim=decim, data_raw=data_raw, interpolate_bads='keep')
 
         # aggregate
         ds_agg = ds.aggregate(model, drop_bad=True, equal_count=equal_count, drop=('i_start', 't_edf', 'T', 'index', 'trigger'), never_drop=('epochs',))
@@ -4079,7 +4089,7 @@ class MneExperiment(FileTree):
         mne.write_forward_solution(dst, fwd, True)
         return dst
 
-    def make_ica_selection(self, epoch=None, decim=None, session=None, **state):
+    def make_ica_selection(self, epoch=None, samplingrate=None, decim=None, session=None, **state):
         """Select ICA components to remove through a GUI
 
         Parameters
@@ -4087,6 +4097,12 @@ class MneExperiment(FileTree):
         epoch : str
             Epoch to use for visualization in the GUI (default is to use the
             raw data).
+        samplingrate : int
+            Samplingrate in Hz for the visualization (set to a lower value to
+            improve GUI performance; for raw data, the default is ~100 Hz, for
+            epochs the default is theepoch setting).
+        decim : int
+            Data decimation factor (alternative to ``samplingrate``).
         decim : int
             Downsample data for visualization (to improve GUI performance;
             for raw data, the default is ~100 Hz, for epochs the default is the
@@ -4577,7 +4593,7 @@ class MneExperiment(FileTree):
         pipe = self._raw[self.get('raw')]
         pipe.cache(self.get('subject'), self.get('recording'))
 
-    def make_epoch_selection(self, decim=None, auto=None, overwrite=None, **state):
+    def make_epoch_selection(self, samplingrate=None, decim=None, auto=None, overwrite=None, **state):
         """Open :func:`gui.select_epochs` for manual epoch selection
 
         The GUI is opened with the correct file name; if the corresponding
@@ -4586,12 +4602,12 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
+        samplingrate : int
+            Samplingrate in Hz for the visualization (set to a lower value to
+            improve GUI performance; for raw data, the default is ~100 Hz, for
+            epochs the default is theepoch setting).
         decim : int
-            Decimate epochs for the purpose of faster display. Decimation is
-            applied relative to the raw data file (i.e., if the raw data is
-            sampled at a 1000 Hz, ``decim=10`` results in a sampling rate of
-            100 Hz for display purposes. The default is to use the decim
-            parameter specified in the epoch definition.
+            Data decimation factor (alternative to ``samplingrate``).
         auto : scalar (optional)
             Perform automatic rejection instead of showing the GUI by supplying
             a an absolute threshold (for example, ``1e-12`` to reject any epoch
@@ -4629,7 +4645,7 @@ class MneExperiment(FileTree):
             else:
                 raise TypeError(f"overwrite={overwrite!r}")
 
-        ds = self.load_epochs(reject=False, trigger_shift=False, decim=decim)
+        ds = self.load_epochs(reject=False, trigger_shift=False, samplingrate=samplingrate, decim=decim)
         has_meg = 'meg' in ds
         has_grad = 'grad' in ds
         has_eeg = 'eeg' in ds
@@ -4654,6 +4670,8 @@ class MneExperiment(FileTree):
             args = [f"auto={auto!r}"]
             if overwrite is True:
                 args.append("overwrite=True")
+            if samplingrate is not None:
+                args.append(f"samplingrate={samplingrate!r}")
             if decim is not None:
                 args.append(f"decim={decim!r}")
             rej_ds.info['desc'] = f"Created with {self.__class__.__name__}.make_epoch_selection({', '.join(args)})"
@@ -6073,7 +6091,7 @@ class MneExperiment(FileTree):
             if test_obj.model is not None:
                 self.set(model=test_obj._within_model)
 
-    def _set_analysis_options(self, data, baseline, src_baseline, pmin, tstart, tstop, parc=None, mask=None, decim=None, test_options=(), folder_options=()):
+    def _set_analysis_options(self, data, baseline, src_baseline, pmin, tstart, tstop, parc=None, mask=None, samplingrate=None, test_options=(), folder_options=()):
         """Set templates for paths with test parameters
 
         analysis:  preprocessing up to source estimate epochs (not parcellation)
@@ -6091,8 +6109,8 @@ class MneExperiment(FileTree):
         src_baseline :
             Should be False if data=='sensor'.
         ...
-        decim : int
-            Decimation factor (default is None, i.e. based on epochs).
+        samplingrate : int
+            Samplingrate (default is None, i.e. based on epochs).
         test_options : sequence of str
             Additional, test-specific tags (for use by TRFExperiment only).
         """
@@ -6199,9 +6217,9 @@ class MneExperiment(FileTree):
         # time window
         if tstart is not None or tstop is not None:
             items.append(_time_window_str((tstart, tstop)))
-        if decim is not None:
-            assert isinstance(decim, int)
-            items.append(str(decim))
+        if samplingrate is not None:
+            assert isinstance(samplingrate, int)
+            items.append(f'{samplingrate:g}Hz')
 
         items.extend(test_options)
 
@@ -6226,8 +6244,11 @@ class MneExperiment(FileTree):
         if '-' in code.lookahead_1:
             out['time_window'] = code.next()
         # decim
-        if code.lookahead_1.isdigit():
-            out['decim'] = code.next()
+        m = re.match(r'(\d+)(Hz)?', code.lookahead_1)
+        if m:
+            num, is_sr = m.groups()
+            key = 'samplingrate' if is_sr else 'decim'
+            out[key] = code.next()
         return out
 
     def show_bad_channels(self, sessions=None, **state):

@@ -197,6 +197,10 @@ class RawSource(RawPipe):
             raise FileMissing(f"Raw input file for {subject}/{recording} does not exist at expected location {path}")
         return path
 
+    def exists(self, subject, recording):
+        path = self.path.format(root=self.root, subject=subject, recording=recording)
+        return exists(path)
+
     def get_connectivity(self, data):
         if data == 'eog':
             return None

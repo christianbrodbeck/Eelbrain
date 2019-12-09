@@ -3,8 +3,19 @@ Changes
 
 .. currentmodule:: eelbrain
 
+New in 0.32
+-----------
+
+* .. currentmodule:: eelbrain.pipeline
+  :class:`MneExperiment` pipeline:
+
+  - Methods with ``decim`` parameter now also have ``samplingrate`` parameter
+
+
 New in 0.31
 -----------
+
+.. currentmodule:: eelbrain
 
 * API changes:
 
