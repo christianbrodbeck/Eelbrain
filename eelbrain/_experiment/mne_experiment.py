@@ -2108,7 +2108,7 @@ class MneExperiment(FileTree):
 
         if group is not None:
             dss = []
-            for _ in self.iter(group=group, progress=f"Load {epoch_name}"):
+            for _ in self.iter(group=group, progress_bar=f"Load {epoch_name}"):
                 ds = self.load_epochs(None, baseline, ndvar, add_bads, reject, cat, samplingrate, decim, pad, data_raw, vardef, data, True, tmin, tmax, tstop, interpolate_bads)
                 dss.append(ds)
 
