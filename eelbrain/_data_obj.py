@@ -1127,19 +1127,19 @@ def combine(items, name=None, check_dims=True, incomplete='raise', dim_intersect
         v_have_case = [v.has_case for v in items]
         if all(v_have_case):
             has_case = True
-            all_dims = (item.dims[1:] for item in items)
+            all_dims = [item.dims[1:] for item in items]
         elif any(v_have_case):
             raise DimensionMismatchError("Some items have a 'case' dimension, others do not")
         else:
             has_case = False
-            all_dims = (item.dims for item in items)
+            all_dims = [item.dims for item in items]
 
         if dim_intersection:
             dims = reduce(lambda x, y: intersect_dims(x, y, check_dims), all_dims)
         else:
-            dims = next(all_dims)
-            if not all(dims_i == dims for dims_i in all_dims):
-                raise DimensionMismatchError("Some NDVars have mismatching dimensions. Set dim_intersection=True to discard elements not present in all.")
+            dims, *other_dims = all_dims
+            if not all(dims_i == dims for dims_i in other_dims):
+                raise DimensionMismatchError.from_dims_list("Some NDVars have mismatching dimensions. Set dim_intersection=True to discard elements not present in all.", all_dims)
         idx = {d.name: d for d in dims}
         # reduce data to common dimension range
         sub_items = []
