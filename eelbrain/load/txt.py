@@ -178,7 +178,17 @@ def tsv(
     # convert values to data-objects
     float_pattern = re.compile(FLOAT_NAN_PATTERN)
     ds = _data.Dataset(name=os.path.basename(path))
-    np_vars = vars(np)
+    np_vars = {
+        'NaN': np.nan,
+        'nan': np.nan,
+        'NAN': np.nan,
+        None: np.nan,
+    }
+    if empty is not None:
+        if empty.lower() == 'nan':
+            np_vars[''] = np.nan
+        else:
+            np_vars[''] = empty
     bool_dict = {'True': True, 'False': False, None: False}
     for name, values, type_ in zip(names, data.T, types_):
         # infer type
@@ -198,9 +208,7 @@ def tsv(
 
         # substitute values
         if type_ == 'v':
-            if empty is not None:
-                values = [empty if v == '' else v for v in values]
-            values = [np.nan if v is None else eval(v, np_vars) for v in values]
+            values = [np_vars[v] if v in np_vars else int(v) if v.isdigit() else float(v) for v in values]
         elif type_ == 'b':
             values = [bool_dict[v] for v in values]
 
