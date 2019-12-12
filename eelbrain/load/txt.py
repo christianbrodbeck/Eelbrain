@@ -9,6 +9,7 @@ Tools for loading data from text files.
 """
 import csv
 import os
+from pathlib import Path
 import re
 from typing import Sequence, Union
 
@@ -26,12 +27,12 @@ def tsv(
         path: str = None,
         names: Union[Sequence[str], bool] = True,
         types: Union[str, dict] = None,
-        delimiter: str = '\t',
+        delimiter: str = 'auto',
         skiprows: int = 0,
         start_tag: str = None,
         ignore_missing: bool = False,
         empty: str = None,
-        random : Union[str, Sequence[str]] = None,
+        random: Union[str, Sequence[str]] = None,
         **fmtparams,
 ):
     r"""Load a :class:`Dataset` from a text file.
@@ -58,7 +59,8 @@ def tsv(
         ``'ffvva'``) or as ``{column_name: data_type}`` dictionary (e.g.
         ``{'participant': 'f'}``); unspecified columns default to ``'a'``.
     delimiter : str
-        Value delimiting cells in the input file (default: tab, ``'\t'``).
+        Value delimiting cells in the input file (default depends on ``path``:
+        ``','`` if the extension is ``'.csv'``, otherwise ``'\t'``).
     skiprows : int
         Skip so many rows at the beginning of the file (for tsv files with
         headers). Column names are expected to come after the skipped rows.
@@ -88,6 +90,7 @@ def tsv(
         path = ui.ask_file("Load TSV", "Select tsv file to import as Dataset")
         if not path:
             return
+    path = Path(path)
 
     if isinstance(random, str):
         random = [random]
@@ -96,10 +99,17 @@ def tsv(
     else:
         random = list(random)
 
+    if delimiter is None:  # legacy option
+        delimiter = ' '
+        fmtparams['skipinitialspace'] = True
+    elif delimiter == 'auto':
+        suffix = path.suffix.lower()
+        if suffix == '.csv':
+            delimiter = ','
+        else:
+            delimiter = '\t'
+
     with open(path, newline='') as fid:
-        if delimiter is None:  # legacy option
-            delimiter = ' '
-            fmtparams['skipinitialspace'] = True
         reader = csv.reader(fid, delimiter=delimiter, **fmtparams)
         lines = list(reader)
 
@@ -179,6 +189,8 @@ def tsv(
     float_pattern = re.compile(FLOAT_NAN_PATTERN)
     ds = _data.Dataset(name=os.path.basename(path))
     np_vars = {
+        'NA': np.nan,
+        'na': np.nan,
         'NaN': np.nan,
         'nan': np.nan,
         'NAN': np.nan,
