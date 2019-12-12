@@ -5568,7 +5568,7 @@ class Dataset(dict):
         items = []  # caption
         if cases == 0 and self.n_cases > preferences['dataset_str_n_cases']:
             cases = preferences['dataset_str_n_cases']
-            items.append("... (use .as_table() method to see the whole Dataset)")
+            items.append(f"... ({cases} of {self.n_cases} rows shown, use .as_table() to see the whole Dataset)")
         ndvars = [key for key, v in self.items() if isinstance(v, NDVar)]
         if ndvars:
             items.append(f"NDVars: {', '.join(ndvars)}")
