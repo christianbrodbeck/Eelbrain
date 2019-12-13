@@ -893,7 +893,7 @@ class ANOVA:
         out = self._log[:]
         print('\n'.join(out))
 
-    def table(self, title=None, caption=None):
+    def table(self, title: fmtxt.FMTextLike = None, caption: fmtxt.FMTextLike = None):
         """ANOVA table
 
         Parameters
@@ -952,7 +952,14 @@ class ANOVA:
         return table
 
 
-def anova(y, x, sub=None, ds=None, title=None, caption=None):
+def anova(
+        y: VarArg,
+        x: ModelArg,
+        sub: IndexArg = None,
+        ds: Dataset = None,
+        title: fmtxt.FMTextLike = None,
+        caption: fmtxt.FMTextLike = None,
+):
     """Univariate ANOVA
 
     Mixed effects models require balanced models and full model specification
