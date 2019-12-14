@@ -2,8 +2,7 @@
 from copy import deepcopy
 from itertools import chain, product
 from math import log
-from operator import (
-    add, iadd, sub, isub, mul, imul, pow, ipow, truediv, itruediv, floordiv, ifloordiv, mod, imod)
+import operator
 import os
 import pickle
 import shutil
@@ -34,14 +33,19 @@ from eelbrain.testing import (
     requires_mne_sample_data, skip_on_windows)
 
 
-OPERATORS = ((add, iadd, '+'),
-             (sub, isub, '-'),
-             (mul, imul, '*'),
-             (mul, imul, '*'),
-             (pow, ipow, '**'),
-             (truediv, itruediv, '/'),
-             (floordiv, ifloordiv, '//'),
-             (mod, imod, '%'))
+OPERATORS = {
+    '+': (operator.add, operator.iadd),
+    '-': (operator.sub, operator.isub),
+    '*': (operator.mul, operator.imul),
+    '/': (operator.truediv, operator.itruediv),
+    '//': (operator.floordiv, operator.ifloordiv),
+    '%': (operator.mod, operator.imod),
+    '**': (pow, operator.ipow),
+    '|': (operator.or_, operator.ior),
+    '^': (operator.xor, operator.ixor),
+    '&': (operator.and_, operator.iand),
+}
+FLOAT_OPERATORS = {k: ops for k, ops in OPERATORS.items() if k not in '|^&'}
 
 
 def test_aggregate():
@@ -1292,13 +1296,13 @@ def test_ndvar_indexing():
     u = ds[0, 'uts']
     dim = Categorial('test_dim', ['a', 'b'])
     v = NDVar([5, 1], dim)
-    for op, _, desc in OPERATORS:
+    for desc, (op, iop) in FLOAT_OPERATORS.items():
         y = op(v, u)
         assert_array_equal(y['a'], op(5, u.x))
         assert_array_equal(y['b'], op(1, u.x))
     # with Case from Var
     case = Var([4, 1])
-    for op, iop, desc in OPERATORS:
+    for desc, (op, iop) in FLOAT_OPERATORS.items():
         y = op(case, u)
         assert_array_equal(y[0], op(4, u.x))
         assert_array_equal(y[1], op(1, u.x))
@@ -1742,12 +1746,18 @@ def test_var():
     # binary operations
     c = 2
     v2 = Var([2., 2., 3., 3.], 'w', info)
+    vs = [v, v2]
+    vsi = [v.astype(int), v2.astype(int)]
     assert v.info == info
-    for op, iop, desc in OPERATORS:
+    for desc, (op, iop) in OPERATORS.items():
+        if desc in FLOAT_OPERATORS:
+            v, v2 = vs
+        else:
+            v, v2 = vsi
         target = op(v.x, c)
         vtarget = op(v.x, v2.x)
         # op
-        if desc == '+':
+        if desc == '+':  # reserved for model building
             w = v.copy()
             w.x = iop(w.x, c)
         else:
@@ -1768,6 +1778,7 @@ def test_var():
         w = v.copy()
         w = iop(w, v2)
         assert_array_equal(w, vtarget)
+    v, v2 = vs
 
     # methods
     w = abs(v)

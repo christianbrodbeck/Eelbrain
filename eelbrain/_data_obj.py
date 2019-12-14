@@ -1496,6 +1496,43 @@ class Var:
         x = self.x ** self._arg_x(other)
         return Var(x, *args)
 
+    def __ipow__(self, other):
+        self.x **= self._arg_x(other)
+        return self
+
+    def __and__(self, other):
+        args = op_name(self, '&', other)
+        if isinstance(other, NDVar):
+            dims, x_other, x_self = other._align(self)
+            return NDVar(x_self & x_other, dims, *args)
+        return Var(self.x & self._arg_x(other), *args)
+
+    def __iand__(self, other):
+        self.x &= self._arg_x(other)
+        return self
+
+    def __xor__(self, other):
+        args = op_name(self, '^', other)
+        if isinstance(other, NDVar):
+            dims, x_other, x_self = other._align(self)
+            return NDVar(x_self ^ x_other, dims, *args)
+        return Var(self.x ^ self._arg_x(other), *args)
+
+    def __ixor__(self, other):
+        self.x ^= self._arg_x(other)
+        return self
+
+    def __or__(self, other):
+        args = op_name(self, '|', other)
+        if isinstance(other, NDVar):
+            dims, x_other, x_self = other._align(self)
+            return NDVar(x_self | x_other, dims, *args)
+        return Var(self.x | self._arg_x(other), *args)
+
+    def __ior__(self, other):
+        self.x |= self._arg_x(other)
+        return self
+
     def __round__(self, n=0):
         return Var(np.round(self.x, n), self.name, self.info)
 
