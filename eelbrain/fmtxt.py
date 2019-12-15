@@ -1432,6 +1432,11 @@ class Table(FMTextElement):
         return self.__str__()
 
     def get_html(self, env={}):
+        if self._title is None:
+            title = None
+        else:
+            title = _html_element('h3', self._title, env)
+
         if self._caption is None:
             caption = None
         else:
@@ -1443,8 +1448,11 @@ class Table(FMTextElement):
 
         # table body
         table = []
-        if caption and not preferences['html_tables_in_fig']:
-            table.append(caption)
+        if not preferences['html_tables_in_fig']:
+            if title:
+                table.append(title)
+            if caption:
+                table.append(caption)
         for row in self.rows:
             if isinstance(row, str):
                 if row == "\\midrule":
@@ -1464,8 +1472,8 @@ class Table(FMTextElement):
 
         # embedd in a figure
         if preferences['html_tables_in_fig']:
-            if caption:
-                txt = '\n'.join((txt, caption))
+            if title or caption:
+                txt = '\n'.join([item for item in [title, txt, caption] if item is not None])
             txt = _html_element('figure', txt, env)
 
         return txt
