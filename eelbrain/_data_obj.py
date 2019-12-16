@@ -2115,7 +2115,7 @@ class _Effect:
         """
         idx = np.empty(len(self), dtype=np.intp)
         if order is None:
-            cells = self.cells
+            cells = self._sorted_cells()
         else:
             cells = order
             idx.fill(-1)
@@ -2135,6 +2135,9 @@ class _Effect:
             sort_idx = sort_idx[::-1]
 
         return sort_idx
+
+    def _sorted_cells(self):
+        raise NotImplementedError
 
 
 class Factor(_Effect):
@@ -2447,6 +2450,9 @@ class Factor(_Effect):
     @property
     def cells(self):
         return tuple(self._labels.values())
+
+    def _sorted_cells(self):
+        return natsorted(self.cells)
 
     def _cellsize(self):
         "int if all cell sizes are equal, otherwise a {cell: size} dict"
@@ -6161,9 +6167,7 @@ class Dataset(dict):
             order = self.eval(order)
 
         if not len(order) == self.n_cases:
-            err = ("Order must be of same length as Dataset; got length "
-                   "%i." % len(order))
-            raise ValueError(err)
+            raise ValueError(f"Order must be of same length as Dataset; got length {len(order)}")
 
         return order.sort_index(descending=descending)
 
@@ -6613,6 +6617,10 @@ class Interaction(_Effect):
     def cells(self):
         return tuple(cell for cell in self._all_cells if cell in self._value_set)
 
+    def _sorted_cells(self):
+        all_cells = product(*(f._sorted_cells() for f in self._factors))
+        return [cell for cell in all_cells if cell in self._value_set]
+
     @LazyProperty
     def _all_cells(self):
         return [*product(*(f.cells for f in self._factors))]
@@ -6799,6 +6807,9 @@ class NestedEffect(_Effect):
         if isinstance(index, Integral):
             return self.effect[index]
         return NestedEffect(self.effect[index], self.nestedin[index])
+
+    def _sorted_cells(self):
+        return self.effect._sorted_cells()
 
     @property
     def df(self):
