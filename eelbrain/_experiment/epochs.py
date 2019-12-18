@@ -80,7 +80,7 @@ class Epoch(EpochBase):
             if post_baseline_trigger_shift_min is None or post_baseline_trigger_shift_max is None:
                 raise DefinitionError(f"post_baseline_trigger_shift={post_baseline_trigger_shift} but missing post_baseline_trigger_shift_min and/or post_baseline_trigger_shift_max")
             cut_time = post_baseline_trigger_shift_max - post_baseline_trigger_shift_min
-            if cut_time >= tmax - tmin:
+            if not isinstance(tmax, str) and cut_time >= tmax - tmin:
                 raise DefinitionError("No data remaining after trigger shift")
 
         if decim is not None:
@@ -97,7 +97,7 @@ class Epoch(EpochBase):
         if baseline is None:
             if tmin >= 0:
                 baseline = False
-            elif tmax < 0:
+            elif not isinstance(tmax, str) and tmax < 0:
                 baseline = (None, None)
             else:
                 baseline = (None, 0)
@@ -112,7 +112,7 @@ class Epoch(EpochBase):
             raise TypeError(f"trigger_shift={trigger_shift!r}: needs to be float or str")
 
         self.tmin = typed_arg(tmin, float)
-        self.tmax = typed_arg(tmax, float)
+        self.tmax = typed_arg(tmax, float, str)
         self.samplingrate = typed_arg(samplingrate, float)
         self.decim = typed_arg(decim, int)
         self.baseline = baseline

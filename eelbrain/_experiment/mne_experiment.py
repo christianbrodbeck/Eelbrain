@@ -112,13 +112,13 @@ CACHE_HELP = "A change in the {experiment} class definition (or the input files)
 ################################################################################
 
 
-def _mask_ndvar(ds, name):
-    y = ds[name]
+def _mask_ndvar(y: NDVar):
     if y.source.parc is None:
-        raise RuntimeError('%r has no parcellation' % (y,))
+        raise RuntimeError(f'{y} has no parcellation')
     mask = y.source.parc.startswith('unknown')
     if mask.any():
-        ds[name] = y.sub(source=np.invert(mask))
+        return y.sub(source=np.invert(mask))
+    return y
 
 
 def _time_str(t):
@@ -2212,6 +2212,15 @@ class MneExperiment(FileTree):
             tmax = epoch.tmax
         if baseline is True:
             baseline = epoch.baseline
+
+        if isinstance(tmax, str):
+            tmax = ds.eval(tmax)
+            assert isinstance(tmax, Var)
+            assert not epoch.post_baseline_trigger_shift, 'not implemented with variable tmax'
+            variable_tmax = True
+        else:
+            variable_tmax = False
+
         if pad:
             if baseline:
                 b0, b1 = baseline
@@ -2221,20 +2230,26 @@ class MneExperiment(FileTree):
                     b1 = tmax
                 baseline = (b0, b1)
             tmin -= pad
-            tmax += pad
+            if tmax is not None:
+                tmax = tmax + pad
+            elif tstop is not None:
+                tstop = tstop + pad
         decim = decim_param(samplingrate, decim, epoch, ds.info['sfreq'])
 
-        with warnings.catch_warnings():
-            warnings.filterwarnings('ignore', 'The events passed to the Epochs constructor', RuntimeWarning)
-            ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim, drop_bad_chs=False, tstop=tstop)
+        if variable_tmax:
+            ds['epochs'] = load.fiff.variable_length_mne_epochs(ds, tmin, tmax, baseline, allow_truncation=True, decim=decim)
+            epochs_list = ds['epochs']
+        else:
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', 'The events passed to the Epochs constructor', RuntimeWarning)
+                ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim, drop_bad_chs=False, tstop=tstop)
 
-        # post baseline-correction trigger shift
-        if trigger_shift and epoch.post_baseline_trigger_shift:
-            ds['epochs'] = shift_mne_epoch_trigger(ds['epochs'],
-                                                   ds[epoch.post_baseline_trigger_shift],
-                                                   epoch.post_baseline_trigger_shift_min,
-                                                   epoch.post_baseline_trigger_shift_max)
-        info = ds['epochs'].info
+            # post baseline-correction trigger shift
+            if trigger_shift and epoch.post_baseline_trigger_shift:
+                ds['epochs'] = shift_mne_epoch_trigger(ds['epochs'], ds[epoch.post_baseline_trigger_shift], epoch.post_baseline_trigger_shift_min, epoch.post_baseline_trigger_shift_max)
+            epochs_list = [ds['epochs']]
+        info = epochs_list[0].info
+
         data_to_ndvar = data.data_to_ndvar(info)
 
         # determine channels to interpolate
@@ -2257,10 +2272,13 @@ class MneExperiment(FileTree):
                     raise ValueError(f"interpolate_bads={interpolate_bads}")
             else:
                 reset_bads = True
-            ds['epochs'].interpolate_bads(reset_bads=reset_bads)
+
+            for epochs in epochs_list:
+                epochs.interpolate_bads(reset_bads=reset_bads)
 
         # interpolate channels
         if reject and bads_individual:
+            assert not variable_tmax
             if 'mag' in data_to_ndvar:
                 interp_path = self.get('interp-file')
                 if exists(interp_path):
@@ -2281,11 +2299,17 @@ class MneExperiment(FileTree):
                 sysname = pipe.get_sysname(info, ds.info['subject'], data_kind)
                 connectivity = pipe.get_connectivity(data_kind)
                 name = 'meg' if data_kind == 'mag' else data_kind
-                ds[name] = load.fiff.epochs_ndvar(ds['epochs'], data=data_kind, sysname=sysname, connectivity=connectivity, exclude=exclude)
-                if add_bads_to_info:
-                    ds[name].info[BAD_CHANNELS] = ds['epochs'].info['bads']
-                if isinstance(data.sensor, str):
-                    ds[name] = getattr(ds[name], data.sensor)('sensor')
+                if variable_tmax:
+                    ys = [load.fiff.epochs_ndvar(e, data=data_kind, sysname=sysname, connectivity=connectivity, exclude=exclude)[0] for e in ds['epochs']]
+                    if isinstance(data.sensor, str):
+                        ys = [getattr(y, data.sensor)('sensor') for y in ys]
+                else:
+                    ys = load.fiff.epochs_ndvar(ds['epochs'], data=data_kind, sysname=sysname, connectivity=connectivity, exclude=exclude)
+                    if add_bads_to_info:
+                        ys.info[BAD_CHANNELS] = ds['epochs'].info['bads']
+                    if isinstance(data.sensor, str):
+                        ys = getattr(ys, data.sensor)('sensor')
+                ds[name] = ys
 
             if ndvar != 'both':
                 del ds['epochs']
@@ -2407,8 +2431,13 @@ class MneExperiment(FileTree):
         # make sure annotation exists
         if parc:
             self.make_annot()
-        epochs = ds['epochs']
-        inv = self.load_inv(epochs)
+
+        is_variable_time = isinstance(ds['epochs'], Datalist)
+        if is_variable_time:
+            epoch_list = ds['epochs']
+        else:
+            epoch_list = [ds['epochs']]
+        inv = self.load_inv(epoch_list[0])
 
         # determine whether initial source-space can be restricted
         mri_sdir = self.get('mri-sdir')
@@ -2419,30 +2448,37 @@ class MneExperiment(FileTree):
         else:
             label = None
         method, make_kw, apply_kw = self._inv_params()
-        stc = apply_inverse_epochs(epochs, inv, label=label, **apply_kw)
+        stc_list = [apply_inverse_epochs(epoch, inv, label=label, **apply_kw) for epoch in epoch_list]
+        if is_variable_time:
+            stc_list = [stc for stc, in stc_list]
 
         if ndvar:
             src = self.get('src')
-            src = load.fiff.stc_ndvar(stc, mrisubject, src, mri_sdir, method, make_kw.get('fixed', False), parc=parc, connectivity=self.get('connectivity'))
+            ndvar_list = [load.fiff.stc_ndvar(stc, mrisubject, src, mri_sdir, method, make_kw.get('fixed', False), parc=parc, connectivity=self.get('connectivity')) for stc in stc_list]
             if src_baseline:
-                src -= src.summary(time=src_baseline)
+                for v in ndvar_list:
+                    v -= v.summary(time=src_baseline)
 
             if morph:
                 common_brain = self.get('common_brain')
                 with self._temporary_state:
                     self.make_annot(mrisubject=common_brain)
-                ds['srcm'] = morph_source_space(src, common_brain)
+                ndvar_list = [morph_source_space(v, common_brain) for v in ndvar_list]
                 if mask and not is_scaled:
-                    _mask_ndvar(ds, 'srcm')
+                    ndvar_list = [_mask_ndvar(v) for v in ndvar_list]
+                key = 'srcm'
             else:
-                ds['src'] = src
+                key = 'src'
+            src_var = ndvar_list
         else:
             if src_baseline:
                 raise NotImplementedError("Baseline for SourceEstimate")
             if morph:
                 raise NotImplementedError("Morphing for SourceEstimate")
-            ds['stc'] = stc
+            key = 'stc'
+            src_var = stc_list
 
+        ds[key] = src_var if is_variable_time else src_var[0]
         if del_epochs:
             del ds['epochs']
         return ds
@@ -2861,12 +2897,12 @@ class MneExperiment(FileTree):
             mri_sdir = self.get('mri-sdir')
             fixed = make_kw.get('fixed', False)
             parc = self.get('parc') or None
-            ds[key] = load.fiff.stc_ndvar(stcs, subject, src, mri_sdir, method, fixed, parc=parc, connectivity=self.get('connectivity'))
+            stcs = load.fiff.stc_ndvar(stcs, subject, src, mri_sdir, method, fixed, parc=parc, connectivity=self.get('connectivity'))
             if mask:
-                _mask_ndvar(ds, key)
+                stcs = _mask_ndvar(stcs)
         else:
             key = 'stcm' if morph else 'stc'
-            ds[key] = stcs
+        ds[key] = stcs
 
         if ndvar == 1 or not keep_evoked:
             del ds['evoked']

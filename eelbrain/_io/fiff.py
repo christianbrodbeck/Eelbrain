@@ -4,6 +4,7 @@ from collections.abc import Iterable
 import fnmatch
 from itertools import zip_longest
 from logging import getLogger
+from math import floor
 import os
 from pathlib import Path
 import re
@@ -327,11 +328,11 @@ def epochs(ds, tmin=-0.1, tmax=None, baseline=None, decim=1, mult=1, proj=False,
     tmax : scalar
         Last sample to include in the epochs in seconds (Default 0.6; use
         ``tstop`` instead to specify index exclusive of last sample).
-    baseline : (tmin, tmax)
-        Time interval for baseline correction. ``tmin`` and ``tmax`` in seconds,
-        or None to use all the data (e.g., ``(None, 0)`` uses all the data from
-        the beginning of the epoch up to t=0). ``baseline=None`` for no baseline
-        correction (default).
+    baseline : (float, float) | None
+        Time interval for baseline correction. ``(tmin, tmax)`` tuple in
+        seconds, or ``None`` to use all the data (e.g., ``(None, 0)`` uses all
+        the data from the beginning of the epoch up to ``t = 0``). Set to
+        ``None`` for no baseline correction (default).
     decim : int
         Downsample the data by this factor when importing. ``1`` means no
         downsampling. Note that this function does not low-pass filter
@@ -418,11 +419,11 @@ def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
     tmax : scalar
         Last sample to include in the epochs in seconds (Default 0.6; use
         ``tstop`` instead to specify index exclusive of last sample).
-    baseline : tuple(tmin, tmax) | ``None``
-        Time interval for baseline correction. Tmin/tmax in seconds, or None to
-        use all the data (e.g., ``(None, 0)`` uses all the data from the
-        beginning of the epoch up to t=0). ``baseline=None`` for no baseline
-        correction (default).
+    baseline : (float, float) | None
+        Time interval for baseline correction. ``(tmin, tmax)`` tuple in
+        seconds, or ``None`` to use all the data (e.g., ``(None, 0)`` uses all
+        the data from the beginning of the epoch up to ``t = 0``). Set to
+        ``None`` for no baseline correction (default).
     decim : int
         Downsample the data by this factor when importing. ``1`` means no
         downsampling. Note that this function does not low-pass filter
@@ -510,11 +511,11 @@ def add_mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, target='epochs',
     tmax : scalar
         Last sample to include in the epochs in seconds (Default 0.6; use
         ``tstop`` instead to specify index exclusive of last sample).
-    baseline : tuple(tmin, tmax) | ``None``
-        Time interval for baseline correction. Tmin/tmax in seconds, or None to
-        use all the data (e.g., ``(None, 0)`` uses all the data from the
-        beginning of the epoch up to t=0). ``baseline=None`` for no baseline
-        correction (default).
+    baseline : (float, float) | None
+        Time interval for baseline correction. ``(tmin, tmax)`` tuple in
+        seconds, or ``None`` to use all the data (e.g., ``(None, 0)`` uses all
+        the data from the beginning of the epoch up to ``t = 0``). Set to
+        ``None`` for no baseline correction (default).
     target : str
         Name for the Epochs object in the Dataset.
     ...
@@ -559,11 +560,11 @@ def mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, i_start='i_start',
     tmax : scalar
         Last sample to include in the epochs in seconds (Default 0.6; use
         ``tstop`` instead to specify index exclusive of last sample).
-    baseline : tuple(tmin, tmax) | ``None``
-        Time interval for baseline correction. Tmin/tmax in seconds, or None to
-        use all the data (e.g., ``(None, 0)`` uses all the data from the
-        beginning of the epoch up to t=0). ``baseline=None`` for no baseline
-        correction (default).
+    baseline : (float, float) | None
+        Time interval for baseline correction. ``(tmin, tmax)`` tuple in
+        seconds, or ``None`` to use all the data (e.g., ``(None, 0)`` uses all
+        the data from the beginning of the epoch up to ``t = 0``). Set to
+        ``None`` for no baseline correction (default).
     i_start : str
         name of the variable containing the index of the events.
     raw : None | mne Raw
@@ -730,6 +731,49 @@ def sensor_dim(info, picks=None, sysname=None, connectivity=None):
     return Sensor(ch_locs, ch_names, sysname, connectivity=connectivity)
 
 
+def variable_length_mne_epochs(ds, tmin, tmax, baseline=None, allow_truncation=False, picks=None, **kwargs):
+    """Load mne Epochs where each epoch has a different length
+
+    Parameters
+    ----------
+    ds : Dataset
+        Dataset containing a variable which defines epoch cues (i_start).
+    tmin : scalar
+        First sample to include in the epochs in seconds (Default is -0.1).
+    tmax : sequence of scalar
+        Last sample to include in each epoch in seconds.
+    baseline : (float, float) | None
+        Time interval for baseline correction. ``(tmin, tmax)`` tuple in
+        seconds, or ``None`` to use all the data (e.g., ``(None, 0)`` uses all
+        the data from the beginning of the epoch up to ``t = 0``). Set to
+        ``None`` for no baseline correction (default).
+    allow_truncation : bool
+        If a ``tmax`` value falls outside the data available in ``raw``,
+        automatically truncate the epoch (by default this raises a
+        ``ValueError``).
+    ...
+        :class:`mne.Epochs` parameters.
+    """
+    if baseline is False:
+        baseline = None
+    raw = ds.info['raw']
+    if picks is None and raw.info['bads']:
+        picks = mne.pick_types(raw.info, eeg=True, eog=True, ref_meg=False, exclude=[])
+    events = _mne_events(ds)
+    out = []
+    for i, tmax_i in enumerate(tmax):
+        i_max = events[i, 0] + floor(tmax_i * raw.info['sfreq'])
+        if raw.last_samp < i_max:
+            if allow_truncation:
+                tmax_i = (raw.last_samp - events[i, 0]) / raw.info['sfreq']
+            else:
+                missing = (i_max - raw.last_samp) / raw.info['sfreq']
+                raise ValueError(f"tmax={tmax}, tmax[{i}] {tmax_i} is outside of data range by {missing:g} s")
+        epochs_i = mne.Epochs(raw, events[i:i+1], None, tmin, tmax_i, baseline, picks, preload=True, **kwargs)
+        out.append(epochs_i)
+    return out
+
+
 def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads',
               sysname=None,  connectivity=None,
               inv=None, lambda2=1, method='dSPM', pick_ori=None, src=None,
@@ -805,6 +849,8 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
         raw = mne_raw(raw)
     if raw.filenames and raw.filenames[0]:
         name = os.path.basename(raw.filenames[0])
+    else:
+        name = None
     start_scalar = i_start is None or isinstance(i_start, int)
     stop_scalar = i_stop is None or isinstance(i_stop, int)
     if start_scalar or stop_scalar:
