@@ -547,7 +547,7 @@ def _mne_events(ds=None, i_start='i_start', trigger='trigger'):
 
 def mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, i_start='i_start',
                raw=None, drop_bad_chs=True, picks=None, reject=None, tstop=None,
-               name=None, decim=1, **kwargs):
+               decim=1, **kwargs):
     """Load epochs as :class:`mne.Epochs`.
 
     Parameters
@@ -583,8 +583,6 @@ def mne_epochs(ds, tmin=-0.1, tmax=None, baseline=None, i_start='i_start',
     ...
         :class:`mne.Epochs` parameters.
     """
-    if name is not None:
-        raise RuntimeError("MNE Epochs no longer have a `name` parameter")
     if baseline is False:
         baseline = None
     if raw is None:
@@ -833,8 +831,7 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
         info = _sensor_info(data, None, raw.info)
     else:
         assert data is None
-        dim = SourceSpace.from_mne_source_spaces(inv['src'], src, subjects_dir,
-                                                 parc, label)
+        dim = SourceSpace.from_mne_source_spaces(inv['src'], src, subjects_dir, parc, label)
         inv = prepare_inverse_operator(inv, 1, lambda2, method)
         info = {}  # FIXME
 
