@@ -82,7 +82,7 @@ def corr(y, x, out=None, perm=None):
         if np.isscalar(out):
             out = 0
         else:
-            out.place(isnan, 0)
+            np.place(out, isnan, 0)
     return out
 
 
