@@ -287,21 +287,22 @@ class RevCorrData:
             if dim is not None and h.dims[-2] != dim:
                 raise ValueError(f"prefit: {h.name!r} {dim.name} dimension mismatch")
         # generate flat h
-        h_n_times = len(h0.get_dim('time'))
+        h_n_times = len(h0.get_dim('time')) #JPK: len(timedim) of res.h[0]
         h_flat = []
         h_index = []
         for h in hs:
             dimnames = h.get_dimnames(first=y_dimnames, last='time')
+            h_n_times = len(h.get_dim('time')) # JPK: inserted
             h_data = h.get_data(dimnames)
             index = meta[h.name][1]
             if isinstance(index, int):
-                h_flat.append(h_data.reshape((n_y, 1, h_n_times)))
+                h_flat.append(h_data.reshape((n_y, 1, h_n_times))) #JPK: changed to h_n_times of each predictor
                 h_index.append(index)
             else:
                 n_hdim = index.stop - index.start
                 h_flat.append(h_data.reshape((n_y, n_hdim, h_n_times)))
                 h_index.extend(range(index.start, index.stop))
-        h_flat = np.concatenate(h_flat, 1)
+        h_flat = np.concatenate(h_flat, 1) #JPK: concatenation may not be possible with mismatched time_dim
         # assert scaling equivalent
         # assert np.all(res.x_mean == self.x_mean[h_index])
         # assert np.all(res.x_scale == self.x_scale[h_index])

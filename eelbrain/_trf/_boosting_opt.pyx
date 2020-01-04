@@ -139,7 +139,7 @@ def generate_options(
         FLOAT64 [:] x_pads,  # (n_stims,)
         INT8 [:] x_active,  # for each predictor whether it is still used
         INT64 [:,:] indexes,  # training segment indexes
-        int i_start,  # kernel start index (y/x offset)
+        INT64[:] i_start,  # kernel start index (y/x offset) JPK: used to be int i_start
         size_t error,  # ID of the error function (l1/l2)
         double delta,
         # buffers
@@ -155,6 +155,11 @@ def generate_options(
 
     if error != 1 and error != 2:
         raise RuntimeError("error=%r" % (error,))
+
+    if len(i_start) != 1: #JPK
+        raise NotImplementedError('JPK: Not implemented') #JPK
+    else: #JPK
+        i_start = i_start[0] #JPK
 
     with nogil:
         for i_stim in range(n_stims):

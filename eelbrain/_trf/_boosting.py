@@ -37,6 +37,7 @@ from .._exceptions import OldVersionError
 from .._utils import LazyProperty, user_activity
 from ._boosting_opt import l1, l2, generate_options, update_error
 from .shared import RevCorrData
+import pdb #JPK
 
 
 # BoostingResult version
@@ -402,14 +403,23 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
 
     # TRF extent in indices
     tstep = data.time.tstep
-    i_start = int(round(tstart / tstep))
-    i_stop = int(round(tstop / tstep))
-    trf_length = i_stop - i_start
+    if isinstance(tstart, (tuple, list, np.ndarray)): #JPK
+        is_trf_len = True
+        if len(tstart) == len(tstop): #JPK
+            i_start = np.asarray([int(round(t_ / tstep)) for t_ in tstart]) #JPK
+            i_stop = np.asarray([int(round(t_ / tstep)) for t_ in tstop]) #JPK
+        else: #JPK
+            raise ValueError(f"tstart and tstop must have the same length, len(tstart) = {len(tstart)}, len(tstop) = {len(tstop)}") #JPK
+    else: #JPK
+        is_trf_len = False
+        i_start = np.asarray([int(round(tstart / tstep))]) #JPK 
+        i_stop = np.asarray([int(round(tstop / tstep))]) #JPK
+    trf_length = np.asarray([i2 - i1 for i1, i2 in zip(i_start, i_stop)]) #JPK
 
-    if data.segments is None:
-        i_skip = trf_length - 1
-    else:
-        i_skip = 0
+    if data.segments is None: #JPK
+        i_skip = [t_ - 1 for t_ in trf_length] #JPK
+    else: #JPK
+        i_skip = [0] #JPK
 
     # progress bar
     n_cv = len(data.cv_segments)
@@ -417,7 +427,10 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     t_start = time.time()
     # result containers
     res = np.empty((3, n_y))  # r, rank-r, error
-    h_x = np.empty((n_y, n_x, trf_length))
+    if not is_trf_len: #JPK
+        h_x = np.empty((n_y, n_x, trf_length[0])) #JPK n_x must match trf-lens since it corresponds to the predictor TRFs
+    else: #JPK
+        raise NotImplementedError('JPK: not yet implemented trf_len h') # JPK: trf_lengths are different    
     store_y_pred = bool(data.vector_dim) or debug
     y_pred = np.empty_like(data.y) if store_y_pred else np.empty(data.y.shape[1:])
     # boosting
@@ -444,7 +457,10 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
                         if hs:
                             h = np.mean(hs, 0, out=h_x[y_i])
                             y_i_pred = y_pred[y_i] if store_y_pred else y_pred
-                            convolve(h, data.x, data.x_pads, i_start, data.segments, y_i_pred)
+                            if len(i_start) != 1: #JPK
+                                raise NotImplementedError('JPK: Not implemeneted') #JPK
+                            else:
+                                convolve(h, data.x, data.x_pads, i_start[0], data.segments, y_i_pred) #JPK
                             if not data.vector_dim:
                                 res[:, y_i] = evaluate_kernel(data.y[y_i], y_i_pred, error, i_skip, data.segments)
                         else:
@@ -588,12 +604,17 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
     n_stims, n_times = x.shape
     assert y.shape == (n_times,)
 
-    h = np.zeros((n_stims, trf_length))
+    if isinstance(trf_length, (tuple, list, np.ndarray)): #JPK
+        if len(trf_length)!=1: #JPK
+            raise NotImplementedError('JPK: Not implemented') #JPK
+        h = np.zeros((n_stims,trf_length[0])) #JPK
+    else:
+        h = np.zeros((n_stims,trf_length)) #JPK: TODO needs to be initialized with multiple lens 
 
     # buffers
     y_error = y.copy()
-    new_error = np.empty(h.shape)
-    new_sign = np.empty(h.shape, np.int8)
+    new_error = np.empty(h.shape) #JPK: TODO h wont be an array
+    new_sign = np.empty(h.shape, np.int8) #JPK TODO h wont be an array
     x_active = np.ones(n_stims, dtype=np.int8)
 
     # history
@@ -639,7 +660,7 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
                     # revert changes
                     for i in range(-undo):
                         step = history.pop(-1)
-                        h[step.i_stim, step.i_time] -= step.delta
+                        h[step.i_stim, step.i_time] -= step.delta #JPK: TODO h wont be an array
                         update_error(y_error, x[step.i_stim], x_pads[step.i_stim], all_index, -step.delta, step.i_time + i_start)
                     step = history[-1]
                     # disable predictor
@@ -845,6 +866,11 @@ def evaluate_kernel(y, y_pred, error, i_skip, segments=None):
         Error corresponding to error_func.
     """
     # discard onset
+    if isinstance(i_skip,(tuple, list, np.ndarray)): #JPK
+        if len(i_skip) != 1: #JPK 
+            raise NotImplementedError('JPK Not implemented') #JPK
+        i_skip = i_skip[0] #JPK
+    
     if i_skip:
         assert segments is None, "Not implemented"
         y = y[i_skip:]
