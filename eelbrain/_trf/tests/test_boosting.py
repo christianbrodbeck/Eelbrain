@@ -238,3 +238,11 @@ def test_trf_len(n_workers):
 
     # test values from running function, not verified independently
     res = boosting(y, x2, [0, -0.1], [1,0.5])
+    res = boosting(y, x2, [0], [1])
+    res = boosting(y, x2, 0, 1)
+    res = boosting(y, x1, [0], [1])
+    res = boosting(y, x1, 0, 1)
+    res = boosting(y, [x1, x2], [0,-0.1], [1,0.5])
+    import pdb
+    pdb.set_trace()
+

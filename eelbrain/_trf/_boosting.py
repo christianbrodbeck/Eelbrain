@@ -394,35 +394,57 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     elif not isinstance(debug, bool):
         raise TypeError(f"debug={debug!r}")
 
-    if isinstance(tstart, (tuple, list, np.ndarray)): #JPK
-        if len(tstart) != len(tstop): #JPK
-            raise ValueError( #JPK
-                f'JPK: must have same number of tstart ({len(tstart)}, tstop ({len(tstop)}), predictors ({x}') #JPK
-        if len(tstart) == 0: #JPK
-            raise ValueError(f'JPK: tstart cannot be an empty list') #JPK
-    else: #JPK
-        npred = len(x) if isinstance(x, (tuple, list)) else 1
-        tstart = [tstart for i in range(npred)] #JPK
-        tstop = [tstop for i in range(npred)] #JPK
-
     data = RevCorrData(y, x, error, scale_data, ds)
     data.apply_basis(basis, basis_window)
     data.prefit(prefit)
     data.initialize_cross_validation(partitions, model, ds)
     n_y = len(data.y)
     n_x = len(data.x)
+    if isinstance(tstart, (tuple, list, np.ndarray)): #JPK
+        if len(tstart) != len(tstop): #JPK
+            raise ValueError( #JPK
+                f'JPK: must have same number of tstart ({len(tstart)}, tstop ({len(tstop)}), predictors ({x})') #JPK
+        elif len(tstart) == 0: #JPK
+            raise ValueError(f'JPK: tstart cannot be an empty list') #JPK
+        if len(tstart) != n_x:
+            if len(tstart) == 1:
+                tstart = [tstart[0] for _ in range(n_x)]
+                tstop = [tstop[0] for _ in range(n_x)]
+            elif len(tstart) == len(data.x_name):
+                print('_x_meta')
+                tstart2 = []
+                tstop2 = []
+                for ix, xx in enumerate(data._x_meta):
+                    if xx[1] is None: # xx[1] = None if 1 dimensional predictor, else xx[1] = Scalar() with len predictor dims
+                        tstart2.append(tstart[ix])
+                        tstop2.append(tstop[ix])
+                    else:
+                        for _ in range(len(xx[1])):
+                            tstart2.append(tstart[ix])
+                            tstop2.append(tstop[ix])
+                tstart = tstart2
+                tstop = tstop2
+            else:
+                raise ValueError(  # JPK
+                    f'JPK: cannot infer number of tstart ({len(tstart)}, predictors x ({len(x)}), dimensions n_x ({n_x})')  # JPK
+    else: #JPK
+        tstart = [tstart for _ in range(n_x)] #JPK
+        tstop = [tstop for _ in range(n_x)] #JPK
+
+
 
     # TRF extent in indices
     tstep = data.time.tstep
     i_start = np.asarray([int(round(t_ / tstep)) for t_ in tstart]) #JPK
     i_stop = np.asarray([int(round(t_ / tstep)) for t_ in tstop]) #JPK
+    i_start_min = np.min(i_start)
+    i_stop_max = np.max(i_stop)
     trf_length = np.asarray([i2 - i1 for i1, i2 in zip(i_start, i_stop)]) #JPK
-    n_times_trf_max = max(trf_length) #JPK
+    n_times_trf_max = i_stop_max - i_start_min #JPK
     if data.segments is None: #JPK
         i_skip = [t_ - 1 for t_ in trf_length] #JPK
     else: #JPK
         i_skip = [0] #JPK
-
     # progress bar
     n_cv = len(data.cv_segments)
     pbar = tqdm(desc=f"Boosting{f' {n_y} signals' if n_y > 1 else ''}", total=n_y * n_cv, disable=CONFIG['tqdm'])
@@ -456,10 +478,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
                         if hs:
                             h = np.mean(hs, 0, out=h_x[y_i])
                             y_i_pred = y_pred[y_i] if store_y_pred else y_pred
-                            if len(i_start) != 1: #JPK
-                                raise NotImplementedError('JPK: Not implemeneted') #JPK
-                            else:
-                                convolve(h, data.x, data.x_pads, i_start[0], data.segments, y_i_pred) #JPK
+                            convolve(h, data.x, data.x_pads, i_start, i_stop, data.segments, y_i_pred) #JPK
                             if not data.vector_dim:
                                 res[:, y_i] = evaluate_kernel(data.y[y_i], y_i_pred, error, i_skip, data.segments)
                         else:
@@ -477,8 +496,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         for y_i, y_ in enumerate(data.y):
             hs = []
             for segments, train, test in data.cv_segments:
-                h = boost(y_, data.x, data.x_pads, segments, train, test, i_start, trf_length, delta, mindelta_, error, selective_stopping)
-                print('boost done') #JPK
+                h = boost(y_, data.x, data.x_pads, segments, train, test, i_start, i_stop, delta, mindelta_, error, selective_stopping)
                 if h is not None:
                     hs.append(h)
                 pbar.update()
@@ -486,7 +504,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
             if hs:
                 h = np.mean(hs, 0, out=h_x[y_i])
                 y_i_pred = y_pred[y_i] if store_y_pred else y_pred
-                convolve(h, data.x, data.x_pads, i_start, data.segments, y_i_pred)
+                convolve(h, data.x, data.x_pads, i_start, i_stop, data.segments, y_i_pred)
                 if not data.vector_dim:
                     res[:, y_i] = evaluate_kernel(data.y[y_i], y_i_pred, error, i_skip, data.segments)
             else:
@@ -535,12 +553,12 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     else:
         debug_attrs = {}
 
-    h = data.package_kernel(h_x, tstart)
+    h = data.package_kernel(h_x, min(tstart))
     model_repr = None if model is None else data.model
     prefit_repr = None if prefit is None else repr(prefit)
     return BoostingResult(
         # input parameters
-        data.y_name, data.x_name, tstart, tstop, scale_data, delta, mindelta, error,
+        data.y_name, data.x_name, min(tstart), max(tstop), scale_data, delta, mindelta, error,
         basis, basis_window, partitions, data.partitions, model_repr, prefit_repr,
         # result parameters
         h, r, isnan, spearmanr, residual, t_run,
@@ -561,7 +579,7 @@ class BoostingStep:
         self.e_test = e_test
 
 
-def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
+def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
           delta, mindelta, error, selective_stopping=0, return_history=False):
     """Estimate one filter with boosting
 
@@ -603,14 +621,21 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
     error = ERROR_FUNC[error]
     n_stims, n_times = x.shape
     assert y.shape == (n_times,)
-    assert len(trf_length) == n_stims #JPK
-    n_times_trf_max = max(trf_length) #JPK
-    h = np.zeros((n_stims, n_times_trf_max)) #JPK: h used to be (n_stims, n_trf_times) is now list
+    if len(i_start) != n_stims:
+        if len(i_start) > 1:
+            raise ValueError(f'i_start = {i_start} and n_stims = {n_stims}')
+        else:
+            i_start = np.asarray([i_start[0] for _ in range(n_stims)])
+            i_stop = np.asarray([i_stop[0] for _ in range(n_stims)])
+    trf_length = i_stop - i_start
+    n_times_trf_max = np.max(trf_length)
+    h_i_start = i_start - min(i_start)
+    h = np.zeros((n_stims, n_times_trf_max))
 
     # buffers
     y_error = y.copy()
-    new_error = np.empty(h.shape) #JPK: TODO h wont be an array
-    new_sign = np.empty(h.shape, np.int8) #JPK TODO h wont be an array
+    new_error = np.empty(h.shape)
+    new_sign = np.empty(h.shape, np.int8)
     x_active = np.ones(n_stims, dtype=np.int8)
 
     # history
@@ -675,9 +700,15 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
                 break
 
         # generate possible movements -> training error
-        generate_options(y_error, x, x_pads, x_active, train_index, i_start, delta_error_func, delta, new_error, new_sign) #JPK
-
-        i_stim, i_time = np.unravel_index(np.argmin(new_error), h.shape)
+        generate_options(y_error, x, x_pads, x_active, train_index, i_start, delta_error_func, delta, new_error,
+                         trf_length, new_sign) #JPK
+        min_err = 99999999 #JPK
+        for i_st in range(n_stims): #JPK
+            min_i = np.argmin(new_error[i_st, :trf_length[i_st]]) #JPK
+            min_v = new_error[i_st, min_i] #JPK
+            if min_v < min_err: #JPK
+                min_err = min_v #JPK
+                i_stim, i_time = i_st, min_i #JPK
         new_train_error = new_error[i_stim, i_time]
         delta_signed = new_sign[i_stim, i_time] * delta
 
@@ -708,6 +739,13 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
         for step in history[-1: best_iteration: -1]:
             if step.delta:
                 h[step.i_stim, step.i_time] -= step.delta
+        h_len = max(i_stop) - min(i_start)
+        h_i_start = i_start - min(i_start)
+        h_i_stop = [h1 + h2 for h1, h2 in zip(h_i_start, trf_length)]
+        h_new = np.zeros((n_stims, h_len))
+        for i_stim in range(n_stims):
+            h_new[i_stim, h_i_start[i_stim]:h_i_stop[i_stim]] = h[i_stim, :trf_length[i_stim]]
+        h = h_new
     else:
         h = None
 
@@ -768,7 +806,7 @@ def put_jobs(queue, n_y, n_segs, stop):
         queue.put((JOB_TERMINATE, None))
 
 
-def convolve(h, x, x_pads, h_i_start, segments=None, out=None):
+def convolve(h, x, x_pads, i_start, i_stop=None, segments=None, out=None):
     """h * x with time axis matching x
 
     Parameters
@@ -779,20 +817,28 @@ def convolve(h, x, x_pads, h_i_start, segments=None, out=None):
         X.
     x_pads : array (n_stims,)
         Padding for x.
-    h_i_start : int
+    h_i_start : int | list
         Time shift of the first sample of ``h``.
     segments : array (n_segments, 2)
         Data segments.
     out : array
         Buffer for predicted ``y``.
     """
-    if isinstance(h_i_start, (tuple, list, np.ndarray)): #JPK
-        if len(h_i_start)==1: #JPK
-            h_i_start = h_i_start[0] #JPK
-        else: #JPK
-            raise NotImplementedError('JPK: NotImplemented') #JPK
     n_x, n_times = x.shape
-    h_n_times = h.shape[1]
+    if i_stop is None:
+        i_stop = h.shape[1]
+    if isinstance(i_start, (tuple, list, np.ndarray)):
+        if len(i_start) != n_x:
+            if len(i_start) != 1:
+                raise ValueError(f'i_start = {i_start}, n_x = {n_x}')
+            i_start = np.array([i_start[0] for _ in range(n_x)])
+            i_stop = np.array([i_stop[0] for _ in range(n_x)])
+    else:
+        i_start = np.array([i_start for _ in range(n_x)])
+        i_stop = np.array([i_stop for _ in range(n_x)])
+    h_n_times_max = max(i_stop) - min(i_start)
+    h_i_start = i_start - min(i_start)
+    h_n_times = np.array([i2 - i1 for i1, i2 in zip(i_start, i_stop)])
     if out is None:
         out = np.zeros(n_times)
     else:
@@ -802,40 +848,41 @@ def convolve(h, x, x_pads, h_i_start, segments=None, out=None):
         segments = ((0, n_times),)
 
     # determine valid section of convolution (cf. _ndvar.convolve())
-    h_i_max = [h_ + h_n_times - 1 for h_ in h_i_start] #JPK
-    out_start = [max(0, h_) for h_ in h_i_start] #JPK
-    out_stop = [min(0, h_) for h_ in h_i_max] #JPK
-    conv_start = [max(0, -h_) for h_ in h_i_start] #JPK
-    conv_stop = [-h_ for h_ in h_i_start] #JPK
+    h_pad = np.sum(h * x_pads[:, newaxis], 0)
 
     # padding
-    h_pad = np.sum(h * x_pads[:, newaxis], 0)
-    # padding for pre-
-    pad_head_n_times = max(0, h_n_times + h_i_start)
-    if pad_head_n_times:
-        pad_head = np.zeros(pad_head_n_times)
-        for i in range(min(pad_head_n_times, h_n_times)):
-            pad_head[:pad_head_n_times - i] += h_pad[- i - 1]
-    else:
-        pad_head = None
-    # padding for post-
-    pad_tail_n_times = -min(0, h_i_start)
-    if pad_tail_n_times:
-        pad_tail = np.zeros(pad_tail_n_times)
-        for i in range(pad_tail_n_times):
-            pad_tail[i:] += h_pad[i]
-    else:
-        pad_tail = None
+    # padding for pre-'
+    for ind in range(n_x):
+        h_i_max = i_stop[ind] + h_n_times[ind]  # JPK
+        out_start = max(0, h_i_start[ind])  # JPK
+        out_stop = min(0, h_i_max)  # JPK
+        conv_start = max(0, -h_i_start[ind])  # JPK
+        conv_stop = -h_i_start[ind]  # JPK
 
-    for start, stop in segments:
-        if pad_head is not None:
-            out[start: start + pad_head_n_times] += pad_head
-        if pad_tail is not None:
-            out[stop - pad_tail_n_times: stop] += pad_tail
+        pad_head_n_times = max(0, h_n_times[ind] + h_i_start[ind])
+        if pad_head_n_times:
+            pad_head = np.zeros(pad_head_n_times)
+            for i in range(min(pad_head_n_times, h_n_times[ind])):
+                pad_head[:pad_head_n_times - i] += h_pad[- i - 1]
+        else:
+            pad_head = None
+        # padding for post-
+        pad_tail_n_times = -min(0, h_i_start[ind])
+        if pad_tail_n_times:
+            pad_tail = np.zeros(pad_tail_n_times)
+            for i in range(pad_tail_n_times):
+                pad_tail[i:] += h_pad[i]
+        else:
+            pad_tail = None
 
-        out_index = slice(start + out_start, stop + out_stop)
-        y_index = slice(conv_start, stop - start + conv_stop)
-        for ind in range(n_x):
+        for start, stop in segments:
+            if pad_head is not None:
+                out[start: start + pad_head_n_times] += pad_head
+            if pad_tail is not None:
+                out[stop - pad_tail_n_times: stop] += pad_tail
+
+            out_index = slice(start + out_start, stop + out_stop)
+            y_index = slice(conv_start, stop - start + conv_stop)
             out[out_index] += scipy.signal.convolve(h[ind], x[ind, start:stop])[y_index]
 
     return out
@@ -867,11 +914,10 @@ def evaluate_kernel(y, y_pred, error, i_skip, segments=None):
         Error corresponding to error_func.
     """
     # discard onset
-    if isinstance(i_skip,(tuple, list, np.ndarray)): #JPK
-        if len(i_skip) != 1: #JPK 
-            raise NotImplementedError('JPK Not implemented') #JPK
-        i_skip = i_skip[0] #JPK
-    
+
+    if isinstance(i_skip, (tuple, list, np.ndarray)):
+        print('Warning (Joshua): max of i_skip')
+        i_skip = max(i_skip)
     if i_skip:
         assert segments is None, "Not implemented"
         y = y[i_skip:]
