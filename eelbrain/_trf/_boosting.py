@@ -299,9 +299,9 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     x : NDVar | sequence of NDVar
         Signal to use to predict ``y``. Can be sequence of NDVars to include
         multiple predictors. Time dimension must correspond to ``y``.
-    tstart : float
+    tstart : float | list
         Start of the TRF in seconds.
-    tstop : float
+    tstop : float | list
         Stop of the TRF in seconds.
     scale_data : bool | 'inplace'
         Scale ``y`` and ``x`` before boosting: subtract the mean and divide by
@@ -394,6 +394,17 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     elif not isinstance(debug, bool):
         raise TypeError(f"debug={debug!r}")
 
+    if isinstance(tstart, (tuple, list, np.ndarray)): #JPK
+        if len(tstart) != len(tstop): #JPK
+            raise ValueError( #JPK
+                f'JPK: must have same number of tstart ({len(tstart)}, tstop ({len(tstop)}), predictors ({x}') #JPK
+        if len(tstart) == 0: #JPK
+            raise ValueError(f'JPK: tstart cannot be an empty list') #JPK
+    else: #JPK
+        npred = len(x) if isinstance(x, (tuple, list)) else 1
+        tstart = [tstart for i in range(npred)] #JPK
+        tstop = [tstop for i in range(npred)] #JPK
+
     data = RevCorrData(y, x, error, scale_data, ds)
     data.apply_basis(basis, basis_window)
     data.prefit(prefit)
@@ -403,19 +414,10 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
 
     # TRF extent in indices
     tstep = data.time.tstep
-    if isinstance(tstart, (tuple, list, np.ndarray)): #JPK
-        is_trf_len = True
-        if len(tstart) == len(tstop): #JPK
-            i_start = np.asarray([int(round(t_ / tstep)) for t_ in tstart]) #JPK
-            i_stop = np.asarray([int(round(t_ / tstep)) for t_ in tstop]) #JPK
-        else: #JPK
-            raise ValueError(f"tstart and tstop must have the same length, len(tstart) = {len(tstart)}, len(tstop) = {len(tstop)}") #JPK
-    else: #JPK
-        is_trf_len = False
-        i_start = np.asarray([int(round(tstart / tstep))]) #JPK 
-        i_stop = np.asarray([int(round(tstop / tstep))]) #JPK
+    i_start = np.asarray([int(round(t_ / tstep)) for t_ in tstart]) #JPK
+    i_stop = np.asarray([int(round(t_ / tstep)) for t_ in tstop]) #JPK
     trf_length = np.asarray([i2 - i1 for i1, i2 in zip(i_start, i_stop)]) #JPK
-
+    n_times_trf_max = max(trf_length) #JPK
     if data.segments is None: #JPK
         i_skip = [t_ - 1 for t_ in trf_length] #JPK
     else: #JPK
@@ -427,10 +429,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     t_start = time.time()
     # result containers
     res = np.empty((3, n_y))  # r, rank-r, error
-    if not is_trf_len: #JPK
-        h_x = np.empty((n_y, n_x, trf_length[0])) #JPK n_x must match trf-lens since it corresponds to the predictor TRFs
-    else: #JPK
-        raise NotImplementedError('JPK: not yet implemented trf_len h') # JPK: trf_lengths are different    
+    h_x = np.empty((n_y, n_x, n_times_trf_max)) #JPK n_x must match trf-lens since it corresponds to the predictor TRFs
     store_y_pred = bool(data.vector_dim) or debug
     y_pred = np.empty_like(data.y) if store_y_pred else np.empty(data.y.shape[1:])
     # boosting
@@ -479,6 +478,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
             hs = []
             for segments, train, test in data.cv_segments:
                 h = boost(y_, data.x, data.x_pads, segments, train, test, i_start, trf_length, delta, mindelta_, error, selective_stopping)
+                print('boost done') #JPK
                 if h is not None:
                     hs.append(h)
                 pbar.update()
@@ -577,7 +577,7 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
         Time sample index of training segments.
     test_index : array of (start, stop)
         Time sample index of test segments.
-    trf_length : int
+    trf_length : list # JPK
         Length of the TRF (in time samples).
     delta : scalar
         Step of the adjustment.
@@ -603,13 +603,9 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
     error = ERROR_FUNC[error]
     n_stims, n_times = x.shape
     assert y.shape == (n_times,)
-
-    if isinstance(trf_length, (tuple, list, np.ndarray)): #JPK
-        if len(trf_length)!=1: #JPK
-            raise NotImplementedError('JPK: Not implemented') #JPK
-        h = np.zeros((n_stims,trf_length[0])) #JPK
-    else:
-        h = np.zeros((n_stims,trf_length)) #JPK: TODO needs to be initialized with multiple lens 
+    assert len(trf_length) == n_stims #JPK
+    n_times_trf_max = max(trf_length) #JPK
+    h = np.zeros((n_stims, n_times_trf_max)) #JPK: h used to be (n_stims, n_trf_times) is now list
 
     # buffers
     y_error = y.copy()
@@ -661,13 +657,13 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
                     for i in range(-undo):
                         step = history.pop(-1)
                         h[step.i_stim, step.i_time] -= step.delta #JPK: TODO h wont be an array
-                        update_error(y_error, x[step.i_stim], x_pads[step.i_stim], all_index, -step.delta, step.i_time + i_start)
+                        update_error(y_error, x[step.i_stim], x_pads[step.i_stim], all_index, -step.delta, step.i_time + i_start[step.i_stim]) #JPK
                     step = history[-1]
                     # disable predictor
                     x_active[i_stim] = False
                     if not np.any(x_active):
                         break
-                    new_error[i_stim, :] = np.inf
+                    new_error[i_stim, :] = np.inf #JPK
             # Basic
             # -----
             # stop the iteration if all the following requirements are met
@@ -679,7 +675,7 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
                 break
 
         # generate possible movements -> training error
-        generate_options(y_error, x, x_pads, x_active, train_index, i_start, delta_error_func, delta, new_error, new_sign)
+        generate_options(y_error, x, x_pads, x_active, train_index, i_start, delta_error_func, delta, new_error, new_sign) #JPK
 
         i_stim, i_time = np.unravel_index(np.argmin(new_error), h.shape)
         new_train_error = new_error[i_stim, i_time]
@@ -702,7 +698,7 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
 
         # update h with best movement
         h[i_stim, i_time] += delta_signed
-        update_error(y_error, x[i_stim], x_pads[i_stim], all_index, delta_signed, i_time + i_start)
+        update_error(y_error, x[i_stim], x_pads[i_stim], all_index, delta_signed, i_time + i_start[i_stim]) #JPK
     else:
         raise RuntimeError("Maximum number of iterations exceeded")
     # print('  (%i iterations)' % (i_boost + 1))
@@ -790,6 +786,11 @@ def convolve(h, x, x_pads, h_i_start, segments=None, out=None):
     out : array
         Buffer for predicted ``y``.
     """
+    if isinstance(h_i_start, (tuple, list, np.ndarray)): #JPK
+        if len(h_i_start)==1: #JPK
+            h_i_start = h_i_start[0] #JPK
+        else: #JPK
+            raise NotImplementedError('JPK: NotImplemented') #JPK
     n_x, n_times = x.shape
     h_n_times = h.shape[1]
     if out is None:
@@ -801,11 +802,11 @@ def convolve(h, x, x_pads, h_i_start, segments=None, out=None):
         segments = ((0, n_times),)
 
     # determine valid section of convolution (cf. _ndvar.convolve())
-    h_i_max = h_i_start + h_n_times - 1
-    out_start = max(0, h_i_start)
-    out_stop = min(0, h_i_max)
-    conv_start = max(0, -h_i_start)
-    conv_stop = -h_i_start
+    h_i_max = [h_ + h_n_times - 1 for h_ in h_i_start] #JPK
+    out_start = [max(0, h_) for h_ in h_i_start] #JPK
+    out_stop = [min(0, h_) for h_ in h_i_max] #JPK
+    conv_start = [max(0, -h_) for h_ in h_i_start] #JPK
+    conv_stop = [-h_ for h_ in h_i_start] #JPK
 
     # padding
     h_pad = np.sum(h * x_pads[:, newaxis], 0)

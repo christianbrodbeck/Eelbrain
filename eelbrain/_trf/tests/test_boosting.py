@@ -224,3 +224,17 @@ def test_boosting_func():
     assert rr == approx(mat['crlt'][1, 0])
     # svdboostV4pred multiplies error by number of predictors
     assert_allclose(test_sse_history, mat['Str_testE'][0] / 3)
+
+def test_trf_len(n_workers):
+    ds = datasets._get_continuous(ynd=True)
+    configure(n_workers=n_workers)
+
+    y = ds['y']
+    ynd = ds['ynd']
+    x1 = ds['x1']
+    x2 = ds['x2']
+    y_mean = y.mean()
+    x2_mean = x2.mean('time')
+
+    # test values from running function, not verified independently
+    res = boosting(y, x2, [0, -0.1], [1,0.5])

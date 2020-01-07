@@ -144,22 +144,28 @@ def generate_options(
         double delta,
         # buffers
         FLOAT64 [:,:] new_error,  # (n_stims, n_times_trf)
+        INT64[:] n_times_trf, #JPK: (n_stims,) has length of each trf
         INT8 [:,:] new_sign,
     ):
     cdef:
         double e_add, e_sub, x_pad
         size_t n_stims = new_error.shape[0]
-        size_t n_times_trf = new_error.shape[1]
+        size_t n_times_trf_max = new_error.shape[1] #JPK
         size_t i_stim, i_time
         FLOAT64 [:] x_stim
 
     if error != 1 and error != 2:
         raise RuntimeError("error=%r" % (error,))
 
+    if True:
+        raise NotImplementedError('JPK')
+
     if len(i_start) != 1: #JPK
         raise NotImplementedError('JPK: Not implemented') #JPK
     else: #JPK
-        i_start = i_start[0] #JPK
+        print('testing multiple') #JPK
+        raise NotImplementedError('JPK:')
+        i_start = i_start #JPK
 
     with nogil:
         for i_stim in range(n_stims):
@@ -167,12 +173,12 @@ def generate_options(
                 continue
             x_stim = x[i_stim]
             x_pad = x_pads[i_stim]
-            for i_time in range(n_times_trf):
+            for i_time in range(n_times_trf[i]):
                 # +/- delta
                 if error == 1:
-                    l1_for_delta(y_error, x_stim, x_pad, indexes, delta, i_time + i_start, &e_add, &e_sub)
+                    l1_for_delta(y_error, x_stim, x_pad, indexes, delta, i_time + i_start[i], &e_add, &e_sub) #JPK
                 else:
-                    l2_for_delta(y_error, x_stim, x_pad, indexes, delta, i_time + i_start, &e_add, &e_sub)
+                    l2_for_delta(y_error, x_stim, x_pad, indexes, delta, i_time + i_start[i], &e_add, &e_sub) #JPK
 
                 if e_add > e_sub:
                     new_error[i_stim, i_time] = e_sub
