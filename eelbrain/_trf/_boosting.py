@@ -299,9 +299,9 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     x : NDVar | sequence of NDVar
         Signal to use to predict ``y``. Can be sequence of NDVars to include
         multiple predictors. Time dimension must correspond to ``y``.
-    tstart : float | list
+    tstart : float | list, tuple
         Start of the TRF in seconds.
-    tstop : float | list
+    tstop : float | list, tuple
         Stop of the TRF in seconds.
     scale_data : bool | 'inplace'
         Scale ``y`` and ``x`` before boosting: subtract the mean and divide by
@@ -400,18 +400,18 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     data.initialize_cross_validation(partitions, model, ds)
     n_y = len(data.y)
     n_x = len(data.x)
-    if isinstance(tstart, (tuple, list, np.ndarray)): #JPK
-        if len(tstart) != len(tstop): #JPK
-            raise ValueError( #JPK
-                f'JPK: must have same number of tstart ({len(tstart)}, tstop ({len(tstop)}), predictors ({x})') #JPK
-        elif len(tstart) == 0: #JPK
-            raise ValueError(f'JPK: tstart cannot be an empty list') #JPK
+    if isinstance(tstart, (tuple, list, np.ndarray)):
+        if len(tstart) != len(tstop):
+            raise ValueError(
+                f'mismatched len(tstart) = {len(tstart)}, len(tstop) = {len(tstop)}')
+        elif len(tstart) == 0:
+            raise ValueError(f'tstart cannot be an empty list')
         if len(tstart) != n_x:
             if len(tstart) == 1:
                 tstart = [tstart[0] for _ in range(n_x)]
                 tstop = [tstop[0] for _ in range(n_x)]
             elif len(tstart) == len(data.x_name):
-                print('Warning: len(tstart) matches len(x) but not # of predictor dimensions. Infering from data._x_meta')
+                print(f'Warning: len(tstart) matches len(x) = {len(x)} but not # of predictor dimensions = {n_x}. Infering from data._x_meta')
                 tstart2 = []
                 tstop2 = []
                 for ix, xx in enumerate(data._x_meta):
@@ -425,40 +425,40 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
                 tstart = tstart2
                 tstop = tstop2
             else:
-                raise ValueError(  # JPK
-                    f'JPK: cannot infer number of tstart ({len(tstart)}, predictors x ({len(x)}), dimensions n_x ({n_x})')  # JPK
-    else: #JPK
-        tstart = [tstart for _ in range(n_x)] #JPK
-        tstop = [tstop for _ in range(n_x)] #JPK
+                raise ValueError( 
+                    f'cannot infer number of tstart ({len(tstart)}, x ({len(x)}), dimensions n_x ({n_x})')  # JPK
+    else:
+        tstart = [tstart for _ in range(n_x)]
+        tstop = [tstop for _ in range(n_x)]
 
 
 
     # TRF extent in indices
     tstep = data.time.tstep
-    i_start = np.asarray([int(round(t_ / tstep)) for t_ in tstart]) #JPK
-    i_stop = np.asarray([int(round(t_ / tstep)) for t_ in tstop]) #JPK
+    i_start = np.asarray([int(round(t_ / tstep)) for t_ in tstart])
+    i_stop = np.asarray([int(round(t_ / tstep)) for t_ in tstop])
     i_start_min = np.min(i_start)
     i_stop_max = np.max(i_stop)
-    trf_length = np.asarray([i2 - i1 for i1, i2 in zip(i_start, i_stop)]) #JPK
-    n_times_trf_max = i_stop_max - i_start_min #JPK
-    if data.segments is None: #JPK
-        i_skip = [t_ - 1 for t_ in trf_length] #JPK
-    else: #JPK
-        i_skip = [0] #JPK
+    trf_length = np.asarray([i2 - i1 for i1, i2 in zip(i_start, i_stop)])
+    n_times_trf_max = i_stop_max - i_start_min
+    if data.segments is None:
+        i_skip = [t_ - 1 for t_ in trf_length]
+    else:
+        i_skip = [0]
     # progress bar
     n_cv = len(data.cv_segments)
     pbar = tqdm(desc=f"Boosting{f' {n_y} signals' if n_y > 1 else ''}", total=n_y * n_cv, disable=CONFIG['tqdm'])
     t_start = time.time()
     # result containers
     res = np.empty((3, n_y))  # r, rank-r, error
-    h_x = np.empty((n_y, n_x, n_times_trf_max)) #JPK n_x must match trf-lens since it corresponds to the predictor TRFs
+    h_x = np.empty((n_y, n_x, n_times_trf_max))
     store_y_pred = bool(data.vector_dim) or debug
     y_pred = np.empty_like(data.y) if store_y_pred else np.empty(data.y.shape[1:])
     # boosting
     if CONFIG['n_workers']:
         # Make sure cross-validations are added in the same order, otherwise
         # slight numerical differences can occur
-        job_queue, result_queue = setup_workers(data, i_start, trf_length, delta, mindelta_, error, selective_stopping)
+        job_queue, result_queue = setup_workers(data, i_start, i_stop, delta, mindelta_, error, selective_stopping)
         stop_jobs = Event()
         thread = Thread(target=put_jobs, args=(job_queue, n_y, n_cv, stop_jobs))
         thread.start()
@@ -478,7 +478,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
                         if hs:
                             h = np.mean(hs, 0, out=h_x[y_i])
                             y_i_pred = y_pred[y_i] if store_y_pred else y_pred
-                            convolve(h, data.x, data.x_pads, i_start, i_stop, data.segments, y_i_pred) #JPK
+                            convolve(h, data.x, data.x_pads, i_start, i_stop, data.segments, y_i_pred)
                             if not data.vector_dim:
                                 res[:, y_i] = evaluate_kernel(data.y[y_i], y_i_pred, error, i_skip, data.segments)
                         else:
@@ -595,8 +595,10 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
         Time sample index of training segments.
     test_index : array of (start, stop)
         Time sample index of test segments.
-    trf_length : list # JPK
-        Length of the TRF (in time samples).
+    i_start : array
+        array of i_start for trfs.
+    i_stop : array
+        array of i_stop for TRF.
     delta : scalar
         Step of the adjustment.
     mindelta : scalar
@@ -684,14 +686,14 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
                     # revert changes
                     for i in range(-undo):
                         step = history.pop(-1)
-                        h[step.i_stim, step.i_time] -= step.delta #JPK: TODO h wont be an array
-                        update_error(y_error, x[step.i_stim], x_pads[step.i_stim], all_index, -step.delta, step.i_time + i_start[step.i_stim]) #JPK
+                        h[step.i_stim, step.i_time] -= step.delta
+                        update_error(y_error, x[step.i_stim], x_pads[step.i_stim], all_index, -step.delta, step.i_time + i_start[step.i_stim])
                     step = history[-1]
                     # disable predictor
                     x_active[i_stim] = False
                     if not np.any(x_active):
                         break
-                    new_error[i_stim, :] = np.inf #JPK
+                    new_error[i_stim, :] = np.inf
             # Basic
             # -----
             # stop the iteration if all the following requirements are met
@@ -704,14 +706,14 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
 
         # generate possible movements -> training error
         generate_options(y_error, x, x_pads, x_active, train_index, i_start, delta_error_func, delta, new_error,
-                         trf_length, new_sign) #JPK
-        min_err = 99999999 #JPK
-        for i_st in range(n_stims): #JPK
-            min_i = np.argmin(new_error[i_st, :trf_length[i_st]]) #JPK
-            min_v = new_error[i_st, min_i] #JPK
-            if min_v < min_err: #JPK
-                min_err = min_v #JPK
-                i_stim, i_time = i_st, min_i #JPK
+                         trf_length, new_sign)
+        min_err = 99999999
+        for i_st in range(n_stims):
+            min_i = np.argmin(new_error[i_st, :trf_length[i_st]])
+            min_v = new_error[i_st, min_i]
+            if min_v < min_err:
+                min_err = min_v
+                i_stim, i_time = i_st, min_i
         new_train_error = new_error[i_stim, i_time]
         delta_signed = new_sign[i_stim, i_time] * delta
 
@@ -758,7 +760,7 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
         return h
 
 
-def setup_workers(data, i_start, trf_length, delta, mindelta, error, selective_stopping):
+def setup_workers(data, i_start, i_stop, delta, mindelta, error, selective_stopping):
     n_y, n_times = data.y.shape
     n_x, _ = data.x.shape
 
@@ -772,7 +774,7 @@ def setup_workers(data, i_start, trf_length, delta, mindelta, error, selective_s
     job_queue = Queue(200)
     result_queue = Queue(200)
 
-    args = (y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, data.cv_segments, i_start, trf_length, delta, mindelta, error, selective_stopping, job_queue, result_queue)
+    args = (y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, data.cv_segments, i_start, i_stop, delta, mindelta, error, selective_stopping, job_queue, result_queue)
     for _ in range(CONFIG['n_workers']):
         process = Process(target=boosting_worker, args=args)
         process.start()
@@ -780,7 +782,7 @@ def setup_workers(data, i_start, trf_length, delta, mindelta, error, selective_s
     return job_queue, result_queue
 
 
-def boosting_worker(y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, cv_segments, i_start, trf_length, delta, mindelta, error, selective_stopping, job_queue, result_queue):
+def boosting_worker(y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, cv_segments, i_start, i_stop, delta, mindelta, error, selective_stopping, job_queue, result_queue):
     if CONFIG['nice']:
         os.nice(CONFIG['nice'])
 
@@ -793,7 +795,7 @@ def boosting_worker(y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, cv_seg
         if y_i == JOB_TERMINATE:
             return
         all_index, train_index, test_index = cv_segments[seg_i]
-        h = boost(y[y_i], x, x_pads, all_index, train_index, test_index, i_start, trf_length, delta, mindelta, error, selective_stopping)
+        h = boost(y[y_i], x, x_pads, all_index, train_index, test_index, i_start, i_stop, delta, mindelta, error, selective_stopping)
         result_queue.put((y_i, seg_i, h))
 
 
@@ -820,8 +822,10 @@ def convolve(h, x, x_pads, i_start, i_stop=None, segments=None, out=None):
         X.
     x_pads : array (n_stims,)
         Padding for x.
-    h_i_start : int | list
-        Time shift of the first sample of ``h``.
+    i_start : list, array
+        List of i_start for the TRFs.
+    i_stop : None | list, array
+        List of i_stop for the TRFs. If None, all TRFs have the same i_stop
     segments : array (n_segments, 2)
         Data segments.
     out : array
@@ -833,7 +837,7 @@ def convolve(h, x, x_pads, i_start, i_stop=None, segments=None, out=None):
     if isinstance(i_start, (tuple, list, np.ndarray)):
         if len(i_start) != n_x:
             if len(i_start) != 1:
-                raise ValueError(f'i_start = {i_start}, n_x = {n_x}')
+                raise ValueError(f'len(i_start) = {len(i_start)}, n_x = {n_x}')
             i_start = np.array([i_start[0] for _ in range(n_x)])
             i_stop = np.array([i_stop[0] for _ in range(n_x)])
     else:
@@ -856,11 +860,11 @@ def convolve(h, x, x_pads, i_start, i_stop=None, segments=None, out=None):
     # padding
     # padding for pre-'
     for ind in range(n_x):
-        h_i_max = i_stop[ind] + h_n_times[ind]  # JPK
-        out_start = max(0, h_i_start[ind])  # JPK
-        out_stop = min(0, h_i_max)  # JPK
-        conv_start = max(0, -h_i_start[ind])  # JPK
-        conv_stop = -h_i_start[ind]  # JPK
+        h_i_max = i_stop[ind] + h_n_times[ind]
+        out_start = max(0, h_i_start[ind])
+        out_stop = min(0, h_i_max)
+        conv_start = max(0, -h_i_start[ind])
+        conv_stop = -h_i_start[ind]
 
         pad_head_n_times = max(0, h_n_times[ind] + h_i_start[ind])
         if pad_head_n_times:
@@ -919,7 +923,7 @@ def evaluate_kernel(y, y_pred, error, i_skip, segments=None):
     # discard onset
 
     if isinstance(i_skip, (tuple, list, np.ndarray)):
-        print('Warning (Joshua): max of i_skip')
+        print(f'Warning: max of i_skip {i_skip}')
         i_skip = max(i_skip)
     if i_skip:
         assert segments is None, "Not implemented"
