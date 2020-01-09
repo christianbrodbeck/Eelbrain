@@ -411,7 +411,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
                 tstart = [tstart[0] for _ in range(n_x)]
                 tstop = [tstop[0] for _ in range(n_x)]
             elif len(tstart) == len(data.x_name):
-                print('_x_meta')
+                print('Warning: len(tstart) matches len(x) but not # of predictor dimensions. Infering from data._x_meta')
                 tstart2 = []
                 tstop2 = []
                 for ix, xx in enumerate(data._x_meta):
