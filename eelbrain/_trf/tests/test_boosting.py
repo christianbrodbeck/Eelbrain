@@ -227,22 +227,33 @@ def test_boosting_func():
 
 def test_trf_len(n_workers):
     ds = datasets._get_continuous(ynd=True)
-    configure(n_workers=n_workers)
+    
+    configure(n_workers=0)
+    x = NDVar(np.random.normal(0,1,100), UTS(0,0.1,100))
+    k = np.zeros(5)
+    k[1] = 0.1
+    k[3] = -0.1
+    k = NDVar(k,UTS(0,0.1,5))
+    y = convolve(k, x)
 
-    y = ds['y']
-    ynd = ds['ynd']
-    x1 = ds['x1']
-    x2 = ds['x2']
-    y_mean = y.mean()
-    x2_mean = x2.mean('time')
+    res = boosting(y, x, 0, 0.5)
+    assert correlation_coefficient(res.h, k) == 1
 
-    # test values from running function, not verified independently
-    res = boosting(y, x2, [0, -0.1], [1,0.5])
-    res = boosting(y, x2, [0], [1])
-    res = boosting(y, x2, 0, 1)
-    res = boosting(y, x1, [0], [1])
-    res = boosting(y, x1, 0, 1)
-    res = boosting(y, [x1, x2], [0,-0.1], [1,0.5])
-    import pdb
-    pdb.set_trace()
+
+    # y = ds['y']
+    # ynd = ds['ynd']
+    # x1 = ds['x1']
+    # x2 = ds['x2']
+    # y_mean = y.mean()
+    # x2_mean = x2.mean('time')
+
+    # # test values from running function, not verified independently
+    # res = boosting(y, x2, [0, -0.1], [1,0.5])
+    # res = boosting(y, x2, [0], [1])
+    # res = boosting(y, x2, 0, 1)
+    # res = boosting(y, x1, [0], [1])
+    # res = boosting(y, x1, 0, 1)
+    # res = boosting(y, [x1, x2], [0,-0.1], [1,0.5])
+    # import pdb
+    # pdb.set_trace()
 

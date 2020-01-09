@@ -627,7 +627,10 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
         else:
             i_start = np.asarray([i_start[0] for _ in range(n_stims)])
             i_stop = np.asarray([i_stop[0] for _ in range(n_stims)])
-    trf_length = i_stop - i_start
+            
+    i_start = i_start.astype('int64')
+    i_stop = i_stop.astype('int64')
+    trf_length = (i_stop - i_start).astype('int64')
     n_times_trf_max = np.max(trf_length)
     h_i_start = i_start - min(i_start)
     h = np.zeros((n_stims, n_times_trf_max))
