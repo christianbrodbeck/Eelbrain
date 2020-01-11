@@ -8,9 +8,18 @@ from eelbrain.testing import skip_on_windows
 from eelbrain._wxgui.testing import hide_plots
 
 
+def assert_layout_consistent(layout):
+    if layout.margins is None:
+        return
+    assert all(v >= 0 for v in layout.margins.values())
+    assert layout.w == layout.margins['left'] + layout.ncol * layout.axw + (layout.ncol - 1) * layout.margins['wspace'] + layout.margins['right']
+    assert layout.h == layout.margins['bottom'] + layout.nrow * layout.axh + (layout.nrow - 1) * layout.margins['hspace'] + layout.margins['top']
+
+
 def assert_layout_ok(*args, **kwargs):
     layout = Layout(*args, **kwargs)
     assert layout.nrow * layout.ncol >= layout.nax
+    assert_layout_consistent(layout)
 
 
 def test_layout():
@@ -34,14 +43,19 @@ def test_layout():
     # left margin & axw
     margins = dict(left=1, top=2, bottom=1, wspace=1, hspace=2)
     layout = Layout(2, 2, 2, margins=margins, axw=5, w=10, ncol=1)
+    assert_layout_consistent(layout)
     assert layout.w == 10
     assert layout.margins == dict(right=10 - 1 - 5, **margins)
     assert layout.axh == 2.5
     assert layout.h == 5 + 2 * layout.axh
     assert layout.tight is False
 
-    layout = Layout(2, 2, 2, margins=True, axw=5, w=10, ncol=1)
+    layout = Layout(2, 2, 2, margins=True, w=10, ncol=1)
+    assert_layout_consistent(layout)
     assert layout.tight is False
+
+    layout = Layout(1, 1.5, 3, h=2, w=15, margins={'left': 1, 'right': 0.1})
+    assert_layout_consistent(layout)
 
 
 def test_im_layout():
