@@ -1988,10 +1988,10 @@ def resolve_plot_rect(w, h, dpi):
 
 class LayoutDim:
     "Helper function to determine figure spacing"
-    _properties = ('total', 'first', 'last', 'ax', 'space')
+    _properties = ('total', 'ax', 'first', 'last', 'space')
     _equations = dict(
-        ax='(total - first - last - (n_ax - 1) * space) / n_ax',
         total='first + n_ax * ax + (n_ax - 1) * space + last',
+        ax='(total - first - last - (n_ax - 1) * space) / n_ax',
         first='total - n_ax * ax  - (n_ax - 1) * space - last',
         last='total - first - n_ax * ax - (n_ax - 1) * space',
         space='(total - first - n_ax * ax - last) / (n_ax - 1)',
@@ -2009,6 +2009,7 @@ class LayoutDim:
                         values[p2] = defaults[p2]
                 values[p] = eval(self._equations[p], values)
                 break
+
         self.total = values['total']
         self.ax = values['ax']
         self.first = values['first']
@@ -2168,10 +2169,10 @@ class Layout(BaseLayout):
         if nax:
             if nrow is None:
                 ncol = min(nax, ncol)
-                nrow = int(math.ceil(nax / ncol))
+                nrow = math.ceil(nax / ncol)
             elif ncol is None:
                 nrow = min(nax, nrow)
-                ncol = int(math.ceil(nax / nrow))
+                ncol = math.ceil(nax / nrow)
 
             if axw:
                 axh_default = axw / ax_aspect
@@ -2187,14 +2188,6 @@ class Layout(BaseLayout):
                 'top': h_dim.first, 'bottom': h_dim.last, 'hspace': h_dim.space,
                 'left': w_dim.first, 'right': w_dim.last, 'wspace': w_dim.space}
             h_is_implicit = w_is_implicit = False
-
-        if nax:
-            nrow = int(nrow)
-            ncol = int(ncol)
-            if w is None:
-                w = axw * ncol
-            if h is None:
-                h = axh * nrow
 
         if h_is_implicit:
             hspace = 0 if nrow is None else margins['hspace'] * (nrow - 1)
@@ -2214,6 +2207,16 @@ class Layout(BaseLayout):
         self.yaxis = yaxis
         self.share_axes = share_axes
         self.margins = margins if use_margins else None
+
+    def __repr__(self):
+        kwargs = self.fig_kwa()
+        if 'subplotpars' in kwargs:
+            pars = kwargs['subplotpars']
+            attrs = ((k, getattr(pars, k)) for k in ('left', 'right', 'bottom', 'top', 'wspace', 'hspace'))
+            desc = ', '.join(f'{k}={v}' for k, v in attrs if v is not None)
+            kwargs['subplotpars'] = f"<{desc}>"
+        args = ', '.join(f'{k}={v}' for k, v in kwargs.items())
+        return f'<Layout: {args}>'
 
     def fig_kwa(self):
         out = BaseLayout.fig_kwa(self)
