@@ -1,7 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import numpy as np
 
-from eelbrain import datasets, plot, testnd
+from eelbrain import datasets, plot, testnd, cwt_morlet
 from eelbrain.plot._figure import Figure
 from eelbrain.plot._utsnd import _ax_bfly_epoch
 from eelbrain.testing import requires_mne_sample_data
@@ -46,6 +46,19 @@ def test_plot_array():
     p.close()
     p = plot.Array('utsnd', 'A', sub='B=="b1"', ds=ds)
     assert p._layout.nax == 2
+    p.close()
+
+    # Scalar dimension
+    sgram = cwt_morlet(ds[0, 'uts'], np.arange(3, 7, 0.1) ** 2)
+    p = plot.Array(sgram)
+    labels = [l.get_text() for l in p.figure.axes[0].get_yticklabels()]
+    assert labels == ['9', '12', '15', '19', '23', '28', '32', '38', '44']
+    p.close()
+
+    sgram = cwt_morlet(ds[0, 'uts'], np.arange(3, 3.5, 0.01) ** 2)
+    p = plot.Array(sgram)
+    labels = [l.get_text() for l in p.figure.axes[0].get_yticklabels()]
+    assert labels == ['9.0', '9.4', '9.7', '10.0', '10.4', '10.8', '11.1', '11.5', '11.8', '12.2']
     p.close()
 
     # Categorial dimension
