@@ -185,9 +185,10 @@ class RawSource(RawPipe):
         if self.montage:
             raw.set_montage(self.montage)
         if not raw.info['dig'] and self._dig_sessions is not None and self._dig_sessions[subject]:
-            dig_session = self._dig_sessions[subject][recording]
-            dig_raw = self._load(subject, dig_session, False)
-            raw.info['dig'] = dig_raw.info['dig']
+            dig_recording = self._dig_sessions[subject][recording]
+            if dig_recording != recording:
+                dig_raw = self._load(subject, dig_recording, False)
+                raw.info['dig'] = dig_raw.info['dig']
         return raw
 
     def cache(self, subject, recording):
