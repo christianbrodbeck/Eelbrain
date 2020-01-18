@@ -69,8 +69,6 @@ class RawPipe:
             raw.info['bads'] = list(add_bads)
         elif add_bads:
             raw.info['bads'] = self.load_bad_channels(subject, recording)
-        else:
-            raw.info['bads'] = []
         return raw
 
     def _load(self, subject, recording, preload):
@@ -254,11 +252,11 @@ class RawSource(RawPipe):
             fid.write(text)
 
     def make_bad_channels_auto(self, subject, recording, flat=1e-14, redo=False):
-        if not flat:
-            return
-        raw = self.load(subject, recording, preload=True, add_bads=False)
-        raw = load.fiff.raw_ndvar(raw)
-        bad_chs = raw.sensor.names[raw.std('time') < flat]
+        raw = self.load(subject, recording, add_bads=False)
+        bad_chs = raw.info['bads']
+        if flat:
+            raw = load.fiff.raw_ndvar(raw)
+            bad_chs.extend(raw.sensor.names[raw.std('time') < flat])
         self.make_bad_channels(subject, recording, bad_chs, redo)
 
     def mtime(self, subject, recording, bad_chs=True):
