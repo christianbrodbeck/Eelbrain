@@ -618,10 +618,20 @@ class ImageTable(ColorBarMixin, EelFigure):
     #  3) Finalize by calling ._add_ims()
     #
 
-    def __init__(self, n_rows, n_columns, title=None, margins=None, *args, **kwargs):
+    def __init__(
+            self,
+            n_rows: int,
+            n_columns: int,
+            row_labels: list = False,
+            column_labels: list = False,
+            title: str = None,
+            margins: dict = None,
+            *args, **kwargs):
         default_margins = {}
-        if title:
-            default_margins['top'] = 0.5
+        if title or column_labels:
+            default_margins['top'] = 0.5 * (bool(title) + bool(column_labels))
+        if row_labels:
+            default_margins['left'] = 0.3
         layout = ImLayout(n_rows * n_columns, 4/3, 2, margins, default_margins, title, *args, nrow=n_rows, ncol=n_columns, autoscale=True, **kwargs)
         EelFigure.__init__(self, None, layout)
 
@@ -629,6 +639,10 @@ class ImageTable(ColorBarMixin, EelFigure):
         self._n_columns = n_columns
         self._res_w = int(round(layout.axw * layout.dpi))
         self._res_h = int(round(layout.axh * layout.dpi))
+        if row_labels:
+            self.add_row_titles(row_labels, rotation='vertical')
+        if column_labels:
+            self.add_column_titles(column_labels)
 
     def _add_ims(self, ims, cmap_params, cmap_data):
         for row, column in product(range(self._n_rows), range(self._n_columns)):
@@ -1350,7 +1364,7 @@ class SequencePlotter:
                 out.append(str(label))
         return out
 
-    def plot_table(self, hemi=None, view=('lateral', 'medial'), orientation='horizontal', labels=True, mode='rgb', antialiased=False, column_header=None, **kwargs):
+    def plot_table(self, hemi=None, view=('lateral', 'medial'), orientation='horizontal', labels=True, mode='rgb', antialiased=False, **kwargs):
         """Create a figure with the images
 
         Parameters
@@ -1394,11 +1408,9 @@ class SequencePlotter:
         """
         if self._source is None:
             raise RuntimeError("No brain model specified for plotting; use .set_brain()")
-        if column_header is not None:
-            labels = column_header
-            warn(f"column_header={column_header!r}: this parameter is deprecated and will be removed after Eelbrain 0.31; use the labels parameter instead ")
         if not self._data:
             raise RuntimeError("No data")
+        labels = self._get_frame_labels(labels)
         # determine hemisphere(s) to plot
         if hemi is None:
             hemis = []
@@ -1436,14 +1448,18 @@ class SequencePlotter:
             n_columns = n_bins
             n_rows = n_views
             transpose = False
+            column_labels = labels
+            row_labels = None
         elif orientation == 'vertical':
             n_columns = n_views
             n_rows = n_bins
             transpose = True
+            column_labels = None
+            row_labels = labels
         else:
             raise ValueError(f"orientation={orientation!r}")
 
-        figure = ImageTable(n_rows, n_columns, **kwargs)
+        figure = ImageTable(n_rows, n_columns, row_labels, column_labels, **kwargs)
 
         im_rows = []
         cmap_params = None
@@ -1482,15 +1498,8 @@ class SequencePlotter:
             b.close()
 
         if transpose:
-            im_rows = tuple(zip(*im_rows))
+            im_rows = list(zip(*im_rows))
         figure._add_ims(im_rows, cmap_params, cmap_data)
-
-        labels = self._get_frame_labels(labels)
-        if labels:
-            if orientation == 'horizontal':
-                figure.add_column_titles(labels)
-            else:
-                figure.add_row_titles(labels, rotation='vertical')
         return figure
 
     def _capture(self, b, hemi_rows, views, mode, antialiased):
