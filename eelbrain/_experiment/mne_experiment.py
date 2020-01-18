@@ -732,6 +732,10 @@ class MneExperiment(FileTree):
         ########################################################################
         # Finalize
         ##########
+        # Calls below might create new cache-dir
+        cache_dir = self.get('cache-dir')
+        cache_dir_existed = exists(cache_dir)
+
         # register experimental features
         self._subclass_init()
 
@@ -747,10 +751,6 @@ class MneExperiment(FileTree):
         #######
         if not root:
             return
-
-        # loading events will create cache-dir
-        cache_dir = self.get('cache-dir')
-        cache_dir_existed = exists(cache_dir)
 
         # collect input file information
         # ==============================
