@@ -45,9 +45,9 @@ class InfoPanel(wx.Panel):
         src = self.ds["src"]
         n_src = src.source.vertices[0].shape[0] + src.source.vertices[0].shape[0]
         src_label = "{} sources".format(n_src)
-        time_label = "{:0.2f} to {:0.2f} s, step={:0.3f} s".format(
-            src.time.times[0],
-            src.time.tstop, src.time.tstep
+        time_label = "{} to {} ms, step={} ms".format(
+            int(src.time.times[0] * 1000),
+            int(src.time.tstop * 1000), int(src.time.tstep * 1000)
         )
         # add brain data description and title to third column
         col3.Add(TitleSizer(self, "Data"), 0, wx.BOTTOM, 5)

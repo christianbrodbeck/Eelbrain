@@ -11,10 +11,10 @@ class TestParams(wx.Panel):
         self.InitUI()
 
     def InitWidgets(self):
-        self.tstart = TextEntryWithLabel(self, wx.VERTICAL, "Start Time (s)")
-        self.tstop = TextEntryWithLabel(self, wx.VERTICAL, "Stop Time (s)")
+        self.tstart = TextEntryWithLabel(self, wx.VERTICAL, "Start Time (ms)")
+        self.tstop = TextEntryWithLabel(self, wx.VERTICAL, "Stop Time (ms)")
         self.samples = TextEntryWithLabel(self, wx.VERTICAL, "Permutations", "10000")
-        self.mintime = TextEntryWithLabel(self, wx.VERTICAL, "Min. Cluster Time (s)", "0.02")
+        self.mintime = TextEntryWithLabel(self, wx.VERTICAL, "Min. Cluster Time (ms)", "20")
         self.minsource = TextEntryWithLabel(self, wx.VERTICAL, "Min. Cluster Sources", "25")
         self.sig = SignificanceType(self)
         self.title = TitleSizer(self, "Test Parameters")
@@ -36,10 +36,10 @@ class TestParams(wx.Panel):
 
     def get_test_kwargs(self):
         kwargs = dict()
-        kwargs["tstart"] = float(self.tstart.GetValue())
-        kwargs["tstop"] = float(self.tstop.GetValue())
+        kwargs["tstart"] = int(self.tstart.GetValue()) / 1000
+        kwargs["tstop"] = int(self.tstop.GetValue()) / 1000
         kwargs["samples"] = int(self.samples.GetValue())
-        kwargs["mintime"] = float(self.mintime.GetValue())
+        kwargs["mintime"] = int(self.mintime.GetValue()) / 1000
         kwargs["minsource"] = int(self.minsource.GetValue())
         kwargs["tfce"] = self.sig.is_tfce()
         kwargs["pmin"] = float(self.sig.get_pmin())
@@ -62,7 +62,7 @@ class TestParams(wx.Panel):
     def validate(self, uts):
         kwargs = self.get_uncast_test_kwargs()
         fields = ("tstart", "tstop", "samples", "mintime", "minsource", "pmin")
-        types = (float, float, int, float, int, float)
+        types = (int, int, int, int, int, float)
         check_bounds = (True, True, False, False, False, False)
         for field, dtype, check in zip(fields, types, check_bounds):
             try:
@@ -72,10 +72,11 @@ class TestParams(wx.Panel):
             except ValueError:
                 msg = "Parameter {} ({}) could not be parsed as type {}."
                 raise ValidationException(msg.format(field, kwargs[field], dtype.__name__))
-            if check:  # check if value in timeseries bounds
-                if val not in uts:
-                    msg = "{} value must be within {:0.3f} and {:0.3f}."
-                    raise ValidationException(msg.format(field, uts.tmin, uts.tmax))
+            if check:  # check if value (in ms) in timeseries bounds
+                if val / 1000 not in uts:  # conver to seconds for check
+                    msg = "{} value must be within {} and {}.".format(
+                        field, int(uts.tmin * 1000), int(uts.tmax * 1000))
+                    raise ValidationException(msg)
         if float(kwargs["tstart"]) >= float(kwargs["tstop"]):
             raise ValidationException("tstart must be less than tstop.")
         if kwargs["pmin"] is not None:
