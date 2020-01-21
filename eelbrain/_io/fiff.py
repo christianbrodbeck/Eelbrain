@@ -70,14 +70,15 @@ def mne_raw(path=None, proj=False, **kwargs):
             return
 
     if isinstance(path, str):
-        _, ext = os.path.splitext(path)
-        ext = ext.lower()
+        path = Path(path)
+    if isinstance(path, Path):
+        ext = path.suffix.lower()
         if ext.startswith('.fif'):
             raw = mne.io.read_raw_fif(path, **kwargs)
         elif ext in ('.sqd', '.con'):
             raw = mne.io.read_raw_kit(path, **kwargs)
         else:
-            raise ValueError("Unknown extension: %r" % ext)
+            raise ValueError(f"{path}: Unknown extension")
     elif isinstance(path, Iterable):
         # MNE Raw supports list of file-names
         raw = mne.io.read_raw_fif(path, **kwargs)
@@ -167,7 +168,7 @@ def events(raw=None, merge=None, proj=False, name=None, bads=None,
          - *raw*: the mne Raw object.
 
     """
-    if (raw is None and events is None) or isinstance(raw, str):
+    if (raw is None and events is None) or isinstance(raw, (str, Path)):
         raw = mne_raw(raw, proj=proj, **kwargs)
 
     if bads is not None and raw is not None :
@@ -735,7 +736,7 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
               sysname=None,  connectivity=None,
               inv=None, lambda2=1, method='dSPM', pick_ori=None, src=None,
               subjects_dir=None, parc='aparc', label=None):
-    """Raw dta as NDVar
+    """Raw data as NDVar
 
     Parameters
     ----------
@@ -804,7 +805,8 @@ def raw_ndvar(raw, i_start=None, i_stop=None, decim=1, data=None, exclude='bads'
     """
     if not isinstance(raw, MNE_RAW):
         raw = mne_raw(raw)
-    name = os.path.basename(raw.filenames[0])
+    if raw.filenames and raw.filenames[0]:
+        name = os.path.basename(raw.filenames[0])
     start_scalar = i_start is None or isinstance(i_start, int)
     stop_scalar = i_stop is None or isinstance(i_stop, int)
     if start_scalar or stop_scalar:
