@@ -21,6 +21,7 @@ class StatsFrame(EelbrainFrame):
         self.roi_info = None
         self.InitWidgets()
         self.InitUI()
+        self.CenterOnScreen()
         self.Show()
         self.Raise()
 
