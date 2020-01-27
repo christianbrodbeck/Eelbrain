@@ -12,7 +12,7 @@ class TestModelInfo(wx.Panel):
 
     def InitWidgets(self):
         self.test_type = wx.RadioBox(self, choices=["ANOVA", "t-test"])
-        self.anova_def = ANOVAModel(self, self.loader.factors)
+        self.anova_def = ANOVAModel(self, self.loader.factors, self.loader.levels)
         fld = {f: l for f, l in zip(self.loader.factors, self.loader.levels)}
         self.ttest_def = TTestModel(self, fld)
         self.Bind(wx.EVT_RADIOBOX, self.OnTestTypeChange, self.test_type)
@@ -59,17 +59,53 @@ class TestModelInfo(wx.Panel):
                 raise ValidationException("Select both levels for the t-test.")
 
 
+class ANOVAFactor(wx.BoxSizer):
+    def __init__(self, parent, name, levels):
+        super().__init__(wx.VERTICAL)
+        self.name = name
+        self.levels = levels
+        self.factor_select = wx.CheckBox(parent, label=name)
+        self.Add(self.factor_select)
+        self.level_select = wx.CheckListBox(parent, choices=levels, style=wx.LC_LIST)
+        self.level_select.Disable()
+        self.Add(self.level_select)
+        parent.Bind(wx.EVT_CHECKBOX, self.OnFactorToggle, self.factor_select)
+        parent.Bind(wx.EVT_CHECKLISTBOX, self.OnLevelToggle, self.level_select)
+
+    def is_selected(self):
+        return self.factor_select.IsChecked()
+
+    def OnFactorToggle(self, evt):
+        if evt.IsChecked():
+            self.level_select.Enable()
+            self.level_select.SetCheckedItems(range(len(self.levels)))
+        else:
+            self.level_select.SetCheckedItems([])
+            self.level_select.Disable()
+
+    def OnLevelToggle(self, evt):
+        idx = evt.GetInt()
+        items = self.level_select.GetCheckedItems()
+        if len(items) < 2:
+            self.level_select.Check(idx)
+            message = "You must select at least 2 levels to include a factor."
+            wx.MessageBox(message, "Invalid ANOVA Model", wx.OK)
+
+
 class ANOVAModel(wx.BoxSizer):
-    def __init__(self, parent, factors=[], **kwargs):
+    def __init__(self, parent, factors, levels):
         super().__init__(wx.HORIZONTAL)
-        self.model = wx.CheckListBox(parent, choices=factors,
-                                     style=wx.LC_LIST, **kwargs)
-        self.Add(self.model)
+        self.factor_boxes = []
+        for fact, levs in zip(factors, levels):
+            factor_box = ANOVAFactor(parent, fact, levs)
+            self.factor_boxes.append(factor_box)
+            self.Add(factor_box)
         self.Layout()
 
     def get_test_kwargs(self):
         kwargs = dict()
-        kwargs["x"] = " * ".join(self.model.GetCheckedStrings())
+        factors = [i.name for i in self.factor_boxes if i.is_selected()]
+        kwargs["x"] = " * ".join(factors)
         return kwargs
 
 
