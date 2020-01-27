@@ -3,6 +3,7 @@ import re
 import glob
 import itertools
 
+from numpy import ones
 from mne import read_source_estimate
 
 from .._data_obj import Dataset, Factor
@@ -149,13 +150,21 @@ class DatasetSTCLoader:
         ds = Dataset(zip(col_names, columns))
         ds["subject"].random = True
         stc_fnames = []
-        for c in ds.itercases():
+        missing = []
+        for idx, c in enumerate(ds.itercases()):
             folder = "_".join(c[i] for i in self.factors)
             exp = "{}/{}/*{}*-lh.stc".format(
                 self.data_dir, folder, c["subject"])
             fnames = glob.glob(exp)
-            assert len(fnames) == 1
-            stc_fnames.append(fnames[0])
+            if len(fnames) == 1:
+                stc_fnames.append(fnames[0])
+            else:
+                missing.append(idx)
+        if missing:
+            keep_idx = ones(ds.n_cases, dtype=bool)
+            keep_idx[missing] = False
+            ds.info["missing"] = ds.sub(missing)
+            ds = ds.sub(keep_idx)
         if load_stcs:
             stcs = list(map(read_source_estimate, stc_fnames))
             ds["src"] = stc_ndvar(stcs, subject=subject, src=src, **stc_kwargs)
