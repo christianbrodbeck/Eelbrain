@@ -110,7 +110,16 @@ class STCLoaderFrame(EelbrainFrame):
         names = self._get_factor_names()
         self.loader.set_factor_names(names)
         stc_kw = self._get_stc_kwargs()
-        return self.loader.make_dataset(**stc_kw)
+        ds = self.loader.make_dataset(**stc_kw)
+        if "missing" in ds.info:
+            msg = ("Source estimate files for the following subjects "
+                   "and conditions were not located. They will not be "
+                   "in the dataset.\n\n")
+            for c in ds.info["missing"].itercases():
+                cond = "-".join([c[i] for i in self.loader.factors])
+                msg += "{}: {}\n".format(c["subject"], cond)
+            wx.MessageBox(msg, "Missing Data", wx.OK)
+        return ds
 
     def OnAttachDataset(self, evt):
         ds = self._get_dataset()
