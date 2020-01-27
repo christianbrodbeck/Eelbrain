@@ -9,6 +9,7 @@ class TestModelInfo(wx.Panel):
         self.loader = loader
         self.InitWidgets()
         self.InitUI()
+        self.model = self.anova_def
 
     def InitWidgets(self):
         self.test_type = wx.RadioBox(self, choices=["ANOVA", "t-test"])
@@ -29,11 +30,13 @@ class TestModelInfo(wx.Panel):
         self.SetSizer(self.sizer)
 
     def OnTestTypeChange(self, evt):
-        test_type = self.get_test_type()
+        test_type = evt.GetString()
         if test_type == "ANOVA":
+            self.model = self.anova_def
             self.sizer.Show(self.anova_def, recursive=True)
             self.sizer.Hide(self.ttest_def, recursive=True)
         elif test_type == "t-test":
+            self.model = self.ttest_def
             self.sizer.Show(self.ttest_def, recursive=True)
             self.sizer.Hide(self.anova_def, recursive=True)
         self.sizer.Layout()
@@ -42,11 +45,10 @@ class TestModelInfo(wx.Panel):
         return self.test_type.GetStringSelection()
 
     def get_test_kwargs(self):
-        test_type = self.get_test_type()
-        if test_type == "ANOVA":
-            return self.anova_def.get_test_kwargs()
-        elif test_type == "t-test":
-            return self.ttest_def.get_test_kwargs()
+        return self.model.get_test_kwargs()
+
+    def get_subconditions(self):
+        return self.model.get_subconditions()
 
     def validate(self):
         kwargs = self.get_test_kwargs()
@@ -108,6 +110,13 @@ class ANOVAModel(wx.BoxSizer):
         kwargs["x"] = " * ".join(factors)
         return kwargs
 
+    def get_subconditions(self):
+        conds = dict()
+        for fb in self.factor_boxes:
+            if fb.is_selected():
+                conds[fb.name] = fb.level_select.GetCheckedStrings()
+        return conds
+
 
 class TTestModel(wx.BoxSizer):
 
@@ -158,4 +167,8 @@ class TTestModel(wx.BoxSizer):
         kwargs["c0"] = self.level1.GetValue()
         kwargs["c1"] = self.level2.GetValue()
         return kwargs
+
+    def get_subconditions(self):
+        kwargs = self.get_test_kwargs()
+        return {kwargs["x"]: (kwargs["c0"], kwargs["c1"])}
 
