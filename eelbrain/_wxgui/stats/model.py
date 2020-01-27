@@ -55,7 +55,7 @@ class TestModelInfo(wx.Panel):
             if not kwargs["x"]:
                 raise ValidationException("Select at least one ANOVA factor.")
         elif test_type == "t-test":
-            if not kwargs["c0"] and kwargs["c1"]:
+            if kwargs["c0"] == "" or kwargs["c1"] == "":
                 raise ValidationException("Select both levels for the t-test.")
 
 
@@ -99,6 +99,8 @@ class TTestModel(wx.BoxSizer):
         self.OnFactorChange(None)
         self.Layout()
         parent.Bind(wx.EVT_RADIOBOX, self.OnFactorChange, self.factor)
+        parent.Bind(wx.EVT_COMBOBOX, self.OnLevelChange, self.level1)
+        parent.Bind(wx.EVT_COMBOBOX, self.OnLevelChange, self.level2)
 
     def OnFactorChange(self, evt):
         factor = self.factor.GetStringSelection()
@@ -106,6 +108,13 @@ class TTestModel(wx.BoxSizer):
         for cb in (self.level1, self.level2):
             cb.Clear()
             cb.AppendItems(levels)
+
+    def OnLevelChange(self, evt):
+        kwargs = self.get_test_kwargs()
+        if kwargs["c0"] == kwargs["c1"]:
+            message = "Levels for t-test must be distinct."
+            wx.MessageBox(message, "Invalid t-test Model", wx.OK)
+            evt.GetEventObject().SetValue("")
 
     def get_test_kwargs(self):
         kwargs = dict()
