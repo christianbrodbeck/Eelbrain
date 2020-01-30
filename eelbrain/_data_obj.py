@@ -7636,6 +7636,9 @@ class Dimension:
         """
         return None
 
+    def _cluster_property_labels(self):
+        return []
+
     def connectivity(self):
         """Retrieve the dimension's connectivity graph
 
@@ -8224,9 +8227,12 @@ class Scalar(Dimension):
         """
         ds = Dataset()
         where = [np.flatnonzero(cluster) for cluster in x]
-        ds['%s_min' % self.name] = Var([self.values[w[0]] for w in where])
-        ds['%s_max' % self.name] = Var([self.values[w[-1]] for w in where])
+        ds[f'{self.name}_min'] = Var([self.values[w[0]] for w in where])
+        ds[f'{self.name}_max'] = Var([self.values[w[-1]] for w in where])
         return ds
+
+    def _cluster_property_labels(self):
+        return [f'{self.name}_min', f'{self.name}_max']
 
     @classmethod
     def _concatenate(cls, dims):
@@ -8462,6 +8468,9 @@ class Sensor(Dimension):
             A dataset with variables describing cluster properties.
         """
         return Dataset({'n_sensors': Var(x.sum(1))})
+
+    def _cluster_property_labels(self):
+        return ['n_sensors']
 
     def _array_index(self, arg):
         "Convert a dimension-semantic index to an array-like index"
@@ -9228,7 +9237,6 @@ class SourceSpaceBase(Dimension):
         # no clusters
         if len(x) == 0:
             ds['n_sources'] = Var([])
-            ds['hemi'] = Factor([])
             if self.parc is not None:
                 ds['location'] = Factor([])
             return ds
@@ -9247,6 +9255,12 @@ class SourceSpaceBase(Dimension):
             ds['location'] = Factor(locations)
 
         return ds
+
+    def _cluster_property_labels(self):
+        out = ['n_sources']
+        if self.parc:
+            out.append('location')
+        return out
 
     def _distances(self):
         "Surface distances between source space vertices"
@@ -9588,6 +9602,9 @@ class SourceSpace(SourceSpaceBase):
                 hemis.append('rh')
         ds['hemi'] = Factor(hemis)
         return ds
+
+    def _cluster_property_labels(self):
+        return [*SourceSpaceBase._cluster_property_labels(), 'hemi']
 
     @classmethod
     def _concatenate(cls, dims):
@@ -10158,6 +10175,9 @@ class UTS(Dimension):
         ds['tstop'] = Var(tmax + self.tstep)
         ds['duration'] = ds.eval("tstop - tstart")
         return ds
+
+    def _cluster_property_labels(self):
+        return ['tstart', 'tstop', 'duration']
 
     def _array_index(self, arg):
         if np.isscalar(arg):

@@ -1843,7 +1843,7 @@ class ANOVA(MultiEffectNDTest):
         else:
             return self._statistic_map
 
-    def table(self, title=None, caption=None):
+    def table(self, title=None, caption=None, clusters=False):
         """Table listing all effects and corresponding smallest p-values
 
         Parameters
@@ -1852,25 +1852,61 @@ class ANOVA(MultiEffectNDTest):
             Title for the table.
         caption : text
             Caption for the table.
+        clusters : bool | float
+            Include properties of all significant clusters (default ``False``;
+            use float to include clusters with p ≤ ``clusters``).
 
         Returns
         -------
         table : eelbrain.fmtxt.Table
             ANOVA table.
         """
-        table = fmtxt.Table('rlr' + ('' if self.p is None else 'rl'), title=title, caption=caption)
-        table.cells('#', 'Effect', 'f_max')
+        # table columns
+        columns = ['#', 'Effect']
+        alignment = ['r', 'l']
+        if clusters:
+            cluster_properties = self._first_cdist._cluster_property_labels()
+            columns.extend(cluster_properties)
+            alignment.extend('l' * len(cluster_properties))
+        else:
+            cluster_properties = []
+        columns.append('f_max')
+        alignment.append('r')
         if self.p is not None:
-            table.cells('p', 'sig')
+            columns.extend(['p', 'sig'])
+            alignment.extend(['r', 'l'])
+        table = fmtxt.Table(alignment, title=title, caption=caption)
+        table.cells(*columns)
         table.midrule()
-        for i in range(len(self.effects)):
+
+        cluster_pmin = None if clusters is True else clusters
+        show_map_stats = True
+        for i, effect in enumerate(self.effects):
             table.cell(i)
-            table.cell(self.effects[i])
-            table.cell(fmtxt.stat(self.f[i].max()))
+            table.cell(effect)
             if self.p is not None:
-                pmin = self.p[i].min()
-                table.cell(fmtxt.p(pmin))
-                table.cell(star(pmin))
+                if clusters:
+                    cluster_table = self.find_clusters(cluster_pmin, True, effect=effect)
+                    show_map_stats = cluster_table.n_cases == 0
+                    for ci in range(cluster_table.n_cases):
+                        if ci:
+                            table.cells('', '')
+                        # properties
+                        for key in cluster_properties:
+                            table.cell(cluster_table[ci, key])
+                        # f_max, p, sig
+                        table.cell(fmtxt.stat(cluster_table[ci, 'cluster'].max()))
+                        table.cell(fmtxt.p(cluster_table[ci, 'p']))
+                        table.cell(star(cluster_table[ci, 'p']))
+                    if show_map_stats:
+                        for _ in cluster_properties:
+                            table.cell('')
+            if show_map_stats:
+                table.cell(fmtxt.stat(self.f[i].max()))
+                if self.p is not None:
+                    pmin = self.p[i].min()
+                    table.cell(fmtxt.p(pmin))
+                    table.cell(star(pmin))
         return table
 
 
@@ -3217,7 +3253,8 @@ class NDPermutationDistribution:
         ra[:] = x.ravel()  # OPT: don't copy data
         return ra, y_flat_shape, x.shape[ndims:]
 
-    def _cluster_properties(self, cluster_map, cids):
+    @staticmethod
+    def _cluster_properties(cluster_map, cids):
         """Create a Dataset with cluster properties
 
         Parameters
@@ -3261,6 +3298,9 @@ class NDPermutationDistribution:
                 ds.update(properties)
 
         return ds
+
+    def _cluster_property_labels(self):
+        return [l for dim in self.dims for l in dim._cluster_property_labels()]
 
     def cluster(self, cluster_id):
         """Retrieve a specific cluster as NDVar
