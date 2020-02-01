@@ -13,6 +13,10 @@ New in 0.32
   - :class:`plot.Timeplot` argument order: second and third argument switched to facilitate plotting single category.
 
 * :class:`plot.Style` to control advanced plotting options by category (see :ref:`exa-bozplot` example).
+* New functions/methods:
+
+  - :meth:`NDVar.quantile`
+
 * .. currentmodule:: eelbrain.pipeline
   :class:`MneExperiment` pipeline:
 

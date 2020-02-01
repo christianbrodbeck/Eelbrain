@@ -4511,6 +4511,33 @@ class NDVar:
         else:
             return NDVar(x, dims, *args)
 
+    def quantile(self, q=0.5, dims=(), interpolation='linear', **regions):
+        """The value such that q of the NDVar's values are lower
+
+        (See func:`numpy.quantile`)
+
+        Parameters
+        ----------
+        dims : str | tuple of str | boolean NDVar
+            Dimensions over which to operate. A str is used to specify a single
+            dimension, a tuple of str to specify several dimensions, None to
+            compute the maximum over all dimensions.
+            An boolean NDVar with the same dimensions as the data can be used
+            to compute the maximum in specific elements (if the data has a case
+            dimension, the maximum is computed for each case).
+        q : float
+            Quantile to compute, between 0 and 1 inclusive.
+        interpolation : str
+            See func:`numpy.quantile`.
+        **regions
+            Regions over which to aggregate. For example, to get the maximum
+            between time=0.1 and time=0.2, use ``ndvar.max(time=(0.1, 0.2))``.
+        name : str
+            Name of the output NDVar (default is the current name).
+        """
+        func = partial(np.quantile, q=q, interpolation=interpolation)
+        return self._aggregate_over_dims(dims, regions, func)
+
     def repeat(self, repeats, name=None):
         """Repeat slices of the NDVar along the case dimension
 
