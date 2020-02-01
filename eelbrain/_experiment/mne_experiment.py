@@ -1084,6 +1084,7 @@ class MneExperiment(FileTree):
         # tests: test def change
 
         # check events
+        # key: (subject, recording)
         # 'events' -> number or timing of triggers (includes trigger_shift)
         # 'variables' -> only variable change
         for key, old_events in cache_state['events'].items():
@@ -1102,20 +1103,22 @@ class MneExperiment(FileTree):
                     if var == 'i_start':
                         continue
                     elif var not in new_events:
-                        invalid_cache['variables'].add(var)
+                        invalid_cache['variable_for_subject'].add((var, key[0]))
                         self._log.warning("  var removed: %s (%s)", var, '/'.join(key))
                         continue
                     old = old_events[var]
                     new = new_events[var]
                     if old.name != new.name:
-                        invalid_cache['variables'].add(var)
+                        invalid_cache['variable_for_subject'].add((var, key[0]))
                         self._log.warning("  var name changed: %s (%s) %s->%s", var, '/'.join(key), old.name, new.name)
                     elif new.__class__ is not old.__class__:
-                        invalid_cache['variables'].add(var)
+                        invalid_cache['variable_for_subject'].add((var, key[0]))
                         self._log.warning("  var type changed: %s (%s) %s->%s", var, '/'.join(key), old.__class__, new.__class)
                     elif not all_equal(old, new, True):
-                        invalid_cache['variables'].add(var)
-                        self._log.warning("  var changed: %s (%s) %i values", var, '/'.join(key), np.sum(new != old))
+                        invalid_cache['variable_for_subject'].add((var, key[0]))
+                        self._log.warning("  var changed: %s (%s) %i values changed", var, '/'.join(key), np.sum(new != old))
+        for var, subject in invalid_cache['variable_for_subject']:
+            invalid_cache['variables'].add(var)
 
         # groups
         for group, members in cache_state['groups'].items():
@@ -1246,8 +1249,8 @@ class MneExperiment(FileTree):
                 rm['evoked-file'].add({'subject': subject, 'epoch': epoch})
 
         # variables
-        for var in invalid_cache['variables']:
-            rm['evoked-file'].add({'model': f'*{var}*'})
+        for var, subject in invalid_cache['variable_for_subject']:
+            rm['evoked-file'].add({'model': f'*{var}*', 'subject': subject})
 
         # groups
         for group in invalid_cache['groups']:
