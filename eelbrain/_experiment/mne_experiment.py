@@ -1831,6 +1831,11 @@ class MneExperiment(FileTree):
                 yield value
 
     def _label_events(self, ds):
+        # subclass fix events
+        info = ds.info
+        ds = self.fix_events(ds)
+        self._check_ds(ds, f'{self.__class__.__name__}.fix_events()', info)
+
         # add standard variables
         ds['T'] = ds['i_start'] / ds.info['sfreq']
         ds['SOA'] = ds['T'].diff(0)
@@ -1844,14 +1849,61 @@ class MneExperiment(FileTree):
         # subclass label_events
         info = ds.info
         ds = self.label_events(ds)
+        self._check_ds(ds, f'{self.__class__.__name__}.label_events()', info)
+        return ds
+
+    @staticmethod
+    def _check_ds(ds, source, info):
         if not isinstance(ds, Dataset):
-            raise DefinitionError(f"{self.__class__.__name__}.label_events() needs to return the events Dataset. Got {ds!r}.")
+            raise DefinitionError(f"{source} needs to return the events Dataset. Got {ds!r}.")
         elif 'i_start' not in ds:
-            raise DefinitionError(f"The Dataset returned by {self.__class__.__name__}.label_events() does not contain a variable called `i_start`. This variable is required to ascribe events to data samples.")
+            raise DefinitionError(f"The Dataset returned by {source} does not contain a variable called `i_start`. This variable is required to ascribe events to data samples.")
         elif 'trigger' not in ds:
-            raise DefinitionError(f"The Dataset returned by {self.__class__.__name__}.label_events() does not contain a variable called `trigger`. This variable is required to check rejection files.")
+            raise DefinitionError(f"The Dataset returned by {source} does not contain a variable called `trigger`. This variable is required to check rejection files.")
         elif ds.info is not info:
             ds.info.update(info)
+
+    def fix_events(self, ds):
+        """Modify event order or timing
+
+        Parameters
+        ----------
+        ds : Dataset
+            A Dataset containing events (with variables as returned by
+            :func:`load.fiff.events`).
+
+        Returns
+        -------
+        ds : Dataset
+            Should return the modified events dataset.
+
+
+        See Also
+        --------
+        label_events : Add event labels
+
+        Notes
+        -----
+        Override this method in subclasses to change the event structure or
+        timing. This method is called *before* adding other variables.
+
+        The subject and session the events are from can be determined with
+        ``ds.info['subject']`` and ``ds.info['session']``.
+
+        Calling the original (super-class) method is not necessary.
+
+        Examples
+        --------
+        Drop the last event from subject ``S01``::
+
+            class Experiment(MneExperiment):
+
+                def fix_events(self, ds):
+                    if ds.info['subject'] == 'S01':
+                        return ds[:-1]
+                    else:
+                        return ds
+        """
         return ds
 
     def label_events(self, ds):
@@ -1863,12 +1915,24 @@ class MneExperiment(FileTree):
             A Dataset containing events (with variables as returned by
             :func:`load.fiff.events`).
 
+        Returns
+        -------
+        ds : Dataset
+            Should return the modified events dataset.
+
+        See Also
+        --------
+        fix_events : Change event order or timing
+
         Notes
         -----
-        Override this method in MneExperiment subclasses to add event labels
-        more flexibly than through the :attr:`variables` attribute.
-        The session that the events are from can be determined with
-        ``ds.info['session']``.
+        Override this method in subclasses to add event labels more flexibly
+        than through the :attr:`variables` attribute. This method is applied
+        *after* adding other variables.
+
+        The subject and session the events are from can be determined with
+        ``ds.info['subject']`` and ``ds.info['session']``.
+
         Calling the original (super-class) method is not necessary.
 
         Examples

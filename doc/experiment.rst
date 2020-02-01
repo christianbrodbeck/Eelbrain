@@ -110,13 +110,13 @@ To inspect raw data for a given pre-processing stage use::
 Which will plot 5 s excerpts and allow scrolling through the data.
 
 
-Labeling events
----------------
+.. _MneExperiment-events:
+
+Events
+------
 
 Initially, events are only labeled with the trigger ID. Use the
 :attr:`MneExperiment.variables` settings to add labels.
-For more complex designs and variables, you can override
-:meth:`MneExperiment.label_events`.
 Events are represented as :class:`Dataset` objects and can be inspected with
 corresponding methods and functions, for example::
 
@@ -124,6 +124,16 @@ corresponding methods and functions, for example::
     >>> ds = e.load_events()
     >>> ds.head()
     >>> print(table.frequencies('trigger', ds=ds))
+
+
+For more complex designs and variables, you can override methods that provide
+complete control over the events. These are the transformations applied to
+the triggers extracted from raw files (in this order):
+
+ - :meth:`MneExperiment.fix_events`: Change event order, timing and remove/add
+   events
+ - :attr:`MneExperiment.variables`: Add labels based on triggers
+ - :meth:`MneExperiment.label_events`: Add any more complex labels
 
 
 Defining data epochs

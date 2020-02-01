@@ -10,6 +10,7 @@ New in 0.32
   :class:`MneExperiment` pipeline:
 
   - Methods with ``decim`` parameter now also have ``samplingrate`` parameter
+  - More control over :ref:`MneExperiment-events`
 
 
 New in 0.31
