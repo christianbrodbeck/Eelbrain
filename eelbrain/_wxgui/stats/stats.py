@@ -1,3 +1,5 @@
+import itertools
+
 import wx
 
 from ..frame import EelbrainFrame
@@ -58,14 +60,22 @@ class StatsFrame(EelbrainFrame):
         info = self.roi_info
         if info is None:
             raise RuntimeError("No ROI information provided.")
+        # subset to selected subjects
         subjects = self.info_panel.subj_sel.get_selected_subjects()
         idx = self.ds["subject"].isin(subjects)
         ds = self.ds.sub(idx)
-        test_type = self.test_model.get_test_type()
+        # for each factor, keep subsetting to required levels
         subconds = self.test_model.get_subconditions()
         for factor, levels in subconds.items():
             sub_exp = "{}.isin({})".format(factor, levels)
             ds = ds.sub(sub_exp)
+        # check for subjects without all conditions
+        missing = self.find_missing_cells(ds, subjects, subconds)
+        if missing:
+            keepers = tuple(i for i in subjects if i not in missing)
+            ds = ds.sub("subject.isin({})".format(keepers))
+            msg = self.missing_cells_message(missing)
+            _ = wx.MessageBox(msg, "Excluding Subjects", wx.OK)
         src = ds["src"]
         src = set_parc(src, info["atlas"])
         if self.spatiotemp.is_temporal():
@@ -73,6 +83,31 @@ class StatsFrame(EelbrainFrame):
         else:
             data = src.sub(source=info["labels"])
         return ds, data
+
+    def find_missing_cells(self, ds, subjects, subconditions):
+        missing = dict()
+        combos = set(itertools.product(*subconditions.values()))
+        factors = subconditions.keys()
+        for subject in subjects:
+            subject_combos = combos.copy()
+            subject_rows = ds.sub("subject=='{}'".format(subject))
+            for row in subject_rows.itercases():
+                condition = tuple(row[factor] for factor in factors)
+                if condition in subject_combos:
+                    subject_combos.remove(condition)
+            if len(subject_combos) > 0:
+                missing[subject] = subject_combos
+        return missing
+
+    def missing_cells_message(self, missing):
+        msg = ("The following subjects must be excluded because "
+               "they are missing data for a required condition:\n\n")
+        join_cond = lambda t: "-".join(t)
+        for subj, mconds in missing.items():
+            msg += subj + ": "
+            msg += ", ".join(join_cond(c) for c in mconds)
+            msg += "\n"
+        return msg
 
     def run_test(self, evt):
         if not self.validate_all():
