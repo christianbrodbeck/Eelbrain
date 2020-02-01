@@ -3116,7 +3116,7 @@ class MneExperiment(FileTree):
             data = self.load_raw(ndvar=True, **state)
         return neighbor_correlation(data)
 
-    def load_raw(self, add_bads=True, preload=False, ndvar=False, decim=1, **kwargs):
+    def load_raw(self, add_bads=True, preload=False, ndvar=False, samplingrate=None, decim=None, **kwargs):
         """
         Load a raw file as mne Raw object.
 
@@ -3130,6 +3130,8 @@ class MneExperiment(FileTree):
             :func:`mne.io.read_raw_fif` parameter).
         ndvar : bool
             Load as NDVar instead of mne Raw object (default False).
+        samplingrate : int
+            Samplingrate in Hz for the analysis.
         decim : int
             Decimate data (default 1, i.e. no decimation; value other than 1
             implies ``preload=True``)
@@ -3145,18 +3147,20 @@ class MneExperiment(FileTree):
         bad channels in the bad channels file.
         """
         pipe = self._raw[self.get('raw', **kwargs)]
-        if decim > 1:
-            preload = True
-        raw = pipe.load(self.get('subject'), self.get('recording'), add_bads, preload)
-        if decim > 1:
+        raw = pipe.load(self.get('subject'), self.get('recording'), add_bads)
+        if decim and decim > 1:
+            assert samplingrate is None, f"samplingrate and decim can't both be specified"
+            samplingrate = int(round(raw.info['sfreq'] / decim))
+        if samplingrate or preload:
+            raw.load_data()
+        if samplingrate:
             if ndvar:
                 # avoid warning for downsampling event channel
                 stim_picks = np.empty(0)
                 events = np.empty((0, 3))
             else:
                 stim_picks = events = None
-            sfreq = int(round(raw.info['sfreq'] / decim))
-            raw.resample(sfreq, stim_picks=stim_picks, events=events)
+            raw.resample(samplingrate, stim_picks=stim_picks, events=events)
 
         if ndvar:
             data = TestDims('sensor')
