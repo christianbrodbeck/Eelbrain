@@ -923,7 +923,7 @@ def evaluate_kernel(y, y_pred, error, i_skip, segments=None):
     # discard onset
 
     if isinstance(i_skip, (tuple, list, np.ndarray)):
-        print(f'Warning: max of i_skip {i_skip}')
+        #print(f'Warning: max of i_skip {i_skip}')
         i_skip = max(i_skip)
     if i_skip:
         assert segments is None, "Not implemented"
