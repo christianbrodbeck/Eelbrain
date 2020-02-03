@@ -2846,7 +2846,7 @@ class NDPermutationDistribution:
         if criteria:
             criteria_ = []
             for k, v in criteria.items():
-                m = re.match('min(\w+)', k)
+                m = re.match(r'min(\w+)', k)
                 if m:
                     dimname = m.group(1)
                     if not y.has_dim(dimname):

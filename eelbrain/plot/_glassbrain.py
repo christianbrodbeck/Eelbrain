@@ -160,9 +160,9 @@ class GlassBrain(TimeSlicerEF, ColorBarMixin, EelFigure):
         Note: The colormap will always be set to range from -vmax to vmax.
     interpolation : str
         Interpolation to use when resampling the image to the destination
-        space. Can be "continuous" (default) to use 3rd-order spline
+        space. Can be "continuous" to use 3rd-order spline
         interpolation, or "nearest" to use nearest-neighbor mapping.
-        "nearest" is faster but can be noisier in some cases.
+        "nearest" (default) is faster but can be noisier in some cases.
     title : str | bool
         Figure title. Set to ``True`` to display current time point as figure
         title.

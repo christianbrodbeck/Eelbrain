@@ -65,7 +65,7 @@ FUNCS = {name: (kind, func) for funcs, kind in
 OP_FUNCS = {'-': np.subtract, '+': np.add}
 
 
-RE_NAME = re.compile("[*\w\d ]*[*\w\d]")
+RE_NAME = re.compile(r"[*\w\d ]*[*\w\d]")
 
 
 class Streamer:

@@ -152,7 +152,7 @@ preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __
                    )
 
 
-SRC_RE = re.compile('^(ico|vol)-(\d+)(?:-(\w+))?$')
+SRC_RE = re.compile(r'^(ico|vol)-(\d+)(?:-(\w+))?$')
 UNNAMED = '<?>'
 LIST_INDEX_TYPES = (*INT_TYPES, slice)
 EXPAND_INDEX_TYPES = (*INT_TYPES, np.ndarray)
@@ -1735,6 +1735,14 @@ class Var:
         -------
         diff : Var
             Difference.
+
+        Examples
+        --------
+        >>> v = Var([1, 2, 4])
+        >>> v.diff()
+        Var([1, 2])
+        >>> v.diff(to_begin=-1)
+        Var([-1, 1, 2])
         """
         args = op_name(self, 'diff(', name=name)
         if len(self) == 0:

@@ -1249,9 +1249,9 @@ class Table(FMTextElement):
         alignment for each column, e.g. ``'lrr'``
     rules : bool
         Add toprule and bottomrule
-    title : None | text
+    title : text
         Title for the table.
-    caption : None | text
+    caption : text
         Caption for the table.
     rows : list of Row
         Table body.

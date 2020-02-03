@@ -2269,7 +2269,7 @@ class MneExperiment(FileTree):
                 if interpolate_bads == 'keep':
                     reset_bads = False
                 else:
-                    raise ValueError(f"interpolate_bads={interpolate_bads}")
+                    raise ValueError(f"interpolate_bads={interpolate_bads!r}")
             else:
                 reset_bads = True
 
@@ -2605,6 +2605,12 @@ class MneExperiment(FileTree):
              - :ref:`state-model`: how to group trials into conditions
              - :ref:`state-equalize_evoked_count`: control number of trials per cell
 
+        Notes
+        -----
+        Channel interpolation: Bad channels are always interpolated. When
+        loading data for a single subject, bad channels are marked as
+        bad/excluded. When loading group level data, datasets are merged using
+        interpolated data.
         """
         subject, group = self._process_subject_arg(subjects, kwargs)
         epoch_name = self.get('epoch')
