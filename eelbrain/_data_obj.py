@@ -5556,15 +5556,19 @@ class Dataset(dict):
                 self[key][idx] = item
             elif isinstance(idx, slice) and idx.start is None and idx.stop is None and idx.step is None:
                 if isdataobject(item):
+                    if not item.has_case:
+                        if self.n_cases is None:
+                            raise IndexError("Can't assign slice of empty Dataset")
+                        item = item.repeat(self.n_cases)
                     self[key] = item
                 elif self.n_cases is None:
-                    raise TypeError("Can't assign slice of empty Dataset")
+                    raise IndexError("Can't assign slice of empty Dataset")
                 elif isinstance(item, str):
                     self[key] = Factor([item], repeat=self.n_cases)
                 elif np.isscalar(item):
                     self[key] = Var([item], repeat=self.n_cases)
                 else:
-                    raise TypeError(f"{item!r} is not supported for slice-assignment of a new variable. Use a str for a new Factor or a scalar for a new Var.")
+                    raise IndexError(f"{item!r} is not supported for slice-assignment of a new variable. Use a str for a new Factor or a scalar for a new Var.")
             else:
                 raise IndexError("When assigning a new item in a Dataset, all values need to be set (ds[:,'name'] = ...)")
         else:
