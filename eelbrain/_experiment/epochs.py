@@ -113,7 +113,7 @@ class Epoch(EpochBase):
 
         self.tmin = typed_arg(tmin, float)
         self.tmax = typed_arg(tmax, float, str)
-        self.samplingrate = typed_arg(samplingrate, float)
+        self.samplingrate = typed_arg(samplingrate, float, int)
         self.decim = typed_arg(decim, int)
         self.baseline = baseline
         self.vars = vars
