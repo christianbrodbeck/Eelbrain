@@ -27,11 +27,6 @@ class Reader(FeatherReader):
             name = self.get_column_name(i)
             if column_set is None or name in column_set:
                 col = self.get_column(i)
-                if len(col.shape) != 1:
-                    raise IOError(
-                        "%s: reading multidimensional columns not currently "
-                        "supprted (try skipping column %r)" %
-                        (self.source, name))
                 n = col.length()
                 data = (col.data[i].as_py() for i in range(n))
                 if isinstance(col.type, DictionaryType) or col.type.equals('string'):
