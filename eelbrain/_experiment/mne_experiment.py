@@ -56,10 +56,10 @@ from ..fmtxt import List, Report, Image, read_meta
 from .._stats.stats import ttest_t
 from .._stats.testnd import _MergedTemporalClusterDist
 from .._text import enumeration, plural
-from .._utils import IS_WINDOWS, ask, subp, keydefaultdict, log_level, ScreenHandler
+from .._utils import IS_WINDOWS, ask, intervals, subp, keydefaultdict, log_level, ScreenHandler
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .definitions import FieldCode, find_dependent_epochs, find_epochs_vars, log_dict_change, log_list_change
-from .epochs import PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, assemble_epochs, decim_param
+from .epochs import ContinuousEpoch, PrimaryEpoch, SecondaryEpoch, SuperEpoch, EpochCollection, assemble_epochs, decim_param
 from .exceptions import FileDeficient, FileMissing
 from .experiment import FileTree
 from .groups import assemble_groups
@@ -2204,6 +2204,29 @@ class MneExperiment(FileTree):
                 if cat:
                     err += f", cat={cat!r}"
                 raise RuntimeError(err)
+
+        if isinstance(epoch, ContinuousEpoch):
+            # find splitting points
+            diff = ds['T'].diff(to_begin=epoch.split+1)
+            onsets = np.flatnonzero(diff >= epoch.split)
+            # make sure we are not messing up user events
+            illegal = ', '.join(k for k in ('T_relative', 'events', 'tmax') if k in ds)
+            if illegal:
+                raise RuntimeError(f"Events contain variables with reserved names: {illegal}")
+            # split events
+            events = [ds[i1:i2] for i1, i2 in intervals(chain(onsets, [None]))]
+            # update event times
+            raw_samplingrate = ds.info['raw'].info['sfreq']
+            for events_i in events:
+                sample_i = events_i['i_start'] - events_i[0, 'i_start']
+                events_i['T_relative'] = sample_i / raw_samplingrate
+            # convert to variable epoch length format
+            ds = ds[onsets]
+            ds.info['nested_events'] = 'events'
+            ds['events'] = events
+            tmin = -epoch.pad_start
+            ds['tmax'] = Var([e[-1, 'T'] - e[0, 'T'] + epoch.pad_end for e in events])
+            tmax = 'tmax'
 
         # load sensor space data
         if tmin is None:

@@ -28,17 +28,16 @@ def assemble_epochs(epoch_def, epoch_default):
         else:
             raise TypeError(f"Epoch {name}: {parameters!r}")
 
-        epoch_type = type(epoch)
-        if epoch_type is PrimaryEpoch:
+        if isinstance(epoch, (PrimaryEpoch, ContinuousEpoch)):
             epochs[name] = epoch._link(name, epochs)
-        elif epoch_type is SecondaryEpoch:
+        elif isinstance(epoch, SecondaryEpoch):
             secondary_epochs[name] = epoch
-        elif epoch_type is SuperEpoch:
+        elif isinstance(epoch, SuperEpoch):
             super_epochs[name] = epoch
-        elif epoch_type is EpochCollection:
+        elif isinstance(epoch, EpochCollection):
             collections[name] = epoch
         else:
-            raise RuntimeError(f"epoch_type={epoch_type!r}")
+            raise RuntimeError(f"epoch_type={epoch.__class__.__name__}")
 
     secondary_epochs.update(super_epochs)
     secondary_epochs.update(collections)
@@ -54,6 +53,11 @@ def assemble_epochs(epoch_def, epoch_default):
 
 
 class EpochBase(Definition):
+    baseline = None
+    n_cases = None
+    trigger_shift = None
+    post_baseline_trigger_shift = None
+    decim = None
 
     def _link(self, name, epochs):
         out = deepcopy(self)
@@ -63,10 +67,7 @@ class EpochBase(Definition):
 
 class Epoch(EpochBase):
     """Epoch definition base (non-functional baseclass)"""
-    DICT_ATTRS = ('name', 'tmin', 'tmax', 'decim', 'samplingrate', 'baseline', 'vars',
-                  'trigger_shift', 'post_baseline_trigger_shift',
-                  'post_baseline_trigger_shift_min',
-                  'post_baseline_trigger_shift_max')
+    DICT_ATTRS = ('name', 'tmin', 'tmax', 'decim', 'samplingrate', 'baseline', 'vars', 'trigger_shift', 'post_baseline_trigger_shift', 'post_baseline_trigger_shift_min', 'post_baseline_trigger_shift_max')
 
     # to be set by subclass
     rej_file_epochs = None
@@ -239,10 +240,7 @@ class SecondaryEpoch(Epoch):
     MneExperiment.epochs
     """
     DICT_ATTRS = Epoch.DICT_ATTRS + ('sel_epoch', 'sel')
-    INHERITED_PARAMS = ('tmin', 'tmax', 'decim', 'samplingrate', 'baseline',
-                        'post_baseline_trigger_shift',
-                        'post_baseline_trigger_shift_min',
-                        'post_baseline_trigger_shift_max')
+    INHERITED_PARAMS = ('tmin', 'tmax', 'decim', 'samplingrate', 'baseline', 'post_baseline_trigger_shift', 'post_baseline_trigger_shift_min', 'post_baseline_trigger_shift_max')
 
     def __init__(self, base, sel=None, **kwargs):
         self.sel_epoch = base
@@ -378,6 +376,56 @@ class EpochCollection(EpochBase):
         out.sessions = sorted(sessions)
         out.rej_file_epochs = sorted(rej_file_epochs)
         return out
+
+
+class ContinuousEpoch(EpochBase):
+    """Epoch spanning multiple events for continuous analysis
+
+    Parameters
+    ----------
+    session : str
+        Session (raw file) from which to load data.
+    sel : str
+        Expression which evaluates in the events Dataset to the index of the
+        events included in this Epoch specification.
+    pad : scalar
+        Time to add before the first event and after the last event (in seconds,
+        default 1).
+    split : scalar
+        Split into several continuous epochs whenever time between used data
+        (event times ± ``pad``) is larger than ``split`` (default 10).
+    samplingrate : scalar
+        Target samplingrate. Needs to divide data samplingrate evenly (e.g.
+        ``200`` for data sampled at 1000 Hz; default ``200``).
+    vars : dict
+        Add new variables only for this epoch.
+        Each entry specifies a variable with the following schema:
+        ``{name: definition}``. ``definition`` can be either a string that is
+        evaluated in the events-Dataset`, or a
+        ``(source_name, {value: code})``-tuple.
+        ``source_name`` can also be an interaction, in which case cells are joined
+        with spaces (``"f1_cell f2_cell"``).
+    """
+    DICT_ATTRS = ('name', 'session', 'sel', 'pad_start', 'pad_end', 'split', 'samplingrate', 'vars')
+
+    def __init__(
+            self,
+            session: str,
+            sel: str,
+            pad_start: float = 0.100,
+            pad_end: float = 1.000,
+            split: float = 10,
+            samplingrate: float = 200,
+            vars: dict = None,
+    ):
+        EpochBase.__init__(self)
+        self.session = typed_arg(session, str)
+        self.sel = typed_arg(sel, str)
+        self.pad_start = typed_arg(pad_start, float)
+        self.pad_end = typed_arg(pad_end, float)
+        self.split = typed_arg(split, float)
+        self.samplingrate = typed_arg(samplingrate, float, int)
+        self.vars = vars
 
 
 def decim_param(samplingrate: int, decim: int, epoch: Epoch, raw_samplingrate: float):
