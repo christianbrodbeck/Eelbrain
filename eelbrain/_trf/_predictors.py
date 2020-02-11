@@ -1,5 +1,7 @@
 """Predictors for reverse correlation"""
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from itertools import repeat
+
 import numpy as np
 
 from .._data_obj import NDVar, Case, UTS, asndvar, asarray
@@ -52,4 +54,49 @@ def epoch_impulse_predictor(shape, value=1, latency=0, name=None, ds=None):
         x[:, t_index] = value
     else:
         x[np.arange(n), t_index] = value
-    return NDVar(x, (Case, time), {}, name)
+    return NDVar(x, (Case, time), name)
+
+
+def event_impulse_predictor(shape, time='time', value=1, latency=0, name=None, ds=None):
+    """Time series with multiple impulses
+
+    Parameters
+    ----------
+    shape : NDVar | UTS
+        Shape of the output. Can be specified as the :class:`NDVar` with the
+        data to predict, or an ``(n_cases, time_dimension)`` tuple.
+    time : sequence of scalar
+        Time points at which impulses occur.
+    value : scalar | sequence
+        Magnitude of each impulse (default 1).
+    latency : scalar | sequence
+        Latency of each impulse relative to ``time`` (default 0).
+    name : str
+        Name for the output :class:`NDVar`.
+    ds : Dataset
+        If specified, input items (``time``, ``value`` and ``latency``) can be
+        strings to be evaluated in ``ds``.
+    """
+    if isinstance(shape, NDVar):
+        uts = shape.get_dim('time')
+    elif isinstance(shape, UTS):
+        uts = shape
+    else:
+        raise TypeError(f'shape={shape!r}')
+
+    time, n = asarray(time, ds=ds, return_n=True)
+
+    if np.isscalar(value):
+        value = repeat(value)
+    else:
+        value = asarray(value, ds=ds, n=n)
+
+    if np.isscalar(latency):
+        latency = repeat(latency)
+    else:
+        latency = asarray(latency, ds=ds, n=n)
+
+    out = NDVar(np.zeros(len(uts)), uts, name)
+    for t, l, v in zip(time, latency, value):
+        out[t + l] = v
+    return out

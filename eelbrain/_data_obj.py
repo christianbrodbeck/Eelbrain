@@ -507,7 +507,7 @@ def as_case_identifier(x, ds=None):
     return x
 
 
-def asarray(x, kind=None, ds=None):
+def asarray(x, kind=None, sub=None, ds=None, n=None, return_n=False):
     "Coerce input to array"
     if isinstance(x, str):
         if ds is None:
@@ -525,7 +525,8 @@ def asarray(x, kind=None, ds=None):
             x = x.astype(int)
         else:
             raise TypeError(f"Expected array of kind {kind!r}, got {x.dtype.kind!r} ({x.dtype})")
-    return x
+
+    return _apply_sub(x, sub, n, return_n)
 
 
 def _apply_sub(x, sub, n, return_n):

@@ -22,7 +22,7 @@ from ._experiment import MneExperiment
 from ._mne import complete_source_space, labels_from_clusters, morph_source_space, xhemi
 from ._ndvar import Butterworth, concatenate, convolve, correlation_coefficient, cross_correlation, cwt_morlet, dss, filter_data, find_intervals, find_peaks, frequency_response, gaussian, label_operator, maximum, minimum, neighbor_correlation, powerlaw_noise, psd_welch, rename_dim, resample, segment, set_parc, set_time, set_tmin
 from ._stats.testnd import NDTest, MultiEffectNDTest
-from ._trf import boosting, BoostingResult, epoch_impulse_predictor
+from ._trf import boosting, BoostingResult, epoch_impulse_predictor, event_impulse_predictor
 from ._utils import set_log_level
 from ._utils.com import check_for_update
 
