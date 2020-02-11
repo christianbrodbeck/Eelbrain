@@ -12,7 +12,6 @@ from .._data_obj import Datalist, as_sensor
 from ._base import EelFigure, ImLayout, Layout
 
 
-SENSOR_AXES_FRAME = 0.0
 SENSORMAP_FRAME = 0.1
 
 
@@ -705,21 +704,16 @@ class SensorMap(SensorMapMixin, EelFigure):
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    _make_axes = False
-
     def __init__(self, sensors, labels='name', proj='default', size=1,
                  color='k', marker='.', mark=None, head_radius=None,
-                 head_pos=0., connectivity=False, *args, **kwargs):
+                 head_pos=0., connectivity=False, margins=None, *args, **kwargs):
         sensors = as_sensor(sensors)
-        layout = Layout(1, 1, 5, False, *args, **kwargs)
+        kwargs.setdefault('frame', 'none')
+        layout = ImLayout(1, 1, 5, margins, {}, *args, **kwargs)
         EelFigure.__init__(self, sensors.sysname, layout)
-
-        # axes with same scaling as plot.Topomap
-        w = 1. - 2 * SENSOR_AXES_FRAME
-        ax = self.figure.add_axes((SENSOR_AXES_FRAME, SENSOR_AXES_FRAME, w, w))
+        ax = self._axes[0]
 
         # store args
-        self._axes.append(ax)
         self._sensors = sensors
         self._proj = proj
         self._marker_handles = []
