@@ -6086,8 +6086,8 @@ class MneExperiment(FileTree):
 
     @staticmethod
     def _update_inv_cache(fields):
-        if fields['inv'] == '*':
-            return '*'
+        if '*' in fields['inv']:
+            return fields['inv']
         m = inv_re.match(fields['inv'])
         ori, snr, method, depth, pick_normal = m.groups()
         if depth:
