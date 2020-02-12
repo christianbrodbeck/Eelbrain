@@ -2704,7 +2704,7 @@ class Legend(EelFigure):
         self.legend = self.figure.legend(handles, labels, loc=2)
 
         # resize figure to match legend
-        if not self._layout.w_fixed:
+        if not self._layout.w_fixed and self._has_frame:
             self.draw()
             bb = self.legend.get_window_extent()
             w0, h0 = self._frame.GetSize()
