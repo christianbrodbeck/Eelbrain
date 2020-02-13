@@ -37,7 +37,6 @@ from .._exceptions import OldVersionError
 from .._utils import LazyProperty, user_activity
 from ._boosting_opt import l1, l2, generate_options, update_error
 from .shared import RevCorrData
-import pdb #JPK
 
 
 # BoostingResult version
@@ -444,7 +443,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     if data.segments is None:
         i_skip = [t_ - 1 for t_ in trf_length]
     else:
-        i_skip = [0]
+        i_skip = 0
     # progress bar
     n_cv = len(data.cv_segments)
     pbar = tqdm(desc=f"Boosting{f' {n_y} signals' if n_y > 1 else ''}", total=n_y * n_cv, disable=CONFIG['tqdm'])
@@ -734,7 +733,7 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
 
         # update h with best movement
         h[i_stim, i_time] += delta_signed
-        update_error(y_error, x[i_stim], x_pads[i_stim], all_index, delta_signed, i_time + i_start[i_stim]) #JPK
+        update_error(y_error, x[i_stim], x_pads[i_stim], all_index, delta_signed, i_time + i_start[i_stim])
     else:
         raise RuntimeError("Maximum number of iterations exceeded")
     # print('  (%i iterations)' % (i_boost + 1))
@@ -891,7 +890,6 @@ def convolve(h, x, x_pads, i_start, i_stop=None, segments=None, out=None):
             out_index = slice(start + out_start, stop + out_stop)
             y_index = slice(conv_start, stop - start + conv_stop)
             out[out_index] += scipy.signal.convolve(h[ind], x[ind, start:stop])[y_index]
-
     return out
 
 

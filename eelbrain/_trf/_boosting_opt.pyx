@@ -139,12 +139,12 @@ def generate_options(
         FLOAT64 [:] x_pads,  # (n_stims,)
         INT8 [:] x_active,  # for each predictor whether it is still used
         INT64 [:,:] indexes,  # training segment indexes
-        INT64[:] i_start,  # kernel start index (y/x offset) JPK: used to be int i_start
+        INT64[:] i_start,  # kernel start index (y/x offset)
         size_t error,  # ID of the error function (l1/l2)
         double delta,
         # buffers
         FLOAT64 [:,:] new_error,  # (n_stims, n_times_trf)
-        INT64[:] n_times_trf, #JPK: (n_stims,) has length of each trf
+        INT64[:] n_times_trf, # (n_stims,) has length of each trf
         INT8 [:,:] new_sign,
     ):
     cdef:
@@ -165,9 +165,9 @@ def generate_options(
             for i_time in range(n_times_trf[i_stim]):
                 # +/- delta
                 if error == 1:
-                    l1_for_delta(y_error, x_stim, x_pad, indexes, delta, i_time + i_start[i_stim], &e_add, &e_sub) #JPK
+                    l1_for_delta(y_error, x_stim, x_pad, indexes, delta, i_time + i_start[i_stim], &e_add, &e_sub)
                 else:
-                    l2_for_delta(y_error, x_stim, x_pad, indexes, delta, i_time + i_start[i_stim], &e_add, &e_sub) #JPK
+                    l2_for_delta(y_error, x_stim, x_pad, indexes, delta, i_time + i_start[i_stim], &e_add, &e_sub)
 
                 if e_add > e_sub:
                     new_error[i_stim, i_time] = e_sub
