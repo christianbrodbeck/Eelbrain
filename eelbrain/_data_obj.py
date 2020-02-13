@@ -5565,7 +5565,7 @@ class Dataset(dict):
                 self[key][idx] = item
             elif isinstance(idx, slice) and idx.start is None and idx.stop is None and idx.step is None:
                 if isdataobject(item):
-                    if not item.has_case:
+                    if isinstance(item, NDVar) and not item.has_case:
                         if self.n_cases is None:
                             raise IndexError("Can't assign slice of empty Dataset")
                         item = item.repeat(self.n_cases)
