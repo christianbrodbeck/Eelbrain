@@ -843,7 +843,7 @@ def convolve(h, x, x_pads, i_start, i_stop=None, segments=None, out=None):
         i_start = np.array([i_start for _ in range(n_x)])
         i_stop = np.array([i_stop for _ in range(n_x)])
     h_n_times_max = max(i_stop) - min(i_start)
-    h_i_start = i_start - min(i_start)
+    h_i_start = i_start
     h_n_times = np.array([i2 - i1 for i1, i2 in zip(i_start, i_stop)])
     if out is None:
         out = np.zeros(n_times)
