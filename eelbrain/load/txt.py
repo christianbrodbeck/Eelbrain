@@ -15,6 +15,7 @@ from typing import Sequence, Union
 
 import numpy as np
 
+from .._types import PathArg
 from .._utils import ui
 from .._utils.parse import FLOAT_NAN_PATTERN
 from .. import _data_obj as _data
@@ -24,7 +25,7 @@ __all__ = ('tsv', 'var')
 
 # could use csv module:  http://docs.python.org/3/library/csv.html
 def tsv(
-        path: str = None,
+        path: PathArg = None,
         names: Union[Sequence[str], bool] = True,
         types: Union[str, dict] = None,
         delimiter: str = 'auto',
@@ -237,15 +238,15 @@ def tsv(
     return ds
 
 
-def var(path=None, name=None):
+def var(path: PathArg = None, name: str = None):
     """
     Load a :class:`Var` object from a text file by splitting at white-spaces.
 
     Parameters
     ----------
-    path : str(path) | None
-        Source file. If None, a system file dialog is opened.
-    name : str | None
+    path : str
+        Source file. If not specified, a system file dialog is opened.
+    name : str
         Name for the Var.
     """
     if path is None:

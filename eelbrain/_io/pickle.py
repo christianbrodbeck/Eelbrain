@@ -5,6 +5,7 @@ from itertools import chain
 import os
 
 from .._data_obj import NDVar, SourceSpaceBase
+from .._types import PathArg
 from .._utils import ui
 
 
@@ -31,7 +32,7 @@ class EelUnpickler(Unpickler):
         return Unpickler.find_class(self, module, name)
 
 
-def pickle(obj, dest: Path = None, protocol: int = HIGHEST_PROTOCOL):
+def pickle(obj, dest: PathArg = None, protocol: int = HIGHEST_PROTOCOL):
     """Pickle a Python object.
 
     Parameters
@@ -70,7 +71,7 @@ def pickle(obj, dest: Path = None, protocol: int = HIGHEST_PROTOCOL):
             raise
 
 
-def unpickle(path: Path = None):
+def unpickle(path: PathArg = None):
     """Load pickled Python objects from a file.
 
     Almost like ``pickle.load(open(path))``, but also loads object saved
