@@ -37,7 +37,6 @@ from .._exceptions import OldVersionError
 from .._utils import LazyProperty, user_activity
 from ._boosting_opt import l1, l2, generate_options, update_error
 from .shared import RevCorrData
-import pdb
 
 # BoostingResult version
 VERSION = 10  # file format (assigned in __getstate__, not __init__)
@@ -414,7 +413,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
                 tstart2 = []
                 tstop2 = []
                 for ix, xx in enumerate(data._x_meta):
-                    if xx[1] is None: # xx[1] = None if 1 dimensional predictor, else xx[1] = Scalar() with len predictor dims
+                    if xx[1] is None:  # xx[1] = None if 1 dimensional predictor, else xx[1] = Scalar() with len predictor dims
                         tstart2.append(tstart[ix])
                         tstop2.append(tstop[ix])
                     else:
@@ -425,12 +424,10 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
                 tstop = tstop2
             else:
                 raise ValueError( 
-                    f'cannot infer number of tstart ({len(tstart)}, x ({len(x)}), dimensions n_x ({n_x})')  # JPK
+                    f'cannot infer number of tstart ({len(tstart)}, x ({len(x)}), dimensions n_x ({n_x})') 
     else:
         tstart = [tstart for _ in range(n_x)]
         tstop = [tstop for _ in range(n_x)]
-
-
 
     # TRF extent in indices
     tstep = data.time.tstep
@@ -622,20 +619,23 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
     error = ERROR_FUNC[error]
     n_stims, n_times = x.shape
     assert y.shape == (n_times,)
-    if len(i_start) != n_stims:
-        if len(i_start) > 1:
-            raise ValueError(f'i_start = {i_start} and n_stims = {n_stims}')
-        else:
-            i_start = np.asarray([i_start[0] for _ in range(n_stims)])
-            i_stop = np.asarray([i_stop[0] for _ in range(n_stims)])
-            
+    if isinstance(i_start, (tuple, list, np.ndarray)):
+        if len(i_start) != n_stims:
+            if len(i_start) > 1:
+                raise ValueError(f'i_start = {i_start} and n_stims = {n_stims}')
+            else:
+                i_start = np.asarray([i_start[0] for _ in range(n_stims)])
+                i_stop = np.asarray([i_stop[0] for _ in range(n_stims)])
+    else:
+        i_start = np.asarray([i_start for _ in range(n_stims)])
+        i_stop = np.asarray([i_stop for _ in range(n_stims)])             
+
     i_start = i_start.astype('int64')
     i_stop = i_stop.astype('int64')
     trf_length = (i_stop - i_start).astype('int64')
-    n_times_trf_max = np.max(trf_length)
+    n_times_trf_max = max(i_stop) - min(i_start)
     h_i_start = i_start - min(i_start)
     h = np.zeros((n_stims, n_times_trf_max))
-
     # buffers
     y_error = y.copy()
     new_error = np.empty(h.shape)
@@ -842,7 +842,6 @@ def convolve(h, x, x_pads, i_start, i_stop=None, segments=None, out=None):
     else:
         i_start = np.array([i_start for _ in range(n_x)])
         i_stop = np.array([i_stop for _ in range(n_x)])
-    h_n_times_max = max(i_stop) - min(i_start)
     h_i_start = i_start
     h_n_times = np.array([i2 - i1 for i1, i2 in zip(i_start, i_stop)])
     if out is None:
@@ -857,8 +856,8 @@ def convolve(h, x, x_pads, i_start, i_stop=None, segments=None, out=None):
     # padding
     # padding for pre-'
     for ind in range(n_x):
-        h_pad = h[ind,:] * x_pads[ind, newaxis]
-        h_i_max = i_stop[ind] + h_n_times[ind]
+        h_pad = h[ind, :] * x_pads[ind, newaxis]
+        h_i_max = h_i_start[ind] + h_n_times[ind] - 1
         out_start = max(0, h_i_start[ind])
         out_stop = min(0, h_i_max)
         conv_start = max(0, -h_i_start[ind])
@@ -919,7 +918,6 @@ def evaluate_kernel(y, y_pred, error, i_skip, segments=None):
     # discard onset
 
     if isinstance(i_skip, (tuple, list, np.ndarray)):
-        #print(f'Warning: max of i_skip {i_skip}')
         i_skip = max(i_skip)
     if i_skip:
         assert segments is None, "Not implemented"

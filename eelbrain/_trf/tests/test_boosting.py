@@ -226,45 +226,47 @@ def test_boosting_func():
     # svdboostV4pred multiplies error by number of predictors
     assert_allclose(test_sse_history, mat['Str_testE'][0] / 3)
 
+
 def test_trf_len(n_workers):
+    configure(n_workers=n_workers)
     # test vanilla boosting
     x = NDVar(np.random.normal(0, 1, 1000), UTS(0, 0.1, 1000))
     k = NDVar(np.random.randint(0, 10, 5) / 10, UTS(0, 0.1, 5))
     y = convolve(k, x)
     res = boosting(y, x, 0, 0.5)
-    assert correlation_coefficient(res.h, k) > 0.95
+    assert correlation_coefficient(res.h, k) > 0.99
 
     # test multiple tstart, tend
     x2 = NDVar(np.random.normal(0, 1, 1000), UTS(0, 0.1, 1000))
     k2 = NDVar(np.random.randint(0, 10, 4) / 10, UTS(-0.1, 0.1, 4))
     y2 = y + convolve(k2, x2)
     res = boosting(y2, [x, x2], [0, -0.1], [0.5, 0.3])
-    assert correlation_coefficient(res.h[0].sub(time=(0, 0.5)), k) > 0.95
-    assert correlation_coefficient(res.h[1].sub(time=(-0.1, 0.3)), k2) > 0.95
-    
+    assert correlation_coefficient(res.h[0].sub(time=(0, 0.5)), k) > 0.99
+    assert correlation_coefficient(res.h[1].sub(time=(-0.1, 0.3)), k2) > 0.99
+
     # test duplicate tstart, tend for multiple predictors
     k3 = NDVar(k2.x, UTS(0, 0.1, 4))
     y3 = convolve(k, x) + convolve(k3, x2)
     res = boosting(y3, [x, x2], 0, 0.5)
-    assert correlation_coefficient(res.h[0], k) > 0.95
-    assert correlation_coefficient(res.h[1].sub(time=(0, 0.4)), k3) > 0.95
+    assert correlation_coefficient(res.h[0], k) > 0.99
+    assert correlation_coefficient(res.h[1].sub(time=(0, 0.4)), k3) > 0.99
 
     # test vanilla boosting with 2d predictor
     x4 = NDVar(np.random.normal(0, 1, (2, 1000)), (Scalar('xdim', [1, 2]), UTS(0, 0.1, 1000)))
     k4 = NDVar(np.random.randint(0, 10, (2, 5)) / 10, (Scalar('xdim', [1, 2]), UTS(0, 0.1, 5)))
     y4 = convolve(k4, x4)
     res = boosting(y4, x4, 0, 0.5)
-    assert correlation_coefficient(res.h, k4) > 0.95
+    assert correlation_coefficient(res.h, k4) > 0.99
 
     # test multiple tstart, tend with 1d, 2d predictors
     y5 = y4 + y2
     res = boosting(y5, [x, x2, x4], [0, -0.1, 0, 0], [0.5, 0.3, 0.5, 0.5])
-    assert correlation_coefficient(res.h[0].sub(time=(0, 0.5)), k) > 0.95
-    assert correlation_coefficient(res.h[1].sub(time=(-0.1, 0.3)), k2) > 0.95
-    assert correlation_coefficient(res.h[2].sub(time=(0, 0.5)), k4) > 0.95
+    assert correlation_coefficient(res.h[0].sub(time=(0, 0.5)), k) > 0.99
+    assert correlation_coefficient(res.h[1].sub(time=(-0.1, 0.3)), k2) > 0.99
+    assert correlation_coefficient(res.h[2].sub(time=(0, 0.5)), k4) > 0.99
 
     # tests duplicating tstart, tend based on data._x_meta
     res2 = boosting(y5, [x, x2, x4], [0, -0.1, 0], [0.5, 0.3, 0.5])
-    assert_array_equal(res.h[0], res2.h[0]) 
+    assert_array_equal(res.h[0], res2.h[0])
     assert_array_equal(res.h[1], res2.h[1]) 
-    assert_array_equal(res.h[2], res2.h[2]) 
+    assert_array_equal(res.h[2], res2.h[2])
