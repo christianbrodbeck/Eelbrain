@@ -37,7 +37,7 @@ from .._exceptions import OldVersionError
 from .._utils import LazyProperty, user_activity
 from ._boosting_opt import l1, l2, generate_options, update_error
 from .shared import RevCorrData
-
+import pdb
 
 # BoostingResult version
 VERSION = 10  # file format (assigned in __getstate__, not __init__)
@@ -854,11 +854,10 @@ def convolve(h, x, x_pads, i_start, i_stop=None, segments=None, out=None):
         segments = ((0, n_times),)
 
     # determine valid section of convolution (cf. _ndvar.convolve())
-    h_pad = np.sum(h * x_pads[:, newaxis], 0)
-
     # padding
     # padding for pre-'
     for ind in range(n_x):
+        h_pad = h[ind,:] * x_pads[ind, newaxis]
         h_i_max = i_stop[ind] + h_n_times[ind]
         out_start = max(0, h_i_start[ind])
         out_stop = min(0, h_i_max)
@@ -880,7 +879,6 @@ def convolve(h, x, x_pads, i_start, i_stop=None, segments=None, out=None):
                 pad_tail[i:] += h_pad[i]
         else:
             pad_tail = None
-
         for start, stop in segments:
             if pad_head is not None:
                 out[start: start + pad_head_n_times] += pad_head
