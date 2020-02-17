@@ -464,7 +464,7 @@ def assert_has_no_empty_cells(x):
         for e in x.effects:
             if isinstance(e, Interaction) and e.is_categorial:
                 if e._empty_cells:
-                    empty.append((dataobj_repr(e), ', '.join(e._empty_cells)))
+                    empty.append((dataobj_repr(e), ', '.join(map(str, e._empty_cells))))
         if empty:
             items = ['%s (%s)' % pair for pair in empty]
             raise NotImplementedError(f"{dataobj_repr(x)} contains empty cells in {enumeration(items)}")
