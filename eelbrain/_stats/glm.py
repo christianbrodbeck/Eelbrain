@@ -818,7 +818,7 @@ class ANOVA:
         # prepare kwargs
         sub = assub(sub, ds)
         y = asvar(y, sub, ds)
-        x = asmodel(x, sub, ds)
+        x = asmodel(x, sub, ds, require_names=True)
 
         if len(y) != len(x):
             raise ValueError("y and x must describe same number of cases")

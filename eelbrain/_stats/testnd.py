@@ -1719,7 +1719,7 @@ class anova(MultiEffectNDTest):
         sub = assub(sub, ds)
         y = asndvar(y, sub, ds, dtype=np.float64)
         check_for_vector_dim(y)
-        x = asmodel(x, sub, ds)
+        x = asmodel(x, sub, ds, require_names=True)
         if match is None:
             random_effects = [e for e in x.effects if e.random]
             if not random_effects:
