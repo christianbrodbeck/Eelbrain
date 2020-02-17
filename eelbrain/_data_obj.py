@@ -614,7 +614,7 @@ def asindex(x):
         return x
 
 
-def asmodel(x, sub=None, ds=None, n=None, return_n=False):
+def asmodel(x, sub=None, ds=None, n=None, return_n=False, require_names=False):
     if isinstance(x, str):
         if ds is None:
             raise TypeError(f"{x!r}: Model was specified as string, but no Dataset was specified")
@@ -633,6 +633,9 @@ def asmodel(x, sub=None, ds=None, n=None, return_n=False):
         pass
     else:
         x = Model(x)
+
+    if require_names and any(e.name is None for e in x.effects):
+        raise ValueError(f"{x}: All relevant effects need to be named")
 
     return _apply_sub(x, sub, n, return_n)
 

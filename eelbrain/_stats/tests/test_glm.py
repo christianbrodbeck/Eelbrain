@@ -129,6 +129,10 @@ Total   114.74   79
     r_res = r['test.summary'][1:]
     assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'rmaov')
 
+    # Factor.name = None
+    with pytest.raises(ValueError):
+        test.ANOVA('fltvar', ds['A'] * Factor(ds['B'] == 'b1'), ds=ds)
+
 
 @requires_r_ez
 def test_anova_eq():
