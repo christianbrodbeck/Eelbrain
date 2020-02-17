@@ -2210,6 +2210,11 @@ class Factor(_Effect):
     def __init__(self, x, name=None, random=False, repeat=1, tile=1, labels=None, default=None):
         if isinstance(x, Iterator):
             x = list(x)
+        elif isdataobject(x):
+            if name is None:
+                name = x.name
+            if isinstance(x, Var):
+                x = x.x
         n_cases = len(x)
         self.name = name
         self.random = random
