@@ -1033,9 +1033,9 @@ def combine(items, name=None, check_dims=True, incomplete='raise', dim_intersect
         Name for the resulting data-object. If None, the name of the combined
         item is the common prefix of all items.
     check_dims : bool
-        For NDVars, check dimensions for consistency between items (e.g.,
-        channel locations in a Sensor dimension). Default is ``True``. Set to
-        ``False`` to ignore non-fatal mismatches.
+        For :class:`NDVar` columns, check dimensions for consistency between
+        items (e.g., channel locations in a :class:`Sensor`). Default is
+        ``True``. Set to ``False`` to ignore mismatches.
     incomplete : "raise" | "drop" | "fill in"
         Only applies when combining Datasets: how to handle variables that are
         missing from some of the input Datasets. With ``"raise"`` (default), a
@@ -5800,7 +5800,7 @@ class Dataset(dict):
         return eval(expression, EVAL_CONTEXT, self)
 
     @classmethod
-    def from_caselist(cls, names, cases, name=None, caption=None, info=None, random=None):
+    def from_caselist(cls, names, cases, name=None, caption=None, info=None, random=None, check_dims=True):
         """Create a Dataset from a list of cases
 
         Parameters
@@ -5821,6 +5821,10 @@ class Dataset(dict):
             shallow copy.
         random : str | sequence of str
             Names of the columns that should be assigned as random factor.
+        check_dims : bool
+            For :class:`NDVar` columns, check dimensions for consistency between
+            cases (e.g., channel locations in a :class:`Sensor`). Default is
+            ``True``. Set to ``False`` to ignore mismatches.
 
         Examples
         --------
@@ -5842,7 +5846,7 @@ class Dataset(dict):
         n_cases = n_cases.pop()
         if len(names) != n_cases:
             raise ValueError('names=%r: %i names but %i cases' % (names, len(names), n_cases))
-        items = {key: combine(case[i] for case in cases) for i, key in enumerate(names)}
+        items = {key: combine((case[i] for case in cases), check_dims=check_dims) for i, key in enumerate(names)}
         for key in random:
             item = items[key]
             if isinstance(item, Factor):
