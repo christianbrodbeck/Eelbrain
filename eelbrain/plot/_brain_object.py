@@ -32,6 +32,7 @@ INLINE_DISPLAY = False
 try:
     from traits.trait_base import ETSConfig
     if use_inline_backend() or not CONFIG['eelbrain']:
+        ETSConfig.toolkit = 'qt'
         INLINE_DISPLAY = True
         from mayavi import mlab
         mlab.options.offscreen = True
