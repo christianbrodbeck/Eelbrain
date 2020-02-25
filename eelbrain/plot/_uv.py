@@ -1266,12 +1266,14 @@ class Histogram(EelFigure):
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
+    bins : str | int | array
+        Histogram bins (see :func:`numpy.histogram_bin_edges`).
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
     def __init__(self, y, x=None, match=None, sub=None, ds=None, pooled=True,
                  density=False, test=False, tight=True, title=None, xlabel=True,
-                 *args, **kwargs):
+                 bins=None, *args, **kwargs):
         ct = Celltable(y, x, match=match, sub=sub, ds=ds, coercion=asvar)
 
         # layout
@@ -1287,8 +1289,10 @@ class Histogram(EelFigure):
             self._make_axes = False
             self._default_ylabel_ax = -1
             if title is True:
-                title = ("Tests for Normality of the Differences" if test else
-                         "Histogram of Pairwise Difference")
+                if test:
+                    title = "Tests for Normality of the Differences"
+                else:
+                    title = "Histogram of Pairwise Difference"
         else:
             nax = len(ct.cells)
             if title is True:
@@ -1297,8 +1301,19 @@ class Histogram(EelFigure):
         layout = Layout(nax, 1, 3, tight, title, *args, **kwargs)
         EelFigure.__init__(self, frame_title(ct.y, ct.x), layout)
 
+        if bins is None:
+            bins = 'auto'
+            if ct.y.x.dtype.kind == 'i':
+                if ct.y.max() - ct.y.min() < len(ct.y.x):
+                    bins = 'int'
+        if isinstance(bins, (str, int)):
+            if bins == 'int':
+                bins = np.arange(ct.y.min() - 0.5, ct.y.max() + 1, 1)
+            else:
+                bins = np.histogram_bin_edges(ct.y.x, bins)
+
         if x is None:
-            _ax_histogram(self._axes[0], ct.y.x, density, test)
+            _ax_histogram(self._axes[0], ct.y.x, density, test, bins=bins)
         elif ct.all_within:  # distribution of differences
             data = [v.x for v in ct.get_data()]
             names = ct.cellnames()
@@ -1313,7 +1328,7 @@ class Histogram(EelFigure):
                     ax_i = n_comp * i + (n_comp + 1 - j)
                     ax = self.figure.add_subplot(n_comp, n_comp, ax_i)
                     self._axes.append(ax)
-                    _ax_histogram(ax, difference, density, test)
+                    _ax_histogram(ax, difference, density, test, bins=bins)
                     if i == 0:
                         ax.set_title(names[j], size=12)
                     if j == n_comp:
@@ -1323,12 +1338,12 @@ class Histogram(EelFigure):
             if pooled and len(names) > 2:
                 ax = self.figure.add_subplot(n_comp, n_comp, n_comp ** 2)
                 self._axes.append(ax)
-                _ax_histogram(ax, pooled_data, density, test, facecolor='g')
+                _ax_histogram(ax, pooled_data, density, test, facecolor='g', bins=bins)
                 ax.set_title("Pooled Differences")
         else:  # independent measures
             for cell, ax in zip(ct.cells, self._axes):
                 ax.set_title(cellname(cell))
-                _ax_histogram(ax, ct.data[cell].x, density, test)
+                _ax_histogram(ax, ct.data[cell].x, density, test, bins=bins)
 
         if test:
             self.figure.text(.99, .01, "$^{*}$ Anderson and Darling test "
