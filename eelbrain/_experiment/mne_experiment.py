@@ -6348,7 +6348,10 @@ class MneExperiment(FileTree):
 
         # time window
         if tstart is not None or tstop is not None:
-            items.append(_time_window_str((tstart, tstop)))
+            if isinstance(tstart, (tuple, list, np.ndarray)):
+                tstart1 = min(tstart)
+                tstop1 = max(tstop)
+            items.append(_time_window_str((tstart1, tstop1)))
         if samplingrate is not None:
             assert isinstance(samplingrate, int)
             items.append(f'{samplingrate:g}Hz')
