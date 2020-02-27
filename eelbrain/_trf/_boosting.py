@@ -634,7 +634,6 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
     i_stop = i_stop.astype('int64')
     trf_length = (i_stop - i_start).astype('int64')
     n_times_trf_max = max(i_stop) - min(i_start)
-    h_i_start = i_start - min(i_start)
     h = np.zeros((n_stims, n_times_trf_max))
     # buffers
     y_error = y.copy()

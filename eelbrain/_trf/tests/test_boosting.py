@@ -226,7 +226,7 @@ def test_boosting_func():
     # svdboostV4pred multiplies error by number of predictors
     assert_allclose(test_sse_history, mat['Str_testE'][0] / 3)
 
-
+@pytest.mark.parametrize('n_workers', [0, True])
 def test_trf_len(n_workers):
     configure(n_workers=n_workers)
     # test vanilla boosting
