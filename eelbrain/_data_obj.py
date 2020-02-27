@@ -5591,7 +5591,7 @@ class Dataset(dict):
         else:
             raise IndexError(f"{index}: not a valid Dataset index")
 
-    def _display_table(self, cases=0):
+    def _display_table(self, cases=0, title=None):
         items = []  # caption
         if cases == 0 and self.n_cases > preferences['dataset_str_n_cases']:
             cases = preferences['dataset_str_n_cases']
@@ -5603,7 +5603,7 @@ class Dataset(dict):
             caption = '; '.join(items)
         else:
             caption = None
-        return self.as_table(cases, '%.5g', midrule=True, caption=caption, lfmt=True)
+        return self.as_table(cases, '%.5g', midrule=True, title=title, caption=caption, lfmt=True)
 
     def __str__(self):
         if sum(isuv(i) or isdatalist(i) for i in self.values()) == 0:
@@ -6072,9 +6072,9 @@ class Dataset(dict):
         index = indexes.any(0)
         return self[index]
 
-    def head(self, n=10):
+    def head(self, n=10, title=None):
         "Table with the first n cases in the Dataset"
-        return self._display_table(n)
+        return self._display_table(n, title)
 
     def index(self, name='index', start=0):
         """Add an index to the Dataset (i.e., ``range(n_cases)``)
@@ -6427,9 +6427,9 @@ class Dataset(dict):
         out.caption(f"{name}: {self.n_cases} cases")
         return out
 
-    def tail(self, n=10):
+    def tail(self, n=10, title=None):
         "Table with the last n cases in the Dataset"
-        return self._display_table(range(-n, 0))
+        return self._display_table(range(-n, 0), title)
 
     def tile(self, repeats, name=None):
         """Concatenate ``repeats`` copies of the dataset
