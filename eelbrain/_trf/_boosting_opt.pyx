@@ -143,8 +143,8 @@ def generate_options(
         size_t error,  # ID of the error function (l1/l2)
         double delta,
         # buffers
-        FLOAT64 [:,:] new_error,  # (n_stims, n_times_trf)
-        INT64[:] n_times_trf, # (n_stims,) has length of each trf
+        FLOAT64 [:,:] new_error,  # (n_stims, trf_length)
+        INT64[:] i_stop, # (n_stims,) has stop of each trf
         INT8 [:,:] new_sign,
     ):
     cdef:
@@ -162,7 +162,7 @@ def generate_options(
                 continue
             x_stim = x[i_stim]
             x_pad = x_pads[i_stim]
-            for i_time in range(n_times_trf[i_stim]):
+            for i_time in range(i_stop[i_stim]):
                 # +/- delta
                 if error == 1:
                     l1_for_delta(y_error, x_stim, x_pad, indexes, delta, i_time + i_start[i_stim], &e_add, &e_sub)

@@ -230,10 +230,12 @@ def test_boosting_func():
 def test_trf_len(n_workers):
     configure(n_workers=n_workers)
     # test vanilla boosting
-    x = NDVar(np.random.normal(0, 1, 1000), UTS(0, 0.1, 1000))
-    k = NDVar(np.random.randint(0, 10, 5) / 10, UTS(0, 0.1, 5))
+    x = NDVar(np.random.normal(0, 1, 1000), UTS(0, 0.1, 1000),name='x')
+    k = NDVar(np.random.randint(0, 10, 5) / 10, UTS(0, 0.1, 5),name='k')
     y = convolve(k, x)
+    y.name = 'y'
     res = boosting(y, x, 0, 0.5)
+    print(res)
     assert correlation_coefficient(res.h, k) > 0.99
 
     # test multiple tstart, tend
@@ -266,7 +268,13 @@ def test_trf_len(n_workers):
     assert correlation_coefficient(res.h[2].sub(time=(0, 0.5)), k4) > 0.99
 
     # tests duplicating tstart, tend based on data._x_meta
+    y5.name = 'y5'
+    x.name = 'x'
+    x2.name = 'x2'
+    x4.name = 'x4'
     res2 = boosting(y5, [x, x2, x4], [0, -0.1, 0], [0.5, 0.3, 0.5])
     assert_array_equal(res.h[0], res2.h[0])
     assert_array_equal(res.h[1], res2.h[1]) 
     assert_array_equal(res.h[2], res2.h[2])
+    print(res2)
+

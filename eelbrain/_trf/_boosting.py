@@ -192,8 +192,9 @@ class BoostingResult:
             x = ' + '.join(map(str, self.x))
         items = [
             'boosting %s ~ %s' % (self.y, x),
-            '%g - %g' % (self.tstart, self.tstop),
         ]
+        for t1, t2 in zip(self.tstart, self.tstop):
+            items.append('%g - %g' % (t1, t2))
         for name, param in inspect.signature(boosting).parameters.items():
             if param.default is inspect.Signature.empty or name == 'ds':
                 continue
@@ -409,7 +410,6 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
                 tstart = [tstart[0] for _ in range(n_x)]
                 tstop = [tstop[0] for _ in range(n_x)]
             elif len(tstart) == len(data.x_name):
-                print(f'Warning: len(tstart) matches len(x) = {len(x)} but not # of predictor dimensions = {n_x}. Infering from data._x_meta')
                 tstart2 = []
                 tstop2 = []
                 for ix, xx in enumerate(data._x_meta):
@@ -554,7 +554,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     prefit_repr = None if prefit is None else repr(prefit)
     return BoostingResult(
         # input parameters
-        data.y_name, data.x_name, min(tstart), max(tstop), scale_data, delta, mindelta, error,
+        data.y_name, data.x_name, tstart, tstop, scale_data, delta, mindelta, error,
         basis, basis_window, partitions, data.partitions, model_repr, prefit_repr,
         # result parameters
         h, r, isnan, spearmanr, residual, t_run,
@@ -619,6 +619,7 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
     error = ERROR_FUNC[error]
     n_stims, n_times = x.shape
     assert y.shape == (n_times,)
+
     if isinstance(i_start, (tuple, list, np.ndarray)):
         if len(i_start) != n_stims:
             if len(i_start) > 1:
@@ -628,7 +629,7 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
                 i_stop = np.asarray([i_stop[0] for _ in range(n_stims)])
     else:
         i_start = np.asarray([i_start for _ in range(n_stims)])
-        i_stop = np.asarray([i_stop for _ in range(n_stims)])             
+        i_stop = np.asarray([i_stop for _ in range(n_stims)])
 
     i_start = i_start.astype('int64')
     i_stop = i_stop.astype('int64')
@@ -705,13 +706,9 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
         # generate possible movements -> training error
         generate_options(y_error, x, x_pads, x_active, train_index, i_start, delta_error_func, delta, new_error,
                          trf_length, new_sign)
-        min_err = 99999999
-        for i_st in range(n_stims):
-            min_i = np.argmin(new_error[i_st, :trf_length[i_st]])
-            min_v = new_error[i_st, min_i]
-            if min_v < min_err:
-                min_err = min_v
-                i_stim, i_time = i_st, min_i
+        for i_st, t_len in enumerate(trf_length):
+            new_error[i_st, t_len:] = np.inf
+        i_stim, i_time = np.unravel_index(np.argmin(new_error), h.shape)
         new_train_error = new_error[i_stim, i_time]
         delta_signed = new_sign[i_stim, i_time] * delta
 
@@ -743,7 +740,7 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
             if step.delta:
                 h[step.i_stim, step.i_time] -= step.delta
         h_len = max(i_stop) - min(i_start)
-        h_i_start = i_start - min(i_start)
+        h_i_start = np.asarray(i_start - min(i_start)).astype('int64')
         h_i_stop = [h1 + h2 for h1, h2 in zip(h_i_start, trf_length)]
         h_new = np.zeros((n_stims, h_len))
         for i_stim in range(n_stims):
