@@ -309,7 +309,10 @@ class RevCorrData:
         x = self.x[h_index]
         x_pads = self.x_pads[h_index]
         # subtract prefit predictions
-        tstart1 = min(res.tstart)
+        if isinstance(res.tstart, list):
+            tstart1 = min(res.tstart)
+        else:
+            tstart1 = res.tstart
         i_start = int(round(tstart1 / self.time.tstep))
         for y, h in zip(self.y, h_flat):
             y -= convolve(h, x, x_pads, i_start, None, self.segments)

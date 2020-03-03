@@ -196,8 +196,10 @@ def test_boosting_func():
     all_segments = np.array([[0, seg_len], [seg_len, y_len]], np.int64)
     train_segments = all_segments[1:]
     test_segments = all_segments[:1]
+    tstart = np.asarray([0])
+    tstop = np.asarray([10])
     h, test_sse_history = boost(y, x, x_pads, all_segments, train_segments, test_segments,
-                                0, 10, 0.005, 0.005, 'l2', return_history=True)
+                                tstart, tstop, 0.005, 0.005, 'l2', return_history=True)
     test_seg_len = int(floor(x.shape[1] / 40))
     y_pred = boosting_convolve(h, x[:, :test_seg_len], x_pads, 0)
     r, rr, _ = evaluate_kernel(y[:test_seg_len], y_pred, 'l2', h.shape[1] - 1)
@@ -213,9 +215,10 @@ def test_boosting_func():
     y = mat['signal'][0]
     x = mat['stim']
     x_pads = np.zeros(len(x))
-
+    tstart = np.asarray([0, 0, 0])
+    tstop = np.asarray([10, 10, 10])
     h, test_sse_history = boost(y, x, x_pads, all_segments, train_segments, test_segments,
-                                0, 10, 0.005, 0.005, 'l2', return_history=True)
+                                tstart, tstop, 0.005, 0.005, 'l2', return_history=True)
     test_seg_len = int(floor(x.shape[1] / 40))
     y_pred = boosting_convolve(h, x[:, :test_seg_len], x_pads, 0)
     r, rr, _ = evaluate_kernel(y[:test_seg_len], y_pred, 'l2', h.shape[1] - 1)
@@ -230,8 +233,9 @@ def test_boosting_func():
 def test_trf_len(n_workers):
     configure(n_workers=n_workers)
     # test vanilla boosting
-    x = NDVar(np.random.normal(0, 1, 1000), UTS(0, 0.1, 1000),name='x')
-    k = NDVar(np.random.randint(0, 10, 5) / 10, UTS(0, 0.1, 5),name='k')
+    rng = np.random.RandomState(0)
+    x = NDVar(rng.normal(0, 1, 1000), UTS(0, 0.1, 1000),name='x')
+    k = NDVar(rng.randint(0, 10, 5) / 10, UTS(0, 0.1, 5),name='k')
     y = convolve(k, x)
     y.name = 'y'
     res = boosting(y, x, 0, 0.5)
@@ -239,12 +243,13 @@ def test_trf_len(n_workers):
     assert correlation_coefficient(res.h, k) > 0.99
 
     # test multiple tstart, tend
-    x2 = NDVar(np.random.normal(0, 1, 1000), UTS(0, 0.1, 1000))
-    k2 = NDVar(np.random.randint(0, 10, 4) / 10, UTS(-0.1, 0.1, 4))
+    x2 = NDVar(rng.normal(0, 1, 1000), UTS(0, 0.1, 1000))
+    k2 = NDVar(rng.randint(0, 10, 4) / 10, UTS(-0.1, 0.1, 4))
     y2 = y + convolve(k2, x2)
     res = boosting(y2, [x, x2], [0, -0.1], [0.5, 0.3])
     assert correlation_coefficient(res.h[0].sub(time=(0, 0.5)), k) > 0.99
     assert correlation_coefficient(res.h[1].sub(time=(-0.1, 0.3)), k2) > 0.99
+    import pdb; pdb.set_trace()
 
     # test duplicate tstart, tend for multiple predictors
     k3 = NDVar(k2.x, UTS(0, 0.1, 4))
@@ -254,8 +259,8 @@ def test_trf_len(n_workers):
     assert correlation_coefficient(res.h[1].sub(time=(0, 0.4)), k3) > 0.99
 
     # test vanilla boosting with 2d predictor
-    x4 = NDVar(np.random.normal(0, 1, (2, 1000)), (Scalar('xdim', [1, 2]), UTS(0, 0.1, 1000)))
-    k4 = NDVar(np.random.randint(0, 10, (2, 5)) / 10, (Scalar('xdim', [1, 2]), UTS(0, 0.1, 5)))
+    x4 = NDVar(rng.normal(0, 1, (2, 1000)), (Scalar('xdim', [1, 2]), UTS(0, 0.1, 1000)))
+    k4 = NDVar(rng.randint(0, 10, (2, 5)) / 10, (Scalar('xdim', [1, 2]), UTS(0, 0.1, 5)))
     y4 = convolve(k4, x4)
     res = boosting(y4, x4, 0, 0.5)
     assert correlation_coefficient(res.h, k4) > 0.99

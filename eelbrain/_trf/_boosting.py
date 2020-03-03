@@ -186,15 +186,24 @@ class BoostingResult:
         self.__init__(**state)
 
     def __repr__(self):
-        if self.x is None or isinstance(self.x, str):
-            x = self.x
+        if isinstance(self.tstart, list):
+
+            xx = []
+            for x, t1, t2 in zip(self.x, self.tstart, self.tstop):
+                xx.append('%s (%g - %g)' % (x, t1, t2))
+            x = ' + '.join(xx)
+            items = [
+                'boosting %s ~ %s' % (self.y, x),
+            ]
         else:
-            x = ' + '.join(map(str, self.x))
-        items = [
-            'boosting %s ~ %s' % (self.y, x),
-        ]
-        for t1, t2 in zip(self.tstart, self.tstop):
-            items.append('%g - %g' % (t1, t2))
+            if self.x is None or isinstance(self.x, str):
+                x = self.x
+            else:
+                x = ' + '.join(map(str, self.x))
+            items = [
+                'boosting %s ~ %s' % (self.y, x),
+                '%g - %g' % (self.tstart, self.tstop),
+            ]
         for name, param in inspect.signature(boosting).parameters.items():
             if param.default is inspect.Signature.empty or name == 'ds':
                 continue
@@ -552,6 +561,9 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     h = data.package_kernel(h_x, min(tstart))
     model_repr = None if model is None else data.model
     prefit_repr = None if prefit is None else repr(prefit)
+    if len(tstart) == 1:
+        tstart = tstart[0]
+        tstop = tstop[0]
     return BoostingResult(
         # input parameters
         data.y_name, data.x_name, tstart, tstop, scale_data, delta, mindelta, error,
@@ -619,18 +631,6 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
     error = ERROR_FUNC[error]
     n_stims, n_times = x.shape
     assert y.shape == (n_times,)
-
-    if isinstance(i_start, (tuple, list, np.ndarray)):
-        if len(i_start) != n_stims:
-            if len(i_start) > 1:
-                raise ValueError(f'i_start = {i_start} and n_stims = {n_stims}')
-            else:
-                i_start = np.asarray([i_start[0] for _ in range(n_stims)])
-                i_stop = np.asarray([i_stop[0] for _ in range(n_stims)])
-    else:
-        i_start = np.asarray([i_start for _ in range(n_stims)])
-        i_stop = np.asarray([i_stop for _ in range(n_stims)])
-
     i_start = i_start.astype('int64')
     i_stop = i_stop.astype('int64')
     trf_length = (i_stop - i_start).astype('int64')
