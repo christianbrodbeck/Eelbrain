@@ -249,7 +249,6 @@ def test_trf_len(n_workers):
     res = boosting(y2, [x, x2], [0, -0.1], [0.5, 0.3])
     assert correlation_coefficient(res.h[0].sub(time=(0, 0.5)), k) > 0.99
     assert correlation_coefficient(res.h[1].sub(time=(-0.1, 0.3)), k2) > 0.99
-    import pdb; pdb.set_trace()
 
     # test duplicate tstart, tend for multiple predictors
     k3 = NDVar(k2.x, UTS(0, 0.1, 4))
