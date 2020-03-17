@@ -408,6 +408,8 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     data.initialize_cross_validation(partitions, model, ds)
     n_y = len(data.y)
     n_x = len(data.x)
+    tstart_in = tstart
+    tstop_in = tstop
     if isinstance(tstart, (tuple, list, np.ndarray)):
         if len(tstart) != len(tstop):
             raise ValueError(
@@ -561,12 +563,9 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     h = data.package_kernel(h_x, min(tstart))
     model_repr = None if model is None else data.model
     prefit_repr = None if prefit is None else repr(prefit)
-    if len(tstart) == 1:
-        tstart = tstart[0]
-        tstop = tstop[0]
     return BoostingResult(
         # input parameters
-        data.y_name, data.x_name, tstart, tstop, scale_data, delta, mindelta, error,
+        data.y_name, data.x_name, tstart_in, tstop_in, scale_data, delta, mindelta, error,
         basis, basis_window, partitions, data.partitions, model_repr, prefit_repr,
         # result parameters
         h, r, isnan, spearmanr, residual, t_run,

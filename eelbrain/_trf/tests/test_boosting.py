@@ -239,7 +239,6 @@ def test_trf_len(n_workers):
     y = convolve(k, x)
     y.name = 'y'
     res = boosting(y, x, 0, 0.5)
-    print(res)
     assert correlation_coefficient(res.h, k) > 0.99
 
     # test multiple tstart, tend
@@ -249,6 +248,11 @@ def test_trf_len(n_workers):
     res = boosting(y2, [x, x2], [0, -0.1], [0.5, 0.3])
     assert correlation_coefficient(res.h[0].sub(time=(0, 0.5)), k) > 0.99
     assert correlation_coefficient(res.h[1].sub(time=(-0.1, 0.3)), k2) > 0.99
+
+    # test scalar res.tstart res.tstop
+    res = boosting(y2, [x, x2], 0, 0.5)
+    assert res.tstart == 0
+    assert res.tstop == 0.5
 
     # test duplicate tstart, tend for multiple predictors
     k3 = NDVar(k2.x, UTS(0, 0.1, 4))
@@ -280,5 +284,4 @@ def test_trf_len(n_workers):
     assert_array_equal(res.h[0], res2.h[0])
     assert_array_equal(res.h[1], res2.h[1]) 
     assert_array_equal(res.h[2], res2.h[2])
-    print(res2)
 
