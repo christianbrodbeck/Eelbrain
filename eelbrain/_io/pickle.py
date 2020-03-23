@@ -4,7 +4,7 @@ from pickle import dump, HIGHEST_PROTOCOL, Unpickler
 from itertools import chain
 import os
 
-from .._data_obj import NDVar, SourceSpaceBase
+from .._data_obj import Dataset, NDVar, Var, SourceSpaceBase, ismodelobject
 from .._types import PathArg
 from .._utils import ui
 
@@ -138,7 +138,12 @@ def update_subjects_dir(obj, subjects_dir, depth=0):
       - ``dict`` values.
       - list/tuple items.
     """
-    if isinstance(obj, NDVar):
+    if isinstance(obj, SourceSpaceBase):
+        if obj.subjects_dir != subjects_dir:
+            obj.subjects_dir = subjects_dir
+            if obj._subjects_dir is not None:
+                obj._subjects_dir = subjects_dir
+    elif isinstance(obj, NDVar):
         for dim in obj.dims:
             if isinstance(dim, SourceSpaceBase):
                 if dim.subjects_dir == subjects_dir:
@@ -150,15 +155,22 @@ def update_subjects_dir(obj, subjects_dir, depth=0):
             for v in obj.info.values():
                 update_subjects_dir(v, subjects_dir, depth)
     elif depth:
-        if hasattr(obj, '__dict__'):
-            values = obj.__dict__.values()
+        if isinstance(obj, Var):
+            values = obj.info.values()
+        elif isinstance(obj, Dataset):
+            values = chain(obj.info, obj.values())
+        elif ismodelobject(obj):
+            return
         else:
-            values = ()
+            if hasattr(obj, '__dict__'):
+                values = obj.__dict__.values()
+            else:
+                values = ()
 
-        if isinstance(obj, dict):
-            values = chain(values, obj.values())
-        elif isinstance(obj, (tuple, list)):
-            values = chain(values, obj)
+            if isinstance(obj, dict):
+                values = chain(values, obj.values())
+            elif isinstance(obj, (tuple, list)):
+                values = chain(values, obj)
 
         for v in values:
             update_subjects_dir(v, subjects_dir, depth - 1)
