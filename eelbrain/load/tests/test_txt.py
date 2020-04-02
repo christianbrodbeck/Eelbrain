@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from pathlib import Path
+import pytest
 
 import numpy as np
 from numpy.testing import assert_array_equal
@@ -59,5 +60,19 @@ def test_tsv_io():
 
     # Fixed column width
     path = file_path('fox-prestige')
-    ds = load.tsv(path, delimiter=' ', skipinitialspace=True)
-    assert ds[1] == {'id': 'GENERAL.MANAGERS', 'education': 12.26, 'income': 25879, 'women': 4.02, 'prestige': 69.1, 'census': 1130, 'type': 'prof'}
+    ds1 = load.tsv(path, delimiter=' ', skipinitialspace=True)
+    assert ds1[1] == {'id': 'GENERAL.MANAGERS', 'education': 12.26, 'income': 25879, 'women': 4.02, 'prestige': 69.1, 'census': 1130, 'type': 'prof'}
+
+    # Empty rows
+    out = ds.copy()
+    out['intvar'] = out['intvar'].as_factor()
+    index = out['intvar'] == '11'
+    assert index.sum() == 6
+    out[index, 'intvar'] = ''
+    out.save_txt(dst)
+    ds1 = load.tsv(dst, random='rm')
+    assert_dataset_equal(ds1, out, decimal=10)
+    ds1 = load.tsv(dst, random='rm', empty='11')
+    assert_dataset_equal(ds1, ds, decimal=10)
+    ds1 = load.tsv(dst, random='rm', empty=11)
+    assert_dataset_equal(ds1, ds, decimal=10)
