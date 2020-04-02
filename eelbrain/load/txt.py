@@ -11,6 +11,7 @@ import csv
 import os
 from pathlib import Path
 import re
+from numbers import Number
 from typing import Sequence, Union
 
 import numpy as np
@@ -23,6 +24,13 @@ from .. import _data_obj as _data
 __all__ = ('tsv', 'var')
 
 
+def to_num(v: str):
+    if v.isdigit():
+        return int(v)
+    else:
+        return float(v)
+
+
 # could use csv module:  http://docs.python.org/3/library/csv.html
 def tsv(
         path: PathArg = None,
@@ -32,7 +40,7 @@ def tsv(
         skiprows: int = 0,
         start_tag: str = None,
         ignore_missing: bool = False,
-        empty: str = None,
+        empty: Union[str, float] = None,
         random: Union[str, Sequence[str]] = None,
         **fmtparams,
 ):
@@ -75,11 +83,12 @@ def tsv(
         ``delimiter`` than the others; by default this raises an IOError). For
         rows with missing values, ``NaN`` is substituted for numerical and
         ``""`` for categorial variables.
-    empty : str
-        For numerical variables, substitute this value for empty entries (i.e.,
-        for ``""``). For example, if a column in a file contains ``['5', '3',
-        '']``, this is read by default as ``Factor(['5', '3', ''])``. With
-        ``empty='nan'``, it is read as ``Var([5, 3, nan])``.
+    empty : number | 'nan'
+        For numerical variables, substitute this value for empty entries. For
+        example, if a column in a file contains ``['5', '3', '']``, this is read
+        by default as ``Factor(['5', '3', ''])``.
+        With ``empty=0``, it is read as ``Var([5, 3, 0])``.
+        With ``empty='nan'``, it is read as ``Var([5, 3, nan])``.
     random : str | sequence of str
         Names of the columns that should be assigned as random factor.
     **fmtparams
@@ -157,7 +166,7 @@ def tsv(
 
     # coerce types parameter
     if types is None:
-        types_ = ['a'] * n_cols
+        types_ = 'a' * n_cols
     elif isinstance(types, dict):
         types_ = [types.get(n, 'a') for n in names]
     elif isinstance(types, str):
@@ -198,14 +207,17 @@ def tsv(
         None: np.nan,
     }
     if empty is not None:
-        if empty.lower() == 'nan':
-            np_vars[''] = np.nan
-        else:
+        if isinstance(empty, str):
+            np_vars[''] = to_num(empty)
+        elif isinstance(empty, Number):
             np_vars[''] = empty
+        else:
+            raise TypeError(f'empty={empty!r}')
     bool_dict = {'True': True, 'False': False, None: False}
+    keys = {}
     for name, values, type_ in zip(names, data.T, types_):
         # infer type
-        if type_ in 'fv':
+        if type_ in 'fvb':
             pass
         elif all(v in bool_dict for v in values):
             type_ = 'b'
@@ -221,7 +233,7 @@ def tsv(
 
         # substitute values
         if type_ == 'v':
-            values = [np_vars[v] if v in np_vars else int(v) if v.isdigit() else float(v) for v in values]
+            values = [np_vars[v] if v in np_vars else to_num(v) for v in values]
         elif type_ == 'b':
             values = [bool_dict[v] for v in values]
 
@@ -233,7 +245,12 @@ def tsv(
             raise ValueError(f"random={random}: {name} is not categorial")
         else:
             dob = _data.Var(values, name)
-        ds.add(dob)
+        key = _data.Dataset.as_key(name)
+        keys[name] = key
+        ds[key] = dob
+
+    if any(k != v for k, v in keys.items()):
+        ds.info['keys'] = keys
 
     return ds
 
