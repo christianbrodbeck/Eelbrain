@@ -1,7 +1,8 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Configure Eelbrain"""
-from multiprocessing import cpu_count
+from multiprocessing import cpu_count, set_start_method
 import os
+import sys
 
 from matplotlib.colors import to_rgb
 
@@ -19,6 +20,10 @@ CONFIG = {
     'nice': 0,
     'tqdm': False,  # disable=CONFIG['tqdm']
 }
+
+# Python 3.8 switched default to spawn, which makes pytest hang  (https://docs.python.org/3/whatsnew/3.8.html#multiprocessing)
+if sys.version_info.minor >= 8:
+    set_start_method('fork')
 
 
 def configure(
