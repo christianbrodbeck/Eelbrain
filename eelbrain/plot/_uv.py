@@ -262,9 +262,11 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         Y axis label (default is inferred from the data).
     xlabel : str | bool
         X axis label (default is ``x.name``).
-    xticks : None | sequence of str
-        X-axis tick labels describing the categories. None to plot no labels
-        (Default uses cell names from ``x``).
+    xticks : None | sequence of str | dict
+        X-axis tick labels describing the categories.
+        The default is to use the cell names from ``x``.
+        Use list of labels or ``{cell: label}`` :class:`dict` for custom labels.
+        None to plot no labels.
     xtick_delim : str
         Delimiter for x axis category descriptors (default is ``'\n'``,
         i.e. the level on each Factor of ``x`` on a separate line).
@@ -385,9 +387,11 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         Error bar color.
     xlabel : str | bool
         X axis label (default is ``x.name``).
-    xticks : None | sequence of str
-        X-axis tick labels describing the categories. None to plot no labels
-        (Default uses cell names from ``x``).
+    xticks : None | sequence of str | dict
+        X-axis tick labels describing the categories.
+        The default is to use the cell names from ``x``.
+        Use list of labels or ``{cell: label}`` :class:`dict` for custom labels.
+        None to plot no labels.
     xtick_delim : str
         Delimiter for x axis category descriptors (default is ``'\n'``,
         i.e. the level on each Factor of ``x`` on a separate line).
@@ -488,9 +492,11 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
         Error bar color.
     xlabel : str | bool
         X axis label (default is ``x.name``).
-    xticks : None | sequence of str
-        X-axis tick labels describing the categories. None to plot no labels
-        (Default uses cell names from ``x``).
+    xticks : None | sequence of str | dict
+        X-axis tick labels describing the categories.
+        The default is to use the cell names from ``x``.
+        Use list of labels or ``{cell: label}`` :class:`dict` for custom labels.
+        None to plot no labels.
     xtick_delim : str
         Delimiter for x axis category descriptors (default ``' '``).
     hatch : bool | str

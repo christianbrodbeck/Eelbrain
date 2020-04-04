@@ -3021,6 +3021,8 @@ class CategorialAxisMixin:
         if ticks:
             if ticks is True:
                 ticks = [cellname(cell, tick_delim) for cell in cells]
+            elif isinstance(ticks, dict):
+                ticks = [ticks[cell] if cell in ticks else cellname(cell, tick_delim) for cell in cells]
             self.__axis_obj.set_ticks(tick_pos)
             self.__axis_obj.set_ticklabels(ticks)
         elif ticks is False:
