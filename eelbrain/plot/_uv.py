@@ -619,7 +619,7 @@ class _plt_boxplot(_plt_uv_base):
             y_top = _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr, trend, test_markers)
         elif test is not False and test is not None:
             ax.axhline(test, color='black')
-            y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit, test, corr, trend, x0=1)
+            y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit, test, corr, trend)
         else:
             ax.autoscale()
             y_top = None
