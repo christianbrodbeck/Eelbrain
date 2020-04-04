@@ -675,14 +675,18 @@ def asndvar(x, sub=None, ds=None, n=None, dtype=None, return_n=False):
     return (x, n) if return_n else x
 
 
-def asnumeric(x, sub=None, ds=None, n=None, return_n=False):
+def asnumeric(x, sub=None, ds=None, n=None, return_n=False, array=False):
     "Var, NDVar"
     if isinstance(x, str):
         if ds is None:
             raise TypeError(f"{x!r}: Numeric argument was specified as string, but no Dataset was specified")
         x = ds.eval(x)
 
-    if not isnumeric(x):
+    if isnumeric(x):
+        pass
+    elif array:
+        x = np.asarray(x)
+    else:
         raise TypeError(f"Numeric argument required (Var or NDVar), got {x!r}")
 
     return _apply_sub(x, sub, n, return_n)

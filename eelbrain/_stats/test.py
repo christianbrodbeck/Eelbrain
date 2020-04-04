@@ -57,8 +57,8 @@ class Correlation:
             ds: Dataset = None,
     ):
         sub, n = assub(sub, ds, return_n=True)
-        y, n = asnumeric(y, sub, ds, n, return_n=True)
-        x = asnumeric(x, sub, ds, n)
+        y, n = asnumeric(y, sub, ds, n, return_n=True, array=True)
+        x = asnumeric(x, sub, ds, n, array=True)
         if type(y) is not type(x):
             raise TypeError(f"y and x must be same type; got type(y)={type(y)}, type(x)={type(x)}")
         elif isinstance(y, Var):
@@ -70,7 +70,10 @@ class Correlation:
             x_y = y.x.ravel()
             x_x = x.x.ravel()
         else:
-            raise RuntimeError("y=%r" % (y,))
+            if y.shape != x.shape:
+                raise ValueError(f"Shape mismatch: y.shape={y.shape}, x.shape={x.shape}")
+            x_y = y.ravel()
+            x_x = x.ravel()
         self.r, self.p, self.df = _corr(x_y, x_x)
         self._y = dataobj_repr(y)
         self._x = dataobj_repr(x)
