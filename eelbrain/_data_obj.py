@@ -1966,6 +1966,20 @@ class Var:
         "The sum over all values"
         return self.x.sum()
 
+    def tile(self, repeats, name=None):
+        """Construct a Var by repeating ``self`` ``repeats`` times
+
+        Parameters
+        ----------
+        repeats : int
+            Number of repeats.
+        name : str
+            Name of the output Var (default is current name).
+        """
+        if name is None:
+            name = self.name
+        return Var(self.x, name, tile=repeats)
+
     @property
     def values(self):
         return np.unique(self.x)
