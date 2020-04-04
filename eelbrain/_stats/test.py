@@ -188,6 +188,8 @@ def mcp_adjust(ps, method='Hochberg'):
     adjusted_ps : list of scalar
         Adjusted p-values.
     """
+    if not method:
+        return ps
     n = len(ps)
     if n <= 1:
         return ps
