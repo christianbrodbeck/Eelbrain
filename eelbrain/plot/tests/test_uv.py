@@ -43,6 +43,7 @@ def test_barplot():
     plot.Barplot('fltvar', 'A%B', match='rm', ds=ds, pool_error=False)
     # test against 0
     plot.Barplot('fltvar', 'A%B', match='rm', test=0, ds=ds)
+    plot.Barplot('fltvar', 'A%B', match='rm', test=0, tail=1, ds=ds)
 
     # cells
     plot.Barplot('fltvar', 'A%B', cells=(('a2', 'b2'), ('a1', 'b1')), ds=ds)

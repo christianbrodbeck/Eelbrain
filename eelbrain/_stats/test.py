@@ -1018,7 +1018,7 @@ def pairwise(
         tests if False).
     corr : None | 'hochberg' | 'bonferroni' | 'holm'
         Method for multiple comparison correction.
-    trend : None | str
+    trend : str
         Marker for a trend in pairwise comparisons.
     title : str
         Title for the table.

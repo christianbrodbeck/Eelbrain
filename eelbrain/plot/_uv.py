@@ -3,7 +3,7 @@
 import inspect
 from itertools import chain
 import logging
-from typing import Sequence
+from typing import Sequence, Union
 
 import numpy as np
 import scipy.linalg
@@ -64,7 +64,7 @@ def _mark_plot_pairwise(ax, ct, parametric, bottom, y_unit, corr, trend, markers
         if top is None).
     corr : None | 'hochberg' | 'bonferroni' | 'holm'
         Method for multiple comparison correction.
-    trend : None | str
+    trend : str
         Symbol to mark trends.
     markers : bool
         Plot markers indicating significance level (stars).
@@ -140,7 +140,7 @@ def _mark_plot_pairwise(ax, ct, parametric, bottom, y_unit, corr, trend, markers
 
 
 def _mark_plot_1sample(ax, ct, par, y_min, y_unit, popmean=0, corr='Hochberg',
-                       trend="'", levels=True, pwcolors=None, x0=0):
+                       trend=False, levels=True, pwcolors=None, x0=0, tail=0):
     """Mark significance for one-sample test
 
     Returns
@@ -273,12 +273,14 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
     titlekwargs : dict
         Keyword arguments for the figure title.
     test : bool | scalar
-        True (default): perform pairwise tests;  False/None: no tests;
+        ``True`` (default): perform pairwise tests; ``False``: no tests;
         scalar: 1-sample tests against this value.
+    tail : 0 | 1 | -1
+        Tailedness of the test (when testing against population mean).
     par : bool
         Use parametric test for pairwise comparisons (use non-parametric
         tests if False).
-    trend : None | str
+    trend : str
         Marker for a trend in pairwise comparisons.
     test_markers : bool
         For pairwise tests, plot markers indicating significance level
@@ -304,7 +306,7 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
     def __init__(self, y, x=None, match=None, sub=None, cells=None,
                  bottom=None, top=None, ylabel=True, xlabel=True,
                  xticks=True, xtick_delim='\n',
-                 test=True, par=True, trend="'", test_markers=True, corr='Hochberg',
+                 test=True, tail=0, par=True, trend=False, test_markers=True, corr='Hochberg',
                  hatch=False, colors=False, ds=None, label_fliers=False, **kwargs):
         # get data
         ct = Celltable(y, x, match, sub, cells, ds, asvar)
@@ -333,7 +335,7 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), **kwargs)
         self._configure_axis(ct.y, ylabel, y=True)
 
-        self._plot = p = _plt_boxplot(self._ax, ct, colors, hatch, bottom, top, test, par, corr, trend, test_markers, label_fliers, boxplot_args)
+        self._plot = p = _plt_boxplot(self._ax, ct, colors, hatch, bottom, top, test, tail, par, corr, trend, test_markers, label_fliers, boxplot_args)
         p.set_ylim(p.bottom, p.top)
         p.ax.set_xlim(p.left, p.right)
 
@@ -359,14 +361,16 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         Cells to plot (optional). All entries have to be cells of ``x``). Can be
         used to change the order of the bars or plot only certain cells.
     test : bool | scalar
-        True (default): perform pairwise tests;  False: no tests;
-        scalar: 1-sample tests against this value
+        ``True`` (default): perform pairwise tests; ``False``: no tests;
+        scalar: 1-sample tests against this value.
+    tail : 0 | 1 | -1
+        Tailedness of the test (when testing against population mean).
     par : bool
         Use parametric test for pairwise comparisons (use non-parametric
         tests if False).
     corr : None | 'hochberg' | 'bonferroni' | 'holm'
         Method for multiple comparison correction (default 'hochberg').
-    trend : None | str
+    trend : str
         Marker for a trend in pairwise comparisons.
     test_markers : bool
         For pairwise tests, plot markers indicating significance level
@@ -422,8 +426,8 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    def __init__(self, y, x=None, match=None, sub=None, cells=None, test=True, par=True,
-                 corr='Hochberg', trend="'", test_markers=True, ylabel=True,
+    def __init__(self, y, x=None, match=None, sub=None, cells=None, test=True, tail=0, par=True,
+                 corr='Hochberg', trend=False, test_markers=True, ylabel=True,
                  error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
                  xtick_delim='\n', hatch=False, colors=False, bottom=None, top=None,
                  origin=None, pos=None, width=0.5, c='#0099FF', edgec=None, ds=None, *args, **kwargs):
@@ -435,7 +439,7 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), *args, **kwargs)
         self._configure_axis(ct.y, ylabel, y=True)
 
-        p = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors, bottom, top, origin, pos, width, c, edgec, ec, test, par, trend, corr, test_markers)
+        p = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors, bottom, top, origin, pos, width, c, edgec, ec, test, tail, par, trend, corr, test_markers)
         p.set_ylim(p.bottom, p.top)
         p.ax.set_xlim(p.left, p.right)
 
@@ -464,14 +468,16 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
         Cells to plot (optional). All entries have to be cells of ``x``). Can be
         used to change the order of the bars or plot only certain cells.
     test : bool | scalar
-        True (default): perform pairwise tests;  False: no tests;
-        scalar: 1-sample tests against this value
+        ``True`` (default): perform pairwise tests; ``False``: no tests;
+        scalar: 1-sample tests against this value.
+    tail : 0 | 1 | -1
+        Tailedness of the test (when testing against population mean).
     par : bool
         Use parametric test for pairwise comparisons (use non-parametric
         tests if False).
     corr : None | 'hochberg' | 'bonferroni' | 'holm'
         Method for multiple comparison correction (default 'hochberg').
-    trend : None | str
+    trend : str
         Marker for a trend in pairwise comparisons.
     test_markers : bool
         For pairwise tests, plot markers indicating significance level
@@ -525,8 +531,8 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    def __init__(self, y, x=None, match=None, sub=None, cells=None, test=False, par=True,
-                 corr='Hochberg', trend="'", test_markers=True, ylabel=True,
+    def __init__(self, y, x=None, match=None, sub=None, cells=None, test=False, tail=0, par=True,
+                 corr='Hochberg', trend=False, test_markers=True, ylabel=True,
                  error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
                  xtick_delim=' ', hatch=False, colors=False, bottom=0, top=None,
                  origin=None, pos=None, width=0.5, c='#0099FF', edgec=None, ds=None, *args, **kwargs):
@@ -540,7 +546,7 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
 
         _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), *args, **kwargs)
 
-        p = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors, bottom, top, origin, pos, width, c, edgec, ec, test, par, trend, corr, test_markers, horizontal=True)
+        p = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors, bottom, top, origin, pos, width, c, edgec, ec, test, tail, par, trend, corr, test_markers, horizontal=True)
         p.ax.set_ylim(p.left, p.right)
         self._configure_axis(ct.y, ylabel)
 
@@ -552,7 +558,37 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
 class _plt_uv_base:
     """Base for barplot and boxplot -- x is categorial, y is scalar"""
 
-    def __init__(self, ax, horizontal=False):
+    def __init__(self, ax, ct, origin, pos, width, bottom, plot_max, top, test, tail, corr, par, trend, test_markers, horizontal=False):
+        # pairwise tests
+        y_unit = (plot_max - bottom) / 15
+        if ct.x is None and test is True:
+            test = 0.
+        if test is True:
+            if tail:
+                raise ValueError(f"tail={tail} for pairwise test")
+            y_top = _mark_plot_pairwise(ax, ct, par, plot_max, y_unit, corr, trend, test_markers, top=top)
+        elif (test is False) or (test is None):
+            y_top = plot_max + y_unit
+        else:
+            ax.axhline(test, color='black')
+            y_top = _mark_plot_1sample(ax, ct, par, plot_max, y_unit, test, corr, trend, tail=tail)
+
+        if top is not None:
+            y_top = top
+        elif origin is not None:
+            y_top = max(y_top, origin)
+
+        if np.isscalar(width):
+            left_margin = right_margin = width
+        else:
+            left_margin = width[np.argmin(pos)]
+            right_margin = width[np.argmax(pos)]
+        self.left = min(pos) - left_margin
+        self.right = max(pos) + right_margin
+        self.origin = origin
+        self.bottom = bottom
+        self.top = y_top
+        self.pos = pos
         self.horizontal = horizontal
         self.vmin, self.vmax = ax.get_ylim()
         self.ax = ax
@@ -569,7 +605,7 @@ class _plt_uv_base:
 class _plt_boxplot(_plt_uv_base):
     """Boxplot"""
 
-    def __init__(self, ax, ct, colors, hatch, bottom, top, test, par, corr, trend, test_markers, label_fliers, boxplot_args):
+    def __init__(self, ax, ct, colors, hatch, bottom, top, test, tail, par, corr, trend, test_markers, label_fliers, boxplot_args):
         # determine ax lim
         if bottom is None:
             if np.min(ct.y.x) >= 0:
@@ -581,12 +617,13 @@ class _plt_boxplot(_plt_uv_base):
                 bottom = d_min - .05 * d_range
 
         # boxplot
+        width = 0.5
         k = len(ct.cells)
         all_data = ct.get_data()
         box_data = [y.x for y in all_data]
         if 'positions' not in boxplot_args:
             boxplot_args['positions'] = np.arange(k)
-        self.pos = boxplot_args['positions']
+        pos = boxplot_args['positions']
         self.boxplot = bp = ax.boxplot(box_data, **boxplot_args)
 
         # Now fill the boxes with desired colors
@@ -612,21 +649,6 @@ class _plt_boxplot(_plt_uv_base):
             for itemname in bp:
                 bp[itemname].set_color('black')
 
-        # tests
-        y_min = max(x.max() for x in all_data)
-        y_unit = (y_min - bottom) / 15
-        if test is True:
-            y_top = _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr, trend, test_markers)
-        elif test is not False and test is not None:
-            ax.axhline(test, color='black')
-            y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit, test, corr, trend)
-        else:
-            ax.autoscale()
-            y_top = None
-
-        if top is None:
-            top = y_top
-
         # data labels
         if label_fliers:
             for cell, fliers in zip(ct.cells, bp['fliers']):
@@ -642,11 +664,8 @@ class _plt_boxplot(_plt_uv_base):
                     ax.annotate(label, (x, y), va='center')
 
         # set ax limits
-        self.left = -.5
-        self.right = k - .5
-        self.bottom = bottom
-        self.top = ax.get_ylim()[1] if top is None else top
-        _plt_uv_base.__init__(self, ax)
+        plot_max = max(x.max() for x in all_data)
+        _plt_uv_base.__init__(self, ax, ct, None, pos, width, bottom, plot_max, top, test, tail, corr, par, trend, test_markers)
 
 
 class _plt_barplot(_plt_uv_base):
@@ -663,13 +682,14 @@ class _plt_barplot(_plt_uv_base):
             top: float = None,
             origin: float = None,
             pos: Sequence[float] = None,  # position of the bars
-            width: float = .5,  # width of the pbars
+            width: Union[float, Sequence[float]] = .5,  # width of the bars
             c='#0099FF',
             edgec=None,
             ec='k',
             test: bool = True,
+            tail: int = 0,
             par=True,
-            trend="'",
+            trend=False,
             corr='Hochberg',
             test_markers=True,
             horizontal: bool = False,
@@ -717,9 +737,7 @@ class _plt_barplot(_plt_uv_base):
         plot_min = np.min(height - error_bars)
         plot_span = plot_max - plot_min
         if bottom is None:
-            y_bottom = min(plot_min - plot_span * .05, origin)
-        else:
-            y_bottom = bottom
+            bottom = min(plot_min - plot_span * .05, origin)
 
         # main BARPLOT
         if horizontal:
@@ -739,30 +757,7 @@ class _plt_barplot(_plt_uv_base):
             for bar, c in zip(bars, colors):
                 bar.set_facecolor(c)
 
-        # pairwise tests
-        if ct.x is None and test is True:
-            test = 0.
-        y_unit = (plot_max - y_bottom) / 15
-        if test is True:
-            y_top = _mark_plot_pairwise(ax, ct, par, plot_max, y_unit, corr, trend, test_markers, top=top)
-        elif (test is False) or (test is None):
-            y_top = plot_max + y_unit
-        else:
-            ax.axhline(test, color='black')
-            y_top = _mark_plot_1sample(ax, ct, par, plot_max, y_unit, test, corr, trend)
-
-        if top is None:
-            y_top = max(y_top, origin)
-        else:
-            y_top = top
-
-        self.left = min(pos) - width
-        self.right = max(pos) + width
-        self.origin = origin
-        self.bottom = y_bottom
-        self.top = y_top
-        self.pos = pos
-        _plt_uv_base.__init__(self, ax, horizontal)
+        _plt_uv_base.__init__(self, ax, ct, origin, pos, width, bottom, plot_max, top, test, tail, corr, par, trend, test_markers, horizontal)
 
 
 class Timeplot(LegendMixin, YLimMixin, EelFigure):
