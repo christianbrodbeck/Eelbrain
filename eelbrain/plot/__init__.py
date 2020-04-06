@@ -5,7 +5,7 @@ from .._colorspaces import two_step_colormap
 
 from ._base import reset_rc
 from ._colors import (
-    ColorBar, ColorGrid, ColorList,
+    ColorBar, ColorGrid, ColorList, Style,
     colors_for_categorial, colors_for_oneway, colors_for_twoway,
     single_hue_colormap, soft_threshold_colormap,
 )

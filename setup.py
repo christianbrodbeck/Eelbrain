@@ -69,7 +69,7 @@ setup(
     author_email='christianbrodbeck@nyu.edu',
     license='BSD (3-clause)',
     long_description=DESC,
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     setup_requires=[
         "numpy >= 1.11",
         "cython >= 0.21",

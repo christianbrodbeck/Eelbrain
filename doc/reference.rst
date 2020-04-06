@@ -333,6 +333,7 @@ Color tools for plotting:
    plot.colors_for_twoway
    plot.soft_threshold_colormap
    plot.two_step_colormap
+   plot.Style
    plot.ColorBar
    plot.ColorGrid
    plot.ColorList

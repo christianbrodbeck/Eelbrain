@@ -6,6 +6,8 @@ Changes
 New in 0.32
 -----------
 
+* Requires at least `Python 3.7 <https://docs.python.org/3.7/>`_
+* :class:`plot.Style` to control advanced plotting options by category (see :ref:`exa-bozplot` example).
 * .. currentmodule:: eelbrain.pipeline
   :class:`MneExperiment` pipeline:
 

@@ -90,6 +90,9 @@ example_order = NameOrder({
         'sensor-cluster-based-ttest.py',
         'sensor-two-stage.py',
     ],
+    'plots': [
+        'boxplot.py',
+    ],
     'reverse-correlation': [
         'trf_intro.py',
         'mtrf.py',
@@ -180,7 +183,7 @@ suppress_warnings = ['image.nonlocal_uri']
 # -- Custom Options -----------------------------------------------------------
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3.6', None),
+    'python': ('https://docs.python.org/3.7', None),
     'imageio': ('https://imageio.readthedocs.io/en/stable/', None),
     'mne': ('http://martinos.org/mne/stable', None),
     'surfer': ('https://pysurfer.github.io', None),

@@ -1,0 +1,5 @@
+^^^^^
+Plots
+^^^^^
+
+:mod:`plot` examples.

@@ -6,7 +6,7 @@ channels:
 - defaults
 - conda-forge
 dependencies:
-- python >= 3.6
+- python >= 3.7
 - pip
 - twine
 - blas=*=mkl  # openblas produces incorrect results for ICA in iMac Pro

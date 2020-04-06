@@ -1,9 +1,11 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Color tools for plotting."""
 from collections.abc import Iterator
+from dataclasses import dataclass
 from itertools import product, chain
 from math import ceil
 import operator
+from typing import Any
 
 import numpy as np
 import matplotlib as mpl
@@ -13,7 +15,7 @@ from matplotlib.ticker import FixedFormatter, MaxNLocator
 
 from .._colorspaces import LocatedListedColormap, oneway_colors, twoway_colors, symmetric_cmaps
 from .._data_obj import Factor, Interaction, cellname
-from .._utils import IS_WINDOWS
+from .._utils import IS_WINDOWS, LazyProperty
 from ._base import EelFigure, Layout, AxisScale, fix_vlim_for_cmap
 from functools import reduce
 
@@ -22,13 +24,40 @@ POINT_SIZE = 0.0138889  # 1 point in inches
 LEGEND_SIZE = 1.2  # times font.size
 
 
-def find_cell_colors(x, colors):
+@dataclass
+class Style:
+    """Control color/pattern by category"""
+    color: Any = (0, 0, 0)
+    marker: str = None
+    hatch: str = ''
+    linestyle: str = None
+
+    @LazyProperty
+    def line_args(self):
+        return {'color': self.color, 'linestyle': self.linestyle, 'marker': self.marker, 'markerfacecolor': self.color}
+
+    @LazyProperty
+    def patch_args(self):
+        return {'facecolor': self.color, 'hatch': self.hatch}
+
+    @classmethod
+    def _coerce(cls, arg):
+        if isinstance(arg, cls):
+            return arg
+        elif arg is None:
+            return cls()
+        else:
+            return cls(arg)
+
+
+def find_cell_styles(x, colors, cells=None):
     """Process the colors arg from plotting functions
 
     Parameters
     ----------
     x : categorial
-        Model for which colors are needed.
+        Model for which colors are needed. ``None`` if only a single value is
+        plotted.
     colors : str | list | dict
         Colors for the plots if multiple categories of data are plotted.
         **str**: A colormap name; cells are mapped onto the colormap in
@@ -37,21 +66,36 @@ def find_cell_colors(x, colors):
         **dict**: A dictionary mapping each cell to a color.
         Colors are specified as `matplotlib compatible color arguments
         <http://matplotlib.org/api/colors_api.html>`_.
+    cells : tuple of str
+        In case only a subset of cells is used.
     """
-    if isinstance(colors, (list, tuple)):
+    if x is None:
+        if isinstance(colors, dict):
+            color = colors[None]
+        elif colors is None:
+            color = 'k'
+        else:
+            color = to_rgba(colors)
+        return {None: Style._coerce(color)}
+    elif cells is None:
         cells = x.cells
+
+    if isinstance(colors, (list, tuple)):
         if len(colors) < len(cells):
             raise ValueError(f"colors={colors!r}: only {len(colors)} colors for {len(cells)} cells.")
-        return dict(zip(cells, colors))
+        out = dict(zip(cells, colors))
     elif isinstance(colors, dict):
-        for cell in x.cells:
-            if cell not in colors:
-                raise KeyError(f"{cell!r} not in colors")
-        return colors
-    elif colors is None:
-        return colors_for_categorial(x, cmap=colors)
+        missing = [cell for cell in cells if cell not in colors]
+        if missing:
+            raise KeyError(f"colors={colors!r} is missing cells {missing}")
+        out = colors
+    elif colors is None or isinstance(colors, str):
+        out = colors_for_categorial(x, cmap=colors)
+    elif colors is False:
+        return
     else:
         raise TypeError(f"colors={colors!r}")
+    return {cell: Style._coerce(c) for cell, c in out.items()}
 
 
 def colors_for_categorial(x, hue_start=0.2, cmap=None):

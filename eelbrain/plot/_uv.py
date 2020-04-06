@@ -16,32 +16,15 @@ from .._celltable import Celltable
 from .._data_obj import asvar, ascategorial, assub, cellname
 from .._stats import test, stats
 from ._base import EelFigure, Layout, LegendMixin, CategorialAxisMixin, XAxisMixin, YLimMixin, frame_title
-from ._colors import find_cell_colors
+from ._colors import find_cell_styles
 
-
-defaults = dict(
-              mono=False,  # use monochrome instead of colors
-              # defaults for color
-              hatch=['', '', '//', '', '*', 'O', '.', '', '/', '//'],
-              linestyle=['-', '-', '--', ':'],
-              c={'pw': ['#00FF00', '#FFCC00', '#FF6600', '#FF3300'],
-                 'colors': [(0.99609375, 0.12890625, 0.0),
-                            (0.99609375, 0.5859375, 0.0),
-                            (0.98046875, 0.99609375, 0.0),
-                            (0.19921875, 0.99609375, 0.0)],
-                 'markers': False,
-                 },
-              # defaults for monochrome
-              cm={'pw': ['.6', '.4', '.2', '.0'],
-                  'colors': ['.3', '.7', '1.', '1.'],
-                  'markers': ['o', 'o', '^', 'o'],
-                  },
-                )
 
 # keys for sorting kwargs
 s = inspect.signature(mpl.axes.Axes.boxplot)
 BOXPLOT_KEYWORDS = list(s.parameters)[2:]
 del s
+
+PAIRWISE_COLORS = ('#00FF00', '#FFCC00', '#FF6600', '#FF3300')
 
 
 def _mark_plot_pairwise(ax, ct, parametric, bottom, y_unit, corr, trend, markers,
@@ -81,15 +64,11 @@ def _mark_plot_pairwise(ax, ct, parametric, bottom, y_unit, corr, trend, markers
         trend = False
 
     # visual parameters
-    if not pwcolors:
-        if defaults['mono']:
-            pwcolors = defaults['cm']['pw'][1 - bool(trend):]
-        else:
-            pwcolors = defaults['c']['pw'][1 - bool(trend):]
+    if pwcolors is None:
+        pwcolors = PAIRWISE_COLORS[1 - bool(trend):]
     font_size = mpl.rcParams['font.size'] * 1.5
 
-    tests = test._pairwise(ct.get_data(), ct.all_within, parametric, corr, levels,
-                           trend)
+    tests = test._pairwise(ct.get_data(), ct.all_within, parametric, corr, levels, trend)
 
     # plan grid layout
     k = len(ct.cells)
@@ -151,11 +130,8 @@ def _mark_plot_1sample(ax, ct, par, y_min, y_unit, popmean=0, corr='Hochberg',
     if levels is not True:  # to avoid test.star() conflict
         trend = False
     # tests
-    if not pwcolors:
-        if defaults['mono']:
-            pwcolors = defaults['cm']['pw'][1 - bool(trend):]
-        else:
-            pwcolors = defaults['c']['pw'][1 - bool(trend):]
+    if pwcolors is None:
+        pwcolors = PAIRWISE_COLORS[1 - bool(trend):]
     # mod
     ps = []
     if par:
@@ -193,12 +169,9 @@ class PairwiseLegend(EelFigure):
         Also accepts :ref:`general-layout-parameters`.
     """
     def __init__(self, size=.3, trend=True, *args, **kwargs):
-        if trend:
-            levels = [.1, .05, .01, .001]
-            colors = defaults['c']['pw']
-        else:
-            levels = [.05, .01, .001]
-            colors = defaults['c']['pw'][1:]
+        i_start = 1 - bool(trend)
+        levels = [.1, .05, .01, .001][i_start:]
+        colors = PAIRWISE_COLORS[i_start:]
 
         # layout
         n_levels = len(levels)
@@ -287,9 +260,6 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         (stars).
     corr : None | 'hochberg' | 'bonferroni' | 'holm'
         Method for multiple comparison correction (default 'hochberg').
-    hatch : bool | str
-        Matplotlib Hatch pattern to fill boxes (True to use the module
-        default; default is False).
     colors : bool | sequence | dict of matplitlib colors
         Matplotlib colors to use for boxes (True to use the module default;
         default is False, i.e. no colors).
@@ -303,39 +273,47 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         Also accepts :ref:`general-layout-parameters` and
         :meth:`~matplotlib.axes.Axes.boxplot` parameters.
     """
-    def __init__(self, y, x=None, match=None, sub=None, cells=None,
-                 bottom=None, top=None, ylabel=True, xlabel=True,
-                 xticks=True, xtick_delim='\n',
-                 test=True, tail=0, par=True, trend=False, test_markers=True, corr='Hochberg',
-                 hatch=False, colors=False, ds=None, label_fliers=False, **kwargs):
+    def __init__(
+            self,
+            y,
+            x=None,
+            match=None,
+            sub=None,
+            cells=None,
+            bottom=None,
+            top=None,
+            ylabel=True,
+            xlabel=True,
+            xticks=True,
+            xtick_delim='\n',
+            test=True,
+            tail=0,
+            par=True,
+            trend=False,
+            test_markers=True,
+            corr='Hochberg',
+            colors=False,
+            ds=None,
+            label_fliers=False,
+            **kwargs,
+    ):
         # get data
         ct = Celltable(y, x, match, sub, cells, ds, asvar)
+        if colors is False:
+            styles = False
+        else:
+            styles = find_cell_styles(ct.x, colors, ct.cells)
         if label_fliers and ct.match is None:
             raise TypeError(f"label_fliers={label_fliers!r} without specifying the match parameter: match is needed to determine labels")
         if ct.x is None and test is True:
             test = 0.
 
-        # kwargs
+        # sort out boxplot kwargs
         boxplot_args = {k: kwargs.pop(k) for k in BOXPLOT_KEYWORDS if k in kwargs}
-        hatch_ = defaults['hatch'] if hatch is True else hatch
-        if hatch_ and len(hatch_) < ct.n_cells:
-            raise ValueError(f"hatch={hatch_!r}: need at least as many values as there are cells ({ct.n_cells})")
-
-        if colors is True:
-            if defaults['mono']:
-                colors = defaults['cm']['colors']
-            else:
-                colors = defaults['c']['colors']
-        elif isinstance(colors, dict):
-            colors = [colors[cell] for cell in ct.cells]
-
-        if colors and len(colors) < ct.n_cells:
-            raise ValueError(f"colors={colors!r}: need at least as many values as there are cells ({ct.n_cells})")
-
         _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), **kwargs)
         self._configure_axis(ct.y, ylabel, y=True)
 
-        self._plot = p = _plt_boxplot(self._ax, ct, colors, hatch, bottom, top, test, tail, par, corr, trend, test_markers, label_fliers, boxplot_args)
+        self._plot = p = _plt_boxplot(self._ax, ct, styles, bottom, top, test, tail, par, corr, trend, test_markers, label_fliers, boxplot_args)
         p.set_ylim(p.bottom, p.top)
         p.ax.set_xlim(p.left, p.right)
 
@@ -399,9 +377,6 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
     xtick_delim : str
         Delimiter for x axis category descriptors (default is ``'\n'``,
         i.e. the level on each Factor of ``x`` on a separate line).
-    hatch : bool | str
-        Matplotlib Hatch pattern to fill boxes (True to use the module
-        default; default is False).
     colors : bool | dict | sequence of matplitlib colors
         Matplotlib colors to use for boxes (True to use the module default;
         default is False, i.e. no colors).
@@ -429,17 +404,20 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
     def __init__(self, y, x=None, match=None, sub=None, cells=None, test=True, tail=0, par=True,
                  corr='Hochberg', trend=False, test_markers=True, ylabel=True,
                  error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
-                 xtick_delim='\n', hatch=False, colors=False, bottom=None, top=None,
+                 xtick_delim='\n', colors=False, bottom=None, top=None,
                  origin=None, pos=None, width=0.5, c='#0099FF', edgec=None, ds=None, *args, **kwargs):
         ct = Celltable(y, x, match, sub, cells, ds, asvar)
-
+        if colors is False:
+            styles = False
+        else:
+            styles = find_cell_styles(ct.x, colors, ct.cells)
         if pool_error is None:
             pool_error = ct.all_within
 
         _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), *args, **kwargs)
         self._configure_axis(ct.y, ylabel, y=True)
 
-        p = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors, bottom, top, origin, pos, width, c, edgec, ec, test, tail, par, trend, corr, test_markers)
+        p = _plt_barplot(self._ax, ct, error, pool_error, styles, bottom, top, origin, pos, width, c, edgec, ec, test, tail, par, trend, corr, test_markers)
         p.set_ylim(p.bottom, p.top)
         p.ax.set_xlim(p.left, p.right)
 
@@ -534,19 +512,22 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
     def __init__(self, y, x=None, match=None, sub=None, cells=None, test=False, tail=0, par=True,
                  corr='Hochberg', trend=False, test_markers=True, ylabel=True,
                  error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
-                 xtick_delim=' ', hatch=False, colors=False, bottom=0, top=None,
+                 xtick_delim=' ', colors=False, bottom=0, top=None,
                  origin=None, pos=None, width=0.5, c='#0099FF', edgec=None, ds=None, *args, **kwargs):
         if test is not False:
             raise NotImplemented("Horizontal barplot with pairwise significance")
 
         ct = Celltable(y, x, match, sub, cells, ds, asvar)
-
+        if colors is False:
+            styles = False
+        else:
+            styles = find_cell_styles(ct.x, colors, ct.cells)
         if pool_error is None:
             pool_error = ct.all_within
 
         _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), *args, **kwargs)
 
-        p = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors, bottom, top, origin, pos, width, c, edgec, ec, test, tail, par, trend, corr, test_markers, horizontal=True)
+        p = _plt_barplot(self._ax, ct, error, pool_error, styles, bottom, top, origin, pos, width, c, edgec, ec, test, tail, par, trend, corr, test_markers, horizontal=True)
         p.ax.set_ylim(p.left, p.right)
         self._configure_axis(ct.y, ylabel)
 
@@ -605,7 +586,7 @@ class _plt_uv_base:
 class _plt_boxplot(_plt_uv_base):
     """Boxplot"""
 
-    def __init__(self, ax, ct, colors, hatch, bottom, top, test, tail, par, corr, trend, test_markers, label_fliers, boxplot_args):
+    def __init__(self, ax, ct, styles, bottom, top, test, tail, par, corr, trend, test_markers, label_fliers, boxplot_args):
         # determine ax lim
         if bottom is None:
             if np.min(ct.y.x) >= 0:
@@ -627,27 +608,16 @@ class _plt_boxplot(_plt_uv_base):
         self.boxplot = bp = ax.boxplot(box_data, **boxplot_args)
 
         # Now fill the boxes with desired colors
-        if hatch or colors:
-            for i in range(ct.n_cells):
-                box = bp['boxes'][i]
+        if styles:
+            for cell, box in zip(ct.cells, bp['boxes']):
                 box_x = box.get_xdata()[:5]  # []
                 box_y = box.get_ydata()[:5]  # []
                 box_coords = list(zip(box_x, box_y))
-                if colors:
-                    c = colors[i]
-                else:
-                    c = '.5'
-
-                if hatch:
-                    h = hatch[i]
-                else:
-                    h = ''
-
-                poly = mpl.patches.Polygon(box_coords, facecolor=c, hatch=h, zorder=-999)
+                style = styles[cell]
+                poly = mpl.patches.Polygon(box_coords, facecolor=style.color, hatch=style.hatch, zorder=-999)
                 ax.add_patch(poly)
-        if defaults['mono']:
-            for itemname in bp:
-                bp[itemname].set_color('black')
+            for item in bp['medians']:
+                item.set_color('black')
 
         # data labels
         if label_fliers:
@@ -676,8 +646,7 @@ class _plt_barplot(_plt_uv_base):
             ct: Celltable,  # Data to plot.
             error: str,  # Variability description (e.g., "95%ci")
             pool_error: bool,  # for the variability estimate
-            hatch,
-            colors,
+            styles: dict = False,
             bottom: float = None,
             top: float = None,
             origin: float = None,
@@ -694,18 +663,6 @@ class _plt_barplot(_plt_uv_base):
             test_markers=True,
             horizontal: bool = False,
     ):
-        # kwargs
-        if hatch is True:
-            hatch = defaults['hatch']
-
-        if colors is True:
-            if defaults['mono']:
-                colors = defaults['cm']['colors']
-            else:
-                colors = defaults['c']['colors']
-        elif isinstance(colors, dict):
-            colors = [colors[cell] for cell in ct.cells]
-
         # data means
         k = len(ct.cells)
         if pos is None:
@@ -749,13 +706,12 @@ class _plt_barplot(_plt_uv_base):
         for artist in chain(bars.patches, *bars.errorbar.lines[1:]):
             artist.set_clip_on(False)
 
-        # hatch
-        if hatch:
-            for bar, h in zip(bars, hatch):
-                bar.set_hatch(h)
-        if colors:
-            for bar, c in zip(bars, colors):
-                bar.set_facecolor(c)
+        if styles:
+            for cell, bar, in zip(ct.cells, bars):
+                style = styles[cell]
+                bar.set_facecolor(style.color)
+                if style.hatch:
+                    bar.set_hatch(style.hatch)
 
         _plt_uv_base.__init__(self, ax, ct, origin, pos, width, bottom, plot_max, top, test, tail, corr, par, trend, test_markers, horizontal)
 
@@ -821,17 +777,29 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    def __init__(self, y, categories, time, match=None, sub=None, ds=None,
-                 # data plotting
-                 main=np.mean, error='sem', x_jitter=False,
-                 bottom=None, top=None,
-                 # labelling
-                 ylabel=True, xlabel=True, timelabels=None, legend='upper right',
-                 labels=None,
-                 colors=None, hatch=False, markers=True, *args, **kwargs):
-        if 'spread' in kwargs:  # deprecated 0.27
-            raise ValueError("The `spread` argument has been removed from "
-                             "plot.Timeplot. Use the `error` argument instead")
+    def __init__(
+            self,
+            y,
+            categories,
+            time,
+            match=None,
+            sub=None,
+            ds=None,
+            # data plotting
+            main=np.mean,
+            error='sem',
+            x_jitter=False,
+            bottom=None,
+            top=None,
+            # labelling
+            ylabel=True,
+            xlabel=True,
+            timelabels=None,
+            legend='upper right',
+            labels=None,
+            colors=None,
+            *args, **kwargs,
+    ):
         sub = assub(sub, ds)
         y = asvar(y, sub, ds)
         categories = ascategorial(categories, sub, ds)
@@ -858,17 +826,7 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
         if not line_plot:
             legend = False
 
-        # hatch/marker
-        if hatch is True:
-            hatch = defaults['hatch']
-        if markers is True:
-            if defaults['mono']:
-                markers = defaults['cm']['markers']
-            else:
-                markers = defaults['c']['markers']
-
-        # colors: {category index -> color, ...}
-        colors = find_cell_colors(categories, colors)
+        styles = find_cell_styles(categories, colors)
 
         # get axes
         layout = Layout(1, 1, 5, *args, **kwargs)
@@ -876,9 +834,7 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
         self._configure_axis(y, ylabel, y=True)
         self._configure_axis(time, xlabel)
 
-        plot = _ax_timeplot(self._axes[0], y, categories, time, match, colors,
-                            hatch, markers, line_plot, error, local_plot,
-                            timelabels, x_jitter, bottom, top)
+        plot = _ax_timeplot(self._axes[0], y, categories, time, match, styles, line_plot, error, local_plot, timelabels, x_jitter, bottom, top)
 
         YLimMixin.__init__(self, (plot,))
         LegendMixin.__init__(self, legend, plot.legend_handles, labels)
@@ -890,10 +846,7 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
 
 class _ax_timeplot:
 
-    def __init__(self, ax, y, categories, time, match, colors, hatch, markers,
-                 line_plot, error, local_plot, timelabels, x_jitter, bottom,
-                 top):
-        color_list = [colors[i] for i in categories.cells]
+    def __init__(self, ax, y, categories, time, match, styles, line_plot, error, local_plot, timelabels, x_jitter, bottom, top):
         # categories
         n_cat = len(categories.cells)
         # find time points
@@ -933,18 +886,14 @@ class _ax_timeplot:
                 for lines in bp.values():
                     setp(lines, color='black')
                 # Now fill the boxes with desired colors
-                for i, cell in enumerate(ct.cells):
-                    box = bp['boxes'][i]
+                for cell, box in enumerate(ct.cells, bp['boxes']):
                     box_x = box.get_xdata()[:5]
                     box_y = box.get_ydata()[:5]
-                    patch = mpl.patches.Polygon(
-                        zip(box_x, box_y),
-                        facecolor=colors[cell],
-                        hatch=hatch[i] if hatch else '',
-                        zorder=-999)
+                    style = styles[cell]
+                    patch = mpl.patches.Polygon(zip(box_x, box_y), zorder=-999, **style.patch_args)
                     ax.add_patch(patch)
             elif local_plot == 'bar':
-                _plt_barplot(ax, ct, error, False, hatch, color_list, 0, pos=pos, width=within_spacing, test=False)
+                _plt_barplot(ax, ct, error, False, styles, 0, pos=pos, width=within_spacing, test=False)
 
         legend_handles = {}
         if line_plot:
@@ -953,27 +902,8 @@ class _ax_timeplot:
             for i, cell in enumerate(categories.cells):
                 y = line_values[i]
                 name = cellname(cell)
-                color = colors[cell]
-
-                if hatch:
-                    ls = defaults['linestyle'][i]
-                    if color == '1.':
-                        color = '0.'
-                else:
-                    ls = '-'
-
-                if ls == '-':
-                    mfc = color
-                else:
-                    mfc = '1.'
-
-                if not markers or len(markers) <= i:
-                    marker = None
-                else:
-                    marker = markers[i]
-
-                handles = ax.plot(x, y, color=color, linestyle=ls, label=name,
-                                  zorder=6, marker=marker, mfc=mfc)
+                style = styles[cell]
+                handles = ax.plot(x, y, label=name, zorder=6, **style.line_args)
                 legend_handles[cell] = handles[0]
 
                 if error:
@@ -981,8 +911,7 @@ class _ax_timeplot:
                         x_errbars = x + rel_pos[i]
                     else:
                         x_errbars = x
-                    ax.errorbar(x_errbars, y, yerr=spread_values[i], fmt='none',
-                                zorder=5, ecolor=color, linestyle=ls, label=name)
+                    ax.errorbar(x_errbars, y, yerr=spread_values[i], fmt='none', zorder=5, ecolor=style.color, label=name)
 
         # x-ticks
         if timelabels is not None:
