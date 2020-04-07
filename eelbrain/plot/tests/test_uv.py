@@ -130,6 +130,6 @@ def test_timeplot():
     ds = datasets.get_loftus_masson_1994()
     ds['cat'] = Factor([int(s) > 5 for s in ds['subject']], labels={True: 'a', False: 'b'})
 
-    plot.Timeplot('n_recalled', 'subject', 'exposure', ds=ds)
-    plot.Timeplot('n_recalled', 'cat', 'exposure', ds=ds)
-    plot.Timeplot('n_recalled', 'cat', 'exposure', 'subject', ds=ds, x_jitter=True)
+    plot.Timeplot('n_recalled', 'exposure', 'subject', ds=ds)
+    plot.Timeplot('n_recalled', 'exposure', 'cat', ds=ds)
+    plot.Timeplot('n_recalled', 'exposure', 'cat', 'subject', ds=ds, x_jitter=True)

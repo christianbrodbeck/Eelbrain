@@ -723,15 +723,15 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
     ----------
     y : Var
         Dependent variable.
-    categories : categorial
-        Model (Factor or Interaction)
     time : Var
-        Variable describing the time.
-    match : None | categorial
+        Variable assigning the time to each case.
+    categories : categorial
+        Plot ``y`` separately for different categories.
+    match : categorial
         Match cases for a repeated measures design.
-    sub : None | index-array
+    sub : index-array
         Use a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     main : numpy function
@@ -780,8 +780,8 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
     def __init__(
             self,
             y,
-            categories,
             time,
+            categories=None,
             match=None,
             sub=None,
             ds=None,
@@ -802,8 +802,11 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
     ):
         sub = assub(sub, ds)
         y = asvar(y, sub, ds)
-        categories = ascategorial(categories, sub, ds)
         time = asvar(time, sub, ds)
+        if categories is None:
+            legend = False
+        else:
+            categories = ascategorial(categories, sub, ds)
         if match is not None:
             match = ascategorial(match, sub, ds)
 
@@ -848,7 +851,7 @@ class _ax_timeplot:
 
     def __init__(self, ax, y, categories, time, match, styles, line_plot, error, local_plot, timelabels, x_jitter, bottom, top):
         # categories
-        n_cat = len(categories.cells)
+        n_cat = 1 if categories is None else len(categories.cells)
         # find time points
         time_points = np.unique(time.x)
         # n_time_points = len(time_points)
@@ -899,7 +902,8 @@ class _ax_timeplot:
         if line_plot:
             # plot means
             x = time_points
-            for i, cell in enumerate(categories.cells):
+            cells = [None] if categories is None else categories.cells
+            for i, cell in enumerate(cells):
                 y = line_values[i]
                 name = cellname(cell)
                 style = styles[cell]
@@ -926,10 +930,7 @@ class _ax_timeplot:
                     raise ValueError("timelabels=%r" % (timelabels,))
             elif (not isinstance(timelabels, Sequence) or
                   not len(timelabels) == len(time_points)):
-                raise TypeError(
-                    "timelabels needs to be a sequence whose length equals the "
-                    "number of time points (%i); got %r" %
-                    (len(time_points), timelabels))
+                raise TypeError(f"timelabels={timelabels}; needs to be a sequence whose length equals the number of time points ({len(time_points)})")
             else:
                 locations = time_points
                 labels = [str(l) for l in timelabels]
