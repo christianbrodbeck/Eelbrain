@@ -20,7 +20,7 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
         Variable to aggregate cases into lines (default is to plot each line).
     sub : None | index array
         Only use a subset of the data provided.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     offset : float | str

@@ -415,7 +415,7 @@ class TContrastRelated(NDTest):
         Match cases for a repeated measures test.
     sub : index
         Perform the test with a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     tail : 0 | 1 | -1
@@ -586,7 +586,7 @@ class Correlation(NDTest):
         Categories in which to normalize (z-score) x.
     sub : index
         Perform the test with a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     samples : int
@@ -821,7 +821,7 @@ class TTestOneSample(NDDifferenceTest):
         Combine data for these categories before testing.
     sub : index
         Perform test with a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     tail : 0 | 1 | -1
@@ -1022,7 +1022,7 @@ class TTestIndependent(NDDifferenceTest):
         Combine cases with the same cell on ``x % match``.
     sub : index
         Perform the test with a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     tail : 0 | 1 | -1
@@ -1237,7 +1237,7 @@ class TTestRelated(NDMaskedC1Mixin, NDDifferenceTest):
         within-subject comparison).
     sub : index
         Perform the test with a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     tail : 0 | 1 | -1
@@ -1633,7 +1633,7 @@ class ANOVA(MultiEffectNDTest):
         Independent variables.
     sub : index
         Perform the test with a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     samples : int
@@ -1921,7 +1921,7 @@ class Vector(NDDifferenceTest):
         Combine data for these categories before testing.
     sub : index
         Perform test with a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     samples : int
@@ -2097,7 +2097,7 @@ class VectorDifferenceIndependent(Vector):
         Combine cases with the same cell on ``x % match``.
     sub : index
         Perform the test with a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     samples : int
@@ -2259,7 +2259,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
         within-subject comparison).
     sub : index
         Perform the test with a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     samples : int

@@ -192,7 +192,7 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
         Specify which axes should be annotated with x-axis tick labels.
         Use ``int`` for a single axis (default ``-1``), a sequence of
         ``int`` for multiple specific axes, or ``bool`` for all/none.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is provided, ``epochs`` and ``xax`` can be specified
         as strings.
     sub : str | array
@@ -389,7 +389,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
         ``color=True`` to use the matplotlib default.
     linewidth : scalar
         Linewidth for plots (defult is to use ``matplotlib.rcParams``).
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is provided, ``epochs`` and ``xax`` can be specified
         as strings.
     sub : str | array

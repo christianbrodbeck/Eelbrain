@@ -990,7 +990,7 @@ class PlotData:
             A model to divide ``y`` into different axes. ``xax`` is currently
             applied on the first level, i.e., it assumes that ``y``'s first
             dimension is cases.
-        ds : None | Dataset
+        ds : Dataset
             Dataset containing data objects which are provided as :class:`str`.
         sub : None | str
             Index selecting a subset of cases.

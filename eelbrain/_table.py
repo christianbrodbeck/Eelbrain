@@ -32,7 +32,7 @@ def difference(y, x, c1, c0, match, sub=None, ds=None, by=None):
         or ``"subject % condition"``).
     sub : None | index
         Only include a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified other arguments can be str instead of
         data-objects and will be retrieved from ``ds``.
 
@@ -612,7 +612,7 @@ def repmeas(y, x, match, sub=None, ds=None):
     sub :
         boolean array specifying which values to include (generate e.g.
         with 'sub=T==[1,2]')
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified other arguments can be str instead of
         data-objects and will be retrieved from ds.
 

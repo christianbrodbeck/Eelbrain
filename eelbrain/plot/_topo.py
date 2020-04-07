@@ -28,7 +28,7 @@ class Topomap(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         Data to plot.
     xax : None | categorial
         Create a separate plot for each cell in this model.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is provided, data can be specified as strings.
     sub : str | array
         Specify a subset of the data.
@@ -155,7 +155,7 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         Data to plot.
     xax : None | categorial
         Create a separate plot for each cell in this model.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is provided, data can be specified as strings.
     sub : str | array
         Specify a subset of the data.
@@ -269,7 +269,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         Data to plot.
     xax : None | categorial
         Create a separate plot for each cell in this model.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is provided, data can be specified as strings.
     sub : str | array
         Specify a subset of the data.
@@ -763,7 +763,7 @@ class TopoArray(ColorMapMixin, TopoMapKey, EelFigure):
         Data to plot.
     xax : None | categorial
         Create a separate plot for each cell in this model.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is provided, data can be specified as strings.
     sub : str | array
         Specify a subset of the data.

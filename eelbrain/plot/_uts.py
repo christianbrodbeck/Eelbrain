@@ -33,7 +33,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         Identifier for repeated measures data.
     sub : None | index array
         Only use a subset of the data provided.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     main : func | None
@@ -314,7 +314,7 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     axtitle : bool | sequence of str
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     sub : str | array

@@ -134,7 +134,7 @@ class Edf:
 
         Parameters
         ----------
-        ds : None | Dataset
+        ds : Dataset
             Dataset with events.
         trigger : str | array
             If ``ds`` is a Dataset, ``trigger`` should be a string naming the

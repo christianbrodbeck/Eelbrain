@@ -221,7 +221,7 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         Category definition (draw one box for every cell in ``x``).
     match : None | categorial
         Match cases for a repeated measures design.
-    sub : None | index-array
+    sub : index-array
         Use a subset of the data.
     cells : None | sequence of cells of x
         Cells to plot (optional). All entries have to be cells of ``x``). Can be
@@ -263,7 +263,7 @@ class Boxplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
     colors : bool | sequence | dict of matplitlib colors
         Matplotlib colors to use for boxes (True to use the module default;
         default is False, i.e. no colors).
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     label_fliers : bool
@@ -333,7 +333,7 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         Model (Factor or Interaction).
     match : None | categorial
         Match cases for a repeated measures design.
-    sub : None | index-array
+    sub : index-array
         Use a subset of the data.
     cells : None | sequence of cells of x
         Cells to plot (optional). All entries have to be cells of ``x``). Can be
@@ -395,7 +395,7 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         Bar color (ignored if colors is specified).
     edgec : matplotlib color
         Barplot edge color.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     ...
@@ -440,7 +440,7 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
         Model (Factor or Interaction).
     match : None | categorial
         Match cases for a repeated measures design.
-    sub : None | index-array
+    sub : index-array
         Use a subset of the data.
     cells : None | sequence of cells of x
         Cells to plot (optional). All entries have to be cells of ``x``). Can be
@@ -503,7 +503,7 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
         Bar color (ignored if colors is specified).
     edgec : matplotlib color
         Barplot edge color.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     ...
@@ -981,9 +981,9 @@ class Correlation(EelFigure, LegendMixin):
         Variable for the x-axis.
     cat : categorial
         Plot the correlation separately for different categories.
-    sub : None | index-array
+    sub : index-array
         Use a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     c : list
@@ -1049,9 +1049,9 @@ class Regression(EelFigure, LegendMixin):
         Plot the regression separately for different categories.
     match : None | categorial
         Match cases for a repeated measures design.
-    sub : None | index-array
+    sub : index-array
         Use a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     ylabel : str
@@ -1183,9 +1183,9 @@ class Histogram(EelFigure):
         Categories for separate histograms.
     match : None | categorial
         Match cases for a repeated measures design.
-    sub : None | index-array
+    sub : index-array
         Use a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
     pooled : bool

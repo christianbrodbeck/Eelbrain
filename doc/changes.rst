@@ -10,6 +10,7 @@ New in 0.32
 * API changes:
 
   - Consistent class names for tests in :mod:`test`, :mod:`testnd` and :mod:`pipeline`.
+  - :class:`plot.Timeplot` argument order: second and third argument switched to facilitate plotting single category.
 
 * :class:`plot.Style` to control advanced plotting options by category (see :ref:`exa-bozplot` example).
 * .. currentmodule:: eelbrain.pipeline

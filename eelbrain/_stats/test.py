@@ -415,7 +415,7 @@ def ttest(y, x=None, against=0, match=None, sub=None, corr='Hochberg',
         Method for multiple comparison correction (default 'hochberg').
     title : str
         Title for the table.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is given, all data-objects can be specified as names of
         Dataset variables
 
@@ -551,9 +551,9 @@ class TTestOneSample(TTest):
     match : categorial
         Units within which measurements are related (e.g. 'subject' in a
         within-subject comparison).
-    sub : None | index-array
+    sub : index-array
         Perform the test with a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     popmean : float
@@ -629,9 +629,9 @@ class TTestIndependent(TTest):
     match : categorial
         Units within which measurements are related and should be averaged over
         (e.g. 'subject' in a between-group comparison).
-    sub : None | index-array
+    sub : index-array
         Perform the test with a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     tail : 0 | 1 | -1
@@ -714,9 +714,9 @@ class MannWhitneyU:
         Units within which measurements are related (e.g. 'subject' in a
         within-subject comparison). If match is unspecified, it is assumed that
         ``y`` and ``x`` are two measurements with matched cases.
-    sub : None | index-array
+    sub : index-array
         Perform the test with a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     tail : 0 | 1 | -1
@@ -814,9 +814,9 @@ class TTestRelated(TTest):
         Units within which measurements are related (e.g. 'subject' in a
         within-subject comparison). If match is unspecified, it is assumed that
         ``y`` and ``x`` are two measurements with matched cases.
-    sub : None | index-array
+    sub : index-array
         Perform the test with a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     tail : 0 | 1 | -1
@@ -908,9 +908,9 @@ class WilcoxonSignedRank:
         Units within which measurements are related (e.g. 'subject' in a
         within-subject comparison). If match is unspecified, it is assumed that
         ``y`` and ``x`` are two measurements with matched cases.
-    sub : None | index-array
+    sub : index-array
         Perform the test with a subset of the data.
-    ds : None | Dataset
+    ds : Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     tail : 0 | 1 | -1
@@ -1015,7 +1015,7 @@ def pairwise(
         Categories to compare.
     match : None | Factor
         Repeated measures factor.
-    sub : None | index-array
+    sub : index-array
         Perform tests with a subset of the data.
     ds : Dataset
         If a Dataset is given, all data-objects can be specified as names of
