@@ -135,9 +135,7 @@ def _mark_plot_1sample(ax, ct, par, y_min, y_unit, popmean=0, corr='Hochberg',
     # mod
     ps = []
     if par:
-        for d in ct.get_data():
-            t, p = scipy.stats.ttest_1samp(d, popmean)
-            ps.append(p)
+        ps = [test.TTestOneSample(d, popmean=popmean, tail=tail).p for d in ct.get_data()]
     else:
         raise NotImplementedError("nonparametric 1-sample test")
     ps_adjusted = test.mcp_adjust(ps, corr)
