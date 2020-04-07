@@ -1691,7 +1691,7 @@ class ANOVA(MultiEffectNDTest):
     Examples
     --------
     For information on model specification see the univariate
-    :func:`~eelbrain.test.anova` examples.
+    :class:`~eelbrain.test.ANOVA` examples.
     """
     _state_specific = ('x', 'pmin', '_effects', '_dfs_denom', 'f')
     _statistic = 'f'

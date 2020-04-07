@@ -59,9 +59,9 @@ class SampleExperiment(MneExperiment):
 
     tests = {
         # T-test to compare left-sided vs right-sided stimulation
-        'left=right': TTestRel('side', 'left', 'right'),
+        'left=right': TTestRelated('side', 'left', 'right'),
         # One-tailed test for auditory > visual stimulation
-        'a>v': TTestRel('modality', 'auditory', 'visual', tail=1),
+        'a>v': TTestRelated('modality', 'auditory', 'visual', tail=1),
         # Two-stage
         'twostage': TwoStageTest(
             stage_1='side_left + modality_a',

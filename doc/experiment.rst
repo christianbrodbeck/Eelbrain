@@ -504,8 +504,8 @@ definitions are defined from the following:
    :template: class_nomethods.rst
 
    TTestOneSample
-   TTestRel
-   TTestInd
+   TTestRelated
+   TTestIndependent
    ANOVA
    TContrastRelated
    TwoStageTest
@@ -515,7 +515,7 @@ Example::
 
     tests = {
         'my_anova': ANOVA('noise * word_type * subject'),
-        'my_ttest': TTestRel('noise', 'a_lot_of_noise', 'no_noise'),
+        'my_ttest': TTestRelated('noise', 'a_lot_of_noise', 'no_noise'),
     }
 
 

@@ -34,7 +34,7 @@ class Experiment(MneExperiment):
     }
 
     tests = {
-        'side': TTestRel('side', 'left', 'right'),
+        'side': TTestRelated('side', 'left', 'right'),
     }
 
 

@@ -7,6 +7,10 @@ New in 0.32
 -----------
 
 * Requires at least `Python 3.7 <https://docs.python.org/3.7/>`_
+* API changes:
+
+  - Consistent class names for tests in :mod:`test`, :mod:`testnd` and :mod:`pipeline`.
+
 * :class:`plot.Style` to control advanced plotting options by category (see :ref:`exa-bozplot` example).
 * .. currentmodule:: eelbrain.pipeline
   :class:`MneExperiment` pipeline:
@@ -175,13 +179,13 @@ New in 0.26
   - Plot source space time series: :func:`plot.brain.butterfly`
 
 * ANOVAs now support mixed models with between- and within-subjects factors
-  (see examples at :func:`test.anova`).
+  (see examples at :class:`test.ANOVA`).
 * :mod:`load.fiff`: when generating epochs from raw data, a new ``tstop``
   argument allows specifying the time interval exclusive of the last sample.
 * New functions:
 
   - :func:`table.cast_to_ndvar`
-  - :func:`test.TTestInd`
+  - :func:`test.TTestIndependent`
 
 * New methods:
 
@@ -247,7 +251,7 @@ New in 0.24
   - :meth:`~testnd.TTestRelated.masked_parameter_map` method of cluster-based test
     results: use of ``pmin=None`` is deprecated, use ``pmin=1`` instead.
 
-* New test: :class:`test.TTestRel`.
+* New test: :class:`test.TTestRelated`.
 * :meth:`MneExperiment.make_report_rois` includes corrected p-values in reports
   for tests in more than one ROI    
 * :meth:`MneExperiment.make_rej` now has a ``decim`` parameter to improve
@@ -413,9 +417,9 @@ New in 0.15
 * Datasets can be saved as tables in RTF format (:meth:`Dataset.save_rtf`).
 * API :class:`plot.Timeplot`: the default spread indicator changed to SEM, and
   there is a new argument for `timelabels`.
-* API: :func:`test.anova` is now a function with a slightly changed signature.
+* API: ``test.anova`` is now a function with a slightly changed signature.
   The old class has been renamed to :class:`test.ANOVA`.
-* API: :func:`test.oneway` was removed. Use :func:`test.anova`.
+* API: ``test.oneway`` was removed. Use :class:`test.ANOVA`.
 * API: the default value of the :class:`plot.Timeplot` parameter `bottom`
   changed from `0` to `None` (determined by the data).
 * API: :meth:`Factor.relabel` renamed to :meth:`Factor.update_labels`.

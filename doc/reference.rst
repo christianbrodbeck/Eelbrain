@@ -211,10 +211,10 @@ Univariate statistical tests:
    :toctree: generated
    
    test.Correlation
-   test.TTest1Sample
-   test.TTestInd
-   test.TTestRel
-   test.anova
+   test.TTestOneSample
+   test.TTestIndependent
+   test.TTestRelated
+   test.ANOVA
    test.pairwise
    test.ttest
    test.correlations

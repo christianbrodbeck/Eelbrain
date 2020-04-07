@@ -541,8 +541,8 @@ class TTest:
         return fmtxt.FMText([fmtxt.eq('t', self.t, self.df), ', ', fmtxt.peq(self.p)])
 
 
-class TTest1Sample(TTest):
-    """1-sample t-test
+class TTestOneSample(TTest):
+    """One-sample t-test
 
     Parameters
     ----------
@@ -556,6 +556,8 @@ class TTest1Sample(TTest):
     ds : None | Dataset
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
+    popmean : float
+        Population mean to test against (default 0).
     tail : 0 | 1 | -1
         Which tail of the t-distribution to consider:
         0: both (two-tailed, default);
@@ -581,6 +583,7 @@ class TTest1Sample(TTest):
             match: CategorialArg = None,
             sub: IndexArg = None,
             ds: Dataset = None,
+            popmean: float = 0,
             tail: int = 0,
     ):
         ct = Celltable(y, None, match, sub, ds=ds, coercion=asvar)
@@ -589,16 +592,20 @@ class TTest1Sample(TTest):
             raise ValueError("Not enough observations for t-test (n=%i)" % n)
 
         self.mean = ct.y.mean()
+        self.popmean = popmean
         self._y = dataobj_repr(ct.y)
-        t = stats.t_1samp(ct.y.x[:, None])[0]
+        v = ct.y.x[:, None]
+        if popmean:
+            v = v - popmean
+        t = stats.t_1samp(v)[0]
         TTest.__init__(self, t, n - 1, tail)
 
     def __repr__(self):
         cmp = '=><'[self.tail]
-        return f"<TTest1Samp: {self._y} {cmp} 0; {self._asfmtext()}> "
+        return f"<{self.__class__.__name__}: {self._y} {cmp} {self.popmean}; {self._asfmtext()}> "
 
 
-class TTestInd(TTest):
+class TTestIndependent(TTest):
     """Independent measures t-test
 
     The test data can be specified in two forms:
@@ -677,7 +684,7 @@ class TTestInd(TTest):
             desc = f"{self._c1} {cmp} {self._c0}"
         else:
             desc = f"{self._y} ~ {self._x}, {self._c1} {cmp} {self._c0}"
-        return f"<TTestInd: {desc}; {self._asfmtext()}>"
+        return f"<{self.__class__.__name__}: {desc}; {self._asfmtext()}>"
 
 
 class MannWhitneyU:
@@ -731,7 +738,7 @@ class MannWhitneyU:
 
     See Also
     --------
-    TTestRel : parametric alternative
+    TTestRelated : parametric alternative
 
     Notes
     -----
@@ -779,7 +786,7 @@ class MannWhitneyU:
         return fmtxt.FMText([fmtxt.eq('U', self.u), ', ', fmtxt.peq(self.p)])
 
 
-class TTestRel(TTest):
+class TTestRelated(TTest):
     """Related-measures t-test
 
     The test data can be specified in two forms:
@@ -870,7 +877,7 @@ class TTestRel(TTest):
             desc = f"{self._c1} {cmp} {self._c0}"
         else:
             desc = f"{self._y} ~ {self._x}, {self._c1} {cmp} {self._c0}"
-        return f"<TTestRel: {desc}; {self._asfmtext()}>"
+        return f"<TTestRelated: {desc}; {self._asfmtext()}>"
 
 
 class WilcoxonSignedRank:
@@ -933,7 +940,7 @@ class WilcoxonSignedRank:
 
     See Also
     --------
-    TTestRel : parametric alternative
+    TTestRelated : parametric alternative
 
     Notes
     -----

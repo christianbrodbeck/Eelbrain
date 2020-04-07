@@ -131,7 +131,7 @@ class TTest(EvokedTest):
         self.tail = tail
 
 
-class TTestInd(TTest):
+class TTestIndependent(TTest):
     """Independent measures t-test (comparing groups of subjects)
 
     Parameters
@@ -157,7 +157,7 @@ class TTestInd(TTest):
     ``'younger'`` and ``'older'``::
 
         tests = {
-            'old=young': TTestInd('group', 'older', 'younger', vars={'group': GroupVar(['younger', 'older'])}),
+            'old=young': TTestIndependent('group', 'older', 'younger', vars={'group': GroupVar(['younger', 'older'])}),
         }
     """
     kind = 'ttest_ind'
@@ -173,7 +173,7 @@ class TTestInd(TTest):
             force_permutation=force_permutation, **kwargs)
 
 
-class TTestRel(TTest):
+class TTestRelated(TTest):
     """Related measures t-test
 
     Parameters
@@ -202,7 +202,7 @@ class TTestRel(TTest):
     Sample test definitions::
 
         tests = {
-            'surprising=expected': TTestRel('surprise', 'surprising', 'expected'),
+            'surprising=expected': TTestRelated('surprise', 'surprising', 'expected'),
         }
 
     Notes
@@ -222,7 +222,7 @@ class TTestRel(TTest):
             force_permutation=force_permutation, **kwargs)
 
 
-class TContrastRel(EvokedTest):
+class TContrastRelated(EvokedTest):
     """Contrasts of T-maps (see :class:`eelbrain.testnd.TContrastRelated`)
 
     Parameters
@@ -273,7 +273,7 @@ class ANOVA(EvokedTest):
     ----------
     x : str
         ANOVA model specification, including ``subject`` for participant random
-        effect (e.g., ``"x * y * subject"``; see :func:`eelbrain.test.anova`).
+        effect (e.g., ``"x * y * subject"``; see :class:`eelbrain.test.ANOVA`).
     model : str
         Model for grouping trials before averaging (by default all fixed effects
         in ``x``). Should be specified in the ``"x % y"`` format (like
@@ -388,9 +388,9 @@ class TwoStageTest(Test):
 TEST_CLASSES = {
     'anova': ANOVA,
     'ttest_1samp': TTestOneSample,
-    'ttest_rel': TTestRel,
-    'ttest_ind': TTestInd,
-    't_contrast_rel': TContrastRel,
+    'ttest_rel': TTestRelated,
+    'ttest_ind': TTestIndependent,
+    't_contrast_rel': TContrastRelated,
     'two-stage': TwoStageTest,
 }
 AGGREGATE_FUNCTIONS = ('mean', 'rms')

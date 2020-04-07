@@ -28,7 +28,7 @@ print(hours * genotype)
 
 ###############################################################################
 # ANCOVA
-print(test.anova(y, hours * genotype, title="ANOVA"))
+print(test.ANOVA(y, hours * genotype, title="ANOVA"))
 
 ###############################################################################
 # Plot the slopes
@@ -52,12 +52,12 @@ a = Factor([1, 2, 3], repeat=8, name='A')
 
 ###############################################################################
 # Full model, with interaction
-print(test.anova(y, cov * a))
+print(test.ANOVA(y, cov * a))
 plot.Regression(y, cov, a)
 
 ###############################################################################
 # Drop interaction term
-print(test.anova(y, a + cov))
+print(test.ANOVA(y, a + cov))
 plot.Regression(y, cov)
 
 
@@ -81,7 +81,7 @@ print(ds.summary())
 ds2 = ds[ds['type'] != 'NA']
 
 # ANOVA
-print(test.anova('prestige', '(income + education) * type', ds=ds2))
+print(test.ANOVA('prestige', '(income + education) * type', ds=ds2))
 
 
 ###############################################################################

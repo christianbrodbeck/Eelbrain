@@ -185,7 +185,7 @@ class LM:
             table.title(title)
 
         if not isbalanced(x):
-            table.caption("Warning: Model is unbalanced, use anova class")
+            table.caption("Warning: Model is unbalanced, use test.ANOVA")
 
         table.cell()
         headers = ["SS", "df", "MS"]
@@ -299,7 +299,7 @@ class LM:
 
 
 def _nd_anova(x):
-    "Create an appropriate anova mapper"
+    "Create an appropriate ANOVA mapper"
     x = asmodel(x)
     assert_has_no_empty_cells(x)
     if hasrandom(x):
@@ -788,6 +788,10 @@ class ANOVA:
         Only use part of the data.
     ds : Dataset
         Dataset to use data from.
+    title : str | FMText
+        Title for the results table.
+    caption : str | FMText
+        Caption for the results table.
 
     Attributes
     ----------
@@ -799,14 +803,69 @@ class ANOVA:
         For fixed effects models, a ``(ss, df, ms)`` tuple; for mixed effects
         models ``None``.
 
-    See Also
-    --------
-    anova : Function for generating ANOVA table directly.
+    Notes
+    -----
+    Mixed effects models require balanced models and full model specification
+    so that E(MS) can be estimated according to Hopkins (1976).
 
     Examples
     --------
-    For information about model specification, see the :func:`anova`
-    documentation.
+    Simple n-way between subjects ANOVA::
+
+        >>> ds = datasets.get_uv(nrm=True)
+        >>> print(test.ANOVA('fltvar', 'A*B', ds=ds))
+                        SS   df      MS          F        p
+        ---------------------------------------------------
+        A            28.69    1   28.69   25.69***   < .001
+        B             0.04    1    0.04    0.03        .855
+        A x B         1.16    1    1.16    1.04        .310
+        Residuals    84.85   76    1.12
+        ---------------------------------------------------
+        Total       114.74   79
+
+    For repeated measures designs, whether a factors is fixed or random is
+    determined based on the :attr:`Factor.random` attribute, which is usually
+    specified at creation::
+
+        >>> ds['rm'].random
+        True
+
+    Thus, with ``rm`` providing the measurement unit (subject for a
+    within-subject design), the ``A*B`` model can be fitted as repeated measures
+    design::
+
+        >>> print(test.ANOVA('fltvar', 'A*B*rm', ds=ds))
+                    SS   df      MS   MS(denom)   df(denom)          F        p
+        -----------------------------------------------------------------------
+        A        28.69    1   28.69        1.21          19   23.67***   < .001
+        B         0.04    1    0.04        1.15          19    0.03        .859
+        A x B     1.16    1    1.16        1.01          19    1.15        .297
+        -----------------------------------------------------------------------
+        Total   114.74   79
+
+    Nested effects are specified with parentheses. For example, if each
+    condition of ``B`` was run with separate subjects (in other words, ``B`` is
+    a between-subjects factor), ``subject`` is nested in ``B``, which is specified
+    as ``subject(B)``::
+
+        >>> print(test.ANOVA('fltvar', 'A * B * nrm(B)', ds=ds))
+                    SS   df      MS   MS(denom)   df(denom)          F        p
+        -----------------------------------------------------------------------
+        A        28.69    1   28.69        1.11          38   25.80***   < .001
+        B         0.04    1    0.04        1.12          38    0.03        .856
+        A x B     1.16    1    1.16        1.11          38    1.05        .313
+        -----------------------------------------------------------------------
+        Total   114.74   79
+
+    Numerical variables can be coerced to categorial factors in the model::
+
+        >>> ds = datasets.get_loftus_masson_1994()
+        >>> print=(test.ANOVA('n_recalled', 'exposure.as_factor()*subject', ds=ds))
+                    SS       df   MS         F         p
+        ---------------------------------------------------
+        exposure     52.27    2   26.13   42.51***   < .001
+        ---------------------------------------------------
+        Total      1005.87   29
     """
     def __init__(
             self,
@@ -814,6 +873,8 @@ class ANOVA:
             x: ModelArg,
             sub: IndexArg = None,
             ds: Dataset = None,
+            title: fmtxt.FMTextLike = None,
+            caption: fmtxt.FMTextLike = None,
     ):
         # prepare kwargs
         sub = assub(sub, ds)
@@ -827,6 +888,8 @@ class ANOVA:
         # save args
         self.y = y
         self.x = x
+        self.title = title
+        self.caption = caption
         self._log = []
 
         # decide which E(MS) model to use
@@ -884,10 +947,14 @@ class ANOVA:
         self.f_tests = tuple(f_tests)
 
     def __repr__(self):
-        return "ANOVA(%s, %s)" % (self.y.name, self.x.name)
+        table = '\n'.join(F'  {line}' for line in str(self).splitlines())
+        return f"<ANOVA: {self.y.name} ~ {self.x.name}\n{table}\n>"
 
     def __str__(self):
         return str(self.table())
+
+    def _asfmtext(self):
+        return self.table()
 
     def print_log(self):
         out = self._log[:]
@@ -908,6 +975,10 @@ class ANOVA:
         table : eelbrain.fmtxt.Table
             ANOVA table.
         """
+        if title is None:
+            title = self.title
+        if caption is None:
+            caption = self.caption
         # table head
         table = fmtxt.Table('l' + 'r' * (5 + 2 * self._is_mixed), title=title, caption=caption)
         table.cells('', 'SS', 'df', 'MS')
@@ -950,100 +1021,3 @@ class ANOVA:
         table.cell(fmtxt.stat(SS))
         table.cell(len(self.y) - 1)
         return table
-
-
-def anova(
-        y: VarArg,
-        x: ModelArg,
-        sub: IndexArg = None,
-        ds: Dataset = None,
-        title: fmtxt.FMTextLike = None,
-        caption: fmtxt.FMTextLike = None,
-):
-    """Univariate ANOVA
-
-    Mixed effects models require balanced models and full model specification
-    so that E(MS) can be estimated according to Hopkins (1976).
-
-    Parameters
-    ----------
-    y : Var
-        dependent variable
-    x : Model
-        Model to fit to y
-    sub : index
-        Only use part of the data.
-    ds : Dataset
-        Dataset to use data from.
-    title : str | FMText
-        Title for the results table.
-    caption : str | FMText
-        Caption for the results table.
-
-    Returns
-    -------
-    table : FMText Table
-        Table with results.
-
-    Examples
-    --------
-    Simple n-way between subjects ANOVA::
-
-        >>> ds = datasets.get_uv(nrm=True)
-        >>> print(test.anova('fltvar', 'A*B', ds=ds))
-                        SS   df      MS          F        p
-        ---------------------------------------------------
-        A            28.69    1   28.69   25.69***   < .001
-        B             0.04    1    0.04    0.03        .855
-        A x B         1.16    1    1.16    1.04        .310
-        Residuals    84.85   76    1.12
-        ---------------------------------------------------
-        Total       114.74   79
-
-    For repeated measures designs, whether a factors is fixed or random is
-    determined based on the :attr:`Factor.random` attribute, which is usually
-    specified at creation::
-
-        >>> ds['rm'].random
-        True
-
-    Thus, with ``rm`` providing the measurement unit (subject for a
-    within-subject design), the ``A*B`` model can be fitted as repeated measures
-    design::
-
-        >>> print(test.anova('fltvar', 'A*B*rm', ds=ds))
-                    SS   df      MS   MS(denom)   df(denom)          F        p
-        -----------------------------------------------------------------------
-        A        28.69    1   28.69        1.21          19   23.67***   < .001
-        B         0.04    1    0.04        1.15          19    0.03        .859
-        A x B     1.16    1    1.16        1.01          19    1.15        .297
-        -----------------------------------------------------------------------
-        Total   114.74   79
-
-    Nested effects are specified with parentheses. For example, if each
-    condition of ``B`` was run with separate subjects (in other words, ``B`` is
-    a between-subjects factor), ``subject`` is nested in ``B``, which is specified
-    as ``subject(B)``::
-
-        >>> print(test.anova('fltvar', 'A * B * nrm(B)', ds=ds))
-                    SS   df      MS   MS(denom)   df(denom)          F        p
-        -----------------------------------------------------------------------
-        A        28.69    1   28.69        1.11          38   25.80***   < .001
-        B         0.04    1    0.04        1.12          38    0.03        .856
-        A x B     1.16    1    1.16        1.11          38    1.05        .313
-        -----------------------------------------------------------------------
-        Total   114.74   79
-
-    Numerical variables can be coerced to categorial factors in the model::
-
-        >>> ds = datasets.get_loftus_masson_1994()
-        >>> print=(test.anova('n_recalled', 'exposure.as_factor()*subject', ds=ds))
-                    SS       df   MS         F         p
-        ---------------------------------------------------
-        exposure     52.27    2   26.13   42.51***   < .001
-        ---------------------------------------------------
-        Total      1005.87   29
-
-    """
-    anova_ = ANOVA(y, x, sub, ds)
-    return anova_.table(title, caption)

@@ -159,7 +159,7 @@ def test_anova_eq():
 
     # not fully specified model with random effects
     with pytest.raises(IncompleteModel):
-        test.anova('fltvar', 'A*rm', ds=ds)
+        test.ANOVA('fltvar', 'A*rm', ds=ds)
 
     # unequal group size, 1-way
     sds = ds.sub("A == 'a1'").sub("nrm.isnotin(('s037', 's038', 's039'))")
@@ -186,12 +186,12 @@ def test_anova_eq():
     # empty cells
     dss = ds.sub("A%B != ('a2', 'b2')")
     with pytest.raises(NotImplementedError):
-        test.anova('fltvar', 'A*B', ds=dss)
+        test.ANOVA('fltvar', 'A*B', ds=dss)
     with pytest.raises(NotImplementedError):
         run_on_lm_fitter('fltvar', 'A*B', ds=dss)
     dss = ds.sub("A%B != ('a1', 'b1')")
     with pytest.raises(NotImplementedError):
-        test.anova('fltvar', 'A*B', ds=dss)
+        test.ANOVA('fltvar', 'A*B', ds=dss)
     with pytest.raises(NotImplementedError):
         run_on_lm_fitter('fltvar', 'A*B', ds=dss)
 
@@ -257,7 +257,7 @@ def test_anova_crawley():
              2, 2, 2, 2, 1, 1, 2, 3], name="Growth Rate")
     genot = Factor(range(6), repeat=4, name="Genotype")
     hrs = Var([8, 12, 16, 24], tile=6, name="Hours")
-    aov = test.anova(y, hrs * genot)
+    aov = test.ANOVA(y, hrs * genot)
     assert f'\n{aov}\n' == """
                       SS   df     MS          F        p
 --------------------------------------------------------
@@ -274,7 +274,7 @@ def test_anova_fox():
     data_path = file_path('fox-prestige')
     ds = load.txt.tsv(data_path, delimiter=' ', skipinitialspace=True)
     ds = ds.sub("type != 'NA'")
-    aov = test.anova('prestige', '(income + education) * type', ds=ds)
+    aov = test.ANOVA('prestige', '(income + education) * type', ds=ds)
     assert f'\n{aov}\n' == """
                          SS   df        MS          F        p
 --------------------------------------------------------------
@@ -297,7 +297,7 @@ def test_anova_rutherford():
             name='y')
     a = Factor('abc', repeat=8, name='A')
     subject = Factor(list(range(24)), name='subject', random=True)
-    aov = test.anova(y, a + subject(a))
+    aov = test.ANOVA(y, a + subject(a))
     assert f'\n{aov}\n' == """
             SS   df      MS   MS(denom)   df(denom)          F        p
 -----------------------------------------------------------------------
@@ -305,7 +305,7 @@ A       112.00    2   56.00        2.48          21   22.62***   < .001
 -----------------------------------------------------------------------
 Total   164.00   23
 """
-    aov = test.anova(y, a)
+    aov = test.ANOVA(y, a)
     assert f'\n{aov}\n' == """
                 SS   df      MS          F        p
 ---------------------------------------------------
@@ -315,7 +315,7 @@ Residuals    52.00   21    2.48
 Total       164.00   23
 """
     subject = Factor(range(8), tile=3, name='subject', random=True)
-    aov = test.anova(y, a * subject)
+    aov = test.ANOVA(y, a * subject)
     assert f'\n{aov}\n' == """
             SS   df      MS   MS(denom)   df(denom)          F        p
 -----------------------------------------------------------------------
@@ -332,7 +332,7 @@ Total   164.00   23
                8, 5, 6, 5, 3, 6, 4, 6,
                5, 8, 3, 4, 6, 9, 4, 5], name='cov')
     a = Factor([1, 2, 3], repeat=8, name='A')
-    aov = test.anova(y, a + cov)
+    aov = test.ANOVA(y, a + cov)
     assert f'\n{aov}\n' == """
                  SS   df       MS          F        p
 -----------------------------------------------------
@@ -342,7 +342,7 @@ Residuals    128.46   20     6.42
 -----------------------------------------------------
 Total       1112.00   23
 """
-    aov = test.anova(y, cov * a)
+    aov = test.ANOVA(y, cov * a)
     assert f'\n{aov}\n' == """
                  SS   df       MS          F        p
 -----------------------------------------------------
@@ -365,7 +365,7 @@ Total       1112.00   23
     b = Factor(list(range(3)), tile=2, repeat=8, name='B')
     # Independent Measures:
     subject = Factor(list(range(8 * 6)), name='subject', random=True)
-    aov = test.anova(y, a * b + subject(a % b))
+    aov = test.ANOVA(y, a * b + subject(a % b))
     assert f'\n{aov}\n' == """
              SS   df       MS   MS(denom)   df(denom)          F        p
 -------------------------------------------------------------------------
@@ -376,7 +376,7 @@ A x B    224.00    2   112.00        9.05          42   12.38***   < .001
 Total   1708.00   47
 """
     subject = Factor(list(range(8)), tile=6, name='subject', random=True)
-    aov = test.anova(y, a * b * subject)
+    aov = test.ANOVA(y, a * b * subject)
     assert f'\n{aov}\n' == """
              SS   df       MS   MS(denom)   df(denom)          F        p
 -------------------------------------------------------------------------

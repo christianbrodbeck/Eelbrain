@@ -46,7 +46,7 @@ class Mouse(MneExperiment):
 
     tests = {
         '=0': TTestOneSample(),
-        'surprise': TTestRel('prediction', 'unexpected', 'expected'),
+        'surprise': TTestRelated('prediction', 'unexpected', 'expected'),
         'anova': ANOVA('prediction * subject'),
     }
 

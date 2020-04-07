@@ -93,6 +93,25 @@ def deprecated(version, replacement):
     return dec
 
 
+def _deprecated_alias(alias, for_, version):
+    """Create a deprecated alias
+
+    Parameters
+    ----------
+    alias : str
+        Name of the alias.
+    for_ : callable
+        New function (replacement).
+    version : str
+        Version in which the feature will be removed.
+    """
+    @functools.wraps(for_)
+    def new(*args, **kwargs):
+        warn(f"{alias} has been renamed to {for_.__name__}. {alias} will be removed in version {version}", DeprecationWarning)
+        return for_(*args, **kwargs)
+    return new
+
+
 def deprecated_attribute(version, class_name, replacement):
     if not isinstance(replacement, str):
         raise TypeError("replacement=%r" % (replacement,))

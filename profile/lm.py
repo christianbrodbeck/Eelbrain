@@ -24,7 +24,7 @@ betasl = np.empty((n_testsl, n_betas))
 ssl = np.empty(n_testsl)
 
 
-# anova
+# ANOVA
 f_map = np.empty((n_fs, n_tests))
 effects = np.array([[0, 2], [2, 1]], dtype=np.int16)
 df_res = n_cases - n_betas - 1
