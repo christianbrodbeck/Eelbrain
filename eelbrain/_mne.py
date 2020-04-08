@@ -14,6 +14,11 @@ from mne.label import Label, BiHemiLabel
 from mne.utils import get_subjects_dir
 from nibabel.freesurfer import read_annot
 
+try:
+    from mne.morph import _compute_morph_matrix as compute_morph_matrix
+except ImportError:
+    from mne import compute_morph_matrix
+
 from ._data_obj import NDVar, Space, SourceSpace, VolumeSourceSpace
 from ._utils.numpy_utils import index
 
@@ -541,7 +546,7 @@ def morph_source_space(ndvar, subject_to=None, vertices_to=None, morph_mat=None,
     if morph_mat is None:
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', r'\d+/\d+ vertices not included in smoothing', module='mne')
-            morph_mat = mne.compute_morph_matrix(subject_from, subject_to, source.vertices, source_to.vertices, None, subjects_dir, xhemi=xhemi)
+            morph_mat = compute_morph_matrix(subject_from, subject_to, source.vertices, source_to.vertices, None, subjects_dir, xhemi=xhemi)
     elif not sp.sparse.issparse(morph_mat):
         raise ValueError('morph_mat must be a sparse matrix')
     elif not sum(len(v) for v in source_to.vertices) == morph_mat.shape[0]:
@@ -795,7 +800,7 @@ def xhemi(ndvar, mask=None, hemi='lh', parc=True):
         vert_to = [vert_lh, []] if hemi == 'lh' else [[], vert_rh]
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', r'\d+/\d+ vertices not included in smoothing', module='mne')
-            morph_mat = mne.compute_morph_matrix(
+            morph_mat = compute_morph_matrix(
                 'fsaverage_sym', 'fsaverage_sym', vert_from, vert_to,
                 subjects_dir=ndvar.source.subjects_dir, xhemi=True)
 
