@@ -114,7 +114,7 @@ class NDTest:
         self._dims = y.dims[1:]
 
     def __getstate__(self):
-        return {name: getattr(self, name, None) for name in self._attributes}
+        return {name: getattr(self, name) for name in self._attributes}
 
     def __setstate__(self, state):
         # backwards compatibility:
@@ -123,8 +123,8 @@ class NDTest:
         if 'X' in state:
             state['x'] = state.pop('X')
 
-        for k, v in state.items():
-            setattr(self, k, v)
+        for name in self._attributes:
+            setattr(self, name, state.get(name))
 
         # backwards compatibility:
         if 'tstart' not in state:
@@ -2153,7 +2153,7 @@ class VectorDifferenceIndependent(Vector):
         all significant regions (or ``None`` if permutations were omitted).
         See also the :meth:`.find_clusters` method.
     """
-    _state_specific = ('difference', 'c1_mean', 'c0_mean' 'n', '_v_dim', 't2')
+    _state_specific = ('difference', 'c1_mean', 'c0_mean', 'n', '_v_dim', 't2')
     _statistic = 'norm'
 
     @user_activity
@@ -2315,7 +2315,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
     --------
     Vector : One-sample vector test, notes on vector test implementation
     """
-    _state_specific = ('x', 'c1', 'c0', 'difference', 'c1_mean', 'c0_mean' 'n', '_v_dim', 't2')
+    _state_specific = ('x', 'c1', 'c0', 'difference', 'c1_mean', 'c0_mean', 'n', '_v_dim', 't2')
 
     @user_activity
     def __init__(
