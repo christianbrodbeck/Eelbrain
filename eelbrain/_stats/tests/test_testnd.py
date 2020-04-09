@@ -678,15 +678,21 @@ def test_vector():
     assert res.p.min() == 0.2
     difference = res.masked_difference(0.5)
     assert difference.x.mask.sum() == 288
+    res_r = pickle.loads(pickle.dumps(res))
+    assert repr(res_r) == repr(res)
     # diff related
     resd = testnd.VectorDifferenceRelated(v1, v2, samples=10)
     assert_dataobj_equal(resd.p, res.p, name=False)
     assert_dataobj_equal(resd.t2, res.t2, name=False)
+    res_r = pickle.loads(pickle.dumps(resd))
+    assert repr(res_r) == repr(resd)
     # diff independent
     res = VectorDifferenceIndependent(v1, v2, samples=10, norm=True)
     assert_dataobj_equal(res.difference, v1.mean('case') - v2.mean('case'), name=False)
     assert res.p.max() == 1
     assert res.p.min() == 0
+    res_r = pickle.loads(pickle.dumps(res))
+    assert repr(res_r) == repr(res)
     # with mp
     res = testnd.Vector(v1, samples=10)
     assert res.p.min() == 0.4
