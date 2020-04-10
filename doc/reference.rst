@@ -630,23 +630,95 @@ Available export methods:
    fmtxt.save_tex
 
 
-^^^^^^^^^^^^^^
-MNE-Experiment
-^^^^^^^^^^^^^^
+^^^^^^^^^^
+Experiment
+^^^^^^^^^^
 
-The :class:`MneExperiment` class serves as a base class for analyzing MEG
-data (gradiometer only) with MNE:
+.. py:module:: pipeline
+.. py:currentmodule:: eelbrain.pipeline
+
+The :class:`MneExperiment` class provides a template for analyzing EEG and MEG
+data. The objects for specifying the analysis are all in the
+:mod:`eelbrain.pipeline` module.
+
+.. seealso::
+    For the guide on working with the :class:`MneExperiment` class see
+    :ref:`experiment-class-guide`.
 
 .. autosummary::
    :toctree: generated
 
-   ~pipeline.MneExperiment
-   ~_experiment.ROITestResult
-   ~_experiment.ROI2StageResult
+   MneExperiment
 
-.. seealso::
-    For the guide on working with the MneExperiment class see
-    :ref:`experiment-class-guide`.
+Result containers:
+
+.. autosummary::
+   :toctree: generated
+
+   ROITestResult
+   ROI2StageResult
+
+Participant groups:
+
+.. autosummary::
+   :toctree: generated
+
+   Group
+   SubGroup
+
+Pre-processing:
+
+.. autosummary::
+   :toctree: generated
+
+   RawSource
+   RawFilter
+   RawICA
+   RawMaxwell
+   RawReReference
+   RawApplyICA
+
+Event variables:
+
+.. autosummary::
+   :toctree: generated
+
+   EvalVar
+   GroupVar
+   LabelVar
+
+Epochs:
+
+.. autosummary::
+   :toctree: generated
+
+   PrimaryEpoch
+   SecondaryEpoch
+   SuperEpoch
+
+Tests:
+
+.. autosummary::
+   :toctree: generated
+
+   ANOVA
+   TTestOneSample
+   TTestIndependent
+   TTestRelated
+   TContrastRelated
+   TwoStageTest
+
+Brain parcellations:
+
+.. autosummary::
+   :toctree: generated
+
+   SubParc
+   CombinationParc
+   FreeSurferParc
+   FSAverageParc
+   SeededParc
+   IndividualSeededParc
 
 
 ^^^^^^^^

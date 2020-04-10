@@ -388,9 +388,10 @@ class ContinuousEpoch(EpochBase):
     sel : str
         Expression which evaluates in the events Dataset to the index of the
         events included in this Epoch specification.
-    pad : scalar
-        Time to add before the first event and after the last event (in seconds,
-        default 1).
+    pad_start : scalar
+        Time to add before the first event (in seconds, default 0.100).
+    pad_end : scalar
+        Time to add after the last event (in seconds, default 1).
     split : scalar
         Split into several continuous epochs whenever time between used data
         (event times ± ``pad``) is larger than ``split`` (default 10).
