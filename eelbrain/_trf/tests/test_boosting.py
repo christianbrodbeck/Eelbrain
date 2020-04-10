@@ -240,14 +240,16 @@ def test_trf_len(n_workers):
     y = convolve(k, x, name='y')
     res = boosting(y, x, 0, 0.5, partitions=3)
     assert correlation_coefficient(res.h, k) > 0.99
+    assert repr(res) == '<boosting y ~ x, 0 - 0.5, partitions=3>'
 
     # test multiple tstart, tend
-    x2 = NDVar(rng.normal(0, 1, 1000), UTS(0, 0.1, 1000))
-    k2 = NDVar(rng.randint(0, 10, 4) / 10, UTS(-0.1, 0.1, 4))
+    x2 = NDVar(rng.normal(0, 1, 1000), UTS(0, 0.1, 1000), name='x2')
+    k2 = NDVar(rng.randint(0, 10, 4) / 10, UTS(-0.1, 0.1, 4), name='k2')
     y2 = y + convolve(k2, x2)
     res = boosting(y2, [x, x2], [0, -0.1], [0.5, 0.3], partitions=3)
     assert correlation_coefficient(res.h[0].sub(time=(0, 0.5)), k) > 0.99
     assert correlation_coefficient(res.h[1].sub(time=(-0.1, 0.3)), k2) > 0.99
+    assert repr(res) == '<boosting y ~ x (0 - 0.5) + x2 (-0.1 - 0.3), partitions=3>'
 
     # test scalar res.tstart res.tstop
     res = boosting(y2, [x, x2], 0, 0.5, partitions=3)
