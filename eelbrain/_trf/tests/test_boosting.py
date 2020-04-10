@@ -118,18 +118,18 @@ def test_boosting_epochs():
     # 1d
     for tstart, basis in product((-0.1, 0.1, 0), (0, 0.05)):
         print(f"tstart={tstart}, basis={basis}")
-        res = boosting('uts', [p0, p1], tstart, 0.6, model='A', ds=ds, basis=basis, partitions=10, debug=True)
+        res = boosting('uts', [p0, p1], tstart, 0.6, model='A', ds=ds, basis=basis, partitions=3, debug=True)
         y = convolve(res.h_scaled, [p0, p1])
         assert correlation_coefficient(y, res.y_pred) > .999
         r = correlation_coefficient(y, ds['uts'])
         assert res.r == approx(r, abs=1e-3)
-        assert res.partitions == 10
+        assert res.partitions == 3
     # prefit
-    res1 = boosting('uts', p1, 0, 0.6, model='A', ds=ds, partitions=10)
-    res0 = boosting('uts', p0, 0, 0.6, model='A', ds=ds, partitions=10)
-    res01 = boosting('uts', [p0, p1], 0, 0.6, model='A', ds=ds, partitions=10, prefit=res1)
+    res1 = boosting('uts', p1, 0, 0.6, model='A', ds=ds, partitions=3)
+    res0 = boosting('uts', p0, 0, 0.6, model='A', ds=ds, partitions=3)
+    res01 = boosting('uts', [p0, p1], 0, 0.6, model='A', ds=ds, partitions=3, prefit=res1)
     # 2d
-    res = boosting('utsnd', [p0, p1], 0, 0.6, model='A', ds=ds, partitions=10)
+    res = boosting('utsnd', [p0, p1], 0, 0.6, model='A', ds=ds, partitions=3)
     assert len(res.h) == 2
     assert res.h[0].shape == (5, 60)
     assert res.h[1].shape == (5, 60)
@@ -137,7 +137,7 @@ def test_boosting_epochs():
     r = correlation_coefficient(y, ds['utsnd'], ('case', 'time'))
     assert_dataobj_equal(res.r, r, decimal=3, name=False)
     # vector
-    res = boosting('v3d', [p0, p1], 0, 0.6, error='l1', model='A', ds=ds, partitions=10)
+    res = boosting('v3d', [p0, p1], 0, 0.6, error='l1', model='A', ds=ds, partitions=3)
     assert res.residual.ndim == 0
 
 
@@ -237,28 +237,27 @@ def test_trf_len(n_workers):
     rng = np.random.RandomState(0)
     x = NDVar(rng.normal(0, 1, 1000), UTS(0, 0.1, 1000), name='x')
     k = NDVar(rng.randint(0, 10, 5) / 10, UTS(0, 0.1, 5), name='k')
-    y = convolve(k, x)
-    y.name = 'y'
-    res = boosting(y, x, 0, 0.5)
+    y = convolve(k, x, name='y')
+    res = boosting(y, x, 0, 0.5, partitions=3)
     assert correlation_coefficient(res.h, k) > 0.99
 
     # test multiple tstart, tend
     x2 = NDVar(rng.normal(0, 1, 1000), UTS(0, 0.1, 1000))
     k2 = NDVar(rng.randint(0, 10, 4) / 10, UTS(-0.1, 0.1, 4))
     y2 = y + convolve(k2, x2)
-    res = boosting(y2, [x, x2], [0, -0.1], [0.5, 0.3])
+    res = boosting(y2, [x, x2], [0, -0.1], [0.5, 0.3], partitions=3)
     assert correlation_coefficient(res.h[0].sub(time=(0, 0.5)), k) > 0.99
     assert correlation_coefficient(res.h[1].sub(time=(-0.1, 0.3)), k2) > 0.99
 
     # test scalar res.tstart res.tstop
-    res = boosting(y2, [x, x2], 0, 0.5)
+    res = boosting(y2, [x, x2], 0, 0.5, partitions=3)
     assert res.tstart == 0
     assert res.tstop == 0.5
 
     # test duplicate tstart, tend for multiple predictors
     k3 = NDVar(k2.x, UTS(0, 0.1, 4))
     y3 = convolve(k, x) + convolve(k3, x2)
-    res = boosting(y3, [x, x2], 0, 0.5)
+    res = boosting(y3, [x, x2], 0, 0.5, partitions=3)
     assert correlation_coefficient(res.h[0], k) > 0.99
     assert correlation_coefficient(res.h[1].sub(time=(0, 0.4)), k3) > 0.99
 
@@ -266,12 +265,12 @@ def test_trf_len(n_workers):
     x4 = NDVar(rng.normal(0, 1, (2, 1000)), (Scalar('xdim', [1, 2]), UTS(0, 0.1, 1000)))
     k4 = NDVar(rng.randint(0, 10, (2, 5)) / 10, (Scalar('xdim', [1, 2]), UTS(0, 0.1, 5)))
     y4 = convolve(k4, x4)
-    res = boosting(y4, x4, 0, 0.5)
+    res = boosting(y4, x4, 0, 0.5, partitions=3)
     assert correlation_coefficient(res.h, k4) > 0.99
 
     # test multiple tstart, tstop with 1d, 2d predictors
     y5 = y4 + y2
-    res = boosting(y5, [x, x2, x4], [0, -0.1, 0], [0.5, 0.3, 0.5])
+    res = boosting(y5, [x, x2, x4], [0, -0.1, 0], [0.5, 0.3, 0.5], partitions=3)
     assert correlation_coefficient(res.h[0].sub(time=(0, 0.5)), k) > 0.99
     assert correlation_coefficient(res.h[1].sub(time=(-0.1, 0.3)), k2) > 0.99
     assert correlation_coefficient(res.h[2].sub(time=(0, 0.5)), k4) > 0.99
