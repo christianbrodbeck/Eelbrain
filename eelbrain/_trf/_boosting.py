@@ -38,6 +38,7 @@ from .._utils import LazyProperty, user_activity
 from ._boosting_opt import l1, l2, generate_options, update_error
 from .shared import RevCorrData
 
+
 # BoostingResult version
 VERSION = 10  # file format (assigned in __getstate__, not __init__)
 
@@ -420,14 +421,13 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
 
     # TRF extent in indices
     tstep = data.time.tstep
-    i_start = np.asarray([int(round(t_ / tstep)) for t_ in tstart])
-    i_stop = np.asarray([int(round(t_ / tstep)) for t_ in tstop])
+    i_start = np.asarray([int(round(t / tstep)) for t in tstart])
+    i_stop = np.asarray([int(round(t / tstep)) for t in tstop])
     i_start_min = np.min(i_start)
     i_stop_max = np.max(i_stop)
-    trf_length = np.asarray([i2 - i1 for i1, i2 in zip(i_start, i_stop)])
-    n_times_trf_max = i_stop_max - i_start_min
+    trf_length = i_stop_max - i_start_min
     if data.segments is None:
-        i_skip = [t_ - 1 for t_ in trf_length]
+        i_skip = trf_length - 1
     else:
         i_skip = 0
     # progress bar
@@ -436,7 +436,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     t_start = time.time()
     # result containers
     res = np.empty((3, n_y))  # r, rank-r, error
-    h_x = np.empty((n_y, n_x, n_times_trf_max))
+    h_x = np.empty((n_y, n_x, trf_length))
     store_y_pred = bool(data.vector_dim) or debug
     y_pred = np.empty_like(data.y) if store_y_pred else np.empty(data.y.shape[1:])
     # boosting
@@ -891,9 +891,6 @@ def evaluate_kernel(y, y_pred, error, i_skip, segments=None):
         Error corresponding to error_func.
     """
     # discard onset
-
-    if isinstance(i_skip, (tuple, list, np.ndarray)):
-        i_skip = max(i_skip)
     if i_skip:
         assert segments is None, "Not implemented"
         y = y[i_skip:]

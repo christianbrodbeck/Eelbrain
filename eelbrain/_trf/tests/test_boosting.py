@@ -229,13 +229,14 @@ def test_boosting_func():
     # svdboostV4pred multiplies error by number of predictors
     assert_allclose(test_sse_history, mat['Str_testE'][0] / 3)
 
+
 @pytest.mark.parametrize('n_workers', [0, True])
 def test_trf_len(n_workers):
     configure(n_workers=n_workers)
     # test vanilla boosting
     rng = np.random.RandomState(0)
-    x = NDVar(rng.normal(0, 1, 1000), UTS(0, 0.1, 1000),name='x')
-    k = NDVar(rng.randint(0, 10, 5) / 10, UTS(0, 0.1, 5),name='k')
+    x = NDVar(rng.normal(0, 1, 1000), UTS(0, 0.1, 1000), name='x')
+    k = NDVar(rng.randint(0, 10, 5) / 10, UTS(0, 0.1, 5), name='k')
     y = convolve(k, x)
     y.name = 'y'
     res = boosting(y, x, 0, 0.5)
