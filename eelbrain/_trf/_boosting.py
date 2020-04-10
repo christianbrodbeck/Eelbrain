@@ -186,24 +186,16 @@ class BoostingResult:
         self.__init__(**state)
 
     def __repr__(self):
-        if isinstance(self.tstart, list):
-
-            xx = []
-            for x, t1, t2 in zip(self.x, self.tstart, self.tstop):
-                xx.append('%s (%g - %g)' % (x, t1, t2))
-            x = ' + '.join(xx)
-            items = [
-                'boosting %s ~ %s' % (self.y, x),
-            ]
+        items = []
+        if isinstance(self.tstart, tuple):
+            x = ' + '.join(f'{x} ({t1:g} - {t2:g})' for x, t1, t2 in zip(self.x, self.tstart, self.tstop))
         else:
             if self.x is None or isinstance(self.x, str):
                 x = self.x
             else:
                 x = ' + '.join(map(str, self.x))
-            items = [
-                'boosting %s ~ %s' % (self.y, x),
-                '%g - %g' % (self.tstart, self.tstop),
-            ]
+            items.append(f'{self.tstart:g} - {self.tstop:g}')
+        items.insert(0, f'boosting {self.y} ~ {x}')
         for name, param in inspect.signature(boosting).parameters.items():
             if param.default is inspect.Signature.empty or name == 'ds':
                 continue
@@ -409,37 +401,22 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     data.initialize_cross_validation(partitions, model, ds)
     n_y = len(data.y)
     n_x = len(data.x)
-    tstart_in = tstart
-    tstop_in = tstop
+    # find TRF start/stop for each x
     if isinstance(tstart, (tuple, list, np.ndarray)):
-        if len(tstart) != len(tstop):
-            raise ValueError(
-                f'mismatched len(tstart) = {len(tstart)}, len(tstop) = {len(tstop)}')
-        elif len(tstart) == 0:
-            raise ValueError(f'tstart cannot be an empty list')
-        if len(tstart) != n_x:
-            if len(tstart) == 1:
-                tstart = [tstart[0] for _ in range(n_x)]
-                tstop = [tstop[0] for _ in range(n_x)]
-            elif len(tstart) == len(data.x_name):
-                tstart2 = []
-                tstop2 = []
-                for ix, xx in enumerate(data._x_meta):
-                    if xx[1] is None:  # xx[1] = None if 1 dimensional predictor, else xx[1] = Scalar() with len predictor dims
-                        tstart2.append(tstart[ix])
-                        tstop2.append(tstop[ix])
-                    else:
-                        for _ in range(len(xx[1])):
-                            tstart2.append(tstart[ix])
-                            tstop2.append(tstop[ix])
-                tstart = tstart2
-                tstop = tstop2
-            else:
-                raise ValueError( 
-                    f'cannot infer number of tstart ({len(tstart)}, x ({len(x)}), dimensions n_x ({n_x})') 
+        if len(tstart) != len(data.x_name):
+            raise ValueError(f'tstart={tstart!r}: len(tstart) ({len(tstart)}) is different from len(x) ({len(data.x_name)}')
+        elif len(tstart) != len(tstop):
+            raise ValueError(f'tstop={tstop!r}: mismatched len(tstart) = {len(tstart)}, len(tstop) = {len(tstop)}')
+        tstart_in = tuple(tstart)
+        tstop_in = tuple(tstop)
+        n_xs = [1 if dim is None else len(dim) for _, dim, _ in data._x_meta]
+        tstart = [t for t, n in zip(tstart, n_xs) for _ in range(n)]
+        tstop = [t for t, n in zip(tstop, n_xs) for _ in range(n)]
     else:
-        tstart = [tstart for _ in range(n_x)]
-        tstop = [tstop for _ in range(n_x)]
+        tstart_in = tstart
+        tstop_in = tstop
+        tstart = [tstart] * n_x
+        tstop = [tstop] * n_x
 
     # TRF extent in indices
     tstep = data.time.tstep

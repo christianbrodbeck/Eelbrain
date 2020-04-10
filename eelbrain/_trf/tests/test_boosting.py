@@ -268,20 +268,15 @@ def test_trf_len(n_workers):
     res = boosting(y4, x4, 0, 0.5)
     assert correlation_coefficient(res.h, k4) > 0.99
 
-    # test multiple tstart, tend with 1d, 2d predictors
+    # test multiple tstart, tstop with 1d, 2d predictors
     y5 = y4 + y2
-    res = boosting(y5, [x, x2, x4], [0, -0.1, 0, 0], [0.5, 0.3, 0.5, 0.5])
+    res = boosting(y5, [x, x2, x4], [0, -0.1, 0], [0.5, 0.3, 0.5])
     assert correlation_coefficient(res.h[0].sub(time=(0, 0.5)), k) > 0.99
     assert correlation_coefficient(res.h[1].sub(time=(-0.1, 0.3)), k2) > 0.99
     assert correlation_coefficient(res.h[2].sub(time=(0, 0.5)), k4) > 0.99
 
-    # tests duplicating tstart, tend based on data._x_meta
-    y5.name = 'y5'
-    x.name = 'x'
-    x2.name = 'x2'
-    x4.name = 'x4'
-    res2 = boosting(y5, [x, x2, x4], [0, -0.1, 0], [0.5, 0.3, 0.5])
-    assert_array_equal(res.h[0], res2.h[0])
-    assert_array_equal(res.h[1], res2.h[1]) 
-    assert_array_equal(res.h[2], res2.h[2])
-
+    # tests tstart/tstop for each time series (not implemented)
+    # res2 = boosting(y5, [x, x2, x4], [0, -0.1, 0, 0], [0.5, 0.3, 0.5, 0.5])
+    # assert_array_equal(res.h[0], res2.h[0])
+    # assert_array_equal(res.h[1], res2.h[1])
+    # assert_array_equal(res.h[2], res2.h[2])
