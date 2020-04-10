@@ -307,10 +307,11 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     x : NDVar | sequence of NDVar
         Signal to use to predict ``y``. Can be sequence of NDVars to include
         multiple predictors. Time dimension must correspond to ``y``.
-    tstart : float | list, tuple
-        Start of the TRF in seconds.
-    tstop : float | list, tuple
-        Stop of the TRF in seconds.
+    tstart : scalar | sequence of scalar
+        Start of the TRF in seconds. A list can be used to specify different
+        values for each item in ``x``.
+    tstop : scalar | sequence of scalar
+        Stop of the TRF in seconds. Format must match ``tstart``.
     scale_data : bool | 'inplace'
         Scale ``y`` and ``x`` before boosting: subtract the mean and divide by
         the standard deviation (when ``error='l2'``) or the mean absolute
@@ -333,10 +334,10 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
 
         For vector ``y``, the error is defined based on the distance in space
         for each data point.
-    basis : float
+    basis : scalar
         Use a basis of windows with this length for the kernel (by default,
         impulses are used).
-    basis_window : str | float | tuple
+    basis_window : str | scalar | tuple
         Basis window (see :func:`scipy.signal.get_window` for options; default
         is ``'hamming'``).
     partitions : int
@@ -598,14 +599,16 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
         Stimulus.
     x_pads : array (n_stims,)
         Padding for x.
+    all_index : array of (start, stop)
+        Time sample index of training and testing segments.
     train_index : array of (start, stop)
         Time sample index of training segments.
     test_index : array of (start, stop)
         Time sample index of test segments.
-    i_start : array
-        array of i_start for trfs.
-    i_stop : array
-        array of i_stop for TRF.
+    i_start : ndarray
+        Array of i_start for trfs.
+    i_stop : ndarray
+        Array of i_stop for TRF.
     delta : scalar
         Step of the adjustment.
     mindelta : scalar
