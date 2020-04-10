@@ -421,15 +421,17 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
 
     # TRF extent in indices
     tstep = data.time.tstep
-    i_start = np.asarray([int(round(t / tstep)) for t in tstart])
-    i_stop = np.asarray([int(round(t / tstep)) for t in tstop])
-    i_start_min = np.min(i_start)
-    i_stop_max = np.max(i_stop)
-    trf_length = i_stop_max - i_start_min
+    i_start_by_x = np.asarray([int(round(t / tstep)) for t in tstart], np.int64)
+    i_stop_by_x = np.asarray([int(round(t / tstep)) for t in tstop], np.int64)
+    i_start = np.min(i_start_by_x)
+    i_stop = np.max(i_stop_by_x)
+    trf_length = i_stop - i_start
+
     if data.segments is None:
         i_skip = trf_length - 1
     else:
         i_skip = 0
+
     # progress bar
     n_cv = len(data.cv_segments)
     pbar = tqdm(desc=f"Boosting{f' {n_y} signals' if n_y > 1 else ''}", total=n_y * n_cv, disable=CONFIG['tqdm'])
@@ -443,7 +445,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     if CONFIG['n_workers']:
         # Make sure cross-validations are added in the same order, otherwise
         # slight numerical differences can occur
-        job_queue, result_queue = setup_workers(data, i_start, i_stop, delta, mindelta_, error, selective_stopping)
+        job_queue, result_queue = setup_workers(data, i_start_by_x, i_stop_by_x, delta, mindelta_, error, selective_stopping)
         stop_jobs = Event()
         thread = Thread(target=put_jobs, args=(job_queue, n_y, n_cv, stop_jobs))
         thread.start()
@@ -463,7 +465,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
                         if hs:
                             h = np.mean(hs, 0, out=h_x[y_i])
                             y_i_pred = y_pred[y_i] if store_y_pred else y_pred
-                            convolve(h, data.x, data.x_pads, i_start, i_stop, data.segments, y_i_pred)
+                            convolve(h, data.x, data.x_pads, i_start, data.segments, y_i_pred)
                             if not data.vector_dim:
                                 res[:, y_i] = evaluate_kernel(data.y[y_i], y_i_pred, error, i_skip, data.segments)
                         else:
@@ -481,7 +483,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         for y_i, y_ in enumerate(data.y):
             hs = []
             for segments, train, test in data.cv_segments:
-                h = boost(y_, data.x, data.x_pads, segments, train, test, i_start, i_stop, delta, mindelta_, error, selective_stopping)
+                h = boost(y_, data.x, data.x_pads, segments, train, test, i_start_by_x, i_stop_by_x, delta, mindelta_, error, selective_stopping)
                 if h is not None:
                     hs.append(h)
                 pbar.update()
@@ -489,7 +491,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
             if hs:
                 h = np.mean(hs, 0, out=h_x[y_i])
                 y_i_pred = y_pred[y_i] if store_y_pred else y_pred
-                convolve(h, data.x, data.x_pads, i_start, i_stop, data.segments, y_i_pred)
+                convolve(h, data.x, data.x_pads, i_start, data.segments, y_i_pred)
                 if not data.vector_dim:
                     res[:, y_i] = evaluate_kernel(data.y[y_i], y_i_pred, error, i_skip, data.segments)
             else:
@@ -564,7 +566,7 @@ class BoostingStep:
         self.e_test = e_test
 
 
-def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
+def boost(y, x, x_pads, all_index, train_index, test_index, i_start_by_x, i_stop_by_x,
           delta, mindelta, error, selective_stopping=0, return_history=False):
     """Estimate one filter with boosting
 
@@ -582,9 +584,9 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
         Time sample index of training segments.
     test_index : array of (start, stop)
         Time sample index of test segments.
-    i_start : ndarray
+    i_start_by_x : ndarray
         Array of i_start for trfs.
-    i_stop : ndarray
+    i_stop_by_x : ndarray
         Array of i_stop for TRF.
     delta : scalar
         Step of the adjustment.
@@ -610,14 +612,13 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
     error = ERROR_FUNC[error]
     n_stims, n_times = x.shape
     assert y.shape == (n_times,)
-    i_start = i_start.astype('int64')
-    i_stop = i_stop.astype('int64')
-    trf_length = (i_stop - i_start).astype('int64')
-    n_times_trf_max = max(i_stop) - min(i_start)
-    h = np.zeros((n_stims, n_times_trf_max))
+    i_start = np.min(i_start_by_x)
+    n_times_trf = np.max(i_stop_by_x) - i_start
+    h = np.zeros((n_stims, n_times_trf))
     # buffers
     y_error = y.copy()
     new_error = np.empty(h.shape)
+    new_error.fill(np.inf)  # ignore values outside TRF
     new_sign = np.empty(h.shape, np.int8)
     x_active = np.ones(n_stims, dtype=np.int8)
 
@@ -665,7 +666,7 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
                     for i in range(-undo):
                         step = history.pop(-1)
                         h[step.i_stim, step.i_time] -= step.delta
-                        update_error(y_error, x[step.i_stim], x_pads[step.i_stim], all_index, -step.delta, step.i_time + i_start[step.i_stim])
+                        update_error(y_error, x[step.i_stim], x_pads[step.i_stim], all_index, -step.delta, step.i_time + i_start)
                     step = history[-1]
                     # disable predictor
                     x_active[i_stim] = False
@@ -683,10 +684,7 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
                 break
 
         # generate possible movements -> training error
-        generate_options(y_error, x, x_pads, x_active, train_index, i_start, delta_error_func, delta, new_error,
-                         trf_length, new_sign)
-        for i_st, t_len in enumerate(trf_length):
-            new_error[i_st, t_len:] = np.inf
+        generate_options(y_error, x, x_pads, x_active, train_index, i_start, i_start_by_x, i_stop_by_x, delta_error_func, delta, new_error, new_sign)
         i_stim, i_time = np.unravel_index(np.argmin(new_error), h.shape)
         new_train_error = new_error[i_stim, i_time]
         delta_signed = new_sign[i_stim, i_time] * delta
@@ -708,7 +706,7 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
 
         # update h with best movement
         h[i_stim, i_time] += delta_signed
-        update_error(y_error, x[i_stim], x_pads[i_stim], all_index, delta_signed, i_time + i_start[i_stim])
+        update_error(y_error, x[i_stim], x_pads[i_stim], all_index, delta_signed, i_time + i_start)
     else:
         raise RuntimeError("Maximum number of iterations exceeded")
     # print('  (%i iterations)' % (i_boost + 1))
@@ -718,13 +716,6 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, i_stop,
         for step in history[-1: best_iteration: -1]:
             if step.delta:
                 h[step.i_stim, step.i_time] -= step.delta
-        h_len = max(i_stop) - min(i_start)
-        h_i_start = np.asarray(i_start - min(i_start)).astype('int64')
-        h_i_stop = [h1 + h2 for h1, h2 in zip(h_i_start, trf_length)]
-        h_new = np.zeros((n_stims, h_len))
-        for i_stim in range(n_stims):
-            h_new[i_stim, h_i_start[i_stim]:h_i_stop[i_stim]] = h[i_stim, :trf_length[i_stim]]
-        h = h_new
     else:
         h = None
 
@@ -785,7 +776,7 @@ def put_jobs(queue, n_y, n_segs, stop):
         queue.put((JOB_TERMINATE, None))
 
 
-def convolve(h, x, x_pads, i_start, i_stop=None, segments=None, out=None):
+def convolve(h, x, x_pads, h_i_start, segments=None, out=None):
     """h * x with time axis matching x
 
     Parameters
@@ -796,29 +787,15 @@ def convolve(h, x, x_pads, i_start, i_stop=None, segments=None, out=None):
         X.
     x_pads : array (n_stims,)
         Padding for x.
-    i_start : list, array
-        List of i_start for the TRFs.
-    i_stop : None | list, array
-        List of i_stop for the TRFs. If None, all TRFs have the same i_stop
+    h_i_start : int
+        Time shift of the first sample of ``h``.
     segments : array (n_segments, 2)
         Data segments.
     out : array
         Buffer for predicted ``y``.
     """
     n_x, n_times = x.shape
-    if i_stop is None:
-        i_stop = h.shape[1]
-    if isinstance(i_start, (tuple, list, np.ndarray)):
-        if len(i_start) != n_x:
-            if len(i_start) != 1:
-                raise ValueError(f'len(i_start) = {len(i_start)}, n_x = {n_x}')
-            i_start = np.array([i_start[0] for _ in range(n_x)])
-            i_stop = np.array([i_stop[0] for _ in range(n_x)])
-    else:
-        i_start = np.array([i_start for _ in range(n_x)])
-        i_stop = np.array([i_stop for _ in range(n_x)])
-    h_i_start = i_start
-    h_n_times = np.array([i2 - i1 for i1, i2 in zip(i_start, i_stop)])
+    h_n_times = h.shape[1]
     if out is None:
         out = np.zeros(n_times)
     else:
@@ -828,40 +805,42 @@ def convolve(h, x, x_pads, i_start, i_stop=None, segments=None, out=None):
         segments = ((0, n_times),)
 
     # determine valid section of convolution (cf. _ndvar.convolve())
+    h_i_max = h_i_start + h_n_times - 1
+    out_start = max(0, h_i_start)
+    out_stop = min(0, h_i_max)
+    conv_start = max(0, -h_i_start)
+    conv_stop = -h_i_start
+
     # padding
-    # padding for pre-'
-    for ind in range(n_x):
-        h_pad = h[ind, :] * x_pads[ind, newaxis]
-        h_i_max = h_i_start[ind] + h_n_times[ind] - 1
-        out_start = max(0, h_i_start[ind])
-        out_stop = min(0, h_i_max)
-        conv_start = max(0, -h_i_start[ind])
-        conv_stop = -h_i_start[ind]
+    h_pad = np.sum(h * x_pads[:, newaxis], 0)
+    # padding for pre-
+    pad_head_n_times = max(0, h_n_times + h_i_start)
+    if pad_head_n_times:
+        pad_head = np.zeros(pad_head_n_times)
+        for i in range(min(pad_head_n_times, h_n_times)):
+            pad_head[:pad_head_n_times - i] += h_pad[- i - 1]
+    else:
+        pad_head = None
+    # padding for post-
+    pad_tail_n_times = -min(0, h_i_start)
+    if pad_tail_n_times:
+        pad_tail = np.zeros(pad_tail_n_times)
+        for i in range(pad_tail_n_times):
+            pad_tail[i:] += h_pad[i]
+    else:
+        pad_tail = None
 
-        pad_head_n_times = max(0, h_n_times[ind] + h_i_start[ind])
-        if pad_head_n_times:
-            pad_head = np.zeros(pad_head_n_times)
-            for i in range(min(pad_head_n_times, h_n_times[ind])):
-                pad_head[:pad_head_n_times - i] += h_pad[- i - 1]
-        else:
-            pad_head = None
-        # padding for post-
-        pad_tail_n_times = -min(0, h_i_start[ind])
-        if pad_tail_n_times:
-            pad_tail = np.zeros(pad_tail_n_times)
-            for i in range(pad_tail_n_times):
-                pad_tail[i:] += h_pad[i]
-        else:
-            pad_tail = None
-        for start, stop in segments:
-            if pad_head is not None:
-                out[start: start + pad_head_n_times] += pad_head
-            if pad_tail is not None:
-                out[stop - pad_tail_n_times: stop] += pad_tail
+    for start, stop in segments:
+        if pad_head is not None:
+            out[start: start + pad_head_n_times] += pad_head
+        if pad_tail is not None:
+            out[stop - pad_tail_n_times: stop] += pad_tail
 
-            out_index = slice(start + out_start, stop + out_stop)
-            y_index = slice(conv_start, stop - start + conv_stop)
+        out_index = slice(start + out_start, stop + out_stop)
+        y_index = slice(conv_start, stop - start + conv_stop)
+        for ind in range(n_x):
             out[out_index] += scipy.signal.convolve(h[ind], x[ind, start:stop])[y_index]
+
     return out
 
 

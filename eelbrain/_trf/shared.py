@@ -315,7 +315,7 @@ class RevCorrData:
             tstart1 = res.tstart
         i_start = int(round(tstart1 / self.time.tstep))
         for y, h in zip(self.y, h_flat):
-            y -= convolve(h, x, x_pads, i_start, None, self.segments)
+            y -= convolve(h, x, x_pads, i_start, self.segments)
         # remove prefit predictors
         keep = np.setdiff1d(np.arange(n_x), h_index)
         self.x = self.x[keep]
