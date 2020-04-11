@@ -187,14 +187,16 @@ class BoostingResult:
         self.__init__(**state)
 
     def __repr__(self):
-        if self.x is None or isinstance(self.x, str):
-            x = self.x
+        items = []
+        if isinstance(self.tstart, tuple):
+            x = ' + '.join(f'{x} ({t1:g} - {t2:g})' for x, t1, t2 in zip(self.x, self.tstart, self.tstop))
         else:
-            x = ' + '.join(map(str, self.x))
-        items = [
-            'boosting %s ~ %s' % (self.y, x),
-            '%g - %g' % (self.tstart, self.tstop),
-        ]
+            if self.x is None or isinstance(self.x, str):
+                x = self.x
+            else:
+                x = ' + '.join(map(str, self.x))
+            items.append(f'{self.tstart:g} - {self.tstop:g}')
+        items.insert(0, f'boosting {self.y} ~ {x}')
         for name, param in inspect.signature(boosting).parameters.items():
             if param.default is inspect.Signature.empty or name == 'ds':
                 continue
@@ -298,10 +300,11 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     x : NDVar | sequence of NDVar
         Signal to use to predict ``y``. Can be sequence of NDVars to include
         multiple predictors. Time dimension must correspond to ``y``.
-    tstart : float
-        Start of the TRF in seconds.
-    tstop : float
-        Stop of the TRF in seconds.
+    tstart : scalar | sequence of scalar
+        Start of the TRF in seconds. A list can be used to specify different
+        values for each item in ``x``.
+    tstop : scalar | sequence of scalar
+        Stop of the TRF in seconds. Format must match ``tstart``.
     scale_data : bool | 'inplace'
         Scale ``y`` and ``x`` before boosting: subtract the mean and divide by
         the standard deviation (when ``error='l2'``) or the mean absolute
@@ -324,10 +327,10 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
 
         For vector ``y``, the error is defined based on the distance in space
         for each data point.
-    basis : float
+    basis : scalar
         Use a basis of windows with this length for the kernel (by default,
         impulses are used).
-    basis_window : str | float | tuple
+    basis_window : str | scalar | tuple
         Basis window (see :func:`scipy.signal.get_window` for options; default
         is ``'hamming'``).
     partitions : int
@@ -399,11 +402,29 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     data.initialize_cross_validation(partitions, model, ds)
     n_y = len(data.y)
     n_x = len(data.x)
+    # find TRF start/stop for each x
+    if isinstance(tstart, (tuple, list, np.ndarray)):
+        if len(tstart) != len(data.x_name):
+            raise ValueError(f'tstart={tstart!r}: len(tstart) ({len(tstart)}) is different from len(x) ({len(data.x_name)}')
+        elif len(tstart) != len(tstop):
+            raise ValueError(f'tstop={tstop!r}: mismatched len(tstart) = {len(tstart)}, len(tstop) = {len(tstop)}')
+        tstart_in = tuple(tstart)
+        tstop_in = tuple(tstop)
+        n_xs = [1 if dim is None else len(dim) for _, dim, _ in data._x_meta]
+        tstart = [t for t, n in zip(tstart, n_xs) for _ in range(n)]
+        tstop = [t for t, n in zip(tstop, n_xs) for _ in range(n)]
+    else:
+        tstart_in = tstart
+        tstop_in = tstop
+        tstart = [tstart] * n_x
+        tstop = [tstop] * n_x
 
     # TRF extent in indices
     tstep = data.time.tstep
-    i_start = int(round(tstart / tstep))
-    i_stop = int(round(tstop / tstep))
+    i_start_by_x = np.asarray([int(round(t / tstep)) for t in tstart], np.int64)
+    i_stop_by_x = np.asarray([int(round(t / tstep)) for t in tstop], np.int64)
+    i_start = np.min(i_start_by_x)
+    i_stop = np.max(i_stop_by_x)
     trf_length = i_stop - i_start
 
     if data.segments is None:
@@ -424,7 +445,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     if CONFIG['n_workers']:
         # Make sure cross-validations are added in the same order, otherwise
         # slight numerical differences can occur
-        job_queue, result_queue = setup_workers(data, i_start, trf_length, delta, mindelta_, error, selective_stopping)
+        job_queue, result_queue = setup_workers(data, i_start_by_x, i_stop_by_x, delta, mindelta_, error, selective_stopping)
         stop_jobs = Event()
         thread = Thread(target=put_jobs, args=(job_queue, n_y, n_cv, stop_jobs))
         thread.start()
@@ -462,7 +483,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         for y_i, y_ in enumerate(data.y):
             hs = []
             for segments, train, test in data.cv_segments:
-                h = boost(y_, data.x, data.x_pads, segments, train, test, i_start, trf_length, delta, mindelta_, error, selective_stopping)
+                h = boost(y_, data.x, data.x_pads, segments, train, test, i_start_by_x, i_stop_by_x, delta, mindelta_, error, selective_stopping)
                 if h is not None:
                     hs.append(h)
                 pbar.update()
@@ -519,12 +540,12 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     else:
         debug_attrs = {}
 
-    h = data.package_kernel(h_x, tstart)
+    h = data.package_kernel(h_x, min(tstart))
     model_repr = None if model is None else data.model
     prefit_repr = None if prefit is None else repr(prefit)
     return BoostingResult(
         # input parameters
-        data.y_name, data.x_name, tstart, tstop, scale_data, delta, mindelta, error,
+        data.y_name, data.x_name, tstart_in, tstop_in, scale_data, delta, mindelta, error,
         basis, basis_window, partitions, data.partitions, model_repr, prefit_repr,
         # result parameters
         h, r, isnan, spearmanr, residual, t_run,
@@ -545,7 +566,7 @@ class BoostingStep:
         self.e_test = e_test
 
 
-def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
+def boost(y, x, x_pads, all_index, train_index, test_index, i_start_by_x, i_stop_by_x,
           delta, mindelta, error, selective_stopping=0, return_history=False):
     """Estimate one filter with boosting
 
@@ -557,12 +578,16 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
         Stimulus.
     x_pads : array (n_stims,)
         Padding for x.
+    all_index : array of (start, stop)
+        Time sample index of training and testing segments.
     train_index : array of (start, stop)
         Time sample index of training segments.
     test_index : array of (start, stop)
         Time sample index of test segments.
-    trf_length : int
-        Length of the TRF (in time samples).
+    i_start_by_x : ndarray
+        Array of i_start for trfs.
+    i_stop_by_x : ndarray
+        Array of i_stop for TRF.
     delta : scalar
         Step of the adjustment.
     mindelta : scalar
@@ -587,12 +612,13 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
     error = ERROR_FUNC[error]
     n_stims, n_times = x.shape
     assert y.shape == (n_times,)
-
-    h = np.zeros((n_stims, trf_length))
-
+    i_start = np.min(i_start_by_x)
+    n_times_trf = np.max(i_stop_by_x) - i_start
+    h = np.zeros((n_stims, n_times_trf))
     # buffers
     y_error = y.copy()
     new_error = np.empty(h.shape)
+    new_error.fill(np.inf)  # ignore values outside TRF
     new_sign = np.empty(h.shape, np.int8)
     x_active = np.ones(n_stims, dtype=np.int8)
 
@@ -658,8 +684,7 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
                 break
 
         # generate possible movements -> training error
-        generate_options(y_error, x, x_pads, x_active, train_index, i_start, delta_error_func, delta, new_error, new_sign)
-
+        generate_options(y_error, x, x_pads, x_active, train_index, i_start, i_start_by_x, i_stop_by_x, delta_error_func, delta, new_error, new_sign)
         i_stim, i_time = np.unravel_index(np.argmin(new_error), h.shape)
         new_train_error = new_error[i_stim, i_time]
         delta_signed = new_sign[i_stim, i_time] * delta
@@ -700,7 +725,7 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start, trf_length,
         return h
 
 
-def setup_workers(data, i_start, trf_length, delta, mindelta, error, selective_stopping):
+def setup_workers(data, i_start, i_stop, delta, mindelta, error, selective_stopping):
     n_y, n_times = data.y.shape
     n_x, _ = data.x.shape
 
@@ -714,7 +739,7 @@ def setup_workers(data, i_start, trf_length, delta, mindelta, error, selective_s
     job_queue = Queue(200)
     result_queue = Queue(200)
 
-    args = (y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, data.cv_segments, i_start, trf_length, delta, mindelta, error, selective_stopping, job_queue, result_queue)
+    args = (y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, data.cv_segments, i_start, i_stop, delta, mindelta, error, selective_stopping, job_queue, result_queue)
     for _ in range(CONFIG['n_workers']):
         process = Process(target=boosting_worker, args=args)
         process.start()
@@ -722,7 +747,7 @@ def setup_workers(data, i_start, trf_length, delta, mindelta, error, selective_s
     return job_queue, result_queue
 
 
-def boosting_worker(y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, cv_segments, i_start, trf_length, delta, mindelta, error, selective_stopping, job_queue, result_queue):
+def boosting_worker(y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, cv_segments, i_start, i_stop, delta, mindelta, error, selective_stopping, job_queue, result_queue):
     if CONFIG['nice']:
         os.nice(CONFIG['nice'])
 
@@ -735,7 +760,7 @@ def boosting_worker(y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, cv_seg
         if y_i == JOB_TERMINATE:
             return
         all_index, train_index, test_index = cv_segments[seg_i]
-        h = boost(y[y_i], x, x_pads, all_index, train_index, test_index, i_start, trf_length, delta, mindelta, error, selective_stopping)
+        h = boost(y[y_i], x, x_pads, all_index, train_index, test_index, i_start, i_stop, delta, mindelta, error, selective_stopping)
         result_queue.put((y_i, seg_i, h))
 
 

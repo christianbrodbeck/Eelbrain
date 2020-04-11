@@ -139,18 +139,20 @@ def generate_options(
         FLOAT64 [:] x_pads,  # (n_stims,)
         INT8 [:] x_active,  # for each predictor whether it is still used
         INT64 [:,:] indexes,  # training segment indexes
-        int i_start,  # kernel start index (y/x offset)
+        int i_start,  # kernel start index (time axis offset)
+        INT64 [:] i_start_by_x,  # (n_stims,) kernel start index
+        INT64 [:] i_stop_by_x, # (n_stims,) kernel stop index
         size_t error,  # ID of the error function (l1/l2)
         double delta,
         # buffers
         FLOAT64 [:,:] new_error,  # (n_stims, n_times_trf)
-        INT8 [:,:] new_sign,
+        INT8 [:,:] new_sign,  # (n_stims, n_times_trf)
     ):
     cdef:
         double e_add, e_sub, x_pad
         size_t n_stims = new_error.shape[0]
-        size_t n_times_trf = new_error.shape[1]
-        size_t i_stim, i_time
+        size_t i_stim
+        int i_time
         FLOAT64 [:] x_stim
 
     if error != 1 and error != 2:
@@ -162,13 +164,14 @@ def generate_options(
                 continue
             x_stim = x[i_stim]
             x_pad = x_pads[i_stim]
-            for i_time in range(n_times_trf):
+            for i_time in range(i_start_by_x[i_stim], i_stop_by_x[i_stim]):
                 # +/- delta
                 if error == 1:
-                    l1_for_delta(y_error, x_stim, x_pad, indexes, delta, i_time + i_start, &e_add, &e_sub)
+                    l1_for_delta(y_error, x_stim, x_pad, indexes, delta, i_time, &e_add, &e_sub)
                 else:
-                    l2_for_delta(y_error, x_stim, x_pad, indexes, delta, i_time + i_start, &e_add, &e_sub)
+                    l2_for_delta(y_error, x_stim, x_pad, indexes, delta, i_time, &e_add, &e_sub)
 
+                i_time -= i_start
                 if e_add > e_sub:
                     new_error[i_stim, i_time] = e_sub
                     new_sign[i_stim, i_time] = -1

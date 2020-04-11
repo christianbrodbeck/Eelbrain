@@ -13,6 +13,7 @@ import scipy.io
 from eelbrain import (
     datasets, configure,
     boosting, convolve, correlation_coefficient, epoch_impulse_predictor,
+    NDVar, UTS, Scalar,
 )
 
 from eelbrain.testing import assert_dataobj_equal
@@ -117,18 +118,18 @@ def test_boosting_epochs():
     # 1d
     for tstart, basis in product((-0.1, 0.1, 0), (0, 0.05)):
         print(f"tstart={tstart}, basis={basis}")
-        res = boosting('uts', [p0, p1], tstart, 0.6, model='A', ds=ds, basis=basis, partitions=10, debug=True)
+        res = boosting('uts', [p0, p1], tstart, 0.6, model='A', ds=ds, basis=basis, partitions=3, debug=True)
         y = convolve(res.h_scaled, [p0, p1])
         assert correlation_coefficient(y, res.y_pred) > .999
         r = correlation_coefficient(y, ds['uts'])
         assert res.r == approx(r, abs=1e-3)
-        assert res.partitions == 10
+        assert res.partitions == 3
     # prefit
-    res1 = boosting('uts', p1, 0, 0.6, model='A', ds=ds, partitions=10)
-    res0 = boosting('uts', p0, 0, 0.6, model='A', ds=ds, partitions=10)
-    res01 = boosting('uts', [p0, p1], 0, 0.6, model='A', ds=ds, partitions=10, prefit=res1)
+    res1 = boosting('uts', p1, 0, 0.6, model='A', ds=ds, partitions=3)
+    res0 = boosting('uts', p0, 0, 0.6, model='A', ds=ds, partitions=3)
+    res01 = boosting('uts', [p0, p1], 0, 0.6, model='A', ds=ds, partitions=3, prefit=res1)
     # 2d
-    res = boosting('utsnd', [p0, p1], 0, 0.6, model='A', ds=ds, partitions=10)
+    res = boosting('utsnd', [p0, p1], 0, 0.6, model='A', ds=ds, partitions=3)
     assert len(res.h) == 2
     assert res.h[0].shape == (5, 60)
     assert res.h[1].shape == (5, 60)
@@ -136,7 +137,7 @@ def test_boosting_epochs():
     r = correlation_coefficient(y, ds['utsnd'], ('case', 'time'))
     assert_dataobj_equal(res.r, r, decimal=3, name=False)
     # vector
-    res = boosting('v3d', [p0, p1], 0, 0.6, error='l1', model='A', ds=ds, partitions=10)
+    res = boosting('v3d', [p0, p1], 0, 0.6, error='l1', model='A', ds=ds, partitions=3)
     assert res.residual.ndim == 0
 
 
@@ -195,8 +196,10 @@ def test_boosting_func():
     all_segments = np.array([[0, seg_len], [seg_len, y_len]], np.int64)
     train_segments = all_segments[1:]
     test_segments = all_segments[:1]
+    tstart = np.array([0], np.int64)
+    tstop = np.array([10], np.int64)
     h, test_sse_history = boost(y, x, x_pads, all_segments, train_segments, test_segments,
-                                0, 10, 0.005, 0.005, 'l2', return_history=True)
+                                tstart, tstop, 0.005, 0.005, 'l2', return_history=True)
     test_seg_len = int(floor(x.shape[1] / 40))
     y_pred = boosting_convolve(h, x[:, :test_seg_len], x_pads, 0)
     r, rr, _ = evaluate_kernel(y[:test_seg_len], y_pred, 'l2', h.shape[1] - 1)
@@ -212,9 +215,10 @@ def test_boosting_func():
     y = mat['signal'][0]
     x = mat['stim']
     x_pads = np.zeros(len(x))
-
+    tstart = np.array([0, 0, 0], np.int64)
+    tstop = np.array([10, 10, 10], np.int64)
     h, test_sse_history = boost(y, x, x_pads, all_segments, train_segments, test_segments,
-                                0, 10, 0.005, 0.005, 'l2', return_history=True)
+                                tstart, tstop, 0.005, 0.005, 'l2', return_history=True)
     test_seg_len = int(floor(x.shape[1] / 40))
     y_pred = boosting_convolve(h, x[:, :test_seg_len], x_pads, 0)
     r, rr, _ = evaluate_kernel(y[:test_seg_len], y_pred, 'l2', h.shape[1] - 1)
@@ -224,3 +228,57 @@ def test_boosting_func():
     assert rr == approx(mat['crlt'][1, 0])
     # svdboostV4pred multiplies error by number of predictors
     assert_allclose(test_sse_history, mat['Str_testE'][0] / 3)
+
+
+@pytest.mark.parametrize('n_workers', [0, True])
+def test_trf_len(n_workers):
+    configure(n_workers=n_workers)
+    # test vanilla boosting
+    rng = np.random.RandomState(0)
+    x = NDVar(rng.normal(0, 1, 1000), UTS(0, 0.1, 1000), name='x')
+    k = NDVar(rng.randint(0, 10, 5) / 10, UTS(0, 0.1, 5), name='k')
+    y = convolve(k, x, name='y')
+    res = boosting(y, x, 0, 0.5, partitions=3)
+    assert correlation_coefficient(res.h, k) > 0.99
+    assert repr(res) == '<boosting y ~ x, 0 - 0.5, partitions=3>'
+
+    # test multiple tstart, tend
+    x2 = NDVar(rng.normal(0, 1, 1000), UTS(0, 0.1, 1000), name='x2')
+    k2 = NDVar(rng.randint(0, 10, 4) / 10, UTS(-0.1, 0.1, 4), name='k2')
+    y2 = y + convolve(k2, x2)
+    res = boosting(y2, [x, x2], [0, -0.1], [0.5, 0.3], partitions=3)
+    assert correlation_coefficient(res.h[0].sub(time=(0, 0.5)), k) > 0.99
+    assert correlation_coefficient(res.h[1].sub(time=(-0.1, 0.3)), k2) > 0.99
+    assert repr(res) == '<boosting y ~ x (0 - 0.5) + x2 (-0.1 - 0.3), partitions=3>'
+
+    # test scalar res.tstart res.tstop
+    res = boosting(y2, [x, x2], 0, 0.5, partitions=3)
+    assert res.tstart == 0
+    assert res.tstop == 0.5
+
+    # test duplicate tstart, tend for multiple predictors
+    k3 = NDVar(k2.x, UTS(0, 0.1, 4))
+    y3 = convolve(k, x) + convolve(k3, x2)
+    res = boosting(y3, [x, x2], 0, 0.5, partitions=3)
+    assert correlation_coefficient(res.h[0], k) > 0.99
+    assert correlation_coefficient(res.h[1].sub(time=(0, 0.4)), k3) > 0.99
+
+    # test vanilla boosting with 2d predictor
+    x4 = NDVar(rng.normal(0, 1, (2, 1000)), (Scalar('xdim', [1, 2]), UTS(0, 0.1, 1000)))
+    k4 = NDVar(rng.randint(0, 10, (2, 5)) / 10, (Scalar('xdim', [1, 2]), UTS(0, 0.1, 5)))
+    y4 = convolve(k4, x4)
+    res = boosting(y4, x4, 0, 0.5, partitions=3)
+    assert correlation_coefficient(res.h, k4) > 0.99
+
+    # test multiple tstart, tstop with 1d, 2d predictors
+    y5 = y4 + y2
+    res = boosting(y5, [x, x2, x4], [0, -0.1, 0], [0.5, 0.3, 0.5], partitions=3)
+    assert correlation_coefficient(res.h[0].sub(time=(0, 0.5)), k) > 0.99
+    assert correlation_coefficient(res.h[1].sub(time=(-0.1, 0.3)), k2) > 0.99
+    assert correlation_coefficient(res.h[2].sub(time=(0, 0.5)), k4) > 0.99
+
+    # tests tstart/tstop for each time series (not implemented)
+    # res2 = boosting(y5, [x, x2, x4], [0, -0.1, 0, 0], [0.5, 0.3, 0.5, 0.5])
+    # assert_array_equal(res.h[0], res2.h[0])
+    # assert_array_equal(res.h[1], res2.h[1])
+    # assert_array_equal(res.h[2], res2.h[2])
