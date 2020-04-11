@@ -215,8 +215,8 @@ def test_boosting_func():
     y = mat['signal'][0]
     x = mat['stim']
     x_pads = np.zeros(len(x))
-    tstart = np.asarray([0, 0, 0])
-    tstop = np.asarray([10, 10, 10])
+    tstart = np.array([0, 0, 0], np.int64)
+    tstop = np.array([10, 10, 10], np.int64)
     h, test_sse_history = boost(y, x, x_pads, all_segments, train_segments, test_segments,
                                 tstart, tstop, 0.005, 0.005, 'l2', return_history=True)
     test_seg_len = int(floor(x.shape[1] / 40))
