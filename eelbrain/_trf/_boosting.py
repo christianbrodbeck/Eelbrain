@@ -16,6 +16,7 @@ x2 = ds['x2']
 %prun -s cumulative res = boosting(y, x1, 0, 1)
 
 """
+from dataclasses import dataclass, field, fields
 import inspect
 from itertools import product
 from multiprocessing import Process, Queue
@@ -23,6 +24,7 @@ from multiprocessing.sharedctypes import RawArray
 import os
 import time
 from threading import Event, Thread
+from typing import Union, Tuple
 
 import numpy as np
 from numpy import newaxis
@@ -39,9 +41,6 @@ from ._boosting_opt import l1, l2, generate_options, update_error
 from .shared import RevCorrData
 
 
-# BoostingResult version
-VERSION = 10  # file format (assigned in __getstate__, not __init__)
-
 # process messages
 JOB_TERMINATE = -1
 
@@ -50,6 +49,7 @@ ERROR_FUNC = {'l2': l2, 'l1': l1}
 DELTA_ERROR_FUNC = {'l2': 2, 'l1': 1}
 
 
+@dataclass(frozen=True, eq=False)
 class BoostingResult:
     """Result from boosting a temporal response function
 
@@ -108,82 +108,58 @@ class BoostingResult:
     partitions : int
         Numbers of partitions of the data used for cross validation.
     """
-    def __init__(
-            self,
-            # input parameters
-            y, x, tstart, tstop, scale_data, delta, mindelta, error,
-            basis, basis_window, partitions_arg, partitions, model, prefit,
-            # result parameters
-            h, r, isnan, spearmanr, residual, t_run,
-            y_mean, y_scale, x_mean, x_scale, y_info={}, r_l1=None,
-            # new parameters
-            selective_stopping=0, n_samples=None,
-            **debug_attrs,
-    ):
-        # input parameters
-        self.y = y
-        self.x = x
-        self.n_samples = n_samples
-        self.tstart = tstart
-        self.tstop = tstop
-        self.scale_data = scale_data
-        self.delta = delta
-        self.mindelta = mindelta
-        self.error = error
-        self._partitions_arg = partitions_arg
-        self.partitions = partitions
-        self.model = model
-        self.prefit = prefit
-        self.basis = basis
-        self.basis_window = basis_window
-        self.selective_stopping = selective_stopping
-        # results
-        self._h = h
-        self._y_info = y_info
-        self.r = r
-        self.r_l1 = r_l1
-        self._isnan = isnan
-        self.spearmanr = spearmanr
-        self.residual = residual
-        self.t_run = t_run
-        self.y_mean = y_mean
-        self.y_scale = y_scale
-        self.x_mean = x_mean
-        self.x_scale = x_scale
-        self._debug_attrs = debug_attrs
-        for k, v in debug_attrs.items():
-            setattr(self, k, v)
+    # basic parameters
+    y: str
+    x: str
+    tstart: Union[float, Tuple[float, ...]]
+    tstop: Union[float, Tuple[float, ...]]
+    scale_data: bool
+    delta: float
+    mindelta: float
+    error: str
+    # results
+    _h: Union[NDVar, Tuple[NDVar, ...]]
+    r: Union[float, NDVar]
+    _isnan: np.ndarray
+    spearmanr: NDVar
+    residual: NDVar
+    t_run: float
+    y_mean: NDVar
+    y_scale: NDVar
+    x_mean: Union[NDVar, Tuple[NDVar, ...]]
+    x_scale: Union[NDVar, Tuple[NDVar, ...]]
+    _y_info: dict = field(default_factory=dict)
+    r_l1: NDVar = None
+    # advanced parameters
+    basis: float = 0
+    basis_window: str = 'hamming'
+    _partitions_arg: int = None
+    partitions: int = None
+    model: str = None
+    prefit: str = None
+    selective_stopping: int = 0
+    n_samples: int = None
+    # store the version of the boosting algorithm with which model was fit
+    version: int = 11
+    # debug parameters
+    _y_pred: NDVar = None
 
-    def __getstate__(self):
-        return {
-            # input parameters
-            'y': self.y, 'x': self.x, 'tstart': self.tstart, 'tstop': self.tstop,
-            'scale_data': self.scale_data, 'delta': self.delta,
-            'mindelta': self.mindelta, 'error': self.error,
-            'partitions_arg': self._partitions_arg, 'partitions': self.partitions,
-            'model': self.model, 'prefit': self.prefit, 'basis': self.basis,
-            'basis_window': self.basis_window,
-            'selective_stopping': self.selective_stopping,
-            # results
-            'h': self._h, 'r': self.r, 'r_l1': self.r_l1, 'isnan': self._isnan,
-            'spearmanr': self.spearmanr, 'residual': self.residual,
-            't_run': self.t_run, 'version': VERSION,
-            'y_mean': self.y_mean, 'y_scale': self.y_scale,
-            'x_mean': self.x_mean, 'x_scale': self.x_scale,
-            'y_info': self._y_info, 'n_samples': self.n_samples,
-            **self._debug_attrs,
-        }
+    def __getstate__(self) -> dict:
+        return {f.name: getattr(self, f.name) for f in fields(self)}
 
-    def __setstate__(self, state):
-        if state['version'] < 7:
-            state.update(partitions=None, partitions_arg=None, model=None, basis=0, basis_window='hamming')
-        elif state['version'] < 8:
-            state['partitions'] = state.pop('n_partitions')
-            state['partitions_arg'] = state.pop('n_partitions_arg')
-        if state['version'] < 9:
-            state['residual'] = state.pop('fit_error')
-        if state['version'] < 10:
-            state['prefit'] = None
+    def __setstate__(self, state: dict):
+        # backwards compatibility
+        version = state.pop('version')
+        if version < 11:
+            if version == 7:
+                state['partitions'] = state.pop('n_partitions')
+                state['partitions_arg'] = state.pop('n_partitions_arg')
+            if version < 9:
+                state['residual'] = state.pop('fit_error')
+            if version < 10:
+                state['prefit'] = None
+            for key in ['partitions_arg', 'h', 'isnan', 'y_info']:
+                state[f'_{key}'] = state.pop(key, None)
         self.__init__(**state)
 
     def __repr__(self):
@@ -535,7 +511,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
 
     if debug:
         debug_attrs = {
-            'y_pred': data.package_y_like(y_pred, 'y-pred'),
+            '_y_pred': data.package_y_like(y_pred, 'y-pred'),
         }
     else:
         debug_attrs = {}
@@ -544,14 +520,13 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     model_repr = None if model is None else data.model
     prefit_repr = None if prefit is None else repr(prefit)
     return BoostingResult(
-        # input parameters
+        # basic parameters
         data.y_name, data.x_name, tstart_in, tstop_in, scale_data, delta, mindelta, error,
-        basis, basis_window, partitions, data.partitions, model_repr, prefit_repr,
-        # result parameters
-        h, r, isnan, spearmanr, residual, t_run,
-        y_mean, y_scale, x_mean, x_scale, data.y_info,
-        # vector results
-        r_l1, selective_stopping, data.y.shape[1],
+        # results
+        h, r, isnan, spearmanr, residual, t_run, y_mean, y_scale, x_mean, x_scale, data.y_info, r_l1,
+        # advanced parameters
+        basis, basis_window, partitions, data.partitions, model_repr, prefit_repr, selective_stopping, data.y.shape[1],
+        # Debug info
         **debug_attrs)
 
 

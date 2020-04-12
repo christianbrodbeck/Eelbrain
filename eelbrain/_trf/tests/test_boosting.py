@@ -120,7 +120,7 @@ def test_boosting_epochs():
         print(f"tstart={tstart}, basis={basis}")
         res = boosting('uts', [p0, p1], tstart, 0.6, model='A', ds=ds, basis=basis, partitions=3, debug=True)
         y = convolve(res.h_scaled, [p0, p1])
-        assert correlation_coefficient(y, res.y_pred) > .999
+        assert correlation_coefficient(y, res._y_pred) > .999
         r = correlation_coefficient(y, ds['uts'])
         assert res.r == approx(r, abs=1e-3)
         assert res.partitions == 3
@@ -161,7 +161,7 @@ def test_result():
     # reconstruction
     res = boosting(x1, y, -1, 0, debug=True)
     x1r = convolve(res.h_scaled, y)
-    assert correlation_coefficient(res.y_pred, x1r) > .999
+    assert correlation_coefficient(res._y_pred, x1r) > .999
     assert correlation_coefficient(x1r[0.9:], x1[0.9:]) == approx(res.r, abs=1e-3)
 
     # test NaN checks  (modifies data)
