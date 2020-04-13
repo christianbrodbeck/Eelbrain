@@ -12,6 +12,11 @@ New in 0.32
   - Consistent class names for tests in :mod:`test`, :mod:`testnd` and :mod:`pipeline`.
   - :class:`plot.Timeplot` argument order: second and third argument switched to facilitate plotting single category.
 
+* :class:`boosting`:
+
+  - Different ``tstart``/``tstop`` for different predictors (contributed by `Joshua Kulasingham`_)
+  - Cross-validation of model fit (``test`` parameter)
+
 * :class:`plot.Style` to control advanced plotting options by category (see :ref:`exa-bozplot` example).
 * New functions/methods:
 
@@ -590,4 +595,5 @@ New in 0.1.5
   ``left arrow``, ``right arrow``).
 
 
+.. _Joshua Kulasingham: https://www.researchgate.net/profile/Joshua_Kulasingham
 .. _Proloy Das: https://ece.umd.edu/~proloy/

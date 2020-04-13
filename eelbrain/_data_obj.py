@@ -94,7 +94,7 @@ ds['Realname'] = 1 / ds['y']
 plot.Correlation('Realname', ..., ds=ds)  # -> 'Realname'
 ```
 """
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterable, Iterator
 from copy import deepcopy
 from functools import partial
 from itertools import chain, product, repeat, zip_longest
@@ -107,7 +107,7 @@ import operator
 import os
 import re
 import string
-import typing
+from typing import Union, Sequence, Tuple, List
 from warnings import warn
 
 from matplotlib.ticker import (
@@ -2995,7 +2995,7 @@ class NDVar:
     def __init__(
             self,
             x: np.ndarray,
-            dims: typing.Union['Dimension', typing.Sequence['Dimension']],
+            dims: Union['Dimension', Sequence['Dimension']],
             name: str = None,
             info: dict = None,
     ):
@@ -7471,7 +7471,7 @@ class Dimension:
         raise NotImplementedError(f"Can't concatenate along {cls.__name__} dimensions")
 
     @staticmethod
-    def _concatenate_connectivity(dims: typing.List['Dimension']):
+    def _concatenate_connectivity(dims: List['Dimension']):
         c_types = {dim._connectivity_type for dim in dims}
         if len(c_types) > 1:
             raise NotImplementedError(f"concatenating with differing connectivity")
@@ -7481,7 +7481,7 @@ class Dimension:
         return c_type
 
     @staticmethod
-    def _concatenate_attr(dims: typing.List['Dimension'], attr: str):
+    def _concatenate_attr(dims: List['Dimension'], attr: str):
         attrs = {getattr(dim, attr) for dim in dims}
         if len(attrs) > 1:
             desc = ', '.join(map(repr, attrs))
@@ -10427,11 +10427,11 @@ def intersect_dims(dims1, dims2, check_dims=True):
 
 EVAL_CONTEXT.update(Var=Var, Factor=Factor, extrema=extrema)
 
-NDVarArg = typing.Union[NDVar, str]
-VarArg = typing.Union[Var, str]
-NumericArg = typing.Union[Var, NDVar, str]
-CategorialArg = typing.Union[Factor, Interaction, NestedEffect, str]
-FactorArg = typing.Union[Factor, str]
-CellArg = typing.Union[str, typing.Tuple[str, ...]]
-IndexArg = typing.Union[Var, np.ndarray, str]
-ModelArg = typing.Union[Model, Interaction, Categorial, Var, str]
+NDVarArg = Union[NDVar, str]
+VarArg = Union[Var, str]
+NumericArg = Union[Var, NDVar, str]
+CategorialArg = Union[Factor, Interaction, NestedEffect, str]
+FactorArg = Union[Factor, str]
+CellArg = Union[str, Tuple[str, ...]]
+IndexArg = Union[Var, np.ndarray, str]
+ModelArg = Union[Model, Var, CategorialArg]

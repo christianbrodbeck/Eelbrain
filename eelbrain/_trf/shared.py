@@ -1,16 +1,47 @@
 from collections.abc import Iterator
+from dataclasses import dataclass
 from functools import reduce
-from math import floor
 from operator import mul
+from typing import List, Union
 
 import numpy as np
 import scipy.signal
 from scipy.linalg import norm
 
 from .. import _info
-from .._data_obj import NDVar, Case, UTS, dataobj_repr, ascategorial, asndvar
-from .._text import enumeration
+from .._data_obj import CategorialArg, NDVarArg, Dataset, NDVar, Case, UTS, dataobj_repr, ascategorial, asndvar
+from .._utils import LazyProperty
 from .._utils.numpy_utils import newaxis
+
+
+@dataclass
+class Split:
+    train: np.ndarray
+    validate: np.ndarray = None
+    test: np.ndarray = None
+    i_test: int = 0  # Index (to group splits with the same test segmet)
+
+    @LazyProperty
+    def train_and_validate(self):
+        return np.vstack([self.train, self.validate])
+
+
+def merge_segments(
+        segments: np.ndarray,
+        soft_splits: Union[bool, np.ndarray] = None,
+):
+    """Take a selection of input segments and remove soft boundaries"""
+    # return out_segments
+    if soft_splits is None or isinstance(soft_splits, np.ndarray) and len(soft_splits) == 0:
+        return segments
+    out_segments = list(segments)
+    for i in range(len(out_segments)-1, 0, -1):
+        pre_seg, post_seg = out_segments[i-1], out_segments[i]
+        if pre_seg[1] >= post_seg[0]:
+            if soft_splits is True or post_seg[0] in soft_splits:
+                out_segments[i-1] = [pre_seg[0], max(pre_seg[1], post_seg[1])]
+                del out_segments[i]
+    return np.vstack(out_segments)
 
 
 class RevCorrData:
@@ -24,14 +55,34 @@ class RevCorrData:
         Predictors.
     segments : np.ndarray
         ``(n_segments, 2)`` array of segment ``[start, stop]`` indices.
-    cv_segments : Sequence
-        Sequence of ``(all_segments, train, test)`` tuples, where each is a
-        2d-array of ``[start, stop]`` indices.
+    cv_segments : np.ndarray
+        Segmentation used for cross-validation.
+    splits : list of Split
+        Cross-validation scheme.
     cv_indexes : Sequence
         Only available for segmented data. For each partition, the index into
         :attr:`.segments` used as test set.
     """
-    def __init__(self, y, x, error, scale_data, ds=None):
+    # prefit
+    _prefit_repr = None
+    # cross-validation
+    partitions_arg = None
+    partitions = None
+    model = None
+    validate = None
+    test = None
+    cv_segments = None
+    cv_indexes = None
+    splits = None
+
+    def __init__(
+            self,
+            y: NDVarArg,
+            x: Union[NDVarArg, List[NDVarArg]],
+            error: str,  # 'l1' | 'l2', for scaling data
+            scale_data: Union[bool, str],  # normalize y and x; can be 'inplace'
+            ds: Dataset = None,
+    ):
         y = asndvar(y, ds=ds)
         if isinstance(x, (tuple, list, Iterator)):
             x = (asndvar(x_, ds=ds) for x_ in x)
@@ -81,6 +132,7 @@ class RevCorrData:
                     segments = np.hstack((seg_i[:-1], seg_i[1:]))
                 else:
                     n_cases = 0
+                    segments = np.array([[0, n_times]], np.int64)
             elif n_cases:
                 if len(x_) != n_cases:
                     raise ValueError(f'x={x}: not all components have same number of cases')
@@ -93,7 +145,7 @@ class RevCorrData:
         if not vector_dims:
             vector_dim = None
         elif len(vector_dims) == 1:
-            vector_dim = vector_dims.pop()
+            vector_dim = y.get_dim(vector_dims.pop())
         else:
             raise NotImplementedError(f"y={y!r}: more than one vector dimension ({', '.join(vector_dims)})")
 
@@ -104,7 +156,7 @@ class RevCorrData:
             last = ('case',) + last
             n_ydims -= 1
         if vector_dim:
-            last = (vector_dim,) + last
+            last = (vector_dim.name,) + last
         y_dimnames = y.get_dimnames(last=last)
         ydims = y.get_dims(y_dimnames[:n_ydims])
         n_times_flat = n_cases * n_times if case_to_segments else n_times
@@ -217,8 +269,7 @@ class RevCorrData:
         self.error = error
         self.time = time_dim
         self.segments = segments
-        self.cv_segments = self.cv_indexes = self.partitions = self.model = None
-        self._scale_data = bool(scale_data)
+        self.scale_data = bool(scale_data)
         self.shortest_segment_n_times = n_times
         # y
         self.y = y_data  # (n_signals, n_times)
@@ -229,7 +280,7 @@ class RevCorrData:
         self.ydims = ydims  # without case and time
         self.yshape = tuple(map(len, ydims))
         self.full_y_dims = y.get_dims(y_dimnames)
-        self.vector_dim = vector_dim  # vector dimension name
+        self.vector_dim = vector_dim  # vector dimension
         self.vector_shape = vector_shape  # flat shape with vector dim separate
         # x
         self.x = x_data  # (n_predictors, n_times)
@@ -240,9 +291,16 @@ class RevCorrData:
         self._multiple_x = multiple_x
         self._x_is_copy = x_is_copy
         self.x_pads = x_pads
+        # basis
+        self.basis = 0
+        self.basis_window = None
 
     def apply_basis(self, basis, basis_window):
         "Apply basis to x"
+        if self.basis != 0:
+            raise NotImplementedError("Applying basis more than once")
+        self.basis = basis
+        self.basis_window = basis_window
         if not basis:
             return
         n = int(round(basis / self.time.tstep))
@@ -344,84 +402,132 @@ class RevCorrData:
             self.x_name.append(name)
         self._x_meta = new_meta
         self._multiple_x = len(self._x_meta) > 1
+        self._prefit_repr = repr(res)
 
-    def initialize_cross_validation(self, partitions=None, model=None, ds=None):
-        if partitions is not None and partitions <= 1:
-            raise ValueError(f"partitions={partitions}")
-        cv_segments = []  # list of (segments, train, test)
-        n_times = len(self.time)
-        if self.segments is None:
+    def initialize_cross_validation(
+            self,
+            partitions: int = None,  # Number of segments to split the data
+            model: CategorialArg = None,  # sample evenly from cells
+            ds: Dataset = None,
+            validate: int = 1,  # Number of segments in validation set
+            test: int = 0,  # Number of segments in test set
+    ):
+        """Initialize cross-validation scheme
+
+        Notes
+        -----
+        General solution:
+
+         - split data into even sized segments (hard and soft splits)
+         - group segments by cell-index
+         - create splits
+         - merge segments at soft boundaries
+        """
+        if partitions is not None and partitions <= validate + test:
+            raise ValueError(f"partitions={partitions} with validate={validate}, test={test}")
+        assert validate >= 0
+        if validate > 1:
+            raise NotImplementedError
+        assert test >= 0
+        if test > 1:
+            raise NotImplementedError
+        self.partitions_arg = partitions
+        if len(self.segments) == 1:
+            if partitions is None:
+                partitions = 2 + test + validate if test else 10
             if model is not None:
                 raise TypeError(f'model={dataobj_repr(model)!r}: model cannot be specified in unsegmented data')
-            if partitions is None:
-                partitions = 10
-            seg_n_times = int(floor(n_times / partitions))
-            # first
-            for i in range(partitions):
-                test = ((seg_n_times * i, seg_n_times * (i + 1)),)
-                if i == 0:  # first
-                    train = ((seg_n_times, n_times),)
-                elif i == partitions - 1:  # last
-                    train = ((0, n_times - seg_n_times),)
-                else:
-                    train = ((0, seg_n_times * i),
-                             (seg_n_times * (i + 1), n_times))
-                cv_segments.append((np.vstack((train, test)), train, test))
-            cv_segments = (tuple(np.array(s, np.int64) for s in cv) for cv in cv_segments)
+            n_times = len(self.time)
+            split_points = np.round(np.linspace(0, n_times, partitions + 1)).astype(np.int64)
+            soft_splits = split_points[1:-1]
+            segments = np.vstack([split_points[i: i+2] for i in range(partitions)])
+            categories = [None]
         else:
-            n_total = len(self.segments)
+            n_segments = len(self.segments)
+            # determine model cells
             if model is None:
-                cell_indexes = [np.arange(n_total)]
+                categories = [None]
+                cell_size = n_segments
             else:
-                model = ascategorial(model, ds=ds, n=n_total)
-                cell_indexes = [np.flatnonzero(model == cell) for cell in model.cells]
-            cell_sizes = [len(i) for i in cell_indexes]
-            cell_size = min(cell_sizes)
-            cell_sizes_are_equal = len(set(cell_sizes)) == 1
+                model = ascategorial(model, ds=ds, n=n_segments)
+                categories = [np.flatnonzero(model == cell) for cell in model.cells]
+                cell_sizes = [len(i) for i in categories]
+                cell_size = min(cell_sizes)
+                cell_sizes_are_equal = len(set(cell_sizes)) == 1
+                if partitions is None and not cell_sizes_are_equal:
+                    raise NotImplementedError(f'Automatic partition for variable cell size {dict(zip(model.cells, cell_sizes))}')
+            # automatic selection of partitions
             if partitions is None:
-                if cell_sizes_are_equal:
-                    if 3 <= cell_size <= 10:
-                        partitions = cell_size
-                    else:
-                        raise NotImplementedError(f"Automatic partition for {cell_size} cases")
+                if 3 <= cell_size <= 10:
+                    partitions = cell_size
                 else:
-                    raise NotImplementedError(f'Automatic partition for variable cell size {tuple(cell_sizes)}')
-
-            if partitions > cell_size:
-                if not cell_sizes_are_equal:
-                    raise ValueError(f'partitions={partitions}: > smallest cell size ({cell_size}) with unequal cell sizes')
+                    raise NotImplementedError(f"Automatic partition for {cell_size} cases")
+            # create segments
+            if cell_size >= partitions:
+                soft_splits = None
+                segments = self.segments
+            else:
+                # need to subdivide segments
+                if model is not None:
+                    raise NotImplementedError(f'partitions={partitions}: with model')
                 elif partitions % cell_size:
-                    raise ValueError(f'partitions={partitions}: not a multiple of cell_size ({cell_size})')
-                elif len(cell_sizes) > 1:
-                    raise NotImplementedError(f'partitions={partitions} with more than one cell')
+                    raise ValueError(f'partitions={partitions}: not a multiple of n_cases ({cell_size})')
                 n_parts = partitions // cell_size
                 segments = []
+                soft_splits = []
                 for start, stop in self.segments:
-                    d = (stop - start) / n_parts
-                    starts = [int(round(start + i * d)) for i in range(n_parts)]
-                    starts.append(stop)
-                    for i in range(n_parts):
-                        segments.append((starts[i], starts[i+1]))
-                segments = np.array(segments, np.int64)
-                index_range = np.arange(partitions)
-                indexes = [index_range == i for i in range(partitions)]
-            else:
-                segments = self.segments
-                indexes = []
-                for i in range(partitions):
-                    index = np.zeros(n_total, bool)
-                    for cell_index in cell_indexes:
-                        index[cell_index[i::partitions]] = True
-                    indexes.append(index)
+                    split_points = np.round(np.linspace(start, stop, n_parts)).astype(np.int64)
+                    soft_splits.append(split_points[1:-1])
+                    segments.extend(split_points[i: i+2] for i in range(n_parts))
+                soft_splits = np.concatenate(soft_splits)
+                segments = np.vstack(segments)
+        # create actual splits
+        splits = []  # list of Split
+        test_iter = range(partitions) if test else [None]
+        validate_iter = range(partitions) if validate else [None]
+        n_segments = len(segments)
+        for i_test in test_iter:
+            for i_validate in validate_iter:
+                if i_test == i_validate:
+                    continue
+                train_set = np.ones(n_segments, bool)
+                # test set
+                if i_test is None:
+                    test_segments = None
+                else:
+                    test_set = np.zeros(n_segments, bool)
+                    for cell_index in categories:
+                        index = slice(i_test, None, partitions)
+                        if cell_index is not None:
+                            index = cell_index[index]
+                        test_set[index] = True
+                    train_set ^= test_set
+                    test_segments = merge_segments(segments[test_set], soft_splits)
+                # validation set
+                if i_validate is None:
+                    validate_segments = None
+                else:
+                    validate_set = np.zeros(n_segments, bool)
+                    for cell_index in categories:
+                        index = slice(i_validate, None, partitions)
+                        if cell_index is not None:
+                            index = cell_index[index]
+                        validate_set[index] = True
+                    train_set ^= validate_set
+                    validate_segments = merge_segments(segments[validate_set], soft_splits)
+                # create split
+                train_segments = merge_segments(segments[train_set], soft_splits)
+                splits.append(Split(train_segments, validate_segments, test_segments, i_test))
 
-            cv_segments = ((segments, segments[np.invert(i)], segments[i]) for i in indexes)
-            self.cv_indexes = tuple(indexes)
         self.partitions = partitions
-        self.cv_segments = tuple(cv_segments)
-        self.model = dataobj_repr(model)
+        self.validate = validate
+        self.test = test
+        self.model = None if model is None else dataobj_repr(model)
+        self.cv_segments = segments
+        self.splits = splits
 
     def data_scale_ndvars(self):
-        if self._scale_data:
+        if self.scale_data:
             # y
             if self.yshape:
                 y_mean = NDVar(self.y_mean.reshape(self.yshape), self.ydims, self.y_info, self.y_name)
@@ -469,7 +575,7 @@ class RevCorrData:
         """
         h_time = UTS(tstart, self.time.tstep, h.shape[-1])
         hs = []
-        if self._scale_data:
+        if self.scale_data:
             info = _info.for_normalized_data(self.y_info, 'Response')
         else:
             info = self.y_info
@@ -537,37 +643,3 @@ class RevCorrData:
         else:
             dims = self.full_y_dims
         return NDVar(data, dims, {}, name)
-
-    def vector_correlation(self, y, y_pred):
-        "Correlation for vector data"
-        # shape (..., space, time)
-        assert self._scale_data
-        assert self.error in ('l1', 'l2')
-        assert y.ndim == y_pred.ndim == 3
-        y_pred_norm = norm(y_pred, axis=1)
-        y_norm = norm(y, axis=1)
-        # l2 correlation
-        y_pred_scale = (y_pred_norm ** 2).mean(1) ** 0.5
-        y_pred_scale[y_pred_scale == 0] = 1
-        y_pred_l2 = y_pred / y_pred_scale[:, newaxis, newaxis]
-        if self.error == 'l1':
-            y_scale = (y_norm ** 2).mean(1) ** 0.5
-            y_l2 = y / y_scale[:, newaxis, newaxis]
-        else:
-            y_l2 = y
-        r_l2 = np.multiply(y_l2, y_pred_l2, out=y_pred_l2).sum(1).mean(1)
-        # l1 correlation
-        if self.error == 'l1':
-            y_pred_scale = y_pred_norm.mean(1)
-            y_pred_scale[y_pred_scale == 0] = 1
-            y_pred_l1 = y_pred / y_pred_scale[:, newaxis, newaxis]
-            # E|X| = 1 --> E√XX = 1
-            yy = np.multiply(y, y_pred_l1, out=y_pred_l1).sum(1)
-            sign = np.sign(yy)
-            np.abs(yy, out=yy)
-            yy **= 0.5
-            yy *= sign
-            r_l1 = yy.mean(1)
-        else:
-            r_l1 = None
-        return r_l2, r_l1

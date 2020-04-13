@@ -10,6 +10,7 @@ import pickle
 import pytest
 from pytest import approx
 import scipy.io
+import scipy.stats
 from eelbrain import (
     datasets, configure,
     boosting, convolve, correlation_coefficient, epoch_impulse_predictor,
@@ -17,22 +18,22 @@ from eelbrain import (
 )
 
 from eelbrain.testing import assert_dataobj_equal
-from eelbrain._trf._boosting import boost, evaluate_kernel
+from eelbrain._trf._boosting import Split, boost
 from eelbrain._trf._boosting import convolve as boosting_convolve
 
 
 def assert_res_equal(res1, res):
     assert_array_equal(res1.h, res.h)
     assert res1.r == res.r
-    assert res1.spearmanr == res.spearmanr
+    assert res1.r_rank == res.r_rank
 
 
 @pytest.mark.parametrize('n_workers', [0, True])
 def test_boosting(n_workers):
     "Test boosting NDVars"
-    ds = datasets._get_continuous(ynd=True)
     configure(n_workers=n_workers)
 
+    ds = datasets._get_continuous(ynd=True)
     y = ds['y']
     ynd = ds['ynd']
     x1 = ds['x1']
@@ -69,6 +70,19 @@ def test_boosting(n_workers):
     # persistence
     res_p = pickle.loads(pickle.dumps(res, pickle.HIGHEST_PROTOCOL))
     assert_res_equal(res_p, res)
+
+    # cross-validation
+    res = boosting(y[:7.5], x1[:7.5], 0, 1, scale_data=False, partitions=3, debug=True)
+    res_cv = boosting(y, x1, 0, 1, test=1, scale_data=False, partitions=4, debug=True)
+    assert correlation_coefficient(res.h, res_cv.h) == approx(.986, abs=.001)
+    # fit res_cv on same data as res
+    fit = res_cv.fit
+    fit.data.splits = [fit.data.splits[i] for i in [9, 10, 11]]
+    fit.fit(0, 1, 0)
+    res_cv = fit.evaluate_fit(debug=True)
+    assert_dataobj_equal(res_cv.h, res.h)
+    y_pred = convolve(res_cv.h_scaled, x1[7.5:])
+    assert correlation_coefficient(y_pred, y[7.5:]) == approx(res_cv.r, abs=1e-8)
 
     res = boosting(y, x2, 0, 1)
     assert res.r == approx(0.601, abs=0.001)
@@ -122,7 +136,7 @@ def test_boosting_epochs():
         res = boosting('uts', [p0, p1], tstart, 0.6, model='A', ds=ds, basis=basis, partitions=3, debug=True)
         assert res.r == approx(0.238, abs=1e-3)
         y = convolve(res.h_scaled, [p0, p1])
-        assert correlation_coefficient(y, res._y_pred) > .999
+        assert correlation_coefficient(y, res.y_pred) > .999
         r = correlation_coefficient(y, ds['uts'])
         assert res.r == approx(r, abs=1e-3)
         assert res.partitions == 3
@@ -163,7 +177,7 @@ def test_result():
     # reconstruction
     res = boosting(x1, y, -1, 0, debug=True)
     x1r = convolve(res.h_scaled, y)
-    assert correlation_coefficient(res._y_pred, x1r) > .999
+    assert correlation_coefficient(res.y_pred, x1r) > .999
     assert correlation_coefficient(x1r[0.9:], x1[0.9:]) == approx(res.r, abs=1e-3)
 
     # test NaN checks  (modifies data)
@@ -184,6 +198,12 @@ def test_result():
             boosting(ds['y'], ds['x1'], 0, .5, False)
 
 
+def evaluate_kernel(y, y_pred, test_seg_len, n_skip):
+    y = y[n_skip: test_seg_len]
+    y_pred = y_pred[n_skip:]
+    return np.corrcoef(y, y_pred)[0, 1], scipy.stats.spearmanr(y, y_pred)[0]
+
+
 def test_boosting_func():
     "Test boosting() against svdboostV4pred.m"
     # 1d-TRF
@@ -196,15 +216,13 @@ def test_boosting_func():
     y_len = len(y)
     seg_len = int(y_len / 40)
     all_segments = np.array([[0, seg_len], [seg_len, y_len]], np.int64)
-    train_segments = all_segments[1:]
-    test_segments = all_segments[:1]
+    split = Split(all_segments[1:], all_segments[:1])
     tstart = np.array([0], np.int64)
     tstop = np.array([10], np.int64)
-    h, test_sse_history = boost(y, x, x_pads, all_segments, train_segments, test_segments,
-                                tstart, tstop, 0.005, 0.005, 'l2', return_history=True)
+    h, test_sse_history = boost(y, x, x_pads, split, tstart, tstop, 0.005, 0.005, 'l2', return_history=True)
     test_seg_len = int(floor(x.shape[1] / 40))
     y_pred = boosting_convolve(h, x[:, :test_seg_len], x_pads, 0)
-    r, rr, _ = evaluate_kernel(y[:test_seg_len], y_pred, 'l2', h.shape[1] - 1)
+    r, rr = evaluate_kernel(y, y_pred, test_seg_len, h.shape[1] - 1)
 
     assert_array_equal(h, mat['h'])
     assert r == approx(mat['crlt'][0, 0])
@@ -219,11 +237,10 @@ def test_boosting_func():
     x_pads = np.zeros(len(x))
     tstart = np.array([0, 0, 0], np.int64)
     tstop = np.array([10, 10, 10], np.int64)
-    h, test_sse_history = boost(y, x, x_pads, all_segments, train_segments, test_segments,
-                                tstart, tstop, 0.005, 0.005, 'l2', return_history=True)
+    h, test_sse_history = boost(y, x, x_pads, split, tstart, tstop, 0.005, 0.005, 'l2', return_history=True)
     test_seg_len = int(floor(x.shape[1] / 40))
     y_pred = boosting_convolve(h, x[:, :test_seg_len], x_pads, 0)
-    r, rr, _ = evaluate_kernel(y[:test_seg_len], y_pred, 'l2', h.shape[1] - 1)
+    r, rr = evaluate_kernel(y, y_pred, test_seg_len, h.shape[1] - 1)
 
     assert_array_equal(h, mat['h'])
     assert r == approx(mat['crlt'][0, 0])

@@ -18,27 +18,27 @@ x2 = ds['x2']
 """
 from dataclasses import dataclass, field, fields
 import inspect
-from itertools import product
+from itertools import chain, product, repeat
 from multiprocessing import Process, Queue
 from multiprocessing.sharedctypes import RawArray
 import os
 import time
 from threading import Event, Thread
-from typing import Union, Tuple
+from typing import Union, Tuple, Sequence
+import warnings
 
 import numpy as np
 from numpy import newaxis
-from scipy.linalg import norm
 import scipy.signal
-from scipy.stats import spearmanr
 from tqdm import tqdm
 
 from .._config import CONFIG
-from .._data_obj import NDVar
+from .._data_obj import Dataset, NDVar, NDVarArg
 from .._exceptions import OldVersionError
 from .._utils import LazyProperty, user_activity
 from ._boosting_opt import l1, l2, generate_options, update_error
-from .shared import RevCorrData
+from .shared import RevCorrData, Split, merge_segments
+from ._fit_metrics import get_evaluators
 
 
 # process messages
@@ -73,7 +73,7 @@ class BoostingResult:
         with ``h``. Type depends on the ``y`` parameter to :func:`boosting`. For
         vector data, measured and predicted responses are normalized, and ``r``
         is computed as the average dot product over time.
-    spearmanr : float | NDVar
+    r_rank : float | NDVar
         As ``r``, the Spearman rank correlation.
     t_run : float
         Time it took to run the boosting algorithm (in seconds).
@@ -117,32 +117,38 @@ class BoostingResult:
     delta: float
     mindelta: float
     error: str
-    # results
-    _h: Union[NDVar, Tuple[NDVar, ...]]
-    r: Union[float, NDVar]
-    _isnan: np.ndarray
-    spearmanr: NDVar
-    residual: NDVar
-    t_run: float
+    # data properties
     y_mean: NDVar
     y_scale: NDVar
     x_mean: Union[NDVar, Tuple[NDVar, ...]]
     x_scale: Union[NDVar, Tuple[NDVar, ...]]
-    _y_info: dict = field(default_factory=dict)
-    r_l1: NDVar = None
+    # results
+    _h: Union[NDVar, Tuple[NDVar, ...]]
+    _isnan: np.ndarray
+    t_run: float
     # advanced parameters
     basis: float = 0
     basis_window: str = 'hamming'
     _partitions_arg: int = None
     partitions: int = None
+    validate: int = 1
+    test: int = 0
     model: str = None
     prefit: str = None
     selective_stopping: int = 0
+    # advanced data properties
     n_samples: int = None
+    _y_info: dict = field(default_factory=dict)
+    # fit metrics
+    residual: NDVar = None
+    r: Union[float, NDVar] = None
+    r_rank: Union[float, NDVar] = None
+    r_l1: NDVar = None
     # store the version of the boosting algorithm with which model was fit
     version: int = 11
     # debug parameters
-    _y_pred: NDVar = None
+    y_pred: NDVar = None
+    fit: 'Boosting' = None
 
     def __getstate__(self) -> dict:
         return {f.name: getattr(self, f.name) for f in fields(self)}
@@ -160,6 +166,7 @@ class BoostingResult:
                 state['prefit'] = None
             for key in ['partitions_arg', 'h', 'isnan', 'y_info']:
                 state[f'_{key}'] = state.pop(key, None)
+            state['r_rank'] = state.pop('spearmanr')
         self.__init__(**state)
 
     def __repr__(self):
@@ -258,15 +265,303 @@ class BoostingResult:
             index = np.invert(obj_new.source.parc.startswith('unknown-'))
             return obj_new.sub(source=index)
 
-        for attr in ('h', 'r', 'spearmanr', 'residual', 'y_mean', 'y_scale'):
+        for attr in ('h', 'r', 'r_rank', 'residual', 'y_mean', 'y_scale'):
             setattr(self, attr, sub_func(getattr(self, attr)))
 
 
+class SplitResult:
+    __slots__ = ('split', 'h', 'h_failed')
+
+    def __init__(self, split: Split, n_y: int, n_x: int, n_times_h: int):
+        self.split = split
+        self.h = np.empty((n_y, n_x, n_times_h), np.float64)
+        self.h_failed = np.zeros(n_y, bool)
+
+    def add_h(self, i_y: int, h: Union[np.ndarray, None]):
+        if h is None:
+            self.h_failed[i_y] = True
+            self.h[i_y] = 0
+        else:
+            self.h[i_y] = h
+
+    def h_with_nan(self):
+        "Set failed TRFs to NaN"
+        if np.any(self.h_failed):
+            h = self.h.copy()
+            h[self.h_failed] = np.nan
+            return h
+        return self.h
+
+
+class Boosting:
+    # fit parameters
+    tstart = None
+    tstart_h = None
+    tstop = None
+    selective_stopping = None
+    delta = None
+    mindelta = None
+    # timing
+    t_fit_start = None
+    t_fit_done = None
+    # fit result
+    _i_start = None
+    split_results = None
+    n_skip = 0
+    # eval result
+    y_pred = None
+
+    def __init__(
+            self,
+            data: RevCorrData,
+    ):
+        self.data = data
+
+    def fit(
+            self,
+            tstart: Union[float, Sequence[float]],
+            tstop: Union[float, Sequence[float]],
+            selective_stopping: int = 1,
+            delta: float = 0.005,  # coordinate search step
+            mindelta: float = None,  # narrow search by reducing delta until reaching mindelta
+    ):
+        mindelta_ = delta if mindelta is None else mindelta
+        self.selective_stopping = selective_stopping
+        self.delta = delta
+        self.mindelta = mindelta
+        n_y = len(self.data.y)
+        n_x = len(self.data.x)
+        # find TRF start/stop for each x
+        if isinstance(tstart, (tuple, list, np.ndarray)):
+            if len(tstart) != len(self.data.x_name):
+                raise ValueError(f'tstart={tstart!r}: len(tstart) ({len(tstart)}) is different from len(x) ({len(self.data.x_name)}')
+            elif len(tstart) != len(tstop):
+                raise ValueError(f'tstop={tstop!r}: mismatched len(tstart) = {len(tstart)}, len(tstop) = {len(tstop)}')
+            self.tstart = tuple(tstart)
+            self.tstart_h = min(self.tstart)
+            self.tstop = tuple(tstop)
+            n_xs = [1 if dim is None else len(dim) for _, dim, _ in self.data._x_meta]
+            tstart = [t for t, n in zip(tstart, n_xs) for _ in range(n)]
+            tstop = [t for t, n in zip(tstop, n_xs) for _ in range(n)]
+        else:
+            self.tstart = self.tstart_h = tstart
+            self.tstop = tstop
+            tstart = [tstart] * n_x
+            tstop = [tstop] * n_x
+
+        # TRF extent in indices
+        tstep = self.data.time.tstep
+        i_start_by_x = np.asarray([int(round(t / tstep)) for t in tstart], np.int64)
+        i_stop_by_x = np.asarray([int(round(t / tstep)) for t in tstop], np.int64)
+        self._i_start = i_start = np.min(i_start_by_x)
+        i_stop = np.max(i_stop_by_x)
+        h_n_times = i_stop - i_start
+
+        if len(self.data.segments) == 1:
+            self.n_skip = h_n_times - 1
+
+        # progress bar
+        n_splits = len(self.data.splits)
+        pbar = tqdm(desc=f"Fitting models", total=n_y * n_splits, disable=CONFIG['tqdm'])
+        self.t_fit_start = time.time()
+
+        # boosting
+        split_results = [SplitResult(split, n_y, n_x, h_n_times) for split in self.data.splits]
+        if CONFIG['n_workers']:
+            # Make sure cross-validations are added in the same order, otherwise
+            # slight numerical differences can occur
+            job_queue, result_queue = setup_workers(self.data, i_start_by_x, i_stop_by_x, delta, mindelta_, self.data.error, selective_stopping)
+            stop_jobs = Event()
+            thread = Thread(target=put_jobs, args=(job_queue, n_y, n_splits, stop_jobs))
+            thread.start()
+            # collect results
+            try:
+                for _ in range(n_y * n_splits):
+                    i_y, i_split, h = result_queue.get()
+                    split_results[i_split].add_h(i_y, h)
+                    pbar.update()
+            except KeyboardInterrupt:
+                stop_jobs.set()
+                raise
+        else:
+            for i_y, y_i in enumerate(self.data.y):
+                for split in split_results:
+                    h = boost(y_i, self.data.x, self.data.x_pads, split.split, i_start_by_x, i_stop_by_x, delta, mindelta_, self.data.error, selective_stopping)
+                    split.add_h(i_y, h)
+                    pbar.update()
+        self.split_results = split_results
+        pbar.close()
+        self.t_fit_done = time.time()
+
+    def _get_i_tests(self):
+        assert self.data.test
+        return sorted({split.split.i_test for split in self.split_results})
+
+    def _get_h(
+            self,
+            skip_failed: bool = False,
+            i_test: int = None,
+    ):
+        if i_test is None:
+            split_results = self.split_results
+            segments = self.data.segments
+        else:
+            split_results = [split for split in self.split_results if split.split.i_test == i_test]
+            segments = split_results[0].split.test
+
+        if skip_failed:
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', 'Mean of empty slice', RuntimeWarning)
+                h = np.nanmean([split.h_with_nan() for split in split_results], 0)
+            is_nan = np.isnan(h[:, :, 0])
+            h[is_nan] = 0
+        else:
+            h = np.mean([split.h for split in split_results])
+        return h, segments
+
+    def _get_h_failed(self, i_test: int = None) -> np.ndarray:
+        if i_test is None:
+            split_results = self.split_results
+        else:
+            split_results = [split for split in self.split_results if split.split.i_test == i_test]
+        out = np.all([split.h_failed for split in split_results], 0)
+        if self.data.vector_dim:
+            out = np.all(out.reshape((len(self.data.vector_dim), -1)), 0)
+        return out
+
+    def evaluate_fit(
+            self,
+            metrics: Sequence[str] = None,
+            cross_fit: bool = None,
+            debug: bool = False,
+    ):
+        if cross_fit is None:
+            cross_fit = bool(self.data.test)
+
+        # fit evaluation
+        if metrics is None:
+            if self.data.vector_dim:
+                metrics = [f'vec-{self.data.error}', f'vec-corr']
+                if self.data.error == 'l1':
+                    metrics.append('vec-corr-l1')
+            else:
+                metrics = [self.data.error, 'r', 'r_rank']
+
+        # hs: [(h, segments), ...]
+        if cross_fit:
+            hs = [self._get_h(True, i_test) for i_test in self._get_i_tests()]
+            all_segments = np.sort(np.vstack([s for _, s in hs]), 0)
+            eval_segments = merge_segments(all_segments, True)
+        else:
+            hs = [self._get_h(True)]
+            eval_segments = merge_segments(self.data.segments, True)
+            if self.n_skip:
+                eval_segments[:, 0] += self.n_skip
+                # check for invalid segments (negative duration)
+                valid = eval_segments[:, 1] - eval_segments[:, 0] > 0
+                if not np.all(valid):
+                    eval_segments = eval_segments[valid]
+
+        # y dimensions
+        n_y = len(self.data.y)
+        if self.data.vector_dim:
+            n_vec = len(self.data.vector_dim)
+            n_vecs = n_y // n_vec
+        else:
+            n_vec = n_vecs = 0
+
+        # predicted y
+        if debug:
+            y_pred_iter = y_pred = np.empty(self.data.y.shape)
+        elif n_vecs:
+            y_pred = np.empty((n_vec, *self.data.y.shape[1:]))
+            y_pred_iter = chain.from_iterable(repeat(tuple(y_pred), n_vecs))
+        else:
+            y_pred = np.empty(self.data.y.shape[1:])
+            y_pred_iter = repeat(y_pred, n_y)
+
+        evaluators, evaluators_s, evaluators_v = get_evaluators(metrics, self.data)
+
+        # buffer for cropped y_pred for evaluation
+        n_eval = np.sum(eval_segments[:, 1] - eval_segments[:, 0])
+        if evaluators_s:
+            y_buffer = np.empty(n_eval, np.float64)
+            y_pred_buffer = np.empty(n_eval, np.float64)
+        else:
+            y_buffer = y_pred_buffer = None
+        if evaluators_v:
+            y_buffer_vec = np.empty((n_vec, n_eval), np.float64)
+            y_pred_buffer_vec = np.empty((n_vec, n_eval), np.float64)
+        else:
+            y_buffer_vec = y_pred_buffer_vec = None
+
+        # fit and evaluate each y
+        for i_y, y_pred_i in enumerate(y_pred_iter):
+            for h, segments in hs:
+                convolve(h[i_y], self.data.x, self.data.x_pads, self._i_start, segments, y_pred_i)
+
+            if evaluators_s:
+                np.concatenate([self.data.y[i_y, a:b] for a, b in eval_segments], 0, y_buffer)
+                np.concatenate([y_pred_i[a:b] for a, b in eval_segments], 0, y_pred_buffer)
+                for e in evaluators_s:
+                    e.add_y(i_y, y_buffer, y_pred_buffer)
+
+            if evaluators_v and i_y % n_vec == n_vec - 1:
+                i_vec = i_y // n_vec
+                i_y_vec = slice(i_y-n_vec+1, i_y+1)
+                y_pred_i_vec = y_pred[i_y_vec] if debug else y_pred
+                np.concatenate([self.data.y[i_y_vec, a:b] for a, b in eval_segments], 1, y_buffer_vec)
+                np.concatenate([y_pred_i_vec[:, a:b] for a, b in eval_segments], 1, y_pred_buffer_vec)
+                for e in evaluators_v:
+                    e.add_y(i_vec, y_buffer_vec, y_pred_buffer_vec)
+
+        # Package evaluators
+        evaluations = {e.attr: self.data.package_value(e.x, e.name, meas=e.meas) for e in evaluators}
+        # package h
+        h_xs = [h for h, _ in hs]
+        h_x = h_xs[0] if len(h_xs) == 1 else np.mean(h_xs, 0)
+        h = self.data.package_kernel(h_x, self.tstart_h)
+        # package model parameters
+        y_mean, y_scale, x_mean, x_scale = self.data.data_scale_ndvars()
+        if debug:
+            evaluations['y_pred'] = self.data.package_y_like(y_pred, 'y-pred')
+            evaluations['fit'] = self
+        t_run = self.t_fit_done - self.t_fit_start
+        return BoostingResult(
+            # basic parameters
+            self.data.y_name, self.data.x_name, self.tstart, self.tstop, self.data.scale_data, self.delta, self.mindelta, self.data.error,
+            # data properties
+            y_mean, y_scale, x_mean, x_scale,
+            # results
+            h, self._get_h_failed(), t_run,
+            # advanced parameters
+            self.data.basis, self.data.basis_window, self.data.partitions_arg, self.data.partitions, self.data.validate, self.data.test, self.data.model, self.data._prefit_repr, self.selective_stopping,
+            # advanced data properties
+            self.data.y.shape[1], self.data.y_info,
+            **evaluations)
+
+
 @user_activity
-def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
-             error='l2', basis=0, basis_window='hamming',
-             partitions=None, model=None, ds=None, selective_stopping=0,
-             prefit=None, debug=False):
+def boosting(
+        y: NDVarArg,
+        x: Union[NDVarArg, Sequence[NDVarArg]],
+        tstart: Union[float, Sequence[float]],
+        tstop: Union[float, Sequence[float]],
+        scale_data: Union[bool, str] = True,  # normalize y and x; can be 'inplace'
+        delta: float = 0.005,  # coordinate search step
+        mindelta: float = None,  # narrow search by reducing delta until reaching mindelta
+        error: str = 'l2',  # 'l1' | 'l2', for scaling data
+        basis: float = 0,
+        basis_window: str = 'hamming',
+        partitions: int = None,  # Number of partitionings for cross-validation
+        model: str = None,
+        validate: int = 1,  # Number of segments in validation set
+        test: int = 0,  # Number of segments in test set
+        ds: Dataset = None,
+        selective_stopping: int = 0,
+        prefit: BoostingResult = None,
+        debug: bool = False,
+):
     """Estimate a linear filter with coordinate descent
 
     Parameters
@@ -324,6 +619,16 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
     ds : Dataset
         If provided, other parameters can be specified as string for items in
         ``ds``.
+    validate : int
+        Number of segments in validation dataset (currently has to be 1).
+    test : int
+        By default (``test=0``), the boosting algorithm uses all available data
+        to estimate the kernel. Set ``test=1`` to perform *k*-fold cross-
+        validation instead (with *k* = ``partitions``):
+        Each partition is used as test dataset in turn, while the remaining
+        ``k-1`` partitions are used to estimate the kernel. The resulting model
+        fit metrics reflect the re-combination of all partitions, each one
+        predicted from the corresponding, independent training set.
     selective_stopping : int
         By default, the boosting algorithm stops when the testing error stops
         decreasing. With ``selective_stopping=True``, boosting continues but
@@ -337,8 +642,7 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         predictors that were used to fit ``prefit``, and that they be identical
         to the originally used ``x``.
     debug : bool
-        Store additional properties in the result object (increases memory
-        consumption).
+        return Boosting object instead of result.
 
     Returns
     -------
@@ -365,169 +669,18 @@ def boosting(y, x, tstart, tstop, scale_data=True, delta=0.005, mindelta=None,
         `10.1080/09548980701609235 <https://doi.org/10.1080/09548980701609235>`_.
     """
     # check arguments
-    mindelta_ = delta if mindelta is None else mindelta
     selective_stopping = int(selective_stopping)
     if selective_stopping < 0:
         raise ValueError(f"selective_stopping={selective_stopping}")
-    elif not isinstance(debug, bool):
-        raise TypeError(f"debug={debug!r}")
 
     data = RevCorrData(y, x, error, scale_data, ds)
     data.apply_basis(basis, basis_window)
     data.prefit(prefit)
-    data.initialize_cross_validation(partitions, model, ds)
-    n_y = len(data.y)
-    n_x = len(data.x)
-    # find TRF start/stop for each x
-    if isinstance(tstart, (tuple, list, np.ndarray)):
-        if len(tstart) != len(data.x_name):
-            raise ValueError(f'tstart={tstart!r}: len(tstart) ({len(tstart)}) is different from len(x) ({len(data.x_name)}')
-        elif len(tstart) != len(tstop):
-            raise ValueError(f'tstop={tstop!r}: mismatched len(tstart) = {len(tstart)}, len(tstop) = {len(tstop)}')
-        tstart_in = tuple(tstart)
-        tstop_in = tuple(tstop)
-        n_xs = [1 if dim is None else len(dim) for _, dim, _ in data._x_meta]
-        tstart = [t for t, n in zip(tstart, n_xs) for _ in range(n)]
-        tstop = [t for t, n in zip(tstop, n_xs) for _ in range(n)]
-    else:
-        tstart_in = tstart
-        tstop_in = tstop
-        tstart = [tstart] * n_x
-        tstop = [tstop] * n_x
+    data.initialize_cross_validation(partitions, model, ds, validate, test)
 
-    # TRF extent in indices
-    tstep = data.time.tstep
-    i_start_by_x = np.asarray([int(round(t / tstep)) for t in tstart], np.int64)
-    i_stop_by_x = np.asarray([int(round(t / tstep)) for t in tstop], np.int64)
-    i_start = np.min(i_start_by_x)
-    i_stop = np.max(i_stop_by_x)
-    trf_length = i_stop - i_start
-
-    if data.segments is None:
-        i_skip = trf_length - 1
-    else:
-        i_skip = 0
-
-    # progress bar
-    n_cv = len(data.cv_segments)
-    pbar = tqdm(desc=f"Boosting{f' {n_y} signals' if n_y > 1 else ''}", total=n_y * n_cv, disable=CONFIG['tqdm'])
-    t_start = time.time()
-    # result containers
-    res = np.empty((3, n_y))  # r, rank-r, error
-    h_x = np.empty((n_y, n_x, trf_length))
-    store_y_pred = bool(data.vector_dim) or debug
-    y_pred = np.empty_like(data.y) if store_y_pred else np.empty(data.y.shape[1:])
-    # boosting
-    if CONFIG['n_workers']:
-        # Make sure cross-validations are added in the same order, otherwise
-        # slight numerical differences can occur
-        job_queue, result_queue = setup_workers(data, i_start_by_x, i_stop_by_x, delta, mindelta_, error, selective_stopping)
-        stop_jobs = Event()
-        thread = Thread(target=put_jobs, args=(job_queue, n_y, n_cv, stop_jobs))
-        thread.start()
-
-        # collect results
-        try:
-            h_segs = {}
-            for _ in range(n_y * n_cv):
-                y_i, seg_i, h = result_queue.get()
-                pbar.update()
-                if y_i in h_segs:
-                    h_seg = h_segs[y_i]
-                    h_seg[seg_i] = h
-                    if len(h_seg) == n_cv:
-                        del h_segs[y_i]
-                        hs = [h for h in (h_seg[i] for i in range(n_cv)) if h is not None]
-                        if hs:
-                            h = np.mean(hs, 0, out=h_x[y_i])
-                            y_i_pred = y_pred[y_i] if store_y_pred else y_pred
-                            convolve(h, data.x, data.x_pads, i_start, data.segments, y_i_pred)
-                            if not data.vector_dim:
-                                res[:, y_i] = evaluate_kernel(data.y[y_i], y_i_pred, error, i_skip, data.segments)
-                        else:
-                            h_x[y_i] = 0
-                            if not data.vector_dim:
-                                res[:, y_i] = 0
-                            if store_y_pred:
-                                y_pred[y_i] = 0
-                else:
-                    h_segs[y_i] = {seg_i: h}
-        except KeyboardInterrupt:
-            stop_jobs.set()
-            raise
-    else:
-        for y_i, y_ in enumerate(data.y):
-            hs = []
-            for segments, train, test in data.cv_segments:
-                h = boost(y_, data.x, data.x_pads, segments, train, test, i_start_by_x, i_stop_by_x, delta, mindelta_, error, selective_stopping)
-                if h is not None:
-                    hs.append(h)
-                pbar.update()
-
-            if hs:
-                h = np.mean(hs, 0, out=h_x[y_i])
-                y_i_pred = y_pred[y_i] if store_y_pred else y_pred
-                convolve(h, data.x, data.x_pads, i_start, data.segments, y_i_pred)
-                if not data.vector_dim:
-                    res[:, y_i] = evaluate_kernel(data.y[y_i], y_i_pred, error, i_skip, data.segments)
-            else:
-                h_x[y_i] = 0
-                if not data.vector_dim:
-                    res[:, y_i] = 0
-                if store_y_pred:
-                    y_pred[y_i] = 0
-
-    pbar.close()
-    t_run = time.time() - t_start
-
-    # fit-evaluation statistics
-    if data.vector_dim:
-        y_vector = data.y.reshape(data.vector_shape)
-        y_pred_vector = y_pred.reshape(data.vector_shape)
-        # error: distance between actual and modeled
-        y_pred_error = norm(y_vector - y_pred_vector, axis=1)
-        if error == 'l1':
-            errs = y_pred_error.mean(-1)
-        elif error == 'l2':
-            errs = y_pred_error.std(-1)
-        else:
-            raise RuntimeError(f"error={error!r}")
-        rs, rs_l1 = data.vector_correlation(y_vector, y_pred_vector)
-        if rs_l1 is None:
-            r_l1 = None
-        else:
-            r_l1 = data.package_value(rs_l1, 'l1 correlation', meas='r')
-        spearmanr = None
-    else:
-        rs, rrs, errs = res
-        r_l1 = None
-        spearmanr = data.package_value(rrs, 'rank correlation', meas='r')
-    isnan = np.isnan(rs)
-    rs[isnan] = 0
-    r = data.package_value(rs, 'correlation', meas='r')
-    residual = data.package_value(errs, 'fit error')
-
-    y_mean, y_scale, x_mean, x_scale = data.data_scale_ndvars()
-
-    if debug:
-        debug_attrs = {
-            '_y_pred': data.package_y_like(y_pred, 'y-pred'),
-        }
-    else:
-        debug_attrs = {}
-
-    h = data.package_kernel(h_x, min(tstart))
-    model_repr = None if model is None else data.model
-    prefit_repr = None if prefit is None else repr(prefit)
-    return BoostingResult(
-        # basic parameters
-        data.y_name, data.x_name, tstart_in, tstop_in, scale_data, delta, mindelta, error,
-        # results
-        h, r, isnan, spearmanr, residual, t_run, y_mean, y_scale, x_mean, x_scale, data.y_info, r_l1,
-        # advanced parameters
-        basis, basis_window, partitions, data.partitions, model_repr, prefit_repr, selective_stopping, data.y.shape[1],
-        # Debug info
-        **debug_attrs)
+    fit = Boosting(data)
+    fit.fit(tstart, tstop, selective_stopping, delta, mindelta)
+    return fit.evaluate_fit(debug=debug)
 
 
 class BoostingStep:
@@ -541,8 +694,7 @@ class BoostingStep:
         self.e_test = e_test
 
 
-def boost(y, x, x_pads, all_index, train_index, test_index, i_start_by_x, i_stop_by_x,
-          delta, mindelta, error, selective_stopping=0, return_history=False):
+def boost(y, x, x_pads, split, i_start_by_x, i_stop_by_x, delta, mindelta, error, selective_stopping=0, return_history=False):
     """Estimate one filter with boosting
 
     Parameters
@@ -553,12 +705,8 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start_by_x, i_stop
         Stimulus.
     x_pads : array (n_stims,)
         Padding for x.
-    all_index : array of (start, stop)
-        Time sample index of training and testing segments.
-    train_index : array of (start, stop)
-        Time sample index of training segments.
-    test_index : array of (start, stop)
-        Time sample index of test segments.
+    split : Split
+        Training/validation data split.
     i_start_by_x : ndarray
         Array of i_start for trfs.
     i_stop_by_x : ndarray
@@ -605,8 +753,8 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start_by_x, i_stop
     # pre-assign iterators
     for i_boost in range(999999):
         # evaluate current h
-        e_test = error(y_error, test_index)
-        e_train = error(y_error, train_index)
+        e_train = error(y_error, split.train)
+        e_test = error(y_error, split.validate)
         step = BoostingStep(i_stim, i_time, delta_signed, e_test, e_train)
         history.append(step)
 
@@ -641,7 +789,7 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start_by_x, i_stop
                     for i in range(-undo):
                         step = history.pop(-1)
                         h[step.i_stim, step.i_time] -= step.delta
-                        update_error(y_error, x[step.i_stim], x_pads[step.i_stim], all_index, -step.delta, step.i_time + i_start)
+                        update_error(y_error, x[step.i_stim], x_pads[step.i_stim], split.train_and_validate, -step.delta, step.i_time + i_start)
                     step = history[-1]
                     # disable predictor
                     x_active[i_stim] = False
@@ -659,7 +807,7 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start_by_x, i_stop
                 break
 
         # generate possible movements -> training error
-        generate_options(y_error, x, x_pads, x_active, train_index, i_start, i_start_by_x, i_stop_by_x, delta_error_func, delta, new_error, new_sign)
+        generate_options(y_error, x, x_pads, x_active, split.train, i_start, i_start_by_x, i_stop_by_x, delta_error_func, delta, new_error, new_sign)
         i_stim, i_time = np.unravel_index(np.argmin(new_error), h.shape)
         new_train_error = new_error[i_stim, i_time]
         delta_signed = new_sign[i_stim, i_time] * delta
@@ -681,7 +829,7 @@ def boost(y, x, x_pads, all_index, train_index, test_index, i_start_by_x, i_stop
 
         # update h with best movement
         h[i_stim, i_time] += delta_signed
-        update_error(y_error, x[i_stim], x_pads[i_stim], all_index, delta_signed, i_time + i_start)
+        update_error(y_error, x[i_stim], x_pads[i_stim], split.train_and_validate, delta_signed, i_time + i_start)
     else:
         raise RuntimeError("Maximum number of iterations exceeded")
     # print('  (%i iterations)' % (i_boost + 1))
@@ -714,7 +862,7 @@ def setup_workers(data, i_start, i_stop, delta, mindelta, error, selective_stopp
     job_queue = Queue(200)
     result_queue = Queue(200)
 
-    args = (y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, data.cv_segments, i_start, i_stop, delta, mindelta, error, selective_stopping, job_queue, result_queue)
+    args = (y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, data.splits, i_start, i_stop, delta, mindelta, error, selective_stopping, job_queue, result_queue)
     for _ in range(CONFIG['n_workers']):
         process = Process(target=boosting_worker, args=args)
         process.start()
@@ -722,7 +870,7 @@ def setup_workers(data, i_start, i_stop, delta, mindelta, error, selective_stopp
     return job_queue, result_queue
 
 
-def boosting_worker(y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, cv_segments, i_start, i_stop, delta, mindelta, error, selective_stopping, job_queue, result_queue):
+def boosting_worker(y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, splits, i_start, i_stop, delta, mindelta, error, selective_stopping, job_queue, result_queue):
     if CONFIG['nice']:
         os.nice(CONFIG['nice'])
 
@@ -731,17 +879,16 @@ def boosting_worker(y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, cv_seg
     x_pads = np.frombuffer(x_pads_buffer, np.float64, n_x)
 
     while True:
-        y_i, seg_i = job_queue.get()
-        if y_i == JOB_TERMINATE:
+        i_y, i_split = job_queue.get()
+        if i_y == JOB_TERMINATE:
             return
-        all_index, train_index, test_index = cv_segments[seg_i]
-        h = boost(y[y_i], x, x_pads, all_index, train_index, test_index, i_start, i_stop, delta, mindelta, error, selective_stopping)
-        result_queue.put((y_i, seg_i, h))
+        h = boost(y[i_y], x, x_pads, splits[i_split], i_start, i_stop, delta, mindelta, error, selective_stopping)
+        result_queue.put((i_y, i_split, h))
 
 
-def put_jobs(queue, n_y, n_segs, stop):
+def put_jobs(queue, n_y, n_splits, stop):
     "Feed boosting jobs into a Queue"
-    for job in product(range(n_y), range(n_segs)):
+    for job in product(range(n_y), range(n_splits)):
         queue.put(job)
         if stop.isSet():
             while not queue.empty():
@@ -771,13 +918,13 @@ def convolve(h, x, x_pads, h_i_start, segments=None, out=None):
     """
     n_x, n_times = x.shape
     h_n_times = h.shape[1]
+    if segments is None:
+        segments = ((0, n_times),)
     if out is None:
         out = np.zeros(n_times)
     else:
-        out.fill(0)
-
-    if segments is None:
-        segments = ((0, n_times),)
+        for a, b in segments:
+            out[a:b] = 0
 
     # determine valid section of convolution (cf. _ndvar.convolve())
     h_i_max = h_i_start + h_n_times - 1
@@ -817,41 +964,3 @@ def convolve(h, x, x_pads, h_i_start, segments=None, out=None):
             out[out_index] += scipy.signal.convolve(h[ind], x[ind, start:stop])[y_index]
 
     return out
-
-
-def evaluate_kernel(y, y_pred, error, i_skip, segments=None):
-    """Fit quality statistics
-
-    Parameters
-    ----------
-    y : array, (n_samples)
-        Y.
-    y_pred : array, (n_samples)
-        Predicted Y.
-    error : str
-        Error metric.
-    i_skip : int
-        Skip this many samples for evaluating model fit.
-    segments : array (n_segments, 2)
-        Data segments.
-
-    Returns
-    -------
-    r : float | array
-        Pearson correlation.
-    rank_r : float | array
-        Spearman rank correlation.
-    error : float | array
-        Error corresponding to error_func.
-    """
-    # discard onset
-    if i_skip:
-        assert segments is None, "Not implemented"
-        y = y[i_skip:]
-        y_pred = y_pred[i_skip:]
-
-    error_func = ERROR_FUNC[error]
-    index = np.array(((0, len(y)),), np.int64)
-    return (np.corrcoef(y, y_pred)[0, 1],
-            spearmanr(y, y_pred)[0],
-            error_func(y - y_pred, index))
