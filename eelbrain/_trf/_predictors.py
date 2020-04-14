@@ -86,15 +86,15 @@ def event_impulse_predictor(shape, time='time', value=1, latency=0, name=None, d
 
     time, n = asarray(time, ds=ds, return_n=True)
 
-    if np.isscalar(value):
-        value = repeat(value)
-    else:
+    if isinstance(value, str) or not np.isscalar(value):
         value = asarray(value, ds=ds, n=n)
-
-    if np.isscalar(latency):
-        latency = repeat(latency)
     else:
+        value = repeat(value)
+
+    if isinstance(latency, str) or not np.isscalar(latency):
         latency = asarray(latency, ds=ds, n=n)
+    else:
+        latency = repeat(latency)
 
     out = NDVar(np.zeros(len(uts)), uts, name)
     for t, l, v in zip(time, latency, value):
