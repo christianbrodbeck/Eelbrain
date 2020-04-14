@@ -43,6 +43,7 @@ def test_boosting(n_workers):
     # test values from running function, not verified independently
     res = boosting(y, x1 * 2000, 0, 1, scale_data=False, mindelta=0.0025)
     assert repr(res) == '<boosting y ~ x1, 0 - 1, scale_data=False, mindelta=0.0025>'
+    assert_allclose(res.h.x, [0, 0, 0, 0.0025, 0, 0, 0, 0, 0, 0.001875], atol=1e-6)
     assert res.r == approx(0.75, abs=0.001)
     assert res.y_mean is None
     assert res.h.info['unit'] == 'V'
@@ -119,6 +120,7 @@ def test_boosting_epochs():
     for tstart, basis in product((-0.1, 0.1, 0), (0, 0.05)):
         print(f"tstart={tstart}, basis={basis}")
         res = boosting('uts', [p0, p1], tstart, 0.6, model='A', ds=ds, basis=basis, partitions=3, debug=True)
+        assert res.r == approx(0.238, abs=1e-3)
         y = convolve(res.h_scaled, [p0, p1])
         assert correlation_coefficient(y, res._y_pred) > .999
         r = correlation_coefficient(y, ds['uts'])
