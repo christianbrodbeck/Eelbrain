@@ -49,7 +49,7 @@ ERROR_FUNC = {'l2': l2, 'l1': l1}
 DELTA_ERROR_FUNC = {'l2': 2, 'l1': 1}
 
 
-@dataclass(frozen=True, eq=False)
+@dataclass(eq=False)
 class BoostingResult:
     """Result from boosting a temporal response function
 
