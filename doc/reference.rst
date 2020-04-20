@@ -54,7 +54,7 @@ File I/O
 
 .. py:module:: load
 .. py:module:: save
-.. py:currentmodule:: eelbrain
+.. currentmodule:: eelbrain
 
 Eelbrain objects can be
 `pickled <https://docs.python.org/library/pickle.html>`_. Eelbrain's own
@@ -174,6 +174,7 @@ Reverse Correlation
    boosting
    BoostingResult
    epoch_impulse_predictor
+   event_impulse_predictor
 
 
 ^^^^^^
@@ -181,7 +182,7 @@ Tables
 ^^^^^^
 
 .. py:module:: table
-.. py:currentmodule:: eelbrain
+.. currentmodule:: eelbrain
 
 Manipulate data tables and compile information about data objects such as cell
 frequencies:
@@ -203,7 +204,7 @@ Statistics
 ^^^^^^^^^^
 
 .. py:module:: test
-.. py:currentmodule:: eelbrain
+.. currentmodule:: eelbrain
 
 Univariate statistical tests:
 
@@ -229,7 +230,7 @@ Mass-Univariate Statistics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. py:module:: testnd
-.. py:currentmodule:: eelbrain
+.. currentmodule:: eelbrain
 
 .. autosummary::
    :toctree: generated
@@ -305,7 +306,7 @@ Plotting
 ^^^^^^^^
 
 .. py:module:: plot
-.. py:currentmodule:: eelbrain
+.. currentmodule:: eelbrain
 
 
 Plot univariate data (:class:`Var` objects):
@@ -488,7 +489,7 @@ Plotting Brains
 ^^^^^^^^^^^^^^^
 
 .. py:module:: plot.brain
-.. py:currentmodule:: eelbrain
+.. currentmodule:: eelbrain
 
 The :mod:`plot.brain` module contains specialized functions to plot
 :class:`NDVar` objects containing source space data.
@@ -550,7 +551,7 @@ GUIs
 ^^^^
 
 .. py:module:: gui
-.. py:currentmodule:: eelbrain
+.. currentmodule:: eelbrain
 
 Tools with a graphical user interface (GUI):
 
@@ -603,7 +604,7 @@ Formatted Text
 ^^^^^^^^^^^^^^
 
 .. py:module:: fmtxt
-.. py:currentmodule:: eelbrain
+.. currentmodule:: eelbrain
 
 The :mod:`fmtxt` submodule provides tools for exporting results. Most eelbrain
 functions and methods that print tables in fact return :mod:`fmtxt` objects,
@@ -630,16 +631,16 @@ Available export methods:
    fmtxt.save_tex
 
 
-^^^^^^^^^^
-Experiment
-^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^
+Experiment Pipeline
+^^^^^^^^^^^^^^^^^^^
 
 .. py:module:: pipeline
-.. py:currentmodule:: eelbrain.pipeline
+.. currentmodule:: eelbrain.pipeline
 
 The :class:`MneExperiment` class provides a template for analyzing EEG and MEG
 data. The objects for specifying the analysis are all in the
-:mod:`eelbrain.pipeline` module.
+:mod:`pipeline` submodule.
 
 .. seealso::
     For the guide on working with the :class:`MneExperiment` class see
@@ -726,7 +727,7 @@ Datasets
 ^^^^^^^^
 
 .. py:module:: datasets
-.. py:currentmodule:: eelbrain
+.. currentmodule:: eelbrain
 
 Datasets for experimenting and testing:
 

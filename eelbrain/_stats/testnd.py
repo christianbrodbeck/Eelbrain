@@ -450,6 +450,10 @@ class TContrastRelated(NDTest):
     minsource : int
         Minimum number of sources per cluster.
 
+    See Also
+    --------
+    testnd : Information on the different permutation methods
+
     Notes
     -----
     A contrast specifies the steps to calculate a map based on *t*-values.
@@ -632,6 +636,10 @@ class Correlation(NDTest):
     tfce_map : NDVar | None
         Map of the test statistic processed with the threshold-free cluster
         enhancement algorithm (or None if no TFCE was performed).
+
+    See Also
+    --------
+    testnd : Information on the different permutation methods
     """
     _state_specific = ('x', 'norm', 'n', 'df', 'r')
     _statistic = 'r'
@@ -876,6 +884,10 @@ class TTestOneSample(NDDifferenceTest):
         Map of the test statistic processed with the threshold-free cluster
         enhancement algorithm (or None if no TFCE was performed).
 
+    See Also
+    --------
+    testnd : Information on the different permutation methods
+
     Notes
     -----
     Data points with zero variance are set to t=0.
@@ -1078,6 +1090,10 @@ class TTestIndependent(NDDifferenceTest):
     tfce_map : NDVar | None
         Map of the test statistic processed with the threshold-free cluster
         enhancement algorithm (or None if no TFCE was performed).
+
+    See Also
+    --------
+    testnd : Information on the different permutation methods
 
     Notes
     -----
@@ -1295,6 +1311,10 @@ class TTestRelated(NDMaskedC1Mixin, NDDifferenceTest):
         enhancement algorithm (or None if no TFCE was performed).
     n : int
         Number of cases.
+
+    See Also
+    --------
+    testnd : Information on the different permutation methods
 
     Notes
     -----
@@ -1688,6 +1708,10 @@ class ANOVA(MultiEffectNDTest):
         Maps of the test statistic processed with the threshold-free cluster
         enhancement algorithm (or None if no TFCE was performed).
 
+    See Also
+    --------
+    testnd : Information on the different permutation methods
+
     Examples
     --------
     For information on model specification see the univariate
@@ -1969,6 +1993,10 @@ class Vector(NDDifferenceTest):
         all significant regions (or ``None`` if permutations were omitted).
         See also the :meth:`.find_clusters` method.
 
+    See Also
+    --------
+    testnd : Information on the different permutation methods
+
     Notes
     -----
     Vector tests are based on the Hotelling T-Square statistic. Computation of
@@ -2152,6 +2180,10 @@ class VectorDifferenceIndependent(Vector):
         For cluster-based tests, a table of all clusters. Otherwise a table of
         all significant regions (or ``None`` if permutations were omitted).
         See also the :meth:`.find_clusters` method.
+
+    See Also
+    --------
+    testnd : Information on the different permutation methods
     """
     _state_specific = ('difference', 'c1_mean', 'c0_mean', 'n', '_v_dim', 't2')
     _statistic = 'norm'
@@ -2314,6 +2346,7 @@ class VectorDifferenceRelated(NDMaskedC1Mixin, Vector):
     See Also
     --------
     Vector : One-sample vector test, notes on vector test implementation
+    testnd : Information on the different permutation methods
     """
     _state_specific = ('x', 'c1', 'c0', 'difference', 'c1_mean', 'c0_mean', 'n', '_v_dim', 't2')
 

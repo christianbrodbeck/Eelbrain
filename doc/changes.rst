@@ -22,8 +22,7 @@ New in 0.32
 
   - :meth:`NDVar.quantile`
 
-* .. currentmodule:: eelbrain.pipeline
-  :class:`MneExperiment` pipeline:
+* Experiment :mod:`pipeline`:
 
   - Methods with ``decim`` parameter now also have ``samplingrate`` parameter
   - More control over :ref:`MneExperiment-events`
