@@ -3,8 +3,10 @@ from os.path import join
 
 import mne
 from numpy.testing import assert_array_equal
+import numpy as np
+import pytest
 
-from eelbrain import gui, load, set_log_level
+from eelbrain import gui, load, save, set_log_level
 from eelbrain.testing import TempDir, gui_test
 from eelbrain._wxgui.select_epochs import Document, Model
 
@@ -19,6 +21,9 @@ def test_select_epochs():
     raw = mne.io.Raw(raw_path, preload=True).pick_types('mag', stim=True)
     ds = load.fiff.events(raw)
     ds['meg'] = load.fiff.epochs(ds, tmax=0.1)
+    # 25 cases
+    arange = np.arange(25)
+    false_at = lambda index: np.isin(arange, index, invert=True)
 
     tempdir = TempDir()
     path = join(tempdir, 'rej.pickled')
@@ -29,15 +34,15 @@ def test_select_epochs():
     doc = Document(ds, 'meg')
     doc.set_path(path)
     doc.set_case(1, False, 'tag', None)
+    doc.set_case(slice(22, 24), False, 'tag', None)
     doc.set_case(2, None, None, ['2'])
     doc.set_bad_channels([1])
     # check modifications
-    assert doc.accept[1] == False
+    assert_array_equal(doc.accept, false_at([1, 22, 23]))
     assert doc.tag[1] == 'tag'
     assert doc.interpolate[1] == []
     assert doc.interpolate[2] == ['2']
     assert doc.bad_channels == [1]
-    assert_array_equal(doc.accept[2:], True)
     # save
     doc.save()
 
@@ -48,27 +53,28 @@ def test_select_epochs():
     # load the file
     doc = Document(ds, 'meg', path=path)
     # modification checks
-    assert doc.accept[1] == False
+    assert_array_equal(doc.accept, false_at([1, 22, 23]))
     assert doc.tag[1] == 'tag'
     assert doc.interpolate[1] == []
     assert doc.interpolate[2] == ['2']
     assert doc.bad_channels == [1]
-    assert_array_equal(doc.accept[2:], True)
 
     # Test Model
     # ==========
-    doc = Document(ds, 'meg')
+    doc = Document(ds, 'meg', path=path)
     model = Model(doc)
 
     # accept
+    assert_array_equal(doc.accept, false_at([1, 22, 23]))
     model.set_case(0, False, None, None)
-    assert doc.accept[0] == False
+    assert_array_equal(doc.accept, false_at([0, 1, 22, 23]))
     model.history.undo()
-    assert doc.accept[0] == True
+    assert_array_equal(doc.accept, false_at([1, 22, 23]))
     model.history.redo()
-    assert doc.accept[0] == False
+    assert_array_equal(doc.accept, false_at([0, 1, 22, 23]))
 
     # interpolate
+    model.toggle_interpolation(2, '2')
     model.toggle_interpolation(2, '3')
     assert doc.interpolate[2] == ['3']
     model.toggle_interpolation(2, '4')
@@ -96,13 +102,19 @@ def test_select_epochs():
 
     # reload to reset
     model.load(path)
-    # tests
-    assert doc.accept[1] == False
+    assert_array_equal(doc.accept, false_at([1, 22, 23]))
     assert doc.tag[1] == 'tag'
     assert doc.interpolate[1] == []
     assert doc.interpolate[2] == ['2']
     assert doc.bad_channels == [1]
-    assert_array_equal(doc.accept[2:], True)
+
+    # load truncated file
+    rej_ds = load.unpickle(path)
+    save.pickle(rej_ds[:23], path)
+    with pytest.raises(IOError):
+        model.load(path, answer=False)
+    model.load(path, answer=True)
+    assert_array_equal(doc.accept, false_at([1, 22]))
 
     # Test GUI
     # ========

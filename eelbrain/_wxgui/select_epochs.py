@@ -1,4 +1,18 @@
-"""GUI for rejecting epochs"""
+"""GUI for rejecting epochs
+
+File format
+-----------
+Required variables:
+
+ - ``trigger`` :class:`Var` (int)
+ - ``accept`` :class:`Var` (boolean)
+ - ``rej_tag`` :class:`Factor`
+
+ Optional:
+
+ - ``interpolate_channels`` :class:`Datalist` (lists)
+
+"""
 
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 
@@ -81,6 +95,16 @@ def format_epoch_list(l, head="Epochs by channel:"):
         item += fmtxt.delim_list(_epoch_list_to_ranges(d[ch]))
         out.add_item(item)
     return out
+
+
+def _ask(caption: str, message: str, style: int, answer: bool = None):
+    "Intercept GUI prompts for tests"
+    if answer is True:
+        return wx.ID_OK
+    elif answer is False:
+        return wx.ID_NO
+    app = get_app()
+    return app.message_box(message, caption, style)
 
 
 class ChangeAction(Action):
@@ -345,7 +369,11 @@ class Document(FileDocument):
             path = root + '.txt'
         FileDocument.set_path(self, path)
 
-    def read_rej_file(self, path):
+    def read_rej_file(
+            self,
+            path: str,
+            answer: bool = None,  # User answer to dialogs (for tests)
+    ):
         "Read a file making sure it is compatible"
         _, ext = os.path.splitext(path)
         if ext.startswith('.pickle'):
@@ -355,34 +383,41 @@ class Document(FileDocument):
         else:
             raise ValueError(f"Unknown file extension for rejections: {path}")
 
+        # check file contents
+        needed = ['trigger', 'accept', 'rej_tag']
+        if INTERPOLATE_CHANNELS in ds:
+            needed.append(INTERPOLATE_CHANNELS)
+        missing = set(needed).difference(ds)
+        if missing:
+            raise IOError(f"{path} is not a valid epoch rejection file. It is missing the following keys: {', '.join(missing)}")
+
         # check file
         if ds.n_cases > self.n_epochs:
-            app = get_app()
-            cmd = app.message_box(f"The File contains more events than the data (file: {ds.n_cases}, data: {self.n_epochs}). Truncate the file?", "Truncate the file?", wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT | wx.ICON_WARNING)
+            cmd = _ask("Truncate the file?", f"The File contains more events than the data (file: {ds.n_cases}, data: {self.n_epochs}). Truncate the file?", wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT | wx.ICON_WARNING, answer)
             if cmd == wx.ID_OK:
                 ds = ds[:self.n_epochs]
             else:
-                raise RuntimeError("Unequal number of cases")
+                raise IOError("Unequal number of cases")
         elif ds.n_cases < self.n_epochs:
-            app = get_app()
-            cmd = app.message_box(f"The rejection file contains fewer epochs than the data (file: {ds.n_cases}, data: {self.n_epochs}). Load anyways (epochs missing from the file will be accepted)?", "Load partial file?", wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT | wx.ICON_WARNING)
+            cmd = _ask("Load partial file?", f"The rejection file contains fewer epochs than the data (file: {ds.n_cases}, data: {self.n_epochs}). Load anyways (epochs missing from the file will be accepted)?", wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT | wx.ICON_WARNING, answer)
             if cmd == wx.ID_OK:
                 n_missing = self.n_epochs - ds.n_cases
                 tail = Dataset(info=ds.info)
                 tail['trigger'] = Var(self.trigger[-n_missing:])
                 tail['accept'] = Var([True], repeat=n_missing)
-                tail['tag'] = Factor(['missing'], repeat=n_missing)
-                ds = combine((ds, tail))
+                tail['rej_tag'] = Factor([''], repeat=n_missing)
+                if INTERPOLATE_CHANNELS in ds:
+                    tail[INTERPOLATE_CHANNELS] = Datalist([[]] * n_missing)
+                ds = combine((ds[needed], tail))
             else:
-                raise RuntimeError("Unequal number of cases")
+                raise IOError("Unequal number of cases")
 
         if not np.all(ds[self.trigger.name] == self.trigger):
-            app = get_app()
-            cmd = app.message_box("The file contains different triggers from the data. Ignore mismatch and proceed?", "Ignore trigger mismatch?", wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT)
+            cmd = _ask("Ignore trigger mismatch?", "The file contains different triggers from the data. Ignore mismatch and proceed?", wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT, answer)
             if cmd == wx.ID_OK:
                 ds[self.trigger.name] = self.trigger
             else:
-                raise RuntimeError("Trigger mismatch")
+                raise IOError("Trigger mismatch")
 
         accept = ds['accept']
         if 'rej_tag' in ds:
@@ -393,8 +428,7 @@ class Document(FileDocument):
         if INTERPOLATE_CHANNELS in ds:
             interpolate = ds[INTERPOLATE_CHANNELS]
             if not self.allow_interpolation and any(interpolate):
-                app = get_app()
-                cmd = app.message_box("The file contains channel interpolation instructions, but interpolation is disabled is the current session. Drop interpolation instructions?", "Clear Channel Interpolation Instructions?", wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT)
+                cmd = _ask("Clear Channel Interpolation Instructions?", "The file contains channel interpolation instructions, but interpolation is disabled is the current session. Drop interpolation instructions?", wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT, answer)
                 if cmd == wx.ID_OK:
                     for l in interpolate:
                         del l[:]
@@ -439,8 +473,21 @@ class Model(FileModel):
         logger.info("Clearing %i rejections" % index.sum())
         self.history.do(action)
 
-    def load(self, path):
-        new_accept, new_tag, new_interpolate, new_bad_chs = self.doc.read_rej_file(path)
+    def load(
+            self,
+            path: str,
+            answer: bool = None,  # User answer to dialogs (for tests)
+    ):
+        try:
+            new_accept, new_tag, new_interpolate, new_bad_chs = self.doc.read_rej_file(path, answer)
+        except Exception as error:
+            if answer is not None:
+                raise
+            caption = f"Error reading {os.path.basename(path)}"
+            msg = f"{error}\nFor more details see Terminal output."
+            app = get_app()
+            app.message_box(msg, caption, wx.ICON_ERROR)
+            raise
 
         # create load action
         action = ChangeAction("Load File", FULL_SLICE, self.doc.accept, new_accept,
