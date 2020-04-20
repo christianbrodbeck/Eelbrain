@@ -260,9 +260,9 @@ def test_combine():
     # combine Datasets with unequal keys
     del ds1['Y']
     # raise
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         combine((ds1, ds2))
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         combine((ds2, ds1))
     # drop
     del ds2['YCat']

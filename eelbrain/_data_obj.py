@@ -1042,10 +1042,11 @@ def combine(items, name=None, check_dims=True, incomplete='raise', dim_intersect
         ``True``. Set to ``False`` to ignore mismatches.
     incomplete : "raise" | "drop" | "fill in"
         Only applies when combining Datasets: how to handle variables that are
-        missing from some of the input Datasets. With ``"raise"`` (default), a
-        KeyError to be raised. With ``"drop"``, partially missing variables are
-        dropped. With ``"fill in"``, they are retained and missing values are
-        filled in with empty values (``""`` for factors, ``NaN`` for variables).
+        missing from some of the input Datasets. With ``"raise"`` (default),
+        raise a :exc:`ValueError`. With ``"drop"``, drop partially missing
+        variables. With ``"fill in"``, retain partially missing variables and
+        fill in missing values with empty values (``""`` for factors, ``NaN``
+        for numerical variables).
     dim_intersection : bool
         Only applies to combining :class:`NDVar`: normally, when :class:`NDVar`
         have mismatching dimensions, a DimensionMismatchError is raised. With
@@ -1106,8 +1107,10 @@ def combine(items, name=None, check_dims=True, incomplete='raise', dim_intersect
         else:
             keys = set(first_item)
             if incomplete == 'raise':
-                if any(set(item) != keys for item in items[1:]):
-                    raise KeyError("Datasets have unequal keys. Use with incomplete='drop' or incomplete='fill in' to combine anyways.")
+                other_keys = [set(item) for item in items[1:]]
+                if any(keys_i != keys for keys_i in other_keys):
+                    info = '\n'.join([f"{i:<2}: {', '.join(sorted(keys_i))}" for i, keys_i in enumerate([keys, *other_keys])])
+                    raise ValueError(f"Datasets have unequal keys. Use with incomplete='drop' or incomplete='fill in' to combine anyways. Keys present:\n{info}")
                 out_keys = first_item
             else:
                 keys.intersection_update(*items[1:])
