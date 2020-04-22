@@ -42,13 +42,14 @@ def test_boosting(n_workers):
     x2_mean = x2.mean('time')
 
     # test values from running function, not verified independently
-    res = boosting(y, x1 * 2000, 0, 1, scale_data=False, mindelta=0.0025)
+    res = boosting(y, x1 * 2000, 0, 1, scale_data=False, mindelta=0.0025, debug=True)
     assert repr(res) == '<boosting y ~ x1, 0 - 1, scale_data=False, mindelta=0.0025>'
     assert_allclose(res.h.x, [0, 0, 0, 0.0025, 0, 0, 0, 0, 0, 0.001875], atol=1e-6)
     assert res.r == approx(0.75, abs=0.001)
     assert res.y_mean is None
     assert res.h.info['unit'] == 'V'
     assert res.h_scaled.info['unit'] == 'V'
+    assert res.residual == approx(((y[.9:] - res.y_pred[.9:])**2).sum())
     with pytest.raises(NotImplementedError):
         res.proportion_explained
 
@@ -70,6 +71,12 @@ def test_boosting(n_workers):
     # persistence
     res_p = pickle.loads(pickle.dumps(res, pickle.HIGHEST_PROTOCOL))
     assert_res_equal(res_p, res)
+
+    # L1 error
+    res = boosting(y, x1 * 2000, 0, 1, error='l1', debug=True)
+    assert res.residual == ((y[.9:] - res.y_mean) / res.y_scale - res.y_pred[.9:]).abs().sum()
+    res_ndb = boosting(y, x1 * 2000, 0, 1, error='l1')
+    assert res_ndb.residual == res.residual
 
     # cross-validation
     res = boosting(y[:7.5], x1[:7.5], 0, 1, scale_data=False, partitions=3, debug=True)

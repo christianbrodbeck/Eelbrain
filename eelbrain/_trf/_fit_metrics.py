@@ -23,7 +23,12 @@ class Evaluator:
             n //= len(data.vector_dim)
         self.x = np.empty(n, np.float64)
 
-    def add_y(self, i, y, y_pred):
+    def add_y(
+            self,
+            i: int,  # y index (row in data.y)
+            y: np.ndarray,  # actual data
+            y_pred: np.ndarray,  # data predicted by model
+    ):
         raise NotImplementedError
 
     def __repr__(self):
