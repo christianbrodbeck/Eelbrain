@@ -3630,25 +3630,16 @@ class NDVar:
                     axis = list(axis) + additional_axis
             return data._aggregate_over_dims(axis, {'name': name}, func)
         elif isinstance(axis, NDVar):
-            if axis.ndim == 1:
-                dim = axis.dims[0]
-                if self.get_dim(dim.name) != dim:
-                    raise DimensionMismatchError(f"Index dimension {dim.name} does not match data dimension")
-                dim_axis = self.get_axis(dim.name)
-                index = FULL_AXIS_SLICE * dim_axis + (axis.x,)
-                x = func(self.x[index], dim_axis)
-                dims = [self.dims[i] for i in range(self.ndim) if i != dim_axis]
-            else:
-                dims, self_x, index = self._align(axis)
-                # move indexed dimensions to the back so they can be flattened
-                src = [ax for ax, n in enumerate(index.shape) if n != 1]
-                n_flatten = len(src)
-                dst = list(range(-n_flatten, 0))
-                x_t = np.moveaxis(self_x, src, dst)
-                x_flat = x_t.reshape((*x_t.shape[:-n_flatten], -1))
-                index_flat = index.ravel()
-                x = func(x_flat[..., index_flat], -1)
-                dims = [dim for i, dim in enumerate(dims) if i not in src]
+            dims, self_x, index = self._align(axis)
+            # move indexed dimensions to the back so they can be flattened
+            src = [ax for ax, n in enumerate(index.shape) if n != 1]
+            n_flatten = len(src)
+            dst = list(range(-n_flatten, 0))
+            x_t = np.moveaxis(self_x, src, dst)
+            x_flat = x_t.reshape((*x_t.shape[:-n_flatten], -1))
+            index_flat = index.ravel()
+            x = func(x_flat[..., index_flat], -1)
+            dims = [dim for i, dim in enumerate(dims) if i not in src]
         elif isinstance(axis, str):
             axis = self._dim_2_ax[axis]
             x = func(self.x, axis=axis)

@@ -1348,9 +1348,10 @@ def test_ndvar_summary_methods():
     idx = x > 0
     x0 = x[0]
     idx0 = idx[0]
+    idx1d = idx[0,:,0]
     xsub = x.sub(time=(0, 0.5))
     idxsub = xsub > 0
-    idx1d = x.mean(('case', 'time')) > 0
+    idxsub1d = idxsub[0,0]
 
     # info inheritance
     assert x.mean(('sensor', 'time')).info == x.info
@@ -1365,6 +1366,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.any(idx), [x_[i].any() for x_, i in zip(x.x, idx.x)])
     assert_array_equal(x0.any(idx0), x0.x[idx0.x].any())
     assert_array_equal(x.any(idxsub), xsub.any(idxsub))
+    assert_array_equal(x.any(idxsub1d), xsub.any(idxsub1d))
     assert_array_equal(x.any(idx1d), x.x[:, idx1d.x].any(1))
 
     assert x.max() == x.x.max()
@@ -1374,6 +1376,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.max(idx), x.x[idx.x].max())
     assert_array_equal(x0.max(idx0), x0.x[idx0.x].max())
     assert_array_equal(x.max(idxsub), xsub.max(idxsub))
+    assert_array_equal(x.max(idxsub1d), xsub.max(idxsub1d))
     assert_array_equal(x.max(idx1d), x.x[:, idx1d.x].max(1))
 
     assert x.mean() == x.x.mean()
@@ -1383,6 +1386,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.mean(idx), x.x[idx.x].mean())
     assert_array_equal(x0.mean(idx0), x0.x[idx0.x].mean())
     assert_array_equal(x.mean(idxsub), xsub.mean(idxsub))
+    assert_array_equal(x.mean(idxsub1d), xsub.mean(idxsub1d))
     assert_array_equal(x.mean(idx1d), x.x[:, idx1d.x].mean(1))
 
     assert x.min() == x.x.min()
@@ -1392,6 +1396,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.min(idx), x.x[idx.x].min())
     assert_array_equal(x0.min(idx0), x0.x[idx0.x].min())
     assert_array_equal(x.min(idxsub), xsub.min(idxsub))
+    assert_array_equal(x.min(idxsub1d), xsub.min(idxsub1d))
     assert_array_equal(x.min(idx1d), x.x[:, idx1d.x].min(1))
 
     assert x.var() == x.x.var()
@@ -1402,6 +1407,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.var(idx), x.x[idx.x].var())
     assert_array_equal(x0.var(idx0), x0.x[idx0.x].var())
     assert_array_equal(x.var(idxsub), xsub.var(idxsub))
+    assert_array_equal(x.var(idxsub1d), xsub.var(idxsub1d))
     assert_array_equal(x.var(idx1d), x.x[:, idx1d.x].var(1))
 
     assert x.std() == x.x.std()
@@ -1411,6 +1417,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.std(idx), x.x[idx.x].std())
     assert_array_equal(x0.std(idx0), x0.x[idx0.x].std())
     assert_array_equal(x.std(idxsub), xsub.std(idxsub))
+    assert_array_equal(x.std(idxsub1d), xsub.std(idxsub1d))
     assert_array_equal(x.std(idx1d), x.x[:, idx1d.x].std(1))
 
     # non-numpy
@@ -1421,6 +1428,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.rms(idx), rms(x.x[idx.x]))
     assert_array_equal(x0.rms(idx0), rms(x0.x[idx0.x]))
     assert_array_equal(x.rms(idxsub), xsub.rms(idxsub))
+    assert_array_equal(x.rms(idxsub1d), xsub.rms(idxsub1d))
     assert_array_equal(x.rms(idx1d), rms(x.x[:, idx1d.x], 1))
 
     assert x.extrema() == max(abs(x.min()), abs(x.max()))
