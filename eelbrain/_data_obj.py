@@ -9841,7 +9841,7 @@ class SourceSpace(SourceSpaceBase):
 
         Parameters
         ----------
-        label : str | sequance of str | Label | BiHemiLabel
+        label : str | sequence of str | Label | BiHemiLabel
             The name of a region in the current parcellation, or an :mod:`mne`
             :class:`~mne.label.Label` object. If the label does not
             match any sources in the SourceEstimate, a ValueError is raised.

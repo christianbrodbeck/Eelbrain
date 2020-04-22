@@ -1182,16 +1182,13 @@ class SequencePlotter:
 
     def set_brain_args(self, surf='inflated', foreground=None, background=None,
                        parallel=True, cortex='classic', mask=True):
-        """Set parameters for anatomical plot
-
-        For parameter descriptions see :func:`plot.brain.brain`.
-        """
+        "Set parameters for anatomical plot (see :func:`.brain`)"
         self._brain_args = {
             'surf': surf, 'foreground': foreground, 'background': background,
             'parallel': parallel, 'cortex': cortex, 'mask': mask}
 
     def set_parallel_view(self, forward=None, up=None, scale=None):
-        """Set view for all plots (cf. :meth:`~plot._brain_obj.Brain.set_parallel_view`"""
+        "Set view for all plots (see :meth:`~._brain_obj.Brain.set_parallel_view`"
         if forward is not None:
             self._parallel_view['forward'] = forward
         if up is not None:
@@ -1200,7 +1197,7 @@ class SequencePlotter:
             self._parallel_view['scale'] = scale
 
     def add_function(self, func, label=None, overlay=False):
-        """func(brain)"""
+        "Custom modification of the brain object (calls ``func(brain)``)"
         args = (func,)
         if overlay:
             index = None
@@ -1224,7 +1221,7 @@ class SequencePlotter:
             Data to add. ``Source`` dimension only for a static layer,
             additional ``time`` or ``case`` dimension for dynamic layers.
         ...
-            :meth:`~plot._brain_object.Brain.add_ndvar` parameters.
+            :meth:`~._brain_object.Brain.add_ndvar` parameters.
         static : bool
             When supplying a one dimensional ``ndvar``, whether to consider it
             as a static layer (an overlay appearing on all plots) or as one of
@@ -1288,7 +1285,7 @@ class SequencePlotter:
         self._data.append(layer)
 
     def add_ndvar_label(self, ndvar, color=(1, 0, 0), borders=False, name=None, alpha=None, lighting=False, overlay=False, label=None):
-        "See :meth:`~plot._brain_object.Brain.add_ndvar_label`"
+        "See :meth:`~._brain_object.Brain.add_ndvar_label`"
         self.set_brain(ndvar.get_dim('source'))
         args = (color, borders, name, alpha, lighting)
         if overlay:
@@ -1300,7 +1297,8 @@ class SequencePlotter:
         layer = SequencePlotterLayer(kind, ndvar, args, {}, label, index, SPPlotType.LABEL)
         self._data.append(layer)
 
-    def add_pmap(self, res: NDTest, label=None):
+    def add_pmap(self, res: NDTest, label=None, **kwargs):
+        "See :meth:`~._brain_object.Brain.add_ndvar_p_map`"
         # interpret NDTest subtypes
         if isinstance(res, MultiEffectNDTest):
             iterator = zip(res.p, res._statistic_map, res.effects)
@@ -1314,7 +1312,7 @@ class SequencePlotter:
         for p_map, stat_map, desc in iterator:
             ndvar, cmap, vmax = p_lut(p_map, stat_map)
             layer_label = desc if label is None else label
-            self.add_ndvar(ndvar, cmap, -vmax, vmax, label=layer_label)
+            self.add_ndvar(ndvar, cmap, -vmax, vmax, label=layer_label, **kwargs)
 
     def set_frame_order(self, order):
         """Set the order in which frames are plotted
@@ -1394,7 +1392,7 @@ class SequencePlotter:
 
         Notes
         -----
-        Use the ``margins`` parameter to contrl image spacing. For example (all
+        Use the ``margins`` parameter to control image spacing. For example (all
         numbers in inches)::
 
         margins = {

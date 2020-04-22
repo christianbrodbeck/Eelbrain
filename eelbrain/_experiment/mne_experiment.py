@@ -1776,7 +1776,7 @@ class MneExperiment(FileTree):
         except KeyError:
             raise FileMissing(f"Raw data missing for {subject}, session {recording}")
 
-    def iter(self, fields='subject', exclude=None, values=None, group=None, progress_bar=None, **kwargs):
+    def iter(self, fields='subject', exclude=None, values=None, progress_bar=None, **state):
         """
         Cycle the experiment's state through all values on the given fields
 
@@ -1790,18 +1790,12 @@ class MneExperiment(FileTree):
             Fields with custom values to iterate over (instead of the
             corresponding field values) with {name: (sequence of values)}
             entries.
-        group : None | str
-            If iterating over subjects, use this group ('all' for all except
-            excluded subjects, 'all!' for all including excluded subjects, or
-            a name defined in experiment.groups).
         progress_bar : str
             Message to show in the progress bar.
         ...
-            Fields with constant values throughout the iteration.
+            State parameters.
         """
-        if group is not None:
-            kwargs['group'] = group
-        return FileTree.iter(self, fields, exclude, values, progress_bar, **kwargs)
+        return FileTree.iter(self, fields, exclude, values, progress_bar, **state)
 
     def iter_range(self, start=None, stop=None, field='subject'):
         """Iterate through a range on a field with ordered values.
@@ -3506,7 +3500,7 @@ class MneExperiment(FileTree):
                         ds = ds[1:]
                         self._log.warning(self.format("First epoch for {subject} is missing"))
                     else:
-                        raise RuntimeError(f"The epoch selection file contains different events (trigger IDs) from the epoch data loaded from the raw file. If the events included in the epoch were changed intentionally, delete the corresponding epoch rejection file and redo epoch rejection: {rej_file}")
+                        raise RuntimeError(f"The epoch selection file contains different events (trigger IDs) from the data loaded from the raw file. If the events included in the epoch were changed intentionally,  redo epoch rejection for {rej_file}")
 
                 if rej_params['interpolation']:
                     ds.info[INTERPOLATE_CHANNELS] = True
