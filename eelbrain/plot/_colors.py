@@ -242,7 +242,7 @@ class ColorList(EelFigure):
         elif not isinstance(labels, dict):
             raise TypeError(f"labels={labels!r}")
 
-        layout = Layout(0, 1.5, 2, False, False, h, *args, **kwargs)
+        layout = Layout(0, 1.5, 2, False, None, h, *args, **kwargs)
         EelFigure.__init__(self, None, layout)
 
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
@@ -361,7 +361,7 @@ class ColorBar(EelFigure):
         else:
             raise ValueError("orientation=%s" % repr(orientation))
 
-        layout = Layout(1, ax_aspect, 2, tight, False, h, w, *args, **kwargs)
+        layout = Layout(1, ax_aspect, 2, tight, None, h, w, *args, **kwargs)
         EelFigure.__init__(self, cm.name, layout)
         ax = self._axes[0]
 

@@ -97,6 +97,7 @@ def test_plot_colors():
 
     colors = plot.colors_for_oneway(cells_1)
     p = plot.ColorList(colors)
+    assert p._figtitle is None
     w0, h0 = p.figure.get_size_inches()
     p.close()
 
