@@ -106,9 +106,9 @@ from .._stats import testnd
 from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
 from .._ndvar import erode, resample
 from .._text import enumeration, ms
-from ..fmtxt import Image
+from ..fmtxt import Image, asfmtext_or_none
 from ..mne_fixes import MNE_EPOCHS
-from ._styles import Style, StylesDict, find_cell_styles
+from ._styles import Style, find_cell_styles
 from ._utils import adjust_hsv
 
 
@@ -2017,8 +2017,8 @@ class BaseLayout:
         self.show = show
         self.run = run
         self.autoscale = autoscale
-        self.title = title
-        self.name = name or title
+        self.title = asfmtext_or_none(title)
+        self.name = asfmtext_or_none(name) or title
         self.user_axes = axes
 
         x = y = None
