@@ -19,7 +19,6 @@ x2 = ds['x2']
 from dataclasses import dataclass, field, fields
 import inspect
 from itertools import chain, product, repeat
-from multiprocessing import Process, Queue
 from multiprocessing.sharedctypes import RawArray
 import os
 import time
@@ -32,7 +31,7 @@ from numpy import newaxis
 import scipy.signal
 from tqdm import tqdm
 
-from .._config import CONFIG
+from .._config import CONFIG, mpc
 from .._data_obj import Dataset, NDVar, NDVarArg
 from .._exceptions import OldVersionError
 from .._utils import LazyProperty, user_activity
@@ -859,12 +858,12 @@ def setup_workers(data, i_start, i_stop, delta, mindelta, error, selective_stopp
     x_pads_buffer = RawArray('d', n_x)
     x_pads_buffer[:] = data.x_pads
 
-    job_queue = Queue(200)
-    result_queue = Queue(200)
+    job_queue = mpc.Queue(200)
+    result_queue = mpc.Queue(200)
 
     args = (y_buffer, x_buffer, x_pads_buffer, n_y, n_times, n_x, data.splits, i_start, i_stop, delta, mindelta, error, selective_stopping, job_queue, result_queue)
     for _ in range(CONFIG['n_workers']):
-        process = Process(target=boosting_worker, args=args)
+        process = mpc.Process(target=boosting_worker, args=args)
         process.start()
 
     return job_queue, result_queue
