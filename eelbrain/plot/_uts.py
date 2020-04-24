@@ -1,11 +1,13 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Plot uniform time-series of one variable."""
+from functools import reduce
 import operator
 
 import matplotlib as mpl
 import numpy as np
 
 from .._celltable import Celltable
+from .._colorspaces import oneway_colors
 from .._data_obj import ascategorial, asndvar, assub, cellname, longname
 from .._stats import stats
 from . import _base
@@ -13,8 +15,6 @@ from ._base import (
     EelFigure, PlotData, Layout,
     LegendMixin, YLimMixin, XAxisMixin, TimeSlicerEF, frame_title)
 from ._colors import colors_for_oneway, find_cell_styles
-from .._colorspaces import oneway_colors
-from functools import reduce
 
 
 class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
@@ -135,8 +135,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         if match is not None:
             match = ascategorial(match, sub, ds, n)
 
-        if error and error != 'all' and \
-                (pool_error or (pool_error is None and match is not None)):
+        if error and error != 'all' and (pool_error or (pool_error is None and match is not None)):
             all_x = [i for i in (xax, x) if i is not None]
             if len(all_x) > 0:
                 full_x = reduce(operator.mod, all_x)

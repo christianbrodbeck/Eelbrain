@@ -68,10 +68,7 @@ import math
 from numbers import Number
 import os
 import re
-import shutil
-import subprocess
 import sys
-import tempfile
 import time
 from typing import List, Sequence, Union
 from typing import Iterator as IteratorType
@@ -83,14 +80,12 @@ from matplotlib.colors import Colormap
 from matplotlib.figure import SubplotParams
 from matplotlib.ticker import FuncFormatter
 import numpy as np
-import PIL
 
 from .._colorspaces import LocatedColormap, symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
 from .._config import CONFIG
 from .._data_obj import Factor, NDVar, Case, UTS, ascategorial, asndvar, assub, isnumeric, isdataobject, cellname
 from .._stats import testnd
 from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
-from .._utils.subp import command_exists
 from ..fmtxt import Image
 from ..mne_fixes import MNE_EPOCHS
 from .._ndvar import erode, resample
@@ -934,8 +929,13 @@ class PlotData:
 
     Notes
     -----
-    :class:`PlotData` is initially independent of plot type, and can be rendered
-    into specific plot-types with :meth:`PlotData.for_plot` methods.
+    Two-stage initialization:
+
+     - Initially independent of plot type
+       - Layers contain masked NDVars
+
+     - Converted into specific plot-types with :meth:`.for_plot` methods.
+       - Masks converted into layers
     """
     def __init__(
             self,
@@ -1012,12 +1012,15 @@ class PlotData:
                 dims = find_data_dims(layer.y, dims)
             return PlotData([y], dims)
         sub = assub(sub, ds)
-        ys = y._default_plot_obj() if hasattr(y, '_default_plot_obj') else y
-
-        if isinstance(ys, MNE_EPOCHS):
+        if hasattr(y, '_default_plot_obj'):
+            ys = getattr(y, '_default_plot_obj')()
+        elif isinstance(y, MNE_EPOCHS):
             # Epochs are Iterators over arrays
-            ys = (asndvar(ys, sub, ds),)
-        elif not isinstance(ys, (tuple, list, Iterator)):
+            ys = (asndvar(y, sub, ds),)
+        else:
+            ys = y
+
+        if not isinstance(ys, (tuple, list, Iterator)):
             ys = (ys,)
 
         ax_names = None
@@ -1250,39 +1253,6 @@ class MatplotlibFrame:
 
     def store_canvas(self):
         self._background = self.canvas.copy_from_bbox(self.figure.bbox)
-
-
-# MARK: figure composition
-
-def _loc(name, size=(0, 0), title_space=0, frame=.01):
-    """Convert loc argument to ``(x, y)`` of bottom left edge"""
-    if isinstance(name, str):
-        y, x = name.split()
-    # interpret x
-    elif len(name) == 2:
-        x, y = name
-    else:
-        raise NotImplementedError("loc needs to be string or len=2 tuple/list")
-    if isinstance(x, str):
-        if x == 'left':
-            x = frame
-        elif x in ['middle', 'center', 'centre']:
-            x = .5 - size[0] / 2
-        elif x == 'right':
-            x = 1 - frame - size[0]
-        else:
-            raise ValueError(x)
-    # interpret y
-    if isinstance(y, str):
-        if y in ['top', 'upper']:
-            y = 1 - frame - title_space - size[1]
-        elif y in ['middle', 'center', 'centre']:
-            y = .5 - title_space / 2. - size[1] / 2.
-        elif y in ['lower', 'bottom']:
-            y = frame
-        else:
-            raise ValueError(y)
-    return x, y
 
 
 def frame_title(y, x=None, xax=None):
@@ -3318,159 +3288,3 @@ class YLimMixin:
         vmin, vmax = self.get_ylim()
         d = (vmax - vmin) * (1 / 22)
         self.__animate(vmin, -d, vmax, d)
-
-
-class ImageTiler:
-    """
-    Create tiled images and animations from individual image files.
-
-    Parameters
-    ----------
-    ext : str
-        Extension to append to generated file names.
-    nrow : int
-        Number of rows of tiles in a frame.
-    ncol : int
-        Number of columns of tiles in a frame.
-    nt : int
-        Number of time points in the animation.
-    dest : str(directory)
-        Directory in which to place files. If None, a temporary directory
-        is created and removed upon deletion of the ImageTiler instance.
-    """
-    def __init__(self, ext='.png', nrow=1, ncol=1, nt=1, dest=None):
-        if dest is None:
-            self.dir = tempfile.mkdtemp()
-        else:
-            if not os.path.exists(dest):
-                os.makedirs(dest)
-            self.dir = dest
-
-        # find number of digits necessary to name images
-        row_fmt = '%%0%id' % (np.floor(np.log10(nrow)) + 1)
-        col_fmt = '%%0%id' % (np.floor(np.log10(ncol)) + 1)
-        t_fmt = '%%0%id' % (np.floor(np.log10(nt)) + 1)
-        self._tile_fmt = 'tile_%s_%s_%s%s' % (row_fmt, col_fmt, t_fmt, ext)
-        self._frame_fmt = 'frame_%s%s' % (t_fmt, ext)
-
-        self.dest = dest
-        self.ncol = ncol
-        self.nrow = nrow
-        self.nt = nt
-
-    def __del__(self):
-        if self.dest is None:
-            shutil.rmtree(self.dir)
-
-    def get_tile_fname(self, col=0, row=0, t=0):
-        if col >= self.ncol:
-            raise ValueError("col: %i >= ncol" % col)
-        if row >= self.nrow:
-            raise ValueError("row: %i >= nrow" % row)
-        if t >= self.nt:
-            raise ValueError("t: %i >= nt" % t)
-
-        if self.ncol == 1 and self.nrow == 1:
-            return self.get_frame_fname(t)
-
-        fname = self._tile_fmt % (col, row, t)
-        return os.path.join(self.dir, fname)
-
-    def get_frame_fname(self, t=0, dirname=None):
-        if t >= self.nt:
-            raise ValueError("t: %i >= nt" % t)
-
-        if dirname is None:
-            dirname = self.dir
-
-        fname = self._frame_fmt % (t,)
-        return os.path.join(dirname, fname)
-
-    def make_frame(self, t=0, redo=False):
-        """Produce a single frame."""
-        dest = self.get_frame_fname(t)
-
-        if os.path.exists(dest):
-            if redo:
-                os.remove(dest)
-            else:
-                return
-
-        # collect tiles
-        images = []
-        colw = [0] * self.ncol
-        rowh = [0] * self.nrow
-        for r in range(self.nrow):
-            row = []
-            for c in range(self.ncol):
-                fname = self.get_tile_fname(c, r, t)
-                if os.path.exists(fname):
-                    im = PIL.Image.open(fname)
-                    colw[c] = max(colw[c], im.size[0])
-                    rowh[r] = max(rowh[r], im.size[1])
-                else:
-                    im = None
-                row.append(im)
-            images.append(row)
-
-        cpos = np.cumsum([0] + colw)
-        rpos = np.cumsum([0] + rowh)
-        out = PIL.Image.new('RGB', (cpos[-1], rpos[-1]))
-        for r, row in enumerate(images):
-            for c, im in enumerate(row):
-                if im is None:
-                    pass
-                else:
-                    out.paste(im, (cpos[c], rpos[r]))
-        out.save(dest)
-
-    def make_frames(self):
-        for t in range(self.nt):
-            self.make_frame(t=t)
-
-    def make_movie(self, dest, framerate=10, codec='mpeg4'):
-        """Make all frames and export a movie"""
-        dest = os.path.expanduser(dest)
-        dest = os.path.abspath(dest)
-        root, ext = os.path.splitext(dest)
-        dirname = os.path.dirname(dest)
-        if ext not in ['.mov', '.avi']:
-            if len(ext) == 4:
-                dest = root + '.mov'
-            else:
-                dest = dest + '.mov'
-
-        if not command_exists('ffmpeg'):
-            err = ("Need ffmpeg for saving movies. Download from "
-                   "http://ffmpeg.org/download.html")
-            raise RuntimeError(err)
-        elif os.path.exists(dest):
-            os.remove(dest)
-        elif not os.path.exists(dirname):
-            os.mkdir(dirname)
-
-        self.make_frames()
-
-        # make the movie
-        frame_name = self._frame_fmt
-        cmd = ['ffmpeg',  # ?!? order of options matters
-               '-f', 'image2',  # force format
-               '-r', str(framerate),  # framerate
-               '-i', frame_name,
-               '-c', codec,
-               '-sameq', dest,
-               '-pass', '2'  #
-               ]
-        sp = subprocess.Popen(cmd, cwd=self.dir, stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE)
-        stdout, stderr = sp.communicate()
-        if not os.path.exists(dest):
-            raise RuntimeError("ffmpeg failed:\n" + stderr)
-
-    def save_frame(self, dest, t=0, overwrite=False):
-        if not overwrite and os.path.exists(dest):
-            raise IOError("File already exists: %r" % dest)
-        self.make_frame(t=t)
-        fname = self.get_frame_fname(t)
-        im = PIL.Image.open(fname)
-        im.save(dest)
