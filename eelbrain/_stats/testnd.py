@@ -24,7 +24,6 @@ from datetime import datetime, timedelta
 from functools import reduce, partial
 from itertools import chain, repeat
 from math import ceil
-from multiprocessing import Process, Event, SimpleQueue
 from multiprocessing.sharedctypes import RawArray
 import logging
 import operator
@@ -42,7 +41,7 @@ from tqdm import trange
 from .. import fmtxt, _info, _text
 from ..fmtxt import FMText
 from .._celltable import Celltable
-from .._config import CONFIG
+from .._config import CONFIG, mpc
 from .._data_obj import (
     CategorialArg, CellArg, IndexArg, ModelArg, NDVarArg, VarArg,
     Dataset, Var, Factor, Interaction, NestedEffect,
@@ -3778,9 +3777,9 @@ def setup_workers(test_func, dist, func_args):
     "Initialize workers for permutation tests"
     logger = logging.getLogger(__name__)
     logger.debug("Setting up %i worker processes..." % CONFIG['n_workers'])
-    permutation_queue = SimpleQueue()
-    dist_queue = SimpleQueue()
-    kill_beacon = Event()
+    permutation_queue = mpc.SimpleQueue()
+    dist_queue = mpc.SimpleQueue()
+    kill_beacon = mpc.Event()
 
     restore_main_spec()
 
@@ -3790,13 +3789,13 @@ def setup_workers(test_func, dist, func_args):
             test_func, func_args, dist.map_args, kill_beacon)
     workers = []
     for _ in range(CONFIG['n_workers']):
-        w = Process(target=permutation_worker, args=args)
+        w = mpc.Process(target=permutation_worker, args=args)
         w.start()
         workers.append(w)
 
     # distribution worker
     args = (dist.dist_array, dist.dist_shape, dist_queue, kill_beacon)
-    w = Process(target=distribution_worker, args=args)
+    w = mpc.Process(target=distribution_worker, args=args)
     w.start()
     workers.append(w)
 
@@ -3857,9 +3856,9 @@ def setup_workers_me(test_func, dists, thresholds):
     "Initialize workers for permutation tests"
     logger = logging.getLogger(__name__)
     logger.debug("Setting up %i worker processes..." % CONFIG['n_workers'])
-    permutation_queue = SimpleQueue()
-    dist_queue = SimpleQueue()
-    kill_beacon = Event()
+    permutation_queue = mpc.SimpleQueue()
+    dist_queue = mpc.SimpleQueue()
+    kill_beacon = mpc.Event()
 
     restore_main_spec()
 
@@ -3870,13 +3869,13 @@ def setup_workers_me(test_func, dists, thresholds):
             test_func, dist.map_args, thresholds, kill_beacon)
     workers = []
     for _ in range(CONFIG['n_workers']):
-        w = Process(target=permutation_worker_me, args=args)
+        w = mpc.Process(target=permutation_worker_me, args=args)
         w.start()
         workers.append(w)
 
     # distribution worker
     args = ([d.dist_array for d in dists], dist.dist_shape, dist_queue, kill_beacon)
-    w = Process(target=distribution_worker_me, args=args)
+    w = mpc.Process(target=distribution_worker_me, args=args)
     w.start()
     workers.append(w)
 

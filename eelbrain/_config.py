@@ -1,15 +1,17 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Configure Eelbrain"""
-from multiprocessing import cpu_count, set_start_method
+import multiprocessing
 import os
 import sys
 
 from matplotlib.colors import to_rgb
 
+from ._utils import IS_OSX
+
 
 SUPPRESS_WARNINGS = True
 CONFIG = {
-    'n_workers': cpu_count(),
+    'n_workers': multiprocessing.cpu_count(),
     'eelbrain': True,
     'autorun': None,
     'show': True,
@@ -22,8 +24,10 @@ CONFIG = {
 }
 
 # Python 3.8 switched default to spawn, which makes pytest hang  (https://docs.python.org/3/whatsnew/3.8.html#multiprocessing)
-if sys.version_info.minor >= 8:
-    set_start_method('fork')
+method = multiprocessing.get_start_method()
+if sys.version_info.minor >= 8 and IS_OSX:
+    method = 'fork'
+mpc = multiprocessing.get_context(method)
 
 
 def configure(
@@ -85,15 +89,15 @@ def configure(
     new = {}
     if n_workers is not None:
         if n_workers is True:
-            new['n_workers'] = cpu_count()
+            new['n_workers'] = multiprocessing.cpu_count()
         elif n_workers is False:
             new['n_workers'] = 0
         elif isinstance(n_workers, int):
+            cpu_count = multiprocessing.cpu_count()
             if n_workers < 0:
-                if cpu_count() - n_workers < 1:
-                    raise ValueError("n_workers=%i, but only %i CPUs are "
-                                     "available" % (n_workers, cpu_count()))
-                new['n_workers'] = cpu_count() - n_workers
+                if cpu_count - n_workers < 1:
+                    raise ValueError(f"n_workers={n_workers}, but only {cpu_count} CPUs are available")
+                new['n_workers'] = cpu_count - n_workers
             else:
                 new['n_workers'] = n_workers
         else:
