@@ -1,6 +1,8 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Statistics functions that work on numpy arrays."""
+from dataclasses import dataclass
 import re
+from typing import Literal, Union
 
 import numpy as np
 import scipy.stats
@@ -12,6 +14,30 @@ from . import vector
 
 
 FLOAT64 = np.dtype('float64')
+
+
+@dataclass
+class DispersionSpec:
+    multiplier: float = 1
+    measure: Literal['SEM', 'CI'] = 'SEM'
+
+    @classmethod
+    def from_string(cls, string: Union[str, 'DispersionSpec']):
+        if isinstance(string, cls):
+            return string
+        m = re.match(r"^([.\d]*)(\%?)(CI|SEM)$", string.upper())
+        if m is None:
+            raise ValueError(f"{string!r}: invalid dispersion specification")
+        multiplier, perc, measure = m.groups()
+        if multiplier:
+            multiplier = float(multiplier)
+            if perc:
+                multiplier /= 100
+        elif measure == 'ci':
+            multiplier = .95
+        else:
+            multiplier = 1
+        return cls(multiplier, measure)
 
 
 def _as_float64(x):
@@ -245,6 +271,15 @@ class SEM:
         self.model = model
         self.sem = sem
 
+    def get(self, spec: DispersionSpec):
+        spec = DispersionSpec.from_string(spec)
+        if spec.measure == 'SEM':
+            return self.sem * spec.multiplier
+        elif spec.measure == 'CI':
+            return self.ci(spec.multiplier)
+        else:
+            raise RuntimeError(spec)
+
     def ci(self, confidence):
         """Confidence interval based on the inverse t-test
 
@@ -429,7 +464,7 @@ def variability(y, x, match, spec, pool, cells=None):
 
     Parameters
     ----------
-    y : array
+    y : ndarray
         Dependent measure.
     x : None | Categorial
         Cells for pooling variance.
@@ -453,42 +488,18 @@ def variability(y, x, match, spec, pool, cells=None):
         Variability estimate. A single estimate if errors are pooled, otherwise
         an estimate for every cell in x.
     """
-    m = re.match("^([.\d]*)(\%?)(ci|sem)$", spec.lower())
-    if m is None:
-        raise ValueError("error=%r" % (spec,))
-    scale, perc, kind = m.groups()
-    if scale:
-        scale = float(scale)
-        if perc:
-            scale /= 100
-    elif kind == 'ci':
-        scale = .95
-    else:
-        scale = 1
-
+    spec_ = DispersionSpec.from_string(spec)
     if x is None:
         if match is not None and match.df == len(match) - 1:
-            raise ValueError("Can't calculate within-subject error because the "
-                             "match predictor explains all variability")
+            raise ValueError("Can't calculate within-subject error because the match predictor explains all variability")
     elif not pool and cells is None:
         cells = x.cells
 
     y = np.asarray(y, np.float64)
-    if kind == 'ci':
-        if pool or x is None:
-            out = SEM(y, x, match).ci(scale)
-        else:
-            out = np.array([SEM(y[x == cell]).ci(scale) for cell in cells])
-    elif kind == 'sem':
-        if pool or x is None:
-            out = SEM(y, x, match).sem
-        else:
-            out = np.array([SEM(y[x == cell]).sem for cell in cells])
-
-        if scale != 1:
-            out *= scale
+    if pool or x is None:
+        out = SEM(y, x, match).get(spec_)
     else:
-        raise RuntimeError("kind=%r" % (kind,))
+        out = np.array([SEM(y[x == cell]).get(spec_) for cell in cells])
 
     # return scalars for 1d-arrays
     if out.ndim == 0:
