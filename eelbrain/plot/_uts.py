@@ -436,7 +436,7 @@ class _ax_uts_stat:
 
         # format y axis
         ax.autoscale(True, 'y')
-        ax.autoscale(False)
+        ax.autoscale(False, 'x')
         self.vmin, self.vmax = self.ax.get_ylim()
 
     @property
