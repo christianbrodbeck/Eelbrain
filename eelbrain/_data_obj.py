@@ -4057,13 +4057,12 @@ class NDVar:
         if isinstance(dims, str):
             dims = (dims,)
 
-        dims_ = tuple(d for d in dims if d is not newaxis)
+        dims_ = [d for d in dims if d is not newaxis]
         if set(dims_) != set(self.dimnames) or len(dims_) != len(self.dimnames):
-            raise DimensionMismatchError("Requested dimensions %r from %r" %
-                                         (dims, self))
+            raise DimensionMismatchError(f"Requested dimensions {dims} from {self}")
 
         # transpose
-        axes = tuple(self.dimnames.index(d) for d in dims_)
+        axes = [self.dimnames.index(d) for d in dims_]
         x = self.x.transpose(axes)
 
         # apply mask
@@ -6717,8 +6716,7 @@ class Interaction(_Effect):
         return self.base.__contains__(item)
 
     def __iter__(self):
-        for i in range(len(self)):
-            yield tuple(b[i] for b in self.base)
+        yield from zip(*self.base)
 
     # numeric ---
     def __eq__(self, other):

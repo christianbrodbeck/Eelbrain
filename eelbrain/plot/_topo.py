@@ -942,26 +942,9 @@ class TopoArray(ColorMapMixin, TopoMapKey, EelFigure):
             data = topo_window.plot.data
         return data, f"{ms} ms", self._proj
 
-    def add_contour(self, meas, level, color='k'):
-        """Add a contour line
-
-        Parameters
-        ----------
-        meas : str
-            The measurement for which to add a contour line.
-        level : scalar
-            The value at which to draw the contour.
-        color : matplotlib color
-            The color of the contour line.
-        """
-        for p in self._iter_plots():
-            p.add_contour(meas, level, color)
-        self.draw()
-
     def _iter_plots(self):
         "Iterate through non-empty plots"
-        for p in self._array_plots:
-            yield p
+        yield from self._array_plots
         for w in self._topo_windows:
             if w.plot is not None:
                 yield w.plot

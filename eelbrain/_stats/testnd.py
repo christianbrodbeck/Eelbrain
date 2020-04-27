@@ -204,7 +204,7 @@ class NDTest:
         raise NotImplementedError
 
     def _iter_cdists(self):
-        yield (None, self._cdist)
+        yield None, self._cdist
 
     @property
     def _first_cdist(self):

@@ -294,8 +294,7 @@ class Document(FileDocument):
                 else:
                     yield epoch
         else:
-            for epoch in epochs:
-                yield epoch
+            yield from epochs
 
     def good_sensor_index(self, case):
         "Index of non-interpolated sensor relative to good sensors"

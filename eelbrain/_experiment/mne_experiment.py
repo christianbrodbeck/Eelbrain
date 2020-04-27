@@ -1319,8 +1319,7 @@ class MneExperiment(FileTree):
 
     def __iter__(self):
         "Iterate state through subjects and yield each subject name."
-        for subject in self.iter():
-            yield subject
+        return self.iter()
 
     # mtime methods
     # -------------
