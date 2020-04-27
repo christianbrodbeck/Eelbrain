@@ -3,24 +3,22 @@
 # to run stats test, install r-ez with $ conda install -c ncil r-ez --no-deps
 name: eeldev
 channels:
-- defaults
 - conda-forge
 dependencies:
-- python >= 3.7
+- python == 3.7  # traitsui incompatible with 3.8
+- pip
 - twine
-- blas=*=mkl  # openblas produces incorrect results for ICA in iMac Pro
-- libblas
+- libblas=*=*mkl  # openblas produces incorrect results for ICA in iMac Pro
 - libcblas
+- libclang
 - numpy
 - scipy >= 1.3
-- matplotlib-base >= 3
+- matplotlib-base >= 3, <3.1  # https://github.com/matplotlib/matplotlib/issues/15410
 - pyarrow
 - pillow
 - psutil
 # mne-python
 - mne >= 0.17
-- mkl
-- pyqt
 - h5py
 - pandas
 - scikit-learn
@@ -55,6 +53,7 @@ dependencies:
 # plotting brains
 - nibabel >= 2.5
 - mayavi >= 4.6.2  # conda-forge pinning faulty
+- traits < 6  # traitsui incompatible (travis error)
 - vtk >= 8.1.1
 - pysurfer >= 0.9
 - nilearn
