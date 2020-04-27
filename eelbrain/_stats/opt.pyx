@@ -1,10 +1,7 @@
 # optimized statistics functions
 # cython: language_level=3, boundscheck=False, wraparound=False
-
-cimport cython
 from cython.view cimport array as cvarray
 from libc.stdlib cimport malloc, free
-import numpy as np
 cimport numpy as np
 
 

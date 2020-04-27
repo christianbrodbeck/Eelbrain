@@ -8,10 +8,8 @@ optimized statistics functions
 Relies on code from 'Efficient numerical diagonalization of hermitian 3x3 matrices'
 governed by GNU LESSER GENERAL PUBLIC LICENSE Version 2.1.
 """
-
 cimport cython
 from libc.math cimport sin, cos
-import numpy as np
 cimport numpy as np
 
 
@@ -171,7 +169,8 @@ def t2_stat_rotated(
     cdef unsigned long i, v, u, case, vi
     cdef double norm, temp, TOL, max_eig
 
-    cdef double mean[3], tempv[3]
+    cdef double mean[3]
+    cdef double tempv[3]
     cdef double sigma[3][3]
 
     cdef double eig[3]

@@ -1,11 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-#cython: boundscheck=False, wraparound=False
-
-cimport cython
-from cython.view cimport array as cvarray
-from libc.stdlib cimport malloc, free
+# cython: language_level=3, boundscheck=False, wraparound=False
 from libc.math cimport fabs
-import numpy as np
 cimport numpy as np
 
 ctypedef np.int8_t INT8
