@@ -43,7 +43,7 @@ from .._ndvar import neighbor_correlation
 from .._utils.parse import FLOAT_PATTERN, POS_FLOAT_PATTERN, INT_PATTERN
 from .._utils.numpy_utils import FULL_SLICE, INT_TYPES
 from ..mne_fixes import MNE_EPOCHS
-from ..plot._base import AxisData, LayerData, PlotType, AxisScale, find_fig_vlims, find_fig_cmaps
+from ..plot._base import AxisData, DataLayer, PlotType, AxisScale, find_fig_vlims, find_fig_cmaps
 from ..plot._nuts import _plt_bin_nuts
 from ..plot._topo import _ax_topomap
 from ..plot._utsnd import _ax_bfly_epoch
@@ -1471,7 +1471,7 @@ class Frame(FileFrame):
                 mark = [ch for ch in self._mark if ch not in self.doc.bad_channel_names]
             else:
                 mark = None
-            layers = AxisData([LayerData(tseg, PlotType.IMAGE)])
+            layers = AxisData([DataLayer(tseg, PlotType.IMAGE)])
             self._topo_plot = _ax_topomap(self._topo_ax, layers, mark=mark, **self._topo_kwargs)
             self._topo_plot_info_str = ""
 

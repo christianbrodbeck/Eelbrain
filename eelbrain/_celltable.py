@@ -1,14 +1,17 @@
 from fnmatch import fnmatchcase
 from itertools import combinations
+from typing import Callable, Sequence
 
 import numpy as np
 
 from ._data_obj import (
+    NumericArg, CategorialArg, CellArg, IndexArg,
     NDVar, Case, Dataset,
     ascategorial, asdataobject, assub,
     cellname, dataobj_repr,
 )
-from ._stats.stats import variability
+from ._stats.stats import SEM, DispersionSpec, variability
+from ._utils import LazyProperty
 from ._utils.numpy_utils import FULL_SLICE
 
 
@@ -82,8 +85,17 @@ class Celltable:
         cell.
 
     """
-    def __init__(self, y, x=None, match=None, sub=None, cat=None, ds=None,
-                 coercion=asdataobject, dtype=None):
+    def __init__(
+            self,
+            y: NumericArg,
+            x: CategorialArg = None,
+            match: CategorialArg = None,
+            sub: IndexArg = None,
+            cat: Sequence[CellArg] = None,
+            ds: Dataset = None,
+            coercion: Callable = asdataobject,
+            dtype: np.dtype = None,
+    ):
         self.sub = sub
         sub, n_cases = assub(sub, ds, return_n=True)
 
@@ -246,7 +258,7 @@ class Celltable:
                 out[k] = reference_v
         return out
 
-    def _align(self, y, rm=False):
+    def _align(self, y, rm=False, ds=None):
         """Align an additional variable to the celltable
 
         Parameters
@@ -257,7 +269,7 @@ class Celltable:
             If the celltable is a repeated-measures celltable, align ``y`` to
             the repeated measures table rather than the long form table.
         """
-        y_ = asdataobject(y, self._sub, n=self._n_cases)
+        y_ = asdataobject(y, self._sub, ds, self._n_cases)
         if self._aggregate is not None:
             y_ = y_.aggregate(self._aggregate)
         if self._sort_idx is not None:
@@ -342,6 +354,25 @@ class Celltable:
             return self.data
         elif out is list:
             return [self.data[cell] for cell in self.cells]
+
+    def _get_func(self, cell, func):
+        return self.data[cell].aggregate(func=func).x
+
+    @LazyProperty
+    def _pooled_sem(self):
+        return SEM(self.y.x, self.x, self.match)
+
+    def _get_dispersion(
+            self,
+            cell: CellArg,
+            spec: DispersionSpec,
+            pool: bool,  # pooled variance estimate
+    ):
+        if pool:
+            sem = self._pooled_sem
+        else:
+            sem = SEM(self.data[cell].x)
+        return sem.get(spec)
 
     def get_statistic(self, func=np.mean):
         """Return a list with ``a * func(data)`` for each data cell.

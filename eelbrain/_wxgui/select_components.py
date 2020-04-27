@@ -24,7 +24,7 @@ from .. import load, plot, fmtxt
 from .._data_obj import Factor, NDVar, asndvar, Categorial, Scalar
 from .._utils.parse import POS_FLOAT_PATTERN
 from .._utils.system import IS_OSX
-from ..plot._base import AxisData, LayerData, PlotType
+from ..plot._base import AxisData, DataLayer, PlotType
 from ..plot._topo import _ax_topomap
 from .frame import EelbrainDialog
 from .history import Action, FileDocument, FileModel, FileFrame, FileFrameChild
@@ -469,7 +469,7 @@ class Frame(SharedToolsMenu, FileFrame):
         axes = tuple(fig.add_subplot(n_v, n_h, i) for i in range(1, n + 1))
         # bgs = tuple(ax.patch)
         for i, ax, c, accept in zip(range(n), axes, self.doc.components, self.doc.accept):
-            layers = AxisData([LayerData(c, PlotType.IMAGE)])
+            layers = AxisData([DataLayer(c, PlotType.IMAGE)])
             _ax_topomap(ax, layers, **TOPO_ARGS)
             ax.text(0.5, 1, "# %i" % i, ha='center', va='top')
             p = Rectangle((0, 0), 1, 1, color=COLOR[accept], zorder=-1)
@@ -748,7 +748,7 @@ class SourceFrame(SharedToolsMenu, FileFrameChild):
         for i in range(n_comp_actual):
             i_comp = self.i_first + i
             ax = self.figure.add_axes((left, 1 - (i + 1) * axheight, axwidth, axheight))
-            layers = AxisData([LayerData(self.doc.components[i_comp], PlotType.IMAGE)])
+            layers = AxisData([DataLayer(self.doc.components[i_comp], PlotType.IMAGE)])
             p = _ax_topomap(ax, layers, **TOPO_ARGS)
             text = ax.text(0, 0.5, "# %i" % i_comp, va='center', ha='right', color='k')
             ax.i = i

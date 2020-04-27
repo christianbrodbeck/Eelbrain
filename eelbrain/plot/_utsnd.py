@@ -8,7 +8,7 @@ from .._names import INTERPOLATE_CHANNELS
 from . import _base
 from ._base import (
     PlotType,
-    EelFigure, PlotData, LayerData, Layout,
+    EelFigure, PlotData, DataLayer, Layout,
     ColorMapMixin, LegendMixin, TimeSlicerEF, TopoMapKey, YLimMixin, XAxisMixin,
     pop_if_dict, set_dict_arg)
 
@@ -20,7 +20,7 @@ class _plt_im:
     def __init__(
             self,
             ax: mpl.axes.Axes,
-            layer: LayerData,
+            layer: DataLayer,
             cmaps: dict,
             vlims: dict,
             contours: dict,
@@ -267,7 +267,7 @@ class _plt_utsnd:
     ----------
     ax : matplotlib axes
         Target axes.
-    layer : LayerData
+    layer : DataLayer
         Epoch to plot.
     sensors : None | True | numpy index
         The sensors to plot (None or True -> all sensors).
@@ -282,10 +282,10 @@ class _plt_utsnd:
         z_order = pop_if_dict(kwargs, 'zorder')
         self._dims = (line_dim, xdim)
         x = epoch.get_dim(xdim)._axis_data()
+        y = epoch.get_data((xdim, line_dim))
         line_dim_obj = epoch.get_dim(line_dim)
         self.legend_handles = {}
-        self.lines = ax.plot(x, epoch.get_data((xdim, line_dim)),
-                             label=epoch.name, **kwargs)
+        self.lines = ax.plot(x, y, label=epoch.name, **kwargs)
 
         # apply line-specific formatting
         lines = Datalist(self.lines)
@@ -326,7 +326,7 @@ class _ax_butterfly:
     ----------
     vmin, vmax: None | scalar
         Y axis limits.
-    layers : list of LayerData
+    layers : list of DataLayer
         Data layers to plot.
     """
     def __init__(self, ax, layers, xdim, linedim, sensors, color, linewidth, vlims, clip=True):
@@ -441,7 +441,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
                  linewidth=None,
                  ds=None, sub=None, x='time', vmax=None, vmin=None, xlim=None,
                  clip=None, *args, **kwargs):
-        data = PlotData.from_args(y, (x, None), xax, ds, sub)
+        data = PlotData.from_args(y, (x, None), xax, ds, sub).for_plot(PlotType.LINE)
         xdim, linedim = data.dims
         layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
@@ -455,8 +455,7 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
         self.plots = []
         self._vlims = _base.find_fig_vlims(data.data, vmax, vmin)
         legend_handles = {}
-        for i, ax in enumerate(self._axes):
-            layers = data.axis_for_plot(i, PlotType.LINE)
+        for ax, layers in zip(self._axes, data):
             h = _ax_butterfly(ax, layers, xdim, linedim, sensors, color, linewidth, self._vlims, clip)
             self.plots.append(h)
             legend_handles.update(h.legend_handles)
@@ -540,7 +539,7 @@ class _ax_bfly_epoch:
         mlw : scalar
             Marked sensor plot line width (default 1).
         """
-        self.lines = _plt_utsnd(ax, LayerData(epoch, PlotType.LINE), 'time', 'sensor',
+        self.lines = _plt_utsnd(ax, DataLayer(epoch, PlotType.LINE), 'time', 'sensor',
                                 color=color, lw=lw, antialiased=antialiased)
         ax.set_xlim(epoch.time[0], epoch.time[-1])
 

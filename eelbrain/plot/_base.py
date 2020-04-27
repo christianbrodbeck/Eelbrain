@@ -56,11 +56,26 @@ functions executed are:
 #. ------> _plt_(diff(A,B))
 #. ------> _plt_(p(A, B))
 
+
+Vision
+------
+
+Modularize organization
+
+Data organizers:
+    Take data from input arguments and organize it into axes and layers
+Style mappers:
+    Take data and input arguments and determine matplotlib parameters
+Figure components
+    Manage styling and interaction for figure properties (XAxisMixin,
+    TimeController, ...)
+
 """
 import __main__
 
 from collections.abc import Iterable, Iterator
 from copy import copy
+from dataclasses import dataclass, replace
 from enum import Enum, auto
 from itertools import chain, repeat
 from logging import getLogger
@@ -70,7 +85,7 @@ import os
 import re
 import sys
 import time
-from typing import List, Sequence, Union
+from typing import Callable, List, Sequence, Tuple, Union
 from typing import Iterator as IteratorType
 import weakref
 
@@ -81,9 +96,10 @@ from matplotlib.figure import SubplotParams
 from matplotlib.ticker import FuncFormatter
 import numpy as np
 
+from .._celltable import Celltable
 from .._colorspaces import LocatedColormap, symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
 from .._config import CONFIG
-from .._data_obj import Factor, NDVar, Case, UTS, ascategorial, asndvar, assub, isnumeric, isdataobject, cellname
+from .._data_obj import Dataset, Factor, Interaction, NDVar, Case, UTS, NDVarArg, CategorialArg, IndexArg, CellArg, ascategorial, asndvar, assub, isnumeric, isdataobject, combine_cells, cellname
 from .._stats import testnd
 from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
 from ..fmtxt import Image
@@ -548,7 +564,11 @@ def fix_vlim_for_cmap(vmin, vmax, cmap):
     return vmin, vmax
 
 
-def find_data_dims(ndvar, dims, extra_dim=None):
+def find_data_dims(
+        ndvar: NDVar,
+        dims: Union[int, Tuple[str, ...]],
+        extra_dim: str = None,
+) -> Tuple[Union[str, None], List[str]]:
     """Find dimensions in data.
 
     Raise a ValueError if the dimensions don't match, except when the ``case``
@@ -559,7 +579,7 @@ def find_data_dims(ndvar, dims, extra_dim=None):
     ndvar : NDVar
         NDVar instance to query.
     dims : int | tuple of str
-        The requested dimensions. ``None`` for a free dimensions.
+        The requested dimensions.
     extra_dim : str
         Dimension that will be removed by other operation (e.g. ``xax``).
 
@@ -567,7 +587,7 @@ def find_data_dims(ndvar, dims, extra_dim=None):
     -------
     agg : None | str
         Dimension to aggregate over.
-    dims : list | tuple of str
+    dims : list of str
         Dimension names with all instances of ``None`` replaced by a string.
     """
     if isinstance(dims, int):
@@ -585,11 +605,11 @@ def find_data_dims(ndvar, dims, extra_dim=None):
         else:
             raise ValueError(f"y={ndvar} has wrong number of dimensions; {dims} or {dims + 1} required")
     else:
-        required_dims = (extra_dim,) + dims if extra_dim else dims
+        required_dims = (extra_dim, *dims) if extra_dim else dims
         if ndvar.ndim == len(required_dims):
             agg = None
             dimnames = list(ndvar.get_dimnames(required_dims))
-        elif ndvar.ndim  == len(required_dims) + 1:
+        elif ndvar.ndim == len(required_dims) + 1:
             if any(d is None for d in required_dims):
                 if ndvar.has_case and 'case' not in required_dims:
                     agg = 'case'
@@ -597,14 +617,14 @@ def find_data_dims(ndvar, dims, extra_dim=None):
                     raise ValueError(f"y={ndvar} is ambiguous for required dimensions {required_dims}")
             else:
                 agg = None
-            dimnames = list(ndvar.get_dimnames((agg,) + required_dims))
+            dimnames = list(ndvar.get_dimnames((agg, *required_dims)))
             agg = dimnames.pop(0)
         else:
             raise ValueError(f"y={ndvar} has wrong dimensions; {required_dims} or one more required")
 
         if extra_dim:
             dimnames.remove(extra_dim)
-    return agg, tuple(dimnames)
+    return agg, dimnames
 
 
 def brain_data(
@@ -713,7 +733,7 @@ def butterfly_data(
             layers = []
             for y, linestyle in ((y_ns, linestyle_ns), (y_sig, linestyle_sig)):
                 kwargs = {'zorder': z_order, **linestyle}
-                layers.append(LayerData(y.sub(source=hemi), PlotType.LINE, kwargs))
+                layers.append(DataLayer(y.sub(source=hemi), PlotType.LINE, kwargs))
             axes.append(AxisData(layers))
         bfly_data = PlotData(axes, ('time', 'source'), plot_names=hemis)
     else:
@@ -752,41 +772,49 @@ def set_dict_arg(key, arg, line_dim_obj, artists, legend_handles=None):
 _remap_args = {'c': 'color'}
 
 
-class LayerData:
-    """Data for one subplot layer"""
+def _dict_arg(arg: dict = None) -> dict:
+    if arg is None:
+        return {}
+    elif any(k in arg for k in _remap_args):
+        return {_remap_args.get(k, k): v for k, v in arg.items()}
+    else:
+        return arg
 
-    def __init__(
-            self,
-            y: NDVar,
-            plot_type: PlotType = PlotType.GENERAL,
-            plot_args: dict = None,
-            plot_args_2: dict = None,  # for contour plot of IMAGE layer
-            bin_func: callable = np.mean,
-    ):
-        self.y = y
-        self.is_masked = isinstance(y.x, np.ma.masked_array)
-        self.plot_type = plot_type
-        self._plot_args = self._dict_arg(plot_args)
-        self._bin_func = bin_func
-        if plot_type == PlotType.IMAGE:
-            self._plot_args_2 = self._dict_arg(plot_args_2)
-        elif plot_args_2:
-            raise TypeError(f"plot_args_2={plot_args_2!r} for {plot_type}")
-        else:
-            self._plot_args_2 = None
 
-    @staticmethod
-    def _dict_arg(arg: dict = None) -> dict:
-        if arg is None:
-            return {}
-        elif any(k in arg for k in _remap_args):
-            return {_remap_args.get(k, k): v for k, v in arg.items()}
-        else:
-            return arg
+@dataclass(eq=False)
+class Layer:
+    y: NDVar
+    plot_type: PlotType = PlotType.GENERAL
+    _plot_args: dict = None
+    _plot_args_2: dict = None  # alternate (contour plot of IMAGE layer)
+    _bin_func: callable = np.mean
+
+    def __post_init__(self):
+        self._plot_args = _dict_arg(self._plot_args)
+        self.is_masked = isinstance(self.y.x, np.ma.masked_array)
+        if self.plot_type == PlotType.IMAGE:
+            self._plot_args_2 = _dict_arg(self._plot_args_2)
+        elif self._plot_args_2:
+            raise TypeError(f"plot_args_2={self._plot_args_2!r} for {self.plot_type}")
 
     def plot_args(self, kwargs: dict) -> dict:
         # needs to be a copy?
-        return {**self._dict_arg(kwargs), **self._plot_args}
+        return {**_dict_arg(kwargs), **self._plot_args}
+
+    def bin(self, bin_length, tstart, tstop):
+        y = self.y.bin(bin_length, tstart, tstop, self._bin_func)
+        return replace(self, y=y)
+
+    def sub_time(self, time: float, data_only: bool = False):
+        raise NotImplementedError
+
+    def for_plot(self, plot_type: PlotType) -> IteratorType['DataLayer']:
+        raise NotImplementedError
+
+
+@dataclass(eq=False)
+class DataLayer(Layer):
+    """Data for one subplot layer"""
 
     def contour_plot_args(self, contours):
         out = {}
@@ -821,13 +849,13 @@ class LayerData:
             vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cmap)
         return {'cmap': cmap, 'vmin': vmin, 'vmax': vmax, **self._plot_args}
 
-    def for_plot(self, plot_type: PlotType) -> IteratorType['LayerData']:
+    def for_plot(self, plot_type: PlotType) -> IteratorType['DataLayer']:
         if self.plot_type == plot_type:
             yield self
         elif not self.is_masked:
-            yield LayerData(self.y, plot_type, self._plot_args)
+            yield DataLayer(self.y, plot_type, self._plot_args)
         elif plot_type == PlotType.LEGACY:
-            yield LayerData(self.y.unmask(), plot_type, self._plot_args)
+            yield DataLayer(self.y.unmask(), plot_type, self._plot_args)
         elif self.plot_type != PlotType.GENERAL:
             raise RuntimeError(f"Invalid PlotData conversion: {self.plot_type} -> {plot_type}")
         elif plot_type == PlotType.LINE:
@@ -843,34 +871,49 @@ class LayerData:
             args_main = {'alpha': 1., 'zorder': 1}
             args_masked = {'alpha': 0.4, 'color': (.7, .7, .7), 'zorder': 0}
             for y, args in ((self.y, args_main), (y_masked, args_masked)):
-                yield LayerData(y, plot_type, args)
+                yield DataLayer(y, plot_type, args)
         elif plot_type == PlotType.IMAGE:
             x = NDVar(self.y.x.data, self.y.dims, self.y.name, self.y.info)
-            yield LayerData(x, PlotType.IMAGE)
+            yield DataLayer(x, PlotType.IMAGE)
             x = NDVar(1. - self.y.x.mask, self.y.dims, self.y.name, {'meas': 'mask'})
-            yield LayerData(x, PlotType.CONTOUR, {'levels': [0.5], 'colors': ['black']}, bin_func=np.max)
+            yield DataLayer(x, PlotType.CONTOUR, {'levels': [0.5], 'colors': ['black']}, _bin_func=np.max)
         else:
             raise RuntimeError(f"plot_type={plot_type!r}")
-
-    def bin(self, bin_length, tstart, tstop):
-        y = self.y.bin(bin_length, tstart, tstop, self._bin_func)
-        return LayerData(y, self.plot_type, self._plot_args, self._plot_args_2, self._bin_func)
 
     def sub_time(self, time: float, data_only: bool = False):
         y = self.y.sub(time=time)
         if data_only:
             return y
         else:
-            return LayerData(y, self.plot_type, self._plot_args, self._plot_args_2, self._bin_func)
+            return DataLayer(y, self.plot_type, self._plot_args, self._plot_args_2, self._bin_func)
 
 
+@dataclass(eq=False)
+class StatLayer(Layer):
+    ct: Celltable = None
+    cell: CellArg = None
+
+    def get_statistic(self, func: Callable = np.mean):
+        return self.ct._get_func(self.cell, func)
+
+    def get_dispersion(self, spec, pool):
+        return self.ct._get_dispersion(self.cell, spec, pool)
+
+    def for_plot(self, plot_type: PlotType) -> IteratorType['DataLayer']:
+        if self.plot_type == plot_type:
+            yield self
+        elif not self.is_masked:
+            yield replace(self, plot_type=plot_type)
+        elif plot_type == PlotType.LINE:
+            raise NotImplementedError
+        else:
+            raise NotImplementedError
+
+
+@dataclass(eq=False)
 class AxisData:
     """Represent one axis (multiple layers)"""
-    def __init__(
-            self,
-            layers: List[LayerData],
-    ):
-        self.layers = layers
+    layers: List[Layer]
 
     def __iter__(self):
         return iter(self.layers)
@@ -898,34 +941,29 @@ class AxisData:
             return AxisData(axis)
 
 
+def x_arg(x: CategorialArg):
+    if isinstance(x, str) and x.startswith('.'):
+        return None, x
+    else:
+        return x, None
+
+
+def combine_x_args(x, xax):
+    if x is None:
+        return xax
+    elif xax is None:
+        return x
+    elif not isinstance(xax, x.__class__):
+        raise TypeError(f"x={x}, xax={xax}: x and xax must be of same type or None")
+    elif isinstance(xax, str):
+        return f"({x}) % ({xax})"
+    else:
+        return x % xax
+
+
+@dataclass(eq=False)
 class PlotData:
     """Organize nd-data for plotting
-
-    Parameters
-    ----------
-    axes : list of {None | list of LayerData}
-        Data to be plotted on each axes.
-    dims : list of str
-        Dimensions assigned to the axes.
-    title : str
-        Default window title.
-    plot_names : list of str
-        Titles for the plots (all non-None axes).
-
-    Attributes
-    ----------
-    plot_used : list of bool
-        List indicating which plot slots are used (as opposed to empty).
-    plot_data : list of AxisData
-        The processed data to plot.
-    data : list of list of NDVar
-        The processed data to plot (for backwards compatibility).
-    dims : tuple of str
-        Dimensions assigned to the axes.
-    title : str
-        Data description for the plot frame.
-    plot_names : list of str
-        Titles for the plots.
 
     Notes
     -----
@@ -936,30 +974,43 @@ class PlotData:
 
      - Converted into specific plot-types with :meth:`.for_plot` methods.
        - Masks converted into layers
+
+
+    Additional consideration for statistics-plots (UTSStat)
+     - Need central tendency and dispersion
+     - Dispersion is not derivable from layer data (within-subject SEM)
+     - Ideally potential to be dynamic (switch between viewing all data and statistic)
+
+     Implementation
+     - DataLayer subclass that keeps reference to a CellTable?
+
     """
-    def __init__(
-            self,
-            axes: List[AxisData],
-            dims: Sequence[str],
-            title: str = "unnamed data",
-            plot_names: List[str] = None,
-            use_axes: List[bool] = None,
-            plot_type: PlotType = PlotType.GENERAL,
-    ):
-        self.plot_data = axes
-        self.n_plots = len(axes)
-        if use_axes is None:
-            self.plot_used = (True,) * self.n_plots
+    plot_data: List[AxisData]  # Data for each axis
+    dims: Sequence[str]  # Dimensions assigned to the axes
+    frame_title: str = "unnamed data"  # Default window title
+    plot_names: List[Union[str, None]] = None  # Titles for the plots (all non-None axes)
+    plot_used: List[bool] = None  # List indicating which plot slots are used
+    plot_type: PlotType = PlotType.GENERAL
+    ct: Celltable = None
+    x: Union[Factor, Interaction] = None
+    xax: Union[Factor, Interaction] = None
+
+    def __post_init__(self):
+        self.n_plots = len(self.plot_data)
+        if self.plot_used is None:
+            self.plot_used = [True] * self.n_plots
         else:
-            assert sum(use_axes) == self.n_plots
-            self.plot_used = use_axes
+            assert sum(self.plot_used) == self.n_plots
         self.has_masked_data = any(l.is_masked for ax in self.plot_data for l in ax)
-        self.dims = dims
-        self.frame_title = title
-        if plot_names is not None:
-            assert len(plot_names) == self.n_plots
-        self._plot_names = plot_names
-        self.plot_type = plot_type
+        if self.plot_names is None:
+            self.plot_names = []
+            for layers in self.plot_data:
+                for layer in layers:
+                    if layer.y.name:
+                        self.plot_names.append(layer.y.name)
+                        break
+                else:
+                    self.plot_names.append(None)
 
     def __repr__(self):
         desc = [f'{self.n_plots} plots']
@@ -1060,7 +1111,7 @@ class PlotData:
             if isinstance(xax, str) and xax.startswith('.'):
                 # y=[y1, y2], xax='.dim'
                 dimname, attr = re.match(r'\.(\w+)(?:\.(\w+))?$', xax).groups()
-                xax_dim = indexes = None
+                xax_dim = indexes = dissolve_dim = None
                 for layer in ys:
                     dim = layer.get_dim(dimname)
                     if xax_dim is None:
@@ -1076,7 +1127,6 @@ class PlotData:
                             if not isinstance(f, Factor):
                                 raise ValueError(f'xax={xax!r}')
                             indexes = [f == cell for cell in f.cells]
-                            dissolve_dim = None
                             ax_names = f.cells
                     elif dim != xax_dim:
                         raise ValueError(f"y={y}, xax={xax!r}: dimension not equal on different y")
@@ -1101,9 +1151,51 @@ class PlotData:
             y_name = ', '.join(y_names)
 
         use_axes = [ax is not None for ax in axes]
-        axes = [AxisData([LayerData(l) for l in ax]) for ax in axes if ax]
+        axes = [AxisData([DataLayer(l) for l in ax]) for ax in axes if ax]
         title = frame_title(y_name, x_name)
         return cls(axes, dims, title, ax_names, use_axes)
+
+    @classmethod
+    def from_stats(
+            cls,
+            y: NDVarArg,
+            x: CategorialArg,
+            xax: CategorialArg,
+            match: CategorialArg,
+            sub: IndexArg,
+            ds: Dataset,
+            dims: Tuple[Union[str, None]],
+    ):
+        x, x_dim = x_arg(x)
+        xax, xax_dim = x_arg(xax)
+        if x_dim or xax_dim:
+            raise NotImplementedError
+        x_full = combine_x_args(x, xax)
+        ct = Celltable(y, x_full, match, sub, ds=ds)
+        agg, dims = find_data_dims(ct.y, dims, 'case')
+        if agg:
+            raise NotImplementedError
+        if xax is None:
+            ax_cells = [None]
+        else:
+            xax = ct._align(xax, ds=ds)
+            ax_cells = xax.cells
+        if x is not None:
+            x = ct._align(x, ds=ds)
+        title = frame_title(y, x, xax)
+        axes = []
+        for ax_cell in ax_cells:
+            if x is None:
+                cells = [ax_cell]
+            elif ax_cell is None:
+                cells = x.cells
+            else:
+                x_cells = x.cells
+                cells = [combine_cells(ax_cell, x_cell) for x_cell in x_cells]
+                cells = [cell for cell in cells if cell in ct.data]
+            layers = [StatLayer(ct.data[cell], ct=ct, cell=cell) for cell in cells]
+            axes.append(AxisData(layers))
+        return cls(axes, dims, title, ct=ct, x=x, xax=xax)
 
     @classmethod
     def empty(cls, plots: Union[int, List[bool]], dims: Sequence[str], title: str):
@@ -1160,7 +1252,8 @@ class PlotData:
     @LazyProperty
     def data(self):
         "For backwards compatibility with nested list of NDVar"
-        return [[l.y for l in self.axis_for_plot(i, PlotType.LEGACY)] for i in range(self.n_plots)]
+        data = self.for_plot(PlotType.LEGACY)
+        return [[l.y for l in layers] for layers in data.plot_data]
 
     @LazyProperty
     def time_dim(self):
@@ -1172,38 +1265,12 @@ class PlotData:
     def for_plot(self, plot_type: PlotType) -> 'PlotData':
         if self.plot_type == plot_type:
             return self
-        axes = [ax.for_plot(plot_type) for ax in self.plot_data]
-        return PlotData(axes, self.dims, self.frame_title, self._plot_names, self.plot_used, plot_type)
-
-    @LazyProperty
-    def plot_names(self):
-        if self._plot_names:
-            return self._plot_names
-        names = []
-        for layers in self.plot_data:
-            for layer in layers:
-                if layer.y.name:
-                    names.append(layer.y.name)
-                    break
-            else:
-                names.append(None)
-        return names
-
-    def axis_for_plot(self, ax: int, plot_type: PlotType) -> List[LayerData]:
-        """Data for ``ax``
-
-        Parameters
-        ----------
-        ax : int
-            Index of the axes.
-        plot_type : PlotType
-            How to handle masked arrays and layers in plot data.
-        """
-        return self.plot_data[ax].for_plot(plot_type)
+        plot_data = [ax.for_plot(plot_type) for ax in self.plot_data]
+        return replace(self, plot_data=plot_data, plot_type=plot_type)
 
     def bin(self, bin_length, tstart, tstop):
         axes = [ax.bin(bin_length, tstart, tstop) for ax in self.plot_data]
-        return PlotData(axes, self.dims, self.frame_title, self._plot_names, self.plot_used, self.plot_type)
+        return PlotData(axes, self.dims, self.frame_title, self.plot_names, self.plot_used, self.plot_type)
 
     def sub_time(self, time: float, data_only: bool = False):
         axes = [ax.sub_time(time, data_only) for ax in self.plot_data]
@@ -1211,7 +1278,7 @@ class PlotData:
             return axes
         else:
             dims = [dim for dim in self.dims if dim != 'time']
-            return PlotData(axes, dims, self.frame_title, self._plot_names, self.plot_used, self.plot_type)
+            return PlotData(axes, dims, self.frame_title, self.plot_names, self.plot_used, self.plot_type)
 
 
 def aggregate(y, agg):

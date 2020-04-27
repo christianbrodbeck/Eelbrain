@@ -2,7 +2,7 @@
 """Statistics functions that work on numpy arrays."""
 from dataclasses import dataclass
 import re
-from typing import Literal, Union
+from typing import Union  #, Literal
 
 import numpy as np
 import scipy.stats
@@ -19,7 +19,7 @@ FLOAT64 = np.dtype('float64')
 @dataclass
 class DispersionSpec:
     multiplier: float = 1
-    measure: Literal['SEM', 'CI'] = 'SEM'
+    measure: str = 'SEM'  # Literal['SEM', 'CI']
 
     @classmethod
     def from_string(cls, string: Union[str, 'DispersionSpec']):

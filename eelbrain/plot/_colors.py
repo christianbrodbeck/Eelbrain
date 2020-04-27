@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from itertools import product, chain
 from math import ceil
 import operator
-from typing import Any
+from typing import Any, Dict
 
 import numpy as np
 import matplotlib as mpl
@@ -14,7 +14,7 @@ from matplotlib.colorbar import ColorbarBase
 from matplotlib.ticker import FixedFormatter, MaxNLocator
 
 from .._colorspaces import LocatedListedColormap, oneway_colors, twoway_colors, symmetric_cmaps
-from .._data_obj import Factor, Interaction, cellname
+from .._data_obj import Factor, Interaction, CellArg, cellname
 from .._utils import IS_WINDOWS, LazyProperty
 from ._base import EelFigure, Layout, AxisScale, fix_vlim_for_cmap
 from functools import reduce
@@ -22,6 +22,7 @@ from functools import reduce
 
 POINT_SIZE = 0.0138889  # 1 point in inches
 LEGEND_SIZE = 1.2  # times font.size
+StylesDict = Dict[CellArg, 'Style']
 
 
 @dataclass
@@ -50,7 +51,7 @@ class Style:
             return cls(arg)
 
 
-def find_cell_styles(x, colors, cells=None):
+def find_cell_styles(x, colors, cells=None) -> StylesDict:
     """Process the colors arg from plotting functions
 
     Parameters

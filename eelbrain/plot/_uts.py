@@ -1,20 +1,20 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Plot uniform time-series of one variable."""
-from functools import reduce
-import operator
+from typing import Callable, Union
 
+import matplotlib.axes
 import matplotlib as mpl
 import numpy as np
 
-from .._celltable import Celltable
 from .._colorspaces import oneway_colors
-from .._data_obj import ascategorial, asndvar, assub, cellname, longname
-from .._stats import stats
+from .._data_obj import cellname, longname
 from . import _base
 from ._base import (
     EelFigure, PlotData, Layout,
-    LegendMixin, YLimMixin, XAxisMixin, TimeSlicerEF, frame_title)
-from ._colors import colors_for_oneway, find_cell_styles
+    LegendMixin, YLimMixin, XAxisMixin, TimeSlicerEF,
+    AxisData, StatLayer,
+)
+from ._colors import StylesDict, colors_for_oneway, find_cell_styles
 
 
 class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
@@ -122,84 +122,41 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
     def __init__(self, y, x=None, xax=None, match=None, sub=None, ds=None,
                  main=np.mean, error='sem', pool_error=None, legend='upper right', labels=None,
                  axtitle=True, xlabel=True, ylabel=True, xticklabels='bottom',
-                 invy=False, bottom=None, top=None, hline=None, xdim='time',
+                 invy=False, bottom=None, top=None, hline=None, xdim=None,
                  xlim=None, clip=None, colors=None, error_alpha=0.3,
                  clusters=None, pmax=0.05, ptrend=0.1, *args, **kwargs):
-        # coerce input variables
-        sub, n = assub(sub, ds, return_n=True)
-        y, n = asndvar(y, sub, ds, n, return_n=True)
-        if x is not None:
-            x = ascategorial(x, sub, ds, n)
-        if xax is not None:
-            xax = ascategorial(xax, sub, ds, n)
-        if match is not None:
-            match = ascategorial(match, sub, ds, n)
-
-        if error and error != 'all' and (pool_error or (pool_error is None and match is not None)):
-            all_x = [i for i in (xax, x) if i is not None]
-            if len(all_x) > 0:
-                full_x = reduce(operator.mod, all_x)
-                ct = Celltable(y, full_x, match)
-                dev_data = stats.variability(ct.y.x, ct.x, ct.match, error, True)
-                error = 'data'
-            else:
-                dev_data = None
-        else:
-            dev_data = None
-
-        if xax is None:
-            nax = 1
-            ct = Celltable(y, x, match)
-            if x is None:
-                color_x = None
-            else:
-                color_x = ct.x
-        else:
-            ct = Celltable(y, xax)
-            if x is None:
-                color_x = None
-                X_ = None
-            else:
-                Xct = Celltable(x, xax)
-                color_x = Xct.y
-            if match is not None:
-                matchct = Celltable(match, xax)
-            nax = len(ct.cells)
+        data = PlotData.from_stats(y, x, xax, match, sub, ds, (xdim,))
+        xdim, = data.dims
 
         # assemble colors
-        styles = find_cell_styles(color_x, colors)
+        # TODO: use x first, fall back on x % xax
+        # if isinstance(colors, dict):
+        #     if all(cell in colors for cell in data.ct.x.cells):
+        #         color_x = data.ct.x
+        #     elif data.x is not None:
+        #         color_x = data.x
+        #     else:
+        #         color_x = data.xax
+        # else:
+        #     color_x = None
+        styles = find_cell_styles(data.ct.x, colors)
 
-        layout = Layout(nax, 2, 4, *args, **kwargs)
-        EelFigure.__init__(self, frame_title(y, x, xax), layout)
+        layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
+        EelFigure.__init__(self, data.frame_title, layout)
         if clip is None:
             clip = layout.frame is True
 
         # create plots
         self._plots = []
         legend_handles = {}
-        if xax is None:
-            p = _ax_uts_stat(self._axes[0], ct, styles, main, error, dev_data, xdim, hline, clusters, pmax, ptrend, clip, error_alpha)
+        ymax = ymin = None
+        for ax, ax_data in zip(self._axes, data):
+            p = _ax_uts_stat(ax, ax_data, xdim, styles, main, error, pool_error, hline, clusters, pmax, ptrend, clip, error_alpha)
             self._plots.append(p)
             legend_handles.update(p.legend_handles)
-            if len(ct) < 2:
-                legend = False
-            ymin, ymax = p.vmin, p.vmax
-        else:
-            ymax = ymin = None
-            for i, ax, cell in zip(range(nax), self._axes, ct.cells):
-                if x is not None:
-                    X_ = Xct.data[cell]
-
-                if match is not None:
-                    match = matchct.data[cell]
-
-                ct_ = Celltable(ct.data[cell], X_, match=match, coercion=asndvar)
-                p = _ax_uts_stat(ax, ct_, styles, main, error, dev_data, xdim, hline, clusters, pmax, ptrend, clip, error_alpha)
-                self._plots.append(p)
-                legend_handles.update(p.legend_handles)
-                self._set_axtitle(axtitle, names=map(cellname, ct.cells))
-                ymin = p.vmin if ymin is None else min(ymin, p.vmin)
-                ymax = p.vmax if ymax is None else max(ymax, p.vmax)
+            ymin = p.vmin if ymin is None else min(ymin, p.vmin)
+            ymax = p.vmax if ymax is None else max(ymax, p.vmax)
+        self._set_axtitle(axtitle, names=map(cellname, data.ct.cells))
 
         # axes limits
         if top is not None:
@@ -211,9 +168,9 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         for p in self._plots:
             p.set_ylim(ymin, ymax)
 
-        self._configure_axis(ct.y, ylabel, y=True)
-        self._configure_xaxis_dim(ct.y.get_dim(xdim), xlabel, xticklabels)
-        XAxisMixin._init_with_data(self, ((y,),), xdim, xlim)
+        self._configure_axis(data.ct.y, ylabel, y=True)
+        self._configure_xaxis_dim(data.ct.y.get_dim(xdim), xlabel, xticklabels)
+        XAxisMixin._init_with_data(self, ((data.ct.y,),), xdim, xlim)
         YLimMixin.__init__(self, self._plots)
         LegendMixin.__init__(self, legend, legend_handles, labels)
         self._update_ui_cluster_button()
@@ -398,20 +355,32 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
 
 class _ax_uts_stat:
 
-    def __init__(self, ax, ct, styles, main, error, dev_data, xdim, hline, clusters, pmax, ptrend, clip, error_alpha):
+    def __init__(
+            self,
+            ax: matplotlib.axes.Axes,
+            data: AxisData,
+            xdim: str,
+            styles: StylesDict,
+            main: Callable,
+            error: Union[str, Callable],
+            pool_error: bool,
+            hline,
+            clusters,
+            pmax,
+            ptrend,
+            clip: bool,
+            error_alpha,
+    ):
         # stat plots
         self.ax = ax
         self.stat_plots = []
         self.legend_handles = {}
 
-        x = ct.y.get_dim(xdim)
-        for cell in ct.cells:
-            ndvar = ct.data[cell]
-            y = ndvar.get_data(('case', xdim))
-            plt = _plt_uts_stat(ax, x, y, main, error, dev_data, styles[cell], cellname(cell), clip, error_alpha)
+        for layer in data:
+            plt = _plt_uts_stat(ax, layer, xdim, main, error, pool_error, styles, clip, error_alpha)
             self.stat_plots.append(plt)
             if plt.main is not None:
-                self.legend_handles[cell] = plt.main[0]
+                self.legend_handles[layer.cell] = plt.main[0]
 
         # hline
         if hline is not None:
@@ -687,29 +656,42 @@ class _plt_uts_clusters:
 
 class _plt_uts_stat:
 
-    def __init__(self, ax, x, y, main, error, dev_data, style, label, clip, error_alpha):
+    def __init__(
+            self,
+            ax: matplotlib.axes.Axes,
+            layer: StatLayer,
+            xdim: str,
+            main: Callable,
+            error: Union[str, Callable],
+            pool_error: bool,
+            styles: StylesDict,
+            clip: bool,
+            error_alpha: float,
+    ):
+        label = cellname(layer.cell)
+        style = styles[layer.cell]
+        x = layer.y.get_dim(xdim)._axis_data()
         # plot main
-        if hasattr(main, '__call__'):
-            y_main = main(y, axis=0)
+        if callable(main):
+            y_main = layer.get_statistic(main)
             lw = mpl.rcParams['lines.linewidth']
             if error == 'all':
                 lw *= 2
             self.main = ax.plot(x, y_main, label=label, lw=lw, zorder=5, clip_on=clip, **style.line_args)
         elif error == 'all':
-            self.main = None
+            self.main = y_main = None
         else:
-            raise ValueError("Invalid argument: main=%r" % main)
+            raise TypeError(f"main={main!r}")
 
         # plot error
         if error == 'all':
-            self.error = ax.plot(x, y.T, alpha=error_alpha, clip_on=clip, **style.line_args)
-        elif error and len(y) > 1:
-            if error == 'data':
-                pass
-            elif hasattr(error, '__call__'):
-                dev_data = error(y, axis=0)
+            y_all = layer.y.get_data((xdim, 'case'))
+            self.error = ax.plot(x, y_all, alpha=error_alpha, clip_on=clip, **style.line_args)
+        elif error:
+            if callable(error):
+                dev_data = layer.get_statistic(error)
             else:
-                dev_data = stats.variability(y, None, None, error, False)
+                dev_data = layer.get_dispersion(error, pool_error)
             lower = y_main - dev_data
             upper = y_main + dev_data
             self.error = ax.fill_between(x, lower, upper, color=style.color, alpha=error_alpha, linewidth=0, zorder=0, clip_on=clip)
