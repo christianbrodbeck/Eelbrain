@@ -275,8 +275,8 @@ Two-stage tests proceed by estimating parameters for a fixed effects model for
 each subject, and then testing hypotheses on these parameter estimates on the
 group level. Two-stage tests are implemented by fitting an :class:`~testnd.LM`
 for each subject, and then combining them in a :class:`~testnd.LMGroup` to
-retrieve coefficients for group level statistics (see recipe for
-:ref:`recipe-regression`).
+retrieve coefficients for group level statistics (see :ref:`exa-two-stage`
+example).
 
 .. autosummary::
    :toctree: generated

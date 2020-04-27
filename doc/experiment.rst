@@ -176,13 +176,13 @@ The neighbor correlation can also be quantified, using::
 
     >>> nc = neighbor_correlation(concatenate(ds['meg']))
     >>> nc.sensor.names[nc < 0.3]
-    Datalist([u'MEG 099'])
+    Datalist(['MEG 099'])
 
 A simple way to cycle through subjects when performing a given pre-processing
 step is :meth:`MneExperiment.next`.
 If a general threshold is adequate, the selection of bad channels based on
 neighbor-correlation can be automated using the
-:meth:`MneExperiment.make_bad_channels_neighbor_correlation method::
+:meth:`MneExperiment.make_bad_channels_neighbor_correlation` method::
 
     >>> for subject in e:
     ...     e.make_bad_channels_neighbor_correlation()
@@ -612,10 +612,10 @@ filter, and to use sensor covariance matrices without regularization.
 .. _state-session:
 
 ``session``
--------
+-----------
 
 Which raw session to work with (one of :attr:`MneExperiment.sessions`; usually
-set automatically when :ref:`state-epoch`_ is set)
+set automatically when :ref:`state-epoch` is set)
 
 
 .. _state-raw:

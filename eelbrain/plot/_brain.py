@@ -1395,14 +1395,14 @@ class SequencePlotter:
         Use the ``margins`` parameter to control image spacing. For example (all
         numbers in inches)::
 
-        margins = {
-            'left': 0.1,    # left mergin
-            'right': 0.1,   # right margin
-            'top': 0.5,     # margin at the top, include space for title
-            'bottom': 0.1,  # bottom
-            'hspace': 0.1,  # height of the space between images
-            'wspace': 0.1,  # width of the space between images
-        }
+            margins = {
+                'left': 0.1,    # left mergin
+                'right': 0.1,   # right margin
+                'top': 0.5,     # margin at the top, include space for title
+                'bottom': 0.1,  # bottom
+                'hspace': 0.1,  # height of the space between images
+                'wspace': 0.1,  # width of the space between images
+            }
         """
         if self._source is None:
             raise RuntimeError("No brain model specified for plotting; use .set_brain()")

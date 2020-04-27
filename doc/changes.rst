@@ -17,7 +17,7 @@ New in 0.32
   - Different ``tstart``/``tstop`` for different predictors (contributed by `Joshua Kulasingham`_)
   - Cross-validation of model fit (``test`` parameter)
 
-* :class:`plot.Style` to control advanced plotting options by category (see :ref:`exa-bozplot` example).
+* :class:`plot.Style` to control advanced plotting options by category (see :ref:`exa-boxplot` example).
 * New functions/methods:
 
   - :meth:`NDVar.quantile`
@@ -544,7 +544,7 @@ New in 0.8
 New in 0.6
 ----------
 
-* New recipes for :ref:`recipe-regression`.
+* New recipes (outdated).
 
 
 New in 0.5

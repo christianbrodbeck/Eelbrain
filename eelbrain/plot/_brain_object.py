@@ -724,8 +724,8 @@ class Brain(TimeSlicer, surfer.Brain):
         color : mayavi color
             Color for the vertex marker.
 
-        Example
-        -------
+        Examples
+        --------
         Load a source space and plot it to be able to select vertices::
 
             ss = SourceSpace.from_file('directory/mri_subjects', 'fsaverage', 'ico-4')

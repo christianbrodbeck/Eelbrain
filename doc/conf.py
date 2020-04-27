@@ -21,6 +21,7 @@ import mne
 
 # docutils 0.14
 filterwarnings('ignore', category=DeprecationWarning)
+filterwarnings('ignore', category=FutureWarning)
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -185,7 +186,7 @@ suppress_warnings = ['image.nonlocal_uri']
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3.7', None),
     'imageio': ('https://imageio.readthedocs.io/en/stable/', None),
-    'mne': ('http://martinos.org/mne/stable', None),
+    'mne': ('https://mne.tools/stable', None),
     'surfer': ('https://pysurfer.github.io', None),
     'matplotlib': ('https://matplotlib.org', None),
     'nilearn': ('https://nilearn.github.io', None),
