@@ -389,7 +389,7 @@ class Celltable:
             ``sem``: Standard error of the mean (default);
             ``2sem``: 2 standard error of the mean;
             ``ci``: 95% confidence interval;
-            ``99%ci``: 99% confidence interval (default).
+            ``99%ci``: 99% confidence interval.
         pool : bool
             Pool the errors for the estimate of variability (default is True
             for complete within-subject designs, False otherwise).
@@ -407,6 +407,6 @@ class Celltable:
             dims = self.y.dims[1:]
             if not pool:
                 dims = (Case,) + dims
-            return NDVar(x, dims, self.y.info.copy(), error)
+            return NDVar(x, dims, error, self.y.info.copy())
         else:
             return x
