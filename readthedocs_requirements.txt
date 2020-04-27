@@ -3,7 +3,7 @@ cython >=0.21
 colormath >=2.1
 keyring >=5
 matplotlib >=2.1
-mne >=0.17
+mne ==0.19
 nibabel >2.3.0  # read_annot bug
 nilearn
 numpy >=1.11
