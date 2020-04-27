@@ -3549,7 +3549,7 @@ class NDVar:
             err = "Dimensions of %r do not match %r" % (self, dims)
             raise DimensionMismatchError(err)
 
-    def aggregate(self, x, func=np.mean, name=None):
+    def aggregate(self, x=None, func=np.mean, name=None):
         """
         Summarize data in each cell of ``x``.
 
@@ -3574,18 +3574,20 @@ class NDVar:
             raise DimensionMismatchError("%r has no case dimension" % self)
         elif x is None:
             x_out = func(self.x, axis=0)
+            dims = self.dims[1:]
         elif len(x) != len(self):
             raise ValueError(f"x={x}: length mismatch, len(self)={len(self)}, len(x)={len(x)}")
         else:
-            x_out = [func(self.x[x == cell], axis=0) for cell in x.cells]
+            x_out = np.array([func(self.x[x == cell], axis=0) for cell in x.cells])
+            dims = (Case, *self.dims[1:])
 
         # update info for summary
         if 'summary_info' in self.info:
             info = self.info.copy()
             info.update(info.pop('summary_info'))
         else:
-            info = None
-        return NDVar(np.array(x_out), (Case(len(x_out)),) + self.dims[1:], name or self.name, info)
+            info = self.info
+        return NDVar(x_out, dims, name or self.name, info)
 
     def _aggregate_over_dims(self, axis, regions, func):
         name = regions.pop('name', None)
