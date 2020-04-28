@@ -5,21 +5,27 @@ Cluster-based permutation t-test
 
 .. currentmodule:: eelbrain
 
-A cluster-based permutation test for a simple design (two conditions).
-The example uses simulated data meant to vaguely resemble data from an N400
-experiment, but not intended as a physiologically realistic simulation.
+This example show a cluster-based permutation test for a simple design (two
+conditions). The example uses simulated data meant to vaguely resemble data
+from an N400 experiment (not intended as a physiologically realistic
+simulation).
 """
-# sphinx_gallery_thumbnail_number = 2
+# sphinx_gallery_thumbnail_number = 3
 from eelbrain import *
 
 ###############################################################################
 # Simulated data
 # --------------
 # Each function call to :func:`datasets.simulate_erp` generates a dataset
-# equivalent to one subject. The ``seed`` argument determines the random noise
-# that is added to the data.
+# equivalent to an N400 experiment for one subject. 
+# The ``seed`` argument determines the random noise that is added to the data.
 ds = datasets.simulate_erp(seed=0)
 print(ds.summary())
+
+###############################################################################
+# A singe trial of data:
+p = plot.TopoButterfly('eeg[0]', ds=ds)
+p.set_time(0.400)
 
 ###############################################################################
 # The :meth:`Dataset.aggregate` method computes condition averages when sorting
@@ -30,9 +36,9 @@ print(ds.aggregate('cloze_cat'))
 ###############################################################################
 # Group level data
 # ----------------
-# This loop simulates an experiment. It generates data and collects condition
-# averages for 10 virtual subjects. For group level analysis, the collected data
-# are combines in a :class:`Dataset`:
+# This loop simulates a multi-subject experiment. 
+# It generates data and collects condition averages for 10 virtual subjects. 
+# For group level analysis, the collected data are combined in a :class:`Dataset`:
 dss = []
 for subject in range(10):
     # generate data for one subject
@@ -44,29 +50,27 @@ for subject in range(10):
     dss.append(ds_agg)
 
 ds = combine(dss)
-# set as random factor (to treat it as random effect for ANOVA)
+# make subject a random factor (to treat it as random effect for ANOVA)
 ds['subject'].random = True
 print(ds.head())
 
 ###############################################################################
-# The :class:`NDVar` is only visible in the summary; it is not shown in the
-# table representation because it does not fit the column format:
-print(ds.summary())
-
-###############################################################################
-# Show the sensor map with connectivity. The connectivity determineds which
-# sensors are considered neighbors when forming clusters for cluster-based
-# tests.
-p = plot.SensorMap(ds['eeg'], connectivity=True)
-
-###############################################################################
-# Re-reference EEG data
+# Re-reference the EEG data (i.e., subtract the mean of the two mastoid channels):
 ds['eeg'] -= ds['eeg'].mean(sensor=['M1', 'M2'])
 
 ###############################################################################
 # Spatio-temporal cluster based test
 # ----------------------------------
-# Compute a cluster-based permutation test for a related measures comparison.
+# Cluster-based tests are based on identifying clusters of meaningful effects, i.e., 
+# groups of adjacent sensors that show the same effect (see :mod:`testnd` for references).
+# In order to find clusters, the algorithm needs to know which channels are 
+# neighbors. This information is refered to as the sensor connectivity (i.e., which sensors 
+# are connected). The connectivity graph can be visualized to confirm that it is set correctly.
+p = plot.SensorMap(ds['eeg'], connectivity=True)
+
+###############################################################################
+# With the correct connectivity, we can now compute a cluster-based permutation test
+# for a related measures *t*-test:
 res = testnd.TTestRelated(
     'eeg', 'cloze_cat', 'low', 'high', match='subject', ds=ds, 
     pmin=0.05,  # Use uncorrected p = 0.05 as threshold for forming clusters
@@ -84,7 +88,7 @@ p = plot.TopoButterfly(res, clip='circle')
 p.set_time(0.400)
 
 ###############################################################################
-# Show a table with all significant clusters:
+# Generate a table with all significant clusters:
 clusters = res.find_clusters(0.05)
 print(clusters)
 
@@ -93,34 +97,47 @@ print(clusters)
 # extent of the cluster:
 cluster_id = clusters[0, 'id']
 cluster = res.cluster(cluster_id)
-p = plot.TopoArray(cluster)
+p = plot.TopoArray(cluster, interpolation='nearest')
 p.set_topo_ts(.350, 0.400, 0.450)
 
 ###############################################################################
-# Generate a spatio-temporal boolean mask corresponding to the cluster, and use
-# it to extract the value in the cluster for each condition/participant.
-# Visualize the difference of the values under the cluster.
-# Since ``mask`` contains time and sensor dimensions, the :meth:`NDVar.mean`
-# method collapses across these dimensions and returns a scalar for each case
-# (i.e., for each condition/subject).
-# If the test were an ANOVA, these values could also be used for pairwise
-# testing.
+# Often it is desirable to summarize values in a cluster. This is especially useful
+# in more complex designs. For example, after finding a signficant interaction effect 
+# in an ANOVA, one might want to follow up with a pairwise test of the value in the 
+# cluster. This can often be achieved using binary masks based on the cluster. Using
+# the cluster identified above, generate a binary mask:
 mask = cluster != 0
+p = plot.TopoArray(mask, cmap='Wistia')
+p.set_topo_ts(.350, 0.400, 0.450)
+
+###############################################################################
+# Such a spatio-temporal boolean mask can be used
+# to extract the value in the cluster for each condition/participant.
+# Since ``mask`` contains both time and sensor dimensions, using it with 
+# the :meth:`NDVar.mean` method collapses across these dimensions and 
+# returns a scalar for each case (i.e., for each condition/subject).
 ds['cluster_mean'] = ds['eeg'].mean(mask)
 p = plot.Barplot('cluster_mean', 'cloze_cat', match='subject', ds=ds, test=False)
 
 ###############################################################################
-# similarly, when using a mask that ony contains a sensor dimenstion (``roi``),
-# :meth:`NDVar.mean` collapses across sensor and returns a value for each time
-# point, i.e. the time course in sensors involved in the cluster:
+# Similarly, a mask consisting of a cluster of sensors can be used to 
+# visualize the time course in that region of interest. A straight forward
+# choice is to use all sensors that were part of the cluster (``mask``)
+# at any point in time:
 roi = mask.any('time')
+p = plot.Topomap(roi, cmap='Wistia')
+
+###############################################################################
+# When using a mask that ony contains a sensor dimension (``roi``),
+# :meth:`NDVar.mean` collapses across sensors and returns a value for each time
+# point, i.e. the time course in sensors involved in the cluster:
 ds['cluster_timecourse'] = ds['eeg'].mean(roi)
 p = plot.UTSStat('cluster_timecourse', 'cloze_cat', match='subject', ds=ds, frame='t')
-p.set_clusters(clusters, y=0.25)
+# mark the duration of the spatio-temporal cluster
+p.set_clusters(clusters, y=0.25e-6)
 
 ###############################################################################
 # Now visualize the cluster topography, marking significant sensors:
-
 time_window = (clusters[0, 'tstart'], clusters[0, 'tstop'])
 c1_topo = res.c1_mean.mean(time=time_window)
 c0_topo = res.c0_mean.mean(time=time_window)
@@ -135,14 +152,14 @@ p.mark_sensors(roi, -1)
 # course can be extracted and submitted to a temporal cluster based test. For
 # example, the N400 is typically expected to be strong at sensor ``Cz``:
 ds['eeg_cz'] = ds['eeg'].sub(sensor='Cz')
-res = testnd.TTestRelated(
+res_timecoure = testnd.TTestRelated(
     'eeg_cz', 'cloze_cat', 'low', 'high', match='subject', ds=ds,
     pmin=0.05,  # Use uncorrected p = 0.05 as threshold for forming clusters
     tstart=0.100,  # Find clusters in the time window from 100 ...
     tstop=0.600,  # ... to 600 ms
 )
-clusters = res.find_clusters(0.05)
+clusters = res_timecoure.find_clusters(0.05)
+print(clusters)
 
 p = plot.UTSStat('eeg_cz', 'cloze_cat', match='subject', ds=ds, frame='t')
-p.set_clusters(clusters, y=0.25)
-print(clusters)
+p.set_clusters(clusters, y=0.25e-6)
