@@ -516,6 +516,8 @@ class _plt_topomap(_plt_im):
         self._visible_data = layer.y.sensor._visible_sensors(proj)
         self._grid = np.linspace(0, 1, res)
         self._mgrid = tuple(np.meshgrid(self._grid, self._grid))
+        if interpolation is None and layer.y.x.dtype.kind in 'biu':
+            interpolation = 'nearest'
         self._method = interpolation
 
         # clip mask
