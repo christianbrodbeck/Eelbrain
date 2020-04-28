@@ -1,8 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from itertools import chain
-
 import numpy as np
 from numpy.testing import assert_array_equal
+import pytest
 
 from eelbrain import Factor, datasets, epoch_impulse_predictor
 from eelbrain._trf.shared import RevCorrData
@@ -10,9 +9,22 @@ from eelbrain._trf.shared import RevCorrData
 
 def test_revcorr_data_continuous():
     ds = datasets._get_continuous(ynd=True)
-    data = RevCorrData(ds['y'][:8], ds['x1'][:8], 'l1', False)
 
-    # no testing set
+    # normalizing
+    data = RevCorrData(ds['y'][:8], ds['x1'][:8])
+    data.normalize('l1')
+    assert data.x[0].mean() == pytest.approx(0, abs=1e-16)
+    assert abs(data.x).mean() == pytest.approx(1, abs=1e-10)
+    with pytest.raises(ValueError):
+        data.apply_basis(0.050, 'hamming')
+    # with basis
+    data = RevCorrData(ds['y'][:8], ds['x1'][:8])
+    data.apply_basis(0.500, 'hamming')
+    data.normalize('l1')
+    assert data.x[0].mean() == pytest.approx(0, abs=1e-16)
+    assert abs(data.x).mean() == pytest.approx(1, abs=1e-10)
+
+    # partitioning, no testing set
     data.initialize_cross_validation(4)
     assert len(data.splits) == 4
     assert_array_equal(data.splits[0].validate, [[0, 20]])
@@ -24,7 +36,7 @@ def test_revcorr_data_continuous():
     assert_array_equal(data.splits[3].validate, [[60, 80]])
     assert_array_equal(data.splits[3].train, [[0, 60]])
 
-    # testing set
+    # partitioning, testing set
     data.initialize_cross_validation(4, test=1)
     assert len(data.splits) == 12
     # 0/1
@@ -59,7 +71,8 @@ def test_revcorr_data_trials():
     ds['imp'] = epoch_impulse_predictor('uts', ds=ds)
     ds['imp_a'] = epoch_impulse_predictor('uts', "A == 'a1'", ds=ds)
 
-    data = RevCorrData('uts', 'imp', 'l1', True, ds)
+    data = RevCorrData('uts', 'imp', ds)
+    data.normalize('l1')
     assert_array_equal(data.segments, [[i * n_times, (i + 1) * n_times] for i in range(60)])
 
     # partitioning

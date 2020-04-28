@@ -106,10 +106,7 @@ class VectorCorrelation(Evaluator):
     meas = 'r'
 
     def __init__(self, data: RevCorrData):
-        if data.scale_data:
-            self.y_scaled = data.error
-        else:
-            self.y_scaled = None
+        self.y_scale = data.scale_data
         Evaluator.__init__(self, data)
 
     def add_y(self, i, y, y_pred):
@@ -128,7 +125,7 @@ class VectorCorrelation(Evaluator):
         y_scale = (y_norm ** 2).mean() ** 0.5
         if y_scale == 0:
             return 0
-        elif self.y_scaled == 'l2':
+        elif self.y_scale == 'l2':
             y_l2 = y
         else:
             y_l2 = y / y_scale
@@ -155,7 +152,7 @@ class VectorCorrelationL1(VectorCorrelation):
         y_scale = y_norm.mean()
         if y_scale == 0:
             return 0
-        elif self.y_scaled == 'l1':
+        elif self.y_scale == 'l1':
             y_l1 = y
         else:
             y_l1 = y / y_scale

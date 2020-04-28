@@ -12,8 +12,9 @@ New in 0.32
   - Consistent class names for tests in :mod:`test`, :mod:`testnd` and :mod:`pipeline`.
   - :class:`plot.Timeplot` argument order: second and third argument switched to facilitate plotting single category.
 
-* :class:`boosting`:
+* :func:`boosting`:
 
+  - When using a ``basis``, the function now considers the effect of the basis when normalizing predictors. This change leads to slightly different results, so TRFs should not be compared between this and previous versions. To facilitate keeping track of this change, it corresponds to a change in the :attr:`BoostingResult.algorithm_version` attribute from ``-1`` to ``0``.
   - Different ``tstart``/``tstop`` for different predictors (contributed by `Joshua Kulasingham`_)
   - Cross-validation of model fit (``test`` parameter)
 
