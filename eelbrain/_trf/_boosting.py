@@ -1,10 +1,11 @@
-"""
-Boosting as described by David et al. (2007).
+"""Boosting as described by David et al. (2007).
 
 Versions
 --------
-7: Accept segmented data, respect segmentation (don't concatenate data)
+Stored in ``algorithm_version`` attribute
 
+ -1. Prior to storing version
+ 0. Normalize ``x`` after applying basis
 
 Profiling
 ---------
@@ -106,6 +107,9 @@ class BoostingResult:
         Scale by which ``x`` was divided.
     partitions : int
         Numbers of partitions of the data used for cross validation.
+    algorithm_version : int
+        Version of the algorithm with which the model was estimated; ``-1`` for
+        results from before this attribute was added.
     """
     # basic parameters
     y: str
@@ -144,7 +148,8 @@ class BoostingResult:
     r_rank: Union[float, NDVar] = None
     r_l1: NDVar = None
     # store the version of the boosting algorithm with which model was fit
-    version: int = 11
+    version: int = 11  # file format (updates when re-saving)
+    algorithm_version: int = -1  # does not change when re'saving
     # debug parameters
     y_pred: NDVar = None
     fit: Any = None  # scanpydoc can't handle undocumented 'Boosting'
@@ -188,7 +193,7 @@ class BoostingResult:
                 value = self._partitions_arg
             else:
                 value = getattr(self, name)
-            if value != param.default:
+            if value != param.default and value is not None:
                 items.append(f'{name}={value}')
         return f"<{', '.join(items)}>"
 
@@ -298,6 +303,7 @@ class Boosting:
     tstart_h = None
     tstop = None
     selective_stopping = None
+    error = None
     delta = None
     mindelta = None
     # timing
@@ -321,11 +327,15 @@ class Boosting:
             tstart: Union[float, Sequence[float]],
             tstop: Union[float, Sequence[float]],
             selective_stopping: int = 1,
+            error: str = 'l1',
             delta: float = 0.005,  # coordinate search step
             mindelta: float = None,  # narrow search by reducing delta until reaching mindelta
     ):
+        self.data._check_data()
+        assert error in ERROR_FUNC
         mindelta_ = delta if mindelta is None else mindelta
         self.selective_stopping = selective_stopping
+        self.error = error
         self.delta = delta
         self.mindelta = mindelta
         n_y = len(self.data.y)
@@ -369,7 +379,7 @@ class Boosting:
         if CONFIG['n_workers']:
             # Make sure cross-validations are added in the same order, otherwise
             # slight numerical differences can occur
-            job_queue, result_queue = setup_workers(self.data, i_start_by_x, i_stop_by_x, delta, mindelta_, self.data.error, selective_stopping)
+            job_queue, result_queue = setup_workers(self.data, i_start_by_x, i_stop_by_x, delta, mindelta_, error, selective_stopping)
             stop_jobs = Event()
             thread = Thread(target=put_jobs, args=(job_queue, n_y, n_splits, stop_jobs))
             thread.start()
@@ -385,7 +395,7 @@ class Boosting:
         else:
             for i_y, y_i in enumerate(self.data.y):
                 for split in split_results:
-                    h = boost(y_i, self.data.x, self.data.x_pads, split.split, i_start_by_x, i_stop_by_x, delta, mindelta_, self.data.error, selective_stopping)
+                    h = boost(y_i, self.data.x, self.data.x_pads, split.split, i_start_by_x, i_stop_by_x, delta, mindelta_, error, selective_stopping)
                     split.add_h(i_y, h)
                     pbar.update()
         self.split_results = split_results
@@ -440,11 +450,11 @@ class Boosting:
         # fit evaluation
         if metrics is None:
             if self.data.vector_dim:
-                metrics = [f'vec-{self.data.error}', f'vec-corr']
-                if self.data.error == 'l1':
+                metrics = [f'vec-{self.error}', f'vec-corr']
+                if self.error == 'l1':
                     metrics.append('vec-corr-l1')
             else:
-                metrics = [self.data.error, 'r', 'r_rank']
+                metrics = [self.error, 'r', 'r_rank']
 
         # hs: [(h, segments), ...]
         if cross_fit:
@@ -528,7 +538,7 @@ class Boosting:
         t_run = self.t_fit_done - self.t_fit_start
         return BoostingResult(
             # basic parameters
-            self.data.y_name, self.data.x_name, self.tstart, self.tstop, self.data.scale_data, self.delta, self.mindelta, self.data.error,
+            self.data.y_name, self.data.x_name, self.tstart, self.tstop, bool(self.data.scale_data), self.delta, self.mindelta, self.error,
             # data properties
             y_mean, y_scale, x_mean, x_scale,
             # results
@@ -537,6 +547,7 @@ class Boosting:
             self.data.basis, self.data.basis_window, self.data.partitions_arg, self.data.partitions, self.data.validate, self.data.test, self.data.model, self.data._prefit_repr, self.selective_stopping,
             # advanced data properties
             self.data.y.shape[1], self.data.y_info,
+            algorithm_version=0,
             **evaluations)
 
 
@@ -667,18 +678,30 @@ def boosting(
         Computation in Neural Systems, 18(3), 191-212.
         `10.1080/09548980701609235 <https://doi.org/10.1080/09548980701609235>`_.
     """
-    # check arguments
+    # scale_data
+    if isinstance(scale_data, bool):
+        scale_in_place = False
+    elif isinstance(scale_data, str):
+        if scale_data == 'inplace':
+            scale_in_place = True
+        else:
+            raise ValueError(f"scale_data={scale_data!r}")
+    else:
+        raise TypeError(f"scale_data={scale_data!r}, need bool or str")
+    # selective_stopping
     selective_stopping = int(selective_stopping)
     if selective_stopping < 0:
         raise ValueError(f"selective_stopping={selective_stopping}")
 
-    data = RevCorrData(y, x, error, scale_data, ds)
+    data = RevCorrData(y, x, ds, scale_in_place)
     data.apply_basis(basis, basis_window)
+    if scale_data:
+        data.normalize(error)
     data.prefit(prefit)
     data.initialize_cross_validation(partitions, model, ds, validate, test)
 
     fit = Boosting(data)
-    fit.fit(tstart, tstop, selective_stopping, delta, mindelta)
+    fit.fit(tstart, tstop, selective_stopping, error, delta, mindelta)
     return fit.evaluate_fit(debug=debug)
 
 

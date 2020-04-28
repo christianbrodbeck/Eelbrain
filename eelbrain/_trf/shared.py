@@ -63,7 +63,16 @@ class RevCorrData:
         Only available for segmented data. For each partition, the index into
         :attr:`.segments` used as test set.
     """
+    # data
+    x_mean = None
+    x_scale = None
+    y_mean = None
+    y_scale = None
+    x_pads = None
+    _x_is_copy = False
+    _y_is_copy = False
     # prefit
+    scale_data = False
     _prefit_repr = None
     # cross-validation
     partitions_arg = None
@@ -79,26 +88,14 @@ class RevCorrData:
             self,
             y: NDVarArg,
             x: Union[NDVarArg, List[NDVarArg]],
-            error: str,  # 'l1' | 'l2', for scaling data
-            scale_data: Union[bool, str],  # normalize y and x; can be 'inplace'
             ds: Dataset = None,
+            in_place: bool = False,
     ):
         y = asndvar(y, ds=ds)
         if isinstance(x, (tuple, list, Iterator)):
             x = (asndvar(x_, ds=ds) for x_ in x)
         else:
             x = asndvar(x, ds=ds)
-
-        # scale_data param
-        if isinstance(scale_data, bool):
-            scale_in_place = False
-        elif isinstance(scale_data, str):
-            if scale_data == 'inplace':
-                scale_in_place = True
-            else:
-                raise ValueError("scale_data=%r" % (scale_data,))
-        else:
-            raise TypeError("scale_data=%r, need bool or str" % (scale_data,))
 
         # check y and x
         if isinstance(x, NDVar):
@@ -165,8 +162,6 @@ class RevCorrData:
         y_data = y.get_data(y_dimnames).reshape(shape)
         # shape for exposing vector dimension
         if vector_dim:
-            if not scale_data:
-                raise NotImplementedError("Vector data without scaling")
             n_flat_prevector = reduce(mul, map(len, ydims[:-1]), 1)
             n_vector = len(ydims[-1])
             assert n_vector > 1
@@ -212,70 +207,14 @@ class RevCorrData:
             x_data = np.concatenate(x_data)
             x_is_copy = True
 
-        if scale_data:
-            if not scale_in_place:
-                y_data = y_data.copy()
-                if not x_is_copy:
-                    x_data = x_data.copy()
-                    x_is_copy = True
-
-            y_mean = y_data.mean(1)
-            x_mean = x_data.mean(1)
-            y_data -= y_mean[:, newaxis]
-            x_data -= x_mean[:, newaxis]
-            # for vector data, scale by vector norm
-            if vector_shape:
-                y_data_vector_shape = y_data.reshape(vector_shape)
-                y_data_scale = norm(y_data_vector_shape, axis=1)
-            else:
-                y_data_vector_shape = None
-                y_data_scale = y_data
-
-            if error == 'l1':
-                y_scale = np.abs(y_data_scale).mean(-1)
-                x_scale = np.abs(x_data).mean(-1)
-            elif error == 'l2':
-                y_scale = (y_data_scale ** 2).mean(-1) ** 0.5
-                x_scale = (x_data ** 2).mean(-1) ** 0.5
-            else:
-                raise RuntimeError(f"error={error!r}")
-
-            if vector_shape:
-                y_data_vector_shape /= y_scale[:, newaxis, newaxis]
-            else:
-                y_data /= y_scale[:, newaxis]
-            x_data /= x_scale[:, newaxis]
-            # for data-check
-            y_check = y_scale
-            x_check = x_scale
-            # zero-padding for convolution
-            x_pads = -x_mean / x_scale
-        else:
-            y_mean = x_mean = y_scale = x_scale = None
-            y_check = y_data.var(1)
-            x_check = x_data.var(1)
-            x_pads = np.zeros(n_x)
-        # check for flat data
-        zero_var = [y.name or 'y'] if np.any(y_check == 0) else []
-        zero_var.extend(x_name[i] for i, v in enumerate(x_check) if v == 0)
-        if zero_var:
-            raise ValueError("Flat data: " + ', '.join(zero_var))
-        # check for NaN
-        has_nan = [y.name] if np.isnan(y_check.sum()) else []
-        has_nan.extend(x_name[i] for i, v in enumerate(x_check) if np.isnan(v))
-        if has_nan:
-            raise ValueError("Data with NaN: " + ', '.join(has_nan))
-
-        self.error = error
         self.time = time_dim
         self.segments = segments
-        self.scale_data = bool(scale_data)
         self.shortest_segment_n_times = n_times
+        self.in_place = in_place
         # y
         self.y = y_data  # (n_signals, n_times)
-        self.y_mean = y_mean
-        self.y_scale = y_scale
         self.y_name = y.name
+        self._y_repr = dataobj_repr(y)
         self.y_info = _info.copy(y.info)
         self.ydims = ydims  # without case and time
         self.yshape = tuple(map(len, ydims))
@@ -284,30 +223,112 @@ class RevCorrData:
         self.vector_shape = vector_shape  # flat shape with vector dim separate
         # x
         self.x = x_data  # (n_predictors, n_times)
-        self.x_mean = x_mean
-        self.x_scale = x_scale
         self.x_name = x_name
+        self.x_names = x_names
         self._x_meta = x_meta  # [(x.name, xdim, index), ...]; index is int or slice
         self._multiple_x = multiple_x
         self._x_is_copy = x_is_copy
-        self.x_pads = x_pads
         # basis
         self.basis = 0
         self.basis_window = None
 
-    def apply_basis(self, basis, basis_window):
-        "Apply basis to x"
+    def _copy_data(self, y=False):
+        "Make sure the data is a copy before modifying"
+        if self.in_place:
+            return
+        if not self._x_is_copy:
+            self.x = self.x.copy()
+            self._x_is_copy = True
+        if y and not self._y_is_copy:
+            self.y = self.y.copy()
+            self._y_is_copy = True
+
+    def apply_basis(self, basis: float, basis_window: str):
+        """Apply basis to x
+
+        Notes
+        -----
+        Normalize after applying basis (basis can smooth out variance).
+        """
         if self.basis != 0:
             raise NotImplementedError("Applying basis more than once")
-        self.basis = basis
-        self.basis_window = basis_window
-        if not basis:
+        elif not basis:
             return
+        self._copy_data()
         n = int(round(basis / self.time.tstep))
         w = scipy.signal.get_window(basis_window, n, False)
+        if len(w) <= 1:
+            raise ValueError(f"basis={basis!r}: Window is {len(w)} samples long")
         w /= w.sum()
         for xi in self.x:
             xi[:] = scipy.signal.convolve(xi, w, 'same')
+        self.basis = basis
+        self.basis_window = basis_window
+
+    @LazyProperty
+    def x_pads(self):
+        return np.zeros(len(self.x))
+
+    def normalize(self, error: str):
+        self._copy_data(y=True)
+        y_mean = self.y.mean(1)
+        x_mean = self.x.mean(1)
+        self.y -= y_mean[:, newaxis]
+        self.x -= x_mean[:, newaxis]
+        # for vector data, scale by vector norm
+        if self.vector_shape:
+            y_data_vector_shape = self.y.reshape(self.vector_shape)
+            y_data_for_scale = norm(y_data_vector_shape, axis=1)
+        else:
+            y_data_vector_shape = None
+            y_data_for_scale = self.y
+
+        if error == 'l1':
+            y_scale = np.abs(y_data_for_scale).mean(-1)
+            x_scale = np.abs(self.x).mean(-1)
+        elif error == 'l2':
+            y_scale = (y_data_for_scale ** 2).mean(-1) ** 0.5
+            x_scale = (self.x ** 2).mean(-1) ** 0.5
+        else:
+            raise RuntimeError(f"error={error!r}")
+
+        if self.vector_shape:
+            y_data_vector_shape /= y_scale[:, newaxis, newaxis]
+        else:
+            self.y /= y_scale[:, newaxis]
+        self.x /= x_scale[:, newaxis]
+
+        self.scale_data = error
+        self.y_mean = y_mean
+        self.y_scale = y_scale
+        self.x_mean = x_mean
+        self.x_scale = x_scale
+        # zero-padding for convolution
+        self.x_pads = -x_mean / x_scale
+
+    def _check_data(self):
+        if self.x_scale is None:
+            x_check = self.x.var(1)
+            y_check = self.y.var(1)
+        else:
+            x_check = self.x_scale
+            y_check = self.y_scale
+        # check for flat data
+        zero_var = y_check == 0
+        if np.any(zero_var):
+            raise ValueError(f"y={self._y_repr}: contains {zero_var.sum()} flat time series")
+        zero_var = x_check == 0
+        if np.any(zero_var):
+            names = [self.x_names[i] for i in np.flatnonzero(zero_var)]
+            raise ValueError(f"x: flat data in {', '.join(names)}")
+        # check for NaN
+        has_nan = np.isnan(y_check.sum())
+        if has_nan:
+            raise ValueError(f"y={self._y_repr}: contains NaN")
+        has_nan = np.isnan(x_check)
+        if np.any(has_nan):
+            names = [self.x_names[i] for i in np.flatnonzero(has_nan)]
+            raise ValueError(f"x: NaN in {', '.join(names)}")
 
     def prefit(self, res):
         if not res:

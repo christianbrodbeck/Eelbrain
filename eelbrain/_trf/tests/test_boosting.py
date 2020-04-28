@@ -85,7 +85,7 @@ def test_boosting(n_workers):
     # fit res_cv on same data as res
     fit = res_cv.fit
     fit.data.splits = [fit.data.splits[i] for i in [9, 10, 11]]
-    fit.fit(0, 1, 0)
+    fit.fit(0, 1, 0, 'l2')
     res_cv = fit.evaluate_fit(debug=True)
     assert_dataobj_equal(res_cv.h, res.h)
     y_pred = convolve(res_cv.h_scaled, x1[7.5:])
@@ -141,7 +141,7 @@ def test_boosting_epochs():
     for tstart, basis in product((-0.1, 0.1, 0), (0, 0.05)):
         print(f"tstart={tstart}, basis={basis}")
         res = boosting('uts', [p0, p1], tstart, 0.6, model='A', ds=ds, basis=basis, partitions=3, debug=True)
-        assert res.r == approx(0.238, abs=1e-3)
+        assert res.r == approx(0.238, abs=2e-3)
         y = convolve(res.h_scaled, [p0, p1], name='predicted')
         assert correlation_coefficient(y, res.y_pred) > .999
         assert y.name == 'predicted'
