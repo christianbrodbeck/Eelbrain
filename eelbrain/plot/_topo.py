@@ -521,7 +521,7 @@ class _plt_topomap(_plt_im):
         self._method = interpolation
 
         # clip mask
-        if interpolation is None and clip:
+        if clip:
             locs = layer.y.sensor.get_locs_2d(self._proj, frame=SENSORMAP_FRAME)
             if clip == 'even':
                 hull = ConvexHull(locs)
