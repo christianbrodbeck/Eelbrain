@@ -53,7 +53,7 @@ the subject identifier.
 The pipeline expects input files in a strictly determined folder/file structure.
 In the schema below, curly brackets indicate slots to be replaced with specific
 names, for example ``'{subject}'`` should be replaced with each specific
-subject's label.::
+subject's label::
 
     root
     mri-sdir                                /mri
@@ -91,6 +91,14 @@ a list of the subjects that were discovered and the MRIs used::
     1    R0040     fsaverage * 0.92
     2    R0176     fsaverage * 0.954746600461
     ...
+
+.. py:attribute:: MneExperiment.visits
+
+.. note::
+    If participants come back for the experiment on multiple occasions, a
+    :attr:`visits` attribute might also be needed. For details see the
+    corresponding `wiki page <https://github.com/christianbrodbeck/Eelbrain/
+    wiki/MneExperiment-analysis-options#multiple-visits>`_.
 
 
 .. _MneExperiment-preprocessing:
@@ -616,6 +624,14 @@ filter, and to use sensor covariance matrices without regularization.
 
 Which raw session to work with (one of :attr:`MneExperiment.sessions`; usually
 set automatically when :ref:`state-epoch` is set)
+
+
+.. _state-visit:
+
+``visit``
+---------
+
+Which visit to work with (one of :attr:`MneExperiment.visits`)
 
 
 .. _state-raw:
