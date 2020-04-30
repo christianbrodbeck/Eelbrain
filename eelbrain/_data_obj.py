@@ -152,7 +152,7 @@ preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __
                    )
 
 
-SRC_RE = re.compile(r'^(ico|vol)-(\d+)(?:-(\w+))?$')
+SRC_RE = re.compile(r'^(ico|oct|vol)-(\d+)(?:-(\w+))?$')
 UNNAMED = '<?>'
 LIST_INDEX_TYPES = (*INT_TYPES, slice)
 EXPAND_INDEX_TYPES = (*INT_TYPES, np.ndarray)
@@ -9145,7 +9145,7 @@ def _mne_tri_soure_space_graph(source_space, vertices_list):
 
 
 class SourceSpaceBase(Dimension):
-    kind = None
+    _kinds = ()
     _default_parc = 'aparc'
     _default_connectivity = 'custom'
     _ANNOT_PATH = os.path.join('{subjects_dir}', '{subject}', 'label', '{hemi}.{parc}.annot')
@@ -9157,6 +9157,16 @@ class SourceSpaceBase(Dimension):
         self.src = src
         self._subjects_dir = subjects_dir
         self._filename = filename
+        # The source-space type is needed to determine connectivity
+        m = SRC_RE.match(src)
+        if not m:
+            raise ValueError(f"src={src!r}")
+        kind, grade, suffix = m.groups()
+        if kind not in self._kinds:
+            raise ValueError(f'src={self.src!r}: {self.__class__.__name__} is wrong class')
+        self.kind = kind
+        self.grade = int(grade)
+        # derived properties for subclasses
         self._init_secondary()
         Dimension.__init__(self, name, connectivity)
 
@@ -9177,14 +9187,6 @@ class SourceSpaceBase(Dimension):
 
     def _init_secondary(self):
         self._n_vert = sum(len(v) for v in self.vertices)
-        # The source-space type is needed to determine connectivity
-        m = SRC_RE.match(self.src)
-        if not m:
-            raise ValueError(f"src={self.src!r}; needs to be '{self.kind}-i' where i is an integer")
-        kind, grade, suffix = m.groups()
-        if kind != self.kind:
-            raise ValueError(f'src={self.src!r}: {self.__class__.__name__} is wrong class')
-        self.grade = int(grade)
 
     @classmethod
     def from_file(cls, subjects_dir, subject, src, parc=None):
@@ -9593,7 +9595,7 @@ class SourceSpace(SourceSpaceBase):
      - 'lh' or 'rh' to select an entire hemisphere
 
     """
-    kind = 'ico'
+    _kinds = ('ico', 'oct')
 
     def __init__(self, vertices, subject=None, src=None, subjects_dir=None,
                  parc='aparc', connectivity='custom', name='source', filename='{subject}-{src}-src.fif'):
@@ -9711,8 +9713,7 @@ class SourceSpace(SourceSpaceBase):
             distance is less than this number (in meters; default 0.015).
         """
         if self.kind != 'ico':
-            raise ValueError("Can only link hemispheres in 'ico' source "
-                             "spaces, not in %s" % repr(self.kind))
+            raise ValueError("Can only link hemispheres in 'ico' source spaces")
         old_con = self.connectivity()
 
         # find vertices to connect
@@ -9731,6 +9732,8 @@ class SourceSpace(SourceSpaceBase):
 
     def _compute_connectivity(self):
         src = self.get_source_space()
+        if self.kind == 'oct':
+            raise NotImplementedError("Connectivity for oct source space")
         return _mne_tri_soure_space_graph(src, self.vertices)
 
     def _array_index(self, arg, allow_vertex=True):
@@ -9923,7 +9926,7 @@ class VolumeSourceSpace(SourceSpaceBase):
     --------
     SourceSpace : surface-based source space
     """
-    kind = 'vol'
+    _kinds = ('vol',)
     _default_parc = 'aseg'
 
     def __init__(self, vertices, subject=None, src=None, subjects_dir=None,

@@ -13,7 +13,7 @@ def test_plot_brain():
     """Test plot.brain plots"""
     if sys.platform.startswith('win'):
         pytest.xfail("Hangs on Appveyor")
-    stc = datasets.get_mne_stc(True)
+    stc = datasets.get_mne_stc(True, 'oct-4')
 
     # size
     b = plot.brain.brain(stc.source, hemi='rh', w=400, h=300, mask=False)
@@ -29,6 +29,15 @@ def test_plot_brain():
     b.set_size(400, 150)
     assert b.screenshot().shape == (150, 400, 3)
     b.close()
+
+    # standard plot
+    y = stc.sub(time=0.090)
+    brain = plot.brain.brain(y, mask=False, hemi='lh')
+    # labels (int)
+    labels = y.astype(int)
+    brain.add_ndvar_annotation(labels)
+    brain.add_ndvar_annotation(labels, 'jet')
+    brain.close()
 
     # plot shortcuts
     p = plot.brain.dspm(stc, mask=False)
