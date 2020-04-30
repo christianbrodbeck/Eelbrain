@@ -528,7 +528,11 @@ def setup_samples_experiment(dst, n_subjects=3, n_segments=4, n_sessions=1, n_vi
     mris_only : bool
         Only create MRIs, skip MEG data (add MRIs to existing experiment data).
     """
+    # find data source
     data_path = Path(mne.datasets.sample.data_path())
+    fsaverage_path = Path(mne.datasets.fetch_fsaverage())
+
+    # setup destination
     dst = Path(dst).expanduser().resolve()
     root = dst / name
     root.mkdir(exist_ok=mris_only)
@@ -549,20 +553,27 @@ def setup_samples_experiment(dst, n_subjects=3, n_segments=4, n_sessions=1, n_vi
         # copy rudimentary fsaverage
         surf_names = ['inflated', 'white', 'orig', 'orig_avg', 'curv', 'sphere']
         files = {
-            'bem': ['fsaverage-head.fif', 'fsaverage-inner_skull-bem.fif', 'fsaverage-ico-4-src.fif'],
+            'bem': ['fsaverage-head.fif', 'fsaverage-inner_skull-bem.fif'],
             'label': ['lh.aparc.annot', 'rh.aparc.annot'],
             'surf': [f'{hemi}.{name}' for hemi, name in product(['lh', 'rh'], surf_names)],
             'mri': [],
         }
-        src_s_dir = data_path / 'subjects' / 'fsaverage'
         dst_s_dir = mri_sdir / 'fsaverage'
         dst_s_dir.mkdir()
+        # from fsaverage
         for dir_name, file_names in files.items():
-            src_dir = src_s_dir / dir_name
+            src_dir = fsaverage_path / dir_name
             dst_dir = dst_s_dir / dir_name
             dst_dir.mkdir()
             for file_name in file_names:
                 shutil.copy(src_dir / file_name, dst_dir / file_name)
+        # source space
+        src_src = fsaverage_path / 'bem' / 'fsaverage-ico-3-src.fif'
+        src_dst = dst_s_dir / 'bem' / 'fsaverage-ico-3-src.fif'
+        if not src_src.exists():
+            src = mne.setup_source_space('fsaverage', 'ico1', subjects_dir=fsaverage_path.parent)
+            src.save(src_src)
+        shutil.copy(src_src, src_dst)
         # create scaled brains
         trans = mne.Transform(4, 5, [[ 0.9998371,  -0.00766024,  0.01634169,  0.00289569],
                                      [ 0.00933457,  0.99443108, -0.10497498, -0.0205526 ],
