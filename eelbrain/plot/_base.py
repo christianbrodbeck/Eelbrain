@@ -77,7 +77,7 @@ from collections.abc import Iterable, Iterator
 from copy import copy
 from dataclasses import dataclass, replace
 from enum import Enum, auto
-from itertools import chain, repeat
+from itertools import chain, cycle, repeat
 from logging import getLogger
 import math
 from numbers import Number
@@ -1285,26 +1285,21 @@ def aggregate(y, agg):
     return y if agg is None else y.mean(agg)
 
 
-class MatplotlibFrame:
-    "Cf. _wxgui.mpl_canvas"
-    def __init__(self, **fig_kwargs):
-        "Create self.figure and self.canvas attributes and return the figure"
-        from matplotlib import pyplot
+class FigureFrame:
 
-        self._plt = pyplot
-        self.figure = pyplot.figure(**fig_kwargs)
+    def __init__(self, figure):
+        self.figure = figure
         self.canvas = self.figure.canvas
         self._background = None
 
     def Close(self):
-        self._plt.close(self.figure)
+        pass
 
     def SetStatusText(self, text):
         pass
 
     def Show(self):
-        if mpl.get_backend() == 'WXAgg' and do_autorun():
-            self._plt.show()
+        pass
 
     def redraw(self, axes=[], artists=[]):
         "Adapted duplicate of mpl_canvas.FigureCanvasPanel"
@@ -1320,6 +1315,24 @@ class MatplotlibFrame:
 
     def store_canvas(self):
         self._background = self.canvas.copy_from_bbox(self.figure.bbox)
+
+
+class MatplotlibFrame(FigureFrame):
+    "Cf. _wxgui.mpl_canvas"
+    def __init__(self, **fig_kwargs):
+        "Create self.figure and self.canvas attributes and return the figure"
+        from matplotlib import pyplot
+
+        figure = pyplot.figure(**fig_kwargs)
+        FigureFrame.__init__(self, figure)
+        self._plt = pyplot
+
+    def Close(self):
+        self._plt.close(self.figure)
+
+    def Show(self):
+        if mpl.get_backend() == 'WXAgg' and do_autorun():
+            self._plt.show()
 
 
 def frame_title(y, x=None, xax=None):
@@ -1387,7 +1400,10 @@ class EelFigure:
         self._title = f'{name}: {desc}' if desc else name
 
         # Use Eelbrain frame or pyplot
-        if CONFIG['eelbrain'] and not use_inline_backend():
+        if layout.user_axes:
+            ax = layout.user_axes[0]
+            frame = FigureFrame(ax.get_figure())
+        elif CONFIG['eelbrain'] and not use_inline_backend():
             from .._wxgui import wx, get_app
             from .._wxgui.mpl_canvas import CanvasFrame
             get_app()
@@ -1926,8 +1942,35 @@ class EelFigure:
         ax.set_ylabel(label)
 
 
+def format_axes(
+        ax: mpl.axes.Axes,
+        frame: Union[bool, str],
+        yaxis: bool,
+):
+    if frame == 't':
+        ax.tick_params(direction='inout', bottom=False, top=True,
+                       left=False, right=True, labelbottom=True,
+                       labeltop=False, labelleft=True,
+                       labelright=False)
+        ax.spines['right'].set_position('zero')
+        ax.spines['left'].set_visible(False)
+        ax.spines['top'].set_position('zero')
+        ax.spines['bottom'].set_visible(False)
+    elif frame == 'none':
+        ax.axis('off')
+    elif not frame:
+        ax.yaxis.set_ticks_position('left')
+        ax.spines['right'].set_visible(False)
+        ax.xaxis.set_ticks_position('bottom')
+        ax.spines['top'].set_visible(False)
+
+    if not yaxis:
+        ax.yaxis.set_ticks(())
+        ax.spines['left'].set_visible(False)
+
+
 class BaseLayout:
-    def __init__(self, h, w, dpi, tight, show, run, title, autoscale=False, name=None, right_of=None, below=None):
+    def __init__(self, h, w, dpi, tight, show, run, title, autoscale=False, name=None, right_of=None, below=None, axes=None):
         self.h = h
         self.w = w
         self.dpi = dpi or mpl.rcParams['figure.dpi']
@@ -1937,6 +1980,7 @@ class BaseLayout:
         self.autoscale = autoscale
         self.title = title
         self.name = name or title
+        self.user_axes = axes
 
         x = y = None
         if isinstance(right_of, EelFigure):
@@ -1975,34 +2019,18 @@ class BaseLayout:
         return out
 
     def make_axes(self, figure):
+        if self.user_axes:
+            axes = self.user_axes
+        else:
+            axes = self._make_axes(figure)
+        self._configure_axes(axes)
+        return axes
+
+    def _make_axes(self, figure):
         raise NotImplementedError
 
-    @staticmethod
-    def _format_axes(
-            ax: mpl.axes.Axes,
-            frame: Union[bool, str],
-            yaxis: bool,
-    ):
-        if frame == 't':
-            ax.tick_params(direction='inout', bottom=False, top=True,
-                           left=False, right=True, labelbottom=True,
-                           labeltop=False, labelleft=True,
-                           labelright=False)
-            ax.spines['right'].set_position('zero')
-            ax.spines['left'].set_visible(False)
-            ax.spines['top'].set_position('zero')
-            ax.spines['bottom'].set_visible(False)
-        elif frame == 'none':
-            ax.axis('off')
-        elif not frame:
-            ax.yaxis.set_ticks_position('left')
-            ax.spines['right'].set_visible(False)
-            ax.xaxis.set_ticks_position('bottom')
-            ax.spines['top'].set_visible(False)
-
-        if not yaxis:
-            ax.yaxis.set_ticks(())
-            ax.spines['left'].set_visible(False)
+    def _configure_axes(self, axes):
+        raise NotImplementedError
 
 
 def resolve_plot_rect(w, h, dpi):
@@ -2270,7 +2298,7 @@ class Layout(BaseLayout):
 
         return out
 
-    def make_axes(self, figure):
+    def _make_axes(self, figure):
         if not self.nax:
             return []
         axes = []
@@ -2280,7 +2308,11 @@ class Layout(BaseLayout):
             axes.append(ax)
             if self.share_axes:
                 kwargs.update(sharex=ax, sharey=ax)
-            self._format_axes(ax, self.frame, self.yaxis)
+        return axes
+
+    def _configure_axes(self, axes):
+        for ax in axes:
+            format_axes(ax, self.frame, self.yaxis)
         return axes
 
 
@@ -2302,14 +2334,16 @@ class ImLayout(Layout):
             raise TypeError(f"margins={margins!r}; needs to be a dict")
         Layout.__init__(self, nax, ax_aspect, axh_default, tight, title, *args, margins=margins, **kwargs)
 
-    def make_axes(self, figure):
+    def _make_axes(self, figure):
         axes = []
         for i in self.axes:
-            ax = figure.add_subplot(self.nrow, self.ncol, i + 1,
-                                    autoscale_on=self.autoscale)
-            ax.axis('off')
+            ax = figure.add_subplot(self.nrow, self.ncol, i + 1, autoscale_on=self.autoscale)
             axes.append(ax)
         return axes
+
+    def _configure_axes(self, axes):
+        for ax in axes:
+            ax.axis('off')
 
 
 class VariableAspectLayout(BaseLayout):
@@ -2333,7 +2367,7 @@ class VariableAspectLayout(BaseLayout):
     ax_kwargs : tuple of dict
         Parameters for :meth:`figure.add_axes` for each column.
     ax_frames : tuple of str
-        ``frame`` parameter for :meth:`._format_axes` for each column.
+        ``frame`` parameter for :func:`format_axes` for each column.
     row_titles : sequence of {str | None}
         One title per row.
     """
@@ -2404,23 +2438,24 @@ class VariableAspectLayout(BaseLayout):
         # rectangles:  (left, bottom, width, height)
         self._ax_rects = [[(l, bottom, w, height) for l, w in zip(lefts_, widths_)] for bottom in bottoms_]
 
-    def make_axes(self, figure):
+    def _make_axes(self, figure):
         axes = []
         for row, row_rects in enumerate(self._ax_rects):
             for rect, kwa, frame in zip(row_rects, self.ax_kwargs, self.ax_frames):
                 ax = figure.add_axes(rect, autoscale_on=self.autoscale, **kwa)
-                self._format_axes(ax, frame, True)
                 axes.append(ax)
 
             if self.row_titles and self.row_titles[row]:
                 bottom, height = rect[1], rect[3]
-                figure.text(0, bottom + height / 2, self.row_titles[row],
-                            ha='left', va='center', rotation='vertical')
+                figure.text(0, bottom + height / 2, self.row_titles[row], ha='left', va='center', rotation='vertical')
+        return axes
 
+    def _configure_axes(self, axes):
+        for ax, frame in zip(axes, cycle(self.ax_frames)):
+            format_axes(ax, frame, True)
         # id axes for callbacks
         for i, ax in enumerate(axes):
             ax.id = i
-        return axes
 
 
 class ColorBarMixin:
