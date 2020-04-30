@@ -1,5 +1,6 @@
 """Create tables from data-objects"""
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from operator import itemgetter
 import re
 from warnings import warn
 
@@ -332,7 +333,7 @@ def melt(name, cells, cell_var_name, ds, labels=None):
     return out
 
 
-def melt_ndvar(ndvar, dim=None, cells=None, ds=None, varname=None):
+def melt_ndvar(ndvar, dim=None, cells=None, ds=None, varname=None, labels=None):
     """
     Transform data to long format by converting an NDVar dimension into a variable
 
@@ -351,6 +352,8 @@ def melt_ndvar(ndvar, dim=None, cells=None, ds=None, varname=None):
         table.
     varname : str
         Name for the transformed ``ndvar`` (default is ``ndvar.name``).
+    labels: dict | callable
+        Mapping or function to create labels for ``dim`` levels.
 
     Returns
     -------
@@ -363,15 +366,25 @@ def melt_ndvar(ndvar, dim=None, cells=None, ds=None, varname=None):
             dim = ndvar.dims[-1]
             dimname = dim.name
         else:
-            raise ValueError("The ndvar has more than one possible dimensions, "
-                             "the dim parameter must be one of %s"
-                             % repr(ndvar.dimnames[ndvar.has_case:]))
+            raise ValueError(f"The ndvar has more than one possible dimensions, the dim parameter must be one of {ndvar.dimnames[ndvar.has_case:]}")
     else:
         dimname = dim
         dim = ndvar.get_dim(dimname)
 
     if cells is None:
         cells = dim._as_uv()
+
+    if callable(labels):
+        label = labels
+    elif isinstance(labels, dict):
+        missing = set(cells).difference(labels)
+        if missing:
+            raise ValueError(f"labels={labels}: missing keys {missing}")
+        label = itemgetter(labels)
+    elif labels is None:
+        label = lambda x: x
+    else:
+        raise TypeError(f"labels={labels!r}")
 
     if varname is None:
         if ndvar.name is None:
@@ -388,7 +401,7 @@ def melt_ndvar(ndvar, dim=None, cells=None, ds=None, varname=None):
     for cell in cells:
         ds_ = base_ds.copy()
         ds_[varname] = ndvar.sub(**{dimname: cell})
-        ds_[dimname, :] = cell
+        ds_[dimname, :] = label(cell)
         dss.append(ds_)
     return combine(dss)
 
