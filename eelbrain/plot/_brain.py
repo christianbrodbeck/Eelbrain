@@ -480,7 +480,7 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
     mask : bool | matplotlib color
         Shade areas that are not in ``src``. Can be matplotlib color, including
         alpha (e.g., ``(1, 1, 1, 0.5)`` for semi-transparent white). If
-        smoothing  is enabled through ``smoothing_steps``, the mask is added as
+        smoothing is enabled through ``smoothing_steps``, the mask is added as
         data layer, otherwise it is added as label. To add a mask independently,
         use the :meth:`Brain.add_mask` method.
     subjects_dir : None | str
@@ -560,8 +560,7 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
         if ndvar.x.dtype.kind in 'ui':
             brain.add_ndvar_annotation(ndvar, cmap, False)
         else:
-            brain.add_ndvar(ndvar, cmap, vmin, vmax, smoothing_steps, colorbar,
-                            time_label)
+            brain.add_ndvar(ndvar, cmap, vmin, vmax, smoothing_steps, colorbar, time_label)
 
     if mask is not False:
         color = (0, 0, 0, 0.5) if mask is True else mask
@@ -1561,7 +1560,7 @@ def copy(brain):
 
 def butterfly(y, cmap=None, vmin=None, vmax=None, surf='inflated',
               views='lateral', hemi=None,
-              w=5, h=2.5, smoothing_steps=None, mask=False,
+              w=5, h=2.5, smoothing_steps=None, mask=True,
               xlim=None, name=None):
     """Shortcut for a Butterfly-plot with a time-linked brain plot
 
@@ -1595,7 +1594,7 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, surf='inflated',
     mask : bool | matplotlib color
         Shade areas that are not in ``src``. Can be matplotlib color, including
         alpha (e.g., ``(1, 1, 1, 0.5)`` for semi-transparent white). If
-        smoothing  is enabled through ``smoothing_steps``, the mask is added as
+        smoothing is enabled through ``smoothing_steps``, the mask is added as
         data layer, otherwise it is added as label. To add a mask independently,
         use the :meth:`Brain.add_mask` method.
     xlim : scalar | (scalar, scalar)
