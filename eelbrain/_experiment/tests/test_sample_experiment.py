@@ -24,7 +24,7 @@ def test_sample():
     # import from file:  http://stackoverflow.com/a/67692/166700
     SampleExperiment = import_attr(sample_path / 'sample_experiment.py', 'SampleExperiment')
     tempdir = TempDir()
-    datasets.setup_samples_experiment(tempdir, 3, 2)
+    datasets.setup_samples_experiment(tempdir, 3, 2, mris=True)
 
     root = join(tempdir, 'SampleExperiment')
     e = SampleExperiment(root)
@@ -249,6 +249,20 @@ def test_sample():
     e = Experiment(root)
     events = e.load_events()
     assert_array_equal(events['new_var'], [67402, 75306])
+
+    # Parc
+    # ----
+    labels = e.load_annot(parc='ac', mrisubject='fsaverage')
+    assert len(labels) == 4
+    # change parc definition
+    class Experiment(SampleExperiment):
+        parcs = {
+            'ac': SubParc('aparc', ('transversetemporal', 'superiortemporal')),
+        }
+    e = Experiment(root)
+    assert len(e.glob('annot-file', True, parc='ac')) == 0
+    labels = e.load_annot(parc='ac', mrisubject='fsaverage')
+    assert len(labels) == 6
 
 
 @requires_mne_sample_data

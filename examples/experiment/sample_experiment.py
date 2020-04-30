@@ -71,7 +71,7 @@ class SampleExperiment(MneExperiment):
     }
 
     parcs = {
-        'ac': CombinationParc('aparc', {'ac': 'transversetemporal'}),
+        'ac': SubParc('aparc', ('transversetemporal',)),
     }
 
 
