@@ -5,7 +5,7 @@ from eelbrain.plot._glassbrain import _fast_abs_percentile
 
 @hide_plots
 def test_glassbrain():
-    ndvar = datasets.get_mne_stc(True, True)
+    ndvar = datasets.get_mne_stc(True, 'vol-7')
 
     # source space only
     p = plot.GlassBrain(ndvar.source)

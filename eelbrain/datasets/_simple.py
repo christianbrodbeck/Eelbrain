@@ -128,7 +128,7 @@ def get_mne_evoked(ndvar=False):
         return evoked
 
 
-def get_mne_stc(ndvar=False, vol=False, subject='sample'):
+def get_mne_stc(ndvar=False, src='ico-5', subject='sample'):
     """MNE-Python SourceEstimate
 
     Parameters
@@ -136,11 +136,15 @@ def get_mne_stc(ndvar=False, vol=False, subject='sample'):
     ndvar : bool
         Convert to NDVar (default False; src="ico-4" is false, but it works as
         long as the source space is not accessed).
-    vol : bool
-        Volume source estimate.
+    src : 'ico-5' | 'vol-7' | 'oct-4
+        Source space to use.
+
+    Notes
+    -----
+    Source space only available for ``oct-4``, ``sample``.
     """
     data_path = Path(mne.datasets.testing.data_path())
-    meg_sdir = data_path / 'MEG/sample'
+    meg_sdir = data_path / 'MEG' / 'sample'
     subjects_dir = data_path / 'subjects'
     # scaled subject
     if subject == 'fsaverage_scaled':
@@ -151,7 +155,7 @@ def get_mne_stc(ndvar=False, vol=False, subject='sample'):
     else:
         data_subject = subject
 
-    if vol:
+    if src == 'vol-7':
         inv = mn.read_inverse_operator(str(meg_sdir / 'sample_audvis_trunc-meg-vol-7-meg-inv.fif'))
         evoked = mne.read_evokeds(str(meg_sdir / 'sample_audvis_trunc-ave.fif'), 'Left Auditory')
         stc = mn.apply_inverse(evoked, inv, method='MNE', pick_ori='vector')
@@ -165,11 +169,23 @@ def get_mne_stc(ndvar=False, vol=False, subject='sample'):
             return load.fiff.stc_ndvar(stc, subject, 'vol-7', subjects_dir, 'MNE', sss_filename='{subject}-volume-7mm-src.fif')
         else:
             return stc
-    stc_path = meg_sdir / f'{data_subject}_audvis_trunc-meg'
-    if ndvar:
-        return load.fiff.stc_ndvar(stc_path, subject, 'ico-5', subjects_dir)
+    elif src == 'oct-4':
+        if subject != 'sample':
+            raise ValueError(f"subject={subject!r}: source space only available for 'sample'")
+        inv = mne.minimum_norm.read_inverse_operator(meg_sdir / 'sample_audvis_trunc-meg-eeg-oct-4-meg-inv.fif')
+        evokeds = mne.read_evokeds(meg_sdir / 'sample_audvis_trunc-ave.fif')
+        evoked = mne.combine_evoked([evokeds[i].apply_baseline() for i in [0, 1]], [1, 1])
+        stc = mne.minimum_norm.apply_inverse(evoked, inv)
+    elif src == 'ico-5':
+        stc_path = meg_sdir / f'{data_subject}_audvis_trunc-meg'
+        stc = mne.read_source_estimate(str(stc_path), subject)
     else:
-        return mne.read_source_estimate(str(stc_path), subject)
+        raise ValueError(f"src={src!r}")
+
+    if ndvar:
+        return load.fiff.stc_ndvar(stc, subject, src, subjects_dir)
+    else:
+        return stc
 
 
 def _mne_source_space(subject, src_tag, subjects_dir):

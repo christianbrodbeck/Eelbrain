@@ -490,8 +490,7 @@ class Brain(TimeSlicer, surfer.Brain):
             'vmax': vmax,
         })
 
-    def add_ndvar_annotation(self, ndvar, colors=None, borders=True, alpha=1,
-                             lighting=True):
+    def add_ndvar_annotation(self, ndvar, colors=None, borders=True, alpha=1, lighting=True):
         """Add annotation from labels in an NDVar
         
         Parameters
@@ -516,25 +515,24 @@ class Brain(TimeSlicer, surfer.Brain):
             raise TypeError("Need NDVar of integer type, not %r" % (x.dtype,))
         # determine colors
         label_values = np.unique(x)
-        if colors is None:
-            colors = plot_colors = colors_for_oneway([v for v in label_values if v])
-        elif 0 in colors and 0 in label_values:
-            x = x + 1
-            label_values += 1
-            try:
-                plot_colors = {k: colors[k - 1] for k in label_values}
-            except KeyError:
-                raise ValueError(
-                    "The following values of ndvar are missing from colors: %s" %
-                    ', '.join(set(label_values - 1).difference(colors)))
-            colors = {k - 1: v for k, v in plot_colors.items()}
+        if colors is None or isinstance(colors, str):
+            cells = np.setdiff1d(label_values, [0], assume_unique=True)
+            colors = plot_colors = colors_for_oneway(cells, cmap=colors)
+        elif isinstance(colors, dict):
+            missing = np.setdiff1d(label_values, colors)
+            # if 0 should be plotted, we need to shift values
+            if 0 in colors and 0 in label_values:
+                plot_colors = {k+1: v for k, v in colors.items()}
+                x = x + 1
+                label_values += 1
+            else:
+                plot_colors = colors
+                missing = np.setdiff1d(missing, [0], assume_unique=True)
+            if missing:
+                missing = ', '.join(map(str, missing))
+                raise ValueError(f"colors={colors}: missing values for {missing}")
         else:
-            try:
-                colors = plot_colors = {k: colors[k] for k in label_values if k}
-            except KeyError:
-                raise ValueError(
-                    "The following values of ndvar are missing from colors: %s" %
-                    ', '.join(set(label_values).difference(colors).difference((0,))))
+            raise TypeError(f"colors={colors}")
         # generate color table
         ctab = np.zeros((len(label_values), 5), int)
         ctab[:, 4] = label_values
@@ -560,8 +558,10 @@ class Brain(TimeSlicer, surfer.Brain):
             ctab_index = np.in1d(ctab[:, 4], ss_map)
             hemi_ctab = ctab[ctab_index]
             if np.any(hemi_ctab):
+                # map nearest from vertex to index
+                nearest = np.searchsorted(ss['vertno'], ss['nearest'])
                 # expand to full brain
-                full_map = ss_map[ss['nearest']]
+                full_map = ss_map[nearest]
                 annot.append((full_map, hemi_ctab))
                 has_annot.append(hemi)
 
