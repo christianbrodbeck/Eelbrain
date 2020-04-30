@@ -1288,7 +1288,7 @@ class MneExperiment(FileTree):
             rm['subject-mov-file'].add({'analysis': analysis})
 
         # parcs
-        for parc in invalid_cache['parc']:
+        for parc in invalid_cache['parcs']:
             rm['annot-file'].add({'parc': parc})
             rm['test-file'].add({'test_dims': parc})
             rm['test-file'].add({'test_dims': f'{parc}.*'})
