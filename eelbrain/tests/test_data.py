@@ -1681,8 +1681,12 @@ def test_source_space():
     assert_source_space_equal(source_v1, source_v1_intersection)
 
     # persistence
-    assert pickle.loads(pickle.dumps(source, pickle.HIGHEST_PROTOCOL)) == source
-    assert pickle.loads(pickle.dumps(source_v1, pickle.HIGHEST_PROTOCOL)) == source_v1
+    for ss in [source, source_v1]:
+        ss_pickled = pickle.loads(pickle.dumps(ss, pickle.HIGHEST_PROTOCOL))
+        assert ss_pickled == ss
+        # secondary attributes
+        for attr in ['kind', 'grade']:
+            assert getattr(ss_pickled, attr) == getattr(ss, attr)
 
     # index from label
     index = source.index_for_label(label_v1)
