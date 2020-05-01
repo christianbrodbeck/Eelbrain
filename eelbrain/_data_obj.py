@@ -9085,16 +9085,7 @@ class SourceSpaceBase(Dimension):
         self.src = src
         self._subjects_dir = subjects_dir
         self._filename = filename
-        # The source-space type is needed to determine connectivity
-        m = SRC_RE.match(src)
-        if not m:
-            raise ValueError(f"src={src!r}")
-        kind, grade, suffix = m.groups()
-        if kind not in self._kinds:
-            raise ValueError(f'src={self.src!r}: {self.__class__.__name__} is wrong class')
-        self.kind = kind
-        self.grade = int(grade)
-        # derived properties for subclasses
+        # secondary attributes (also set when unpickling)
         self._init_secondary()
         Dimension.__init__(self, name, connectivity)
 
@@ -9114,6 +9105,15 @@ class SourceSpaceBase(Dimension):
         raise NotImplementedError(f"parc={parc!r}: can't set parcellation from annotation files for {self.__class__.__name__}. Consider using a Factor instead.")
 
     def _init_secondary(self):
+        # The source-space type is needed to determine connectivity
+        m = SRC_RE.match(self.src)
+        if not m:
+            raise ValueError(f"src={self.src!r}")
+        kind, grade, suffix = m.groups()
+        if kind not in self._kinds:
+            raise ValueError(f'src={self.src!r}: {self.__class__.__name__} is wrong class')
+        self.kind = kind
+        self.grade = int(grade)
         self._n_vert = sum(len(v) for v in self.vertices)
 
     @classmethod
