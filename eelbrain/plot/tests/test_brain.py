@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from eelbrain import datasets, plot, _info, NDVar
-from eelbrain._wxgui.testing import hide_plots
+from eelbrain.testing import hide_plots
 
 
 @hide_plots

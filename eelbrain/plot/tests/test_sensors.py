@@ -3,7 +3,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from eelbrain import datasets, plot
-from eelbrain._wxgui.testing import hide_plots
+from eelbrain.testing import hide_plots
 
 
 @hide_plots

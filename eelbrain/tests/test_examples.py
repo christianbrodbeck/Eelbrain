@@ -4,13 +4,12 @@ import logging
 import os
 from pathlib import Path
 import re
-from tempfile import TemporaryDirectory
 
 import mne
 import pytest
 
 from eelbrain import configure
-from eelbrain.testing import working_directory
+from eelbrain.testing import hide_plots, working_directory
 
 
 DATASETS = {
@@ -22,6 +21,7 @@ examples_dir = Path(__file__).parents[2] / 'examples'
 examples = list(examples_dir.glob('*/*.py'))
 
 
+@hide_plots
 @pytest.mark.parametrize("path", examples)
 def test_example(tmp_path, path: Path):
     "Run the example script at ``filename``"

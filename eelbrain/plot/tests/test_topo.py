@@ -7,9 +7,10 @@ import wx
 from eelbrain import datasets, plot, testnd
 from eelbrain._utils import IS_WINDOWS
 from eelbrain.testing import requires_mne_sample_data
-from eelbrain._wxgui.testing import hide_plots
+from eelbrain.testing import hide_plots
 
 
+@hide_plots
 def test_plot_topomap():
     "Test plot.Topomap"
     ds = datasets.get_uts(utsnd=True)

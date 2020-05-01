@@ -3,7 +3,7 @@ from numpy.testing import assert_array_equal
 import pytest
 
 from eelbrain import datasets, plot
-from eelbrain._wxgui.testing import hide_plots
+from eelbrain.testing import hide_plots
 
 
 def test_generate_colors():

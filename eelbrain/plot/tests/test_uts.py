@@ -1,6 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from eelbrain import datasets, plot, testnd, Factor, concatenate, set_tmin
-from eelbrain._wxgui.testing import hide_plots
+from eelbrain.testing import hide_plots
 
 
 @hide_plots

@@ -7,6 +7,7 @@ import os
 from operator import mul
 from pathlib import Path
 import shutil
+import sys
 import tempfile
 
 import mne
@@ -15,6 +16,7 @@ from numpy.testing import assert_array_equal
 import pytest
 
 import eelbrain._wxgui
+from .._config import CONFIG
 from .._data_obj import Dataset, NDVar, Var, Factor, isdatalist, isuv
 
 
@@ -140,7 +142,33 @@ class GUITestContext(ContextDecorator):
                 mod.TEST_MODE = False
 
 
-gui_test = GUITestContext()
+gui_test_context = GUITestContext()
+
+
+def gui_test(function):
+    return gui_test_context(requires_framework_build(function))
+
+
+class ConfigContext(ContextDecorator):
+
+    def __init__(self, key, value):
+        self.key = key
+        self.value = value
+        self.old = None
+
+    def __enter__(self):
+        self.old = CONFIG[self.key]
+        CONFIG[self.key] = self.value
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        CONFIG[self.key] = self.old
+
+
+hide_plots_context = ConfigContext('show', False)
+
+
+def hide_plots(function):
+    return hide_plots_context(requires_framework_build(function))
 
 
 @contextmanager
@@ -159,6 +187,10 @@ def import_attr(path, attr):
     mod = module_from_spec(spec)
     spec.loader.exec_module(mod)
     return getattr(mod, attr)
+
+
+def requires_framework_build(function):
+    return pytest.mark.framework_build(function)
 
 
 def requires_mne_sample_data(function):
