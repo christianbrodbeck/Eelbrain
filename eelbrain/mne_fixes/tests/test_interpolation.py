@@ -14,6 +14,8 @@ def test_interpolation():
     bads3 = ['MEG 0531', 'MEG 2231']
     bads_list = [[], bads1, [], bads3]
     test_epochs = ds['epochs']
+    index_0531 = test_epochs.ch_names.index('MEG 0531')
+    test_epochs._data[1, index_0531] = 0
     epochs1 = test_epochs.copy()
     epochs3 = test_epochs.copy()
 
@@ -21,8 +23,8 @@ def test_interpolation():
     assert_array_equal(test_epochs._data[0], epochs1._data[0])
     assert_array_equal(test_epochs._data[2], epochs1._data[2])
     epochs1.info['bads'] = bads1
-    epochs1.interpolate_bads(mode='accurate')
+    epochs1.interpolate_bads(mode='accurate', origin='auto')
     assert_array_almost_equal(test_epochs._data[1], epochs1._data[1], 25)
     epochs3.info['bads'] = bads3
-    epochs3.interpolate_bads(mode='accurate')
+    epochs3.interpolate_bads(mode='accurate', origin='auto')
     assert_array_almost_equal(test_epochs._data[3], epochs3._data[3], 25)

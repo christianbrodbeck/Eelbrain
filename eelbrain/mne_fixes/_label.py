@@ -17,7 +17,7 @@ if LooseVersion(nibabel.__version__) == LooseVersion('2.3.0'):
 @verbose
 def write_labels_to_annot(labels, subject=None, parc=None, overwrite=False,
                           subjects_dir=None, annot_fname=None,
-                          colormap='hsv', hemi='both'):
+                          colormap='hsv', hemi='both', verbose=None):
     """Create a FreeSurfer annotation from a list of labels
 
     FIX: always write both hemispheres

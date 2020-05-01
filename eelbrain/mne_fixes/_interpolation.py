@@ -4,21 +4,19 @@
 import logging
 
 import numpy as np
-from numpy.polynomial.legendre import legval
-from scipy import linalg
 
 import mne
 from mne.bem import _fit_sphere
+from mne.channels.interpolation import _make_interpolation_matrix
 from mne.forward import _map_meg_channels
 from mne.io.pick import pick_types, pick_channels
-from mne.surface import _normalize_vectors
 
 
 # mne 0.10 function
 def map_meg_channels(inst, picks_good, picks_bad, mode):
     info_from = mne.pick_info(inst.info, picks_good, copy=True)
     info_to = mne.pick_info(inst.info, picks_bad, copy=True)
-    return _map_meg_channels(info_from, info_to, mode=mode)
+    return _map_meg_channels(info_from, info_to, mode=mode, origin='auto')
 
 
 # private in 0.9.0 (Epochs method)
@@ -40,98 +38,6 @@ def get_channel_positions(self, picks=None):
         raise ValueError('Could not extract channel positions for '
                          '{} channels'.format(n_zero))
     return pos
-
-
-def _calc_g(cosang, stiffness=4, num_lterms=50):
-    """Calculate spherical spline g function between points on a sphere.
-
-    Parameters
-    ----------
-    cosang : array-like of float, shape(n_channels, n_channels)
-        cosine of angles between pairs of points on a spherical surface. This
-        is equivalent to the dot product of unit vectors.
-    stiffness : float
-        stiffness of the spline.
-    num_lterms : int
-        number of Legendre terms to evaluate.
-
-    Returns
-    -------
-    G : np.ndrarray of float, shape(n_channels, n_channels)
-        The G matrix.
-    """
-    factors = [(2 * n + 1) / (n ** stiffness * (n + 1) ** stiffness *
-                              4 * np.pi) for n in range(1, num_lterms + 1)]
-    return legval(cosang, [0] + factors)
-
-
-def _calc_h(cosang, stiffness=4, num_lterms=50):
-    """Calculate spherical spline h function between points on a sphere.
-
-    Parameters
-    ----------
-    cosang : array-like of float, shape(n_channels, n_channels)
-        cosine of angles between pairs of points on a spherical surface. This
-        is equivalent to the dot product of unit vectors.
-    stiffness : float
-        stiffness of the spline. Also referred to as `m`.
-    num_lterms : int
-        number of Legendre terms to evaluate.
-    H : np.ndrarray of float, shape(n_channels, n_channels)
-        The H matrix.
-    """
-    factors = [(2 * n + 1) /
-               (n ** (stiffness - 1) * (n + 1) ** (stiffness - 1) * 4 * np.pi)
-               for n in range(1, num_lterms + 1)]
-    return legval(cosang, [0] + factors)
-
-
-def _make_interpolation_matrix(pos_from, pos_to, alpha=1e-5):
-    """Compute interpolation matrix based on spherical splines
-
-    Implementation based on [1]
-
-    Parameters
-    ----------
-    pos_from : np.ndarray of float, shape(n_good_sensors, 3)
-        The positions to interpoloate from.
-    pos_to : np.ndarray of float, shape(n_bad_sensors, 3)
-        The positions to interpoloate.
-    alpha : float
-        Regularization parameter. Defaults to 1e-5.
-
-    Returns
-    -------
-    interpolation : np.ndarray of float, shape(len(pos_from), len(pos_to))
-        The interpolation matrix that maps good signals to the location
-        of bad signals.
-
-    References
-    ----------
-    [1] Perrin, F., Pernier, J., Bertrand, O. and Echallier, JF. (1989).
-        Spherical splines for scalp potential and current density mapping.
-        Electroencephalography Clinical Neurophysiology, Feb; 72(2):184-7.
-    """
-
-    pos_from = pos_from.copy()
-    pos_to = pos_to.copy()
-
-    # normalize sensor positions to sphere
-    _normalize_vectors(pos_from)
-    _normalize_vectors(pos_to)
-
-    # cosine angles between source positions
-    cosang_from = pos_from.dot(pos_from.T)
-    cosang_to_from = pos_to.dot(pos_from.T)
-    G_from = _calc_g(cosang_from)
-    G_to_from, H_to_from = (f(cosang_to_from) for f in (_calc_g, _calc_h))
-
-    if alpha is not None:
-        G_from.flat[::len(G_from) + 1] += alpha
-
-    C_inv = linalg.pinv(G_from)
-    interpolation = G_to_from.dot(C_inv)
-    return interpolation
 
 
 def _make_interpolator(inst, bad_channels):
