@@ -3333,7 +3333,7 @@ class MneExperiment(FileTree):
             # load files
             with self._temporary_state:
                 if reject and rej_params['kind'] is not None:
-                    rej_file = self.get('rej-file')
+                    rej_file = self.get('rej-file', session=epoch.session)
                     if exists(rej_file):
                         ds_sel = load.unpickle(rej_file)
                     else:
