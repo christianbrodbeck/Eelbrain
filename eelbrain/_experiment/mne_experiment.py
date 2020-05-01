@@ -3332,7 +3332,6 @@ class MneExperiment(FileTree):
             rej_params = self._artifact_rejection[self.get('rej')]
             # load files
             with self._temporary_state:
-                ds = self.load_events(add_bads=add_bads, data_raw=data_raw, session=epoch.session)
                 if reject and rej_params['kind'] is not None:
                     rej_file = self.get('rej-file')
                     if exists(rej_file):
@@ -3342,6 +3341,7 @@ class MneExperiment(FileTree):
                         raise FileMissing(f"The rejection file at {rej_file} does not exist. Run .make_epoch_selection() first.")
                 else:
                     ds_sel = None
+                ds = self.load_events(add_bads=add_bads, data_raw=data_raw, session=epoch.session)
 
             # primary event selection
             if epoch.sel:
