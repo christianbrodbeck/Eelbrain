@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from typing import List
+from warnings import catch_warnings, filterwarnings
 
 import numpy as np
 from scipy.linalg import norm
@@ -59,11 +60,10 @@ class Correlation(Evaluator):
     meas = 'r'
 
     def add_y(self, i, y, y_pred):
-        r = np.corrcoef(y, y_pred)[0, 1]
-        if np.isnan(r):
-            self.x[i] = 0
-        else:
-            self.x[i] = r
+        with catch_warnings():
+            filterwarnings('ignore', "invalid value encountered", RuntimeWarning)
+            r = np.corrcoef(y, y_pred)[0, 1]
+        self.x[i] = 0 if np.isnan(r) else r
 
 
 class RankCorrelation(Evaluator):
@@ -72,7 +72,10 @@ class RankCorrelation(Evaluator):
     meas = 'r'
 
     def add_y(self, i, y, y_pred):
-        self.x[i] = spearmanr(y, y_pred)[0]
+        with catch_warnings():
+            filterwarnings('ignore', "invalid value encountered", RuntimeWarning)
+            r = spearmanr(y, y_pred)[0]
+        self.x[i] = 0 if np.isnan(r) else r
 
 
 class VectorL1(Evaluator):

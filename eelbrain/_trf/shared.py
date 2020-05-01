@@ -530,7 +530,7 @@ class RevCorrData:
         if self.scale_data:
             # y
             if self.yshape:
-                y_mean = NDVar(self.y_mean.reshape(self.yshape), self.ydims, self.y_info, self.y_name)
+                y_mean = NDVar(self.y_mean.reshape(self.yshape), self.ydims, self.y_name, self.y_info)
             else:
                 y_mean = self.y_mean[0]
             # scale does not include vector dim
@@ -541,7 +541,7 @@ class RevCorrData:
                 dims = self.ydims
                 shape = self.yshape
             if shape:
-                y_scale = NDVar(self.y_scale.reshape(shape), dims, self.y_info, self.y_name)
+                y_scale = NDVar(self.y_scale.reshape(shape), dims, self.y_name, self.y_info)
             else:
                 y_scale = self.y_scale[0]
             # x
@@ -553,8 +553,8 @@ class RevCorrData:
                     x_scale.append(self.x_scale[index])
                 else:
                     dims = (dim,)
-                    x_mean.append(NDVar(self.x_mean[index], dims, {}, name))
-                    x_scale.append(NDVar(self.x_scale[index], dims, {}, name))
+                    x_mean.append(NDVar(self.x_mean[index], dims, name))
+                    x_scale.append(NDVar(self.x_scale[index], dims, name))
             if self._multiple_x:
                 x_mean = tuple(x_mean)
                 x_scale = tuple(x_scale)
@@ -592,7 +592,7 @@ class RevCorrData:
                     x = x.reshape(self.yshape + x.shape[1:])
             else:
                 x = x[0]
-            hs.append(NDVar(x, dims, info, name))
+            hs.append(NDVar(x, dims, name, info))
 
         if self._multiple_x:
             return tuple(hs)
@@ -628,7 +628,7 @@ class RevCorrData:
         elif info is None:
             info = self.y_info
 
-        return NDVar(value, dims, info, name)
+        return NDVar(value, dims, name, info)
 
     def package_y_like(self, data, name):
         shape = tuple(map(len, self.full_y_dims))
@@ -642,4 +642,4 @@ class RevCorrData:
                 break
         else:
             dims = self.full_y_dims
-        return NDVar(data, dims, {}, name)
+        return NDVar(data, dims, name)
