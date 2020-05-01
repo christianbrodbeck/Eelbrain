@@ -5,7 +5,7 @@ from eelbrain import datasets, plot, testnd, cwt_morlet
 from eelbrain.plot._figure import Figure
 from eelbrain.plot._utsnd import _ax_bfly_epoch
 from eelbrain.testing import requires_mne_sample_data
-from eelbrain._wxgui.testing import hide_plots
+from eelbrain.testing import hide_plots
 
 
 @hide_plots

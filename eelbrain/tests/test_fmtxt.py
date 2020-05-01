@@ -5,7 +5,7 @@ import tempfile
 import numpy as np
 
 from eelbrain import fmtxt
-from eelbrain.testing import TempDir
+from eelbrain.testing import TempDir, requires_framework_build
 from eelbrain.fmtxt import html, tex, read_meta
 from eelbrain import datasets, plot
 
@@ -93,6 +93,7 @@ def test_p():
     assert str(fmtxt.p(.0001, stars=True)) == '< .001***'
 
 
+@requires_framework_build
 def test_report():
     "Test fmtxt.Report class"
     tempdir = tempfile.mkdtemp()

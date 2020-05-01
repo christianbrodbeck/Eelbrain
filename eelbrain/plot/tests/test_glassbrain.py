@@ -1,6 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from eelbrain import datasets, plot, NDVar
-from eelbrain._wxgui.testing import hide_plots
+from eelbrain.testing import hide_plots
 from eelbrain.plot._glassbrain import _fast_abs_percentile
 
 @hide_plots
