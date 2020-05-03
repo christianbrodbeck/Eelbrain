@@ -899,18 +899,19 @@ class StatLayer(Layer):
     ct: Celltable = None
     cell: CellArg = None
     mask: NDVar = None  # mask needs to be applied to stats
+    mask_missing: bool = True
 
-    def _apply_mask(self, y: NDVar):
+    def _apply_mask(self, y: np.ndarray) -> np.ndarray:
         if self.mask is None:
             return y
-        if np.ma.is_masked(y.x):
-            y = y.unmask()
-        return y.mask(self.mask)
+        if np.ma.is_masked(y):
+            y = y.data
+        return NDVar(y, self.y.dims[1:]).mask(self.mask, missing=self.mask_missing).x
 
-    def get_statistic(self, func: Callable = np.mean):
+    def get_statistic(self, func: Callable = np.mean) -> np.ndarray:
         return self._apply_mask(self.ct._get_func(self.cell, func))
 
-    def get_dispersion(self, spec, pool):
+    def get_dispersion(self, spec, pool) -> np.ndarray:
         return self._apply_mask(self.ct._get_dispersion(self.cell, spec, pool))
 
     def for_plot(self, plot_type: PlotType) -> IteratorType['DataLayer']:
@@ -919,11 +920,11 @@ class StatLayer(Layer):
         elif self.mask is None:
             yield replace(self, plot_type=plot_type)
         elif plot_type == PlotType.LINE:
-            yield replace(self, plot_type=plot_type)
             inverse_mask = ~self.mask
             if self.y.has_dim('time'):
                 inverse_mask = erode(inverse_mask, 'time')
-            yield replace(self, plot_type=plot_type, style=self.style.masked_style, mask=inverse_mask)
+            yield replace(self, plot_type=plot_type, style=self.style.masked_style, mask=inverse_mask, mask_missing=False)
+            yield replace(self, plot_type=plot_type)
         else:
             raise NotImplementedError
 
@@ -1542,6 +1543,8 @@ class EelFigure:
             ax.set_title(title, **kwargs)
 
     def _show(self, crosshair_axes=None):
+        if self._layout.user_axes:
+            return
         if self._layout.tight:
             self._tight()
 

@@ -1,5 +1,11 @@
 """Figures for custom plots"""
-from ._base import EelFigure, Layout, XAxisMixin
+from numbers import Real
+from typing import Union, Tuple
+
+import matplotlib.patches
+import numpy as np
+
+from ._base import EelFigure, Layout, XAxisMixin, format_axes
 
 
 class Figure(EelFigure):
@@ -31,3 +37,102 @@ class XFigure(XAxisMixin, Figure):
     def show(self):
         XAxisMixin.__init__(self, *self._args)
         Figure.show(self)
+
+
+class AbsoluteLayoutFigure(XAxisMixin, Figure):
+    """Layout for plots sharing y-axis scaling but with different limits
+
+    Parameters
+    ----------
+    y_per_inch
+        Y-axis scaling.
+    xlim
+        Set default x-axis limits for axes.
+    ystep
+        Space between ticks on the y-axis. Ticks will be aligned to include 0.
+        Leave this parameter unspecified to use the :mod:`matplotlib` default.
+    kwargs
+        Other :class:`Figure` parameters.
+
+    Notes
+    -----
+    Usage:
+
+     - Create ``TRFFigure``
+     - Add axes using :meth:`.add_axes`
+     - Finish by calling :meth:`.finalize`
+    """
+
+    def __init__(
+            self,
+            y_per_inch: Real,
+            xlim: Tuple[Real, Real] = None,
+            ystep: float = None,  # spacing of y ticks
+            **kwargs):
+        self.y_per_inch = y_per_inch
+        kwargs.setdefault('tight', False)
+        Figure.__init__(self, **kwargs)
+        self._xlim = xlim
+        self._ylims = []
+        self._ystep = ystep
+
+    def add_axes(
+            self,
+            y_origin: Real,
+            ylim: Union[Real, Tuple[Real, Real]],
+            left: Real,
+            width: Real,
+            frame: Union[bool, str] = 't',
+            yaxis: bool = True,
+            **kwargs,  # for matplotlib Axes
+    ):
+        if isinstance(ylim, tuple):
+            ymin, ymax = ylim
+        elif isinstance(ylim, Real):
+            ymin, ymax = -ylim, ylim
+            ylim = (ymin, ymax)
+        else:
+            raise TypeError(f"ylim={ylim!r}")
+
+        # [left, bottom, width, height]
+        rect = [
+            left / self._layout.w,
+            (y_origin + (ymin / self.y_per_inch)) / self._layout.h,
+            width / self._layout.w,
+            (ymax - ymin) / self.y_per_inch / self._layout.h,
+        ]
+        kwargs.setdefault('autoscale_on', False)
+        ax = self.figure.add_axes(rect, ylim=ylim, **kwargs)
+        format_axes(ax, frame, yaxis)
+        ax.patch.set_visible(False)
+        if self._ystep is not None:
+            ytick_start = (ymin // self._ystep) * self._ystep
+            ytick_stop = (ymax // self._ystep + 1) * self._ystep
+            ax.set_yticks(np.arange(ytick_start, ytick_stop, self._ystep))
+        self._axes.append(ax)
+        self._ylims.append(ylim)
+        return ax
+
+    def finalize(
+            self,
+            outline: bool = False,
+    ):
+        """Finalize figure creation
+
+        Parameters
+        ----------
+        outline
+            Draw the outline of the figure (Area that will be exported when
+            saving the figure). This is mainly useful for fine-tuning the figure
+            size in Jupyter, which crops the display area based on figure
+            elements rather than actual figure size.
+        """
+        for ax, ylim in zip(self._axes, self._ylims):
+            ax.set_ylim(ylim)
+        XAxisMixin.__init__(self, None, None, self._xlim, self._axes)
+
+        if outline:
+            artist = matplotlib.patches.Rectangle((0, 0), 1, 1, fc='none', ec='k')
+            self.figure.add_artist(artist)
+
+        self._show()
