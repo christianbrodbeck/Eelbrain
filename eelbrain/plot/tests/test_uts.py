@@ -40,15 +40,22 @@ def test_uts_stat():
     p = plot.UTSStat('uts', 'A', ds=ds, clusters=res.clusters)
     p.close()
     res = testnd.TTestRelated('uts', 'A', 'a1', 'a0', match='rm', ds=sds, samples=100, pmin=0.05, mintime=0.02)
+    res_sub = testnd.TTestRelated('uts', 'A', 'a1', 'a0', match='rm', ds=sds, tstart=0.100, samples=100, pmin=0.05, mintime=0.02)
     p = plot.UTSStat('uts', 'A', ds=ds, clusters=res.clusters)
     p.close()
-    p = plot.UTSStat('uts', 'A', 'B', ds=ds, clusters=res.clusters)
+    p = plot.UTSStat('uts', 'A', 'B', ds=ds, clusters=res_sub.clusters)
     p.set_clusters(None)
     p.set_clusters(res.clusters, ax=0)
     p.close()
     p = plot.UTSStat('uts', 'A', 'B', ds=ds)
     p.set_clusters(res.clusters)
     p.set_clusters(None, ax=1)
+    p.close()
+
+    # mask
+    p = plot.UTSStat('uts', 'A', ds=ds, mask=res.p > 0.05)
+    p.close()
+    p = plot.UTSStat('uts', 'A', ds=ds, mask=res_sub.p > 0.05)
     p.close()
 
 

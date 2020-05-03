@@ -10,7 +10,7 @@ from .._colorspaces import oneway_colors, to_rgba
 from .._data_obj import NDVarArg, CategorialArg, CellArg, IndexArg, Dataset, NDVar, cellname, longname
 from . import _base
 from ._base import (
-    EelFigure, PlotData, Layout,
+    PlotType, EelFigure, PlotData, Layout,
     LegendMixin, YLimMixin, XAxisMixin, TimeSlicerEF,
     AxisData, StatLayer,
 )
@@ -147,7 +147,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             pmax: float = 0.05,
             ptrend: float = 0.1,
             *args, **kwargs):
-        data = PlotData.from_stats(y, x, xax, match, sub, ds, (xdim,), colors, mask)
+        data = PlotData.from_stats(y, x, xax, match, sub, ds, (xdim,), colors, mask).for_plot(PlotType.LINE)
         xdim, = data.dims
 
         layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
