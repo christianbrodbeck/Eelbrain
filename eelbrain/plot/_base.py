@@ -1957,6 +1957,9 @@ def format_axes(
         ax.spines['top'].set_position('zero')
         ax.spines['bottom'].set_visible(False)
     elif frame == 'none':
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+    elif frame == 'off':
         ax.axis('off')
     elif not frame:
         ax.yaxis.set_ticks_position('left')
