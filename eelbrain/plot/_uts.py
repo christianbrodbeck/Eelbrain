@@ -668,6 +668,7 @@ class _plt_uts_stat:
             clip: bool,
             error_alpha: float,
     ):
+        # zorder defaults: 1 for patches, 2 for lines
         label = cellname(layer.cell)
         style = styles[layer.cell]
         x = layer.y.get_dim(xdim)._axis_data()
@@ -677,7 +678,7 @@ class _plt_uts_stat:
             lw = mpl.rcParams['lines.linewidth']
             if error == 'all':
                 lw *= 2
-            self.main = ax.plot(x, y_main, label=label, lw=lw, zorder=5, clip_on=clip, **style.line_args)
+            self.main = ax.plot(x, y_main, label=label, lw=lw, zorder=2, clip_on=clip, **style.line_args)
         elif error == 'all':
             self.main = y_main = None
         else:
@@ -694,6 +695,6 @@ class _plt_uts_stat:
                 dev_data = layer.get_dispersion(error, pool_error)
             lower = y_main - dev_data
             upper = y_main + dev_data
-            self.error = ax.fill_between(x, lower, upper, color=style.color, alpha=error_alpha, linewidth=0, zorder=0, clip_on=clip)
+            self.error = ax.fill_between(x, lower, upper, color=style.color, alpha=error_alpha, linewidth=0, zorder=1.99, clip_on=clip)
         else:
             self.error = None
