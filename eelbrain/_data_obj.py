@@ -3404,9 +3404,16 @@ class NDVar:
             yield self.sub(**{name: value})
 
     def __repr__(self):
-        return '<NDVar%(name)s: %(dims)s>' % {
-            'name': '' if self.name is None else ' %r' % self.name,
-            'dims': ', '.join(f'{len(dim)} {dim.name}' for dim in self.dims)}
+        items = ['NDVar']
+        if self.name is not None:
+            items.append(repr(self.name))
+        if self.x.dtype != np.float64:
+            items.append(self.x.dtype.name)
+        if np.ma.is_masked(self.x):
+            items.append(f"{self.x.mask.mean():.0%} masked")
+        desc = ' '.join(items)
+        dims = ', '.join([f'{len(dim)} {dim.name}' for dim in self.dims])
+        return f"<{desc}: {dims}>"
 
     def _summary(self, width=80):
         items = [f'{len(dim)} {dim.name}' for dim in self.dims[1:]]

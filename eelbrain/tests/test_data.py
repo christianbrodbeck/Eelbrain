@@ -975,6 +975,7 @@ def test_ndvar():
     assert repr(x * 2) == "<NDVar 'uts': 100 time>"
     assert repr(x * 2 + 5) == "<NDVar 'uts': 100 time>"
     assert repr(-x * 2 + 5) == "<NDVar 'uts': 100 time>"
+    assert repr(x > 0) == "<NDVar 'uts' bool: 100 time>"
 
     # meaningful slicing
     x = ds['utsnd']
