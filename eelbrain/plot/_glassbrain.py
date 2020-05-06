@@ -43,7 +43,6 @@ import numpy as np
 from .._data_obj import VolumeSourceSpace
 from .._utils.numpy_utils import newaxis
 from ._base import ColorBarMixin, TimeSlicerEF, Layout, EelFigure, brain_data, butterfly_data, use_inline_backend
-from ._colors import soft_threshold_colormap
 from ._utsnd import Butterfly
 
 

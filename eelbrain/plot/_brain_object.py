@@ -20,7 +20,8 @@ from ..fmtxt import Image
 from ..mne_fixes import reset_logger
 from ._base import CONFIG, TimeSlicer, AxisScale, do_autorun, find_fig_cmaps, find_fig_vlims, fix_vlim_for_cmap, use_inline_backend
 from ._color_luts import p_lut
-from ._colors import ColorBar, ColorList, colors_for_oneway
+from ._colors import ColorBar, ColorList
+from ._styles import colors_for_oneway
 
 # Traits-GUI related imports
 # --------------------------

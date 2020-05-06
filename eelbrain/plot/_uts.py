@@ -14,7 +14,7 @@ from ._base import (
     LegendMixin, YLimMixin, XAxisMixin, TimeSlicerEF,
     AxisData, StatLayer,
 )
-from ._colors import StylesDict, colors_for_oneway, find_cell_styles
+from ._styles import StylesDict, colors_for_oneway, find_cell_styles
 
 
 class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):

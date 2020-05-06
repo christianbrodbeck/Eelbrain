@@ -16,7 +16,7 @@ from .._celltable import Celltable
 from .._data_obj import asvar, ascategorial, assub, cellname
 from .._stats import test, stats
 from ._base import EelFigure, Layout, LegendMixin, CategorialAxisMixin, XAxisMixin, YLimMixin, frame_title
-from ._colors import find_cell_styles
+from ._styles import find_cell_styles
 
 
 # keys for sorting kwargs
