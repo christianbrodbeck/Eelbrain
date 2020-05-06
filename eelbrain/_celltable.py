@@ -43,6 +43,8 @@ class Celltable:
     coercion : callable
         Function to convert the y parameter to to the dependent varaible
         (default: asdataobject).
+    dtype : numpy.dtype
+        If specified, ``y`` will be converted to this type.
 
 
     Examples
@@ -65,9 +67,9 @@ class Celltable:
         ``sub`` after evaluating input parameters.
     cells : list of (str | tuple)
         List of all cells in x.
-    data : dict(cell -> data)
+    data : {cell: data}
         Data (``y[index]``) in each cell.
-    data_indexes : dict(cell -> index-array)
+    data_indexes : {cell: index-array}
         For each cell, a boolean-array specifying the index for that cell in
         ``x``.
 

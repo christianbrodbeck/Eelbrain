@@ -4191,6 +4191,12 @@ class NDVar:
         clusters : NDVar
             NDVar of int, each cluster labeled with a unique integer value.
             ``clusters.info['cids']`` contains an array of all cluster IDs.
+
+        Notes
+        -----
+        Together, the labels in the ``clusters.x`` array and the identifiers in
+        ``clusters.info['cids']`` can be used as input for :mod:`scipy.ndimage`
+        functions.
         """
         from ._stats.testnd import Connectivity, label_clusters
 

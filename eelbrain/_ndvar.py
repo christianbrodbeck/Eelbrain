@@ -10,18 +10,16 @@ from copy import copy
 from functools import reduce
 from itertools import repeat
 from math import floor
-from numbers import Number, Real
+from numbers import Real
 import operator
-from typing import Any, Sequence, Union
+from typing import Sequence, Union
 
 import mne
 import numpy as np
 from scipy import linalg, ndimage, signal, stats
 
 from . import _info, mne_fixes
-from ._data_obj import (
-    NDVar, Case, Categorial, Dimension, Scalar, SourceSpace, UTS,
-    asndvar, combine, op_name)
+from ._data_obj import NDVar, Case, Categorial, Dimension, Scalar, UTS, asndvar, op_name
 from ._exceptions import DimensionMismatchError
 from ._external.colorednoise import powerlaw_psd_gaussian
 from ._info import merge_info

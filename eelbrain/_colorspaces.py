@@ -13,7 +13,7 @@ from colormath.color_objects import LCHabColor, sRGBColor
 from colormath.color_conversions import convert_color
 from matplotlib.colors import ListedColormap
 from matplotlib.cm import LUTSIZE, register_cmap, get_cmap
-from matplotlib.colors import LinearSegmentedColormap, Normalize, to_rgb, to_rgba
+from matplotlib.colors import LinearSegmentedColormap, to_rgb, to_rgba
 import numpy as np
 
 

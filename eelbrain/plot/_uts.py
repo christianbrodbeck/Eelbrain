@@ -49,7 +49,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         Pool the errors for the estimate of variability (default is True
         for related measures designs, False otherwise). See Loftus & Masson
         (1994).
-    legend : str | int | 'fig' | None
+    legend : str | int | None
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
     labels : dict

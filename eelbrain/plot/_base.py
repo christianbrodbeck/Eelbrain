@@ -77,6 +77,7 @@ from collections.abc import Iterable, Iterator
 from copy import copy
 from dataclasses import dataclass, replace
 from enum import Enum, auto
+from functools import reduce
 from itertools import chain, cycle, repeat
 from logging import getLogger
 import math
@@ -102,12 +103,11 @@ from .._config import CONFIG
 from .._data_obj import Dataset, Factor, Interaction, NDVar, Case, UTS, NDVarArg, CategorialArg, IndexArg, CellArg, ascategorial, asndvar, assub, isnumeric, isdataobject, combine_cells, cellname
 from .._stats import testnd
 from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
-from ..fmtxt import Image
-from ..mne_fixes import MNE_EPOCHS
 from .._ndvar import erode, resample
 from .._text import enumeration, ms
+from ..fmtxt import Image
+from ..mne_fixes import MNE_EPOCHS
 from ._utils import adjust_hsv
-from functools import reduce
 
 
 # constants
