@@ -107,6 +107,7 @@ from .._ndvar import erode, resample
 from .._text import enumeration, ms
 from ..fmtxt import Image
 from ..mne_fixes import MNE_EPOCHS
+from ._styles import Style, StylesDict, find_cell_styles
 from ._utils import adjust_hsv
 
 
@@ -710,6 +711,7 @@ def butterfly_data(
         y_sig = y.mask(non_sig)
         y_ns = y.mask(sig)
         # line-styles
+        from ._colors import Style
         if colors:
             lh_color = '#046AAD'
             rh_color = '#A60628'
@@ -785,25 +787,9 @@ def _dict_arg(arg: dict = None) -> dict:
 class Layer:
     y: NDVar
     plot_type: PlotType = PlotType.GENERAL
-    _plot_args: dict = None
-    _plot_args_2: dict = None  # alternate (contour plot of IMAGE layer)
-    _bin_func: callable = np.mean
-
-    def __post_init__(self):
-        self._plot_args = _dict_arg(self._plot_args)
-        self.is_masked = isinstance(self.y.x, np.ma.masked_array)
-        if self.plot_type == PlotType.IMAGE:
-            self._plot_args_2 = _dict_arg(self._plot_args_2)
-        elif self._plot_args_2:
-            raise TypeError(f"plot_args_2={self._plot_args_2!r} for {self.plot_type}")
-
-    def plot_args(self, kwargs: dict) -> dict:
-        # needs to be a copy?
-        return {**_dict_arg(kwargs), **self._plot_args}
 
     def bin(self, bin_length, tstart, tstop):
-        y = self.y.bin(bin_length, tstart, tstop, self._bin_func)
-        return replace(self, y=y)
+        raise NotImplementedError
 
     def sub_time(self, time: float, data_only: bool = False):
         raise NotImplementedError
@@ -815,6 +801,20 @@ class Layer:
 @dataclass(eq=False)
 class DataLayer(Layer):
     """Data for one subplot layer"""
+    _plot_args: dict = None
+    _plot_args_2: dict = None  # alternate (contour plot of IMAGE layer)
+    _bin_func: callable = np.mean
+
+    def __post_init__(self):
+        self._plot_args = _dict_arg(self._plot_args)
+        if self.plot_type == PlotType.IMAGE:
+            self._plot_args_2 = _dict_arg(self._plot_args_2)
+        elif self._plot_args_2:
+            raise TypeError(f"plot_args_2={self._plot_args_2!r} for {self.plot_type}")
+
+    def plot_args(self, kwargs: dict) -> dict:
+        # needs to be a copy?
+        return {**_dict_arg(kwargs), **self._plot_args}
 
     def contour_plot_args(self, contours):
         out = {}
@@ -852,7 +852,7 @@ class DataLayer(Layer):
     def for_plot(self, plot_type: PlotType) -> IteratorType['DataLayer']:
         if self.plot_type == plot_type:
             yield self
-        elif not self.is_masked:
+        elif not np.ma.is_masked(self.y.x):
             yield DataLayer(self.y, plot_type, self._plot_args)
         elif plot_type == PlotType.LEGACY:
             yield DataLayer(self.y.unmask(), plot_type, self._plot_args)
@@ -887,9 +887,14 @@ class DataLayer(Layer):
         else:
             return DataLayer(y, self.plot_type, self._plot_args, self._plot_args_2, self._bin_func)
 
+    def bin(self, bin_length, tstart, tstop):
+        y = self.y.bin(bin_length, tstart, tstop, self._bin_func)
+        return replace(self, y=y)
+
 
 @dataclass(eq=False)
 class StatLayer(Layer):
+    style: Style = None
     ct: Celltable = None
     cell: CellArg = None
 
@@ -902,7 +907,7 @@ class StatLayer(Layer):
     def for_plot(self, plot_type: PlotType) -> IteratorType['DataLayer']:
         if self.plot_type == plot_type:
             yield self
-        elif not self.is_masked:
+        elif not np.ma.is_masked(self.y.x):
             yield replace(self, plot_type=plot_type)
         elif plot_type == PlotType.LINE:
             raise NotImplementedError
@@ -1001,7 +1006,6 @@ class PlotData:
             self.plot_used = [True] * self.n_plots
         else:
             assert sum(self.plot_used) == self.n_plots
-        self.has_masked_data = any(l.is_masked for ax in self.plot_data for l in ax)
         if self.plot_names is None:
             self.plot_names = []
             for layers in self.plot_data:
@@ -1165,6 +1169,7 @@ class PlotData:
             sub: IndexArg,
             ds: Dataset,
             dims: Tuple[Union[str, None]],
+            colors: dict,
     ):
         x, x_dim = x_arg(x)
         xax, xax_dim = x_arg(xax)
@@ -1172,9 +1177,11 @@ class PlotData:
             raise NotImplementedError
         x_full = combine_x_args(x, xax)
         ct = Celltable(y, x_full, match, sub, ds=ds)
+        # data dimensions
         agg, dims = find_data_dims(ct.y, dims, 'case')
         if agg:
             raise NotImplementedError
+        # reconstruct x/xax
         if xax is None:
             ax_cells = [None]
         else:
@@ -1183,6 +1190,8 @@ class PlotData:
         if x is not None:
             x = ct._align(x, ds=ds)
         title = frame_title(y, x, xax)
+        # find styles
+        styles = find_cell_styles(ct.x, colors)
         axes = []
         for ax_cell in ax_cells:
             if x is None:
@@ -1193,7 +1202,7 @@ class PlotData:
                 x_cells = x.cells
                 cells = [combine_cells(ax_cell, x_cell) for x_cell in x_cells]
                 cells = [cell for cell in cells if cell in ct.data]
-            layers = [StatLayer(ct.data[cell], ct=ct, cell=cell) for cell in cells]
+            layers = [StatLayer(ct.data[cell], style=styles[cell], ct=ct, cell=cell) for cell in cells]
             axes.append(AxisData(layers))
         return cls(axes, dims, title, ct=ct, x=x, xax=xax)
 

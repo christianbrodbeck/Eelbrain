@@ -14,7 +14,7 @@ from ._base import (
     LegendMixin, YLimMixin, XAxisMixin, TimeSlicerEF,
     AxisData, StatLayer,
 )
-from ._styles import StylesDict, colors_for_oneway, find_cell_styles
+from ._styles import StylesDict, colors_for_oneway
 
 
 class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
@@ -125,21 +125,8 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
                  invy=False, bottom=None, top=None, hline=None, xdim=None,
                  xlim=None, clip=None, colors=None, error_alpha=0.3,
                  clusters=None, pmax=0.05, ptrend=0.1, *args, **kwargs):
-        data = PlotData.from_stats(y, x, xax, match, sub, ds, (xdim,))
+        data = PlotData.from_stats(y, x, xax, match, sub, ds, (xdim,), colors)
         xdim, = data.dims
-
-        # assemble colors
-        # TODO: use x first, fall back on x % xax
-        # if isinstance(colors, dict):
-        #     if all(cell in colors for cell in data.ct.x.cells):
-        #         color_x = data.ct.x
-        #     elif data.x is not None:
-        #         color_x = data.x
-        #     else:
-        #         color_x = data.xax
-        # else:
-        #     color_x = None
-        styles = find_cell_styles(data.ct.x, colors)
 
         layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
@@ -151,7 +138,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         legend_handles = {}
         ymax = ymin = None
         for ax, ax_data in zip(self._axes, data):
-            p = _ax_uts_stat(ax, ax_data, xdim, styles, main, error, pool_error, hline, clusters, pmax, ptrend, clip, error_alpha)
+            p = _ax_uts_stat(ax, ax_data, xdim, main, error, pool_error, hline, clusters, pmax, ptrend, clip, error_alpha)
             self._plots.append(p)
             legend_handles.update(p.legend_handles)
             ymin = p.vmin if ymin is None else min(ymin, p.vmin)
@@ -360,7 +347,6 @@ class _ax_uts_stat:
             ax: matplotlib.axes.Axes,
             data: AxisData,
             xdim: str,
-            styles: StylesDict,
             main: Callable,
             error: Union[str, Callable],
             pool_error: bool,
@@ -377,7 +363,7 @@ class _ax_uts_stat:
         self.legend_handles = {}
 
         for layer in data:
-            plt = _plt_uts_stat(ax, layer, xdim, main, error, pool_error, styles, clip, error_alpha)
+            plt = _plt_uts_stat(ax, layer, xdim, main, error, pool_error, clip, error_alpha)
             self.stat_plots.append(plt)
             if plt.main is not None:
                 self.legend_handles[layer.cell] = plt.main[0]
@@ -664,13 +650,11 @@ class _plt_uts_stat:
             main: Callable,
             error: Union[str, Callable],
             pool_error: bool,
-            styles: StylesDict,
             clip: bool,
             error_alpha: float,
     ):
         # zorder defaults: 1 for patches, 2 for lines
         label = cellname(layer.cell)
-        style = styles[layer.cell]
         x = layer.y.get_dim(xdim)._axis_data()
         # plot main
         if callable(main):
@@ -678,7 +662,7 @@ class _plt_uts_stat:
             lw = mpl.rcParams['lines.linewidth']
             if error == 'all':
                 lw *= 2
-            self.main = ax.plot(x, y_main, label=label, lw=lw, zorder=2, clip_on=clip, **style.line_args)
+            self.main = ax.plot(x, y_main, label=label, lw=lw, zorder=2, clip_on=clip, **layer.style.line_args)
         elif error == 'all':
             self.main = y_main = None
         else:
@@ -687,7 +671,7 @@ class _plt_uts_stat:
         # plot error
         if error == 'all':
             y_all = layer.y.get_data((xdim, 'case'))
-            self.error = ax.plot(x, y_all, alpha=error_alpha, clip_on=clip, **style.line_args)
+            self.error = ax.plot(x, y_all, alpha=error_alpha, clip_on=clip, **layer.style.line_args)
         elif error:
             if callable(error):
                 dev_data = layer.get_statistic(error)
@@ -695,6 +679,6 @@ class _plt_uts_stat:
                 dev_data = layer.get_dispersion(error, pool_error)
             lower = y_main - dev_data
             upper = y_main + dev_data
-            self.error = ax.fill_between(x, lower, upper, color=style.color, alpha=error_alpha, linewidth=0, zorder=1.99, clip_on=clip)
+            self.error = ax.fill_between(x, lower, upper, color=layer.style.color, alpha=error_alpha, linewidth=0, zorder=1.99, clip_on=clip)
         else:
             self.error = None
