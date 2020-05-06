@@ -1347,6 +1347,8 @@ class SequencePlotter:
                 else:
                     index = self._frame_dim._array_index(self._frame_order)
                     labels = [self._frame_dim[i] for i in index]
+            if not any(labels):
+                return 
 
         # float -> ms
         out = []
