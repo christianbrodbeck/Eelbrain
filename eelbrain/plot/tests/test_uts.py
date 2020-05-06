@@ -18,9 +18,11 @@ def test_uts_stat():
     p.close()
     p = plot.UTSStat('uts', 'A', xax='B', ds=ds)
     p.close()
-    p = plot.UTSStat('uts', 'A%B', 'rm', sub="rm.isin(('R00', 'R01'))", ds=ds)
+    p = plot.UTSStat('uts', 'A', 'B', match='rm', ds=ds)
+    assert [len(pl.stat_plots) for pl in p._plots] == [2, 2]
     p.close()
-    p = plot.UTSStat('uts', 'A%B', 'rm', sub="rm.isin(('R00', 'R01'))", ds=ds, pool_error=False)
+    p = plot.UTSStat('uts', 'A', 'B', match='rm', ds=ds, pool_error=False)
+    assert [len(pl.stat_plots) for pl in p._plots] == [2, 2]
     p.close()
 
     # error

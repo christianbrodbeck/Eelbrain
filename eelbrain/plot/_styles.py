@@ -1,12 +1,12 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Style specification"""
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import reduce
 from itertools import product
 from math import ceil
 import operator
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 import numpy as np
 import matplotlib as mpl
@@ -27,14 +27,28 @@ class Style:
     marker: str = None
     hatch: str = ''
     linestyle: str = None
+    linewidth: float = None
+    zorder: float = 0  # z-order shift (relative to plot element default)
+    masked: Union['Style', Dict[str, Any]] = None
 
     @LazyProperty
     def line_args(self):
-        return {'color': self.color, 'linestyle': self.linestyle, 'marker': self.marker, 'markerfacecolor': self.color}
+        return {'color': self.color, 'linestyle': self.linestyle, 'linewidth': self.linewidth, 'marker': self.marker, 'markerfacecolor': self.color, 'zorder': 2 + self.zorder}
 
     @LazyProperty
     def patch_args(self):
-        return {'facecolor': self.color, 'hatch': self.hatch}
+        return {'facecolor': self.color, 'hatch': self.hatch, 'zorder': 1 + self.zorder}
+
+    @LazyProperty
+    def masked_style(self) -> 'Style':
+        if self.masked is None:
+            return replace(self, color=(0.7, 0.7, 0.7, 0.4))
+        elif isinstance(self.masked, Style):
+            return self.masked
+        elif isinstance(self.masked, dict):
+            return replace(self, **self.masked)
+        else:
+            raise TypeError(f"Style is invalid masked parameter: {self.masked!r}")
 
     @classmethod
     def _coerce(cls, arg):

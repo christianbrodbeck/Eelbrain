@@ -74,6 +74,7 @@ Figure components
 import __main__
 
 from collections.abc import Iterable, Iterator
+from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass, replace
 from enum import Enum, auto
@@ -86,7 +87,7 @@ import os
 import re
 import sys
 import time
-from typing import Callable, List, Sequence, Tuple, Union
+from typing import Callable, Dict, List, Sequence, Tuple, Union
 from typing import Iterator as IteratorType
 import weakref
 
@@ -897,20 +898,32 @@ class StatLayer(Layer):
     style: Style = None
     ct: Celltable = None
     cell: CellArg = None
+    mask: NDVar = None  # mask needs to be applied to stats
+
+    def _apply_mask(self, y: NDVar):
+        if self.mask is None:
+            return y
+        if np.ma.is_masked(y.x):
+            y = y.unmask()
+        return y.mask(self.mask)
 
     def get_statistic(self, func: Callable = np.mean):
-        return self.ct._get_func(self.cell, func)
+        return self._apply_mask(self.ct._get_func(self.cell, func))
 
     def get_dispersion(self, spec, pool):
-        return self.ct._get_dispersion(self.cell, spec, pool)
+        return self._apply_mask(self.ct._get_dispersion(self.cell, spec, pool))
 
     def for_plot(self, plot_type: PlotType) -> IteratorType['DataLayer']:
         if self.plot_type == plot_type:
             yield self
-        elif not np.ma.is_masked(self.y.x):
+        elif self.mask is None:
             yield replace(self, plot_type=plot_type)
         elif plot_type == PlotType.LINE:
-            raise NotImplementedError
+            yield replace(self, plot_type=plot_type)
+            inverse_mask = ~self.mask
+            if self.y.has_dim('time'):
+                inverse_mask = erode(inverse_mask, 'time')
+            yield replace(self, plot_type=plot_type, style=self.style.masked_style, mask=inverse_mask)
         else:
             raise NotImplementedError
 
@@ -1170,6 +1183,7 @@ class PlotData:
             ds: Dataset,
             dims: Tuple[Union[str, None]],
             colors: dict,
+            mask: Union[NDVar, Dict[CellArg, NDVar]],
     ):
         x, x_dim = x_arg(x)
         xax, xax_dim = x_arg(xax)
@@ -1192,6 +1206,16 @@ class PlotData:
         title = frame_title(y, x, xax)
         # find styles
         styles = find_cell_styles(ct.x, colors)
+        # find masks
+        if mask is None:
+            masks = defaultdict(lambda: None)
+        elif isinstance(mask, NDVar):
+            masks = defaultdict(lambda: mask)
+        elif isinstance(mask, dict):
+            masks = defaultdict(lambda: None, **mask)
+        else:
+            raise TypeError(f"mask={mask!r}")
+        # assemble layers
         axes = []
         for ax_cell in ax_cells:
             if x is None:
@@ -1200,9 +1224,9 @@ class PlotData:
                 cells = x.cells
             else:
                 x_cells = x.cells
-                cells = [combine_cells(ax_cell, x_cell) for x_cell in x_cells]
+                cells = [combine_cells(x_cell, ax_cell) for x_cell in x_cells]
                 cells = [cell for cell in cells if cell in ct.data]
-            layers = [StatLayer(ct.data[cell], style=styles[cell], ct=ct, cell=cell) for cell in cells]
+            layers = [StatLayer(ct.data[cell], style=styles[cell], ct=ct, cell=cell, mask=masks[cell]) for cell in cells]
             axes.append(AxisData(layers))
         return cls(axes, dims, title, ct=ct, x=x, xax=xax)
 

@@ -905,7 +905,8 @@ class _ax_timeplot:
                 y = line_values[i]
                 name = cellname(cell)
                 style = styles[cell]
-                handles = ax.plot(x, y, label=name, zorder=6, **style.line_args)
+                kwargs = {**style.line_args, 'zorder': 6}
+                handles = ax.plot(x, y, label=name, **kwargs)
                 legend_handles[cell] = handles[0]
 
                 if error:

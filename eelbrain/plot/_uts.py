@@ -1,20 +1,20 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Plot uniform time-series of one variable."""
-from typing import Callable, Union
+from typing import Any, Callable, Dict, Sequence, Tuple, Union
 
 import matplotlib.axes
 import matplotlib as mpl
 import numpy as np
 
 from .._colorspaces import oneway_colors
-from .._data_obj import cellname, longname
+from .._data_obj import NDVarArg, CategorialArg, CellArg, IndexArg, Dataset, NDVar, cellname, longname
 from . import _base
 from ._base import (
     EelFigure, PlotData, Layout,
     LegendMixin, YLimMixin, XAxisMixin, TimeSlicerEF,
     AxisData, StatLayer,
 )
-from ._styles import StylesDict, colors_for_oneway
+from ._styles import colors_for_oneway
 
 
 class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
@@ -96,6 +96,8 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         <http://matplotlib.org/api/colors_api.html>`_.
     error_alpha : float
         Alpha of the error plot (default 0.3).
+    mask : NDVar | {cell: NDVar}
+        Mask certain time points.
     clusters : None | Dataset
         Clusters to add to the plots. The clusters should be provided as
         Dataset, as stored in test results' :py:attr:`.clusters`.
@@ -119,13 +121,38 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
      - ``r``: y-axis zoom in (reduce y-axis range)
      - ``c``: y-axis zoom out (increase y-axis range)
     """
-    def __init__(self, y, x=None, xax=None, match=None, sub=None, ds=None,
-                 main=np.mean, error='sem', pool_error=None, legend='upper right', labels=None,
-                 axtitle=True, xlabel=True, ylabel=True, xticklabels='bottom',
-                 invy=False, bottom=None, top=None, hline=None, xdim=None,
-                 xlim=None, clip=None, colors=None, error_alpha=0.3,
-                 clusters=None, pmax=0.05, ptrend=0.1, *args, **kwargs):
-        data = PlotData.from_stats(y, x, xax, match, sub, ds, (xdim,), colors)
+    def __init__(
+            self,
+            y: NDVarArg,
+            x: CategorialArg = None,
+            xax: CategorialArg = None,
+            match: CategorialArg = None,
+            sub: IndexArg = None,
+            ds: Dataset = None,
+            main: Callable = np.mean,
+            error: str = 'sem',
+            pool_error: bool = None,
+            legend: Union[str, bool] = 'upper right',
+            labels: Dict[CellArg, str] = None,
+            axtitle: Union[bool, Sequence[str]] = True,
+            xlabel: Union[bool, str] = True,
+            ylabel: Union[bool, str] = True,
+            xticklabels: Union[str, int, Sequence[int]] = 'bottom',
+            invy: bool = False,
+            bottom: float = None,
+            top: float = None,
+            hline = None,
+            xdim: str = None,
+            xlim: Union[float, Tuple[float, float]] = None,
+            clip: bool = None,
+            colors: Dict[CellArg, Any] = None,
+            error_alpha: float = 0.3,
+            mask: Union[NDVar, Dict[CellArg, NDVar]] = None,
+            clusters: Dataset = None,
+            pmax: float = 0.05,
+            ptrend: float = 0.1,
+            *args, **kwargs):
+        data = PlotData.from_stats(y, x, xax, match, sub, ds, (xdim,), colors, mask)
         xdim, = data.dims
 
         layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
@@ -659,10 +686,11 @@ class _plt_uts_stat:
         # plot main
         if callable(main):
             y_main = layer.get_statistic(main)
-            lw = mpl.rcParams['lines.linewidth']
+            kwargs = layer.style.line_args
             if error == 'all':
-                lw *= 2
-            self.main = ax.plot(x, y_main, label=label, lw=lw, zorder=2, clip_on=clip, **layer.style.line_args)
+                lw = kwargs['linewidth'] or mpl.rcParams['lines.linewidth']
+                kwargs = {**kwargs, 'linewidth': lw * 2}
+            self.main = ax.plot(x, y_main, label=label, clip_on=clip, **kwargs)
         elif error == 'all':
             self.main = y_main = None
         else:
