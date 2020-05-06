@@ -50,27 +50,42 @@ def test_generate_colormaps():
     assert cmap.symmetric
 
 
+def ticks(p):
+    return [t.get_text() for t in p._colorbar.ax.get_xticklabels()]
+
+
 @hide_plots
 def test_plot_colorbar():
     "Test plot.ColorBar()"
     p = plot.ColorBar('jet', -1, 1)
     p.close()
+    p = plot.ColorBar('jet', -1, 1, ticks=[-1, 0, 1])
+    assert ticks(p) == ['-1', '0', '1']
     p = plot.ColorBar('jet', -1, 1, orientation='vertical')
     p.close()
     p = plot.ColorBar('jet', -1, 1, label_position='top')
     p.close()
     p = plot.ColorBar('jet', -1, 1, orientation='vertical', label_position='right')
     p.close()
-    p = plot.ColorBar('xpolar-a', -3, 3, clipmin=0, unit='t')
+    p = plot.ColorBar('xpolar-a', -3, 3, clipmin=0, unit='t', ticks=[0, 2, 3])
+    assert ticks(p) == ['0', '2', '3']
     p.close()
 
     p = plot.ColorBar('xpolar-a', -3e-6, 3e-6, unit='µV')
-    assert [t.get_text() for t in p._colorbar.ax.get_xticklabels()] == ['-3', '-1.5', '0', '1.5', '3']
+    assert ticks(p) == ['-3', '-1.5', '0', '1.5', '3']
     assert p._colorbar.ax.get_xlabel() == 'µV'
 
     # soft-thresholded colormap
     cmap = plot.soft_threshold_colormap('xpolar-a', 0.2, 2.0)
     p = plot.ColorBar(cmap)
+    p.close()
+    cmap = plot.soft_threshold_colormap('xpolar-a', 1, 3)
+    p = plot.ColorBar(cmap, clipmin=0, unit='t', ticks=[0, 2, 3])
+    assert ticks(p) == ['0', '2', '3']
+    p.close()
+    cmap = plot.soft_threshold_colormap('xpolar-a', 0.5, 3)
+    p = plot.ColorBar(cmap, clipmin=0, unit='t', ticks=[0, 2, 3])
+    assert ticks(p) == ['0', '2', '3']
     p.close()
 
 
