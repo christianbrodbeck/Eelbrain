@@ -46,7 +46,11 @@ class Style:
             return cls(arg)
 
 
-def find_cell_styles(x, colors, cells=None) -> StylesDict:
+def to_styles_dict(colors: Dict[CellArg, Any]) -> StylesDict:
+    return {cell: Style._coerce(spec) for cell, spec in colors.items()}
+
+
+def find_cell_styles(x, colors, cells=None, fallback: bool = True) -> StylesDict:
     """Process the colors arg from plotting functions
 
     Parameters
@@ -64,15 +68,15 @@ def find_cell_styles(x, colors, cells=None) -> StylesDict:
         <http://matplotlib.org/api/colors_api.html>`_.
     cells : tuple of str
         In case only a subset of cells is used.
+    fallback : bool
+        If a cell is missing, fall back on partial cells (on by default).
     """
     if x is None:
-        if isinstance(colors, dict):
-            color = colors[None]
-        elif colors is None:
-            color = 'k'
-        else:
-            color = to_rgba(colors)
-        return {None: Style._coerce(color)}
+        if not isinstance(colors, dict):
+            if colors is None:
+                colors = 'k'
+            colors = {None: colors}
+        return to_styles_dict(colors)
     elif cells is None:
         cells = x.cells
 
@@ -83,15 +87,22 @@ def find_cell_styles(x, colors, cells=None) -> StylesDict:
     elif isinstance(colors, dict):
         missing = [cell for cell in cells if cell not in colors]
         if missing:
-            raise KeyError(f"colors={colors!r} is missing cells {missing}")
+            if fallback:
+                for cell in missing[:]:
+                    n = len(cell) if isinstance(cell, tuple) else 0
+                    for i in range(1, n):
+                        if cell[:-i] in colors:
+                            colors[cell] = colors[cell[:-i]]
+                            missing.remove(cell)
+                            break
+            if missing:
+                raise ValueError(f"colors={colors!r} is missing cells {missing}")
         out = colors
     elif colors is None or isinstance(colors, str):
         out = colors_for_categorial(x, cmap=colors)
-    elif colors is False:
-        return
     else:
         raise TypeError(f"colors={colors!r}")
-    return {cell: Style._coerce(c) for cell, c in out.items()}
+    return to_styles_dict(out)
 
 
 def colors_for_categorial(x, hue_start=0.2, cmap=None):
