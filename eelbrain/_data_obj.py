@@ -3619,7 +3619,11 @@ class NDVar:
         elif len(x) != len(self):
             raise ValueError(f"x={x}: length mismatch, len(self)={len(self)}, len(x)={len(x)}")
         else:
-            x_out = np.array([func(self.x[x == cell], axis=0) for cell in x.cells])
+            cell_data = [func(self.x[x == cell], axis=0) for cell in x.cells]
+            if np.ma.is_masked(self.x):
+                x_out = np.ma.stack(cell_data)
+            else:
+                x_out = np.stack(cell_data)
             dims = (Case, *self.dims[1:])
 
         # update info for summary
