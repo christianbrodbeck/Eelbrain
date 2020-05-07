@@ -41,14 +41,30 @@ extensions = [
     'sphinx.ext.autodoc', 'sphinx.ext.autosummary',  # default
     'sphinx.ext.todo', 'sphinx.ext.imgmath',  # default
     'sphinx.ext.intersphinx',  # http://sphinx.pocoo.org/ext/intersphinx.html
-    'numpydoc',  # https://github.com/numpy/numpy/tree/master/doc/sphinxext
+    'sphinx.ext.napoleon',  # https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html
+    'sphinx_autodoc_typehints',  # https://github.com/agronholm/sphinx-autodoc-typehints
     'sphinxcontrib.bibtex',  # https://sphinxcontrib-bibtex.readthedocs.io
     'sphinx_gallery.gen_gallery',  # https://sphinx-gallery.github.io
+    'scanpydoc',  # https://github.com/theislab/scanpydoc
 ]
 # enable to  have all methods documented on the same page as a class:
 # autodoc_default_flags=['inherited-members']
 autosummary_generate = True
 numpydoc_show_class_members = False
+
+# Napoleon settings
+napoleon_google_docstring = False
+napoleon_include_init_with_doc = True
+napoleon_include_special_with_doc = False
+napoleon_use_param = True
+napoleon_use_ivar = True
+napoleon_use_keyword = True
+napoleon_use_rtype = True
+
+
+qualname_overrides = {
+    "eelbrain._data_obj.NDVar": "eelbrain.NDVar",
+}
 
 
 def use_pyplot(gallery_conf, fname):

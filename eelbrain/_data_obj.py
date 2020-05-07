@@ -239,7 +239,7 @@ def op_name(
         other: object = None,  # Var, NDVar, scalar; None for unary operations
         info: dict = None,
         name: str = None,  # name parameter, if specified
-):
+) -> (Union[str, None], dict):
     """name, info for Var/NDVar operation
 
     Notes

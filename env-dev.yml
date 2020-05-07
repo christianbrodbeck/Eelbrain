@@ -7,7 +7,6 @@ channels:
 - conda-forge
 dependencies:
 - python >= 3.7
-- pip
 - twine
 - blas=*=mkl  # openblas produces incorrect results for ICA in iMac Pro
 - libblas
@@ -39,9 +38,9 @@ dependencies:
 - cython
 # docs
 - sphinx
+- sphinx-autodoc-typehints
 - sphinx-gallery
 - sphinxcontrib-bibtex
-- numpydoc
 - pydocstyle
 # testing
 - flake8
@@ -59,3 +58,5 @@ dependencies:
 - vtk >= 8.1.1
 - pysurfer >= 0.9
 - nilearn
+- pip:
+  - scanpydoc

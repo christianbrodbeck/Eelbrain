@@ -391,7 +391,7 @@ def cwt_morlet(y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
     return NDVar(x, out_dims, y.name, info)
 
 
-def dss(ndvar):
+def dss(ndvar) -> (NDVar, NDVar):
     """Denoising source separation (DSS)
 
     Parameters

@@ -24,7 +24,7 @@ from multiprocessing.sharedctypes import RawArray
 import os
 import time
 from threading import Event, Thread
-from typing import Union, Tuple, Sequence
+from typing import Any, Union, Tuple, Sequence
 import warnings
 
 import numpy as np
@@ -148,7 +148,7 @@ class BoostingResult:
     version: int = 11
     # debug parameters
     y_pred: NDVar = None
-    fit: 'Boosting' = None
+    fit: Any = None  # scanpydoc can't handle undocumented 'Boosting'
 
     def __getstate__(self) -> dict:
         return {f.name: getattr(self, f.name) for f in fields(self)}
