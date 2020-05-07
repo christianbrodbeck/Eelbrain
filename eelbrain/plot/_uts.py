@@ -6,7 +6,7 @@ import matplotlib.axes
 import matplotlib as mpl
 import numpy as np
 
-from .._colorspaces import oneway_colors
+from .._colorspaces import oneway_colors, to_rgba
 from .._data_obj import NDVarArg, CategorialArg, CellArg, IndexArg, Dataset, NDVar, cellname, longname
 from . import _base
 from ._base import (
@@ -688,6 +688,8 @@ class _plt_uts_stat:
                 dev_data = layer.get_dispersion(error, pool_error)
             lower = y_main - dev_data
             upper = y_main + dev_data
-            self.error = ax.fill_between(x, lower, upper, color=layer.style.color, alpha=error_alpha, linewidth=0, zorder=1.99, clip_on=clip)
+            r, g, b, a = to_rgba(layer.style.color)
+            a *= error_alpha
+            self.error = ax.fill_between(x, lower, upper, color=(r, g, b, a), linewidth=0, zorder=1.99, clip_on=clip)
         else:
             self.error = None
