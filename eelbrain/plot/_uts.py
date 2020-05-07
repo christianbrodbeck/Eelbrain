@@ -72,10 +72,6 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         specifying ``bottom > top``).
     bottom, top | None | scalar
         Set an absolute range for the plot's y axis.
-    hline : None | scalar | (value, kwarg-dict) tuple
-        Add a horizontal line to each plot. If provided as a tuple, the second
-        element can include any keyword arguments that should be submitted to
-        the call to matplotlib axhline call.
     xdim : str
         dimension for the x-axis (default is 'time')
     xlim : scalar | (scalar, scalar)
@@ -141,7 +137,6 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             invy: bool = False,
             bottom: float = None,
             top: float = None,
-            hline = None,
             xdim: str = None,
             xlim: Union[float, Tuple[float, float]] = None,
             clip: bool = None,
@@ -165,7 +160,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         legend_handles = {}
         ymax = ymin = None
         for ax, ax_data in zip(self._axes, data):
-            p = _ax_uts_stat(ax, ax_data, xdim, main, error, pool_error, hline, clusters, pmax, ptrend, clip, error_alpha)
+            p = _ax_uts_stat(ax, ax_data, xdim, main, error, pool_error, clusters, pmax, ptrend, clip, error_alpha)
             self._plots.append(p)
             legend_handles.update(p.legend_handles)
             ymin = p.vmin if ymin is None else min(ymin, p.vmin)
@@ -377,7 +372,6 @@ class _ax_uts_stat:
             main: Callable,
             error: Union[str, Callable],
             pool_error: bool,
-            hline,
             clusters,
             pmax,
             ptrend,
@@ -394,19 +388,6 @@ class _ax_uts_stat:
             self.stat_plots.append(plt)
             if plt.main is not None:
                 self.legend_handles[layer.cell] = plt.main[0]
-
-        # hline
-        if hline is not None:
-            if isinstance(hline, tuple):
-                if len(hline) != 2:
-                    raise ValueError("hline must be None, scalar or length 2 tuple")
-                hline, hline_kw = hline
-                hline_kw = dict(hline_kw)
-            else:
-                hline_kw = {'color': 'k'}
-
-            hline = float(hline)
-            ax.axhline(hline, **hline_kw)
 
         # cluster plot
         self.cluster_plt = _plt_uts_clusters(ax, clusters, pmax, ptrend)
