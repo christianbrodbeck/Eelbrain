@@ -1,22 +1,24 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Write text files"""
+from typing import Iterable
+
+from .._types import PathArg
 from .._utils import ui
 
 
-def txt(iterator, fmt='%s', delim='\n', dest=None):
-    """
-    Write any object that supports iteration to a text file.
+def txt(iterator: Iterable, fmt: str = '%s', delim: str = '\n', dest: PathArg = None):
+    """Write any object that supports iteration to a text file
 
     Parameters
     ----------
-    iterator : iterator
-        Object that iterates over values to be saved
-    fmt : fmt-str
-        format-string which is used to format the iterator's values
-    delim : str
-        the delimiter which is inserted between values
-    dest : str(path) | None
-        The destination; if None, a system save-as dialog is displayed
+    iterator
+        Object that iterates over values to be saved.
+    fmt
+        Format-string which is used to format the iterator's values.
+    delim
+        The delimiter which is inserted between values.
+    dest
+        Path to save at; by default, a system save-as dialog is displayed.
     """
     if dest is None:
         name = repr(iterator)[:20]
