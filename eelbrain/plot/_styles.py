@@ -6,7 +6,7 @@ from functools import reduce
 from itertools import product
 from math import ceil
 import operator
-from typing import Any, Dict, Union
+from typing import Any, Dict, Sequence, Union
 
 import numpy as np
 import matplotlib as mpl
@@ -205,24 +205,31 @@ def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None,
     return dict(zip(cells, colors))
 
 
-def colors_for_twoway(x1_cells, x2_cells, hue_start=0.2, hue_shift=0., hues=None, lightness=None):
+def colors_for_twoway(
+        x1_cells: Sequence[str],
+        x2_cells: Sequence[str],
+        hue_start: float = 0.2,
+        hue_shift: float = 0.,
+        hues: Sequence[float] = None,
+        lightness: Union[float, Sequence[float]] = None,
+):
     """Define cell colors for a two-way design
 
     Parameters
     ----------
-    x1_cells : tuple of str
+    x1_cells
         Cells of the major factor.
-    x2_cells : tuple of str
+    x2_cells
         Cells of the minor factor.
     hue_start : 0 <= scalar < 1
         First hue value.
     hue_shift : 0 <= scalar < 1
         Use that part of the hue continuum between categories to shift hue
         within categories.
-    hues : list of scalar
+    hues
         List of hue values corresponding to the levels of the first factor
         (overrides regular hue distribution).
-    lightness : scalar | list of scalar
+    lightness
         If specified as scalar, colors will occupy the range
         ``[lightness, 100-lightness]``. Can also be given as list with one
         value corresponding to each element in the second factor.
@@ -232,9 +239,10 @@ def colors_for_twoway(x1_cells, x2_cells, hue_start=0.2, hue_shift=0., hues=None
     dict : {tuple: tuple}
         Mapping from cells to colors.
     """
+    x1_cells = list(x1_cells)
+    x2_cells = list(x2_cells)
     n1 = len(x1_cells)
     n2 = len(x2_cells)
-
     if n1 < 2 or n2 < 2:
         raise ValueError("Need at least 2 cells on each factor")
 

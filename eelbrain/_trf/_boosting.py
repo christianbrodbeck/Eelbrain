@@ -642,7 +642,7 @@ def boosting(
         predictors that were used to fit ``prefit``, and that they be identical
         to the originally used ``x``.
     debug : bool
-        return Boosting object instead of result.
+        Add additional attributes to the returned result.
 
     Returns
     -------

@@ -2,6 +2,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from operator import itemgetter
 import re
+from typing import Callable, Sequence
 from warnings import warn
 
 import numpy as np
@@ -10,6 +11,7 @@ from . import fmtxt
 from ._celltable import Celltable
 from ._exceptions import KeysMissing
 from ._data_obj import (
+    CategorialArg, IndexArg,
     Categorial, Dataset, Factor, Interaction, NDVar, Scalar, UTS,
     Var, ascategorial, as_legal_dataset_key, asndvar, asvar, assub, asuv,
     cellname, combine, isuv)
@@ -491,25 +493,42 @@ def cast_to_ndvar(data, dim_values, match, sub=None, ds=None, dim=None,
     return out
 
 
-def stats(y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
-          ds=None, title=None, caption=None):
+def stats(
+        y: Var,
+        row: CategorialArg,
+        col: CategorialArg = None,
+        match: CategorialArg = None,
+        sub: IndexArg = None,
+        fmt: str = '%.4g',
+        funcs: Sequence[Callable] = (np.mean,),
+        ds: Dataset = None,
+        title: fmtxt.FMTextArg = None,
+        caption: fmtxt.FMTextArg = None,
+):
     """Make a table with statistics
 
     Parameters
     ----------
-    y : Var
+    y
         Dependent variable.
-    row : categorial
+    row
         Model specifying rows
-    col : categorial | None
+    col
         Model specifying columns.
-    funcs : list of callables
+    match
+        Identifier for repeated measures data; aggregate within subject before
+        computing statistics.
+    sub
+        Only use part of the data.
+    fmt
+        How to format values.
+    funcs
         A list of statistics functions to show (all functions must take an
         array argument and return a scalar).
-    ds : Dataset
-        If a Dataset is provided, y, row, and col can be strings specifying
-        members.
-    title : str | FMText
+    ds
+        If a Dataset is provided, ``y``, ``row``, and ``col`` can be strings
+        specifying members.
+    title
         Table title.
     caption : str | FMText
         Table caption.
@@ -532,7 +551,7 @@ def stats(y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
     a1   -0.4897   0.8746
 
     >>> table.stats('Y', 'A', ds=ds, funcs=[np.mean, np.std])
-    Condition   mean     std
+    Condition   Mean     Std
     --------------------------
     a0          0.6691   1.37
     a1          0.8596   1.192
@@ -552,7 +571,7 @@ def stats(y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
         table = fmtxt.Table('l' * (n_disp + 1), title=title, caption=caption)
         table.cell('Condition', 'bf')
         for func in funcs:
-            table.cell(func.__name__, 'bf')
+            table.cell(func.__name__.capitalize(), 'bf')
         table.midrule()
 
         # table entries

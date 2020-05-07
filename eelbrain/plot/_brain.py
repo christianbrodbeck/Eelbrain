@@ -47,9 +47,10 @@ def annot(annot, subject='fsaverage', surf='smoothwm', borders=False, alpha=0.7,
     hemi : 'lh' | 'rh' | 'both' | 'split'
         Which hemispheres to plot (default includes hemisphere with more than one
         label in the annot file).
-    views : str | iterator of str
-        View or views to show in the figure. Options are: 'rostral', 'parietal',
-        'frontal', 'ventral', 'lateral', 'caudal', 'medial', 'dorsal'.
+    views : str | sequence of str
+        One or several views to show in the figure. The options are:
+        ``'lateral', 'medial', 'ventral', 'dorsal', 'rostral', 'parietal',
+        'frontal', 'caudal'``.
     w, h, axw, axh : scalar
         Layout parameters (figure width/height, subplot width/height).
     foreground : mayavi color
@@ -205,9 +206,10 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
         half way between fmin and fmax.
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
-    views : str | iterator of str
-        View or views to show in the figure. Options are: 'rostral', 'parietal',
-        'frontal', 'ventral', 'lateral', 'caudal', 'medial', 'dorsal'.
+    views : str | sequence of str
+        One or several views to show in the figure. The options are:
+        ``'lateral', 'medial', 'ventral', 'dorsal', 'rostral', 'parietal',
+        'frontal', 'caudal'``.
     hemi : 'lh' | 'rh' | 'both' | 'split'
         Which hemispheres to plot (default based on data).
     colorbar : bool
@@ -276,9 +278,10 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, p0alpha=0.5, *args,
         clearly delineate significant regions (default 0.5).
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
-    views : str | iterator of str
-        View or views to show in the figure. Options are: 'rostral', 'parietal',
-        'frontal', 'ventral', 'lateral', 'caudal', 'medial', 'dorsal'.
+    views : str | sequence of str
+        One or several views to show in the figure. The options are:
+        ``'lateral', 'medial', 'ventral', 'dorsal', 'rostral', 'parietal',
+        'frontal', 'caudal'``.
     hemi : 'lh' | 'rh' | 'both' | 'split'
         Which hemispheres to plot (default based on data).
     colorbar : bool
@@ -364,9 +367,10 @@ def cluster(cluster, vmax=None, *args, **kwargs):
         cluster.
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
-    views : str | iterator of str
-        View or views to show in the figure. Options are: 'rostral', 'parietal',
-        'frontal', 'ventral', 'lateral', 'caudal', 'medial', 'dorsal'.
+    views : str | sequence of str
+        One or several views to show in the figure. The options are:
+        ``'lateral', 'medial', 'ventral', 'dorsal', 'rostral', 'parietal',
+        'frontal', 'caudal'``.
     hemi : 'lh' | 'rh' | 'both' | 'split'
         Which hemispheres to plot (default based on data).
     colorbar : bool
@@ -445,9 +449,10 @@ def brain(src, cmap=None, vmin=None, vmax=None, surf='inflated',
         a LUT array.
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
-    views : str | iterator of str
-        View or views to show in the figure. Options are: 'rostral', 'parietal',
-        'frontal', 'ventral', 'lateral', 'caudal', 'medial', 'dorsal'.
+    views : str | sequence of str
+        One or several views to show in the figure. The options are:
+        ``'lateral', 'medial', 'ventral', 'dorsal', 'rostral', 'parietal',
+        'frontal', 'caudal'``.
     hemi : 'lh' | 'rh' | 'both' | 'split'
         Which hemispheres to plot (default based on data).
     colorbar : bool
@@ -1580,9 +1585,10 @@ def butterfly(y, cmap=None, vmin=None, vmax=None, surf='inflated',
         Plot data range maximum.
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
-    views : str | iterator of str
-        View or views to show in the figure. Options are: 'rostral', 'parietal',
-        'frontal', 'ventral', 'lateral', 'caudal', 'medial', 'dorsal'.
+    views : str | sequence of str
+        One or several views to show in the figure. The options are:
+        ``'lateral', 'medial', 'ventral', 'dorsal', 'rostral', 'parietal',
+        'frontal', 'caudal'``.
     hemi : 'lh' | 'rh'
         Plot only this hemisphere (the default is to plot all hemispheres with
         data in ``y``).

@@ -5593,8 +5593,10 @@ class MneExperiment(FileTree):
             state.
         surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
             Freesurfer surface to use as brain geometry.
-        views : str | iterator of str
-            View or views to show in the figure.
+        views : str | sequence of str
+            One or several views to show in the figure. The options are:
+            ``'lateral', 'medial', 'ventral', 'dorsal', 'rostral', 'parietal',
+            'frontal', 'caudal'``.
         hemi : 'lh' | 'rh' | 'both' | 'split'
             Which hemispheres to plot (default includes hemisphere with more
             than one label in the annot file).

@@ -2422,3 +2422,6 @@ class MetaParser(HTMLParser):
 def read_meta(file_path):
     "Read meta information from a HTML head"
     return MetaParser(file_path).out
+
+
+FMTextArg = Union[str, ListType[str], FMTextElement, FMTextConstant]

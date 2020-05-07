@@ -3,6 +3,7 @@ from itertools import cycle
 import logging
 from math import ceil
 from numbers import Real
+from typing import Sequence, Union
 
 # colormath starts out at 0; needs to be set before init
 logger = logging.getLogger('colormath.color_conversions')
@@ -192,22 +193,31 @@ def oneway_colors(n, hue_start=0.2, light_range=0.5, light_cycle=None,
     return [lch_to_rgb(l, 100, h) for l, h in zip(lightness, hue)]
 
 
-def twoway_colors(n1, n2, hue_start=0.2, hue_shift=0., hues=None, lightness=None):
+def twoway_colors(
+        n1: int,
+        n2: int,
+        hue_start: float = 0.2,
+        hue_shift: float = 0.,
+        hues: Sequence[float] = None,
+        lightness: Union[float, Sequence[float]] = None,
+):
     """Create colors for two-way interaction
 
     Parameters
     ----------
-    n1, n2 : int
-        Number of levels on the first and second factors.
+    n1
+        Number of levels on the first factor.
+    n2
+        Number of levels on the second factor.
     hue_start : 0 <= scalar < 1
         First hue value.
     hue_shift : 0 <= scalar < 1
         Use that part of the hue continuum between categories to shift hue
         within categories.
-    hues : list of scalar
+    hues
         List of hue values corresponding to the levels of the first factor
         (overrides regular hue distribution).
-    lightness : scalar | list of scalar
+    lightness
         If specified as scalar, colors will occupy the range
         ``[lightness, 100-lightness]``. Can also be given as list with one
         value corresponding to each element in the second factor.
