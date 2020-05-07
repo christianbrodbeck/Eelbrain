@@ -92,6 +92,9 @@ def test_melt_ndvar():
     # no ds
     lds2 = table.melt_ndvar(ds['uts'])
     assert_dataobj_equal(lds2['uts'], lds['uts'])
+    # no ds no case
+    lds3 = table.melt_ndvar(ds[0, 'utsnd'], 'sensor')
+    assert_dataobj_equal(lds3[0, 'utsnd'], ds[0, 'utsnd'][0])
 
     # sensor
     lds = table.melt_ndvar("utsnd.summary(time=(0.1, 0.2))", ds=ds, varname='summary')

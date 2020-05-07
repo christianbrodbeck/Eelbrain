@@ -397,6 +397,8 @@ def melt_ndvar(ndvar, dim=None, cells=None, ds=None, varname=None, labels=None):
         uv_keys = tuple(k for k, v in ds.items() if isuv(v))
         base_ds = ds[uv_keys]
 
+    if not ndvar.has_case:
+        ndvar = ndvar[np.newaxis]
     dss = []
     for cell in cells:
         ds_ = base_ds.copy()

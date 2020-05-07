@@ -1171,7 +1171,7 @@ def combine(items, name=None, check_dims=True, incomplete='raise', dim_intersect
         if has_case:
             x = np.concatenate([v.x for v in sub_items], axis=0)
         else:
-            x = np.array([v.x for v in sub_items])
+            x = np.stack([v.x for v in sub_items])
         dims = ('case',) + dims
         return NDVar(x, dims, name, _info.merge_info(sub_items))
     elif stype is Datalist:
