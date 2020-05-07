@@ -12,12 +12,13 @@ import numpy as np
 import matplotlib as mpl
 from matplotlib.colors import LinearSegmentedColormap, to_rgb, to_rgba
 
-from .._colorspaces import LocatedListedColormap, oneway_colors, twoway_colors, symmetric_cmaps
+from .._colorspaces import LocatedListedColormap, lch_to_rgb, rgb_to_lch, oneway_colors, twoway_colors, symmetric_cmaps
 from .._data_obj import Factor, Interaction, CellArg
 from .._utils import LazyProperty
 
 
-StylesDict = Dict[CellArg, 'Style']
+# masked keys that act as modifier rather than replacement
+modifer_keys = {'alpha', 'saturation'}
 
 
 @dataclass
@@ -29,7 +30,7 @@ class Style:
     linestyle: str = None
     linewidth: float = None
     zorder: float = 0  # z-order shift (relative to plot element default)
-    masked: Union['Style', Dict[str, Any]] = None
+    masked: Union[Any, Dict[str, Any]] = None  # Any should be Style, but autodoc does not support foward reference under decorator yet https://github.com/agronholm/sphinx-autodoc-typehints/issues/76
 
     @LazyProperty
     def line_args(self):
@@ -40,13 +41,21 @@ class Style:
         return {'facecolor': self.color, 'hatch': self.hatch, 'zorder': 1 + self.zorder}
 
     @LazyProperty
-    def masked_style(self) -> 'Style':
+    def masked_style(self):  # -> 'Style'
         if self.masked is None:
             return replace(self, color=(0.7, 0.7, 0.7, 0.4))
         elif isinstance(self.masked, Style):
             return self.masked
         elif isinstance(self.masked, dict):
-            return replace(self, **self.masked)
+            kwargs = self.masked
+            if modifer_keys.intersection(self.masked):
+                kwargs = dict(kwargs)
+                r, g, b, a = to_rgba(self.color)
+                a *= kwargs.pop('alpha', 1)
+                l, c, h = rgb_to_lch(r, g, b)
+                c *= kwargs.pop('saturation', 1)
+                kwargs['color'] = (*lch_to_rgb(l, c, h), a)
+            return replace(self, **kwargs)
         else:
             raise TypeError(f"Style is invalid masked parameter: {self.masked!r}")
 
@@ -60,11 +69,11 @@ class Style:
             return cls(arg)
 
 
-def to_styles_dict(colors: Dict[CellArg, Any]) -> StylesDict:
+def to_styles_dict(colors: Dict[CellArg, Any]) -> 'StylesDict':
     return {cell: Style._coerce(spec) for cell, spec in colors.items()}
 
 
-def find_cell_styles(x, colors, cells=None, fallback: bool = True) -> StylesDict:
+def find_cell_styles(x, colors, cells=None, fallback: bool = True) -> 'StylesDict':
     """Process the colors arg from plotting functions
 
     Parameters
@@ -348,3 +357,6 @@ def soft_threshold_colormap(cmap, threshold, vmax, subthreshold=None, symmetric=
     out.vmin = -vmax if symmetric else 0
     out.symmetric = symmetric
     return out
+
+
+StylesDict = Dict[CellArg, Style]

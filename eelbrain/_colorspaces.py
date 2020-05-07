@@ -38,6 +38,12 @@ def lch_to_rgb(lightness, chroma, hue):
     return rgb.clamped_rgb_r, rgb.clamped_rgb_g, rgb.clamped_rgb_b
 
 
+def rgb_to_lch(r, g, b):
+    rgb = sRGBColor(r, g, b)
+    lch = convert_color(rgb, LCHabColor)
+    return lch.lch_l, lch.lch_c, lch.lch_h / 360
+
+
 def _to_rgb(arg, alpha=False):
     if isinstance(arg, (float, int)):
         arg = lch_to_rgb(50, 100, arg)
