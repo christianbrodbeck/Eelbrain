@@ -172,7 +172,7 @@ def convolve(h, x, ds=None, name=None):
         assert len(h) == len(x)
         out = None
         for h_, x_ in zip(h, x):
-            y_i = convolve(h_, x_)
+            y_i = convolve(h_, x_, name=name)
             if out is None:
                 out = y_i
             else:

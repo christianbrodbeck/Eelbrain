@@ -142,8 +142,9 @@ def test_boosting_epochs():
         print(f"tstart={tstart}, basis={basis}")
         res = boosting('uts', [p0, p1], tstart, 0.6, model='A', ds=ds, basis=basis, partitions=3, debug=True)
         assert res.r == approx(0.238, abs=1e-3)
-        y = convolve(res.h_scaled, [p0, p1])
+        y = convolve(res.h_scaled, [p0, p1], name='predicted')
         assert correlation_coefficient(y, res.y_pred) > .999
+        assert y.name == 'predicted'
         r = correlation_coefficient(y, ds['uts'])
         assert res.r == approx(r, abs=1e-3)
         assert res.partitions == 3
