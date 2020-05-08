@@ -522,10 +522,10 @@ def find_vlim_args(ndvar, vmin=None, vmax=None):
 
     if vmax is None or vmin is None:
         xmax = np.nanmax(ndvar.x)
-        if np.ma.is_masked(xmax):
+        if np.ma.isMaskedArray(xmax):
             xmax = xmax.data
         xmin = np.nanmin(ndvar.x)
-        if np.ma.is_masked(xmin):
+        if np.ma.isMaskedArray(xmin):
             xmin = xmin.data
         abs_max = max(abs(xmax), abs(xmin)) or 1e-14
         scale = math.floor(np.log10(abs_max))
@@ -853,7 +853,7 @@ class DataLayer(Layer):
     def for_plot(self, plot_type: PlotType) -> IteratorType['DataLayer']:
         if self.plot_type == plot_type:
             yield self
-        elif not np.ma.is_masked(self.y.x):
+        elif not np.ma.isMaskedArray(self.y.x):
             yield DataLayer(self.y, plot_type, self._plot_args)
         elif plot_type == PlotType.LEGACY:
             yield DataLayer(self.y.unmask(), plot_type, self._plot_args)
@@ -904,7 +904,7 @@ class StatLayer(Layer):
     def _apply_mask(self, y: np.ndarray) -> np.ndarray:
         if self.mask is None:
             return y
-        if np.ma.is_masked(y):
+        if np.ma.isMaskedArray(y):
             y = y.data
         return NDVar(y, self.y.dims[1:]).mask(self.mask, missing=self.mask_missing).x
 

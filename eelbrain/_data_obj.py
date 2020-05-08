@@ -3409,7 +3409,7 @@ class NDVar:
             items.append(repr(self.name))
         if self.x.dtype != np.float64:
             items.append(self.x.dtype.name)
-        if np.ma.is_masked(self.x):
+        if np.ma.isMaskedArray(self.x):
             items.append(f"{self.x.mask.mean():.0%} masked")
         desc = ' '.join(items)
         dims = ', '.join([f'{len(dim)} {dim.name}' for dim in self.dims])
@@ -3620,7 +3620,7 @@ class NDVar:
             raise ValueError(f"x={x}: length mismatch, len(self)={len(self)}, len(x)={len(x)}")
         else:
             cell_data = [func(self.x[x == cell], axis=0) for cell in x.cells]
-            if np.ma.is_masked(self.x):
+            if np.ma.isMaskedArray(self.x):
                 x_out = np.ma.stack(cell_data)
             else:
                 x_out = np.stack(cell_data)
