@@ -1,49 +1,40 @@
 # Author:  Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Document model for formatted text documents
 
-Objects for the abstract representation of a document which can be into
-different formats. Currently (incomplete) support for str, RTF, TeX and HTML.
+This module defines classes for the abstract representation of a document,
+which can be rendered into different formats.
+Currently (incomplete) support for str, RTF, TeX, PDF (through TeX) and HTML.
 
-Base classes:
+Documents are represented with classes inheriting from two base classes:
 
-:class:`FMTextElement`
-    A string (or object with a str representation) along with formatting
-    information.
-:class:`FMText`
-    An FMTextElement whose contents is a list of FMText objects.
+.. autosummary::
+   :toctree: generated
 
+   FMTextElement
+   FMText
 
 Subclasses for specific purposes:
 
-:class:`Table`
-    Tables with multicolumn cells.
-:class:`Image`
-    Images.
-:class:`Figure`
-    Figure with content and caption.
-:class:`Section`
-    Document section containing a title and content (any other FMText objects,
-    including other Section objects for subsections).
-:class:`Report`
-    Document consisting of several sections plus a title.
+.. autosummary::
+   :toctree: generated
 
-Whenever an parameter asks for an FMText object, :func:`asfmtxt` handles the
-coercion into an appropriate FMTextElement subclass.
+   Table
+   Image
+   Figure
+   Section
+   Report
 
-FMText objects provide an interface to formatting through different methods:
+Functions for export:
 
-- the :py:meth:`__str__` method for a string representation
-- a :py:meth:`get_tex` method for a TeX representation
-- a :py:meth:`get_html` method for a HTML representation
+.. autosummary::
+   :toctree: generated
 
-The module also provides functions that work with fmtxt objects:
-
-- :func:`save_tex` for saving an object's tex representation
-- :func:`copy_tex` for copying an object's tex representation to
-  the clipboard
-- :func:`save_pdf` for saving a pdf
-- :func:`copy_pdf` for copying a pdf to the clipboard
-- :func:`save_html` for saving an HTML file
+   copy_pdf
+   copy_tex
+   save_html
+   save_pdf
+   save_rtf
+   save_tex
 
 """
 import base64
@@ -54,7 +45,6 @@ from itertools import repeat
 from math import ceil
 import os
 from pathlib import Path
-import pickle
 import re
 import shutil
 import socket
@@ -70,6 +60,7 @@ import matplotlib.figure
 from matplotlib.image import imsave
 from matplotlib.mathtext import math_to_image
 
+from ._types import PathArg
 from ._utils.tex import latex2pdf
 from ._utils import ui
 
@@ -152,7 +143,7 @@ def _html_repl(m):
 
 
 def escape_html(text):
-    return _html_escape_pattern.sub(_html_repl, text)#.encode('ascii', 'xmlcharrefreplace')
+    return _html_escape_pattern.sub(_html_repl, text)
 
 
 def _tex_repl(m):
@@ -208,20 +199,25 @@ def rtf_document(fmtext):
     return "{\\rtf1\\ansi\\deff0\n\n%s\n}" % fmtext.get_rtf()
 
 
-def save_html(fmtext, path=None, embed_images=True, meta=None):
+def save_html(
+        fmtext: FMTextLike,
+        path: PathArg = None,
+        embed_images: bool = True,
+        meta: dict = None,
+):
     """Save an FMText object in HTML format
 
     Parameters
     ----------
     fmtext : FMText
         Object to save.
-    path : str (optional)
+    path
         Destination filename. If unspecified, a file dialog will open to ask
         for a destination.
-    embed_images : bool
+    embed_images
         Embed images in the HTML file (default True). If False, a separate
         folder containing image files is created.
-    meta : dict
+    meta
         Meta-information for document head.
     """
     if path is None:
@@ -248,14 +244,17 @@ def save_html(fmtext, path=None, embed_images=True, meta=None):
     html_path.write_bytes(buf_enc)
 
 
-def save_pdf(fmtext, path=None):
-    """Save an FMText object as a pdf (requires LaTeX installation)
+def save_pdf(
+        fmtext: FMTextLike,
+        path: PathArg = None,
+):
+    """Save an FMText object as a PDF (requires LaTeX installation)
 
     Parameters
     ----------
     fmtext : FMText
         Object to save.
-    path : str (optional)
+    path
         Destination filename. If unspecified, a file dialog will open to ask
         for a destination.
     """
@@ -268,14 +267,17 @@ def save_pdf(fmtext, path=None):
             f.write(pdf)
 
 
-def save_rtf(fmtext, path=None):
+def save_rtf(
+        fmtext: FMTextLike,
+        path: PathArg = None,
+):
     """Save an FMText object in Rich Text format
 
     Parameters
     ----------
     fmtext : FMText
         Object to save.
-    path : str (optional)
+    path
         Destination filename. If unspecified, a file dialog will open to ask
         for a destination.
     """
@@ -287,14 +289,17 @@ def save_rtf(fmtext, path=None):
             fid.write(text)
 
 
-def save_tex(fmtext, path=None):
+def save_tex(
+        fmtext: FMTextLike,
+        path: PathArg = None,
+):
     """Save an FMText object as TeX code
 
     Parameters
     ----------
     fmtext : FMText
         Object to save.
-    path : str (optional)
+    path
         Destination filename. If unspecified, a file dialog will open to ask
         for a destination.
     """
@@ -306,7 +311,7 @@ def save_tex(fmtext, path=None):
             f.write(txt)
 
 
-def _save_txt(text, path=None):
+def _save_txt(text, path: PathArg = None):
     if path is None:
         path = ui.ask_saveas("Save Text File", filetypes=[("Plain Text File (*.txt)", "*.txt")])
     if path:
@@ -314,8 +319,8 @@ def _save_txt(text, path=None):
             fid.write(text)
 
 
-def copy_pdf(fmtext):
-    """Copy an FMText object to the clipboard as PDF.
+def copy_pdf(fmtext: FMTextLike):
+    """Copy an FMText object to the clipboard as PDF
 
     Parameters
     ----------
@@ -332,7 +337,7 @@ def copy_pdf(fmtext):
     ui.copy_file(path)
 
 
-def copy_tex(fmtext):
+def copy_tex(fmtext: FMTextLike):
     "Copy an FMText object to the clipboard as tex code"
     txt = tex(fmtext)
     ui.copy_text(txt)
@@ -360,7 +365,7 @@ def make_html_doc(body, root, resource_dir=None, title=None, meta=None):
 
     Parameters
     ----------
-    body : fmtxt-object
+    body : FMText
         FMTXT object which should be formatted into an HTML document.
     root : str
         Path to the directory in which the HTML file is going to be located.
@@ -400,7 +405,7 @@ def make_html_doc(body, root, resource_dir=None, title=None, meta=None):
 
 
 def tex(text, env=None):
-    """Create html code for any object with a string representation
+    """Create TeX code for any object with a string representation
 
     Parameters
     ----------
@@ -507,29 +512,22 @@ linebreak = FMTextConstant(
 
 
 class FMTextElement:
-    """Represent a text element along with formatting properties.
-
-    The elementary unit of the :py:mod:`fmtxt` module. It can function as a
-    string, but can hold formatting properties such as font properties.
-
-    The following methods are used to get different string representations:
-
-     - FMText.get_str() -> unicode
-     - FMText.get_tex() -> str (TeX)
-     - FMText.get_html() -> str (HTML)
-     - str(FMText) -> str
-
-    """
-    def __init__(self, content, tag=None, options=None):
+    """A text element along with formatting specification"""
+    def __init__(
+            self,
+            content: object,
+            tag: str = None,
+            options: dict = None,
+    ):
         """Represent a value along with formatting properties.
 
         Parameters
         ----------
-        content : object
+        content
             Any item with a string representation (str, scalar, ...).
-        tag : str
+        tag
             Formatting tag.
-        options : dict
+        options
             Options for HTML tags.
         """
         self.content = content
@@ -589,7 +587,7 @@ class FMTextElement:
         "HTML representation of everything inside the tag"
         return escape_html(self._get_core(env))
 
-    def get_rtf(self, env={}):
+    def get_rtf(self, env={}) -> str:
         if self.tag in _RTF_SUBS:
             return _RTF_SUBS[self.tag] % self._get_rtf_core(env)
         else:
@@ -598,8 +596,8 @@ class FMTextElement:
     def _get_rtf_core(self, env):
         return self._get_core(env)
 
-    def get_str(self, env={}):
-        "Unicode representation"
+    def get_str(self, env={}) -> str:
+        "String representation"
         if self.tag in _STR_SUBS:
             return _STR_SUBS[self.tag] % self._get_str_core(env)
         else:
@@ -608,7 +606,8 @@ class FMTextElement:
     def _get_str_core(self, env):
         return self._get_core(env)
 
-    def get_tex(self, env):
+    def get_tex(self, env) -> str:
+        "TeX representation"
         if self.tag == 'math':
             if env['math']:
                 raise RuntimeError("Nested math tag")
@@ -632,12 +631,12 @@ class FMTextElement:
         else:
             return escape_tex(out)
 
-    def save_html(self, path=None, embed_images=True, meta=None):
+    def save_html(self, path: PathArg = None, embed_images=True, meta=None):
         """Save in HTML format
 
         Parameters
         ----------
-        path : str (optional)
+        path
             Destination filename. If unspecified, a file dialog will open to ask
             for a destination.
         embed_images : bool
@@ -648,45 +647,45 @@ class FMTextElement:
         """
         save_html(self, path, embed_images, meta)
 
-    def save_pdf(self, path=None):
+    def save_pdf(self, path: PathArg = None):
         """Save in PDF format
 
         Parameters
         ----------
-        path : str (optional)
+        path
             Destination filename. If unspecified, a file dialog will open to ask
             for a destination.
         """
         save_pdf(self, path)
 
-    def save_rtf(self, path=None):
+    def save_rtf(self, path: PathArg = None):
         """Save in Rich Text format
 
         Parameters
         ----------
-        path : str (optional)
+        path
             Destination filename. If unspecified, a file dialog will open to ask
             for a destination.
         """
         save_rtf(self, path)
 
-    def save_tex(self, path=None):
+    def save_tex(self, path: PathArg = None):
         """Save in TeX format
 
         Parameters
         ----------
-        path : str (optional)
+        path
             Destination filename. If unspecified, a file dialog will open to ask
             for a destination.
         """
         save_tex(self, path)
 
-    def save_txt(self, path=None):
+    def save_txt(self, path: PathArg = None):
         """Save as plain text file
 
         Parameters
         ----------
-        path : str (optional)
+        path
             Destination filename. If unspecified, a file dialog will open to ask
             for a destination.
         """
@@ -832,7 +831,7 @@ class Number(FMTextElement):
 
 class P(Number):
 
-    def __init__(self, content):
+    def __init__(self, content: float):
         Number.__init__(self, content, fmt='%.3f', drop0=True)
 
     def _get_core(self, env):
@@ -1241,7 +1240,7 @@ class Row(list):
 
 
 class Table(FMTextElement):
-    r"""A table :class:`FMText` element
+    r"""A table
 
     Parameters
     ----------
@@ -1588,9 +1587,8 @@ class Table(FMTextElement):
             items.append(r"\end{center}")
         return '\n'.join(items)
 
-    def get_tsv(self, delimiter='\t', fmt='%.9g'):
-        r"""
-        Return the table as tab-separated values (TSV) string.
+    def get_tsv(self, delimiter='\t', fmt='%.9g') -> str:
+        r"""Render the table to tab-separated values (TSV) string
 
         Parameters
         ----------
@@ -1609,7 +1607,7 @@ class Table(FMTextElement):
                 writer.writerow([cell.get_str(env) for cell in row])
         return buffer.getvalue()
 
-    def save_docx(self, path=None):
+    def save_docx(self, path: PathArg = None):
         """Save table as *.docx (requires `python-docx <https://python-docx.readthedocs.io>`_)
 
         Parameters
@@ -1646,13 +1644,12 @@ class Table(FMTextElement):
 
         document.save(path)
 
-    def save_tsv(self, path=None, delimiter='\t', fmt='%.15g'):
-        r"""
-        Save the table as tab-separated values file.
+    def save_tsv(self, path: PathArg = None, delimiter='\t', fmt='%.15g'):
+        r"""Save the table as tab-separated values file
 
         Parameters
         ----------
-        path : str | None
+        path
             Destination file name.
         delimiter : str
             String that is placed between cells (default: ``'\t'``).
@@ -1663,13 +1660,12 @@ class Table(FMTextElement):
         """
         _save_txt(self.get_tsv(delimiter, fmt), path)
 
-    def save_txt(self, path=None, fmt='%.15g', delim='   ', linesep='\n'):
-        r"""
-        Save the table as text file.
+    def save_txt(self, path: PathArg = None, fmt='%.15g', delim='   ', linesep='\n'):
+        r"""Save the table as text file
 
         Parameters
         ----------
-        path : str | None
+        path
             Destination file name.
         fmt : str
             Format string for representing numerical cells (default '%.15g').
@@ -1736,17 +1732,17 @@ class Image(FMTextElement, BytesIO):
         return im
 
     @classmethod
-    def from_file(cls, path, name=None, alt=None):
+    def from_file(cls, path: PathArg, name: str = None, alt: str = None):
         """Create an Image object from an existing image file.
 
         Parameters
         ----------
-        path : str
+        path
             Path to the image file.
-        name : str
+        name
             Name for the file (the default is ``os.path.basename(path)`` without
             extension.
-        alt : None | str
+        alt
             Alternate text, placeholder in case the image can not be found
             (HTML `alt` tag).
         """
@@ -1813,7 +1809,7 @@ class Image(FMTextElement, BytesIO):
 
 
 class Figure(FMText):
-    "Represent a figure"
+    "Represent a figure with figure caption"
 
     def __init__(
             self,
@@ -1852,22 +1848,21 @@ class Figure(FMText):
 
 
 class Section(FMText):
+    """Document section containing a title and content
 
+    Parameters
+    ----------
+    heading : FMTextLike
+        Section heading.
+    content : FMTextLike
+        Section content. Can also be constructed dynamically through the
+        different .add_... methods.
+    """
     def __init__(
             self,
             heading: FMTextLike,
             content: FMTextLike = None,
     ):
-        """Represent a section of an FMText document
-
-        Parameters
-        ----------
-        heading : FMTextLike
-            Section heading.
-        content : FMTextLike
-            Section content. Can also be constructed dynamically through the
-            different .add_... methods.
-        """
         self._heading = asfmtext(heading)
         FMText.__init__(self, content)
 
@@ -2027,7 +2022,23 @@ class Section(FMText):
 
 
 class Report(Section):
+    """Document consisting of several sections plus a title
 
+    Parameters
+    ----------
+    title : FMTextLike
+        Document title.
+    author : FMTextLike
+        Document autho.
+    date : bool | FMTextLike
+        Date to print on the report. If True (default), the current day
+        (object initialization) is used.
+    content : FMTextLike
+        Report content. Can also be constructed dynamically through the
+        different .add_... methods.
+    site_title : str
+        Set the HTML site title (the default is the same as title).
+    """
     def __init__(
             self,
             title: FMTextLike,
@@ -2036,23 +2047,6 @@ class Report(Section):
             content: FMTextLike = None,
             site_title: str = None,
     ):
-        """Represent an FMText report document
-
-        Parameters
-        ----------
-        title : FMTextLike
-            Document title.
-        author : FMTextLike
-            Document autho.
-        date : bool | FMTextLike
-            Date to print on the report. If True (default), the current day
-            (object initialization) is used.
-        content : FMTextLike
-            Report content. Can also be constructed dynamically through the
-            different .add_... methods.
-        site_title : str
-            Set the HTML site title (the default is the same as title).
-        """
         if author is not None:
             author = asfmtext(author, r'\author')
         if date:
@@ -2135,24 +2129,6 @@ class Report(Section):
 
         txt = '\n'.join(content)
         return txt
-
-    def pickle(self, path, extension='.pickled'):
-        """Pickle the Report object
-
-        Parameters
-        ----------
-        path : str
-            Location where to save the report. For None, the file is saved
-            in the report's folder.
-        extension : None | str
-            Extension to append to the path. If extension is None, or path
-            already ends with extension nothing is done.
-        """
-        if extension and not path.endswith(extension):
-            path += extension
-
-        with open(path, 'wb') as fid:
-            pickle.dump(self, fid, pickle.HIGHEST_PROTOCOL)
 
     def save_html(self, path, embed_images=True, meta=None):
         """Save HTML file of the report

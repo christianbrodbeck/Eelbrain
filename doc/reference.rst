@@ -610,19 +610,27 @@ The :mod:`fmtxt` submodule provides tools for exporting results. Most eelbrain
 functions and methods that print tables in fact return :mod:`fmtxt` objects,
 which can be exported in different formats, for example::
 
-    >>> ds = datasets.get_uv()
-    >>> type(ds.head())
+    >>> ds = datasets.get_uts()
+    >>> table.stats('Y', 'A', 'B', ds=ds)
+               B
+         ---------------
+         b0       b1
+    --------------------
+    a0   0.8857   0.4525
+    a1   0.3425   1.377
+    >>> type(table.stats('Y', 'A', 'B', ds=ds))
     eelbrain.fmtxt.Table
 
 This means that the result can be exported as formatted text, for example::
 
-    >>> fmtxt.save_pdf(ds.head())
+    >>> fmtxt.save_pdf(table.stats('Y', 'A', 'B', ds=ds))
 
-Available export methods:
+See available export functions and the module documentation for details:
 
 .. autosummary::
    :toctree: generated
 
+   fmtxt
    fmtxt.copy_pdf
    fmtxt.copy_tex
    fmtxt.save_html
