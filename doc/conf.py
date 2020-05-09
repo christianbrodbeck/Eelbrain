@@ -46,6 +46,7 @@ extensions = [
     'sphinxcontrib.bibtex',  # https://sphinxcontrib-bibtex.readthedocs.io
     'sphinx_gallery.gen_gallery',  # https://sphinx-gallery.github.io
     'scanpydoc',  # https://github.com/theislab/scanpydoc
+    'sphinx_rtd_theme',  # https://sphinx-rtd-theme.readthedocs.io/
 ]
 # enable to  have all methods documented on the same page as a class:
 # autodoc_default_flags=['inherited-members']
@@ -218,12 +219,16 @@ intersphinx_mapping = {
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 # new default: alabaster
-html_theme = 'classic'
+html_theme = "sphinx_rtd_theme"
 
 # Theme options are theme-specific and customize the look and feel of a theme
-# further.  For a list of options available for each theme, see the
-# documentation.
-html_theme_options = {'stickysidebar': True}
+# further. https://sphinx-rtd-theme.readthedocs.io/en/latest/configuring.html
+html_theme_options = {
+    'logo_only': True,
+    'includehidden': False,
+    'navigation_depth': 2,  # otherwise RTD includes all autosummary sub-headings
+    'canonical_url': 'https://eelbrain.readthedocs.io/en/stable/',
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
 # html_theme_path = []
@@ -248,6 +253,7 @@ html_favicon = 'static/eelbrain.ico'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['static']
+html_css_files = ['css/custom.css']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.

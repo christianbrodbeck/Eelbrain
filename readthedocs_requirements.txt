@@ -8,6 +8,7 @@ nibabel >2.3.0  # read_annot bug
 nilearn
 numpy >=1.11
 pillow
+sphinx_rtd_theme
 sphinx >=1.6
 sphinx-autodoc-typehints
 sphinx-gallery

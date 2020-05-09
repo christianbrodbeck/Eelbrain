@@ -12,7 +12,7 @@ Methods
 {{ underline }}
 
 .. autosummary::
-   :toctree:
+   :toctree: generated
 
 {% for item in methods %}
    {%- if not item.startswith('_') or item in ['__call__'] %}
