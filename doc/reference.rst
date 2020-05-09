@@ -210,7 +210,7 @@ Univariate statistical tests:
 
 .. autosummary::
    :toctree: generated
-   
+
    test.Correlation
    test.TTestOneSample
    test.TTestIndependent

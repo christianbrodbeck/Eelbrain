@@ -38,6 +38,7 @@ dependencies:
 - sphinx
 - sphinx-autodoc-typehints
 - sphinx-gallery
+- sphinx_rtd_theme
 - sphinxcontrib-bibtex
 - pydocstyle
 # testing
