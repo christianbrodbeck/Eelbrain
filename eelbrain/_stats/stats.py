@@ -255,9 +255,12 @@ class SEM:
         -----
         See Loftus and Masson (1994).
         """
-        if x is None:
+        if x is None or len(x.cells) == 1:
             n = len(y)
-            model = match
+            if match is None or len(match) == len(match.cells):
+                model = None
+            else:
+                model = match
         else:
             x = asfactor(x)
             n = x._cellsize()
