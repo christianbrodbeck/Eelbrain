@@ -2,6 +2,7 @@
 """Plots for color/style legends"""
 from collections.abc import Iterator
 from itertools import chain
+from typing import Sequence
 
 import numpy as np
 import matplotlib as mpl
@@ -23,21 +24,21 @@ class ColorGrid(EelFigure):
 
     Parameters
     ----------
-    row_cells : tuple of str
+    row_cells
         Cells contained in the rows.
-    column_cells : tuple of str
+    column_cells
         Cells contained in the columns.
-    colors : dict
+    colors
         Colors for cells.
-    size : scalar
+    size
         Size (width and height) of the color squares (the default is to
         scale them to fit the font size).
     column_label_position : 'top' | 'bottom'
         Where to place the column labels (default is 'top').
-    row_first : bool
+    row_first
         Whether the row cell precedes the column cell in color keys. By
         default this is inferred from the existing keys.
-    labels : dict (optional)
+    labels
         Condition labels that are used instead of the keys in ``row_cells`` and
         ``column_cells``.
     shape : 'box' | 'line'
@@ -52,9 +53,19 @@ class ColorGrid(EelFigure):
     row_labels : list of :class:`matplotlib.text.Text`
         Row labels.
     """
-    def __init__(self, row_cells, column_cells, colors, size=None,
-                 column_label_position='top', row_first=None, labels=None,
-                 shape='box', *args, **kwargs):
+    def __init__(
+            self,
+            row_cells: Sequence[str],
+            column_cells: Sequence[str],
+            colors: dict,
+            size: float = None,
+            column_label_position: str = 'top',
+            row_first: bool = None,
+            labels: dict = None,
+            shape: str = 'box',
+            *args, **kwargs):
+        row_cells = list(row_cells)
+        column_cells = list(column_cells)
         if row_first is None:
             row_cell_0 = row_cells[0]
             col_cell_0 = column_cells[0]
@@ -63,9 +74,7 @@ class ColorGrid(EelFigure):
             elif (col_cell_0, row_cell_0) in colors:
                 row_first = False
             else:
-                msg = ("Neither %s nor %s exist as a key in colors" %
-                       ((row_cell_0, col_cell_0), (col_cell_0, row_cell_0)))
-                raise KeyError(msg)
+                raise KeyError(f"Neither {(row_cell_0, col_cell_0)} nor {(col_cell_0, row_cell_0)} exist as a key in colors")
 
         if size is None:
             size = mpl.rcParams['font.size'] * LEGEND_SIZE * POINT_SIZE
@@ -76,7 +85,7 @@ class ColorGrid(EelFigure):
         self._ax = ax
 
         # reverse rows so we can plot upwards
-        row_cells = tuple(reversed(row_cells))
+        row_cells.reverse()
         n_rows = len(row_cells)
         n_cols = len(column_cells)
 
