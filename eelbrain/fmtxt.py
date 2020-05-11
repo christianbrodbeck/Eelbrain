@@ -1411,7 +1411,7 @@ class Table(FMTextElement):
             if isinstance(span, (list, tuple)):
                 span = '%i-%i' % span
             elif isinstance(span, str):
-                if not re.match('\d+-\d+', span):
+                if not re.match(r'\d+-\d+', span):
                     raise ValueError("span=%r" % span)
             else:
                 raise TypeError("span=%r" % (span,))
@@ -1424,6 +1424,13 @@ class Table(FMTextElement):
     def caption(self, content: FMTextLike):
         """Set the table caption"""
         self._caption = asfmtext_or_none(content)
+
+    def append(self, table: 'Table'):
+        "Append another table (has to have same column specification)"
+        if table.columns != self.columns:
+            raise ValueError(f"Trying to append table with table.colums={table.columns} to {self.columns}")
+        self.endline()
+        self.rows.extend(table.rows)
 
     def __repr__(self):
         # return self.__str__ so that when a function returns a Table, the
