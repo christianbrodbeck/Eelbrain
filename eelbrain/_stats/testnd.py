@@ -3415,7 +3415,7 @@ class NDPermutationDistribution:
                     # resulted in a larger test statistic than the observed
                     # one" (179)
                     dist = self._aggregate_dist(**sub)
-                    n_larger = np.sum(dist > np.abs(cluster_v[:, None]), 1)
+                    n_larger = np.sum(dist >= np.abs(cluster_v[:, None]), 1)
                     cluster_p = n_larger / self.samples
 
                     # select clusters
