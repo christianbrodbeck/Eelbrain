@@ -260,18 +260,18 @@ class Celltable:
                 out[k] = reference_v
         return out
 
-    def _align(self, y, rm=False, ds=None):
+    def _align(self, y, rm: bool = False, ds: Dataset = None, coerce: Callable = asdataobject):
         """Align an additional variable to the celltable
 
         Parameters
         ----------
         y : data-object
             Data-object to align.
-        rm : bool
+        rm
             If the celltable is a repeated-measures celltable, align ``y`` to
             the repeated measures table rather than the long form table.
         """
-        y_ = asdataobject(y, self._sub, ds, self._n_cases)
+        y_ = coerce(y, self._sub, ds, self._n_cases)
         if self._aggregate is not None:
             y_ = y_.aggregate(self._aggregate)
         if self._sort_idx is not None:

@@ -1200,10 +1200,10 @@ class PlotData:
         if xax is None:
             ax_cells = [None]
         else:
-            xax = ct._align(xax, ds=ds)
+            xax = ct._align(xax, ds=ds, coerce=ascategorial)
             ax_cells = xax.cells
         if x is not None:
-            x = ct._align(x, ds=ds)
+            x = ct._align(x, ds=ds, coerce=ascategorial)
         title = frame_title(y, x, xax)
         # find styles
         styles = find_cell_styles(ct.x, colors)
