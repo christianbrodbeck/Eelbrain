@@ -126,7 +126,7 @@ from scipy.spatial import ConvexHull
 from scipy.spatial.distance import cdist, pdist, squareform
 
 from . import fmtxt, _info
-from ._exceptions import DimensionMismatchError, IncompleteModel
+from ._exceptions import DimensionMismatchError, EvalError, IncompleteModel
 from ._data_opt import gaussian_smoother
 from ._text import enumeration
 from ._utils import (
@@ -5862,7 +5862,10 @@ class Dataset(dict):
         """
         if not isinstance(expression, str):
             raise TypeError(f"expression={expression!r}: needs str")
-        return eval(expression, EVAL_CONTEXT, self)
+        try:
+            return eval(expression, EVAL_CONTEXT, self)
+        except Exception as exception:
+            raise EvalError(expression, exception) from exception
 
     @classmethod
     def from_caselist(cls, names, cases, name=None, caption=None, info=None, random=None, check_dims=True):
