@@ -14,6 +14,7 @@ from mne.io.constants import FIFF
 import numpy as np
 
 from .._data_obj import NDVar, SourceSpace, asndvar
+from .._exceptions import KeysMissing
 from .._text import ms
 from .._utils import LazyProperty
 from ..fmtxt import Image
@@ -531,8 +532,7 @@ class Brain(TimeSlicer, surfer.Brain):
                 plot_colors = colors
                 missing = np.setdiff1d(missing, [0], assume_unique=True)
             if missing:
-                missing = ', '.join(map(str, missing))
-                raise ValueError(f"colors={colors}: missing values for {missing}")
+                raise KeysMissing(missing, 'colors', colors)
         else:
             raise TypeError(f"colors={colors}")
         # generate color table

@@ -1,4 +1,18 @@
 """Exceptions used throughout Eelbrain"""
+from typing import Collection
+
+from ._text import enumeration, plural
+
+
+class KeysMissing(KeyError):
+    "A styling dictionary is missing a key (more information than KeyError)"
+    def __init__(self, keys: Collection, from_name: str, from_dict: dict):
+        KeyError.__init__(self, keys, from_name, from_dict)
+
+    def str(self):
+        keys, from_name, from_dict = self.args
+        n = len(keys)
+        return f"{plural('Key', n)} {enumeration(map(repr, keys))} missing from {from_name}={from_dict!r}"
 
 
 class DefinitionError(Exception):

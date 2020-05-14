@@ -8,6 +8,7 @@ import numpy as np
 
 from . import fmtxt
 from ._celltable import Celltable
+from ._exceptions import KeysMissing
 from ._data_obj import (
     Categorial, Dataset, Factor, Interaction, NDVar, Scalar, UTS,
     Var, ascategorial, as_legal_dataset_key, asndvar, asvar, assub, asuv,
@@ -379,7 +380,7 @@ def melt_ndvar(ndvar, dim=None, cells=None, ds=None, varname=None, labels=None):
     elif isinstance(labels, dict):
         missing = set(cells).difference(labels)
         if missing:
-            raise ValueError(f"labels={labels}: missing keys {missing}")
+            raise KeysMissing(missing, 'labels', labels)
         label = itemgetter(labels)
     elif labels is None:
         label = lambda x: x

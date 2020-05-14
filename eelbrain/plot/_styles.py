@@ -14,6 +14,7 @@ from matplotlib.colors import LinearSegmentedColormap, to_rgb, to_rgba
 
 from .._colorspaces import LocatedListedColormap, lch_to_rgb, rgb_to_lch, oneway_colors, twoway_colors, symmetric_cmaps
 from .._data_obj import Factor, Interaction, CellArg
+from .._exceptions import KeysMissing
 from .._utils import LazyProperty
 
 
@@ -108,19 +109,19 @@ def find_cell_styles(x, colors, cells=None, fallback: bool = True) -> 'StylesDic
             raise ValueError(f"colors={colors!r}: only {len(colors)} colors for {len(cells)} cells.")
         out = dict(zip(cells, colors))
     elif isinstance(colors, dict):
-        missing = [cell for cell in cells if cell not in colors]
+        out = colors.copy()
+        missing = [cell for cell in cells if cell not in out]
         if missing:
             if fallback:
                 for cell in missing[:]:
                     n = len(cell) if isinstance(cell, tuple) else 0
                     for i in range(1, n):
-                        if cell[:-i] in colors:
-                            colors[cell] = colors[cell[:-i]]
+                        if cell[:-i] in out:
+                            out[cell] = out[cell[:-i]]
                             missing.remove(cell)
                             break
             if missing:
-                raise ValueError(f"colors={colors!r} is missing cells {missing}")
-        out = colors
+                raise KeysMissing(missing, 'colors', colors)
     elif colors is None or isinstance(colors, str):
         out = colors_for_categorial(x, cmap=colors)
     else:
