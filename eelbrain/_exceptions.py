@@ -5,6 +5,12 @@ class DefinitionError(Exception):
     "MneExperiment definition error"
 
 
+class EvalError(Exception):
+    "Error while evaluating expression"
+    def __init__(self, expression, exception, context):
+        Exception.__init__(self, f"Error evaluating {expression!r} in {context}: {exception}")
+
+
 class DimensionMismatchError(Exception):
     "Trying to align NDVars with mismatching dimensions"
 
