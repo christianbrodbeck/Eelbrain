@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import ast
+from typing import Set
 
 
 FLOAT_PATTERN = "^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$"
@@ -9,12 +10,12 @@ INT_PATTERN = "^-?\d+$"
 FLOAT_NAN_PATTERN = "^([Nn][Aa][Nn]$)|([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)$"
 
 
-def find_variables(expr):
+def find_variables(expr: str) -> Set[str]:
     """Find the variables participating in an expressions
 
     Returns
     -------
-    variables : tuple of str
+    variables
         Variables occurring in expr.
     """
     try:

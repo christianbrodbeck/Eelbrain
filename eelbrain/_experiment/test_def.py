@@ -1,8 +1,10 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from inspect import getfullargspec
 import re
+from typing import Collection, Tuple, Union
 
 from .. import testnd
+from .._data_obj import CellArg
 from .._exceptions import DefinitionError
 from .._io.fiff import find_mne_channel_types
 from .._utils.parse import find_variables
@@ -51,48 +53,42 @@ class Test(Definition):
     kind = None
     DICT_ATTRS = ('kind', 'model', 'vars')
 
-    def __init__(self, desc, model, vars=None):
+    def __init__(
+            self,
+            desc: str,
+            model: str = None,  # within-subject model; None for single-trial analysis
+            vars: Union[str, tuple, list, dict] = None,  # dynamic variables
+            cat: Tuple[CellArg, ...] = None,  # cells in model to load
+            depend_on: Collection[str] = (),  # non-model variables
+    ):
         self.desc = desc
-        self.model = model
+        if model is None:
+            self._test_vars = []
+            self.model = None
+        else:
+            self._test_vars = [v for v in map(str.strip, model.split('%')) if v]
+            self.model = '%'.join(self._test_vars)
+        self.cat = cat
         try:
             self.vars = Variables(vars)
         except Exception as error:
             raise DefinitionError(f"vars={vars} ({error})")
+        self._test_vars.extend(depend_on)
 
-        if model is None:  # no averaging
-            self._between = None
-            self._within_model = None
-            self._within_model_items = None
-        else:
-            model_elements = list(map(str.strip, model.split('%')))
-            if 'group' in model_elements:
-                self._between = model_elements.index('group')
-                del model_elements[self._between]
-            else:
-                self._between = None
-            self._within_model_items = model_elements
-            self._within_model = '%'.join(model_elements)
-
-
-class EvokedTest(Test):
-    "Group level test applied to subject averages"
-    def __init__(self, desc, model, cat=None, vars=None):
-        Test.__init__(self, desc, model, vars)
-        self.cat = cat
-        if cat is not None:
-            if self._within_model is None or len(self._within_model_items) == 0:
-                cat = None
-            elif self._between is not None:
-                # remove between factor from cat
-                cat = [[c for i, c in enumerate(cat) if i != self._between]
-                       for cat in self.cat]
-        self._within_cat = cat
-
-    def make(self, y, ds, force_permutation, kwargs):
-        raise NotImplementedError
+    def _find_test_vars(self):
+        "Find variables and groups used in a test definition"
+        vs = set(self._test_vars)
+        groups = set()
+        for name, variable in self.vars.vars.items():
+            if name in vs:
+                vs.remove(name)
+                vs.update(variable.input_vars())
+                if isinstance(variable, GroupVar):
+                    groups.update(variable.groups)
+        return vs, groups
 
 
-class TTestOneSample(EvokedTest):
+class TTestOneSample(Test):
     """One-sample t-test
 
     Parameters
@@ -108,30 +104,17 @@ class TTestOneSample(EvokedTest):
     kind = 'ttest_1samp'
     DICT_ATTRS = Test.DICT_ATTRS + ('tail',)
 
-    def __init__(self, tail=0):
+    def __init__(self, tail: int = 0):
+        tail = tail_arg(tail)
         desc = "%s 0" % TAIL_REPR[tail]
-        EvokedTest.__init__(self, desc, '')
+        Test.__init__(self, desc, '')
         self.tail = tail
 
     def make(self, y, ds, force_permutation, kwargs):
-        return testnd.TTestOneSample(
-            y, match='subject', ds=ds, tail=self.tail,
-            force_permutation=force_permutation, **kwargs)
+        return testnd.TTestOneSample(y, match='subject', ds=ds, tail=self.tail, force_permutation=force_permutation, **kwargs)
 
 
-class TTest(EvokedTest):
-    DICT_ATTRS = Test.DICT_ATTRS + ('c1', 'c0', 'tail')
-
-    def __init__(self, model, c1, c0, tail, vars=None):
-        tail = tail_arg(tail)
-        desc = '%s %s %s' % (c1, TAIL_REPR[tail], c0)
-        EvokedTest.__init__(self, desc, model, (c1, c0), vars)
-        self.c1 = c1
-        self.c0 = c0
-        self.tail = tail
-
-
-class TTestIndependent(TTest):
+class TTestIndependent(Test):
     """Independent measures t-test (comparing groups of subjects)
 
     Parameters
@@ -161,19 +144,32 @@ class TTestIndependent(TTest):
         }
     """
     kind = 'ttest_ind'
+    DICT_ATTRS = Test.DICT_ATTRS + ('c1', 'c0', 'tail')
 
-    def __init__(self, model, c1, c0, tail=0, vars=None):
-        if vars is None and model == 'group':
-            vars = (('group', GroupVar((c1, c0))),)
-        TTest.__init__(self, model, c1, c0, tail, vars)
+    def __init__(self, model: str, c1: CellArg, c0: CellArg, tail: int = 0):
+        if model == 'group':
+            vars_ = {'group': GroupVar((c1, c0))}
+        elif '%' in model:
+            # assume 'group' is between, others are within
+            raise NotImplementedError(f"model={model!r}: model with % for {self.__class__.__name__}")
+        else:
+            vars_ = None
+        tail = tail_arg(tail)
+        desc = '%s %s %s' % (c1, TAIL_REPR[tail], c0)
+        Test.__init__(self, desc, '', vars=vars_, depend_on=[model])
+        self.between_model = model
+        self.c1 = c1
+        self.c0 = c0
+        self.tail = tail
+
+    def as_dict(self):
+        return {**Test.as_dict(self), 'model': self.between_model}
 
     def make(self, y, ds, force_permutation, kwargs):
-        return testnd.TTestIndependent(
-            y, self.model, self.c1, self.c0, 'subject', ds=ds, tail=self.tail,
-            force_permutation=force_permutation, **kwargs)
+        return testnd.TTestIndependent(y, self.between_model, self.c1, self.c0, 'subject', ds=ds, tail=self.tail, force_permutation=force_permutation, **kwargs)
 
 
-class TTestRelated(TTest):
+class TTestRelated(Test):
     """Related measures t-test
 
     Parameters
@@ -211,18 +207,21 @@ class TTestRelated(TTest):
     :class:`~eelbrain.pipeline.EpochCollection` epoch and ``model='epoch'``.
     """
     kind = 'ttest_rel'
+    DICT_ATTRS = Test.DICT_ATTRS + ('c1', 'c0', 'tail')
 
-    def __init__(self, model, c1, c0, tail=0):
-        TTest.__init__(self, model, c1, c0, tail)
-        assert self._between is None
+    def __init__(self, model: str, c1: CellArg, c0: CellArg, tail: int = 0):
+        tail = tail_arg(tail)
+        desc = '%s %s %s' % (c1, TAIL_REPR[tail], c0)
+        Test.__init__(self, desc, model, cat=(c1, c0))
+        self.c1 = c1
+        self.c0 = c0
+        self.tail = tail
 
     def make(self, y, ds, force_permutation, kwargs):
-        return testnd.TTestRelated(
-            y, self.model, self.c1, self.c0, 'subject', ds=ds, tail=self.tail,
-            force_permutation=force_permutation, **kwargs)
+        return testnd.TTestRelated(y, self.model, self.c1, self.c0, 'subject', ds=ds, tail=self.tail, force_permutation=force_permutation, **kwargs)
 
 
-class TContrastRelated(EvokedTest):
+class TContrastRelated(Test):
     """Contrasts of T-maps (see :class:`eelbrain.testnd.TContrastRelated`)
 
     Parameters
@@ -254,19 +253,17 @@ class TContrastRelated(EvokedTest):
     kind = 't_contrast_rel'
     DICT_ATTRS = Test.DICT_ATTRS + ('contrast', 'tail')
 
-    def __init__(self, model, contrast, tail=0):
+    def __init__(self, model: str, contrast: str, tail: int = 0):
         tail = tail_arg(tail)
-        EvokedTest.__init__(contrast, model)
+        Test.__init__(self, contrast, model)
         self.contrast = contrast
         self.tail = tail
 
     def make(self, y, ds, force_permutation, kwargs):
-        return testnd.TContrastRelated(
-            y, self.model, self.contrast, 'subject', ds=ds, tail=self.tail,
-            force_permutation=force_permutation, **kwargs)
+        return testnd.TContrastRelated(y, self.model, self.contrast, 'subject', ds=ds, tail=self.tail, force_permutation=force_permutation, **kwargs)
 
 
-class ANOVA(EvokedTest):
+class ANOVA(Test):
     """ANOVA test
 
     Parameters
@@ -299,16 +296,28 @@ class ANOVA(EvokedTest):
     kind = 'anova'
     DICT_ATTRS = Test.DICT_ATTRS + ('x',)
 
-    def __init__(self, x, model=None, vars=None):
-        x = ''.join(x.split())
+    def __init__(self, x: str, model: str = None, vars: dict = None):
+        x_items = [item.strip() for item in x.split('*')]
+        items = sorted(x_items)
+        nested_in = (re.match(r'^subject\((\w+)\)?$', item) for item in items)
+        between_items = []
+        for match in filter(None, nested_in):
+            between_item = match.group(1)
+            items.remove(match.string)
+            items.remove(between_item)
+            between_items.append(between_item)
         if model is None:
-            items = sorted(i.strip() for i in x.split('*'))
-            within_items = (i for i in items if not re.match(r'^subject(\(\w+\))?$', i))
-            model = '%'.join(within_items)
-        EvokedTest.__init__(self, x, model, vars=vars)
-        if self._between is not None:
-            raise NotImplementedError("Between-subject ANOVA")
-        self.x = x
+            if 'subject' in items:
+                items.remove('subject')
+            elif not between_items:
+                raise DefinitionError(f"x={x!r} without model: for mixed ANOVA, 'subject' needs to be in x; for between-subject ANOVA, model needs to be set explicitly")
+            model = '%'.join(items)
+        else:
+            model_items = list(filter(None, (item.strip() for item in model.split('%'))))
+            between_items.extend(set(items).difference(model_items))
+        desc = ' * '.join(x_items)
+        Test.__init__(self, desc, model, vars=vars, depend_on=between_items)
+        self.x = '*'.join(x_items)
 
     def make(self, y, ds, force_permutation, kwargs):
         return testnd.ANOVA(y, self.x, ds=ds, force_permutation=force_permutation, **kwargs)
@@ -371,8 +380,8 @@ class TwoStageTest(Test):
     kind = 'two-stage'
     DICT_ATTRS = Test.DICT_ATTRS + ('stage_1',)
 
-    def __init__(self, stage_1, vars=None, model=None):
-        Test.__init__(self, stage_1, model, vars)
+    def __init__(self, stage_1: str, vars: dict = None, model: str = None):
+        Test.__init__(self, stage_1, model, vars=vars, depend_on=find_variables(stage_1))
         self.stage_1 = stage_1
 
     def make_stage_1(self, y, ds, subject):
@@ -530,23 +539,3 @@ class ROI2StageResult(ROITestResult):
         Dataset describing how many trials were used in each condition per
         subject.
     """
-
-
-def find_test_vars(params):
-    "Find variables used in a test definition"
-    if 'model' in params and params['model'] is not None:
-        vs = find_variables(params['model'])
-    else:
-        vs = set()
-
-    if params['kind'] == 'two-stage':
-        vs.update(find_variables(params['stage_1']))
-
-    for name, variable in params['vars'].vars.items():
-        if name in vs:
-            vs.remove(name)
-            vs.update(variable.input_vars())
-    return vs
-
-
-find_test_vars.__test__ = False
