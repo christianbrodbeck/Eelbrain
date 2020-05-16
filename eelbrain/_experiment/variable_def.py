@@ -10,7 +10,7 @@ variables = {
 """
 import numpy as np
 
-from .._data_obj import Factor, Var, asfactor, assert_is_legal_dataset_key
+from .._data_obj import Factor, Var, assert_is_legal_dataset_key
 from .._utils.numpy_utils import INT_TYPES
 from .._utils.parse import find_variables
 from .definitions import DefinitionError
@@ -226,7 +226,7 @@ class Variables:
     arg : str | tuple | dict
         The ``vars`` argument.
     """
-    def __init__(self, arg):
+    def __init__(self, arg: dict):
         if arg is None:
             arg = ()
         elif isinstance(arg, str):

@@ -68,11 +68,11 @@ from .preprocessing import (
     assemble_pipeline, RawSource, RawFilter, RawICA,
     compare_pipelines, ask_to_delete_ica_files)
 from .test_def import (
-    Test, EvokedTest,
+    Test,
     ROITestResult, ROI2StageResult, TestDims, TwoStageTest,
-    assemble_tests, find_test_vars,
+    assemble_tests,
 )
-from .variable_def import Variables
+from .variable_def import GroupVar, Variables
 
 
 # current cache state version
@@ -1186,18 +1186,34 @@ class MneExperiment(FileTree):
                 if subjects.intersection(members):
                     invalid_cache['groups'].add(group)
 
-        # tests/epochs based on variables
+        # group-variables using bad groups
+        if 'groups' in invalid_cache:
+            bad_groups = invalid_cache['groups']
+            for key, var in self._variables.vars.items():
+                if isinstance(var, GroupVar) and bad_groups.intersection(var.groups):
+                    invalid_cache['variables'].add(key)
+
+        # tests that depend on variables or group definitions
+        if 'groups' in invalid_cache or 'variables' in invalid_cache:
+            bad_groups = invalid_cache.get('groups', ())
+            bad_vars = invalid_cache.get('variables', ())
+            for test in cache_state['tests']:
+                if test in invalid_cache['tests'] or test not in self._tests:
+                    continue
+                test_obj = self._tests[test]
+                test_vars, test_groups = test_obj._find_test_vars()
+                bad_test_vars = test_vars.intersection(bad_vars)
+                if bad_test_vars:
+                    invalid_cache['tests'].add(test)
+                    self._log.debug("  Test %s depends on changed variables %s", test, ', '.join(bad_test_vars))
+                bad_test_groups = test_groups.intersection(bad_groups)
+                if bad_test_groups:
+                    invalid_cache['tests'].add(test)
+                    self._log.debug("  Test %s depends on changed groups %s", test, ', '.join(bad_test_groups))
+
+        # epochs based on variables
         if 'variables' in invalid_cache:
             bad_vars = invalid_cache['variables']
-            # tests using bad variable
-            for test in cache_state['tests']:
-                if test in invalid_cache['tests']:
-                    continue
-                params = new_state['tests'][test]
-                bad = bad_vars.intersection(find_test_vars(params))
-                if bad:
-                    invalid_cache['tests'].add(test)
-                    self._log.debug("  Test %s depends on changed variables %s", test, ', '.join(bad))
             # epochs using bad variable
             epochs_vars = find_epochs_vars(cache_state['epochs'])
             for epoch, evars in epochs_vars.items():
@@ -3329,10 +3345,7 @@ class MneExperiment(FileTree):
         ...
             State parameters.
         """
-        if not isinstance(self._tests[test], EvokedTest):
-            raise NotImplementedError("Result-plots for %s" %
-                                      self._tests[test].__class__.__name__)
-        elif data != 'source':
+        if data != 'source':
             raise NotImplementedError("data=%s" % repr(data))
         elif not isinstance(pmin, float):
             raise NotImplementedError("Threshold-free tests")
@@ -3728,9 +3741,9 @@ class MneExperiment(FileTree):
             res_data, res = self._make_test_rois(baseline, src_baseline, test_obj, samples, pmin, test_kwargs, res, data)
         else:
             if data.sensor:
-                res_data = self.load_evoked(True, baseline, True, test_obj._within_cat, data=data, vardef=test_obj.vars)
+                res_data = self.load_evoked(True, baseline, True, test_obj.cat, data=data, vardef=test_obj.vars)
             elif data.source:
-                res_data = self.load_evoked_stc(True, baseline, src_baseline, morph=True, cat=test_obj._within_cat, mask=mask, vardef=test_obj.vars)
+                res_data = self.load_evoked_stc(True, baseline, src_baseline, morph=True, cat=test_obj.cat, mask=mask, vardef=test_obj.vars)
             else:
                 raise ValueError(f"data={data.string!r}")
 
@@ -3811,7 +3824,7 @@ class MneExperiment(FileTree):
             if test_obj.model is None:
                 ds = self.load_epochs_stc(1, baseline, src_baseline, mask=True, vardef=test_obj.vars)
             else:
-                ds = self.load_evoked_stc(1, baseline, src_baseline, mask=True, vardef=test_obj.vars, model=test_obj._within_model)
+                ds = self.load_evoked_stc(1, baseline, src_baseline, mask=True, vardef=test_obj.vars, model=test_obj.model)
 
             dss = self._src_to_label_tc(ds, data.source)
             if res is None:
@@ -3849,7 +3862,7 @@ class MneExperiment(FileTree):
             if test_obj.model is None:
                 ds = self.load_epochs_stc(1, baseline, src_baseline, morph=True, mask=mask, vardef=test_obj.vars)
             else:
-                ds = self.load_evoked_stc(1, baseline, src_baseline, morph=True, mask=mask, vardef=test_obj.vars, model=test_obj._within_model)
+                ds = self.load_evoked_stc(1, baseline, src_baseline, morph=True, mask=mask, vardef=test_obj.vars, model=test_obj.model)
 
             if res is None:
                 lms.append(test_obj.make_stage_1(data.y_name, ds, subject))
@@ -4934,7 +4947,7 @@ class MneExperiment(FileTree):
 
     def _two_stage_report(self, report, data, test, baseline, src_baseline, pmin, samples, tstart, tstop, parc, mask, include):
         test_obj = self._tests[test]
-        return_data = test_obj._within_model is not None
+        return_data = bool(test_obj.model)
         rlm = self._load_test(test, tstart, tstop, pmin, parc, mask, samples, data, baseline, src_baseline, return_data, True)
         if return_data:
             group_ds, rlm = rlm
@@ -5505,8 +5518,6 @@ class MneExperiment(FileTree):
             Conduct permutations regardless of whether there are any clusters.
         """
         test_obj = test if isinstance(test, Test) else self._tests[test]
-        if not isinstance(test_obj, EvokedTest):
-            raise RuntimeError("Test kind=%s" % test_obj.kind)
         return test_obj.make(y, ds, force_permutation, kwargs)
 
     def merge_bad_channels(self):
@@ -6216,7 +6227,7 @@ class MneExperiment(FileTree):
         if test != '*' and test in self._tests:  # with vmatch=False, test object might not be availale
             test_obj = self._tests[test]
             if test_obj.model is not None:
-                self.set(model=test_obj._within_model)
+                self.set(model=test_obj.model)
 
     def _set_analysis_options(self, data, baseline, src_baseline, pmin, tstart, tstop, parc=None, mask=None, samplingrate=None, test_options=(), folder_options=()):
         """Set templates for paths with test parameters
