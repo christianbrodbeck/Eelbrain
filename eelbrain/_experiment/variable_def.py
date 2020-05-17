@@ -16,6 +16,10 @@ from .._utils.parse import find_variables
 from .definitions import DefinitionError
 
 
+# Some event columns are reserved for Eelbrain
+RESERVED_VAR_KEYS = ('subject', 'session', 'visit')
+
+
 def as_vardef_var(v):
     "Coerce ds.eval() output for use as variable"
     if isinstance(v, np.ndarray):
@@ -259,6 +263,8 @@ class Variables:
                     raise DefinitionError(f"Variable {name!r}: {vdef!r}")
 
             assert_is_legal_dataset_key(name)
+            if name in RESERVED_VAR_KEYS:
+                raise DefinitionError(f"Variable {name!r}: reserved name")
             self.vars[name] = vdef
 
     def __getstate__(self):
