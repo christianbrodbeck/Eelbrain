@@ -193,108 +193,6 @@ def cache_valid(mtime, *source_mtimes):
         and mtime > max(source_mtimes))
 
 
-temp = {
-    # MEG
-    'equalize_evoked_count': ('', 'eq'),
-    # locations
-    'raw-sdir': join('{root}', 'meg'),
-    'raw-dir': join('{raw-sdir}', '{subject}'),
-
-    # raw input files
-    'trans-file': join('{raw-dir}', '{mrisubject_visit}-trans.fif'),
-    # log-files (eye-tracker etc.)
-    'log-dir': join('{raw-dir}', 'logs'),
-    'edf-file': join('{log-dir}', '*.edf'),
-
-    # created input files
-    'ica-file': join('{raw-dir}', '{subject_visit} {raw}-ica.fif'),  # hard-coded in RawICA
-    'rej-dir': join('{raw-dir}', 'epoch selection'),
-    'rej-file': join('{rej-dir}', '{session}_{sns_kind}_{epoch_visit}-{rej}.pickled'),
-
-    # cache
-    'cache-dir': join('{root}', 'eelbrain-cache'),
-    # raw
-    'raw-cache-dir': join('{cache-dir}', 'raw', '{subject}'),
-    'raw-cache-base': join('{raw-cache-dir}', '{recording} {raw}'),
-    'cached-raw-file': '{raw-cache-base}-raw.fif',
-    'event-file': '{raw-cache-base}-evts.pickled',
-    'interp-file': '{raw-cache-base}-interp.pickled',
-    'cached-raw-log-file': '{raw-cache-base}-raw.log',
-
-    # forward modeling:
-    'fwd-file': join('{raw-cache-dir}', '{recording}-{mrisubject}-{src}-fwd.fif'),
-    # sensor covariance
-    'cov-dir': join('{cache-dir}', 'cov'),
-    'cov-base': join('{cov-dir}', '{subject_visit}', '{sns_kind} {cov}-{rej}'),
-    'cov-file': '{cov-base}-cov.fif',
-    'cov-info-file': '{cov-base}-info.txt',
-    # inverse solution
-    'inv-file': join('{raw-cache-dir}', 'inv', '{mrisubject} {src} {recording} {sns_kind} {cov} {rej} {inv-cache}-inv.fif'),
-    # evoked
-    'evoked-dir': join('{cache-dir}', 'evoked'),
-    'evoked-file': join('{evoked-dir}', '{subject}', '{sns_kind} {epoch_visit} {model} {evoked_kind}-ave.fif'),
-    # test files
-    'test-dir': join('{cache-dir}', 'test'),
-    'test-file': join('{test-dir}', '{analysis} {group}', '{test_desc} {test_dims}.pickled'),
-
-    # MRIs
-    'common_brain': 'fsaverage',
-    # MRI base files
-    'mri-sdir': join('{root}', 'mri'),
-    'mri-dir': join('{mri-sdir}', '{mrisubject}'),
-    'bem-dir': join('{mri-dir}', 'bem'),
-    'mri-cfg-file': join('{mri-dir}', 'MRI scaling parameters.cfg'),
-    'mri-file': join('{mri-dir}', 'mri', 'orig.mgz'),
-    'bem-file': join('{bem-dir}', '{mrisubject}-inner_skull-bem.fif'),
-    'bem-sol-file': join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),  # removed for 0.24
-    'head-bem-file': join('{bem-dir}', '{mrisubject}-head.fif'),
-    'src-file': join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
-    'fiducials-file': join('{bem-dir}', '{mrisubject}-fiducials.fif'),
-    # Labels
-    'hemi': ('lh', 'rh'),
-    'label-dir': join('{mri-dir}', 'label'),
-    'annot-file': join('{label-dir}', '{hemi}.{parc}.annot'),
-
-    # (method) plots
-    'methods-dir': join('{root}', 'methods'),
-
-    # result output files
-    # data processing parameters
-    #    > group
-    #        > kind of test
-    #    > single-subject
-    #        > kind of test
-    #            > subject
-    'res-dir': join('{root}', 'results'),
-    'res-file': join('{res-dir}', '{analysis}', '{resname}.{ext}'),
-    'res-deep-file': join('{res-dir}', '{analysis}', '{folder}', '{resname}.{ext}'),
-    'report-file': join('{res-dir}', '{analysis} {group}', '{folder}', '{test_desc}.html'),
-    'group-mov-file': join('{res-dir}', '{analysis} {group}', '{epoch_visit} {test_options} {resname}.mov'),
-    'subject-res-dir': join('{res-dir}', '{analysis} subjects'),
-    'subject-spm-report': join('{subject-res-dir}', '{test} {epoch_visit} {test_options}', '{subject}.html'),
-    'subject-mov-file': join('{subject-res-dir}', '{epoch_visit} {test_options} {resname}', '{subject}.mov'),
-
-    # plots
-    # plot corresponding to a report (and using same folder structure)
-    'res-plot-root': join('{root}', 'result plots'),
-    'res-plot-dir': join('{res-plot-root}', '{analysis} {group}', '{folder}', '{test_desc}'),
-
-    # besa
-    'besa-root': join('{root}', 'besa'),
-    'besa-trig': join('{besa-root}', '{subject}', '{subject}_{recording}_{epoch_visit}_triggers.txt'),
-    'besa-evt': join('{besa-root}', '{subject}', '{subject}_{recording}_{epoch_visit}[{rej}].evt'),
-
-    # MRAT
-    'mrat_condition': '',
-    'mrat-root': join('{root}', 'mrat'),
-    'mrat-sns-root': join('{mrat-root}', '{sns_kind}', '{epoch_visit} {model} {evoked_kind}'),
-    'mrat-src-root': join('{mrat-root}', '{src_kind}', '{epoch_visit} {model} {evoked_kind}'),
-    'mrat-sns-file': join('{mrat-sns-root}', '{mrat_condition}', '{mrat_condition}_{subject}-ave.fif'),
-    'mrat_info-file': join('{mrat-root}', '{subject} info.txt'),
-    'mrat-src-file': join('{mrat-src-root}', '{mrat_condition}', '{mrat_condition}_{subject}'),
-}
-
-
 class MneExperiment(FileTree):
     """Analyze an MEG experiment (gradiometer only) with MNE
 
@@ -329,6 +227,14 @@ class MneExperiment(FileTree):
     cache_inv = True  # Whether to cache inverse solution
     # moderate speed gain for loading source estimates (34 subjects: 20 vs 70 s)
     # hard drive space ~ 100 mb/file
+
+    # Customize data locations, relative to root:
+    # Main data files (MEG/EEG)
+    data_dir = 'meg'
+    # Directory where to look for MRI subjects
+    mri_dir = 'mri'
+    # Directory where to keep cache files
+    cache_dir = 'eelbrain-cache'
 
     # tuple (if the experiment has multiple sessions)
     sessions = None
@@ -436,10 +342,6 @@ class MneExperiment(FileTree):
                         'n_cycles': 5}}
     freqs = {}
 
-    # basic templates to use. Can be a string referring to a templates
-    # dictionary in the module level _temp dictionary, or a templates
-    # dictionary
-    _templates = temp
     # specify additional templates
     _values = {}
     # specify defaults for specific fields (e.g. specify the initial subject
@@ -484,7 +386,114 @@ class MneExperiment(FileTree):
 
         # create attributes (overwrite class attributes)
         self._mri_subjects = self._mri_subjects.copy()
-        self._templates = self._templates.copy()
+        self._templates = {
+            # MEG
+            'equalize_evoked_count': ('', 'eq'),
+            # locations
+            # raw-sdir to be set later
+            'raw-dir': join('{raw-sdir}', '{subject}'),
+
+            # raw input files
+            'trans-file': join('{raw-dir}', '{mrisubject_visit}-trans.fif'),
+            # log-files (eye-tracker etc.)
+            'log-dir': join('{raw-dir}', 'logs'),
+            'edf-file': join('{log-dir}', '*.edf'),
+
+            # created input files
+            'ica-file': join('{raw-dir}', '{subject_visit} {raw}-ica.fif'),  # hard-coded in RawICA
+            'rej-dir': join('{raw-dir}', 'epoch selection'),
+            'rej-file': join('{rej-dir}', '{session}_{sns_kind}_{epoch_visit}-{rej}.pickled'),
+
+            # raw
+            'raw-cache-dir': join('{cache-dir}', 'raw', '{subject}'),
+            'raw-cache-base': join('{raw-cache-dir}', '{recording} {raw}'),
+            'cached-raw-file': '{raw-cache-base}-raw.fif',
+            'event-file': '{raw-cache-base}-evts.pickled',
+            'interp-file': '{raw-cache-base}-interp.pickled',
+            'cached-raw-log-file': '{raw-cache-base}-raw.log',
+
+            # forward modeling:
+            'fwd-file': join('{raw-cache-dir}', '{recording}-{mrisubject}-{src}-fwd.fif'),
+            # sensor covariance
+            'cov-dir': join('{cache-dir}', 'cov'),
+            'cov-base': join('{cov-dir}', '{subject_visit}', '{sns_kind} {cov}-{rej}'),
+            'cov-file': '{cov-base}-cov.fif',
+            'cov-info-file': '{cov-base}-info.txt',
+            # inverse solution
+            'inv-file': join('{raw-cache-dir}', 'inv', '{mrisubject} {src} {recording} {sns_kind} {cov} {rej} {inv-cache}-inv.fif'),
+            # evoked
+            'evoked-dir': join('{cache-dir}', 'evoked'),
+            'evoked-file': join('{evoked-dir}', '{subject}', '{sns_kind} {epoch_visit} {model} {evoked_kind}-ave.fif'),
+            # test files
+            'test-dir': join('{cache-dir}', 'test'),
+            'test-file': join('{test-dir}', '{analysis} {group}', '{test_desc} {test_dims}.pickled'),
+
+            # MRIs
+            'common_brain': 'fsaverage',
+            # MRI base files
+            'mri-dir': join('{mri-sdir}', '{mrisubject}'),
+            'bem-dir': join('{mri-dir}', 'bem'),
+            'mri-cfg-file': join('{mri-dir}', 'MRI scaling parameters.cfg'),
+            'mri-file': join('{mri-dir}', 'mri', 'orig.mgz'),
+            'bem-file': join('{bem-dir}', '{mrisubject}-inner_skull-bem.fif'),
+            'bem-sol-file': join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),  # removed for 0.24
+            'head-bem-file': join('{bem-dir}', '{mrisubject}-head.fif'),
+            'src-file': join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
+            'fiducials-file': join('{bem-dir}', '{mrisubject}-fiducials.fif'),
+            # Labels
+            'hemi': ('lh', 'rh'),
+            'label-dir': join('{mri-dir}', 'label'),
+            'annot-file': join('{label-dir}', '{hemi}.{parc}.annot'),
+
+            # (method) plots
+            'methods-dir': join('{root}', 'methods'),
+
+            # result output files
+            # data processing parameters
+            #    > group
+            #        > kind of test
+            #    > single-subject
+            #        > kind of test
+            #            > subject
+            'res-dir': join('{root}', 'results'),
+            'res-file': join('{res-dir}', '{analysis}', '{resname}.{ext}'),
+            'res-deep-file': join('{res-dir}', '{analysis}', '{folder}', '{resname}.{ext}'),
+            'report-file': join('{res-dir}', '{analysis} {group}', '{folder}', '{test_desc}.html'),
+            'group-mov-file': join('{res-dir}', '{analysis} {group}', '{epoch_visit} {test_options} {resname}.mov'),
+            'subject-res-dir': join('{res-dir}', '{analysis} subjects'),
+            'subject-spm-report': join('{subject-res-dir}', '{test} {epoch_visit} {test_options}', '{subject}.html'),
+            'subject-mov-file': join('{subject-res-dir}', '{epoch_visit} {test_options} {resname}', '{subject}.mov'),
+
+            # plots
+            # plot corresponding to a report (and using same folder structure)
+            'res-plot-root': join('{root}', 'result plots'),
+            'res-plot-dir': join('{res-plot-root}', '{analysis} {group}', '{folder}', '{test_desc}'),
+
+            # besa
+            'besa-root': join('{root}', 'besa'),
+            'besa-trig': join('{besa-root}', '{subject}', '{subject}_{recording}_{epoch_visit}_triggers.txt'),
+            'besa-evt': join('{besa-root}', '{subject}', '{subject}_{recording}_{epoch_visit}[{rej}].evt'),
+
+            # MRAT
+            'mrat_condition': '',
+            'mrat-root': join('{root}', 'mrat'),
+            'mrat-sns-root': join('{mrat-root}', '{sns_kind}', '{epoch_visit} {model} {evoked_kind}'),
+            'mrat-src-root': join('{mrat-root}', '{src_kind}', '{epoch_visit} {model} {evoked_kind}'),
+            'mrat-sns-file': join('{mrat-sns-root}', '{mrat_condition}', '{mrat_condition}_{subject}-ave.fif'),
+            'mrat_info-file': join('{mrat-root}', '{subject} info.txt'),
+            'mrat-src-file': join('{mrat-src-root}', '{mrat_condition}', '{mrat_condition}_{subject}'),
+        }
+        for temp, path in [
+            ('raw-sdir', self.data_dir),
+            ('cache-dir', self.cache_dir),
+            ('mri-sdir', self.mri_dir),
+        ]:
+            path = Path(path).expanduser()
+            if path.is_absolute():
+                self._templates[temp] = str(path)
+            else:
+                self._templates[temp] = join('{root}', path)
+
         # templates version
         if self.path_version == 0:
             self._templates['raw-dir'] = join('{raw-sdir}', 'meg', 'raw')
@@ -494,7 +503,7 @@ class MneExperiment(FileTree):
         elif self.path_version == 2:
             raw_def = {'raw': RawSource(), **self.raw}
         else:
-            raise ValueError(f"MneExperiment.path_version={self.path_version}; needs to be 0, 1 or 2")
+            raise ValueError(f"{self.__class__.__name__}.path_version={self.path_version}; needs to be 0, 1 or 2")
         # update templates with _values
         for cls in reversed(inspect.getmro(self.__class__)):
             if hasattr(cls, '_values'):
