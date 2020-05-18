@@ -4477,11 +4477,12 @@ class NDVar:
         if isinstance(x, str):
             if x.startswith('.'):
                 x = x[:]
-            dimnames = self.get_dimnames((x,) + (None,) * (self.ndim - 1))
+            dimnames = self.get_dimnames(first=x)
             dim = self.get_dim(x)
             values = dim._as_scalar_array()
             y = self.get_data(dimnames)
-            betas = stats.betas(y, Var(values, x))[1]
+            p = asmodel(Var(values, x))._parametrize()
+            betas = stats.lm_betas(y, p)[1]
             out_dims = self.get_dims(dimnames[1:])
         elif not self.has_case:
             raise DimensionMismatchError("Can only apply regression to NDVar with case dimension")
@@ -4490,7 +4491,7 @@ class NDVar:
             if len(x) != len(self):
                 raise DimensionMismatchError(f"Predictors do not have same number of cases ({len(x)}) as the dependent variable ({len(self)})")
 
-            betas = stats.betas(self.x, x)[1:]  # drop intercept
+            betas = stats.lm_betas(self.x, x._parametrize())[1:]  # drop intercept
             out_dims = (Case,) + self.dims[1:]
         return self._package_aggregated_output(betas, out_dims, name, info)
 
@@ -4532,8 +4533,8 @@ class NDVar:
                 "Predictors do not have same number of cases (%i) as the "
                 "dependent variable (%i)" % (len(x), len(self)))
 
-        t = stats.lm_t(self.x, x._parametrize())[1:]  # drop intercept
-        return NDVar(t, ('case',) + self.dims[1:], name or self.name, self.info)
+        t = stats.lm_t(self.x, x._parametrize())[2][1:]  # drop intercept
+        return NDVar(t, (Case, *self.dims[1:]), name or self.name, self.info)
 
     def _package_aggregated_output(self, x, dims, name, info=None):
         args = op_name(self, info=info, name=name)

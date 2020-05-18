@@ -6,9 +6,10 @@ from numpy.testing import assert_allclose, assert_equal
 import pytest
 import scipy.stats
 
-from eelbrain import datasets
+from eelbrain import datasets, Model, Var
 from eelbrain._stats import stats
 from eelbrain._stats.permutation import permute_order, rand_rotation_matrices
+from eelbrain._utils.r_bridge import r
 
 
 def test_corr():
@@ -51,16 +52,45 @@ def test_lm():
     n = ds.n_cases
 
     # 1d betas
-    betas = stats.betas(uts.x, x)
+    betas = stats.lm_betas(uts.x, p)
     sp_betas = scipy.linalg.lstsq(p.x, uts.x.reshape((n, -1)))[0]
-    # sp_betas = sp_betas.reshape((x.df,) + uts.shape[1:])
     assert_allclose(betas, sp_betas)
 
     # 2d betas
-    betas = stats.betas(utsnd.x, x)
+    betas = stats.lm_betas(utsnd.x, p)
     sp_betas = scipy.linalg.lstsq(p.x, utsnd.x.reshape((n, -1)))[0]
     sp_betas = sp_betas.reshape((x.df,) + utsnd.shape[1:])
     assert_allclose(betas, sp_betas)
+
+
+def test_lm_r():
+    "Test linear model agains R"
+    ds = datasets.get_uv()
+    ds['A2'] = Var(ds['A'] == 'a2').astype(float)
+    ds['B2'] = Var(ds['B'] == 'b2').astype(float)
+    ds.to_r('ds')
+    y = ds['fltvar'].x[:, None]
+
+    p = Model([ds['A2']])._parametrize('dummy')
+    b, se, t = stats.lm_t(y, p)
+    r_res = r("summary(lm(fltvar ~ A2, ds, type=2))")
+    assert_allclose(b[:, 0], r_res[3][0:2])
+    assert_allclose(se[:, 0], r_res[3][2:4])
+    assert_allclose(t[:, 0], r_res[3][4:6])
+
+    p = ds.eval("A2 + B2")._parametrize('dummy')
+    b, se, t = stats.lm_t(y, p)
+    r_res = r("summary(lm(fltvar ~ A2 + B2, ds, type=2))")
+    assert_allclose(b[:, 0], r_res[3][0:3])
+    assert_allclose(se[:, 0], r_res[3][3:6])
+    assert_allclose(t[:, 0], r_res[3][6:9])
+
+    p = ds.eval("A2 + B2 + intvar")._parametrize('dummy')
+    b, se, t = stats.lm_t(y, p)
+    r_res = r("summary(lm(fltvar ~ A2 + B2 + intvar, ds, type=2))")
+    assert_allclose(b[:, 0], r_res[3][0:4])
+    assert_allclose(se[:, 0], r_res[3][4:8])
+    assert_allclose(t[:, 0], r_res[3][8:12])
 
 
 def test_variability():
