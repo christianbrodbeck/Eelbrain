@@ -8,7 +8,7 @@ import numpy as np
 import scipy.stats
 from scipy.linalg import inv
 
-from .._data_obj import asfactor, asmodel, Model
+from .._data_obj import Model, Parametrization, asfactor, asmodel
 from . import opt
 from . import vector
 
@@ -47,15 +47,11 @@ def _as_float64(x):
         return x.astype(FLOAT64)
 
 
-def betas(y, x):
-    """Regression coefficients
-
-    Parameters
-    ----------
-    y : array  [n_cases, ...]
-        Dependent measure.
-    x : Model
-        Predictors
+def lm_betas(
+        y: np.ndarray,  # shape [n_cases, ...]
+        p: Parametrization,  # model
+) -> np.ndarray:
+    """OLS regression coefficients
 
     Returns
     -------
@@ -63,15 +59,9 @@ def betas(y, x):
         Beta coefficients for the regression. The first beta is always the
         intercept (see Model).
     """
-    n = len(y)
-    x = asmodel(x)
-    p = x._parametrize()
-    shape = (x.df,) + y.shape[1:]
-    y_ = _as_float64(y).reshape((n, -1))
-    out = np.empty(shape)
-    out_ = out.reshape((x.df, -1))
-    opt.lm_betas(y_, p.x, p.projector, out_)
-    return out
+    y_ = y.reshape((len(y), -1))
+    b = p.projector.dot(y_)
+    return b.reshape((p.model.df, *y.shape[1:]))
 
 
 def corr(y, x, out=None, perm=None):
@@ -127,7 +117,7 @@ def lm_betas_se_1d(y, b, p):
     v = np.einsum('i...,i...', y, y)
     y_hat = b.T.dot(p.x.T).T
     v -= np.einsum('i...,i...', y_hat, y)
-    v /= len(y) - p.x.shape[1]  # Var(e)
+    v /= len(y) - p.x.shape[1]
     var_b = v * p.g.diagonal()[:, None]
     return np.sqrt(var_b, var_b)
 
@@ -144,8 +134,12 @@ def lm_t(y, p):
     """
     y_ = y.reshape((len(y), -1))
     b = p.projector.dot(y_)
-    b /= lm_betas_se_1d(y_, b, p)
-    return b.reshape((len(b), ) + y.shape[1:])
+    se = lm_betas_se_1d(y_, b, p)
+    shape = (len(b), *y.shape[1:])
+    b = b.reshape(shape)
+    se = se.reshape((len(b), *y.shape[1:]))
+    t = b / se
+    return b, se, t
 
 
 def residual_mean_square(y, x=None):

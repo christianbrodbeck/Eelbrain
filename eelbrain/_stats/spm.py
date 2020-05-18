@@ -7,7 +7,7 @@ import numpy as np
 from .. import _info, fmtxt
 from .._data_obj import Dataset, Factor, Var, NDVar, Case, asmodel, asndvar, assub, combine, dataobj_repr
 from .._exceptions import DimensionMismatchError
-from . import opt
+from . import stats
 from .stats import lm_betas_se_1d
 from .test import star
 from .testnd import TTestOneSample
@@ -47,11 +47,7 @@ class LM:
         n_cases = len(y)
         model = asmodel(model, sub, ds, n_cases)
         p = model._parametrize(coding)
-        n_coeff = p.x.shape[1]
-        coeffs_flat = np.empty((n_coeff, reduce(mul, y.shape[1:])))
-        y_flat = y.x.reshape((n_cases, -1))
-        opt.lm_betas(y_flat, p.x, p.projector, coeffs_flat)
-        se_flat = lm_betas_se_1d(y_flat, coeffs_flat, p)
+        b, se, t = stats.lm_t(y.x, p)
         # find variables to keep
         variables = {}
         if ds is not None:
@@ -67,8 +63,8 @@ class LM:
                 raise TypeError(f"subject={subject!r}: needs to be string or None")
             variables['subject'] = subject
         self.coding = coding
-        self._coeffs_flat = coeffs_flat
-        self._se_flat = se_flat
+        self._coeffs_flat = b.reshape((len(b), -1))
+        self._se_flat = se.reshape((len(se), -1))
         self.model = model
         self._p = p
         self.dims = y.dims[1:]

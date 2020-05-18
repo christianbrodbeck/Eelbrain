@@ -296,40 +296,6 @@ cdef double _lm_res_ss(
     return ss
 
 
-def lm_betas(
-        const np.npy_float64[:,:] y,
-        const np.npy_float64[:,:] x,
-        const np.npy_float64[:,:] xsinv,
-        np.npy_float64[:,:] out,
-):
-    """Fit a linear model
-
-    Parameters
-    ----------
-    y : array (n_cases, n_tests)
-        Dependent Measurement.
-    x : array (n_cases, n_betas)
-        Model matrix for the model.
-    xsinv : array (n_betas, n_cases)
-        xsinv for x.
-    out : array (n_coefficients, n_tests)
-        Container for output.
-    """
-    cdef unsigned long i
-    cdef unsigned int i_beta
-
-    cdef unsigned long n_tests = y.shape[1]
-    cdef unsigned int df_x = xsinv.shape[0]
-    cdef double *betas = <double *>malloc(sizeof(double) * df_x)
-
-    for i in range(n_tests):
-        _lm_betas(y, i, xsinv, betas)
-        for i_beta in range(df_x):
-            out[i_beta, i] = betas[i_beta]
-
-    free(betas)
-
-
 def lm_res(
         const np.npy_float64[:,:] y,
         const np.npy_float64[:,:] x,
