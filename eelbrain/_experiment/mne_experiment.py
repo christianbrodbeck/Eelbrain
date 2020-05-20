@@ -529,7 +529,7 @@ class MneExperiment(FileTree):
         if root is None:
             find_subjects = False
         else:
-            root = self.get('root', root=root)
+            root = self.get('root', root=str(root))
 
         if find_subjects:
             subject_re = re.compile(self.subject_re)
