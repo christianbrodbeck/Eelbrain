@@ -660,16 +660,16 @@ class Correlation(NDTest):
             match: CategorialArg = None,
             parc: str = None,
             **criteria):
-        sub = assub(sub, ds)
-        y = asndvar(y, sub=sub, ds=ds, dtype=np.float64)
+        sub, n = assub(sub, ds, True)
+        y, n = asndvar(y, sub, ds, n, np.float64, True)
         check_for_vector_dim(y)
         if not y.has_case:
             raise ValueError("Dependent variable needs case dimension")
-        x = asvar(x, sub=sub, ds=ds)
+        x = asvar(x, sub, ds, n)
         if norm is not None:
-            norm = ascategorial(norm, sub, ds)
+            norm = ascategorial(norm, sub, ds, n)
         if match is not None:
-            match = ascategorial(match, sub, ds)
+            match = ascategorial(match, sub, ds, n)
 
         self.x = x.name
         name = "%s corr %s" % (y.name, x.name)
@@ -1665,9 +1665,6 @@ class ANOVA(MultiEffectNDTest):
     tfce : bool | scalar
         Use threshold-free cluster enhancement. Use a scalar to specify the
         step of TFCE levels (for ``tfce is True``, 0.1 is used).
-    replacement : bool
-        whether random samples should be drawn with replacement or
-        without
     tstart : scalar
         Start of the time window for the permutation test (default is the
         beginning of ``y``).
@@ -1739,22 +1736,20 @@ class ANOVA(MultiEffectNDTest):
             **criteria):
         x_arg = x
         sub_arg = sub
-        sub = assub(sub, ds)
-        y = asndvar(y, sub, ds, dtype=np.float64)
+        sub, n = assub(sub, ds, True)
+        y, n = asndvar(y, sub, ds, n, np.float64, True)
         check_for_vector_dim(y)
-        x = asmodel(x, sub, ds, require_names=True)
+        x = asmodel(x, sub, ds, n, require_names=True)
         if match is None:
             random_effects = [e for e in x.effects if e.random]
             if not random_effects:
                 match = None
             elif len(random_effects) > 1:
-                raise NotImplementedError(
-                    "Automatic match parameter for model with more than one "
-                    "random effect. Set match manually.")
+                raise NotImplementedError("Automatic match parameter for model with more than one random effect. Set match manually.")
             else:
                 match = random_effects[0]
         elif match is not False:
-            match = ascategorial(match, sub, ds)
+            match = ascategorial(match, sub, ds, n)
 
         lm = _nd_anova(x)
         effects = lm.effects
