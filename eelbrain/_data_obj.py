@@ -626,15 +626,6 @@ def asmodel(x, sub=None, ds=None, n=None, return_n=False, require_names=False):
     if isinstance(x, str):
         if ds is None:
             raise TypeError(f"{x!r}: Model was specified as string, but no Dataset was specified")
-        elif sub is not None:
-            # need to sub dataset before building model to get right number of
-            # df
-            names = set(re.findall(r'\w+', x))
-            if isinstance(sub, str):
-                names.update(re.findall(r'\w+', sub))
-            names.intersection_update(ds)
-            ds = ds[names].sub(sub)
-            sub = None
         x = ds.eval(x)
 
     if isinstance(x, Model):
