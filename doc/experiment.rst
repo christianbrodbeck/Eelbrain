@@ -341,8 +341,19 @@ encountered an error)
 Whenever a :class:`MneExperiment` instance is initialized with a valid
 ``root`` path, it checks whether changes in the class definition invalidate
 previously computed results. By default, the user is prompted to confirm
-the deletion of invalidated results. Set ``.auto_delete_results=True`` to
-delete them automatically without interrupting initialization.
+the deletion of invalidated results. Set :attr:`auto_delete_results` to ``True``
+to delete them automatically without interrupting initialization.
+
+.. py:attribute:: MneExperiment.auto_delete_cache
+
+:class:`MneExperiment` caches various intermediate results. By default, if a
+change in the experiment definition would make cache files invalid, the outdated
+files are automatically deleted. Set :attr:`auto_delete_cache` to ``'ask'`` to
+ask for confirmation before deleting files. This can be useful to prevent
+accidentally deleting files that take long to compute when editing the pipeline
+definition.
+When using this option, set :attr:`MneExperiment.screen_log_level` to
+``'debug'`` to learn about what change caused the cache to be invalid.
 
 .. py:attribute:: MneExperiment.screen_log_level
 
