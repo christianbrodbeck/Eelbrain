@@ -204,8 +204,6 @@ def test_test_experiment(root_dir):
 
 class FileExperiment(MneExperiment):
 
-    auto_delete_cache = 'disable'
-
     groups = {
         'gsub': Group(SUBJECTS[1:]),
         'gexc': SubGroup('all', SUBJECTS[0]),

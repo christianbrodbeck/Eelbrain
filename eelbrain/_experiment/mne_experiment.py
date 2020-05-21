@@ -1,13 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-"""MneExperiment class to manage data from a experiment
-
-For testing purposed, set up an experiment class without checking for data:
-
-MneExperiment.auto_delete_cache = 'disable'
-MneExperiment.sessions = ('session',)
-e = MneExperiment('.', find_subjects=False)
-
-"""
+"""MneExperiment class to manage data from a experiment"""
 from collections import defaultdict
 from collections.abc import Sequence
 from copy import deepcopy
@@ -218,12 +210,11 @@ class MneExperiment(FileTree):
     path_version = 2
     screen_log_level = logging.INFO
     auto_delete_results = False
-    auto_delete_cache = True
+    auto_delete_cache = 'auto'
     # what to do when the experiment class definition changed:
-    #   True: delete outdated files
-    #   False: raise an error
-    #   'disable': ignore it
-    #   'debug': prompt with debug options
+    #   'auto': Automatically delete outdated files
+    #   'ask': Ask whether to delete or raise an error
+    #   'debug': Prompt with debug options
     cache_inv = True  # Whether to cache inverse solution
     # moderate speed gain for loading source estimates (34 subjects: 20 vs 70 s)
     # hard drive space ~ 100 mb/file
@@ -383,6 +374,10 @@ class MneExperiment(FileTree):
         # checks
         if hasattr(self, 'cluster_criteria'):
             raise AttributeError("MneExperiment subclasses can not have a .cluster_criteria attribute anymore. Please remove the attribute, delete the eelbrain-cache folder and use the select_clusters analysis parameter.")
+        if not isinstance(self.auto_delete_cache, str):
+            raise TypeError(f"{self.__class__.__name__}.auto_delete_cache={self.auto_delete_cache!r}")
+        if not isinstance(self.auto_delete_results, bool):
+            raise TypeError(f"{self.__class__.__name__}.auto_delete_results={self.auto_delete_results!r}")
 
         # create attributes (overwrite class attributes)
         self._mri_subjects = self._mri_subjects.copy()
@@ -730,10 +725,6 @@ class MneExperiment(FileTree):
         else:
             log.info(msg)
 
-        if self.auto_delete_cache == 'disable':
-            log.warning("Cache-management disabled")
-            return
-
         ########################################################################
         # Finalize
         ##########
@@ -943,13 +934,13 @@ class MneExperiment(FileTree):
 
                 # handle invalid files
                 n_result_files = len(result_files)
-                if n_result_files and self.auto_delete_cache is True and not self.auto_delete_results:
+                # Only ask for result files
+                if n_result_files and self.auto_delete_cache == 'auto' and not self.auto_delete_results:
                     if self._screen_log_level > logging.DEBUG:
-                        msg = result_files[:]
-                        msg.insert(0, "Outdated result files detected:")
+                        msg = ["Outdated result files detected:", *result_files]
                     else:
                         msg = []
-                    msg.append("Delete %i outdated results?" % (n_result_files,))
+                    msg.append(f"Delete {n_result_files} outdated results?")
                     command = ask(
                         '\n'.join(msg),
                         options={
@@ -961,22 +952,17 @@ class MneExperiment(FileTree):
                         raise RuntimeError("User aborted invalid result deletion")
                     elif command != 'delete':
                         raise RuntimeError("command=%r" % (command,))
-
+                # Ask for any files
                 if files:
-                    if self.auto_delete_cache is False:
-                        raise RuntimeError(
-                            "Automatic cache management disabled. Either "
-                            "revert changes, or set e.auto_delete_cache=True")
-                    elif isinstance(self.auto_delete_cache, str):
-                        if self.auto_delete_cache != 'debug':
-                            raise ValueError(f"MneExperiment.auto_delete_cache={self.auto_delete_cache!r}")
+                    if self.auto_delete_cache != 'auto':
+                        options = {'delete': 'delete invalid files', 'abort': 'raise an error'}
+                        if self.auto_delete_cache == 'debug':
+                            options.update({'ignore': 'proceed without doing anything', 'revalidate': "don't delete any cache files but write a new cache-state file"})
+                        elif self.auto_delete_cache != 'ask':
+                            raise ValueError(f"{self.__class__.__name__}.auto_delete_cache={self.auto_delete_cache!r}")
                         command = ask(
                             "Outdated cache files. Choose 'delete' to proceed. WARNING: only choose 'ignore' or 'revalidate' if you know what you are doing.",
-                            options={
-                                'delete': 'delete invalid files',
-                                'abort': 'raise an error',
-                                'ignore': 'proceed without doing anything',
-                                'revalidate': "don't delete any cache files but write a new cache-state file"},
+                            options=options,
                             help=CACHE_HELP.format(experiment=self.__class__.__name__, filetype='cache and/or result'),
                         )
                         if command == 'delete':
@@ -991,8 +977,6 @@ class MneExperiment(FileTree):
                             files.clear()
                         else:
                             raise RuntimeError("command=%s" % repr(command))
-                    elif self.auto_delete_cache is not True:
-                        raise TypeError(f"MneExperiment.auto_delete_cache={self.auto_delete_cache!r}")
 
                     # delete invalid files
                     n_cache_files = len(files) - n_result_files
@@ -1009,22 +993,23 @@ class MneExperiment(FileTree):
             else:
                 log.debug("Cache up to date.")
         elif cache_dir_existed:  # cache-dir but no history
-            if self.auto_delete_cache is True:
+            if self.auto_delete_cache == 'auto':
+                command = 'delete'
+            else:
+                options = {'delete': 'Delete the cache directory and start over', 'abort': 'leave the directory and raise an error'}
+                if self.auto_delete_cache == 'debug':
+                    options['validate'] = 'write a history file treating cache as valid'
+                command = ask("Cache directory without history", options, help=f"Without history-file, it can't be determined whether the cache corresponds to {self.__class__.__name__}, so it should be deleted (and will be re-created)")
+            if command == 'delete':
                 log.info("Deleting cache-dir without history")
                 shutil.rmtree(cache_dir)
                 os.mkdir(cache_dir)
-            elif self.auto_delete_cache == 'disable':
-                log.warning("Ignoring cache-dir without history")
-            elif self.auto_delete_cache == 'debug':
-                command = ask("Cache directory without history", {'validate': 'write a history file treating cache as valid', 'abort': 'raise an error'})
-                if command == 'abort':
-                    raise RuntimeError("User aborted")
-                elif command == 'validate':
-                    log.warning("Validating cache-dir without history")
-                else:
-                    raise RuntimeError(f"command={command}")
+            elif command == 'abort':
+                raise RuntimeError("User aborted")
+            elif command == 'validate':
+                log.warning("Validating cache-dir without history")
             else:
-                raise IOError("Cache directory without history, but auto_delete_cache is not True")
+                raise RuntimeError(f"command={command}")
         elif not exists(cache_dir):
             os.mkdir(cache_dir)
 
