@@ -6984,11 +6984,7 @@ class Model:
                     n_cases = len(e)
                 elif len(e) != n_cases:
                     e0 = effects[0]
-                    raise ValueError(
-                        "All effects contained in a Model need to describe the "
-                        "same number of cases. %s has %i cases, %s has %i "
-                        "cases." %
-                        (dataobj_repr(e0), len(e0), dataobj_repr(e), len(e)))
+                    raise ValueError(f"All effects contained in a Model need to describe the same number of cases. {dataobj_repr(e0)} has {len(e0)} cases, {dataobj_repr(e)} has {len(e)} cases.")
 
                 # find effects
                 if iseffect(e):
@@ -6996,10 +6992,7 @@ class Model:
                 elif isinstance(e, Model):
                     effects += e.effects
                 else:
-                    raise TypeError(
-                        "Model needs to be initialized with effect (Var, "
-                        "Factor, Interaction, ...) and/or Model objects (got "
-                        "%s)" % type(e))
+                    raise TypeError(f"Model needs to be initialized with effect (Var, Factor, Interaction, ...) and/or Model objects (got {type(e)})")
 
         # check dfs
         df = sum(e.df for e in effects) + 1  # intercept
@@ -7011,10 +7004,7 @@ class Model:
         # beta indices
         for e in effects:
             if isinstance(e, Factor) and len(e.cells) == 1:
-                raise ValueError("The Factor %s has only one level (%s). The "
-                                 "intercept is implicit in each model and "
-                                 "should not be specified explicitly."
-                                 % (dataobj_repr(e), e.cells[0]))
+                raise ValueError(f"The Factor {dataobj_repr(e)} has only one level ({e.cells[0]}). The intercept is implicit in each model and should not be specified explicitly.")
 
         self.effects = effects
         self.df = df
