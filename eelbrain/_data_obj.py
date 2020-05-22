@@ -7043,11 +7043,7 @@ class Model:
                     n_cases = len(e)
                 elif len(e) != n_cases:
                     e0 = effects[0]
-                    raise ValueError(
-                        "All effects contained in a Model need to describe the "
-                        "same number of cases. %s has %i cases, %s has %i "
-                        "cases." %
-                        (dataobj_repr(e0), len(e0), dataobj_repr(e), len(e)))
+                    raise ValueError(f"All effects contained in a Model need to describe the same number of cases. {dataobj_repr(e0)} has {len(e0)} cases, {dataobj_repr(e)} has {len(e)} cases.")
 
                 # find effects
                 if iseffect(e):
@@ -7055,10 +7051,7 @@ class Model:
                 elif isinstance(e, Model):
                     effects += e.effects
                 else:
-                    raise TypeError(
-                        "Model needs to be initialized with effect (Var, "
-                        "Factor, Interaction, ...) and/or Model objects (got "
-                        "%s)" % type(e))
+                    raise TypeError(f"Model needs to be initialized with effect (Var, Factor, Interaction, ...) and/or Model objects (got {type(e)})")
 
         # check dfs
         df = sum(e.df for e in effects) + 1  # intercept
@@ -7070,10 +7063,7 @@ class Model:
         # beta indices
         for e in effects:
             if isinstance(e, Factor) and len(e.cells) == 1:
-                raise ValueError("The Factor %s has only one level (%s). The "
-                                 "intercept is implicit in each model and "
-                                 "should not be specified explicitly."
-                                 % (dataobj_repr(e), e.cells[0]))
+                raise ValueError(f"The Factor {dataobj_repr(e)} has only one level ({e.cells[0]}). The intercept is implicit in each model and should not be specified explicitly.")
 
         self.effects = effects
         self.df = df
@@ -10324,44 +10314,39 @@ class UTS(Dimension):
     def _cluster_property_labels(self):
         return ['tstart', 'tstop', 'duration']
 
-    def _array_index(self, arg):
+    def _array_index(self, arg, fraction=False):
         if np.isscalar(arg):
-            i = int(round((arg - self.tmin) / self.tstep))
+            i = (arg - self.tmin) / self.tstep
+            if not fraction:
+                i = int(round(i))
             if 0 <= i < self.nsamples:
                 return i
             else:
-                raise ValueError("Time index %s out of range (%s, %s)"
-                                 % (arg, self.tmin, self.tmax))
+                raise ValueError(f"Time index {arg} out of range ({self.tmin}, {self.tmax})")
+        elif fraction:
+            raise NotImplementedError
         elif isinstance(arg, UTS):
             if self.tmin == arg.tmin:
                 start = None
                 stop = arg.nsamples
             elif arg.tmin < self.tmin:
-                err = ("The index time dimension starts before the reference "
-                       "time dimension")
-                raise DimensionMismatchError(err)
+                raise DimensionMismatchError("The index time dimension starts before the reference time dimension")
             else:
                 start_float = (arg.tmin - self.tmin) / self.tstep
                 start = int(round(start_float))
                 if abs(start_float - start) > self._tol:
-                    err = ("The index time dimension contains values not "
-                           "contained in the reference time dimension")
-                    raise DimensionMismatchError(err)
+                    raise DimensionMismatchError("The index time dimension contains values not contained in the reference time dimension")
                 stop = start + arg.nsamples
 
             if self.tstep == arg.tstep:
                 step = None
             elif self.tstep > arg.tstep:
-                err = ("The index time dimension has a higher sampling rate "
-                       "than the reference time dimension")
-                raise DimensionMismatchError(err)
+                raise DimensionMismatchError("The index time dimension has a higher sampling rate than the reference time dimension")
             else:
                 step_float = arg.tstep / self.tstep
                 step = int(round(step_float))
                 if abs(step_float - step) > self._tol:
-                    err = ("The index time dimension contains values not "
-                           "contained in the reference time dimension")
-                    raise DimensionMismatchError(err)
+                    raise DimensionMismatchError("The index time dimension contains values not contained in the reference time dimension")
 
             if stop == self.nsamples:
                 stop = None

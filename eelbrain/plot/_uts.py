@@ -25,64 +25,67 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
     ----------
     y : 1d-NDVar
         Dependent variable (one-dimensional NDVar).
-    x : categorial or None
+    x : categorial
         Model: specification of conditions which should be plotted separately.
-    xax : None | categorial
+    xax : categorial
         Make separate axes for each category in this categorial model.
-    match : Factor
+    match : categorial
         Identifier for repeated measures data.
-    sub : None | index array
+    sub : index array
         Only use a subset of the data provided.
-    ds : Dataset
+    ds
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables.
     main : func | None
         Measure for the central tendency (function that takes an ``axis``
         argument). The default is numpy.mean.
-    error : None | str
+    error
         Measure of variability to plot (default: 1 SEM). Examples:
         'ci': 95% confidence interval;
         '99%ci': 99% confidence interval (default);
         '2sem': 2 standard error of the mean;
         'all': plot all traces.
-    pool_error : bool
+        'none': No indication of error.
+    pool_error
         Pool the errors for the estimate of variability (default is True
         for related measures designs, False otherwise). See Loftus & Masson
         (1994).
-    legend : str | int | None
+    legend
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
     labels : dict
         Alternative labels for legend as ``{cell: label}`` dictionary (preserves
         order).
-    axtitle : bool | sequence of str
+    axtitle
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.
-    xlabel : bool | str
+    xlabel
         X-axis label. By default the label is inferred from the data.
-    ylabel : bool | str
+    ylabel
         Y-axis label. By default the label is inferred from the data.
-    xticklabels : bool | int | list of int
+    xticklabels
         Specify which axes should be annotated with x-axis tick labels.
         Use ``int`` for a single axis (default ``-1``), a sequence of
         ``int`` for multiple specific axes, or ``bool`` for all/none.
-    invy : bool
+    invy
         Invert the y axis (if ``bottom`` and/or ``top`` are specified explicitly
         they take precedence; an inverted y-axis can also be produced by
         specifying ``bottom > top``).
-    bottom, top | None | scalar
-        Set an absolute range for the plot's y axis.
-    xdim : str
+    bottom
+        The lower end of the plot's y axis.
+    top
+        The upper end of the plot's y axis.
+    xdim
         dimension for the x-axis (default is 'time')
-    xlim : scalar | (scalar, scalar)
+    xlim
         Initial x-axis view limits as ``(left, right)`` tuple or as ``length``
         scalar (default is the full x-axis in the data).
-    clip : bool
+    clip
         Clip lines outside of axes (the default depends on whether ``frame`` is
         closed or open).
     color : matplotlib color
         Color if just a single category of data is plotted.
-    colors : str | list | dict
+    colors
         Colors for the plots if multiple categories of data are plotted.
         **str**: A colormap name; Cells of ``x`` are mapped onto the colormap in
         regular intervals.
@@ -90,21 +93,21 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         **dict**: A dictionary mapping each cell in ``x`` to a color.
         Colors are specified as `matplotlib compatible color arguments
         <http://matplotlib.org/api/colors_api.html>`_.
-    error_alpha : float
+    error_alpha
         Alpha of the error plot (default 0.3).
     mask : NDVar | {cell: NDVar}
         Mask certain time points.
-    clusters : None | Dataset
+    clusters
         Clusters to add to the plots. The clusters should be provided as
         Dataset, as stored in test results' :py:attr:`.clusters`.
-    pmax : scalar
+    pmax
         Maximum p-value of clusters to plot as solid.
-    ptrend : scalar
+    ptrend
         Maximum p-value of clusters to plot as trend.
-    tight : bool
+    tight
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
-    title : str | None
+    title
         Figure title.
     ...
         Also accepts :ref:`general-layout-parameters`.
@@ -681,7 +684,7 @@ class _plt_uts_stat:
         if error == 'all':
             y_all = layer.y.get_data((xdim, 'case'))
             self.error = ax.plot(x, y_all, alpha=error_alpha, clip_on=clip, **layer.style.line_args)
-        elif error:
+        elif error and error != 'none':
             if callable(error):
                 dev_data = layer.get_statistic(error)
             else:

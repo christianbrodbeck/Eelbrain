@@ -1288,10 +1288,10 @@ class Table(FMTextElement):
     >>> table.save_tex()
 
     """
-    def __init__(self, columns, rules=True, title=None, caption=None, rows=[]):
+    def __init__(self, columns, rules=True, title=None, caption=None, rows=()):
         self.columns = columns
         self.n_columns = len(columns)
-        self.rows = rows[:]
+        self.rows = list(rows)
         self.rules = rules
         self.title(title)
         self.caption(caption)

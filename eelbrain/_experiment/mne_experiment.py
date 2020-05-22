@@ -407,6 +407,10 @@ class MneExperiment(FileTree):
             'interp-file': '{raw-cache-base}-interp.pickled',
             'cached-raw-log-file': '{raw-cache-base}-raw.log',
 
+            # evoked
+            'evoked-dir': join('{cache-dir}', 'evoked'),
+            'evoked-file': join('{evoked-dir}', '{subject}', '{sns_kind} {epoch_visit} {model} {evoked_kind}-ave.fif'),
+
             # forward modeling:
             'fwd-file': join('{raw-cache-dir}', '{recording}-{mrisubject}-{src}-fwd.fif'),
             # sensor covariance
@@ -416,13 +420,6 @@ class MneExperiment(FileTree):
             'cov-info-file': '{cov-base}-info.txt',
             # inverse solution
             'inv-file': join('{raw-cache-dir}', 'inv', '{mrisubject} {src} {recording} {sns_kind} {cov} {rej} {inv-cache}-inv.fif'),
-            # evoked
-            'evoked-dir': join('{cache-dir}', 'evoked'),
-            'evoked-file': join('{evoked-dir}', '{subject}', '{sns_kind} {epoch_visit} {model} {evoked_kind}-ave.fif'),
-            # test files
-            'test-dir': join('{cache-dir}', 'test'),
-            'test-file': join('{test-dir}', '{analysis} {group}', '{test_desc} {test_dims}.pickled'),
-
             # MRIs
             'common_brain': 'fsaverage',
             # MRI base files
@@ -443,6 +440,9 @@ class MneExperiment(FileTree):
             # (method) plots
             'methods-dir': join('{root}', 'methods'),
 
+            # group level: test files
+            'test-dir': join('{cache-dir}', 'test'),
+            'test-file': join('{test-dir}', '{analysis} {group}', '{test_desc} {test_dims}.pickled'),
             # result output files
             # data processing parameters
             #    > group
@@ -3651,11 +3651,12 @@ class MneExperiment(FileTree):
 
         Returns
         -------
-        ds : Dataset (if return_data==True)
-            Data that forms the basis of the test.
+        ds : Dataset | dict (if return_data==True)
+            Data that forms the basis of the test (for ROI tests, a
+            ``{roi: dataset}`` dictionary).
         res : NDTest | ROITestResult
-            Test result for the specified test (when performing tests in ROIs,
-            an :class:`~_experiment.ROITestResult` object is returned).
+            Test result for the specified test (for ROIs tests,
+            an :class:`~_experiment.ROITestResult` object).
         """
         self.set(test=test, **state)
         data = TestDims.coerce(data, morph=True)
