@@ -146,11 +146,11 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             clusters: Dataset = None,
             pmax: float = 0.05,
             ptrend: float = 0.1,
-            *args, **kwargs):
+            **kwargs):
         data = PlotData.from_stats(y, x, xax, match, sub, ds, (xdim,), colors, mask).for_plot(PlotType.LINE)
         xdim, = data.dims
 
-        layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
+        layout = Layout(data.plot_used, 2, 4, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         if clip is None:
             clip = layout.frame is True
@@ -324,11 +324,11 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     """
     def __init__(self, y, xax=None, axtitle=True, ds=None, sub=None,
                  xlabel=True, ylabel=True, xticklabels='bottom', bottom=None,
-                 top=None, legend='upper right', labels=None, xlim=None, colors=None, *args,
+                 top=None, legend='upper right', labels=None, xlim=None, colors=None,
                  **kwargs):
         data = PlotData.from_args(y, (None,), xax, ds, sub)
         xdim = data.dims[0]
-        layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
+        layout = Layout(data.plot_used, 2, 4, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data)
         self._configure_xaxis_dim(data.y0.get_dim(xdim), xlabel, xticklabels)
@@ -436,13 +436,13 @@ class UTSClusters(EelFigure):
         Also accepts :ref:`general-layout-parameters`.
     """
     def __init__(self, res, pmax=0.05, ptrend=0.1, axtitle=True, cm=None,
-                 overlay=False, xticklabels='bottom', *args, **kwargs):
+                 overlay=False, xticklabels='bottom', **kwargs):
         clusters_ = res.clusters
 
         data = PlotData.from_args(res, (None,))
         xdim = data.dims[0]
         # create figure
-        layout = Layout(1 if overlay else data.plot_used, 2, 4, *args, **kwargs)
+        layout = Layout(1 if overlay else data.plot_used, 2, 4, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data)
 

@@ -166,7 +166,7 @@ class PairwiseLegend(EelFigure):
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    def __init__(self, size=.3, trend=True, *args, **kwargs):
+    def __init__(self, size=.3, trend=True, **kwargs):
         i_start = 1 - bool(trend)
         levels = [.1, .05, .01, .001][i_start:]
         colors = PAIRWISE_COLORS[i_start:]
@@ -176,7 +176,7 @@ class PairwiseLegend(EelFigure):
         ax_h = n_levels * size
         y_unit = size / 5
         ax_aspect = 4 / n_levels
-        layout = Layout(0, ax_aspect, ax_h, False, *args, **kwargs)
+        layout = Layout(0, ax_aspect, ax_h, tight=False, **kwargs)
         EelFigure.__init__(self, None, layout)
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
         ax.set_axis_off()
@@ -403,7 +403,7 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
                  corr='Hochberg', trend=False, test_markers=True, ylabel=True,
                  error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
                  xtick_delim='\n', colors=False, bottom=None, top=None,
-                 origin=None, pos=None, width=0.5, c='#0099FF', edgec=None, ds=None, *args, **kwargs):
+                 origin=None, pos=None, width=0.5, c='#0099FF', edgec=None, ds=None, **kwargs):
         ct = Celltable(y, x, match, sub, cells, ds, asvar)
         if colors is False:
             styles = False
@@ -412,7 +412,7 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         if pool_error is None:
             pool_error = ct.all_within
 
-        _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), *args, **kwargs)
+        _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), **kwargs)
         self._configure_axis(ct.y, ylabel, y=True)
 
         p = _plt_barplot(self._ax, ct, error, pool_error, styles, bottom, top, origin, pos, width, c, edgec, ec, test, tail, par, trend, corr, test_markers)
@@ -511,7 +511,7 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
                  corr='Hochberg', trend=False, test_markers=True, ylabel=True,
                  error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
                  xtick_delim=' ', colors=False, bottom=0, top=None,
-                 origin=None, pos=None, width=0.5, c='#0099FF', edgec=None, ds=None, *args, **kwargs):
+                 origin=None, pos=None, width=0.5, c='#0099FF', edgec=None, ds=None, **kwargs):
         if test is not False:
             raise NotImplemented("Horizontal barplot with pairwise significance")
 
@@ -523,7 +523,7 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
         if pool_error is None:
             pool_error = ct.all_within
 
-        _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), *args, **kwargs)
+        _SimpleFigure.__init__(self, frame_title(ct.y, ct.x), **kwargs)
 
         p = _plt_barplot(self._ax, ct, error, pool_error, styles, bottom, top, origin, pos, width, c, edgec, ec, test, tail, par, trend, corr, test_markers, horizontal=True)
         p.ax.set_ylim(p.left, p.right)
@@ -796,7 +796,7 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
             legend='upper right',
             labels=None,
             colors=None,
-            *args, **kwargs,
+            **kwargs,
     ):
         sub = assub(sub, ds)
         y = asvar(y, sub, ds)
@@ -830,7 +830,7 @@ class Timeplot(LegendMixin, YLimMixin, EelFigure):
         styles = find_cell_styles(categories, colors)
 
         # get axes
-        layout = Layout(1, 1, 5, *args, **kwargs)
+        layout = Layout(1, 1, 5, **kwargs)
         EelFigure.__init__(self, frame_title(y, categories), layout)
         self._configure_axis(y, ylabel, y=True)
         self._configure_axis(time, xlabel)
@@ -1003,7 +1003,7 @@ class Correlation(EelFigure, LegendMixin):
     """
     def __init__(self, y, x, cat=None, sub=None, ds=None,
                  c=['b', 'r', 'k', 'c', 'm', 'y', 'g'], legend='upper right',
-                 labels=None, xlabel=True, ylabel=True, *args, **kwargs):
+                 labels=None, xlabel=True, ylabel=True, **kwargs):
         sub, n = assub(sub, ds, return_n=True)
         y, n = asvar(y, sub, ds, n, return_n=True)
         x = asvar(x, sub, ds, n)
@@ -1011,7 +1011,7 @@ class Correlation(EelFigure, LegendMixin):
             cat = ascategorial(cat, sub, ds, n)
 
         # figure
-        layout = Layout(1, 1, 5, *args, autoscale=True, **kwargs)
+        layout = Layout(1, 1, 5, autoscale=True, **kwargs)
         EelFigure.__init__(self, frame_title(y, x, cat), layout)
         self._configure_axis(y, ylabel, y=True)
         self._configure_axis(x, xlabel)
@@ -1075,7 +1075,7 @@ class Regression(EelFigure, LegendMixin):
     def __init__(self, y, x, cat=None, match=None, sub=None, ds=None,
                  xlabel=True, ylabel=True, alpha=.2, legend='upper right', labels=None,
                  c=['#009CFF', '#FF7D26', '#54AF3A', '#FE58C6', '#20F2C3'],
-                 *args, **kwargs):
+                 **kwargs):
         sub, n = assub(sub, ds, return_n=True)
         y, n = asvar(y, sub, ds, n, return_n=True)
         x = asvar(x, sub, ds, n)
@@ -1088,7 +1088,7 @@ class Regression(EelFigure, LegendMixin):
             ylabel = y.name
 
         # figure
-        layout = Layout(1, 1, 5, *args, autoscale=True, **kwargs)
+        layout = Layout(1, 1, 5, autoscale=True, **kwargs)
         EelFigure.__init__(self, frame_title(y, x, cat), layout)
         self._configure_axis(x, xlabel)
         self._configure_axis(y, ylabel, y=True)
@@ -1203,7 +1203,7 @@ class Histogram(EelFigure):
     """
     def __init__(self, y, x=None, match=None, sub=None, ds=None, pooled=True,
                  density=False, test=False, tight=True, title=None, xlabel=True,
-                 bins=None, *args, **kwargs):
+                 bins=None, **kwargs):
         ct = Celltable(y, x, match=match, sub=sub, ds=ds, coercion=asvar)
 
         # layout
@@ -1228,7 +1228,7 @@ class Histogram(EelFigure):
             if title is True:
                 title = "Tests for Normality" if test else "Histogram"
 
-        layout = Layout(nax, 1, 3, tight, title, *args, **kwargs)
+        layout = Layout(nax, 1, 3, tight, title, **kwargs)
         EelFigure.__init__(self, frame_title(ct.y, ct.x), layout)
 
         if bins is None:

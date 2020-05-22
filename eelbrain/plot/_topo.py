@@ -221,7 +221,7 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
                  im_interpolation=None,
                  # sensor-map args
                  sensorlabels=None, mark=None, mcolor=None,
-                 *args, **kwargs):
+                 **kwargs):
         data = PlotData.from_args(y, ('sensor', 'time'), xax, ds, sub)
         self._plots = []
         data._cannot_skip_axes(self)
@@ -232,7 +232,7 @@ class TopomapBins(SensorMapMixin, ColorMapMixin, TopoMapKey, EelFigure):
         time = bin_data.y0.get_dim('time')
         n_bins = len(time)
         n_rows = bin_data.n_plots
-        layout = Layout(n_bins * n_rows, 1, 1.5, False, *args, nrow=n_rows, ncol=n_bins, **kwargs)
+        layout = Layout(n_bins * n_rows, 1, 1.5, tight=False, nrow=n_rows, ncol=n_bins, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         self._plots.extend(repeat(None, n_bins * n_rows))
 
@@ -374,7 +374,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
                  # layout
                  xlabel=True, ylabel=True, xticklabels=-1,
                  axtitle=True, frame=True, xlim=None,
-                 *args, **kwargs):
+                 **kwargs):
         data = PlotData.from_args(y, ('sensor', None), xax, ds, sub)
         data._cannot_skip_axes(self)
         xdim = data.dims[1]
@@ -382,7 +382,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
 
         # create figure
         row_titles = self._set_axtitle(axtitle, data, data.n_plots)
-        layout = VariableAspectLayout(data.n_plots, 3, 10, aspect=(None, 1), ax_frames=(frame, False), row_titles=row_titles, *args, **kwargs)
+        layout = VariableAspectLayout(data.n_plots, 3, 10, aspect=(None, 1), ax_frames=(frame, False), row_titles=row_titles, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
 
         self.bfly_axes = self._axes[0::2]
@@ -845,12 +845,12 @@ class TopoArray(ColorMapMixin, TopoMapKey, EelFigure):
                  sensorlabels=None, mark=None, mcolor=None,
                  # layout
                  xticklabels=-1, axtitle=True,
-                 title=None, *args, **kwargs):
+                 **kwargs):
         data = PlotData.from_args(y, ('time', 'sensor'), xax, ds, sub).for_plot(PlotType.IMAGE)
         n_topo_total = ntopo * data.n_plots
 
         # create figure
-        layout = Layout(data.plot_used, 1.5, 4, False, title, *args, **kwargs)
+        layout = Layout(data.plot_used, 1.5, 4, tight=False, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         all_plots = []
         ColorMapMixin.__init__(self, data.data, cmap, vmax, vmin, contours, all_plots)
@@ -864,7 +864,6 @@ class TopoArray(ColorMapMixin, TopoMapKey, EelFigure):
 
         self.figure.subplots_adjust(left=x_frame_l, right=1 - x_frame_r,
                                     bottom=.05, top=.9, wspace=.1, hspace=.3)
-        self.title = title
 
         # save important properties
         self._data = data
@@ -876,7 +875,7 @@ class TopoArray(ColorMapMixin, TopoMapKey, EelFigure):
         self._array_axes = []
         self._array_plots = []
         self._topo_windows = []
-        ax_height = .4 + .07 * (not title)
+        ax_height = .4 + .07 * (not layout.title)
         ax_bottom = .45  # + .05*(not title)
         for i, layers in enumerate(data):
             ax_left = x_frame_l + i * (x_per_ax + x_sep)
