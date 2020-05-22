@@ -20,8 +20,8 @@ class Figure(EelFigure):
     autoscale : bool
         Autoscale data axes (default False).
     """
-    def __init__(self, nax=0, *args, **kwargs):
-        layout = Layout(nax, 1, 2, *args, **kwargs)
+    def __init__(self, nax=0, **kwargs):
+        layout = Layout(nax, 1, 2, **kwargs)
         EelFigure.__init__(self, None, layout)
 
     def show(self):
@@ -30,8 +30,8 @@ class Figure(EelFigure):
 
 class XFigure(XAxisMixin, Figure):
 
-    def __init__(self, nax, xmin, xmax, xlim, *args, **kwargs):
-        Figure.__init__(self, nax, *args, **kwargs)
+    def __init__(self, nax, xmin, xmax, xlim, **kwargs):
+        Figure.__init__(self, nax, **kwargs)
         self._args = (xmin, xmax, xlim)
 
     def show(self):

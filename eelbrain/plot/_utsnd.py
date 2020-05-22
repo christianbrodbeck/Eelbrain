@@ -235,13 +235,13 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
     def __init__(self, y, xax=None, xlabel=True, ylabel=True,
                  xticklabels='bottom', ds=None, sub=None, x='time', vmax=None,
                  vmin=None, cmap=None, axtitle=True, interpolation=None,
-                 xlim=None, *args, **kwargs):
+                 xlim=None, **kwargs):
         data = PlotData.from_args(y, (x, None), xax, ds, sub).for_plot(PlotType.IMAGE)
         xdim, ydim = data.dims
         self.plots = []
         ColorMapMixin.__init__(self, data.data, cmap, vmax, vmin, None, self.plots)
 
-        layout = Layout(data.plot_used, 1.5, 3, *args, **kwargs)
+        layout = Layout(data.plot_used, 1.5, 3, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data)
 
@@ -440,10 +440,10 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
                  xlabel=True, ylabel=True, xticklabels='bottom', color=None,
                  linewidth=None,
                  ds=None, sub=None, x='time', vmax=None, vmin=None, xlim=None,
-                 clip=None, *args, **kwargs):
+                 clip=None, **kwargs):
         data = PlotData.from_args(y, (x, None), xax, ds, sub).for_plot(PlotType.LINE)
         xdim, linedim = data.dims
-        layout = Layout(data.plot_used, 2, 4, *args, **kwargs)
+        layout = Layout(data.plot_used, 2, 4, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data)
         self._configure_xaxis_dim(data.y0.get_dim(xdim), xlabel, xticklabels)

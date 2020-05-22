@@ -2363,15 +2363,14 @@ class ImLayout(Layout):
     _default_margins = {'left': 0, 'bottom': 0, 'right': 0, 'top': 0,
                         'wspace': 0, 'hspace': 0}
 
-    def __init__(self, nax, ax_aspect, axh_default, margins, default_margins,
-                 title=None, tight=False, *args, **kwargs):
+    def __init__(self, nax, ax_aspect, axh_default, margins, default_margins, title=None, tight=False, **kwargs):
         if margins is None:
             margins = {**self._default_margins, **default_margins}
         elif isinstance(margins, dict):
             margins = {**self._default_margins, **default_margins, **margins}
         else:
             raise TypeError(f"margins={margins!r}; needs to be a dict")
-        Layout.__init__(self, nax, ax_aspect, axh_default, tight, title, *args, margins=margins, **kwargs)
+        Layout.__init__(self, nax, ax_aspect, axh_default, tight, title, margins=margins, **kwargs)
 
     def _make_axes(self, figure):
         axes = []
@@ -2808,8 +2807,8 @@ class LegendMixin:
 
 class Legend(EelFigure):
 
-    def __init__(self, handles, labels, *args, **kwargs):
-        layout = Layout(0, 1, 2, False, *args, **kwargs)
+    def __init__(self, handles, labels, **kwargs):
+        layout = Layout(0, 1, 2, tight=False, **kwargs)
         EelFigure.__init__(self, None, layout)
 
         self.legend = self.figure.legend(handles, labels, loc=2)

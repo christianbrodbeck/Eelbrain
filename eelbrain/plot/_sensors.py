@@ -477,14 +477,14 @@ class SensorMaps(EelFigure):
 
     """
     def __init__(self, sensors, select=[], proj='default', size=1,
-                 color='k', marker='.', frame=0.05, *args, **kwargs):
+                 color='k', marker='.', frame=0.05, **kwargs):
         sensors = as_sensor(sensors)
 
         # layout figure
         self._drag_ax = None
         self._drag_x = None
         self._drag_y = None
-        layout = ImLayout(4, 1, 3, None, {}, frame='off', ncol=2, nrow=2, *args, **kwargs)
+        layout = ImLayout(4, 1, 3, None, {}, frame='off', ncol=2, nrow=2, **kwargs)
         EelFigure.__init__(self, sensors.sysname, layout)
         self.figure.subplots_adjust(left=0, bottom=0, right=1, top=1,
                                     wspace=.1, hspace=.1)
@@ -705,10 +705,10 @@ class SensorMap(SensorMapMixin, EelFigure):
     """
     def __init__(self, sensors, labels='name', proj='default', size=1,
                  color='k', marker='.', mark=None, head_radius=None,
-                 head_pos=0., connectivity=False, margins=None, *args, **kwargs):
+                 head_pos=0., connectivity=False, margins=None, **kwargs):
         sensors = as_sensor(sensors)
         kwargs.setdefault('frame', 'none')
-        layout = ImLayout(1, 1, 5, margins, {}, *args, **kwargs)
+        layout = ImLayout(1, 1, 5, margins, {}, **kwargs)
         EelFigure.__init__(self, sensors.sysname, layout)
         ax = self._axes[0]
 

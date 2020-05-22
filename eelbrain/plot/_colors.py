@@ -63,7 +63,7 @@ class ColorGrid(EelFigure):
             row_first: bool = None,
             labels: dict = None,
             shape: str = 'box',
-            *args, **kwargs):
+            **kwargs):
         row_cells = list(row_cells)
         column_cells = list(column_cells)
         if row_first is None:
@@ -78,7 +78,7 @@ class ColorGrid(EelFigure):
 
         if size is None:
             size = mpl.rcParams['font.size'] * LEGEND_SIZE * POINT_SIZE
-        layout = Layout(0, 1, 3, False, *args, **kwargs)
+        layout = Layout(0, 1, 3, tight=False, **kwargs)
         EelFigure.__init__(self, None, layout)
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
         ax.set_axis_off()
@@ -222,7 +222,7 @@ class ColorList(EelFigure):
     labels : list of :class:`matplotlib.text.Text`
         Color labels.
     """
-    def __init__(self, colors, cells=None, labels=None, size=None, h='auto', *args, **kwargs):
+    def __init__(self, colors, cells=None, labels=None, size=None, h='auto', **kwargs):
         if cells is None:
             cells = tuple(colors.keys())
         elif isinstance(cells, Iterator):
@@ -242,7 +242,7 @@ class ColorList(EelFigure):
         elif not isinstance(labels, dict):
             raise TypeError(f"labels={labels!r}")
 
-        layout = Layout(0, 1.5, 2, False, None, h, *args, **kwargs)
+        layout = Layout(0, 1.5, 2, False, h=h, **kwargs)
         EelFigure.__init__(self, None, layout)
 
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
@@ -336,7 +336,7 @@ class ColorBar(EelFigure):
                  clipmin=None, clipmax=None, orientation='horizontal',
                  unit=None, contours=(), width=None, ticks=None, threshold=None,
                  ticklocation='auto', background='white', tight=True,
-                 h=None, w=None, *args, **kwargs):
+                 h=None, w=None, **kwargs):
         # get Colormap
         if isinstance(cmap, np.ndarray):
             if threshold is not None:
@@ -361,7 +361,7 @@ class ColorBar(EelFigure):
         else:
             raise ValueError("orientation=%s" % repr(orientation))
 
-        layout = Layout(1, ax_aspect, 2, tight, None, h, w, *args, **kwargs)
+        layout = Layout(1, ax_aspect, 2, tight, h=h, w=w, **kwargs)
         EelFigure.__init__(self, cm.name, layout)
         ax = self._axes[0]
 
