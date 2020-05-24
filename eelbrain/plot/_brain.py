@@ -630,13 +630,12 @@ class ImageTable(ColorBarMixin, EelFigure):
             column_labels: list = False,
             title: str = None,
             margins: dict = None,
-            *args, **kwargs):
+            **kwargs,
+    ):
         default_margins = {}
-        if title or column_labels:
-            default_margins['top'] = 0.5 * (bool(title) + bool(column_labels))
         if row_labels:
             default_margins['left'] = 0.3
-        layout = ImLayout(n_rows * n_columns, 4/3, 2, margins, default_margins, title, *args, nrow=n_rows, ncol=n_columns, autoscale=True, **kwargs)
+        layout = ImLayout(n_rows * n_columns, 4/3, 2, margins, default_margins, title, column_labels, nrow=n_rows, ncol=n_columns, autoscale=True, **kwargs)
         EelFigure.__init__(self, None, layout)
 
         self._n_rows = n_rows
@@ -719,7 +718,7 @@ class _BinTable(EelFigure, ColorBarMixin):
     def __init__(self, ndvar, tstart, tstop, tstep, im_func, surf, views, hemi,
                  summary, title, foreground=None, background=None,
                  parallel=True, smoothing_steps=None, mask=True, margins=None,
-                 *args, **kwargs):
+                 **kwargs):
         if isinstance(views, str):
             views = (views,)
         data = ndvar.bin(tstep, tstart, tstop, summary)
@@ -727,8 +726,7 @@ class _BinTable(EelFigure, ColorBarMixin):
         n_hemis = (data.source.lh_n > 0) + (data.source.rh_n > 0)
         n_rows = len(views) * n_hemis
 
-        layout = ImLayout(n_rows * n_columns, 4/3, 2, margins, {'bottom': 0.5},
-                          title, *args, nrow=n_rows, ncol=n_columns, **kwargs)
+        layout = ImLayout(n_rows * n_columns, 4/3, 2, margins, {'bottom': 0.5}, title, nrow=n_rows, ncol=n_columns, **kwargs)
         EelFigure.__init__(self, None, layout)
 
         res_w = int(layout.axw * layout.dpi)

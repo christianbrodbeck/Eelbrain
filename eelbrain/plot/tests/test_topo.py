@@ -6,8 +6,8 @@ import wx
 
 from eelbrain import datasets, plot, testnd
 from eelbrain._utils import IS_WINDOWS
-from eelbrain.testing import requires_mne_sample_data
-from eelbrain.testing import hide_plots
+from eelbrain.testing import requires_mne_sample_data, hide_plots
+from eelbrain.testing.matplotlib import assert_titles_visible
 
 
 @hide_plots
@@ -25,8 +25,13 @@ def test_plot_topomap():
     p = plot.Topomap('topo', ds=ds, vmax=0.5e-6, w=2)
     p.close()
     p = plot.Topomap('topo', 'cloze_cat', ds=ds, axw=2)
+    assert_titles_visible(p)
     p.close()
     p = plot.Topomap('topo', 'cloze_cat % long', ds=ds, axw=2, ncol=2)
+    assert_titles_visible(p)
+    p.close()
+    p = plot.Topomap('topo', 'cloze_cat % long', ds=ds, axw=2, ncol=2, title='Topomap Plot Title')
+    assert_titles_visible(p)
     p.close()
 
     # axtitles from array

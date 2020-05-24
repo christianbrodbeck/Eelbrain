@@ -93,6 +93,7 @@ import weakref
 
 import matplotlib as mpl
 import matplotlib.axes
+import matplotlib.font_manager
 from matplotlib.colors import Colormap
 from matplotlib.figure import SubplotParams
 from matplotlib.ticker import FuncFormatter
@@ -106,7 +107,7 @@ from .._stats import testnd
 from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
 from .._ndvar import erode, resample
 from .._text import enumeration, ms
-from ..fmtxt import Image, asfmtext_or_none
+from ..fmtxt import FMTextArg, Image, asfmtext_or_none
 from ..mne_fixes import MNE_EPOCHS
 from ._styles import Style, find_cell_styles
 from ._utils import adjust_hsv
@@ -135,6 +136,12 @@ def do_autorun(run=None):
         return not hasattr(__main__, '__file__')
     else:
         return CONFIG['autorun']
+
+
+def mpl_font_size(key: str) -> float:
+    "Font size in inches"
+    p = matplotlib.font_manager.FontProperties(size=mpl.rcParams[key])
+    return p.get_size() * POINT
 
 
 DISPLAY_UNIT = {
@@ -2009,7 +2016,21 @@ def format_axes(
 
 
 class BaseLayout:
-    def __init__(self, h, w, dpi, tight, show, run, title, autoscale=False, name=None, right_of=None, below=None, axes=None):
+    def __init__(
+            self,
+            h: float,
+            w: float,
+            dpi: float,
+            tight: bool,
+            show: bool,
+            run: bool,
+            title: FMTextArg = None,
+            autoscale: bool = False,
+            name: str = None,
+            right_of: Union[EelFigure, int] = None,
+            below: Union[EelFigure, int] = None,
+            axes: List[matplotlib.axes.Axes] = None,
+    ):
         self.h = h
         self.w = w
         self.dpi = dpi or mpl.rcParams['figure.dpi']
@@ -2125,10 +2146,27 @@ class Layout(BaseLayout):
     """Layout for figures with several axes of the same size"""
     _default_margins = {'left': 0.4, 'bottom': 0.5, 'right': 0.05, 'top': 0.05, 'wspace': 0.1, 'hspace': 0.1}
 
-    def __init__(self, nax, ax_aspect, axh_default, tight=True, title=None,
-                 h=None, w=None, axh=None, axw=None, nrow=None, ncol=None,
-                 dpi=None, margins=None, show=True, run=None,
-                 frame=True, yaxis=True, share_axes=False, **kwargs):
+    def __init__(
+            self,
+            nax: Union[int, List[bool]],
+            ax_aspect: float,  # width / height
+            axh_default: float,
+            tight: bool = True,
+            title=None,
+            h=None,
+            w=None,
+            axh=None,
+            axw=None,
+            nrow=None,
+            ncol=None,
+            dpi=None,
+            margins=None,
+            show=True,
+            run=None,
+            frame=True,
+            yaxis=True,
+            share_axes=False,
+            **kwargs):
         """Create a grid of axes based on variable parameters.
 
         Parameters
@@ -2360,17 +2398,35 @@ class ImLayout(Layout):
 
     Make sure to specify the ``margins`` parameter for absolute spacing
     """
-    _default_margins = {'left': 0, 'bottom': 0, 'right': 0, 'top': 0,
-                        'wspace': 0, 'hspace': 0}
 
-    def __init__(self, nax, ax_aspect, axh_default, margins, default_margins, title=None, tight=False, **kwargs):
-        if margins is None:
-            margins = {**self._default_margins, **default_margins}
-        elif isinstance(margins, dict):
-            margins = {**self._default_margins, **default_margins, **margins}
+    def __init__(
+            self,
+            nax: Union[int, List[bool]],
+            ax_aspect: float,  # width / height
+            axh_default: float,
+            margins: dict = None,
+            default_margins: dict = None,
+            title: str = None,
+            axtitle: Union[bool, List] = False,  # for default spacing
+            **kwargs,
+    ):
+        if axtitle is True:
+            has_axtitle = (len(nax) if isinstance(nax, list) else nax) > 1
         else:
-            raise TypeError(f"margins={margins!r}; needs to be a dict")
-        Layout.__init__(self, nax, ax_aspect, axh_default, tight, title, margins=margins, **kwargs)
+            has_axtitle = True if isinstance(axtitle, np.ndarray) else bool(axtitle)
+        title_space = 1.5 * mpl_font_size('figure.titlesize') if title else 0
+        axtitle_space = 1.5 * mpl_font_size('axes.titlesize') if has_axtitle else 0
+        margins_ = {
+            'left': 0, 'wspace': 0, 'right': 0,
+            'top': axtitle_space + title_space,
+            'hspace': axtitle_space,
+            'bottom': 0,
+        }
+        if default_margins:
+            margins_.update(default_margins)
+        if margins:
+            margins_.update(margins)
+        Layout.__init__(self, nax, ax_aspect, axh_default, title=title, margins=margins_, **kwargs)
 
     def _make_axes(self, figure):
         axes = []
