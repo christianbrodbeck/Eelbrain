@@ -11,6 +11,7 @@ New in 0.32
 
   - Consistent class names for tests in :mod:`test`, :mod:`testnd` and :mod:`pipeline`.
   - :class:`plot.Timeplot` argument order: second and third argument switched to facilitate plotting single category.
+  - Significance markers for trends (.05 < *p* ≤ .1) are disabled by default.
 
 * :func:`boosting`:
 

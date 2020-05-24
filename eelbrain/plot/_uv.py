@@ -60,15 +60,12 @@ def _mark_plot_pairwise(ax, ct, parametric, bottom, y_unit, corr, trend, markers
     top : scalar
         The top most value on the y axis.
     """
-    if levels is not True:  # to avoid test.star() conflict
-        trend = False
-
     # visual parameters
     if pwcolors is None:
         pwcolors = PAIRWISE_COLORS[1 - bool(trend):]
     font_size = mpl.rcParams['font.size'] * 1.5
 
-    tests = test._pairwise(ct.get_data(), ct.all_within, parametric, corr, levels, trend)
+    tests = test._pairwise(ct.get_data(), ct.all_within, parametric, corr, trend, levels)
 
     # plan grid layout
     k = len(ct.cells)
@@ -127,13 +124,10 @@ def _mark_plot_1sample(ax, ct, par, y_min, y_unit, popmean=0, corr='Hochberg',
     y_max : float
         Top of space used on y axis.
     """
-    if levels is not True:  # to avoid test.star() conflict
-        trend = False
     # tests
     if pwcolors is None:
         pwcolors = PAIRWISE_COLORS[1 - bool(trend):]
     # mod
-    ps = []
     if par:
         ps = [test.TTestOneSample(d, popmean=popmean, tail=tail).p for d in ct.get_data()]
     else:
@@ -159,14 +153,14 @@ class PairwiseLegend(EelFigure):
 
     Parameters
     ----------
-    size : scalar
+    size
         Side length in inches of a virtual square containing each bar.
-    trend : bool
-        Also include a bar for trends (p<0.1). Default is True.
+    trend
+        Also include a bar for trends (*p* < .1).
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    def __init__(self, size=.3, trend=True, **kwargs):
+    def __init__(self, size: float = .3, trend: bool = False, **kwargs):
         i_start = 1 - bool(trend)
         levels = [.1, .05, .01, .001][i_start:]
         colors = PAIRWISE_COLORS[i_start:]
@@ -656,7 +650,7 @@ class _plt_barplot(_plt_uv_base):
             test: bool = True,
             tail: int = 0,
             par=True,
-            trend=False,
+            trend: Union[bool, str] = False,
             corr='Hochberg',
             test_markers=True,
             horizontal: bool = False,

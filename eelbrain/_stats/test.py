@@ -2,7 +2,7 @@
 """Statistical tests for univariate variables"""
 from functools import partial
 import itertools
-from typing import Union
+from typing import Union, Sequence
 
 import numpy as np
 import scipy.stats
@@ -23,6 +23,22 @@ from . import stats
 __test__ = False
 DEFAULT_LEVELS = {.05: '*', .01: '**', .001: '***'}
 DEFAULT_LEVELS_TREND = {.05: '*', .01: '**', .001: '***', .1: '`'}
+
+
+def get_levels(
+        levels: Union[bool, dict],
+        trend: Union[bool, str] = False,
+):
+    if levels is True:
+        if trend is True:
+            return DEFAULT_LEVELS_TREND
+        elif trend:
+            return {**DEFAULT_LEVELS, .1: trend}
+        else:
+            return DEFAULT_LEVELS
+    elif trend:
+        raise TypeError("trend=%r only valid when levels=True" % (trend,))
+    return levels
 
 
 class Correlation:
@@ -233,40 +249,36 @@ def _get_correction_caption(corr, n):
         return "(* Uncorrected)"
 
 
-def _n_stars(p, levels):
+def _n_stars(p: float, levels: Sequence[float]):
     return sum(p <= l for l in levels)
 
 
-def star(p_list, out=str, levels=True, trend=False, eq_strlen=False):
+def star(
+        p_list: Union[float, Sequence[float]],
+        out: type = str,
+        levels: Union[bool, dict] = True,
+        trend: Union[bool, str] = False,
+        eq_strlen: bool = False,
+):
     """Determine number of stars for p-value
 
     Parameters
     ----------
-    p_list : sequence of scalar
+    p_list
         P-values.
     out : {str, int}
         Return string with stars ('**') or an integer indicating the number of
         stars.
-    levels : dict
+    levels
         ``{p: str, ...}`` dictionary. The default is ``{.05 : '*',
         .01 : '**', .001: '***'}``; ``trend=True`` adds ``{.1: "'"}``.
-    trend : bool
-        Add trend to default ``levels`` (default ``False``).
-    eq_strlen : bool
+    trend
+        Add trend to default ``levels``.
+    eq_strlen
         Equalize string lengths; when strings are returned, make sure they all
         have the same length (default ``False``).
     """
-    # set default levels
-    if levels is True:
-        if trend is True:
-            levels = DEFAULT_LEVELS_TREND
-        elif trend:
-            levels = DEFAULT_LEVELS.copy()
-            levels[.1] = trend
-        else:
-            levels = DEFAULT_LEVELS
-    elif trend:
-        raise TypeError("trend=%r only valid when levels=True" % (trend,))
+    levels = get_levels(levels, trend)
 
     levels_descending = sorted(levels.keys(), reverse=True)
     symbols_descending = [''] + [levels[l] for l in levels_descending]
@@ -297,7 +309,7 @@ def star(p_list, out=str, levels=True, trend=False, eq_strlen=False):
         return symbols
 
 
-def star_factor(p, levels={.1: '`', .05: '*', .01: '**', .001: '***'}):
+def star_factor(p, levels=True):
     """Create a factor with stars for a sequence of p-values
 
     Parameters
@@ -312,6 +324,7 @@ def star_factor(p, levels={.1: '`', .05: '*', .01: '**', .001: '***'}):
     stars : Factor
         Factor with the appropriate star marking for each item in p.
     """
+    levels = get_levels(levels)
     sorted_levels = sorted(levels, reverse=True)
     star_labels = {i: levels[v] for i, v in enumerate(sorted_levels, 1)}
     star_labels[0] = ''
@@ -1001,7 +1014,7 @@ def pairwise(
         ds: Dataset = None,
         par: bool = True,
         corr: Union[None, str] = 'Hochberg',
-        trend: Union[bool, str] = True,
+        trend: Union[bool, str] = False,
         title: str = '{desc}',
         mirror: bool = False,
 ):
@@ -1025,11 +1038,11 @@ def pairwise(
         tests if False).
     corr : None | 'hochberg' | 'bonferroni' | 'holm'
         Method for multiple comparison correction.
-    trend : str
+    trend
         Marker for a trend in pairwise comparisons.
-    title : str
+    title
         Title for the table.
-    mirror : bool
+    mirror
         Redundant table including all row/column combinations.
 
     Returns
@@ -1038,8 +1051,7 @@ def pairwise(
         Table with results.
     """
     ct = Celltable(y, x, match=match, sub=sub, ds=ds, coercion=asvar)
-    test = _pairwise(ct.get_data(), within=ct.all_within, parametric=par,
-                     corr=corr, trend=trend)
+    test = _pairwise(ct.get_data(), ct.all_within, par, corr, trend)
 
     # extract test results
     k = len(ct)
@@ -1071,6 +1083,7 @@ def pairwise(
     else:
         subrows = 2
 
+    n_stars = 3 + bool(trend)
     for row in range(0, k - 1 + mirror):
         for subrow in range(subrows):  # contains t/p
             # names column
@@ -1085,8 +1098,7 @@ def pairwise(
                 elif col > row:
                     index = indexes[(row, col)]
                     if subrow == 0:
-                        table.cell(fmtxt.eq(statistic, _K[index], _df[index],
-                                            stars=symbols[index], of=3 + trend))
+                        table.cell(fmtxt.eq(statistic, _K[index], _df[index], stars=symbols[index], of=n_stars))
                     elif subrow == 1:
                         table.cell(fmtxt.peq(_P[index]))
                     elif subrow == 2:
@@ -1099,8 +1111,14 @@ def pairwise(
     return table
 
 
-def _pairwise(data, within=True, parametric=True, corr='Hochberg',
-              levels=True, trend=True):
+def _pairwise(
+        data,
+        within,
+        parametric,
+        corr,
+        trend,
+        levels=True,
+):
     """Pairwise tests
 
     Parameters
@@ -1168,18 +1186,15 @@ def _pairwise(data, within=True, parametric=True, corr='Hochberg',
         p_adjusted = mcp_adjust(_P, corr)
     else:
         p_adjusted = _P
-    _NStars = star(p_adjusted, int, levels, trend)
-    _str_Stars = star(p_adjusted, str, levels, trend)
-    caption = _get_correction_caption(corr, len(_P))
     # prepare output
     out = {'test': test_name,
-           'caption': caption,
+           'caption': _get_correction_caption(corr, len(_P)),
            'statistic': statistic,
            statistic: _K,
            'df': _df,
            'p': _P,
-           'stars': _NStars,
-           'symbols': _str_Stars,
+           'stars': star(p_adjusted, int, levels, trend),
+           'symbols': star(p_adjusted, str, levels, trend),
            'pw_indexes': indexes}
     return out
 
