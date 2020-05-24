@@ -13,20 +13,25 @@ from eelbrain.testing import hide_plots
 @hide_plots
 def test_plot_topomap():
     "Test plot.Topomap"
-    ds = datasets.get_uts(utsnd=True)
-    topo = ds.eval('utsnd.summary(time=(0.075, 0.125))')
+    ds = datasets.simulate_erp(8, 0)
+    ds['long'] = ds['n_chars'] > 4
+    ds['topo'] = ds['eeg'].mean(time=(0.300, 0.500))
 
-    p = plot.Topomap(topo, ds=ds)
-    p.add_contour('V', 1, '#00FF00')
+    p = plot.Topomap('topo', ds=ds)
+    p.add_contour(0, '0', 'V')
+    p.add_contour(0.5e-6, '#00FF00', 'V')
     p.close()
-    p = plot.Topomap(topo, ds=ds, vmax=0.2, w=2)
+
+    p = plot.Topomap('topo', ds=ds, vmax=0.5e-6, w=2)
     p.close()
-    p = plot.Topomap(topo, 'A%B', ds=ds, axw=2)
+    p = plot.Topomap('topo', 'cloze_cat', ds=ds, axw=2)
     p.close()
-    p = plot.Topomap(topo, ds=ds, sensorlabels=None)
+    p = plot.Topomap('topo', 'cloze_cat % long', ds=ds, axw=2, ncol=2)
     p.close()
+
+    # axtitles from array
     index = np.array([1, 3, 2])
-    p = plot.Topomap(topo[index], '.case', nrow=1, axh=2, h=2.4, axtitle=index)
+    p = plot.Topomap(ds[index, 'topo'], '.case', nrow=1, axh=2, h=2.4, axtitle=index)
     p.close()
 
 

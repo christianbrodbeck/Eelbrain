@@ -87,7 +87,7 @@ import os
 import re
 import sys
 import time
-from typing import Callable, Dict, List, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Sequence, Tuple, Union
 from typing import Iterator as IteratorType
 import weakref
 
@@ -2567,7 +2567,7 @@ class ColorMapMixin(ColorBarMixin):
     def __get_cmap_params(self):
         return (self._cmaps[self._first_meas],) + self._vlims[self._first_meas]
 
-    def add_contour(self, level, color='k', meas=None):
+    def add_contour(self, level: float, color: Any = 'k', meas: str = None):
         """Add a contour line
 
         Parameters

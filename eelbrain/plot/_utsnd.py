@@ -23,11 +23,11 @@ class _plt_im:
             layer: DataLayer,
             cmaps: dict,
             vlims: dict,
-            contours: dict,
+            contours: dict,  # {meas: kwargs}
             extent, interpolation, mask=None):
         self.ax = ax
         self._meas = layer.y.info.get('meas')
-        self._contours = layer.contour_plot_args(contours)
+        self._contours = layer.contour_plot_args(contours)  # kwargs
         self._data = self._data_from_ndvar(layer.y)
         self._extent = extent
         self._mask = mask
@@ -74,9 +74,8 @@ class _plt_im:
 
     def add_contour(self, meas, level, color):
         if self._meas == meas:
-            levels = tuple(self._contours['levels']) + (level,)
-            colors = tuple(self._contours['colors']) + (color,)
-            self._contours = {'levels': levels, 'colors': colors}
+            self._contours['levels'] = [*self._contours.get('levels', ()), level]
+            self._contours['colors'] = [*self._contours.get('colors', ()), color]
             self._draw_contours()
 
     def get_kwargs(self):
