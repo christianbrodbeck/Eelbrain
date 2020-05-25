@@ -1537,15 +1537,11 @@ class EelFigure:
             if axtitle is True:
                 axtitle = names
             else:
-                axtitle = (axtitle.format(name=n) if n else None for n in names)
-        elif isinstance(axtitle, Iterable):
-            if isinstance(axtitle, Iterator):
-                axtitle = tuple(axtitle)
-            if len(axtitle) != naxes:
-                raise ValueError("axtitle needs to have one entry per axes. "
-                                 "Got %r for %i axes" % (axtitle, naxes))
+                axtitle = [axtitle.format(name=n) if n else None for n in names]
         else:
-            raise TypeError("axtitle=%r" % (axtitle,))
+            axtitle = list(axtitle)
+            if len(axtitle) != naxes:
+                raise ValueError(f"axtitle needs to have one entry per axes. Got {axtitle} for {naxes} axes")
 
         if isinstance(axes, int):
             return axtitle
