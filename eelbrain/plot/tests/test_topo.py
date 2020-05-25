@@ -18,8 +18,14 @@ def test_plot_topomap():
     ds['topo'] = ds['eeg'].mean(time=(0.300, 0.500))
 
     p = plot.Topomap('topo', ds=ds)
+    # contours
     p.add_contour(0, '0', 'V')
     p.add_contour(0.5e-6, '#00FF00', 'V')
+    # colormap with limits
+    assert p.get_vlim() == (-2e-06, 2e-06)
+    cmap = plot.soft_threshold_colormap('jet', 1e-6, 4e-6, symmetric=True)
+    p.set_cmap(cmap)
+    assert p.get_vlim() == (-4e-06, 4e-06)
     p.close()
 
     p = plot.Topomap('topo', ds=ds, vmax=0.5e-6, w=2)

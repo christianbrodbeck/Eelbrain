@@ -2660,7 +2660,10 @@ class ColorMapMixin(ColorBarMixin):
         for p in self.__plots:
             p.set_cmap(cmap, meas)
         self._cmaps[meas] = cmap
-        self.draw()
+        if isinstance(cmap, LocatedColormap):
+            self.set_vlim(cmap.vmin, cmap.vmax, meas)
+        else:
+            self.draw()
 
     def set_vlim(self, v=None, vmax=None, meas=None):
         """Change the colormap limits
