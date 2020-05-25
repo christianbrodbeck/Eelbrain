@@ -1496,6 +1496,10 @@ class EelFigure:
         title = self._frame.GetTitle() if self._has_frame else self._title
         return f'<{title}>'
 
+    def _ipython_display_(self):
+        from IPython.display import display
+        display(self.figure)
+
     def _set_axtitle(self, axtitle, data=None, axes=None, names=None, **kwargs):
         """Set axes titles automatically
 
