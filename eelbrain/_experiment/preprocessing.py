@@ -364,7 +364,7 @@ class RawFilter(CachedRawPipe):
     h_freq : scalar | None
         High cut-off frequency in Hz.
     cache : bool
-        Cache the resulting raw files (default False).
+        Cache the resulting raw files (default ``True``).
     ...
         :meth:`mne.io.Raw.filter` parameters.
 
@@ -477,7 +477,7 @@ class RawICA(CachedRawPipe):
         Set the random state for ICA decomposition to make results reproducible
         (default 0, see :class:`mne.preprocessing.ICA`).
     cache : bool
-        Cache the resulting raw files (default False).
+        Cache the resulting raw files (default ``False``).
     ...
         Additional parameters for :class:`mne.preprocessing.ICA`.
 
@@ -635,6 +635,8 @@ class RawApplyICA(CachedRawPipe):
         Name of the raw pipe to use for input data.
     ica : str
         Name of the :class:`RawICA` pipe from which to load the ICA components.
+    cache : bool
+        Cache the resulting raw files (default ``False``).
 
     See Also
     --------
@@ -709,8 +711,8 @@ class RawMaxwell(CachedRawPipe):
         How to deal with ill-conditioned SSS matrices; by default, an error is
         raised, which might prevent the process to complete for some subjects.
         Set to ``'warning'`` to proceed anyways.
-    session : str | sequence of str
-        Session(s) to use for estimating ICA components.
+    cache : bool
+        Cache the resulting raw files (default ``True``).
     ...
         :func:`mne.preprocessing.maxwell_filter` parameters.
 
@@ -721,8 +723,8 @@ class RawMaxwell(CachedRawPipe):
 
     _bad_chs_affect_cache = True
 
-    def __init__(self, source, bad_condition='error', **kwargs):
-        CachedRawPipe.__init__(self, source)
+    def __init__(self, source, bad_condition='error', cache=True, **kwargs):
+        CachedRawPipe.__init__(self, source, cache)
         self.kwargs = kwargs
         self.bad_condition = bad_condition
 
@@ -752,14 +754,16 @@ class RawReReference(CachedRawPipe):
         Reconstruct reference channels with given names and set them to 0.
     drop : list of str
         Drop these channels after applying the reference.
+    cache : bool
+        Cache the resulting raw files (default ``False``).
 
     See Also
     --------
     MneExperiment.raw
     """
 
-    def __init__(self, source, reference='average', add=None, drop=None):
-        CachedRawPipe.__init__(self, source, False)
+    def __init__(self, source, reference='average', add=None, drop=None, cache=False):
+        CachedRawPipe.__init__(self, source, cache)
         if not isinstance(reference, str):
             reference = list(reference)
             if not all(isinstance(ch, str) for ch in reference):
