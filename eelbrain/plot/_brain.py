@@ -4,8 +4,8 @@ from functools import partial
 from itertools import product
 from numbers import Number
 from typing import Sequence
-from warnings import warn
 
+import matplotlib
 import mne
 from nibabel.freesurfer import read_annot
 import numpy as np
@@ -640,8 +640,13 @@ class ImageTable(ColorBarMixin, EelFigure):
 
         self._n_rows = n_rows
         self._n_columns = n_columns
-        self._res_w = int(round(layout.axw * layout.dpi))
-        self._res_h = int(round(layout.axh * layout.dpi))
+        fig_dpi = matplotlib.rcParams['savefig.dpi']
+        if isinstance(fig_dpi, str):
+            dpi = layout.dpi
+        else:
+            dpi = max(layout.dpi, fig_dpi)
+        self._res_w = int(round(layout.axw * dpi))
+        self._res_h = int(round(layout.axh * dpi))
         if row_labels:
             self.add_row_titles(row_labels, rotation='vertical')
         if column_labels:
