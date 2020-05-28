@@ -9,7 +9,7 @@ class KeysMissing(KeyError):
     def __init__(self, keys: Collection, from_name: str, from_dict: dict):
         KeyError.__init__(self, keys, from_name, from_dict)
 
-    def str(self):
+    def __str__(self):
         keys, from_name, from_dict = self.args
         n = len(keys)
         return f"{plural('Key', n)} {enumeration(map(repr, keys))} missing from {from_name}={from_dict!r}"
