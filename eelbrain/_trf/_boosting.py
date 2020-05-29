@@ -113,7 +113,7 @@ class BoostingResult:
     """
     # basic parameters
     y: str
-    x: str
+    x: Union[str, Tuple[str]]
     tstart: Union[float, Tuple[float, ...]]
     tstop: Union[float, Tuple[float, ...]]
     scale_data: bool
