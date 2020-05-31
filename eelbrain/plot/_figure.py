@@ -108,7 +108,10 @@ class AbsoluteLayoutFigure(XAxisMixin, Figure):
         if self._ystep is not None:
             ytick_start = (ymin // self._ystep) * self._ystep
             ytick_stop = (ymax // self._ystep + 1) * self._ystep
-            ax.set_yticks(np.arange(ytick_start, ytick_stop, self._ystep))
+            ticks = np.arange(ytick_start, ytick_stop, self._ystep)
+            if isinstance(self._ystep, int):
+                ticks = ticks.astype(int)
+            ax.set_yticks(ticks)
         self._axes.append(ax)
         self._ylims.append(ylim)
         return ax
