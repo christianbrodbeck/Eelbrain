@@ -791,6 +791,13 @@ def test_factor():
     f = Factor(['', '', 'a', '', 'e', 'r', ''])
     assert_array_equal(f.floodfill([1, 1, 1, 11, 11, 11, 11]), Factor('aaaeerr'))
 
+    # cell-based index
+    f = Factor(['a1', 'a10', 'b1', 'b10'])
+    assert_array_equal(f.startswith('a'), [1, 1, 0, 0])
+    assert_array_equal(f.endswith('1'), [1, 0, 1, 0])
+    assert_array_equal(f.matches('a?'), [1, 0, 0, 0])
+    assert_array_equal(f.matches('b*'), [0, 0, 1, 1])
+
 
 def test_factor_relabel():
     "Test Factor.relabel() method"

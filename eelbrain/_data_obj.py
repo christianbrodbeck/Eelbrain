@@ -96,6 +96,7 @@ plot.Correlation('Realname', ..., ds=ds)  # -> 'Realname'
 """
 from collections.abc import Iterable, Iterator
 from copy import deepcopy
+import fnmatch
 from functools import partial
 from itertools import chain, product, repeat, zip_longest
 from keyword import iskeyword
@@ -107,7 +108,7 @@ import operator
 import os
 import re
 import string
-from typing import Union, Sequence, Tuple, List
+from typing import Collection, Union, Sequence, Tuple, List
 from warnings import warn
 
 from matplotlib.ticker import (
@@ -133,7 +134,7 @@ from ._utils import (
     intervals, ui, LazyProperty, n_decimals, natsorted)
 from ._utils.numpy_utils import (
     INT_TYPES, FULL_SLICE, FULL_AXIS_SLICE,
-    aindex, aslice, apply_numpy_index, digitize_index, digitize_slice_endpoint,
+    aslice, apply_numpy_index, digitize_index, digitize_slice_endpoint,
     index_length, index_to_int_array, newaxis, slice_to_arange)
 from .mne_fixes import MNE_EPOCHS, MNE_EVOKED, MNE_RAW, MNE_LABEL
 from functools import reduce
@@ -2583,18 +2584,24 @@ class Factor(_Effect):
     def df(self):
         return max(0, len(self._labels) - 1)
 
-    def endswith(self, substr):
+    def endswith(self, substr: str) -> np.ndarray:
         """An index that is true for all cases whose name ends with ``substr``
 
         Parameters
         ----------
-        substr : str
+        substr
             String for selecting cells that end with substr.
 
         Returns
         -------
-        idx : boolean array,  len = len(self)
-            Index that is true wherever the value ends with ``substr``.
+        index
+            Index that is ``True`` for all cases whose label ends with
+            ``substr``.
+
+        See Also
+        --------
+        .startswith
+        .matches
 
         Examples
         --------
@@ -2714,12 +2721,12 @@ class Factor(_Effect):
         """
         return self.isin(values)
 
-    def isin(self, values):
+    def isin(self, values: Collection[str]) -> np.ndarray:
         """Find the index of entries matching one of the ``values``
 
         Returns
         -------
-        index : array of bool
+        index
             For each case True if the value is in values, else False.
 
         Examples
@@ -2779,6 +2786,34 @@ class Factor(_Effect):
             longname = name
 
         return Var(x, name, {"longname": longname})
+
+    def matches(self, pattern: str) -> np.ndarray:
+        """An index that is true for all cases whose name matches ``pattern``
+
+        Parameters
+        ----------
+        pattern
+            :mod:`fnmatch` pattern for selecting cells.
+
+        Returns
+        -------
+        index
+            Index that is ``True`` for all cases whose label matches
+            ``pattern``.
+
+        See Also
+        --------
+        .startswith
+        .endswith
+
+        Examples
+        --------
+        >>> a = Factor(['a1', 'a2', 'b1', 'b2'])
+        >>> a.matches('b*')
+        array([False, False,  True,  True], dtype=bool)
+        """
+        values = [v for v in self.cells if fnmatch.fnmatch(v, pattern)]
+        return self.isin(values)
 
     @property
     def n_cells(self):
@@ -2860,18 +2895,24 @@ class Factor(_Effect):
             raise RuntimeError("Factor.sort_cells comparing %s and %s" % (old, new))
         self._labels = {self._codes[cell]: cell for cell in new_order}
 
-    def startswith(self, substr):
+    def startswith(self, substr: str) -> np.ndarray:
         """An index that is true for all cases whose name starts with ``substr``
 
         Parameters
         ----------
-        substr : str
+        substr
             String for selecting cells that start with substr.
 
         Returns
         -------
-        idx : boolean array,  len = len(self)
-            Index that is true wherever the value starts with ``substr``.
+        index
+            Index that is ``True`` for all cases whose label starts with
+            ``substr``.
+
+        See Also
+        --------
+        .endswith
+        .matches
 
         Examples
         --------
