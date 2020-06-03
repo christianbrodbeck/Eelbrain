@@ -1149,8 +1149,11 @@ def combine(items, name=None, check_dims=True, incomplete='raise', dim_intersect
             dims = reduce(lambda x, y: intersect_dims(x, y, check_dims), all_dims)
         else:
             dims, *other_dims = all_dims
-            if not all(dims_i == dims for dims_i in other_dims):
-                raise DimensionMismatchError.from_dims_list("Some NDVars have mismatching dimensions. Set dim_intersection=True to discard elements not present in all.", all_dims)
+            if not all(dims_stackable(dims_i, dims, check_dims) for dims_i in other_dims):
+                msg = ["Some NDVars have mismatching dimensions", "set dim_intersection=True to discard elements not present in all"]
+                if not check_dims:
+                    msg.insert(1, "set check_dims=False to ignore non-critical differences (e.g. connectivity)")
+                raise DimensionMismatchError.from_dims_list('; '.join(msg), all_dims, check_dims)
         idx = {d.name: d for d in dims}
         # reduce data to common dimension range
         sub_items = []
@@ -5902,7 +5905,7 @@ class Dataset(dict):
             raise EvalError(expression, exception, ds_repr) from exception
 
     @classmethod
-    def from_caselist(cls, names, cases, name=None, caption=None, info=None, random=None, check_dims=True):
+    def from_caselist(cls, names, cases, name=None, caption=None, info=None, random=None, check_dims=True, dim_intersection=False):
         """Create a Dataset from a list of cases
 
         Parameters
@@ -5927,6 +5930,10 @@ class Dataset(dict):
             For :class:`NDVar` columns, check dimensions for consistency between
             cases (e.g., channel locations in a :class:`Sensor`). Default is
             ``True``. Set to ``False`` to ignore mismatches.
+        dim_intersection : bool
+            Only applies to combining :class:`NDVar`: normally, when :class:`NDVar`
+            have mismatching dimensions, a DimensionMismatchError is raised. With
+            ``dim_intersection``, the intersection is used instead.
 
         Examples
         --------
@@ -5948,7 +5955,7 @@ class Dataset(dict):
         n_cases = n_cases.pop()
         if len(names) != n_cases:
             raise ValueError('names=%r: %i names but %i cases' % (names, len(names), n_cases))
-        items = {key: combine((case[i] for case in cases), check_dims=check_dims) for i, key in enumerate(names)}
+        items = {key: combine((case[i] for case in cases), check_dims=check_dims, dim_intersection=dim_intersection) for i, key in enumerate(names)}
         for key in random:
             item = items[key]
             if isinstance(item, Factor):
@@ -7495,13 +7502,22 @@ class Dimension:
         raise NotImplementedError
 
     def __eq__(self, other):
-        if isinstance(other, self.__class__) and other.name == self.name and other._connectivity_type == self._connectivity_type:
-            if self._connectivity_type == 'custom':
-                if other._connectivity is None or self._connectivity is None:
-                    return True
-                return np.array_equal(other._connectivity, self._connectivity)
-            return True
-        return False
+        return self._eq(other, True)
+
+    def _eq(self, other, check: bool):
+        if not isinstance(other, self.__class__) or not other.name == self.name:
+            return False
+        elif len(other) != len(self):
+            return False
+        elif check:
+            if other._connectivity_type == self._connectivity_type:
+                if self._connectivity_type == 'custom':
+                    if other._connectivity is None or self._connectivity is None:
+                        return True
+                    return np.array_equal(other._connectivity, self._connectivity)
+                return True
+            return False
+        return True
 
     def __ne__(self, other):
         return not self == other
@@ -7848,9 +7864,6 @@ class Case(Dimension):
     def __len__(self):
         return self.n
 
-    def __eq__(self, other):
-        return Dimension.__eq__(self, other) and other.n == self.n
-
     def __getitem__(self, item):
         if isinstance(item, Integral):
             if item < 0:
@@ -7955,8 +7968,8 @@ class Space(Dimension):
     def __len__(self):
         return len(self._directions)
 
-    def __eq__(self, other):
-        return Dimension.__eq__(self, other) and other._directions == self._directions
+    def _eq(self, other, check: bool):
+        return Dimension._eq(self, other, check) and other._directions == self._directions
 
     def __getitem__(self, item):
         if not all(i in self._directions for i in item):
@@ -8014,7 +8027,8 @@ class Space(Dimension):
         """
         if self.name != dim.name:
             raise DimensionMismatchError("Dimensions don't match")
-        elif self._directions == dim._directions:
+
+        if self._directions == dim._directions:
             return self
         self_dirs = set(self._directions)
         dim_dirs = set(dim._directions)
@@ -8089,8 +8103,8 @@ class Categorial(Dimension):
     def __len__(self):
         return len(self.values)
 
-    def __eq__(self, other):
-        return Dimension.__eq__(self, other) and self.values == other.values
+    def _eq(self, other, check: bool):
+        return Dimension._eq(self, other, check) and self.values == other.values
 
     def __getitem__(self, index):
         if isinstance(index, Integral):
@@ -8236,9 +8250,8 @@ class Scalar(Dimension):
     def __len__(self):
         return len(self.values)
 
-    def __eq__(self, other):
-        return (Dimension.__eq__(self, other) and
-                np.array_equal(self.values, other.values))
+    def _eq(self, other, check: bool):
+        return Dimension._eq(self, other, check) and np.array_equal(self.values, other.values)
 
     def __getitem__(self, index):
         if isinstance(index, Integral):
@@ -8559,10 +8572,8 @@ class Sensor(Dimension):
     def __len__(self):
         return len(self.locs)
 
-    def __eq__(self, other):  # Based on equality of sensor names
-        return (Dimension.__eq__(self, other) and
-                len(self) == len(other) and
-                np.all(other.names == self.names))
+    def _eq(self, other, check: bool):  # Based on equality of sensor names
+        return Dimension._eq(self, other, check) and np.all(other.names == self.names)
 
     def __getitem__(self, index):
         if np.isscalar(index):
@@ -9017,8 +9028,7 @@ class Sensor(Dimension):
             raise DimensionMismatchError("Dimensions don't match")
 
         n_self = len(self)
-        names = set(self.names)
-        names.intersection_update(dim.names)
+        names = set(self.names).intersection(dim.names)
         n_intersection = len(names)
         if n_intersection == n_self:
             return self
@@ -9029,8 +9039,7 @@ class Sensor(Dimension):
         if check_dims:
             other_index = np.array([name in names for name in dim.names])
             if not np.all(self.locs[index] == dim.locs[other_index]):
-                raise ValueError("Sensor locations don't match between "
-                                 "dimension objects")
+                raise DimensionMismatchError("Sensor locations don't match between dimension objects")
         return self[index]
 
     def neighbors(self, connect_dist):
@@ -9309,14 +9318,12 @@ class SourceSpaceBase(Dimension):
     def __len__(self):
         return self._n_vert
 
-    def __eq__(self, other):
+    def _eq(self, other, check: bool):
         return (
-            Dimension.__eq__(self, other) and
+            Dimension._eq(self, other, check) and
             self.subject == other.subject and
             self.src == other.src and
-            len(self) == len(other) and
-            all(np.array_equal(s, o) for s, o in zip(self.vertices, other.vertices))
-        )
+            all(np.array_equal(s, o) for s, o in zip(self.vertices, other.vertices)))
 
     def _assert_same_base(self, other):
         "Assert that ``other`` is based on the same source space"
@@ -9571,7 +9578,7 @@ class SourceSpaceBase(Dimension):
         index = np.hstack([np.in1d(s, d) for s, d in zip(self.vertices, dim.vertices)])
         return NDVar(index, (self,))
 
-    def intersect(self, other, check_dims=True):
+    def intersect(self, dim, check_dims=True):
         """Create a Source dimension that is the intersection with dim
 
         Parameters
@@ -9587,8 +9594,8 @@ class SourceSpaceBase(Dimension):
             The intersection with dim (returns itself if dim and self are
             equal)
         """
-        self._assert_same_base(other)
-        index = np.hstack([np.in1d(s, o) for s, o in zip(self.vertices, other.vertices)])
+        self._assert_same_base(dim)
+        index = np.hstack([np.in1d(s, o) for s, o in zip(self.vertices, dim.vertices)])
         return self[index]
 
     @property
@@ -10211,9 +10218,8 @@ class UTS(Dimension):
     def __len__(self):
         return self.nsamples
 
-    def __eq__(self, other):
-        return (Dimension.__eq__(self, other) and
-                self.nsamples == other.nsamples and
+    def _eq(self, other, check: bool):
+        return (Dimension._eq(self, other, check) and
                 abs(self.tmin - other.tmin) < self._tol and
                 abs(self.tstep - other.tstep) < self._tol)
 
@@ -10464,14 +10470,21 @@ class UTS(Dimension):
         return UTS(tmin, tstep, n_samples)
 
 
-def intersect_dims(dims1, dims2, check_dims=True):
+def dims_stackable(dims1: Sequence, dims2: Sequence, check_dims: bool):
+    """Check whether two NDVars can be stacked"""
+    if len(dims1) != len(dims2):
+        return False
+    return all(d1._eq(d2, check_dims) for d1, d2 in zip(dims1, dims2))
+
+
+def intersect_dims(dims1, dims2, check_dims: bool = True):
     """Find the intersection between two multidimensional spaces
 
     Parameters
     ----------
     dims1, dims2 : tuple of dimension objects
         Two spaces involving the same dimensions with overlapping values.
-    check_dims : bool
+    check_dims
         Check dimensions for consistency (e.g., channel locations in a Sensor
         dimension). Default is ``True``. Set to ``False`` to ignore non-fatal
         mismatches.
@@ -10481,7 +10494,7 @@ def intersect_dims(dims1, dims2, check_dims=True):
     dims : tuple of Dimension objects
         Intersection of dims1 and dims2.
     """
-    return tuple(d1.intersect(d2, check_dims=check_dims) for d1, d2 in zip(dims1, dims2))
+    return tuple([d1.intersect(d2, check_dims) for d1, d2 in zip(dims1, dims2)])
 
 
 EVAL_CONTEXT.update(Var=Var, Factor=Factor, extrema=extrema)

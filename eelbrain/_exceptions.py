@@ -29,10 +29,12 @@ class DimensionMismatchError(Exception):
     "Trying to align NDVars with mismatching dimensions"
 
     @classmethod
-    def from_dims_list(cls, message, dims_list):
+    def from_dims_list(cls, message, dims_list, check: bool):
+        from ._data_obj import dims_stackable
+
         unique_dims = []
         for dims in dims_list:
-            if any(dims == dims_ for dims_ in unique_dims):
+            if any(dims_stackable(dims, dims_, check) for dims_ in unique_dims):
                 continue
             else:
                 unique_dims.append(dims)
