@@ -894,7 +894,7 @@ def test_longname():
 
     # Dataset assigning
     ds['abs_v'] = v.abs()
-    assert longname(ds['abs_v']) == 'abs(v)'
+    assert longname(ds['abs_v']) == 'abs_v'
 
 
 def test_model():

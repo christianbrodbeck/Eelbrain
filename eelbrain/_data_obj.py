@@ -41,8 +41,9 @@ Potentially, data-object names could fulfill the following functions::
 
 1) Names should be effortless to set and update
 
-  - Always updat when assigning to dataset
+  - Always update when assigning to dataset
   - With ``name`` argument in methods
+  - Any explicit naming should override inherited names
 
 2) Keep track of data source
 
@@ -1218,7 +1219,23 @@ class EffectList(list):
         return [UNNAMED if n is None else n for n in names]
 
 
-class Var:
+class Named:
+
+    def __init__(self, name, info):
+        self.info = {} if info is None else dict(info)
+        self._name = name
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        self.info.pop('longname', None)
+        self._name = name
+
+
+class Var(Named):
     """Container for scalar data.
 
     Parameters
@@ -1251,7 +1268,9 @@ class Var:
     :py:class:`numpy.array` which can be used for anything more complicated.
     :py:attr:`Var.x` can be read and modified, but should not be replaced.
     """
+    df = 1
     ndim = 1
+    random = False
 
     def __init__(self, x, name=None, info=None, repeat=1, tile=1):
         if isinstance(x, str):
@@ -1277,8 +1296,8 @@ class Var:
         if tile > 1:
             x = np.tile(x, tile)
 
-        info = {} if info is None else dict(info)
-        self.__setstate__((x, name, info))
+        Named.__init__(self, name, info)
+        self.x = x
 
     def __setstate__(self, state):
         if len(state) == 3:
@@ -1286,17 +1305,12 @@ class Var:
         else:
             x, name = state
             info = {}
-        # raw
-        self.name = name
         self.x = x
+        self._name = name
         self.info = info
-        # constants
-        self._n_cases = len(x)
-        self.df = 1
-        self.random = False
 
     def __getstate__(self):
-        return self.x, self.name, self.info
+        return self.x, self._name, self.info
 
     def __repr__(self, full=False):
         n_cases = preferences['var_repr_n_cases']
@@ -1334,7 +1348,7 @@ class Var:
 
     # container ---
     def __len__(self):
-        return self._n_cases
+        return len(self.x)
 
     def __getitem__(self, index):
         index = asindex(index)
@@ -2969,7 +2983,7 @@ class Factor(_Effect):
         return Factor(self.x, name, self.random, tile=repeats, labels=self._labels)
 
 
-class NDVar:
+class NDVar(Named):
     """Container for n-dimensional data.
 
     Parameters
@@ -3075,8 +3089,7 @@ class NDVar:
 
         self.x = x
         self.dims = tuple(dims_)
-        self.info = {} if info is None else dict(info)
-        self.name = name
+        Named.__init__(self, name, info)
         self._init_secondary()
 
     def _init_secondary(self):
@@ -3102,15 +3115,12 @@ class NDVar:
 
         self.x = state['x']
         self.dims = state['dims']
-        self.name = state['name']
+        self._name = state['name']
         self.info = state['info']
         self._init_secondary()
 
     def __getstate__(self):
-        return {'dims': self.dims,
-                'x': self.x,
-                'name': self.name,
-                'info': self.info}
+        return {'dims': self.dims, 'x': self.x, 'name': self._name, 'info': self.info}
 
     __array_priority__ = 15
 
