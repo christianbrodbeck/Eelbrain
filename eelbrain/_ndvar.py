@@ -599,7 +599,7 @@ def gaussian(center: float, width: float, time: UTS):
     Parameters
     ----------
     center : scalar
-        Center of the window.
+        Center of the window (normalized to the closest sample on ``time``).
     width : scalar
         Standard deviation of the window.
     time : UTS
@@ -613,14 +613,14 @@ def gaussian(center: float, width: float, time: UTS):
     width_i = int(round(width / time.tstep))
     n_times = len(time)
     center_i = time._array_index(center)
-    if center_i > n_times // 2:
+    if center_i >= n_times / 2:
         start = None
         stop = n_times
-        window_width = 2 * center_i
+        window_width = 2 * center_i + 1
     else:
         start = -n_times
         stop = None
-        window_width = 2 * (n_times - center_i)
+        window_width = 2 * (n_times - center_i) - 1
     window_data = signal.windows.gaussian(window_width, width_i)[start: stop]
     return NDVar(window_data, (time,))
 

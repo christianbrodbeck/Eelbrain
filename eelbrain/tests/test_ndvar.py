@@ -7,7 +7,7 @@ from scipy import signal
 from eelbrain import (
     NDVar, Case, Scalar, UTS, datasets,
     concatenate, convolve, correlation_coefficient, cross_correlation,
-    cwt_morlet, find_intervals, find_peaks, frequency_response, psd_welch,
+    cwt_morlet, find_intervals, find_peaks, frequency_response, gaussian, psd_welch,
     resample, set_time,
 )
 from eelbrain.testing import assert_dataobj_equal, get_ndvar
@@ -152,6 +152,18 @@ def test_frequency_response():
     assert_array_equal(fresp.x[0], fresp_array)
     assert_array_equal(fresp.x[1], fresp_array)
     assert_array_equal(fresp.frequency.values * hz_to_rad, freqs_array)
+
+
+def test_gaussian():
+    time = UTS(0, 0.1, 5)
+    assert_array_equal(gaussian(0.1, 0.2, time).x, signal.windows.gaussian(7, 2)[2:])
+    assert_array_equal(gaussian(0.2, 0.2, time).x, signal.windows.gaussian(5, 2))
+    assert_array_equal(gaussian(0.3, 0.1, time).x, signal.windows.gaussian(7, 1)[:5])
+    time = UTS(0, 0.1, 6)
+    assert_array_equal(gaussian(0.1, 0.2, time).x, signal.windows.gaussian(9, 2)[3:])
+    assert_array_equal(gaussian(0.2, 0.2, time).x, signal.windows.gaussian(9, 2)[2:8])
+    assert_array_equal(gaussian(0.3, 0.2, time).x, signal.windows.gaussian(9, 2)[1:7])
+    assert_array_equal(gaussian(0.4, 0.1, time).x, signal.windows.gaussian(9, 1)[:6])
 
 
 def test_mask():
