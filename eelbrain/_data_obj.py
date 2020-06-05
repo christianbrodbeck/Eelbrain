@@ -1596,11 +1596,21 @@ class Var(Named):
         return Var(np.abs(self.x), *op_name(self, 'abs(', name=name))
 
     def argmax(self):
-        """:func:`numpy.argmax`"""
+        """Index of the largest value
+
+        See also
+        --------
+        .max
+        """
         return np.argmax(self.x)
 
     def argmin(self):
-        """:func:`numpy.argmin`"""
+        """Index of the smallest value
+
+        See Also
+        --------
+        .min
+        """
         return np.argmin(self.x)
 
     def argsort(self, kind='quicksort'):
@@ -1917,7 +1927,13 @@ class Var(Named):
         return Var(x, *op_name(self, op, name=name))
 
     def max(self):
-        "The highest value"
+        """The largest value
+
+        See Also
+        --------
+        .argmax
+        .min
+        """
         return self.x.max()
 
     def mean(self):
@@ -1925,7 +1941,13 @@ class Var(Named):
         return self.x.mean()
 
     def min(self):
-        "The smallest value"
+        """The smallest value
+
+        See Also
+        --------
+        .argmin
+        .max
+        """
         return self.x.min()
 
     def repeat(self, repeats, name=None):
@@ -4042,6 +4064,11 @@ class NDVar(Named):
             Extrema over specified dimensions. Return a Var if only the
             case dimension remains, and a float if the function collapses over
             all data.
+
+        See Also
+        --------
+        .max
+        .min
         """
         return self._aggregate_over_dims(dims, regions, extrema)
 
@@ -4389,6 +4416,11 @@ class NDVar(Named):
             The maximum over specified dimensions. Return a Var if only the
             case dimension remains, and a float if the function collapses over
             all data.
+
+        See Also
+        --------
+        .argmax
+        .extrema
         """
         return self._aggregate_over_dims(dims, regions, np.max)
 
@@ -4443,6 +4475,11 @@ class NDVar(Named):
             The minimum over specified dimensions. Return a Var if only the
             case dimension remains, and a float if the function collapses over
             all data.
+
+        See Also
+        --------
+        .argmin
+        .extrema
         """
         return self._aggregate_over_dims(dims, regions, np.min)
 
