@@ -101,3 +101,14 @@ dt em {
 dl.docutils dd p.first, tr.field th.field-name  {
     font-size: 16px;
 }
+
+/* code samples */
+div.highlight-default div.highlight pre {
+    font-size: 13px;
+}
+
+/* example code output*/
+div.sphx-glr-script-out div.highlight pre {
+    font-size: 13px;
+    color: #555555;
+}
