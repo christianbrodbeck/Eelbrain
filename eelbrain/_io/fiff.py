@@ -726,7 +726,7 @@ def sensor_dim(info, picks=None, sysname=None, connectivity=None):
             c_matrix = c_matrix[index][:, index]
 
         connectivity = _matrix_graph(c_matrix)
-    else:
+    elif connectivity in (None, False):
         connectivity = 'none'
 
     return Sensor(ch_locs, ch_names, sysname, connectivity=connectivity)
