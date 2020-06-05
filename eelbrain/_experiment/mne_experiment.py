@@ -1115,7 +1115,7 @@ class MneExperiment(FileTree):
                         self._log.warning("  var name changed: %s (%s) %s->%s", var, '/'.join(key), old.name, new.name)
                     elif new.__class__ is not old.__class__:
                         invalid_cache['variables'].add(var)
-                        self._log.warning("  var type changed: %s (%s) %s->%s", var, '/'.join(key), old.__class__, new.__class)
+                        self._log.warning("  var type changed: %s (%s) %s->%s", var, '/'.join(key), old.__class__.__name__, new.__class__.__name__)
                     elif not all_equal(old, new, True):
                         invalid_cache['variables'].add(var)
                         self._log.warning("  var changed: %s (%s) %i values", var, '/'.join(key), np.sum(new != old))
