@@ -2225,6 +2225,7 @@ class Layout(BaseLayout):
                 raise ValueError("w < axw")
         w, h = resolve_plot_rect(w, h, dpi)
 
+        self.h_fixed = h
         self.w_fixed = w if w is not None else axw
         self._margins_arg = margins
 
@@ -2257,6 +2258,7 @@ class Layout(BaseLayout):
         else:
             raise TypeError("nax=%r" % (nax,))
 
+        trim = None
         if not nax:
             if w is None:
                 if h is None:
@@ -2268,33 +2270,39 @@ class Layout(BaseLayout):
             ncol = nrow = 1
         elif nrow is None and ncol is None:
             if w and axw:
+                trim = 'row'
                 ncol = math.floor(w / axw)
             elif h and axh:
+                trim = 'col'
                 nrow = math.floor(h / axh)
             elif w:
+                trim = 'row'
                 if axh:
                     ncol = round(w / (axh * ax_aspect))
                 else:
                     ncol = round(w / (axh_default * ax_aspect))
                 ncol = max(1, min(nax, ncol))
             elif h:
+                trim = 'col'
                 if axw:
                     nrow = round(h / (axw / ax_aspect))
                 else:
                     nrow = round(h / axh_default)
                 nrow = max(1, min(nax, nrow))
             elif axh or axw:
+                trim = 'row'
                 if not axh:
                     axh = axw / ax_aspect
                 nrow = min(nax, math.floor(defaults['maxh'] / axh))
             else:
+                trim = 'row'
                 # default: minimum number of columns (max number of rows)
                 hspace = margins.get('hspace', 0)
                 maxh = defaults['maxh'] - margins.get('top', 0) - margins.get('bottom', 0) + hspace
                 axh_with_space = axh_default + hspace
                 nrow = min(nax, math.floor(maxh / axh_with_space))
-                # test width
                 ncol = math.ceil(nax / nrow)
+                # test width
                 wspace = margins.get('wspace', 0)
                 maxw = defaults['maxw'] - margins.get('left', 0) - margins.get('right', 0) + wspace
                 axw_with_space = axh_default * ax_aspect + wspace
@@ -2315,6 +2323,13 @@ class Layout(BaseLayout):
             elif ncol is None:
                 nrow = min(nax, nrow)
                 ncol = math.ceil(nax / nrow)
+
+            if trim == 'row':
+                if (nrow * ncol) - nax >= ncol:
+                    nrow -= 1
+            elif trim == 'col':
+                if (nrow * ncol) - nax >= nrow:
+                    nrow -= 1
 
             if axw:
                 axh_default = axw / ax_aspect

@@ -19,6 +19,10 @@ def assert_layout_consistent(layout):
 def assert_layout_ok(*args, **kwargs):
     layout = Layout(*args, **kwargs)
     assert layout.nrow * layout.ncol >= layout.nax
+    if layout.h_fixed:
+        assert layout.nrow * layout.ncol < layout.nax + layout.nrow
+    else:
+        assert layout.nrow * layout.ncol < layout.nax + layout.ncol
     assert_layout_consistent(layout)
 
 

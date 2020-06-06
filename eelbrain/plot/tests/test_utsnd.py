@@ -43,6 +43,7 @@ def test_plot_array():
     p.close()
     p = plot.Array('utsnd', 'A%B', ds=ds)
     assert p._layout.nax == 4
+    assert (p._layout.nrow, p._layout.ncol) == (2, 2)
     p.close()
     p = plot.Array('utsnd', 'A', sub='B=="b1"', ds=ds)
     assert p._layout.nax == 2
