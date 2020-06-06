@@ -1538,10 +1538,6 @@ class EelFigure:
                 axtitle = names
             else:
                 axtitle = [axtitle.format(name=n) if n else None for n in names]
-        else:
-            axtitle = list(axtitle)
-            if len(axtitle) != naxes:
-                raise ValueError(f"axtitle needs to have one entry per axes. Got {axtitle} for {naxes} axes")
 
         if isinstance(axes, int):
             return axtitle
