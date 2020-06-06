@@ -2,9 +2,9 @@
 """Fix Python-based executables so that they are run with a framework build"""
 from argparse import ArgumentParser
 from distutils.spawn import find_executable
+import re
 
 
-OLD = '/bin/python'
 NEW = '/python.app/Contents/MacOS/python'
 
 argparser = ArgumentParser(description=__doc__)
@@ -18,10 +18,9 @@ if __name__ == '__main__':
     with open(path) as fid:
         text = fid.read()
 
-    if OLD not in text:
-        raise RuntimeError("%r not in file:\n%s" % (OLD, text))
-
-    text = text.replace(OLD, NEW)
+    text_sub, n = re.subn(r"/bin/python(?:\d\.\d)?$", NEW, text, flags=re.MULTILINE)
+    if n != 1:
+        raise RuntimeError(f"Found {n} instances of path in:\n\n{text}")
 
     with open(path, 'w') as fid:
-        fid.write(text)
+        fid.write(text_sub)
