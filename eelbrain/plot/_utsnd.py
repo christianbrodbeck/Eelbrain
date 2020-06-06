@@ -1,9 +1,11 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Plot multidimensional uniform time series."""
+from typing import Union, Sequence
+
 import matplotlib as mpl
 import numpy as np
 
-from .._data_obj import Datalist
+from .._data_obj import Datalist, Dataset
 from .._names import INTERPOLATE_CHANNELS
 from . import _base
 from ._base import (
@@ -185,12 +187,18 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
         Data to plot.
     xax : None | categorial
         Create a separate plot for each cell in this model.
-    xlabel, ylabel : bool | str
-        Labels for x- and y-axis; the default is determined from the data.
-    xticklabels : bool | int | list of int
+    xlabel
+        Labels for x-axis; the default is determined from the data.
+    ylabel
+        Labels for y-axis; the default is determined from the data.
+    xticklabels
         Specify which axes should be annotated with x-axis tick labels.
-        Use ``int`` for a single axis (default ``-1``), a sequence of
-        ``int`` for multiple specific axes, or ``bool`` for all/none.
+        Use ``int`` for a single axis, a sequence of ``int`` for multiple
+        specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
+    yticklabels
+        Specify which axes should be annotated with y-axis tick labels.
+        Use ``int`` for a single axis, a sequence of ``int`` for multiple
+        specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
     ds : Dataset
         If a Dataset is provided, ``epochs`` and ``xax`` can be specified
         as strings.
@@ -198,9 +206,9 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
         Specify a subset of the data.
     x : str
         Dimension to plot on the x axis (default 'time').
-    vmax : scalar
+    vmax
         Upper limits for the colormap.
-    vmin : scalar
+    vmin
         Lower limit for the colormap.
     cmap : str
         Colormap (default depends on the data).
@@ -231,10 +239,24 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
      - ``f``: zoom in (reduce x axis range)
      - ``d``: zoom out (increase x axis range)
     """
-    def __init__(self, y, xax=None, xlabel=True, ylabel=True,
-                 xticklabels='bottom', ds=None, sub=None, x='time', vmax=None,
-                 vmin=None, cmap=None, axtitle=True, interpolation=None,
-                 xlim=None, **kwargs):
+    def __init__(
+            self,
+            y,
+            xax=None,
+            xlabel: Union[bool, str] = True,
+            ylabel: Union[bool, str] = True,
+            xticklabels: Union[str, int, Sequence[int]] = 'bottom',
+            yticklabels: Union[str, int, Sequence[int]] = 'left',
+            sub=None,
+            ds: Dataset = None,
+            x: str = 'time',
+            vmax: float = None,
+            vmin: float = None,
+            cmap=None,
+            axtitle=True,
+            interpolation=None,
+            xlim=None,
+            **kwargs):
         data = PlotData.from_args(y, (x, None), xax, ds, sub).for_plot(PlotType.IMAGE)
         xdim, ydim = data.dims
         self.plots = []
@@ -248,8 +270,8 @@ class Array(TimeSlicerEF, ColorMapMixin, XAxisMixin, EelFigure):
             p = _ax_im_array(ax, layers, x, interpolation, self._vlims, self._cmaps, self._contours)
             self.plots.append(p)
 
-        self._configure_xaxis_dim(data.data[0][0].get_dim(xdim), xlabel, xticklabels)
-        self._configure_yaxis_dim(data.data, ydim, ylabel, scalar=False)
+        self._configure_axis_dim('x', xdim, xlabel, xticklabels, data=data.data)
+        self._configure_axis_dim('y', ydim, ylabel, yticklabels, scalar=False, data=data.data)
         XAxisMixin._init_with_data(self, data.data, xdim, xlim, im=True)
         TimeSlicerEF.__init__(self, xdim, data.time_dim)
         self._show()
@@ -377,10 +399,10 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
         X-axis labels. By default the label is inferred from the data.
     ylabel : str | bool
         Y-axis labels. By default the label is inferred from the data.
-    xticklabels : bool | int | list of int
+    xticklabels
         Specify which axes should be annotated with x-axis tick labels.
-        Use ``int`` for a single axis (default ``-1``), a sequence of
-        ``int`` for multiple specific axes, or ``bool`` for all/none.
+        Use ``int`` for a single axis, a sequence of ``int`` for multiple
+        specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
     color : matplotlib color | dict
         Either a color for all lines, or a dictionary mapping levels of the 
         line dimension to colors. The default is to use ``NDVar.info['color']``
@@ -435,17 +457,21 @@ class Butterfly(TimeSlicerEF, LegendMixin, TopoMapKey, YLimMixin, XAxisMixin, Ee
     # keep track of open butterfly combo plots to optimally position new plots on screen
     _OPEN_PLOTS = []
 
-    def __init__(self, y, xax=None, sensors=None, axtitle=True,
-                 xlabel=True, ylabel=True, xticklabels='bottom', color=None,
-                 linewidth=None,
-                 ds=None, sub=None, x='time', vmax=None, vmin=None, xlim=None,
-                 clip=None, **kwargs):
+    def __init__(
+            self, y, xax=None, sensors=None, axtitle=True,
+            xlabel=True,
+            ylabel=True,
+            xticklabels: Union[str, int, Sequence[int]] = 'bottom',
+            color=None,
+            linewidth=None,
+            ds=None, sub=None, x='time', vmax=None, vmin=None, xlim=None,
+            clip=None, **kwargs):
         data = PlotData.from_args(y, (x, None), xax, ds, sub).for_plot(PlotType.LINE)
         xdim, linedim = data.dims
         layout = Layout(data.plot_used, 2, 4, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data)
-        self._configure_xaxis_dim(data.y0.get_dim(xdim), xlabel, xticklabels)
+        self._configure_axis_dim('x', xdim, xlabel, xticklabels, data=data.data)
         self._configure_axis(data.y0, ylabel, y=True)
 
         if clip is None:

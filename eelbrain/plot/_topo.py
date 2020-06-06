@@ -1,9 +1,8 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Plot topographic maps of sensor space data."""
-from collections.abc import Sequence
 from itertools import repeat
 from math import floor, sqrt
-from typing import Union, Tuple
+from typing import Sequence, Tuple, Union
 
 import matplotlib as mpl
 import numpy as np
@@ -317,10 +316,10 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
         Color for marked sensors.
     xlabel, ylabel : bool | string
         Labels for x and y axes. If True, labels are automatically chosen.
-    xticklabels : bool | int | list of int
+    xticklabels
         Specify which axes should be annotated with x-axis tick labels.
-        Use ``int`` for a single axis (default ``-1``), a sequence of
-        ``int`` for multiple specific axes, or ``bool`` for all/none.
+        Use ``int`` for a single axis, a sequence of ``int`` for multiple
+        specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
     axtitle : bool | sequence of str
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.
@@ -367,7 +366,8 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
                  # sensor-map args
                  sensorlabels=None, mark=None, mcolor=None,
                  # layout
-                 xlabel=True, ylabel=True, xticklabels=-1,
+                 xlabel=True, ylabel=True,
+                 xticklabels: Union[str, int, Sequence[int]] = -1,
                  axtitle=True, frame=True, xlim=None,
                  **kwargs):
         data = PlotData.from_args(y, ('sensor', None), xax, ds, sub)
@@ -410,7 +410,7 @@ class TopoButterfly(ColorMapMixin, TimeSlicerEF, TopoMapKey, YLimMixin,
             self.bfly_plots.append(h)
 
         # decorate axes
-        self._configure_xaxis_dim(data.time_dim, xlabel, xticklabels, self.bfly_axes)
+        self._configure_axis_dim('x', data.time_dim, xlabel, xticklabels, self.bfly_axes)
         self._configure_axis(data, ylabel, self.bfly_axes, y=True)
 
         # setup callback
@@ -810,10 +810,14 @@ class TopoArray(ColorMapMixin, TopoMapKey, EelFigure):
         Sensors which to mark.
     mcolor : matplotlib color
         Color for marked sensors.
-    xticklabels : bool | int | list of int
+    xticklabels
         Specify which axes should be annotated with x-axis tick labels.
-        Use ``int`` for a single axis (default ``-1``), a sequence of
-        ``int`` for multiple specific axes, or ``bool`` for all/none.
+        Use ``int`` for a single axis, a sequence of ``int`` for multiple
+        specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
+    yticklabels
+        Specify which axes should be annotated with y-axis tick labels.
+        Use ``int`` for a single axis, a sequence of ``int`` for multiple
+        specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
     axtitle : bool | sequence of str
         Title for the individual axes. The default is to show the names of the
         epochs, but only if multiple axes are plotted.
@@ -839,7 +843,9 @@ class TopoArray(ColorMapMixin, TopoMapKey, EelFigure):
                  # sensor-map args
                  sensorlabels=None, mark=None, mcolor=None,
                  # layout
-                 xticklabels=-1, axtitle=True,
+                 axtitle: bool = True,
+                 xticklabels: Union[int, Sequence[int]] = -1,
+                 yticklabels: Union[int, Sequence[int]] = 0,
                  **kwargs):
         data = PlotData.from_args(y, ('time', 'sensor'), xax, ds, sub).for_plot(PlotType.IMAGE)
         n_topo_total = ntopo * data.n_plots
@@ -912,8 +918,8 @@ class TopoArray(ColorMapMixin, TopoMapKey, EelFigure):
             self.set_topo_ts(*t)
 
         self._set_axtitle(axtitle, data, self._array_axes)
-        self._configure_xaxis_dim(data.y0.time, True, xticklabels, self._array_axes)
-        self._configure_yaxis_dim(data.data, 'sensor', True, self._array_axes, False)
+        self._configure_axis_dim('x', data.y0.time, True, xticklabels, self._array_axes)
+        self._configure_axis_dim('y', 'sensor', True, yticklabels, self._array_axes, False, data.data)
 
         # setup callback
         self._selected_window = None

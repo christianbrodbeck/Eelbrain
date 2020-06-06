@@ -73,7 +73,7 @@ Figure components
 """
 import __main__
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable
 from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass, replace
@@ -87,8 +87,7 @@ import os
 import re
 import sys
 import time
-from typing import Any, Callable, Dict, List, Sequence, Tuple, Union
-from typing import Iterator as IteratorType
+from typing import Any, Callable, Dict, Iterator, List, Sequence, Tuple, Union
 import weakref
 
 import matplotlib as mpl
@@ -102,7 +101,7 @@ import numpy as np
 from .._celltable import Celltable
 from .._colorspaces import LocatedColormap, symmetric_cmaps, zerobased_cmaps, ALPHA_CMAPS
 from .._config import CONFIG
-from .._data_obj import Dataset, Factor, Interaction, NDVar, Case, UTS, NDVarArg, CategorialArg, IndexArg, CellArg, ascategorial, asndvar, assub, isnumeric, isdataobject, combine_cells, cellname
+from .._data_obj import Dimension, Dataset, Factor, Interaction, NDVar, Case, UTS, NDVarArg, CategorialArg, IndexArg, CellArg, ascategorial, asndvar, assub, isnumeric, isdataobject, combine_cells, cellname
 from .._stats import testnd
 from .._utils import IS_WINDOWS, LazyProperty, intervals, ui
 from .._ndvar import erode, resample
@@ -802,7 +801,7 @@ class Layer:
     def sub_time(self, time: float, data_only: bool = False):
         raise NotImplementedError
 
-    def for_plot(self, plot_type: PlotType) -> IteratorType['DataLayer']:
+    def for_plot(self, plot_type: PlotType) -> Iterator['DataLayer']:
         raise NotImplementedError
 
 
@@ -857,7 +856,7 @@ class DataLayer(Layer):
             vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cmap)
         return {'cmap': cmap, 'vmin': vmin, 'vmax': vmax, **self._plot_args}
 
-    def for_plot(self, plot_type: PlotType) -> IteratorType['DataLayer']:
+    def for_plot(self, plot_type: PlotType) -> Iterator['DataLayer']:
         if self.plot_type == plot_type:
             yield self
         elif not np.ma.isMaskedArray(self.y.x):
@@ -921,7 +920,7 @@ class StatLayer(Layer):
     def get_dispersion(self, spec, pool) -> np.ndarray:
         return self._apply_mask(self.ct._get_dispersion(self.cell, spec, pool))
 
-    def for_plot(self, plot_type: PlotType) -> IteratorType['DataLayer']:
+    def for_plot(self, plot_type: PlotType) -> Iterator['DataLayer']:
         if self.plot_type == plot_type:
             yield self
         elif self.mask is None:
@@ -1692,67 +1691,6 @@ class EelFigure:
         else:
             return (self._axes[i] for i in axes)
 
-    def _configure_xaxis_dim(self, dim, label, xticklabels, axes=None, scalar=True):
-        """Configure the x-axis based on a dimension
-
-        Parameters
-        ----------
-        dim : Dimension
-            The dimension assigned to the axis.
-        label : bool | str
-            Axis label.
-        xticklabels : bool | int | list of int
-            Specify which axes should be annotated with x-axis tick labels.
-            Use ``int`` for a single axis (default ``-1``), a sequence of
-            ``int`` for multiple specific axes, or ``bool`` for all/none.
-        axes : list of Axes
-            Axes which to format (default is EelFigure._axes)
-        """
-        if axes is None:
-            axes = self._axes
-            ncol = self._layout.ncol
-        else:
-            ncol = None
-        formatter, locator, label = dim._axis_format(scalar, label)
-
-        n_axes = len(axes)
-        if isinstance(xticklabels, bool):
-            add_tick_labels = [xticklabels] * n_axes
-        elif isinstance(xticklabels, str):
-            if xticklabels == 'bottom':
-                if ncol is None:
-                    raise NotImplementedError(f"xticklabels={xticklabels!r} for {self.__class__.__name__}")
-                add_tick_labels = chain(repeat(False, n_axes - ncol), repeat(True, ncol))
-            else:
-                raise ValueError(f"xticklabels={xticklabels!r}")
-        else:
-            if isinstance(xticklabels, int):
-                tick_label_i = (xticklabels,)
-            else:
-                try:
-                    tick_label_i = map(int, xticklabels)
-                except TypeError:
-                    raise TypeError("xticklabels=%r" % (xticklabels,))
-            add_tick_labels = [False] * n_axes
-            for i in tick_label_i:
-                if i >= n_axes or i < -n_axes:
-                    raise ValueError("xticklabels=%r for a plot with %i axes"
-                                     % (xticklabels, n_axes))
-                add_tick_labels[i] = True
-
-        for ax, add_tick_labels_ in zip(axes, add_tick_labels):
-            if locator:
-                ax.xaxis.set_major_locator(locator)
-
-            if formatter:
-                ax.xaxis.set_major_formatter(formatter)
-
-            if not add_tick_labels_:
-                ax.tick_params(labelbottom=False)
-
-        if label:
-            self.set_xlabel(label)
-
     def _configure_axis(self, data, label, axes=None, y=False):
         if axes is None:
             axes = self._axes
@@ -1768,28 +1706,79 @@ class EelFigure:
             for i, l in enumerate(scale.label):
                 set_label(l, i)
 
-    def _configure_yaxis_dim(self, epochs, dim, label, axes=None, scalar=True):
-        "Configure the y-axis based on a dimension (see ._configure_xaxis_dim)"
+    def _configure_axis_dim(
+            self,
+            axis: str,  # 'x' | 'y'
+            dim: Union[str, Dimension],  # The dimension assigned to the axis
+            label: Union[bool, str],  # axis labale
+            ticklabels: Union[str, int, Sequence[int]],  # where to show tick-labels
+            axes: List[matplotlib.axes.Axes] = None,  # axes which to format
+            scalar: bool = True,
+            data: List = None,
+    ):
+        "Configure an axis based on a dimension"
         if axes is None:
             axes = self._axes
 
+        # find axes with tick-labels
+        nax = len(axes)
+        if isinstance(ticklabels, bool):
+            show_ticklabels = [ticklabels] * nax
+        else:
+            if isinstance(ticklabels, str):
+                if ticklabels == 'bottom':
+                    ticklabels = range(-min(self._layout.ncol, nax), 0)
+                elif ticklabels == 'left':
+                    ticklabels = range(0, nax, self._layout.ncol)
+                elif ticklabels == 'all':
+                    ticklabels = [True] * nax
+                elif ticklabels == 'none':
+                    ticklabels = [False] * nax
+                else:
+                    raise ValueError(f"ticklabels={ticklabels!r}")
+            elif isinstance(ticklabels, int):
+                ticklabels = [ticklabels]
+            show_ticklabels = [False] * nax
+            for i in ticklabels:
+                show_ticklabels[i] = True
+        # parameter for hiding tick-labels
+        if axis == 'y':
+            tick_params = {'labelleft': False}
+        else:
+            tick_params = {'labelbottom': False}
+        # Dimension objects
+        if isinstance(dim, str):
+            dims = [layers[0].get_dim(dim) for layers in data]
+        else:
+            dims = repeat(dim)
+
+        # format ticks
         labels = []
-        for ax, layers in zip(axes, epochs):
-            formatter, locator, label_ = layers[0].get_dim(
-                dim)._axis_format(scalar, label)
+        for ax, dim, show_ticklabels_ in zip(axes, dims, show_ticklabels):
+            formatter, locator, label_ = dim._axis_format(scalar, label)
+            axis_ = ax.yaxis if axis == 'y' else ax.xaxis
             if locator:
-                ax.yaxis.set_major_locator(locator)
+                axis_.set_major_locator(locator)
             if formatter:
-                ax.yaxis.set_major_formatter(formatter)
+                axis_.set_major_formatter(formatter)
+            if not show_ticklabels_:
+                ax.tick_params(**tick_params)
             labels.append(label_)
 
+        # set labels
         if any(labels):
             if len(set(labels)) == 1:
-                self.set_ylabel(labels[0])
+                if axis == 'y':
+                    self.set_ylabel(labels[0])
+                else:
+                    self.set_xlabel(labels[0])
             else:
                 for ax, label in zip(axes, labels):
                     if label:
-                        self.set_ylabel(label, ax)
+                        if axis == 'y':
+                            ax.set_ylabel(label)
+                        else:
+                            ax.set_xlabel(label)
 
     def draw(self):
         "(Re-)draw the figure (after making manual changes)."
@@ -1950,35 +1939,33 @@ class EelFigure:
                 t.set_rotation(rotation)
         self.draw()
 
-    def set_xlabel(self, label, ax=None):
+    def set_xlabel(self, label: str, ax: int = None):
         """Set the label for the x-axis
 
         Parameters
         ----------
-        label : str
+        label
             X-axis label.
-        ax : int
+        ax
             Axis on which to set the label (default is usually the last axis).
         """
         if ax is None:
             ax = self._default_xlabel_ax
         self._axes[ax].set_xlabel(label)
 
-    def set_ylabel(self, label, ax=None):
+    def set_ylabel(self, label: str, ax: int = None):
         """Set the label for the y-axis
 
         Parameters
         ----------
-        label : str
+        label
             Y-axis label.
-        ax : int
+        ax
             Axis on which to set the label (default is usually the first axis).
         """
         if ax is None:
-            ax = self._axes[self._default_ylabel_ax]
-        elif isinstance(ax, int):
-            ax = self._axes[ax]
-        ax.set_ylabel(label)
+            ax = self._default_ylabel_ax
+        self._axes[ax].set_ylabel(label)
 
 
 def format_axes(

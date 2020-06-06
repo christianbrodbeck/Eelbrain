@@ -176,7 +176,7 @@ class LineStack(LegendMixin, XAxisMixin, EelFigure):
         ax.set_yticks(offsets)
         ax.set_yticklabels(ylabels or (), va='center' if ymin < 0 else 'baseline')
         ax.set_ylim(ylim)
-        self._configure_xaxis_dim(xdim_obj, xlabel, xticklabels)
+        self._configure_axis_dim('x', xdim_obj, xlabel, xticklabels)
         if ylabel:
             ax.set_ylabel(ylabel)
         XAxisMixin._init_with_data(self, epochs, xdim, xlim)

@@ -65,8 +65,8 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         Y-axis label. By default the label is inferred from the data.
     xticklabels
         Specify which axes should be annotated with x-axis tick labels.
-        Use ``int`` for a single axis (default ``-1``), a sequence of
-        ``int`` for multiple specific axes, or ``bool`` for all/none.
+        Use ``int`` for a single axis, a sequence of ``int`` for multiple
+        specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
     invy
         Invert the y axis (if ``bottom`` and/or ``top`` are specified explicitly
         they take precedence; an inverted y-axis can also be produced by
@@ -181,7 +181,7 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
             p.set_ylim(ymin, ymax)
 
         self._configure_axis(data.ct.y, ylabel, y=True)
-        self._configure_xaxis_dim(data.ct.y.get_dim(xdim), xlabel, xticklabels)
+        self._configure_axis_dim('x', data.ct.y.get_dim(xdim), xlabel, xticklabels)
         XAxisMixin._init_with_data(self, ((data.ct.y,),), xdim, xlim)
         YLimMixin.__init__(self, self._plots)
         LegendMixin.__init__(self, legend, legend_handles, labels)
@@ -290,10 +290,10 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
     xlabel, ylabel : str | None
         X- and y axis labels. By default the labels will be inferred from
         the data.
-    xticklabels : bool | int | list of int
+    xticklabels
         Specify which axes should be annotated with x-axis tick labels.
-        Use ``int`` for a single axis (default ``-1``), a sequence of
-        ``int`` for multiple specific axes, or ``bool`` for all/none.
+        Use ``int`` for a single axis, a sequence of ``int`` for multiple
+        specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
     bottom, top : scalar
         Y-axis limits.
     legend : str | int | 'fig' | None
@@ -325,16 +325,24 @@ class UTS(TimeSlicerEF, LegendMixin, YLimMixin, XAxisMixin, EelFigure):
      - ``r``: y-axis zoom in (reduce y-axis range)
      - ``c``: y-axis zoom out (increase y-axis range)
     """
-    def __init__(self, y, xax=None, axtitle=True, ds=None, sub=None,
-                 xlabel=True, ylabel=True, xticklabels='bottom', bottom=None,
-                 top=None, legend='upper right', labels=None, xlim=None, colors=None,
-                 **kwargs):
+    def __init__(
+            self, y, xax=None, axtitle=True, ds=None, sub=None,
+            xlabel=True,
+            ylabel=True,
+            xticklabels: Union[str, int, Sequence[int]] = 'bottom',
+            bottom: float = None,
+            top: float = None,
+            legend='upper right',
+            labels=None,
+            xlim=None,
+            colors=None,
+            **kwargs):
         data = PlotData.from_args(y, (None,), xax, ds, sub)
         xdim = data.dims[0]
         layout = Layout(data.plot_used, 2, 4, **kwargs)
         EelFigure.__init__(self, data.frame_title, layout)
         self._set_axtitle(axtitle, data)
-        self._configure_xaxis_dim(data.y0.get_dim(xdim), xlabel, xticklabels)
+        self._configure_axis_dim('x', xdim, xlabel, xticklabels, data=data.data)
         self._configure_axis(data, ylabel, y=True)
 
         self.plots = []
@@ -428,18 +436,21 @@ class UTSClusters(EelFigure):
     overlay : bool
         Plot epochs (time course for different effects) on top of each
         other (as opposed to on separate axes).
-    xticklabels : bool | int | list of int
+    xticklabels
         Specify which axes should be annotated with x-axis tick labels.
-        Use ``int`` for a single axis (default ``-1``), a sequence of
-        ``int`` for multiple specific axes, or ``bool`` for all/none.
+        Use ``int`` for a single axis, a sequence of ``int`` for multiple
+        specific axes, or one of ``'left' | 'bottom' | 'all' | 'none'``.
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
-    def __init__(self, res, pmax=0.05, ptrend=0.1, axtitle=True, cm=None,
-                 overlay=False, xticklabels='bottom', **kwargs):
+    def __init__(
+            self, res, pmax=0.05, ptrend=0.1, axtitle=True, cm=None,
+            overlay=False,
+            xticklabels: Union[str, int, Sequence[int]] = 'bottom',
+            **kwargs):
         clusters_ = res.clusters
 
         data = PlotData.from_args(res, (None,))
@@ -472,7 +483,7 @@ class UTSClusters(EelFigure):
             self._caxes.append(cax)
 
         self._configure_axis(data, True, y=True)
-        self._configure_xaxis_dim(data.y0.get_dim(xdim), True, xticklabels)
+        self._configure_axis_dim('x', xdim, True, xticklabels, data=data.data)
         self.clusters = clusters_
         self._show()
 
