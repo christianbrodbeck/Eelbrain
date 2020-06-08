@@ -407,7 +407,9 @@ Pre-processing (raw)
 
 .. py:attribute:: MneExperiment.raw
 
-Define a pre-processing pipeline as a series of linked processing steps:
+Define a pre-processing pipeline as a series of linked processing steps
+(:mod:`mne` refers to data that is not time-locked to specific events as
+:class:`~mne.io.Raw`, with filenames matching ``*-raw.fif``):
 
 .. autosummary::
    :toctree: generated
@@ -421,8 +423,9 @@ Define a pre-processing pipeline as a series of linked processing steps:
    RawReReference
 
 
-By default the raw data can be accessed in a pipe named ``"raw"`` (raw data
-input can be customized by adding a :class:`RawSource` pipe).
+The raw data that constitutes the input to the pipeline can be accessed in a
+pipe named ``"raw"``
+(the input data can be customized by adding a :class:`RawSource` pipe).
 Each subsequent preprocessing step is defined with its input as first argument
 (``source``).
 
@@ -441,6 +444,11 @@ filter and ICA::
         
 To use the ``raw --> TSSS --> 1-40 Hz band-pass`` pipeline, use ``e.set(raw="1-40")``. 
 To use ``raw --> TSSS --> 1-40 Hz band-pass --> ICA``, select ``e.set(raw="ica")``.
+
+.. note::
+    Continuous files take up a lot of hard drive space. By default, files for most pre-processing steps are cached This can be controlled with the ``cache`` parameter. To delete files correspoding to a specific step (e.g., ``'1-40'``, use the `meth`:MneExperiment.rm` method::
+
+        >>> e.rm('cached-raw-file', True, raw='1-40')
 
 
 Event variables
