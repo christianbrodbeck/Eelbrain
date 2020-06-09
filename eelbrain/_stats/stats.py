@@ -456,7 +456,7 @@ def ttest_t(p, df, tail=0):
     return t
 
 
-def variability(y, x, match, spec, pool, cells=None):
+def variability(y, x, match, spec: str, pool: bool, cells=None):
     """Calculate data variability
 
     Parameters
@@ -467,13 +467,14 @@ def variability(y, x, match, spec, pool, cells=None):
         Cells for pooling variance.
     match : Factor
         Calculate variability for related measures (Loftus & Masson 1994).
-    spec : str
-        Specification of the kind of variability estimate. Contains an optional
-        number, an optional percent-sign, and a kind ('ci' or 'sem'). Examples:
-        'ci': 95% confidence interval;
-        '99%ci': 99% confidence interval (default);
-        '2sem': 2 standard error of the mean.
-    pool : bool
+    spec
+        The variability estimate. Contains an optional number, an optional
+        percent-sign, and a kind ('ci' or 'sem'). Examples:
+        ``sem``: Standard error of the mean;
+        ``2sem``: 2 standard error of the mean;
+        ``ci``: 95% confidence interval;
+        ``99%ci``: 99% confidence interval.
+    pool
         Pool the variability to create a single estimate (as opposed to one for
         each cell in x).
     cells : list of cells

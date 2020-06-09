@@ -40,12 +40,11 @@ class UTSStat(LegendMixin, XAxisMixin, YLimMixin, EelFigure):
         Measure for the central tendency (function that takes an ``axis``
         argument). The default is numpy.mean.
     error
-        Measure of variability to plot (default: 1 SEM). Examples:
-        'ci': 95% confidence interval;
-        '99%ci': 99% confidence interval (default);
-        '2sem': 2 standard error of the mean;
-        'all': plot all traces.
-        'none': No indication of error.
+        Measure of variability to plot. Examples:
+        ``sem``: Standard error of the mean;
+        ``2sem``: 2 standard error of the mean;
+        ``ci``: 95% confidence interval;
+        ``99%ci``: 99% confidence interval.
     pool_error
         Pool the errors for the estimate of variability (default is True
         for related measures designs, False otherwise). See Loftus & Masson

@@ -347,12 +347,12 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
         (stars).
     ylabel : str | None
         Y axis label (default is inferred from the data).
-    error : str
-        Measure of variability to display in the error bars (default: 1
-        SEM). Examples:
-        'ci': 95% confidence interval;
-        '99%ci': 99% confidence interval (default);
-        '2sem': 2 standard error of the mean.
+    error
+        Measure of variability to plot. Examples:
+        ``sem``: Standard error of the mean;
+        ``2sem``: 2 standard error of the mean;
+        ``ci``: 95% confidence interval;
+        ``99%ci``: 99% confidence interval.
     pool_error : bool
         Pool the errors for the estimate of variability (default is True
         for related measures designs, False for others). See Loftus & Masson
@@ -395,7 +395,7 @@ class Barplot(CategorialAxisMixin, YLimMixin, _SimpleFigure):
     """
     def __init__(self, y, x=None, match=None, sub=None, cells=None, test=True, tail=0, par=True,
                  corr='Hochberg', trend=False, test_markers=True, ylabel=True,
-                 error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
+                 error: str = 'sem', pool_error=None, ec='k', xlabel=True, xticks=True,
                  xtick_delim='\n', colors=False, bottom=None, top=None,
                  origin=None, pos=None, width=0.5, c='#0099FF', edgec=None, ds=None, **kwargs):
         ct = Celltable(y, x, match, sub, cells, ds, asvar)
@@ -454,12 +454,12 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
         (stars).
     ylabel : str | None
         Y axis label (default is inferred from the data).
-    error : str
-        Measure of variability to display in the error bars (default: 1
-        SEM). Examples:
-        'ci': 95% confidence interval;
-        '99%ci': 99% confidence interval (default);
-        '2sem': 2 standard error of the mean.
+    error
+        Measure of variability to plot. Examples:
+        ``sem``: Standard error of the mean;
+        ``2sem``: 2 standard error of the mean;
+        ``ci``: 95% confidence interval;
+        ``99%ci``: 99% confidence interval.
     pool_error : bool
         Pool the errors for the estimate of variability (default is True
         for related measures designs, False for others). See Loftus & Masson
@@ -503,7 +503,7 @@ class BarplotHorizontal(XAxisMixin, CategorialAxisMixin, _SimpleFigure):
     """
     def __init__(self, y, x=None, match=None, sub=None, cells=None, test=False, tail=0, par=True,
                  corr='Hochberg', trend=False, test_markers=True, ylabel=True,
-                 error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
+                 error: str = 'sem', pool_error=None, ec='k', xlabel=True, xticks=True,
                  xtick_delim=' ', colors=False, bottom=0, top=None,
                  origin=None, pos=None, width=0.5, c='#0099FF', edgec=None, ds=None, **kwargs):
         if test is not False:
