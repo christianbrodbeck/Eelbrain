@@ -12,7 +12,7 @@ from itertools import repeat
 from math import floor
 from numbers import Real
 import operator
-from typing import Sequence, Union
+from typing import Callable, Sequence, Union
 
 import mne
 import numpy as np
@@ -691,26 +691,28 @@ def label_operator(labels, operation='mean', exclude=None, weights=None,
     return NDVar(x, (label_dim, dim), labels.name)
 
 
-def maximum(ndvars: Sequence[NDVar], name: str = None):
+def _sequence_elementwise(ndvars: Sequence[Union[NDVar, float]], np_func: Callable, name: str):
+    true_ndvars = [x for x in ndvars if isinstance(x, NDVar)]
+    if not true_ndvars:
+        raise TypeError(f"Need at least one NDVar")
+    info = merge_info(true_ndvars)
+    ndvar = true_ndvars.pop(0)
+    dims = ndvar.dims
+    if any(x.dims != dims for x in true_ndvars):
+        raise NotImplementedError("NDVars with mismatching dimensions")
+    xs = [x.x if isinstance(x, NDVar) else x for x in ndvars]
+    x = np_func(*xs)
+    return NDVar(x, dims, name, info)
+
+
+def maximum(ndvars: Sequence[Union[NDVar, float]], name: str = None):
     "Element-wise maximum of multiple :class:`NDVar` objects"
-    x0 = ndvars[0]
-    dims = x0.dims
-    if any(x.dims != dims for x in ndvars[1:]):
-        raise NotImplementedError("NDVars with mismatching dimensions")
-    x = np.maximum(*(v.x for v in ndvars))
-    info = merge_info(ndvars)
-    return NDVar(x, dims, info, name)
+    return _sequence_elementwise(ndvars, np.maximum, name)
 
 
-def minimum(ndvars: Sequence[NDVar], name: str = None):
+def minimum(ndvars: Sequence[Union[NDVar, float]], name: str = None):
     "Element-wise minimum of multiple :class:`NDVar` objects"
-    x0 = ndvars[0]
-    dims = x0.dims
-    if any(x.dims != dims for x in ndvars[1:]):
-        raise NotImplementedError("NDVars with mismatching dimensions")
-    x = np.minimum(*(v.x for v in ndvars))
-    info = merge_info(ndvars)
-    return NDVar(x, dims, info, name)
+    return _sequence_elementwise(ndvars, np.minimum, name)
 
 
 def neighbor_correlation(x, dim='sensor', obs='time', name=None):
