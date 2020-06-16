@@ -1,5 +1,5 @@
-^^^^^
-Plots
-^^^^^
+^^^^^^^^
+Plotting
+^^^^^^^^
 
-:mod:`plot` examples.
+Examples illustrating the use of the :mod:`plot` functionality.

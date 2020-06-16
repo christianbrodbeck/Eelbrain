@@ -110,6 +110,7 @@ example_order = NameOrder({
     ],
     'plots': [
         'boxplot.py',
+        'customizing.py',
     ],
     'reverse-correlation': [
         'trf_intro.py',

@@ -12,10 +12,15 @@ Recipes
 Plots for Publication
 ^^^^^^^^^^^^^^^^^^^^^
 
+.. seealso::
+
+   * Example on :ref:`exa-customizing-plots`
+   * Matplotlib page on `styles <https://matplotlib.org/tutorials/introductory/
+     customizing.html>`_
+
 In order to produce multiple plots with consistent style it is useful to set
-some :mod:`matplotlib` options globally (`more on styles
-<https://matplotlib.org/3.1.1/tutorials/introductory/customizing.html>`_).
-One way this can be done is by update ``rcParams`` inside a script, e.g.::
+some :mod:`matplotlib` options globally One way this can be done is by updating
+``rcParams`` inside a script, e.g.::
 
     import matplotlib as mpl
 
