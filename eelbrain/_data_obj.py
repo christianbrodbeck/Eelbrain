@@ -924,9 +924,9 @@ def align1(d, to, by='index', out='data'):
     if isinstance(to, Dataset):
         if not isinstance(by, str):
             raise TypeError(f"by={by}: needs to be a str if to is a Dataset")
-        to = asuv(by, ds=to)
+        to = asuv(by, ds=to, interaction=True)
     else:
-        to = asuv(to)
+        to = asuv(to, interaction=True)
     if not isinstance(by, str):
         # check d_idx length
         if isinstance(d, Dataset):
@@ -934,7 +934,7 @@ def align1(d, to, by='index', out='data'):
                 raise ValueError(f"by={by}: does not have the same number of cases as d (by: {len(by)}, d: {d.n_cases})")
         elif len(by) != len(d):
             raise ValueError(f"by={by}: does not have the same number of cases as d (d_idx: {len(by)}, d: {len(d)})")
-    by = asuv(by, ds=d)
+    by = asuv(by, ds=d, interaction=True)
 
     align_idx = np.empty(len(to), int)
     for i, v in enumerate(to):
