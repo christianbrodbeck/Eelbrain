@@ -1314,6 +1314,12 @@ def test_ndvar_indexing():
         y = op(case, u)
         assert_array_equal(y[0], op(4, u.x))
         assert_array_equal(y[1], op(1, u.x))
+    # Case as non-first
+    x = ds[:2, 'uts']
+    r = u * x
+    assert_array_equal(r.x, u.x[None] * x.x)
+    r2 = x * u
+    assert_array_equal(r2.x, r.x)
 
     # set NDVar elements
     x = ds['uts'].copy()

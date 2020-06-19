@@ -3202,15 +3202,16 @@ class NDVar(Named):
                 x_other = other.x.reshape([-1, *repeat(1, self.ndim)])
                 return dims, x_self, x_other
         elif isinstance(other, NDVar):
-            dimnames = list(self.dimnames)
-            i_add = 0
-            for dimname in other.dimnames:
-                if dimname not in dimnames:
-                    dimnames.append(dimname)
-                    i_add += 1
+            # union of dimensions
+            dimnames = []
+            if self.has_case or other.has_case:
+                dimnames.append('case')
+            for name in chain(self.dimnames, other.dimnames):
+                if name not in dimnames:
+                    dimnames.append(name)
 
             # find data axes
-            self_axes = [*self.dimnames, *repeat(None, i_add)]
+            self_axes = [name if name in self.dimnames else None for name in dimnames]
             other_axes = [name if name in other.dimnames else None for name in dimnames]
 
             # find dims
