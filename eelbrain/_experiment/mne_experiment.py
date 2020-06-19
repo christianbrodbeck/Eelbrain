@@ -4040,29 +4040,42 @@ class MneExperiment(FileTree):
         epoch = self._epochs[self.get('epoch')]
         save.besa_evt(ds, tstart=epoch.tmin, tstop=epoch.tmax, dest=evt_dest)
 
-    def make_copy(self, temp, field, src, dst, redo=False):
+    def make_copy(
+            self,
+            temp: str,
+            field: str,
+            src: str,
+            dst: str,
+            overwrite: bool = None,
+            **state,
+    ):
         """Make a copy of a file to a new path by substituting one field value
 
         Parameters
         ----------
-        temp : str
+        temp
             Template of the file which to copy.
-        field : str
+        field
             Field in which the source and target of the link are distinguished.
-        src : str
+        src
             Value for field on the source file.
-        dst : str
+        dst
             Value for field on the destination filename.
-        redo : bool
-            If the target file already exists, overwrite it.
+        overwrite
+            If the target file already exists, overwrite the old file.
+            The default is to raise an :exc:`IOError` if the file exists.
+            Set to ``False`` to quietly keep exising files.
 
         See Also
         --------
         copy : Copy muliple files to a different root directory
         """
-        dst_path = self.get(temp, mkdir=True, **{field: dst})
-        if not redo and exists(dst_path):
-            return
+        dst_path = self.get(temp, mkdir=True, **{field: dst}, **state)
+        if exists(dst_path):
+            if overwrite is False:
+                return
+            else:
+                raise IOError(f"File already exists at {dst_path}; use the `overwrite` parameter")
 
         src_path = self.get(temp, **{field: src})
         if isdir(src_path):
@@ -4748,11 +4761,23 @@ class MneExperiment(FileTree):
             If a rejection file already exists also set ``overwrite=True``.
         overwrite : bool
             If ``auto`` is specified and a rejection file already exists,
-            overwrite the old file. The default is to raise an error if the
-            file exists (``None``). Set to ``False`` to quietly keep the exising
-            file.
+            overwrite the old file. The default is to raise an :exc:`IOError` if
+            the file exists (``None``). Set to ``False`` to quietly keep the
+            exising file.
         ...
             State parameters.
+
+
+        Notes
+        -----
+        By default, the epoch selection is different for each primary epoch and
+        for each preprocessing setting (``raw``). To share the same epoch
+        selection, the corresponding selection file can be duplicated.
+        To quickly duplicate the files for several subjects from one
+        preprocessing setting to another, use :meth:`.make_copy`::
+
+            for subject in e:
+                e.make_copy('rej-file', 'raw', '0.1-40', '1-20')
         """
         rej = self.get('rej', **state)
         rej_args = self._artifact_rejection[rej]
