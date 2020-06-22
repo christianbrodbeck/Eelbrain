@@ -8,6 +8,7 @@ from math import floor
 import os
 from pathlib import Path
 import re
+from typing import Sequence, Union
 
 import numpy as np
 
@@ -18,6 +19,7 @@ from mne.io.kit.constants import KIT
 from mne.minimum_norm import prepare_inverse_operator, apply_inverse_raw
 
 from .. import _info
+from .._types import PathArg
 from .._data_obj import (Var, NDVar, Dataset, Case, Sensor, Space, SourceSpace,
                          VolumeSourceSpace, UTS, _matrix_graph)
 from .._info import BAD_CHANNELS
@@ -1165,9 +1167,19 @@ def inverse_operator(inv, src, subjects_dir=None, parc='aparc', name=None):
     return NDVar(k, (source, sensor), {}, name)
 
 
-def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
-              name=None, check=True, parc='aparc', connectivity=None,
-              sss_filename='{subject}-{src}-src.fif'):
+def stc_ndvar(
+        stc: Union[_BaseSourceEstimate, Sequence[_BaseSourceEstimate], PathArg],
+        subject: str,
+        src: str,
+        subjects_dir: PathArg = None,
+        method: str = None,
+        fixed: bool = None,
+        name: str = None,
+        check: bool = True,
+        parc: Union[str, None] = 'aparc',
+        connectivity: str = None,
+        sss_filename: str = '{subject}-{src}-src.fif',
+):
     """
     Convert one or more :class:`mne.SourceEstimate` objects to an :class:`NDVar`.
 
@@ -1176,29 +1188,29 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
     stc : SourceEstimate | list of SourceEstimates | str
         The source estimate object(s) or a path to an stc file. Volum and vector
         source estimates are supported.
-    subject : str
+    subject
         MRI subject (used for loading MRI in PySurfer plotting)
-    src : str
+    src
         The kind of source space used (e.g., 'ico-4').
-    subjects_dir : None | str
-        The path to the subjects_dir (needed to locate the source space
-        file).
+    subjects_dir
+        The path to the subjects_dir (needed to locate the source space file).
     method : 'MNE' | 'dSPM' | 'sLORETA' | 'eLORETA'
         Source estimation method (optional, used for generating info).
-    fixed : bool
+    fixed
         Source estimation orientation constraint (optional, used for generating
         info).
-    name : str | None
+    name
         Ndvar name.
-    check : bool
+    check
         If multiple stcs are provided, check if all stcs have the same times
         and vertices.
-    parc : None | str
-        Parcellation to add to the source space.
+    parc
+        Name of a parcellation to add to the source space. ``None`` to add no
+        parcellation.
     connectivity : 'link-midline'
         Modify source space connectivity to link medial sources of the two
         hemispheres across the midline.
-    sss_filename : str
+    sss_filename
         Filename template for the MNE source space file.
     """
     subjects_dir = mne.utils.get_subjects_dir(subjects_dir)

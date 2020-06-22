@@ -186,7 +186,7 @@ def cache_valid(mtime, *source_mtimes):
 
 
 class MneExperiment(FileTree):
-    """Analyze an MEG experiment (gradiometer only) with MNE
+    """Analyze an MEG or EEG experiment
 
     Parameters
     ----------
@@ -3618,7 +3618,9 @@ class MneExperiment(FileTree):
             Mask whole brain.
         samples : int
             Number of random permutations of the data used to determine cluster
-            p values (default 10'000).
+            *p*-values (default 10'000). If the test is already cached with a
+            number ≥ ``samples`` the cached version is returned, otherwise the
+            test is recomputed.
         data : str
             Data to test, for example:
 
