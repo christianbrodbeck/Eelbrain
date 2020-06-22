@@ -112,23 +112,6 @@ def test_boosting(n_workers):
     res = boosting(y, [x1, x2], 0, 1, selective_stopping=2)
     assert res.r == approx(0.992, abs=0.001)
 
-    # prefit
-    res_full = boosting(y, [x1, x2], 0, 1)
-    prefit = boosting(y, x1, 0, 1)
-    res = boosting(y, [x1, x2], 0, 1, prefit=prefit)
-    assert correlation_coefficient(res.h, res_full.h[1]) == approx(0.984, 1e-3)
-    prefit = boosting(y, x2, 0, 1)
-    res = boosting(y, [x1, x2], 0, 1, prefit=prefit)
-    assert correlation_coefficient(res.h, res_full.h[0]) == approx(0.995, 1e-3)
-    # ynd
-    res_full = boosting(ynd, [x1, x2], 0, 1)
-    prefit = boosting(ynd, x1, 0, 1)
-    res = boosting(ynd, [x1, x2], 0, 1, prefit=prefit)
-    assert correlation_coefficient(res.h, res_full.h[1]) == approx(0.978, 1e-3)
-    prefit = boosting(ynd, x2, 0, 1)
-    res = boosting(ynd, [x1, x2], 0, 1, prefit=prefit)
-    assert correlation_coefficient(res.h, res_full.h[0]) == approx(0.997, 1e-3)
-
 
 def test_boosting_epochs():
     """Test boosting with epoched data"""
@@ -148,10 +131,6 @@ def test_boosting_epochs():
         r = correlation_coefficient(y, ds['uts'])
         assert res.r == approx(r, abs=1e-3)
         assert res.partitions == 3
-    # prefit
-    res1 = boosting('uts', p1, 0, 0.6, model='A', ds=ds, partitions=3)
-    res0 = boosting('uts', p0, 0, 0.6, model='A', ds=ds, partitions=3)
-    res01 = boosting('uts', [p0, p1], 0, 0.6, model='A', ds=ds, partitions=3, prefit=res1)
     # 2d
     res = boosting('utsnd', [p0, p1], 0, 0.6, model='A', ds=ds, partitions=3)
     assert len(res.h) == 2

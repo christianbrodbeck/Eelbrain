@@ -166,8 +166,6 @@ class BoostingResult:
                 state['partitions_arg'] = state.pop('n_partitions_arg')
             if version < 9:
                 state['residual'] = state.pop('fit_error')
-            if version < 10:
-                state['prefit'] = None
             for key in ['partitions_arg', 'h', 'isnan', 'y_info']:
                 state[f'_{key}'] = state.pop(key, None)
             state['r_rank'] = state.pop('spearmanr')
@@ -569,7 +567,6 @@ def boosting(
         test: int = 0,  # Number of segments in test set
         ds: Dataset = None,
         selective_stopping: int = 0,
-        prefit: BoostingResult = None,
         debug: bool = False,
 ):
     """Estimate a linear filter with coordinate descent
@@ -646,11 +643,6 @@ def boosting(
         increase in testing error, and continues until all predictors are
         stopped. The integer value of ``selective_stopping`` determines after
         how many steps with error increases each predictor is excluded.
-    prefit : BoostingResult
-        Apply predictions from these estimated response functions before fitting
-        the remaining predictors. This requires that ``x`` contains all the
-        predictors that were used to fit ``prefit``, and that they be identical
-        to the originally used ``x``.
     debug : bool
         Add additional attributes to the returned result.
 
@@ -697,7 +689,6 @@ def boosting(
     data.apply_basis(basis, basis_window)
     if scale_data:
         data.normalize(error)
-    data.prefit(prefit)
     data.initialize_cross_validation(partitions, model, ds, validate, test)
 
     fit = Boosting(data)
