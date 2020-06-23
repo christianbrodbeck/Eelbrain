@@ -31,9 +31,7 @@ from .. import plot
 from .. import save
 from .. import table
 from .. import testnd
-from .._data_obj import (
-    Datalist, Dataset, Factor, Var, NDVar, SourceSpace, VolumeSourceSpace,
-    align1, all_equal, assert_is_legal_dataset_key, combine)
+from .._data_obj import NDVarArg, Datalist, Dataset, Factor, Var, NDVar, SourceSpace, VolumeSourceSpace, align1, all_equal, assert_is_legal_dataset_key, combine
 from .._exceptions import DefinitionError, DimensionMismatchError, OldVersionError
 from .._info import BAD_CHANNELS
 from .._io.pickle import update_subjects_dir
@@ -89,6 +87,11 @@ inv_re = re.compile(r"^"
                     r"(?:-((?:0\.)?\d+))?"  # depth weighting
                     r"(?:-(pick_normal))?"
                     r"$")  # pick normal
+
+
+# Argument types
+PMIN_TYPE = Union[str, float, None]
+DATA_TYPE = Union[str, TestDims]
 
 # Eelbrain 0.24 raw/preprocessing pipeline
 LEGACY_RAW = {
@@ -5512,10 +5515,17 @@ class MneExperiment(FileTree):
                 sss = mne.setup_source_space(subject, spacing=spacing, add_dist=True, subjects_dir=self.get('mri-sdir'))
             mne.write_source_spaces(dst, sss)
 
-    def _test_kwargs(self, samples, pmin, tstart, tstop, data, parc_dim):
-        "Compile kwargs for testnd tests"
-        kwargs = {'samples': samples, 'tstart': tstart, 'tstop': tstop,
-                  'parc': parc_dim}
+    def _test_kwargs(
+            self,
+            samples: int,
+            pmin: PMIN_TYPE,
+            tstart: Union[None, float],
+            tstop: Union[None, float],
+            data: DATA_TYPE,
+            parc_dim: Union[None, str],
+    ):
+        "Compile kwargs for mass-univariate tests"
+        kwargs = {'samples': samples, 'tstart': tstart, 'tstop': tstop, 'parc': parc_dim}
         if pmin == 'tfce':
             kwargs['tfce'] = True
         elif pmin is not None:
@@ -5523,22 +5533,15 @@ class MneExperiment(FileTree):
             kwargs.update(self._cluster_criteria_kwargs(data))
         return kwargs
 
-    def _make_test(self, y, ds, test, kwargs, force_permutation=False):
-        """Compute test results
-
-        Parameters
-        ----------
-        y : NDVar
-            Dependent variable.
-        ds : Dataset
-            Other variables.
-        test : Test | str
-            Test, or name of the test to perform.
-        kwargs : dict
-            Test parameters (from :meth:`._test_kwargs`).
-        force_permutation : bool
-            Conduct permutations regardless of whether there are any clusters.
-        """
+    def _make_test(
+            self,
+            y: NDVarArg,  # Dependent variable
+            ds: Dataset,  # Other variables
+            test: Union[Test, str],  # Test, or name of the test
+            kwargs: dict = None,  # Test parameters from self._test_kwargs()
+            force_permutation: bool = False,
+    ):
+        "Compute test results"
         test_obj = test if isinstance(test, Test) else self._tests[test]
         return test_obj.make(y, ds, force_permutation, kwargs)
 
