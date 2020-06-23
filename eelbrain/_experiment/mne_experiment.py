@@ -90,8 +90,8 @@ inv_re = re.compile(r"^"
 
 
 # Argument types
-PMIN_TYPE = Union[str, float, None]
-DATA_TYPE = Union[str, TestDims]
+DataArg = Union[str, TestDims]
+PMinArg = Union[str, float, None]
 
 # Eelbrain 0.24 raw/preprocessing pipeline
 LEGACY_RAW = {
@@ -5518,10 +5518,10 @@ class MneExperiment(FileTree):
     def _test_kwargs(
             self,
             samples: int,
-            pmin: PMIN_TYPE,
+            pmin: PMinArg,
             tstart: Union[None, float],
             tstop: Union[None, float],
-            data: DATA_TYPE,
+            data: DataArg,
             parc_dim: Union[None, str],
     ):
         "Compile kwargs for mass-univariate tests"
@@ -5540,9 +5540,16 @@ class MneExperiment(FileTree):
             test: Union[Test, str],  # Test, or name of the test
             kwargs: dict = None,  # Test parameters from self._test_kwargs()
             force_permutation: bool = False,
+            to_uv: str = None,  # NDVar method to make y  univariate
     ):
         "Compute test results"
         test_obj = test if isinstance(test, Test) else self._tests[test]
+        if to_uv:
+            if isinstance(y, str):
+                y = ds.eval(y)
+            dim = 'sensor' if y.has_dim('sensor') else 'source'
+            y = getattr(y, to_uv)(dim)
+            return test_obj.make_uv(y, ds)
         return test_obj.make(y, ds, force_permutation, kwargs)
 
     def merge_bad_channels(self):

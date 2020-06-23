@@ -4,6 +4,7 @@ import re
 from typing import Collection, Tuple, Union
 
 from .. import testnd
+from .. import test
 from .._data_obj import CellArg
 from .._exceptions import DefinitionError
 from .._io.fiff import find_mne_channel_types
@@ -87,6 +88,12 @@ class Test(Definition):
                     groups.update(variable.groups)
         return vs, groups
 
+    def make(self, y, ds, force_permutation, kwargs):
+        raise NotImplementedError(f"For {self.__class__.__name__}")
+
+    def make_uv(self, y, ds):
+        raise NotImplementedError(f"For {self.__class__.__name__}")
+
 
 class TTestOneSample(Test):
     """One-sample t-test
@@ -112,6 +119,9 @@ class TTestOneSample(Test):
 
     def make(self, y, ds, force_permutation, kwargs):
         return testnd.TTestOneSample(y, match='subject', ds=ds, tail=self.tail, force_permutation=force_permutation, **kwargs)
+
+    def make_uv(self, y, ds):
+        return test.TTestOneSample(y, match='subject', ds=ds, tail=self.tail)
 
 
 class TTestIndependent(Test):
@@ -168,6 +178,9 @@ class TTestIndependent(Test):
     def make(self, y, ds, force_permutation, kwargs):
         return testnd.TTestIndependent(y, self.between_model, self.c1, self.c0, 'subject', ds=ds, tail=self.tail, force_permutation=force_permutation, **kwargs)
 
+    def make_uv(self, y, ds):
+        return test.TTestIndependent(y, self.between_model, self.c1, self.c0, 'subject', ds=ds, tail=self.tail)
+
 
 class TTestRelated(Test):
     """Related measures t-test
@@ -219,6 +232,9 @@ class TTestRelated(Test):
 
     def make(self, y, ds, force_permutation, kwargs):
         return testnd.TTestRelated(y, self.model, self.c1, self.c0, 'subject', ds=ds, tail=self.tail, force_permutation=force_permutation, **kwargs)
+
+    def make_uv(self, y, ds):
+        return test.TTestRelated(y, self.model, self.c1, self.c0, 'subject', ds=ds, tail=self.tail)
 
 
 class TContrastRelated(Test):
@@ -322,6 +338,9 @@ class ANOVA(Test):
     def make(self, y, ds, force_permutation, kwargs):
         return testnd.ANOVA(y, self.x, ds=ds, force_permutation=force_permutation, **kwargs)
 
+    def make_uv(self, y, ds):
+        return test.ANOVA(y, self.x, ds=ds)
+
 
 class TwoStageTest(Test):
     """Two-stage test: T-test of regression coefficients
@@ -384,14 +403,19 @@ class TwoStageTest(Test):
         Test.__init__(self, stage_1, model, vars=vars, depend_on=find_variables(stage_1))
         self.stage_1 = stage_1
 
-    def make_stage_1(self, y, ds, subject):
+    def make_stage_1(self, y, ds, subject, sub=None):
         """Assumes that model has already been applied"""
-        return testnd.LM(y, self.stage_1, ds, subject=subject)
+        return testnd.LM(y, self.stage_1, ds, subject=subject, sub=sub)
 
-    def make_stage_2(self, lms, kwargs):
+    @staticmethod
+    def make_stage_2(lms, kwargs):
         lm = testnd.LMGroup(lms)
         lm.compute_column_ttests(**kwargs)
         return lm
+
+    def make(self, y, ds, force_permutation, kwargs):
+        lms = [self.make_stage_1(y, ds, subject, f"subject=={subject!r}") for subject in ds['subject'].cells]
+        return self.make_stage_2(lms, kwargs)
 
 
 TEST_CLASSES = {
