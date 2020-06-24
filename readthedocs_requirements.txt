@@ -2,14 +2,14 @@ setuptools >=17
 cython >=0.21
 colormath >=2.1
 keyring >=5
-matplotlib >=2.1
+matplotlib >=3
 mne >=0.17
 nibabel >2.3.0  # read_annot bug
 nilearn
 numpy >=1.11
 pillow
 sphinx_rtd_theme
-sphinx >=1.6
+sphinx >=3
 sphinx-autodoc-typehints
 sphinx-gallery
 sphinxcontrib-bibtex
