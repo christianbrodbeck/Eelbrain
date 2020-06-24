@@ -80,10 +80,9 @@ LOG_FILE_OLD = join('{root}', '.eelbrain.log')
 COV_PARAMS = {'epoch', 'session', 'method', 'reg', 'keep_sample_mean', 'reg_eval_win_pad'}
 INV_METHODS = ('MNE', 'dSPM', 'sLORETA', 'eLORETA', 'champ')
 SRC_RE = re.compile(r'^(ico|vol)-(\d+)(?:-(cortex|brainstem))?$')
-inv_re = re.compile(r"^"
-                    r"(free|fixed|loose\.\d+|vec)-"  # orientation constraint
-                    r"(\d*\.?\d+)-"  # SNR
-                    rf"({'|'.join(INV_METHODS)})"  # method
+inv_re = re.compile(r"^(free|fixed|loose\.\d+|vec)"  # orientation constraint
+                    r"(?:-(\d*\.?\d+))?"  # SNR
+                    rf"-({'|'.join(INV_METHODS)})"  # method
                     r"(?:-((?:0\.)?\d+))?"  # depth weighting
                     r"(?:-(pick_normal))?"
                     r"$")  # pick normal
@@ -5984,7 +5983,14 @@ class MneExperiment(FileTree):
         if subject != '*' and subject not in group_members and group_members:
             self.set(group_members[0])
 
-    def set_inv(self, ori='free', snr=3, method='dSPM', depth=None, pick_normal=False, **state):
+    def set_inv(
+            self,
+            ori: str = 'free',
+            snr: float = 3,
+            method: str = 'dSPM',
+            depth: float = 0.8,
+            pick_normal: bool = False,
+            **state):
         """Set the type of inverse solution used for source estimation
 
         Parameters
@@ -6010,24 +6016,31 @@ class MneExperiment(FileTree):
               direction. Then, multiple the two components parallel to the
               surface with this number, and retain the magnitude.
 
-        snr : scalar
-            SNR estimate used for regularization (default 3; the general
-            recommendation is 3 for averaged responses, and 1 for raw or single
-            trial data).
+        snr
+            SNR estimate used for regularization (``λ = 1 / snr``). Larger λ
+            (smaller SNR) correspond to spatially smoother and weaker current
+            estimates. 3 is recommended for averaged responses, 1 for raw or
+            single trial data. Set to 0 for unregularized inverse solution
+            (``λ = 0``).
         method : 'MNE' | 'dSPM' | 'sLORETA' | 'eLORETA'
             Noise normalization method. ``MNE`` uses unnormalized current
             estimates. ``dSPM`` [1]_ (default) ``sLORETA`` [2]_ and eLORETA [3]_
             normalize each the estimate at each source with an estimate of the
             noise at that source (default ``'dSPM'``).
-        depth : None | float [0, 1]
-            Depth weighting [4]_ (default ``None`` to use mne default 0.8; ``0`` to
-            disable depth weighting).
-        pick_normal : bool
+        depth
+            Depth weighting [4]_ (``0`` to disable depth weighting).
+        pick_normal
             Estimate a free orientation current vector, then pick the component
             orthogonal to the cortical surface and discard the parallel
             components.
         ...
             State parameters.
+
+        Notes
+        -----
+        For details, see the MNE  documentation on the `inverse operator
+        <https://mne.tools/stable/overview/implementation.html?
+        highlight=lambda#the-linear-inverse-operator>`_
 
         References
         ----------
@@ -6056,7 +6069,7 @@ class MneExperiment(FileTree):
         self.set(inv=self._inv_str(ori, snr, method, depth, pick_normal), **state)
 
     @staticmethod
-    def _inv_str(ori, snr, method, depth, pick_normal):
+    def _inv_str(ori: str, snr: float, method: str, depth: float, pick_normal: bool):
         "Construct inv str from settings"
         if isinstance(ori, str):
             if ori not in ('free', 'fixed', 'vec'):
@@ -6065,20 +6078,21 @@ class MneExperiment(FileTree):
             raise ValueError(f"ori={ori!r}; must be in range (0, 1)")
         else:
             ori = f'loose{str(ori)[1:]}'
+        items = [ori]
 
-        if snr <= 0:
+        if snr > 0:
+            items.append(f'{snr:g}')
+        elif snr < 0:
             raise ValueError(f"snr={snr!r}")
 
-        if method not in INV_METHODS:
+        if method in INV_METHODS:
+            items.append(method)
+        else:
             raise ValueError(f"method={method!r}")
 
-        items = [ori, f'{snr:g}', method]
-
-        if depth is None:
-            pass
-        elif not 0 <= depth <= 1:
+        if not 0 <= depth <= 1:
             raise ValueError(f"depth={depth!r}; must be in range [0, 1]")
-        else:
+        elif depth != 0.8:
             items.append(f'{depth:g}')
 
         if pick_normal:
@@ -6089,7 +6103,7 @@ class MneExperiment(FileTree):
         return '-'.join(items)
 
     @staticmethod
-    def _parse_inv(inv):
+    def _parse_inv(inv: str) -> (str, float, str, float, bool):
         "(ori, snr, method, depth, pick_normal)"
         m = inv_re.match(inv)
         if m is None:
@@ -6103,14 +6117,19 @@ class MneExperiment(FileTree):
         elif pick_normal and ori in ('vec', 'fixed'):
             raise ValueError(f"inv={inv!r}: {ori} incompatible with pick_normal")
 
-        snr = float(snr)
-        if snr <= 0:
-            raise ValueError(f"inv={inv!r}: snr={snr!r}")
+        if snr is None:
+            snr = 0
+        else:
+            snr = float(snr)
+            if snr < 0:
+                raise ValueError(f"inv={inv!r}: snr={snr!r}")
 
         if method not in INV_METHODS:
             raise ValueError(f"inv={inv!r}: method={method!r}")
 
-        if depth is not None:
+        if depth is None:
+            depth = 0.8
+        else:
             depth = float(depth)
             if not 0 <= depth <= 1:
                 raise ValueError(f"inv={inv!r}: depth={depth!r}, needs to be in range [0, 1]")
@@ -6119,8 +6138,7 @@ class MneExperiment(FileTree):
 
     @classmethod
     def _eval_inv(cls, inv):
-        cls._parse_inv(inv)
-        return inv
+        return cls._inv_str(*cls._parse_inv(inv))
 
     @staticmethod
     def _update_inv_cache(fields):
@@ -6156,7 +6174,7 @@ class MneExperiment(FileTree):
         else:
             make_kw['depth'] = depth
 
-        apply_kw = {'method': method, 'lambda2': 1. / snr ** 2}
+        apply_kw = {'method': method, 'lambda2': 1. / snr ** 2 if snr else 0}
         if ori == 'vec':
             apply_kw['pick_ori'] = 'vector'
         elif pick_normal:

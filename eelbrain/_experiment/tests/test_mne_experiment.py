@@ -138,7 +138,7 @@ def test_mne_experiment_templates():
                      {'fixed': True, 'depth': 0.2},
                      {'method': 'MNE', 'lambda2': 1/4})
     assert_inv_works(e, 'loose.2-2-MNE-pick_normal',
-                     (0.2, 2, 'MNE', None, True),
+                     (0.2, 2, 'MNE', 0.8, True),
                      {'loose': 0.2, 'depth': 0.8},
                      {'method': 'MNE', 'lambda2': 1/4, 'pick_ori': 'normal'})
     assert_inv_works(e, 'loose.5-3-sLORETA',
@@ -149,11 +149,13 @@ def test_mne_experiment_templates():
                      ('fixed', 1, 'MNE', 0),
                      {'fixed': True, 'depth': None},
                      {'method': 'MNE', 'lambda2': 1})
-    # should remove this
-    assert_inv_works(e, 'fixed-1-MNE-0.8',
-                     ('fixed', 1, 'MNE', 0.8),
-                     {'fixed': True, 'depth': 0.8},
-                     {'method': 'MNE', 'lambda2': 1})
+    assert_inv_works(e, 'fixed-MNE-0',
+                     ('fixed', 0, 'MNE', 0),
+                     {'fixed': True, 'depth': None},
+                     {'method': 'MNE', 'lambda2': 0})
+    # redundant values
+    assert e.get('inv', inv='fixed-1-MNE-0.8') == 'fixed-1-MNE'
+    assert e.get('inv', inv='fixed-0-MNE-0.8') == 'fixed-MNE'
 
     with pytest.raises(ValueError):
         e.set_inv('free', -3, 'dSPM')
