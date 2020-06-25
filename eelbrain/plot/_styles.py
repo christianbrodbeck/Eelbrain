@@ -6,7 +6,7 @@ from functools import reduce
 from itertools import product
 from math import ceil
 import operator
-from typing import Any, Dict, Sequence, Union
+from typing import Any, Dict, Sequence, Tuple, Union
 
 import numpy as np
 import matplotlib as mpl
@@ -155,16 +155,24 @@ def colors_for_categorial(x, hue_start=0.2, cmap=None):
         raise TypeError(f"x={x!r}: needs to be Factor or Interaction")
 
 
-def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None,
-                      light_cycle=None, always_cycle_hue=False, locations=None):
+def colors_for_oneway(
+        cells,
+        hue_start: Union[float, Sequence[float]] = 0.2,
+        light_range: Union[float, Tuple[float, float]] = 0.5,
+        cmap: str = None,
+        light_cycle: int = None,
+        always_cycle_hue: bool = False,
+        locations: Sequence[float] = None,
+        unambiguous: Union[bool, Sequence[int]] = None,
+):
     """Define colors for a single factor design
 
     Parameters
     ----------
     cells : sequence of str
         Cells for which to assign colors.
-    hue_start : 0 <= scalar < 1 | sequence of scalar
-        First hue value (default 0.2) or list of hue values.
+    hue_start
+        First hue value (``0 <= hue < 1``) or list of hue values.
     light_range : scalar | tuple of 2 scalar
         Scalar that specifies the amount of lightness variation (default 0.5).
         If positive, the first color is lightest; if negative, the first color
@@ -172,19 +180,23 @@ def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None,
         ``(1.0, 0.4)``). ``0.2`` is equivalent to ``(0.4, 0.6)``.
         The ``light_cycle`` parameter can be used to cycle between light and
         dark more than once.
-    cmap : str
+    cmap
         Use a matplotlib colormap instead of the default color generation
         algorithm. Name of a matplotlib colormap to use (e.g., 'jet'). If
         specified, ``hue_start`` and ``light_range`` are ignored.
-    light_cycle : int
+    light_cycle
         Cycle from light to dark in ``light_cycle`` cells to make nearby colors
         more distinct (default cycles once).
-    always_cycle_hue : bool
+    always_cycle_hue
         Cycle hue even when cycling lightness. With ``False`` (default), hue
         is constant within a lightness cycle.
-    locations : sequence of float
+    locations
         Locations of the cells on the color-map (all in range [0, 1]; default is
         evenly spaced; example: ``numpy.linspace(0, 1, len(cells)) ** 0.5``).
+    unambiguous
+        Use `unambiguos colors <https://jfly.uni-koeln.de/html/color_blind/
+        #pallet>`_. If ``True``, choose the ``n`` first colors; use a list of
+        ``int`` to pick specific colors. Other parameters are ignored.
 
     Returns
     -------
@@ -195,7 +207,7 @@ def colors_for_oneway(cells, hue_start=0.2, light_range=0.5, cmap=None,
         cells = tuple(cells)
     n = len(cells)
     if cmap is None:
-        colors = oneway_colors(n, hue_start, light_range, light_cycle, always_cycle_hue, locations)
+        colors = oneway_colors(n, hue_start, light_range, light_cycle, always_cycle_hue, locations, unambiguous)
     else:
         cm = mpl.cm.get_cmap(cmap)
         if locations is None:

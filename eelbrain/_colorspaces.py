@@ -3,7 +3,7 @@ from itertools import cycle
 import logging
 from math import ceil
 from numbers import Real
-from typing import Sequence, Union
+from typing import Sequence, Tuple, Union
 
 # colormath starts out at 0; needs to be set before init
 logger = logging.getLogger('colormath.color_conversions')
@@ -16,6 +16,19 @@ from matplotlib.colors import ListedColormap
 from matplotlib.cm import LUTSIZE, register_cmap, get_cmap
 from matplotlib.colors import LinearSegmentedColormap, to_rgb, to_rgba
 import numpy as np
+
+
+# https://jfly.uni-koeln.de/html/color_blind/ (Fig. 16)
+UNAMBIGUOUS_COLORS = {
+    'black': (0.00, 0.00, 0.00),
+    'orange': (0.90, 0.60, 0.00),
+    'sky blue': (0.35, 0.70, 0.90),
+    'bluish green': (0.00, 0.60, 0.50),
+    'yellow': (0.95, 0.90, 0.25),
+    'blue': (0.00, 0.45, 0.70),
+    'vermillion': (0.80, 0.40, 0.00),
+    'reddish purple': (0.80, 0.60, 0.70),
+}
 
 
 class LocatedColormap:
@@ -134,30 +147,28 @@ def twoway_cmap(n1, hue_start=0.1, hue_shift=0.5, name=None, hues=None):
     return make_seq_cmap(seq, loc, name)
 
 
-def oneway_colors(n, hue_start=0.2, light_range=0.5, light_cycle=None,
-                  always_cycle_hue=False, locations=None):
-    """Create colors for categories
+def oneway_colors(
+        n: int,
+        hue_start: Union[float, Sequence[float]] = 0.2,
+        light_range: Union[float, Tuple[float, float]] = 0.5,
+        light_cycle: int = None,
+        always_cycle_hue: bool = False,
+        locations: Sequence[float] = None,
+        unambiguous: Union[bool, Sequence[int]] = None,
+):
+    "Create colors for categories (see docs at colors_for_oneway)"
+    if unambiguous:
+        if unambiguous is True:
+            if n > 8:
+                raise ValueError("unambiguous=True for n > 8")
+            indices = list(range(n))
+        else:
+            if min(unambiguous) < 1 or max(unambiguous) > 8:
+                raise ValueError(f"unambiguous={unambiguous}: values outside range (1, 8)")
+            indices = [i - 1 for i in unambiguous]
+        colors = list(UNAMBIGUOUS_COLORS.values())
+        return [colors[i] for i in indices]
 
-    Parameters
-    ----------
-    n : int
-        Number of levels.
-    hue_start : 0 <= scalar < 1 | sequence of scalar
-        First hue value (default 0.2) or list of hue values.
-    light_range : scalar | tuple
-        Amount of lightness variation. If a positive scalar, the first color is
-        lightest; if a negative scalar, the first color is darkest. Tuple with
-        two scalar to define a specific range.
-    light_cycle : int
-        Cycle from light to dark in ``light_cycle`` cells to make nearby colors 
-        more distinct (default cycles once).
-    always_cycle_hue : bool
-        Cycle hue even when cycling lightness. With ``False`` (default), hue
-        is constant within a lightness cycle.
-    locations : sequence of float
-        Locations of the cells on the color-map (all in range [0, 1]; default is
-        evenly spaced; example: ``numpy.linspace(0, 1, n) ** 0.5``).
-    """
     if locations is not None:
         raise NotImplementedError('locations for non-cmap based colors')
 
@@ -173,8 +184,7 @@ def oneway_colors(n, hue_start=0.2, light_range=0.5, light_cycle=None,
     elif len(hue_start) >= n_hues:
         hue = hue_start
     else:
-        raise ValueError("If list of hues is provided it needs ot contain at "
-                         "least as many hues as there are cells")
+        raise ValueError("If list of hues is provided it needs ot contain at least as many hues as there are cells")
 
     if isinstance(light_range, (list, tuple)):
         start, stop = light_range
