@@ -1191,7 +1191,8 @@ class Histogram(EelFigure):
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
     bins : str | int | array
-        Histogram bins (see :func:`numpy.histogram_bin_edges`).
+        Histogram bins, specified either as arry of bin edges or as ``bins``
+        parameter for :func:`numpy.histogram_bin_edges`).
     ...
         Also accepts :ref:`general-layout-parameters`.
     """
