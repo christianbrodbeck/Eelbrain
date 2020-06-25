@@ -50,7 +50,7 @@ def plural(singular, n):
         return singular
     elif singular in PLURALS:
         return PLURALS[singular]
-    elif singular.endswith('y'):
+    elif singular[-1] == 'y' and singular[-2] != 'e':
         return singular[:-1] + 'ies'
     else:
         return singular + 's'
