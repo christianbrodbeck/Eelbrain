@@ -9299,16 +9299,16 @@ class SourceSpaceBase(Dimension):
         return cls.from_mne_source_spaces(source_spaces, src, subjects_dir, parc)
 
     @classmethod
-    def from_mne_source_spaces(cls, source_spaces, src, subjects_dir,
-                               parc='aparc', label=None):
+    def from_mne_source_spaces(cls, source_spaces, src, subjects_dir, parc=None, label=None):
         """SourceSpace dimension from MNE SourceSpaces object"""
+        if parc is None:
+            parc = cls._default_parc
         if label is None:
             vertices = [ss['vertno'] for ss in source_spaces]
         else:
             vertices, _ = label_src_vertno_sel(label, source_spaces)
 
-        return cls(vertices, source_spaces[0]['subject_his_id'], src,
-                   subjects_dir, parc)
+        return cls(vertices, source_spaces[0]['subject_his_id'], src, subjects_dir, parc, filename=source_spaces)
 
     @LazyProperty
     def subjects_dir(self):
@@ -9571,15 +9571,13 @@ class SourceSpaceBase(Dimension):
 
     def get_source_space(self, subjects_dir=None):
         "Read the corresponding MNE source space"
+        if isinstance(self._filename, mne.SourceSpaces):
+            return self._filename
         if self.src is None:
-            raise TypeError("Unknown source-space. Specify the src parameter "
-                            "when initializing SourceSpace.")
+            raise TypeError("Unknown source-space. Specify the src parameter when initializing SourceSpace.")
         path = self._sss_path(subjects_dir)
         if not path.exists():
-            raise IOError(
-                f"Can't load source space because {path} does not exist; if "
-                f"the MRI files for {self.subject} were moved, use "
-                f"eelbrain.load.update_subjects_dir()")
+            raise IOError(f"Can't load source space because {path} does not exist; if the MRI files for {self.subject} were moved, use eelbrain.load.update_subjects_dir()")
         return mne.read_source_spaces(str(path))
 
     def index_for_label(self, label):
@@ -9696,8 +9694,7 @@ class SourceSpace(SourceSpaceBase):
     """
     _kinds = ('ico', 'oct')
 
-    def __init__(self, vertices, subject=None, src=None, subjects_dir=None,
-                 parc='aparc', connectivity='custom', name='source', filename='{subject}-{src}-src.fif'):
+    def __init__(self, vertices, subject=None, src=None, subjects_dir=None, parc='aparc', connectivity='custom', name='source', filename='{subject}-{src}-src.fif'):
         SourceSpaceBase.__init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name, filename)
 
     def _init_secondary(self):
@@ -10026,10 +10023,9 @@ class VolumeSourceSpace(SourceSpaceBase):
     SourceSpace : surface-based source space
     """
     _kinds = ('vol',)
-    _default_parc = 'aseg'
+    _default_parc = None  # early version of mne-Python did not scale parcellations for scaled brains
 
-    def __init__(self, vertices, subject=None, src=None, subjects_dir=None,
-                 parc=None, connectivity='custom', name='source', filename='{subject}-{src}-src.fif'):
+    def __init__(self, vertices, subject=None, src=None, subjects_dir=None, parc=None, connectivity='custom', name='source', filename='{subject}-{src}-src.fif'):
         if isinstance(vertices, np.ndarray):
             vertices = [vertices]
         SourceSpaceBase.__init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name, filename)
@@ -10078,9 +10074,7 @@ class VolumeSourceSpace(SourceSpaceBase):
                 raise IndexError("VolumeSourceSpace Index out of range: %i" % index)
         else:
             parc = None if self.parc is None else self.parc[index]
-            return VolumeSourceSpace(
-                [self.vertices[0][index]], self.subject, self.src,
-                self.subjects_dir, parc, self._subgraph(index), self.name)
+            return VolumeSourceSpace([self.vertices[0][index]], self.subject, self.src, self.subjects_dir, parc, self._subgraph(index), self.name, self._filename)
 
     def _as_uv(self):
         return Factor(self.vertices[0], name=self.name)
