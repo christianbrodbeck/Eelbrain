@@ -17,7 +17,7 @@ def merge_volume_source_space(sss, name='Volume'):
     if len(sss) <= 1:
         return sss
     assert all(ss['type'] == 'vol' for ss in sss)
-    ss = sss[0]
+    ss = sss[0].copy()
     ss['vertno'] = np.unique(np.concatenate([ss['vertno'] for ss in sss]))
     ss['inuse'] = reduce(np.logical_or, (ss['inuse'] for ss in sss))
     ss['nuse'] = ss['inuse'].sum()
@@ -26,39 +26,85 @@ def merge_volume_source_space(sss, name='Volume'):
     return SourceSpaces([ss], sss.info)
 
 
-def prune_volume_source_space(sss, grade, n=1, mirror=True, remove_midline=False):
+def prune_volume_source_space(
+        sss: SourceSpaces,
+        grade: int,
+        min_neighbors: int = 1,  # remove voxels with fewer neighbors
+        mirror: bool = True,  # make source space symmetric
+        remove_midline: bool = False,  # remove voxels along the midline
+        fill_holes: int = 0,  # fill holes bordered by n voxels
+):
     """Remove sources that have ``n`` or fewer neighboring sources"""
     assert len(sss) == 1
+    # make copy
     ss = sss[0].copy()
+    ss['inuse'] = ss['inuse'].copy()
     assert ss['type'] == 'vol'
     if 'neighbor_vert' in ss:
         del ss['neighbor_vert']
+    # coordinates in mm
+    rr_mm = np.round(ss['rr'] * 1000).astype(int)
+    rr_vertno = {coord: v for v, coord in enumerate(map(tuple, rr_mm))}
+    # remove midline
     if remove_midline:
         rm = ss['rr'][ss['vertno']][:, 0] == 0
         ss['inuse'][ss['vertno'][rm]] = 0
         ss['vertno'] = ss['vertno'][~rm]
+    # make symmetric
     if mirror:
-        coord_tuples = tuple(map(tuple, ss['rr']))
         vertex_list = list(ss['vertno'])
-        coord_id = {coord: v for v, coord in enumerate(coord_tuples)}
         for v in ss['vertno']:
-            r, a, s = ss['rr'][v]
-            v_mirror = coord_id[-r, a, s]
+            r, a, s = rr_mm[v]
+            v_mirror = rr_vertno[-r, a, s]
             if v_mirror not in vertex_list:
                 vertex_list.append(v_mirror)
         vertex_list.sort()
         ss['vertno'] = np.array(vertex_list, dtype=ss['vertno'].dtype)
-        ss['inuse'][ss['vertno']] = 1
-    dist = grade * .0011
-    while True:
-        coords = ss['rr'][ss['vertno']]
-        neighbors = _point_graph(coords, dist)
-        keep = np.array([np.sum(neighbors == i) > n for i in range(len(coords))])
-        if np.all(keep):
+        ss['inuse'][ss['vertno']] = True
+    # fill in holes
+    if fill_holes:
+        assert 6 >= fill_holes >= 3
+        max_coord = rr_mm.max(0)
+        min_coord = rr_mm.min(0)
+        while True:
+            add = np.zeros(ss['np'], bool)
+            for i in range(ss['np']):
+                if ss['inuse'][i]:
+                    continue
+                ras = rr_mm[i]
+                n_neighbors = 0
+                for j in range(3):
+                    index = list(ras)
+                    # up
+                    if ras[j] < max_coord[j]:
+                        index[j] = ras[j] + grade
+                        n_neighbors += rr_vertno[tuple(index)] in ss['vertno']
+                    # down
+                    if ras[j] > min_coord[j]:
+                        index[j] = ras[j] - grade
+                        n_neighbors += rr_vertno[tuple(index)] in ss['vertno']
+                    # move on if done
+                    if n_neighbors >= fill_holes:
+                        add[i] = True
+                        break
+            if not np.any(add):
+                break
+            ss['inuse'][add] = True
+            ss['vertno'] = np.flatnonzero(ss['inuse'])
+        ss['nuse'] = len(ss['vertno'])
+    # remove points with few neighbors
+    if min_neighbors > 1:
+        while True:
+            neighbors = _point_graph(rr_mm[ss['vertno']], grade * 1.1)
+            unique, counts = np.unique(neighbors, return_counts=True)
+            keep = unique[counts >= min_neighbors]
+            if len(keep) == ss['nuse']:
+                break
+            ss['vertno'] = ss['vertno'][keep]
+            ss['nuse'] = len(ss['vertno'])
             break
-        ss['inuse'][ss['vertno'][~keep]] = 0
-        ss['vertno'] = ss['vertno'][keep]
-    ss['nuse'] = len(ss['vertno'])
+        ss['inuse'] = np.in1d(np.arange(ss['np']), ss['vertno'])
+    # check result
     assert ss['inuse'].sum() == ss['nuse']
     assert np.all(np.flatnonzero(ss['inuse']) == ss['vertno'])
     return SourceSpaces([ss], sss.info)

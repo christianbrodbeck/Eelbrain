@@ -5501,12 +5501,9 @@ class MneExperiment(FileTree):
                 else:
                     raise RuntimeError(f'src={src!r}')
                 voi.extend('%s-%s' % fmt for fmt in product(('Left', 'Right'), voi_lat))
-                sss = mne.setup_volume_source_space(
-                    subject, pos=float(param), bem=bem,
-                    mri=join(self.get('mri-dir'), 'mri', 'aseg.mgz'),
-                    volume_label=voi, subjects_dir=self.get('mri-sdir'))
+                sss = mne.setup_volume_source_space(subject, pos=float(param), bem=bem, mri=join(self.get('mri-dir'), 'mri', 'aseg.mgz'), volume_label=voi, subjects_dir=self.get('mri-sdir'))
                 sss = merge_volume_source_space(sss, name)
-                sss = prune_volume_source_space(sss, int(param), 2, remove_midline=remove_midline)
+                sss = prune_volume_source_space(sss, int(param), 3, remove_midline=remove_midline, fill_holes=4)
             else:
                 assert not special
                 spacing = kind + param
