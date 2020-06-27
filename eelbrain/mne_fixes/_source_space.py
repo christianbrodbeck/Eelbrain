@@ -3,7 +3,8 @@ from functools import reduce
 from mne import SourceSpaces
 import numpy as np
 
-from .._data_obj import _point_graph
+from .._data_obj import VolumeSourceSpace, _point_graph
+from .._types import PathArg
 
 
 def merge_volume_source_space(sss, name='Volume'):
@@ -107,4 +108,34 @@ def prune_volume_source_space(
     # check result
     assert ss['inuse'].sum() == ss['nuse']
     assert np.all(np.flatnonzero(ss['inuse']) == ss['vertno'])
+    return SourceSpaces([ss], sss.info)
+
+
+def restrict_volume_source_space(
+        sss: SourceSpaces,
+        grade: int,
+        subjects_dir: PathArg,
+        subject: str,
+        parc: str = 'aseg',  # parcellation with labels
+        label: str = '*Cortex',  # pattern for selecting labels
+        grow: int = 0,  # grow index after selection
+):
+    assert len(sss) == 1
+    # make copy
+    ss = sss[0].copy()
+    assert ss['type'] == 'vol'
+    if 'neighbor_vert' in ss:
+        del ss['neighbor_vert']
+    # parcellation
+    parc = VolumeSourceSpace._read_volume_parc(subjects_dir, subject, parc, ss['rr'][ss['vertno']])
+    index = parc.matches(label)
+    neighbors = _point_graph(ss['rr'][ss['vertno']], grade * 0.0011)
+    neighbors = np.vstack((neighbors, neighbors[:, [1, 0]]))
+    for _ in range(grow):
+        for i in np.flatnonzero(index):
+            index[neighbors[neighbors[:, 0] == i, 1]] = True
+    # update ss
+    ss['vertno'] = ss['vertno'][index]
+    ss['inuse'] = np.in1d(np.arange(ss['np']), ss['vertno'])
+    ss['nuse'] = len(ss['vertno'])
     return SourceSpaces([ss], sss.info)

@@ -131,6 +131,7 @@ from . import fmtxt, _info
 from ._exceptions import DimensionMismatchError, EvalError, IncompleteModel
 from ._data_opt import gaussian_smoother
 from ._text import enumeration
+from ._types import PathArg
 from ._utils import (
     intervals, ui, LazyProperty, n_decimals, natsorted)
 from ._utils.numpy_utils import (
@@ -10031,14 +10032,23 @@ class VolumeSourceSpace(SourceSpaceBase):
         SourceSpaceBase.__init__(self, vertices, subject, src, subjects_dir, parc, connectivity, name, filename)
 
     def _read_parc(self, parc: str) -> Factor:
-        path = Path(self.subjects_dir) / self.subject / 'mri' / f'{parc}.mgz'
+        return self._read_volume_parc(self.subjects_dir, self.subject, parc, self.coordinates)
+
+    @staticmethod
+    def _read_volume_parc(
+            subjects_dir: PathArg,
+            subject: str,
+            parc: str,
+            coordinates: np.ndarray,
+    ) -> Factor:
+        path = Path(subjects_dir) / subject / 'mri' / f'{parc}.mgz'
         if not path.exists():
             raise ValueError(f"parc={parc!r}: parcellation does not exist at {path}")
         mgz = nibabel.load(str(path))
         voxel_to_mri = mgz.affine.copy()
         voxel_to_mri[:3] /= 1000
         mri_to_voxel = inv(voxel_to_mri)
-        voxel_coords = mne.transforms.apply_trans(mri_to_voxel, self.coordinates)
+        voxel_coords = mne.transforms.apply_trans(mri_to_voxel, coordinates)
         voxel_coords = np.round(voxel_coords).astype(int)
         x, y, z = voxel_coords.T
         data = mgz.get_data()

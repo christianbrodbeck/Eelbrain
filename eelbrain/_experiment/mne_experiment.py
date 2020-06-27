@@ -40,7 +40,7 @@ from .._meeg import new_rejection_ds
 from .._mne import morph_source_space, shift_mne_epoch_trigger, find_source_subject, label_from_annot
 from ..mne_fixes import write_labels_to_annot, _interpolate_bads_eeg, _interpolate_bads_meg
 from ..mne_fixes._trans import hsp_equal, mrk_equal
-from ..mne_fixes._source_space import merge_volume_source_space, prune_volume_source_space
+from ..mne_fixes._source_space import merge_volume_source_space, prune_volume_source_space, restrict_volume_source_space
 from .._ndvar import concatenate, cwt_morlet, neighbor_correlation
 from ..fmtxt import List, Report, Image, read_meta
 from .._stats.stats import ttest_t
@@ -5477,6 +5477,7 @@ class MneExperiment(FileTree):
         else:
             src = self.get('src')
             kind, param, special = SRC_RE.match(src).groups()
+            grade = int(param)
             self._log.info(f"Generating {src} source space for {subject}...")
             if kind == 'vol':
                 if subject == 'fsaverage':
@@ -5501,9 +5502,12 @@ class MneExperiment(FileTree):
                 else:
                     raise RuntimeError(f'src={src!r}')
                 voi.extend('%s-%s' % fmt for fmt in product(('Left', 'Right'), voi_lat))
-                sss = mne.setup_volume_source_space(subject, pos=float(param), bem=bem, mri=join(self.get('mri-dir'), 'mri', 'aseg.mgz'), volume_label=voi, subjects_dir=self.get('mri-sdir'))
+                mri_sdir = self.get('mri-sdir')
+                sss = mne.setup_volume_source_space(subject, pos=float(param), bem=bem, mri=join(self.get('mri-dir'), 'mri', 'aseg.mgz'), volume_label=voi, subjects_dir=mri_sdir)
                 sss = merge_volume_source_space(sss, name)
-                sss = prune_volume_source_space(sss, int(param), 3, remove_midline=remove_midline, fill_holes=4)
+                if special is None:
+                    sss = restrict_volume_source_space(sss, grade, mri_sdir, subject, grow=1)
+                sss = prune_volume_source_space(sss, grade, 3, remove_midline=remove_midline, fill_holes=4)
             else:
                 assert not special
                 spacing = kind + param
