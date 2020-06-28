@@ -537,7 +537,7 @@ class RawICA(CachedRawPipe):
         visit = _visit(recording)
         path = self._ica_path(subject, visit)
         if not exists(path):
-            raise RuntimeError(f"ICA file {basename(path)} does not exist for raw={self.name!r}. Run e.make_ica_selection() to create it.")
+            raise FileMissing(f"ICA file {basename(path)} does not exist for raw={self.name!r}. Run e.make_ica_selection() to create it.")
         return mne.preprocessing.read_ica(path)
 
     @staticmethod
@@ -557,7 +557,11 @@ class RawICA(CachedRawPipe):
             raw.append(raw_)
         return raw
 
-    def make_ica(self, subject, visit, make=True):
+    def make_ica(
+            self,
+            subject: str,
+            visit: str,
+    ):
         path = self._ica_path(subject, visit)
         recordings = [compound((session, visit)) for session in self.session]
         raw = self.source.load(subject, recordings[0], False)
@@ -579,9 +583,6 @@ class RawICA(CachedRawPipe):
                     remove(path)
                 else:
                     raise RuntimeError(f"command={command!r}")
-
-        if not make:
-            raise FileMissing(path)
 
         for session in self.session[1:]:
             recording = compound((session, visit))

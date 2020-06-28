@@ -55,7 +55,7 @@ from .experiment import FileTree
 from .groups import assemble_groups
 from .parc import SEEDED_PARC_RE, CombinationParc, EelbrainParc, FreeSurferParc, FSAverageParc, SeededParc, IndividualSeededParc, LabelParc, assemble_parcs
 from .preprocessing import (
-    assemble_pipeline, RawSource, RawFilter, RawICA,
+    assemble_pipeline, RawSource, RawFilter, RawICA, RawApplyICA,
     compare_pipelines, ask_to_delete_ica_files)
 from .test_def import (
     Test,
@@ -3070,24 +3070,33 @@ class MneExperiment(FileTree):
                 mne.convert_forward_solution(fwd, surf_ori, copy=False)
             return fwd
 
-    def load_ica(self, make=True, **state):
+    def load_ica(self, **state):
         """Load the mne-python ICA object
 
         Parameters
         ----------
-        make : bool
-            If the file does not exist, compute it (default). Set ``make=False``
-            to raise a FileMissing error.
         ...
             State parameters.
 
         Returns
         -------
         ica : mne.preprocessing.ICA
-            ICA object for the current raw/rej setting.
+            ICA object for the current :ref:`state-raw` setting.
         """
-        path = self.make_ica(make, **state)
-        return mne.preprocessing.read_ica(path)
+        pipe = self._get_ica_pipe(state)
+        return pipe.load_ica(self.get('subject'), self.get('recording'))
+
+    def _get_ica_pipe(self, state):
+        raw = self.get('raw', **state)
+        pipe = self._raw[raw]
+        while not isinstance(pipe, RawICA):
+            if isinstance(raw, RawSource):
+                raise ValueError(f"raw={raw!r} does not involve ICA")
+            elif isinstance(raw, RawApplyICA):
+                pipe = pipe.ica_source
+            else:
+                pipe = pipe.source
+        return pipe
 
     def load_inv(self, fiff=None, ndvar=False, mask=None, **state):
         """Load the inverse operator
@@ -4301,7 +4310,7 @@ class MneExperiment(FileTree):
         connectivity = pipe.get_connectivity(data_kind)
         gui.select_components(path, ds, sysname, connectivity)
 
-    def make_ica(self, make=True, **state):
+    def make_ica(self, **state):
         """Compute ICA decomposition for a :class:`pipeline.RawICA` preprocessing step
 
         If a corresponding file exists, a basic check is done as to whether the
@@ -4309,9 +4318,6 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        make : bool
-            If the file does not exist, compute it (default). Set ``make=False``
-            to raise a FileMissing error.
         ...
             State parameters.
 
@@ -4330,19 +4336,8 @@ class MneExperiment(FileTree):
             ...     e.make_ica()
 
         """
-        if state:
-            self.set(**state)
-        pipe = self._raw[self.get('raw')]
-        if not isinstance(pipe, RawICA):
-            ica_raws = [key for key, pipe in self._raw.items() if isinstance(pipe, RawICA)]
-            if len(ica_raws) > 1:
-                raise ValueError(f"raw={pipe.name!r} does not involve ICA; set raw to an ICA processing step ({enumeration(ica_raws)})")
-            elif len(ica_raws) == 1:
-                print(f"raw: {pipe.name} -> {ica_raws[0]}")
-                return self.make_ica(raw=ica_raws[0])
-            else:
-                raise RuntimeError("Experiment has no RawICA processing step")
-        return pipe.make_ica(self.get('subject'), self.get('visit'), make)
+        pipe = self._get_ica_pipe(state)
+        return pipe.make_ica(self.get('subject'), self.get('visit'))
 
     def make_link(self, temp, field, src, dst, redo=False):
         """Make a hard link
@@ -6563,7 +6558,7 @@ class MneExperiment(FileTree):
             for subject in self:
                 table.cell(subject)
                 try:
-                    ica = self.load_ica(make=False)
+                    ica = self.load_ica()
                     table.cells(ica.n_components_, len(ica.exclude))
                 except FileMissing:
                     table.cells("No ICA-file", '')
