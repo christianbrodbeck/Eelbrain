@@ -3156,6 +3156,8 @@ class MneExperiment(FileTree):
             inv = make_inverse_operator(fiff.info, self.load_fwd(), self.load_cov(), use_cps=True, **make_kw)
             if dst:
                 mne.minimum_norm.write_inverse_operator(dst, inv)
+                # re-load to reduce precision to cached version
+                inv = mne.minimum_norm.read_inverse_operator(dst)
 
         if ndvar:
             inv = load.fiff.inverse_operator(inv, self.get('src'), self.get('mri-sdir'), self.get('parc'))
@@ -4218,6 +4220,8 @@ class MneExperiment(FileTree):
             e.comment = ' % '.join(cell)
         if use_cache:
             mne.write_evokeds(dst, ds_agg['evoked'])
+            # re-load to reduce precision to cached version
+            ds_agg['evoked'] = mne.read_evokeds(dst, proj=False)
 
         return ds_agg
 

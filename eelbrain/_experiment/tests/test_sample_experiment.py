@@ -106,9 +106,9 @@ def test_sample():
     ep = e.load_epochs(baseline=True, epoch='visual', rej='').aggregate('side')
     evs = e.load_evoked(baseline=True, epoch='visual-s', rej='', model='side')
     tstart = ep['meg'].time.tmin - shift
-    assert_dataobj_equal(evs[0, 'meg'], ep[0, 'meg'].sub(time=(tstart, None)), decimal=20)
+    assert_dataobj_equal(evs[0, 'meg'], ep[0, 'meg'].sub(time=(tstart, None)), decimal=19)
     tstop = ep['meg'].time.tstop + shift
-    assert_almost_equal(evs[1, 'meg'].x, ep[1, 'meg'].sub(time=(None, tstop)).x, decimal=20)
+    assert_almost_equal(evs[1, 'meg'].x, ep[1, 'meg'].sub(time=(None, tstop)).x, decimal=19)
 
     # post_baseline_trigger_shift & multiple epochs with same time stamp
     class Experiment(SampleExperiment):
@@ -278,17 +278,18 @@ def test_sample_source():
     # source space tests
     e.set(src='ico-4', rej='', epoch='auditory')
     # These two tests are only identical if the evoked has been cached before the first test is loaded
-    ds = e.load_evoked(-1, model='side')
     resp = e.load_test('left=right', 0.05, 0.2, 0.05, samples=100, parc='ac', make=True)
     resm = e.load_test('left=right', 0.05, 0.2, 0.05, samples=100, mask='ac', make=True)
     assert_dataobj_equal(resp.t, resm.t)
     # ROI tests
     e.set(epoch='target')
     ress = e.load_test('left=right', 0.05, 0.2, 0.05, samples=100, data='source.rms', parc='ac', make=True)
-    res = ress.res['ac-lh']
+    res = ress.res['transversetemporal-lh']
     assert res.p.min() == pytest.approx(0.429, abs=.001)
     ress = e.load_test('twostage', 0.05, 0.2, 0.05, samples=100, data='source.rms', parc='ac', make=True)
-    res = ress.res['ac-lh']
+    res = ress.res['transversetemporal-lh']
+    assert res.samples == -1
+    assert res.tests['intercept'].p.min() == 1/7
 
 
 @requires_mne_sample_data
@@ -335,7 +336,7 @@ def test_sample_sessions():
     # evoked
     dse_super = e.load_evoked(epoch='super', model='modality%side')
     target = ds_super.aggregate('modality%side', drop=('i_start', 't_edf', 'T', 'index', 'trigger', 'session', 'interpolate_channels', 'epoch'))
-    assert_dataobj_equal(dse_super, target)
+    assert_dataobj_equal(dse_super, target, 19)
 
     # conflicting session and epoch settings
     rej_path = join(root, 'meg', 'R0000', 'epoch selection', 'sample2_1-40_target2-man.pickled')
