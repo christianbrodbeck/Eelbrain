@@ -3026,7 +3026,10 @@ class NDPermutationDistribution:
         # process map
         if self.kind == 'tfce':
             dh = 0.1 if self.tfce is True else self.tfce
-            self.tfce_warning = max(stat_map.max(), -stat_map.min()) < dh
+            n_steps = max(0, stat_map.max()) // dh + max(0, -stat_map.min()) // dh
+            if n_steps > 10000:
+                raise RuntimeError(f"TFCE requested with {n_steps:.0f} steps; currently 10000 is set as limit to avoid excessive computation times. Consider setting the tfce parameter to a larger step size.")
+            self.tfce_warning = n_steps < 1
             cmap = tfce(stat_map, self.tail, self._connectivity, dh)
             cids = None
             n_clusters = cmap.max() > 0
