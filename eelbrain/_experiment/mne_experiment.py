@@ -184,7 +184,7 @@ def cache_valid(mtime, *source_mtimes):
     return (
         mtime is not None
         and all(t is not None for t in source_mtimes)
-        and mtime > max(source_mtimes))
+        and mtime >= max(source_mtimes))
 
 
 class MneExperiment(FileTree):
@@ -3921,7 +3921,7 @@ class MneExperiment(FileTree):
                     return mtime
                 elif is_fake:
                     for _ in self.iter('hemi'):
-                        self.make_copy('annot-file', 'mrisubject', common_brain, mrisubject)
+                        self.make_copy('annot-file', 'mrisubject', common_brain, mrisubject, overwrite=True)
                 else:
                     self.get('label-dir', make=True)
                     subjects_dir = self.get('mri-sdir')
