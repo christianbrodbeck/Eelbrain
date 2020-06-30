@@ -148,7 +148,7 @@ class BoostingResult:
     r_rank: Union[float, NDVar] = None
     r_l1: NDVar = None
     # store the version of the boosting algorithm with which model was fit
-    version: int = 11  # file format (updates when re-saving)
+    version: int = 12  # file format (updates when re-saving)
     algorithm_version: int = -1  # does not change when re'saving
     # debug parameters
     y_pred: NDVar = None
@@ -160,15 +160,20 @@ class BoostingResult:
     def __setstate__(self, state: dict):
         # backwards compatibility
         version = state.pop('version')
-        if version < 11:
+        if version < 12:
             if version == 7:
                 state['partitions'] = state.pop('n_partitions')
                 state['partitions_arg'] = state.pop('n_partitions_arg')
             if version < 9:
                 state['residual'] = state.pop('fit_error')
-            for key in ['partitions_arg', 'h', 'isnan', 'y_info']:
-                state[f'_{key}'] = state.pop(key, None)
-            state['r_rank'] = state.pop('spearmanr')
+            if version < 11:
+                for key in ['partitions_arg', 'h', 'isnan', 'y_info']:
+                    state[f'_{key}'] = state.pop(key, None)
+                state['r_rank'] = state.pop('spearmanr')
+            if version < 12:
+                # Vector residuals are averaged
+                if state['r_rank'] is None:
+                    state['residual'] *= state['n_samples']
         self.__init__(**state)
 
     def __repr__(self):
