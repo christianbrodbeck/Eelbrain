@@ -2871,6 +2871,8 @@ class NDPermutationDistribution:
 
         # prepare cluster minimum size criteria
         if criteria:
+            if kind != 'cluster':
+                raise ValueError("Can not use cluster size criteria when doing threshold free cluster evaluation")
             criteria_ = []
             for k, v in criteria.items():
                 m = re.match(r'min(\w+)', k)
@@ -2894,12 +2896,6 @@ class NDPermutationDistribution:
 
                 axes = tuple(i for i in range(ndim) if i != ax)
                 criteria_.append((axes, v))
-
-            if kind != 'cluster':
-                # here so that invalid keywords raise explicitly
-                err = ("Can not use cluster size criteria when doing "
-                       "threshold free cluster evaluation")
-                raise ValueError(err)
         else:
             criteria_ = None
 
@@ -3032,7 +3028,7 @@ class NDPermutationDistribution:
             self.tfce_warning = n_steps < 1
             cmap = tfce(stat_map, self.tail, self._connectivity, dh)
             cids = None
-            n_clusters = cmap.max() > 0
+            n_clusters = True
         elif self.kind == 'cluster':
             cmap, cids = label_clusters(stat_map, self.threshold, self.tail,
                                         self._connectivity, self._criteria)
@@ -3103,24 +3099,17 @@ class NDPermutationDistribution:
         return dist
 
     def __repr__(self):
-        items = []
+        items = [self.kind]
         if self.has_original:
-            dt = timedelta(seconds=round(self.dt_original))
-            items.append("%i clusters (%s)" % (self.n_clusters, dt))
-
-            if self.samples > 0 and self.n_clusters > 0:
-                if self.dt_perm is not None:
-                    dt = timedelta(seconds=round(self.dt_perm))
-                    items.append("%i permutations (%s)" % (self.samples, dt))
+            if self.kind == 'cluster':
+                items.append(f"{self.n_clusters} clusters")
         else:
             items.append("no data")
-
-        return "<NDPermutationDistribution: %s>" % ', '.join(items)
+        return f"<NDPermutationDistribution: {', '.join(items)}>"
 
     def __getstate__(self):
         if not self._finalized:
-            raise RuntimeError("Cannot pickle cluster distribution before all "
-                               "permutations have been added.")
+            raise RuntimeError("Cannot pickle cluster distribution before all permutations have been added.")
         state = {
             name: getattr(self, name) for name in (
                 'name', 'meas', '_version', '_host', '_init_time',
@@ -3181,7 +3170,7 @@ class NDPermutationDistribution:
 
     def _repr_test_args(self, pmin):
         "Argument representation for TestResult repr"
-        args = ['samples=%r' % self.samples]
+        args = [f'samples={self.samples}']
         if pmin is not None:
             args.append(f"pmin={pmin!r}")
         elif self.kind == 'tfce':
@@ -3203,7 +3192,7 @@ class NDPermutationDistribution:
             if self.n_clusters == 0:
                 info.append("no clusters")
             else:
-                info.append("%i clusters" % self.n_clusters)
+                info.append(f"{self.n_clusters} clusters")
 
         if self.n_clusters and self.samples:
             info.append(f"{fmtxt.peq(self.probability_map.min())}")
