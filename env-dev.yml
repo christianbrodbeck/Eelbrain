@@ -5,7 +5,7 @@ name: eeldev
 channels:
 - conda-forge
 dependencies:
-- python == 3.7  # traitsui incompatible with 3.8
+- python >= 3.7
 - pip
 - twine
 - libblas=*=*mkl  # openblas produces incorrect results for ICA in iMac Pro
