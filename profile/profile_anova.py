@@ -7,7 +7,7 @@ from eelbrain import *
 import eelbrain
 
 mne.set_log_level('warning')
-eelbrain._stats.testnd.multiprocessing = False
+configure(n_workers=False)
 
 
 # option parser

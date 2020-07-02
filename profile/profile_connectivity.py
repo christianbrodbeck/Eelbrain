@@ -10,7 +10,7 @@ from eelbrain import *
 fname = 'profile_of_connectivity.profile'
 
 mne.set_log_level('warning')
-eelbrain._stats.testnd.multiprocessing = False
+configure(n_workers=False)
 
 ds = datasets.get_mne_sample(-0.1, 0.2, src='ico', sub="modality == 'A'")
 
