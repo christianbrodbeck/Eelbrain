@@ -306,7 +306,7 @@ class MneExperiment(FileTree):
     # MRI subject names: {subject: mrisubject} mappings
     # selected with e.set(mri=dict_name)
     # default is identity (mrisubject = subject)
-    _mri_subjects = {'': keydefaultdict(lambda s: s)}
+    mri_subjects = {'': keydefaultdict(lambda s: s)}
 
     # Where to search for subjects (defined as a template name). If the
     # experiment searches for subjects automatically, it scans this directory
@@ -382,7 +382,7 @@ class MneExperiment(FileTree):
             raise TypeError(f"{self.__class__.__name__}.auto_delete_results={self.auto_delete_results!r}")
 
         # create attributes (overwrite class attributes)
-        self._mri_subjects = self._mri_subjects.copy()
+        self._mri_subjects = self.mri_subjects.copy()
         self._templates = {
             # MEG
             'equalize_evoked_count': ('', 'eq'),
