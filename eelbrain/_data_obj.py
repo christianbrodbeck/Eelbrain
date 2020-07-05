@@ -7596,7 +7596,7 @@ class Dimension:
         attrs = {getattr(dim, attr) for dim in dims}
         if len(attrs) > 1:
             desc = ', '.join(map(repr, attrs))
-            raise DimensionMismatchError(f"different {attr}s: {desc}")
+            raise DimensionMismatchError(f"Different values for {attrs}: {desc}")
         return attrs.pop()
 
     def _as_scalar_array(self):
@@ -9782,20 +9782,18 @@ class SourceSpace(SourceSpaceBase):
         dims = list(dims)
         if len(dims) != 2 or dims[0].rh_n != 0 or dims[1].lh_n != 0:
             raise NotImplementedError("Can only concatenate SourceSpace with exactly two NDVars, one for lh and one for rh (in this order)")
-        lh, rh = dims
-        if lh.subject != rh.subject:
-            raise DimensionMismatchError(f"Different subject ({lh.subject}/{rh.subject})")
-        elif lh.src != rh.src:
-            raise DimensionMismatchError(f"Different source-spaces ({lh.src}/{rh.src})")
-        elif lh.subjects_dir != rh.subjects_dir:
-            raise DimensionMismatchError(f"Different subjects_dirs ({lh.subjects_dir}/{rh.subjects_dir})")
+        subject = cls._concatenate_attr(dims, 'subject')
+        src = cls._concatenate_attr(dims, 'src')
+        subjects_dir = cls._concatenate_attr(dims, 'subjects_dir')
+        name = cls._concatenate_attr(dims, 'name')
+        filename = cls._concatenate_attr(dims, '_filename')
         # parc
+        lh, rh = dims
         if lh.parc is None or rh.parc is None:
             parc = None
         else:
             parc = combine((lh.parc, rh.parc))
-        name = cls._concatenate_attr(dims, 'name')
-        return SourceSpace([lh.lh_vertices, rh.rh_vertices], lh.subject, lh.src, lh.subjects_dir, parc, name=name)
+        return SourceSpace([lh.lh_vertices, rh.rh_vertices], subject, src, subjects_dir, parc, name=name, filename=filename)
 
     def _link_midline(self, maxdist=0.015):
         """Link sources in the left and right hemispheres
